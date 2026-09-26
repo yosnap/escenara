@@ -1,0 +1,41 @@
+# Secretos y configuración local
+.env
+.env.*
+!.env.example
+*.pem
+
+# Documentación privada: claves API, cuentas y datos personales (nunca al repositorio)
+docs/privado/
+
+# Planificación privada: enlace simbólico al repositorio hermano escenara-planes
+# (sin barra final: git trata el enlace como fichero, no como carpeta)
+/plans
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Dependencias y compilación
+node_modules/
+.pnpm-store/
+.next/
+.turbo/
+dist/
+build/
+out/
+coverage/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+
+# Medios generados en pruebas locales
+tmp/
+spikes/output/
+
+# Editores
+.idea/
+.vscode/*
+!.vscode/extensions.json
