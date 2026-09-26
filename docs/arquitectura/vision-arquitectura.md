@@ -57,6 +57,15 @@ flowchart LR
 | Montaje | FFmpeg en workers | Pendiente, ADR-0008 |
 | Modelos iniciales | Según el informe de 0.3.0 | Pendiente, ADR-0009 |
 
+## Entorno local
+
+| Servicio | Puerto del host | Puerto interno | Nota |
+|---|---|---|---|
+| Aplicación web (Next.js) | **3021** | 3021 | Siempre `http://localhost:3021` |
+| PostgreSQL | **5421** | 5432 | Contenedor Docker; desde otros contenedores se usa `5432` |
+
+Los puertos son fijos. Si al arrancar uno está ocupado, se identifica el proceso con `lsof -nP -iTCP:PUERTO -sTCP:LISTEN` y se detiene si pertenece a Escenara; no se arranca en otro puerto. El 5421 se eligió porque el 5438 ya lo usa otro proyecto en la máquina de desarrollo. Los puertos del resto de servicios locales (almacenamiento S3, correo) se fijan en 0.2.0 con la misma comprobación.
+
 ## Principios
 
 - Ninguna generación se envía sin aprobación, sin presupuesto reservado o con una regla obligatoria fallida.
