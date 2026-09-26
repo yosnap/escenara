@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="LICENSE"><img alt="Licencia AGPL 3.0" src="https://img.shields.io/badge/licencia-AGPL--3.0-2753D7"></a>
-  <img alt="Versión 0.4.0" src="https://img.shields.io/badge/versión-0.4.0-F0663D">
+  <img alt="Versión 0.5.0" src="https://img.shields.io/badge/versión-0.5.0-F0663D">
   <img alt="Estado: en desarrollo" src="https://img.shields.io/badge/estado-en%20desarrollo-485269">
 </p>
 
@@ -20,7 +20,7 @@
 - **Nada se genera sin tu aprobación.** Ves el guion, el storyboard y una estimación de coste antes de gastar.
 - **Consentimiento y privacidad primero.** Registro de derechos, sin menores, etiquetado de contenido sintético y borrado completo.
 
-> 🚧 **Proyecto en fase temprana (0.4.0).** Ahora mismo hay base técnica, infraestructura local, un prototipo de generación con KIE y el sistema de diseño con su catálogo de componentes; la experiencia de creación llega en las próximas versiones. Iremos añadiendo capturas de cada apartado aquí y en la guía de usuario.
+> 🚧 **Proyecto en fase temprana (0.5.0).** Ahora mismo hay base técnica, infraestructura local, un prototipo de generación con KIE, el sistema de diseño con su catálogo de componentes y el selector de medios con editor de imagen; la experiencia de creación llega en las próximas versiones. Iremos añadiendo capturas de cada apartado aquí y en la guía de usuario.
 
 ## Empezar en local
 
@@ -32,6 +32,7 @@ cd escenara
 cp .env.example .env        # cambia las contraseñas de ejemplo
 bun install
 bun run services:up         # PostgreSQL y SeaweedFS (almacenamiento S3)
+bun run db:migrate          # crea o actualiza las tablas
 bun run dev                 # http://localhost:3021
 ```
 
@@ -53,6 +54,8 @@ Los puertos son fijos. Si alguno está ocupado, libera el proceso que lo usa en 
 | `bun run check` | Lint, tipos, tests y build: lo que debe pasar antes de proponer un cambio |
 | `bun run format` | Formatea y ordena imports con Biome |
 | `bun run services:up` / `bun run services:down` | Levanta o detiene PostgreSQL y SeaweedFS |
+| `bun run db:backup` / `bun run db:migrate` | Copia la base de datos a `backups/bd/` / aplica las migraciones pendientes |
+| `bun run db:generate` | Genera una migración SQL a partir de los cambios del esquema |
 
 ## Estructura
 

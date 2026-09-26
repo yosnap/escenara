@@ -1,6 +1,6 @@
 {
   "name": "escenara",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "description": "Estudio abierto de personajes y vídeo",
   "license": "AGPL-3.0-only",
@@ -23,6 +23,9 @@
     "check": "bun run lint && bun run typecheck && bun run test && bun run build",
     "services:up": "docker compose up -d --wait postgres seaweedfs && docker compose run --rm seaweedfs-init",
     "services:down": "docker compose down",
+    "db:backup": "mkdir -p backups/bd && docker compose exec -T postgres sh -c 'pg_dump -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\"' > backups/bd/escenara-$(date +%Y%m%d-%H%M%S).sql",
+    "db:generate": "bun --filter @escenara/web db:generate",
+    "db:migrate": "bun --filter @escenara/web db:migrate",
     "prototipo": "bun spikes/prototipo/run.ts",
     "tokens": "bun --filter @escenara/web tokens"
   },

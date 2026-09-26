@@ -18,7 +18,7 @@ El PRD proponía Next.js para la web y un servicio Python con LangGraph para las
 
 ## Decisión
 
-El MVP se construye **solo en TypeScript**: Next.js (interfaz y API), workers en Node.js y adaptadores de proveedores. El servicio de decisiones se define como un **contrato HTTP** (0.9.0) para que un servicio Python (LangGraph o Laya) pueda añadirse después sin reescribir el resto, cuando su valor esté medido (a partir de 0.21.0).
+El MVP se construye **solo en TypeScript**: Next.js (interfaz y API), workers en Node.js y adaptadores de proveedores. El servicio de decisiones se define como un **contrato HTTP** (0.11.0) para que un servicio Python (LangGraph o Laya) pueda añadirse después sin reescribir el resto, cuando su valor esté medido (a partir de 0.23.0).
 
 ## Consecuencias
 

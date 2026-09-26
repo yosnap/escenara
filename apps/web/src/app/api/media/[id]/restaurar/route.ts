@@ -1,0 +1,8 @@
+import { type ContextoId, leerId, manejador } from "@/server/media/http";
+import { restaurarMedio } from "@/server/media/servicio";
+
+export const dynamic = "force-dynamic";
+
+export const POST = manejador(async (_: Request, contexto: ContextoId) => {
+  return Response.json(await restaurarMedio(await leerId(contexto)));
+});

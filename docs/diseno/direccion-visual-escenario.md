@@ -1,6 +1,6 @@
 # Dirección visual «Escenario»
 
-**Estado:** aprobada por el propietario el 26-sep-2026 como marca 0.5.0 · **Base:** `docs/branding/ESCENARA_BRAND_GUIDE.md` (0.4) y `escenara.brand.json` (0.4.0) · **Se implementa en:** 0.4.0 (sistema de diseño) y 0.5.0 (portada)
+**Estado:** aprobada por el propietario el 26-sep-2026 como marca 0.5.0 · **Base:** `docs/branding/ESCENARA_BRAND_GUIDE.md` (0.4) y `escenara.brand.json` (0.4.0) · **Se implementa en:** 0.4.0 (sistema de diseño) y 0.6.0 (portada)
 
 ## Intención
 

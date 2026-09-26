@@ -6,26 +6,42 @@ import { Tooltip as TT } from "@base-ui/react/tooltip";
 import { X } from "lucide-react";
 import type { ReactElement, ReactNode } from "react";
 
-/** Diálogo modal accesible con foco atrapado y cierre por Escape. */
+const ANCHO_DIALOGO = {
+  md: "w-[min(32rem,calc(100vw-2rem))]",
+  xl: "w-[min(72rem,calc(100vw-2rem))] max-h-[calc(100dvh-2rem)] overflow-y-auto",
+} as const;
+
+/**
+ * Diálogo modal accesible con foco atrapado y cierre por Escape. Sin `disparador`, se controla
+ * desde fuera con `abierto` y `onAbiertoCambio`.
+ */
 export function Dialogo({
   disparador,
   titulo,
   descripcion,
   children,
   pie,
+  abierto,
+  onAbiertoCambio,
+  tamano = "md",
 }: {
-  disparador: ReactElement;
+  disparador?: ReactElement;
   titulo: string;
   descripcion?: string;
   children?: ReactNode;
   pie?: ReactNode;
+  abierto?: boolean;
+  onAbiertoCambio?: (abierto: boolean) => void;
+  tamano?: keyof typeof ANCHO_DIALOGO;
 }) {
   return (
-    <D.Root>
-      <D.Trigger render={disparador} />
+    <D.Root open={abierto} onOpenChange={(v) => onAbiertoCambio?.(v)}>
+      {disparador && <D.Trigger render={disparador} />}
       <D.Portal>
         <D.Backdrop className="fixed inset-0 z-40 bg-black/45 backdrop-blur-sm transition-opacity duration-(--motion-base) data-ending-style:opacity-0 data-starting-style:opacity-0" />
-        <D.Popup className="fixed top-1/2 left-1/2 z-50 w-[min(32rem,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-tarjeta border border-borde bg-superficie p-6 text-texto shadow-2xl transition-all duration-(--motion-base) data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0">
+        <D.Popup
+          className={`fixed top-1/2 left-1/2 z-50 ${ANCHO_DIALOGO[tamano]} -translate-x-1/2 -translate-y-1/2 rounded-tarjeta border border-borde bg-superficie p-6 text-texto shadow-2xl transition-all duration-(--motion-base) data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0`}
+        >
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <D.Title className="text-2xl font-bold">{titulo}</D.Title>

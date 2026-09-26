@@ -25,7 +25,7 @@ La dirección visual «Escenario» (marca 0.5.0) pide una interfaz colorida, ani
 - Todos los componentes viven en `apps/web/src/components/ui/` y se muestran en **`/admin/componentes`** con sus variantes y estados. Una pantalla nueva solo usa componentes del catálogo; si falta uno, primero se añade al catálogo.
 - **Prohibido `<select>` nativo:** un test recorre el código fuente y falla si encuentra el elemento.
 - **Prohibidos los bordes o sombras de color en un solo lateral** de tarjetas y bloques (norma del propietario): otro test lo comprueba.
-- Hasta que exista autenticación (0.6.0), `/admin/componentes` solo está disponible en desarrollo.
+- Hasta que exista autenticación (0.7.0), `/admin/componentes` solo está disponible en desarrollo.
 
 ## Consecuencias
 

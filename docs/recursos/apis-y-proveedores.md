@@ -20,7 +20,7 @@ La instancia nunca usa una clave global del operador para generar contenido de u
 |---|---|---|---|---|---|
 | **Google Gemini API** | `text_generation` (guion), `image_edit` (imagen con referencias), `image_to_video` y `text_to_video` (Veo), `tts`, `speech_to_text`, `multimodal_review` | Google AI Studio → «Get API key»: https://aistudio.google.com/apikey. Veo requiere facturación activa | https://ai.google.dev/gemini-api/docs · Veo: https://ai.google.dev/gemini-api/docs/veo · Modelos: https://ai.google.dev/api/models | https://ai.google.dev/gemini-api/docs/pricing | **Aplazado** (ADR-0009): sin facturación activa la cuota es 0; se incorporará más adelante |
 | **KIE.ai** | Agregador de modelos de imagen, vídeo, voz y música de varios fabricantes, con tareas asíncronas y callbacks | Panel de KIE → sección de claves API (verificar ruta exacta al darse de alta) | https://docs.kie.ai/ · Catálogo: https://kie.ai/ | Créditos por modelo (medido: `nano-banana-2-lite` 4 créditos por imagen, `veo3_lite` 60 créditos por vídeo de 4 s) | **Proveedor inicial** (ADR-0009). No presuponer endpoint universal de catálogo |
-| **TypeSafe Jev** | Decisiones tipadas `choice`, `score` y `noul` | Alta en TypeSafe (verificar proceso) | https://docs.typesafe.ai/introduction · Confianza: https://docs.typesafe.ai/confidence | Consultar al darse de alta | Por evaluar en 0.21.0 (modo sombra) |
+| **TypeSafe Jev** | Decisiones tipadas `choice`, `score` y `noul` | Alta en TypeSafe (verificar proceso) | https://docs.typesafe.ai/introduction · Confianza: https://docs.typesafe.ai/confidence | Consultar al darse de alta | Por evaluar en 0.23.0 (modo sombra) |
 | **Laya** | Decisiones tipadas autoalojadas, ajuste fino con datos del dominio | Token de Hugging Face si el modelo lo exige: https://huggingface.co/settings/tokens | https://huggingface.co/convaiinnovations/laya | Sin coste por token; consume CPU o GPU del operador | Posterior; solo con datos etiquetados |
 | **LTX (Lightricks)** | `image_to_video`; modelos abiertos | Alta en la plataforma LTX (verificar) | https://docs.ltx.io/api-documentation/api-reference/video-generation/image-to-video · https://github.com/Lightricks/LTX-Video | Consultar | Posterior, por adaptador |
 | **Kling AI** | `image_to_video` | Alta en la plataforma de desarrolladores de Kling (verificar); también accesible vía KIE | https://kling.ai/document-api/api/video/3-0-omni/image-to-video/legacy | Consultar | Posterior o vía KIE |
@@ -38,7 +38,7 @@ La instancia nunca usa una clave global del operador para generar contenido de u
 | Easypanel | Panel de despliegue (Docker) de la instancia del proyecto: aplicaciones, bases de datos, dominios y certificados | — | Servidor propio con Easypanel | https://easypanel.io/docs | Decidido (ADR-0007) |
 | GitHub | Repositorio, etiquetas y releases | — | — | https://docs.github.com/ | Pendiente de crear el remoto |
 | Dominio | Portada y aplicación públicas | — | Registrador por decidir | — | Verificar disponibilidad de «Escenara» |
-| C2PA | Credenciales de contenido en exportaciones | — | Librería en workers | https://c2pa.org/ | 0.19.0 / 0.28.0 |
+| C2PA | Credenciales de contenido en exportaciones | — | Librería en workers | https://c2pa.org/ | 0.21.0 / 0.30.0 |
 
 ## Variables de entorno previstas
 
@@ -48,7 +48,7 @@ Se documentarán en `.env.example` a partir de 0.2.0. Nombres propuestos:
 |---|---|---|
 | `GEMINI_API_KEY` | Desarrollo | Adaptador de Google (aplazado) |
 | `KIE_API_KEY` | Desarrollo | Prototipo 0.3.0 y pruebas de contrato del adaptador de KIE |
-| `TYPESAFE_API_KEY` | Desarrollo | Evaluación de Jev en 0.21.0 |
+| `TYPESAFE_API_KEY` | Desarrollo | Evaluación de Jev en 0.23.0 |
 | `HF_TOKEN` | Desarrollo | Descarga de Laya si procede |
 | `ELEVENLABS_API_KEY` | Desarrollo | Evaluación opcional de voz |
 | `DATABASE_URL` | Operador | Conexión a PostgreSQL (en local, `localhost:5421`) |
@@ -61,5 +61,5 @@ Se documentarán en `.env.example` a partir de 0.2.0. Nombres propuestos:
 
 1. Añadir su fila aquí con capacidades, documentación, precios y estado «Por evaluar».
 2. Añadir su bloque en `claves-api.plantilla.md` y en el documento privado.
-3. Tras verificarlo, registrar los modelos en el catálogo versionado (0.8.0) con fuente y fecha.
+3. Tras verificarlo, registrar los modelos en el catálogo versionado (0.10.0) con fuente y fecha.
 4. Implementar su adaptador con pruebas de contrato antes de habilitarlo.
