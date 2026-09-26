@@ -2,7 +2,7 @@ import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { ErrorMedio } from "./errores";
 
-const MAX_REDIRECCIONES = 3;
+const MAX_REDIRECCIONES = 5;
 const TIEMPO_MAXIMO_MS = 20_000;
 const LARGO_MAX_URL = 2048;
 
@@ -90,17 +90,68 @@ function traducirError(error: unknown): ErrorMedio {
   return new ErrorMedio(502, "No se ha podido descargar la URL.");
 }
 
-async function comprobarDestino(url: URL, ipPermitida: ComprobadorIp, fin: number) {
+export type Resolvedor = (host: string) => Promise<string[]>;
+
+const resolverDns: Resolvedor = async (host) => (await lookup(host, { all: true })).map((d) => d.address);
+
+/**
+ * Resuelve el host y devuelve las IP candidatas, IPv4 primero (muchas redes no tienen salida IPv6).
+ * Todas deben ser públicas: así un dominio que mezcle una IP pública y otra interna también se rechaza.
+ */
+async function resolverDestino(url: URL, ipPermitida: ComprobadorIp, resolver: Resolvedor, fin: number) {
   const host = url.hostname.replace(/^\[|\]$/g, "");
   const direcciones = isIP(host)
     ? [host]
-    : (
-        await conPlazo(lookup(host, { all: true }), fin).catch((e) =>
-          e instanceof ErrorMedio ? Promise.reject(e) : [],
-        )
-      ).map((d) => d.address);
+    : await conPlazo(resolver(host), fin).catch((e) => (e instanceof ErrorMedio ? Promise.reject(e) : []));
   if (direcciones.length === 0) throw new ErrorMedio(400, "No se encuentra el servidor de esa URL.");
   if (!direcciones.every(ipPermitida)) throw new ErrorMedio(400, "La URL apunta a una dirección no permitida.");
+  return [...direcciones].sort((a, b) => isIP(a) - isIP(b)).slice(0, MAX_INTENTOS_CONEXION);
+}
+
+const MAX_INTENTOS_CONEXION = 4;
+/** Tiempo para que cada IP candidata responda con las cabeceras; no limita la descarga del cuerpo. */
+const TIEMPO_CONEXION_MS = 5000;
+
+/** Prueba las IP candidatas en orden hasta que una conecta; los errores HTTP no provocan reintento. */
+async function pedirAlguna(url: URL, ips: string[], senal: AbortSignal): Promise<Response> {
+  let ultimo: unknown;
+  for (const ip of ips) {
+    const intento = new AbortController();
+    const temporizador = setTimeout(() => intento.abort(), TIEMPO_CONEXION_MS);
+    try {
+      return await pedirFijado(url, ip, AbortSignal.any([senal, intento.signal]));
+    } catch (error) {
+      if (senal.aborted) throw error;
+      ultimo = error;
+    } finally {
+      clearTimeout(temporizador);
+    }
+  }
+  throw ultimo;
+}
+
+/** Cabeceras de un navegador corriente: algunos CDN rechazan peticiones sin ellas. */
+const CABECERAS = {
+  "User-Agent": "Mozilla/5.0 (compatible; Escenara/0.5; +https://github.com/escenara)",
+  Accept: "image/avif,image/webp,image/*,video/*,audio/*;q=0.9,*/*;q=0.5",
+};
+
+/**
+ * Conecta a la IP ya validada en lugar de dejar que la conexión vuelva a resolver el nombre: así un DNS
+ * que cambie de respuesta entre la comprobación y la conexión («DNS rebinding») no puede desviarla a una
+ * dirección interna. El dominio viaja en la cabecera `Host` y en el SNI, y el certificado TLS se valida
+ * contra él, de modo que HTTPS sigue siendo seguro.
+ */
+function pedirFijado(url: URL, ip: string, senal: AbortSignal): Promise<Response> {
+  const fijada = new URL(url);
+  fijada.hostname = isIP(ip) === 6 ? `[${ip}]` : ip;
+  const esNombre = !isIP(url.hostname.replace(/^\[|\]$/g, ""));
+  return fetch(fijada, {
+    redirect: "manual",
+    signal: senal,
+    headers: { ...CABECERAS, Host: url.host },
+    ...(url.protocol === "https:" && esNombre ? { tls: { serverName: url.hostname } } : {}),
+  });
 }
 
 /** Nombre del archivo a partir de la ruta, sin separadores ni caracteres de control. */
@@ -155,17 +206,16 @@ let descargasActivas = 0;
 
 /**
  * Descarga un archivo público desde una URL para guardarlo como medio. Protección frente a SSRF:
- * cada destino (también tras una redirección) debe resolver solo a IP públicas. Queda un riesgo
- * residual de «DNS rebinding» entre la comprobación y la conexión, aceptable mientras la API sea
- * solo de administración; al abrirla a usuarios (0.7.0) conviene descargar desde un worker aislado.
- * `origen` es la URL introducida sin consulta ni fragmento, para no guardar tokens de enlaces firmados.
+ * cada destino (también tras una redirección) debe resolver solo a IP públicas y la conexión se fija
+ * a la IP comprobada. `origen` es la URL introducida sin consulta ni fragmento, para no guardar
+ * tokens de enlaces firmados.
  */
 export async function descargarUrl(
   texto: string,
   limite: number,
   ipPermitida: ComprobadorIp = esIpPublica,
   /** Solo para tests con un servidor local en un puerto libre. */
-  opciones: { puertosPermitidos?: readonly string[] } = {},
+  opciones: { puertosPermitidos?: readonly string[]; resolver?: Resolvedor } = {},
 ): Promise<{ archivo: File; origen: string }> {
   const puertos = [...PUERTOS_ESTANDAR, ...(opciones.puertosPermitidos ?? [])];
   const inicial = validarUrl(texto, puertos);
@@ -178,8 +228,8 @@ export async function descargarUrl(
     const senal = AbortSignal.timeout(TIEMPO_MAXIMO_MS);
     let url = inicial;
     for (let saltos = 0; ; saltos++) {
-      await comprobarDestino(url, ipPermitida, fin);
-      const respuesta = await fetch(url, { redirect: "manual", signal: senal }).catch((e) => {
+      const ips = await resolverDestino(url, ipPermitida, opciones.resolver ?? resolverDns, fin);
+      const respuesta = await pedirAlguna(url, ips, senal).catch((e) => {
         throw traducirError(e);
       });
       if (respuesta.status >= 300 && respuesta.status < 400) {
@@ -193,6 +243,13 @@ export async function descargarUrl(
       if (!respuesta.ok) {
         await descartarCuerpo(respuesta);
         throw new ErrorMedio(502, `La URL ha respondido con el código ${respuesta.status}.`);
+      }
+      if (respuesta.headers.get("content-type")?.startsWith("text/html")) {
+        await descartarCuerpo(respuesta);
+        throw new ErrorMedio(
+          415,
+          "Esa URL es una página web, no un archivo. Abre la imagen, pulsa con el botón derecho y elige «Copiar dirección de la imagen».",
+        );
       }
       const partes = await leerConLimite(respuesta, limite).catch((e) => {
         throw traducirError(e);

@@ -71,6 +71,9 @@ describe("descargarUrl", () => {
       if (ruta === "/grande") return new Response(new Uint8Array(5000));
       if (ruta === "/a-privada") return Response.redirect("http://10.0.0.1/secreto", 302);
       if (ruta === "/bucle") return Response.redirect(`${peticion.url}`, 302);
+      if (ruta === "/eco")
+        return Response.json({ host: peticion.headers.get("host"), ua: peticion.headers.get("user-agent") });
+      if (ruta === "/pagina") return new Response("<html></html>", { headers: { "Content-Type": "text/html" } });
       return new Response("no", { status: 404 });
     },
   });
@@ -104,6 +107,36 @@ describe("descargarUrl", () => {
 
   test("limita las redirecciones", async () => {
     await expect(descargar("/bucle")).rejects.toThrow("demasiadas veces");
+  });
+
+  test("conecta a la IP comprobada y envía el dominio en la cabecera Host", async () => {
+    // `fijado.test` no existe en el DNS real: solo el resolvedor del test lo conoce.
+    const { archivo } = await descargarUrl(`http://fijado.test:${servidor.port}/eco`, 10_000, soloLocal, {
+      puertosPermitidos: [String(servidor.port)],
+      resolver: async () => ["127.0.0.1"],
+    });
+    const eco = JSON.parse(await archivo.text());
+    expect(eco.host).toBe(`fijado.test:${servidor.port}`);
+    expect(eco.ua).toContain("Escenara");
+  });
+
+  test("si una IP no responde, prueba la siguiente", async () => {
+    // 240.0.0.1 no responde y agota su plazo de conexión; 127.0.0.1 es el servidor del test.
+    const { archivo } = await descargarUrl(`http://varias.test:${servidor.port}/foto.png`, 10_000, () => true, {
+      puertosPermitidos: [String(servidor.port)],
+      resolver: async () => ["240.0.0.1", "127.0.0.1"],
+    });
+    expect(archivo.size).toBe(png.byteLength);
+  }, 15_000);
+
+  test("rechaza un dominio si cualquiera de sus IP es interna", async () => {
+    await expect(
+      descargarUrl("http://mixto.test/foto.png", 10_000, undefined, { resolver: async () => ["8.8.8.8", "127.0.0.1"] }),
+    ).rejects.toThrow("no permitida");
+  });
+
+  test("explica que una página web no es un archivo", async () => {
+    await expect(descargar("/pagina")).rejects.toThrow("página web");
   });
 
   test("informa de las respuestas de error", async () => {
