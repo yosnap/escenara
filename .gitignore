@@ -43,3 +43,6 @@ tmp/
 # Generados por Next.js y TypeScript
 next-env.d.ts
 *.tsbuildinfo
+
+# Copias de seguridad locales de la base de datos
+backups/
