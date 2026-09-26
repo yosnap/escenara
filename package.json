@@ -23,7 +23,8 @@
     "check": "bun run lint && bun run typecheck && bun run test && bun run build",
     "services:up": "docker compose up -d --wait postgres seaweedfs && docker compose run --rm seaweedfs-init",
     "services:down": "docker compose down",
-    "prototipo": "bun spikes/prototipo/run.ts"
+    "prototipo": "bun spikes/prototipo/run.ts",
+    "tokens": "bun --filter @escenara/web tokens"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.14"
