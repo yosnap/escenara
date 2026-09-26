@@ -1,0 +1,1 @@
+- [Tests de integración y .env](proyecto-tests-integracion.md) — `bun test` los salta en silencio sin `DATABASE_URL`; cómo lanzarlos de verdad

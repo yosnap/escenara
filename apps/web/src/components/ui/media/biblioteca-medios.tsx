@@ -23,6 +23,7 @@ import { EditorSubida } from "./editor-subida";
 import type { AccionesMedio, VistaBiblioteca } from "./elemento-medio";
 import { ListaSubidas } from "./lista-subidas";
 import { type Consulta, ResultadosBiblioteca } from "./resultados-biblioteca";
+import { SubidaUrl } from "./subida-url";
 import { useSubidaMedios } from "./use-subida-medios";
 
 const ESPERA_BUSQUEDA_MS = 300;
@@ -68,6 +69,7 @@ function Biblioteca({
   const [texto, setTexto] = useState("");
   const [vista, setVista] = useState<VistaBiblioteca>("cuadricula");
   const [arrastrando, setArrastrando] = useState(false);
+  const [desdeUrl, setDesdeUrl] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const [enDatos, setEnDatos] = useState<Medio | null>(null);
   const [enImagen, setEnImagen] = useState<Medio | null>(null);
@@ -156,7 +158,19 @@ function Biblioteca({
         onArchivos={subida.agregar}
         editarAlSubir={subida.editarAlSubir}
         onEditarAlSubir={subida.setEditarAlSubir}
+        desdeUrl={desdeUrl}
+        onDesdeUrl={setDesdeUrl}
       />
+
+      {desdeUrl && (
+        <SubidaUrl
+          tipos={tipos}
+          onSubido={(medio) => {
+            recargar();
+            onSubido?.(medio);
+          }}
+        />
+      )}
 
       <ListaSubidas subidas={subida.subidas} onLimpiar={subida.limpiarTerminadas} />
 

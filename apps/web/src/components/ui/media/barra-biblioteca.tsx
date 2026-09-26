@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutGrid, List, Search, Trash2, Upload } from "lucide-react";
+import { LayoutGrid, Link2, List, Search, Trash2, Upload } from "lucide-react";
 import { useRef } from "react";
 import { aceptarArchivos, ETIQUETA_TIPO, type TipoMedio } from "@/lib/media/reglas";
 import { Boton, BotonIcono } from "../button";
@@ -25,6 +25,8 @@ export function BarraBiblioteca({
   onArchivos,
   editarAlSubir,
   onEditarAlSubir,
+  desdeUrl,
+  onDesdeUrl,
 }: {
   tiposPermitidos: readonly TipoMedio[];
   busqueda: string;
@@ -38,6 +40,8 @@ export function BarraBiblioteca({
   onArchivos: (archivos: File[]) => void;
   editarAlSubir: boolean;
   onEditarAlSubir: (activo: boolean) => void;
+  desdeUrl: boolean;
+  onDesdeUrl: (activo: boolean) => void;
 }) {
   const entrada = useRef<HTMLInputElement>(null);
 
@@ -57,6 +61,14 @@ export function BarraBiblioteca({
         </div>
         <Boton variante="chispa" icono={<Upload className="size-4" />} onClick={() => entrada.current?.click()}>
           Subir archivos
+        </Boton>
+        <Boton
+          variante="secundario"
+          icono={<Link2 className="size-4" />}
+          aria-expanded={desdeUrl}
+          onClick={() => onDesdeUrl(!desdeUrl)}
+        >
+          Desde URL
         </Boton>
         <input
           ref={entrada}
