@@ -1,0 +1,25 @@
+{
+  "name": "escenara",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Estudio abierto de personajes y vídeo",
+  "license": "AGPL-3.0-only",
+  "packageManager": "pnpm@11.5.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @escenara/web dev",
+    "build": "pnpm -r build",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "services:up": "docker compose up -d --wait postgres seaweedfs && docker compose run --rm seaweedfs-init",
+    "services:down": "docker compose down"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.14"
+  }
+}

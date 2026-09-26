@@ -1,0 +1,41 @@
+name: Informar de un error
+description: Algo no funciona como debería
+labels: ["error"]
+body:
+  - type: textarea
+    id: que-pasa
+    attributes:
+      label: Qué ocurre
+      description: Describe el problema. No pegues claves API, contraseñas ni fotos de personas.
+    validations:
+      required: true
+  - type: textarea
+    id: pasos
+    attributes:
+      label: Pasos para reproducirlo
+      placeholder: "1. Ve a…\n2. Pulsa…\n3. Aparece…"
+    validations:
+      required: true
+  - type: textarea
+    id: esperado
+    attributes:
+      label: Qué esperabas que pasara
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versión de Escenara
+      placeholder: "0.2.0 o hash del commit"
+    validations:
+      required: true
+  - type: input
+    id: entorno
+    attributes:
+      label: Entorno
+      placeholder: "Sistema operativo, navegador, versión de Node y Docker"
+  - type: textarea
+    id: capturas
+    attributes:
+      label: Capturas o registros
+      description: Opcional. Revisa que no contengan datos personales ni secretos.

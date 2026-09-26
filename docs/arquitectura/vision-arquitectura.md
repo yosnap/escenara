@@ -46,8 +46,10 @@ flowchart LR
 
 | Pieza | Propuesta | Estado |
 |---|---|---|
-| Lenguaje del MVP | TypeScript único; Python cuando Laya o LangGraph aporten valor medido | Pendiente, ADR-0002 |
-| Web y API | Next.js (App Router) | Propuesta del PRD |
+| Lenguaje del MVP | TypeScript único; Python cuando Laya o LangGraph aporten valor medido | Decidido (ADR-0002) |
+| Web y API | Next.js 16 (App Router) en `apps/web` | Implantado en 0.2.0 |
+| Herramientas | pnpm (monorepo), Biome, Vitest, TypeScript estricto | Implantado en 0.2.0 |
+| Licencia | AGPL 3.0 | Decidido (ADR-0001) |
 | Base de datos | PostgreSQL | Decidido en el PRD |
 | Cola | pg-boss (solo Postgres) o BullMQ (Redis) | Pendiente, ADR-0003 |
 | Autenticación | Better Auth o Auth.js | Pendiente, ADR-0004 |

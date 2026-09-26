@@ -11,7 +11,7 @@
 | Reglamento de IA de la UE, art. 50 | Transparencia del contenido sintético y deepfakes: aplicable desde el 2 de agosto de 2026 según el calendario original. Comprobar el estado del paquete «Omnibus digital» y de la normativa española de etiquetado | 0.19.0 y 0.28.0 |
 | Publicidad | Afirmaciones sobre productos, salud y lugares con fuente y aprobación editorial; identificación de contenido publicitario | 0.14.0 |
 | Términos de proveedores | Políticas de uso de Google, KIE y cada modelo; restricciones regionales de generación de personas | 0.3.0 y 0.8.0 |
-| Licencias | Licencia del repositorio (ADR-0001), de modelos, fuentes (Manrope, OFL), música y recursos | 0.2.0 y 0.29.0 |
+| Licencias | Licencia del repositorio: AGPL 3.0 (ADR-0001); licencias de modelos, fuentes (Manrope, OFL), música y recursos | 0.2.0 y 0.29.0 |
 | Marca y nombre | Disponibilidad de «Escenara» en OEPM y EUIPO, dominios y cuentas | Antes de 0.5.0 |
 
 ## Controles del producto

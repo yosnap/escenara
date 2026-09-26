@@ -6,8 +6,8 @@ Cada decisión relevante se documenta en un fichero `adr-NNNN-slug.md` dentro de
 
 | ADR | Decisión | Necesaria para | Estado |
 |---|---|---|---|
-| 0001 | Licencia del repositorio: Apache 2.0 o AGPL 3.0 | 0.2.0 | Pendiente del propietario |
-| 0002 | Lenguajes y servicios del MVP: TypeScript único o TypeScript y Python | 0.2.0 | Pendiente del propietario |
+| [0001](adr-0001-licencia-agpl.md) | Licencia del repositorio: AGPL 3.0 | 0.2.0 | Aceptado |
+| [0002](adr-0002-typescript-unico-mvp.md) | Lenguajes del MVP: TypeScript único | 0.2.0 | Aceptado |
 | 0003 | Cola de trabajos: pg-boss o BullMQ con Redis | 0.9.0 | Pendiente |
 | 0004 | Autenticación: Better Auth o Auth.js | 0.6.0 | Pendiente |
 | 0005 | Cifrado de credenciales BYOK y gestión de la clave maestra | 0.7.0 | Pendiente |
