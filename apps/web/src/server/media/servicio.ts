@@ -1,14 +1,28 @@
-import { and, count, desc, eq, ilike, inArray, isNotNull, isNull, or, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, ilike, inArray, isNotNull, isNull, or, type SQL, sql, sum } from "drizzle-orm";
 import { LIMITE_BYTES, POR_PAGINA, TIPOS_MEDIO, type TipoMedio } from "@/lib/media/reglas";
-import type { CambiosMetadatos, DatosReproduccion, FiltroMedios, Medio, PaginaMedios } from "@/lib/media/tipos";
+import type {
+  CambiosMetadatos,
+  DatosReproduccion,
+  EspacioUsado,
+  FiltroMedios,
+  Medio,
+  PaginaMedios,
+} from "@/lib/media/tipos";
+import { leerAjustes } from "../ajustes";
 import { borrarObjeto, guardarObjeto, urlTemporal } from "../almacenamiento";
 import { db } from "../db/cliente";
-import { type FilaMedio, media } from "../db/esquema";
+import { collectionMedia, collections, type FilaMedio, media, users } from "../db/esquema";
 import { type TipoDetectado, validarArchivo } from "./deteccion";
 import { ErrorMedio } from "./errores";
 import { procesarImagen } from "./procesado";
 
 export { ErrorMedio };
+
+/** Quién hace la petición. El admin ve lo de todos; nadie más ve lo ajeno. */
+export interface Actor {
+  id: string;
+  esAdmin: boolean;
+}
 
 const LARGO_MAX_TEXTO = 500;
 const PAGINA_MAXIMA = 100_000;
@@ -31,7 +45,8 @@ function filaOError(fila: FilaMedio | undefined): FilaMedio {
   return fila;
 }
 
-export function aDto(fila: FilaMedio): Medio {
+export function aDto(fila: FilaMedio, actor: Actor, propietario?: { id: string; nombre: string }): Medio {
+  const esDueno = fila.ownerId === actor.id;
   return {
     id: fila.id,
     tipo: fila.kind,
@@ -49,6 +64,8 @@ export function aDto(fila: FilaMedio): Medio {
     actualizadoEn: fila.updatedAt.toISOString(),
     enPapelera: fila.deletedAt !== null,
     origen: fila.sourceUrl,
+    ...(propietario ? { propietario } : {}),
+    permisos: { editarImagen: esDueno, borrarDefinitivo: esDueno },
   };
 }
 
@@ -104,32 +121,85 @@ async function prepararArchivo(
   };
 }
 
+const MB = 1024 * 1024;
+
+/** Espacio que ocupan los medios de un usuario (también los de la papelera) y su cuota. */
+export async function espacioUsado(actor: Actor): Promise<EspacioUsado> {
+  const [fila] = await db()
+    .select({ total: sum(media.sizeBytes) })
+    .from(media)
+    .where(eq(media.ownerId, actor.id));
+  const { cuotaMb } = await leerAjustes();
+  return {
+    usadoBytes: Number(fila?.total ?? 0),
+    cuotaBytes: actor.esAdmin || cuotaMb === 0 ? null : cuotaMb * MB,
+  };
+}
+
+type Transaccion = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
+
+function errorCuota(cuotaBytes: number) {
+  return new ErrorMedio(
+    413,
+    `Has llegado a tu límite de espacio (${Math.round(cuotaBytes / MB)} MB). Vacía la papelera o borra archivos.`,
+  );
+}
+
+/** Comprobación rápida antes de subir nada al almacenamiento (evita trabajo inútil). */
+async function comprobarCuota(actor: Actor, bytesNuevos: number) {
+  const { usadoBytes, cuotaBytes } = await espacioUsado(actor);
+  if (cuotaBytes !== null && usadoBytes + bytesNuevos > cuotaBytes) throw errorCuota(cuotaBytes);
+}
+
+/**
+ * Comprobación definitiva dentro de la transacción que guarda el medio: bloquea la fila del usuario, así
+ * dos subidas simultáneas no pueden leer el mismo espacio usado y pasarse las dos de la cuota.
+ */
+async function reservarCuota(tx: Transaccion, actor: Actor, bytesNuevos: number) {
+  const { cuotaMb } = await leerAjustes();
+  if (actor.esAdmin || cuotaMb === 0 || bytesNuevos <= 0) return;
+  await tx.execute(sql`select 1 from users where id = ${actor.id} for update`);
+  const [fila] = await tx
+    .select({ total: sum(media.sizeBytes) })
+    .from(media)
+    .where(eq(media.ownerId, actor.id));
+  const cuotaBytes = cuotaMb * MB;
+  if (Number(fila?.total ?? 0) + bytesNuevos > cuotaBytes) throw errorCuota(cuotaBytes);
+}
+
 export async function crearMedio(
+  actor: Actor,
   archivo: File,
   reproduccion: DatosReproduccion = {},
   permitidos?: readonly TipoMedio[],
   origen: string | null = null,
 ): Promise<Medio> {
   const preparado = await prepararArchivo(archivo, reproduccion, permitidos);
+  await comprobarCuota(actor, preparado.datos.byteLength);
   const clave = nuevaClave(preparado.detectado.extension);
   await guardarObjeto(clave, preparado.datos, preparado.detectado.mime);
   try {
-    const [fila] = await db()
-      .insert(media)
-      .values({
-        kind: preparado.detectado.tipo,
-        storageKey: clave,
-        originalName: (archivo.name || "sin-nombre").slice(0, LARGO_MAX_TEXTO),
-        mimeType: preparado.detectado.mime,
-        sizeBytes: preparado.datos.byteLength,
-        width: preparado.ancho,
-        height: preparado.alto,
-        durationSeconds: preparado.duracion,
-        sourceUrl: origen,
-      })
-      .returning();
+    const fila = await db().transaction(async (tx) => {
+      await reservarCuota(tx, actor, preparado.datos.byteLength);
+      const [insertada] = await tx
+        .insert(media)
+        .values({
+          ownerId: actor.id,
+          kind: preparado.detectado.tipo,
+          storageKey: clave,
+          originalName: (archivo.name || "sin-nombre").slice(0, LARGO_MAX_TEXTO),
+          mimeType: preparado.detectado.mime,
+          sizeBytes: preparado.datos.byteLength,
+          width: preparado.ancho,
+          height: preparado.alto,
+          durationSeconds: preparado.duracion,
+          sourceUrl: origen,
+        })
+        .returning();
+      return insertada;
+    });
     if (!fila) throw new Error("Inserción sin resultado");
-    return aDto(fila);
+    return aDto(fila, actor);
   } catch (error) {
     await borrarSinBloquear(clave);
     throw error;
@@ -140,8 +210,35 @@ function escaparComodines(texto: string) {
   return texto.replace(/[\\%_]/g, (c) => `\\${c}`);
 }
 
-export async function listarMedios(filtro: FiltroMedios, porPagina = POR_PAGINA): Promise<PaginaMedios> {
+/** Colección accesible: la propia, o cualquiera si quien consulta es administrador (solo lectura). */
+async function coleccionVisible(actor: Actor, id: string) {
+  const [coleccion] = await db().select().from(collections).where(eq(collections.id, id)).limit(1);
+  if (!coleccion || (coleccion.ownerId !== actor.id && !actor.esAdmin)) {
+    throw new ErrorMedio(404, "La colección no existe.");
+  }
+  return coleccion;
+}
+
+export async function listarMedios(actor: Actor, filtro: FiltroMedios, porPagina = POR_PAGINA): Promise<PaginaMedios> {
   const condiciones: SQL[] = [filtro.papelera ? isNotNull(media.deletedAt) : isNull(media.deletedAt)];
+  // Un usuario solo ve lo suyo; el admin elige «todos» o un usuario concreto (por defecto, lo suyo).
+  const verTodos = actor.esAdmin && filtro.propietario === "todos";
+  const dueno = actor.esAdmin && filtro.propietario && filtro.propietario !== "mios" ? filtro.propietario : actor.id;
+  if (!verTodos) condiciones.push(eq(media.ownerId, dueno));
+  // El dueño solo se muestra cuando el admin mira archivos de otros.
+  const mostrarDueno = verTodos || dueno !== actor.id;
+  if (filtro.coleccion) {
+    await coleccionVisible(actor, filtro.coleccion);
+    condiciones.push(
+      inArray(
+        media.id,
+        db()
+          .select({ id: collectionMedia.mediaId })
+          .from(collectionMedia)
+          .where(eq(collectionMedia.collectionId, filtro.coleccion)),
+      ),
+    );
+  }
   if (filtro.tipos.length > 0) condiciones.push(inArray(media.kind, filtro.tipos));
   const busqueda = filtro.busqueda.trim().slice(0, 100);
   if (busqueda) {
@@ -158,28 +255,54 @@ export async function listarMedios(filtro: FiltroMedios, porPagina = POR_PAGINA)
   const pagina = Math.min(PAGINA_MAXIMA, Math.max(1, Math.floor(filtro.pagina) || 1));
   const [filas, [totales]] = await Promise.all([
     db()
-      .select()
+      .select({ medio: media, nombreDueno: users.name })
       .from(media)
+      .innerJoin(users, eq(users.id, media.ownerId))
       .where(donde)
       .orderBy(desc(media.createdAt), desc(media.id))
       .limit(porPagina)
       .offset((pagina - 1) * porPagina),
     db().select({ total: count() }).from(media).where(donde),
   ]);
-  return { elementos: filas.map(aDto), total: totales?.total ?? 0, pagina, porPagina };
+  return {
+    elementos: filas.map(({ medio, nombreDueno }) =>
+      aDto(medio, actor, mostrarDueno ? { id: medio.ownerId, nombre: nombreDueno } : undefined),
+    ),
+    total: totales?.total ?? 0,
+    pagina,
+    porPagina,
+  };
 }
 
-async function buscarFila(id: string): Promise<FilaMedio> {
+/**
+ * Fila visible para quien consulta: la suya o, si es administrador, cualquiera. Lo ajeno responde 404
+ * (no revela que existe).
+ */
+async function buscarFila(actor: Actor, id: string): Promise<FilaMedio> {
   const [fila] = await db().select().from(media).where(eq(media.id, id)).limit(1);
-  if (!fila) throw new ErrorMedio(404, "El medio no existe.");
+  if (!fila || (fila.ownerId !== actor.id && !actor.esAdmin)) throw new ErrorMedio(404, "El medio no existe.");
   return fila;
 }
 
-export async function obtenerMedio(id: string): Promise<Medio> {
-  return aDto(await buscarFila(id));
+/** Solo el dueño: editar la imagen o borrar para siempre (el admin tampoco puede con lo ajeno). */
+async function buscarFilaPropia(actor: Actor, id: string, accion: string): Promise<FilaMedio> {
+  const fila = await buscarFila(actor, id);
+  if (fila.ownerId !== actor.id) throw new ErrorMedio(403, `Solo quien subió el archivo puede ${accion}.`);
+  return fila;
 }
 
-export async function actualizarMetadatos(id: string, cambios: CambiosMetadatos): Promise<Medio> {
+export async function obtenerMedio(actor: Actor, id: string): Promise<Medio> {
+  return aDto(await buscarFila(actor, id), actor);
+}
+
+/** Clave del archivo para servirlo (dueño o admin). */
+export async function archivoDeMedio(actor: Actor, id: string) {
+  const fila = await buscarFila(actor, id);
+  if (fila.deletedAt) throw new ErrorMedio(404, "El medio no existe.");
+  return { clave: fila.storageKey, mime: fila.mimeType };
+}
+
+export async function actualizarMetadatos(actor: Actor, id: string, cambios: CambiosMetadatos): Promise<Medio> {
   const valores: Partial<Pick<FilaMedio, "title" | "altEs" | "altEn">> = {};
   for (const [campo, columna] of [
     ["titulo", "title"],
@@ -191,37 +314,41 @@ export async function actualizarMetadatos(id: string, cambios: CambiosMetadatos)
     if (typeof valor !== "string") throw new ErrorMedio(400, "Los metadatos deben ser texto.");
     valores[columna] = valor.trim().slice(0, LARGO_MAX_TEXTO);
   }
-  await buscarFila(id);
+  await buscarFila(actor, id);
   const [fila] = await db()
     .update(media)
     .set({ ...valores, updatedAt: new Date() })
     .where(eq(media.id, id))
     .returning();
-  return aDto(filaOError(fila));
+  return aDto(filaOError(fila), actor);
 }
 
 /** Sustituye el archivo de una imagen (editor en modo «sobrescribir»). Conserva el identificador y los textos. */
-export async function reemplazarImagen(id: string, archivo: File): Promise<Medio> {
-  const anterior = await buscarFila(id);
+export async function reemplazarImagen(actor: Actor, id: string, archivo: File): Promise<Medio> {
+  const anterior = await buscarFilaPropia(actor, id, "editar la imagen");
   if (anterior.kind !== "imagen") throw new ErrorMedio(400, "Solo se pueden editar imágenes.");
   if (anterior.deletedAt) throw new ErrorMedio(409, "Restaura el medio antes de editarlo.");
   const preparado = await prepararArchivo(archivo, {}, ["imagen"]);
+  await comprobarCuota(actor, Math.max(0, preparado.datos.byteLength - anterior.sizeBytes));
   const clave = nuevaClave(preparado.detectado.extension);
   await guardarObjeto(clave, preparado.datos, preparado.detectado.mime);
   let fila: FilaMedio;
   try {
-    const [actualizada] = await db()
-      .update(media)
-      .set({
-        storageKey: clave,
-        mimeType: preparado.detectado.mime,
-        sizeBytes: preparado.datos.byteLength,
-        width: preparado.ancho,
-        height: preparado.alto,
-        updatedAt: new Date(),
-      })
-      .where(eq(media.id, id))
-      .returning();
+    const [actualizada] = await db().transaction(async (tx) => {
+      await reservarCuota(tx, actor, preparado.datos.byteLength - anterior.sizeBytes);
+      return tx
+        .update(media)
+        .set({
+          storageKey: clave,
+          mimeType: preparado.detectado.mime,
+          sizeBytes: preparado.datos.byteLength,
+          width: preparado.ancho,
+          height: preparado.alto,
+          updatedAt: new Date(),
+        })
+        .where(eq(media.id, id))
+        .returning();
+    });
     fila = filaOError(actualizada);
   } catch (error) {
     await borrarSinBloquear(clave);
@@ -229,27 +356,27 @@ export async function reemplazarImagen(id: string, archivo: File): Promise<Medio
   }
   // El archivo anterior solo se borra cuando la fila ya apunta al nuevo.
   await borrarSinBloquear(anterior.storageKey);
-  return aDto(fila);
+  return aDto(fila, actor);
 }
 
 /** Envía a la papelera. Si ya estaba, no cambia la fecha original del borrado. */
-export async function enviarAPapelera(id: string): Promise<Medio> {
-  const actual = await buscarFila(id);
-  if (actual.deletedAt) return aDto(actual);
+export async function enviarAPapelera(actor: Actor, id: string): Promise<Medio> {
+  const actual = await buscarFila(actor, id);
+  if (actual.deletedAt) return aDto(actual, actor);
   const [fila] = await db().update(media).set({ deletedAt: new Date() }).where(eq(media.id, id)).returning();
-  return aDto(filaOError(fila));
+  return aDto(filaOError(fila), actor);
 }
 
-export async function restaurarMedio(id: string): Promise<Medio> {
-  const actual = await buscarFila(id);
-  if (!actual.deletedAt) return aDto(actual);
+export async function restaurarMedio(actor: Actor, id: string): Promise<Medio> {
+  const actual = await buscarFila(actor, id);
+  if (!actual.deletedAt) return aDto(actual, actor);
   const [fila] = await db().update(media).set({ deletedAt: null }).where(eq(media.id, id)).returning();
-  return aDto(filaOError(fila));
+  return aDto(filaOError(fila), actor);
 }
 
 /** Borrado definitivo: solo desde la papelera, para evitar pérdidas por un clic. */
-export async function eliminarDefinitivamente(id: string): Promise<void> {
-  const fila = await buscarFila(id);
+export async function eliminarDefinitivamente(actor: Actor, id: string): Promise<void> {
+  const fila = await buscarFilaPropia(actor, id, "borrarlo para siempre");
   if (!fila.deletedAt) throw new ErrorMedio(409, "Envía primero el medio a la papelera.");
   await db().delete(media).where(eq(media.id, id));
   await borrarSinBloquear(fila.storageKey);

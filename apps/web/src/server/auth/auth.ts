@@ -6,6 +6,7 @@ import { nextCookies } from "better-auth/next-js";
 import { admin } from "better-auth/plugins";
 import { count, sql } from "drizzle-orm";
 import { IDIOMAS, TEMAS } from "@/lib/preferencias";
+import { type Ajustes, leerAjustes } from "../ajustes";
 import { enviarEnSegundoPlano, plantillaEnlace } from "../correo";
 import { db } from "../db/cliente";
 import * as esquema from "../db/esquema";
@@ -29,8 +30,6 @@ function proveedoresSociales() {
 
 export const proveedoresActivos = () => Object.keys(proveedoresSociales()) as ("google" | "github")[];
 
-const registroAbierto = () => process.env.ESCENARA_REGISTRO_ABIERTO !== "0";
-
 // Una vez existe una cuenta, la instalación nunca vuelve a estar vacía: se memoriza para no contar en cada visita.
 let hayCuentasMemo = false;
 
@@ -43,7 +42,7 @@ async function hayCuentas(): Promise<boolean> {
 
 /** Se puede crear una cuenta si el registro está abierto o si aún no existe ninguna (la del administrador). */
 export async function registroDisponible(): Promise<boolean> {
-  return registroAbierto() || !(await hayCuentas());
+  return (await leerAjustes()).registroAbierto || !(await hayCuentas());
 }
 
 const LARGO_MAX_NOMBRE = 80;
@@ -58,26 +57,21 @@ function limpiarPreferencias<T extends Record<string, unknown>>(datos: T): T {
 }
 
 /**
- * Cabeceras de las que se toma la IP para el límite de intentos por IP. Solo son fiables si las escribe
- * un proxy propio que sobrescriba lo que mande el cliente: en producción, `ESCENARA_CABECERAS_IP` con la
- * de ese proxy (p. ej. `x-real-ip`). En local se usa `x-forwarded-for`, que Next rellena con la IP de la
- * conexión pero que el cliente puede falsificar; sin ninguna cabecera, todas las peticiones compartirían
- * un único contador y cualquiera podría bloquear el acceso a todos. La defensa que no depende de la IP es
- * el límite por cuenta (limite-cuenta.ts).
+ * Cabeceras de las que se toma la IP para el límite de intentos por IP (Admin › Ajustes). Solo son
+ * fiables si las escribe un proxy propio que sobrescriba lo que mande el cliente. Sin ajuste se usa
+ * `x-forwarded-for`, que Next rellena con la IP de la conexión pero que el cliente puede falsificar; sin
+ * ninguna cabecera, todas las peticiones compartirían un único contador y cualquiera podría bloquear el
+ * acceso a todos. La defensa que no depende de la IP es el límite por cuenta (limite-cuenta.ts).
  */
-function cabecerasIp(): string[] {
-  const configuradas = (process.env.ESCENARA_CABECERAS_IP ?? "")
+function cabecerasIp(ajustes: Ajustes): string[] {
+  const configuradas = ajustes.cabecerasIp
     .split(",")
     .map((c) => c.trim().toLowerCase())
     .filter(Boolean);
-  if (configuradas.length > 0) return configuradas;
-  if (process.env.NODE_ENV === "production") {
-    console.warn("[auth] ESCENARA_CABECERAS_IP no está definida: el límite por IP confía en x-forwarded-for.");
-  }
-  return ["x-forwarded-for"];
+  return configuradas.length > 0 ? configuradas : ["x-forwarded-for"];
 }
 
-function crearAuth() {
+function crearAuth(ajustes: Ajustes) {
   const secreto = process.env.BETTER_AUTH_SECRET;
   // Sin secreto propio, Better Auth usaría uno conocido y cualquiera podría firmar cookies de sesión.
   if (!secreto || secreto.length < 32) {
@@ -89,7 +83,7 @@ function crearAuth() {
     secret: secreto,
     trustedOrigins: [URL_BASE],
     database: drizzleAdapter(db(), { provider: "pg", schema: esquema, usePlural: true }),
-    advanced: { database: { generateId: "uuid" }, ipAddress: { ipAddressHeaders: cabecerasIp() } },
+    advanced: { database: { generateId: "uuid" }, ipAddress: { ipAddressHeaders: cabecerasIp(ajustes) } },
     // Sin enlazado automático de cuentas: evita que una cuenta con contraseña creada por otra persona con
     // tu correo (sin verificar) se una a tu acceso con Google o GitHub. Revisar antes de activarlo.
     account: { accountLinking: { enabled: false } },
@@ -177,7 +171,7 @@ function crearAuth() {
           // La primera cuenta de la instalación es administradora; con el registro cerrado, nadie más entra.
           before: async (usuario) => {
             const esPrimera = !(await hayCuentas());
-            if (!esPrimera && !registroAbierto()) {
+            if (!esPrimera && !(await leerAjustes()).registroAbierto) {
               throw new APIError("FORBIDDEN", { message: "El registro está cerrado en esta instalación." });
             }
             return { data: { ...limpiarPreferencias(usuario), role: esPrimera ? "admin" : "user" } };
@@ -212,10 +206,16 @@ function crearAuth() {
 
 export type Auth = ReturnType<typeof crearAuth>;
 
-const global = globalThis as { __escenaraAuth?: Auth };
+const global = globalThis as { __escenaraAuth?: { instancia: Auth; clave: string } };
 
-/** Instancia única (se crea al primer uso, no al importar: así el build no necesita la base de datos). */
-export function auth(): Auth {
-  global.__escenaraAuth ??= crearAuth();
-  return global.__escenaraAuth;
+/**
+ * Instancia de Better Auth. Se crea al primer uso (no al importar: el build no necesita la base de datos)
+ * y se vuelve a crear cuando cambian los ajustes de Admin › Ajustes.
+ */
+export async function auth(): Promise<Auth> {
+  const ajustes = await leerAjustes();
+  // Solo la cabecera de IP forma parte de la configuración de Better Auth; el resto se lee en cada uso.
+  const clave = ajustes.cabecerasIp;
+  if (global.__escenaraAuth?.clave !== clave) global.__escenaraAuth = { instancia: crearAuth(ajustes), clave };
+  return global.__escenaraAuth.instancia;
 }

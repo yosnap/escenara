@@ -39,6 +39,14 @@ export interface BibliotecaMediosProps {
   onActualizado?: (medio: Medio) => void;
   /** Un medio sale de la vista activa (papelera o borrado). */
   onRetirado?: (id: string) => void;
+  /** Solo los medios de esta colección. */
+  coleccion?: string | null;
+  /** Solo administradores: «todos» o el id de un usuario. */
+  propietario?: string | null;
+  /** Sin subida (p. ej., en la vista de administración de medios ajenos). */
+  permitirSubida?: boolean;
+  /** Cambia algo en la biblioteca (subida, papelera, borrado…): para refrescar contadores fuera. */
+  onCambio?: () => void;
 }
 
 /** Biblioteca de medios: búsqueda, filtros, vista, paginación, subida con editor, papelera y edición. */
@@ -59,13 +67,19 @@ function Biblioteca({
   onSubido,
   onActualizado,
   onRetirado,
+  coleccion = null,
+  propietario = null,
+  permitirSubida = true,
+  onCambio,
 }: BibliotecaMediosProps) {
   const todos = tipos.length === TIPOS_MEDIO.length ? [] : [...tipos];
   const [consulta, setConsulta] = useState<Consulta>({
     filtro: { busqueda: "", tipos: todos, papelera: false, pagina: 1 },
     version: 0,
   });
-  const diferida = useDeferredValue(consulta);
+  const diferidaBase = useDeferredValue(consulta);
+  // La colección y el dueño salen siempre de las props (no se congelan en el estado inicial).
+  const diferida: Consulta = { ...diferidaBase, filtro: { ...diferidaBase.filtro, coleccion, propietario } };
   const [texto, setTexto] = useState("");
   const [vista, setVista] = useState<VistaBiblioteca>("cuadricula");
   const [arrastrando, setArrastrando] = useState(false);
@@ -78,7 +92,10 @@ function Biblioteca({
 
   const filtrar = (cambios: Partial<Consulta["filtro"]>) =>
     setConsulta((c) => ({ ...c, filtro: { ...c.filtro, pagina: 1, ...cambios } }));
-  const recargar = () => setConsulta((c) => ({ ...c, version: c.version + 1 }));
+  const recargar = () => {
+    setConsulta((c) => ({ ...c, version: c.version + 1 }));
+    onCambio?.();
+  };
 
   const subida = useSubidaMedios({
     tipos,
@@ -127,6 +144,7 @@ function Biblioteca({
   const soltar = (e: DragEvent) => {
     e.preventDefault();
     setArrastrando(false);
+    if (!permitirSubida) return;
     subida.agregar(Array.from(e.dataTransfer.files));
   };
 
@@ -138,7 +156,7 @@ function Biblioteca({
       className="relative flex flex-col gap-4"
       onDragOver={(e) => {
         e.preventDefault();
-        setArrastrando(true);
+        if (permitirSubida) setArrastrando(true);
       }}
       onDragLeave={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setArrastrando(false);
@@ -159,6 +177,7 @@ function Biblioteca({
         editarAlSubir={subida.editarAlSubir}
         onEditarAlSubir={subida.setEditarAlSubir}
         desdeUrl={desdeUrl}
+        permitirSubida={permitirSubida}
         onDesdeUrl={setDesdeUrl}
       />
 
@@ -181,8 +200,8 @@ function Biblioteca({
       )}
 
       <div
-        className={cn("transition-opacity duration-(--motion-fast)", consulta !== diferida && "opacity-60")}
-        aria-busy={consulta !== diferida}
+        className={cn("transition-opacity duration-(--motion-fast)", consulta !== diferidaBase && "opacity-60")}
+        aria-busy={consulta !== diferidaBase}
       >
         <Suspense fallback={<CargadorChispa etiqueta="Cargando medios" />}>
           <ResultadosBiblioteca

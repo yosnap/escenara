@@ -1,16 +1,27 @@
 import nodemailer, { type Transporter } from "nodemailer";
+import { type Ajustes, leerAjustes } from "./ajustes";
 
 /**
- * Envío de correo por SMTP. En local apunta a Mailpit (bandeja en http://localhost:8421), así que
- * nada sale a internet; al publicar basta con cambiar `SMTP_URL` y `CORREO_REMITENTE`.
+ * Envío de correo por SMTP con el servidor y el remitente de Admin › Ajustes. En local, Mailpit
+ * (bandeja en http://localhost:8421): nada sale a internet. La contraseña del servidor llegará con la
+ * bóveda de secretos (0.9.0); hasta entonces, solo servidores sin autenticación o con usuario sin clave.
  */
-const global = globalThis as { __escenaraCorreo?: Transporter };
+const global = globalThis as { __escenaraCorreo?: { clave: string; transporte: Transporter } };
 
-function transporte(): Transporter {
-  const url = process.env.SMTP_URL;
-  if (!url) throw new Error("Falta SMTP_URL en .env (plantilla en .env.example).");
-  global.__escenaraCorreo ??= nodemailer.createTransport(url);
-  return global.__escenaraCorreo;
+function transporte(ajustes: Ajustes): Transporter {
+  const clave = JSON.stringify([ajustes.smtpHost, ajustes.smtpPuerto, ajustes.smtpSeguro, ajustes.smtpUsuario]);
+  if (global.__escenaraCorreo?.clave !== clave) {
+    global.__escenaraCorreo = {
+      clave,
+      transporte: nodemailer.createTransport({
+        host: ajustes.smtpHost,
+        port: ajustes.smtpPuerto,
+        secure: ajustes.smtpSeguro,
+        ...(ajustes.smtpUsuario ? { auth: { user: ajustes.smtpUsuario } } : {}),
+      }),
+    };
+  }
+  return global.__escenaraCorreo.transporte;
 }
 
 export interface Correo {
@@ -21,8 +32,9 @@ export interface Correo {
 }
 
 export async function enviarCorreo({ para, asunto, texto, html }: Correo): Promise<void> {
-  await transporte().sendMail({
-    from: process.env.CORREO_REMITENTE ?? "Escenara <no-responder@escenara.local>",
+  const ajustes = await leerAjustes();
+  await transporte(ajustes).sendMail({
+    from: ajustes.correoRemitente,
     to: para,
     subject: asunto,
     text: texto,

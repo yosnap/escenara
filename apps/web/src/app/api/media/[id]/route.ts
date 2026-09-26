@@ -11,31 +11,31 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export const GET = manejador(async (_: Request, contexto: ContextoId) => {
-  return Response.json(await obtenerMedio(await leerId(contexto)));
+export const GET = manejador(async (_: Request, contexto: ContextoId, actor) => {
+  return Response.json(await obtenerMedio(actor, await leerId(contexto)));
 });
 
-/** Metadatos editables: `{ titulo?, altEs?, altEn? }`. */
-export const PATCH = manejador(async (peticion: Request, contexto: ContextoId) => {
+/** Metadatos editables: `{ titulo?, altEs?, altEn? }` (dueño o admin). */
+export const PATCH = manejador(async (peticion: Request, contexto: ContextoId, actor) => {
   const id = await leerId(contexto);
   const cuerpo = (await peticion.json().catch(() => null)) as CambiosMetadatos | null;
   if (!cuerpo || typeof cuerpo !== "object") throw new ErrorMedio(400, "Cuerpo JSON no válido.");
-  return Response.json(await actualizarMetadatos(id, cuerpo));
+  return Response.json(await actualizarMetadatos(actor, id, cuerpo));
 });
 
-/** Sustituye el archivo de una imagen editada (modo «sobrescribir»). */
-export const PUT = manejador(async (peticion: Request, contexto: ContextoId) => {
+/** Sustituye el archivo de una imagen editada (modo «sobrescribir»; solo el dueño). */
+export const PUT = manejador(async (peticion: Request, contexto: ContextoId, actor) => {
   const id = await leerId(contexto);
   const { archivo } = await leerArchivo(peticion);
-  return Response.json(await reemplazarImagen(id, archivo));
+  return Response.json(await reemplazarImagen(actor, id, archivo));
 });
 
-/** Envía a la papelera; con `?definitivo=1` borra para siempre un medio que ya está en ella. */
-export const DELETE = manejador(async (peticion: Request, contexto: ContextoId) => {
+/** Envía a la papelera (dueño o admin); con `?definitivo=1` borra para siempre (solo el dueño). */
+export const DELETE = manejador(async (peticion: Request, contexto: ContextoId, actor) => {
   const id = await leerId(contexto);
   if (new URL(peticion.url).searchParams.get("definitivo") === "1") {
-    await eliminarDefinitivamente(id);
+    await eliminarDefinitivamente(actor, id);
     return new Response(null, { status: 204 });
   }
-  return Response.json(await enviarAPapelera(id));
+  return Response.json(await enviarAPapelera(actor, id));
 });

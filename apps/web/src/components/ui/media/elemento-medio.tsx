@@ -29,13 +29,15 @@ function Acciones({ medio, acciones }: { medio: Medio; acciones: AccionesMedio }
         >
           <RotateCcw className="size-4" />
         </BotonIcono>
-        <BotonIcono
-          className={cn(clase, "text-error")}
-          etiqueta={`Eliminar definitivamente ${medio.nombre}`}
-          onClick={() => acciones.onEliminar(medio)}
-        >
-          <X className="size-4" />
-        </BotonIcono>
+        {medio.permisos.borrarDefinitivo && (
+          <BotonIcono
+            className={cn(clase, "text-error")}
+            etiqueta={`Eliminar definitivamente ${medio.nombre}`}
+            onClick={() => acciones.onEliminar(medio)}
+          >
+            <X className="size-4" />
+          </BotonIcono>
+        )}
       </div>
     );
   }
@@ -48,7 +50,7 @@ function Acciones({ medio, acciones }: { medio: Medio; acciones: AccionesMedio }
       >
         <Pencil className="size-4" />
       </BotonIcono>
-      {medio.tipo === "imagen" && (
+      {medio.tipo === "imagen" && medio.permisos.editarImagen && (
         <BotonIcono
           className={clase}
           etiqueta={`Editar imagen ${medio.nombre}`}
@@ -75,7 +77,12 @@ function Detalle({ medio }: { medio: Medio }) {
     medio.duracion ? formatearDuracion(medio.duracion) : null,
     formatearTamano(medio.tamano),
   ].filter(Boolean);
-  return <span className="truncate text-xs text-texto-suave">{partes.join(" · ")}</span>;
+  return (
+    <span className="truncate text-xs text-texto-suave">
+      {medio.propietario && <span className="font-semibold text-texto">{medio.propietario.nombre} · </span>}
+      {partes.join(" · ")}
+    </span>
+  );
 }
 
 /** Un medio en la biblioteca: en cuadrícula o en lista, con selección opcional y acciones. */

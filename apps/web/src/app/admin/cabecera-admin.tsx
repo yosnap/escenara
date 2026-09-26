@@ -8,6 +8,8 @@ import { cn } from "@/components/ui/cn";
 import { SelectorTema } from "@/components/ui/theme-toggle";
 
 const PAGINAS = [
+  ["/admin/medios", "Medios"],
+  ["/admin/ajustes", "Ajustes"],
   ["/admin/componentes", "Componentes"],
   ["/admin/versiones", "Versiones"],
 ] as const;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { BarraEspacio } from "@/components/ui/media/barra-espacio";
 import { BibliotecaMedios } from "@/components/ui/media/biblioteca-medios";
 import { SelectorMedios } from "@/components/ui/media/selector-medios";
 import type { Medio } from "@/lib/media/tipos";
@@ -35,6 +36,13 @@ export function SeccionMediaPicker() {
             </div>
           </Muestra>
         </div>
+        <Muestra titulo="Espacio usado (normal, casi lleno y sin límite)">
+          <div className="grid w-full gap-3 md:grid-cols-3">
+            <BarraEspacio espacio={{ usadoBytes: 700 * 1024 * 1024, cuotaBytes: 2048 * 1024 * 1024 }} />
+            <BarraEspacio espacio={{ usadoBytes: 1950 * 1024 * 1024, cuotaBytes: 2048 * 1024 * 1024 }} />
+            <BarraEspacio espacio={{ usadoBytes: 5 * 1024 * 1024 * 1024, cuotaBytes: null }} />
+          </div>
+        </Muestra>
         <Muestra titulo="Biblioteca en modo gestión">
           <div className="w-full">
             <BibliotecaMedios />
