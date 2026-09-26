@@ -190,15 +190,11 @@ describe.skipIf(!process.env.DATABASE_URL)("API de medios (PostgreSQL y SeaweedF
     expect((await interna.json()).error).toContain("no permitida");
   });
 
-  test("sin sesión responde 401 y sin rol de administrador, 404", async () => {
+  test("sin sesión responde 401", async () => {
     const guardada = cookie;
     try {
       cookie = "";
       expect((await rutaLista.GET(peticion(BASE), undefined)).status).toBe(401);
-      const usuario = await crearSesionDePrueba("user");
-      cookie = usuario.cookie;
-      expect((await rutaLista.GET(peticion(BASE), undefined)).status).toBe(404);
-      await usuario.borrar();
     } finally {
       cookie = guardada;
     }

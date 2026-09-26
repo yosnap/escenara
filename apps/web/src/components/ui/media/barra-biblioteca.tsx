@@ -27,6 +27,7 @@ export function BarraBiblioteca({
   onEditarAlSubir,
   desdeUrl,
   onDesdeUrl,
+  permitirSubida,
 }: {
   tiposPermitidos: readonly TipoMedio[];
   busqueda: string;
@@ -42,6 +43,7 @@ export function BarraBiblioteca({
   onEditarAlSubir: (activo: boolean) => void;
   desdeUrl: boolean;
   onDesdeUrl: (activo: boolean) => void;
+  permitirSubida: boolean;
 }) {
   const entrada = useRef<HTMLInputElement>(null);
 
@@ -59,30 +61,34 @@ export function BarraBiblioteca({
             className="pl-10"
           />
         </div>
-        <Boton variante="chispa" icono={<Upload className="size-4" />} onClick={() => entrada.current?.click()}>
-          Subir archivos
-        </Boton>
-        <Boton
-          variante="secundario"
-          icono={<Link2 className="size-4" />}
-          aria-expanded={desdeUrl}
-          onClick={() => onDesdeUrl(!desdeUrl)}
-        >
-          Desde URL
-        </Boton>
-        <input
-          ref={entrada}
-          type="file"
-          multiple
-          accept={aceptarArchivos(tiposPermitidos)}
-          className="sr-only"
-          tabIndex={-1}
-          aria-hidden
-          onChange={(e) => {
-            onArchivos(Array.from(e.target.files ?? []));
-            e.target.value = "";
-          }}
-        />
+        {permitirSubida && (
+          <>
+            <Boton variante="chispa" icono={<Upload className="size-4" />} onClick={() => entrada.current?.click()}>
+              Subir archivos
+            </Boton>
+            <Boton
+              variante="secundario"
+              icono={<Link2 className="size-4" />}
+              aria-expanded={desdeUrl}
+              onClick={() => onDesdeUrl(!desdeUrl)}
+            >
+              Desde URL
+            </Boton>
+            <input
+              ref={entrada}
+              type="file"
+              multiple
+              accept={aceptarArchivos(tiposPermitidos)}
+              className="sr-only"
+              tabIndex={-1}
+              aria-hidden
+              onChange={(e) => {
+                onArchivos(Array.from(e.target.files ?? []));
+                e.target.value = "";
+              }}
+            />
+          </>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -103,9 +109,11 @@ export function BarraBiblioteca({
         )}
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="w-60">
-            <Interruptor etiqueta="Editar imágenes al subir" activo={editarAlSubir} onCambio={onEditarAlSubir} />
-          </div>
+          {permitirSubida && (
+            <div className="w-60">
+              <Interruptor etiqueta="Editar imágenes al subir" activo={editarAlSubir} onCambio={onEditarAlSubir} />
+            </div>
+          )}
           <button
             type="button"
             aria-pressed={papelera}

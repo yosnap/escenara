@@ -9,9 +9,9 @@ import { auth } from "@/server/auth/auth";
  */
 export async function cerrarSesionDispositivo(id: string): Promise<{ ok: boolean }> {
   const cabeceras = await headers();
-  const sesiones = await auth().api.listSessions({ headers: cabeceras });
+  const sesiones = await (await auth()).api.listSessions({ headers: cabeceras });
   const objetivo = sesiones.find((s) => s.id === id);
   if (!objetivo) return { ok: false };
-  await auth().api.revokeSession({ body: { token: objetivo.token }, headers: cabeceras });
+  await (await auth()).api.revokeSession({ body: { token: objetivo.token }, headers: cabeceras });
   return { ok: true };
 }

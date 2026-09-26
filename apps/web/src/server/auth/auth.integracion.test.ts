@@ -11,19 +11,20 @@ const { crearSesionDePrueba } = await import("./sesion-de-prueba");
 const { db } = await import("../db/cliente");
 const { sessions, users } = await import("../db/esquema");
 const { aplicarMigraciones } = await import("../db/migrar");
+const { guardarAjustes, leerAjustes } = await import("../ajustes");
 
 const marca = `cuentas-${crypto.randomUUID().slice(0, 8)}`;
 const correo = (n: string) => `${marca}-${n}@escenara.test`;
 const clave = "una-clave-larga-de-prueba";
 
 // Cada llamada llega con una x-forwarded-for distinta: en local esa cabecera no se tiene en cuenta
-// (ESCENARA_CABECERAS_IP vacía) y el test del límite por cuenta comprueba que falsificarla no sirve.
+// (sin cabecera de IP configurada en los ajustes) y el test del límite por cuenta comprueba que falsificarla no sirve.
 let siguienteIp = Math.floor(Math.random() * 100);
 const ipNueva = () => `203.0.113.${(siguienteIp++ % 250) + 1}`;
 
 /** Llama a la API HTTP de Better Auth como lo haría el navegador. */
-function llamar(ruta: string, cuerpo: unknown, cabeceras: Record<string, string> = {}) {
-  return auth().handler(
+async function llamar(ruta: string, cuerpo: unknown, cabeceras: Record<string, string> = {}) {
+  return (await auth()).handler(
     new Request(`http://localhost:3021/api/auth${ruta}`, {
       method: "POST",
       headers: {
@@ -109,8 +110,10 @@ describe.skipIf(!process.env.DATABASE_URL)("cuentas (Better Auth contra PostgreS
   });
 
   test("con el registro cerrado se rechaza el alta de forma visible y no se crea la cuenta", async () => {
-    const antes = process.env.ESCENARA_REGISTRO_ABIERTO;
-    process.env.ESCENARA_REGISTRO_ABIERTO = "0";
+    const [admin] = await db().select({ id: users.id }).from(users).where(eq(users.email, base.email));
+    const idAdmin = admin?.id ?? "";
+    const antes = (await leerAjustes()).registroAbierto;
+    await guardarAjustes({ registroAbierto: false }, idAdmin);
     try {
       const r = await llamar("/sign-up/email", { name: "Cerrado", email: correo("cerrado"), password: clave });
       expect(r.status).toBe(403);
@@ -121,7 +124,7 @@ describe.skipIf(!process.env.DATABASE_URL)("cuentas (Better Auth contra PostgreS
         .where(eq(users.email, correo("cerrado")));
       expect(filas).toHaveLength(0);
     } finally {
-      process.env.ESCENARA_REGISTRO_ABIERTO = antes;
+      await guardarAjustes({ registroAbierto: antes }, idAdmin);
     }
   });
 
