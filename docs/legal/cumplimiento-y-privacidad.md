@@ -1,18 +1,18 @@
 # Cumplimiento, privacidad y límites de contenido
 
-**Estado:** lista de trabajo; **no sustituye** la revisión jurídica especializada que exige el PRD (§8) antes del lanzamiento · **Versión objetivo:** 0.28.0, con controles técnicos repartidos en versiones anteriores
+**Estado:** lista de trabajo; **no sustituye** la revisión jurídica especializada que exige el PRD (§8) antes del lanzamiento · **Versión objetivo:** 0.30.0, con controles técnicos repartidos en versiones anteriores
 
 ## Marco a revisar
 
 | Ámbito | Qué comprobar | Versión |
 |---|---|---|
-| RGPD y LOPDGDD | Base jurídica, consentimiento explícito para fotos de rostro y voz, evaluación de impacto (EIPD), encargados del tratamiento (proveedores de IA con claves del usuario), transferencias internacionales, derechos de acceso y supresión | 0.10.0 y 0.28.0 |
-| Derecho a la propia imagen (LO 1/1982) | Consentimiento del titular para uso comercial de su imagen y voz; revocación | 0.10.0 |
-| Reglamento de IA de la UE, art. 50 | Transparencia del contenido sintético y deepfakes: aplicable desde el 2 de agosto de 2026 según el calendario original. Comprobar el estado del paquete «Omnibus digital» y de la normativa española de etiquetado | 0.19.0 y 0.28.0 |
-| Publicidad | Afirmaciones sobre productos, salud y lugares con fuente y aprobación editorial; identificación de contenido publicitario | 0.14.0 |
-| Términos de proveedores | Políticas de uso de Google, KIE y cada modelo; restricciones regionales de generación de personas | 0.3.0 y 0.8.0 |
-| Licencias | Licencia del repositorio: AGPL 3.0 (ADR-0001); licencias de modelos, fuentes (Manrope, OFL), música y recursos | 0.2.0 y 0.29.0 |
-| Marca y nombre | Disponibilidad de «Escenara» en OEPM y EUIPO, dominios y cuentas | Antes de 0.5.0 |
+| RGPD y LOPDGDD | Base jurídica, consentimiento explícito para fotos de rostro y voz, evaluación de impacto (EIPD), encargados del tratamiento (proveedores de IA con claves del usuario), transferencias internacionales, derechos de acceso y supresión | 0.12.0 y 0.30.0 |
+| Derecho a la propia imagen (LO 1/1982) | Consentimiento del titular para uso comercial de su imagen y voz; revocación | 0.12.0 |
+| Reglamento de IA de la UE, art. 50 | Transparencia del contenido sintético y deepfakes: aplicable desde el 2 de agosto de 2026 según el calendario original. Comprobar el estado del paquete «Omnibus digital» y de la normativa española de etiquetado | 0.21.0 y 0.30.0 |
+| Publicidad | Afirmaciones sobre productos, salud y lugares con fuente y aprobación editorial; identificación de contenido publicitario | 0.16.0 |
+| Términos de proveedores | Políticas de uso de Google, KIE y cada modelo; restricciones regionales de generación de personas | 0.3.0 y 0.10.0 |
+| Licencias | Licencia del repositorio: AGPL 3.0 (ADR-0001); licencias de modelos, fuentes (Manrope, OFL), música y recursos | 0.2.0 y 0.31.0 |
+| Marca y nombre | Disponibilidad de «Escenara» en OEPM y EUIPO, dominios y cuentas | Antes de 0.6.0 |
 
 ## Controles del producto
 

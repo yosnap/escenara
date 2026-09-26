@@ -18,6 +18,7 @@ Requisitos: [Bun](https://bun.sh) 1.4.2 o superior (runtime, gestor de paquetes 
 cp .env.example .env        # cambia las contraseñas de ejemplo; .env nunca se sube
 bun install
 bun run services:up         # PostgreSQL (5421) y SeaweedFS S3 (8321)
+bun run db:migrate          # aplica las migraciones pendientes (antes: bun run db:backup)
 bun run dev                 # http://localhost:3021
 ```
 
