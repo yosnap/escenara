@@ -18,8 +18,8 @@ La instancia nunca usa una clave global del operador para generar contenido de u
 
 | Proveedor | Capacidades para Escenara | Cómo obtener la clave | Documentación | Precios | Estado |
 |---|---|---|---|---|---|
-| **Google Gemini API** | `text_generation` (guion), `image_edit` (imagen con referencias), `image_to_video` y `text_to_video` (Veo), `tts`, `speech_to_text`, `multimodal_review` | Google AI Studio → «Get API key»: https://aistudio.google.com/apikey. Veo requiere facturación activa | https://ai.google.dev/gemini-api/docs · Veo: https://ai.google.dev/gemini-api/docs/veo · Modelos: https://ai.google.dev/api/models | https://ai.google.dev/gemini-api/docs/pricing | Confirmado (PRD). Verificar restricciones regionales de generación de personas en la UE |
-| **KIE.ai** | Agregador de modelos de imagen, vídeo, voz y música de varios fabricantes, con tareas asíncronas y callbacks | Panel de KIE → sección de claves API (verificar ruta exacta al darse de alta) | https://docs.kie.ai/ · Catálogo: https://kie.ai/ | Créditos por modelo; consultar el Market de KIE | Confirmado (PRD). No presuponer endpoint universal de catálogo |
+| **Google Gemini API** | `text_generation` (guion), `image_edit` (imagen con referencias), `image_to_video` y `text_to_video` (Veo), `tts`, `speech_to_text`, `multimodal_review` | Google AI Studio → «Get API key»: https://aistudio.google.com/apikey. Veo requiere facturación activa | https://ai.google.dev/gemini-api/docs · Veo: https://ai.google.dev/gemini-api/docs/veo · Modelos: https://ai.google.dev/api/models | https://ai.google.dev/gemini-api/docs/pricing | **Aplazado** (ADR-0009): sin facturación activa la cuota es 0; se incorporará más adelante |
+| **KIE.ai** | Agregador de modelos de imagen, vídeo, voz y música de varios fabricantes, con tareas asíncronas y callbacks | Panel de KIE → sección de claves API (verificar ruta exacta al darse de alta) | https://docs.kie.ai/ · Catálogo: https://kie.ai/ | Créditos por modelo (medido: `nano-banana-2-lite` 4 créditos por imagen, `veo3_lite` 60 créditos por vídeo de 4 s) | **Proveedor inicial** (ADR-0009). No presuponer endpoint universal de catálogo |
 | **TypeSafe Jev** | Decisiones tipadas `choice`, `score` y `noul` | Alta en TypeSafe (verificar proceso) | https://docs.typesafe.ai/introduction · Confianza: https://docs.typesafe.ai/confidence | Consultar al darse de alta | Por evaluar en 0.21.0 (modo sombra) |
 | **Laya** | Decisiones tipadas autoalojadas, ajuste fino con datos del dominio | Token de Hugging Face si el modelo lo exige: https://huggingface.co/settings/tokens | https://huggingface.co/convaiinnovations/laya | Sin coste por token; consume CPU o GPU del operador | Posterior; solo con datos etiquetados |
 | **LTX (Lightricks)** | `image_to_video`; modelos abiertos | Alta en la plataforma LTX (verificar) | https://docs.ltx.io/api-documentation/api-reference/video-generation/image-to-video · https://github.com/Lightricks/LTX-Video | Consultar | Posterior, por adaptador |
@@ -46,7 +46,7 @@ Se documentarán en `.env.example` a partir de 0.2.0. Nombres propuestos:
 
 | Variable | Tipo | Uso |
 |---|---|---|
-| `GEMINI_API_KEY` | Desarrollo | Prototipo 0.3.0 y pruebas de contrato del adaptador de Google |
+| `GEMINI_API_KEY` | Desarrollo | Adaptador de Google (aplazado) |
 | `KIE_API_KEY` | Desarrollo | Prototipo 0.3.0 y pruebas de contrato del adaptador de KIE |
 | `TYPESAFE_API_KEY` | Desarrollo | Evaluación de Jev en 0.21.0 |
 | `HF_TOKEN` | Desarrollo | Descarga de Laya si procede |

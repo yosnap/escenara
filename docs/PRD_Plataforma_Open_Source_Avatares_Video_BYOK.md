@@ -52,7 +52,7 @@ El sistema adapta esta estructura al proveedor seleccionado. Separa instruccione
 | RF08 | Montaje | Ordenar, recortar, subtitular, poner voz/música autorizada y exportar 9:16; conservar proyecto editable. |
 | RF09 | Historial y portabilidad | Exportar proyecto, assets y metadatos sin incluir claves; borrar proyectos y personajes. |
 | RF10 | Seguridad y derechos | Confirmación de derechos, control de uso por personaje y prohibición de suplantación no consentida. |
-| RF11 | Catálogo de modelos | Conectar KIE y Google; actualizar catálogo, filtrar por capacidad y mostrar disponibilidad verificada o pendiente para esa cuenta. |
+| RF11 | Catálogo de modelos | Conectar KIE (Google aplazado, ADR-0009); actualizar catálogo, filtrar por capacidad y mostrar disponibilidad verificada o pendiente para esa cuenta. |
 | RF12 | Control previo de generación | Ninguna generación se envía si falla una regla obligatoria, falta aprobación o se supera el presupuesto autorizado. Cada freno incluye motivo y siguiente acción. |
 | RF13 | Confianza y comparativas | Guardar decisión, evidencia, modelo, versión de reglas y revisión humana; comparar alternativas sin lanzar generaciones de pago por defecto. |
 | RF14 | Protección del gasto | Presupuesto por proyecto y etapa, reserva atómica para trabajos concurrentes y límite de reintentos. No reenviar un trabajo cuyo cobro o estado sea desconocido. |
@@ -69,7 +69,7 @@ Un **planificador** transforma la intención en escenas y dependencias; un **enr
 
 **Stack de IA propuesto:** *Decisión del 26-sep-2026 (ADR-0002): el MVP se construye solo en TypeScript, con un contrato HTTP de decisiones; Python con LangGraph o Laya se incorporará cuando su valor esté medido.* Propuesta original: Python con API de servicio, LangGraph para flujos persistentes, reanudación y aprobaciones humanas; LangChain solo donde simplifique integraciones concretas. Versionar plantillas, ejecuciones, resultados y etiquetas humanas en PostgreSQL. Evaluar primero prompts y reglas con un conjunto de pruebas; después entrenar o calibrar una versión de Laya exclusivamente con ejemplos consentidos del dominio, separando conjuntos de entrenamiento, validación y prueba. Jev queda como alternativa API y como punto de comparación, sin dar por hecho que el usuario pueda ajustar sus pesos.
 
-**Proveedores confirmados para la primera integración:** KIE.ai como agregador y Google mediante API directa, cada uno con las credenciales del usuario. Seleccionar sus modelos concretos tras pruebas de referencias, continuidad, voz, coste efectivo y estabilidad. LTX y otros proveedores podrán incorporarse mediante adaptadores. Cada capacidad tiene proveedor configurable y la interfaz muestra quién procesará los archivos. Un modelo autoalojado como Laya consume recursos del operador, aunque no tenga un coste por token del proveedor.
+**Proveedores confirmados para la primera integración:** KIE.ai como agregador, con las credenciales del usuario. *Decisión del 26-sep-2026 (ADR-0009): Google queda aplazado y se incorporará más adelante mediante su adaptador; el prototipo validó `nano-banana-2-lite` para el fotograma clave y `veo3_lite` para la animación.* Seleccionar sus modelos concretos tras pruebas de referencias, continuidad, voz, coste efectivo y estabilidad. LTX y otros proveedores podrán incorporarse mediante adaptadores. Cada capacidad tiene proveedor configurable y la interfaz muestra quién procesará los archivos. Un modelo autoalojado como Laya consume recursos del operador, aunque no tenga un coste por token del proveedor.
 
 **Adaptadores iniciales a estudiar:** Google Veo permite referencias visuales y extensión en su API; LTX documenta imagen a vídeo y ofrece código/modelos abiertos; Kling ofrece API de imagen a vídeo. La compatibilidad real, términos, regiones, precios y límites se verifican al implementar. Un modelo de código abierto puede exigir GPU y no convierte la ejecución en gratuita.
 
@@ -153,7 +153,7 @@ La modalidad BYOK evita subvencionar el consumo de IA, pero exige límites por t
 
 ## 11. Decisiones pendientes
 
-1. Validar modelos concretos, tarifas y condiciones de KIE.ai y Google mediante pruebas reales; ambos proveedores quedan confirmados para la primera integración.
+1. ~~Validar modelos concretos, tarifas y condiciones de KIE.ai y Google mediante pruebas reales.~~ Resuelto en el prototipo 0.3.0 (ADR-0009): solo KIE.ai de momento; Google aplazado.
 2. ~~Escoger licencia y política de contribuciones del repositorio.~~ Resuelto: AGPL 3.0 y `CONTRIBUTING.md` (0.2.0).
 3. Definir si el lanzamiento prioritario será autoalojado o también habrá instancia pública mantenida por el proyecto.
 4. Fijar, tras un benchmark propio, qué decisiones usará Laya, Jev o reglas y el presupuesto máximo por vídeo.
