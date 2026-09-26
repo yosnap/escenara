@@ -52,7 +52,7 @@ flowchart LR
 | Cola | pg-boss (solo Postgres) o BullMQ (Redis) | Pendiente, ADR-0003 |
 | Autenticación | Better Auth o Auth.js | Pendiente, ADR-0004 |
 | Cifrado de credenciales | AES-256-GCM con cifrado de sobre y clave maestra en el entorno o gestor de secretos | Pendiente, ADR-0005 |
-| Almacenamiento | MinIO en local; Cloudflare R2 o S3 en producción | Pendiente, ADR-0006 |
+| Almacenamiento | SeaweedFS (API S3) en local y en la instalación propia; en producción, SeaweedFS en Easypanel para el piloto y almacenamiento gestionado en la UE si crece | Decidido: SeaweedFS (ADR-0006) |
 | Despliegue | Docker Compose en local; Easypanel para la instancia del proyecto | Decidido: Easypanel (ADR-0007) |
 | Montaje | FFmpeg en workers | Pendiente, ADR-0008 |
 | Modelos iniciales | Según el informe de 0.3.0 | Pendiente, ADR-0009 |
@@ -63,8 +63,9 @@ flowchart LR
 |---|---|---|---|
 | Aplicación web (Next.js) | **3021** | 3021 | Siempre `http://localhost:3021` |
 | PostgreSQL | **5421** | 5432 | Contenedor Docker; desde otros contenedores se usa `5432` |
+| SeaweedFS (pasarela S3) | **8321** | 8333 | Solo se publica la pasarela S3; maestro, volúmenes y filer quedan internos |
 
-Los puertos son fijos. Si al arrancar uno está ocupado, se identifica el proceso con `lsof -nP -iTCP:PUERTO -sTCP:LISTEN` y se detiene si pertenece a Escenara; no se arranca en otro puerto. El 5421 se eligió porque el 5438 ya lo usa otro proyecto en la máquina de desarrollo. Los puertos del resto de servicios locales (almacenamiento S3, correo) se fijan en 0.2.0 con la misma comprobación.
+Los puertos son fijos. Si al arrancar uno está ocupado, se identifica el proceso con `lsof -nP -iTCP:PUERTO -sTCP:LISTEN` y se detiene si pertenece a Escenara; no se arranca en otro puerto. El 5421 se eligió porque el 5438 ya lo usa otro proyecto en la máquina de desarrollo, y el 8321 porque el 8333 habitual de SeaweedFS también está ocupado. El puerto del correo local se fija en 0.2.0 con la misma comprobación.
 
 ## Principios
 

@@ -32,7 +32,7 @@ La instancia nunca usa una clave global del operador para generar contenido de u
 | Servicio | Para qué | Local | Producción | Documentación | Estado |
 |---|---|---|---|---|---|
 | PostgreSQL | Datos, trabajos, presupuesto, historial | Docker Compose, puerto 5421 del host | Contenedor gestionado o servicio de base de datos | https://www.postgresql.org/docs/ | Decidido (PRD) |
-| Almacenamiento S3 | Referencias, medios generados y exportaciones con URLs temporales | MinIO | Cloudflare R2 o AWS S3 | https://min.io/docs/ · https://developers.cloudflare.com/r2/ | ADR-0006 |
+| Almacenamiento S3 | Referencias, medios generados y exportaciones con URLs temporales | SeaweedFS, pasarela S3 en el puerto 8321 | SeaweedFS en Easypanel para el piloto; almacenamiento gestionado en la UE (p. ej. Cloudflare R2) si crece | https://github.com/seaweedfs/seaweedfs/wiki/Amazon-S3-API · https://developers.cloudflare.com/r2/ | Decidido (ADR-0006) |
 | Redis | Solo si la cola elegida es BullMQ | Docker Compose | Contenedor | https://redis.io/docs/ | ADR-0003 |
 | Correo transaccional | Verificación de cuenta y avisos | Captura local (Mailpit) | Resend u otro | https://resend.com/docs | Pendiente |
 | Easypanel | Panel de despliegue (Docker) de la instancia del proyecto: aplicaciones, bases de datos, dominios y certificados | — | Servidor propio con Easypanel | https://easypanel.io/docs | Decidido (ADR-0007) |
@@ -52,7 +52,7 @@ Se documentarán en `.env.example` a partir de 0.2.0. Nombres propuestos:
 | `HF_TOKEN` | Desarrollo | Descarga de Laya si procede |
 | `ELEVENLABS_API_KEY` | Desarrollo | Evaluación opcional de voz |
 | `DATABASE_URL` | Operador | Conexión a PostgreSQL (en local, `localhost:5421`) |
-| `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | Operador | Almacenamiento de objetos |
+| `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | Operador | Almacenamiento de objetos (en local, `http://localhost:8321`) |
 | `CREDENTIALS_MASTER_KEY` | Operador | Clave maestra del cifrado de credenciales BYOK |
 | `AUTH_SECRET` | Operador | Firma de sesiones |
 | `RESEND_API_KEY` | Operador | Correo transaccional |
