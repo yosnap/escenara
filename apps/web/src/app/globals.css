@@ -1,10 +1,9 @@
 @import "tailwindcss";
-@import "@fontsource-variable/manrope";
 @import "../styles/tokens.css";
 
 /* Los componentes usan tokens semánticos; nunca colores hexadecimales directos. */
 @theme inline {
-  --font-sans: "Manrope Variable", var(--font-family);
+  --font-sans: var(--font-manrope), var(--font-family);
   --font-mono: var(--font-mono-family);
   --color-fondo: var(--background);
   --color-superficie: var(--surface);
@@ -59,6 +58,11 @@
 }
 @utility bg-degradado-escenario {
   background-image: var(--gradient-escenario);
+}
+/* Palabras destacadas del titular: cobalto → fucsia supera 3:1 sobre el fondo en ambos temas (test en
+   lib/tokens.test.ts). El degradado Escenario completo no: su tramo sol queda por debajo en tema claro. */
+@utility bg-degradado-titular {
+  background-image: linear-gradient(135deg, var(--vibrant-cobalt), var(--vibrant-fuchsia));
 }
 @utility bg-degradado-atardecer {
   background-image: var(--gradient-atardecer);

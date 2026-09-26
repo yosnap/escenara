@@ -1,11 +1,34 @@
-export default function Home() {
+import type { Metadata } from "next";
+import paquete from "../../package.json";
+import { BarraPortada, CabeceraPortada } from "./_portada/cabecera";
+import { ComoFunciona } from "./_portada/como-funciona";
+import { Confianza } from "./_portada/confianza";
+import { Escaparate } from "./_portada/escaparate";
+import { Pie } from "./_portada/pie";
+
+export const metadata: Metadata = {
+  title: "Escenara · Da vida a cada escena",
+  description:
+    "Estudio abierto de personajes y vídeo: crea personajes persistentes desde fotos autorizadas y produce reels escena a escena, con tu propia clave y el gasto bajo control.",
+};
+
+export default function Portada() {
   return (
-    <main className="grid min-h-dvh place-content-center gap-2 p-5 text-center">
-      <h1 className="bg-degradado-escenario bg-clip-text text-5xl font-bold tracking-tight text-transparent">
-        Escenara
-      </h1>
-      <p className="text-xl font-semibold text-creativo">Da vida a cada escena</p>
-      <p className="text-texto-suave">Estudio abierto de personajes y vídeo · en construcción</p>
-    </main>
+    <>
+      <a
+        href="#contenido"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-control focus:bg-superficie focus:px-4 focus:py-2 focus:font-semibold focus:text-texto focus:shadow-lg"
+      >
+        Saltar al contenido
+      </a>
+      <BarraPortada />
+      <main id="contenido">
+        <CabeceraPortada />
+        <Escaparate />
+        <ComoFunciona />
+        <Confianza />
+      </main>
+      <Pie version={paquete.version} />
+    </>
   );
 }

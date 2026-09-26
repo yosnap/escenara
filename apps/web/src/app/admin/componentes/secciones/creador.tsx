@@ -3,6 +3,7 @@
 import { Dumbbell, Heart, Palmtree, PawPrint, ShoppingBag, UtensilsCrossed } from "lucide-react";
 import { useState } from "react";
 import { AnilloHistoria, ChipPreset, Pegatina, TarjetaReel, type Tono } from "@/components/ui/creator";
+import { MascotaChispa } from "@/components/ui/mascota";
 import { Muestra, Seccion } from "../seccion";
 
 const PRESETS: { id: string; etiqueta: string; tono: Tono; icono: typeof Palmtree }[] = [
@@ -20,7 +21,7 @@ export function SeccionCreador() {
     <Seccion
       id="creador"
       titulo="Creador"
-      descripcion="Componentes con carácter de app de creadores: color por especialidad, anillos de historia y tarjetas 9:16."
+      descripcion="Componentes con carácter de app de creadores: color por especialidad, anillos de historia, tarjetas 9:16 y Chispa, la mascota."
     >
       <div className="grid gap-4">
         <Muestra titulo="Chips de preset (uno activo)">
@@ -67,6 +68,16 @@ export function SeccionCreador() {
             <Pegatina tono="cobalto">Nuevo</Pegatina>
             <Pegatina tono="mandarina">Reto de la semana</Pegatina>
           </div>
+        </Muestra>
+        <Muestra titulo="Chispa, la mascota (saluda · señala · celebra)">
+          {(["saluda", "senala", "celebra"] as const).map((e) => (
+            <div key={e} className="flex flex-col items-center gap-2">
+              <MascotaChispa expresion={e} tamano={88} />
+              <span className="text-sm text-texto-suave">
+                {{ saluda: "Saluda", senala: "Señala", celebra: "Celebra" }[e]}
+              </span>
+            </div>
+          ))}
         </Muestra>
       </div>
     </Seccion>
