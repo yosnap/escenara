@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "brandVersion": "0.4.0",
+  "brandVersion": "0.5.0",
   "identity": {
     "name": "Escenara",
     "slug": "escenara",
@@ -20,17 +20,39 @@
   "logo": {
     "status": "selected",
     "concept": "enfoque",
-    "preview": "escenara-identidad-enfoque.svg",
-    "symbol": { "light": "escenara-mark-light.svg", "dark": "escenara-mark-dark.svg" },
-    "horizontal": { "light": "escenara-horizontal-light.svg", "dark": "escenara-horizontal-dark.svg" },
-    "stacked": { "light": "escenara-stacked-light.svg", "dark": "escenara-stacked-dark.svg" },
+    "preview": "escenara-identidad-enfoque.png",
+    "symbol": {
+      "light": "escenara-mark-light.svg",
+      "dark": "escenara-mark-dark.svg"
+    },
+    "horizontal": {
+      "light": "escenara-horizontal-light.svg",
+      "dark": "escenara-horizontal-dark.svg"
+    },
+    "stacked": {
+      "light": "escenara-stacked-light.svg",
+      "dark": "escenara-stacked-dark.svg"
+    },
     "raster": {
-      "horizontal": { "light": "escenara-horizontal-light.png", "dark": "escenara-horizontal-dark.png" },
-      "stacked": { "light": "escenara-stacked-light.png", "dark": "escenara-stacked-dark.png" },
-      "symbol": { "light": "escenara-mark-light.png", "dark": "escenara-mark-dark.png" }
+      "horizontal": {
+        "light": "escenara-horizontal-light.png",
+        "dark": "escenara-horizontal-dark.png"
+      },
+      "stacked": {
+        "light": "escenara-stacked-light.png",
+        "dark": "escenara-stacked-dark.png"
+      },
+      "symbol": {
+        "light": "escenara-mark-light.png",
+        "dark": "escenara-mark-dark.png"
+      }
     },
     "monochrome": "escenara-horizontal-mono.svg",
-    "favicon": { "light32": "escenara-icon-32.png" },
+    "favicon": {
+      "svg": "escenara-icon.svg",
+      "png32": "escenara-icon-32.png",
+      "png16": "escenara-icon-16.png"
+    },
     "minSymbolPx": 24,
     "minHorizontalPx": 140,
     "clearSpace": "0.5x symbol height"
@@ -48,7 +70,7 @@
       "surfaceRaised": "#EFF1F8",
       "text": "#182032",
       "textMuted": "#485269",
-      "border": "#8992A5",
+      "border": "#858EA1",
       "primary": "#2753D7",
       "onPrimary": "#FFFFFF",
       "focus": "#2753D7",
@@ -74,6 +96,44 @@
       "warning": "#F5C97A",
       "danger": "#FF9EAD"
     }
+  },
+  "vibrant": {
+    "light": {
+      "cobalt": "#3D6BFF",
+      "coral": "#F0663D",
+      "tangerine": "#FF8A3D",
+      "sun": "#FFC83D",
+      "fuchsia": "#E8458B",
+      "cyan": "#19B8D9"
+    },
+    "dark": {
+      "cobalt": "#7C9BFF",
+      "coral": "#FF8F6B",
+      "tangerine": "#FFA566",
+      "sun": "#FFD66B",
+      "fuchsia": "#FF6FA8",
+      "cyan": "#4FD3EE"
+    }
+  },
+  "gradients": {
+    "foco": [
+      "cobalt",
+      "cyan"
+    ],
+    "chispa": [
+      "coral",
+      "sun"
+    ],
+    "escenario": [
+      "cobalt",
+      "fuchsia",
+      "coral",
+      "sun"
+    ],
+    "atardecer": [
+      "fuchsia",
+      "tangerine"
+    ]
   },
   "typography": {
     "family": "Manrope, Inter, ui-sans-serif, system-ui, sans-serif",
@@ -127,6 +187,14 @@
     "interactionMs": [
       120,
       220
+    ],
+    "transitionMs": [
+      300,
+      500
+    ],
+    "celebrationMs": [
+      800,
+      1200
     ],
     "themeMs": 180,
     "respectReducedMotion": true

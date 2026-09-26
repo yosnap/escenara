@@ -1,6 +1,6 @@
 # Escenara guía de identidad visual
 
-**Versión 0.4 · 26 septiembre 2026 · dirección Enfoque y paleta cobalto coral**
+**Versión 0.5 · 26 septiembre 2026 · dirección Enfoque, paleta cobalto coral y capa vibrante «Escenario»**
 
 Escenara convierte un personaje en escenas y las escenas en historias. Su marca debe transmitir dirección creativa, continuidad y control: una herramienta profesional accesible para quien crea contenido con imágenes, vídeo y voz. Esta guía define el aspecto de la propia aplicación. Los vídeos que produzca cada usuario pueden utilizar una marca diferente.
 
@@ -8,7 +8,7 @@ Escenara convierte un personaje en escenas y las escenas en historias. Su marca 
 
 **Nombre comercial:** Escenara. **Pronunciación:** es-ce-na-ra. **Escritura:** inicial mayúscula en texto y minúsculas `escenara` en identificadores. No traducir el nombre. **Descriptor:** «Estudio abierto de personajes y vídeo». **Eslogan principal:** «Da vida a cada escena». **Línea de producto:** «Crea personajes, dirige historias». Usar el eslogan en portada y presentaciones; en el producto preferir verbos concretos como «Crear personaje», «Preparar escena», «Revisar» y «Exportar». En inglés: «Bring every scene to life» y «Create characters, direct stories»; revisar con hablantes nativos antes de una campaña.
 
-**Voz:** clara, cinematográfica y precisa. La interfaz informa lo que falta, lo que costará y lo que ocurrirá a continuación. No promete resultados perfectos ni presenta una puntuación de confianza como garantía. Ejemplo: «Falta una foto lateral para mantener mejor el perfil del personaje»; botón «Añadir foto lateral». Para costes: «Estimación: 0,42 € por escena; el importe final depende del proveedor». Evitar «La IA se encargará de todo».
+**Voz:** clara, cercana y festiva, sin prometer resultados (ampliada en 0.5: antes «clara, cinematográfica y precisa»). La interfaz informa lo que falta, lo que costará y lo que ocurrirá a continuación. No promete resultados perfectos ni presenta una puntuación de confianza como garantía. Ejemplo: «Falta una foto lateral para mantener mejor el perfil del personaje»; botón «Añadir foto lateral». Para costes: «Estimación: 0,42 € por escena; el importe final depende del proveedor». Evitar «La IA se encargará de todo».
 
 ## Símbolo y logotipos
 
@@ -34,7 +34,7 @@ El **azul cobalto** representa dirección y claridad; el **coral cálido** marca
 | Superficie elevada | `#EFF1F8` | `#222839` | Menús y estados activos. |
 | Texto principal | `#182032` | `#F5F6FA` | Títulos y cuerpo. |
 | Texto secundario | `#485269` | `#B8C0D1` | Ayuda y metadatos. |
-| Borde | `#8992A5` | `#737F98` | Campos, divisores y límites de componentes. |
+| Borde | `#858EA1` | `#737F98` | Campos, divisores y límites de componentes. |
 | Acento | `#2753D7` | `#8EB8FF` | Enlaces y controles destacados. |
 | Sobre acento | `#FFFFFF` | `#101320` | Texto dentro de botones de acento. |
 | Chispa del logo | `#F0663D` | `#FFAD78` | Símbolo y detalles puramente gráficos. |
@@ -44,6 +44,12 @@ El **azul cobalto** representa dirección y claridad; el **coral cálido** marca
 | Error | `#A43343` | `#FF9EAD` | Falta obligatoria o fallo. |
 
 No expresar estados solo mediante color: acompañar con texto e icono. El foco de teclado usa anillo de 2 px con separación de 2 px y debe ser visible en ambos temas. Comprobar al implementar contraste de al menos 4,5:1 en texto normal, 3:1 en texto grande y 3:1 en componentes e indicadores relevantes; verificar también los estados hover y disabled. Los colores de marca dentro del vídeo exportado no se fuerzan sobre la identidad del creador.
+
+## Capa «Escenario» y zonas de claridad (0.5)
+
+La aplicación es colorida, animada y con parallax en todos sus apartados, con aire de comunidad de creadores. Se añade una paleta **vibrante** (cobalto `#3D6BFF`, coral `#F0663D`, mandarina `#FF8A3D`, sol `#FFC83D`, fucsia `#E8458B`, cian `#19B8D9`, con variantes para tema oscuro) y cuatro degradados con nombre: **Foco** (cobalto → cian), **Chispa** (coral → sol), **Escenario** (cobalto → fucsia → coral → sol) y **Atardecer** (fucsia → mandarina). Los vibrantes son decorativos: el texto de lectura usa siempre los tokens semánticos.
+
+**Zonas de claridad:** costes, consentimiento, credenciales, errores y avisos legales usan superficies neutras, sin parallax ni texto sobre degradado, con contraste AA. Detalle completo en `docs/diseno/direccion-visual-escenario.md`; tokens en `escenara.brand.json`.
 
 ## Tipografía y composición
 
@@ -67,7 +73,7 @@ Microinteracciones de 120–220 ms para hover, selección y apertura de panel; t
 
 ## Entregables gráficos pendientes
 
-La dirección Enfoque tiene variantes vectoriales para ambos temas, una versión monocroma y una presentación conjunta en `escenara-identidad-enfoque.svg`. Antes del lanzamiento hacen falta una versión simplificada de favicon 16 px, iconos PWA, imagen social, portada de repositorio y revisión tipográfica del wordmark en entornos sin Manrope. Verificar disponibilidad de marca, dominio y cuentas antes de registrar una identidad o publicar assets definitivos.
+La dirección Enfoque tiene variantes vectoriales para ambos temas, versión monocroma (`escenara-horizontal-mono.svg`), presentación conjunta (`escenara-identidad-enfoque.png`), exportaciones PNG y un icono simplificado (`escenara-icon.svg`, con PNG de 16 y 32 px) legible como favicon. Antes del lanzamiento hacen falta iconos PWA, imagen social, portada de repositorio y convertir el texto del wordmark a contornos: los PNG actuales se rasterizaron sin Manrope instalada y usan una fuente de sustitución. Verificar disponibilidad de marca, dominio y cuentas antes de registrar una identidad o publicar assets definitivos.
 
 ## Fuentes de referencia
 

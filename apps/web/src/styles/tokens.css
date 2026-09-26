@@ -1,0 +1,94 @@
+/* Generado desde docs/branding/escenara.brand.json (marca 0.5.0). No editar a mano: bun run tokens */
+:root {
+  color-scheme: light;
+  --font-family: Manrope, Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-mono-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --radius-control: 12px;
+  --radius-card: 16px;
+  --motion-fast: 120ms;
+  --motion-base: 220ms;
+  --motion-slow: 500ms;
+  --motion-theme: 180ms;
+  --background: #F7F8FC;
+  --surface: #FFFFFF;
+  --surface-raised: #EFF1F8;
+  --text: #182032;
+  --text-muted: #485269;
+  --border: #858EA1;
+  --primary: #2753D7;
+  --on-primary: #FFFFFF;
+  --focus: #2753D7;
+  --brand-spark: #F0663D;
+  --creative: #B53D1C;
+  --success: #166A51;
+  --warning: #875016;
+  --danger: #A43343;
+  --vibrant-cobalt: #3D6BFF;
+  --vibrant-coral: #F0663D;
+  --vibrant-tangerine: #FF8A3D;
+  --vibrant-sun: #FFC83D;
+  --vibrant-fuchsia: #E8458B;
+  --vibrant-cyan: #19B8D9;
+  --gradient-foco: linear-gradient(135deg, var(--vibrant-cobalt), var(--vibrant-cyan));
+  --gradient-chispa: linear-gradient(135deg, var(--vibrant-coral), var(--vibrant-sun));
+  --gradient-escenario: linear-gradient(135deg, var(--vibrant-cobalt), var(--vibrant-fuchsia), var(--vibrant-coral), var(--vibrant-sun));
+  --gradient-atardecer: linear-gradient(135deg, var(--vibrant-fuchsia), var(--vibrant-tangerine));
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --background: #0D1018;
+    --surface: #171B27;
+    --surface-raised: #222839;
+    --text: #F5F6FA;
+    --text-muted: #B8C0D1;
+    --border: #737F98;
+    --primary: #8EB8FF;
+    --on-primary: #101320;
+    --focus: #8EB8FF;
+    --brand-spark: #FFAD78;
+    --creative: #FFAD78;
+    --success: #66D6AB;
+    --warning: #F5C97A;
+    --danger: #FF9EAD;
+    --vibrant-cobalt: #7C9BFF;
+    --vibrant-coral: #FF8F6B;
+    --vibrant-tangerine: #FFA566;
+    --vibrant-sun: #FFD66B;
+    --vibrant-fuchsia: #FF6FA8;
+    --vibrant-cyan: #4FD3EE;
+    --gradient-foco: linear-gradient(135deg, var(--vibrant-cobalt), var(--vibrant-cyan));
+    --gradient-chispa: linear-gradient(135deg, var(--vibrant-coral), var(--vibrant-sun));
+    --gradient-escenario: linear-gradient(135deg, var(--vibrant-cobalt), var(--vibrant-fuchsia), var(--vibrant-coral), var(--vibrant-sun));
+    --gradient-atardecer: linear-gradient(135deg, var(--vibrant-fuchsia), var(--vibrant-tangerine));
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #0D1018;
+  --surface: #171B27;
+  --surface-raised: #222839;
+  --text: #F5F6FA;
+  --text-muted: #B8C0D1;
+  --border: #737F98;
+  --primary: #8EB8FF;
+  --on-primary: #101320;
+  --focus: #8EB8FF;
+  --brand-spark: #FFAD78;
+  --creative: #FFAD78;
+  --success: #66D6AB;
+  --warning: #F5C97A;
+  --danger: #FF9EAD;
+  --vibrant-cobalt: #7C9BFF;
+  --vibrant-coral: #FF8F6B;
+  --vibrant-tangerine: #FFA566;
+  --vibrant-sun: #FFD66B;
+  --vibrant-fuchsia: #FF6FA8;
+  --vibrant-cyan: #4FD3EE;
+  --gradient-foco: linear-gradient(135deg, var(--vibrant-cobalt), var(--vibrant-cyan));
+  --gradient-chispa: linear-gradient(135deg, var(--vibrant-coral), var(--vibrant-sun));
+  --gradient-escenario: linear-gradient(135deg, var(--vibrant-cobalt), var(--vibrant-fuchsia), var(--vibrant-coral), var(--vibrant-sun));
+  --gradient-atardecer: linear-gradient(135deg, var(--vibrant-fuchsia), var(--vibrant-tangerine));
+}

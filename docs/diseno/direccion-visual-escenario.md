@@ -1,6 +1,6 @@
 # Dirección visual «Escenario»
 
-**Estado:** propuesta para la marca 0.5.0, pendiente de aprobación · **Base:** `docs/branding/ESCENARA_BRAND_GUIDE.md` (0.4) y `escenara.brand.json` (0.4.0) · **Se implementa en:** 0.4.0 (sistema de diseño) y 0.5.0 (portada)
+**Estado:** aprobada por el propietario el 26-sep-2026 como marca 0.5.0 · **Base:** `docs/branding/ESCENARA_BRAND_GUIDE.md` (0.4) y `escenara.brand.json` (0.4.0) · **Se implementa en:** 0.4.0 (sistema de diseño) y 0.5.0 (portada)
 
 ## Intención
 
@@ -54,6 +54,13 @@ El núcleo no cambia: **cobalto** (dirección) y **coral** (chispa creativa). Se
 - Animar solo `transform` y `opacity`. Nada que provoque recálculo de maquetación.
 - **`prefers-reduced-motion`:** sin parallax ni confeti; transiciones sustituidas por fundidos cortos. Opción equivalente en las preferencias del usuario.
 - En las zonas de claridad solo hay microinteracciones.
+
+## Reglas de componentes
+
+- Todo componente reutilizable se crea primero en el catálogo **`/admin/componentes`**, con sus variantes y estados, y después se usa en las pantallas (ADR-0011).
+- **Nunca se usa el `<select>` nativo del navegador.** Selección única, múltiple y con búsqueda se hacen con los componentes del catálogo; un test lo impide en todo el código.
+- El **selector de medios (media picker)** es un componente del catálogo; su comportamiento lo definirá el propietario.
+- **Nada de bordes ni sombras de color en un solo lateral** de tarjetas o bloques (el típico acento a la izquierda): da aspecto de interfaz generada por IA. Se usan bordes completos, fondos suaves o un icono en círculo; un test lo impide.
 
 ## Componentes con carácter de creador
 
