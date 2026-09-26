@@ -7,6 +7,8 @@ loadEnvConfig(path.resolve(import.meta.dirname, "../.."), process.env.NODE_ENV !
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // El historial de versiones del admin lee el changelog de la raíz del monorepo.
+  outputFileTracingIncludes: { "/admin/versiones": ["../../docs/CHANGELOG.md"] },
 };
 
 export default nextConfig;
