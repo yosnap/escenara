@@ -2,6 +2,15 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.5.3] · 2026-09-26
+
+### Añadido
+
+- Historial de versiones en el admin (`/admin/versiones`), generado a partir de este registro de cambios: cada versión con su fecha y sus cambios agrupados por tipo, y la actual destacada.
+- Cabecera común del admin con navegación entre Componentes y Versiones y la versión en curso.
+- Norma del proyecto: toda versión publicada aparece en el historial del admin; un test comprueba que la última versión del registro de cambios coincide con `package.json` y `VERSION`.
+- Captura del historial en `docs/assets/capturas/`.
+
 ## [0.5.2] · 2026-09-26
 
 ### Seguridad

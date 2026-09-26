@@ -46,7 +46,7 @@ Una versión está terminada cuando:
 - cumple los criterios de aceptación definidos para la versión;
 - pasa lint, tipos, tests y build en local;
 - tiene revisión de código sin hallazgos críticos abiertos;
-- actualiza la documentación afectada y `docs/CHANGELOG.md`;
+- actualiza la documentación afectada y `docs/CHANGELOG.md`, que es la fuente del **historial de versiones del admin** (`/admin/versiones`): toda versión publicada debe verse ahí, y un test comprueba que la última entrada del changelog coincide con `package.json` y `VERSION`;
 - si cambia algo visible, añade o actualiza las capturas de `docs/assets/capturas/` y la guía de usuario;
 - no introduce secretos (comprobación de `git diff` antes de cada commit);
 - el propietario aprueba la release.
