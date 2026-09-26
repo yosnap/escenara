@@ -12,13 +12,13 @@ Al participar aceptas el [código de conducta](CODE_OF_CONDUCT.md). Los fallos d
 
 ## Entorno local
 
-Requisitos: Node.js 22+ (hay un `.nvmrc`), pnpm 11+ y Docker con Docker Compose.
+Requisitos: [Bun](https://bun.sh) 1.4.2 o superior (runtime, gestor de paquetes y tests) y Docker con Docker Compose.
 
 ```bash
 cp .env.example .env        # cambia las contraseñas de ejemplo; .env nunca se sube
-pnpm install
-pnpm services:up            # PostgreSQL (5421) y SeaweedFS S3 (8321)
-pnpm dev                    # http://localhost:3021
+bun install
+bun run services:up         # PostgreSQL (5421) y SeaweedFS S3 (8321)
+bun run dev                 # http://localhost:3021
 ```
 
 `http://localhost:3021/api/health` debe devolver `status: ok` con base de datos y almacenamiento conectados.
@@ -40,8 +40,8 @@ No cambies de puerto si uno está ocupado: identifica el proceso con `lsof -nP -
 3. Antes de abrir la pull request ejecuta:
 
    ```bash
-   pnpm format
-   pnpm check    # lint, tipos, tests y build
+   bun run format
+   bun run check    # lint, tipos, tests y build
    ```
 
 4. Abre la pull request contra `develop` y rellena la plantilla.
@@ -50,7 +50,7 @@ Las ramas `main` y `develop` no admiten commits directos. El equipo mantenedor p
 
 ## Qué esperamos de una contribución
 
-- **Pruebas:** la lógica nueva incluye tests con Vitest (`*.test.ts` junto al código).
+- **Pruebas:** la lógica nueva incluye tests con `bun test` (`*.test.ts` junto al código, importando de `bun:test`).
 - **Estilo:** Biome define formato y lint; TypeScript en modo estricto.
 - **Tamaño de archivos:** evita archivos de más de 1.000 líneas; divide en módulos con responsabilidades claras.
 - **Sin secretos:** nunca subas `.env`, claves API, contraseñas ni fotos o voces de personas reales. Usa datos de prueba inventados.

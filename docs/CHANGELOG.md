@@ -6,13 +6,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ### Añadido
 
-- Monorepo pnpm con la aplicación Next.js 16 en `apps/web`, servida en `http://localhost:3021`.
+- Monorepo con workspaces de Bun 1.4.2 y la aplicación Next.js 16 en `apps/web`, ejecutada sobre Bun y servida en `http://localhost:3021`.
 - Docker Compose con PostgreSQL 18 (puerto 5421) y SeaweedFS 4.47 con API S3 (puerto 8321) y creación automática del bucket.
-- Ruta `/api/health` que comprueba base de datos y almacenamiento sin exponer configuración.
-- Validación de la configuración del servidor con tests (Vitest).
-- Biome para lint y formato, TypeScript estricto y script `pnpm check`.
+- Ruta `/api/health` que comprueba base de datos y almacenamiento con los clientes nativos de Bun, sin exponer configuración.
+- Validación de la configuración del servidor con tests (`bun test`).
+- Biome para lint y formato, TypeScript estricto y script `bun run check`.
 - Licencia AGPL 3.0, README, guía de contribución, código de conducta, política de seguridad y plantillas de issues y pull requests.
-- ADR-0001 (licencia AGPL 3.0) y ADR-0002 (TypeScript único en el MVP).
+- ADR-0001 (licencia AGPL 3.0), ADR-0002 (TypeScript único en el MVP) y ADR-0010 (Bun como runtime).
 
 ## [0.1.0] · 2026-09-26
 

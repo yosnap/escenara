@@ -13,7 +13,7 @@ Mapa de la documentación pública del proyecto. Versión actual: **0.2.0**. Par
 | Marca | [Tokens de marca](branding/escenara.brand.json) | Tokens editables de ambos temas | 0.4.0 |
 | Diseño | [Dirección visual «Escenario»](diseno/direccion-visual-escenario.md) | Capa vibrante, parallax, animación, componentes de creador y zonas de claridad | Propuesta marca 0.5.0 |
 | Arquitectura | [Visión de arquitectura](arquitectura/vision-arquitectura.md) | Componentes, flujo de generación, entidades y pila propuesta | Propuesta |
-| Arquitectura | [Decisiones (ADR)](arquitectura/decisiones/README.md) | Índice de decisiones y plantilla | Licencia, lenguaje, despliegue y almacenamiento decididos; 5 pendientes |
+| Arquitectura | [Decisiones (ADR)](arquitectura/decisiones/README.md) | Índice de decisiones y plantilla | Licencia, lenguaje, runtime, despliegue y almacenamiento decididos; 5 pendientes |
 | Recursos | [APIs, proveedores y servicios](recursos/apis-y-proveedores.md) | Qué servicio, para qué, dónde se obtiene la clave, documentación y precios | Vivo |
 | Recursos | [Plantilla de claves API](recursos/claves-api.plantilla.md) | Estructura del documento privado de claves | Vivo |
 | Privado | `privado/claves-api.local.md` | Claves reales. **Fuera de git** (`.gitignore`) | Local |

@@ -1,39 +1,47 @@
-import { HeadBucketCommand, S3Client } from "@aws-sdk/client-s3";
-import { Client } from "pg";
 import { ConfigError, readServerConfig, type ServerConfig } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
 type Check = "ok" | "error";
 
-async function checkDatabase(url: string): Promise<Check> {
-  const client = new Client({ connectionString: url, connectionTimeoutMillis: 3000 });
+const TIMEOUT_MS = 3000;
+
+async function probe(task: () => Promise<unknown>): Promise<Check> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("timeout")), TIMEOUT_MS);
+  });
   try {
-    await client.connect();
-    await client.query("select 1");
+    await Promise.race([task(), timeout]);
     return "ok";
   } catch {
     return "error";
   } finally {
-    await client.end().catch(() => undefined);
+    clearTimeout(timer);
   }
 }
 
-async function checkStorage(storage: ServerConfig["storage"]): Promise<Check> {
-  const s3 = new S3Client({
+function checkDatabase(url: string): Promise<Check> {
+  return probe(async () => {
+    const sql = new Bun.SQL(url, { max: 1, connectionTimeout: TIMEOUT_MS / 1000 });
+    try {
+      await sql`select 1`;
+    } finally {
+      await sql.close().catch(() => undefined);
+    }
+  });
+}
+
+function checkStorage(storage: ServerConfig["storage"]): Promise<Check> {
+  const s3 = new Bun.S3Client({
     endpoint: storage.endpoint,
     region: storage.region,
-    forcePathStyle: true,
-    credentials: { accessKeyId: storage.accessKeyId, secretAccessKey: storage.secretAccessKey },
+    bucket: storage.bucket,
+    accessKeyId: storage.accessKeyId,
+    secretAccessKey: storage.secretAccessKey,
   });
-  try {
-    await s3.send(new HeadBucketCommand({ Bucket: storage.bucket }), { abortSignal: AbortSignal.timeout(3000) });
-    return "ok";
-  } catch {
-    return "error";
-  } finally {
-    s3.destroy();
-  }
+  // Listar una clave falla si el bucket no existe o las credenciales no son válidas.
+  return probe(() => s3.list({ maxKeys: 1 }));
 }
 
 /** Estado de los servicios de los que depende la aplicación. No expone configuración ni errores internos. */

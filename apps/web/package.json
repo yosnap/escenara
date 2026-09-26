@@ -5,26 +5,23 @@
   "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {
-    "dev": "next dev --port 3021",
-    "build": "next build",
-    "start": "next start --port 3021",
+    "dev": "bun --bun next dev --port 3021",
+    "build": "bun --bun next build",
+    "start": "bun --bun next start --port 3021",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "bun test"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "3.1141.0",
     "@next/env": "16.3.6",
     "next": "16.3.6",
-    "pg": "8.23.0",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@types/bun": "1.4.2",
     "@types/node": "26.6.3",
-    "@types/pg": "8.23.1",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
-    "typescript": "7.0.2",
-    "vitest": "5.0.2"
+    "typescript": "7.0.2"
   }
 }

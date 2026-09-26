@@ -4,18 +4,22 @@
   "private": true,
   "description": "Estudio abierto de personajes y vídeo",
   "license": "AGPL-3.0-only",
-  "packageManager": "pnpm@11.5.1",
+  "packageManager": "bun@1.4.2",
   "engines": {
-    "node": ">=22"
+    "bun": ">=1.4.2"
   },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "pnpm --filter @escenara/web dev",
-    "build": "pnpm -r build",
+    "dev": "bun --filter @escenara/web dev",
+    "build": "bun --filter '*' build",
     "lint": "biome check .",
     "format": "biome check --write .",
-    "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "typecheck": "bun --filter '*' typecheck",
+    "test": "bun test",
+    "check": "bun run lint && bun run typecheck && bun run test && bun run build",
     "services:up": "docker compose up -d --wait postgres seaweedfs && docker compose run --rm seaweedfs-init",
     "services:down": "docker compose down"
   },

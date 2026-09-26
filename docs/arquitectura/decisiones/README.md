@@ -15,6 +15,7 @@ Cada decisión relevante se documenta en un fichero `adr-NNNN-slug.md` dentro de
 | 0007 | Despliegue en Easypanel e instancia pública del proyecto | 0.5.0 | Plataforma decidida (Easypanel); instancia pública pendiente del propietario |
 | 0008 | Motor de montaje y render | 0.19.0 | Pendiente |
 | 0009 | Modelos iniciales por capacidad | 0.8.0 | Tras el informe de 0.3.0 |
+| [0010](adr-0010-bun-runtime.md) | Bun como runtime, gestor de paquetes y ejecutor de tests | 0.2.0 | Aceptado |
 
 ## Plantilla
 

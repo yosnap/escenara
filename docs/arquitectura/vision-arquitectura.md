@@ -48,7 +48,7 @@ flowchart LR
 |---|---|---|
 | Lenguaje del MVP | TypeScript único; Python cuando Laya o LangGraph aporten valor medido | Decidido (ADR-0002) |
 | Web y API | Next.js 16 (App Router) en `apps/web` | Implantado en 0.2.0 |
-| Herramientas | pnpm (monorepo), Biome, Vitest, TypeScript estricto | Implantado en 0.2.0 |
+| Runtime y herramientas | Bun 1.4.2+ (runtime, workspaces, `bun test`, `Bun.SQL`, `Bun.S3Client`), Biome y TypeScript estricto | Decidido (ADR-0010) |
 | Licencia | AGPL 3.0 | Decidido (ADR-0001) |
 | Base de datos | PostgreSQL | Decidido en el PRD |
 | Cola | pg-boss (solo Postgres) o BullMQ (Redis) | Pendiente, ADR-0003 |

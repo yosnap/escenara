@@ -22,6 +22,6 @@ El MVP se construye **solo en TypeScript**: Next.js (interfaz y API), workers en
 
 ## Consecuencias
 
-- Monorepo pnpm con `apps/*` y `packages/*`; Biome para lint y formato, Vitest para tests y TypeScript estricto.
+- Monorepo con `apps/*` y `packages/*`, Biome para lint y formato y TypeScript estricto; runtime, gestor de paquetes y tests con Bun (ADR-0010).
 - Se aparta del PRD: el PRD queda actualizado con esta decisión.
 - Introducir Python más adelante requerirá un nuevo ADR con la evidencia que lo justifique.

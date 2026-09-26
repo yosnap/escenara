@@ -24,15 +24,15 @@
 
 ## Empezar en local
 
-Requisitos: **Node.js 22+**, **pnpm 11+** y **Docker** con Docker Compose.
+Requisitos: **[Bun](https://bun.sh) 1.4.2+** y **Docker** con Docker Compose.
 
 ```bash
 git clone <url-del-repositorio> escenara
 cd escenara
 cp .env.example .env        # cambia las contraseñas de ejemplo
-pnpm install
-pnpm services:up            # PostgreSQL y SeaweedFS (almacenamiento S3)
-pnpm dev                    # http://localhost:3021
+bun install
+bun run services:up         # PostgreSQL y SeaweedFS (almacenamiento S3)
+bun run dev                 # http://localhost:3021
 ```
 
 Comprueba que todo está conectado en <http://localhost:3021/api/health>: debe responder `{"status":"ok","database":"ok","storage":"ok"}`.
@@ -49,15 +49,15 @@ Los puertos son fijos. Si alguno está ocupado, libera el proceso que lo usa en 
 
 | Comando | Qué hace |
 |---|---|
-| `pnpm dev` | Arranca la web en modo desarrollo en el puerto 3021 |
-| `pnpm check` | Lint, tipos, tests y build: lo que debe pasar antes de proponer un cambio |
-| `pnpm format` | Formatea y ordena imports con Biome |
-| `pnpm services:up` / `pnpm services:down` | Levanta o detiene PostgreSQL y SeaweedFS |
+| `bun run dev` | Arranca la web en modo desarrollo en el puerto 3021 |
+| `bun run check` | Lint, tipos, tests y build: lo que debe pasar antes de proponer un cambio |
+| `bun run format` | Formatea y ordena imports con Biome |
+| `bun run services:up` / `bun run services:down` | Levanta o detiene PostgreSQL y SeaweedFS |
 
 ## Estructura
 
 ```text
-apps/web/        Aplicación Next.js (interfaz y API)
+apps/web/        Aplicación Next.js sobre Bun (interfaz y API)
 packages/        Paquetes compartidos (llegarán con los workers y adaptadores)
 docs/            Documentación del producto, marca, arquitectura y procesos
 docker-compose.yml  Servicios locales

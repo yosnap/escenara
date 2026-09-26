@@ -2,6 +2,7 @@
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["dom", "dom.iterable", "ES2023"],
+    "types": ["bun"],
     "module": "esnext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
