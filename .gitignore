@@ -31,9 +31,9 @@ __pycache__/
 .venv/
 .pytest_cache/
 
-# Medios generados en pruebas locales
+# Fotos de referencia, consentimientos y medios generados: datos personales, nunca al repositorio
+datos-privados/
 tmp/
-spikes/output/
 
 # Editores
 .idea/

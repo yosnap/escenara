@@ -12,7 +12,7 @@ flowchart LR
     W --> Q[Cola persistente]
     Q --> WK[Workers<br/>imagen, vídeo, voz,<br/>subtítulos, FFmpeg]
     WK --> AD[Adaptadores por capacidad]
-    AD --> G[Google<br/>Gemini, Veo, TTS]
+    AD -.->|aplazado| G[Google<br/>Gemini, Veo, TTS]
     AD --> K[KIE.ai<br/>agregador]
     W --> DEC[Servicio de decisiones<br/>contrato HTTP]
     DEC --> R[Reglas deterministas]
@@ -57,7 +57,7 @@ flowchart LR
 | Almacenamiento | SeaweedFS (API S3) en local y en la instalación propia; en producción, SeaweedFS en Easypanel para el piloto y almacenamiento gestionado en la UE si crece | Decidido: SeaweedFS (ADR-0006) |
 | Despliegue | Docker Compose en local; Easypanel para la instancia del proyecto | Decidido: Easypanel (ADR-0007) |
 | Montaje | FFmpeg en workers | Pendiente, ADR-0008 |
-| Modelos iniciales | Según el informe de 0.3.0 | Pendiente, ADR-0009 |
+| Modelos iniciales | KIE: `nano-banana-2-lite` (fotograma clave) y `veo3_lite` (animación); Google aplazado | Decidido (ADR-0009) |
 
 ## Entorno local
 
