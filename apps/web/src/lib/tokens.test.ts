@@ -48,6 +48,31 @@ describe("tokens de marca", () => {
     }
   }
 
+  // Las pegatinas usan el color vibrante mezclado al 75 % con blanco y texto #182032 (creator.tsx).
+  it("las pegatinas cumplen AA en todos los tonos y temas", () => {
+    const mezcla = (hex: string) =>
+      `#${[1, 3, 5]
+        .map((i) =>
+          Math.round(Number.parseInt(hex.slice(i, i + 2), 16) * 0.75 + 255 * 0.25)
+            .toString(16)
+            .padStart(2, "0"),
+        )
+        .join("")}`;
+    for (const tema of Object.values(marca.vibrant)) {
+      for (const color of Object.values(tema)) expect(contraste("#182032", mezcla(color))).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  // Titular de la portada: texto grande sobre el fondo con el degradado cobalto → fucsia (≥ 3:1).
+  it("el degradado del titular cumple 3:1 sobre el fondo en ambos temas", () => {
+    for (const nombre of ["light", "dark"] as const) {
+      const fondo = marca.theme[nombre].background as string;
+      for (const color of [marca.vibrant[nombre].cobalt, marca.vibrant[nombre].fuchsia]) {
+        expect(contraste(color as string, fondo)).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
+
   it("calcula el contraste de referencia blanco/negro", () => {
     expect(contraste("#FFFFFF", "#000000")).toBeCloseTo(21, 5);
   });

@@ -1,17 +1,50 @@
+"use client";
+
 import { AlertTriangle, CheckCircle2, Clock3, ImageOff, Play } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "./cn";
+import { VideoReel } from "./video-reel";
 
 /** Familias de color por especialidad (dirección visual «Escenario»). */
 export type Tono = "cobalto" | "coral" | "mandarina" | "sol" | "fucsia" | "cian";
 
-const TONOS: Record<Tono, { borde: string; fondo: string; punto: string }> = {
-  cobalto: { borde: "border-v-cobalto", fondo: "bg-v-cobalto/12", punto: "bg-v-cobalto" },
-  coral: { borde: "border-v-coral", fondo: "bg-v-coral/12", punto: "bg-v-coral" },
-  mandarina: { borde: "border-v-mandarina", fondo: "bg-v-mandarina/14", punto: "bg-v-mandarina" },
-  sol: { borde: "border-v-sol", fondo: "bg-v-sol/18", punto: "bg-v-sol" },
-  fucsia: { borde: "border-v-fucsia", fondo: "bg-v-fucsia/12", punto: "bg-v-fucsia" },
-  cian: { borde: "border-v-cian", fondo: "bg-v-cian/14", punto: "bg-v-cian" },
+const TONOS: Record<Tono, { borde: string; fondo: string; punto: string; pegatina: string }> = {
+  cobalto: {
+    borde: "border-v-cobalto",
+    fondo: "bg-v-cobalto/12",
+    punto: "bg-v-cobalto",
+    pegatina: "bg-[color-mix(in_srgb,var(--color-v-cobalto)_75%,white)]",
+  },
+  coral: {
+    borde: "border-v-coral",
+    fondo: "bg-v-coral/12",
+    punto: "bg-v-coral",
+    pegatina: "bg-[color-mix(in_srgb,var(--color-v-coral)_75%,white)]",
+  },
+  mandarina: {
+    borde: "border-v-mandarina",
+    fondo: "bg-v-mandarina/14",
+    punto: "bg-v-mandarina",
+    pegatina: "bg-[color-mix(in_srgb,var(--color-v-mandarina)_75%,white)]",
+  },
+  sol: {
+    borde: "border-v-sol",
+    fondo: "bg-v-sol/18",
+    punto: "bg-v-sol",
+    pegatina: "bg-[color-mix(in_srgb,var(--color-v-sol)_75%,white)]",
+  },
+  fucsia: {
+    borde: "border-v-fucsia",
+    fondo: "bg-v-fucsia/12",
+    punto: "bg-v-fucsia",
+    pegatina: "bg-[color-mix(in_srgb,var(--color-v-fucsia)_75%,white)]",
+  },
+  cian: {
+    borde: "border-v-cian",
+    fondo: "bg-v-cian/14",
+    punto: "bg-v-cian",
+    pegatina: "bg-[color-mix(in_srgb,var(--color-v-cian)_75%,white)]",
+  },
 };
 
 /** Botón grande de preset (especialidad, formato, estilo). Conmutable y con color de su familia. */
@@ -53,7 +86,8 @@ export function Pegatina({ children, tono = "coral" }: { children: ReactNode; to
     <span
       className={cn(
         "inline-flex -rotate-2 items-center gap-1 rounded-full px-3 py-1 text-sm font-bold text-[#182032] shadow-sm",
-        TONOS[tono].punto,
+        // Mezcla al 75 % con blanco: texto oscuro con contraste AA en todos los tonos y ambos temas.
+        TONOS[tono].pegatina,
       )}
     >
       {children}
@@ -113,21 +147,49 @@ export function TarjetaReel({
   subtitulo,
   duracion,
   imagen,
+  alt = "",
+  video,
   pegatina,
   tono = "cobalto",
+  ancho = "w-44",
+  className,
+  prioridad = false,
 }: {
   titulo: string;
   subtitulo?: string;
   duracion?: string;
   imagen?: string;
+  /** Texto alternativo de la imagen; vacío si es decorativa. */
+  alt?: string;
+  /** Vídeo corto sin sonido; la imagen hace de póster hasta que entra en pantalla. */
+  video?: string;
   pegatina?: ReactNode;
   tono?: Tono;
+  /** Clase de ancho (por defecto `w-44`); `className` solo añade clases. */
+  ancho?: string;
+  className?: string;
+  /** Carga la imagen de inmediato (tarjetas visibles al abrir la página). */
+  prioridad?: boolean;
 }) {
   return (
-    <article className="group relative aspect-9/16 w-44 overflow-hidden rounded-tarjeta bg-elevada shadow-md transition-transform duration-(--motion-base) hover:-translate-y-1 hover:shadow-xl">
-      {imagen ? (
-        // biome-ignore lint/performance/noImgElement: miniatura de ejemplo
-        <img src={imagen} alt="" className="absolute inset-0 size-full object-cover" />
+    <article
+      className={cn(
+        "group relative aspect-9/16 overflow-hidden rounded-tarjeta bg-elevada shadow-md transition-transform duration-(--motion-base) hover:-translate-y-1 hover:shadow-xl",
+        ancho,
+        className,
+      )}
+    >
+      {video ? (
+        <VideoReel src={video} poster={imagen} alt={alt} />
+      ) : imagen ? (
+        // biome-ignore lint/performance/noImgElement: imágenes estáticas ya optimizadas
+        <img
+          src={imagen}
+          alt={alt}
+          loading={prioridad ? "eager" : "lazy"}
+          decoding="async"
+          className="absolute inset-0 size-full object-cover"
+        />
       ) : (
         <div className={cn("absolute inset-0 flex items-center justify-center opacity-90", TONOS[tono].punto)}>
           <ImageOff className="size-8 text-[#182032]/60" aria-hidden />
