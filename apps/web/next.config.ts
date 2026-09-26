@@ -9,6 +9,14 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   // El historial de versiones del admin lee el changelog de la raíz del monorepo.
   outputFileTracingIncludes: { "/admin/versiones": ["../../docs/CHANGELOG.md"] },
+  // Páginas con datos de cuenta: que ningún proxy o CDN las guarde.
+  async headers() {
+    const privado = [{ key: "Cache-Control", value: "private, no-store" }];
+    return [
+      { source: "/cuenta", headers: privado },
+      { source: "/admin/:ruta*", headers: privado },
+    ];
+  },
 };
 
 export default nextConfig;

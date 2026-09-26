@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowDown, Sparkles } from "lucide-react";
+import { ArrowDown, Sparkles, UserRound } from "lucide-react";
+import Link from "next/link";
 import { claseBoton } from "@/components/ui/button";
 import { Pegatina, TarjetaReel } from "@/components/ui/creator";
 import { Logotipo } from "@/components/ui/logotipo";
@@ -66,7 +67,7 @@ const CAPAS: CapaParallax[] = [
 ];
 
 /** Barra superior de la portada: logotipo, secciones y tema. */
-export function BarraPortada() {
+export function BarraPortada({ conSesion }: { conSesion: boolean }) {
   return (
     <header className="sticky top-0 z-30 border-b border-borde/30 bg-fondo/80 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3 md:px-8">
@@ -87,7 +88,12 @@ export function BarraPortada() {
             ))}
           </ul>
         </nav>
-        <SelectorTema />
+        <div className="flex items-center gap-2">
+          <SelectorTema />
+          <Link href={conSesion ? "/cuenta" : "/entrar"} className={claseBoton("primario", "sm")}>
+            <UserRound className="size-4" aria-hidden /> {conSesion ? "Mi cuenta" : "Entrar"}
+          </Link>
+        </div>
       </div>
     </header>
   );
