@@ -2,7 +2,8 @@ import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { ErrorMedio } from "./errores";
 
-const MAX_REDIRECCIONES = 3;
+/** Cadenas habituales de CDN (http → https → CDN → variante) caben de sobra; los navegadores admiten hasta 20. */
+const MAX_REDIRECCIONES = 5;
 const TIEMPO_MAXIMO_MS = 20_000;
 const LARGO_MAX_URL = 2048;
 
@@ -36,16 +37,62 @@ export function esIpPublica(ip: string): boolean {
     return !RANGOS_V4_BLOQUEADOS.some(([base, bits]) => n >>> (32 - bits) === ipv4ANumero(base) >>> (32 - bits));
   }
   if (version === 6) {
-    const v6 = ip.toLowerCase();
-    const mapeada = v6.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-    if (mapeada?.[1]) return esIpPublica(mapeada[1]);
-    // `::/96` (sin especificar, bucle local y compatibles con IPv4) no es enrutable.
-    if (v6.startsWith("::")) return false;
-    // fc00::/7 privadas, fe80::/10 enlace local, fec0::/10 sitio, ff00::/8 multidifusión, 64:ff9b:: traducción,
-    // 2001:0::/32 Teredo, 2001:db8:: documentación, 2002::/16 6to4, 100::/64 descarte, 3ffe:: 6bone.
-    return !/^(f[cd]|fe[89a-f]|ff|64:ff9b:|2001:0{0,4}:|2001:db8:|2002:|100:0{0,4}:|3ffe:)/.test(v6);
+    const n = ipv6ANumero(ip);
+    if (n === null) return false;
+    // IPv4 mapeada (::ffff:0:0/96): decide la IPv4 que lleva dentro.
+    if (n >> 32n === 0xffffn) return esIpPublica(numeroAIpv4(Number(n & 0xffffffffn)));
+    // Lista blanca: solo el unicast global (2000::/3) y fuera de sus rangos especiales. Todo lo demás
+    // (::1, fc00::/7, fe80::/10, ff00::/8, 64:ff9b::/96…) queda bloqueado sin enumerarlo.
+    return enRangoV6(n, "2000::", 3) && !RANGOS_V6_BLOQUEADOS.some(([base, bits]) => enRangoV6(n, base, bits));
   }
   return false;
+}
+
+/** Rangos especiales dentro de 2000::/3: Teredo, ORCHID, documentación, 6to4, 6bone y 5f00::/16. */
+const RANGOS_V6_BLOQUEADOS: [string, number][] = [
+  ["2001::", 32],
+  ["2001:10::", 28],
+  ["2001:20::", 28],
+  ["2001:db8::", 32],
+  ["2002::", 16],
+  ["3ffe::", 16],
+  ["5f00::", 16],
+];
+
+function numeroAIpv4(n: number): string {
+  return [24, 16, 8, 0].map((d) => (n >>> d) & 255).join(".");
+}
+
+/** Valor de 128 bits de una IPv6 en cualquier notación (comprimida o no, con IPv4 incrustada); `null` si no es válida. */
+function ipv6ANumero(ip: string): bigint | null {
+  if (ip.includes("%")) return null;
+  let texto = ip.toLowerCase();
+  const v4 = texto.match(/(\d+\.\d+\.\d+\.\d+)$/);
+  if (v4?.[1]) {
+    if (isIP(v4[1]) !== 4) return null;
+    const n = ipv4ANumero(v4[1]);
+    texto = `${texto.slice(0, -v4[1].length)}${(n >>> 16).toString(16)}:${(n & 0xffff).toString(16)}`;
+  }
+  const [izquierda = "", derecha, sobra] = texto.split("::");
+  if (sobra !== undefined) return null;
+  const grupos = (parte: string) => (parte ? parte.split(":") : []);
+  const iz = grupos(izquierda);
+  const de = derecha === undefined ? [] : grupos(derecha);
+  const faltan = 8 - iz.length - de.length;
+  if (derecha === undefined ? faltan !== 0 : faltan < 1) return null;
+  const todos = [...iz, ...Array(derecha === undefined ? 0 : faltan).fill("0"), ...de];
+  let n = 0n;
+  for (const g of todos) {
+    if (!/^[0-9a-f]{1,4}$/.test(g)) return null;
+    n = (n << 16n) | BigInt(Number.parseInt(g, 16));
+  }
+  return n;
+}
+
+function enRangoV6(n: bigint, base: string, bits: number): boolean {
+  const b = ipv6ANumero(base);
+  const desplazamiento = BigInt(128 - bits);
+  return b !== null && n >> desplazamiento === b >> desplazamiento;
 }
 
 const PUERTOS_ESTANDAR = ["80", "443"];
@@ -90,17 +137,70 @@ function traducirError(error: unknown): ErrorMedio {
   return new ErrorMedio(502, "No se ha podido descargar la URL.");
 }
 
-async function comprobarDestino(url: URL, ipPermitida: ComprobadorIp, fin: number) {
+export type Resolvedor = (host: string) => Promise<string[]>;
+
+const resolverDns: Resolvedor = async (host) => (await lookup(host, { all: true })).map((d) => d.address);
+
+/**
+ * Resuelve el host y devuelve las IP candidatas, IPv4 primero (muchas redes no tienen salida IPv6).
+ * Todas deben ser públicas: así un dominio que mezcle una IP pública y otra interna también se rechaza.
+ */
+async function resolverDestino(url: URL, ipPermitida: ComprobadorIp, resolver: Resolvedor, fin: number) {
   const host = url.hostname.replace(/^\[|\]$/g, "");
   const direcciones = isIP(host)
     ? [host]
-    : (
-        await conPlazo(lookup(host, { all: true }), fin).catch((e) =>
-          e instanceof ErrorMedio ? Promise.reject(e) : [],
-        )
-      ).map((d) => d.address);
+    : await conPlazo(resolver(host), fin).catch((e) => (e instanceof ErrorMedio ? Promise.reject(e) : []));
   if (direcciones.length === 0) throw new ErrorMedio(400, "No se encuentra el servidor de esa URL.");
   if (!direcciones.every(ipPermitida)) throw new ErrorMedio(400, "La URL apunta a una dirección no permitida.");
+  return [...direcciones].sort((a, b) => isIP(a) - isIP(b)).slice(0, MAX_INTENTOS_CONEXION);
+}
+
+const MAX_INTENTOS_CONEXION = 4;
+/** Tiempo para que cada IP candidata responda con las cabeceras; no limita la descarga del cuerpo. */
+const TIEMPO_CONEXION_MS = 5000;
+
+/** Prueba las IP candidatas en orden hasta que una conecta; los errores HTTP no provocan reintento. */
+async function pedirAlguna(url: URL, ips: string[], senal: AbortSignal, fin: number): Promise<Response> {
+  let ultimo: unknown = new ErrorMedio(502, "No se ha podido conectar con el servidor de la URL.");
+  for (const ip of ips) {
+    const intento = new AbortController();
+    // Cada intento cabe dentro del presupuesto total: nunca agota el tiempo reservado para el cuerpo.
+    const plazo = Math.min(TIEMPO_CONEXION_MS, Math.max(0, fin - Date.now()));
+    const temporizador = setTimeout(() => intento.abort(), plazo);
+    try {
+      return await pedirFijado(url, ip, AbortSignal.any([senal, intento.signal]));
+    } catch (error) {
+      if (senal.aborted) throw error;
+      ultimo = error;
+    } finally {
+      clearTimeout(temporizador);
+    }
+  }
+  throw ultimo;
+}
+
+/** Cabeceras de un navegador corriente: algunos CDN rechazan peticiones sin ellas. */
+const CABECERAS = {
+  "User-Agent": "Mozilla/5.0 (compatible; Escenara/0.5; +https://github.com/escenara)",
+  Accept: "image/avif,image/webp,image/*,video/*,audio/*;q=0.9,*/*;q=0.5",
+};
+
+/**
+ * Conecta a la IP ya validada en lugar de dejar que la conexión vuelva a resolver el nombre: así un DNS
+ * que cambie de respuesta entre la comprobación y la conexión («DNS rebinding») no puede desviarla a una
+ * dirección interna. El dominio viaja en la cabecera `Host` y en el SNI, y el certificado TLS se valida
+ * contra él, de modo que HTTPS sigue siendo seguro.
+ */
+function pedirFijado(url: URL, ip: string, senal: AbortSignal): Promise<Response> {
+  const fijada = new URL(url);
+  fijada.hostname = isIP(ip) === 6 ? `[${ip}]` : ip;
+  const esNombre = !isIP(url.hostname.replace(/^\[|\]$/g, ""));
+  return fetch(fijada, {
+    redirect: "manual",
+    signal: senal,
+    headers: { ...CABECERAS, Host: url.host },
+    ...(url.protocol === "https:" && esNombre ? { tls: { serverName: url.hostname } } : {}),
+  });
 }
 
 /** Nombre del archivo a partir de la ruta, sin separadores ni caracteres de control. */
@@ -149,23 +249,42 @@ async function leerConLimite(respuesta: Response, limite: number): Promise<Uint8
   return partes;
 }
 
+const VARIABLES_PROXY_HTTP = ["HTTP_PROXY", "http_proxy", "ALL_PROXY", "all_proxy"];
+
+/**
+ * Con un proxy HTTP en el entorno, `fetch` le pide la URL por el nombre de la cabecera `Host` y es el
+ * proxy quien resuelve el dominio: la IP comprobada dejaría de ser la del destino. En HTTPS no pasa
+ * (el túnel CONNECT va a la IP fijada), así que solo se rechazan las URL http, fallando en cerrado.
+ */
+function comprobarSinProxyHttp(url: URL, entorno: Record<string, string | undefined>) {
+  if (url.protocol === "http:" && VARIABLES_PROXY_HTTP.some((v) => entorno[v])) {
+    throw new ErrorMedio(
+      503,
+      "Este servidor sale a internet por un proxy y no puede descargar URL http de forma segura. Usa la versión https.",
+    );
+  }
+}
+
 /** Descargas simultáneas: cada una puede ocupar cientos de MB de memoria. */
 const MAX_DESCARGAS_SIMULTANEAS = 2;
 let descargasActivas = 0;
 
 /**
  * Descarga un archivo público desde una URL para guardarlo como medio. Protección frente a SSRF:
- * cada destino (también tras una redirección) debe resolver solo a IP públicas. Queda un riesgo
- * residual de «DNS rebinding» entre la comprobación y la conexión, aceptable mientras la API sea
- * solo de administración; al abrirla a usuarios (0.7.0) conviene descargar desde un worker aislado.
- * `origen` es la URL introducida sin consulta ni fragmento, para no guardar tokens de enlaces firmados.
+ * cada destino (también tras una redirección) debe resolver solo a IP públicas y la conexión se fija
+ * a la IP comprobada. `origen` es la URL introducida sin consulta ni fragmento, para no guardar
+ * tokens de enlaces firmados.
  */
 export async function descargarUrl(
   texto: string,
   limite: number,
   ipPermitida: ComprobadorIp = esIpPublica,
   /** Solo para tests con un servidor local en un puerto libre. */
-  opciones: { puertosPermitidos?: readonly string[] } = {},
+  opciones: {
+    puertosPermitidos?: readonly string[];
+    resolver?: Resolvedor;
+    entorno?: Record<string, string | undefined>;
+  } = {},
 ): Promise<{ archivo: File; origen: string }> {
   const puertos = [...PUERTOS_ESTANDAR, ...(opciones.puertosPermitidos ?? [])];
   const inicial = validarUrl(texto, puertos);
@@ -178,8 +297,9 @@ export async function descargarUrl(
     const senal = AbortSignal.timeout(TIEMPO_MAXIMO_MS);
     let url = inicial;
     for (let saltos = 0; ; saltos++) {
-      await comprobarDestino(url, ipPermitida, fin);
-      const respuesta = await fetch(url, { redirect: "manual", signal: senal }).catch((e) => {
+      comprobarSinProxyHttp(url, opciones.entorno ?? process.env);
+      const ips = await resolverDestino(url, ipPermitida, opciones.resolver ?? resolverDns, fin);
+      const respuesta = await pedirAlguna(url, ips, senal, fin).catch((e) => {
         throw traducirError(e);
       });
       if (respuesta.status >= 300 && respuesta.status < 400) {
@@ -187,12 +307,26 @@ export async function descargarUrl(
         await descartarCuerpo(respuesta);
         if (!destino) throw new ErrorMedio(502, "La URL ha respondido con una redirección incompleta.");
         if (saltos >= MAX_REDIRECCIONES) throw new ErrorMedio(502, "La URL redirige demasiadas veces.");
-        url = validarUrl(new URL(destino, url).toString(), puertos);
+        let absoluta: URL;
+        try {
+          absoluta = new URL(destino, url);
+        } catch {
+          throw new ErrorMedio(502, "La URL ha respondido con una redirección no válida.");
+        }
+        url = validarUrl(absoluta.toString(), puertos);
         continue;
       }
       if (!respuesta.ok) {
         await descartarCuerpo(respuesta);
         throw new ErrorMedio(502, `La URL ha respondido con el código ${respuesta.status}.`);
+      }
+      const tipoRespuesta = (respuesta.headers.get("content-type") ?? "").toLowerCase();
+      if (tipoRespuesta.startsWith("text/html") || tipoRespuesta.startsWith("application/xhtml+xml")) {
+        await descartarCuerpo(respuesta);
+        throw new ErrorMedio(
+          415,
+          "Esa URL es una página web, no un archivo. Abre la imagen, pulsa con el botón derecho y elige «Copiar dirección de la imagen».",
+        );
       }
       const partes = await leerConLimite(respuesta, limite).catch((e) => {
         throw traducirError(e);

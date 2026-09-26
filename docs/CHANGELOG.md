@@ -2,6 +2,23 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.5.2] · 2026-09-26
+
+### Seguridad
+
+- La descarga desde una URL se conecta a la IP ya comprobada, con el dominio en la cabecera `Host` y en el SNI de TLS (el certificado se valida contra él): un DNS que cambie de respuesta entre la comprobación y la conexión («DNS rebinding») ya no puede desviarla a la red interna.
+- Si el servidor sale por un proxy HTTP (`HTTP_PROXY`), las URL http se rechazan, porque el proxy resolvería el dominio por su cuenta; las https siguen funcionando.
+- Las direcciones IPv6 se comprueban por su valor y solo se admite el unicast global, en cualquier notación.
+
+### Cambiado
+
+- Descarga más compatible: prueba primero IPv4 y pasa a la siguiente IP si una no responde, envía cabeceras de navegador y admite hasta 5 redirecciones.
+- Si se pega la URL de una página web en lugar de la de la imagen, se explica cómo copiar la dirección de la imagen.
+
+### Corregido
+
+- Una redirección con destino inválido devolvía un error interno (500).
+
 ## [0.5.1] · 2026-09-26
 
 ### Añadido
