@@ -19,6 +19,8 @@ export const media = pgTable(
     width: integer("width"),
     height: integer("height"),
     durationSeconds: real("duration_seconds"),
+    /** URL de la que se descargó, si se añadió desde una URL. */
+    sourceUrl: text("source_url"),
     title: text("title").notNull().default(""),
     altEs: text("alt_es").notNull().default(""),
     altEn: text("alt_en").notNull().default(""),

@@ -93,6 +93,15 @@ export function guardarMetadatos(id: string, cambios: CambiosMetadatos) {
   });
 }
 
+/** El servidor descarga el archivo de la URL, lo valida y lo guarda como cualquier otra subida. */
+export function subirDesdeUrl(url: string, tipos?: readonly TipoMedio[]) {
+  return pedir<Medio>("/api/media/url", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url, tipos }),
+  });
+}
+
 export const enviarAPapelera = (id: string) => pedir<Medio>(`/api/media/${id}`, { method: "DELETE" });
 export const restaurarMedio = (id: string) => pedir<Medio>(`/api/media/${id}/restaurar`, { method: "POST" });
 export const eliminarDefinitivamente = (id: string) =>
