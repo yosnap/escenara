@@ -19,6 +19,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - Los medios pertenecen a un usuario; los subidos antes de existir cuentas pasan al primer administrador.
 - Se retiran `ESCENARA_REGISTRO_ABIERTO`, `ESCENARA_CABECERAS_IP`, `SMTP_URL` y `CORREO_REMITENTE`: ahora son ajustes del panel. Las claves de Google y GitHub y la contraseña del correo pasarán al panel, cifradas, en la 0.9.0.
 
+### Corregido
+
+- Los campos de contraseña ya no rompen la carga de la página cuando un gestor de claves (LastPass y similares) inserta su icono antes de que termine de cargar.
+
 ### Actualizar desde la 0.7.0
 
 - Si habías cambiado `ESCENARA_REGISTRO_ABIERTO`, `ESCENARA_CABECERAS_IP`, `SMTP_URL` o `CORREO_REMITENTE`, vuelve a poner esos valores en **Admin › Ajustes** tras migrar: sin ellos se usan los valores por defecto (registro abierto, correo por `localhost:1021`).
