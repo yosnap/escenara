@@ -18,6 +18,14 @@ const TAMANOS: Record<TamanoBoton, string> = {
   lg: "min-h-13 px-7 text-lg",
 };
 
+const BASE_BOTON =
+  "inline-flex items-center justify-center gap-2 rounded-control font-semibold transition-all duration-(--motion-base) ease-out active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0";
+
+/** Clases de botón para usarlas también en enlaces (`<a>` o `Link`) que deben parecer botones. */
+export function claseBoton(variante: VarianteBoton = "primario", tamano: TamanoBoton = "md", className?: string) {
+  return cn(BASE_BOTON, VARIANTES[variante], TAMANOS[tamano], className);
+}
+
 export interface BotonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variante?: VarianteBoton;
   tamano?: TamanoBoton;
@@ -42,12 +50,7 @@ export function Boton({
       type={type}
       disabled={disabled || cargando}
       aria-busy={cargando || undefined}
-      className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-control font-semibold transition-all duration-(--motion-base) ease-out active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0",
-        VARIANTES[variante],
-        TAMANOS[tamano],
-        className,
-      )}
+      className={claseBoton(variante, tamano, className)}
       {...resto}
     >
       {cargando ? (

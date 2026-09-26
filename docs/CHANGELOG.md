@@ -2,6 +2,30 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.6.0] · 2026-09-26
+
+### Añadido
+
+- Portada en `/`: cabecera con parallax por capas (degradados, marco Enfoque y chispas), escaparate de personajes, «Cómo funciona» en tres pasos, zona de claridad sobre la clave propia, el control de gasto, el consentimiento y el código abierto, y pie con contacto.
+- Escaparate de personajes **ficticios** (Lucía, Marco, Aisha, Nube, Tomás y Sofía) generados con KIE solo a partir de texto, sin fotos de personas reales, con dos vídeos de 4 s y una segunda escena de Lucía que muestra que el personaje se mantiene. Todo el contenido sintético se etiqueta como «Generado con IA». Gasto real: 148 créditos (≈ 0,74 USD); scripts reproducibles en `spikes/prototipo/escaparate.ts` y `escaparate-web.ts`.
+- Chispa, la mascota: la estrella del logotipo con cara que saluda, señala y celebra (SVG animado con Motion, estática con movimiento reducido), también en el catálogo de componentes.
+- Logotipo como componente que se adapta al tema y `claseBoton` para dar aspecto de botón a enlaces.
+- Las tarjetas 9:16 admiten un vídeo corto con botón de pausa y reproducción (WCAG 2.2.2): solo se reproduce en pantalla y con la pestaña visible, nunca con movimiento reducido ni con ahorro de datos (comprobado también si cambian con la página abierta), y respeta la pausa manual.
+- Enlace «Saltar al contenido» y escaparate recorrible con el teclado cuando se desplaza en horizontal.
+- Capturas de la portada en `docs/assets/capturas/`.
+
+### Cambiado
+
+- La fuente Manrope se carga con `next/font/local` (precarga y respaldo con métricas ajustadas) en lugar del paquete de Fontsource; se incluye solo el alfabeto latino, que cubre el español.
+- Las pegatinas usan su color mezclado con blanco para que el texto cumpla el contraste AA en todos los tonos y temas; un test lo comprueba.
+- Las palabras destacadas del titular usan el degradado cobalto → fucsia, que supera 3:1 sobre el fondo en ambos temas (el degradado Escenario completo no lo cumple en tema claro); un test lo comprueba.
+- La mascota se anima unas pocas veces y se detiene, en lugar de moverse sin fin.
+- `TarjetaReel` recibe el ancho con la propiedad `ancho`; `className` solo añade clases.
+
+### Rendimiento y accesibilidad
+
+- Lighthouse móvil en local: 93 en rendimiento con la simulación por defecto (99 y LCP de 1,6 s con limitación real del navegador) y 100 en accesibilidad.
+
 ## [0.5.3] · 2026-09-26
 
 ### Añadido
