@@ -1,54 +1,76 @@
-/* Estilos provisionales con los tokens de la marca 0.4; el sistema de diseño llega en 0.4.0. */
-:root {
-  color-scheme: light dark;
-  --background: #f7f8fc;
-  --text: #182032;
-  --text-muted: #485269;
-  --primary: #2753d7;
-  --spark: #f0663d;
+@import "tailwindcss";
+@import "@fontsource-variable/manrope";
+@import "../styles/tokens.css";
+
+/* Los componentes usan tokens semánticos; nunca colores hexadecimales directos. */
+@theme inline {
+  --font-sans: "Manrope Variable", var(--font-family);
+  --font-mono: var(--font-mono-family);
+  --color-fondo: var(--background);
+  --color-superficie: var(--surface);
+  --color-elevada: var(--surface-raised);
+  --color-texto: var(--text);
+  --color-texto-suave: var(--text-muted);
+  --color-borde: var(--border);
+  --color-acento: var(--primary);
+  --color-sobre-acento: var(--on-primary);
+  --color-foco: var(--focus);
+  --color-chispa: var(--brand-spark);
+  --color-creativo: var(--creative);
+  --color-correcto: var(--success);
+  --color-aviso: var(--warning);
+  --color-error: var(--danger);
+  --color-v-cobalto: var(--vibrant-cobalt);
+  --color-v-coral: var(--vibrant-coral);
+  --color-v-mandarina: var(--vibrant-tangerine);
+  --color-v-sol: var(--vibrant-sun);
+  --color-v-fucsia: var(--vibrant-fuchsia);
+  --color-v-cian: var(--vibrant-cyan);
+  --radius-control: var(--radius-control);
+  --radius-tarjeta: var(--radius-card);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0d1018;
-    --text: #f5f6fa;
-    --text-muted: #b8c0d1;
-    --primary: #8eb8ff;
-    --spark: #ffad78;
+@layer base {
+  html {
+    background: var(--background);
+    color: var(--text);
+    font-family: var(--font-sans);
+    transition:
+      background-color var(--motion-theme) ease,
+      color var(--motion-theme) ease;
+  }
+
+  body {
+    min-height: 100dvh;
+    background: var(--background);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
   }
 }
 
-body {
-  margin: 0;
-  background: var(--background);
-  color: var(--text);
-  font-family: Manrope, Inter, ui-sans-serif, system-ui, sans-serif;
+@utility bg-degradado-foco {
+  background-image: var(--gradient-foco);
+}
+@utility bg-degradado-chispa {
+  background-image: var(--gradient-chispa);
+}
+@utility bg-degradado-escenario {
+  background-image: var(--gradient-escenario);
+}
+@utility bg-degradado-atardecer {
+  background-image: var(--gradient-atardecer);
 }
 
-.home {
-  min-height: 100dvh;
-  display: grid;
-  place-content: center;
-  text-align: center;
-  gap: 8px;
-  padding: 20px;
-}
-
-.home h1 {
-  margin: 0;
-  font-size: 48px;
-  line-height: 56px;
-  color: var(--primary);
-}
-
-.tagline {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--spark);
-}
-
-.note {
-  margin: 0;
-  color: var(--text-muted);
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
 }
