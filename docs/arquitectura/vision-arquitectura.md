@@ -16,7 +16,7 @@ flowchart LR
     AD --> K[KIE.ai<br/>agregador]
     W --> DEC[Servicio de decisiones<br/>contrato HTTP]
     DEC --> R[Reglas deterministas]
-    DEC -.->|modo sombra, 0.21.0| J[Jev / Laya]
+    DEC -.->|modo sombra, 0.23.0| J[Jev / Laya]
     WK --> DB
     WK --> S3
 ```
@@ -40,7 +40,7 @@ flowchart LR
 
 ## Entidades del PRD
 
-`User`, `ProviderCredential`, `Character`, `ConsentRecord`, `ReferenceAsset`, `CharacterVersion`, `PromptTemplate`, `Project`, `Scene`, `GenerationJob`, `ReviewResult`, `Export` y `UsageLedger`. Se añadirán `ModelCatalogEntry` (registro de modelos con estado y fecha de precio) y `DecisionRecord` (decisión, evidencia, umbral, versión de reglas y corrección humana) cuando se implementen 0.8.0 y 0.21.0.
+`User`, `ProviderCredential`, `Character`, `ConsentRecord`, `ReferenceAsset`, `CharacterVersion`, `PromptTemplate`, `Project`, `Scene`, `GenerationJob`, `ReviewResult`, `Export` y `UsageLedger`. Se añadirán `ModelCatalogEntry` (registro de modelos con estado y fecha de precio) y `DecisionRecord` (decisión, evidencia, umbral, versión de reglas y corrección humana) cuando se implementen 0.10.0 y 0.23.0.
 
 ## Pila propuesta
 

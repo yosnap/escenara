@@ -8,13 +8,13 @@ Cada decisión relevante se documenta en un fichero `adr-NNNN-slug.md` dentro de
 |---|---|---|---|
 | [0001](adr-0001-licencia-agpl.md) | Licencia del repositorio: AGPL 3.0 | 0.2.0 | Aceptado |
 | [0002](adr-0002-typescript-unico-mvp.md) | Lenguajes del MVP: TypeScript único | 0.2.0 | Aceptado |
-| 0003 | Cola de trabajos: pg-boss o BullMQ con Redis | 0.9.0 | Pendiente |
-| 0004 | Autenticación: Better Auth o Auth.js | 0.6.0 | Pendiente |
-| 0005 | Cifrado de credenciales BYOK y gestión de la clave maestra | 0.7.0 | Pendiente |
+| 0003 | Cola de trabajos: pg-boss o BullMQ con Redis | 0.11.0 | Pendiente |
+| 0004 | Autenticación: Better Auth o Auth.js | 0.7.0 | Pendiente |
+| 0005 | Cifrado de credenciales BYOK y gestión de la clave maestra | 0.9.0 | Pendiente |
 | [0006](adr-0006-almacenamiento-seaweedfs.md) | Almacenamiento de objetos: SeaweedFS por defecto y API S3 estándar | 0.2.0 | Aceptado |
-| 0007 | Despliegue en Easypanel e instancia pública del proyecto | 0.5.0 | Plataforma decidida (Easypanel); instancia pública pendiente del propietario |
-| 0008 | Motor de montaje y render | 0.19.0 | Pendiente |
-| [0009](adr-0009-modelos-iniciales-kie.md) | Modelos iniciales: solo KIE.ai (Google aplazado) | 0.8.0 | Aceptado |
+| 0007 | Despliegue en Easypanel e instancia pública del proyecto | 0.6.0 | Plataforma decidida (Easypanel); instancia pública pendiente del propietario |
+| 0008 | Motor de montaje y render | 0.21.0 | Pendiente |
+| [0009](adr-0009-modelos-iniciales-kie.md) | Modelos iniciales: solo KIE.ai (Google aplazado) | 0.10.0 | Aceptado |
 | [0010](adr-0010-bun-runtime.md) | Bun como runtime, gestor de paquetes y ejecutor de tests | 0.2.0 | Aceptado |
 | [0011](adr-0011-interfaz-componentes.md) | Pila de interfaz, catálogo de componentes en el admin y prohibición del `<select>` nativo | 0.4.0 | Aceptado |
 

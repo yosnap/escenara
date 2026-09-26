@@ -21,7 +21,7 @@ Cada paso del proyecto tiene **su propia versión y su propia rama**. Se empieza
 | `fix/{versión}-{slug}` | Parche de una versión publicada | `develop` | `develop` |
 | `release/1.0.0` | Congelación y candidatas del lanzamiento | `develop` | `main` y `develop` |
 
-**Tipos:** `feat` (funcionalidad), `fix` (corrección), `chore` (infraestructura y mantenimiento), `docs` (documentación), `refactor`. Ejemplos: `docs/0.1.0-fundacion-documental`, `feat/0.7.0-boveda-byok`, `fix/0.7.1-rotacion-credenciales`.
+**Tipos:** `feat` (funcionalidad), `fix` (corrección), `chore` (infraestructura y mantenimiento), `docs` (documentación), `refactor`. Ejemplos: `docs/0.1.0-fundacion-documental`, `feat/0.9.0-boveda-byok`, `fix/0.9.1-rotacion-credenciales`.
 
 Nunca se hace commit directo en `develop` ni en `main`.
 
