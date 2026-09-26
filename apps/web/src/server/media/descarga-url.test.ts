@@ -17,6 +17,11 @@ describe("esIpPublica", () => {
     "fe80::1",
     "::ffff:127.0.0.1",
     "::ffff:7f00:1",
+    "0:0:0:0:0:0:0:1",
+    "0000:0000:0000:0000:0000:0000:0000:0001",
+    "0:0:0:0:0:ffff:7f00:1",
+    "64:ff9b::7f00:1",
+    "fe80::1%en0",
     "::7f00:1",
     "fec0::1",
     "2002:7f00:1::",
@@ -71,6 +76,11 @@ describe("descargarUrl", () => {
       if (ruta === "/grande") return new Response(new Uint8Array(5000));
       if (ruta === "/a-privada") return Response.redirect("http://10.0.0.1/secreto", 302);
       if (ruta === "/bucle") return Response.redirect(`${peticion.url}`, 302);
+      if (ruta === "/eco")
+        return Response.json({ host: peticion.headers.get("host"), ua: peticion.headers.get("user-agent") });
+      if (ruta === "/pagina") return new Response("<html></html>", { headers: { "Content-Type": "TEXT/HTML" } });
+      if (ruta === "/redireccion-rota")
+        return new Response(null, { status: 302, headers: { Location: "http://[mal" } });
       return new Response("no", { status: 404 });
     },
   });
@@ -104,6 +114,54 @@ describe("descargarUrl", () => {
 
   test("limita las redirecciones", async () => {
     await expect(descargar("/bucle")).rejects.toThrow("demasiadas veces");
+  });
+
+  test("conecta a la IP comprobada y envía el dominio en la cabecera Host", async () => {
+    // `fijado.test` no existe en el DNS real: solo el resolvedor del test lo conoce.
+    const { archivo } = await descargarUrl(`http://fijado.test:${servidor.port}/eco`, 10_000, soloLocal, {
+      puertosPermitidos: [String(servidor.port)],
+      resolver: async () => ["127.0.0.1"],
+    });
+    const eco = JSON.parse(await archivo.text());
+    expect(eco.host).toBe(`fijado.test:${servidor.port}`);
+    expect(eco.ua).toContain("Escenara");
+  });
+
+  test("si una IP no responde, prueba la siguiente", async () => {
+    // 240.0.0.1 no responde y agota su plazo de conexión (5 s); 127.0.0.1 es el servidor del test.
+    // Si la red respondiera con «inalcanzable», el test pasaría igual por el camino rápido.
+    const { archivo } = await descargarUrl(`http://varias.test:${servidor.port}/foto.png`, 10_000, () => true, {
+      puertosPermitidos: [String(servidor.port)],
+      resolver: async () => ["240.0.0.1", "127.0.0.1"],
+    });
+    expect(archivo.size).toBe(png.byteLength);
+  }, 15_000);
+
+  test("rechaza un dominio si cualquiera de sus IP es interna", async () => {
+    await expect(
+      descargarUrl("http://mixto.test/foto.png", 10_000, undefined, { resolver: async () => ["8.8.8.8", "127.0.0.1"] }),
+    ).rejects.toThrow("no permitida");
+  });
+
+  test("explica que una página web no es un archivo", async () => {
+    await expect(descargar("/pagina")).rejects.toThrow("página web");
+  });
+
+  test("una redirección con destino inválido es un error controlado", async () => {
+    await expect(descargar("/redireccion-rota")).rejects.toThrow("redirección no válida");
+  });
+
+  test("con un proxy HTTP en el entorno rechaza las URL http y admite las https", async () => {
+    const entorno = { HTTP_PROXY: "http://proxy.interno:3128" };
+    await expect(
+      descargarUrl(`${base}/foto.png`, 10_000, soloLocal, { puertosPermitidos: [String(servidor.port)], entorno }),
+    ).rejects.toThrow("proxy");
+    await expect(
+      descargarUrl("https://publico.test/foto.png", 10_000, () => false, {
+        resolver: async () => ["8.8.8.8"],
+        entorno,
+      }),
+    ).rejects.toThrow("no permitida");
   });
 
   test("informa de las respuestas de error", async () => {
