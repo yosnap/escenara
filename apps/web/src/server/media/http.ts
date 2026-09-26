@@ -1,8 +1,16 @@
 import { esAdmin, sesionDePeticion } from "../auth/sesion";
 import { ErrorMedio } from "./errores";
-import { limiteSubida } from "./servicio";
+import { type Actor, limiteSubida } from "./servicio";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export const esUuid = (valor: unknown): valor is string => typeof valor === "string" && UUID.test(valor);
+
+/** Filtro de dueño (solo admin): «todos», «mios» o el id de un usuario; cualquier otra cosa es un error. */
+export function leerPropietario(valor: string | null): string | null {
+  if (valor === null || valor === "todos" || valor === "mios" || esUuid(valor)) return valor;
+  throw new ErrorMedio(400, "Filtro de usuario no válido.");
+}
 
 export type ContextoId = { params: Promise<{ id: string }> };
 
@@ -14,16 +22,15 @@ export function respuestaError(error: unknown): Response {
 }
 
 /**
- * Envuelve un manejador de ruta: exige sesión (401) y rol de administrador (404, como si no existiera)
- * y traduce los errores. En 0.8.0 cada usuario tendrá acceso a sus propios medios.
+ * Envuelve un manejador de ruta: exige sesión (401), pasa quién hace la petición y traduce los errores.
+ * Qué puede ver o cambiar cada uno lo decide el servicio (lo ajeno responde 404).
  */
-export function manejador<C>(fn: (peticion: Request, contexto: C) => Promise<Response>) {
+export function manejador<C>(fn: (peticion: Request, contexto: C, actor: Actor) => Promise<Response>) {
   return async (peticion: Request, contexto: C): Promise<Response> => {
     try {
       const sesion = await sesionDePeticion(peticion);
       if (!sesion) return Response.json({ error: "Inicia sesión para continuar." }, { status: 401 });
-      if (!esAdmin(sesion)) return new Response(null, { status: 404 });
-      return await fn(peticion, contexto);
+      return await fn(peticion, contexto, { id: sesion.user.id, esAdmin: esAdmin(sesion) });
     } catch (error) {
       return respuestaError(error);
     }

@@ -19,3 +19,8 @@ que una revisión que se apoye solo en esa salida da por probado código que no 
 **How to apply:** al revisar cambios que toquen `apps/web/src/server/media/**` o rutas `/api/media/**`,
 comprobar el recuento de ficheros/tests de la salida y, si los de integración aparecen saltados,
 relanzarlos con las variables cargadas antes de dar por verificada la ruta.
+
+Desde la 0.8.0 esos tests escriben en la tabla `settings` de la base local (cuota, registro abierto):
+tocan la configuración real de la instalación del propietario, no una base aislada. Antes de lanzarlos,
+guardar los valores de `settings` y comprobarlos al terminar; los usuarios `prueba-*@escenara.test` que
+se creen hay que borrarlos (borrar el usuario arrastra en cascada sus medios y colecciones).

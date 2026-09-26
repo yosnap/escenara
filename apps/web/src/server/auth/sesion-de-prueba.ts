@@ -10,9 +10,9 @@ import { auth } from "./auth";
 export async function crearSesionDePrueba(rol: "admin" | "user") {
   const email = `prueba-${crypto.randomUUID().slice(0, 8)}@escenara.test`;
   const password = `clave-${crypto.randomUUID()}`;
-  await auth().api.signUpEmail({ body: { name: `Prueba ${rol}`, email, password } });
+  await (await auth()).api.signUpEmail({ body: { name: `Prueba ${rol}`, email, password } });
   await db().update(users).set({ emailVerified: true, role: rol }).where(eq(users.email, email));
-  const respuesta = await auth().api.signInEmail({ body: { email, password }, asResponse: true });
+  const respuesta = await (await auth()).api.signInEmail({ body: { email, password }, asResponse: true });
   const cookie = respuesta.headers
     .getSetCookie()
     .map((c) => c.split(";")[0])

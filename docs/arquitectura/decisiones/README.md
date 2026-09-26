@@ -18,6 +18,7 @@ Cada decisión relevante se documenta en un fichero `adr-NNNN-slug.md` dentro de
 | [0010](adr-0010-bun-runtime.md) | Bun como runtime, gestor de paquetes y ejecutor de tests | 0.2.0 | Aceptado |
 | [0011](adr-0011-interfaz-componentes.md) | Pila de interfaz, catálogo de componentes en el admin y prohibición del `<select>` nativo | 0.4.0 | Aceptado |
 | [0012](adr-0012-drizzle-orm.md) | Acceso a PostgreSQL y migraciones con Drizzle ORM | 0.5.0 | Aceptado |
+| [0013](adr-0013-configuracion-en-panel.md) | La configuración se gestiona en el panel de administración | 0.8.0 | Aceptado |
 
 ## Plantilla
 

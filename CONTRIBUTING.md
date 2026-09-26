@@ -24,7 +24,7 @@ bun run dev                 # http://localhost:3021
 
 `http://localhost:3021/api/health` debe devolver `status: ok` con base de datos y almacenamiento conectados.
 
-La **primera cuenta** que crees en `http://localhost:3021/registro` será la administradora (acceso a `/admin`). Los correos de confirmación y de recuperación no salen a internet: los verás en la bandeja de Mailpit, `http://localhost:8421`. Google y GitHub son opcionales; sus claves van en `.env` (instrucciones en `.env.example`).
+La **primera cuenta** que crees en `http://localhost:3021/registro` será la administradora (acceso a `/admin`). Los correos de confirmación y de recuperación no salen a internet: los verás en la bandeja de Mailpit, `http://localhost:8421`. Google y GitHub son opcionales; sus claves van en `.env` (instrucciones en `.env.example`). El resto de la configuración (registro, espacio por usuario, correo…) se cambia en **Admin › Ajustes**, no en `.env`.
 
 ### Puertos fijos
 

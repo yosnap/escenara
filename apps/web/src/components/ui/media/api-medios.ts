@@ -1,5 +1,13 @@
 import type { TipoMedio } from "@/lib/media/reglas";
-import type { CambiosMetadatos, DatosReproduccion, FiltroMedios, Medio, PaginaMedios } from "@/lib/media/tipos";
+import type {
+  CambiosMetadatos,
+  Coleccion,
+  DatosReproduccion,
+  EspacioUsado,
+  FiltroMedios,
+  Medio,
+  PaginaMedios,
+} from "@/lib/media/tipos";
 
 /** Cliente de la API de medios para el navegador. */
 
@@ -32,6 +40,8 @@ export function paginaMedios(filtro: FiltroMedios, version: number): Promise<Res
     const q = new URLSearchParams({ busqueda: filtro.busqueda, pagina: String(filtro.pagina) });
     if (filtro.tipos.length > 0) q.set("tipo", filtro.tipos.join(","));
     if (filtro.papelera) q.set("papelera", "1");
+    if (filtro.coleccion) q.set("coleccion", filtro.coleccion);
+    if (filtro.propietario) q.set("propietario", filtro.propietario);
     promesa = pedir<PaginaMedios>(`/api/media?${q}`);
     cache.set(clave, promesa);
     if (cache.size > MAX_CACHE) cache.delete(cache.keys().next().value as string);
@@ -110,3 +120,36 @@ export const eliminarDefinitivamente = (id: string) =>
 /** URL del archivo servido desde el mismo origen (necesaria para dibujarlo en un canvas). */
 export const urlArchivoPropio = (id: string, version: string) =>
   `/api/media/${id}/archivo?v=${encodeURIComponent(version)}`;
+
+/** Espacio usado y cuota de quien consulta. */
+export const consultarEspacio = () => pedir<EspacioUsado>("/api/media/espacio");
+
+export const crearColeccion = (nombre: string) =>
+  pedir<Coleccion>("/api/colecciones", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nombre }),
+  });
+
+export const renombrarColeccion = (id: string, nombre: string) =>
+  pedir<void>(`/api/colecciones/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ nombre }),
+  });
+
+export const borrarColeccion = (id: string) => pedir<void>(`/api/colecciones/${id}`, { method: "DELETE" });
+
+export const anadirAColeccion = (id: string, ids: string[]) =>
+  pedir<{ anadidos: number }>(`/api/colecciones/${id}/medios`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids }),
+  });
+
+export const quitarDeColeccion = (id: string, ids: string[]) =>
+  pedir<void>(`/api/colecciones/${id}/medios`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids }),
+  });

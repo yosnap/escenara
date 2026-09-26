@@ -2,6 +2,33 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.8.0] · 2026-09-27
+
+### Añadido
+
+- Biblioteca de medios por usuario en `/biblioteca`: cada usuario solo ve y modifica sus archivos; lo ajeno responde como si no existiera.
+- Colecciones privadas: crear, renombrar y borrar (los archivos se conservan), y añadir o quitar archivos seleccionados; un archivo puede estar en varias.
+- Espacio por usuario (2 GB por defecto, configurable) con indicador de uso; quien administra no tiene límite.
+- Admin › Medios: los archivos de todos con su dueño y filtro por usuario. El administrador corrige título y texto alternativo y usa la papelera; editar la imagen o borrar para siempre solo puede hacerlo quien la subió.
+- Admin › Ajustes (ADR-0013): registro abierto, espacio por usuario, remitente y servidor de correo con envío de prueba, y cabecera con la IP real. **Norma: la configuración se gestiona en el panel, no en variables de entorno**; en `.env` solo queda el arranque.
+- Cabecera común de la aplicación (Biblioteca, Cuenta, Admin) y barra de espacio en el catálogo de componentes.
+- Tests de autorización de la biblioteca: medios y colecciones ajenos, permisos del administrador y cuota.
+
+### Cambiado
+
+- Los medios pertenecen a un usuario; los subidos antes de existir cuentas pasan al primer administrador.
+- Se retiran `ESCENARA_REGISTRO_ABIERTO`, `ESCENARA_CABECERAS_IP`, `SMTP_URL` y `CORREO_REMITENTE`: ahora son ajustes del panel. Las claves de Google y GitHub y la contraseña del correo pasarán al panel, cifradas, en la 0.9.0.
+
+### Actualizar desde la 0.7.0
+
+- Si habías cambiado `ESCENARA_REGISTRO_ABIERTO`, `ESCENARA_CABECERAS_IP`, `SMTP_URL` o `CORREO_REMITENTE`, vuelve a poner esos valores en **Admin › Ajustes** tras migrar: sin ellos se usan los valores por defecto (registro abierto, correo por `localhost:1021`).
+- La migración asigna los medios sin dueño al primer administrador; si no existe ninguna cuenta, se detiene en lugar de borrar nada.
+
+### Seguridad
+
+- La cuota se reserva dentro de una transacción que bloquea al usuario: varias subidas simultáneas no pueden superarla.
+- Los filtros de colección y de usuario se validan (404 o 400 en lugar de un error interno) y el correo de prueba no muestra detalles de la red.
+
 ## [0.7.0] · 2026-09-26
 
 ### Añadido
