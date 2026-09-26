@@ -60,6 +60,7 @@ El núcleo no cambia: **cobalto** (dirección) y **coral** (chispa creativa). Se
 - Todo componente reutilizable se crea primero en el catálogo **`/admin/componentes`**, con sus variantes y estados, y después se usa en las pantallas (ADR-0011).
 - **Nunca se usa el `<select>` nativo del navegador.** Selección única, múltiple y con búsqueda se hacen con los componentes del catálogo; un test lo impide en todo el código.
 - El **selector de medios (media picker)** es un componente del catálogo; su comportamiento lo definirá el propietario.
+- **Nada de bordes ni sombras de color en un solo lateral** de tarjetas o bloques (el típico acento a la izquierda): da aspecto de interfaz generada por IA. Se usan bordes completos, fondos suaves o un icono en círculo; un test lo impide.
 
 ## Componentes con carácter de creador
 

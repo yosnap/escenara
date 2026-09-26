@@ -5,11 +5,38 @@ import { cn } from "./cn";
 /** Los cuatro estados de preparación del PRD. Siempre con icono, título y acción concreta. */
 export type EstadoPreparacion = "listo" | "ajustes" | "revision" | "bloqueado";
 
-const ESTADO: Record<EstadoPreparacion, { titulo: string; icono: ReactNode; clase: string }> = {
-  listo: { titulo: "Listo para generar", icono: <CheckCircle2 />, clase: "border-correcto text-correcto" },
-  ajustes: { titulo: "Necesita ajustes", icono: <Wrench />, clase: "border-aviso text-aviso" },
-  revision: { titulo: "Requiere revisión", icono: <Eye />, clase: "border-acento text-acento" },
-  bloqueado: { titulo: "Bloqueado por un requisito", icono: <AlertOctagon />, clase: "border-error text-error" },
+const ESTADO: Record<
+  EstadoPreparacion,
+  { titulo: string; icono: ReactNode; borde: string; texto: string; circulo: string }
+> = {
+  listo: {
+    titulo: "Listo para generar",
+    icono: <CheckCircle2 />,
+    borde: "border-correcto/45",
+    texto: "text-correcto",
+    circulo: "bg-correcto/12",
+  },
+  ajustes: {
+    titulo: "Necesita ajustes",
+    icono: <Wrench />,
+    borde: "border-aviso/45",
+    texto: "text-aviso",
+    circulo: "bg-aviso/12",
+  },
+  revision: {
+    titulo: "Requiere revisión",
+    icono: <Eye />,
+    borde: "border-acento/45",
+    texto: "text-acento",
+    circulo: "bg-acento/12",
+  },
+  bloqueado: {
+    titulo: "Bloqueado por un requisito",
+    icono: <AlertOctagon />,
+    borde: "border-error/45",
+    texto: "text-error",
+    circulo: "bg-error/12",
+  },
 };
 
 /** Zona de claridad: aviso de estado sin degradados ni animación. */
@@ -24,12 +51,19 @@ export function AvisoEstado({
 }) {
   const e = ESTADO[estado];
   return (
-    <div role="status" className={cn("flex gap-3 rounded-tarjeta border-l-4 bg-superficie p-4 shadow-sm", e.clase)}>
-      <span className="mt-0.5 size-5 shrink-0 [&>svg]:size-5" aria-hidden>
+    <div role="status" className={cn("flex gap-3 rounded-tarjeta border-2 bg-superficie p-4", e.borde)}>
+      <span
+        className={cn(
+          "flex size-9 shrink-0 items-center justify-center rounded-full [&>svg]:size-5",
+          e.circulo,
+          e.texto,
+        )}
+        aria-hidden
+      >
         {e.icono}
       </span>
       <div className="flex flex-1 flex-col gap-2">
-        <p className="font-bold">{e.titulo}</p>
+        <p className={cn("font-bold", e.texto)}>{e.titulo}</p>
         <p className="text-texto">{motivo}</p>
         {accion && <div>{accion}</div>}
       </div>
