@@ -1,7 +1,9 @@
 "use client";
 
+import { UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { claseBoton } from "@/components/ui/button";
 import { cn } from "@/components/ui/cn";
 import { SelectorTema } from "@/components/ui/theme-toggle";
 
@@ -40,7 +42,12 @@ export function CabeceraAdmin({ version }: { version: string }) {
             </ul>
           </nav>
         </div>
-        <SelectorTema />
+        <div className="flex items-center gap-2">
+          <SelectorTema />
+          <Link href="/cuenta" className={claseBoton("secundario", "sm")}>
+            <UserRound className="size-4" aria-hidden /> Mi cuenta
+          </Link>
+        </div>
       </div>
     </header>
   );

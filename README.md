@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="LICENSE"><img alt="Licencia AGPL 3.0" src="https://img.shields.io/badge/licencia-AGPL--3.0-2753D7"></a>
-  <img alt="Versión 0.6.0" src="https://img.shields.io/badge/versión-0.6.0-F0663D">
+  <img alt="Versión 0.7.0" src="https://img.shields.io/badge/versión-0.7.0-F0663D">
   <img alt="Estado: en desarrollo" src="https://img.shields.io/badge/estado-en%20desarrollo-485269">
 </p>
 
@@ -20,7 +20,7 @@
 - **Nada se genera sin tu aprobación.** Ves el guion, el storyboard y una estimación de coste antes de gastar.
 - **Consentimiento y privacidad primero.** Registro de derechos, sin menores, etiquetado de contenido sintético y borrado completo.
 
-> 🚧 **Proyecto en fase temprana (0.6.0).** Ahora mismo hay base técnica, infraestructura local, un prototipo de generación con KIE, el sistema de diseño con su catálogo de componentes, el selector de medios con editor de imagen y la portada con un escaparate de personajes ficticios; la experiencia de creación llega en las próximas versiones. Iremos añadiendo capturas de cada apartado aquí y en la guía de usuario.
+> 🚧 **Proyecto en fase temprana (0.7.0).** Ahora mismo hay base técnica, infraestructura local, un prototipo de generación con KIE, el sistema de diseño con su catálogo de componentes, el selector de medios con editor de imagen, la portada con un escaparate de personajes ficticios y las cuentas de usuario; la experiencia de creación llega en las próximas versiones. Iremos añadiendo capturas de cada apartado aquí y en la guía de usuario.
 
 <p align="center">
   <img alt="Portada de Escenara con parallax, la mascota Chispa y tarjetas de personajes ficticios" src="docs/assets/capturas/0.6.0-portada-claro.webp" width="720">
@@ -35,18 +35,19 @@ git clone <url-del-repositorio> escenara
 cd escenara
 cp .env.example .env        # cambia las contraseñas de ejemplo
 bun install
-bun run services:up         # PostgreSQL y SeaweedFS (almacenamiento S3)
+bun run services:up         # PostgreSQL, SeaweedFS (almacenamiento S3) y Mailpit (correo local)
 bun run db:migrate          # crea o actualiza las tablas
 bun run dev                 # http://localhost:3021
 ```
 
-Comprueba que todo está conectado en <http://localhost:3021/api/health>: debe responder `{"status":"ok","database":"ok","storage":"ok"}`.
+Comprueba que todo está conectado en <http://localhost:3021/api/health>: debe responder `{"status":"ok","database":"ok","storage":"ok"}`. Después crea tu cuenta en <http://localhost:3021/registro>: la primera es la administradora y los correos de confirmación llegan a Mailpit.
 
 | Servicio | Dirección local |
 |---|---|
 | Aplicación web | `http://localhost:3021` |
 | PostgreSQL | `localhost:5421` |
 | SeaweedFS (API S3) | `http://localhost:8321` |
+| Mailpit (bandeja de correo local) | `http://localhost:8421` (SMTP en `localhost:1021`) |
 
 Los puertos son fijos. Si alguno está ocupado, libera el proceso que lo usa en lugar de cambiar el puerto (detalles en [CONTRIBUTING.md](CONTRIBUTING.md)).
 

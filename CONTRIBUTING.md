@@ -17,12 +17,14 @@ Requisitos: [Bun](https://bun.sh) 1.4.2 o superior (runtime, gestor de paquetes 
 ```bash
 cp .env.example .env        # cambia las contraseñas de ejemplo; .env nunca se sube
 bun install
-bun run services:up         # PostgreSQL (5421) y SeaweedFS S3 (8321)
+bun run services:up         # PostgreSQL (5421), SeaweedFS S3 (8321) y Mailpit (1021 y 8421)
 bun run db:migrate          # aplica las migraciones pendientes (antes: bun run db:backup)
 bun run dev                 # http://localhost:3021
 ```
 
 `http://localhost:3021/api/health` debe devolver `status: ok` con base de datos y almacenamiento conectados.
+
+La **primera cuenta** que crees en `http://localhost:3021/registro` será la administradora (acceso a `/admin`). Los correos de confirmación y de recuperación no salen a internet: los verás en la bandeja de Mailpit, `http://localhost:8421`. Google y GitHub son opcionales; sus claves van en `.env` (instrucciones en `.env.example`).
 
 ### Puertos fijos
 
@@ -31,6 +33,7 @@ bun run dev                 # http://localhost:3021
 | Web | 3021 |
 | PostgreSQL | 5421 |
 | SeaweedFS (API S3) | 8321 |
+| Mailpit (SMTP / bandeja web) | 1021 / 8421 |
 
 No cambies de puerto si uno está ocupado: identifica el proceso con `lsof -nP -iTCP:PUERTO -sTCP:LISTEN` y detenlo si es una instancia anterior de Escenara. Así evitamos procesos duplicados y configuraciones distintas entre personas.
 

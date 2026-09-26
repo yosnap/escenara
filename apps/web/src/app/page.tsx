@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { obtenerSesion } from "@/server/auth/sesion";
 import paquete from "../../package.json";
 import { BarraPortada, CabeceraPortada } from "./_portada/cabecera";
 import { ComoFunciona } from "./_portada/como-funciona";
@@ -12,7 +13,8 @@ export const metadata: Metadata = {
     "Estudio abierto de personajes y vídeo: crea personajes persistentes desde fotos autorizadas y produce reels escena a escena, con tu propia clave y el gasto bajo control.",
 };
 
-export default function Portada() {
+export default async function Portada() {
+  const conSesion = (await obtenerSesion()) !== null;
   return (
     <>
       <a
@@ -21,7 +23,7 @@ export default function Portada() {
       >
         Saltar al contenido
       </a>
-      <BarraPortada />
+      <BarraPortada conSesion={conSesion} />
       <main id="contenido">
         <CabeceraPortada />
         <Escaparate />

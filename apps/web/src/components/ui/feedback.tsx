@@ -1,4 +1,4 @@
-import { AlertOctagon, CheckCircle2, Eye, Wrench } from "lucide-react";
+import { AlertOctagon, CheckCircle2, Eye, Info, Wrench } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "./cn";
 
@@ -175,6 +175,33 @@ export function EstadoVacio({
       <h3 className="text-xl font-bold text-texto">{titulo}</h3>
       <p className="max-w-sm text-texto-suave">{texto}</p>
       {accion}
+    </div>
+  );
+}
+
+export type TonoAviso = "correcto" | "error" | "info";
+
+const TONO_AVISO: Record<TonoAviso, { icono: ReactNode; clase: string; circulo: string }> = {
+  correcto: { icono: <CheckCircle2 />, clase: "border-correcto/45 text-correcto", circulo: "bg-correcto/12" },
+  error: { icono: <AlertOctagon />, clase: "border-error/45 text-error", circulo: "bg-error/12" },
+  info: { icono: <Info />, clase: "border-acento/45 text-acento", circulo: "bg-acento/12" },
+};
+
+/** Aviso breve de resultado (hecho, error o información), con icono y texto; los errores se anuncian al momento. */
+export function Aviso({ tono = "info", children }: { tono?: TonoAviso; children: ReactNode }) {
+  const t = TONO_AVISO[tono];
+  return (
+    <div
+      role={tono === "error" ? "alert" : "status"}
+      className={cn("flex items-start gap-3 rounded-tarjeta border-2 bg-superficie p-3", t.clase)}
+    >
+      <span
+        aria-hidden
+        className={cn("flex size-8 shrink-0 items-center justify-center rounded-full [&>svg]:size-4", t.circulo)}
+      >
+        {t.icono}
+      </span>
+      <p className="self-center text-texto">{children}</p>
     </div>
   );
 }
