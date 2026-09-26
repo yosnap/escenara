@@ -2,6 +2,18 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.3.0] · pendiente de release
+
+### Añadido
+
+- Prototipo técnico de generación en `spikes/prototipo` (Bun): subida de referencias, fotograma clave y animación con KIE, clientes mínimos de KIE y Google, y control de presupuesto con tope que bloquea cualquier paso que no quepa.
+- ADR-0009: KIE.ai como único proveedor inicial (`nano-banana-2-lite` y `veo3_lite`); Google aplazado.
+
+### Cambiado
+
+- PRD y documentación de proveedores: Google pasa a aplazado.
+- `.gitignore`: carpeta `datos-privados/` para fotos de referencia y medios generados.
+
 ## [0.2.0] · 2026-09-26
 
 ### Añadido

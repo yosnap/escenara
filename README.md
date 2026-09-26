@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="LICENSE"><img alt="Licencia AGPL 3.0" src="https://img.shields.io/badge/licencia-AGPL--3.0-2753D7"></a>
-  <img alt="Versión 0.2.0" src="https://img.shields.io/badge/versión-0.2.0-F0663D">
+  <img alt="Versión 0.3.0" src="https://img.shields.io/badge/versión-0.3.0-F0663D">
   <img alt="Estado: en desarrollo" src="https://img.shields.io/badge/estado-en%20desarrollo-485269">
 </p>
 
@@ -20,7 +20,7 @@
 - **Nada se genera sin tu aprobación.** Ves el guion, el storyboard y una estimación de coste antes de gastar.
 - **Consentimiento y privacidad primero.** Registro de derechos, sin menores, etiquetado de contenido sintético y borrado completo.
 
-> 🚧 **Proyecto en fase temprana (0.2.0).** Ahora mismo hay base técnica e infraestructura local; la experiencia de creación llega en las próximas versiones. Iremos añadiendo capturas de cada apartado aquí y en la guía de usuario.
+> 🚧 **Proyecto en fase temprana (0.3.0).** Ahora mismo hay base técnica, infraestructura local y un prototipo de generación con KIE; la experiencia de creación llega en las próximas versiones. Iremos añadiendo capturas de cada apartado aquí y en la guía de usuario.
 
 ## Empezar en local
 
