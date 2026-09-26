@@ -64,6 +64,7 @@ function Formulario({
     ...(medio.ancho && medio.alto ? [["Dimensiones", `${medio.ancho} × ${medio.alto} px`] as [string, string]] : []),
     ...(medio.duracion ? [["Duración", formatearDuracion(medio.duracion)] as [string, string]] : []),
     ["Tamaño", formatearTamano(medio.tamano)],
+    ...(medio.origen ? [["Origen", medio.origen] as [string, string]] : []),
     ["Subido", new Date(medio.creadoEn).toLocaleString("es-ES", { dateStyle: "long", timeStyle: "short" })],
   ];
 

@@ -11,6 +11,7 @@ const rutaLista = await import("@/app/api/media/route");
 const rutaMedio = await import("@/app/api/media/[id]/route");
 const rutaRestaurar = await import("@/app/api/media/[id]/restaurar/route");
 const rutaArchivo = await import("@/app/api/media/[id]/archivo/route");
+const rutaUrl = await import("@/app/api/media/url/route");
 const { aplicarMigraciones } = await import("../db/migrar");
 
 const BASE = "http://localhost/api/media";
@@ -64,7 +65,14 @@ describe.skipIf(!process.env.DATABASE_URL)("API de medios (PostgreSQL y SeaweedF
   test("optimiza las imágenes a WebP de 1920 × 1080 como máximo", async () => {
     const { estado, cuerpo } = await subir(await png(3000, 2000));
     expect(estado).toBe(201);
-    expect(cuerpo).toMatchObject({ tipo: "imagen", mime: "image/webp", ancho: 1620, alto: 1080, enPapelera: false });
+    expect(cuerpo).toMatchObject({
+      tipo: "imagen",
+      mime: "image/webp",
+      ancho: 1620,
+      alto: 1080,
+      enPapelera: false,
+      origen: null,
+    });
     const descarga = await fetch((cuerpo as Medio).url);
     expect(descarga.status).toBe(200);
     expect((await sharp(new Uint8Array(await descarga.arrayBuffer())).metadata()).format).toBe("webp");
@@ -160,6 +168,15 @@ describe.skipIf(!process.env.DATABASE_URL)("API de medios (PostgreSQL y SeaweedF
     );
     expect(put.status).toBe(409);
     expect((await rutaArchivo.GET(new Request(`${BASE}/${id}/archivo`), ctx(id))).status).toBe(404);
+  });
+
+  test("añadir desde URL rechaza cuerpos sin URL y direcciones internas", async () => {
+    const pedir = (cuerpo: unknown) =>
+      rutaUrl.POST(new Request(`${BASE}/url`, { method: "POST", body: JSON.stringify(cuerpo) }), undefined);
+    expect((await pedir({})).status).toBe(400);
+    const interna = await pedir({ url: "http://127.0.0.1/api/health" });
+    expect(interna.status).toBe(400);
+    expect((await interna.json()).error).toContain("no permitida");
   });
 
   test("responde 404 a identificadores con formato no válido", async () => {

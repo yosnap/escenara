@@ -5,18 +5,10 @@ import { borrarObjeto, guardarObjeto, urlTemporal } from "../almacenamiento";
 import { db } from "../db/cliente";
 import { type FilaMedio, media } from "../db/esquema";
 import { type TipoDetectado, validarArchivo } from "./deteccion";
+import { ErrorMedio } from "./errores";
 import { procesarImagen } from "./procesado";
 
-/** Error de negocio con el código HTTP y un mensaje apto para mostrar al usuario. */
-export class ErrorMedio extends Error {
-  constructor(
-    readonly estado: number,
-    mensaje: string,
-  ) {
-    super(mensaje);
-    this.name = "ErrorMedio";
-  }
-}
+export { ErrorMedio };
 
 const LARGO_MAX_TEXTO = 500;
 const PAGINA_MAXIMA = 100_000;
@@ -56,6 +48,7 @@ export function aDto(fila: FilaMedio): Medio {
     creadoEn: fila.createdAt.toISOString(),
     actualizadoEn: fila.updatedAt.toISOString(),
     enPapelera: fila.deletedAt !== null,
+    origen: fila.sourceUrl,
   };
 }
 
@@ -115,6 +108,7 @@ export async function crearMedio(
   archivo: File,
   reproduccion: DatosReproduccion = {},
   permitidos?: readonly TipoMedio[],
+  origen: string | null = null,
 ): Promise<Medio> {
   const preparado = await prepararArchivo(archivo, reproduccion, permitidos);
   const clave = nuevaClave(preparado.detectado.extension);
@@ -131,6 +125,7 @@ export async function crearMedio(
         width: preparado.ancho,
         height: preparado.alto,
         durationSeconds: preparado.duracion,
+        sourceUrl: origen,
       })
       .returning();
     if (!fila) throw new Error("Inserción sin resultado");

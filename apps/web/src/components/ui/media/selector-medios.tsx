@@ -1,6 +1,6 @@
 "use client";
 
-import { FolderOpen, UploadCloud, X } from "lucide-react";
+import { FolderOpen, Link2, UploadCloud, X } from "lucide-react";
 import { type DragEvent, useRef, useState } from "react";
 import {
   aceptarArchivos,
@@ -17,6 +17,7 @@ import { DialogoSelectorMedios } from "./dialogo-selector-medios";
 import { EditorSubida } from "./editor-subida";
 import { ListaSubidas } from "./lista-subidas";
 import { MiniaturaMedio } from "./miniatura-medio";
+import { SubidaUrl } from "./subida-url";
 import { useSubidaMedios } from "./use-subida-medios";
 
 export interface SelectorMediosProps {
@@ -43,6 +44,7 @@ export function SelectorMedios({
   const entrada = useRef<HTMLInputElement>(null);
   const [abierto, setAbierto] = useState(false);
   const [arrastrando, setArrastrando] = useState(false);
+  const [desdeUrl, setDesdeUrl] = useState(false);
   // La cola puede terminar varias subidas seguidas: se acumulan sobre la selección más reciente.
   const actual = useRef(valor);
   actual.current = valor;
@@ -114,6 +116,15 @@ export function SelectorMedios({
             <Boton tamano="sm" icono={<FolderOpen className="size-4" />} onClick={() => setAbierto(true)}>
               Elegir de la biblioteca
             </Boton>
+            <Boton
+              variante="fantasma"
+              tamano="sm"
+              icono={<Link2 className="size-4" />}
+              aria-expanded={desdeUrl}
+              onClick={() => setDesdeUrl((v) => !v)}
+            >
+              Desde una URL
+            </Boton>
           </div>
         </section>
       )}
@@ -138,6 +149,15 @@ export function SelectorMedios({
         }}
       />
 
+      {desdeUrl && (multiple || valor.length === 0) && (
+        <SubidaUrl
+          tipos={tipos}
+          onSubido={(medio) => {
+            onCambio(multiple ? [...actual.current, medio] : [medio]);
+            if (!multiple) setDesdeUrl(false);
+          }}
+        />
+      )}
       {ayuda && <p className="text-sm text-texto-suave">{ayuda}</p>}
       <ListaSubidas subidas={subida.subidas} onLimpiar={subida.limpiarTerminadas} />
       <EditorSubida subida={subida} />
@@ -151,6 +171,7 @@ export function SelectorMedios({
         onConfirmar={(medios) => {
           onCambio(medios);
           setAbierto(false);
+          if (!multiple) setDesdeUrl(false);
         }}
       />
     </fieldset>

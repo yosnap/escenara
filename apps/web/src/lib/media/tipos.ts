@@ -17,6 +17,8 @@ export interface Medio {
   creadoEn: string;
   actualizadoEn: string;
   enPapelera: boolean;
+  /** URL de la que se descargó, o `null` si se subió desde el equipo. */
+  origen: string | null;
 }
 
 export interface PaginaMedios {
