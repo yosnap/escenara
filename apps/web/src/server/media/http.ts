@@ -1,4 +1,4 @@
-import { adminDisponible } from "../acceso";
+import { esAdmin, sesionDePeticion } from "../auth/sesion";
 import { ErrorMedio } from "./errores";
 import { limiteSubida } from "./servicio";
 
@@ -13,11 +13,16 @@ export function respuestaError(error: unknown): Response {
   return Response.json({ error: "Error interno al procesar el medio." }, { status: 500 });
 }
 
-/** Envuelve un manejador de ruta: comprueba el acceso y traduce los errores. */
+/**
+ * Envuelve un manejador de ruta: exige sesión (401) y rol de administrador (404, como si no existiera)
+ * y traduce los errores. En 0.8.0 cada usuario tendrá acceso a sus propios medios.
+ */
 export function manejador<C>(fn: (peticion: Request, contexto: C) => Promise<Response>) {
   return async (peticion: Request, contexto: C): Promise<Response> => {
-    if (!adminDisponible()) return new Response(null, { status: 404 });
     try {
+      const sesion = await sesionDePeticion(peticion);
+      if (!sesion) return Response.json({ error: "Inicia sesión para continuar." }, { status: 401 });
+      if (!esAdmin(sesion)) return new Response(null, { status: 404 });
       return await fn(peticion, contexto);
     } catch (error) {
       return respuestaError(error);

@@ -1,6 +1,6 @@
 # Servicios locales de Escenara. Puertos fijos del proyecto:
-#   PostgreSQL 5421 (5432 dentro) · SeaweedFS S3 8321 (8333 dentro)
-# La aplicación web se arranca aparte con `pnpm dev` en el puerto 3021.
+#   PostgreSQL 5421 (5432 dentro) · SeaweedFS S3 8321 (8333 dentro) · Mailpit SMTP 1021 y web 8421
+# La aplicación web se arranca aparte con `bun run dev` en el puerto 3021.
 name: escenara
 
 services:
@@ -56,6 +56,20 @@ services:
     environment:
       S3_BUCKET: ${S3_BUCKET:-escenara}
     restart: "no"
+
+  # Captura el correo en local (verificación y recuperación de contraseña): nada sale a internet.
+  # Bandeja en http://localhost:8421
+  mailpit:
+    image: axllent/mailpit:v1.31.2
+    restart: unless-stopped
+    ports:
+      - "1021:1025"
+      - "8421:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
 volumes:
   postgres-data:

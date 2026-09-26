@@ -2,6 +2,27 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.7.0] · 2026-09-26
+
+### Añadido
+
+- Cuentas de usuario con Better Auth (ADR-0004): crear cuenta, entrar, confirmar el correo, recuperar y restablecer la contraseña, y cerrar sesión.
+- Acceso con passkeys (huella, cara o PIN del dispositivo) y, si se configuran sus claves OAuth en `.env`, con Google o GitHub.
+- Página «Tu cuenta»: nombre, preferencias de tema e idioma, cambio de contraseña (cierra las demás sesiones), passkeys y sesiones abiertas con opción de cerrarlas.
+- Tema por usuario sin destello: la preferencia se guarda en la cuenta y el servidor la aplica al pintar, en cualquier dispositivo (RF16). El idioma se guarda y se aplica a `lang`; la traducción de la interfaz llega más adelante.
+- La primera cuenta de la instalación es administradora; `ESCENARA_REGISTRO_ABIERTO=0` cierra el registro al resto.
+- Límite de intentos por IP y por cuenta al entrar, registrarse, recuperar la contraseña y reenviar la confirmación; el límite por cuenta no se puede eludir cambiando de IP.
+- Cerrar una sesión o retirar el rol de administrador tiene efecto inmediato en el admin, la API y la página de cuenta.
+- La aplicación no arranca sin `BETTER_AUTH_SECRET`, y las páginas de cuenta y de admin no se guardan en proxies ni CDN.
+- Correo local con Mailpit en `docker compose` (SMTP 1021, bandeja en `http://localhost:8421`): nada sale a internet.
+- Componentes nuevos en el catálogo: tarjeta de cuenta, contraseña con mostrar u ocultar, botones de Google y GitHub, separador y avisos de resultado.
+- Enlaces «Entrar» o «Mi cuenta» en la portada y en el admin.
+- Tests de autorización: sin sesión no hay acceso a la cuenta, al admin ni a la API de medios; un usuario normal no entra en el admin ni puede darse el rol de administrador; preferencias validadas; registro cerrado; límite de intentos.
+
+### Cambiado
+
+- El admin (`/admin`) y la API de medios exigen una sesión con rol de administrador en lugar de estar disponibles «solo en desarrollo»; desaparece `ESCENARA_ADMIN_COMPONENTES`.
+
 ## [0.6.0] · 2026-09-26
 
 ### Añadido

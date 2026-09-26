@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import type { ReactNode } from "react";
 import { SCRIPT_TEMA } from "@/lib/tema";
+import { obtenerSesion } from "@/server/auth/sesion";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -18,9 +19,18 @@ const manrope = localFont({
   variable: "--font-manrope",
 });
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  // Con sesión, el tema y el idioma del usuario salen ya en el HTML: sin destello en ningún dispositivo.
+  const usuario = (await obtenerSesion())?.user;
+  const tema = usuario?.tema === "light" || usuario?.tema === "dark" ? usuario.tema : undefined;
   return (
-    <html lang="es" className={manrope.variable} suppressHydrationWarning>
+    <html
+      lang={usuario?.idioma === "en" ? "en" : "es"}
+      data-theme={tema}
+      data-tema-usuario={usuario ? (usuario.tema ?? "system") : undefined}
+      className={manrope.variable}
+      suppressHydrationWarning
+    >
       <head>
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: script estático propio para aplicar el tema antes de pintar */}
         <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA }} />

@@ -1,5 +1,5 @@
 import { Boton } from "@/components/ui/button";
-import { AvisoEstado, DepositoPresupuesto, ProgresoEtapas } from "@/components/ui/feedback";
+import { Aviso, AvisoEstado, DepositoPresupuesto, ProgresoEtapas } from "@/components/ui/feedback";
 import { CargadorChispa } from "@/components/ui/motion";
 import { Muestra, Seccion } from "../seccion";
 
@@ -52,6 +52,13 @@ export function SeccionEstados() {
           </div>
         </Muestra>
         <div className="flex flex-col gap-4">
+          <Muestra titulo="Avisos de resultado">
+            <div className="flex w-full flex-col gap-2">
+              <Aviso tono="correcto">Contraseña cambiada. Ya puedes entrar con la nueva.</Aviso>
+              <Aviso tono="info">Esta instalación no admite cuentas nuevas.</Aviso>
+              <Aviso tono="error">El enlace no es válido o ha caducado.</Aviso>
+            </div>
+          </Muestra>
           <Muestra titulo="Depósito de presupuesto">
             <div className="w-full">
               <DepositoPresupuesto autorizado={5} gastado={1.84} reservado={0.9} />

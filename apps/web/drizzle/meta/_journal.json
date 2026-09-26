@@ -15,6 +15,13 @@
       "when": 1790448231441,
       "tag": "0001_anade_origen_url",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790459195044,
+      "tag": "0002_tablas_autenticacion",
+      "breakpoints": true
     }
   ]
 }
