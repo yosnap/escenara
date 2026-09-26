@@ -32,6 +32,7 @@ cd escenara
 cp .env.example .env        # cambia las contraseñas de ejemplo
 bun install
 bun run services:up         # PostgreSQL y SeaweedFS (almacenamiento S3)
+bun run db:migrate          # crea o actualiza las tablas
 bun run dev                 # http://localhost:3021
 ```
 
@@ -53,6 +54,8 @@ Los puertos son fijos. Si alguno está ocupado, libera el proceso que lo usa en 
 | `bun run check` | Lint, tipos, tests y build: lo que debe pasar antes de proponer un cambio |
 | `bun run format` | Formatea y ordena imports con Biome |
 | `bun run services:up` / `bun run services:down` | Levanta o detiene PostgreSQL y SeaweedFS |
+| `bun run db:backup` / `bun run db:migrate` | Copia la base de datos a `backups/bd/` / aplica las migraciones pendientes |
+| `bun run db:generate` | Genera una migración SQL a partir de los cambios del esquema |
 
 ## Estructura
 
