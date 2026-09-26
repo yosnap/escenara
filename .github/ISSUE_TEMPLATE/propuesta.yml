@@ -1,0 +1,27 @@
+name: Proponer una mejora
+description: Una idea o funcionalidad nueva
+labels: ["propuesta"]
+body:
+  - type: textarea
+    id: problema
+    attributes:
+      label: Qué problema resuelve
+      description: Cuéntanos la necesidad antes que la solución.
+    validations:
+      required: true
+  - type: textarea
+    id: propuesta
+    attributes:
+      label: Propuesta
+    validations:
+      required: true
+  - type: textarea
+    id: alternativas
+    attributes:
+      label: Alternativas consideradas
+  - type: checkboxes
+    id: confianza
+    attributes:
+      label: Confianza y privacidad
+      options:
+        - label: La propuesta respeta el consentimiento, el control de gasto y la privacidad descritos en la documentación.

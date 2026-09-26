@@ -39,3 +39,7 @@ spikes/output/
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Generados por Next.js y TypeScript
+next-env.d.ts
+*.tsbuildinfo

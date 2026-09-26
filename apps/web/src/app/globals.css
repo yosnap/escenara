@@ -1,0 +1,54 @@
+/* Estilos provisionales con los tokens de la marca 0.4; el sistema de diseño llega en 0.4.0. */
+:root {
+  color-scheme: light dark;
+  --background: #f7f8fc;
+  --text: #182032;
+  --text-muted: #485269;
+  --primary: #2753d7;
+  --spark: #f0663d;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0d1018;
+    --text: #f5f6fa;
+    --text-muted: #b8c0d1;
+    --primary: #8eb8ff;
+    --spark: #ffad78;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--text);
+  font-family: Manrope, Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.home {
+  min-height: 100dvh;
+  display: grid;
+  place-content: center;
+  text-align: center;
+  gap: 8px;
+  padding: 20px;
+}
+
+.home h1 {
+  margin: 0;
+  font-size: 48px;
+  line-height: 56px;
+  color: var(--primary);
+}
+
+.tagline {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--spark);
+}
+
+.note {
+  margin: 0;
+  color: var(--text-muted);
+}

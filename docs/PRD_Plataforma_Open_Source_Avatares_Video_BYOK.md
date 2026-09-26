@@ -67,7 +67,7 @@ Un **planificador** transforma la intención en escenas y dependencias; un **enr
 
 **Aplicación concreta de las decisiones:** escoger plantilla según briefing; detectar si faltan referencias; clasificar categoría y nivel de revisión; puntuar claridad del guion o coherencia de metadatos; recomendar proveedor según criterios explícitos; enviar a revisión humana escenas dudosas. Los modelos reciben estado textual o JSON, por ejemplo una descripción o el informe de un analizador multimodal. No ven ni verifican por sí solos la identidad visual en fotogramas: esa señal necesita un componente visual y revisión humana. Precio, consentimiento, límites técnicos y políticas se comprueban con reglas deterministas, no con una probabilidad del modelo.
 
-**Stack de IA propuesto:** Python con API de servicio, LangGraph para flujos persistentes, reanudación y aprobaciones humanas; LangChain solo donde simplifique integraciones concretas. Versionar plantillas, ejecuciones, resultados y etiquetas humanas en PostgreSQL. Evaluar primero prompts y reglas con un conjunto de pruebas; después entrenar o calibrar una versión de Laya exclusivamente con ejemplos consentidos del dominio, separando conjuntos de entrenamiento, validación y prueba. Jev queda como alternativa API y como punto de comparación, sin dar por hecho que el usuario pueda ajustar sus pesos.
+**Stack de IA propuesto:** *Decisión del 26-sep-2026 (ADR-0002): el MVP se construye solo en TypeScript, con un contrato HTTP de decisiones; Python con LangGraph o Laya se incorporará cuando su valor esté medido.* Propuesta original: Python con API de servicio, LangGraph para flujos persistentes, reanudación y aprobaciones humanas; LangChain solo donde simplifique integraciones concretas. Versionar plantillas, ejecuciones, resultados y etiquetas humanas en PostgreSQL. Evaluar primero prompts y reglas con un conjunto de pruebas; después entrenar o calibrar una versión de Laya exclusivamente con ejemplos consentidos del dominio, separando conjuntos de entrenamiento, validación y prueba. Jev queda como alternativa API y como punto de comparación, sin dar por hecho que el usuario pueda ajustar sus pesos.
 
 **Proveedores confirmados para la primera integración:** KIE.ai como agregador y Google mediante API directa, cada uno con las credenciales del usuario. Seleccionar sus modelos concretos tras pruebas de referencias, continuidad, voz, coste efectivo y estabilidad. LTX y otros proveedores podrán incorporarse mediante adaptadores. Cada capacidad tiene proveedor configurable y la interfaz muestra quién procesará los archivos. Un modelo autoalojado como Laya consume recursos del operador, aunque no tenga un coste por token del proveedor.
 
@@ -123,7 +123,7 @@ Conservar en cada decisión el estado y versiones evaluadas, evidencias, distrib
 - **Entorno local:** la aplicación web se sirve siempre en `http://localhost:3021` PostgreSQL escucha en el puerto `5421` del host (Docker, `5432` dentro del contenedor) y el almacenamiento de objetos, SeaweedFS con API S3, en el `8321` (`8333` dentro del contenedor). Si un puerto está ocupado, se identifica y detiene el proceso que lo usa; nunca se cambia a otro puerto.
 - **Secretos:** cifrado en reposo con clave de servidor o gestor de secretos, permisos mínimos, rotación y exclusión de logs. Las llamadas sensibles se hacen en backend. Modo local opcional con secretos guardados por el operador.
 - **Portabilidad:** contrato de adaptador por capacidades (`image_edit`, `image_to_video`, `text_to_video`, `tts`, `speech_to_text`, `multimodal_review`); pruebas de contrato y capacidades detectadas por proveedor.
-- **Licencia:** escoger explícitamente licencia OSI antes de publicar. Apache 2.0 o AGPL 3.0 son candidatas según prioridad entre adopción e intercambio de mejoras de servicios alojados. Revisar licencias separadas de modelos y recursos.
+- **Licencia:** AGPL 3.0 (decidido el 26-sep-2026, ADR-0001). Revisar licencias separadas de modelos y recursos.
 
 **Entidades principales:** User, ProviderCredential, Character, ConsentRecord, ReferenceAsset, CharacterVersion, PromptTemplate, Project, Scene, GenerationJob, ReviewResult, Export y UsageLedger. El `UsageLedger` registra estimación y gasto reportado, nunca presupone precios fijos.
 
@@ -154,7 +154,7 @@ La modalidad BYOK evita subvencionar el consumo de IA, pero exige límites por t
 ## 11. Decisiones pendientes
 
 1. Validar modelos concretos, tarifas y condiciones de KIE.ai y Google mediante pruebas reales; ambos proveedores quedan confirmados para la primera integración.
-2. Escoger licencia y política de contribuciones del repositorio.
+2. ~~Escoger licencia y política de contribuciones del repositorio.~~ Resuelto: AGPL 3.0 y `CONTRIBUTING.md` (0.2.0).
 3. Definir si el lanzamiento prioritario será autoalojado o también habrá instancia pública mantenida por el proyecto.
 4. Fijar, tras un benchmark propio, qué decisiones usará Laya, Jev o reglas y el presupuesto máximo por vídeo.
 5. Elegir condiciones para clonación de voz, avatares de terceros y publicación automatizada en fases futuras.
