@@ -1,4 +1,4 @@
-import { formatearCreditos } from "@/lib/generacion";
+import { enQueEstaRetenido, formatearCreditos } from "@/lib/generacion";
 
 /**
  * Textos del presupuesto, en un sitio y puros. Los usan **las dos** comprobaciones que existen sobre lo
@@ -7,21 +7,11 @@ import { formatearCreditos } from "@/lib/generacion";
  * manda). Dos textos distintos para el mismo freno acabarían divergiendo.
  */
 
-/** En qué está retenido el presupuesto, con la acción que corresponde a cada caso. */
-export function enQueEstaRetenido(trabajos: number, llamadas: number): string {
-  const partes: string[] = [];
-  if (trabajos > 0) {
-    partes.push(
-      `${trabajos === 1 ? "un trabajo" : `${trabajos} trabajos`} pendientes de revisión, que resuelve quien administra`,
-    );
-  }
-  if (llamadas > 0) {
-    partes.push(
-      `${llamadas === 1 ? "una llamada" : `${llamadas} llamadas`} al asistente que no terminaron, que el servidor cierra solo en unos minutos`,
-    );
-  }
-  return partes.join(" y ");
-}
+/**
+ * En qué está retenido el presupuesto. La escribe `lib/generacion.ts` porque la usan las dos orillas: este rechazo y
+ * el depósito que ve el usuario. Se reexporta para que quien ya la importaba de aquí siga funcionando.
+ */
+export { enQueEstaRetenido } from "@/lib/generacion";
 
 export interface DatosSinPresupuesto {
   disponible: number;
@@ -30,6 +20,8 @@ export interface DatosSinPresupuesto {
   retenido: number;
   trabajosEnRevision: number;
   llamadasDeTextoColgadas: number;
+  /** Revisiones con modelo que se quedaron con su coste apartado (RF07). */
+  revisionesColgadas?: number;
 }
 
 /**
@@ -43,7 +35,7 @@ export function motivoSinPresupuesto(datos: DatosSinPresupuesto): string {
 /** Qué hacer cuando no cabe: esperar, o saber que esperar no va a servir. */
 export function accionSinPresupuesto(datos: DatosSinPresupuesto): string {
   if (datos.retenido > 0) {
-    return `De tu presupuesto hay ${formatearCreditos(Math.round(datos.retenido))} retenidos en ${enQueEstaRetenido(datos.trabajosEnRevision, datos.llamadasDeTextoColgadas)}, porque el proveedor no contestó y no se sabe si cobró: eso no se libera solo.`;
+    return `De tu presupuesto hay ${formatearCreditos(Math.round(datos.retenido))} retenidos en ${enQueEstaRetenido(datos.trabajosEnRevision, datos.llamadasDeTextoColgadas, datos.revisionesColgadas ?? 0)}, porque el proveedor no contestó y no se sabe si cobró: eso no se libera solo.`;
   }
   return "Espera a que terminen los trabajos en marcha o pídele más presupuesto a quien administra.";
 }

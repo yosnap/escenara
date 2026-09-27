@@ -10,6 +10,7 @@ import { limpiarLimitesCaducados } from "../limite";
 import { cerrarGasto } from "../presupuesto/reserva";
 import { purgarTraduccionesViejas } from "../prompts/traduccion";
 import { proveedoresConAdaptador } from "../proveedores/registro";
+import { barrerRevisionesReservadas } from "../revision/gasto";
 import { despachar } from "./despacho";
 import { identificadorDeWorker, limpiarWorkersCaidos } from "./latido";
 import {
@@ -214,10 +215,15 @@ export async function pasadaDeCola(
     console.error(`[cola] barrido de llamadas de texto: ${detalle(error)}`);
     return 0;
   });
+  // Y las revisiones con modelo que se quedaron con su coste apartado: mismo motivo y misma política (ADR-0016).
+  const revisionesColgadas = await barrerRevisionesReservadas().catch((error) => {
+    console.error(`[cola] barrido de revisiones con modelo: ${detalle(error)}`);
+    return 0;
+  });
   return {
     enviados,
     avanzados,
     recuperados: aSeguimiento + cerrados + enRevision + abandonadas,
-    reservasSueltas: reservasSueltas + textosColgados,
+    reservasSueltas: reservasSueltas + textosColgados + revisionesColgadas,
   };
 }

@@ -310,6 +310,7 @@ export async function exigirTopeDelProyecto(proyectoId: string, creditos: number
       retenidoUsuario: 0,
       trabajosEnRevision: 0,
       llamadasDeTextoColgadas: 0,
+      revisionesColgadas: 0,
       autorizadoProyecto: techo.autorizado,
       comprometidoProyecto: techo.comprometido,
     },

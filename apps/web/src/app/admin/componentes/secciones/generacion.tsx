@@ -28,6 +28,7 @@ const DEPOSITO: Deposito = {
   reservado: 64,
   retenido: 0,
   llamadasDeTextoColgadas: 0,
+  revisionesColgadas: 0,
   trabajosEnRevision: 0,
   consumido: 312,
   disponible: 1624,

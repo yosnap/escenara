@@ -128,6 +128,25 @@ const REGLAS: readonly Regla[] = [
         }
       : null,
 
+  // ── Revisión de continuidad: no se exporta un proyecto con un fallo crítico abierto (RF07, 0.20.0) ───
+  (h) => {
+    const criticos = h.exportacion?.criticos ?? [];
+    if (criticos.length === 0) return null;
+    const escenas = criticos.map((c) => c.orden).join(", ");
+    return {
+      regla: "revision-critica-abierta",
+      estado: "bloqueado",
+      motivo:
+        criticos.length === 1
+          ? `La escena ${escenas} tiene un fallo crítico abierto en su revisión: ${criticos[0]?.motivo ?? ""}`
+          : `${criticos.length} escenas tienen un fallo crítico abierto en su revisión (${escenas}).`,
+      accion: "Resuélvelo en la revisión del proyecto: regenera esas escenas o acepta el fallo expresamente.",
+      enlace: "/proyectos",
+      http: 409,
+      excepcion: "proyecto",
+    };
+  },
+
   // ── Espacio: guardar el resultado no puede quedarse sin sitio después de pagarlo ─────────────────────
   (h) => {
     if (!h.cuota) return null;
@@ -176,6 +195,7 @@ const REGLAS: readonly Regla[] = [
       retenido: p.retenidoUsuario,
       trabajosEnRevision: p.trabajosEnRevision,
       llamadasDeTextoColgadas: p.llamadasDeTextoColgadas,
+      revisionesColgadas: p.revisionesColgadas,
     };
     return {
       regla: "presupuesto-usuario",

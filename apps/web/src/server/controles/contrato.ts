@@ -109,6 +109,8 @@ export interface HechosPresupuesto {
   retenidoUsuario: number;
   trabajosEnRevision: number;
   llamadasDeTextoColgadas: number;
+  /** Revisiones con modelo que se quedaron con su coste apartado (RF07). */
+  revisionesColgadas: number;
   /** Techo del proyecto; `null` cuando el envío no pertenece a un proyecto o el proyecto no tiene techo. */
   autorizadoProyecto: number | null;
   comprometidoProyecto: number;
@@ -135,6 +137,21 @@ export interface HechosEscena {
   plantillaCambiada: boolean;
   /** Afirmaciones de la escena que siguen `por_verificar`. */
   afirmacionesPorVerificar: number;
+}
+
+/**
+ * Revisión de continuidad del proyecto que se va a **exportar** (RF07, 0.20.0).
+ *
+ * Este grupo de hechos solo llega cuando lo que se evalúa es una exportación: las escenas que mantienen un fallo
+ * crítico abierto, con el motivo de cada una. Producir una escena no lo aporta, porque un crítico de otra escena no
+ * puede impedir seguir trabajando; lo que impide es **publicar el resultado**.
+ *
+ * El recuento sale de un solo sitio (`revision/resultados.ts › criticosAbiertosDeProyecto`), así que la pantalla de
+ * revisión y esta puerta no pueden decir cosas distintas.
+ */
+export interface HechosExportacion {
+  /** Escenas con un crítico abierto, por su número de orden y con su motivo en lenguaje llano. */
+  criticos: { orden: number; motivo: string }[];
 }
 
 /** Parámetros de las reglas, editables en Admin › Ajustes (no hay editor de reglas en la interfaz). */
@@ -169,6 +186,11 @@ export interface Hechos {
   cuota?: HechosCuota;
   /** `null` en el camino rápido de «Crear», que no pertenece a ningún proyecto (ADR-0021). */
   escena?: HechosEscena | null;
+  /**
+   * Revisión de continuidad del proyecto que se exporta (0.20.0). Ausente en todo lo que **no** es una
+   * exportación, que es todo lo de 0.10.0–0.19.1: un crítico abierto no impide producir ni regenerar.
+   */
+  exportacion?: HechosExportacion;
   parametros: ParametrosControles;
 }
 

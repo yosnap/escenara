@@ -26,6 +26,7 @@ import {
   media,
 } from "../db/esquema";
 import { type Actor, aDto } from "../media/servicio";
+import { invalidarRevisionesDePersonaje } from "../revision/resultados";
 import { filaPropia, filaVisible, mediosDeReferenciaVigentes, tuvoConsentimientoDeTercero } from "./consulta";
 import { ErrorPersonaje } from "./errores";
 import {
@@ -100,6 +101,17 @@ async function insertarVersion(
     })
     .where(and(eq(characterApprovals.characterId, personaje.id), isNull(characterApprovals.invalidatedAt)))
     .returning({ id: characterApprovals.id });
+  /**
+   * Y las revisiones de continuidad de las escenas de sus proyectos (RF07, 0.20.0): lo que se revisó se generó con
+   * la versión anterior del personaje, así que ya no corresponde al personaje vigente. **No se borran**: se marcan
+   * con el motivo, y se vuelve a comprobar cuando el usuario quiera.
+   */
+  await invalidarRevisionesDePersonaje(
+    tx,
+    personaje.id,
+    `Se creó la versión ${numero} del personaje «${personaje.name}», que cambia ${resumenDeCambios(opciones.diferencias)}, así que la comparación con su hoja ya no vale.`,
+  );
+
   if (invalidadas.length > 0) {
     await tx
       .update(characterVersions)

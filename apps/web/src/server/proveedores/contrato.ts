@@ -155,6 +155,34 @@ export interface PeticionTexto {
   buscar: Buscador;
 }
 
+/**
+ * Lo que se le pide a un modelo que **mira** un clip o una imagen (capacidad `multimodal_review`, RF07).
+ * `instrucciones` las compone **siempre el servidor**; `url` es la URL temporal del archivo ya guardado.
+ */
+export interface PeticionRevisionMultimodal {
+  clave: string;
+  modelo: string;
+  url: string;
+  instrucciones: string;
+  buscar: Buscador;
+  /**
+   * Corte de tiempo de la llamada, que **pone quien la pide** y el adaptador tiene que respetar pasándoselo a su
+   * petición HTTP. Sin él, un proveedor que no contesta deja la revisión abierta para siempre con su reserva
+   * apartada, y lo que se sabe entonces del gasto es exactamente nada.
+   */
+  senal: AbortSignal;
+}
+
+/**
+ * Lo que devuelve un modelo que ha mirado un clip. **No es un veredicto**: es una opinión más junto a la de la
+ * persona que revisa, y quien decide si la escena vale sigue siendo ella.
+ */
+export interface RevisionProveedor {
+  resumen: string;
+  /** Créditos que informa el proveedor; `null` si no los informa y hay que quedarse con la estimación. */
+  creditos: number | null;
+}
+
 /** Lo que devuelve un modelo de texto. El texto **no es de fiar**: quien lo recibe lo trata como propuesta. */
 export interface TextoProveedor {
   texto: string;
@@ -217,6 +245,12 @@ export interface Adaptador {
    * mano, que es un camino de primera clase).
    */
   generarTexto?(peticion: PeticionTexto): Promise<TextoProveedor>;
+  /**
+   * Pide una opinión sobre un clip ya generado (RF07). **Opcional**, y hoy ningún adaptador la implementa: la
+   * revisión de continuidad la hace la comprobación técnica sin coste y la valida una persona. Un proveedor que
+   * la implemente añade una opinión más, que se estima y se confirma una por una y nunca se lanza sola.
+   */
+  revisarMedio?(peticion: PeticionRevisionMultimodal): Promise<RevisionProveedor>;
   /** Precio registrado del modelo. Nunca se inventa: sin precio no se estima ni se gasta. */
   estimar(modelo: string): Promise<PrecioModelo>;
   /** Comprueba la credencial y devuelve el saldo si el proveedor lo informa. */

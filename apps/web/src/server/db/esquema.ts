@@ -70,3 +70,4 @@ export * from "./esquema-personajes";
 export * from "./esquema-presets";
 export * from "./esquema-presupuesto";
 export * from "./esquema-proyectos";
+export * from "./esquema-revision";

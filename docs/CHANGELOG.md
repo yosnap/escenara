@@ -2,6 +2,99 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.20.0] · 2026-09-28
+
+### Decisiones provisionales del propietario (2026-09-27, pendientes de confirmar)
+
+- **La comprobación automática es técnica, no de identidad.** Se empieza por lo que **no cuesta nada**: que el
+  archivo se lea, cuánto dura, cómo es de grande, su proporción, si lleva audio y si tiene tramos negros o
+  congelados, todo medido con `ffprobe` y `ffmpeg` sobre el clip que ya está en la biblioteca. **Que el personaje siga
+  siendo el mismo lo valida una persona**, y se dice en la pantalla y en la guía. La revisión multimodal de pago es
+  una **opción explícita** con su estimación y su confirmación, nunca automática, y queda en el `UsageLedger` con su
+  reserva, su consumo y su liberación como cualquier otro gasto.
+- **Qué es un fallo crítico**: formato o duración incorrectos (archivo ilegible, otra duración, otra resolución, otra
+  proporción) y cualquier fallo que **marque como crítico** la persona que revisa. Los técnicos **no se cierran
+  aceptándolos** —un clip que dura 1 s no deja de durarlo porque alguien lo apruebe—: se cierran regenerando la
+  escena. El que marcó una persona se cierra con su propia decisión posterior, así que **todo crítico tiene salida**.
+- **Revisa el dueño del proyecto.** Un proyecto o una escena de otra persona responden 404, también para quien
+  administra; la moderación de contenido ajeno llega en 0.28.0.
+
+### Añadido
+
+- **Revisión de continuidad de las escenas producidas (RF07)** en `/proyectos/[id]/revision`: escena a escena, el
+  clip **junto a la hoja de personaje y al fotograma aprobado**, con zoom común a los tres paneles y navegable por
+  teclado. La hoja que se compara es la de la **versión que congeló la aprobación** de esa escena, no la de hoy.
+- **Comprobaciones técnicas sin coste** con FFmpeg: archivo legible, duración, resolución, proporción, audio y tramos
+  negros o congelados. Cada una muestra **el valor medido y el que se pedía**, porque «falla la duración» sin decir
+  cuánto dura no permite decidir nada. Lo que no se puede medir se dice como «no se ha podido medir»: **no medir no es
+  aprobar**.
+- **Revisión humana** con tres acciones y su propia fila en el historial: aceptar, rechazar con motivo y marcar como
+  crítico. Las dos últimas **exigen motivo** (al menos diez caracteres), la misma regla en el navegador y en el
+  servidor.
+- **Regla nueva en el motor de controles**: exportar con un crítico abierto → **Bloqueado**, con el número de escena,
+  el motivo y la acción. El recuento sale de un solo sitio, así que la pantalla de revisión y la puerta de la
+  exportación no pueden decir cosas distintas. La versión de reglas sube a `2026-09-27.2`.
+- **Una revisión deja de valer sola** cuando se regenera la escena o cuando se crea una versión nueva del personaje
+  protagonista. **No se borra nunca**: se marca con su motivo y su fecha y queda en el historial de la escena.
+- **Revisión multimodal opcional** por el contrato de adaptadores (capacidad `multimodal_review`, método
+  `revisarMedio` opcional), con confirmación de coste, clave de idempotencia y su reserva, consumo y liberación en el
+  registro de gasto. **Está preparada y apagada**: hoy ningún modelo del catálogo declara esa capacidad, así
+  que la pantalla lo dice y no ofrece el botón. Su veredicto es **siempre «sin decidir»**: aporta una opinión, no
+  cierra la revisión ni abre un crítico.
+- **Ajustes nuevos en Admin › Ajustes › «Revisión de continuidad»**: tolerancia de duración (0,5 s de fábrica),
+  segundos negros o congelados tolerados (0,5 s), exigir audio (**apagado**) y ofrecer la revisión con modelo
+  (**apagada**). Qué fallo es crítico **no es configurable**: es una decisión de producto y vive en el código.
+- **Guía de usuario** [Revisar la continuidad](guias/revisar-la-continuidad.md), con una sección propia sobre lo que
+  la comprobación automática **no** garantiza y el requisito de FFmpeg en el servidor.
+
+### Seguridad
+
+- **Autorización en el servidor en toda la revisión**: la escena se comprueba como propia en la misma consulta que la
+  trae, **antes** de tocar nada, y además se exige que sea del proyecto de la URL. `Origin` del mismo sitio y límite
+  de ritmo por acción en el POST.
+- **El clip se baja a un directorio temporal propio que se borra siempre**, también si la medida falla. A FFmpeg no se
+  le pasa nunca una URL: se le pasa un archivo local, así que una orden del servidor no sale a la red con una
+  dirección que viene de la base de datos.
+- **Nada se apunta en el registro de gasto antes de validar la confirmación**: sin los créditos confirmados, el sello
+  vigente y la clave de la confirmación, la revisión multimodal se rechaza en el borde y no deja ni un apunte.
+- **Una revisión de pago no se cobra dos veces**: la clave que firma el navegador es única por revisor
+  (`review_results_revisor_idempotencia_uq`) y es estable mientras no cambie lo confirmado, así que un doble clic o un
+  reintento tras un error de red devuelven la revisión que ya existe **sin llamar al proveedor**. La fila y su reserva
+  nacen en la misma transacción, así que no queda ni una fila sin reserva ni una reserva sin fila.
+- **Si la llamada falla, la reserva no se suelta**: no se sabe si el proveedor la ejecutó, y soltar lo que quizá se ha
+  pagado sería mentir (ADR-0016). Y si el proceso muere entre reservar y cerrar, la revisión queda `reservado`: cuenta
+  como **retenido** en el depósito del usuario (con su propio motivo, no confundida con un trabajo) y el barrido de la
+  cola la cierra con la misma política. También se apunta el **exceso** cuando el proveedor cobra más de lo apartado.
+- **Guardar una revisión bloquea la escena y comprueba que el clip siga siendo el revisado**: si se regeneró mientras
+  alguien la miraba, la revisión no se guarda y se dice por qué, en lugar de aprobar un vídeo que nadie ha visto.
+- **El clip se baja acotado a 64 MB y por trozos**, sin cargarlo entero en memoria, y de la salida de FFmpeg se leen
+  como mucho 512 KiB: ni el tamaño ni el contenido de un archivo deciden cuánta memoria gasta el servidor.
+- **El prompt de la revisión lo compone siempre el servidor** y no viaja al navegador (ADR-0022).
+
+### Corregido
+
+- **El depósito de presupuesto ya no dice que lo retenido está en «trabajos pendientes de revisión» cuando no lo
+  está.** La pantalla escribía su propia frase y solo sabía contar trabajos, así que con una llamada de texto colgada
+  —que ya podía pasar antes de esta versión— explicaba algo que no era verdad. Ahora la frase la compone la misma
+  función que usa el servidor al rechazar un gasto por presupuesto (`enQueEstaRetenido`, en `lib/generacion.ts`), y
+  enumera las tres cosas que pueden retener: trabajos pendientes de revisión, llamadas al asistente y revisiones con
+  modelo.
+
+### Actualizar desde la 0.19.5
+
+- **Instala FFmpeg en el servidor**: `ffprobe` y `ffmpeg` son una dependencia del entorno, no una librería. En Debian
+  o Ubuntu, `apt-get install ffmpeg`; en macOS, `brew install ffmpeg`. Sin ellos, la comprobación automática **lo dice
+  con su mensaje y no muestra ningún resultado**, en lugar de pintar vistos verdes que no ha medido. Esta versión no
+  trae Dockerfile; cuando lo haya, `ffmpeg` se declara ahí.
+- **Aplica la migración antes de arrancar el código nuevo**: `bun run db:backup` y luego `bun run db:migrate`. La
+  `0022` crea `review_results` con sus cuatro enumeraciones (tipo, severidad, veredicto y estado del gasto) y añade
+  `usage_ledger.review_id` con su índice único de apuntes por revisión. **No cambia ni recalcula nada de lo que ya
+  había**: sin revisiones guardadas, ningún proyecto bloquea la exportación.
+- **Revisa los ajustes nuevos** en Admin › Ajustes › «Revisión de continuidad». Los cuatro vienen con valores de
+  fábrica prudentes y la revisión con modelo **apagada**.
+- **Lo demás no cambia.** «Crear», el plan y la producción funcionan exactamente como en la 0.19.5. La regla nueva del
+  motor solo se evalúa cuando lo que se comprueba es una **exportación**: un crítico abierto no impide producir,
+  regenerar ni aprobar nada.
 ## [0.19.5] · 2026-09-28
 
 ### Corregido

@@ -14,11 +14,13 @@ import { motivosParaNoGenerar } from "../personajes/puede-generar";
 import { acotarCoste } from "../presupuesto/acotar";
 import { comprometidoDe, topesDe } from "../presupuesto/deposito";
 import type { Buscador } from "../proveedores/codigos";
+import { criticosAbiertosDeProyecto } from "../revision/resultados";
 import type {
   Hechos,
   HechosCredencial,
   HechosCuota,
   HechosEscena,
+  HechosExportacion,
   HechosModelo,
   HechosPersonaje,
   ParametrosControles,
@@ -133,6 +135,7 @@ export async function hechosDePresupuesto(
     retenidoUsuario: comprometido?.retenido ?? 0,
     trabajosEnRevision: comprometido?.trabajosEnRevision ?? 0,
     llamadasDeTextoColgadas: comprometido?.llamadasDeTextoColgadas ?? 0,
+    revisionesColgadas: comprometido?.revisionesColgadas ?? 0,
     autorizadoProyecto:
       proyecto && proyecto.autorizado !== null && proyecto.autorizado > 0 ? proyecto.autorizado : null,
     comprometidoProyecto: proyecto?.comprometido ?? 0,
@@ -207,4 +210,12 @@ export async function recopilarHechos(actor: Actor, sujeto: SujetoDeHechos, busc
     presupuesto,
     escena: sujeto.escena,
   };
+}
+
+/**
+ * Hechos de la revisión de continuidad del proyecto que se va a **exportar** (RF07, 0.20.0): sus escenas con un
+ * fallo crítico abierto. Es lectura, y sale del mismo sitio que lo que enumera la pantalla de revisión.
+ */
+export async function hechosDeExportacion(proyectoId: string): Promise<HechosExportacion> {
+  return { criticos: await criticosAbiertosDeProyecto(proyectoId) };
 }

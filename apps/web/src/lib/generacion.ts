@@ -258,6 +258,11 @@ export interface Deposito {
    * en su siguiente pasada; se cuentan aparte porque lo que hay que hacer con ellas no es lo mismo.
    */
   llamadasDeTextoColgadas: number;
+  /**
+   * Revisiones con modelo que se quedaron a medias y cuya estimación sigue apartada (RF07). El mismo barrido del
+   * worker las cierra; se cuentan aparte por lo mismo: lo que hay que hacer con ellas no es esperar a un trabajo.
+   */
+  revisionesColgadas: number;
   /** Créditos ya gastados, informados por el proveedor cuando los informa. */
   consumido: number;
   /** Lo que queda por comprometer; `null` cuando no hay presupuesto propio. */
@@ -266,6 +271,40 @@ export interface Deposito {
   topeTrabajo: number | null;
   /** Equivalente aproximado en euros de lo consumido, con el cambio configurado. */
   consumidoEuros: number;
+}
+
+/** Une las partes con comas y una «y» final: «A, B y C». Sin partes, cadena vacía. */
+function enumerar(partes: readonly string[]): string {
+  if (partes.length <= 1) return partes.join("");
+  return `${partes.slice(0, -1).join(", ")} y ${partes.at(-1)}`;
+}
+
+/**
+ * En qué está retenido el presupuesto, con lo que corresponde hacer en cada caso.
+ *
+ * Vive aquí, y no en el servidor, porque **la escriben los dos**: el depósito que se le muestra al usuario y el
+ * rechazo por presupuesto que compone el servidor (`server/presupuesto/mensajes.ts`). La misma explicación escrita
+ * dos veces acaba divergiendo, y ya lo había hecho: la pantalla hablaba solo de trabajos pendientes de revisión, así
+ * que con una llamada de texto o una revisión colgada decía algo que no era verdad.
+ */
+export function enQueEstaRetenido(trabajos: number, llamadas: number, revisiones = 0): string {
+  const partes: string[] = [];
+  if (trabajos > 0) {
+    partes.push(
+      `${trabajos === 1 ? "un trabajo" : `${trabajos} trabajos`} pendientes de revisión, que resuelve quien administra`,
+    );
+  }
+  if (llamadas > 0) {
+    partes.push(
+      `${llamadas === 1 ? "una llamada" : `${llamadas} llamadas`} al asistente que no terminaron, que el servidor cierra solo en unos minutos`,
+    );
+  }
+  if (revisiones > 0) {
+    partes.push(
+      `${revisiones === 1 ? "una revisión con modelo" : `${revisiones} revisiones con modelo`} que no terminaron, que el servidor cierra solo en unos minutos`,
+    );
+  }
+  return enumerar(partes);
 }
 
 /** Un worker sin latido más reciente que esto se considera caído y la cola, desatendida. */
