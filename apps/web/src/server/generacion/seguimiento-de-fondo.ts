@@ -1,7 +1,9 @@
 import { and, asc, eq, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
+import { esProveedor, type Proveedor } from "@/lib/boveda";
 import { usarCredencialValida } from "../boveda/credenciales";
 import { db } from "../db/cliente";
 import { generationJobs } from "../db/esquema";
+import { proveedoresConAdaptador } from "../proveedores/registro";
 import { HERRAMIENTAS, type Herramientas } from "./herramientas";
 import { consultarTrabajo, MS_MINIMO_ENTRE_CONSULTAS } from "./seguimiento";
 import { MS_MAXIMO_PREPARANDO } from "./trabajos";
@@ -19,6 +21,10 @@ import { MS_MAXIMO_PREPARANDO } from "./trabajos";
  *
  * Nunca se reenvía nada: solo se consulta el `task_id` guardado.
  */
+
+/** Proveedores con adaptador que además admiten credencial del usuario (los que pueden tener trabajos). */
+const proveedoresConCredencial = (): Proveedor[] =>
+  proveedoresConAdaptador.filter((p): p is Proveedor => esProveedor(p));
 
 /** Cada cuánto se mira si hay trabajos que avanzar. */
 export const MS_ENTRE_PASADAS = 10_000;
@@ -117,15 +123,26 @@ async function cerrarPorEdad(id: string): Promise<boolean> {
   return cerrados.length > 0;
 }
 
-/** Credencial utilizable del usuario, comprobada una sola vez por pasada. */
+/**
+ * ¿Merece la pena consultar algo de este usuario? Si no tiene ninguna credencial utilizable de ningún
+ * proveedor con adaptador, no. Se comprueba una sola vez por pasada; la credencial que se usa de verdad es
+ * la del proveedor de cada trabajo, y eso lo decide `consultarTrabajo`.
+ */
 function comprobadorDeCredencial() {
   const vistos = new Map<string, boolean>();
   return async (usuarioId: string): Promise<boolean> => {
     const visto = vistos.get(usuarioId);
     if (visto !== undefined) return visto;
-    const credencial = await usarCredencialValida(usuarioId, "kie");
-    vistos.set(usuarioId, credencial.ok);
-    return credencial.ok;
+    let alguna = false;
+    for (const proveedor of proveedoresConCredencial()) {
+      const credencial = await usarCredencialValida(usuarioId, proveedor);
+      if (credencial.ok) {
+        alguna = true;
+        break;
+      }
+    }
+    vistos.set(usuarioId, alguna);
+    return alguna;
   };
 }
 
@@ -134,7 +151,7 @@ function comprobadorDeCredencial() {
  * consulta la pidiera su navegador). Devuelve cuántos se han avanzado de verdad.
  *
  * - un trabajo demasiado viejo se cierra como `desconocido` y no se consulta;
- * - si la credencial del usuario no es utilizable, su trabajo se salta sin llamar a KIE: se queda como
+ * - si la credencial del usuario no es utilizable, su trabajo se salta sin llamar al proveedor: se queda como
  *   está y la persona lo verá al volver a la aplicación;
  * - un fallo en un trabajo se registra y no detiene a los demás.
  */

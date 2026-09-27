@@ -2,6 +2,44 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.11.0] · 2026-09-27
+
+### Añadido
+
+- **Catálogo de proveedores y modelos** en la base de datos, sembrado desde un fichero versionado (`apps/web/src/server/proveedores/catalogo.json`). Cada modelo declara sus **capacidades** (`image_edit`, `image_to_video`, `text_to_video`, `text_generation`, `tts`, `speech_to_text`, `multimodal_review`), los **parámetros que se le han comprobado ejecutándolo** (duraciones, proporciones, resoluciones, formatos de referencia y cuántas acepta), si **tiene voz**, su **precio medido** con fuente y fecha, su **estado** (`descubierto`, `compatible`, `validado`, `retirado`), sus notas y la versión del registro.
+- **Contrato de adaptadores por capacidades** (ADR-0015): `server/proveedores/contrato.ts` define qué sabe hacer un proveedor (subir referencia, crear tarea de imagen o de vídeo, consultar, estimar, probar credencial y montar la entrada de cada modelo), con **errores normalizados** (`credencial`, `saldo`, `contenido`, `limite`, `temporal`, `respuesta`). El adaptador de KIE se reescribe sobre ese contrato **sin cambiar nada de lo que hacía la 0.10.0**: mismos endpoints (`jobs/createTask`, `jobs/recordInfo`), mismos estados y mismas reglas de gasto.
+- **Registro de adaptadores**: el servicio de generación ya no nombra a ningún proveedor; resuelve «capacidad + modelo» y habla con quien corresponda. Añadir un proveedor es escribir su adaptador, declararlo y sembrar sus modelos.
+- **`/admin/modelos`**: catálogo filtrable por capacidad, proveedor y estado, con la ficha legible de cada modelo (qué hace, qué necesita, cuánto cuesta y cuándo se comprobó), edición de precio con fuente y fecha, cambio de estado con evidencia obligatoria para `validado`, historial de cambios (quién, cuándo, de qué a qué) y aviso de cuántos trabajos en marcha dejan su estimación caducada al cambiar un precio.
+- En `/admin/modelos`, **la opción por defecto de cada capacidad se elige a mano** («por defecto en…», una por capacidad) y **no se puede retirar el modelo por defecto sin designar otro antes**: «Crear» nunca se queda sin opción. Al retirar o degradar un modelo, el motivo que se escriba queda en el historial.
+- **Elección de modelo en «Crear»**, por capacidad y solo entre los que se pueden usar (`compatible` o `validado`, con precio registrado): al cambiar de modelo se vuelve a pedir la estimación al servidor, así que el coste que se ve es el de ese modelo. Un **modelo sin voz lo dice claramente y no usa «Lo que dice»**.
+- **Cuatro modelos más de KIE, con lo medido de verdad** en la comparativa del 2026-09-27: `seedream/4.5-edit` (6,5 créditos por imagen, el más rápido y de más resolución), `gpt-image-2-5-flare-image-to-image` (6 a 1K, usa `input_urls`), `hailuo/2-3-image-to-video-standard` (30 créditos por clip de 6 s, **sin voz**, 768P y sin proporción configurable) y `kling/v3-turbo-image-to-video` (72 por 4 s, con voz, solo JPEG o PNG). Los dos de ADR-0009 siguen siendo los de por defecto: `nano-banana-2-lite` (4) y `veo3_lite` (60, con voz), y son los únicos `validado`.
+- La imagen de referencia **se convierte al formato que acepte el modelo** antes de subirla (los fotogramas se guardan en WebP y Kling solo admite JPEG o PNG).
+- Componentes nuevos en el catálogo de `/admin/componentes`: insignias de estado de un modelo, ficha de modelo, selector de modelo por capacidad y aviso de «este modelo no tiene voz».
+- Tests: contrato del adaptador de KIE con **respuestas grabadas** del servicio real (entrada exacta de cada modelo, traducción de estados y los siete errores normalizados); coherencia de la semilla versionada; y, contra la base de datos, que un modelo `retirado`, sin la capacidad necesaria o inexistente no se puede elegir ni enviar, que validar exige evidencia y que **cambiar un precio caduca las estimaciones anteriores sin tocar los créditos ya consumidos**.
+- Modo opcional de prueba contra el proveedor real, apagado por defecto: `ESCENARA_PRUEBA_REAL_KIE=1 bun run proveedores:prueba-real --correo tu@correo`. Solo hace las llamadas que no cuestan créditos y `bun test` nunca lo ejecuta.
+
+### Cambiado
+
+- **El modelo de cada trabajo ya no es una constante del código**: sale del catálogo. La estimación viaja con un **sello del precio** y la confirmación lo devuelve, así que si el precio cambia entre la pantalla y el botón el envío se rechaza y hay que revisarlo (antes solo se comparaban los créditos). Quien elige modelo **tiene que devolver ese sello**; sin elegir modelo se sigue enviando como en la 0.10.x, con el predeterminado.
+- El catálogo se lee con una **caché corta de proceso** (5 s) que se olvida en cuanto quien administra lo cambia: una carga de «Crear» ya no repite la misma consulta una docena de veces.
+- La duración con la que se guarda un clip en la biblioteca es la que declara el modelo, no una constante (Hailuo 2.3 hace 6 s, no 4).
+- El trabajo y su seguimiento usan la credencial **del proveedor de ese trabajo**, en lugar de dar por hecho que es KIE.
+- `docs/recursos/apis-y-proveedores.md` explica cómo añadir un proveedor apuntando al contrato real.
+
+### Seguridad
+
+- Solo quien administra cambia el catálogo, los precios y los estados: cada acción del servidor lo vuelve a comprobar contra la base de datos, no basta con que la página del admin se vea.
+- A «Crear» solo viaja una **forma recortada** de cada modelo (identificador, nombre, si tiene voz, unidad, créditos, estado y duraciones). La evidencia, las notas, la fuente del precio, el identificador de la fila y la versión del registro son datos internos del admin y no salen de ahí.
+- Los tests de integración que cambian configuración de la instalación **no pueden tocar la base de datos de desarrollo**: se registra cuáles son de prueba y todo borrado ancho lo comprueba antes (`exigirBaseDeDatosDePrueba`), además de abortar si ya hubiera una conexión abierta a la base real.
+- Todo lo que llega del navegador se valida: el identificador del modelo se acota por forma antes de buscarlo, y los créditos, la fuente y la fecha de un precio se comprueban (nada de fechas futuras ni fuentes vacías).
+- La entrada que se guarda del trabajo sigue sin llevar URL temporales del proveedor: ahora se quitan de **todos** los campos por los que pueden llegar (`image_urls`, `input_urls`, `image_url`).
+- Del proveedor sigue sin conservarse su texto: los errores se guardan como motivo y código propios.
+
+### Actualizar desde la 0.10.1
+
+- Haz `bun run db:backup` y luego `bun run db:migrate`: la migración crea `model_providers`, `models`, `model_capabilities` y `model_catalog_changes`, amplía `model_prices` con versión y fecha de actualización, y **siembra el catálogo** con los seis modelos medidos. La semilla es idempotente y no pisa los precios ni los estados que cambies después.
+- Revisa **Admin › Modelos**: los modelos por defecto siguen siendo `nano-banana-2-lite` y `veo3_lite`. Los otros cuatro llegan como `compatible` (probados de verdad, con su precio medido, sin revisión de evidencia): valídalos tú si los quieres marcar como tales.
+
 ## [0.10.1] · 2026-09-27
 
 ### Comprobado

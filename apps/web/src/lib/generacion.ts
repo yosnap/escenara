@@ -1,3 +1,4 @@
+import type { Proveedor } from "./boveda";
 import type { TipoMedio } from "./media/reglas";
 import type { Medio } from "./media/tipos";
 
@@ -33,12 +34,10 @@ export const ETIQUETA_ESTADO: Record<EstadoTrabajo, string> = {
   desconocido: "Sin respuesta del proveedor",
 };
 
-export const MODELOS: Record<TipoTrabajo, string> = {
-  fotograma: "nano-banana-2-lite",
-  animacion: "veo3_lite",
-};
-
-/** Formato fijo del clip en esta versión (decisión del propietario); configurable en 0.19.0 y 0.26.0. */
+/**
+ * Formato de referencia del clip: lo que se usa cuando el modelo elegido no declara duración, proporción o
+ * resolución propias. Qué modelo se usa ya no se decide aquí, sino en el catálogo (`lib/catalogo.ts`).
+ */
 export const CLIP = { segundos: 4, proporcion: "9:16", resolucion: "720p" } as const;
 
 /** Tipo de archivo que puede devolver cada trabajo: se usa para la cuota y para validar el resultado. */
@@ -64,7 +63,7 @@ export const DIALOGO_MAXIMO = 200;
 export interface TrabajoVista {
   id: string;
   tipo: TipoTrabajo;
-  proveedor: "kie";
+  proveedor: Proveedor;
   modelo: string;
   estado: EstadoTrabajo;
   /** Estado tal cual lo informa el proveedor (`waiting`, `queuing`, `generating`…), si se conoce. */
@@ -90,7 +89,12 @@ export interface TrabajoVista {
 /** Estimación de coste de un trabajo. Siempre se muestra etiquetada como estimación. */
 export interface Estimacion {
   tipo: TipoTrabajo;
+  /** Identificador del modelo en el proveedor. */
   modelo: string;
+  /** Nombre legible del modelo, tal como está en el catálogo. */
+  nombreModelo: string;
+  /** `true` si el modelo genera voz: sin voz no se usa «Lo que dice». */
+  conVoz: boolean;
   /** Unidad del precio registrado («imagen», «vídeo de 4 s»). */
   unidad: string;
   creditos: number;
@@ -106,6 +110,13 @@ export interface Estimacion {
   fuente: string;
   /** Fecha (AAAA-MM-DD) en la que se comprobó el precio. */
   comprobado: string;
+  /** El precio se comprobó hace más de 90 días: se avisa de que puede haber cambiado. */
+  precioAntiguo: boolean;
+  /**
+   * Sello del precio con el que se hizo esta estimación. Viaja en la confirmación: si el precio cambia
+   * entre la pantalla y el botón, el servidor la rechaza y hay que volver a revisarla.
+   */
+  sello: string;
 }
 
 /** Créditos y euros con el formato de España; el redondeo de euros deja claro que es aproximado. */

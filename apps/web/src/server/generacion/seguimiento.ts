@@ -1,10 +1,13 @@
 import { and, eq, isNull } from "drizzle-orm";
+import { PROVEEDORES_PUBLICOS } from "@/lib/boveda";
 import { CLIP, LARGO_ESTADO_PROVEEDOR, TIPO_RESULTADO, type TrabajoVista } from "@/lib/generacion";
 import { usarCredencial } from "../boveda/credenciales";
 import { db } from "../db/cliente";
 import { type FilaTrabajo, generationJobs } from "../db/esquema";
 import { type Actor, crearMedio, eliminarDefinitivamente, enviarAPapelera, limiteSubida } from "../media/servicio";
-import { consultarTarea, ErrorKie, type TareaKie } from "../proveedores/kie/cliente";
+import { duracionDeModelo } from "../proveedores/catalogo";
+import { ErrorProveedor, type TareaProveedor } from "../proveedores/contrato";
+import { adaptadorDe } from "../proveedores/registro";
 import { ErrorGeneracion } from "./errores";
 import { HERRAMIENTAS, type Herramientas } from "./herramientas";
 import { filaPropia, MS_MAXIMO_PREPARANDO, vistaDeFila } from "./trabajos";
@@ -70,9 +73,11 @@ export async function consultarTrabajo(
   const minimo = opciones.forzar ? MS_SUELO_ENTRE_CONSULTAS : MS_MINIMO_ENTRE_CONSULTAS;
   if (fila.polledAt !== null && Date.now() - fila.polledAt.getTime() < minimo) return vistaDeFila(fila);
 
-  const clave = await usarCredencial(actor.id, "kie");
+  // La tarea se consulta con la clave del proveedor que la ejecuta, que es el que la cobró.
+  const clave = await usarCredencial(actor.id, fila.provider);
   if (!clave) {
-    throw new ErrorGeneracion(409, "No hay una clave de KIE utilizable en tu cuenta. Añádela en «Tu cuenta».");
+    const nombre = PROVEEDORES_PUBLICOS[fila.provider].nombre;
+    throw new ErrorGeneracion(409, `No hay una clave de ${nombre} utilizable en tu cuenta. Añádela en «Tu cuenta».`);
   }
 
   const llave = `${fila.provider}:${fila.taskId}`;
@@ -92,12 +97,12 @@ async function consultar(actor: Actor, fila: FilaTrabajo, clave: string, h: Herr
   const taskId = fila.taskId as string;
   await db().update(generationJobs).set({ polledAt: new Date() }).where(eq(generationJobs.id, fila.id));
 
-  let tarea: TareaKie;
+  let tarea: TareaProveedor;
   try {
-    tarea = await consultarTarea(clave, taskId, h.buscar);
+    tarea = await adaptadorDe(fila.provider).consultar({ clave, taskId, buscar: h.buscar });
   } catch (error) {
-    if (!(error instanceof ErrorKie)) throw error;
-    if (error.codigo === "tiempo-agotado" || error.codigo === "sin-red") {
+    if (!(error instanceof ErrorProveedor)) throw error;
+    if (error.sinRespuesta) {
       // Tras un timeout no se reenvía: el trabajo queda desconocido y decide el usuario.
       return guardarEstado(fila.id, { state: "desconocido", errorMessage: MENSAJE_SIN_RESPUESTA });
     }
@@ -130,14 +135,14 @@ async function consultar(actor: Actor, fila: FilaTrabajo, clave: string, h: Herr
 }
 
 /**
- * Descarga el resultado en cuanto se sabe que está listo (la URL de KIE caduca) y lo guarda en la
+ * Descarga el resultado en cuanto se sabe que está listo (la URL del proveedor caduca) y lo guarda en la
  * biblioteca del usuario respetando su cuota. Si el guardado falla, el trabajo queda `listo` con el error:
  * ya se ha pagado, y volver a consultar reintenta la descarga, nunca la generación.
  */
 async function guardarResultado(
   actor: Actor,
   fila: FilaTrabajo,
-  tarea: TareaKie,
+  tarea: TareaProveedor,
   h: Herramientas,
 ): Promise<TrabajoVista> {
   const url = tarea.urls[0];
@@ -152,7 +157,11 @@ async function guardarResultado(
   const permitidos = TIPO_RESULTADO[fila.kind];
   try {
     const { archivo, origen } = await h.descargar(url, limiteSubida(permitidos));
-    const reproduccion = fila.kind === "animacion" ? { duracion: CLIP.segundos } : {};
+    // La duración del clip es la que declara el modelo en el catálogo (Hailuo 2.3 hace 6 s, no 4).
+    const reproduccion =
+      fila.kind === "animacion"
+        ? { duracion: (await duracionDeModelo(fila.provider, fila.model)) ?? CLIP.segundos }
+        : {};
     const medio = await crearMedio(actor, archivo, reproduccion, permitidos, origen);
     const [cerrada] = await db()
       .update(generationJobs)

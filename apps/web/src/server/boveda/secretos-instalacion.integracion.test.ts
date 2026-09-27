@@ -15,6 +15,8 @@ if (hayBaseDeDatos) {
   await usarBaseDeDatosDePrueba("escenara_pruebas_boveda");
 }
 
+const { exigirBaseDeDatosDePrueba } = await import("../db/bd-de-prueba");
+
 const { like } = await import("drizzle-orm");
 const { db } = await import("../db/cliente");
 const { installationSecrets, settings } = await import("../db/esquema");
@@ -41,6 +43,8 @@ const VARIABLES = ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GITHUB_CLIENT_ID
 
 /** Deja la instalación de prueba sin secretos, sin claves de acceso y sin marcador de importación. */
 async function limpiar() {
+  // Esto cambia configuración de toda la instalación: nunca en una base de datos que no sea la de prueba.
+  exigirBaseDeDatosDePrueba("escenara_pruebas_boveda");
   for (const clave of CLAVES_SECRETAS) await quitarSecreto(clave);
   await db()
     .delete(settings)

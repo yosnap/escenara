@@ -77,6 +77,9 @@ export const generationJobs = pgTable(
 /**
  * Precio de un modelo en la unidad que factura el proveedor, con su fuente y la fecha en que se
  * comprobó: los precios cambian y una estimación sin fecha no vale nada.
+ *
+ * `version` sube en cada edición del precio: el sello que viaja con una estimación la incluye, así que
+ * cambiar el precio caduca las estimaciones anteriores sin tocar los créditos ya consumidos.
  */
 export const modelPrices = pgTable(
   "model_prices",
@@ -89,6 +92,8 @@ export const modelPrices = pgTable(
     credits: real("credits").notNull(),
     source: text("source").notNull(),
     checkedAt: timestamp("checked_at", { withTimezone: true }).notNull().defaultNow(),
+    version: integer("version").notNull().default(1),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [unique("model_prices_proveedor_modelo_unidad_uq").on(t.provider, t.model, t.unit)],
 );

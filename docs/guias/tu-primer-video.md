@@ -5,7 +5,7 @@ Guía para generar tu primer fotograma y tu primer clip en Escenara, desde el na
 ## Antes de empezar
 
 1. **Tu clave de KIE.ai.** Escenara no vende créditos ni usa una clave común: generas con tu propia cuenta y pagas al proveedor. Consigue la clave en [kie.ai/api-key](https://kie.ai/api-key) y guárdala en **Tu cuenta › Credenciales de IA**. Solo se guarda si la prueba pasa, y queda cifrada en el servidor: nadie, ni quien administra, puede volver a verla.
-2. **Saldo de créditos en KIE.** Con los precios comprobados el 27 de septiembre de 2026, un fotograma cuesta 4 créditos y un clip de 4 s, 60. Unos 5 USD dan para unos 1.000 créditos.
+2. **Saldo de créditos en KIE.** Con los precios comprobados el 27 de septiembre de 2026, el fotograma por defecto cuesta 4 créditos y el clip por defecto de 4 s, 60. Unos 5 USD dan para unos 1.000 créditos. Si eliges otro modelo, el coste es el suyo y se muestra antes de confirmar.
 3. **Una foto de la persona o el personaje.** Súbela a tu biblioteca o tenla a mano. Solo imágenes (JPEG, PNG, WebP, GIF o AVIF) de hasta 10 MB.
 
 Si te falta la clave, `/crear` te lo dice y te lleva a la página de cuenta.
@@ -15,6 +15,8 @@ Si te falta la clave, `/crear` te lo dice y te lleva a la página de cuenta.
 ### 1. Elige la imagen de referencia
 
 En **Crear**, sube la foto, arrástrala o elígela de tu biblioteca. El modelo intentará mantener la cara, el pelo y los rasgos de esa imagen.
+
+**Puedes elegir el modelo.** Debajo de la imagen aparece el modelo del fotograma, y junto al clip el de la animación, con sus créditos y su estado. Solo salen los que esta instalación ha probado de verdad: los marcados como **validado** están además revisados por quien administra. Al cambiar de modelo, el coste estimado se vuelve a calcular.
 
 Marca la casilla **«tengo derecho a usar esta imagen»** cuando llegues al paso 3: es obligatoria y queda registrada en el trabajo con su fecha. Si la persona de la foto no eres tú, necesitas su permiso.
 
@@ -28,7 +30,7 @@ Di dónde está, qué hace y cómo se ve. Cuanto más concreto, mejor:
 
 El fotograma sale vertical (9:16), el formato de Reels, TikTok y Shorts.
 
-**Lo que dice, aparte.** Si quieres que el personaje hable, escribe la frase en el campo **«Lo que dice (opcional)»**, no en la descripción de la escena. Los modelos de imagen, si ven una frase en el prompt, la **dibujan** en el fotograma como subtítulo, bocadillo o rótulo (lo comprobamos generando de verdad con tres modelos distintos), y el clip lo hereda. Por eso el fotograma se genera solo con la descripción visual, y la frase se usa únicamente en el clip, que sí tiene voz.
+**Lo que dice, aparte.** Si quieres que el personaje hable, escribe la frase en el campo **«Lo que dice (opcional)»**, no en la descripción de la escena. Si el modelo de clip que has elegido no genera voz, Escenara te lo dice y ese campo no se usa: para que hable, elige un modelo con voz. Los modelos de imagen, si ven una frase en el prompt, la **dibujan** en el fotograma como subtítulo, bocadillo o rótulo (lo comprobamos generando de verdad con tres modelos distintos), y el clip lo hereda. Por eso el fotograma se genera solo con la descripción visual, y la frase se usa únicamente en el clip, que sí tiene voz.
 
 ### 3. Revisa el coste y confirma
 
@@ -54,7 +56,7 @@ Cuando esté listo, el archivo se descarga al momento (la URL del proveedor cadu
 
 ## Animar el fotograma
 
-Desde el fotograma listo, el botón **Animar 4 s** genera un clip vertical de 4 segundos a 720p usando ese fotograma como primer fotograma. Tiene su propia estimación y su propia confirmación: cada gasto se aprueba por separado. En esta versión la duración y el formato son fijos; se podrán elegir más adelante.
+Desde el fotograma listo, el botón **Animar** genera un clip vertical usando ese fotograma como primer fotograma. La duración y el formato son los del modelo elegido (con el de por defecto, 4 segundos a 720p); todavía no se pueden ajustar a mano. Tiene su propia estimación y su propia confirmación: cada gasto se aprueba por separado.
 
 ## Si algo va mal
 

@@ -42,7 +42,7 @@ export function vistaDe(fila: FilaTrabajo, medio: FilaMedio | null): TrabajoVist
   return {
     id: fila.id,
     tipo: fila.kind,
-    proveedor: fila.provider as "kie",
+    proveedor: fila.provider,
     modelo: fila.model,
     estado: fila.state,
     estadoProveedor: fila.providerState,

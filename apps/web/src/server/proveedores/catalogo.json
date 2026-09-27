@@ -1,0 +1,163 @@
+{
+  "comentario": "Semilla del catálogo de proveedores y modelos (0.11.0). Cada modelo se siembra con lo que se ejecutó de verdad: los parámetros salen de spikes/comparativa-modelos/comparativa.ts y los precios, de plans/reports/comparativa-260927-modelos-kie.md. Solo es 'validado' lo que además tiene evidencia revisada. La semilla no pisa lo que haya cambiado quien administra: solo crea lo que falta.",
+  "proveedores": [
+    {
+      "slug": "kie",
+      "nombre": "KIE.ai",
+      "docs": "https://docs.kie.ai/",
+      "notas": "Proveedor inicial (ADR-0009). Agregador de modelos con tareas asíncronas: jobs/createTask y jobs/recordInfo. No tiene endpoint universal de catálogo, así que el catálogo se mantiene aquí."
+    },
+    {
+      "slug": "google",
+      "nombre": "Google Gemini",
+      "docs": "https://ai.google.dev/gemini-api/docs",
+      "notas": "Aplazado (ADR-0009): sin facturación activa la cuota es 0. El hueco queda listo; su adaptador no existe todavía."
+    }
+  ],
+  "modelos": [
+    {
+      "proveedor": "kie",
+      "modelo": "nano-banana-2-lite",
+      "nombre": "Nano Banana 2 Lite",
+      "capacidades": ["image_edit"],
+      "estado": "validado",
+      "predeterminado": true,
+      "conVoz": false,
+      "unidad": "imagen",
+      "parametros": {
+        "duraciones": [],
+        "proporciones": ["9:16"],
+        "resoluciones": [],
+        "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
+        "maximoReferencias": 10
+      },
+      "precio": {
+        "creditos": 4,
+        "fuente": "Medido en el prototipo 0.3.0 con la cuenta de KIE del propietario",
+        "comprobado": "2026-09-27"
+      },
+      "evidencia": "4 créditos por imagen medidos en el prototipo 0.3.0 y confirmados en la comparativa del 2026-09-27 (plans/reports/comparativa-260927-modelos-kie.md). Fotograma real generado de extremo a extremo en la 0.10.1.",
+      "notas": "El más barato y el de encuadre más natural. Admite hasta 10 referencias JPEG, PNG o WebP y proporción 9:16."
+    },
+    {
+      "proveedor": "kie",
+      "modelo": "seedream/4.5-edit",
+      "nombre": "Seedream 4.5 Edit",
+      "capacidades": ["image_edit"],
+      "estado": "compatible",
+      "predeterminado": false,
+      "conVoz": false,
+      "unidad": "imagen",
+      "parametros": {
+        "duraciones": [],
+        "proporciones": ["9:16"],
+        "resoluciones": [],
+        "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
+        "maximoReferencias": 10
+      },
+      "precio": {
+        "creditos": 6.5,
+        "fuente": "Comparativa real del 2026-09-27 (plans/reports/comparativa-260927-modelos-kie.md)",
+        "comprobado": "2026-09-27"
+      },
+      "evidencia": "",
+      "notas": "El más rápido (31-45 s) y el de más resolución (hasta 1520 × 2736). Se envía con quality \"basic\"."
+    },
+    {
+      "proveedor": "kie",
+      "modelo": "gpt-image-2-5-flare-image-to-image",
+      "nombre": "GPT Image 2.5 Flare (imagen a imagen)",
+      "capacidades": ["image_edit"],
+      "estado": "compatible",
+      "predeterminado": false,
+      "conVoz": false,
+      "unidad": "imagen",
+      "parametros": {
+        "duraciones": [],
+        "proporciones": ["9:16"],
+        "resoluciones": ["1K", "2K", "4K"],
+        "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
+        "maximoReferencias": 1
+      },
+      "precio": {
+        "creditos": 6,
+        "fuente": "Comparativa real del 2026-09-27 a resolución 1K (plans/reports/comparativa-260927-modelos-kie.md)",
+        "comprobado": "2026-09-27"
+      },
+      "evidencia": "",
+      "notas": "Usa input_urls, no image_urls. Encuadre muy cercano (selfie) y buena identidad, pero más lento y menos resolución que Seedream. El precio medido es el de 1K."
+    },
+    {
+      "proveedor": "kie",
+      "modelo": "veo3_lite",
+      "nombre": "Veo 3.1 Lite",
+      "capacidades": ["image_to_video", "text_to_video"],
+      "estado": "validado",
+      "predeterminado": true,
+      "conVoz": true,
+      "unidad": "vídeo de 4 s",
+      "parametros": {
+        "duraciones": [4, 6, 8],
+        "proporciones": ["9:16"],
+        "resoluciones": ["720p", "1080p"],
+        "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
+        "maximoReferencias": 2
+      },
+      "precio": {
+        "creditos": 60,
+        "fuente": "Medido en el prototipo 0.3.0 con la cuenta de KIE del propietario",
+        "comprobado": "2026-09-27"
+      },
+      "evidencia": "60 créditos por clip de 4 s medidos en el prototipo 0.3.0. Clip real con voz, 720 × 1280 y 4 s comprobado de extremo a extremo en la 0.10.1.",
+      "notas": "Único modelo con voz validado: dice la frase de «Lo que dice» con labios sincronizados. Con una sola imagen se envía como FIRST_AND_LAST_FRAMES_2_VIDEO."
+    },
+    {
+      "proveedor": "kie",
+      "modelo": "hailuo/2-3-image-to-video-standard",
+      "nombre": "Hailuo 2.3 Standard",
+      "capacidades": ["image_to_video"],
+      "estado": "compatible",
+      "predeterminado": false,
+      "conVoz": false,
+      "unidad": "vídeo de 6 s",
+      "parametros": {
+        "duraciones": [6, 10],
+        "proporciones": [],
+        "resoluciones": ["768P", "1080P"],
+        "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
+        "maximoReferencias": 1
+      },
+      "precio": {
+        "creditos": 30,
+        "fuente": "Comparativa real del 2026-09-27, clip de 6 s a 768P (plans/reports/comparativa-260927-modelos-kie.md)",
+        "comprobado": "2026-09-27"
+      },
+      "evidencia": "",
+      "notas": "El más barato por segundo (5,1 créditos/s), pero SIN VOZ: no sirve para que el personaje hable. Mínimo 6 s, toma la proporción de la imagen (no acepta aspect_ratio) y usa image_url, no image_urls."
+    },
+    {
+      "proveedor": "kie",
+      "modelo": "kling/v3-turbo-image-to-video",
+      "nombre": "Kling 3.0 Turbo",
+      "capacidades": ["image_to_video"],
+      "estado": "compatible",
+      "predeterminado": false,
+      "conVoz": true,
+      "unidad": "vídeo de 4 s",
+      "parametros": {
+        "duraciones": [4],
+        "proporciones": [],
+        "resoluciones": ["720p"],
+        "formatosReferencia": ["image/jpeg", "image/png"],
+        "maximoReferencias": 1
+      },
+      "precio": {
+        "creditos": 72,
+        "fuente": "Comparativa real del 2026-09-27, clip de 4 s a 720p (plans/reports/comparativa-260927-modelos-kie.md)",
+        "comprobado": "2026-09-27"
+      },
+      "evidencia": "",
+      "notas": "Tiene voz, pero cuesta más que Veo 3.1 Lite (72 frente a 60 créditos por 4 s). Solo acepta JPEG o PNG: los fotogramas de la biblioteca son WebP y se convierten a PNG antes de subirlos. El proveedor documenta de 3 a 15 s; aquí solo están los 4 s comprobados."
+    }
+  ]
+}

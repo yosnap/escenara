@@ -8,6 +8,7 @@ import { exigirSesion } from "@/server/auth/sesion";
 import { bovedaDisponible } from "@/server/boveda/cifrado";
 import { listarCredenciales } from "@/server/boveda/credenciales";
 import { estimarTodo } from "@/server/generacion/estimacion";
+import { modelosParaCrear } from "@/server/proveedores/catalogo";
 import { CabeceraApp } from "../_app/cabecera-app";
 import { VistaCrear } from "./_componentes/vista-crear";
 
@@ -25,7 +26,13 @@ export default async function PaginaCrear() {
   const kie = credenciales.find((c) => c.proveedor === "kie") ?? null;
   const puedeGenerar = Boolean(kie && kie.estado === "valida");
   // La estimación no necesita credencial (el saldo se queda en `null`): así el coste se ve siempre.
-  const estimaciones = puedeGenerar ? await estimarTodo(sesion.user.id) : null;
+  const [estimaciones, modelosFotograma, modelosClip] = puedeGenerar
+    ? await Promise.all([
+        estimarTodo(sesion.user.id),
+        modelosParaCrear("image_edit"),
+        modelosParaCrear("image_to_video"),
+      ])
+    : [null, [], []];
 
   return (
     <div className="min-h-dvh bg-fondo">
@@ -63,7 +70,12 @@ export default async function PaginaCrear() {
         )}
 
         {estimaciones && (
-          <VistaCrear estimacionFotograma={estimaciones.fotograma} estimacionAnimacion={estimaciones.animacion} />
+          <VistaCrear
+            estimacionFotograma={estimaciones.fotograma}
+            estimacionAnimacion={estimaciones.animacion}
+            modelosFotograma={modelosFotograma}
+            modelosClip={modelosClip}
+          />
         )}
       </main>
     </div>

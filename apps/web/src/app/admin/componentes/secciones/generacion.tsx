@@ -6,6 +6,8 @@ import { Muestra, Seccion } from "../seccion";
 const ESTIMACION: Estimacion = {
   tipo: "animacion",
   modelo: "veo3_lite",
+  nombreModelo: "Veo 3.1 Lite",
+  conVoz: true,
   unidad: "vídeo de 4 s",
   creditos: 60,
   euros: 0.3,
@@ -15,6 +17,8 @@ const ESTIMACION: Estimacion = {
   umbral: 200,
   fuente: "Medido en el prototipo 0.3.0",
   comprobado: "2026-09-27",
+  precioAntiguo: false,
+  sello: "kie:veo3_lite:vídeo de 4 s@v1",
 };
 
 /** Componentes del flujo de creación: coste (zona de claridad) y estado real de un trabajo. */
