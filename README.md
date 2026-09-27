@@ -20,7 +20,7 @@
 - **Nada se genera sin tu aprobación.** Ves el guion, el storyboard y una estimación de coste antes de gastar.
 - **Consentimiento y privacidad primero.** Registro de derechos, sin menores, etiquetado de contenido sintético y borrado completo.
 
-> 🚧 **Proyecto en fase temprana (0.9.0).** Ahora mismo hay base técnica, infraestructura local, un prototipo de generación con KIE, el sistema de diseño con su catálogo de componentes, el selector de medios con editor de imagen, la portada con un escaparate de personajes ficticios, las cuentas de usuario, la biblioteca de medios de cada usuario y la bóveda cifrada para las claves de API de cada usuario; la experiencia de creación llega en las próximas versiones. Iremos añadiendo capturas de cada apartado aquí y en la guía de usuario.
+> 🚧 **Proyecto en fase temprana (0.10.0).** **Ya se puede crear:** con tu propia clave de KIE, en «Crear» eliges una imagen, describes la escena, ves el coste estimado y obtienes un fotograma vertical y un clip de 4 s guardados en tu biblioteca, con su historial ([guía «Tu primer vídeo»](docs/guias/tu-primer-video.md)). Alrededor hay base técnica, infraestructura local, el sistema de diseño con su catálogo de componentes, el selector de medios con editor de imagen, la portada con un escaparate de personajes ficticios, las cuentas de usuario, la biblioteca de medios de cada usuario y la bóveda cifrada para las claves de API. Personajes, guion, varias escenas y montaje llegan en las próximas versiones. Iremos añadiendo capturas de cada apartado aquí y en la guía de usuario.
 
 <p align="center">
   <img alt="Portada de Escenara con parallax, la mascota Chispa y tarjetas de personajes ficticios" src="docs/assets/capturas/0.6.0-portada-claro.webp" width="720">

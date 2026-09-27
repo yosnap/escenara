@@ -159,10 +159,28 @@ export async function usarCredencial(usuarioId: string, proveedor: Proveedor): P
   return fila ? descifrarFila(fila.secret, usuarioId, proveedor) : null;
 }
 
-/** Identificador y valor cifrado de la credencial del usuario, o `null` si no tiene ninguna. */
+export type CredencialUtilizable =
+  | { ok: true; clave: string }
+  | { ok: false; motivo: "boveda" | "sin-credencial" | "invalida" | "ilegible" };
+
+/**
+ * Como `usarCredencial`, pero además exige que la última prueba la dejara **válida**: quien va a gastar
+ * dinero con ella (la generación) no debe intentarlo con una clave que ya se sabe rechazada. Distingue el
+ * motivo para poder decirle a quien la usa qué tiene que hacer.
+ */
+export async function usarCredencialValida(usuarioId: string, proveedor: Proveedor): Promise<CredencialUtilizable> {
+  if (!bovedaDisponible()) return { ok: false, motivo: "boveda" };
+  const fila = await filaDe(usuarioId, proveedor);
+  if (!fila) return { ok: false, motivo: "sin-credencial" };
+  if (fila.status !== "valida") return { ok: false, motivo: "invalida" };
+  const clave = descifrarFila(fila.secret, usuarioId, proveedor);
+  return clave ? { ok: true, clave } : { ok: false, motivo: "ilegible" };
+}
+
+/** Identificador, valor cifrado y estado de la credencial del usuario, o `null` si no tiene ninguna. */
 async function filaDe(usuarioId: string, proveedor: Proveedor) {
   const [fila] = await db()
-    .select({ id: providerCredentials.id, secret: providerCredentials.secret })
+    .select({ id: providerCredentials.id, secret: providerCredentials.secret, status: providerCredentials.status })
     .from(providerCredentials)
     .where(and(eq(providerCredentials.userId, usuarioId), eq(providerCredentials.provider, proveedor)));
   return fila ?? null;

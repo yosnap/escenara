@@ -8,7 +8,7 @@ import { Boton } from "../button";
 import { Campo, EntradaTexto } from "../field";
 import { Dialogo } from "../overlay";
 import { guardarMetadatos } from "./api-medios";
-import { MiniaturaMedio } from "./miniatura-medio";
+import { VisorMedio } from "./visor-medio";
 
 /** Edición del título y los textos alternativos (es/en), con los datos del archivo en solo lectura. */
 export function EditorMetadatos({
@@ -71,9 +71,8 @@ function Formulario({
   return (
     <form onSubmit={guardar} className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
       <div className="flex flex-col gap-4">
-        <div className="aspect-video overflow-hidden rounded-tarjeta bg-elevada">
-          <MiniaturaMedio medio={medio} controles className="object-contain" />
-        </div>
+        {/* El medio se ve entero en su proporción: un vertical no se mete en un marco horizontal. */}
+        <VisorMedio medio={medio} alturaMaxima="55dvh" />
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
           {datos.map(([clave, valor]) => (
             <div key={clave} className="contents">

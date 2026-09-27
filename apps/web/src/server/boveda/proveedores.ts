@@ -1,4 +1,7 @@
 import type { CodigoPrueba, Proveedor } from "@/lib/boveda";
+import { type Buscador, codigoDeEstado, codigoDeFallo, MS_MAXIMO } from "../proveedores/codigos";
+
+export type { Buscador };
 
 /**
  * Prueba de una clave de API por proveedor: una petición sin coste que solo comprueba que la clave vale.
@@ -7,11 +10,9 @@ import type { CodigoPrueba, Proveedor } from "@/lib/boveda";
  *
  * Reglas para no filtrar el secreto:
  * - la URL es fija por proveedor (no llega del navegador, así que no hay SSRF posible);
- * - del proveedor solo se conserva un código propio; su texto nunca se guarda, se registra ni se muestra,
- *   porque algunos servicios devuelven la clave recibida dentro del mensaje de error.
+ * - del proveedor solo se conserva un código propio (`proveedores/codigos.ts`); su texto nunca se guarda,
+ *   se registra ni se muestra, porque algunos servicios devuelven la clave recibida en el error.
  */
-
-const MS_MAXIMO = 10_000;
 
 export interface ResultadoPrueba {
   ok: boolean;
@@ -24,26 +25,6 @@ export interface ResultadoPrueba {
 export function formatoValido(secreto: string): boolean {
   // Solo caracteres imprimibles ASCII sin espacios: es lo que admite una cabecera HTTP.
   return secreto.length >= 16 && secreto.length <= 500 && /^[\x21-\x7e]+$/.test(secreto);
-}
-
-/**
- * Solo se usa `fetch(url, opciones)`. Declararlo así (en lugar de `typeof fetch`) permite que un test
- * lo simule sin recrear toda la API del navegador.
- */
-export type Buscador = (url: string, opciones: RequestInit) => Promise<Response>;
-
-/** Traduce un fallo de red o de tiempo a un código propio. */
-function codigoDeFallo(error: unknown): CodigoPrueba {
-  const nombre = (error as { name?: string } | undefined)?.name;
-  return nombre === "TimeoutError" || nombre === "AbortError" ? "tiempo-agotado" : "sin-red";
-}
-
-/** Códigos HTTP comunes a todos los proveedores. */
-function codigoDeEstado(estado: number): CodigoPrueba | null {
-  if (estado === 400 || estado === 401 || estado === 403) return "rechazada";
-  if (estado === 402) return "sin-credito";
-  if (estado === 429) return "limite";
-  return estado >= 200 && estado < 300 ? null : "error-proveedor";
 }
 
 /**

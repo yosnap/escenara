@@ -106,7 +106,13 @@ function crearAuth(ajustes: Ajustes, sociales: Record<string, { clientId: string
     secret: secreto,
     trustedOrigins: [URL_BASE],
     database: drizzleAdapter(db(), { provider: "pg", schema: esquema, usePlural: true }),
-    advanced: { database: { generateId: "uuid" }, ipAddress: { ipAddressHeaders: cabecerasIp(ajustes) } },
+    advanced: {
+      // Prefijo propio: los navegadores no separan las cookies por puerto, y otra aplicación con Better Auth
+      // en `localhost` pisaría la sesión de Escenara (y al revés) con el prefijo por defecto.
+      cookiePrefix: "escenara",
+      database: { generateId: "uuid" },
+      ipAddress: { ipAddressHeaders: cabecerasIp(ajustes) },
+    },
     // Sin enlazado automático de cuentas: evita que una cuenta con contraseña creada por otra persona con
     // tu correo (sin verificar) se una a tu acceso con Google o GitHub. Revisar antes de activarlo.
     account: { accountLinking: { enabled: false } },

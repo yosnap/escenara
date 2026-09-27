@@ -5,6 +5,7 @@ import { SeccionCreador } from "./secciones/creador";
 import { SeccionCuentas } from "./secciones/cuentas";
 import { SeccionEstados } from "./secciones/estados";
 import { SeccionFormularios } from "./secciones/formularios";
+import { SeccionGeneracion } from "./secciones/generacion";
 import { SeccionMediaPicker } from "./secciones/media-picker";
 import { SeccionMovimiento } from "./secciones/movimiento";
 import { SeccionSecretos } from "./secciones/secretos";
@@ -22,6 +23,7 @@ const INDICE = [
   ["cuentas", "Cuentas"],
   ["secretos", "Secretos"],
   ["estados", "Estados y presupuesto"],
+  ["generacion", "Coste y trabajos"],
   ["superposiciones", "Diálogos y pestañas"],
   ["movimiento", "Movimiento"],
 ] as const;
@@ -58,6 +60,7 @@ export function Catalogo() {
         <SeccionCuentas />
         <SeccionSecretos />
         <SeccionEstados />
+        <SeccionGeneracion />
         <SeccionSuperposiciones />
         <SeccionMovimiento />
       </main>

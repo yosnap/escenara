@@ -12,6 +12,10 @@ export interface Ajustes {
   registroAbierto: boolean;
   /** Espacio máximo por usuario en MB; 0 = sin límite. El administrador no tiene límite. */
   cuotaMb: number;
+  /** Créditos estimados por encima de los cuales un trabajo exige un aviso extra antes de gastar. */
+  avisoCreditos: number;
+  /** Cambio aproximado de crédito a euros, solo para mostrar la estimación en euros. */
+  eurosPorCredito: number;
   correoRemitente: string;
   smtpHost: string;
   smtpPuerto: number;
@@ -31,6 +35,9 @@ export interface Ajustes {
 export const AJUSTES_POR_DEFECTO: Ajustes = {
   registroAbierto: true,
   cuotaMb: 2048,
+  avisoCreditos: 200,
+  // KIE vende 1.000 créditos por unos 5 USD (comprobado el 2026-09-27); se redondea al alza a propósito.
+  eurosPorCredito: 0.005,
   correoRemitente: "Escenara <no-responder@escenara.local>",
   smtpHost: "localhost",
   smtpPuerto: 1021,
@@ -55,12 +62,23 @@ const texto = (max: number) => (v: unknown) => typeof v === "string" && v.length
 const entero = (min: number, max: number) => (v: unknown) =>
   typeof v === "number" && Number.isInteger(v) && v >= min && v <= max;
 const booleano = (v: unknown) => typeof v === "boolean";
+/** Número decimal positivo con cuatro decimales como mucho: un cambio de moneda, no un importe. */
+const decimal = (min: number, max: number) => (v: unknown) =>
+  typeof v === "number" && Number.isFinite(v) && v >= min && v <= max && Math.round(v * 10_000) === v * 10_000;
 // Identificador de cliente OAuth: solo los caracteres que usan Google y GitHub, o vacío para desactivarlo.
 const idCliente = (v: unknown) => texto(300)(v) && /^[a-z0-9._~-]*$/i.test(v as string);
 
 const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensaje: string }> = {
   registroAbierto: { valido: booleano, mensaje: "Debe ser sí o no." },
   cuotaMb: { valido: entero(0, 10_000_000), mensaje: "Indica un número entero de MB (0 = sin límite)." },
+  avisoCreditos: {
+    valido: entero(0, 1_000_000),
+    mensaje: "Indica un número entero de créditos (0 = avisar siempre).",
+  },
+  eurosPorCredito: {
+    valido: decimal(0, 100),
+    mensaje: "Indica el precio de un crédito en euros, con cuatro decimales como mucho.",
+  },
   correoRemitente: {
     // «correo@dominio» o «Nombre <correo@dominio>», sin saltos de línea.
     valido: (v) =>
