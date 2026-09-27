@@ -286,6 +286,19 @@ describe("motor de controles previos", () => {
     expect(evaluar(hechos).frenos).toEqual([]);
   });
 
+  test("generar una vista que falta no avisa de las vistas sin cubrir, pero sí de las fotos señaladas", () => {
+    const hechos = todoBien();
+    if (!hechos.personaje) throw new Error("La base de prueba lleva personaje.");
+    hechos.personaje.vistasSinCubrir = ["frontal", "perfil_derecho"];
+    hechos.personaje.completaCobertura = true;
+    expect(evaluar(hechos).frenos).toEqual([]);
+
+    hechos.personaje.referenciasSenaladas = 1;
+    const frenos = evaluar(hechos).frenos;
+    expect(frenos.map((f) => f.regla)).toEqual(["referencias-cobertura"]);
+    expect(frenos[0]?.motivo).not.toContain("faltan fotos");
+  });
+
   test("solo un aviso puede dejar de cerrar puerta, aunque la regla venga mal declarada", () => {
     // `gatea: false` en un `bloqueado` o en un `revision` sería un freno que no frena: un pase gratis escrito por
     // descuido. El motor lo corrige, así que aquí se comprueba sobre **todas** las reglas a la vez.
