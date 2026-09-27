@@ -1,6 +1,16 @@
 import type { RechazoDeReferencia, Vista } from "@/lib/captura-personaje";
+import type { CampoFicha } from "@/lib/ficha-personaje";
 import type { Estimacion, TrabajoVista } from "@/lib/generacion";
-import type { PersonajeVista, ReferenciasAnadidas, ResumenBorradoPersonaje } from "@/lib/personajes";
+import type { Medio } from "@/lib/media/tipos";
+import type {
+  AprobacionVista,
+  ContextoAplicado,
+  HistorialVersiones,
+  PersonajeVista,
+  ReferenciasAnadidas,
+  ResumenBorradoPersonaje,
+  TipoAprobacion,
+} from "@/lib/personajes";
 
 /** Cliente de la API de personajes para el navegador. */
 
@@ -54,6 +64,37 @@ export const obtenerPersonaje = (id: string) => pedir<PersonajeVista>(`/api/pers
 
 export const editarPersonaje = (id: string, cambios: Partial<DatosNuevoPersonaje>) =>
   pedir<PersonajeVista>(`/api/personajes/${id}`, json("PATCH", cambios));
+
+/** Cambios de la ficha de apariencia. Van con el motivo: es lo que explica por qué existe la versión nueva. */
+export type CambiosFicha = Partial<Record<CampoFicha | "descripcion" | "motivo", string>>;
+
+/**
+ * Guarda la ficha. El servidor decide si eso crea versión: si el texto es el mismo, no se gasta un número.
+ * Devuelve el personaje recalculado, con su versión vigente.
+ */
+export const guardarFicha = (id: string, cambios: CambiosFicha) =>
+  pedir<PersonajeVista>(`/api/personajes/${id}`, json("PATCH", cambios));
+
+/** Historial de versiones con sus aprobaciones y qué se invalidó en cada una. */
+export const listarVersiones = (id: string) => pedir<HistorialVersiones>(`/api/personajes/${id}/versiones`);
+
+/** Registra una aprobación contra la versión vigente (base de 0.17.0 y 0.20.0). */
+export const registrarAprobacion = (id: string, tipo: TipoAprobacion, asunto: string) =>
+  pedir<AprobacionVista>(`/api/personajes/${id}/versiones`, json("POST", { tipo, asunto }));
+
+/** Compone la hoja de personaje de la versión vigente. No cuesta créditos: la monta el servidor. */
+export const generarHojaDePersonaje = (id: string) =>
+  pedir<{ hoja: Medio; versionId: string; versionNumero: number }>(`/api/personajes/${id}/hoja`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+
+/**
+ * Contexto que se añadirá al prompt y referencias que se enviarán con ese modelo. Es lo que se muestra
+ * **antes de confirmar**: una lectura, sin coste y sin encolar nada.
+ */
+export const consultarContexto = (id: string, modelo?: string) =>
+  pedir<ContextoAplicado>(`/api/personajes/${id}/contexto${modelo ? `?modelo=${encodeURIComponent(modelo)}` : ""}`);
 
 /** Qué se borraría: referencias, trabajos y medios derivados. Se enumera antes de confirmar. */
 export const consultarBorrado = (id: string) => pedir<ResumenBorradoPersonaje>(`/api/personajes/${id}?borrado=1`);

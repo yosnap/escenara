@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import {
   boolean,
   index,
@@ -14,6 +15,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { media } from "./esquema";
 import { users } from "./esquema-auth";
+import { jsonb } from "./jsonb";
 
 /**
  * Personajes con sus fotos de referencia y su registro de consentimiento (RF02 y RF10).
@@ -51,6 +53,17 @@ export const characters = pgTable(
     /** Especie o notas del animal; en personas sirve para matices que no son descripción de escena. */
     speciesNotes: text("species_notes").notNull().default(""),
     description: text("description").notNull().default(""),
+    /**
+     * Ficha de apariencia (0.15.0): lo que se añade al prompt como contexto de generación. Estos cinco campos
+     * y `description` son los que **versionan**; el nombre y las notas de especie, no. Se guardan aquí porque
+     * son el valor vigente que edita el formulario; su instantánea vive en `character_versions`.
+     */
+    traits: text("traits").notNull().default(""),
+    style: text("style").notNull().default(""),
+    wardrobe: text("wardrobe").notNull().default(""),
+    personality: text("personality").notNull().default(""),
+    /** Voz **prevista**, solo declarada: la voz real llega en 0.21.0. */
+    voice: text("voice").notNull().default(""),
     state: estadoPersonaje("state").notNull().default("borrador"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -180,6 +193,101 @@ export const consentAccessLog = pgTable(
   (t) => [index("consent_access_log_fecha_idx").on(t.createdAt), index("consent_access_log_admin_idx").on(t.adminId)],
 );
 
+/**
+ * Instantánea de lo que versiona: la ficha de apariencia y la descripción, tal como estaban al crear la
+ * versión. Se guarda entera y no por referencia: una versión tiene que seguir diciendo lo que decía aunque
+ * la fila del personaje cambie después, porque es lo que se envió al proveedor.
+ */
+export interface HojaDeFicha {
+  rasgos: string;
+  estilo: string;
+  vestuario: string;
+  personalidad: string;
+  voz: string;
+  descripcion: string;
+}
+
+/**
+ * Versiones de la ficha de un personaje (0.15.0). Cada cambio de **apariencia o de prompt** —ficha,
+ * descripción o referencias— crea una fila; el nombre y las notas de especie no.
+ *
+ * Las versiones **no se borran nunca**: son la trazabilidad de lo que ya se generó. Los trabajos citan la
+ * versión con la que salieron (`generation_jobs.character_version_id`), así que un trabajo hecho con la 2
+ * sigue apuntando a la 2 después de crear la 3. Solo desaparecen al borrar el personaje, en cascada.
+ */
+export const characterVersions = pgTable(
+  "character_versions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => characters.id, { onDelete: "cascade" }),
+    /** Número correlativo dentro del personaje, empezando en 1. */
+    number: integer("number").notNull(),
+    sheet: jsonb<HojaDeFicha>("sheet").notNull(),
+    /** Medios de referencia incluidos, en su orden. No es una clave ajena: es lo que había, no lo que hay. */
+    referenceMediaIds: jsonb<string[]>("reference_media_ids").notNull(),
+    /**
+     * Hoja de personaje: montaje de las referencias compuesto **en el servidor**, sin IA y sin coste. Se
+     * guarda en la biblioteca del usuario; `set null` porque puede borrarla desde allí y la versión sigue
+     * siendo válida.
+     */
+    sheetMediaId: uuid("sheet_media_id").references(() => media.id, { onDelete: "set null" }),
+    /** Motivo del cambio que escribió el usuario. Vacío en la primera versión. */
+    changeReason: text("change_reason").notNull().default(""),
+    /** Qué campos cambiaron respecto a la anterior: es el resumen que se muestra en el historial. */
+    changedFields: jsonb<string[]>("changed_fields").notNull(),
+    /** Cuántas aprobaciones quedaron invalidadas al crearla. */
+    invalidatedApprovals: integer("invalidated_approvals").notNull().default(0),
+    createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // Dos versiones no comparten número: el número es el que se cita en los trabajos y en el historial.
+    unique("character_versions_personaje_numero_uq").on(t.characterId, t.number),
+    index("character_versions_personaje_idx").on(t.characterId, t.number),
+  ],
+);
+
+/**
+ * Aprobaciones que dependen de una versión del personaje. Es la base de las aprobaciones de guion y escenas
+ * (0.17.0) y de la revisión de continuidad (0.20.0): aquí se registran y, sobre todo, se **invalidan** cuando
+ * la apariencia cambia. Una aprobación invalidada no se borra: deja escrito con qué versión se aprobó, cuándo
+ * dejó de valer y qué la invalidó, porque eso es justo lo que hay que volver a revisar.
+ */
+export const characterApprovals = pgTable(
+  "character_approvals",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => characters.id, { onDelete: "cascade" }),
+    /** Versión con la que se aprobó. Cascada: sin versión no hay aprobación que revisar. */
+    characterVersionId: uuid("character_version_id")
+      .notNull()
+      .references(() => characterVersions.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    /** Qué se aprobó, en palabras del usuario. */
+    subject: text("subject").notNull().default(""),
+    approvedBy: uuid("approved_by").references(() => users.id, { onDelete: "set null" }),
+    approvedAt: timestamp("approved_at", { withTimezone: true }).notNull().defaultNow(),
+    invalidatedAt: timestamp("invalidated_at", { withTimezone: true }),
+    /** Qué la invalidó, en lenguaje llano y con la acción concreta que hace falta. */
+    invalidationReason: text("invalidation_reason").notNull().default(""),
+    /** Versión que la invalidó. `set null` para no perder la aprobación si algo borra esa versión. */
+    invalidatedByVersionId: uuid("invalidated_by_version_id").references((): AnyPgColumn => characterVersions.id, {
+      onDelete: "set null",
+    }),
+  },
+  (t) => [
+    index("character_approvals_personaje_idx").on(t.characterId, t.approvedAt),
+    // Índice de la invalidación: al crear una versión se buscan las aprobaciones vigentes del personaje.
+    index("character_approvals_version_idx").on(t.characterVersionId),
+  ],
+);
+
 export type FilaPersonaje = typeof characters.$inferSelect;
+export type FilaVersionPersonaje = typeof characterVersions.$inferSelect;
+export type FilaAprobacion = typeof characterApprovals.$inferSelect;
 export type FilaConsentimiento = typeof consentRecords.$inferSelect;
 export type FilaReferencia = typeof characterReferences.$inferSelect;

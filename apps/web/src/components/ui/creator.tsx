@@ -108,21 +108,32 @@ const ESTADOS: Record<EstadoPersonaje, { anillo: string; texto: string; icono: R
   bloqueado: { anillo: "bg-error", texto: "Bloqueado", icono: <ShieldOff className="size-3.5" /> },
 };
 
-/** Avatar de personaje con anillo de historia; el estado se indica también con icono y texto. */
+/**
+ * Avatar de personaje con anillo de historia; el estado se indica también con icono y texto.
+ *
+ * `conPie` a `false` deja solo el avatar, para cuando el nombre y el estado ya están **al lado** (la cabecera de
+ * la ficha de un personaje): repetirlos debajo no añade información y obliga a leer lo mismo dos veces. El
+ * anillo sigue llevando su color y el avatar su texto alternativo, así que nada se indica solo con color.
+ */
 export function AnilloHistoria({
   nombre,
   imagen,
   estado,
   tamano = 88,
+  conPie = true,
 }: {
   nombre: string;
   imagen?: string;
   estado: EstadoPersonaje;
   tamano?: number;
+  conPie?: boolean;
 }) {
   const e = ESTADOS[estado];
   return (
-    <figure className="flex w-min flex-col items-center gap-1.5">
+    <figure
+      className="flex w-min flex-col items-center gap-1.5"
+      aria-label={conPie ? undefined : `${nombre}: ${e.texto}`}
+    >
       <div className={cn("rounded-full p-[3px]", e.anillo)} style={{ width: tamano, height: tamano }}>
         <div className="size-full overflow-hidden rounded-full border-[3px] border-fondo bg-elevada">
           {imagen ? (
@@ -135,13 +146,15 @@ export function AnilloHistoria({
           )}
         </div>
       </div>
-      <figcaption className="text-center">
-        <span className="block text-sm font-semibold text-texto">{nombre}</span>
-        <span className="flex items-center justify-center gap-1 text-xs text-texto-suave">
-          {e.icono}
-          {e.texto}
-        </span>
-      </figcaption>
+      {conPie && (
+        <figcaption className="text-center">
+          <span className="block text-sm font-semibold text-texto">{nombre}</span>
+          <span className="flex items-center justify-center gap-1 text-xs text-texto-suave">
+            {e.icono}
+            <span>{e.texto}</span>
+          </span>
+        </figcaption>
+      )}
     </figure>
   );
 }

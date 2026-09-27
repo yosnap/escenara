@@ -42,6 +42,10 @@ export function SeccionCreador() {
           <AnilloHistoria nombre="Marcos" estado="en-revision" />
           <AnilloHistoria nombre="Sara" estado="bloqueado" />
         </Muestra>
+        <Muestra titulo="Anillo sin pie: para cuando el nombre y el estado ya están al lado">
+          <AnilloHistoria nombre="Lucía" estado="listo" tamano={96} conPie={false} />
+          <AnilloHistoria nombre="Sara" estado="bloqueado" tamano={96} conPie={false} />
+        </Muestra>
         <Muestra titulo="Tarjetas 9:16 y pegatinas">
           <TarjetaReel
             titulo="Escapada a Cádiz"

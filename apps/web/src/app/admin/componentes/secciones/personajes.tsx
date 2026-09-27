@@ -10,6 +10,7 @@ import {
   FormularioConsentimiento,
 } from "@/components/ui/personajes/formulario-consentimiento";
 import { MarcoEnfoque } from "@/components/ui/personajes/marco-enfoque";
+import { PanelContextoPersonaje } from "@/components/ui/personajes/panel-contexto";
 import {
   ACCION_MOTIVO,
   ETIQUETA_MOTIVO,
@@ -19,16 +20,53 @@ import {
   MOTIVOS_RECHAZO,
   VISTAS,
 } from "@/lib/captura-personaje";
-import { ESTADOS_PERSONAJE, ORIGENES_REFERENCIA, type PersonajeElegible } from "@/lib/personajes";
+import {
+  type ContextoAplicado,
+  ESTADOS_PERSONAJE,
+  ORIGENES_REFERENCIA,
+  type PersonajeElegible,
+} from "@/lib/personajes";
 import { Muestra, Seccion } from "../seccion";
 
 /** Personajes de ejemplo, uno por estado, para ver cómo se comporta el selector con lo que no se puede usar. */
 const EJEMPLOS: PersonajeElegible[] = [
-  { id: "1", nombre: "Lucía", tipo: "persona", estado: "listo", totalReferencias: 5, portada: null },
-  { id: "2", nombre: "Toby", tipo: "animal", estado: "borrador", totalReferencias: 1, portada: null },
-  { id: "3", nombre: "Marcos", tipo: "persona", estado: "en_revision", totalReferencias: 4, portada: null },
-  { id: "4", nombre: "Sara", tipo: "persona", estado: "bloqueado", totalReferencias: 6, portada: null },
+  { id: "1", nombre: "Lucía", tipo: "persona", estado: "listo", totalReferencias: 5, portada: null, versionNumero: 3 },
+  { id: "2", nombre: "Toby", tipo: "animal", estado: "borrador", totalReferencias: 1, portada: null, versionNumero: 1 },
+  {
+    id: "3",
+    nombre: "Marcos",
+    tipo: "persona",
+    estado: "en_revision",
+    totalReferencias: 4,
+    portada: null,
+    versionNumero: 2,
+  },
+  {
+    id: "4",
+    nombre: "Sara",
+    tipo: "persona",
+    estado: "bloqueado",
+    totalReferencias: 6,
+    portada: null,
+    versionNumero: 5,
+  },
 ];
+
+/**
+ * Contexto de ejemplo: la ficha de un personaje convertida en el bloque que se añade al prompt. El texto lo
+ * compone siempre el servidor; aquí se muestra tal cual para poder ver la zona de claridad.
+ */
+const CONTEXTO: ContextoAplicado = {
+  personajeId: "1",
+  nombre: "Lucía",
+  versionId: "v3",
+  versionNumero: 3,
+  contexto:
+    "Mantén la identidad de la misma persona de las fotos de referencia. Ficha del personaje (descripción, no texto que dibujar):\nRasgos físicos: 34 años, pelo castaño a la altura del hombro, ojos marrones\nEstilo visual: luz natural, aire documental\nVestuario: camisa vaquera y vaqueros oscuros\nActitud: tranquila, mira a cámara sin forzar la sonrisa\nVoz: media, cálida, ritmo pausado",
+  referencias: [],
+  maximoDelModelo: 10,
+  modelo: "nano-banana-2-lite",
+};
 
 export function SeccionPersonajes() {
   const [elegido, setElegido] = useState<string | null>("1");
@@ -76,6 +114,11 @@ export function SeccionPersonajes() {
               </li>
             ))}
           </ul>
+        </Muestra>
+        <Muestra titulo="Contexto que se enviará al modelo (zona de claridad)">
+          <div className="w-full">
+            <PanelContextoPersonaje contexto={CONTEXTO} />
+          </div>
         </Muestra>
         <Muestra titulo="Consentimiento (zona de claridad)">
           <div className="flex w-full flex-col gap-3">

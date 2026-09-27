@@ -3,7 +3,7 @@ import { index, integer, pgEnum, pgTable, real, text, timestamp, unique, uuid } 
 import { media } from "./esquema";
 import { users } from "./esquema-auth";
 import { proveedorCredencial } from "./esquema-boveda";
-import { characters } from "./esquema-personajes";
+import { characters, characterVersions } from "./esquema-personajes";
 import { jsonb } from "./jsonb";
 
 /**
@@ -91,6 +91,13 @@ export const generationJobs = pgTable(
      * una cascada: el borrado del personaje borra sus derivados y sus trabajos en la misma transacción.
      */
     characterId: uuid("character_id").references(() => characters.id, { onDelete: "set null" }),
+    /**
+     * Versión de la ficha con la que se pidió el trabajo (0.15.0). Es lo que hace auditable el prompt: la
+     * ficha se añade al prompt como contexto, así que sin esta columna no se podría saber **qué** apariencia
+     * se envió. `set null` por simetría con el personaje, pero en la práctica no se dispara: las versiones
+     * solo desaparecen al borrar el personaje, que borra también sus trabajos.
+     */
+    characterVersionId: uuid("character_version_id").references(() => characterVersions.id, { onDelete: "set null" }),
     resultMediaId: uuid("result_media_id").references(() => media.id, { onDelete: "set null" }),
     estimatedCredits: integer("estimated_credits").notNull(),
     /** Créditos que informa el proveedor; si no llegan, se conserva la estimación marcada como tal. */

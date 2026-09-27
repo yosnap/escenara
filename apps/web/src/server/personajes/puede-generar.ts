@@ -1,15 +1,10 @@
 import { eq } from "drizzle-orm";
 import { leerAjustes } from "../ajustes";
 import { db } from "../db/cliente";
-import { characters, type FilaMedio, type FilaPersonaje, media } from "../db/esquema";
+import { characters, type FilaMedio, type FilaPersonaje, type FilaVersionPersonaje, media } from "../db/esquema";
 import type { Actor } from "../media/servicio";
-import {
-  contarReferencias,
-  efectivo,
-  esUuidPersonaje,
-  mediosDeReferenciaVigentes,
-  ultimoConsentimientoDe,
-} from "./consulta";
+import { contarReferencias, efectivo, esUuidPersonaje, ultimoConsentimientoDe } from "./consulta";
+import { contextoParaGenerar } from "./contexto";
 import { ErrorPersonaje } from "./errores";
 import { impedimentosDePersonaje } from "./estado";
 
@@ -19,14 +14,19 @@ import { impedimentosDePersonaje } from "./estado";
  * a deducir de los datos en lugar de creerse la columna `characters.state`.
  *
  * Al elegir un personaje se envían **varias referencias** suyas, hasta el máximo que declare el modelo en el
- * catálogo: varias fotos dan mucha mejor guía de identidad que una sola (comparativa del 2026-09-27). La
- * ficha textual como contexto llega en la 0.15.0.
+ * catálogo: varias fotos dan mucha mejor guía de identidad que una sola (comparativa del 2026-09-27). Desde
+ * 0.15.0 se eligen **las mejores por cobertura de vistas** (una de cada ángulo antes que diez del mismo) y el
+ * trabajo cita además la **versión de la ficha**, cuyo texto se añade al prompt como contexto.
  */
 
 export interface PersonajeParaGenerar {
   personaje: FilaPersonaje;
-  /** Fotos que se enviarán al proveedor, en el orden que fijó el usuario. Nunca está vacío. */
+  /** Fotos que se enviarán al proveedor, elegidas por cobertura de vistas. Nunca está vacío. */
   referencias: FilaMedio[];
+  /** Versión de la ficha con la que sale el trabajo: es la que se guarda y la que compone el contexto. */
+  version: FilaVersionPersonaje;
+  /** Bloque de contexto que se añadirá al prompt; vacío si la ficha no dice nada. */
+  contexto: string;
 }
 
 /**
@@ -80,8 +80,6 @@ export async function personajeParaGenerar(
   if (!personaje || personaje.ownerId !== actor.id) throw new ErrorPersonaje(404, "El personaje no existe.");
 
   await exigirPersonajeUsable(personaje.id, personaje.name);
-  // Solo las utilizables y en su orden: una referencia en la papelera no se envía a ningún proveedor.
-  const idsVigentes = (await mediosDeReferenciaVigentes(personaje.id)).map((r) => r.mediaId);
   if (maximoDelModelo < 1) {
     throw new ErrorPersonaje(
       400,
@@ -89,9 +87,11 @@ export async function personajeParaGenerar(
     );
   }
 
-  // Las fotos se leen en el mismo orden que las referencias y se recortan al tope del modelo.
+  // Versión vigente, contexto y las mejores referencias por cobertura, recortadas al tope del modelo. Solo
+  // entran las utilizables: una referencia en la papelera no se envía a ningún proveedor.
+  const { version, contexto, referencias: elegidas } = await contextoParaGenerar(personaje, maximoDelModelo);
   const filas = await Promise.all(
-    idsVigentes.slice(0, maximoDelModelo).map(async (mediaId) => {
+    elegidas.map(async (mediaId) => {
       const [fila] = await db().select().from(media).where(eq(media.id, mediaId)).limit(1);
       return fila ?? null;
     }),
@@ -100,5 +100,5 @@ export async function personajeParaGenerar(
   if (referencias.length === 0) {
     throw new ErrorPersonaje(409, "Las fotos de referencia de este personaje ya no están disponibles.");
   }
-  return { personaje, referencias };
+  return { personaje, referencias, version, contexto };
 }

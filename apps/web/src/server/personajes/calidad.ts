@@ -1,6 +1,7 @@
 import sharp from "sharp";
 import { LARGO_HUELLA, type MetricasCalidad, type UmbralesCalidad } from "@/lib/captura-personaje";
 import type { Ajustes } from "../ajustes";
+import { ENTRADA_ACOTADA, MAXIMO_PIXELES } from "../media/procesado";
 
 /**
  * Control de calidad de una foto de referencia, **local y sin gastar créditos** (decisión 2 de la fase 14):
@@ -28,12 +29,6 @@ const LADO_ANALISIS = 256;
 /** Lado de la huella perceptual: 9 × 8 comparaciones horizontales = 64 bits. */
 const LADO_HUELLA = 8;
 
-/**
- * Tope de píxeles de entrada: 40 megapíxeles son más que cualquier cámara de fotos de consumo, y la
- * biblioteca guarda las imágenes reducidas a 1920 × 1080. Por encima no se decodifica.
- */
-export const MAXIMO_PIXELES = 40_000_000;
-
 export interface AnalisisImagen {
   /** Métricas con `caraRelativa` a `null`: la cara la mide el navegador, no el servidor. */
   metricas: MetricasCalidad;
@@ -51,9 +46,6 @@ export const umbralesDe = (ajustes: Ajustes): UmbralesCalidad => ({
   luminosidadMaxima: ajustes.calidadLuminosidadMaxima,
   caraMinima: ajustes.calidadCaraMinima,
 });
-
-/** Opciones con las que se abre **siempre** una imagen que ha subido alguien. */
-const ENTRADA_ACOTADA = { limitInputPixels: MAXIMO_PIXELES, pages: 1, animated: false } as const;
 
 /**
  * Varianza del laplaciano de una matriz de luminancia. Es la medida clásica de enfoque: una foto nítida tiene

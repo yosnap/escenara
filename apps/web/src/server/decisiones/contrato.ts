@@ -19,6 +19,15 @@ export interface EntradaDecision {
   escena: string;
   /** Lo que dice el personaje; vacío si no hay. */
   dialogo: string;
+  /**
+   * Bloque de contexto que el servidor añade al prompt a partir de la ficha del personaje (0.15.0); vacío si el
+   * trabajo no lleva personaje o su ficha no dice nada.
+   *
+   * Va **aparte de `escena`** a propósito: `escena` es lo que escribió la persona, y las reglas que miden su
+   * longitud tienen que seguir midiendo eso. Meter el contexto dentro haría que una ficha rellena colara una
+   * descripción demasiado corta.
+   */
+  contexto: string;
   /** El modelo elegido genera voz. */
   conVoz: boolean;
   /** Hay imagen de referencia propia. */

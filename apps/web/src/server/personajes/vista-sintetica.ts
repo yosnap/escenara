@@ -5,7 +5,7 @@ import { MAXIMO_REFERENCIAS, type TipoPersonaje } from "@/lib/personajes";
 import { leerObjeto } from "../almacenamiento";
 import { filaDeLaConfirmacion } from "../cola/encolar";
 import { db } from "../db/cliente";
-import { characterReferences, type FilaTrabajo, media } from "../db/esquema";
+import { characterReferences, characters, type FilaTrabajo, media } from "../db/esquema";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { crearFotograma } from "../generacion/servicio";
 import { vistaDeFila } from "../generacion/trabajos";
@@ -13,6 +13,7 @@ import type { Actor } from "../media/servicio";
 import { type AnalisisImagen, analizarImagen } from "./calidad";
 import { coberturaDe, filaPropia, siguienteOrden } from "./consulta";
 import { ErrorPersonaje } from "./errores";
+import { versionarSiCambia } from "./versiones";
 
 /**
  * Vistas sintéticas (decisión 3 de la fase 14): cuando a un personaje le falta una vista de la cobertura, se
@@ -195,6 +196,12 @@ export async function adjuntarVistaGenerada(fila: FilaTrabajo, medioId: string):
         sortOrder: await siguienteOrden(fila.characterId),
       })
       .onConflictDoNothing();
+    // Una referencia más cambia lo que se le envía al proveedor, así que crea versión igual que añadirla a
+    // mano (0.15.0). Lo hace el worker, sin sesión: la versión se atribuye al dueño del personaje.
+    const [personaje] = await db().select().from(characters).where(eq(characters.id, fila.characterId)).limit(1);
+    if (personaje) {
+      await versionarSiCambia(personaje, personaje.ownerId, `Se añadió la vista generada «${ETIQUETA_VISTA[vista]}».`);
+    }
   } catch (error) {
     console.error(
       `[personajes] no se ha podido adjuntar la vista generada del trabajo ${fila.id}: ${(error as Error).name}`,

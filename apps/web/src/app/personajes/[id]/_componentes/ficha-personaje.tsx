@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Boton, claseBoton } from "@/components/ui/button";
 import { AnilloHistoria } from "@/components/ui/creator";
 import { Aviso, AvisoEstado } from "@/components/ui/feedback";
+import { Pestanas } from "@/components/ui/overlay";
 import { anilloDeEstado, InsigniaEstadoPersonaje } from "@/components/ui/personaje";
 import {
   anadirReferencias,
@@ -33,7 +34,9 @@ import {
 import { DialogoBorrarPersonaje } from "./dialogo-borrar-personaje";
 import { type EstadoDeClave, PanelCobertura } from "./panel-cobertura";
 import { PanelConsentimiento } from "./panel-consentimiento";
+import { PanelFicha } from "./panel-ficha";
 import { PanelReferencias } from "./panel-referencias";
+import { PanelVersiones } from "./panel-versiones";
 
 /**
  * Ficha de un personaje: su estado con lo que le falta, sus fotos de referencia, su consentimiento y el
@@ -105,11 +108,14 @@ export function FichaPersonaje({
       )}
 
       <header className="flex flex-wrap items-start gap-5">
+        {/* Sin pie: el nombre y el estado están justo al lado, y repetirlos debajo del avatar es leer lo mismo
+            dos veces. El anillo conserva su color y la insignia de al lado, su icono y su texto. */}
         <AnilloHistoria
           nombre={personaje.nombre}
           imagen={personaje.portada?.url}
           estado={anilloDeEstado(personaje.estado)}
           tamano={96}
+          conPie={false}
         />
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <h1 className="text-4xl font-bold text-texto">{personaje.nombre}</h1>
@@ -187,22 +193,52 @@ export function FichaPersonaje({
         </Aviso>
       )}
 
-      {personaje.puedeEditar && (
-        <PanelCobertura
-          personaje={personaje}
-          umbrales={umbrales}
-          claveDeGeneracion={claveDeGeneracion}
-          onPersonaje={(actualizado) => {
-            setPersonaje(actualizado);
-            router.refresh();
-          }}
-          onVistaEncolada={(vista) => setVistaEncolada(ETIQUETA_VISTA[vista])}
+      {/* Tres pestañas del catálogo: la ficha (contexto de generación), las referencias con su cobertura y el
+          historial de versiones. El consentimiento queda fuera de las pestañas a propósito: es la puerta que
+          decide si se puede generar y tiene que verse siempre, no escondido detrás de una pestaña. */}
+      {personaje.puedeEditar ? (
+        <Pestanas
+          pestanas={[
+            {
+              valor: "ficha",
+              etiqueta: "Ficha",
+              contenido: (
+                <PanelFicha
+                  personaje={personaje}
+                  onPersonaje={(actualizado) => {
+                    setPersonaje(actualizado);
+                    router.refresh();
+                  }}
+                />
+              ),
+            },
+            {
+              valor: "referencias",
+              etiqueta: "Referencias",
+              contenido: (
+                <div className="flex flex-col gap-8">
+                  <PanelCobertura
+                    personaje={personaje}
+                    umbrales={umbrales}
+                    claveDeGeneracion={claveDeGeneracion}
+                    onPersonaje={(actualizado) => {
+                      setPersonaje(actualizado);
+                      router.refresh();
+                    }}
+                    onVistaEncolada={(vista) => setVistaEncolada(ETIQUETA_VISTA[vista])}
+                  />
+                  <PanelReferencias personaje={personaje} onCambio={cambiarReferencias} ocupado={ocupado} />
+                </div>
+              ),
+            },
+            {
+              valor: "versiones",
+              etiqueta: "Versiones",
+              contenido: <PanelVersiones personaje={personaje} onPersonaje={setPersonaje} />,
+            },
+          ]}
         />
-      )}
-
-      {personaje.puedeEditar && (
-        <PanelReferencias personaje={personaje} onCambio={cambiarReferencias} ocupado={ocupado} />
-      )}
+      ) : null}
 
       <PanelConsentimiento
         personaje={personaje}

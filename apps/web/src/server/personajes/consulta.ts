@@ -1,5 +1,6 @@
 import { and, asc, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { type Cobertura, calcularCobertura, esVista, type ReferenciaParaCobertura } from "@/lib/captura-personaje";
+import { FICHA_VACIA } from "@/lib/ficha-personaje";
 import type { Medio } from "@/lib/media/tipos";
 import type {
   ConsentimientoVista,
@@ -32,6 +33,7 @@ import {
   impedimentosDePersonaje,
   personajePuedeGenerar,
 } from "./estado";
+import { fichaDeFila, ultimaVersion } from "./ficha";
 import { registrarAccesoAConsentimiento, registrarAccesoAListado } from "./registro-acceso";
 
 /**
@@ -229,10 +231,16 @@ export async function vistaDePersonaje(
   opciones: OpcionesVista = {},
 ): Promise<PersonajeVista> {
   const minimo = opciones.minimo ?? (await leerAjustes()).minimoReferenciasPersonaje;
-  const [consentimiento, referencias] = await Promise.all([ultimoConsentimientoDe(fila.id), referenciasDe(fila.id)]);
+  const [consentimiento, referencias, version] = await Promise.all([
+    ultimoConsentimientoDe(fila.id),
+    referenciasDe(fila.id),
+    ultimaVersion(fila.id),
+  ]);
   const idsMedios = [
     ...referencias.map((r) => r.mediaId),
     ...(consentimiento?.documentMediaId ? [consentimiento.documentMediaId] : []),
+    // La hoja de personaje solo se resuelve para su dueño: es un montaje con las fotos de una persona.
+    ...(version?.sheetMediaId && fila.ownerId === actor.id ? [version.sheetMediaId] : []),
   ];
   const medios = await mediosPorId(idsMedios, actor);
   // Las que están en la papelera se siguen mostrando (para que se vea qué ha pasado), pero no cuentan.
@@ -255,6 +263,16 @@ export async function vistaDePersonaje(
     tipo: fila.kind,
     especie: fila.speciesNotes,
     descripcion: fila.description,
+    // La ficha de apariencia solo la ve su dueño: es la descripción física de una persona.
+    ficha: esDueno ? fichaDeFila(fila) : FICHA_VACIA,
+    versionVigente: version
+      ? {
+          id: version.id,
+          numero: version.number,
+          creadaEn: version.createdAt.toISOString(),
+          hoja: esDueno && version.sheetMediaId ? (medios.get(version.sheetMediaId) ?? null) : null,
+        }
+      : null,
     estado: estadoDePersonaje(datos),
     totalReferencias: utilizables,
     totalGeneradas: generadas,
@@ -307,6 +325,8 @@ interface ResumenDeLista {
   generadas: Map<string, number>;
   portadas: Map<string, Medio>;
   duenos: Map<string, string>;
+  /** Versión vigente de cada personaje (0.15.0): la que se cita al generar. */
+  versiones: Map<string, { id: string; numero: number; creadaEn: string }>;
 }
 
 async function resumenDeLista(filas: FilaPersonaje[], actor: Actor): Promise<ResumenDeLista> {
@@ -318,6 +338,7 @@ async function resumenDeLista(filas: FilaPersonaje[], actor: Actor): Promise<Res
       generadas: new Map(),
       portadas: new Map(),
       duenos: new Map(),
+      versiones: new Map(),
     };
   }
   const lista = sql.join(
@@ -325,7 +346,7 @@ async function resumenDeLista(filas: FilaPersonaje[], actor: Actor): Promise<Res
     sql`, `,
   );
   // `distinct on` para quedarse con el último registro de cada personaje en una sola pasada.
-  const [ultimos, conteos, primeras, nombres] = await Promise.all([
+  const [ultimos, conteos, primeras, nombres, versiones] = await Promise.all([
     db().execute<{
       character_id: string;
       holder_type: string;
@@ -356,6 +377,12 @@ async function resumenDeLista(filas: FilaPersonaje[], actor: Actor): Promise<Res
       .select({ id: users.id, nombre: users.name })
       .from(users)
       .where(inArray(users.id, [...new Set(filas.map((f) => f.ownerId))])),
+    // Versión vigente de cada uno en una sola pasada: entra en la firma de la confirmación de «Crear».
+    db().execute<{ character_id: string; id: string; number: number; created_at: Date }>(
+      sql`select distinct on (character_id) character_id, id, number, created_at
+          from character_versions where character_id in (${lista})
+          order by character_id, number desc`,
+    ),
   ]);
 
   const idsPortada = [...primeras].map((f) => f.media_id);
@@ -380,8 +407,18 @@ async function resumenDeLista(filas: FilaPersonaje[], actor: Actor): Promise<Res
       }),
     ),
     duenos: new Map(nombres.map((n) => [n.id, n.nombre])),
+    versiones: new Map(
+      [...versiones].map((v) => [
+        v.character_id,
+        { id: v.id, numero: v.number, creadaEn: new Date(v.created_at).toISOString() },
+      ]),
+    ),
   };
 }
+
+/** Versión vigente en un listado: sin hoja de personaje, que solo se resuelve en la ficha del dueño. */
+const versionDeLista = (version: { id: string; numero: number; creadaEn: string } | undefined) =>
+  version ? { ...version, hoja: null } : null;
 
 /** Vista de lista de varios personajes, sin referencias ni consentimiento detallado y sin consultas por fila. */
 async function vistasDeLista(
@@ -404,6 +441,9 @@ async function vistasDeLista(
       tipo: fila.kind,
       especie: fila.speciesNotes,
       descripcion: fila.description,
+      // La lista no lleva ficha ni hoja: se ven en `/personajes/[id]`, que es donde se editan.
+      ficha: FICHA_VACIA,
+      versionVigente: versionDeLista(resumen.versiones.get(fila.id)),
       estado: estadoDePersonaje(datos),
       totalReferencias: datos.referencias,
       totalGeneradas: resumen.generadas.get(fila.id) ?? 0,
@@ -450,7 +490,7 @@ export async function obtenerPersonaje(actor: Actor, id: unknown): Promise<Perso
 }
 
 /** `true` si el personaje tiene (o tuvo) algún consentimiento con titular «otra persona». */
-async function tuvoConsentimientoDeTercero(personajeId: string): Promise<boolean> {
+export async function tuvoConsentimientoDeTercero(personajeId: string): Promise<boolean> {
   const [fila] = await db()
     .select({ id: consentRecords.id })
     .from(consentRecords)
@@ -484,6 +524,8 @@ export async function personajesElegibles(actor: Actor): Promise<PersonajeElegib
       }),
       totalReferencias: referencias,
       portada: resumen.portadas.get(fila.id) ?? null,
+      // Entra en la firma de la confirmación: si la ficha cambia, lo confirmado deja de ser lo mismo.
+      versionNumero: resumen.versiones.get(fila.id)?.numero ?? 0,
     };
   });
 }
@@ -554,6 +596,9 @@ export async function pendientesDeRevision(actor: Actor, pagina = 1): Promise<Pa
       tipo: personaje.kind,
       especie: personaje.speciesNotes,
       descripcion: personaje.description,
+      // Quien revisa un consentimiento no ve la ficha de apariencia ni la hoja de nadie.
+      ficha: FICHA_VACIA,
+      versionVigente: versionDeLista(resumen.versiones.get(personaje.id)),
       estado: estadoDePersonaje(datos),
       totalReferencias: datos.referencias,
       totalGeneradas: resumen.generadas.get(personaje.id) ?? 0,

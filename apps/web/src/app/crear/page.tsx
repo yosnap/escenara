@@ -10,6 +10,7 @@ import { listarCredenciales } from "@/server/boveda/credenciales";
 import { estadoDeCola } from "@/server/cola/latido";
 import { estimarTodo } from "@/server/generacion/estimacion";
 import { personajesElegibles } from "@/server/personajes/consulta";
+import { contextoAplicado } from "@/server/personajes/contexto";
 import { depositoDe } from "@/server/presupuesto/deposito";
 import { modelosParaCrear } from "@/server/proveedores/catalogo";
 import { CabeceraApp } from "../_app/cabecera-app";
@@ -42,6 +43,20 @@ export default async function PaginaCrear({ searchParams }: { searchParams: Prom
         personajesElegibles({ id: sesion.user.id, esAdmin: esAdmin(sesion) }),
       ])
     : [null, [], [], null, null, []];
+
+  // Llegando desde la ficha con un personaje preseleccionado, el contexto se resuelve **aquí**: así la zona de
+  // claridad ya está rellena al cargar la página, sin efectos en el navegador.
+  const personajeInicial = personajes.some((p) => p.id === personajePedido && p.estado === "listo")
+    ? (personajePedido ?? null)
+    : null;
+  const contextoInicial =
+    personajeInicial && estimaciones
+      ? await contextoAplicado(
+          { id: sesion.user.id, esAdmin: esAdmin(sesion) },
+          personajeInicial,
+          estimaciones.fotograma.modelo,
+        ).catch(() => null)
+      : null;
 
   return (
     <div className="min-h-dvh bg-fondo">
@@ -88,11 +103,8 @@ export default async function PaginaCrear({ searchParams }: { searchParams: Prom
             deposito={deposito}
             cola={cola}
             personajes={personajes}
-            personajeInicial={
-              personajes.some((p) => p.id === personajePedido && p.estado === "listo")
-                ? (personajePedido ?? null)
-                : null
-            }
+            personajeInicial={personajeInicial}
+            contextoInicial={contextoInicial}
           />
         )}
       </main>

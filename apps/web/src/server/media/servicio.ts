@@ -201,6 +201,12 @@ async function reservarCuota(tx: Transaccion, actor: Actor, bytesNuevos: number)
 export interface OpcionesCreacion {
   /** Documento de consentimiento: se guarda sin procesar y no puede usarse como referencia. */
   documento?: boolean;
+  /**
+   * Personaje del que este medio es su hoja (0.15.0). Se marca **en el propio `insert`**, no después: entre
+   * crear la fila y marcarla habría un hueco en el que la hoja sería un medio corriente y visible para quien
+   * administra, y es un montaje con las fotos de una persona.
+   */
+  hojaDePersonaje?: string;
 }
 
 export async function crearMedio(
@@ -233,6 +239,7 @@ export async function crearMedio(
           durationSeconds: preparado.duracion,
           sourceUrl: origen,
           isDocument: documento,
+          characterSheetOf: opciones.hojaDePersonaje ?? null,
         })
         .returning();
       return insertada;

@@ -34,11 +34,24 @@ export const media = pgTable(
      * impide el servidor, no la interfaz.
      */
     isDocument: boolean("is_document").notNull().default(false),
+    /**
+     * Personaje del que este medio es su **hoja de personaje** (0.15.0); `null` en todo lo demás. Es la marca que
+     * hace que la hoja se trate como material reservado: no la ve quien administra en `/admin/medios` ni por
+     * `/api/media/*`, igual que las fotos de referencia, porque es un montaje **con esas mismas fotos**.
+     *
+     * Sin restricción de clave ajena a propósito, como `generation_jobs.reservation_id`: `characters` referencia
+     * a `media` y una referencia de vuelta cerraría un ciclo entre los dos módulos del esquema. La marca se lee
+     * **antes** de borrar el personaje, que se lleva sus hojas en la misma operación; si algo fallara, lo que
+     * queda es un medio marcado y oculto, no un medio visible que no debería verse.
+     */
+    characterSheetOf: uuid("character_sheet_of"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (t) => [
+    // Índice del borrado del personaje: hay que localizar sus hojas, incluidas las que quedaron huérfanas.
+    index("media_hoja_personaje_idx").on(t.characterSheetOf),
     index("media_listado_idx").on(t.deletedAt, t.createdAt),
     index("media_propietario_idx").on(t.ownerId, t.deletedAt, t.createdAt),
   ],

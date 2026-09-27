@@ -23,6 +23,7 @@ Cada decisión relevante se documenta en un fichero `adr-NNNN-slug.md` dentro de
 | [0015](adr-0015-contrato-adaptadores-capacidades.md) | Contrato de adaptadores por capacidades y catálogo de modelos en la base de datos | 0.11.0 | Aceptado |
 | [0016](adr-0016-reserva-y-conciliacion-de-gasto.md) | Reserva y conciliación del gasto: registro de apuntes como única verdad | 0.12.0 | Aceptado |
 | [0017](adr-0017-consentimiento-de-personajes.md) | Consentimiento de personajes: registro con prueba, revisión humana y borrado de derivados | 0.13.0 | Propuesto (decisiones provisionales pendientes del propietario) |
+| [0018](adr-0018-ficha-como-contexto-y-version-citada.md) | La ficha del personaje es contexto de generación y cada trabajo cita su versión | 0.15.0 | Propuesto (decisiones provisionales pendientes del propietario) |
 
 ## Plantilla
 

@@ -1,10 +1,12 @@
 import { and, count, eq, inArray, isNull, sql } from "drizzle-orm";
+import { CAMPOS_FICHA, type CampoFicha, limpiarCampoFicha } from "@/lib/ficha-personaje";
 import {
   DESCRIPCION_MAXIMA,
   ESPECIE_MAXIMA,
   esTipoPersonaje,
   MAXIMO_PERSONAJES,
   MAXIMO_REFERENCIAS,
+  MOTIVO_CAMBIO_MAXIMO,
   NOMBRE_MAXIMO,
   type OrigenReferencia,
   type PersonajeVista,
@@ -24,6 +26,12 @@ import {
 } from "./analisis-referencia";
 import { esUuidPersonaje, filaPropia, recalcularEstado, siguienteOrden, vistaDePersonaje } from "./consulta";
 import { ErrorPersonaje } from "./errores";
+import {
+  asegurarVersionVigente,
+  referenciasParaVersionar,
+  versionarEnTransaccion,
+  versionarSiCambia,
+} from "./versiones";
 import { vistaSinteticaDe } from "./vista-sintetica";
 
 /**
@@ -40,7 +48,24 @@ export interface DatosPersonaje {
   tipo: unknown;
   especie?: unknown;
   descripcion?: unknown;
+  /** Campos de la ficha de apariencia (0.15.0). Versionan: cambiarlos crea una versión nueva. */
+  rasgos?: unknown;
+  estilo?: unknown;
+  vestuario?: unknown;
+  personalidad?: unknown;
+  voz?: unknown;
+  /** Por qué se cambia. Se guarda en la versión que produce el cambio; no versiona por sí mismo. */
+  motivo?: unknown;
 }
+
+/** Columna de la fila del personaje que guarda cada campo de la ficha. */
+const COLUMNA_FICHA: Record<CampoFicha, "traits" | "style" | "wardrobe" | "personality" | "voice"> = {
+  rasgos: "traits",
+  estilo: "style",
+  vestuario: "wardrobe",
+  personalidad: "personality",
+  voz: "voice",
+};
 
 function texto(valor: unknown, maximo: number, campo: string, obligatorio = false): string {
   if (valor === undefined || valor === null) {
@@ -106,6 +131,9 @@ export async function crearPersonaje(actor: Actor, datos: DatosPersonaje): Promi
       if (!creada) throw new ErrorPersonaje(500, "No se ha podido crear el personaje.");
       return creada;
     });
+    // Todo personaje nace con su versión 1: los trabajos citan una versión, y sin ella la primera generación
+    // tendría que inventarse cuál. Crearla aquí es gratis y deja el historial completo desde el principio.
+    await asegurarVersionVigente(fila);
     return vistaDePersonaje(fila, actor, { completa: true, conReferencias: true });
   } catch (error) {
     if (esNombreRepetido(error)) throw new ErrorPersonaje(409, "Ya tienes un personaje con ese nombre.");
@@ -113,13 +141,24 @@ export async function crearPersonaje(actor: Actor, datos: DatosPersonaje): Promi
   }
 }
 
+/**
+ * Cambia los datos del personaje. Los campos de **apariencia** (ficha y descripción) crean una versión nueva
+ * y invalidan las aprobaciones que dependían de la anterior; los **metadatos** (nombre, notas de especie) no
+ * (decisión 1 de la fase 15).
+ *
+ * Guardar el mismo texto otra vez no crea versión: lo decide `versionarSiCambia` comparando con la anterior,
+ * no la lista de campos que llegó en la petición. Eso es lo que evita la explosión de versiones por ediciones
+ * triviales y permite guardar varias veces en la misma sesión sin gastar números.
+ */
 export async function actualizarPersonaje(
   actor: Actor,
   id: unknown,
   cambios: Partial<DatosPersonaje>,
 ): Promise<PersonajeVista> {
   const fila = await filaPropia(actor, id);
-  const valores: { name?: string; kind?: TipoPersonaje; speciesNotes?: string; description?: string } = {};
+  // Tipado con la fila de verdad: un nombre de columna equivocado es un error de compilación, no un `update`
+  // silencioso que no cambia nada.
+  const valores: Partial<typeof characters.$inferInsert> = {};
   if (cambios.nombre !== undefined)
     valores.name = texto(cambios.nombre, NOMBRE_MAXIMO, "el nombre del personaje", true);
   if (cambios.tipo !== undefined) valores.kind = tipoValido(cambios.tipo);
@@ -128,14 +167,34 @@ export async function actualizarPersonaje(
   if (cambios.descripcion !== undefined) {
     valores.description = textoLargo(cambios.descripcion, DESCRIPCION_MAXIMA, "la descripción");
   }
+  // Los campos de la ficha se limpian con la **misma** función que compone el contexto: lo que se guarda es
+  // exactamente lo que se va a enviar al proveedor, sin parámetros ni instrucciones colados dentro.
+  for (const campo of CAMPOS_FICHA) {
+    const valor = cambios[campo];
+    if (valor === undefined) continue;
+    if (valor !== null && typeof valor !== "string") throw new ErrorPersonaje(400, `${campo} tiene que ser texto.`);
+    valores[COLUMNA_FICHA[campo]] = limpiarCampoFicha(valor);
+  }
+  const motivo = texto(cambios.motivo, MOTIVO_CAMBIO_MAXIMO, "el motivo del cambio");
   if (Object.keys(valores).length === 0) return vistaDePersonaje(fila, actor, { completa: true, conReferencias: true });
+  // Las referencias se leen antes de abrir la transacción: no las cambia esta operación, y así la transacción
+  // solo contiene lo que tiene que pasar de una vez.
+  const referencias = await referenciasParaVersionar(fila.id);
   try {
-    const [actualizada] = await db()
-      .update(characters)
-      .set({ ...valores, updatedAt: new Date() })
-      .where(eq(characters.id, fila.id))
-      .returning();
-    if (!actualizada) throw new ErrorPersonaje(404, "El personaje no existe.");
+    // Guardar, versionar e invalidar las aprobaciones pasan **en la misma transacción**, con la fila del
+    // personaje bloqueada: no puede quedar una ficha nueva sin su versión, ni una aprobación viva apuntando a
+    // una apariencia que ya cambió.
+    const actualizada = await db().transaction(async (tx) => {
+      await tx.execute(sql`select 1 from characters where id = ${fila.id} for update`);
+      const [guardada] = await tx
+        .update(characters)
+        .set({ ...valores, updatedAt: new Date() })
+        .where(eq(characters.id, fila.id))
+        .returning();
+      if (!guardada) throw new ErrorPersonaje(404, "El personaje no existe.");
+      await versionarEnTransaccion(tx, guardada, referencias, actor.id, motivo);
+      return guardada;
+    });
     return vistaDePersonaje(actualizada, actor, { completa: true, conReferencias: true });
   } catch (error) {
     if (esNombreRepetido(error)) throw new ErrorPersonaje(409, "Ya tienes un personaje con ese nombre.");
@@ -282,7 +341,7 @@ export async function anadirReferencias(actor: Actor, id: unknown, peticion: unk
       .onConflictDoNothing();
     await recalcularEstado(personaje.id, tx);
   });
-  const vista = await obtenerActualizado(actor, personaje.id);
+  const vista = await obtenerActualizado(actor, personaje.id, "Se añadieron fotos de referencia.");
   // Las que se han quedado fuera se dicen: un 200 con una foto menos y sin explicación es un fallo silencioso.
   return guardadas.rechazadas.length > 0 ? { ...vista, rechazos: guardadas.rechazadas } : vista;
 }
@@ -297,7 +356,7 @@ export async function quitarReferencias(actor: Actor, id: unknown, ids: unknown)
     .delete(characterReferences)
     .where(and(eq(characterReferences.characterId, personaje.id), inArray(characterReferences.id, validos)));
   await recalcularEstado(personaje.id);
-  return obtenerActualizado(actor, personaje.id);
+  return obtenerActualizado(actor, personaje.id, "Se quitaron fotos de referencia.");
 }
 
 /** Cambia el orden de las referencias: la primera es la portada y la primera que se envía al proveedor. */
@@ -330,13 +389,20 @@ export async function ordenarReferencias(actor: Actor, id: unknown, ids: unknown
         .where(and(eq(characterReferences.characterId, personaje.id), eq(characterReferences.id, referenciaId)));
     }
   });
-  return obtenerActualizado(actor, personaje.id);
+  return obtenerActualizado(actor, personaje.id, "Se cambió el orden de las fotos de referencia.");
 }
 
-/** Relee la fila y devuelve la ficha completa: el estado puede haber cambiado con la operación. */
-async function obtenerActualizado(actor: Actor, id: string): Promise<PersonajeVista> {
+/**
+ * Relee la fila y devuelve la ficha completa: el estado puede haber cambiado con la operación.
+ *
+ * Con `motivo` se versiona antes de leer: cambiar las referencias (añadir, quitar o reordenar) cambia lo que
+ * se le envía al proveedor, así que es un cambio de apariencia y crea versión, igual que editar la ficha. Si
+ * la lista acaba siendo la misma que la de la versión vigente, no se crea nada.
+ */
+async function obtenerActualizado(actor: Actor, id: string, motivo?: string): Promise<PersonajeVista> {
   const [fila] = await db().select().from(characters).where(eq(characters.id, id)).limit(1);
   if (!fila) throw new ErrorPersonaje(404, "El personaje no existe.");
+  if (motivo !== undefined && fila.ownerId === actor.id) await versionarSiCambia(fila, actor.id, motivo);
   return vistaDePersonaje(fila, actor, { completa: true, conReferencias: fila.ownerId === actor.id });
 }
 

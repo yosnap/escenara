@@ -4,6 +4,13 @@ import { encolar, filaDeLaConfirmacion, type NuevoTrabajoEncolado } from "../col
 import type { FilaMedio } from "../db/esquema";
 import { decidir } from "../decisiones/reglas";
 import type { Actor } from "../media/servicio";
+import {
+  contextoDeVersion,
+  contextoParaGenerar,
+  personajePorId,
+  promptConContexto,
+  versionDeTrabajo,
+} from "../personajes/contexto";
 import { exigirPersonajeUsable, personajeParaGenerar } from "../personajes/puede-generar";
 import { acotarCoste } from "../presupuesto/acotar";
 import type { Adaptador } from "../proveedores/contrato";
@@ -60,6 +67,28 @@ interface Confirmacion {
   modelo?: string;
   /** Sello del precio con el que se hizo la estimación: si ha cambiado, se rechaza. */
   selloEstimacion?: string;
+  /**
+   * Versión de la ficha del personaje que se le mostró al confirmar (0.15.0). Si la que se usaría ahora es
+   * otra, el trabajo se rechaza con 409: la ficha entra en el prompt, así que confirmar con una y enviar otra
+   * sería gastar dinero en algo que el usuario no ha revisado.
+   *
+   * Opcional para no romper a quien siga enviando como en la 0.14.x; sin ella no se compara nada.
+   */
+  versionPersonaje?: string;
+}
+
+/**
+ * La ficha citada tiene que ser la que se confirmó. Si entre la pantalla y el botón se creó una versión nueva
+ * —una vista sintética que terminó, otra pestaña que guardó la ficha—, lo confirmado ya no es lo que se
+ * enviaría, y se dice en lugar de gastar.
+ */
+function exigirVersionConfirmada(confirmada: string | undefined, seUsaria: string | null): void {
+  if (confirmada === undefined || confirmada === "") return;
+  if (confirmada === seUsaria) return;
+  throw new ErrorGeneracion(
+    409,
+    "La ficha ha cambiado desde que la revisaste: vuelve a mirar el contexto que se enviará y confirma otra vez.",
+  );
 }
 
 /**
@@ -135,6 +164,29 @@ async function trabajoDeLaConfirmacion(usuarioId: string, claveIdempotencia: str
   return fila ? vistaDeFila(fila) : null;
 }
 
+/**
+ * Contexto del personaje **heredado** por una imagen suelta que salió de otro trabajo hecho con él. Sin
+ * personaje no hay contexto ni versión que citar.
+ */
+async function fichaHeredada(
+  personajeId: string | null,
+  maximoDelModelo: number,
+): Promise<{ versionId: string | null; contexto: string }> {
+  if (!personajeId) return { versionId: null, contexto: "" };
+  const personaje = await personajePorId(personajeId);
+  if (!personaje) return { versionId: null, contexto: "" };
+  const { version, contexto } = await contextoParaGenerar(personaje, Math.max(1, maximoDelModelo));
+  return { versionId: version.id, contexto };
+}
+
+/** Contexto de una versión concreta, tal como se compuso al generar el fotograma del que sale el clip. */
+async function contextoDeLaVersion(versionId: string | null): Promise<string> {
+  const version = await versionDeTrabajo(versionId);
+  if (!version) return "";
+  const personaje = await personajePorId(version.characterId);
+  return personaje ? contextoDeVersion(version, personaje.kind) : "";
+}
+
 /** Comprobación previa determinista (contrato de decisiones): un rechazo no llega ni a encolarse. */
 async function exigirDecisionFavorable(entrada: Parameters<typeof decidir>[0]): Promise<void> {
   const decision = await decidir(entrada);
@@ -175,6 +227,14 @@ export async function crearFotograma(
     exigirRevisionDeReferencias(peticion.sinTerceros);
     await exigirPersonajeUsable(personajeId, "El personaje de esa imagen");
   }
+  // La ficha del personaje es **contexto de generación**: el servidor la compone a partir de la versión
+  // vigente y la añade al prompt. Un fotograma heredado (imagen suelta que salió de otro trabajo con
+  // personaje) recibe el contexto de ese mismo personaje, porque es la misma cara.
+  const conFicha = elegido
+    ? { versionId: elegido.version.id, contexto: elegido.contexto }
+    : await fichaHeredada(personajeId, modelo.parametros.maximoReferencias);
+  exigirVersionConfirmada(peticion.versionPersonaje, conFicha.versionId);
+  const promptFinal = promptConContexto(prompt, conFicha.contexto);
   await exigirCuota(actor, "fotograma");
   await exigirSaldo(actor.id, creditos, h.buscar, proveedor);
   await exigirRitmo(actor.id);
@@ -182,31 +242,40 @@ export async function crearFotograma(
     tipo: "fotograma",
     escena: prompt,
     dialogo: "",
+    // El contexto de la ficha va aparte de la escena: las reglas miden la descripción que escribió la persona.
+    contexto: conFicha.contexto,
     conVoz: modelo.conVoz,
     conReferencia: true,
     creditos,
   });
 
-  const parametros = adaptador.montarEntrada(modelo, { escena: prompt, dialogo: "", urls: [] });
+  const parametros = adaptador.montarEntrada(modelo, { escena: promptFinal, dialogo: "", urls: [] });
   const valores: NuevoTrabajoEncolado = {
     userId: actor.id,
     kind: "fotograma",
     provider: proveedor,
     model: modelo.modelo,
-    prompt,
+    // Se guarda el prompt **compuesto**, que es el que se envía: así el trabajo sigue llevando el contexto de
+    // la versión que citó aunque la ficha cambie después.
+    prompt: promptFinal,
     input: {
       ...entradaGuardada(
         adaptador,
-        prompt,
+        promptFinal,
         referencias.map((r) => r.id),
         parametros,
       ),
+      // Lo que escribió la persona y lo que añadió el servidor, separados: el historial tiene que poder
+      // mostrar las dos cosas sin adivinar dónde acaba una y empieza la otra.
+      escena: prompt,
+      ...(conFicha.contexto === "" ? {} : { contextoPersonaje: conFicha.contexto }),
       // Marca de «este resultado es una vista generada del personaje»: la lee el cierre del trabajo para
       // añadirla como referencia etiquetada. Solo la pone el servidor.
       ...(peticion.vistaSintetica && personajeId ? { vistaSintetica: peticion.vistaSintetica } : {}),
     },
     sourceMediaId: origen.id,
     characterId: personajeId,
+    characterVersionId: conFicha.versionId,
     // La revisión de referencias se guarda con su fecha, igual que la confirmación de derechos: es una
     // declaración y hay que poder demostrar cuándo se hizo.
     referencesReviewedAt: personajeId ? new Date() : null,
@@ -261,26 +330,38 @@ export async function crearAnimacion(
 
   // Un modelo sin voz no recibe nunca lo que dice el personaje (Hailuo 2.3 no tiene audio).
   const dialogo = modelo.conVoz ? limpiarDialogo(peticion.dialogo) : "";
+  // El clip lleva el contexto de **la misma versión que el fotograma**, no de la vigente: si la ficha ha
+  // cambiado entre los dos, animar tiene que seguir siendo el mismo personaje que se generó.
+  exigirVersionConfirmada(peticion.versionPersonaje, padre.characterVersionId);
+  const contexto = await contextoDeLaVersion(padre.characterVersionId);
   await exigirDecisionFavorable({
     tipo: "animacion",
     escena: prompt,
     dialogo,
+    contexto,
     conVoz: modelo.conVoz,
     conReferencia: true,
     creditos,
   });
   const segundos = modelo.parametros.duraciones[0] ?? CLIP.segundos;
-  const parametros = adaptador.montarEntrada(modelo, { escena: prompt, dialogo, urls: [] });
+  const promptFinal = promptConContexto(prompt, contexto);
+  const parametros = adaptador.montarEntrada(modelo, { escena: promptFinal, dialogo, urls: [] });
   const valores: NuevoTrabajoEncolado = {
     userId: actor.id,
     kind: "animacion",
     provider: proveedor,
     model: modelo.modelo,
-    prompt,
-    input: { ...entradaGuardada(adaptador, prompt, [origen.id], { ...parametros, segundos }), dialogo },
+    prompt: promptFinal,
+    input: {
+      ...entradaGuardada(adaptador, promptFinal, [origen.id], { ...parametros, segundos }),
+      dialogo,
+      escena: prompt,
+      ...(contexto === "" ? {} : { contextoPersonaje: contexto }),
+    },
     sourceMediaId: origen.id,
     parentJobId: padre.id,
     characterId: padre.characterId,
+    characterVersionId: padre.characterVersionId,
     referencesReviewedAt: padre.characterId ? new Date() : null,
     estimatedCredits: creditos,
   };
