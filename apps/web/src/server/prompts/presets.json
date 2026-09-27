@@ -1,0 +1,291 @@
+{
+  "comentario": "Semilla versionada de presets y plantillas de prompt (0.16.0). Ojo con los formatos: la proporcion viaja en `valores.proporcion`, que se valida contra el catalogo del modelo, y NO en el texto del prompt. El texto pasa por la misma limpieza anti-inyeccion que la ficha del personaje, que quita las medidas de salida (\"9:16\", \"1080p\"): escribelo en palabras (\"vertical full-bleed framing\"). Es el catálogo inicial de la instalación: seis especialidades, cuatro formatos y cinco looks, más vestuarios, duraciones y acciones. La descripción va en español (es lo que se lee en el botón) y `valores.prompt` en inglés (es lo que entra en el prompt), según la decisión provisional del 2026-09-27. La semilla no pisa lo que haya cambiado quien administra: solo crea lo que falta. Para añadir un preset, añade una entrada aquí con una clave nueva y vuelve a migrar.",
+  "presets": [
+    {
+      "categoria": "especialidad",
+      "clave": "moda",
+      "nombre": "Moda",
+      "descripcion": "El vestuario y el estilismo son el centro del plano.",
+      "orden": 10,
+      "valores": { "prompt": "Fashion content where the outfit and the styling are the subject of the shot" }
+    },
+    {
+      "categoria": "especialidad",
+      "clave": "fitness",
+      "nombre": "Fitness",
+      "descripcion": "Entrenamiento: cuerpo en movimiento, gimnasio o aire libre.",
+      "orden": 20,
+      "valores": { "prompt": "Fitness content with athletic body language, in a gym or an outdoor training spot" }
+    },
+    {
+      "categoria": "especialidad",
+      "clave": "gastronomia",
+      "nombre": "Gastronomía",
+      "descripcion": "El plato se ve y se entiende dentro del encuadre.",
+      "orden": 30,
+      "valores": { "prompt": "Food content where the dish stays clearly readable inside the frame" }
+    },
+    {
+      "categoria": "especialidad",
+      "clave": "viajes",
+      "nombre": "Viajes",
+      "descripcion": "Un sitio reconocible detrás, con sensación de estar allí.",
+      "orden": 40,
+      "valores": { "prompt": "Travel content with a recognisable location behind the subject" }
+    },
+    {
+      "categoria": "especialidad",
+      "clave": "belleza",
+      "nombre": "Belleza",
+      "descripcion": "Piel, pelo y maquillaje en plano corto y con detalle.",
+      "orden": 50,
+      "valores": { "prompt": "Beauty content in close framing, with skin, hair and make-up detail" }
+    },
+    {
+      "categoria": "especialidad",
+      "clave": "mascotas",
+      "nombre": "Mascotas",
+      "descripcion": "El animal comparte plano con quien lo cuida.",
+      "orden": 60,
+      "valores": { "prompt": "Pet content where the animal shares the frame with its owner" }
+    },
+
+    {
+      "categoria": "formato",
+      "clave": "reel-9-16",
+      "nombre": "Reel 9:16",
+      "descripcion": "Vertical a sangre, sin espacio reservado arriba.",
+      "orden": 10,
+      "valores": { "prompt": "vertical full-bleed framing, subject centred", "proporcion": "9:16" }
+    },
+    {
+      "categoria": "formato",
+      "clave": "story-9-16",
+      "nombre": "Story 9:16",
+      "descripcion": "Vertical con aire arriba para los rótulos de la historia.",
+      "orden": 20,
+      "valores": {
+        "prompt": "vertical framing with clear headroom at the top for overlaid captions",
+        "proporcion": "9:16"
+      }
+    },
+    {
+      "categoria": "formato",
+      "clave": "cuadrado-1-1",
+      "nombre": "Cuadrado 1:1",
+      "descripcion": "Cuadrado para cuadrícula. Hoy ningún modelo del catálogo lo admite.",
+      "orden": 30,
+      "valores": { "prompt": "square framing, subject centred", "proporcion": "1:1" }
+    },
+    {
+      "categoria": "formato",
+      "clave": "horizontal-16-9",
+      "nombre": "Horizontal 16:9",
+      "descripcion": "Apaisado. Hoy ningún modelo del catálogo lo admite.",
+      "orden": 40,
+      "valores": { "prompt": "horizontal framing, room on both sides", "proporcion": "16:9" }
+    },
+
+    {
+      "categoria": "estilo",
+      "clave": "natural",
+      "nombre": "Natural",
+      "descripcion": "Luz de día, contraste suave y color como es.",
+      "orden": 10,
+      "valores": { "prompt": "natural daylight, soft contrast, true-to-life colour" }
+    },
+    {
+      "categoria": "estilo",
+      "clave": "editorial",
+      "nombre": "Editorial",
+      "descripcion": "Revista: luz dura controlada y mucho contraste.",
+      "orden": 20,
+      "valores": { "prompt": "editorial magazine look, controlled hard light, rich contrast" }
+    },
+    {
+      "categoria": "estilo",
+      "clave": "nocturno-neon",
+      "nombre": "Nocturno neón",
+      "descripcion": "Noche con luces de color y reflejos en el suelo.",
+      "orden": 30,
+      "valores": { "prompt": "night-time neon look, coloured practical lights, wet reflections on the ground" }
+    },
+    {
+      "categoria": "estilo",
+      "clave": "luz-dorada",
+      "nombre": "Luz dorada",
+      "descripcion": "Última hora de sol: contraluz cálido y sombras largas.",
+      "orden": 40,
+      "valores": { "prompt": "golden hour backlight, warm haze, long shadows" }
+    },
+    {
+      "categoria": "estilo",
+      "clave": "estudio",
+      "nombre": "Estudio",
+      "descripcion": "Fondo liso y luz uniforme de plató.",
+      "orden": 50,
+      "valores": { "prompt": "studio look, seamless backdrop, even softbox lighting" }
+    },
+
+    {
+      "categoria": "vestuario",
+      "clave": "calle",
+      "nombre": "De calle",
+      "descripcion": "Lo de todos los días.",
+      "orden": 10,
+      "valores": { "prompt": "everyday streetwear" }
+    },
+    {
+      "categoria": "vestuario",
+      "clave": "deportivo",
+      "nombre": "Deportivo",
+      "descripcion": "Ropa de entrenar.",
+      "orden": 20,
+      "valores": { "prompt": "athletic sportswear" }
+    },
+    {
+      "categoria": "vestuario",
+      "clave": "elegante",
+      "nombre": "Elegante",
+      "descripcion": "Conjunto de noche, bien cortado.",
+      "orden": 30,
+      "valores": { "prompt": "tailored evening outfit" }
+    },
+    {
+      "categoria": "vestuario",
+      "clave": "de-casa",
+      "nombre": "De casa",
+      "descripcion": "Cómodo, en casa.",
+      "orden": 40,
+      "valores": { "prompt": "relaxed loungewear at home" }
+    },
+
+    {
+      "categoria": "duracion",
+      "clave": "clip-4",
+      "nombre": "4 segundos",
+      "descripcion": "Plano corto. Es la duración con precio medido en el catálogo, así que es la que se puede elegir hoy.",
+      "orden": 10,
+      "valores": { "prompt": "four", "segundos": 4 }
+    },
+    {
+      "categoria": "duracion",
+      "clave": "clip-6",
+      "nombre": "6 segundos",
+      "descripcion": "Da tiempo a una frase entera. Solo se puede elegir si el modelo la admite Y su precio está medido por clip de 6 s en Admin › Modelos: el precio se cobra por unidad.",
+      "orden": 20,
+      "valores": { "prompt": "six", "segundos": 6 }
+    },
+    {
+      "categoria": "duracion",
+      "clave": "clip-8",
+      "nombre": "8 segundos",
+      "descripcion": "Para una acción con principio y fin. Solo se puede elegir si el modelo la admite Y su precio está medido por clip de 8 s en Admin › Modelos: el precio se cobra por unidad.",
+      "orden": 30,
+      "valores": { "prompt": "eight", "segundos": 8 }
+    },
+
+    {
+      "categoria": "accion",
+      "clave": "saluda",
+      "nombre": "Saluda a cámara",
+      "descripcion": "Mira al objetivo y saluda con la mano.",
+      "orden": 10,
+      "valores": { "prompt": "waving at the camera" }
+    },
+    {
+      "categoria": "accion",
+      "clave": "camina",
+      "nombre": "Camina hacia cámara",
+      "descripcion": "Se acerca andando, sin prisa.",
+      "orden": 20,
+      "valores": { "prompt": "walking towards the camera" }
+    },
+    {
+      "categoria": "accion",
+      "clave": "ensena",
+      "nombre": "Enseña algo",
+      "descripcion": "Sostiene algo delante y lo muestra.",
+      "orden": 30,
+      "valores": { "prompt": "holding something up and showing it to the camera" }
+    },
+    {
+      "categoria": "accion",
+      "clave": "rie",
+      "nombre": "Se ríe",
+      "descripcion": "Risa natural, sin posar.",
+      "orden": 40,
+      "valores": { "prompt": "laughing naturally" }
+    },
+    {
+      "categoria": "accion",
+      "clave": "gira",
+      "nombre": "Da una vuelta",
+      "descripcion": "Gira para que se vea el conjunto entero.",
+      "orden": 50,
+      "valores": { "prompt": "turning around so the whole outfit is visible" }
+    }
+  ],
+  "plantillas": [
+    {
+      "clave": "fotograma-social",
+      "nombre": "Fotograma para redes",
+      "descripcion": "El fotograma de siempre, armado con los botones: especialidad, formato, look, vestuario y acción.",
+      "capacidad": "image_edit",
+      "orden": 10,
+      "plantilla": "{{especialidad}}.\nSubject: {{personaje}}.\nScene: {{escena}}.\nWardrobe: {{vestuario}}.\nLook: {{estilo}}.\nFraming: {{formato}}.\nAction: {{accion}}.\nPhotographic, no text and no logos in the image.",
+      "variables": [
+        {
+          "nombre": "especialidad",
+          "tipo": "enumerado",
+          "categoria": "especialidad",
+          "etiqueta": "Especialidad",
+          "obligatoria": true
+        },
+        { "nombre": "personaje", "tipo": "personaje", "etiqueta": "Personaje", "obligatoria": false },
+        { "nombre": "escena", "tipo": "texto", "etiqueta": "Qué quieres ver", "obligatoria": true },
+        {
+          "nombre": "vestuario",
+          "tipo": "enumerado",
+          "categoria": "vestuario",
+          "etiqueta": "Vestuario",
+          "obligatoria": false
+        },
+        { "nombre": "estilo", "tipo": "enumerado", "categoria": "estilo", "etiqueta": "Look", "obligatoria": true },
+        {
+          "nombre": "formato",
+          "tipo": "enumerado",
+          "categoria": "formato",
+          "etiqueta": "Formato",
+          "obligatoria": true
+        },
+        { "nombre": "accion", "tipo": "enumerado", "categoria": "accion", "etiqueta": "Acción", "obligatoria": false }
+      ],
+      "restricciones": { "modelos": [], "minimoReferencias": 1 }
+    },
+    {
+      "clave": "clip-social",
+      "nombre": "Clip para redes",
+      "descripcion": "El clip que anima el fotograma: duración, look y acción. El formato lo hereda de la imagen.",
+      "capacidad": "image_to_video",
+      "orden": 10,
+      "plantilla": "A continuous {{duracion}}-second shot of {{personaje}}.\nScene: {{escena}}.\nLook: {{estilo}}.\nAction: {{accion}}.\nCamera: steady, with a subtle handheld feel.",
+      "variables": [
+        {
+          "nombre": "duracion",
+          "tipo": "numero",
+          "categoria": "duracion",
+          "etiqueta": "Duración",
+          "obligatoria": true,
+          "minimo": 1,
+          "maximo": 60
+        },
+        { "nombre": "personaje", "tipo": "personaje", "etiqueta": "Personaje", "obligatoria": false },
+        { "nombre": "escena", "tipo": "texto", "etiqueta": "Qué quieres ver", "obligatoria": true },
+        { "nombre": "estilo", "tipo": "enumerado", "categoria": "estilo", "etiqueta": "Look", "obligatoria": false },
+        { "nombre": "accion", "tipo": "enumerado", "categoria": "accion", "etiqueta": "Acción", "obligatoria": false }
+      ],
+      "restricciones": { "modelos": [], "minimoReferencias": 1 }
+    }
+  ]
+}

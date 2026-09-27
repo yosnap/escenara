@@ -1,9 +1,10 @@
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
-import { index, integer, pgEnum, pgTable, real, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgEnum, pgTable, real, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { media } from "./esquema";
 import { users } from "./esquema-auth";
 import { proveedorCredencial } from "./esquema-boveda";
 import { characters, characterVersions } from "./esquema-personajes";
+import { promptTemplates, promptTemplateVersions } from "./esquema-presets";
 import { jsonb } from "./jsonb";
 
 /**
@@ -98,6 +99,18 @@ export const generationJobs = pgTable(
      * solo desaparecen al borrar el personaje, que borra también sus trabajos.
      */
     characterVersionId: uuid("character_version_id").references(() => characterVersions.id, { onDelete: "set null" }),
+    /**
+     * Plantilla de prompt con la que se compuso el trabajo (0.16.0), y la **fila de la versión** que se citó.
+     * La versión es lo que hace auditable el prompt: editar la plantilla crea otra versión y lo ya generado
+     * sigue apuntando a la que usó, igual que la ficha del personaje. `set null` en las dos: una plantilla se
+     * puede borrar y el trabajo, con su prompt final guardado, sigue siendo un hecho histórico.
+     */
+    promptTemplateId: uuid("prompt_template_id").references(() => promptTemplates.id, { onDelete: "set null" }),
+    promptTemplateVersionId: uuid("prompt_template_version_id").references(() => promptTemplateVersions.id, {
+      onDelete: "set null",
+    }),
+    /** `true` si el usuario editó a mano el texto que compuso la plantilla antes de confirmar. */
+    promptEdited: boolean("prompt_edited").notNull().default(false),
     resultMediaId: uuid("result_media_id").references(() => media.id, { onDelete: "set null" }),
     estimatedCredits: integer("estimated_credits").notNull(),
     /** Créditos que informa el proveedor; si no llegan, se conserva la estimación marcada como tal. */

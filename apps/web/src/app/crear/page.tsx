@@ -12,6 +12,7 @@ import { estimarTodo } from "@/server/generacion/estimacion";
 import { personajesElegibles } from "@/server/personajes/consulta";
 import { contextoAplicado } from "@/server/personajes/contexto";
 import { depositoDe } from "@/server/presupuesto/deposito";
+import { catalogoParaCrear } from "@/server/prompts/catalogo-para-crear";
 import { modelosParaCrear } from "@/server/proveedores/catalogo";
 import { CabeceraApp } from "../_app/cabecera-app";
 import { VistaCrear } from "./_componentes/vista-crear";
@@ -33,16 +34,21 @@ export default async function PaginaCrear({ searchParams }: { searchParams: Prom
   const kie = credenciales.find((c) => c.proveedor === "kie") ?? null;
   const puedeGenerar = Boolean(kie && kie.estado === "valida");
   // La estimación no necesita credencial (el saldo se queda en `null`): así el coste se ve siempre.
-  const [estimaciones, modelosFotograma, modelosClip, deposito, cola, personajes] = puedeGenerar
-    ? await Promise.all([
-        estimarTodo(sesion.user.id),
-        modelosParaCrear("image_edit"),
-        modelosParaCrear("image_to_video"),
-        depositoDe(sesion.user.id),
-        estadoDeCola(sesion.user.id),
-        personajesElegibles({ id: sesion.user.id, esAdmin: esAdmin(sesion) }),
-      ])
-    : [null, [], [], null, null, []];
+  const [estimaciones, modelosFotograma, modelosClip, deposito, cola, personajes, catalogoFoto, catalogoClip] =
+    puedeGenerar
+      ? await Promise.all([
+          estimarTodo(sesion.user.id),
+          modelosParaCrear("image_edit"),
+          modelosParaCrear("image_to_video"),
+          depositoDe(sesion.user.id),
+          estadoDeCola(sesion.user.id),
+          personajesElegibles({ id: sesion.user.id, esAdmin: esAdmin(sesion) }),
+          // Presets y plantillas con el modelo predeterminado de cada capacidad: así la botonera está pintada
+          // al cargar la página, sin efectos en el navegador.
+          catalogoParaCrear(sesion.user.id, "fotograma"),
+          catalogoParaCrear(sesion.user.id, "animacion"),
+        ])
+      : [null, [], [], null, null, [], null, null];
 
   // Llegando desde la ficha con un personaje preseleccionado, el contexto se resuelve **aquí**: así la zona de
   // claridad ya está rellena al cargar la página, sin efectos en el navegador.
@@ -94,7 +100,7 @@ export default async function PaginaCrear({ searchParams }: { searchParams: Prom
           />
         )}
 
-        {estimaciones && deposito && cola && (
+        {estimaciones && deposito && cola && catalogoFoto && catalogoClip && (
           <VistaCrear
             estimacionFotograma={estimaciones.fotograma}
             estimacionAnimacion={estimaciones.animacion}
@@ -105,6 +111,8 @@ export default async function PaginaCrear({ searchParams }: { searchParams: Prom
             personajes={personajes}
             personajeInicial={personajeInicial}
             contextoInicial={contextoInicial}
+            catalogoFotogramaInicial={catalogoFoto}
+            catalogoClipInicial={catalogoClip}
           />
         )}
       </main>

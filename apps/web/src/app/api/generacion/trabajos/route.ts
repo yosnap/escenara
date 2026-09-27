@@ -4,6 +4,7 @@ import { ErrorGeneracion } from "@/server/generacion/errores";
 import { exigirMismoOrigen, leerCuerpo, manejador } from "@/server/generacion/http";
 import { crearAnimacion, crearFotograma } from "@/server/generacion/servicio";
 import { listarTrabajos } from "@/server/generacion/trabajos";
+import { leerSeleccionDePresets } from "@/server/prompts/entrada";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,10 @@ export const GET = manejador(async (_: Request, __: unknown, actor) =>
  * `avisoUmbralAceptado` es obligatorio cuando la estimación pasa del aviso de Admin › Ajustes, y
  * `versionPersonaje` es la versión de la ficha que se le mostró al confirmar: si la que se usaría es otra, se
  * responde 409 en lugar de generar con una apariencia que el usuario no ha revisado.
+ *
+ * Con `plantillaId` (0.16.0), el prompt lo **compone el servidor** a partir de `presets` (identificadores por
+ * categoría) y de `prompt`, que pasa a ser el valor de la variable de texto. `promptEditado` es el texto final
+ * que el usuario editó a mano, si lo editó. Nada de esto puede cambiar modelo, duración ni resolución.
  */
 export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
   exigirMismoOrigen(peticion);
@@ -46,8 +51,10 @@ export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
   if (version !== undefined && (typeof version !== "string" || version.length > 40)) {
     throw new ErrorGeneracion(400, "La versión de la ficha confirmada no es válida.");
   }
+  const plantilla = leerSeleccionDePresets(cuerpo);
   const comun = {
     prompt: String(cuerpo.prompt ?? ""),
+    ...plantilla,
     creditosConfirmados: cuerpo.creditosConfirmados as number,
     derechos: cuerpo.derechos === true,
     avisoUmbralAceptado: cuerpo.avisoUmbralAceptado === true,

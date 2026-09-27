@@ -23,8 +23,20 @@ import {
 } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
 import { AVISO_SIN_TERCEROS, type ContextoAplicado, type PersonajeElegible } from "@/lib/personajes";
+import { type CatalogoParaCrear, type PresetElegible, VARIABLE_TEXTO_MAXIMA } from "@/lib/presets";
 import { consultarEstimacion, crearTrabajo, type Resultado } from "./api-generacion";
+import { consultarCatalogoDePresets, duplicarPreset } from "./api-presets";
+import { DialogoPresetPropio } from "./dialogo-preset-propio";
 import { type ConfirmacionCoste, PanelGenerar } from "./panel-generar";
+import {
+  confirmacionDePlantilla,
+  ESTADO_PLANTILLA_VACIO,
+  type EstadoPlantilla,
+  firmaDePlantilla,
+  PanelPlantilla,
+  previsualizar,
+  sinIncompatibles,
+} from "./panel-plantilla";
 import { ResultadoTrabajo } from "./resultado-trabajo";
 import { SeguimientoTrabajo } from "./seguimiento-trabajo";
 
@@ -49,6 +61,8 @@ export function VistaCrear({
   personajes,
   personajeInicial,
   contextoInicial,
+  catalogoFotogramaInicial,
+  catalogoClipInicial,
 }: {
   estimacionFotograma: Estimacion;
   estimacionAnimacion: Estimacion;
@@ -62,6 +76,12 @@ export function VistaCrear({
   personajeInicial: string | null;
   /** Contexto ya resuelto en el servidor para ese personaje, si venía preseleccionado. */
   contextoInicial: ContextoAplicado | null;
+  /**
+   * Presets y plantillas que este usuario puede usar, con lo que el modelo predeterminado no admite y por qué
+   * (0.16.0). Se vuelven a pedir al cambiar de modelo, porque los formatos y las duraciones son suyos.
+   */
+  catalogoFotogramaInicial: CatalogoParaCrear;
+  catalogoClipInicial: CatalogoParaCrear;
 }) {
   const [personajeId, setPersonajeId] = useState<string | null>(personajeInicial);
   /**
@@ -82,6 +102,18 @@ export function VistaCrear({
   const [estimacionClip, setEstimacionClip] = useState(estimacionAnimacion);
   const [enviando, setEnviando] = useState<"fotograma" | "animacion" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [catalogoFoto, setCatalogoFoto] = useState(catalogoFotogramaInicial);
+  const [catalogoClip, setCatalogoClip] = useState(catalogoClipInicial);
+  // Plantilla y presets elegidos. Empiezan en la primera plantilla activa de cada capacidad, que es la que la
+  // instalación ofrece por defecto.
+  const [plantillaFoto, setPlantillaFoto] = useState<EstadoPlantilla>({
+    ...ESTADO_PLANTILLA_VACIO,
+    plantillaId: catalogoFotogramaInicial.plantillas[0]?.id ?? "",
+  });
+  const [plantillaClip, setPlantillaClip] = useState<EstadoPlantilla>({
+    ...ESTADO_PLANTILLA_VACIO,
+    plantillaId: catalogoClipInicial.plantillas[0]?.id ?? "",
+  });
 
   const modeloClip = modelosClip.find((m) => m.modelo === estimacionClip.modelo) ?? null;
   const clipConVoz = modeloClip?.conVoz ?? estimacionClip.conVoz;
@@ -90,6 +122,14 @@ export function VistaCrear({
   const modeloFoto = modelosFotograma.find((m) => m.modelo === estimacionFoto.modelo) ?? null;
   const descripcion = prompt.trim();
   const frase = dialogo.trim();
+  // Previsualización del prompt, calculada aquí mismo con la **misma** función pura que compone el servidor.
+  const previaFoto = previsualizar(catalogoFoto, plantillaFoto, descripcion, personaje?.tipo ?? null);
+  // El clip anima **el fotograma**, así que su sujeto es el personaje con el que se hizo ese fotograma, no el que
+  // esté elegido ahora arriba: entre los dos envíos se puede haber cambiado de personaje.
+  const personajeDelClip = fotograma?.personajeId
+    ? (personajes.find((p) => p.id === fotograma.personajeId) ?? null)
+    : null;
+  const previaClip = previsualizar(catalogoClip, plantillaClip, descripcion, personajeDelClip?.tipo ?? null);
 
   const bloqueosFotograma = [
     ...(personaje || referencia ? [] : ["Elige un personaje o una imagen de referencia."]),
@@ -98,6 +138,9 @@ export function VistaCrear({
       ? ["El modelo elegido no acepta fotos de referencia: elige otro para generar con un personaje."]
       : []),
     ...(descripcion.length >= PROMPT_MINIMO ? [] : ["Falta describir la escena."]),
+    // Todo lo que impide componer el prompt, con la explicación que da el renderizador: qué falta y qué número
+    // está fuera de rango. No se resume en «revisa los datos».
+    ...previaFoto.motivos,
     ...(estimacionFoto.alcanza ? [] : ["Tu saldo de KIE no llega para este trabajo."]),
   ];
 
@@ -144,6 +187,8 @@ export function VistaCrear({
         : {}),
       prompt: descripcion,
       modelo: estimacionFoto.modelo,
+      // Plantilla, versión y presets elegidos: el prompt lo compone el servidor con ellos, no con este texto.
+      ...confirmacionDePlantilla(previaFoto, plantillaFoto),
       ...confirmacion,
     });
     setEnviando(null);
@@ -166,6 +211,7 @@ export function VistaCrear({
       dialogo: clipConVoz ? frase : "",
       ...(fotograma.personajeId ? { sinTerceros: sinTercerosClip } : {}),
       modelo: estimacionClip.modelo,
+      ...confirmacionDePlantilla(previaClip, plantillaClip),
       ...confirmacion,
     });
     setEnviando(null);
@@ -201,6 +247,39 @@ export function VistaCrear({
       // El tope de fotos de referencia es del modelo: al cambiarlo, cambia lo que se va a enviar.
       await refrescarContexto(personajeId, respuesta.datos.modelo);
     } else setEstimacionClip(respuesta.datos);
+    // Y los formatos y las duraciones que se pueden ofrecer también son del modelo: se vuelven a pedir en
+    // lugar de deducirlos aquí, que es lo que dejaría ofrecer algo que el servidor va a rechazar.
+    await refrescarCatalogo(tipo, respuesta.datos.modelo);
+  };
+
+  /** Presets y plantillas para el modelo indicado. Lectura: no encola nada ni mueve dinero. */
+  const refrescarCatalogo = async (tipo: "fotograma" | "animacion", modelo: string) => {
+    const respuesta = await consultarCatalogoDePresets(tipo, modelo);
+    if (!respuesta.ok) {
+      setError(respuesta.error);
+      return;
+    }
+    if (tipo === "fotograma") {
+      setCatalogoFoto(respuesta.datos);
+      setPlantillaFoto((previo) => sinIncompatibles(previo, respuesta.datos));
+    } else {
+      setCatalogoClip(respuesta.datos);
+      setPlantillaClip((previo) => sinIncompatibles(previo, respuesta.datos));
+    }
+  };
+
+  /**
+   * Duplica un preset de la instalación para que el usuario pueda editarlo en «Tus presets». La copia aparece
+   * al momento en la botonera, marcada como tuya.
+   */
+  const duplicar = async (tipo: "fotograma" | "animacion", preset: PresetElegible) => {
+    setError(null);
+    const respuesta = await duplicarPreset(preset.id);
+    if (!respuesta.ok) {
+      setError(respuesta.error);
+      return;
+    }
+    await refrescarCatalogo(tipo, tipo === "fotograma" ? estimacionFoto.modelo : estimacionClip.modelo);
   };
 
   return (
@@ -261,7 +340,22 @@ export function VistaCrear({
       <Paso numero={2} titulo="Describe la escena">
         <Campo
           etiqueta="Qué quieres ver"
-          ayuda={`Dónde está, qué hace y cómo se ve. Mínimo ${PROMPT_MINIMO} caracteres. El clip saldrá con el formato del modelo que elijas para animarlo.`}
+          ayuda={
+            <>
+              Dónde está, qué hace y cómo se ve. Mínimo {PROMPT_MINIMO} caracteres. El clip saldrá con el formato del
+              modelo que elijas para animarlo.{" "}
+              <span className="font-mono">
+                {descripcion.length}/{VARIABLE_TEXTO_MAXIMA}
+              </span>
+              {descripcion.length > VARIABLE_TEXTO_MAXIMA && (
+                <strong className="font-semibold text-texto">
+                  {" "}
+                  Al componer el prompt se enviarán solo los primeros {VARIABLE_TEXTO_MAXIMA} caracteres: acórtalo tú
+                  para decidir qué se queda.
+                </strong>
+              )}
+            </>
+          }
         >
           {(props) => (
             <AreaTexto
@@ -272,6 +366,23 @@ export function VistaCrear({
             />
           )}
         </Campo>
+        {/* Los botones son el corazón de «Crear»: la escena que se escribe arriba es una de las variables. */}
+        <PanelPlantilla
+          catalogo={catalogoFoto}
+          estado={plantillaFoto}
+          previa={previaFoto}
+          deshabilitado={enviando !== null}
+          onCambio={setPlantillaFoto}
+          onDuplicar={(preset) => void duplicar("fotograma", preset)}
+          accionesDePreset={(preset) => (
+            <DialogoPresetPropio
+              key={preset.id}
+              preset={preset}
+              deshabilitado={enviando !== null}
+              onGuardado={() => void refrescarCatalogo("fotograma", estimacionFoto.modelo)}
+            />
+          )}
+        />
         {clipConVoz ? (
           <Campo
             etiqueta="Lo que dice (opcional)"
@@ -309,7 +420,7 @@ export function VistaCrear({
         <PanelGenerar
           estimacion={estimacionFoto}
           etiqueta="Generar fotograma"
-          firma={`fotograma|${personaje?.id ?? ""}|${contexto?.personajeId === personaje?.id ? contexto?.versionId : ""}|${referencia?.id ?? ""}|${descripcion}|${estimacionFoto.modelo}|${estimacionFoto.sello}`}
+          firma={`fotograma|${personaje?.id ?? ""}|${contexto?.personajeId === personaje?.id ? contexto?.versionId : ""}|${referencia?.id ?? ""}|${descripcion}|${estimacionFoto.modelo}|${estimacionFoto.sello}|${firmaDePlantilla(previaFoto, plantillaFoto)}`}
           bloqueos={bloqueosFotograma}
           enviando={enviando === "fotograma"}
           onGenerar={generarFotograma}
@@ -345,11 +456,28 @@ export function VistaCrear({
                         onCambio={setSinTercerosClip}
                       />
                     )}
+                    <PanelPlantilla
+                      catalogo={catalogoClip}
+                      estado={plantillaClip}
+                      previa={previaClip}
+                      deshabilitado={enviando !== null}
+                      onCambio={setPlantillaClip}
+                      onDuplicar={(preset) => void duplicar("animacion", preset)}
+                      accionesDePreset={(preset) => (
+                        <DialogoPresetPropio
+                          key={preset.id}
+                          preset={preset}
+                          deshabilitado={enviando !== null}
+                          onGuardado={() => void refrescarCatalogo("animacion", estimacionClip.modelo)}
+                        />
+                      )}
+                    />
                     <PanelGenerar
                       estimacion={estimacionClip}
                       etiqueta={`Animar ${segundosDelClip(modeloClip)} s`}
-                      firma={`animacion|${fotograma.id}|${descripcion}|${frase}|${estimacionClip.modelo}|${estimacionClip.sello}`}
+                      firma={`animacion|${fotograma.id}|${descripcion}|${frase}|${estimacionClip.modelo}|${estimacionClip.sello}|${firmaDePlantilla(previaClip, plantillaClip)}`}
                       bloqueos={[
+                        ...previaClip.motivos,
                         ...(estimacionClip.alcanza ? [] : ["Tu saldo de KIE no llega para el clip."]),
                         ...(fotograma.personajeId && !sinTercerosClip
                           ? ["Falta confirmar la revisión de las fotos del personaje."]

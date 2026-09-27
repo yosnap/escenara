@@ -70,6 +70,24 @@ Las ramas `main` y `develop` no admiten commits directos. El equipo mantenedor p
 - **Documentación:** si cambias algo visible o de configuración, actualiza `docs/` y, si cambia la interfaz, añade o actualiza capturas en `docs/assets/capturas/`.
 - **Decisiones de arquitectura:** un cambio de tecnología o de contrato público necesita un [ADR](docs/arquitectura/decisiones/README.md).
 
+### Añadir presets o plantillas de prompt a la semilla
+
+El catálogo inicial de presets y plantillas de una instalación nueva sale de un fichero versionado,
+`apps/web/src/server/prompts/presets.json`. Para añadir uno:
+
+1. añade una entrada con una **clave nueva** (`clave`), su categoría, su nombre, su descripción **en español** y
+   su `valores.prompt` **en inglés**. La descripción es lo que se lee en el botón; el `prompt` es lo que entra
+   en el prompt;
+2. en la categoría `formato`, la proporción va en `valores.proporcion` («9:16»), y en `duracion`, los segundos
+   van en `valores.segundos`. **No** los escribas dentro del texto del prompt: son restricciones que se
+   comprueban contra el catálogo de modelos, y la limpieza anti-inyección quita del prompt cualquier medida de
+   salida escrita en texto («9:16», «1080p»);
+3. ejecuta `bun run db:backup` y `bun run db:migrate`. La semilla es **idempotente** y **no pisa** lo que haya
+   cambiado quien administra desde `/admin/presets` o `/admin/plantillas`: solo crea lo que falta.
+
+Los presets y las plantillas de la semilla son **de la instalación** (`owner_id` nulo). Las copias de cada
+usuario nacen de duplicar desde «Crear», nunca de la semilla.
+
 ## Idioma
 
 El producto y la documentación están en español de España; la versión en inglés llegará más adelante. Puedes escribir issues y pull requests en español o en inglés.
