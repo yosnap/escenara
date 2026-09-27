@@ -129,14 +129,15 @@ describe("creación de la tarea", () => {
     });
   });
 
-  test("la entrada de la animación fija 4 s, 9:16 y 720p con el fotograma como primer fotograma", () => {
-    expect(entradaAnimacion("se mueve", "", "https://tempfile.kie.ai/a.png")).toMatchObject({
+  test("la entrada de la animación lleva la duración pedida, 9:16 y 720p, con el fotograma como primero", () => {
+    expect(entradaAnimacion("se mueve", "", "https://tempfile.kie.ai/a.png", 8)).toMatchObject({
       image_urls: ["https://tempfile.kie.ai/a.png"],
       generation_type: "FIRST_AND_LAST_FRAMES_2_VIDEO",
       aspect_ratio: "9:16",
-      duration: 4,
+      duration: 8,
       resolution: "720p",
     });
+    expect(entradaAnimacion("se mueve", "", "https://tempfile.kie.ai/a.png", 4).duration).toBe(4);
   });
 
   test("una tarea sin identificador no se da por creada", async () => {

@@ -74,8 +74,6 @@ export const PRESUPUESTO_MAXIMO = 100_000_000;
 
 export const TEXTO_ESCENA_MAXIMO = 600;
 export const ACCION_MAXIMA = 300;
-export const SEGUNDOS_MINIMOS = 2;
-export const SEGUNDOS_MAXIMOS = 30;
 
 /** Título del proyecto que se usa cuando no hay ninguno (y el que crea la migración de los trabajos sueltos). */
 export const TITULO_SIN_TITULO = "Sin título";
@@ -226,6 +224,8 @@ export interface ProyectoVista {
   personajeNombre: string | null;
   /** Presupuesto autorizado del proyecto en créditos; 0 = sin fijar todavía. */
   presupuestoCreditos: number;
+  /** Duración de los clips de este proyecto, en segundos. Es la que se le pide al modelo de vídeo. */
+  segundosClip: number;
   totalEscenas: number;
   /** Total estimado de todas las escenas, en créditos. */
   totalEstimado: number;

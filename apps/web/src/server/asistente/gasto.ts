@@ -221,7 +221,7 @@ async function apuntarCierre(
 
 /**
  * Una llamada de texto que se queda en `reservado` más de esto es una llamada que no terminó: el proceso murió
- * entre la reserva y el cierre. Una síncrona no tarda más de un minuto y medio (el cliente corta a los 45 s).
+ * entre la reserva y el cierre. Una síncrona no tarda más de un par de minutos (el cliente corta a los 90 s).
  */
 export const MS_MAXIMO_RESERVADO = 10 * 60 * 1000;
 

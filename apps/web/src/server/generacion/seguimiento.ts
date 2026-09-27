@@ -193,10 +193,18 @@ async function guardarResultado(
   await db().update(generationJobs).set({ stage: "descargando" }).where(eq(generationJobs.id, fila.id));
   try {
     const { archivo, origen } = await h.descargar(url, limiteSubida(permitidos));
-    // La duración del clip es la que declara el modelo en el catálogo (Hailuo 2.3 hace 6 s, no 4).
+    // La duración del clip es la que se le pidió de verdad al proveedor, que quedó guardada en la entrada del
+    // trabajo. Solo si ese trabajo es anterior a que la duración se eligiera se cae en la del catálogo.
+    const parametrosPedidos = (fila.input.parametros ?? {}) as Record<string, unknown>;
+    const segundosPedidos = parametrosPedidos.segundos;
     const reproduccion =
       fila.kind === "animacion"
-        ? { duracion: (await duracionDeModelo(fila.provider, fila.model)) ?? CLIP.segundos }
+        ? {
+            duracion:
+              typeof segundosPedidos === "number" && segundosPedidos > 0
+                ? segundosPedidos
+                : ((await duracionDeModelo(fila.provider, fila.model)) ?? CLIP.segundos),
+          }
         : {};
     const medio = await crearMedio(actor, archivo, reproduccion, permitidos, origen);
     const [cerrada] = await db()

@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import type { CodigoPrueba } from "@/lib/boveda";
 import type { Buscador } from "../codigos";
 import { ErrorKie } from "./cliente";
-import { generarTextoKie } from "./texto";
+import { generarTextoKie, MS_TEXTO } from "./texto";
 
 /**
  * Cliente del modelo de texto de KIE. **Ningún test llama al proveedor**: se simula.
@@ -56,6 +56,12 @@ describe("lo que se le envía al proveedor", () => {
       { role: "user", content: "Hola a todos." },
     ]);
     expect(resultado).toEqual({ texto: "Hello.", creditos: 0.48 });
+  });
+
+  test("espera hasta 90 s, que es el doble de la latencia medida del modelo", () => {
+    // Medido el 2026-09-27 con la clave real: un guion de cuatro escenas tardó hasta 37 s, así que cortar a los
+    // 45 s tiraba respuestas ya pagadas.
+    expect(MS_TEXTO).toBe(90_000);
   });
 });
 

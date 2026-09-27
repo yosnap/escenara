@@ -11,7 +11,7 @@ import { crearAnimacion, crearFotograma } from "../generacion/servicio";
 import type { Actor } from "../media/servicio";
 import { plantillaVigenteDe } from "../prompts/consulta";
 import { marcarEnProduccion } from "./cierre";
-import { escenasPorProducir, estadoDeProduccion, ultimoTrabajoDeEscena } from "./consulta";
+import { escenasPorProducir, estadoDeProduccion, exigirDuracionProducible, ultimoTrabajoDeEscena } from "./consulta";
 import { presetsDeProduccion } from "./presets";
 
 /**
@@ -119,7 +119,7 @@ async function encolarFotograma(
         ? {
             plantillaId: plantilla.id,
             plantillaVersionId: plantilla.versionId,
-            presets: await presetsDeProduccion(actor.id, plantilla, plantilla.versionId),
+            presets: await presetsDeProduccion(actor.id, plantilla, proyecto.clipSeconds, plantilla.versionId),
           }
         : {}),
     },
@@ -134,6 +134,7 @@ async function encolarFotograma(
 async function encolarAnimacion(
   actor: Actor,
   escena: FilaEscena,
+  proyecto: FilaProyecto,
   trabajoPadreId: string,
   confirmacion: ConfirmacionProduccion,
   clave: string,
@@ -160,7 +161,7 @@ async function encolarAnimacion(
         ? {
             plantillaId: plantilla.id,
             plantillaVersionId: plantilla.versionId,
-            presets: await presetsDeProduccion(actor.id, plantilla, plantilla.versionId),
+            presets: await presetsDeProduccion(actor.id, plantilla, proyecto.clipSeconds, plantilla.versionId),
           }
         : {}),
     },
@@ -276,6 +277,7 @@ export async function producirEscena(
   h: Herramientas = HERRAMIENTAS,
 ): Promise<ProduccionVista> {
   const { escena, proyecto } = await escenaPropia(actor, escenaId);
+  await exigirDuracionProducible(proyecto);
   const anteriores = await ultimosTrabajos(escena.id);
   await encolarFotograma(
     actor,
@@ -307,6 +309,7 @@ export async function aprobarFotograma(
   h: Herramientas = HERRAMIENTAS,
 ): Promise<ProduccionVista> {
   const { escena, proyecto } = await escenaPropia(actor, escenaId);
+  await exigirDuracionProducible(proyecto);
   const [fotograma, animacion] = await ultimosTrabajos(escena.id);
   if (fotograma?.state !== "listo" || !fotograma.resultMediaId) {
     throw new ErrorProyecto(409, "Espera a que el fotograma de esta escena esté listo y guardado antes de aprobarlo.");
@@ -329,6 +332,7 @@ export async function aprobarFotograma(
   await encolarAnimacion(
     actor,
     escena,
+    proyecto,
     fotograma.id,
     confirmacion,
     claveDerivada(confirmacion.claveIdempotencia, "animacion", fotograma.id, animacion?.id ?? "primera"),
@@ -357,6 +361,7 @@ export async function regenerarEscena(
   h: Herramientas = HERRAMIENTAS,
 ): Promise<ProduccionVista> {
   const { escena, proyecto } = await escenaPropia(actor, escenaId);
+  await exigirDuracionProducible(proyecto);
   const anteriores = await ultimosTrabajos(escena.id);
   const enMarcha = anteriores.find((t) => t !== null && !trabajoTerminado(t.state));
   if (enMarcha) {

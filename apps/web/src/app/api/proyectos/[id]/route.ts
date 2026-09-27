@@ -16,7 +16,7 @@ export const GET = manejador(async (_: Request, contexto: ContextoId, actor) => 
   return Response.json(await detalleProyecto(actor, await leerId(contexto)));
 });
 
-/** Cambia título, formato, idea, concepto, protagonista o presupuesto autorizado (solo el dueño). */
+/** Cambia título, formato, idea, concepto, protagonista, presupuesto autorizado o duración del clip (solo el dueño). */
 export const PATCH = manejador(async (peticion: Request, contexto: ContextoId, actor) => {
   exigirMismoOrigen(peticion);
   await exigirRitmoDeEscritura(actor, "editar");

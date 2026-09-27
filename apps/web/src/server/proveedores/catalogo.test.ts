@@ -217,8 +217,15 @@ describe("semilla versionada del catálogo", () => {
   });
 
   test("de todo modelo de KIE que se puede elegir se sabe con qué parámetros pedirlo", () => {
+    // Los de texto no pasan por `jobs/createTask` ni por el mapa de entradas: su endpoint es síncrono y su
+    // petición la compone el asistente (`kie/texto.ts`).
     const sinEntrada = MODELOS.filter(
-      (m) => m.proveedor === "kie" && esEstadoModelo(m.estado) && esSeleccionable(m.estado) && !tieneEntrada(m.modelo),
+      (m) =>
+        m.proveedor === "kie" &&
+        !m.capacidades.includes("text_generation") &&
+        esEstadoModelo(m.estado) &&
+        esSeleccionable(m.estado) &&
+        !tieneEntrada(m.modelo),
     );
     expect(sinEntrada.map((m) => m.modelo)).toEqual([]);
   });

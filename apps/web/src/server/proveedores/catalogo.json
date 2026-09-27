@@ -1,5 +1,5 @@
 {
-  "comentario": "Semilla del catálogo de proveedores y modelos (0.11.0). Cada modelo se siembra con lo que se ejecutó de verdad: los parámetros salen de spikes/comparativa-modelos/comparativa.ts y los precios, de plans/reports/comparativa-260927-modelos-kie.md. Solo es 'validado' lo que además tiene evidencia revisada. La semilla no pisa lo que haya cambiado quien administra: solo crea lo que falta. La 0.17.0 añade el modelo de texto del asistente de guion, sembrado como «descubierto»: no se puede elegir ni enviar hasta que quien administra lo ejecute de verdad y lo marque compatible.",
+  "comentario": "Semilla del catálogo de proveedores y modelos (0.11.0). Cada modelo se siembra con lo que se ejecutó de verdad: los parámetros salen de spikes/comparativa-modelos/comparativa.ts y los precios, de plans/reports/comparativa-260927-modelos-kie.md. Solo es 'validado' lo que además tiene evidencia revisada. La semilla no pisa lo que haya cambiado quien administra: solo crea lo que falta. La 0.17.0 añade el modelo de texto del asistente de guion, que desde la 0.19.1 está validado con su coste medido llamada a llamada.",
   "proveedores": [
     {
       "slug": "kie",
@@ -89,15 +89,15 @@
     },
     {
       "proveedor": "kie",
-      "modelo": "veo3_lite",
-      "nombre": "Veo 3.1 Lite",
+      "modelo": "veo3_fast",
+      "nombre": "Veo 3.1 Fast",
       "capacidades": ["image_to_video", "text_to_video"],
       "estado": "validado",
       "predeterminado": true,
       "conVoz": true,
-      "unidad": "vídeo de 4 s",
+      "unidad": "vídeo de 4 u 8 s",
       "parametros": {
-        "duraciones": [4, 6, 8],
+        "duraciones": [8, 4],
         "proporciones": ["9:16"],
         "resoluciones": ["720p", "1080p"],
         "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
@@ -105,11 +105,35 @@
       },
       "precio": {
         "creditos": 60,
-        "fuente": "Medido en el prototipo 0.3.0 con la cuenta de KIE del propietario",
+        "fuente": "Medido el 2026-09-27 con la cuenta de KIE del propietario: clip de 8 s a 720p con FIRST_AND_LAST_FRAMES_2_VIDEO",
         "comprobado": "2026-09-27"
       },
-      "evidencia": "60 créditos por clip de 4 s medidos en el prototipo 0.3.0. Clip real con voz, 720 × 1280 y 4 s comprobado de extremo a extremo en la 0.10.1.",
-      "notas": "Único modelo con voz validado: dice la frase de «Lo que dice» con labios sincronizados. Con una sola imagen se envía como FIRST_AND_LAST_FRAMES_2_VIDEO."
+      "evidencia": "60 créditos por un clip de 8 s en 720 × 1280 con voz, generado en 96 s el 2026-09-27, que arranca exactamente en el fotograma que se le entrega. A 4 s cuesta lo mismo: los 60 créditos de Veo 3.1 Lite están medidos tanto a 4 s como a 8 s.",
+      "notas": "Modelo de animación predeterminado: mismo precio que Veo 3.1 Lite por el doble de clip y mejor calidad. Con una sola imagen se envía como FIRST_AND_LAST_FRAMES_2_VIDEO. Falla sin cobrar («unable to generate audio») si el prompt no dice qué se oye: con diálogo se le pide la frase y sin diálogo, solo sonido ambiente."
+    },
+    {
+      "proveedor": "kie",
+      "modelo": "veo3_lite",
+      "nombre": "Veo 3.1 Lite",
+      "capacidades": ["image_to_video", "text_to_video"],
+      "estado": "validado",
+      "predeterminado": false,
+      "conVoz": true,
+      "unidad": "vídeo de 4 u 8 s",
+      "parametros": {
+        "duraciones": [8, 4],
+        "proporciones": ["9:16"],
+        "resoluciones": ["720p", "1080p"],
+        "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
+        "maximoReferencias": 2
+      },
+      "precio": {
+        "creditos": 60,
+        "fuente": "Medido con la cuenta de KIE del propietario: 60 créditos a 4 s en el prototipo 0.3.0 y los mismos 60 a 8 s el 2026-09-27",
+        "comprobado": "2026-09-27"
+      },
+      "evidencia": "60 créditos por clip medidos a 4 s (prototipo 0.3.0) y a 8 s (2026-09-27): la duración no cambia el precio, así que la tabla pública de KIE (30 créditos a 720p) no coincide con lo cobrado y manda lo medido. Clip real con voz y 720 × 1280 comprobado de extremo a extremo en la 0.10.1.",
+      "notas": "Alternativa a Veo 3.1 Fast al mismo precio: se deja validada pero no predeterminada. Con una sola imagen se envía como FIRST_AND_LAST_FRAMES_2_VIDEO. Los 6 s los documenta el proveedor y no están medidos: esta versión solo ofrece 4 y 8 s."
     },
     {
       "proveedor": "kie",
@@ -164,7 +188,7 @@
       "modelo": "gpt-5-6-sol",
       "nombre": "GPT 5.6 Sol (texto)",
       "capacidades": ["text_generation"],
-      "estado": "descubierto",
+      "estado": "validado",
       "predeterminado": true,
       "conVoz": false,
       "unidad": "respuesta de texto",
@@ -176,12 +200,12 @@
         "maximoReferencias": 0
       },
       "precio": {
-        "creditos": 3,
-        "fuente": "https://docs.kie.ai/market/chat/gpt-5-6-sol (2026-09-27): su ejemplo informa credits_consumed 0,48. Se registran 3 con margen prudente porque el coste depende de los tokens; el consumo real lo informa el proveedor en cada llamada.",
+        "creditos": 1.5,
+        "fuente": "Medido el 2026-09-27 con la clave de KIE del propietario: de 0,05 a 0,93 créditos por llamada según el largo. Se registran 1,5 con margen prudente porque el coste depende de los tokens; el consumo real lo informa el proveedor en cada llamada.",
         "comprobado": "2026-09-27"
       },
-      "evidencia": "",
-      "notas": "Modelo de texto del asistente de guion (0.17.0). Endpoint síncrono POST codex/v1/responses, distinto del jobs/createTask del resto, e informa credits_consumed en la propia respuesta. Se siembra como «descubierto» a propósito: el catálogo reserva «compatible» para lo que se ha ejecutado de verdad, así que el asistente sale apagado de fábrica y el guion se escribe a mano hasta que quien administra lo ejecute una vez y lo marque compatible con su evidencia y su precio medido."
+      "evidencia": "Ejecutado de verdad el 2026-09-27 con el adaptador de la app: traducir una frase costó 0,05 créditos en 3 s, un lote de dos o tres textos de la ficha entre 0,28 y 0,34, y el guion de cuatro escenas del asistente entre 0,5 y 0,93 créditos en 8 a 37 s. El JSON del guion y el de la traducción se leen bien, y un texto con intento de inyección devuelve cadena vacía, que la app descarta.",
+      "notas": "Modelo de texto del asistente de guion (0.17.0). Endpoint síncrono POST codex/v1/responses, distinto del jobs/createTask del resto, e informa credits_consumed en la propia respuesta. El asistente y la traducción siguen apagados de fábrica: quien administra los enciende en Admin › Ajustes. La latencia medida llega a 37 s, así que el adaptador espera hasta 90 s."
     }
   ]
 }

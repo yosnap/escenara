@@ -12,10 +12,10 @@ import { ErrorPreset } from "./errores";
  * - **proporción**: un preset de formato exige una proporción concreta. El modelo tiene que declararla en
  *   `parametros.proporciones`. Una lista vacía significa «este modelo no acepta el parámetro» (Hailuo toma la
  *   de la imagen), no «acepta cualquiera»: elegir formato con él se rechaza con ese motivo;
- * - **duración**: un preset de duración exige unos segundos. Tienen que estar en `parametros.duraciones`
- *   **y** ser los que se le envían de verdad al proveedor, que son los primeros de la lista: el precio
- *   registrado es por esa unidad («vídeo de 4 s») y cobrar 8 s con el precio de 4 s sería mentir en la
- *   estimación. Registrar el precio de otra duración es un cambio de Admin › Modelos, no de aquí;
+ * - **duración**: un preset de duración exige unos segundos. Tienen que estar en `parametros.duraciones` **y**
+ *   ser los que se le envían de verdad al proveedor: la duración del proyecto cuando se produce y la primera que
+ *   declara el modelo en el camino rápido de «Crear». Un texto que promete 4 s con un clip de 8 s miente, y el
+ *   precio registrado tiene que cubrir la duración que se pide;
  * - **referencias**: si la plantilla exige un mínimo de fotos de referencia, el modelo tiene que admitirlas;
  * - **modelo declarado**: una plantilla puede restringirse a modelos concretos.
  *
@@ -23,15 +23,21 @@ import { ErrorPreset } from "./errores";
  * pueda generar: lo que el modelo no admite se rechaza con su motivo escrito.
  */
 
-/** Duración que se le envía de verdad al proveedor: la primera que declara el modelo. */
-export const duracionEnviada = (modelo: ModeloVista): number | null => modelo.parametros.duraciones[0] ?? null;
+/**
+ * Duración que se le envía de verdad al modelo cuando nadie la elige (el camino rápido de «Crear»): la primera
+ * que declara. Produciendo un proyecto manda la duración del proyecto, que llega como `segundos`.
+ */
+export const duracionEnviada = (modelo: ModeloVista, segundos?: number): number | null => {
+  if (segundos !== undefined && modelo.parametros.duraciones.includes(segundos)) return segundos;
+  return modelo.parametros.duraciones[0] ?? null;
+};
 
 /**
  * Límites del modelo tal como los ve la botonera. La duración se recorta a **la que se envía**, por el mismo
- * motivo que arriba: ofrecer 8 s cuando el precio es de 4 s sería prometer un coste que no es el que se cobra.
+ * motivo que arriba: ofrecer un texto de 4 s cuando se van a pedir 8 sería prometer un clip que no se genera.
  */
-export function limitesDelModelo(modelo: ModeloVista): LimitesDelModelo {
-  const enviada = duracionEnviada(modelo);
+export function limitesDelModelo(modelo: ModeloVista, segundos?: number): LimitesDelModelo {
+  const enviada = duracionEnviada(modelo, segundos);
   return {
     nombre: modelo.nombre,
     proporciones: [...modelo.parametros.proporciones],
@@ -49,10 +55,11 @@ export function limitesDelModelo(modelo: ModeloVista): LimitesDelModelo {
 export function motivoDelPreset(
   valores: Pick<ValoresPreset, "proporcion" | "segundos">,
   modelo: ModeloVista,
+  segundos?: number,
 ): string | null {
   return motivoIncompatible(
     { proporcion: valores.proporcion ?? null, segundos: valores.segundos ?? null },
-    limitesDelModelo(modelo),
+    limitesDelModelo(modelo, segundos),
   );
 }
 
@@ -64,9 +71,11 @@ export function exigirCombinacionPosible(
   elegidos: readonly { nombre: string; valores: ValoresPreset }[],
   restricciones: RestriccionesPlantilla,
   modelo: ModeloVista,
+  /** Duración que se le va a pedir al proveedor, si ya está decidida (la del proyecto al producir). */
+  segundos?: number,
 ): void {
   for (const preset of elegidos) {
-    const motivo = motivoDelPreset(preset.valores, modelo);
+    const motivo = motivoDelPreset(preset.valores, modelo, segundos);
     if (motivo) throw new ErrorPreset(409, `«${preset.nombre}» no se puede generar con este modelo: ${motivo}`);
   }
   if (restricciones.modelos.length > 0 && !restricciones.modelos.includes(modelo.modelo)) {

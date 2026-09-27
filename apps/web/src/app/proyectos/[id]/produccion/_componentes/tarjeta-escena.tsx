@@ -157,8 +157,8 @@ export function TarjetaEscena({
           titulo={escena.fotogramaAprobado ? "Animar el fotograma aprobado" : "Aprobar el fotograma y animarlo"}
           explicacion={
             escena.fotogramaAprobado
-              ? "Este fotograma ya está aprobado y todavía no tiene clip: se encola su clip de 4 s en 9:16."
-              : "Al aprobarlo se encola su clip de 4 s en 9:16. Míralo con las zonas seguras antes de decidir."
+              ? `Este fotograma ya está aprobado y todavía no tiene clip: se encola su clip de ${escena.segundos} s en 9:16.`
+              : `Al aprobarlo se encola su clip de ${escena.segundos} s en 9:16. Míralo con las zonas seguras antes de decidir.`
           }
           creditos={produccion.creditosPorClip}
           umbral={produccion.umbralAvisoCreditos}

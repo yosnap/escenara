@@ -41,14 +41,18 @@ describe("prompt del clip", () => {
     expect(promptAnimacion(ESCENA, FRASE)).toContain("Spoken audio only");
   });
 
-  test("sin frase, el prompt es solo la escena y los negativos", () => {
+  test("sin frase, el prompt describe el sonido ambiente en positivo, sin prohibir la voz", () => {
     const prompt = promptAnimacion(ESCENA, "");
     expect(prompt).toStartWith(ESCENA);
     expect(prompt).not.toContain("dice en español");
+    // Sin sonido descrito, o solo prohibiendo la voz, Veo falla sin cobrar (medido el 2026-09-27).
+    expect(prompt).toContain("Audio: the natural ambient sound");
+    expect(prompt).not.toContain("nobody speaks");
+    expect(prompt).not.toContain("Spoken audio only");
   });
 
   test("la entrada del clip lleva el prompt montado con la frase", () => {
-    const entrada = entradaAnimacion(ESCENA, FRASE, "https://tempfile.kie.ai/a.png");
+    const entrada = entradaAnimacion(ESCENA, FRASE, "https://tempfile.kie.ai/a.png", 8);
     expect(entrada.prompt).toBe(promptAnimacion(ESCENA, FRASE));
     expect(entrada.image_urls).toEqual(["https://tempfile.kie.ai/a.png"]);
   });

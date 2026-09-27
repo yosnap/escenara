@@ -164,7 +164,7 @@
       "categoria": "duracion",
       "clave": "clip-4",
       "nombre": "4 segundos",
-      "descripcion": "Plano corto. Es la duración con precio medido en el catálogo, así que es la que se puede elegir hoy.",
+      "descripcion": "Plano corto. Se usa en los proyectos con clips de 4 s; cuesta lo mismo que uno de 8 s (medido el 2026-09-27).",
       "orden": 10,
       "valores": { "prompt": "four", "segundos": 4 }
     },
@@ -172,7 +172,7 @@
       "categoria": "duracion",
       "clave": "clip-6",
       "nombre": "6 segundos",
-      "descripcion": "Da tiempo a una frase entera. Solo se puede elegir si el modelo la admite Y su precio está medido por clip de 6 s en Admin › Modelos: el precio se cobra por unidad.",
+      "descripcion": "Da tiempo a una frase entera. Esta versión no produce clips de 6 s: su coste no está medido.",
       "orden": 20,
       "valores": { "prompt": "six", "segundos": 6 }
     },
@@ -180,7 +180,7 @@
       "categoria": "duracion",
       "clave": "clip-8",
       "nombre": "8 segundos",
-      "descripcion": "Para una acción con principio y fin. Solo se puede elegir si el modelo la admite Y su precio está medido por clip de 8 s en Admin › Modelos: el precio se cobra por unidad.",
+      "descripcion": "Para una acción con principio y fin. Es la duración de fábrica de los proyectos y la que se usa en los de 8 s.",
       "orden": 30,
       "valores": { "prompt": "eight", "segundos": 8 }
     },

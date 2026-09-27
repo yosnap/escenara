@@ -157,7 +157,7 @@ describe.skipIf(!hayBaseDeDatos)("el prompt compuesto no llega al navegador", ()
       presupuestoCreditos: 500,
     });
     proyectoId = proyecto.proyecto.id;
-    await crearEscena(actorAna, proyectoId, { texto: ESCENA, accion: "Plano medio", segundos: 4 });
+    await crearEscena(actorAna, proyectoId, { texto: ESCENA, accion: "Plano medio" });
   });
 
   afterAll(async () => {

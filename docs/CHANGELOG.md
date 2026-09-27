@@ -2,6 +2,42 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.19.1] · 2026-09-27
+
+### Decisiones del propietario (2026-09-27, con dinero real por delante)
+
+- **Clips de 8 s por defecto, con 4 s opcional.** Medido con la cuenta de KIE del propietario: un clip de 8 s
+  cuesta **los mismos 60 créditos** que uno de 4 s, tanto en Veo 3.1 Lite como en Veo 3.1 Fast. La tabla pública de
+  KIE (30 créditos a 720p) **no coincide con lo cobrado**, y manda lo medido. Elegir 4 s no abarata nada y la
+  interfaz lo dice al elegirlo.
+- **Veo 3.1 Fast como modelo de animación.** Al mismo precio que Lite y con el fotograma respetado: un clip de 8 s
+  en 720 × 1280 con voz, generado en 96 s, que **arranca exactamente en el fotograma** que se le entrega.
+- **APIMart solo documentado.** Su canal `-ext` sale más barato en imagen (0,0125 USD frente a 0,02 USD) pero **no
+  respeta el primer fotograma** con personas reales, y su canal oficial cuesta 0,64 USD por el mismo clip que KIE
+  cobra a 0,30 USD. No se escribe adaptador: queda la comparativa en `recursos/apis-y-proveedores.md`.
+
+### Añadido
+
+- **Duración de clip por proyecto**: 8 s de fábrica y 4 s opcional, con el selector del catálogo de componentes y el
+  aviso de que la corta cuesta lo mismo. La producción le pide al proveedor **la duración del proyecto**, las escenas
+  la copian y el asistente de guion propone escenas de esa duración exacta.
+- **Veo 3.1 Fast** en el catálogo, validado, con su precio y su evidencia medidos, y predeterminado para
+  `image_to_video`. Veo 3.1 Lite sigue validado al mismo precio, ya no predeterminado.
+- **Comparativa de KIE y APIMart** con precios publicados y pruebas reales de las dos plataformas, en
+  `recursos/apis-y-proveedores.md`.
+
+### Corregido
+
+- **Las escenas sin diálogo ya no fallan.** Veo se caía con «The Google model was unable to generate audio for this
+  request» —sin cobrar— cuando el prompt no decía qué se tenía que oír. Ahora, sin diálogo, se le pide de forma
+  explícita **solo sonido ambiente y que nadie hable**.
+- **El modelo de texto del asistente queda validado** con su coste medido llamada a llamada (de 0,05 a 0,93 créditos
+  según el largo) y su precio registrado baja de 3 a **1,5 créditos** por respuesta.
+- **El cliente de texto espera hasta 90 s** (antes 45): la latencia medida llega a 37 s, así que el tope anterior se
+  quedaba a un suspiro de tirar una respuesta ya pagada.
+- La duración que se guarda del clip en la biblioteca es la que **se le pidió al proveedor**, no la primera que
+  declare el modelo en el catálogo.
+
 ## [0.19.0] · 2026-09-27
 
 ### Decisiones provisionales del propietario (2026-09-27, pendientes de confirmar)

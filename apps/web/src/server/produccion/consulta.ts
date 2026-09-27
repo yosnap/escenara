@@ -3,6 +3,8 @@ import type { EvaluacionVista } from "@/lib/controles";
 import { formatearCreditos } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
 import {
+  duracionesEnTexto,
+  duracionParaModelo,
   type EscenaProduccionVista,
   esDuracionDisponible,
   esperaAutorizacionDeReintento,
@@ -15,6 +17,7 @@ import {
 import { resumenDeEscena } from "@/lib/proyectos";
 import { leerAjustes } from "../ajustes";
 import { afirmacionesDe, escenasDe, proyectoPropio } from "../asistente/consulta";
+import { ErrorProyecto } from "../asistente/errores";
 import { comprometidoDelProyecto, type EleccionesDelPlan, eleccionesDelPlan } from "../asistente/plan";
 import { posicionesEnCola } from "../cola/toma";
 import type { HechosEscena, ParametrosControles } from "../controles/contrato";
@@ -322,7 +325,10 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
       planAprobado: proyecto.planApprovedAt !== null,
       protagonista: proyecto.mainCharacterId,
       sinPrecio: !elecciones.fotograma || !elecciones.animacion,
-      segundosDelClip: elecciones.animacion?.modelo.parametros.duraciones[0] ?? null,
+      segundosDelClip: elecciones.animacion
+        ? duracionParaModelo(elecciones.animacion.modelo.parametros.duraciones, proyecto.clipSeconds)
+        : null,
+      segundosDelProyecto: proyecto.clipSeconds,
       presupuesto: proyecto.authorizedCredits,
       comprometido,
       creditosFotograma: porFotograma,
@@ -341,8 +347,10 @@ export function impedimentosDeProduccion(datos: {
   planAprobado: boolean;
   protagonista: string | null;
   sinPrecio: boolean;
-  /** Duración del clip que declara el modelo de animación vigente; `null` si no hay modelo. */
+  /** Duración que se le pediría de verdad al modelo de animación vigente; `null` si no hay modelo. */
   segundosDelClip: number | null;
+  /** Duración de clip elegida en el proyecto, en segundos. */
+  segundosDelProyecto: number;
   presupuesto: number;
   comprometido: number;
   creditosFotograma: number;
@@ -360,12 +368,8 @@ export function impedimentosDeProduccion(datos: {
       "Falta algún modelo con precio registrado, así que no se puede estimar ni producir. Pídeselo a quien administra.",
     );
   }
-  // Decisión provisional del propietario (2026-09-27): solo se ofrece la duración con coste medido.
-  if (datos.segundosDelClip !== null && !esDuracionDisponible(datos.segundosDelClip)) {
-    impedimentos.push(
-      `El modelo de animación vigente genera clips de ${datos.segundosDelClip} s y esta versión solo ofrece los de 4 s, que son los que tienen coste medido. Elige otro modelo predeterminado en el catálogo.`,
-    );
-  }
+  const duracion = impedimentoDeDuracion(datos.segundosDelClip, datos.segundosDelProyecto);
+  if (duracion) impedimentos.push(duracion);
   if (datos.presupuesto > 0 && datos.porProducir > 0) {
     const libre = datos.presupuesto - datos.comprometido;
     if (datos.creditosFotograma > libre) {
@@ -375,6 +379,35 @@ export function impedimentosDeProduccion(datos: {
     }
   }
   return impedimentos;
+}
+
+/**
+ * Solo se produce con duraciones que tengan coste medido, y solo la que ha elegido el proyecto: si el modelo
+ * vigente no la admite, el clip duraría otra cosa de la que pone el plan. `null` si no hay nada que impedir.
+ */
+export function impedimentoDeDuracion(segundosDelClip: number | null, segundosDelProyecto: number): string | null {
+  if (segundosDelClip === null) return null;
+  if (!esDuracionDisponible(segundosDelClip)) {
+    return `El modelo de animación vigente genera clips de ${segundosDelClip} s y esta versión solo ofrece los de ${duracionesEnTexto()}, que son los que tienen coste medido. Elige otro modelo predeterminado en el catálogo.`;
+  }
+  if (segundosDelClip !== segundosDelProyecto) {
+    return `Los clips de este proyecto son de ${segundosDelProyecto} s y el modelo de animación vigente solo genera de ${segundosDelClip} s. Cambia la duración del proyecto o elige otro modelo predeterminado en el catálogo.`;
+  }
+  return null;
+}
+
+/**
+ * Lo mismo, leyendo el modelo de animación vigente, para los caminos que encolan **una** escena sin pasar por
+ * `producirProyecto`: producir, aprobar y regenerar tienen que negarse igual que el botón del proyecto.
+ */
+export async function exigirDuracionProducible(proyecto: FilaProyecto): Promise<void> {
+  const { animacion } = await eleccionesDelPlan();
+  if (!animacion) return; // Sin modelo con precio, el propio envío ya se rechaza por no poder estimarse.
+  const motivo = impedimentoDeDuracion(
+    duracionParaModelo(animacion.modelo.parametros.duraciones, proyecto.clipSeconds),
+    proyecto.clipSeconds,
+  );
+  if (motivo) throw new ErrorProyecto(409, motivo);
 }
 
 /** Trabajos de una sola escena, de lo más reciente a lo más antiguo. */

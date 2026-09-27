@@ -7,14 +7,28 @@ import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo } from "@/components/ui/field";
 import { Paso } from "@/components/ui/paso";
 import { SelectorPersonaje } from "@/components/ui/personaje";
+import { Selector } from "@/components/ui/select";
 import { type ClaveConfirmacion, claveEstable } from "@/lib/asistente";
 import { formatearCreditos, formatearEuros } from "@/lib/generacion";
 import type { PersonajeElegible } from "@/lib/personajes";
+import { DURACIONES_DISPONIBLES } from "@/lib/produccion";
 import { CONCEPTO_MAXIMO, ESCENAS_SUGERIDAS, formatearFecha, IDEA_MAXIMA, type ProyectoDetalle } from "@/lib/proyectos";
 import { editarProyecto, pedirGuion } from "../../_componentes/api-proyectos";
 
 /**
- * Idea, protagonista y concepto, con el asistente al lado.
+ * Opciones de duración del clip. Las dos están medidas con dinero real y **cuestan lo mismo**, así que la corta no
+ * se ofrece como ahorro: se dice al lado que no lo es.
+ */
+const OPCIONES_DURACION = DURACIONES_DISPONIBLES.map((segundos) => ({
+  value: String(segundos),
+  label: `${segundos} segundos`,
+}));
+
+/** La duración más larga de las ofrecidas: es la de fábrica y la referencia del aviso de que no se ahorra nada. */
+const MAS_LARGA = Math.max(...DURACIONES_DISPONIBLES);
+
+/**
+ * Idea, protagonista, duración del clip y concepto, con el asistente al lado.
  *
  * El botón del asistente es el único de la página que gasta dinero, así que va con su **zona de claridad**: lo
  * que cuesta, con la palabra «estimación» y la fecha del precio, y la clave de idempotencia que se genera al
@@ -34,6 +48,7 @@ export function PanelIdea({
 }) {
   const { proyecto, estimacionAsistente } = detalle;
   const [idea, setIdea] = useState(proyecto.idea);
+  const [segundos, setSegundos] = useState(proyecto.segundosClip);
   const [concepto, setConcepto] = useState(proyecto.concepto);
   const [guardando, setGuardando] = useState(false);
   const [escribiendo, setEscribiendo] = useState(false);
@@ -46,16 +61,18 @@ export function PanelIdea({
    */
   const clave = useRef<ClaveConfirmacion | null>(null);
 
-  const guardar = async (cambios: Record<string, unknown>) => {
+  /** `true` si se ha guardado; si no, ya ha avisado del error y quien llama deshace lo que mostró por adelantado. */
+  const guardar = async (cambios: Record<string, unknown>): Promise<boolean> => {
     setGuardando(true);
     const resultado = await editarProyecto(proyecto.id, cambios);
     setGuardando(false);
     if (!resultado.ok) {
       onError(resultado.error);
-      return;
+      return false;
     }
     setHecho("Guardado.");
     onCambio(resultado.datos);
+    return true;
   };
 
   const escribir = async () => {
@@ -101,6 +118,35 @@ export function PanelIdea({
           onCambio={(id) => guardar({ personajeId: id })}
           deshabilitado={guardando}
         />
+
+        <div className="flex flex-col gap-2">
+          <Selector
+            etiqueta="Duración de cada clip"
+            opciones={OPCIONES_DURACION}
+            valor={String(segundos)}
+            deshabilitado={guardando}
+            onCambio={(v) => {
+              if (!v) return;
+              const elegidos = Number(v);
+              const anteriores = segundos;
+              setSegundos(elegidos);
+              void guardar({ segundosClip: elegidos }).then((ok) => {
+                if (!ok) setSegundos(anteriores);
+              });
+            }}
+          />
+          <p className="text-sm text-texto-suave">
+            Es lo que dura cada escena del vídeo, y el asistente propone escenas de esa duración.{" "}
+            {segundos === MAS_LARGA ? (
+              <>Es la duración de fábrica: el proveedor cobra lo mismo por un clip corto que por uno largo.</>
+            ) : (
+              <>
+                <strong className="text-texto">Elegirla no ahorra nada</strong>: el proveedor cobra lo mismo por{" "}
+                {segundos} s que por {MAS_LARGA} s (medido el 27 de septiembre de 2026).
+              </>
+            )}
+          </p>
+        </div>
 
         <Campo
           etiqueta="Concepto"

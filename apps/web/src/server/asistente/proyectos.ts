@@ -1,5 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import { limpiarTextoDePrompt } from "@/lib/ficha-personaje";
+import { DURACION_PREDETERMINADA, duracionesEnTexto, esDuracionDisponible } from "@/lib/produccion";
 import {
   CONCEPTO_MAXIMO,
   esFormatoProyecto,
@@ -10,7 +11,7 @@ import {
 } from "@/lib/proyectos";
 import { leerAjustes } from "../ajustes";
 import { db } from "../db/cliente";
-import { type FilaProyecto, projects } from "../db/esquema";
+import { type FilaProyecto, projects, scenes } from "../db/esquema";
 import type { Actor } from "../media/servicio";
 import { filaPropia } from "../personajes/consulta";
 import { exigirPersonajeUsable } from "../personajes/puede-generar";
@@ -36,6 +37,7 @@ export interface DatosProyecto {
   concepto?: unknown;
   personajeId?: unknown;
   presupuestoCreditos?: unknown;
+  segundosClip?: unknown;
 }
 
 function tituloLimpio(valor: unknown): string {
@@ -53,6 +55,18 @@ function creditosValidos(valor: unknown): number {
   const numero = typeof valor === "number" ? valor : Number.parseInt(String(valor), 10);
   if (!Number.isInteger(numero) || numero < 0 || numero > PRESUPUESTO_MAXIMO) {
     throw new ErrorProyecto(400, "El presupuesto del proyecto tiene que ser un número entero de créditos.");
+  }
+  return numero;
+}
+
+/**
+ * Duración de clip del proyecto. Solo se aceptan las que esta versión ofrece con coste medido: una duración sin
+ * precio medido se cobraría a ciegas, y el navegador no decide qué se le pide al proveedor.
+ */
+function duracionValida(valor: unknown): number {
+  const numero = typeof valor === "number" ? valor : Number.parseInt(String(valor), 10);
+  if (!Number.isInteger(numero) || !esDuracionDisponible(numero)) {
+    throw new ErrorProyecto(400, `Los clips solo pueden durar ${duracionesEnTexto()}.`);
   }
   return numero;
 }
@@ -93,6 +107,7 @@ export async function crearProyecto(actor: Actor, datos: DatosProyecto): Promise
         datos.presupuestoCreditos === undefined
           ? ajustes.presupuestoProyecto
           : creditosValidos(datos.presupuestoCreditos),
+      clipSeconds: datos.segundosClip === undefined ? DURACION_PREDETERMINADA : duracionValida(datos.segundosClip),
     })
     .returning();
   if (!fila) throw new ErrorProyecto(500, "No se ha podido crear el proyecto.");
@@ -112,7 +127,26 @@ export async function editarProyecto(actor: Actor, id: unknown, datos: DatosProy
   if (datos.concepto !== undefined) cambios.concept = limpiarTextoDePrompt(datos.concepto, CONCEPTO_MAXIMO);
   if (datos.personajeId !== undefined) cambios.mainCharacterId = await personajeValido(actor, datos.personajeId);
   if (datos.presupuestoCreditos !== undefined) cambios.authorizedCredits = creditosValidos(datos.presupuestoCreditos);
-  await db().update(projects).set(cambios).where(eq(projects.id, proyecto.id));
+  if (datos.segundosClip !== undefined) cambios.clipSeconds = duracionValida(datos.segundosClip);
+  await db().transaction(async (tx) => {
+    await tx.update(projects).set(cambios).where(eq(projects.id, proyecto.id));
+    /**
+     * La duración es del proyecto entero, así que sus escenas la copian, en la misma transacción: lo que se
+     * muestra de cada escena y lo que se le pide al modelo tienen que ser lo mismo. No invalida nada aprobado,
+     * porque **no cambia el coste** (KIE cobra igual 4 s que 8 s, medido el 2026-09-27), pero una escena que ya
+     * tiene clip deja de corresponder a lo que dice, y la rejilla de producción lo avisa como cualquier edición.
+     */
+    if (cambios.clipSeconds !== undefined && cambios.clipSeconds !== proyecto.clipSeconds) {
+      await tx
+        .update(scenes)
+        .set({
+          plannedSeconds: cambios.clipSeconds,
+          changedSinceGeneration: sql`${scenes.changedSinceGeneration} or ${scenes.clipMediaId} is not null`,
+          updatedAt: new Date(),
+        })
+        .where(eq(scenes.projectId, proyecto.id));
+    }
+  });
   return detalleProyecto(actor, proyecto.id);
 }
 
