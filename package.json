@@ -1,6 +1,6 @@
 {
   "name": "escenara",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "private": true,
   "description": "Estudio abierto de personajes y vídeo",
   "license": "AGPL-3.0-only",
@@ -26,6 +26,7 @@
     "db:backup": "mkdir -p backups/bd && docker compose exec -T postgres sh -c 'pg_dump -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\"' > backups/bd/escenara-$(date +%Y%m%d-%H%M%S).sql",
     "db:generate": "bun --filter @escenara/web db:generate",
     "db:migrate": "bun --filter @escenara/web db:migrate",
+    "medios:medir-videos": "bun --filter @escenara/web medios:medir-videos",
     "boveda:recifrar": "bun --filter @escenara/web boveda:recifrar",
     "prototipo": "bun spikes/prototipo/run.ts",
     "tokens": "bun --filter @escenara/web tokens"
