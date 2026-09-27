@@ -6,6 +6,7 @@ import {
   PLANTILLA_MAXIMA,
   PROMPT_RENDERIZADO_MAXIMO,
   type PresetElegible,
+  type PresetVisible,
   type SeleccionPresets,
   VARIABLE_TEXTO_MAXIMA,
   type VariablePlantilla,
@@ -166,11 +167,11 @@ export function limpiarTextoEditado(valor: unknown): string {
  * determinista el texto. `ordenados` es la lista completa tal como la devuelve el servidor (por categoría,
  * orden y nombre), así que el servidor y el navegador ordenan igual.
  */
-export function elegidosDeCategoria(
-  ordenados: readonly PresetElegible[],
+export function elegidosDeCategoria<T extends { id: string; categoria: CategoriaPreset }>(
+  ordenados: readonly T[],
   categoria: CategoriaPreset,
   ids: readonly string[] | undefined,
-): PresetElegible[] {
+): T[] {
   if (!ids || ids.length === 0) return [];
   const pedidos = new Set(ids);
   return ordenados.filter((p) => p.categoria === categoria && pedidos.has(p.id));
@@ -223,4 +224,61 @@ export function valoresDeVariables(
             .join(", ");
   }
   return valores;
+}
+
+/**
+ * Qué falta por elegir y qué no encaja, **sin componer el prompt**.
+ *
+ * Es lo único que el navegador necesita saber para habilitar el botón de generar y para decir qué falta: desde la
+ * 0.17.0 el texto compuesto no sale hacia el navegador (ADR-0022), así que ni se renderiza allí ni se le envían
+ * las piezas. La comprobación es la misma que hace el renderizador del servidor sobre las mismas variables.
+ */
+export function faltanPorElegir(
+  variables: readonly VariablePlantilla[],
+  entrada: {
+    ordenados: readonly PresetVisible[];
+    seleccion: SeleccionPresets;
+    /** La escena que ha escrito la persona: es el valor de todas las variables de tipo `texto`. */
+    escena: string;
+    tipoPersonaje: TipoPersonaje | null;
+  },
+): { faltan: string[]; motivos: string[] } {
+  const faltan: string[] = [];
+  const motivos: string[] = [];
+  if (variables.length > MAXIMO_VARIABLES) {
+    return { faltan, motivos: [`La plantilla declara más de ${MAXIMO_VARIABLES} variables.`] };
+  }
+  for (const variable of variables) {
+    const elegidos =
+      variable.tipo === "enumerado" || variable.tipo === "numero"
+        ? variable.categoria
+          ? elegidosDeCategoria(entrada.ordenados, variable.categoria, entrada.seleccion[variable.categoria])
+          : []
+        : [];
+    const numero = variable.tipo === "numero" ? (elegidos[0]?.segundos ?? null) : null;
+    const tieneValor =
+      variable.tipo === "texto"
+        ? entrada.escena.trim() !== ""
+        : variable.tipo === "personaje"
+          ? entrada.tipoPersonaje !== null
+          : variable.tipo === "numero"
+            ? numero !== null
+            : elegidos.length > 0;
+    if (!tieneValor) {
+      if (variable.obligatoria) {
+        faltan.push(variable.etiqueta);
+        motivos.push(`Falta «${variable.etiqueta}».`);
+      }
+      continue;
+    }
+    if (numero !== null) {
+      if (variable.minimo !== undefined && numero < variable.minimo) {
+        motivos.push(`«${variable.etiqueta}» no puede bajar de ${variable.minimo}.`);
+      }
+      if (variable.maximo !== undefined && numero > variable.maximo) {
+        motivos.push(`«${variable.etiqueta}» no puede pasar de ${variable.maximo}.`);
+      }
+    }
+  }
+  return { faltan, motivos };
 }

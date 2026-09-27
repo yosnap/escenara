@@ -3,6 +3,8 @@ import type { ModeloVista } from "@/lib/catalogo";
 import { CLIP, type TipoTrabajo, type TrabajoVista } from "@/lib/generacion";
 import type { TipoPersonaje } from "@/lib/personajes";
 import type { SeleccionPresets } from "@/lib/presets";
+import { proyectoDeEscena } from "../asistente/consulta";
+import { exigirEscenaAprobada, exigirTopeDelProyecto } from "../asistente/plan";
 import { encolar, filaDeLaConfirmacion, type NuevoTrabajoEncolado } from "../cola/encolar";
 import type { FilaMedio } from "../db/esquema";
 import { decidir } from "../decisiones/reglas";
@@ -16,7 +18,9 @@ import {
 } from "../personajes/contexto";
 import { exigirPersonajeUsable, personajeParaGenerar } from "../personajes/puede-generar";
 import { acotarCoste } from "../presupuesto/acotar";
+import { exigirTopePorTrabajo } from "../presupuesto/reserva";
 import { componerDesdePlantilla, type PromptCompuesto } from "../prompts/render";
+import { estadoDeTraduccion, traducirAlIngles } from "../prompts/traduccion";
 import type { Adaptador } from "../proveedores/contrato";
 import {
   exigirAvisoUmbral,
@@ -182,6 +186,13 @@ export interface PeticionFotograma extends Confirmacion {
    */
   sinTerceros?: boolean;
   /**
+   * Escena del proyecto que se está produciendo (0.17.0). Con ella, el trabajo **solo sale si el plan del
+   * proyecto está aprobado y la aprobación de esa escena sigue en pie** (`exigirEscenaAprobada`): es la puerta
+   * que impide encolar una generación de un guion que nadie ha autorizado. Sin ella, el camino rápido de
+   * «Crear» funciona igual que en la 0.16.x.
+   */
+  escenaId?: string;
+  /**
    * Vista de cobertura que este fotograma va a rellenar (0.14.0). La pone **el servidor**
    * (`personajes/vista-sintetica.ts`), nunca el navegador: es lo que marca el resultado como `vista_generada`
    * al terminar el trabajo, y un valor puesto desde fuera convertiría una foto en una etiqueta falsa.
@@ -215,6 +226,18 @@ function entradaGuardada(
   const resto = { ...parametros };
   for (const campo of adaptador.camposDeUrl) delete resto[campo];
   return { prompt, referencias, parametros: resto };
+}
+
+/**
+ * Créditos que el usuario tiene que confirmar: los de la generación **más los de la traducción**, si esta
+ * instalación traduce los prompts al inglés (decisión provisional del propietario, 2026-09-27).
+ *
+ * Es un **máximo**: un texto que ya se tradujo antes no se vuelve a pagar, pero lo que se confirma no puede
+ * depender de si hay caché o no, porque entonces la cifra cambiaría entre la pantalla y el botón.
+ */
+async function creditosConfirmables(creditosDelModelo: number): Promise<number> {
+  const traduccion = await estadoDeTraduccion();
+  return creditosDelModelo + (traduccion.activa ? traduccion.creditos : 0);
 }
 
 /** Modelo elegido, su adaptador y sus créditos ya comprobados contra lo que confirmó el usuario. */
@@ -274,13 +297,27 @@ export async function crearFotograma(
   const eleccion = await eleccionConfirmada("fotograma", peticion);
   const { modelo, adaptador, precio } = eleccion;
   const creditos = Math.ceil(precio.creditos);
-  exigirConfirmacion(peticion.creditosConfirmados, creditos);
-  await exigirAvisoUmbral(creditos, peticion.avisoUmbralAceptado);
+  // Lo que el usuario confirma es **todo** lo que va a pagar por este envío: la generación y, si esta instalación
+  // traduce, la traducción (decisión provisional del propietario, 2026-09-27). Y es esa suma la que tiene que
+  // caber en el tope por trabajo de la instalación.
+  const totales = await creditosConfirmables(creditos);
+  exigirConfirmacion(peticion.creditosConfirmados, totales);
+  await exigirAvisoUmbral(totales, peticion.avisoUmbralAceptado);
+  await exigirTopePorTrabajo(totales);
   const yaHecho = await trabajoDeLaConfirmacion(actor.id, claveIdempotencia);
   if (yaHecho) return { trabajo: yaHecho, nueva: false };
   const proveedor = proveedorDeCredencial(modelo);
   // La credencial se comprueba ahora, no al enviar: encolar algo que no se puede pagar no ayuda a nadie.
   await exigirCredencial(actor.id, proveedor);
+  /**
+   * Producir una escena exige que su plan esté aprobado. Se comprueba **antes** de reservar presupuesto y de
+   * tocar al proveedor: sin aprobación explícita no se encola nada.
+   *
+   * La puerta **solo se aplica cuando llega `escenaId`**: el camino rápido de «Crear» sigue siendo el de la
+   * 0.16.x y no pertenece a ningún proyecto (ADR-0021). Quien produzca una escena tiene que mandar su
+   * identificador; es lo que 0.19.0 hará desde la página del proyecto.
+   */
+  const escena = peticion.escenaId ? await exigirEscenaAprobada(actor, peticion.escenaId) : null;
   // Con personaje se envían varias referencias suyas; sin personaje, la imagen suelta de 0.10.0.
   if (peticion.personajeId) exigirRevisionDeReferencias(peticion.sinTerceros);
   const elegido = peticion.personajeId
@@ -304,17 +341,16 @@ export async function crearFotograma(
     ? { versionId: elegido.version.id, contexto: elegido.contexto, tipo: elegido.personaje.kind }
     : await fichaHeredada(personajeId, modelo.parametros.maximoReferencias);
   exigirVersionConfirmada(peticion.versionPersonaje, conFicha.versionId);
-  // Con plantilla, el texto base lo compone el servidor con los presets elegidos (0.16.0); sin ella, es lo que
-  // escribió la persona, igual que en la 0.15.x. La compatibilidad del formato con el modelo se valida ahí
-  // dentro, **antes** de reservar presupuesto y de tocar al proveedor.
-  const base = await baseDelPrompt(actor, peticion, "fotograma", modelo, conFicha.tipo, prompt);
-  const promptFinal = promptConContexto(base.escena, conFicha.contexto);
+  // Se compone una vez con **el texto original**: valida la combinación de plantilla, presets y modelo, y es lo
+  // que miden las reglas de la decisión. Todo esto es gratis, y tiene que fallar **antes** de que se pague nada.
+  const original = await baseDelPrompt(actor, peticion, "fotograma", modelo, conFicha.tipo, prompt);
   await exigirCuota(actor, "fotograma");
-  await exigirSaldo(actor.id, creditos, h.buscar, proveedor);
+  await exigirSaldo(actor.id, totales, h.buscar, proveedor);
   await exigirRitmo(actor.id);
   await exigirDecisionFavorable({
     tipo: "fotograma",
-    escena: base.escena,
+    // Las reglas miden lo que escribió la persona, en su idioma: es lo único sobre lo que puede decidir.
+    escena: original.escena,
     dialogo: "",
     // El contexto de la ficha va aparte de la escena: las reglas miden la descripción que escribió la persona.
     contexto: conFicha.contexto,
@@ -322,6 +358,24 @@ export async function crearFotograma(
     conReferencia: true,
     creditos,
   });
+  // Tope del proyecto: lo que se lleve gastado y apartado en él, más esto, tiene que caber en lo autorizado.
+  if (escena) await exigirTopeDelProyecto(escena.projectId, totales);
+  // Y solo ahora, que ya no queda ninguna puerta gratis: los prompts van **siempre en inglés** (decisión firme
+  // del propietario, 2026-09-27). Apagada la traducción, esto devuelve los textos tal cual; encendida y con
+  // fallo, no se encola nada.
+  const enIngles = await traducirAlIngles(
+    actor.id,
+    [{ texto: prompt }, { texto: conFicha.contexto, personajeId }],
+    h.buscar,
+  );
+  const escenaEnIngles = enIngles.get(prompt) ?? prompt;
+  const contextoEnIngles = enIngles.get(conFicha.contexto) ?? conFicha.contexto;
+  // Si no ha hecho falta traducir nada, se reutiliza lo ya compuesto en lugar de componerlo otra vez.
+  const base =
+    escenaEnIngles === prompt
+      ? original
+      : await baseDelPrompt(actor, peticion, "fotograma", modelo, conFicha.tipo, escenaEnIngles);
+  const promptFinal = promptConContexto(base.escena, contextoEnIngles);
 
   const parametros = adaptador.montarEntrada(modelo, { escena: promptFinal, dialogo: "", urls: [] });
   const valores: NuevoTrabajoEncolado = {
@@ -355,12 +409,13 @@ export async function crearFotograma(
             textoDeLaPlantilla: base.escena,
           }
         : {}),
-      ...(conFicha.contexto === "" ? {} : { contextoPersonaje: conFicha.contexto }),
+      ...(contextoEnIngles === "" ? {} : { contextoPersonaje: contextoEnIngles }),
       // Marca de «este resultado es una vista generada del personaje»: la lee el cierre del trabajo para
       // añadirla como referencia etiquetada. Solo la pone el servidor.
       ...(peticion.vistaSintetica && personajeId ? { vistaSintetica: peticion.vistaSintetica } : {}),
     },
     sourceMediaId: origen.id,
+    sceneId: escena?.id ?? null,
     characterId: personajeId,
     characterVersionId: conFicha.versionId,
     ...columnasDePlantilla(base.compuesto),
@@ -391,8 +446,10 @@ export async function crearAnimacion(
   const eleccion = await eleccionConfirmada("animacion", peticion);
   const { modelo, adaptador, precio } = eleccion;
   const creditos = Math.ceil(precio.creditos);
-  exigirConfirmacion(peticion.creditosConfirmados, creditos);
-  await exigirAvisoUmbral(creditos, peticion.avisoUmbralAceptado);
+  const totales = await creditosConfirmables(creditos);
+  exigirConfirmacion(peticion.creditosConfirmados, totales);
+  await exigirAvisoUmbral(totales, peticion.avisoUmbralAceptado);
+  await exigirTopePorTrabajo(totales);
   const yaHecho = await trabajoDeLaConfirmacion(actor.id, claveIdempotencia);
   if (yaHecho) return { trabajo: yaHecho, nueva: false };
   const proveedor = proveedorDeCredencial(modelo);
@@ -413,9 +470,11 @@ export async function crearAnimacion(
     await exigirPersonajeUsable(padre.characterId, "El personaje de este fotograma");
   }
   await exigirCuota(actor, "animacion");
-  await exigirSaldo(actor.id, creditos, h.buscar, proveedor);
+  await exigirSaldo(actor.id, totales, h.buscar, proveedor);
   await exigirRitmo(actor.id);
 
+  // Tope del proyecto: el clip hereda la escena del fotograma, así que también su presupuesto.
+  if (padre.sceneId) await exigirTopeDelProyecto(await proyectoDeEscena(padre.sceneId), totales);
   // Un modelo sin voz no recibe nunca lo que dice el personaje (Hailuo 2.3 no tiene audio).
   const dialogo = modelo.conVoz ? limpiarDialogo(peticion.dialogo) : "";
   // El clip lleva el contexto de **la misma versión que el fotograma**, no de la vigente: si la ficha ha
@@ -424,19 +483,34 @@ export async function crearAnimacion(
   const { contexto, tipo } = await contextoDeLaVersion(padre.characterVersionId);
   // La plantilla del clip compone el texto con la duración y el look elegidos. La duración que declare el
   // preset se valida contra la que se le envía de verdad al proveedor (`segundos`), que es la unidad con la
-  // que está medido el precio: pedir otra se rechaza con su motivo en lugar de cobrarse mal.
-  const base = await baseDelPrompt(actor, peticion, "animacion", modelo, tipo, prompt);
+  // que está medido el precio: pedir otra se rechaza con su motivo en lugar de cobrarse mal. Se compone primero
+  // con el texto original: valida la combinación y es lo que miden las reglas, y las dos cosas son gratis.
+  const original = await baseDelPrompt(actor, peticion, "animacion", modelo, tipo, prompt);
   await exigirDecisionFavorable({
     tipo: "animacion",
-    escena: base.escena,
+    escena: original.escena,
     dialogo,
     contexto,
     conVoz: modelo.conVoz,
     conReferencia: true,
     creditos,
   });
+  // Igual que en el fotograma: la descripción y el contexto se traducen al inglés antes de componer, y solo
+  // después de todas las puertas gratis. **El diálogo no**: es lo que dirá el personaje y tiene que salir en el
+  // idioma en que se escribió.
+  const enIngles = await traducirAlIngles(
+    actor.id,
+    [{ texto: prompt }, { texto: contexto, personajeId: padre.characterId }],
+    h.buscar,
+  );
+  const escenaEnIngles = enIngles.get(prompt) ?? prompt;
+  const contextoEnIngles = enIngles.get(contexto) ?? contexto;
+  const base =
+    escenaEnIngles === prompt
+      ? original
+      : await baseDelPrompt(actor, peticion, "animacion", modelo, tipo, escenaEnIngles);
   const segundos = modelo.parametros.duraciones[0] ?? CLIP.segundos;
-  const promptFinal = promptConContexto(base.escena, contexto);
+  const promptFinal = promptConContexto(base.escena, contextoEnIngles);
   const parametros = adaptador.montarEntrada(modelo, { escena: promptFinal, dialogo, urls: [] });
   const valores: NuevoTrabajoEncolado = {
     userId: actor.id,
@@ -459,9 +533,11 @@ export async function crearAnimacion(
             textoDeLaPlantilla: base.escena,
           }
         : {}),
-      ...(contexto === "" ? {} : { contextoPersonaje: contexto }),
+      ...(contextoEnIngles === "" ? {} : { contextoPersonaje: contextoEnIngles }),
     },
     sourceMediaId: origen.id,
+    // El clip hereda la escena del fotograma: su aprobación es la misma y ya se comprobó al producirlo.
+    sceneId: padre.sceneId,
     parentJobId: padre.id,
     characterId: padre.characterId,
     characterVersionId: padre.characterVersionId,

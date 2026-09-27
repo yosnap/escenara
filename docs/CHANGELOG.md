@@ -2,6 +2,157 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.17.0] · 2026-09-27
+
+### Decisiones firmes del propietario (2026-09-27)
+
+- **Los prompts van siempre en inglés, y la traducción la hace el servidor.** Lo que escribes en español —la
+  escena, los campos de la ficha del personaje y su descripción, y el guion— se traduce con el modelo de texto de
+  KIE **antes de componer el prompt**. **Lo que dice el personaje no se traduce**: tiene que sonar en el idioma en
+  que se escribió. Es una llamada de pago y recorre el camino de dinero completo: entra en la estimación (como un
+  coste aparte y como un máximo, con su precio y su fecha), reserva antes de llamar, tiene tope y presupuesto,
+  aplica la **lista blanca de rechazos** y apunta el consumo que informa el proveedor. **Se cachea por huella del
+  texto de origen, por usuario**: lo mismo no se paga dos veces, y la caché no es global porque lo que se traduce
+  son datos personales de alguien (la ficha describe a una persona). Si la traducción falla, **no se envía la
+  generación** y se dice con esas palabras. Mientras el modelo de texto siga `descubierto`, vive detrás del ajuste
+  «Traducir los prompts al inglés», **apagado de fábrica** (apagado se envía el texto original, como en la 0.16.x):
+  para cumplir la decisión hay que validar el modelo con una prueba real y encenderlo.
+- **El prompt compuesto es material del servidor y del panel de administración** (ADR-0022). Se quitan las cuatro
+  pantallas que lo mostraban: «Ver el contexto aplicado» (0.15.0), «Lo que se le enviará al modelo» y «Editar el
+  texto final» (0.16.0) y «Prompts de esta escena» (0.17.0). **El prompt no llega al navegador** de un usuario
+  normal en ninguna API, payload RSC ni vista, **y tampoco sus piezas**: el fragmento en inglés de cada preset y el
+  texto de la plantilla dejan de viajar. Lo que el usuario ve es **lo que ha elegido** (los botones, con su nombre
+  en español), de qué versión de su ficha sale el contexto, **qué fotos** se enviarán y el coste; y su propia
+  descripción en el historial. **Quien administra sí lo ve**, en `/admin/trabajos`, porque si no un rechazo del
+  proveedor no se podría explicar. Queda el ajuste «Mostrar el prompt a los usuarios», **apagado**, preparado para
+  los planes de pago. La comprobación del navegador deja de componer: «qué falta por elegir» se calcula con una
+  función pura sobre las variables declaradas. **Ni las rutas de presets lo devuelven**: editar o duplicar tu copia
+  responde con lo visible, nunca con el fragmento en inglés.
+- **El presupuesto autorizado de un proyecto es un tope que se aplica al gastar**, no solo al aprobar: producir una
+  escena o llamar al asistente comprueba, **antes de reservar**, que lo que el proyecto lleva comprometido más esto
+  cabe en lo autorizado.
+- **El coste de la traducción entra en lo que confirmas**: el total que se te muestra y que confirmas es la
+  generación **más** la traducción, con la misma función en el navegador y en el servidor, y esa suma es la que se
+  mide contra el tope por trabajo y contra el aviso de gasto.
+- **Las traducciones de la ficha de un personaje se borran con el personaje**, y el consentimiento dice que al
+  generar con él se envían a KIE sus fotos **y el texto de su ficha** (y que, con la traducción encendida, ese texto
+  pasa además por su modelo de texto). Recogido en `docs/legal`.
+
+### Añadido
+
+- **Proyectos** (RF05): una idea se convierte en un **concepto**, un **guion por escenas** y un **plan con su coste**, todo editable a mano. `/proyectos` lista los tuyos y `/proyectos/[id]` los trabaja de arriba abajo: idea → concepto → escenas → plan. Desde esta versión una escena pertenece **siempre** a un proyecto.
+- **Asistente de guion, opcional y apagado de fábrica.** Con él encendido, propone concepto y escenas a partir de tu idea; sin él, el guion se escribe a mano de principio a fin, que es un camino de primera clase y el que funciona en una instalación recién migrada. Lo que el modelo devuelve es **una propuesta**: se limpia, se guarda como borrador y la revisas tú. Nada de lo que escriba aprueba ni encola nada.
+- **El texto también cuesta, y su coste queda en el `UsageLedger`.** La llamada al modelo de texto recorre el mismo camino de dinero que un fotograma: estimación con el precio registrado, confirmación explícita, clave de idempotencia firmada por el navegador, **reserva antes de llamar**, tope por llamada y presupuesto autorizado, límite de ritmo y, al terminar, **consumo con los créditos que informa el proveedor** (`credits_consumed`) y liberación de la reserva. Repetir la misma confirmación devuelve el proyecto tal como está y **no vuelve a llamar al proveedor**.
+- **Modelo de texto de KIE** (`gpt-5-6-sol`), con la **misma clave del usuario** que ya guarda la bóveda: no hace falta una segunda credencial y no se reactiva Google (ADR-0009 sigue en pie). Se siembra como `descubierto`, así que **no se puede elegir ni enviar** hasta que quien administra lo ejecute de verdad y lo marque `compatible` en `/admin/modelos` con su evidencia, igual que cualquier otro modelo nuevo.
+- **Estimación por escena y total del proyecto**, siempre con la palabra «estimación» y **la fecha del precio** con el que se calculó, y con un **margen prudente** para los modelos que todavía no tienen coste medido y revisado (ADR-0009: el prototipo infraestimó ×3). El margen se dice en la interfaz, no se esconde en la cifra.
+- **Presupuesto autorizado por proyecto** (RF14), que se fija al aprobar el plan. Un plan cuyo total estimado se pasa de ahí **no se puede aprobar** sin subirlo, y un plan sin presupuesto fijado tampoco.
+- **Tabla de aprobación en zona de claridad**: escena, modelos, duración, coste estimado, total y presupuesto autorizado, con «Aprobar y producir» **deshabilitado mientras falte algo** y la lista de lo que falta a la vista. Aprobar **congela** modelo, sello del precio, versión de la ficha del personaje y versión de la plantilla de cada escena.
+- **Afirmaciones que conviene verificar, señaladas en el guion**: cifras, datos presentados como hechos, promesas de salud y resultados prometidos. Se detectan **leyendo el texto, sin llamar a ningún modelo y sin coste**, así que funcionan igual con el guion escrito a mano. Cada una se puede **verificar** (exige escribir la fuente), **corregir** o **descartar**, y una afirmación de salud sin revisar **bloquea la aprobación** (PRD §8). Escenara no comprueba si son ciertas: decide una persona.
+- **Edición manual de cada escena y de cada prompt**, reordenar y borrar escenas. Los prompts vacíos los sigue componiendo el servidor con la plantilla, los presets y la ficha, como en 0.16.0.
+- Ajustes nuevos en Admin › Ajustes: **asistente de guion activo** (apagado por defecto), **presupuesto por proyecto** (500 créditos) y **margen prudente de la estimación** (30 %). Ninguno vive en `.env`.
+- Componentes nuevos en el catálogo `/admin/componentes`: insignias de estado de proyecto, de escena y de afirmación, y la **tabla de aprobación del plan**.
+- Guía de usuario [«El asistente de guion»](guias/asistente-de-guion.md), ADR-0020 (modelo de texto del asistente) y ADR-0021 (el proyecto como unidad de trabajo).
+- Tests: **sin aprobación explícita del plan no se encola ninguna generación** de imagen ni de vídeo (y no se crea ni trabajo ni reserva); la estimación se muestra por escena y en total con la palabra «estimación» y la fecha del precio (**test de render** de la tabla, no una inspección del código); **editar una escena aprobada invalida su aprobación** y lo indica con su motivo, y a partir de ahí no se puede producir; un plan por encima del presupuesto autorizado **no se puede aprobar** sin subirlo; un total distinto del confirmado tampoco; una afirmación de salud sin revisar bloquea la aprobación y verificar exige fuente; **el coste de la llamada de texto queda en el `UsageLedger`** con los créditos informados por el proveedor; la misma confirmación **no llama dos veces** al modelo ni cobra dos veces; un sello de precio caducado se rechaza en lugar de gastar; lo que devuelve el modelo se guarda **limpio** (no cuela instrucciones ni parámetros del proveedor); proyectos y escenas **solo del dueño** (404 para el resto, también para quien administra) y sus escrituras exigen `Origin` del mismo sitio. Más la lectura de la propuesta, la detección de afirmaciones y las reglas del plan probadas como funciones puras.
+- **Traducción de los prompts al inglés** (ver arriba): tabla `translation_cache` por usuario y por huella, ajuste
+  `traducirPrompts` y su coste visible en el panel de coste de «Crear».
+- **El gasto del asistente cuenta contra el presupuesto del proyecto** y se muestra en la tabla del plan (decisión
+  provisional del propietario): es dinero del mismo bote.
+- **Barrido de las llamadas de texto que se quedan a medias**: el worker las cierra **conservando la estimación**
+  (no se sabe si el proveedor las ejecutó, y soltar lo que quizá se ha pagado sería mentir), y mientras no las
+  cierre cuentan como presupuesto **retenido**, con su explicación distinta de la de un trabajo en revisión.
+- Tests nuevos: **el prompt no aparece en ningún cuerpo HTTP de un usuario normal** ni en los objetos que las
+  páginas pasan al navegador, y **sí lo ve quien administra** (centinela: una frase que solo está en la plantilla);
+  la traducción apagada no llama a nadie y encendida envía el texto en inglés, se cachea, no paga dos veces, no
+  traduce el diálogo, y **si falla no encola nada** (con la distinción entre rechazo probado y 5xx); el cliente de
+  texto traduce cada código HTTP al suyo, descarta el razonamiento y **conserva los créditos informados aunque la
+  respuesta sea ilegible**; y la clave de la confirmación es estable mientras no cambie lo que se confirma.
+
+### Cambiado
+
+- `generation_jobs` gana la **escena** de la que sale el trabajo (`scene_id`). Los trabajos del camino rápido de «Crear» siguen naciendo sin escena, y **«Crear» no cambia**: sigue funcionando exactamente como en la 0.16.x.
+- `usage_ledger` gana `assistant_run_id`, con su propio índice único por apunte: una llamada del asistente tiene como mucho una reserva, un consumo y una liberación, igual que un trabajo.
+- La comprobación de tope por trabajo y de presupuesto disponible se extrae a `exigirPresupuestoDisponible` y la comparten la reserva de un trabajo y la de una llamada del asistente: una sola definición para las dos.
+- El contrato de adaptadores gana `generarTexto`, **opcional**: un proveedor sin modelos de texto sigue siendo un adaptador válido y el asistente simplemente no está disponible con él.
+- **La cabecera de la aplicación pasa la navegación a su propia fila**, con el mismo criterio que la del admin: con
+  «Proyectos» dejaba de caber en una línea a 1920 px y empujaba el selector de tema y «Cerrar sesión» a otra. En
+  pantallas estrechas la tira desplaza en horizontal, así que ninguna sección queda inalcanzable.
+- `TrabajoVista` deja de llevar el prompt y lleva **la descripción que escribió la persona** (`escena`), que es lo
+  que se muestra en el historial. El prompt solo vuelve si se enciende «Mostrar el prompt a los usuarios».
+- El contexto aplicado de un personaje deja de llevar el texto y lleva **si la ficha aporta contexto**
+  (`conContexto`): lo que el usuario puede arreglar es que esté vacía, no el texto.
+- **Duplicar un preset** personaliza su nombre y su descripción; el fragmento en inglés se hereda y se edita en
+  Admin › Presets.
+- El botón de la aprobación dice **«Aprobar el plan»** y no «Aprobar y producir»: producir llega en la 0.19.0 y
+  prometerlo antes es prometer lo que no hay.
+- La aprobación de una escena congela además **la versión de la ficha del personaje y la de la plantilla**, y
+  `exigirEscenaAprobada` comprueba las tres cosas: sin eso, «lo aprobado sigue valiendo» era una promesa.
+- La lista de proyectos se lee con **una sola consulta de escenas** para todas las filas, y en orden descendente por
+  última modificación.
+
+### Seguridad
+
+- **Lo que devuelve el modelo de texto es contenido, nunca instrucciones.** Se parsea, pasa por la **misma limpieza anti-inyección** que la ficha (sin saltos de línea, sin caracteres de estructura, sin parámetros del proveedor y sin redirecciones), se recorta a su tope y se guarda como borrador para que lo revise una persona. La idea del usuario viaja al modelo **delimitada y etiquetada como dato**, también limpia.
+- **Autorización en el servidor y en la misma consulta**: un proyecto, una escena o una afirmación de otra persona responden 404, y **quien administra no es una excepción** (un guion es trabajo privado de alguien y `/admin` no tiene ninguna pantalla que lo necesite).
+- **Ninguna lectura mueve dinero.** Ver un proyecto, su plan o su coste estimado no llama a ningún proveedor ni reserva nada; el único camino que gasta es el del asistente, con su confirmación, su idempotencia y su límite de ritmo, y las escrituras exigen `Origin` del mismo sitio.
+- **Aprobar no genera.** La aprobación solo autoriza: `exigirEscenaAprobada` es la puerta por la que pasa cualquier camino que encole una generación desde una escena, y comprueba además que el sello del precio congelado siga siendo el vigente.
+
+### Arreglado
+
+- **La clave de la confirmación del asistente ya no se genera en cada clic**: es estable mientras no cambie lo que
+  se confirma (idea, precio y número de escenas), que es lo único que hace que la idempotencia del servidor sirva
+  de algo. Un doble clic o un reintento tras un error de red ya no encargaban dos guiones y no se cobran dos veces.
+- La petición del asistente **se compone antes de reservar**: leer la ficha del protagonista puede fallar, y una
+  reserva apartada por un fallo nuestro le comía presupuesto al usuario.
+- **El personaje tiene que poder usarse antes de que su ficha salga hacia el modelo de texto**: si su
+  consentimiento se ha revocado desde que se asignó al proyecto, no sale.
+- El cliente de texto corta a los **45 s** (antes 90): por encima de eso lo que hay es un problema, y el usuario
+  espera con su presupuesto apartado.
+- **La migración no crea una escena por clip**: un clip es la animación del fotograma de su escena y hereda la
+  suya. La `0018` corrige de forma idempotente lo que agrupó de más la `0017`, renumera sin huecos y deja el
+  proyecto heredado como `listo` si todos sus trabajos terminaron.
+- El tope de 24 escenas ya no confunde en un proyecto heredado: dice cuántas tiene, en lugar de afirmar un máximo
+  que ese proyecto ya se ha pasado.
+- **El límite de ritmo del asistente solo cuenta las llamadas nuevas**: reintentar una confirmación que ya se
+  ejecutó no gasta cupo.
+- El presupuesto de un proyecto se valida con el **mismo tope** al crearlo y al aprobar su plan.
+- «Proyectos» vacío solo menciona el proyecto «Sin título» **si existe**, y un plan sin escenas dice que añadas una
+  escena en lugar de hablar de precios que no faltan.
+- Antes de llamar al asistente se comprueba el **saldo del usuario** en el proveedor, si se conoce.
+- **Las rutas de presets ya no devolvían el fragmento del prompt.** Editar y duplicar tu copia responden con la
+  vista recortada, y editar solo el nombre **ya no vacía** el fragmento que tenía (antes se mandaba una cadena
+  vacía).
+- **La traducción va detrás de todas las puertas gratis** también en el fotograma: cuota, saldo, ritmo, decisión
+  (medida sobre el texto original, en el idioma de quien escribe) y tope del proyecto. Antes se pagaba una
+  traducción para después fallar por cualquiera de ellas.
+- Con la traducción ya en marcha en otra petición, **se vuelve a mirar la caché** y se sigue sin pagar si están
+  todas; si no, el mensaje **no afirma nada sobre el cobro**, solo que no se ha enviado nada a generar.
+- La caché de traducciones se lee **por las huellas que hacen falta** (antes se leía entera), se purga sola cuando
+  nadie la usa desde hace más de lo configurado (ajuste nuevo, 180 días) y **se borra con el personaje**.
+- **El gasto de texto tiene techo y su exceso se ve**: si el proveedor cobra por encima de lo apartado se apunta en
+  la llamada y aparece en `/admin/trabajos`, como el exceso de un trabajo. El modelo de texto cobra por tokens, así
+  que pasará.
+- Las escenas dejan de guardar dos columnas de prompt que nadie leía: el prompt se compone al producir y el que se
+  envió vive en el trabajo.
+- Las tres migraciones de esta versión se **fusionan en una sola** (`0017`), que acota los proyectos heredados por
+  su idea y no por su título: alguien puede llamar «Sin título» a un proyecto suyo.
+
+### Actualizar desde la 0.16.0
+
+- **Aplica las migraciones antes de arrancar el código nuevo**: `bun run db:backup` y luego `bun run db:migrate`. La `0017` crea `projects`, `scenes`, `claims` y `assistant_runs`, y añade `generation_jobs.scene_id` y `usage_ledger.assistant_run_id`.
+- **Tus trabajos anteriores se agrupan en un proyecto «Sin título»**, uno por usuario, con una escena por trabajo en orden de creación y el prompt que se envió de verdad conservado tal cual. No se borra ni se recalcula nada.
+- **El asistente llega apagado** (Admin › Ajustes › «Asistente de guion activo»). Para encenderlo hacen falta tres cosas: el interruptor, un modelo `text_generation` **seleccionable** en `/admin/modelos` —el sembrado es `descubierto`, así que hay que ejecutarlo una vez y marcarlo `compatible` con su precio medido— y que cada usuario tenga su clave del proveedor. Sin nada de eso, la pantalla lo dice y el guion se escribe a mano.
+- **Revisa el precio del modelo de texto antes de encenderlo.** Se siembra con 3 créditos por respuesta y un margen deliberado: el proveedor documenta 0,48 créditos en su ejemplo, pero el coste depende de los tokens. El consumo real lo informa él en cada llamada y se concilia en el registro de gasto.
+- **Fija el presupuesto de cada proyecto.** El plan no se puede aprobar sin él; el valor que se propone al crear sale de Admin › Ajustes (500 créditos por defecto).
+- **La versión trae una sola migración, la `0017`**, con todo: proyectos, escenas, afirmaciones, asistente, caché de
+  traducciones y la agrupación de los trabajos anteriores (una escena por **fotograma**; un clip hereda la de su
+  fotograma). Haz `bun run db:backup` antes, como siempre.
+- **La traducción de los prompts llega apagada.** Encenderla exige lo mismo que el asistente: el interruptor, un
+  modelo de texto `compatible` en `/admin/modelos` y la clave de cada usuario. Apagada, todo funciona como en la
+  0.16.x. Encenderla **añade un coste por texto nuevo**: revisa el precio del modelo antes.
+- **El prompt deja de verse.** Si usabas «Editar el texto final», ese camino ya no existe: lo que decides son los
+  botones y tu descripción. Quien administra puede consultar el prompt de cualquier trabajo en `/admin/trabajos`.
+- **«Crear» no cambia** en lo demás. Si trabajas como hasta ahora, no tienes que tocar nada.
+
 ## [0.16.0] · 2026-09-27
 
 ### Añadido

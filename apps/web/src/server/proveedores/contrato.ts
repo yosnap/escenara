@@ -138,6 +138,25 @@ export interface PeticionAdaptador {
   callbackUrl?: string;
 }
 
+/**
+ * Lo que necesita el adaptador para pedir un texto (0.17.0). `instrucciones` las compone **siempre el
+ * servidor**; `entrada` es el contenido del usuario, ya limpio y delimitado. La clave solo viaja hasta aquí.
+ */
+export interface PeticionTexto {
+  clave: string;
+  modelo: string;
+  instrucciones: string;
+  entrada: string;
+  buscar: Buscador;
+}
+
+/** Lo que devuelve un modelo de texto. El texto **no es de fiar**: quien lo recibe lo trata como propuesta. */
+export interface TextoProveedor {
+  texto: string;
+  /** Créditos que informa el proveedor; `null` si no los informa y hay que quedarse con la estimación. */
+  creditos: number | null;
+}
+
 export interface PeticionConsulta {
   clave: string;
   taskId: string;
@@ -187,6 +206,12 @@ export interface Adaptador {
   /** Crea la tarea de vídeo y devuelve su identificador. */
   generarVideo(peticion: PeticionAdaptador): Promise<string>;
   consultar(peticion: PeticionConsulta): Promise<TareaProveedor>;
+  /**
+   * Pide un texto al modelo (0.17.0). **Opcional**: un proveedor sin modelos de texto sigue siendo un
+   * adaptador válido, y el asistente de guion simplemente no está disponible con él (el guion se escribe a
+   * mano, que es un camino de primera clase).
+   */
+  generarTexto?(peticion: PeticionTexto): Promise<TextoProveedor>;
   /** Precio registrado del modelo. Nunca se inventa: sin precio no se estima ni se gasta. */
   estimar(modelo: string): Promise<PrecioModelo>;
   /** Comprueba la credencial y devuelve el saldo si el proveedor lo informa. */

@@ -1,4 +1,4 @@
-import type { CatalogoParaCrear, PresetVista } from "@/lib/presets";
+import type { CatalogoParaCrear, PresetVisible } from "@/lib/presets";
 import type { Resultado } from "./api-generacion";
 
 /** Cliente de presets y plantillas para el navegador. */
@@ -26,9 +26,9 @@ export const consultarCatalogoDePresets = (tipo: "fotograma" | "animacion", mode
 /** Edita **tu** copia de un preset. La de la instalación responde 403 y la de otro usuario, 404. */
 export const editarPresetPropio = (
   id: string,
-  cambios: { nombre: string; descripcion: string; prompt: string; proporcion?: string; segundos?: number },
+  cambios: { nombre: string; descripcion: string; prompt?: string; proporcion?: string; segundos?: number },
 ) =>
-  pedir<PresetVista>(`/api/prompts/presets/${id}`, {
+  pedir<PresetVisible>(`/api/prompts/presets/${id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(cambios),
@@ -39,4 +39,4 @@ export const borrarPresetPropio = (id: string) => pedir<null>(`/api/prompts/pres
 
 /** Duplica un preset de la instalación para hacerlo tuyo. */
 export const duplicarPreset = (id: string) =>
-  pedir<PresetVista>(`/api/prompts/presets/${id}/duplicar`, { method: "POST" });
+  pedir<PresetVisible>(`/api/prompts/presets/${id}/duplicar`, { method: "POST" });

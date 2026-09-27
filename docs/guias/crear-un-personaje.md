@@ -133,3 +133,15 @@ personaje. Revoca primero su consentimiento y después ya podrás borrarlo.
 **Mandé una foto del personaje a la papelera y ahora no puede generar.** Es lo esperado: una foto en la papelera
 no se puede enviar a ningún proveedor, así que no cuenta para el mínimo. Restáurala y el personaje vuelve a estar
 listo sin tener que añadirla otra vez.
+
+## Qué sale de Escenara cuando generas con él (0.17.0)
+
+No son solo sus fotos. **El texto de su ficha** —rasgos, estilo, vestuario, personalidad y descripción— forma parte
+del prompt, así que **se procesa en KIE** igual que las fotos. Y si tu instalación traduce los prompts al inglés,
+ese texto pasa **además** por el modelo de texto de KIE, y su traducción se guarda con tu cuenta.
+
+Dos cosas que van con eso:
+
+- lo dice el propio formulario de consentimiento, antes de registrarlo;
+- **al borrar el personaje se borran también sus traducciones**, en la misma operación que sus derivados y su
+  consentimiento. Y las que nadie use durante mucho tiempo se borran solas.

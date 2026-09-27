@@ -1,3 +1,4 @@
+import { recortarPresetVisible } from "@/lib/presets";
 import { type ContextoId, exigirRitmoDePresets, leerId, manejador } from "@/server/prompts/http";
 import { duplicarPreset } from "@/server/prompts/presets-admin";
 
@@ -9,9 +10,11 @@ export const dynamic = "force-dynamic";
  *
  * Exige `Origin` del mismo sitio, como todo lo que cambia datos, y lleva límite de ritmo: escribe una fila y
  * nadie la borra sola.
+ *
+ * **La copia se devuelve recortada** (ADR-0022): el fragmento en inglés se hereda y se queda en el servidor.
  */
 export const POST = manejador(async (_: Request, contexto: ContextoId, actor) => {
   const id = await leerId(contexto);
   await exigirRitmoDePresets(actor);
-  return Response.json(await duplicarPreset(actor.id, id), { status: 201 });
+  return Response.json(recortarPresetVisible(await duplicarPreset(actor.id, id)), { status: 201 });
 });

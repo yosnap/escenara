@@ -19,6 +19,7 @@ const ESTIMACION: Estimacion = {
   fuente: "Medido en el prototipo 0.3.0",
   comprobado: "2026-09-27",
   precioAntiguo: false,
+  traduccion: null,
   sello: "kie:veo3_lite:vídeo de 4 s@v1",
 };
 
@@ -26,6 +27,7 @@ const DEPOSITO: Deposito = {
   autorizado: 2000,
   reservado: 64,
   retenido: 0,
+  llamadasDeTextoColgadas: 0,
   trabajosEnRevision: 0,
   consumido: 312,
   disponible: 1624,

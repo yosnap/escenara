@@ -36,7 +36,8 @@ export interface DatosPreset {
   clave: string;
   nombre: string;
   descripcion: string;
-  prompt: string;
+  /** Fragmento en inglés. Opcional al editar una copia propia: sin él se conserva el que tenía (ADR-0022). */
+  prompt?: string;
   /** Proporción que exige, solo en `formato`. Cadena vacía = ninguna. */
   proporcion?: string;
   /** Segundos que exige, solo en `duracion`. 0 = ninguno. */
@@ -231,8 +232,15 @@ export async function editarPresetPropio(usuarioId: string, id: string, datos: D
   }
   // El orden y el estado no se tocan aquí: los lleva la fila, y el formulario de «Crear» no los ofrece. Si se
   // cogieran de `datos`, editar el nombre de una copia la reordenaría y la reactivaría sin que nadie lo pidiera.
+  // El fragmento en inglés **ya no viaja al navegador** (ADR-0022), así que si no llega se conserva el que
+  // tenía: desde «Crear» se personalizan el nombre y la descripción, y el texto del prompt se edita en
+  // Admin › Presets. Los valores anteriores incluyen la proporción y la duración que exige.
+  const previos = valoresDeTexto(anterior.values);
   const valores = normalizar({
+    ...(previos.proporcion === undefined ? {} : { proporcion: previos.proporcion }),
+    ...(previos.segundos === undefined ? {} : { segundos: previos.segundos }),
     ...datos,
+    prompt: datos.prompt ?? previos.prompt,
     clave: anterior.slug,
     categoria: anterior.category,
     orden: anterior.sortOrder,

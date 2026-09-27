@@ -6,11 +6,14 @@ import {
   type PeticionAdaptador,
   type PeticionConsulta,
   type PeticionReferencia,
+  type PeticionTexto,
   type PrecioModelo,
   type TareaProveedor,
+  type TextoProveedor,
 } from "../contrato";
 import { consultarTarea, crearTarea, ErrorKie, saldoCreditos, subirReferencia } from "./cliente";
 import { CAMPOS_DE_URL, type ContextoEntrada, entradaDeModelo } from "./entradas";
+import { generarTextoKie } from "./texto";
 
 /**
  * Adaptador de KIE.ai sobre el contrato de proveedores (ADR-0015). No cambia nada de lo que hacía la
@@ -23,7 +26,12 @@ import { CAMPOS_DE_URL, type ContextoEntrada, entradaDeModelo } from "./entradas
  * `entradas.ts` a partir de los parámetros comprobados del catálogo.
  */
 
-const CAPACIDADES: readonly Capacidad[] = ["image_edit", "image_to_video", "text_to_video"];
+/**
+ * `text_generation` se añade en la 0.17.0: KIE también ofrece modelos de chat, con su propio endpoint
+ * síncrono (`codex/v1/responses`). El asistente de guion los usa con la **misma credencial de KIE** del
+ * usuario, así que no hace falta una segunda clave.
+ */
+const CAPACIDADES: readonly Capacidad[] = ["image_edit", "image_to_video", "text_to_video", "text_generation"];
 
 /** Todo fallo del cliente sale de aquí como `ErrorProveedor`, con su código propio y su mensaje. */
 async function normalizando<T>(accion: () => Promise<T>): Promise<T> {
@@ -61,6 +69,10 @@ export const adaptadorKie: Adaptador = {
 
   consultar({ clave, taskId, buscar }: PeticionConsulta): Promise<TareaProveedor> {
     return normalizando(() => consultarTarea(clave, taskId, buscar));
+  },
+
+  generarTexto({ clave, modelo, instrucciones, entrada, buscar }: PeticionTexto): Promise<TextoProveedor> {
+    return normalizando(() => generarTextoKie(clave, modelo, instrucciones, entrada, buscar));
   },
 
   estimar(modelo: string): Promise<PrecioModelo> {

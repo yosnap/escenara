@@ -5,6 +5,7 @@ import { users } from "./esquema-auth";
 import { proveedorCredencial } from "./esquema-boveda";
 import { characters, characterVersions } from "./esquema-personajes";
 import { promptTemplates, promptTemplateVersions } from "./esquema-presets";
+import { scenes } from "./esquema-proyectos";
 import { jsonb } from "./jsonb";
 
 /**
@@ -111,6 +112,12 @@ export const generationJobs = pgTable(
     }),
     /** `true` si el usuario editó a mano el texto que compuso la plantilla antes de confirmar. */
     promptEdited: boolean("prompt_edited").notNull().default(false),
+    /**
+     * Escena del proyecto de la que salió este trabajo (0.17.0). `null` en los trabajos del camino rápido de
+     * «Crear», que sigue existiendo. `set null` y no cascada: borrar una escena no puede hacer desaparecer el
+     * hecho histórico de un trabajo que ya se pagó.
+     */
+    sceneId: uuid("scene_id").references(() => scenes.id, { onDelete: "set null" }),
     resultMediaId: uuid("result_media_id").references(() => media.id, { onDelete: "set null" }),
     estimatedCredits: integer("estimated_credits").notNull(),
     /** Créditos que informa el proveedor; si no llegan, se conserva la estimación marcada como tal. */
@@ -180,6 +187,8 @@ export const generationJobs = pgTable(
     index("generation_jobs_toma_idx").on(t.lockedUntil),
     // Índice del borrado de derivados: al borrar un personaje hay que localizar todos sus trabajos.
     index("generation_jobs_personaje_idx").on(t.characterId),
+    // Índice del proyecto: la página de un proyecto busca los trabajos de sus escenas.
+    index("generation_jobs_escena_idx").on(t.sceneId),
   ],
 );
 

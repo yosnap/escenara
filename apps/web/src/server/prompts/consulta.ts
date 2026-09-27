@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, inArray, isNull, or } from "drizzle-orm";
+import type { Capacidad } from "@/lib/catalogo";
 import {
   type CategoriaPreset,
   esCategoriaPreset,
@@ -264,6 +265,15 @@ export async function listarPlantillas(opciones: { usuarioId?: string } = {}): P
     .orderBy(asc(promptTemplates.capability), asc(promptTemplates.sortOrder), asc(promptTemplates.name));
   const vigentes = await versionesVigentes(filas.map((f) => f.id));
   return filas.map((f) => vistaDePlantilla(f, vigentes.get(f.id) ?? ""));
+}
+
+/**
+ * Plantilla activa con la que se compondría un prompt de esa capacidad, con su versión vigente. Es la que la
+ * aprobación de una escena **congela**: si cambia, lo aprobado ya no es lo que se enviaría.
+ */
+export async function plantillaVigenteDe(usuarioId: string, capacidad: Capacidad): Promise<PlantillaVista | null> {
+  const plantillas = await listarPlantillas({ usuarioId });
+  return plantillas.find((p) => p.activa && p.capacidad === capacidad) ?? null;
 }
 
 /** Fila de una plantilla utilizable por quien pregunta: la suya o la de la instalación. */

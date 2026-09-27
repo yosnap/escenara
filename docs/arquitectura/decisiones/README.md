@@ -25,6 +25,9 @@ Cada decisión relevante se documenta en un fichero `adr-NNNN-slug.md` dentro de
 | [0017](adr-0017-consentimiento-de-personajes.md) | Consentimiento de personajes: registro con prueba, revisión humana y borrado de derivados | 0.13.0 | Propuesto (decisiones provisionales pendientes del propietario) |
 | [0018](adr-0018-ficha-como-contexto-y-version-citada.md) | La ficha del personaje es contexto de generación y cada trabajo cita su versión | 0.15.0 | Propuesto (decisiones provisionales pendientes del propietario) |
 | [0019](adr-0019-presets-y-plantillas-de-prompt.md) | Presets y plantillas de prompt: prompts en inglés, compuestos en el servidor y con versión citada | 0.16.0 | Propuesto (decisiones provisionales pendientes del propietario) |
+| [0020](adr-0020-modelo-de-texto-del-asistente.md) | Modelo de texto del asistente: KIE con la clave del usuario, apagado de fábrica y texto no confiable | 0.17.0 | Propuesto (decisiones provisionales pendientes del propietario) |
+| [0021](adr-0021-el-proyecto-como-unidad-de-trabajo.md) | El proyecto es la unidad de trabajo y el plan aprobado, la única puerta a la producción | 0.17.0 | Propuesto (decisiones provisionales pendientes del propietario) |
+| [0022](adr-0022-el-prompt-es-material-del-servidor.md) | El prompt compuesto es material del servidor y del admin, no del navegador | 0.17.0 | Propuesto (decisión **firme** del propietario) |
 
 ## Plantilla
 

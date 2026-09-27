@@ -1,6 +1,6 @@
 import { and, desc, eq, gt, inArray, isNotNull, type SQL, sql } from "drizzle-orm";
 import { db } from "../db/cliente";
-import { generationJobs, usageLedger, users } from "../db/esquema";
+import { assistantRuns, generationJobs, usageLedger, users } from "../db/esquema";
 
 /**
  * Trabajos que necesitan que alguien decida a mano: los que quedaron `desconocido` porque el proveedor no
@@ -27,6 +27,11 @@ export interface TrabajoEnRevision {
   /** Créditos cobrados por encima de ese techo, si ha pasado. */
   excesoCreditos: number | null;
   motivo: string | null;
+  /**
+   * Prompt compuesto tal como se envió. **Solo aquí** (ADR-0022): al usuario no se le muestra, y quien administra
+   * lo necesita para poder explicar un resultado o un rechazo del proveedor.
+   */
+  prompt: string;
   creadoEn: string;
 }
 
@@ -56,6 +61,7 @@ async function leerTrabajos(condicion: SQL | undefined, limite: number): Promise
       taskId: generationJobs.taskId,
       creditosEstimados: generationJobs.estimatedCredits,
       motivo: generationJobs.errorMessage,
+      prompt: generationJobs.prompt,
       limiteCreditos: generationJobs.creditLimit,
       excesoCreditos: generationJobs.excessCredits,
       creadoEn: generationJobs.createdAt,
@@ -98,4 +104,43 @@ export async function contarTrabajosEnRevision(): Promise<number> {
     .from(generationJobs)
     .where(eq(generationJobs.state, "desconocido"));
   return fila?.total ?? 0;
+}
+
+/** Llamada al modelo de texto en la que el proveedor ha cobrado por encima de lo que se apartó. */
+export interface LlamadaConExceso {
+  id: string;
+  correo: string;
+  /** Para qué se llamó: `guion`, `traduccion`… */
+  tipo: string;
+  modelo: string;
+  estimado: number;
+  consumido: number | null;
+  exceso: number;
+  creadoEn: string;
+}
+
+/**
+ * Llamadas de texto que se han cobrado por encima del techo que se apartó. No hay nada que deshacer (el precio lo
+ * decide el proveedor y el gasto real ya está apuntado), pero quien administra tiene que poder verlas: es el
+ * síntoma de un precio del catálogo desfasado, y el modelo de texto cobra **por tokens**, así que es lo esperable
+ * el día que alguien escriba una idea muy larga.
+ */
+export async function llamadasConExceso(limite = 100): Promise<LlamadaConExceso[]> {
+  const filas = await db()
+    .select({
+      id: assistantRuns.id,
+      correo: users.email,
+      tipo: assistantRuns.kind,
+      modelo: assistantRuns.model,
+      estimado: assistantRuns.estimatedCredits,
+      consumido: assistantRuns.consumedCredits,
+      exceso: assistantRuns.excessCredits,
+      creadoEn: assistantRuns.createdAt,
+    })
+    .from(assistantRuns)
+    .innerJoin(users, eq(users.id, assistantRuns.userId))
+    .where(and(isNotNull(assistantRuns.excessCredits), gt(assistantRuns.excessCredits, 0)))
+    .orderBy(desc(assistantRuns.createdAt))
+    .limit(limite);
+  return filas.map((f) => ({ ...f, exceso: f.exceso ?? 0, creadoEn: f.creadoEn.toISOString() }));
 }

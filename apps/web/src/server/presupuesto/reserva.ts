@@ -38,33 +38,66 @@ export interface DatosReserva {
 }
 
 /**
- * Comprueba el presupuesto y apunta la reserva. Tiene que llamarse **dentro** de una transacción que ya
- * haya bloqueado la fila del usuario: es lo que serializa dos envíos a la vez.
+ * Comprueba el tope por trabajo y el presupuesto autorizado del usuario. Tiene que llamarse **dentro** de la
+ * transacción que ya bloqueó su fila: si se sumara fuera, dos gastos simultáneos podrían leer el mismo saldo.
+ *
+ * Lo usan la reserva de un trabajo de generación y la de una llamada del asistente de guion (0.17.0): el texto
+ * también cuesta, así que también tiene tope y también consume presupuesto.
  */
-export async function reservar(tx: Ejecutor, datos: DatosReserva, ajustes: Ajustes): Promise<FilaApunte> {
-  const { autorizado, topeTrabajo } = topesDe(ajustes);
-  if (topeTrabajo !== null && datos.creditos > topeTrabajo) {
+export function exigirTopeDeTrabajo(creditos: number, ajustes: Ajustes): void {
+  const { topeTrabajo } = topesDe(ajustes);
+  if (topeTrabajo !== null && creditos > topeTrabajo) {
     throw new ErrorGeneracion(
       402,
-      `Este trabajo necesita ${formatearCreditos(datos.creditos)} y el tope por trabajo de esta instalación es de ${formatearCreditos(topeTrabajo)}. Pídele a quien administra que lo suba.`,
+      `Este trabajo necesita ${formatearCreditos(creditos)} y el tope por trabajo de esta instalación es de ${formatearCreditos(topeTrabajo)}. Pídele a quien administra que lo suba.`,
     );
   }
+}
+
+/**
+ * Tope por trabajo, leyendo los ajustes. Lo usa el alta de un trabajo **antes de gastar nada** con el coste
+ * **total** del envío (la generación más su traducción, si esta instalación traduce): las dos llamadas son el
+ * mismo envío para quien las paga, así que el tope se mide sobre la suma.
+ */
+export async function exigirTopePorTrabajo(creditos: number): Promise<void> {
+  exigirTopeDeTrabajo(creditos, await leerAjustes());
+}
+
+export async function exigirPresupuestoDisponible(
+  tx: Ejecutor,
+  usuarioId: string,
+  creditos: number,
+  ajustes: Ajustes,
+): Promise<void> {
+  const { autorizado } = topesDe(ajustes);
+  exigirTopeDeTrabajo(creditos, ajustes);
   if (autorizado !== null) {
-    const { reservado, consumido, retenido, trabajosEnRevision } = await comprometidoDe(datos.usuarioId, tx);
+    const { reservado, consumido, retenido, trabajosEnRevision, llamadasDeTextoColgadas } = await comprometidoDe(
+      usuarioId,
+      tx,
+    );
     const disponible = autorizado - reservado - consumido;
-    if (datos.creditos > disponible) {
+    if (creditos > disponible) {
       // Se dice la verdad sobre **por qué** no queda: si parte del presupuesto está retenida en trabajos que
       // nadie puede soltar solo, esperar no sirve de nada y hay que decirlo.
       const retencion =
         retenido > 0
-          ? ` De tu presupuesto hay ${formatearCreditos(retenido)} retenidos en ${trabajosEnRevision === 1 ? "un trabajo" : `${trabajosEnRevision} trabajos`} pendientes de revisión, porque el proveedor no contestó y no se sabe si cobró: eso no se libera solo, pídele a quien administra que lo resuelva.`
+          ? ` De tu presupuesto hay ${formatearCreditos(retenido)} retenidos en ${enQue(trabajosEnRevision, llamadasDeTextoColgadas)}, porque el proveedor no contestó y no se sabe si cobró: eso no se libera solo.`
           : " Espera a que terminen los trabajos en marcha o pídele más presupuesto a quien administra.";
       throw new ErrorGeneracion(
         402,
-        `Tu presupuesto en esta instalación tiene ${formatearCreditos(Math.max(0, disponible))} libres y este trabajo necesita ${formatearCreditos(datos.creditos)}.${retencion}`,
+        `Tu presupuesto en esta instalación tiene ${formatearCreditos(Math.max(0, disponible))} libres y este trabajo necesita ${formatearCreditos(creditos)}.${retencion}`,
       );
     }
   }
+}
+
+/**
+ * Comprueba el presupuesto y apunta la reserva. Tiene que llamarse **dentro** de una transacción que ya
+ * haya bloqueado la fila del usuario: es lo que serializa dos envíos a la vez.
+ */
+export async function reservar(tx: Ejecutor, datos: DatosReserva, ajustes: Ajustes): Promise<FilaApunte> {
+  await exigirPresupuestoDisponible(tx, datos.usuarioId, datos.creditos, ajustes);
   let apunte: FilaApunte | undefined;
   try {
     [apunte] = await tx
@@ -93,6 +126,26 @@ export async function reservar(tx: Ejecutor, datos: DatosReserva, ajustes: Ajust
   }
   if (!apunte) throw new ErrorGeneracion(500, "No se ha podido reservar el presupuesto del trabajo.");
   return apunte;
+}
+
+/**
+ * En qué está retenido el presupuesto, con la acción que corresponde a cada caso: un trabajo pendiente de
+ * revisión lo resuelve quien administra; una llamada de texto a medias la cierra el worker en su siguiente
+ * pasada, así que ahí lo que toca es esperar unos minutos.
+ */
+function enQue(trabajos: number, llamadas: number): string {
+  const partes: string[] = [];
+  if (trabajos > 0) {
+    partes.push(
+      `${trabajos === 1 ? "un trabajo" : `${trabajos} trabajos`} pendientes de revisión, que resuelve quien administra`,
+    );
+  }
+  if (llamadas > 0) {
+    partes.push(
+      `${llamadas === 1 ? "una llamada" : `${llamadas} llamadas`} al asistente que no terminaron, que el servidor cierra solo en unos minutos`,
+    );
+  }
+  return partes.join(" y ");
 }
 
 /** Violación del índice único de apuntes automáticos (`usage_ledger_trabajo_apunte_uq`). */

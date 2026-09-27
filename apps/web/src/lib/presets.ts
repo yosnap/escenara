@@ -98,9 +98,8 @@ export interface PresetElegible {
   nombre: string;
   descripcion: string;
   /**
-   * Fragmento en inglés que entra en el prompt. Viaja al navegador a propósito: es lo que le permite ver la
-   * previsualización **exacta** con la misma función pura, y de todas formas el texto final se le muestra y se
-   * puede editar. No es un secreto: es el catálogo de la instalación.
+   * Fragmento en inglés que entra en el prompt. **Solo vive en el servidor** desde la 0.17.0 (ADR-0022): el
+   * prompt compuesto no sale hacia el navegador de un usuario normal, y sus piezas tampoco.
    */
   prompt: string;
   /** Proporción que exige, si exige alguna. */
@@ -108,6 +107,18 @@ export interface PresetElegible {
   /** Segundos que exige, si exige alguno. */
   segundos: number | null;
   deLaInstalacion: boolean;
+}
+
+/**
+ * Preset tal como lo ve **el navegador**: lo que el usuario eligió y por qué, sin el fragmento de prompt
+ * (ADR-0022). Es lo único que necesita la botonera: el nombre, la descripción y lo que el preset exige del
+ * modelo para poder deshabilitarlo con su motivo.
+ */
+export type PresetVisible = Omit<PresetElegible, "prompt">;
+
+export function recortarPresetVisible(preset: PresetVista): PresetVisible {
+  const { prompt: _prompt, ...visible } = recortarPreset(preset);
+  return visible;
 }
 
 export function recortarPreset(preset: PresetVista): PresetElegible {
@@ -216,6 +227,18 @@ export interface PlantillaElegible {
   deLaInstalacion: boolean;
 }
 
+/**
+ * Plantilla tal como la ve **el navegador**: su nombre, su descripción y sus variables, **sin el texto de la
+ * plantilla** (ADR-0022). Con las variables basta para pintar la botonera y para decir qué falta elegir; el
+ * texto en inglés es material del servidor.
+ */
+export type PlantillaVisible = Omit<PlantillaElegible, "plantilla">;
+
+export function recortarPlantillaVisible(plantilla: PlantillaVista): PlantillaVisible {
+  const { plantilla: _texto, ...visible } = recortarPlantilla(plantilla);
+  return visible;
+}
+
 export function recortarPlantilla(plantilla: PlantillaVista): PlantillaElegible {
   return {
     id: plantilla.id,
@@ -267,11 +290,11 @@ export interface LimitesDelModelo {
  */
 export interface CatalogoParaCrear {
   /** Presets activos que este usuario puede usar, de la instalación y suyos, ya ordenados. */
-  presets: PresetElegible[];
+  presets: PresetVisible[];
   /** Por identificador de preset, el motivo por el que no se puede usar con el modelo elegido. */
   incompatibles: Record<string, string>;
   /** Plantillas activas de la capacidad del tipo de trabajo. */
-  plantillas: PlantillaElegible[];
+  plantillas: PlantillaVisible[];
   /** Identificador del modelo contra el que se ha calculado todo esto. */
   modelo: string;
   limites: LimitesDelModelo;

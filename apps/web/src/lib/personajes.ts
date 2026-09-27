@@ -147,6 +147,14 @@ export const AVISO_MAYORIA_DE_EDAD =
 export const AVISO_SIN_TERCEROS =
   "Antes de enviar las fotos al proveedor, confirma que en ellas no aparece ninguna otra persona ni ningún menor. Las referencias se suben al almacenamiento temporal del proveedor, donde quedan accesibles por enlace unas horas.";
 
+/**
+ * Qué sale de Escenara hacia el proveedor cuando se genera con este personaje. Se dice **en el consentimiento**,
+ * porque no son solo las fotos: **el texto de su ficha también se procesa en KIE** (entra en el prompt y, si la
+ * instalación traduce los prompts al inglés, pasa además por su modelo de texto).
+ */
+export const AVISO_DATOS_AL_PROVEEDOR =
+  "Al generar con este personaje se envían a KIE sus fotos de referencia y el texto de su ficha (rasgos, estilo, vestuario, personalidad y descripción), que forma parte del prompt. Si esta instalación traduce los prompts al inglés, ese texto pasa además por el modelo de texto de KIE, y su traducción se guarda con tu cuenta hasta que borres el personaje.";
+
 export const AVISO_CONTROL_NO_GARANTIA =
   "Este registro es un control del producto, no una verificación. Escenara no comprueba identidades ni edades: guarda tu declaración con tu cuenta y la fecha, y quien administra la instalación revisa los documentos de terceros.";
 
@@ -249,8 +257,12 @@ export interface ContextoAplicado {
   nombre: string;
   versionId: string;
   versionNumero: number;
-  /** Bloque de contexto tal como se añadirá al prompt; vacío si la ficha no dice nada. */
-  contexto: string;
+  /**
+   * `true` si la ficha aporta algo al prompt. **El texto no viaja** (ADR-0022): el prompt compuesto no sale hacia
+   * el navegador de un usuario normal, así que aquí solo se dice si la ficha está aportando contexto o si está
+   * vacía, que es la única parte que el usuario puede arreglar.
+   */
+  conContexto: boolean;
   /** Referencias que se enviarán, ya elegidas por cobertura y recortadas al tope del modelo. */
   referencias: { medioId: string; vista: Vista | null; origen: OrigenReferencia; medio: Medio | null }[];
   /** Tope de referencias del modelo elegido. */

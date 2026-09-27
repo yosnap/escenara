@@ -1,5 +1,6 @@
 import { and, desc, eq, gt, inArray, isNotNull, ne, or, type SQL } from "drizzle-orm";
 import { ESTADOS_ACTIVOS, type TrabajoVista } from "@/lib/generacion";
+import { leerAjustes } from "../ajustes";
 import { posicionEnCola, posicionesEnCola } from "../cola/toma";
 import { db } from "../db/cliente";
 import { type FilaMedio, type FilaTrabajo, generationJobs, media } from "../db/esquema";
@@ -45,7 +46,22 @@ const iso = (f: Date | null) => (f ? f.toISOString() : null);
  */
 const necesitaRevision = (fila: FilaTrabajo) => fila.state === "desconocido";
 
-export function vistaDe(fila: FilaTrabajo, medio: FilaMedio | null, posicion: number | null = null): TrabajoVista {
+/** Lo que escribió la persona, guardado aparte del prompt compuesto desde 0.16.0 (`input.escena`). */
+function escenaDe(fila: FilaTrabajo): string {
+  const escena = (fila.input as { escena?: unknown }).escena;
+  return typeof escena === "string" ? escena : "";
+}
+
+/**
+ * Trabajo tal como lo ve el navegador. `conPrompt` solo es `true` cuando el ajuste «Mostrar el prompt a los
+ * usuarios» está encendido: de fábrica el prompt compuesto **no sale de aquí** (ADR-0022).
+ */
+export function vistaDe(
+  fila: FilaTrabajo,
+  medio: FilaMedio | null,
+  posicion: number | null = null,
+  conPrompt = false,
+): TrabajoVista {
   return {
     id: fila.id,
     tipo: fila.kind,
@@ -54,7 +70,8 @@ export function vistaDe(fila: FilaTrabajo, medio: FilaMedio | null, posicion: nu
     estado: fila.state,
     estadoProveedor: fila.providerState,
     taskId: fila.taskId,
-    prompt: fila.prompt,
+    escena: escenaDe(fila),
+    ...(conPrompt ? { prompt: fila.prompt } : {}),
     creditosEstimados: fila.estimatedCredits,
     creditosConsumidos: fila.consumedCredits,
     error: fila.errorMessage,
@@ -136,8 +153,8 @@ async function medioDe(fila: FilaTrabajo): Promise<FilaMedio | null> {
 }
 
 export async function vistaDeFila(fila: FilaTrabajo): Promise<TrabajoVista> {
-  const [medio, posicion] = await Promise.all([medioDe(fila), posicionEnCola(fila)]);
-  return vistaDe(fila, medio, posicion);
+  const [medio, posicion, ajustes] = await Promise.all([medioDe(fila), posicionEnCola(fila), leerAjustes()]);
+  return vistaDe(fila, medio, posicion, ajustes.mostrarPromptAlUsuario);
 }
 
 export async function obtenerTrabajo(usuarioId: string, id: string): Promise<TrabajoVista> {
@@ -157,8 +174,14 @@ export async function listarTrabajos(usuarioId: string, limite = MAXIMO_HISTORIA
   const porId = new Map(medios.map((m) => [m.id, m]));
   // Los puestos de la cola se calculan una sola vez para toda la lista, no uno por fila.
   const puestos = filas.some((f) => f.state === "en_cola") ? await posicionesEnCola() : new Map<string, number>();
+  const { mostrarPromptAlUsuario } = await leerAjustes();
   return filas.map((f) =>
-    vistaDe(f, f.resultMediaId ? (porId.get(f.resultMediaId) ?? null) : null, puestos.get(f.id) ?? null),
+    vistaDe(
+      f,
+      f.resultMediaId ? (porId.get(f.resultMediaId) ?? null) : null,
+      puestos.get(f.id) ?? null,
+      mostrarPromptAlUsuario,
+    ),
   );
 }
 

@@ -48,6 +48,8 @@ const ESCENA = "En una cafetería luminosa, saluda a cámara con una sonrisa.";
 const NANO = "nano-banana-2-lite";
 const SEEDREAM = "seedream/4.5-edit";
 const HAILUO = "hailuo/2-3-image-to-video-standard";
+/** Modelo de texto del asistente de guion (0.17.0), sembrado como `descubierto`. */
+const TEXTO = "gpt-5-6-sol";
 
 let llamadas = { credito: 0, subida: 0, crearTarea: 0, consulta: 0 };
 /** Identificador de tarea único por proceso: una tarea del proveedor es un solo trabajo (clave única). */
@@ -183,6 +185,9 @@ describe.skipIf(!hayBaseDeDatos)("catálogo de modelos", () => {
           NANO,
           SEEDREAM,
           "veo3_lite",
+          // Modelo de texto del asistente de guion (0.17.0). Se siembra `descubierto`: está en el catálogo pero
+          // no se puede elegir ni enviar hasta que quien administra lo ejecute y lo marque compatible.
+          TEXTO,
         ].sort(),
       );
       const resultado = await sembrarCatalogo();
@@ -216,6 +221,9 @@ describe.skipIf(!hayBaseDeDatos)("catálogo de modelos", () => {
         const modelo = porModelo.get(sembrado.modelo);
         expect(modelo).toBeDefined();
         if (!modelo) continue;
+        // Los modelos de texto no pasan por `jobs/createTask` ni reciben referencias: tienen su propio endpoint
+        // (`codex/v1/responses`) y su propia entrada, así que aquí no hay ninguna que montar.
+        if (modelo.capacidades.includes("text_generation")) continue;
         const entrada = adaptadorKie.montarEntrada(modelo, contexto);
         // Toda entrada lleva prompt y recibe la referencia por el campo que espera ese modelo.
         expect(typeof entrada.prompt).toBe("string");

@@ -1,5 +1,5 @@
 {
-  "comentario": "Semilla del catálogo de proveedores y modelos (0.11.0). Cada modelo se siembra con lo que se ejecutó de verdad: los parámetros salen de spikes/comparativa-modelos/comparativa.ts y los precios, de plans/reports/comparativa-260927-modelos-kie.md. Solo es 'validado' lo que además tiene evidencia revisada. La semilla no pisa lo que haya cambiado quien administra: solo crea lo que falta.",
+  "comentario": "Semilla del catálogo de proveedores y modelos (0.11.0). Cada modelo se siembra con lo que se ejecutó de verdad: los parámetros salen de spikes/comparativa-modelos/comparativa.ts y los precios, de plans/reports/comparativa-260927-modelos-kie.md. Solo es 'validado' lo que además tiene evidencia revisada. La semilla no pisa lo que haya cambiado quien administra: solo crea lo que falta. La 0.17.0 añade el modelo de texto del asistente de guion, sembrado como «descubierto»: no se puede elegir ni enviar hasta que quien administra lo ejecute de verdad y lo marque compatible.",
   "proveedores": [
     {
       "slug": "kie",
@@ -158,6 +158,30 @@
       },
       "evidencia": "",
       "notas": "Tiene voz, pero cuesta más que Veo 3.1 Lite (72 frente a 60 créditos por 4 s). Solo acepta JPEG o PNG: los fotogramas de la biblioteca son WebP y se convierten a PNG antes de subirlos. El proveedor documenta de 3 a 15 s; aquí solo están los 4 s comprobados."
+    },
+    {
+      "proveedor": "kie",
+      "modelo": "gpt-5-6-sol",
+      "nombre": "GPT 5.6 Sol (texto)",
+      "capacidades": ["text_generation"],
+      "estado": "descubierto",
+      "predeterminado": true,
+      "conVoz": false,
+      "unidad": "respuesta de texto",
+      "parametros": {
+        "duraciones": [],
+        "proporciones": [],
+        "resoluciones": [],
+        "formatosReferencia": [],
+        "maximoReferencias": 0
+      },
+      "precio": {
+        "creditos": 3,
+        "fuente": "https://docs.kie.ai/market/chat/gpt-5-6-sol (2026-09-27): su ejemplo informa credits_consumed 0,48. Se registran 3 con margen prudente porque el coste depende de los tokens; el consumo real lo informa el proveedor en cada llamada.",
+        "comprobado": "2026-09-27"
+      },
+      "evidencia": "",
+      "notas": "Modelo de texto del asistente de guion (0.17.0). Endpoint síncrono POST codex/v1/responses, distinto del jobs/createTask del resto, e informa credits_consumed en la propia respuesta. Se siembra como «descubierto» a propósito: el catálogo reserva «compatible» para lo que se ha ejecutado de verdad, así que el asistente sale apagado de fábrica y el guion se escribe a mano hasta que quien administra lo ejecute una vez y lo marque compatible con su evidencia y su precio medido."
     }
   ]
 }

@@ -16,6 +16,7 @@ import {
 } from "../db/esquema";
 import type { Actor } from "../media/servicio";
 import { cerrarGasto, cerrarTrabajoYGasto } from "../presupuesto/reserva";
+import { borrarTraduccionesDePersonaje } from "../prompts/traduccion";
 import { filaPropia } from "./consulta";
 import { ErrorPersonaje } from "./errores";
 
@@ -246,6 +247,10 @@ export async function borrarPersonaje(actor: Actor, id: unknown): Promise<Borrad
     // el personaje; se borran explícito para que el recuento sea real y no depender del orden de las cascadas.
     // Las versiones **solo** desaparecen aquí (decisión 3 de la fase 15): mientras el personaje exista son la
     // trazabilidad de lo que ya se generó con él.
+    // Las traducciones de su ficha se van con él: su ficha lo describe a él, así que su traducción al inglés es
+    // material suyo y no puede sobrevivir a la revocación de su consentimiento (decisión provisional del
+    // propietario, 2026-09-27). La cascada de la clave ajena lo haría igual; se hace explícito para que se lea.
+    await borrarTraduccionesDePersonaje(tx, personaje.id);
     await tx.delete(consentRecords).where(eq(consentRecords.characterId, personaje.id));
     await tx.delete(characterApprovals).where(eq(characterApprovals.characterId, personaje.id));
     await tx.delete(characterVersions).where(eq(characterVersions.characterId, personaje.id));

@@ -45,7 +45,11 @@ export function limitesDelModelo(modelo: ModeloVista): LimitesDelModelo {
  * que usa el navegador (`lib/presets.ts`), con los límites ya recortados: la botonera no puede ofrecer algo
  * que el servidor vaya a rechazar.
  */
-export function motivoDelPreset(valores: ValoresPreset, modelo: ModeloVista): string | null {
+/** Lo único que decide si un preset encaja con un modelo: la proporción y la duración que exige. */
+export function motivoDelPreset(
+  valores: Pick<ValoresPreset, "proporcion" | "segundos">,
+  modelo: ModeloVista,
+): string | null {
   return motivoIncompatible(
     { proporcion: valores.proporcion ?? null, segundos: valores.segundos ?? null },
     limitesDelModelo(modelo),

@@ -125,9 +125,11 @@ export async function contextoAplicado(actor: Actor, id: unknown, modeloPedido?:
     nombre: personaje.name,
     versionId: version?.id ?? "",
     versionNumero: version?.number ?? 0,
-    contexto: version
-      ? contextoDeVersion(version, personaje.kind)
-      : componerContexto(fichaDeFila(personaje), personaje.kind, personaje.description),
+    // Solo si la ficha aporta algo, nunca el texto: el prompt no sale hacia el navegador (ADR-0022).
+    conContexto:
+      (version
+        ? contextoDeVersion(version, personaje.kind)
+        : componerContexto(fichaDeFila(personaje), personaje.kind, personaje.description)) !== "",
     referencias: ids.map((medioId) => ({
       medioId,
       vista: porId.get(medioId)?.vistaClave ?? null,

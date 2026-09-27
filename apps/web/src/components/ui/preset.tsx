@@ -7,7 +7,7 @@ import {
   type CategoriaPreset,
   ETIQUETA_CATEGORIA,
   esCategoriaMultiple,
-  type PresetElegible,
+  type PresetVisible,
 } from "@/lib/presets";
 import { Boton } from "./button";
 import { cn } from "./cn";
@@ -25,7 +25,7 @@ import { cn } from "./cn";
  * - un preset de la instalación se puede **duplicar** para hacerlo tuyo; el que ya es tuyo lo dice.
  */
 
-function Etiqueta({ presets }: { presets: readonly PresetElegible[] }) {
+function Etiqueta({ presets }: { presets: readonly PresetVisible[] }) {
   const primero = presets[0];
   if (!primero) return null;
   return (
@@ -44,7 +44,7 @@ function BotonPreset({
   deshabilitado,
   onElegir,
 }: {
-  preset: PresetElegible;
+  preset: PresetVisible;
   elegido: boolean;
   motivo: string | undefined;
   deshabilitado: boolean;
@@ -82,7 +82,7 @@ function BotonPreset({
 
 export interface GrupoPresets {
   categoria: CategoriaPreset;
-  presets: PresetElegible[];
+  presets: PresetVisible[];
 }
 
 /**
@@ -107,9 +107,9 @@ export function BotoneraPresets({
   deshabilitado?: boolean;
   onCambio: (categoria: CategoriaPreset, ids: string[]) => void;
   /** Duplicar un preset de la instalación para hacerlo tuyo. Sin ella, no se ofrece. */
-  onDuplicar?: (preset: PresetElegible) => void;
+  onDuplicar?: (preset: PresetVisible) => void;
   /** Acciones propias de un preset que ya es del usuario (editar su copia, borrarla). */
-  accionesDePreset?: (preset: PresetElegible) => ReactNode;
+  accionesDePreset?: (preset: PresetVisible) => ReactNode;
   /** Hueco para lo que quiera añadir quien lo usa debajo de los botones. */
   acciones?: ReactNode;
 }) {
@@ -161,47 +161,49 @@ export function BotoneraPresets({
 }
 
 /**
- * Zona de claridad del prompt: el texto que se le va a enviar al modelo, tal cual, y la posibilidad de
- * editarlo. Superficie neutra y sin degradados a propósito: aquí se decide lo que sale hacia el proveedor.
+ * Zona de claridad de lo elegido: **qué has elegido y qué falta**, nunca el prompt.
+ *
+ * Desde la 0.17.0 el prompt compuesto no se le muestra al usuario ni llega a su navegador (ADR-0022). Lo que
+ * necesita saber antes de gastar es qué se va a usar (los botones que ha pulsado) y si falta algo; el texto en
+ * inglés que se le envía al proveedor es material del panel de administración.
  */
-export function PanelPromptFinal({
-  texto,
-  editado,
+export function PanelLoElegido({
+  elegidos,
   faltan,
-  children,
 }: {
-  texto: string;
-  /** `true` si el texto es el que ha escrito el usuario y no el que compone la plantilla. */
-  editado: boolean;
-  /** Etiquetas de lo que falta para poder componerlo. */
+  /** Presets elegidos, en el orden del catálogo. */
+  elegidos: { categoria: CategoriaPreset; nombre: string }[];
+  /** Etiquetas de lo que falta por elegir. */
   faltan: string[];
-  children?: ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-3 rounded-tarjeta border-2 border-borde bg-superficie p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="flex items-center gap-2 text-base font-bold text-texto">
-          <Sparkles className="size-4 text-acento" aria-hidden />
-          <span>Lo que se le enviará al modelo</span>
-        </h3>
-        {editado && (
-          <span className="rounded-full bg-elevada px-3 py-1 text-sm font-semibold text-texto">Texto editado</span>
-        )}
-      </div>
+      <h3 className="flex items-center gap-2 text-base font-bold text-texto">
+        <Sparkles className="size-4 text-acento" aria-hidden />
+        <span>Lo que has elegido</span>
+      </h3>
       {faltan.length > 0 ? (
         <p className="text-texto">
           Falta elegir: <strong className="font-semibold">{faltan.join(", ")}</strong>.
         </p>
+      ) : elegidos.length === 0 ? (
+        <p className="text-texto-suave">Solo tu descripción: esta plantilla no necesita que elijas nada más.</p>
       ) : (
-        <pre className="max-h-60 overflow-y-auto whitespace-pre-wrap rounded-control bg-elevada p-3 font-mono text-sm text-texto">
-          {texto}
-        </pre>
+        <ul className="flex flex-wrap gap-2">
+          {elegidos.map((e) => (
+            <li
+              key={`${e.categoria}-${e.nombre}`}
+              className="rounded-full bg-elevada px-3 py-1 text-sm font-semibold text-texto"
+            >
+              <span className="text-texto-suave">{ETIQUETA_CATEGORIA[e.categoria]}:</span> {e.nombre}
+            </li>
+          ))}
+        </ul>
       )}
       <p className="text-sm text-texto-suave">
-        El prompt va en inglés porque los modelos responden mejor: los botones y las descripciones están en español. Lo
-        compone el servidor con lo que has elegido; si lo editas, se envía tu texto.
+        Con esto y tu descripción, el servidor compone el texto que se le envía al modelo, en inglés porque responden
+        mejor. Tú decides el qué; el cómo se escribe lo pone Escenara.
       </p>
-      {children}
     </div>
   );
 }
