@@ -27,6 +27,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - La cabecera de la aplicación estrena el apartado **Crear**.
 - La traducción de los fallos de un proveedor a códigos propios pasa a `server/proveedores/codigos.ts` y la comparte la prueba de credenciales de la 0.9.0.
 
+### Corregido
+
+- Las cookies de sesión llevan el prefijo `escenara`: otra aplicación con Better Auth en `localhost` (en otro puerto) pisaba la sesión y obligaba a volver a entrar. **Al actualizar hay que iniciar sesión una vez más.**
+
 ### Actualizar desde la 0.9.0
 
 - Haz `bun run db:backup` y luego `bun run db:migrate`: las migraciones crean `generation_jobs` (con la clave de idempotencia del envío) y `model_prices`, y siembran los precios de los dos modelos.
