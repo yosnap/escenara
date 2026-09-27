@@ -1,8 +1,8 @@
-import { and, eq, isNotNull, ne, sql } from "drizzle-orm";
+import { and, eq, isNotNull, lt, ne, sql } from "drizzle-orm";
 import type { Proveedor } from "@/lib/boveda";
 import { leerAjustes } from "../ajustes";
 import { db, type Ejecutor } from "../db/cliente";
-import { type FilaTrabajo, generationJobs } from "../db/esquema";
+import { type FilaTrabajo, generationJobs, scenes } from "../db/esquema";
 import { ErrorGeneracion } from "../generacion/errores";
 import { condicionEnCurso } from "../generacion/trabajos";
 import type { Acotacion } from "../presupuesto/acotar";
@@ -14,8 +14,11 @@ import { reservar } from "../presupuesto/reserva";
  *
  * 1. se comprueba que esta confirmación no esté ya encolada (clave de idempotencia);
  * 2. se comprueba el tope de trabajos simultáneos del usuario;
- * 3. se reserva el coste máximo estimable en el registro de gasto;
- * 4. se da de alta el trabajo en `en_cola`.
+ * 3. produciendo una escena: el tope de escenas en vuelo, que no haya ya un trabajo de ese tipo en marcha para
+ *    ella, que no tenga ya su clip, y el consumo del reintento autorizado si este envío repite lo que pudo
+ *    cobrarse (0.19.0, ADR-0024);
+ * 4. se reserva el coste máximo estimable en el registro de gasto;
+ * 5. se da de alta el trabajo en `en_cola`.
  *
  * Así dos envíos a la vez ni se pasan del tope ni reservan el mismo saldo: el segundo espera el bloqueo y
  * ve lo que hizo el primero. Nada se envía aquí: eso lo hace el worker cuando toma el trabajo.
@@ -66,7 +69,87 @@ export interface PeticionEncolado {
    * Se comprueba **aquí y no antes** porque aquí ya está bloqueada la fila del usuario: contar fuera de esta
    * transacción dejaría que dos producciones simultáneas leyeran el mismo recuento y se pasaran las dos del tope.
    */
-  escena: { escenaId: string; maximo: number } | null;
+  escena: {
+    escenaId: string;
+    maximo: number;
+    /**
+     * `true` cuando este envío repite algo que pudo cobrarse, así que consume un reintento autorizado de la
+     * escena (ADR-0024). El consumo va en esta misma transacción: así ni dos envíos simultáneos gastan el mismo
+     * reintento, ni se pierde uno cuando el alta se deshace.
+     */
+    reintento: boolean;
+  } | null;
+}
+
+/**
+ * Un solo trabajo de cada tipo por escena a la vez, y ni un clip más cuando la escena ya tiene el suyo.
+ *
+ * Va **dentro** de la transacción que reserva y da de alta, con la fila del usuario ya bloqueada, porque es lo que
+ * impide que dos pestañas con dos confirmaciones distintas paguen dos clips de la misma escena: comprobarlo antes
+ * dejaría pasar las dos, y el tope de escenas en vuelo no lo ve porque excluye la escena que se está encolando.
+ */
+async function exigirEscenaSinRepetir(tx: Ejecutor, peticion: PeticionEncolado): Promise<void> {
+  const escenaId = peticion.escena?.escenaId;
+  if (!escenaId) return;
+  const tipo = peticion.valores.kind;
+  const nombre = tipo === "animacion" ? "un clip" : "un fotograma";
+  const [{ total } = { total: 0 }] = await tx
+    .select({ total: sql<number>`count(*)::int` })
+    .from(generationJobs)
+    .where(and(eq(generationJobs.sceneId, escenaId), eq(generationJobs.kind, tipo), condicionEnCurso()));
+  if (total > 0) {
+    throw new ErrorGeneracion(
+      409,
+      `Esta escena ya tiene ${nombre} en marcha. Espera a que termine o cancélalo antes de pedir otro: si no, se pagarían los dos.`,
+    );
+  }
+  if (tipo !== "animacion") return;
+  const [escena] = await tx
+    .select({ clip: scenes.clipMediaId, fotogramaJobId: scenes.approvedFrameJobId })
+    .from(scenes)
+    .where(eq(scenes.id, escenaId))
+    .limit(1);
+  // También cuenta el clip que ya está `listo` y aún no se ha guardado en la escena: entre que termina y que se
+  // registra, o si ese registro falla, la escena todavía no lo tiene, pero ya se ha pagado. Solo los posteriores
+  // al fotograma aprobado: tras regenerar, el clip del fotograma anterior no cuenta.
+  const [{ listos } = { listos: 0 }] = escena?.fotogramaJobId
+    ? await tx
+        .select({ listos: sql<number>`count(*)::int` })
+        .from(generationJobs)
+        .where(
+          and(
+            eq(generationJobs.sceneId, escenaId),
+            eq(generationJobs.kind, "animacion"),
+            eq(generationJobs.state, "listo"),
+            isNotNull(generationJobs.resultMediaId),
+            sql`${generationJobs.createdAt} > (select created_at from generation_jobs where id = ${escena.fotogramaJobId})`,
+          ),
+        )
+    : [];
+  if (escena?.clip || listos > 0) {
+    throw new ErrorGeneracion(
+      409,
+      "Esta escena ya tiene su clip guardado. Regenérala si quieres otro distinto: animarla otra vez sería pagar dos veces lo mismo.",
+    );
+  }
+}
+
+/**
+ * Consume un reintento autorizado de la escena. La condición va **dentro** del `UPDATE`, así que dos envíos a la
+ * vez no pueden gastar el mismo, y al estar en esta transacción un alta que se deshaga lo devuelve sola.
+ */
+async function consumirReintento(tx: Ejecutor, escenaId: string): Promise<void> {
+  const consumidos = await tx
+    .update(scenes)
+    .set({ retriesUsed: sql`${scenes.retriesUsed} + 1`, updatedAt: new Date() })
+    .where(and(eq(scenes.id, escenaId), lt(scenes.retriesUsed, scenes.retryBudget)))
+    .returning({ id: scenes.id });
+  if (consumidos.length === 0) {
+    throw new ErrorGeneracion(
+      409,
+      "Esta escena se ha quedado sin reintentos autorizados: autoriza más antes de volver a intentar algo que pudo cobrarse.",
+    );
+  }
 }
 
 /**
@@ -122,6 +205,8 @@ export async function encolar(peticion: PeticionEncolado): Promise<Encolado> {
             `Ya tienes ${enVuelo} ${enVuelo === 1 ? "escena" : "escenas"} produciéndose y esta instalación permite ${peticion.escena.maximo} a la vez. Espera a que termine alguna: el resto del proyecto sigue esperando y no se pierde nada.`,
           );
         }
+        await exigirEscenaSinRepetir(tx, peticion);
+        if (peticion.escena.reintento) await consumirReintento(tx, peticion.escena.escenaId);
       }
 
       // Sin coste acotado no se reserva nada y el trabajo espera un límite del usuario: así no puede

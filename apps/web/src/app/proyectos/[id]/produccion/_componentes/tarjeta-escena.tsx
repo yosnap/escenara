@@ -7,6 +7,7 @@ import { InsigniaEstadoEscena } from "@/components/ui/proyecto";
 import { bloqueosDeControles } from "@/lib/controles";
 import { formatearCreditos } from "@/lib/generacion";
 import {
+  clipPorEncolar,
   type EscenaProduccionVista,
   escenaEnVuelo,
   escenaLista,
@@ -138,6 +139,7 @@ export function TarjetaEscena({
           titulo="Producir esta escena"
           explicacion="Se encola su fotograma. El clip llega después, cuando apruebes el fotograma."
           creditos={produccion.creditosPorFotograma}
+          umbral={produccion.umbralAvisoCreditos}
           sello={produccion.selloFotograma}
           etiqueta="Generar el fotograma"
           firma={`producir|${firma}`}
@@ -148,14 +150,22 @@ export function TarjetaEscena({
         />
       )}
 
-      {fotogramaPorAprobar(escena) && !trabajoEnMarcha(escena.animacion) && (
+      {/* También cuando el fotograma ya está aprobado y se quedó sin clip: su envío se pudo rechazar, y la salida
+          no puede ser regenerar el fotograma y pagarlo otra vez. */}
+      {(fotogramaPorAprobar(escena) || clipPorEncolar(escena)) && !trabajoEnMarcha(escena.animacion) && (
         <ConfirmacionGasto
-          titulo="Aprobar el fotograma y animarlo"
-          explicacion="Al aprobarlo se encola su clip de 4 s en 9:16. Míralo con las zonas seguras antes de decidir."
+          titulo={escena.fotogramaAprobado ? "Animar el fotograma aprobado" : "Aprobar el fotograma y animarlo"}
+          explicacion={
+            escena.fotogramaAprobado
+              ? "Este fotograma ya está aprobado y todavía no tiene clip: se encola su clip de 4 s en 9:16."
+              : "Al aprobarlo se encola su clip de 4 s en 9:16. Míralo con las zonas seguras antes de decidir."
+          }
           creditos={produccion.creditosPorClip}
+          umbral={produccion.umbralAvisoCreditos}
           sello={produccion.selloClip}
-          etiqueta="Aprobar y animar"
-          firma={`aprobar|${escena.fotograma?.id ?? ""}|${avisosConfirmados.join(",")}`}
+          etiqueta={escena.fotogramaAprobado ? "Animar el fotograma" : "Aprobar y animar"}
+          // La última animación entra en la firma: tras un clip fallido, volver a animar es otra confirmación.
+          firma={`aprobar|${escena.fotograma?.id ?? ""}|${escena.animacion?.id ?? ""}|${avisosConfirmados.join(",")}`}
           bloqueos={bloqueos}
           avisosConfirmados={avisosConfirmados}
           ocupado={ocupado}
@@ -168,6 +178,7 @@ export function TarjetaEscena({
           titulo="Regenerar solo esta escena"
           explicacion="Se encola otro fotograma de esta escena y nada más: las demás no se tocan. Lo generado antes se conserva en su historial y en tu biblioteca."
           creditos={produccion.creditosPorFotograma}
+          umbral={produccion.umbralAvisoCreditos}
           sello={produccion.selloFotograma}
           etiqueta="Regenerar la escena"
           firma={`regenerar|${escena.fotograma?.id ?? ""}|${avisosConfirmados.join(",")}`}

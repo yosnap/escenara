@@ -335,6 +335,34 @@ describe.skipIf(!hayBaseDeDatos)("producción de las escenas de un proyecto", ()
     return taskId;
   }
 
+  /**
+   * Lleva el fotograma de una escena a un fallo **con coste posible**: ya había hablado con el proveedor, así que
+   * repetirlo puede volver a cobrarse y solo se repite con un reintento autorizado.
+   */
+  async function fallarConCoste(escenaId: string): Promise<void> {
+    const [trabajo] = await trabajosDe(escenaId);
+    if (!trabajo) throw new Error("Falta el trabajo de la escena.");
+    const taskId = await marcarEnviado(trabajo.id);
+    tareas.set(taskId, { state: "fail", creditos: 4 });
+    await consultarTrabajo(actor, trabajo.id, { forzar: true }, h);
+  }
+
+  /**
+   * Cierra un trabajo con un fallo **sin coste probado**: se quedó antes de hablar con el proveedor, así que
+   * repetirlo no consume ningún reintento y tiene que encolar un trabajo nuevo.
+   */
+  async function fallarSinCoste(trabajoId: string): Promise<void> {
+    await db()
+      .update(generationJobs)
+      .set({
+        state: "fallido",
+        failureReason: "interno",
+        errorMessage: "Fallo de preparación de prueba: no se llegó a enviar nada.",
+        finishedAt: new Date(),
+      })
+      .where(eq(generationJobs.id, trabajoId));
+  }
+
   // ── Criterio: el tope de escenas en vuelo se respeta ────────────────────────────────────────────────────
 
   test("producir el proyecto encola solo hasta el tope de escenas en vuelo", async () => {
@@ -583,6 +611,172 @@ describe.skipIf(!hayBaseDeDatos)("producción de las escenas de un proyecto", ()
     expect(await trabajosDe(escena.id)).toHaveLength(2);
   });
 
+  test("tras un fallo sin coste, volver a pedirlo encola otro trabajo y no devuelve el fallido", async () => {
+    const escena = (await estadoDeProduccionDe(proyectoId)).escenas[0];
+    if (!escena) throw new Error("Falta la escena de prueba.");
+    // La **misma** confirmación del navegador las dos veces: lo que cambia la clave es el trabajo anterior.
+    const base = await confirmacion();
+    await producirEscena(actor, escena.id, base, h);
+    const [primero] = await trabajosDe(escena.id);
+    if (!primero) throw new Error("Falta el trabajo de la escena.");
+    await fallarSinCoste(primero.id);
+
+    await producirEscena(actor, escena.id, base, h);
+    const trabajos = await trabajosDe(escena.id);
+    expect(trabajos).toHaveLength(2);
+    expect(trabajos.filter((t) => t.state === "en_cola")).toHaveLength(1);
+    // Un fallo sin coste probado no gasta reintentos: no había nada que pagar.
+    expect((await filaDeEscena(escena.id)).retriesUsed).toBe(0);
+  });
+
+  test("tras un clip fallido sin coste, aprobar otra vez el mismo fotograma encola otro clip", async () => {
+    const escena = (await estadoDeProduccionDe(proyectoId)).escenas[0];
+    if (!escena) throw new Error("Falta la escena de prueba.");
+    await producirEscena(actor, escena.id, await confirmacion(), h);
+    const [fotograma] = await trabajosDe(escena.id);
+    if (!fotograma) throw new Error("Falta el trabajo de la escena.");
+    const tareaFoto = await marcarEnviado(fotograma.id);
+    tareas.set(tareaFoto, { state: "success", urls: ["https://res.kie.ai/fotograma.png"], creditos: 4 });
+    await consultarTrabajo(actor, fotograma.id, { forzar: true }, h);
+
+    const base = await confirmacion("clip");
+    await aprobarFotograma(actor, escena.id, base, h);
+    const primerClip = (await trabajosDe(escena.id)).find((t) => t.kind === "animacion");
+    if (!primerClip) throw new Error("Falta el clip de la escena.");
+    await fallarSinCoste(primerClip.id);
+
+    // El fotograma aprobado sigue siendo el mismo, así que solo el clip anterior distingue una confirmación de la
+    // otra: sin él, esto devolvería el clip fallido y el botón no haría nada.
+    await aprobarFotograma(actor, escena.id, base, h);
+    const clips = (await trabajosDe(escena.id)).filter((t) => t.kind === "animacion");
+    expect(clips).toHaveLength(2);
+    expect(clips.filter((t) => t.state === "en_cola")).toHaveLength(1);
+    expect((await filaDeEscena(escena.id)).retriesUsed).toBe(0);
+  });
+
+  test("dos aprobaciones simultáneas del mismo fotograma encolan un solo clip", async () => {
+    const escena = (await estadoDeProduccionDe(proyectoId)).escenas[0];
+    if (!escena) throw new Error("Falta la escena de prueba.");
+    await producirEscena(actor, escena.id, await confirmacion(), h);
+    const [fotograma] = await trabajosDe(escena.id);
+    if (!fotograma) throw new Error("Falta el trabajo de la escena.");
+    const tareaFoto = await marcarEnviado(fotograma.id);
+    tareas.set(tareaFoto, { state: "success", urls: ["https://res.kie.ai/fotograma.png"], creditos: 4 });
+    await consultarTrabajo(actor, fotograma.id, { forzar: true }, h);
+
+    // Dos pestañas, dos confirmaciones distintas y a la vez: la idempotencia no las junta, así que lo único que
+    // impide pagar dos clips es la comprobación dentro de la transacción que reserva y encola.
+    const base = await confirmacion("clip");
+    const resultados = await Promise.all([
+      intentar(() => aprobarFotograma(actor, escena.id, { ...base, claveIdempotencia: crypto.randomUUID() }, h)),
+      intentar(() => aprobarFotograma(actor, escena.id, { ...base, claveIdempotencia: crypto.randomUUID() }, h)),
+    ]);
+    expect(resultados.filter((r) => r.ok)).toHaveLength(1);
+    const rechazado = resultados.find((r) => !r.ok);
+    expect(rechazado && !rechazado.ok && rechazado.estado).toBe(409);
+    expect((await trabajosDe(escena.id)).filter((t) => t.kind === "animacion")).toHaveLength(1);
+  });
+
+  test("el lote no vuelve a pagar una escena que falló con coste, ni el botón de una sola escena", async () => {
+    await guardarAjustes({ escenasEnVuelo: 3 }, null);
+    const primera = (await estadoDeProduccionDe(proyectoId)).escenas[0];
+    if (!primera) throw new Error("Falta la escena de prueba.");
+    await producirProyecto(actor, proyectoId, await confirmacion(), h);
+    await fallarConCoste(primera.id);
+
+    // La escena que pudo cobrarse deja de contar como pendiente: el lote no la lleva por delante otra vez.
+    expect((await estadoDeProduccionDe(proyectoId)).porProducir).toBe(0);
+    const conf = await confirmacion();
+    const lote = await intentar(() => producirProyecto(actor, proyectoId, conf, h));
+    expect(!lote.ok && lote.estado).toBe(409);
+    expect(await trabajosDe(primera.id)).toHaveLength(1);
+    expect((await filaDeEscena(primera.id)).retriesUsed).toBe(0);
+
+    // Y por el camino de una sola escena tampoco: reenviarla exige un reintento autorizado.
+    const suelta = await intentar(() => producirEscena(actor, primera.id, conf, h));
+    expect(!suelta.ok && suelta.estado).toBe(409);
+    expect(!suelta.ok && suelta.error).toContain("presupuesto de reintentos");
+    expect(await trabajosDe(primera.id)).toHaveLength(1);
+    expect((await filaDeEscena(primera.id)).retriesUsed).toBe(0);
+  });
+
+  test("si el envío de la regeneración se rechaza, la escena conserva su fotograma aprobado y su clip", async () => {
+    const escena = (await estadoDeProduccionDe(proyectoId)).escenas[0];
+    if (!escena) throw new Error("Falta la escena de prueba.");
+    await producirEscena(actor, escena.id, await confirmacion(), h);
+    const [fotograma] = await trabajosDe(escena.id);
+    if (!fotograma) throw new Error("Falta el trabajo de la escena.");
+    const tareaFoto = await marcarEnviado(fotograma.id);
+    tareas.set(tareaFoto, { state: "success", urls: ["https://res.kie.ai/fotograma.png"], creditos: 4 });
+    await consultarTrabajo(actor, fotograma.id, { forzar: true }, h);
+    await aprobarFotograma(actor, escena.id, await confirmacion("clip"), h);
+    const clip = (await trabajosDe(escena.id)).find((t) => t.kind === "animacion");
+    if (!clip) throw new Error("Falta el clip de la escena.");
+    const tareaClip = await marcarEnviado(clip.id);
+    tareas.set(tareaClip, { state: "success", urls: ["https://res.kie.ai/clip.mp4"], creditos: 12 });
+    await consultarTrabajo(actor, clip.id, { forzar: true }, h);
+    const antes = await filaDeEscena(escena.id);
+    expect(antes.clipMediaId).not.toBeNull();
+    const trabajosAntes = (await trabajosDe(escena.id)).length;
+
+    // Sello caducado: el servidor rechaza el envío antes de gastar un solo crédito.
+    const conf = { ...(await confirmacion()), selloEstimacion: "kie:modelo-inventado:imagen@v0" };
+    const rechazo = await intentar(() => regenerarEscena(actor, escena.id, conf, h));
+    expect(!rechazo.ok && rechazo.estado).toBe(409);
+
+    // Nada se ha invalidado: el clip que el usuario pagó sigue ahí y la escena sigue producida.
+    const despues = await filaDeEscena(escena.id);
+    expect(despues.approvedFrameMediaId).toBe(antes.approvedFrameMediaId);
+    expect(despues.approvedFrameJobId).toBe(antes.approvedFrameJobId);
+    expect(despues.clipMediaId).toBe(antes.clipMediaId);
+    expect(despues.clipJobId).toBe(antes.clipJobId);
+    expect(despues.state).toBe("producida");
+    expect(await trabajosDe(escena.id)).toHaveLength(trabajosAntes);
+  });
+
+  test("un envío rechazado devuelve el reintento que había consumido", async () => {
+    const escena = (await estadoDeProduccionDe(proyectoId)).escenas[0];
+    if (!escena) throw new Error("Falta la escena de prueba.");
+    await producirEscena(actor, escena.id, await confirmacion(), h);
+    await fallarConCoste(escena.id);
+    const { autorizarReintentos } = await import("./producir");
+    await autorizarReintentos(actor, escena.id, 1);
+
+    const conf = { ...(await confirmacion()), selloEstimacion: "kie:modelo-inventado:imagen@v0" };
+    const rechazo = await intentar(() => regenerarEscena(actor, escena.id, conf, h));
+    expect(!rechazo.ok && rechazo.estado).toBe(409);
+    const fila = await filaDeEscena(escena.id);
+    expect(fila.retriesUsed).toBe(0);
+    expect(fila.retryBudget).toBe(1);
+
+    // El reintento sigue disponible: con el sello vigente, la regeneración sale y lo consume.
+    await regenerarEscena(actor, escena.id, await confirmacion(), h);
+    expect((await filaDeEscena(escena.id)).retriesUsed).toBe(1);
+  });
+
+  test("con un reintento autorizado, dos regeneraciones simultáneas consumen uno solo", async () => {
+    const escena = (await estadoDeProduccionDe(proyectoId)).escenas[0];
+    if (!escena) throw new Error("Falta la escena de prueba.");
+    await producirEscena(actor, escena.id, await confirmacion(), h);
+    await fallarConCoste(escena.id);
+    const { autorizarReintentos } = await import("./producir");
+    await autorizarReintentos(actor, escena.id, 1);
+
+    // A la vez, de verdad: la serialización la pone la condición dentro del `UPDATE`, no una lectura previa.
+    const base = await confirmacion();
+    const resultados = await Promise.all([
+      intentar(() => regenerarEscena(actor, escena.id, { ...base, claveIdempotencia: crypto.randomUUID() }, h)),
+      intentar(() => regenerarEscena(actor, escena.id, { ...base, claveIdempotencia: crypto.randomUUID() }, h)),
+    ]);
+    expect(resultados.filter((r) => r.ok)).toHaveLength(1);
+    const rechazado = resultados.find((r) => !r.ok);
+    expect(rechazado && !rechazado.ok && rechazado.estado).toBe(409);
+    const fila = await filaDeEscena(escena.id);
+    expect(fila.retriesUsed).toBe(1);
+    // Un solo trabajo nuevo: la regeneración sin reintento no encoló nada.
+    expect((await trabajosDe(escena.id)).filter((t) => t.state !== "fallido")).toHaveLength(1);
+  });
+
   // ── Aprobar el fotograma es un acto del usuario ─────────────────────────────────────────────────────────
 
   test("un fotograma listo no se aprueba solo: el clip se encola al aprobarlo", async () => {
@@ -632,6 +826,33 @@ describe.skipIf(!hayBaseDeDatos)("producción de las escenas de un proyecto", ()
     const [proyecto] = await db().select().from(projects).where(eq(projects.id, proyectoId)).limit(1);
     // Quedan dos escenas por producir, así que el proyecto está en producción, no listo.
     expect(proyecto?.state).toBe("en_produccion");
+  });
+
+  test("un clip listo que no llegó a guardarse en la escena impide pagar otro", async () => {
+    const escena = (await estadoDeProduccionDe(proyectoId)).escenas[0];
+    if (!escena) throw new Error("Falta la escena de prueba.");
+    await producirEscena(actor, escena.id, await confirmacion(), h);
+    const [fotograma] = await trabajosDe(escena.id);
+    if (!fotograma) throw new Error("Falta el trabajo de la escena.");
+    const tareaFoto = await marcarEnviado(fotograma.id);
+    tareas.set(tareaFoto, { state: "success", urls: ["https://res.kie.ai/fotograma.png"], creditos: 4 });
+    await consultarTrabajo(actor, fotograma.id, { forzar: true }, h);
+    await aprobarFotograma(actor, escena.id, await confirmacion("clip"), h);
+    const clip = (await trabajosDe(escena.id)).find((t) => t.kind === "animacion");
+    if (!clip) throw new Error("Falta el clip de la escena.");
+    const tareaClip = await marcarEnviado(clip.id);
+    tareas.set(tareaClip, { state: "success", urls: ["https://res.kie.ai/clip.mp4"], creditos: 12 });
+    await consultarTrabajo(actor, clip.id, { forzar: true }, h);
+    // Como si el registro en la escena no hubiera llegado: el clip está pagado y listo, pero la escena no lo tiene.
+    await db().update(scenes).set({ clipMediaId: null, clipJobId: null }).where(eq(scenes.id, escena.id));
+
+    const nueva = await confirmacion("clip");
+    const otra = await intentar(() =>
+      aprobarFotograma(actor, escena.id, { ...nueva, claveIdempotencia: crypto.randomUUID() }, h),
+    );
+    expect(otra.ok).toBe(false);
+    expect(!otra.ok && otra.estado).toBe(409);
+    expect((await trabajosDe(escena.id)).filter((t) => t.kind === "animacion")).toHaveLength(1);
   });
 
   // ── Autorización y lectura ──────────────────────────────────────────────────────────────────────────────

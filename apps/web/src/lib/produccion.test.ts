@@ -1,12 +1,15 @@
 import { describe, expect, it } from "bun:test";
 import {
+  clipPorEncolar,
   DURACIONES_DISPONIBLES,
   type EscenaProduccionVista,
   ETAPAS_TRABAJO,
   efectoDeCancelar,
   esDuracionDisponible,
+  esperaAutorizacionDeReintento,
   etapaDeTrabajo,
   etapasDeTrabajo,
+  exigeAvisoDeGasto,
   falloConCoste,
   fotogramaPorAprobar,
   type TrabajoDeEscena,
@@ -153,6 +156,18 @@ describe("reintentos de pago", () => {
   });
 });
 
+describe("aviso de gasto alto", () => {
+  it("se pide con la misma comparación que hace el servidor", () => {
+    expect(exigeAvisoDeGasto(10, 200)).toBe(false);
+    expect(exigeAvisoDeGasto(200, 200)).toBe(false);
+    expect(exigeAvisoDeGasto(201, 200)).toBe(true);
+    // Umbral a cero en Admin › Ajustes es «avisar siempre»: si la casilla no apareciera aquí, el servidor
+    // rechazaría el envío con un 400 y no habría manera de producir nada.
+    expect(exigeAvisoDeGasto(1, 0)).toBe(true);
+    expect(exigeAvisoDeGasto(0, 0)).toBe(false);
+  });
+});
+
 describe("duraciones disponibles", () => {
   it("solo se ofrece la duración con coste medido", () => {
     expect(DURACIONES_DISPONIBLES).toEqual([4]);
@@ -170,6 +185,37 @@ describe("estado de la escena", () => {
     expect(
       fotogramaPorAprobar(escena({ fotograma: trabajo({ estado: "listo", medio }), fotogramaAprobado: medio })),
     ).toBe(false);
+  });
+
+  it("un fotograma aprobado sin clip vuelve a ofrecer animarlo, no regenerarlo", () => {
+    const medio = { id: "m1" } as never;
+    const aprobada = escena({ fotograma: trabajo({ estado: "listo", medio }), fotogramaAprobado: medio });
+    // El envío del clip se rechazó (un tope, el techo del proyecto, un control): la salida es animar, no pagar
+    // otro fotograma.
+    expect(clipPorEncolar(aprobada)).toBe(true);
+    // Con el clip ya hecho, o con su animación en marcha, no hay nada que encolar.
+    expect(clipPorEncolar({ ...aprobada, clip: medio })).toBe(false);
+    expect(clipPorEncolar({ ...aprobada, animacion: trabajo({ id: "t2", estado: "en_curso" }) })).toBe(false);
+    // Y si la animación falló con coste posible, esto pasa por los reintentos autorizados, no por animar otra vez.
+    expect(
+      clipPorEncolar({
+        ...aprobada,
+        animacion: trabajo({ id: "t2", estado: "fallido", motivoFallo: "respuesta" }),
+      }),
+    ).toBe(false);
+    // Sin fotograma aprobado no se anima nada: primero lo mira una persona.
+    expect(clipPorEncolar(escena({ fotograma: trabajo({ estado: "listo", medio }) }))).toBe(false);
+  });
+
+  it("una escena que falló con coste espera autorización antes de volver a enviarse", () => {
+    expect(
+      esperaAutorizacionDeReintento(escena({ fotograma: trabajo({ estado: "fallido", motivoFallo: "temporal" }) })),
+    ).toBe(true);
+    // Un fallo anterior a hablar con el proveedor no ha costado nada: se repite sin autorizar ningún reintento.
+    expect(
+      esperaAutorizacionDeReintento(escena({ fotograma: trabajo({ estado: "fallido", motivoFallo: "interno" }) })),
+    ).toBe(false);
+    expect(esperaAutorizacionDeReintento(escena())).toBe(false);
   });
 
   it("un trabajo en marcha es el que sigue vivo en la cola o en el proveedor", () => {

@@ -257,6 +257,12 @@ export interface ProduccionVista {
   /** Escenas que se pueden encolar ahora mismo y lo que costaría hacerlo. */
   porProducir: number;
   creditosPorFotograma: number;
+  /**
+   * Umbral de aviso por gasto alto de Admin › Ajustes, en créditos y **por trabajo**. Es el mismo que compara el
+   * servidor (`generacion/comprobaciones.ts › exigirAvisoUmbral`), así que la confirmación puede pedir la casilla
+   * del aviso exactamente cuando el servidor la va a exigir.
+   */
+  umbralAvisoCreditos: number;
   /** Lo que costaría animar un fotograma aprobado, con su sello. Es el segundo gasto de cada escena. */
   creditosPorClip: number;
   selloClip: string;
@@ -290,6 +296,41 @@ export const escenaEnVuelo = (escena: EscenaProduccionVista): boolean =>
 /** `true` cuando hay un fotograma listo y guardado que el usuario todavía no ha aprobado. */
 export const fotogramaPorAprobar = (escena: EscenaProduccionVista): boolean =>
   escena.fotograma?.estado === "listo" && escena.fotograma.medio !== null && escena.fotogramaAprobado === null;
+
+/**
+ * `true` cuando ese importe **por trabajo** pasa del umbral de aviso de la instalación, así que hay que aceptar el
+ * aviso de gasto alto antes de enviarlo.
+ *
+ * Es la **misma comparación** que hace el servidor antes de encolar (`generacion/comprobaciones.ts ›
+ * exigirAvisoUmbral`) y la misma que usa «Crear». Con el umbral a cero —que en Admin › Ajustes significa «avisar
+ * siempre»— avisa de cualquier gasto: si la casilla no apareciera, el envío se rechazaría con un 400 y no habría
+ * forma de producir.
+ */
+export const exigeAvisoDeGasto = (creditos: number, umbral: number): boolean => creditos > umbral;
+
+/** `true` si ese trabajo falló **después** de hablar con el proveedor, así que puede haberse cobrado. */
+const falloQuePudoCobrarse = (trabajo: TrabajoDeEscena | null): boolean =>
+  trabajo !== null && trabajo.estado === "fallido" && falloConCoste(trabajo.motivoFallo);
+
+/**
+ * `true` cuando el último trabajo de la escena falló con coste posible. Volver a enviarla no es gratis: pasa por
+ * regenerarla, que consume un reintento autorizado (ADR-0024). Por eso una escena así **no entra en el lote** de
+ * «producir lo pendiente»: el botón de lote no puede volver a pagar un fallo sin que nadie lo autorice.
+ */
+export const esperaAutorizacionDeReintento = (escena: EscenaProduccionVista): boolean =>
+  falloQuePudoCobrarse(escena.fotograma) || falloQuePudoCobrarse(escena.animacion);
+
+/**
+ * `true` cuando hay un fotograma aprobado, no hay clip y nada lo está animando: el clip no llegó a encolarse (su
+ * envío se rechazó por un tope, por el techo del proyecto o por un control) y la salida honesta es volver a ofrecer
+ * animarlo, no obligar a regenerar el fotograma y pagarlo otra vez. Si la animación falló con coste posible, no:
+ * eso pasa por los reintentos autorizados.
+ */
+export const clipPorEncolar = (escena: EscenaProduccionVista): boolean =>
+  escena.fotogramaAprobado !== null &&
+  escena.clip === null &&
+  !trabajoEnMarcha(escena.animacion) &&
+  !falloQuePudoCobrarse(escena.animacion);
 
 /** `true` cuando la escena ya tiene su clip guardado: es el hito de «escena lista». */
 export const escenaLista = (escena: EscenaProduccionVista): boolean => escena.clip !== null;

@@ -5,6 +5,7 @@ import type { Medio } from "@/lib/media/tipos";
 import {
   type EscenaProduccionVista,
   esDuracionDisponible,
+  esperaAutorizacionDeReintento,
   etapaDeTrabajo,
   type ProduccionVista,
   type TrabajoDeEscena,
@@ -240,13 +241,18 @@ function vistaDeEscena(
 /**
  * Escenas cuyo fotograma se puede encolar ahora: aprobadas, sin fotograma en marcha y sin fotograma ya guardado.
  * Es la misma lista que recorre la producción del proyecto, así que lo que se muestra es lo que se va a encolar.
+ *
+ * Queda fuera la escena cuyo último intento falló **con coste posible**: volver a enviarla puede costar otra vez, y
+ * eso solo lo autoriza el usuario escena a escena con su presupuesto de reintentos (ADR-0024). Sin esta exclusión,
+ * el botón de lote pagaría otra vez los fallos sin consumir ningún reintento ni pedir permiso.
  */
 export const escenasPorProducir = (escenas: readonly EscenaProduccionVista[]): EscenaProduccionVista[] =>
   escenas.filter(
     (e) =>
       e.estado !== "borrador" &&
       !trabajoEnMarcha(e.fotograma) &&
-      !(e.fotograma?.estado === "listo" && e.fotograma.medio !== null),
+      !(e.fotograma?.estado === "listo" && e.fotograma.medio !== null) &&
+      !esperaAutorizacionDeReintento(e),
   );
 
 /** Estado completo de la producción de un proyecto. Un proyecto ajeno responde 404, igual que en 0.17.0. */
@@ -298,6 +304,9 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
     escenas,
     porProducir: porProducir.length,
     creditosPorFotograma: porFotograma,
+    // El umbral del aviso de gasto alto es de la instalación: viaja para que la confirmación pida la casilla
+    // exactamente cuando el servidor la va a exigir, ni antes ni nunca.
+    umbralAvisoCreditos: ajustes.avisoCreditos,
     creditosPorClip: porClip,
     selloClip: elecciones.animacion?.precio.sello ?? "",
     selloFotograma: elecciones.fotograma?.precio.sello ?? "",

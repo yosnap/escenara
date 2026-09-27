@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { Boton } from "@/components/ui/button";
 import { Casilla } from "@/components/ui/choice";
 import { formatearCreditos } from "@/lib/generacion";
+import { exigeAvisoDeGasto } from "@/lib/produccion";
 import type { ConfirmacionEnvio } from "./api-produccion";
 
 /**
@@ -12,7 +13,9 @@ import type { ConfirmacionEnvio } from "./api-produccion";
  * servidor, y sin las dos casillas obligatorias el botón no se activa.
  *
  * - derecho de uso de la imagen (RF04);
- * - revisión de las referencias del personaje: en sus fotos no aparece nadie más ni ningún menor (ADR-0009).
+ * - revisión de las referencias del personaje: en sus fotos no aparece nadie más ni ningún menor (ADR-0009);
+ * - y, cuando el importe por trabajo pasa del umbral de Admin › Ajustes, el aviso de gasto alto, que se acepta aquí
+ *   y no se da por aceptado en nombre de nadie.
  *
  * Cada confirmación lleva **su propia clave**: mientras no cambie lo que se confirma (`firma`), reintentar manda
  * la misma clave y el servidor devuelve el trabajo que ya creó en lugar de encargar otro. De esa clave el servidor
@@ -22,6 +25,8 @@ export function ConfirmacionGasto({
   titulo,
   explicacion,
   creditos,
+  total,
+  umbral,
   sello,
   etiqueta,
   firma,
@@ -32,8 +37,16 @@ export function ConfirmacionGasto({
 }: {
   titulo: string;
   explicacion: string;
-  /** Créditos que se van a confirmar. Es la cifra exacta que compara el servidor. */
+  /** Créditos que se van a confirmar **por trabajo**. Es la cifra exacta que compara el servidor. */
   creditos: number;
+  /**
+   * Importe total de la acción cuando encola varios trabajos de golpe: es la cifra **principal**, porque es lo que
+   * se compromete al pulsar, y `creditos` pasa a ser el detalle. Sin esto, el botón de lote enseñaría el importe de
+   * un solo trabajo.
+   */
+  total?: { creditos: number; detalle: string };
+  /** Umbral del aviso por gasto alto de Admin › Ajustes, en créditos y por trabajo. */
+  umbral: number;
   /** Sello del precio que se mostró: si ha cambiado, el servidor rechaza el envío. */
   sello: string;
   etiqueta: string;
@@ -48,12 +61,17 @@ export function ConfirmacionGasto({
 }) {
   const [derechos, setDerechos] = useState(false);
   const [sinTerceros, setSinTerceros] = useState(false);
+  const [avisoAceptado, setAvisoAceptado] = useState(false);
   const clave = useRef<{ firma: string; valor: string } | null>(null);
 
+  // El aviso se mide sobre lo que se confirma **por trabajo**, con la función que comparte la comparación con el
+  // servidor: así el botón no puede quedarse esperando una casilla que no aparece.
+  const superaUmbral = exigeAvisoDeGasto(creditos, umbral);
   const impedimentos = [
     ...bloqueos,
     ...(derechos ? [] : ["Falta confirmar que tienes derecho a usar la imagen."]),
     ...(sinTerceros ? [] : ["Falta confirmar la revisión de las fotos del personaje."]),
+    ...(!superaUmbral || avisoAceptado ? [] : ["Falta aceptar el aviso de gasto alto."]),
   ];
 
   const enviar = () => {
@@ -64,8 +82,9 @@ export function ConfirmacionGasto({
       creditosConfirmados: creditos,
       selloEstimacion: sello,
       claveIdempotencia: clave.current.valor,
-      // El aviso de gasto alto se acepta con la misma acción: la explicación lleva el importe delante.
-      avisoUmbralAceptado: true,
+      // El aviso de gasto alto se acepta en su propia casilla: mandarlo aceptado siempre anularía el umbral que
+      // configura quien administra la instalación.
+      avisoUmbralAceptado: avisoAceptado,
       avisosConfirmados: [...avisosConfirmados],
     });
   };
@@ -76,7 +95,12 @@ export function ConfirmacionGasto({
         <h3 className="text-lg font-bold text-texto">{titulo}</h3>
         <p className="mt-1 text-sm text-texto-suave">{explicacion}</p>
       </div>
-      <p className="font-mono text-lg font-bold text-texto">{formatearCreditos(creditos)} (estimación)</p>
+      <div>
+        <p className="font-mono text-lg font-bold text-texto">
+          {formatearCreditos(total ? total.creditos : creditos)} (estimación)
+        </p>
+        {total && <p className="mt-0.5 text-sm text-texto-suave">{total.detalle}</p>}
+      </div>
       <Casilla
         etiqueta="Tengo derecho a usar esta imagen"
         descripcion="Es tuya o tienes permiso de quien aparece en ella. Para generar, las fotos se suben temporalmente al almacenamiento del proveedor, donde quedan accesibles por enlace unas horas."
@@ -89,6 +113,14 @@ export function ConfirmacionGasto({
         marcada={sinTerceros}
         onCambio={setSinTerceros}
       />
+      {superaUmbral && (
+        <Casilla
+          etiqueta={`Sé que cada trabajo de esta acción pasa de ${formatearCreditos(umbral)}`}
+          descripcion="Aviso de gasto alto de esta instalación: hay que aceptarlo expresamente antes de enviarlo."
+          marcada={avisoAceptado}
+          onCambio={setAvisoAceptado}
+        />
+      )}
       {impedimentos.length > 0 && (
         <ul className="flex list-inside list-disc flex-col gap-1 text-sm text-texto">
           {impedimentos.map((motivo) => (

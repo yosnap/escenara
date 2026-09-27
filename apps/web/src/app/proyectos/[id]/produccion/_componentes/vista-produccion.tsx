@@ -73,6 +73,7 @@ export function VistaProduccion({ inicial }: { inicial: ProduccionVista }) {
   const hayAvisos = avisosConfirmables(produccion.controlesDelModelo).length > 0;
   const caben = Math.max(0, produccion.maximoEnVuelo - produccion.enVuelo);
   const deGolpe = Math.min(produccion.porProducir, caben);
+  const firmaDeEscenas = produccion.escenas.map((e) => e.fotograma?.id ?? "-").join(",");
 
   return (
     <>
@@ -122,18 +123,35 @@ export function VistaProduccion({ inicial }: { inicial: ProduccionVista }) {
         />
       )}
 
-      {produccion.porProducir > 0 && produccion.impedimentos.length === 0 && (
+      {/* Sin sitio en el tope no se ofrece el lote: un importe de cero escenas no sería una estimación de nada. */}
+      {produccion.porProducir > 0 && produccion.impedimentos.length === 0 && deGolpe === 0 && (
+        <Aviso tono="info">
+          Tienes {produccion.porProducir} {produccion.porProducir === 1 ? "escena" : "escenas"} pendientes y{" "}
+          {produccion.enVuelo} produciéndose, que es el máximo de esta instalación. En cuanto termine alguna, vuelve a
+          pulsar: nada se pierde.
+        </Aviso>
+      )}
+
+      {produccion.porProducir > 0 && produccion.impedimentos.length === 0 && deGolpe > 0 && (
         <ConfirmacionGasto
           titulo={
             deGolpe === produccion.porProducir
               ? `Producir las ${produccion.porProducir} escenas pendientes`
               : `Producir ${deGolpe} de las ${produccion.porProducir} escenas pendientes`
           }
-          explicacion={`Se encola el fotograma de cada una. Esta instalación permite ${produccion.maximoEnVuelo} ${produccion.maximoEnVuelo === 1 ? "escena" : "escenas"} a la vez, así que el resto espera: nada se pierde y vuelves a pulsar cuando quede sitio. El importe que confirmas es el de un fotograma; cada escena aparta el suyo por separado.`}
+          explicacion={`Se encola el fotograma de cada una. Esta instalación permite ${produccion.maximoEnVuelo} ${produccion.maximoEnVuelo === 1 ? "escena" : "escenas"} a la vez, así que el resto espera: nada se pierde y vuelves a pulsar cuando quede sitio. Cada escena aparta su importe por separado, y el clip de cada una se paga después, al aprobar su fotograma.`}
           creditos={produccion.creditosPorFotograma}
+          // La cifra principal es lo que se compromete al pulsar: un importe de fotograma no dice lo que cuesta el lote.
+          total={{
+            creditos: deGolpe * produccion.creditosPorFotograma,
+            detalle: `${formatearCreditos(produccion.creditosPorFotograma)} por fotograma × ${deGolpe} ${deGolpe === 1 ? "escena" : "escenas"}`,
+          }}
+          umbral={produccion.umbralAvisoCreditos}
           sello={produccion.selloFotograma}
           etiqueta={deGolpe <= 1 ? "Producir la escena" : `Producir ${deGolpe} escenas`}
-          firma={`proyecto|${produccion.porProducir}|${firmaDeAvisos(confirmados)}`}
+          // El último trabajo de cada escena entra en la firma: después de un fallo, volver a pulsar es otra
+          // confirmación y estrena clave, así que el servidor no puede devolver los trabajos que ya fallaron.
+          firma={`proyecto|${firmaDeEscenas}|${firmaDeAvisos(confirmados)}`}
           bloqueos={bloqueosDelModelo}
           avisosConfirmados={confirmados}
           ocupado={ocupado}

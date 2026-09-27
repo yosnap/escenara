@@ -43,6 +43,7 @@ const escena = (id: string, orden: number, accion: string, est: EstimacionEscena
   aprobadaEn: null,
   motivoInvalidacion: "",
   trabajoId: null,
+  fotograma: null,
   estimacion: est,
   afirmaciones: [],
   controles: EVALUACION_LISTA(REGLAS_VERSION),

@@ -12,8 +12,9 @@ import type { ConfirmacionProduccion } from "./producir";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * Claves de regla de los avisos «Necesita ajustes» que el usuario confirma. Nunca texto libre: como mucho 20 y
- * solo minúsculas, dígitos y guiones. Una clave que no corresponda a un aviso salvable no hace nada, y un freno
+ * Claves de regla de los avisos «Necesita ajustes» que el usuario confirma. Nunca texto libre: como mucho 20 claves,
+ * cada una de 1 a 60 caracteres y solo con minúsculas, dígitos y guiones, que es la forma que tienen las claves de
+ * regla del motor. Una clave que no corresponda a un aviso salvable no hace nada, y un freno
  * `Bloqueado` o `Requiere revisión` no se salta por venir listado (`controles/puerta.ts`).
  */
 function leerAvisos(valor: unknown): string[] {
