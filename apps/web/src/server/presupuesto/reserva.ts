@@ -7,6 +7,7 @@ import { type FilaApunte, type FilaTrabajo, generationJobs, usageLedger } from "
 import { ErrorGeneracion } from "../generacion/errores";
 import { esUuidGeneracion } from "../generacion/trabajos";
 import { comprometidoDe, topesDe } from "./deposito";
+import { accionSinPresupuesto, motivoSinPresupuesto } from "./mensajes";
 
 /**
  * Reserva, liberación y consumo del presupuesto. Tres reglas:
@@ -31,8 +32,17 @@ export interface DatosReserva {
   trabajoId: string;
   proveedor: Proveedor;
   modelo: string;
-  /** Coste máximo estimable del trabajo, en créditos. */
+  /** Coste máximo estimable del trabajo, en créditos. Es lo que se aparta de verdad en el registro de gasto. */
   creditos: number;
+  /**
+   * Coste **total del envío** contra el que se mide el tope por trabajo: la generación más su traducción, si esta
+   * instalación traduce (decisión provisional del propietario, 2026-09-27). Para quien paga las dos llamadas son
+   * un solo envío, y es la misma cifra que mide el motor de controles, así que los dos controles miden lo mismo.
+   *
+   * No cambia **lo que se aparta**: la traducción tiene su propio apunte. Sin este campo se mide `creditos`, que
+   * es lo correcto donde no hay traducción de por medio.
+   */
+  creditosDelEnvio?: number;
   /** Sello del precio con el que se calculó, para poder auditar la estimación. */
   sello: string;
 }
@@ -54,23 +64,19 @@ export function exigirTopeDeTrabajo(creditos: number, ajustes: Ajustes): void {
   }
 }
 
-/**
- * Tope por trabajo, leyendo los ajustes. Lo usa el alta de un trabajo **antes de gastar nada** con el coste
- * **total** del envío (la generación más su traducción, si esta instalación traduce): las dos llamadas son el
- * mismo envío para quien las paga, así que el tope se mide sobre la suma.
- */
-export async function exigirTopePorTrabajo(creditos: number): Promise<void> {
-  exigirTopeDeTrabajo(creditos, await leerAjustes());
-}
-
 export async function exigirPresupuestoDisponible(
   tx: Ejecutor,
   usuarioId: string,
   creditos: number,
   ajustes: Ajustes,
+  /**
+   * Coste total del envío con el que se mide el **tope por trabajo**; sin él, el que se aparta. La disponibilidad
+   * sí se mide con lo que se aparta aquí, porque cada llamada tiene su propio apunte y no se cuenta dos veces.
+   */
+  creditosDelEnvio = creditos,
 ): Promise<void> {
   const { autorizado } = topesDe(ajustes);
-  exigirTopeDeTrabajo(creditos, ajustes);
+  exigirTopeDeTrabajo(creditosDelEnvio, ajustes);
   if (autorizado !== null) {
     const { reservado, consumido, retenido, trabajosEnRevision, llamadasDeTextoColgadas } = await comprometidoDe(
       usuarioId,
@@ -78,16 +84,10 @@ export async function exigirPresupuestoDisponible(
     );
     const disponible = autorizado - reservado - consumido;
     if (creditos > disponible) {
-      // Se dice la verdad sobre **por qué** no queda: si parte del presupuesto está retenida en trabajos que
-      // nadie puede soltar solo, esperar no sirve de nada y hay que decirlo.
-      const retencion =
-        retenido > 0
-          ? ` De tu presupuesto hay ${formatearCreditos(retenido)} retenidos en ${enQue(trabajosEnRevision, llamadasDeTextoColgadas)}, porque el proveedor no contestó y no se sabe si cobró: eso no se libera solo.`
-          : " Espera a que terminen los trabajos en marcha o pídele más presupuesto a quien administra.";
-      throw new ErrorGeneracion(
-        402,
-        `Tu presupuesto en esta instalación tiene ${formatearCreditos(Math.max(0, disponible))} libres y este trabajo necesita ${formatearCreditos(creditos)}.${retencion}`,
-      );
+      // El texto lo compone `presupuesto/mensajes.ts`, el mismo que usa el motor de controles: la lectura del
+      // panel y esta comprobación, que es la que manda, nunca pueden decir cosas distintas.
+      const datos = { disponible, creditos, retenido, trabajosEnRevision, llamadasDeTextoColgadas };
+      throw new ErrorGeneracion(402, `${motivoSinPresupuesto(datos)} ${accionSinPresupuesto(datos)}`);
     }
   }
 }
@@ -97,7 +97,7 @@ export async function exigirPresupuestoDisponible(
  * haya bloqueado la fila del usuario: es lo que serializa dos envíos a la vez.
  */
 export async function reservar(tx: Ejecutor, datos: DatosReserva, ajustes: Ajustes): Promise<FilaApunte> {
-  await exigirPresupuestoDisponible(tx, datos.usuarioId, datos.creditos, ajustes);
+  await exigirPresupuestoDisponible(tx, datos.usuarioId, datos.creditos, ajustes, datos.creditosDelEnvio);
   let apunte: FilaApunte | undefined;
   try {
     [apunte] = await tx
@@ -126,26 +126,6 @@ export async function reservar(tx: Ejecutor, datos: DatosReserva, ajustes: Ajust
   }
   if (!apunte) throw new ErrorGeneracion(500, "No se ha podido reservar el presupuesto del trabajo.");
   return apunte;
-}
-
-/**
- * En qué está retenido el presupuesto, con la acción que corresponde a cada caso: un trabajo pendiente de
- * revisión lo resuelve quien administra; una llamada de texto a medias la cierra el worker en su siguiente
- * pasada, así que ahí lo que toca es esperar unos minutos.
- */
-function enQue(trabajos: number, llamadas: number): string {
-  const partes: string[] = [];
-  if (trabajos > 0) {
-    partes.push(
-      `${trabajos === 1 ? "un trabajo" : `${trabajos} trabajos`} pendientes de revisión, que resuelve quien administra`,
-    );
-  }
-  if (llamadas > 0) {
-    partes.push(
-      `${llamadas === 1 ? "una llamada" : `${llamadas} llamadas`} al asistente que no terminaron, que el servidor cierra solo en unos minutos`,
-    );
-  }
-  return partes.join(" y ");
 }
 
 /** Violación del índice único de apuntes automáticos (`usage_ledger_trabajo_apunte_uq`). */

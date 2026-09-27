@@ -3,9 +3,11 @@
 import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Boton, BotonIcono } from "@/components/ui/button";
+import { InsigniaControl } from "@/components/ui/controles";
 import { AreaTexto, Campo, EntradaTexto } from "@/components/ui/field";
 import { Dialogo } from "@/components/ui/overlay";
 import { InsigniaEstadoEscena } from "@/components/ui/proyecto";
+import { ETIQUETA_ESTADO_CONTROL } from "@/lib/controles";
 import {
   ACCION_MAXIMA,
   type EscenaVista,
@@ -77,6 +79,8 @@ export function EditorEscena({
             {escena.orden}
           </span>
           <InsigniaEstadoEscena estado={escena.estado} />
+          {/* Controles previos de la escena (0.18.0): color **y** icono **y** texto. */}
+          <InsigniaControl estado={escena.controles.estado} breve />
         </div>
         <div className="flex items-center gap-1">
           <BotonIcono etiqueta="Subir la escena" onClick={onSubir} disabled={ocupado || primera}>
@@ -95,10 +99,20 @@ export function EditorEscena({
         </div>
       </header>
 
-      {escena.motivoInvalidacion !== "" && (
-        <p role="status" className="rounded-control bg-elevada p-3 text-texto">
-          {escena.motivoInvalidacion}
-        </p>
+      {/*
+        Por qué esta escena no se puede producir todavía, con la acción de cada freno. Sale del **mismo motor**
+        que cierra la puerta al producirla, así que aquí no hay promesas: es lo que va a decir el servidor.
+      */}
+      {escena.controles.comprobaciones.length > 0 && (
+        <ul role="status" className="flex flex-col gap-2 rounded-control bg-elevada p-3">
+          {escena.controles.comprobaciones.map((c) => (
+            <li key={c.regla} className="text-texto">
+              <span className="font-semibold">{ETIQUETA_ESTADO_CONTROL[c.estado]}: </span>
+              <span>{c.motivo} </span>
+              <span className="text-texto-suave">{c.accion}</span>
+            </li>
+          ))}
+        </ul>
       )}
 
       <div className="grid gap-3 sm:grid-cols-[2fr_1fr]">

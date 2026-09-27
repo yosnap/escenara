@@ -15,6 +15,7 @@ import { SeccionAccesoSocial } from "./seccion-acceso-social";
 import { Seccion } from "./seccion-ajustes";
 import { SeccionAsistente } from "./seccion-asistente";
 import { SeccionCalidad } from "./seccion-calidad";
+import { SeccionControles } from "./seccion-controles";
 import { SeccionPresupuesto } from "./seccion-presupuesto";
 
 export interface DatosAjustes {
@@ -201,6 +202,8 @@ export function FormularioAjustes({
       </Seccion>
 
       <SeccionAsistente valores={valores} errorDe={errorDe} onCambio={cambiar} />
+
+      <SeccionControles valores={valores} errorDe={errorDe} onCambio={cambiar} />
 
       <SeccionPresupuesto
         valores={valores}

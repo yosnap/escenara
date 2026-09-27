@@ -35,6 +35,24 @@ export const GET = manejador(async (_: Request, __: unknown, actor) =>
  * categoría) y de `prompt`, que pasa a ser el valor de la variable de texto. `promptEditado` es el texto final
  * que el usuario editó a mano, si lo editó. Nada de esto puede cambiar modelo, duración ni resolución.
  */
+/**
+ * Avisos «Necesita ajustes» que el usuario confirma expresamente (0.18.0): claves de regla, nunca texto libre.
+ * Se acotan aquí a lo que puede ser una clave de regla; las que no correspondan a un aviso salvable no hacen
+ * nada, y un freno `Bloqueado` o `Requiere revisión` no se salta por venir listado (`controles/puerta.ts`).
+ */
+function leerAvisosConfirmados(valor: unknown): string[] {
+  if (valor === undefined) return [];
+  if (!Array.isArray(valor) || valor.length > 20) {
+    throw new ErrorGeneracion(400, "Los avisos confirmados no son válidos.");
+  }
+  return valor.map((clave) => {
+    if (typeof clave !== "string" || !/^[a-z0-9-]{1,60}$/.test(clave)) {
+      throw new ErrorGeneracion(400, "Los avisos confirmados no son válidos.");
+    }
+    return clave;
+  });
+}
+
 export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
   exigirMismoOrigen(peticion);
   const cuerpo = await leerCuerpo(peticion);
@@ -53,6 +71,7 @@ export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
   }
   const plantilla = leerSeleccionDePresets(cuerpo);
   const comun = {
+    avisosConfirmados: leerAvisosConfirmados(cuerpo.avisosConfirmados),
     prompt: String(cuerpo.prompt ?? ""),
     ...plantilla,
     creditosConfirmados: cuerpo.creditosConfirmados as number,

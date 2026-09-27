@@ -2,6 +2,71 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.18.0] · 2026-09-27
+
+### Decisiones provisionales del propietario (2026-09-27, pendientes de confirmar)
+
+- **Quién puede saltarse un aviso.** «Necesita ajustes» es **salvable por el usuario con confirmación expresa**;
+  «Requiere revisión» lo resuelve **aportando algo** (volver a aprobar el plan, verificar una afirmación con su
+  fuente) y no tiene casilla; **«Bloqueado» no se salta nunca**, tampoco desde la API. La confirmación de un aviso
+  viaja en la petición por la **clave de su regla** y **entra en la firma de idempotencia del cliente**: confirmar
+  un aviso distinto es otra confirmación y estrena clave, igual que un coste distinto.
+- **Reglas en el código, parámetros en el panel.** No hay editor de reglas en la interfaz. En Admin › Ajustes se
+  ajustan solo umbrales de avisos; los frenos duros (credencial, consentimiento, formato del modelo y presupuesto)
+  **no son configurables a propósito**: se apagan cambiando el código y revisándolo.
+- **Las reglas mandan sobre los modelos de decisión** (ADR-0023, prepara 0.24.0). El contrato de decisiones se
+  consulta **después** del motor y solo puede **añadir** un rechazo, nunca levantar un freno: un freno del motor es
+  una afirmación objetiva y reproducible, y una opinión de un modelo no autoriza a enviar la cara de una persona a
+  un proveedor.
+- **El coste que no se puede acotar avisa, no bloquea.** La fase lo proponía como «Bloqueado», pero desde la 0.12.0
+  el trabajo queda `esperando_limite` y **no sale** hasta que el usuario fija su techo: ese paso **es** la acción
+  del aviso, así que pedir además una casilla no añadiría nada.
+- **El mínimo duro de referencias y el consentimiento siguen bloqueando.** El aviso salvable de esta versión es el
+  de **cobertura de vistas incompleta o fotos señaladas por el control de calidad**, que es lo que de verdad se
+  puede salvar; bajar el mínimo a un aviso sería abrir una puerta de consentimiento.
+- **Cualquier afirmación sin verificar de la escena pasa a «Requiere revisión»** al producirla. Es más estricto que
+  la 0.17.0, donde solo las de salud bloqueaban, y solo para aprobar el plan.
+
+### Añadido
+
+- **Motor de reglas único de controles previos (RF12).** Antes de gastar, una sola zona dice si se puede generar: **Listo**, **Necesita ajustes**, **Requiere revisión** o **Bloqueado**, **siempre** con el motivo y la siguiente acción. Las comprobaciones que estaban repartidas entre siete ficheros desde la 0.10.0 se han **movido** a `server/controles/motor.ts`, que es una función **pura y determinista**: recibe hechos ya cargados, no consulta nada y devuelve siempre lo mismo para la misma entrada.
+- **Panel «Antes de generar» en «Crear»**, en zona de claridad: el estado global y la lista de comprobaciones, cada una con su icono, su motivo, su acción y el enlace al sitio donde se arregla. Se rellena **en el servidor al cargar la página** y se vuelve a pedir desde la acción que cambia lo evaluado (elegir personaje, cambiar de modelo, elegir otra imagen): nunca desde un efecto.
+- **Estado por escena en el plan del proyecto**, con el **peor** como estado global del plan. Se calcula con el **mismo** motor que cierra la puerta al producirla, así que lo que se ve no es una promesa, y sin una consulta más por escena.
+- **Los cuatro estados se distinguen por color, icono y texto**, nunca solo por color, y están en el catálogo de componentes (`/admin/componentes` → «Controles previos»).
+- **La evaluación queda guardada** en `control_evaluations`: sujeto (escena o trabajo), estado, reglas disparadas con su motivo y su acción, **versión del conjunto de reglas**, avisos confirmados y fecha. Es la base de RF13 (0.24.0): sin la versión de reglas, «esto se bloqueó» no se puede reproducir meses después.
+- **Ruta de lectura `GET /api/generacion/controles`**: qué diría la puerta si generases ahora. Es lectura de verdad: no encola, no aparta presupuesto, no guarda evaluación y no llama a ningún endpoint de pago (lo único que consulta fuera es el saldo, por el mismo endpoint gratuito que la estimación y con su misma caché de 30 s).
+- **Parámetros nuevos en Admin › Ajustes › «Controles previos»**: avisar si el precio del modelo se comprobó hace más de 90 días (**encendido**), avisar si faltan vistas mínimas del personaje o alguna foto la señaló el control de calidad (**apagado**: solo tiene sentido con la captura guiada en uso) y cuántos avisos se pueden confirmar de una vez (3).
+- **Guía de usuario «Por qué no puedo generar»** con cada motivo y su solución, y **ADR-0023** con el motor y su precedencia sobre los modelos de decisión.
+
+### Cambiado
+
+- **El encolado tiene una sola puerta.** `crearFotograma` y `crearAnimacion` evalúan **una vez**, con todos los hechos resueltos, y solo después reservan y encolan. Las comprobaciones sueltas que se han movido conservan **su mensaje y su código HTTP**: credencial (409), proveedor sin soporte (503), consentimiento (409), modelo sin referencias (400), plan sin aprobar (409), cuota (413), saldo (402) y los tres techos de presupuesto (402).
+- **La puerta de producción de una escena aplica las reglas del motor**, no una copia suya, y lo mismo el tope del proyecto.
+- **El despacho reevalúa antes de enviar** con el mismo motor: entre encolar y enviar el usuario puede haber revocado el consentimiento o quitado fotos. Solo se reevalúa lo que puede cambiar sin que él pida nada; las reglas de dinero no, porque su reserva ya está apartada y compararlas otra vez rechazaría el trabajo por su propio apartado.
+- **Un grupo de hechos que no está no se evalúa** —lo que permite mirar una escena del plan antes de haber elegido modelo—, pero **la puerta exige que estén todos** antes de dejar encolar y responde 500 si falta alguno: olvidarse de un grupo es un error de programación, no una configuración permisiva.
+- **El texto del presupuesto se compone en un solo sitio** (`server/presupuesto/mensajes.ts`), usado por el motor y por la reserva que manda dentro de la transacción: dos textos para el mismo freno acabarían divergiendo.
+- **`vista-crear.tsx` se ha partido**: el paso «Elige a quién generas» y el bloque de confirmación son componentes aparte.
+
+### Corregido
+
+- **Un freno de personaje o de proyecto ya no llega al navegador como «error interno».** `ErrorPersonaje` y `ErrorProyecto` no estaban contemplados en el traductor de errores de las rutas de generación, así que un consentimiento revocado respondía 500 en lugar de 409 con su motivo.
+
+### Seguridad
+
+- **Un «Bloqueado» no se puede confirmar ni mandando su clave de regla por la API**: la puerta ignora cualquier confirmación que no corresponda a un aviso salvable, y el motor corrige a «no confirmable» cualquier freno que no sea un aviso, por si una regla nueva viniera mal marcada. Hay test.
+- **Las claves de aviso se acotan en la ruta** (como mucho 20, y solo minúsculas, dígitos y guiones): no son texto libre.
+- **Ninguna ruta encola una generación sin pasar por el motor**, comprobado de dos formas: un test que recorre el código y exige que todo fichero que llama al encolado pase por la puerta, y un test de integración que cuenta que cada trabajo encolado deja exactamente una evaluación.
+- **Los mensajes no revelan el prompt** (ADR-0022): lo que sale hacia el navegador son motivos y acciones escritos para el usuario. Hay test.
+
+### Actualizar desde la 0.17.0
+
+- **Aplica las migraciones antes de arrancar el código nuevo**: `bun run db:backup` y luego `bun run db:migrate`. La `0018` crea la tabla `control_evaluations` y sus dos tipos enumerados; no toca ninguna tabla existente y no hay nada que migrar.
+- **No hay que configurar nada para que funcione.** Los tres ajustes nuevos traen valores por defecto y el panel aparece solo.
+- **Cuando el precio de un modelo pase de 90 días sin comprobarse**, generar con él pedirá confirmar el aviso. Si prefieres que no, apaga «Avisar si el precio del modelo es antiguo» en Admin › Ajustes › Controles previos; lo razonable es volver a comprobar el precio.
+- **El aviso de cobertura de vistas llega apagado.** Encendido, generar con un personaje al que le falte alguna vista mínima exige confirmarlo. Enciéndelo si usas la captura guiada de 0.14.0.
+- **Producir una escena con afirmaciones sin verificar ya no pasa.** Antes solo bloqueaban las de salud, y solo al aprobar el plan; ahora cualquier afirmación `por_verificar` de la escena la deja en «Requiere revisión». Resuélvelas (verificar con fuente, corregir o descartar) antes de producir.
+- **«Crear» no cambia** en lo demás: si trabajas como hasta ahora y todo está en orden, el panel dice «Listo» y el botón se comporta igual.
+
 ## [0.17.0] · 2026-09-27
 
 ### Decisiones firmes del propietario (2026-09-27)

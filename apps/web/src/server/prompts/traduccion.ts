@@ -67,6 +67,19 @@ export const TRADUCCION_APAGADA: EstadoTraduccion = {
  * Estado de la traducción para la estimación: si está activa y cuánto costaría. Es una **lectura**: no llama a
  * ningún proveedor ni reserva nada.
  */
+/**
+ * Créditos que hay que confirmar antes de generar: los del modelo **más los de la traducción**, si esta
+ * instalación traduce los prompts al inglés (decisión provisional del propietario, 2026-09-27).
+ *
+ * Es un **máximo**: un texto que ya se tradujo antes no se vuelve a pagar, pero lo que se confirma no puede
+ * depender de si hay caché o no, porque entonces la cifra cambiaría entre la pantalla y el botón. Y es la
+ * misma cifra que miden los topes del motor de controles: el usuario paga las dos llamadas como un solo envío.
+ */
+export async function creditosDelEnvio(creditosDelModelo: number): Promise<number> {
+  const traduccion = await estadoDeTraduccion();
+  return creditosDelModelo + (traduccion.activa ? traduccion.creditos : 0);
+}
+
 export async function estadoDeTraduccion(): Promise<EstadoTraduccion> {
   const ajustes = await leerAjustes();
   if (!ajustes.traducirPrompts) return TRADUCCION_APAGADA;

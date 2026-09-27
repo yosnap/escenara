@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { EVALUACION_LISTA, REGLAS_VERSION } from "./controles";
 import {
   type EscenaVista,
   type EstimacionEscena,
@@ -44,6 +45,7 @@ const escena = (id: string, orden: number, accion: string, est: EstimacionEscena
   trabajoId: null,
   estimacion: est,
   afirmaciones: [],
+  controles: EVALUACION_LISTA(REGLAS_VERSION),
 });
 
 describe("texto de una estimación", () => {

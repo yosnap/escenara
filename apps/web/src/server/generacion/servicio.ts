@@ -4,8 +4,10 @@ import { CLIP, type TipoTrabajo, type TrabajoVista } from "@/lib/generacion";
 import type { TipoPersonaje } from "@/lib/personajes";
 import type { SeleccionPresets } from "@/lib/presets";
 import { proyectoDeEscena } from "../asistente/consulta";
-import { exigirEscenaAprobada, exigirTopeDelProyecto } from "../asistente/plan";
+import { hechosDeEscena, techoDelProyecto } from "../asistente/plan";
 import { encolar, filaDeLaConfirmacion, type NuevoTrabajoEncolado } from "../cola/encolar";
+import { recopilarHechos } from "../controles/hechos";
+import { exigirControles } from "../controles/puerta";
 import type { FilaMedio } from "../db/esquema";
 import { decidir } from "../decisiones/reglas";
 import type { Actor } from "../media/servicio";
@@ -16,22 +18,19 @@ import {
   promptConContexto,
   versionDeTrabajo,
 } from "../personajes/contexto";
-import { exigirPersonajeUsable, personajeParaGenerar } from "../personajes/puede-generar";
+import { personajePropio, referenciasParaGenerar } from "../personajes/puede-generar";
 import { acotarCoste } from "../presupuesto/acotar";
-import { exigirTopePorTrabajo } from "../presupuesto/reserva";
 import { componerDesdePlantilla, type PromptCompuesto } from "../prompts/render";
-import { estadoDeTraduccion, traducirAlIngles } from "../prompts/traduccion";
+import { creditosDelEnvio, traducirAlIngles } from "../prompts/traduccion";
 import type { Adaptador } from "../proveedores/contrato";
 import {
   exigirAvisoUmbral,
   exigirClaveIdempotencia,
   exigirConfirmacion,
-  exigirCredencial,
-  exigirCuota,
   exigirDerechos,
+  exigirMedioElegido,
   exigirRevisionDeReferencias,
   exigirRitmo,
-  exigirSaldo,
   imagenPropia,
   limpiarDialogo,
   limpiarPrompt,
@@ -71,6 +70,14 @@ interface Confirmacion {
   avisoUmbralAceptado?: boolean;
   /** Clave que genera el navegador al confirmar: la misma confirmación nunca se cobra dos veces. */
   claveIdempotencia: string;
+  /**
+   * Avisos «Necesita ajustes» que el usuario ha confirmado expresamente, por su clave de regla (0.18.0).
+   *
+   * Es lo único que salva un aviso salvable, y **entra en la firma de idempotencia del cliente**: confirmar un
+   * aviso distinto es otra confirmación y estrena clave. Una clave que corresponda a un freno `Requiere
+   * revisión` o `Bloqueado` no hace nada: esos no se saltan nunca, tampoco desde la API.
+   */
+  avisosConfirmados?: string[];
   /** Modelo elegido en el catálogo; sin él se usa el predeterminado de la capacidad. */
   modelo?: string;
   /** Sello del precio con el que se hizo la estimación: si ha cambiado, se rechaza. */
@@ -228,18 +235,6 @@ function entradaGuardada(
   return { prompt, referencias, parametros: resto };
 }
 
-/**
- * Créditos que el usuario tiene que confirmar: los de la generación **más los de la traducción**, si esta
- * instalación traduce los prompts al inglés (decisión provisional del propietario, 2026-09-27).
- *
- * Es un **máximo**: un texto que ya se tradujo antes no se vuelve a pagar, pero lo que se confirma no puede
- * depender de si hay caché o no, porque entonces la cifra cambiaría entre la pantalla y el botón.
- */
-async function creditosConfirmables(creditosDelModelo: number): Promise<number> {
-  const traduccion = await estadoDeTraduccion();
-  return creditosDelModelo + (traduccion.activa ? traduccion.creditos : 0);
-}
-
 /** Modelo elegido, su adaptador y sus créditos ya comprobados contra lo que confirmó el usuario. */
 async function eleccionConfirmada(tipo: TipoTrabajo, peticion: Confirmacion): Promise<EleccionDeTrabajo> {
   const eleccion = await elegirParaTipo(tipo, peticion.modelo);
@@ -299,41 +294,71 @@ export async function crearFotograma(
   const creditos = Math.ceil(precio.creditos);
   // Lo que el usuario confirma es **todo** lo que va a pagar por este envío: la generación y, si esta instalación
   // traduce, la traducción (decisión provisional del propietario, 2026-09-27). Y es esa suma la que tiene que
-  // caber en el tope por trabajo de la instalación.
-  const totales = await creditosConfirmables(creditos);
+  // caber en los topes que comprueba el motor de controles.
+  const totales = await creditosDelEnvio(creditos);
   exigirConfirmacion(peticion.creditosConfirmados, totales);
   await exigirAvisoUmbral(totales, peticion.avisoUmbralAceptado);
-  await exigirTopePorTrabajo(totales);
   const yaHecho = await trabajoDeLaConfirmacion(actor.id, claveIdempotencia);
   if (yaHecho) return { trabajo: yaHecho, nueva: false };
-  const proveedor = proveedorDeCredencial(modelo);
-  // La credencial se comprueba ahora, no al enviar: encolar algo que no se puede pagar no ayuda a nadie.
-  await exigirCredencial(actor.id, proveedor);
   /**
-   * Producir una escena exige que su plan esté aprobado. Se comprueba **antes** de reservar presupuesto y de
-   * tocar al proveedor: sin aprobación explícita no se encola nada.
-   *
-   * La puerta **solo se aplica cuando llega `escenaId`**: el camino rápido de «Crear» sigue siendo el de la
-   * 0.16.x y no pertenece a ningún proyecto (ADR-0021). Quien produzca una escena tiene que mandar su
-   * identificador; es lo que 0.19.0 hará desde la página del proyecto.
+   * El ritmo va **aquí**: después del corte de idempotencia (repetir una confirmación no gasta ritmo) y **antes**
+   * del motor. Es lo único que acota cuántas veces se puede pedir una evaluación que va a fallar: sin este orden,
+   * un bucle de envíos rechazados leería el saldo y escribiría una fila de `control_evaluations` por intento.
    */
-  const escena = peticion.escenaId ? await exigirEscenaAprobada(actor, peticion.escenaId) : null;
-  // Con personaje se envían varias referencias suyas; sin personaje, la imagen suelta de 0.10.0.
-  if (peticion.personajeId) exigirRevisionDeReferencias(peticion.sinTerceros);
-  const elegido = peticion.personajeId
-    ? await personajeParaGenerar(actor, peticion.personajeId, modelo.parametros.maximoReferencias)
-    : null;
-  const referencias: FilaMedio[] = elegido ? elegido.referencias : [await imagenPropia(actor.id, peticion.medioId)];
+  await exigirRitmo(actor.id);
+
+  /**
+   * Producir una escena exige que su plan esté aprobado y que su aprobación siga en pie. Solo se aplica cuando
+   * llega `escenaId`: el camino rápido de «Crear» no pertenece a ningún proyecto (ADR-0021).
+   */
+  const conEscena = peticion.escenaId ? await hechosDeEscena(actor, peticion.escenaId) : null;
+  // Con personaje se envían varias referencias suyas; sin personaje, la imagen suelta de 0.10.0. Y si esa
+  // imagen suelta salió de otro trabajo hecho con un personaje, este trabajo **hereda** ese personaje: si no,
+  // animar o reeditar un fotograma escaparía del borrado de derivados y la cara sobreviviría al borrado del
+  // personaje. Heredarlo significa cumplir sus reglas como cualquier otro.
+  const medioId = peticion.personajeId ? null : exigirMedioElegido(peticion.medioId);
+  const personajeId = peticion.personajeId ?? (medioId === null ? null : await personajeDeLaCadena(actor.id, medioId));
+  if (personajeId) exigirRevisionDeReferencias(peticion.sinTerceros);
+  const personaje = peticion.personajeId
+    ? await personajePropio(actor, peticion.personajeId)
+    : personajeId
+      ? await personajePorId(personajeId)
+      : null;
+
+  // ── Punto único: el motor decide si esto se puede generar ─────────────────────────────────────────────
+  await exigirControles(
+    {
+      usuarioId: actor.id,
+      sujeto: conEscena ? "escena" : "trabajo",
+      sujetoId: conEscena?.escena.id ?? null,
+      tipo: "fotograma",
+    },
+    await recopilarHechos(
+      actor,
+      {
+        tipo: "fotograma",
+        eleccion,
+        creditos: totales,
+        personajeId,
+        personaje,
+        escena: conEscena?.hechos ?? null,
+        proyecto: conEscena ? await techoDelProyecto(conEscena.escena.projectId) : null,
+      },
+      h.buscar,
+    ),
+    peticion.avisosConfirmados ?? [],
+  );
+
+  // A partir de aquí ya no queda ninguna regla: el motor las ha aplicado todas. `proveedorDeCredencial` solo
+  // acota el tipo (el motor ya ha bloqueado un proveedor sin soporte), y la cola necesita ese valor acotado.
+  const proveedor = proveedorDeCredencial(modelo);
+  const elegido =
+    personaje && peticion.personajeId
+      ? await referenciasParaGenerar(personaje, modelo.parametros.maximoReferencias)
+      : null;
+  const referencias: FilaMedio[] = elegido ? elegido.referencias : [await imagenPropia(actor.id, medioId)];
   const [origen] = referencias;
   if (!origen) throw new ErrorGeneracion(400, "Elige un personaje o una imagen de referencia.");
-  // Si la imagen suelta es el resultado de otro trabajo hecho con un personaje, este trabajo hereda ese
-  // personaje: si no, animar o reeditar un fotograma escaparía del borrado de derivados y la cara sobreviviría
-  // al borrado del personaje. Y si lo hereda, tiene que cumplir sus reglas como cualquier otro.
-  const personajeId = elegido?.personaje.id ?? (await personajeDeLaCadena(actor.id, origen.id));
-  if (personajeId && !elegido) {
-    exigirRevisionDeReferencias(peticion.sinTerceros);
-    await exigirPersonajeUsable(personajeId, "El personaje de esa imagen");
-  }
   // La ficha del personaje es **contexto de generación**: el servidor la compone a partir de la versión
   // vigente y la añade al prompt. Un fotograma heredado (imagen suelta que salió de otro trabajo con
   // personaje) recibe el contexto de ese mismo personaje, porque es la misma cara.
@@ -344,9 +369,6 @@ export async function crearFotograma(
   // Se compone una vez con **el texto original**: valida la combinación de plantilla, presets y modelo, y es lo
   // que miden las reglas de la decisión. Todo esto es gratis, y tiene que fallar **antes** de que se pague nada.
   const original = await baseDelPrompt(actor, peticion, "fotograma", modelo, conFicha.tipo, prompt);
-  await exigirCuota(actor, "fotograma");
-  await exigirSaldo(actor.id, totales, h.buscar, proveedor);
-  await exigirRitmo(actor.id);
   await exigirDecisionFavorable({
     tipo: "fotograma",
     // Las reglas miden lo que escribió la persona, en su idioma: es lo único sobre lo que puede decidir.
@@ -358,8 +380,6 @@ export async function crearFotograma(
     conReferencia: true,
     creditos,
   });
-  // Tope del proyecto: lo que se lleve gastado y apartado en él, más esto, tiene que caber en lo autorizado.
-  if (escena) await exigirTopeDelProyecto(escena.projectId, totales);
   // Y solo ahora, que ya no queda ninguna puerta gratis: los prompts van **siempre en inglés** (decisión firme
   // del propietario, 2026-09-27). Apagada la traducción, esto devuelve los textos tal cual; encendida y con
   // fallo, no se encola nada.
@@ -415,7 +435,7 @@ export async function crearFotograma(
       ...(peticion.vistaSintetica && personajeId ? { vistaSintetica: peticion.vistaSintetica } : {}),
     },
     sourceMediaId: origen.id,
-    sceneId: escena?.id ?? null,
+    sceneId: conEscena?.escena.id ?? null,
     characterId: personajeId,
     characterVersionId: conFicha.versionId,
     ...columnasDePlantilla(base.compuesto),
@@ -431,6 +451,8 @@ export async function crearFotograma(
     acotacion: acotarCoste("fotograma", eleccion),
     valores,
     sello: precio.sello,
+    // El tope por trabajo se mide con lo que el usuario confirma, aquí y en el motor.
+    creditosDelEnvio: totales,
   });
   return { trabajo: await vistaDeFila(fila), nueva };
 }
@@ -446,14 +468,13 @@ export async function crearAnimacion(
   const eleccion = await eleccionConfirmada("animacion", peticion);
   const { modelo, adaptador, precio } = eleccion;
   const creditos = Math.ceil(precio.creditos);
-  const totales = await creditosConfirmables(creditos);
+  const totales = await creditosDelEnvio(creditos);
   exigirConfirmacion(peticion.creditosConfirmados, totales);
   await exigirAvisoUmbral(totales, peticion.avisoUmbralAceptado);
-  await exigirTopePorTrabajo(totales);
   const yaHecho = await trabajoDeLaConfirmacion(actor.id, claveIdempotencia);
   if (yaHecho) return { trabajo: yaHecho, nueva: false };
-  const proveedor = proveedorDeCredencial(modelo);
-  await exigirCredencial(actor.id, proveedor);
+  // Igual que en el fotograma: tras el corte de idempotencia y **antes** del motor.
+  await exigirRitmo(actor.id);
 
   if (!esUuidGeneracion(peticion.trabajoPadreId)) throw new ErrorGeneracion(404, "El trabajo no existe.");
   const padre = await filaPropia(actor.id, peticion.trabajoPadreId);
@@ -461,20 +482,42 @@ export async function crearAnimacion(
   if (padre.state !== "listo" || !padre.resultMediaId) {
     throw new ErrorGeneracion(409, "Espera a que el fotograma esté listo y guardado antes de animarlo.");
   }
-  const origen = await imagenPropia(actor.id, padre.resultMediaId);
   // El clip hereda el personaje del fotograma, así que hereda también sus reglas: si el consentimiento se ha
   // revocado entre el fotograma y el clip, el clip no sale. Y la revisión de referencias se vuelve a confirmar,
   // porque es otra confirmación distinta sobre otro envío distinto.
-  if (padre.characterId) {
-    exigirRevisionDeReferencias(peticion.sinTerceros);
-    await exigirPersonajeUsable(padre.characterId, "El personaje de este fotograma");
-  }
-  await exigirCuota(actor, "animacion");
-  await exigirSaldo(actor.id, totales, h.buscar, proveedor);
-  await exigirRitmo(actor.id);
+  if (padre.characterId) exigirRevisionDeReferencias(peticion.sinTerceros);
+  const personaje = padre.characterId ? await personajePorId(padre.characterId) : null;
 
-  // Tope del proyecto: el clip hereda la escena del fotograma, así que también su presupuesto.
-  if (padre.sceneId) await exigirTopeDelProyecto(await proyectoDeEscena(padre.sceneId), totales);
+  // ── Punto único: el mismo motor, con los hechos del clip ──────────────────────────────────────────────
+  await exigirControles(
+    // El sujeto es la escena cuando el clip pertenece a una: es lo que hay que poder auditar después, y guardar
+    // «trabajo» con un `subject_id` de escena haría imposible filtrar las evaluaciones de un proyecto.
+    {
+      usuarioId: actor.id,
+      sujeto: padre.sceneId ? "escena" : "trabajo",
+      sujetoId: padre.sceneId,
+      tipo: "animacion",
+    },
+    await recopilarHechos(
+      actor,
+      {
+        tipo: "animacion",
+        eleccion,
+        creditos: totales,
+        personajeId: padre.characterId,
+        personaje,
+        // El clip hereda la escena del fotograma, así que hereda también su presupuesto. Su **aprobación** no se
+        // vuelve a mirar: ya se comprobó al producir el fotograma, y el clip no es otra decisión de guion.
+        escena: null,
+        proyecto: padre.sceneId ? await techoDelProyecto(await proyectoDeEscena(padre.sceneId)) : null,
+      },
+      h.buscar,
+    ),
+    peticion.avisosConfirmados ?? [],
+  );
+
+  const proveedor = proveedorDeCredencial(modelo);
+  const origen = await imagenPropia(actor.id, padre.resultMediaId);
   // Un modelo sin voz no recibe nunca lo que dice el personaje (Hailuo 2.3 no tiene audio).
   const dialogo = modelo.conVoz ? limpiarDialogo(peticion.dialogo) : "";
   // El clip lleva el contexto de **la misma versión que el fotograma**, no de la vigente: si la ficha ha
@@ -552,6 +595,7 @@ export async function crearAnimacion(
     acotacion: acotarCoste("animacion", eleccion),
     valores,
     sello: precio.sello,
+    creditosDelEnvio: totales,
   });
   return { trabajo: await vistaDeFila(fila), nueva };
 }

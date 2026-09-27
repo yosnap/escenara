@@ -1,3 +1,4 @@
+import type { EstadoControl, EvaluacionVista } from "./controles";
 import { formatearCreditos, formatearEuros } from "./generacion";
 
 /**
@@ -196,6 +197,14 @@ export interface EscenaVista {
   trabajoId: string | null;
   estimacion: EstimacionEscena | null;
   afirmaciones: AfirmacionVista[];
+  /**
+   * Controles previos **de esta escena** (RF12, 0.18.0): si su plan está aprobado, si su aprobación sigue en
+   * pie y si le quedan afirmaciones por verificar.
+   *
+   * Solo cubre lo que es propio de la escena. Lo que depende del envío concreto (credencial, saldo, cuota,
+   * presupuesto) se evalúa al generar, con el modelo elegido: aquí todavía no hay ninguno.
+   */
+  controles: EvaluacionVista;
 }
 
 export interface ProyectoVista {
@@ -266,6 +275,11 @@ export interface PlanVista {
   margen: number;
   /** Lo que impide aprobar, en lenguaje llano. Vacío = se puede aprobar. */
   impedimentos: string[];
+  /**
+   * Estado global de los controles previos del plan: el **peor** de sus escenas (0.18.0). Es lo que decide si el
+   * botón de producir está disponible, y se distingue por color **y** por icono y texto.
+   */
+  estadoControl: EstadoControl;
 }
 
 // ── Funciones puras del plan ───────────────────────────────────────────────────────────────────────────────

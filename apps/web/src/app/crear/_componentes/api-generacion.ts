@@ -1,3 +1,4 @@
+import type { EvaluacionVista } from "@/lib/controles";
 import type { Deposito, EstadoCola, Estimacion, TipoTrabajo, TrabajoVista } from "@/lib/generacion";
 
 /** Cliente de la API de generación para el navegador. */
@@ -38,6 +39,8 @@ interface Confirmacion {
   avisoUmbralAceptado: boolean;
   /** La misma confirmación lleva siempre la misma clave: repetirla no genera un segundo trabajo. */
   claveIdempotencia: string;
+  /** Avisos «Necesita ajustes» confirmados expresamente, por su clave de regla (0.18.0). */
+  avisosConfirmados: string[];
   /**
    * Versión de la ficha del personaje que se estaba mirando al confirmar. Si el servidor usaría otra, responde
    * 409 y hay que volver a revisar el contexto: la ficha entra en el prompt.
@@ -87,6 +90,25 @@ export const autorizarLimite = (id: string, creditos: number) =>
 
 /** Estado de la cola y depósito de presupuesto de quien pregunta. */
 export const consultarCola = () => pedir<{ cola: EstadoCola; deposito: Deposito }>("/api/generacion/cola");
+
+/**
+ * Estado de los controles previos: qué diría el servidor si generaras ahora (0.18.0). Es una lectura: no
+ * encola nada ni mueve presupuesto.
+ */
+export const consultarControles = (peticion: {
+  tipo: TipoTrabajo;
+  modelo?: string;
+  personajeId?: string;
+  medioId?: string;
+  escenaId?: string;
+}) => {
+  const parametros = new URLSearchParams({ tipo: peticion.tipo });
+  for (const clave of ["modelo", "personajeId", "medioId", "escenaId"] as const) {
+    const valor = peticion[clave];
+    if (valor) parametros.set(clave, valor);
+  }
+  return pedir<EvaluacionVista>(`/api/generacion/controles?${parametros}`);
+};
 
 /** Estimación del modelo indicado (sin modelo, el predeterminado de la capacidad). */
 export const consultarEstimacion = (tipo: TipoTrabajo, modelo?: string) =>
