@@ -2,6 +2,18 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.19.4] · 2026-09-28
+
+### Corregido
+
+- **Ahora puedes decir qué vista es una foto que ya tienes en el personaje.** Las fotos subidas desde la
+  biblioteca entraban «sin clasificar» y no había forma de asignarles la vista después: la cobertura pedía fotos
+  de frente o de perfil que el usuario ya tenía, y volver a añadirlas por la captura guiada las rechazaba por
+  duplicadas. Cada foto de referencia lleva ahora su selector **«Qué vista es»**, y el panel de cobertura avisa de
+  las fotos sin clasificar —y lleva a clasificarlas— antes de proponer hacer otra foto o generar una de pago.
+  Cambiar la vista crea versión, como añadir o reordenar fotos, porque cambia qué fotos se envían al modelo; las
+  vistas generadas conservan la vista que pidió su trabajo y no se pueden cambiar.
+
 ## [0.19.3] · 2026-09-28
 
 ### Corregido

@@ -6,24 +6,45 @@ import { Boton, BotonIcono } from "@/components/ui/button";
 import { MiniaturaMedio } from "@/components/ui/media/miniatura-medio";
 import { SelectorMedios } from "@/components/ui/media/selector-medios";
 import { DistintivoOrigen } from "@/components/ui/personajes/distintivo-origen";
-import { ACCION_MOTIVO, ETIQUETA_MOTIVO, ETIQUETA_VISTA } from "@/lib/captura-personaje";
+import { Selector } from "@/components/ui/select";
+import {
+  ACCION_MOTIVO,
+  ETIQUETA_MOTIVO,
+  ETIQUETA_VISTA,
+  esVista,
+  type Vista,
+  vistasMinimas,
+} from "@/lib/captura-personaje";
 import type { Medio } from "@/lib/media/tipos";
-import { MAXIMO_REFERENCIAS, type PersonajeVista } from "@/lib/personajes";
+import { MAXIMO_REFERENCIAS, type PersonajeVista, type ReferenciaVista } from "@/lib/personajes";
+
+/** Ancla de la sección: el panel de cobertura lleva aquí cuando hay fotos que clasificar. */
+export const ANCLA_REFERENCIAS = "fotos-de-referencia";
+
+/** Valor del selector que deja la foto sin clasificar. No es una vista: es la ausencia de vista. */
+const SIN_CLASIFICAR = "sin_clasificar";
 
 /**
  * Fotos de referencia del personaje: añadir desde la biblioteca o subiendo, quitar y reordenar. La primera es
  * la portada y la que más peso tiene en la identidad, así que el orden se puede cambiar.
  *
  * Quitar una referencia **no borra la foto de la biblioteca**: se deshace la relación y se dice expresamente.
+ *
+ * Cada foto lleva además el selector de **su vista**: las que se suben desde la biblioteca entran sin vista, y
+ * sin poder decirla después no cubrirían nunca la cobertura ni se podrían volver a añadir por la captura guiada
+ * (saltaría el duplicado). Las vistas generadas no lo llevan: su vista es la que pidió su trabajo.
  */
 export function PanelReferencias({
   personaje,
   onCambio,
+  onVista,
   ocupado,
 }: {
   personaje: PersonajeVista;
   /** Devuelve el error, o `null` si ha ido bien. */
   onCambio: (accion: "anadir" | "quitar" | "ordenar", ids: string[]) => Promise<string | null>;
+  /** Asigna la vista de una foto que ya está en el personaje; `null` la deja sin clasificar. */
+  onVista: (referenciaId: string, vista: Vista | null) => void;
   ocupado: boolean;
 }) {
   const [nuevas, setNuevas] = useState<Medio[]>([]);
@@ -44,7 +65,7 @@ export function PanelReferencias({
   };
 
   return (
-    <section aria-label="Fotos de referencia" className="flex flex-col gap-4">
+    <section id={ANCLA_REFERENCIAS} aria-label="Fotos de referencia" className="flex flex-col gap-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-2xl font-bold text-texto">Fotos de referencia</h2>
         <p className="text-sm text-texto-suave">
@@ -77,12 +98,20 @@ export function PanelReferencias({
                   />
                 )}
               </div>
-              <p className="text-xs text-texto-suave">
-                {referencia.vistaClave && `${ETIQUETA_VISTA[referencia.vistaClave]}`}
-                {!referencia.vistaClave && referencia.vista}
-              </p>
-              {referencia.origen === "vista_generada" && (
-                <p className="text-xs text-texto-suave">No cuenta como foto original del personaje.</p>
+              {referencia.origen === "vista_generada" ? (
+                <>
+                  <p className="text-xs text-texto-suave">
+                    {referencia.vistaClave ? ETIQUETA_VISTA[referencia.vistaClave] : referencia.vista}
+                  </p>
+                  <p className="text-xs text-texto-suave">No cuenta como foto original del personaje.</p>
+                </>
+              ) : (
+                <SelectorDeVista
+                  referencia={referencia}
+                  tipo={personaje.tipo}
+                  deshabilitado={ocupado}
+                  onVista={(vista) => onVista(referencia.id, vista)}
+                />
               )}
               {referencia.motivosMarcada.map((motivo) => (
                 <p key={motivo} className="text-xs font-medium text-aviso">
@@ -151,5 +180,40 @@ export function PanelReferencias({
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * Qué vista es esta foto. Se ofrecen las vistas que **cuentan** para el tipo de personaje, más la que ya tenga
+ * si fuera otra: así una foto clasificada antes no pierde su vista solo porque el catálogo mínimo cambie.
+ */
+function SelectorDeVista({
+  referencia,
+  tipo,
+  deshabilitado,
+  onVista,
+}: {
+  referencia: ReferenciaVista;
+  tipo: PersonajeVista["tipo"];
+  deshabilitado: boolean;
+  onVista: (vista: Vista | null) => void;
+}) {
+  const disponibles: Vista[] = [...vistasMinimas(tipo)];
+  if (referencia.vistaClave && !disponibles.includes(referencia.vistaClave)) disponibles.push(referencia.vistaClave);
+  return (
+    <Selector
+      etiqueta="Qué vista es"
+      valor={referencia.vistaClave ?? SIN_CLASIFICAR}
+      deshabilitado={deshabilitado}
+      opciones={[
+        {
+          value: SIN_CLASIFICAR,
+          label: "Sin clasificar",
+          descripcion: referencia.vista ? `La subiste como «${referencia.vista}»` : "No cubre ninguna vista",
+        },
+        ...disponibles.map((vista) => ({ value: vista, label: ETIQUETA_VISTA[vista] })),
+      ]}
+      onCambio={(valor) => onVista(esVista(valor) ? valor : null)}
+    />
   );
 }

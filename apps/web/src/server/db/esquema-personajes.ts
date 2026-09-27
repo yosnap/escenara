@@ -228,6 +228,13 @@ export const characterVersions = pgTable(
     /** Medios de referencia incluidos, en su orden. No es una clave ajena: es lo que había, no lo que hay. */
     referenceMediaIds: jsonb<string[]>("reference_media_ids").notNull(),
     /**
+     * Vista de cada referencia, en el **mismo orden** que `reference_media_ids`; cadena vacía = sin clasificar.
+     * Va aparte y no dentro de `sheet` porque es una lista paralela a la de fotos, no un campo de la ficha.
+     * Cambiar la vista de una foto cambia qué fotos se envían al proveedor (se eligen por cobertura), así que
+     * versiona: sin esta columna, clasificar una foto no crearía versión y el historial mentiría.
+     */
+    referenceViewKeys: jsonb<string[]>("reference_view_keys").notNull().default([]),
+    /**
      * Hoja de personaje: montaje de las referencias compuesto **en el servidor**, sin IA y sin coste. Se
      * guarda en la biblioteca del usuario; `set null` porque puede borrarla desde allí y la versión sigue
      * siendo válida.

@@ -153,6 +153,13 @@ export const quitarReferencias = (id: string, ids: string[]) =>
 export const ordenarReferencias = (id: string, ids: string[]) =>
   pedir<PersonajeVista>(`/api/personajes/${id}/referencias`, json("PATCH", { ids }));
 
+/**
+ * Dice qué vista es cada foto que ya está en el personaje. `vistaClave: null` la deja sin clasificar. El
+ * servidor decide si eso crea versión: si la vista es la que ya tenía, no se gasta un número.
+ */
+export const asignarVistasDeReferencias = (id: string, vistas: { id: string; vistaClave: Vista | null }[]) =>
+  pedir<PersonajeVista>(`/api/personajes/${id}/referencias`, json("PATCH", { vistas }));
+
 export interface DatosConsentimientoEnvio {
   titular: string;
   mayoriaDeEdad: boolean;

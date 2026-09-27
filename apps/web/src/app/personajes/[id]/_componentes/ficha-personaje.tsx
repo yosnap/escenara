@@ -11,6 +11,7 @@ import { Pestanas } from "@/components/ui/overlay";
 import { anilloDeEstado, InsigniaEstadoPersonaje } from "@/components/ui/personaje";
 import {
   anadirReferencias,
+  asignarVistasDeReferencias,
   ordenarReferencias,
   quitarReferencias,
   type Resultado,
@@ -24,6 +25,7 @@ import {
   ETIQUETA_VISTA,
   type RechazoDeReferencia,
   type UmbralesCalidad,
+  type Vista,
 } from "@/lib/captura-personaje";
 import {
   ETIQUETA_TIPO_PERSONAJE,
@@ -86,6 +88,10 @@ export function FichaPersonaje({
     if (accion === "quitar") return aplicar(quitarReferencias(personaje.id, ids));
     return aplicar(ordenarReferencias(personaje.id, ids));
   };
+
+  /** Dice qué vista es una foto que ya está en el personaje. `null` la deja sin clasificar. */
+  const cambiarVista = (referenciaId: string, vista: Vista | null) =>
+    void aplicar(asignarVistasDeReferencias(personaje.id, [{ id: referenciaId, vistaClave: vista }]));
 
   const registrar = (estado: EstadoConsentimiento) =>
     aplicar(
@@ -227,7 +233,12 @@ export function FichaPersonaje({
                     }}
                     onVistaEncolada={(vista) => setVistaEncolada(ETIQUETA_VISTA[vista])}
                   />
-                  <PanelReferencias personaje={personaje} onCambio={cambiarReferencias} ocupado={ocupado} />
+                  <PanelReferencias
+                    personaje={personaje}
+                    onCambio={cambiarReferencias}
+                    onVista={cambiarVista}
+                    ocupado={ocupado}
+                  />
                 </div>
               ),
             },

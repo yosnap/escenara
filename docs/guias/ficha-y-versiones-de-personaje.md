@@ -1,6 +1,6 @@
 # La ficha y las versiones de un personaje
 
-**Versión:** 0.15.0 · **Para:** quien usa Escenara
+**Versión:** 0.19.4 · **Para:** quien usa Escenara
 
 Las fotos fijan la cara de un personaje. Lo que no fijan es todo lo demás: la edad que aparenta, la ropa que
 suele llevar, la estética con la que quieres retratarlo o cómo está delante de la cámara. Desde la 0.15.0 eso
@@ -92,7 +92,9 @@ originales y, al final, las vistas generadas. Si el modelo admite diez y tienes 
 
 - cualquiera de los cinco campos de la ficha;
 - la descripción;
-- añadir, quitar o **reordenar** fotos de referencia (el orden decide qué se envía primero).
+- añadir, quitar o **reordenar** fotos de referencia (el orden decide qué se envía primero);
+- decir **qué vista es** una foto, cambiarla o dejarla sin clasificar: las fotos que se envían se eligen por
+  cobertura de vistas, así que la vista decide cuáles van.
 
 **No crean versión** los metadatos: el nombre y las notas de especie. Y guardar el mismo texto otra vez
 tampoco: puedes editar varias veces en una sesión sin llenar el historial de versiones idénticas.
