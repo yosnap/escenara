@@ -1,0 +1,291 @@
+import { and, eq, isNull } from "drizzle-orm";
+import { type Capacidad, esCapacidad, esIdentificadorDeModelo } from "@/lib/catalogo";
+import { variablesUsadas } from "@/lib/plantillas-prompt";
+import {
+  esCategoriaPreset,
+  esNombreDeVariable,
+  esTipoVariable,
+  MAXIMO_VARIABLES,
+  PLANTILLA_MAXIMA,
+  type PlantillaVista,
+  PRESET_DESCRIPCION_MAXIMA,
+  PRESET_NOMBRE_MAXIMO,
+  type RestriccionesPlantilla,
+  TIPOS_VARIABLE,
+  type VariablePlantilla,
+} from "@/lib/presets";
+import { db } from "../db/cliente";
+import { promptTemplates, promptTemplateVersions } from "../db/esquema";
+import {
+  listarPlantillas,
+  plantillaDeLaInstalacion,
+  restriccionesDeTexto,
+  textoDeRestricciones,
+  textoDeVariables,
+  variablesDeTexto,
+  versionVigente,
+} from "./consulta";
+import { ErrorPreset } from "./errores";
+
+/**
+ * Alta, edición y activación de las plantillas **de la instalación**. Solo quien administra llega aquí: cada
+ * función exige que la fila no tenga dueño, así que una plantilla de un usuario responde 404 aunque quien pida
+ * el cambio sea administrador.
+ *
+ * Toda edición del texto, de las variables o de las restricciones **crea una versión nueva** con su motivo.
+ * Las anteriores se conservan intactas y los trabajos que las citaron siguen citándolas: editar una plantilla
+ * **no cambia lo que ya se generó**. Lo que no versiona es el nombre, la descripción, el orden ni el estado:
+ * no cambian nada de lo que se le envía al proveedor.
+ */
+
+const CLAVE = /^[a-z0-9][a-z0-9-]{1,48}$/;
+
+export interface DatosPlantilla {
+  clave: string;
+  nombre: string;
+  descripcion: string;
+  capacidad: Capacidad;
+  plantilla: string;
+  variables: VariablePlantilla[];
+  restricciones: RestriccionesPlantilla;
+  orden: number;
+  activa: boolean;
+  /** Motivo del cambio; obligatorio cuando el cambio crea versión. */
+  motivo?: string;
+}
+
+function exigirTexto(valor: unknown, campo: string, maximo: number, minimo = 1): string {
+  const texto = typeof valor === "string" ? valor.trim().replace(/[ \t]+/g, " ") : "";
+  if (texto.length < minimo) throw new ErrorPreset(400, `${campo} no puede quedar vacío.`);
+  if (texto.length > maximo) throw new ErrorPreset(400, `${campo} no puede pasar de ${maximo} caracteres.`);
+  return texto;
+}
+
+function exigirOrden(valor: unknown): number {
+  if (typeof valor !== "number" || !Number.isInteger(valor) || valor < 0 || valor > 10_000) {
+    throw new ErrorPreset(400, "El orden tiene que ser un número entero entre 0 y 10.000.");
+  }
+  return valor;
+}
+
+/**
+ * Llaves que **parecen** una variable pero no lo son: `{{Escena}}` (con mayúsculas), `{{ mi-variable }}` (con
+ * guion) o una llave suelta. Al renderizar no se sustituirían y se quedarían escritas dentro del prompt, o
+ * peor, se borrarían sin que nadie lo notase. Se avisa al guardar, que es cuando se puede arreglar.
+ */
+const LLAVE_SOSPECHOSA = /\{\{[^}]*\}\}|\{\{|\}\}|\{[^{}]*\}/g;
+const MARCA_VALIDA = /^\{\{\s*[a-z][a-z0-9_]{0,29}\s*\}\}$/;
+
+function exigirLlavesBienEscritas(texto: string): void {
+  for (const trozo of texto.match(LLAVE_SOSPECHOSA) ?? []) {
+    if (MARCA_VALIDA.test(trozo)) continue;
+    throw new ErrorPreset(
+      400,
+      `«${trozo}» no es una variable válida: se escriben como {{nombre}}, en minúsculas y con guion bajo.`,
+    );
+  }
+}
+
+/**
+ * Cada variable, una a una, diciendo **cuál** falla. La validación silenciosa de `variablesDeTexto` descarta lo
+ * que no entiende, y comparar solo el número de variables diría «alguna está mal» sin decir cuál.
+ */
+function exigirVariablesBienDeclaradas(crudas: unknown): void {
+  if (!Array.isArray(crudas)) throw new ErrorPreset(400, "Las variables tienen que ser una lista.");
+  // El tope se comprueba **antes** de iterar: una lista enorme no tiene que recorrerse para rechazarse.
+  if (crudas.length > MAXIMO_VARIABLES) {
+    throw new ErrorPreset(400, `Una plantilla no puede declarar más de ${MAXIMO_VARIABLES} variables.`);
+  }
+  const vistos = new Set<string>();
+  for (const [i, cruda] of crudas.entries()) {
+    const donde = `la variable ${i + 1}`;
+    if (!cruda || typeof cruda !== "object") throw new ErrorPreset(400, `${donde} no es un objeto.`);
+    const o = cruda as Record<string, unknown>;
+    if (!esNombreDeVariable(o.nombre)) {
+      throw new ErrorPreset(
+        400,
+        `El nombre de ${donde} no vale: minúsculas, números y guion bajo, empezando por letra.`,
+      );
+    }
+    if (vistos.has(o.nombre)) throw new ErrorPreset(400, `La variable «${o.nombre}» está declarada dos veces.`);
+    vistos.add(o.nombre);
+    if (!esTipoVariable(o.tipo)) {
+      throw new ErrorPreset(400, `El tipo de «${o.nombre}» no existe: usa ${TIPOS_VARIABLE.join(", ")}.`);
+    }
+    if ((o.tipo === "enumerado" || o.tipo === "numero") && !esCategoriaPreset(o.categoria)) {
+      throw new ErrorPreset(400, `«${o.nombre}» es de tipo ${o.tipo} y tiene que declarar de qué categoría sale.`);
+    }
+    if (typeof o.etiqueta !== "string" || o.etiqueta.trim() === "") {
+      throw new ErrorPreset(400, `«${o.nombre}» necesita una etiqueta en español: es lo que se le muestra al usuario.`);
+    }
+  }
+}
+
+/**
+ * El texto y sus variables tienen que encajar: una variable declarada que la plantilla no usa no hace nada, y
+ * una usada sin declarar **se borraría al renderizar** sin que nadie se enterase. Las dos se dicen.
+ */
+function exigirPlantillaCoherente(texto: string, variables: VariablePlantilla[]): void {
+  if (variables.length === 0) throw new ErrorPreset(400, "Declara al menos una variable.");
+  exigirLlavesBienEscritas(texto);
+  const usadas = new Set(variablesUsadas(texto));
+  const declaradas = new Set(variables.map((v) => v.nombre));
+  const sinDeclarar = [...usadas].filter((n) => !declaradas.has(n));
+  if (sinDeclarar.length > 0) {
+    throw new ErrorPreset(400, `La plantilla usa variables que no declara: ${sinDeclarar.join(", ")}.`);
+  }
+  const sinUsar = [...declaradas].filter((n) => !usadas.has(n));
+  if (sinUsar.length > 0) {
+    throw new ErrorPreset(400, `Estas variables se declaran pero no se usan en el texto: ${sinUsar.join(", ")}.`);
+  }
+}
+
+function exigirRestricciones(restricciones: RestriccionesPlantilla): RestriccionesPlantilla {
+  const modelos = (Array.isArray(restricciones.modelos) ? restricciones.modelos : []).map((m) => String(m).trim());
+  for (const modelo of modelos) {
+    if (!esIdentificadorDeModelo(modelo)) throw new ErrorPreset(400, `«${modelo}» no es un identificador de modelo.`);
+  }
+  const minimo = restricciones.minimoReferencias;
+  if (typeof minimo !== "number" || !Number.isInteger(minimo) || minimo < 0 || minimo > 20) {
+    throw new ErrorPreset(400, "El mínimo de referencias tiene que ser un entero entre 0 y 20.");
+  }
+  return { modelos: [...new Set(modelos)].slice(0, 20), minimoReferencias: minimo };
+}
+
+/** Texto y variables ya validados a partir de lo que llegó del formulario. */
+function normalizarContenido(datos: DatosPlantilla) {
+  // El texto conserva sus saltos de línea: son la estructura de la plantilla, que la escribe quien administra.
+  const texto = exigirTexto(datos.plantilla, "El texto de la plantilla", PLANTILLA_MAXIMA, 10);
+  // Primero se valida una a una, diciendo cuál falla, y después se leen con el **mismo** validador que las lee al
+  // renderizar: así lo que se guarda es exactamente lo que se escribió, y un error dice qué arreglar.
+  exigirVariablesBienDeclaradas(datos.variables ?? []);
+  const variables = variablesDeTexto(JSON.stringify(datos.variables ?? []));
+  if (variables.length !== (datos.variables?.length ?? 0)) {
+    throw new ErrorPreset(400, "Alguna variable está mal declarada: revisa el nombre, el tipo y la categoría.");
+  }
+  exigirPlantillaCoherente(texto, variables);
+  return { texto, variables, restricciones: exigirRestricciones(datos.restricciones) };
+}
+
+function exigirCapacidad(valor: unknown): Capacidad {
+  if (!esCapacidad(valor)) throw new ErrorPreset(400, "Esa capacidad no existe.");
+  return valor;
+}
+
+/** Crea una plantilla de la instalación con su versión 1. */
+export async function crearPlantillaDeLaInstalacion(datos: DatosPlantilla, autorId: string): Promise<PlantillaVista> {
+  const clave = typeof datos.clave === "string" ? datos.clave.trim().toLowerCase() : "";
+  if (!CLAVE.test(clave)) {
+    throw new ErrorPreset(400, "La clave solo admite minúsculas, números y guiones, y tiene que tener 2 o más.");
+  }
+  const { texto, variables, restricciones } = normalizarContenido(datos);
+  const capacidad = exigirCapacidad(datos.capacidad);
+  const comun = {
+    name: exigirTexto(datos.nombre, "El nombre", PRESET_NOMBRE_MAXIMO),
+    description: exigirTexto(datos.descripcion, "La descripción", PRESET_DESCRIPCION_MAXIMA),
+    template: texto,
+    variables: textoDeVariables(variables),
+    modelRestrictions: textoDeRestricciones(restricciones),
+    sortOrder: exigirOrden(datos.orden),
+    active: datos.activa === true,
+  };
+
+  let creadaId = "";
+  await db().transaction(async (tx) => {
+    const [fila] = await tx
+      .insert(promptTemplates)
+      .values({ slug: clave, capability: capacidad, ...comun })
+      .onConflictDoNothing()
+      .returning({ id: promptTemplates.id });
+    if (!fila) return;
+    await tx.insert(promptTemplateVersions).values({
+      templateId: fila.id,
+      number: 1,
+      template: texto,
+      variables: comun.variables,
+      modelRestrictions: comun.modelRestrictions,
+      changeReason: exigirTexto(datos.motivo ?? "Alta de la plantilla.", "El motivo", 300),
+      createdBy: autorId,
+    });
+    creadaId = fila.id;
+  });
+  if (creadaId === "") throw new ErrorPreset(409, `Ya hay una plantilla de la instalación con la clave «${clave}».`);
+  return await vistaPorId(creadaId);
+}
+
+/**
+ * Edita una plantilla de la instalación. Si cambia el texto, las variables o las restricciones, crea una
+ * versión nueva con su motivo (obligatorio) y sube el número. Si solo cambia el nombre, la descripción, el
+ * orden o el estado, **no** crea versión: no cambia nada de lo que se le envía al proveedor.
+ */
+export async function editarPlantillaDeLaInstalacion(
+  id: string,
+  datos: DatosPlantilla,
+  autorId: string,
+): Promise<PlantillaVista> {
+  const anterior = await plantillaDeLaInstalacion(id);
+  const { texto, variables, restricciones } = normalizarContenido(datos);
+  const vigente = await versionVigente(anterior.id);
+  const variablesTexto = textoDeVariables(variables);
+  const restriccionesTexto = textoDeRestricciones(restricciones);
+  const cambiaContenido =
+    vigente.template !== texto ||
+    textoDeVariables(variablesDeTexto(vigente.variables)) !== variablesTexto ||
+    textoDeRestricciones(restriccionesDeTexto(vigente.modelRestrictions)) !== restriccionesTexto;
+  const motivo = cambiaContenido ? exigirTexto(datos.motivo, "El motivo del cambio", 300, 4) : "";
+
+  await db().transaction(async (tx) => {
+    await tx
+      .update(promptTemplates)
+      .set({
+        name: exigirTexto(datos.nombre, "El nombre", PRESET_NOMBRE_MAXIMO),
+        description: exigirTexto(datos.descripcion, "La descripción", PRESET_DESCRIPCION_MAXIMA),
+        template: texto,
+        variables: variablesTexto,
+        modelRestrictions: restriccionesTexto,
+        sortOrder: exigirOrden(datos.orden),
+        active: datos.activa === true,
+        version: cambiaContenido ? vigente.number + 1 : anterior.version,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(promptTemplates.id, anterior.id), isNull(promptTemplates.ownerId)));
+    if (!cambiaContenido) return;
+    await tx.insert(promptTemplateVersions).values({
+      templateId: anterior.id,
+      number: vigente.number + 1,
+      template: texto,
+      variables: variablesTexto,
+      modelRestrictions: restriccionesTexto,
+      changeReason: motivo,
+      createdBy: autorId,
+    });
+  });
+  return await vistaPorId(anterior.id);
+}
+
+/** Activa o desactiva una plantilla de la instalación. Una desactivada no compone ningún prompt. */
+export async function activarPlantillaDeLaInstalacion(id: string, activa: boolean): Promise<PlantillaVista> {
+  const anterior = await plantillaDeLaInstalacion(id);
+  await db()
+    .update(promptTemplates)
+    .set({ active: activa === true, updatedAt: new Date() })
+    .where(and(eq(promptTemplates.id, anterior.id), isNull(promptTemplates.ownerId)));
+  return await vistaPorId(anterior.id);
+}
+
+/** Cambia el orden de una plantilla de la instalación. */
+export async function ordenarPlantillaDeLaInstalacion(id: string, orden: number): Promise<PlantillaVista> {
+  const anterior = await plantillaDeLaInstalacion(id);
+  await db()
+    .update(promptTemplates)
+    .set({ sortOrder: exigirOrden(orden), updatedAt: new Date() })
+    .where(and(eq(promptTemplates.id, anterior.id), isNull(promptTemplates.ownerId)));
+  return await vistaPorId(anterior.id);
+}
+
+/** Vista de una plantilla por identificador, con su versión vigente ya resuelta. */
+async function vistaPorId(id: string): Promise<PlantillaVista> {
+  const plantilla = (await listarPlantillas()).find((p) => p.id === id);
+  if (!plantilla) throw new ErrorPreset(404, "Esa plantilla no existe.");
+  return plantilla;
+}

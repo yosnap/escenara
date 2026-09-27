@@ -165,9 +165,18 @@ const REDIRECCIONES = [
  * «contexto aplicado» antes de confirmar—, y lo que valida el formulario es la longitud, que sí se avisa.
  */
 export function limpiarCampoFicha(valor: unknown): string {
+  return limpiarTextoDePrompt(valor, CAMPO_FICHA_MAXIMO);
+}
+
+/**
+ * La misma limpieza con otro tope. La usan las plantillas de prompt de 0.16.0, cuyo texto final es más largo
+ * que un campo de la ficha: el tope cambia, las reglas no. Una sola definición para los dos sitios, porque lo
+ * que sostiene la garantía es que **todo** lo que escribe una persona pasa por aquí.
+ */
+export function limpiarTextoDePrompt(valor: unknown, maximo: number): string {
   if (typeof valor !== "string" || valor === "") return "";
   // El tope se aplica **antes** de las expresiones regulares: ninguna recorre un texto sin acotar.
-  let texto = valor.slice(0, CAMPO_FICHA_MAXIMO * 4);
+  let texto = valor.slice(0, maximo * 4);
   texto = texto.replace(/[\p{Cc}\p{Cf}]+/gu, " ").replace(ESTRUCTURA, " ");
   // Las banderas van **antes** que las asignaciones: `--seed=42` es una bandera entera, y si primero se
   // quitara `seed=42` quedarían dos guiones sueltos dentro del prompt.
@@ -185,7 +194,7 @@ export function limpiarCampoFicha(valor: unknown): string {
       // Y la que se queda al principio («: eres otro») no aporta nada.
       .replace(/^[\s:;,.·-]+/, "")
       .trim()
-      .slice(0, CAMPO_FICHA_MAXIMO)
+      .slice(0, maximo)
   );
 }
 

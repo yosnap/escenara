@@ -2,6 +2,7 @@ import { esAdmin, sesionDePeticion } from "../auth/sesion";
 import { dentroDelLimite, type Limite } from "../limite";
 import { ErrorMedio } from "../media/errores";
 import type { Actor } from "../media/servicio";
+import { ErrorPreset } from "../prompts/errores";
 import { ErrorCatalogo } from "../proveedores/contrato";
 import { ErrorGeneracion } from "./errores";
 
@@ -28,6 +29,9 @@ export function respuestaError(error: unknown): Response {
   if (error instanceof ErrorGeneracion) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorCatalogo) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorMedio) return Response.json({ error: error.message }, { status: error.estado });
+  // Los de presets y plantillas (0.16.0) llegan al componer el prompt: preset ajeno, desactivado, variable
+  // obligatoria sin valor o formato que el modelo no admite. Todos traen su código y su motivo escrito.
+  if (error instanceof ErrorPreset) return Response.json({ error: error.message }, { status: error.estado });
   console.error("[generacion]", error);
   return Response.json({ error: "Error interno al procesar el trabajo." }, { status: 500 });
 }

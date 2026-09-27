@@ -1,5 +1,8 @@
 import type { Vista } from "@/lib/captura-personaje";
+import type { ModeloVista } from "@/lib/catalogo";
 import { CLIP, type TipoTrabajo, type TrabajoVista } from "@/lib/generacion";
+import type { TipoPersonaje } from "@/lib/personajes";
+import type { SeleccionPresets } from "@/lib/presets";
 import { encolar, filaDeLaConfirmacion, type NuevoTrabajoEncolado } from "../cola/encolar";
 import type { FilaMedio } from "../db/esquema";
 import { decidir } from "../decisiones/reglas";
@@ -13,6 +16,7 @@ import {
 } from "../personajes/contexto";
 import { exigirPersonajeUsable, personajeParaGenerar } from "../personajes/puede-generar";
 import { acotarCoste } from "../presupuesto/acotar";
+import { componerDesdePlantilla, type PromptCompuesto } from "../prompts/render";
 import type { Adaptador } from "../proveedores/contrato";
 import {
   exigirAvisoUmbral,
@@ -75,7 +79,70 @@ interface Confirmacion {
    * Opcional para no romper a quien siga enviando como en la 0.14.x; sin ella no se compara nada.
    */
   versionPersonaje?: string;
+  /**
+   * Plantilla de prompt elegida (0.16.0) y la versión que se tenía en pantalla. Con ellas, **el servidor
+   * compone el prompt** a partir de los presets elegidos: `prompt` pasa a ser solo el valor de la variable de
+   * texto («qué quieres ver»). Sin plantilla, todo funciona como en la 0.15.x.
+   */
+  plantillaId?: string;
+  plantillaVersionId?: string;
+  /** Presets elegidos por categoría: identificadores, nunca texto. */
+  presets?: SeleccionPresets;
+  /**
+   * Texto final editado a mano. Si llega, manda sobre lo que compone la plantilla, y pasa por la misma
+   * limpieza anti-inyección: editar el texto no es una puerta para colar parámetros del proveedor.
+   */
+  promptEditado?: string;
 }
+
+/**
+ * Texto base del prompt: lo que compuso la plantilla o, sin plantilla, lo que escribió la persona. `compuesto`
+ * es lo que se guarda en el trabajo para poder auditarlo.
+ */
+interface BaseDelPrompt {
+  escena: string;
+  compuesto: PromptCompuesto | null;
+}
+
+/**
+ * Compone el texto base con la plantilla elegida, si se eligió alguna. **Siempre en el servidor**: el navegador
+ * manda identificadores de plantilla y de preset, y su previsualización coincide porque usa la misma función
+ * pura, no porque se le crea el texto.
+ */
+async function baseDelPrompt(
+  actor: Actor,
+  peticion: Confirmacion,
+  tipo: TipoTrabajo,
+  modelo: ModeloVista,
+  tipoPersonaje: TipoPersonaje | null,
+  escenaEscrita: string,
+): Promise<BaseDelPrompt> {
+  if (!peticion.plantillaId) return { escena: escenaEscrita, compuesto: null };
+  const compuesto = await componerDesdePlantilla({
+    usuarioId: actor.id,
+    plantillaId: peticion.plantillaId,
+    versionId: peticion.plantillaVersionId,
+    tipo,
+    presets: peticion.presets ?? {},
+    // **Todas** las variables de tipo texto de la plantilla reciben esta escena, no solo la que se llame
+    // «escena»: en «Crear» solo hay un campo, y el navegador previsualiza con la misma regla.
+    escena: escenaEscrita,
+    tipoPersonaje,
+    modelo,
+    textoEditado: peticion.promptEditado,
+  });
+  return { escena: compuesto.texto, compuesto };
+}
+
+/** Lo que el trabajo guarda de la plantilla usada: identificadores y la marca de editado. */
+const columnasDePlantilla = (compuesto: PromptCompuesto | null) =>
+  compuesto
+    ? {
+        promptTemplateId: compuesto.plantillaId,
+        promptTemplateVersionId: compuesto.versionId,
+        promptEdited: compuesto.editado,
+      }
+    : {};
 
 /**
  * La ficha citada tiene que ser la que se confirmó. Si entre la pantalla y el botón se creó una versión nueva
@@ -171,20 +238,23 @@ async function trabajoDeLaConfirmacion(usuarioId: string, claveIdempotencia: str
 async function fichaHeredada(
   personajeId: string | null,
   maximoDelModelo: number,
-): Promise<{ versionId: string | null; contexto: string }> {
-  if (!personajeId) return { versionId: null, contexto: "" };
+): Promise<{ versionId: string | null; contexto: string; tipo: TipoPersonaje | null }> {
+  if (!personajeId) return { versionId: null, contexto: "", tipo: null };
   const personaje = await personajePorId(personajeId);
-  if (!personaje) return { versionId: null, contexto: "" };
+  if (!personaje) return { versionId: null, contexto: "", tipo: null };
   const { version, contexto } = await contextoParaGenerar(personaje, Math.max(1, maximoDelModelo));
-  return { versionId: version.id, contexto };
+  return { versionId: version.id, contexto, tipo: personaje.kind };
 }
 
 /** Contexto de una versión concreta, tal como se compuso al generar el fotograma del que sale el clip. */
-async function contextoDeLaVersion(versionId: string | null): Promise<string> {
+async function contextoDeLaVersion(
+  versionId: string | null,
+): Promise<{ contexto: string; tipo: TipoPersonaje | null }> {
   const version = await versionDeTrabajo(versionId);
-  if (!version) return "";
+  if (!version) return { contexto: "", tipo: null };
   const personaje = await personajePorId(version.characterId);
-  return personaje ? contextoDeVersion(version, personaje.kind) : "";
+  if (!personaje) return { contexto: "", tipo: null };
+  return { contexto: contextoDeVersion(version, personaje.kind), tipo: personaje.kind };
 }
 
 /** Comprobación previa determinista (contrato de decisiones): un rechazo no llega ni a encolarse. */
@@ -231,16 +301,20 @@ export async function crearFotograma(
   // vigente y la añade al prompt. Un fotograma heredado (imagen suelta que salió de otro trabajo con
   // personaje) recibe el contexto de ese mismo personaje, porque es la misma cara.
   const conFicha = elegido
-    ? { versionId: elegido.version.id, contexto: elegido.contexto }
+    ? { versionId: elegido.version.id, contexto: elegido.contexto, tipo: elegido.personaje.kind }
     : await fichaHeredada(personajeId, modelo.parametros.maximoReferencias);
   exigirVersionConfirmada(peticion.versionPersonaje, conFicha.versionId);
-  const promptFinal = promptConContexto(prompt, conFicha.contexto);
+  // Con plantilla, el texto base lo compone el servidor con los presets elegidos (0.16.0); sin ella, es lo que
+  // escribió la persona, igual que en la 0.15.x. La compatibilidad del formato con el modelo se valida ahí
+  // dentro, **antes** de reservar presupuesto y de tocar al proveedor.
+  const base = await baseDelPrompt(actor, peticion, "fotograma", modelo, conFicha.tipo, prompt);
+  const promptFinal = promptConContexto(base.escena, conFicha.contexto);
   await exigirCuota(actor, "fotograma");
   await exigirSaldo(actor.id, creditos, h.buscar, proveedor);
   await exigirRitmo(actor.id);
   await exigirDecisionFavorable({
     tipo: "fotograma",
-    escena: prompt,
+    escena: base.escena,
     dialogo: "",
     // El contexto de la ficha va aparte de la escena: las reglas miden la descripción que escribió la persona.
     contexto: conFicha.contexto,
@@ -268,6 +342,19 @@ export async function crearFotograma(
       // Lo que escribió la persona y lo que añadió el servidor, separados: el historial tiene que poder
       // mostrar las dos cosas sin adivinar dónde acaba una y empieza la otra.
       escena: prompt,
+      // Lo que compuso la plantilla, aparte de lo que escribió la persona: el historial tiene que poder
+      // mostrar las dos cosas, y auditar un prompt exige saber de qué plantilla y de qué presets salió.
+      ...(base.compuesto
+        ? {
+            plantilla: {
+              id: base.compuesto.plantillaId,
+              version: base.compuesto.versionNumero,
+              editado: base.compuesto.editado,
+              presets: base.compuesto.presetsElegidos,
+            },
+            textoDeLaPlantilla: base.escena,
+          }
+        : {}),
       ...(conFicha.contexto === "" ? {} : { contextoPersonaje: conFicha.contexto }),
       // Marca de «este resultado es una vista generada del personaje»: la lee el cierre del trabajo para
       // añadirla como referencia etiquetada. Solo la pone el servidor.
@@ -276,6 +363,7 @@ export async function crearFotograma(
     sourceMediaId: origen.id,
     characterId: personajeId,
     characterVersionId: conFicha.versionId,
+    ...columnasDePlantilla(base.compuesto),
     // La revisión de referencias se guarda con su fecha, igual que la confirmación de derechos: es una
     // declaración y hay que poder demostrar cuándo se hizo.
     referencesReviewedAt: personajeId ? new Date() : null,
@@ -333,10 +421,14 @@ export async function crearAnimacion(
   // El clip lleva el contexto de **la misma versión que el fotograma**, no de la vigente: si la ficha ha
   // cambiado entre los dos, animar tiene que seguir siendo el mismo personaje que se generó.
   exigirVersionConfirmada(peticion.versionPersonaje, padre.characterVersionId);
-  const contexto = await contextoDeLaVersion(padre.characterVersionId);
+  const { contexto, tipo } = await contextoDeLaVersion(padre.characterVersionId);
+  // La plantilla del clip compone el texto con la duración y el look elegidos. La duración que declare el
+  // preset se valida contra la que se le envía de verdad al proveedor (`segundos`), que es la unidad con la
+  // que está medido el precio: pedir otra se rechaza con su motivo en lugar de cobrarse mal.
+  const base = await baseDelPrompt(actor, peticion, "animacion", modelo, tipo, prompt);
   await exigirDecisionFavorable({
     tipo: "animacion",
-    escena: prompt,
+    escena: base.escena,
     dialogo,
     contexto,
     conVoz: modelo.conVoz,
@@ -344,7 +436,7 @@ export async function crearAnimacion(
     creditos,
   });
   const segundos = modelo.parametros.duraciones[0] ?? CLIP.segundos;
-  const promptFinal = promptConContexto(prompt, contexto);
+  const promptFinal = promptConContexto(base.escena, contexto);
   const parametros = adaptador.montarEntrada(modelo, { escena: promptFinal, dialogo, urls: [] });
   const valores: NuevoTrabajoEncolado = {
     userId: actor.id,
@@ -356,12 +448,24 @@ export async function crearAnimacion(
       ...entradaGuardada(adaptador, promptFinal, [origen.id], { ...parametros, segundos }),
       dialogo,
       escena: prompt,
+      ...(base.compuesto
+        ? {
+            plantilla: {
+              id: base.compuesto.plantillaId,
+              version: base.compuesto.versionNumero,
+              editado: base.compuesto.editado,
+              presets: base.compuesto.presetsElegidos,
+            },
+            textoDeLaPlantilla: base.escena,
+          }
+        : {}),
       ...(contexto === "" ? {} : { contextoPersonaje: contexto }),
     },
     sourceMediaId: origen.id,
     parentJobId: padre.id,
     characterId: padre.characterId,
     characterVersionId: padre.characterVersionId,
+    ...columnasDePlantilla(base.compuesto),
     referencesReviewedAt: padre.characterId ? new Date() : null,
     estimatedCredits: creditos,
   };
