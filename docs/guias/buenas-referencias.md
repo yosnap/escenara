@@ -66,7 +66,7 @@ sin haber ocupado espacio de tu cuota.
 
 | Aviso | Qué pasa | Qué hacer |
 |---|---|---|
-| **Foto pequeña** | El lado menor no llega al mínimo (512 px por defecto) **medido con el tamaño con el que se va a guardar** | Usa la foto original en vez de una captura de pantalla, o acércate y repítela |
+| **Foto pequeña** | El lado menor no llega al mínimo (512 px por defecto) **medido con el tamaño con el que se va a guardar** | Si tienes la original, úsala; si la has recortado y es la que tienes, puedes usarla de todas formas |
 | **Foto demasiado grande** | Tiene tantos píxeles que analizarla bloquearía el servidor | Redúcela (2000 px de lado sobran) y vuelve a subirla |
 | **Foto borrosa** | Se ha movido o no ha enfocado | Sujeta el móvil con las dos manos, espera a que enfoque y repite |
 | **Poca luz** | La cara se pierde en la sombra | Ponte de cara a una ventana o enciende una luz |
@@ -74,8 +74,9 @@ sin haber ocupado espacio de tu cuota.
 | **Cara pequeña** | La cara ocupa muy poco del encuadre | Acércate hasta que ocupe buena parte |
 | **Duplicada** | Ya tienes esa foto, o una casi idéntica | Haz otra desde otro ángulo |
 
-**«Foto pequeña», «foto demasiado grande» y «duplicada» no se pueden saltar.** Una foto demasiado pequeña no aporta identidad, y una
-repetida no aporta nada nuevo. Los demás avisos llevan el botón **«Usarla de todas formas»**: la foto se
+**Solo «foto demasiado grande» y «duplicada» no se pueden saltar**: la primera no se puede analizar sin bloquear
+el servidor, y una repetida no aporta nada nuevo. Todos los demás avisos, también **«Foto pequeña»** (una foto real
+que has recortado sigue sirviendo, aunque guíe algo peor la identidad), llevan el botón **«Usarla de todas formas»**: la foto se
 guarda, y su tarjeta sigue diciendo **todo** lo que le pasaba, para que sepas por qué el resultado puede salir peor.
 
 Si tu navegador no sabe detectar caras (no todos lo hacen), el visor lo dice: se comprueban tamaño, enfoque y

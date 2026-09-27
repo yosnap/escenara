@@ -131,7 +131,8 @@ export const ETIQUETA_MOTIVO: Record<MotivoRechazo, string> = {
 
 /** Qué hacer para arreglarlo. Un rechazo sin acción concreta solo frustra. */
 export const ACCION_MOTIVO: Record<MotivoRechazo, string> = {
-  resolucion: "Usa la foto original en vez de una captura de pantalla, o acércate y vuelve a hacerla.",
+  resolucion:
+    "Tiene poca resolución (quizá está recortada o es una captura): guiará algo peor la identidad. Si tienes la original, mejor; si no, puedes usarla de todas formas.",
   enorme:
     "Tiene demasiados píxeles para analizarla sin bloquear el servidor. Redúcela (basta con 2000 px de lado) y vuelve a subirla.",
   nitidez: "Sujeta el móvil con las dos manos, espera a que enfoque y repite la foto.",
@@ -141,8 +142,13 @@ export const ACCION_MOTIVO: Record<MotivoRechazo, string> = {
   duplicada: "Ya tienes esta foto (o una casi idéntica) en el personaje. Haz otra desde otro ángulo.",
 };
 
-/** Los mínimos técnicos no se pueden saltar con «usar de todas formas»: la foto no sirve de referencia. */
-export const MOTIVOS_TECNICOS: readonly MotivoRechazo[] = ["resolucion", "enorme", "duplicada"];
+/**
+ * Los mínimos técnicos no se pueden saltar con «usar de todas formas»: una foto que no se puede analizar sin
+ * bloquear el servidor, o una que ya está. Una foto **pequeña** no es uno de ellos (decisión del propietario,
+ * 2026-09-28): una foto real recortada guía algo peor la identidad, pero sigue siendo suya y útil, así que se
+ * avisa y se deja usar, y el control previo de generar la sigue señalando.
+ */
+export const MOTIVOS_TECNICOS: readonly MotivoRechazo[] = ["enorme", "duplicada"];
 
 export const esMotivoTecnico = (motivo: MotivoRechazo): boolean => MOTIVOS_TECNICOS.includes(motivo);
 

@@ -292,15 +292,20 @@ describe.skipIf(!hayBaseDeDatos)("captura guiada de referencias", () => {
     expect(referencia?.motivosMarcada).toContain("oscuridad");
   });
 
-  test("una foto pequeña es un mínimo técnico: ni con «usar de todas formas» se guarda", async () => {
+  test("una foto pequeña (p. ej. recortada) se rechaza sola, pero se guarda con «usar de todas formas»", async () => {
     const personaje = await nuevoPersonaje("Pequeña");
     const medio = await subir(await foto(3, 256), "mini.png");
-    const forzada = await anadir(personaje.id, [{ medioId: medio.id, vistaClave: "frontal", usarDeTodasFormas: true }]);
-    expect(forzada.status).toBe(422);
-    const cuerpo = (await forzada.json()) as { rechazos: { motivos: string[]; bloqueante: boolean }[] };
+    const sola = await anadir(personaje.id, [{ medioId: medio.id, vistaClave: "frontal" }]);
+    expect(sola.status).toBe(422);
+    const cuerpo = (await sola.json()) as { rechazos: { motivos: string[]; bloqueante: boolean }[] };
     expect(cuerpo.rechazos[0]?.motivos).toContain("resolucion");
-    expect(cuerpo.rechazos[0]?.bloqueante).toBe(true);
-    expect(await db().select().from(characterReferences).where(eq(characterReferences.mediaId, medio.id))).toEqual([]);
+    expect(cuerpo.rechazos[0]?.bloqueante).toBe(false);
+
+    const forzada = await anadir(personaje.id, [{ medioId: medio.id, vistaClave: "frontal", usarDeTodasFormas: true }]);
+    expect(forzada.status).toBe(200);
+    const [fila] = await db().select().from(characterReferences).where(eq(characterReferences.mediaId, medio.id));
+    // Queda guardada y señalada: su tarjeta y el control previo de generar lo siguen diciendo.
+    expect(fila?.rejectionReason).toContain("resolucion");
   });
 
   test("la misma foto dos veces avisa de duplicado y no crea una segunda referencia", async () => {

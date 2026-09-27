@@ -119,8 +119,8 @@ export interface Ajustes {
    * `sharp` que ya reduce las imágenes, **sin gastar un solo crédito**: la revisión con modelo llega en
    * 0.20.0.
    *
-   * `calidadLadoMinimo` es el único **mínimo técnico**: por debajo, la foto no se guarda como referencia ni
-   * con «usar de todas formas». Los demás avisan y se pueden saltar.
+   * Todos avisan y se pueden saltar con «usar de todas formas», también `calidadLadoMinimo` desde el
+   * 2026-09-28: una foto real recortada sigue siendo útil. Lo que no se salta es una foto enorme o repetida.
    */
   calidadLadoMinimo: number;
   /** Varianza del laplaciano mínima (escala 0–255). Por debajo, la foto está borrosa. */
