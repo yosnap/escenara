@@ -28,7 +28,13 @@ import {
 import { type Actor, aDto } from "../media/servicio";
 import { filaPropia, filaVisible, mediosDeReferenciaVigentes, tuvoConsentimientoDeTercero } from "./consulta";
 import { ErrorPersonaje } from "./errores";
-import { hojaDeFicha, instantaneaDeFila, instantaneaDeVersion, ultimaVersion } from "./ficha";
+import {
+  hojaDeFicha,
+  instantaneaDeFila,
+  instantaneaDeVersion,
+  type ReferenciasVersionables,
+  ultimaVersion,
+} from "./ficha";
 import { registrarAccesoAConsentimiento } from "./registro-acceso";
 
 /**
@@ -46,9 +52,11 @@ import { registrarAccesoAConsentimiento } from "./registro-acceso";
  * - **un cambio que no cambia nada no crea versión**: guardar el mismo texto otra vez no gasta un número.
  */
 
-/** Identificadores de los medios de referencia utilizables del personaje, en su orden. */
-const referenciasActuales = async (personajeId: string): Promise<string[]> =>
-  (await mediosDeReferenciaVigentes(personajeId)).map((r) => r.mediaId);
+/** Medios de referencia utilizables del personaje, en su orden, cada uno con su vista. */
+const referenciasActuales = async (personajeId: string): Promise<ReferenciasVersionables> => {
+  const filas = await mediosDeReferenciaVigentes(personajeId);
+  return { ids: filas.map((r) => r.mediaId), vistas: filas.map((r) => r.vista) };
+};
 
 /**
  * Inserta una versión con el número siguiente e invalida las aprobaciones vigentes del personaje. Se llama
@@ -72,6 +80,7 @@ async function insertarVersion(
       number: numero,
       sheet: hojaDeFicha(instantanea.ficha, instantanea.descripcion),
       referenceMediaIds: instantanea.referencias,
+      referenceViewKeys: instantanea.vistas,
       sheetMediaId: opciones.hojaMedioId ?? null,
       changeReason: opciones.motivo,
       changedFields: opciones.diferencias.map((d) => d.campo),
@@ -147,7 +156,7 @@ export interface Versionado {
 export async function versionarEnTransaccion(
   tx: Ejecutor,
   personaje: FilaPersonaje,
-  referencias: string[],
+  referencias: ReferenciasVersionables,
   usuarioId: string,
   motivo = "",
 ): Promise<Versionado> {

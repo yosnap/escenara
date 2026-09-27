@@ -1,6 +1,6 @@
 # Buenas referencias: la captura guiada
 
-**Versión:** 0.14.0 · **Para:** quien usa Escenara
+**Versión:** 0.19.4 · **Para:** quien usa Escenara
 
 Las fotos de referencia son lo único que sostiene el parecido de un personaje entre fotogramas. Una foto
 movida, oscura o diminuta no ayuda: el modelo se inventa lo que no ve. Desde la 0.14.0, Escenara te dice
@@ -27,6 +27,24 @@ lo que hay que encuadrar:
 La cobertura es una **guía**, no un candado: lo que decide si el personaje puede generar sigue siendo el
 mínimo de fotos de **Admin › Ajustes › Personajes** (3 por defecto). Una foto sin vista asignada cuenta para
 ese mínimo, pero no cubre ninguna vista.
+
+## Decir qué vista es una foto que ya tienes
+
+Las fotos que subes desde tu biblioteca entran **sin vista**: Escenara no adivina si una foto es de frente o de
+perfil, porque fingirlo sería inventarse un dato. Así que si ya habías subido tus fotos, la cobertura te dirá que
+faltan vistas aunque las tengas.
+
+Se arregla en **«Fotos de referencia»**: cada foto lleva el selector **«Qué vista es»** con las vistas de su tipo
+de personaje y **«Sin clasificar»**. Eliges la vista y la cobertura se actualiza al momento.
+
+- cuando falta una vista y tienes fotos sin clasificar, el panel de cobertura te lo dice antes de proponerte
+  hacer otra foto o generar una de pago, y te lleva ahí con **«Clasificar mis fotos»**;
+- puedes **cambiarla** cuantas veces quieras, o volver a **«Sin clasificar»**;
+- cambiar la vista **crea una versión** del personaje, igual que añadir, quitar o reordenar fotos: las fotos que
+  se envían al modelo se eligen por cobertura, así que decir que una foto es de perfil cambia lo que se envía.
+  Volver a poner la misma vista no gasta un número de versión;
+- una **vista generada** no lleva selector: su vista es la que pidió su trabajo y no se cambia. Si no te sirve,
+  quítala.
 
 ## Hacer la foto
 

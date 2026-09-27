@@ -97,13 +97,18 @@ export async function contarReferencias(personajeId: string, ejecutor: Ejecutor 
  * haberse quitado o haber ido a la papelera.
  *
  * Lleva el **origen** de cada una porque la cola necesita distinguirlas: las vistas generadas sí se envían
- * como guía de encuadre, pero no cuentan para el mínimo de fotos originales.
+ * como guía de encuadre, pero no cuentan para el mínimo de fotos originales. Y lleva la **vista** porque es
+ * parte de lo que versiona: cambiarla cambia qué fotos se eligen para enviar al proveedor.
  */
 export async function mediosDeReferenciaVigentes(
   personajeId: string,
-): Promise<{ mediaId: string; origen: FilaReferencia["origin"] }[]> {
+): Promise<{ mediaId: string; origen: FilaReferencia["origin"]; vista: string }[]> {
   return db()
-    .select({ mediaId: characterReferences.mediaId, origen: characterReferences.origin })
+    .select({
+      mediaId: characterReferences.mediaId,
+      origen: characterReferences.origin,
+      vista: characterReferences.viewKey,
+    })
     .from(characterReferences)
     .innerJoin(media, eq(media.id, characterReferences.mediaId))
     .where(and(eq(characterReferences.characterId, personajeId), isNull(media.deletedAt)))

@@ -1,5 +1,10 @@
 import { type ContextoId, exigirRitmoDeAnalisis, leerCuerpo, leerId, manejador } from "@/server/personajes/http";
-import { anadirReferencias, ordenarReferencias, quitarReferencias } from "@/server/personajes/servicio";
+import {
+  anadirReferencias,
+  asignarVistasDeReferencias,
+  ordenarReferencias,
+  quitarReferencias,
+} from "@/server/personajes/servicio";
 
 export const dynamic = "force-dynamic";
 
@@ -17,10 +22,16 @@ export const POST = manejador(async (peticion: Request, contexto: ContextoId, ac
   return Response.json(await anadirReferencias(actor, id, cuerpo.referencias));
 });
 
-/** Reordena las referencias: `{ ids: [...] }` en el orden deseado. La primera es la portada. */
+/**
+ * Cambia las referencias que ya existen, en dos formas que no se mezclan:
+ *
+ * - `{ ids: [...] }` reordena: el orden deseado completo, y la primera es la portada;
+ * - `{ vistas: [{ id, vistaClave }] }` asigna la vista de cada foto; `vistaClave: null` la deja sin clasificar.
+ */
 export const PATCH = manejador(async (peticion: Request, contexto: ContextoId, actor) => {
   const id = await leerId(contexto);
   const cuerpo = await leerCuerpo(peticion);
+  if (cuerpo.vistas !== undefined) return Response.json(await asignarVistasDeReferencias(actor, id, cuerpo.vistas));
   return Response.json(await ordenarReferencias(actor, id, cuerpo.ids));
 });
 

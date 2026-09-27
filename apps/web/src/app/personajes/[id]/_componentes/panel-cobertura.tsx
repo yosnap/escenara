@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, CheckCircle2, CircleDashed, Sparkles, WandSparkles } from "lucide-react";
+import { Camera, CheckCircle2, CircleDashed, Sparkles, Tags, WandSparkles } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { Boton, claseBoton } from "@/components/ui/button";
@@ -20,6 +20,7 @@ import {
 import type { Estimacion } from "@/lib/generacion";
 import type { PersonajeVista } from "@/lib/personajes";
 import { DialogoVistaSintetica } from "./dialogo-vista-sintetica";
+import { ANCLA_REFERENCIAS } from "./panel-referencias";
 
 /**
  * Panel de cobertura (RF03): qué vistas tiene el personaje, cuál falta y qué hacer con la que falta. Es el
@@ -102,11 +103,36 @@ export function PanelCobertura({
         />
       )}
 
+      {/* Antes de proponer hacer otra foto o —peor— generar una de pago: puede que la vista que falta ya esté
+          entre las fotos que el usuario subió y nadie ha clasificado todavía. */}
+      {cobertura.sinClasificar > 0 && cobertura.faltan.length > 0 && (
+        <AvisoEstado
+          estado="ajustes"
+          motivo={
+            cobertura.sinClasificar === 1
+              ? "Tienes 1 foto sin clasificar: dinos qué vista es antes de hacer otra o de generar ninguna. Puede que la vista que falta ya la tengas."
+              : `Tienes ${cobertura.sinClasificar} fotos sin clasificar: dinos qué vista es cada una antes de hacer otra o de generar ninguna. Puede que las vistas que faltan ya las tengas.`
+          }
+          accion={
+            <Boton
+              tamano="sm"
+              icono={<Tags className="size-4" />}
+              onClick={() =>
+                document.getElementById(ANCLA_REFERENCIAS)?.scrollIntoView({ behavior: "smooth", block: "start" })
+              }
+            >
+              Clasificar mis fotos
+            </Boton>
+          }
+        />
+      )}
+
       <ul className="grid gap-3 sm:grid-cols-[repeat(auto-fill,minmax(13rem,1fr))]">
         {cobertura.vistas.map((v) => (
           <li key={v.vista}>
             <TarjetaVista
               vista={v}
+              sinClasificar={cobertura.sinClasificar}
               conClave={claveDeGeneracion.ok}
               ocupado={pidiendo !== null}
               onCapturar={() => setCapturando(v.vista)}
@@ -120,8 +146,8 @@ export function PanelCobertura({
       {cobertura.sinClasificar > 0 && (
         <p className="text-sm text-texto-suave">
           {cobertura.sinClasificar === 1
-            ? "Hay 1 foto sin vista asignada: cuenta para el mínimo, pero no cubre ninguna vista."
-            : `Hay ${cobertura.sinClasificar} fotos sin vista asignada: cuentan para el mínimo, pero no cubren ninguna vista.`}
+            ? "Hay 1 foto sin vista asignada: cuenta para el mínimo, pero no cubre ninguna vista. Puedes decir qué vista es en «Fotos de referencia»."
+            : `Hay ${cobertura.sinClasificar} fotos sin vista asignada: cuentan para el mínimo, pero no cubren ninguna vista. Puedes decir qué vista es cada una en «Fotos de referencia».`}
         </p>
       )}
 
@@ -168,6 +194,7 @@ export function PanelCobertura({
 
 function TarjetaVista({
   vista,
+  sinClasificar,
   conClave,
   onCapturar,
   onGenerar,
@@ -175,6 +202,8 @@ function TarjetaVista({
   generando,
 }: {
   vista: CoberturaVista;
+  /** Cuántas fotos del personaje están sin clasificar: puede que esta vista ya esté entre ellas. */
+  sinClasificar: number;
   /** `false` cuando no hay clave utilizable del proveedor: entonces no se ofrece generar la vista. */
   conClave: boolean;
   onCapturar: () => void;
@@ -201,6 +230,11 @@ function TarjetaVista({
               : "Falta"}
           {cubierta && vista.generadas > 0 && ` · ${vista.generadas} generada${vista.generadas === 1 ? "" : "s"}`}
         </p>
+        {!cubierta && sinClasificar > 0 && (
+          <p className="text-sm text-texto-suave">
+            Puede que ya la tengas: {sinClasificar === 1 ? "hay 1 foto" : `hay ${sinClasificar} fotos`} sin clasificar.
+          </p>
+        )}
         {!cubierta && <p className="text-sm text-texto-suave">{vista.indicacion}</p>}
       </div>
       <div className="mt-auto flex flex-wrap gap-2">

@@ -34,7 +34,7 @@ if (hayBaseDeDatos) {
   await usarBaseDeDatosDePrueba("escenara_pruebas_captura_guiada");
 }
 
-const { eq } = await import("drizzle-orm");
+const { desc, eq } = await import("drizzle-orm");
 const rutaPersonajes = await import("@/app/api/personajes/route");
 const rutaPersonaje = await import("@/app/api/personajes/[id]/route");
 const rutaReferencias = await import("@/app/api/personajes/[id]/referencias/route");
@@ -43,7 +43,7 @@ const rutaVistaSintetica = await import("@/app/api/personajes/[id]/vista-sinteti
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
-const { characterReferences, generationJobs, users } = await import("../db/esquema");
+const { characterReferences, characterVersions, generationJobs, users } = await import("../db/esquema");
 const { guardarCredencial } = await import("../boveda/credenciales");
 const { crearMedio, enviarAPapelera } = await import("../media/servicio");
 const { pasadaDeCola } = await import("../cola/pasada");
@@ -233,6 +233,13 @@ describe.skipIf(!hayBaseDeDatos)("captura guiada de referencias", () => {
   const anadir = (personajeId: string, referencias: unknown[]) =>
     rutaReferencias.POST(
       pedir(ana, `/api/personajes/${personajeId}/referencias`, "POST", { referencias }),
+      ctx(personajeId),
+    );
+
+  /** Dice qué vista es cada foto que ya está en el personaje; `vistaClave: null` la deja sin clasificar. */
+  const vistas = (personajeId: string, cambios: { id: string; vistaClave: string | null }[]) =>
+    rutaReferencias.PATCH(
+      pedir(ana, `/api/personajes/${personajeId}/referencias`, "PATCH", { vistas: cambios }),
       ctx(personajeId),
     );
 
@@ -674,5 +681,126 @@ describe.skipIf(!hayBaseDeDatos)("captura guiada de referencias", () => {
     const caraMala = await anadir(personaje.id, [{ medioId: medio.id, vistaClave: "frontal", caraRelativa: 42 }]);
     expect(caraMala.status).toBe(400);
     expect((await ficha(personaje.id)).totalReferencias).toBe(0);
+  });
+
+  test("decir qué vista es una foto que ya está en el personaje la hace contar en la cobertura", async () => {
+    const personaje = await nuevoPersonaje("Fotos sin clasificar");
+    const fotos = await Promise.all([subir(await foto(50), "s1.png"), subir(await foto(51), "s2.png")]);
+    // Como se suben desde la biblioteca: sin vista, que es justo el caso que dejaba la cobertura pidiendo
+    // fotos que el usuario ya tenía.
+    expect(
+      (
+        await anadir(
+          personaje.id,
+          fotos.map((f) => ({ medioId: f.id })),
+        )
+      ).status,
+    ).toBe(200);
+    const sinClasificar = await ficha(personaje.id);
+    expect(sinClasificar.cobertura?.sinClasificar).toBe(2);
+    expect(sinClasificar.cobertura?.faltan).toContain("frontal");
+    const referencias = sinClasificar.referencias ?? [];
+    const primera = referencias[0]?.id as string;
+    const segunda = referencias[1]?.id as string;
+
+    const versiones = async (): Promise<number> =>
+      (await db().select().from(characterVersions).where(eq(characterVersions.characterId, personaje.id))).length;
+    const antesDeClasificar = await versiones();
+
+    // Asignar: la vista cuenta en la cobertura y crea versión, porque cambia qué fotos se envían al proveedor.
+    const asignada = await vistas(personaje.id, [{ id: primera, vistaClave: "frontal" }]);
+    expect(asignada.status).toBe(200);
+    const conFrontal = (await asignada.json()) as PersonajeVista;
+    expect(conFrontal.cobertura?.faltan).not.toContain("frontal");
+    expect(conFrontal.cobertura?.sinClasificar).toBe(1);
+    expect(conFrontal.referencias?.find((r) => r.id === primera)?.vistaClave).toBe("frontal");
+    expect(await versiones()).toBe(antesDeClasificar + 1);
+    const [vigente] = await db()
+      .select()
+      .from(characterVersions)
+      .where(eq(characterVersions.characterId, personaje.id))
+      .orderBy(desc(characterVersions.number))
+      .limit(1);
+    expect(vigente?.changedFields).toEqual(["vistas"]);
+
+    // La misma vista otra vez no cambia nada: no se gasta un número de versión.
+    expect((await vistas(personaje.id, [{ id: primera, vistaClave: "frontal" }])).status).toBe(200);
+    expect(await versiones()).toBe(antesDeClasificar + 1);
+
+    // Cambiarla: la vista anterior vuelve a faltar y la nueva queda cubierta.
+    const cambiada = await vistas(personaje.id, [{ id: primera, vistaClave: "tres_cuartos" }]);
+    expect(cambiada.status).toBe(200);
+    const conTresCuartos = (await cambiada.json()) as PersonajeVista;
+    expect(conTresCuartos.cobertura?.faltan).toContain("frontal");
+    expect(conTresCuartos.cobertura?.faltan).not.toContain("tres_cuartos");
+    expect(await versiones()).toBe(antesDeClasificar + 2);
+
+    // Quitarla: vuelve a estar sin clasificar, y también versiona.
+    const quitada = await vistas(personaje.id, [{ id: primera, vistaClave: null }]);
+    expect(quitada.status).toBe(200);
+    expect(((await quitada.json()) as PersonajeVista).cobertura?.sinClasificar).toBe(2);
+    expect(await versiones()).toBe(antesDeClasificar + 3);
+
+    // Dos de una vez, y con una vista inventada no se guarda ninguna.
+    expect((await vistas(personaje.id, [{ id: primera, vistaClave: "de-espaldas" }])).status).toBe(400);
+    const dos = await vistas(personaje.id, [
+      { id: primera, vistaClave: "frontal" },
+      { id: segunda, vistaClave: "perfil_izquierdo" },
+    ]);
+    expect(dos.status).toBe(200);
+    expect(((await dos.json()) as PersonajeVista).cobertura?.sinClasificar).toBe(0);
+  });
+
+  test("la vista de un personaje ajeno responde 404, y la de una vista generada no se cambia", async () => {
+    const personaje = await nuevoPersonaje("Vista generada intocable");
+    const fotos = await Promise.all([
+      subir(await foto(60), "g1.png"),
+      subir(await foto(61), "g2.png"),
+      subir(await foto(62), "g3.png"),
+    ]);
+    await anadir(
+      personaje.id,
+      fotos.map((f, i) => ({ medioId: f.id, vistaClave: ["frontal", "perfil_izquierdo", "cuerpo_completo"][i] })),
+    );
+    const propia = (await ficha(personaje.id)).referencias?.[0]?.id as string;
+
+    // Ajeno: 404, y no dice ni que el personaje existe.
+    const bea = await crearSesionDePrueba("user");
+    try {
+      const ajena = await rutaReferencias.PATCH(
+        pedir(bea, `/api/personajes/${personaje.id}/referencias`, "PATCH", {
+          vistas: [{ id: propia, vistaClave: "perfil_derecho" }],
+        }),
+        ctx(personaje.id),
+      );
+      expect(ajena.status).toBe(404);
+    } finally {
+      await db().delete(users).where(eq(users.email, bea.email));
+    }
+
+    // La vista generada lleva la que pidió su trabajo: no se cambia.
+    await pedirVistaSintetica(
+      actorAna,
+      personaje.id,
+      {
+        vista: "perfil_derecho",
+        creditosConfirmados: 4,
+        derechos: true,
+        sinTerceros: true,
+        claveIdempotencia: crypto.randomUUID(),
+      },
+      h,
+    );
+    await pasadaDeCola(h);
+    const generada = (await ficha(personaje.id)).referencias?.find((r) => r.origen === "vista_generada");
+    expect(generada?.vistaClave).toBe("perfil_derecho");
+    const negada = await vistas(personaje.id, [{ id: generada?.id as string, vistaClave: "frontal" }]);
+    expect(negada.status).toBe(400);
+    expect((await negada.json()).error).toContain("vista generada");
+    const [sigueIgual] = await db()
+      .select()
+      .from(characterReferences)
+      .where(eq(characterReferences.id, generada?.id as string));
+    expect(sigueIgual?.viewKey).toBe("perfil_derecho");
   });
 });

@@ -241,7 +241,7 @@ export function componerPrompt(escena: string, contexto: string): string {
 
 /** Campos de la ficha (y la descripción) que han cambiado entre dos versiones. */
 export interface DiferenciaFicha {
-  campo: CampoFicha | "descripcion" | "referencias";
+  campo: CampoFicha | "descripcion" | "referencias" | "vistas";
   etiqueta: string;
   antes: string;
   despues: string;
@@ -251,15 +251,25 @@ const ETIQUETA_DIFERENCIA: Record<DiferenciaFicha["campo"], string> = {
   ...ETIQUETA_CAMPO_FICHA,
   descripcion: "Descripción",
   referencias: "Fotos de referencia",
+  vistas: "Vistas de las fotos",
 };
 
-/** Instantánea de lo que versiona: la ficha, la descripción y las referencias incluidas. */
+/** Instantánea de lo que versiona: la ficha, la descripción y las referencias incluidas con su vista. */
 export interface FichaVersionada {
   ficha: FichaPersonaje;
   descripcion: string;
   /** Identificadores de los medios de referencia incluidos, en su orden. */
   referencias: string[];
+  /**
+   * Vista de cada referencia, en el **mismo orden** que `referencias`; cadena vacía = sin clasificar. Versiona
+   * porque la elección de qué fotos se envían al proveedor se hace por cobertura de vistas: cambiar la vista de
+   * una foto cambia lo que se envía, aunque la lista de fotos sea la misma.
+   */
+  vistas: string[];
 }
+
+/** Cuántas referencias de una instantánea tienen vista asignada. Es lo que se muestra al comparar versiones. */
+const clasificadas = (instantanea: FichaVersionada): number => instantanea.vistas.filter((v) => v !== "").length;
 
 /**
  * Diferencias entre dos instantáneas, en el orden en que se muestran. Las referencias no se comparan una a
@@ -294,6 +304,16 @@ export function diferenciasDeFicha(antes: FichaVersionada, despues: FichaVersion
       etiqueta: ETIQUETA_DIFERENCIA.referencias,
       antes: `${antes.referencias.length}`,
       despues: `${despues.referencias.length}`,
+    });
+  } else if (antes.vistas.some((vista, i) => despues.vistas[i] !== vista)) {
+    // Las mismas fotos en el mismo orden, pero alguna con otra vista: también cambia lo que se envía al
+    // proveedor, porque las referencias se eligen por cobertura de vistas. Se dice aparte para que el historial
+    // no muestre «6 fotos → 6 fotos», que no explicaría por qué existe la versión.
+    cambios.push({
+      campo: "vistas",
+      etiqueta: ETIQUETA_DIFERENCIA.vistas,
+      antes: `${clasificadas(antes)} de ${antes.referencias.length} clasificadas`,
+      despues: `${clasificadas(despues)} de ${despues.referencias.length} clasificadas`,
     });
   }
   return cambios;

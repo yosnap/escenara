@@ -1,4 +1,5 @@
 import { and, count, eq, inArray, isNull, sql } from "drizzle-orm";
+import { esVista, type Vista } from "@/lib/captura-personaje";
 import { CAMPOS_FICHA, type CampoFicha, limpiarCampoFicha } from "@/lib/ficha-personaje";
 import {
   DESCRIPCION_MAXIMA,
@@ -357,6 +358,110 @@ export async function quitarReferencias(actor: Actor, id: unknown, ids: unknown)
     .where(and(eq(characterReferences.characterId, personaje.id), inArray(characterReferences.id, validos)));
   await recalcularEstado(personaje.id);
   return obtenerActualizado(actor, personaje.id, "Se quitaron fotos de referencia.");
+}
+
+/** Una referencia y la vista que le asigna el usuario; `null` la deja sin clasificar. */
+export interface VistaPedida {
+  id: string;
+  vistaClave: Vista | null;
+}
+
+/**
+ * Valida la lista de `{ id, vistaClave }` que llega del navegador. Una clave que no está en el catálogo se
+ * rechaza aquí: la cobertura cuenta por esa clave, así que un valor inventado sería una vista que nunca se
+ * cubre y que nadie puede quitar.
+ */
+function vistasPedidas(peticion: unknown): VistaPedida[] {
+  if (!Array.isArray(peticion) || peticion.length === 0) {
+    throw new ErrorPersonaje(400, "Indica qué vista es cada foto.");
+  }
+  if (peticion.length > MAXIMO_REFERENCIAS) {
+    throw new ErrorPersonaje(400, `Como máximo ${MAXIMO_REFERENCIAS} fotos a la vez.`);
+  }
+  const pedidas = peticion.map((entrada) => {
+    const objeto = (typeof entrada === "object" && entrada !== null ? entrada : {}) as Record<string, unknown>;
+    if (!esUuidPersonaje(objeto.id)) throw new ErrorPersonaje(400, "Identificador de referencia no válido.");
+    const clave = objeto.vistaClave;
+    if (clave !== null && clave !== undefined && !esVista(clave)) {
+      throw new ErrorPersonaje(400, "Esa vista no existe.");
+    }
+    return { id: objeto.id, vistaClave: esVista(clave) ? clave : null };
+  });
+  if (new Set(pedidas.map((p) => p.id)).size !== pedidas.length) {
+    throw new ErrorPersonaje(400, "Cada foto solo puede llevar una vista.");
+  }
+  return pedidas;
+}
+
+/**
+ * Asigna, cambia o quita la vista de referencias que **ya existen** en el personaje. Sin esto, una foto subida
+ * desde la biblioteca se quedaba «sin clasificar» para siempre: no cubría ninguna vista y volver a añadirla por
+ * la captura guiada la rechazaba por duplicada, así que la cobertura pedía fotos que el usuario ya tenía.
+ *
+ * Las **vistas generadas no se tocan**: su vista es la que pidió su trabajo y la escribió el servidor. Cambiarla
+ * convertiría el encuadre que se generó en otro distinto sin que nada lo respalde.
+ *
+ * Versiona igual que añadir, quitar o reordenar: la elección de qué fotos se envían al proveedor se hace por
+ * cobertura de vistas, así que cambiar una vista cambia lo que se envía. Si la vista es la que ya tenía, no se
+ * escribe nada y no se gasta un número de versión.
+ */
+export async function asignarVistasDeReferencias(
+  actor: Actor,
+  id: unknown,
+  peticion: unknown,
+): Promise<PersonajeVista> {
+  const personaje = await filaPropia(actor, id);
+  const pedidas = vistasPedidas(peticion);
+  const suyas = new Map(
+    (
+      await db()
+        .select({
+          id: characterReferences.id,
+          origen: characterReferences.origin,
+          viewKey: characterReferences.viewKey,
+        })
+        .from(characterReferences)
+        .where(
+          and(
+            eq(characterReferences.characterId, personaje.id),
+            inArray(
+              characterReferences.id,
+              pedidas.map((p) => p.id),
+            ),
+          ),
+        )
+    ).map((f) => [f.id, f]),
+  );
+  // Una referencia de otro personaje (o que ya no existe) no se distingue de una inexistente: 404, como todo
+  // lo ajeno en personajes.
+  if (suyas.size !== pedidas.length) throw new ErrorPersonaje(404, "Alguna de las fotos no es de este personaje.");
+  if (pedidas.some((p) => suyas.get(p.id)?.origen === "vista_generada")) {
+    throw new ErrorPersonaje(
+      400,
+      "Una vista generada lleva la vista con la que se pidió: no se puede cambiar. Quítala si no te sirve.",
+    );
+  }
+
+  const cambios = pedidas.filter((p) => (suyas.get(p.id)?.viewKey ?? "") !== (p.vistaClave ?? ""));
+  if (cambios.length === 0) return obtenerActualizado(actor, personaje.id);
+  await db().transaction(async (tx) => {
+    for (const cambio of cambios) {
+      await tx
+        .update(characterReferences)
+        .set({ viewKey: cambio.vistaClave ?? "" })
+        .where(and(eq(characterReferences.characterId, personaje.id), eq(characterReferences.id, cambio.id)));
+    }
+  });
+  // El estado del personaje no depende de la vista (depende del número de fotos originales y del
+  // consentimiento), pero se recalcula igual que en las demás operaciones: es el servidor quien lo dice.
+  await recalcularEstado(personaje.id);
+  return obtenerActualizado(
+    actor,
+    personaje.id,
+    cambios.length === 1
+      ? "Se cambió la vista de una foto de referencia."
+      : `Se cambió la vista de ${cambios.length} fotos de referencia.`,
+  );
 }
 
 /** Cambia el orden de las referencias: la primera es la portada y la primera que se envía al proveedor. */

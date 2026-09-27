@@ -25,6 +25,7 @@ const version = (parcial: Partial<FichaVersionada> = {}): FichaVersionada => ({
   ficha: FICHA_VACIA,
   descripcion: "",
   referencias: [],
+  vistas: [],
   ...parcial,
 });
 
@@ -152,9 +153,20 @@ describe("diferencias entre versiones", () => {
   });
 
   test("cambiar el orden de las referencias es un cambio: es lo que se envía primero", () => {
-    const antes = version({ referencias: ["a", "b"] });
-    const despues = version({ referencias: ["b", "a"] });
+    const antes = version({ referencias: ["a", "b"], vistas: ["", ""] });
+    const despues = version({ referencias: ["b", "a"], vistas: ["", ""] });
     expect(diferenciasDeFicha(antes, despues).map((d) => d.campo)).toEqual(["referencias"]);
+  });
+
+  test("decir qué vista es una foto versiona: cambia qué fotos se envían al proveedor", () => {
+    const antes = version({ referencias: ["a", "b"], vistas: ["", ""] });
+    const despues = version({ referencias: ["a", "b"], vistas: ["frontal", ""] });
+    const diferencias = diferenciasDeFicha(antes, despues);
+    expect(diferencias.map((d) => d.campo)).toEqual(["vistas"]);
+    expect(diferencias[0]?.antes).toBe("0 de 2 clasificadas");
+    expect(diferencias[0]?.despues).toBe("1 de 2 clasificadas");
+    // Y volver a guardar la misma vista no es un cambio: no se gasta un número de versión.
+    expect(diferenciasDeFicha(despues, { ...despues })).toEqual([]);
   });
 
   test("la descripción también versiona", () => {
