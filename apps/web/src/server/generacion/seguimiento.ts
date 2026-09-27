@@ -7,6 +7,7 @@ import { type FilaTrabajo, generationJobs } from "../db/esquema";
 import { type Actor, crearMedio, eliminarDefinitivamente, enviarAPapelera, limiteSubida } from "../media/servicio";
 import { adjuntarVistaGenerada } from "../personajes/vista-sintetica";
 import { cerrarGasto } from "../presupuesto/reserva";
+import { registrarFalloDeEscena, registrarResultadoDeEscena } from "../produccion/cierre";
 import { duracionDeModelo } from "../proveedores/catalogo";
 import { ErrorProveedor, type TareaProveedor } from "../proveedores/contrato";
 import { adaptadorDe } from "../proveedores/registro";
@@ -125,6 +126,15 @@ async function consultar(actor: Actor, fila: FilaTrabajo, clave: string, h: Herr
     // Un fallo del proveedor puede haber cobrado (algunos modelos cobran el intento): se apunta lo que
     // informe, y cero si no informa nada.
     await cerrarGasto(fila.id, tarea.creditos ?? 0, "El proveedor no ha podido completar la generación.");
+    /**
+     * Si el trabajo producía una escena, se apunta el motivo en ella y **nada más**: no se reenvía, no se
+     * reintenta y no se consume ningún reintento de pago (decisión provisional del propietario, 2026-09-27).
+     * Volver a intentarlo es una decisión del usuario, con presupuesto de reintentos explícito.
+     */
+    await registrarFalloDeEscena(
+      fila,
+      "El proveedor no ha podido completar la generación. No se ha vuelto a enviar nada: si quieres reintentarlo, autoriza un presupuesto de reintentos.",
+    );
     return guardarEstado(fila.id, {
       state: "fallido",
       failureReason: "contenido",
@@ -146,7 +156,13 @@ async function consultar(actor: Actor, fila: FilaTrabajo, clave: string, h: Herr
     });
   }
 
-  return guardarEstado(fila.id, { state: tarea.estadoPropio, providerState: tarea.estado });
+  // Las etapas se apuntan con el estado que informa el proveedor, nunca con un reloj: `enviado` = sigue en su
+  // cola, `en_curso` = está generando de verdad.
+  return guardarEstado(fila.id, {
+    state: tarea.estadoPropio,
+    stage: tarea.estadoPropio === "en_curso" ? "en_curso" : "enviado",
+    providerState: tarea.estado,
+  });
 }
 
 /**
@@ -172,6 +188,9 @@ async function guardarResultado(
     });
   }
   const permitidos = TIPO_RESULTADO[fila.kind];
+  // Cuarta etapa: el proveedor ha terminado y estamos trayendo el archivo. Es la única que el estado propio no
+  // distingue (el trabajo sigue en `en_curso` hasta que se guarda), y por eso existe la columna.
+  await db().update(generationJobs).set({ stage: "descargando" }).where(eq(generationJobs.id, fila.id));
   try {
     const { archivo, origen } = await h.descargar(url, limiteSubida(permitidos));
     // La duración del clip es la que declara el modelo en el catálogo (Hailuo 2.3 hace 6 s, no 4).
@@ -184,6 +203,7 @@ async function guardarResultado(
       .update(generationJobs)
       .set({
         state: "listo",
+        stage: "listo",
         providerState: tarea.estado,
         consumedCredits: tarea.creditos,
         resultMediaId: medio.id,
@@ -196,6 +216,9 @@ async function guardarResultado(
       // Si el trabajo era una vista sintética del personaje, su resultado entra en la ficha **etiquetado**
       // como vista generada. Solo en la rama que cierra el trabajo, así que no se adjunta dos veces.
       await adjuntarVistaGenerada(cerrada, medio.id);
+      // Y si el trabajo producía una escena, la escena apunta lo que acaba de pasar (0.19.0). Un fotograma no
+      // se aprueba solo: animar cuesta otro dinero y lo autoriza una persona.
+      await registrarResultadoDeEscena(cerrada, medio.id);
       return vistaDeFila(cerrada);
     }
     // Otra consulta lo cerró antes: el archivo repetido se borra de verdad (la papelera seguiría ocupando

@@ -133,11 +133,37 @@ describe.skipIf(!hayBaseDeDatos)("presets y plantillas de prompt", () => {
   let medioId = "";
   let presets: PresetVista[] = [];
   let plantillas: PlantillaVista[] = [];
+  /** Texto de las plantillas de la instalación al empezar, para poder dejarlas como estaban al terminar. */
+  let textosOriginales: Map<string, PlantillaVista> = new Map();
 
   const porClave = (clave: string): PresetVista => {
     const preset = presets.find((p) => p.clave === clave);
     if (!preset) throw new Error(`Falta el preset ${clave} en la semilla.`);
     return preset;
+  };
+
+  /** Deja cada plantilla de la instalación con el texto que tenía al empezar el fichero. */
+  const restaurarPlantillas = async () => {
+    for (const original of textosOriginales.values()) {
+      const vigente = (await listarPlantillas()).find((p) => p.id === original.id);
+      if (!vigente || vigente.plantilla === original.plantilla) continue;
+      await editarPlantillaDeLaInstalacion(
+        original.id,
+        {
+          clave: original.clave,
+          nombre: original.nombre,
+          descripcion: original.descripcion,
+          capacidad: original.capacidad,
+          plantilla: original.plantilla,
+          variables: original.variables,
+          restricciones: original.restricciones,
+          orden: original.orden,
+          activa: true,
+          motivo: "Se deja la plantilla como estaba antes de los tests.",
+        },
+        ana.id,
+      );
+    }
   };
 
   const plantillaFotograma = (): PlantillaVista => {
@@ -186,6 +212,7 @@ describe.skipIf(!hayBaseDeDatos)("presets y plantillas de prompt", () => {
     medioId = medio.id;
     presets = await listarPresetsDeLaInstalacion();
     plantillas = await listarPlantillas();
+    textosOriginales = new Map(plantillas.map((p) => [p.id, p]));
   });
 
   // El tope de trabajos simultáneos de la instalación es tres: sin vaciar la cola, el cuarto test que encolara
@@ -196,6 +223,15 @@ describe.skipIf(!hayBaseDeDatos)("presets y plantillas de prompt", () => {
   });
 
   afterAll(async () => {
+    /**
+     * Se devuelve el texto de las plantillas de la instalación a como estaba al empezar.
+     *
+     * La base de datos de prueba **sobrevive entre ejecuciones**, y varios tests de este fichero editan la
+     * plantilla **añadiendo** una línea. Sin esta restauración, cada pasada de `bun test` la dejaba un poco más
+     * larga y al cabo de unas cuantas rebasaba su tope de 1200 caracteres: el fichero empezaba a fallar por su
+     * propio rastro, con un motivo que no tenía nada que ver con lo que probaba.
+     */
+    await restaurarPlantillas();
     // La plantilla de prueba es de la instalación y no cuelga de ningún usuario: se borra a mano.
     await db().delete(promptTemplates).where(eq(promptTemplates.slug, CLAVE_PLANTILLA_DE_PRUEBA));
     for (const sesion of [ana, bruno]) {

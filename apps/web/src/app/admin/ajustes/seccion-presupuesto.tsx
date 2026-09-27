@@ -95,6 +95,24 @@ export function SeccionPresupuesto({
             />
           )}
         </Campo>
+        <Campo
+          etiqueta="Escenas en vuelo por usuario"
+          ayuda="Cuántas escenas de un proyecto puede tener produciéndose a la vez. Cada escena son dos trabajos (fotograma y clip), así que esto acota el gasto comprometido antes de que vea ni un fotograma."
+          error={errorDe("escenasEnVuelo")}
+        >
+          {(p) => (
+            <EntradaTexto
+              {...p}
+              type="number"
+              min={1}
+              max={24}
+              step={1}
+              inputMode="numeric"
+              value={Number.isNaN(valores.escenasEnVuelo) ? "" : valores.escenasEnVuelo}
+              onChange={(e) => onCambio("escenasEnVuelo", e.target.value === "" ? Number.NaN : Number(e.target.value))}
+            />
+          )}
+        </Campo>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo

@@ -2,6 +2,71 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.19.0] · 2026-09-27
+
+### Decisiones provisionales del propietario (2026-09-27, pendientes de confirmar)
+
+- **Cancelar solo lo que aún no se ha enviado.** Un trabajo en cola o esperando límite se cancela y **suelta su
+  reserva**; uno que ya salió hacia el proveedor **no se cancela**: se marca «se cobrará» y sigue hasta el final.
+  Verificado en `docs.kie.ai` el 2026-09-27 **sin llamar a la API**: su guía de tareas asíncronas solo documenta el
+  `task_id`, el callback y la consulta del registro, y **no existe ningún endpoint de cancelación**. Sin endpoint,
+  «cancelar» en el proveedor no se puede prometer (ADR-0024).
+- **Cero reintentos automáticos de pago** (PRD §6). Un fallo del proveedor nunca vuelve a enviar nada por su
+  cuenta: la cola solo reintenta lo que falló **antes** de hablar con él (`interno`, `limite`), que no ha costado
+  nada. El usuario puede autorizar un **presupuesto de reintentos por escena**; cada regeneración de una escena que
+  falló con coste posible consume uno, y sin presupuesto se responde 409 diciendo qué hacer.
+- **Solo 4 s en 9:16 y 720p.** La recomendación de la fase incluía 8 s, pero **no hay coste medido de 8 s**, así que
+  no se ofrece: prometer una duración cuyo precio no se ha medido es lo que ADR-0009 desaconseja (el prototipo
+  infraestimó ×3). Producir con un modelo cuya duración no esté en la lista se **bloquea** con su motivo. Queda
+  **pendiente de una prueba real**; cuando se mida, se añade al registro de precios y a la lista.
+- **Máximo de escenas en vuelo por usuario configurable, por defecto 2.** Cada escena son dos trabajos, así que
+  esto acota el gasto comprometido antes de que el usuario haya visto ni un fotograma. Se comprueba **dentro** de la
+  misma transacción que ya bloquea su fila para reservar presupuesto.
+- **El fotograma no se aprueba solo.** Un fotograma listo deja la escena esperando a que una persona lo mire:
+  animar cuesta otro dinero y nadie lo autoriza en nombre del usuario.
+
+### Añadido
+
+- **Producción de las escenas de un proyecto aprobado (RF06)** en `/proyectos/[id]/produccion`: rejilla con una tarjeta por escena, su estado real, su fotograma, su clip, el coste estimado y el consumido, y las acciones que caben en cada momento (producir, aprobar el fotograma y animarlo, regenerar, cancelar, autorizar reintentos).
+- **Progreso por etapas reales, sin un solo porcentaje**: `preparando` → `enviado` → `en_curso` → `descargando` → `listo`. Cada etapa se apunta cuando el hecho ocurre de verdad (un worker toma el trabajo, la tarea existe en el proveedor, el proveedor informa de que genera, se está trayendo el archivo, está guardado), y `descargando` existe como columna porque es la única que el estado propio no distingue. El reloj **no interviene en ningún sitio**.
+- **Regeneración de una sola escena**, con confirmación de coste y contra el presupuesto del proyecto. Las demás escenas no se tocan: ni su estado, ni sus medios, ni sus reintentos. Lo generado antes **se conserva** como versión en el historial de la escena y sigue en la biblioteca.
+- **Historial por escena**: qué versiones se generaron, con qué modelo, cuánto costaron según el proveedor y qué cambió antes de cada regeneración.
+- **Cancelación por escena en zona de claridad**: dice antes y después cuántos trabajos se cancelan de verdad (soltando su reserva) y cuántos **se cobrarán** porque ya están en el proveedor.
+- **Presupuesto de reintentos por escena**, autorizado por el usuario en un diálogo del catálogo, con los consumidos y los autorizados siempre a la vista.
+- **Zonas seguras de TikTok, Reels y Shorts** sobre la previsualización del fotograma y del clip, elegibles con botones. Son aproximaciones documentadas y se dice que lo son.
+- **Espera acompañada por Chispa** con las cinco etapas honestas, el puesto real en la cola y el estado crudo del proveedor tal cual. **Celebra solo en hitos reales**: fotograma listo y escena lista.
+- **El storyboard del plan muestra ya los fotogramas reales** de cada escena (el aprobado si hay uno y, si no, el último generado). En la 0.17.0 era una lista de texto sin miniaturas.
+- **Ajuste nuevo en Admin › Ajustes › «Presupuesto y cola»**: «Escenas en vuelo por usuario» (2 de fábrica).
+- **`GET`/`POST /api/proyectos/[id]/produccion`** y **`POST /api/escenas/[id]/produccion`** (`producir`, `aprobar-fotograma`, `regenerar`, `cancelar`, `reintentos`). El `GET` es lectura de verdad: no encola, no aparta presupuesto y no llama a ningún endpoint de pago.
+- **Guía de usuario «Producir tu proyecto»** y **ADR-0024** con las dos políticas de dinero de esta versión.
+
+### Cambiado
+
+- **`scenes` gana lo que hace auditable una producción**: fotograma aprobado (medio y trabajo), clip resultante (medio y trabajo), reintentos consumidos y autorizados, motivo del último fallo y marca de «cambió desde la última generación». Los identificadores de trabajo van **sin clave ajena**, igual que `generation_jobs.reservation_id`, para no cerrar un ciclo entre los dos módulos del esquema.
+- **`generation_jobs` gana `stage`**, la etapa real por la que va. El **estado manda** sobre la etapa: quien decide el dinero es `state`.
+- **El encolado comprueba además el tope de escenas en vuelo**, en la misma transacción que ya bloquea la fila del usuario y reserva el presupuesto. Se cuentan **escenas distintas**, no trabajos.
+- **Editar una escena ya generada la marca como cambiada** en lugar de borrar nada: el gasto está hecho y el resultado sigue en la biblioteca. La rejilla lo avisa y el historial lo registra.
+- **Los presets obligatorios de la plantilla los resuelve el servidor al producir**: producir no tiene botonera, así que se elige el primer preset activo de cada categoría obligatoria, **filtrando** la duración a la que tiene coste medido (4 s) y el formato a 9:16. Si no hay ninguno que encaje, no se produce y se dice por qué.
+- **`resumenDeEscena` acepta solo lo que lee** (acción, texto y orden) en lugar de la escena entera.
+
+### Seguridad
+
+- **Toda la producción pasa por la puerta única del motor de controles con `escenaId`** (0.18.0): plan aprobado, aprobación en pie (precio, ficha y plantilla congelados), afirmaciones verificadas, consentimiento del personaje, credencial, cuota y los tres techos de dinero. `server/produccion` decide **qué** escena toca, nunca **si** se puede gastar.
+- **Autorización en el servidor en todas las rutas nuevas**: un proyecto o una escena de otra persona responden 404, también para quien administra, con el dueño en la misma consulta que trae la fila (IDOR). `Origin` del mismo sitio en todos los POST y límite de ritmo por acción.
+- **El prompt no llega al navegador** en la rejilla de producción (ADR-0022): lo que viaja son estados, etapas, importes y medios. Hay test.
+- **Las claves de aviso confirmadas se acotan en el borde** (como mucho 20, solo minúsculas, dígitos y guiones) y un freno `Bloqueado` o `Requiere revisión` no se salta por venir listado.
+- **La idempotencia de una producción en lote es estable**: de la clave que firma el navegador se derivan las de cada escena con `sha256`, así que repetir el mismo clic devuelve los trabajos que ya existen y no encarga otros.
+- **Test de revisión de código** que recorre el código de la cola, la generación y la producción y falla si aparece un `<progress>`, un `role="progressbar"`, un identificador de porcentaje de progreso o un ancho calculado con el tiempo.
+
+### Actualizar desde la 0.18.0
+
+- **Aplica la migración antes de arrancar el código nuevo**: `bun run db:backup` y luego `bun run db:migrate`. La `0019` crea la enumeración de etapas, añade `generation_jobs.stage` y nueve columnas a `scenes` (fotograma aprobado, clip, reintentos, motivo del último fallo y marca de cambio). **Todas tienen valor por defecto**, así que los proyectos existentes siguen valiendo tal cual y no se recalcula nada.
+- **Los trabajos anteriores no tienen etapa** y se quedan así: se hicieron sin ella. Su estado sigue contándose igual, porque el estado es lo que manda.
+- **Revisa «Escenas en vuelo por usuario»** en Admin › Ajustes › «Presupuesto y cola» (2 de fábrica). Es un tope aparte del de trabajos simultáneos y más estricto a propósito: cada escena son dos trabajos.
+- **Comprueba que el modelo de animación predeterminado del catálogo declara 4 s.** Esta versión solo produce la duración con coste medido; con otra, la producción se bloquea diciéndolo en lugar de encolar un clip cuyo precio no se ha medido.
+- **Asigna un protagonista a cada proyecto que vayas a producir.** Sin personaje con consentimiento vigente no se produce: sus fotos son lo que da identidad a cada fotograma.
+- **Lo demás no cambia.** «Crear» funciona exactamente como en la 0.18.x, y un proyecto sin plan aprobado sigue sin poder producir nada.
+
 ## [0.18.0] · 2026-09-27
 
 ### Decisiones provisionales del propietario (2026-09-27, pendientes de confirmar)

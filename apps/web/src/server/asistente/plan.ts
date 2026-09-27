@@ -1,7 +1,8 @@
-import { eq, inArray, sql } from "drizzle-orm";
+import { asc, eq, inArray, sql } from "drizzle-orm";
 import { precioCaducado } from "@/lib/catalogo";
 import { EVALUACION_LISTA, type EvaluacionVista, peorEstado } from "@/lib/controles";
 import { formatearCreditos } from "@/lib/generacion";
+import type { Medio } from "@/lib/media/tipos";
 import {
   type AfirmacionVista,
   BLOQUEAN_APROBACION,
@@ -27,12 +28,13 @@ import {
   type FilaEscena,
   type FilaProyecto,
   generationJobs,
+  media,
   projects,
   scenes,
   usageLedger,
 } from "../db/esquema";
 import { type EleccionDeTrabajo, elegirParaTipo } from "../generacion/precios";
-import type { Actor } from "../media/servicio";
+import { type Actor, aDto } from "../media/servicio";
 import { ultimaVersion } from "../personajes/ficha";
 import { plantillaVigenteDe } from "../prompts/consulta";
 import { ErrorCatalogo } from "../proveedores/contrato";
@@ -177,6 +179,7 @@ function vistaEscena(
   trabajoId: string | null,
   estimacion: EstimacionEscena | null,
   controles: EvaluacionVista,
+  fotograma: Medio | null = null,
 ): EscenaVista {
   return {
     id: fila.id,
@@ -189,6 +192,7 @@ function vistaEscena(
     aprobadaEn: fila.approvedAt?.toISOString() ?? null,
     motivoInvalidacion: fila.invalidationReason,
     trabajoId,
+    fotograma,
     estimacion,
     afirmaciones: afirmaciones.filter((a) => a.sceneId === fila.id).map(vistaAfirmacion),
     controles,
@@ -310,16 +314,43 @@ export async function exigirTopeDelProyecto(proyectoId: string, creditos: number
   });
 }
 
-/** Trabajo de generación asociado a cada escena, si lo hay. */
-async function trabajosPorEscena(escenaIds: string[]): Promise<Map<string, string>> {
+/** Trabajo de generación asociado a cada escena, si lo hay. El más reciente manda. */
+async function trabajosPorEscena(escenaIds: string[]): Promise<Map<string, { id: string; medioId: string | null }>> {
   if (escenaIds.length === 0) return new Map();
   const filas = await db()
-    .select({ id: generationJobs.id, escenaId: generationJobs.sceneId })
+    .select({ id: generationJobs.id, escenaId: generationJobs.sceneId, medioId: generationJobs.resultMediaId })
     .from(generationJobs)
-    .where(inArray(generationJobs.sceneId, escenaIds));
-  const mapa = new Map<string, string>();
-  for (const fila of filas) if (fila.escenaId) mapa.set(fila.escenaId, fila.id);
+    .where(inArray(generationJobs.sceneId, escenaIds))
+    .orderBy(asc(generationJobs.createdAt));
+  const mapa = new Map<string, { id: string; medioId: string | null }>();
+  for (const fila of filas) if (fila.escenaId) mapa.set(fila.escenaId, { id: fila.id, medioId: fila.medioId });
   return mapa;
+}
+
+/**
+ * Fotogramas reales de las escenas para el storyboard (0.19.0): el aprobado si hay uno y, si no, el último que se
+ * generó. Una consulta para todas las escenas, y el DTO de siempre con su URL temporal.
+ */
+async function fotogramasDeEscenas(
+  actor: Actor,
+  escenas: readonly FilaEscena[],
+  trabajos: Map<string, { id: string; medioId: string | null }>,
+): Promise<Map<string, Medio>> {
+  const porEscena = new Map<string, string>();
+  for (const escena of escenas) {
+    const id = escena.approvedFrameMediaId ?? trabajos.get(escena.id)?.medioId ?? null;
+    if (id) porEscena.set(escena.id, id);
+  }
+  const ids = [...new Set(porEscena.values())];
+  if (ids.length === 0) return new Map();
+  const filas = await db().select().from(media).where(inArray(media.id, ids));
+  const porId = new Map(filas.map((fila) => [fila.id, aDto(fila, actor)]));
+  const resultado = new Map<string, Medio>();
+  for (const [escenaId, medioId] of porEscena) {
+    const dto = porId.get(medioId);
+    if (dto) resultado.set(escenaId, dto);
+  }
+  return resultado;
 }
 
 export async function vistaDeProyecto(fila: FilaProyecto, totalEscenas: number, totalEstimado: number) {
@@ -388,11 +419,12 @@ export async function detalleProyecto(actor: Actor, id: unknown): Promise<Proyec
     trabajosPorEscena(ids),
     contextoDeControles(actor, fila, elecciones),
   ]);
+  const fotogramas = await fotogramasDeEscenas(actor, filasEscena, trabajos);
   const escenasVista = filasEscena.map((escena) =>
     vistaEscena(
       escena,
       afirmaciones,
-      trabajos.get(escena.id) ?? null,
+      trabajos.get(escena.id)?.id ?? null,
       estimacionONula(escena, elecciones, ajustes),
       // Los controles de la escena se evalúan con el **mismo motor** que cierra la puerta al producirla, con
       // datos que ya están cargados: ni una consulta más por escena.
@@ -401,6 +433,7 @@ export async function detalleProyecto(actor: Actor, id: unknown): Promise<Proyec
         parametros: contexto.parametros,
         escena: hechosDeFilaEscena(escena, fila, afirmaciones, contexto),
       }),
+      fotogramas.get(escena.id) ?? null,
     ),
   );
   const plan = planDeEscenas(fila, escenasVista, ajustes, creditosAsistente);

@@ -1,6 +1,7 @@
 import type { Proveedor } from "./boveda";
 import type { TipoMedio } from "./media/reglas";
 import type { Medio } from "./media/tipos";
+import type { EtapaTrabajo } from "./produccion";
 
 /**
  * Datos de la generación que comparten el servidor y el navegador. Aquí no hay nada que dependa de una
@@ -129,6 +130,12 @@ export interface TrabajoVista {
   proveedor: Proveedor;
   modelo: string;
   estado: EstadoTrabajo;
+  /**
+   * Etapa real por la que va el trabajo (0.19.0), o `null` si todavía no ha entrado en ninguna. Se deduce del
+   * estado y de la etapa que se apuntó al pasar por ella: **no hay ningún porcentaje ni ninguna fase calculada
+   * por tiempo** (`lib/produccion.ts`).
+   */
+  etapa: EtapaTrabajo | null;
   /** Estado tal cual lo informa el proveedor (`waiting`, `queuing`, `generating`…), si se conoce. */
   estadoProveedor: string | null;
   /** Identificador de la tarea en el proveedor: es lo que permite reconsultar sin reenviar. */

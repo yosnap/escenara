@@ -1,5 +1,6 @@
 import type { EstadoControl, EvaluacionVista } from "./controles";
 import { formatearCreditos, formatearEuros } from "./generacion";
+import type { Medio } from "./media/tipos";
 
 /**
  * Proyectos, escenas y afirmaciones (RF05, 0.17.0) tal como los comparten el servidor y el navegador. Aquí
@@ -195,6 +196,13 @@ export interface EscenaVista {
   motivoInvalidacion: string;
   /** Trabajo de generación asociado, si ya se ha producido. */
   trabajoId: string | null;
+  /**
+   * Fotograma real de la escena (0.19.0): el aprobado si hay uno y, si no, el último que se generó. `null`
+   * mientras no se haya producido nada.
+   *
+   * El storyboard de la 0.17.0 no tenía miniaturas y era una lista de texto; con esto se ve de verdad lo que hay.
+   */
+  fotograma: Medio | null;
   estimacion: EstimacionEscena | null;
   afirmaciones: AfirmacionVista[];
   /**
@@ -334,8 +342,8 @@ export function filasDelPlan(escenas: readonly EscenaVista[]): FilaPlan[] {
   });
 }
 
-/** Resumen corto de una escena para listas y tablas. */
-export function resumenDeEscena(escena: EscenaVista): string {
+/** Resumen corto de una escena para listas y tablas. Solo necesita lo que se lee, no la escena entera. */
+export function resumenDeEscena(escena: Pick<EscenaVista, "accion" | "texto" | "orden">): string {
   const base = escena.accion.trim() !== "" ? escena.accion : escena.texto;
   const limpio = base.trim().replace(/\s+/g, " ");
   if (limpio === "") return `Escena ${escena.orden}`;

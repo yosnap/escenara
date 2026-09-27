@@ -1,0 +1,381 @@
+import { createHash } from "node:crypto";
+import { eq, sql } from "drizzle-orm";
+import { DIALOGO_MAXIMO, PROMPT_MINIMO } from "@/lib/generacion";
+import { falloConCoste, type ProduccionVista, trabajoTerminado } from "@/lib/produccion";
+import { escenaPropia, escenasDe, proyectoPropio } from "../asistente/consulta";
+import { ErrorProyecto } from "../asistente/errores";
+import { db } from "../db/cliente";
+import { type FilaEscena, type FilaProyecto, scenes } from "../db/esquema";
+import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
+import { crearAnimacion, crearFotograma } from "../generacion/servicio";
+import type { Actor } from "../media/servicio";
+import { plantillaVigenteDe } from "../prompts/consulta";
+import { marcarEnProduccion } from "./cierre";
+import { escenasPorProducir, estadoDeProduccion, ultimoTrabajoDeEscena } from "./consulta";
+import { presetsDeProduccion } from "./presets";
+
+/**
+ * Producción de las escenas de un proyecto aprobado (RF06, 0.19.0).
+ *
+ * **Todo lo que gasta dinero aquí pasa por `generacion/servicio.ts`**, con `escenaId`. Eso no es una comodidad:
+ * es lo que garantiza, sin repetir una sola regla, que cada envío cruza la puerta única del motor de controles
+ * con la escena como sujeto (plan aprobado, aprobación en pie, afirmaciones verificadas, consentimiento,
+ * credencial, cuota y los tres techos de dinero), la idempotencia por confirmación, la reserva atómica con el
+ * tope de trabajos y el de escenas en vuelo, la traducción detrás de todas las comprobaciones y la revalidación
+ * del despacho antes de enviar. Este fichero **no decide nada de dinero**: decide qué escena toca.
+ *
+ * Y una regla de alcance: **una escena no toca a las demás**. Regenerar, cancelar o reintentar escriben solo en
+ * su propia fila y encolan solo sus propios trabajos.
+ */
+
+/** Lo que el navegador confirma para gastar en un trabajo de producción. Es la confirmación de siempre. */
+export interface ConfirmacionProduccion {
+  /** Casilla «tengo derecho a usar esta imagen». */
+  derechos: boolean;
+  /** Revisión de las referencias del personaje (ADR-0009). */
+  sinTerceros: boolean;
+  /** Créditos que el usuario tenía delante **por trabajo**. */
+  creditosConfirmados: number;
+  /** Sello del precio que se mostró: si ha cambiado, el servidor rechaza el envío. */
+  selloEstimacion: string;
+  /** Clave que firma el navegador. De ella se derivan las de cada escena, así que repetir no cobra dos veces. */
+  claveIdempotencia: string;
+  avisoUmbralAceptado?: boolean;
+  /** Avisos «Necesita ajustes» confirmados expresamente, por su clave de regla. */
+  avisosConfirmados?: string[];
+}
+
+/**
+ * Clave de idempotencia derivada de la que firmó el navegador y de qué se está encolando.
+ *
+ * Producir un proyecto es **un** clic del usuario y varios trabajos, así que cada uno necesita su propia clave y
+ * las claves tienen que ser **estables**: repetir el mismo clic (doble pulsación, reintento tras un error de red)
+ * tiene que devolver los trabajos que ya existen, no encargar otros. Derivarlas con `sha256` de la clave del
+ * navegador más el destino da exactamente eso, y el formato es el UUID que exige `exigirClaveIdempotencia`.
+ */
+export function claveDerivada(base: string, ...partes: readonly string[]): string {
+  const h = createHash("sha256")
+    .update([base, ...partes].join(":"))
+    .digest("hex");
+  // Versión 4 y variante 8 en su sitio: es un UUID con la forma correcta, derivado y no aleatorio.
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-8${h.slice(17, 20)}-${h.slice(20, 32)}`;
+}
+
+/**
+ * Texto de la escena con el que se compone el prompt del fotograma: lo que se ve (`accion`) y, si está vacío, lo
+ * que se cuenta. El prompt final lo compone el servidor y **no se le muestra al usuario** (ADR-0022).
+ */
+function textoVisualDe(escena: FilaEscena): string {
+  const texto = (escena.action.trim() !== "" ? escena.action : escena.scriptText).trim();
+  if (texto.length < PROMPT_MINIMO) {
+    throw new ErrorProyecto(
+      409,
+      `La escena ${escena.sortOrder} no describe todavía lo que se ve. Escribe su acción con al menos ${PROMPT_MINIMO} caracteres antes de producirla.`,
+    );
+  }
+  return texto;
+}
+
+/** El protagonista del proyecto es lo que da identidad al fotograma: sin él no se produce. */
+function exigirProtagonista(proyecto: FilaProyecto): string {
+  if (!proyecto.mainCharacterId) {
+    throw new ErrorProyecto(
+      409,
+      "Este proyecto no tiene protagonista asignado. Elige un personaje con consentimiento vigente antes de producirlo.",
+    );
+  }
+  return proyecto.mainCharacterId;
+}
+
+/** Encola el fotograma de una escena. Toda la decisión de dinero la toma `crearFotograma`. */
+async function encolarFotograma(
+  actor: Actor,
+  escena: FilaEscena,
+  proyecto: FilaProyecto,
+  confirmacion: ConfirmacionProduccion,
+  clave: string,
+  h: Herramientas,
+): Promise<void> {
+  const plantilla = await plantillaVigenteDe(actor.id, "image_edit");
+  await crearFotograma(
+    actor,
+    {
+      prompt: textoVisualDe(escena),
+      personajeId: exigirProtagonista(proyecto),
+      escenaId: escena.id,
+      derechos: confirmacion.derechos,
+      sinTerceros: confirmacion.sinTerceros,
+      creditosConfirmados: confirmacion.creditosConfirmados,
+      selloEstimacion: confirmacion.selloEstimacion,
+      avisoUmbralAceptado: confirmacion.avisoUmbralAceptado,
+      avisosConfirmados: confirmacion.avisosConfirmados,
+      claveIdempotencia: clave,
+      // La plantilla vigente es la que congeló la aprobación: si ha cambiado, el control `aprobacion-plantilla` ya
+      // lo ha dicho y esta escena no llega hasta aquí. Las opciones obligatorias que declare las resuelve el
+      // servidor con el primer preset activo que encaje: producir no tiene botonera.
+      ...(plantilla
+        ? {
+            plantillaId: plantilla.id,
+            plantillaVersionId: plantilla.versionId,
+            presets: await presetsDeProduccion(actor.id, plantilla, plantilla.versionId),
+          }
+        : {}),
+    },
+    h,
+  );
+}
+
+/**
+ * Encola la animación del fotograma aprobado de una escena. Hereda su escena, su personaje y la versión de la
+ * ficha con la que se generó el fotograma: animar tiene que seguir siendo el mismo personaje.
+ */
+async function encolarAnimacion(
+  actor: Actor,
+  escena: FilaEscena,
+  trabajoPadreId: string,
+  confirmacion: ConfirmacionProduccion,
+  clave: string,
+  h: Herramientas,
+): Promise<void> {
+  const plantilla = await plantillaVigenteDe(actor.id, "image_to_video");
+  await crearAnimacion(
+    actor,
+    {
+      prompt: textoVisualDe(escena),
+      trabajoPadreId,
+      // Lo que dice el personaje va aparte de la descripción visual y solo lo usan los modelos con voz.
+      dialogo: escena.scriptText.trim().slice(0, DIALOGO_MAXIMO),
+      derechos: confirmacion.derechos,
+      sinTerceros: confirmacion.sinTerceros,
+      creditosConfirmados: confirmacion.creditosConfirmados,
+      selloEstimacion: confirmacion.selloEstimacion,
+      avisoUmbralAceptado: confirmacion.avisoUmbralAceptado,
+      avisosConfirmados: confirmacion.avisosConfirmados,
+      claveIdempotencia: clave,
+      ...(plantilla
+        ? {
+            plantillaId: plantilla.id,
+            plantillaVersionId: plantilla.versionId,
+            presets: await presetsDeProduccion(actor.id, plantilla, plantilla.versionId),
+          }
+        : {}),
+    },
+    h,
+  );
+}
+
+/**
+ * Produce el proyecto: encola los fotogramas de sus escenas aprobadas **hasta donde deja el tope de escenas en
+ * vuelo**. Lo que no cabe no se pierde: se queda esperando y se encola en la siguiente pasada del usuario.
+ *
+ * Si un envío se rechaza, se para ahí y se devuelve el estado tal como ha quedado, con el motivo del primero que
+ * no pudo salir: encadenar rechazos idénticos no informa de nada y sí gasta ritmo.
+ */
+export async function producirProyecto(
+  actor: Actor,
+  proyectoId: unknown,
+  confirmacion: ConfirmacionProduccion,
+  h: Herramientas = HERRAMIENTAS,
+): Promise<ProduccionVista> {
+  const estado = await estadoDeProduccion(actor, proyectoId);
+  if (estado.impedimentos.length > 0) throw new ErrorProyecto(409, estado.impedimentos[0] ?? "No se puede producir.");
+  const pendientes = escenasPorProducir(estado.escenas);
+  if (pendientes.length === 0) {
+    throw new ErrorProyecto(409, "No hay ninguna escena pendiente de producir en este proyecto.");
+  }
+  const caben = Math.max(0, estado.maximoEnVuelo - estado.enVuelo);
+  if (caben === 0) {
+    throw new ErrorProyecto(
+      429,
+      `Ya tienes ${estado.enVuelo} ${estado.enVuelo === 1 ? "escena" : "escenas"} produciéndose y esta instalación permite ${estado.maximoEnVuelo} a la vez. Espera a que termine alguna.`,
+    );
+  }
+  const { proyecto, escenas } = await escenasDelProyecto(actor, estado.proyectoId);
+  const porId = new Map(escenas.map((e) => [e.id, e]));
+  let encoladas = 0;
+  for (const pendiente of pendientes.slice(0, caben)) {
+    const escena = porId.get(pendiente.id);
+    if (!escena) continue;
+    try {
+      await encolarFotograma(
+        actor,
+        escena,
+        proyecto,
+        confirmacion,
+        claveDerivada(confirmacion.claveIdempotencia, "fotograma", escena.id),
+        h,
+      );
+    } catch (error) {
+      /**
+       * Si ya se ha encolado alguna, se para aquí y se devuelve el estado tal como ha quedado: lo encolado es un
+       * hecho con su reserva apartada, y responder un error dejaría al usuario creyendo que no se ha hecho nada.
+       * Si no se ha encolado ninguna, el error se propaga tal cual: es la respuesta a lo que pidió.
+       */
+      if (encoladas === 0) throw error;
+      break;
+    }
+    encoladas++;
+  }
+  if (encoladas > 0) await marcarEnProduccion(proyecto.id);
+  return estadoDeProduccion(actor, proyecto.id);
+}
+
+/** Produce una sola escena: su fotograma, y nada de las demás. */
+export async function producirEscena(
+  actor: Actor,
+  escenaId: unknown,
+  confirmacion: ConfirmacionProduccion,
+  h: Herramientas = HERRAMIENTAS,
+): Promise<ProduccionVista> {
+  const { escena, proyecto } = await escenaPropia(actor, escenaId);
+  await encolarFotograma(
+    actor,
+    escena,
+    proyecto,
+    confirmacion,
+    claveDerivada(confirmacion.claveIdempotencia, "fotograma", escena.id),
+    h,
+  );
+  await marcarEnProduccion(proyecto.id);
+  return estadoDeProduccion(actor, proyecto.id);
+}
+
+/**
+ * Aprueba el fotograma de una escena y encola su animación. Las dos cosas van juntas porque son la misma
+ * decisión del usuario: «este fotograma es el bueno, anímalo». El coste del clip se confirma igual que cualquier
+ * otro, así que aprobar sin querer gastar no es posible.
+ */
+export async function aprobarFotograma(
+  actor: Actor,
+  escenaId: unknown,
+  confirmacion: ConfirmacionProduccion,
+  h: Herramientas = HERRAMIENTAS,
+): Promise<ProduccionVista> {
+  const { escena, proyecto } = await escenaPropia(actor, escenaId);
+  const fotograma = await ultimoTrabajoDeEscena(escena.id, "fotograma");
+  if (fotograma?.state !== "listo" || !fotograma.resultMediaId) {
+    throw new ErrorProyecto(409, "Espera a que el fotograma de esta escena esté listo y guardado antes de aprobarlo.");
+  }
+  /**
+   * Primero se apunta la aprobación y después se gasta, y no al revés: si el encolado del clip se rechaza (por un
+   * tope, por el presupuesto del proyecto), queda una escena con su fotograma aprobado y sin clip, que es un estado
+   * correcto y del que se sale volviendo a pulsar. Al contrario, un clip pagado cuya aprobación no se hubiera
+   * guardado sería dinero gastado sin nada que lo explique.
+   */
+  await db()
+    .update(scenes)
+    .set({ approvedFrameMediaId: fotograma.resultMediaId, approvedFrameJobId: fotograma.id, updatedAt: new Date() })
+    .where(eq(scenes.id, escena.id));
+  // La clave de la animación se deriva del fotograma aprobado: aprobar dos veces el mismo no encarga dos clips.
+  await encolarAnimacion(
+    actor,
+    escena,
+    fotograma.id,
+    confirmacion,
+    claveDerivada(confirmacion.claveIdempotencia, "animacion", fotograma.id),
+    h,
+  );
+  return estadoDeProduccion(actor, proyecto.id);
+}
+
+/**
+ * Regenera **una** escena: encola otro fotograma suyo y nada más. Las demás escenas no se tocan, ni su estado ni
+ * sus medios.
+ *
+ * Lo que se conserva: **todos** los trabajos anteriores con sus medios, que pasan a ser versiones en el historial
+ * de la escena (`consulta.ts › versionesDe`). Lo que se invalida: el fotograma aprobado y el clip de esta escena,
+ * porque ya no corresponden a lo que se va a generar; y si la escena estaba `producida`, vuelve a `aprobada`.
+ *
+ * Y los reintentos: si el último trabajo de la escena falló **con coste posible**, regenerar consume un reintento
+ * y exige que el usuario haya autorizado presupuesto para ellos (decisión provisional del propietario,
+ * 2026-09-27: cero automáticos). Una regeneración voluntaria sobre algo que salió bien no consume ninguno.
+ */
+export async function regenerarEscena(
+  actor: Actor,
+  escenaId: unknown,
+  confirmacion: ConfirmacionProduccion,
+  h: Herramientas = HERRAMIENTAS,
+): Promise<ProduccionVista> {
+  const { escena, proyecto } = await escenaPropia(actor, escenaId);
+  const anteriores = await Promise.all([
+    ultimoTrabajoDeEscena(escena.id, "fotograma"),
+    ultimoTrabajoDeEscena(escena.id, "animacion"),
+  ]);
+  const enMarcha = anteriores.find((t) => t !== null && !trabajoTerminado(t.state));
+  if (enMarcha) {
+    throw new ErrorProyecto(
+      409,
+      "Esta escena tiene un trabajo en marcha. Espera a que termine o cancélalo antes de regenerarla.",
+    );
+  }
+  const trasFallo = anteriores.some((t) => t !== null && t.state === "fallido" && falloConCoste(t.failureReason));
+  if (trasFallo && escena.retriesUsed >= escena.retryBudget) {
+    throw new ErrorProyecto(
+      409,
+      `El último intento de esta escena falló después de hablar con el proveedor, así que puede haberse cobrado. Escenara no reintenta nada por su cuenta: autoriza un presupuesto de reintentos para esta escena (llevas ${escena.retriesUsed} de ${escena.retryBudget}) y vuelve a pedirlo.`,
+    );
+  }
+
+  // La clave se deriva también del último trabajo: así cada regeneración es una confirmación distinta, y repetir
+  // **la misma** regeneración (doble clic) devuelve el trabajo que ya existe.
+  const clave = claveDerivada(
+    confirmacion.claveIdempotencia,
+    "regenerar",
+    escena.id,
+    anteriores[0]?.id ?? "sin-fotograma",
+  );
+  await db().transaction(async (tx) => {
+    await tx
+      .update(scenes)
+      .set({
+        // Lo aprobado y el clip ya no corresponden a lo que se va a generar. Los medios **no se borran**: siguen
+        // en la biblioteca y en el historial de versiones de la escena.
+        approvedFrameMediaId: null,
+        approvedFrameJobId: null,
+        clipMediaId: null,
+        clipJobId: null,
+        state: escena.state === "producida" ? "aprobada" : escena.state,
+        // Se incrementa en la base de datos, no con el valor leído antes: dos regeneraciones a la vez no pueden
+        // consumir el mismo reintento.
+        ...(trasFallo ? { retriesUsed: sql`${scenes.retriesUsed} + 1` } : {}),
+        lastFailureReason: "",
+        changedSinceGeneration: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(scenes.id, escena.id));
+  });
+  await encolarFotograma(actor, escena, proyecto, confirmacion, clave, h);
+  await marcarEnProduccion(proyecto.id);
+  return estadoDeProduccion(actor, proyecto.id);
+}
+
+/**
+ * Autoriza reintentos de pago para una escena. Es lo único que permite volver a intentar algo que pudo cobrarse,
+ * y lo autoriza siempre el usuario **en número de reintentos**, escena a escena.
+ */
+export async function autorizarReintentos(
+  actor: Actor,
+  escenaId: unknown,
+  reintentos: unknown,
+): Promise<ProduccionVista> {
+  if (typeof reintentos !== "number" || !Number.isInteger(reintentos) || reintentos < 0 || reintentos > 10) {
+    throw new ErrorProyecto(400, "Indica de 0 a 10 reintentos autorizados para esta escena.");
+  }
+  const { escena, proyecto } = await escenaPropia(actor, escenaId);
+  // Se autoriza a partir de los ya consumidos —«dos más», no «dos en total», que sería no autorizar nada— y se
+  // calcula en la base de datos, para no partir de un recuento que pudo cambiar mientras se leía.
+  await db()
+    .update(scenes)
+    .set({ retryBudget: sql`${scenes.retriesUsed} + ${reintentos}`, updatedAt: new Date() })
+    .where(eq(scenes.id, escena.id));
+  return estadoDeProduccion(actor, proyecto.id);
+}
+
+/** Escenas del proyecto en orden, con su proyecto ya comprobado como propio. */
+async function escenasDelProyecto(
+  actor: Actor,
+  proyectoId: string,
+): Promise<{ proyecto: FilaProyecto; escenas: FilaEscena[] }> {
+  const proyecto = await proyectoPropio(actor, proyectoId);
+  return { proyecto, escenas: await escenasDe(proyecto.id) };
+}

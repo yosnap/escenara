@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNotNull, ne, sql } from "drizzle-orm";
 import type { Proveedor } from "@/lib/boveda";
 import { leerAjustes } from "../ajustes";
 import { db, type Ejecutor } from "../db/cliente";
@@ -59,6 +59,38 @@ export interface PeticionEncolado {
    * que los dos controles no pueden discrepar. No cambia lo que se aparta: eso es `acotacion.creditos`.
    */
   creditosDelEnvio: number;
+  /**
+   * Escena que se está produciendo y el tope de escenas en vuelo del usuario (0.19.0). `null` en el camino
+   * rápido de «Crear», que no pertenece a ninguna escena.
+   *
+   * Se comprueba **aquí y no antes** porque aquí ya está bloqueada la fila del usuario: contar fuera de esta
+   * transacción dejaría que dos producciones simultáneas leyeran el mismo recuento y se pasaran las dos del tope.
+   */
+  escena: { escenaId: string; maximo: number } | null;
+}
+
+/**
+ * Escenas del usuario con algún trabajo en marcha, sin contar la que se está encolando: es el recuento con el que
+ * se compara el tope de escenas en vuelo. Se cuentan **escenas distintas**, no trabajos: una escena con su
+ * fotograma y su clip a la vez sigue siendo una escena.
+ */
+export async function escenasEnVueloDe(
+  usuarioId: string,
+  exceptoEscenaId: string,
+  ejecutor: Ejecutor,
+): Promise<number> {
+  const [fila] = await ejecutor
+    .select({ total: sql<number>`count(distinct ${generationJobs.sceneId})::int` })
+    .from(generationJobs)
+    .where(
+      and(
+        eq(generationJobs.userId, usuarioId),
+        isNotNull(generationJobs.sceneId),
+        ne(generationJobs.sceneId, exceptoEscenaId),
+        condicionEnCurso(),
+      ),
+    );
+  return fila?.total ?? 0;
 }
 
 export async function encolar(peticion: PeticionEncolado): Promise<Encolado> {
@@ -79,6 +111,17 @@ export async function encolar(peticion: PeticionEncolado): Promise<Encolado> {
           429,
           `Ya tienes ${total} trabajos en marcha, que es el máximo de esta instalación. Espera a que terminen antes de pedir otro.`,
         );
+      }
+
+      // Tope de escenas en vuelo (0.19.0): más estricto que el de trabajos, porque cada escena son dos.
+      if (peticion.escena) {
+        const enVuelo = await escenasEnVueloDe(peticion.usuarioId, peticion.escena.escenaId, tx);
+        if (enVuelo >= peticion.escena.maximo) {
+          throw new ErrorGeneracion(
+            429,
+            `Ya tienes ${enVuelo} ${enVuelo === 1 ? "escena" : "escenas"} produciéndose y esta instalación permite ${peticion.escena.maximo} a la vez. Espera a que termine alguna: el resto del proyecto sigue esperando y no se pierde nada.`,
+          );
+        }
       }
 
       // Sin coste acotado no se reserva nada y el trabajo espera un límite del usuario: así no puede

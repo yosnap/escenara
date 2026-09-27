@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Boton, BotonIcono } from "@/components/ui/button";
 import { InsigniaControl } from "@/components/ui/controles";
 import { AreaTexto, Campo, EntradaTexto } from "@/components/ui/field";
+import { MiniaturaMedio } from "@/components/ui/media/miniatura-medio";
 import { Dialogo } from "@/components/ui/overlay";
 import { InsigniaEstadoEscena } from "@/components/ui/proyecto";
 import { ETIQUETA_ESTADO_CONTROL } from "@/lib/controles";
@@ -78,6 +79,15 @@ export function EditorEscena({
           <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-degradado-escenario font-bold text-sobre-acento">
             {escena.orden}
           </span>
+          {/*
+            El storyboard muestra el fotograma **real** de la escena (0.19.0): el aprobado si hay uno y, si no, el
+            último generado. En la 0.17.0 aquí no había miniatura y el storyboard era una lista de texto.
+          */}
+          {escena.fotograma && (
+            <span className="block size-14 shrink-0 overflow-hidden rounded-control border border-borde">
+              <MiniaturaMedio medio={escena.fotograma} />
+            </span>
+          )}
           <InsigniaEstadoEscena estado={escena.estado} />
           {/* Controles previos de la escena (0.18.0): color **y** icono **y** texto. */}
           <InsigniaControl estado={escena.controles.estado} breve />

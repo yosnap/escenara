@@ -148,10 +148,19 @@ export async function editarEscena(actor: Actor, escenaId: unknown, datos: Datos
   const { escena } = await escenaPropia(actor, escenaId);
   const campos = camposLimpios(datos, escena);
   if (Object.keys(campos).length === 0) return escena;
+  // Editar una escena que ya se ha generado no borra nada (el gasto está hecho y el resultado sigue en la
+  // biblioteca), pero deja de corresponder a lo que dice: la rejilla de producción lo avisa y el historial lo
+  // registra como «qué cambió» antes de la siguiente regeneración (0.19.0, PRD §6).
+  const yaGenerada = escena.approvedFrameMediaId !== null || escena.clipMediaId !== null;
   return db().transaction(async (tx) => {
     const [actualizada] = await tx
       .update(scenes)
-      .set({ ...campos, ...invalidacion(escena, "Has editado esta escena"), updatedAt: new Date() })
+      .set({
+        ...campos,
+        ...invalidacion(escena, "Has editado esta escena"),
+        ...(yaGenerada ? { changedSinceGeneration: true } : {}),
+        updatedAt: new Date(),
+      })
       .where(eq(scenes.id, escena.id))
       .returning();
     if (!actualizada) throw new ErrorProyecto(404, "Esa escena no existe.");
