@@ -42,3 +42,4 @@ export type NuevoMedio = typeof media.$inferInsert;
 
 export * from "./esquema-auth";
 export * from "./esquema-biblioteca";
+export * from "./esquema-boveda";

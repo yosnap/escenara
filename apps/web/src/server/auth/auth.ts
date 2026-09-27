@@ -7,6 +7,8 @@ import { admin } from "better-auth/plugins";
 import { count, sql } from "drizzle-orm";
 import { IDIOMAS, TEMAS } from "@/lib/preferencias";
 import { type Ajustes, leerAjustes } from "../ajustes";
+import { importarClavesDelEntorno } from "../boveda/importar-entorno";
+import { type ClaveSecreta, huellaSecretos, leerSecreto } from "../boveda/secretos";
 import { enviarEnSegundoPlano, plantillaEnlace } from "../correo";
 import { db } from "../db/cliente";
 import * as esquema from "../db/esquema";
@@ -14,21 +16,42 @@ import { dentroDelLimite } from "./limite-cuenta";
 
 const URL_BASE = process.env.BETTER_AUTH_URL ?? "http://localhost:3021";
 
-/** Google y GitHub solo se activan si sus claves OAuth están en `.env`. */
-function proveedoresSociales() {
+export type ProveedorSocial = "google" | "github";
+
+const SOCIALES = [
+  { nombre: "google", idAjuste: "googleClientId", claveSecreta: "googleClientSecret" },
+  { nombre: "github", idAjuste: "githubClientId", claveSecreta: "githubClientSecret" },
+] as const satisfies readonly {
+  nombre: ProveedorSocial;
+  idAjuste: keyof Ajustes;
+  claveSecreta: ClaveSecreta;
+}[];
+
+export const CLAVES_SECRETAS_SOCIALES = SOCIALES.map((p) => p.claveSecreta);
+
+/** URL de redirección que hay que registrar en el proveedor. */
+export const urlRedireccion = (proveedor: ProveedorSocial) => `${URL_BASE}/api/auth/callback/${proveedor}`;
+
+/**
+ * Google y GitHub se activan cuando su identificador de cliente (Admin › Ajustes) y su secreto (bóveda)
+ * están puestos. Las claves que aún queden en `.env` se importan una sola vez al panel.
+ */
+async function proveedoresSociales(ajustes: Ajustes) {
   const proveedores: Record<string, { clientId: string; clientSecret: string }> = {};
-  for (const [nombre, prefijo] of [
-    ["google", "GOOGLE"],
-    ["github", "GITHUB"],
-  ] as const) {
-    const clientId = process.env[`${prefijo}_CLIENT_ID`];
-    const clientSecret = process.env[`${prefijo}_CLIENT_SECRET`];
-    if (clientId && clientSecret) proveedores[nombre] = { clientId, clientSecret };
+  for (const p of SOCIALES) {
+    const clientId = (ajustes[p.idAjuste] as string).trim();
+    if (!clientId) continue;
+    const clientSecret = await leerSecreto(p.claveSecreta);
+    if (clientSecret) proveedores[p.nombre] = { clientId, clientSecret };
   }
   return proveedores;
 }
 
-export const proveedoresActivos = () => Object.keys(proveedoresSociales()) as ("google" | "github")[];
+/** Proveedores sociales con sus claves puestas; quitar cualquiera de las dos oculta su botón. */
+export async function proveedoresActivos(): Promise<ProveedorSocial[]> {
+  await importarClavesDelEntorno();
+  return Object.keys(await proveedoresSociales(await leerAjustes())) as ProveedorSocial[];
+}
 
 // Una vez existe una cuenta, la instalación nunca vuelve a estar vacía: se memoriza para no contar en cada visita.
 let hayCuentasMemo = false;
@@ -71,7 +94,7 @@ function cabecerasIp(ajustes: Ajustes): string[] {
   return configuradas.length > 0 ? configuradas : ["x-forwarded-for"];
 }
 
-function crearAuth(ajustes: Ajustes) {
+function crearAuth(ajustes: Ajustes, sociales: Record<string, { clientId: string; clientSecret: string }>) {
   const secreto = process.env.BETTER_AUTH_SECRET;
   // Sin secreto propio, Better Auth usaría uno conocido y cualquiera podría firmar cookies de sesión.
   if (!secreto || secreto.length < 32) {
@@ -140,7 +163,7 @@ function crearAuth(ajustes: Ajustes) {
         });
       },
     },
-    socialProviders: proveedoresSociales(),
+    socialProviders: sociales,
     rateLimit: {
       enabled: true,
       storage: "database",
@@ -213,9 +236,20 @@ const global = globalThis as { __escenaraAuth?: { instancia: Auth; clave: string
  * y se vuelve a crear cuando cambian los ajustes de Admin › Ajustes.
  */
 export async function auth(): Promise<Auth> {
+  // Antes de leer los ajustes: la importación desde `.env` puede rellenarlos la primera vez.
+  await importarClavesDelEntorno();
   const ajustes = await leerAjustes();
-  // Solo la cabecera de IP forma parte de la configuración de Better Auth; el resto se lee en cada uso.
-  const clave = ajustes.cabecerasIp;
-  if (global.__escenaraAuth?.clave !== clave) global.__escenaraAuth = { instancia: crearAuth(ajustes), clave };
+  // Clave de caché: la cabecera de IP, los identificadores de cliente y una huella de los secretos. La
+  // huella se calcula con el valor cifrado y su fecha, nunca con el secreto en claro.
+  const clave = [
+    ajustes.cabecerasIp,
+    ajustes.googleClientId,
+    ajustes.githubClientId,
+    await huellaSecretos(CLAVES_SECRETAS_SOCIALES),
+  ].join("|");
+  // Los secretos solo se descifran cuando hay que reconstruir la instancia, no en cada petición.
+  if (global.__escenaraAuth?.clave !== clave) {
+    global.__escenaraAuth = { instancia: crearAuth(ajustes, await proveedoresSociales(ajustes)), clave };
+  }
   return global.__escenaraAuth.instancia;
 }

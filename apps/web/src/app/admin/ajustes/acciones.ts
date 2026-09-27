@@ -13,7 +13,8 @@ export async function guardarAjustesAccion(cambios: Partial<Ajustes>): Promise<R
     return { ok: true, ajustes: await guardarAjustes(cambios, sesion.user.id) };
   } catch (error) {
     if (error instanceof ErrorAjustes) return { ok: false, campo: error.campo, error: error.message };
-    console.error("[ajustes]", error);
+    // Solo el mensaje: el objeto de error podría arrastrar valores de la configuración.
+    console.error(`[ajustes] no se han podido guardar: ${(error as Error).message}`);
     return { ok: false, error: "No se han podido guardar los ajustes." };
   }
 }
@@ -30,8 +31,9 @@ export async function enviarCorreoPruebaAccion(): Promise<{ ok: boolean; mensaje
     });
     return { ok: true, mensaje: `Enviado a ${sesion.user.email}.` };
   } catch (error) {
-    // El detalle (conexión rechazada, tiempo agotado…) solo va al registro del servidor.
-    console.error("[ajustes] correo de prueba:", error);
+    // El detalle (conexión rechazada, tiempo agotado…) solo va al registro del servidor, y solo el
+    // mensaje: algunos errores de SMTP incluyen las credenciales enviadas.
+    console.error(`[ajustes] correo de prueba: ${(error as Error).message}`);
     return { ok: false, mensaje: "No se ha podido enviar. Revisa el servidor, el puerto y el tipo de conexión." };
   }
 }
