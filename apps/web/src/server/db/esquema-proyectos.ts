@@ -1,4 +1,5 @@
-import { index, integer, pgEnum, pgTable, real, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgEnum, pgTable, real, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { media } from "./esquema";
 import { users } from "./esquema-auth";
 import { proveedorCredencial } from "./esquema-boveda";
 import { characters, characterVersions } from "./esquema-personajes";
@@ -97,6 +98,40 @@ export const scenes = pgTable(
     estimatedCredits: real("estimated_credits").notNull().default(0),
     /** Por qué dejó de estar aprobada, en lenguaje llano y con la acción concreta. Vacío si nunca lo estuvo. */
     invalidationReason: text("invalidation_reason").notNull().default(""),
+    /**
+     * Producción de la escena (RF06, 0.19.0).
+     *
+     * El **fotograma aprobado** es el que el usuario ha mirado y ha dado por bueno: es el que se anima y el que
+     * usará el montaje. Guardar el medio y no solo el trabajo importa porque el trabajo es un hecho histórico y
+     * el medio es lo que se ve; y guardar el trabajo además del medio permite saber con qué modelo, a qué precio
+     * y con qué versión de la ficha salió eso que se aprobó.
+     *
+     * Los identificadores de trabajo van **sin clave ajena**, igual que `generation_jobs.reservation_id` y que
+     * `media.character_sheet_of`: `generation_jobs` ya referencia a `scenes`, y una referencia de vuelta cerraría
+     * un ciclo entre los dos módulos del esquema. Si un trabajo desapareciera, lo que queda es una escena que
+     * cita un trabajo que no está, y eso la rejilla lo trata como «no producida».
+     */
+    approvedFrameMediaId: uuid("approved_frame_media_id").references(() => media.id, { onDelete: "set null" }),
+    approvedFrameJobId: uuid("approved_frame_job_id"),
+    /** Clip resultante de animar el fotograma aprobado, y el trabajo del que salió. */
+    clipMediaId: uuid("clip_media_id").references(() => media.id, { onDelete: "set null" }),
+    clipJobId: uuid("clip_job_id"),
+    /**
+     * Reintentos **de pago** consumidos en esta escena y los que el usuario ha autorizado, en número de
+     * reintentos (decisión provisional del propietario, 2026-09-27: **cero automáticos**, PRD §6). Un fallo del
+     * proveedor no consume ninguno por su cuenta porque no se reenvía nada por su cuenta: solo los consume una
+     * regeneración que el usuario pide **después** de un fallo con coste, y solo si hay presupuesto autorizado.
+     */
+    retriesUsed: integer("retries_used").notNull().default(0),
+    retryBudget: integer("retry_budget").notNull().default(0),
+    /** Motivo del último fallo, escrito para el usuario. Vacío si no ha fallado nada. */
+    lastFailureReason: text("last_failure_reason").notNull().default(""),
+    /**
+     * `true` cuando la escena se ha editado **después** de generarla: lo producido ya no corresponde a lo que
+     * dice. No invalida nada por sí solo (el gasto está hecho y el resultado sigue en la biblioteca), pero la
+     * rejilla lo avisa y el historial lo registra como «qué cambió» antes de la siguiente regeneración.
+     */
+    changedSinceGeneration: boolean("changed_since_generation").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

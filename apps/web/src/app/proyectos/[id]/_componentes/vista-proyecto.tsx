@@ -52,6 +52,12 @@ export function VistaProyecto({ inicial, personajes }: { inicial: ProyectoDetall
         </div>
         <div className="flex flex-col items-end gap-2">
           <InsigniaEstadoProyecto estado={proyecto.estado} />
+          {/* La producción solo tiene sentido con el plan aprobado: hasta entonces no hay nada que producir. */}
+          {proyecto.estado !== "borrador" && (
+            <Link href={`/proyectos/${proyecto.id}/produccion`} className={claseBoton("primario", "sm")}>
+              Producir las escenas
+            </Link>
+          )}
           <Link href="/crear/historial" className={claseBoton("secundario", "sm")}>
             Historial de trabajos
           </Link>

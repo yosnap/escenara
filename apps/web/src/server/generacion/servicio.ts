@@ -3,6 +3,7 @@ import type { ModeloVista } from "@/lib/catalogo";
 import { CLIP, type TipoTrabajo, type TrabajoVista } from "@/lib/generacion";
 import type { TipoPersonaje } from "@/lib/personajes";
 import type { SeleccionPresets } from "@/lib/presets";
+import { leerAjustes } from "../ajustes";
 import { proyectoDeEscena } from "../asistente/consulta";
 import { hechosDeEscena, techoDelProyecto } from "../asistente/plan";
 import { encolar, filaDeLaConfirmacion, type NuevoTrabajoEncolado } from "../cola/encolar";
@@ -80,6 +81,12 @@ interface Confirmacion {
   avisosConfirmados?: string[];
   /** Modelo elegido en el catálogo; sin él se usa el predeterminado de la capacidad. */
   modelo?: string;
+  /**
+   * Este envío repite algo que pudo cobrarse, así que consume un reintento autorizado de la escena (0.19.0,
+   * ADR-0024). Lo pone **el servidor** de producción a partir del estado real de la escena, igual que
+   * `vistaSintetica`: si lo pudiera poner el navegador, bastaría con no mandarlo para reintentar gratis.
+   */
+  reintentoDeEscena?: boolean;
   /** Sello del precio con el que se hizo la estimación: si ha cambiado, se rechaza. */
   selloEstimacion?: string;
   /**
@@ -275,6 +282,19 @@ async function contextoDeLaVersion(
   return { contexto: contextoDeVersion(version, personaje.kind), tipo: personaje.kind };
 }
 
+/**
+ * Tope de escenas en vuelo del usuario para este envío (0.19.0). `null` fuera de un proyecto: el camino rápido
+ * de «Crear» no produce ninguna escena y solo lo acota el tope de trabajos simultáneos.
+ */
+async function topeDeEscenasEnVuelo(
+  escenaId: string | null,
+  reintento = false,
+): Promise<{ escenaId: string; maximo: number; reintento: boolean } | null> {
+  if (!escenaId) return null;
+  const { escenasEnVuelo } = await leerAjustes();
+  return { escenaId, maximo: escenasEnVuelo, reintento };
+}
+
 /** Comprobación previa determinista (contrato de decisiones): un rechazo no llega ni a encolarse. */
 async function exigirDecisionFavorable(entrada: Parameters<typeof decidir>[0]): Promise<void> {
   const decision = await decidir(entrada);
@@ -453,6 +473,7 @@ export async function crearFotograma(
     sello: precio.sello,
     // El tope por trabajo se mide con lo que el usuario confirma, aquí y en el motor.
     creditosDelEnvio: totales,
+    escena: await topeDeEscenasEnVuelo(conEscena?.escena.id ?? null, peticion.reintentoDeEscena),
   });
   return { trabajo: await vistaDeFila(fila), nueva };
 }
@@ -596,6 +617,7 @@ export async function crearAnimacion(
     valores,
     sello: precio.sello,
     creditosDelEnvio: totales,
+    escena: await topeDeEscenasEnVuelo(padre.sceneId, peticion.reintentoDeEscena),
   });
   return { trabajo: await vistaDeFila(fila), nueva };
 }

@@ -14,6 +14,7 @@ import type { Herramientas } from "../generacion/herramientas";
 import { referenciaCompatible } from "../media/conversion-referencia";
 import { mediosDeReferenciaVigentes } from "../personajes/consulta";
 import { cerrarTrabajoYGasto } from "../presupuesto/reserva";
+import { registrarFalloDeEscena } from "../produccion/cierre";
 import { type Adaptador, ErrorProveedor } from "../proveedores/contrato";
 import { resolver } from "../proveedores/registro";
 import { prepararCallback } from "./callback";
@@ -222,6 +223,8 @@ async function guardarTarea(
         .set({
           taskId,
           state: "enviado",
+          // La tarea existe en el proveedor: es la segunda etapa real.
+          stage: "enviado",
           sentAt: new Date(),
           errorMessage: null,
           failureReason: null,
@@ -332,6 +335,8 @@ async function cerrarSinCoste(fila: FilaTrabajo, motivo: MotivoFalloTrabajo, men
     "El trabajo no ha llegado a enviarse al proveedor: no ha costado nada.",
   );
   if (!cerrada) throw new Error(`El trabajo ${fila.id} ha desaparecido mientras se despachaba.`);
+  // Si producía una escena, la escena apunta por qué no salió. Sin coste y **sin reenviar nada** (0.19.0).
+  await registrarFalloDeEscena(cerrada, mensaje);
   return cerrada;
 }
 

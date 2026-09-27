@@ -61,6 +61,22 @@ export const motivoFalloTrabajo = pgEnum("generation_job_failure", [
   "consentimiento",
 ]);
 
+/**
+ * Etapa real por la que va un trabajo (0.19.0), para el progreso por etapas de la rejilla de producción.
+ *
+ * **No es un porcentaje ni una fase calculada por tiempo**: cada valor se apunta cuando el hecho ocurre de
+ * verdad (el worker lo toma, la tarea existe en el proveedor, el proveedor informa de que genera, se está
+ * descargando el archivo, está guardado). Existe porque `descargando` es la única etapa que el estado propio no
+ * distingue: durante la descarga el trabajo sigue en `en_curso`.
+ */
+export const etapaTrabajo = pgEnum("generation_job_stage", [
+  "preparando",
+  "enviado",
+  "en_curso",
+  "descargando",
+  "listo",
+]);
+
 export const generationJobs = pgTable(
   "generation_jobs",
   {
@@ -80,6 +96,11 @@ export const generationJobs = pgTable(
      */
     idempotencyKey: text("idempotency_key"),
     state: estadoTrabajo("state").notNull().default("preparando"),
+    /**
+     * Última etapa por la que pasó (0.19.0); `null` mientras el trabajo espera turno. El estado manda sobre esto:
+     * quien decide el dinero es `state`, y la etapa solo sirve para contar honestamente por dónde va.
+     */
+    stage: etapaTrabajo("stage"),
     /** Estado crudo del proveedor (`waiting`, `queuing`, `generating`, `success`, `fail`). */
     providerState: text("provider_state"),
     prompt: text("prompt").notNull(),

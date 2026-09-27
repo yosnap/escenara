@@ -29,6 +29,7 @@ Cada decisión relevante se documenta en un fichero `adr-NNNN-slug.md` dentro de
 | [0021](adr-0021-el-proyecto-como-unidad-de-trabajo.md) | El proyecto es la unidad de trabajo y el plan aprobado, la única puerta a la producción | 0.17.0 | Propuesto (decisiones provisionales pendientes del propietario) |
 | [0022](adr-0022-el-prompt-es-material-del-servidor.md) | El prompt compuesto es material del servidor y del admin, no del navegador | 0.17.0 | Propuesto (decisión **firme** del propietario) |
 | [0023](adr-0023-motor-de-reglas-de-controles-previos.md) | Motor de reglas de controles previos, y su precedencia sobre los modelos de decisión | 0.18.0 | Propuesto (decisiones provisionales pendientes del propietario) |
+| [0024](adr-0024-cancelacion-y-reintentos-de-produccion.md) | Cancelación y reintentos en la producción de escenas: nada se reenvía y nada se cancela en el proveedor | 0.19.0 | Propuesto (decisiones provisionales pendientes del propietario) |
 
 ## Plantilla
 

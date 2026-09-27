@@ -27,6 +27,16 @@ export interface Ajustes {
   /** Trabajos simultáneos por usuario en la cola (en cola, preparando, enviados o en curso). */
   trabajosSimultaneos: number;
   /**
+   * Escenas de proyecto que un usuario puede tener **en vuelo** a la vez (RF06, 0.19.0). Una escena está en vuelo
+   * mientras su fotograma o su clip siguen en la cola o en el proveedor.
+   *
+   * Es un tope **aparte** del de trabajos simultáneos y más estricto a propósito: una escena cuesta dos trabajos
+   * (fotograma y clip), así que producir un proyecto de diez escenas de golpe sería comprometer diez veces el
+   * coste de una antes de que el usuario haya visto ni un fotograma. Por defecto 2 (decisión provisional del
+   * propietario, 2026-09-27): acota el gasto y el riesgo sin que la producción se haga eterna.
+   */
+  escenasEnVuelo: number;
+  /**
    * Presupuesto en créditos que se propone al crear un proyecto (RF14, 0.17.0). Es solo la propuesta: quien
    * crea el proyecto la puede subir o bajar, y sin presupuesto fijado el plan no se puede aprobar.
    */
@@ -133,6 +143,8 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   presupuestoCreditos: 2000,
   presupuestoTrabajo: 500,
   trabajosSimultaneos: 3,
+  // Dos escenas en vuelo: cada una son dos trabajos, así que esto ya compromete hasta cuatro a la vez.
+  escenasEnVuelo: 2,
   presupuestoProyecto: 500,
   // El asistente de guion arranca apagado: cuesta dinero y el guion a mano funciona igual de bien.
   asistenteActivo: false,
@@ -230,6 +242,10 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
   trabajosSimultaneos: {
     valido: entero(1, 50),
     mensaje: "Indica de 1 a 50 trabajos simultáneos por usuario.",
+  },
+  escenasEnVuelo: {
+    valido: entero(1, 24),
+    mensaje: "Indica de 1 a 24 escenas en vuelo por usuario.",
   },
   presupuestoProyecto: {
     valido: entero(0, 100_000_000),

@@ -1,0 +1,92 @@
+import { and, eq, ne, sql } from "drizzle-orm";
+import { db, type Ejecutor } from "../db/cliente";
+import { type FilaTrabajo, projects, scenes } from "../db/esquema";
+
+/**
+ * Lo que la producción de una escena apunta cuando un trabajo suyo **termina** (RF06, 0.19.0).
+ *
+ * Se llama desde el cierre del trabajo (`generacion/seguimiento.ts`), que es el único sitio que sabe de verdad
+ * qué ha pasado con el dinero. Aquí no se cobra, no se libera ninguna reserva y **no se reenvía nada**: solo se
+ * escribe en la escena el hecho que acaba de ocurrir.
+ *
+ * Dos reglas:
+ *
+ * - **el fotograma no se aprueba solo.** Un fotograma listo deja la escena a la espera de que una persona lo mire:
+ *   animar cuesta otro dinero y nadie lo autoriza en nombre del usuario;
+ * - **un fallo no consume ningún reintento y no dispara ningún reenvío** (decisión provisional del propietario,
+ *   2026-09-27; PRD §6). Lo único que se apunta es el motivo, para que la rejilla pueda decir qué pasó y ofrecer
+ *   al usuario autorizar un presupuesto de reintentos si quiere volver a intentarlo.
+ */
+
+/** Todo cambio en una escena mueve la marca de tiempo de su proyecto. */
+const tocarProyecto = (tx: Ejecutor, proyectoId: string) =>
+  tx.update(projects).set({ updatedAt: new Date() }).where(eq(projects.id, proyectoId));
+
+/**
+ * El proyecto pasa a `listo` cuando **todas** sus escenas están producidas, y a `en_produccion` mientras quede
+ * alguna sin producir. No se toca un borrador: eso lo decide la aprobación del plan.
+ */
+async function ajustarEstadoDelProyecto(tx: Ejecutor, proyectoId: string): Promise<void> {
+  const [{ pendientes } = { pendientes: 0 }] = await tx
+    .select({ pendientes: sql<number>`count(*)::int` })
+    .from(scenes)
+    .where(and(eq(scenes.projectId, proyectoId), ne(scenes.state, "producida")));
+  await tx
+    .update(projects)
+    .set({ state: pendientes === 0 ? "listo" : "en_produccion", updatedAt: new Date() })
+    .where(and(eq(projects.id, proyectoId), ne(projects.state, "borrador")));
+}
+
+/** Marca el proyecto como en producción en cuanto se encola su primera escena. */
+export async function marcarEnProduccion(proyectoId: string): Promise<void> {
+  await db()
+    .update(projects)
+    .set({ state: "en_produccion", updatedAt: new Date() })
+    .where(and(eq(projects.id, proyectoId), eq(projects.state, "planificado")));
+}
+
+/**
+ * Un trabajo de escena ha terminado bien y su resultado ya está en la biblioteca.
+ *
+ * - **fotograma**: no se aprueba nada; solo se limpia el motivo del último fallo, porque ya no es verdad;
+ * - **animación**: el clip es el resultado de la escena, así que la escena pasa a `producida` y el proyecto se
+ *   recalcula.
+ */
+export async function registrarResultadoDeEscena(fila: FilaTrabajo, medioId: string): Promise<void> {
+  if (!fila.sceneId) return;
+  const escenaId = fila.sceneId;
+  await db().transaction(async (tx) => {
+    const [escena] = await tx.select().from(scenes).where(eq(scenes.id, escenaId)).limit(1).for("update");
+    if (!escena) return;
+    if (fila.kind === "fotograma") {
+      await tx.update(scenes).set({ lastFailureReason: "", updatedAt: new Date() }).where(eq(scenes.id, escenaId));
+      await tocarProyecto(tx, escena.projectId);
+      return;
+    }
+    await tx
+      .update(scenes)
+      .set({
+        clipMediaId: medioId,
+        clipJobId: fila.id,
+        state: "producida",
+        lastFailureReason: "",
+        // Lo producido corresponde otra vez a lo que dice la escena: se generó con el texto de ahora.
+        changedSinceGeneration: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(scenes.id, escenaId));
+    await ajustarEstadoDelProyecto(tx, escena.projectId);
+  });
+}
+
+/**
+ * Un trabajo de escena ha fallado. Se apunta el motivo **apto para el usuario** y nada más: ni se reintenta, ni
+ * se consume presupuesto de reintentos, ni se marca la escena como producida.
+ */
+export async function registrarFalloDeEscena(fila: FilaTrabajo, motivo: string): Promise<void> {
+  if (!fila.sceneId || motivo.trim() === "") return;
+  await db()
+    .update(scenes)
+    .set({ lastFailureReason: motivo, updatedAt: new Date() })
+    .where(eq(scenes.id, fila.sceneId));
+}

@@ -560,23 +560,31 @@ describe.skipIf(!hayBaseDeDatos)("asistente de guion y proyectos", () => {
     const plantillas = await listarPlantillas({ usuarioId: ana.id });
     const plantilla = plantillas.find((p) => p.activa && p.capacidad === "image_edit");
     if (!plantilla) throw new Error("Falta la plantilla de fotograma de la semilla.");
-    await editarPlantillaDeLaInstalacion(
-      plantilla.id,
-      {
-        clave: plantilla.clave,
-        nombre: plantilla.nombre,
-        descripcion: plantilla.descripcion,
-        capacidad: plantilla.capacidad,
-        plantilla: `${plantilla.plantilla}\nExtra line.`,
-        variables: plantilla.variables,
-        restricciones: plantilla.restricciones,
-        orden: plantilla.orden,
-        activa: true,
-        motivo: "Se cambia el texto para comprobar la invalidación.",
-      },
-      admin.id,
-    );
+    const editar = (texto: string, motivo: string) =>
+      editarPlantillaDeLaInstalacion(
+        plantilla.id,
+        {
+          clave: plantilla.clave,
+          nombre: plantilla.nombre,
+          descripcion: plantilla.descripcion,
+          capacidad: plantilla.capacidad,
+          plantilla: texto,
+          variables: plantilla.variables,
+          restricciones: plantilla.restricciones,
+          orden: plantilla.orden,
+          activa: true,
+          motivo,
+        },
+        admin.id,
+      );
+    await editar(`${plantilla.plantilla}\nExtra line.`, "Se cambia el texto para comprobar la invalidación.");
     await expect(exigirEscenaAprobada(actorAna, aprobada.id)).rejects.toThrow(/plantilla .* ha cambiado/);
+    /**
+     * Y se deja el texto como estaba. La base de datos de prueba **sobrevive entre ejecuciones**, así que una
+     * edición que añade una línea la iría alargando en cada pasada de `bun test` hasta rebasar su tope de 1200
+     * caracteres: el test acabaría fallando por su propio rastro y con un motivo que no es el que prueba.
+     */
+    await editar(plantilla.plantilla, "Se deja la plantilla como estaba antes del test.");
   });
 
   test("una llamada del asistente que se queda a medias retiene presupuesto y el barrido la cierra con su estimación", async () => {

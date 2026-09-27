@@ -1,5 +1,6 @@
 import { and, desc, eq, gt, inArray, isNotNull, ne, or, type SQL } from "drizzle-orm";
 import { ESTADOS_ACTIVOS, type TrabajoVista } from "@/lib/generacion";
+import { etapaDeTrabajo } from "@/lib/produccion";
 import { leerAjustes } from "../ajustes";
 import { posicionEnCola, posicionesEnCola } from "../cola/toma";
 import { db } from "../db/cliente";
@@ -68,6 +69,8 @@ export function vistaDe(
     proveedor: fila.provider,
     modelo: fila.model,
     estado: fila.state,
+    // Etapa real por la que va, deducida del estado y de lo que se apuntó al pasar por ella. Nunca un porcentaje.
+    etapa: etapaDeTrabajo(fila.state, fila.stage),
     estadoProveedor: fila.providerState,
     taskId: fila.taskId,
     escena: escenaDe(fila),

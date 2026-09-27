@@ -1,5 +1,7 @@
+import { ProgresoEtapas } from "@/components/ui/feedback";
 import { InsigniaAfirmacion, InsigniaEstadoEscena, InsigniaEstadoProyecto, TablaPlan } from "@/components/ui/proyecto";
 import { EVALUACION_LISTA, REGLAS_VERSION } from "@/lib/controles";
+import { etapasDeTrabajo, textoDeCancelacion } from "@/lib/produccion";
 import {
   ESTADOS_AFIRMACION,
   ESTADOS_ESCENA,
@@ -30,6 +32,8 @@ const escena = (id: string, orden: number, accion: string, creditos: number | nu
   aprobadaEn: null,
   motivoInvalidacion: "",
   trabajoId: null,
+  // Sin miniatura en el catálogo: la del storyboard real es un medio del usuario, y aquí no hay ninguno.
+  fotograma: null,
   estimacion:
     creditos === null
       ? null
@@ -105,6 +109,22 @@ export function SeccionProyectos() {
         <Muestra titulo="Tabla de aprobación del plan">
           <div className="w-full">
             <TablaPlan plan={PLAN} escenas={ESCENAS} />
+          </div>
+        </Muestra>
+        {/*
+          Producción de una escena (0.19.0). Las etapas salen de la **misma función pura** que usa la rejilla, con
+          un estado y una etapa de verdad: aquí no hay ningún porcentaje que se pueda copiar por descuido.
+        */}
+        <Muestra titulo="Etapas reales de un trabajo">
+          <div className="flex w-full flex-col gap-4">
+            <ProgresoEtapas etiqueta="Fotograma generándose" etapas={etapasDeTrabajo("en_curso", null)} />
+            <ProgresoEtapas etiqueta="Clip que ha fallado" etapas={etapasDeTrabajo("fallido", "enviado")} />
+          </div>
+        </Muestra>
+        <Muestra titulo="Qué pasa al cancelar una escena">
+          <div className="flex w-full flex-col gap-2 text-texto">
+            <p>{textoDeCancelacion({ seCancelan: 1, seCobraran: 1 })}</p>
+            <p>{textoDeCancelacion({ seCancelan: 0, seCobraran: 0 })}</p>
           </div>
         </Muestra>
       </div>

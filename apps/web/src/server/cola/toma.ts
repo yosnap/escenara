@@ -59,6 +59,8 @@ export async function tomarTrabajos(workerId: string, limite = MAXIMO_POR_TOMA):
     set locked_by = ${workerId},
         locked_until = ${hasta},
         state = 'preparando',
+        -- Primera etapa real del trabajo: un worker lo ha tomado. No es un porcentaje, es un hecho.
+        stage = 'preparando',
         attempts = j.attempts + 1
     from candidatos c
     where j.id = c.id
