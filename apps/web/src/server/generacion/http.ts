@@ -1,7 +1,9 @@
+import { ErrorProyecto } from "../asistente/errores";
 import { esAdmin, sesionDePeticion } from "../auth/sesion";
 import { dentroDelLimite, type Limite } from "../limite";
 import { ErrorMedio } from "../media/errores";
 import type { Actor } from "../media/servicio";
+import { ErrorPersonaje } from "../personajes/errores";
 import { ErrorPreset } from "../prompts/errores";
 import { ErrorCatalogo } from "../proveedores/contrato";
 import { ErrorGeneracion } from "./errores";
@@ -32,6 +34,11 @@ export function respuestaError(error: unknown): Response {
   // Los de presets y plantillas (0.16.0) llegan al componer el prompt: preset ajeno, desactivado, variable
   // obligatoria sin valor o formato que el modelo no admite. Todos traen su código y su motivo escrito.
   if (error instanceof ErrorPreset) return Response.json({ error: error.message }, { status: error.estado });
+  // Y desde 0.18.0 también los frenos del motor de controles que pertenecen a un personaje (consentimiento,
+  // referencias) o a un proyecto (plan sin aprobar, presupuesto del proyecto): la puerta los lanza con la clase
+  // y el código de su familia, y el usuario tiene que ver el motivo, no un «error interno».
+  if (error instanceof ErrorPersonaje) return Response.json({ error: error.message }, { status: error.estado });
+  if (error instanceof ErrorProyecto) return Response.json({ error: error.message }, { status: error.estado });
   console.error("[generacion]", error);
   return Response.json({ error: "Error interno al procesar el trabajo." }, { status: 500 });
 }

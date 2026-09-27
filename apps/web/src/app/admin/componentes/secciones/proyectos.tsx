@@ -1,4 +1,5 @@
 import { InsigniaAfirmacion, InsigniaEstadoEscena, InsigniaEstadoProyecto, TablaPlan } from "@/components/ui/proyecto";
+import { EVALUACION_LISTA, REGLAS_VERSION } from "@/lib/controles";
 import {
   ESTADOS_AFIRMACION,
   ESTADOS_ESCENA,
@@ -47,6 +48,7 @@ const escena = (id: string, orden: number, accion: string, creditos: number | nu
           selloAnimacion: "kie:veo3_lite:vídeo de 4 s@v1",
         },
   afirmaciones: [],
+  controles: EVALUACION_LISTA(REGLAS_VERSION),
 });
 
 const ESCENAS: EscenaVista[] = [
@@ -67,6 +69,7 @@ const PLAN: PlanVista = {
   afirmacionesBloqueantes: 1,
   comprobado: "2026-09-27",
   margen: 30,
+  estadoControl: "listo",
   impedimentos: impedimentosDelPlan({
     totalEscenas: ESCENAS.length,
     escenasSinEstimacion: 1,

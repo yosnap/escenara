@@ -1,6 +1,7 @@
 "use client";
 
 import { SeccionAcciones } from "./secciones/acciones";
+import { SeccionControles } from "./secciones/controles";
 import { SeccionCreador } from "./secciones/creador";
 import { SeccionCuentas } from "./secciones/cuentas";
 import { SeccionEstados } from "./secciones/estados";
@@ -30,6 +31,7 @@ const INDICE = [
   ["cuentas", "Cuentas"],
   ["secretos", "Secretos"],
   ["estados", "Estados y presupuesto"],
+  ["controles", "Controles previos"],
   ["generacion", "Coste y trabajos"],
   ["modelos", "Catálogo de modelos"],
   ["superposiciones", "Diálogos y pestañas"],
@@ -71,6 +73,7 @@ export function Catalogo() {
         <SeccionCuentas />
         <SeccionSecretos />
         <SeccionEstados />
+        <SeccionControles />
         <SeccionGeneracion />
         <SeccionModelos />
         <SeccionSuperposiciones />

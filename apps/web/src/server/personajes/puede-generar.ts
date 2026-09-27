@@ -62,31 +62,28 @@ export async function exigirPersonajeUsable(personajeId: string, nombre: string)
   }
 }
 
-/**
- * Personaje propio listo para generar, con sus referencias ya resueltas y recortadas a lo que admite el
- * modelo. Lanza con el motivo exacto si no puede: es lo que ve quien lo pidió.
- *
- * `maximoDelModelo` es `parametros.maximoReferencias` del catálogo. Un modelo que no declare referencias
- * (0) no puede recibir un personaje: se dice y no se envía nada.
- */
-export async function personajeParaGenerar(
-  actor: Actor,
-  personajeId: unknown,
-  maximoDelModelo: number,
-): Promise<PersonajeParaGenerar> {
+/** Personaje propio, sin juzgar todavía si puede generar: eso lo decide el motor de controles (0.18.0). */
+export async function personajePropio(actor: Actor, personajeId: unknown): Promise<FilaPersonaje> {
   if (!esUuidPersonaje(personajeId)) throw new ErrorPersonaje(400, "Elige un personaje.");
   const [personaje] = await db().select().from(characters).where(eq(characters.id, personajeId)).limit(1);
   // Lo ajeno responde 404 igual que en la biblioteca: no se revela que existe.
   if (!personaje || personaje.ownerId !== actor.id) throw new ErrorPersonaje(404, "El personaje no existe.");
+  return personaje;
+}
 
-  await exigirPersonajeUsable(personaje.id, personaje.name);
-  if (maximoDelModelo < 1) {
-    throw new ErrorPersonaje(
-      400,
-      "El modelo elegido no acepta fotos de referencia, así que no se puede usar con un personaje. Elige otro modelo.",
-    );
-  }
-
+/**
+ * Referencias, versión y contexto con los que se va a generar: las mejores por cobertura de vistas,
+ * recortadas a lo que admite el modelo.
+ *
+ * **No comprueba si el personaje puede generar.** Desde 0.18.0 eso es una regla del motor de controles
+ * (`server/controles/motor.ts › consentimiento`), que se evalúa **antes** de llamar aquí: tener la regla en dos
+ * sitios es tenerla en ninguno, porque acabarían divergiendo. Quien llame sin haber pasado por el motor se lo
+ * encuentra en la puerta del encolado, que exige todos los grupos de hechos resueltos.
+ */
+export async function referenciasParaGenerar(
+  personaje: FilaPersonaje,
+  maximoDelModelo: number,
+): Promise<PersonajeParaGenerar> {
   // Versión vigente, contexto y las mejores referencias por cobertura, recortadas al tope del modelo. Solo
   // entran las utilizables: una referencia en la papelera no se envía a ningún proveedor.
   const { version, contexto, referencias: elegidas } = await contextoParaGenerar(personaje, maximoDelModelo);

@@ -61,6 +61,24 @@ export interface Ajustes {
    */
   mostrarPromptAlUsuario: boolean;
   /**
+   * Parámetros del motor de controles previos (RF12, 0.18.0). Las **reglas viven en el código**
+   * (`server/controles/motor.ts`, deterministas y puras) y aquí solo se ajustan sus umbrales: no hay editor
+   * de reglas en la interfaz (decisión provisional del propietario, 2026-09-27).
+   *
+   * Estos tres solo gobiernan avisos **salvables**. Los frenos duros (credencial, consentimiento, formato,
+   * presupuesto) no son configurables a propósito: se apagan cambiando el código y revisándolo, no desde un
+   * panel.
+   */
+  /** Avisar cuando falten vistas mínimas del personaje o alguna foto la haya señalado el control de calidad. */
+  controlesExigirCoberturaVistas: boolean;
+  /** Avisar cuando el precio del modelo se comprobó hace más de 90 días: la estimación puede quedarse corta. */
+  controlesExigirPrecioFresco: boolean;
+  /**
+   * Avisos salvables que se pueden confirmar de una vez. Pasado ese número hay que arreglar algo: una pantalla
+   * con seis casillas de «sé lo que hago» no es una confirmación informada, es un trámite.
+   */
+  controlesMaximoAvisos: number;
+  /**
    * Fotos de referencia que un personaje necesita como mínimo para poder generar. Con menos, la identidad
    * se pierde entre fotogramas: en el prototipo del 2026-09-27 cinco fotos dieron buen resultado y tres son
    * el mínimo razonable. La cobertura guiada de vistas llega en 0.14.0.
@@ -123,6 +141,14 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   traducirPrompts: false,
   traduccionDiasCache: 180,
   mostrarPromptAlUsuario: false,
+  // El aviso de cobertura **viene apagado**: añade una confirmación a un flujo que ya funciona y solo tiene
+  // sentido cuando la instalación usa la captura guiada de vistas (0.14.0) de verdad. Encenderlo es decidir que
+  // a partir de ahora generar con un personaje sin todas sus vistas exige confirmarlo.
+  controlesExigirCoberturaVistas: false,
+  // El del precio viejo sí: no cuesta nada, no bloquea nada, y gastar con una tarifa de hace más de tres meses
+  // es exactamente lo que el panel «Antes de generar» tiene que poder decir antes de gastar.
+  controlesExigirPrecioFresco: true,
+  controlesMaximoAvisos: 3,
   minimoReferenciasPersonaje: 3,
   // 512 px de lado menor: por debajo, una cara ya no aporta identidad y el proveedor la amplía inventando.
   calidadLadoMinimo: 512,
@@ -220,6 +246,12 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
     mensaje: "Indica de 0 a 3650 días (0 = no guardar traducciones entre sesiones).",
   },
   mostrarPromptAlUsuario: { valido: booleano, mensaje: "Debe ser sí o no." },
+  controlesExigirCoberturaVistas: { valido: booleano, mensaje: "Debe ser sí o no." },
+  controlesExigirPrecioFresco: { valido: booleano, mensaje: "Debe ser sí o no." },
+  controlesMaximoAvisos: {
+    valido: entero(1, 10),
+    mensaje: "Indica de 1 a 10 avisos confirmables a la vez.",
+  },
   minimoReferenciasPersonaje: {
     valido: entero(1, 10),
     mensaje: "Indica de 1 a 10 fotos de referencia como mínimo por personaje.",

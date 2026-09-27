@@ -111,6 +111,24 @@ export async function mediosDeReferenciaVigentes(
 }
 
 /**
+ * Referencias del personaje **que siguen siendo utilizables**: las mismas que `referenciasDe`, pero sin las que
+ * tengan su medio en la papelera.
+ *
+ * La diferencia importa donde se mide la **cobertura de vistas** (`controles/hechos.ts`): una foto en la papelera
+ * no se envía a ningún proveedor, así que contarla haría decir «esta vista está cubierta» de una foto que no se
+ * va a usar, que es justo el aviso que el motor tiene que dar.
+ */
+export async function referenciasVigentesDe(personajeId: string, ejecutor: Ejecutor = db()): Promise<FilaReferencia[]> {
+  const filas = await ejecutor
+    .select({ referencia: characterReferences })
+    .from(characterReferences)
+    .innerJoin(media, eq(media.id, characterReferences.mediaId))
+    .where(and(eq(characterReferences.characterId, personajeId), isNull(media.deletedAt)))
+    .orderBy(asc(characterReferences.sortOrder), asc(characterReferences.createdAt));
+  return filas.map((f) => f.referencia);
+}
+
+/**
  * Fila del personaje visible para quien pregunta. Lo ajeno responde 404 y no revela que existe; el admin
  * puede leer cualquiera, porque tiene que poder revisar los documentos de consentimiento.
  */

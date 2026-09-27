@@ -1,0 +1,176 @@
+import type { EstadoControl } from "@/lib/controles";
+import type { TipoTrabajo } from "@/lib/generacion";
+
+/**
+ * Contrato del motor de controles previos (RF12, 0.18.0): los **hechos** que se le dan y los **frenos** que
+ * devuelve.
+ *
+ * El motor es determinista y puro: recibe hechos ya cargados y no consulta nada. Todo lo que hace falta leer
+ * lo lee `hechos.ts` **antes**, para que la misma evaluación sirva para pintar el panel «Antes de generar»
+ * (lectura, sin mover un céntimo) y para cerrar la puerta del encolado.
+ */
+
+/** Versión del conjunto de reglas activo; vive en `lib/controles.ts` porque también se muestra (RF13). */
+export { REGLAS_VERSION } from "@/lib/controles";
+
+/** Qué se está evaluando. Una escena del plan de un proyecto, o un envío suelto de «Crear». */
+export const SUJETOS_CONTROL = ["escena", "trabajo"] as const;
+export type SujetoControl = (typeof SUJETOS_CONTROL)[number];
+
+/** Tipo de excepción con la que se rechaza el envío, para no cambiar los códigos ni las clases de 0.10.0–0.17.0. */
+export type FamiliaError = "generacion" | "proyecto" | "personaje";
+
+/** Un freno del motor: por qué no se puede generar (o qué conviene arreglar) y qué hay que hacer. */
+export interface Freno {
+  /** Clave estable de la regla. Es lo que el usuario confirma cuando el aviso es salvable. */
+  regla: string;
+  estado: Exclude<EstadoControl, "listo">;
+  /** Por qué, en lenguaje llano. Nunca vacío. */
+  motivo: string;
+  /** Qué hacer. Nunca vacío. */
+  accion: string;
+  /** Ruta de la aplicación donde se arregla; `null` si no hay una concreta. */
+  enlace?: string | null;
+  /** Código HTTP con el que se rechaza el envío. */
+  http: number;
+  excepcion: FamiliaError;
+  /**
+   * `true` cuando el usuario puede salvar el aviso confirmándolo expresamente. Solo puede serlo un freno
+   * `ajustes`: el motor lo comprueba y nunca marca como confirmable un `revision` ni un `bloqueado`
+   * (decisión provisional del propietario, 2026-09-27).
+   */
+  confirmable?: boolean;
+  /**
+   * `false` en los avisos que **solo informan** y no cierran ninguna puerta. Hoy solo uno: el coste que no se
+   * puede acotar, porque desde 0.12.0 el trabajo ya se encola como `esperando_limite` y no sale hasta que el
+   * usuario fija su techo. Ese paso **es** la acción del aviso; pedir además una casilla no añadiría nada.
+   */
+  gatea?: boolean;
+}
+
+/** Freno con todos sus campos resueltos: es lo que guarda y devuelve el motor. */
+export interface FrenoResuelto extends Required<Omit<Freno, "enlace">> {
+  enlace: string | null;
+}
+
+export interface Evaluacion {
+  estado: EstadoControl;
+  reglasVersion: string;
+  frenos: FrenoResuelto[];
+}
+
+// ── Hechos ────────────────────────────────────────────────────────────────────────────────────────────────
+
+/** Estado de la credencial del usuario en el proveedor del modelo elegido. */
+export interface HechosCredencial {
+  nombreProveedor: string;
+  /** `false` cuando el proveedor del modelo todavía no puede cobrar con la clave del usuario (ADR-0009). */
+  proveedorAdmitido: boolean;
+  /** Motivo por el que la credencial no sirve, o `null` si sirve. */
+  motivo: "boveda" | "sin-credencial" | "invalida" | "ilegible" | null;
+  /** Saldo de créditos en el proveedor; `null` cuando no se ha podido consultar (entonces no se bloquea). */
+  saldo: number | null;
+}
+
+/** Modelo elegido y su precio, reducidos a lo que deciden las reglas. */
+export interface HechosModelo {
+  nombre: string;
+  /** Fotos de referencia que admite; 0 = no admite ninguna. */
+  maximoReferencias: number;
+  /** Fecha (AAAA-MM-DD) en la que se comprobó su precio. */
+  precioComprobado: string;
+  /** El precio se comprobó hace más de {@link DIAS_PRECIO_FRESCO} días. */
+  precioCaducado: boolean;
+  /** El coste máximo del trabajo se puede acotar con el precio registrado (PRD §6). */
+  costeAcotado: boolean;
+  /** Por qué no se puede acotar; vacío cuando sí se puede. */
+  motivoSinAcotar: string;
+}
+
+/** Personaje con el que se genera, si se genera con uno. */
+export interface HechosPersonaje {
+  nombre: string;
+  /** Impedimentos duros (consentimiento y mínimo de referencias), tal como los deduce `personajes/estado.ts`. */
+  impedimentos: string[];
+  /** Vistas mínimas sin ninguna foto original suya. */
+  vistasSinCubrir: string[];
+  /** Fotos de referencia que el control de calidad señaló y el usuario añadió «de todas formas». */
+  referenciasSenaladas: number;
+}
+
+/** Dinero: lo que cuesta el envío frente a los tres techos que existen. */
+export interface HechosPresupuesto {
+  /** Créditos totales del envío (generación más traducción, si esta instalación traduce). */
+  creditos: number;
+  topeTrabajo: number | null;
+  /** Créditos que le quedan libres al usuario; `null` = sin presupuesto propio en esta instalación. */
+  disponibleUsuario: number | null;
+  /** Parte del presupuesto del usuario que está retenida y no se libera sola, con en qué está. */
+  retenidoUsuario: number;
+  trabajosEnRevision: number;
+  llamadasDeTextoColgadas: number;
+  /** Techo del proyecto; `null` cuando el envío no pertenece a un proyecto o el proyecto no tiene techo. */
+  autorizadoProyecto: number | null;
+  comprometidoProyecto: number;
+}
+
+/** Espacio de la biblioteca: el resultado tiene que caber antes de pagarlo. */
+export interface HechosCuota {
+  /** Bytes que hay que reservar para el peor caso del tipo de resultado. */
+  previstoBytes: number;
+  /** Bytes libres; `null` = sin cuota. */
+  libresBytes: number | null;
+}
+
+/** Escena del plan que se produce, si el envío pertenece a un proyecto. */
+export interface HechosEscena {
+  planAprobado: boolean;
+  /** `false` cuando la escena está en borrador (nunca aprobada o invalidada). */
+  aprobada: boolean;
+  /** Por qué dejó de estar aprobada, tal como se lo guardó el proyecto. Vacío si nunca lo estuvo. */
+  motivoInvalidacion: string;
+  /** Lo congelado al aprobar ya no coincide con lo vigente. */
+  precioCambiado: boolean;
+  fichaCambiada: boolean;
+  plantillaCambiada: boolean;
+  /** Afirmaciones de la escena que siguen `por_verificar`. */
+  afirmacionesPorVerificar: number;
+}
+
+/** Parámetros de las reglas, editables en Admin › Ajustes (no hay editor de reglas en la interfaz). */
+export interface ParametrosControles {
+  /** Avisar cuando falten vistas mínimas del personaje o haya fotos señaladas por calidad. */
+  exigirCoberturaVistas: boolean;
+  /** Avisar cuando el precio del modelo se comprobó hace más de 90 días. */
+  exigirPrecioFresco: boolean;
+  /** Tope de avisos salvables que se pueden confirmar de una vez; pasado ese número, hay que arreglar algo. */
+  maximoAvisos: number;
+}
+
+/**
+ * Hechos que evalúa el motor.
+ *
+ * Todos los grupos salvo `tipo` y `parametros` son opcionales, y una regla cuyo grupo de hechos **no está**
+ * no se evalúa. Eso permite una sola función de evaluación para dos usos honestos: la puerta del encolado, que
+ * aporta **todos** los grupos, y la mirada a una escena del plan, donde todavía no hay ni modelo elegido ni
+ * coste que comparar.
+ *
+ * Para que «no está» no pueda convertirse nunca en un pase gratis, la puerta
+ * ({@link exigirControles}) exige que estén **todos** los grupos antes de dejar encolar y falla con 500 si
+ * falta alguno: olvidarse de un grupo es un error de programación, no una configuración.
+ */
+export interface Hechos {
+  tipo: TipoTrabajo;
+  credencial?: HechosCredencial;
+  modelo?: HechosModelo;
+  /** `null` cuando el envío no lleva personaje (imagen suelta de 0.10.0); ausente = no se evalúa. */
+  personaje?: HechosPersonaje | null;
+  presupuesto?: HechosPresupuesto;
+  cuota?: HechosCuota;
+  /** `null` en el camino rápido de «Crear», que no pertenece a ningún proyecto (ADR-0021). */
+  escena?: HechosEscena | null;
+  parametros: ParametrosControles;
+}
+
+/** Grupos que la puerta del encolado exige tener resueltos. */
+export const GRUPOS_OBLIGATORIOS = ["credencial", "modelo", "personaje", "presupuesto", "cuota", "escena"] as const;

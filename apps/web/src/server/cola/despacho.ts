@@ -3,6 +3,9 @@ import { PROVEEDORES_PUBLICOS } from "@/lib/boveda";
 import { CAPACIDAD_DE_TIPO, type ModeloVista } from "@/lib/catalogo";
 import { leerAjustes } from "../ajustes";
 import { usarCredencialValida } from "../boveda/credenciales";
+import { hechosDePersonajeCitado, parametrosDeControles } from "../controles/hechos";
+import { evaluar, frenosQueGatean } from "../controles/motor";
+import { mensajeDeFreno } from "../controles/puerta";
 import { db } from "../db/cliente";
 import { type FilaMedio, type FilaTrabajo, generationJobs, media } from "../db/esquema";
 import { archivoDe } from "../generacion/comprobaciones";
@@ -10,7 +13,6 @@ import { olvidarSaldo } from "../generacion/estimacion";
 import type { Herramientas } from "../generacion/herramientas";
 import { referenciaCompatible } from "../media/conversion-referencia";
 import { mediosDeReferenciaVigentes } from "../personajes/consulta";
-import { motivosParaNoGenerar } from "../personajes/puede-generar";
 import { cerrarTrabajoYGasto } from "../presupuesto/reserva";
 import { type Adaptador, ErrorProveedor } from "../proveedores/contrato";
 import { resolver } from "../proveedores/registro";
@@ -127,23 +129,39 @@ class ErrorPersonajeNoUsable extends Error {
 
 async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): Promise<Preparado> {
   const { modelo, adaptador } = await resolver(CAPACIDAD_DE_TIPO[fila.kind], fila.model);
-  // ── Revalidación del consentimiento, **antes** de subir nada. El encolado la comprobó, pero entre encolar y
-  // enviar el usuario puede haber revocado el consentimiento o borrado fotos, y en un reintento puede haber
-  // pasado más rato todavía. Sin esta comprobación, revocar no impediría que la cara saliera hacia el
-  // proveedor: solo impediría pedir trabajos nuevos, que es la mitad de la regla.
+  // ── Reevaluación de los controles previos, **antes** de subir nada. El encolado los evaluó, pero entre
+  // encolar y enviar el usuario puede haber revocado el consentimiento o borrado fotos, y en un reintento puede
+  // haber pasado más rato todavía. Sin esto, revocar no impediría que la cara saliera hacia el proveedor: solo
+  // impediría pedir trabajos nuevos, que es la mitad de la regla.
+  //
+  // Se reevalúan las reglas que **pueden haber cambiado sin que el usuario pida nada** y que se pueden decidir
+  // con lo que hay en la fila: el consentimiento del personaje y si el modelo sigue aceptando referencias. Las
+  // de dinero no: su reserva ya está apartada desde el encolado, y volver a compararlas aquí rechazaría un
+  // trabajo por su propia reserva.
   if (fila.characterId) {
-    const motivos = await motivosParaNoGenerar(fila.characterId);
-    if (motivos.length > 0) {
+    const freno = frenosQueGatean(
+      evaluar({
+        tipo: fila.kind,
+        parametros: await parametrosDeControles(),
+        // Si la ficha del personaje ya no está, esto bloquea en lugar de dejar pasar: un borrado a medias no
+        // puede convertirse en un envío sin consentimiento.
+        personaje: await hechosDePersonajeCitado(fila.characterId),
+        modelo: {
+          nombre: modelo.nombre,
+          maximoReferencias: modelo.parametros.maximoReferencias,
+          // El precio y la acotación se decidieron al encolar y su reserva ya está apartada: volver a
+          // juzgarlos aquí rechazaría el trabajo por su propio apartado.
+          precioComprobado: "",
+          precioCaducado: false,
+          costeAcotado: true,
+          motivoSinAcotar: "",
+        },
+      }),
+    )[0];
+    if (freno) {
       throw new ErrorPersonajeNoUsable(
-        `El personaje de este trabajo ya no se puede usar para generar, así que no se ha enviado nada y no se te ha cobrado. ${motivos.join(" ")}`,
-      );
-    }
-    // Un modelo que dejó de aceptar referencias no puede recibir un personaje: se cierra en lugar de
-    // reintentar para siempre contra una configuración que no va a cambiar sola.
-    if (modelo.parametros.maximoReferencias < 1) {
-      throw new ErrorPersonajeNoUsable(
-        `El modelo ${modelo.nombre} ya no acepta fotos de referencia, así que no se puede usar con un personaje. No se ha enviado nada y no se te ha cobrado: vuelve a pedir el trabajo con otro modelo.`,
-        "interno",
+        `${mensajeDeFreno(freno)} No se ha enviado nada y no se te ha cobrado.`,
+        freno.regla === "consentimiento" ? "consentimiento" : "interno",
       );
     }
   }

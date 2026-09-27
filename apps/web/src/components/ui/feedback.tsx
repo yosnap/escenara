@@ -5,10 +5,20 @@ import { cn } from "./cn";
 /** Los cuatro estados de preparación del PRD. Siempre con icono, título y acción concreta. */
 export type EstadoPreparacion = "listo" | "ajustes" | "revision" | "bloqueado";
 
-const ESTADO: Record<
-  EstadoPreparacion,
-  { titulo: string; icono: ReactNode; borde: string; texto: string; circulo: string }
-> = {
+export interface EstiloPreparacion {
+  titulo: string;
+  icono: ReactNode;
+  borde: string;
+  texto: string;
+  circulo: string;
+}
+
+/**
+ * Color, icono y título de cada estado de preparación, en un solo sitio. Se exporta porque los controles
+ * previos (0.18.0) pintan el mismo estado en tres formas distintas —aviso grande, fila de comprobación e
+ * insignia de escena— y las tres tienen que decir lo mismo: **nunca solo color**, siempre icono y texto.
+ */
+export const ESTILO_PREPARACION: Record<EstadoPreparacion, EstiloPreparacion> = {
   listo: {
     titulo: "Listo para generar",
     icono: <CheckCircle2 />,
@@ -49,7 +59,7 @@ export function AvisoEstado({
   motivo: ReactNode;
   accion?: ReactNode;
 }) {
-  const e = ESTADO[estado];
+  const e = ESTILO_PREPARACION[estado];
   return (
     <div role="status" className={cn("flex gap-3 rounded-tarjeta border-2 bg-superficie p-4", e.borde)}>
       <span

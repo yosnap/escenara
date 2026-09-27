@@ -2,7 +2,7 @@
 
 **Escenara** · Estudio abierto de personajes y vídeo · «Da vida a cada escena»
 
-Mapa de la documentación pública del proyecto. Versión actual: **0.17.0**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
+Mapa de la documentación pública del proyecto. Versión actual: **0.18.0**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
 
 ## Mapa de documentos
 
@@ -19,7 +19,8 @@ Mapa de la documentación pública del proyecto. Versión actual: **0.17.0**. Pa
 | Guías | [La ficha y las versiones de un personaje](guias/ficha-y-versiones-de-personaje.md) | Ficha como contexto de generación, versiones, aprobaciones invalidadas y hoja de personaje | 0.15.0 |
 | Guías | [Presets y plantillas](guias/presets-y-plantillas.md) | Crear con botones, previsualización y edición del prompt final, y el catálogo de presets del admin | 0.16.0 |
 | Guías | [El asistente de guion](guias/asistente-de-guion.md) | Proyectos, guion por escenas, afirmaciones por verificar y aprobación del plan con su coste | 0.17.0 |
-| Arquitectura | [Decisiones (ADR)](arquitectura/decisiones/README.md) | Índice de decisiones y plantilla | Licencia, lenguaje, runtime, despliegue, almacenamiento, modelos iniciales, interfaz, base de datos, bóveda de credenciales, seguimiento de trabajos, ficha como contexto de generación, prompts en el servidor y en inglés, modelo de texto del asistente, el proyecto como unidad de trabajo y el prompt como material del servidor decididos; 2 pendientes |
+| Guías | [Por qué no puedo generar](guias/por-que-no-puedo-generar.md) | Los cuatro estados de los controles previos, cada motivo y cómo se arregla | 0.18.0 |
+| Arquitectura | [Decisiones (ADR)](arquitectura/decisiones/README.md) | Índice de decisiones y plantilla | Licencia, lenguaje, runtime, despliegue, almacenamiento, modelos iniciales, interfaz, base de datos, bóveda de credenciales, seguimiento de trabajos, ficha como contexto de generación, prompts en el servidor y en inglés, modelo de texto del asistente, el proyecto como unidad de trabajo, el prompt como material del servidor y el motor de reglas de controles previos decididos; 2 pendientes |
 | Recursos | [APIs, proveedores y servicios](recursos/apis-y-proveedores.md) | Qué servicio, para qué, dónde se obtiene la clave, documentación y precios | Vivo |
 | Recursos | [Plantilla de claves API](recursos/claves-api.plantilla.md) | Estructura del documento privado de claves | Vivo |
 | Privado | `privado/claves-api.local.md` | Claves reales. **Fuera de git** (`.gitignore`) | Local |

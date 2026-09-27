@@ -1,15 +1,13 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { esProveedor, PROVEEDORES_PUBLICOS, type Proveedor } from "@/lib/boveda";
 import type { ModeloVista } from "@/lib/catalogo";
-import { DIALOGO_MAXIMO, PROMPT_MAXIMO, PROMPT_MINIMO, TIPO_RESULTADO, type TipoTrabajo } from "@/lib/generacion";
-import { formatearTamano } from "@/lib/media/reglas";
+import { DIALOGO_MAXIMO, PROMPT_MAXIMO, PROMPT_MINIMO } from "@/lib/generacion";
 import { leerAjustes } from "../ajustes";
 import { leerObjeto } from "../almacenamiento";
 import { usarCredencialValida } from "../boveda/credenciales";
 import { db } from "../db/cliente";
 import { type FilaMedio, media } from "../db/esquema";
 import { dentroDelLimite, type Limite } from "../limite";
-import { type Actor, espacioUsado, limiteSubida } from "../media/servicio";
 import type { Buscador } from "../proveedores/codigos";
 import { ErrorGeneracion } from "./errores";
 import { saldoDelUsuario } from "./estimacion";
@@ -134,22 +132,6 @@ export async function exigirRitmo(usuarioId: string) {
   }
 }
 
-/**
- * La cuota se comprueba **antes** de gastar: guardar el resultado no puede quedarse sin sitio. Se reserva
- * el peor caso real del tipo de archivo (el máximo que admite la biblioteca), no una media: un clip que no
- * cupiera se habría pagado ya.
- */
-export async function exigirCuota(actor: Actor, tipo: TipoTrabajo) {
-  const previsto = limiteSubida(TIPO_RESULTADO[tipo]);
-  const { usadoBytes, cuotaBytes } = await espacioUsado(actor);
-  if (cuotaBytes !== null && usadoBytes + previsto > cuotaBytes) {
-    throw new ErrorGeneracion(
-      413,
-      `Necesitas ${formatearTamano(previsto)} libres en la biblioteca para guardar el resultado y te quedan ${formatearTamano(Math.max(0, cuotaBytes - usadoBytes))}. Vacía la papelera o borra archivos antes de generar.`,
-    );
-  }
-}
-
 export async function exigirSaldo(usuarioId: string, creditos: number, buscar: Buscador, proveedor: Proveedor) {
   const saldo = await saldoDelUsuario(usuarioId, buscar, proveedor);
   if (saldo !== null && saldo < creditos) {
@@ -161,14 +143,23 @@ export async function exigirSaldo(usuarioId: string, creditos: number, buscar: B
   }
 }
 
+/**
+ * Identificador de la imagen de referencia, ya validado como UUID. Se valida **antes** de consultar nada, y
+ * aparte de la lectura, porque el motor de controles necesita el identificador para saber si esa imagen salió
+ * de un trabajo con personaje (y entonces hereda sus reglas) antes de mirar si la imagen sigue existiendo.
+ */
+export function exigirMedioElegido(medioId: unknown): string {
+  if (!esUuidGeneracion(medioId)) throw new ErrorGeneracion(400, "Elige una imagen de referencia.");
+  return medioId;
+}
+
 /** Imagen propia, existente y fuera de la papelera: lo ajeno responde 404, como en la biblioteca. */
 export async function imagenPropia(usuarioId: string, medioId: unknown): Promise<FilaMedio> {
-  // El identificador llega del navegador: se valida como UUID antes de consultar nada.
-  if (!esUuidGeneracion(medioId)) throw new ErrorGeneracion(400, "Elige una imagen de referencia.");
+  const id = exigirMedioElegido(medioId);
   const [fila] = await db()
     .select()
     .from(media)
-    .where(and(eq(media.id, medioId), eq(media.ownerId, usuarioId), isNull(media.deletedAt)))
+    .where(and(eq(media.id, id), eq(media.ownerId, usuarioId), isNull(media.deletedAt)))
     .limit(1);
   if (!fila) throw new ErrorGeneracion(404, "La imagen no existe.");
   if (fila.kind !== "imagen") throw new ErrorGeneracion(400, "La referencia tiene que ser una imagen.");

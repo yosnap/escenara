@@ -82,6 +82,9 @@ export async function autorizarLimite(usuarioId: string, id: string, creditos: u
         proveedor: fila.provider,
         modelo: fila.model,
         creditos,
+        // Sin `creditosDelEnvio`: el tope por trabajo se mide con el techo que el usuario acaba de autorizar, que
+        // es exactamente lo que está autorizando para este trabajo. La traducción, si la hubo, ya se reservó y se
+        // apuntó por su cuenta al encolar, así que sumarla aquí la contaría dos veces.
         sello: `limite-del-usuario:${fila.model}`,
       },
       ajustes,

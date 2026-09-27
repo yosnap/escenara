@@ -15,6 +15,11 @@ export interface ConfirmacionCoste {
   avisoUmbralAceptado: boolean;
   /** Clave de la confirmación: la misma confirmación repetida no genera un segundo trabajo. */
   claveIdempotencia: string;
+  /**
+   * Avisos «Necesita ajustes» confirmados expresamente (0.18.0). Viajan con el envío y **entran en la firma**
+   * de esta confirmación: confirmar un aviso distinto es otra confirmación y estrena clave.
+   */
+  avisosConfirmados: string[];
 }
 
 /**
@@ -30,6 +35,7 @@ export function PanelGenerar({
   etiqueta,
   firma,
   bloqueos,
+  avisosConfirmados,
   enviando,
   onGenerar,
 }: {
@@ -39,6 +45,8 @@ export function PanelGenerar({
   firma: string;
   /** Motivos por los que aún no se puede generar, en lenguaje llano. */
   bloqueos: string[];
+  /** Avisos de los controles previos que el usuario ha confirmado (0.18.0). */
+  avisosConfirmados: readonly string[];
   enviando: boolean;
   onGenerar: (confirmacion: ConfirmacionCoste) => void;
 }) {
@@ -53,7 +61,8 @@ export function PanelGenerar({
   ];
 
   const generar = () => {
-    // Misma confirmación, misma clave: un doble clic o un reintento no pagan dos veces.
+    // Misma confirmación, misma clave: un doble clic o un reintento no pagan dos veces. Los avisos confirmados
+    // forman parte de la firma (la compone quien llama), así que confirmar otro aviso estrena clave.
     if (clave.current?.firma !== firma) clave.current = { firma, valor: crypto.randomUUID() };
     onGenerar({
       creditosConfirmados: creditosAConfirmar(estimacion),
@@ -61,6 +70,7 @@ export function PanelGenerar({
       derechos,
       avisoUmbralAceptado: avisoAceptado,
       claveIdempotencia: clave.current.valor,
+      avisosConfirmados: [...avisosConfirmados],
     });
   };
 

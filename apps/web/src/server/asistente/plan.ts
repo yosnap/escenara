@@ -1,5 +1,6 @@
 import { eq, inArray, sql } from "drizzle-orm";
 import { precioCaducado } from "@/lib/catalogo";
+import { EVALUACION_LISTA, type EvaluacionVista, peorEstado } from "@/lib/controles";
 import { formatearCreditos } from "@/lib/generacion";
 import {
   type AfirmacionVista,
@@ -14,6 +15,10 @@ import {
   puedeAprobarse,
 } from "@/lib/proyectos";
 import { type Ajustes, leerAjustes } from "../ajustes";
+import type { HechosEscena, ParametrosControles } from "../controles/contrato";
+import { REGLAS_VERSION } from "../controles/contrato";
+import { parametrosDeControles } from "../controles/hechos";
+import { evaluarParaMostrar, exigirFrenosDuros } from "../controles/puerta";
 import { db, type Ejecutor } from "../db/cliente";
 import {
   assistantRuns,
@@ -134,11 +139,44 @@ const vistaAfirmacion = (fila: FilaAfirmacion): AfirmacionVista => ({
   creadoEn: fila.createdAt.toISOString(),
 });
 
+/**
+ * Lo que hace falta para poder evaluar los controles previos de una escena **sin una consulta por escena**: el
+ * sello del precio vigente, las versiones vigentes de ficha y plantilla, y los parámetros de las reglas. Todo
+ * eso es del proyecto, no de la escena, así que se lee una vez y se reutiliza.
+ */
+interface ContextoDeControles {
+  selloVigente: string;
+  versionPersonaje: string | null;
+  versionPlantilla: string | null;
+  parametros: ParametrosControles;
+}
+
+/** Hechos de una escena a partir de datos ya cargados. Es la misma forma que evalúa la puerta de producción. */
+function hechosDeFilaEscena(
+  fila: FilaEscena,
+  proyecto: FilaProyecto,
+  afirmaciones: FilaAfirmacion[],
+  contexto: ContextoDeControles,
+): HechosEscena {
+  return {
+    planAprobado: proyecto.planApprovedAt !== null,
+    aprobada: fila.state !== "borrador",
+    motivoInvalidacion: fila.invalidationReason,
+    precioCambiado: fila.approvedFrameStamp !== "" && fila.approvedFrameStamp !== contexto.selloVigente,
+    fichaCambiada:
+      fila.approvedCharacterVersionId !== null && fila.approvedCharacterVersionId !== contexto.versionPersonaje,
+    plantillaCambiada:
+      fila.approvedTemplateVersionId !== null && fila.approvedTemplateVersionId !== contexto.versionPlantilla,
+    afirmacionesPorVerificar: afirmaciones.filter((a) => a.sceneId === fila.id && a.state === "por_verificar").length,
+  };
+}
+
 function vistaEscena(
   fila: FilaEscena,
   afirmaciones: FilaAfirmacion[],
   trabajoId: string | null,
   estimacion: EstimacionEscena | null,
+  controles: EvaluacionVista,
 ): EscenaVista {
   return {
     id: fila.id,
@@ -153,6 +191,7 @@ function vistaEscena(
     trabajoId,
     estimacion,
     afirmaciones: afirmaciones.filter((a) => a.sceneId === fila.id).map(vistaAfirmacion),
+    controles,
   };
 }
 
@@ -179,6 +218,8 @@ export function planDeEscenas(
     comprobado: fechas.sort()[0] ?? "",
     margen: Math.max(0, ...estimables.map((e) => e.estimacion?.margen ?? 0)),
     impedimentos: [],
+    // El estado global es el peor de sus escenas: es lo que 0.19.0 usará para habilitar el botón de producir.
+    estadoControl: peorEstado(escenasVista.map((e) => e.controles.estado)),
   };
   plan.impedimentos = impedimentosDelPlan({
     totalEscenas: escenasVista.length,
@@ -212,7 +253,7 @@ async function gastoDelAsistente(proyectoId: string, ejecutor: Ejecutor = db()):
  * Créditos que el proyecto lleva comprometidos: lo del asistente más lo de los trabajos de sus escenas (reservas
  * vivas y consumos). Es lo que se compara con su presupuesto autorizado.
  */
-async function comprometidoDelProyecto(proyectoId: string): Promise<number> {
+export async function comprometidoDelProyecto(proyectoId: string): Promise<number> {
   const [fila] = await db()
     .select({
       total: sql<number>`coalesce(sum(case when ${usageLedger.entryType} in ('reserva', 'liberacion', 'consumo', 'ajuste') then ${usageLedger.credits} else 0 end), 0)::float8`,
@@ -225,27 +266,48 @@ async function comprometidoDelProyecto(proyectoId: string): Promise<number> {
 }
 
 /**
- * **El presupuesto autorizado de un proyecto es un tope que se aplica al gastar** (decisión provisional del
- * propietario, 2026-09-27), no solo una condición para aprobar el plan: entre la aprobación y la producción puede
- * haber pasado cualquier cosa (más escenas, otro precio, llamadas al asistente), y sin esta puerta el techo que
- * alguien autorizó no sería un techo.
+ * Techo del proyecto tal como lo necesita el motor de controles: cuánto se autorizó y cuánto lleva
+ * comprometido. **El presupuesto autorizado de un proyecto es un tope que se aplica al gastar** (decisión
+ * provisional del propietario, 2026-09-27), no solo una condición para aprobar el plan: entre la aprobación y
+ * la producción puede haber pasado cualquier cosa (más escenas, otro precio, llamadas al asistente).
  *
  * `0` = sin tope propio del proyecto; manda solo el presupuesto del usuario y el tope por trabajo.
  */
-export async function exigirTopeDelProyecto(proyectoId: string, creditos: number): Promise<void> {
+export async function techoDelProyecto(
+  proyectoId: string,
+): Promise<{ autorizado: number | null; comprometido: number }> {
   const [fila] = await db()
     .select({ autorizado: projects.authorizedCredits })
     .from(projects)
     .where(eq(projects.id, proyectoId))
     .limit(1);
   const autorizado = fila?.autorizado ?? 0;
-  if (autorizado <= 0) return;
-  const comprometido = await comprometidoDelProyecto(proyectoId);
-  if (comprometido + creditos <= autorizado) return;
-  throw new ErrorProyecto(
-    402,
-    `Este proyecto tiene ${formatearCreditos(autorizado)} autorizados y lleva ${formatearCreditos(Math.round(comprometido))} comprometidos, así que no caben los ${formatearCreditos(creditos)} de esto. Sube el presupuesto del proyecto o quita escenas.`,
-  );
+  if (autorizado <= 0) return { autorizado: null, comprometido: 0 };
+  return { autorizado, comprometido: await comprometidoDelProyecto(proyectoId) };
+}
+
+/**
+ * El mismo tope, para los caminos que **no** pasan por el motor de generación porque no encolan un trabajo: la
+ * llamada al asistente de guion, que también cuesta y también sale del mismo bote. La regla es la del motor
+ * (`controles/motor.ts › presupuesto-proyecto`), aplicada aquí con los hechos de este proyecto.
+ */
+export async function exigirTopeDelProyecto(proyectoId: string, creditos: number): Promise<void> {
+  const techo = await techoDelProyecto(proyectoId);
+  if (techo.autorizado === null) return;
+  exigirFrenosDuros({
+    tipo: "fotograma",
+    presupuesto: {
+      creditos,
+      topeTrabajo: null,
+      disponibleUsuario: null,
+      retenidoUsuario: 0,
+      trabajosEnRevision: 0,
+      llamadasDeTextoColgadas: 0,
+      autorizadoProyecto: techo.autorizado,
+      comprometidoProyecto: techo.comprometido,
+    },
+    parametros: await parametrosDeControles(),
+  });
 }
 
 /** Trabajo de generación asociado a cada escena, si lo hay. */
@@ -295,6 +357,21 @@ export async function listarProyectos(actor: Actor): Promise<ProyectoVista[]> {
   );
 }
 
+/** Contexto de los controles del proyecto: se lee una vez y vale para todas sus escenas. */
+async function contextoDeControles(
+  actor: Actor,
+  proyecto: FilaProyecto,
+  elecciones: EleccionesDelPlan,
+): Promise<ContextoDeControles> {
+  const [vigente, parametros] = await Promise.all([versionesACongelar(actor, proyecto), parametrosDeControles()]);
+  return {
+    selloVigente: elecciones.fotograma?.precio.sello ?? "",
+    versionPersonaje: vigente.versionPersonaje,
+    versionPlantilla: vigente.versionPlantilla,
+    parametros,
+  };
+}
+
 /** Proyecto completo: escenas, afirmaciones y plan. Es lo que pinta `/proyectos/[id]`. */
 export async function detalleProyecto(actor: Actor, id: unknown): Promise<ProyectoDetalle> {
   const fila = await proyectoPropio(actor, id);
@@ -306,9 +383,25 @@ export async function detalleProyecto(actor: Actor, id: unknown): Promise<Proyec
     gastoDelAsistente(fila.id),
   ]);
   const ids = filasEscena.map((e) => e.id);
-  const [afirmaciones, trabajos] = await Promise.all([afirmacionesDe(ids), trabajosPorEscena(ids)]);
+  const [afirmaciones, trabajos, contexto] = await Promise.all([
+    afirmacionesDe(ids),
+    trabajosPorEscena(ids),
+    contextoDeControles(actor, fila, elecciones),
+  ]);
   const escenasVista = filasEscena.map((escena) =>
-    vistaEscena(escena, afirmaciones, trabajos.get(escena.id) ?? null, estimacionONula(escena, elecciones, ajustes)),
+    vistaEscena(
+      escena,
+      afirmaciones,
+      trabajos.get(escena.id) ?? null,
+      estimacionONula(escena, elecciones, ajustes),
+      // Los controles de la escena se evalúan con el **mismo motor** que cierra la puerta al producirla, con
+      // datos que ya están cargados: ni una consulta más por escena.
+      evaluarParaMostrar({
+        tipo: "fotograma",
+        parametros: contexto.parametros,
+        escena: hechosDeFilaEscena(escena, fila, afirmaciones, contexto),
+      }),
+    ),
   );
   const plan = planDeEscenas(fila, escenasVista, ajustes, creditosAsistente);
   return {
@@ -361,7 +454,15 @@ export async function aprobarPlan(actor: Actor, id: unknown, peticion: PeticionA
     const ids = filasEscena.map((e) => e.id);
     const afirmaciones = ids.length === 0 ? [] : await tx.select().from(claims).where(inArray(claims.sceneId, ids));
     const escenasVista = filasEscena.map((escena) =>
-      vistaEscena(escena, afirmaciones, null, estimacionONula(escena, elecciones, ajustes)),
+      // Aquí solo interesa el coste: la aprobación se está decidiendo en esta misma transacción, así que los
+      // controles de la escena se dejan vacíos y los recalcula `detalleProyecto` al devolver el resultado.
+      vistaEscena(
+        escena,
+        afirmaciones,
+        null,
+        estimacionONula(escena, elecciones, ajustes),
+        EVALUACION_LISTA(REGLAS_VERSION),
+      ),
     );
     // El presupuesto que se está fijando es el que manda en la comprobación, no el que había guardado.
     const plan = planDeEscenas(
@@ -428,46 +529,55 @@ async function versionesACongelar(
 }
 
 /**
- * Puerta de producción: una escena solo se puede generar si su plan está aprobado y su aprobación sigue en
- * pie. **Cualquier camino que encole una generación a partir de una escena pasa por aquí.**
+ * Hechos de una escena para el motor de controles: si el plan está aprobado, si la escena sigue aprobada, si lo
+ * que se congeló (sello del precio, versión de la ficha y versión de la plantilla) sigue siendo lo vigente y
+ * cuántas afirmaciones le quedan por verificar.
  *
- * Comprueba además que siga siendo lo mismo lo que se congeló: el sello del precio, la versión de la ficha del
- * personaje y la versión de la plantilla. Si cualquiera de las tres ha cambiado, lo aprobado ya no es lo que se
- * enviaría ni lo que se pagaría, y se dice en lugar de gastar.
+ * Aquí **no se decide nada**: las reglas están en `controles/motor.ts`, que es el único sitio donde se decide
+ * si algo se puede generar.
+ */
+export async function hechosDeEscena(
+  actor: Actor,
+  escenaId: unknown,
+): Promise<{ escena: FilaEscena; hechos: HechosEscena }> {
+  const { escena, proyecto } = await escenaPropia(actor, escenaId);
+  const [elecciones, vigente, afirmaciones] = await Promise.all([
+    eleccionesDelPlan(),
+    versionesACongelar(actor, proyecto),
+    afirmacionesDe([escena.id]),
+  ]);
+  const selloVigente = elecciones.fotograma?.precio.sello ?? "";
+  return {
+    escena,
+    hechos: {
+      planAprobado: proyecto.planApprovedAt !== null,
+      aprobada: escena.state !== "borrador",
+      motivoInvalidacion: escena.invalidationReason,
+      precioCambiado: escena.approvedFrameStamp !== "" && escena.approvedFrameStamp !== selloVigente,
+      fichaCambiada:
+        escena.approvedCharacterVersionId !== null && escena.approvedCharacterVersionId !== vigente.versionPersonaje,
+      plantillaCambiada:
+        escena.approvedTemplateVersionId !== null && escena.approvedTemplateVersionId !== vigente.versionPlantilla,
+      afirmacionesPorVerificar: afirmaciones.filter((a) => a.state === "por_verificar").length,
+    },
+  };
+}
+
+/**
+ * Puerta de producción de una escena: aplica **las reglas del motor** sobre los hechos de esa escena.
+ *
+ * **Es una puerta parcial, y a propósito.** Solo aporta el grupo `escena`, así que solo aplica las reglas de la
+ * escena: plan aprobado, aprobación en pie (precio, ficha y plantilla congelados) y afirmaciones por verificar.
+ * **No aplica los frenos de credencial, de saldo, de cuota ni de presupuesto**, porque en este punto no hay
+ * modelo elegido ni coste que comparar: esas reglas dependen del envío concreto.
+ *
+ * Por eso **no basta para autorizar un gasto**. Quien encola pasa por la puerta completa
+ * (`controles/puerta.ts › exigirControles`), que exige **todos** los grupos de hechos y falla si falta alguno.
+ * Esta se usa para dos cosas: cortar temprano un camino que produce una escena, y pintar el estado de cada
+ * escena en el plan del proyecto.
  */
 export async function exigirEscenaAprobada(actor: Actor, escenaId: unknown): Promise<FilaEscena> {
-  const { escena, proyecto } = await escenaPropia(actor, escenaId);
-  if (proyecto.planApprovedAt === null) {
-    throw new ErrorProyecto(409, "Este proyecto no tiene el plan aprobado: apruébalo antes de producir sus escenas.");
-  }
-  if (escena.state === "borrador") {
-    throw new ErrorProyecto(
-      409,
-      escena.invalidationReason !== ""
-        ? escena.invalidationReason
-        : "Esta escena no está aprobada: apruébala en el plan antes de producirla.",
-    );
-  }
-  const elecciones = await eleccionesDelPlan();
-  const vigenteFotograma = elecciones.fotograma?.precio.sello ?? "";
-  if (escena.approvedFrameStamp !== "" && escena.approvedFrameStamp !== vigenteFotograma) {
-    throw new ErrorProyecto(
-      409,
-      "El precio del modelo ha cambiado desde que aprobaste el plan. Revísalo y vuelve a aprobarlo.",
-    );
-  }
-  const vigente = await versionesACongelar(actor, proyecto);
-  if (escena.approvedCharacterVersionId !== null && escena.approvedCharacterVersionId !== vigente.versionPersonaje) {
-    throw new ErrorProyecto(
-      409,
-      "La ficha del personaje ha cambiado desde que aprobaste el plan: revisa lo que se enviará y vuelve a aprobarlo.",
-    );
-  }
-  if (escena.approvedTemplateVersionId !== null && escena.approvedTemplateVersionId !== vigente.versionPlantilla) {
-    throw new ErrorProyecto(
-      409,
-      "La plantilla de prompt ha cambiado desde que aprobaste el plan: revisa el coste y vuelve a aprobarlo.",
-    );
-  }
+  const { escena, hechos } = await hechosDeEscena(actor, escenaId);
+  exigirFrenosDuros({ tipo: "fotograma", escena: hechos, parametros: await parametrosDeControles() });
   return escena;
 }

@@ -53,6 +53,12 @@ export interface PeticionEncolado {
   valores: NuevoTrabajoEncolado;
   /** Sello del precio con el que se hizo la estimación, para auditar la reserva. */
   sello: string;
+  /**
+   * Coste **total del envío** (la generación más su traducción, si esta instalación traduce) con el que se mide
+   * el tope por trabajo. Es la misma cifra que confirma el usuario y la misma que mide el motor de controles, así
+   * que los dos controles no pueden discrepar. No cambia lo que se aparta: eso es `acotacion.creditos`.
+   */
+  creditosDelEnvio: number;
 }
 
 export async function encolar(peticion: PeticionEncolado): Promise<Encolado> {
@@ -90,6 +96,7 @@ export async function encolar(peticion: PeticionEncolado): Promise<Encolado> {
           proveedor: peticion.proveedor,
           modelo: fila.model,
           creditos: peticion.acotacion.creditos,
+          creditosDelEnvio: peticion.creditosDelEnvio,
           sello: peticion.sello,
         },
         ajustes,

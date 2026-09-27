@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
+import { EVALUACION_LISTA, REGLAS_VERSION } from "@/lib/controles";
 import type { EscenaVista, EstimacionEscena, PlanVista } from "@/lib/proyectos";
 import { impedimentosDelPlan } from "@/lib/proyectos";
 import { TablaPlan } from "./proyecto";
@@ -40,6 +41,7 @@ const escena = (id: string, orden: number, est: EstimacionEscena | null): Escena
   trabajoId: null,
   estimacion: est,
   afirmaciones: [],
+  controles: EVALUACION_LISTA(REGLAS_VERSION),
 });
 
 const plan = (parcial: Partial<PlanVista> = {}): PlanVista => {
@@ -53,6 +55,7 @@ const plan = (parcial: Partial<PlanVista> = {}): PlanVista => {
     afirmacionesBloqueantes: 0,
     comprobado: "2026-09-27",
     margen: 30,
+    estadoControl: "listo",
     impedimentos: [],
     ...parcial,
   };

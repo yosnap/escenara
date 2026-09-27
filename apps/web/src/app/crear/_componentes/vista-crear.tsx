@@ -5,13 +5,12 @@ import { Casilla } from "@/components/ui/choice";
 import { DepositoPresupuesto } from "@/components/ui/deposito";
 import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo } from "@/components/ui/field";
-import { SelectorMedios } from "@/components/ui/media/selector-medios";
 import { AvisoSinVoz, SelectorModelo } from "@/components/ui/modelo";
 import { Paso } from "@/components/ui/paso";
-import { SelectorPersonaje } from "@/components/ui/personaje";
 import { consultarContexto } from "@/components/ui/personajes/api-personajes";
 import { PanelContextoPersonaje } from "@/components/ui/personajes/panel-contexto";
 import type { ModeloElegible } from "@/lib/catalogo";
+import { type EvaluacionVista, evaluacionPendiente } from "@/lib/controles";
 import {
   CLIP,
   type Deposito,
@@ -26,8 +25,9 @@ import { AVISO_SIN_TERCEROS, type ContextoAplicado, type PersonajeElegible } fro
 import { type CatalogoParaCrear, type PresetVisible, VARIABLE_TEXTO_MAXIMA } from "@/lib/presets";
 import { consultarEstimacion, crearTrabajo, type Resultado } from "./api-generacion";
 import { consultarCatalogoDePresets, duplicarPreset } from "./api-presets";
+import { BloqueConfirmacion } from "./bloque-confirmacion";
 import { DialogoPresetPropio } from "./dialogo-preset-propio";
-import { type ConfirmacionCoste, PanelGenerar } from "./panel-generar";
+import type { ConfirmacionCoste } from "./panel-generar";
 import {
   confirmacionDePlantilla,
   ESTADO_PLANTILLA_VACIO,
@@ -37,8 +37,10 @@ import {
   previsualizar,
   sinIncompatibles,
 } from "./panel-plantilla";
+import { PasoSujeto } from "./paso-sujeto";
 import { ResultadoTrabajo } from "./resultado-trabajo";
 import { SeguimientoTrabajo } from "./seguimiento-trabajo";
+import { useControles } from "./use-controles";
 
 /**
  * Los cuatro pasos de «Crear»: elegir la imagen y el modelo, describir la escena, revisar el coste y
@@ -63,6 +65,7 @@ export function VistaCrear({
   contextoInicial,
   catalogoFotogramaInicial,
   catalogoClipInicial,
+  controlesIniciales,
 }: {
   estimacionFotograma: Estimacion;
   estimacionAnimacion: Estimacion;
@@ -82,6 +85,11 @@ export function VistaCrear({
    */
   catalogoFotogramaInicial: CatalogoParaCrear;
   catalogoClipInicial: CatalogoParaCrear;
+  /**
+   * Controles previos ya evaluados en el servidor al cargar la página (0.18.0): la zona de claridad «Antes de
+   * generar» está rellena desde el primer instante, sin efectos en el navegador.
+   */
+  controlesIniciales: EvaluacionVista;
 }) {
   const [personajeId, setPersonajeId] = useState<string | null>(personajeInicial);
   /**
@@ -114,6 +122,11 @@ export function VistaCrear({
     ...ESTADO_PLANTILLA_VACIO,
     plantillaId: catalogoClipInicial.plantillas[0]?.id ?? "",
   });
+  // Controles previos del fotograma y del clip: cada envío se evalúa por separado, como su coste. El clip empieza
+  // **sin evaluar** (no hay fotograma que animar todavía), no con la evaluación del fotograma: sus hechos son
+  // otros, y heredarla diría «Listo» sobre algo que no se ha comprobado.
+  const controlesFoto = useControles(controlesIniciales);
+  const controlesClip = useControles(evaluacionPendiente(controlesIniciales.reglasVersion));
 
   const modeloClip = modelosClip.find((m) => m.modelo === estimacionClip.modelo) ?? null;
   const clipConVoz = modeloClip?.conVoz ?? estimacionClip.conVoz;
@@ -141,7 +154,6 @@ export function VistaCrear({
     // Todo lo que impide componer el prompt, con la explicación que da el renderizador: qué falta y qué número
     // está fuera de rango. No se resume en «revisa los datos».
     ...previaFoto.motivos,
-    ...(estimacionFoto.alcanza ? [] : ["Tu saldo de KIE no llega para este trabajo."]),
   ];
 
   /**
@@ -152,6 +164,19 @@ export function VistaCrear({
     respuesta.red
       ? `${respuesta.error} Puede que el trabajo se haya enviado: revisa el historial antes de repetirlo.`
       : respuesta.error;
+
+  /**
+   * Vuelve a evaluar los controles previos del fotograma con lo que hay elegido ahora. Lo llama la acción que
+   * cambia lo evaluado (personaje, imagen o modelo): nunca un efecto.
+   */
+  const refrescarControles = async (id: string | null, medio: string | undefined, modelo: string) => {
+    const fallo = await controlesFoto.refrescar({
+      tipo: "fotograma",
+      modelo,
+      ...(id ? { personajeId: id } : medio ? { medioId: medio } : {}),
+    });
+    if (fallo) setError(fallo);
+  };
 
   /** Pide el contexto aplicado de un personaje con el modelo que esté elegido. Sin personaje, se limpia. */
   const refrescarContexto = async (id: string | null, modelo: string) => {
@@ -228,6 +253,13 @@ export function VistaCrear({
     if (trabajo.estado !== "listo" || !trabajo.medio) return;
     const respuesta = await consultarEstimacion("animacion", estimacionClip.modelo);
     if (respuesta.ok) setEstimacionClip(respuesta.datos);
+    // El clip es otro envío: sus controles se evalúan con el fotograma ya generado, que es su referencia.
+    const fallo = await controlesClip.refrescar({
+      tipo: "animacion",
+      modelo: estimacionClip.modelo,
+      medioId: trabajo.medio.id,
+    });
+    if (fallo) setError(fallo);
   };
 
   /**
@@ -246,7 +278,17 @@ export function VistaCrear({
       setEstimacionFoto(respuesta.datos);
       // El tope de fotos de referencia es del modelo: al cambiarlo, cambia lo que se va a enviar.
       await refrescarContexto(personajeId, respuesta.datos.modelo);
-    } else setEstimacionClip(respuesta.datos);
+      await refrescarControles(personajeId, referencia?.id, respuesta.datos.modelo);
+    } else {
+      setEstimacionClip(respuesta.datos);
+      if (fotograma?.medio) {
+        await controlesClip.refrescar({
+          tipo: "animacion",
+          modelo: respuesta.datos.modelo,
+          medioId: fotograma.medio.id,
+        });
+      }
+    }
     // Y los formatos y las duraciones que se pueden ofrecer también son del modelo: se vuelven a pedir en
     // lugar de deducirlos aquí, que es lo que dejaría ofrecer algo que el servidor va a rechazar.
     await refrescarCatalogo(tipo, respuesta.datos.modelo);
@@ -286,56 +328,30 @@ export function VistaCrear({
     <div className="flex flex-col gap-6">
       <DepositoPresupuesto deposito={deposito} cola={cola} />
 
-      <Paso numero={1} titulo="Elige a quién generas">
-        <SelectorPersonaje
-          personajes={personajes}
-          valor={personajeId}
-          onCambio={(id) => {
-            setPersonajeId(id);
-            setSinTerceros(false);
-            void refrescarContexto(id, estimacionFoto.modelo);
-          }}
-          deshabilitado={enviando !== null}
-        />
-        {personaje ? (
-          <p className="text-texto-suave">
-            Se enviarán varias fotos de «{personaje.nombre}»
-            {modeloFoto && modeloFoto.maximoReferencias > 0
-              ? ` (hasta ${modeloFoto.maximoReferencias}, las que admite ${modeloFoto.nombre})`
-              : ""}
-            : varias referencias dan mucha mejor guía de identidad que una sola.
-          </p>
-        ) : (
-          <SelectorMedios
-            etiqueta="Imagen de la persona o el personaje"
-            ayuda="Solo imágenes. Puedes subirla, arrastrarla o elegirla de tu biblioteca. Con un personaje se envían varias fotos suyas en lugar de una sola."
-            tipos={["imagen"]}
-            sinDocumentos
-            valor={imagen}
-            onCambio={setImagen}
-          />
-        )}
-        {(personaje || referencia) && (
-          <div className="rounded-tarjeta border-2 border-borde bg-superficie p-4">
-            <Casilla
-              etiqueta="En estas fotos no aparece ninguna otra persona ni ningún menor"
-              descripcion={AVISO_SIN_TERCEROS}
-              marcada={sinTerceros}
-              deshabilitado={enviando !== null}
-              onCambio={setSinTerceros}
-            />
-          </div>
-        )}
-        {modelosFotograma.length > 1 && (
-          <SelectorModelo
-            etiqueta="Modelo del fotograma"
-            modelos={modelosFotograma}
-            valor={estimacionFoto.modelo}
-            onCambio={(modelo) => elegirModelo("fotograma", modelo)}
-            deshabilitado={enviando !== null}
-          />
-        )}
-      </Paso>
+      <PasoSujeto
+        personajes={personajes}
+        personajeId={personajeId}
+        personaje={personaje}
+        imagen={imagen}
+        referencia={referencia}
+        modelos={modelosFotograma}
+        modeloElegido={estimacionFoto.modelo}
+        modeloFoto={modeloFoto}
+        sinTerceros={sinTerceros}
+        deshabilitado={enviando !== null}
+        onPersonaje={(id) => {
+          setPersonajeId(id);
+          setSinTerceros(false);
+          void refrescarContexto(id, estimacionFoto.modelo);
+          void refrescarControles(id, referencia?.id, estimacionFoto.modelo);
+        }}
+        onImagen={(medios) => {
+          setImagen(medios);
+          void refrescarControles(null, medios[0]?.id, estimacionFoto.modelo);
+        }}
+        onSinTerceros={setSinTerceros}
+        onModelo={(modelo) => elegirModelo("fotograma", modelo)}
+      />
 
       <Paso numero={2} titulo="Describe la escena">
         <Campo
@@ -417,7 +433,8 @@ export function VistaCrear({
         {personaje && contexto && contexto.personajeId === personaje.id && (
           <PanelContextoPersonaje contexto={contexto} cargando={pidiendoContexto} />
         )}
-        <PanelGenerar
+        <BloqueConfirmacion
+          controles={controlesFoto}
           estimacion={estimacionFoto}
           etiqueta="Generar fotograma"
           firma={`fotograma|${personaje?.id ?? ""}|${contexto?.personajeId === personaje?.id ? contexto?.versionId : ""}|${referencia?.id ?? ""}|${descripcion}|${estimacionFoto.modelo}|${estimacionFoto.sello}|${firmaDePlantilla(previaFoto, plantillaFoto)}`}
@@ -472,13 +489,13 @@ export function VistaCrear({
                         />
                       )}
                     />
-                    <PanelGenerar
+                    <BloqueConfirmacion
+                      controles={controlesClip}
                       estimacion={estimacionClip}
                       etiqueta={`Animar ${segundosDelClip(modeloClip)} s`}
                       firma={`animacion|${fotograma.id}|${descripcion}|${frase}|${estimacionClip.modelo}|${estimacionClip.sello}|${firmaDePlantilla(previaClip, plantillaClip)}`}
                       bloqueos={[
                         ...previaClip.motivos,
-                        ...(estimacionClip.alcanza ? [] : ["Tu saldo de KIE no llega para el clip."]),
                         ...(fotograma.personajeId && !sinTercerosClip
                           ? ["Falta confirmar la revisión de las fotos del personaje."]
                           : []),

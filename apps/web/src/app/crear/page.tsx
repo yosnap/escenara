@@ -4,10 +4,13 @@ import Link from "next/link";
 import { claseBoton } from "@/components/ui/button";
 import { AvisoEstado } from "@/components/ui/feedback";
 import { AVISO_BOVEDA_USUARIO, PROVEEDORES_PUBLICOS } from "@/lib/boveda";
+import { evaluacionFallida } from "@/lib/controles";
 import { esAdmin, exigirSesion } from "@/server/auth/sesion";
 import { bovedaDisponible } from "@/server/boveda/cifrado";
 import { listarCredenciales } from "@/server/boveda/credenciales";
 import { estadoDeCola } from "@/server/cola/latido";
+import { evaluarControles } from "@/server/controles/consulta";
+import { REGLAS_VERSION } from "@/server/controles/contrato";
 import { estimarTodo } from "@/server/generacion/estimacion";
 import { personajesElegibles } from "@/server/personajes/consulta";
 import { contextoAplicado } from "@/server/personajes/contexto";
@@ -64,6 +67,24 @@ export default async function PaginaCrear({ searchParams }: { searchParams: Prom
         ).catch(() => null)
       : null;
 
+  /**
+   * Controles previos ya evaluados **aquí** (0.18.0): la zona de claridad «Antes de generar» está rellena al
+   * cargar la página, sin efectos en el navegador. Es una lectura: no encola nada ni mueve presupuesto.
+   *
+   * Si la evaluación falla, **no se muestra «Listo»**: se muestra «Requiere revisión» con el motivo, y el botón
+   * queda deshabilitado. No saber si se puede gastar no es lo mismo que poder, y un panel en verde por un error
+   * sería la mentira que invita a pulsar.
+   */
+  const controlesIniciales = estimaciones
+    ? await evaluarControles(
+        { id: sesion.user.id, esAdmin: esAdmin(sesion) },
+        { tipo: "fotograma", modelo: estimaciones.fotograma.modelo, personajeId: personajeInicial },
+      ).catch((error: unknown) => {
+        console.error("[controles] no se ha podido evaluar al cargar «Crear»:", error);
+        return evaluacionFallida(REGLAS_VERSION);
+      })
+    : null;
+
   return (
     <div className="min-h-dvh bg-fondo">
       <CabeceraApp sesion={sesion} />
@@ -100,7 +121,7 @@ export default async function PaginaCrear({ searchParams }: { searchParams: Prom
           />
         )}
 
-        {estimaciones && deposito && cola && catalogoFoto && catalogoClip && (
+        {estimaciones && deposito && cola && catalogoFoto && catalogoClip && controlesIniciales && (
           <VistaCrear
             estimacionFotograma={estimaciones.fotograma}
             estimacionAnimacion={estimaciones.animacion}
@@ -113,6 +134,7 @@ export default async function PaginaCrear({ searchParams }: { searchParams: Prom
             contextoInicial={contextoInicial}
             catalogoFotogramaInicial={catalogoFoto}
             catalogoClipInicial={catalogoClip}
+            controlesIniciales={controlesIniciales}
           />
         )}
       </main>

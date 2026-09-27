@@ -3,10 +3,12 @@
 import { ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { Boton } from "@/components/ui/button";
+import { InsigniaControl } from "@/components/ui/controles";
 import { Aviso } from "@/components/ui/feedback";
 import { Campo, EntradaTexto } from "@/components/ui/field";
 import { Paso } from "@/components/ui/paso";
 import { TablaPlan } from "@/components/ui/proyecto";
+import { DESCRIPCION_ESTADO_CONTROL } from "@/lib/controles";
 import { impedimentosDelPlan, type ProyectoDetalle } from "@/lib/proyectos";
 import { aprobarPlan, editarProyecto } from "../../_componentes/api-proyectos";
 
@@ -70,6 +72,16 @@ export function PanelAprobacion({
     <Paso numero={3} titulo="El plan y su coste">
       <div className="flex flex-col gap-4">
         {hecho && <Aviso tono="correcto">{hecho}</Aviso>}
+
+        {/*
+          Estado global de los controles previos del plan: el peor de sus escenas. Es lo que decidirá si el botón
+          de producir está disponible (0.19.0); aquí se muestra para poder arreglarlo antes de llegar.
+        */}
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="font-semibold text-texto">Antes de producir:</span>
+          <InsigniaControl estado={plan.estadoControl} />
+          <span className="text-sm text-texto-suave">{DESCRIPCION_ESTADO_CONTROL[plan.estadoControl]}</span>
+        </div>
 
         <TablaPlan plan={{ ...plan, presupuestoCreditos: creditos, impedimentos }} escenas={escenas} />
 
