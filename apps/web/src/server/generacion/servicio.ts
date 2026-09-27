@@ -8,6 +8,7 @@ import { leerAjustes } from "../ajustes";
 import { duracionDeClipDeEscena, proyectoDeEscena } from "../asistente/consulta";
 import { hechosDeEscena, techoDelProyecto } from "../asistente/plan";
 import { encolar, filaDeLaConfirmacion, type NuevoTrabajoEncolado } from "../cola/encolar";
+import type { Hechos } from "../controles/contrato";
 import { recopilarHechos } from "../controles/hechos";
 import { exigirControles } from "../controles/puerta";
 import type { FilaMedio } from "../db/esquema";
@@ -357,18 +358,21 @@ export async function crearFotograma(
       sujetoId: conEscena?.escena.id ?? null,
       tipo: "fotograma",
     },
-    await recopilarHechos(
-      actor,
-      {
-        tipo: "fotograma",
-        eleccion,
-        creditos: totales,
-        personajeId,
-        personaje,
-        escena: conEscena?.hechos ?? null,
-        proyecto: conEscena ? await techoDelProyecto(conEscena.escena.projectId) : null,
-      },
-      h.buscar,
+    conVistaQueCompleta(
+      await recopilarHechos(
+        actor,
+        {
+          tipo: "fotograma",
+          eleccion,
+          creditos: totales,
+          personajeId,
+          personaje,
+          escena: conEscena?.hechos ?? null,
+          proyecto: conEscena ? await techoDelProyecto(conEscena.escena.projectId) : null,
+        },
+        h.buscar,
+      ),
+      peticion.vistaSintetica && personajeId ? peticion.vistaSintetica : undefined,
     ),
     peticion.avisosConfirmados ?? [],
   );
@@ -630,4 +634,14 @@ export async function crearAnimacion(
     escena: await topeDeEscenasEnVuelo(padre.sceneId, peticion.reintentoDeEscena),
   });
   return { trabajo: await vistaDeFila(fila), nueva };
+}
+
+/**
+ * Generar una vista que le falta al personaje **es** completar su cobertura: el aviso de que faltan vistas no
+ * puede frenar justo lo que la arregla (ni pedir confirmar algo que el diálogo de la vista no ofrece). Se marca
+ * en los hechos y el motor deja de contar las vistas sin cubrir; lo demás del personaje se evalúa igual.
+ */
+function conVistaQueCompleta(hechos: Hechos, vista: Vista | undefined): Hechos {
+  if (!vista || !hechos.personaje) return hechos;
+  return { ...hechos, personaje: { ...hechos.personaje, completaCobertura: true } };
 }

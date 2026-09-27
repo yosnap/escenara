@@ -288,7 +288,8 @@ const REGLAS: readonly Regla[] = [
   // ── Necesita ajustes: salvable confirmándolo expresamente ────────────────────────────────────────────
   (h) => {
     if (!h.parametros.exigirCoberturaVistas || !h.personaje) return null;
-    const { vistasSinCubrir, referenciasSenaladas } = h.personaje;
+    const { referenciasSenaladas } = h.personaje;
+    const vistasSinCubrir = h.personaje.completaCobertura ? [] : h.personaje.vistasSinCubrir;
     if (vistasSinCubrir.length === 0 && referenciasSenaladas === 0) return null;
     const partes: string[] = [];
     if (vistasSinCubrir.length > 0) {

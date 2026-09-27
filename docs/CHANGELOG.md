@@ -2,6 +2,16 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.20.1] · 2026-09-28
+
+### Corregido
+
+- **Generar una vista que le falta a un personaje ya no se frena por faltarle vistas.** El control previo avisaba
+  de que las referencias no cubrían las vistas recomendadas y pedía confirmarlo, pero el diálogo de la vista no
+  tiene dónde confirmarlo, así que no había forma de seguir; y generar esa vista es justo lo que completa la
+  cobertura. Ahora ese aviso no se aplica a la vista generada. El de fotos señaladas por el control de calidad
+  sigue avisando, porque esas fotos se envían igual.
+
 ## [0.20.0] · 2026-09-28
 
 ### Decisiones provisionales del propietario (2026-09-27, pendientes de confirmar)

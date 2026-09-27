@@ -96,6 +96,8 @@ export interface HechosPersonaje {
   vistasSinCubrir: string[];
   /** Fotos de referencia que el control de calidad señaló y el usuario añadió «de todas formas». */
   referenciasSenaladas: number;
+  /** El envío genera una vista que le falta: completa la cobertura, así que no se le avisa de que falta. */
+  completaCobertura?: boolean;
 }
 
 /** Dinero: lo que cuesta el envío frente a los tres techos que existen. */
