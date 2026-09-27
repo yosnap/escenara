@@ -24,7 +24,7 @@ export default async function PaginaEntrar({
   return (
     <FormularioEntrar
       volver={destino}
-      proveedores={proveedoresActivos()}
+      proveedores={await proveedoresActivos()}
       registroAbierto={await registroDisponible()}
       aviso={aviso ? AVISOS[aviso] : undefined}
     />

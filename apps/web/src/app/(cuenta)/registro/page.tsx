@@ -9,5 +9,5 @@ export const dynamic = "force-dynamic";
 
 export default async function PaginaRegistro() {
   if (await obtenerSesion()) redirect("/cuenta");
-  return <FormularioRegistro proveedores={proveedoresActivos()} registroAbierto={await registroDisponible()} />;
+  return <FormularioRegistro proveedores={await proveedoresActivos()} registroAbierto={await registroDisponible()} />;
 }

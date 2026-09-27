@@ -2,8 +2,11 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { auth } from "@/server/auth/auth";
 import { exigirSesion } from "@/server/auth/sesion";
+import { bovedaDisponible } from "@/server/boveda/cifrado";
+import { listarCredenciales } from "@/server/boveda/credenciales";
 import { CabeceraApp } from "../_app/cabecera-app";
 import { CambiarContrasena } from "./_componentes/cambiar-contrasena";
+import { Credenciales } from "./_componentes/credenciales";
 import { Passkeys } from "./_componentes/passkeys";
 import { Perfil } from "./_componentes/perfil";
 import { Preferencias } from "./_componentes/preferencias";
@@ -15,10 +18,11 @@ export const dynamic = "force-dynamic";
 export default async function PaginaCuenta() {
   const sesion = await exigirSesion("/cuenta");
   const cabeceras = await headers();
-  const [passkeys, sesiones, cuentas] = await Promise.all([
+  const [passkeys, sesiones, cuentas, credenciales] = await Promise.all([
     (await auth()).api.listPasskeys({ headers: cabeceras }),
     (await auth()).api.listSessions({ headers: cabeceras }),
     (await auth()).api.listUserAccounts({ headers: cabeceras }),
+    listarCredenciales(sesion.user.id),
   ]);
   const tieneContrasena = cuentas.some((c) => c.providerId === "credential");
 
@@ -32,6 +36,7 @@ export default async function PaginaCuenta() {
         </div>
         <Perfil nombre={sesion.user.name} email={sesion.user.email} verificado={sesion.user.emailVerified} />
         <Preferencias idioma={sesion.user.idioma === "en" ? "en" : "es"} />
+        <Credenciales credenciales={credenciales} bovedaLista={bovedaDisponible()} />
         {tieneContrasena && <CambiarContrasena />}
         <Passkeys
           passkeys={passkeys.map((p) => ({

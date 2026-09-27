@@ -7,6 +7,9 @@ loadEnvConfig(path.resolve(import.meta.dirname, "../.."), process.env.NODE_ENV !
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // En desarrollo, Next registra cada acción de servidor con sus argumentos: contraseñas y claves de API
+  // acabarían en la consola. Ningún secreto debe aparecer en los registros (bóveda, ADR-0005).
+  logging: { serverFunctions: false },
   // El historial de versiones del admin lee el changelog de la raíz del monorepo.
   outputFileTracingIncludes: { "/admin/versiones": ["../../docs/CHANGELOG.md"] },
   // Páginas con datos de cuenta: que ningún proxy o CDN las guarde.

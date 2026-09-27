@@ -1,23 +1,37 @@
 import nodemailer, { type Transporter } from "nodemailer";
 import { type Ajustes, leerAjustes } from "./ajustes";
+import { huellaSecretos, leerSecreto } from "./boveda/secretos";
 
 /**
- * Envío de correo por SMTP con el servidor y el remitente de Admin › Ajustes. En local, Mailpit
- * (bandeja en http://localhost:8421): nada sale a internet. La contraseña del servidor llegará con la
- * bóveda de secretos (0.9.0); hasta entonces, solo servidores sin autenticación o con usuario sin clave.
+ * Envío de correo por SMTP con el servidor y el remitente de Admin › Ajustes. La contraseña del servidor
+ * se guarda cifrada en la bóveda (ADR-0005) y solo se lee aquí, en el servidor. En local, Mailpit
+ * (bandeja en http://localhost:8421): nada sale a internet.
  */
 const global = globalThis as { __escenaraCorreo?: { clave: string; transporte: Transporter } };
 
-function transporte(ajustes: Ajustes): Transporter {
-  const clave = JSON.stringify([ajustes.smtpHost, ajustes.smtpPuerto, ajustes.smtpSeguro, ajustes.smtpUsuario]);
+/**
+ * Transporte reutilizado mientras no cambie la configuración. La clave de caché lleva una huella de la
+ * contraseña cifrada (fecha y longitud del valor guardado), nunca la contraseña.
+ */
+async function transporte(ajustes: Ajustes): Promise<Transporter> {
+  const clave = JSON.stringify([
+    ajustes.smtpHost,
+    ajustes.smtpPuerto,
+    ajustes.smtpSeguro,
+    ajustes.smtpUsuario,
+    await huellaSecretos(["smtpContrasena"]),
+  ]);
   if (global.__escenaraCorreo?.clave !== clave) {
+    const contrasena = ajustes.smtpUsuario ? await leerSecreto("smtpContrasena") : null;
     global.__escenaraCorreo = {
       clave,
       transporte: nodemailer.createTransport({
         host: ajustes.smtpHost,
         port: ajustes.smtpPuerto,
         secure: ajustes.smtpSeguro,
-        ...(ajustes.smtpUsuario ? { auth: { user: ajustes.smtpUsuario } } : {}),
+        ...(ajustes.smtpUsuario
+          ? { auth: { user: ajustes.smtpUsuario, ...(contrasena ? { pass: contrasena } : {}) } }
+          : {}),
       }),
     };
   }
@@ -33,7 +47,7 @@ export interface Correo {
 
 export async function enviarCorreo({ para, asunto, texto, html }: Correo): Promise<void> {
   const ajustes = await leerAjustes();
-  await transporte(ajustes).sendMail({
+  await (await transporte(ajustes)).sendMail({
     from: ajustes.correoRemitente,
     to: para,
     subject: asunto,
@@ -44,7 +58,10 @@ export async function enviarCorreo({ para, asunto, texto, html }: Correo): Promi
 
 /** Envía sin bloquear la respuesta (evita revelar por el tiempo si una cuenta existe) y registra los fallos. */
 export function enviarEnSegundoPlano(correo: Correo): void {
-  enviarCorreo(correo).catch((error) => console.error("[correo] no se ha podido enviar:", correo.asunto, error));
+  // Solo el mensaje del error: algunos fallos de SMTP incluyen las credenciales enviadas.
+  enviarCorreo(correo).catch((error) =>
+    console.error(`[correo] no se ha podido enviar «${correo.asunto}»: ${(error as Error).message}`),
+  );
 }
 
 const escapar = (texto: string) =>
