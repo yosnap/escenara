@@ -4,7 +4,7 @@ import { Combobox as C } from "@base-ui/react/combobox";
 import { Check, ChevronsUpDown, X } from "lucide-react";
 import { useId } from "react";
 import { cn } from "./cn";
-import { claseControl } from "./field";
+import { claseControl, SIN_GESTOR_CONTRASENAS } from "./field";
 import { claseItem, clasePopup, type Opcion } from "./options";
 
 export interface BuscadorProps {
@@ -44,7 +44,12 @@ export function Buscador({
           {etiqueta}
         </label>
         <C.InputGroup className="relative flex items-center">
-          <C.Input id={id} placeholder={marcador} className={cn(claseControl, "min-h-11 pr-20")} />
+          <C.Input
+            id={id}
+            placeholder={marcador}
+            className={cn(claseControl, "min-h-11 pr-20")}
+            {...SIN_GESTOR_CONTRASENAS}
+          />
           <div className="absolute right-1.5 flex items-center gap-0.5 text-texto-suave">
             <C.Clear
               aria-label="Borrar selección"

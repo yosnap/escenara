@@ -2,6 +2,16 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.19.2] · 2026-09-28
+
+### Corregido
+
+- **Los gestores de contraseñas ya no rompen la página.** LastPass metía su icono dentro de los buscadores y de los
+  campos que no son credenciales antes de que la página arrancara; el HTML dejaba de coincidir y la página se
+  rehacía entera en el navegador, con dos errores en la consola. Ahora los buscadores, filtros y campos de texto
+  piden a LastPass, 1Password, Bitwarden y Dashlane que no los decoren; los de correo, nombre y contraseña siguen
+  pudiéndose rellenar desde el gestor.
+
 ## [0.19.1] · 2026-09-27
 
 ### Decisiones del propietario (2026-09-27, con dinero real por delante)
