@@ -15,6 +15,7 @@ export function MarcoEnfoque({
   vista,
   children,
   etiqueta,
+  silueta = true,
   className,
 }: {
   /** Vista que se está capturando: decide la silueta y la orientación del encuadre. */
@@ -23,6 +24,11 @@ export function MarcoEnfoque({
   children?: ReactNode;
   /** Texto de la esquina: la indicación de lo que hay que hacer. */
   etiqueta?: ReactNode;
+  /**
+   * Silueta de la vista. Se quita cuando dentro hay ya **fotos de esa vista**: la guía sirve para colocarse al
+   * hacer la foto, y encima de la foto hecha solo tapa lo que se quiere ver.
+   */
+  silueta?: boolean;
   className?: string;
 }) {
   return (
@@ -50,22 +56,24 @@ export function MarcoEnfoque({
           vectorEffect="non-scaling-stroke"
         />
       </svg>
-      <svg
-        viewBox="0 0 100 100"
-        aria-hidden
-        className="pointer-events-none absolute inset-0 size-full animate-pulse motion-reduce:animate-none"
-      >
-        <path
-          d={SILUETA_VISTA[vista]}
-          fill="none"
-          stroke="var(--color-chispa)"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          opacity="0.85"
-          vectorEffect="non-scaling-stroke"
-        />
-      </svg>
+      {silueta && (
+        <svg
+          viewBox="0 0 100 100"
+          aria-hidden
+          className="pointer-events-none absolute inset-0 size-full animate-pulse motion-reduce:animate-none"
+        >
+          <path
+            d={SILUETA_VISTA[vista]}
+            fill="none"
+            stroke="var(--color-chispa)"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity="0.85"
+            vectorEffect="non-scaling-stroke"
+          />
+        </svg>
+      )}
       {etiqueta && (
         <p className="absolute inset-x-2 bottom-2 rounded-control bg-black/65 px-3 py-2 text-center text-sm font-medium text-white">
           {etiqueta}

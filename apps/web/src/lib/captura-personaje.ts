@@ -131,7 +131,8 @@ export const ETIQUETA_MOTIVO: Record<MotivoRechazo, string> = {
 
 /** Qué hacer para arreglarlo. Un rechazo sin acción concreta solo frustra. */
 export const ACCION_MOTIVO: Record<MotivoRechazo, string> = {
-  resolucion: "Usa la foto original en vez de una captura de pantalla, o acércate y vuelve a hacerla.",
+  resolucion:
+    "Tiene poca resolución (quizá está recortada o es una captura): guiará algo peor la identidad. Si tienes la original, mejor; si no, puedes usarla de todas formas.",
   enorme:
     "Tiene demasiados píxeles para analizarla sin bloquear el servidor. Redúcela (basta con 2000 px de lado) y vuelve a subirla.",
   nitidez: "Sujeta el móvil con las dos manos, espera a que enfoque y repite la foto.",
@@ -141,8 +142,13 @@ export const ACCION_MOTIVO: Record<MotivoRechazo, string> = {
   duplicada: "Ya tienes esta foto (o una casi idéntica) en el personaje. Haz otra desde otro ángulo.",
 };
 
-/** Los mínimos técnicos no se pueden saltar con «usar de todas formas»: la foto no sirve de referencia. */
-export const MOTIVOS_TECNICOS: readonly MotivoRechazo[] = ["resolucion", "enorme", "duplicada"];
+/**
+ * Los mínimos técnicos no se pueden saltar con «usar de todas formas»: una foto que no se puede analizar sin
+ * bloquear el servidor, o una que ya está. Una foto **pequeña** no es uno de ellos (decisión del propietario,
+ * 2026-09-28): una foto real recortada guía algo peor la identidad, pero sigue siendo suya y útil, así que se
+ * avisa y se deja usar, y el control previo de generar la sigue señalando.
+ */
+export const MOTIVOS_TECNICOS: readonly MotivoRechazo[] = ["enorme", "duplicada"];
 
 export const esMotivoTecnico = (motivo: MotivoRechazo): boolean => MOTIVOS_TECNICOS.includes(motivo);
 
@@ -226,6 +232,33 @@ export interface RechazoDeReferencia {
   metricas: MetricasCalidad;
 }
 
+/**
+ * Rechazos repartidos en los que se pueden **usar de todas formas** y los que no. Es lo que decide si la
+ * interfaz ofrece el botón por cada foto: un mínimo técnico se explica, pero no se ofrece saltarlo.
+ *
+ * El `bloqueante` que manda es el del servidor, y si faltara se recalcula con los motivos: así una respuesta
+ * antigua o incompleta nunca acaba ofreciendo saltarse un mínimo técnico.
+ */
+export interface RechazosClasificados {
+  salvables: RechazoDeReferencia[];
+  bloqueantes: RechazoDeReferencia[];
+}
+
+export const esRechazoBloqueante = (rechazo: RechazoDeReferencia): boolean =>
+  rechazo.bloqueante || rechazo.motivos.some(esMotivoTecnico);
+
+export function clasificarRechazos(rechazos: readonly RechazoDeReferencia[]): RechazosClasificados {
+  const salvables: RechazoDeReferencia[] = [];
+  const bloqueantes: RechazoDeReferencia[] = [];
+  for (const rechazo of rechazos) (esRechazoBloqueante(rechazo) ? bloqueantes : salvables).push(rechazo);
+  return { salvables, bloqueantes };
+}
+
+/** Fotos que se pueden reenviar con `usarDeTodasFormas`, sin repetir ninguna. */
+export const medioIdsSalvables = (rechazos: readonly RechazoDeReferencia[]): string[] => [
+  ...new Set(clasificarRechazos(rechazos).salvables.map((r) => r.medioId)),
+];
+
 /** Estado de una vista en el panel de cobertura. */
 export interface CoberturaVista {
   vista: Vista;
@@ -248,6 +281,25 @@ export interface Cobertura {
 export interface ReferenciaParaCobertura {
   vistaClave: Vista | null;
   origen: OrigenReferencia;
+}
+
+/**
+ * Referencias agrupadas por la vista que tienen asignada, en el orden en que llegan (que es el orden en el que
+ * se envían al proveedor). Las que no tienen vista no entran en ningún grupo.
+ *
+ * Va aparte de `calcularCobertura` a propósito: la cobertura solo **cuenta**, y la usan también el motor de
+ * controles y el contexto del prompt, donde las fotos no vienen al caso. Esto es lo que necesita la interfaz
+ * para enseñar *cuáles* son las fotos de cada vista en vez de un número suelto.
+ */
+export function agruparPorVista<T extends ReferenciaParaCobertura>(referencias: readonly T[]): Map<Vista, T[]> {
+  const grupos = new Map<Vista, T[]>();
+  for (const referencia of referencias) {
+    if (!referencia.vistaClave) continue;
+    const grupo = grupos.get(referencia.vistaClave);
+    if (grupo) grupo.push(referencia);
+    else grupos.set(referencia.vistaClave, [referencia]);
+  }
+  return grupos;
 }
 
 /**

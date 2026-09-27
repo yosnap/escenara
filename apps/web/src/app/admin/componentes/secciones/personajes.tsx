@@ -9,6 +9,7 @@ import {
   type EstadoConsentimiento,
   FormularioConsentimiento,
 } from "@/components/ui/personajes/formulario-consentimiento";
+import { FotosRechazadas } from "@/components/ui/personajes/fotos-rechazadas";
 import { MarcoEnfoque } from "@/components/ui/personajes/marco-enfoque";
 import { PanelContextoPersonaje } from "@/components/ui/personajes/panel-contexto";
 import {
@@ -18,6 +19,7 @@ import {
   esMotivoTecnico,
   INDICACION_VISTA,
   MOTIVOS_RECHAZO,
+  type RechazoDeReferencia,
   VISTAS,
 } from "@/lib/captura-personaje";
 import {
@@ -67,6 +69,22 @@ const CONTEXTO: ContextoAplicado = {
   modelo: "nano-banana-2-lite",
 };
 
+/** Tanda de ejemplo: una foto salvable y una que no se puede saltar, para ver las dos salidas a la vez. */
+const RECHAZOS: RechazoDeReferencia[] = [
+  {
+    medioId: "m1",
+    motivos: ["resolucion"],
+    bloqueante: false,
+    metricas: { ancho: 320, alto: 320, nitidez: 90, luminosidad: 128, caraRelativa: 0.35 },
+  },
+  {
+    medioId: "m2",
+    motivos: ["duplicada"],
+    bloqueante: true,
+    metricas: { ancho: 1024, alto: 1024, nitidez: 140, luminosidad: 130, caraRelativa: 0.5 },
+  },
+];
+
 export function SeccionPersonajes() {
   const [elegido, setElegido] = useState<string | null>("1");
   const [consentimiento, setConsentimiento] = useState<EstadoConsentimiento>(CONSENTIMIENTO_INICIAL);
@@ -113,6 +131,17 @@ export function SeccionPersonajes() {
               </li>
             ))}
           </ul>
+        </Muestra>
+        <Muestra titulo="Fotos que el control de calidad ha dejado fuera: cada una con su salida">
+          <div className="w-full">
+            <FotosRechazadas
+              rechazos={RECHAZOS}
+              medios={[]}
+              ocupado={false}
+              onUsarDeTodasFormas={() => {}}
+              onSeguirSinEllas={() => {}}
+            />
+          </div>
         </Muestra>
         <Muestra titulo="Contexto que se enviará al modelo (zona de claridad)">
           <div className="w-full">

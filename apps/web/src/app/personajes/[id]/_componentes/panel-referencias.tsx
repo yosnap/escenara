@@ -1,17 +1,20 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Boton, BotonIcono } from "@/components/ui/button";
+import { type ElementoOrdenable, ListaOrdenable } from "@/components/ui/lista-ordenable";
 import { MiniaturaMedio } from "@/components/ui/media/miniatura-medio";
 import { SelectorMedios } from "@/components/ui/media/selector-medios";
 import { DistintivoOrigen } from "@/components/ui/personajes/distintivo-origen";
+import { FotosRechazadas } from "@/components/ui/personajes/fotos-rechazadas";
 import { Selector } from "@/components/ui/select";
 import {
   ACCION_MOTIVO,
   ETIQUETA_MOTIVO,
   ETIQUETA_VISTA,
   esVista,
+  type RechazoDeReferencia,
   type Vista,
   vistasMinimas,
 } from "@/lib/captura-personaje";
@@ -21,48 +24,136 @@ import { MAXIMO_REFERENCIAS, type PersonajeVista, type ReferenciaVista } from "@
 /** Ancla de la sección: el panel de cobertura lleva aquí cuando hay fotos que clasificar. */
 export const ANCLA_REFERENCIAS = "fotos-de-referencia";
 
+/** `id` de la tarjeta de una foto en la página: es a donde llevan las miniaturas del panel de cobertura. */
+export const idDeReferencia = (referenciaId: string) => `referencia-${referenciaId}`;
+
 /** Valor del selector que deja la foto sin clasificar. No es una vista: es la ausencia de vista. */
 const SIN_CLASIFICAR = "sin_clasificar";
 
+/** Lo que devuelve añadir fotos: el error si lo hubo y las que se han quedado fuera, con su detalle. */
+export interface ResultadoAnadir {
+  error: string | null;
+  rechazos: RechazoDeReferencia[];
+}
+
 /**
- * Fotos de referencia del personaje: añadir desde la biblioteca o subiendo, quitar y reordenar. La primera es
- * la portada y la que más peso tiene en la identidad, así que el orden se puede cambiar.
+ * Fotos de referencia del personaje: añadir desde la biblioteca o subiendo, quitar y **ordenar arrastrando**. La
+ * primera es la portada y la primera que se le envía al proveedor, así que el orden importa y se puede cambiar
+ * con el ratón, con el dedo y con el teclado (lo gobierna `ListaOrdenable`).
  *
  * Quitar una referencia **no borra la foto de la biblioteca**: se deshace la relación y se dice expresamente.
  *
  * Cada foto lleva además el selector de **su vista**: las que se suben desde la biblioteca entran sin vista, y
  * sin poder decirla después no cubrirían nunca la cobertura ni se podrían volver a añadir por la captura guiada
  * (saltaría el duplicado). Las vistas generadas no lo llevan: su vista es la que pidió su trabajo.
+ *
+ * Y si el control de calidad deja alguna foto fuera, no se queda en un error sin salida: se enseña cuál, qué le
+ * pasa y —salvo en los mínimos técnicos— se puede **usar de todas formas**.
  */
 export function PanelReferencias({
   personaje,
   onCambio,
+  onAnadir,
   onVista,
   ocupado,
 }: {
   personaje: PersonajeVista;
-  /** Devuelve el error, o `null` si ha ido bien. */
-  onCambio: (accion: "anadir" | "quitar" | "ordenar", ids: string[]) => Promise<string | null>;
+  /** Quitar o reordenar. Devuelve el error, o `null` si ha ido bien. */
+  onCambio: (accion: "quitar" | "ordenar", ids: string[]) => Promise<string | null>;
+  /** Añade fotos; `deTodasFormas` son las que se aceptan aunque estén marcadas. */
+  onAnadir: (medioIds: string[], deTodasFormas?: string[]) => Promise<ResultadoAnadir>;
   /** Asigna la vista de una foto que ya está en el personaje; `null` la deja sin clasificar. */
   onVista: (referenciaId: string, vista: Vista | null) => void;
   ocupado: boolean;
 }) {
   const [nuevas, setNuevas] = useState<Medio[]>([]);
+  /** Fotos de la última tanda que se intentó añadir: son las que ponen cara a cada rechazo. */
+  const [tanda, setTanda] = useState<Medio[]>([]);
+  const [rechazadas, setRechazadas] = useState<RechazoDeReferencia[]>([]);
   const referencias = personaje.referencias ?? [];
   const hueco = MAXIMO_REFERENCIAS - referencias.length;
   // La portada la elige el servidor: es la **primera foto original**, no la primera referencia. Si la primera
   // fuera una vista generada, marcar la posición 0 diría que la portada es algo que no lo es.
   const portada = referencias.find((r) => r.origen === "foto_original")?.id ?? null;
 
-  const mover = (indice: number, salto: number) => {
-    const orden = referencias.map((r) => r.id);
-    const destino = indice + salto;
-    if (destino < 0 || destino >= orden.length) return;
-    const actual = orden[indice] as string;
-    orden[indice] = orden[destino] as string;
-    orden[destino] = actual;
-    void onCambio("ordenar", orden);
+  /**
+   * Manda la tanda al servidor. `deTodasFormas` reenvía las fotos marcadas que el usuario acepta usar; como el
+   * servidor ignora las que ya son referencia, reenviar la tanda entera solo añade las que faltaban.
+   */
+  const anadir = async (deTodasFormas: string[] = []) => {
+    const fotos = nuevas.length > 0 ? nuevas.slice(0, hueco) : tanda;
+    if (fotos.length === 0) return;
+    setTanda(fotos);
+    const { error, rechazos } = await onAnadir(
+      fotos.map((m) => m.id),
+      deTodasFormas,
+    );
+    setRechazadas(rechazos);
+    // La selección se limpia también cuando hay rechazos: de ellos se encarga el panel de abajo, con su
+    // miniatura y su acción, y dejarla puesta enseñaría las mismas fotos dos veces.
+    if (!error || rechazos.length > 0) setNuevas([]);
   };
+
+  const elementos: ElementoOrdenable[] = referencias.map((referencia) => ({
+    clave: referencia.id,
+    id: idDeReferencia(referencia.id),
+    etiqueta: referencia.medio.nombre,
+    contenido: (
+      <>
+        <div className="relative aspect-square overflow-hidden rounded-control bg-elevada">
+          <MiniaturaMedio medio={referencia.medio} className="object-cover" />
+          {referencia.id === portada && (
+            <span className="absolute top-1.5 left-1.5 rounded-full bg-acento px-2 py-0.5 text-xs font-bold text-sobre-acento">
+              Portada
+            </span>
+          )}
+          {/* Una vista generada lleva su distintivo **sobre la propia imagen**: nunca se presenta como
+              una foto del personaje, ni de refilón. */}
+          {referencia.origen === "vista_generada" && (
+            <DistintivoOrigen
+              origen={referencia.origen}
+              sobreImagen
+              className="absolute inset-x-1.5 bottom-1.5 justify-center"
+            />
+          )}
+        </div>
+        {/* La vista de una imagen generada solo se elige cuando **no la trae**: eso pasa al añadir desde la
+            biblioteca el resultado de un trabajo que no era «generar una vista». Si la trae, es la que pidió su
+            trabajo y no se cambia. Clasificarla no la convierte en una foto tuya: sigue sin contar. */}
+        {referencia.origen === "vista_generada" && referencia.vistaClave ? (
+          <>
+            <p className="text-xs text-texto-suave">{ETIQUETA_VISTA[referencia.vistaClave]}</p>
+            <p className="text-xs text-texto-suave">
+              Su vista ya no se cambia. Si no es la que querías, quítala y vuelve a añadirla.
+            </p>
+          </>
+        ) : (
+          <SelectorDeVista
+            referencia={referencia}
+            tipo={personaje.tipo}
+            deshabilitado={ocupado}
+            onVista={(vista) => onVista(referencia.id, vista)}
+          />
+        )}
+        {referencia.origen === "vista_generada" && (
+          <p className="text-xs text-texto-suave">No cuenta como foto original del personaje.</p>
+        )}
+        {referencia.motivosMarcada.map((motivo) => (
+          <p key={motivo} className="text-xs font-medium text-aviso">
+            {ETIQUETA_MOTIVO[motivo]}: {ACCION_MOTIVO[motivo]}
+          </p>
+        ))}
+        <BotonIcono
+          etiqueta={`Quitar ${referencia.medio.nombre} del personaje`}
+          disabled={ocupado}
+          className="size-9 self-end text-error"
+          onClick={() => void onCambio("quitar", [referencia.id])}
+        >
+          <Trash2 className="size-4" />
+        </BotonIcono>
+      </>
+    ),
+  }));
 
   return (
     <section id={ANCLA_REFERENCIAS} aria-label="Fotos de referencia" className="flex flex-col gap-4">
@@ -75,81 +166,28 @@ export function PanelReferencias({
       </div>
 
       {referencias.length > 0 && (
-        <ul className="grid gap-3 sm:grid-cols-[repeat(auto-fill,minmax(9rem,1fr))]">
-          {referencias.map((referencia, indice) => (
-            <li
-              key={referencia.id}
-              className="flex flex-col gap-2 rounded-tarjeta border border-borde bg-superficie p-2"
-            >
-              <div className="relative aspect-square overflow-hidden rounded-control bg-elevada">
-                <MiniaturaMedio medio={referencia.medio} className="object-cover" />
-                {referencia.id === portada && (
-                  <span className="absolute top-1.5 left-1.5 rounded-full bg-acento px-2 py-0.5 text-xs font-bold text-sobre-acento">
-                    Portada
-                  </span>
-                )}
-                {/* Una vista generada lleva su distintivo **sobre la propia imagen**: nunca se presenta como
-                    una foto del personaje, ni de refilón. */}
-                {referencia.origen === "vista_generada" && (
-                  <DistintivoOrigen
-                    origen={referencia.origen}
-                    sobreImagen
-                    className="absolute inset-x-1.5 bottom-1.5 justify-center"
-                  />
-                )}
-              </div>
-              {referencia.origen === "vista_generada" ? (
-                <>
-                  <p className="text-xs text-texto-suave">
-                    {referencia.vistaClave ? ETIQUETA_VISTA[referencia.vistaClave] : referencia.vista}
-                  </p>
-                  <p className="text-xs text-texto-suave">No cuenta como foto original del personaje.</p>
-                </>
-              ) : (
-                <SelectorDeVista
-                  referencia={referencia}
-                  tipo={personaje.tipo}
-                  deshabilitado={ocupado}
-                  onVista={(vista) => onVista(referencia.id, vista)}
-                />
-              )}
-              {referencia.motivosMarcada.map((motivo) => (
-                <p key={motivo} className="text-xs font-medium text-aviso">
-                  {ETIQUETA_MOTIVO[motivo]}: {ACCION_MOTIVO[motivo]}
-                </p>
-              ))}
-              <div className="flex items-center justify-between">
-                <span className="flex">
-                  <BotonIcono
-                    etiqueta={`Mover ${referencia.medio.nombre} antes`}
-                    disabled={ocupado || indice === 0}
-                    className="size-9"
-                    onClick={() => mover(indice, -1)}
-                  >
-                    <ArrowLeft className="size-4" />
-                  </BotonIcono>
-                  <BotonIcono
-                    etiqueta={`Mover ${referencia.medio.nombre} después`}
-                    disabled={ocupado || indice === referencias.length - 1}
-                    className="size-9"
-                    onClick={() => mover(indice, 1)}
-                  >
-                    <ArrowRight className="size-4" />
-                  </BotonIcono>
-                </span>
-                <BotonIcono
-                  etiqueta={`Quitar ${referencia.medio.nombre} del personaje`}
-                  disabled={ocupado}
-                  className="size-9 text-error"
-                  onClick={() => void onCambio("quitar", [referencia.id])}
-                >
-                  <Trash2 className="size-4" />
-                </BotonIcono>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <>
+          <p className="text-sm text-texto-suave">
+            La primera es la <strong className="font-semibold text-texto">portada</strong> y la primera que se le envía
+            al proveedor al generar: el orden cambia lo que ve el modelo.
+          </p>
+          <ListaOrdenable
+            elementos={elementos}
+            etiquetaLista="Fotos de referencia en el orden en que se envían"
+            deshabilitado={ocupado}
+            onOrden={(ids) => onCambio("ordenar", ids)}
+            className="grid gap-3 sm:grid-cols-[repeat(auto-fill,minmax(9rem,1fr))]"
+            claseElemento="flex flex-col gap-2 rounded-tarjeta border border-borde bg-superficie p-2"
+          />
+        </>
       )}
+
+      <FotosRechazadas
+        rechazos={rechazadas}
+        medios={tanda}
+        ocupado={ocupado}
+        onUsarDeTodasFormas={(medioIds) => void anadir(medioIds)}
+      />
 
       {hueco > 0 && (
         <div className="flex flex-col gap-3">
@@ -163,17 +201,7 @@ export function PanelReferencias({
             onCambio={setNuevas}
           />
           {nuevas.length > 0 && (
-            <Boton
-              className="self-start"
-              cargando={ocupado}
-              onClick={async () => {
-                const error = await onCambio(
-                  "anadir",
-                  nuevas.slice(0, hueco).map((m) => m.id),
-                );
-                if (!error) setNuevas([]);
-              }}
-            >
+            <Boton className="self-start" cargando={ocupado} onClick={() => void anadir()}>
               Añadir {nuevas.length === 1 ? "la foto" : `las ${nuevas.length} fotos`}
             </Boton>
           )}

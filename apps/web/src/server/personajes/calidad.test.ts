@@ -94,11 +94,12 @@ describe("medidas de calidad de una referencia", () => {
     expect(evaluarCalidad(metricas, UMBRALES).aceptada).toBe(true);
   });
 
-  test("una foto pequeña es un mínimo técnico: no se puede usar «de todas formas»", async () => {
+  test("una foto pequeña avisa, pero se puede usar «de todas formas»", async () => {
     const { metricas } = await analizarImagen(await conRuido(200));
     const veredicto = evaluarCalidad(metricas, UMBRALES);
     expect(veredicto.motivos).toContain("resolucion");
-    expect(veredicto.bloqueante).toBe(true);
+    expect(veredicto.aceptada).toBe(false);
+    expect(veredicto.bloqueante).toBe(false);
   });
 
   test("una foto movida se detecta por la varianza del laplaciano, y eso sí se puede saltar", async () => {
