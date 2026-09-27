@@ -28,6 +28,7 @@ function medioDeMuestra(nombre: string, ancho: number, alto: number): Medio {
     actualizadoEn: new Date().toISOString(),
     enPapelera: false,
     origen: null,
+    documento: false,
     permisos: { editarImagen: false, borrarDefinitivo: false },
   };
 }

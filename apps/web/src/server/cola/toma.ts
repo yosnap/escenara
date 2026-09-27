@@ -94,6 +94,27 @@ export async function marcarEnviando(id: string, workerId: string): Promise<bool
 }
 
 /**
+ * Renueva la toma de un trabajo que se está preparando. Subir varias referencias al proveedor puede tardar
+ * más que la toma, y una toma caducada mientras se prepara deja que otro worker se lleve el trabajo y lo
+ * prepare otra vez. Devuelve `false` si la fila ya no es de este worker: entonces hay que abandonar.
+ */
+export async function renovarToma(id: string, workerId: string): Promise<boolean> {
+  const renovadas = await db()
+    .update(generationJobs)
+    .set({ lockedUntil: new Date(Date.now() + MS_TOMA) })
+    .where(
+      and(
+        eq(generationJobs.id, id),
+        eq(generationJobs.lockedBy, workerId),
+        eq(generationJobs.state, "preparando"),
+        isNull(generationJobs.taskId),
+      ),
+    )
+    .returning({ id: generationJobs.id });
+  return renovadas.length > 0;
+}
+
+/**
  * Suelta la toma de un trabajo que este worker ya ha terminado de atender.
  *
  * Dos condiciones, y las dos son de dinero:

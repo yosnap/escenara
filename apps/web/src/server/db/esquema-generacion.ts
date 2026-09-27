@@ -3,6 +3,7 @@ import { index, integer, pgEnum, pgTable, real, text, timestamp, unique, uuid } 
 import { media } from "./esquema";
 import { users } from "./esquema-auth";
 import { proveedorCredencial } from "./esquema-boveda";
+import { characters } from "./esquema-personajes";
 import { jsonb } from "./jsonb";
 
 /**
@@ -52,6 +53,10 @@ export const motivoFalloTrabajo = pgEnum("generation_job_failure", [
   "interno",
   "sin_acotar",
   "cancelado",
+  // 0.13.0: el personaje con el que se pidió el trabajo ya no puede usarse (consentimiento revocado o
+  // rechazado, o referencias por debajo del mínimo). El trabajo se cierra **sin coste**, porque se detecta
+  // antes de tocar al proveedor.
+  "consentimiento",
 ]);
 
 export const generationJobs = pgTable(
@@ -79,6 +84,13 @@ export const generationJobs = pgTable(
     /** Entrada enviada al proveedor (modelo y parámetros). Nunca contiene la credencial. */
     input: jsonb<Record<string, unknown>>("input").notNull(),
     sourceMediaId: uuid("source_media_id").references(() => media.id, { onDelete: "set null" }),
+    /**
+     * Personaje con el que se pidió el trabajo, si se pidió con uno (0.13.0). Es lo que permite borrar los
+     * **derivados** al borrar el personaje: sin esta columna, un medio generado con la cara de alguien
+     * sobreviviría a la revocación de su consentimiento. `set null` no sirve aquí, pero tampoco hace falta
+     * una cascada: el borrado del personaje borra sus derivados y sus trabajos en la misma transacción.
+     */
+    characterId: uuid("character_id").references(() => characters.id, { onDelete: "set null" }),
     resultMediaId: uuid("result_media_id").references(() => media.id, { onDelete: "set null" }),
     estimatedCredits: integer("estimated_credits").notNull(),
     /** Créditos que informa el proveedor; si no llegan, se conserva la estimación marcada como tal. */
@@ -87,6 +99,13 @@ export const generationJobs = pgTable(
     errorMessage: text("error_message"),
     /** Casilla obligatoria de derecho de uso de la imagen, tal como se confirmó al generar. */
     rightsConfirmedAt: timestamp("rights_confirmed_at", { withTimezone: true }),
+    /**
+     * Revisión de las referencias antes de enviarlas (ADR-0009): cuándo confirmó quien generó que en las
+     * fotos del personaje no aparece ninguna otra persona ni ningún menor. Se guarda con su fecha, igual que
+     * la confirmación de derechos, porque es una declaración y hay que poder demostrar cuándo se hizo.
+     * `null` en los trabajos sin personaje.
+     */
+    referencesReviewedAt: timestamp("references_reviewed_at", { withTimezone: true }),
     /** Animación → fotograma del que salió. */
     parentJobId: uuid("parent_job_id").references((): AnyPgColumn => generationJobs.id, { onDelete: "set null" }),
     /** Motivo normalizado del fallo; decide si el trabajo se puede reintentar sin riesgo de doble cobro. */
@@ -139,6 +158,8 @@ export const generationJobs = pgTable(
     // Índice de la toma de la cola: el worker busca `en_cola` disponible y ordena por prioridad y edad.
     index("generation_jobs_cola_idx").on(t.state, t.availableAt, t.priority),
     index("generation_jobs_toma_idx").on(t.lockedUntil),
+    // Índice del borrado de derivados: al borrar un personaje hay que localizar todos sus trabajos.
+    index("generation_jobs_personaje_idx").on(t.characterId),
   ],
 );
 

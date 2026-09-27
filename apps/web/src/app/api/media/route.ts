@@ -20,13 +20,16 @@ export const GET = manejador(async (peticion: Request, _: unknown, actor) => {
     pagina: Number(p.get("pagina") ?? 1),
     coleccion,
     propietario: leerPropietario(p.get("propietario")),
+    // `sinDocumentos=1` deja fuera los documentos de consentimiento: lo usan los selectores de fotos.
+    sinDocumentos: p.get("sinDocumentos") === "1",
   });
   return Response.json(pagina);
 });
 
 /**
  * Subida multiparte: `archivo`; para vídeo y audio, `duracion`, `ancho` y `alto` leídos por el navegador;
- * y `tipos`, los tipos que admite el campo de origen.
+ * `tipos`, los tipos que admite el campo de origen; y `documento=1` para un documento de consentimiento, que
+ * se guarda **sin recortar ni reconvertir** y no puede usarse como referencia de un personaje.
  */
 export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
   const { archivo, campos } = await leerArchivo(peticion);
@@ -43,6 +46,8 @@ export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
     archivo,
     { duracion: numero("duracion"), ancho: numero("ancho"), alto: numero("alto") },
     tipos.length > 0 ? tipos : undefined,
+    null,
+    { documento: campos.get("documento") === "1" },
   );
   return Response.json(medio, { status: 201 });
 });

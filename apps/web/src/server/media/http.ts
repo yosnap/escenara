@@ -1,4 +1,5 @@
 import { esAdmin, sesionDePeticion } from "../auth/sesion";
+import { ErrorMedioEnUso, ErrorPersonaje } from "../personajes/errores";
 import { ErrorMedio } from "./errores";
 import { type Actor, limiteSubida } from "./servicio";
 
@@ -17,6 +18,12 @@ export type ContextoId = { params: Promise<{ id: string }> };
 /** Convierte errores en respuestas JSON sin filtrar detalles internos. */
 export function respuestaError(error: unknown): Response {
   if (error instanceof ErrorMedio) return Response.json({ error: error.message }, { status: error.estado });
+  // El borrado definitivo de un medio puede toparse con un personaje que lo usa: el aviso lleva la lista,
+  // para que la interfaz pueda enumerar a quién afecta antes de que se confirme.
+  if (error instanceof ErrorMedioEnUso) {
+    return Response.json({ error: error.message, enUsoPor: error.personajes }, { status: error.estado });
+  }
+  if (error instanceof ErrorPersonaje) return Response.json({ error: error.message }, { status: error.estado });
   console.error("[media]", error);
   return Response.json({ error: "Error interno al procesar el medio." }, { status: 500 });
 }

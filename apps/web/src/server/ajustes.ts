@@ -27,6 +27,12 @@ export interface Ajustes {
   /** Trabajos simultáneos por usuario en la cola (en cola, preparando, enviados o en curso). */
   trabajosSimultaneos: number;
   /**
+   * Fotos de referencia que un personaje necesita como mínimo para poder generar. Con menos, la identidad
+   * se pierde entre fotogramas: en el prototipo del 2026-09-27 cinco fotos dieron buen resultado y tres son
+   * el mínimo razonable. La cobertura guiada de vistas llega en 0.14.0.
+   */
+  minimoReferenciasPersonaje: number;
+  /**
    * URL pública de esta instalación. Con ella se activan los callbacks del proveedor; vacía, solo se usa
    * el sondeo del worker. El sondeo funciona siempre, con callbacks o sin ellos.
    */
@@ -56,6 +62,7 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   presupuestoCreditos: 2000,
   presupuestoTrabajo: 500,
   trabajosSimultaneos: 3,
+  minimoReferenciasPersonaje: 3,
   urlPublica: "",
   correoRemitente: "Escenara <no-responder@escenara.local>",
   smtpHost: "localhost",
@@ -128,6 +135,10 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
   trabajosSimultaneos: {
     valido: entero(1, 50),
     mensaje: "Indica de 1 a 50 trabajos simultáneos por usuario.",
+  },
+  minimoReferenciasPersonaje: {
+    valido: entero(1, 10),
+    mensaje: "Indica de 1 a 10 fotos de referencia como mínimo por personaje.",
   },
   urlPublica: {
     valido: urlPublicaValida,

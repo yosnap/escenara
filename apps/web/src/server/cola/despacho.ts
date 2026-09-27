@@ -1,6 +1,7 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { PROVEEDORES_PUBLICOS } from "@/lib/boveda";
 import { CAPACIDAD_DE_TIPO, type ModeloVista } from "@/lib/catalogo";
+import { leerAjustes } from "../ajustes";
 import { usarCredencialValida } from "../boveda/credenciales";
 import { db } from "../db/cliente";
 import { type FilaMedio, type FilaTrabajo, generationJobs, media } from "../db/esquema";
@@ -8,11 +9,13 @@ import { archivoDe } from "../generacion/comprobaciones";
 import { olvidarSaldo } from "../generacion/estimacion";
 import type { Herramientas } from "../generacion/herramientas";
 import { referenciaCompatible } from "../media/conversion-referencia";
+import { mediosDeReferenciaVigentes } from "../personajes/consulta";
+import { motivosParaNoGenerar } from "../personajes/puede-generar";
 import { cerrarTrabajoYGasto } from "../presupuesto/reserva";
-import { type Adaptador, ErrorProveedor, type MotivoProveedor } from "../proveedores/contrato";
+import { type Adaptador, ErrorProveedor } from "../proveedores/contrato";
 import { resolver } from "../proveedores/registro";
 import { prepararCallback } from "./callback";
-import { marcarEnviando, reintentar } from "./toma";
+import { marcarEnviando, reintentar, renovarToma } from "./toma";
 
 /**
  * Envío al proveedor de un trabajo que el worker ya ha tomado. Es el único sitio desde el que se crea una
@@ -36,6 +39,9 @@ import { marcarEnviando, reintentar } from "./toma";
  * - un fallo que sí cierra el trabajo suelta la reserva, porque no ha habido gasto.
  */
 
+/** Motivo normalizado del fallo, tomado del propio esquema para que no pueda desviarse de la enumeración. */
+type MotivoFalloTrabajo = NonNullable<FilaTrabajo["failureReason"]>;
+
 /** Intentos de escritura del `taskId` y espera entre ellos. Corto: es la propia base de datos, no una red. */
 const INTENTOS_ESCRITURA = 5;
 const MS_ENTRE_ESCRITURAS = 200;
@@ -53,10 +59,15 @@ export async function despachar(fila: FilaTrabajo, workerId: string, h: Herramie
   // ── Mitad 1: preparar. Un fallo aquí no ha costado nada y se puede reintentar.
   let preparado: Preparado;
   try {
-    preparado = await preparar(fila, h);
+    preparado = await preparar(fila, workerId, h);
   } catch (error) {
     if (error instanceof ErrorSinCredencial) {
       return { fila: await cerrarSinCoste(fila, "credencial", error.message), enviado: false };
+    }
+    // El personaje ya no se puede usar: se cierra sin coste y **no se reintenta**. Reintentar esperaría a que
+    // alguien volviera a dar un consentimiento que precisamente se ha retirado.
+    if (error instanceof ErrorPersonajeNoUsable) {
+      return { fila: await cerrarSinCoste(fila, error.motivo, error.message), enviado: false };
     }
     console.error(`[cola] no se ha podido preparar el trabajo ${fila.id}: ${detalle(error)}`);
     await reintentar(fila, "No se ha podido preparar el envío. Se volverá a intentar.", "interno");
@@ -100,8 +111,42 @@ interface Preparado {
 /** La credencial del usuario no sirve: no es un fallo reintentable, es algo que tiene que arreglar él. */
 class ErrorSinCredencial extends Error {}
 
-async function preparar(fila: FilaTrabajo, h: Herramientas): Promise<Preparado> {
+/**
+ * El personaje del trabajo ya no puede generar (consentimiento revocado o rechazado, referencias por debajo
+ * del mínimo, o un modelo que dejó de aceptar referencias). No es reintentable: el trabajo se cierra sin coste.
+ */
+class ErrorPersonajeNoUsable extends Error {
+  constructor(
+    mensaje: string,
+    readonly motivo: MotivoFalloTrabajo = "consentimiento",
+  ) {
+    super(mensaje);
+    this.name = "ErrorPersonajeNoUsable";
+  }
+}
+
+async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): Promise<Preparado> {
   const { modelo, adaptador } = await resolver(CAPACIDAD_DE_TIPO[fila.kind], fila.model);
+  // ── Revalidación del consentimiento, **antes** de subir nada. El encolado la comprobó, pero entre encolar y
+  // enviar el usuario puede haber revocado el consentimiento o borrado fotos, y en un reintento puede haber
+  // pasado más rato todavía. Sin esta comprobación, revocar no impediría que la cara saliera hacia el
+  // proveedor: solo impediría pedir trabajos nuevos, que es la mitad de la regla.
+  if (fila.characterId) {
+    const motivos = await motivosParaNoGenerar(fila.characterId);
+    if (motivos.length > 0) {
+      throw new ErrorPersonajeNoUsable(
+        `El personaje de este trabajo ya no se puede usar para generar, así que no se ha enviado nada y no se te ha cobrado. ${motivos.join(" ")}`,
+      );
+    }
+    // Un modelo que dejó de aceptar referencias no puede recibir un personaje: se cierra en lugar de
+    // reintentar para siempre contra una configuración que no va a cambiar sola.
+    if (modelo.parametros.maximoReferencias < 1) {
+      throw new ErrorPersonajeNoUsable(
+        `El modelo ${modelo.nombre} ya no acepta fotos de referencia, así que no se puede usar con un personaje. No se ha enviado nada y no se te ha cobrado: vuelve a pedir el trabajo con otro modelo.`,
+        "interno",
+      );
+    }
+  }
   const credencial = await usarCredencialValida(fila.userId, fila.provider);
   if (!credencial.ok) {
     const nombre = PROVEEDORES_PUBLICOS[fila.provider].nombre;
@@ -109,12 +154,22 @@ async function preparar(fila: FilaTrabajo, h: Herramientas): Promise<Preparado> 
       `No hay una clave de ${nombre} utilizable en tu cuenta. Añádela en «Tu cuenta» y vuelve a pedir el trabajo.`,
     );
   }
-  const origen = await medioOrigen(fila);
-  const url = await subirReferencia(adaptador, credencial.clave, origen, modelo, h);
+  // Un trabajo con personaje lleva **varias** referencias (0.13.0); uno con imagen suelta, una sola. Se
+  // suben en el mismo orden que se guardaron: la primera es la que más peso tiene en la identidad.
+  const origenes = await mediosDeReferencia(fila, Math.max(1, modelo.parametros.maximoReferencias));
+  const urls: string[] = [];
+  for (const origen of origenes) {
+    // Cada subida renueva la toma: con diez referencias, la preparación puede pasar de los tres minutos que
+    // dura, y una toma caducada dejaría que otro worker preparase el mismo trabajo en paralelo.
+    if (!(await renovarToma(fila.id, workerId))) {
+      throw new Error(`El trabajo ${fila.id} ha dejado de ser de este worker mientras se preparaba.`);
+    }
+    urls.push(await subirReferencia(adaptador, credencial.clave, origen, modelo, h));
+  }
   const entrada = adaptador.montarEntrada(modelo, {
     escena: fila.prompt,
     dialogo: dialogoDe(fila),
-    urls: [url],
+    urls,
   });
   const callback = await prepararCallback(fila);
   return { adaptador, clave: credencial.clave, entrada, ...callback };
@@ -241,11 +296,7 @@ async function tratarFalloDeLlamada(fila: FilaTrabajo, error: unknown): Promise<
 }
 
 /** Cierra el trabajo como fallido y suelta su reserva: el proveedor no ha llegado a crear la tarea. */
-async function cerrarSinCoste(
-  fila: FilaTrabajo,
-  motivo: MotivoProveedor | "interno",
-  mensaje: string,
-): Promise<FilaTrabajo> {
+async function cerrarSinCoste(fila: FilaTrabajo, motivo: MotivoFalloTrabajo, mensaje: string): Promise<FilaTrabajo> {
   // El cambio de estado y la liberación de la reserva van juntos: si el apunte fallara después del `UPDATE`, el
   // trabajo quedaría cerrado con su presupuesto apartado para siempre.
   const cerrada = await cerrarTrabajoYGasto(
@@ -283,11 +334,47 @@ function dialogoDe(fila: FilaTrabajo): string {
   return typeof dialogo === "string" ? dialogo : "";
 }
 
-async function medioOrigen(fila: FilaTrabajo): Promise<FilaMedio> {
-  if (!fila.sourceMediaId) throw new Error("El trabajo no tiene imagen de referencia.");
-  const [origen] = await db().select().from(media).where(eq(media.id, fila.sourceMediaId)).limit(1);
-  if (!origen) throw new Error("La imagen de referencia ya no existe.");
-  return origen;
+/**
+ * Referencias del trabajo, en el orden en que se guardaron al encolar, **cruzadas con lo que sigue siendo
+ * verdad**: se recortan al tope del modelo (el catálogo puede haber cambiado) y, si el trabajo lleva personaje,
+ * se descarta lo que ya no sea referencia suya o esté en la papelera.
+ *
+ * Es la otra mitad de la revalidación: comprobar el consentimiento no basta si entre encolar y enviar el usuario
+ * ha quitado fotos o las ha mandado a la papelera. Si quedan por debajo del mínimo, el trabajo se cierra sin
+ * subir nada, igual que si el consentimiento se hubiera revocado.
+ */
+async function mediosDeReferencia(fila: FilaTrabajo, maximo = Number.POSITIVE_INFINITY): Promise<FilaMedio[]> {
+  const guardadas = (fila.input as { referencias?: unknown }).referencias;
+  let ids = Array.isArray(guardadas) ? guardadas.filter((id): id is string => typeof id === "string") : [];
+  if (fila.characterId) {
+    // Solo lo que sigue siendo referencia del personaje y fuera de la papelera, respetando el orden guardado.
+    const vigentes = new Set(await mediosDeReferenciaVigentes(fila.characterId));
+    ids = ids.filter((id) => vigentes.has(id));
+    const { minimoReferenciasPersonaje: minimo } = await leerAjustes();
+    if (ids.length < minimo) {
+      throw new ErrorPersonajeNoUsable(
+        `Las fotos de referencia del personaje han cambiado desde que pediste el trabajo y ya no llegan al mínimo de ${minimo}. No se ha enviado nada y no se te ha cobrado: añade más fotos y vuelve a pedirlo.`,
+      );
+    }
+  }
+  ids = ids.slice(0, maximo);
+  if (ids.length === 0) {
+    if (!fila.sourceMediaId) throw new Error("El trabajo no tiene imagen de referencia.");
+    ids.push(fila.sourceMediaId);
+  }
+  // Un medio en la papelera no se envía nunca: su archivo puede desaparecer en cualquier momento.
+  const filas = await db()
+    .select()
+    .from(media)
+    .where(and(inArray(media.id, ids), isNull(media.deletedAt)));
+  const porId = new Map(filas.map((m) => [m.id, m]));
+  // Se respeta el orden guardado, no el que devuelva la consulta.
+  const origenes = ids.flatMap((id) => {
+    const medio = porId.get(id);
+    return medio ? [medio] : [];
+  });
+  if (origenes.length === 0) throw new Error("Las imágenes de referencia ya no existen.");
+  return origenes;
 }
 
 /**

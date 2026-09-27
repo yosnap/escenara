@@ -1,6 +1,6 @@
 "use client";
 
-import { Coins, HardDrive, Mail, ShieldCheck, UserPlus } from "lucide-react";
+import { Coins, HardDrive, Mail, ShieldCheck, UserPlus, UsersRound } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Boton } from "@/components/ui/button";
 import { CampoSecreto } from "@/components/ui/campo-secreto";
@@ -117,6 +117,34 @@ export function FormularioAjustes({
               inputMode="numeric"
               value={Number.isNaN(valores.cuotaMb) ? "" : valores.cuotaMb}
               onChange={(e) => cambiar("cuotaMb", e.target.value === "" ? Number.NaN : Number(e.target.value))}
+              className="max-w-48"
+            />
+          )}
+        </Campo>
+      </Seccion>
+
+      <Seccion
+        titulo="Personajes"
+        descripcion="Cuántas fotos de referencia necesita un personaje para poder usarse al generar."
+        icono={<UsersRound />}
+      >
+        <Campo
+          etiqueta="Fotos de referencia mínimas por personaje"
+          ayuda="Con menos fotos la identidad se pierde entre fotogramas. Un personaje por debajo del mínimo no puede generar, aunque tenga el consentimiento registrado."
+          error={errorDe("minimoReferenciasPersonaje")}
+        >
+          {(p) => (
+            <EntradaTexto
+              {...p}
+              type="number"
+              min={1}
+              max={10}
+              step={1}
+              inputMode="numeric"
+              value={Number.isNaN(valores.minimoReferenciasPersonaje) ? "" : valores.minimoReferenciasPersonaje}
+              onChange={(e) =>
+                cambiar("minimoReferenciasPersonaje", e.target.value === "" ? Number.NaN : Number(e.target.value))
+              }
               className="max-w-48"
             />
           )}

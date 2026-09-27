@@ -45,6 +45,8 @@ export interface BibliotecaMediosProps {
   propietario?: string | null;
   /** Sin subida (p. ej., en la vista de administración de medios ajenos). */
   permitirSubida?: boolean;
+  /** Deja fuera los documentos de consentimiento: no son fotos elegibles. */
+  sinDocumentos?: boolean;
   /** Cambia algo en la biblioteca (subida, papelera, borrado…): para refrescar contadores fuera. */
   onCambio?: () => void;
 }
@@ -70,16 +72,20 @@ function Biblioteca({
   coleccion = null,
   propietario = null,
   permitirSubida = true,
+  sinDocumentos = false,
   onCambio,
 }: BibliotecaMediosProps) {
   const todos = tipos.length === TIPOS_MEDIO.length ? [] : [...tipos];
   const [consulta, setConsulta] = useState<Consulta>({
-    filtro: { busqueda: "", tipos: todos, papelera: false, pagina: 1 },
+    filtro: { busqueda: "", tipos: todos, papelera: false, pagina: 1, sinDocumentos },
     version: 0,
   });
   const diferidaBase = useDeferredValue(consulta);
   // La colección y el dueño salen siempre de las props (no se congelan en el estado inicial).
-  const diferida: Consulta = { ...diferidaBase, filtro: { ...diferidaBase.filtro, coleccion, propietario } };
+  const diferida: Consulta = {
+    ...diferidaBase,
+    filtro: { ...diferidaBase.filtro, coleccion, propietario, sinDocumentos },
+  };
   const [texto, setTexto] = useState("");
   const [vista, setVista] = useState<VistaBiblioteca>("cuadricula");
   const [arrastrando, setArrastrando] = useState(false);
@@ -88,6 +94,9 @@ function Biblioteca({
   const [enDatos, setEnDatos] = useState<Medio | null>(null);
   const [enImagen, setEnImagen] = useState<Medio | null>(null);
   const [aEliminar, setAEliminar] = useState<Medio | null>(null);
+  // Personajes que usan el medio que se intenta borrar: se enumeran y se pide una segunda confirmación.
+  const [enUsoPor, setEnUsoPor] = useState<{ id: string; nombre: string }[] | null>(null);
+  const [borrando, setBorrando] = useState(false);
   const espera = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const filtrar = (cambios: Partial<Consulta["filtro"]>) =>
@@ -111,12 +120,30 @@ function Biblioteca({
     espera.current = setTimeout(() => filtrar({ busqueda: valor }), ESPERA_BUSQUEDA_MS);
   };
 
-  const ejecutar = async (accion: Promise<{ ok: boolean; error?: string }>, retirado?: string) => {
+  /** Devuelve `true` si el medio está en uso y hay que volver a preguntar, en lugar de cerrar el diálogo. */
+  const ejecutar = async (
+    accion: Promise<{ ok: boolean; error?: string; enUsoPor?: { id: string; nombre: string }[] }>,
+    retirado?: string,
+  ): Promise<boolean> => {
     setAviso(null);
     const r = await accion;
-    if (!r.ok) return setAviso(r.error ?? "No se ha podido completar la operación.");
+    if (!r.ok) {
+      setAviso(r.error ?? "No se ha podido completar la operación.");
+      if (r.enUsoPor && r.enUsoPor.length > 0) {
+        setEnUsoPor(r.enUsoPor);
+        return true;
+      }
+      return false;
+    }
     if (retirado) onRetirado?.(retirado);
     recargar();
+    return false;
+  };
+
+  /** Abre el diálogo de borrado definitivo desde cero: sin aviso de uso previo. */
+  const pedirBorrado = (medio: Medio | null) => {
+    setEnUsoPor(null);
+    setAEliminar(medio);
   };
 
   const acciones: AccionesMedio = {
@@ -124,7 +151,7 @@ function Biblioteca({
     onEditarImagen: setEnImagen,
     onPapelera: (m) => ejecutar(enviarAPapelera(m.id), m.id),
     onRestaurar: (m) => ejecutar(restaurarMedio(m.id)),
-    onEliminar: setAEliminar,
+    onEliminar: pedirBorrado,
   };
 
   const guardarImagenEditada = async (archivo: File, modo: ModoGuardado) => {
@@ -248,26 +275,52 @@ function Biblioteca({
 
       <Dialogo
         abierto={aEliminar !== null}
-        onAbiertoCambio={(abierto) => !abierto && setAEliminar(null)}
-        titulo="¿Eliminar definitivamente?"
+        onAbiertoCambio={(abierto) => !abierto && pedirBorrado(null)}
+        titulo={enUsoPor ? "Esta foto está en uso" : "¿Eliminar definitivamente?"}
         descripcion={`«${aEliminar?.nombre ?? ""}» se borrará del almacenamiento. Esta acción no se puede deshacer.`}
         pie={
           <>
-            <Boton variante="fantasma" onClick={() => setAEliminar(null)}>
+            <Boton variante="fantasma" onClick={() => pedirBorrado(null)}>
               Cancelar
             </Boton>
             <Boton
               variante="peligro"
-              onClick={() => {
-                if (aEliminar) void ejecutar(eliminarDefinitivamente(aEliminar.id), aEliminar.id);
-                setAEliminar(null);
+              cargando={borrando}
+              onClick={async () => {
+                if (!aEliminar) return;
+                // La primera vez se manda sin confirmar: si está en uso, el servidor avisa y no borra nada, y
+                // entonces el diálogo se queda abierto enumerando a quién afecta. En cualquier otro caso se
+                // cierra, como en 0.8.0: dejarlo abierto tras un borrado hecho era una regresión.
+                setBorrando(true);
+                const volverAPreguntar = await ejecutar(
+                  eliminarDefinitivamente(aEliminar.id, enUsoPor !== null),
+                  aEliminar.id,
+                );
+                setBorrando(false);
+                if (!volverAPreguntar) setAEliminar(null);
               }}
             >
-              Eliminar
+              {enUsoPor ? "Borrar de todas formas" : "Eliminar"}
             </Boton>
           </>
         }
-      />
+      >
+        {enUsoPor && (
+          <div className="flex flex-col gap-2">
+            <p className="text-texto">
+              Se usa en {enUsoPor.length === 1 ? "este personaje" : `estos ${enUsoPor.length} personajes`}:
+            </p>
+            <ul className="flex list-inside list-disc flex-col gap-1 text-texto">
+              {enUsoPor.map((p) => (
+                <li key={p.id}>{p.nombre}</li>
+              ))}
+            </ul>
+            <p className="text-texto-suave">
+              Si la borras, pierden esa referencia y puede que se queden sin las suficientes para poder generar.
+            </p>
+          </div>
+        )}
+      </Dialogo>
     </section>
   );
 }

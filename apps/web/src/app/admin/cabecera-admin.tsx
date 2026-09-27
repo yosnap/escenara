@@ -9,6 +9,7 @@ import { SelectorTema } from "@/components/ui/theme-toggle";
 
 const PAGINAS = [
   ["/admin/medios", "Medios"],
+  ["/admin/personajes", "Personajes"],
   ["/admin/modelos", "Modelos"],
   ["/admin/trabajos", "Trabajos"],
   ["/admin/ajustes", "Ajustes"],

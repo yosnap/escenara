@@ -11,7 +11,13 @@ import type {
 
 /** Cliente de la API de medios para el navegador. */
 
-export type Resultado<T> = { ok: true; datos: T } | { ok: false; error: string };
+export type Resultado<T> =
+  | { ok: true; datos: T }
+  /**
+   * `enUsoPor` llega solo del borrado definitivo de un medio que sirve de referencia a algún personaje o de
+   * documento de un consentimiento: la interfaz enumera a quién afecta y pide confirmación en lugar de borrar.
+   */
+  | { ok: false; error: string; enUsoPor?: { id: string; nombre: string }[] };
 
 /**
  * Caché de páginas para `use()`. Se vacía tras cualquier cambio para que ninguna biblioteca
@@ -26,7 +32,13 @@ async function pedir<T>(url: string, init?: RequestInit): Promise<Resultado<T>> 
     if (init?.method && init.method !== "GET") cache.clear();
     if (r.status === 204) return { ok: true, datos: undefined as T };
     const cuerpo = await r.json().catch(() => null);
-    if (!r.ok) return { ok: false, error: cuerpo?.error ?? "No se ha podido completar la operación." };
+    if (!r.ok) {
+      return {
+        ok: false,
+        error: cuerpo?.error ?? "No se ha podido completar la operación.",
+        ...(Array.isArray(cuerpo?.enUsoPor) ? { enUsoPor: cuerpo.enUsoPor } : {}),
+      };
+    }
     return { ok: true, datos: cuerpo as T };
   } catch {
     return { ok: false, error: "Sin conexión con el servidor." };
@@ -42,6 +54,7 @@ export function paginaMedios(filtro: FiltroMedios, version: number): Promise<Res
     if (filtro.papelera) q.set("papelera", "1");
     if (filtro.coleccion) q.set("coleccion", filtro.coleccion);
     if (filtro.propietario) q.set("propietario", filtro.propietario);
+    if (filtro.sinDocumentos) q.set("sinDocumentos", "1");
     promesa = pedir<PaginaMedios>(`/api/media?${q}`);
     cache.set(clave, promesa);
     if (cache.size > MAX_CACHE) cache.delete(cache.keys().next().value as string);
@@ -79,9 +92,12 @@ export function subirMedio(
   reproduccion: DatosReproduccion,
   onProgreso?: (f: number) => void,
   tipos?: readonly TipoMedio[],
+  /** Documento de consentimiento: se guarda sin procesar. */
+  documento = false,
 ) {
   const datos = new FormData();
   datos.set("archivo", archivo);
+  if (documento) datos.set("documento", "1");
   if (tipos && tipos.length > 0) datos.set("tipos", tipos.join(","));
   for (const [clave, valor] of Object.entries(reproduccion)) {
     if (valor !== undefined) datos.set(clave, String(valor));
@@ -114,8 +130,12 @@ export function subirDesdeUrl(url: string, tipos?: readonly TipoMedio[]) {
 
 export const enviarAPapelera = (id: string) => pedir<Medio>(`/api/media/${id}`, { method: "DELETE" });
 export const restaurarMedio = (id: string) => pedir<Medio>(`/api/media/${id}/restaurar`, { method: "POST" });
-export const eliminarDefinitivamente = (id: string) =>
-  pedir<void>(`/api/media/${id}?definitivo=1`, { method: "DELETE" });
+/**
+ * Borrado definitivo. Sin `confirmado`, un medio en uso por algún personaje responde 409 con `enUsoPor` y no
+ * se borra nada; con `confirmado` se borra igualmente (el aviso ya se ha aceptado).
+ */
+export const eliminarDefinitivamente = (id: string, confirmado = false) =>
+  pedir<void>(`/api/media/${id}?definitivo=1${confirmado ? "&confirmado=1" : ""}`, { method: "DELETE" });
 
 /** URL del archivo servido desde el mismo origen (necesaria para dibujarlo en un canvas). */
 export const urlArchivoPropio = (id: string, version: string) =>

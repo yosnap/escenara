@@ -186,6 +186,11 @@ export interface ModeloElegible {
   creditos: number;
   /** Duraciones que admite el clip, para decir cuántos segundos saldrá. */
   duraciones: number[];
+  /**
+   * Cuántas fotos de referencia admite como máximo. Al generar con un personaje se le envían **varias**
+   * referencias suyas hasta este tope, porque dan mejor guía de identidad que una sola foto.
+   */
+  maximoReferencias: number;
 }
 
 /** Recorta un modelo del catálogo a lo que puede ver quien va a generar. */
@@ -198,6 +203,7 @@ export function recortarModelo(modelo: ModeloVista): ModeloElegible {
     estado: modelo.estado,
     creditos: Math.ceil(modelo.precio?.creditos ?? 0),
     duraciones: modelo.parametros.duraciones,
+    maximoReferencias: modelo.parametros.maximoReferencias,
   };
 }
 

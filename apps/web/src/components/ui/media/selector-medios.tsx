@@ -27,6 +27,15 @@ export interface SelectorMediosProps {
   onCambio: (medios: Medio[]) => void;
   multiple?: boolean;
   tipos?: readonly TipoMedio[];
+  /** Sube lo que se elija como documento de consentimiento: sin procesar y sin editor. */
+  documento?: boolean;
+  /** Deja fuera de la biblioteca los documentos de consentimiento (selectores de fotos). */
+  sinDocumentos?: boolean;
+  /**
+   * Solo subida desde el equipo: sin «Elegir de la biblioteca» ni «Desde una URL». Lo usa el documento de
+   * consentimiento, que tiene que subirse **como documento** (se guarda sin recortar y no vale otra cosa).
+   */
+  soloSubida?: boolean;
 }
 
 /**
@@ -40,6 +49,9 @@ export function SelectorMedios({
   onCambio,
   multiple = false,
   tipos = TIPOS_MEDIO,
+  documento = false,
+  sinDocumentos = false,
+  soloSubida = false,
 }: SelectorMediosProps) {
   const entrada = useRef<HTMLInputElement>(null);
   const [abierto, setAbierto] = useState(false);
@@ -51,6 +63,7 @@ export function SelectorMedios({
 
   const subida = useSubidaMedios({
     tipos,
+    documento,
     onSubido: (medio) => onCambio(multiple ? [...actual.current, medio] : [medio]),
   });
 
@@ -113,23 +126,27 @@ export function SelectorMedios({
             >
               Subir desde el equipo
             </Boton>
-            <Boton tamano="sm" icono={<FolderOpen className="size-4" />} onClick={() => setAbierto(true)}>
-              Elegir de la biblioteca
-            </Boton>
-            <Boton
-              variante="fantasma"
-              tamano="sm"
-              icono={<Link2 className="size-4" />}
-              aria-expanded={desdeUrl}
-              onClick={() => setDesdeUrl((v) => !v)}
-            >
-              Desde una URL
-            </Boton>
+            {!soloSubida && (
+              <>
+                <Boton tamano="sm" icono={<FolderOpen className="size-4" />} onClick={() => setAbierto(true)}>
+                  Elegir de la biblioteca
+                </Boton>
+                <Boton
+                  variante="fantasma"
+                  tamano="sm"
+                  icono={<Link2 className="size-4" />}
+                  aria-expanded={desdeUrl}
+                  onClick={() => setDesdeUrl((v) => !v)}
+                >
+                  Desde una URL
+                </Boton>
+              </>
+            )}
           </div>
         </section>
       )}
 
-      {!multiple && valor.length > 0 && (
+      {!multiple && valor.length > 0 && !soloSubida && (
         <Boton variante="secundario" tamano="sm" className="self-start" onClick={() => setAbierto(true)}>
           Cambiar
         </Boton>
@@ -149,7 +166,7 @@ export function SelectorMedios({
         }}
       />
 
-      {desdeUrl && (multiple || valor.length === 0) && (
+      {desdeUrl && !soloSubida && (multiple || valor.length === 0) && (
         <SubidaUrl
           tipos={tipos}
           onSubido={(medio) => {
@@ -163,10 +180,11 @@ export function SelectorMedios({
       <EditorSubida subida={subida} />
 
       <DialogoSelectorMedios
-        abierto={abierto}
+        abierto={abierto && !soloSubida}
         onAbiertoCambio={setAbierto}
         multiple={multiple}
         tipos={tipos}
+        sinDocumentos={sinDocumentos}
         inicial={valor}
         onConfirmar={(medios) => {
           onCambio(medios);

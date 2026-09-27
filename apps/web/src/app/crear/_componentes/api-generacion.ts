@@ -42,7 +42,12 @@ interface Confirmacion {
 
 export interface ConfirmacionFotograma extends Confirmacion {
   tipo: "fotograma";
-  medioId: string;
+  /** Imagen suelta de la biblioteca; alternativa a `personajeId`. */
+  medioId?: string;
+  /** Personaje elegido: se le envían **varias** referencias suyas, hasta el tope del modelo. */
+  personajeId?: string;
+  /** Revisión de referencias (ADR-0009): en las fotos no aparece ningún tercero ni ningún menor. */
+  sinTerceros?: boolean;
 }
 
 export interface ConfirmacionAnimacion extends Confirmacion {
@@ -50,6 +55,11 @@ export interface ConfirmacionAnimacion extends Confirmacion {
   trabajoPadreId: string;
   /** Lo que dice el personaje: solo el clip tiene voz. */
   dialogo: string;
+  /**
+   * Revisión de referencias (ADR-0009). Obligatoria cuando el fotograma se hizo con un personaje: el clip
+   * envía la misma cara al proveedor, así que es otro envío y necesita su propia confirmación.
+   */
+  sinTerceros?: boolean;
 }
 
 /** Envía la generación. `creditosConfirmados` son los créditos que el usuario tenía delante. */

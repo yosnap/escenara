@@ -1,1 +1,2 @@
+- [El admin ve toda la biblioteca](proyecto-admin-ve-toda-la-biblioteca.md) — cualquier medio de cualquier usuario, con URL firmada y sin auditoría; choca con lo que prometen ADR-0017 y docs/legal
 - [Tests de integración y .env](proyecto-tests-integracion.md) — `bun test` los salta en silencio sin `DATABASE_URL`; cómo lanzarlos de verdad

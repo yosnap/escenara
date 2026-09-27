@@ -12,10 +12,18 @@ import { leerAjustes } from "../ajustes";
 import { borrarObjeto, guardarObjeto, urlTemporal } from "../almacenamiento";
 import { db } from "../db/cliente";
 import { collectionMedia, collections, type FilaMedio, media, users } from "../db/esquema";
+import { recalcularEstado } from "../personajes/consulta";
+import {
+  condicionMedioNoReservado,
+  esMedioReservado,
+  exigirDocumentoSinConsentimientoVigente,
+  personajesQueUsan,
+} from "../personajes/uso-de-medio";
 import { type TipoDetectado, validarArchivo } from "./deteccion";
 import { dimensionesVideo } from "./dimensiones-video";
 import { ErrorMedio } from "./errores";
-import { procesarImagen } from "./procesado";
+import { esMimeDeDocumento, limpiarMetadatosDocumento } from "./metadatos-documento";
+import { medidasDeImagen, procesarImagen } from "./procesado";
 
 export { ErrorMedio };
 
@@ -65,6 +73,7 @@ export function aDto(fila: FilaMedio, actor: Actor, propietario?: { id: string; 
     actualizadoEn: fila.updatedAt.toISOString(),
     enPapelera: fila.deletedAt !== null,
     origen: fila.sourceUrl,
+    documento: fila.isDocument,
     ...(propietario ? { propietario } : {}),
     permisos: { editarImagen: esDueno, borrarDefinitivo: esDueno },
   };
@@ -93,12 +102,31 @@ async function prepararArchivo(
   archivo: File,
   reproduccion: DatosReproduccion,
   permitidos?: readonly TipoMedio[],
+  /** Documento de consentimiento: se guarda tal cual, sin recortar ni reconvertir. */
+  documento = false,
 ): Promise<ArchivoPreparado> {
   if (archivo.size > limiteSubida(permitidos)) throw new ErrorMedio(413, "El archivo supera el tamaño máximo.");
   const bruto = new Uint8Array(await archivo.arrayBuffer());
   const validacion = validarArchivo(bruto, archivo.type, permitidos);
   if (!validacion.ok) throw new ErrorMedio(415, validacion.motivo);
   const { detectado } = validacion;
+
+  // Un documento de consentimiento se guarda **sin pasar por el procesado**: el recorte a 1920 × 1080 y la
+  // reconversión a WebP pueden dejar ilegible la letra pequeña de una hoja firmada, que es justo lo que hay
+  // que poder leer al revisarlo. Lo único que se le quita son los metadatos (EXIF con la localización de donde
+  // se firmó, marca del teléfono, fecha exacta), y eso se hace a nivel de contenedor: los píxeles salen byte a
+  // byte idénticos. Solo JPEG y PNG, que son los formatos en los que ese recorte es fiable.
+  if (documento) {
+    if (!esMimeDeDocumento(detectado.mime)) {
+      throw new ErrorMedio(
+        415,
+        "Sube el documento de consentimiento como JPEG o PNG: son los formatos que se pueden guardar sin recomprimir y limpiando sus metadatos.",
+      );
+    }
+    const limpio = limpiarMetadatosDocumento(bruto, detectado.mime);
+    const medidas = await medidasDeImagen(limpio);
+    return { datos: limpio, detectado, ancho: medidas.ancho, alto: medidas.alto, duracion: null };
+  }
 
   if (detectado.tipo === "imagen") {
     const imagen = await procesarImagen(bruto, detectado).catch(() => {
@@ -170,14 +198,21 @@ async function reservarCuota(tx: Transaccion, actor: Actor, bytesNuevos: number)
   if (Number(fila?.total ?? 0) + bytesNuevos > cuotaBytes) throw errorCuota(cuotaBytes);
 }
 
+export interface OpcionesCreacion {
+  /** Documento de consentimiento: se guarda sin procesar y no puede usarse como referencia. */
+  documento?: boolean;
+}
+
 export async function crearMedio(
   actor: Actor,
   archivo: File,
   reproduccion: DatosReproduccion = {},
   permitidos?: readonly TipoMedio[],
   origen: string | null = null,
+  opciones: OpcionesCreacion = {},
 ): Promise<Medio> {
-  const preparado = await prepararArchivo(archivo, reproduccion, permitidos);
+  const documento = opciones.documento === true;
+  const preparado = await prepararArchivo(archivo, reproduccion, permitidos, documento);
   await comprobarCuota(actor, preparado.datos.byteLength);
   const clave = nuevaClave(preparado.detectado.extension);
   await guardarObjeto(clave, preparado.datos, preparado.detectado.mime);
@@ -197,6 +232,7 @@ export async function crearMedio(
           height: preparado.alto,
           durationSeconds: preparado.duracion,
           sourceUrl: origen,
+          isDocument: documento,
         })
         .returning();
       return insertada;
@@ -224,10 +260,19 @@ async function coleccionVisible(actor: Actor, id: string) {
 
 export async function listarMedios(actor: Actor, filtro: FiltroMedios, porPagina = POR_PAGINA): Promise<PaginaMedios> {
   const condiciones: SQL[] = [filtro.papelera ? isNotNull(media.deletedAt) : isNull(media.deletedAt)];
+  // Los documentos de consentimiento no se ofrecen donde se eligen fotos.
+  if (filtro.sinDocumentos) condiciones.push(eq(media.isDocument, false));
   // Un usuario solo ve lo suyo; el admin elige «todos» o un usuario concreto (por defecto, lo suyo).
   const verTodos = actor.esAdmin && filtro.propietario === "todos";
   const dueno = actor.esAdmin && filtro.propietario && filtro.propietario !== "mios" ? filtro.propietario : actor.id;
   if (!verTodos) condiciones.push(eq(media.ownerId, dueno));
+  // Lo ajeno nunca incluye material reservado de un personaje (documentos de consentimiento y fotos de
+  // referencia): para quien no es su dueño, esos archivos no existen. Los documentos de terceros se revisan por
+  // `/admin/personajes`, que está auditado.
+  if (verTodos || dueno !== actor.id) {
+    const acotado = or(eq(media.ownerId, actor.id), condicionMedioNoReservado());
+    if (acotado) condiciones.push(acotado);
+  }
   // El dueño solo se muestra cuando el admin mira archivos de otros.
   const mostrarDueno = verTodos || dueno !== actor.id;
   if (filtro.coleccion) {
@@ -284,6 +329,11 @@ export async function listarMedios(actor: Actor, filtro: FiltroMedios, porPagina
 async function buscarFila(actor: Actor, id: string): Promise<FilaMedio> {
   const [fila] = await db().select().from(media).where(eq(media.id, id)).limit(1);
   if (!fila || (fila.ownerId !== actor.id && !actor.esAdmin)) throw new ErrorMedio(404, "El medio no existe.");
+  // Para quien no es el dueño, el material reservado de un personaje responde igual que un medio inexistente:
+  // ni se lista, ni se obtiene por identificador, ni se sirve su archivo.
+  if (fila.ownerId !== actor.id && (await esMedioReservado(fila.id))) {
+    throw new ErrorMedio(404, "El medio no existe.");
+  }
   return fila;
 }
 
@@ -377,10 +427,28 @@ export async function restaurarMedio(actor: Actor, id: string): Promise<Medio> {
   return aDto(filaOError(fila), actor);
 }
 
-/** Borrado definitivo: solo desde la papelera, para evitar pérdidas por un clic. */
-export async function eliminarDefinitivamente(actor: Actor, id: string): Promise<void> {
+/**
+ * Borrado definitivo: solo desde la papelera, para evitar pérdidas por un clic, y solo con confirmación si
+ * el medio está en uso como referencia de un personaje o como documento de un consentimiento (0.13.0). El
+ * aviso de uso se responde con 409 y la lista de personajes afectados; `confirmado` lo salta.
+ */
+export async function eliminarDefinitivamente(actor: Actor, id: string, confirmado = false): Promise<void> {
   const fila = await buscarFilaPropia(actor, id, "borrarlo para siempre");
   if (!fila.deletedAt) throw new ErrorMedio(409, "Envía primero el medio a la papelera.");
+  // Quiénes lo usaban se lee **antes** de borrarlo: después, la relación ya no existe y no habría a quién
+  // recalcular. Un personaje que se queda por debajo del mínimo tiene que pasar a `borrador` al momento, o su
+  // ficha diría «listo» mientras la generación lo rechaza.
+  await exigirDocumentoSinConsentimientoVigente(id);
+  const afectados = await personajesQueUsan(id, confirmado);
   await db().delete(media).where(eq(media.id, id));
   await borrarSinBloquear(fila.storageKey);
+  for (const personajeId of afectados) {
+    await recalcularEstado(personajeId).catch((error) =>
+      console.error(
+        `[media] no se ha podido recalcular el estado del personaje ${personajeId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      ),
+    );
+  }
 }

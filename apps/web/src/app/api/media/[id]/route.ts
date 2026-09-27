@@ -30,11 +30,18 @@ export const PUT = manejador(async (peticion: Request, contexto: ContextoId, act
   return Response.json(await reemplazarImagen(actor, id, archivo));
 });
 
-/** Envía a la papelera (dueño o admin); con `?definitivo=1` borra para siempre (solo el dueño). */
+/**
+ * Envía a la papelera (dueño o admin); con `?definitivo=1` borra para siempre (solo el dueño).
+ *
+ * Si el medio se usa como referencia de un personaje o como documento de un consentimiento, el borrado
+ * definitivo responde 409 con la lista de personajes afectados y **no borra nada**. Añadiendo
+ * `&confirmado=1` se borra de todas formas: es el aviso ya aceptado.
+ */
 export const DELETE = manejador(async (peticion: Request, contexto: ContextoId, actor) => {
   const id = await leerId(contexto);
-  if (new URL(peticion.url).searchParams.get("definitivo") === "1") {
-    await eliminarDefinitivamente(actor, id);
+  const parametros = new URL(peticion.url).searchParams;
+  if (parametros.get("definitivo") === "1") {
+    await eliminarDefinitivamente(actor, id, parametros.get("confirmado") === "1");
     return new Response(null, { status: 204 });
   }
   return Response.json(await enviarAPapelera(actor, id));

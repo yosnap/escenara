@@ -19,6 +19,11 @@ export interface Medio {
   enPapelera: boolean;
   /** URL de la que se descargó, o `null` si se subió desde el equipo. */
   origen: string | null;
+  /**
+   * `true` en los documentos de consentimiento: se guardan sin recortar ni reconvertir (un documento reducido
+   * puede dejar de ser legible) y no se pueden usar como referencia de un personaje ni elegirse en «Crear».
+   */
+  documento: boolean;
   /** Quién lo subió; solo se incluye en la vista de administración. */
   propietario?: { id: string; nombre: string };
   /** Lo que puede hacer quien consulta (el admin no edita la imagen ni borra para siempre lo ajeno). */
@@ -42,6 +47,11 @@ export interface FiltroMedios {
   coleccion?: string | null;
   /** Solo para administradores: «todos» o el id de un usuario. Por defecto, los propios. */
   propietario?: string | null;
+  /**
+   * `true` deja fuera del listado los documentos de consentimiento. Lo usan los selectores que eligen fotos
+   * (referencias de personaje y «Crear»); la biblioteca los sigue mostrando, porque son archivos del usuario.
+   */
+  sinDocumentos?: boolean;
 }
 
 export interface EspacioUsado {

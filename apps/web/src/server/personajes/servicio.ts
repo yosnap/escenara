@@ -1,0 +1,274 @@
+import { and, count, eq, inArray, isNull, sql } from "drizzle-orm";
+import {
+  DESCRIPCION_MAXIMA,
+  ESPECIE_MAXIMA,
+  esOrigenReferencia,
+  esTipoPersonaje,
+  MAXIMO_PERSONAJES,
+  MAXIMO_REFERENCIAS,
+  NOMBRE_MAXIMO,
+  type OrigenReferencia,
+  type PersonajeVista,
+  type TipoPersonaje,
+  VISTA_MAXIMA,
+} from "@/lib/personajes";
+import { db } from "../db/cliente";
+import { characterReferences, characters, media } from "../db/esquema";
+import type { Actor } from "../media/servicio";
+import { esUuidPersonaje, filaPropia, recalcularEstado, siguienteOrden, vistaDePersonaje } from "./consulta";
+import { ErrorPersonaje } from "./errores";
+
+/**
+ * Alta y edición de personajes y de sus fotos de referencia (RF02). Todo pasa por el dueño: un personaje
+ * ajeno responde 404 y una foto ajena tampoco se puede referenciar, aunque se conozca su identificador.
+ *
+ * Las referencias se añaden desde la biblioteca del usuario (la subida la hace `server/media/servicio.ts`,
+ * que ya reduce las imágenes y las guarda en WebP): aquí solo se comprueba que el medio sea suyo, sea una
+ * imagen y no esté en la papelera.
+ */
+
+export interface DatosPersonaje {
+  nombre: unknown;
+  tipo: unknown;
+  especie?: unknown;
+  descripcion?: unknown;
+}
+
+function texto(valor: unknown, maximo: number, campo: string, obligatorio = false): string {
+  if (valor === undefined || valor === null) {
+    if (obligatorio) throw new ErrorPersonaje(400, `Falta ${campo}.`);
+    return "";
+  }
+  if (typeof valor !== "string") throw new ErrorPersonaje(400, `${campo} tiene que ser texto.`);
+  const limpio = valor.trim().replace(/\s+/g, " ");
+  if (obligatorio && limpio === "") throw new ErrorPersonaje(400, `Falta ${campo}.`);
+  if (limpio.length > maximo) throw new ErrorPersonaje(400, `${campo} admite hasta ${maximo} caracteres.`);
+  return limpio;
+}
+
+/** La descripción sí conserva los saltos de línea: es un texto largo, no una etiqueta. */
+function textoLargo(valor: unknown, maximo: number, campo: string): string {
+  if (valor === undefined || valor === null) return "";
+  if (typeof valor !== "string") throw new ErrorPersonaje(400, `${campo} tiene que ser texto.`);
+  const limpio = valor.trim();
+  if (limpio.length > maximo) throw new ErrorPersonaje(400, `${campo} admite hasta ${maximo} caracteres.`);
+  return limpio;
+}
+
+function tipoValido(valor: unknown): TipoPersonaje {
+  if (!esTipoPersonaje(valor)) throw new ErrorPersonaje(400, "Elige si es una persona o un animal.");
+  return valor;
+}
+
+/**
+ * Nombre repetido en la misma cuenta: se rechaza con un mensaje claro, no con un error de base de datos.
+ *
+ * Se recorre la cadena de causas porque Drizzle envuelve el error de PostgreSQL en un `DrizzleQueryError`: el
+ * código de la violación de unicidad está en la causa, no en el error de fuera.
+ */
+function esNombreRepetido(error: unknown): boolean {
+  for (let actual: unknown = error, salto = 0; actual && salto < 5; salto++) {
+    const fallo = actual as { code?: unknown; errno?: unknown; message?: unknown; cause?: unknown };
+    if (fallo.code === "23505" || fallo.errno === "23505") return true;
+    if (String(fallo.message ?? "").includes("characters_propietario_nombre_uq")) return true;
+    actual = fallo.cause;
+  }
+  return false;
+}
+
+export async function crearPersonaje(actor: Actor, datos: DatosPersonaje): Promise<PersonajeVista> {
+  const nombre = texto(datos.nombre, NOMBRE_MAXIMO, "el nombre del personaje", true);
+  const tipo = tipoValido(datos.tipo);
+  const especie = texto(datos.especie, ESPECIE_MAXIMA, "la especie o las notas");
+  const descripcion = textoLargo(datos.descripcion, DESCRIPCION_MAXIMA, "la descripción");
+
+  try {
+    // El recuento y el alta van en la misma transacción con la fila del usuario bloqueada: dos altas a la vez
+    // leerían las dos el mismo total y se pasarían las dos del tope.
+    const fila = await db().transaction(async (tx) => {
+      await tx.execute(sql`select 1 from users where id = ${actor.id} for update`);
+      const [conteo] = await tx.select({ total: count() }).from(characters).where(eq(characters.ownerId, actor.id));
+      if ((conteo?.total ?? 0) >= MAXIMO_PERSONAJES) {
+        throw new ErrorPersonaje(409, `Has llegado al máximo de ${MAXIMO_PERSONAJES} personajes.`);
+      }
+      const [creada] = await tx
+        .insert(characters)
+        .values({ ownerId: actor.id, name: nombre, kind: tipo, speciesNotes: especie, description: descripcion })
+        .returning();
+      if (!creada) throw new ErrorPersonaje(500, "No se ha podido crear el personaje.");
+      return creada;
+    });
+    return vistaDePersonaje(fila, actor, { completa: true, conReferencias: true });
+  } catch (error) {
+    if (esNombreRepetido(error)) throw new ErrorPersonaje(409, "Ya tienes un personaje con ese nombre.");
+    throw error;
+  }
+}
+
+export async function actualizarPersonaje(
+  actor: Actor,
+  id: unknown,
+  cambios: Partial<DatosPersonaje>,
+): Promise<PersonajeVista> {
+  const fila = await filaPropia(actor, id);
+  const valores: { name?: string; kind?: TipoPersonaje; speciesNotes?: string; description?: string } = {};
+  if (cambios.nombre !== undefined)
+    valores.name = texto(cambios.nombre, NOMBRE_MAXIMO, "el nombre del personaje", true);
+  if (cambios.tipo !== undefined) valores.kind = tipoValido(cambios.tipo);
+  if (cambios.especie !== undefined)
+    valores.speciesNotes = texto(cambios.especie, ESPECIE_MAXIMA, "la especie o las notas");
+  if (cambios.descripcion !== undefined) {
+    valores.description = textoLargo(cambios.descripcion, DESCRIPCION_MAXIMA, "la descripción");
+  }
+  if (Object.keys(valores).length === 0) return vistaDePersonaje(fila, actor, { completa: true, conReferencias: true });
+  try {
+    const [actualizada] = await db()
+      .update(characters)
+      .set({ ...valores, updatedAt: new Date() })
+      .where(eq(characters.id, fila.id))
+      .returning();
+    if (!actualizada) throw new ErrorPersonaje(404, "El personaje no existe.");
+    return vistaDePersonaje(actualizada, actor, { completa: true, conReferencias: true });
+  } catch (error) {
+    if (esNombreRepetido(error)) throw new ErrorPersonaje(409, "Ya tienes un personaje con ese nombre.");
+    throw error;
+  }
+}
+
+export interface ReferenciaPedida {
+  medioId: unknown;
+  origen?: unknown;
+  vista?: unknown;
+}
+
+function idsDeReferencias(peticion: unknown): ReferenciaPedida[] {
+  if (!Array.isArray(peticion) || peticion.length === 0) {
+    throw new ErrorPersonaje(400, "Indica qué fotos quieres añadir.");
+  }
+  if (peticion.length > MAXIMO_REFERENCIAS) {
+    throw new ErrorPersonaje(400, `Como máximo ${MAXIMO_REFERENCIAS} fotos a la vez.`);
+  }
+  return peticion.map((entrada) => {
+    const objeto = (
+      typeof entrada === "object" && entrada !== null ? entrada : { medioId: entrada }
+    ) as ReferenciaPedida;
+    if (!esUuidPersonaje(objeto.medioId)) throw new ErrorPersonaje(400, "Identificador de foto no válido.");
+    return objeto;
+  });
+}
+
+function origenValido(valor: unknown): OrigenReferencia {
+  if (valor === undefined || valor === null) return "foto_original";
+  if (!esOrigenReferencia(valor)) throw new ErrorPersonaje(400, "Origen de la referencia no válido.");
+  return valor;
+}
+
+/**
+ * Añade fotos de la biblioteca del usuario como referencias del personaje. Las que ya estuvieran se
+ * ignoran, así que repetir la petición no falla ni duplica nada.
+ */
+export async function anadirReferencias(actor: Actor, id: unknown, peticion: unknown): Promise<PersonajeVista> {
+  const personaje = await filaPropia(actor, id);
+  const pedidas = idsDeReferencias(peticion);
+  const ids = [...new Set(pedidas.map((p) => p.medioId as string))];
+
+  // Solo fotos propias, que sean imagen y no estén en la papelera: una referencia ajena o borrada no vale.
+  const propias = await db()
+    .select({ id: media.id, tipo: media.kind, documento: media.isDocument })
+    .from(media)
+    .where(and(inArray(media.id, ids), eq(media.ownerId, actor.id), isNull(media.deletedAt)));
+  if (propias.length !== ids.length) throw new ErrorPersonaje(404, "Alguna de las fotos no existe.");
+  if (propias.some((m) => m.tipo !== "imagen")) {
+    throw new ErrorPersonaje(400, "Las referencias de un personaje tienen que ser imágenes.");
+  }
+  // Un documento de consentimiento no es una foto del personaje: enviarlo al proveedor como referencia sería
+  // mandarle un documento de identidad ajeno. Lo impide el servidor, no la interfaz.
+  if (propias.some((m) => m.documento)) {
+    throw new ErrorPersonaje(
+      400,
+      "Un documento de consentimiento no se puede usar como foto de referencia de un personaje.",
+    );
+  }
+
+  await db().transaction(async (tx) => {
+    // El tope va con la fila del usuario bloqueada: dos peticiones a la vez leerían el mismo total.
+    await tx.execute(sql`select 1 from users where id = ${actor.id} for update`);
+    const [yaTiene] = await tx
+      .select({ total: count() })
+      .from(characterReferences)
+      .where(eq(characterReferences.characterId, personaje.id));
+    if ((yaTiene?.total ?? 0) + ids.length > MAXIMO_REFERENCIAS) {
+      throw new ErrorPersonaje(409, `Un personaje admite como máximo ${MAXIMO_REFERENCIAS} fotos de referencia.`);
+    }
+    let orden = await siguienteOrden(personaje.id, tx);
+    await tx
+      .insert(characterReferences)
+      .values(
+        pedidas.map((p) => ({
+          characterId: personaje.id,
+          mediaId: p.medioId as string,
+          origin: origenValido(p.origen),
+          declaredView: texto(p.vista, VISTA_MAXIMA, "la vista"),
+          sortOrder: orden++,
+        })),
+      )
+      .onConflictDoNothing();
+    await recalcularEstado(personaje.id, tx);
+  });
+  return obtenerActualizado(actor, personaje.id);
+}
+
+/** Quita referencias del personaje. Las fotos siguen en la biblioteca: lo que se borra es la relación. */
+export async function quitarReferencias(actor: Actor, id: unknown, ids: unknown): Promise<PersonajeVista> {
+  const personaje = await filaPropia(actor, id);
+  if (!Array.isArray(ids) || ids.length === 0) throw new ErrorPersonaje(400, "Indica qué referencias quitar.");
+  const validos = ids.filter(esUuidPersonaje);
+  if (validos.length !== ids.length) throw new ErrorPersonaje(400, "Identificador de referencia no válido.");
+  await db()
+    .delete(characterReferences)
+    .where(and(eq(characterReferences.characterId, personaje.id), inArray(characterReferences.id, validos)));
+  await recalcularEstado(personaje.id);
+  return obtenerActualizado(actor, personaje.id);
+}
+
+/** Cambia el orden de las referencias: la primera es la portada y la primera que se envía al proveedor. */
+export async function ordenarReferencias(actor: Actor, id: unknown, ids: unknown): Promise<PersonajeVista> {
+  const personaje = await filaPropia(actor, id);
+  if (!Array.isArray(ids) || ids.length === 0) throw new ErrorPersonaje(400, "Indica el orden de las referencias.");
+  const validos = ids.filter(esUuidPersonaje);
+  if (validos.length !== ids.length || new Set(validos).size !== validos.length) {
+    throw new ErrorPersonaje(400, "Orden de referencias no válido.");
+  }
+  await db().transaction(async (tx) => {
+    // El orden tiene que traer **todas** las referencias del personaje y ninguna ajena. Con un orden parcial,
+    // las que faltaran conservarían su posición anterior y dos referencias acabarían compartiendo sitio: la
+    // portada (y la primera foto que se envía al proveedor) pasaría a depender del desempate de la consulta.
+    const actuales = await tx
+      .select({ id: characterReferences.id })
+      .from(characterReferences)
+      .where(eq(characterReferences.characterId, personaje.id));
+    const suyas = new Set(actuales.map((r) => r.id));
+    if (validos.length !== suyas.size || !validos.every((referenciaId) => suyas.has(referenciaId))) {
+      throw new ErrorPersonaje(
+        400,
+        "El orden tiene que incluir todas las referencias del personaje, una sola vez. Recarga la página y vuelve a intentarlo.",
+      );
+    }
+    for (const [posicion, referenciaId] of validos.entries()) {
+      await tx
+        .update(characterReferences)
+        .set({ sortOrder: posicion })
+        .where(and(eq(characterReferences.characterId, personaje.id), eq(characterReferences.id, referenciaId)));
+    }
+  });
+  return obtenerActualizado(actor, personaje.id);
+}
+
+/** Relee la fila y devuelve la ficha completa: el estado puede haber cambiado con la operación. */
+async function obtenerActualizado(actor: Actor, id: string): Promise<PersonajeVista> {
+  const [fila] = await db().select().from(characters).where(eq(characters.id, id)).limit(1);
+  if (!fila) throw new ErrorPersonaje(404, "El personaje no existe.");
+  return vistaDePersonaje(fila, actor, { completa: true, conReferencias: fila.ownerId === actor.id });
+}
+
+export { obtenerActualizado as fichaDePersonaje };

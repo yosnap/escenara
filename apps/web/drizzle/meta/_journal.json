@@ -71,6 +71,27 @@
       "when": 1790486293069,
       "tag": "0009_estado_enviando_y_callbacks",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790489359048,
+      "tag": "0010_personajes_y_consentimiento",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790491375057,
+      "tag": "0011_revalidacion_de_consentimiento",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790493085451,
+      "tag": "0012_indice_consentimiento_declarado",
+      "breakpoints": true
     }
   ]
 }

@@ -105,7 +105,8 @@ describe("lo que puede ver quien genera", () => {
   test("el recorte solo lleva lo necesario para elegir y confirmar", () => {
     const recortado = recortarModelo(completo);
     expect(Object.keys(recortado).sort()).toEqual(
-      ["conVoz", "creditos", "duraciones", "estado", "modelo", "nombre", "unidad"].sort(),
+      // `maximoReferencias` lo añade 0.13.0: «Crear» necesita saber cuántas fotos del personaje se envían.
+      ["conVoz", "creditos", "duraciones", "estado", "maximoReferencias", "modelo", "nombre", "unidad"].sort(),
     );
     expect(recortado).toMatchObject({ modelo: "veo3_lite", creditos: 60, conVoz: true, duraciones: [4, 6] });
   });
