@@ -9,6 +9,8 @@ import { SelectorMedios } from "@/components/ui/media/selector-medios";
 import { AvisoSinVoz, SelectorModelo } from "@/components/ui/modelo";
 import { Paso } from "@/components/ui/paso";
 import { SelectorPersonaje } from "@/components/ui/personaje";
+import { consultarContexto } from "@/components/ui/personajes/api-personajes";
+import { PanelContextoPersonaje } from "@/components/ui/personajes/panel-contexto";
 import type { ModeloElegible } from "@/lib/catalogo";
 import {
   CLIP,
@@ -20,7 +22,7 @@ import {
   type TrabajoVista,
 } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
-import { AVISO_SIN_TERCEROS, type PersonajeElegible } from "@/lib/personajes";
+import { AVISO_SIN_TERCEROS, type ContextoAplicado, type PersonajeElegible } from "@/lib/personajes";
 import { consultarEstimacion, crearTrabajo, type Resultado } from "./api-generacion";
 import { type ConfirmacionCoste, PanelGenerar } from "./panel-generar";
 import { ResultadoTrabajo } from "./resultado-trabajo";
@@ -46,6 +48,7 @@ export function VistaCrear({
   cola,
   personajes,
   personajeInicial,
+  contextoInicial,
 }: {
   estimacionFotograma: Estimacion;
   estimacionAnimacion: Estimacion;
@@ -57,8 +60,16 @@ export function VistaCrear({
   personajes: PersonajeElegible[];
   /** Personaje preseleccionado al llegar desde su ficha («Generar con él»). */
   personajeInicial: string | null;
+  /** Contexto ya resuelto en el servidor para ese personaje, si venía preseleccionado. */
+  contextoInicial: ContextoAplicado | null;
 }) {
   const [personajeId, setPersonajeId] = useState<string | null>(personajeInicial);
+  /**
+   * Contexto que el servidor va a añadir al prompt y fotos que va a enviar. Se pide al elegir personaje y al
+   * cambiar de modelo (el tope de fotos es del modelo), nunca en un efecto: lo pide la acción que lo cambia.
+   */
+  const [contexto, setContexto] = useState<ContextoAplicado | null>(contextoInicial);
+  const [pidiendoContexto, setPidiendoContexto] = useState(false);
   const [sinTerceros, setSinTerceros] = useState(false);
   // La revisión del clip es una confirmación distinta sobre un envío distinto, así que tiene su propia casilla.
   const [sinTercerosClip, setSinTercerosClip] = useState(false);
@@ -99,6 +110,24 @@ export function VistaCrear({
       ? `${respuesta.error} Puede que el trabajo se haya enviado: revisa el historial antes de repetirlo.`
       : respuesta.error;
 
+  /** Pide el contexto aplicado de un personaje con el modelo que esté elegido. Sin personaje, se limpia. */
+  const refrescarContexto = async (id: string | null, modelo: string) => {
+    if (!id) {
+      setContexto(null);
+      return;
+    }
+    setPidiendoContexto(true);
+    const respuesta = await consultarContexto(id, modelo);
+    setPidiendoContexto(false);
+    // Un fallo aquí no impide generar: lo que decide es el servidor al encolar. Se dice y no se muestra nada.
+    if (!respuesta.ok) {
+      setContexto(null);
+      setError(respuesta.error);
+      return;
+    }
+    setContexto(respuesta.datos);
+  };
+
   const generarFotograma = async (confirmacion: ConfirmacionCoste) => {
     if (!personaje && !referencia) return;
     setEnviando("fotograma");
@@ -109,6 +138,10 @@ export function VistaCrear({
       // personaje, y entonces el servidor la exige igual (hereda ese personaje).
       sinTerceros,
       ...(personaje ? { personajeId: personaje.id } : { medioId: referencia?.id }),
+      // La versión que se estaba mirando: si el servidor usaría otra, responde 409 y no se gasta nada.
+      ...(personaje && contexto?.personajeId === personaje.id && contexto.versionId !== ""
+        ? { versionPersonaje: contexto.versionId }
+        : {}),
       prompt: descripcion,
       modelo: estimacionFoto.modelo,
       ...confirmacion,
@@ -163,8 +196,11 @@ export function VistaCrear({
       setError(respuesta.error);
       return;
     }
-    if (tipo === "fotograma") setEstimacionFoto(respuesta.datos);
-    else setEstimacionClip(respuesta.datos);
+    if (tipo === "fotograma") {
+      setEstimacionFoto(respuesta.datos);
+      // El tope de fotos de referencia es del modelo: al cambiarlo, cambia lo que se va a enviar.
+      await refrescarContexto(personajeId, respuesta.datos.modelo);
+    } else setEstimacionClip(respuesta.datos);
   };
 
   return (
@@ -178,6 +214,7 @@ export function VistaCrear({
           onCambio={(id) => {
             setPersonajeId(id);
             setSinTerceros(false);
+            void refrescarContexto(id, estimacionFoto.modelo);
           }}
           deshabilitado={enviando !== null}
         />
@@ -265,10 +302,14 @@ export function VistaCrear({
       </Paso>
 
       <Paso numero={3} titulo="Revisa el coste y confirma">
+        {/* Zona de claridad: el contexto de la ficha y las fotos que se enviarán, antes de confirmar. */}
+        {personaje && contexto && contexto.personajeId === personaje.id && (
+          <PanelContextoPersonaje contexto={contexto} cargando={pidiendoContexto} />
+        )}
         <PanelGenerar
           estimacion={estimacionFoto}
           etiqueta="Generar fotograma"
-          firma={`fotograma|${personaje?.id ?? ""}|${referencia?.id ?? ""}|${descripcion}|${estimacionFoto.modelo}|${estimacionFoto.sello}`}
+          firma={`fotograma|${personaje?.id ?? ""}|${contexto?.personajeId === personaje?.id ? contexto?.versionId : ""}|${referencia?.id ?? ""}|${descripcion}|${estimacionFoto.modelo}|${estimacionFoto.sello}`}
           bloqueos={bloqueosFotograma}
           enviando={enviando === "fotograma"}
           onGenerar={generarFotograma}

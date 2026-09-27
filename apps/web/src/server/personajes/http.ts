@@ -86,6 +86,21 @@ export async function exigirRitmoDeAnalisis(actor: Actor): Promise<void> {
   }
 }
 
+/**
+ * Ritmo de las aprobaciones (0.15.0). Cada una escribe una fila y ninguna la borra, así que sin límite una
+ * cuenta podría llenar la tabla desde un bucle. Sesenta por minuto sobran para una persona.
+ */
+const LIMITE_APROBACIONES: Limite = { ventanaSegundos: 60, maximo: 60 };
+
+export async function exigirRitmoDeAprobaciones(actor: Actor): Promise<void> {
+  if (!(await dentroDelLimite(`personajes:aprobaciones:${actor.id}`, LIMITE_APROBACIONES))) {
+    throw new ErrorPersonaje(
+      429,
+      "Estás registrando aprobaciones muy seguidas. Espera un minuto y vuelve a intentarlo.",
+    );
+  }
+}
+
 export async function leerCuerpo(peticion: Request): Promise<Record<string, unknown>> {
   const cuerpo = await peticion.json().catch(() => null);
   if (!cuerpo || typeof cuerpo !== "object") throw new ErrorPersonaje(400, "Envía los datos en JSON.");

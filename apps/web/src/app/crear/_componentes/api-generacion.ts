@@ -38,6 +38,11 @@ interface Confirmacion {
   avisoUmbralAceptado: boolean;
   /** La misma confirmación lleva siempre la misma clave: repetirla no genera un segundo trabajo. */
   claveIdempotencia: string;
+  /**
+   * Versión de la ficha del personaje que se estaba mirando al confirmar. Si el servidor usaría otra, responde
+   * 409 y hay que volver a revisar el contexto: la ficha entra en el prompt.
+   */
+  versionPersonaje?: string;
 }
 
 export interface ConfirmacionFotograma extends Confirmacion {

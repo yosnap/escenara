@@ -26,7 +26,9 @@ export const GET = manejador(async (_: Request, __: unknown, actor) =>
  * - animación: `{ tipo: "animacion", trabajoPadreId, dialogo?, … }` (`dialogo` es lo que dice el personaje,
  *   que solo se usa en el clip: en el fotograma los modelos lo dibujarían como texto)
  *
- * `avisoUmbralAceptado` es obligatorio cuando la estimación pasa del aviso de Admin › Ajustes.
+ * `avisoUmbralAceptado` es obligatorio cuando la estimación pasa del aviso de Admin › Ajustes, y
+ * `versionPersonaje` es la versión de la ficha que se le mostró al confirmar: si la que se usaría es otra, se
+ * responde 409 en lugar de generar con una apariencia que el usuario no ha revisado.
  */
 export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
   exigirMismoOrigen(peticion);
@@ -39,6 +41,11 @@ export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
   if (sello !== undefined && (typeof sello !== "string" || sello.length > 200)) {
     throw new ErrorGeneracion(400, "La estimación confirmada no es válida.");
   }
+  // Versión de la ficha que se confirmó (0.15.0): si la que se usaría es otra, el servicio responde 409.
+  const version = cuerpo.versionPersonaje;
+  if (version !== undefined && (typeof version !== "string" || version.length > 40)) {
+    throw new ErrorGeneracion(400, "La versión de la ficha confirmada no es válida.");
+  }
   const comun = {
     prompt: String(cuerpo.prompt ?? ""),
     creditosConfirmados: cuerpo.creditosConfirmados as number,
@@ -47,6 +54,7 @@ export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
     claveIdempotencia: cuerpo.claveIdempotencia as string,
     modelo: cuerpo.modelo,
     selloEstimacion: sello,
+    versionPersonaje: version,
   };
   const envio =
     cuerpo.tipo === "fotograma"

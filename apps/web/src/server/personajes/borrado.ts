@@ -4,8 +4,10 @@ import type { ResumenBorradoPersonaje } from "@/lib/personajes";
 import { borrarObjeto } from "../almacenamiento";
 import { db } from "../db/cliente";
 import {
+  characterApprovals,
   characterReferences,
   characters,
+  characterVersions,
   consentRecords,
   type FilaTrabajo,
   generationJobs,
@@ -53,6 +55,26 @@ const ESTADOS_QUE_IMPIDEN: readonly EstadoTrabajo[] = ["preparando", "enviando",
 
 const detalle = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
+/**
+ * Hojas de personaje de todas sus versiones: fila y objeto. Se borran con el personaje, igual que los medios
+ * generados con él, porque son un montaje **con sus fotos**: dejarlas en la biblioteca sería conservar su cara
+ * después de haber pedido que desaparezca.
+ */
+async function hojasDe(personajeId: string): Promise<{ id: string; clave: string }[]> {
+  // Por **los dos caminos**: la marca del propio medio y la referencia desde la versión. La marca es la que
+  // encuentra una hoja **huérfana** —creada y guardada, pero que no llegó a quedar apuntada en su versión
+  // porque la escritura falló—, que por la otra vía sobreviviría al borrado del personaje.
+  const [marcadas, apuntadas] = await Promise.all([
+    db().select({ id: media.id, clave: media.storageKey }).from(media).where(eq(media.characterSheetOf, personajeId)),
+    db()
+      .select({ id: media.id, clave: media.storageKey })
+      .from(characterVersions)
+      .innerJoin(media, eq(media.id, characterVersions.sheetMediaId))
+      .where(eq(characterVersions.characterId, personajeId)),
+  ]);
+  return [...new Map([...marcadas, ...apuntadas].map((f) => [f.id, f])).values()];
+}
+
 /** Medios generados con este personaje: son sus derivados. */
 async function derivadosDe(personajeId: string): Promise<{ id: string; clave: string }[]> {
   const filas = await db()
@@ -90,10 +112,11 @@ async function conReservaAbierta(ids: string[]): Promise<string[]> {
 /** Qué se va a borrar, para poder enumerarlo en el diálogo antes de confirmar. */
 export async function resumenBorrado(actor: Actor, id: unknown): Promise<ResumenBorradoPersonaje> {
   const personaje = await filaPropia(actor, id);
-  const [referencias, trabajos, derivados, documento] = await Promise.all([
+  const [referencias, trabajos, derivados, hojas, documento] = await Promise.all([
     db().select({ total: count() }).from(characterReferences).where(eq(characterReferences.characterId, personaje.id)),
     trabajosDe(personaje.id),
     derivadosDe(personaje.id),
+    hojasDe(personaje.id),
     db()
       .select({ total: count() })
       .from(consentRecords)
@@ -102,7 +125,8 @@ export async function resumenBorrado(actor: Actor, id: unknown): Promise<Resumen
   return {
     nombre: personaje.name,
     referencias: referencias[0]?.total ?? 0,
-    derivados: derivados.length,
+    // La hoja de personaje cuenta como derivado: es un montaje con sus fotos y se borra con él.
+    derivados: new Set([...derivados, ...hojas].map((d) => d.id)).size,
     trabajos: trabajos.length,
     trabajosEnMarcha: trabajos.filter((t) => ESTADOS_QUE_IMPIDEN.includes(t.state)).length,
     trabajosPorCancelar: trabajos.filter((t) => ESTADOS_CANCELABLES.includes(t.state)).length,
@@ -184,9 +208,16 @@ export async function borrarPersonaje(actor: Actor, id: unknown): Promise<Borrad
     );
   }
 
-  // ── 4. Borrado de las filas, en una sola transacción.
-  const derivados = await derivadosDe(personaje.id);
-  const idsDerivados = derivados.map((d) => d.id);
+  // ── 4. Borrado de las filas, en una sola transacción. Las hojas de personaje se borran con él: son un
+  // montaje con sus fotos, así que van con los derivados y no se quedan en la biblioteca.
+  // Deduplicado **por clave de almacenamiento**, no solo por identificador: un mismo objeto borrado dos veces
+  // deja en el registro un error que no significa nada y hace pensar que se ha quedado huérfano.
+  const derivados = [
+    ...new Map(
+      [...(await derivadosDe(personaje.id)), ...(await hojasDe(personaje.id))].map((d) => [d.clave, d]),
+    ).values(),
+  ];
+  const idsDerivados = [...new Set(derivados.map((d) => d.id))];
   const { referencias, borrados } = await db().transaction(async (tx) => {
     const borradasReferencias = await tx
       .delete(characterReferences)
@@ -211,9 +242,13 @@ export async function borrarPersonaje(actor: Actor, id: unknown): Promise<Borrad
       .where(eq(generationJobs.characterId, personaje.id))
       .returning({ id: generationJobs.id });
     if (idsDerivados.length > 0) await tx.delete(media).where(inArray(media.id, idsDerivados));
-    // Los registros de consentimiento y las referencias caen en cascada con el personaje; se borra explícito
-    // para que el recuento sea real y no depender del orden de las cascadas.
+    // Los registros de consentimiento, las referencias, las versiones y las aprobaciones caen en cascada con
+    // el personaje; se borran explícito para que el recuento sea real y no depender del orden de las cascadas.
+    // Las versiones **solo** desaparecen aquí (decisión 3 de la fase 15): mientras el personaje exista son la
+    // trazabilidad de lo que ya se generó con él.
     await tx.delete(consentRecords).where(eq(consentRecords.characterId, personaje.id));
+    await tx.delete(characterApprovals).where(eq(characterApprovals.characterId, personaje.id));
+    await tx.delete(characterVersions).where(eq(characterVersions.characterId, personaje.id));
     await tx.delete(characters).where(eq(characters.id, personaje.id));
     return { referencias: borradasReferencias.length, borrados: borradosTrabajos.length };
   });

@@ -137,7 +137,7 @@ export function AltaPersonaje({ minimoReferencias }: { minimoReferencias: number
         </Campo>
         <Campo
           etiqueta="Descripción (opcional)"
-          ayuda="Para tu propia referencia. La ficha que se le pasa al modelo como contexto llega en una versión posterior."
+          ayuda="Se le pasa al modelo como contexto en cada fotograma y cada clip que hagas con él, así que describe lo que no debería cambiar entre escenas. Después puedes ampliarla en la pestaña «Ficha» del personaje."
         >
           {(props) => (
             <AreaTexto

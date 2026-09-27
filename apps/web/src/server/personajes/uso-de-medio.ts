@@ -15,20 +15,26 @@ import { ErrorMedioEnUso, ErrorPersonaje } from "./errores";
 
 /**
  * Condición SQL: este medio **no** es material reservado de un personaje. Un medio lo es cuando es un documento
- * de consentimiento o cuando es foto de referencia de algún personaje.
+ * de consentimiento, cuando es foto de referencia de algún personaje o cuando es su **hoja de personaje**
+ * (0.15.0), que es un montaje hecho con esas mismas fotos y por tanto se trata igual que ellas.
  *
  * Se usa para acotar lo que ve quien **no es el dueño** del archivo: por decisión del propietario, quien
  * administra sigue viendo y editando la biblioteca de todos como en 0.8.0, pero no esto. Los documentos de
  * terceros se revisan por `/admin/personajes`, que está auditado; las fotos de un personaje no se miran.
+ *
+ * La hoja se reconoce por **dos** caminos, y basta con uno para ocultarla: la marca del propio medio
+ * (`character_sheet_of`, que sobrevive aunque la versión deje de apuntarla) y la referencia desde la versión.
  */
 export function condicionMedioNoReservado() {
   return and(
     eq(media.isDocument, false),
+    isNull(media.characterSheetOf),
     sql`not exists (select 1 from character_references cr where cr.media_id = ${media.id})`,
+    sql`not exists (select 1 from character_versions cv where cv.sheet_media_id = ${media.id})`,
   );
 }
 
-/** `true` si el medio es un documento de consentimiento o referencia de algún personaje. */
+/** `true` si el medio es un documento de consentimiento, referencia de un personaje o su hoja. */
 export async function esMedioReservado(medioId: string): Promise<boolean> {
   const [fila] = await db()
     .select({ id: media.id })

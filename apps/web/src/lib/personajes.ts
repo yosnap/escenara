@@ -1,4 +1,5 @@
 import type { Cobertura, MotivoRechazo, RechazoDeReferencia, Vista } from "./captura-personaje";
+import type { DiferenciaFicha, FichaPersonaje } from "./ficha-personaje";
 import type { Medio } from "./media/tipos";
 
 /**
@@ -98,11 +99,37 @@ export const ETIQUETA_ORIGEN_REFERENCIA: Record<OrigenReferencia, string> = {
   vista_generada: "Vista generada",
 };
 
+/**
+ * Para qué se aprobó algo con un personaje. La base de las aprobaciones de guion y escenas (0.17.0) y de la
+ * revisión de continuidad (0.20.0): aquí solo se registran y se **invalidan** al cambiar la ficha.
+ */
+export const TIPOS_APROBACION = ["guion", "escena", "continuidad"] as const;
+export type TipoAprobacion = (typeof TIPOS_APROBACION)[number];
+
+export const esTipoAprobacion = (v: unknown): v is TipoAprobacion => TIPOS_APROBACION.includes(v as TipoAprobacion);
+
+export const ETIQUETA_TIPO_APROBACION: Record<TipoAprobacion, string> = {
+  guion: "Guion",
+  escena: "Escena",
+  continuidad: "Continuidad",
+};
+
+/** Qué hay que hacer con una aprobación invalidada. Una invalidación sin acción concreta solo confunde. */
+export const ACCION_APROBACION_INVALIDA: Record<TipoAprobacion, string> = {
+  guion: "Vuelve a revisar el guion con la ficha nueva y apruébalo otra vez.",
+  escena: "Vuelve a revisar la escena: se aprobó con una apariencia que ya no es la vigente.",
+  continuidad: "Repite la revisión de continuidad: las referencias o la ficha han cambiado.",
+};
+
 export const NOMBRE_MAXIMO = 80;
 export const DESCRIPCION_MAXIMA = 1000;
 export const ESPECIE_MAXIMA = 120;
 export const VISTA_MAXIMA = 60;
 export const MOTIVO_MAXIMO = 500;
+/** Motivo del cambio de ficha: una línea que explique por qué existe esta versión. */
+export const MOTIVO_CAMBIO_MAXIMO = 200;
+/** Asunto de una aprobación («escena 3», «guion del anuncio»). */
+export const ASUNTO_APROBACION_MAXIMO = 120;
 
 /** Tope de referencias por personaje. No es el del modelo: es lo que la ficha admite guardar. */
 export const MAXIMO_REFERENCIAS = 20;
@@ -166,6 +193,72 @@ export interface ConsentimientoVista {
   vigente: boolean;
 }
 
+/** Aprobación dependiente de una versión del personaje, tal como la devuelve la API. */
+export interface AprobacionVista {
+  id: string;
+  tipo: TipoAprobacion;
+  /** Qué se aprobó, en palabras del usuario («escena 3», «guion del anuncio»). */
+  asunto: string;
+  /** Número de la versión con la que se aprobó. */
+  versionNumero: number;
+  aprobadaEn: string;
+  /** `true` cuando una versión posterior la ha invalidado: hay que volver a revisarla. */
+  invalidada: boolean;
+  invalidadaEn: string | null;
+  /** Qué la invalidó, en lenguaje llano. Vacío si sigue vigente. */
+  motivoInvalidacion: string;
+  /** Número de la versión que la invalidó, si la invalidó una. */
+  invalidadaPorVersion: number | null;
+}
+
+/** Versión de la ficha de un personaje tal como la devuelve la API. */
+export interface VersionPersonajeVista {
+  id: string;
+  numero: number;
+  ficha: FichaPersonaje;
+  descripcion: string;
+  /** Cuántas referencias incluía esta versión. */
+  totalReferencias: number;
+  /** Hoja de personaje de esta versión (montaje de sus referencias); `null` si no se ha compuesto. */
+  hoja: Medio | null;
+  /** Motivo del cambio que escribió el usuario; vacío en la primera versión. */
+  motivo: string;
+  /** Qué cambió respecto a la anterior. Vacío en la primera. */
+  diferencias: DiferenciaFicha[];
+  /** Cuántas aprobaciones quedaron invalidadas al crearla. */
+  aprobacionesInvalidadas: number;
+  /** Bloque de contexto que esta versión añade al prompt; vacío si la ficha está sin rellenar. */
+  contexto: string;
+  creadaEn: string;
+  /** `true` en la versión con la que se genera ahora mismo. */
+  vigente: boolean;
+}
+
+/** Historial de versiones de un personaje con sus aprobaciones. */
+export interface HistorialVersiones {
+  versiones: VersionPersonajeVista[];
+  aprobaciones: AprobacionVista[];
+}
+
+/**
+ * Lo que se le enseña al usuario **antes de confirmar**: el contexto que se añadirá al prompt y qué
+ * referencias se enviarán, con la versión que las cita. Es una lectura: no mueve dinero ni encola nada.
+ */
+export interface ContextoAplicado {
+  personajeId: string;
+  nombre: string;
+  versionId: string;
+  versionNumero: number;
+  /** Bloque de contexto tal como se añadirá al prompt; vacío si la ficha no dice nada. */
+  contexto: string;
+  /** Referencias que se enviarán, ya elegidas por cobertura y recortadas al tope del modelo. */
+  referencias: { medioId: string; vista: Vista | null; origen: OrigenReferencia; medio: Medio | null }[];
+  /** Tope de referencias del modelo elegido. */
+  maximoDelModelo: number;
+  /** Modelo para el que se ha calculado. */
+  modelo: string;
+}
+
 /** Personaje tal como lo devuelve la API. `referencias` y `consentimiento` solo van en la ficha. */
 export interface PersonajeVista {
   id: string;
@@ -174,6 +267,13 @@ export interface PersonajeVista {
   /** Especie o notas del animal; en personas se usa para matices («gemela de…»). */
   especie: string;
   descripcion: string;
+  /**
+   * Ficha de apariencia (0.15.0). Es lo que se añade al prompt como contexto, así que cambiarla crea una
+   * versión nueva. Va siempre, también cuando está vacía: el formulario necesita los campos.
+   */
+  ficha: FichaPersonaje;
+  /** Versión vigente de la ficha: la que se cita al generar. `null` solo mientras se está creando. */
+  versionVigente: { id: string; numero: number; creadaEn: string; hoja: Medio | null } | null;
   estado: EstadoPersonaje;
   /**
    * Cuántas **fotos originales** utilizables tiene. Las vistas generadas no se suman aquí: no cuentan para el
@@ -225,6 +325,11 @@ export interface PersonajeElegible {
   estado: EstadoPersonaje;
   totalReferencias: number;
   portada: Medio | null;
+  /**
+   * Versión vigente de su ficha. Entra en la firma de la confirmación de «Crear»: si la ficha cambia entre
+   * la pantalla y el botón, lo confirmado ya no es lo mismo y la clave de idempotencia se renueva.
+   */
+  versionNumero: number;
 }
 
 /** Qué se va a borrar al borrar un personaje, para poder enumerarlo antes de confirmar. */
