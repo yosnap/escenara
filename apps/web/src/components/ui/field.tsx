@@ -38,8 +38,33 @@ export function Campo({ etiqueta, ayuda, error, children }: CampoProps) {
   );
 }
 
+/**
+ * Atributos que piden a los gestores de contraseñas (LastPass, 1Password, Bitwarden, Dashlane) que no decoren un
+ * campo. Hay que ponérselos a todo lo que **no** es una credencial: si no, LastPass mete su propio `<div>` dentro
+ * del grupo del campo antes de que React hidrate, el HTML deja de coincidir y React rehace la página entera en
+ * el cliente.
+ */
+export const SIN_GESTOR_CONTRASENAS = {
+  autoComplete: "off",
+  "data-lpignore": "true",
+  "data-1p-ignore": "true",
+  "data-bwignore": "true",
+  "data-form-type": "other",
+} as const;
+
+/**
+ * Campo de texto. Si declara un `autoComplete` de verdad (email, nombre, contraseña) es un dato de acceso o de
+ * identidad y los gestores pueden rellenarlo; si no, se les pide que lo dejen en paz.
+ */
 export function EntradaTexto({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
-  return <input className={cn(claseControl, "min-h-11", className)} {...props} />;
+  const esCredencial = props.type === "password" || (props.autoComplete !== undefined && props.autoComplete !== "off");
+  return (
+    <input
+      className={cn(claseControl, "min-h-11", className)}
+      {...(esCredencial ? {} : SIN_GESTOR_CONTRASENAS)}
+      {...props}
+    />
+  );
 }
 
 export function AreaTexto({ className, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
