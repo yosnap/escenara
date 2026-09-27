@@ -1,5 +1,6 @@
+import type { Deposito, EstadoCola } from "@/lib/generacion";
 import { esEstadoActivo, type TrabajoVista } from "@/lib/generacion";
-import { consultarTrabajo, reconsultarTrabajo } from "./api-generacion";
+import { cancelarTrabajo, consultarCola, consultarTrabajo, reconsultarTrabajo } from "./api-generacion";
 
 /**
  * Sondeo del estado de un trabajo como almacén externo (`useSyncExternalStore`): los temporizadores viven
@@ -22,6 +23,10 @@ export interface EstadoSondeo {
   consultando: boolean;
   /** Fallo de la consulta (no del trabajo): el estado del trabajo no cambia por esto. */
   error: string | null;
+  /** Estado de la cola mientras el trabajo espera turno; `null` si todavía no se ha consultado. */
+  cola: EstadoCola | null;
+  /** Depósito de presupuesto, que cambia al reservar y al liberar. */
+  deposito: Deposito | null;
 }
 
 export interface AlmacenTrabajo {
@@ -29,6 +34,14 @@ export interface AlmacenTrabajo {
   obtener: () => EstadoSondeo;
   /** Consulta al momento, aunque el trabajo esté «sin respuesta»; nunca reenvía la generación. */
   reconsultar: () => void;
+  /** Cancela el trabajo si todavía no ha salido hacia el proveedor. */
+  cancelar: () => void;
+  /**
+   * Adopta un trabajo que ha cambiado por otra vía (autorizar su límite de gasto, por ejemplo). Sin esto, la
+   * tarjeta se quedaría congelada en el estado viejo: el sondeo está parado porque `esperando_limite` no
+   * avanza solo, y nadie lo volvería a arrancar.
+   */
+  aplicar: (trabajo: TrabajoVista) => void;
 }
 
 function transcurrido(trabajo: TrabajoVista): number {
@@ -43,6 +56,8 @@ export function crearAlmacenTrabajo(inicial: TrabajoVista, alCambiar?: (t: Traba
     transcurridoSegundos: transcurrido(inicial),
     consultando: false,
     error: null,
+    cola: null,
+    deposito: null,
   };
   const oyentes = new Set<() => void>();
   let temporizadorConsulta: ReturnType<typeof setTimeout> | null = null;
@@ -79,13 +94,31 @@ export function crearAlmacenTrabajo(inicial: TrabajoVista, alCambiar?: (t: Traba
     else parar();
   };
 
+  /**
+   * Estado de la cola y presupuesto. Solo se pide mientras el trabajo espera turno: una vez en el proveedor,
+   * la posición en la cola ya no dice nada.
+   */
+  const refrescarCola = async () => {
+    const respuesta = await consultarCola();
+    if (respuesta.ok) publicar({ cola: respuesta.datos.cola, deposito: respuesta.datos.deposito });
+  };
+
   const consultar = async (forzada: boolean) => {
     if (estado.consultando) return;
     publicar({ consultando: true });
     const respuesta = forzada ? await reconsultarTrabajo(estado.trabajo.id) : await consultarTrabajo(estado.trabajo.id);
     if (respuesta.ok) aplicar(respuesta.datos);
     else publicar({ consultando: false, error: respuesta.error });
+    if (estado.trabajo.estado === "en_cola") await refrescarCola();
     if (vivo && esEstadoActivo(estado.trabajo.estado)) programar();
+  };
+
+  const cancelar = async () => {
+    if (estado.consultando) return;
+    publicar({ consultando: true });
+    const respuesta = await cancelarTrabajo(estado.trabajo.id);
+    if (respuesta.ok) aplicar(respuesta.datos);
+    else publicar({ consultando: false, error: respuesta.error });
   };
 
   const programar = () => {
@@ -107,5 +140,7 @@ export function crearAlmacenTrabajo(inicial: TrabajoVista, alCambiar?: (t: Traba
     },
     obtener: () => estado,
     reconsultar: () => void consultar(true),
+    cancelar: () => void cancelar(),
+    aplicar,
   };
 }

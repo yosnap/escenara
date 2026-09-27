@@ -1,6 +1,7 @@
-import { index, jsonb, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { index, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { media } from "./esquema";
 import { users } from "./esquema-auth";
+import { jsonb } from "./jsonb";
 
 /** Colecciones privadas de cada usuario. Un medio puede estar en varias (tabla `collection_media`). */
 export const collections = pgTable(
@@ -34,10 +35,13 @@ export const collectionMedia = pgTable(
 /**
  * Ajustes de la instalación que se editan en Admin › Ajustes (norma: la configuración vive en el panel,
  * no en variables de entorno). Una fila por clave; el valor, en JSON y validado en `server/ajustes.ts`.
+ *
+ * El `jsonb` es el de `db/jsonb.ts`, no el de Drizzle: el de Drizzle guardaba el valor como una cadena
+ * con JSON dentro y los presupuestos necesitan consultar dentro del valor.
  */
 export const settings = pgTable("settings", {
   key: text("key").primaryKey(),
-  value: jsonb("value").notNull(),
+  value: jsonb<unknown>("value").notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   updatedBy: uuid("updated_by").references(() => users.id, { onDelete: "set null" }),
 });

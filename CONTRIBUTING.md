@@ -12,7 +12,7 @@ Al participar aceptas el [código de conducta](CODE_OF_CONDUCT.md). Los fallos d
 
 ## Entorno local
 
-Requisitos: [Bun](https://bun.sh) 1.4.2 o superior (runtime, gestor de paquetes y tests) y Docker con Docker Compose.
+Requisitos: [Bun](https://bun.sh) 1.4.2 o superior (runtime, gestor de paquetes y tests) y Docker con Docker Compose. La base de datos tiene que ser **PostgreSQL 16 o superior** (una migración usa el predicado `IS JSON`); el Compose del proyecto trae PostgreSQL 18.
 
 ```bash
 cp .env.example .env        # cambia las contraseñas de ejemplo; .env nunca se sube
@@ -20,10 +20,18 @@ openssl rand -base64 32     # ponlo en BETTER_AUTH_SECRET y repítelo para ESCEN
 bun install
 bun run services:up         # PostgreSQL (5421), SeaweedFS S3 (8321) y Mailpit (1021 y 8421)
 bun run db:migrate          # aplica las migraciones pendientes (antes: bun run db:backup)
-bun run dev                 # http://localhost:3021
+bun run dev                 # web en http://localhost:3021 y worker de la cola
 ```
 
 `http://localhost:3021/api/health` debe devolver `status: ok` con base de datos y almacenamiento conectados.
+
+### El worker de la cola
+
+Desde la 0.12.0 las generaciones no se envían dentro de la petición del navegador: se encolan en PostgreSQL y las envía un **worker**, que es un proceso aparte (ADR-0003). `bun run dev` arranca los dos y los ata: si uno muere se para el otro, y Ctrl-C los para a los dos, así que el worker se da de baja del registro de latidos y no deja trabajos tomados.
+
+Si prefieres verlos por separado, usa `bun run dev:web` en una terminal y `bun run worker` en otra. **Sin worker no se pierde nada**: los trabajos se quedan en cola y la interfaz avisa de que nadie está atendiendo. Quién está atendiendo la cola se ve en `/admin/trabajos`.
+
+Dos workers a la vez son seguros (la toma usa `FOR UPDATE SKIP LOCKED`), pero en local no hacen falta: antes de arrancar otro, para el que ya tengas para no dejar procesos duplicados.
 
 La **primera cuenta** que crees en `http://localhost:3021/registro` será la administradora (acceso a `/admin`). Los correos de confirmación y de recuperación no salen a internet: los verás en la bandeja de Mailpit, `http://localhost:8421`. Toda la configuración se cambia en **Admin › Ajustes**, no en `.env`: registro, espacio por usuario, correo (servidor y contraseña) y las claves de acceso con Google y GitHub, que son opcionales. Los secretos se guardan cifrados con `ESCENARA_CLAVE_MAESTRA` (ADR-0005); sin esa clave la aplicación arranca, pero la bóveda queda desactivada y no se pueden guardar credenciales. Tus claves de API de KIE.ai y Google Gemini se ponen en **Tu cuenta › Credenciales de IA**.
 

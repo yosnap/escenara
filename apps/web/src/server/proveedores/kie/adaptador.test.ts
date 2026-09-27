@@ -291,7 +291,8 @@ describe("errores normalizados", () => {
     ["clave rechazada", ERROR_CLAVE, "credencial"],
     ["cuenta sin saldo", ERROR_SIN_CREDITO, "saldo"],
     ["demasiadas peticiones", ERROR_LIMITE, "limite"],
-    ["error del proveedor", ERROR_SERVIDOR, "contenido"],
+    // Un 5xx no prueba que el proveedor no haya hecho nada: es «no lo sabemos», no «lo ha rechazado».
+    ["error del proveedor", ERROR_SERVIDOR, "temporal"],
     ["respuesta que no se entiende", RESPUESTA_RARA, "respuesta"],
     ["tiempo agotado", fallo("TimeoutError"), "temporal"],
     ["red caída", fallo("TypeError"), "temporal"],

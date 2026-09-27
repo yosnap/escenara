@@ -8,7 +8,7 @@ Cada decisión relevante se documenta en un fichero `adr-NNNN-slug.md` dentro de
 |---|---|---|---|
 | [0001](adr-0001-licencia-agpl.md) | Licencia del repositorio: AGPL 3.0 | 0.2.0 | Aceptado |
 | [0002](adr-0002-typescript-unico-mvp.md) | Lenguajes del MVP: TypeScript único | 0.2.0 | Aceptado |
-| 0003 | Cola de trabajos: pg-boss o BullMQ con Redis | 0.12.0 | Pendiente |
+| [0003](adr-0003-cola-postgresql.md) | Cola de trabajos sobre PostgreSQL con `FOR UPDATE SKIP LOCKED` | 0.12.0 | Aceptado |
 | [0004](adr-0004-autenticacion-better-auth.md) | Autenticación con Better Auth | 0.7.0 | Aceptado |
 | [0005](adr-0005-boveda-credenciales.md) | Bóveda de credenciales BYOK y gestión de la clave maestra | 0.9.0 | Aceptado |
 | [0006](adr-0006-almacenamiento-seaweedfs.md) | Almacenamiento de objetos: SeaweedFS por defecto y API S3 estándar | 0.2.0 | Aceptado |
@@ -21,6 +21,7 @@ Cada decisión relevante se documenta en un fichero `adr-NNNN-slug.md` dentro de
 | [0013](adr-0013-configuracion-en-panel.md) | La configuración se gestiona en el panel de administración | 0.8.0 | Aceptado |
 | [0014](adr-0014-seguimiento-trabajos-sondeo.md) | Seguimiento de los trabajos de generación por sondeo (callback en 0.12.0) | 0.10.0 | Aceptado |
 | [0015](adr-0015-contrato-adaptadores-capacidades.md) | Contrato de adaptadores por capacidades y catálogo de modelos en la base de datos | 0.11.0 | Aceptado |
+| [0016](adr-0016-reserva-y-conciliacion-de-gasto.md) | Reserva y conciliación del gasto: registro de apuntes como única verdad | 0.12.0 | Aceptado |
 
 ## Plantilla
 

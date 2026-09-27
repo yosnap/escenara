@@ -27,3 +27,14 @@ export async function dentroDelLimite(clave: string, limite: Limite): Promise<bo
   const fila = (filas as unknown as { count: number }[])[0];
   return (fila?.count ?? 1) <= limite.maximo;
 }
+
+/**
+ * Borra los contadores de ritmo cuya ventana ya ha caducado. La tabla crece con una fila por clave (usuario,
+ * trabajo, callback…) y nadie la limpiaba: lo hace el worker en cada pasada.
+ *
+ * El corte es generoso —un día— porque la ventana más larga que usamos es de una hora y borrar una ventana
+ * viva reiniciaría el contador de alguien a mitad.
+ */
+export async function limpiarLimitesCaducados(maximaEdadMs = 24 * 60 * 60 * 1000): Promise<void> {
+  await db().execute(sql`delete from rate_limits where last_request < ${Date.now() - maximaEdadMs}`);
+}

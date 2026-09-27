@@ -5,12 +5,13 @@ import { usarCredencial } from "../boveda/credenciales";
 import { db } from "../db/cliente";
 import { type FilaTrabajo, generationJobs } from "../db/esquema";
 import { type Actor, crearMedio, eliminarDefinitivamente, enviarAPapelera, limiteSubida } from "../media/servicio";
+import { cerrarGasto } from "../presupuesto/reserva";
 import { duracionDeModelo } from "../proveedores/catalogo";
 import { ErrorProveedor, type TareaProveedor } from "../proveedores/contrato";
 import { adaptadorDe } from "../proveedores/registro";
 import { ErrorGeneracion } from "./errores";
 import { HERRAMIENTAS, type Herramientas } from "./herramientas";
-import { filaPropia, MS_MAXIMO_PREPARANDO, vistaDeFila } from "./trabajos";
+import { filaPropia, vistaDeFila } from "./trabajos";
 
 /**
  * Seguimiento de los trabajos por sondeo (ADR-0014): el navegador pregunta por el estado y el servidor
@@ -19,7 +20,9 @@ import { filaPropia, MS_MAXIMO_PREPARANDO, vistaDeFila } from "./trabajos";
  *
  * Idempotencia por tarea: dos consultas simultáneas del mismo trabajo comparten la misma operación, y la
  * fila solo se cierra si todavía no tenía medio resultante, así que no se descarga ni se guarda dos veces.
- * Con la cola persistente de 0.12.0 esto pasará a un worker y el reparto dejará de ser por proceso.
+ * Desde 0.12.0 el que consulta en automático es el worker de la cola, y al cerrar un trabajo se apunta lo
+ * consumido y se libera su reserva (`presupuesto/reserva.ts`), también de forma idempotente: un sondeo y un
+ * callback del proveedor que lleguen los dos no cobran dos veces.
  */
 
 /** Mínimo entre consultas al proveedor por trabajo (el navegador pregunta más a menudo que esto). */
@@ -30,9 +33,6 @@ export const MS_MINIMO_ENTRE_CONSULTAS = 3500;
  * convertirse en una herramienta para golpear al proveedor pulsando el botón.
  */
 export const MS_SUELO_ENTRE_CONSULTAS = 1000;
-
-const MENSAJE_SIN_RESPUESTA =
-  "El proveedor no ha contestado a la consulta. El trabajo no se reenviará: vuelve a consultarlo cuando quieras con su identificador de tarea.";
 
 /** Consultas en marcha por tarea, para no duplicar la descarga del resultado. */
 const enMarcha = new Map<string, Promise<TrabajoVista>>();
@@ -59,14 +59,16 @@ export async function consultarTrabajo(
   const fila = await filaPropia(actor.id, id);
 
   // Terminado de verdad: nada que preguntar.
-  if (fila.state === "fallido" || (fila.state === "listo" && fila.resultMediaId !== null)) return vistaDeFila(fila);
+  if (fila.state === "fallido" || fila.state === "cancelado") return vistaDeFila(fila);
+  if (fila.state === "listo" && fila.resultMediaId !== null) return vistaDeFila(fila);
+  // Un trabajo que todavía no ha salido de la cola no tiene nada que consultarle al proveedor.
+  if (fila.state === "en_cola" || fila.state === "esperando_limite") return vistaDeFila(fila);
 
-  if (!fila.taskId) {
-    if (fila.state === "preparando" && Date.now() - fila.createdAt.getTime() > MS_MAXIMO_PREPARANDO) {
-      return guardarEstado(fila.id, { state: "desconocido", errorMessage: MENSAJE_SIN_RESPUESTA });
-    }
-    return vistaDeFila(fila);
-  }
+  // Un trabajo sin tarea en el proveedor **no se toca desde aquí**. Antes, una consulta del navegador podía
+  // dejar en `desconocido` un trabajo que un worker estaba enviando en ese mismo momento (con su toma viva), y
+  // eso retenía su reserva sin motivo y confundía el estado real. Quién cierra una preparación abandonada es
+  // cosa del worker, que es el único que sabe si alguien la está atendiendo (`cola/toma.ts`).
+  if (!fila.taskId) return vistaDeFila(fila);
 
   // `desconocido` y «listo sin guardar» solo avanzan si el usuario lo pide: no se insiste en automático.
   if (!opciones.forzar && (fila.state === "desconocido" || fila.state === "listo")) return vistaDeFila(fila);
@@ -102,19 +104,29 @@ async function consultar(actor: Actor, fila: FilaTrabajo, clave: string, h: Herr
     tarea = await adaptadorDe(fila.provider).consultar({ clave, taskId, buscar: h.buscar });
   } catch (error) {
     if (!(error instanceof ErrorProveedor)) throw error;
-    if (error.sinRespuesta) {
-      // Tras un timeout no se reenvía: el trabajo queda desconocido y decide el usuario.
-      return guardarEstado(fila.id, { state: "desconocido", errorMessage: MENSAJE_SIN_RESPUESTA });
-    }
-    // Un fallo de la consulta (clave rechazada, exceso de peticiones) no cambia el estado del trabajo.
+    /**
+     * **Un fallo de la consulta no cambia el estado del trabajo.** Da igual que sea una clave rechazada, un
+     * exceso de peticiones, un 5xx o un tiempo agotado: lo único que ha fallado es nuestra pregunta, y la
+     * tarea sigue exactamente donde estaba. Antes, un tiempo agotado dejaba el trabajo `desconocido`, así que
+     * un corte de red de tres segundos mandaba a revisión (con su reserva retenida) un trabajo que estaba
+     * generando de lo más bien, y hacía falta que una persona lo resolviera a mano.
+     *
+     * Del intento solo queda el `polled_at` que se acaba de escribir, que es lo que espacia las consultas. El
+     * **único** camino automático a `desconocido` por falta de respuesta es el techo de edad
+     * (`cola/pasada.ts › cerrarPorEdad`), medido desde que el trabajo salió al proveedor.
+     */
     throw new ErrorGeneracion(502, `No se ha podido consultar el estado. ${error.message}`);
   }
 
   if (tarea.estadoPropio === "listo") return guardarResultado(actor, fila, tarea, h);
 
   if (tarea.estadoPropio === "fallido") {
+    // Un fallo del proveedor puede haber cobrado (algunos modelos cobran el intento): se apunta lo que
+    // informe, y cero si no informa nada.
+    await cerrarGasto(fila.id, tarea.creditos ?? 0, "El proveedor no ha podido completar la generación.");
     return guardarEstado(fila.id, {
       state: "fallido",
+      failureReason: "contenido",
       providerState: tarea.estado,
       consumedCredits: tarea.creditos,
       // El texto del proveedor no se propaga: puede contener datos de la petición.
@@ -124,8 +136,10 @@ async function consultar(actor: Actor, fila: FilaTrabajo, clave: string, h: Herr
   }
 
   if (tarea.estadoPropio === "desconocido") {
+    // Reserva retenida a propósito: no se sabe si ha costado algo.
     return guardarEstado(fila.id, {
       state: "desconocido",
+      failureReason: "respuesta",
       providerState: tarea.estado,
       errorMessage: `El proveedor informa de un estado que no conocemos («${tarea.estado}»). No se reenviará nada.`,
     });
@@ -146,6 +160,8 @@ async function guardarResultado(
   h: Herramientas,
 ): Promise<TrabajoVista> {
   const url = tarea.urls[0];
+  // El trabajo ha terminado: se apunta lo consumido y se libera la reserva, una sola vez por trabajo.
+  await cerrarGasto(fila.id, tarea.creditos, "Trabajo terminado en el proveedor.");
   if (!url) {
     return guardarEstado(fila.id, {
       state: "listo",

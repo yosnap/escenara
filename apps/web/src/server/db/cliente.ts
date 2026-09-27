@@ -4,6 +4,13 @@ import * as esquema from "./esquema";
 
 export type BaseDatos = BunSQLDatabase<typeof esquema>;
 
+/**
+ * Quien ejecuta una consulta: la base de datos o una transacción en marcha. Las funciones que tienen que
+ * poder participar en la transacción de quien las llama (reservar presupuesto mientras se encola un
+ * trabajo, por ejemplo) reciben esto en lugar de llamar a `db()` por su cuenta.
+ */
+export type Ejecutor = BaseDatos | Parameters<Parameters<BaseDatos["transaction"]>[0]>[0];
+
 // Una sola conexión por proceso, también tras las recargas en caliente del modo desarrollo. Se guarda
 // además a qué base de datos apunta: los tests de integración lo comprueban antes de borrar nada.
 const global = globalThis as { __escenaraDb?: BaseDatos; __escenaraDbUrl?: string };

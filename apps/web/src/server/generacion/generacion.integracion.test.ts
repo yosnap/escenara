@@ -40,8 +40,9 @@ const { crearMedio } = await import("../media/servicio");
 const { estimar, olvidarSaldos } = await import("./estimacion");
 const { crearAnimacion, crearFotograma } = await import("./servicio");
 const { consultarTrabajo, reconciliar } = await import("./seguimiento");
-const { avanzarTrabajosDe, pasadaDeSeguimiento, pendientesDeConsulta } = await import("./seguimiento-de-fondo");
-const { listarTrabajos } = await import("./trabajos");
+const { enviarEncolados, pasadaDeCola } = await import("../cola/pasada");
+const { pendientesDeConsulta } = await import("../cola/pendientes");
+const { listarTrabajos, obtenerTrabajo } = await import("./trabajos");
 type Buscador = import("../proveedores/codigos").Buscador;
 type Herramientas = import("./herramientas").Herramientas;
 type Actor = import("../media/servicio").Actor;
@@ -246,7 +247,23 @@ describe.skipIf(!hayBaseDeDatos)("generación con la clave del usuario", () => {
     ...extra,
   });
 
-  const crearFoto = async (actor: Actor, p: PeticionFotograma) => (await crearFotograma(actor, p, h)).trabajo;
+  /**
+   * Encola el fotograma y deja que la cola lo envíe, que es lo que hace el worker en producción. Los tests de
+   * 0.10.0 esperaban que `crearFotograma` enviara en línea; desde 0.12.0 esa capa solo encola (ADR-0003), así
+   * que el envío se provoca aquí y las expectativas de esos tests siguen siendo las mismas.
+   */
+  const crearFoto = async (actor: Actor, p: PeticionFotograma) => {
+    const { trabajo } = await crearFotograma(actor, p, h);
+    await enviarEncolados(h);
+    return obtenerTrabajo(actor.id, trabajo.id);
+  };
+
+  /** Igual para el clip: encolar y dejar que la cola lo envíe. */
+  const crearClip = async (actor: Actor, p: Parameters<typeof crearAnimacion>[1]) => {
+    const { trabajo } = await crearAnimacion(actor, p, h);
+    await enviarEncolados(h);
+    return obtenerTrabajo(actor.id, trabajo.id);
+  };
 
   /**
    * Borra la marca de la última consulta: es la forma de simular que ha pasado el tiempo, porque el
@@ -295,7 +312,10 @@ describe.skipIf(!hayBaseDeDatos)("generación con la clave del usuario", () => {
       .update(generationJobs)
       .set({ state: "fallido", finishedAt: new Date(), errorMessage: "cerrado por el test" })
       .where(
-        and(eq(generationJobs.userId, usuarioId), inArray(generationJobs.state, ["preparando", "enviado", "en_curso"])),
+        and(
+          eq(generationJobs.userId, usuarioId),
+          inArray(generationJobs.state, ["en_cola", "preparando", "enviado", "en_curso"]),
+        ),
       );
 
   const enCursoDe = async (usuarioId: string) =>
@@ -306,7 +326,7 @@ describe.skipIf(!hayBaseDeDatos)("generación con la clave del usuario", () => {
         .where(
           and(
             eq(generationJobs.userId, usuarioId),
-            inArray(generationJobs.state, ["preparando", "enviado", "en_curso"]),
+            inArray(generationJobs.state, ["en_cola", "preparando", "enviado", "en_curso"]),
           ),
         )
     ).length;
@@ -453,6 +473,8 @@ describe.skipIf(!hayBaseDeDatos)("generación con la clave del usuario", () => {
       expect(primero.nueva).toBe(true);
       expect(segundo.nueva).toBe(false);
       expect(segundo.trabajo.id).toBe(primero.trabajo.id);
+      // La cola solo tiene un trabajo, así que solo crea una tarea en el proveedor.
+      await enviarEncolados(h);
       expect(kie.llamadas.crearTarea).toBe(1);
       const filas = await db()
         .select({ id: generationJobs.id })
@@ -471,6 +493,7 @@ describe.skipIf(!hayBaseDeDatos)("generación con la clave del usuario", () => {
       ]);
       expect(uno.trabajo.id).toBe(otro.trabajo.id);
       expect([uno.nueva, otro.nueva].filter(Boolean)).toHaveLength(1);
+      await enviarEncolados(h);
       expect(kie.llamadas.crearTarea).toBe(1);
       const filas = await db()
         .select({ id: generationJobs.id })
@@ -491,6 +514,7 @@ describe.skipIf(!hayBaseDeDatos)("generación con la clave del usuario", () => {
       );
       expect(intentos.filter((r) => r === "ok")).toHaveLength(3);
       expect(intentos.filter((r) => r === 429)).toHaveLength(2);
+      await enviarEncolados(h);
       expect(kie.llamadas.crearTarea).toBe(3);
       expect(await enCursoDe(ana.id)).toBe(3);
       await cerrarEnCurso(ana.id);
@@ -558,19 +582,13 @@ describe.skipIf(!hayBaseDeDatos)("generación con la clave del usuario", () => {
     });
 
     test("el clip de 4 s sale del fotograma y también se guarda", async () => {
-      const animacion = (
-        await crearAnimacion(
-          actorAna,
-          {
-            trabajoPadreId: fotograma.id,
-            prompt: "se mueve un poco",
-            creditosConfirmados: 60,
-            derechos: true,
-            claveIdempotencia: crypto.randomUUID(),
-          },
-          h,
-        )
-      ).trabajo;
+      const animacion = await crearClip(actorAna, {
+        trabajoPadreId: fotograma.id,
+        prompt: "se mueve un poco",
+        creditosConfirmados: 60,
+        derechos: true,
+        claveIdempotencia: crypto.randomUUID(),
+      });
       expect(animacion.estado).toBe("enviado");
       expect(animacion.trabajoPadreId).toBe(fotograma.id);
       terminar(animacion.taskId as string, ["https://tempfile.kie.ai/r.mp4"], 60);
@@ -596,21 +614,28 @@ describe.skipIf(!hayBaseDeDatos)("generación con la clave del usuario", () => {
       await cerrarEnCurso(ana.id);
     });
 
-    test("la consulta que no contesta deja el trabajo sin respuesta", async () => {
+    /**
+     * Desde 0.12.0 un fallo de la consulta **no cambia el estado del trabajo**: lo que ha fallado es nuestra
+     * pregunta, no la tarea, que sigue donde estaba. Antes esto lo dejaba `desconocido`, así que un corte de red
+     * de unos segundos mandaba a revisión (reteniendo su reserva) un trabajo que estaba generando bien.
+     */
+    test("la consulta que no contesta deja el trabajo como estaba y no reenvía nada", async () => {
       trabajo = await crearFoto(actorAna, peticion(4));
       kie.falloConsulta = "TimeoutError";
-      const tras = await consultarYa(actorAna, trabajo.id);
-      expect(tras.estado).toBe("desconocido");
+      const error = await consultarYa(actorAna, trabajo.id).catch((e) => e);
+      expect(error.estado).toBe(502);
+      const tras = await obtenerTrabajo(ana.id, trabajo.id);
+      expect(tras.estado).toBe("enviado");
       expect(tras.taskId).toBe(trabajo.taskId);
-      expect(tras.error).toContain("no se reenviará");
       // Lo importante: solo se ha creado la tarea del envío, no una segunda.
       expect(kie.llamadas.crearTarea).toBe(1);
+      kie.falloConsulta = null;
     });
 
-    test("el sondeo automático no insiste en un trabajo sin respuesta", async () => {
-      await permitirConsulta(trabajo.id);
+    test("el mínimo entre consultas se respeta aunque la anterior fallara", async () => {
+      // El intento fallido ha dejado su marca de última consulta, así que el sondeo normal no insiste.
       const igual = await consultarTrabajo(actorAna, trabajo.id, {}, h);
-      expect(igual.estado).toBe("desconocido");
+      expect(igual.estado).toBe("enviado");
       expect(kie.llamadas.consulta).toBe(0);
     });
 
@@ -710,7 +735,7 @@ describe.skipIf(!hayBaseDeDatos)("generación con la clave del usuario", () => {
       await permitirConsulta(trabajo.id);
       expect((await pendientesDeConsulta()).some((p) => p.id === trabajo.id)).toBe(true);
 
-      expect(await pasadaDeSeguimiento(h)).toBeGreaterThanOrEqual(1);
+      expect((await pasadaDeCola(h)).avanzados).toBeGreaterThanOrEqual(1);
 
       const [fila] = await db().select().from(generationJobs).where(eq(generationJobs.id, trabajo.id));
       expect(fila?.state).toBe("listo");
@@ -730,7 +755,7 @@ describe.skipIf(!hayBaseDeDatos)("generación con la clave del usuario", () => {
       await permitirConsulta(roto.id);
       await permitirConsulta(bueno.id);
 
-      const avanzados = await pasadaDeSeguimiento(h);
+      const { avanzados } = await pasadaDeCola(h);
 
       expect(avanzados).toBe(1);
       const [filaRota] = await db().select().from(generationJobs).where(eq(generationJobs.id, roto.id));
@@ -742,18 +767,16 @@ describe.skipIf(!hayBaseDeDatos)("generación con la clave del usuario", () => {
       await cerrarEnCurso(ana.id);
     });
 
-    test("al abrir el historial se avanzan los trabajos del propio usuario y no los ajenos", async () => {
+    test("el trabajo termina sin que su dueño abra nada: lo cierra la cola", async () => {
       await cerrarEnCurso(ana.id);
       await cerrarEnCurso(beto.id);
       const deAna = await crearFoto(actorAna, peticion(4));
       terminar(deAna.taskId as string, ["https://tempfile.kie.ai/historial.png"], 4);
       await permitirConsulta(deAna.id);
 
-      await avanzarTrabajosDe(beto.id, h);
-      const [sinTocar] = await db().select().from(generationJobs).where(eq(generationJobs.id, deAna.id));
-      expect(sinTocar?.state).toBe("enviado");
+      // Nadie consulta desde el navegador: es la pasada de la cola la que lo remata.
+      await pasadaDeCola(h);
 
-      await avanzarTrabajosDe(ana.id, h);
       const [avanzado] = await db().select().from(generationJobs).where(eq(generationJobs.id, deAna.id));
       expect(avanzado?.state).toBe("listo");
       expect(avanzado?.resultMediaId).not.toBeNull();
@@ -774,7 +797,7 @@ describe.skipIf(!hayBaseDeDatos)("generación con la clave del usuario", () => {
       const pendientes = await pendientesDeConsulta();
       expect(pendientes[0]?.id).toBe(nuevo.id);
 
-      await pasadaDeSeguimiento(h);
+      await pasadaDeCola(h);
 
       const [filaNueva] = await db().select().from(generationJobs).where(eq(generationJobs.id, nuevo.id));
       expect(filaNueva?.state).toBe("listo");
@@ -806,7 +829,7 @@ describe.skipIf(!hayBaseDeDatos)("generación con la clave del usuario", () => {
         .where(and(eq(providerCredentials.userId, beto.id), eq(providerCredentials.provider, "kie")));
       const consultasAntes = kie.llamadas.consulta;
 
-      const avanzados = await pasadaDeSeguimiento(h);
+      const { avanzados } = await pasadaDeCola(h);
 
       expect(avanzados).toBe(0);
       expect(kie.llamadas.consulta).toBe(consultasAntes);
@@ -819,10 +842,10 @@ describe.skipIf(!hayBaseDeDatos)("generación con la clave del usuario", () => {
       await cerrarEnCurso(beto.id);
     });
 
-    test("el avance del historial filtra por usuario en la consulta, no después del límite", async () => {
+    test("el que nunca se ha consultado va primero en el lote, aunque sea de otra persona", async () => {
       await cerrarEnCurso(ana.id);
       await cerrarEnCurso(beto.id);
-      // Cuatro trabajos de otra persona, más antiguos: con el filtro en JS se comerían el lote.
+      // Cuatro trabajos más antiguos, ya consultados: no pueden comerse el lote.
       await Promise.all(
         Array.from({ length: 4 }, (_, i) =>
           insertarAtascado(ana.id, { minutosDeEdad: 5 + i, consultadoHaceMs: 90_000 }),
@@ -836,10 +859,8 @@ describe.skipIf(!hayBaseDeDatos)("generación con la clave del usuario", () => {
       terminar(deBeto.taskId as string, ["https://tempfile.kie.ai/solo-beto.png"], 4);
       await permitirConsulta(deBeto.id);
 
-      expect(await pendientesDeConsulta({ usuarioId: beto.id, limite: 3 })).toEqual([
-        { id: deBeto.id, usuarioId: beto.id },
-      ]);
-      await avanzarTrabajosDe(beto.id, h);
+      expect((await pendientesDeConsulta(3))[0]).toEqual({ id: deBeto.id, usuarioId: beto.id });
+      await pasadaDeCola(h);
 
       const [fila] = await db().select().from(generationJobs).where(eq(generationJobs.id, deBeto.id));
       expect(fila?.state).toBe("listo");
@@ -847,7 +868,12 @@ describe.skipIf(!hayBaseDeDatos)("generación con la clave del usuario", () => {
       await cerrarEnCurso(beto.id);
     });
 
-    test("un envío que nunca llegó a tener tarea se cierra sin llamar al proveedor", async () => {
+    /**
+     * Desde 0.12.0 un envío que nunca llegó al proveedor se cierra como `fallido` soltando su reserva, no como
+     * `desconocido`: retener presupuesto por algo que no se envió no tiene sentido. Y ya no sale en el sondeo
+     * (`pendientesDeConsulta`), porque no hay nada que consultarle a nadie: lo cierra la cola por su camino.
+     */
+    test("un envío que nunca llegó a tener tarea se cierra sin coste y sin llamar al proveedor", async () => {
       await cerrarEnCurso(ana.id);
       const [sinTarea] = await db()
         .insert(generationJobs)
@@ -864,12 +890,15 @@ describe.skipIf(!hayBaseDeDatos)("generación con la clave del usuario", () => {
         })
         .returning({ id: generationJobs.id });
       const idSinTarea = sinTarea?.id as string;
-      expect((await pendientesDeConsulta()).some((p) => p.id === idSinTarea)).toBe(true);
+      // No se le pregunta al proveedor por un trabajo que nunca salió.
+      expect((await pendientesDeConsulta()).some((p) => p.id === idSinTarea)).toBe(false);
 
-      await pasadaDeSeguimiento(h);
+      await pasadaDeCola(h);
 
       const [fila] = await db().select().from(generationJobs).where(eq(generationJobs.id, idSinTarea));
-      expect(fila?.state).toBe("desconocido");
+      expect(fila?.state).toBe("fallido");
+      expect(fila?.failureReason).toBe("interno");
+      expect(fila?.finishedAt).not.toBeNull();
       expect(kie.llamadas.consulta).toBe(0);
       await cerrarEnCurso(ana.id);
     });

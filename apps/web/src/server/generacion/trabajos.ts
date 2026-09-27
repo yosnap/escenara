@@ -1,5 +1,6 @@
 import { and, desc, eq, gt, inArray, isNotNull, ne, or, type SQL } from "drizzle-orm";
 import { ESTADOS_ACTIVOS, type TrabajoVista } from "@/lib/generacion";
+import { posicionEnCola, posicionesEnCola } from "../cola/toma";
 import { db } from "../db/cliente";
 import { type FilaMedio, type FilaTrabajo, generationJobs, media } from "../db/esquema";
 import { aDto } from "../media/servicio";
@@ -38,7 +39,13 @@ export function condicionEnCurso(): SQL {
 
 const iso = (f: Date | null) => (f ? f.toISOString() : null);
 
-export function vistaDe(fila: FilaTrabajo, medio: FilaMedio | null): TrabajoVista {
+/**
+ * Un trabajo `desconocido` con tarea en el proveedor necesita revisión a mano: quizá se ha pagado y su
+ * reserva sigue retenida hasta que alguien lo resuelva.
+ */
+const necesitaRevision = (fila: FilaTrabajo) => fila.state === "desconocido";
+
+export function vistaDe(fila: FilaTrabajo, medio: FilaMedio | null, posicion: number | null = null): TrabajoVista {
   return {
     id: fila.id,
     tipo: fila.kind,
@@ -55,6 +62,13 @@ export function vistaDe(fila: FilaTrabajo, medio: FilaMedio | null): TrabajoVist
     medio: medio ? aDto(medio, { id: fila.userId, esAdmin: false }) : null,
     trabajoPadreId: fila.parentJobId,
     derechosConfirmados: fila.rightsConfirmedAt !== null,
+    motivoFallo: fila.failureReason,
+    intentos: fila.attempts,
+    intentosMaximos: fila.maxAttempts,
+    posicionEnCola: posicion,
+    limiteCreditos: fila.creditLimit,
+    excesoCreditos: fila.excessCredits,
+    enRevision: necesitaRevision(fila),
     creadoEn: fila.createdAt.toISOString(),
     enviadoEn: iso(fila.sentAt),
     ultimaConsulta: iso(fila.polledAt),
@@ -81,7 +95,8 @@ async function medioDe(fila: FilaTrabajo): Promise<FilaMedio | null> {
 }
 
 export async function vistaDeFila(fila: FilaTrabajo): Promise<TrabajoVista> {
-  return vistaDe(fila, await medioDe(fila));
+  const [medio, posicion] = await Promise.all([medioDe(fila), posicionEnCola(fila)]);
+  return vistaDe(fila, medio, posicion);
 }
 
 export async function obtenerTrabajo(usuarioId: string, id: string): Promise<TrabajoVista> {
@@ -99,7 +114,11 @@ export async function listarTrabajos(usuarioId: string, limite = MAXIMO_HISTORIA
   const ids = filas.map((f) => f.resultMediaId).filter((id): id is string => id !== null);
   const medios = ids.length > 0 ? await db().select().from(media).where(inArray(media.id, ids)) : [];
   const porId = new Map(medios.map((m) => [m.id, m]));
-  return filas.map((f) => vistaDe(f, f.resultMediaId ? (porId.get(f.resultMediaId) ?? null) : null));
+  // Los puestos de la cola se calculan una sola vez para toda la lista, no uno por fila.
+  const puestos = filas.some((f) => f.state === "en_cola") ? await posicionesEnCola() : new Map<string, number>();
+  return filas.map((f) =>
+    vistaDe(f, f.resultMediaId ? (porId.get(f.resultMediaId) ?? null) : null, puestos.get(f.id) ?? null),
+  );
 }
 
 /** Cuántos trabajos del usuario siguen en marcha (informativo; el tope se comprueba al reservar). */

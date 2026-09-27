@@ -24,7 +24,8 @@ import type { Buscador } from "./codigos";
  * - `saldo`: la clave vale pero la cuenta no tiene créditos;
  * - `contenido`: el proveedor rechaza lo que se le pide;
  * - `limite`: demasiadas peticiones;
- * - `temporal`: no se sabe si la petición llegó (tiempo agotado o red caída): **no se reenvía**;
+ * - `temporal`: no se sabe si la petición llegó ni si se ejecutó (tiempo agotado, red caída o un error del
+ *   propio proveedor, que puede haber fallado **después** de aceptar el trabajo): **no se reenvía**;
  * - `respuesta`: ha contestado algo que no se entiende.
  */
 export const MOTIVOS_PROVEEDOR = ["credencial", "saldo", "contenido", "limite", "temporal", "respuesta"] as const;
@@ -36,7 +37,9 @@ const MOTIVO_DE_CODIGO: Record<CodigoPrueba, MotivoProveedor> = {
   rechazada: "credencial",
   "sin-credito": "saldo",
   limite: "limite",
-  "error-proveedor": "contenido",
+  // Un error del proveedor (5xx) **no** prueba que no haya hecho nada: puede haber fallado después de
+  // aceptar el trabajo. Es exactamente el caso «no lo sabemos», no «lo ha rechazado».
+  "error-proveedor": "temporal",
   "sin-red": "temporal",
   "tiempo-agotado": "temporal",
   "respuesta-inesperada": "respuesta",
@@ -63,7 +66,27 @@ export class ErrorProveedor extends Error {
   get sinRespuesta(): boolean {
     return this.motivo === "temporal";
   }
+
+  /**
+   * `true` solo cuando el código **prueba** que el proveedor rechazó la petición antes de crear ninguna tarea,
+   * y por tanto que no ha cobrado nada. Es una lista blanca a propósito: decidir «no cobrado» por descarte es
+   * lo que provoca los dobles cobros, porque un 5xx o una respuesta que no se entiende pueden venir de un
+   * trabajo ya aceptado.
+   *
+   * - `rechazada` (400/401/403) y `formato`: la petición no era válida, no hay tarea;
+   * - `sin-credito` (402): la cuenta no tenía saldo, no hay tarea;
+   * - `limite` (429): el proveedor pidió esperar, no hay tarea.
+   *
+   * Todo lo demás —`error-proveedor` (5xx), `respuesta-inesperada` (un 200 sin identificador de tarea),
+   * `sin-red`, `tiempo-agotado`— es «no lo sabemos».
+   */
+  get rechazoProbado(): boolean {
+    return CODIGOS_DE_RECHAZO_PROBADO.includes(this.codigo);
+  }
 }
+
+/** Códigos que prueban que el proveedor no creó ninguna tarea. Cualquier añadido aquí es una decisión de dinero. */
+export const CODIGOS_DE_RECHAZO_PROBADO: readonly CodigoPrueba[] = ["rechazada", "formato", "sin-credito", "limite"];
 
 /** Fallo del catálogo (modelo desconocido, retirado o sin precio), con su código HTTP y su mensaje. */
 export class ErrorCatalogo extends Error {
@@ -107,6 +130,12 @@ export interface PeticionAdaptador {
   /** Parámetros ya montados para ese modelo concreto. */
   entrada: Record<string, unknown>;
   buscar: Buscador;
+  /**
+   * URL a la que el proveedor puede avisar al terminar. Solo llega cuando la instalación tiene URL pública y
+   * secreto configurados; es un atajo del sondeo, no una alternativa (ADR-0003). Lleva dentro el token de ese
+   * trabajo, así que **no debe registrarse en ningún log**.
+   */
+  callbackUrl?: string;
 }
 
 export interface PeticionConsulta {

@@ -1,6 +1,6 @@
 {
   "name": "@escenara/web",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "module",
@@ -8,6 +8,7 @@
     "dev": "bun --bun next dev --port 3021",
     "build": "bun --bun next build",
     "start": "bun --bun next start --port 3021",
+    "worker": "bun scripts/worker.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "tokens": "bun scripts/tokens.ts",

@@ -108,17 +108,24 @@ export async function subirReferencia(clave: string, archivo: File, buscar: Busc
   return data.downloadUrl;
 }
 
-/** Crea la tarea y devuelve su identificador, lo único que permite reconsultarla sin reenviar nada. */
+/**
+ * Crea la tarea y devuelve su identificador, lo único que permite reconsultarla sin reenviar nada.
+ *
+ * `callBackUrl` es el nombre exacto del parámetro en KIE (comprobado en docs.kie.ai el 2026-09-27): va al
+ * nivel de `model` e `input`, no dentro de `input`, y KIE hace un POST a esa dirección al terminar la tarea.
+ * Solo se envía si la instalación tiene callbacks configurados; sin él, KIE no avisa y manda el sondeo.
+ */
 export async function crearTarea(
   clave: string,
   model: string,
   input: Record<string, unknown>,
   buscar: Buscador = fetch,
+  callBackUrl?: string,
 ): Promise<string> {
   const data = await pedir<{ taskId?: unknown }>(buscar, `${API}/api/v1/jobs/createTask`, {
     method: "POST",
     headers: { ...cabeceras(clave), "Content-Type": "application/json" },
-    body: JSON.stringify({ model, input }),
+    body: JSON.stringify(callBackUrl ? { model, input, callBackUrl } : { model, input }),
     signal: AbortSignal.timeout(MS_SUBIDA),
   });
   if (typeof data?.taskId !== "string" || data.taskId === "") throw new ErrorKie("respuesta-inesperada");

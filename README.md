@@ -20,7 +20,7 @@
 - **Nada se genera sin tu aprobación.** Ves el guion, el storyboard y una estimación de coste antes de gastar.
 - **Consentimiento y privacidad primero.** Registro de derechos, sin menores, etiquetado de contenido sintético y borrado completo.
 
-> 🚧 **Proyecto en fase temprana (0.11.0).** **Ya se puede crear:** con tu propia clave de KIE, en «Crear» eliges una imagen y el modelo, describes la escena, ves el coste estimado y obtienes un fotograma vertical y un clip corto guardados en tu biblioteca, con su historial ([guía «Tu primer vídeo»](docs/guias/tu-primer-video.md)). Los modelos disponibles, sus parámetros comprobados y sus precios medidos viven en un catálogo que se gestiona en el panel de administración. Alrededor hay base técnica, infraestructura local, el sistema de diseño con su catálogo de componentes, el selector de medios con editor de imagen, la portada con un escaparate de personajes ficticios, las cuentas de usuario, la biblioteca de medios de cada usuario y la bóveda cifrada para las claves de API. Personajes, guion, varias escenas y montaje llegan en las próximas versiones. Iremos añadiendo capturas de cada apartado aquí y en la guía de usuario.
+> 🚧 **Proyecto en fase temprana (0.12.0).** **Ya se puede crear:** con tu propia clave de KIE, en «Crear» eliges una imagen y el modelo, describes la escena, ves el coste estimado y obtienes un fotograma vertical y un clip corto guardados en tu biblioteca, con su historial ([guía «Tu primer vídeo»](docs/guias/tu-primer-video.md)). Los trabajos van a una **cola persistente** que atiende un worker, así que puedes cerrar el navegador sin perder nada, y cada trabajo **reserva su coste estimado** de un presupuesto que ves en el «depósito de presupuesto» ([guía del depósito](docs/guias/deposito-de-presupuesto.md)). Los modelos disponibles, sus parámetros comprobados y sus precios medidos viven en un catálogo que se gestiona en el panel de administración. Alrededor hay base técnica, infraestructura local, el sistema de diseño con su catálogo de componentes, el selector de medios con editor de imagen, la portada con un escaparate de personajes ficticios, las cuentas de usuario, la biblioteca de medios de cada usuario y la bóveda cifrada para las claves de API. Personajes, guion, varias escenas y montaje llegan en las próximas versiones. Iremos añadiendo capturas de cada apartado aquí y en la guía de usuario.
 
 <p align="center">
   <img alt="Portada de Escenara con parallax, la mascota Chispa y tarjetas de personajes ficticios" src="docs/assets/capturas/0.6.0-portada-claro.webp" width="720">
@@ -37,7 +37,7 @@ cp .env.example .env        # cambia las contraseñas y genera los secretos que 
 bun install
 bun run services:up         # PostgreSQL, SeaweedFS (almacenamiento S3) y Mailpit (correo local)
 bun run db:migrate          # crea o actualiza las tablas
-bun run dev                 # http://localhost:3021
+bun run dev                 # web en http://localhost:3021 y worker de la cola
 ```
 
 Comprueba que todo está conectado en <http://localhost:3021/api/health>: debe responder `{"status":"ok","database":"ok","storage":"ok"}`. Después crea tu cuenta en <http://localhost:3021/registro>: la primera es la administradora y los correos de confirmación llegan a Mailpit. Tus claves de API van en **Tu cuenta › Credenciales de IA**, cifradas con la clave maestra del servidor; la configuración de la instalación, en **Admin › Ajustes**.
@@ -55,7 +55,8 @@ Los puertos son fijos. Si alguno está ocupado, libera el proceso que lo usa en 
 
 | Comando | Qué hace |
 |---|---|
-| `bun run dev` | Arranca la web en modo desarrollo en el puerto 3021 |
+| `bun run dev` | Arranca la web en el puerto 3021 **y el worker de la cola** |
+| `bun run dev:web` / `bun run worker` | Arranca solo la web o solo el worker (útil para verlos por separado) |
 | `bun run check` | Lint, tipos, tests y build: lo que debe pasar antes de proponer un cambio |
 | `bun run format` | Formatea y ordena imports con Biome |
 | `bun run services:up` / `bun run services:down` | Levanta o detiene PostgreSQL y SeaweedFS |

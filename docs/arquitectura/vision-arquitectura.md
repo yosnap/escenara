@@ -51,7 +51,7 @@ flowchart LR
 | Runtime y herramientas | Bun 1.4.2+ (runtime, workspaces, `bun test`, `Bun.SQL`, `Bun.S3Client`), Biome y TypeScript estricto | Decidido (ADR-0010) |
 | Licencia | AGPL 3.0 | Decidido (ADR-0001) |
 | Base de datos | PostgreSQL | Decidido en el PRD |
-| Cola | pg-boss (solo Postgres) o BullMQ (Redis) | Pendiente, ADR-0003 |
+| Cola | PostgreSQL con `FOR UPDATE SKIP LOCKED` y worker en proceso aparte | Decidido, ADR-0003 |
 | Autenticación | Better Auth o Auth.js | Pendiente, ADR-0004 |
 | Cifrado de credenciales | AES-256-GCM con cifrado de sobre y clave maestra en el entorno o gestor de secretos | Pendiente, ADR-0005 |
 | Almacenamiento | SeaweedFS (API S3) en local y en la instalación propia; en producción, SeaweedFS en Easypanel para el piloto y almacenamiento gestionado en la UE si crece | Decidido: SeaweedFS (ADR-0006) |

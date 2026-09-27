@@ -1,6 +1,7 @@
 import { PanelCoste } from "@/components/ui/coste";
+import { DepositoPresupuesto } from "@/components/ui/deposito";
 import { EsperaTrabajo, InsigniaEstado } from "@/components/ui/trabajo";
-import { ESTADOS_TRABAJO, type Estimacion } from "@/lib/generacion";
+import { type Deposito, ESTADOS_TRABAJO, type EstadoCola, type Estimacion } from "@/lib/generacion";
 import { Muestra, Seccion } from "../seccion";
 
 const ESTIMACION: Estimacion = {
@@ -21,13 +22,29 @@ const ESTIMACION: Estimacion = {
   sello: "kie:veo3_lite:vídeo de 4 s@v1",
 };
 
-/** Componentes del flujo de creación: coste (zona de claridad) y estado real de un trabajo. */
+const DEPOSITO: Deposito = {
+  autorizado: 2000,
+  reservado: 64,
+  retenido: 0,
+  trabajosEnRevision: 0,
+  consumido: 312,
+  disponible: 1624,
+  topeTrabajo: 500,
+  consumidoEuros: 1.56,
+};
+
+/** Mismo depósito con parte del presupuesto retenido en trabajos pendientes de revisión. */
+const DEPOSITO_RETENIDO: Deposito = { ...DEPOSITO, reservado: 124, retenido: 60, trabajosEnRevision: 1 };
+
+const COLA: EstadoCola = { enCola: 2, enMarcha: 1, workerActivo: true, ultimoLatido: "2026-09-27T06:00:00.000Z" };
+
+/** Componentes del flujo de creación: coste y presupuesto (zonas de claridad) y estado real de un trabajo. */
 export function SeccionGeneracion() {
   return (
     <Seccion
       id="generacion"
       titulo="Coste y trabajos"
-      descripcion="El panel de coste es zona de claridad: superficie neutra, sin degradados ni movimiento, y siempre etiquetado como estimación. El estado del trabajo es el que informa el proveedor; nunca hay porcentajes calculados por tiempo."
+      descripcion="El panel de coste y el depósito de presupuesto son zonas de claridad: superficie neutra, sin degradados ni movimiento, y siempre etiquetados como estimación. El estado del trabajo es el que informa el proveedor; nunca hay porcentajes calculados por tiempo, y el puesto en la cola es un número contado de verdad."
     >
       <div className="grid gap-4 lg:grid-cols-2">
         <Muestra titulo="Panel de coste">
@@ -56,6 +73,42 @@ export function SeccionGeneracion() {
           <Muestra titulo="Aviso por encima del umbral">
             <div className="w-full">
               <PanelCoste estimacion={{ ...ESTIMACION, creditos: 240, euros: 1.2, superaUmbral: true }} />
+            </div>
+          </Muestra>
+        </div>
+        <Muestra titulo="Depósito de presupuesto">
+          <div className="w-full">
+            <DepositoPresupuesto deposito={DEPOSITO} cola={COLA} />
+          </div>
+        </Muestra>
+        <Muestra titulo="Depósito con presupuesto retenido">
+          <div className="w-full">
+            <DepositoPresupuesto deposito={DEPOSITO_RETENIDO} cola={COLA} />
+          </div>
+        </Muestra>
+        <div className="flex flex-col gap-4">
+          <Muestra titulo="Espera en cola, con su puesto">
+            <div className="w-full">
+              <EsperaTrabajo
+                tipo="fotograma"
+                estado="en_cola"
+                estadoProveedor={null}
+                transcurridoSegundos={9}
+                posicionEnCola={3}
+                cola={COLA}
+              />
+            </div>
+          </Muestra>
+          <Muestra titulo="Espera sin worker atendiendo">
+            <div className="w-full">
+              <EsperaTrabajo
+                tipo="fotograma"
+                estado="en_cola"
+                estadoProveedor={null}
+                transcurridoSegundos={124}
+                posicionEnCola={1}
+                cola={{ ...COLA, workerActivo: false }}
+              />
             </div>
           </Muestra>
         </div>

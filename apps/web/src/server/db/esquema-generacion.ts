@@ -1,12 +1,13 @@
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
-import { index, integer, jsonb, pgEnum, pgTable, real, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { index, integer, pgEnum, pgTable, real, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { media } from "./esquema";
 import { users } from "./esquema-auth";
 import { proveedorCredencial } from "./esquema-boveda";
+import { jsonb } from "./jsonb";
 
 /**
- * Trabajos de generación (embrión de `GenerationJob`, que 0.12.0 generaliza con cola y presupuesto) y
- * registro versionado de precios por modelo (que amplía 0.11.0).
+ * Trabajos de generación (`GenerationJob` completo desde 0.12.0: cola persistente, toma por worker,
+ * reintentos y reserva de presupuesto) y registro versionado de precios por modelo (que amplía 0.11.0).
  *
  * El proveedor comparte enumeración con las credenciales: un trabajo se paga siempre con la clave del
  * usuario para ese mismo proveedor.
@@ -14,7 +15,14 @@ import { proveedorCredencial } from "./esquema-boveda";
 
 export const tipoTrabajo = pgEnum("generation_job_kind", ["fotograma", "animacion"]);
 
-/** Estado propio, nunca el del proveedor tal cual: un estado que no se reconoce es `desconocido`. */
+/**
+ * Estado propio, nunca el del proveedor tal cual: un estado que no se reconoce es `desconocido`.
+ *
+ * Los tres últimos los añade 0.12.0: `en_cola` es el estado con el que nace un trabajo encolado (antes se
+ * enviaba en línea desde la petición del navegador), `esperando_limite` es un trabajo cuyo coste no se
+ * puede acotar y que no se envía hasta que el usuario fija un límite, y `cancelado` es el que el usuario
+ * retiró antes de que saliera hacia el proveedor.
+ */
 export const estadoTrabajo = pgEnum("generation_job_state", [
   "preparando",
   "enviado",
@@ -22,6 +30,28 @@ export const estadoTrabajo = pgEnum("generation_job_state", [
   "listo",
   "fallido",
   "desconocido",
+  "en_cola",
+  "esperando_limite",
+  "cancelado",
+  "enviando",
+]);
+
+/**
+ * Motivo normalizado por el que un trabajo no ha salido adelante. Es lo que decide si se puede reintentar:
+ * solo `interno` (falló nuestra preparación, antes de hablar con el proveedor) y `limite` (el proveedor
+ * rechazó la petición por ritmo, así que no creó ninguna tarea) son fallos **sin coste**. `temporal` no lo
+ * es: no se sabe si la tarea llegó a existir, y reenviarla podría cobrarse dos veces.
+ */
+export const motivoFalloTrabajo = pgEnum("generation_job_failure", [
+  "temporal",
+  "credencial",
+  "saldo",
+  "contenido",
+  "limite",
+  "respuesta",
+  "interno",
+  "sin_acotar",
+  "cancelado",
 ]);
 
 export const generationJobs = pgTable(
@@ -47,7 +77,7 @@ export const generationJobs = pgTable(
     providerState: text("provider_state"),
     prompt: text("prompt").notNull(),
     /** Entrada enviada al proveedor (modelo y parámetros). Nunca contiene la credencial. */
-    input: jsonb("input").notNull(),
+    input: jsonb<Record<string, unknown>>("input").notNull(),
     sourceMediaId: uuid("source_media_id").references(() => media.id, { onDelete: "set null" }),
     resultMediaId: uuid("result_media_id").references(() => media.id, { onDelete: "set null" }),
     estimatedCredits: integer("estimated_credits").notNull(),
@@ -59,6 +89,41 @@ export const generationJobs = pgTable(
     rightsConfirmedAt: timestamp("rights_confirmed_at", { withTimezone: true }),
     /** Animación → fotograma del que salió. */
     parentJobId: uuid("parent_job_id").references((): AnyPgColumn => generationJobs.id, { onDelete: "set null" }),
+    /** Motivo normalizado del fallo; decide si el trabajo se puede reintentar sin riesgo de doble cobro. */
+    failureReason: motivoFalloTrabajo("failure_reason"),
+    /** Más alta = antes en la cola. Igualdad de prioridad se resuelve por antigüedad. */
+    priority: integer("priority").notNull().default(0),
+    /** Veces que un worker ha tomado este trabajo para enviarlo. */
+    attempts: integer("attempts").notNull().default(0),
+    maxAttempts: integer("max_attempts").notNull().default(3),
+    /** No se toma antes de esta fecha: es la espera entre reintentos. */
+    availableAt: timestamp("available_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Worker que lo tiene tomado, y hasta cuándo vale esa toma (un worker caído lo suelta al caducar). */
+    lockedBy: text("locked_by"),
+    lockedUntil: timestamp("locked_until", { withTimezone: true }),
+    /**
+     * Apunte de reserva del presupuesto que respalda este trabajo (`usage_ledger`). Sin restricción de
+     * clave ajena a propósito: los apuntes no se borran nunca y la tabla se define aparte para no montar
+     * una referencia circular entre las dos.
+     */
+    reservationId: uuid("reservation_id"),
+    /**
+     * Tope de créditos que el usuario autoriza para este trabajo cuando el coste no se puede acotar
+     * (PRD §6). Sin él, un trabajo `esperando_limite` no se envía.
+     */
+    creditLimit: integer("credit_limit"),
+    /**
+     * Créditos que el proveedor ha cobrado **por encima** del tope que autorizó el usuario. No se puede
+     * impedir (el precio lo decide el proveedor), así que se apunta el gasto real y se avisa: el usuario lo ve
+     * en su trabajo y quien administra, en `/admin/trabajos`.
+     */
+    excessCredits: integer("excess_credits"),
+    /**
+     * Huella del token de callback de este trabajo, `sha256(secreto:token)`. El token viaja solo en la URL que
+     * se le da al proveedor y nunca se guarda: sin el secreto de la bóveda, esta huella no sirve de nada.
+     * `null` si el trabajo se envió sin callbacks.
+     */
+    callbackTokenHash: text("callback_token_hash"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     sentAt: timestamp("sent_at", { withTimezone: true }),
     polledAt: timestamp("polled_at", { withTimezone: true }),
@@ -71,6 +136,9 @@ export const generationJobs = pgTable(
     unique("generation_jobs_usuario_idempotencia_uq").on(t.userId, t.idempotencyKey),
     index("generation_jobs_usuario_idx").on(t.userId, t.createdAt),
     index("generation_jobs_estado_idx").on(t.state),
+    // Índice de la toma de la cola: el worker busca `en_cola` disponible y ordena por prioridad y edad.
+    index("generation_jobs_cola_idx").on(t.state, t.availableAt, t.priority),
+    index("generation_jobs_toma_idx").on(t.lockedUntil),
   ],
 );
 

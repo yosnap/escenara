@@ -9,7 +9,12 @@ import { bovedaDisponible, cifrar, descifrar, ErrorBoveda, pistaDe } from "./cif
  * (`leerSecreto`); a la interfaz únicamente llega la pista de cuatro caracteres.
  */
 
-export const CLAVES_SECRETAS = ["smtpContrasena", "googleClientSecret", "githubClientSecret"] as const;
+export const CLAVES_SECRETAS = [
+  "smtpContrasena",
+  "googleClientSecret",
+  "githubClientSecret",
+  "secretoCallback",
+] as const;
 export type ClaveSecreta = (typeof CLAVES_SECRETAS)[number];
 
 export const esClaveSecreta = (v: unknown): v is ClaveSecreta => CLAVES_SECRETAS.includes(v as ClaveSecreta);
@@ -19,6 +24,7 @@ export const NOMBRE_SECRETO: Record<ClaveSecreta, string> = {
   smtpContrasena: "Contraseña del servidor de correo",
   googleClientSecret: "Secreto de cliente de Google",
   githubClientSecret: "Secreto de cliente de GitHub",
+  secretoCallback: "Secreto de los callbacks del proveedor",
 };
 
 const LARGO_MAXIMO = 500;
