@@ -94,9 +94,15 @@ export function VistaProduccion({ inicial }: { inicial: ProduccionVista }) {
               : "un presupuesto sin fijar"}
           </p>
         </div>
-        <Link href="/crear/historial" className={claseBoton("secundario", "sm")}>
-          Historial de trabajos
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          {/* La revisión de continuidad vive aparte: se mira cuando ya hay clips, no mientras se produce. */}
+          <Link href={`/proyectos/${produccion.proyectoId}/revision`} className={claseBoton("secundario", "sm")}>
+            Revisar la continuidad
+          </Link>
+          <Link href="/crear/historial" className={claseBoton("secundario", "sm")}>
+            Historial de trabajos
+          </Link>
+        </div>
       </div>
 
       {error && <Aviso tono="error">{error}</Aviso>}

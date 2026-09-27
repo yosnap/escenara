@@ -54,6 +54,15 @@ export const usageLedger = pgTable(
      * borran nunca y la tabla se define aparte para no montar una referencia circular entre los dos módulos.
      */
     assistantRunId: uuid("assistant_run_id"),
+    /**
+     * Revisión multimodal a la que pertenece el apunte (RF07); `null` en todo lo demás. Mirar un clip con un
+     * modelo **también cuesta**, y su llamada no crea ni un trabajo de generación ni una ejecución del
+     * asistente: su gasto se apunta aquí con la misma mecánica de reserva, consumo y liberación.
+     *
+     * Sin restricción de clave ajena, igual que `assistant_run_id`: los apuntes no se borran nunca y la tabla se
+     * define aparte para no montar una referencia circular entre los dos módulos del esquema.
+     */
+    reviewId: uuid("review_id"),
     provider: proveedorCredencial("provider").notNull(),
     model: text("model").notNull(),
     entryType: tipoApunte("entry_type").notNull(),
@@ -87,9 +96,15 @@ export const usageLedger = pgTable(
     uniqueIndex("usage_ledger_ejecucion_apunte_uq")
       .on(t.assistantRunId, t.entryType)
       .where(sql`${t.entryType} <> 'ajuste'`),
+    /**
+     * Y lo mismo para la revisión multimodal: una revisión tiene como mucho una reserva, un consumo y una
+     * liberación. Es lo que hace idempotente el cierre de una revisión que se repita.
+     */
+    uniqueIndex("usage_ledger_revision_apunte_uq").on(t.reviewId, t.entryType).where(sql`${t.entryType} <> 'ajuste'`),
     index("usage_ledger_usuario_idx").on(t.userId, t.createdAt),
     index("usage_ledger_trabajo_idx").on(t.jobId),
     index("usage_ledger_ejecucion_idx").on(t.assistantRunId),
+    index("usage_ledger_revision_idx").on(t.reviewId),
   ],
 );
 

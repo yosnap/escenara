@@ -1,6 +1,6 @@
 import { PiggyBank } from "lucide-react";
 import type { ReactNode } from "react";
-import { type Deposito, type EstadoCola, formatearCreditos, formatearEuros } from "@/lib/generacion";
+import { type Deposito, type EstadoCola, enQueEstaRetenido, formatearCreditos, formatearEuros } from "@/lib/generacion";
 
 /**
  * «Depósito de presupuesto» (zona de claridad): superficie neutra, sin degradados ni movimiento, como el
@@ -19,8 +19,18 @@ export function DepositoPresupuesto({
   cola?: EstadoCola | null;
   children?: ReactNode;
 }) {
-  const { autorizado, reservado, retenido, trabajosEnRevision, consumido, disponible, topeTrabajo, consumidoEuros } =
-    deposito;
+  const {
+    autorizado,
+    reservado,
+    retenido,
+    trabajosEnRevision,
+    llamadasDeTextoColgadas,
+    revisionesColgadas,
+    consumido,
+    disponible,
+    topeTrabajo,
+    consumidoEuros,
+  } = deposito;
   return (
     <section
       aria-label="Depósito de presupuesto"
@@ -60,9 +70,14 @@ export function DepositoPresupuesto({
       {retenido > 0 && (
         <p className="rounded-control bg-elevada p-3 text-sm font-medium text-texto">
           De lo reservado, {formatearCreditos(retenido)} están <strong className="font-semibold">retenidos</strong> en{" "}
-          {trabajosEnRevision === 1 ? "un trabajo pendiente" : `${trabajosEnRevision} trabajos pendientes`} de revisión:
-          el proveedor no contestó y no se sabe si cobró, así que no se sueltan solos. Quien administra esta instalación
-          puede resolverlos y devolverte lo que no se gastó.
+          {/*
+            El «en qué» lo escribe la misma función que usa el servidor al rechazar un gasto por presupuesto
+            (`presupuesto/mensajes.ts`): antes esta frase solo hablaba de trabajos pendientes de revisión, así que
+            con una llamada de texto o una revisión colgada decía algo que no era verdad. Una explicación del
+            mismo hecho escrita dos veces acaba divergiendo siempre.
+          */}
+          {enQueEstaRetenido(trabajosEnRevision, llamadasDeTextoColgadas, revisionesColgadas)}: el proveedor no contestó
+          y no se sabe si cobró, así que no se sueltan solos.
         </p>
       )}
 

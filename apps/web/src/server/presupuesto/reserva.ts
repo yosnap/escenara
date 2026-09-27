@@ -78,15 +78,13 @@ export async function exigirPresupuestoDisponible(
   const { autorizado } = topesDe(ajustes);
   exigirTopeDeTrabajo(creditosDelEnvio, ajustes);
   if (autorizado !== null) {
-    const { reservado, consumido, retenido, trabajosEnRevision, llamadasDeTextoColgadas } = await comprometidoDe(
-      usuarioId,
-      tx,
-    );
+    const { reservado, consumido, retenido, trabajosEnRevision, llamadasDeTextoColgadas, revisionesColgadas } =
+      await comprometidoDe(usuarioId, tx);
     const disponible = autorizado - reservado - consumido;
     if (creditos > disponible) {
       // El texto lo compone `presupuesto/mensajes.ts`, el mismo que usa el motor de controles: la lectura del
       // panel y esta comprobación, que es la que manda, nunca pueden decir cosas distintas.
-      const datos = { disponible, creditos, retenido, trabajosEnRevision, llamadasDeTextoColgadas };
+      const datos = { disponible, creditos, retenido, trabajosEnRevision, llamadasDeTextoColgadas, revisionesColgadas };
       throw new ErrorGeneracion(402, `${motivoSinPresupuesto(datos)} ${accionSinPresupuesto(datos)}`);
     }
   }

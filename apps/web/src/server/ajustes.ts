@@ -89,6 +89,26 @@ export interface Ajustes {
    */
   controlesMaximoAvisos: number;
   /**
+   * Revisión de continuidad de las escenas producidas (RF07). Las comprobaciones técnicas **no cuestan nada** y
+   * aquí solo se ajustan sus umbrales; qué fallo es crítico vive en el código (`lib/revision.ts`), porque es una
+   * decisión de producto y no un umbral.
+   */
+  /** Diferencia de duración que se tolera frente a los segundos planificados, en segundos. */
+  revisionToleranciaDuracion: number;
+  /** Segundos de metraje negro o congelado que se toleran antes de avisar. */
+  revisionSegundosPlanosMaximos: number;
+  /**
+   * Exigir que el clip lleve pista de audio. **Apagado de fábrica**: no todos los modelos de animación generan
+   * voz, así que con esto apagado la revisión dice si hay audio pero no lo cuenta como fallo.
+   */
+  revisionExigirAudio: boolean;
+  /**
+   * Revisión multimodal de pago disponible. **Apagada de fábrica**: mirar un clip con un modelo cuesta créditos y
+   * la identidad la valida siempre una persona, así que esto solo añade una opinión más. Aunque esté encendida,
+   * cada revisión se estima y se confirma una por una: nunca se lanza sola.
+   */
+  revisionMultimodalActiva: boolean;
+  /**
    * Fotos de referencia que un personaje necesita como mínimo para poder generar. Con menos, la identidad
    * se pierde entre fotogramas: en el prototipo del 2026-09-27 cinco fotos dieron buen resultado y tres son
    * el mínimo razonable. La cobertura guiada de vistas llega en 0.14.0.
@@ -161,6 +181,14 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   // es exactamente lo que el panel «Antes de generar» tiene que poder decir antes de gastar.
   controlesExigirPrecioFresco: true,
   controlesMaximoAvisos: 3,
+  // Medio segundo: los clips de 4 s de KIE miden 4,0–4,1 s según el contenedor, así que una diferencia menor que
+  // esto no es un formato incorrecto, es cómo se cierra un MP4.
+  revisionToleranciaDuracion: 0.5,
+  revisionSegundosPlanosMaximos: 0.5,
+  // Apagado: los modelos de animación en uso no generan voz, así que exigir audio avisaría en cada escena.
+  revisionExigirAudio: false,
+  // Apagada: cuesta créditos y es una opinión, no un veredicto. Encenderla es decidir que se ofrece ese gasto.
+  revisionMultimodalActiva: false,
   minimoReferenciasPersonaje: 3,
   // 512 px de lado menor: por debajo, una cara ya no aporta identidad y el proveedor la amplía inventando.
   calidadLadoMinimo: 512,
@@ -268,6 +296,16 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
     valido: entero(1, 10),
     mensaje: "Indica de 1 a 10 avisos confirmables a la vez.",
   },
+  revisionToleranciaDuracion: {
+    valido: decimal(0, 5),
+    mensaje: "Indica la tolerancia de duración en segundos, de 0 a 5 (0 = exigir la duración exacta).",
+  },
+  revisionSegundosPlanosMaximos: {
+    valido: decimal(0, 60),
+    mensaje: "Indica los segundos de metraje negro o congelado que se toleran, de 0 a 60.",
+  },
+  revisionExigirAudio: { valido: booleano, mensaje: "Debe ser sí o no." },
+  revisionMultimodalActiva: { valido: booleano, mensaje: "Debe ser sí o no." },
   minimoReferenciasPersonaje: {
     valido: entero(1, 10),
     mensaje: "Indica de 1 a 10 fotos de referencia como mínimo por personaje.",

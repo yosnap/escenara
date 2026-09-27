@@ -34,6 +34,7 @@ const todoBien = (): Hechos => ({
     retenidoUsuario: 0,
     trabajosEnRevision: 0,
     llamadasDeTextoColgadas: 0,
+    revisionesColgadas: 0,
     autorizadoProyecto: 1000,
     comprometidoProyecto: 0,
   },

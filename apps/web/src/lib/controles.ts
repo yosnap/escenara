@@ -22,7 +22,7 @@
  *
  * Vive aquí, y no en el servidor, porque también se muestra: el panel dice con qué reglas se comprobó.
  */
-export const REGLAS_VERSION = "2026-09-27.1";
+export const REGLAS_VERSION = "2026-09-27.2";
 
 export const ESTADOS_CONTROL = ["listo", "ajustes", "revision", "bloqueado"] as const;
 export type EstadoControl = (typeof ESTADOS_CONTROL)[number];

@@ -10,6 +10,7 @@ import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { crearAnimacion, crearFotograma } from "../generacion/servicio";
 import type { Actor } from "../media/servicio";
 import { plantillaVigenteDe } from "../prompts/consulta";
+import { invalidarRevisionesDeEscena } from "../revision/resultados";
 import { marcarEnProduccion } from "./cierre";
 import { escenasPorProducir, estadoDeProduccion, exigirDuracionProducible, ultimoTrabajoDeEscena } from "./consulta";
 import { presetsDeProduccion } from "./presets";
@@ -348,7 +349,8 @@ export async function aprobarFotograma(
  *
  * Lo que se conserva: **todos** los trabajos anteriores con sus medios, que pasan a ser versiones en el historial
  * de la escena (`consulta.ts › versionesDe`). Lo que se invalida: el fotograma aprobado y el clip de esta escena,
- * porque ya no corresponden a lo que se va a generar; y si la escena estaba `producida`, vuelve a `aprobada`.
+ * porque ya no corresponden a lo que se va a generar; **su revisión de continuidad**, porque lo que se revisó era el
+ * clip anterior; y si la escena estaba `producida`, vuelve a `aprobada`.
  *
  * Y los reintentos: si el último trabajo de la escena falló **con coste posible**, regenerar consume un reintento
  * y exige que el usuario haya autorizado presupuesto para ellos (decisión provisional del propietario,
@@ -386,23 +388,45 @@ export async function regenerarEscena(
    * no salió. Así, un rechazo deja la escena exactamente como estaba.
    */
   await encolarFotograma(actor, escena, proyecto, confirmacion, clave, h, esReintentoAutorizado(escena, anteriores));
-  await db()
-    .update(scenes)
-    .set({
-      // Lo aprobado y el clip ya no corresponden a lo que se va a generar. Los medios **no se borran**: siguen
-      // en la biblioteca y en el historial de versiones de la escena.
-      approvedFrameMediaId: null,
-      approvedFrameJobId: null,
-      clipMediaId: null,
-      clipJobId: null,
-      state: escena.state === "producida" ? "aprobada" : escena.state,
-      // El motivo del fallo anterior ya no es verdad, pero el trabajo nuevo pudo fallar mientras se llegaba aquí y
-      // haber escrito el suyo: solo se borra el que se leyó, nunca uno más reciente.
-      lastFailureReason: sql`case when ${scenes.lastFailureReason} = ${escena.lastFailureReason} then '' else ${scenes.lastFailureReason} end`,
-      changedSinceGeneration: false,
-      updatedAt: new Date(),
-    })
-    .where(eq(scenes.id, escena.id));
+  /**
+   * Quitar el clip de la escena e **invalidar su revisión van en la misma transacción**, con la fila de la escena
+   * bloqueada. Son el mismo hecho contado dos veces («lo revisado ya no es lo que hay»), y separarlas dejaba una
+   * ventana en la que la escena ya no tenía clip pero su revisión seguía vigente: en ese hueco, un crítico técnico
+   * del clip anterior seguía bloqueando la exportación de algo que ya no existía.
+   *
+   * El bloqueo es además el otro lado del cerrojo de `revision/resultados.ts › exigirClipVigente`: una revisión que
+   * se estuviera guardando a la vez espera aquí y, al leer la escena, ve que el clip ya no es el que revisó.
+   */
+  await db().transaction(async (tx) => {
+    await tx.select({ id: scenes.id }).from(scenes).where(eq(scenes.id, escena.id)).limit(1).for("update");
+    await tx
+      .update(scenes)
+      .set({
+        // Lo aprobado y el clip ya no corresponden a lo que se va a generar. Los medios **no se borran**: siguen
+        // en la biblioteca y en el historial de versiones de la escena.
+        approvedFrameMediaId: null,
+        approvedFrameJobId: null,
+        clipMediaId: null,
+        clipJobId: null,
+        state: escena.state === "producida" ? "aprobada" : escena.state,
+        // El motivo del fallo anterior ya no es verdad, pero el trabajo nuevo pudo fallar mientras se llegaba aquí y
+        // haber escrito el suyo: solo se borra el que se leyó, nunca uno más reciente.
+        lastFailureReason: sql`case when ${scenes.lastFailureReason} = ${escena.lastFailureReason} then '' else ${scenes.lastFailureReason} end`,
+        changedSinceGeneration: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(scenes.id, escena.id));
+    /**
+     * La revisión **no se borra**: se marca con su motivo, así que el historial sigue explicando qué se dio por
+     * bueno y cuándo dejó de valer. Todo esto va después del encolado por la misma razón de siempre: un envío
+     * rechazado tiene que dejar la escena exactamente como estaba, revisión incluida.
+     */
+    await invalidarRevisionesDeEscena(
+      escena.id,
+      "Se regeneró la escena, así que lo revisado ya no es el clip que hay. Vuelve a comprobarlo cuando esté listo.",
+      tx,
+    );
+  });
   await marcarEnProduccion(proyecto.id);
   return estadoDeProduccion(actor, proyecto.id);
 }
