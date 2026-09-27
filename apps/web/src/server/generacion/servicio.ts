@@ -1,3 +1,4 @@
+import type { Vista } from "@/lib/captura-personaje";
 import { CLIP, type TipoTrabajo, type TrabajoVista } from "@/lib/generacion";
 import { encolar, filaDeLaConfirmacion, type NuevoTrabajoEncolado } from "../cola/encolar";
 import type { FilaMedio } from "../db/esquema";
@@ -84,6 +85,12 @@ export interface PeticionFotograma extends Confirmacion {
    * persona ni ningún menor. Obligatoria cuando se genera con un personaje.
    */
   sinTerceros?: boolean;
+  /**
+   * Vista de cobertura que este fotograma va a rellenar (0.14.0). La pone **el servidor**
+   * (`personajes/vista-sintetica.ts`), nunca el navegador: es lo que marca el resultado como `vista_generada`
+   * al terminar el trabajo, y un valor puesto desde fuera convertiría una foto en una etiqueta falsa.
+   */
+  vistaSintetica?: Vista;
 }
 
 export interface PeticionAnimacion extends Confirmacion {
@@ -187,12 +194,17 @@ export async function crearFotograma(
     provider: proveedor,
     model: modelo.modelo,
     prompt,
-    input: entradaGuardada(
-      adaptador,
-      prompt,
-      referencias.map((r) => r.id),
-      parametros,
-    ),
+    input: {
+      ...entradaGuardada(
+        adaptador,
+        prompt,
+        referencias.map((r) => r.id),
+        parametros,
+      ),
+      // Marca de «este resultado es una vista generada del personaje»: la lee el cierre del trabajo para
+      // añadirla como referencia etiquetada. Solo la pone el servidor.
+      ...(peticion.vistaSintetica && personajeId ? { vistaSintetica: peticion.vistaSintetica } : {}),
+    },
     sourceMediaId: origen.id,
     characterId: personajeId,
     // La revisión de referencias se guarda con su fecha, igual que la confirmación de derechos: es una

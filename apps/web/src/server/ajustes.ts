@@ -33,6 +33,25 @@ export interface Ajustes {
    */
   minimoReferenciasPersonaje: number;
   /**
+   * Umbrales del control de calidad de la captura guiada (0.14.0). Se miden en el servidor con el mismo
+   * `sharp` que ya reduce las imágenes, **sin gastar un solo crédito**: la revisión con modelo llega en
+   * 0.20.0.
+   *
+   * `calidadLadoMinimo` es el único **mínimo técnico**: por debajo, la foto no se guarda como referencia ni
+   * con «usar de todas formas». Los demás avisan y se pueden saltar.
+   */
+  calidadLadoMinimo: number;
+  /** Varianza del laplaciano mínima (escala 0–255). Por debajo, la foto está borrosa. */
+  calidadNitidezMinima: number;
+  /** Luminancia media mínima y máxima (0–255): fuera de la horquilla, la cara se pierde. */
+  calidadLuminosidadMinima: number;
+  calidadLuminosidadMaxima: number;
+  /**
+   * Proporción mínima que debe ocupar la cara, en % del lado menor. La mide el **navegador** con
+   * `FaceDetector`, así que solo avisa donde existe; 0 la desactiva.
+   */
+  calidadCaraMinima: number;
+  /**
    * URL pública de esta instalación. Con ella se activan los callbacks del proveedor; vacía, solo se usa
    * el sondeo del worker. El sondeo funciona siempre, con callbacks o sin ellos.
    */
@@ -63,6 +82,14 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   presupuestoTrabajo: 500,
   trabajosSimultaneos: 3,
   minimoReferenciasPersonaje: 3,
+  // 512 px de lado menor: por debajo, una cara ya no aporta identidad y el proveedor la amplía inventando.
+  calidadLadoMinimo: 512,
+  // Umbrales medidos el 2026-09-27 sobre fotos propias reducidas a 1920 × 1080: una foto de móvil bien
+  // enfocada pasa de 40, una movida se queda por debajo de 8.
+  calidadNitidezMinima: 8,
+  calidadLuminosidadMinima: 45,
+  calidadLuminosidadMaxima: 225,
+  calidadCaraMinima: 12,
   urlPublica: "",
   correoRemitente: "Escenara <no-responder@escenara.local>",
   smtpHost: "localhost",
@@ -140,6 +167,26 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
     valido: entero(1, 10),
     mensaje: "Indica de 1 a 10 fotos de referencia como mínimo por personaje.",
   },
+  calidadLadoMinimo: {
+    valido: entero(64, 4096),
+    mensaje: "Indica el lado menor mínimo en píxeles, de 64 a 4096.",
+  },
+  calidadNitidezMinima: {
+    valido: decimal(0, 1000),
+    mensaje: "Indica la nitidez mínima (0 = no comprobarla).",
+  },
+  calidadLuminosidadMinima: {
+    valido: entero(0, 254),
+    mensaje: "Indica la luminosidad mínima, de 0 a 254.",
+  },
+  calidadLuminosidadMaxima: {
+    valido: entero(1, 255),
+    mensaje: "Indica la luminosidad máxima, de 1 a 255.",
+  },
+  calidadCaraMinima: {
+    valido: entero(0, 90),
+    mensaje: "Indica el tamaño mínimo de la cara en % del lado menor (0 = no comprobarlo).",
+  },
   urlPublica: {
     valido: urlPublicaValida,
     mensaje: "Escribe una dirección http:// o https:// completa, o déjalo vacío.",
@@ -209,6 +256,15 @@ export async function guardarAjustes(cambios: Partial<Record<keyof Ajustes, unkn
     const limpio = typeof valor === "string" ? valor.trim() : valor;
     if (!VALIDACION[clave].valido(limpio)) throw new ErrorAjustes(clave, VALIDACION[clave].mensaje);
     validos.push([clave, limpio]);
+  }
+  // La horquilla de luminosidad no se valida campo a campo: con mínimo por encima del máximo, **ninguna**
+  // foto pasaría el control y el motivo que vería el usuario sería falso.
+  const resultantes = { ...(await leerAjustes()), ...Object.fromEntries(validos) } as Ajustes;
+  if (resultantes.calidadLuminosidadMinima >= resultantes.calidadLuminosidadMaxima) {
+    throw new ErrorAjustes(
+      "calidadLuminosidadMinima",
+      "La luminosidad mínima tiene que ser menor que la máxima: si no, ninguna foto pasaría el control.",
+    );
   }
   await db().transaction(async (tx) => {
     for (const [clave, valor] of validos) {

@@ -5,6 +5,7 @@ import { usarCredencial } from "../boveda/credenciales";
 import { db } from "../db/cliente";
 import { type FilaTrabajo, generationJobs } from "../db/esquema";
 import { type Actor, crearMedio, eliminarDefinitivamente, enviarAPapelera, limiteSubida } from "../media/servicio";
+import { adjuntarVistaGenerada } from "../personajes/vista-sintetica";
 import { cerrarGasto } from "../presupuesto/reserva";
 import { duracionDeModelo } from "../proveedores/catalogo";
 import { ErrorProveedor, type TareaProveedor } from "../proveedores/contrato";
@@ -191,7 +192,12 @@ async function guardarResultado(
       })
       .where(and(eq(generationJobs.id, fila.id), isNull(generationJobs.resultMediaId)))
       .returning();
-    if (cerrada) return vistaDeFila(cerrada);
+    if (cerrada) {
+      // Si el trabajo era una vista sintética del personaje, su resultado entra en la ficha **etiquetado**
+      // como vista generada. Solo en la rama que cierra el trabajo, así que no se adjunta dos veces.
+      await adjuntarVistaGenerada(cerrada, medio.id);
+      return vistaDeFila(cerrada);
+    }
     // Otra consulta lo cerró antes: el archivo repetido se borra de verdad (la papelera seguiría ocupando
     // cuota del usuario por algo que no ha pedido).
     await enviarAPapelera(actor, medio.id)

@@ -1,3 +1,5 @@
+import { ACCION_MOTIVO, ETIQUETA_MOTIVO, type RechazoDeReferencia } from "@/lib/captura-personaje";
+
 /** Fallo de una operación con personajes, con su código HTTP y un mensaje apto para mostrar. */
 export class ErrorPersonaje extends Error {
   constructor(
@@ -25,5 +27,24 @@ export class ErrorMedioEnUso extends ErrorPersonaje {
         )}. Si la borras, ${personajes.length === 1 ? "ese personaje pierde" : "esos personajes pierden"} esa referencia y puede que se quede sin las suficientes para generar.`,
     );
     this.name = "ErrorMedioEnUso";
+  }
+}
+
+/**
+ * Ninguna de las fotos pedidas ha pasado el control de calidad (RF03). Lleva el detalle de cada una, con sus
+ * motivos y sus métricas, porque «no se ha podido añadir» sin decir por qué ni qué hacer no sirve de nada.
+ *
+ * 422 y no 400: la petición está bien formada, lo que no vale es el contenido de la foto.
+ */
+export class ErrorReferenciaRechazada extends ErrorPersonaje {
+  constructor(readonly rechazos: RechazoDeReferencia[]) {
+    const motivos = [...new Set(rechazos.flatMap((r) => r.motivos))];
+    super(
+      422,
+      `${
+        rechazos.length === 1 ? "Esa foto no sirve como referencia" : "Ninguna de esas fotos sirve como referencia"
+      }: ${motivos.map((m) => `${ETIQUETA_MOTIVO[m].toLowerCase()} (${ACCION_MOTIVO[m]})`).join(" ")}`,
+    );
+    this.name = "ErrorReferenciaRechazada";
   }
 }

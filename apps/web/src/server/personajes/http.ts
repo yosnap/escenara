@@ -1,7 +1,9 @@
 import { esAdmin, sesionDePeticion } from "../auth/sesion";
+import { ErrorGeneracion } from "../generacion/errores";
+import { dentroDelLimite, type Limite } from "../limite";
 import { ErrorMedio } from "../media/errores";
 import type { Actor } from "../media/servicio";
-import { ErrorMedioEnUso, ErrorPersonaje } from "./errores";
+import { ErrorMedioEnUso, ErrorPersonaje, ErrorReferenciaRechazada } from "./errores";
 
 /**
  * Envoltorio de las rutas de personajes: exige sesión (401), comprueba el `Origin` en todo lo que cambia
@@ -19,9 +21,17 @@ export function respuestaError(error: unknown): Response {
   if (error instanceof ErrorMedioEnUso) {
     return Response.json({ error: error.message, enUsoPor: error.personajes }, { status: error.estado });
   }
+  // El control de calidad devuelve el detalle por foto: la interfaz necesita saber cuál falló y por qué para
+  // poder ofrecer «usar de todas formas» solo donde tiene sentido.
+  if (error instanceof ErrorReferenciaRechazada) {
+    return Response.json({ error: error.message, rechazos: error.rechazos }, { status: error.estado });
+  }
   if (error instanceof ErrorPersonaje) return Response.json({ error: error.message }, { status: error.estado });
   // Subir una referencia pasa por la biblioteca: su cuota y sus formatos llegan hasta aquí con su código.
   if (error instanceof ErrorMedio) return Response.json({ error: error.message }, { status: error.estado });
+  // Pedir una vista sintética encola un trabajo normal: sus rechazos (coste sin confirmar, sin clave, tope de
+  // trabajos, presupuesto) llegan hasta aquí y conservan su código en lugar de convertirse en un 500.
+  if (error instanceof ErrorGeneracion) return Response.json({ error: error.message }, { status: error.estado });
   // Solo el tipo y el mensaje: un error de Drizzle vuelca la consulta **con sus parámetros**, y aquí los
   // parámetros son nombres de personas, identificadores de fotos y de documentos de consentimiento. Nada de eso
   // tiene que acabar en el registro del servidor.
@@ -61,6 +71,19 @@ export function manejador<C>(fn: (peticion: Request, contexto: C, actor: Actor) 
       return respuestaError(error);
     }
   };
+}
+
+/**
+ * Ritmo del análisis de fotos: añadir referencias mide cada imagen con `sharp`, así que es la única operación
+ * de personajes que cuesta CPU de verdad. Sesenta peticiones por minuto sobran para una persona (cada una puede
+ * llevar hasta veinte fotos) y evitan que una cuenta ponga el servidor a decodificar imágenes sin parar.
+ */
+const LIMITE_ANALISIS: Limite = { ventanaSegundos: 60, maximo: 60 };
+
+export async function exigirRitmoDeAnalisis(actor: Actor): Promise<void> {
+  if (!(await dentroDelLimite(`personajes:analisis:${actor.id}`, LIMITE_ANALISIS))) {
+    throw new ErrorPersonaje(429, "Estás añadiendo fotos muy seguidas. Espera un minuto y vuelve a intentarlo.");
+  }
 }
 
 export async function leerCuerpo(peticion: Request): Promise<Record<string, unknown>> {

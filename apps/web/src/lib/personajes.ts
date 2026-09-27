@@ -1,3 +1,4 @@
+import type { Cobertura, MotivoRechazo, RechazoDeReferencia, Vista } from "./captura-personaje";
 import type { Medio } from "./media/tipos";
 
 /**
@@ -126,9 +127,22 @@ export const AVISO_CONTROL_NO_GARANTIA =
 export interface ReferenciaVista {
   id: string;
   medio: Medio;
+  /**
+   * De dónde sale. `vista_generada` viaja hasta la interfaz y se muestra **siempre** con su distintivo: una
+   * vista generada no se presenta nunca como foto.
+   */
   origen: OrigenReferencia;
   /** Vista declarada por el usuario («de frente», «perfil izquierdo»…); vacío si no la ha indicado. */
   vista: string;
+  /** Vista del catálogo de cobertura (0.14.0); `null` si la foto no está clasificada. */
+  vistaClave: Vista | null;
+  /** Medidas del control de calidad; `null` en las referencias anteriores a 0.14.0. */
+  calidad: { ancho: number; alto: number; nitidez: number | null; luminosidad: number | null } | null;
+  /**
+   * Motivos por los que el control de calidad la marcó, si se añadió «de todas formas». Vacío si pasó limpia;
+   * van **todos**, no solo el primero: una foto puede estar a la vez borrosa y oscura.
+   */
+  motivosMarcada: MotivoRechazo[];
   orden: number;
 }
 
@@ -161,8 +175,13 @@ export interface PersonajeVista {
   especie: string;
   descripcion: string;
   estado: EstadoPersonaje;
-  /** Cuántas referencias tiene guardadas. */
+  /**
+   * Cuántas **fotos originales** utilizables tiene. Las vistas generadas no se suman aquí: no cuentan para el
+   * mínimo que exige la instalación (decisión 3 de la fase 14).
+   */
   totalReferencias: number;
+  /** Cuántas vistas generadas utilizables tiene, contadas aparte a propósito. */
+  totalGeneradas: number;
   /** Mínimo de referencias que exige esta instalación para poder generar. */
   minimoReferencias: number;
   /** `true` si se puede usar en «Crear» ahora mismo. */
@@ -180,10 +199,23 @@ export interface PersonajeVista {
   actualizadoEn: string;
   /** Solo para el dueño: las fotos del personaje no salen nunca en una respuesta a otra persona. */
   referencias?: ReferenciaVista[];
+  /**
+   * Cobertura de vistas (0.14.0): qué vistas mínimas hay y cuál falta. Solo para el dueño, como las
+   * referencias: dice cuántas fotos tiene y de qué ángulo.
+   */
+  cobertura?: Cobertura;
   consentimiento?: ConsentimientoVista | null;
   /** Solo en la vista de administración: quién es el dueño del personaje. */
   propietario?: { id: string; nombre: string };
 }
+
+/**
+ * Respuesta de añadir referencias: el personaje recalculado y, si alguna foto no ha pasado el control de
+ * calidad, cuáles y por qué. Si **ninguna** pasa, la respuesta es un 422 con el mismo detalle; si pasan unas y
+ * otras no, se guardan las buenas y aquí se dice qué le ha pasado al resto, que es mejor que dejar al usuario
+ * contando fotos para averiguar que falta una.
+ */
+export type ReferenciasAnadidas = PersonajeVista & { rechazos?: RechazoDeReferencia[] };
 
 /** Lo que el selector de «Crear» necesita saber de un personaje. */
 export interface PersonajeElegible {

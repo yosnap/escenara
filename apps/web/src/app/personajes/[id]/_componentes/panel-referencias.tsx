@@ -5,8 +5,10 @@ import { useState } from "react";
 import { Boton, BotonIcono } from "@/components/ui/button";
 import { MiniaturaMedio } from "@/components/ui/media/miniatura-medio";
 import { SelectorMedios } from "@/components/ui/media/selector-medios";
+import { DistintivoOrigen } from "@/components/ui/personajes/distintivo-origen";
+import { ACCION_MOTIVO, ETIQUETA_MOTIVO, ETIQUETA_VISTA } from "@/lib/captura-personaje";
 import type { Medio } from "@/lib/media/tipos";
-import { ETIQUETA_ORIGEN_REFERENCIA, MAXIMO_REFERENCIAS, type PersonajeVista } from "@/lib/personajes";
+import { MAXIMO_REFERENCIAS, type PersonajeVista } from "@/lib/personajes";
 
 /**
  * Fotos de referencia del personaje: añadir desde la biblioteca o subiendo, quitar y reordenar. La primera es
@@ -27,6 +29,9 @@ export function PanelReferencias({
   const [nuevas, setNuevas] = useState<Medio[]>([]);
   const referencias = personaje.referencias ?? [];
   const hueco = MAXIMO_REFERENCIAS - referencias.length;
+  // La portada la elige el servidor: es la **primera foto original**, no la primera referencia. Si la primera
+  // fuera una vista generada, marcar la posición 0 diría que la portada es algo que no lo es.
+  const portada = referencias.find((r) => r.origen === "foto_original")?.id ?? null;
 
   const mover = (indice: number, salto: number) => {
     const orden = referencias.map((r) => r.id);
@@ -43,7 +48,8 @@ export function PanelReferencias({
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-2xl font-bold text-texto">Fotos de referencia</h2>
         <p className="text-sm text-texto-suave">
-          {referencias.length} de {MAXIMO_REFERENCIAS} · mínimo {personaje.minimoReferencias} para poder generar
+          {referencias.length} de {MAXIMO_REFERENCIAS} · {personaje.totalReferencias} original
+          {personaje.totalReferencias === 1 ? "" : "es"} de {personaje.minimoReferencias} para poder generar
         </p>
       </div>
 
@@ -56,16 +62,33 @@ export function PanelReferencias({
             >
               <div className="relative aspect-square overflow-hidden rounded-control bg-elevada">
                 <MiniaturaMedio medio={referencia.medio} className="object-cover" />
-                {indice === 0 && (
+                {referencia.id === portada && (
                   <span className="absolute top-1.5 left-1.5 rounded-full bg-acento px-2 py-0.5 text-xs font-bold text-sobre-acento">
                     Portada
                   </span>
                 )}
+                {/* Una vista generada lleva su distintivo **sobre la propia imagen**: nunca se presenta como
+                    una foto del personaje, ni de refilón. */}
+                {referencia.origen === "vista_generada" && (
+                  <DistintivoOrigen
+                    origen={referencia.origen}
+                    sobreImagen
+                    className="absolute inset-x-1.5 bottom-1.5 justify-center"
+                  />
+                )}
               </div>
               <p className="text-xs text-texto-suave">
-                {ETIQUETA_ORIGEN_REFERENCIA[referencia.origen]}
-                {referencia.vista && ` · ${referencia.vista}`}
+                {referencia.vistaClave && `${ETIQUETA_VISTA[referencia.vistaClave]}`}
+                {!referencia.vistaClave && referencia.vista}
               </p>
+              {referencia.origen === "vista_generada" && (
+                <p className="text-xs text-texto-suave">No cuenta como foto original del personaje.</p>
+              )}
+              {referencia.motivosMarcada.map((motivo) => (
+                <p key={motivo} className="text-xs font-medium text-aviso">
+                  {ETIQUETA_MOTIVO[motivo]}: {ACCION_MOTIVO[motivo]}
+                </p>
+              ))}
               <div className="flex items-center justify-between">
                 <span className="flex">
                   <BotonIcono

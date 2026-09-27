@@ -2,21 +2,29 @@ import { and, count, eq, inArray, isNull, sql } from "drizzle-orm";
 import {
   DESCRIPCION_MAXIMA,
   ESPECIE_MAXIMA,
-  esOrigenReferencia,
   esTipoPersonaje,
   MAXIMO_PERSONAJES,
   MAXIMO_REFERENCIAS,
   NOMBRE_MAXIMO,
   type OrigenReferencia,
   type PersonajeVista,
+  type ReferenciasAnadidas,
   type TipoPersonaje,
   VISTA_MAXIMA,
 } from "@/lib/personajes";
 import { db } from "../db/cliente";
 import { characterReferences, characters, media } from "../db/esquema";
+import { trabajosQueGeneraron } from "../generacion/trabajos";
 import type { Actor } from "../media/servicio";
+import {
+  analizarReferencias,
+  descartarDuplicadosTardios,
+  exigirAlgoQueGuardar,
+  motivosGuardables,
+} from "./analisis-referencia";
 import { esUuidPersonaje, filaPropia, recalcularEstado, siguienteOrden, vistaDePersonaje } from "./consulta";
 import { ErrorPersonaje } from "./errores";
+import { vistaSinteticaDe } from "./vista-sintetica";
 
 /**
  * Alta y edición de personajes y de sus fotos de referencia (RF02). Todo pasa por el dueño: un personaje
@@ -139,6 +147,12 @@ export interface ReferenciaPedida {
   medioId: unknown;
   origen?: unknown;
   vista?: unknown;
+  /** Vista del catálogo de cobertura (0.14.0); la valida `analisis-referencia.ts`. */
+  vistaClave?: unknown;
+  /** Proporción de la cara medida en el navegador, 0–1. */
+  caraRelativa?: unknown;
+  /** El usuario acepta añadirla aunque el control de calidad la haya marcado. */
+  usarDeTodasFormas?: unknown;
 }
 
 function idsDeReferencias(peticion: unknown): ReferenciaPedida[] {
@@ -157,65 +171,120 @@ function idsDeReferencias(peticion: unknown): ReferenciaPedida[] {
   });
 }
 
-function origenValido(valor: unknown): OrigenReferencia {
-  if (valor === undefined || valor === null) return "foto_original";
-  if (!esOrigenReferencia(valor)) throw new ErrorPersonaje(400, "Origen de la referencia no válido.");
-  return valor;
-}
-
 /**
  * Añade fotos de la biblioteca del usuario como referencias del personaje. Las que ya estuvieran se
  * ignoran, así que repetir la petición no falla ni duplica nada.
+ *
+ * Desde 0.14.0 cada foto pasa el **control de calidad** del servidor (resolución, nitidez, luz y duplicados)
+ * antes de guardarse: lo que no lo pasa no se guarda, y si el motivo no es un mínimo técnico se puede volver
+ * a pedir con `usarDeTodasFormas`.
+ *
+ * El origen **no lo decide el navegador**: lo decide el servidor comprobando si ese medio es el resultado de
+ * un trabajo de generación de esta cuenta. Si lo es, entra como `vista_generada` —aunque se haya elegido desde
+ * la biblioteca como una foto más—, porque es una imagen que hizo un modelo y no una foto de nadie; si no lo
+ * es, entra como `foto_original`. Sin esta comprobación, reañadir una vista generada desde la biblioteca la
+ * convertiría en una foto original y subiría el recuento que sostiene el mínimo del personaje.
  */
-export async function anadirReferencias(actor: Actor, id: unknown, peticion: unknown): Promise<PersonajeVista> {
+export async function anadirReferencias(actor: Actor, id: unknown, peticion: unknown): Promise<ReferenciasAnadidas> {
   const personaje = await filaPropia(actor, id);
   const pedidas = idsDeReferencias(peticion);
-  const ids = [...new Set(pedidas.map((p) => p.medioId as string))];
+  const pedidos = [...new Set(pedidas.map((p) => p.medioId as string))];
+
+  // Lo que ya es referencia de este personaje se ignora en silencio: repetir la petición (un doble clic, un
+  // reintento) no es un error del usuario y no tiene nada que medir ni que guardar.
+  const yaReferencia = new Set(
+    (
+      await db()
+        .select({ mediaId: characterReferences.mediaId })
+        .from(characterReferences)
+        .where(and(eq(characterReferences.characterId, personaje.id), inArray(characterReferences.mediaId, pedidos)))
+    ).map((f) => f.mediaId),
+  );
+  const ids = pedidos.filter((medioId) => !yaReferencia.has(medioId));
+  if (ids.length === 0) return obtenerActualizado(actor, personaje.id);
 
   // Solo fotos propias, que sean imagen y no estén en la papelera: una referencia ajena o borrada no vale.
   const propias = await db()
-    .select({ id: media.id, tipo: media.kind, documento: media.isDocument })
+    .select()
     .from(media)
     .where(and(inArray(media.id, ids), eq(media.ownerId, actor.id), isNull(media.deletedAt)));
   if (propias.length !== ids.length) throw new ErrorPersonaje(404, "Alguna de las fotos no existe.");
-  if (propias.some((m) => m.tipo !== "imagen")) {
+  if (propias.some((m) => m.kind !== "imagen")) {
     throw new ErrorPersonaje(400, "Las referencias de un personaje tienen que ser imágenes.");
   }
   // Un documento de consentimiento no es una foto del personaje: enviarlo al proveedor como referencia sería
   // mandarle un documento de identidad ajeno. Lo impide el servidor, no la interfaz.
-  if (propias.some((m) => m.documento)) {
+  if (propias.some((m) => m.isDocument)) {
     throw new ErrorPersonaje(
       400,
       "Un documento de consentimiento no se puede usar como foto de referencia de un personaje.",
     );
   }
 
+  const analisis = await analizarReferencias(
+    personaje.id,
+    pedidas
+      .filter((p) => ids.includes(p.medioId as string))
+      .map((p) => ({
+        medioId: p.medioId as string,
+        vistaClave: p.vistaClave,
+        caraRelativa: p.caraRelativa,
+        usarDeTodasFormas: p.usarDeTodasFormas,
+      })),
+    new Map(propias.map((m) => [m.id, m])),
+  );
+  exigirAlgoQueGuardar(analisis);
+  // La vista libre de 0.13.0 se conserva, indexada por foto para no perderla al filtrar las rechazadas.
+  const vistaLibre = new Map(pedidas.map((p) => [p.medioId as string, texto(p.vista, VISTA_MAXIMA, "la vista")]));
+  // Qué medios de los pedidos son resultado de un trabajo: esos entran marcados como vista generada.
+  const generados = await trabajosQueGeneraron(actor.id, ids);
+
+  let guardadas = analisis;
   await db().transaction(async (tx) => {
     // El tope va con la fila del usuario bloqueada: dos peticiones a la vez leerían el mismo total.
     await tx.execute(sql`select 1 from users where id = ${actor.id} for update`);
+    // Los duplicados se vuelven a comprobar aquí, ya con el bloqueo puesto: dos peticiones a la vez midieron
+    // las dos contra el mismo estado anterior y sin esto guardarían la misma foto.
+    guardadas = await descartarDuplicadosTardios(personaje.id, analisis, tx);
+    if (guardadas.aceptadas.length === 0) return;
     const [yaTiene] = await tx
       .select({ total: count() })
       .from(characterReferences)
       .where(eq(characterReferences.characterId, personaje.id));
-    if ((yaTiene?.total ?? 0) + ids.length > MAXIMO_REFERENCIAS) {
+    if ((yaTiene?.total ?? 0) + guardadas.aceptadas.length > MAXIMO_REFERENCIAS) {
       throw new ErrorPersonaje(409, `Un personaje admite como máximo ${MAXIMO_REFERENCIAS} fotos de referencia.`);
     }
     let orden = await siguienteOrden(personaje.id, tx);
     await tx
       .insert(characterReferences)
       .values(
-        pedidas.map((p) => ({
-          characterId: personaje.id,
-          mediaId: p.medioId as string,
-          origin: origenValido(p.origen),
-          declaredView: texto(p.vista, VISTA_MAXIMA, "la vista"),
-          sortOrder: orden++,
-        })),
+        guardadas.aceptadas.map((a) => {
+          const trabajo = generados.get(a.medioId);
+          return {
+            characterId: personaje.id,
+            mediaId: a.medioId,
+            // Resultado de un trabajo = imagen generada, diga lo que diga el navegador.
+            origin: (trabajo ? "vista_generada" : "foto_original") as OrigenReferencia,
+            declaredView: vistaLibre.get(a.medioId) ?? "",
+            // Si el trabajo pidió una vista concreta, esa manda sobre lo que declare quien la añade.
+            viewKey: (trabajo ? vistaSinteticaDe(trabajo) : null) ?? a.vistaClave ?? "",
+            width: a.metricas.ancho,
+            height: a.metricas.alto,
+            sharpness: a.metricas.nitidez,
+            brightness: a.metricas.luminosidad,
+            faceRatio: a.metricas.caraRelativa,
+            phash: a.huella,
+            rejectionReason: motivosGuardables(a.motivosMarcada),
+            sortOrder: orden++,
+          };
+        }),
       )
       .onConflictDoNothing();
     await recalcularEstado(personaje.id, tx);
   });
-  return obtenerActualizado(actor, personaje.id);
+  const vista = await obtenerActualizado(actor, personaje.id);
+  // Las que se han quedado fuera se dicen: un 200 con una foto menos y sin explicación es un fallo silencioso.
+  return guardadas.rechazadas.length > 0 ? { ...vista, rechazos: guardadas.rechazadas } : vista;
 }
 
 /** Quita referencias del personaje. Las fotos siguen en la biblioteca: lo que se borra es la relación. */

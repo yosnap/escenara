@@ -5,6 +5,7 @@ import {
   integer,
   pgEnum,
   pgTable,
+  real,
   text,
   timestamp,
   unique,
@@ -117,8 +118,32 @@ export const characterReferences = pgTable(
       .notNull()
       .references(() => media.id, { onDelete: "cascade" }),
     origin: origenReferencia("origin").notNull().default("foto_original"),
-    /** Vista declarada por el usuario; la cobertura guiada de vistas llega en 0.14.0. */
+    /** Vista declarada por el usuario en texto libre (0.13.0); se conserva tal cual. */
     declaredView: text("declared_view").notNull().default(""),
+    /**
+     * Vista normalizada al catálogo de `lib/captura-personaje.ts` (0.14.0), que es la que cuenta para la
+     * cobertura. Es la vista **que pidió la guía** o la que eligió el usuario: sin modelo no hay detección
+     * real de la vista, y fingirla sería inventar un dato. Vacío = sin clasificar.
+     */
+    viewKey: text("view_key").notNull().default(""),
+    /** Medidas del control de calidad, tal como estaban al añadir la foto. `null` en lo anterior a 0.14.0. */
+    width: integer("width"),
+    height: integer("height"),
+    /** Varianza del laplaciano (nitidez) y luminancia media, las dos en la escala 0–255. */
+    sharpness: real("sharpness"),
+    brightness: real("brightness"),
+    /** Proporción de la cara medida **en el navegador**; `null` donde no hay detector. */
+    faceRatio: real("face_ratio"),
+    /**
+     * Huella perceptual (dHash de 64 bits en hexadecimal) con la que se detectan los duplicados antes de
+     * guardar. No permite reconstruir la foto: solo comparar dos fotos entre sí.
+     */
+    phash: text("phash"),
+    /**
+     * Motivo por el que el control de calidad marcó la foto, si el usuario la añadió «de todas formas». No
+     * es un rechazo (lo rechazado no se guarda): es la razón por la que la ficha la sigue señalando.
+     */
+    rejectionReason: text("rejection_reason"),
     sortOrder: integer("sort_order").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -128,6 +153,8 @@ export const characterReferences = pgTable(
     index("character_references_personaje_idx").on(t.characterId, t.sortOrder),
     // Índice de la comprobación de uso en el borrado definitivo de un medio.
     index("character_references_medio_idx").on(t.mediaId),
+    // Índice de la detección de duplicados: se comparan solo las huellas del mismo personaje.
+    index("character_references_huella_idx").on(t.characterId, t.phash),
   ],
 );
 

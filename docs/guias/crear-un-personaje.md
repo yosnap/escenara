@@ -32,6 +32,11 @@ Las fotos se guardan en tu biblioteca como cualquier otra imagen: se reducen a 1
 convierten a WebP al subirlas. La **primera** referencia es la portada del personaje y la que más peso tiene en
 la identidad; puedes cambiar el orden desde su ficha.
 
+Desde la 0.14.0 no hace falta acertar a ciegas: la ficha del personaje tiene un panel de **vistas** que dice
+cuál falta, un visor que te guía al hacer cada foto y un control de calidad que rechaza lo que no va a servir
+diciendo por qué. Está todo en [«Buenas referencias»](buenas-referencias.md). Una foto por debajo del tamaño
+mínimo (512 px de lado menor por defecto) ya no se puede añadir, y una foto repetida tampoco.
+
 ## 3. Registra el consentimiento
 
 El consentimiento se rellena en una **zona de claridad**: fondo neutro, sin animación y con el texto legal

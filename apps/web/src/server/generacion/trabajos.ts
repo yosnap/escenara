@@ -108,6 +108,26 @@ export async function personajeDeLaCadena(usuarioId: string, medioId: string): P
   return fila?.personajeId ?? null;
 }
 
+/**
+ * De los medios indicados, cuáles son **resultado de un trabajo** del usuario: es decir, cuáles son imágenes
+ * que generó Escenara y no fotos que hizo nadie. Se usa al añadir referencias a un personaje, para que una
+ * imagen generada no pueda entrar como «foto original» aunque se elija desde la biblioteca.
+ */
+export async function trabajosQueGeneraron(usuarioId: string, medioIds: string[]): Promise<Map<string, FilaTrabajo>> {
+  if (medioIds.length === 0) return new Map();
+  const filas = await db()
+    .select()
+    .from(generationJobs)
+    .where(
+      and(
+        eq(generationJobs.userId, usuarioId),
+        inArray(generationJobs.resultMediaId, [...new Set(medioIds)]),
+        isNotNull(generationJobs.resultMediaId),
+      ),
+    );
+  return new Map(filas.flatMap((f) => (f.resultMediaId ? [[f.resultMediaId, f] as [string, FilaTrabajo]] : [])));
+}
+
 /** Medio resultante de un trabajo, si ya está guardado. */
 async function medioDe(fila: FilaTrabajo): Promise<FilaMedio | null> {
   if (!fila.resultMediaId) return null;

@@ -81,7 +81,7 @@ export async function personajeParaGenerar(
 
   await exigirPersonajeUsable(personaje.id, personaje.name);
   // Solo las utilizables y en su orden: una referencia en la papelera no se envía a ningún proveedor.
-  const idsVigentes = await mediosDeReferenciaVigentes(personaje.id);
+  const idsVigentes = (await mediosDeReferenciaVigentes(personaje.id)).map((r) => r.mediaId);
   if (maximoDelModelo < 1) {
     throw new ErrorPersonaje(
       400,

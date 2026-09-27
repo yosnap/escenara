@@ -92,6 +92,13 @@
       "when": 1790493085451,
       "tag": "0012_indice_consentimiento_declarado",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790494045525,
+      "tag": "0013_calidad_y_cobertura_de_referencias",
+      "breakpoints": true
     }
   ]
 }
