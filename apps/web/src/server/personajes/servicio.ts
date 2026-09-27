@@ -398,8 +398,13 @@ function vistasPedidas(peticion: unknown): VistaPedida[] {
  * desde la biblioteca se quedaba «sin clasificar» para siempre: no cubría ninguna vista y volver a añadirla por
  * la captura guiada la rechazaba por duplicada, así que la cobertura pedía fotos que el usuario ya tenía.
  *
- * Las **vistas generadas no se tocan**: su vista es la que pidió su trabajo y la escribió el servidor. Cambiarla
- * convertiría el encuadre que se generó en otro distinto sin que nada lo respalde.
+ * Una **vista generada que ya trae su vista no se toca**: la pidió su trabajo y la escribió el servidor, así que
+ * cambiarla convertiría el encuadre que se generó en otro distinto sin que nada lo respalde. En cambio una
+ * imagen generada **sin vista** sí se puede clasificar: es lo que pasa al añadir desde la biblioteca el
+ * resultado de un trabajo que no era «generar una vista» (uno de «Crear», por ejemplo). Antes no había salida
+ * —la cobertura la contaba como sin clasificar, aquí se rechazaba y la interfaz no le ofrecía selector—, y la
+ * única forma de salir del callejón era borrarla. Siga clasificada o no, **sigue siendo una vista generada**: no
+ * cuenta como foto original ni cubre la vista.
  *
  * Versiona igual que añadir, quitar o reordenar: la elección de qué fotos se envían al proveedor se hace por
  * cobertura de vistas, así que cambiar una vista cambia lo que se envía. Si la vista es la que ya tenía, no se
@@ -435,10 +440,15 @@ export async function asignarVistasDeReferencias(
   // Una referencia de otro personaje (o que ya no existe) no se distingue de una inexistente: 404, como todo
   // lo ajeno en personajes.
   if (suyas.size !== pedidas.length) throw new ErrorPersonaje(404, "Alguna de las fotos no es de este personaje.");
-  if (pedidas.some((p) => suyas.get(p.id)?.origen === "vista_generada")) {
+  if (
+    pedidas.some((p) => {
+      const fila = suyas.get(p.id);
+      return fila?.origen === "vista_generada" && (fila.viewKey ?? "") !== "";
+    })
+  ) {
     throw new ErrorPersonaje(
       400,
-      "Una vista generada lleva la vista con la que se pidió: no se puede cambiar. Quítala si no te sirve.",
+      "Esa vista generada lleva la vista con la que se pidió: no se puede cambiar. Quítala si no te sirve.",
     );
   }
 

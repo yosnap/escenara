@@ -13,17 +13,20 @@ export function MiniaturaMedio({
   medio,
   className,
   controles = false,
+  alt,
 }: {
   medio: Medio;
   className?: string;
   controles?: boolean;
+  /** Texto alternativo cuando el contexto dice más que el nombre del archivo (por ejemplo, qué vista es). */
+  alt?: string;
 }) {
   if (medio.tipo === "imagen") {
     return (
       // biome-ignore lint/performance/noImgElement: URL temporal del almacenamiento, sin optimizador de Next
       <img
         src={medio.url}
-        alt={medio.altEs || medio.titulo || medio.nombre}
+        alt={alt ?? (medio.altEs || medio.titulo || medio.nombre)}
         loading="lazy"
         className={cn("size-full object-cover", className)}
       />

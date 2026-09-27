@@ -16,6 +16,8 @@ import {
   type EstadoConsentimiento,
   FormularioConsentimiento,
 } from "@/components/ui/personajes/formulario-consentimiento";
+import { FotosRechazadas } from "@/components/ui/personajes/fotos-rechazadas";
+import type { RechazoDeReferencia } from "@/lib/captura-personaje";
 import type { Medio } from "@/lib/media/tipos";
 import {
   DESCRIPCION_MAXIMA,
@@ -36,6 +38,14 @@ import {
  * operaciones distintas del servidor. Si alguna falla, el personaje ya creado se queda en borrador y se avisa
  * de qué ha fallado con un enlace a su ficha: nada se pierde y se puede terminar desde allí.
  */
+/** Con qué se reanuda el alta después de que el control de calidad deje alguna foto fuera. */
+interface OpcionesGuardar {
+  /** Fotos marcadas que el usuario acepta usar igualmente. */
+  deTodasFormas?: string[];
+  /** Sigue sin tocar las fotos: las que entraron ya están y las rechazadas se quedan fuera. */
+  omitirFotos?: boolean;
+}
+
 export function AltaPersonaje({ minimoReferencias }: { minimoReferencias: number }) {
   const router = useRouter();
   const [tipo, setTipo] = useState<TipoPersonaje>("persona");
@@ -46,6 +56,13 @@ export function AltaPersonaje({ minimoReferencias }: { minimoReferencias: number
   const [consentimiento, setConsentimiento] = useState<EstadoConsentimiento>(CONSENTIMIENTO_INICIAL);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * Personaje ya creado en un intento anterior. Guardarlo es lo que permite reintentar las fotos sin crear un
+   * personaje repetido cada vez (y el nombre es único: el segundo intento daría un 409).
+   */
+  const [creadoId, setCreadoId] = useState<string | null>(null);
+  /** Fotos que el control de calidad ha dejado fuera: se enseñan con su motivo y se pueden usar de todas formas. */
+  const [rechazadas, setRechazadas] = useState<RechazoDeReferencia[]>([]);
 
   const nombreLimpio = nombre.trim();
   const bloqueos = [
@@ -56,26 +73,48 @@ export function AltaPersonaje({ minimoReferencias }: { minimoReferencias: number
     ...bloqueosDeConsentimiento(consentimiento),
   ];
 
-  const guardar = async () => {
+  /**
+   * Crea el personaje, le añade sus fotos y registra el consentimiento. Son tres operaciones del servidor, así
+   * que se pueden reanudar: lo ya hecho no se repite.
+   *
+   * `deTodasFormas` son las fotos marcadas que el usuario acepta usar igualmente, y `omitirFotos` sigue sin las
+   * que no se pueden añadir. Si el control de calidad deja alguna fuera, el alta **se detiene aquí** en vez de
+   * llevarse el problema a la ficha: se dice qué pasa con cada foto y se decide.
+   */
+  const guardar = async ({ deTodasFormas = [], omitirFotos = false }: OpcionesGuardar = {}) => {
     setGuardando(true);
     setError(null);
-    const creado = await crearPersonaje({ nombre: nombreLimpio, tipo, especie, descripcion });
-    if (!creado.ok) {
-      setGuardando(false);
-      setError(creado.error);
-      return;
+    let id = creadoId;
+    if (!id) {
+      const creado = await crearPersonaje({ nombre: nombreLimpio, tipo, especie, descripcion });
+      if (!creado.ok) {
+        setGuardando(false);
+        setError(creado.error);
+        return;
+      }
+      id = creado.datos.id;
+      setCreadoId(id);
     }
-    const id = creado.datos.id;
-    const conReferencias = await anadirReferencias(
-      id,
-      fotos.map((f) => f.id),
-    );
-    if (!conReferencias.ok) {
-      setGuardando(false);
-      setError(`El personaje se ha creado, pero sus fotos no: ${conReferencias.error} Termínalo desde su ficha.`);
-      router.push(`/personajes/${id}`);
-      return;
+    if (!omitirFotos) {
+      const conReferencias = await anadirReferencias(
+        id,
+        fotos.map((f) => f.id),
+        deTodasFormas,
+      );
+      const rechazos = conReferencias.ok ? (conReferencias.datos.rechazos ?? []) : (conReferencias.rechazos ?? []);
+      if (rechazos.length > 0) {
+        setRechazadas(rechazos);
+        setGuardando(false);
+        return;
+      }
+      if (!conReferencias.ok) {
+        setGuardando(false);
+        setError(`El personaje se ha creado, pero sus fotos no: ${conReferencias.error} Termínalo desde su ficha.`);
+        router.push(`/personajes/${id}`);
+        return;
+      }
     }
+    setRechazadas([]);
     const registro = await registrarConsentimiento(id, {
       titular: consentimiento.titular,
       mayoriaDeEdad: consentimiento.mayoriaDeEdad,
@@ -195,15 +234,28 @@ export function AltaPersonaje({ minimoReferencias }: { minimoReferencias: number
             </ul>
           )}
           {error && <Aviso tono="error">{error}</Aviso>}
+          {creadoId && rechazadas.length > 0 && (
+            <Aviso tono="info">
+              El personaje ya está creado y su consentimiento se registrará en cuanto decidas qué hacer con las fotos de
+              abajo.
+            </Aviso>
+          )}
+          <FotosRechazadas
+            rechazos={rechazadas}
+            medios={fotos}
+            ocupado={guardando}
+            onUsarDeTodasFormas={(medioIds) => void guardar({ deTodasFormas: medioIds })}
+            onSeguirSinEllas={() => void guardar({ omitirFotos: true })}
+          />
           <Boton
             variante="chispa"
             icono={<Check className="size-5" />}
             className="self-start"
             cargando={guardando}
             disabled={bloqueos.length > 0}
-            onClick={guardar}
+            onClick={() => void guardar()}
           >
-            Crear el personaje
+            {creadoId ? "Terminar el personaje" : "Crear el personaje"}
           </Boton>
         </div>
       </Paso>

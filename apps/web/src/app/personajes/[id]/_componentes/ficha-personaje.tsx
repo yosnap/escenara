@@ -19,14 +19,7 @@ import {
   revocarConsentimiento,
 } from "@/components/ui/personajes/api-personajes";
 import type { EstadoConsentimiento } from "@/components/ui/personajes/formulario-consentimiento";
-import {
-  ACCION_MOTIVO,
-  ETIQUETA_MOTIVO,
-  ETIQUETA_VISTA,
-  type RechazoDeReferencia,
-  type UmbralesCalidad,
-  type Vista,
-} from "@/lib/captura-personaje";
+import { ETIQUETA_VISTA, type UmbralesCalidad, type Vista } from "@/lib/captura-personaje";
 import {
   ETIQUETA_TIPO_PERSONAJE,
   exigeDocumento,
@@ -37,7 +30,7 @@ import { DialogoBorrarPersonaje } from "./dialogo-borrar-personaje";
 import { type EstadoDeClave, PanelCobertura } from "./panel-cobertura";
 import { PanelConsentimiento } from "./panel-consentimiento";
 import { PanelFicha } from "./panel-ficha";
-import { PanelReferencias } from "./panel-referencias";
+import { PanelReferencias, type ResultadoAnadir } from "./panel-referencias";
 import { PanelVersiones } from "./panel-versiones";
 
 /**
@@ -63,8 +56,6 @@ export function FichaPersonaje({
   const [error, setError] = useState<string | null>(null);
   const [borrando, setBorrando] = useState(false);
   const [vistaEncolada, setVistaEncolada] = useState<string | null>(null);
-  /** Fotos que el control de calidad ha dejado fuera de una tanda en la que sí entraron otras. */
-  const [descartadas, setDescartadas] = useState<RechazoDeReferencia[]>([]);
 
   /** Aplica una operación y deja el personaje que devuelve el servidor. Devuelve el error, o `null`. */
   const aplicar = async (accion: Promise<Resultado<ReferenciasAnadidas>>): Promise<string | null> => {
@@ -77,16 +68,34 @@ export function FichaPersonaje({
       return respuesta.error;
     }
     setPersonaje(respuesta.datos);
-    // Si se han guardado unas fotos y otras no, se dice cuáles y por qué: contar miniaturas no es una respuesta.
-    setDescartadas(respuesta.datos.rechazos ?? []);
     router.refresh();
     return null;
   };
 
-  const cambiarReferencias = (accion: "anadir" | "quitar" | "ordenar", ids: string[]) => {
-    if (accion === "anadir") return aplicar(anadirReferencias(personaje.id, ids));
-    if (accion === "quitar") return aplicar(quitarReferencias(personaje.id, ids));
-    return aplicar(ordenarReferencias(personaje.id, ids));
+  const cambiarReferencias = (accion: "quitar" | "ordenar", ids: string[]) =>
+    accion === "quitar"
+      ? aplicar(quitarReferencias(personaje.id, ids))
+      : aplicar(ordenarReferencias(personaje.id, ids));
+
+  /**
+   * Añade fotos de la biblioteca y devuelve **también los rechazos**: es lo que permite enseñar por qué una foto
+   * se ha quedado fuera y ofrecer usarla de todas formas, en vez de un error suelto sin salida.
+   *
+   * Un rechazo no se pinta como error rojo arriba: lo cuenta el panel de las fotos, con su miniatura y su acción.
+   */
+  const anadirFotos = async (medioIds: string[], deTodasFormas: string[] = []): Promise<ResultadoAnadir> => {
+    setOcupado(true);
+    setError(null);
+    const respuesta = await anadirReferencias(personaje.id, medioIds, deTodasFormas);
+    setOcupado(false);
+    if (!respuesta.ok) {
+      const rechazos = respuesta.rechazos ?? [];
+      if (rechazos.length === 0) setError(respuesta.error);
+      return { error: respuesta.error, rechazos };
+    }
+    setPersonaje(respuesta.datos);
+    router.refresh();
+    return { error: null, rechazos: respuesta.datos.rechazos ?? [] };
   };
 
   /** Dice qué vista es una foto que ya está en el personaje. `null` la deja sin clasificar. */
@@ -168,25 +177,6 @@ export function FichaPersonaje({
 
       {error && <Aviso tono="error">{error}</Aviso>}
 
-      {descartadas.length > 0 && (
-        <Aviso tono="info">
-          <span className="flex flex-col gap-1">
-            <span>
-              {descartadas.length === 1
-                ? "Una de las fotos no se ha añadido:"
-                : `${descartadas.length} fotos no se han añadido:`}
-            </span>
-            {descartadas.flatMap((rechazo) =>
-              rechazo.motivos.map((motivo) => (
-                <span key={`${rechazo.medioId}-${motivo}`}>
-                  <strong className="font-semibold">{ETIQUETA_MOTIVO[motivo]}:</strong> {ACCION_MOTIVO[motivo]}
-                </span>
-              )),
-            )}
-          </span>
-        </Aviso>
-      )}
-
       {vistaEncolada && (
         <Aviso tono="info">
           La vista «{vistaEncolada}» se está generando. Cuando termine aparecerá aquí como{" "}
@@ -236,6 +226,7 @@ export function FichaPersonaje({
                   <PanelReferencias
                     personaje={personaje}
                     onCambio={cambiarReferencias}
+                    onAnadir={anadirFotos}
                     onVista={cambiarVista}
                     ocupado={ocupado}
                   />

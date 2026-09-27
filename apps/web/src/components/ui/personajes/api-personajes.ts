@@ -102,10 +102,23 @@ export const consultarBorrado = (id: string) => pedir<ResumenBorradoPersonaje>(`
 export const borrarPersonaje = (id: string) =>
   pedir<{ personaje: string; clavesBorradas: string[] }>(`/api/personajes/${id}`, { method: "DELETE" });
 
-export const anadirReferencias = (id: string, medioIds: string[]) =>
+/**
+ * Añade fotos de la biblioteca como referencias. `deTodasFormas` son las que el usuario ha aceptado usar
+ * **aunque el control de calidad las haya marcado**: se marcan una por una y no en bloque, así que aceptar una
+ * foto borrosa no cuela de rebote las demás.
+ *
+ * Es idempotente: las fotos que ya sean referencia del personaje se ignoran en el servidor, así que se puede
+ * reenviar la tanda entera para salvar las que faltaban.
+ */
+export const anadirReferencias = (id: string, medioIds: string[], deTodasFormas: readonly string[] = []) =>
   pedir<ReferenciasAnadidas>(
     `/api/personajes/${id}/referencias`,
-    json("POST", { referencias: medioIds.map((medioId) => ({ medioId })) }),
+    json("POST", {
+      referencias: medioIds.map((medioId) => ({
+        medioId,
+        ...(deTodasFormas.includes(medioId) ? { usarDeTodasFormas: true } : {}),
+      })),
+    }),
   );
 
 /** Foto que se añade desde la captura guiada, con lo que midió el navegador y la vista que cubre. */

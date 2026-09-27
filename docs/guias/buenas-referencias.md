@@ -1,6 +1,6 @@
 # Buenas referencias: la captura guiada
 
-**Versión:** 0.19.4 · **Para:** quien usa Escenara
+**Versión:** 0.20.2 · **Para:** quien usa Escenara
 
 Las fotos de referencia son lo único que sostiene el parecido de un personaje entre fotogramas. Una foto
 movida, oscura o diminuta no ayuda: el modelo se inventa lo que no ve. Desde la 0.14.0, Escenara te dice
@@ -13,8 +13,11 @@ navegador sabe, cuánto ocupa la cara) y una huella con la que se detectan las r
 
 ## Las vistas que hace falta cubrir
 
-En la ficha del personaje, el panel **«Vistas del personaje»** enseña una tarjeta por vista, con la silueta de
-lo que hay que encuadrar:
+En la ficha del personaje, el panel **«Vistas del personaje»** enseña una tarjeta por vista. Si la vista **ya
+tiene fotos**, la tarjeta enseña la foto (y si hay varias, las va pasando sola, con un punto por cada una); si
+todavía no tiene ninguna, enseña la silueta de lo que hay que encuadrar. El pase se para al pasar el ratón por
+encima o al llegar con el teclado, y si le has pedido a tu sistema menos movimiento no se mueve: se queda la
+primera. Al pulsar una foto vas a ella en **«Fotos de referencia»**, que es donde se cambia su vista o se quita.
 
 | Personas | Animales |
 |---|---|
@@ -43,8 +46,12 @@ de personaje y **«Sin clasificar»**. Eliges la vista y la cobertura se actuali
 - cambiar la vista **crea una versión** del personaje, igual que añadir, quitar o reordenar fotos: las fotos que
   se envían al modelo se eligen por cobertura, así que decir que una foto es de perfil cambia lo que se envía.
   Volver a poner la misma vista no gasta un número de versión;
-- una **vista generada** no lleva selector: su vista es la que pidió su trabajo y no se cambia. Si no te sirve,
-  quítala.
+- una **vista generada** no lleva selector si ya trae su vista: es la que pidió su trabajo y no se cambia. Si no
+  es la que querías, quítala y vuelve a añadirla;
+- pero una imagen generada **sin vista** sí se puede clasificar. Es lo que pasa al añadir desde tu biblioteca algo
+  que salió de «Crear»: entra marcada como generada y sin vista, y desde la 0.20.2 puedes decir qué vista es en
+  lugar de tener que borrarla. Siga clasificada o no, **sigue sin contar** como foto original y **sigue sin
+  cubrir** la vista.
 
 ## Hacer la foto
 
@@ -84,6 +91,26 @@ luz, y lo de la cara queda en tus manos.
 
 Quien administra la instalación puede mover todos estos umbrales en **Admin › Ajustes › Calidad de las fotos de
 referencia**.
+
+## Añadir fotos desde tu biblioteca
+
+El control de calidad es el mismo cuando eliges fotos que ya tienes, en la ficha del personaje o al crearlo. Si
+alguna no pasa, no se queda en un error sin salida: se enseña **cada foto** con su miniatura, qué le pasa y qué
+hacer, y las que se pueden usar llevan su botón **«Usarla de todas formas»** (y **«Usar todas de todas formas»**
+cuando son varias). La foto se guarda **señalada**, y su tarjeta lo sigue diciendo.
+
+Las que no se pueden saltar («foto demasiado grande» y «duplicada») se explican sin botón. Al crear un personaje
+puedes además **seguir sin ellas**: el personaje que ya está creado no se pierde, y se termina con las que sí
+entraron.
+
+## Ordenar tus fotos
+
+El orden importa: la **primera** es la portada del personaje y la primera que se le envía al proveedor al generar.
+Se cambia **arrastrando** cada foto por su asa, con el ratón o con el dedo, y se guarda al soltarla (una sola vez,
+no en cada movimiento). Con el teclado se hace igual: enfoca el asa, pulsa **Espacio** para coger la foto, muévela
+con las **flechas**, **Espacio** para soltarla y **Escape** para dejarlo como estaba; cada paso se dice en voz alta
+para quien use un lector de pantalla. Si el servidor no puede guardar el orden nuevo, se vuelve al anterior y se
+dice. Reordenar **crea una versión** del personaje, igual que añadir o quitar fotos.
 
 ## Generar una vista que falta
 

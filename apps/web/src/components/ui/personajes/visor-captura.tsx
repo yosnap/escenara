@@ -4,8 +4,6 @@ import { Camera, RefreshCw, SwitchCamera, Upload } from "lucide-react";
 import { useCallback, useState } from "react";
 import type { RechazoDeReferencia } from "@/lib/captura-personaje";
 import {
-  ACCION_MOTIVO,
-  ETIQUETA_MOTIVO,
   ETIQUETA_VISTA,
   evaluarCalidad,
   INDICACION_VISTA,
@@ -24,6 +22,7 @@ import { Aviso } from "../feedback";
 import { subirMedio } from "../media/api-medios";
 import { hayDetectorDeCaras, medirEnNavegador } from "./analisis-navegador";
 import { anadirReferenciasGuiadas } from "./api-personajes";
+import { MotivosDeFoto } from "./fotos-rechazadas";
 import { MarcoEnfoque } from "./marco-enfoque";
 
 /**
@@ -266,13 +265,7 @@ export function VisorCaptura({
               <h4 className="font-bold text-texto">
                 {bloqueante ? "Esta foto no sirve como referencia" : "Esta foto se puede mejorar"}
               </h4>
-              <ul className="flex flex-col gap-2">
-                {motivos.map((motivo) => (
-                  <li key={motivo} className="text-sm text-texto">
-                    <strong className="font-semibold">{ETIQUETA_MOTIVO[motivo]}:</strong> {ACCION_MOTIVO[motivo]}
-                  </li>
-                ))}
-              </ul>
+              <MotivosDeFoto motivos={motivos} />
               {foto.medio && (
                 <p className="text-sm text-texto-suave">
                   La foto ya está subida a tu biblioteca, aunque no se haya añadido al personaje: si no la quieres,

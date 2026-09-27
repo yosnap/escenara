@@ -232,6 +232,33 @@ export interface RechazoDeReferencia {
   metricas: MetricasCalidad;
 }
 
+/**
+ * Rechazos repartidos en los que se pueden **usar de todas formas** y los que no. Es lo que decide si la
+ * interfaz ofrece el botón por cada foto: un mínimo técnico se explica, pero no se ofrece saltarlo.
+ *
+ * El `bloqueante` que manda es el del servidor, y si faltara se recalcula con los motivos: así una respuesta
+ * antigua o incompleta nunca acaba ofreciendo saltarse un mínimo técnico.
+ */
+export interface RechazosClasificados {
+  salvables: RechazoDeReferencia[];
+  bloqueantes: RechazoDeReferencia[];
+}
+
+export const esRechazoBloqueante = (rechazo: RechazoDeReferencia): boolean =>
+  rechazo.bloqueante || rechazo.motivos.some(esMotivoTecnico);
+
+export function clasificarRechazos(rechazos: readonly RechazoDeReferencia[]): RechazosClasificados {
+  const salvables: RechazoDeReferencia[] = [];
+  const bloqueantes: RechazoDeReferencia[] = [];
+  for (const rechazo of rechazos) (esRechazoBloqueante(rechazo) ? bloqueantes : salvables).push(rechazo);
+  return { salvables, bloqueantes };
+}
+
+/** Fotos que se pueden reenviar con `usarDeTodasFormas`, sin repetir ninguna. */
+export const medioIdsSalvables = (rechazos: readonly RechazoDeReferencia[]): string[] => [
+  ...new Set(clasificarRechazos(rechazos).salvables.map((r) => r.medioId)),
+];
+
 /** Estado de una vista en el panel de cobertura. */
 export interface CoberturaVista {
   vista: Vista;
@@ -254,6 +281,25 @@ export interface Cobertura {
 export interface ReferenciaParaCobertura {
   vistaClave: Vista | null;
   origen: OrigenReferencia;
+}
+
+/**
+ * Referencias agrupadas por la vista que tienen asignada, en el orden en que llegan (que es el orden en el que
+ * se envían al proveedor). Las que no tienen vista no entran en ningún grupo.
+ *
+ * Va aparte de `calcularCobertura` a propósito: la cobertura solo **cuenta**, y la usan también el motor de
+ * controles y el contexto del prompt, donde las fotos no vienen al caso. Esto es lo que necesita la interfaz
+ * para enseñar *cuáles* son las fotos de cada vista en vez de un número suelto.
+ */
+export function agruparPorVista<T extends ReferenciaParaCobertura>(referencias: readonly T[]): Map<Vista, T[]> {
+  const grupos = new Map<Vista, T[]>();
+  for (const referencia of referencias) {
+    if (!referencia.vistaClave) continue;
+    const grupo = grupos.get(referencia.vistaClave);
+    if (grupo) grupo.push(referencia);
+    else grupos.set(referencia.vistaClave, [referencia]);
+  }
+  return grupos;
 }
 
 /**

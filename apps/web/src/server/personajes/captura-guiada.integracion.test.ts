@@ -808,4 +808,45 @@ describe.skipIf(!hayBaseDeDatos)("captura guiada de referencias", () => {
       .where(eq(characterReferences.id, generada?.id as string));
     expect(sigueIgual?.viewKey).toBe("perfil_derecho");
   });
+
+  test("una imagen generada sin vista sí se puede clasificar, y sigue sin contar como foto", async () => {
+    const personaje = await nuevoPersonaje("Generada sin vista");
+    const medio = await subir(await foto(70), "de-crear.png");
+    expect((await anadir(personaje.id, [{ medioId: medio.id }])).status).toBe(200);
+    const referencia = (await ficha(personaje.id)).referencias?.[0];
+
+    // Así queda una imagen que salió de un trabajo que **no era** «generar una vista» (uno de «Crear», por
+    // ejemplo) y que se añade después desde la biblioteca: marcada como generada y sin vista ninguna. Hasta la
+    // 0.20.2 no había salida: la cobertura la contaba como sin clasificar, decir qué vista era se rechazaba y la
+    // única forma de quitarla de en medio era borrarla.
+    await db()
+      .update(characterReferences)
+      .set({ origin: "vista_generada", viewKey: "" })
+      .where(eq(characterReferences.id, referencia?.id as string));
+
+    const sinVista = await ficha(personaje.id);
+    expect(sinVista.totalGeneradas).toBe(1);
+    expect(sinVista.cobertura?.sinClasificar).toBe(1);
+
+    const clasificada = await vistas(personaje.id, [{ id: referencia?.id as string, vistaClave: "frontal" }]);
+    expect(clasificada.status).toBe(200);
+    const [fila] = await db()
+      .select()
+      .from(characterReferences)
+      .where(eq(characterReferences.id, referencia?.id as string));
+    expect(fila?.viewKey).toBe("frontal");
+    // Clasificarla no la convierte en una foto del personaje: sigue siendo generada, no cuenta para el mínimo y
+    // no cubre la vista.
+    expect(fila?.origin).toBe("vista_generada");
+    const despues = await ficha(personaje.id);
+    expect(despues.totalReferencias).toBe(0);
+    expect(despues.totalGeneradas).toBe(1);
+    expect(despues.cobertura?.faltan).toContain("frontal");
+    expect(despues.cobertura?.sinClasificar).toBe(0);
+
+    // Y en cuanto tiene vista, vuelve a ser intocable: la que se pidió (o la que se le puso) no se cambia sola.
+    const negada = await vistas(personaje.id, [{ id: referencia?.id as string, vistaClave: "tres_cuartos" }]);
+    expect(negada.status).toBe(400);
+    expect((await negada.json()).error).toContain("vista generada");
+  });
 });

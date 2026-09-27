@@ -5,11 +5,15 @@ import Link from "next/link";
 import { useState } from "react";
 import { Boton, claseBoton } from "@/components/ui/button";
 import { Aviso, AvisoEstado } from "@/components/ui/feedback";
+import { MiniaturaMedio } from "@/components/ui/media/miniatura-medio";
 import { Dialogo } from "@/components/ui/overlay";
+import { type DiapositivaPase, PaseAutomatico } from "@/components/ui/pase-automatico";
 import { consultarEstimacionDeVista } from "@/components/ui/personajes/api-personajes";
+import { DistintivoOrigen } from "@/components/ui/personajes/distintivo-origen";
 import { MarcoEnfoque } from "@/components/ui/personajes/marco-enfoque";
 import { VisorCaptura } from "@/components/ui/personajes/visor-captura";
 import {
+  agruparPorVista,
   type Cobertura,
   type CoberturaVista,
   ETIQUETA_VISTA,
@@ -18,9 +22,9 @@ import {
   type Vista,
 } from "@/lib/captura-personaje";
 import type { Estimacion } from "@/lib/generacion";
-import type { PersonajeVista } from "@/lib/personajes";
+import type { PersonajeVista, ReferenciaVista } from "@/lib/personajes";
 import { DialogoVistaSintetica } from "./dialogo-vista-sintetica";
-import { ANCLA_REFERENCIAS } from "./panel-referencias";
+import { ANCLA_REFERENCIAS, idDeReferencia } from "./panel-referencias";
 
 /**
  * Panel de cobertura (RF03): qué vistas tiene el personaje, cuál falta y qué hacer con la que falta. Es el
@@ -57,6 +61,10 @@ export function PanelCobertura({
   const [error, setError] = useState<string | null>(null);
 
   if (!cobertura) return null;
+
+  // Qué fotos son las de cada vista, para enseñarlas y no solo contarlas. Se deriva de las referencias que ya
+  // trae el personaje: la cobertura del servidor sigue siendo la que cuenta, y aquí no se recalcula nada.
+  const porVista = agruparPorVista(personaje.referencias ?? []);
 
   /** Pide el coste antes de abrir el diálogo: nunca se muestra un precio inventado en el navegador. */
   const abrirGeneracion = async (vista: Vista) => {
@@ -132,6 +140,7 @@ export function PanelCobertura({
           <li key={v.vista}>
             <TarjetaVista
               vista={v}
+              fotos={porVista.get(v.vista) ?? []}
               sinClasificar={cobertura.sinClasificar}
               conClave={claveDeGeneracion.ok}
               ocupado={pidiendo !== null}
@@ -192,8 +201,46 @@ export function PanelCobertura({
   );
 }
 
+/**
+ * Las fotos de esta vista, dentro del propio cuadro de la tarjeta: cuando la vista ya tiene fotos, lo que se ve
+ * es **la foto**, no la silueta de cómo habría que hacerla. Con más de una van pasando solas.
+ *
+ * Cada foto lleva a su tarjeta en «Fotos de referencia», que es donde se cambia su vista o se quita, y una vista
+ * generada se distingue con su distintivo también aquí: nunca se presenta como una foto del personaje.
+ */
+function FotosDeLaVista({ fotos, etiqueta }: { fotos: readonly ReferenciaVista[]; etiqueta: string }) {
+  const diapositivas: DiapositivaPase[] = fotos.map((foto) => {
+    const generada = foto.origen === "vista_generada";
+    return {
+      clave: foto.id,
+      contenido: (
+        <a
+          href={`#${idDeReferencia(foto.id)}`}
+          className="group/foto block size-full focus-visible:outline-2 focus-visible:outline-acento focus-visible:-outline-offset-2"
+        >
+          <MiniaturaMedio
+            medio={foto.medio}
+            alt={`${etiqueta}${generada ? ", vista generada" : ""}: ${foto.medio.nombre}`}
+            className="object-cover"
+          />
+          {generada && <DistintivoOrigen origen={foto.origen} sobreImagen className="absolute top-1.5 left-1.5" />}
+          <span className="sr-only">Verla en tus fotos de referencia</span>
+        </a>
+      ),
+    };
+  });
+  return (
+    <PaseAutomatico
+      diapositivas={diapositivas}
+      etiqueta={`Fotos de ${etiqueta.toLowerCase()} del personaje`}
+      className="absolute inset-0 size-full"
+    />
+  );
+}
+
 function TarjetaVista({
   vista,
+  fotos,
   sinClasificar,
   conClave,
   onCapturar,
@@ -202,6 +249,8 @@ function TarjetaVista({
   generando,
 }: {
   vista: CoberturaVista;
+  /** Las referencias clasificadas en esta vista, en el orden en que se envían. */
+  fotos: readonly ReferenciaVista[];
   /** Cuántas fotos del personaje están sin clasificar: puede que esta vista ya esté entre ellas. */
   sinClasificar: number;
   /** `false` cuando no hay clave utilizable del proveedor: entonces no se ofrece generar la vista. */
@@ -214,7 +263,9 @@ function TarjetaVista({
   const cubierta = vista.originales > 0;
   return (
     <div className="flex h-full flex-col gap-3 rounded-tarjeta border-2 border-borde bg-superficie p-3">
-      <MarcoEnfoque vista={vista.vista} className="w-full" />
+      <MarcoEnfoque vista={vista.vista} silueta={fotos.length === 0} className="w-full">
+        <FotosDeLaVista fotos={fotos} etiqueta={vista.etiqueta} />
+      </MarcoEnfoque>
       <div className="flex flex-col gap-1">
         <p className="flex items-center gap-2 font-semibold text-texto">
           <span aria-hidden className={cubierta ? "text-correcto" : "text-aviso"}>

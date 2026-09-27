@@ -2,6 +2,40 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.20.2] · 2026-09-28
+
+### Añadido
+
+- **Las fotos de cada vista se ven dentro de su tarjeta, en «Vistas del personaje».** Antes la tarjeta decía «3
+  fotos» y no enseñaba ninguna: para saber cuáles eran había que bajar a «Fotos de referencia» y adivinarlo. Ahora
+  el cuadro de la tarjeta muestra **la foto** en lugar del dibujo guía, y con más de una las va pasando sola; la
+  silueta se queda solo en las vistas que todavía no tienen ninguna. El pase lo mueve CSS, se detiene al pasar el
+  ratón o al enfocar dentro, no se mueve si has pedido menos movimiento, lleva puntos de cuál se ve y al pulsar una
+  foto se va a ella en «Fotos de referencia». Una vista generada se distingue con su distintivo también ahí.
+- **Las fotos de referencia se ordenan arrastrando.** Se coge cada foto por su asa y se suelta donde quieras, con
+  ratón o con el dedo, y el orden se guarda **una sola vez al soltar**. Con el teclado se hace igual de bien: se
+  enfoca el asa, `Espacio` coge la foto, las flechas la mueven, `Espacio` la suelta y `Escape` lo deja como estaba,
+  contando cada paso en voz alta para quien use un lector de pantalla. Se han quitado las flechas de antes, que ya
+  no hacen falta. La primera foto sigue siendo la portada y la primera que se le envía al proveedor, y se dice.
+
+### Corregido
+
+- **Una foto pequeña avisa, pero se puede usar de todas formas.** Estar por debajo del tamaño mínimo era un mínimo
+  técnico y no había forma de seguir. Ya no: una foto tuya recortada guía algo peor la identidad, pero sigue siendo
+  tuya y útil, así que se avisa, se deja usar y su tarjeta lo sigue diciendo. Los únicos que no se pueden saltar
+  son «foto demasiado grande» (no se puede analizar sin bloquear el servidor) y «duplicada» (ya la tienes).
+- **Añadir fotos desde la biblioteca ya ofrece «Usarla de todas formas».** Hasta ahora eso solo existía en la
+  captura guiada: desde la ficha y desde el alta se veía un error («ninguna de esas fotos sirve como referencia»)
+  sin ninguna salida. Ahora se enseña cada foto rechazada con su miniatura, qué le pasa y qué hacer, con su botón
+  para usarla igualmente (y uno para todas cuando son varias). Las que no se pueden saltar se explican sin botón,
+  y en el alta se puede seguir sin ellas sin perder el personaje ya creado.
+- **Una imagen generada sin vista ya se puede clasificar.** Al añadir desde la biblioteca el resultado de un
+  trabajo que no era «generar una vista» (uno de «Crear», por ejemplo), la foto entraba marcada como generada y
+  **sin vista**: la cobertura la contaba como sin clasificar, decir qué vista era se rechazaba y la única salida
+  era borrarla. Ahora se le puede decir su vista. Sigue siendo una vista generada: no cuenta para el mínimo de
+  fotos originales ni cubre la vista. La que ya trae la vista con la que se pidió sigue sin poder cambiarse, y la
+  tarjeta dice qué hacer si no es la que querías.
+
 ## [0.20.1] · 2026-09-28
 
 ### Corregido
