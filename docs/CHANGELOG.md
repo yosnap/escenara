@@ -2,6 +2,20 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.10.1] · 2026-09-27
+
+### Comprobado
+
+- Primera generación real de extremo a extremo con voz: fotograma sin texto dibujado y clip de `veo3_lite` que dice la frase de «Lo que dice» con audio, 720×1280 y 4 s, terminado por el seguimiento del servidor.
+
+### Corregido
+
+- Los vídeos generados se guardaban en la biblioteca sin ancho ni alto, así que el visor no conocía su proporción. Ahora las medidas se leen de la cabecera del MP4/MOV al guardarlo (también en vídeos girados de móvil), y si no se puede, se usan las que mide el navegador.
+
+### Actualizar desde la 0.10.0
+
+- Los vídeos generados con la 0.10.0 se quedaron sin medidas: haz `bun run db:backup` y después `bun run medios:medir-videos`, que las lee de cada archivo. Se puede repetir sin riesgo.
+
 ## [0.10.0] · 2026-09-27
 
 ### Añadido

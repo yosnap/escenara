@@ -1,6 +1,6 @@
 {
   "name": "@escenara/web",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "module",
@@ -13,6 +13,7 @@
     "tokens": "bun scripts/tokens.ts",
     "db:generate": "bun --bun drizzle-kit generate",
     "db:migrate": "bun scripts/migrar.ts",
+    "medios:medir-videos": "bun scripts/medir-videos.ts",
     "boveda:recifrar": "bun scripts/recifrar-boveda.ts"
   },
   "dependencies": {

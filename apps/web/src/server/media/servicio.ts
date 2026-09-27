@@ -13,6 +13,7 @@ import { borrarObjeto, guardarObjeto, urlTemporal } from "../almacenamiento";
 import { db } from "../db/cliente";
 import { collectionMedia, collections, type FilaMedio, media, users } from "../db/esquema";
 import { type TipoDetectado, validarArchivo } from "./deteccion";
+import { dimensionesVideo } from "./dimensiones-video";
 import { ErrorMedio } from "./errores";
 import { procesarImagen } from "./procesado";
 
@@ -111,12 +112,14 @@ async function prepararArchivo(
       duracion: null,
     };
   }
-  // Vídeo y audio se guardan sin transcodificar; sus datos de reproducción los lee el navegador.
+  // Vídeo y audio se guardan sin transcodificar. Las medidas del vídeo salen de su cabecera cuando se
+  // puede (los generados por el servidor no pasan por el navegador); si no, de lo que midió el navegador.
+  const leidas = detectado.tipo === "video" ? dimensionesVideo(bruto) : null;
   return {
     datos: bruto,
     detectado,
-    ancho: detectado.tipo === "video" ? numeroValido(reproduccion.ancho, 16384) : null,
-    alto: detectado.tipo === "video" ? numeroValido(reproduccion.alto, 16384) : null,
+    ancho: detectado.tipo === "video" ? numeroValido(leidas?.ancho ?? reproduccion.ancho, 16384) : null,
+    alto: detectado.tipo === "video" ? numeroValido(leidas?.alto ?? reproduccion.alto, 16384) : null,
     duracion: numeroValido(reproduccion.duracion, 24 * 3600),
   };
 }
