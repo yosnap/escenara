@@ -20,7 +20,7 @@
 - **Nada se genera sin tu aprobación.** Ves el guion, el storyboard y una estimación de coste antes de gastar.
 - **Consentimiento y privacidad primero.** Registro de derechos, sin menores, etiquetado de contenido sintético y borrado completo.
 
-> 🚧 **Proyecto en fase temprana (0.8.0).** Ahora mismo hay base técnica, infraestructura local, un prototipo de generación con KIE, el sistema de diseño con su catálogo de componentes, el selector de medios con editor de imagen, la portada con un escaparate de personajes ficticios, las cuentas de usuario y la biblioteca de medios de cada usuario; la experiencia de creación llega en las próximas versiones. Iremos añadiendo capturas de cada apartado aquí y en la guía de usuario.
+> 🚧 **Proyecto en fase temprana (0.9.0).** Ahora mismo hay base técnica, infraestructura local, un prototipo de generación con KIE, el sistema de diseño con su catálogo de componentes, el selector de medios con editor de imagen, la portada con un escaparate de personajes ficticios, las cuentas de usuario, la biblioteca de medios de cada usuario y la bóveda cifrada para las claves de API de cada usuario; la experiencia de creación llega en las próximas versiones. Iremos añadiendo capturas de cada apartado aquí y en la guía de usuario.
 
 <p align="center">
   <img alt="Portada de Escenara con parallax, la mascota Chispa y tarjetas de personajes ficticios" src="docs/assets/capturas/0.6.0-portada-claro.webp" width="720">
@@ -33,14 +33,14 @@ Requisitos: **[Bun](https://bun.sh) 1.4.2+** y **Docker** con Docker Compose.
 ```bash
 git clone <url-del-repositorio> escenara
 cd escenara
-cp .env.example .env        # cambia las contraseñas de ejemplo
+cp .env.example .env        # cambia las contraseñas y genera los secretos que indica el archivo
 bun install
 bun run services:up         # PostgreSQL, SeaweedFS (almacenamiento S3) y Mailpit (correo local)
 bun run db:migrate          # crea o actualiza las tablas
 bun run dev                 # http://localhost:3021
 ```
 
-Comprueba que todo está conectado en <http://localhost:3021/api/health>: debe responder `{"status":"ok","database":"ok","storage":"ok"}`. Después crea tu cuenta en <http://localhost:3021/registro>: la primera es la administradora y los correos de confirmación llegan a Mailpit.
+Comprueba que todo está conectado en <http://localhost:3021/api/health>: debe responder `{"status":"ok","database":"ok","storage":"ok"}`. Después crea tu cuenta en <http://localhost:3021/registro>: la primera es la administradora y los correos de confirmación llegan a Mailpit. Tus claves de API van en **Tu cuenta › Credenciales de IA**, cifradas con la clave maestra del servidor; la configuración de la instalación, en **Admin › Ajustes**.
 
 | Servicio | Dirección local |
 |---|---|

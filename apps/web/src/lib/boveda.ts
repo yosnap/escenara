@@ -1,0 +1,88 @@
+/**
+ * Datos públicos de la bóveda de credenciales: se usan en el servidor y en el navegador, así que aquí
+ * nunca hay secretos ni nada que dependa de la clave maestra.
+ */
+
+/** Mensaje para quien no administra cuando la instalación no tiene clave maestra. */
+export const AVISO_BOVEDA_USUARIO = "Esta instalación aún no admite credenciales: pídeselo a quien la administra.";
+
+export const PROVEEDORES = ["kie", "google"] as const;
+export type Proveedor = (typeof PROVEEDORES)[number];
+
+export const esProveedor = (v: unknown): v is Proveedor => PROVEEDORES.includes(v as Proveedor);
+
+export interface ProveedorPublico {
+  id: Proveedor;
+  nombre: string;
+  /** Qué se genera con este proveedor, en una frase. */
+  para: string;
+  /** Dónde se obtiene la clave. */
+  urlClave: string;
+  etiquetaUrlClave: string;
+  /** Qué aspecto tiene la clave, para que se reconozca antes de pegarla. */
+  ayuda: string;
+}
+
+export const PROVEEDORES_PUBLICOS: Record<Proveedor, ProveedorPublico> = {
+  kie: {
+    id: "kie",
+    nombre: "KIE.ai",
+    para: "Imágenes y vídeo de tus personajes. Se paga con los créditos de tu cuenta de KIE.",
+    urlClave: "https://kie.ai/api-key",
+    etiquetaUrlClave: "kie.ai/api-key",
+    ayuda: "Una cadena larga que empieza por «sk-» o similar. Cópiala completa, sin espacios.",
+  },
+  google: {
+    id: "google",
+    nombre: "Google Gemini",
+    para: "Texto e imágenes con los modelos Gemini. Se paga en tu cuenta de Google AI Studio.",
+    urlClave: "https://aistudio.google.com/apikey",
+    etiquetaUrlClave: "aistudio.google.com/apikey",
+    ayuda: "Empieza por «AIza» y tiene unos 39 caracteres.",
+  },
+};
+
+export type EstadoCredencial = "valida" | "invalida";
+
+/**
+ * Códigos propios del resultado de una prueba. Nunca se guarda ni se muestra el texto del proveedor: así
+ * un mensaje suyo no puede acabar reflejando la clave enviada.
+ */
+export const CODIGOS_PRUEBA = [
+  "ok",
+  "formato",
+  "rechazada",
+  "sin-credito",
+  "limite",
+  "error-proveedor",
+  "sin-red",
+  "tiempo-agotado",
+  "respuesta-inesperada",
+] as const;
+export type CodigoPrueba = (typeof CODIGOS_PRUEBA)[number];
+
+export const MENSAJE_PRUEBA: Record<CodigoPrueba, string> = {
+  ok: "La clave funciona.",
+  formato: "Esa clave no tiene el aspecto esperado. Cópiala completa, sin espacios.",
+  rechazada: "El proveedor no acepta esta clave. Comprueba que la has copiado entera y que sigue activa.",
+  "sin-credito": "La clave es correcta, pero la cuenta no tiene saldo. Recarga créditos en el proveedor.",
+  limite: "El proveedor ha recibido demasiadas peticiones. Espera un momento y vuelve a probar.",
+  "error-proveedor": "El proveedor ha respondido con un error. Vuelve a probar en un rato.",
+  "sin-red": "No se ha podido contactar con el proveedor. Revisa la conexión del servidor.",
+  "tiempo-agotado": "El proveedor ha tardado demasiado en responder. Vuelve a probar.",
+  "respuesta-inesperada": "El proveedor ha respondido algo que no entendemos. Vuelve a probar en un rato.",
+};
+
+/** Vista de una credencial que sí puede llegar al navegador: nunca incluye el secreto. */
+export interface CredencialVista {
+  proveedor: Proveedor;
+  /** Últimos cuatro caracteres de la clave. */
+  pista: string;
+  estado: EstadoCredencial;
+  ultimoCodigo: CodigoPrueba | null;
+  /** Dato público de la última prueba (por ejemplo, los créditos de KIE). */
+  ultimoDetalle: string | null;
+  alta: string;
+  ultimaPrueba: string | null;
+  ultimaRotacion: string | null;
+}

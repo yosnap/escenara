@@ -8,8 +8,15 @@ import { claseControl } from "./field";
 
 const nada = () => () => {};
 
-/** Contraseña con botón para mostrarla u ocultarla (útil en móvil y para quien usa gestores de claves). */
-export function EntradaContrasena({ className, ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, "type">) {
+/**
+ * Contraseña con botón para mostrarla u ocultarla (útil en móvil y para quien usa gestores de claves).
+ * `nombre` es lo que anuncia el botón («Mostrar contraseña», «Mostrar clave»…).
+ */
+export function EntradaContrasena({
+  className,
+  nombre = "contraseña",
+  ...props
+}: Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & { nombre?: string }) {
   const [visible, setVisible] = useState(false);
   // Los gestores de claves (LastPass…) insertan nodos junto al campo antes de que React hidrate y rompen la
   // hidratación. El campo solo existe en el navegador; el servidor pinta un marcador con el mismo aspecto.
@@ -34,7 +41,7 @@ export function EntradaContrasena({ className, ...props }: Omit<InputHTMLAttribu
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}
-        aria-label={visible ? "Ocultar contraseña" : "Mostrar contraseña"}
+        aria-label={`${visible ? "Ocultar" : "Mostrar"} ${nombre}`}
         aria-pressed={visible}
         className="absolute top-1/2 right-1 flex size-10 -translate-y-1/2 items-center justify-center rounded-control text-texto-suave hover:text-texto"
       >

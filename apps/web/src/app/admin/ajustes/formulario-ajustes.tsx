@@ -1,48 +1,42 @@
 "use client";
 
-import { HardDrive, KeyRound, Mail, ShieldCheck, UserPlus } from "lucide-react";
-import { type FormEvent, type ReactNode, useState } from "react";
+import { HardDrive, Mail, ShieldCheck, UserPlus } from "lucide-react";
+import { type FormEvent, useState } from "react";
 import { Boton } from "@/components/ui/button";
+import { CampoSecreto } from "@/components/ui/campo-secreto";
 import { Interruptor } from "@/components/ui/choice";
 import { Aviso } from "@/components/ui/feedback";
 import { Campo, EntradaTexto } from "@/components/ui/field";
 import type { Ajustes } from "@/server/ajustes";
+import type { ClaveSecreta, SecretoVista } from "@/server/boveda/secretos";
 import { enviarCorreoPruebaAccion, guardarAjustesAccion } from "./acciones";
+import { guardarSecretoAccion, quitarSecretoAccion } from "./acciones-secretos";
+import { SeccionAccesoSocial } from "./seccion-acceso-social";
+import { Seccion } from "./seccion-ajustes";
 
-function Seccion({
-  titulo,
-  descripcion,
-  icono,
-  children,
-}: {
-  titulo: string;
-  descripcion: string;
-  icono: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <section className="flex flex-col gap-4 rounded-tarjeta border border-borde bg-superficie p-6">
-      <div className="flex items-start gap-3">
-        <span
-          aria-hidden
-          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-acento/12 text-acento [&>svg]:size-5"
-        >
-          {icono}
-        </span>
-        <div>
-          <h2 className="text-xl font-bold text-texto">{titulo}</h2>
-          <p className="text-sm text-texto-suave">{descripcion}</p>
-        </div>
-      </div>
-      {children}
-    </section>
-  );
+export interface DatosAjustes {
+  inicial: Ajustes;
+  secretos: SecretoVista[];
+  proveedores: string[];
+  redirecciones: Record<"google" | "github", string>;
+  bovedaLista: boolean;
+  /** Variables de `.env` que ya no hacen nada porque su proveedor está configurado en el panel. */
+  variablesSobrantes: string[];
 }
 
-export function FormularioAjustes({ inicial, proveedores }: { inicial: Ajustes; proveedores: string[] }) {
+export function FormularioAjustes({
+  inicial,
+  secretos: secretosIniciales,
+  proveedores,
+  redirecciones,
+  bovedaLista,
+  variablesSobrantes,
+}: DatosAjustes) {
   const [valores, setValores] = useState(inicial);
+  const [secretos, setSecretos] = useState(secretosIniciales);
   const [guardando, setGuardando] = useState(false);
   const [resultado, setResultado] = useState<{ ok: boolean; texto: string; campo?: keyof Ajustes } | null>(null);
+  const [errorSecreto, setErrorSecreto] = useState<string | null>(null);
   const [prueba, setPrueba] = useState<{ ok: boolean; mensaje: string } | null>(null);
   const [probando, setProbando] = useState(false);
 
@@ -52,6 +46,26 @@ export function FormularioAjustes({ inicial, proveedores }: { inicial: Ajustes; 
   };
   const errorDe = (campo: keyof Ajustes) =>
     resultado && !resultado.ok && resultado.campo === campo ? resultado.texto : undefined;
+
+  const pista = (clave: ClaveSecreta) => secretos.find((s) => s.clave === clave)?.pista ?? null;
+
+  const guardarSecreto = async (clave: ClaveSecreta, valor: string) => {
+    setErrorSecreto(null);
+    const r = await guardarSecretoAccion(clave, valor);
+    if (!r.ok) {
+      setErrorSecreto(r.error);
+      return false;
+    }
+    setSecretos(r.secretos);
+    return true;
+  };
+
+  const quitarSecreto = async (clave: ClaveSecreta) => {
+    setErrorSecreto(null);
+    const r = await quitarSecretoAccion(clave);
+    if (r.ok) setSecretos(r.secretos);
+    else setErrorSecreto(r.error);
+  };
 
   const guardar = async (evento: FormEvent) => {
     evento.preventDefault();
@@ -66,6 +80,14 @@ export function FormularioAjustes({ inicial, proveedores }: { inicial: Ajustes; 
 
   return (
     <form onSubmit={guardar} className="flex flex-col gap-5">
+      {variablesSobrantes.length > 0 && (
+        <Aviso tono="info">
+          Estas variables de <code className="font-mono">.env</code> ya no se usan (la configuración está en este
+          panel): <code className="font-mono">{variablesSobrantes.join(", ")}</code>. Puedes borrarlas.
+        </Aviso>
+      )}
+      {errorSecreto && <Aviso tono="error">{errorSecreto}</Aviso>}
+
       <Seccion titulo="Registro" descripcion="Quién puede crear una cuenta." icono={<UserPlus />}>
         <Interruptor
           etiqueta="Registro abierto"
@@ -146,17 +168,29 @@ export function FormularioAjustes({ inicial, proveedores }: { inicial: Ajustes; 
               />
             )}
           </Campo>
+          <CampoSecreto
+            etiqueta="Contraseña del servidor"
+            pista={pista("smtpContrasena")}
+            vacio="Se guarda cifrada y no se vuelve a mostrar. Vacía si el servidor no la pide."
+            deshabilitado={!bovedaLista}
+            tituloQuitar="¿Quitar la contraseña del correo?"
+            descripcionQuitar="Si el servidor la pide, dejarán de salir los correos de confirmación y recuperación."
+            onGuardar={(valor) => guardarSecreto("smtpContrasena", valor)}
+            onQuitar={() => quitarSecreto("smtpContrasena")}
+          />
         </div>
+        {pista("smtpContrasena") !== null && valores.smtpUsuario.trim() === "" && (
+          <Aviso tono="error">
+            Hay una contraseña guardada, pero el usuario está vacío: no se enviará con la conexión. Escribe el usuario
+            del servidor o quita la contraseña.
+          </Aviso>
+        )}
         <Interruptor
           etiqueta="Conexión segura directa (TLS, puerto 465)"
           descripcion="Desactivado: se usa STARTTLS si el servidor lo ofrece."
           activo={valores.smtpSeguro}
           onCambio={(v) => cambiar("smtpSeguro", v)}
         />
-        <p className="text-sm text-texto-suave">
-          La contraseña del servidor de correo se podrá guardar aquí, cifrada, con la bóveda de secretos (versión
-          0.9.0).
-        </p>
         <div className="flex flex-wrap items-center gap-3">
           <Boton
             variante="secundario"
@@ -191,17 +225,17 @@ export function FormularioAjustes({ inicial, proveedores }: { inicial: Ajustes; 
         </Campo>
       </Seccion>
 
-      <Seccion titulo="Acceso con Google y GitHub" descripcion="Proveedores externos para entrar." icono={<KeyRound />}>
-        <p className="text-texto">
-          {proveedores.length > 0
-            ? `Activos: ${proveedores.map((p) => (p === "google" ? "Google" : "GitHub")).join(" y ")}.`
-            : "Ninguno activo."}
-        </p>
-        <p className="text-sm text-texto-suave">
-          Sus claves son secretas: pasarán a este panel, cifradas, con la bóveda de secretos (versión 0.9.0). Hasta
-          entonces se configuran en <code className="font-mono">.env</code>.
-        </p>
-      </Seccion>
+      <SeccionAccesoSocial
+        valores={valores}
+        activos={proveedores}
+        redirecciones={redirecciones}
+        pista={pista}
+        bovedaLista={bovedaLista}
+        errorDe={errorDe}
+        onCambio={cambiar}
+        onGuardarSecreto={guardarSecreto}
+        onQuitarSecreto={quitarSecreto}
+      />
 
       <div className="sticky bottom-4 flex flex-wrap items-center gap-3 rounded-tarjeta border border-borde bg-superficie/95 p-4 shadow-lg backdrop-blur">
         <Boton type="submit" cargando={guardando}>

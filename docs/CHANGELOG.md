@@ -2,6 +2,39 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.9.0] · 2026-09-27
+
+### Añadido
+
+- **Bóveda de secretos** (ADR-0005): todo secreto se guarda cifrado con AES-256-GCM y una clave maestra propia del servidor (`ESCENARA_CLAVE_MAESTRA`), con identificador de clave en cada valor para poder rotarla. El contexto (usuario y proveedor, o clave del ajuste) va autenticado: un valor copiado a otra fila no se descifra.
+- **Credenciales de IA por usuario** (BYOK, RF01) en «Tu cuenta › Credenciales de IA»: una clave por proveedor (KIE.ai y Google Gemini) con estado, pista `••••abcd`, créditos, fecha de la última prueba y acciones Añadir, Probar, Sustituir y Borrar. Solo se guarda si la prueba pasa; sustituir prueba la nueva antes de reemplazar la anterior.
+- Prueba de clave sin coste y sin llamadas de más: saldo de créditos en KIE y lista de un modelo en Google, con URL fija por proveedor, 10 s de tiempo máximo y límite de pruebas por usuario.
+- **Secretos de la instalación en Admin › Ajustes**, cifrados: contraseña del servidor de correo y secretos de cliente de Google y GitHub, con sus identificadores de cliente como ajustes normales y la URL de redirección que hay que registrar en cada proveedor. Un secreto guardado se muestra como «Guardada (••••abcd)» con Cambiar y Quitar, y su valor nunca vuelve al navegador.
+- Campo de secreto en el catálogo de componentes (`/admin/componentes`), con confirmación por diálogo propio para quitarlo.
+- `bun run boveda:recifrar`: vuelve a cifrar la bóveda con la clave maestra actual tras una rotación (la anterior se pone en `ESCENARA_CLAVE_MAESTRA_ANTERIOR`). Es idempotente y conviene ejecutarlo con el servidor parado: nada se pierde si alguien guarda a la vez, pero esas filas se quedan sin recifrar, el script las cuenta y avisa, y hay que volver a pasarlo.
+- Tests: cifrado y contexto autenticado, clave maestra ausente, inválida y rotada; pruebas de KIE y Google con `fetch` simulado (nunca se llama a los proveedores); autorización de las credenciales entre usuarios; y comprobación automática de que ningún secreto aparece en las respuestas ni en la consola al guardar, probar (con éxito y con fallo) y rotar.
+
+### Cambiado
+
+- Los proveedores de acceso Google y GitHub se leen del panel, no de `.env`: la instancia de Better Auth se reconstruye cuando cambian (con una huella del valor cifrado, nunca del secreto). Si quitas el identificador o el secreto, su botón deja de aparecer.
+- El correo usa la contraseña SMTP de la bóveda: ya se puede configurar un servidor que exija autenticación.
+- Se retiran `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GITHUB_CLIENT_ID` y `GITHUB_CLIENT_SECRET` de `.env`. Si todavía están, se importan **una sola vez** al panel al arrancar y se avisa, en el registro del servidor y en Admin › Ajustes, de que ya se pueden borrar; a partir de ahí manda el panel y quitar ahí una clave no la resucita desde `.env`.
+
+### Actualizar desde la 0.8.0
+
+- Añade `ESCENARA_CLAVE_MAESTRA` a tu `.env` con 32 bytes en base64 (`openssl rand -base64 32`) y reinicia. **Guárdala con tus copias de seguridad:** si se pierde, hay que volver a introducir todas las claves. Sin ella, Escenara arranca pero no admite credenciales.
+- Haz `bun run db:backup` y luego `bun run db:migrate`: la migración crea `provider_credentials` e `installation_secrets`.
+- Si usabas Google o GitHub desde `.env`, al arrancar se importan solos a **Admin › Ajustes**; después borra esas cuatro variables del archivo. **Pon primero la clave maestra:** sin ella no se pueden cifrar, así que no se importan, el acceso con Google y GitHub queda desactivado y se registra un error explicándolo. El `.env` no sirve de respaldo.
+- Si tu servidor de correo pide contraseña, ponla ahora en **Admin › Ajustes › Correo**.
+
+### Seguridad
+
+- Ninguna respuesta del servidor ni ningún registro contiene un secreto: de un proveedor solo se conserva un código propio del resultado, nunca su texto (algunos repiten en el error la clave recibida).
+- Los secretos de la instalación viven en su propia tabla, nunca en una columna en claro de `settings`.
+- Un usuario no puede ver, probar, rotar ni borrar las credenciales de otro, ni indicando su proveedor; al borrar una cuenta desaparecen sus credenciales.
+- La clave de Google viaja en la cabecera `x-goog-api-key`, no en la URL, para que no quede en los registros de ningún proxy.
+- En desarrollo, Next ya no registra las acciones de servidor con sus argumentos: mostraba en la consola las claves y contraseñas enviadas desde los formularios.
+
 ## [0.8.0] · 2026-09-27
 
 ### Añadido

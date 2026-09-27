@@ -7,6 +7,7 @@ import { SeccionEstados } from "./secciones/estados";
 import { SeccionFormularios } from "./secciones/formularios";
 import { SeccionMediaPicker } from "./secciones/media-picker";
 import { SeccionMovimiento } from "./secciones/movimiento";
+import { SeccionSecretos } from "./secciones/secretos";
 import { SeccionSelectores } from "./secciones/selectores";
 import { SeccionSuperposiciones } from "./secciones/superposiciones";
 import { SeccionTokens } from "./secciones/tokens";
@@ -19,6 +20,7 @@ const INDICE = [
   ["media-picker", "Selector de medios"],
   ["creador", "Creador"],
   ["cuentas", "Cuentas"],
+  ["secretos", "Secretos"],
   ["estados", "Estados y presupuesto"],
   ["superposiciones", "Diálogos y pestañas"],
   ["movimiento", "Movimiento"],
@@ -54,6 +56,7 @@ export function Catalogo() {
         <SeccionMediaPicker />
         <SeccionCreador />
         <SeccionCuentas />
+        <SeccionSecretos />
         <SeccionEstados />
         <SeccionSuperposiciones />
         <SeccionMovimiento />

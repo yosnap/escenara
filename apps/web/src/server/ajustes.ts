@@ -20,6 +20,12 @@ export interface Ajustes {
   smtpUsuario: string;
   /** Cabeceras con la IP real que escribe el proxy propio (separadas por comas); vacío = `x-forwarded-for`. */
   cabecerasIp: string;
+  /**
+   * Identificadores de cliente OAuth. No son secretos (se envían al navegador en el propio flujo de
+   * acceso); sus secretos van cifrados en la bóveda (`server/boveda/secretos.ts`).
+   */
+  googleClientId: string;
+  githubClientId: string;
 }
 
 export const AJUSTES_POR_DEFECTO: Ajustes = {
@@ -31,6 +37,8 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   smtpSeguro: false,
   smtpUsuario: "",
   cabecerasIp: "",
+  googleClientId: "",
+  githubClientId: "",
 };
 
 export class ErrorAjustes extends Error {
@@ -47,6 +55,8 @@ const texto = (max: number) => (v: unknown) => typeof v === "string" && v.length
 const entero = (min: number, max: number) => (v: unknown) =>
   typeof v === "number" && Number.isInteger(v) && v >= min && v <= max;
 const booleano = (v: unknown) => typeof v === "boolean";
+// Identificador de cliente OAuth: solo los caracteres que usan Google y GitHub, o vacío para desactivarlo.
+const idCliente = (v: unknown) => texto(300)(v) && /^[a-z0-9._~-]*$/i.test(v as string);
 
 const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensaje: string }> = {
   registroAbierto: { valido: booleano, mensaje: "Debe ser sí o no." },
@@ -69,6 +79,8 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
     valido: (v) => texto(200)(v) && /^[a-z0-9, -]*$/i.test(v as string),
     mensaje: "Solo nombres de cabecera separados por comas.",
   },
+  googleClientId: { valido: idCliente, mensaje: "Pega el identificador de cliente que te da Google, sin espacios." },
+  githubClientId: { valido: idCliente, mensaje: "Pega el identificador de cliente que te da GitHub, sin espacios." },
 };
 
 const CLAVES = Object.keys(AJUSTES_POR_DEFECTO) as (keyof Ajustes)[];
@@ -76,11 +88,24 @@ const VIGENCIA_MS = 30_000;
 
 // Caché por proceso: evita consultar la base de datos en cada petición. Con varias instancias del
 // servidor, un cambio tarda como mucho `VIGENCIA_MS` en verse en las demás.
-const global = globalThis as { __escenaraAjustes?: { valores: Ajustes; cargado: number } };
+// La versión evita publicar un resultado viejo: si alguien guarda mientras se está consultando la base de
+// datos, lo leído se devuelve pero no se guarda en la caché, y la siguiente lectura vuelve a preguntar.
+const global = globalThis as {
+  __escenaraAjustes?: { valores: Ajustes; cargado: number; version: number };
+  __escenaraAjustesVersion?: number;
+};
+
+const versionActual = () => (global.__escenaraAjustesVersion ??= 1);
+
+/** Fuerza la relectura en este proceso (tras guardar). */
+export function olvidarAjustes(): void {
+  global.__escenaraAjustesVersion = versionActual() + 1;
+}
 
 export async function leerAjustes(): Promise<Ajustes> {
+  const version = versionActual();
   const cache = global.__escenaraAjustes;
-  if (cache && Date.now() - cache.cargado < VIGENCIA_MS) return cache.valores;
+  if (cache && cache.version === version && Date.now() - cache.cargado < VIGENCIA_MS) return cache.valores;
   const filas = await db().select().from(settings);
   const valores: Ajustes = { ...AJUSTES_POR_DEFECTO };
   for (const fila of filas) {
@@ -89,12 +114,12 @@ export async function leerAjustes(): Promise<Ajustes> {
       (valores as unknown as Record<string, unknown>)[clave] = fila.value;
     }
   }
-  global.__escenaraAjustes = { valores, cargado: Date.now() };
+  if (versionActual() === version) global.__escenaraAjustes = { valores, cargado: Date.now(), version };
   return valores;
 }
 
 /** Valida y guarda los cambios; devuelve los ajustes resultantes. */
-export async function guardarAjustes(cambios: Partial<Record<keyof Ajustes, unknown>>, usuarioId: string) {
+export async function guardarAjustes(cambios: Partial<Record<keyof Ajustes, unknown>>, usuarioId: string | null) {
   const validos: [keyof Ajustes, unknown][] = [];
   for (const [clave, valor] of Object.entries(cambios) as [keyof Ajustes, unknown][]) {
     if (!CLAVES.includes(clave)) continue;
@@ -114,6 +139,6 @@ export async function guardarAjustes(cambios: Partial<Record<keyof Ajustes, unkn
     }
   });
   // Fuerza la relectura: este proceso ve el cambio al momento.
-  if (global.__escenaraAjustes) global.__escenaraAjustes.cargado = 0;
+  olvidarAjustes();
   return leerAjustes();
 }
