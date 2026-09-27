@@ -28,6 +28,8 @@ Di dónde está, qué hace y cómo se ve. Cuanto más concreto, mejor:
 
 El fotograma sale vertical (9:16), el formato de Reels, TikTok y Shorts.
 
+**Lo que dice, aparte.** Si quieres que el personaje hable, escribe la frase en el campo **«Lo que dice (opcional)»**, no en la descripción de la escena. Los modelos de imagen, si ven una frase en el prompt, la **dibujan** en el fotograma como subtítulo, bocadillo o rótulo (lo comprobamos generando de verdad con tres modelos distintos), y el clip lo hereda. Por eso el fotograma se genera solo con la descripción visual, y la frase se usa únicamente en el clip, que sí tiene voz.
+
 ### 3. Revisa el coste y confirma
 
 El panel de coste es la zona clara de la pantalla y dice tres cosas:
@@ -46,9 +48,9 @@ Si un trabajo pasa del aviso configurado (200 créditos por defecto, ajustable e
 
 Verás el estado **real** que informa KIE, traducido: «en cola en el proveedor», «generando», «listo» o «ha fallado», con el tiempo transcurrido y Chispa haciéndote compañía. No hay barras de porcentaje porque el proveedor no informa de ningún porcentaje: preferimos decirte la verdad.
 
-Puedes cerrar la página: el trabajo sigue en KIE y lo encuentras en **Crear › Historial**.
+Puedes cerrar la página: el trabajo sigue en KIE, el servidor lo sigue consultando por su cuenta y, cuando termine, el archivo aparece en tu biblioteca y en **Crear › Historial** sin que tengas que hacer nada. Si vuelves al historial, lo que se quedó a medias se reconcilia al abrirlo.
 
-Cuando esté listo, el archivo se descarga al momento (la URL del proveedor caduca) y se guarda en tu biblioteca.
+Cuando esté listo, el archivo se descarga al momento (la URL del proveedor caduca) y se guarda en tu biblioteca. Se ve completo, en su proporción real: un vertical no se recorta ni en el resultado, ni en el historial, ni a pantalla completa.
 
 ## Animar el fotograma
 

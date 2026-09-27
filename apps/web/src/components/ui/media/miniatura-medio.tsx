@@ -2,7 +2,13 @@ import { Film, Music } from "lucide-react";
 import type { Medio } from "@/lib/media/tipos";
 import { cn } from "../cn";
 
-/** Vista previa de un medio: la imagen, el primer fotograma del vídeo o un icono para el audio. */
+/**
+ * Vista previa de un medio: la imagen, el primer fotograma del vídeo o un icono para el audio.
+ *
+ * `className` se aplica **al propio medio** (la imagen, el vídeo o la caja del audio), no al marco: es lo
+ * que permite pedir `object-contain` cuando el medio no debe recortarse. Por defecto llena el hueco con
+ * `object-cover`, que es lo que quiere una cuadrícula de miniaturas.
+ */
 export function MiniaturaMedio({
   medio,
   className,
@@ -25,14 +31,15 @@ export function MiniaturaMedio({
   }
   if (medio.tipo === "video") {
     return (
-      <div className={cn("relative size-full bg-black", className)}>
+      <div className="relative size-full bg-black">
         <video
           src={medio.url}
           preload="metadata"
           muted={!controles}
           controls={controles}
           playsInline
-          className="size-full object-cover"
+          // `className` también manda aquí: sin esto, un vídeo vertical salía recortado en cualquier marco.
+          className={cn("size-full object-cover", className)}
         />
         {!controles && (
           <span className="absolute top-2 left-2 flex size-8 items-center justify-center rounded-full bg-black/60 text-white">

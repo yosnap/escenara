@@ -40,6 +40,7 @@ const { crearMedio } = await import("../media/servicio");
 const { estimar, olvidarSaldos } = await import("./estimacion");
 const { crearAnimacion, crearFotograma } = await import("./servicio");
 const { consultarTrabajo, reconciliar } = await import("./seguimiento");
+const { avanzarTrabajosDe, pasadaDeSeguimiento, pendientesDeConsulta } = await import("./seguimiento-de-fondo");
 const { listarTrabajos } = await import("./trabajos");
 type Buscador = import("../proveedores/codigos").Buscador;
 type Herramientas = import("./herramientas").Herramientas;
@@ -106,6 +107,13 @@ const buscar: Buscador = async (url, opciones) => {
     }
     const taskId = new URL(url).searchParams.get("taskId") ?? "";
     const tarea = kie.tareas.get(taskId) ?? { state: "waiting" };
+    // Tarea marcada para que su consulta falle con un error del proveedor (clave rechazada).
+    if (tarea.state === "rechaza") {
+      return new Response(JSON.stringify({ code: 401, msg: "unauthorized" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
     return sobre({
       state: tarea.state,
       resultJson: tarea.urls ? JSON.stringify({ resultUrls: tarea.urls }) : undefined,
@@ -194,6 +202,7 @@ describe.skipIf(!hayBaseDeDatos)("generación con la clave del usuario", () => {
   let actorBeto: Actor;
   let actorCarla: Actor;
   let referencia: string;
+  let referenciaBeto: string;
   let referenciaCarla: string;
 
   beforeAll(async () => {
@@ -211,6 +220,7 @@ describe.skipIf(!hayBaseDeDatos)("generación con la clave del usuario", () => {
     await guardarCredencial(beto.id, "kie", CLAVE_BETO, buscar);
     await guardarCredencial(carla.id, "kie", CLAVE_CARLA, buscar);
     referencia = (await crearMedio(actorAna, new File([await png()], "ana.png", { type: "image/png" }))).id;
+    referenciaBeto = (await crearMedio(actorBeto, new File([await png()], "beto.png", { type: "image/png" }))).id;
     referenciaCarla = (await crearMedio(actorCarla, new File([await png()], "carla.png", { type: "image/png" }))).id;
   });
 
@@ -249,6 +259,34 @@ describe.skipIf(!hayBaseDeDatos)("generación con la clave del usuario", () => {
   const consultarYa = async (actor: Actor, id: string) => {
     await permitirConsulta(id);
     return reconciliar(actor, id, h);
+  };
+
+  /**
+   * Inserta directamente un trabajo «atascado» (enviado hace rato y sin terminar). Se hace por debajo del
+   * servicio a propósito: así se puede simular una cola sucia sin tropezar con el tope de simultáneos.
+   */
+  const insertarAtascado = async (
+    usuarioId: string,
+    { minutosDeEdad, consultadoHaceMs }: { minutosDeEdad: number; consultadoHaceMs: number | null },
+  ): Promise<string> => {
+    const [fila] = await db()
+      .insert(generationJobs)
+      .values({
+        userId: usuarioId,
+        kind: "fotograma",
+        provider: "kie",
+        model: "nano-banana-2-lite",
+        prompt: ESCENA,
+        input: {},
+        estimatedCredits: 4,
+        state: "enviado",
+        taskId: `atascada_${crypto.randomUUID()}`,
+        createdAt: new Date(Date.now() - minutosDeEdad * 60_000),
+        sentAt: new Date(Date.now() - minutosDeEdad * 60_000),
+        polledAt: consultadoHaceMs === null ? null : new Date(Date.now() - consultadoHaceMs),
+      })
+      .returning({ id: generationJobs.id });
+    return fila?.id as string;
   };
 
   /** Cierra los trabajos que sigan en marcha: el tope de simultáneos no se hereda entre tests. */
@@ -656,6 +694,184 @@ describe.skipIf(!hayBaseDeDatos)("generación con la clave del usuario", () => {
       expect((await rutaConsultar.POST(ajena, ctx(deAna.id))).status).toBe(403);
       const sinOrigen = pedir(ana, "/api/generacion/trabajos", { method: "POST", body: "{}" });
       expect((await rutaTrabajos.POST(sinOrigen, undefined)).status).toBe(403);
+    });
+  });
+
+  describe("los trabajos terminan sin nadie en la página", () => {
+    beforeAll(async () => {
+      await cerrarEnCurso(ana.id);
+      await cerrarEnCurso(beto.id);
+    });
+
+    test("una pasada del seguimiento deja listo un trabajo enviado y lo guarda en la biblioteca", async () => {
+      const trabajo = await crearFoto(actorAna, peticion(4));
+      terminar(trabajo.taskId as string, ["https://tempfile.kie.ai/de-fondo.png"], 4);
+      // Nadie ha abierto la página: el trabajo solo tiene la marca del envío.
+      await permitirConsulta(trabajo.id);
+      expect((await pendientesDeConsulta()).some((p) => p.id === trabajo.id)).toBe(true);
+
+      expect(await pasadaDeSeguimiento(h)).toBeGreaterThanOrEqual(1);
+
+      const [fila] = await db().select().from(generationJobs).where(eq(generationJobs.id, trabajo.id));
+      expect(fila?.state).toBe("listo");
+      expect(fila?.resultMediaId).not.toBeNull();
+      expect(fila?.consumedCredits).toBe(4);
+      // Y ya no queda pendiente de consultar.
+      expect((await pendientesDeConsulta()).some((p) => p.id === trabajo.id)).toBe(false);
+    });
+
+    test("un trabajo que falla al consultarse no impide avanzar los demás", async () => {
+      await cerrarEnCurso(ana.id);
+      const roto = await crearFoto(actorAna, peticion(4));
+      const bueno = await crearFoto(actorAna, peticion(4));
+      // El proveedor rechazará la consulta del primero y dará por terminado el segundo.
+      kie.tareas.set(roto.taskId as string, { state: "rechaza" });
+      terminar(bueno.taskId as string, ["https://tempfile.kie.ai/el-bueno.png"], 4);
+      await permitirConsulta(roto.id);
+      await permitirConsulta(bueno.id);
+
+      const avanzados = await pasadaDeSeguimiento(h);
+
+      expect(avanzados).toBe(1);
+      const [filaRota] = await db().select().from(generationJobs).where(eq(generationJobs.id, roto.id));
+      const [filaBuena] = await db().select().from(generationJobs).where(eq(generationJobs.id, bueno.id));
+      // El que falla no cambia de estado (ni se da por listo ni se reenvía); el otro termina.
+      expect(filaRota?.state).toBe("enviado");
+      expect(filaBuena?.state).toBe("listo");
+      expect(filaBuena?.resultMediaId).not.toBeNull();
+      await cerrarEnCurso(ana.id);
+    });
+
+    test("al abrir el historial se avanzan los trabajos del propio usuario y no los ajenos", async () => {
+      await cerrarEnCurso(ana.id);
+      await cerrarEnCurso(beto.id);
+      const deAna = await crearFoto(actorAna, peticion(4));
+      terminar(deAna.taskId as string, ["https://tempfile.kie.ai/historial.png"], 4);
+      await permitirConsulta(deAna.id);
+
+      await avanzarTrabajosDe(beto.id, h);
+      const [sinTocar] = await db().select().from(generationJobs).where(eq(generationJobs.id, deAna.id));
+      expect(sinTocar?.state).toBe("enviado");
+
+      await avanzarTrabajosDe(ana.id, h);
+      const [avanzado] = await db().select().from(generationJobs).where(eq(generationJobs.id, deAna.id));
+      expect(avanzado?.state).toBe("listo");
+      expect(avanzado?.resultMediaId).not.toBeNull();
+    });
+
+    test("los trabajos recién enviados no esperan detrás de los atascados, y los muy viejos se cierran", async () => {
+      await cerrarEnCurso(ana.id);
+      // Primero el nuevo (si no, los atascados llenarían el tope de trabajos en curso).
+      const nuevo = await crearFoto(actorAna, peticion(4));
+      terminar(nuevo.taskId as string, ["https://tempfile.kie.ai/el-nuevo.png"], 4);
+      const atascados = await Promise.all(
+        Array.from({ length: 6 }, (_, i) =>
+          insertarAtascado(ana.id, { minutosDeEdad: 45 + i, consultadoHaceMs: 60_000 }),
+        ),
+      );
+
+      // El nuevo (sin consultar nunca) va primero: `nulls first`.
+      const pendientes = await pendientesDeConsulta();
+      expect(pendientes[0]?.id).toBe(nuevo.id);
+
+      await pasadaDeSeguimiento(h);
+
+      const [filaNueva] = await db().select().from(generationJobs).where(eq(generationJobs.id, nuevo.id));
+      expect(filaNueva?.state).toBe("listo");
+      expect(filaNueva?.resultMediaId).not.toBeNull();
+      // Los viejos salen del automático como «sin respuesta», sin reenviar nada.
+      const viejos = await db()
+        .select({ estado: generationJobs.state, error: generationJobs.errorMessage })
+        .from(generationJobs)
+        .where(inArray(generationJobs.id, atascados));
+      const desconocidos = viejos.filter((v) => v.estado === "desconocido");
+      expect(desconocidos.length).toBeGreaterThanOrEqual(1);
+      expect(desconocidos[0]?.error).toContain("No se reenviará");
+      await cerrarEnCurso(ana.id);
+    });
+
+    test("un trabajo cuyo dueño no tiene credencial válida se salta sin llamar al proveedor", async () => {
+      await cerrarEnCurso(ana.id);
+      await cerrarEnCurso(beto.id);
+      const deBeto = await crearFoto(actorBeto, {
+        ...peticion(4),
+        medioId: referenciaBeto,
+        claveIdempotencia: crypto.randomUUID(),
+      });
+      terminar(deBeto.taskId as string, ["https://tempfile.kie.ai/de-beto.png"], 4);
+      await permitirConsulta(deBeto.id);
+      await db()
+        .update(providerCredentials)
+        .set({ status: "invalida" })
+        .where(and(eq(providerCredentials.userId, beto.id), eq(providerCredentials.provider, "kie")));
+      const consultasAntes = kie.llamadas.consulta;
+
+      const avanzados = await pasadaDeSeguimiento(h);
+
+      expect(avanzados).toBe(0);
+      expect(kie.llamadas.consulta).toBe(consultasAntes);
+      const [fila] = await db().select().from(generationJobs).where(eq(generationJobs.id, deBeto.id));
+      expect(fila?.state).toBe("enviado");
+      await db()
+        .update(providerCredentials)
+        .set({ status: "valida" })
+        .where(and(eq(providerCredentials.userId, beto.id), eq(providerCredentials.provider, "kie")));
+      await cerrarEnCurso(beto.id);
+    });
+
+    test("el avance del historial filtra por usuario en la consulta, no después del límite", async () => {
+      await cerrarEnCurso(ana.id);
+      await cerrarEnCurso(beto.id);
+      // Cuatro trabajos de otra persona, más antiguos: con el filtro en JS se comerían el lote.
+      await Promise.all(
+        Array.from({ length: 4 }, (_, i) =>
+          insertarAtascado(ana.id, { minutosDeEdad: 5 + i, consultadoHaceMs: 90_000 }),
+        ),
+      );
+      const deBeto = await crearFoto(actorBeto, {
+        ...peticion(4),
+        medioId: referenciaBeto,
+        claveIdempotencia: crypto.randomUUID(),
+      });
+      terminar(deBeto.taskId as string, ["https://tempfile.kie.ai/solo-beto.png"], 4);
+      await permitirConsulta(deBeto.id);
+
+      expect(await pendientesDeConsulta({ usuarioId: beto.id, limite: 3 })).toEqual([
+        { id: deBeto.id, usuarioId: beto.id },
+      ]);
+      await avanzarTrabajosDe(beto.id, h);
+
+      const [fila] = await db().select().from(generationJobs).where(eq(generationJobs.id, deBeto.id));
+      expect(fila?.state).toBe("listo");
+      await cerrarEnCurso(ana.id);
+      await cerrarEnCurso(beto.id);
+    });
+
+    test("un envío que nunca llegó a tener tarea se cierra sin llamar al proveedor", async () => {
+      await cerrarEnCurso(ana.id);
+      const [sinTarea] = await db()
+        .insert(generationJobs)
+        .values({
+          userId: ana.id,
+          kind: "fotograma",
+          provider: "kie",
+          model: "nano-banana-2-lite",
+          prompt: ESCENA,
+          input: {},
+          estimatedCredits: 4,
+          state: "preparando",
+          createdAt: new Date(Date.now() - 5 * 60_000),
+        })
+        .returning({ id: generationJobs.id });
+      const idSinTarea = sinTarea?.id as string;
+      expect((await pendientesDeConsulta()).some((p) => p.id === idSinTarea)).toBe(true);
+
+      await pasadaDeSeguimiento(h);
+
+      const [fila] = await db().select().from(generationJobs).where(eq(generationJobs.id, idSinTarea));
+      expect(fila?.state).toBe("desconocido");
+      expect(kie.llamadas.consulta).toBe(0);
+      await cerrarEnCurso(ana.id);
     });
   });
 

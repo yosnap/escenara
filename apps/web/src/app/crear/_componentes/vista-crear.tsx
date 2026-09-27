@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo } from "@/components/ui/field";
 import { SelectorMedios } from "@/components/ui/media/selector-medios";
-import { CLIP, type Estimacion, PROMPT_MINIMO, type TrabajoVista } from "@/lib/generacion";
+import { CLIP, DIALOGO_MAXIMO, type Estimacion, PROMPT_MINIMO, type TrabajoVista } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
 import { consultarEstimacion, crearTrabajo, type Resultado } from "./api-generacion";
 import { type ConfirmacionCoste, PanelGenerar } from "./panel-generar";
@@ -26,6 +26,7 @@ export function VistaCrear({
 }) {
   const [imagen, setImagen] = useState<Medio[]>([]);
   const [prompt, setPrompt] = useState("");
+  const [dialogo, setDialogo] = useState("");
   const [fotograma, setFotograma] = useState<TrabajoVista | null>(null);
   const [animacion, setAnimacion] = useState<TrabajoVista | null>(null);
   const [estimacionClip, setEstimacionClip] = useState(estimacionAnimacion);
@@ -34,6 +35,7 @@ export function VistaCrear({
 
   const referencia = imagen[0] ?? null;
   const descripcion = prompt.trim();
+  const frase = dialogo.trim();
 
   const bloqueosFotograma = [
     ...(referencia ? [] : ["Falta la imagen de referencia."]),
@@ -77,6 +79,7 @@ export function VistaCrear({
       tipo: "animacion",
       trabajoPadreId: fotograma.id,
       prompt: descripcion,
+      dialogo: frase,
       ...confirmacion,
     });
     setEnviando(null);
@@ -121,6 +124,29 @@ export function VistaCrear({
             />
           )}
         </Campo>
+        <Campo
+          etiqueta="Lo que dice (opcional)"
+          ayuda={
+            <>
+              Solo se usa en el clip, que tiene voz: el fotograma se genera sin ninguna frase para que los modelos no la
+              dibujen como texto.{" "}
+              <span className="font-mono">
+                {dialogo.length}/{DIALOGO_MAXIMO}
+              </span>
+            </>
+          }
+        >
+          {(props) => (
+            <AreaTexto
+              {...props}
+              value={dialogo}
+              maxLength={DIALOGO_MAXIMO}
+              onChange={(e) => setDialogo(e.target.value)}
+              className="min-h-20"
+              placeholder="¡Estamos muy contentos de lanzar esto!"
+            />
+          )}
+        </Campo>
       </Paso>
 
       <Paso numero={3} titulo="Revisa el coste y confirma">
@@ -146,7 +172,7 @@ export function VistaCrear({
                   <PanelGenerar
                     estimacion={estimacionClip}
                     etiqueta={`Animar ${CLIP.segundos} s`}
-                    firma={`animacion|${fotograma.id}|${descripcion}|${estimacionClip.creditos}`}
+                    firma={`animacion|${fotograma.id}|${descripcion}|${frase}|${estimacionClip.creditos}`}
                     bloqueos={estimacionClip.alcanza ? [] : ["Tu saldo de KIE no llega para el clip."]}
                     enviando={enviando === "animacion"}
                     onGenerar={generarAnimacion}

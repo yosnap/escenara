@@ -1,6 +1,7 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import {
   CLIP,
+  DIALOGO_MAXIMO,
   MODELOS,
   PROMPT_MAXIMO,
   PROMPT_MINIMO,
@@ -76,6 +77,8 @@ export interface PeticionFotograma extends Confirmacion {
 export interface PeticionAnimacion extends Confirmacion {
   /** Fotograma ya generado que se anima (su medio es el primer fotograma del clip). */
   trabajoPadreId: string;
+  /** Lo que dice el personaje, opcional. Solo lo usa el clip: en el fotograma saldría escrito. */
+  dialogo?: string;
 }
 
 function limpiarPrompt(prompt: unknown): string {
@@ -87,6 +90,23 @@ function limpiarPrompt(prompt: unknown): string {
     throw new ErrorGeneracion(400, `La descripción no puede pasar de ${PROMPT_MAXIMO} caracteres.`);
   }
   return texto;
+}
+
+/**
+ * Limpia lo que dice el personaje. Se quitan los saltos de línea y las comillas: el diálogo se le pasa a
+ * Veo con dos puntos y sin comillas, que es lo que menos texto incrustado provoca.
+ */
+function limpiarDialogo(dialogo: unknown): string {
+  if (dialogo === undefined || dialogo === null || dialogo === "") return "";
+  if (typeof dialogo !== "string") throw new ErrorGeneracion(400, "Lo que dice tiene que ser texto.");
+  // El tope se comprueba **antes** de limpiar: ninguna expresión regular recorre un texto enorme.
+  if (dialogo.length > DIALOGO_MAXIMO) {
+    throw new ErrorGeneracion(400, `Lo que dice no puede pasar de ${DIALOGO_MAXIMO} caracteres.`);
+  }
+  return dialogo
+    .replace(/[\r\n"“”«»‘’']+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
 }
 
 function exigirDerechos(derechos: unknown) {
@@ -189,7 +209,11 @@ async function archivoDe(fila: FilaMedio): Promise<File> {
   return new File([datos], fila.originalName || "referencia", { type: fila.mimeType });
 }
 
-/** Lo que se guarda como entrada del trabajo: sin URL temporales del proveedor y sin ningún secreto. */
+/**
+ * Lo que se guarda como entrada del trabajo: `prompt` es lo que escribió la persona y `parametros` lo que
+ * se le envió al proveedor (incluido el prompt ya montado, útil para entender un resultado raro). Nunca
+ * incluye las URL temporales del proveedor ni ningún secreto.
+ */
 function entradaGuardada(prompt: string, referencias: string[], parametros: Record<string, unknown>) {
   const { image_urls: _urlsTemporales, ...resto } = parametros;
   return { prompt, referencias, parametros: resto };
@@ -262,14 +286,15 @@ export async function crearAnimacion(
   await exigirSaldo(actor.id, creditos, h.buscar);
   await exigirRitmo(actor.id);
 
-  const parametros = entradaAnimacion(prompt, "");
+  const dialogo = limpiarDialogo(peticion.dialogo);
+  const parametros = entradaAnimacion(prompt, dialogo, "");
   const reserva = await reservar(actor.id, claveIdempotencia, {
     userId: actor.id,
     kind: "animacion",
     provider: "kie",
     model: MODELOS.animacion,
     prompt,
-    input: entradaGuardada(prompt, [origen.id], { ...parametros, segundos: CLIP.segundos }),
+    input: { ...entradaGuardada(prompt, [origen.id], { ...parametros, segundos: CLIP.segundos }), dialogo },
     sourceMediaId: origen.id,
     parentJobId: padre.id,
     estimatedCredits: creditos,
@@ -278,7 +303,7 @@ export async function crearAnimacion(
 
   const trabajo = await enviar(reserva.fila, clave, h, async () => {
     const url = await subirReferencia(clave, await archivoDe(origen), h.buscar);
-    return entradaAnimacion(prompt, url);
+    return entradaAnimacion(prompt, dialogo, url);
   });
   return { trabajo, nueva: true };
 }

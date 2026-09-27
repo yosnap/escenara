@@ -44,6 +44,8 @@ export interface ConfirmacionFotograma extends Confirmacion {
 export interface ConfirmacionAnimacion extends Confirmacion {
   tipo: "animacion";
   trabajoPadreId: string;
+  /** Lo que dice el personaje: solo el clip tiene voz. */
+  dialogo: string;
 }
 
 /** Envía la generación. `creditosConfirmados` son los créditos que el usuario tenía delante. */

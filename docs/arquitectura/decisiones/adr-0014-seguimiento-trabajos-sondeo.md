@@ -25,12 +25,31 @@ Se elige el **sondeo desde el servidor** (opción 1). El estado vive en `generat
 Reglas que acompañan a la decisión:
 
 - el navegador pregunta con intervalo creciente (4 s → 15 s) y el servidor guarda un mínimo entre consultas por trabajo, así que preguntar de más no se traduce en más peticiones al proveedor;
+- **el servidor también sondea por su cuenta**, sin que nadie tenga la página abierta (ver más abajo): un trabajo pagado tiene que terminar y guardarse aunque se cierre el navegador o se pierda la sesión;
 - dos consultas simultáneas del mismo trabajo comparten la misma operación y el trabajo solo se cierra si aún no tenía archivo: el resultado no se descarga ni se guarda dos veces (idempotencia por tarea);
 - si el proveedor no contesta, el trabajo queda `desconocido` y **nunca** se reenvía: solo se vuelve a consultar el `taskId` guardado, y esa decisión es del usuario;
 - un estado que el proveedor informe y no esté documentado se traduce a `desconocido`, jamás a «listo».
+
+## Seguimiento en el servidor (sustituto mínimo de la cola de 0.12.0)
+
+El sondeo desde el navegador no basta: si la persona cierra la pestaña —o pierde la sesión— el trabajo se queda en `enviado` para siempre, **pagado al proveedor y sin guardar en la biblioteca**. Pasó de verdad el 2026-09-27 con tres trabajos del propietario, que hubo que reconciliar a mano.
+
+Por eso la 0.10.0 añade dos cosas:
+
+- un bucle en el propio proceso del servidor (`server/generacion/seguimiento-de-fondo.ts`), que arranca en `instrumentation.ts` solo en el runtime de Node y no durante `next build` ni en los tests. Cada ~10 s toma un lote pequeño de trabajos en marcha con tarea en el proveedor y la última consulta vieja, de cualquier usuario, y los avanza como su dueño (la clave sale de la bóveda de cada uno). No se solapa consigo mismo y un fallo en un trabajo no detiene a los demás;
+- al abrir `/crear/historial`, los trabajos en marcha de quien mira se avanzan en el servidor antes de listarlos.
+
+Reglas del bucle:
+
+- el lote se ordena por «hace más que no se consulta», con los que **nunca** se han consultado delante, para que un trabajo recién enviado no espere detrás de otros atascados;
+- **techo de edad de 30 minutos**: un trabajo en marcha desde hace más de media hora (lo medido para `veo3_lite` son unos 2,5 minutos) pasa a `desconocido` sin llamar al proveedor y sale del automático. Solo el usuario puede volver a consultarlo, y nunca se reenvía;
+- si la credencial del usuario no es utilizable, su trabajo se salta sin llamar a KIE: se queda como está y la persona lo verá al volver;
+- los envíos que se quedaron «preparando» sin tarea entran en el lote para cerrarse, también sin llamar a nadie.
+
+Esto es **un sustituto mínimo de la cola persistente de 0.12.0**, no su sustituto definitivo: vive en memoria del proceso, no reparte trabajo entre instancias y no reintenta con política propia. **Hasta la 0.12.0 se asume una sola instancia del servidor.** Con varias, dos podrían tomar el mismo lote: no se cobra de más (consultar es gratis y el cierre es idempotente: solo se cierra si todavía no tenía archivo, y el archivo repetido de una carrera se borra), pero se haría trabajo repetido, así que haría falta reservar los trabajos con `SELECT … FOR UPDATE SKIP LOCKED` antes de consultarlos. Es justo lo que trae la cola de 0.12.0, y por eso no se adelanta aquí.
 
 ## Consecuencias
 
 Se gana una implementación que funciona en cualquier instalación, sin exponer nada a internet y sin ningún endpoint que alguien pueda usar para falsear un resultado o un gasto. Se pierde inmediatez (hasta 15 s de retraso en ver el cambio) y se gasta alguna petición de consulta de más, que no cuesta créditos.
 
-En **0.12.0**, con la cola persistente y los workers, el sondeo pasará del navegador al worker y se añadirá el callback como camino rápido para instalaciones con URL pública, **sin cambiar la interfaz**: el estado seguirá viniendo de `generation_jobs` y el callback solo adelantará la consulta que el worker haría igualmente. El reparto de consultas dejará entonces de ser por proceso (hoy dos instancias del servidor podrían consultar el mismo trabajo a la vez; la idempotencia por tarea evita que eso duplique archivos).
+En **0.12.0**, con la cola persistente y los workers, el sondeo pasará del bucle en proceso al worker y se añadirá el callback como camino rápido para instalaciones con URL pública, **sin cambiar la interfaz**: el estado seguirá viniendo de `generation_jobs` y el callback solo adelantará la consulta que el worker haría igualmente. El reparto de consultas dejará entonces de ser por proceso (hoy dos instancias del servidor podrían consultar el mismo trabajo a la vez; la idempotencia por tarea evita que eso duplique archivos).

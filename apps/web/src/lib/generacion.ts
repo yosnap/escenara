@@ -53,6 +53,13 @@ export const LARGO_ESTADO_PROVEEDOR = 64;
 export const PROMPT_MINIMO = 10;
 export const PROMPT_MAXIMO = 2000;
 
+/**
+ * Lo que dice el personaje va aparte de la descripción visual: en la comparativa de modelos del
+ * 2026-09-27 los modelos de imagen dibujaban la frase en el fotograma. Solo se usa en el clip, que sí
+ * tiene voz. Cuatro segundos no dan para mucho más que una frase.
+ */
+export const DIALOGO_MAXIMO = 200;
+
 /** Trabajo tal como lo devuelve la API. Nunca lleva la clave del proveedor ni su texto de error. */
 export interface TrabajoVista {
   id: string;

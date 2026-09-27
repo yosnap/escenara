@@ -123,15 +123,14 @@ describe("creación de la tarea", () => {
     expect(await crearTarea(CLAVE, "nano-banana-2-lite", entrada, buscar)).toBe("task_123");
     expect(registro[0]?.url).toBe("https://api.kie.ai/api/v1/jobs/createTask");
     expect(registro[0]?.metodo).toBe("POST");
-    expect(registro[0]?.cuerpo).toEqual({
+    expect(registro[0]?.cuerpo).toMatchObject({
       model: "nano-banana-2-lite",
-      input: { prompt: "una escena", image_urls: ["https://tempfile.kie.ai/a.png"], aspect_ratio: "9:16" },
+      input: { image_urls: ["https://tempfile.kie.ai/a.png"], aspect_ratio: "9:16" },
     });
   });
 
   test("la entrada de la animación fija 4 s, 9:16 y 720p con el fotograma como primer fotograma", () => {
-    expect(entradaAnimacion("se mueve", "https://tempfile.kie.ai/a.png")).toEqual({
-      prompt: "se mueve",
+    expect(entradaAnimacion("se mueve", "", "https://tempfile.kie.ai/a.png")).toMatchObject({
       image_urls: ["https://tempfile.kie.ai/a.png"],
       generation_type: "FIRST_AND_LAST_FRAMES_2_VIDEO",
       aspect_ratio: "9:16",

@@ -61,7 +61,8 @@ export function ListaTrabajos({ iniciales }: { iniciales: TrabajoVista[] }) {
           >
             <div className="size-20 shrink-0 overflow-hidden rounded-control border border-borde bg-elevada">
               {trabajo.medio ? (
-                <MiniaturaMedio medio={trabajo.medio} />
+                // Sin recortar: un vertical se ve entero dentro del cuadro.
+                <MiniaturaMedio medio={trabajo.medio} className="object-contain" />
               ) : (
                 <span className="flex size-full items-center justify-center text-sm text-texto-suave">Sin archivo</span>
               )}

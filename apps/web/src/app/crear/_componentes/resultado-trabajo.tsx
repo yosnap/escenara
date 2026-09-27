@@ -2,7 +2,7 @@ import { FolderOpen } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { claseBoton } from "@/components/ui/button";
-import { MiniaturaMedio } from "@/components/ui/media/miniatura-medio";
+import { VisorMedio } from "@/components/ui/media/visor-medio";
 import { formatearCreditos, type TrabajoVista } from "@/lib/generacion";
 
 /**
@@ -16,11 +16,8 @@ export function ResultadoTrabajo({ trabajo, children }: { trabajo: TrabajoVista;
   return (
     <section className="flex flex-col gap-4 rounded-tarjeta border border-borde bg-superficie p-5">
       <div className="flex flex-col gap-4 sm:flex-row">
-        <div className="w-full max-w-[16rem] shrink-0 overflow-hidden rounded-tarjeta border border-borde bg-elevada">
-          <div className="aspect-9/16">
-            <MiniaturaMedio medio={medio} controles={medio.tipo === "video"} />
-          </div>
-        </div>
+        {/* Se ve completo, en la proporción que devolvió el proveedor, y el vídeo con sus controles. */}
+        <VisorMedio medio={medio} alturaMaxima="26rem" className="shrink-0" />
         <div className="flex flex-1 flex-col gap-2">
           <h3 className="text-xl font-bold text-texto">
             {trabajo.tipo === "fotograma" ? "Fotograma listo" : "Clip listo"}

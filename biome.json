@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!**/next-env.d.ts", "!docs", "!**/src/styles/tokens.css"]
+    "includes": ["**", "!**/next-env.d.ts", "!docs", "!**/src/styles/tokens.css", "!spikes/*/resultados"]
   },
   "formatter": {
     "indentStyle": "space",

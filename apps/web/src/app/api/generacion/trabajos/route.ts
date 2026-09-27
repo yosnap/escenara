@@ -16,7 +16,8 @@ export const GET = manejador(async (_: Request, __: unknown, actor) =>
  * sin `derechos` marcado y sin `claveIdempotencia`, que evita cobrar dos veces la misma confirmación.
  *
  * - fotograma: `{ tipo: "fotograma", medioId, prompt, creditosConfirmados, derechos, claveIdempotencia }`
- * - animación: `{ tipo: "animacion", trabajoPadreId, … }`
+ * - animación: `{ tipo: "animacion", trabajoPadreId, dialogo?, … }` (`dialogo` es lo que dice el personaje,
+ *   que solo se usa en el clip: en el fotograma los modelos lo dibujarían como texto)
  *
  * `avisoUmbralAceptado` es obligatorio cuando la estimación pasa del aviso de Admin › Ajustes.
  */
@@ -34,7 +35,12 @@ export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
   const envio =
     cuerpo.tipo === "fotograma"
       ? await crearFotograma(actor, { ...comun, medioId: cuerpo.medioId as string })
-      : await crearAnimacion(actor, { ...comun, trabajoPadreId: cuerpo.trabajoPadreId as string });
+      : await crearAnimacion(actor, {
+          ...comun,
+          trabajoPadreId: cuerpo.trabajoPadreId as string,
+          // Como el resto de los campos: si llega, tiene que ser texto.
+          dialogo: cuerpo.dialogo === undefined ? "" : (cuerpo.dialogo as string),
+        });
   // 201 cuando el trabajo es nuevo; 200 si esta confirmación ya se había enviado (misma clave).
   return Response.json(envio.trabajo, { status: envio.nueva ? 201 : 200 });
 });
