@@ -11,6 +11,21 @@ export interface ImagenProcesada {
 }
 
 /**
+ * Medidas de una imagen **sin tocarla**. Es lo que se usa en los documentos de consentimiento, que se guardan
+ * tal cual: hacen falta el ancho y el alto para reservar el hueco al mostrarlos, pero el archivo no se recorta
+ * ni se reconvierte, porque un documento reducido puede dejar de ser legible.
+ */
+export async function medidasDeImagen(datos: Uint8Array): Promise<{ ancho: number | null; alto: number | null }> {
+  try {
+    const meta = await sharp(datos).metadata();
+    return { ancho: meta.width ?? null, alto: meta.pageHeight ?? meta.height ?? null };
+  } catch {
+    // Un documento que sharp no sabe medir se guarda igual: las medidas solo sirven para el hueco del visor.
+    return { ancho: null, alto: null };
+  }
+}
+
+/**
  * Optimiza una imagen: orienta según EXIF, reduce a 1920 × 1080 como máximo sin ampliar y la guarda
  * en WebP con calidad 85. Los GIF se conservan intactos para no perder la animación. Sharp descarta
  * los metadatos (EXIF, GPS) al volver a codificar.

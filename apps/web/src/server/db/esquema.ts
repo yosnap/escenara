@@ -1,4 +1,4 @@
-import { index, integer, pgEnum, pgTable, real, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgEnum, pgTable, real, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { users } from "./esquema-auth";
 
 export const tipoMedio = pgEnum("media_kind", ["imagen", "video", "audio"]);
@@ -27,6 +27,13 @@ export const media = pgTable(
     title: text("title").notNull().default(""),
     altEs: text("alt_es").notNull().default(""),
     altEn: text("alt_en").notNull().default(""),
+    /**
+     * `true` en los documentos de consentimiento (0.13.0). Hacen dos cosas distintas de una foto normal: se
+     * guardan **sin pasar por el recorte ni la reconversión** de imágenes, porque un documento reducido puede
+     * dejar de ser legible, y no se pueden usar como referencia de un personaje ni elegirse en «Crear». Lo
+     * impide el servidor, no la interfaz.
+     */
+    isDocument: boolean("is_document").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
@@ -45,4 +52,5 @@ export * from "./esquema-biblioteca";
 export * from "./esquema-boveda";
 export * from "./esquema-catalogo";
 export * from "./esquema-generacion";
+export * from "./esquema-personajes";
 export * from "./esquema-presupuesto";

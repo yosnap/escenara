@@ -53,6 +53,21 @@ export function limpiarDialogo(dialogo: unknown): string {
     .replace(/\s+/g, " ");
 }
 
+/**
+ * Revisión de las referencias antes de enviarlas al proveedor (ADR-0009). La reducción de tamaño ya la hace
+ * la biblioteca al subir (`server/media/procesado.ts` recorta a 1920 × 1080 y guarda en WebP); lo que
+ * falta es el aviso: quien genera con un personaje confirma expresamente que en sus fotos no aparece ninguna
+ * otra persona ni ningún menor. Es un control, no una comprobación: nadie puede verificarlo por él.
+ */
+export function exigirRevisionDeReferencias(sinTerceros: unknown) {
+  if (sinTerceros !== true) {
+    throw new ErrorGeneracion(
+      400,
+      "Confirma que en las fotos del personaje no aparece ninguna otra persona ni ningún menor antes de enviarlas al proveedor.",
+    );
+  }
+}
+
 export function exigirDerechos(derechos: unknown) {
   if (derechos !== true) {
     throw new ErrorGeneracion(400, "Confirma que tienes derecho a usar esa imagen antes de generar.");
@@ -157,6 +172,10 @@ export async function imagenPropia(usuarioId: string, medioId: unknown): Promise
     .limit(1);
   if (!fila) throw new ErrorGeneracion(404, "La imagen no existe.");
   if (fila.kind !== "imagen") throw new ErrorGeneracion(400, "La referencia tiene que ser una imagen.");
+  // Un documento de consentimiento no sale nunca hacia un proveedor: es un documento de identidad ajeno.
+  if (fila.isDocument) {
+    throw new ErrorGeneracion(400, "Un documento de consentimiento no se puede usar como imagen de referencia.");
+  }
   return fila;
 }
 

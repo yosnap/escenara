@@ -40,6 +40,7 @@ export function SeccionCreador() {
           <AnilloHistoria nombre="Lucía" estado="listo" />
           <AnilloHistoria nombre="Toby" estado="faltan-fotos" />
           <AnilloHistoria nombre="Marcos" estado="en-revision" />
+          <AnilloHistoria nombre="Sara" estado="bloqueado" />
         </Muestra>
         <Muestra titulo="Tarjetas 9:16 y pegatinas">
           <TarjetaReel

@@ -80,6 +80,7 @@ export const MOTIVOS_FALLO = [
   "interno",
   "sin_acotar",
   "cancelado",
+  "consentimiento",
 ] as const;
 export type MotivoFallo = (typeof MOTIVOS_FALLO)[number];
 
@@ -93,6 +94,7 @@ export const ETIQUETA_MOTIVO_FALLO: Record<MotivoFallo, string> = {
   interno: "Escenara no ha podido preparar el envío",
   sin_acotar: "El coste de este trabajo no se puede acotar sin un límite tuyo",
   cancelado: "Lo has cancelado antes de enviarlo",
+  consentimiento: "El consentimiento del personaje ya no permite generar con él",
 };
 
 /**
@@ -137,6 +139,8 @@ export interface TrabajoVista {
   creditosConsumidos: number | null;
   error: string | null;
   medioOrigenId: string | null;
+  /** Personaje con el que se pidió el trabajo, si se pidió con uno; `null` si fue una imagen suelta. */
+  personajeId: string | null;
   /** Medio resultante ya guardado en la biblioteca, o `null` mientras no exista. */
   medio: Medio | null;
   trabajoPadreId: string | null;

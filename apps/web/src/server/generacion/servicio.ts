@@ -1,7 +1,9 @@
 import { CLIP, type TipoTrabajo, type TrabajoVista } from "@/lib/generacion";
 import { encolar, filaDeLaConfirmacion, type NuevoTrabajoEncolado } from "../cola/encolar";
+import type { FilaMedio } from "../db/esquema";
 import { decidir } from "../decisiones/reglas";
 import type { Actor } from "../media/servicio";
+import { exigirPersonajeUsable, personajeParaGenerar } from "../personajes/puede-generar";
 import { acotarCoste } from "../presupuesto/acotar";
 import type { Adaptador } from "../proveedores/contrato";
 import {
@@ -11,6 +13,7 @@ import {
   exigirCredencial,
   exigirCuota,
   exigirDerechos,
+  exigirRevisionDeReferencias,
   exigirRitmo,
   exigirSaldo,
   imagenPropia,
@@ -21,7 +24,7 @@ import {
 import { ErrorGeneracion } from "./errores";
 import { HERRAMIENTAS, type Herramientas } from "./herramientas";
 import { type EleccionDeTrabajo, elegirParaTipo, exigirSelloVigente } from "./precios";
-import { esUuidGeneracion, filaPropia, vistaDeFila } from "./trabajos";
+import { esUuidGeneracion, filaPropia, personajeDeLaCadena, vistaDeFila } from "./trabajos";
 
 /**
  * Alta de trabajos de generación con la clave del propio usuario (RF01). Desde la 0.12.0 esta capa **no
@@ -68,13 +71,29 @@ export interface Envio {
 }
 
 export interface PeticionFotograma extends Confirmacion {
-  /** Imagen de la biblioteca del usuario que sirve de referencia. */
-  medioId: string;
+  /** Imagen de la biblioteca del usuario que sirve de referencia. Alternativa a `personajeId`. */
+  medioId?: string;
+  /**
+   * Personaje del usuario con el que se genera (0.13.0). Sustituye a la imagen suelta y manda si llegan los
+   * dos: se envían **varias** referencias suyas, hasta el tope que declare el modelo, porque dan mejor guía
+   * de identidad. Exige consentimiento vigente y referencias suficientes, comprobado en el servidor.
+   */
+  personajeId?: string;
+  /**
+   * Confirmación de la revisión de referencias (ADR-0009): en las fotos del personaje no aparece ninguna otra
+   * persona ni ningún menor. Obligatoria cuando se genera con un personaje.
+   */
+  sinTerceros?: boolean;
 }
 
 export interface PeticionAnimacion extends Confirmacion {
   /** Fotograma ya generado que se anima (su medio es el primer fotograma del clip). */
   trabajoPadreId: string;
+  /**
+   * Revisión de referencias (ADR-0009). Obligatoria cuando el fotograma del que sale el clip se hizo con un
+   * personaje: el clip envía la misma cara.
+   */
+  sinTerceros?: boolean;
   /** Lo que dice el personaje, opcional. Solo lo usa el clip: en el fotograma saldría escrito. */
   dialogo?: string;
 }
@@ -133,7 +152,22 @@ export async function crearFotograma(
   const proveedor = proveedorDeCredencial(modelo);
   // La credencial se comprueba ahora, no al enviar: encolar algo que no se puede pagar no ayuda a nadie.
   await exigirCredencial(actor.id, proveedor);
-  const origen = await imagenPropia(actor.id, peticion.medioId);
+  // Con personaje se envían varias referencias suyas; sin personaje, la imagen suelta de 0.10.0.
+  if (peticion.personajeId) exigirRevisionDeReferencias(peticion.sinTerceros);
+  const elegido = peticion.personajeId
+    ? await personajeParaGenerar(actor, peticion.personajeId, modelo.parametros.maximoReferencias)
+    : null;
+  const referencias: FilaMedio[] = elegido ? elegido.referencias : [await imagenPropia(actor.id, peticion.medioId)];
+  const [origen] = referencias;
+  if (!origen) throw new ErrorGeneracion(400, "Elige un personaje o una imagen de referencia.");
+  // Si la imagen suelta es el resultado de otro trabajo hecho con un personaje, este trabajo hereda ese
+  // personaje: si no, animar o reeditar un fotograma escaparía del borrado de derivados y la cara sobreviviría
+  // al borrado del personaje. Y si lo hereda, tiene que cumplir sus reglas como cualquier otro.
+  const personajeId = elegido?.personaje.id ?? (await personajeDeLaCadena(actor.id, origen.id));
+  if (personajeId && !elegido) {
+    exigirRevisionDeReferencias(peticion.sinTerceros);
+    await exigirPersonajeUsable(personajeId, "El personaje de esa imagen");
+  }
   await exigirCuota(actor, "fotograma");
   await exigirSaldo(actor.id, creditos, h.buscar, proveedor);
   await exigirRitmo(actor.id);
@@ -153,8 +187,17 @@ export async function crearFotograma(
     provider: proveedor,
     model: modelo.modelo,
     prompt,
-    input: entradaGuardada(adaptador, prompt, [origen.id], parametros),
+    input: entradaGuardada(
+      adaptador,
+      prompt,
+      referencias.map((r) => r.id),
+      parametros,
+    ),
     sourceMediaId: origen.id,
+    characterId: personajeId,
+    // La revisión de referencias se guarda con su fecha, igual que la confirmación de derechos: es una
+    // declaración y hay que poder demostrar cuándo se hizo.
+    referencesReviewedAt: personajeId ? new Date() : null,
     estimatedCredits: creditos,
   };
   const { fila, nueva } = await encolar({
@@ -193,6 +236,13 @@ export async function crearAnimacion(
     throw new ErrorGeneracion(409, "Espera a que el fotograma esté listo y guardado antes de animarlo.");
   }
   const origen = await imagenPropia(actor.id, padre.resultMediaId);
+  // El clip hereda el personaje del fotograma, así que hereda también sus reglas: si el consentimiento se ha
+  // revocado entre el fotograma y el clip, el clip no sale. Y la revisión de referencias se vuelve a confirmar,
+  // porque es otra confirmación distinta sobre otro envío distinto.
+  if (padre.characterId) {
+    exigirRevisionDeReferencias(peticion.sinTerceros);
+    await exigirPersonajeUsable(padre.characterId, "El personaje de este fotograma");
+  }
   await exigirCuota(actor, "animacion");
   await exigirSaldo(actor.id, creditos, h.buscar, proveedor);
   await exigirRitmo(actor.id);
@@ -218,6 +268,8 @@ export async function crearAnimacion(
     input: { ...entradaGuardada(adaptador, prompt, [origen.id], { ...parametros, segundos }), dialogo },
     sourceMediaId: origen.id,
     parentJobId: padre.id,
+    characterId: padre.characterId,
+    referencesReviewedAt: padre.characterId ? new Date() : null,
     estimatedCredits: creditos,
   };
   const { fila, nueva } = await encolar({

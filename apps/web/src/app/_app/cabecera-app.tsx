@@ -20,6 +20,9 @@ export function CabeceraApp({ sesion }: { sesion: Sesion }) {
                 <EnlaceApp href="/crear">Crear</EnlaceApp>
               </li>
               <li>
+                <EnlaceApp href="/personajes">Personajes</EnlaceApp>
+              </li>
+              <li>
                 <EnlaceApp href="/biblioteca">Biblioteca</EnlaceApp>
               </li>
               <li>

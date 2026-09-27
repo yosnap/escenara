@@ -19,7 +19,10 @@ export const GET = manejador(async (_: Request, __: unknown, actor) =>
  * `modelo` y `selloEstimacion` son opcionales: sin ellos se usa el modelo predeterminado de la capacidad.
  * Con ellos, el modelo tiene que estar en el catálogo y el sello ser el del precio vigente.
  *
- * - fotograma: `{ tipo: "fotograma", medioId, prompt, creditosConfirmados, derechos, claveIdempotencia }`
+ * - fotograma: `{ tipo: "fotograma", medioId | personajeId, prompt, creditosConfirmados, derechos,
+ *   claveIdempotencia }`. Con `personajeId` se envían varias referencias del personaje y hace falta además
+ *   `sinTerceros` (la revisión de referencias de ADR-0009); el personaje tiene que tener consentimiento
+ *   vigente y referencias suficientes, o se rechaza con 409.
  * - animación: `{ tipo: "animacion", trabajoPadreId, dialogo?, … }` (`dialogo` es lo que dice el personaje,
  *   que solo se usa en el clip: en el fotograma los modelos lo dibujarían como texto)
  *
@@ -47,12 +50,19 @@ export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
   };
   const envio =
     cuerpo.tipo === "fotograma"
-      ? await crearFotograma(actor, { ...comun, medioId: cuerpo.medioId as string })
+      ? await crearFotograma(actor, {
+          ...comun,
+          medioId: cuerpo.medioId as string | undefined,
+          personajeId: cuerpo.personajeId as string | undefined,
+          sinTerceros: cuerpo.sinTerceros === true,
+        })
       : await crearAnimacion(actor, {
           ...comun,
           trabajoPadreId: cuerpo.trabajoPadreId as string,
           // Como el resto de los campos: si llega, tiene que ser texto.
           dialogo: cuerpo.dialogo === undefined ? "" : (cuerpo.dialogo as string),
+          // Obligatoria si el fotograma del que sale el clip se hizo con un personaje.
+          sinTerceros: cuerpo.sinTerceros === true,
         });
   // 201 cuando el trabajo es nuevo; 200 si esta confirmación ya se había enviado (misma clave).
   return Response.json(envio.trabajo, { status: envio.nueva ? 201 : 200 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, Clock3, ImageOff, Play } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock3, ImageOff, Play, ShieldOff } from "lucide-react";
 import type { ReactNode } from "react";
 import { cn } from "./cn";
 import { VideoReel } from "./video-reel";
@@ -95,12 +95,17 @@ export function Pegatina({ children, tono = "coral" }: { children: ReactNode; to
   );
 }
 
-export type EstadoPersonaje = "listo" | "faltan-fotos" | "en-revision";
+/**
+ * Estado del personaje tal como lo pinta el anillo. `bloqueado` es el de un consentimiento revocado o
+ * rechazado: se distingue con color, icono y texto, nunca solo con el color.
+ */
+export type EstadoPersonaje = "listo" | "faltan-fotos" | "en-revision" | "bloqueado";
 
 const ESTADOS: Record<EstadoPersonaje, { anillo: string; texto: string; icono: ReactNode }> = {
   listo: { anillo: "bg-degradado-escenario", texto: "Listo", icono: <CheckCircle2 className="size-3.5" /> },
   "faltan-fotos": { anillo: "bg-aviso", texto: "Faltan fotos", icono: <AlertTriangle className="size-3.5" /> },
   "en-revision": { anillo: "bg-borde", texto: "En revisión", icono: <Clock3 className="size-3.5" /> },
+  bloqueado: { anillo: "bg-error", texto: "Bloqueado", icono: <ShieldOff className="size-3.5" /> },
 };
 
 /** Avatar de personaje con anillo de historia; el estado se indica también con icono y texto. */

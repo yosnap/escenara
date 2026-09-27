@@ -59,6 +59,7 @@ export function vistaDe(fila: FilaTrabajo, medio: FilaMedio | null, posicion: nu
     creditosConsumidos: fila.consumedCredits,
     error: fila.errorMessage,
     medioOrigenId: fila.sourceMediaId,
+    personajeId: fila.characterId,
     medio: medio ? aDto(medio, { id: fila.userId, esAdmin: false }) : null,
     trabajoPadreId: fila.parentJobId,
     derechosConfirmados: fila.rightsConfirmedAt !== null,
@@ -85,6 +86,26 @@ export async function filaPropia(usuarioId: string, id: string): Promise<FilaTra
     .limit(1);
   if (!fila) throw new ErrorGeneracion(404, "El trabajo no existe.");
   return fila;
+}
+
+/**
+ * Personaje al que pertenece un medio por ser **resultado** de un trabajo hecho con él. Es lo que mantiene la
+ * cadena: animar o reeditar un fotograma generado con un personaje sigue siendo ese personaje, y su borrado
+ * tiene que alcanzarlo. `null` si el medio no salió de ningún trabajo con personaje.
+ */
+export async function personajeDeLaCadena(usuarioId: string, medioId: string): Promise<string | null> {
+  const [fila] = await db()
+    .select({ personajeId: generationJobs.characterId })
+    .from(generationJobs)
+    .where(
+      and(
+        eq(generationJobs.userId, usuarioId),
+        eq(generationJobs.resultMediaId, medioId),
+        isNotNull(generationJobs.characterId),
+      ),
+    )
+    .limit(1);
+  return fila?.personajeId ?? null;
 }
 
 /** Medio resultante de un trabajo, si ya está guardado. */

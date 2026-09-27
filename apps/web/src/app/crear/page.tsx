@@ -4,11 +4,12 @@ import Link from "next/link";
 import { claseBoton } from "@/components/ui/button";
 import { AvisoEstado } from "@/components/ui/feedback";
 import { AVISO_BOVEDA_USUARIO, PROVEEDORES_PUBLICOS } from "@/lib/boveda";
-import { exigirSesion } from "@/server/auth/sesion";
+import { esAdmin, exigirSesion } from "@/server/auth/sesion";
 import { bovedaDisponible } from "@/server/boveda/cifrado";
 import { listarCredenciales } from "@/server/boveda/credenciales";
 import { estadoDeCola } from "@/server/cola/latido";
 import { estimarTodo } from "@/server/generacion/estimacion";
+import { personajesElegibles } from "@/server/personajes/consulta";
 import { depositoDe } from "@/server/presupuesto/deposito";
 import { modelosParaCrear } from "@/server/proveedores/catalogo";
 import { CabeceraApp } from "../_app/cabecera-app";
@@ -21,22 +22,26 @@ export const dynamic = "force-dynamic";
  * «Crear»: el primer flujo usable. Cada usuario genera con su propia clave de KIE (RF01) y paga en su
  * cuenta del proveedor. Sin clave utilizable no se muestra el formulario: se explica qué falta.
  */
-export default async function PaginaCrear() {
+export default async function PaginaCrear({ searchParams }: { searchParams: Promise<{ personaje?: string }> }) {
   const sesion = await exigirSesion("/crear");
+  // Preselección al llegar desde la ficha de un personaje. Solo es una sugerencia de la interfaz: quien
+  // autoriza el uso de ese personaje es el servidor, al encolar.
+  const { personaje: personajePedido } = await searchParams;
   const boveda = bovedaDisponible();
   const credenciales = boveda ? await listarCredenciales(sesion.user.id) : [];
   const kie = credenciales.find((c) => c.proveedor === "kie") ?? null;
   const puedeGenerar = Boolean(kie && kie.estado === "valida");
   // La estimación no necesita credencial (el saldo se queda en `null`): así el coste se ve siempre.
-  const [estimaciones, modelosFotograma, modelosClip, deposito, cola] = puedeGenerar
+  const [estimaciones, modelosFotograma, modelosClip, deposito, cola, personajes] = puedeGenerar
     ? await Promise.all([
         estimarTodo(sesion.user.id),
         modelosParaCrear("image_edit"),
         modelosParaCrear("image_to_video"),
         depositoDe(sesion.user.id),
         estadoDeCola(sesion.user.id),
+        personajesElegibles({ id: sesion.user.id, esAdmin: esAdmin(sesion) }),
       ])
-    : [null, [], [], null, null];
+    : [null, [], [], null, null, []];
 
   return (
     <div className="min-h-dvh bg-fondo">
@@ -82,6 +87,12 @@ export default async function PaginaCrear() {
             modelosClip={modelosClip}
             deposito={deposito}
             cola={cola}
+            personajes={personajes}
+            personajeInicial={
+              personajes.some((p) => p.id === personajePedido && p.estado === "listo")
+                ? (personajePedido ?? null)
+                : null
+            }
           />
         )}
       </main>

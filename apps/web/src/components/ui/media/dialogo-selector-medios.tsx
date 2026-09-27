@@ -12,6 +12,7 @@ export interface DialogoSelectorMediosProps {
   onAbiertoCambio: (abierto: boolean) => void;
   multiple?: boolean;
   tipos?: readonly TipoMedio[];
+  sinDocumentos?: boolean;
   /** Selección con la que se abre. */
   inicial: Medio[];
   onConfirmar: (medios: Medio[]) => void;
@@ -23,6 +24,7 @@ export function DialogoSelectorMedios({
   onAbiertoCambio,
   multiple = false,
   tipos = TIPOS_MEDIO,
+  sinDocumentos = false,
   inicial,
   onConfirmar,
 }: DialogoSelectorMediosProps) {
@@ -38,6 +40,7 @@ export function DialogoSelectorMedios({
       <Contenido
         multiple={multiple}
         tipos={tipos}
+        sinDocumentos={sinDocumentos}
         inicial={inicial}
         onConfirmar={onConfirmar}
         onCancelar={() => onAbiertoCambio(false)}
@@ -49,12 +52,14 @@ export function DialogoSelectorMedios({
 function Contenido({
   multiple,
   tipos,
+  sinDocumentos,
   inicial,
   onConfirmar,
   onCancelar,
 }: {
   multiple: boolean;
   tipos: readonly TipoMedio[];
+  sinDocumentos: boolean;
   inicial: Medio[];
   onConfirmar: (medios: Medio[]) => void;
   onCancelar: () => void;
@@ -72,6 +77,7 @@ function Contenido({
     <div className="flex flex-col gap-6">
       <BibliotecaMedios
         tipos={tipos}
+        sinDocumentos={sinDocumentos}
         seleccion={ids}
         onAlternar={alternar}
         onSubido={(medio) => setElegidos((lista) => (multiple ? [...lista, medio] : [medio]))}

@@ -9,6 +9,7 @@ import { SeccionGeneracion } from "./secciones/generacion";
 import { SeccionMediaPicker } from "./secciones/media-picker";
 import { SeccionModelos } from "./secciones/modelos";
 import { SeccionMovimiento } from "./secciones/movimiento";
+import { SeccionPersonajes } from "./secciones/personajes";
 import { SeccionSecretos } from "./secciones/secretos";
 import { SeccionSelectores } from "./secciones/selectores";
 import { SeccionSuperposiciones } from "./secciones/superposiciones";
@@ -21,6 +22,7 @@ const INDICE = [
   ["selectores", "Selectores"],
   ["media-picker", "Selector de medios"],
   ["creador", "Creador"],
+  ["personajes", "Personajes"],
   ["cuentas", "Cuentas"],
   ["secretos", "Secretos"],
   ["estados", "Estados y presupuesto"],
@@ -59,6 +61,7 @@ export function Catalogo() {
         <SeccionSelectores />
         <SeccionMediaPicker />
         <SeccionCreador />
+        <SeccionPersonajes />
         <SeccionCuentas />
         <SeccionSecretos />
         <SeccionEstados />

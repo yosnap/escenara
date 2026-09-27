@@ -21,7 +21,12 @@ import { reservar } from "../presupuesto/reserva";
  * ve lo que hizo el primero. Nada se envía aquí: eso lo hace el worker cuando toma el trabajo.
  */
 
-/** Campos del trabajo que decide quien encola; el estado y la reserva los pone esta función. */
+/**
+ * Campos del trabajo que decide quien encola; el estado y la reserva los pone esta función.
+ *
+ * `rightsConfirmedAt` queda fuera porque lo sella `insertar` con la fecha del alta. `referencesReviewedAt` sí
+ * lo trae quien encola: solo existe cuando el trabajo lleva personaje.
+ */
 export type NuevoTrabajoEncolado = Omit<
   typeof generationJobs.$inferInsert,
   | "rightsConfirmedAt"

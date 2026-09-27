@@ -27,13 +27,18 @@ export interface PendienteEditor {
 export function useSubidaMedios({
   tipos,
   onSubido,
+  documento = false,
 }: {
   tipos: readonly TipoMedio[];
   onSubido: (medio: Medio) => void;
+  /** Sube como documento de consentimiento: sin procesar y sin editor de imagen. */
+  documento?: boolean;
 }) {
   const [subidas, setSubidas] = useState<Subida[]>([]);
   const [colaEditor, setColaEditor] = useState<PendienteEditor[]>([]);
-  const [editarAlSubir, setEditarAlSubir] = useState(true);
+  // Un documento de consentimiento no pasa por el editor de imagen: recortarlo o girarlo es justo lo que no
+  // queremos que le pase a una hoja firmada.
+  const [editarAlSubir, setEditarAlSubir] = useState(!documento);
 
   const actualizar = (id: string, cambios: Partial<Subida>) =>
     setSubidas((lista) => lista.map((s) => (s.id === id ? { ...s, ...cambios } : s)));
@@ -47,7 +52,7 @@ export function useSubidaMedios({
     }
     setSubidas((lista) => [...lista, { id, nombre: archivo.name, progreso: 0, estado: "subiendo" }]);
     const reproduccion = await leerDatosReproduccion(archivo);
-    const r = await subirMedio(archivo, reproduccion, (progreso) => actualizar(id, { progreso }), tipos);
+    const r = await subirMedio(archivo, reproduccion, (progreso) => actualizar(id, { progreso }), tipos, documento);
     if (r.ok) {
       actualizar(id, { estado: "hecha", progreso: 1 });
       onSubido(r.datos);

@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { Casilla } from "@/components/ui/choice";
 import { DepositoPresupuesto } from "@/components/ui/deposito";
 import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo } from "@/components/ui/field";
 import { SelectorMedios } from "@/components/ui/media/selector-medios";
 import { AvisoSinVoz, SelectorModelo } from "@/components/ui/modelo";
+import { Paso } from "@/components/ui/paso";
+import { SelectorPersonaje } from "@/components/ui/personaje";
 import type { ModeloElegible } from "@/lib/catalogo";
 import {
   CLIP,
@@ -17,9 +20,9 @@ import {
   type TrabajoVista,
 } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
+import { AVISO_SIN_TERCEROS, type PersonajeElegible } from "@/lib/personajes";
 import { consultarEstimacion, crearTrabajo, type Resultado } from "./api-generacion";
 import { type ConfirmacionCoste, PanelGenerar } from "./panel-generar";
-import { Paso } from "./paso";
 import { ResultadoTrabajo } from "./resultado-trabajo";
 import { SeguimientoTrabajo } from "./seguimiento-trabajo";
 
@@ -41,6 +44,8 @@ export function VistaCrear({
   modelosClip,
   deposito,
   cola,
+  personajes,
+  personajeInicial,
 }: {
   estimacionFotograma: Estimacion;
   estimacionAnimacion: Estimacion;
@@ -48,7 +53,15 @@ export function VistaCrear({
   modelosClip: ModeloElegible[];
   deposito: Deposito;
   cola: EstadoCola;
+  /** Personajes propios; los que no pueden generar salen deshabilitados con su motivo. */
+  personajes: PersonajeElegible[];
+  /** Personaje preseleccionado al llegar desde su ficha («Generar con él»). */
+  personajeInicial: string | null;
 }) {
+  const [personajeId, setPersonajeId] = useState<string | null>(personajeInicial);
+  const [sinTerceros, setSinTerceros] = useState(false);
+  // La revisión del clip es una confirmación distinta sobre un envío distinto, así que tiene su propia casilla.
+  const [sinTercerosClip, setSinTercerosClip] = useState(false);
   const [imagen, setImagen] = useState<Medio[]>([]);
   const [prompt, setPrompt] = useState("");
   const [dialogo, setDialogo] = useState("");
@@ -62,11 +75,17 @@ export function VistaCrear({
   const modeloClip = modelosClip.find((m) => m.modelo === estimacionClip.modelo) ?? null;
   const clipConVoz = modeloClip?.conVoz ?? estimacionClip.conVoz;
   const referencia = imagen[0] ?? null;
+  const personaje = personajes.find((p) => p.id === personajeId) ?? null;
+  const modeloFoto = modelosFotograma.find((m) => m.modelo === estimacionFoto.modelo) ?? null;
   const descripcion = prompt.trim();
   const frase = dialogo.trim();
 
   const bloqueosFotograma = [
-    ...(referencia ? [] : ["Falta la imagen de referencia."]),
+    ...(personaje || referencia ? [] : ["Elige un personaje o una imagen de referencia."]),
+    ...((personaje || referencia) && !sinTerceros ? ["Falta confirmar la revisión de las fotos."] : []),
+    ...(personaje && modeloFoto && modeloFoto.maximoReferencias < 1
+      ? ["El modelo elegido no acepta fotos de referencia: elige otro para generar con un personaje."]
+      : []),
     ...(descripcion.length >= PROMPT_MINIMO ? [] : ["Falta describir la escena."]),
     ...(estimacionFoto.alcanza ? [] : ["Tu saldo de KIE no llega para este trabajo."]),
   ];
@@ -81,12 +100,15 @@ export function VistaCrear({
       : respuesta.error;
 
   const generarFotograma = async (confirmacion: ConfirmacionCoste) => {
-    if (!referencia) return;
+    if (!personaje && !referencia) return;
     setEnviando("fotograma");
     setError(null);
     const respuesta = await crearTrabajo({
       tipo: "fotograma",
-      medioId: referencia.id,
+      // La revisión se envía siempre: una imagen suelta puede ser el resultado de otro trabajo hecho con un
+      // personaje, y entonces el servidor la exige igual (hereda ese personaje).
+      sinTerceros,
+      ...(personaje ? { personajeId: personaje.id } : { medioId: referencia?.id }),
       prompt: descripcion,
       modelo: estimacionFoto.modelo,
       ...confirmacion,
@@ -109,6 +131,7 @@ export function VistaCrear({
       trabajoPadreId: fotograma.id,
       prompt: descripcion,
       dialogo: clipConVoz ? frase : "",
+      ...(fotograma.personajeId ? { sinTerceros: sinTercerosClip } : {}),
       modelo: estimacionClip.modelo,
       ...confirmacion,
     });
@@ -148,14 +171,45 @@ export function VistaCrear({
     <div className="flex flex-col gap-6">
       <DepositoPresupuesto deposito={deposito} cola={cola} />
 
-      <Paso numero={1} titulo="Elige la imagen de referencia">
-        <SelectorMedios
-          etiqueta="Imagen de la persona o el personaje"
-          ayuda="Solo imágenes. Puedes subirla, arrastrarla o elegirla de tu biblioteca."
-          tipos={["imagen"]}
-          valor={imagen}
-          onCambio={setImagen}
+      <Paso numero={1} titulo="Elige a quién generas">
+        <SelectorPersonaje
+          personajes={personajes}
+          valor={personajeId}
+          onCambio={(id) => {
+            setPersonajeId(id);
+            setSinTerceros(false);
+          }}
+          deshabilitado={enviando !== null}
         />
+        {personaje ? (
+          <p className="text-texto-suave">
+            Se enviarán varias fotos de «{personaje.nombre}»
+            {modeloFoto && modeloFoto.maximoReferencias > 0
+              ? ` (hasta ${modeloFoto.maximoReferencias}, las que admite ${modeloFoto.nombre})`
+              : ""}
+            : varias referencias dan mucha mejor guía de identidad que una sola.
+          </p>
+        ) : (
+          <SelectorMedios
+            etiqueta="Imagen de la persona o el personaje"
+            ayuda="Solo imágenes. Puedes subirla, arrastrarla o elegirla de tu biblioteca. Con un personaje se envían varias fotos suyas en lugar de una sola."
+            tipos={["imagen"]}
+            sinDocumentos
+            valor={imagen}
+            onCambio={setImagen}
+          />
+        )}
+        {(personaje || referencia) && (
+          <div className="rounded-tarjeta border-2 border-borde bg-superficie p-4">
+            <Casilla
+              etiqueta="En estas fotos no aparece ninguna otra persona ni ningún menor"
+              descripcion={AVISO_SIN_TERCEROS}
+              marcada={sinTerceros}
+              deshabilitado={enviando !== null}
+              onCambio={setSinTerceros}
+            />
+          </div>
+        )}
         {modelosFotograma.length > 1 && (
           <SelectorModelo
             etiqueta="Modelo del fotograma"
@@ -214,7 +268,7 @@ export function VistaCrear({
         <PanelGenerar
           estimacion={estimacionFoto}
           etiqueta="Generar fotograma"
-          firma={`fotograma|${referencia?.id ?? ""}|${descripcion}|${estimacionFoto.modelo}|${estimacionFoto.sello}`}
+          firma={`fotograma|${personaje?.id ?? ""}|${referencia?.id ?? ""}|${descripcion}|${estimacionFoto.modelo}|${estimacionFoto.sello}`}
           bloqueos={bloqueosFotograma}
           enviando={enviando === "fotograma"}
           onGenerar={generarFotograma}
@@ -241,11 +295,25 @@ export function VistaCrear({
                       />
                     )}
                     {!clipConVoz && <AvisoSinVoz />}
+                    {fotograma.personajeId && (
+                      <Casilla
+                        etiqueta="En estas fotos no aparece ninguna otra persona ni ningún menor"
+                        descripcion={AVISO_SIN_TERCEROS}
+                        marcada={sinTercerosClip}
+                        deshabilitado={enviando !== null}
+                        onCambio={setSinTercerosClip}
+                      />
+                    )}
                     <PanelGenerar
                       estimacion={estimacionClip}
                       etiqueta={`Animar ${segundosDelClip(modeloClip)} s`}
                       firma={`animacion|${fotograma.id}|${descripcion}|${frase}|${estimacionClip.modelo}|${estimacionClip.sello}`}
-                      bloqueos={estimacionClip.alcanza ? [] : ["Tu saldo de KIE no llega para el clip."]}
+                      bloqueos={[
+                        ...(estimacionClip.alcanza ? [] : ["Tu saldo de KIE no llega para el clip."]),
+                        ...(fotograma.personajeId && !sinTercerosClip
+                          ? ["Falta confirmar la revisión de las fotos del personaje."]
+                          : []),
+                      ]}
                       enviando={enviando === "animacion"}
                       onGenerar={generarAnimacion}
                     />
