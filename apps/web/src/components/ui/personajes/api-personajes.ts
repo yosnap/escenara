@@ -1,18 +1,34 @@
-import type { PersonajeVista, ResumenBorradoPersonaje } from "@/lib/personajes";
+import type { RechazoDeReferencia, Vista } from "@/lib/captura-personaje";
+import type { Estimacion, TrabajoVista } from "@/lib/generacion";
+import type { PersonajeVista, ReferenciasAnadidas, ResumenBorradoPersonaje } from "@/lib/personajes";
 
 /** Cliente de la API de personajes para el navegador. */
 
-export type Resultado<T> = { ok: true; datos: T } | { ok: false; error: string };
+export type Resultado<T> =
+  | { ok: true; datos: T }
+  /**
+   * `rechazos` llega del control de calidad de las referencias (422): dice qué foto falló y por qué.
+   *
+   * `red` marca los fallos en los que **no se sabe** si la petición llegó al servidor. Importa al pedir una
+   * vista sintética: puede haberse encargado ya, así que no se invita a repetir sin más.
+   */
+  | { ok: false; error: string; rechazos?: RechazoDeReferencia[]; red?: boolean };
 
 async function pedir<T>(url: string, init?: RequestInit): Promise<Resultado<T>> {
   try {
     const respuesta = await fetch(url, init);
     if (respuesta.status === 204) return { ok: true, datos: undefined as T };
     const cuerpo = await respuesta.json().catch(() => null);
-    if (!respuesta.ok) return { ok: false, error: cuerpo?.error ?? "No se ha podido completar la operación." };
+    if (!respuesta.ok) {
+      return {
+        ok: false,
+        error: cuerpo?.error ?? "No se ha podido completar la operación.",
+        ...(Array.isArray(cuerpo?.rechazos) ? { rechazos: cuerpo.rechazos as RechazoDeReferencia[] } : {}),
+      };
+    }
     return { ok: true, datos: cuerpo as T };
   } catch {
-    return { ok: false, error: "Sin conexión con el servidor." };
+    return { ok: false, error: "Sin conexión con el servidor.", red: true };
   }
 }
 
@@ -46,10 +62,49 @@ export const borrarPersonaje = (id: string) =>
   pedir<{ personaje: string; clavesBorradas: string[] }>(`/api/personajes/${id}`, { method: "DELETE" });
 
 export const anadirReferencias = (id: string, medioIds: string[]) =>
-  pedir<PersonajeVista>(
+  pedir<ReferenciasAnadidas>(
     `/api/personajes/${id}/referencias`,
     json("POST", { referencias: medioIds.map((medioId) => ({ medioId })) }),
   );
+
+/** Foto que se añade desde la captura guiada, con lo que midió el navegador y la vista que cubre. */
+export interface ReferenciaGuiada {
+  medioId: string;
+  vistaClave?: Vista;
+  /** Proporción de la cara que midió el navegador (0–1); se omite donde no hay detector. */
+  caraRelativa?: number;
+  /** El usuario ha aceptado añadirla aunque el control de calidad la haya marcado. */
+  usarDeTodasFormas?: boolean;
+}
+
+/**
+ * Añade fotos con su vista y sus medidas. El servidor vuelve a medirlas: lo que decide es él, no el
+ * navegador, así que una respuesta 422 trae el detalle de cada foto en `rechazos`.
+ */
+export const anadirReferenciasGuiadas = (id: string, referencias: ReferenciaGuiada[]) =>
+  pedir<ReferenciasAnadidas>(`/api/personajes/${id}/referencias`, json("POST", { referencias }));
+
+/** Confirmación con la que se pide una vista sintética: las mismas reglas de dinero que «Crear». */
+export interface ConfirmacionVistaSintetica {
+  vista: Vista;
+  creditosConfirmados: number;
+  derechos: boolean;
+  sinTerceros: boolean;
+  avisoUmbralAceptado: boolean;
+  claveIdempotencia: string;
+  modelo?: string;
+  selloEstimacion?: string;
+}
+
+/**
+ * Coste estimado de un fotograma, que es lo que cuesta una vista sintética. Se pide **al abrir** el diálogo y
+ * no al cargar la ficha: así ver un personaje no provoca una consulta de saldo al proveedor.
+ */
+export const consultarEstimacionDeVista = () => pedir<Estimacion>("/api/generacion/estimacion?tipo=fotograma");
+
+/** Encola la generación de una vista que falta. La indicación al proveedor la escribe el servidor. */
+export const pedirVistaSintetica = (id: string, confirmacion: ConfirmacionVistaSintetica) =>
+  pedir<{ trabajo: TrabajoVista; vista: Vista }>(`/api/personajes/${id}/vista-sintetica`, json("POST", confirmacion));
 
 export const quitarReferencias = (id: string, ids: string[]) =>
   pedir<PersonajeVista>(`/api/personajes/${id}/referencias`, json("DELETE", { ids }));

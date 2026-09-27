@@ -348,10 +348,13 @@ async function mediosDeReferencia(fila: FilaTrabajo, maximo = Number.POSITIVE_IN
   let ids = Array.isArray(guardadas) ? guardadas.filter((id): id is string => typeof id === "string") : [];
   if (fila.characterId) {
     // Solo lo que sigue siendo referencia del personaje y fuera de la papelera, respetando el orden guardado.
-    const vigentes = new Set(await mediosDeReferenciaVigentes(fila.characterId));
+    const referencias = await mediosDeReferenciaVigentes(fila.characterId);
+    const vigentes = new Map(referencias.map((r) => [r.mediaId, r.origen]));
     ids = ids.filter((id) => vigentes.has(id));
     const { minimoReferenciasPersonaje: minimo } = await leerAjustes();
-    if (ids.length < minimo) {
+    // El mínimo lo sostienen solo las fotos originales: una vista generada se envía como guía, pero no
+    // sustituye a una foto de la persona (0.14.0).
+    if (ids.filter((id) => vigentes.get(id) === "foto_original").length < minimo) {
       throw new ErrorPersonajeNoUsable(
         `Las fotos de referencia del personaje han cambiado desde que pediste el trabajo y ya no llegan al mínimo de ${minimo}. No se ha enviado nada y no se te ha cobrado: añade más fotos y vuelve a pedirlo.`,
       );

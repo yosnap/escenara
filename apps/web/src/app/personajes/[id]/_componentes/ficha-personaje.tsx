@@ -17,8 +17,21 @@ import {
   revocarConsentimiento,
 } from "@/components/ui/personajes/api-personajes";
 import type { EstadoConsentimiento } from "@/components/ui/personajes/formulario-consentimiento";
-import { ETIQUETA_TIPO_PERSONAJE, exigeDocumento, type PersonajeVista } from "@/lib/personajes";
+import {
+  ACCION_MOTIVO,
+  ETIQUETA_MOTIVO,
+  ETIQUETA_VISTA,
+  type RechazoDeReferencia,
+  type UmbralesCalidad,
+} from "@/lib/captura-personaje";
+import {
+  ETIQUETA_TIPO_PERSONAJE,
+  exigeDocumento,
+  type PersonajeVista,
+  type ReferenciasAnadidas,
+} from "@/lib/personajes";
 import { DialogoBorrarPersonaje } from "./dialogo-borrar-personaje";
+import { type EstadoDeClave, PanelCobertura } from "./panel-cobertura";
 import { PanelConsentimiento } from "./panel-consentimiento";
 import { PanelReferencias } from "./panel-referencias";
 
@@ -29,15 +42,27 @@ import { PanelReferencias } from "./panel-referencias";
  * Toda operación devuelve el personaje recalculado por el servidor, así que el estado que se ve después es el
  * de verdad y no una suposición del navegador.
  */
-export function FichaPersonaje({ inicial }: { inicial: PersonajeVista }) {
+export function FichaPersonaje({
+  inicial,
+  umbrales,
+  claveDeGeneracion,
+}: {
+  inicial: PersonajeVista;
+  umbrales: UmbralesCalidad;
+  /** Si se puede generar con la clave del usuario, y si no, por qué: lo decide el servidor en la página. */
+  claveDeGeneracion: EstadoDeClave;
+}) {
   const router = useRouter();
   const [personaje, setPersonaje] = useState(inicial);
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [borrando, setBorrando] = useState(false);
+  const [vistaEncolada, setVistaEncolada] = useState<string | null>(null);
+  /** Fotos que el control de calidad ha dejado fuera de una tanda en la que sí entraron otras. */
+  const [descartadas, setDescartadas] = useState<RechazoDeReferencia[]>([]);
 
   /** Aplica una operación y deja el personaje que devuelve el servidor. Devuelve el error, o `null`. */
-  const aplicar = async (accion: Promise<Resultado<PersonajeVista>>): Promise<string | null> => {
+  const aplicar = async (accion: Promise<Resultado<ReferenciasAnadidas>>): Promise<string | null> => {
     setOcupado(true);
     setError(null);
     const respuesta = await accion;
@@ -47,6 +72,8 @@ export function FichaPersonaje({ inicial }: { inicial: PersonajeVista }) {
       return respuesta.error;
     }
     setPersonaje(respuesta.datos);
+    // Si se han guardado unas fotos y otras no, se dice cuáles y por qué: contar miniaturas no es una respuesta.
+    setDescartadas(respuesta.datos.rechazos ?? []);
     router.refresh();
     return null;
   };
@@ -128,6 +155,50 @@ export function FichaPersonaje({ inicial }: { inicial: PersonajeVista }) {
       )}
 
       {error && <Aviso tono="error">{error}</Aviso>}
+
+      {descartadas.length > 0 && (
+        <Aviso tono="info">
+          <span className="flex flex-col gap-1">
+            <span>
+              {descartadas.length === 1
+                ? "Una de las fotos no se ha añadido:"
+                : `${descartadas.length} fotos no se han añadido:`}
+            </span>
+            {descartadas.flatMap((rechazo) =>
+              rechazo.motivos.map((motivo) => (
+                <span key={`${rechazo.medioId}-${motivo}`}>
+                  <strong className="font-semibold">{ETIQUETA_MOTIVO[motivo]}:</strong> {ACCION_MOTIVO[motivo]}
+                </span>
+              )),
+            )}
+          </span>
+        </Aviso>
+      )}
+
+      {vistaEncolada && (
+        <Aviso tono="info">
+          La vista «{vistaEncolada}» se está generando. Cuando termine aparecerá aquí como{" "}
+          <strong className="font-semibold">vista generada</strong>, etiquetada y sin contar como foto original. Puedes
+          seguir el trabajo en{" "}
+          <Link href="/crear/historial" className="font-semibold underline">
+            el historial
+          </Link>
+          , y recargar esta ficha cuando esté listo.
+        </Aviso>
+      )}
+
+      {personaje.puedeEditar && (
+        <PanelCobertura
+          personaje={personaje}
+          umbrales={umbrales}
+          claveDeGeneracion={claveDeGeneracion}
+          onPersonaje={(actualizado) => {
+            setPersonaje(actualizado);
+            router.refresh();
+          }}
+          onVistaEncolada={(vista) => setVistaEncolada(ETIQUETA_VISTA[vista])}
+        />
+      )}
 
       {personaje.puedeEditar && (
         <PanelReferencias personaje={personaje} onCambio={cambiarReferencias} ocupado={ocupado} />

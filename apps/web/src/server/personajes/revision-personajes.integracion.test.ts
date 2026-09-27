@@ -116,6 +116,27 @@ async function png(color = "#3d6bff", lado = 64): Promise<Uint8Array<ArrayBuffer
   );
 }
 
+/**
+ * Foto que sirve de referencia de verdad: 640 × 640 con ruido gaussiano, así que pasa el control de calidad de
+ * 0.14.0 (tamaño mínimo, enfoque y luz) y cada una tiene su propia huella perceptual. Las imágenes planas de
+ * 64 × 64 que servían antes las rechaza ahora el servidor, con razón: no guiarían ninguna identidad.
+ */
+async function fotoDeReferencia(lado = 640): Promise<Uint8Array<ArrayBuffer>> {
+  return bytes(
+    await sharp({
+      create: {
+        width: lado,
+        height: lado,
+        channels: 3,
+        background: "#808080",
+        noise: { type: "gaussian", mean: 128, sigma: 40 },
+      },
+    })
+      .png()
+      .toBuffer(),
+  );
+}
+
 const descargar: Herramientas["descargar"] = async (url) => ({
   archivo: new File([await png("#ff5a5f")], "fotograma.png", { type: "image/png" }),
   origen: url,
@@ -152,9 +173,7 @@ describe.skipIf(!hayBaseDeDatos)("arreglos de la revisión de personajes", () =>
       Array.from({ length: cuantas }, async (_, i) => {
         const medio = await crearMedio(
           actorAna,
-          new File([await png(`#${((i + 2) * 17).toString(16).padStart(2, "0").repeat(3)}`)], `${nombre}-${i}.png`, {
-            type: "image/png",
-          }),
+          new File([await fotoDeReferencia()], `${nombre}-${i}.png`, { type: "image/png" }),
         );
         return medio.id;
       }),

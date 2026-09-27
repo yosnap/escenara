@@ -1,4 +1,5 @@
 import { and, asc, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { type Cobertura, calcularCobertura, esVista, type ReferenciaParaCobertura } from "@/lib/captura-personaje";
 import type { Medio } from "@/lib/media/tipos";
 import type {
   ConsentimientoVista,
@@ -6,6 +7,7 @@ import type {
   PersonajeElegible,
   PersonajeVista,
   ReferenciaVista,
+  TipoPersonaje,
 } from "@/lib/personajes";
 import { leerAjustes } from "../ajustes";
 import { db, type Ejecutor } from "../db/cliente";
@@ -21,6 +23,7 @@ import {
   users,
 } from "../db/esquema";
 import { type Actor, aDto } from "../media/servicio";
+import { motivosGuardados } from "./analisis-referencia";
 import { ErrorPersonaje } from "./errores";
 import {
   type ConsentimientoEfectivo,
@@ -64,16 +67,25 @@ export const efectivo = (fila: FilaConsentimiento | null): ConsentimientoEfectiv
   fila ? { titular: fila.holderType, aceptado: fila.reviewApproved, revocado: fila.revokedAt !== null } : null;
 
 /**
- * Referencias **utilizables** del personaje: las que apuntan a una foto que sigue en la biblioteca y fuera de la
- * papelera. Una foto en la papelera no se puede enviar a ningún proveedor, así que no cuenta para el mínimo: si
- * contara, un personaje con tres fotos en la papelera diría «listo» y fallaría al generar.
+ * **Fotos originales** utilizables del personaje: las que apuntan a una foto que sigue en la biblioteca y
+ * fuera de la papelera. Una foto en la papelera no se puede enviar a ningún proveedor, así que no cuenta para
+ * el mínimo: si contara, un personaje con tres fotos en la papelera diría «listo» y fallaría al generar.
+ *
+ * Las **vistas generadas** tampoco cuentan (0.14.0): son una ayuda de encuadre, no una foto de la persona, y
+ * un personaje sostenido solo por imágenes generadas no tiene identidad que guiar.
  */
 export async function contarReferencias(personajeId: string, ejecutor: Ejecutor = db()): Promise<number> {
   const [fila] = await ejecutor
     .select({ total: count() })
     .from(characterReferences)
     .innerJoin(media, eq(media.id, characterReferences.mediaId))
-    .where(and(eq(characterReferences.characterId, personajeId), isNull(media.deletedAt)));
+    .where(
+      and(
+        eq(characterReferences.characterId, personajeId),
+        isNull(media.deletedAt),
+        eq(characterReferences.origin, "foto_original"),
+      ),
+    );
   return fila?.total ?? 0;
 }
 
@@ -81,15 +93,19 @@ export async function contarReferencias(personajeId: string, ejecutor: Ejecutor 
  * Identificadores de los medios que son referencia utilizable del personaje, en el orden que fijó el usuario.
  * Es la lista que la cola cruza con lo que guardó el trabajo: entre encolar y enviar, una referencia puede
  * haberse quitado o haber ido a la papelera.
+ *
+ * Lleva el **origen** de cada una porque la cola necesita distinguirlas: las vistas generadas sí se envían
+ * como guía de encuadre, pero no cuentan para el mínimo de fotos originales.
  */
-export async function mediosDeReferenciaVigentes(personajeId: string): Promise<string[]> {
-  const filas = await db()
-    .select({ mediaId: characterReferences.mediaId })
+export async function mediosDeReferenciaVigentes(
+  personajeId: string,
+): Promise<{ mediaId: string; origen: FilaReferencia["origin"] }[]> {
+  return db()
+    .select({ mediaId: characterReferences.mediaId, origen: characterReferences.origin })
     .from(characterReferences)
     .innerJoin(media, eq(media.id, characterReferences.mediaId))
     .where(and(eq(characterReferences.characterId, personajeId), isNull(media.deletedAt)))
     .orderBy(asc(characterReferences.sortOrder), asc(characterReferences.createdAt));
-  return filas.map((f) => f.mediaId);
 }
 
 /**
@@ -137,7 +153,44 @@ export function vistaConsentimiento(fila: FilaConsentimiento, documento: Medio |
 }
 
 function vistaReferencia(fila: FilaReferencia, medio: Medio): ReferenciaVista {
-  return { id: fila.id, medio, origen: fila.origin, vista: fila.declaredView, orden: fila.sortOrder };
+  return {
+    id: fila.id,
+    medio,
+    origen: fila.origin,
+    vista: fila.declaredView,
+    vistaClave: esVista(fila.viewKey) ? fila.viewKey : null,
+    calidad:
+      fila.width !== null && fila.height !== null
+        ? { ancho: fila.width, alto: fila.height, nitidez: fila.sharpness, luminosidad: fila.brightness }
+        : null,
+    motivosMarcada: motivosGuardados(fila.rejectionReason),
+    orden: fila.sortOrder,
+  };
+}
+
+/** Referencias reducidas a lo que necesita la cobertura de vistas. */
+const paraCobertura = (filas: FilaReferencia[]): ReferenciaParaCobertura[] =>
+  filas.map((f) => ({ vistaClave: esVista(f.viewKey) ? f.viewKey : null, origen: f.origin }));
+
+/**
+ * Cobertura de vistas de un personaje leída de la base de datos. Es el **único** sitio que la calcula, así que
+ * la que ve el usuario en su ficha y la que decide si se puede pedir una vista sintética son la misma cosa.
+ *
+ * Solo cuentan las referencias **utilizables**: una foto en la papelera no cubre nada (no se puede enviar a
+ * ningún proveedor), igual que no cuenta para el mínimo.
+ */
+export async function coberturaDe(
+  personajeId: string,
+  tipo: TipoPersonaje,
+  ejecutor: Ejecutor = db(),
+): Promise<Cobertura> {
+  const filas = await ejecutor
+    .select({ referencia: characterReferences })
+    .from(characterReferences)
+    .innerJoin(media, eq(media.id, characterReferences.mediaId))
+    .where(and(eq(characterReferences.characterId, personajeId), isNull(media.deletedAt)))
+    .orderBy(asc(characterReferences.sortOrder), asc(characterReferences.createdAt));
+  return calcularCobertura(tipo, paraCobertura(filas.map((f) => f.referencia)));
 }
 
 /** Referencias de un personaje, en el orden que fijó el usuario. */
@@ -183,10 +236,15 @@ export async function vistaDePersonaje(
   ];
   const medios = await mediosPorId(idsMedios, actor);
   // Las que están en la papelera se siguen mostrando (para que se vea qué ha pasado), pero no cuentan.
-  const utilizables = referencias.filter((r) => medios.get(r.mediaId)?.enPapelera === false).length;
+  const vigentes = referencias.filter((r) => medios.get(r.mediaId)?.enPapelera === false);
+  // El mínimo lo sostienen solo las fotos originales: una vista generada no cuenta como foto del personaje.
+  const utilizables = vigentes.filter((r) => r.origin === "foto_original").length;
+  const generadas = vigentes.length - utilizables;
   const datos = { consentimiento: efectivo(consentimiento), referencias: utilizables, minimoReferencias: minimo };
   const esDueno = fila.ownerId === actor.id;
-  const portada = esDueno && referencias[0] ? (medios.get(referencias[0].mediaId) ?? null) : null;
+  // La portada es siempre una foto original, por lo mismo que en los listados.
+  const primeraOriginal = referencias.find((r) => r.origin === "foto_original");
+  const portada = esDueno && primeraOriginal ? (medios.get(primeraOriginal.mediaId) ?? null) : null;
   const propietario = opciones.conPropietario
     ? { id: fila.ownerId, nombre: opciones.nombreDelDueno ?? (await nombreDeDueno(fila.ownerId)).nombre }
     : undefined;
@@ -199,6 +257,7 @@ export async function vistaDePersonaje(
     descripcion: fila.description,
     estado: estadoDePersonaje(datos),
     totalReferencias: utilizables,
+    totalGeneradas: generadas,
     minimoReferencias: minimo,
     puedeGenerar: personajePuedeGenerar(datos),
     impedimentos: impedimentosDePersonaje(datos),
@@ -212,6 +271,8 @@ export async function vistaDePersonaje(
             const medio = medios.get(r.mediaId);
             return medio ? [vistaReferencia(r, medio)] : [];
           }),
+          // Mismo cálculo que usa la vista sintética (`coberturaDe`), sobre las mismas referencias utilizables.
+          cobertura: calcularCobertura(fila.kind, paraCobertura(vigentes)),
         }
       : {}),
     ...(opciones.completa
@@ -240,7 +301,10 @@ async function nombreDeDueno(ownerId: string): Promise<{ id: string; nombre: str
  */
 interface ResumenDeLista {
   consentimientos: Map<string, ConsentimientoEfectivo>;
+  /** Fotos originales utilizables por personaje: es lo que cuenta para el mínimo. */
   referencias: Map<string, number>;
+  /** Vistas generadas utilizables por personaje, contadas aparte. */
+  generadas: Map<string, number>;
   portadas: Map<string, Medio>;
   duenos: Map<string, string>;
 }
@@ -248,7 +312,13 @@ interface ResumenDeLista {
 async function resumenDeLista(filas: FilaPersonaje[], actor: Actor): Promise<ResumenDeLista> {
   const ids = filas.map((f) => f.id);
   if (ids.length === 0) {
-    return { consentimientos: new Map(), referencias: new Map(), portadas: new Map(), duenos: new Map() };
+    return {
+      consentimientos: new Map(),
+      referencias: new Map(),
+      generadas: new Map(),
+      portadas: new Map(),
+      duenos: new Map(),
+    };
   }
   const lista = sql.join(
     ids.map((id) => sql`${id}::uuid`),
@@ -266,16 +336,20 @@ async function resumenDeLista(filas: FilaPersonaje[], actor: Actor): Promise<Res
           from consent_records where character_id in (${lista})
           order by character_id, registered_at desc`,
     ),
+    // Agrupado también por origen: las fotos originales y las vistas generadas se cuentan aparte, porque solo
+    // las primeras sostienen el mínimo de la instalación.
     db()
-      .select({ id: characterReferences.characterId, total: count() })
+      .select({ id: characterReferences.characterId, origen: characterReferences.origin, total: count() })
       .from(characterReferences)
       .innerJoin(media, eq(media.id, characterReferences.mediaId))
       .where(and(inArray(characterReferences.characterId, ids), isNull(media.deletedAt)))
-      .groupBy(characterReferences.characterId),
+      .groupBy(characterReferences.characterId, characterReferences.origin),
     db().execute<{ character_id: string; media_id: string }>(
+      // Solo fotos originales: la miniatura de un listado va sin etiqueta al lado, y una vista generada
+      // presentada así parecería una foto de la persona.
       sql`select distinct on (cr.character_id) cr.character_id, cr.media_id
           from character_references cr join media m on m.id = cr.media_id
-          where cr.character_id in (${lista}) and m.deleted_at is null
+          where cr.character_id in (${lista}) and m.deleted_at is null and cr.origin = 'foto_original'
           order by cr.character_id, cr.sort_order asc, cr.created_at asc`,
     ),
     db()
@@ -297,7 +371,8 @@ async function resumenDeLista(filas: FilaPersonaje[], actor: Actor): Promise<Res
         },
       ]),
     ),
-    referencias: new Map(conteos.map((c) => [c.id, c.total])),
+    referencias: new Map(conteos.filter((c) => c.origen === "foto_original").map((c) => [c.id, c.total])),
+    generadas: new Map(conteos.filter((c) => c.origen === "vista_generada").map((c) => [c.id, c.total])),
     portadas: new Map(
       [...primeras].flatMap((f) => {
         const medio = medios.get(f.media_id);
@@ -331,6 +406,7 @@ async function vistasDeLista(
       descripcion: fila.description,
       estado: estadoDePersonaje(datos),
       totalReferencias: datos.referencias,
+      totalGeneradas: resumen.generadas.get(fila.id) ?? 0,
       minimoReferencias: minimo,
       puedeGenerar: personajePuedeGenerar(datos),
       impedimentos: impedimentosDePersonaje(datos),
@@ -480,6 +556,7 @@ export async function pendientesDeRevision(actor: Actor, pagina = 1): Promise<Pa
       descripcion: personaje.description,
       estado: estadoDePersonaje(datos),
       totalReferencias: datos.referencias,
+      totalGeneradas: resumen.generadas.get(personaje.id) ?? 0,
       minimoReferencias: minimo,
       puedeGenerar: personajePuedeGenerar(datos),
       impedimentos: impedimentosDePersonaje(datos),

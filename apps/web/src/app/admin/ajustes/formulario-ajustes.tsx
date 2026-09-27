@@ -13,6 +13,7 @@ import { enviarCorreoPruebaAccion, guardarAjustesAccion } from "./acciones";
 import { guardarSecretoAccion, quitarSecretoAccion } from "./acciones-secretos";
 import { SeccionAccesoSocial } from "./seccion-acceso-social";
 import { Seccion } from "./seccion-ajustes";
+import { SeccionCalidad } from "./seccion-calidad";
 import { SeccionPresupuesto } from "./seccion-presupuesto";
 
 export interface DatosAjustes {
@@ -150,6 +151,8 @@ export function FormularioAjustes({
           )}
         </Campo>
       </Seccion>
+
+      <SeccionCalidad valores={valores} errorDe={errorDe} onCambio={cambiar} />
 
       <Seccion
         titulo="Generación"

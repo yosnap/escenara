@@ -3,7 +3,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { claseBoton } from "@/components/ui/button";
+import { AVISO_BOVEDA_USUARIO } from "@/lib/boveda";
+import { leerAjustes } from "@/server/ajustes";
 import { esAdmin, exigirSesion } from "@/server/auth/sesion";
+import { bovedaDisponible } from "@/server/boveda/cifrado";
+import { listarCredenciales } from "@/server/boveda/credenciales";
+import { umbralesDe } from "@/server/personajes/calidad";
 import { obtenerPersonaje } from "@/server/personajes/consulta";
 import { ErrorPersonaje } from "@/server/personajes/errores";
 import { CabeceraApp } from "../../_app/cabecera-app";
@@ -25,6 +30,11 @@ export default async function PaginaPersonaje({ params }: { params: Promise<{ id
     throw error;
   });
 
+  // Generar una vista sintética cuesta dinero de la cuenta del usuario en el proveedor, así que la ficha
+  // necesita saber si hay clave utilizable: sin ella se dice qué falta y no se ofrece generar, igual que en
+  // «Crear». Lo que decide sigue siendo el servidor al encolar.
+  const claveDeGeneracion = await estadoDeLaClave(sesion.user.id);
+
   return (
     <div className="min-h-dvh bg-fondo">
       <CabeceraApp sesion={sesion} />
@@ -32,8 +42,37 @@ export default async function PaginaPersonaje({ params }: { params: Promise<{ id
         <Link href="/personajes" className={claseBoton("fantasma", "sm", "self-start")}>
           <ArrowLeft className="size-4" aria-hidden /> Tus personajes
         </Link>
-        <FichaPersonaje inicial={personaje} />
+        {/* Los umbrales del control de calidad viajan al navegador para poder avisar antes de subir nada; lo
+            que decide sigue siendo el servidor, que los vuelve a aplicar. */}
+        <FichaPersonaje
+          inicial={personaje}
+          umbrales={umbralesDe(await leerAjustes())}
+          claveDeGeneracion={claveDeGeneracion}
+        />
       </main>
     </div>
   );
+}
+
+/**
+ * Si se puede generar con la clave del usuario, y si no, por qué. El mismo criterio que `/crear`: hace falta
+ * bóveda y una credencial de KIE marcada como válida.
+ */
+async function estadoDeLaClave(usuarioId: string): Promise<{ ok: true } | { ok: false; motivo: string }> {
+  if (!bovedaDisponible()) return { ok: false, motivo: AVISO_BOVEDA_USUARIO };
+  const kie = (await listarCredenciales(usuarioId)).find((c) => c.proveedor === "kie") ?? null;
+  if (!kie) {
+    return {
+      ok: false,
+      motivo:
+        "Para generar una vista hace falta tu propia clave de KIE.ai: tú pagas al proveedor y nadie más usa tu saldo. Añádela en «Tu cuenta».",
+    };
+  }
+  if (kie.estado !== "valida") {
+    return {
+      ok: false,
+      motivo: "Tu clave de KIE está marcada como no válida. Pruébala o sustitúyela en «Tu cuenta» y vuelve aquí.",
+    };
+  }
+  return { ok: true };
 }

@@ -2,13 +2,24 @@
 
 import { useState } from "react";
 import { InsigniaEstadoPersonaje, SelectorPersonaje } from "@/components/ui/personaje";
+import { DistintivoOrigen } from "@/components/ui/personajes/distintivo-origen";
 import {
   bloqueosDeConsentimiento,
   CONSENTIMIENTO_INICIAL,
   type EstadoConsentimiento,
   FormularioConsentimiento,
 } from "@/components/ui/personajes/formulario-consentimiento";
-import { ESTADOS_PERSONAJE, type PersonajeElegible } from "@/lib/personajes";
+import { MarcoEnfoque } from "@/components/ui/personajes/marco-enfoque";
+import {
+  ACCION_MOTIVO,
+  ETIQUETA_MOTIVO,
+  ETIQUETA_VISTA,
+  esMotivoTecnico,
+  INDICACION_VISTA,
+  MOTIVOS_RECHAZO,
+  VISTAS,
+} from "@/lib/captura-personaje";
+import { ESTADOS_PERSONAJE, ORIGENES_REFERENCIA, type PersonajeElegible } from "@/lib/personajes";
 import { Muestra, Seccion } from "../seccion";
 
 /** Personajes de ejemplo, uno por estado, para ver cómo se comporta el selector con lo que no se puede usar. */
@@ -26,7 +37,7 @@ export function SeccionPersonajes() {
     <Seccion
       id="personajes"
       titulo="Personajes y consentimiento"
-      descripcion="Estado del personaje (siempre con icono y texto, nunca solo con color), selector de «Crear» sin el desplegable nativo del navegador, y el consentimiento en zona de claridad: superficies neutras, sin degradados ni parallax."
+      descripcion="Estado del personaje (siempre con icono y texto, nunca solo con color), selector de «Crear» sin el desplegable nativo del navegador, la captura guiada con el marco «Enfoque» y el consentimiento en zona de claridad: superficies neutras, sin degradados ni parallax."
     >
       <div className="grid gap-4">
         <Muestra titulo="Insignias de estado">
@@ -38,6 +49,33 @@ export function SeccionPersonajes() {
           <div className="w-full">
             <SelectorPersonaje personajes={EJEMPLOS} valor={elegido} onCambio={setElegido} />
           </div>
+        </Muestra>
+        <Muestra titulo="Origen de una referencia (una vista generada nunca se presenta como foto)">
+          {ORIGENES_REFERENCIA.map((origen) => (
+            <DistintivoOrigen key={origen} origen={origen} />
+          ))}
+        </Muestra>
+        <Muestra titulo="Visor de la captura guiada: marco «Enfoque» con la silueta de cada vista">
+          <div className="grid w-full gap-3 sm:grid-cols-[repeat(auto-fill,minmax(9rem,1fr))]">
+            {VISTAS.map((vista) => (
+              <div key={vista} className="flex flex-col gap-1">
+                <MarcoEnfoque vista={vista} />
+                <p className="text-sm font-medium text-texto">{ETIQUETA_VISTA[vista]}</p>
+                <p className="text-xs text-texto-suave">{INDICACION_VISTA[vista]}</p>
+              </div>
+            ))}
+          </div>
+        </Muestra>
+        <Muestra titulo="Motivos de rechazo de una foto: cada uno con su acción concreta">
+          <ul className="flex w-full flex-col gap-2">
+            {MOTIVOS_RECHAZO.map((motivo) => (
+              <li key={motivo} className="text-sm text-texto">
+                <strong className="font-semibold">{ETIQUETA_MOTIVO[motivo]}</strong>
+                {esMotivoTecnico(motivo) ? " (mínimo técnico, no se puede saltar): " : ": "}
+                {ACCION_MOTIVO[motivo]}
+              </li>
+            ))}
+          </ul>
         </Muestra>
         <Muestra titulo="Consentimiento (zona de claridad)">
           <div className="flex w-full flex-col gap-3">
