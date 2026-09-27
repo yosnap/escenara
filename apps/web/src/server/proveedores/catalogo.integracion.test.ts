@@ -32,6 +32,8 @@ const { guardarCredencial } = await import("../boveda/credenciales");
 const { crearMedio } = await import("../media/servicio");
 const { estimar, olvidarSaldos } = await import("../generacion/estimacion");
 const { crearAnimacion, crearFotograma } = await import("../generacion/servicio");
+const { obtenerTrabajo } = await import("../generacion/trabajos");
+const { enviarEncolados } = await import("../cola/pasada");
 const { historialCatalogo, listarModelos, modelosElegibles } = await import("./catalogo");
 const { cambiarEstadoDeModelo, cambiarPrecioDeModelo, marcarPredeterminado } = await import("./catalogo-admin");
 const { adaptadorKie } = await import("./kie/adaptador");
@@ -148,7 +150,10 @@ describe.skipIf(!hayBaseDeDatos)("catálogo de modelos", () => {
       .update(generationJobs)
       .set({ state: "fallido", finishedAt: new Date(), errorMessage: "cerrado por el test" })
       .where(
-        and(eq(generationJobs.userId, ana.id), inArray(generationJobs.state, ["preparando", "enviado", "en_curso"])),
+        and(
+          eq(generationJobs.userId, ana.id),
+          inArray(generationJobs.state, ["en_cola", "preparando", "enviado", "en_curso"]),
+        ),
       );
 
   /** Petición desde la propia aplicación: las rutas que gastan exigen `Origin` del mismo sitio. */
@@ -290,7 +295,9 @@ describe.skipIf(!hayBaseDeDatos)("catálogo de modelos", () => {
         await crearFotograma(actor, peticion(7, { modelo: SEEDREAM, selloEstimacion: estimacion.sello }), h)
       ).trabajo;
       expect(trabajo.modelo).toBe(SEEDREAM);
-      expect(trabajo.estado).toBe("enviado");
+      // Desde 0.12.0 la petición encola y el envío lo hace la cola (ADR-0003).
+      await enviarEncolados(h);
+      expect((await obtenerTrabajo(ana.id, trabajo.id)).estado).toBe("enviado");
       expect(llamadas.crearTarea).toBe(1);
     });
   });
@@ -373,7 +380,8 @@ describe.skipIf(!hayBaseDeDatos)("catálogo de modelos", () => {
       const estimacion = await estimar(ana.id, "fotograma", buscar);
       const trabajo = (await crearFotograma(actor, peticion(estimacion.creditos), h)).trabajo;
       expect(trabajo.modelo).toBe(NANO);
-      expect(trabajo.estado).toBe("enviado");
+      await enviarEncolados(h);
+      expect((await obtenerTrabajo(ana.id, trabajo.id)).estado).toBe("enviado");
       await cerrarEnCurso();
     });
   });
@@ -513,7 +521,8 @@ describe.skipIf(!hayBaseDeDatos)("catálogo de modelos", () => {
           h,
         )
       ).trabajo;
-      expect(trabajo.estado).toBe("enviado");
+      await enviarEncolados(h);
+      expect((await obtenerTrabajo(ana.id, trabajo.id)).estado).toBe("enviado");
 
       const { estimacionesAfectadas } = await cambiarPrecioDeModelo(
         {

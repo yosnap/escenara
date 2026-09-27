@@ -16,22 +16,83 @@ export const esTipoTrabajo = (v: unknown): v is TipoTrabajo => TIPOS_TRABAJO.inc
  * Estado propio del trabajo. `desconocido` es el estado honesto cuando el proveedor no ha contestado:
  * nunca se da por «listo» ni se vuelve a enviar (podría cobrarse dos veces).
  */
-export const ESTADOS_TRABAJO = ["preparando", "enviado", "en_curso", "listo", "fallido", "desconocido"] as const;
+export const ESTADOS_TRABAJO = [
+  "en_cola",
+  "preparando",
+  "enviando",
+  "enviado",
+  "en_curso",
+  "listo",
+  "fallido",
+  "desconocido",
+  "esperando_limite",
+  "cancelado",
+] as const;
 export type EstadoTrabajo = (typeof ESTADOS_TRABAJO)[number];
 
-/** Estados en los que el trabajo todavía puede cambiar solo: se sigue consultando al proveedor. */
-export const ESTADOS_ACTIVOS: readonly EstadoTrabajo[] = ["preparando", "enviado", "en_curso"];
+/**
+ * Estados en los que el trabajo sigue vivo: cuentan para el tope de trabajos simultáneos del usuario.
+ * `esperando_limite` también cuenta, aunque lo que espere sea una decisión suya y no un worker.
+ */
+export const ESTADOS_ACTIVOS: readonly EstadoTrabajo[] = [
+  "en_cola",
+  "preparando",
+  "enviando",
+  "enviado",
+  "en_curso",
+  // Cuenta para el tope aunque espere una decisión del usuario: si no contara, se podrían acumular muchos
+  // trabajos «esperando límite» y autorizarlos todos de golpe, desbordando el tope de simultáneos.
+  "esperando_limite",
+];
 
 export const esEstadoActivo = (estado: EstadoTrabajo) => ESTADOS_ACTIVOS.includes(estado);
 
+/** Estados en los que el trabajo aún no ha salido hacia el proveedor: son los que se pueden cancelar. */
+export const ESTADOS_CANCELABLES: readonly EstadoTrabajo[] = ["en_cola", "esperando_limite"];
+
+export const esCancelable = (estado: EstadoTrabajo) => ESTADOS_CANCELABLES.includes(estado);
+
 /** Texto del estado tal como se muestra: traduce el estado real, sin inventar porcentajes ni fases. */
 export const ETIQUETA_ESTADO: Record<EstadoTrabajo, string> = {
+  en_cola: "En cola",
   preparando: "Preparando el envío",
+  enviando: "Enviando al proveedor",
   enviado: "En cola en el proveedor",
   en_curso: "Generando",
   listo: "Listo",
   fallido: "Ha fallado",
   desconocido: "Sin respuesta del proveedor",
+  esperando_limite: "Esperando tu límite de gasto",
+  cancelado: "Cancelado",
+};
+
+/**
+ * Motivo normalizado por el que un trabajo no ha salido adelante, tal como se muestra. Solo `interno` y
+ * `limite` son fallos sin coste: son los únicos que la cola reintenta sola.
+ */
+export const MOTIVOS_FALLO = [
+  "temporal",
+  "credencial",
+  "saldo",
+  "contenido",
+  "limite",
+  "respuesta",
+  "interno",
+  "sin_acotar",
+  "cancelado",
+] as const;
+export type MotivoFallo = (typeof MOTIVOS_FALLO)[number];
+
+export const ETIQUETA_MOTIVO_FALLO: Record<MotivoFallo, string> = {
+  temporal: "El proveedor no contestó y no sabemos si aceptó el trabajo",
+  credencial: "Tu clave del proveedor no sirve",
+  saldo: "Tu cuenta del proveedor no tiene créditos",
+  contenido: "El proveedor ha rechazado lo que se le pedía",
+  limite: "El proveedor ha pedido esperar antes de aceptar más trabajos",
+  respuesta: "El proveedor ha contestado algo que no entendemos",
+  interno: "Escenara no ha podido preparar el envío",
+  sin_acotar: "El coste de este trabajo no se puede acotar sin un límite tuyo",
+  cancelado: "Lo has cancelado antes de enviarlo",
 };
 
 /**
@@ -80,6 +141,25 @@ export interface TrabajoVista {
   medio: Medio | null;
   trabajoPadreId: string | null;
   derechosConfirmados: boolean;
+  /** Motivo normalizado del fallo, si lo hay. */
+  motivoFallo: MotivoFallo | null;
+  /** Veces que la cola ha intentado enviarlo y tope de intentos. */
+  intentos: number;
+  intentosMaximos: number;
+  /**
+   * Puesto en la cola de esta instalación (1 = el siguiente), o `null` si el trabajo ya no está en cola.
+   * Es una posición real contada en la base de datos, no una barra de progreso inventada.
+   */
+  posicionEnCola: number | null;
+  /** Límite de créditos que el usuario ha autorizado para este trabajo, si lo ha tenido que fijar. */
+  limiteCreditos: number | null;
+  /**
+   * Créditos que el proveedor ha cobrado por encima del límite autorizado, si ha pasado. No se puede
+   * impedir: el precio final lo decide el proveedor, así que se registra el gasto real y se avisa.
+   */
+  excesoCreditos: number | null;
+  /** El trabajo necesita que alguien lo revise a mano (sin respuesta del proveedor, reserva retenida). */
+  enRevision: boolean;
   creadoEn: string;
   enviadoEn: string | null;
   ultimaConsulta: string | null;
@@ -117,6 +197,48 @@ export interface Estimacion {
    * entre la pantalla y el botón, el servidor la rechaza y hay que volver a revisarla.
    */
   sello: string;
+}
+
+/**
+ * Depósito de presupuesto de un usuario: lo que la instalación le autoriza a comprometer, lo que tiene
+ * apartado en trabajos en marcha y lo que ya ha gastado. Todo en créditos del proveedor, y todo
+ * estimación salvo lo que el proveedor ya ha informado.
+ */
+export interface Deposito {
+  /** Créditos autorizados por Admin › Ajustes; `null` = sin presupuesto propio en Escenara. */
+  autorizado: number | null;
+  /** Créditos apartados por trabajos que aún no han terminado (estimación del coste máximo). */
+  reservado: number;
+  /**
+   * Parte de `reservado` que está **retenida** en trabajos pendientes de revisión: el proveedor no contestó y
+   * no se sabe si cobró, así que no se puede soltar. Solo quien administra la instalación puede resolverlos.
+   */
+  retenido: number;
+  /** Cuántos trabajos están en esa situación. */
+  trabajosEnRevision: number;
+  /** Créditos ya gastados, informados por el proveedor cuando los informa. */
+  consumido: number;
+  /** Lo que queda por comprometer; `null` cuando no hay presupuesto propio. */
+  disponible: number | null;
+  /** Tope de créditos por trabajo; `null` = sin tope por trabajo. */
+  topeTrabajo: number | null;
+  /** Equivalente aproximado en euros de lo consumido, con el cambio configurado. */
+  consumidoEuros: number;
+}
+
+/** Un worker sin latido más reciente que esto se considera caído y la cola, desatendida. */
+export const MS_LATIDO_WORKER = 60_000;
+
+/** Estado de la cola tal como se le muestra al usuario. */
+export interface EstadoCola {
+  /** Trabajos del usuario esperando su turno. */
+  enCola: number;
+  /** Trabajos del usuario ya enviados al proveedor. */
+  enMarcha: number;
+  /** Hay al menos un worker con latido reciente: la cola se está atendiendo. */
+  workerActivo: boolean;
+  /** Fecha ISO del último latido de cualquier worker, o `null` si nunca ha habido ninguno. */
+  ultimoLatido: string | null;
 }
 
 /** Créditos y euros con el formato de España; el redondeo de euros deja claro que es aproximado. */

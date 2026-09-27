@@ -1,4 +1,4 @@
-import type { Estimacion, TipoTrabajo, TrabajoVista } from "@/lib/generacion";
+import type { Deposito, EstadoCola, Estimacion, TipoTrabajo, TrabajoVista } from "@/lib/generacion";
 
 /** Cliente de la API de generación para el navegador. */
 
@@ -61,6 +61,17 @@ export const consultarTrabajo = (id: string) => pedir<TrabajoVista>(`/api/genera
 /** «Volver a consultar»: reconcilia con el identificador de tarea guardado, sin reenviar nada. */
 export const reconsultarTrabajo = (id: string) =>
   pedir<TrabajoVista>(`/api/generacion/trabajos/${id}/consultar`, { method: "POST" });
+
+/** Cancela un trabajo que aún no ha salido hacia el proveedor. Uno ya enviado responde 409. */
+export const cancelarTrabajo = (id: string) =>
+  pedir<TrabajoVista>(`/api/generacion/trabajos/${id}/cancelar`, { method: "POST" });
+
+/** Autoriza un tope de créditos para un trabajo cuyo coste no se podía acotar, y lo encola. */
+export const autorizarLimite = (id: string, creditos: number) =>
+  pedir<TrabajoVista>(`/api/generacion/trabajos/${id}/limite`, json({ creditos }));
+
+/** Estado de la cola y depósito de presupuesto de quien pregunta. */
+export const consultarCola = () => pedir<{ cola: EstadoCola; deposito: Deposito }>("/api/generacion/cola");
 
 /** Estimación del modelo indicado (sin modelo, el predeterminado de la capacidad). */
 export const consultarEstimacion = (tipo: TipoTrabajo, modelo?: string) =>

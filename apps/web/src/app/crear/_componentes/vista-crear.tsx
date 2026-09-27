@@ -1,12 +1,21 @@
 "use client";
 
 import { useState } from "react";
+import { DepositoPresupuesto } from "@/components/ui/deposito";
 import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo } from "@/components/ui/field";
 import { SelectorMedios } from "@/components/ui/media/selector-medios";
 import { AvisoSinVoz, SelectorModelo } from "@/components/ui/modelo";
 import type { ModeloElegible } from "@/lib/catalogo";
-import { CLIP, DIALOGO_MAXIMO, type Estimacion, PROMPT_MINIMO, type TrabajoVista } from "@/lib/generacion";
+import {
+  CLIP,
+  type Deposito,
+  DIALOGO_MAXIMO,
+  type EstadoCola,
+  type Estimacion,
+  PROMPT_MINIMO,
+  type TrabajoVista,
+} from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
 import { consultarEstimacion, crearTrabajo, type Resultado } from "./api-generacion";
 import { type ConfirmacionCoste, PanelGenerar } from "./panel-generar";
@@ -30,11 +39,15 @@ export function VistaCrear({
   estimacionAnimacion,
   modelosFotograma,
   modelosClip,
+  deposito,
+  cola,
 }: {
   estimacionFotograma: Estimacion;
   estimacionAnimacion: Estimacion;
   modelosFotograma: ModeloElegible[];
   modelosClip: ModeloElegible[];
+  deposito: Deposito;
+  cola: EstadoCola;
 }) {
   const [imagen, setImagen] = useState<Medio[]>([]);
   const [prompt, setPrompt] = useState("");
@@ -133,6 +146,8 @@ export function VistaCrear({
 
   return (
     <div className="flex flex-col gap-6">
+      <DepositoPresupuesto deposito={deposito} cola={cola} />
+
       <Paso numero={1} titulo="Elige la imagen de referencia">
         <SelectorMedios
           etiqueta="Imagen de la persona o el personaje"

@@ -1,0 +1,306 @@
+import { and, eq, isNull } from "drizzle-orm";
+import { PROVEEDORES_PUBLICOS } from "@/lib/boveda";
+import { CAPACIDAD_DE_TIPO, type ModeloVista } from "@/lib/catalogo";
+import { usarCredencialValida } from "../boveda/credenciales";
+import { db } from "../db/cliente";
+import { type FilaMedio, type FilaTrabajo, generationJobs, media } from "../db/esquema";
+import { archivoDe } from "../generacion/comprobaciones";
+import { olvidarSaldo } from "../generacion/estimacion";
+import type { Herramientas } from "../generacion/herramientas";
+import { referenciaCompatible } from "../media/conversion-referencia";
+import { cerrarTrabajoYGasto } from "../presupuesto/reserva";
+import { type Adaptador, ErrorProveedor, type MotivoProveedor } from "../proveedores/contrato";
+import { resolver } from "../proveedores/registro";
+import { prepararCallback } from "./callback";
+import { marcarEnviando, reintentar } from "./toma";
+
+/**
+ * Envío al proveedor de un trabajo que el worker ya ha tomado. Es el único sitio desde el que se crea una
+ * tarea en el proveedor, y está partido en dos mitades que **no se mezclan**:
+ *
+ * 1. **Preparar** (estado `preparando`): resolver el modelo, la credencial y la referencia, y montar la
+ *    entrada. Nada de esto toca al proveedor con dinero, así que un fallo aquí se puede reintentar.
+ * 2. **Llamar y persistir** (estado `enviando`): se marca la fila **antes** de llamar, se llama una sola vez
+ *    y después solo se reintenta **la escritura** del identificador de la tarea, nunca la llamada.
+ *
+ * Las reglas duras, desde 0.10.0 y ahora también frente a fallos de la base de datos:
+ *
+ * - en cuanto se ha llamado al proveedor, el trabajo **no puede volver a la cola** bajo ninguna circunstancia:
+ *   los únicos destinos son `enviado` (se sabe la tarea), `desconocido` (no se sabe) o `fallido` con la
+ *   reserva suelta (el proveedor rechazó la petición y no creó nada);
+ * - si se obtiene el `taskId` pero no se puede guardar, se insiste en la escritura y, si aun así no se
+ *   consigue, se registra el `taskId` en el log (sin ninguna clave) y el trabajo queda `desconocido` con la
+ *   reserva retenida: se ha pagado y hay que resolverlo a mano, pero nunca se reenvía. Si ni eso se puede
+ *   escribir, la fila se queda en `enviando` **con su toma puesta** y la recoge `recuperarHuerfanos`, que la
+ *   deja en `desconocido`: por eso `soltarToma` no suelta nunca una fila `enviando`;
+ * - un fallo que sí cierra el trabajo suelta la reserva, porque no ha habido gasto.
+ */
+
+/** Intentos de escritura del `taskId` y espera entre ellos. Corto: es la propia base de datos, no una red. */
+const INTENTOS_ESCRITURA = 5;
+const MS_ENTRE_ESCRITURAS = 200;
+
+export interface Despachado {
+  fila: FilaTrabajo;
+  enviado: boolean;
+}
+
+const detalle = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
+const espera = (ms: number) => new Promise((listo) => setTimeout(listo, ms));
+
+export async function despachar(fila: FilaTrabajo, workerId: string, h: Herramientas): Promise<Despachado> {
+  // ── Mitad 1: preparar. Un fallo aquí no ha costado nada y se puede reintentar.
+  let preparado: Preparado;
+  try {
+    preparado = await preparar(fila, h);
+  } catch (error) {
+    if (error instanceof ErrorSinCredencial) {
+      return { fila: await cerrarSinCoste(fila, "credencial", error.message), enviado: false };
+    }
+    console.error(`[cola] no se ha podido preparar el trabajo ${fila.id}: ${detalle(error)}`);
+    await reintentar(fila, "No se ha podido preparar el envío. Se volverá a intentar.", "interno");
+    return { fila: (await filaDe(fila.id)) ?? fila, enviado: false };
+  }
+
+  // ── Frontera: se marca la fila como «llamada en curso» y se renueva la toma antes de llamar. Si la fila ya
+  // no es de este worker, otro la tiene: no se llama al proveedor.
+  if (!(await marcarEnviando(fila.id, workerId))) {
+    console.warn(`[cola] el trabajo ${fila.id} ya no es de este worker: no se envía`);
+    return { fila: (await filaDe(fila.id)) ?? fila, enviado: false };
+  }
+
+  // ── Mitad 2: llamar al proveedor. A partir de aquí no hay vuelta a la cola.
+  let taskId: string;
+  try {
+    taskId = await llamarAlProveedor(fila, preparado, h);
+  } catch (error) {
+    return { fila: await tratarFalloDeLlamada(fila, error), enviado: false };
+  }
+  // El saldo del proveedor acaba de cambiar: la próxima estimación lo vuelve a preguntar.
+  olvidarSaldo(fila.userId);
+
+  // ── Persistencia del identificador, con reintentos **solo de la escritura**.
+  const guardada = await guardarTarea(fila, taskId, preparado.callbackTokenHash);
+  if (guardada) return { fila: guardada, enviado: true };
+  return { fila: await marcarTareaPerdida(fila, taskId), enviado: false };
+}
+
+/** Lo que hace falta para llamar al proveedor, ya resuelto y sin tocar la base de datos. */
+interface Preparado {
+  adaptador: Adaptador;
+  clave: string;
+  entrada: Record<string, unknown>;
+  /** URL de callback que se le da al proveedor, o `undefined` si esta instalación no los usa. */
+  callbackUrl?: string;
+  /** Huella del token de esa URL, que se guarda con el trabajo. */
+  callbackTokenHash?: string;
+}
+
+/** La credencial del usuario no sirve: no es un fallo reintentable, es algo que tiene que arreglar él. */
+class ErrorSinCredencial extends Error {}
+
+async function preparar(fila: FilaTrabajo, h: Herramientas): Promise<Preparado> {
+  const { modelo, adaptador } = await resolver(CAPACIDAD_DE_TIPO[fila.kind], fila.model);
+  const credencial = await usarCredencialValida(fila.userId, fila.provider);
+  if (!credencial.ok) {
+    const nombre = PROVEEDORES_PUBLICOS[fila.provider].nombre;
+    throw new ErrorSinCredencial(
+      `No hay una clave de ${nombre} utilizable en tu cuenta. Añádela en «Tu cuenta» y vuelve a pedir el trabajo.`,
+    );
+  }
+  const origen = await medioOrigen(fila);
+  const url = await subirReferencia(adaptador, credencial.clave, origen, modelo, h);
+  const entrada = adaptador.montarEntrada(modelo, {
+    escena: fila.prompt,
+    dialogo: dialogoDe(fila),
+    urls: [url],
+  });
+  const callback = await prepararCallback(fila);
+  return { adaptador, clave: credencial.clave, entrada, ...callback };
+}
+
+function llamarAlProveedor(fila: FilaTrabajo, preparado: Preparado, h: Herramientas): Promise<string> {
+  const peticion = {
+    clave: preparado.clave,
+    modelo: fila.model,
+    entrada: preparado.entrada,
+    buscar: h.buscar,
+    callbackUrl: preparado.callbackUrl,
+  };
+  return fila.kind === "animacion"
+    ? preparado.adaptador.generarVideo(peticion)
+    : preparado.adaptador.generarImagen(peticion);
+}
+
+/**
+ * Guarda el identificador de la tarea, insistiendo si la base de datos falla. Devuelve la fila guardada o
+ * `null` si no se ha conseguido. **No reintenta la llamada al proveedor**: eso ya ha pasado.
+ */
+async function guardarTarea(
+  fila: FilaTrabajo,
+  taskId: string,
+  callbackTokenHash: string | undefined,
+): Promise<FilaTrabajo | null> {
+  for (let intento = 1; intento <= INTENTOS_ESCRITURA; intento++) {
+    try {
+      const [enviada] = await db()
+        .update(generationJobs)
+        .set({
+          taskId,
+          state: "enviado",
+          sentAt: new Date(),
+          errorMessage: null,
+          failureReason: null,
+          lockedBy: null,
+          lockedUntil: null,
+          ...(callbackTokenHash ? { callbackTokenHash } : {}),
+        })
+        // Solo se marca si seguía sin tarea: dos despachos del mismo trabajo no se pisan.
+        .where(and(eq(generationJobs.id, fila.id), isNull(generationJobs.taskId)))
+        .returning();
+      if (enviada) return enviada;
+      // Ya tenía tarea (otro despacho la guardó): se devuelve lo que hay, sin tocar nada.
+      return await filaDe(fila.id);
+    } catch (error) {
+      console.error(`[cola] intento ${intento} de guardar la tarea del trabajo ${fila.id}: ${detalle(error)}`);
+      if (intento < INTENTOS_ESCRITURA) await espera(MS_ENTRE_ESCRITURAS * intento);
+    }
+  }
+  return null;
+}
+
+/**
+ * El proveedor ha aceptado el trabajo pero no se ha podido guardar su identificador. Se registra el `taskId`
+ * en el log (nunca la clave) para poder resolverlo a mano y se deja el trabajo en revisión con la reserva
+ * retenida. Si ni eso se puede escribir, al menos queda el registro.
+ */
+async function marcarTareaPerdida(fila: FilaTrabajo, taskId: string): Promise<FilaTrabajo> {
+  console.error(
+    `[cola] TAREA CREADA Y NO GUARDADA · trabajo=${fila.id} usuario=${fila.userId} proveedor=${fila.provider} tarea=${taskId} · el trabajo queda en revisión y NO se reenviará`,
+  );
+  const nombre = PROVEEDORES_PUBLICOS[fila.provider].nombre;
+  const mensaje = `El trabajo se ha encargado a ${nombre}, pero no se ha podido guardar su identificador. No se reenviará: quien administra esta instalación lo resolverá con el registro del servidor.`;
+  for (let intento = 1; intento <= INTENTOS_ESCRITURA; intento++) {
+    try {
+      const [fallida] = await db()
+        .update(generationJobs)
+        .set({
+          state: "desconocido",
+          failureReason: "temporal",
+          errorMessage: mensaje,
+          lockedBy: null,
+          lockedUntil: null,
+          finishedAt: new Date(),
+        })
+        // Solo si la fila sigue como la dejamos: en `enviando` y sin tarea guardada. Si otro camino ya la ha
+        // movido (la escritura del identificador que creíamos fallida acabó entrando, por ejemplo), no se pisa.
+        .where(and(eq(generationJobs.id, fila.id), eq(generationJobs.state, "enviando"), isNull(generationJobs.taskId)))
+        .returning();
+      if (fallida) return fallida;
+      // No ha afectado a ninguna fila: se relee y se devuelve la de verdad, no una inventada.
+      return (await filaDe(fila.id)) ?? fila;
+    } catch (error) {
+      console.error(`[cola] intento ${intento} de marcar en revisión el trabajo ${fila.id}: ${detalle(error)}`);
+      if (intento < INTENTOS_ESCRITURA) await espera(MS_ENTRE_ESCRITURAS * intento);
+    }
+  }
+  // La base de datos no responde ni para esto. La fila se queda en `enviando` **con su toma puesta**
+  // (`soltarToma` no toca ese estado), así que caducará y `recuperarHuerfanos` la dejará en `desconocido` con
+  // la reserva retenida, sin reenviarla. Lo que se devuelve aquí es solo para el registro de esta pasada.
+  return { ...fila, state: "desconocido", failureReason: "temporal", errorMessage: mensaje };
+}
+
+/**
+ * Qué hacer con un fallo de la llamada al proveedor. **Ninguna rama vuelve a la cola**: o no se sabe qué ha
+ * pasado (`desconocido`, reserva retenida) o el proveedor ha rechazado la petición con una respuesta, y
+ * entonces se sabe que no creó nada y el trabajo se cierra soltando la reserva.
+ */
+async function tratarFalloDeLlamada(fila: FilaTrabajo, error: unknown): Promise<FilaTrabajo> {
+  // Solo se da por «no cobrado» lo que el proveedor ha **rechazado con una respuesta que lo prueba**
+  // (`ErrorProveedor.rechazoProbado`: clave inválida, sin saldo, exceso de ritmo). Un 5xx, un 200 sin
+  // identificador de tarea, una red caída o un tiempo agotado no prueban nada: pueden venir de un trabajo ya
+  // aceptado, y decidir «no cobrado» por descarte es justo lo que provoca los dobles cobros.
+  if (error instanceof ErrorProveedor && error.rechazoProbado) {
+    return cerrarSinCoste(fila, error.motivo, `${error.message} No se ha enviado nada y no se te ha cobrado.`);
+  }
+  const nombre = PROVEEDORES_PUBLICOS[fila.provider].nombre;
+  const explicacion = error instanceof ErrorProveedor ? error.message : "El envío ha fallado de forma inesperada.";
+  if (!(error instanceof ErrorProveedor)) {
+    console.error(`[cola] fallo tras llamar al proveedor en el trabajo ${fila.id}: ${detalle(error)}`);
+  }
+  // Reserva retenida a propósito: quizá se ha pagado y todavía no lo sabemos.
+  return marcar(fila.id, {
+    state: "desconocido",
+    failureReason: error instanceof ErrorProveedor ? error.motivo : "respuesta",
+    errorMessage: `${explicacion} No sabemos si el proveedor ha aceptado el trabajo, así que no se reenviará: revisa el historial de tu cuenta en ${nombre} antes de pedirlo otra vez.`,
+    lockedBy: null,
+    lockedUntil: null,
+    finishedAt: new Date(),
+  });
+}
+
+/** Cierra el trabajo como fallido y suelta su reserva: el proveedor no ha llegado a crear la tarea. */
+async function cerrarSinCoste(
+  fila: FilaTrabajo,
+  motivo: MotivoProveedor | "interno",
+  mensaje: string,
+): Promise<FilaTrabajo> {
+  // El cambio de estado y la liberación de la reserva van juntos: si el apunte fallara después del `UPDATE`, el
+  // trabajo quedaría cerrado con su presupuesto apartado para siempre.
+  const cerrada = await cerrarTrabajoYGasto(
+    fila.id,
+    undefined,
+    {
+      state: "fallido",
+      failureReason: motivo,
+      errorMessage: mensaje,
+      finishedAt: new Date(),
+      lockedBy: null,
+      lockedUntil: null,
+    },
+    0,
+    "El trabajo no ha llegado a enviarse al proveedor: no ha costado nada.",
+  );
+  if (!cerrada) throw new Error(`El trabajo ${fila.id} ha desaparecido mientras se despachaba.`);
+  return cerrada;
+}
+
+async function marcar(id: string, cambios: Partial<typeof generationJobs.$inferInsert>): Promise<FilaTrabajo> {
+  const [fila] = await db().update(generationJobs).set(cambios).where(eq(generationJobs.id, id)).returning();
+  if (!fila) throw new Error(`El trabajo ${id} ha desaparecido mientras se despachaba.`);
+  return fila;
+}
+
+async function filaDe(id: string): Promise<FilaTrabajo | null> {
+  const [fila] = await db().select().from(generationJobs).where(eq(generationJobs.id, id)).limit(1);
+  return fila ?? null;
+}
+
+/** Lo que dice el personaje, tal como se guardó al encolar. Solo lo usa el clip. */
+function dialogoDe(fila: FilaTrabajo): string {
+  const dialogo = (fila.input as { dialogo?: unknown }).dialogo;
+  return typeof dialogo === "string" ? dialogo : "";
+}
+
+async function medioOrigen(fila: FilaTrabajo): Promise<FilaMedio> {
+  if (!fila.sourceMediaId) throw new Error("El trabajo no tiene imagen de referencia.");
+  const [origen] = await db().select().from(media).where(eq(media.id, fila.sourceMediaId)).limit(1);
+  if (!origen) throw new Error("La imagen de referencia ya no existe.");
+  return origen;
+}
+
+/**
+ * Sube la referencia al proveedor, convirtiéndola antes si ese modelo no acepta el formato en que la guarda
+ * la biblioteca (Kling v3 turbo solo admite JPEG o PNG y los fotogramas son WebP).
+ */
+async function subirReferencia(
+  adaptador: Adaptador,
+  clave: string,
+  origen: FilaMedio,
+  modelo: ModeloVista,
+  h: Herramientas,
+): Promise<string> {
+  const archivo = await referenciaCompatible(await archivoDe(origen), modelo.parametros.formatosReferencia);
+  return adaptador.subirReferencia({ clave, archivo, buscar: h.buscar });
+}

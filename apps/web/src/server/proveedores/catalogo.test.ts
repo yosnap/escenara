@@ -10,6 +10,7 @@ import {
   recortarModelo,
   resumenParametros,
 } from "@/lib/catalogo";
+import { AJUSTES_POR_DEFECTO } from "../ajustes";
 import { parametrosDeTexto, textoDeParametros } from "./catalogo";
 import semilla from "./catalogo.json";
 import { tieneEntrada } from "./kie/entradas";
@@ -184,6 +185,15 @@ describe("semilla versionada del catálogo", () => {
       expect(m.precio?.creditos).toBeGreaterThan(0);
       expect(m.precio?.fuente.length).toBeGreaterThan(10);
       expect(m.precio?.comprobado).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    }
+  });
+
+  test("ningún precio sembrado pasa del tope por trabajo que trae la instalación", () => {
+    // Si un modelo del catálogo costara más que `presupuestoTrabajo`, nadie podría generar con él nada más
+    // instalar Escenara: el trabajo se rechazaría con un 402 sin que haya hecho nada raro.
+    const tope = AJUSTES_POR_DEFECTO.presupuestoTrabajo;
+    for (const m of MODELOS.filter((x) => x.precio !== null)) {
+      expect(Math.ceil(m.precio?.creditos ?? 0)).toBeLessThanOrEqual(tope);
     }
   });
 

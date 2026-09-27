@@ -1,17 +1,21 @@
 "use client";
 
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, X } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
 import { Boton } from "@/components/ui/button";
 import { Aviso } from "@/components/ui/feedback";
 import { EsperaTrabajo } from "@/components/ui/trabajo";
-import type { TrabajoVista } from "@/lib/generacion";
+import { esCancelable, formatearCreditos, type TrabajoVista } from "@/lib/generacion";
 import { type AlmacenTrabajo, crearAlmacenTrabajo } from "./almacen-trabajo";
+import { LimiteDeGasto } from "./limite-de-gasto";
 
 /**
- * Espera de un trabajo: sondea su estado mientras está en pantalla y avisa al padre de cada cambio. Un
- * trabajo «sin respuesta» muestra su identificador de tarea y el botón para volver a consultarlo, con el
- * aviso de que no se reenviará (reenviar podría cobrarse dos veces).
+ * Espera de un trabajo: sondea su estado mientras está en pantalla y avisa al padre de cada cambio.
+ *
+ * - en cola se ve el puesto real y si hay algún proceso atendiéndola (nada de girar sin fin);
+ * - mientras no ha salido hacia el proveedor se puede cancelar, y eso suelta la reserva;
+ * - un trabajo «sin respuesta» muestra su identificador de tarea y el botón para volver a consultarlo, con el
+ *   aviso de que no se reenviará (reenviar podría cobrarse dos veces).
  */
 export function SeguimientoTrabajo({
   inicial,
@@ -35,8 +39,33 @@ export function SeguimientoTrabajo({
         estado={trabajo.estado}
         estadoProveedor={trabajo.estadoProveedor}
         transcurridoSegundos={estado.transcurridoSegundos}
+        posicionEnCola={trabajo.posicionEnCola}
+        cola={estado.cola}
       >
         {trabajo.error && <p className="text-sm font-medium text-texto">{trabajo.error}</p>}
+        {trabajo.excesoCreditos !== null && trabajo.excesoCreditos > 0 && (
+          <p className="text-sm font-medium text-texto">
+            El proveedor ha cobrado {formatearCreditos(trabajo.excesoCreditos)} por encima del límite que autorizaste.
+            No se puede deshacer: el precio final lo decide él. Se ha registrado el gasto real y quien administra esta
+            instalación también lo ve.
+          </p>
+        )}
+        {trabajo.estado === "esperando_limite" && (
+          // `almacen.aplicar` y no `onCambio`: así la tarjeta adopta el trabajo nuevo y vuelve a sondearlo.
+          <LimiteDeGasto trabajo={trabajo} onAutorizado={almacen.aplicar} />
+        )}
+        {esCancelable(trabajo.estado) && (
+          <Boton
+            variante="secundario"
+            tamano="sm"
+            className="self-start"
+            icono={<X className="size-4" />}
+            cargando={estado.consultando}
+            onClick={almacen.cancelar}
+          >
+            Cancelar el trabajo
+          </Boton>
+        )}
         {(sinRespuesta || listoSinGuardar) && (
           <div className="flex flex-col gap-2">
             {trabajo.taskId && (

@@ -16,6 +16,21 @@ export interface Ajustes {
   avisoCreditos: number;
   /** Cambio aproximado de crédito a euros, solo para mostrar la estimación en euros. */
   eurosPorCredito: number;
+  /**
+   * Créditos que cada usuario tiene autorizados a comprometer en Escenara (reservados + consumidos);
+   * 0 = sin presupuesto propio, manda solo el saldo del proveedor. No es dinero de Escenara: es el tope
+   * que esta instalación autoriza a gastar en la cuenta del propio usuario.
+   */
+  presupuestoCreditos: number;
+  /** Tope de créditos por trabajo; 0 = sin tope por trabajo. */
+  presupuestoTrabajo: number;
+  /** Trabajos simultáneos por usuario en la cola (en cola, preparando, enviados o en curso). */
+  trabajosSimultaneos: number;
+  /**
+   * URL pública de esta instalación. Con ella se activan los callbacks del proveedor; vacía, solo se usa
+   * el sondeo del worker. El sondeo funciona siempre, con callbacks o sin ellos.
+   */
+  urlPublica: string;
   correoRemitente: string;
   smtpHost: string;
   smtpPuerto: number;
@@ -38,6 +53,10 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   avisoCreditos: 200,
   // KIE vende 1.000 créditos por unos 5 USD (comprobado el 2026-09-27); se redondea al alza a propósito.
   eurosPorCredito: 0.005,
+  presupuestoCreditos: 2000,
+  presupuestoTrabajo: 500,
+  trabajosSimultaneos: 3,
+  urlPublica: "",
   correoRemitente: "Escenara <no-responder@escenara.local>",
   smtpHost: "localhost",
   smtpPuerto: 1021,
@@ -65,6 +84,25 @@ const booleano = (v: unknown) => typeof v === "boolean";
 /** Número decimal positivo con cuatro decimales como mucho: un cambio de moneda, no un importe. */
 const decimal = (min: number, max: number) => (v: unknown) =>
   typeof v === "number" && Number.isFinite(v) && v >= min && v <= max && Math.round(v * 10_000) === v * 10_000;
+/** URL pública de la instalación: `http://` o `https://` con host, sin credenciales ni consulta. Vacía la desactiva. */
+function urlPublicaValida(v: unknown): boolean {
+  if (typeof v !== "string" || v.length > 300) return false;
+  if (v.trim() === "") return true;
+  try {
+    const url = new URL(v);
+    return (
+      (url.protocol === "http:" || url.protocol === "https:") &&
+      url.hostname !== "" &&
+      url.username === "" &&
+      url.password === "" &&
+      url.search === "" &&
+      url.hash === ""
+    );
+  } catch {
+    return false;
+  }
+}
+
 // Identificador de cliente OAuth: solo los caracteres que usan Google y GitHub, o vacío para desactivarlo.
 const idCliente = (v: unknown) => texto(300)(v) && /^[a-z0-9._~-]*$/i.test(v as string);
 
@@ -78,6 +116,22 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
   eurosPorCredito: {
     valido: decimal(0, 100),
     mensaje: "Indica el precio de un crédito en euros, con cuatro decimales como mucho.",
+  },
+  presupuestoCreditos: {
+    valido: entero(0, 100_000_000),
+    mensaje: "Indica un número entero de créditos (0 = sin presupuesto propio).",
+  },
+  presupuestoTrabajo: {
+    valido: entero(0, 100_000_000),
+    mensaje: "Indica un número entero de créditos (0 = sin tope por trabajo).",
+  },
+  trabajosSimultaneos: {
+    valido: entero(1, 50),
+    mensaje: "Indica de 1 a 50 trabajos simultáneos por usuario.",
+  },
+  urlPublica: {
+    valido: urlPublicaValida,
+    mensaje: "Escribe una dirección http:// o https:// completa, o déjalo vacío.",
   },
   correoRemitente: {
     // «correo@dominio» o «Nombre <correo@dominio>», sin saltos de línea.

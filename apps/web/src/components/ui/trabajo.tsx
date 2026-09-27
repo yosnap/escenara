@@ -1,6 +1,7 @@
-import { CheckCircle2, CircleHelp, Clock, Loader2, OctagonX } from "lucide-react";
+import { Ban, CheckCircle2, CircleHelp, Clock, Coins, ListOrdered, Loader2, OctagonX } from "lucide-react";
 import type { ReactNode } from "react";
 import {
+  type EstadoCola,
   type EstadoTrabajo,
   ETIQUETA_ESTADO,
   esEstadoActivo,
@@ -18,7 +19,11 @@ import { MascotaChispa } from "./mascota";
  */
 
 const ASPECTO: Record<EstadoTrabajo, { icono: ReactNode; clase: string; circulo: string }> = {
+  en_cola: { icono: <ListOrdered />, clase: "text-texto-suave", circulo: "bg-elevada" },
+  esperando_limite: { icono: <Coins />, clase: "text-aviso", circulo: "bg-aviso/12" },
+  cancelado: { icono: <Ban />, clase: "text-texto-suave", circulo: "bg-elevada" },
   preparando: { icono: <Loader2 className="animate-spin" />, clase: "text-texto-suave", circulo: "bg-elevada" },
+  enviando: { icono: <Loader2 className="animate-spin" />, clase: "text-acento", circulo: "bg-acento/12" },
   enviado: { icono: <Clock />, clase: "text-acento", circulo: "bg-acento/12" },
   en_curso: { icono: <Loader2 className="animate-spin" />, clase: "text-acento", circulo: "bg-acento/12" },
   listo: { icono: <CheckCircle2 />, clase: "text-correcto", circulo: "bg-correcto/12" },
@@ -48,12 +53,18 @@ export function EsperaTrabajo({
   estado,
   estadoProveedor,
   transcurridoSegundos,
+  posicionEnCola,
+  cola,
   children,
 }: {
   tipo: TipoTrabajo;
   estado: EstadoTrabajo;
   estadoProveedor: string | null;
   transcurridoSegundos: number;
+  /** Puesto real en la cola de esta instalación, si el trabajo sigue en ella. */
+  posicionEnCola?: number | null;
+  /** Estado de la cola: sirve para avisar de que no hay worker atendiendo, en vez de girar sin fin. */
+  cola?: EstadoCola | null;
   children?: ReactNode;
 }) {
   const a = ASPECTO[estado];
@@ -83,9 +94,20 @@ export function EsperaTrabajo({
           </p>
         </div>
       </div>
+      {estado === "en_cola" && posicionEnCola != null && (
+        <p className="text-sm text-texto-suave">
+          {posicionEnCola === 1 ? "Es el siguiente en salir." : `Hay ${posicionEnCola - 1} trabajos delante del tuyo.`}
+        </p>
+      )}
+      {activo && cola && !cola.workerActivo && (
+        <p className="text-sm font-medium text-texto">
+          Ahora mismo no hay ningún proceso atendiendo la cola, así que el trabajo espera. Avisa a quien administra esta
+          instalación: nada se ha perdido y no se enviará dos veces.
+        </p>
+      )}
       {activo && (
         <p className="text-sm text-texto-suave">
-          Puedes cerrar esta página: el trabajo sigue en el proveedor y lo encuentras en tu historial.
+          Puedes cerrar esta página: el trabajo sigue en la cola del servidor y lo encuentras en tu historial.
         </p>
       )}
       {children}

@@ -35,8 +35,8 @@ async function normalizando<T>(accion: () => Promise<T>): Promise<T> {
   }
 }
 
-async function crear({ clave, modelo, entrada, buscar }: PeticionAdaptador): Promise<string> {
-  return normalizando(() => crearTarea(clave, modelo, entrada, buscar));
+async function crear({ clave, modelo, entrada, buscar, callbackUrl }: PeticionAdaptador): Promise<string> {
+  return normalizando(() => crearTarea(clave, modelo, entrada, buscar, callbackUrl));
 }
 
 export const adaptadorKie: Adaptador = {

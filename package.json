@@ -1,6 +1,6 @@
 {
   "name": "escenara",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "private": true,
   "description": "Estudio abierto de personajes y vídeo",
   "license": "AGPL-3.0-only",
@@ -14,7 +14,9 @@
     "spikes/*"
   ],
   "scripts": {
-    "dev": "bun --filter @escenara/web dev",
+    "dev": "bun scripts/dev.ts",
+    "dev:web": "bun --filter @escenara/web dev",
+    "worker": "bun --filter @escenara/web worker",
     "build": "bun --filter '*' build",
     "lint": "biome check .",
     "format": "biome check --write .",

@@ -10,13 +10,18 @@ import { SelectorTema } from "@/components/ui/theme-toggle";
 const PAGINAS = [
   ["/admin/medios", "Medios"],
   ["/admin/modelos", "Modelos"],
+  ["/admin/trabajos", "Trabajos"],
   ["/admin/ajustes", "Ajustes"],
   ["/admin/componentes", "Componentes"],
   ["/admin/versiones", "Versiones"],
 ] as const;
 
-/** Cabecera común del admin: navegación entre sus páginas y selector de tema. */
-export function CabeceraAdmin({ version }: { version: string }) {
+/**
+ * Cabecera común del admin: navegación entre sus páginas, contador de trabajos pendientes de revisión y
+ * selector de tema. El contador va aquí porque cada trabajo en revisión retiene presupuesto de alguien: es lo
+ * único del panel que cuesta dinero mientras nadie lo mira.
+ */
+export function CabeceraAdmin({ version, enRevision = 0 }: { version: string; enRevision?: number }) {
   const ruta = usePathname();
   return (
     <header className="sticky top-0 z-30 border-b border-borde/40 bg-fondo/85 backdrop-blur">
@@ -39,6 +44,18 @@ export function CabeceraAdmin({ version }: { version: string }) {
                     )}
                   >
                     {nombre}
+                    {href === "/admin/trabajos" && enRevision > 0 && (
+                      <>
+                        <span
+                          aria-hidden
+                          className="ml-2 flex min-w-5 items-center justify-center rounded-full bg-aviso px-1.5 text-xs font-bold text-sobre-acento"
+                        >
+                          {enRevision}
+                        </span>
+                        {/* El número solo no dice nada en un lector de pantalla. */}
+                        <span className="sr-only">({enRevision} pendientes de revisión)</span>
+                      </>
+                    )}
                   </Link>
                 </li>
               ))}

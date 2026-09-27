@@ -2,16 +2,13 @@
  * Arranque del servidor (convención `instrumentation.ts` de Next: `register()` se ejecuta una sola vez por
  * instancia, antes de atender peticiones, y **no** durante `next build`).
  *
- * Aquí se pone en marcha el seguimiento de los trabajos de generación, para que un trabajo termine y se
- * guarde en la biblioteca aunque nadie tenga la página abierta. El import es dinámico y solo en el runtime
- * de Node: en el runtime edge no hay base de datos ni temporizadores largos.
+ * Desde 0.12.0 aquí no se arranca ningún bucle: los trabajos de generación los atiende el worker de la cola,
+ * que es un proceso aparte (`bun run worker`, ADR-0003). Tener el sondeo también dentro del servidor web
+ * significaría dos mecanismos consultando lo mismo, y con varias instancias del servidor, tantos como
+ * instancias.
+ *
+ * Se deja el gancho porque Next lo espera y porque es donde iría cualquier comprobación de arranque futura.
  */
 export async function register(): Promise<void> {
-  if (process.env.NEXT_RUNTIME !== "nodejs") return;
-  // Durante la compilación de producción también se llega aquí en algunas fases: no hay nada que sondear.
-  if (process.env.NEXT_PHASE === "phase-production-build") return;
-  // En los tests el bucle no aporta nada y ensuciaría la base de datos de prueba.
-  if (process.env.NODE_ENV === "test") return;
-  const { arrancarSeguimiento } = await import("./server/generacion/seguimiento-de-fondo");
-  arrancarSeguimiento();
+  return;
 }

@@ -57,6 +57,20 @@
       "when": 1790480445133,
       "tag": "0007_catalogo_de_modelos",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790483247034,
+      "tag": "0008_cola_presupuesto_y_json",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790486293069,
+      "tag": "0009_estado_enviando_y_callbacks",
+      "breakpoints": true
     }
   ]
 }
