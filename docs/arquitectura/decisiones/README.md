@@ -8,17 +8,18 @@ Cada decisión relevante se documenta en un fichero `adr-NNNN-slug.md` dentro de
 |---|---|---|---|
 | [0001](adr-0001-licencia-agpl.md) | Licencia del repositorio: AGPL 3.0 | 0.2.0 | Aceptado |
 | [0002](adr-0002-typescript-unico-mvp.md) | Lenguajes del MVP: TypeScript único | 0.2.0 | Aceptado |
-| 0003 | Cola de trabajos: pg-boss o BullMQ con Redis | 0.11.0 | Pendiente |
+| 0003 | Cola de trabajos: pg-boss o BullMQ con Redis | 0.12.0 | Pendiente |
 | [0004](adr-0004-autenticacion-better-auth.md) | Autenticación con Better Auth | 0.7.0 | Aceptado |
 | [0005](adr-0005-boveda-credenciales.md) | Bóveda de credenciales BYOK y gestión de la clave maestra | 0.9.0 | Aceptado |
 | [0006](adr-0006-almacenamiento-seaweedfs.md) | Almacenamiento de objetos: SeaweedFS por defecto y API S3 estándar | 0.2.0 | Aceptado |
-| 0007 | Despliegue en Easypanel e instancia pública del proyecto | 0.6.0 | Plataforma decidida (Easypanel); instancia pública pendiente del propietario |
-| 0008 | Motor de montaje y render | 0.21.0 | Pendiente |
+| 0007 | Despliegue en Easypanel e instancia pública del proyecto | 0.33.0 | Plataforma decidida (Easypanel); instancia pública pendiente del propietario |
+| 0008 | Motor de montaje y render | 0.22.0 | Pendiente |
 | [0009](adr-0009-modelos-iniciales-kie.md) | Modelos iniciales: solo KIE.ai (Google aplazado) | 0.10.0 | Aceptado |
 | [0010](adr-0010-bun-runtime.md) | Bun como runtime, gestor de paquetes y ejecutor de tests | 0.2.0 | Aceptado |
 | [0011](adr-0011-interfaz-componentes.md) | Pila de interfaz, catálogo de componentes en el admin y prohibición del `<select>` nativo | 0.4.0 | Aceptado |
 | [0012](adr-0012-drizzle-orm.md) | Acceso a PostgreSQL y migraciones con Drizzle ORM | 0.5.0 | Aceptado |
 | [0013](adr-0013-configuracion-en-panel.md) | La configuración se gestiona en el panel de administración | 0.8.0 | Aceptado |
+| [0014](adr-0014-seguimiento-trabajos-sondeo.md) | Seguimiento de los trabajos de generación por sondeo (callback en 0.12.0) | 0.10.0 | Aceptado |
 
 ## Plantilla
 

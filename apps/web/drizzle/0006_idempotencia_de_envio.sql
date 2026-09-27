@@ -1,0 +1,2 @@
+ALTER TABLE "generation_jobs" ADD COLUMN "idempotency_key" text;--> statement-breakpoint
+ALTER TABLE "generation_jobs" ADD CONSTRAINT "generation_jobs_usuario_idempotencia_uq" UNIQUE("user_id","idempotency_key");

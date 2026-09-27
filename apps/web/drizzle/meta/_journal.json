@@ -36,6 +36,20 @@
       "when": 1790466813724,
       "tag": "0004_boveda_credenciales",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790472694432,
+      "tag": "0005_trabajos_generacion_y_precios",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790474139205,
+      "tag": "0006_idempotencia_de_envio",
+      "breakpoints": true
     }
   ]
 }

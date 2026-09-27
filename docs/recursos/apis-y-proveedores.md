@@ -19,13 +19,31 @@ La instancia nunca usa una clave global del operador para generar contenido de u
 | Proveedor | Capacidades para Escenara | Cómo obtener la clave | Documentación | Precios | Estado |
 |---|---|---|---|---|---|
 | **Google Gemini API** | `text_generation` (guion), `image_edit` (imagen con referencias), `image_to_video` y `text_to_video` (Veo), `tts`, `speech_to_text`, `multimodal_review` | Google AI Studio → «Get API key»: https://aistudio.google.com/apikey. Veo requiere facturación activa | https://ai.google.dev/gemini-api/docs · Veo: https://ai.google.dev/gemini-api/docs/veo · Modelos: https://ai.google.dev/api/models | https://ai.google.dev/gemini-api/docs/pricing | **Aplazado** (ADR-0009): sin facturación activa la cuota es 0; se incorporará más adelante |
-| **KIE.ai** | Agregador de modelos de imagen, vídeo, voz y música de varios fabricantes, con tareas asíncronas y callbacks | Panel de KIE → sección de claves API (verificar ruta exacta al darse de alta) | https://docs.kie.ai/ · Catálogo: https://kie.ai/ | Créditos por modelo (medido: `nano-banana-2-lite` 4 créditos por imagen, `veo3_lite` 60 créditos por vídeo de 4 s) | **Proveedor inicial** (ADR-0009). No presuponer endpoint universal de catálogo |
+| **KIE.ai** | Agregador de modelos de imagen, vídeo, voz y música de varios fabricantes, con tareas asíncronas y callbacks | https://kie.ai/api-key | https://docs.kie.ai/ · Catálogo: https://kie.ai/market | Créditos por modelo (medido: `nano-banana-2-lite` 4 créditos por imagen, `veo3_lite` 60 créditos por vídeo de 4 s; unos 5 USD por 1.000 créditos) | **Proveedor inicial** (ADR-0009), en uso desde la 0.10.0. No presuponer endpoint universal de catálogo |
 | **TypeSafe Jev** | Decisiones tipadas `choice`, `score` y `noul` | Alta en TypeSafe (verificar proceso) | https://docs.typesafe.ai/introduction · Confianza: https://docs.typesafe.ai/confidence | Consultar al darse de alta | Por evaluar en 0.23.0 (modo sombra) |
 | **Laya** | Decisiones tipadas autoalojadas, ajuste fino con datos del dominio | Token de Hugging Face si el modelo lo exige: https://huggingface.co/settings/tokens | https://huggingface.co/convaiinnovations/laya | Sin coste por token; consume CPU o GPU del operador | Posterior; solo con datos etiquetados |
 | **LTX (Lightricks)** | `image_to_video`; modelos abiertos | Alta en la plataforma LTX (verificar) | https://docs.ltx.io/api-documentation/api-reference/video-generation/image-to-video · https://github.com/Lightricks/LTX-Video | Consultar | Posterior, por adaptador |
 | **Kling AI** | `image_to_video` | Alta en la plataforma de desarrolladores de Kling (verificar); también accesible vía KIE | https://kling.ai/document-api/api/video/3-0-omni/image-to-video/legacy | Consultar | Posterior o vía KIE |
 | **ElevenLabs** | `tts` con voces de catálogo (sin clonación en el MVP) | https://elevenlabs.io/app/settings/api-keys | https://elevenlabs.io/docs | Consultar | Opcional, alternativa de voz |
 | **Whisper / faster-whisper** | `speech_to_text` local y de código abierto | No requiere clave | https://github.com/SYSTRAN/faster-whisper | Coste de cómputo propio | Opcional, alternativa sin proveedor |
+
+### Endpoints de KIE.ai que usa Escenara
+
+Comprobados en https://docs.kie.ai/ el **2026-09-27** y ejecutados contra el servicio real en el prototipo de la 0.3.0. Todos responden HTTP 200 con un sobre `{ code, msg, data }`: el error real está en `code`, así que un `code` distinto de 200 es un fallo.
+
+| Para qué | Petición | Notas |
+|---|---|---|
+| Saldo de créditos | `GET https://api.kie.ai/api/v1/chat/credit` | `data` es el número de créditos. Sin coste; es también la prueba de la clave (0.9.0) |
+| Subida temporal de una referencia | `POST https://kieai.redpandaai.co/api/file-stream-upload` (multiparte: `file`, `uploadPath`) | Devuelve `downloadUrl`; KIE borra el archivo en unas horas |
+| Crear tarea | `POST https://api.kie.ai/api/v1/jobs/createTask` con `{ model, input }` | Devuelve `taskId`, lo único que permite reconsultar sin reenviar |
+| Estado de la tarea | `GET https://api.kie.ai/api/v1/jobs/recordInfo?taskId=…` | `state` ∈ `waiting`, `queuing`, `generating`, `success`, `fail`; `resultJson` (cadena JSON con `resultUrls`), `failMsg`, `creditsConsumed` |
+
+La clave viaja siempre en la cabecera `Authorization: Bearer …` y nunca en la URL. Del proveedor no se conserva su texto de error: puede repetir la clave recibida.
+
+Parámetros de los modelos en uso:
+
+- `nano-banana-2-lite`: `prompt` (hasta 20.000 caracteres), `aspect_ratio` (`9:16` entre otros) e `image_urls` (hasta 10 referencias).
+- `veo3_lite`: `prompt`, `image_urls` (1 o 2), `generation_type` (`TEXT_2_VIDEO`, `FIRST_AND_LAST_FRAMES_2_VIDEO`, `REFERENCE_2_VIDEO`), `aspect_ratio`, `duration` (4, 6 u 8 s) y `resolution` (`720p`, `1080p`). Escenara usa `FIRST_AND_LAST_FRAMES_2_VIDEO` con el fotograma como primer fotograma, 4 s, `9:16` y `720p`.
 
 ## Infraestructura y servicios del operador
 

@@ -74,7 +74,7 @@ export function SelectorMedios({
               key={m.id}
               className="relative aspect-square overflow-hidden rounded-tarjeta border border-borde bg-elevada"
             >
-              <MiniaturaMedio medio={m} />
+              <MiniaturaMedio medio={m} className="object-contain" />
               <BotonIcono
                 etiqueta={`Quitar ${m.nombre}`}
                 onClick={() => onCambio(valor.filter((v) => v.id !== m.id))}

@@ -7,13 +7,26 @@ import { huellaSecretos, leerSecreto } from "./boveda/secretos";
  * se guarda cifrada en la bóveda (ADR-0005) y solo se lee aquí, en el servidor. En local, Mailpit
  * (bandeja en http://localhost:8421): nada sale a internet.
  */
-const global = globalThis as { __escenaraCorreo?: { clave: string; transporte: Transporter } };
+const global = globalThis as {
+  __escenaraCorreo?: { clave: string; transporte: Transporter };
+  __escenaraTransporteFijo?: Transporter;
+};
+
+/**
+ * Fija el transporte que se usará en lugar del SMTP configurado. Es el punto de inyección para las
+ * pruebas (la preload de `bun test` pone uno que no envía nada, ver `correo-de-prueba.ts`): así la suite no
+ * llena la bandeja de Mailpit y el camino de producción queda intacto.
+ */
+export function fijarTransporte(transporteFijo: Transporter | null): void {
+  global.__escenaraTransporteFijo = transporteFijo ?? undefined;
+}
 
 /**
  * Transporte reutilizado mientras no cambie la configuración. La clave de caché lleva una huella de la
  * contraseña cifrada (fecha y longitud del valor guardado), nunca la contraseña.
  */
 async function transporte(ajustes: Ajustes): Promise<Transporter> {
+  if (global.__escenaraTransporteFijo) return global.__escenaraTransporteFijo;
   const clave = JSON.stringify([
     ajustes.smtpHost,
     ajustes.smtpPuerto,

@@ -17,6 +17,9 @@ export function CabeceraApp({ sesion }: { sesion: Sesion }) {
           <nav aria-label="Aplicación">
             <ul className="flex gap-1 rounded-full bg-elevada p-1">
               <li>
+                <EnlaceApp href="/crear">Crear</EnlaceApp>
+              </li>
+              <li>
                 <EnlaceApp href="/biblioteca">Biblioteca</EnlaceApp>
               </li>
               <li>

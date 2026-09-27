@@ -2,6 +2,55 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.10.0] · 2026-09-27
+
+### Añadido
+
+- **Crear: el primer flujo usable** en `/crear`. Eliges o subes una imagen de tu biblioteca, describes la escena, ves el coste estimado, confirmas y obtienes un **fotograma vertical** (`nano-banana-2-lite`) y, desde él, un **clip de 4 s en 9:16 a 720p** (`veo3_lite`, con el fotograma como primer fotograma). Todo se genera con **tu propia clave de KIE** (RF01) y se paga en tu cuenta del proveedor.
+- Los resultados se descargan al momento (la URL del proveedor caduca) y se guardan en tu biblioteca respetando tu cuota de espacio.
+- **Panel de coste en zona de claridad**: créditos estimados, tu saldo en KIE, equivalente aproximado en euros, la fuente del precio y la fecha en que se comprobó. Siempre etiquetado como estimación; el importe final es el que informa el proveedor.
+- **Confirmación obligatoria antes de gastar**: nada se envía sin que el coste mostrado viaje en la confirmación (si el precio cambia entre la pantalla y el botón, se rechaza), y sin marcar la casilla **«tengo derecho a usar esta imagen»**, que queda registrada con su fecha en el trabajo. Por encima del aviso de créditos hace falta además aceptar el gasto expresamente.
+- **La misma confirmación no se cobra dos veces**: cada confirmación lleva su propia clave, así que un doble clic o un reintento tras un corte de red devuelven el trabajo que ya existe en lugar de encargar otro. Si la conexión se corta al enviar, se avisa de que puede haberse enviado y se invita a mirar el historial, nunca a repetir a ciegas.
+- Tope de tres trabajos en marcha por usuario, comprobado dentro de la misma transacción que da de alta el trabajo: dos envíos simultáneos no pueden pasarse del tope. Límite de envíos y de consultas por usuario.
+- **Estados reales del proveedor** traducidos («en cola en el proveedor», «generando», «listo», «ha fallado», «sin respuesta del proveedor») con el tiempo transcurrido y la mascota Chispa acompañando la espera. **No hay ninguna barra de porcentaje**: solo se muestra lo que el proveedor informa.
+- **Seguimiento por sondeo** (ADR-0014): el navegador pregunta con intervalo creciente (4 s → 15 s) y el servidor consulta a KIE con un mínimo entre consultas por trabajo. Límite de trabajos en curso y de envíos por usuario.
+- **Los trabajos terminan aunque cierres la página:** el servidor sondea por su cuenta los trabajos en marcha de cualquier usuario (bucle cada 10 s en lotes pequeños, arrancado en `instrumentation.ts`) y, al abrir el historial, avanza antes los tuyos sin bloquear la página. Es el sustituto mínimo de la cola de 0.12.0: nada se reenvía, solo se consulta la tarea guardada, y el resultado se descarga y se guarda como si estuvieras mirando. Los recién enviados van primero, un trabajo que lleve más de 30 minutos sin terminar se deja como «sin respuesta del proveedor» (y solo tú puedes volver a consultarlo), y si tu clave ya no vale, tus trabajos se saltan sin llamar al proveedor.
+- **«Lo que dice (opcional)» separado de la descripción visual:** el fotograma se genera solo con la descripción y con una instrucción explícita de no dibujar texto, subtítulos ni rótulos; la frase va únicamente al clip, que tiene voz, en el formato que Veo entiende (dos puntos, sin comillas) y también sin subtítulos en pantalla. Sale de la comparativa real de modelos: con la frase en el prompt, los tres modelos de imagen la dibujaban en la imagen y el clip la heredaba. El diálogo queda guardado en la entrada del trabajo.
+- **Tras un timeout nunca se reenvía nada**: el trabajo queda «sin respuesta del proveedor» con su identificador de tarea y un botón «Volver a consultar» que reconcilia el resultado y los créditos con ese mismo identificador.
+- `/crear/historial`: lo generado con miniatura, modelo, estado, créditos y enlace al archivo; al volver, un trabajo que se quedó a medias se puede reconciliar a mano.
+- Tablas `generation_jobs` (embrión de `GenerationJob`, que generaliza 0.12.0) y `model_prices`, registro versionado de precios sembrado con lo medido en el prototipo de la 0.3.0: `nano-banana-2-lite` 4 créditos por imagen y `veo3_lite` 60 créditos por vídeo de 4 s. Sin precio registrado no se estima ni se gasta.
+- **Admin › Ajustes › Generación**: aviso por trabajo por encima de N créditos (200 por defecto) y euros por crédito para la estimación en euros.
+- Panel de coste, insignias de estado, tarjeta de espera y visor de medios en el catálogo de componentes (`/admin/componentes`).
+- Guía de usuario [«Tu primer vídeo»](guias/tu-primer-video.md).
+- Tests: estados de KIE (`waiting`, `queuing`, `generating`, `success`, `fail`) y parámetros de los dos modelos con `fetch` simulado; envío sin confirmación, sin credencial o sin saldo (no se llama al proveedor); timeout que deja el trabajo «sin respuesta» sin crear una segunda tarea y su reconciliación posterior; dos consultas simultáneas que no duplican la descarga ni el archivo; autorización entre usuarios; y comprobación automática de que la clave de KIE no aparece en respuestas, base de datos ni consola en ninguna fase.
+
+### Cambiado
+
+- La cabecera de la aplicación estrena el apartado **Crear**.
+- **Los medios se ven completos, nunca recortados:** el visor (modal de datos de la biblioteca, resultado en «Crear», historial y pantalla completa) muestra cada imagen o vídeo en su proporción real, con la altura limitada por la ventana y el ancho derivado. Antes un vertical 9:16 se metía en un marco horizontal, y el vídeo se recortaba incluso a pantalla completa porque ignoraba el ajuste que se le pedía.
+- La traducción de los fallos de un proveedor a códigos propios pasa a `server/proveedores/codigos.ts` y la comparte la prueba de credenciales de la 0.9.0.
+
+### Corregido
+
+- Las cookies de sesión llevan el prefijo `escenara`: otra aplicación con Better Auth en `localhost` (en otro puerto) pisaba la sesión y obligaba a volver a entrar. **Al actualizar hay que iniciar sesión una vez más.**
+
+### Actualizar desde la 0.9.0
+
+- Haz `bun run db:backup` y luego `bun run db:migrate`: las migraciones crean `generation_jobs` (con la clave de idempotencia del envío) y `model_prices`, y siembran los precios de los dos modelos.
+- Para generar necesitas tu clave de KIE.ai en **Tu cuenta › Credenciales de IA**. Sin ella, `/crear` explica qué falta y enlaza a la página de cuenta.
+- Revisa en **Admin › Ajustes › Generación** el aviso por créditos y el cambio a euros si tu tarifa de KIE no es la habitual.
+
+### Seguridad
+
+- La clave de KIE solo sale de la bóveda dentro del servidor y viaja únicamente en la cabecera `Authorization`; del proveedor no se conserva su texto (su mensaje de error puede repetir la clave recibida), solo un código propio.
+- Un usuario no ve, consulta ni reconcilia trabajos de otro, ni usa una imagen ajena como referencia: lo ajeno responde 404.
+- El resultado se descarga con la protección frente a SSRF de la 0.5.0 y se valida por su firma binaria antes de guardarlo.
+- La entrada que se guarda del trabajo no incluye las URL temporales del proveedor.
+- Las peticiones que gastan dinero exigen que el `Origin` sea el de la propia aplicación: una página ajena no puede encargar una generación con tu sesión.
+- Solo se genera con una credencial que la última prueba dejó como válida, y la cuota de la biblioteca se reserva por el tamaño máximo real del resultado: un clip que no cupiera ya se habría pagado.
+- Se declara en la interfaz y en la guía que la imagen de referencia se sube temporalmente al almacenamiento de KIE, accesible por enlace unas horas.
+- Los tests ya no envían correo de verdad (transporte nulo inyectado en la preload de `bun test`), en lugar de saltarse el envío con una condición dentro del código de producción.
+
 ## [0.9.0] · 2026-09-27
 
 ### Añadido
