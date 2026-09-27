@@ -9,7 +9,7 @@ import { Aviso } from "@/components/ui/feedback";
 import { Dialogo } from "@/components/ui/overlay";
 import { pedirVistaSintetica } from "@/components/ui/personajes/api-personajes";
 import { ETIQUETA_VISTA, type Vista } from "@/lib/captura-personaje";
-import { type Estimacion, formatearCreditos, type TrabajoVista } from "@/lib/generacion";
+import { creditosAConfirmar, type Estimacion, formatearCreditos, type TrabajoVista } from "@/lib/generacion";
 import { AVISO_SIN_TERCEROS } from "@/lib/personajes";
 
 /**
@@ -50,7 +50,9 @@ export function DialogoVistaSintetica({
    */
   const clave = useRef<{ firma: string; valor: string } | null>(null);
 
-  const creditos = Math.ceil(estimacion.creditos);
+  // Lo que se confirma es el total del envío (modelo + traducción del prompt), igual que en «Crear»: es lo que
+  // el servidor exige y lo que se le ha enseñado al usuario.
+  const creditos = creditosAConfirmar(estimacion);
   const firma = `${vista}|${estimacion.sello}|${creditos}`;
 
   const bloqueos = [

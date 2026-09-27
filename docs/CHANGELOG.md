@@ -2,6 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.19.3] · 2026-09-28
+
+### Corregido
+
+- **Generar una vista que falta de un personaje ya no se rechaza siempre** con «El coste estimado ha cambiado».
+  Con la traducción de prompts encendida, el diálogo confirmaba solo el precio del modelo y el servidor exige el
+  total que se ve en pantalla, modelo más traducción. Ahora confirma ese total, igual que «Crear».
+
 ## [0.19.2] · 2026-09-28
 
 ### Corregido
