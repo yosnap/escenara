@@ -1,0 +1,473 @@
+import { eq, inArray, sql } from "drizzle-orm";
+import { precioCaducado } from "@/lib/catalogo";
+import { formatearCreditos } from "@/lib/generacion";
+import {
+  type AfirmacionVista,
+  BLOQUEAN_APROBACION,
+  type EscenaVista,
+  type EstimacionEscena,
+  impedimentosDelPlan,
+  type PlanVista,
+  PRESUPUESTO_MAXIMO,
+  type ProyectoDetalle,
+  type ProyectoVista,
+  puedeAprobarse,
+} from "@/lib/proyectos";
+import { type Ajustes, leerAjustes } from "../ajustes";
+import { db, type Ejecutor } from "../db/cliente";
+import {
+  assistantRuns,
+  claims,
+  type FilaAfirmacion,
+  type FilaEscena,
+  type FilaProyecto,
+  generationJobs,
+  projects,
+  scenes,
+  usageLedger,
+} from "../db/esquema";
+import { type EleccionDeTrabajo, elegirParaTipo } from "../generacion/precios";
+import type { Actor } from "../media/servicio";
+import { ultimaVersion } from "../personajes/ficha";
+import { plantillaVigenteDe } from "../prompts/consulta";
+import { ErrorCatalogo } from "../proveedores/contrato";
+import {
+  afirmacionesDe,
+  escenaPropia,
+  escenasDe,
+  escenasDeProyectos,
+  nombreDePersonaje,
+  proyectoPropio,
+  proyectosDe,
+} from "./consulta";
+import { ErrorProyecto } from "./errores";
+import { estadoDelAsistente } from "./texto";
+
+/**
+ * El plan de un proyecto: cuánto se estima que cuesta cada escena, cuánto el proyecto entero y si se puede
+ * aprobar (RF14).
+ *
+ * Tres reglas, y las tres son de dinero:
+ *
+ * 1. **Una estimación nunca se inventa.** Sale del registro versionado de precios; una escena cuyo modelo no
+ *    tiene precio no se estima, y un plan con alguna así no se puede aprobar. Siempre se muestra con la palabra
+ *    «estimación» y con la fecha del precio usado (`lib/proyectos.ts`).
+ * 2. **Aprobar es un acto explícito** y exige que el total que el usuario tenía delante siga siendo el vigente.
+ *    Lo que se aprueba se congela: modelo, sello del precio, versión de la ficha y versión de la plantilla.
+ * 3. **Nada se produce sin aprobación.** `exigirEscenaAprobada` es la puerta, y la cruza cualquier camino que
+ *    encole una generación a partir de una escena.
+ */
+
+/** Modelos con los que se estima el plan: el predeterminado de cada capacidad, con su precio vigente. */
+export interface EleccionesDelPlan {
+  fotograma: EleccionDeTrabajo | null;
+  animacion: EleccionDeTrabajo | null;
+}
+
+/**
+ * Elige los modelos del plan. Un catálogo sin modelo o sin precio **no es un error**: deja el plan sin
+ * estimación y lo dice, en lugar de dejar la página del proyecto inaccesible.
+ */
+export async function eleccionesDelPlan(): Promise<EleccionesDelPlan> {
+  const [fotograma, animacion] = await Promise.all([elegir("fotograma"), elegir("animacion")]);
+  return { fotograma, animacion };
+}
+
+async function elegir(tipo: "fotograma" | "animacion"): Promise<EleccionDeTrabajo | null> {
+  try {
+    return await elegirParaTipo(tipo);
+  } catch (error) {
+    if (error instanceof ErrorCatalogo) return null;
+    throw error;
+  }
+}
+
+/**
+ * Margen prudente de una elección: se aplica a los modelos que todavía no están `validado`, es decir, a los
+ * que no tienen un coste medido y revisado. ADR-0009 avisa de que el prototipo infraestimó ×3, así que aquí se
+ * suma margen y se dice que se ha sumado.
+ */
+const necesitaMargen = (eleccion: EleccionDeTrabajo) => eleccion.modelo.estado !== "validado";
+
+/** Estimación de una escena; `null` si falta alguno de los dos modelos o alguno no tiene precio. */
+export function estimarEscena(escena: FilaEscena, elecciones: EleccionesDelPlan, ajustes: Ajustes): EstimacionEscena {
+  const { fotograma, animacion } = elecciones;
+  if (!fotograma || !animacion) throw new ErrorCatalogo(503, "Faltan modelos con precio para estimar el plan.");
+  const margen = [fotograma, animacion].some(necesitaMargen) ? ajustes.asistenteMargenEstimacion : 0;
+  const creditosFotograma = Math.ceil(fotograma.precio.creditos);
+  const creditosAnimacion = Math.ceil(animacion.precio.creditos);
+  const creditos = Math.ceil((creditosFotograma + creditosAnimacion) * (1 + margen / 100));
+  // La fecha que se muestra es la **más antigua** de las dos: es la que de verdad puede haber caducado.
+  const comprobado = [fotograma.precio.comprobado, animacion.precio.comprobado].sort()[0] ?? "";
+  return {
+    creditosFotograma,
+    creditosAnimacion,
+    creditos,
+    euros: creditos * ajustes.eurosPorCredito,
+    modeloFotograma: fotograma.modelo.nombre,
+    modeloAnimacion: animacion.modelo.nombre,
+    segundos: animacion.modelo.parametros.duraciones[0] ?? escena.plannedSeconds,
+    comprobado,
+    precioAntiguo: precioCaducado(comprobado),
+    margen,
+    selloFotograma: fotograma.precio.sello,
+    selloAnimacion: animacion.precio.sello,
+  };
+}
+
+const estimacionONula = (escena: FilaEscena, elecciones: EleccionesDelPlan, ajustes: Ajustes) => {
+  try {
+    return estimarEscena(escena, elecciones, ajustes);
+  } catch (error) {
+    if (error instanceof ErrorCatalogo) return null;
+    throw error;
+  }
+};
+
+const vistaAfirmacion = (fila: FilaAfirmacion): AfirmacionVista => ({
+  id: fila.id,
+  escenaId: fila.sceneId,
+  texto: fila.text,
+  tipo: fila.kind,
+  estado: fila.state,
+  fuente: fila.source,
+  creadoEn: fila.createdAt.toISOString(),
+});
+
+function vistaEscena(
+  fila: FilaEscena,
+  afirmaciones: FilaAfirmacion[],
+  trabajoId: string | null,
+  estimacion: EstimacionEscena | null,
+): EscenaVista {
+  return {
+    id: fila.id,
+    proyectoId: fila.projectId,
+    orden: fila.sortOrder,
+    texto: fila.scriptText,
+    accion: fila.action,
+    segundos: fila.plannedSeconds,
+    estado: fila.state,
+    aprobadaEn: fila.approvedAt?.toISOString() ?? null,
+    motivoInvalidacion: fila.invalidationReason,
+    trabajoId,
+    estimacion,
+    afirmaciones: afirmaciones.filter((a) => a.sceneId === fila.id).map(vistaAfirmacion),
+  };
+}
+
+/** Plan a partir de las escenas ya estimadas. Los impedimentos los compone `lib/proyectos.ts`. */
+export function planDeEscenas(
+  proyecto: FilaProyecto,
+  escenasVista: EscenaVista[],
+  ajustes: Ajustes,
+  creditosAsistente = 0,
+): PlanVista {
+  const estimables = escenasVista.filter((e) => e.estimacion !== null);
+  const totalCreditos = estimables.reduce((suma, e) => suma + (e.estimacion?.creditos ?? 0), 0);
+  const porVerificar = escenasVista.flatMap((e) => e.afirmaciones).filter((a) => a.estado === "por_verificar");
+  const bloqueantes = porVerificar.filter((a) => BLOQUEAN_APROBACION.includes(a.tipo));
+  const fechas = estimables.map((e) => e.estimacion?.comprobado ?? "").filter((f) => f !== "");
+  const plan: PlanVista = {
+    creditosAsistente,
+    totalCreditos,
+    totalEuros: totalCreditos * ajustes.eurosPorCredito,
+    presupuestoCreditos: proyecto.authorizedCredits,
+    escenasSinEstimacion: escenasVista.length - estimables.length,
+    afirmacionesPorVerificar: porVerificar.length,
+    afirmacionesBloqueantes: bloqueantes.length,
+    comprobado: fechas.sort()[0] ?? "",
+    margen: Math.max(0, ...estimables.map((e) => e.estimacion?.margen ?? 0)),
+    impedimentos: [],
+  };
+  plan.impedimentos = impedimentosDelPlan({
+    totalEscenas: escenasVista.length,
+    escenasSinEstimacion: plan.escenasSinEstimacion,
+    // Lo que ya se ha gastado el asistente cuenta contra el presupuesto del proyecto: es dinero del mismo bote.
+    totalCreditos: plan.totalCreditos + plan.creditosAsistente,
+    presupuestoCreditos: plan.presupuestoCreditos,
+    afirmacionesBloqueantes: plan.afirmacionesBloqueantes,
+  });
+  return plan;
+}
+
+/**
+ * Créditos que ya se ha gastado el asistente en este proyecto (decisión provisional del propietario, 2026-09-27:
+ * su gasto también consume el presupuesto del proyecto y se muestra en el plan).
+ *
+ * Se suman los consumos y las reservas vivas de sus llamadas: lo apartado también está comprometido.
+ */
+async function gastoDelAsistente(proyectoId: string, ejecutor: Ejecutor = db()): Promise<number> {
+  const [fila] = await ejecutor
+    .select({
+      total: sql<number>`coalesce(sum(case when ${usageLedger.entryType} in ('reserva', 'liberacion', 'consumo', 'ajuste') then ${usageLedger.credits} else 0 end), 0)::float8`,
+    })
+    .from(usageLedger)
+    .innerJoin(assistantRuns, eq(assistantRuns.id, usageLedger.assistantRunId))
+    .where(eq(assistantRuns.projectId, proyectoId));
+  return Math.max(0, fila?.total ?? 0);
+}
+
+/**
+ * Créditos que el proyecto lleva comprometidos: lo del asistente más lo de los trabajos de sus escenas (reservas
+ * vivas y consumos). Es lo que se compara con su presupuesto autorizado.
+ */
+async function comprometidoDelProyecto(proyectoId: string): Promise<number> {
+  const [fila] = await db()
+    .select({
+      total: sql<number>`coalesce(sum(case when ${usageLedger.entryType} in ('reserva', 'liberacion', 'consumo', 'ajuste') then ${usageLedger.credits} else 0 end), 0)::float8`,
+    })
+    .from(usageLedger)
+    .innerJoin(generationJobs, eq(generationJobs.id, usageLedger.jobId))
+    .innerJoin(scenes, eq(scenes.id, generationJobs.sceneId))
+    .where(eq(scenes.projectId, proyectoId));
+  return Math.max(0, fila?.total ?? 0) + (await gastoDelAsistente(proyectoId));
+}
+
+/**
+ * **El presupuesto autorizado de un proyecto es un tope que se aplica al gastar** (decisión provisional del
+ * propietario, 2026-09-27), no solo una condición para aprobar el plan: entre la aprobación y la producción puede
+ * haber pasado cualquier cosa (más escenas, otro precio, llamadas al asistente), y sin esta puerta el techo que
+ * alguien autorizó no sería un techo.
+ *
+ * `0` = sin tope propio del proyecto; manda solo el presupuesto del usuario y el tope por trabajo.
+ */
+export async function exigirTopeDelProyecto(proyectoId: string, creditos: number): Promise<void> {
+  const [fila] = await db()
+    .select({ autorizado: projects.authorizedCredits })
+    .from(projects)
+    .where(eq(projects.id, proyectoId))
+    .limit(1);
+  const autorizado = fila?.autorizado ?? 0;
+  if (autorizado <= 0) return;
+  const comprometido = await comprometidoDelProyecto(proyectoId);
+  if (comprometido + creditos <= autorizado) return;
+  throw new ErrorProyecto(
+    402,
+    `Este proyecto tiene ${formatearCreditos(autorizado)} autorizados y lleva ${formatearCreditos(Math.round(comprometido))} comprometidos, así que no caben los ${formatearCreditos(creditos)} de esto. Sube el presupuesto del proyecto o quita escenas.`,
+  );
+}
+
+/** Trabajo de generación asociado a cada escena, si lo hay. */
+async function trabajosPorEscena(escenaIds: string[]): Promise<Map<string, string>> {
+  if (escenaIds.length === 0) return new Map();
+  const filas = await db()
+    .select({ id: generationJobs.id, escenaId: generationJobs.sceneId })
+    .from(generationJobs)
+    .where(inArray(generationJobs.sceneId, escenaIds));
+  const mapa = new Map<string, string>();
+  for (const fila of filas) if (fila.escenaId) mapa.set(fila.escenaId, fila.id);
+  return mapa;
+}
+
+export async function vistaDeProyecto(fila: FilaProyecto, totalEscenas: number, totalEstimado: number) {
+  const proyecto: ProyectoVista = {
+    id: fila.id,
+    titulo: fila.title,
+    formato: fila.format,
+    estado: fila.state,
+    idea: fila.idea,
+    concepto: fila.concept,
+    personajeId: fila.mainCharacterId,
+    personajeNombre: await nombreDePersonaje(fila.mainCharacterId),
+    presupuestoCreditos: fila.authorizedCredits,
+    totalEscenas,
+    totalEstimado,
+    creadoEn: fila.createdAt.toISOString(),
+    actualizadoEn: fila.updatedAt.toISOString(),
+  };
+  return proyecto;
+}
+
+/** Proyectos del actor con su total estimado, para la lista. Una consulta de escenas para todos, no una por fila. */
+export async function listarProyectos(actor: Actor): Promise<ProyectoVista[]> {
+  const [filas, elecciones, ajustes] = await Promise.all([proyectosDe(actor), eleccionesDelPlan(), leerAjustes()]);
+  const escenasPorProyecto = await escenasDeProyectos(filas.map((f) => f.id));
+  return Promise.all(
+    filas.map((fila) => {
+      const suyas = escenasPorProyecto.get(fila.id) ?? [];
+      const total = suyas.reduce(
+        (suma, escena) => suma + (estimacionONula(escena, elecciones, ajustes)?.creditos ?? 0),
+        0,
+      );
+      return vistaDeProyecto(fila, suyas.length, total);
+    }),
+  );
+}
+
+/** Proyecto completo: escenas, afirmaciones y plan. Es lo que pinta `/proyectos/[id]`. */
+export async function detalleProyecto(actor: Actor, id: unknown): Promise<ProyectoDetalle> {
+  const fila = await proyectoPropio(actor, id);
+  const [filasEscena, elecciones, ajustes, asistente, creditosAsistente] = await Promise.all([
+    escenasDe(fila.id),
+    eleccionesDelPlan(),
+    leerAjustes(),
+    estadoDelAsistente(actor.id),
+    gastoDelAsistente(fila.id),
+  ]);
+  const ids = filasEscena.map((e) => e.id);
+  const [afirmaciones, trabajos] = await Promise.all([afirmacionesDe(ids), trabajosPorEscena(ids)]);
+  const escenasVista = filasEscena.map((escena) =>
+    vistaEscena(escena, afirmaciones, trabajos.get(escena.id) ?? null, estimacionONula(escena, elecciones, ajustes)),
+  );
+  const plan = planDeEscenas(fila, escenasVista, ajustes, creditosAsistente);
+  return {
+    proyecto: await vistaDeProyecto(fila, escenasVista.length, plan.totalCreditos),
+    escenas: escenasVista,
+    plan,
+    asistenteDisponible: asistente.disponible,
+    motivoAsistente: asistente.motivo,
+    estimacionAsistente: asistente.estimacion,
+  };
+}
+
+// ── Aprobación ────────────────────────────────────────────────────────────────────────────────────────────
+
+export interface PeticionAprobacion {
+  /** Presupuesto autorizado del proyecto, en créditos. Se fija al aprobar (decisión 3 de la fase). */
+  presupuestoCreditos: number;
+  /** Total estimado que el usuario tenía delante. Si el vigente es otro, no se aprueba y se vuelve a mostrar. */
+  totalConfirmado: number;
+}
+
+/**
+ * Aprueba el plan del proyecto. Todo pasa en una transacción con la fila del proyecto bloqueada: dos
+ * aprobaciones a la vez no pueden congelar precios distintos.
+ *
+ * Lo que comprueba, en este orden: que el presupuesto es un número válido, que el total sigue siendo el que se
+ * confirmó, y que no queda ningún impedimento (escenas sin estimar, presupuesto corto o afirmaciones de salud
+ * sin revisar). Solo entonces congela cada escena y marca el proyecto como planificado.
+ */
+export async function aprobarPlan(actor: Actor, id: unknown, peticion: PeticionAprobacion): Promise<ProyectoDetalle> {
+  const presupuesto = peticion.presupuestoCreditos;
+  // El mismo tope que al crear el proyecto: un presupuesto sin techo no es un presupuesto.
+  if (!Number.isInteger(presupuesto) || presupuesto <= 0 || presupuesto > PRESUPUESTO_MAXIMO) {
+    throw new ErrorProyecto(
+      400,
+      `Indica cuántos créditos autorizas como máximo para este proyecto (de 1 a ${PRESUPUESTO_MAXIMO}).`,
+    );
+  }
+  const proyecto = await proyectoPropio(actor, id);
+  const proyectoId = proyecto.id;
+  const ajustes = await leerAjustes();
+  const elecciones = await eleccionesDelPlan();
+  // Lo que se congela además del modelo y el precio: con qué versión de la ficha y de la plantilla se iba a
+  // componer el prompt. Sin guardarlas, «la ficha ha cambiado desde que aprobaste» no se podría comprobar.
+  const congelado = await versionesACongelar(actor, proyecto);
+  await db().transaction(async (tx) => {
+    const [fila] = await tx.select().from(projects).where(eq(projects.id, proyectoId)).limit(1).for("update");
+    if (!fila) throw new ErrorProyecto(404, "Ese proyecto no existe.");
+    const filasEscena = await escenasDe(proyectoId, tx);
+    const ids = filasEscena.map((e) => e.id);
+    const afirmaciones = ids.length === 0 ? [] : await tx.select().from(claims).where(inArray(claims.sceneId, ids));
+    const escenasVista = filasEscena.map((escena) =>
+      vistaEscena(escena, afirmaciones, null, estimacionONula(escena, elecciones, ajustes)),
+    );
+    // El presupuesto que se está fijando es el que manda en la comprobación, no el que había guardado.
+    const plan = planDeEscenas(
+      { ...fila, authorizedCredits: presupuesto },
+      escenasVista,
+      ajustes,
+      await gastoDelAsistente(proyectoId, tx),
+    );
+    if (plan.totalCreditos !== peticion.totalConfirmado) {
+      throw new ErrorProyecto(
+        409,
+        `El coste estimado ha cambiado desde que lo viste (ahora son ${formatearCreditos(plan.totalCreditos)}). Revisa el plan y vuelve a aprobarlo.`,
+      );
+    }
+    if (!puedeAprobarse(plan)) throw new ErrorProyecto(409, plan.impedimentos[0] ?? "El plan no se puede aprobar.");
+
+    const ahora = new Date();
+    for (const escena of filasEscena) {
+      const estimacion = estimacionONula(escena, elecciones, ajustes);
+      if (!estimacion) continue;
+      await tx
+        .update(scenes)
+        .set({
+          state: escena.state === "producida" ? "producida" : "aprobada",
+          approvedBy: actor.id,
+          approvedAt: ahora,
+          approvedFrameModel: elecciones.fotograma?.modelo.modelo ?? "",
+          approvedAnimationModel: elecciones.animacion?.modelo.modelo ?? "",
+          approvedFrameStamp: estimacion.selloFotograma,
+          approvedAnimationStamp: estimacion.selloAnimacion,
+          approvedCharacterVersionId: congelado.versionPersonaje,
+          approvedTemplateVersionId: congelado.versionPlantilla,
+          estimatedCredits: estimacion.creditos,
+          invalidationReason: "",
+          updatedAt: ahora,
+        })
+        .where(eq(scenes.id, escena.id));
+    }
+    await tx
+      .update(projects)
+      .set({
+        authorizedCredits: presupuesto,
+        state: fila.state === "en_produccion" || fila.state === "listo" ? fila.state : "planificado",
+        planApprovedBy: actor.id,
+        planApprovedAt: ahora,
+        updatedAt: ahora,
+      })
+      .where(eq(projects.id, proyectoId));
+  });
+  return detalleProyecto(actor, proyectoId);
+}
+
+/**
+ * Versiones que congela una aprobación: la de la ficha del protagonista y la de la plantilla con la que se
+ * compondría el prompt. `null` cuando el proyecto no tiene protagonista o la instalación no tiene plantilla.
+ */
+async function versionesACongelar(
+  actor: Actor,
+  proyecto: FilaProyecto,
+): Promise<{ versionPersonaje: string | null; versionPlantilla: string | null }> {
+  const version = proyecto.mainCharacterId ? await ultimaVersion(proyecto.mainCharacterId) : null;
+  const plantilla = await plantillaVigenteDe(actor.id, "image_edit");
+  return { versionPersonaje: version?.id ?? null, versionPlantilla: plantilla?.versionId ?? null };
+}
+
+/**
+ * Puerta de producción: una escena solo se puede generar si su plan está aprobado y su aprobación sigue en
+ * pie. **Cualquier camino que encole una generación a partir de una escena pasa por aquí.**
+ *
+ * Comprueba además que siga siendo lo mismo lo que se congeló: el sello del precio, la versión de la ficha del
+ * personaje y la versión de la plantilla. Si cualquiera de las tres ha cambiado, lo aprobado ya no es lo que se
+ * enviaría ni lo que se pagaría, y se dice en lugar de gastar.
+ */
+export async function exigirEscenaAprobada(actor: Actor, escenaId: unknown): Promise<FilaEscena> {
+  const { escena, proyecto } = await escenaPropia(actor, escenaId);
+  if (proyecto.planApprovedAt === null) {
+    throw new ErrorProyecto(409, "Este proyecto no tiene el plan aprobado: apruébalo antes de producir sus escenas.");
+  }
+  if (escena.state === "borrador") {
+    throw new ErrorProyecto(
+      409,
+      escena.invalidationReason !== ""
+        ? escena.invalidationReason
+        : "Esta escena no está aprobada: apruébala en el plan antes de producirla.",
+    );
+  }
+  const elecciones = await eleccionesDelPlan();
+  const vigenteFotograma = elecciones.fotograma?.precio.sello ?? "";
+  if (escena.approvedFrameStamp !== "" && escena.approvedFrameStamp !== vigenteFotograma) {
+    throw new ErrorProyecto(
+      409,
+      "El precio del modelo ha cambiado desde que aprobaste el plan. Revísalo y vuelve a aprobarlo.",
+    );
+  }
+  const vigente = await versionesACongelar(actor, proyecto);
+  if (escena.approvedCharacterVersionId !== null && escena.approvedCharacterVersionId !== vigente.versionPersonaje) {
+    throw new ErrorProyecto(
+      409,
+      "La ficha del personaje ha cambiado desde que aprobaste el plan: revisa lo que se enviará y vuelve a aprobarlo.",
+    );
+  }
+  if (escena.approvedTemplateVersionId !== null && escena.approvedTemplateVersionId !== vigente.versionPlantilla) {
+    throw new ErrorProyecto(
+      409,
+      "La plantilla de prompt ha cambiado desde que aprobaste el plan: revisa el coste y vuelve a aprobarlo.",
+    );
+  }
+  return escena;
+}

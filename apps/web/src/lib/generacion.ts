@@ -133,7 +133,18 @@ export interface TrabajoVista {
   estadoProveedor: string | null;
   /** Identificador de la tarea en el proveedor: es lo que permite reconsultar sin reenviar. */
   taskId: string | null;
-  prompt: string;
+  /**
+   * Lo que escribió la persona, en su idioma. Es lo que se le muestra en el historial para reconocer el trabajo.
+   *
+   * **El prompt compuesto no está aquí** (ADR-0022): no sale hacia el navegador de un usuario normal. Quien
+   * administra lo ve en `/admin/trabajos`.
+   */
+  escena: string;
+  /**
+   * Prompt compuesto tal como se envió. Solo llega cuando el ajuste «Mostrar el prompt a los usuarios» está
+   * encendido (apagado de fábrica, preparado para los planes de pago).
+   */
+  prompt?: string;
   creditosEstimados: number;
   /** Créditos que informa el proveedor; `null` si aún no los ha informado. */
   creditosConsumidos: number | null;
@@ -201,6 +212,21 @@ export interface Estimacion {
    * entre la pantalla y el botón, el servidor la rechaza y hay que volver a revisarla.
    */
   sello: string;
+  /**
+   * Coste de traducir al inglés lo que escribas, si esta instalación traduce antes de componer el prompt
+   * (decisión firme del propietario, 2026-09-27). Es un **máximo**: un texto que ya se tradujo antes no se
+   * vuelve a pagar. `null` cuando la traducción está apagada y se envía el texto original.
+   */
+  traduccion: CosteTraduccion | null;
+}
+
+/** Lo que costaría la traducción al inglés de un texto nuevo, con su precio y su fecha. */
+export interface CosteTraduccion {
+  creditos: number;
+  euros: number;
+  /** Fecha (AAAA-MM-DD) en la que se comprobó el precio del modelo de texto. */
+  comprobado: string;
+  nombreModelo: string;
 }
 
 /**
@@ -220,6 +246,11 @@ export interface Deposito {
   retenido: number;
   /** Cuántos trabajos están en esa situación. */
   trabajosEnRevision: number;
+  /**
+   * Llamadas al modelo de texto que se quedaron a medias y cuya estimación sigue apartada. El worker las cierra
+   * en su siguiente pasada; se cuentan aparte porque lo que hay que hacer con ellas no es lo mismo.
+   */
+  llamadasDeTextoColgadas: number;
   /** Créditos ya gastados, informados por el proveedor cuando los informa. */
   consumido: number;
   /** Lo que queda por comprometer; `null` cuando no hay presupuesto propio. */
@@ -243,6 +274,17 @@ export interface EstadoCola {
   workerActivo: boolean;
   /** Fecha ISO del último latido de cualquier worker, o `null` si nunca ha habido ninguno. */
   ultimoLatido: string | null;
+}
+
+/**
+ * Créditos que hay que confirmar antes de generar: los del modelo **más los de la traducción**, si esta
+ * instalación traduce los prompts al inglés (decisión provisional del propietario, 2026-09-27).
+ *
+ * Es la **misma** función en el navegador y en el servidor: lo que se muestra es exactamente lo que se compara al
+ * confirmar, así que no puede pasar que el botón diga una cifra y el servidor espere otra.
+ */
+export function creditosAConfirmar(estimacion: Estimacion): number {
+  return estimacion.creditos + (estimacion.traduccion?.creditos ?? 0);
 }
 
 /** Créditos y euros con el formato de España; el redondeo de euros deja claro que es aproximado. */

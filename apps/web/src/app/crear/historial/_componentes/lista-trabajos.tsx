@@ -105,8 +105,8 @@ export function ListaTrabajos({ iniciales, cola }: { iniciales: TrabajoVista[]; 
                   </span>
                 )}
               </div>
-              <p className="truncate text-texto" title={trabajo.prompt}>
-                {trabajo.prompt}
+              <p className="truncate text-texto" title={trabajo.escena}>
+                {trabajo.escena === "" ? "Sin descripción" : trabajo.escena}
               </p>
               <p className="text-sm text-texto-suave">
                 {new Date(trabajo.creadoEn).toLocaleString("es-ES")} ·{" "}

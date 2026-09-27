@@ -26,7 +26,8 @@ import { type ContextoAplicado, DESCRIPCION_MAXIMA, MOTIVO_CAMBIO_MAXIMO, type P
  *   dependían de la anterior. Se dice aquí, antes de pulsar, no después;
  * - el texto se **limpia** con la misma función que compone el contexto, así que lo que se escribe se ve tal
  *   como se enviará (sin saltos de línea, sin parámetros colados). Se avisa cuando la limpieza cambia algo;
- * - «Ver el contexto aplicado» lo pide al servidor: el prompt lo compone él, no el navegador.
+ * - «Ver lo que se enviará» dice de qué versión sale y qué fotos se mandan. **El prompt no se muestra**
+ *   (ADR-0022): lo compone el servidor y solo se ve en el panel de administración.
  */
 export function PanelFicha({
   personaje,
@@ -162,8 +163,8 @@ export function PanelFicha({
         <Boton icono={<Save className="size-4" />} cargando={guardando} disabled={!cambiado} onClick={guardar}>
           Guardar la ficha
         </Boton>
-        {/* El contexto se compone a partir de la **versión guardada**: mientras haya cambios sin guardar, lo
-            que se enseñaría no sería lo que hay en pantalla, así que se pide guardar primero. */}
+        {/* Se resuelve a partir de la **versión guardada**: mientras haya cambios sin guardar, lo que se
+            enseñaría no sería lo que hay en pantalla, así que se pide guardar primero. */}
         <Boton
           variante="secundario"
           icono={<Eye className="size-4" />}
@@ -171,7 +172,7 @@ export function PanelFicha({
           disabled={cambiado}
           onClick={verContexto}
         >
-          Ver el contexto aplicado
+          Ver lo que se enviará
         </Boton>
         {cambiado && (
           <p className="self-center text-sm text-texto-suave">

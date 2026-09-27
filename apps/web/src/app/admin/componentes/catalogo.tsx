@@ -11,6 +11,7 @@ import { SeccionModelos } from "./secciones/modelos";
 import { SeccionMovimiento } from "./secciones/movimiento";
 import { SeccionPersonajes } from "./secciones/personajes";
 import { SeccionPresets } from "./secciones/presets";
+import { SeccionProyectos } from "./secciones/proyectos";
 import { SeccionSecretos } from "./secciones/secretos";
 import { SeccionSelectores } from "./secciones/selectores";
 import { SeccionSuperposiciones } from "./secciones/superposiciones";
@@ -25,6 +26,7 @@ const INDICE = [
   ["creador", "Creador"],
   ["personajes", "Personajes"],
   ["presets", "Presets y prompt"],
+  ["proyectos", "Proyectos y plan"],
   ["cuentas", "Cuentas"],
   ["secretos", "Secretos"],
   ["estados", "Estados y presupuesto"],
@@ -65,6 +67,7 @@ export function Catalogo() {
         <SeccionCreador />
         <SeccionPersonajes />
         <SeccionPresets />
+        <SeccionProyectos />
         <SeccionCuentas />
         <SeccionSecretos />
         <SeccionEstados />

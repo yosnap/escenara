@@ -45,6 +45,15 @@ export const usageLedger = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     /** Trabajo al que pertenece el apunte; `null` solo en los ajustes que no son de un trabajo concreto. */
     jobId: uuid("job_id").references(() => generationJobs.id, { onDelete: "set null" }),
+    /**
+     * Ejecución del asistente de guion a la que pertenece el apunte (0.17.0); `null` en todo lo demás. El
+     * texto también cuesta, y su llamada no crea un trabajo de generación: su gasto se apunta aquí con la
+     * misma mecánica de reserva, consumo y liberación.
+     *
+     * Sin restricción de clave ajena a propósito, igual que `generation_jobs.reservation_id`: los apuntes no se
+     * borran nunca y la tabla se define aparte para no montar una referencia circular entre los dos módulos.
+     */
+    assistantRunId: uuid("assistant_run_id"),
     provider: proveedorCredencial("provider").notNull(),
     model: text("model").notNull(),
     entryType: tipoApunte("entry_type").notNull(),
@@ -71,8 +80,16 @@ export const usageLedger = pgTable(
      * ajustes quedan fuera del índice: corregir a mano dos veces el mismo trabajo es legítimo.
      */
     uniqueIndex("usage_ledger_trabajo_apunte_uq").on(t.jobId, t.entryType).where(sql`${t.entryType} <> 'ajuste'`),
+    /**
+     * Lo mismo para el asistente: una ejecución tiene como mucho una reserva, un consumo y una liberación. Es
+     * lo que hace idempotente el cierre de una llamada de texto que se repita.
+     */
+    uniqueIndex("usage_ledger_ejecucion_apunte_uq")
+      .on(t.assistantRunId, t.entryType)
+      .where(sql`${t.entryType} <> 'ajuste'`),
     index("usage_ledger_usuario_idx").on(t.userId, t.createdAt),
     index("usage_ledger_trabajo_idx").on(t.jobId),
+    index("usage_ledger_ejecucion_idx").on(t.assistantRunId),
   ],
 );
 

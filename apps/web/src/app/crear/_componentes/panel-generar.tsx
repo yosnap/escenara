@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import { Boton } from "@/components/ui/button";
 import { Casilla } from "@/components/ui/choice";
 import { PanelCoste } from "@/components/ui/coste";
-import { type Estimacion, formatearCreditos } from "@/lib/generacion";
+import { creditosAConfirmar, type Estimacion, formatearCreditos } from "@/lib/generacion";
 
 export interface ConfirmacionCoste {
   creditosConfirmados: number;
@@ -56,7 +56,7 @@ export function PanelGenerar({
     // Misma confirmación, misma clave: un doble clic o un reintento no pagan dos veces.
     if (clave.current?.firma !== firma) clave.current = { firma, valor: crypto.randomUUID() };
     onGenerar({
-      creditosConfirmados: estimacion.creditos,
+      creditosConfirmados: creditosAConfirmar(estimacion),
       selloEstimacion: estimacion.sello,
       derechos,
       avisoUmbralAceptado: avisoAceptado,

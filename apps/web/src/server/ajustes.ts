@@ -27,6 +27,40 @@ export interface Ajustes {
   /** Trabajos simultáneos por usuario en la cola (en cola, preparando, enviados o en curso). */
   trabajosSimultaneos: number;
   /**
+   * Presupuesto en créditos que se propone al crear un proyecto (RF14, 0.17.0). Es solo la propuesta: quien
+   * crea el proyecto la puede subir o bajar, y sin presupuesto fijado el plan no se puede aprobar.
+   */
+  presupuestoProyecto: number;
+  /**
+   * Asistente de guion encendido (0.17.0). **Apagado de fábrica**: escribir el guion a mano es un camino de
+   * primera clase y el asistente cuesta dinero, así que se enciende a propósito. Aunque esté encendido, hace
+   * falta además un modelo de texto utilizable en el catálogo y la clave del proveedor del usuario.
+   */
+  asistenteActivo: boolean;
+  /**
+   * Margen prudente que se suma a la estimación de una escena cuando su modelo no tiene precio **medido**
+   * (solo documentado), en % (ADR-0009: el prototipo infraestimó ×3). Siempre se dice en la interfaz.
+   */
+  asistenteMargenEstimacion: number;
+  /**
+   * Traducir al inglés lo que el usuario escribe en español **antes de componer el prompt** (decisión firme del
+   * propietario, 2026-09-27). Es una llamada de pago al modelo de texto, así que viene **apagada**: mientras ese
+   * modelo esté `descubierto` en el catálogo, encenderla es una decisión con coste. Apagada se envía el texto
+   * original, como hasta la 0.16.x. El diálogo hablado no se traduce nunca.
+   */
+  traducirPrompts: boolean;
+  /**
+   * Días que se guarda una traducción sin usarse antes de que el barrido la borre. La caché existe para no pagar
+   * dos veces lo mismo, no para guardar texto de alguien indefinidamente: 0 la desactiva (se purga en cada pasada).
+   */
+  traduccionDiasCache: number;
+  /**
+   * Mostrar al usuario el prompt compuesto. **Apagado y preparado para el futuro** (planes de pago): desde la
+   * 0.17.0 el prompt final es material del panel de administración y no sale hacia el navegador de un usuario
+   * normal (ADR-0022).
+   */
+  mostrarPromptAlUsuario: boolean;
+  /**
    * Fotos de referencia que un personaje necesita como mínimo para poder generar. Con menos, la identidad
    * se pierde entre fotogramas: en el prototipo del 2026-09-27 cinco fotos dieron buen resultado y tres son
    * el mínimo razonable. La cobertura guiada de vistas llega en 0.14.0.
@@ -81,6 +115,14 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   presupuestoCreditos: 2000,
   presupuestoTrabajo: 500,
   trabajosSimultaneos: 3,
+  presupuestoProyecto: 500,
+  // El asistente de guion arranca apagado: cuesta dinero y el guion a mano funciona igual de bien.
+  asistenteActivo: false,
+  asistenteMargenEstimacion: 30,
+  // Traducir cuesta créditos y el modelo de texto aún no está validado: se enciende a propósito.
+  traducirPrompts: false,
+  traduccionDiasCache: 180,
+  mostrarPromptAlUsuario: false,
   minimoReferenciasPersonaje: 3,
   // 512 px de lado menor: por debajo, una cara ya no aporta identidad y el proveedor la amplía inventando.
   calidadLadoMinimo: 512,
@@ -163,6 +205,21 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
     valido: entero(1, 50),
     mensaje: "Indica de 1 a 50 trabajos simultáneos por usuario.",
   },
+  presupuestoProyecto: {
+    valido: entero(0, 100_000_000),
+    mensaje: "Indica un número entero de créditos (0 = no proponer ninguno).",
+  },
+  asistenteActivo: { valido: booleano, mensaje: "Debe ser sí o no." },
+  asistenteMargenEstimacion: {
+    valido: entero(0, 200),
+    mensaje: "Indica el margen prudente en %, de 0 a 200.",
+  },
+  traducirPrompts: { valido: booleano, mensaje: "Debe ser sí o no." },
+  traduccionDiasCache: {
+    valido: entero(0, 3650),
+    mensaje: "Indica de 0 a 3650 días (0 = no guardar traducciones entre sesiones).",
+  },
+  mostrarPromptAlUsuario: { valido: booleano, mensaje: "Debe ser sí o no." },
   minimoReferenciasPersonaje: {
     valido: entero(1, 10),
     mensaje: "Indica de 1 a 10 fotos de referencia como mínimo por personaje.",

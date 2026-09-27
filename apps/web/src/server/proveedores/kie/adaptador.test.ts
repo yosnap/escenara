@@ -147,8 +147,10 @@ const contexto = (dialogo = "") => ({ escena: ESCENA, dialogo, urls: [URL_REFERE
 describe("capacidades del adaptador", () => {
   test("declara lo que KIE sabe hacer hoy en Escenara y nada más", () => {
     expect(adaptadorKie.proveedor).toBe("kie");
-    expect(adaptadorKie.capacidades).toEqual(["image_edit", "image_to_video", "text_to_video"]);
+    // `text_generation` la añade la 0.17.0: KIE también ofrece modelos de chat, con su propio endpoint.
+    expect(adaptadorKie.capacidades).toEqual(["image_edit", "image_to_video", "text_to_video", "text_generation"]);
     expect(adaptadorKie.admite("image_edit")).toBe(true);
+    expect(adaptadorKie.admite("text_generation")).toBe(true);
     expect(adaptadorKie.admite("tts")).toBe(false);
   });
 });

@@ -5,11 +5,12 @@ import { MiniaturaMedio } from "../media/miniatura-medio";
 import { DistintivoOrigen } from "./distintivo-origen";
 
 /**
- * **Zona de claridad** de lo que se le va a enviar al proveedor: el bloque de contexto que sale de la ficha y
- * las fotos elegidas, con su vista. Superficie neutra, sin degradados y sin animación: aquí no se decora nada,
- * se lee lo que se envía antes de confirmarlo (petición del propietario, 2026-09-27).
+ * **Zona de claridad** de lo que se le va a enviar al proveedor: **qué fotos** y de qué versión de la ficha.
+ * Superficie neutra, sin degradados y sin animación.
  *
- * El contenido lo compone **el servidor** a partir de la versión citada; esto solo lo muestra tal cual.
+ * Desde la 0.17.0 **no muestra el bloque de contexto** (ADR-0022): el prompt compuesto es material del panel de
+ * administración y no sale hacia el navegador. Lo que sí se dice es si la ficha está vacía, porque eso sí lo
+ * puede arreglar quien mira la pantalla.
  */
 export function PanelContextoPersonaje({ contexto, cargando }: { contexto: ContextoAplicado; cargando?: boolean }) {
   return (
@@ -30,16 +31,11 @@ export function PanelContextoPersonaje({ contexto, cargando }: { contexto: Conte
         </p>
       </header>
 
-      {contexto.contexto === "" ? (
-        <p className="text-sm text-texto-suave">
-          La ficha de este personaje está vacía, así que al prompt no se le añade ningún contexto: solo se envían sus
-          fotos. Rellena la ficha en su pestaña «Ficha» para que la identidad se mantenga entre escenas.
-        </p>
-      ) : (
-        <p className="rounded-control border border-borde bg-fondo p-3 font-mono text-sm whitespace-pre-line text-texto">
-          {contexto.contexto}
-        </p>
-      )}
+      <p className="text-sm text-texto-suave">
+        {contexto.conContexto
+          ? "Se enviarán estas fotos y la descripción de esta versión de su ficha (rasgos, estilo, vestuario y personalidad), que es lo que mantiene la identidad entre escenas."
+          : "La ficha de este personaje está vacía, así que solo se envían sus fotos. Rellena la ficha en su pestaña «Ficha» para que la identidad se mantenga entre escenas."}
+      </p>
 
       <div className="flex flex-col gap-2">
         <h4 className="flex items-center gap-2 text-sm font-semibold text-texto">

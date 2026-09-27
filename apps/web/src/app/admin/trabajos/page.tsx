@@ -1,6 +1,6 @@
 import { desc } from "drizzle-orm";
 import type { Metadata } from "next";
-import { trabajosConExceso, trabajosEnRevision } from "@/server/cola/revision";
+import { llamadasConExceso, trabajosConExceso, trabajosEnRevision } from "@/server/cola/revision";
 import { db } from "@/server/db/cliente";
 import { queueWorkers } from "@/server/db/esquema";
 import { VistaRevisionTrabajos } from "./vista-revision-trabajos";
@@ -13,9 +13,10 @@ export const dynamic = "force-dynamic";
  * estado de los workers de la cola (el layout del admin ya exige el rol).
  */
 export default async function PaginaAdminTrabajos() {
-  const [trabajos, excesos, workers] = await Promise.all([
+  const [trabajos, excesos, excesosDeTexto, workers] = await Promise.all([
     trabajosEnRevision(),
     trabajosConExceso(),
+    llamadasConExceso(),
     db().select().from(queueWorkers).orderBy(desc(queueWorkers.seenAt)).limit(20),
   ]);
   return (
@@ -31,6 +32,7 @@ export default async function PaginaAdminTrabajos() {
       <VistaRevisionTrabajos
         iniciales={trabajos}
         excesos={excesos}
+        excesosDeTexto={excesosDeTexto}
         workers={workers.map((w) => ({
           id: w.id,
           arrancado: w.startedAt.toISOString(),

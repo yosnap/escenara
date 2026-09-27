@@ -24,7 +24,7 @@
 - [x] Borrado de personaje con todos sus derivados. **0.13.0**: borra el personaje, su consentimiento, sus relaciones con las fotos y los medios generados con él, fila y objeto del almacenamiento, con registro de las claves borradas. Las fotos de referencia se conservan en la biblioteca del usuario a propósito (son suyas y pueden estar en otro personaje). Escenas y exportaciones aún no existen: se añadirán al mismo borrado cuando lleguen.
 - [ ] Etiqueta visible de contenido sintético por defecto y metadatos C2PA en exportaciones realistas.
 - [ ] Sugerencias de salud informativas, revisables y sin promesas de diagnóstico ni curación.
-- [ ] Aviso de qué proveedor procesará los archivos antes de enviarlos.
+- [x] Aviso de qué proveedor procesará los archivos **y los textos** antes de enviarlos. **0.17.0**: el formulario de consentimiento dice que al generar con ese personaje se envían a KIE sus fotos **y el texto de su ficha** (rasgos, estilo, vestuario, personalidad y descripción), que forma parte del prompt; y que si la instalación traduce los prompts al inglés, ese texto pasa además por el **modelo de texto** de KIE. La zona de coste de «Crear» dice lo mismo antes de gastar.
 - [ ] Credenciales cifradas, excluidas de logs y nunca devueltas íntegras al navegador.
 - [ ] Protección contra SSRF en URLs externas y límites de uso por cuenta.
 
@@ -36,7 +36,27 @@ Escrito aquí para no repetirlo con eufemismos en cada pantalla:
 - **Escenara no comprueba la identidad de nadie.** Para la imagen de un tercero exige un documento de consentimiento firmado y una **revisión humana** de quien administra la instalación. Esa revisión valora el documento; no autentica al firmante ni verifica que sea quien dice ser.
 - **Lo que sí se puede demostrar** es qué se declaró, quién lo declaró, cuándo, con qué alcance de uso, quién lo revisó y cuándo se revocó. Los registros revocados no se borran por eso mismo.
 - **Riesgos que quedan abiertos** y que esta versión no cierra: una declaración falsa, un documento falsificado, un personaje creado a partir de fotos obtenidas sin permiso, y la moderación de lo ya generado. Se mitigan en 0.28.0 (moderación de comunidad) y con los filtros de contenido de los propios proveedores. Cualquier texto público del producto debe describir estos controles como controles, sin dar a entender verificación.
-- **Datos personales implicados**: fotos de rostro y documentos de consentimiento firmados. Las **fotos solo las ve su dueño**: no salen en ninguna respuesta dirigida a otra persona, tampoco a quien administra. Del documento de un tercero, quien administra ve únicamente ese documento, en `/admin/personajes`, y **cada acceso queda registrado** (quién, cuándo, qué personaje y qué hizo) en `consent_access_log`. Ni los documentos ni las fotos de referencia aparecen en la biblioteca de administración (`/admin/medios`): para quien no es su dueño responden como si no existieran. A los documentos se les quitan los metadatos al guardarlos, **incluida la localización** de la foto, sin recomprimir la imagen. Se sirven con URL temporales firmadas que caducan y no aparecen en ningún registro del servidor. Antes del lanzamiento hay que reflejar este tratamiento (y el plazo de conservación de los documentos) en la política de privacidad y en la EIPD.
+- **Datos personales implicados**: fotos de rostro, documentos de consentimiento firmados y **el texto de la ficha** del personaje. Las **fotos solo las ve su dueño**: no salen en ninguna respuesta dirigida a otra persona, tampoco a quien administra. Del documento de un tercero, quien administra ve únicamente ese documento, en `/admin/personajes`, y **cada acceso queda registrado** (quién, cuándo, qué personaje y qué hizo) en `consent_access_log`. Ni los documentos ni las fotos de referencia aparecen en la biblioteca de administración (`/admin/medios`): para quien no es su dueño responden como si no existieran. A los documentos se les quitan los metadatos al guardarlos, **incluida la localización** de la foto, sin recomprimir la imagen. Se sirven con URL temporales firmadas que caducan y no aparecen en ningún registro del servidor. Antes del lanzamiento hay que reflejar este tratamiento (y el plazo de conservación de los documentos) en la política de privacidad y en la EIPD.
+
+## El texto de la ficha también sale hacia el proveedor (0.17.0)
+
+La ficha de un personaje (rasgos, estilo, vestuario, personalidad y descripción) **no es solo archivo**: desde la
+0.15.0 entra en el prompt de cada fotograma y de cada clip, así que **se procesa en KIE** igual que sus fotos. Y
+desde la 0.17.0, si la instalación tiene encendida la traducción de los prompts al inglés (decisión firme del
+propietario, ADR-0020), ese texto pasa **además** por el modelo de texto de KIE.
+
+Consecuencias que hay que sostener:
+
+- **se dice antes de consentir**: el formulario de consentimiento lo enuncia, y no solo para las fotos;
+- **la traducción de una ficha se guarda con la cuenta de su dueño**, nunca en una caché común: es la descripción
+  de una persona, y compartirla entre cuentas la convertiría en material de otro (decisión provisional del
+  propietario, 2026-09-27);
+- **se borra con el personaje**, en la misma operación que sus derivados y su consentimiento, y se purga sola
+  cuando nadie la usa desde hace más de lo configurado en Admin › Ajustes;
+- del texto de origen **solo se guarda su huella**, así que la caché no es una segunda copia de lo que se escribió.
+
+Queda pendiente para la política de privacidad: nombrar KIE como **encargado del tratamiento** también para texto,
+no solo para imagen y vídeo, y decir el plazo de conservación de las traducciones.
 
 ## Documentos públicos necesarios antes de 1.0.0
 

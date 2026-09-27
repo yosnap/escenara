@@ -13,6 +13,7 @@ import { enviarCorreoPruebaAccion, guardarAjustesAccion } from "./acciones";
 import { guardarSecretoAccion, quitarSecretoAccion } from "./acciones-secretos";
 import { SeccionAccesoSocial } from "./seccion-acceso-social";
 import { Seccion } from "./seccion-ajustes";
+import { SeccionAsistente } from "./seccion-asistente";
 import { SeccionCalidad } from "./seccion-calidad";
 import { SeccionPresupuesto } from "./seccion-presupuesto";
 
@@ -198,6 +199,8 @@ export function FormularioAjustes({
           </Campo>
         </div>
       </Seccion>
+
+      <SeccionAsistente valores={valores} errorDe={errorDe} onCambio={cambiar} />
 
       <SeccionPresupuesto
         valores={valores}

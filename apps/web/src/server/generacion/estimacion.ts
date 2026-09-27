@@ -3,6 +3,7 @@ import { precioCaducado } from "@/lib/catalogo";
 import type { Estimacion, TipoTrabajo } from "@/lib/generacion";
 import { leerAjustes } from "../ajustes";
 import { usarCredencial } from "../boveda/credenciales";
+import { type EstadoTraduccion, estadoDeTraduccion } from "../prompts/traduccion";
 import type { Buscador } from "../proveedores/codigos";
 import { ErrorCatalogo, ErrorProveedor } from "../proveedores/contrato";
 import { adaptadorDe } from "../proveedores/registro";
@@ -91,9 +92,13 @@ export async function estimar(
   buscar: Buscador = fetch,
   modelo?: string | null,
 ): Promise<Estimacion> {
-  const [eleccion, ajustes] = await Promise.all([elegirParaTipo(tipo, modelo), leerAjustes()]);
+  const [eleccion, ajustes, traduccion] = await Promise.all([
+    elegirParaTipo(tipo, modelo),
+    leerAjustes(),
+    estadoDeTraduccion(),
+  ]);
   const saldos = await saldoDe(usuarioId, buscar, [eleccion]);
-  return conEleccion(eleccion, ajustes, saldos, tipo);
+  return conEleccion(eleccion, ajustes, saldos, tipo, traduccion);
 }
 
 /**
@@ -105,15 +110,16 @@ export async function estimarTodo(
   buscar: Buscador = fetch,
   modelos: Partial<Record<TipoTrabajo, string>> = {},
 ): Promise<Record<TipoTrabajo, Estimacion>> {
-  const [fotograma, animacion, ajustes] = await Promise.all([
+  const [fotograma, animacion, ajustes, traduccion] = await Promise.all([
     elegirParaTipo("fotograma", modelos.fotograma),
     elegirParaTipo("animacion", modelos.animacion),
     leerAjustes(),
+    estadoDeTraduccion(),
   ]);
   const saldos = await saldoDe(usuarioId, buscar, [fotograma, animacion]);
   return {
-    fotograma: conEleccion(fotograma, ajustes, saldos, "fotograma"),
-    animacion: conEleccion(animacion, ajustes, saldos, "animacion"),
+    fotograma: conEleccion(fotograma, ajustes, saldos, "fotograma", traduccion),
+    animacion: conEleccion(animacion, ajustes, saldos, "animacion", traduccion),
   };
 }
 
@@ -122,10 +128,14 @@ function conEleccion(
   ajustes: Awaited<ReturnType<typeof leerAjustes>>,
   saldos: Map<string, number | null>,
   tipo: TipoTrabajo,
+  traduccion: EstadoTraduccion,
 ): Estimacion {
   const { precio, modelo } = eleccion;
   const saldo = saldos.get(modelo.proveedor) ?? null;
   const creditos = Math.ceil(precio.creditos);
+  // El umbral de aviso se mide sobre **lo que el usuario va a confirmar**, que incluye la traducción: si no, el
+  // servidor pediría el aviso y la casilla no aparecería.
+  const totales = creditos + (traduccion.activa ? traduccion.creditos : 0);
   return {
     tipo,
     modelo: precio.modelo,
@@ -136,12 +146,22 @@ function conEleccion(
     euros: creditos * ajustes.eurosPorCredito,
     saldo,
     // Solo se niega cuando se conoce el saldo y no llega.
-    alcanza: saldo === null || saldo >= creditos,
-    superaUmbral: creditos > ajustes.avisoCreditos,
+    alcanza: saldo === null || saldo >= totales,
+    superaUmbral: totales > ajustes.avisoCreditos,
     umbral: ajustes.avisoCreditos,
     fuente: precio.fuente,
     comprobado: precio.comprobado,
     precioAntiguo: precioCaducado(precio.comprobado),
     sello: precio.sello,
+    // La traducción es un coste aparte del modelo de imagen o vídeo: se muestra como tal y **no** entra en los
+    // créditos que se confirman, que son los del modelo. Su reserva es su propio apunte.
+    traduccion: traduccion.activa
+      ? {
+          creditos: traduccion.creditos,
+          euros: traduccion.creditos * ajustes.eurosPorCredito,
+          comprobado: traduccion.comprobado,
+          nombreModelo: traduccion.nombreModelo,
+        }
+      : null,
   };
 }

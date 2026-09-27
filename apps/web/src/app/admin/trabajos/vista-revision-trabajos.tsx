@@ -6,7 +6,7 @@ import { Boton } from "@/components/ui/button";
 import { Aviso, EstadoVacio } from "@/components/ui/feedback";
 import { Campo, EntradaTexto } from "@/components/ui/field";
 import { formatearCreditos, MS_LATIDO_WORKER } from "@/lib/generacion";
-import type { TrabajoEnRevision } from "@/server/cola/revision";
+import type { LlamadaConExceso, TrabajoEnRevision } from "@/server/cola/revision";
 import { resolverTrabajoAccion } from "./acciones";
 
 export interface WorkerVista {
@@ -24,10 +24,13 @@ export interface WorkerVista {
 export function VistaRevisionTrabajos({
   iniciales,
   excesos,
+  excesosDeTexto,
   workers,
 }: {
   iniciales: TrabajoEnRevision[];
   excesos: TrabajoEnRevision[];
+  /** Llamadas al modelo de texto cobradas por encima de lo apartado. El texto cobra por tokens: pasará. */
+  excesosDeTexto: LlamadaConExceso[];
   workers: WorkerVista[];
 }) {
   const [trabajos, setTrabajos] = useState(iniciales);
@@ -37,6 +40,7 @@ export function VistaRevisionTrabajos({
     <div className="flex flex-col gap-6">
       <EstadoWorkers workers={workers} />
       <ExcesosDeLimite trabajos={excesos} />
+      <ExcesosDeTexto llamadas={excesosDeTexto} />
       {error && <Aviso tono="error">{error}</Aviso>}
       {trabajos.length === 0 ? (
         <EstadoVacio
@@ -74,6 +78,33 @@ function ExcesosDeLimite({ trabajos }: { trabajos: TrabajoEnRevision[] }) {
             {t.usuario} · <span className="font-mono">{t.modelo}</span> · autorizó{" "}
             {t.limiteCreditos === null ? "sin límite" : formatearCreditos(t.limiteCreditos)} y se cobraron{" "}
             {formatearCreditos(t.excesoCreditos ?? 0)} de más · {new Date(t.creadoEn).toLocaleString("es-ES")}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/**
+ * Llamadas de texto que se cobraron por encima de lo apartado. Es lo esperable de vez en cuando: el modelo de
+ * texto cobra **por tokens** y el precio registrado es por llamada. Si se repite, el precio del catálogo se ha
+ * quedado corto.
+ */
+function ExcesosDeTexto({ llamadas }: { llamadas: LlamadaConExceso[] }) {
+  if (llamadas.length === 0) return null;
+  return (
+    <section className="flex flex-col gap-2 rounded-tarjeta border border-borde bg-superficie p-4">
+      <h2 className="text-xl font-bold text-texto">Llamadas de texto cobradas por encima de lo apartado</h2>
+      <p className="text-texto-suave">
+        El modelo de texto cobra por tokens y su precio registrado es por llamada, así que un texto largo se pasa. El
+        gasto apuntado es el real. Si se repite, sube su precio en Admin › Modelos.
+      </p>
+      <ul className="flex flex-col gap-1 text-sm text-texto-suave">
+        {llamadas.map((l) => (
+          <li key={l.id}>
+            {l.correo} · <span className="font-mono">{l.modelo}</span> · {l.tipo} · se apartaron{" "}
+            {formatearCreditos(l.estimado)} y se cobraron {formatearCreditos(l.consumido ?? 0)} ({l.exceso} de más) ·{" "}
+            {new Date(l.creadoEn).toLocaleString("es-ES")}
           </li>
         ))}
       </ul>
@@ -157,6 +188,13 @@ function FilaRevision({
         estimado {formatearCreditos(trabajo.creditosEstimados)} · reservado {formatearCreditos(trabajo.reservado)}
       </p>
       {trabajo.motivo && <p className="text-sm text-texto">{trabajo.motivo}</p>}
+      {/* El prompt compuesto solo se ve aquí (ADR-0022): al usuario no se le muestra. */}
+      <details className="rounded-control border border-borde/60 p-3">
+        <summary className="cursor-pointer text-sm font-semibold text-texto">Prompt que se envió</summary>
+        <pre className="mt-2 max-h-60 overflow-y-auto rounded-control bg-elevada p-3 font-mono text-sm whitespace-pre-wrap text-texto">
+          {trabajo.prompt}
+        </pre>
+      </details>
       <div className="flex flex-wrap items-end gap-3">
         <Campo etiqueta="Créditos comprobados" ayuda="0 si el proveedor no llegó a cobrar.">
           {(p) => (

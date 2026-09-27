@@ -16,7 +16,7 @@ En `/personajes/[id]` hay tres pestañas:
 
 | Pestaña | Para qué |
 |---|---|
-| **Ficha** | Los cinco campos de apariencia, la descripción y el botón «Ver el contexto aplicado» |
+| **Ficha** | Los cinco campos de apariencia, la descripción y el botón «Ver lo que se enviará» |
 | **Referencias** | Las vistas que faltan, la captura guiada y las fotos que tiene ([«Buenas referencias»](buenas-referencias.md)) |
 | **Versiones** | El historial, la hoja de personaje y la comparación de dos versiones |
 
@@ -59,15 +59,18 @@ El prompt lo **compone el servidor**, no el navegador, y tu texto se limpia ante
 Cuando la limpieza cambia algo, la ayuda del campo te dice, antes de guardar, **exactamente** qué se va a
 enviar. No es censura: es que un campo de vestuario no puede cambiar la resolución de la imagen.
 
-## Ver el contexto antes de gastar
+## Ver lo que se enviará, antes de gastar
 
-En la ficha, **«Ver el contexto aplicado»** enseña el bloque tal cual se añadirá al prompt y las fotos que se
-enviarían. Se compone con la **versión guardada**, así que mientras tengas cambios sin guardar el botón está
-desactivado: primero guarda, y entonces lo que veas será lo que se envía. En **«Crear»**, ese mismo bloque aparece en el paso 3, justo encima del botón de generar, con:
+En la ficha, **«Ver lo que se enviará»** dice de qué versión sale el contexto y **qué fotos** se enviarían. Se
+resuelve con la **versión guardada**, así que mientras tengas cambios sin guardar el botón está desactivado:
+primero guarda. En **«Crear»**, lo mismo aparece en el paso 3, justo encima del botón de generar, con:
 
-- el texto del contexto, línea a línea;
+- si tu ficha está aportando contexto o si está vacía;
 - las miniaturas de las fotos elegidas, con su vista y su etiqueta de origen;
 - cuántas de las que admite el modelo se están usando.
+
+**El texto que se compone con tu ficha no se muestra** (desde la 0.17.0): el prompt es material de Escenara y del
+panel de administración. Lo que sí se te dice es de dónde sale y qué se envía con él.
 
 Mirarlo no cuesta nada: es una lectura, no encola ningún trabajo, no toca al proveedor y no cambia nada en tu
 cuenta.
@@ -144,5 +147,5 @@ la biblioteca de hojas repetidas. Eso sí: ocupa cuota de tu biblioteca, como cu
 - Tus personajes reciben su **versión 1** al aplicar la migración, con lo que tengan en ese momento.
 - Los cinco campos empiezan **vacíos**, pero la **descripción** no: si tus personajes ya tenían una, ese texto
   empieza a ir en cada prompt. Revísalo antes de generar.
-- En cuanto escribas algo, ese texto va en **cada** fotograma y **cada** clip. Míralo una vez en «Ver el
-  contexto aplicado» antes de generar.
+- En cuanto escribas algo, ese texto va en **cada** fotograma y **cada** clip. Compruébalo una vez en «Ver lo que
+  se enviará» antes de generar: ahí se dice si tu ficha está aportando contexto y con qué fotos.

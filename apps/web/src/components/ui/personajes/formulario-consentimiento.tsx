@@ -9,6 +9,7 @@ import {
   ALCANCES_USO,
   type AlcanceUso,
   AVISO_CONTROL_NO_GARANTIA,
+  AVISO_DATOS_AL_PROVEEDOR,
   AVISO_MAYORIA_DE_EDAD,
   DESCRIPCION_ALCANCE,
   DESCRIPCION_TITULAR,
@@ -76,6 +77,8 @@ export function FormularioConsentimiento({
         <div className="flex flex-col gap-1">
           <h3 className="text-xl font-bold text-texto">Consentimiento de uso de imagen</h3>
           <p className="text-texto-suave">{AVISO_CONTROL_NO_GARANTIA}</p>
+          {/* Qué sale de aquí hacia el proveedor: no son solo las fotos, también el texto de la ficha. */}
+          <p className="text-texto-suave">{AVISO_DATOS_AL_PROVEEDOR}</p>
         </div>
       </div>
 

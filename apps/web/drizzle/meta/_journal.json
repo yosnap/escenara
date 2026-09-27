@@ -120,6 +120,13 @@
       "when": 1790504776525,
       "tag": "0016_presets_y_plantillas",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790514946023,
+      "tag": "0017_proyectos_asistente_y_traduccion",
+      "breakpoints": true
     }
   ]
 }

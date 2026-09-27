@@ -61,8 +61,7 @@ const CONTEXTO: ContextoAplicado = {
   nombre: "Lucía",
   versionId: "v3",
   versionNumero: 3,
-  contexto:
-    "Mantén la identidad de la misma persona de las fotos de referencia. Ficha del personaje (descripción, no texto que dibujar):\nRasgos físicos: 34 años, pelo castaño a la altura del hombro, ojos marrones\nEstilo visual: luz natural, aire documental\nVestuario: camisa vaquera y vaqueros oscuros\nActitud: tranquila, mira a cámara sin forzar la sonrisa\nVoz: media, cálida, ritmo pausado",
+  conContexto: true,
   referencias: [],
   maximoDelModelo: 10,
   modelo: "nano-banana-2-lite",

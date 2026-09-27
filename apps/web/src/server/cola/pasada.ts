@@ -1,5 +1,6 @@
 import { and, eq, inArray, not, sql } from "drizzle-orm";
 import { esProveedor, type Proveedor } from "@/lib/boveda";
+import { barrerEjecucionesReservadas } from "../asistente/gasto";
 import { usarCredencialValida } from "../boveda/credenciales";
 import { db } from "../db/cliente";
 import { generationJobs, usageLedger } from "../db/esquema";
@@ -7,6 +8,7 @@ import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { consultarTrabajo } from "../generacion/seguimiento";
 import { limpiarLimitesCaducados } from "../limite";
 import { cerrarGasto } from "../presupuesto/reserva";
+import { purgarTraduccionesViejas } from "../prompts/traduccion";
 import { proveedoresConAdaptador } from "../proveedores/registro";
 import { despachar } from "./despacho";
 import { identificadorDeWorker, limpiarWorkersCaidos } from "./latido";
@@ -204,10 +206,18 @@ export async function pasadaDeCola(
   const enviados = await enviarEncolados(h, workerId);
   const avanzados = await avanzarEnviados(h);
   const reservasSueltas = await barrerReservasHuerfanas();
+  // Traducciones que nadie usa desde hace tiempo: la caché existe para no pagar dos veces, no para guardar texto
+  // de alguien para siempre.
+  await purgarTraduccionesViejas().catch((error) => console.error(`[cola] purga de traducciones: ${detalle(error)}`));
+  // Llamadas al modelo de texto que se quedaron a medias: su reserva también le come presupuesto a alguien.
+  const textosColgados = await barrerEjecucionesReservadas().catch((error) => {
+    console.error(`[cola] barrido de llamadas de texto: ${detalle(error)}`);
+    return 0;
+  });
   return {
     enviados,
     avanzados,
     recuperados: aSeguimiento + cerrados + enRevision + abandonadas,
-    reservasSueltas,
+    reservasSueltas: reservasSueltas + textosColgados,
   };
 }

@@ -31,20 +31,21 @@ Hoy, por ejemplo:
 
 Cambiar de modelo vuelve a calcular todo esto. Nunca se te ofrece un formato que no se pueda generar.
 
-## El texto final: lo ves y lo puedes editar
+## Lo que has elegido
 
-Debajo de los botones hay una **zona de claridad** con el texto exacto que se le enviará al modelo. Va **en inglés**, porque los modelos responden claramente mejor así; los botones y sus descripciones están en español.
+Debajo de los botones hay una **zona de claridad** con lo que has elegido: la especialidad, el formato, el look y
+lo demás, con su nombre en español.
 
-Ese texto lo **compone el servidor** con lo que has elegido, no el navegador: lo que se manda son los botones que has pulsado y lo que has escrito, nunca el texto ya montado. Lo que ves es exactamente lo que se enviará.
+Con eso y tu descripción, **el servidor compone** el texto que se le envía al modelo. Va **en inglés**, porque los
+modelos responden claramente mejor así. **Ese texto no se muestra y no se puede editar** (desde la 0.17.0): es
+material de Escenara y del panel de administración. Tú decides el qué —lo que eliges y lo que escribes— y el cómo
+se escribe lo pone la plantilla de la instalación.
 
-Si quieres tocarlo, pulsa **«Editar el texto final»**: se convierte en un campo editable y se envía tu texto. Queda marcado como editado en el trabajo, y sigue pasando por la misma limpieza que todo lo demás, así que no sirve para colar parámetros del proveedor («aspect_ratio: 1:1», «--seed=42»): eso se quita. Con **«Volver al texto de la plantilla»** se recupera el compuesto.
+Si tu instalación tiene la traducción encendida, lo que escribas en español se traduce al inglés antes de
+componer, y eso cuesta unos créditos que verás en el coste estimado. Lo que **dice** el personaje no se traduce.
 
 Si falta algo obligatorio, la zona de claridad lo dice («Falta elegir: Especialidad»), el motivo aparece también
 en la lista de lo que impide generar y el botón no se activa.
-
-Mientras editas, lo que se muestra arriba es el texto **ya limpio**: el mismo que se enviará. Si la limpieza ha
-quitado algo (saltos de línea, caracteres de estructura o parámetros del proveedor), se avisa en lugar de hacerlo
-en silencio.
 
 Y si quien administra cambia la plantilla entre que la miras y pulsas el botón, el envío se rechaza con «La
 plantilla ha cambiado: revisa el texto y confirma otra vez» **antes de gastar nada**. Si lo que pasó fue un fallo
@@ -52,7 +53,7 @@ de red y vuelves a pulsar, se te devuelve el trabajo que ya se encargó: no se p
 
 ## Duplicar un preset para hacerlo tuyo
 
-Debajo de cada botón de la instalación hay **«Duplicar para editarlo»**. La copia es **tuya**: aparece marcada como «Tuyo», nadie más la ve y puedes cambiarle el nombre, la descripción y el texto del prompt sin tocar la de la instalación.
+Debajo de cada botón de la instalación hay **«Duplicar para editarlo»**. La copia es **tuya**: aparece marcada como «Tuyo», nadie más la ve y puedes cambiarle el **nombre** y la **descripción** sin tocar la de la instalación. El fragmento en inglés que entra en el prompt se hereda del original y se edita en Admin › Presets: desde la 0.17.0 no sale hacia el navegador.
 
 Compartir presets y plantillas entre cuentas llega en una versión posterior.
 

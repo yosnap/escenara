@@ -23,7 +23,7 @@ import {
 } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
 import { AVISO_SIN_TERCEROS, type ContextoAplicado, type PersonajeElegible } from "@/lib/personajes";
-import { type CatalogoParaCrear, type PresetElegible, VARIABLE_TEXTO_MAXIMA } from "@/lib/presets";
+import { type CatalogoParaCrear, type PresetVisible, VARIABLE_TEXTO_MAXIMA } from "@/lib/presets";
 import { consultarEstimacion, crearTrabajo, type Resultado } from "./api-generacion";
 import { consultarCatalogoDePresets, duplicarPreset } from "./api-presets";
 import { DialogoPresetPropio } from "./dialogo-preset-propio";
@@ -272,7 +272,7 @@ export function VistaCrear({
    * Duplica un preset de la instalación para que el usuario pueda editarlo en «Tus presets». La copia aparece
    * al momento en la botonera, marcada como tuya.
    */
-  const duplicar = async (tipo: "fotograma" | "animacion", preset: PresetElegible) => {
+  const duplicar = async (tipo: "fotograma" | "animacion", preset: PresetVisible) => {
     setError(null);
     const respuesta = await duplicarPreset(preset.id);
     if (!respuesta.ok) {

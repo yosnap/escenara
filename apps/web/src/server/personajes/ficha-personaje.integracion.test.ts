@@ -245,7 +245,7 @@ describe.skipIf(!hayBaseDeDatos)("ficha y versiones de personaje", () => {
     const respuesta = await rutaContexto.GET(pedir(ana, `/api/personajes/${personajeId}/contexto`), ctx(personajeId));
     expect(respuesta.status).toBe(200);
     return (await respuesta.json()) as {
-      contexto: string;
+      conContexto: boolean;
       versionId: string;
       versionNumero: number;
       referencias: unknown[];
@@ -381,24 +381,29 @@ describe.skipIf(!hayBaseDeDatos)("ficha y versiones de personaje", () => {
     expect(nuevo?.characterVersionId).not.toBe(versionCitada ?? null);
   });
 
-  test("el contexto que se muestra antes de confirmar es el que se va a enviar", async () => {
+  test("antes de confirmar se dice qué se enviará, pero el prompt no viaja al navegador", async () => {
     const personaje = await personajeListo("Contexto visible", 150);
     await editar(personaje.id, { estilo: "luz natural, aire documental" });
     const respuesta = await rutaContexto.GET(pedir(ana, `/api/personajes/${personaje.id}/contexto`), ctx(personaje.id));
     expect(respuesta.status).toBe(200);
-    const contexto = (await respuesta.json()) as {
-      contexto: string;
+    const crudo = await respuesta.text();
+    const contexto = JSON.parse(crudo) as {
+      conContexto: boolean;
       versionNumero: number;
       referencias: unknown[];
       maximoDelModelo: number;
     };
-    expect(contexto.contexto).toContain("Estilo visual: luz natural, aire documental");
+    // Lo que se le dice al usuario: que su ficha aporta contexto, de qué versión y qué fotos se enviarán.
+    expect(contexto.conContexto).toBe(true);
     expect(contexto.referencias.length).toBe(3);
     expect(contexto.maximoDelModelo).toBeGreaterThan(0);
+    // Y lo que **no** se le dice: el texto que se compone con su ficha (ADR-0022).
+    expect(crudo).not.toContain("Estilo visual: luz natural, aire documental");
 
+    // Pero ese texto sí es el que se envía: queda en el prompt del trabajo, que solo ve quien administra.
     const { trabajo } = await generar(personaje.id, "sentada en un banco del parque");
     const [encolado] = await db().select().from(generationJobs).where(eq(generationJobs.id, trabajo.id));
-    expect(encolado?.prompt).toContain(contexto.contexto);
+    expect(encolado?.prompt).toContain("Estilo visual: luz natural, aire documental");
   });
 
   test("la hoja de personaje se compone sin llamar a ningún proveedor de pago", async () => {
@@ -656,7 +661,8 @@ describe.skipIf(!hayBaseDeDatos)("ficha y versiones de personaje", () => {
     const personaje = await personajeListo("Con descripción", 260);
     await editar(personaje.id, { descripcion: "Periodista de barrio, siempre con libreta", motivo: "Quién es" });
     const contexto = await contextoVisible(personaje.id);
-    expect(contexto.contexto).toContain("Descripción: Periodista de barrio, siempre con libreta");
+    // La descripción entra en el contexto que se envía, no en lo que se le muestra al usuario (ADR-0022).
+    expect(contexto.conContexto).toBe(true);
 
     const { trabajo } = await generar(personaje.id, "entrevistando a alguien en la calle", contexto.versionId);
     const [encolado] = await db().select().from(generationJobs).where(eq(generationJobs.id, trabajo.id));
