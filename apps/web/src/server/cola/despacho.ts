@@ -185,10 +185,17 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
     }
     urls.push(await subirReferencia(adaptador, credencial.clave, origen, modelo, h));
   }
+  /**
+   * La entrada se vuelve a montar aquí (las URL del proveedor caducan y no se guardan), pero **la duración es la
+   * que se decidió al encolar**, no la que declare hoy el catálogo: es la que se estimó, la que confirmó el
+   * usuario y la del proyecto. Volver a deducirla cambiaría el clip que se paga.
+   */
+  const segundos = segundosDe(fila);
   const entrada = adaptador.montarEntrada(modelo, {
     escena: fila.prompt,
     dialogo: dialogoDe(fila),
     urls,
+    ...(segundos === null ? {} : { segundos }),
   });
   const callback = await prepararCallback(fila);
   return { adaptador, clave: credencial.clave, entrada, ...callback };
@@ -349,6 +356,17 @@ async function marcar(id: string, cambios: Partial<typeof generationJobs.$inferI
 async function filaDe(id: string): Promise<FilaTrabajo | null> {
   const [fila] = await db().select().from(generationJobs).where(eq(generationJobs.id, id)).limit(1);
   return fila ?? null;
+}
+
+/**
+ * Duración que se le pidió al proveedor al encolar, tal como quedó en la entrada guardada; `null` en un trabajo
+ * anterior a que la duración se eligiera, que se queda con la que declare su modelo.
+ */
+function segundosDe(fila: FilaTrabajo): number | null {
+  const parametros = (fila.input as { parametros?: unknown }).parametros;
+  if (!parametros || typeof parametros !== "object") return null;
+  const segundos = (parametros as { segundos?: unknown }).segundos;
+  return typeof segundos === "number" && segundos > 0 ? segundos : null;
 }
 
 /** Lo que dice el personaje, tal como se guardó al encolar. Solo lo usa el clip. */

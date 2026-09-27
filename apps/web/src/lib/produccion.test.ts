@@ -1,7 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import {
   clipPorEncolar,
+  DURACION_PREDETERMINADA,
   DURACIONES_DISPONIBLES,
+  duracionParaModelo,
   type EscenaProduccionVista,
   ETAPAS_TRABAJO,
   efectoDeCancelar,
@@ -169,11 +171,22 @@ describe("aviso de gasto alto", () => {
 });
 
 describe("duraciones disponibles", () => {
-  it("solo se ofrece la duración con coste medido", () => {
-    expect(DURACIONES_DISPONIBLES).toEqual([4]);
+  it("se ofrecen las dos duraciones medidas, con 8 s de fábrica", () => {
+    expect(DURACIONES_DISPONIBLES).toEqual([8, 4]);
+    expect(DURACION_PREDETERMINADA).toBe(8);
     expect(esDuracionDisponible(4)).toBe(true);
-    // Los 8 s que proponía la fase quedan fuera mientras no se mida su coste real.
-    expect(esDuracionDisponible(8)).toBe(false);
+    expect(esDuracionDisponible(8)).toBe(true);
+    // Los 6 s que documenta el proveedor no están medidos: no se ofrecen.
+    expect(esDuracionDisponible(6)).toBe(false);
+  });
+
+  it("al modelo se le pide la duración del proyecto si la admite, y la suya si no", () => {
+    expect(duracionParaModelo([8, 4], 4)).toBe(4);
+    expect(duracionParaModelo([8, 4], 8)).toBe(8);
+    // Hailuo 2.3 no hace 8 s: se le pide la primera que declara, que es la que tiene precio registrado.
+    expect(duracionParaModelo([6, 10], 8)).toBe(6);
+    // Un modelo que no declara ninguna se queda con la del proyecto: es lo que se ha estimado.
+    expect(duracionParaModelo([], 8)).toBe(8);
   });
 });
 

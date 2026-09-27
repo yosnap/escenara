@@ -66,8 +66,8 @@ type Buscador = import("../proveedores/codigos").Buscador;
 type Actor = import("../media/servicio").Actor;
 
 const CLAVE = "sk-ana-clave-de-kie-inventada-dddd";
-/** Créditos del modelo de texto sembrado en el catálogo. */
-const CREDITOS_TEXTO = 3;
+/** Créditos que se estiman por llamada: el precio sembrado es 1,5 y la estimación redondea al alza. */
+const CREDITOS_TEXTO = 2;
 /** Créditos que el simulador informa como consumidos de verdad en la llamada de texto. */
 const CREDITOS_INFORMADOS = 1.5;
 
@@ -243,7 +243,6 @@ describe.skipIf(!hayBaseDeDatos)("asistente de guion y proyectos", () => {
       pedir(ana, `/api/proyectos/${proyectoId}/escenas`, "POST", true, {
         texto: "Sale el sol sobre la ciudad.",
         accion: "Plano general del amanecer",
-        segundos: 4,
       }),
       ctx(proyectoId),
     );

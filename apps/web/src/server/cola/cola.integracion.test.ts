@@ -65,6 +65,8 @@ interface Kie {
   falloConsulta: number | string | null;
   /** `callBackUrl` del último `createTask`, tal como lo recibió el proveedor simulado. */
   ultimoCallbackUrl: string | null;
+  /** `input` del último `createTask`: lo que de verdad se le pidió al modelo. */
+  ultimaEntrada: Record<string, unknown> | null;
   /**
    * Cómo responde el próximo `createTask`. `null` = normal. Un número simula ese estado HTTP; `sin-taskid`
    * simula un 200 del sobre de KIE sin identificador de tarea; un nombre de error simula un fallo de red.
@@ -81,6 +83,7 @@ const nuevoKie = (): Kie => ({
   llamadas: { credito: 0, subida: 0, crearTarea: 0, consulta: 0, descargas: 0 },
   falloConsulta: null,
   ultimoCallbackUrl: null,
+  ultimaEntrada: null,
   falloCrearTarea: null,
 });
 
@@ -102,8 +105,9 @@ const buscar: Buscador = async (url, opciones) => {
   if (url.includes("createTask")) {
     kie.llamadas.crearTarea++;
     // `callBackUrl` va al nivel de `model` e `input`, que es donde lo espera KIE.
-    const cuerpo = JSON.parse(String(opciones?.body ?? "{}")) as { callBackUrl?: unknown };
+    const cuerpo = JSON.parse(String(opciones?.body ?? "{}")) as { callBackUrl?: unknown; input?: unknown };
     kie.ultimoCallbackUrl = typeof cuerpo.callBackUrl === "string" ? cuerpo.callBackUrl : null;
+    kie.ultimaEntrada = (cuerpo.input as Record<string, unknown> | undefined) ?? null;
     const fallo = kie.falloCrearTarea;
     if (typeof fallo === "number") {
       // KIE devuelve HTTP 200 con el error en `code`: así se simula un 5xx o un 504 suyos.
@@ -467,6 +471,39 @@ describe.skipIf(!hayBaseDeDatos)("cola, presupuesto y conciliación", () => {
     });
   });
 
+  describe("el clip sale con la duración que se decidió al encolar", () => {
+    beforeEach(limpiarTrabajos);
+
+    test("el despacho pide al proveedor los segundos guardados, no los que declara hoy el modelo", async () => {
+      const { trabajo: fotograma } = await crearFotograma(actor, peticion(), h);
+      await enviarEncolados(h);
+      const enviado = await obtenerTrabajo(dana.id, fotograma.id);
+      terminar(enviado.taskId as string, ["https://tempfile.kie.ai/base.png"], 4);
+      await db().update(generationJobs).set({ polledAt: null }).where(eq(generationJobs.id, fotograma.id));
+      const padre = (await reconciliar(actor, fotograma.id, h)).id;
+
+      const { trabajo } = await crearAnimacion(
+        actor,
+        {
+          trabajoPadreId: padre,
+          prompt: "se mueve un poco",
+          creditosConfirmados: 60,
+          derechos: true,
+          claveIdempotencia: crypto.randomUUID(),
+        },
+        h,
+      );
+      // Un proyecto de 4 s encola su clip con 4 s en la entrada; el modelo declara 8 s como primera duración.
+      await db()
+        .update(generationJobs)
+        .set({ input: sql`jsonb_set(${generationJobs.input}::jsonb, '{parametros,segundos}', '4')` })
+        .where(eq(generationJobs.id, trabajo.id));
+      await enviarEncolados(h);
+
+      expect(kie.ultimaEntrada?.duration).toBe(4);
+    });
+  });
+
   describe("callback del proveedor", () => {
     beforeEach(async () => {
       await limpiarTrabajos();
@@ -577,18 +614,19 @@ describe.skipIf(!hayBaseDeDatos)("cola, presupuesto y conciliación", () => {
 
   describe("coste que no se puede acotar", () => {
     let fotogramaListo: string;
+    // Se restaura tal cual estaba: otros ficheros de prueba comparten la base y necesitan el modelo completo.
+    let parametrosOriginales = "{}";
 
     beforeAll(async () => {
+      const [fila] = await db().select({ p: models.parameters }).from(models).where(eq(models.modelId, "veo3_fast"));
+      parametrosOriginales = fila?.p ?? "{}";
       // Un clip cuyo modelo no declara duración: el precio registrado no acota lo que costará.
-      await db().update(models).set({ parameters: "{}" }).where(eq(models.modelId, "veo3_lite"));
+      await db().update(models).set({ parameters: "{}" }).where(eq(models.modelId, "veo3_fast"));
       olvidarCatalogo();
     });
 
     afterAll(async () => {
-      await db()
-        .update(models)
-        .set({ parameters: JSON.stringify({ duraciones: [4], proporciones: ["9:16"], resoluciones: ["720p"] }) })
-        .where(eq(models.modelId, "veo3_lite"));
+      await db().update(models).set({ parameters: parametrosOriginales }).where(eq(models.modelId, "veo3_fast"));
       olvidarCatalogo();
     });
 

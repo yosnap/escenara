@@ -102,7 +102,7 @@ export const ETIQUETA_MOTIVO_FALLO: Record<MotivoFallo, string> = {
  * Formato de referencia del clip: lo que se usa cuando el modelo elegido no declara duración, proporción o
  * resolución propias. Qué modelo se usa ya no se decide aquí, sino en el catálogo (`lib/catalogo.ts`).
  */
-export const CLIP = { segundos: 4, proporcion: "9:16", resolucion: "720p" } as const;
+export const CLIP = { segundos: 8, proporcion: "9:16", resolucion: "720p" } as const;
 
 /** Tipo de archivo que puede devolver cada trabajo: se usa para la cuota y para validar el resultado. */
 export const TIPO_RESULTADO: Record<TipoTrabajo, readonly TipoMedio[]> = {
@@ -119,7 +119,7 @@ export const PROMPT_MAXIMO = 2000;
 /**
  * Lo que dice el personaje va aparte de la descripción visual: en la comparativa de modelos del
  * 2026-09-27 los modelos de imagen dibujaban la frase en el fotograma. Solo se usa en el clip, que sí
- * tiene voz. Cuatro segundos no dan para mucho más que una frase.
+ * tiene voz. Ocho segundos no dan para mucho más que un par de frases.
  */
 export const DIALOGO_MAXIMO = 200;
 

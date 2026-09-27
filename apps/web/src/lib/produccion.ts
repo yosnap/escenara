@@ -115,18 +115,34 @@ export const falloConCoste = (motivo: MotivoFallo | null): boolean =>
 // ── Duraciones y formatos disponibles ─────────────────────────────────────────────────────────────────────
 
 /**
- * Duraciones de clip que esta versión ofrece, en segundos.
+ * Duraciones de clip que esta versión ofrece, en segundos, de la predeterminada a la opcional.
  *
- * **Solo 4 s** (decisión provisional del propietario, 2026-09-27): los 8 s que proponía la fase no tienen coste
- * medido, y ADR-0009 avisa de lo que pasa al estimar sin medir (el prototipo infraestimó ×3). Cuando se mida, se
- * añade aquí y al registro de precios. El resto de proporciones y resoluciones llega en 0.26.0.
+ * Las dos están **medidas con dinero real** el 2026-09-27: KIE cobra los mismos 60 créditos por un clip de 4 s
+ * que por uno de 8 s, así que la duración corta no abarata nada y la larga es la de fábrica. El resto de
+ * proporciones y resoluciones llega en 0.26.0.
  */
-export const DURACIONES_DISPONIBLES: readonly number[] = [4];
+export const DURACIONES_DISPONIBLES: readonly number[] = [8, 4];
+
+/** Duración de clip de un proyecto nuevo. La misma que el valor por omisión de la columna del proyecto. */
+export const DURACION_PREDETERMINADA = 8;
 
 export const PROPORCION_DISPONIBLE = "9:16";
 export const RESOLUCION_DISPONIBLE = "720p";
 
 export const esDuracionDisponible = (segundos: number): boolean => DURACIONES_DISPONIBLES.includes(segundos);
+
+/** Las duraciones ofrecidas escritas para leerlas en un aviso: «8 o 4 s». */
+export const duracionesEnTexto = (): string => `${DURACIONES_DISPONIBLES.join(" o ")} s`;
+
+/**
+ * Duración que se le pide de verdad al modelo para un clip de este proyecto: la del proyecto si el modelo la
+ * admite y, si no, la primera que declare. Un modelo que no declara ninguna se queda con la del proyecto: es lo
+ * que se ha estimado y lo que se le va a cobrar.
+ */
+export function duracionParaModelo(duraciones: readonly number[], segundosDelProyecto: number): number {
+  if (duraciones.length === 0 || duraciones.includes(segundosDelProyecto)) return segundosDelProyecto;
+  return duraciones[0] ?? segundosDelProyecto;
+}
 
 /** Zona segura de cada plataforma vertical, en % del alto y del ancho del fotograma (medido el 2026-09-27). */
 export interface ZonaSegura {

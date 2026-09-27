@@ -120,6 +120,7 @@ export async function escribirGuion(
     formato: proyecto.format,
     contextoPersonaje: await contextoDelProtagonista(actor, proyecto),
     escenas: numeroDeEscenas(peticion.escenas, proyecto),
+    segundos: proyecto.clipSeconds,
   });
 
   // El presupuesto autorizado del proyecto es un **tope que se aplica al gastar**: lo que ya lleva comprometido
@@ -169,7 +170,7 @@ export async function escribirGuion(
   }
 
   try {
-    const propuesta = leerPropuesta(respuesta.texto);
+    const propuesta = leerPropuesta(respuesta.texto, proyecto.clipSeconds);
     const escenasEscritas = await db().transaction(async (tx) => {
       const total = await sustituirEscenas(tx, proyecto.id, propuesta.escenas);
       if (propuesta.concepto !== "") {

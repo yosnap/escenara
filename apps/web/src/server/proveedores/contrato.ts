@@ -120,6 +120,11 @@ export interface ContextoEntrada {
   dialogo: string;
   /** URL temporales de las referencias ya subidas al proveedor. */
   urls: string[];
+  /**
+   * Duración del clip que ha elegido el proyecto, en segundos. Solo la usan los modelos de vídeo y solo llega
+   * desde la producción de un proyecto: el camino rápido de «Crear» no tiene proyecto y deja decidir al modelo.
+   */
+  segundos?: number;
 }
 
 /** Lo que necesita el adaptador para pedir una generación. La clave solo viaja hasta aquí. */

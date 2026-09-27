@@ -53,10 +53,10 @@ Lo que el asistente devuelve es **una propuesta**:
   proveedor, eso se quita antes de guardarlo. Lo que escriba es contenido para que tú lo revises, nunca una orden
   para Escenara.
 
-De cada escena puedes cambiar:
+De cada escena puedes cambiar **lo que se cuenta o se dice** y **lo que se ve** (encuadre y acción, que es la base
+del fotograma). La **duración** no se cambia escena a escena: se elige una vez para todo el proyecto, arriba en «La
+idea», y el asistente propone escenas de esa duración exacta (8 s de fábrica, 4 s si lo prefieres; cuestan lo mismo).
 
-- **lo que se cuenta o se dice** y **lo que se ve** (encuadre y acción, que es la base del fotograma);
-- **la duración** en segundos;
 El texto que se le envía al modelo **no se muestra y no se edita**: lo compone Escenara con tu escena, la
 plantilla, los presets y la ficha de tu personaje, y va en inglés porque los modelos responden mejor. Tú decides el
 qué; el cómo se escribe lo pone Escenara. Si tu instalación tiene la traducción encendida, lo que escribas en
@@ -92,7 +92,7 @@ Abajo tienes la **tabla de aprobación**, en zona de claridad: sin colores de ma
 decides gastarte un dinero. Muestra, por escena:
 
 - los **modelos** con los que se generaría (el fotograma y el clip);
-- la **duración**;
+- la **duración** del clip, que es la del proyecto;
 - el **coste estimado**, siempre con la palabra «estimación» y **la fecha del precio** usado.
 
 Y debajo, el **total estimado del proyecto** y tu **presupuesto autorizado**.

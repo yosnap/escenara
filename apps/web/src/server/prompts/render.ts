@@ -57,6 +57,12 @@ export interface PeticionRender {
   tipoPersonaje: TipoPersonaje | null;
   /** Modelo elegido en el catálogo: es contra él contra el que se valida la compatibilidad. */
   modelo: ModeloVista;
+  /**
+   * Duración que se le va a pedir al proveedor, en segundos, cuando ya está decidida (la del proyecto al
+   * producir). Sin ella manda la que declare el modelo. Es contra esta contra la que se valida un preset de
+   * duración: un texto que promete 4 s con un clip de 8 s miente.
+   */
+  segundos?: number;
   /** Texto final editado a mano por el usuario. Si llega, manda sobre lo que compone la plantilla. */
   textoEditado?: string;
 }
@@ -173,6 +179,7 @@ export async function componerDesdePlantilla(peticion: PeticionRender): Promise<
     })),
     restricciones,
     peticion.modelo,
+    peticion.segundos,
   );
 
   const render = renderizarPlantilla(version.template, variables, valores);

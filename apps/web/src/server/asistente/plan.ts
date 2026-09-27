@@ -3,6 +3,7 @@ import { precioCaducado } from "@/lib/catalogo";
 import { EVALUACION_LISTA, type EvaluacionVista, peorEstado } from "@/lib/controles";
 import { formatearCreditos } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
+import { duracionParaModelo } from "@/lib/produccion";
 import {
   type AfirmacionVista,
   BLOQUEAN_APROBACION,
@@ -113,7 +114,9 @@ export function estimarEscena(escena: FilaEscena, elecciones: EleccionesDelPlan,
     euros: creditos * ajustes.eurosPorCredito,
     modeloFotograma: fotograma.modelo.nombre,
     modeloAnimacion: animacion.modelo.nombre,
-    segundos: animacion.modelo.parametros.duraciones[0] ?? escena.plannedSeconds,
+    // Los segundos que se estiman son los que se van a pedir: la duración del proyecto (que la escena copia) si
+    // el modelo la admite, y la suya si no. El precio es el mismo en 4 y en 8 s, así que esto no mueve el coste.
+    segundos: duracionParaModelo(animacion.modelo.parametros.duraciones, escena.plannedSeconds),
     comprobado,
     precioAntiguo: precioCaducado(comprobado),
     margen,
@@ -364,6 +367,7 @@ export async function vistaDeProyecto(fila: FilaProyecto, totalEscenas: number, 
     personajeId: fila.mainCharacterId,
     personajeNombre: await nombreDePersonaje(fila.mainCharacterId),
     presupuestoCreditos: fila.authorizedCredits,
+    segundosClip: fila.clipSeconds,
     totalEscenas,
     totalEstimado,
     creadoEn: fila.createdAt.toISOString(),

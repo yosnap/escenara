@@ -131,6 +131,20 @@ export async function proyectoDeEscena(escenaId: string): Promise<string> {
   return fila.projectId;
 }
 
+/**
+ * Duración de clip del proyecto al que pertenece una escena, en segundos; `null` si la escena ya no existe. Es lo
+ * que se le pide al modelo de vídeo, así que se lee de la fila y no se supone.
+ */
+export async function duracionDeClipDeEscena(escenaId: string): Promise<number | null> {
+  const [fila] = await db()
+    .select({ segundos: projects.clipSeconds })
+    .from(scenes)
+    .innerJoin(projects, eq(projects.id, scenes.projectId))
+    .where(eq(scenes.id, escenaId))
+    .limit(1);
+  return fila?.segundos ?? null;
+}
+
 /** Nombre del personaje principal de un proyecto, si lo tiene y sigue existiendo. */
 export async function nombreDePersonaje(personajeId: string | null): Promise<string | null> {
   if (!personajeId) return null;

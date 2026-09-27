@@ -1,5 +1,6 @@
 import type { ModeloVista } from "@/lib/catalogo";
 import { CLIP } from "@/lib/generacion";
+import { duracionParaModelo } from "@/lib/produccion";
 import { type ContextoEntrada, ErrorCatalogo } from "../contrato";
 import { entradaAnimacion, entradaFotograma, promptAnimacion, promptFotograma } from "./modelos";
 
@@ -13,7 +14,8 @@ export type { ContextoEntrada };
  * - `nano-banana-2-lite`: `image_urls`, `aspect_ratio`.
  * - `seedream/4.5-edit`: `image_urls`, `aspect_ratio`, `quality`.
  * - `gpt-image-2-5-flare-image-to-image`: **`input_urls`** (no `image_urls`) y `resolution` 1K/2K/4K.
- * - `veo3_lite`: `image_urls`, `generation_type`, `aspect_ratio`, `duration` (número), `resolution`.
+ * - `veo3_fast` y `veo3_lite`: `image_urls`, `generation_type`, `aspect_ratio`, `duration` (número),
+ *   `resolution`. Reciben exactamente lo mismo, comprobado con dinero real el 2026-09-27.
  * - `hailuo/2-3-image-to-video-standard`: **`image_url`** (texto), `duration` y `resolution` como texto,
  *   **sin `aspect_ratio`** (toma el de la imagen).
  * - `kling/v3-turbo-image-to-video`: `image_urls`, `duration` y `resolution` como texto, sin
@@ -29,8 +31,17 @@ export const CAMPOS_DE_URL = ["image_urls", "input_urls", "image_url"] as const;
 
 /** Primer valor admitido por el modelo, o el de `CLIP` si el modelo no declara ninguno. */
 const primeraResolucion = (modelo: ModeloVista) => modelo.parametros.resoluciones[0] ?? CLIP.resolucion;
-const primeraDuracion = (modelo: ModeloVista) => modelo.parametros.duraciones[0] ?? CLIP.segundos;
 const proporcion = (modelo: ModeloVista) => modelo.parametros.proporciones[0] ?? null;
+
+/**
+ * Duración que se le pide al modelo: la del clip del proyecto si la admite y, si no, la primera que declare. Sin
+ * proyecto (el camino rápido de «Crear») manda la del modelo, y `CLIP` es el último recurso.
+ */
+const duracion = (modelo: ModeloVista, contexto: ContextoEntrada) =>
+  duracionParaModelo(
+    modelo.parametros.duraciones,
+    contexto.segundos ?? modelo.parametros.duraciones[0] ?? CLIP.segundos,
+  );
 
 /** Proporción solo si el modelo la acepta: Hailuo 2.3 rechaza `aspect_ratio`. */
 function conProporcion(modelo: ModeloVista, entrada: Record<string, unknown>): Record<string, unknown> {
@@ -53,22 +64,26 @@ const CONSTRUCTORES = new Map<string, Constructor>(
         resolution: primeraResolucion(modelo),
       }),
 
-    veo3_lite: ({ escena, dialogo, urls }) => entradaAnimacion(escena, dialogo, urls[0] ?? ""),
+    veo3_fast: (contexto, modelo) =>
+      entradaAnimacion(contexto.escena, contexto.dialogo, contexto.urls[0] ?? "", duracion(modelo, contexto)),
 
-    "hailuo/2-3-image-to-video-standard": ({ escena, dialogo, urls }, modelo) =>
+    veo3_lite: (contexto, modelo) =>
+      entradaAnimacion(contexto.escena, contexto.dialogo, contexto.urls[0] ?? "", duracion(modelo, contexto)),
+
+    "hailuo/2-3-image-to-video-standard": (contexto, modelo) =>
       conProporcion(modelo, {
-        prompt: promptAnimacion(escena, dialogo),
-        image_url: urls[0] ?? "",
+        prompt: promptAnimacion(contexto.escena, contexto.dialogo),
+        image_url: contexto.urls[0] ?? "",
         // Hailuo espera la duración y la resolución como texto.
-        duration: String(primeraDuracion(modelo)),
+        duration: String(duracion(modelo, contexto)),
         resolution: primeraResolucion(modelo),
       }),
 
-    "kling/v3-turbo-image-to-video": ({ escena, dialogo, urls }, modelo) =>
+    "kling/v3-turbo-image-to-video": (contexto, modelo) =>
       conProporcion(modelo, {
-        prompt: promptAnimacion(escena, dialogo),
-        image_urls: urls,
-        duration: String(primeraDuracion(modelo)),
+        prompt: promptAnimacion(contexto.escena, contexto.dialogo),
+        image_urls: contexto.urls,
+        duration: String(duracion(modelo, contexto)),
         resolution: primeraResolucion(modelo),
       }),
   }),

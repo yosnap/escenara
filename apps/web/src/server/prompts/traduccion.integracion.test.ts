@@ -52,7 +52,8 @@ type Herramientas = import("../generacion/herramientas").Herramientas;
 type Actor = import("../media/servicio").Actor;
 
 const CLAVE = "sk-ana-clave-de-kie-inventada-ffff";
-const CREDITOS_TEXTO = 3;
+/** Créditos que se estiman por llamada de texto: el precio sembrado es 1,5 y la estimación redondea al alza. */
+const CREDITOS_TEXTO = 2;
 const CREDITOS_INFORMADOS = 0.5;
 const ESCENA = "en una azotea al amanecer, mirando a cámara";
 const TRADUCIDA = "on a rooftop at dawn, looking at the camera";

@@ -46,6 +46,12 @@ export const projects = pgTable(
      * aprobar el plan**: un plan sin techo no se autoriza solo.
      */
     authorizedCredits: integer("authorized_credits").notNull().default(0),
+    /**
+     * Duración de los clips de este proyecto, en segundos. Es la que se le pide al modelo de vídeo, y solo puede
+     * ser una de las que esta versión ofrece (`lib/produccion.ts › DURACIONES_DISPONIBLES`). Ocho por defecto:
+     * KIE cobra lo mismo por 4 s que por 8 s, medido el 2026-09-27, así que la corta no ahorra nada.
+     */
+    clipSeconds: integer("clip_seconds").notNull().default(8),
     /** Quién aprobó el plan y cuándo; `null` mientras el proyecto sea un borrador. */
     planApprovedBy: uuid("plan_approved_by").references(() => users.id, { onDelete: "set null" }),
     planApprovedAt: timestamp("plan_approved_at", { withTimezone: true }),
@@ -70,7 +76,12 @@ export const scenes = pgTable(
     scriptText: text("script_text").notNull().default(""),
     /** Lo que se ve: encuadre, gesto y luz. Es la base del prompt del fotograma. */
     action: text("action").notNull().default(""),
-    plannedSeconds: integer("planned_seconds").notNull().default(4),
+    /**
+     * Duración prevista de la escena, en segundos. Es **copia de la del proyecto** (`projects.clip_seconds`): la
+     * elige el proyecto entero y se guarda aquí para que lo que se muestra de cada escena y lo que se le pide al
+     * modelo sean lo mismo. Cambiar la del proyecto la reescribe en todas sus escenas.
+     */
+    plannedSeconds: integer("planned_seconds").notNull().default(8),
     /**
      * La escena **no guarda prompts**: los compone el servidor al producir, con la plantilla, los presets y la
      * ficha de la versión congelada, y el texto que de verdad se envió queda en `generation_jobs.prompt`. Una

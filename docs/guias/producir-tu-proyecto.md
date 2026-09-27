@@ -24,7 +24,7 @@ Cada escena son **dos gastos, y cada uno lo confirmas tú**:
 1. **El fotograma.** Es la imagen clave de la escena. Se encola y un proceso del servidor la envía al proveedor.
    Puedes cerrar el navegador: el trabajo sigue en la cola del servidor.
 2. **El clip.** Cuando el fotograma está listo, lo miras. Si te vale, pulsas **«Aprobar y animar»** y entonces
-   —y solo entonces— se encola el clip de 4 s. **Un fotograma nunca se anima solo:** animar cuesta otro dinero y
+   —y solo entonces— se encola el clip. **Un fotograma nunca se anima solo:** animar cuesta otro dinero y
    nadie lo autoriza en tu nombre.
 
 Con el botón grande de arriba produces **todas las escenas pendientes de una vez**. Se encolan tantas como permita
@@ -109,9 +109,14 @@ y te la muestra.
 
 ## Duración y formato
 
-Esta versión produce **clips de 4 s en 9:16 a 720p**. Es la única duración cuyo coste está **medido** en esta
-instalación; los 8 s llegarán cuando se mida su precio real. Si el modelo predeterminado del catálogo genera otra
-duración, la producción se bloquea y lo dice, en lugar de encolar algo cuyo coste no podemos estimar.
+Esta versión produce **clips de 8 s o de 4 s, en 9:16 a 720p**. La duración se elige **una vez para todo el
+proyecto**, en el paso «La idea», y todas sus escenas se producen con ella: verlo cada escena por separado no
+tendría sentido en un vídeo que se monta seguido.
+
+**Ocho segundos es lo de fábrica, y elegir cuatro no ahorra nada**: medido con dinero real el 27 de septiembre de
+2026, el proveedor cobra **lo mismo** por un clip de 4 s que por uno de 8 s. Las dos duraciones son las únicas con
+coste medido en esta instalación. Si el modelo predeterminado del catálogo no admite la duración de tu proyecto, la
+producción se bloquea y lo dice, en lugar de encolar un clip que duraría otra cosa.
 
 Los formatos 16:9 y 1:1 y los proyectos largos llegan más adelante.
 

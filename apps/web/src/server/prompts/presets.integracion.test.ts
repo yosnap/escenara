@@ -761,23 +761,24 @@ describe.skipIf(!hayBaseDeDatos)("presets y plantillas de prompt", () => {
       plantillaId: plantillaClip.id,
     };
 
-    // Veo 3.1 Lite declara 4, 6 y 8 s, pero su precio está medido por clip de 4 s: es la duración que se envía.
+    // Sin proyecto detrás, la duración que se envía es la primera que declara el modelo: 8 s en Veo 3.1 Fast. Un
+    // preset que promete otra se rechaza, porque el texto diría una cosa y el clip duraría otra.
     const fallo = await crearAnimacion(
       actorAna,
-      { ...comun, claveIdempotencia: crypto.randomUUID(), presets: { duracion: [porClave("clip-8").id] } },
+      { ...comun, claveIdempotencia: crypto.randomUUID(), presets: { duracion: [porClave("clip-4").id] } },
       h,
     ).catch((e: unknown) => e);
     expect(fallo).toBeInstanceOf(ErrorPreset);
     expect((fallo as InstanceType<typeof ErrorPreset>).estado).toBe(409);
-    expect((fallo as Error).message).toContain("4 s");
+    expect((fallo as Error).message).toContain("8 s");
 
     const { trabajo: clip } = await crearAnimacion(
       actorAna,
-      { ...comun, claveIdempotencia: crypto.randomUUID(), presets: { duracion: [porClave("clip-4").id] } },
+      { ...comun, claveIdempotencia: crypto.randomUUID(), presets: { duracion: [porClave("clip-8").id] } },
       h,
     );
     const promptDelClip = await promptDeTrabajo(clip.id);
-    expect(promptDelClip).toContain("A continuous 4-second shot");
+    expect(promptDelClip).toContain("A continuous 8-second shot");
     expect(promptDelClip).toContain("walking slowly towards the camera");
     const [fila] = await db().select().from(generationJobs).where(eq(generationJobs.id, clip.id));
     expect(fila?.promptTemplateId).toBe(plantillaClip.id);

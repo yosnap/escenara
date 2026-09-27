@@ -581,7 +581,7 @@ describe.skipIf(!hayBaseDeDatos)("generación con la clave del usuario", () => {
       expect(kie.llamadas).toMatchObject({ consulta: 0, descargas: 0 });
     });
 
-    test("el clip de 4 s sale del fotograma y también se guarda", async () => {
+    test("el clip de 8 s sale del fotograma y también se guarda", async () => {
       const animacion = await crearClip(actorAna, {
         trabajoPadreId: fotograma.id,
         prompt: "se mueve un poco",
@@ -596,7 +596,9 @@ describe.skipIf(!hayBaseDeDatos)("generación con la clave del usuario", () => {
       expect(listo.estado).toBe("listo");
       expect(listo.medio?.tipo).toBe("video");
       expect(listo.creditosConsumidos).toBe(60);
-      expect(listo.modelo).toBe("veo3_lite");
+      // Veo 3.1 Fast es el predeterminado de animación, y sin proyecto detrás el clip dura lo que declara.
+      expect(listo.modelo).toBe("veo3_fast");
+      expect(listo.medio?.duracion).toBe(8);
     });
 
     test("el historial reúne los trabajos listos con su medio", async () => {

@@ -3,8 +3,9 @@ import type { ModeloVista } from "@/lib/catalogo";
 import { CLIP, type TipoTrabajo, type TrabajoVista } from "@/lib/generacion";
 import type { TipoPersonaje } from "@/lib/personajes";
 import type { SeleccionPresets } from "@/lib/presets";
+import { duracionParaModelo } from "@/lib/produccion";
 import { leerAjustes } from "../ajustes";
-import { proyectoDeEscena } from "../asistente/consulta";
+import { duracionDeClipDeEscena, proyectoDeEscena } from "../asistente/consulta";
 import { hechosDeEscena, techoDelProyecto } from "../asistente/plan";
 import { encolar, filaDeLaConfirmacion, type NuevoTrabajoEncolado } from "../cola/encolar";
 import { recopilarHechos } from "../controles/hechos";
@@ -134,6 +135,8 @@ async function baseDelPrompt(
   modelo: ModeloVista,
   tipoPersonaje: TipoPersonaje | null,
   escenaEscrita: string,
+  /** Duración que se le va a pedir al proveedor, si ya está decidida: es contra la que se valida un preset. */
+  segundos?: number,
 ): Promise<BaseDelPrompt> {
   if (!peticion.plantillaId) return { escena: escenaEscrita, compuesto: null };
   const compuesto = await componerDesdePlantilla({
@@ -147,6 +150,7 @@ async function baseDelPrompt(
     escena: escenaEscrita,
     tipoPersonaje,
     modelo,
+    ...(segundos === undefined ? {} : { segundos }),
     textoEditado: peticion.promptEditado,
   });
   return { escena: compuesto.texto, compuesto };
@@ -549,7 +553,14 @@ export async function crearAnimacion(
   // preset se valida contra la que se le envía de verdad al proveedor (`segundos`), que es la unidad con la
   // que está medido el precio: pedir otra se rechaza con su motivo en lugar de cobrarse mal. Se compone primero
   // con el texto original: valida la combinación y es lo que miden las reglas, y las dos cosas son gratis.
-  const original = await baseDelPrompt(actor, peticion, "animacion", modelo, tipo, prompt);
+  /**
+   * Duración del clip: la que ha elegido el proyecto de la escena, y la del modelo cuando el clip no pertenece a
+   * ninguna (el camino rápido de «Crear»). Se decide **antes** de componer, porque un preset de duración se valida
+   * contra la que de verdad se va a pedir.
+   */
+  const deseados = (padre.sceneId ? await duracionDeClipDeEscena(padre.sceneId) : null) ?? CLIP.segundos;
+  const segundos = duracionParaModelo(modelo.parametros.duraciones, deseados);
+  const original = await baseDelPrompt(actor, peticion, "animacion", modelo, tipo, prompt, segundos);
   await exigirDecisionFavorable({
     tipo: "animacion",
     escena: original.escena,
@@ -572,10 +583,9 @@ export async function crearAnimacion(
   const base =
     escenaEnIngles === prompt
       ? original
-      : await baseDelPrompt(actor, peticion, "animacion", modelo, tipo, escenaEnIngles);
-  const segundos = modelo.parametros.duraciones[0] ?? CLIP.segundos;
+      : await baseDelPrompt(actor, peticion, "animacion", modelo, tipo, escenaEnIngles, segundos);
   const promptFinal = promptConContexto(base.escena, contextoEnIngles);
-  const parametros = adaptador.montarEntrada(modelo, { escena: promptFinal, dialogo, urls: [] });
+  const parametros = adaptador.montarEntrada(modelo, { escena: promptFinal, dialogo, urls: [], segundos });
   const valores: NuevoTrabajoEncolado = {
     userId: actor.id,
     kind: "animacion",

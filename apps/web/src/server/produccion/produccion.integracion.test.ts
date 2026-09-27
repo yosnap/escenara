@@ -922,10 +922,56 @@ describe.skipIf(!hayBaseDeDatos)("producción de las escenas de un proyecto", ()
     expect(estado).not.toMatch(/"prompt"/);
   });
 
-  test("la escena solo ofrece la duración con coste medido", async () => {
+  test("un proyecto nuevo produce clips de 8 s y elegir 4 s cambia lo que se le pide al proveedor", async () => {
+    const { editarProyecto } = await import("../asistente/proyectos");
     const estado = await estadoDeProduccionDe(proyectoId);
-    expect(estado.escenas.every((e) => e.segundos === 4)).toBe(true);
-    expect(estado.impedimentos.join(" ")).not.toContain("solo ofrece los de 4 s");
+    // 8 s de fábrica: es la duración medida que se ofrece por defecto, y la escena la copia.
+    expect(estado.escenas.every((e) => e.segundos === 8)).toBe(true);
+    expect(estado.impedimentos.join(" ")).not.toContain("duración");
+
+    const escena = estado.escenas[0];
+    if (!escena) throw new Error("Falta la escena de prueba.");
+    /** Duración que se le ha pedido de verdad al proveedor, tal como quedó guardada en la entrada del clip. */
+    const clipDe = async (escenaId: string) => {
+      const trabajos = await trabajosDe(escenaId);
+      const clip = trabajos.find((t) => t.kind === "animacion");
+      if (!clip) throw new Error("Falta el clip de la escena.");
+      const parametros = (clip.input.parametros ?? {}) as Record<string, unknown>;
+      return { modelo: clip.model, duracion: parametros.duration, segundos: parametros.segundos };
+    };
+
+    // Con la duración de fábrica, al proveedor se le piden 8 s.
+    await producirEscena(actor, escena.id, await confirmacion(), h);
+    const [fotograma] = await trabajosDe(escena.id);
+    if (!fotograma) throw new Error("Falta el fotograma de la escena.");
+    const tarea = await marcarEnviado(fotograma.id);
+    tareas.set(tarea, { state: "success", urls: ["https://res.kie.ai/fotograma.png"], creditos: 4 });
+    await consultarTrabajo(actor, fotograma.id, { forzar: true }, h);
+    await aprobarFotograma(actor, escena.id, await confirmacion("clip"), h);
+    expect(await clipDe(escena.id)).toMatchObject({ modelo: "veo3_fast", duracion: 8, segundos: 8 });
+
+    // Con 4 s elegidos en el proyecto, al proveedor se le piden 4, y el coste estimado no cambia.
+    const antes = await estadoDeProduccionDe(proyectoId);
+    await editarProyecto(actor, proyectoId, { segundosClip: 4 });
+    const otra = (await estadoDeProduccionDe(proyectoId)).escenas[1];
+    if (!otra) throw new Error("Falta la segunda escena de prueba.");
+    expect(otra.segundos).toBe(4);
+    const despues = await estadoDeProduccionDe(proyectoId);
+    expect(despues.creditosPorClip).toBe(antes.creditosPorClip);
+    expect(despues.impedimentos.join(" ")).not.toContain("duración");
+
+    await producirEscena(actor, otra.id, await confirmacion(), h);
+    const [suFotograma] = await trabajosDe(otra.id);
+    if (!suFotograma) throw new Error("Falta el fotograma de la segunda escena.");
+    const suTarea = await marcarEnviado(suFotograma.id);
+    tareas.set(suTarea, { state: "success", urls: ["https://res.kie.ai/fotograma.png"], creditos: 4 });
+    await consultarTrabajo(actor, suFotograma.id, { forzar: true }, h);
+    await aprobarFotograma(actor, otra.id, await confirmacion("clip"), h);
+    expect(await clipDe(otra.id)).toMatchObject({ modelo: "veo3_fast", duracion: 4, segundos: 4 });
+
+    // Una duración que no está medida no se acepta: el navegador no decide qué se le pide al proveedor.
+    await expect(editarProyecto(actor, proyectoId, { segundosClip: 6 })).rejects.toThrow(/solo pueden durar/);
+    await editarProyecto(actor, proyectoId, { segundosClip: 8 });
   });
 
   test("sin trabajos ajenos: los de otro usuario no cuentan para el tope de escenas en vuelo", async () => {

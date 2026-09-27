@@ -184,9 +184,9 @@ describe.skipIf(!hayBaseDeDatos)("catálogo de modelos", () => {
           "kling/v3-turbo-image-to-video",
           NANO,
           SEEDREAM,
+          "veo3_fast",
           "veo3_lite",
-          // Modelo de texto del asistente de guion (0.17.0). Se siembra `descubierto`: está en el catálogo pero
-          // no se puede elegir ni enviar hasta que quien administra lo ejecute y lo marque compatible.
+          // Modelo de texto del asistente de guion (0.17.0), validado con su coste medido llamada a llamada.
           TEXTO,
         ].sort(),
       );
@@ -201,14 +201,20 @@ describe.skipIf(!hayBaseDeDatos)("catálogo de modelos", () => {
       expect(imagen?.modelo).toBe(NANO);
       expect(imagen?.precio?.creditos).toBe(4);
       expect(imagen?.estado).toBe("validado");
-      expect(video?.modelo).toBe("veo3_lite");
+      // Veo 3.1 Fast es el predeterminado de animación desde que se midió: mismo precio que Lite por 8 s de clip.
+      expect(video?.modelo).toBe("veo3_fast");
       expect(video?.precio?.creditos).toBe(60);
       expect(video?.conVoz).toBe(true);
     });
 
     test("el catálogo se puede filtrar por capacidad", async () => {
       const deVideo = await listarModelos({ capacidad: "image_to_video" });
-      expect(deVideo.map((m) => m.modelo).sort()).toEqual([HAILUO, "kling/v3-turbo-image-to-video", "veo3_lite"]);
+      expect(deVideo.map((m) => m.modelo).sort()).toEqual([
+        HAILUO,
+        "kling/v3-turbo-image-to-video",
+        "veo3_fast",
+        "veo3_lite",
+      ]);
       expect(await listarModelos({ capacidad: "tts" })).toEqual([]);
     });
 

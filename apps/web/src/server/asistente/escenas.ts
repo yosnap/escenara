@@ -1,14 +1,7 @@
 import { and, eq, inArray, max, sql } from "drizzle-orm";
 import { detectarAfirmaciones } from "@/lib/asistente";
 import { limpiarTextoDePrompt } from "@/lib/ficha-personaje";
-import {
-  ACCION_MAXIMA,
-  ESCENAS_MAXIMAS,
-  motivoDeInvalidacion,
-  SEGUNDOS_MAXIMOS,
-  SEGUNDOS_MINIMOS,
-  TEXTO_ESCENA_MAXIMO,
-} from "@/lib/proyectos";
+import { ACCION_MAXIMA, ESCENAS_MAXIMAS, motivoDeInvalidacion, TEXTO_ESCENA_MAXIMO } from "@/lib/proyectos";
 import { db, type Ejecutor } from "../db/cliente";
 import { claims, type FilaEscena, generationJobs, projects, scenes } from "../db/esquema";
 import type { Actor } from "../media/servicio";
@@ -35,28 +28,18 @@ import { ErrorProyecto } from "./errores";
 export interface DatosEscena {
   texto?: unknown;
   accion?: unknown;
-  segundos?: unknown;
 }
 
-const segundosValidos = (valor: unknown, porDefecto: number): number => {
-  if (valor === undefined) return porDefecto;
-  const numero = typeof valor === "number" ? valor : Number.parseInt(String(valor), 10);
-  if (!Number.isFinite(numero)) {
-    throw new ErrorProyecto(
-      400,
-      `Indica cuántos segundos dura la escena, de ${SEGUNDOS_MINIMOS} a ${SEGUNDOS_MAXIMOS}.`,
-    );
-  }
-  return Math.min(SEGUNDOS_MAXIMOS, Math.max(SEGUNDOS_MINIMOS, Math.round(numero)));
-};
-
-/** Campos de una escena ya limpios. Lo que no llega, no se toca. */
-function camposLimpios(datos: DatosEscena, anterior: FilaEscena | null) {
+/**
+ * Campos de una escena ya limpios. Lo que no llega, no se toca.
+ *
+ * La duración no está aquí: la elige el proyecto entero y la escena la copia (`projects.clip_seconds`), porque es
+ * lo que se le pide al modelo de vídeo y lo que se ha medido con dinero real.
+ */
+function camposLimpios(datos: DatosEscena) {
   const campos: Partial<typeof scenes.$inferInsert> = {};
   if (datos.texto !== undefined) campos.scriptText = limpiarTextoDePrompt(datos.texto, TEXTO_ESCENA_MAXIMO);
   if (datos.accion !== undefined) campos.action = limpiarTextoDePrompt(datos.accion, ACCION_MAXIMA);
-  if (datos.segundos !== undefined)
-    campos.plannedSeconds = segundosValidos(datos.segundos, anterior?.plannedSeconds ?? 4);
   return campos;
 }
 
@@ -131,10 +114,10 @@ export async function crearEscena(actor: Actor, proyectoId: unknown, datos: Dato
         `Este proyecto ya tiene ${total} ${total === 1 ? "escena" : "escenas"} y el máximo son ${ESCENAS_MAXIMAS}. Borra alguna antes de añadir otra.`,
       );
     }
-    const campos = camposLimpios(datos, null);
+    const campos = camposLimpios(datos);
     const [escena] = await tx
       .insert(scenes)
-      .values({ projectId: proyecto.id, sortOrder: orden, ...campos })
+      .values({ projectId: proyecto.id, sortOrder: orden, plannedSeconds: proyecto.clipSeconds, ...campos })
       .returning();
     if (!escena) throw new ErrorProyecto(500, "No se ha podido añadir la escena.");
     await sincronizarAfirmaciones(tx, escena.id, escena.scriptText);
@@ -146,7 +129,7 @@ export async function crearEscena(actor: Actor, proyectoId: unknown, datos: Dato
 /** Edita una escena a mano. Si estaba aprobada, deja de estarlo y se dice por qué. */
 export async function editarEscena(actor: Actor, escenaId: unknown, datos: DatosEscena): Promise<FilaEscena> {
   const { escena } = await escenaPropia(actor, escenaId);
-  const campos = camposLimpios(datos, escena);
+  const campos = camposLimpios(datos);
   if (Object.keys(campos).length === 0) return escena;
   // Editar una escena que ya se ha generado no borra nada (el gasto está hecho y el resultado sigue en la
   // biblioteca), pero deja de corresponder a lo que dice: la rejilla de producción lo avisa y el historial lo

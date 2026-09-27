@@ -19,10 +19,11 @@ import { ErrorKie } from "./cliente";
 
 const API = "https://api.kie.ai";
 /**
- * Escribir un guion tarda más que consultar un estado y menos que generar un vídeo. 45 s: por encima de eso, lo
- * que hay es un problema, y el usuario lleva demasiado tiempo esperando con su presupuesto apartado.
+ * Escribir un guion tarda más que consultar un estado y menos que generar un vídeo. 90 s: medido el 2026-09-27
+ * con la clave real, un guion de cuatro escenas tardó hasta 37 s, así que el tope anterior de 45 s se quedaba a
+ * un suspiro de cortar una respuesta ya pagada. Por encima de esto lo que hay es un problema.
  */
-const MS_TEXTO = 45_000;
+export const MS_TEXTO = 90_000;
 
 export interface RespuestaTexto {
   /** Texto generado, tal cual lo devuelve el proveedor. **No confiable**: hay que limpiarlo antes de usarlo. */
