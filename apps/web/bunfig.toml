@@ -1,0 +1,3 @@
+[test]
+# Ningún test envía correo de verdad: se sustituye el transporte antes de cargar la suite.
+preload = ["./src/server/correo-de-prueba.ts"]

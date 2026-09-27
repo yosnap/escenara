@@ -1,6 +1,6 @@
 "use client";
 
-import { HardDrive, Mail, ShieldCheck, UserPlus } from "lucide-react";
+import { Coins, HardDrive, Mail, ShieldCheck, UserPlus } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Boton } from "@/components/ui/button";
 import { CampoSecreto } from "@/components/ui/campo-secreto";
@@ -120,6 +120,51 @@ export function FormularioAjustes({
             />
           )}
         </Campo>
+      </Seccion>
+
+      <Seccion
+        titulo="Generación"
+        descripcion="Avisos de gasto al generar con la clave de cada usuario."
+        icono={<Coins />}
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Campo
+            etiqueta="Avisar por encima de (créditos)"
+            ayuda="Un trabajo que pase de esta cifra exige un aviso extra antes de gastar. 0 = avisar siempre."
+            error={errorDe("avisoCreditos")}
+          >
+            {(p) => (
+              <EntradaTexto
+                {...p}
+                type="number"
+                min={0}
+                step={1}
+                inputMode="numeric"
+                value={Number.isNaN(valores.avisoCreditos) ? "" : valores.avisoCreditos}
+                onChange={(e) => cambiar("avisoCreditos", e.target.value === "" ? Number.NaN : Number(e.target.value))}
+              />
+            )}
+          </Campo>
+          <Campo
+            etiqueta="Euros por crédito (aproximado)"
+            ayuda="Solo para mostrar la estimación en euros. KIE vende 1.000 créditos por unos 5 USD."
+            error={errorDe("eurosPorCredito")}
+          >
+            {(p) => (
+              <EntradaTexto
+                {...p}
+                type="number"
+                min={0}
+                step={0.0001}
+                inputMode="decimal"
+                value={Number.isNaN(valores.eurosPorCredito) ? "" : valores.eurosPorCredito}
+                onChange={(e) =>
+                  cambiar("eurosPorCredito", e.target.value === "" ? Number.NaN : Number(e.target.value))
+                }
+              />
+            )}
+          </Campo>
+        </div>
       </Seccion>
 
       <Seccion
