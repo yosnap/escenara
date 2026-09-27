@@ -1,33 +1,37 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
-import {
-  CLIP,
-  DIALOGO_MAXIMO,
-  MODELOS,
-  PROMPT_MAXIMO,
-  PROMPT_MINIMO,
-  TIPO_RESULTADO,
-  type TipoTrabajo,
-  type TrabajoVista,
-} from "@/lib/generacion";
-import { formatearTamano } from "@/lib/media/reglas";
-import { leerAjustes } from "../ajustes";
-import { leerObjeto } from "../almacenamiento";
-import { usarCredencialValida } from "../boveda/credenciales";
+import { and, eq, sql } from "drizzle-orm";
+import { PROVEEDORES_PUBLICOS, type Proveedor } from "@/lib/boveda";
+import type { ModeloVista } from "@/lib/catalogo";
+import { CLIP, type TipoTrabajo, type TrabajoVista } from "@/lib/generacion";
 import { db } from "../db/cliente";
-import { type FilaMedio, type FilaTrabajo, generationJobs, media } from "../db/esquema";
-import { dentroDelLimite, type Limite } from "../limite";
-import { type Actor, espacioUsado, limiteSubida } from "../media/servicio";
-import type { Buscador } from "../proveedores/codigos";
-import { crearTarea, ErrorKie, subirReferencia } from "../proveedores/kie/cliente";
-import { entradaAnimacion, entradaFotograma } from "../proveedores/kie/modelos";
+import { type FilaMedio, type FilaTrabajo, generationJobs } from "../db/esquema";
+import { referenciaCompatible } from "../media/conversion-referencia";
+import type { Actor } from "../media/servicio";
+import { type Adaptador, ErrorProveedor } from "../proveedores/contrato";
+import {
+  archivoDe,
+  exigirAvisoUmbral,
+  exigirClaveIdempotencia,
+  exigirConfirmacion,
+  exigirCredencial,
+  exigirCuota,
+  exigirDerechos,
+  exigirRitmo,
+  exigirSaldo,
+  imagenPropia,
+  limpiarDialogo,
+  limpiarPrompt,
+  proveedorDeCredencial,
+} from "./comprobaciones";
 import { ErrorGeneracion } from "./errores";
-import { olvidarSaldo, saldoDelUsuario } from "./estimacion";
+import { olvidarSaldo } from "./estimacion";
 import { HERRAMIENTAS, type Herramientas } from "./herramientas";
-import { precioDe } from "./precios";
+import { type EleccionDeTrabajo, elegirParaTipo, exigirSelloVigente } from "./precios";
 import { condicionEnCurso, esUuidGeneracion, filaPropia, vistaDeFila } from "./trabajos";
 
 /**
- * Envío de trabajos a KIE con la clave del propio usuario (RF01). Reglas duras de esta versión:
+ * Envío de trabajos al proveedor con la clave del propio usuario (RF01). Desde la 0.11.0 el proveedor no se
+ * nombra aquí: el modelo se elige por capacidad en el catálogo y se habla con él a través de su adaptador
+ * (ADR-0015). Reglas duras, iguales que en la 0.10.0:
  *
  * - nada se envía sin una confirmación explícita que incluya los créditos estimados que se mostraron: si
  *   el precio ha cambiado entre la pantalla y el botón, se rechaza y se vuelve a mostrar;
@@ -44,9 +48,6 @@ import { condicionEnCurso, esUuidGeneracion, filaPropia, vistaDeFila } from "./t
 /** Trabajos simultáneos por usuario: la cola con workers y su límite configurable llegan en 0.12.0. */
 const MAXIMO_EN_CURSO = 3;
 
-/** Ritmo máximo de envíos por usuario: un accidente (o un script) no puede vaciarle la cuenta. */
-const RITMO_ENVIOS: Limite = { ventanaSegundos: 60 * 60, maximo: 40 };
-
 /** Confirmación común a los dos tipos de trabajo. */
 interface Confirmacion {
   prompt: string;
@@ -58,6 +59,10 @@ interface Confirmacion {
   avisoUmbralAceptado?: boolean;
   /** Clave que genera el navegador al confirmar: la misma confirmación nunca se cobra dos veces. */
   claveIdempotencia: string;
+  /** Modelo elegido en el catálogo; sin él se usa el predeterminado de la capacidad. */
+  modelo?: string;
+  /** Sello del precio con el que se hizo la estimación: si ha cambiado, se rechaza. */
+  selloEstimacion?: string;
 }
 
 /**
@@ -81,142 +86,29 @@ export interface PeticionAnimacion extends Confirmacion {
   dialogo?: string;
 }
 
-function limpiarPrompt(prompt: unknown): string {
-  const texto = typeof prompt === "string" ? prompt.trim().replace(/\s+/g, " ") : "";
-  if (texto.length < PROMPT_MINIMO) {
-    throw new ErrorGeneracion(400, `Describe la escena con al menos ${PROMPT_MINIMO} caracteres.`);
-  }
-  if (texto.length > PROMPT_MAXIMO) {
-    throw new ErrorGeneracion(400, `La descripción no puede pasar de ${PROMPT_MAXIMO} caracteres.`);
-  }
-  return texto;
-}
-
-/**
- * Limpia lo que dice el personaje. Se quitan los saltos de línea y las comillas: el diálogo se le pasa a
- * Veo con dos puntos y sin comillas, que es lo que menos texto incrustado provoca.
- */
-function limpiarDialogo(dialogo: unknown): string {
-  if (dialogo === undefined || dialogo === null || dialogo === "") return "";
-  if (typeof dialogo !== "string") throw new ErrorGeneracion(400, "Lo que dice tiene que ser texto.");
-  // El tope se comprueba **antes** de limpiar: ninguna expresión regular recorre un texto enorme.
-  if (dialogo.length > DIALOGO_MAXIMO) {
-    throw new ErrorGeneracion(400, `Lo que dice no puede pasar de ${DIALOGO_MAXIMO} caracteres.`);
-  }
-  return dialogo
-    .replace(/[\r\n"“”«»‘’']+/g, " ")
-    .trim()
-    .replace(/\s+/g, " ");
-}
-
-function exigirDerechos(derechos: unknown) {
-  if (derechos !== true) {
-    throw new ErrorGeneracion(400, "Confirma que tienes derecho a usar esa imagen antes de generar.");
-  }
-}
-
-/** La confirmación vale para el precio que se mostró y para ningún otro. */
-function exigirConfirmacion(confirmados: unknown, creditos: number) {
-  if (typeof confirmados !== "number" || !Number.isFinite(confirmados)) {
-    throw new ErrorGeneracion(400, "Falta la confirmación del coste estimado.");
-  }
-  if (confirmados !== creditos) {
-    throw new ErrorGeneracion(
-      409,
-      `El coste estimado ha cambiado: ahora son ${creditos} créditos. Revísalo y vuelve a confirmar.`,
-    );
-  }
-}
-
-/** El aviso por gasto alto lo comprueba el servidor: es un aviso obligatorio, no un tope. */
-async function exigirAvisoUmbral(creditos: number, aceptado: unknown) {
-  const { avisoCreditos } = await leerAjustes();
-  if (creditos > avisoCreditos && aceptado !== true) {
-    throw new ErrorGeneracion(
-      400,
-      `Este trabajo pasa del aviso de ${avisoCreditos} créditos. Confirma que quieres gastarlos.`,
-    );
-  }
-}
-
-/** Clave de idempotencia: la genera el navegador y tiene que ser un UUID. */
-function exigirClaveIdempotencia(clave: unknown): string {
-  if (!esUuidGeneracion(clave)) throw new ErrorGeneracion(400, "Falta la clave de la confirmación.");
-  return clave;
-}
-
-async function exigirCredencial(usuarioId: string): Promise<string> {
-  const credencial = await usarCredencialValida(usuarioId, "kie");
-  if (credencial.ok) return credencial.clave;
-  const MENSAJE = {
-    boveda: "Esta instalación aún no admite credenciales: pídeselo a quien la administra.",
-    "sin-credencial": "No tienes ninguna clave de KIE guardada. Añádela en «Tu cuenta».",
-    invalida: "Tu clave de KIE está marcada como no válida. Pruébala o sustitúyela en «Tu cuenta».",
-    ilegible: "La clave guardada no se puede leer en esta instalación. Bórrala y vuelve a guardarla.",
-  } as const;
-  throw new ErrorGeneracion(409, MENSAJE[credencial.motivo]);
-}
-
-async function exigirRitmo(usuarioId: string) {
-  if (!(await dentroDelLimite(`generacion:envio:${usuarioId}`, RITMO_ENVIOS))) {
-    throw new ErrorGeneracion(429, "Has pedido demasiadas generaciones seguidas. Espera un rato.");
-  }
-}
-
-/**
- * La cuota se comprueba **antes** de gastar: guardar el resultado no puede quedarse sin sitio. Se reserva
- * el peor caso real del tipo de archivo (el máximo que admite la biblioteca), no una media: un clip que no
- * cupiera se habría pagado ya.
- */
-async function exigirCuota(actor: Actor, tipo: TipoTrabajo) {
-  const previsto = limiteSubida(TIPO_RESULTADO[tipo]);
-  const { usadoBytes, cuotaBytes } = await espacioUsado(actor);
-  if (cuotaBytes !== null && usadoBytes + previsto > cuotaBytes) {
-    throw new ErrorGeneracion(
-      413,
-      `Necesitas ${formatearTamano(previsto)} libres en la biblioteca para guardar el resultado y te quedan ${formatearTamano(Math.max(0, cuotaBytes - usadoBytes))}. Vacía la papelera o borra archivos antes de generar.`,
-    );
-  }
-}
-
-async function exigirSaldo(usuarioId: string, creditos: number, buscar: Buscador) {
-  const saldo = await saldoDelUsuario(usuarioId, buscar);
-  if (saldo !== null && saldo < creditos) {
-    throw new ErrorGeneracion(
-      402,
-      `Tu cuenta de KIE tiene ${saldo} créditos y este trabajo necesita ${creditos}. Recarga créditos en el proveedor.`,
-    );
-  }
-}
-
-/** Imagen propia, existente y fuera de la papelera: lo ajeno responde 404, como en la biblioteca. */
-async function imagenPropia(usuarioId: string, medioId: unknown): Promise<FilaMedio> {
-  // El identificador llega del navegador: se valida como UUID antes de consultar nada.
-  if (!esUuidGeneracion(medioId)) throw new ErrorGeneracion(400, "Elige una imagen de referencia.");
-  const [fila] = await db()
-    .select()
-    .from(media)
-    .where(and(eq(media.id, medioId), eq(media.ownerId, usuarioId), isNull(media.deletedAt)))
-    .limit(1);
-  if (!fila) throw new ErrorGeneracion(404, "La imagen no existe.");
-  if (fila.kind !== "imagen") throw new ErrorGeneracion(400, "La referencia tiene que ser una imagen.");
-  return fila;
-}
-
-/** Baja el archivo del almacenamiento propio para subirlo al proveedor. */
-async function archivoDe(fila: FilaMedio): Promise<File> {
-  const datos = await leerObjeto(fila.storageKey).arrayBuffer();
-  return new File([datos], fila.originalName || "referencia", { type: fila.mimeType });
-}
-
 /**
  * Lo que se guarda como entrada del trabajo: `prompt` es lo que escribió la persona y `parametros` lo que
  * se le envió al proveedor (incluido el prompt ya montado, útil para entender un resultado raro). Nunca
- * incluye las URL temporales del proveedor ni ningún secreto.
+ * incluye las URL temporales del proveedor ni ningún secreto: cada modelo las recibe por un campo distinto
+ * (`image_urls`, `input_urls`, `image_url`) y se quitan todos.
  */
-function entradaGuardada(prompt: string, referencias: string[], parametros: Record<string, unknown>) {
-  const { image_urls: _urlsTemporales, ...resto } = parametros;
+function entradaGuardada(
+  adaptador: Adaptador,
+  prompt: string,
+  referencias: string[],
+  parametros: Record<string, unknown>,
+) {
+  const resto = { ...parametros };
+  for (const campo of adaptador.camposDeUrl) delete resto[campo];
   return { prompt, referencias, parametros: resto };
+}
+
+/** Modelo elegido, su adaptador y sus créditos ya comprobados contra lo que confirmó el usuario. */
+async function eleccionConfirmada(tipo: TipoTrabajo, peticion: Confirmacion): Promise<EleccionDeTrabajo> {
+  const eleccion = await elegirParaTipo(tipo, peticion.modelo);
+  // Quien elige modelo tiene que devolver el sello del precio que vio; sin modelo se usa el predeterminado.
+  exigirSelloVigente(peticion.selloEstimacion, eleccion.precio.sello, Boolean(peticion.modelo));
+  return eleccion;
 }
 
 export async function crearFotograma(
@@ -227,34 +119,35 @@ export async function crearFotograma(
   const prompt = limpiarPrompt(peticion.prompt);
   exigirDerechos(peticion.derechos);
   const claveIdempotencia = exigirClaveIdempotencia(peticion.claveIdempotencia);
-  const precio = await precioDe("fotograma");
+  const { modelo, adaptador, precio } = await eleccionConfirmada("fotograma", peticion);
   const creditos = Math.ceil(precio.creditos);
   exigirConfirmacion(peticion.creditosConfirmados, creditos);
   await exigirAvisoUmbral(creditos, peticion.avisoUmbralAceptado);
   const yaHecho = await trabajoDeLaConfirmacion(actor.id, claveIdempotencia);
   if (yaHecho) return { trabajo: yaHecho, nueva: false };
-  const clave = await exigirCredencial(actor.id);
+  const proveedor = proveedorDeCredencial(modelo);
+  const clave = await exigirCredencial(actor.id, proveedor);
   const origen = await imagenPropia(actor.id, peticion.medioId);
   await exigirCuota(actor, "fotograma");
-  await exigirSaldo(actor.id, creditos, h.buscar);
+  await exigirSaldo(actor.id, creditos, h.buscar, proveedor);
   await exigirRitmo(actor.id);
 
-  const parametros = entradaFotograma(prompt, []);
+  const parametros = adaptador.montarEntrada(modelo, { escena: prompt, dialogo: "", urls: [] });
   const reserva = await reservar(actor.id, claveIdempotencia, {
     userId: actor.id,
     kind: "fotograma",
-    provider: "kie",
-    model: MODELOS.fotograma,
+    provider: proveedor,
+    model: modelo.modelo,
     prompt,
-    input: entradaGuardada(prompt, [origen.id], parametros),
+    input: entradaGuardada(adaptador, prompt, [origen.id], parametros),
     sourceMediaId: origen.id,
     estimatedCredits: creditos,
   });
   if (!reserva.nueva) return { trabajo: await vistaDeFila(reserva.fila), nueva: false };
 
-  const trabajo = await enviar(reserva.fila, clave, h, async () => {
-    const url = await subirReferencia(clave, await archivoDe(origen), h.buscar);
-    return entradaFotograma(prompt, [url]);
+  const trabajo = await enviar(reserva.fila, { adaptador, clave, video: false }, h, async () => {
+    const url = await subirReferenciaDe(adaptador, clave, origen, modelo, h);
+    return adaptador.montarEntrada(modelo, { escena: prompt, dialogo: "", urls: [url] });
   });
   return { trabajo, nueva: true };
 }
@@ -267,13 +160,14 @@ export async function crearAnimacion(
   const prompt = limpiarPrompt(peticion.prompt);
   exigirDerechos(peticion.derechos);
   const claveIdempotencia = exigirClaveIdempotencia(peticion.claveIdempotencia);
-  const precio = await precioDe("animacion");
+  const { modelo, adaptador, precio } = await eleccionConfirmada("animacion", peticion);
   const creditos = Math.ceil(precio.creditos);
   exigirConfirmacion(peticion.creditosConfirmados, creditos);
   await exigirAvisoUmbral(creditos, peticion.avisoUmbralAceptado);
   const yaHecho = await trabajoDeLaConfirmacion(actor.id, claveIdempotencia);
   if (yaHecho) return { trabajo: yaHecho, nueva: false };
-  const clave = await exigirCredencial(actor.id);
+  const proveedor = proveedorDeCredencial(modelo);
+  const clave = await exigirCredencial(actor.id, proveedor);
 
   if (!esUuidGeneracion(peticion.trabajoPadreId)) throw new ErrorGeneracion(404, "El trabajo no existe.");
   const padre = await filaPropia(actor.id, peticion.trabajoPadreId);
@@ -283,27 +177,29 @@ export async function crearAnimacion(
   }
   const origen = await imagenPropia(actor.id, padre.resultMediaId);
   await exigirCuota(actor, "animacion");
-  await exigirSaldo(actor.id, creditos, h.buscar);
+  await exigirSaldo(actor.id, creditos, h.buscar, proveedor);
   await exigirRitmo(actor.id);
 
-  const dialogo = limpiarDialogo(peticion.dialogo);
-  const parametros = entradaAnimacion(prompt, dialogo, "");
+  // Un modelo sin voz no recibe nunca lo que dice el personaje (Hailuo 2.3 no tiene audio).
+  const dialogo = modelo.conVoz ? limpiarDialogo(peticion.dialogo) : "";
+  const segundos = modelo.parametros.duraciones[0] ?? CLIP.segundos;
+  const parametros = adaptador.montarEntrada(modelo, { escena: prompt, dialogo, urls: [] });
   const reserva = await reservar(actor.id, claveIdempotencia, {
     userId: actor.id,
     kind: "animacion",
-    provider: "kie",
-    model: MODELOS.animacion,
+    provider: proveedor,
+    model: modelo.modelo,
     prompt,
-    input: { ...entradaGuardada(prompt, [origen.id], { ...parametros, segundos: CLIP.segundos }), dialogo },
+    input: { ...entradaGuardada(adaptador, prompt, [origen.id], { ...parametros, segundos }), dialogo },
     sourceMediaId: origen.id,
     parentJobId: padre.id,
     estimatedCredits: creditos,
   });
   if (!reserva.nueva) return { trabajo: await vistaDeFila(reserva.fila), nueva: false };
 
-  const trabajo = await enviar(reserva.fila, clave, h, async () => {
-    const url = await subirReferencia(clave, await archivoDe(origen), h.buscar);
-    return entradaAnimacion(prompt, dialogo, url);
+  const trabajo = await enviar(reserva.fila, { adaptador, clave, video: true }, h, async () => {
+    const url = await subirReferenciaDe(adaptador, clave, origen, modelo, h);
+    return adaptador.montarEntrada(modelo, { escena: prompt, dialogo, urls: [url] });
   });
   return { trabajo, nueva: true };
 }
@@ -376,23 +272,50 @@ function esClaveRepetida(error: unknown): boolean {
 }
 
 /**
+ * Sube la referencia al proveedor, convirtiéndola antes si ese modelo no acepta el formato en que la
+ * guarda la biblioteca (Kling v3 turbo solo admite JPEG o PNG y los fotogramas son WebP).
+ */
+async function subirReferenciaDe(
+  adaptador: Adaptador,
+  clave: string,
+  origen: FilaMedio,
+  modelo: ModeloVista,
+  h: Herramientas,
+): Promise<string> {
+  const archivo = await referenciaCompatible(await archivoDe(origen), modelo.parametros.formatosReferencia);
+  return adaptador.subirReferencia({ clave, archivo, buscar: h.buscar });
+}
+
+/** Nombre público del proveedor que ejecuta un trabajo ya guardado (su columna ya es un proveedor válido). */
+const proveedorDeFila = (fila: FilaTrabajo): Proveedor => fila.provider;
+
+/** Contexto del envío: con quién se habla, con qué clave y si lo que se pide es un vídeo. */
+interface Destino {
+  adaptador: Adaptador;
+  clave: string;
+  video: boolean;
+}
+
+/**
  * Sube la referencia, crea la tarea y guarda su identificador. Si no se sabe si el proveedor la ha
  * aceptado, el trabajo queda `desconocido`: nunca se reintenta el envío desde aquí.
  */
 async function enviar(
   fila: FilaTrabajo,
-  clave: string,
+  destino: Destino,
   h: Herramientas,
   preparar: () => Promise<Record<string, unknown>>,
 ): Promise<TrabajoVista> {
+  const { adaptador, clave, video } = destino;
   try {
     const entrada = await preparar();
-    const taskId = await crearTarea(clave, fila.model, entrada, h.buscar);
+    const peticion = { clave, modelo: fila.model, entrada, buscar: h.buscar };
+    const taskId = video ? await adaptador.generarVideo(peticion) : await adaptador.generarImagen(peticion);
     // El saldo acaba de cambiar: la próxima estimación lo vuelve a preguntar.
     olvidarSaldo(fila.userId);
     return await actualizar(fila.id, { taskId, state: "enviado", sentAt: new Date() });
   } catch (error) {
-    if (!(error instanceof ErrorKie)) {
+    if (!(error instanceof ErrorProveedor)) {
       console.error(`[generacion] fallo al enviar el trabajo ${fila.id}: ${(error as Error).message}`);
       return actualizar(fila.id, {
         state: "fallido",
@@ -401,11 +324,11 @@ async function enviar(
       });
     }
     // Un tiempo agotado o una red caída no dicen si la tarea existe ya en el proveedor.
-    const sinRespuesta = error.codigo === "tiempo-agotado" || error.codigo === "sin-red";
+    const sinRespuesta = error.sinRespuesta;
     return actualizar(fila.id, {
       state: sinRespuesta ? "desconocido" : "fallido",
       errorMessage: sinRespuesta
-        ? `${error.message} No sabemos si el proveedor ha aceptado el trabajo, así que no se reenviará: revisa el historial de tu cuenta de KIE antes de pedirlo otra vez.`
+        ? `${error.message} No sabemos si el proveedor ha aceptado el trabajo, así que no se reenviará: revisa el historial de tu cuenta en ${PROVEEDORES_PUBLICOS[proveedorDeFila(fila)].nombre} antes de pedirlo otra vez.`
         : error.message,
       finishedAt: sinRespuesta ? null : new Date(),
     });

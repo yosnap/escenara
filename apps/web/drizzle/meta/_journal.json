@@ -50,6 +50,13 @@
       "when": 1790474139205,
       "tag": "0006_idempotencia_de_envio",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790480445133,
+      "tag": "0007_catalogo_de_modelos",
+      "breakpoints": true
     }
   ]
 }

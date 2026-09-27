@@ -1,51 +1,59 @@
-import { and, eq } from "drizzle-orm";
-import { MODELOS, type TipoTrabajo } from "@/lib/generacion";
-import { db } from "../db/cliente";
-import { modelPrices } from "../db/esquema";
+import { CAPACIDAD_DE_TIPO, type ModeloVista } from "@/lib/catalogo";
+import type { TipoTrabajo } from "@/lib/generacion";
+import type { Adaptador, PrecioModelo } from "../proveedores/contrato";
+import { resolver } from "../proveedores/registro";
 import { ErrorGeneracion } from "./errores";
 
 /**
- * Precios de los modelos que usa esta versión, leídos del registro versionado `model_prices` (la tabla se
- * siembra en la migración con lo medido en el prototipo de la 0.3.0 y la amplía 0.11.0).
+ * Qué modelo se usa para cada tipo de trabajo y cuánto cuesta. Desde la 0.11.0 las dos cosas salen del
+ * catálogo (`server/proveedores/catalogo.ts`), no de constantes en el código: el modelo se elige por
+ * capacidad y el precio está en el registro versionado `model_prices` con su fuente y su fecha.
  *
- * Nunca hay un precio por defecto en el código: si el registro no tiene el modelo, no se estima ni se
- * gasta. Un precio inventado es peor que no poder generar.
+ * Nunca hay un precio por defecto: si el registro no tiene el modelo, no se estima ni se gasta. Un precio
+ * inventado es peor que no poder generar.
  */
 
-/** Unidad que factura cada tipo de trabajo, tal como está registrada en `model_prices`. */
-export const UNIDAD: Record<TipoTrabajo, string> = {
-  fotograma: "imagen",
-  animacion: "vídeo de 4 s",
-};
+export type Precio = PrecioModelo;
 
-export interface Precio {
-  modelo: string;
-  unidad: string;
-  creditos: number;
-  fuente: string;
-  /** Fecha (AAAA-MM-DD) en la que se comprobó. */
-  comprobado: string;
+/** Modelo elegido para un tipo de trabajo, con su adaptador y su precio vigente. */
+export interface EleccionDeTrabajo {
+  modelo: ModeloVista;
+  adaptador: Adaptador;
+  precio: Precio;
 }
 
-export async function precioDe(tipo: TipoTrabajo): Promise<Precio> {
-  const modelo = MODELOS[tipo];
-  const unidad = UNIDAD[tipo];
-  const [fila] = await db()
-    .select()
-    .from(modelPrices)
-    .where(and(eq(modelPrices.provider, "kie"), eq(modelPrices.model, modelo), eq(modelPrices.unit, unidad)))
-    .limit(1);
-  if (!fila) {
+/**
+ * Elige el modelo del tipo de trabajo (el que pida el usuario o el predeterminado de su capacidad) y lee
+ * su precio. Un modelo retirado, sin la capacidad necesaria o sin precio no llega a enviarse.
+ */
+export async function elegirParaTipo(tipo: TipoTrabajo, modelo?: string | null): Promise<EleccionDeTrabajo> {
+  const { modelo: elegido, adaptador } = await resolver(CAPACIDAD_DE_TIPO[tipo], modelo);
+  return { modelo: elegido, adaptador, precio: await adaptador.estimar(elegido.modelo) };
+}
+
+/** Precio vigente del modelo con el que se haría ese trabajo. */
+export async function precioDe(tipo: TipoTrabajo, modelo?: string | null): Promise<Precio> {
+  return (await elegirParaTipo(tipo, modelo)).precio;
+}
+
+/**
+ * La confirmación vale para el precio que se mostró y para ningún otro. Si el sello no es el vigente, el
+ * precio ha cambiado desde que se hizo la estimación y hay que volver a revisarla: lo ya consumido no se
+ * toca, pero no se gasta con una estimación caducada.
+ *
+ * Con `obligatorio` (cuando la petición elige modelo, es decir, viene de la 0.11.0 o posterior) falta el
+ * sello es un error. Sin él se acepta que no venga, para no romper a quien siga enviando como en la 0.10.x:
+ * esa ruta usa el modelo por defecto y sigue comparando los créditos confirmados.
+ */
+export function exigirSelloVigente(sello: unknown, vigente: string, obligatorio = false): void {
+  if (sello === undefined || sello === null || sello === "") {
+    if (!obligatorio) return;
+    throw new ErrorGeneracion(400, "Falta la estimación confirmada de ese modelo. Vuelve a revisar el coste.");
+  }
+  if (typeof sello !== "string" || sello !== vigente) {
     throw new ErrorGeneracion(
-      503,
-      `No hay precio registrado para ${modelo}. Sin precio no se puede estimar el coste, así que no se genera.`,
+      409,
+      "El precio de este modelo ha cambiado desde que viste la estimación. Revísala y vuelve a confirmar.",
     );
   }
-  return {
-    modelo: fila.model,
-    unidad: fila.unit,
-    creditos: fila.credits,
-    fuente: fila.source,
-    comprobado: fila.checkedAt.toISOString().slice(0, 10),
-  };
 }

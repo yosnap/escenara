@@ -40,10 +40,18 @@ Comprobados en https://docs.kie.ai/ el **2026-09-27** y ejecutados contra el ser
 
 La clave viaja siempre en la cabecera `Authorization: Bearer …` y nunca en la URL. Del proveedor no se conserva su texto de error: puede repetir la clave recibida.
 
-Parámetros de los modelos en uso:
+Parámetros de los modelos en uso, **ejecutados de verdad** (comparativa del 2026-09-27; cada modelo recibe campos distintos, así que no se generalizan):
 
-- `nano-banana-2-lite`: `prompt` (hasta 20.000 caracteres), `aspect_ratio` (`9:16` entre otros) e `image_urls` (hasta 10 referencias).
-- `veo3_lite`: `prompt`, `image_urls` (1 o 2), `generation_type` (`TEXT_2_VIDEO`, `FIRST_AND_LAST_FRAMES_2_VIDEO`, `REFERENCE_2_VIDEO`), `aspect_ratio`, `duration` (4, 6 u 8 s) y `resolution` (`720p`, `1080p`). Escenara usa `FIRST_AND_LAST_FRAMES_2_VIDEO` con el fotograma como primer fotograma, 4 s, `9:16` y `720p`.
+| Modelo | Campos de la referencia | Otros parámetros | Créditos medidos | Voz |
+|---|---|---|---|---|
+| `nano-banana-2-lite` | `image_urls` (hasta 10) | `prompt`, `aspect_ratio` | 4 / imagen | — |
+| `seedream/4.5-edit` | `image_urls` (hasta 10) | `prompt`, `aspect_ratio`, `quality: basic` | 6,5 / imagen | — |
+| `gpt-image-2-5-flare-image-to-image` | **`input_urls`** (1) | `prompt`, `aspect_ratio`, `resolution` (1K, 2K, 4K) | 6 / imagen a 1K | — |
+| `veo3_lite` (Veo 3.1 Lite) | `image_urls` (1 o 2) | `prompt`, `generation_type` (`TEXT_2_VIDEO`, `FIRST_AND_LAST_FRAMES_2_VIDEO`, `REFERENCE_2_VIDEO`), `aspect_ratio`, `duration` numérico (4, 6, 8), `resolution` (`720p`, `1080p`) | 60 / clip de 4 s | Sí |
+| `hailuo/2-3-image-to-video-standard` | **`image_url`** (texto, 1) | `prompt`, `duration` en texto («6», «10»), `resolution` (`768P`, `1080P`); **no acepta `aspect_ratio`** (toma el de la imagen) | 30 / clip de 6 s | **No** |
+| `kling/v3-turbo-image-to-video` | `image_urls` (1), **solo JPEG o PNG** | `prompt`, `duration` en texto, `resolution` (`720p`) | 72 / clip de 4 s | Sí |
+
+Escenara usa el catálogo de `/admin/modelos` para todo esto: los parámetros de la tabla son los que están sembrados en `apps/web/src/server/proveedores/catalogo.json`, y el precio vigente vive en `model_prices` con su fuente y su fecha.
 
 ## Infraestructura y servicios del operador
 
@@ -77,7 +85,11 @@ Se documentarán en `.env.example` a partir de 0.2.0. Nombres propuestos:
 
 ## Cómo añadir un proveedor
 
-1. Añadir su fila aquí con capacidades, documentación, precios y estado «Por evaluar».
-2. Añadir su bloque en `claves-api.plantilla.md` y en el documento privado.
-3. Tras verificarlo, registrar los modelos en el catálogo versionado (0.10.0) con fuente y fecha.
-4. Implementar su adaptador con pruebas de contrato antes de habilitarlo.
+El contrato real está en `apps/web/src/server/proveedores/contrato.ts` (ADR-0015); el adaptador de KIE en `apps/web/src/server/proveedores/kie/` es el ejemplo a seguir.
+
+1. **Documentarlo aquí**: su fila con capacidades, documentación, precios y estado «Por evaluar», y su bloque en `claves-api.plantilla.md` y en el documento privado.
+2. **Ejecutar sus modelos de verdad** (un spike en `spikes/`, con tope de gasto) y anotar en un informe qué campos acepta cada uno, qué límites tiene y cuántos créditos costó. Los esquemas de los informes de investigación se equivocan: la comparativa del 2026-09-27 corrigió tres.
+3. **Sembrar sus modelos** en `apps/web/src/server/proveedores/catalogo.json` con sus capacidades, sus parámetros comprobados, si tienen voz y su precio con fuente y fecha. Se siembran como `compatible`; `validado` lo decide quien administra desde `/admin/modelos`, con evidencia.
+4. **Escribir su adaptador** implementando `Adaptador`: `subirReferencia`, `generarImagen`, `generarVideo`, `consultar`, `estimar`, `probarCredencial` y `montarEntrada` (los campos exactos de cada modelo), con sus fallos traducidos a los motivos normalizados (`credencial`, `saldo`, `contenido`, `limite`, `temporal`, `respuesta`). `temporal` es el que significa «no se sabe si la petición llegó»: tras uno de esos **nunca** se reenvía nada.
+5. **Declararlo** en `apps/web/src/server/proveedores/registro.ts`. Si además va a cobrar trabajos, añadirlo a `PROVEEDORES` en `apps/web/src/lib/boveda.ts` para que pueda tener credencial del usuario.
+6. **Escribir su prueba de contrato** con respuestas grabadas del servicio real (ver `apps/web/src/server/proveedores/kie/grabaciones.ts`), incluidos todos los errores normalizados. La suite no llama a ningún proveedor: cada llamada de verdad cuesta dinero de alguien.

@@ -1,3 +1,4 @@
+import { esIdentificadorDeModelo } from "@/lib/catalogo";
 import { esTipoTrabajo } from "@/lib/generacion";
 import { ErrorGeneracion } from "@/server/generacion/errores";
 import { exigirMismoOrigen, leerCuerpo, manejador } from "@/server/generacion/http";
@@ -15,6 +16,9 @@ export const GET = manejador(async (_: Request, __: unknown, actor) =>
  * Crea un trabajo. Nada se envía al proveedor sin `creditosConfirmados` (los créditos que se mostraron),
  * sin `derechos` marcado y sin `claveIdempotencia`, que evita cobrar dos veces la misma confirmación.
  *
+ * `modelo` y `selloEstimacion` son opcionales: sin ellos se usa el modelo predeterminado de la capacidad.
+ * Con ellos, el modelo tiene que estar en el catálogo y el sello ser el del precio vigente.
+ *
  * - fotograma: `{ tipo: "fotograma", medioId, prompt, creditosConfirmados, derechos, claveIdempotencia }`
  * - animación: `{ tipo: "animacion", trabajoPadreId, dialogo?, … }` (`dialogo` es lo que dice el personaje,
  *   que solo se usa en el clip: en el fotograma los modelos lo dibujarían como texto)
@@ -25,12 +29,21 @@ export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
   exigirMismoOrigen(peticion);
   const cuerpo = await leerCuerpo(peticion);
   if (!esTipoTrabajo(cuerpo.tipo)) throw new ErrorGeneracion(400, "Tipo de trabajo no válido.");
+  if (cuerpo.modelo !== undefined && !esIdentificadorDeModelo(cuerpo.modelo)) {
+    throw new ErrorGeneracion(400, "Ese modelo no es válido.");
+  }
+  const sello = cuerpo.selloEstimacion;
+  if (sello !== undefined && (typeof sello !== "string" || sello.length > 200)) {
+    throw new ErrorGeneracion(400, "La estimación confirmada no es válida.");
+  }
   const comun = {
     prompt: String(cuerpo.prompt ?? ""),
     creditosConfirmados: cuerpo.creditosConfirmados as number,
     derechos: cuerpo.derechos === true,
     avisoUmbralAceptado: cuerpo.avisoUmbralAceptado === true,
     claveIdempotencia: cuerpo.claveIdempotencia as string,
+    modelo: cuerpo.modelo,
+    selloEstimacion: sello,
   };
   const envio =
     cuerpo.tipo === "fotograma"

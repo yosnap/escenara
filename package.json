@@ -1,6 +1,6 @@
 {
   "name": "escenara",
-  "version": "0.10.1",
+  "version": "0.11.0",
   "private": true,
   "description": "Estudio abierto de personajes y vídeo",
   "license": "AGPL-3.0-only",
@@ -28,6 +28,7 @@
     "db:migrate": "bun --filter @escenara/web db:migrate",
     "medios:medir-videos": "bun --filter @escenara/web medios:medir-videos",
     "boveda:recifrar": "bun --filter @escenara/web boveda:recifrar",
+    "proveedores:prueba-real": "bun --filter @escenara/web proveedores:prueba-real",
     "prototipo": "bun spikes/prototipo/run.ts",
     "tokens": "bun --filter @escenara/web tokens"
   },

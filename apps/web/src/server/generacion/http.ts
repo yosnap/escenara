@@ -2,6 +2,7 @@ import { esAdmin, sesionDePeticion } from "../auth/sesion";
 import { dentroDelLimite, type Limite } from "../limite";
 import { ErrorMedio } from "../media/errores";
 import type { Actor } from "../media/servicio";
+import { ErrorCatalogo } from "../proveedores/contrato";
 import { ErrorGeneracion } from "./errores";
 
 /**
@@ -21,8 +22,11 @@ export async function leerIdTrabajo(contexto: ContextoId): Promise<string> {
 }
 
 export function respuestaError(error: unknown): Response {
-  // Los errores de la biblioteca (cuota, formato) llegan hasta aquí al guardar el resultado.
+  // Los errores de la biblioteca (cuota, formato) llegan hasta aquí al guardar el resultado, y los del
+  // catálogo (modelo retirado, sin capacidad, sin precio) al elegir el modelo: los tres llevan ya su
+  // código HTTP y un mensaje apto para mostrar.
   if (error instanceof ErrorGeneracion) return Response.json({ error: error.message }, { status: error.estado });
+  if (error instanceof ErrorCatalogo) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorMedio) return Response.json({ error: error.message }, { status: error.estado });
   console.error("[generacion]", error);
   return Response.json({ error: "Error interno al procesar el trabajo." }, { status: 500 });

@@ -29,6 +29,10 @@ const json = (cuerpo: unknown): RequestInit => ({
 
 interface Confirmacion {
   prompt: string;
+  /** Modelo elegido en el catálogo. */
+  modelo: string;
+  /** Sello del precio con el que se hizo la estimación: si ha cambiado, el servidor rechaza el envío. */
+  selloEstimacion: string;
   creditosConfirmados: number;
   derechos: boolean;
   avisoUmbralAceptado: boolean;
@@ -58,4 +62,6 @@ export const consultarTrabajo = (id: string) => pedir<TrabajoVista>(`/api/genera
 export const reconsultarTrabajo = (id: string) =>
   pedir<TrabajoVista>(`/api/generacion/trabajos/${id}/consultar`, { method: "POST" });
 
-export const consultarEstimacion = (tipo: TipoTrabajo) => pedir<Estimacion>(`/api/generacion/estimacion?tipo=${tipo}`);
+/** Estimación del modelo indicado (sin modelo, el predeterminado de la capacidad). */
+export const consultarEstimacion = (tipo: TipoTrabajo, modelo?: string) =>
+  pedir<Estimacion>(`/api/generacion/estimacion?tipo=${tipo}${modelo ? `&modelo=${encodeURIComponent(modelo)}` : ""}`);

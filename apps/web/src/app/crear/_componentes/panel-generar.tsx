@@ -9,6 +9,8 @@ import { type Estimacion, formatearCreditos } from "@/lib/generacion";
 
 export interface ConfirmacionCoste {
   creditosConfirmados: number;
+  /** Sello del precio que se mostró: si el precio ha cambiado, el servidor lo rechaza. */
+  selloEstimacion: string;
   derechos: boolean;
   avisoUmbralAceptado: boolean;
   /** Clave de la confirmación: la misma confirmación repetida no genera un segundo trabajo. */
@@ -55,6 +57,7 @@ export function PanelGenerar({
     if (clave.current?.firma !== firma) clave.current = { firma, valor: crypto.randomUUID() };
     onGenerar({
       creditosConfirmados: estimacion.creditos,
+      selloEstimacion: estimacion.sello,
       derechos,
       avisoUmbralAceptado: avisoAceptado,
       claveIdempotencia: clave.current.valor,

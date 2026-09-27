@@ -20,6 +20,7 @@ Cada decisión relevante se documenta en un fichero `adr-NNNN-slug.md` dentro de
 | [0012](adr-0012-drizzle-orm.md) | Acceso a PostgreSQL y migraciones con Drizzle ORM | 0.5.0 | Aceptado |
 | [0013](adr-0013-configuracion-en-panel.md) | La configuración se gestiona en el panel de administración | 0.8.0 | Aceptado |
 | [0014](adr-0014-seguimiento-trabajos-sondeo.md) | Seguimiento de los trabajos de generación por sondeo (callback en 0.12.0) | 0.10.0 | Aceptado |
+| [0015](adr-0015-contrato-adaptadores-capacidades.md) | Contrato de adaptadores por capacidades y catálogo de modelos en la base de datos | 0.11.0 | Aceptado |
 
 ## Plantilla
 
