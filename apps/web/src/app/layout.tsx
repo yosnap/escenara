@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import type { ReactNode } from "react";
-import { SCRIPT_TEMA } from "@/lib/tema";
 import { obtenerSesion } from "@/server/auth/sesion";
 import "./globals.css";
+import { ScriptTema } from "./script-tema";
 
 export const metadata: Metadata = {
   title: "Escenara · Da vida a cada escena",
@@ -32,8 +32,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       suppressHydrationWarning
     >
       <head>
-        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: script estático propio para aplicar el tema antes de pintar */}
-        <script dangerouslySetInnerHTML={{ __html: SCRIPT_TEMA }} />
+        <ScriptTema />
       </head>
       <body className="antialiased">{children}</body>
     </html>

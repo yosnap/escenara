@@ -2,6 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.19.5] · 2026-09-28
+
+### Corregido
+
+- **Sin aviso del script del tema en la consola.** Cuando el navegador tenía que rehacer la página (una extensión que
+  toca el HTML, un desajuste o una página de error), React volvía a crear el script que aplica el tema y avisaba
+  de que no se ejecuta. El tema se sigue aplicando antes de pintar, sin destello.
+
 ## [0.19.4] · 2026-09-28
 
 ### Corregido
