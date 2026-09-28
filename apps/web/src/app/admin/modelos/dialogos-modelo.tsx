@@ -17,7 +17,13 @@ import {
   esSeleccionable,
   type ModeloVista,
 } from "@/lib/catalogo";
-import { cambiarEstadoAccion, guardarPrecioAccion, marcarPredeterminadoAccion, type ResultadoModelo } from "./acciones";
+import {
+  cambiarEstadoAccion,
+  cambiarVarianteAccion,
+  guardarPrecioAccion,
+  marcarPredeterminadoAccion,
+  type ResultadoModelo,
+} from "./acciones";
 
 /**
  * Diálogos con los que quien administra cambia el precio y el estado de un modelo. El precio siempre lleva
@@ -236,5 +242,80 @@ export function BotonesPredeterminado({
         </Boton>
       ))}
     </>
+  );
+}
+
+/**
+ * Variante que se envía de un modelo cuyo proveedor cobra distinto según la resolución o la calidad (0.23.0).
+ * Cambiarla cambia a la vez lo que se pide y lo que se paga, así que se enseñan las dos cosas juntas y el
+ * cambio caduca las estimaciones que alguien tuviera en pantalla.
+ */
+export function DialogoVariante({
+  modelo,
+  onResultado,
+}: {
+  modelo: ModeloVista;
+  onResultado: (resultado: ResultadoModelo) => void;
+}) {
+  const [abierto, setAbierto] = useState(false);
+  const [unidad, setUnidad] = useState(modelo.unidad);
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // Con una sola tarifa registrada no hay nada que elegir: el modelo no cobra por resolución ni por calidad.
+  if (modelo.tarifas.length < 2) return null;
+
+  const guardar = async () => {
+    setGuardando(true);
+    setError(null);
+    const resultado = await cambiarVarianteAccion({ modeloId: modelo.id, unidad });
+    setGuardando(false);
+    if (!resultado.ok) {
+      setError(resultado.error);
+      return;
+    }
+    setAbierto(false);
+    onResultado(resultado);
+  };
+
+  return (
+    <Dialogo
+      abierto={abierto}
+      onAbiertoCambio={setAbierto}
+      disparador={
+        <Boton variante="secundario" tamano="sm">
+          Variante
+        </Boton>
+      }
+      titulo={`Variante de ${modelo.nombre}`}
+      descripcion="El proveedor cobra este modelo distinto según lo que se le pida. Lo que elijas aquí es lo que se envía y lo que se paga."
+      pie={
+        <>
+          <Boton variante="fantasma" onClick={() => setAbierto(false)}>
+            Cancelar
+          </Boton>
+          <Boton onClick={guardar} cargando={guardando}>
+            Guardar variante
+          </Boton>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <GrupoOpciones
+          etiqueta="Lo que se pide y lo que cuesta"
+          opciones={modelo.tarifas.map((t) => ({
+            value: t.unidad,
+            etiqueta: t.unidad,
+            descripcion: `${t.creditos} créditos · leído el ${t.comprobado}`,
+          }))}
+          valor={unidad}
+          onCambio={setUnidad}
+        />
+        <p className="text-sm text-texto-suave">
+          Cambiarla no toca ningún trabajo ya creado. Las estimaciones que alguien tenga en pantalla quedan caducadas y
+          habrá que volver a confirmarlas; los créditos ya consumidos no cambian.
+        </p>
+        {error && <Aviso tono="error">{error}</Aviso>}
+      </div>
+    </Dialogo>
   );
 }

@@ -10,6 +10,7 @@ import { limpiarLimitesCaducados } from "../limite";
 import { cerrarGasto } from "../presupuesto/reserva";
 import { purgarTraduccionesViejas } from "../prompts/traduccion";
 import { proveedoresConAdaptador } from "../proveedores/registro";
+import { sincronizarLoQueTocaHoy } from "../proveedores/sincronizacion";
 import { barrerRevisionesReservadas } from "../revision/gasto";
 import { despachar } from "./despacho";
 import { identificadorDeWorker, limpiarWorkersCaidos } from "./latido";
@@ -190,6 +191,26 @@ export async function avanzarEnviados(h: Herramientas = HERRAMIENTAS, limite = M
   return avanzados;
 }
 
+/**
+ * Sincronización diaria de los precios que publican los proveedores. Nunca interrumpe la pasada: si el
+ * proveedor no contesta, queda apuntada como fallida y se reintenta en la siguiente pasada que toque.
+ */
+async function sincronizarPreciosPublicos(): Promise<void> {
+  try {
+    for (const resultado of await sincronizarLoQueTocaHoy()) {
+      if (!resultado.ok) {
+        console.warn(`[catalogo] no se han podido sincronizar los precios de ${resultado.proveedor}`);
+        continue;
+      }
+      console.log(
+        `[catalogo] precios de ${resultado.proveedor}: ${resultado.publicados} publicados, ${resultado.modelosCreados} modelos nuevos, ${resultado.preciosCreados} precios nuevos, ${resultado.preciosActualizados} actualizados`,
+      );
+    }
+  } catch (error) {
+    console.error(`[cola] sincronización de precios: ${detalle(error)}`);
+  }
+}
+
 export async function pasadaDeCola(
   h: Herramientas = HERRAMIENTAS,
   workerId = identificadorDeWorker(),
@@ -210,6 +231,9 @@ export async function pasadaDeCola(
   // Traducciones que nadie usa desde hace tiempo: la caché existe para no pagar dos veces, no para guardar texto
   // de alguien para siempre.
   await purgarTraduccionesViejas().catch((error) => console.error(`[cola] purga de traducciones: ${detalle(error)}`));
+  // Precios publicados por los proveedores (0.23.0). Comprueba una fecha y, casi siempre, no hace nada: solo
+  // sincroniza una vez al día. No usa la credencial de nadie ni gasta créditos, y nunca pisa un precio medido.
+  await sincronizarPreciosPublicos();
   // Llamadas al modelo de texto que se quedaron a medias: su reserva también le come presupuesto a alguien.
   const textosColgados = await barrerEjecucionesReservadas().catch((error) => {
     console.error(`[cola] barrido de llamadas de texto: ${detalle(error)}`);

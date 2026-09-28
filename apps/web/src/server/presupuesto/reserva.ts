@@ -216,6 +216,28 @@ export async function apuntarCierre(
 export async function cerrarGasto(trabajoId: string, creditosInformados: number | null, motivo: string): Promise<void> {
   const ajustes = await leerAjustes();
   await db().transaction((tx) => apuntarCierre(tx, trabajoId, creditosInformados, motivo, ajustes));
+  await compararConLaTarifaPublicada(trabajoId, creditosInformados);
+}
+
+/**
+ * Compara lo cobrado con la **tarifa publicada** del modelo, cuando el precio del catálogo es publicado y no
+ * medido aquí (0.23.0). Va fuera de la transacción del cierre a propósito: es un apunte informativo del
+ * catálogo y no puede hacer que falle el cierre de un gasto, que es lo que de verdad importa.
+ */
+async function compararConLaTarifaPublicada(trabajoId: string, creditosInformados: number | null): Promise<void> {
+  if (creditosInformados === null) return;
+  try {
+    const [trabajo] = await db()
+      .select({ proveedor: generationJobs.provider, modelo: generationJobs.model })
+      .from(generationJobs)
+      .where(eq(generationJobs.id, trabajoId))
+      .limit(1);
+    if (!trabajo) return;
+    const { anotarDesviacionDeTarifa } = await import("../proveedores/catalogo-admin");
+    await anotarDesviacionDeTarifa(trabajo.proveedor, trabajo.modelo, creditosInformados);
+  } catch (error) {
+    console.error(`[catalogo] no se ha podido comparar con la tarifa publicada: ${(error as Error).message}`);
+  }
 }
 
 /**
@@ -231,16 +253,18 @@ export async function cerrarTrabajoYGasto(
   motivo: string,
 ): Promise<FilaTrabajo | null> {
   const ajustes = await leerAjustes();
-  return db().transaction(async (tx) => {
-    const [fila] = await tx
+  const fila = await db().transaction(async (tx) => {
+    const [actualizada] = await tx
       .update(generationJobs)
       .set(cambios)
       .where(condicion ? and(eq(generationJobs.id, trabajoId), condicion) : eq(generationJobs.id, trabajoId))
       .returning();
-    if (!fila) return null;
+    if (!actualizada) return null;
     await apuntarCierre(tx, trabajoId, creditosInformados, motivo, ajustes);
-    return fila;
+    return actualizada;
   });
+  if (fila) await compararConLaTarifaPublicada(trabajoId, creditosInformados);
+  return fila;
 }
 
 /**
