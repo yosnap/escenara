@@ -1,4 +1,4 @@
-import { BadgeCheck, CircleDot, CircleSlash, FlaskConical, MicOff, TriangleAlert } from "lucide-react";
+import { BadgeCheck, CircleDot, CircleSlash, FlaskConical, MicOff, Tag, TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
 import {
   DESCRIPCION_CAPACIDAD,
@@ -23,6 +23,7 @@ import { Selector } from "./select";
 
 const ASPECTO_ESTADO: Record<EstadoModelo, { icono: ReactNode; clase: string }> = {
   descubierto: { icono: <CircleDot />, clase: "text-texto-suave" },
+  precio_publicado: { icono: <Tag />, clase: "text-acento" },
   compatible: { icono: <FlaskConical />, clase: "text-acento" },
   validado: { icono: <BadgeCheck />, clase: "text-correcto" },
   retirado: { icono: <CircleSlash />, clase: "text-error" },

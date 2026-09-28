@@ -10,6 +10,7 @@ import {
   type ParametrosModelo,
   precioCaducado,
   recortarModelo,
+  type TarifaVista,
 } from "@/lib/catalogo";
 import { db } from "../db/cliente";
 import {
@@ -115,10 +116,9 @@ async function leerCatalogo(): Promise<CatalogoCargado> {
   const listado = filas.flatMap((fila) => {
     const proveedor = porProveedor.get(fila.providerId);
     if (!proveedor) return [];
-    const precio = precios.find(
-      (p) => p.provider === proveedor.slug && p.model === fila.modelId && p.unit === fila.unit,
-    );
-    return [vistaDeModelo(fila, proveedor, porModelo.get(fila.id) ?? [], precio ?? null)];
+    const suyos = precios.filter((p) => p.provider === proveedor.slug && p.model === fila.modelId);
+    const precio = suyos.find((p) => p.unit === fila.unit);
+    return [vistaDeModelo(fila, proveedor, porModelo.get(fila.id) ?? [], precio ?? null, suyos)];
   });
   listado.sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
   return { modelos: listado, proveedores };
@@ -131,8 +131,18 @@ function vistaDeModelo(
   proveedor: FilaProveedorModelo,
   capacidades: Capacidad[],
   precio: FilaPrecioCatalogo | null,
+  /** Todas las tarifas registradas de este modelo, sea cual sea su unidad (0.23.0). */
+  suyas: FilaPrecioCatalogo[] = [],
 ): ModeloVista {
   const comprobado = precio ? precio.checkedAt.toISOString().slice(0, 10) : "";
+  const tarifas: TarifaVista[] = suyas
+    .map((p) => ({
+      unidad: p.unit,
+      creditos: p.credits,
+      enUso: p.unit === fila.unit,
+      comprobado: p.checkedAt.toISOString().slice(0, 10),
+    }))
+    .sort((a, b) => a.creditos - b.creditos);
   return {
     id: fila.id,
     proveedor: proveedor.slug,
@@ -153,11 +163,13 @@ function vistaDeModelo(
           unidad: precio.unit,
           creditos: precio.credits,
           fuente: precio.source,
+          publicado: precio.published,
           comprobado,
           sello: selloDe(proveedor.slug, fila.modelId, precio.unit, precio.version),
           caducado: precioCaducado(comprobado),
         }
       : null,
+    tarifas,
     actualizado: fila.updatedAt.toISOString(),
   };
 }
@@ -216,7 +228,10 @@ export async function elegirModelo(capacidad: Capacidad, modelo?: string | null)
     throw new ErrorCatalogo(409, `El modelo ${existente.nombre} está retirado y ya no se puede usar.`);
   }
   if (!esSeleccionable(existente.estado)) {
-    throw new ErrorCatalogo(409, `El modelo ${existente.nombre} aún no se ha probado en esta instalación.`);
+    // El motivo concreto lo escribe quien lo dio de alta (la semilla o la sincronización de precios): puede ser
+    // que no se haya probado nunca o que esta instalación no sepa con qué parámetros pedírselo.
+    const motivo = existente.notas === "" ? "" : ` ${existente.notas}`;
+    throw new ErrorCatalogo(409, `El modelo ${existente.nombre} no se puede elegir en esta instalación.${motivo}`);
   }
   throw new ErrorCatalogo(503, `No hay precio registrado para ${existente.nombre}: sin precio no se genera.`);
 }

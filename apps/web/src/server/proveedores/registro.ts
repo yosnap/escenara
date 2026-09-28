@@ -17,6 +17,9 @@ const ADAPTADORES: readonly Adaptador[] = [adaptadorKie, adaptadorElevenLabs, ad
 
 export const proveedoresConAdaptador = ADAPTADORES.map((a) => a.proveedor);
 
+/** Todos los adaptadores de esta instalación. Lo usa la sincronización de precios para saber quién publica. */
+export const adaptadores = (): readonly Adaptador[] => ADAPTADORES;
+
 export function adaptadorDe(proveedor: string): Adaptador {
   const adaptador = ADAPTADORES.find((a) => a.proveedor === proveedor);
   if (!adaptador) {

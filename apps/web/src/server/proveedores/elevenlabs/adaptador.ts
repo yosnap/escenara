@@ -144,6 +144,11 @@ export const adaptadorElevenLabs: Adaptador = {
     });
   },
 
+  /** Este proveedor monta la entrada de cualquiera de sus modelos: no hay esquemas por modelo que adivinar. */
+  sabeMontar(): boolean {
+    return true;
+  },
+
   estimar(modelo: string): Promise<PrecioModelo> {
     return precioDeModelo("elevenlabs", modelo);
   },

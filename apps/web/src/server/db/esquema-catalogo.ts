@@ -33,7 +33,14 @@ export const capacidadModelo = pgEnum("model_capability", [
   "multimodal_review",
 ]);
 
-export const estadoModelo = pgEnum("model_state", ["descubierto", "compatible", "validado", "retirado"]);
+export const estadoModelo = pgEnum("model_state", [
+  "descubierto",
+  // 0.23.0: el proveedor publica su tarifa y esta instalación sabe montar su entrada, así que se puede elegir.
+  "precio_publicado",
+  "compatible",
+  "validado",
+  "retirado",
+]);
 
 /**
  * Proveedor de modelos. No comparte enumeración con las credenciales a propósito: un proveedor puede
@@ -116,3 +123,35 @@ export const modelCatalogChanges = pgTable(
 export type FilaProveedorModelo = typeof modelProviders.$inferSelect;
 export type FilaModelo = typeof models.$inferSelect;
 export type FilaCambioCatalogo = typeof modelCatalogChanges.$inferSelect;
+
+/**
+ * Sincronizaciones del catálogo con la tabla de precios pública de un proveedor (0.23.0). Una fila por pasada:
+ * cuántos precios se leyeron, cuántos modelos se crearon o cambiaron y cuántos registros no se supieron
+ * traducir. Es lo que deja ver en el admin **cuándo** se leyó el catálogo y **qué parte** de él se entiende.
+ *
+ * Un fallo también deja fila, con `ok` en falso y su motivo: una sincronización que no se hizo tiene que
+ * notarse, porque si no los precios envejecen en silencio.
+ */
+export const modelPriceSyncs = pgTable(
+  "model_price_syncs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    provider: text("provider").notNull(),
+    ok: boolean("ok").notNull().default(true),
+    /** Tarifas que publicaba el proveedor en esa pasada. */
+    published: integer("published").notNull().default(0),
+    /** Tarifas que esta instalación supo traducir a un modelo de su catálogo. */
+    understood: integer("understood").notNull().default(0),
+    modelsCreated: integer("models_created").notNull().default(0),
+    pricesCreated: integer("prices_created").notNull().default(0),
+    pricesUpdated: integer("prices_updated").notNull().default(0),
+    /** Motivo cuando `ok` es falso; vacío cuando fue bien. */
+    note: text("note").notNull().default(""),
+    /** Quién la lanzó; `null` cuando la lanzó el worker en su pasada diaria. */
+    startedBy: uuid("started_by").references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("model_price_syncs_proveedor_idx").on(t.provider, t.createdAt)],
+);
+
+export type FilaSincronizacionPrecios = typeof modelPriceSyncs.$inferSelect;

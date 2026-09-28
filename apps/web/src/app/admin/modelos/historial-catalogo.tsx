@@ -9,6 +9,8 @@ const ETIQUETA_CAMPO: Record<CambioCatalogo["campo"], string> = {
   alta: "Alta en el catálogo",
   estado: "Cambio de estado",
   precio: "Cambio de precio",
+  variante: "Cambio de variante",
+  desviacion: "Desviación de lo cobrado",
   predeterminado: "Opción por defecto",
 };
 

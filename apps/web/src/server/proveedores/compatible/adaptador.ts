@@ -146,6 +146,11 @@ export const adaptadorCompatible: Adaptador = {
     });
   },
 
+  /** Este proveedor monta la entrada de cualquiera de sus modelos: no hay esquemas por modelo que adivinar. */
+  sabeMontar(): boolean {
+    return true;
+  },
+
   estimar(modelo: string): Promise<PrecioModelo> {
     return precioDeModelo("compatible", modelo);
   },

@@ -24,7 +24,8 @@ import {
   saldoCreditos,
   subirReferencia,
 } from "./cliente";
-import { CAMPOS_DE_URL, type ContextoEntrada, entradaDeModelo } from "./entradas";
+import { CAMPOS_DE_URL, type ContextoEntrada, entradaDeModelo, tieneEntrada } from "./entradas";
+import { modelosPublicadosDeKie } from "./publicados";
 import { generarTextoKie } from "./texto";
 
 /**
@@ -130,6 +131,18 @@ export const adaptadorKie: Adaptador = {
 
   generarTexto({ clave, modelo, instrucciones, entrada, buscar }: PeticionTexto): Promise<TextoProveedor> {
     return normalizando(() => generarTextoKie(clave, modelo, instrucciones, entrada, buscar));
+  },
+
+  sabeMontar(modelo: string): boolean {
+    return tieneEntrada(modelo);
+  },
+
+  /**
+   * Catálogo publicado por KIE con sus tarifas (0.23.0). Es una API pública y gratuita, así que no recibe
+   * ninguna credencial ni consume créditos.
+   */
+  modelosPublicados(buscar) {
+    return modelosPublicadosDeKie(buscar);
   },
 
   estimar(modelo: string): Promise<PrecioModelo> {

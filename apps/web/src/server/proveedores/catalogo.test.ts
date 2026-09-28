@@ -94,19 +94,33 @@ describe("lo que puede ver quien genera", () => {
     precio: {
       unidad: "vídeo de 4 s",
       creditos: 60,
+      publicado: false,
       fuente: "fuente interna del admin",
       comprobado: "2026-09-27",
       sello: "kie:veo3_lite:vídeo de 4 s@v1",
       caducado: false,
     },
+    tarifas: [],
     actualizado: "2026-09-27T00:00:00.000Z",
   };
 
   test("el recorte solo lleva lo necesario para elegir y confirmar", () => {
     const recortado = recortarModelo(completo);
     expect(Object.keys(recortado).sort()).toEqual(
-      // `maximoReferencias` lo añade 0.13.0: «Crear» necesita saber cuántas fotos del personaje se envían.
-      ["conVoz", "creditos", "duraciones", "estado", "maximoReferencias", "modelo", "nombre", "unidad"].sort(),
+      // `maximoReferencias` lo añade 0.13.0: «Crear» necesita saber cuántas fotos del personaje se envían, y
+      // `precioPublicado` la 0.23.0: quien va a gastar tiene que ver si ese precio lo hemos medido o lo publica
+      // el proveedor.
+      [
+        "conVoz",
+        "creditos",
+        "duraciones",
+        "estado",
+        "maximoReferencias",
+        "modelo",
+        "nombre",
+        "precioPublicado",
+        "unidad",
+      ].sort(),
     );
     expect(recortado).toMatchObject({ modelo: "veo3_lite", creditos: 60, conVoz: true, duraciones: [4, 6] });
   });

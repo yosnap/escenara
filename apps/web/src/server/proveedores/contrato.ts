@@ -1,5 +1,5 @@
 import { type CodigoPrueba, MENSAJE_PRUEBA } from "@/lib/boveda";
-import type { Capacidad, ModeloVista } from "@/lib/catalogo";
+import type { Capacidad, ModeloVista, ParametrosModelo } from "@/lib/catalogo";
 import type { EstadoTrabajo } from "@/lib/generacion";
 import type { ParametrosVoz } from "@/lib/voz";
 import type { Buscador } from "./codigos";
@@ -309,6 +309,37 @@ export interface PrecioModelo {
   sello: string;
 }
 
+/** Una tarifa que el proveedor publica para un modelo, ya en unidades de trabajo de Escenara. */
+export interface TarifaPublicada {
+  /** Unidad tal como se enseña y se registra («imagen a 2K», «vídeo de 6 s a 480p»). */
+  unidad: string;
+  /** Créditos por esa unidad, tal cual los publica el proveedor. No se redondean ni se ajustan. */
+  creditos: number;
+  /** Dónde está publicada, para poder comprobarla sin fiarse de nosotros. */
+  referencia: string;
+}
+
+/**
+ * Un modelo tal como lo publica su proveedor (0.23.0): lo que hace falta para darlo de alta en el catálogo con
+ * su precio a la vista, sin haberlo ejecutado nunca.
+ *
+ * `montable` es la frontera del dinero: solo un modelo cuya entrada esta instalación sabe montar puede
+ * elegirse. Los demás entran para que el hueco se vea, con el motivo escrito en `notas`.
+ */
+export interface ModeloPublicado {
+  modelo: string;
+  nombre: string;
+  capacidades: Capacidad[];
+  conVoz: boolean;
+  parametros: ParametrosModelo;
+  /** Tarifas publicadas, de la más barata a la más cara. **La primera es la que se le pone a un modelo nuevo.** */
+  tarifas: TarifaPublicada[];
+  montable: boolean;
+  notas: string;
+  /** Página del proveedor donde está publicado. */
+  referencia: string;
+}
+
 /**
  * Adaptador de un proveedor. Un proveedor sin adaptador puede estar en el catálogo (para que el hueco se
  * vea), pero no se le puede enviar nada.
@@ -366,6 +397,20 @@ export interface Adaptador {
    */
   registrarVoz?(peticion: PeticionVozRegistrada): Promise<string>;
   registrarPersonaje?(peticion: PeticionPersonajeRegistrado): Promise<PersonajeRegistrado>;
+  /**
+   * `true` si esta instalación sabe con qué parámetros pedirle algo a ese modelo. Un modelo del catálogo que
+   * responda `false` se ve pero no se puede elegir: enviar a ciegas cuesta dinero de verdad.
+   */
+  sabeMontar(modelo: string): boolean;
+  /**
+   * Catálogo que el proveedor **publica** con sus tarifas (0.23.0). **Opcional**: un proveedor que no publique
+   * precios sigue siendo válido y su catálogo se mantiene a mano, como hasta la 0.22.x.
+   *
+   * No lleva credencial a propósito: la tabla de precios de KIE es pública y gratuita, así que sincronizarla no
+   * gasta la clave de nadie ni un solo crédito. Un proveedor cuya tabla exigiera clave necesitaría otra firma y
+   * otra decisión, y no la hay todavía.
+   */
+  modelosPublicados?(buscar: Buscador): Promise<ModeloPublicado[]>;
   /** Precio registrado del modelo. Nunca se inventa: sin precio no se estima ni se gasta. */
   estimar(modelo: string): Promise<PrecioModelo>;
   /** Comprueba la credencial y devuelve el saldo si el proveedor lo informa. */
