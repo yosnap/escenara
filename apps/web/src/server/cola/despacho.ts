@@ -1,6 +1,7 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { PROVEEDORES_PUBLICOS } from "@/lib/boveda";
 import { CAPACIDAD_DE_TIPO, type ModeloVista } from "@/lib/catalogo";
+import { type ParametrosVoz, parametrosVozDe } from "@/lib/voz";
 import { leerAjustes } from "../ajustes";
 import { usarCredencialValida } from "../boveda/credenciales";
 import { hechosDePersonajeCitado, parametrosDeControles } from "../controles/hechos";
@@ -139,7 +140,9 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
   // con lo que hay en la fila: el consentimiento del personaje y si el modelo sigue aceptando referencias. Las
   // de dinero no: su reserva ya está apartada desde el encolado, y volver a compararlas aquí rechazaría un
   // trabajo por su propia reserva.
-  if (fila.characterId) {
+  // Una pista de voz no lleva personaje ni referencias, así que no hay nada que revalidar: sus reglas son las del
+  // dinero, y esas ya se decidieron al encolar con su reserva apartada.
+  if (fila.characterId && fila.kind !== "voz") {
     const freno = frenosQueGatean(
       evaluar({
         tipo: fila.kind,
@@ -172,6 +175,22 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
     throw new ErrorSinCredencial(
       `No hay una clave de ${nombre} utilizable en tu cuenta. Añádela en «Tu cuenta» y vuelve a pedir el trabajo.`,
     );
+  }
+  /**
+   * Una pista de voz (0.21.0) no lleva ninguna imagen: no hay nada que subir ni que revalidar contra las fotos de
+   * un personaje. Lo que se le manda es **el texto y la voz que quedaron guardados al encolar**, nunca los que
+   * diga el proyecto ahora: lo que se paga tiene que ser lo que el usuario confirmó.
+   */
+  if (fila.kind === "voz") {
+    const voz = vozDe(fila);
+    const entradaVoz = adaptador.montarEntrada(modelo, {
+      escena: "",
+      dialogo: dialogoDe(fila),
+      urls: [],
+      ...(voz === null ? {} : { voz }),
+    });
+    const callbackVoz = await prepararCallback(fila);
+    return { adaptador, clave: credencial.clave, entrada: entradaVoz, ...callbackVoz };
   }
   // Un trabajo con personaje lleva **varias** referencias (0.13.0); uno con imagen suelta, una sola. Se
   // suben en el mismo orden que se guardaron: la primera es la que más peso tiene en la identidad.
@@ -209,9 +228,27 @@ function llamarAlProveedor(fila: FilaTrabajo, preparado: Preparado, h: Herramien
     buscar: h.buscar,
     callbackUrl: preparado.callbackUrl,
   };
-  return fila.kind === "animacion"
-    ? preparado.adaptador.generarVideo(peticion)
-    : preparado.adaptador.generarImagen(peticion);
+  if (fila.kind === "animacion") return preparado.adaptador.generarVideo(peticion);
+  if (fila.kind !== "voz") return preparado.adaptador.generarImagen(peticion);
+  const generarVoz = preparado.adaptador.generarVoz;
+  if (!generarVoz) {
+    // El adaptador dejó de ofrecer voz entre encolar y enviar. No se ha llamado a nadie, así que es un fallo sin
+    // coste: `interno` es el motivo que cierra el trabajo soltando su reserva.
+    throw new ErrorProveedor(fila.provider, "formato", "Este proveedor ya no puede generar voz en esta instalación.");
+  }
+  return generarVoz.call(preparado.adaptador, peticion);
+}
+
+/**
+ * Voz y parámetros con los que se encoló la pista, tal como quedaron en la entrada guardada. `null` si el trabajo
+ * no los trae: sin voz, el adaptador rechaza la petición en lugar de inventarse un timbre.
+ */
+function vozDe(fila: FilaTrabajo): { voz: string; parametros: ParametrosVoz } | null {
+  const guardada = (fila.input as { voz?: unknown }).voz;
+  if (!guardada || typeof guardada !== "object") return null;
+  const { voz, parametros } = guardada as { voz?: unknown; parametros?: unknown };
+  if (typeof voz !== "string" || voz === "") return null;
+  return { voz, parametros: parametrosVozDe(parametros) };
 }
 
 /**

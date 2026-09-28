@@ -109,6 +109,31 @@ export interface Ajustes {
    */
   revisionMultimodalActiva: boolean;
   /**
+   * Voz y subtítulos (RF08, 0.21.0). **La voz se elige por proyecto**, no aquí: lo que se ajusta en el panel es
+   * si esta instalación ofrece la pista de voz de pago y con qué transcriptor local trabaja.
+   */
+  /**
+   * Ofrecer el modo «pista de voz aparte», que **cuesta créditos por escena**. Apagado de fábrica: el modo «voz
+   * del clip» funciona sin gastar nada más y es el de fábrica de cada proyecto. Aunque esté encendido hace falta
+   * además un modelo de voz utilizable **con precio medido** en el catálogo y la clave del proveedor del usuario:
+   * sin precio no se estima y no se gasta.
+   */
+  vozTtsActivo: boolean;
+  /**
+   * Orden del transcriptor local, que es el que saca los subtítulos del audio (decisión provisional del
+   * propietario, 2026-09-28: **local, sin coste y sin clave**). `whisper-cli` es el binario de `whisper.cpp`
+   * (`brew install whisper-cpp`), el más sencillo de instalar en macOS y en Linux.
+   *
+   * Es una **dependencia del entorno**, igual que FFmpeg desde la 0.20.0: si falta, la pantalla lo dice con el
+   * mensaje de instalación y no ofrece transcribir. No inventa subtítulos.
+   */
+  transcripcionBinario: string;
+  /**
+   * Ruta del fichero de modelo que usa ese binario (`ggml-base.bin` y similares). Vacía deja que el binario use
+   * el suyo por defecto, si lo tiene. El modelo pequeño es el de fábrica: es el que cabe en un servidor modesto.
+   */
+  transcripcionModelo: string;
+  /**
    * Fotos de referencia que un personaje necesita como mínimo para poder generar. Con menos, la identidad
    * se pierde entre fotogramas: en el prototipo del 2026-09-27 cinco fotos dieron buen resultado y tres son
    * el mínimo razonable. La cobertura guiada de vistas llega en 0.14.0.
@@ -189,6 +214,10 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   revisionExigirAudio: false,
   // Apagada: cuesta créditos y es una opinión, no un veredicto. Encenderla es decidir que se ofrece ese gasto.
   revisionMultimodalActiva: false,
+  // La pista de voz de pago arranca apagada: el modo «voz del clip» no gasta nada más y es el de fábrica.
+  vozTtsActivo: false,
+  transcripcionBinario: "whisper-cli",
+  transcripcionModelo: "",
   minimoReferenciasPersonaje: 3,
   // 512 px de lado menor: por debajo, una cara ya no aporta identidad y el proveedor la amplía inventando.
   calidadLadoMinimo: 512,
@@ -306,6 +335,17 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
   },
   revisionExigirAudio: { valido: booleano, mensaje: "Debe ser sí o no." },
   revisionMultimodalActiva: { valido: booleano, mensaje: "Debe ser sí o no." },
+  vozTtsActivo: { valido: booleano, mensaje: "Debe ser sí o no." },
+  transcripcionBinario: {
+    // Nombre de orden o ruta, sin espacios ni metacaracteres: se ejecuta como proceso, así que aquí se acota lo
+    // que puede llegar a ser un argumento del intérprete de órdenes.
+    valido: (v: unknown) => texto(200)(v) && /^[a-zA-Z0-9._/-]*$/.test(v as string),
+    mensaje: "Indica el nombre de la orden o su ruta, sin espacios (por ejemplo «whisper-cli»).",
+  },
+  transcripcionModelo: {
+    valido: (v: unknown) => texto(400)(v) && /^[a-zA-Z0-9._/-]*$/.test(v as string),
+    mensaje: "Indica la ruta del fichero de modelo, sin espacios. Vacío usa el del propio binario.",
+  },
   minimoReferenciasPersonaje: {
     valido: entero(1, 10),
     mensaje: "Indica de 1 a 10 fotos de referencia como mínimo por personaje.",

@@ -99,6 +99,10 @@ export function VistaProduccion({ inicial }: { inicial: ProduccionVista }) {
           <Link href={`/proyectos/${produccion.proyectoId}/revision`} className={claseBoton("secundario", "sm")}>
             Revisar la continuidad
           </Link>
+          {/* La voz y los subtítulos también viven aparte: se deciden por proyecto, no escena a escena (0.21.0). */}
+          <Link href={`/proyectos/${produccion.proyectoId}/voz`} className={claseBoton("secundario", "sm")}>
+            Voz y subtítulos
+          </Link>
           <Link href="/crear/historial" className={claseBoton("secundario", "sm")}>
             Historial de trabajos
           </Link>

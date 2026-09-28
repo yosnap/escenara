@@ -79,6 +79,34 @@ const CONSTRUCTORES = new Map<string, Constructor>(
         resolution: primeraResolucion(modelo),
       }),
 
+    /**
+     * Voz a partir del diálogo de la escena (capacidad `tts`, 0.21.0). Campos documentados en
+     * https://docs.kie.ai/market/elevenlabs/text-to-speech-multilingual-v2 (comprobado el 2026-09-28, sin llamar a
+     * la API con ninguna clave): `text`, `voice`, `stability`, `similarity_boost`, `style` y `speed`.
+     *
+     * `language_code` se fija en español: el diálogo se escribe en español y **no se traduce nunca** (es lo que se
+     * va a oír). `timestamps` se pide para que, cuando el proveedor los devuelva, los subtítulos puedan alinearse
+     * con lo que de verdad se ha dicho en lugar de repartir el tiempo a ojo.
+     */
+    "elevenlabs/text-to-speech-multilingual-v2": ({ dialogo, voz }) => {
+      if (!voz) {
+        throw new ErrorCatalogo(
+          409,
+          "No hay ninguna voz fijada para este proyecto. Elige la voz antes de generar su pista de audio.",
+        );
+      }
+      return {
+        text: dialogo,
+        voice: voz.voz,
+        stability: voz.parametros.estabilidad,
+        similarity_boost: voz.parametros.similitud,
+        style: voz.parametros.estilo,
+        speed: voz.parametros.velocidad,
+        language_code: "es",
+        timestamps: true,
+      };
+    },
+
     "kling/v3-turbo-image-to-video": (contexto, modelo) =>
       conProporcion(modelo, {
         prompt: promptAnimacion(contexto.escena, contexto.dialogo),

@@ -1,4 +1,4 @@
-import type { TipoTrabajo } from "./generacion";
+import type { TipoTrabajoCola } from "./generacion";
 
 /**
  * Catálogo de proveedores y modelos tal como lo ven el servidor y el navegador. Aquí no hay secretos ni
@@ -86,10 +86,14 @@ const IDENTIFICADOR_MODELO = /^[a-z0-9][a-z0-9._/-]{0,95}$/i;
 export const esIdentificadorDeModelo = (v: unknown): v is string =>
   typeof v === "string" && IDENTIFICADOR_MODELO.test(v);
 
-/** Capacidad que necesita cada tipo de trabajo de «Crear». */
-export const CAPACIDAD_DE_TIPO: Record<TipoTrabajo, Capacidad> = {
+/**
+ * Capacidad que necesita cada tipo de trabajo de la cola. Los dos primeros son los de «Crear»; `voz` (0.21.0) solo
+ * se pide desde la pantalla de voz de un proyecto en modo `pista`.
+ */
+export const CAPACIDAD_DE_TIPO: Record<TipoTrabajoCola, Capacidad> = {
   fotograma: "image_edit",
   animacion: "image_to_video",
+  voz: "tts",
 };
 
 /** Un precio comprobado hace más de esto se muestra con aviso: los proveedores cambian de tarifa. */

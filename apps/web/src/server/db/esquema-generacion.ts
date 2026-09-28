@@ -16,7 +16,13 @@ import { jsonb } from "./jsonb";
  * usuario para ese mismo proveedor.
  */
 
-export const tipoTrabajo = pgEnum("generation_job_kind", ["fotograma", "animacion"]);
+/**
+ * `voz` se añade en la 0.21.0: la pista de voz de una escena **también cuesta dinero** y su llamada al proveedor
+ * es asíncrona, igual que un vídeo. Pasa por esta misma tabla a propósito, en lugar de por un camino paralelo:
+ * así hereda sin repetir una sola regla la cola persistente, la reserva atómica, la idempotencia por
+ * confirmación, el corte de «nada se reenvía tras un fallo sin respuesta» y el cierre del gasto.
+ */
+export const tipoTrabajo = pgEnum("generation_job_kind", ["fotograma", "animacion", "voz"]);
 
 /**
  * Estado propio, nunca el del proveedor tal cual: un estado que no se reconoce es `desconocido`.

@@ -4,6 +4,7 @@ import { users } from "./esquema-auth";
 import { proveedorCredencial } from "./esquema-boveda";
 import { characters, characterVersions } from "./esquema-personajes";
 import { promptTemplateVersions } from "./esquema-presets";
+import { jsonb } from "./jsonb";
 
 /**
  * Proyectos, escenas, afirmaciones por verificar y ejecuciones del asistente de guion (RF05, 0.17.0).
@@ -21,6 +22,13 @@ import { promptTemplateVersions } from "./esquema-presets";
 export const estadoProyecto = pgEnum("project_state", ["borrador", "planificado", "en_produccion", "listo"]);
 
 export const formatoProyecto = pgEnum("project_format", ["reel_vertical", "corto", "anuncio", "explicativo"]);
+
+/**
+ * De dónde sale la voz del proyecto (RF08, 0.21.0; decisión firme del propietario, 2026-09-28). Los dos modos son
+ * excluyentes y se eligen **por proyecto**: `clip` la genera el modelo de vídeo dentro del propio clip, y `pista`
+ * pide los clips sin diálogo y genera el audio del diálogo aparte, siempre con la misma voz.
+ */
+export const modoVoz = pgEnum("project_voice_mode", ["clip", "pista"]);
 
 export const projects = pgTable(
   "projects",
@@ -52,6 +60,25 @@ export const projects = pgTable(
      * KIE cobra lo mismo por 4 s que por 8 s, medido el 2026-09-27, así que la corta no ahorra nada.
      */
     clipSeconds: integer("clip_seconds").notNull().default(8),
+    /**
+     * Modo de voz del proyecto (RF08, 0.21.0; decisión firme del propietario, 2026-09-28). `clip` es el de
+     * fábrica: la voz la genera el modelo de vídeo, como hasta la 0.20.x, y no hay pista TTS. `pista` pide los
+     * clips **sin diálogo** y genera el audio del diálogo aparte, siempre con la misma voz.
+     *
+     * Vive en el proyecto y no en la escena a propósito: si cada escena pudiera elegir, el timbre cambiaría de
+     * plano a plano (riesgo del brainstorm §3.2). El servidor rechaza cualquier intento de fijarla por escena.
+     */
+    voiceMode: modoVoz("voice_mode").notNull().default("clip"),
+    /**
+     * Voz fijada para **todas** las escenas: proveedor, modelo, nombre de voz y parámetros. Vacíos mientras el
+     * proyecto esté en modo `clip`, que no tiene pista de voz que configurar.
+     */
+    voiceProvider: proveedorCredencial("voice_provider"),
+    voiceModel: text("voice_model").notNull().default(""),
+    voiceId: text("voice_id").notNull().default(""),
+    voiceParams: jsonb<Record<string, number>>("voice_params").notNull().default({}),
+    /** Cuándo se fijó la voz vigente. Es la fecha que explica por qué lo anterior quedó invalidado. */
+    voiceSetAt: timestamp("voice_set_at", { withTimezone: true }),
     /** Quién aprobó el plan y cuándo; `null` mientras el proyecto sea un borrador. */
     planApprovedBy: uuid("plan_approved_by").references(() => users.id, { onDelete: "set null" }),
     planApprovedAt: timestamp("plan_approved_at", { withTimezone: true }),
@@ -143,6 +170,36 @@ export const scenes = pgTable(
      * rejilla lo avisa y el historial lo registra como «qué cambió» antes de la siguiente regeneración.
      */
     changedSinceGeneration: boolean("changed_since_generation").notNull().default(false),
+    /**
+     * Pista de voz de la escena (RF08, 0.21.0). Solo existe en un proyecto en modo `pista`: en modo `clip` la voz
+     * va dentro del propio clip y aquí no hay nada que guardar.
+     *
+     * El identificador del trabajo va **sin clave ajena**, igual que `clip_job_id`: `generation_jobs` ya
+     * referencia a `scenes` y una referencia de vuelta cerraría un ciclo entre los dos módulos del esquema.
+     */
+    voiceMediaId: uuid("voice_media_id").references(() => media.id, { onDelete: "set null" }),
+    voiceJobId: uuid("voice_job_id"),
+    /**
+     * Firma de la voz con la que se generó lo que hay guardado (`lib/voz.ts › firmaDeVoz`): modo, proveedor,
+     * modelo, voz, parámetros y texto del diálogo.
+     *
+     * Es lo que permite decir «esto ya no corresponde a lo que pide el proyecto» **sin** una bandera que se
+     * desincronice: se compara con la firma de ahora. Cambiar la voz, el modo, un parámetro o el diálogo la
+     * cambia, y la escena queda invalidada hasta que el usuario confirme el coste de regenerarla.
+     */
+    voiceSignature: text("voice_signature").notNull().default(""),
+    /** Por qué la voz o los subtítulos dejaron de valer, en llano. Vacío si nunca se invalidaron. */
+    voiceInvalidationReason: text("voice_invalidation_reason").notNull().default(""),
+    /**
+     * Transcripción con marcas de tiempo tal como la devolvió el transcriptor local. Se guarda **aparte de los
+     * subtítulos** a propósito: los subtítulos son lo que la persona ha corregido y es lo que se exporta, y sin
+     * esta columna volver a transcribir sería la única forma de recuperar lo medido.
+     */
+    transcript: jsonb<{ desde: number; hasta: number; texto: string }[]>("transcript").notNull().default([]),
+    /** Subtítulos **editados**: es lo único que se exporta a SRT y a WebVTT, nunca la transcripción cruda. */
+    subtitles: jsonb<{ desde: number; hasta: number; texto: string }[]>("subtitles").notNull().default([]),
+    /** Cuándo los tocó una persona por última vez; `null` si nadie los ha editado todavía. */
+    subtitlesEditedAt: timestamp("subtitles_edited_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

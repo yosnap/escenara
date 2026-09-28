@@ -6,6 +6,7 @@ import type { Actor } from "../media/servicio";
 import { ErrorPersonaje } from "../personajes/errores";
 import { ErrorPreset } from "../prompts/errores";
 import { ErrorCatalogo } from "../proveedores/contrato";
+import { ErrorTranscripcion } from "../voz/transcripcion";
 import { ErrorProyecto } from "./errores";
 
 /**
@@ -25,6 +26,12 @@ export function respuestaError(error: unknown): Response {
   if (error instanceof ErrorCatalogo) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorMedio) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorPreset) return Response.json({ error: error.message }, { status: error.estado });
+  /**
+   * El transcriptor local es una **dependencia del entorno** (0.21.0), igual que FFmpeg: que falte no es un error
+   * interno que haya que ocultar, es algo que quien administra tiene que instalar. 503 con el mensaje de
+   * instalación, que ya viene escrito para el usuario.
+   */
+  if (error instanceof ErrorTranscripcion) return Response.json({ error: error.message }, { status: 503 });
   console.error("[proyectos]", error);
   return Response.json({ error: "Error interno al procesar el proyecto." }, { status: 500 });
 }

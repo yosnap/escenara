@@ -77,6 +77,20 @@ function textoVisualDe(escena: FilaEscena): string {
   return texto;
 }
 
+/**
+ * Lo que el clip tiene que decir, según el modo de voz del proyecto (RF08, 0.21.0).
+ *
+ * - modo `clip`: el diálogo de la escena, que es lo que el modelo de vídeo pone en boca del personaje con los
+ *   labios sincronizados. Es lo que hacía la 0.19.0 y sigue siendo el modo de fábrica;
+ * - modo `pista`: **cadena vacía**, así que el prompt pide solo sonido ambiente (`promptAnimacion`). El diálogo lo
+ *   dirá la pista de voz que se genera aparte, y si el clip también lo dijera se oirían dos voces distintas
+ *   diciendo lo mismo, que es exactamente el problema que el modo de pista viene a resolver.
+ */
+function dialogoDelClip(escena: FilaEscena, proyecto: FilaProyecto): string {
+  if (proyecto.voiceMode === "pista") return "";
+  return escena.scriptText.trim().slice(0, DIALOGO_MAXIMO);
+}
+
 /** El protagonista del proyecto es lo que da identidad al fotograma: sin él no se produce. */
 function exigirProtagonista(proyecto: FilaProyecto): string {
   if (!proyecto.mainCharacterId) {
@@ -150,7 +164,7 @@ async function encolarAnimacion(
       trabajoPadreId,
       reintentoDeEscena: reintento,
       // Lo que dice el personaje va aparte de la descripción visual y solo lo usan los modelos con voz.
-      dialogo: escena.scriptText.trim().slice(0, DIALOGO_MAXIMO),
+      dialogo: dialogoDelClip(escena, proyecto),
       derechos: confirmacion.derechos,
       sinTerceros: confirmacion.sinTerceros,
       creditosConfirmados: confirmacion.creditosConfirmados,

@@ -1,5 +1,6 @@
 import { type CodigoPrueba, MENSAJE_PRUEBA } from "@/lib/boveda";
 import type { Capacidad, ModeloVista } from "@/lib/catalogo";
+import type { ParametrosVoz } from "@/lib/voz";
 import type { EstadoTrabajo } from "@/lib/generacion";
 import type { Buscador } from "./codigos";
 
@@ -125,6 +126,12 @@ export interface ContextoEntrada {
    * desde la producción de un proyecto: el camino rápido de «Crear» no tiene proyecto y deja decidir al modelo.
    */
   segundos?: number;
+  /**
+   * Voz con la que hay que leer `dialogo` (capacidad `tts`, 0.21.0). Llega **solo** desde un proyecto en modo
+   * `pista`, y siempre es la del proyecto: la voz no se elige por escena. Sin esto, un modelo de voz no sabría
+   * con qué timbre leer, y un adaptador no debe inventarse uno por defecto.
+   */
+  voz?: { voz: string; parametros: ParametrosVoz };
 }
 
 /** Lo que necesita el adaptador para pedir una generación. La clave solo viaja hasta aquí. */
@@ -238,6 +245,11 @@ export interface Adaptador {
   generarImagen(peticion: PeticionAdaptador): Promise<string>;
   /** Crea la tarea de vídeo y devuelve su identificador. */
   generarVideo(peticion: PeticionAdaptador): Promise<string>;
+  /**
+   * Crea la tarea de voz y devuelve su identificador (capacidad `tts`, 0.21.0). **Opcional**: un proveedor sin
+   * modelos de voz sigue siendo un adaptador válido, y un proyecto suyo solo puede usar la voz del clip.
+   */
+  generarVoz?(peticion: PeticionAdaptador): Promise<string>;
   consultar(peticion: PeticionConsulta): Promise<TareaProveedor>;
   /**
    * Pide un texto al modelo (0.17.0). **Opcional**: un proveedor sin modelos de texto sigue siendo un

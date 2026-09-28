@@ -58,6 +58,30 @@ export async function registrarResultadoDeEscena(fila: FilaTrabajo, medioId: str
   await db().transaction(async (tx) => {
     const [escena] = await tx.select().from(scenes).where(eq(scenes.id, escenaId)).limit(1).for("update");
     if (!escena) return;
+    /**
+     * Pista de voz de la escena (0.21.0). No cambia el estado de la escena: lo que la da por **producida** es su
+     * clip, y una escena con voz y sin clip sigue sin estar producida.
+     *
+     * Se guarda además la **firma** con la que se encoló, no la que el proyecto tenga ahora: es lo único que
+     * permite decir después si ese audio sigue correspondiendo a la voz y al diálogo vigentes. Y se limpia el
+     * motivo de invalidación, porque el audio que acaba de llegar ya es el de ahora.
+     */
+    if (fila.kind === "voz") {
+      const firma = (fila.input as { firmaVoz?: unknown }).firmaVoz;
+      await tx
+        .update(scenes)
+        .set({
+          voiceMediaId: medioId,
+          voiceJobId: fila.id,
+          voiceSignature: typeof firma === "string" ? firma : "",
+          voiceInvalidationReason: "",
+          lastFailureReason: "",
+          updatedAt: new Date(),
+        })
+        .where(eq(scenes.id, escenaId));
+      await tocarProyecto(tx, escena.projectId);
+      return;
+    }
     if (fila.kind === "fotograma") {
       await tx.update(scenes).set({ lastFailureReason: "", updatedAt: new Date() }).where(eq(scenes.id, escenaId));
       await tocarProyecto(tx, escena.projectId);
