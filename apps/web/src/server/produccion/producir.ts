@@ -6,7 +6,7 @@ import { escenaPropia, escenasDe, proyectoPropio } from "../asistente/consulta";
 import { ErrorProyecto } from "../asistente/errores";
 import { db } from "../db/cliente";
 import { characters, type FilaEscena, type FilaProyecto, type FilaTrabajo, scenes } from "../db/esquema";
-import { direccionDeLaEscena, type PersonajeDirigido } from "../direccion/escena";
+import { direccionDeLaEscena, type PersonajeDirigido, seisCDeLaEscena } from "../direccion/escena";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { crearAnimacion, crearFotograma } from "../generacion/servicio";
 import type { Actor } from "../media/servicio";
@@ -167,6 +167,7 @@ async function encolarFotograma(
   reintento = false,
 ): Promise<void> {
   const plantilla = await plantillaVigenteDe(actor.id, "image_edit");
+  const personaje = await personajeDirigidoDe(proyecto);
   await crearFotograma(
     actor,
     {
@@ -174,6 +175,22 @@ async function encolarFotograma(
       personajeId: exigirProtagonista(proyecto),
       escenaId: escena.id,
       reintentoDeEscena: reintento,
+      /**
+       * El fotograma de una escena se compone con las **6C** y no con la plantilla: la escena trae elegidos
+       * el plano, el ángulo, la óptica, la luz y el sitio, y el bloque de anclajes tiene que cerrar el prompt.
+       * `vestuario` sale de la ficha del personaje, que ya entra por su propio camino como contexto.
+       */
+      seisC: await seisCDeLaEscena(actor.id, escena, personaje, ""),
+      ...(escena.changeOnly === "ninguno"
+        ? {}
+        : {
+            cambiarSolo: {
+              que: escena.changeOnly,
+              // Lo nuevo es lo que el usuario ha escrito en la acción de la escena, ya traducido aguas abajo.
+              valor: escena.action.trim(),
+              conSegundaReferencia: escena.changeOnlyReferenceMediaId !== null,
+            },
+          }),
       derechos: confirmacion.derechos,
       sinTerceros: confirmacion.sinTerceros,
       creditosConfirmados: confirmacion.creditosConfirmados,

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { Vista } from "@/lib/captura-personaje";
 import { duracionesConCoste, type ModeloVista, segundosDeUnidad } from "@/lib/catalogo";
 import { CLIP, type TipoTrabajo, type TrabajoVista } from "@/lib/generacion";
@@ -12,7 +13,8 @@ import { conVistaQueCompleta, recopilarHechos } from "../controles/hechos";
 import { exigirControles } from "../controles/puerta";
 import type { FilaMedio } from "../db/esquema";
 import { decidir } from "../decisiones/reglas";
-import { type DireccionDeClip, dirigirClipPara, familiaDe } from "../direccion/clip";
+import { dirigirClipPara, familiaDe } from "../direccion/clip";
+import type { DireccionSinTextoLibre } from "../direccion/escena";
 import { type CambiarSolo, componerSeisC, type SeisC } from "../direccion/fotograma";
 import {
   type EleccionDelMapa,
@@ -134,7 +136,7 @@ interface Confirmacion {
    * Se aplica **después de traducir**, porque su hueco `escena` es el texto libre del usuario ya en inglés.
    * Sin ella todo funciona como en la 0.24.x.
    */
-  direccion?: Omit<DireccionDeClip, "escena" | "dialogo">;
+  direccion?: DireccionSinTextoLibre;
   /** Las 6C del fotograma, igual: las resuelve el servidor y se aplican después de traducir. */
   seisC?: Omit<SeisC, "contextoLibre">;
   /** Modo «cambiar solo…», cuando se parte de un fotograma ya aprobado. */
@@ -181,6 +183,33 @@ async function baseDelPrompt(
     textoEditado: peticion.promptEditado,
   });
   return { escena: compuesto.texto, compuesto };
+}
+
+/**
+ * Reparto del **experimento en sombra** de la hoja de identidad 3×3 (0.25.0).
+ *
+ * Mientras la hoja está `candidata` hay que llenar los dos grupos de la comparación, o el panel no podrá
+ * concluir nunca y la hoja se quedará candidata para siempre por no haberla usado. Así que la mitad de las
+ * generaciones de ese personaje salen con la hoja y la otra mitad con sus vistas sueltas.
+ *
+ * El reparto es **determinista** por el asunto que se genera (la escena, o la clave de idempotencia cuando no
+ * hay escena): repetir el mismo envío cae siempre del mismo lado, así que un reintento no cambia de grupo ni
+ * ensucia la medida. Y no es aleatorio a propósito: un `Math.random()` haría que dos ejecuciones del mismo
+ * trabajo dieran referencias distintas.
+ *
+ * Con la hoja `por_defecto` no se reparte nada: esa ya es la referencia del personaje. Con `descartada`
+ * tampoco: se usan las vistas.
+ */
+function conHojaDeIdentidad(
+  personaje: { identitySheetMediaId: string | null; identitySheetStatus: string },
+  asunto: string,
+): boolean {
+  if (!personaje.identitySheetMediaId) return false;
+  if (personaje.identitySheetStatus === "por_defecto") return true;
+  if (personaje.identitySheetStatus !== "candidata") return false;
+  // Paridad de una huella estable del asunto: mitad y mitad, y siempre la misma para el mismo asunto.
+  const huella = createHash("sha256").update(asunto).digest();
+  return (huella[0] ?? 0) % 2 === 0;
 }
 
 /** Lo que el trabajo guarda de la plantilla usada: identificadores y la marca de editado. */
@@ -461,7 +490,11 @@ export async function crearFotograma(
   const proveedor = proveedorDeCredencial(modelo);
   const elegido =
     personaje && peticion.personajeId && !peticion.retratoInventado
-      ? await referenciasParaGenerar(personaje, modelo.parametros.maximoReferencias)
+      ? await referenciasParaGenerar(
+          personaje,
+          modelo.parametros.maximoReferencias,
+          conHojaDeIdentidad(personaje, peticion.escenaId ?? peticion.claveIdempotencia),
+        )
       : null;
   /**
    * El retrato candidato de un personaje inventado **no tiene referencia**: nace de su descripción, que es
@@ -508,16 +541,23 @@ export async function crearFotograma(
   );
   const escenaEnIngles = enIngles.get(prompt) ?? prompt;
   const contextoEnIngles = enIngles.get(conFicha.contexto) ?? conFicha.contexto;
-  // Las 6C se componen con el texto libre ya en inglés. El bloque de anclajes (C6) lo cierra `componerSeisC` y
-  // no depende de esto: va siempre, aunque el usuario no haya elegido nada.
-  const escenaCompuesta = peticion.seisC
-    ? componerSeisC({ ...peticion.seisC, contextoLibre: escenaEnIngles }, peticion.cambiarSolo)
-    : escenaEnIngles;
-  // Si no ha hecho falta traducir nada ni dirigir nada, se reutiliza lo ya compuesto en lugar de rehacerlo.
-  const base =
-    escenaCompuesta === prompt
+  /**
+   * **Las 6C sustituyen a la plantilla, no se meten dentro de ella.**
+   *
+   * Una escena dirigida trae ya sus seis bloques con su orden y su cierre de anclajes; pasarla como valor de
+   * la variable `{{escena}}` de `fotograma-social` produciría dos cabeceras de cámara y dos bloques de
+   * realismo, y el «C6 cierra siempre» dejaría de ser verdad porque la plantilla pone lo suyo después.
+   *
+   * La plantilla sigue siendo el camino de «Crear», donde no hay escena que dirija nada.
+   */
+  const base = peticion.seisC
+    ? {
+        escena: componerSeisC({ ...peticion.seisC, contextoLibre: escenaEnIngles }, peticion.cambiarSolo),
+        compuesto: null,
+      }
+    : escenaEnIngles === prompt
       ? original
-      : await baseDelPrompt(actor, peticion, "fotograma", modelo, conFicha.tipo, escenaCompuesta);
+      : await baseDelPrompt(actor, peticion, "fotograma", modelo, conFicha.tipo, escenaEnIngles);
   const promptFinal = promptConContexto(base.escena, contextoEnIngles);
 
   const parametros = adaptador.montarEntrada(modelo, { escena: promptFinal, dialogo: "", urls: [] });
@@ -529,6 +569,8 @@ export async function crearFotograma(
     // Se guarda el prompt **compuesto**, que es el que se envía: así el trabajo sigue llevando el contexto de
     // la versión que citó aunque la ficha cambie después.
     prompt: promptFinal,
+    // Con qué referencia salió: es el dato que permite comparar la hoja 3×3 con las vistas sueltas.
+    identityReferenceKind: elegido?.referenciaIdentidad ?? "vistas",
     input: {
       ...entradaGuardada(
         adaptador,
@@ -716,9 +758,12 @@ export async function crearAnimacion(
   // Igual que en el fotograma: la descripción y el contexto se traducen al inglés antes de componer, y solo
   // después de todas las puertas gratis. **El diálogo no**: es lo que dirá el personaje y tiene que salir en el
   // idioma en que se escribió.
+  // El matiz de voz del usuario viaja con el resto del texto libre: está escrito en castellano y el prompt va
+  // en inglés. El diálogo sigue sin traducirse, que es lo que se va a oír.
+  const matizDeVoz = peticion.direccion?.direccionVocalOriginal ?? "";
   const enIngles = await traducirAlIngles(
     actor.id,
-    [{ texto: prompt }, { texto: contexto, personajeId: padre.characterId }],
+    [{ texto: prompt }, { texto: contexto, personajeId: padre.characterId }, { texto: matizDeVoz }],
     h.buscar,
   );
   const escenaEnIngles = enIngles.get(prompt) ?? prompt;
@@ -726,7 +771,15 @@ export async function crearAnimacion(
   // La dirección se aplica **aquí**, con el texto libre ya en inglés y después de todas las puertas gratis: es
   // lo que pone el encuadre, la cámara, el gesto en su momento y la regla de toma única alrededor de la escena.
   const dirigido = peticion.direccion
-    ? dirigirClipPara(familiaDe(modelo.modelo), { ...peticion.direccion, escena: escenaEnIngles, dialogo })
+    ? dirigirClipPara(familiaDe(modelo.modelo), {
+        ...peticion.direccion,
+        direccionVocal: matizDeVoz === "" ? "" : (enIngles.get(matizDeVoz) ?? matizDeVoz),
+        escena: escenaEnIngles,
+        dialogo,
+        // La duración **resuelta para este modelo**, que es la que se sella en el precio y la que decide si el
+        // gesto cabe fuera del diálogo. La planificada de la escena puede no ser la que acepta el modelo.
+        segundos,
+      })
     : null;
   const escenaDirigida = dirigido?.escena ?? escenaEnIngles;
   // En formato mudo el diálogo **no viaja**, aunque el guion tenga texto: el clip lleva la boca cerrada.
@@ -748,6 +801,11 @@ export async function crearAnimacion(
     provider: proveedor,
     model: modelo.modelo,
     prompt: promptFinal,
+    /**
+     * El clip **hereda** la referencia de su fotograma: la cara que se anima es la que salió de ahí, así que
+     * el veredicto de identidad del clip mide la misma referencia que el fotograma usó.
+     */
+    identityReferenceKind: padre.identityReferenceKind,
     input: {
       ...entradaGuardada(adaptador, promptFinal, [origen.id], { ...parametros, segundos }),
       // La tarifa confirmada: es la de **esta** duración, y es la que el worker vuelve a comprobar antes de enviar.

@@ -19,6 +19,7 @@ import {
   MODO_MUDO,
   REGISTRO_CAMARA_INGLES,
   REGLA_ANTI_CORTE,
+  SIN_RETOQUE_FINAL,
 } from "./ingles";
 
 /**
@@ -63,6 +64,12 @@ export interface DireccionDeClip {
   registroEstetico: RegistroEstetico;
   /** Quién sale, en inglés. Con personaje real es la cita de sus referencias, nunca adjetivos de atractivo. */
   sujeto: string;
+  /**
+   * `true` si el sujeto es una **persona real**. Con `true` se repite la regla de no retoque al cerrar, después
+   * de todo el texto del catálogo: un fragmento de preset redactado por alguien no puede quedar por delante de
+   * ella y contradecirla.
+   */
+  personajeReal: boolean;
   /** Lo que se ve, escrito por el usuario y ya traducido al inglés (`prompts/traduccion.ts`). */
   escena: string;
   /** Gesto del catálogo, ya en inglés. Vacío = ninguno. */
@@ -171,6 +178,7 @@ export function dirigirClip(direccion: DireccionDeClip, opciones: OpcionesDeDire
     opciones.dialogoDentro && dialogo !== "" ? `The character says, in Spanish, exactly: "${dialogo}"` : "",
     parrafo([gestoDespues]),
     habla ? bloqueVoz(direccion) : MODO_MUDO,
+    direccion.personajeReal ? SIN_RETOQUE_FINAL : "",
     REGLA_ANTI_CORTE,
   ]
     .filter((bloque) => bloque !== "")

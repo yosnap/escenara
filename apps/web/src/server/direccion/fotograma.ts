@@ -7,6 +7,7 @@ import {
   REGISTRO_CAMARA_INGLES,
   REGISTRO_LUZ_INGLES,
   SIN_NOMBRAR_LA_TECNICA,
+  SIN_RETOQUE_FINAL,
 } from "./ingles";
 
 /**
@@ -125,7 +126,17 @@ export function componerSeisC(seis: SeisC, cambiarSolo?: CambiarSolo): string {
   // C6 va la última **siempre**, y nunca viene vacío: sin catálogo se usa el bloque del código.
   const anclajes = base.anclajes.trim() === "" ? ANCLAJES_REALISMO : base.anclajes.trim();
   bloques.push(
-    etiqueta("Realism", unir([anclajes, REGISTRO_ANCLAJE_INGLES[base.registroEstetico], SIN_NOMBRAR_LA_TECNICA])),
+    etiqueta(
+      "Realism",
+      unir([
+        anclajes,
+        REGISTRO_ANCLAJE_INGLES[base.registroEstetico],
+        SIN_NOMBRAR_LA_TECNICA,
+        // Con una persona real, la regla de no retoque se repite **después** del catálogo: ningún fragmento
+        // redactado por alguien puede quedar por delante de ella.
+        base.personajeReal ? SIN_RETOQUE_FINAL : "",
+      ]),
+    ),
   );
   return bloques.filter((b) => b !== "").join("\n");
 }

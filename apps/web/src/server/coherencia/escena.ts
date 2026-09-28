@@ -11,6 +11,7 @@ import { imagenParaModelo } from "../media/procesado";
 import type { Actor } from "../media/servicio";
 import { audioDelClip, ErrorAudioDelClip } from "./audio";
 import { decidirCoherencia } from "./decidir";
+import { ErrorFotogramasDelClip, fotogramasDelClip } from "./fotogramas";
 import { declaraCoherencia } from "./identidad";
 import { ErrorPercepcion, percibir } from "./percepcion";
 import { ultimaDecisionDe } from "./registro";
@@ -111,7 +112,11 @@ export async function comprobarEscena(actor: Actor, escenaId: unknown): Promise<
       const decision = await ultimaDecisionDe(actor.id, escena.id, comprobacion);
       if (decision) resultado.decisiones.push(decision);
     } catch (error) {
-      if (error instanceof ErrorPercepcion || error instanceof ErrorAudioDelClip) {
+      if (
+        error instanceof ErrorPercepcion ||
+        error instanceof ErrorAudioDelClip ||
+        error instanceof ErrorFotogramasDelClip
+      ) {
         resultado.sinComprobar.push({ comprobacion, motivo: error.message });
         return;
       }
@@ -195,14 +200,17 @@ export async function comprobarEscena(actor: Actor, escenaId: unknown): Promise<
     if (!clip) return "Esta escena todavía no tiene clip, así que no hay nada que comparar con lo que dirigiste.";
     const sinPermiso = await motivoSinPermiso(proyecto);
     if (sinPermiso) return sinPermiso;
-    const imagen = await imagenDe(escena.approvedFrameMediaId);
-    if (!imagen) {
-      return "Esta escena todavía no tiene fotograma aprobado, así que no hay con qué mirar cómo salió la dirección.";
-    }
+    /**
+     * Se mira **el clip**, no el fotograma. Lo que se pregunta es si la cámara se mueve como se pidió, si hay
+     * un corte y si en un clip mudo mueve los labios: nada de eso se puede ver en una foto fija, y juzgarlo
+     * sobre una daría siempre la misma respuesta vacía. Llega como tira de fotogramas en orden porque los
+     * servicios de percepción ven imágenes y no vídeo.
+     */
+    const imagen = await fotogramasDelClip(clip.storageKey, clip.mimeType);
     const percepcion = await percibir({
       usuarioId: actor.id,
       proyectoId: proyecto.id,
-      clase: "escena",
+      clase: "clip",
       claveIdempotencia: `coherencia:direccion:${escena.id}`,
       imagen,
     });

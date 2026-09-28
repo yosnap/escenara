@@ -139,6 +139,15 @@ export interface HechosEscena {
   plantillaCambiada: boolean;
   /** Afirmaciones de la escena que siguen `por_verificar`. */
   afirmacionesPorVerificar: number;
+  /**
+   * `true` cuando la escena tiene guion escrito y su formato es **voz en off** (0.25.0): el clip saldrá mudo y
+   * lo que el usuario escribió no se le enviará al modelo.
+   *
+   * Es un aviso **confirmable y no un freno**: montar la narración encima es un camino legítimo. Pero es
+   * dinero, y gastarlo en un clip sin la voz que uno ha escrito sin que nadie lo diga es justo lo que la norma
+   * de errores visibles prohíbe.
+   */
+  guionEnClipMudo: boolean;
 }
 
 /**

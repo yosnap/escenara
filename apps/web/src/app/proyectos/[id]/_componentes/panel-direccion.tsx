@@ -6,10 +6,12 @@ import { Campo, EntradaTexto } from "@/components/ui/field";
 import { Selector } from "@/components/ui/select";
 import {
   AVISO_MOVIMIENTO_AVANZADO,
+  avisoGestoNoCabe,
   DESCRIPCION_FORMATO_CLIP,
   DESCRIPCION_REGISTRO_ESTETICO,
   FORMATOS_CLIP,
   formatoHabla,
+  gestoNoCabe,
   MOMENTOS_MICROACCION,
   NOMBRE_FORMATO_CLIP,
   NOMBRE_MOMENTO_MICROACCION,
@@ -45,11 +47,18 @@ const opcionesDe = (lista: OpcionDireccion[], vacio: string) => [
 export function PanelDireccion({
   direccion,
   opciones,
+  guion,
+  segundos,
   deshabilitado,
   onCambio,
 }: {
   direccion: DireccionDeEscenaVista;
   opciones: OpcionesDeDireccion | null;
+  /** El guion de la escena: con él se sabe si el gesto va a caber fuera del habla. */
+  guion: string;
+  /** Duración planificada de la escena. Es la que se usa para el aviso; el servidor repite el cálculo con la
+   * duración ya resuelta para el modelo, que es la que manda. */
+  segundos: number;
   deshabilitado?: boolean;
   /** Cambia un campo. El guardado lo decide quien usa el panel, con el resto de la escena. */
   onCambio: <C extends keyof DireccionDeEscenaVista>(campo: C, valor: DireccionDeEscenaVista[C]) => void;
@@ -58,6 +67,19 @@ export function PanelDireccion({
   const habla = formatoHabla(direccion.formatoClip);
   const camaraElegida = opciones.camara.find((o) => o.clave === direccion.camara);
   const gestoElegido = opciones.microaccion.find((o) => o.clave === direccion.microaccion);
+
+  /**
+   * Los mismos avisos que compone el servidor, calculados aquí con las **mismas funciones puras**: así el
+   * usuario los ve mientras elige y no al recibir el clip. El que cuesta dinero —guion en clip mudo— no está
+   * aquí: ese es un control confirmable y se pide antes de pagar, no se cuenta de pasada.
+   */
+  const palabras = guion.trim() === "" ? 0 : guion.trim().split(/\s+/).length;
+  const avisos = [
+    camaraElegida?.nivel === "avanzado" ? AVISO_MOVIMIENTO_AVANZADO : "",
+    gestoElegido && direccion.momentoMicroaccion !== "durante" && gestoNoCabe(palabras, segundos)
+      ? avisoGestoNoCabe(segundos)
+      : "",
+  ].filter((aviso) => aviso !== "");
 
   /** Lo que ha pedido, escrito en castellano. No es el prompt: es su elección. */
   const nombreDe = (lista: OpcionDireccion[], clave: string) => lista.find((o) => o.clave === clave)?.nombre ?? "";
@@ -117,8 +139,7 @@ export function PanelDireccion({
       />
       {camaraElegida?.nivel && camaraElegida.nivel !== "basico" && (
         <p className="text-sm text-texto-suave">
-          Nivel: <strong className="font-semibold">{NOMBRE_NIVEL_CAMARA[camaraElegida.nivel]}</strong>.{" "}
-          {camaraElegida.nivel === "avanzado" ? AVISO_MOVIMIENTO_AVANZADO : "Sale bien la mayoría de las veces."}
+          Nivel: <strong className="font-semibold">{NOMBRE_NIVEL_CAMARA[camaraElegida.nivel]}</strong>.
         </p>
       )}
 
@@ -197,6 +218,12 @@ export function PanelDireccion({
           onCambio={(v) => v && onCambio("registroEstetico", v as DireccionDeEscenaVista["registroEstetico"])}
         />
       </div>
+
+      {avisos.map((aviso) => (
+        <Aviso key={aviso} tono="info">
+          {aviso}
+        </Aviso>
+      ))}
 
       {/* Lo que ha pedido, en castellano. Nunca el prompt: eso solo lo ve quien administra. */}
       <Aviso tono="info">

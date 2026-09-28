@@ -15,6 +15,11 @@ import { IDENTIDAD_DE_REFERENCIA } from "./ingles";
  *
  * Los huecos del texto libre (`escena` y `dialogo` del clip, `contextoLibre` del fotograma) se rellenan
  * **después**, en `generacion/servicio.ts`, cuando ese texto ya está traducido al inglés.
+ *
+ * **`segundos` tampoco sale de aquí**, y es a propósito: la duración que decide si el gesto cabe es la que se
+ * le va a pedir al modelo, no la que la escena tiene planificada. Un modelo que solo hace 6 s convierte una
+ * escena de 8 s en un clip de 6 s, y prometer entonces un gesto «antes» sería prometer algo que no cabe.
+ * Quien compone ya tiene la duración resuelta y sellada en el precio: la pone él.
  */
 
 /** Lo que aporta el personaje a la dirección. Lo resuelve quien lo conoce y llega ya en inglés. */
@@ -30,6 +35,15 @@ export interface PersonajeDirigido {
 }
 
 /**
+ * La dirección sin nada que dependa de traducir ni del modelo: el texto libre (`escena`, `dialogo`), la
+ * duración resuelta y el matiz de voz ya traducido los pone quien compone.
+ */
+export type DireccionSinTextoLibre = Omit<DireccionDeClip, "escena" | "dialogo" | "segundos" | "direccionVocal"> & {
+  /** Matiz de voz tal como lo escribió el usuario, en castellano y sin traducir. */
+  direccionVocalOriginal: string;
+};
+
+/**
  * Dirección del clip de una escena, sin el texto libre. Es lo que se le pasa a `crearAnimacion` y a la
  * producción de escenas habladas.
  */
@@ -38,7 +52,7 @@ export async function direccionDeLaEscena(
   escena: FilaEscena,
   proyecto: FilaProyecto,
   personaje: PersonajeDirigido,
-): Promise<Omit<DireccionDeClip, "escena" | "dialogo">> {
+): Promise<DireccionSinTextoLibre> {
   const catalogo = await leerCatalogoDeDireccion(usuarioId);
   const movimiento = fragmento(catalogo, "camara", escena.cameraMove);
   return {
@@ -52,13 +66,17 @@ export async function direccionDeLaEscena(
     sujeto: personaje.real
       ? `${personaje.descripcion}. ${IDENTIDAD_DE_REFERENCIA}`.trim()
       : personaje.descripcion.trim(),
+    personajeReal: personaje.real,
     microaccion: fragmento(catalogo, "microaccion", escena.microAction),
     momentoMicroaccion: escena.microActionTiming,
-    // Se traduce en `generacion/servicio.ts` con el resto del texto libre; aquí llega ya en inglés o vacía.
-    direccionVocal: "",
+    /**
+     * El matiz de voz lo escribe el usuario **en castellano**, así que sale de aquí en crudo y con su nombre
+     * propio: quien compone lo traduce junto al resto del texto libre y lo pone en `direccionVocal`. Devolverlo
+     * ya en ese campo obligaría a traducirlo aquí, y aquí no se paga nada ni se llama a nadie.
+     */
+    direccionVocalOriginal: escena.dialogueDirection.trim(),
     ejesVoz: ejesVozDe(personaje.ejesVoz),
     acento: proyecto.speechAccent,
-    segundos: escena.plannedSeconds,
   };
 }
 

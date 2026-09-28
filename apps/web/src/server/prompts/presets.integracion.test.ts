@@ -326,6 +326,44 @@ describe.skipIf(!hayBaseDeDatos)("presets y plantillas de prompt", () => {
     await db().update(promptTemplates).set({ template: original }).where(eq(promptTemplates.id, clip.id));
   });
 
+  test("si otra siembra se adelantó, no se inserta una versión repetida ni se rompe la siembra", async () => {
+    const { sembrarPresets } = await import("./semilla");
+    const antigua =
+      "A continuous {{duracion}}-second shot of {{personaje}}.\nScene: {{escena}}.\nLook: {{estilo}}.\nAction: {{accion}}.\nCamera: steady, with a subtle handheld feel.";
+    const [clip] = await db()
+      .select()
+      .from(promptTemplates)
+      .where(and(isNull(promptTemplates.ownerId), eq(promptTemplates.slug, "clip-social")))
+      .limit(1);
+    if (!clip) throw new Error("No está sembrada la plantilla del clip.");
+    const nueva = clip.template;
+    await db().update(promptTemplates).set({ template: antigua }).where(eq(promptTemplates.id, clip.id));
+
+    // Dos siembras a la vez, como la web y el worker al arrancar tras desplegar: una publica y la otra ve que
+    // ya no hay nada que hacer. Ninguna revienta.
+    const [a, b] = await Promise.all([sembrarPresets(), sembrarPresets()]);
+    expect(a.plantillasActualizadas + b.plantillasActualizadas).toBe(1);
+    const [despues] = await db().select().from(promptTemplates).where(eq(promptTemplates.id, clip.id)).limit(1);
+    expect(despues?.template).toBe(nueva);
+  });
+
+  test("la descripción de una copia propia se limpia como la ficha antes de entrar al prompt", async () => {
+    const { duplicarPreset, editarPresetPropio } = await import("./presets-admin");
+    const original = (await listarPresetsDeLaInstalacion()).find((p) => p.categoria === "camara");
+    if (!original) throw new Error("No hay preset de cámara sembrado.");
+    const copia = await duplicarPreset(ana.id, original.id);
+    const editada = await editarPresetPropio(ana.id, copia.id, {
+      categoria: copia.categoria,
+      clave: copia.clave,
+      nombre: "Mi cámara",
+      // Saltos de línea y espacios de sobra: lo mismo que se limpia en la ficha del personaje.
+      descripcion: "  Slow   push in\n\ntowards  the face  ",
+      orden: copia.orden,
+      activo: true,
+    });
+    expect(editada.valores.prompt).toBe("Slow push in towards the face");
+  });
+
   test("todos los presets de la instalación son editables desde el admin", async () => {
     const moda = porClave("moda");
     const editado = await editarPresetDeLaInstalacion(moda.id, {

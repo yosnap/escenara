@@ -69,14 +69,32 @@ const INSTRUCCIONES_REFERENCIA = [
   "Answer in English, one short sentence per line.",
 ].join(" ");
 
+/**
+ * Percepción de un **clip**, que llega como una tira de fotogramas en orden (`coherencia/fotogramas.ts`): los
+ * servicios que esta instalación usa para percibir ven imágenes, no vídeo, y una tira ordenada es lo que más
+ * se parece a ver el clip con lo que hay.
+ *
+ * Se le dice expresamente que las viñetas son el **mismo plano en el tiempo** y no fotos distintas: sin eso,
+ * el modelo describe ocho imágenes sueltas y cualquier movimiento de cámara parece un cambio de escena, que es
+ * justo lo contrario de lo que hay que medir.
+ */
+const INSTRUCCIONES_CLIP = [
+  "You are a perception step, not a judge.",
+  "This image is a filmstrip: several frames taken from a single video clip, in chronological order from left to right. They are the same shot over time, not separate photographs.",
+  "Report, in this order: the framing and camera angle in the first frame; whether the framing moves across the frames and how (push in, pull back, orbit, tracking, or static); whether there is any abrupt change of scene, background or framing that would indicate a cut; what the person does with their head, hands and body across the frames; and whether their mouth is open and moving, as if speaking, or closed and still.",
+  "Do not identify anyone, do not guess the story, do not invent anything you cannot see and do not give a score.",
+  "Answer in English, in at most eight short sentences.",
+].join(" ");
+
 /** Qué se está percibiendo. Cada una tiene sus instrucciones y su modelo preferido. */
-export type ClasePercepcion = "cara" | "escena" | "audio" | "referencia";
+export type ClasePercepcion = "cara" | "escena" | "audio" | "referencia" | "clip";
 
 const INSTRUCCIONES: Record<ClasePercepcion, string> = {
   cara: INSTRUCCIONES_CARA,
   escena: INSTRUCCIONES_ESCENA,
   audio: INSTRUCCIONES_AUDIO,
   referencia: INSTRUCCIONES_REFERENCIA,
+  clip: INSTRUCCIONES_CLIP,
 };
 
 /**

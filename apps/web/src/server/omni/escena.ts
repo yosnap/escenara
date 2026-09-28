@@ -334,9 +334,11 @@ export async function producirEscenaHablada(
     conReferencia: true,
     creditos,
   });
+  // El matiz de voz se traduce con el resto del texto libre; el diálogo no, que es lo que se va a oír.
+  const matizDeVoz = escena.dialogueDirection.trim();
   const enIngles = await traducirAlIngles(
     actor.id,
-    [{ texto: prompt }, { texto: contexto, personajeId: personaje.id }],
+    [{ texto: prompt }, { texto: contexto, personajeId: personaje.id }, { texto: matizDeVoz }],
     h.buscar,
   );
   const escenaEnIngles = enIngles.get(prompt) ?? prompt;
@@ -350,8 +352,11 @@ export async function producirEscenaHablada(
       atractivoElegido: personaje.virtual && personaje.beautyOptIn,
       ejesVoz: personaje.voiceAxes,
     })),
+    direccionVocal: matizDeVoz === "" ? "" : (enIngles.get(matizDeVoz) ?? matizDeVoz),
     escena: escenaEnIngles,
     dialogo,
+    // La duración resuelta para el modelo, no la planificada de la escena: es la que decide si el gesto cabe.
+    segundos,
   });
   const dialogoFinal = dirigido.dialogo;
   const promptFinal = promptConContexto(dirigido.escena, contextoEnIngles);
@@ -362,9 +367,12 @@ export async function producirEscenaHablada(
    * - **referencias**: las fotos del personaje y la muestra de la voz del proyecto, que se suben al despachar
    *   (aquí solo se guardan sus identificadores: las URL del proveedor caducan y no se guardan nunca).
    */
-  const referencias = conIdentidad
-    ? []
-    : (await referenciasParaGenerar(personaje, modelo.parametros.maximoReferencias)).referencias;
+  /**
+   * Con identidad registrada la cara la pone el registro del proveedor, así que no hay referencia que elegir
+   * ni nada que comparar: se apunta `vistas`, que es con lo que se registró el personaje.
+   */
+  const elegido = conIdentidad ? null : await referenciasParaGenerar(personaje, modelo.parametros.maximoReferencias);
+  const referencias = elegido?.referencias ?? [];
   const parametros = adaptador.montarEntrada(modelo, {
     escena: promptFinal,
     dialogo: dialogoFinal,
@@ -379,6 +387,7 @@ export async function producirEscenaHablada(
     provider: proveedor,
     model: modelo.modelo,
     prompt: promptFinal,
+    identityReferenceKind: elegido?.referenciaIdentidad ?? "vistas",
     input: {
       prompt: promptFinal,
       /**

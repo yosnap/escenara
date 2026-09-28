@@ -9,6 +9,7 @@ import {
   type NivelCamara,
   type RegistroEstetico,
 } from "@/lib/direccion";
+import { limpiarTextoDePrompt } from "@/lib/ficha-personaje";
 import {
   type CategoriaPreset,
   esCategoriaPreset,
@@ -245,9 +246,16 @@ async function claveLibre(
   throw new ErrorPreset(409, "No queda ninguna clave libre para esa copia: renombra las que ya tienes.");
 }
 
-/** Lo que pide una copia propia: su descripción limpia, o lo que tenía si la descripción llega vacía. */
+/**
+ * Lo que pide una copia propia: su descripción limpia, o lo que tenía si la descripción llega vacía.
+ *
+ * Pasa por **la misma limpieza que la ficha del personaje** (`limpiarTextoDePrompt`) y no por un `trim` a
+ * secas. Desde la 0.25.0 estas descripciones son fragmentos de cámara, plano, luz o micro-acción, y el
+ * fragmento de cámara se coloca en la **cabecera** del prompt del clip, que es la posición que más obedece el
+ * modelo: es exactamente el sitio donde no puede colarse nada que no sea contenido.
+ */
 function promptDeDescripcion(descripcion: unknown, previo: string | undefined): string | undefined {
-  const texto = typeof descripcion === "string" ? descripcion.replace(/\s+/g, " ").trim() : "";
+  const texto = typeof descripcion === "string" ? limpiarTextoDePrompt(descripcion, PRESET_PROMPT_MAXIMO) : "";
   return texto === "" ? previo : texto;
 }
 

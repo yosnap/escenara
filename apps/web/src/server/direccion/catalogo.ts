@@ -23,6 +23,9 @@ import { ANCLAJES_REALISMO } from "./ingles";
  * separación que hay entre percibir y decidir en la coherencia, y por el mismo motivo: cada cosa se prueba por
  * donde se rompe.
  *
+ * Quién lo usa: `direccion/escena.ts`, que es el único sitio que sabe qué escena se está dirigiendo. Aquí solo
+ * se traduce de clave a fragmento.
+ *
  * Qué hace cuando falta algo: **nada se inventa**. Una clave que ya no está en el catálogo (porque quien
  * administra la desactivó) se comporta como «no elegido», que en la cámara significa quieta y en el gesto
  * significa ninguno. Lo que sí tiene reserva es el bloque de anclajes (C6): sin él el fotograma saldría de
@@ -87,85 +90,4 @@ export function anclajesDe(catalogo: CatalogoDeDireccion): string {
     if (texto !== "") return texto;
   }
   return ANCLAJES_REALISMO;
-}
-
-/** Lo que la escena y su proyecto guardaron, tal como sale de la base de datos. */
-export interface EleccionesDeEscena {
-  clipFormat: FormatoClip;
-  shotType: string;
-  cameraAngle: string;
-  cameraMove: string;
-  microAction: string;
-  microActionTiming: MomentoMicroaccion;
-  aestheticRegister: RegistroEstetico;
-  lightPreset: string;
-  locationPreset: string;
-  opticsPreset: string;
-}
-
-/** Lo que aportan el personaje y el proyecto, ya resuelto por quien los conoce. */
-export interface ContextoDeDireccion {
-  /** Duración del clip, que es lo que decide si el gesto cabe fuera del diálogo. */
-  segundos: number;
-  /** Quién sale, en inglés. Con persona real, la cita de sus referencias y ningún adjetivo de atractivo. */
-  sujeto: string;
-  /** Lo que se ve, escrito por el usuario y **ya traducido** (`prompts/traduccion.ts`). */
-  escena: string;
-  dialogo: string;
-  /** Dirección vocal del usuario, ya traducida. */
-  direccionVocal: string;
-  ejesVoz: unknown;
-  acento: Acento;
-}
-
-/** Monta la dirección de un clip a partir de lo elegido. Es el puente entre la base de datos y `dirigirClip`. */
-export function direccionDeClipDesde(
-  catalogo: CatalogoDeDireccion,
-  elecciones: EleccionesDeEscena,
-  contexto: ContextoDeDireccion,
-): DireccionDeClip {
-  const movimiento = fragmento(catalogo, "camara", elecciones.cameraMove);
-  const ejes: EjesVoz = ejesVozDe(contexto.ejesVoz);
-  return {
-    formato: elecciones.clipFormat,
-    movimientosCamara: movimiento === "" ? [] : [movimiento],
-    nivelCamara: nivelDelMovimiento(catalogo, elecciones.cameraMove),
-    plano: fragmento(catalogo, "plano", elecciones.shotType),
-    angulo: fragmento(catalogo, "angulo", elecciones.cameraAngle),
-    registroEstetico: elecciones.aestheticRegister,
-    sujeto: contexto.sujeto,
-    escena: contexto.escena,
-    microaccion: fragmento(catalogo, "microaccion", elecciones.microAction),
-    momentoMicroaccion: elecciones.microActionTiming,
-    dialogo: contexto.dialogo,
-    direccionVocal: contexto.direccionVocal,
-    ejesVoz: ejes,
-    acento: contexto.acento ?? ACENTO_POR_DEFECTO,
-    segundos: contexto.segundos,
-  };
-}
-
-/** Lo mismo para el fotograma: las 6C a partir de lo elegido. */
-export function seisCDesde(
-  catalogo: CatalogoDeDireccion,
-  elecciones: EleccionesDeEscena,
-  personaje: { descripcion: string; real: boolean; atractivoElegido: boolean },
-  libre: { ropa: string; contexto: string; accion: string },
-): SeisC {
-  return {
-    personaje: personaje.descripcion,
-    personajeReal: personaje.real,
-    // Con una persona real da igual lo que se haya elegido: el atractivo no entra nunca (decisión firme).
-    atractivoElegido: !personaje.real && personaje.atractivoElegido,
-    plano: fragmento(catalogo, "plano", elecciones.shotType),
-    angulo: fragmento(catalogo, "angulo", elecciones.cameraAngle),
-    optica: fragmento(catalogo, "optica", elecciones.opticsPreset),
-    ropa: libre.ropa,
-    localizacion: fragmento(catalogo, "localizacion", elecciones.locationPreset),
-    contextoLibre: libre.contexto,
-    luz: fragmento(catalogo, "luz", elecciones.lightPreset),
-    accion: libre.accion,
-    registroEstetico: elecciones.aestheticRegister,
-    anclajes: anclajesDe(catalogo),
-  };
 }

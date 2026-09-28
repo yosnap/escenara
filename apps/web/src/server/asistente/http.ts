@@ -1,4 +1,5 @@
 import { esAdmin, sesionDePeticion } from "../auth/sesion";
+import { ErrorPercepcion } from "../coherencia/percepcion";
 import { ErrorGeneracion } from "../generacion/errores";
 import { dentroDelLimite, type Limite } from "../limite";
 import { ErrorMedio } from "../media/errores";
@@ -28,6 +29,12 @@ export function respuestaError(error: unknown): Response {
   if (error instanceof ErrorCatalogo) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorMedio) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorPreset) return Response.json({ error: error.message }, { status: error.estado });
+  /**
+   * La percepción no es un error del servidor: o falta un servicio compatible que vea imágenes, o el que hay
+   * ha fallado. Su mensaje ya dice qué falta y dónde se añade, así que se devuelve tal cual con un 409 en vez
+   * de un 500 mudo (norma de errores visibles con causa).
+   */
+  if (error instanceof ErrorPercepcion) return Response.json({ error: error.message }, { status: 409 });
   /**
    * El transcriptor local es una **dependencia del entorno** (0.21.0), igual que FFmpeg: que falte no es un error
    * interno, es algo que quien administra tiene que instalar. Se responde 503 y se dice qué pasa, pero **sin el

@@ -194,8 +194,9 @@ async function actualizarPlantillaSembrada(plantilla: PlantillaSemilla): Promise
   if (variables.length === 0) throw new Error(`La plantilla ${plantilla.clave} de la semilla no declara variables.`);
   const restricciones = restriccionesDeTexto(JSON.stringify(plantilla.restricciones ?? {}));
   const numero = fila.version + 1;
+  let publicada = false;
   await db().transaction(async (tx) => {
-    await tx
+    const tocadas = await tx
       .update(promptTemplates)
       .set({
         name: plantilla.nombre,
@@ -213,7 +214,14 @@ async function actualizarPlantillaSembrada(plantilla: PlantillaSemilla): Promise
           isNull(promptTemplates.ownerId),
           eq(promptTemplates.template, fila.template),
         ),
-      );
+      )
+      .returning({ id: promptTemplates.id });
+    /**
+     * **Si el `update` no tocó nada, no se inserta la versión.** Otra siembra simultánea (la web y el worker
+     * arrancando a la vez tras desplegar) ya la publicó, y su número está cogido: insertarlo igual choca con
+     * `prompt_template_versions_plantilla_numero_uq` y aborta la siembra entera por algo que no es un error.
+     */
+    if (tocadas.length === 0) return;
     await tx.insert(promptTemplateVersions).values({
       templateId: fila.id,
       number: numero,
@@ -222,6 +230,7 @@ async function actualizarPlantillaSembrada(plantilla: PlantillaSemilla): Promise
       modelRestrictions: textoDeRestricciones(restricciones),
       changeReason: MOTIVO_ACTUALIZACION,
     });
+    publicada = true;
   });
-  return true;
+  return publicada;
 }

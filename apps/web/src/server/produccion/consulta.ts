@@ -215,6 +215,7 @@ function hechosDeFila(
     plantillaCambiada:
       fila.approvedTemplateVersionId !== null && fila.approvedTemplateVersionId !== contexto.versionPlantilla,
     afirmacionesPorVerificar: afirmaciones.filter((a) => a.sceneId === fila.id && a.state === "por_verificar").length,
+    guionEnClipMudo: fila.clipFormat === "voz_en_off" && fila.scriptText.trim() !== "",
   };
 }
 

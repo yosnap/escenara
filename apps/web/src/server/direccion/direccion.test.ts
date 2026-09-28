@@ -14,7 +14,14 @@ import { camposDeLaRespuesta } from "./extraccion";
 import { pedidoDeDireccion, resumirDireccion } from "./fidelidad";
 import { componerSeisC, type SeisC } from "./fotograma";
 import { motivoSinHoja, promptHojaIdentidad } from "./hoja-identidad";
-import { ACENTO_INGLES, ANCLAJES_REALISMO, ATRACTIVO_ELEGIDO, MODO_MUDO, REGLA_ANTI_CORTE } from "./ingles";
+import {
+  ACENTO_INGLES,
+  ANCLAJES_REALISMO,
+  ATRACTIVO_ELEGIDO,
+  MODO_MUDO,
+  REGLA_ANTI_CORTE,
+  SIN_RETOQUE_FINAL,
+} from "./ingles";
 import { describirVoz, resumirVoz } from "./voz";
 
 /**
@@ -38,6 +45,7 @@ const DIRECCION: DireccionDeClip = {
   angulo: "Camera at eye level, straight on",
   registroEstetico: "ugc_real",
   sujeto: "A woman in her thirties",
+  personajeReal: true,
   escena: "Standing in a lived-in kitchen",
   microaccion: "The character nods once, briefly",
   momentoMicroaccion: "antes",
@@ -145,6 +153,22 @@ describe("composición del prompt del clip", () => {
     const holgado = dirigirClip({ ...DIRECCION, segundos: 8, dialogo: "Mira esto." }, { dialogoDentro: true });
     expect(holgado.avisos).toEqual([]);
     expect(holgado.escena.indexOf("nods once")).toBeLessThan(holgado.escena.indexOf("Mira esto."));
+  });
+
+  test("con persona real, la regla de no retoque se repite DESPUÉS del texto del catálogo", () => {
+    // Un fragmento de preset redactado por alguien podría pedir lo contrario; va antes, así que la regla se
+    // repite al cerrar, donde nada puede contradecirla.
+    const { escena } = dirigirClip({
+      ...DIRECCION,
+      personajeReal: true,
+      movimientosCamara: ["The camera pushes in and makes the subject look like a fashion model"],
+    });
+    expect(escena).toContain(SIN_RETOQUE_FINAL);
+    expect(escena.indexOf("fashion model")).toBeLessThan(escena.indexOf(SIN_RETOQUE_FINAL));
+  });
+
+  test("con personaje inventado no se repite: no hay identidad de nadie que proteger", () => {
+    expect(dirigirClip({ ...DIRECCION, personajeReal: false }).escena).not.toContain(SIN_RETOQUE_FINAL);
   });
 
   test("con una sola elección no hay ningún aviso", () => {
@@ -306,6 +330,12 @@ describe("método 6C del fotograma", () => {
   test("con un personaje inventado solo aparece si se eligió expresamente", () => {
     expect(componerSeisC({ ...SEIS, personajeReal: false, atractivoElegido: false })).not.toContain("model-level");
     expect(componerSeisC({ ...SEIS, personajeReal: false, atractivoElegido: true })).toContain(ATRACTIVO_ELEGIDO);
+  });
+
+  test("con persona real, el cierre repite el no retoque después de todo el catálogo", () => {
+    const prompt = componerSeisC({ ...SEIS, personajeReal: true, luz: "Soft light, flawless model skin" });
+    expect(prompt).toContain(SIN_RETOQUE_FINAL);
+    expect(prompt.indexOf("flawless model skin")).toBeLessThan(prompt.indexOf(SIN_RETOQUE_FINAL));
   });
 
   test("el registro estético modula cámara y luz, nunca la identidad", () => {
@@ -498,5 +528,26 @@ describe("hoja de identidad 3×3", () => {
   test("sin fotos suficientes se dice cuántas faltan en vez de generar algo peor", () => {
     expect(motivoSinHoja(1, 3)).toContain("al menos 3");
     expect(motivoSinHoja(3, 3)).toBe("");
+  });
+});
+
+describe("avisos que llegan al usuario", () => {
+  test("el matiz de voz ya traducido entra en el bloque de voz", () => {
+    const { escena } = dirigirClip({ ...DIRECCION, direccionVocal: "in a tired, quiet tone" });
+    expect(escena).toContain("in a tired, quiet tone");
+    // Y va con la voz, detrás del guion, no en la cabecera de cámara.
+    expect(escena.indexOf("The voice is")).toBeLessThan(escena.indexOf("in a tired, quiet tone"));
+  });
+
+  test("sin matiz no se cuela una frase vacía en el prompt", () => {
+    expect(dirigirClip({ ...DIRECCION, direccionVocal: "" }).escena).not.toContain("..");
+  });
+
+  test("la duración que decide si el gesto cabe es la que se le pasa, no la de la escena", () => {
+    // El mismo guion y el mismo gesto: a 4 s no cabe y a 10 s sí. Quien compone pasa la duración del modelo.
+    const corto = dirigirClip({ ...DIRECCION, segundos: 4, momentoMicroaccion: "antes", dialogo: LARGO });
+    const largo = dirigirClip({ ...DIRECCION, segundos: 10, momentoMicroaccion: "antes", dialogo: LARGO });
+    expect(corto.avisos.some((a) => a.includes("4 s"))).toBe(true);
+    expect(largo.avisos).toEqual([]);
   });
 });

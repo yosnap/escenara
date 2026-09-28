@@ -185,6 +185,7 @@ function hechosDeFilaEscena(
     plantillaCambiada:
       fila.approvedTemplateVersionId !== null && fila.approvedTemplateVersionId !== contexto.versionPlantilla,
     afirmacionesPorVerificar: afirmaciones.filter((a) => a.sceneId === fila.id && a.state === "por_verificar").length,
+    guionEnClipMudo: fila.clipFormat === "voz_en_off" && fila.scriptText.trim() !== "",
   };
 }
 
@@ -627,6 +628,7 @@ export async function hechosDeEscena(
       plantillaCambiada:
         escena.approvedTemplateVersionId !== null && escena.approvedTemplateVersionId !== vigente.versionPlantilla,
       afirmacionesPorVerificar: afirmaciones.filter((a) => a.state === "por_verificar").length,
+      guionEnClipMudo: escena.clipFormat === "voz_en_off" && escena.scriptText.trim() !== "",
     },
   };
 }

@@ -143,6 +143,8 @@ export function EditorEscena({
       <PanelDireccion
         direccion={direccion}
         opciones={opcionesDireccion}
+        guion={texto}
+        segundos={escena.segundos}
         deshabilitado={ocupado || escena.estado === "producida"}
         onCambio={(campo, valor) => setDireccion((antes) => ({ ...antes, [campo]: valor }))}
       />

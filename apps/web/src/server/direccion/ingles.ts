@@ -164,6 +164,17 @@ export const IDENTIDAD_DE_REFERENCIA =
   "The person is exactly the individual in the reference images: keep their face, their features, their body and their age unchanged. Do not idealise them, do not slim them, do not smooth their skin and do not make them more or less attractive than the references. Any trait named in their profile (freckles, moles, scars, skin tone, tan) is a description of how they already look, not an effect to apply: reproduce it exactly as in the references and never exaggerate, intensify or add more of it, whatever the scene or the light.";
 
 /**
+ * Recordatorio de no retoque que se pone **al final**, después de todo el texto del catálogo.
+ *
+ * `IDENTIDAD_DE_REFERENCIA` va con el sujeto, al principio, y eso deja por delante del recordatorio los
+ * fragmentos de cámara, luz o gesto, que quien administra —o el propio usuario en una copia suya— puede haber
+ * redactado. Un «make the subject look like a fashion model» escrito ahí quedaría **antes** de la regla. Con
+ * una persona real la regla se repite al cerrar, que es donde nada puede contradecirla.
+ */
+export const SIN_RETOQUE_FINAL =
+  "Regardless of anything else in this description, the person keeps the exact face, body, age and skin of the reference images: do not beautify, slim, smooth, retouch or restyle them in any way.";
+
+/**
  * Lo que se añade con un personaje **inventado** y **solo si el usuario lo ha elegido expresamente**. Nunca por
  * defecto: de fábrica, un personaje inventado tampoco se embellece.
  */
