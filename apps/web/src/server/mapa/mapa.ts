@@ -81,7 +81,20 @@ export async function entradasDe(
 ): Promise<{ entradas: EntradaMapa[]; propio: boolean }> {
   const propias = await filas(usuarioId, tipo);
   if (propias.length > 0) return { entradas: propias.map(aEntrada), propio: true };
-  return { entradas: await recomendadasDe(tipo), propio: false };
+  const recomendadas = await recomendadasDe(tipo);
+  if (tipo !== "texto") return { entradas: recomendadas, propio: false };
+  /**
+   * En texto, los **servicios compatibles del propio usuario van delante** de la recomendación. Los ha añadido él
+   * con su clave, suelen cobrar por cuota de plan y no por llamada (NaN builders con gemma4, glm5.3-flash,
+   * qwen3.8-flash…) y son mucho más baratos que el modelo de texto de pago de la plataforma, que así queda como
+   * reserva en vez de gastarse en cada traducción (decisión del propietario, 2026-09-28). Van en el orden en que
+   * él los puso; si guarda su propio mapa, manda el suyo.
+   */
+  const compatibles = await usarCompatibles(usuarioId);
+  const suyas: EntradaMapa[] = compatibles.flatMap((c) =>
+    c.modelos.map((modelo) => ({ proveedor: "compatible" as Proveedor, compatibleId: c.id, modelo })),
+  );
+  return { entradas: [...suyas, ...recomendadas], propio: false };
 }
 
 /** Una entrada ya resuelta y lista para llamar: con su credencial en claro y su nombre visible. */

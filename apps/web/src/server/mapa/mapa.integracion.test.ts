@@ -369,17 +369,24 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
     await ponerMapaCompleto();
   });
 
-  test("sin mapa propio se usa el recomendado por la plataforma, deducido del catálogo", async () => {
+  test("sin mapa propio, los servicios compatibles del usuario van delante y el de pago queda de reserva", async () => {
     await volverALoRecomendado(ana.id, "texto");
     const vista = await mapaVista(ana.id, "texto");
     expect(vista.propio).toBe(false);
-    // La recomendación por defecto es el modelo de texto elegible del catálogo: exactamente lo de antes del mapa.
-    expect(vista.entradas[0]?.modelo).toBe("gpt-5-6-sol");
-    expect(vista.entradas[0]?.utilizable).toBe(true);
+    // La recomendación de la plataforma sigue siendo el modelo de texto elegible del catálogo…
     expect((await recomendadasDe("texto"))[0]?.proveedor).toBe("kie");
-    // Y con el recomendado no hay reserva: al fallar el de pago no se prueba ningún servicio compatible.
-    await expect(generar("una escena con el mapa recomendado")).rejects.toThrow(ErrorGeneracion);
-    expect(llamadas).toHaveLength(0);
+    // …pero los servicios que el usuario añadió con su clave, que cobran por cuota y no por llamada, van primero
+    // en su orden, y el modelo de pago de la plataforma queda al final como reserva.
+    expect(vista.entradas.map((e) => e.modelo)).toEqual([
+      "gemma4",
+      "deepseek-v4-flash",
+      "glm5.3-flash",
+      "modelo-de-ultimo-recurso",
+      "gpt-5-6-sol",
+    ]);
+    // Y se usa el primero sin llegar a pagar el de la plataforma.
+    await generar("una escena con el mapa por defecto");
+    expect(llamadas).toEqual(["api.nan.builders/gemma4"]);
     await ponerMapaCompleto();
   });
 

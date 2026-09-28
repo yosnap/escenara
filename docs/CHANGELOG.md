@@ -14,6 +14,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
   intentarlo en un momento» queda prohibido.
 - **Los créditos de dos proveedores no son la misma unidad**: no se suman, no se comparan y no se convierten
   entre sí. Cada coste se enseña, se confirma y se aparta en la moneda de quien va a cobrar.
+- **En texto, tus servicios compatibles van primero.** Mientras no guardes tu propio mapa, las traducciones y el
+  asistente usan antes los modelos de tus servicios compatibles (por ejemplo NaN builders con gemma4,
+  glm5.3-flash o qwen3.8-flash, que se pagan por cuota del plan) y dejan el modelo de texto de pago de la
+  plataforma como última reserva.
 
 ### Añadido
 

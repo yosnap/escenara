@@ -40,6 +40,11 @@ mientras el usuario no haya tocado el suyo. Sin recomendación escrita, el orden
 modelo predeterminado de cada capacidad primero), de modo que una instalación recién migrada se comporta
 **exactamente igual que antes de que el mapa existiera**.
 
+**Excepción en `texto`** (propietario, 2026-09-28): sin mapa propio, los modelos de los servicios compatibles del
+usuario van **delante** de la recomendación, en el orden en que los dio de alta. Suelen cobrar por cuota de plan
+y no por llamada, y usar el modelo de texto de pago de la plataforma para cada traducción teniéndolos es gastar
+sin necesidad; así el de pago queda como última reserva.
+
 ### La regla de dinero, que manda sobre el recorrido
 
 Se pasa a la siguiente entrada **solo cuando se ha probado que la anterior no cobró**. Es la lista blanca de
