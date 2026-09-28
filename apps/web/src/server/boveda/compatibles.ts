@@ -83,10 +83,7 @@ export async function guardarCompatible(
   if (!nombre) return { ok: false, error: "Ponle un nombre corto al servicio, sin saltos de línea." };
   const modelos = modelosValidos(datos.modelos);
   if (!modelos) {
-    return { ok: false, error: "Indica al menos un modelo de texto y como mucho doce, uno por línea." };
-  }
-  if (typeof datos.clave !== "string" || !formatoValido(datos.clave.trim())) {
-    return { ok: false, error: "Esa clave no tiene el aspecto esperado. Cópiala completa, sin espacios." };
+    return { ok: false, error: "Elige al menos un modelo y como mucho doce." };
   }
   if (datos.soloCuota !== true) {
     return {
@@ -95,7 +92,6 @@ export async function guardarCompatible(
         "De momento Escenara solo usa servicios que cobran por cuota de tu plan y no por petición: sin una tarifa por petición no puede estimar ni confirmar lo que costaría cada llamada. Si este servicio es de cuota, márcalo en la casilla.",
     };
   }
-  const clave = datos.clave.trim();
   let urlBase: string;
   try {
     urlBase = textoDeUrlBase(validarUrlBase(datos.urlBase));
@@ -111,6 +107,25 @@ export async function guardarCompatible(
   const previa = existentes.find((f) => f.name === nombre) ?? null;
   if (!previa && existentes.length >= COMPATIBLES_MAXIMOS) {
     return { ok: false, error: `No puedes tener más de ${COMPATIBLES_MAXIMOS} servicios compatibles a la vez.` };
+  }
+
+  /**
+   * Al editar un servicio **sin volver a pegar la clave** se mantiene la guardada, pero solo si la dirección no
+   * ha cambiado: la clave de un servicio nunca se envía a otra dirección que no sea la suya.
+   */
+  let clave = typeof datos.clave === "string" ? datos.clave.trim() : "";
+  if (clave === "") {
+    if (previa && previa.baseUrl === urlBase) clave = descifrarFila(previa) ?? "";
+    if (clave === "") {
+      return {
+        ok: false,
+        error: previa
+          ? "Has cambiado la dirección del servicio: pega la clave de API para esa dirección."
+          : "Pega la clave de API del servicio.",
+      };
+    }
+  } else if (!formatoValido(clave)) {
+    return { ok: false, error: "Esa clave no tiene el aspecto esperado. Cópiala completa, sin espacios." };
   }
 
   let ofrecidos: string[];
@@ -158,6 +173,51 @@ export async function guardarCompatible(
 }
 
 /** Vuelve a probar la clave guardada de ese servicio y actualiza su estado. */
+/** Modelos que ofrece un servicio, para elegirlos en el formulario en lugar de escribirlos a mano. */
+export type ResultadoModelos = { ok: true; modelos: string[] } | { ok: false; error: string };
+
+/**
+ * Pide al servicio su lista de modelos (`GET {base}/models`, que no consume cuota) **sin guardar nada**. Usa la
+ * clave que llega del formulario o, si viene vacía y se indica un servicio ya guardado, la que tiene cifrada: así
+ * se puede recargar la lista al editar sin volver a pegar la clave. Pasa por la misma validación de dirección
+ * (solo https pública) y el mismo límite de pruebas que el alta.
+ */
+export async function modelosDelServicio(
+  usuarioId: string,
+  datos: { urlBase: unknown; clave: unknown; id?: unknown },
+  buscar?: Parameters<typeof listarModelos>[0]["buscar"],
+): Promise<ResultadoModelos> {
+  if (!bovedaDisponible()) return { ok: false, error: AVISO_BOVEDA_USUARIO };
+  let urlBase: string;
+  try {
+    urlBase = textoDeUrlBase(validarUrlBase(datos.urlBase));
+  } catch (error) {
+    const detalle = error instanceof ErrorCompatible && error.detalle !== "" ? ` (${error.detalle})` : "";
+    return { ok: false, error: `La dirección del servicio no sirve${detalle}. Tiene que ser una https pública.` };
+  }
+  let clave = typeof datos.clave === "string" ? datos.clave.trim() : "";
+  let nombre = "El servicio";
+  if (clave === "" && typeof datos.id === "string") {
+    const fila = await filaDe(usuarioId, datos.id);
+    // La clave guardada solo vale para la dirección con la que se guardó: nunca se envía a otra.
+    if (fila && fila.baseUrl === urlBase) {
+      clave = descifrarFila(fila) ?? "";
+      nombre = fila.name;
+    }
+  }
+  if (clave === "" || !formatoValido(clave)) {
+    return { ok: false, error: "Pega la clave de API del servicio para poder pedirle su lista de modelos." };
+  }
+  if (!(await dentroDelLimite(`boveda:prueba:${usuarioId}`, LIMITE_PRUEBAS))) {
+    return { ok: false, error: "Has probado demasiadas claves seguidas. Espera un rato." };
+  }
+  try {
+    return { ok: true, modelos: await listarModelos({ urlBase, clave, buscar }) };
+  } catch (error) {
+    return { ok: false, error: mensajeDePrueba(nombre, error) };
+  }
+}
+
 export async function probarCompatible(
   usuarioId: string,
   id: string,

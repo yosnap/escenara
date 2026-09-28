@@ -69,8 +69,8 @@ export function Compatibles({
 
   return (
     <Bloque
-      titulo="Servicios de reserva para el texto"
-      descripcion="Servicios compatibles con la API de OpenAI que se usan si el modelo de texto de siempre falla al traducir o al escribir el guion. Se pagan por cuota de tu plan, no por petición: en Escenara sus llamadas se apuntan con 0 créditos."
+      titulo="Servicios de texto de tu plan"
+      descripcion="Servicios compatibles con la API de OpenAI que pagas por cuota de tu plan, no por petición. Mientras no ordenes tu mapa de modelos, se usan primero para traducir y escribir el guion, y el modelo de texto de pago de la instalación queda como reserva. En Escenara sus llamadas se apuntan con 0 créditos."
       icono={<Plug />}
     >
       {!bovedaLista && <Aviso tono="error">{AVISO_BOVEDA_USUARIO}</Aviso>}

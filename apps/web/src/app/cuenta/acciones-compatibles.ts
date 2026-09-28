@@ -6,8 +6,10 @@ import {
   borrarCompatible,
   guardarCompatible,
   listarCompatibles,
+  modelosDelServicio,
   probarCompatible,
   type ResultadoCompatible,
+  type ResultadoModelos,
 } from "@/server/boveda/compatibles";
 
 /**
@@ -58,3 +60,18 @@ export async function borrarCompatibleAccion(id: string): Promise<RespuestaCompa
 }
 
 export type { CompatibleVista };
+
+/** Lista de modelos del servicio para elegirlos en el formulario. No guarda nada. */
+export async function modelosDelServicioAccion(datos: {
+  urlBase: string;
+  clave: string;
+  id?: string;
+}): Promise<ResultadoModelos> {
+  const sesion = await exigirSesion("/cuenta");
+  try {
+    return await modelosDelServicio(sesion.user.id, datos);
+  } catch (error) {
+    console.error("[boveda] no se ha podido pedir la lista de modelos:", (error as Error).message);
+    return { ok: false, error: "No se ha podido pedir la lista de modelos al servicio. Revisa la dirección." };
+  }
+}

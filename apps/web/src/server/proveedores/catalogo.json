@@ -268,7 +268,7 @@
       "modelo": "kokoro",
       "nombre": "Kokoro v1.0 (voz)",
       "capacidades": ["tts"],
-      "estado": "descubierto",
+      "estado": "validado",
       "predeterminado": false,
       "conVoz": true,
       "unidad": "pista de voz de una escena",
@@ -284,13 +284,13 @@
         "fuente": "No cobra por petición: los servicios compatibles con la API de OpenAI se pagan con la cuota del plan que tenga contratado el usuario. 0 créditos no es una estimación, es el precio: lo que consume es cuota, no créditos de Escenara.",
         "comprobado": "2026-09-28"
       },
-      "evidencia": "",
-      "notas": "TTS de 82M parámetros con 67 paquetes de voz, comprobado en https://nan.builders/docs/models el 2026-09-28: latencia por debajo de un segundo y límite de 15 peticiones por minuto. SUS VOCES TIENEN OTROS IDENTIFICADORES (ef_dora, em_alex, af_heart...), así que pertenece a otra «familia de voces» que ElevenLabs: una voz fijada con ElevenLabs no se puede leer aquí y el mapa de modelos lo dice en lugar de cambiar el timbre. No da marcas por carácter, así que los subtítulos salen del diálogo o de transcribir. Queda «descubierto» hasta que se ejecute de verdad y se registre su evidencia."
+      "evidencia": "Llamada real del 2026-09-28 a https://api.nan.builders/v1/audio/speech con la clave del propietario: voces ef_dora y em_alex, 200 en 0,9 s, MP3 de 5 s por 79 caracteres en español; transcrito con whisper, la frase sale exacta. Sin coste por petición (cuota del plan).",
+      "notas": "TTS de 82M parámetros con 67 paquetes de voz, comprobado en https://nan.builders/docs/models el 2026-09-28: latencia por debajo de un segundo y límite de 15 peticiones por minuto. SUS VOCES TIENEN OTROS IDENTIFICADORES (ef_dora, em_alex, af_heart...), así que pertenece a otra «familia de voces» que ElevenLabs: una voz fijada con ElevenLabs no se puede leer aquí y el mapa de modelos lo dice en lugar de cambiar el timbre. No da marcas por carácter, así que los subtítulos salen del diálogo o de transcribir. Validado con una llamada real el 2026-09-28."
     },
     {
       "proveedor": "kie",
       "modelo": "gemini-omni-video",
-      "nombre": "Gemini Omni 1.1 Flash (vídeo)",
+      "nombre": "Gemini Omni (vídeo)",
       "capacidades": ["image_to_video", "text_to_video"],
       "estado": "validado",
       "predeterminado": false,
@@ -310,6 +310,30 @@
       },
       "evidencia": "Ejecutado de verdad el 2026-09-28 contra la API de KIE: 4 s, 9:16, 720p, 63 créditos, 59 s, 720x1280 con audio. Dijo el diálogo en español con exactitud.",
       "notas": "DICE EL DIÁLOGO EN ESPAÑOL CON EXACTITUD (medido el 2026-09-28), así que sirve para escenas con personaje hablando: el diálogo va en el prompt y NO se traduce. Acepta hasta 7 referencias por image_urls, y la primera hace de fotograma inicial. Su API tiene además character_ids y audio_ids (identidades y voces guardadas en el proveedor) que esta versión NO expone: son una decisión de producto con consentimiento de por medio."
+    },
+    {
+      "proveedor": "kie",
+      "modelo": "google/gemini-omni-flash-1-1",
+      "nombre": "Gemini Omni 1.1 Flash (vídeo)",
+      "capacidades": ["image_to_video", "text_to_video"],
+      "estado": "validado",
+      "predeterminado": false,
+      "conVoz": true,
+      "unidad": "clip de 4 s a 720p",
+      "parametros": {
+        "duraciones": [4],
+        "proporciones": ["9:16", "16:9"],
+        "resoluciones": ["720p"],
+        "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
+        "maximoReferencias": 7
+      },
+      "precio": {
+        "creditos": 63,
+        "fuente": "Medido con dinero real el 2026-09-28 con la clave del propietario: clip de 4 s en 9:16 a 720p, 63 créditos y 38 s de espera, salida de 720x1280 con audio. A 360p costó lo mismo (63), así que no se ofrece. El catálogo se limita a 4 s y 720p: es lo único medido.",
+        "comprobado": "2026-09-28"
+      },
+      "evidencia": "Ejecutado de verdad el 2026-09-28 contra la API de KIE: 4 s, 9:16, 720p, 63 créditos, 38 s, 720x1280 con audio; y a 360p, 63 créditos, 34 s. Dijo el diálogo en español con exactitud en los dos.",
+      "notas": "Mismo precio que Gemini Omni y un 35 % más rápido (38 s frente a 59 s, medido el 2026-09-28). DICE EL DIÁLOGO EN ESPAÑOL CON EXACTITUD: el diálogo va en el prompt y NO se traduce. Acepta hasta 7 referencias por image_urls. Su API tiene además first_frame_url y last_frame_url (excluyentes con image_urls, audio_ids y character_ids), character_ids, audio_ids y video_list para editar o alargar un vídeo: esta versión no los expone."
     },
     {
       "proveedor": "kie",

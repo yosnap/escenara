@@ -38,7 +38,7 @@ export const PLANTILLAS: readonly PlantillaCompatible[] = [
   {
     nombre: "NaN builders",
     urlBase: "https://api.nan.builders/v1",
-    modelos: ["gemma4", "glm5.3-flash", "deepseek-v4-flash", "qwen3.8-flash"],
+    modelos: ["gemma4", "glm5.3-flash", "deepseek-v4-flash", "qwen3.8-flash", "whisper"],
     ayuda:
       "Se paga por cuota del plan, no por petición: en Escenara sus llamadas se apuntan con 0 créditos y lo que se guarda son los tokens.",
   },
@@ -75,6 +75,26 @@ export function nombreValido(valor: unknown): string | null {
  * Limpia y valida la lista ordenada de modelos: sin repetidos, sin vacíos y con los caracteres que admite un
  * identificador de modelo. Devuelve `null` si la lista no sirve.
  */
+/**
+ * Para qué sirve un modelo de un servicio compatible. La API de `GET /models` de estos servicios no lo dice (NaN
+ * builders solo devuelve `id`), así que se deduce del nombre. Lo que no se reconoce como voz, transcripción ni
+ * «otro» se trata como texto, que es lo que atiende `/chat/completions`.
+ */
+export type CategoriaModelo = "texto" | "voz" | "transcripcion" | "otro";
+
+export function categoriaDeModelo(modelo: string): CategoriaModelo {
+  if (/whisper|transcri|stt/i.test(modelo)) return "transcripcion";
+  if (/kokoro|tts|speech/i.test(modelo)) return "voz";
+  if (/embed|rerank|moderation|flux|image|dall-?e|sora|veo|video/i.test(modelo)) return "otro";
+  return "texto";
+}
+
+export const NOMBRE_DE_CATEGORIA: Record<Exclude<CategoriaModelo, "otro">, string> = {
+  texto: "Texto",
+  voz: "Voz",
+  transcripcion: "Transcripción",
+};
+
 export function modelosValidos(valores: unknown): string[] | null {
   if (!Array.isArray(valores)) return null;
   const limpios: string[] = [];

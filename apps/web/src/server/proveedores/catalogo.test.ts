@@ -183,7 +183,9 @@ describe("semilla versionada del catálogo", () => {
   test("todo modelo que se puede elegir tiene precio con fuente y fecha", () => {
     for (const m of MODELOS.filter((x) => esEstadoModelo(x.estado) && esSeleccionable(x.estado))) {
       expect(m.precio).not.toBeNull();
-      expect(m.precio?.creditos).toBeGreaterThan(0);
+      // Los servicios compatibles se pagan por cuota del plan: su precio por petición es 0 de verdad, no una falta.
+      if (m.proveedor === "compatible") expect(m.precio?.creditos).toBe(0);
+      else expect(m.precio?.creditos).toBeGreaterThan(0);
       expect(m.precio?.fuente.length).toBeGreaterThan(10);
       expect(m.precio?.comprobado).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     }
