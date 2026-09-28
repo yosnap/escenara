@@ -4,7 +4,7 @@ import { CheckCircle2 } from "lucide-react";
 import { InsigniaControl } from "@/components/ui/controles";
 import { Aviso } from "@/components/ui/feedback";
 import { InsigniaEstadoEscena } from "@/components/ui/proyecto";
-import { bloqueosDeControles } from "@/lib/controles";
+import { avisosConfirmables, bloqueosDeControles } from "@/lib/controles";
 import { formatearCreditos } from "@/lib/generacion";
 import {
   clipPorEncolar,
@@ -39,6 +39,7 @@ export function TarjetaEscena({
   onRegenerar,
   onCancelar,
   onReintentos,
+  onConfirmarAviso,
   avisosConfirmados,
 }: {
   escena: EscenaProduccionVista;
@@ -49,6 +50,8 @@ export function TarjetaEscena({
   onRegenerar: (confirmacion: ConfirmacionEnvio) => void;
   onCancelar: () => void;
   onReintentos: (reintentos: number) => void;
+  /** Confirma un aviso salvable: la misma confirmación que el panel «Antes de generar» de la producción. */
+  onConfirmarAviso: (regla: string, valor: boolean) => void;
   avisosConfirmados: readonly string[];
 }) {
   const bloqueos = [
@@ -56,6 +59,15 @@ export function TarjetaEscena({
     ...bloqueosDeControles(produccion.controlesDelModelo, avisosConfirmados),
   ];
   const firma = [escena.id, ...avisosConfirmados].join("|");
+  // Los avisos que frenan a esta escena, sin repetir regla: los suyos y los del modelo y el protagonista.
+  const avisos = [
+    ...new Map(
+      [...avisosConfirmables(escena.controles), ...avisosConfirmables(produccion.controlesDelModelo)].map((a) => [
+        a.regla,
+        a,
+      ]),
+    ).values(),
+  ];
   const enVuelo = escenaEnVuelo(escena);
   const lista = escenaLista(escena);
   const sinProducir = escena.fotograma === null;
@@ -145,6 +157,8 @@ export function TarjetaEscena({
           firma={`producir|${firma}`}
           bloqueos={bloqueos}
           avisosConfirmados={avisosConfirmados}
+          avisos={avisos}
+          onConfirmarAviso={onConfirmarAviso}
           ocupado={ocupado}
           onEnviar={onProducir}
         />
@@ -168,6 +182,8 @@ export function TarjetaEscena({
           firma={`aprobar|${escena.fotograma?.id ?? ""}|${escena.animacion?.id ?? ""}|${avisosConfirmados.join(",")}`}
           bloqueos={bloqueos}
           avisosConfirmados={avisosConfirmados}
+          avisos={avisos}
+          onConfirmarAviso={onConfirmarAviso}
           ocupado={ocupado}
           onEnviar={onAprobar}
         />
@@ -184,6 +200,8 @@ export function TarjetaEscena({
           firma={`regenerar|${escena.fotograma?.id ?? ""}|${avisosConfirmados.join(",")}`}
           bloqueos={bloqueos}
           avisosConfirmados={avisosConfirmados}
+          avisos={avisos}
+          onConfirmarAviso={onConfirmarAviso}
           ocupado={ocupado}
           onEnviar={onRegenerar}
         />
