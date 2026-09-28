@@ -25,6 +25,7 @@ import {
   type OpcionDeGeneracion,
 } from "../mapa/generacion";
 import type { Actor } from "../media/servicio";
+import { referenciasVigentesDe } from "../personajes/consulta";
 import {
   contextoDeVersion,
   contextoParaGenerar,
@@ -35,6 +36,7 @@ import {
 import { personajePropio, referenciasParaGenerar } from "../personajes/puede-generar";
 import { acotarCoste } from "../presupuesto/acotar";
 import { productoDelTrabajo } from "../productos/columnas";
+import { hechosDelProducto, productoEnPrompt, productoParaGenerar } from "../productos/prompt";
 import { componerDesdePlantilla, type PromptCompuesto } from "../prompts/render";
 import { creditosDelEnvio, traducirAlIngles } from "../prompts/traduccion";
 import type { Adaptador } from "../proveedores/contrato";
@@ -505,6 +507,26 @@ async function topeDeEscenasEnVuelo(
   return { escenaId, maximo: escenasEnVuelo, reintento };
 }
 
+/**
+ * Referencias que el modelo acepta **como galería**, que son las únicas donde cabe la foto de un producto. Un
+ * adaptador que no lo declare las acepta todas, que es lo que era verdad antes de la 0.26.0.
+ */
+const cupoDeGaleria = (adaptador: Adaptador, modelo: ModeloVista): number =>
+  adaptador.referenciasDeGaleria?.(modelo) ?? modelo.parametros.maximoReferencias;
+
+/**
+ * Lo que se guarda en el trabajo de las fotos del producto: **solo las que caben**, en el orden de prioridad
+ * con el que se van a enviar. El worker no vuelve a repartir nada; envía esto, que es lo que se ha avisado y
+ * se ha confirmado.
+ */
+function referenciasDeProductoGuardadas(
+  producto: { fotos: readonly string[] } | null,
+  conProducto: { reparto: { producto: number } } | null,
+): { referenciasProducto?: string[] } {
+  if (!producto || !conProducto || conProducto.reparto.producto === 0) return {};
+  return { referenciasProducto: producto.fotos.slice(0, conProducto.reparto.producto) };
+}
+
 /** Comprobación previa determinista (contrato de decisiones): un rechazo no llega ni a encolarse. */
 async function exigirDecisionFavorable(entrada: Parameters<typeof decidir>[0]): Promise<void> {
   const decision = await decidir(entrada);
@@ -565,6 +587,25 @@ export async function crearFotograma(
       ? await personajePorId(personajeId)
       : null;
 
+  /**
+   * **El producto del fotograma** (0.26.0). Sale de la escena, que es donde se elige: el camino rápido de
+   * «Crear» elige el producto junto a la dirección del clip, no aquí. Se resuelve **antes** de la puerta
+   * porque sus avisos —la identidad que no cabe, la marca que el filtro puede rechazar— son de los que hay
+   * que dar antes de cobrar nada.
+   */
+  const columnasProducto = await productoDelTrabajo(actor.id, conEscena?.escena.id ?? null, undefined);
+  const producto = await productoParaGenerar(actor.id, columnasProducto.productId, columnasProducto.productAction);
+  const conProducto = producto
+    ? hechosDelProducto(
+        producto,
+        cupoDeGaleria(adaptador, modelo),
+        // Las que de verdad se le pueden enviar: una imagen suelta es una, y un personaje, las suyas vigentes.
+        personaje ? (await referenciasVigentesDe(personaje.id)).length : 1,
+        // En el fotograma no hay identidad registrada que perder: eso solo pasa en la escena hablada.
+        false,
+      )
+    : null;
+
   // ── Punto único: el motor decide si esto se puede generar ─────────────────────────────────────────────
   await exigirControles(
     {
@@ -585,6 +626,7 @@ export async function crearFotograma(
           ...(peticion.retratoInventado ? { primerRetrato: true } : {}),
           escena: conEscena?.hechos ?? null,
           proyecto: conEscena ? await techoDelProyecto(conEscena.escena.projectId) : null,
+          ...(conProducto ? { producto: conProducto.hechos } : {}),
         },
         h.buscar,
       ),
@@ -645,11 +687,29 @@ export async function crearFotograma(
   // fallo, no se encola nada.
   const enIngles = await traducirAlIngles(
     actor.id,
-    [{ texto: prompt }, { texto: conFicha.contexto, personajeId }],
+    [
+      { texto: prompt },
+      { texto: conFicha.contexto, personajeId },
+      // La descripción del producto la escribe el usuario en castellano y el prompt va en inglés.
+      { texto: producto?.descripcionOriginal ?? "" },
+    ],
     h.buscar,
   );
   const escenaEnIngles = enIngles.get(prompt) ?? prompt;
   const contextoEnIngles = enIngles.get(conFicha.contexto) ?? conFicha.contexto;
+  /**
+   * El producto tal como entra en las 6C. `conReferencias` dice la verdad sobre lo que va a recibir el modelo:
+   * si no le cabe ninguna foto suya, se le pide un envase sin marca en lugar de prometerle una foto que no va
+   * a llegar, que es lo que le hace inventarse la etiqueta.
+   */
+  const productoDelPrompt =
+    producto && conProducto
+      ? productoEnPrompt(
+          producto,
+          producto.descripcionOriginal === "" ? "" : (enIngles.get(producto.descripcionOriginal) ?? ""),
+          conProducto.reparto.producto > 0,
+        )
+      : null;
   /**
    * **Las 6C sustituyen a la plantilla, no se meten dentro de ella.**
    *
@@ -661,7 +721,10 @@ export async function crearFotograma(
    */
   const base = peticion.seisC
     ? {
-        escena: componerSeisC({ ...peticion.seisC, contextoLibre: escenaEnIngles }, peticion.cambiarSolo),
+        escena: componerSeisC(
+          { ...peticion.seisC, contextoLibre: escenaEnIngles, producto: productoDelPrompt },
+          peticion.cambiarSolo,
+        ),
         // El texto no sale de la plantilla, pero la plantilla se validó y es la que aprobó la escena: se sigue
         // registrando para que la aprobación y la auditoría de «con qué versión se hizo» no queden en nulo.
         compuesto: original.compuesto,
@@ -720,12 +783,15 @@ export async function crearFotograma(
       // Marca de «este trabajo no parte de ninguna imagen»: la lee el worker para no buscar referencias que no
       // existen y para montar la entrada del modelo de texto a imagen tal como se estimó.
       ...(sinReferencia ? { sinReferencia: true } : {}),
+      // Fotos del producto que viajan con este envío, ya repartidas contra el tope del modelo. Se guardan sus
+      // identificadores y no sus URL: las del proveedor caducan y no se guardan nunca.
+      ...referenciasDeProductoGuardadas(producto, conProducto),
     },
     sourceMediaId: origen?.id ?? null,
     sceneId: conEscena?.escena.id ?? null,
     // El fotograma de una escena hereda su producto. En «Crear» no llega ninguno: allí el producto se elige
     // junto a la dirección del clip, que es donde se ve lo que se le va a pedir.
-    ...(await productoDelTrabajo(actor.id, conEscena?.escena.id ?? null, undefined)),
+    ...columnasProducto,
     characterId: personajeId,
     characterVersionId: conFicha.versionId,
     ...columnasDePlantilla(base.compuesto),
@@ -815,6 +881,24 @@ export async function crearAnimacion(
   if (partida.personajeId) exigirRevisionDeReferencias(peticion.sinTerceros);
   const personaje = partida.personajeId ? await personajePorId(partida.personajeId) : null;
 
+  /**
+   * **El producto del clip** (0.26.0): el de la escena cuando el clip sale de un proyecto, y el elegido en
+   * «Crear» cuando no hay escena. Se resuelve antes de la puerta, que es donde se avisa de lo que cuesta
+   * llevarlo: las referencias que no caben y la marca que el filtro del proveedor puede rechazar.
+   */
+  const columnasProducto = await productoDelTrabajo(actor.id, partida.escenaId, peticion.productoElegido);
+  const producto = await productoParaGenerar(actor.id, columnasProducto.productId, columnasProducto.productAction);
+  const conProducto = producto
+    ? hechosDelProducto(
+        producto,
+        cupoDeGaleria(adaptador, modelo),
+        // Un clip parte de **una** imagen: su fotograma aprobado. Esa es la referencia del personaje aquí.
+        1,
+        // Este camino no cita ninguna identidad registrada: la escena hablada en modo Omni va por `omni/escena.ts`.
+        false,
+      )
+    : null;
+
   // ── Punto único: el mismo motor, con los hechos del clip ──────────────────────────────────────────────
   await exigirControles(
     // El sujeto es la escena cuando el clip pertenece a una: es lo que hay que poder auditar después, y guardar
@@ -837,6 +921,7 @@ export async function crearAnimacion(
         // vuelve a mirar: ya se comprobó al producir el fotograma, y el clip no es otra decisión de guion.
         escena: null,
         proyecto: partida.escenaId ? await techoDelProyecto(await proyectoDeEscena(partida.escenaId)) : null,
+        ...(conProducto ? { producto: conProducto.hechos } : {}),
       },
       h.buscar,
     ),
@@ -904,6 +989,8 @@ export async function crearAnimacion(
       { texto: matizDeVoz },
       { texto: instrucciones },
       { texto: descripcionExperta },
+      // La descripción del producto viaja con el resto del texto libre: la escribe el usuario en castellano.
+      { texto: producto?.descripcionOriginal ?? "" },
     ],
     h.buscar,
   );
@@ -912,9 +999,18 @@ export async function crearAnimacion(
   const enInglesO = (texto: string) => (texto === "" ? "" : (enIngles.get(texto) ?? texto));
   // La dirección se aplica **aquí**, con el texto libre ya en inglés y después de todas las puertas gratis: es
   // lo que pone el encuadre, la cámara, el gesto en su momento y la regla de toma única alrededor de la escena.
+  const productoDelPrompt =
+    producto && conProducto
+      ? productoEnPrompt(
+          producto,
+          producto.descripcionOriginal === "" ? "" : (enIngles.get(producto.descripcionOriginal) ?? ""),
+          conProducto.reparto.producto > 0,
+        )
+      : null;
   const dirigido = direccion
     ? dirigirClipPara(familiaDe(modelo.modelo), {
         ...direccion,
+        producto: productoDelPrompt,
         direccionVocal: enInglesO(matizDeVoz),
         instruccionesExtra: enInglesO(instrucciones),
         descripcionExperta: enInglesO(descripcionExperta),
@@ -987,13 +1083,14 @@ export async function crearAnimacion(
         : {}),
       ...(contextoEnIngles === "" ? {} : { contextoPersonaje: contextoEnIngles }),
       ...reservasGuardadas(reservas),
+      ...referenciasDeProductoGuardadas(producto, conProducto),
     },
     sourceMediaId: origen.id,
     // El clip hereda la escena del fotograma: su aprobación es la misma y ya se comprobó al producirlo.
     sceneId: partida.escenaId,
     // El producto con el que se pidió: el de la escena cuando el clip sale de un proyecto y el elegido en
-    // «Crear» cuando no hay escena. Es lo que permite borrar sus derivados al borrar el producto.
-    ...(await productoDelTrabajo(actor.id, partida.escenaId, peticion.productoElegido)),
+    // «Crear» cuando no hay escena.
+    ...columnasProducto,
     parentJobId: partida.trabajoPadreId,
     characterId: partida.personajeId,
     characterVersionId: partida.versionPersonajeId,

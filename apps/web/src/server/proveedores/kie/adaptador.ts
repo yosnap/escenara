@@ -24,7 +24,7 @@ import {
   saldoCreditos,
   subirReferencia,
 } from "./cliente";
-import { CAMPOS_DE_URL, type ContextoEntrada, entradaDeModelo, tieneEntrada } from "./entradas";
+import { CAMPOS_DE_URL, type ContextoEntrada, entradaDeModelo, referenciasDeGaleria, tieneEntrada } from "./entradas";
 import { gemeloDeTextoAImagen } from "./familias";
 import { modelosPublicadosDeKie } from "./publicados";
 import { generarTextoKie } from "./texto";
@@ -86,6 +86,10 @@ export const adaptadorKie: Adaptador = {
 
   montarEntrada(modelo: ModeloVista, contexto: ContextoEntrada): Record<string, unknown> {
     return entradaDeModelo(modelo, contexto);
+  },
+
+  referenciasDeGaleria(modelo: ModeloVista): number {
+    return referenciasDeGaleria(modelo);
   },
 
   subirReferencia({ clave, archivo, buscar }: PeticionReferencia): Promise<string> {

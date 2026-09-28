@@ -92,6 +92,17 @@ export function personajesOmniDe(fila: FilaTrabajo): string[] {
   return guardados.filter((id): id is string => typeof id === "string" && id !== "");
 }
 
+/**
+ * Fotos del **producto** que este trabajo tiene que enviar como referencia (0.26.0), tal como quedaron al
+ * encolar y en el orden en que se decidió enviarlas. Aquí no se vuelve a repartir nada contra el tope del
+ * modelo: el reparto se hizo al encolar, es lo que se avisó y es lo que el usuario confirmó.
+ */
+export function referenciasDeProductoDe(fila: FilaTrabajo): string[] {
+  const guardadas = (fila.input as { referenciasProducto?: unknown }).referenciasProducto;
+  if (!Array.isArray(guardadas)) return [];
+  return guardadas.filter((id): id is string => typeof id === "string" && id !== "");
+}
+
 /** Identificador del servicio compatible con el que se encoló, si lo hubo. */
 export function compatibleIdDe(fila: FilaTrabajo): string {
   const guardado = (fila.input as { compatibleId?: unknown }).compatibleId;

@@ -363,6 +363,18 @@ export interface Adaptador {
    * (uno espera `image_urls`, otro `input_urls`, otro `image_url`), así que vive en el adaptador.
    */
   montarEntrada(modelo: ModeloVista, contexto: ContextoEntrada): Record<string, unknown>;
+  /**
+   * Cuántas de las referencias que admite ese modelo son una **galería** de imágenes que describen lo que
+   * tiene que salir, y no otra cosa (0.26.0).
+   *
+   * Hace falta porque `maximoReferencias` no distingue las dos cosas: Veo 3.1 admite dos imágenes, pero son
+   * el **primer y el último fotograma** del clip, no dos referencias. Meterle ahí la foto de un producto no
+   * añadiría el producto a la escena: pondría esa foto como fotograma final, y eso se paga igual.
+   *
+   * **Opcional**: sin implementar, se entiende que todas sus referencias son galería, que es lo que era
+   * verdad para todos los modelos hasta esta versión.
+   */
+  referenciasDeGaleria?(modelo: ModeloVista): number;
   /** Sube la referencia al almacenamiento temporal del proveedor y devuelve su URL. */
   subirReferencia(peticion: PeticionReferencia): Promise<string>;
   /** Crea la tarea de imagen y devuelve su identificador. */

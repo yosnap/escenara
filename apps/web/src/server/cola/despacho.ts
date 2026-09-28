@@ -39,6 +39,7 @@ import {
   compatibleIdDe,
   dialogoDe,
   personajesOmniDe,
+  referenciasDeProductoDe,
   reservasAutorizadas,
   reservasPendientes,
   segundosDe,
@@ -340,11 +341,21 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
     const callbackRetrato = await prepararCallback(fila);
     return { adaptador, clave: credencial.clave, entrada: entradaRetrato, ...callbackRetrato };
   }
-  // Un trabajo con personaje lleva **varias** referencias (0.13.0); uno con imagen suelta, una sola. Se
-  // suben en el mismo orden que se guardaron: la primera es la que más peso tiene en la identidad.
-  const origenes = await mediosDeReferencia(fila, Math.max(1, modelo.parametros.maximoReferencias));
+  /**
+   * Un trabajo con personaje lleva **varias** referencias (0.13.0); uno con imagen suelta, una sola. Se suben
+   * en el mismo orden que se guardaron: la primera es la que más peso tiene en la identidad.
+   *
+   * Con **producto** (0.26.0) el cupo del modelo se comparte: sus fotos van detrás de las del personaje, y el
+   * hueco que ocupan se le descuenta al personaje. El reparto ya se hizo al encolar —es lo que se avisó y lo
+   * que el usuario confirmó—, así que aquí solo se respeta: se le quita al personaje exactamente el número de
+   * huecos que ocupan las fotos del producto que quedaron guardadas.
+   */
+  const fotosDeProducto = referenciasDeProductoDe(fila);
+  const cupo = Math.max(1, modelo.parametros.maximoReferencias);
+  const origenes = await mediosDeReferencia(fila, Math.max(1, cupo - fotosDeProducto.length));
+  const origenesProducto = await mediosVigentes(fotosDeProducto);
   const urls: string[] = [];
-  for (const origen of origenes) {
+  for (const origen of [...origenes, ...origenesProducto]) {
     // Cada subida renueva la toma: con diez referencias, la preparación puede pasar de los tres minutos que
     // dura, y una toma caducada dejaría que otro worker preparase el mismo trabajo en paralelo.
     if (!(await renovarToma(fila.id, workerId))) {
@@ -926,6 +937,24 @@ async function mediosDeReferencia(fila: FilaTrabajo, maximo = Number.POSITIVE_IN
     );
   }
   return origenes;
+}
+
+/**
+ * Medios por identificador que **siguen en la biblioteca**, en el orden pedido. Las fotos de un producto son
+ * fotos del usuario: si ha borrado alguna entre encolar y enviar, se envían las que quedan en lugar de
+ * cancelar el trabajo, que es lo que hace la referencia de un personaje porque allí la cara es obligatoria.
+ */
+async function mediosVigentes(ids: readonly string[]): Promise<FilaMedio[]> {
+  if (ids.length === 0) return [];
+  const filas = await db()
+    .select()
+    .from(media)
+    .where(and(inArray(media.id, [...ids]), isNull(media.deletedAt)));
+  const porId = new Map(filas.map((m) => [m.id, m]));
+  return ids.flatMap((id) => {
+    const medio = porId.get(id);
+    return medio ? [medio] : [];
+  });
 }
 
 /**
