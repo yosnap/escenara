@@ -25,6 +25,8 @@ export interface SujetoDeControles {
   personajeId?: string;
   medioId?: string;
   escenaId?: string;
+  productoId?: string;
+  accion?: string;
 }
 
 export interface Controles {

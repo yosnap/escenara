@@ -2,6 +2,16 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.26.2] · 2026-09-28
+
+### Corregido
+
+- **El aviso «este modelo no admite la foto del producto» se ve antes de pulsar.** En «Crear» el panel de
+  controles no conocía el producto elegido, así que el aviso solo aparecía al generar, como un error sin casilla
+  para confirmarlo (por ejemplo, un clip con Veo 3.1 Fast y un producto con foto). Ahora elegir o quitar el
+  producto vuelve a evaluar los controles y el aviso sale con su casilla, junto con los modelos que sí llevan la
+  foto. No se cambia de modelo por su cuenta ni se cobra nada.
+
 ## [0.26.1] · 2026-09-28
 
 ### Corregido

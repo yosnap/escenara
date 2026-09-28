@@ -45,6 +45,12 @@ export interface PeticionDeControles {
    * precisamente ese retrato le va a dar. Solo vale si el personaje es inventado; en otro se ignora.
    */
   retratoInventado?: boolean;
+  /**
+   * Producto elegido **sin escena** (pantalla «Crear»): con él, el panel enseña los mismos avisos que dará la
+   * puerta al confirmar. Una escena con producto manda sobre este; uno ajeno se ignora, sin decir que existe.
+   */
+  productoId?: string | null;
+  productoAccion?: string | null;
 }
 
 export async function evaluarControles(
@@ -69,12 +75,16 @@ export async function evaluarControles(
   /**
    * El producto de la escena (0.26.0), para que el panel enseñe **los mismos avisos** que va a dar la puerta:
    * la identidad que no cabe, las referencias que se quedan fuera y la marca que el filtro puede rechazar.
-   * En «Crear» no hay escena, y allí el producto se elige junto a la dirección del clip: su aviso llega al
-   * confirmar, que es cuando se sabe cuál es.
+   * En «Crear» no hay escena: el producto llega en la propia petición (`productoId`), para que el aviso se vea
+   * **antes** de confirmar y se pueda confirmar con su casilla, en lugar de toparse con él al pulsar.
    */
-  const producto = conEscena?.escena.productId
-    ? await productoParaGenerar(actor.id, conEscena.escena.productId, conEscena.escena.productAction)
-    : null;
+  const producto = conEscena
+    ? conEscena.escena.productId
+      ? await productoParaGenerar(actor.id, conEscena.escena.productId, conEscena.escena.productAction)
+      : null
+    : peticion.productoId
+      ? await productoParaGenerar(actor.id, peticion.productoId, peticion.productoAccion ?? "")
+      : null;
   const conProducto = producto
     ? hechosDelProducto(
         producto,

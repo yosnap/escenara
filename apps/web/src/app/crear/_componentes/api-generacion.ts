@@ -139,9 +139,11 @@ export const consultarControles = (peticion: {
   personajeId?: string;
   medioId?: string;
   escenaId?: string;
+  productoId?: string;
+  accion?: string;
 }) => {
   const parametros = new URLSearchParams({ tipo: peticion.tipo });
-  for (const clave of ["modelo", "personajeId", "medioId", "escenaId"] as const) {
+  for (const clave of ["modelo", "personajeId", "medioId", "escenaId", "productoId", "accion"] as const) {
     const valor = peticion[clave];
     if (valor) parametros.set(clave, valor);
   }
