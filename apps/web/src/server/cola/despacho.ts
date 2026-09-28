@@ -278,10 +278,32 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
    * usuario y la del proyecto. Volver a deducirla cambiaría el clip que se paga.
    */
   const segundos = segundosDe(fila);
+  /**
+   * Audio de referencia de una escena hablada con un motor **de referencias** (MiniMax H3, 0.22.0): la muestra
+   * ya pagada de la voz del proyecto. Se sube igual que una imagen —el almacenamiento temporal del proveedor
+   * acepta cualquier archivo— y su URL caduca igual, así que tampoco se guarda nunca en el trabajo.
+   */
+  const audios: string[] = [];
+  const audioId = audioDeReferenciaDe(fila);
+  if (audioId) {
+    const [audio] = await db()
+      .select()
+      .from(media)
+      .where(and(eq(media.id, audioId), isNull(media.deletedAt)));
+    if (!audio) {
+      throw new ErrorSinCredencial(
+        "La muestra de voz con la que se iba a generar esta escena ya no está en tu biblioteca, así que el clip no sonaría con la voz de este proyecto. Vuelve a oír esa voz en «Voz y subtítulos» y pide la escena otra vez.",
+      );
+    }
+    audios.push(
+      await adaptador.subirReferencia({ clave: credencial.clave, archivo: await archivoDe(audio), buscar: h.buscar }),
+    );
+  }
   const entrada = adaptador.montarEntrada(modelo, {
     escena: fila.prompt,
     dialogo: dialogoDe(fila),
     urls,
+    ...(audios.length > 0 ? { audiosDeReferencia: audios } : {}),
     ...(segundos === null ? {} : { segundos }),
   });
   const callback = await prepararCallback(fila);
@@ -800,6 +822,12 @@ async function claveDelTrabajo(fila: FilaTrabajo): Promise<{ clave: string }> {
 function urlBaseDe(fila: FilaTrabajo): string {
   const url = (fila.input as { urlBase?: unknown }).urlBase;
   return typeof url === "string" ? url : "";
+}
+
+/** Muestra de voz que este trabajo usa como audio de referencia; vacío en todo lo que no la use. */
+function audioDeReferenciaDe(fila: FilaTrabajo): string {
+  const guardado = (fila.input as { audioDeReferencia?: unknown }).audioDeReferencia;
+  return typeof guardado === "string" ? guardado : "";
 }
 
 /**

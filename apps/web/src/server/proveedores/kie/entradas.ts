@@ -31,7 +31,14 @@ export type { ContextoEntrada };
 type Constructor = (contexto: ContextoEntrada, modelo: ModeloVista) => Record<string, unknown>;
 
 /** Campos por los que puede llegar una URL temporal del proveedor: nunca se guardan en el trabajo. */
-export const CAMPOS_DE_URL = ["image_urls", "input_urls", "image_url"] as const;
+export const CAMPOS_DE_URL = [
+  "image_urls",
+  "input_urls",
+  "image_url",
+  // MiniMax H3 recibe las referencias y la muestra de voz por sus propios campos, y caducan igual (0.22.0).
+  "reference_image_urls",
+  "reference_audio_urls",
+] as const;
 
 /** Primer valor admitido por el modelo, o el de `CLIP` si el modelo no declara ninguno. */
 const primeraResolucion = (modelo: ModeloVista) => modelo.parametros.resoluciones[0] ?? CLIP.resolucion;
@@ -184,6 +191,27 @@ const CONSTRUCTORES = new Map<string, Constructor>(
         image_urls: contexto.urls,
         mode: "normal",
         duration: String(duracion(modelo, contexto)),
+        resolution: primeraResolucion(modelo),
+      }),
+
+    /**
+     * MiniMax H3 (0.22.0), el **segundo motor de escenas habladas**. Medido con dinero real el 2026-09-28: 5 s
+     * en 9:16 a 768P costaron **40 créditos** y tardaron 143 s, con la cara fiel al retrato de referencia y el
+     * diálogo en español exacto.
+     *
+     * No registra nada en el proveedor: la identidad son las **fotos del personaje** (`reference_image_urls`,
+     * hasta 9) y la voz es una **muestra de la voz del proyecto** (`reference_audio_urls`, hasta 3), así que el
+     * timbre es el del mapa de voz del usuario. `duration` va como **entero** (4–15), al revés que en Omni, que
+     * lo quiere como texto.
+     */
+    "minimax-h3/reference-to-video": (contexto, modelo) =>
+      conProporcion(modelo, {
+        prompt: promptEscenaHablada(contexto.escena, contexto.dialogo),
+        reference_image_urls: contexto.urls,
+        ...(contexto.audiosDeReferencia && contexto.audiosDeReferencia.length > 0
+          ? { reference_audio_urls: [...contexto.audiosDeReferencia] }
+          : {}),
+        duration: duracion(modelo, contexto),
         resolution: primeraResolucion(modelo),
       }),
 

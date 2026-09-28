@@ -30,7 +30,35 @@
  * medido con dinero real ese día, cuesta lo mismo que `gemini-omni-video` —63 créditos por 4 s en 9:16 a 720p—
  * y tarda **38 s en lugar de 59 s**, con el diálogo en español igual de exacto.
  */
-export const MODELOS_OMNI = ["google/gemini-omni-flash-1-1", "gemini-omni-video"] as const;
+export const MODELOS_OMNI = [
+  "google/gemini-omni-flash-1-1",
+  "gemini-omni-video",
+  "minimax-h3/reference-to-video",
+] as const;
+
+/**
+ * Modelos que hablan citando una **identidad registrada** en el proveedor (`character_ids`). Los demás de la
+ * lista hablan con **referencias**: la cara sale de las fotos del personaje y la voz, de una muestra de la voz
+ * del proyecto, así que no hay nada que registrar pero sí que enviar en cada clip.
+ *
+ * Es la diferencia que decide qué hace falta antes de producir, y por eso vive aquí y no en una condición
+ * suelta: con identidad registrada hace falta el registro; con referencias, la voz del mapa y su muestra.
+ */
+export const MODELOS_CON_IDENTIDAD_REGISTRADA = ["google/gemini-omni-flash-1-1", "gemini-omni-video"] as const;
+
+export const usaIdentidadRegistrada = (modelo: string): boolean =>
+  MODELOS_CON_IDENTIDAD_REGISTRADA.includes(modelo as (typeof MODELOS_CON_IDENTIDAD_REGISTRADA)[number]);
+
+/**
+ * Duración con la que se midió el precio de cada motor de escenas habladas. Lo que no esté aquí se estima con
+ * su propio precio registrado tal cual, sin escalar: inventar una proporción sobre algo no medido sería peor
+ * que no estimarlo.
+ */
+export const SEGUNDOS_MEDIDOS_POR_MODELO: Record<string, number> = {
+  "google/gemini-omni-flash-1-1": 4,
+  "gemini-omni-video": 4,
+  "minimax-h3/reference-to-video": 5,
+};
 
 export const esModeloOmni = (modelo: string): boolean => MODELOS_OMNI.includes(modelo as (typeof MODELOS_OMNI)[number]);
 
@@ -156,24 +184,29 @@ export type DuracionOmni = (typeof DURACIONES_OMNI)[number];
 
 export const esDuracionOmni = (v: unknown): v is DuracionOmni => DURACIONES_OMNI.includes(v as DuracionOmni);
 
-/** Duración con la que se midió el precio: 4 s en 9:16 a 720p costaron 63 créditos el 2026-09-28. */
+/** Duración con la que se midió el precio del motor recomendado: 4 s en 9:16 a 720p, 63 créditos el 2026-09-28. */
 export const SEGUNDOS_PRECIO_OMNI_MEDIDO = 4;
 
+/** Segundos medidos de ese modelo; los del recomendado cuando el modelo no declara los suyos. */
+export const segundosMedidosDe = (modelo: string): number =>
+  SEGUNDOS_MEDIDOS_POR_MODELO[modelo] ?? SEGUNDOS_PRECIO_OMNI_MEDIDO;
+
 /**
- * Créditos de una escena Omni de `segundos` a partir del precio registrado del modelo.
+ * Créditos de una escena hablada de `segundos` a partir del precio registrado de **ese** modelo.
  *
- * Solo los 4 s están **medidos**; 6, 8 y 10 se estiman proporcionales y la interfaz los marca como estimados
- * (decisión provisional del propietario, 2026-09-28). Nunca baja del precio registrado: ningún proveedor cobra
- * menos que su mínimo por llamada, y estimar por debajo sería prometer un precio que no existe.
+ * Cada motor tiene su duración medida (4 s en Gemini Omni Flash, 5 s en MiniMax H3) y las demás se estiman en
+ * proporción, marcadas como estimadas en la pantalla (decisión provisional del propietario, 2026-09-28). Nunca
+ * baja del precio registrado: ningún proveedor cobra menos que su mínimo por llamada, y estimar por debajo sería
+ * prometer un precio que no existe.
  */
-export function creditosDeEscenaOmni(creditosRegistrados: number, segundos: number): number {
+export function creditosDeEscenaOmni(creditosRegistrados: number, segundos: number, modelo = ""): number {
   if (!(segundos > 0)) return Math.ceil(creditosRegistrados);
-  const proporcional = (creditosRegistrados * segundos) / SEGUNDOS_PRECIO_OMNI_MEDIDO;
+  const proporcional = (creditosRegistrados * segundos) / segundosMedidosDe(modelo);
   return Math.max(Math.ceil(creditosRegistrados), Math.ceil(proporcional));
 }
 
 /** `true` cuando el precio de esa duración es una estimación y no una medida. Se dice en la pantalla. */
-export const precioOmniEstimado = (segundos: number): boolean => segundos !== SEGUNDOS_PRECIO_OMNI_MEDIDO;
+export const precioOmniEstimado = (segundos: number, modelo = ""): boolean => segundos !== segundosMedidosDe(modelo);
 
 // ── Textos que las dos partes dicen igual ────────────────────────────────────────────────────────────────────
 

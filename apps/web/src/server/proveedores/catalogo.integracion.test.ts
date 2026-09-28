@@ -190,6 +190,8 @@ describe.skipIf(!hayBaseDeDatos)("catálogo de modelos", () => {
           HAILUO,
           "kling/v3-turbo-image-to-video",
           "kokoro",
+          // Segundo motor de escenas habladas (0.22.0), medido: 40 créditos por 5 s a 768P.
+          "minimax-h3/reference-to-video",
           NANO,
           SEEDREAM,
           "veo3_fast",
@@ -227,6 +229,7 @@ describe.skipIf(!hayBaseDeDatos)("catálogo de modelos", () => {
         "grok-imagine/image-to-video",
         HAILUO,
         "kling/v3-turbo-image-to-video",
+        "minimax-h3/reference-to-video",
         "veo3_fast",
         "veo3_lite",
       ]);

@@ -5,6 +5,7 @@ import {
   DESCRIPCION_PERSONAJE_OMNI_MAXIMA,
   DESCRIPCION_VOZ_OMNI_MAXIMA,
   EJEMPLO_VOZ_OMNI_MAXIMO,
+  esModeloOmni,
   MODELOS_OMNI,
   NOMBRE_VOZ_OMNI_MAXIMO,
 } from "@/lib/omni";
@@ -70,7 +71,17 @@ export async function exigirRitmoDeRegistro(usuarioId: string): Promise<void> {
  * una decisión de quien administra, y escribirlo a fuego aquí significaría que cambiarlo es cambiar el código.
  * Si ninguno está utilizable, se propaga el motivo del último intento y **no se produce nada**.
  */
-export async function eleccionOmni(): Promise<EleccionDeTrabajo> {
+export async function eleccionOmni(usuarioId?: string): Promise<EleccionDeTrabajo> {
+  /**
+   * Con usuario, manda **su mapa de vídeo** (0.22.0): es él quien elige con qué motor hablan sus escenas, y hay
+   * dos (Gemini Omni Flash, el recomendado, y MiniMax H3). Solo se miran las entradas que saben producir una
+   * escena hablada; el resto de su mapa de vídeo sirve para clips normales, no para estas.
+   */
+  if (usuarioId) {
+    const { eleccionDeGeneracion } = await import("../mapa/generacion");
+    const { elegida } = await eleccionDeGeneracion(usuarioId, "animacion", null, true);
+    if (esModeloOmni(elegida.eleccion.modelo.modelo)) return elegida.eleccion;
+  }
   let ultimo: unknown = null;
   for (const modelo of MODELOS_OMNI) {
     try {
@@ -166,7 +177,7 @@ export async function registrarVozEnProveedor(
   datos: { voz: string; nombre: string; descripcion: string; ejemplo: string },
   h: Herramientas = HERRAMIENTAS,
 ): Promise<{ audioId: string; eleccion: EleccionDeTrabajo }> {
-  const eleccion = await eleccionOmni();
+  const eleccion = await eleccionOmni(usuarioId);
   const { modelo, adaptador } = eleccion;
   if (!adaptador.registrarVoz) {
     throw new ErrorOmni(
@@ -223,7 +234,7 @@ export async function registrarPersonajeEnProveedor(
   imagenCuerpoUrl: string;
   creditosObservados: number | null;
 }> {
-  const { modelo, adaptador } = await eleccionOmni();
+  const { modelo, adaptador } = await eleccionOmni(usuarioId);
   if (!adaptador.registrarPersonaje) {
     throw new ErrorOmni(
       503,

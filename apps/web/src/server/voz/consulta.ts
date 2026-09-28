@@ -290,10 +290,10 @@ async function estadoOmni(actor: Actor, proyecto: FilaProyecto): Promise<EstadoO
   let creditosPorEscena: number | null = null;
   let precioEstimado = false;
   try {
-    const { creditos } = await creditosDeEscenaHablada(proyecto);
-    const { modelo } = await eleccionOmni();
+    const { creditos } = await creditosDeEscenaHablada(actor.id, proyecto);
+    const { modelo } = await eleccionOmni(actor.id);
     creditosPorEscena = await creditosDelEnvio(creditos);
-    precioEstimado = precioOmniEstimado(segundosDeEscenaOmni(modelo.parametros.duraciones, proyecto));
+    precioEstimado = precioOmniEstimado(segundosDeEscenaOmni(modelo.parametros.duraciones, proyecto), modelo.modelo);
   } catch {
     // Sin modelo Omni con precio registrado no se inventa ninguna cifra: la pantalla dirá que no se puede.
     creditosPorEscena = null;

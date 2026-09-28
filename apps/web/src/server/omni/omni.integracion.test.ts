@@ -63,6 +63,7 @@ const {
   scenes,
   usageLedger,
   users,
+  voiceSamples,
 } = await import("../db/esquema");
 const { crearMedio } = await import("../media/servicio");
 const { olvidarSaldos } = await import("../generacion/estimacion");
@@ -90,6 +91,9 @@ const { MODELOS_OMNI } = await import("@/lib/omni");
 /** Precio medido con dinero real el 2026-09-28: 4 s en 9:16 a 720p costaron 63 créditos. */
 const CREDITOS_OMNI = 63;
 const [VOZ_A, VOZ_B] = VOCES_OMNI.map((v) => v.id) as [string, string];
+/** Segundo motor de escenas habladas: 40 créditos por 5 s a 768P, medidos con dinero real el 2026-09-28. */
+const MODELO_H3 = "minimax-h3/reference-to-video";
+const CREDITOS_H3 = 40;
 
 // ── Proveedor simulado, con las formas reales de la API ────────────────────────────────────────────────────
 
@@ -270,6 +274,8 @@ describe.skipIf(!hayBaseDeDatos)("escenas habladas con Omni", () => {
     respuestas.personajeCaducado = false;
     await db().delete(generationJobs).where(eq(generationJobs.userId, ana.id));
     await db().delete(usageLedger).where(eq(usageLedger.userId, ana.id));
+    // Las muestras de voz son del usuario y sobreviven al proyecto: sin limpiarlas, un test vería la del anterior.
+    await db().delete(voiceSamples).where(eq(voiceSamples.userId, ana.id));
     await db().delete(projects).where(eq(projects.userId, ana.id));
     await db().delete(characters).where(eq(characters.ownerId, ana.id));
     exigirBaseDeDatosDePrueba("escenara_pruebas_omni");
@@ -277,6 +283,60 @@ describe.skipIf(!hayBaseDeDatos)("escenas habladas con Omni", () => {
     personajeId = (await nuevoPersonaje()).id;
     proyectoId = await nuevoProyectoOmni();
   });
+
+  /** Registra y valida el precio medido de un modelo, que es lo que hace quien administra tras medirlo. */
+  async function registrarPrecioDe(nombre: string, creditos: number): Promise<void> {
+    olvidarCatalogo();
+    const [modelo] = (await listarModelos({ capacidad: "image_to_video" })).filter((m) => m.modelo === nombre);
+    if (!modelo) throw new Error(`Falta ${nombre} en el catálogo de pruebas.`);
+    await cambiarPrecioDeModelo(
+      { modeloId: modelo.id, creditos, fuente: "Medido con dinero real el 2026-09-28.", comprobado: "2026-09-28" },
+      admin.id,
+    );
+    olvidarCatalogo();
+    await cambiarEstadoDeModelo(
+      { modeloId: modelo.id, estado: "validado", evidencia: "Medido con dinero real el 2026-09-28." },
+      admin.id,
+    );
+    olvidarCatalogo();
+  }
+
+  /**
+   * Fija la voz del proyecto como en el modo `pista` —que es la que usa un motor de referencias— y, si se pide,
+   * deja su **muestra ya pagada** en la caché, que es lo que viaja como audio de referencia en cada clip.
+   */
+  async function fijarVozDePista(conMuestra = true): Promise<void> {
+    const { VOCES_OFRECIDAS, firmaDeVoz, PARAMETROS_VOZ_POR_DEFECTO } = await import("@/lib/voz");
+    const voz = VOCES_OFRECIDAS[0]?.id ?? "";
+    const modeloDeVoz = "elevenlabs/text-to-speech-multilingual-v2";
+    await db()
+      .update(projects)
+      .set({
+        voiceProvider: "kie",
+        voiceModel: modeloDeVoz,
+        voiceId: voz,
+        voiceParams: PARAMETROS_VOZ_POR_DEFECTO as unknown as Record<string, number>,
+        voiceSetAt: new Date(),
+      })
+      .where(eq(projects.id, proyectoId));
+    if (!conMuestra) return;
+    const medio = await crearMedio(actor, new File([MP4], "muestra.mp3", { type: "audio/mpeg" }));
+    const { TEXTO_DE_MUESTRA } = await import("../voz/muestra");
+    await db()
+      .insert(voiceSamples)
+      .values({
+        userId: ana.id,
+        provider: "kie",
+        model: modeloDeVoz,
+        voice: voz,
+        paramsSignature: firmaDeVoz(
+          "pista",
+          { proveedor: "kie", modelo: modeloDeVoz, voz, parametros: PARAMETROS_VOZ_POR_DEFECTO, fijadaEn: "" },
+          TEXTO_DE_MUESTRA,
+        ),
+        mediaId: medio.id,
+      });
+  }
 
   /** Registra el precio medido del modelo Omni y lo valida, que es lo que hace quien administra tras medirlo. */
   async function registrarPrecioDeOmni(): Promise<void> {
@@ -794,5 +854,56 @@ describe.skipIf(!hayBaseDeDatos)("escenas habladas con Omni", () => {
     // Y se produce de verdad, que es lo que el impedimento estaba bloqueando antes.
     await producirProyecto(actor, proyectoId, await confirmacion(), h);
     expect(await trabajosDelProyecto()).toHaveLength(2);
+  });
+  // ── Segundo motor: MiniMax H3, elegible desde el mapa de vídeo ───────────────────────────────────────────
+
+  test("con MiniMax H3 la escena va con las fotos del personaje y la muestra de la voz del proyecto", async () => {
+    const { guardarMapa } = await import("../mapa/mapa");
+    await registrarPrecioDe(MODELO_H3, CREDITOS_H3);
+    // El usuario pone H3 el primero en su mapa de vídeo: es él quien elige con qué se genera.
+    await guardarMapa(ana.id, "video", [{ proveedor: "kie", compatibleId: null, modelo: MODELO_H3 }]);
+    // H3 genera clips de 5 s, así que el proyecto tiene que pedir esa duración: la pantalla lo dice si no.
+    await db().update(projects).set({ clipSeconds: 5 }).where(eq(projects.id, proyectoId));
+    // H3 no registra nada en el proveedor: la voz es la del mapa de voz del proyecto y su muestra ya pagada.
+    await fijarVozDePista();
+
+    const estado = await produccion();
+    expect(estado.impedimentos).toEqual([]);
+    // 40 créditos por 5 s medidos: el precio es el de **ese** modelo, no el del recomendado.
+    expect(estado.creditosPorClip).toBe(CREDITOS_H3);
+
+    await producirProyecto(actor, proyectoId, await confirmacion(), h);
+    await enviarEncolados(h);
+
+    const entradas = [...enviados.values()];
+    expect(entradas).toHaveLength(2);
+    for (const entrada of entradas) {
+      // La cara son las fotos del personaje y la voz, la muestra: nada de identidades registradas.
+      expect((entrada.reference_image_urls as string[]).length).toBeGreaterThan(0);
+      expect((entrada.reference_audio_urls as string[]).length).toBe(1);
+      expect(entrada.character_ids).toBeUndefined();
+      // La duración va como número entero, al revés que en Omni, que la quiere como texto.
+      expect(entrada.duration).toBe(5);
+      expect(entrada.resolution).toBe("768P");
+    }
+    // Y no se ha registrado nada en el proveedor: este motor no lo necesita.
+    expect(respuestas.registrosDePersonaje).toBe(0);
+    await guardarMapa(ana.id, "video", []);
+  });
+
+  test("con MiniMax H3 y sin muestra de la voz pagada, la escena se bloquea y dice qué falta", async () => {
+    const { guardarMapa } = await import("../mapa/mapa");
+    await registrarPrecioDe(MODELO_H3, CREDITOS_H3);
+    await guardarMapa(ana.id, "video", [{ proveedor: "kie", compatibleId: null, modelo: MODELO_H3 }]);
+    await db().update(projects).set({ clipSeconds: 5 }).where(eq(projects.id, proyectoId));
+    // Voz elegida pero **sin muestra pagada**: es el audio de referencia, así que sin él no puede sonar.
+    await fijarVozDePista(false);
+
+    expect((await produccion()).impedimentos.join(" ")).toContain("muestra");
+    const confirmada = await confirmacion();
+    const fallo = await error(() => producirProyecto(actor, proyectoId, confirmada, h));
+    expect(fallo.estado).toBe(409);
+    expect(await trabajosDelProyecto()).toHaveLength(0);
+    await guardarMapa(ana.id, "video", []);
   });
 });

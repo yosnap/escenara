@@ -38,8 +38,8 @@ import {
 import type { EleccionDeTrabajo } from "../generacion/precios";
 import { condicionEnCurso } from "../generacion/trabajos";
 import { type Actor, aDto } from "../media/servicio";
-import { creditosDeEscenaHablada, segundosDeEscenaOmni } from "../omni/escena";
-import { eleccionOmni, registroVigente } from "../omni/registro";
+import { creditosDeEscenaHablada, registroParaProducir, segundosDeEscenaOmni } from "../omni/escena";
+import { eleccionOmni } from "../omni/registro";
 import { ultimaVersion } from "../personajes/ficha";
 import { plantillaVigenteDe } from "../prompts/consulta";
 import { creditosDelEnvio } from "../prompts/traduccion";
@@ -316,7 +316,7 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
    * escena hablada con la duración del proyecto: 63 créditos por 4 s medidos el 2026-09-28, y proporcional (y
    * marcado como estimado) en las demás duraciones.
    */
-  const habladas = omni ? await costeDeEscenaHablada(proyecto) : null;
+  const habladas = omni ? await costeDeEscenaHablada(actor, proyecto) : null;
   const porFotograma = omni ? 0 : await creditosDeTrabajo(elecciones.fotograma);
   const porClip = habladas ? await creditosDelEnvio(habladas.creditos) : await creditosDeTrabajo(elecciones.animacion);
   const porProducir = escenasPorProducir(escenas, proyecto.voiceMode);
@@ -350,14 +350,20 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
     enVuelo,
     maximoEnVuelo: ajustes.escenasEnVuelo,
     impedimentos: [
-      ...(omni ? await impedimentosDeOmni(proyecto) : []),
+      ...(omni ? await impedimentosDeOmni(actor, proyecto) : []),
       ...impedimentosDeProduccion({
         planAprobado: proyecto.planApprovedAt !== null,
         protagonista: proyecto.mainCharacterId,
-        sinPrecio: !elecciones.fotograma || !elecciones.animacion,
-        segundosDelClip: elecciones.animacion
-          ? duracionParaModelo(elecciones.animacion.modelo.parametros.duraciones, proyecto.clipSeconds)
-          : null,
+        /**
+         * En modo `omni` **no hay fotograma**, así que el modelo de imagen no tiene por qué tener precio: lo que
+         * hace falta es el de escenas habladas, y de eso responde `impedimentosDeOmni`. Y la duración se juzga
+         * contra ese mismo modelo, no contra el de animación genérico.
+         */
+        sinPrecio: omni ? habladas === null : !elecciones.fotograma || !elecciones.animacion,
+        segundosDelClip:
+          omni || !elecciones.animacion
+            ? null
+            : duracionParaModelo(elecciones.animacion.modelo.parametros.duraciones, proyecto.clipSeconds),
         segundosDelProyecto: proyecto.clipSeconds,
         presupuesto: proyecto.authorizedCredits,
         comprometido,
@@ -374,15 +380,16 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
  * y el servidor esperar otra.
  */
 async function costeDeEscenaHablada(
+  actor: Actor,
   proyecto: FilaProyecto,
 ): Promise<{ creditos: number; sello: string; estimado: boolean } | null> {
   try {
-    const { creditos, sello } = await creditosDeEscenaHablada(proyecto);
-    const { modelo } = await eleccionOmni();
+    const { creditos, sello } = await creditosDeEscenaHablada(actor.id, proyecto);
+    const { modelo } = await eleccionOmni(actor.id);
     return {
       creditos,
       sello,
-      estimado: precioOmniEstimado(segundosDeEscenaOmni(modelo.parametros.duraciones, proyecto)),
+      estimado: precioOmniEstimado(segundosDeEscenaOmni(modelo.parametros.duraciones, proyecto), modelo.modelo),
     };
   } catch {
     // Sin modelo Omni utilizable no se inventa ningún precio: `impedimentosDeOmni` dice por qué y no se produce.
@@ -395,35 +402,34 @@ async function costeDeEscenaHablada(
  * registrada y sin personaje registrado con ella, ninguna escena puede hablar. Los dos registros son gratuitos,
  * así que el mensaje dice dónde se arregla en lugar de limitarse a bloquear.
  */
-async function impedimentosDeOmni(proyecto: FilaProyecto): Promise<string[]> {
+async function impedimentosDeOmni(actor: Actor, proyecto: FilaProyecto): Promise<string[]> {
   const motivos: string[] = [];
-  const voz = vozOmniDelProyecto(proyecto);
-  if (!voz) {
-    motivos.push(
-      "Este proyecto está en modo Omni y todavía no tiene voz registrada: elígela y regístrala en «Voz y subtítulos». No cuesta créditos.",
-    );
-  }
-  if (!proyecto.mainCharacterId) return motivos;
-  const version = await ultimaVersion(proyecto.mainCharacterId);
-  if (voz && version && !(await registroVigente(proyecto.mainCharacterId, version.id, voz.audioId))) {
-    motivos.push(
-      "El protagonista no está registrado en el proveedor con la voz de este proyecto, así que sus escenas no saldrían con la misma cara y la misma voz. Regístralo desde su ficha: no cuesta créditos.",
-    );
-  }
+  let modeloOmni: { nombre: string; modelo: string; duraciones: readonly number[] } | null = null;
   try {
-    const { modelo } = await eleccionOmni();
-    const segundos = segundosDeEscenaOmni(modelo.parametros.duraciones, proyecto);
-    if (segundos !== proyecto.clipSeconds) {
-      motivos.push(
-        `Los clips de este proyecto son de ${proyecto.clipSeconds} s y ${modelo.nombre} solo genera de ${segundos} s en esta instalación. Cambia la duración del proyecto a ${segundos} s antes de producir.`,
-      );
-    }
+    const { modelo } = await eleccionOmni(actor.id);
+    modeloOmni = { nombre: modelo.nombre, modelo: modelo.modelo, duraciones: modelo.parametros.duraciones };
   } catch (error) {
     motivos.push(
       error instanceof ErrorCatalogo
         ? error.message
-        : "Esta instalación no tiene un modelo Omni utilizable con precio registrado, así que no se puede producir en este modo.",
+        : "Esta instalación no tiene ningún modelo de escenas habladas utilizable con precio registrado, así que no se puede producir en este modo.",
     );
+  }
+  /**
+   * Qué falta lo decide **el mismo sitio que lo decide al producir** (`omni/escena.ts › registroParaProducir`),
+   * que es quien sabe qué necesita cada motor: los de identidad registrada, la voz y el personaje registrados;
+   * los de referencias, la voz del proyecto y su muestra ya pagada. Dos listas distintas acabarían diciendo
+   * cosas distintas.
+   */
+  const { falta } = await registroParaProducir(actor, proyecto, modeloOmni?.modelo);
+  if (falta !== "") motivos.push(`Este proyecto está en modo Omni y ${falta}`);
+  if (modeloOmni) {
+    const segundos = segundosDeEscenaOmni(modeloOmni.duraciones, proyecto);
+    if (segundos !== proyecto.clipSeconds) {
+      motivos.push(
+        `Los clips de este proyecto son de ${proyecto.clipSeconds} s y ${modeloOmni.nombre} solo genera de ${segundos} s en esta instalación. Cambia la duración del proyecto a ${segundos} s antes de producir.`,
+      );
+    }
   }
   return motivos;
 }

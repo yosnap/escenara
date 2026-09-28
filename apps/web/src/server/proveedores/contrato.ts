@@ -177,6 +177,12 @@ export interface ContextoEntrada {
    * lo entienda lo ignora, y por eso el servicio comprueba antes que el modelo elegido sea el que lo admite.
    */
   personajesOmni?: readonly string[];
+  /**
+   * URL temporales de los **audios de referencia** del proveedor (MiniMax H3, 0.22.0): la muestra de la voz del
+   * proyecto, que es lo que hace que el clip suene con ese timbre. Llega solo en los motores de escena hablada
+   * que trabajan con referencias en lugar de con una identidad registrada.
+   */
+  audiosDeReferencia?: readonly string[];
 }
 
 /** Lo que necesita el adaptador para pedir una generación. La clave solo viaja hasta aquí. */

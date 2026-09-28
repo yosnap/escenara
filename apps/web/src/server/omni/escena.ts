@@ -1,6 +1,7 @@
-import { creditosDeEscenaOmni, type VozOmniDelProyecto } from "@/lib/omni";
+import type { Medio } from "@/lib/media/tipos";
+import { creditosDeEscenaOmni, usaIdentidadRegistrada, type VozOmniDelProyecto } from "@/lib/omni";
 import { duracionParaModelo } from "@/lib/produccion";
-import { firmaDeVoz } from "@/lib/voz";
+import { firmaDeVoz, nombreDeVoz } from "@/lib/voz";
 import { escenaPropia } from "../asistente/consulta";
 import { ErrorProyecto } from "../asistente/errores";
 import { techoDelProyecto } from "../asistente/plan";
@@ -32,10 +33,12 @@ import { exigirSelloVigente } from "../generacion/precios";
 import type { Actor } from "../media/servicio";
 import { contextoDeVersion, promptConContexto } from "../personajes/contexto";
 import { ultimaVersion } from "../personajes/ficha";
-import { personajePropio } from "../personajes/puede-generar";
+import { personajePropio, referenciasParaGenerar } from "../personajes/puede-generar";
 import { acotarCoste } from "../presupuesto/acotar";
 import { creditosDelEnvio, traducirAlIngles } from "../prompts/traduccion";
+import { muestrasDe } from "../voz/muestra";
 import { vozOmniDelProyecto } from "../voz/omni";
+import { vozDelProyecto } from "../voz/proyecto";
 import { ErrorOmni } from "./errores";
 import { eleccionOmni, registroVigente } from "./registro";
 
@@ -74,10 +77,13 @@ export const segundosDeEscenaOmni = (duraciones: readonly number[], proyecto: Fi
  * Créditos de una escena hablada con la duración del proyecto. Se calcula en un solo sitio para que la cifra que
  * se muestra, la que se confirma y la que se aparta sean la misma.
  */
-export async function creditosDeEscenaHablada(proyecto: FilaProyecto): Promise<{ creditos: number; sello: string }> {
-  const { modelo, precio } = await eleccionOmni();
+export async function creditosDeEscenaHablada(
+  usuarioId: string,
+  proyecto: FilaProyecto,
+): Promise<{ creditos: number; sello: string }> {
+  const { modelo, precio } = await eleccionOmni(usuarioId);
   const segundos = segundosDeEscenaOmni(modelo.parametros.duraciones, proyecto);
-  return { creditos: creditosDeEscenaOmni(precio.creditos, segundos), sello: precio.sello };
+  return { creditos: creditosDeEscenaOmni(precio.creditos, segundos, modelo.modelo), sello: precio.sello };
 }
 
 /**
@@ -88,14 +94,30 @@ export async function creditosDeEscenaHablada(proyecto: FilaProyecto): Promise<{
 export async function registroParaProducir(
   actor: Actor,
   proyecto: FilaProyecto,
+  /** Modelo con el que se va a producir; sin él se mira el que elegiría el mapa ahora mismo. */
+  modelo?: string,
 ): Promise<{
   personaje: FilaPersonaje | null;
   version: FilaVersionPersonaje | null;
   registro: FilaRegistroOmni | null;
   voz: VozOmniDelProyecto | null;
+  /**
+   * Muestra ya pagada de la voz del proyecto, que es el audio de referencia de los motores que no registran
+   * identidades (MiniMax H3). `null` con los de identidad registrada, que no la necesitan.
+   */
+  muestra?: Medio | null;
   /** Qué falta para poder producir, en llano; vacío cuando no falta nada. Es lo que evalúa el motor. */
   falta: string;
 }> {
+  /**
+   * Los dos motores de escenas habladas no necesitan lo mismo (0.22.0):
+   *
+   * - los de **identidad registrada** (Gemini Omni) necesitan la voz y el personaje registrados en el proveedor;
+   * - los de **referencias** (MiniMax H3) no registran nada: necesitan la voz del proyecto —la del mapa de voz,
+   *   la misma del modo `pista`— y su **muestra ya pagada**, que es lo que viaja como audio de referencia.
+   */
+  const conRegistro = usaIdentidadRegistrada(modelo ?? (await modeloDeEscenaHablada(actor.id)));
+  if (!conRegistro) return referenciasParaProducir(actor, proyecto);
   const voz = vozOmniDelProyecto(proyecto);
   if (!voz) {
     return {
@@ -135,6 +157,53 @@ export async function registroParaProducir(
   };
 }
 
+/** Modelo con el que se produciría ahora mismo una escena hablada; vacío si no hay ninguno utilizable. */
+async function modeloDeEscenaHablada(usuarioId: string): Promise<string> {
+  try {
+    return (await eleccionOmni(usuarioId)).modelo.modelo;
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * Lo que hace falta con un motor **de referencias** (MiniMax H3): la voz del proyecto fijada en su mapa de voz y
+ * su **muestra ya pagada**, que es el audio que se le manda en cada clip para que suene con ese timbre.
+ *
+ * La muestra no se paga aquí: se paga una sola vez desde el selector de voz, y esta pantalla dice que falta. Así
+ * el gasto sigue estando donde el usuario lo confirma, y no escondido dentro de producir una escena.
+ */
+async function referenciasParaProducir(actor: Actor, proyecto: FilaProyecto) {
+  const vacio = { personaje: null, version: null, registro: null, voz: null };
+  const voz = vozDelProyecto(proyecto);
+  if (!voz) {
+    return {
+      ...vacio,
+      falta:
+        "todavía no tiene voz elegida. Este motor pone la voz con una muestra de la tuya, así que elígela en «Voz y subtítulos».",
+    };
+  }
+  if (!proyecto.mainCharacterId) {
+    throw new ErrorProyecto(
+      409,
+      "Este proyecto no tiene protagonista asignado, y en las escenas habladas la cara de todas es la suya. Elige un personaje con consentimiento vigente.",
+    );
+  }
+  const personaje = await personajePropio(actor, proyecto.mainCharacterId);
+  const version = await ultimaVersion(personaje.id);
+  const muestra = (await muestrasDe(actor, voz.modelo, voz.parametros)).get(voz.voz) ?? null;
+  return {
+    personaje,
+    version,
+    registro: null,
+    voz: null,
+    muestra,
+    falta: muestra
+      ? ""
+      : `la voz «${nombreDeVoz(voz.voz)}» de este proyecto todavía no tiene muestra pagada, y este motor la necesita como referencia para que el clip suene con ese timbre. Óyela una vez desde «Voz y subtítulos»: se paga una sola vez y se reutiliza en todas las escenas.`,
+  };
+}
+
 /**
  * Hechos de la identidad hablada para el motor de controles. Se leen igual aquí y en la pantalla, así que el
  * panel no puede decir «listo» donde la puerta va a bloquear.
@@ -159,10 +228,10 @@ export async function producirEscenaHablada(
   exigirDerechos(confirmacion.derechos);
   exigirRevisionDeReferencias(confirmacion.sinTerceros);
   const claveIdempotencia = exigirClaveIdempotencia(confirmacion.claveIdempotencia);
-  const eleccion = await eleccionOmni();
+  const eleccion = await eleccionOmni(actor.id);
   const { modelo, adaptador, precio } = eleccion;
   const segundos = segundosDeEscenaOmni(modelo.parametros.duraciones, proyecto);
-  const creditos = creditosDeEscenaOmni(precio.creditos, segundos);
+  const creditos = creditosDeEscenaOmni(precio.creditos, segundos, modelo.modelo);
   exigirSelloVigente(confirmacion.selloEstimacion, precio.sello, true);
   const totales = await creditosDelEnvio(creditos);
   exigirConfirmacion(confirmacion.creditosConfirmados, totales);
@@ -171,7 +240,12 @@ export async function producirEscenaHablada(
   if (repetida) return { trabajo: repetida, nueva: false };
   await exigirRitmo(actor.id);
 
-  const { personaje, version, registro, voz, falta } = await registroParaProducir(actor, proyecto);
+  const conIdentidad = usaIdentidadRegistrada(modelo.modelo);
+  const { personaje, version, registro, voz, falta, muestra } = await registroParaProducir(
+    actor,
+    proyecto,
+    modelo.modelo,
+  );
 
   // ── Punto único: el mismo motor que cierra la puerta de cualquier otro envío ───────────────────────────
   await exigirControles(
@@ -200,7 +274,7 @@ export async function producirEscenaHablada(
    * A partir de aquí ya no queda ninguna regla: el motor las ha aplicado todas, y la de `omni-sin-registro` es la
    * que garantiza que estos tres existen. La comprobación es el otro lado de esa puerta, no una segunda regla.
    */
-  if (!personaje || !version || !registro || !voz) {
+  if (!personaje || !version || (conIdentidad && (!registro || !voz)) || (!conIdentidad && !muestra)) {
     throw new ErrorOmni(409, `Este proyecto no puede producir escenas habladas todavía: ${falta}`);
   }
   const proveedor = proveedorDeCredencial(modelo);
@@ -225,12 +299,22 @@ export async function producirEscenaHablada(
   const escenaEnIngles = enIngles.get(prompt) ?? prompt;
   const contextoEnIngles = enIngles.get(contexto) ?? contexto;
   const promptFinal = promptConContexto(escenaEnIngles, contextoEnIngles);
+  /**
+   * Qué se le manda al proveedor según el motor:
+   *
+   * - **identidad registrada**: su `character_ids` y nada más; la cara y la voz ya están allí;
+   * - **referencias**: las fotos del personaje y la muestra de la voz del proyecto, que se suben al despachar
+   *   (aquí solo se guardan sus identificadores: las URL del proveedor caducan y no se guardan nunca).
+   */
+  const referencias = conIdentidad
+    ? []
+    : (await referenciasParaGenerar(personaje, modelo.parametros.maximoReferencias)).referencias;
   const parametros = adaptador.montarEntrada(modelo, {
     escena: promptFinal,
     dialogo,
     urls: [],
     segundos,
-    personajesOmni: [registro.remoteCharacterId],
+    ...(conIdentidad && registro ? { personajesOmni: [registro.remoteCharacterId] } : {}),
   });
 
   const valores: NuevoTrabajoEncolado = {
@@ -241,8 +325,12 @@ export async function producirEscenaHablada(
     prompt: promptFinal,
     input: {
       prompt: promptFinal,
-      // Sin referencias: la cara la pone el registro del proveedor, no una foto que se suba en cada escena.
-      referencias: [],
+      /**
+       * Con identidad registrada no hay referencias: la cara la pone el registro del proveedor. Con un motor de
+       * referencias, son las fotos del personaje, y la muestra de la voz va aparte porque es audio y no imagen.
+       */
+      referencias: referencias.map((r) => r.id),
+      ...(muestra ? { audioDeReferencia: muestra.id } : {}),
       parametros: { ...parametros, segundos },
       dialogo,
       escena: prompt,
@@ -251,14 +339,18 @@ export async function producirEscenaHablada(
        * Identidad registrada con la que se encoló. El worker envía **esta** y no la que el personaje tenga
        * registrada al llegar su turno: lo que se paga tiene que ser lo que el usuario confirmó.
        */
-      personajesOmni: [registro.remoteCharacterId],
-      /** Firma de la voz con la que sale, para poder decir después si lo generado sigue correspondiendo. */
+      ...(conIdentidad && registro ? { personajesOmni: [registro.remoteCharacterId] } : {}),
+      /**
+       * Firma de la voz con la que sale, para poder decir después si lo generado sigue correspondiendo. Con un
+       * motor de referencias la identidad es **el personaje y su muestra de voz**, no un identificador remoto.
+       */
       firmaVoz: firmaDeVoz("omni", null, escena.scriptText, {
-        audioId: voz.audioId,
-        personajeOmniId: registro.remoteCharacterId,
+        audioId: conIdentidad && voz ? voz.audioId : (muestra?.id ?? ""),
+        personajeOmniId: conIdentidad && registro ? registro.remoteCharacterId : personaje.id,
       }),
     },
-    sourceMediaId: null,
+    // El origen es la primera referencia cuando la hay: es lo que el historial enseña como punto de partida.
+    sourceMediaId: referencias[0]?.id ?? null,
     sceneId: escena.id,
     characterId: personaje.id,
     characterVersionId: version.id,
