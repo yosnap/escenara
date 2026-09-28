@@ -18,6 +18,7 @@ export function BloqueConfirmacion({
   etiqueta,
   firma,
   bloqueos,
+  conProducto = false,
   enviando,
   onGenerar,
 }: {
@@ -28,6 +29,8 @@ export function BloqueConfirmacion({
   firma: string;
   /** Bloqueos propios de la pantalla (falta imagen, falta descripción), además de los del motor. */
   bloqueos: string[];
+  /** `true` cuando el envío lleva producto: entonces se pide además la casilla del derecho de marca. */
+  conProducto?: boolean;
   enviando: boolean;
   onGenerar: (confirmacion: ConfirmacionCoste) => void;
 }) {
@@ -46,6 +49,7 @@ export function BloqueConfirmacion({
         firma={`${firma}|${controles.firma}`}
         bloqueos={[...bloqueos, ...controles.bloqueos]}
         avisosConfirmados={controles.confirmados}
+        conProducto={conProducto}
         enviando={enviando}
         onGenerar={onGenerar}
       />

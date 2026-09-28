@@ -44,6 +44,7 @@ export function leerConfirmacion(cuerpo: Record<string, unknown>): ConfirmacionP
   }
   return {
     derechos: cuerpo.derechos === true,
+    derechoMarca: cuerpo.derechoMarca === true,
     sinTerceros: cuerpo.sinTerceros === true,
     creditosConfirmados: creditos,
     selloEstimacion: typeof sello === "string" ? sello : "",

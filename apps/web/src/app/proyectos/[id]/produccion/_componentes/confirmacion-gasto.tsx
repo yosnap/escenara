@@ -33,6 +33,7 @@ export function ConfirmacionGasto({
   bloqueos,
   avisosConfirmados,
   avisos = [],
+  conProducto = false,
   onConfirmarAviso,
   ocupado,
   onEnviar,
@@ -64,12 +65,15 @@ export function ConfirmacionGasto({
    * las dos. Sin esto, el botón decía «falta confirmar el aviso» sin decir dónde.
    */
   avisos?: readonly { regla: string; motivo: string }[];
+  /** `true` cuando la escena lleva producto: entonces, y solo entonces, se pide la casilla de la marca. */
+  conProducto?: boolean;
   onConfirmarAviso?: (regla: string, valor: boolean) => void;
   ocupado: boolean;
   onEnviar: (confirmacion: ConfirmacionEnvio) => void;
 }) {
   const [derechos, setDerechos] = useState(false);
   const [sinTerceros, setSinTerceros] = useState(false);
+  const [derechoMarca, setDerechoMarca] = useState(false);
   const [avisoAceptado, setAvisoAceptado] = useState(false);
   const clave = useRef<{ firma: string; valor: string } | null>(null);
 
@@ -80,6 +84,7 @@ export function ConfirmacionGasto({
     ...bloqueos,
     ...(derechos ? [] : ["Falta confirmar que tienes derecho a usar la imagen."]),
     ...(sinTerceros ? [] : ["Falta confirmar la revisión de las fotos del personaje."]),
+    ...(!conProducto || derechoMarca ? [] : ["Falta confirmar que tienes derecho a usar la marca del producto."]),
     ...(!superaUmbral || avisoAceptado ? [] : ["Falta aceptar el aviso de gasto alto."]),
   ];
 
@@ -87,6 +92,7 @@ export function ConfirmacionGasto({
     if (clave.current?.firma !== firma) clave.current = { firma, valor: crypto.randomUUID() };
     onEnviar({
       derechos,
+      derechoMarca,
       sinTerceros,
       creditosConfirmados: creditos,
       selloEstimacion: sello,
@@ -122,6 +128,14 @@ export function ConfirmacionGasto({
         marcada={sinTerceros}
         onCambio={setSinTerceros}
       />
+      {conProducto && (
+        <Casilla
+          etiqueta="Tengo derecho a usar esta marca"
+          descripcion="El producto es tuyo o tienes autorización de la marca para usarlo en este vídeo. Solo aparece cuando el envío lleva producto, y sin ella no se genera. Tu declaración queda registrada con su fecha."
+          marcada={derechoMarca}
+          onCambio={setDerechoMarca}
+        />
+      )}
       {onConfirmarAviso &&
         avisos.map((aviso) => (
           <Casilla

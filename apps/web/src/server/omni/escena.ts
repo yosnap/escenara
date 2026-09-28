@@ -1,4 +1,4 @@
-import { duracionesConCoste, type ModeloVista, segundosDeUnidad } from "@/lib/catalogo";
+import { CAPACIDAD_DE_TIPO, duracionesConCoste, type ModeloVista, segundosDeUnidad } from "@/lib/catalogo";
 import type { Medio } from "@/lib/media/tipos";
 import { creditosDeEscenaOmni, precioOmniEstimado, usaIdentidadRegistrada, type VozOmniDelProyecto } from "@/lib/omni";
 import { duracionParaModelo } from "@/lib/produccion";
@@ -25,6 +25,7 @@ import {
   exigirAvisoUmbral,
   exigirClaveIdempotencia,
   exigirConfirmacion,
+  exigirDerechoDeMarca,
   exigirDerechos,
   exigirRevisionDeReferencias,
   exigirRitmo,
@@ -40,6 +41,7 @@ import { contextoDeVersion, promptConContexto } from "../personajes/contexto";
 import { ultimaVersion } from "../personajes/ficha";
 import { personajePropio, referenciasParaGenerar } from "../personajes/puede-generar";
 import { acotarCoste } from "../presupuesto/acotar";
+import { completarModelosSugeridos } from "../productos/modelos-sugeridos";
 import { hechosDelProducto, productoEnPrompt, productoParaGenerar } from "../productos/prompt";
 import { creditosDelEnvio, traducirAlIngles } from "../prompts/traduccion";
 import { muestrasDe } from "../voz/muestra";
@@ -65,6 +67,8 @@ import { eleccionOmni, registroVigente } from "./registro";
 /** Lo que el navegador confirma para producir una escena hablada. Es la confirmación de siempre. */
 export interface ConfirmacionEscenaHablada {
   derechos: boolean;
+  /** Casilla «tengo derecho a usar esta marca» (0.26.0). Obligatoria en cuanto la escena lleva producto. */
+  derechoMarca?: boolean;
   sinTerceros: boolean;
   creditosConfirmados: number;
   selloEstimacion: string;
@@ -313,6 +317,8 @@ export async function producirEscenaHablada(
         conIdentidad,
       )
     : null;
+  if (producto) exigirDerechoDeMarca(confirmacion.derechoMarca);
+  if (conProducto) await completarModelosSugeridos(conProducto.hechos, CAPACIDAD_DE_TIPO.animacion);
 
   // ── Punto único: el mismo motor que cierra la puerta de cualquier otro envío ───────────────────────────
   await exigirControles(
@@ -475,6 +481,8 @@ export async function producirEscenaHablada(
     // El origen es la primera referencia cuando la hay: es lo que el historial enseña como punto de partida.
     sourceMediaId: referencias[0]?.id ?? null,
     sceneId: escena.id,
+    // La declaración de marca se guarda con su fecha, igual que la de la imagen.
+    brandRightsAt: producto ? new Date() : null,
     characterId: personaje.id,
     characterVersionId: version.id,
     referencesReviewedAt: new Date(),

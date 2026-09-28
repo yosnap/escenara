@@ -12,6 +12,8 @@ export interface ConfirmacionCoste {
   /** Sello del precio que se mostró: si el precio ha cambiado, el servidor lo rechaza. */
   selloEstimacion: string;
   derechos: boolean;
+  /** Casilla «tengo derecho a usar esta marca»: solo se pide cuando el envío lleva producto. */
+  derechoMarca: boolean;
   avisoUmbralAceptado: boolean;
   /** Clave de la confirmación: la misma confirmación repetida no genera un segundo trabajo. */
   claveIdempotencia: string;
@@ -36,6 +38,7 @@ export function PanelGenerar({
   firma,
   bloqueos,
   avisosConfirmados,
+  conProducto = false,
   enviando,
   onGenerar,
 }: {
@@ -47,16 +50,20 @@ export function PanelGenerar({
   bloqueos: string[];
   /** Avisos de los controles previos que el usuario ha confirmado (0.18.0). */
   avisosConfirmados: readonly string[];
+  /** `true` cuando el envío lleva producto: entonces, y solo entonces, se pide la casilla de la marca. */
+  conProducto?: boolean;
   enviando: boolean;
   onGenerar: (confirmacion: ConfirmacionCoste) => void;
 }) {
   const [derechos, setDerechos] = useState(false);
+  const [derechoMarca, setDerechoMarca] = useState(false);
   const [avisoAceptado, setAvisoAceptado] = useState(false);
   const clave = useRef<{ firma: string; valor: string } | null>(null);
 
   const impedimentos = [
     ...bloqueos,
     ...(derechos ? [] : ["Falta confirmar que tienes derecho a usar la imagen."]),
+    ...(!conProducto || derechoMarca ? [] : ["Falta confirmar que tienes derecho a usar la marca del producto."]),
     ...(!estimacion.superaUmbral || avisoAceptado ? [] : ["Falta aceptar el aviso de gasto."]),
   ];
 
@@ -68,6 +75,7 @@ export function PanelGenerar({
       creditosConfirmados: creditosAConfirmar(estimacion),
       selloEstimacion: estimacion.sello,
       derechos,
+      derechoMarca,
       avisoUmbralAceptado: avisoAceptado,
       claveIdempotencia: clave.current.valor,
       avisosConfirmados: [...avisosConfirmados],
@@ -93,6 +101,14 @@ export function PanelGenerar({
         marcada={derechos}
         onCambio={setDerechos}
       />
+      {conProducto && (
+        <Casilla
+          etiqueta="Tengo derecho a usar esta marca"
+          descripcion="El producto es tuyo o tienes autorización de la marca para usarlo en este vídeo. Solo aparece cuando el envío lleva producto, y sin ella no se genera. Tu declaración queda registrada con su fecha."
+          marcada={derechoMarca}
+          onCambio={setDerechoMarca}
+        />
+      )}
       {estimacion.superaUmbral && (
         <Casilla
           etiqueta={`Sé que este trabajo pasa de ${formatearCreditos(estimacion.umbral)}`}

@@ -377,6 +377,44 @@ const REGLAS: readonly Regla[] = [
       confirmable: true,
     };
   },
+  /**
+   * **El modelo elegido no admite la foto del producto** (decisión firme del propietario, 2026-09-28). Nunca
+   * se cambia de modelo por su cuenta: cambiar de modelo cambia la tarifa, y lo que se paga lo decide el
+   * usuario. Se avisa, se dice cuáles sí la llevan y él elige.
+   */
+  (h) => {
+    if (!h.producto?.sinHuecoDeReferencia) return null;
+    const sugeridos = h.producto.modelosConFoto;
+    return {
+      regla: "producto-sin-hueco-de-referencia",
+      estado: "ajustes",
+      motivo: `${h.modelo?.nombre ?? "Este modelo"} no admite la foto de «${h.producto.nombre}» como referencia, así que el producto viajará solo descrito con palabras y su etiqueta puede salir distinta.`,
+      accion:
+        sugeridos.length > 0
+          ? `Cambia el modelo a uno que sí lleve la foto del producto (${sugeridos.join(", ")}) y vuelve a estimar el coste, porque la tarifa es otra. No se cambia solo por eso. Si te vale con la descripción, confírmalo.`
+          : "Hoy no hay ningún otro modelo disponible que acepte la foto del producto. Si te vale con la descripción, confírmalo.",
+      http: 409,
+      excepcion: "generacion",
+      confirmable: true,
+    };
+  },
+  /**
+   * **Acción poco fiable**: las de piel salen mal a menudo con los modelos de hoy. No se prohíben —el usuario
+   * decide en qué gasta—, pero se dice antes de cobrar y no después.
+   */
+  (h) => {
+    if (!h.producto?.pocoFiable) return null;
+    return {
+      regla: "producto-accion-poco-fiable",
+      estado: "ajustes",
+      motivo: `«${h.producto.nombreAccion}» es de las acciones que peor salen hoy: abrir un envase, extender un producto sobre la piel o seguir una mano moviéndose falla a menudo, y el resultado puede no servirte.`,
+      accion:
+        "Añade la foto del mecanismo y la del frontal para darle todo lo que se puede, cuenta con repetirlo, o elige una acción más sencilla. Si quieres probarlo igualmente, confírmalo.",
+      http: 409,
+      excepcion: "generacion",
+      confirmable: true,
+    };
+  },
   (h) => {
     if (!h.producto?.sinFotos) return null;
     return {

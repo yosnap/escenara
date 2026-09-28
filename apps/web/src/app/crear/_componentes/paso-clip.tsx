@@ -213,6 +213,7 @@ export function PasoClip({
                 ...previaMotivos,
                 ...(exigeRevision && !sinTerceros ? ["Falta confirmar la revisión de las fotos del personaje."] : []),
               ]}
+              conProducto={producto.productoId !== ""}
               enviando={enviando}
               onGenerar={onGenerar}
             />

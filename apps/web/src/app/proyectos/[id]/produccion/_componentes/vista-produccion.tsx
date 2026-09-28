@@ -160,6 +160,8 @@ export function VistaProduccion({ inicial }: { inicial: ProduccionVista }) {
           }}
           umbral={produccion.umbralAvisoCreditos}
           sello={produccion.selloFotograma}
+          // Con una sola escena del lote que lleve producto hay una marca en juego, y se declara una vez.
+          conProducto={produccion.escenas.some((e) => e.conProducto)}
           etiqueta={deGolpe <= 1 ? "Producir la escena" : `Producir ${deGolpe} escenas`}
           // El último trabajo de cada escena entra en la firma: después de un fallo, volver a pulsar es otra
           // confirmación y estrena clave, así que el servidor no puede devolver los trabajos que ya fallaron.

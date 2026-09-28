@@ -196,6 +196,17 @@ export interface HechosProducto {
   /** El tope de referencias del modelo deja fuera fotos del personaje o del producto. */
   referenciasNoCaben: boolean;
   /**
+   * El producto tiene fotos y en este modelo **no cabe ninguna**: su segunda imagen no es una galería (en Veo
+   * es el último fotograma del clip). El producto viajaría solo descrito con palabras.
+   */
+  sinHuecoDeReferencia: boolean;
+  /** Modelos de la misma capacidad en los que sí cabe la foto del producto. Solo se rellena si hace falta. */
+  modelosConFoto: string[];
+  /** La acción elegida es de las que hoy salen mal a menudo (las de piel). */
+  pocoFiable: boolean;
+  /** El nombre en castellano de la acción elegida: es el que el usuario leyó en el botón. */
+  nombreAccion: string;
+  /**
    * `true` cuando llevar el producto obliga a renunciar a la identidad registrada en el proveedor: sus
    * referencias y su `character_ids` son excluyentes, así que la cara y la voz pasan a salir de las fotos.
    */

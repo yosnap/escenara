@@ -79,6 +79,23 @@ export function exigirRevisionDeReferencias(sinTerceros: unknown) {
   }
 }
 
+/**
+ * **Derecho a usar la marca del producto** (decisión firme del propietario, 2026-09-28).
+ *
+ * Es una casilla **aparte** de la de la imagen y no un aviso confirmable más: quien pone un producto en un
+ * vídeo está usando una marca —la suya o la de otro—, y esa es una declaración distinta de «esta foto es
+ * mía». Solo se pide cuando el envío lleva producto, y sin ella el envío no sale. Queda registrada con su
+ * fecha en el trabajo, que es lo que permite demostrar cuándo se hizo.
+ */
+export function exigirDerechoDeMarca(derechoMarca: unknown) {
+  if (derechoMarca !== true) {
+    throw new ErrorGeneracion(
+      400,
+      "Confirma que tienes derecho a usar la marca de este producto antes de generar. Si es un producto de otra empresa, necesitas su autorización.",
+    );
+  }
+}
+
 export function exigirDerechos(derechos: unknown) {
   if (derechos !== true) {
     throw new ErrorGeneracion(400, "Confirma que tienes derecho a usar esa imagen antes de generar.");
