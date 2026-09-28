@@ -1,5 +1,5 @@
 {
-  "comentario": "Semilla versionada de presets y plantillas de prompt (0.16.0). Ojo con los formatos: la proporcion viaja en `valores.proporcion`, que se valida contra el catalogo del modelo, y NO en el texto del prompt. El texto pasa por la misma limpieza anti-inyeccion que la ficha del personaje, que quita las medidas de salida (\"9:16\", \"1080p\"): escribelo en palabras (\"vertical full-bleed framing\"). Es el catalogo inicial de la instalacion: seis especialidades, cuatro formatos y cinco looks, mas vestuarios, duraciones y acciones, y desde la 0.25.0 los catalogos de la direccion del clip (formato-clip, plano, angulo, optica, luz, localizacion, camara, microaccion y registro-estetico) mas el bloque fijo de anclajes (C6), que cierra siempre el prompt del fotograma y que el usuario no puede editar ni quitar. La descripción va en español (es lo que se lee en el botón) y `valores.prompt` en inglés (es lo que entra en el prompt), según la decisión provisional del 2026-09-27. La semilla no pisa lo que haya cambiado quien administra: solo crea lo que falta. Para añadir un preset, añade una entrada aquí con una clave nueva y vuelve a migrar.",
+  "comentario": "Semilla versionada de presets y plantillas de prompt (0.16.0). Ojo con los formatos: la proporcion viaja en `valores.proporcion`, que se valida contra el catalogo del modelo, y NO en el texto del prompt. El texto pasa por la misma limpieza anti-inyeccion que la ficha del personaje, que quita las medidas de salida (\"9:16\", \"1080p\"): escribelo en palabras (\"vertical full-bleed framing\"). Es el catalogo inicial de la instalacion: seis especialidades, cuatro formatos y cinco looks, mas vestuarios, duraciones y acciones, y desde la 0.25.0 los catalogos de la direccion del clip (formato-clip, plano, angulo, optica, luz, localizacion, camara, microaccion y registro-estetico) mas el bloque fijo de anclajes (C6), que cierra siempre el prompt del fotograma y que el usuario no puede editar ni quitar. La descripción va en español (es lo que se lee en el botón) y `valores.prompt` en inglés (es lo que entra en el prompt), según la decisión provisional del 2026-09-27. La semilla no pisa lo que haya cambiado quien administra: solo crea lo que falta. Para añadir un preset, añade una entrada aquí con una clave nueva y vuelve a migrar. Desde la 0.27.0 esta semilla trae tambien el catalogo de los doce angulos del anuncio (categoria `angulo-anuncio`, que NO es el angulo de camara `angulo` de la direccion del clip): cada uno con su definicion breve en castellano (la referencia de Jev), por donde entra, un ejemplo del mismo producto en los doce y, en los que afirman algo comprobable, `valores.exigeDeclaracion` para pedir la declaracion de veracidad antes del guion. Este catalogo solo lo amplia quien administra: el usuario elige uno en el brief y no puede duplicarlo.",
   "presets": [
     {
       "categoria": "especialidad",
@@ -1153,6 +1153,154 @@
       "orden": 230,
       "valores": {
         "prompt": "The person massages their face with the fingertips in slow upward circles, the skin moving softly under the fingers"
+      }
+    },
+    {
+      "categoria": "angulo-anuncio",
+      "clave": "problema-dolor",
+      "nombre": "Problema / dolor",
+      "descripcion": "Entra por lo que le molesta cada día y lo nombra tal como lo vive.",
+      "orden": 10,
+      "valores": {
+        "prompt": "Opens on the everyday problem the viewer lives with, named the way they would name it themselves",
+        "porDondeEntra": "Lo que le molesta cada día",
+        "ejemplo": "El encrespado que aparece a los diez minutos de salir de casa."
+      }
+    },
+    {
+      "categoria": "angulo-anuncio",
+      "clave": "identidad",
+      "nombre": "Identidad",
+      "descripcion": "Entra por quién es: le habla a un grupo con el que se reconoce al instante.",
+      "orden": 20,
+      "valores": {
+        "prompt": "Opens by naming who the viewer is, so they recognise themselves in the first second",
+        "porDondeEntra": "Quién es",
+        "ejemplo": "Para la que tiene el pelo rizado y ya lo ha probado todo."
+      }
+    },
+    {
+      "categoria": "angulo-anuncio",
+      "clave": "mecanismo",
+      "nombre": "Mecanismo",
+      "descripcion": "Entra por la causa oculta: explica por qué pasa lo que pasa.",
+      "orden": 30,
+      "valores": {
+        "prompt": "Opens by revealing the hidden cause behind the problem, and explains why it happens",
+        "porDondeEntra": "El porqué, la causa oculta",
+        "ejemplo": "El culpable son los sulfatos del champú de siempre.",
+        "exigeDeclaracion": true
+      }
+    },
+    {
+      "categoria": "angulo-anuncio",
+      "clave": "beneficio",
+      "nombre": "Beneficio",
+      "descripcion": "Entra por el resultado: lo que consigue y en cuánto tiempo.",
+      "orden": 40,
+      "valores": {
+        "prompt": "Opens on the concrete result the viewer gets, and how soon they get it",
+        "porDondeEntra": "El resultado",
+        "ejemplo": "Rizos definidos todo el día, en cinco minutos.",
+        "exigeDeclaracion": true
+      }
+    },
+    {
+      "categoria": "angulo-anuncio",
+      "clave": "objeciones",
+      "nombre": "Objeciones",
+      "descripcion": "Entra por lo que ya cree y no es cierto, y lo responde.",
+      "orden": 50,
+      "valores": {
+        "prompt": "Opens by voicing what the viewer already believes and then answering that objection",
+        "porDondeEntra": "Lo que cree y no es cierto",
+        "ejemplo": "«Todos los champús son iguales, es puro marketing»."
+      }
+    },
+    {
+      "categoria": "angulo-anuncio",
+      "clave": "emocional",
+      "nombre": "Emocional",
+      "descripcion": "Entra por un sentimiento concreto, no por un dato.",
+      "orden": 60,
+      "valores": {
+        "prompt": "Opens on a specific feeling rather than on a fact or a figure",
+        "porDondeEntra": "Un sentimiento",
+        "ejemplo": "Dejar de plancharse el pelo para esconder los rizos."
+      }
+    },
+    {
+      "categoria": "angulo-anuncio",
+      "clave": "estatus",
+      "nombre": "Estatus",
+      "descripcion": "Entra por el secreto de quienes ya lo tienen resuelto.",
+      "orden": 70,
+      "valores": {
+        "prompt": "Opens as the insider secret of the people who already have it figured out",
+        "porDondeEntra": "El secreto de las que van perfectas",
+        "ejemplo": "Lo que usan las que siempre lo llevan impecable."
+      }
+    },
+    {
+      "categoria": "angulo-anuncio",
+      "clave": "miedo-perdida",
+      "nombre": "Miedo / pérdida",
+      "descripcion": "Entra por lo que se pierde si no cambia nada.",
+      "orden": 80,
+      "valores": {
+        "prompt": "Opens on what the viewer keeps losing if nothing changes",
+        "porDondeEntra": "Lo que se pierde si no cambia",
+        "ejemplo": "Los sulfatos siguen dañando el pelo, y ese daño no vuelve atrás.",
+        "exigeDeclaracion": true
+      }
+    },
+    {
+      "categoria": "angulo-anuncio",
+      "clave": "comodidad",
+      "nombre": "Comodidad",
+      "descripcion": "Entra por lo fácil y lo rápido que es hacerlo.",
+      "orden": 90,
+      "valores": {
+        "prompt": "Opens on how easy and how fast it is to do",
+        "porDondeEntra": "Lo fácil y rápido",
+        "ejemplo": "Dos minutos en la ducha y ya está."
+      }
+    },
+    {
+      "categoria": "angulo-anuncio",
+      "clave": "precio-valor",
+      "nombre": "Precio / valor",
+      "descripcion": "Entra comparando lo que cuesta con algo cotidiano.",
+      "orden": 100,
+      "valores": {
+        "prompt": "Opens by comparing the price with an everyday purchase the viewer already makes",
+        "porDondeEntra": "Lo que cuesta comparado con algo cotidiano",
+        "ejemplo": "Menos que un desayuno, y dura todo el mes."
+      }
+    },
+    {
+      "categoria": "angulo-anuncio",
+      "clave": "comparacion",
+      "nombre": "Comparación",
+      "descripcion": "Entra comparándolo con lo que ya usa o ya paga.",
+      "orden": 110,
+      "valores": {
+        "prompt": "Opens by comparing it with what the viewer already uses or already pays for",
+        "porDondeEntra": "Frente a lo que ya usa",
+        "ejemplo": "Lo de la peluquería semanal, en casa y por la cuarta parte.",
+        "exigeDeclaracion": true
+      }
+    },
+    {
+      "categoria": "angulo-anuncio",
+      "clave": "rompemitos",
+      "nombre": "Rompemitos",
+      "descripcion": "Entra desmontando una creencia extendida del sector.",
+      "orden": 120,
+      "valores": {
+        "prompt": "Opens by dismantling a widespread belief about how this is supposed to work",
+        "porDondeEntra": "Desmonta una creencia",
+        "ejemplo": "El rizo no se define echando más producto."
       }
     }
   ],

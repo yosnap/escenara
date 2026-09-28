@@ -11,6 +11,7 @@ import {
   type PlantillaVista,
   PRESET_NOMBRE_MAXIMO,
   PRESET_PROMPT_MAXIMO,
+  PRESET_TEXTO_ES_MAXIMO,
   type PresetVista,
   RESTRICCIONES_VACIAS,
   type RestriccionesPlantilla,
@@ -76,6 +77,15 @@ export function valoresDeTexto(crudo: string): ValoresPreset {
     ...(esMomentoMicroaccion(o.momento) ? { momento: o.momento } : {}),
     ...(esFormatoClip(o.formatoClip) ? { formatoClip: o.formatoClip } : {}),
     ...(esRegistroEstetico(o.registro) ? { registro: o.registro } : {}),
+    // Catálogo de ángulos del anuncio (0.27.0). Los dos textos van en castellano y el tercero es una bandera:
+    // un `exigeDeclaracion` que no sea booleano se descarta, y sin bandera el ángulo no exige declaración.
+    ...(typeof o.porDondeEntra === "string" && o.porDondeEntra.trim() !== ""
+      ? { porDondeEntra: texto(o.porDondeEntra, PRESET_TEXTO_ES_MAXIMO) }
+      : {}),
+    ...(typeof o.ejemplo === "string" && o.ejemplo.trim() !== ""
+      ? { ejemplo: texto(o.ejemplo, PRESET_TEXTO_ES_MAXIMO) }
+      : {}),
+    ...(o.exigeDeclaracion === true ? { exigeDeclaracion: true } : {}),
   };
 }
 

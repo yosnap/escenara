@@ -1,4 +1,5 @@
 import { and, count, eq, isNull, sql } from "drizzle-orm";
+import { CATEGORIA_ANGULO } from "@/lib/anuncio";
 import {
   esFormatoClip,
   esMomentoMicroaccion,
@@ -189,6 +190,17 @@ export async function duplicarPreset(usuarioId: string, id: string): Promise<Pre
   const original = await presetUsable(usuarioId, id);
   if (original.ownerId === usuarioId) {
     throw new ErrorPreset(409, "Ese preset ya es tuyo: edítalo en lugar de duplicarlo.");
+  }
+  /**
+   * El catálogo de ángulos del anuncio (0.27.0) **lo amplía quien administra, no el usuario** (decisión del
+   * propietario, 2026-09-28): Jev comprueba el guion contra la definición de referencia de cada ángulo, y una
+   * copia editada por cada cuenta dejaría esa referencia en manos de quien la está usando.
+   */
+  if (original.category === CATEGORIA_ANGULO) {
+    throw new ErrorPreset(
+      409,
+      "Los ángulos del anuncio no se duplican: su definición es la referencia con la que se comprueba el guion. Si te falta un ángulo, pídeselo a quien administra esta instalación.",
+    );
   }
   /**
    * El tope, la clave libre y el alta van en **una sola transacción con la fila del usuario bloqueada**, igual que

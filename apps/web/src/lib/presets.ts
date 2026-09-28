@@ -40,6 +40,11 @@ export const CATEGORIAS_PRESET = [
   "anclajes",
   // Acciones de producto (0.26.0).
   "accion-producto",
+  /**
+   * Ángulos del anuncio (0.27.0): desde qué dolor o deseo entra. **No es** el ángulo de cámara de la dirección
+   * del clip, que es `angulo`; de ahí el sufijo.
+   */
+  "angulo-anuncio",
 ] as const;
 export type CategoriaPreset = (typeof CATEGORIAS_PRESET)[number];
 
@@ -63,6 +68,7 @@ export const ETIQUETA_CATEGORIA: Record<CategoriaPreset, string> = {
   "registro-estetico": "Registro estético",
   anclajes: "Anclajes de realismo",
   "accion-producto": "Acción con el producto",
+  "angulo-anuncio": "Ángulo del anuncio",
 };
 
 export const AYUDA_CATEGORIA: Record<CategoriaPreset, string> = {
@@ -83,6 +89,8 @@ export const AYUDA_CATEGORIA: Record<CategoriaPreset, string> = {
   "registro-estetico": "Cómo de cuidado es el acabado: de campaña o de móvil.",
   anclajes: "Lo que hace que la imagen parezca una foto y no un render. Solo lo edita quien administra.",
   "accion-producto": "Qué hace el personaje con el producto: sostenerlo, señalarlo, abrirlo, o el producto solo.",
+  "angulo-anuncio":
+    "Desde qué dolor o deseo entra el anuncio. Uno solo por vídeo: mezclar varios es el error más común.",
 };
 
 /** Categorías que se pueden elegir varias veces a la vez. El resto son de elección única. */
@@ -164,7 +172,25 @@ export interface ValoresPreset {
   formatoClip?: FormatoClip;
   /** Registro estético al que corresponde; solo en `registro-estetico`. */
   registro?: RegistroEstetico;
+  /**
+   * Campos del catálogo de ángulos del anuncio (0.27.0; solo en `angulo-anuncio`). Van **en castellano** a
+   * propósito, al contrario que `prompt`: son lo que se lee en el brief y la definición de referencia con la que
+   * Jev comprueba si el guion responde al ángulo, y traducirlas al inglés las alejaría de lo que eligió el
+   * usuario.
+   */
+  /** Por dónde entra el anuncio con este ángulo. «Lo que le molesta cada día». */
+  porDondeEntra?: string;
+  /** Un ejemplo escrito del mismo producto en los doce: es lo que hace entender el ángulo de un vistazo. */
+  ejemplo?: string;
+  /**
+   * `true` cuando elegir este ángulo obliga a **declarar que lo que se afirma es cierto** antes de pedir guion.
+   * Lo dice cada preset y no una lista en el código, para que un ángulo nuevo del admin también pueda exigirla.
+   */
+  exigeDeclaracion?: boolean;
 }
+
+/** Largo de los textos en castellano del catálogo de ángulos: una frase cada uno, no un párrafo. */
+export const PRESET_TEXTO_ES_MAXIMO = 240;
 
 /**
  * Largo del fragmento en inglés de un preset. Subido de 300 a 600 en la 0.25.0 por el bloque de anclajes (C6),

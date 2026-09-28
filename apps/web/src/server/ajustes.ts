@@ -161,6 +161,19 @@ export interface Ajustes {
    */
   coherenciaDecisionesPorDia: number;
   /**
+   * **Estrategia del anuncio** (0.27.0): el brief (ángulo y oferta antes del guion) y las variantes por ángulo.
+   *
+   * Las dos **encendidas de fábrica**: no cuestan nada por sí mismas —el brief es un formulario y las variantes
+   * crean proyectos, no clips— y son el camino que esta versión propone. Se apagan desde el panel si una
+   * instalación prefiere el guion a mano, y apagarlas no borra ningún brief ya escrito.
+   */
+  anuncioBriefActivo: boolean;
+  /**
+   * Ofrecer crear variantes del mismo producto y oferta, una por ángulo. Depende del brief: sin brief no hay
+   * ángulo del que variar, así que con `anuncioBriefActivo` apagado esto no ofrece nada aunque esté encendido.
+   */
+  anuncioVariantesActivas: boolean;
+  /**
    * Voz y subtítulos (RF08, 0.21.0). **La voz se elige por proyecto**, no aquí: lo que se ajusta en el panel es
    * si esta instalación ofrece la pista de voz de pago y con qué transcriptor local trabaja.
    */
@@ -289,6 +302,9 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   // Sin tarifa medida en esta instalación: 0 € hasta que quien administra la mida, como con el resto.
   coherenciaEurosPorMillonTokens: 0,
   coherenciaDecisionesPorDia: 60,
+  // El brief y las variantes arrancan **encendidos**: no gastan nada y son el camino de esta versión.
+  anuncioBriefActivo: true,
+  anuncioVariantesActivas: true,
   // La pista de voz de pago arranca apagada: el modo «voz del clip» no gasta nada más y es el de fábrica.
   vozTtsActivo: false,
   transcripcionBinario: "whisper-cli",
@@ -454,6 +470,8 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
     valido: entero(1, 10000),
     mensaje: "Indica de 1 a 10000 comprobaciones de coherencia por usuario y día.",
   },
+  anuncioBriefActivo: { valido: booleano, mensaje: "Debe ser sí o no." },
+  anuncioVariantesActivas: { valido: booleano, mensaje: "Debe ser sí o no." },
   vozTtsActivo: { valido: booleano, mensaje: "Debe ser sí o no." },
   transcripcionBinario: {
     // Nombre de orden o ruta, sin espacios ni metacaracteres: se ejecuta como proceso, así que aquí se acota lo

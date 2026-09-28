@@ -130,13 +130,36 @@ export const projects = pgTable(
      * de voz que se registró en el proveedor, así que invalida ese registro igual que cambiarla a mano.
      */
     speechAccent: acentoHabla("speech_accent").notNull().default("es_ES_madrid"),
+    /**
+     * **Variantes por ángulo** (0.27.0). Un proyecto es un anuncio y un anuncio tiene un solo ángulo, así que
+     * probar doce ángulos del mismo producto son doce proyectos hermanos. Este identificador es lo que los agrupa:
+     * mismo grupo = mismo producto y misma oferta, ángulo distinto. `null` en un proyecto que no es variante de
+     * nada, que es todo lo anterior a esta versión.
+     *
+     * No es clave ajena a ninguna tabla: no hay entidad «grupo de variantes» que dé de alta nada. Es el valor que
+     * comparten, generado al crear el primer hermano.
+     */
+    variantGroupId: uuid("variant_group_id"),
+    /**
+     * Ángulo del anuncio de este proyecto, **denormalizado** desde `ad_briefs.angle_preset_key` (0.27.0): es lo que
+     * permite listar y comparar campañas por ángulo sin unir tablas. Vacío = sin brief o sin ángulo elegido.
+     *
+     * La copia la mantiene el servicio del brief en la misma escritura que el brief (`server/anuncio/brief.ts`), y
+     * quien manda es el brief: si alguna vez discreparan, el brief es la fuente y esto, el índice.
+     */
+    anglePresetKey: text("angle_preset_key").notNull().default(""),
     /** Quién aprobó el plan y cuándo; `null` mientras el proyecto sea un borrador. */
     planApprovedBy: uuid("plan_approved_by").references(() => users.id, { onDelete: "set null" }),
     planApprovedAt: timestamp("plan_approved_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("projects_usuario_idx").on(t.userId, t.updatedAt)],
+  (t) => [
+    index("projects_usuario_idx").on(t.userId, t.updatedAt),
+    // Las variantes de un grupo se leen juntas, y el ángulo es con lo que se comparan las campañas (0.27.0).
+    index("projects_grupo_variantes_idx").on(t.variantGroupId),
+    index("projects_angulo_idx").on(t.userId, t.anglePresetKey),
+  ],
 );
 
 export const estadoEscena = pgEnum("scene_state", ["borrador", "aprobada", "producida"]);
