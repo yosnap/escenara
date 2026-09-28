@@ -2,6 +2,18 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.27.1] · 2026-09-29
+
+### Corregido
+
+- **Los guiones del anuncio se quedan en su ángulo.** La prueba real con el modelo de texto mostró guiones que
+  arrancaban bien y se iban a otro ángulo (por ejemplo, cerrar con el precio en un anuncio de comodidad). Ahora
+  las instrucciones dicen que el ángulo vale para todas las escenas, que la primera entra por su punto de entrada
+  y que contar la oferta en el cierre no es cambiar de ángulo. La comprobación de Jev sigue la misma regla, así
+  que decir el precio de la oferta ya no cuenta como mezcla.
+- **El veredicto del ángulo no promete lo que no hace.** Dice si el guion mezcla ángulos y enseña lo que miró, pero
+  no nombra cuál es el intruso: se han quitado esas promesas de la pantalla y de los comentarios.
+
 ## [0.27.0] · 2026-09-28
 
 La estrategia del anuncio: un anuncio no es creatividad, es un sistema con tres palancas. El **ángulo** (a quién

@@ -49,7 +49,9 @@ export const INSTRUCCIONES_HOOKS_Y_GUION = [
   "«camara» y «gesto» de cada hook son una clave exacta de las listas que se te dan, la que mejor arranque ese hook, o cadena vacía si ninguna encaja. No escribas nada que no sea una de esas claves.",
   "«concepto» resume el anuncio en dos o tres frases. «texto» es lo que se dice en la escena y «accion» describe solo lo que se ve: encuadre, gesto y luz.",
   "«segundos» es exactamente la duración que se indique en la petición, la misma en todas las escenas.",
-  "El guion de «escenas» no empieza por ninguno de los hooks: el hook lo elige la persona después y se pone delante.",
+  "El guion de «escenas» no repite ninguno de los hooks: el hook lo elige la persona después y se pone delante. Aun así, la primera escena entra por el punto de entrada del ángulo.",
+  "El ángulo vale para todas las escenas, sin excepción: cada una habla desde el mismo dolor, deseo o creencia, también la primera y la de cierre. No cambies de ángulo a mitad del guion.",
+  "Decir en el cierre lo que se da (el precio, la garantía o el regalo que aparezcan en la oferta) no es cambiar de ángulo: la oferta se cuenta siempre desde el ángulo elegido, sin pasar a hablar de precio, comodidad o miedo si ese no es el ángulo.",
   "Escribe en español de España.",
 ].join(" ");
 
