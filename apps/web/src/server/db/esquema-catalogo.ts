@@ -25,6 +25,8 @@ import { users } from "./esquema-auth";
 
 export const capacidadModelo = pgEnum("model_capability", [
   "image_edit",
+  // 0.23.4: generar una imagen **sin ninguna de partida** (retrato de un personaje inventado, «Crear» sin foto).
+  "text_to_image",
   "image_to_video",
   "text_to_video",
   "text_generation",

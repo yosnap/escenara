@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import {
   DESCRIPCION_CAPACIDAD,
   DESCRIPCION_ESTADO_MODELO,
+  type DuracionConCoste,
   type EstadoModelo,
   ETIQUETA_CAPACIDAD,
   ETIQUETA_ESTADO_MODELO,
@@ -214,6 +215,41 @@ export function SelectorModelo({
       opciones={modelos.map(opcionDeModelo)}
       valor={valor}
       onCambio={(v) => v && onCambio(v)}
+      deshabilitado={deshabilitado}
+    />
+  );
+}
+
+/**
+ * Selector de **duración del clip** (0.23.4). Solo ofrece las duraciones que el modelo admite y que además
+ * tienen su tarifa registrada, con lo que cuesta cada una: una duración sin precio no se puede confirmar, así
+ * que no se enseña. Y se dice cuáles tienen el precio publicado por el proveedor y cuáles están medidas aquí.
+ *
+ * Existe porque hasta la 0.23.3 la interfaz hablaba de clips de 8 s mientras el modelo solo sabía hacer 4: los
+ * textos de duración salen ahora de lo que el modelo sabe hacer y cobrar, no de una frase escrita a mano.
+ */
+export function SelectorDuracion({
+  duraciones,
+  valor,
+  onCambio,
+  deshabilitado,
+}: {
+  duraciones: DuracionConCoste[];
+  valor: number;
+  onCambio: (segundos: number) => void;
+  deshabilitado?: boolean;
+}) {
+  if (duraciones.length < 2) return null;
+  return (
+    <Selector
+      etiqueta="Duración del clip"
+      opciones={duraciones.map((d) => ({
+        value: String(d.segundos),
+        label: `${d.segundos} segundos`,
+        descripcion: `${formatearCreditos(d.creditos)} por ${d.unidad}${d.publicado ? " · precio publicado por el proveedor" : ""}`,
+      }))}
+      valor={String(valor)}
+      onCambio={(v) => v && onCambio(Number(v))}
       deshabilitado={deshabilitado}
     />
   );

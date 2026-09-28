@@ -2,7 +2,6 @@ import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import type { EvaluacionVista } from "@/lib/controles";
 import { formatearCreditos } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
-import { precioOmniEstimado } from "@/lib/omni";
 import {
   duracionesEnTexto,
   duracionParaModelo,
@@ -38,13 +37,18 @@ import {
 import type { EleccionDeTrabajo } from "../generacion/precios";
 import { condicionEnCurso } from "../generacion/trabajos";
 import { type Actor, aDto } from "../media/servicio";
-import { creditosDeEscenaHablada, registroParaProducir, segundosDeEscenaOmni } from "../omni/escena";
+import {
+  creditosDeEscenaHablada,
+  duracionesDeOmni,
+  precioDeDuracionEstimado,
+  registroParaProducir,
+  segundosDeEscenaOmni,
+} from "../omni/escena";
 import { eleccionOmni } from "../omni/registro";
 import { ultimaVersion } from "../personajes/ficha";
 import { plantillaVigenteDe } from "../prompts/consulta";
 import { creditosDelEnvio } from "../prompts/traduccion";
 import { ErrorCatalogo } from "../proveedores/contrato";
-import { vozOmniDelProyecto } from "../voz/omni";
 
 /**
  * Lectura del estado de producción de un proyecto (RF06, 0.19.0).
@@ -389,7 +393,7 @@ async function costeDeEscenaHablada(
     return {
       creditos,
       sello,
-      estimado: precioOmniEstimado(segundosDeEscenaOmni(modelo.parametros.duraciones, proyecto), modelo.modelo),
+      estimado: precioDeDuracionEstimado(modelo, segundosDeEscenaOmni(duracionesDeOmni(modelo), proyecto)),
     };
   } catch {
     // Sin modelo Omni utilizable no se inventa ningún precio: `impedimentosDeOmni` dice por qué y no se produce.

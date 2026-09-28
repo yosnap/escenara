@@ -20,7 +20,7 @@ const REGLAS: readonly ((e: EntradaDecision) => Decision | null)[] = [
         }
       : null,
   (e) =>
-    e.tipo === "fotograma" && !e.conReferencia
+    e.tipo === "fotograma" && !e.conReferencia && e.sinReferencia !== true
       ? { estado: "rechazado", evidencia: "Un fotograma necesita una imagen de referencia propia.", coste: 0 }
       : null,
   (e) =>

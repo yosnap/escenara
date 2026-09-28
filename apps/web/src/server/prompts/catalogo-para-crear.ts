@@ -27,21 +27,27 @@ export async function catalogoParaCrear(
   usuarioId: string,
   tipo: TipoTrabajo,
   modeloPedido?: string | null,
+  /**
+   * Cómo se va a generar: sin imagen de partida el modelo es de **texto a imagen**, y la duración elegida es
+   * contra la que se validan los presets de duración. Es el mismo modo con el que se estima, para que la
+   * botonera no ofrezca nada que el servidor vaya a rechazar.
+   */
+  modo: { sinReferencia?: boolean; segundos?: number } = {},
 ): Promise<CatalogoParaCrear> {
-  const capacidad = CAPACIDAD_DE_TIPO[tipo];
+  const capacidad = tipo === "fotograma" && modo.sinReferencia ? "text_to_image" : CAPACIDAD_DE_TIPO[tipo];
   const { modelo } = await resolver(capacidad, modeloPedido ?? null);
   const [todos, plantillas] = await Promise.all([listarPresets({ usuarioId }), listarPlantillas({ usuarioId })]);
   const activos = todos.filter((p) => p.activo).map(recortarPresetVisible);
   return {
     presets: activos,
-    incompatibles: motivosPorPreset(activos, modelo),
+    incompatibles: motivosPorPreset(activos, modelo, modo.segundos),
     plantillas: plantillas.filter((p) => p.activa && p.capacidad === capacidad).map(recortarPlantillaVisible),
     modelo: modelo.modelo,
-    limites: limitesDelModelo(modelo),
+    limites: limitesDelModelo(modelo, modo.segundos),
   };
 }
 
-function motivosPorPreset(presets: PresetVisible[], modelo: ModeloVista): Record<string, string> {
+function motivosPorPreset(presets: PresetVisible[], modelo: ModeloVista, segundos?: number): Record<string, string> {
   const motivos: Record<string, string> = {};
   for (const preset of presets) {
     const motivo = motivoDelPreset(
@@ -50,6 +56,7 @@ function motivosPorPreset(presets: PresetVisible[], modelo: ModeloVista): Record
         ...(preset.segundos === null ? {} : { segundos: preset.segundos }),
       },
       modelo,
+      segundos,
     );
     if (motivo) motivos[preset.id] = motivo;
   }

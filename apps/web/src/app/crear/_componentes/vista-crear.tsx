@@ -5,7 +5,7 @@ import { Casilla } from "@/components/ui/choice";
 import { DepositoPresupuesto } from "@/components/ui/deposito";
 import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo } from "@/components/ui/field";
-import { AvisoSinVoz, SelectorModelo } from "@/components/ui/modelo";
+import { AvisoSinVoz, SelectorDuracion, SelectorModelo } from "@/components/ui/modelo";
 import { Paso } from "@/components/ui/paso";
 import { consultarContexto } from "@/components/ui/personajes/api-personajes";
 import { PanelContextoPersonaje } from "@/components/ui/personajes/panel-contexto";
@@ -50,13 +50,18 @@ import { useControles } from "./use-controles";
  * El modelo se elige por capacidad entre los del catálogo que se pueden usar (`compatible` o `validado`),
  * y al cambiarlo se vuelve a pedir la estimación: el coste es el de ese modelo, no una media.
  */
-/** Duración del clip según el modelo elegido; si no la declara, la de referencia del proyecto. */
-const segundosDelClip = (modelo: ModeloElegible | null) => modelo?.duraciones[0] ?? CLIP.segundos;
+/**
+ * Duración del clip que se va a pedir: la que se ha estimado (que es la que se paga) y, si el modelo no tarifa
+ * ninguna en concreto, la primera que sabe cobrar. `CLIP` es el último recurso.
+ */
+const segundosDelClip = (estimacion: Estimacion, modelo: ModeloElegible | null) =>
+  estimacion.segundos ?? modelo?.duraciones[0] ?? CLIP.segundos;
 
 export function VistaCrear({
   estimacionFotograma,
   estimacionAnimacion,
   modelosFotograma,
+  modelosSinImagen,
   modelosClip,
   deposito,
   cola,
@@ -70,6 +75,11 @@ export function VistaCrear({
   estimacionFotograma: Estimacion;
   estimacionAnimacion: Estimacion;
   modelosFotograma: ModeloElegible[];
+  /**
+   * Modelos que generan **sin imagen de partida** (0.23.4). Son otros modelos y otro precio: mientras no haya
+   * personaje ni foto elegidos, la escena se genera con uno de estos.
+   */
+  modelosSinImagen: ModeloElegible[];
   modelosClip: ModeloElegible[];
   deposito: Deposito;
   cola: EstadoCola;
@@ -128,11 +138,14 @@ export function VistaCrear({
   const controlesFoto = useControles(controlesIniciales);
   const controlesClip = useControles(evaluacionPendiente(controlesIniciales.reglasVersion));
 
+  // Sin personaje y sin imagen, la escena sale **solo de la descripción**: otro modelo y otro precio.
+  const sinImagen = personajeId === null && imagen.length === 0;
+  const modelosDelFotograma = sinImagen ? modelosSinImagen : modelosFotograma;
   const modeloClip = modelosClip.find((m) => m.modelo === estimacionClip.modelo) ?? null;
   const clipConVoz = modeloClip?.conVoz ?? estimacionClip.conVoz;
   const referencia = imagen[0] ?? null;
   const personaje = personajes.find((p) => p.id === personajeId) ?? null;
-  const modeloFoto = modelosFotograma.find((m) => m.modelo === estimacionFoto.modelo) ?? null;
+  const modeloFoto = modelosDelFotograma.find((m) => m.modelo === estimacionFoto.modelo) ?? null;
   const descripcion = prompt.trim();
   const frase = dialogo.trim();
   // Previsualización del prompt, calculada aquí mismo con la **misma** función pura que compone el servidor.
@@ -145,7 +158,11 @@ export function VistaCrear({
   const previaClip = previsualizar(catalogoClip, plantillaClip, descripcion, personajeDelClip?.tipo ?? null);
 
   const bloqueosFotograma = [
-    ...(personaje || referencia ? [] : ["Elige un personaje o una imagen de referencia."]),
+    // Sin personaje ni imagen no falta nada: se genera a partir de la descripción con un modelo de texto a
+    // imagen. Lo que sí falta es que haya alguno con el que hacerlo.
+    ...(sinImagen && modelosSinImagen.length === 0
+      ? ["Esta instalación no tiene ningún modelo que genere sin imagen de partida: elige un personaje o una foto."]
+      : []),
     ...((personaje || referencia) && !sinTerceros ? ["Falta confirmar la revisión de las fotos."] : []),
     ...(personaje && modeloFoto && modeloFoto.maximoReferencias < 1
       ? ["El modelo elegido no acepta fotos de referencia: elige otro para generar con un personaje."]
@@ -196,6 +213,24 @@ export function VistaCrear({
     setContexto(respuesta.datos);
   };
 
+  /**
+   * Al cambiar el sujeto (personaje o imagen) cambia **cómo** se va a generar: con una imagen de partida o sin
+   * ella. Y eso cambia el modelo y su precio, así que la estimación se vuelve a pedir al servidor con el modo
+   * nuevo. Lo llama la acción que cambia el sujeto, nunca un efecto.
+   */
+  const refrescarPorSujeto = async (id: string | null, medios: Medio[]) => {
+    const ahoraSinImagen = id === null && medios.length === 0;
+    const respuesta = await consultarEstimacion("fotograma", undefined, { sinImagen: ahoraSinImagen });
+    if (!respuesta.ok) {
+      setError(respuesta.error);
+      return;
+    }
+    setEstimacionFoto(respuesta.datos);
+    await refrescarContexto(id, respuesta.datos.modelo);
+    await refrescarControles(id, medios[0]?.id, respuesta.datos.modelo);
+    await refrescarCatalogo("fotograma", respuesta.datos.modelo, undefined, ahoraSinImagen);
+  };
+
   const generarFotograma = async (confirmacion: ConfirmacionCoste) => {
     if (!personaje && !referencia) return;
     setEnviando("fotograma");
@@ -234,6 +269,8 @@ export function VistaCrear({
       trabajoPadreId: fotograma.id,
       prompt: descripcion,
       dialogo: clipConVoz ? frase : "",
+      // La duración que se ha estimado y que se está confirmando: es la tarifa que se va a pagar.
+      segundos: segundosDelClip(estimacionClip, modeloClip),
       ...(fotograma.personajeId ? { sinTerceros: sinTercerosClip } : {}),
       modelo: estimacionClip.modelo,
       ...confirmacionDePlantilla(previaClip, plantillaClip),
@@ -267,9 +304,12 @@ export function VistaCrear({
    * calcularla en el navegador. Si falla, se dice y no se toca la que había: nunca se muestra un coste
    * inventado.
    */
-  const elegirModelo = async (tipo: "fotograma" | "animacion", modelo: string) => {
+  const elegirModelo = async (tipo: "fotograma" | "animacion", modelo: string, segundos?: number) => {
     setError(null);
-    const respuesta = await consultarEstimacion(tipo, modelo);
+    const respuesta = await consultarEstimacion(tipo, modelo, {
+      ...(tipo === "fotograma" ? { sinImagen } : {}),
+      ...(segundos === undefined ? {} : { segundos }),
+    });
     if (!respuesta.ok) {
       setError(respuesta.error);
       return;
@@ -291,12 +331,22 @@ export function VistaCrear({
     }
     // Y los formatos y las duraciones que se pueden ofrecer también son del modelo: se vuelven a pedir en
     // lugar de deducirlos aquí, que es lo que dejaría ofrecer algo que el servidor va a rechazar.
-    await refrescarCatalogo(tipo, respuesta.datos.modelo);
+    await refrescarCatalogo(tipo, respuesta.datos.modelo, respuesta.datos.segundos ?? undefined);
   };
 
   /** Presets y plantillas para el modelo indicado. Lectura: no encola nada ni mueve dinero. */
-  const refrescarCatalogo = async (tipo: "fotograma" | "animacion", modelo: string) => {
-    const respuesta = await consultarCatalogoDePresets(tipo, modelo);
+  const refrescarCatalogo = async (
+    tipo: "fotograma" | "animacion",
+    modelo: string,
+    segundos?: number,
+    /** Si hay o no imagen de partida **ahora mismo**: quien lo llama tras cambiarla trae el valor nuevo. */
+    sinImagenAhora = sinImagen,
+  ) => {
+    const respuesta = await consultarCatalogoDePresets(tipo, modelo, {
+      // Con el mismo modo que la estimación: la botonera no puede ofrecer algo que el servidor vaya a rechazar.
+      ...(tipo === "fotograma" ? { sinImagen: sinImagenAhora } : {}),
+      ...(segundos === undefined ? {} : { segundos }),
+    });
     if (!respuesta.ok) {
       setError(respuesta.error);
       return;
@@ -334,7 +384,8 @@ export function VistaCrear({
         personaje={personaje}
         imagen={imagen}
         referencia={referencia}
-        modelos={modelosFotograma}
+        modelos={modelosDelFotograma}
+        sinImagen={sinImagen}
         modeloElegido={estimacionFoto.modelo}
         modeloFoto={modeloFoto}
         sinTerceros={sinTerceros}
@@ -342,12 +393,11 @@ export function VistaCrear({
         onPersonaje={(id) => {
           setPersonajeId(id);
           setSinTerceros(false);
-          void refrescarContexto(id, estimacionFoto.modelo);
-          void refrescarControles(id, referencia?.id, estimacionFoto.modelo);
+          void refrescarPorSujeto(id, imagen);
         }}
         onImagen={(medios) => {
           setImagen(medios);
-          void refrescarControles(null, medios[0]?.id, estimacionFoto.modelo);
+          void refrescarPorSujeto(null, medios);
         }}
         onSinTerceros={setSinTerceros}
         onModelo={(modelo) => elegirModelo("fotograma", modelo)}
@@ -463,6 +513,13 @@ export function VistaCrear({
                         deshabilitado={enviando !== null}
                       />
                     )}
+                    {/* La duración sale del modelo y de lo que sabe cobrar, no de un texto escrito a mano. */}
+                    <SelectorDuracion
+                      duraciones={estimacionClip.duraciones}
+                      valor={segundosDelClip(estimacionClip, modeloClip)}
+                      deshabilitado={enviando !== null}
+                      onCambio={(segundos) => void elegirModelo("animacion", estimacionClip.modelo, segundos)}
+                    />
                     {!clipConVoz && <AvisoSinVoz />}
                     {fotograma.personajeId && (
                       <Casilla
@@ -492,8 +549,8 @@ export function VistaCrear({
                     <BloqueConfirmacion
                       controles={controlesClip}
                       estimacion={estimacionClip}
-                      etiqueta={`Animar ${segundosDelClip(modeloClip)} s`}
-                      firma={`animacion|${fotograma.id}|${descripcion}|${frase}|${estimacionClip.modelo}|${estimacionClip.sello}|${firmaDePlantilla(previaClip, plantillaClip)}`}
+                      etiqueta={`Animar ${segundosDelClip(estimacionClip, modeloClip)} s`}
+                      firma={`animacion|${fotograma.id}|${descripcion}|${frase}|${estimacionClip.modelo}|${segundosDelClip(estimacionClip, modeloClip)}|${estimacionClip.sello}|${firmaDePlantilla(previaClip, plantillaClip)}`}
                       bloqueos={[
                         ...previaClip.motivos,
                         ...(fotograma.personajeId && !sinTercerosClip

@@ -11,10 +11,10 @@ import {
   ENTRADAS_MAXIMAS,
   type EntradaMapa,
   type EntradaMapaVista,
+  ETIQUETA_FORMA_DE_IMAGEN,
   etiquetaDeEntrada,
   type MapaVista,
   NOMBRE_DE_TIPO,
-  type TipoDeMapa,
 } from "@/lib/mapa-modelos";
 import { guardarMapaAccion, type RespuestaMapa, volverALoRecomendadoAccion } from "../acciones-mapa";
 import { Bloque } from "./bloque";
@@ -98,7 +98,12 @@ function TarjetaTipo({ inicial, opciones }: { inicial: MapaVista; opciones: Entr
         </span>
         <span className="flex min-w-0 flex-1 flex-col">
           <span className="text-texto">{etiquetaDeEntrada(entrada)}</span>
-          {entrada.coste ? <span className="text-sm text-texto-suave">{entrada.coste}</span> : null}
+          <span className="text-sm text-texto-suave">
+            {/* De qué parte el modelo: es lo que decide si sirve para una escena que no tiene foto de partida. */}
+            {[entrada.forma ? ETIQUETA_FORMA_DE_IMAGEN[entrada.forma] : "", entrada.coste ?? ""]
+              .filter(Boolean)
+              .join(" · ")}
+          </span>
         </span>
         <Boton
           tamano="sm"
@@ -159,7 +164,13 @@ function TarjetaTipo({ inicial, opciones }: { inicial: MapaVista; opciones: Entr
                 return {
                   value: clave(o),
                   label: etiquetaDeEntrada(o),
-                  descripcion: [o.coste, yaEsta ? "ya en tu lista" : ""].filter(Boolean).join(" · "),
+                  descripcion: [
+                    o.forma ? ETIQUETA_FORMA_DE_IMAGEN[o.forma] : "",
+                    o.coste,
+                    yaEsta ? "ya en tu lista" : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" · "),
                 };
               })}
               onCambio={setAñadir}

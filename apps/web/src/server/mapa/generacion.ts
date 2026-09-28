@@ -1,4 +1,4 @@
-import { CAPACIDAD_DE_TIPO, type Capacidad } from "@/lib/catalogo";
+import { CAPACIDAD_DE_TIPO, type Capacidad, type ModeloVista, unidadParaDuracion } from "@/lib/catalogo";
 import type { TipoTrabajo } from "@/lib/generacion";
 import type { TipoDeMapa } from "@/lib/mapa-modelos";
 import { esModeloOmni } from "@/lib/omni";
@@ -20,6 +20,26 @@ import { type EntradaResuelta, resolverMapa } from "./mapa";
  * Lo que **no** cambia: sin precio registrado no se estima ni se gasta, los créditos de dos proveedores no se
  * comparan ni se suman, y quien decide si algo se puede generar sigue siendo el motor de controles.
  */
+
+/**
+ * Cómo se va a generar esto: lo que decide **qué capacidad** hace falta y **qué tarifa** se cobra.
+ *
+ * - `sinReferencia` (0.23.4): no hay ninguna imagen de partida (el retrato de un personaje inventado o «Crear»
+ *   sin foto). Entonces hace falta un modelo de **texto a imagen**, no uno de edición: pedirle a un modelo de
+ *   edición que edite una imagen que no existe se rechaza después de haberse cobrado la petición;
+ * - `segundos`: la duración que se va a pedir. Cada duración es una tarifa distinta del modelo, así que la que
+ *   se elige tiene que ser la que se estima, la que se confirma y la que se paga.
+ */
+export interface ModoDeGeneracion {
+  sinReferencia?: boolean;
+  segundos?: number;
+  soloOmni?: boolean;
+}
+
+/** Capacidad que hace falta para este trabajo, según haya o no imagen de partida. */
+export function capacidadDeGeneracion(tipo: TipoTrabajo, modo: ModoDeGeneracion = {}): Capacidad {
+  return tipo === "fotograma" && modo.sinReferencia ? "text_to_image" : CAPACIDAD_DE_TIPO[tipo];
+}
 
 /** Qué apartado del mapa le toca a cada tipo de trabajo. */
 export const TIPO_DE_MAPA_DE: Record<TipoTrabajo, TipoDeMapa> = {
@@ -48,20 +68,30 @@ export interface OpcionDeGeneracion {
 export async function opcionesDeGeneracion(
   usuarioId: string,
   tipo: TipoTrabajo,
-  soloOmni = false,
+  modo: ModoDeGeneracion = {},
 ): Promise<OpcionDeGeneracion[]> {
-  const capacidad: Capacidad = CAPACIDAD_DE_TIPO[tipo];
+  const capacidad = capacidadDeGeneracion(tipo, modo);
   const entradas = await resolverMapa(usuarioId, TIPO_DE_MAPA_DE[tipo]);
   const opciones: OpcionDeGeneracion[] = [];
   for (const entrada of entradas) {
     // Un servicio compatible con la API de OpenAI no genera ni imagen ni vídeo: no se ofrece donde no sirve.
     if (entrada.proveedor === "local" || entrada.proveedor === "compatible") continue;
-    if (soloOmni && !esModeloOmni(entrada.modelo)) continue;
+    if (modo.soloOmni && !esModeloOmni(entrada.modelo)) continue;
     try {
-      const modelo = await elegirModelo(capacidad, entrada.modelo);
-      const adaptador = adaptadorDe(modelo.proveedor);
+      const adaptador = adaptadorDe(entrada.proveedor);
       if (!adaptador.admite(capacidad)) continue;
-      const precio = await adaptador.estimar(modelo.modelo);
+      /**
+       * Sin imagen de partida se usa el **gemelo texto a imagen de esta misma entrada**: el usuario ya eligió
+       * ese motor para sus imágenes, así que lo que cambia es la forma de pedírselo, no el modelo. Si esa
+       * familia no tiene gemelo, la entrada solo sirve si ella misma genera sin referencia, y si tampoco, se
+       * pasa a la siguiente del mapa.
+       */
+      const pedido =
+        capacidad === "text_to_image"
+          ? (adaptador.gemeloSinReferencia?.(entrada.modelo) ?? entrada.modelo)
+          : entrada.modelo;
+      const modelo = await elegirModelo(capacidad, pedido);
+      const precio = await adaptador.estimar(modelo.modelo, unidadDeLaDuracion(modelo, modo.segundos));
       opciones.push({ entrada, eleccion: { modelo, adaptador, precio }, creditos: Math.ceil(precio.creditos) });
     } catch (error) {
       // Un modelo retirado, sin esa capacidad o sin precio se salta: las demás entradas siguen valiendo.
@@ -70,6 +100,16 @@ export async function opcionesDeGeneracion(
     }
   }
   return opciones;
+}
+
+/**
+ * Unidad con la que se cobra la duración pedida, o `undefined` cuando no se pide ninguna (el precio del modelo
+ * no depende de cuánto dure). Una duración que el modelo no tarifa deja `undefined` a propósito: quien estima
+ * se queda con la tarifa vigente y la comprobación de duración lo rechaza antes de gastar.
+ */
+function unidadDeLaDuracion(modelo: ModeloVista, segundos?: number): string | undefined {
+  if (segundos === undefined) return undefined;
+  return unidadParaDuracion(modelo, segundos) ?? undefined;
 }
 
 export interface EleccionDelMapa {
@@ -91,19 +131,23 @@ export async function eleccionDeGeneracion(
   usuarioId: string,
   tipo: TipoTrabajo,
   modeloPedido?: string | null,
-  soloOmni = false,
+  modo: ModoDeGeneracion = {},
 ): Promise<EleccionDelMapa> {
   if (modeloPedido) {
-    return { elegida: await opcionDelCatalogo(tipo, modeloPedido), reservas: [] };
+    return { elegida: await opcionDelCatalogo(tipo, modeloPedido, modo), reservas: [] };
   }
-  const [elegida, ...reservas] = await opcionesDeGeneracion(usuarioId, tipo, soloOmni);
+  const [elegida, ...reservas] = await opcionesDeGeneracion(usuarioId, tipo, modo);
   if (elegida) return { elegida, reservas };
-  return { elegida: await opcionDelCatalogo(tipo, null), reservas: [] };
+  return { elegida: await opcionDelCatalogo(tipo, null, modo), reservas: [] };
 }
 
 /** El modelo del catálogo (el pedido o el predeterminado de su capacidad), como opción suelta y sin reservas. */
-async function opcionDelCatalogo(tipo: TipoTrabajo, modelo: string | null): Promise<OpcionDeGeneracion> {
-  const eleccion = await elegirParaTipo(tipo, modelo);
+async function opcionDelCatalogo(
+  tipo: TipoTrabajo,
+  modelo: string | null,
+  modo: ModoDeGeneracion = {},
+): Promise<OpcionDeGeneracion> {
+  const eleccion = await elegirParaTipo(tipo, modelo, modo);
   return {
     // Sin entrada de mapa detrás: esta opción no viene de ninguna, así que tampoco puede relevarse a otra.
     entrada: {

@@ -1,9 +1,9 @@
 import { esProveedor, type Proveedor } from "@/lib/boveda";
-import { precioCaducado } from "@/lib/catalogo";
+import { duracionesConCoste, precioCaducado, segundosDeUnidad } from "@/lib/catalogo";
 import type { Estimacion, TipoTrabajo } from "@/lib/generacion";
 import { eurosPorCreditoDe, leerAjustes } from "../ajustes";
 import { usarCredencial } from "../boveda/credenciales";
-import { eleccionDeGeneracion } from "../mapa/generacion";
+import { eleccionDeGeneracion, type ModoDeGeneracion } from "../mapa/generacion";
 import { type EstadoTraduccion, estadoDeTraduccion } from "../prompts/traduccion";
 import type { Buscador } from "../proveedores/codigos";
 import { ErrorCatalogo, ErrorProveedor } from "../proveedores/contrato";
@@ -92,6 +92,12 @@ export async function estimar(
   tipo: TipoTrabajo,
   buscar: Buscador = fetch,
   modelo?: string | null,
+  /**
+   * Cómo se va a generar (0.23.4): sin imagen de partida el modelo tiene que ser de **texto a imagen**, y la
+   * duración elegida decide qué tarifa del modelo se cobra. Lo que se estima aquí es lo que se enviará: el
+   * mismo modelo, la misma tarifa y el mismo sello.
+   */
+  modo: ModoDeGeneracion = {},
 ): Promise<Estimacion> {
   /**
    * Con qué se generaría **según el mapa de este usuario** (0.22.0), salvo que haya elegido modelo a mano en
@@ -99,13 +105,13 @@ export async function estimar(
    * estima es lo que se va a enviar.
    */
   const [{ elegida }, ajustes, traduccion] = await Promise.all([
-    eleccionDeGeneracion(usuarioId, tipo, modelo),
+    eleccionDeGeneracion(usuarioId, tipo, modelo, modo),
     leerAjustes(),
     estadoDeTraduccion(),
   ]);
   const eleccion = elegida.eleccion;
   const saldos = await saldoDe(usuarioId, buscar, [eleccion]);
-  return conEleccion(eleccion, ajustes, saldos, tipo, traduccion);
+  return conEleccion(eleccion, ajustes, saldos, tipo, traduccion, modo);
 }
 
 /**
@@ -116,10 +122,11 @@ export async function estimarTodo(
   usuarioId: string,
   buscar: Buscador = fetch,
   modelos: Partial<Record<TipoTrabajo, string>> = {},
+  modos: Partial<Record<TipoTrabajo, ModoDeGeneracion>> = {},
 ): Promise<Record<TipoTrabajo, Estimacion>> {
   const [porFotograma, porAnimacion, ajustes, traduccion] = await Promise.all([
-    eleccionDeGeneracion(usuarioId, "fotograma", modelos.fotograma),
-    eleccionDeGeneracion(usuarioId, "animacion", modelos.animacion),
+    eleccionDeGeneracion(usuarioId, "fotograma", modelos.fotograma, modos.fotograma ?? {}),
+    eleccionDeGeneracion(usuarioId, "animacion", modelos.animacion, modos.animacion ?? {}),
     leerAjustes(),
     estadoDeTraduccion(),
   ]);
@@ -127,8 +134,8 @@ export async function estimarTodo(
   const animacion = porAnimacion.elegida.eleccion;
   const saldos = await saldoDe(usuarioId, buscar, [fotograma, animacion]);
   return {
-    fotograma: conEleccion(fotograma, ajustes, saldos, "fotograma", traduccion),
-    animacion: conEleccion(animacion, ajustes, saldos, "animacion", traduccion),
+    fotograma: conEleccion(fotograma, ajustes, saldos, "fotograma", traduccion, modos.fotograma ?? {}),
+    animacion: conEleccion(animacion, ajustes, saldos, "animacion", traduccion, modos.animacion ?? {}),
   };
 }
 
@@ -138,6 +145,7 @@ function conEleccion(
   saldos: Map<string, number | null>,
   tipo: TipoTrabajo,
   traduccion: EstadoTraduccion,
+  modo: ModoDeGeneracion,
 ): Estimacion {
   const { precio, modelo } = eleccion;
   const saldo = saldos.get(modelo.proveedor) ?? null;
@@ -164,6 +172,13 @@ function conEleccion(
     sello: precio.sello,
     // La traducción es un coste aparte del modelo de imagen o vídeo: se muestra como tal y **no** entra en los
     // créditos que se confirman, que son los del modelo. Su reserva es su propio apunte.
+    /**
+     * La duración estimada es la de la **tarifa que se ha leído**, no la que pidiera la pantalla: si el modelo
+     * no tarifa esa duración, aquí se ve la que sí cobra y el envío la vuelve a comprobar antes de gastar.
+     */
+    segundos: segundosDeUnidad(precio.unidad) ?? modo.segundos ?? null,
+    duraciones: duracionesConCoste(modelo),
+    sinReferencia: modo.sinReferencia === true,
     traduccion: traduccion.activa
       ? {
           creditos: traduccion.creditos,

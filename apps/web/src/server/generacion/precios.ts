@@ -1,4 +1,4 @@
-import { CAPACIDAD_DE_TIPO, type ModeloVista } from "@/lib/catalogo";
+import { CAPACIDAD_DE_TIPO, type ModeloVista, unidadParaDuracion } from "@/lib/catalogo";
 import type { TipoTrabajoCola } from "@/lib/generacion";
 import type { Adaptador, PrecioModelo } from "../proveedores/contrato";
 import { resolver } from "../proveedores/registro";
@@ -26,14 +26,29 @@ export interface EleccionDeTrabajo {
  * Elige el modelo del tipo de trabajo (el que pida el usuario o el predeterminado de su capacidad) y lee
  * su precio. Un modelo retirado, sin la capacidad necesaria o sin precio no llega a enviarse.
  */
-export async function elegirParaTipo(tipo: TipoTrabajoCola, modelo?: string | null): Promise<EleccionDeTrabajo> {
-  const { modelo: elegido, adaptador } = await resolver(CAPACIDAD_DE_TIPO[tipo], modelo);
-  return { modelo: elegido, adaptador, precio: await adaptador.estimar(elegido.modelo) };
+export async function elegirParaTipo(
+  tipo: TipoTrabajoCola,
+  modelo?: string | null,
+  /**
+   * Cómo se va a generar: sin imagen de partida hace falta un modelo de **texto a imagen**, y la duración
+   * elegida decide **qué tarifa** del modelo se cobra. Las dos cosas tienen que valer ya en la estimación,
+   * porque es la que se confirma y la que se paga.
+   */
+  modo: { sinReferencia?: boolean; segundos?: number } = {},
+): Promise<EleccionDeTrabajo> {
+  const capacidad = tipo === "fotograma" && modo.sinReferencia ? "text_to_image" : CAPACIDAD_DE_TIPO[tipo];
+  const { modelo: elegido, adaptador } = await resolver(capacidad, modelo);
+  const unidad = modo.segundos === undefined ? undefined : (unidadParaDuracion(elegido, modo.segundos) ?? undefined);
+  return { modelo: elegido, adaptador, precio: await adaptador.estimar(elegido.modelo, unidad) };
 }
 
 /** Precio vigente del modelo con el que se haría ese trabajo. */
-export async function precioDe(tipo: TipoTrabajoCola, modelo?: string | null): Promise<Precio> {
-  return (await elegirParaTipo(tipo, modelo)).precio;
+export async function precioDe(
+  tipo: TipoTrabajoCola,
+  modelo?: string | null,
+  modo: { sinReferencia?: boolean; segundos?: number } = {},
+): Promise<Precio> {
+  return (await elegirParaTipo(tipo, modelo, modo)).precio;
 }
 
 /**

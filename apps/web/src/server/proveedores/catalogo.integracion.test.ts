@@ -326,6 +326,17 @@ describe.skipIf(!hayBaseDeDatos)("catálogo de modelos", () => {
     });
 
     test("un modelo sin la capacidad necesaria se rechaza sin llamar al proveedor", async () => {
+      // Un modelo de imagen no sabe animar, y uno de vídeo no sabe generar un fotograma: en los dos casos se
+      // rechaza antes de tocar al proveedor, que es lo que importa del dinero.
+      const error = await crearFotograma(actor, peticion(60, { modelo: "veo3_lite" }), h).catch((e) => e);
+      expect(error.estado).toBe(400);
+      expect(error.message).toContain("no sirve para esto");
+      expect(llamadas).toMatchObject({ crearTarea: 0, subida: 0 });
+    });
+
+    test("un clip de un fotograma que no existe se rechaza antes que nada", async () => {
+      // Desde la 0.23.4 el fotograma se lee **antes** de estimar: su proyecto es el que decide la duración, y la
+      // duración decide qué tarifa se cobra. Un fotograma que no existe no llega a estimarse ni a enviarse.
       const error = await crearAnimacion(
         actor,
         {
@@ -338,8 +349,7 @@ describe.skipIf(!hayBaseDeDatos)("catálogo de modelos", () => {
         },
         h,
       ).catch((e) => e);
-      expect(error.estado).toBe(400);
-      expect(error.message).toContain("no sirve para esto");
+      expect(error.estado).toBe(404);
       expect(llamadas).toMatchObject({ crearTarea: 0, subida: 0 });
     });
 

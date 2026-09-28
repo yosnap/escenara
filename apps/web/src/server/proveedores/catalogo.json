@@ -31,7 +31,7 @@
       "proveedor": "kie",
       "modelo": "nano-banana-2-lite",
       "nombre": "Nano Banana 2 Lite",
-      "capacidades": ["image_edit"],
+      "capacidades": ["image_edit", "text_to_image"],
       "estado": "validado",
       "predeterminado": true,
       "conVoz": false,
@@ -297,7 +297,7 @@
       "conVoz": true,
       "unidad": "clip de 4 s a 720p",
       "parametros": {
-        "duraciones": [4],
+        "duraciones": [4, 6, 8, 10],
         "proporciones": ["9:16", "16:9"],
         "resoluciones": ["720p"],
         "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
@@ -345,7 +345,7 @@
       "conVoz": true,
       "unidad": "clip de 4 s a 720p",
       "parametros": {
-        "duraciones": [4],
+        "duraciones": [4, 6, 8, 10],
         "proporciones": ["9:16", "16:9"],
         "resoluciones": ["720p"],
         "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],

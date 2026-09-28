@@ -161,6 +161,14 @@ export interface ConfirmacionVistaSintetica {
 export const consultarEstimacionDeVista = () => pedir<Estimacion>("/api/generacion/estimacion?tipo=fotograma");
 
 /**
+ * Estimación de un retrato de **personaje inventado** (0.23.4): nace de su descripción y no de ninguna foto,
+ * así que lo genera un modelo de **texto a imagen** y su precio es el de ese modelo. Pedir aquí la del modelo
+ * de edición enseñaría un coste y se enviaría otro.
+ */
+export const consultarEstimacionSinImagen = () =>
+  pedir<Estimacion>("/api/generacion/estimacion?tipo=fotograma&sinImagen=1");
+
+/**
  * «Antes de generar» de una vista que falta: lo mismo que dirá la puerta al encolarla, con sus avisos
  * confirmables. Es una lectura: no gasta nada.
  */

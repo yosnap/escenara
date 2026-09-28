@@ -5,6 +5,8 @@ import { categoriaDeModelo } from "@/lib/compatible";
 import {
   type EntradaMapa,
   type EntradaMapaVista,
+  ETIQUETA_FORMA_DE_IMAGEN,
+  type FormaDeImagen,
   type MapaVista,
   nombreDeProveedor,
   type TipoDeMapa,
@@ -52,7 +54,13 @@ const CAPACIDADES_DE_TIPO: Record<TipoDeMapa, readonly Capacidad[]> = {
   texto: ["text_generation"],
   voz: ["tts"],
   transcripcion: [],
-  imagen: ["image_edit"],
+  /**
+   * La imagen tiene **dos** capacidades y las dos entran en el mismo apartado (0.23.4): editar una imagen de
+   * partida (`image_edit`) y generar solo con la descripción (`text_to_image`). Es la misma decisión que en
+   * vídeo: separarlas obligaría a ordenar dos veces lo mismo, y lo que cambia no es el motor, sino si hay o no
+   * foto de la que partir.
+   */
+  imagen: ["image_edit", "text_to_image"],
   /**
    * El vídeo tiene **dos** capacidades y las dos entran en el mismo apartado del mapa: un clip normal sale de un
    * fotograma (`image_to_video`) y una escena hablada de Omni no parte de ninguna imagen (`text_to_video`).
@@ -179,18 +187,31 @@ export async function mapaVista(usuarioId: string, tipo: TipoDeMapa): Promise<Ma
 }
 
 /** Nombre legible y coste de una entrada, sacados del catálogo; los servicios compatibles se pagan por cuota. */
-async function descripcionDe(entrada: EntradaMapa): Promise<{ nombreModelo: string; coste: string }> {
-  if (entrada.proveedor === "compatible") return { nombreModelo: "", coste: "Cuota de tu plan" };
-  if (entrada.proveedor === "local") return { nombreModelo: "", coste: "Sin coste" };
+async function descripcionDe(
+  entrada: EntradaMapa,
+): Promise<{ nombreModelo: string; coste: string; forma: FormaDeImagen | null }> {
+  if (entrada.proveedor === "compatible") return { nombreModelo: "", coste: "Cuota de tu plan", forma: null };
+  if (entrada.proveedor === "local") return { nombreModelo: "", coste: "Sin coste", forma: null };
   const modelo = (await listarModelos({ proveedor: entrada.proveedor })).find((m) => m.modelo === entrada.modelo);
-  if (!modelo) return { nombreModelo: "", coste: "" };
+  if (!modelo) return { nombreModelo: "", coste: "", forma: null };
   const precio = modelo.precio;
   return {
     nombreModelo: modelo.nombre,
+    forma: formaDeImagenDe(modelo.capacidades),
     coste: precio
       ? `${formatearCreditosTexto(precio.creditos)} por ${precio.unidad || modelo.unidad}`
       : "Sin precio registrado: no se puede usar todavía",
   };
+}
+
+/** De qué parte un modelo de imagen, según sus capacidades; `null` si no es de imagen. */
+function formaDeImagenDe(capacidades: readonly Capacidad[]): FormaDeImagen | null {
+  const edita = capacidades.includes("image_edit");
+  const deTexto = capacidades.includes("text_to_image");
+  if (edita && deTexto) return "ambas";
+  if (edita) return "imagen_a_imagen";
+  if (deTexto) return "texto_a_imagen";
+  return null;
 }
 
 const formatearCreditosTexto = (creditos: number) =>
@@ -337,7 +358,12 @@ export async function opcionesRecomendables(
     opciones.push({
       proveedor: modelo.proveedor,
       modelo: modelo.modelo,
-      etiqueta: `${modelo.nombreProveedor} · ${modelo.nombre}`,
+      // En imagen se dice de qué parte cada modelo: es lo que decide si sirve para una escena sin foto.
+      etiqueta: `${modelo.nombreProveedor} · ${modelo.nombre}${
+        formaDeImagenDe(modelo.capacidades) === null
+          ? ""
+          : ` (${ETIQUETA_FORMA_DE_IMAGEN[formaDeImagenDe(modelo.capacidades) as FormaDeImagen].toLowerCase()})`
+      }`,
     });
   }
   return opciones;

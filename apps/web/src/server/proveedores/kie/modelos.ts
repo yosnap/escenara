@@ -77,7 +77,16 @@ export function promptEscenaHablada(escena: string, dialogo: string): string {
 }
 
 export function entradaFotograma(escena: string, referencias: string[]): Record<string, unknown> {
-  return { prompt: promptFotograma(escena), image_urls: referencias, aspect_ratio: CLIP.proporcion };
+  return {
+    prompt: promptFotograma(escena),
+    /**
+     * **Sin referencias no se envía el campo** (0.23.4): nano banana genera a partir del texto cuando no lo
+     * recibe (docs.kie.ai/market/google/nano-banana-2-lite, comprobado el 2026-09-28: «omite image_urls para
+     * texto a imagen»), y mandarlo vacío sería pedirle que editara una imagen que no existe.
+     */
+    ...(referencias.length > 0 ? { image_urls: referencias } : {}),
+    aspect_ratio: CLIP.proporcion,
+  };
 }
 
 /** `segundos` es la duración del clip del proyecto, ya comprobada contra las que admite el modelo. */

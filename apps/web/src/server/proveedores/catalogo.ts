@@ -141,6 +141,9 @@ function vistaDeModelo(
       creditos: p.credits,
       enUso: p.unit === fila.unit,
       comprobado: p.checkedAt.toISOString().slice(0, 10),
+      publicado: p.published,
+      fuente: p.source,
+      sello: selloDe(proveedor.slug, fila.modelId, p.unit, p.version),
     }))
     .sort((a, b) => a.creditos - b.creditos);
   return {
@@ -236,8 +239,15 @@ export async function elegirModelo(capacidad: Capacidad, modelo?: string | null)
   throw new ErrorCatalogo(503, `No hay precio registrado para ${existente.nombre}: sin precio no se genera.`);
 }
 
-/** Precio vigente de un modelo. Sin precio registrado no se estima ni se gasta. */
-export async function precioDeModelo(proveedor: string, modelo: string): Promise<PrecioModelo> {
+/**
+ * Precio vigente de un modelo. Sin precio registrado no se estima ni se gasta.
+ *
+ * `unidad` pide **una tarifa concreta** de ese modelo (una duración, una resolución o una calidad). Es lo que
+ * permite que la duración que el usuario elige sea la que se estima, la que confirma y la que se paga: el sello
+ * lleva la unidad dentro, así que una confirmación no puede acabar pidiendo otra cosa. Una unidad que no está
+ * registrada no se aproxima con otra: se dice que no tiene precio.
+ */
+export async function precioDeModelo(proveedor: string, modelo: string, unidad?: string): Promise<PrecioModelo> {
   const { modelos } = await cargarCatalogo();
   const fila = modelos.find((m) => m.proveedor === proveedor && m.modelo === modelo);
 
@@ -246,6 +256,24 @@ export async function precioDeModelo(proveedor: string, modelo: string): Promise
       503,
       `No hay precio registrado para ${modelo}. Sin precio no se puede estimar el coste, así que no se genera.`,
     );
+  }
+  if (unidad !== undefined && unidad !== fila.precio.unidad) {
+    const otra = fila.tarifas.find((t) => t.unidad === unidad);
+    if (!otra) {
+      throw new ErrorCatalogo(
+        503,
+        `No hay precio registrado para ${modelo} por «${unidad}». Sin precio no se puede estimar el coste, así que no se genera.`,
+      );
+    }
+    return {
+      proveedor,
+      modelo,
+      unidad: otra.unidad,
+      creditos: otra.creditos,
+      fuente: otra.fuente,
+      comprobado: otra.comprobado,
+      sello: otra.sello,
+    };
   }
   return {
     proveedor,

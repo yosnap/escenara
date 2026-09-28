@@ -218,6 +218,20 @@
       "when": 1790573590086,
       "tag": "0030_catalogo_dinamico",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1790577737512,
+      "tag": "0031_tipos_de_imagen",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1790577737513,
+      "tag": "0032_duraciones_y_texto_a_imagen",
+      "breakpoints": true
     }
   ]
 }

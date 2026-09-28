@@ -1,5 +1,5 @@
 import type { Vista } from "@/lib/captura-personaje";
-import type { ModeloVista } from "@/lib/catalogo";
+import { duracionesConCoste, type ModeloVista, segundosDeUnidad } from "@/lib/catalogo";
 import { CLIP, type TipoTrabajo, type TrabajoVista } from "@/lib/generacion";
 import type { TipoPersonaje } from "@/lib/personajes";
 import type { SeleccionPresets } from "@/lib/presets";
@@ -12,7 +12,12 @@ import { conVistaQueCompleta, recopilarHechos } from "../controles/hechos";
 import { exigirControles } from "../controles/puerta";
 import type { FilaMedio } from "../db/esquema";
 import { decidir } from "../decisiones/reglas";
-import { type EleccionDelMapa, eleccionDeGeneracion, type OpcionDeGeneracion } from "../mapa/generacion";
+import {
+  type EleccionDelMapa,
+  eleccionDeGeneracion,
+  type ModoDeGeneracion,
+  type OpcionDeGeneracion,
+} from "../mapa/generacion";
 import type { Actor } from "../media/servicio";
 import {
   contextoDeVersion,
@@ -83,6 +88,12 @@ interface Confirmacion {
   avisosConfirmados?: string[];
   /** Modelo elegido en el catálogo; sin él se usa el predeterminado de la capacidad. */
   modelo?: string;
+  /**
+   * Duración del clip que se confirmó, en segundos (0.23.4). Cada duración es **una tarifa distinta** del
+   * modelo, así que la que llega aquí es la que se estimó, la que se reserva y la que se le pide al proveedor.
+   * Sin ella manda la del proyecto, y fuera de un proyecto, la primera que el modelo sabe cobrar.
+   */
+  segundos?: number;
   /**
    * Este envío repite algo que pudo cobrarse, así que consume un reintento autorizado de la escena (0.19.0,
    * ADR-0024). Lo pone **el servidor** de producción a partir del estado real de la escena, igual que
@@ -284,8 +295,14 @@ async function eleccionConfirmada(
   usuarioId: string,
   tipo: TipoTrabajo,
   peticion: Confirmacion,
+  /**
+   * Cómo se va a generar: sin imagen de partida hace falta un modelo de **texto a imagen**, y la duración
+   * elegida decide qué tarifa se cobra. Es el mismo modo con el que se hizo la estimación, así que lo que se
+   * confirma y lo que se envía son la misma tarifa del mismo modelo.
+   */
+  modo: ModoDeGeneracion = {},
 ): Promise<EleccionDelMapa> {
-  const delMapa = await eleccionDeGeneracion(usuarioId, tipo, peticion.modelo);
+  const delMapa = await eleccionDeGeneracion(usuarioId, tipo, peticion.modelo, modo);
   // Quien elige modelo tiene que devolver el sello del precio que vio; sin modelo se usa el del mapa.
   exigirSelloVigente(peticion.selloEstimacion, delMapa.elegida.eleccion.precio.sello, Boolean(peticion.modelo));
   return delMapa;
@@ -350,7 +367,13 @@ export async function crearFotograma(
   const prompt = limpiarPrompt(peticion.prompt);
   exigirDerechos(peticion.derechos);
   const claveIdempotencia = exigirClaveIdempotencia(peticion.claveIdempotencia);
-  const { elegida, reservas } = await eleccionConfirmada(actor.id, "fotograma", peticion);
+  /**
+   * **Sin imagen de partida** (0.23.4): el retrato candidato de un personaje inventado nace de su descripción,
+   * y en «Crear» se puede describir una escena sin elegir personaje ni foto. Las dos cosas necesitan un modelo
+   * de texto a imagen; pedírselo a uno de edición se rechaza **después** de que el proveedor cobre la petición.
+   */
+  const sinReferencia = peticion.retratoInventado === true || (!peticion.personajeId && !peticion.medioId);
+  const { elegida, reservas } = await eleccionConfirmada(actor.id, "fotograma", peticion, { sinReferencia });
   const eleccion = elegida.eleccion;
   const { modelo, adaptador, precio } = eleccion;
   const creditos = Math.ceil(precio.creditos);
@@ -378,7 +401,8 @@ export async function crearFotograma(
   // imagen suelta salió de otro trabajo hecho con un personaje, este trabajo **hereda** ese personaje: si no,
   // animar o reeditar un fotograma escaparía del borrado de derivados y la cara sobreviviría al borrado del
   // personaje. Heredarlo significa cumplir sus reglas como cualquier otro.
-  const medioId = peticion.personajeId ? null : exigirMedioElegido(peticion.medioId);
+  // Sin imagen de partida no se exige ninguna: es el propio modo de generación, no un dato que falte.
+  const medioId = peticion.personajeId || sinReferencia ? null : exigirMedioElegido(peticion.medioId);
   const personajeId = peticion.personajeId ?? (medioId === null ? null : await personajeDeLaCadena(actor.id, medioId));
   // Un personaje inventado no tiene fotos, así que no hay terceros que revisar en ellas: lo que se envía es su
   // descripción. Exigir esa casilla aquí sería pedir una declaración sobre unas fotos que no existen.
@@ -430,11 +454,11 @@ export async function crearFotograma(
    */
   const referencias: FilaMedio[] = elegido
     ? elegido.referencias
-    : peticion.retratoInventado
+    : sinReferencia
       ? []
       : [await imagenPropia(actor.id, medioId)];
   const [origen] = referencias;
-  if (!origen && !peticion.retratoInventado) {
+  if (!origen && !sinReferencia) {
     throw new ErrorGeneracion(400, "Elige un personaje o una imagen de referencia.");
   }
   // La ficha del personaje es **contexto de generación**: el servidor la compone a partir de la versión
@@ -455,7 +479,8 @@ export async function crearFotograma(
     // El contexto de la ficha va aparte de la escena: las reglas miden la descripción que escribió la persona.
     contexto: conFicha.contexto,
     conVoz: modelo.conVoz,
-    conReferencia: true,
+    conReferencia: !sinReferencia,
+    ...(sinReferencia ? { sinReferencia: true } : {}),
     creditos,
   });
   // Y solo ahora, que ya no queda ninguna puerta gratis: los prompts van **siempre en inglés** (decisión firme
@@ -491,6 +516,9 @@ export async function crearFotograma(
         referencias.map((r) => r.id),
         parametros,
       ),
+      // La tarifa exacta que se ha confirmado. El worker envía **esa** variante: sin esto, un cambio de variante
+      // en el catálogo entre encolar y enviar pediría una cosa y cobraría otra.
+      unidadPrecio: precio.unidad,
       // Lo que escribió la persona y lo que añadió el servidor, separados: el historial tiene que poder
       // mostrar las dos cosas sin adivinar dónde acaba una y empieza la otra.
       escena: prompt,
@@ -515,6 +543,9 @@ export async function crearFotograma(
       // Marca de «este fotograma nace de una descripción y no de ninguna foto» (0.22.0). La lee el worker para
       // no buscar referencias que no existen, y el cierre para añadir el retrato elegido como vista generada.
       ...(peticion.retratoInventado ? { retratoInventado: true } : {}),
+      // Marca de «este trabajo no parte de ninguna imagen»: la lee el worker para no buscar referencias que no
+      // existen y para montar la entrada del modelo de texto a imagen tal como se estimó.
+      ...(sinReferencia ? { sinReferencia: true } : {}),
     },
     sourceMediaId: origen?.id ?? null,
     sceneId: conEscena?.escena.id ?? null,
@@ -540,6 +571,31 @@ export async function crearFotograma(
   return { trabajo: await vistaDeFila(fila), nueva };
 }
 
+/**
+ * Duración que se le va a pedir al proveedor, **comprobada contra la tarifa que se acaba de leer**.
+ *
+ * La regla es una: lo que se paga y lo que se pide tienen que ser lo mismo. Si el precio del modelo depende de
+ * la duración, la duración es la de esa tarifa; si no depende (Veo 3 cuesta igual a 4 y a 8 s), se pide la que
+ * el usuario haya elegido siempre que el modelo la admita. Una duración que el modelo no sabe cobrar no se
+ * aproxima con otra: se dice y no se gasta.
+ */
+function duracionCobrada(modelo: ModeloVista, unidad: string, pedidos: number | null): number {
+  const deLaTarifa = segundosDeUnidad(unidad);
+  const cobrables = duracionesConCoste(modelo);
+  if (pedidos !== null && deLaTarifa !== null && pedidos !== deLaTarifa) {
+    throw new ErrorGeneracion(
+      409,
+      `${modelo.nombre} no tiene precio registrado para un clip de ${pedidos} s: solo sabe cobrar ${cobrables.map((d) => `${d.segundos} s`).join(", ")}. Elige una de esas duraciones o cambia de modelo.`,
+    );
+  }
+  if (deLaTarifa !== null) return deLaTarifa;
+  if (pedidos !== null && modelo.parametros.duraciones.includes(pedidos)) return pedidos;
+  const primera = cobrables[0]?.segundos ?? modelo.parametros.duraciones[0];
+  if (primera !== undefined) return primera;
+  // Un modelo de vídeo que no declara ninguna duración: se le pide la de referencia, como hasta la 0.23.3.
+  return duracionParaModelo(modelo.parametros.duraciones, pedidos ?? CLIP.segundos);
+}
+
 export async function crearAnimacion(
   actor: Actor,
   peticion: PeticionAnimacion,
@@ -548,7 +604,19 @@ export async function crearAnimacion(
   const prompt = limpiarPrompt(peticion.prompt);
   exigirDerechos(peticion.derechos);
   const claveIdempotencia = exigirClaveIdempotencia(peticion.claveIdempotencia);
-  const { elegida, reservas } = await eleccionConfirmada(actor.id, "animacion", peticion);
+  if (!esUuidGeneracion(peticion.trabajoPadreId)) throw new ErrorGeneracion(404, "El trabajo no existe.");
+  const padre = await filaPropia(actor.id, peticion.trabajoPadreId);
+  if (padre.kind !== "fotograma") throw new ErrorGeneracion(400, "Solo se animan fotogramas.");
+  /**
+   * **La duración se decide antes de estimar nada**, porque cada duración es una tarifa distinta del modelo: si
+   * se estimara con una y se pidiera otra, lo reservado no cubriría lo que se cobra. Manda la del proyecto
+   * cuando el clip produce una escena —esa ya la eligió el usuario para todo el proyecto— y, fuera de un
+   * proyecto, la que se haya confirmado en «Crear».
+   */
+  const pedidos = padre.sceneId ? await duracionDeClipDeEscena(padre.sceneId) : (peticion.segundos ?? null);
+  const { elegida, reservas } = await eleccionConfirmada(actor.id, "animacion", peticion, {
+    ...(pedidos === null ? {} : { segundos: pedidos }),
+  });
   const eleccion = elegida.eleccion;
   const { modelo, adaptador, precio } = eleccion;
   const creditos = Math.ceil(precio.creditos);
@@ -560,9 +628,6 @@ export async function crearAnimacion(
   // Igual que en el fotograma: tras el corte de idempotencia y **antes** del motor.
   await exigirRitmo(actor.id);
 
-  if (!esUuidGeneracion(peticion.trabajoPadreId)) throw new ErrorGeneracion(404, "El trabajo no existe.");
-  const padre = await filaPropia(actor.id, peticion.trabajoPadreId);
-  if (padre.kind !== "fotograma") throw new ErrorGeneracion(400, "Solo se animan fotogramas.");
   if (padre.state !== "listo" || !padre.resultMediaId) {
     throw new ErrorGeneracion(409, "Espera a que el fotograma esté listo y guardado antes de animarlo.");
   }
@@ -617,8 +682,7 @@ export async function crearAnimacion(
    * ninguna (el camino rápido de «Crear»). Se decide **antes** de componer, porque un preset de duración se valida
    * contra la que de verdad se va a pedir.
    */
-  const deseados = (padre.sceneId ? await duracionDeClipDeEscena(padre.sceneId) : null) ?? CLIP.segundos;
-  const segundos = duracionParaModelo(modelo.parametros.duraciones, deseados);
+  const segundos = duracionCobrada(modelo, precio.unidad, pedidos);
   const original = await baseDelPrompt(actor, peticion, "animacion", modelo, tipo, prompt, segundos);
   await exigirDecisionFavorable({
     tipo: "animacion",
@@ -653,6 +717,8 @@ export async function crearAnimacion(
     prompt: promptFinal,
     input: {
       ...entradaGuardada(adaptador, promptFinal, [origen.id], { ...parametros, segundos }),
+      // La tarifa confirmada: es la de **esta** duración, y es la que el worker vuelve a comprobar antes de enviar.
+      unidadPrecio: precio.unidad,
       dialogo,
       escena: prompt,
       ...(base.compuesto

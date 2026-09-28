@@ -61,6 +61,11 @@ export interface ConfirmacionFotograma extends Confirmacion {
 export interface ConfirmacionAnimacion extends Confirmacion {
   tipo: "animacion";
   trabajoPadreId: string;
+  /**
+   * Duración del clip que se ha confirmado, en segundos. Es la de la estimación que se tenía delante: cada
+   * duración es una tarifa distinta del modelo, y lo que se paga es esta.
+   */
+  segundos?: number;
   /** Lo que dice el personaje: solo el clip tiene voz. */
   dialogo: string;
   /**
@@ -110,6 +115,21 @@ export const consultarControles = (peticion: {
   return pedir<EvaluacionVista>(`/api/generacion/controles?${parametros}`);
 };
 
-/** Estimación del modelo indicado (sin modelo, el predeterminado de la capacidad). */
-export const consultarEstimacion = (tipo: TipoTrabajo, modelo?: string) =>
-  pedir<Estimacion>(`/api/generacion/estimacion?tipo=${tipo}${modelo ? `&modelo=${encodeURIComponent(modelo)}` : ""}`);
+/**
+ * Estimación del modelo indicado (sin modelo, el del mapa del usuario).
+ *
+ * `sinImagen` pide la del modelo que genera **sin imagen de partida** y `segundos`, la de esa duración
+ * concreta: las dos cambian el modelo o la tarifa, así que la estimación se vuelve a pedir al servidor en
+ * lugar de calcularla aquí. Nunca se muestra un coste que no haya dicho el servidor.
+ */
+export const consultarEstimacion = (
+  tipo: TipoTrabajo,
+  modelo?: string,
+  opciones: { sinImagen?: boolean; segundos?: number } = {},
+) => {
+  const parametros = new URLSearchParams({ tipo });
+  if (modelo) parametros.set("modelo", modelo);
+  if (opciones.sinImagen) parametros.set("sinImagen", "1");
+  if (opciones.segundos !== undefined) parametros.set("segundos", String(opciones.segundos));
+  return pedir<Estimacion>(`/api/generacion/estimacion?${parametros}`);
+};

@@ -148,16 +148,19 @@ const contexto = (dialogo = "") => ({ escena: ESCENA, dialogo, urls: [URL_REFERE
 describe("capacidades del adaptador", () => {
   test("declara lo que KIE sabe hacer hoy en Escenara y nada más", () => {
     expect(adaptadorKie.proveedor).toBe("kie");
-    // `text_generation` la añade la 0.17.0 (modelos de chat, con su propio endpoint) y `tts` la 0.21.0 (modelos
-    // de voz del «market», por el mismo jobs/createTask asíncrono que el vídeo).
+    // `text_generation` la añade la 0.17.0 (modelos de chat, con su propio endpoint), `tts` la 0.21.0 (modelos
+    // de voz del «market», por el mismo jobs/createTask asíncrono que el vídeo) y `text_to_image` la 0.23.4
+    // (generar sin ninguna imagen de partida).
     expect(adaptadorKie.capacidades).toEqual([
       "image_edit",
+      "text_to_image",
       "image_to_video",
       "text_to_video",
       "text_generation",
       "tts",
     ]);
     expect(adaptadorKie.admite("image_edit")).toBe(true);
+    expect(adaptadorKie.admite("text_to_image")).toBe(true);
     expect(adaptadorKie.admite("text_generation")).toBe(true);
     expect(adaptadorKie.admite("tts")).toBe(true);
     expect(adaptadorKie.admite("speech_to_text")).toBe(false);
@@ -343,5 +346,53 @@ describe("errores normalizados", () => {
     expect(await sinRespuesta(fallo("TypeError"))).toBe(true);
     expect(await sinRespuesta(ERROR_CLAVE)).toBe(false);
     expect(await sinRespuesta(ERROR_LIMITE)).toBe(false);
+  });
+});
+
+/**
+ * **Texto a imagen** (0.23.4). Lo que se prueba aquí es lo que cuesta dinero de verdad: que una generación sin
+ * foto de partida no le pida a un modelo de edición que edite una imagen que no existe, y que el gemelo que se
+ * usa sea el de la misma familia que el usuario ya tenía elegida.
+ */
+describe("generar sin imagen de partida", () => {
+  const GPT_TEXTO = modelo({
+    modelo: "gpt-image-2-text-to-image",
+    nombre: "GPT Image 2 (texto a imagen)",
+    capacidades: ["text_to_image"],
+    unidad: "imagen a 1K",
+    parametros: {
+      duraciones: [],
+      proporciones: ["9:16"],
+      resoluciones: ["1K"],
+      formatosReferencia: [],
+      maximoReferencias: 0,
+    },
+  });
+
+  test("el gemelo de un modelo de edición es el mismo motor sin imagen de partida", () => {
+    expect(adaptadorKie.gemeloSinReferencia?.("gpt-image-2-image-to-image")).toBe("gpt-image-2-text-to-image");
+    expect(adaptadorKie.gemeloSinReferencia?.("seedream/5-pro-image-to-image")).toBe("seedream/5-pro-text-to-image");
+    // Nano banana ya sabe hacer las dos cosas con el mismo identificador: es su propio gemelo.
+    expect(adaptadorKie.gemeloSinReferencia?.("nano-banana-2-lite")).toBe("nano-banana-2-lite");
+    // Un modelo que esta instalación no sabe pedir no tiene gemelo que ofrecer.
+    expect(adaptadorKie.gemeloSinReferencia?.("modelo-inventado")).toBeNull();
+  });
+
+  test("la entrada de un modelo de texto a imagen no lleva ningún campo de referencia", () => {
+    const entrada = adaptadorKie.montarEntrada(GPT_TEXTO, { escena: ESCENA, dialogo: "", urls: [] });
+    expect(entrada).toMatchObject({ resolution: "1K", aspect_ratio: "9:16" });
+    expect(entrada.prompt).toContain(ESCENA);
+    for (const campo of ["image_urls", "input_urls", "image_url", "image_input", "reference_image_urls"]) {
+      expect(entrada).not.toHaveProperty(campo);
+    }
+  });
+
+  test("un modelo que sabe las dos cosas no manda el campo de referencias cuando no las hay", () => {
+    const conFoto = adaptadorKie.montarEntrada(NANO, { escena: ESCENA, dialogo: "", urls: [URL_REFERENCIA] });
+    expect(conFoto.image_urls).toEqual([URL_REFERENCIA]);
+    const sinFoto = adaptadorKie.montarEntrada(NANO, { escena: ESCENA, dialogo: "", urls: [] });
+    // Mandar «image_urls: []» sería pedirle que edite una imagen que no existe: el campo no va.
+    expect(sinFoto).not.toHaveProperty("image_urls");
+    expect(sinFoto.prompt).toContain(ESCENA);
   });
 });

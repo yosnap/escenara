@@ -151,8 +151,8 @@ export const adaptadorCompatible: Adaptador = {
     return true;
   },
 
-  estimar(modelo: string): Promise<PrecioModelo> {
-    return precioDeModelo("compatible", modelo);
+  estimar(modelo: string, unidad?: string): Promise<PrecioModelo> {
+    return precioDeModelo("compatible", modelo, unidad);
   },
 
   /**

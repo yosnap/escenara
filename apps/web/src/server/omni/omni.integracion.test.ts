@@ -820,8 +820,9 @@ describe.skipIf(!hayBaseDeDatos)("escenas habladas con Omni", () => {
     );
     expect(trabajos).toHaveLength(4);
     await enviarEncolados(h);
-    // Ningún retrato lleva referencias: nacen de la descripción, no de una foto.
-    for (const entrada of enviados.values()) expect(entrada.image_urls).toEqual([]);
+    // Ningún retrato lleva referencias: nacen de la descripción, no de una foto. Desde la 0.23.4 el campo ni
+    // siquiera se envía (enviarlo vacío sería pedirle al modelo que editara una imagen que no existe).
+    for (const entrada of enviados.values()) expect(entrada.image_urls).toBeUndefined();
 
     for (const [taskId] of tareas) {
       tareas.set(taskId, { state: "success", urls: ["https://kie/retrato.png"], creditos: 4 });

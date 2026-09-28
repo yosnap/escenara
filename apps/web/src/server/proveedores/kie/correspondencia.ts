@@ -30,8 +30,9 @@ export interface VarianteTarifa {
 /**
  * Clase de trabajo que describe la tarifa. **No decide la capacidad del modelo**: eso lo declara la familia
  * (`familias.ts`), que es lo que de verdad se ha leído en la documentación. Aquí solo sirve para dos cosas:
- * descartar los precios de «texto a imagen» —que no generan a partir de una referencia y no son de esta
- * versión— y elegir la entrada correcta cuando una página del market ofrece varias.
+ * distinguir «texto a imagen» de «imagen a imagen» —desde la 0.23.4 las dos se importan, porque hay
+ * generaciones que no parten de ninguna foto— y elegir la entrada correcta cuando una página del market
+ * ofrece varias.
  */
 export const OPERACIONES = ["image-to-image", "text-to-image", "image-to-video", "text-to-video"] as const;
 export type Operacion = (typeof OPERACIONES)[number];
@@ -60,6 +61,8 @@ export interface TarifaTraducida {
  */
 const MODELO_POR_PAGINA: Record<string, string> = {
   // Comprobados en docs.kie.ai el 2026-09-28, cada uno en el `"model"` de su ejemplo de `createTask`.
+  // Una página que ofrece las dos formas lleva la operación en la clave: su `anchor` no las distingue.
+  "/gpt-image-2-5#text-to-image": "gpt-image-2-5-flare-text-to-image",
   "/nano-banana-2-lite": "nano-banana-2-lite",
   "/nano-banana-2": "nano-banana-2",
   "/nano-banana-pro": "nano-banana-pro",
@@ -98,8 +101,12 @@ const CALIDADES = new Map<string, string>([
   ["pro", "pro"],
 ]);
 
-/** Identificador de la API a partir del `anchor`, o `null` si esta instalación no sabe cuál es. */
-export function modeloDeAncla(ancla: string): string | null {
+/**
+ * Identificador de la API a partir del `anchor`, o `null` si esta instalación no sabe cuál es. La operación
+ * solo hace falta para las páginas que ofrecen varias formas del mismo modelo (texto a imagen e imagen a
+ * imagen comparten página en GPT Image 2.5).
+ */
+export function modeloDeAncla(ancla: string, operacion?: Operacion | null): string | null {
   if (ancla === "") return null;
   let url: URL;
   try {
@@ -110,8 +117,9 @@ export function modeloDeAncla(ancla: string): string | null {
   // La documentación de KIE es la que manda: su `?model=` es literalmente el `model` de `createTask`.
   const declarado = url.searchParams.get("model");
   if (declarado !== null && declarado.trim() !== "") return declarado.trim();
-  // Cada entrada de la tabla ya nombra una operación concreta, así que no hace falta nada más para resolverla.
-  return MODELO_POR_PAGINA[url.pathname.replace(/\/$/, "")] ?? null;
+  const ruta = url.pathname.replace(/\/$/, "");
+  const conOperacion = operacion ? MODELO_POR_PAGINA[`${ruta}#${operacion}`] : undefined;
+  return conOperacion ?? MODELO_POR_PAGINA[ruta] ?? null;
 }
 
 /** Texto normalizado para buscar una operación: minúsculas y «x to y» escrito siempre con guiones. */
@@ -150,7 +158,8 @@ function varianteDe(partes: string[], operacion: Operacion): VarianteTarifa {
       continue;
     }
     // La duración solo cuenta en vídeo: en imagen, «1.0s» es el tiempo de render, no lo que dura nada.
-    const segundos = operacion === "image-to-image" ? null : /^(\d+(?:\.\d+)?)s$/.exec(trozo);
+    const esImagen = operacion === "image-to-image" || operacion === "text-to-image";
+    const segundos = esImagen ? null : /^(\d+(?:\.\d+)?)s$/.exec(trozo);
     if (variante.segundos === 0 && segundos) variante.segundos = Number(segundos[1]);
   }
   return variante;
@@ -170,7 +179,7 @@ export function traducirTarifa(tarifa: TarifaKie): TarifaTraducida | null {
   const [nombre, ...calificadores] = partes;
   if (!nombre || calificadores.some((c) => NO_ES_GENERACION.some((patron) => patron.test(c)))) return null;
   const declarada = operacionEn(calificadores.join(" "));
-  const modelo = modeloDeAncla(tarifa.ancla);
+  const modelo = modeloDeAncla(tarifa.ancla, declarada);
   if (modelo === null) return null;
   /**
    * Cuando la descripción no nombra la operación («Qwen image 3.0, output, 2K», «nano-banana-2-lite, 1k»), la
@@ -180,10 +189,8 @@ export function traducirTarifa(tarifa: TarifaKie): TarifaTraducida | null {
    */
   const operacion =
     declarada ?? operacionEn(modelo) ?? (tarifa.interfaz === "image" ? "image-to-image" : "text-to-video");
-  // Texto a imagen no genera a partir de una referencia: no hay capacidad en Escenara que lo use.
-  if (operacion === "text-to-image") return null;
   // Un registro de imagen no puede describir un vídeo y al revés: si no cuadran, la descripción no se entiende.
-  if (tarifa.interfaz === "image" && operacion !== "image-to-image") return null;
+  if (tarifa.interfaz === "image" && operacion !== "image-to-image" && operacion !== "text-to-image") return null;
   if (tarifa.interfaz === "video" && operacion === "image-to-image") return null;
   return {
     modelo,

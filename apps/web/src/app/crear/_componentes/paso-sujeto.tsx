@@ -23,6 +23,7 @@ export function PasoSujeto({
   imagen,
   referencia,
   modelos,
+  sinImagen,
   modeloElegido,
   modeloFoto,
   sinTerceros,
@@ -38,6 +39,11 @@ export function PasoSujeto({
   imagen: Medio[];
   referencia: Medio | null;
   modelos: ModeloElegible[];
+  /**
+   * `true` cuando no hay personaje ni imagen elegidos: la escena saldrá **solo de la descripción**, con un
+   * modelo de texto a imagen. Se dice en pantalla, porque es otro modelo y otro precio.
+   */
+  sinImagen: boolean;
   /** Identificador del modelo elegido para el fotograma. */
   modeloElegido: string;
   /** Ficha del modelo elegido, si está en la lista: de ahí sale el tope de fotos que se anuncia. */
@@ -86,9 +92,16 @@ export function PasoSujeto({
           />
         </div>
       )}
+      {sinImagen && (
+        <p className="rounded-control bg-elevada p-3 text-sm font-medium text-texto">
+          Sin personaje ni imagen, la escena se genera{" "}
+          <strong className="font-semibold">solo con tu descripción</strong>, con un modelo de texto a imagen. Elige un
+          personaje o una foto si quieres partir de una cara concreta.
+        </p>
+      )}
       {modelos.length > 1 && (
         <SelectorModelo
-          etiqueta="Modelo del fotograma"
+          etiqueta={sinImagen ? "Modelo de la imagen (texto a imagen)" : "Modelo del fotograma"}
           modelos={modelos}
           valor={modeloElegido}
           onCambio={onModelo}

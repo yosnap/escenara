@@ -67,10 +67,10 @@ describe("de la descripción al identificador de la API", () => {
     expect(cuatroK?.variante.resolucion).toBe("4k");
   });
 
-  test("«texto a imagen» no se importa: no genera a partir de una referencia", () => {
+  test("«texto a imagen» se importa como su propio modelo (0.23.4)", () => {
     const registro = tarifa("gpt image 2, text-to-image, 1k");
     expect(registro).toBeDefined();
-    const traducidas = traducirTarifas([
+    const [traducida] = traducirTarifas([
       {
         descripcion: registro?.modelDescription ?? "",
         interfaz: "image",
@@ -81,7 +81,10 @@ describe("de la descripción al identificador de la API", () => {
         ancla: registro?.anchor ?? "",
       },
     ]);
-    expect(traducidas).toHaveLength(0);
+    // Su identificador es el del modelo de texto a imagen, **no** el de edición: son dos modelos distintos con
+    // dos precios distintos, y generar sin foto de partida es lo que hace falta para un retrato inventado.
+    expect(traducida).toMatchObject({ modelo: "gpt-image-2-text-to-image", operacion: "text-to-image", creditos: 6 });
+    expect(traducida?.variante.resolucion).toBe("1k");
   });
 
   test("un recargo por imagen de entrada no es el precio de generar", () => {
@@ -138,6 +141,34 @@ describe("catálogo publicado", () => {
     const sinFamilia = publicados.find((p) => !p.montable);
     expect(sinFamilia).toBeDefined();
     expect(sinFamilia?.notas).toContain("no sabe con qué parámetros");
+  });
+
+  test("un modelo de texto a imagen entra con su capacidad y sin admitir referencias (0.23.4)", async () => {
+    const publicados = await modelosPublicadosDeKie(buscar());
+    const deTexto = publicados.find((p) => p.modelo === "gpt-image-2-text-to-image");
+    expect(deTexto?.montable).toBe(true);
+    expect(deTexto?.capacidades).toEqual(["text_to_image"]);
+    // No acepta ninguna imagen de partida: es lo que lo hace servir para un retrato que nace de la descripción.
+    expect(deTexto?.parametros.maximoReferencias).toBe(0);
+    expect(deTexto?.tarifas).toEqual([
+      { unidad: "imagen a 1K", creditos: 6, referencia: "https://kie.ai/gpt-image-2?model=gpt-image-2-text-to-image" },
+    ]);
+  });
+
+  test("un modelo de vídeo trae una tarifa por duración, sin escalar ninguna (0.23.4)", async () => {
+    const publicados = await modelosPublicadosDeKie(buscar());
+    const omni = publicados.find((p) => p.modelo === "google/gemini-omni-flash-1-1");
+    expect(omni?.montable).toBe(true);
+    // Las cuatro que publica a 720p, cada una con su precio. El recargo por vídeo de entrada no es una de ellas.
+    expect(omni?.tarifas.map((t) => [t.unidad, t.creditos])).toEqual([
+      ["clip de 4 s a 720p", 63],
+      ["clip de 6 s a 720p", 84],
+      ["clip de 8 s a 720p", 105],
+      ["clip de 10 s a 720p", 126],
+    ]);
+    expect(omni?.parametros.duraciones).toEqual([4, 6, 8, 10]);
+    // Los 63 de 4 s son los que se pagaron de verdad el 2026-09-28: la tabla publicada coincide con lo medido.
+    expect(omni?.tarifas[0]?.creditos).toBe(63);
   });
 
   test("los precios de chat no entran: se cobran por tokens y no se saben antes de generar", async () => {

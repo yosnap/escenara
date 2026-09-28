@@ -1,4 +1,4 @@
-import type { ModeloVista } from "@/lib/catalogo";
+import { duracionesConCoste, type ModeloVista } from "@/lib/catalogo";
 import type { LimitesDelModelo, RestriccionesPlantilla, ValoresPreset } from "@/lib/presets";
 import { motivoIncompatible } from "@/lib/presets";
 import { ErrorPreset } from "./errores";
@@ -28,8 +28,13 @@ import { ErrorPreset } from "./errores";
  * que declara. Produciendo un proyecto manda la duración del proyecto, que llega como `segundos`.
  */
 export const duracionEnviada = (modelo: ModeloVista, segundos?: number): number | null => {
-  if (segundos !== undefined && modelo.parametros.duraciones.includes(segundos)) return segundos;
-  return modelo.parametros.duraciones[0] ?? null;
+  /**
+   * Solo cuentan las duraciones **que el modelo sabe cobrar** (0.23.4): si una duración no tiene tarifa
+   * registrada, ofrecer su preset sería prometer un clip que después no se puede confirmar.
+   */
+  const cobrables = duracionesConCoste(modelo).map((d) => d.segundos);
+  if (segundos !== undefined && cobrables.includes(segundos)) return segundos;
+  return cobrables[0] ?? null;
 };
 
 /**

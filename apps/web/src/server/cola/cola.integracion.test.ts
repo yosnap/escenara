@@ -471,6 +471,53 @@ describe.skipIf(!hayBaseDeDatos)("cola, presupuesto y conciliación", () => {
     });
   });
 
+  /**
+   * Norma de errores visibles en el fallo de preparación (0.23.4). Antes, cualquier fallo antes de llamar al
+   * proveedor decía «No se ha podido preparar el envío. Se volverá a intentar» y se reintentaba tres veces,
+   * aunque fuera algo que no se arregla solo. Ahora se dice la causa concreta, que no se ha enviado ni cobrado,
+   * y lo que no es pasajero no se reintenta.
+   */
+  describe("un fallo al preparar dice su causa y no se reintenta si no se va a arreglar solo", () => {
+    beforeEach(limpiarTrabajos);
+
+    test("un modelo que esta instalación no puede pedir cierra el trabajo con su motivo y sin coste", async () => {
+      const { trabajo } = await crearFotograma(actor, peticion(), h);
+      // Entre encolar y enviar, el catálogo deja de tener ese modelo: es un fallo de catálogo, no del proveedor.
+      await db()
+        .update(generationJobs)
+        .set({ model: "modelo-que-ya-no-esta" })
+        .where(eq(generationJobs.id, trabajo.id));
+      await enviarEncolados(h);
+
+      const fallido = await obtenerTrabajo(dana.id, trabajo.id);
+      expect(fallido.estado).toBe("fallido");
+      expect(fallido.error).toContain("no se te ha cobrado");
+      expect(fallido.error).not.toContain("Se volverá a intentar");
+      // Nada ha salido hacia el proveedor y la reserva se ha soltado entera.
+      expect(kie.llamadas.crearTarea).toBe(0);
+      expect((await depositoDe(dana.id)).reservado).toBe(0);
+    });
+
+    test("un fotograma que se quedó sin imagen de partida lo dice, y no lo intenta tres veces", async () => {
+      const { trabajo } = await crearFotograma(actor, peticion(), h);
+      await db()
+        .update(generationJobs)
+        .set({
+          sourceMediaId: null,
+          input: sql`jsonb_set(${generationJobs.input}::jsonb, '{referencias}', '[]')`,
+        })
+        .where(eq(generationJobs.id, trabajo.id));
+      await enviarEncolados(h);
+
+      const fallido = await obtenerTrabajo(dana.id, trabajo.id);
+      expect(fallido.estado).toBe("fallido");
+      expect(fallido.error).toContain("Falta la imagen de partida");
+      expect(fallido.error).toContain("no se te ha cobrado");
+      expect(kie.llamadas.crearTarea).toBe(0);
+      expect((await depositoDe(dana.id)).reservado).toBe(0);
+    });
+  });
+
   describe("el clip sale con la duración que se decidió al encolar", () => {
     beforeEach(limpiarTrabajos);
 

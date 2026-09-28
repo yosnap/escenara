@@ -149,8 +149,8 @@ export const adaptadorElevenLabs: Adaptador = {
     return true;
   },
 
-  estimar(modelo: string): Promise<PrecioModelo> {
-    return precioDeModelo("elevenlabs", modelo);
+  estimar(modelo: string, unidad?: string): Promise<PrecioModelo> {
+    return precioDeModelo("elevenlabs", modelo, unidad);
   },
 
   /**
