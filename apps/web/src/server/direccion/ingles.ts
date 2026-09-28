@@ -161,7 +161,7 @@ export const SIN_NOMBRAR_LA_TECNICA =
  * que protege la comprobación de identidad de la 0.24.0.
  */
 export const IDENTIDAD_DE_REFERENCIA =
-  "The person is exactly the individual in the reference images: keep their face, their features, their body and their age unchanged. Do not idealise them, do not slim them, do not smooth their skin and do not make them more or less attractive than the references.";
+  "The person is exactly the individual in the reference images: keep their face, their features, their body and their age unchanged. Do not idealise them, do not slim them, do not smooth their skin and do not make them more or less attractive than the references. Any trait named in their profile (freckles, moles, scars, skin tone, tan) is a description of how they already look, not an effect to apply: reproduce it exactly as in the references and never exaggerate, intensify or add more of it, whatever the scene or the light.";
 
 /**
  * Lo que se añade con un personaje **inventado** y **solo si el usuario lo ha elegido expresamente**. Nunca por

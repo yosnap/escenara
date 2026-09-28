@@ -1,5 +1,15 @@
 import { and, count, eq, isNull, sql } from "drizzle-orm";
 import {
+  esFormatoClip,
+  esMomentoMicroaccion,
+  esNivelCamara,
+  esRegistroEstetico,
+  type FormatoClip,
+  type MomentoMicroaccion,
+  type NivelCamara,
+  type RegistroEstetico,
+} from "@/lib/direccion";
+import {
   type CategoriaPreset,
   esCategoriaPreset,
   esProporcion,
@@ -42,6 +52,11 @@ export interface DatosPreset {
   proporcion?: string;
   /** Segundos que exige, solo en `duracion`. 0 = ninguno. */
   segundos?: number;
+  /** Campos de la dirección del clip (0.25.0), cada uno solo en su categoría. */
+  nivel?: NivelCamara;
+  momento?: MomentoMicroaccion;
+  formatoClip?: FormatoClip;
+  registro?: RegistroEstetico;
   orden: number;
   activo: boolean;
 }
@@ -88,6 +103,12 @@ function exigirValores(datos: DatosPreset): ValoresPreset {
     }
     valores.segundos = segundos;
   }
+  // Campos de la dirección (0.25.0). No son texto: el nivel avisa de cuánto se arriesga el usuario y el momento
+  // propone cuándo ocurre el gesto, así que perderlos al editar una copia dejaría el catálogo mudo sin decirlo.
+  if (datos.categoria === "camara" && esNivelCamara(datos.nivel)) valores.nivel = datos.nivel;
+  if (datos.categoria === "microaccion" && esMomentoMicroaccion(datos.momento)) valores.momento = datos.momento;
+  if (datos.categoria === "formato-clip" && esFormatoClip(datos.formatoClip)) valores.formatoClip = datos.formatoClip;
+  if (datos.categoria === "registro-estetico" && esRegistroEstetico(datos.registro)) valores.registro = datos.registro;
   return valores;
 }
 
@@ -224,6 +245,12 @@ async function claveLibre(
   throw new ErrorPreset(409, "No queda ninguna clave libre para esa copia: renombra las que ya tienes.");
 }
 
+/** Lo que pide una copia propia: su descripción limpia, o lo que tenía si la descripción llega vacía. */
+function promptDeDescripcion(descripcion: unknown, previo: string | undefined): string | undefined {
+  const texto = typeof descripcion === "string" ? descripcion.replace(/\s+/g, " ").trim() : "";
+  return texto === "" ? previo : texto;
+}
+
 /** Edita una copia **propia**. Una del otro (o la de la instalación) responde 404 o 403. */
 export async function editarPresetPropio(usuarioId: string, id: string, datos: DatosPreset): Promise<PresetVista> {
   const anterior = await presetUsable(usuarioId, id);
@@ -232,15 +259,20 @@ export async function editarPresetPropio(usuarioId: string, id: string, datos: D
   }
   // El orden y el estado no se tocan aquí: los lleva la fila, y el formulario de «Crear» no los ofrece. Si se
   // cogieran de `datos`, editar el nombre de una copia la reordenaría y la reactivaría sin que nadie lo pidiera.
-  // El fragmento en inglés **ya no viaja al navegador** (ADR-0022), así que si no llega se conserva el que
-  // tenía: desde «Crear» se personalizan el nombre y la descripción, y el texto del prompt se edita en
-  // Admin › Presets. Los valores anteriores incluyen la proporción y la duración que exige.
+  // El fragmento en inglés **no viaja al navegador** (ADR-0022), así que en una copia propia **lo que se le pide
+  // al modelo es su descripción**: es lo único que la persona ve y escribe. Conservar el fragmento del original
+  // hacía que renombrar «De calle» a «Playa» siguiera pidiendo ropa de calle sin que nada lo dijera. Los
+  // valores anteriores incluyen la proporción, la duración y los campos de la dirección que declare.
   const previos = valoresDeTexto(anterior.values);
   const valores = normalizar({
     ...(previos.proporcion === undefined ? {} : { proporcion: previos.proporcion }),
     ...(previos.segundos === undefined ? {} : { segundos: previos.segundos }),
+    ...(previos.nivel === undefined ? {} : { nivel: previos.nivel }),
+    ...(previos.momento === undefined ? {} : { momento: previos.momento }),
+    ...(previos.formatoClip === undefined ? {} : { formatoClip: previos.formatoClip }),
+    ...(previos.registro === undefined ? {} : { registro: previos.registro }),
     ...datos,
-    prompt: datos.prompt ?? previos.prompt,
+    prompt: datos.prompt ?? promptDeDescripcion(datos.descripcion, previos.prompt),
     clave: anterior.slug,
     categoria: anterior.category,
     orden: anterior.sortOrder,

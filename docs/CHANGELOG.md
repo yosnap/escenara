@@ -13,9 +13,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - **La regla de toma única no es opcional.** Todo clip se cierra pidiendo una sola toma continua sin cortes y la
   cámara quieta al terminar el movimiento, se haya elegido movimiento o no. Sin ella el modelo corta a media
   frase.
-- **Con una persona real nunca se embellece.** Su identidad sale de sus referencias y el prompt pide
-  expresamente que no se la retoque, no se la adelgace y no se le cambie el atractivo. Las descripciones de
-  belleza solo existen para personajes **inventados** y **solo si el usuario las elige**, nunca por defecto.
+- **Con una persona real nunca se embellece ni se la altera.** Su identidad sale de sus referencias y el
+  prompt pide expresamente que no se la retoque, no se la adelgace y no se le cambie el atractivo. Y un rasgo
+  que diga su ficha —pecas, lunares, cicatrices, tono de piel, bronceado— es **cómo es ya**, no un efecto que
+  aplicar: se reproduce igual que en las referencias y no se exagera, lo pida la escena o la luz lo que pida.
+  Las descripciones de belleza solo existen para personajes **inventados** y **solo si el usuario las elige**,
+  nunca por defecto.
 - **El bloque de anclajes de realismo (C6) lo compone quien administra y el usuario no puede quitarlo**: es lo
   que separa una foto creíble de un render, y cierra siempre el prompt del fotograma.
 
@@ -61,6 +64,18 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - **Spike de bajo coste sin ejecutar**: confirmar con generaciones reales el orden del prompt, que la regla de
   toma única evita el corte y que el acento se oye. Preparado en `scripts/spike-direccion.ts`; requiere la
   aprobación del propietario porque gasta créditos.
+## [0.24.1] · 2026-09-28
+
+### Corregido
+
+- **Tus copias de un preset piden lo que dice su descripción.** Al editar una copia propia (por ejemplo, «De
+  calle» renombrado a «Playa») solo se veían el nombre y la descripción, pero al modelo le seguía llegando el texto
+  del original, oculto: un anuncio en traje de baño salía con ropa de calle. Ahora la descripción que escribes es
+  lo que se le pide, y el diálogo lo dice. Las copias que ya tenías se han corregido igual.
+- **La escena manda sobre la ropa, el lugar y la luz.** La ficha del personaje se añadía con su vestuario y su
+  estilo habituales (luz de ventana, fondo neutro), y el modelo copiaba además la ropa de las fotos de
+  referencia. Ahora el bloque de la ficha dice que de las fotos solo se toman la cara y el cuerpo, y que el
+  vestuario y el estilo de la ficha solo valen si la escena no dice otra cosa.
 
 ## [0.24.0] · 2026-09-28
 

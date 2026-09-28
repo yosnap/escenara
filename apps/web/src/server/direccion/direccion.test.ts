@@ -276,6 +276,12 @@ describe("método 6C del fotograma", () => {
     expect(pedido).toContain("do not make them more or less attractive");
   });
 
+  test("un rasgo de la ficha se reproduce, no se exagera: las pecas y el bronceado no suben con la escena", () => {
+    const prompt = componerSeisC({ ...SEIS, personajeReal: true, localizacion: "On a beach at midday" });
+    expect(prompt).toContain("never exaggerate, intensify or add more of it");
+    expect(prompt).toContain("not an effect to apply");
+  });
+
   test("con un personaje inventado solo aparece si se eligió expresamente", () => {
     expect(componerSeisC({ ...SEIS, personajeReal: false, atractivoElegido: false })).not.toContain("model-level");
     expect(componerSeisC({ ...SEIS, personajeReal: false, atractivoElegido: true })).toContain(ATRACTIVO_ELEGIDO);

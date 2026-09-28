@@ -227,7 +227,7 @@ describe.skipIf(!hayBaseDeDatos)("el prompt compuesto no llega al navegador", ()
     copiaId = (JSON.parse(cuerpo) as { id: string }).id;
   });
 
-  test("editar tu copia devuelve lo visible, no el prompt, y conserva el fragmento que tenía", async () => {
+  test("editar tu copia devuelve lo visible, no el prompt, y lo que pide pasa a ser su descripción", async () => {
     const antes = (await listarPresets({ usuarioId: ana.id })).find((p) => p.id === copiaId);
     if (!antes) throw new Error("Falta la copia que se acaba de duplicar.");
     const fragmento = antes.valores.prompt;
@@ -245,9 +245,9 @@ describe.skipIf(!hayBaseDeDatos)("el prompt compuesto no llega al navegador", ()
     expect(cuerpo).not.toContain(fragmento);
     expect(cuerpo).toContain("Mi versión");
 
-    // Y el fragmento sigue siendo el que era: no llegaba, así que no se ha vaciado.
+    // Y lo que se pide es la descripción que escribió: el fragmento del original ya no se arrastra oculto.
     const despues = (await listarPresets({ usuarioId: ana.id })).find((p) => p.id === copiaId);
-    expect(despues?.valores.prompt).toBe(fragmento);
+    expect(despues?.valores.prompt).toBe("Con otro nombre y otra descripción.");
     expect(despues?.nombre).toBe("Mi versión");
   });
 

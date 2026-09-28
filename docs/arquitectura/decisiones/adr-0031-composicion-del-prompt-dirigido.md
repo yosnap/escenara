@@ -77,8 +77,10 @@ Tres reglas que este ADR fija y que no dependen de ninguna configuración:
   partir;
 - **el bloque de anclajes (C6) va siempre**, y si el catálogo estuviera vacío se usa el del código. El usuario
   no lo elige y no lo puede quitar; quien administra sí lo compone;
-- **con una persona real no entra ningún adjetivo de atractivo**, lo pida quien lo pida. Con un personaje
-  inventado solo entra si el usuario lo eligió expresamente.
+- **con una persona real no entra ningún adjetivo de atractivo**, lo pida quien lo pida, y **ningún rasgo suyo
+  se exagera**: las pecas, los lunares, las cicatrices, el tono de piel y el bronceado que nombre su ficha
+  describen cómo es ya, no son un efecto que aplicar, y con una escena de playa el modelo los subía solo. Con
+  un personaje inventado el atractivo solo entra si el usuario lo eligió expresamente.
 
 **Dónde se aplica.** Después de traducir y después de todas las puertas gratis, en
 `generacion/servicio.ts` y en `omni/escena.ts`: el hueco del texto libre se rellena con el texto del usuario ya

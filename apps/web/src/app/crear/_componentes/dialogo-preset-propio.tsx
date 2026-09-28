@@ -89,7 +89,10 @@ export function DialogoPresetPropio({
         <Campo etiqueta="Nombre" ayuda="Lo que se lee grande en el botón.">
           {(props) => <EntradaTexto {...props} value={nombre} onChange={(e) => setNombre(e.target.value)} />}
         </Campo>
-        <Campo etiqueta="Descripción (español)" ayuda="Una frase que te recuerde para qué lo usas.">
+        <Campo
+          etiqueta="Descripción (español)"
+          ayuda="Es lo que se le pide al modelo cuando eliges este botón: descríbelo tal como quieres que salga (por ejemplo, «traje de baño para la playa»)."
+        >
           {(props) => (
             <AreaTexto
               {...props}
