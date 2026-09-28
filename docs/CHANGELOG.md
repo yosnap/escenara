@@ -62,11 +62,26 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
   guardada en el historial (que es el camino de vuelta). Si quien administra había editado la plantilla, no se
   toca: su decisión manda sobre la semilla.
 
+- **Panel de dirección en el editor de escenas**: formato, plano, ángulo, cámara, micro-acción con su momento,
+  matiz de voz y las cuatro C del fotograma, con la previsualización en castellano de lo que se ha pedido.
+- **Casilla «estética de modelo» en la ficha del personaje inventado**, desmarcada de fábrica y solo visible en
+  inventados. Con una persona real no aparece, y si llegara, se rechaza.
+- **Comparación de la hoja 3×3 frente a las vistas sueltas** en Admin › Coherencia, con muestra mínima de 20 en
+  cada grupo. Por debajo de ahí enseña recuentos y no saca conclusiones.
+
+### Medido con dinero real (spike del 2026-09-28, 504 créditos)
+
+- **La regla de toma única funciona: ni un corte en 5 de 5 clips.** Era el riesgo alto de la versión.
+- **El movimiento de cámara se respeta** (acercamiento lento), y también el plano, el ángulo, el sitio y el
+  registro estético.
+- **En un clip de 4 s no cabe un gesto antes o después de hablar**: la frase ocupa el clip entero. Por eso,
+  cuando no hay hueco, el gesto se coloca dentro del habla y **se avisa con la causa** en lugar de prometer un
+  «antes» que no puede ocurrir.
+
 ### Pendiente
 
-- **Spike de bajo coste sin ejecutar**: confirmar con generaciones reales el orden del prompt, que la regla de
-  toma única evita el corte y que el acento se oye. Preparado en `scripts/spike-direccion.ts`; requiere la
-  aprobación del propietario porque gasta créditos.
+- **Segundo spike con clips de 8 s**: la ordenación del gesto, los niveles de cámara con variación y avanzados,
+  y el acento (que hay que escuchar) siguen sin medir.
 ## [0.24.1] · 2026-09-28
 
 ### Corregido

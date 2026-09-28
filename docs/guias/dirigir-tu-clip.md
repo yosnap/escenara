@@ -4,6 +4,8 @@ Hasta ahora escribías qué se veía y qué se decía, y la cámara la ponía el
 fijo con un temblor ligero. Desde la 0.25.0 diriges tú, parte por parte, como un director. No hace falta que
 sepas inglés ni que veas ningún texto técnico: eliges con botones y el programa se encarga del resto.
 
+![Panel de dirección de una escena](../assets/capturas/0.25.0-direccion-claro.webp)
+
 ## Las seis partes de un clip
 
 Cada escena se dirige con seis decisiones. Ninguna es obligatoria salvo el formato: lo que no elijas se queda
@@ -37,6 +39,10 @@ Qué hace la cámara durante el clip. Están ordenados por cuánto se puede conf
   lenta, seguimiento al caminar.
 - **Avanzados** (mira el clip antes de darlo por bueno): push-in a los ojos en la frase clave, contrapicado
   heroico, foco que cambia al fondo, cámara lenta.
+
+> **Los gestos necesitan sitio.** En un clip de 4 segundos una frase normal ocupa el clip entero y no queda
+> hueco para asentir antes o después: si eso pasa, se te dice y el gesto sale mientras habla. Acorta el guion o
+> pon clips de 8 segundos si lo quieres separado.
 
 **Solo un movimiento por clip.** Si eliges dos, se te avisa y se envía el primero: los modelos, cuando les
 pides dos movimientos, parten el plano en dos. Si de verdad quieres los dos, parte la escena en dos y pon uno
@@ -138,10 +144,16 @@ motivo y con dos botones —«tiene razón» y «se equivoca»— que son lo ún
 De momento esta comprobación **no bloquea nada**: se registra y se te enseña, para poder medir cuánto acierta
 antes de darle poder. Quien administra puede apagarla en Admin › Ajustes › Coherencia.
 
-## Lo que todavía no está
+## Lo que ya está comprobado y lo que no
 
-- La **prueba real** del orden del prompt, de que la regla de toma única evita el corte y de que el acento se
-  oye está preparada pero **sin ejecutar**: gasta créditos y hace falta autorización.
-- La **hoja de identidad 3×3** (nueve retratos en una imagen) se genera y se guarda, pero nace como
-  **candidata** y no se usa por defecto: primero hay que comprobar con datos si da mejor parecido que las
-  vistas sueltas.
+Probado con clips reales el 28/09/2026:
+
+- **la regla de una sola toma funciona**: ninguno de los cinco clips salió cortado;
+- **el movimiento de cámara se respeta**, y también el plano, el ángulo, el sitio y el acabado.
+
+Todavía sin comprobar: si el **acento** suena como se pide, si los movimientos **avanzados** se respetan, y si
+el gesto se coloca en su momento cuando el clip es de 8 segundos.
+
+La **hoja de identidad 3×3** (nueve retratos en una imagen) nace como **candidata** y no se usa por defecto:
+primero hay que comprobar con datos si da mejor parecido que las fotos sueltas, y eso se ve en el panel de
+quien administra.
