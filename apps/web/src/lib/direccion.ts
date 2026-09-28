@@ -306,7 +306,13 @@ export interface OpcionDireccion {
   momento?: MomentoMicroaccion;
 }
 
-/** Las siete categorías que el usuario elige. Los anclajes no están: no son suyos. */
+/**
+ * Las categorías que el usuario elige. Los anclajes no están: no son suyos.
+ *
+ * `accionProducto` (0.26.0) viaja con el resto porque se elige en el mismo panel: qué hace el personaje con el
+ * producto es dirección del clip, igual que el gesto, y pedirlo en otra pantalla lo separaría de lo que
+ * describe.
+ */
 export interface OpcionesDeDireccion {
   plano: OpcionDireccion[];
   angulo: OpcionDireccion[];
@@ -315,6 +321,7 @@ export interface OpcionesDeDireccion {
   localizacion: OpcionDireccion[];
   camara: OpcionDireccion[];
   microaccion: OpcionDireccion[];
+  accionProducto: OpcionDireccion[];
 }
 
 // ── Texto libre del usuario ─────────────────────────────────────────────────────────────────────────────

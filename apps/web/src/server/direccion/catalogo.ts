@@ -35,6 +35,8 @@ const CATEGORIAS: readonly CategoriaPreset[] = [
   "microaccion",
   "registro-estetico",
   "anclajes",
+  // Acciones de producto (0.26.0). Se leen aquí para que el compositor del bloque siguiente las tenga a mano.
+  "accion-producto",
 ];
 
 /** Lee de una vez todas las categorías de la dirección. Una consulta, no diez. */

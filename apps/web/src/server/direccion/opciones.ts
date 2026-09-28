@@ -21,6 +21,7 @@ const CATEGORIAS: readonly CategoriaPreset[] = [
   "localizacion",
   "camara",
   "microaccion",
+  "accion-producto",
 ];
 
 export async function opcionesDeDireccion(usuarioId: string): Promise<OpcionesDeDireccion> {
@@ -33,11 +34,15 @@ export async function opcionesDeDireccion(usuarioId: string): Promise<OpcionesDe
     localizacion: vacio(),
     camara: vacio(),
     microaccion: vacio(),
+    accionProducto: vacio(),
   };
   for (const preset of await listarPresets({ usuarioId })) {
     if (!preset.activo) continue;
     if (!CATEGORIAS.includes(preset.categoria)) continue;
-    const lista = opciones[preset.categoria as keyof OpcionesDeDireccion];
+    // La categoría del catálogo lleva guion y el campo de la vista va en una palabra: es la única que no
+    // coincide, así que se traduce aquí en lugar de renombrar una categoría que ya está sembrada.
+    const campo = preset.categoria === "accion-producto" ? "accionProducto" : preset.categoria;
+    const lista = opciones[campo as keyof OpcionesDeDireccion];
     if (!lista) continue;
     lista.push({
       clave: preset.clave,

@@ -994,6 +994,76 @@
       "valores": {
         "prompt": "Photographic realism: real skin with visible pores and small imperfections, natural asymmetry, a light film of grain. Hands, fingers, teeth and eyes are anatomically correct and unaltered. Do not render this as an illustration, a 3D render, CGI or a digital painting: it is a photograph. No text, no captions, no subtitles, no watermarks, no logos, no written words and no distorted or duplicated body parts anywhere in the image."
       }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "sostenerlo",
+      "nombre": "Sostenerlo",
+      "descripcion": "Lo tiene en la mano, a la vista, sin taparlo con los dedos.",
+      "orden": 10,
+      "valores": {
+        "prompt": "The person holds the product in one hand, clearly visible, fingers away from the label"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "mirarlo",
+      "nombre": "Mirarlo",
+      "descripcion": "Lo mira mientras lo tiene delante, como quien lo está descubriendo.",
+      "orden": 20,
+      "valores": {
+        "prompt": "The person looks down at the product they are holding, attentive, as if discovering it"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "senalarlo",
+      "nombre": "Señalarlo",
+      "descripcion": "Lo señala con el dedo para que te fijes en él.",
+      "orden": 30,
+      "valores": {
+        "prompt": "The person points at the product with one finger to draw attention to it"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "ensenarlo-a-camara",
+      "nombre": "Enseñarlo a cámara",
+      "descripcion": "Lo gira hacia la cámara con la etiqueta de frente.",
+      "orden": 40,
+      "valores": {
+        "prompt": "The person turns the product towards the camera, front label facing the lens, held steady"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "abrirlo",
+      "nombre": "Abrirlo",
+      "descripcion": "Le quita la tapa o lo abre delante de la cámara.",
+      "orden": 50,
+      "valores": {
+        "prompt": "The person opens the product, removing its cap or lid, hands visible in frame"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "aplicarlo",
+      "nombre": "Aplicarlo o usarlo",
+      "descripcion": "Lo usa de verdad: se lo aplica, lo prueba, lo pone en marcha.",
+      "orden": 60,
+      "valores": {
+        "prompt": "The person actually uses the product, applying or operating it naturally"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "producto-solo",
+      "nombre": "El producto solo",
+      "descripcion": "Plano del producto sin nadie: para intercalar en el montaje.",
+      "orden": 70,
+      "valores": {
+        "prompt": "Product-only shot with no people in frame, the product presented on a clean surface"
+      }
     }
   ],
   "plantillas": [
