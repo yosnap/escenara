@@ -2,8 +2,10 @@
 -- cada una (63, 84, 105 y 126 créditos a 4, 6, 8 y 10 s en 720p, leído el 2026-09-28) y los 63 de 4 s son los
 -- que se pagaron de verdad, así que las cuatro se pueden cobrar sin inventar ninguna tarifa. Lo que se ofrece
 -- de verdad sigue siendo solo lo que tenga su precio registrado: la sincronización de precios las da de alta.
+-- Solo se cambia la lista de duraciones: el resto de parámetros (proporciones 9:16 y 16:9, resolución,
+-- referencias) se queda como esté.
 UPDATE "models"
-SET "parameters" = '{"duraciones":[4,6,8,10],"proporciones":["9:16"],"resoluciones":["720p"],"formatosReferencia":["image/jpeg","image/png","image/webp"],"maximoReferencias":7}'
+SET "parameters" = jsonb_set("parameters"::jsonb, '{duraciones}', '[4,6,8,10]'::jsonb)::text
 WHERE "model_id" IN ('google/gemini-omni-flash-1-1', 'gemini-omni-video')
   AND "parameters" LIKE '%"duraciones":[4]%';
 --> statement-breakpoint

@@ -232,7 +232,7 @@ export function VistaCrear({
   };
 
   const generarFotograma = async (confirmacion: ConfirmacionCoste) => {
-    if (!personaje && !referencia) return;
+    // Sin personaje ni imagen también se genera: el servidor usa el gemelo texto a imagen del modelo elegido.
     setEnviando("fotograma");
     setError(null);
     const respuesta = await crearTrabajo({
@@ -240,7 +240,7 @@ export function VistaCrear({
       // La revisión se envía siempre: una imagen suelta puede ser el resultado de otro trabajo hecho con un
       // personaje, y entonces el servidor la exige igual (hereda ese personaje).
       sinTerceros,
-      ...(personaje ? { personajeId: personaje.id } : { medioId: referencia?.id }),
+      ...(personaje ? { personajeId: personaje.id } : referencia ? { medioId: referencia.id } : {}),
       // La versión que se estaba mirando: si el servidor usaría otra, responde 409 y no se gasta nada.
       ...(personaje && contexto?.personajeId === personaje.id && contexto.versionId !== ""
         ? { versionPersonaje: contexto.versionId }

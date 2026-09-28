@@ -1,4 +1,4 @@
-import { CAPACIDAD_DE_TIPO, type ModeloVista, unidadParaDuracion } from "@/lib/catalogo";
+import { CAPACIDAD_DE_TIPO, duracionesConCoste, type ModeloVista, unidadParaDuracion } from "@/lib/catalogo";
 import type { TipoTrabajoCola } from "@/lib/generacion";
 import type { Adaptador, PrecioModelo } from "../proveedores/contrato";
 import { resolver } from "../proveedores/registro";
@@ -39,6 +39,14 @@ export async function elegirParaTipo(
   const capacidad = tipo === "fotograma" && modo.sinReferencia ? "text_to_image" : CAPACIDAD_DE_TIPO[tipo];
   const { modelo: elegido, adaptador } = await resolver(capacidad, modelo);
   const unidad = modo.segundos === undefined ? undefined : (unidadParaDuracion(elegido, modo.segundos) ?? undefined);
+  // Un modelo que cobra por duración y no tiene tarifa para la pedida no se estima con otra: se dice cuáles hay.
+  const cobrables = duracionesConCoste(elegido).map((d) => d.segundos);
+  if (modo.segundos !== undefined && unidad === undefined && cobrables.length > 0) {
+    throw new ErrorGeneracion(
+      409,
+      `${elegido.nombre} no tiene precio para un clip de ${modo.segundos} s, así que no se puede pedir. Elige una de estas duraciones: ${cobrables.map((d) => `${d} s`).join(", ")}. No se ha cobrado nada.`,
+    );
+  }
   return { modelo: elegido, adaptador, precio: await adaptador.estimar(elegido.modelo, unidad) };
 }
 

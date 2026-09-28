@@ -1,4 +1,4 @@
-import { duracionesConCoste, type ModeloVista } from "@/lib/catalogo";
+import { duracionesConCoste, type ModeloVista, segundosDeUnidad } from "@/lib/catalogo";
 import type { Medio } from "@/lib/media/tipos";
 import { creditosDeEscenaOmni, precioOmniEstimado, usaIdentidadRegistrada, type VozOmniDelProyecto } from "@/lib/omni";
 import { duracionParaModelo } from "@/lib/produccion";
@@ -75,6 +75,24 @@ export const segundosDeEscenaOmni = (duraciones: readonly number[], proyecto: Fi
   duracionParaModelo(duraciones, proyecto.clipSeconds);
 
 /**
+ * Créditos de una escena hablada a partir de la tarifa leída. Si la tarifa **es** la de esa duración («clip de
+ * 6 s»), se cobra tal cual: volver a escalarla sería cobrarla dos veces. Solo cuando no hay tarifa propia de esa
+ * duración se estima en proporción, y desde los segundos de la tarifa que sí se leyó.
+ */
+export function creditosDeTarifa(
+  precio: { unidad: string; creditos: number },
+  segundos: number,
+  modelo: string,
+): number {
+  const segundosDeTarifa = segundosDeUnidad(precio.unidad);
+  if (segundosDeTarifa === segundos) return Math.ceil(precio.creditos);
+  if (segundosDeTarifa !== null && segundos > 0) {
+    return Math.max(Math.ceil(precio.creditos), Math.ceil((precio.creditos * segundos) / segundosDeTarifa));
+  }
+  return creditosDeEscenaOmni(precio.creditos, segundos, modelo);
+}
+
+/**
  * Créditos de una escena hablada con la duración del proyecto. Se calcula en un solo sitio para que la cifra que
  * se muestra, la que se confirma y la que se aparta sean la misma.
  */
@@ -91,7 +109,7 @@ export async function creditosDeEscenaHablada(
   const { modelo: primero } = await eleccionOmni(usuarioId);
   const segundos = segundosDeEscenaOmni(duracionesDeOmni(primero), proyecto);
   const { modelo, precio } = await eleccionOmni(usuarioId, segundos);
-  return { creditos: creditosDeEscenaOmni(precio.creditos, segundos, modelo.modelo), sello: precio.sello };
+  return { creditos: creditosDeTarifa(precio, segundos, modelo.modelo), sello: precio.sello };
 }
 
 /**
@@ -254,7 +272,7 @@ export async function producirEscenaHablada(
   const eleccion = await eleccionOmni(actor.id, segundosDeEscenaOmni(duracionesDeOmni(primero), proyecto));
   const { modelo, adaptador, precio } = eleccion;
   const segundos = segundosDeEscenaOmni(duracionesDeOmni(modelo), proyecto);
-  const creditos = creditosDeEscenaOmni(precio.creditos, segundos, modelo.modelo);
+  const creditos = creditosDeTarifa(precio, segundos, modelo.modelo);
   exigirSelloVigente(confirmacion.selloEstimacion, precio.sello, true);
   const totales = await creditosDelEnvio(creditos);
   exigirConfirmacion(confirmacion.creditosConfirmados, totales);
