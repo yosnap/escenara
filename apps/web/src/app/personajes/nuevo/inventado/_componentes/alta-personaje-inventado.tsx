@@ -1,0 +1,139 @@
+"use client";
+
+import { Check } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { Boton } from "@/components/ui/button";
+import { Casilla } from "@/components/ui/choice";
+import { Aviso } from "@/components/ui/feedback";
+import { AreaTexto, Campo, EntradaTexto } from "@/components/ui/field";
+import { Paso } from "@/components/ui/paso";
+import { crearPersonajeInventado } from "@/components/ui/personajes/api-personajes";
+import { nombresRealesEn } from "@/lib/nombres-reales";
+import { DECLARACION_PERSONAJE_INVENTADO, MOTIVO_SIN_FOTOS_REALES } from "@/lib/omni";
+import { DESCRIPCION_MAXIMA, NOMBRE_MAXIMO } from "@/lib/personajes";
+
+/** Descripción mínima para que los retratos salgan de algo y no de una línea suelta. La misma que el servidor. */
+const DESCRIPCION_MINIMA = 20;
+
+/**
+ * Alta de un personaje inventado: nombre, descripción y declaración. Nada más, porque nada más hace falta: sus
+ * retratos se generan después desde su ficha, con su coste delante.
+ *
+ * El aviso de nombres reales aparece **mientras se escribe**, con la misma lista que aplica el servidor: no es
+ * una validación distinta, es la misma dicha antes de pulsar.
+ */
+export function AltaPersonajeInventado() {
+  const router = useRouter();
+  const [nombre, setNombre] = useState("");
+  const [descripcion, setDescripcion] = useState("");
+  const [declaracion, setDeclaracion] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const nombreLimpio = nombre.trim();
+  const descripcionLimpia = descripcion.trim();
+  const reales = nombresRealesEn(`${nombreLimpio} ${descripcionLimpia}`);
+  const bloqueos = [
+    ...(nombreLimpio === "" ? ["Falta el nombre del personaje."] : []),
+    ...(descripcionLimpia.length < DESCRIPCION_MINIMA
+      ? [`Descríbelo con al menos ${DESCRIPCION_MINIMA} caracteres: de ahí salen sus retratos.`]
+      : []),
+    ...(reales.length > 0 ? ["El texto nombra a una persona real."] : []),
+    ...(declaracion ? [] : ["Falta la declaración de que es un personaje inventado."]),
+  ];
+
+  const guardar = async () => {
+    setGuardando(true);
+    setError(null);
+    const creado = await crearPersonajeInventado({
+      nombre: nombreLimpio,
+      descripcion: descripcionLimpia,
+      declaracion,
+    });
+    setGuardando(false);
+    if (!creado.ok) {
+      setError(creado.error);
+      return;
+    }
+    router.push(`/personajes/${creado.datos.id}`);
+  };
+
+  return (
+    <div className="flex flex-col gap-8">
+      <Paso numero={1} titulo="¿Cómo es?">
+        <Campo etiqueta="Nombre" ayuda={`Cómo lo vas a reconocer en tu lista. Hasta ${NOMBRE_MAXIMO} caracteres.`}>
+          {(props) => (
+            <EntradaTexto
+              {...props}
+              value={nombre}
+              maxLength={NOMBRE_MAXIMO}
+              onChange={(e) => setNombre(e.target.value)}
+              placeholder="Nora"
+            />
+          )}
+        </Campo>
+        <Campo
+          etiqueta="Descripción"
+          ayuda="De aquí salen sus retratos y el contexto de cada escena: edad aproximada, pelo, complexión, ropa y gesto. No nombres a personas reales ni pidas que se parezca a alguien."
+        >
+          {(props) => (
+            <AreaTexto
+              {...props}
+              value={descripcion}
+              maxLength={DESCRIPCION_MAXIMA}
+              onChange={(e) => setDescripcion(e.target.value)}
+              className="min-h-32"
+              placeholder="Mujer de unos treinta años, pelo corto castaño, chaqueta vaquera y gesto tranquilo."
+            />
+          )}
+        </Campo>
+        {reales.length > 0 && (
+          <Aviso tono="error">
+            El texto nombra a {reales.join(", ")}. Un personaje inventado no puede describirse por su parecido con
+            alguien real: descríbelo por su aspecto.
+          </Aviso>
+        )}
+      </Paso>
+
+      <Paso numero={2} titulo="Declaración">
+        <Aviso tono="info">{MOTIVO_SIN_FOTOS_REALES}</Aviso>
+        <Casilla
+          etiqueta={DECLARACION_PERSONAJE_INVENTADO}
+          descripcion="Queda registrada con tu cuenta y la fecha. Es un control del producto, no una verificación: Escenara no puede comprobar a quién se parece una cara generada."
+          marcada={declaracion}
+          onCambio={setDeclaracion}
+          deshabilitado={guardando}
+        />
+      </Paso>
+
+      <Paso numero={3} titulo="Y después">
+        <div className="flex flex-col gap-4 rounded-tarjeta border border-borde bg-superficie p-5">
+          <p className="text-texto-suave">
+            Al crearlo irás a su ficha, donde se generan <strong className="text-texto">cuatro retratos</strong> a
+            partir de esta descripción. Verás lo que cuesta antes de generarlos y eliges el que te convenza; el resto se
+            queda en tu biblioteca. De ese retrato salen después sus vistas.
+          </p>
+          {bloqueos.length > 0 && (
+            <ul className="flex list-inside list-disc flex-col gap-1 text-texto-suave">
+              {bloqueos.map((motivo) => (
+                <li key={motivo}>{motivo}</li>
+              ))}
+            </ul>
+          )}
+          {error && <Aviso tono="error">{error}</Aviso>}
+          <Boton
+            variante="chispa"
+            icono={<Check className="size-5" />}
+            className="self-start"
+            cargando={guardando}
+            disabled={bloqueos.length > 0}
+            onClick={() => void guardar()}
+          >
+            Crear el personaje inventado
+          </Boton>
+        </div>
+      </Paso>
+    </div>
+  );
+}

@@ -3,16 +3,27 @@ import { precioDeModelo } from "../catalogo";
 import {
   type Adaptador,
   ErrorProveedor,
+  type PersonajeRegistrado,
   type PeticionAdaptador,
   type PeticionConsulta,
+  type PeticionPersonajeRegistrado,
   type PeticionReferencia,
   type PeticionTexto,
+  type PeticionVozRegistrada,
   type PrecioModelo,
   type TareaProveedor,
   type TextoProveedor,
   type VozPedida,
 } from "../contrato";
-import { consultarTarea, crearTarea, ErrorKie, saldoCreditos, subirReferencia } from "./cliente";
+import {
+  consultarTarea,
+  crearTarea,
+  ErrorKie,
+  registrarPersonajeOmni,
+  registrarVozOmni,
+  saldoCreditos,
+  subirReferencia,
+} from "./cliente";
 import { CAMPOS_DE_URL, type ContextoEntrada, entradaDeModelo } from "./entradas";
 import { generarTextoKie } from "./texto";
 
@@ -81,6 +92,36 @@ export const adaptadorKie: Adaptador = {
    */
   async generarVoz(peticion: PeticionAdaptador): Promise<VozPedida> {
     return { taskId: await crear(peticion) };
+  },
+
+  /**
+   * Registro de la voz del proyecto en Omni (0.22.0). Síncrono y sin coste: devuelve el `audioId` que después se
+   * cita al registrar al personaje.
+   */
+  registrarVoz({ clave, voz, nombre, descripcion, ejemplo, buscar }: PeticionVozRegistrada): Promise<string> {
+    return normalizando(() => registrarVozOmni(clave, { voz, nombre, descripcion, ejemplo }, buscar));
+  },
+
+  /**
+   * Registro del personaje en Omni (0.22.0). Envía su retrato ya subido al almacenamiento temporal de KIE y la
+   * voz registrada, y devuelve el identificador que viaja en `character_ids` al generar cada escena.
+   */
+  async registrarPersonaje({
+    clave,
+    nombre,
+    descripcion,
+    imagenes,
+    vocesRegistradas,
+    buscar,
+  }: PeticionPersonajeRegistrado): Promise<PersonajeRegistrado> {
+    const personaje = await normalizando(() =>
+      registrarPersonajeOmni(clave, { nombre, descripcion, imagenes, audioIds: vocesRegistradas }, buscar),
+    );
+    return {
+      id: personaje.characterId,
+      imagenUrl: personaje.imageUrl,
+      imagenCuerpoUrl: personaje.bodyImageUrl,
+    };
   },
 
   consultar({ clave, taskId, buscar }: PeticionConsulta): Promise<TareaProveedor> {

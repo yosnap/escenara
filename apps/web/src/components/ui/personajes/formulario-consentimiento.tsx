@@ -16,7 +16,7 @@ import {
   ETIQUETA_ALCANCE,
   ETIQUETA_TITULAR,
   exigeDocumento,
-  TITULARES_CONSENTIMIENTO,
+  TITULARES_REGISTRABLES,
   type TitularConsentimiento,
 } from "@/lib/personajes";
 
@@ -84,7 +84,7 @@ export function FormularioConsentimiento({
 
       <GrupoOpciones
         etiqueta="¿De quién es la imagen?"
-        opciones={TITULARES_CONSENTIMIENTO.map((t) => ({
+        opciones={TITULARES_REGISTRABLES.map((t) => ({
           value: t,
           etiqueta: ETIQUETA_TITULAR[t],
           descripcion: DESCRIPCION_TITULAR[t],

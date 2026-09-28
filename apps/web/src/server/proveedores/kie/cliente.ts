@@ -132,6 +132,92 @@ export async function crearTarea(
   return data.taskId;
 }
 
+// ── Registro de voz y de personaje en Gemini Omni (0.22.0) ────────────────────────────────────────────────
+
+/**
+ * Los dos registros de Omni son **síncronos y gratuitos**: contestan en la misma llamada y no consumen créditos
+ * (comprobado con la clave del propietario el 2026-09-28). Aun así se hacen con la credencial del usuario y
+ * envían su cara al proveedor, así que quien los llama los trata como cualquier otro envío: consentimiento
+ * vigente primero y registro de lo ocurrido después.
+ *
+ * Los límites de cada campo son los que publica docs.kie.ai; quien los valida de verdad es el proveedor, y por
+ * eso aquí solo se envían tal cual y se normaliza su respuesta.
+ */
+export interface PeticionVozOmni {
+  /** Una de las treinta voces predefinidas (`audio_id`). */
+  voz: string;
+  nombre: string;
+  descripcion: string;
+  ejemplo: string;
+}
+
+/** Registra la voz y devuelve el `audioId` con el que se cita después al crear el personaje. */
+export async function registrarVozOmni(
+  clave: string,
+  peticion: PeticionVozOmni,
+  buscar: Buscador = fetch,
+): Promise<string> {
+  const data = await pedir<{ audioId?: unknown }>(buscar, `${API}/api/v1/omni/audio/create`, {
+    method: "POST",
+    headers: { ...cabeceras(clave), "Content-Type": "application/json" },
+    body: JSON.stringify({
+      audio_id: peticion.voz,
+      name: peticion.nombre,
+      voice_description: peticion.descripcion,
+      example_dialogue: peticion.ejemplo,
+    }),
+    signal: AbortSignal.timeout(MS_MAXIMO),
+  });
+  if (typeof data?.audioId !== "string" || data.audioId === "") throw new ErrorKie("respuesta-inesperada");
+  return data.audioId;
+}
+
+export interface PeticionPersonajeOmni {
+  nombre: string;
+  descripcion: string;
+  /** Retrato primero y, si la hay, la vista de cuerpo entero. URL públicas: las de la subida temporal de KIE. */
+  imagenes: readonly string[];
+  audioIds: readonly string[];
+}
+
+export interface PersonajeOmni {
+  characterId: string;
+  imageUrl: string;
+  bodyImageUrl: string;
+}
+
+/**
+ * Registra el personaje (cara más voz) y devuelve el identificador que viaja en `character_ids` al generar cada
+ * escena. Es lo que hace que todas salgan con la misma cara y la misma voz.
+ */
+export async function registrarPersonajeOmni(
+  clave: string,
+  peticion: PeticionPersonajeOmni,
+  buscar: Buscador = fetch,
+): Promise<PersonajeOmni> {
+  const data = await pedir<{ characterId?: unknown; imageUrl?: unknown; bodyImageUrl?: unknown }>(
+    buscar,
+    `${API}/api/v1/omni/character/create`,
+    {
+      method: "POST",
+      headers: { ...cabeceras(clave), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        character_name: peticion.nombre,
+        descriptions: peticion.descripcion,
+        image_urls: [...peticion.imagenes],
+        audio_ids: [...peticion.audioIds],
+      }),
+      signal: AbortSignal.timeout(MS_SUBIDA),
+    },
+  );
+  if (typeof data?.characterId !== "string" || data.characterId === "") throw new ErrorKie("respuesta-inesperada");
+  return {
+    characterId: data.characterId,
+    imageUrl: typeof data.imageUrl === "string" ? data.imageUrl : "",
+    bodyImageUrl: typeof data.bodyImageUrl === "string" ? data.bodyImageUrl : "",
+  };
+}
+
 export interface TareaKie {
   /** Estado tal cual lo informa el proveedor. */
   estado: string;

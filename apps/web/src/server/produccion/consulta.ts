@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import type { EvaluacionVista } from "@/lib/controles";
 import { formatearCreditos } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
+import { precioOmniEstimado } from "@/lib/omni";
 import {
   duracionesEnTexto,
   duracionParaModelo,
@@ -15,6 +16,7 @@ import {
   type VersionDeEscena,
 } from "@/lib/produccion";
 import { resumenDeEscena } from "@/lib/proyectos";
+import type { ModoVoz } from "@/lib/voz";
 import { leerAjustes } from "../ajustes";
 import { afirmacionesDe, escenasDe, proyectoPropio } from "../asistente/consulta";
 import { ErrorProyecto } from "../asistente/errores";
@@ -36,9 +38,13 @@ import {
 import type { EleccionDeTrabajo } from "../generacion/precios";
 import { condicionEnCurso } from "../generacion/trabajos";
 import { type Actor, aDto } from "../media/servicio";
+import { creditosDeEscenaHablada, segundosDeEscenaOmni } from "../omni/escena";
+import { eleccionOmni, registroVigente } from "../omni/registro";
 import { ultimaVersion } from "../personajes/ficha";
 import { plantillaVigenteDe } from "../prompts/consulta";
 import { creditosDelEnvio } from "../prompts/traduccion";
+import { ErrorCatalogo } from "../proveedores/contrato";
+import { vozOmniDelProyecto } from "../voz/omni";
 
 /**
  * Lectura del estado de producción de un proyecto (RF06, 0.19.0).
@@ -249,14 +255,23 @@ function vistaDeEscena(
  * eso solo lo autoriza el usuario escena a escena con su presupuesto de reintentos (ADR-0024). Sin esta exclusión,
  * el botón de lote pagaría otra vez los fallos sin consumir ningún reintento ni pedir permiso.
  */
-export const escenasPorProducir = (escenas: readonly EscenaProduccionVista[]): EscenaProduccionVista[] =>
-  escenas.filter(
+export const escenasPorProducir = (
+  escenas: readonly EscenaProduccionVista[],
+  modo: ModoVoz = "clip",
+): EscenaProduccionVista[] => {
+  /**
+   * En modo `omni` (0.22.0) la escena **no tiene fotograma**: se produce entera de una vez, así que lo que dice si
+   * queda algo por encolar es su clip. Mirar el fotograma aquí ofrecería producir escenas que ya están hechas.
+   */
+  const trabajo = (e: EscenaProduccionVista) => (modo === "omni" ? e.animacion : e.fotograma);
+  return escenas.filter(
     (e) =>
       e.estado !== "borrador" &&
-      !trabajoEnMarcha(e.fotograma) &&
-      !(e.fotograma?.estado === "listo" && e.fotograma.medio !== null) &&
+      !trabajoEnMarcha(trabajo(e)) &&
+      !(trabajo(e)?.estado === "listo" && trabajo(e)?.medio !== null) &&
       !esperaAutorizacionDeReintento(e),
   );
+};
 
 /** Estado completo de la producción de un proyecto. Un proyecto ajeno responde 404, igual que en 0.17.0. */
 export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Promise<ProduccionVista> {
@@ -295,9 +310,16 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
   );
 
   // Lo que el usuario confirma por trabajo es **todo** lo que va a pagar: la generación y su traducción.
-  const porFotograma = await creditosDeTrabajo(elecciones.fotograma);
-  const porClip = await creditosDeTrabajo(elecciones.animacion);
-  const porProducir = escenasPorProducir(escenas);
+  const omni = proyecto.voiceMode === "omni";
+  /**
+   * En modo `omni` la escena es un solo trabajo, así que no hay coste de fotograma y el del clip es el de la
+   * escena hablada con la duración del proyecto: 63 créditos por 4 s medidos el 2026-09-28, y proporcional (y
+   * marcado como estimado) en las demás duraciones.
+   */
+  const habladas = omni ? await costeDeEscenaHablada(proyecto) : null;
+  const porFotograma = omni ? 0 : await creditosDeTrabajo(elecciones.fotograma);
+  const porClip = habladas ? await creditosDelEnvio(habladas.creditos) : await creditosDeTrabajo(elecciones.animacion);
+  const porProducir = escenasPorProducir(escenas, proyecto.voiceMode);
   return {
     proyectoId: proyecto.id,
     titulo: proyecto.title,
@@ -310,8 +332,10 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
     // El umbral del aviso de gasto alto es de la instalación: viaja para que la confirmación pida la casilla
     // exactamente cuando el servidor la va a exigir, ni antes ni nunca.
     umbralAvisoCreditos: ajustes.avisoCreditos,
+    modoVoz: proyecto.voiceMode,
+    precioClipEstimado: habladas?.estimado ?? false,
     creditosPorClip: porClip,
-    selloClip: elecciones.animacion?.precio.sello ?? "",
+    selloClip: habladas ? habladas.sello : (elecciones.animacion?.precio.sello ?? ""),
     selloFotograma: elecciones.fotograma?.precio.sello ?? "",
     // Modelo **y protagonista**: la puerta del encolado evalúa también al personaje (consentimiento, fotos
     // señaladas, cobertura de vistas), así que sus avisos confirmables tienen que salir aquí con su casilla. Sin
@@ -325,20 +349,83 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
     // El recuento es del usuario, no del proyecto: es el mismo que cierra la puerta al encolar.
     enVuelo,
     maximoEnVuelo: ajustes.escenasEnVuelo,
-    impedimentos: impedimentosDeProduccion({
-      planAprobado: proyecto.planApprovedAt !== null,
-      protagonista: proyecto.mainCharacterId,
-      sinPrecio: !elecciones.fotograma || !elecciones.animacion,
-      segundosDelClip: elecciones.animacion
-        ? duracionParaModelo(elecciones.animacion.modelo.parametros.duraciones, proyecto.clipSeconds)
-        : null,
-      segundosDelProyecto: proyecto.clipSeconds,
-      presupuesto: proyecto.authorizedCredits,
-      comprometido,
-      creditosFotograma: porFotograma,
-      porProducir: porProducir.length,
-    }),
+    impedimentos: [
+      ...(omni ? await impedimentosDeOmni(proyecto) : []),
+      ...impedimentosDeProduccion({
+        planAprobado: proyecto.planApprovedAt !== null,
+        protagonista: proyecto.mainCharacterId,
+        sinPrecio: !elecciones.fotograma || !elecciones.animacion,
+        segundosDelClip: elecciones.animacion
+          ? duracionParaModelo(elecciones.animacion.modelo.parametros.duraciones, proyecto.clipSeconds)
+          : null,
+        segundosDelProyecto: proyecto.clipSeconds,
+        presupuesto: proyecto.authorizedCredits,
+        comprometido,
+        creditosFotograma: omni ? porClip : porFotograma,
+        porProducir: porProducir.length,
+      }),
+    ],
   };
+}
+
+/**
+ * Coste de una escena hablada con la duración del proyecto, y si ese precio está medido o estimado. Sale del
+ * mismo sitio que el que se confirma al producir (`omni/escena.ts`), así que la pantalla no puede decir una cifra
+ * y el servidor esperar otra.
+ */
+async function costeDeEscenaHablada(
+  proyecto: FilaProyecto,
+): Promise<{ creditos: number; sello: string; estimado: boolean } | null> {
+  try {
+    const { creditos, sello } = await creditosDeEscenaHablada(proyecto);
+    const { modelo } = await eleccionOmni();
+    return {
+      creditos,
+      sello,
+      estimado: precioOmniEstimado(segundosDeEscenaOmni(modelo.parametros.duraciones, proyecto)),
+    };
+  } catch {
+    // Sin modelo Omni utilizable no se inventa ningún precio: `impedimentosDeOmni` dice por qué y no se produce.
+    return null;
+  }
+}
+
+/**
+ * Lo que impide producir **en modo Omni**, además de lo que impide producir en cualquier modo: sin voz
+ * registrada y sin personaje registrado con ella, ninguna escena puede hablar. Los dos registros son gratuitos,
+ * así que el mensaje dice dónde se arregla en lugar de limitarse a bloquear.
+ */
+async function impedimentosDeOmni(proyecto: FilaProyecto): Promise<string[]> {
+  const motivos: string[] = [];
+  const voz = vozOmniDelProyecto(proyecto);
+  if (!voz) {
+    motivos.push(
+      "Este proyecto está en modo Omni y todavía no tiene voz registrada: elígela y regístrala en «Voz y subtítulos». No cuesta créditos.",
+    );
+  }
+  if (!proyecto.mainCharacterId) return motivos;
+  const version = await ultimaVersion(proyecto.mainCharacterId);
+  if (voz && version && !(await registroVigente(proyecto.mainCharacterId, version.id, voz.audioId))) {
+    motivos.push(
+      "El protagonista no está registrado en el proveedor con la voz de este proyecto, así que sus escenas no saldrían con la misma cara y la misma voz. Regístralo desde su ficha: no cuesta créditos.",
+    );
+  }
+  try {
+    const { modelo } = await eleccionOmni();
+    const segundos = segundosDeEscenaOmni(modelo.parametros.duraciones, proyecto);
+    if (segundos !== proyecto.clipSeconds) {
+      motivos.push(
+        `Los clips de este proyecto son de ${proyecto.clipSeconds} s y ${modelo.nombre} solo genera de ${segundos} s en esta instalación. Cambia la duración del proyecto a ${segundos} s antes de producir.`,
+      );
+    }
+  } catch (error) {
+    motivos.push(
+      error instanceof ErrorCatalogo
+        ? error.message
+        : "Esta instalación no tiene un modelo Omni utilizable con precio registrado, así que no se puede producir en este modo.",
+    );
+  }
+  return motivos;
 }
 
 /**

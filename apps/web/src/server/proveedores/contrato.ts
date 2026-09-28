@@ -169,6 +169,14 @@ export interface ContextoEntrada {
    * alta cada usuario en su cuenta.
    */
   urlBaseCompatible?: string;
+  /**
+   * Personajes ya **registrados en el proveedor** cuya cara y voz tiene que usar la escena (modo `omni`, 0.22.0).
+   * Llega solo desde un proyecto en ese modo y solo con el protagonista dentro.
+   *
+   * Cuando llega, sustituye a las referencias: la identidad la pone el registro, no las fotos. Un adaptador que no
+   * lo entienda lo ignora, y por eso el servicio comprueba antes que el modelo elegido sea el que lo admite.
+   */
+  personajesOmni?: readonly string[];
 }
 
 /** Lo que necesita el adaptador para pedir una generación. La clave solo viaja hasta aquí. */
@@ -246,6 +254,43 @@ export interface PeticionReferencia {
   buscar: Buscador;
 }
 
+/**
+ * Registro de una **identidad hablada** en el proveedor (capacidad `omni`, 0.22.0): una voz y un personaje que el
+ * proveedor guarda con identificadores propios y que después se citan al generar cada escena.
+ *
+ * Va en el contrato (ADR-0015) y no en el servicio porque es una llamada al proveedor como cualquier otra: la
+ * clave solo viaja hasta aquí, el fallo sale normalizado y fuera del adaptador nadie nombra a KIE. Lo que lo
+ * distingue de generar es que es **síncrono y sin coste**, y eso lo dice el tipo: no devuelve ninguna tarea.
+ */
+export interface PeticionVozRegistrada {
+  clave: string;
+  /** Voz predefinida del proveedor. */
+  voz: string;
+  nombre: string;
+  descripcion: string;
+  ejemplo: string;
+  buscar: Buscador;
+}
+
+export interface PeticionPersonajeRegistrado {
+  clave: string;
+  nombre: string;
+  descripcion: string;
+  /** URL públicas del retrato y, si la hay, del cuerpo entero, ya subidas al almacenamiento del proveedor. */
+  imagenes: readonly string[];
+  /** Voces registradas que se le asocian. Hoy siempre una: la del proyecto. */
+  vocesRegistradas: readonly string[];
+  buscar: Buscador;
+}
+
+export interface PersonajeRegistrado {
+  /** Identificador del personaje en el proveedor. Es lo que se cita al generar. */
+  id: string;
+  /** URL con la que el proveedor aloja las imágenes registradas; vacío si no las informa. */
+  imagenUrl: string;
+  imagenCuerpoUrl: string;
+}
+
 /** Precio vigente de un modelo, con su fuente, su fecha y el sello que caduca las estimaciones viejas. */
 export interface PrecioModelo {
   proveedor: string;
@@ -304,6 +349,17 @@ export interface Adaptador {
    * la implemente añade una opinión más, que se estima y se confirma una por una y nunca se lanza sola.
    */
   revisarMedio?(peticion: PeticionRevisionMultimodal): Promise<RevisionProveedor>;
+  /**
+   * Registra en el proveedor la voz de un proyecto y la identidad de un personaje para las escenas habladas
+   * (0.22.0). **Opcionales**: un proveedor que no las implemente sigue siendo válido y sus proyectos no pueden
+   * usar el modo `omni`, que es exactamente lo que la pantalla dirá.
+   *
+   * Las dos son síncronas y **no cuestan créditos** (medido el 2026-09-28), así que no devuelven ninguna tarea ni
+   * pasan por la cola. Lo que sí hacen es enviar la cara del personaje al proveedor, y de eso responde quien las
+   * llama comprobando antes el consentimiento.
+   */
+  registrarVoz?(peticion: PeticionVozRegistrada): Promise<string>;
+  registrarPersonaje?(peticion: PeticionPersonajeRegistrado): Promise<PersonajeRegistrado>;
   /** Precio registrado del modelo. Nunca se inventa: sin precio no se estima ni se gasta. */
   estimar(modelo: string): Promise<PrecioModelo>;
   /** Comprueba la credencial y devuelve el saldo si el proveedor lo informa. */

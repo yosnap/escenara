@@ -115,6 +115,20 @@ const REGLAS: readonly Regla[] = [
         }
       : null,
 
+  // ── Identidad hablada registrada: sin registro, la escena no puede salir con esa cara ni esa voz ────
+  (h) =>
+    h.omni && !h.omni.registrado
+      ? {
+          regla: "omni-sin-registro",
+          estado: "bloqueado",
+          motivo: `Este proyecto genera sus escenas con la cara y la voz registradas de su protagonista, y ${h.omni.falta}`,
+          accion: "Regístralo antes de producir: registrar la voz y el personaje no cuesta créditos.",
+          enlace: "/personajes",
+          http: 409,
+          excepcion: "personaje",
+        }
+      : null,
+
   // ── Aprobación del plan: sin plan aprobado no se produce ninguna escena (0.17.0) ─────────────────────
   (h) =>
     h.escena && !h.escena.planAprobado

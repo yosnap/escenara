@@ -3,6 +3,7 @@ import { ErrorGeneracion } from "../generacion/errores";
 import { dentroDelLimite, type Limite } from "../limite";
 import { ErrorMedio } from "../media/errores";
 import type { Actor } from "../media/servicio";
+import { ErrorOmni } from "../omni/errores";
 import { ErrorPersonaje } from "../personajes/errores";
 import { ErrorPreset } from "../prompts/errores";
 import { ErrorCatalogo } from "../proveedores/contrato";
@@ -23,6 +24,7 @@ export function respuestaError(error: unknown): Response {
   if (error instanceof ErrorProyecto) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorPersonaje) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorGeneracion) return Response.json({ error: error.message }, { status: error.estado });
+  if (error instanceof ErrorOmni) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorCatalogo) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorMedio) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorPreset) return Response.json({ error: error.message }, { status: error.estado });

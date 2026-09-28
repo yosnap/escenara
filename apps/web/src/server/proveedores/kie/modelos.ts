@@ -58,6 +58,24 @@ export function promptAnimacion(escena: string, dialogo = ""): string {
   return `${habla}${escena}\n\n${SIN_TEXTO_VIDEO} ${AUDIO_HABLADO}`;
 }
 
+/**
+ * Prompt de una **escena hablada** de Gemini Omni (0.22.0), donde la identidad y la voz no van en el texto sino
+ * en `character_ids`: lo único que hay que decirle es qué se ve y qué dice.
+ *
+ * El diálogo se indica con la forma `saying in Spanish: "…"`, que es la que se midió con dinero real el
+ * 2026-09-28: el personaje dijo la frase **exacta** en español, comprobado transcribiendo el clip. Va entre
+ * comillas a propósito, al revés que en Veo: aquí las comillas son lo que delimita lo que hay que decir, y sin
+ * ellas el modelo parafrasea.
+ *
+ * El diálogo **no se traduce nunca**: es lo que se va a oír. La descripción de la escena sí llega ya en inglés.
+ */
+export function promptEscenaHablada(escena: string, dialogo: string): string {
+  const habla =
+    dialogo.trim() === "" ? "" : `The character looks at the camera, saying in Spanish: "${dialogo.trim()}"\n\n`;
+  if (habla === "") return `${escena}\n\n${AUDIO_SOLO_AMBIENTE}\n\n${SIN_TEXTO_VIDEO}`;
+  return `${habla}${escena}\n\n${SIN_TEXTO_VIDEO} ${AUDIO_HABLADO}`;
+}
+
 export function entradaFotograma(escena: string, referencias: string[]): Record<string, unknown> {
   return { prompt: promptFotograma(escena), image_urls: referencias, aspect_ratio: CLIP.proporcion };
 }

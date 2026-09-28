@@ -143,7 +143,7 @@ export async function pedirVistaSintetica(
  * Medidas y huella de un medio ya guardado. Devuelve `null` si no se puede leer: una vista generada sin medidas
  * se guarda igual, porque perder la referencia por no poder medirla sería peor.
  */
-async function medidasDelMedio(medioId: string): Promise<AnalisisImagen | null> {
+export async function medidasDelMedio(medioId: string): Promise<AnalisisImagen | null> {
   const [fila] = await db().select().from(media).where(eq(media.id, medioId)).limit(1);
   if (!fila) return null;
   try {

@@ -9,6 +9,7 @@ import { type FilaEscena, type FilaProyecto, type FilaTrabajo, scenes } from "..
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { crearAnimacion, crearFotograma } from "../generacion/servicio";
 import type { Actor } from "../media/servicio";
+import { producirEscenaHablada } from "../omni/escena";
 import { plantillaVigenteDe } from "../prompts/consulta";
 import { invalidarRevisionesDeEscena } from "../revision/resultados";
 import { dialogoDelClip } from "../voz/modo";
@@ -87,6 +88,45 @@ function exigirProtagonista(proyecto: FilaProyecto): string {
     );
   }
   return proyecto.mainCharacterId;
+}
+
+/**
+ * Encola lo que toca para **empezar** una escena: su fotograma, o el clip hablado entero cuando el proyecto está
+ * en modo `omni` (0.22.0).
+ *
+ * En modo `omni` no hay fotograma: la identidad y la voz salen del personaje registrado en el proveedor, así que
+ * la escena es un solo trabajo. Todo lo demás —confirmación, sello, idempotencia, motor de controles, reserva y
+ * topes— es exactamente lo mismo, porque lo hace el mismo camino de dinero.
+ */
+async function encolarPrimerTrabajo(
+  actor: Actor,
+  escena: FilaEscena,
+  proyecto: FilaProyecto,
+  confirmacion: ConfirmacionProduccion,
+  clave: string,
+  h: Herramientas,
+  reintento = false,
+): Promise<void> {
+  if (proyecto.voiceMode === "omni") {
+    await producirEscenaHablada(
+      actor,
+      escena,
+      proyecto,
+      {
+        derechos: confirmacion.derechos,
+        sinTerceros: confirmacion.sinTerceros,
+        creditosConfirmados: confirmacion.creditosConfirmados,
+        selloEstimacion: confirmacion.selloEstimacion,
+        claveIdempotencia: clave,
+        avisoUmbralAceptado: confirmacion.avisoUmbralAceptado,
+        avisosConfirmados: confirmacion.avisosConfirmados,
+        reintentoDeEscena: reintento,
+      },
+      h,
+    );
+    return;
+  }
+  await encolarFotograma(actor, escena, proyecto, confirmacion, clave, h, reintento);
 }
 
 /** Encola el fotograma de una escena. Toda la decisión de dinero la toma `crearFotograma`. */
@@ -235,14 +275,19 @@ export async function producirProyecto(
     const escena = porId.get(pendiente.id);
     if (!escena) continue;
     try {
-      await encolarFotograma(
+      await encolarPrimerTrabajo(
         actor,
         escena,
         proyecto,
         confirmacion,
-        // La clave lleva también el último fotograma de la escena: si no, repetir el clic después de un fallo
+        // La clave lleva también el último trabajo de la escena: si no, repetir el clic después de un fallo
         // devolvería ese mismo trabajo fallido (el corte de idempotencia) y el botón no haría nada.
-        claveDerivada(confirmacion.claveIdempotencia, "fotograma", escena.id, pendiente.fotograma?.id ?? "primera"),
+        claveDerivada(
+          confirmacion.claveIdempotencia,
+          proyecto.voiceMode === "omni" ? "escena-hablada" : "fotograma",
+          escena.id,
+          (proyecto.voiceMode === "omni" ? pendiente.animacion?.id : pendiente.fotograma?.id) ?? "primera",
+        ),
         h,
       );
     } catch (error) {
@@ -281,13 +326,19 @@ export async function producirEscena(
   const { escena, proyecto } = await escenaPropia(actor, escenaId);
   await exigirDuracionProducible(proyecto);
   const anteriores = await ultimosTrabajos(escena.id);
-  await encolarFotograma(
+  const omni = proyecto.voiceMode === "omni";
+  await encolarPrimerTrabajo(
     actor,
     escena,
     proyecto,
     confirmacion,
-    // Con el último fotograma dentro: repetir tras un fallo tiene que encargar otro trabajo, no devolver el fallido.
-    claveDerivada(confirmacion.claveIdempotencia, "fotograma", escena.id, anteriores[0]?.id ?? "primera"),
+    // Con el último trabajo dentro: repetir tras un fallo tiene que encargar otro, no devolver el fallido.
+    claveDerivada(
+      confirmacion.claveIdempotencia,
+      omni ? "escena-hablada" : "fotograma",
+      escena.id,
+      (omni ? anteriores[1]?.id : anteriores[0]?.id) ?? "primera",
+    ),
     h,
     esReintentoAutorizado(escena, anteriores),
   );
@@ -311,6 +362,12 @@ export async function aprobarFotograma(
   h: Herramientas = HERRAMIENTAS,
 ): Promise<ProduccionVista> {
   const { escena, proyecto } = await escenaPropia(actor, escenaId);
+  if (proyecto.voiceMode === "omni") {
+    throw new ErrorProyecto(
+      409,
+      "En modo Omni no hay fotograma que aprobar: cada escena se genera entera con la cara y la voz registradas del protagonista. Produce la escena directamente.",
+    );
+  }
   await exigirDuracionProducible(proyecto);
   const [fotograma, animacion] = await ultimosTrabajos(escena.id);
   if (fotograma?.state !== "listo" || !fotograma.resultMediaId) {
@@ -388,7 +445,15 @@ export async function regenerarEscena(
    * invalidado ya el fotograma aprobado y el clip dejaría al usuario sin un clip que pagó a cambio de un envío que
    * no salió. Así, un rechazo deja la escena exactamente como estaba.
    */
-  await encolarFotograma(actor, escena, proyecto, confirmacion, clave, h, esReintentoAutorizado(escena, anteriores));
+  await encolarPrimerTrabajo(
+    actor,
+    escena,
+    proyecto,
+    confirmacion,
+    clave,
+    h,
+    esReintentoAutorizado(escena, anteriores),
+  );
   /**
    * Quitar el clip de la escena e **invalidar su revisión van en la misma transacción**, con la fila de la escena
    * bloqueada. Son el mismo hecho contado dos veces («lo revisado ya no es lo que hay»), y separarlas dejaba una

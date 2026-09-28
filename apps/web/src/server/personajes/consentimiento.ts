@@ -56,6 +56,14 @@ export interface DatosConsentimiento {
 
 function titularValido(valor: unknown): TitularConsentimiento {
   if (!esTitularConsentimiento(valor)) throw new ErrorPersonaje(400, "Indica de quién es la imagen.");
+  // `inventado` no se registra desde aquí: lo crea `inventado.ts`, que es el único camino que da de alta un
+  // personaje sin cara real. Aceptarlo aquí permitiría marcar como inventado a uno que sí tiene fotos de alguien.
+  if (valor === "inventado") {
+    throw new ErrorPersonaje(
+      400,
+      "«Un personaje inventado» no es un consentimiento que se registre sobre un personaje existente: créalo como inventado desde el principio.",
+    );
+  }
   return valor;
 }
 
@@ -144,6 +152,17 @@ export async function registrarConsentimiento(
   datos: DatosConsentimiento,
 ): Promise<PersonajeVista> {
   const personaje = await filaPropia(actor, id);
+  /**
+   * Un personaje inventado no registra consentimiento por este camino (0.22.0): no hay ninguna persona que
+   * consienta, y dejar que se le registre uno «soy yo» convertiría un personaje sin cara real en uno que dice
+   * tenerla. Su declaración se registra al crearlo (`inventado.ts`) y no se sustituye.
+   */
+  if (personaje.virtual) {
+    throw new ErrorPersonaje(
+      409,
+      "Este personaje es inventado: no representa a ninguna persona real, así que no hay ningún consentimiento de imagen que registrar. Su declaración quedó guardada al crearlo.",
+    );
+  }
   const titular = titularValido(datos.titular);
   // Un personaje que alguna vez fue de un tercero lo sigue siendo: no se puede rebajar la fricción cambiando
   // de titular, ni saltarse una revisión rechazada o pendiente registrando «soy yo».

@@ -35,7 +35,7 @@ export const tipoPersonaje = pgEnum("character_kind", ["persona", "animal"]);
 
 export const estadoPersonaje = pgEnum("character_state", ["borrador", "en_revision", "listo", "bloqueado"]);
 
-export const titularConsentimiento = pgEnum("consent_holder", ["yo", "tercero", "animal_propio"]);
+export const titularConsentimiento = pgEnum("consent_holder", ["yo", "tercero", "animal_propio", "inventado"]);
 
 export const alcanceUso = pgEnum("consent_scope", ["personal", "comercial"]);
 
@@ -64,6 +64,16 @@ export const characters = pgTable(
     personality: text("personality").notNull().default(""),
     /** Voz **prevista**, solo declarada: la voz real llega en 0.21.0. */
     voice: text("voice").notNull().default(""),
+    /**
+     * Personaje **inventado** (0.22.0): no existe, nace de una descripción y su cara se genera. Se guarda en la
+     * fila del personaje además de en su consentimiento porque es una **puerta** que se comprueba en cada foto
+     * que se intenta añadir y en cada texto que se guarda, y leer el consentimiento vigente para cada una de esas
+     * comprobaciones sería releer la misma respuesta una y otra vez.
+     *
+     * No se puede cambiar después de crearlo: un personaje que dejara de ser inventado tendría ya generadas
+     * vistas de una cara sin consentimiento de nadie.
+     */
+    virtual: boolean("virtual").notNull().default(false),
     state: estadoPersonaje("state").notNull().default("borrador"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -88,8 +98,17 @@ export const consentRecords = pgTable(
       .notNull()
       .references(() => characters.id, { onDelete: "cascade" }),
     holderType: titularConsentimiento("holder_type").notNull(),
-    /** Declaración de mayoría de edad. Es obligatoria para registrar: un control, no una garantía. */
+    /**
+     * Declaración de mayoría de edad. Es obligatoria para registrar: un control, no una garantía. El titular
+     * `inventado` es el único que no la declara, porque no hay ninguna persona cuya edad declarar.
+     */
     adultDeclared: boolean("adult_declared").notNull().default(false),
+    /**
+     * Declaración de que el personaje es inventado y no representa a ninguna persona real (0.22.0). Obligatoria
+     * para el titular `inventado` y siempre `false` en los demás. Con `registered_by` y `registered_at` ya
+     * guardados aquí, la declaración queda con su cuenta y su fecha, que es lo que hay que poder demostrar.
+     */
+    syntheticDeclared: boolean("synthetic_declared").notNull().default(false),
     usageScope: alcanceUso("usage_scope").notNull().default("personal"),
     /**
      * Documento firmado del tercero, guardado como medio de la biblioteca. `set null` a propósito: si el
@@ -292,6 +311,62 @@ export const characterApprovals = pgTable(
     index("character_approvals_version_idx").on(t.characterVersionId),
   ],
 );
+
+/**
+ * Registro de un personaje en Gemini Omni (RF02 y RF08, 0.22.0): la cara y la voz que el proveedor guarda con un
+ * identificador propio y que todas las escenas habladas citan.
+ *
+ * **Uno por versión de la ficha** (decisión provisional del propietario, 2026-09-28): cambiar la ficha crea
+ * versión nueva y obliga a registrar otra vez, porque lo que se envió al proveedor era la ficha anterior y su
+ * retrato. No hay restricción de unicidad sobre la versión a propósito: si el proveedor caduca un identificador,
+ * se registra de nuevo sin coste y la fila nueva es la vigente (la más reciente), y la anterior se conserva
+ * porque explica con qué identidad salió lo que ya se generó.
+ *
+ * `credits_spent` existe y vale siempre 0: los dos registros son gratis (medido el 2026-09-28) y **decirlo con un
+ * dato** es lo que permite auditar que este camino no cobra, en lugar de prometerlo en un comentario.
+ */
+export const characterOmniRegistrations = pgTable(
+  "character_omni_registrations",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => characters.id, { onDelete: "cascade" }),
+    /** Versión de la ficha que se registró. Cascada: sin versión, el registro no dice con qué cara salió. */
+    characterVersionId: uuid("character_version_id")
+      .notNull()
+      .references(() => characterVersions.id, { onDelete: "cascade" }),
+    /** Voz Omni del proyecto que se citó al registrar (`projects.omni_audio_id`). */
+    audioId: text("audio_id").notNull(),
+    /** Identificador del personaje en el proveedor. Es lo que viaja en `character_ids` al generar. */
+    remoteCharacterId: text("remote_character_id").notNull(),
+    /** URL con la que el proveedor aloja el retrato registrado. Se guarda para poder enseñarlo tal cual lo tiene. */
+    remoteImageUrl: text("remote_image_url").notNull().default(""),
+    remoteBodyImageUrl: text("remote_body_image_url").notNull().default(""),
+    /**
+     * Retrato de la biblioteca que se envió. `set null`: si el usuario lo borra, el registro sigue siendo cierto
+     * (la imagen ya está en el proveedor) y perder esa referencia no puede borrar el hecho.
+     */
+    portraitMediaId: uuid("portrait_media_id").references(() => media.id, { onDelete: "set null" }),
+    bodyMediaId: uuid("body_media_id").references(() => media.id, { onDelete: "set null" }),
+    /** Créditos que costó. Siempre 0: los dos endpoints de registro son gratuitos. */
+    creditsSpent: real("credits_spent").notNull().default(0),
+    registeredBy: uuid("registered_by").references(() => users.id, { onDelete: "set null" }),
+    registeredAt: timestamp("registered_at", { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * Cuándo dejó de valer y por qué: hoy solo cuando el proveedor rechaza el identificador por caducado y hay que
+     * registrar otra vez. `null` mientras siga valiendo.
+     */
+    supersededAt: timestamp("superseded_at", { withTimezone: true }),
+    supersededReason: text("superseded_reason").notNull().default(""),
+  },
+  (t) => [
+    index("character_omni_registrations_personaje_idx").on(t.characterId, t.registeredAt),
+    index("character_omni_registrations_version_idx").on(t.characterVersionId),
+  ],
+);
+
+export type FilaRegistroOmni = typeof characterOmniRegistrations.$inferSelect;
 
 export type FilaPersonaje = typeof characters.$inferSelect;
 export type FilaVersionPersonaje = typeof characterVersions.$inferSelect;

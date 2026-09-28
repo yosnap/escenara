@@ -201,3 +201,35 @@ export const revocarConsentimiento = (id: string, motivo: string) =>
 /** Revisión del documento de un tercero. Solo funciona para quien administra la instalación. */
 export const revisarConsentimiento = (id: string, aceptado: boolean, nota: string) =>
   pedir<PersonajeVista>(`/api/personajes/${id}/revision`, json("POST", { aceptado, nota }));
+
+// ── Personajes inventados (0.22.0) ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Crea un **personaje inventado**: no existe, su cara se genera y no admite fotos reales. `declaracion` es la
+ * declaración de que no representa a ninguna persona real, y sin ella el servidor no lo crea.
+ */
+export const crearPersonajeInventado = (datos: { nombre: string; descripcion: string; declaracion: boolean }) =>
+  pedir<PersonajeVista>("/api/personajes/inventados", json("POST", datos));
+
+/**
+ * Lo que se confirma para generar los retratos. Es la confirmación de dinero de siempre **sin la revisión de
+ * referencias**: un personaje inventado no tiene fotos en las que pueda aparecer un tercero.
+ */
+export type ConfirmacionRetratos = Omit<ConfirmacionVistaSintetica, "vista" | "sinTerceros">;
+
+/** Retratos candidatos ya generados de un personaje inventado, por identificador de medio. */
+export const consultarRetratos = (id: string) => pedir<{ candidatos: Medio[] }>(`/api/personajes/${id}/retratos`);
+
+/**
+ * Genera los cuatro retratos candidatos a partir de la descripción. **Cuesta**: cada uno es un fotograma con su
+ * estimación y su confirmación, así que viaja lo mismo que confirma cualquier otro envío.
+ */
+export const generarRetratos = (id: string, confirmacion: ConfirmacionRetratos) =>
+  pedir<{ trabajos: TrabajoVista[] }>(
+    `/api/personajes/${id}/retratos`,
+    json("POST", { accion: "generar", ...confirmacion }),
+  );
+
+/** Elige uno de los candidatos como cara del personaje. **No cuesta nada**: ya están pagados. */
+export const elegirRetrato = (id: string, medioId: string) =>
+  pedir<PersonajeVista>(`/api/personajes/${id}/retratos`, json("POST", { accion: "elegir", medioId }));

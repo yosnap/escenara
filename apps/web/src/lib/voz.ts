@@ -1,6 +1,7 @@
 import type { Proveedor } from "./boveda";
 import type { EvaluacionVista } from "./controles";
 import type { Medio } from "./media/tipos";
+import type { VozOmniDelProyecto, VozOmniOfrecida } from "./omni";
 
 /**
  * Voz, subtítulos y música de un proyecto (RF08, 0.21.0). Lo que comparten el servidor y el navegador: aquí no
@@ -20,7 +21,7 @@ import type { Medio } from "./media/tipos";
  * Nada se regenera sin que el usuario confirme ese coste.
  */
 
-export const MODOS_VOZ = ["clip", "pista"] as const;
+export const MODOS_VOZ = ["clip", "pista", "omni"] as const;
 export type ModoVoz = (typeof MODOS_VOZ)[number];
 
 export const esModoVoz = (v: unknown): v is ModoVoz => MODOS_VOZ.includes(v as ModoVoz);
@@ -31,12 +32,14 @@ export const MODO_VOZ_POR_DEFECTO: ModoVoz = "clip";
 export const ETIQUETA_MODO_VOZ: Record<ModoVoz, string> = {
   clip: "Voz del clip",
   pista: "Pista de voz aparte",
+  omni: "Omni: misma cara y voz en todas las escenas",
 };
 
 export const DESCRIPCION_MODO_VOZ: Record<ModoVoz, string> = {
   clip: "El modelo de vídeo genera el clip con el personaje diciendo el diálogo y los labios sincronizados. No se genera ninguna pista de voz aparte y los subtítulos salen de transcribir el audio del clip.",
   pista:
     "Los clips se piden sin diálogo, solo con sonido ambiente, y el diálogo se genera como audio aparte con la misma voz en todas las escenas. Cuesta una llamada de voz por escena.",
+  omni: "La cara y la voz del protagonista se registran una vez en el proveedor y todas las escenas se generan citándolas: la misma cara, la misma voz y los labios sincronizados. Cada escena es un clip de Gemini Omni y no se genera ningún fotograma aparte.",
 };
 
 /**
@@ -202,6 +205,15 @@ export interface VozDelProyecto {
 }
 
 /**
+ * Lo que identifica en el proveedor a una escena hablada en modo `omni` (0.22.0): la voz registrada del proyecto
+ * y el personaje registrado con el que se genera. Los dos son identificadores del proveedor, no texto.
+ */
+export interface FirmaOmni {
+  audioId: string;
+  personajeOmniId: string;
+}
+
+/**
  * Firma de lo que hace válida una pista de voz: el modo, el proveedor, el modelo, la voz, sus parámetros y el
  * **texto del diálogo** de la escena.
  *
@@ -209,7 +221,23 @@ export interface VozDelProyecto {
  * se desincronice: se compara la firma de ahora con la que se guardó al generarlo. Cambiar la voz, el modo, un
  * parámetro o el diálogo cambia la firma, y con ella la escena queda invalidada.
  */
-export function firmaDeVoz(modo: ModoVoz, voz: VozDelProyecto | null, dialogo: string): string {
+export function firmaDeVoz(
+  modo: ModoVoz,
+  voz: VozDelProyecto | null,
+  dialogo: string,
+  omni?: FirmaOmni | null,
+): string {
+  /**
+   * Modo `omni` (0.22.0): lo que hace válida una escena hablada es **qué identidad y qué voz se citaron** en el
+   * proveedor, y el diálogo. Registrar otra voz o volver a registrar al personaje cambia esos identificadores, y con
+   * ellos la firma: las escenas que salieron con los anteriores quedan invalidadas, igual que en modo `pista`.
+   *
+   * Sin registro todavía, la firma dice justamente eso: un audio o unos subtítulos guardados antes de registrar no
+   * pueden darse por buenos.
+   */
+  if (modo === "omni") {
+    return ["omni", omni?.audioId ?? "", omni?.personajeOmniId ?? "", dialogo.trim()].join("|");
+  }
   if (modo === "clip" || !voz) return `clip:${dialogo.trim()}`;
   const p = voz.parametros;
   return [
@@ -607,6 +635,29 @@ export interface VozProyectoVista {
   costeRegenerar: number | null;
   /** Por qué no se puede estimar, en llano. Vacío si sí se puede. */
   motivoSinCoste: string;
+  /**
+   * Modo `omni` (0.22.0): la voz registrada del proyecto y lo que falta para poder producir con ella. `null`
+   * fuera de ese modo, que es donde no hay nada que registrar.
+   */
+  omni: EstadoOmniVista | null;
+}
+
+/** Lo que la pantalla necesita saber del modo Omni: qué hay registrado, qué falta y qué cuesta una escena. */
+export interface EstadoOmniVista {
+  /** Voz registrada del proyecto; `null` mientras no se haya registrado ninguna. */
+  voz: VozOmniDelProyecto | null;
+  /** Las treinta voces que ofrece el proveedor, con su género y su tono. */
+  voces: readonly VozOmniOfrecida[];
+  /** `true` cuando la voz y el personaje están registrados y se puede producir. */
+  listo: boolean;
+  /** Qué falta, en llano. Vacío cuando no falta nada. */
+  falta: string;
+  /** Créditos de **una escena** con la duración del proyecto; `null` si no hay modelo Omni con precio. */
+  creditosPorEscena: number | null;
+  /** `true` cuando ese precio es proporcional y no medido (solo los 4 s están medidos). */
+  precioEstimado: boolean;
+  /** Nombre del personaje registrado, para poder decir quién habla. Vacío si no hay ninguno. */
+  personaje: string;
 }
 
 /** Qué puede hacer esta instalación con la voz. Si algo falta, se dice **por qué**, no se oculta el botón. */
@@ -653,6 +704,8 @@ export interface DisponibilidadVoz {
 export const ACCIONES_VOZ = [
   "fijar-modo",
   "fijar-voz",
+  /** Registra en el proveedor la voz Omni del proyecto (0.22.0). No cuesta créditos. */
+  "registrar-voz-omni",
   "generar-voz",
   "transcribir",
   "guardar-subtitulos",

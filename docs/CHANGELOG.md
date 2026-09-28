@@ -2,6 +2,49 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.22.0] · 2026-09-28
+
+### Decisiones firmes del propietario
+
+- **Personajes inventados** (ADR-0027): un personaje que no existe, nace de una descripción y su cara se genera.
+  No admite fotos de personas reales, no declara mayoría de edad y lo que declara en su lugar —con la cuenta y la
+  fecha— es que **no representa a ninguna persona real**.
+- **Escenas habladas con identidad registrada** (ADR-0028): la cara y la voz se registran una vez en el proveedor
+  y todas las escenas las citan, así que salen con la misma cara, la misma voz y los labios sincronizados. La
+  **recomendación de la plataforma es Gemini Omni 1.1 Flash**, que genera voz, ambiente e imagen en una sola
+  llamada, sin pista de voz aparte ni mezcla posterior.
+
+### Añadido
+
+- **Personaje inventado**, en «Personajes → Nuevo personaje → Crear un personaje inventado»: se describe, se
+  generan **cuatro retratos candidatos** con su coste confirmado y se elige uno. El elegido se guarda marcado como
+  vista generada —nunca como foto— y de él salen las demás vistas. Los que no se eligen quedan en la biblioteca.
+- **Bloqueo de fotos reales y de nombres de personas reales** en un personaje inventado, aplicado en el servidor
+  al añadir una foto y al guardar cualquiera de sus textos.
+- **Modo de voz `omni`** en el proyecto: cada escena se genera entera con el personaje y la voz registrados, sin
+  fotograma que aprobar. Se elige una de las **treinta voces** de Gemini Omni con su descripción (acento de España
+  por defecto) y su frase de ejemplo.
+- **Registro de la voz del proyecto y del personaje en el proveedor**, con su fecha, su cuenta y sus **0 créditos**
+  guardados: los dos endpoints son gratuitos, medido con dinero real el 2026-09-28. Un identificador que el
+  proveedor deja de reconocer se vuelve a registrar **una sola vez**, tampoco con coste.
+- **Regla nueva del motor de controles** (`omni-sin-registro`): sin voz registrada o sin el personaje registrado
+  con ella, la escena no se produce y se dice exactamente qué falta y dónde se arregla.
+
+### Cambiado
+
+- En modo `omni` la rejilla de producción **no ofrece aprobar fotograma**: la escena es un solo trabajo y su coste
+  es el del clip (63 créditos por 4 s, medido; las demás duraciones, proporcionales y marcadas como estimadas).
+- El formulario de consentimiento ya no ofrece el titular «inventado»: un personaje inventado nace inventado, y no
+  se le puede registrar después un consentimiento de imagen.
+
+### Actualizar desde la 0.21.x
+
+- `bun run db:backup` y `bun run db:migrate`: la migración `0028_escenas_habladas_omni` añade el modo de voz
+  `omni` y la voz Omni del proyecto, el titular de consentimiento `inventado` con su declaración, la marca de
+  personaje inventado y la tabla de registros Omni de cada versión de ficha.
+- Nada que reconfigurar: los proyectos siguen en el modo de voz que tuvieran, y registrar la voz y el personaje no
+  cuesta créditos.
+
 ## [0.21.2] · 2026-09-28
 
 ### Añadido

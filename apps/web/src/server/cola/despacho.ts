@@ -182,9 +182,15 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
       evaluar({
         tipo: fila.kind,
         parametros: await parametrosDeControles(),
-        // Si la ficha del personaje ya no está, esto bloquea en lugar de dejar pasar: un borrado a medias no
-        // puede convertirse en un envío sin consentimiento.
-        personaje: await hechosDePersonajeCitado(fila.characterId),
+        /**
+         * Si la ficha del personaje ya no está, esto bloquea en lugar de dejar pasar. Y el **primer retrato de
+         * un personaje inventado** (0.22.0) se revalida sin exigirle las fotos que todavía no tiene: es este
+         * mismo trabajo el que se las va a dar, igual que al encolarlo.
+         */
+        personaje: await hechosDePersonajeCitado(
+          fila.characterId,
+          (fila.input as { retratoInventado?: unknown }).retratoInventado === true,
+        ),
         modelo: {
           nombre: modelo.nombre,
           maximoReferencias: modelo.parametros.maximoReferencias,
@@ -222,6 +228,35 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
     });
     const callbackVoz = await prepararCallback(fila);
     return { adaptador, clave: credencial.clave, entrada: entradaVoz, ...callbackVoz };
+  }
+  /**
+   * Escena hablada de un proyecto en modo `omni` (0.22.0). La identidad y la voz **son** el personaje registrado
+   * en el proveedor, así que no hay ninguna imagen que subir: lo que se envía son los `character_ids` que
+   * quedaron guardados al encolar, nunca los que el personaje tenga registrados ahora. Lo que se paga tiene que
+   * ser lo que el usuario confirmó, y volver a leer el registro podría mandar otra cara.
+   */
+  const personajesOmni = personajesOmniDe(fila);
+  if (personajesOmni.length > 0) {
+    const segundosOmni = segundosDe(fila);
+    const entradaOmni = adaptador.montarEntrada(modelo, {
+      escena: fila.prompt,
+      dialogo: dialogoDe(fila),
+      urls: [],
+      personajesOmni,
+      ...(segundosOmni === null ? {} : { segundos: segundosOmni }),
+    });
+    const callbackOmni = await prepararCallback(fila);
+    return { adaptador, clave: credencial.clave, entrada: entradaOmni, ...callbackOmni };
+  }
+  /**
+   * Retrato candidato de un personaje inventado (0.22.0): nace de su descripción y no tiene ninguna foto que
+   * subir. El modelo recibe el prompt sin referencias, que es lo que lo convierte en un retrato nuevo en lugar
+   * de en la edición de una foto.
+   */
+  if ((fila.input as { retratoInventado?: unknown }).retratoInventado === true) {
+    const entradaRetrato = adaptador.montarEntrada(modelo, { escena: fila.prompt, dialogo: "", urls: [] });
+    const callbackRetrato = await prepararCallback(fila);
+    return { adaptador, clave: credencial.clave, entrada: entradaRetrato, ...callbackRetrato };
   }
   // Un trabajo con personaje lleva **varias** referencias (0.13.0); uno con imagen suelta, una sola. Se
   // suben en el mismo orden que se guardaron: la primera es la que más peso tiene en la identidad.
@@ -740,6 +775,16 @@ async function claveDelTrabajo(fila: FilaTrabajo): Promise<{ clave: string }> {
 function urlBaseDe(fila: FilaTrabajo): string {
   const url = (fila.input as { urlBase?: unknown }).urlBase;
   return typeof url === "string" ? url : "";
+}
+
+/**
+ * Personajes registrados en el proveedor que este trabajo tiene que citar (modo `omni`, 0.22.0), tal como
+ * quedaron guardados al encolar. Vacío en todo lo demás, que es todo lo anterior a la 0.22.0.
+ */
+function personajesOmniDe(fila: FilaTrabajo): string[] {
+  const guardados = (fila.input as { personajesOmni?: unknown }).personajesOmni;
+  if (!Array.isArray(guardados)) return [];
+  return guardados.filter((id): id is string => typeof id === "string" && id !== "");
 }
 
 /** Identificador del servicio compatible con el que se encoló, si lo hubo. */

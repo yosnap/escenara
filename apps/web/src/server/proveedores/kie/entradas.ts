@@ -2,7 +2,7 @@ import type { ModeloVista } from "@/lib/catalogo";
 import { CLIP } from "@/lib/generacion";
 import { duracionParaModelo } from "@/lib/produccion";
 import { type ContextoEntrada, ErrorCatalogo } from "../contrato";
-import { entradaAnimacion, entradaFotograma, promptAnimacion, promptFotograma } from "./modelos";
+import { entradaAnimacion, entradaFotograma, promptAnimacion, promptEscenaHablada, promptFotograma } from "./modelos";
 
 export type { ContextoEntrada };
 
@@ -20,7 +20,8 @@ export type { ContextoEntrada };
  *   **sin `aspect_ratio`** (toma el de la imagen).
  * - `kling/v3-turbo-image-to-video`: `image_urls`, `duration` y `resolution` como texto, sin
  *   `aspect_ratio`; solo acepta JPEG o PNG (la conversión la hace la generación antes de subir).
- * - `gemini-omni-video`: `image_urls` (hasta 7), `duration` y `resolution` como texto, `aspect_ratio`.
+ * - `gemini-omni-video`: `image_urls` (hasta 7), `duration` y `resolution` como texto, `aspect_ratio`; y, en las
+ *   escenas habladas de 0.22.0, `character_ids` **en lugar de** `image_urls`.
  * - `grok-imagine/text-to-video` y `grok-imagine/image-to-video`: `mode`, `duration` y `resolution` como texto,
  *   `aspect_ratio`, y `image_urls` solo la segunda. **Prompt solo en inglés y sin diálogo.**
  *
@@ -51,6 +52,29 @@ function conProporcion(modelo: ModeloVista, entrada: Record<string, unknown>): R
   const valor = proporcion(modelo);
   return valor ? { ...entrada, aspect_ratio: valor } : entrada;
 }
+
+/**
+ * Entrada de los modelos de **Gemini Omni**, que la comparten: con un personaje registrado la identidad y la voz
+ * **son** `character_ids`, así que no se envía ninguna referencia. Enviar además `image_urls` sería darle dos
+ * caras a la vez y pagar por que elija una; medido el 2026-09-28, con `character_ids` sola la cara es idéntica
+ * entre escenas.
+ */
+const entradaOmni: Constructor = (contexto, modelo) => {
+  if (contexto.personajesOmni && contexto.personajesOmni.length > 0) {
+    return conProporcion(modelo, {
+      prompt: promptEscenaHablada(contexto.escena, contexto.dialogo),
+      duration: String(duracion(modelo, contexto)),
+      resolution: primeraResolucion(modelo),
+      character_ids: [...contexto.personajesOmni],
+    });
+  }
+  return conProporcion(modelo, {
+    prompt: promptAnimacion(contexto.escena, contexto.dialogo),
+    image_urls: contexto.urls,
+    duration: String(duracion(modelo, contexto)),
+    resolution: primeraResolucion(modelo),
+  });
+};
 
 /** Un `Map` y no un objeto: así un nombre de modelo no puede resolverse por el prototipo de `Object`. */
 const CONSTRUCTORES = new Map<string, Constructor>(
@@ -116,26 +140,25 @@ const CONSTRUCTORES = new Map<string, Constructor>(
      * para una escena con personaje hablando.
      *
      * La duración y la resolución van **como texto**, y acepta hasta siete referencias por `image_urls` (la
-     * primera hace de fotograma inicial). `character_ids` y `audio_ids` existen en su API pero **no se exponen**:
-     * son identidades y voces guardadas en el proveedor, y eso es una decisión de producto con consentimiento de
-     * por medio, no un campo más.
+     * primera hace de fotograma inicial). Desde la 0.22.0 **sí se expone `character_ids`**, porque hay
+     * consentimiento y registro detrás: un personaje registrado lleva su cara y su voz guardadas en el proveedor,
+     * y citarlo es lo que hace que todas las escenas del proyecto salgan iguales. `audio_ids` sigue sin exponerse
+     * aquí: la voz viaja dentro del personaje registrado, no suelta por escena.
      */
-    "gemini-omni-video": (contexto, modelo) =>
-      conProporcion(modelo, {
-        prompt: promptAnimacion(contexto.escena, contexto.dialogo),
-        image_urls: contexto.urls,
-        duration: String(duracion(modelo, contexto)),
-        resolution: primeraResolucion(modelo),
-      }),
+    "gemini-omni-video": entradaOmni,
 
-    // Gemini Omni 1.1 Flash: los mismos campos que Gemini Omni (medido el 2026-09-28, mismo precio y más rápido).
-    "google/gemini-omni-flash-1-1": (contexto, modelo) =>
-      conProporcion(modelo, {
-        prompt: promptAnimacion(contexto.escena, contexto.dialogo),
-        image_urls: contexto.urls,
-        duration: String(duracion(modelo, contexto)),
-        resolution: primeraResolucion(modelo),
-      }),
+    /**
+     * Gemini Omni 1.1 Flash (0.22.0), el predeterminado de las escenas habladas. Medido con dinero real el
+     * 2026-09-28: 4 s en 9:16 a 720p costaron **63 créditos** —lo mismo que `gemini-omni-video`— y tardaron
+     * **38 s en lugar de 59 s**, con el diálogo en español igual de exacto.
+     *
+     * Recibe lo mismo que su hermano y con los mismos tipos: `duration` y `resolution` **como texto**,
+     * `aspect_ratio`, y `character_ids` cuando la escena la dice un personaje registrado. `first_frame_url` y
+     * `last_frame_url` existen en su API pero **son excluyentes** con `image_urls`, `audio_ids` y
+     * `character_ids`, así que esta versión no los usa: mezclar los dos caminos es pedir un clip que el
+     * proveedor rechaza después de haber cobrado la petición.
+     */
+    "google/gemini-omni-flash-1-1": entradaOmni,
 
     /**
      * Grok Imagine (0.21.1), en sus dos variantes. Medido con dinero real el 2026-09-28: 6 s en 9:16 a 480p
