@@ -23,9 +23,11 @@ export type Acotacion =
 export function acotarCoste(tipo: TipoTrabajoCola, eleccion: EleccionDeTrabajo): Acotacion {
   const creditos = Math.ceil(eleccion.precio.creditos);
   /**
-   * Un fotograma es una unidad, y una pista de voz también: su precio registrado cubre **la llamada de una
-   * escena** (0.21.0), que es lo que se pide y lo que se paga. Lo que no está acotado es un clip cuyo modelo no
-   * declara cuánto dura, porque entonces la longitud (y el precio) los decide el proveedor.
+   * Un fotograma es una unidad. Una pista de voz **no** lo es —los modelos de voz cobran por carácter—, pero sí
+   * está acotada: el diálogo se conoce y se congela al encolar (queda en la entrada del trabajo y no se vuelve a
+   * leer del proyecto), así que su coste se estima con la longitud real del texto y no con una tarifa plana
+   * (`lib/voz.ts › creditosDeVoz`). Lo que no está acotado es un clip cuyo modelo no declara cuánto dura, porque
+   * entonces la longitud (y el precio) los decide el proveedor.
    */
   if (tipo === "fotograma" || tipo === "voz" || eleccion.modelo.parametros.duraciones.length > 0) {
     return { acotado: true, creditos };

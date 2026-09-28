@@ -126,12 +126,16 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 #### Proveedor de voz de reserva · cambiado
 
-- **Lo que confirmas es el mayor de los dos precios** cuando hay proveedor de reserva. Es lo único que cubre los
-  dos caminos sin interrumpirte a mitad de un envío que ya autorizaste, y hace que un cambio automático no pueda
-  gastar más de lo que tenías delante. Lo que se apunta como gastado es siempre lo que informe el proveedor que de
-  verdad haya cobrado.
-- **Al cambiar de proveedor, la reserva pasa a su nombre.** No se mueve ni un crédito —cubría a los dos—, pero el
-  historial de gasto deja de atribuirle a uno un cobro que hizo el otro.
+- **La voz se estima por carácter y en la moneda de cada proveedor.** Cada escena te enseña lo que costaría su
+  diálogo con el proveedor elegido y con el de reserva, cada uno en sus créditos: los de uno no valen lo mismo que
+  los del otro, así que no se suman ni se comparan. Un monólogo ya no se estima con el precio de una frase.
+- **El cambio automático solo va a lo que viste.** Se hace al proveedor y modelo que se te enseñaron al pedir la
+  voz y solo si lo que cuesta allí cabe en esa cifra; si añadiste la clave después o el precio subió, no se
+  cambia y el mensaje te dice por qué. Al cambiar, la reserva pasa a nombre del proveedor que cobra y a su importe,
+  y lo que se apunta como gastado es lo que ese proveedor informe.
+- **La voz del proyecto guarda el proveedor real del modelo**, no uno fijo.
+- **Si una voz ya pagada no se puede guardar**, el mensaje dice qué proveedor la cobró, que sí se ha cobrado, que
+  no se puede recuperar sin volver a pagar y qué hacer.
 - **Todos los mensajes de error de la voz dicen qué falló de verdad** (proveedor, modelo y causa concreta), **si
   se ha cobrado o no**, qué se intentó y qué puedes hacer. Se acabaron los «no se ha podido, vuelve a intentarlo».
   El texto del proveedor, las rutas del servidor y la configuración de la máquina siguen sin salir nunca.

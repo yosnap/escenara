@@ -130,7 +130,7 @@ export function PanelVozProyecto({
                   <p className="text-sm text-texto-suave">
                     Se genera con <strong className="text-texto">{d.nombreProveedor}</strong>, con tu clave suya.
                     {d.reserva
-                      ? ` Si rechazara la petición sin cobrar, se probaría solo con ${d.reserva.nombre} y se te diría: la estimación ya cubre el más caro de los dos.`
+                      ? ` Si rechazara la petición sin cobrar, se probaría solo con ${d.reserva.nombre} y se te diría. Cada escena muestra lo que costaría en cada uno, en la moneda de cada proveedor: los créditos de uno no valen lo mismo que los del otro.`
                       : ""}
                   </p>
                 )}

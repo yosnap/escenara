@@ -3,6 +3,7 @@ import {
   avisosDeSubtitulos,
   CARACTERES_POR_LINEA,
   componerSubtitulos,
+  creditosDeVoz,
   dividirEnLineas,
   erroresDeSubtitulos,
   esModoVoz,
@@ -202,5 +203,19 @@ describe("ficheros de subtítulos", () => {
 
   test("la división de líneas que decidió quien edita se respeta tal cual", () => {
     expect(componerSubtitulos(escenas, "srt")).toContain("Primera\nescena");
+  });
+});
+
+describe("coste de la voz por carácter", () => {
+  test("escala con la longitud del diálogo sobre el precio medido", () => {
+    // 22 créditos medidos sobre 79 caracteres: 3.000 caracteres son unas 38 veces más.
+    const monologo = "a".repeat(3000);
+    expect(creditosDeVoz("eleven_multilingual_v2", 22, monologo)).toBe(Math.ceil((22 * 3000) / 79));
+  });
+
+  test("nunca baja de la tarifa registrada y los modelos por llamada no escalan", () => {
+    expect(creditosDeVoz("eleven_multilingual_v2", 22, "Hola.")).toBe(22);
+    expect(creditosDeVoz("eleven_multilingual_v2", 22, "")).toBe(22);
+    expect(creditosDeVoz("modelo-por-llamada", 10, "a".repeat(3000))).toBe(10);
   });
 });

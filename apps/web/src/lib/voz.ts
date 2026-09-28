@@ -183,6 +183,40 @@ export function firmaDeVoz(modo: ModoVoz, voz: VozDelProyecto | null, dialogo: s
 /** Texto máximo que acepta el modelo de voz por llamada (docs.kie.ai, 2026-09-28). */
 export const DIALOGO_VOZ_MAXIMO = 5000;
 
+/**
+ * Modelos de voz que **cobran por carácter**, con los caracteres sobre los que se midió su precio registrado.
+ *
+ * ElevenLabs cobra por carácter, así que «22 créditos por llamada» es una media que solo vale para el texto con el
+ * que se midió (79 caracteres, 2026-09-28). Un diálogo de 3.000 caracteres cuesta del orden de treinta veces más,
+ * y estimarlo con la tarifa plana significaba enseñar 22, reservar 22 y que el proveedor cobrara ochocientos.
+ *
+ * Con esta tabla la estimación **escala con el texto de verdad**, que es lo que hace que el coste vuelva a estar
+ * acotado: el diálogo se conoce y se congela al encolar (queda en la entrada del trabajo y no se relee), así que
+ * el máximo se puede calcular antes de gastar nada.
+ *
+ * Un modelo que no esté aquí se cobra por llamada, que es lo que hacen los de imagen y vídeo.
+ */
+export const CARACTERES_DEL_PRECIO_MEDIDO: Record<string, number> = {
+  eleven_multilingual_v2: 79,
+};
+
+export const cobraPorCaracter = (modelo: string): boolean => modelo in CARACTERES_DEL_PRECIO_MEDIDO;
+
+/**
+ * Créditos que costaría leer `texto` con ese modelo, a partir de su precio registrado.
+ *
+ * Para los modelos por carácter se escala con la regla de tres del precio medido; para los demás es el precio tal
+ * cual. Nunca baja de la tarifa registrada: ningún proveedor cobra menos que su mínimo por llamada, y estimar por
+ * debajo sería prometer un precio que no existe.
+ */
+export function creditosDeVoz(modelo: string, creditosRegistrados: number, texto: string): number {
+  const medidos = CARACTERES_DEL_PRECIO_MEDIDO[modelo];
+  if (medidos === undefined || medidos <= 0) return Math.ceil(creditosRegistrados);
+  const caracteres = texto.trim().length;
+  if (caracteres === 0) return Math.ceil(creditosRegistrados);
+  return Math.max(Math.ceil(creditosRegistrados), Math.ceil((creditosRegistrados * caracteres) / medidos));
+}
+
 // ── Subtítulos ───────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -482,6 +516,17 @@ export interface EscenaVozVista {
   editados: boolean;
   /** Avisos de legibilidad de los subtítulos guardados. */
   avisos: AvisoSubtitulo[];
+  /**
+   * Créditos estimados de generar **esta** escena, con su diálogo. Los modelos de voz cobran por carácter, así
+   * que un monólogo cuesta decenas de veces lo que una frase: una cifra por proyecto mentiría. `null` cuando no
+   * hay modelo de voz utilizable y por tanto no se puede estimar nada.
+   */
+  creditos: number | null;
+  /**
+   * Créditos **del proveedor de reserva** para esta escena, en su moneda (no se suman ni se comparan con los del
+   * primero). Es el tope que autoriza el cambio automático. `null` si no hay reserva.
+   */
+  creditosReserva: number | null;
   /** Estado del trabajo de voz en marcha, si hay uno. */
   trabajoEnMarcha: string | null;
   /**
@@ -524,7 +569,10 @@ export interface DisponibilidadVoz {
   /** `true` si hay modelo de voz utilizable, con precio, y el ajuste está encendido. */
   ttsDisponible: boolean;
   motivoTts: string;
-  /** Créditos por llamada de voz; `null` si el modelo no tiene precio medido y por tanto no se estima. */
+  /**
+   * Precio **de referencia** del modelo, tal como está registrado; `null` si no hay modelo utilizable. No es lo
+   * que va a costar una escena concreta: eso lo lleva cada escena, porque escala con su diálogo.
+   */
   creditosPorEscena: number | null;
   sello: string;
   /** Modelo de voz que usaría esta instalación; vacío cuando no hay ninguno utilizable. */
@@ -534,10 +582,11 @@ export interface DisponibilidadVoz {
   nombreProveedor: string;
   /**
    * Proveedor de reserva al que se cambiaría **solo** si el primero rechaza la petición sin cobrar; `null` si
-   * este usuario no tiene ninguno más configurado. El cambio es automático y no vuelve a preguntar: lo que se
-   * confirma es el mayor de los dos precios.
+   * este usuario no tiene ninguno más configurado. El cambio es automático y no vuelve a preguntar, así que su
+   * coste se enseña **en su propia moneda** junto al del primero y queda guardado en el trabajo al encolar: el
+   * relevo solo procede si lo que cuesta de verdad cabe en esa cifra. `creditos` es su precio de referencia.
    */
-  reserva: { proveedor: string; nombre: string } | null;
+  reserva: { proveedor: string; nombre: string; modelo: string; creditos: number } | null;
   /** `true` si el transcriptor local está instalado y utilizable. No cuesta nada. */
   transcripcionDisponible: boolean;
   motivoTranscripcion: string;
