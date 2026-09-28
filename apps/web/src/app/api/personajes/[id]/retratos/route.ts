@@ -1,6 +1,11 @@
 import { obtenerPersonaje } from "@/server/personajes/consulta";
 import { type ContextoId, leerCuerpo, leerId, manejador } from "@/server/personajes/http";
-import { elegirRetrato, generarRetratosCandidatos, mediosDeCandidatos } from "@/server/personajes/inventado";
+import {
+  descartarRetratos,
+  elegirRetrato,
+  generarRetratosCandidatos,
+  mediosDeCandidatos,
+} from "@/server/personajes/inventado";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +27,9 @@ export const GET = manejador(async (_: Request, contexto: ContextoId, actor) => 
 export const POST = manejador(async (peticion: Request, contexto: ContextoId, actor) => {
   const id = await leerId(contexto);
   const cuerpo = await leerCuerpo(peticion);
+  if (cuerpo.accion === "descartar") {
+    return Response.json(await descartarRetratos(actor, id));
+  }
   if (cuerpo.accion === "elegir") {
     return Response.json(await elegirRetrato(actor, id, cuerpo.medioId));
   }

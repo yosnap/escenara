@@ -2,6 +2,20 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.23.1] · 2026-09-28
+
+### Cambiado
+
+- **Las vistas de la cabeza y los retratos se generan en 3:4**, con la cara centrada en primer plano; el cuerpo
+  entero sigue en 9:16. En 9:16 la cara salía pequeña y descentrada. Solo se pide 3:4 a los modelos cuya
+  documentación lo admite (nano-banana-2-lite y Seedream 4.5); en los demás se refuerza el encuadre en la
+  indicación. El precio no cambia y los formatos de «Crear» tampoco.
+
+### Añadido
+
+- **«Descartar los retratos pendientes»** en un personaje inventado: dejan de ofrecerse como cara, pero siguen en
+  tu biblioteca y no se borra nada. Útil para quedarte con tus propias imágenes.
+
 ## [0.23.0] · 2026-09-28
 
 ### Decisión firme del propietario

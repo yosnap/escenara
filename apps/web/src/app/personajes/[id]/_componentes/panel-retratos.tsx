@@ -12,6 +12,7 @@ import {
   consultarControlesDeRetrato,
   consultarEstimacionDeVista,
   consultarRetratos,
+  descartarRetratos,
   elegirRetrato,
   generarRetratos,
 } from "@/components/ui/personajes/api-personajes";
@@ -152,6 +153,28 @@ export function PanelRetratos({
       >
         Buscar retratos terminados
       </Boton>
+
+      {candidatos.length > 0 && (
+        <Boton
+          variante="fantasma"
+          tamano="sm"
+          className="self-start"
+          disabled={ocupado}
+          onClick={async () => {
+            setOcupado(true);
+            const respuesta = await descartarRetratos(personaje.id);
+            setOcupado(false);
+            if (!respuesta.ok) {
+              setError(respuesta.error);
+              return;
+            }
+            setCandidatos([]);
+            setAviso("Retratos descartados: ya no se ofrecen como cara, pero siguen en tu biblioteca.");
+          }}
+        >
+          Descartar los retratos pendientes
+        </Boton>
+      )}
 
       {candidatos.length > 0 && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

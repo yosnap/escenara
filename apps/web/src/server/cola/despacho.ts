@@ -1,5 +1,6 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { PROVEEDORES_PUBLICOS } from "@/lib/boveda";
+import { esVista, proporcionDeVista } from "@/lib/captura-personaje";
 import { CAPACIDAD_DE_TIPO, type ModeloVista } from "@/lib/catalogo";
 import { mensajeDeFalloDeProveedor } from "@/lib/diagnostico-proveedor";
 import {
@@ -256,7 +257,13 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
    * de en la edición de una foto.
    */
   if ((fila.input as { retratoInventado?: unknown }).retratoInventado === true) {
-    const entradaRetrato = adaptador.montarEntrada(modelo, { escena: fila.prompt, dialogo: "", urls: [] });
+    // Retrato de cabeza y hombros: 3:4, la misma proporción que las vistas de la cabeza.
+    const entradaRetrato = adaptador.montarEntrada(modelo, {
+      escena: fila.prompt,
+      dialogo: "",
+      urls: [],
+      proporcion: proporcionDeVista("frontal"),
+    });
     const callbackRetrato = await prepararCallback(fila);
     return { adaptador, clave: credencial.clave, entrada: entradaRetrato, ...callbackRetrato };
   }
@@ -299,10 +306,13 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
       await adaptador.subirReferencia({ clave: credencial.clave, archivo: await archivoDe(audio), buscar: h.buscar }),
     );
   }
+  const vistaPedida = (fila.input as { vistaSintetica?: unknown }).vistaSintetica;
   const entrada = adaptador.montarEntrada(modelo, {
     escena: fila.prompt,
     dialogo: dialogoDe(fila),
     urls,
+    // Una vista del personaje sale con su proporción (cabeza 3:4, cuerpo 9:16); lo demás, con la del modelo.
+    ...(fila.kind === "fotograma" && esVista(vistaPedida) ? { proporcion: proporcionDeVista(vistaPedida) } : {}),
     ...(audios.length > 0 ? { audiosDeReferencia: audios } : {}),
     ...(segundos === null ? {} : { segundos }),
   });
