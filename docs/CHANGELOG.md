@@ -2,6 +2,23 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.22.2] · 2026-09-28
+
+### Seguridad
+
+- **La cara de una persona real ya no sale hacia un modelo de texto.** «Completar la ficha con IA» solo envía la
+  imagen de un personaje inventado; con una persona real la propuesta sale de la descripción y se dice así. Su
+  consentimiento cubre enviar su cara al proveedor de imagen y vídeo, no a cualquier servicio de texto.
+- **El asistente de la ficha solo gasta lo confirmado**: la entrada principal del mapa de texto (si es de pago y la
+  confirmaste) y las que se pagan por cuota. Ya no salta a otra entrada de pago cuyo coste no se enseñó.
+
+### Corregido
+
+- **«Generar todas las vistas» no cobra dos veces**: las vistas que ya se están generando no se vuelven a encargar,
+  aunque se pulse dos veces o se reabra el diálogo.
+- El **aviso de gasto alto y el saldo** del encargo de vistas se miden sobre el total, no por imagen.
+- Un fallo interno al encargar una vista ya no se enseña en crudo: se dice que no se ha enviado ni cobrado.
+
 ## [0.22.1] · 2026-09-28
 
 ### Añadido

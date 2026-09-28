@@ -35,7 +35,7 @@ if (hayBaseDeDatos) {
   await usarBaseDeDatosDePrueba("escenara_pruebas_asistente_ficha");
 }
 
-const { and, eq } = await import("drizzle-orm");
+const { and, desc, eq } = await import("drizzle-orm");
 const rutaPersonajes = await import("@/app/api/personajes/route");
 const rutaReferencias = await import("@/app/api/personajes/[id]/referencias/route");
 const rutaConsentimiento = await import("@/app/api/personajes/[id]/consentimiento/route");
@@ -43,7 +43,9 @@ const rutaPersonaje = await import("@/app/api/personajes/[id]/route");
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
-const { assistantRuns, characters, users } = await import("../db/esquema");
+const { assistantRuns, characters, generationJobs, users } = await import("../db/esquema");
+const { coberturaDe } = await import("./consulta");
+const { vistasPorGenerar } = await import("@/lib/captura-personaje");
 const { guardarCompatible, listarCompatibles } = await import("../boveda/compatibles");
 const { guardarMapa } = await import("../mapa/mapa");
 const { crearMedio } = await import("../media/servicio");
@@ -194,8 +196,31 @@ describe.skipIf(!hayBaseDeDatos)("asistente de la ficha del personaje", () => {
     expect(estimacion.modelo).toBe(MODELO);
   });
 
-  test("propone la ficha con la imagen del personaje y no guarda nada", async () => {
-    const personaje = await personajeConCara(`Nora ${sufijo}`, 11);
+  test("con una persona real la cara no sale hacia el modelo de texto: la propuesta es solo de la descripción", async () => {
+    const real = await personajeConCara(`Lara ${sufijo}`, 12);
+    const propuesta = await proponerFichaConIA(actorAna, real.id, { claveIdempotencia: crypto.randomUUID() }, buscar);
+    expect(propuesta.conImagen).toBe(false);
+    const contenido = enviados.at(-1)?.messages.at(-1)?.content;
+    // Solo texto: ni rastro de una imagen en lo que se envió.
+    expect(typeof contenido === "string" || !JSON.stringify(contenido).includes("image_url")).toBe(true);
+  });
+
+  test("propone la ficha con la imagen del personaje inventado y no guarda nada", async () => {
+    const inventadoConCara = await crearPersonajeInventado(actorAna, {
+      nombre: `Nora ${sufijo}`,
+      descripcion: "Mujer de unos treinta años, pelo castaño y voz grave.",
+      declaracion: true,
+    });
+    const medioIA = await crearMedio(actorAna, new File([await foto(11)], "ia-11.png", { type: "image/png" }));
+    const conImagen = await rutaReferencias.POST(
+      pedir(ana, `/api/personajes/${inventadoConCara.id}/referencias`, "POST", {
+        referencias: [{ medioId: medioIA.id, vistaClave: "frontal", usarDeTodasFormas: true }],
+        generadasConIA: true,
+      }),
+      ctx(inventadoConCara.id),
+    );
+    expect(conImagen.status).toBe(200);
+    const personaje = inventadoConCara;
     const propuesta: PropuestaDeFicha = await proponerFichaConIA(
       actorAna,
       personaje.id,
@@ -210,7 +235,7 @@ describe.skipIf(!hayBaseDeDatos)("asistente de la ficha del personaje", () => {
     expect(propuesta.deReserva).toBe(false);
 
     // Lo que se envió de verdad: el mensaje del usuario lleva el texto **y** la imagen en `data:` URL.
-    const contenido = enviados[0]?.messages.at(-1)?.content as { type: string; image_url?: { url: string } }[];
+    const contenido = enviados.at(-1)?.messages.at(-1)?.content as { type: string; image_url?: { url: string } }[];
     expect(Array.isArray(contenido)).toBe(true);
     expect(contenido.map((p) => p.type)).toEqual(["text", "image_url"]);
     expect(contenido[1]?.image_url?.url.startsWith("data:image/jpeg;base64,")).toBe(true);
@@ -224,7 +249,8 @@ describe.skipIf(!hayBaseDeDatos)("asistente de la ficha del personaje", () => {
     const [ejecucion] = await db()
       .select()
       .from(assistantRuns)
-      .where(and(eq(assistantRuns.userId, ana.id), eq(assistantRuns.kind, "ficha_personaje")));
+      .where(and(eq(assistantRuns.userId, ana.id), eq(assistantRuns.kind, "ficha_personaje")))
+      .orderBy(desc(assistantRuns.createdAt));
     expect(ejecucion?.estimatedCredits).toBe(0);
     expect(ejecucion?.consumedCredits).toBe(0);
     expect(ejecucion?.state).toBe("listo");
@@ -295,5 +321,39 @@ describe.skipIf(!hayBaseDeDatos)("asistente de la ficha del personaje", () => {
     // Sin clave de KIE ni retrato, ninguna vista sale: se responde con el motivo y no se ha cobrado nada.
     expect(fallo).toBeInstanceOf(ErrorPersonaje);
     expect(fallo.message).toContain("no se te ha cobrado");
+  });
+
+  test("«todas las vistas» no vuelve a encargar las que ya se están generando", async () => {
+    const inventado = await crearPersonajeInventado(actorAna, {
+      nombre: `Iris ${sufijo}`,
+      descripcion: "Una mujer de unos cincuenta años, pelo gris corto y gafas redondas.",
+      declaracion: true,
+    });
+    // Todas las vistas que le faltan tienen ya un trabajo en cola: es la segunda pulsación del mismo encargo.
+    for (const vista of vistasPorGenerar(await coberturaDe(inventado.id, "persona"))) {
+      await db()
+        .insert(generationJobs)
+        .values({
+          userId: ana.id,
+          kind: "fotograma",
+          provider: "kie",
+          model: "nano-banana-2-lite",
+          prompt: "",
+          input: { vistaSintetica: vista },
+          state: "en_cola",
+          characterId: inventado.id,
+          estimatedCredits: 4,
+          idempotencyKey: crypto.randomUUID(),
+        });
+    }
+    const fallo = await pedirVistasQueFaltan(
+      actorAna,
+      inventado.id,
+      { creditosConfirmados: 4, derechos: true, sinTerceros: true, claveIdempotencia: crypto.randomUUID() },
+      { buscar, descargar: async () => ({ archivo: new File([], "x"), origen: "" }) },
+    ).catch((e) => e);
+    expect(fallo).toBeInstanceOf(ErrorPersonaje);
+    expect(fallo.message).toContain("ya se están generando");
+    await db().delete(generationJobs).where(eq(generationJobs.characterId, inventado.id));
   });
 });

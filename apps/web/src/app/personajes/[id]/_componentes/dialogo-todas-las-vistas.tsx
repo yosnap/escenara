@@ -53,13 +53,17 @@ export function DialogoTodasLasVistas({
   // total que se enseña es ese precio por cada vista que falta.
   const porVista = creditosAConfirmar(estimacion);
   const total = porVista * vistas.length;
+  // El aviso de gasto y el saldo se miden sobre **el total del encargo**, como hace el servidor: por imagen,
+  // seis vistas caras nunca pasarían del aviso aunque juntas sí.
+  const superaUmbral = total > estimacion.umbral;
+  const alcanza = estimacion.saldo === null || estimacion.saldo >= total;
   const firma = `${vistas.join(",")}|${estimacion.sello}|${porVista}|${firmaDeAvisos(confirmados)}`;
 
   const bloqueos = [
     ...(derechos ? [] : ["Falta confirmar que tienes derecho a usar estas fotos."]),
     ...(sinTerceros ? [] : ["Falta confirmar la revisión de las fotos."]),
-    ...(estimacion.superaUmbral && !avisoAceptado ? ["Falta aceptar el aviso de gasto."] : []),
-    ...(estimacion.alcanza ? [] : ["Tu saldo de KIE no llega para este trabajo."]),
+    ...(superaUmbral && !avisoAceptado ? ["Falta aceptar el aviso de gasto."] : []),
+    ...(alcanza ? [] : ["Tu saldo de KIE no llega para todas estas vistas."]),
     ...bloqueosDeControles(controles, confirmados),
   ];
 
@@ -125,7 +129,7 @@ export function DialogoTodasLasVistas({
               onCambio={setSinTerceros}
               deshabilitado={enviando}
             />
-            {estimacion.superaUmbral && (
+            {superaUmbral && (
               <Casilla
                 etiqueta={`Sí, quiero gastar ${formatearCreditos(total)}`}
                 marcada={avisoAceptado}

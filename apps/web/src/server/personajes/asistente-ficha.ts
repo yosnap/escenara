@@ -145,12 +145,23 @@ export async function proponerFichaConIA(
 
   // La imagen se prepara **antes** de reservar: leerla y reducirla puede fallar, y una reserva apartada por un
   // fallo nuestro le comería presupuesto al usuario hasta que el barrido la cerrara.
-  const { imagen, motivo: motivoSinImagen } = estimacion.admiteImagen
-    ? await imagenDelPersonaje(personaje)
-    : {
+  /**
+   * La cara solo sale hacia un servicio de texto externo si el personaje es **inventado**: no es de nadie. La de
+   * una persona real no se envía por este camino, porque su consentimiento cubre enviarla al proveedor de
+   * imagen y vídeo, no a cualquier servicio de texto que el usuario haya dado de alta.
+   */
+  const { imagen, motivo: motivoSinImagen } = !personaje.virtual
+    ? {
         imagen: null,
-        motivo: `${estimacion.nombreProveedor} (${estimacion.modelo}) no admite imágenes, así que la propuesta sale solo de la descripción. Puedes poner delante un servicio que sí las admita en tu mapa de modelos de texto.`,
-      };
+        motivo:
+          "La propuesta sale solo de la descripción: la cara de una persona real no se envía a un modelo de texto.",
+      }
+    : estimacion.admiteImagen
+      ? await imagenDelPersonaje(personaje)
+      : {
+          imagen: null,
+          motivo: `${estimacion.nombreProveedor} (${estimacion.modelo}) no admite imágenes, así que la propuesta sale solo de la descripción. Puedes poner delante un servicio que sí las admita en tu mapa de modelos de texto.`,
+        };
 
   let resultado: Awaited<ReturnType<typeof pedirTextoPorMapa>>;
   try {
@@ -167,6 +178,8 @@ export async function proponerFichaConIA(
       }),
       claveIdempotencia: `ficha:${personaje.id}:${clave}`,
       buscar,
+      // Solo lo confirmado: la principal si es de pago, y las entradas de cuota.
+      limitarAConfirmado: true,
       ...(imagen ? { imagen } : {}),
     });
   } catch (error) {
