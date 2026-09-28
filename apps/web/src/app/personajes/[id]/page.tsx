@@ -12,6 +12,7 @@ import { umbralesDe } from "@/server/personajes/calidad";
 import { obtenerPersonaje } from "@/server/personajes/consulta";
 import { ErrorPersonaje } from "@/server/personajes/errores";
 import { mediosDeCandidatos } from "@/server/personajes/inventado";
+import { proyectosEnModoOmni } from "@/server/voz/omni";
 import { CabeceraApp } from "../../_app/cabecera-app";
 import { FichaPersonaje } from "./_componentes/ficha-personaje";
 
@@ -38,6 +39,8 @@ export default async function PaginaPersonaje({ params }: { params: Promise<{ id
   // Los retratos candidatos solo existen en un personaje inventado: en los demás no se consulta nada.
   const actor = { id: sesion.user.id, esAdmin: esAdmin(sesion) };
   const retratos = personaje.inventado && personaje.puedeEditar ? await mediosDeCandidatos(actor, id) : [];
+  // Con qué voz se puede registrar: la de sus proyectos en modo Omni. Sin ninguno, la ficha lo dice y no ofrece.
+  const proyectosOmni = personaje.puedeEditar ? await proyectosEnModoOmni(actor.id) : [];
 
   return (
     <div className="min-h-dvh bg-fondo">
@@ -53,6 +56,7 @@ export default async function PaginaPersonaje({ params }: { params: Promise<{ id
           umbrales={umbralesDe(await leerAjustes())}
           claveDeGeneracion={claveDeGeneracion}
           retratos={retratos}
+          proyectosOmni={proyectosOmni}
         />
       </main>
     </div>

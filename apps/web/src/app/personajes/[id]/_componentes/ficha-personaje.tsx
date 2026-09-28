@@ -31,6 +31,7 @@ import { DialogoBorrarPersonaje } from "./dialogo-borrar-personaje";
 import { type EstadoDeClave, PanelCobertura } from "./panel-cobertura";
 import { PanelConsentimiento } from "./panel-consentimiento";
 import { PanelFicha } from "./panel-ficha";
+import { PanelOmni, type ProyectoOmni } from "./panel-omni";
 import { PanelReferencias, type ResultadoAnadir } from "./panel-referencias";
 import { PanelRetratos } from "./panel-retratos";
 import { PanelVersiones } from "./panel-versiones";
@@ -47,11 +48,14 @@ export function FichaPersonaje({
   umbrales,
   claveDeGeneracion,
   retratos,
+  proyectosOmni,
 }: {
   inicial: PersonajeVista;
   umbrales: UmbralesCalidad;
   /** Retratos candidatos de un personaje inventado, resueltos por la página; vacío en los demás. */
   retratos: Medio[];
+  /** Proyectos suyos en modo Omni, para poder registrarlo con la voz de uno de ellos (0.22.0). */
+  proyectosOmni: ProyectoOmni[];
   /** Si se puede generar con la clave del usuario, y si no, por qué: lo decide el servidor en la página. */
   claveDeGeneracion: EstadoDeClave;
 }) {
@@ -248,6 +252,20 @@ export function FichaPersonaje({
                     ocupado={ocupado}
                   />
                 </div>
+              ),
+            },
+            {
+              valor: "habladas",
+              etiqueta: "Escenas habladas",
+              contenido: (
+                <PanelOmni
+                  personaje={personaje}
+                  proyectos={proyectosOmni}
+                  onPersonaje={(actualizado) => {
+                    setPersonaje(actualizado);
+                    router.refresh();
+                  }}
+                />
               ),
             },
             {

@@ -21,6 +21,7 @@ import {
   proponerSubtitulos,
   quitarMusica,
   type Resultado,
+  registrarVozOmni,
   transcribir,
 } from "./api-voz";
 import { PanelMusica } from "./panel-musica";
@@ -74,7 +75,9 @@ export function VistaVoz({ inicial }: { inicial: VozProyectoVista }) {
     setAviso(null);
     const resultado = await (pendiente.tipo === "modo"
       ? fijarModo(estado.proyectoId, pendiente.modo, confirmar)
-      : fijarVozDelProyecto(estado.proyectoId, pendiente.voz, pendiente.parametros, confirmar));
+      : pendiente.tipo === "voz-omni"
+        ? registrarVozOmni(estado.proyectoId, pendiente, confirmar)
+        : fijarVozDelProyecto(estado.proyectoId, pendiente.voz, pendiente.parametros, confirmar));
     setOcupado(false);
     if (resultado.ok) {
       setEstado(resultado.datos);
@@ -202,6 +205,7 @@ export function VistaVoz({ inicial }: { inicial: VozProyectoVista }) {
         ocupado={ocupado}
         onModo={(modo) => cambiar({ tipo: "modo", modo }, false)}
         onVoz={(voz, parametros) => cambiar({ tipo: "voz", voz, parametros }, false)}
+        onVozOmni={(voz, descripcion, ejemplo) => cambiar({ tipo: "voz-omni", voz, descripcion, ejemplo }, false)}
         onMuestra={(voz, parametros) => {
           if (creditos === null) return;
           setGasto({ tipo: "muestra", voz, parametros, creditos });
@@ -378,4 +382,6 @@ type PendienteDeSobrescribir = { tipo: "transcribir" | "proponer"; escenaId: str
 /** Cambio pendiente de confirmar porque invalida lo generado. `motivo` lo escribe el servidor. */
 type PendienteDeInvalidar =
   | { tipo: "modo"; modo: ModoVoz; motivo?: string }
-  | { tipo: "voz"; voz: string; parametros: ParametrosVoz; motivo?: string };
+  | { tipo: "voz"; voz: string; parametros: ParametrosVoz; motivo?: string }
+  /** Registro de la voz Omni (0.22.0): no cuesta créditos, pero invalida lo que salió con la anterior. */
+  | { tipo: "voz-omni"; voz: string; descripcion: string; ejemplo: string; motivo?: string };
