@@ -194,3 +194,58 @@ describe("Omni con producto", () => {
     expect(entrada.image_urls).toEqual(["https://tempfile.kie.ai/cara.png", "https://tempfile.kie.ai/bote.png"]);
   });
 });
+
+// ── Producto digital y acciones especiales (0.26.0, bloque 3) ────────────────────────────────────────────
+
+describe("el producto digital, en sus dos pasos", () => {
+  test("con la pantalla apagada no se le pide la interfaz ni se le promete ninguna foto", () => {
+    const prompt = componerSeisC({
+      ...SEIS_C,
+      producto: { ...PRODUCTO, pasoDigital: "pantalla_negra", conReferencias: false },
+    });
+    expect(prompt).toContain("screen is completely black and switched off");
+    // La acción del catálogo no viaja: pelearía con lo único que este paso tiene que conseguir.
+    expect(prompt).not.toContain("turns the product towards the camera");
+    // Y no se le promete una referencia ni se le pide un envase sin marca: la captura llega en el paso 2.
+    expect(prompt).not.toContain("no invented logo");
+    expect(prompt).not.toContain("reference images show the product");
+  });
+
+  test("al insertar la captura se pide cambiar solo la pantalla, con perspectiva y sin recortar", () => {
+    const prompt = componerSeisC({ ...SEIS_C, producto: { ...PRODUCTO, pasoDigital: "insertar_captura" } });
+    expect(prompt).toContain("change only what is inside the black screen");
+    expect(prompt).toContain("the same perspective and tilt as the device");
+    expect(prompt).toContain("complete and uncropped");
+    // Es una edición: no se vuelve a describir a la persona, ni la ropa, ni el sitio.
+    expect(prompt).not.toContain("A woman in her thirties");
+    expect(prompt).not.toContain("A grey jumper");
+    // Y la interfaz es la etiqueta de un producto digital: tampoco se reescribe.
+    expect(prompt).toContain("every printed word exactly as they are");
+  });
+});
+
+describe("las acciones sin habla", () => {
+  const SIN_HABLA: ProductoEnPrompt = {
+    ...PRODUCTO,
+    accion: "The person walks straight towards the camera with a steady runway walk",
+    sinHabla: true,
+  };
+
+  test("el guion no viaja, se dice por qué, y el clip no prohíbe el audio", () => {
+    const { escena, dialogo, avisos } = dirigirClip({ ...DIRECCION, producto: SIN_HABLA });
+    expect(dialogo).toBe("");
+    expect(avisos.some((a) => a.includes("plano visual"))).toBe(true);
+    // Lo que sí se describe: dónde está su atención y qué se oye del sitio.
+    expect(escena).toContain("natural room tone");
+    // Y lo que no se dice nunca: nada que prohíba el audio. Prohibírselo hace fallar a estos modelos.
+    for (const prohibicion of ["no audio", "no sound", "no music", "silence", "mute"]) {
+      expect(escena.toLowerCase()).not.toContain(prohibicion);
+    }
+  });
+
+  test("con una acción que sí habla, el clip sigue llevando la voz y la frase", () => {
+    const { escena, dialogo } = dirigirClip({ ...DIRECCION, producto: PRODUCTO });
+    expect(dialogo).toBe("Mira lo que he encontrado.");
+    expect(escena).toContain("The voice is");
+  });
+});

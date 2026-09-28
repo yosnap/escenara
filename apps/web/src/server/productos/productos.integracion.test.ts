@@ -295,6 +295,7 @@ describe.skipIf(!hayBaseDeDatos)("productos con sus fotos, su elección y su bor
           creditosConfirmados: creditosClip,
           selloEstimacion: selloClip,
           derechos: true,
+          derechoMarca: true,
           claveIdempotencia: crypto.randomUUID(),
           producto: { productoId: producto.id, accion: "ensenarlo-a-camara" },
         }),
@@ -318,6 +319,7 @@ describe.skipIf(!hayBaseDeDatos)("productos con sus fotos, su elección y su bor
           creditosConfirmados: creditosClip,
           selloEstimacion: selloClip,
           derechos: true,
+          derechoMarca: true,
           claveIdempotencia: crypto.randomUUID(),
           producto: { productoId: producto.id, accion: "ensenarlo-a-camara" },
           avisosConfirmados: ["producto-sin-fotos", "producto-con-marca"],
@@ -343,6 +345,7 @@ describe.skipIf(!hayBaseDeDatos)("productos con sus fotos, su elección y su bor
           creditosConfirmados: creditosClip,
           selloEstimacion: selloClip,
           derechos: true,
+          derechoMarca: true,
           claveIdempotencia: crypto.randomUUID(),
           producto: { productoId: deBeto.id, accion: "sostenerlo" },
         }),
@@ -389,11 +392,29 @@ describe.skipIf(!hayBaseDeDatos)("productos con sus fotos, su elección y su bor
   // ── 4. El catálogo de acciones ─────────────────────────────────────────────────────────────────────────
 
   describe("las acciones de producto son catálogo del admin", () => {
-    test("la semilla deja las siete acciones activas y con su texto en castellano", async () => {
+    test("la semilla deja las dieciséis acciones activas y con su texto en castellano", async () => {
       const filas = await db().select().from(presets).where(eq(presets.category, "accion-producto"));
       const claves = filas.map((f) => f.slug).sort();
       expect(claves).toEqual(
-        ["abrirlo", "aplicarlo", "ensenarlo-a-camara", "mirarlo", "producto-solo", "senalarlo", "sostenerlo"].sort(),
+        [
+          "abrirlo",
+          "aplicarlo",
+          "ensenarlo-a-camara",
+          "mirarlo",
+          "producto-solo",
+          "senalarlo",
+          "sostenerlo",
+          // Moda y cuidado de la piel (0.26.0): la familia se deduce del prefijo de la clave.
+          "moda-cuerpo-entero",
+          "moda-detalle-accesorio",
+          "moda-detalle-tejido",
+          "moda-giro-360",
+          "moda-pasarela",
+          "moda-pose-editorial",
+          "skincare-abrir-tapa",
+          "skincare-extender",
+          "skincare-masajear",
+        ].sort(),
       );
       // Son de la instalación: las edita quien administra, y cada usuario puede duplicarlas.
       expect(filas.every((f) => f.ownerId === null && f.active)).toBe(true);
@@ -426,11 +447,12 @@ describe.skipIf(!hayBaseDeDatos)("productos con sus fotos, su elección y su bor
           creditosConfirmados: estimacion?.creditos ?? creditosClip,
           selloEstimacion: estimacion?.sello ?? selloClip,
           derechos: true,
+          derechoMarca: true,
           claveIdempotencia: crypto.randomUUID(),
           producto: { productoId, accion },
           direccion: { formatoClip: "ugc_a_camara", registroEstetico: "ugc_real", momentoMicroaccion: "durante" },
           // Los avisos del producto se confirman: es lo que hace el usuario en la pantalla.
-          avisosConfirmados: ["producto-con-marca", "producto-sin-fotos", "producto-referencias-no-caben"],
+          avisosConfirmados: ["producto-con-marca", "producto-sin-fotos", "producto-sin-hueco-de-referencia"],
         }),
         undefined,
       );
@@ -482,16 +504,26 @@ describe.skipIf(!hayBaseDeDatos)("productos con sus fotos, su elección y su bor
           creditosConfirmados: creditosClip,
           selloEstimacion: selloClip,
           derechos: true,
+          derechoMarca: true,
           claveIdempotencia: crypto.randomUUID(),
           producto: { productoId: producto.id, accion: "ensenarlo-a-camara" },
           avisosConfirmados: ["producto-con-marca"],
         }),
         undefined,
       );
-      // Veo admite dos imágenes, pero la segunda es el **último fotograma**, no una referencia: no cabe
-      // ninguna foto del producto y hay que decirlo antes de cobrar.
+      /**
+       * Veo admite dos imágenes, pero la segunda es el **último fotograma**, no una referencia: no cabe
+       * ninguna foto del producto y hay que decirlo antes de cobrar.
+       *
+       * Y no se cambia de modelo por su cuenta (decisión firme del propietario): se **sugieren** los que sí
+       * llevan la foto, se dice que la tarifa es otra y elige el usuario.
+       */
       expect(sinConfirmar.status).toBe(409);
-      expect(((await sinConfirmar.json()) as { error: string }).error).toContain("se quedan fuera");
+      const aviso = ((await sinConfirmar.json()) as { error: string }).error;
+      expect(aviso).toContain("no admite la foto");
+      expect(aviso).toContain("MiniMax H3");
+      expect(aviso).toContain("vuelve a estimar el coste");
+      // El modelo con el que se acabará enviando sigue siendo el que eligió el usuario: Veo.
 
       const { entrada, prompt } = await clipConProducto(producto.id, "ensenarlo-a-camara");
       expect((entrada.image_urls as string[]).length).toBe(1);
@@ -561,10 +593,11 @@ describe.skipIf(!hayBaseDeDatos)("productos con sus fotos, su elección y su bor
           creditosConfirmados: creditosClip,
           selloEstimacion: selloClip,
           derechos: true,
+          derechoMarca: true,
           claveIdempotencia: crypto.randomUUID(),
           producto: { productoId: producto.id, accion: "ensenarlo-a-camara" },
           // Los avisos del producto se confirman antes de pagar: marca visible y la foto que no cabe en Veo.
-          avisosConfirmados: ["producto-con-marca", "producto-referencias-no-caben"],
+          avisosConfirmados: ["producto-con-marca", "producto-sin-hueco-de-referencia"],
         }),
         undefined,
       );
