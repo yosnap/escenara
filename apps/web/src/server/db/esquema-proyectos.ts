@@ -28,7 +28,7 @@ export const formatoProyecto = pgEnum("project_format", ["reel_vertical", "corto
  * excluyentes y se eligen **por proyecto**: `clip` la genera el modelo de vídeo dentro del propio clip, y `pista`
  * pide los clips sin diálogo y genera el audio del diálogo aparte, siempre con la misma voz.
  */
-export const modoVoz = pgEnum("project_voice_mode", ["clip", "pista"]);
+export const modoVoz = pgEnum("project_voice_mode", ["clip", "pista", "omni"]);
 
 export const projects = pgTable(
   "projects",
@@ -79,6 +79,22 @@ export const projects = pgTable(
     voiceParams: jsonb<Record<string, number>>("voice_params").notNull().default({}),
     /** Cuándo se fijó la voz vigente. Es la fecha que explica por qué lo anterior quedó invalidado. */
     voiceSetAt: timestamp("voice_set_at", { withTimezone: true }),
+    /**
+     * Voz registrada en Gemini Omni para este proyecto (RF08, 0.22.0). Solo existe en modo `omni`, y es **una por
+     * proyecto**: es lo que hace que todas sus escenas suenen con el mismo timbre.
+     *
+     * `omniVoice` es una de las treinta voces predefinidas (`lib/omni.ts`), `omniVoiceDescription` y
+     * `omniVoiceExample` son lo que se le envió al proveedor para matizarla (el acento, sobre todo), y
+     * `omniAudioId` es lo que devolvió: sin él no hay registro, y sin registro no se produce ninguna escena.
+     *
+     * El registro **no cuesta créditos** (medido el 2026-09-28), pero se hace con la credencial del usuario y
+     * queda con su fecha: cambiarlo invalida las escenas habladas que salieron con el anterior.
+     */
+    omniVoice: text("omni_voice").notNull().default(""),
+    omniVoiceDescription: text("omni_voice_description").notNull().default(""),
+    omniVoiceExample: text("omni_voice_example").notNull().default(""),
+    omniAudioId: text("omni_audio_id").notNull().default(""),
+    omniVoiceSetAt: timestamp("omni_voice_set_at", { withTimezone: true }),
     /** Quién aprobó el plan y cuándo; `null` mientras el proyecto sea un borrador. */
     planApprovedBy: uuid("plan_approved_by").references(() => users.id, { onDelete: "set null" }),
     planApprovedAt: timestamp("plan_approved_at", { withTimezone: true }),

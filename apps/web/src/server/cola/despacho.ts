@@ -223,6 +223,25 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
     const callbackVoz = await prepararCallback(fila);
     return { adaptador, clave: credencial.clave, entrada: entradaVoz, ...callbackVoz };
   }
+  /**
+   * Escena hablada de un proyecto en modo `omni` (0.22.0). La identidad y la voz **son** el personaje registrado
+   * en el proveedor, así que no hay ninguna imagen que subir: lo que se envía son los `character_ids` que
+   * quedaron guardados al encolar, nunca los que el personaje tenga registrados ahora. Lo que se paga tiene que
+   * ser lo que el usuario confirmó, y volver a leer el registro podría mandar otra cara.
+   */
+  const personajesOmni = personajesOmniDe(fila);
+  if (personajesOmni.length > 0) {
+    const segundosOmni = segundosDe(fila);
+    const entradaOmni = adaptador.montarEntrada(modelo, {
+      escena: fila.prompt,
+      dialogo: dialogoDe(fila),
+      urls: [],
+      personajesOmni,
+      ...(segundosOmni === null ? {} : { segundos: segundosOmni }),
+    });
+    const callbackOmni = await prepararCallback(fila);
+    return { adaptador, clave: credencial.clave, entrada: entradaOmni, ...callbackOmni };
+  }
   // Un trabajo con personaje lleva **varias** referencias (0.13.0); uno con imagen suelta, una sola. Se
   // suben en el mismo orden que se guardaron: la primera es la que más peso tiene en la identidad.
   const origenes = await mediosDeReferencia(fila, Math.max(1, modelo.parametros.maximoReferencias));
@@ -740,6 +759,16 @@ async function claveDelTrabajo(fila: FilaTrabajo): Promise<{ clave: string }> {
 function urlBaseDe(fila: FilaTrabajo): string {
   const url = (fila.input as { urlBase?: unknown }).urlBase;
   return typeof url === "string" ? url : "";
+}
+
+/**
+ * Personajes registrados en el proveedor que este trabajo tiene que citar (modo `omni`, 0.22.0), tal como
+ * quedaron guardados al encolar. Vacío en todo lo demás, que es todo lo anterior a la 0.22.0.
+ */
+function personajesOmniDe(fila: FilaTrabajo): string[] {
+  const guardados = (fila.input as { personajesOmni?: unknown }).personajesOmni;
+  if (!Array.isArray(guardados)) return [];
+  return guardados.filter((id): id is string => typeof id === "string" && id !== "");
 }
 
 /** Identificador del servicio compatible con el que se encoló, si lo hubo. */

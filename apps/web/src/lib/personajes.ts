@@ -49,7 +49,7 @@ export const DESCRIPCION_ESTADO_PERSONAJE: Record<EstadoPersonaje, string> = {
 };
 
 /** Quién es el titular de la imagen que se va a usar. Es lo que decide cuánta fricción hay. */
-export const TITULARES_CONSENTIMIENTO = ["yo", "tercero", "animal_propio"] as const;
+export const TITULARES_CONSENTIMIENTO = ["yo", "tercero", "animal_propio", "inventado"] as const;
 export type TitularConsentimiento = (typeof TITULARES_CONSENTIMIENTO)[number];
 
 export const esTitularConsentimiento = (v: unknown): v is TitularConsentimiento =>
@@ -59,6 +59,7 @@ export const ETIQUETA_TITULAR: Record<TitularConsentimiento, string> = {
   yo: "Soy yo",
   tercero: "Otra persona",
   animal_propio: "Un animal mío",
+  inventado: "Un personaje inventado",
 };
 
 export const DESCRIPCION_TITULAR: Record<TitularConsentimiento, string> = {
@@ -66,10 +67,19 @@ export const DESCRIPCION_TITULAR: Record<TitularConsentimiento, string> = {
   tercero:
     "Aparece otra persona. Hace falta subir su documento de consentimiento firmado, y el personaje queda en revisión hasta que quien administra esta instalación lo acepte.",
   animal_propio: "Es un animal tuyo. Basta con tu declaración, que queda registrada con tu cuenta y la fecha.",
+  inventado:
+    "No existe: nace de una descripción y su cara se genera. No hay ninguna persona a la que pedir permiso, así que no hay documento que subir ni mayoría de edad que declarar; lo que se registra es que es inventado y no representa a nadie real. No admite fotos de personas.",
 };
 
 /** El titular `tercero` es el único que exige documento firmado y revisión humana. */
 export const exigeDocumento = (titular: TitularConsentimiento) => titular === "tercero";
+
+/**
+ * El titular `inventado` (0.22.0) es el único que **no** declara mayoría de edad: no hay ninguna persona cuya edad
+ * declarar. Lo que declara en su lugar es que el personaje no representa a nadie real, y esa declaración es
+ * obligatoria y se guarda con la cuenta y la fecha.
+ */
+export const esInventado = (titular: TitularConsentimiento) => titular === "inventado";
 
 /** Para qué se autoriza el uso de la imagen. El uso comercial se declara aparte a propósito. */
 export const ALCANCES_USO = ["personal", "comercial"] as const;

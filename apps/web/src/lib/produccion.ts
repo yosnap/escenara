@@ -2,6 +2,7 @@ import type { EvaluacionVista } from "./controles";
 import type { EstadoTrabajo, MotivoFallo, TipoTrabajoCola } from "./generacion";
 import type { Medio } from "./media/tipos";
 import type { EstadoEscena } from "./proyectos";
+import type { ModoVoz } from "./voz";
 
 /**
  * Producción de las escenas de un proyecto aprobado (RF06, 0.19.0) tal como la comparten el servidor y el
@@ -270,6 +271,14 @@ export interface ProduccionVista {
   /** `true` cuando el plan del proyecto está aprobado: sin eso no se produce nada. */
   planAprobado: boolean;
   escenas: EscenaProduccionVista[];
+  /**
+   * Modo de voz del proyecto (0.22.0). En `omni` cada escena es **un solo trabajo**: no hay fotograma que aprobar
+   * y el coste de la escena es el del clip hablado. La rejilla lo necesita para no ofrecer un botón que el
+   * servidor va a rechazar.
+   */
+  modoVoz: ModoVoz;
+  /** `true` en modo `omni` cuando el precio de esa duración es proporcional y no medido. Se dice en la pantalla. */
+  precioClipEstimado: boolean;
   /** Escenas que se pueden encolar ahora mismo y lo que costaría hacerlo. */
   porProducir: number;
   creditosPorFotograma: number;

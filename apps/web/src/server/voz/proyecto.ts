@@ -1,5 +1,6 @@
 import { eq, inArray } from "drizzle-orm";
 import {
+  type FirmaOmni,
   firmaDeVoz,
   type ModoVoz,
   nombreDeVoz,
@@ -37,19 +38,26 @@ export function vozDelProyecto(proyecto: FilaProyecto): VozDelProyecto | null {
   };
 }
 
-/** Firma que tendría que tener la escena para que su voz y sus subtítulos siguieran valiendo. */
-export function firmaVigente(proyecto: FilaProyecto, escena: FilaEscena): string {
-  return firmaDeVoz(proyecto.voiceMode, vozDelProyecto(proyecto), escena.scriptText);
+/**
+ * Firma que tendría que tener la escena para que su voz y sus subtítulos siguieran valiendo.
+ *
+ * En modo `omni` (0.22.0) esa firma depende de **qué identidad y qué voz están registradas ahora** en el
+ * proveedor, y eso no está en la fila del proyecto: lo lee quien llama (`voz/omni.ts › firmaOmniDelProyecto`) una
+ * sola vez y lo pasa aquí. Sin ella, la firma dice «sin registro», que es justo lo que corresponde: lo generado
+ * antes de registrar no se puede dar por bueno.
+ */
+export function firmaVigente(proyecto: FilaProyecto, escena: FilaEscena, omni: FirmaOmni | null = null): string {
+  return firmaDeVoz(proyecto.voiceMode, vozDelProyecto(proyecto), escena.scriptText, omni);
 }
 
 /**
  * `true` si lo que la escena tiene guardado ya no corresponde a lo que pide el proyecto. Una escena **sin nada
  * generado no está invalidada**: no hay nada que dejara de valer.
  */
-export function escenaInvalidada(proyecto: FilaProyecto, escena: FilaEscena): boolean {
+export function escenaInvalidada(proyecto: FilaProyecto, escena: FilaEscena, omni: FirmaOmni | null = null): boolean {
   const generado = escena.voiceMediaId !== null || escena.subtitles.length > 0 || escena.transcript.length > 0;
   if (!generado) return false;
-  return escena.voiceSignature !== firmaVigente(proyecto, escena);
+  return escena.voiceSignature !== firmaVigente(proyecto, escena, omni);
 }
 
 /**
@@ -100,9 +108,14 @@ export async function clipsConDialogoHablado(tx: Ejecutor, proyectoId: string): 
  * Va dentro de la transacción que cambia el proyecto: si se hiciera después, entre el cambio y la marca habría un
  * rato en el que la pantalla daría por buena una voz que ya no es la del proyecto.
  */
-async function marcarInvalidadas(tx: Ejecutor, proyecto: FilaProyecto, motivo: string): Promise<number> {
+export async function marcarInvalidadas(
+  tx: Ejecutor,
+  proyecto: FilaProyecto,
+  motivo: string,
+  omni: FirmaOmni | null = null,
+): Promise<number> {
   const escenas: FilaEscena[] = await tx.select().from(scenes).where(eq(scenes.projectId, proyecto.id));
-  const invalidadas = escenas.filter((escena) => escenaInvalidada(proyecto, escena)).map((escena) => escena.id);
+  const invalidadas = escenas.filter((escena) => escenaInvalidada(proyecto, escena, omni)).map((escena) => escena.id);
   if (invalidadas.length === 0) return 0;
   await tx
     .update(scenes)
@@ -115,9 +128,14 @@ async function marcarInvalidadas(tx: Ejecutor, proyecto: FilaProyecto, motivo: s
  * Escenas con algo generado que **dejaría de valer** si el proyecto pasara a ser `futuro`. Es la cifra que se le
  * muestra al usuario antes de cambiar y la que exige su confirmación: nunca se calcula de dos formas distintas.
  */
-export async function escenasAfectadas(tx: Ejecutor, proyectoId: string, futuro: FilaProyecto): Promise<number> {
+export async function escenasAfectadas(
+  tx: Ejecutor,
+  proyectoId: string,
+  futuro: FilaProyecto,
+  omni: FirmaOmni | null = null,
+): Promise<number> {
   const escenas: FilaEscena[] = await tx.select().from(scenes).where(eq(scenes.projectId, proyectoId));
-  return escenas.filter((escena) => escenaInvalidada({ ...futuro, id: proyectoId }, escena)).length;
+  return escenas.filter((escena) => escenaInvalidada({ ...futuro, id: proyectoId }, escena, omni)).length;
 }
 
 export interface CambioDeVoz {
@@ -221,16 +239,17 @@ export async function fijarVoz(
  * Un cambio que deja sin valer escenas ya pagadas **necesita confirmación**. No se cobra nada aquí y no se
  * regenera nada: lo único que se exige es que el usuario haya visto cuántas escenas pierde antes de perderlas.
  */
-async function exigirConfirmacionDelCambio(
+export async function exigirConfirmacionDelCambio(
   tx: Ejecutor,
   proyecto: FilaProyecto,
   futuro: FilaProyecto,
   confirmado: boolean,
   que: string,
   clipsHablados = 0,
+  omni: FirmaOmni | null = null,
 ): Promise<void> {
   if (confirmado) return;
-  const afectadas = await escenasAfectadas(tx, proyecto.id, futuro);
+  const afectadas = await escenasAfectadas(tx, proyecto.id, futuro, omni);
   if (afectadas === 0 && clipsHablados === 0) return;
   const partes: string[] = [];
   if (afectadas > 0) {
