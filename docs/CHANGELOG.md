@@ -2,6 +2,81 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.21.0] · 2026-09-28
+
+### Decisiones del propietario
+
+- **La voz se elige por proyecto, no por escena.** Hay dos modos y son excluyentes: **«voz del clip»** (de fábrica,
+  el modelo de vídeo pone el diálogo en boca del personaje con los labios sincronizados, sin ningún gasto nuevo) y
+  **«pista de voz aparte»** (los clips se piden sin diálogo y el audio se genera escena a escena con la **misma voz
+  y los mismos parámetros**). Intentar fijar la voz de una sola escena se rechaza con su motivo: si cada escena
+  tuviera la suya, el timbre cambiaría de plano a plano.
+
+### Decisiones provisionales del propietario (2026-09-28, pendientes de confirmar)
+
+- **Proveedor de voz**: el modelo `elevenlabs/text-to-speech-multilingual-v2` del «market» de KIE, con la **misma
+  credencial de KIE** del usuario, así que no hace falta una segunda clave. Entra en el catálogo **sin precio**: KIE
+  no publica su tarifa, y sin precio registrado no se estima ni se gasta. La pantalla lo dice y no ofrece generar
+  hasta que quien administra lo mida una vez y registre el precio en Admin › Modelos. Sin clonación de voz.
+- **Transcripción local y sin coste**, con el binario de `whisper.cpp` en la propia máquina: no sale nada de ella y
+  **no deja ningún apunte de gasto externo**.
+- **Música solo subida por el usuario**, con declaración de derechos escrita. No se genera música.
+
+### Añadido
+
+- **Pantalla de voz y subtítulos del proyecto** en `/proyectos/[id]/voz`: modo de voz, selector de voz con muestra,
+  estado escena a escena, editor de subtítulos y música de fondo.
+- **Selector de voz con muestra cacheada**: oír una voz cuesta **una sola vez** por voz y por combinación de
+  parámetros. La muestra ya pagada se devuelve sin llamar a nadie, y la pantalla dice cuándo va a costar y cuánto.
+- **Pista de voz por escena** (modo «pista»), por la **misma cola** que los fotogramas y los clips: reserva atómica,
+  idempotencia por confirmación, tope de trabajos simultáneos y de escenas en vuelo, cierre del gasto con lo que
+  informe el proveedor y la regla de que tras un fallo sin respuesta no se reenvía nada. Pasa además por el **motor
+  de controles**, igual que cualquier otro gasto.
+- **Transcripción local con marcas de tiempo** y propuesta de subtítulos a partir de ella. Si no hay transcriptor
+  instalado, se dice con su mensaje de instalación: **no se inventan subtítulos**.
+- **Propuesta de subtítulos desde el texto del diálogo** cuando no hay audio todavía: reparte el tiempo en
+  proporción a los caracteres de cada frase y la pantalla dice que es una propuesta, no una medición.
+- **Editor de subtítulos** por escena con texto, tiempos, división de líneas y previsualización sobre el clip con
+  las **zonas seguras** de las plataformas verticales dibujadas. Los avisos de legibilidad (línea larga, tres
+  líneas, subtítulo demasiado rápido) **avisan y no bloquean**; los tiempos imposibles sí se rechazan.
+- **Exportación a SRT y a WebVTT** desde los **subtítulos editados**, nunca desde la transcripción cruda, con los
+  tiempos corridos escena a escena.
+- **Música de fondo** con su **declaración de derechos obligatoria** (la exige el servidor, no la interfaz), su
+  fecha y su volumen para la mezcla de la 0.22.0. Quitarla no borra el archivo de la biblioteca.
+- **Ajustes nuevos en Admin › Ajustes › «Voz y subtítulos»**: ofrecer la pista de voz de pago (**apagada** de
+  fábrica), orden del transcriptor local y ruta de su fichero de modelo.
+- **Capacidad `tts` en el contrato de adaptadores** y en el adaptador de KIE, con `generarVoz` opcional: un
+  proveedor sin modelos de voz sigue siendo válido y sus proyectos usan la voz del clip.
+
+### Cambiado
+
+- **Cambiar el modo, la voz, un parámetro o el diálogo invalida lo que dependía de ello.** Se compara una **firma**
+  guardada con la vigente, así que no hay ninguna bandera que se pueda desincronizar. Invalidar es **marcar, no
+  borrar**: el audio pagado sigue en la biblioteca. Un cambio que deje sin valer escenas ya generadas exige
+  confirmarlo diciendo cuántas son, y **nada se regenera solo**: cada escena se regenera a mano confirmando su
+  coste.
+- **En modo «pista», el clip se pide sin diálogo** (solo sonido ambiente): si el clip también lo dijera, se oirían
+  dos voces distintas diciendo lo mismo.
+
+### Corregido
+
+- **Transcribir un archivo que ya era un `.wav` fallaba**: el temporal de entrada y el convertido eran el mismo
+  fichero y FFmpeg se negaba a escribir encima de lo que estaba leyendo.
+
+### Actualizar desde la 0.20.x
+
+- **Aplica la migración antes de arrancar el código nuevo**: `bun run db:backup` y luego `bun run db:migrate`. La
+  `0023` añade el modo y la voz al proyecto, la voz, la transcripción y los subtítulos a cada escena, y crea
+  `music_tracks` y `voice_samples`. Añade además el valor `voz` al tipo de trabajo de la cola. **No cambia nada de
+  lo que ya había**: todos los proyectos existentes quedan en modo «voz del clip», que es exactamente como
+  funcionaban.
+- **Si quieres subtítulos automáticos, instala el transcriptor**: `brew install whisper-cpp` en macOS, el paquete o
+  la compilación de `whisper.cpp` en Linux, y FFmpeg (que ya hacía falta desde la 0.20.0). Sin él, la propuesta
+  desde el texto del diálogo sigue funcionando.
+- **La pista de voz de pago viene apagada.** Para ofrecerla hay que encenderla en Admin › Ajustes › «Voz y
+  subtítulos» **y** medir y registrar el precio del modelo de voz en Admin › Modelos: sin precio no se estima ni se
+  gasta.
+
 ## [0.20.7] · 2026-09-28
 
 ### Corregido
