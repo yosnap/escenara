@@ -237,6 +237,38 @@ export const tieneEntrada = (modelo: string) => CONSTRUCTORES.has(modelo) || fam
 
 /** Entrada lista para `jobs/createTask` con los campos que espera ese modelo concreto. */
 export function entradaDeModelo(modelo: ModeloVista, contexto: ContextoEntrada): Record<string, unknown> {
+  return conProporcionPreferida(modelo, contexto, montarEntrada(modelo, contexto));
+}
+
+/**
+ * Cambia `aspect_ratio` por la proporción preferida del contexto **solo si el modelo la admite**: una vista de
+ * la cabeza en 9:16 deja la cara pequeña y descentrada, pero pedir una proporción que el modelo no admite haría
+ * fallar la tarea. Si la entrada no lleva `aspect_ratio`, no se añade.
+ */
+function conProporcionPreferida(
+  modelo: ModeloVista,
+  contexto: ContextoEntrada,
+  entrada: Record<string, unknown>,
+): Record<string, unknown> {
+  const preferida = contexto.proporcion;
+  if (!preferida || !("aspect_ratio" in entrada)) return entrada;
+  const admitida =
+    modelo.parametros.proporciones.includes(preferida) ||
+    (PROPORCIONES_DE_VISTA[modelo.modelo] ?? []).includes(preferida);
+  return admitida ? { ...entrada, aspect_ratio: preferida } : entrada;
+}
+
+/**
+ * Proporciones que un modelo admite **para las vistas y retratos de un personaje**, comprobadas en su
+ * documentación (docs.kie.ai, 2026-09-28). Van aparte de `parametros.proporciones` a propósito: esa lista dice
+ * qué formatos de preset admite «Crear», y añadir ahí 3:4 haría aceptar presets que luego se generarían en 9:16.
+ */
+const PROPORCIONES_DE_VISTA: Record<string, readonly string[]> = {
+  "nano-banana-2-lite": ["3:4", "1:1"],
+  "seedream/4.5-edit": ["3:4", "1:1"],
+};
+
+function montarEntrada(modelo: ModeloVista, contexto: ContextoEntrada): Record<string, unknown> {
   // Un modelo sin voz no recibe nunca lo que dice el personaje: lo dibujaría o lo ignoraría.
   const limpio: ContextoEntrada = { ...contexto, dialogo: modelo.conVoz ? contexto.dialogo : "" };
   const montar = CONSTRUCTORES.get(modelo.modelo);

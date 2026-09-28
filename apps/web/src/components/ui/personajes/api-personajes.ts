@@ -293,6 +293,10 @@ export const generarRetratos = (id: string, confirmacion: ConfirmacionRetratos) 
     json("POST", { accion: "generar", ...confirmacion }),
   );
 
+/** Descarta los retratos candidatos pendientes: dejan de ofrecerse, pero siguen en la biblioteca. Gratis. */
+export const descartarRetratos = (id: string) =>
+  pedir<{ descartados: number }>(`/api/personajes/${id}/retratos`, json("POST", { accion: "descartar" }));
+
 /** Elige uno de los candidatos como cara del personaje. **No cuesta nada**: ya están pagados. */
 export const elegirRetrato = (id: string, medioId: string) =>
   pedir<PersonajeVista>(`/api/personajes/${id}/retratos`, json("POST", { accion: "elegir", medioId }));

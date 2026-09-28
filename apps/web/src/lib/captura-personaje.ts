@@ -92,6 +92,12 @@ export const midaCara = (vista: Vista, tipo: TipoPersonaje): boolean =>
  * vista, **nunca el navegador**: así una vista generada no puede convertirse en un hueco por el que colar
  * cualquier indicación con las fotos del personaje dentro.
  */
+/**
+ * Proporción con la que se pide una vista: las de la cabeza en **3:4**, que deja la cara grande y centrada, y el
+ * cuerpo entero en vertical 9:16. En 9:16 una vista de cabeza sale con la cara pequeña y fuera de sitio.
+ */
+export const proporcionDeVista = (vista: Vista | null): string => (vista === "cuerpo_completo" ? "9:16" : "3:4");
+
 export function promptDeVista(vista: Vista, tipo: TipoPersonaje): string {
   const sujeto = tipo === "animal" ? "el mismo animal" : "la misma persona";
   const encuadre: Record<Vista, string> = {
@@ -102,7 +108,11 @@ export function promptDeVista(vista: Vista, tipo: TipoPersonaje): string {
     tres_cuartos: "en tres cuartos, girado unos 45 grados",
     cuerpo_completo: "de cuerpo entero, de la cabeza a los pies",
   };
-  return `Foto de referencia de ${sujeto} ${encuadre[vista]}, fondo neutro y liso, luz suave y uniforme, sin cambiar los rasgos, el peinado, la ropa ni la edad, sin texto ni marcas de agua.`;
+  const plano =
+    vista === "cuerpo_completo"
+      ? "con el cuerpo entero dentro del encuadre y centrado"
+      : "en primer plano de cabeza y hombros, con la cara centrada y ocupando buena parte del encuadre";
+  return `Foto de referencia de ${sujeto} ${encuadre[vista]}, ${plano}, fondo neutro y liso, luz suave y uniforme, sin cambiar los rasgos, el peinado, la ropa ni la edad, sin texto ni marcas de agua.`;
 }
 
 /** Por qué se marca o se rechaza una foto de referencia. */

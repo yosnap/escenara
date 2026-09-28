@@ -217,6 +217,8 @@ export async function retratosCandidatos(personajeId: string): Promise<RetratoCa
         eq(generationJobs.state, "listo"),
         // Se filtra en la consulta y no después del límite: si no, 20 trabajos de otra clase ocultaban los retratos.
         sql`${generationJobs.input}->>'retratoInventado' = 'true'`,
+        // Los descartados no vuelven a ofrecerse: siguen en la biblioteca, pero ya no se proponen como cara.
+        sql`${generationJobs.input}->>'retratoDescartado' is null`,
       ),
     )
     .orderBy(desc(generationJobs.createdAt))
@@ -298,4 +300,27 @@ export async function mediosDeCandidatos(actor: Actor, personajeId: string): Pro
       ),
     );
   return filas.filter((fila) => !yaReferencia.has(fila.id)).map((fila) => aDto(fila, actor));
+}
+
+/**
+ * Descarta los retratos candidatos que quedan por elegir: dejan de ofrecerse como cara, pero **no se borra
+ * nada** —las imágenes siguen en la biblioteca, ya pagadas— y el que ya se eligió como cara no se toca. Sirve para
+ * quedarse con las imágenes propias (por ejemplo, hechas con otro generador) sin tener que elegir ninguno.
+ */
+export async function descartarRetratos(actor: Actor, id: unknown): Promise<{ descartados: number }> {
+  const personaje = await filaPropia(actor, id);
+  if (personaje.ownerId !== actor.id) throw new ErrorPersonaje(404, "El personaje no existe.");
+  const filas = await db()
+    .update(generationJobs)
+    .set({ input: sql`${generationJobs.input} || '{"retratoDescartado": true}'::jsonb` })
+    .where(
+      and(
+        eq(generationJobs.characterId, personaje.id),
+        eq(generationJobs.userId, actor.id),
+        sql`${generationJobs.input}->>'retratoInventado' = 'true'`,
+        sql`${generationJobs.input}->>'retratoDescartado' is null`,
+      ),
+    )
+    .returning({ id: generationJobs.id });
+  return { descartados: filas.length };
 }

@@ -172,6 +172,16 @@ describe("entrada de cada modelo", () => {
     });
   });
 
+  test("una vista de cabeza pide 3:4 solo al modelo que lo admite; al resto, su proporción de siempre", () => {
+    expect(adaptadorKie.montarEntrada(NANO, { ...contexto(), proporcion: "3:4" })).toMatchObject({
+      aspect_ratio: "3:4",
+    });
+    // Una proporción que el modelo no admite no se envía: la tarea fallaría.
+    expect(adaptadorKie.montarEntrada(NANO, { ...contexto(), proporcion: "21:9" })).toMatchObject({
+      aspect_ratio: "9:16",
+    });
+  });
+
   test("seedream pide calidad básica", () => {
     expect(adaptadorKie.montarEntrada(SEEDREAM, contexto())).toMatchObject({
       image_urls: [URL_REFERENCIA],

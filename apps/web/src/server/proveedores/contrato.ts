@@ -148,6 +148,11 @@ export interface TareaProveedor {
 export interface ContextoEntrada {
   /** Descripción visual de la escena, tal como la escribió la persona. */
   escena: string;
+  /**
+   * Proporción preferida para esta imagen («3:4» en las vistas de cabeza y los retratos de un personaje). Solo se
+   * usa si el modelo la declara entre las suyas; si no, manda la primera del modelo. No cambia el precio.
+   */
+  proporcion?: string;
   /** Lo que dice el personaje; vacío si el modelo no tiene voz. */
   dialogo: string;
   /** URL temporales de las referencias ya subidas al proveedor. */

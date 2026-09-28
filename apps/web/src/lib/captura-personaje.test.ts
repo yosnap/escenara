@@ -1,4 +1,4 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, test } from "bun:test";
 import {
   clasificarRechazos,
   esMotivoTecnico,
@@ -6,6 +6,7 @@ import {
   type MetricasCalidad,
   type MotivoRechazo,
   medioIdsSalvables,
+  proporcionDeVista,
   type RechazoDeReferencia,
 } from "./captura-personaje";
 
@@ -54,5 +55,14 @@ describe("clasificarRechazos", () => {
   it("sin rechazos no hay nada que ofrecer", () => {
     expect(medioIdsSalvables([])).toEqual([]);
     expect(clasificarRechazos([])).toEqual({ salvables: [], bloqueantes: [] });
+  });
+});
+
+describe("proporción de las vistas", () => {
+  test("las de la cabeza en 3:4 y el cuerpo entero en 9:16", () => {
+    expect(proporcionDeVista("frontal")).toBe("3:4");
+    expect(proporcionDeVista("perfil_izquierdo")).toBe("3:4");
+    expect(proporcionDeVista("tres_cuartos")).toBe("3:4");
+    expect(proporcionDeVista("cuerpo_completo")).toBe("9:16");
   });
 });

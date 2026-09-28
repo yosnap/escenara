@@ -57,6 +57,7 @@ const {
   characterOmniRegistrations,
   characterReferences,
   characters,
+  media,
   consentRecords,
   generationJobs,
   projects,
@@ -79,7 +80,8 @@ const { cambiarEstadoDeModelo, cambiarPrecioDeModelo } = await import("../provee
 const { registrarPersonajeOmni, volverARegistrar } = await import("../personajes/omni");
 const { contarReferencias } = await import("../personajes/consulta");
 const { registrarVozOmni, validarEleccionVozOmni } = await import("../voz/omni");
-const { crearPersonajeInventado, elegirRetrato, generarRetratosCandidatos } = await import("../personajes/inventado");
+const { crearPersonajeInventado, descartarRetratos, elegirRetrato, generarRetratosCandidatos, retratosCandidatos } =
+  await import("../personajes/inventado");
 const { VOCES_OMNI } = await import("@/lib/omni");
 
 type Sesion = Awaited<ReturnType<typeof crearSesionDePrueba>>;
@@ -841,6 +843,16 @@ describe.skipIf(!hayBaseDeDatos)("escenas habladas con Omni", () => {
     // Y sí cuenta para el mínimo: en un inventado lo sostienen sus imágenes generadas, no fotos que no tiene.
     expect(conRetrato.totalReferencias).toBe(1);
     expect(conRetrato.totalGeneradas).toBe(1);
+
+    // Descartar los que quedan: dejan de ofrecerse, pero sus imágenes siguen en la biblioteca.
+    const quedaban = await retratosCandidatos(personaje.id);
+    const { descartados } = await descartarRetratos(actor, personaje.id);
+    expect(descartados).toBeGreaterThan(0);
+    expect(await retratosCandidatos(personaje.id)).toHaveLength(0);
+    for (const c of quedaban) {
+      const [medio] = await db().select().from(media).where(eq(media.id, c.medioId));
+      expect(medio?.deletedAt ?? null).toBeNull();
+    }
   });
   // ── Lo que señaló la revisión de código ──────────────────────────────────────────────────────────────────
 
