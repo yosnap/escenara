@@ -41,6 +41,7 @@ const rutaReferencias = await import("@/app/api/personajes/[id]/referencias/rout
 const rutaConsentimiento = await import("@/app/api/personajes/[id]/consentimiento/route");
 const rutaVistaSintetica = await import("@/app/api/personajes/[id]/vista-sintetica/route");
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
+const { guardarAjustes, leerAjustes } = await import("../ajustes");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
 const { characterReferences, characterVersions, generationJobs, users } = await import("../db/esquema");
@@ -386,6 +387,53 @@ describe.skipIf(!hayBaseDeDatos)("captura guiada de referencias", () => {
     expect(despues.cobertura?.sinClasificar).toBe(1);
     expect(despues.cobertura?.faltan).toEqual(["frontal", "cuerpo_completo"]);
     expect(despues.totalReferencias).toBe(2);
+  });
+
+  test("un aviso confirmable frena la vista generada hasta que se confirma, y con la confirmación se encola", async () => {
+    const personaje = await nuevoPersonaje("Con foto señalada");
+    const fotos = await Promise.all([
+      subir(await foto(30), "s1.png"),
+      subir(await foto(31), "s2.png"),
+      subir(await foto(32), "s3.png"),
+    ]);
+    await anadir(
+      personaje.id,
+      fotos.map((f, i) => ({ medioId: f.id, vistaClave: ["frontal", "perfil_izquierdo", "cuerpo_completo"][i] })),
+    );
+    // Una foto añadida «de todas formas»: el control previo avisa de ella en cada envío con este personaje.
+    await db()
+      .update(characterReferences)
+      .set({ rejectionReason: "resolucion" })
+      .where(eq(characterReferences.mediaId, fotos[0]?.id as string));
+    const peticion = () => ({
+      vista: "perfil_derecho",
+      creditosConfirmados: 4,
+      derechos: true,
+      sinTerceros: true,
+      claveIdempotencia: crypto.randomUUID(),
+    });
+
+    // La regla de cobertura viene apagada de fábrica: se enciende para este caso y se deja como estaba, porque
+    // la base de prueba persiste entre ejecuciones.
+    const antes = (await leerAjustes()).controlesExigirCoberturaVistas;
+    await guardarAjustes({ controlesExigirCoberturaVistas: true }, null);
+    try {
+      const sinConfirmar = await pedirVistaSintetica(actorAna, personaje.id, peticion(), h).catch((e: Error) => e);
+      expect(sinConfirmar).toBeInstanceOf(Error);
+      expect((sinConfirmar as Error).message).toContain("señaló el control de calidad");
+      // Y no le avisa de la vista que falta: generarla es justo lo que la completa.
+      expect((sinConfirmar as Error).message).not.toContain("faltan fotos");
+
+      const confirmada = await pedirVistaSintetica(
+        actorAna,
+        personaje.id,
+        { ...peticion(), avisosConfirmados: ["referencias-cobertura"] },
+        h,
+      );
+      expect(confirmada.nueva).toBe(true);
+    } finally {
+      await guardarAjustes({ controlesExigirCoberturaVistas: antes }, null);
+    }
   });
 
   test("una vista sintética nace etiquetada, no cuenta como foto original y su etiqueta llega al render", async () => {

@@ -1,3 +1,4 @@
+import { esVista, type Vista } from "@/lib/captura-personaje";
 import { esIdentificadorDeModelo } from "@/lib/catalogo";
 import { esTipoTrabajo } from "@/lib/generacion";
 import { evaluarControles } from "@/server/controles/consulta";
@@ -15,10 +16,18 @@ function uuidOpcional(valor: string | null, queEs: string): string | null {
   return valor;
 }
 
+/** Vista que se va a generar para un personaje: o es una del catálogo, o no viene. */
+function vistaOpcional(valor: string | null): Vista | null {
+  if (valor === null || valor === "") return null;
+  if (!esVista(valor)) throw new ErrorGeneracion(400, "Esa vista no es válida.");
+  return valor;
+}
+
 /**
  * Estado de los controles previos: qué diría la puerta si generaras ahora mismo (RF12).
  *
- * `?tipo=fotograma|animacion` y, opcionalmente, `&modelo=`, `&personajeId=`, `&medioId=` y `&escenaId=`.
+ * `?tipo=fotograma|animacion` y, opcionalmente, `&modelo=`, `&personajeId=`, `&medioId=`, `&escenaId=` y `&vista=`
+ * (la vista que falta y se va a generar para ese personaje).
  *
  * **Es una lectura.** No encola nada, no apunta ningún movimiento de presupuesto y no llama a ningún endpoint
  * de pago del proveedor: lo único que consulta fuera es el saldo, por el mismo endpoint gratuito que la
@@ -40,6 +49,7 @@ export const GET = manejador(async (peticion: Request, _: unknown, actor) => {
       personajeId: uuidOpcional(parametros.get("personajeId"), "personaje"),
       medioId: uuidOpcional(parametros.get("medioId"), "identificador de imagen"),
       escenaId: uuidOpcional(parametros.get("escenaId"), "identificador de escena"),
+      vistaSintetica: vistaOpcional(parametros.get("vista")),
     }),
   );
 });

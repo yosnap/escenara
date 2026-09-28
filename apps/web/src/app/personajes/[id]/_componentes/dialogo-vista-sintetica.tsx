@@ -4,11 +4,13 @@ import { Sparkles } from "lucide-react";
 import { useRef, useState } from "react";
 import { Boton } from "@/components/ui/button";
 import { Casilla } from "@/components/ui/choice";
+import { PanelAntesDeGenerar } from "@/components/ui/controles";
 import { PanelCoste } from "@/components/ui/coste";
 import { Aviso } from "@/components/ui/feedback";
 import { Dialogo } from "@/components/ui/overlay";
 import { pedirVistaSintetica } from "@/components/ui/personajes/api-personajes";
 import { ETIQUETA_VISTA, type Vista } from "@/lib/captura-personaje";
+import { bloqueosDeControles, type EvaluacionVista, firmaDeAvisos } from "@/lib/controles";
 import { creditosAConfirmar, type Estimacion, formatearCreditos, type TrabajoVista } from "@/lib/generacion";
 import { AVISO_SIN_TERCEROS } from "@/lib/personajes";
 
@@ -24,6 +26,7 @@ export function DialogoVistaSintetica({
   personajeId,
   vista,
   estimacion,
+  controles,
   abierto,
   onAbiertoCambio,
   onEncolada,
@@ -32,6 +35,8 @@ export function DialogoVistaSintetica({
   vista: Vista;
   /** Estimación ya pedida al servidor al abrir el diálogo: aquí no se calcula ningún precio. */
   estimacion: Estimacion;
+  /** «Antes de generar» de esta vista, pedido al abrir: sus avisos confirmables se confirman aquí. */
+  controles: EvaluacionVista;
   abierto: boolean;
   onAbiertoCambio: (abierto: boolean) => void;
   /** Se llama con el trabajo encolado: la ficha lo sigue como cualquier otro. */
@@ -40,6 +45,7 @@ export function DialogoVistaSintetica({
   const [derechos, setDerechos] = useState(false);
   const [sinTerceros, setSinTerceros] = useState(false);
   const [avisoAceptado, setAvisoAceptado] = useState(false);
+  const [confirmados, setConfirmados] = useState<string[]>([]);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /**
@@ -53,13 +59,14 @@ export function DialogoVistaSintetica({
   // Lo que se confirma es el total del envío (modelo + traducción del prompt), igual que en «Crear»: es lo que
   // el servidor exige y lo que se le ha enseñado al usuario.
   const creditos = creditosAConfirmar(estimacion);
-  const firma = `${vista}|${estimacion.sello}|${creditos}`;
+  const firma = `${vista}|${estimacion.sello}|${creditos}|${firmaDeAvisos(confirmados)}`;
 
   const bloqueos = [
     ...(derechos ? [] : ["Falta confirmar que tienes derecho a usar estas fotos."]),
     ...(sinTerceros ? [] : ["Falta confirmar la revisión de las fotos."]),
     ...(estimacion.superaUmbral && !avisoAceptado ? ["Falta aceptar el aviso de gasto."] : []),
     ...(estimacion.alcanza ? [] : ["Tu saldo de KIE no llega para este trabajo."]),
+    ...bloqueosDeControles(controles, confirmados),
   ];
 
   const generar = async () => {
@@ -75,6 +82,7 @@ export function DialogoVistaSintetica({
       claveIdempotencia: clave.current.valor,
       modelo: estimacion.modelo,
       selloEstimacion: estimacion.sello,
+      avisosConfirmados: confirmados,
     });
     setEnviando(false);
     if (!respuesta.ok) {
@@ -132,6 +140,15 @@ export function DialogoVistaSintetica({
             )}
           </div>
         </PanelCoste>
+
+        <PanelAntesDeGenerar
+          evaluacion={controles}
+          confirmados={confirmados}
+          deshabilitado={enviando}
+          onConfirmar={(regla, valor) =>
+            setConfirmados((antes) => (valor ? [...new Set([...antes, regla])] : antes.filter((r) => r !== regla)))
+          }
+        />
 
         {error && <Aviso tono="error">{error}</Aviso>}
         {bloqueos.length > 0 && (

@@ -1,5 +1,5 @@
 import { esProveedor, PROVEEDORES_PUBLICOS } from "@/lib/boveda";
-import { calcularCobertura, esVista } from "@/lib/captura-personaje";
+import { calcularCobertura, esVista, type Vista } from "@/lib/captura-personaje";
 import { precioCaducado } from "@/lib/catalogo";
 import { TIPO_RESULTADO, type TipoTrabajo } from "@/lib/generacion";
 import { leerAjustes } from "../ajustes";
@@ -218,4 +218,14 @@ export async function recopilarHechos(actor: Actor, sujeto: SujetoDeHechos, busc
  */
 export async function hechosDeExportacion(proyectoId: string): Promise<HechosExportacion> {
   return { criticos: await criticosAbiertosDeProyecto(proyectoId) };
+}
+
+/**
+ * Generar una vista que le falta al personaje **es** completar su cobertura: el aviso de que faltan vistas no
+ * puede frenar justo lo que la arregla (ni pedir confirmar algo que el diálogo de la vista no ofrece). Se marca
+ * en los hechos y el motor deja de contar las vistas sin cubrir; lo demás del personaje se evalúa igual.
+ */
+export function conVistaQueCompleta(hechos: Hechos, vista: Vista | null | undefined): Hechos {
+  if (!vista || !hechos.personaje) return hechos;
+  return { ...hechos, personaje: { ...hechos.personaje, completaCobertura: true } };
 }
