@@ -20,10 +20,12 @@ import {
   INDICACION_VISTA,
   type UmbralesCalidad,
   type Vista,
+  vistasPorGenerar,
 } from "@/lib/captura-personaje";
 import type { EvaluacionVista } from "@/lib/controles";
 import type { Estimacion } from "@/lib/generacion";
 import type { PersonajeVista, ReferenciaVista } from "@/lib/personajes";
+import { DialogoTodasLasVistas } from "./dialogo-todas-las-vistas";
 import { DialogoVistaSintetica } from "./dialogo-vista-sintetica";
 import { ANCLA_REFERENCIAS, idDeReferencia } from "./panel-referencias";
 
@@ -63,6 +65,9 @@ export function PanelCobertura({
     controles: EvaluacionVista;
   } | null>(null);
   const [pidiendo, setPidiendo] = useState<Vista | null>(null);
+  const [todas, setTodas] = useState<{ estimacion: Estimacion; controles: EvaluacionVista } | null>(null);
+  const [preparandoTodas, setPreparandoTodas] = useState(false);
+  const [resumen, setResumen] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   if (!cobertura) return null;
@@ -92,6 +97,34 @@ export function PanelCobertura({
     setGenerando({ vista, estimacion: estimacion.datos, controles: controles.datos });
   };
 
+  /**
+   * Las vistas que se van a encargar de una vez. Se calculan con la **misma** función que usa el servidor, así
+   * que el número que se confirma es el número que se encarga.
+   */
+  const porGenerar = vistasPorGenerar(cobertura);
+
+  /** Coste de una imagen y «Antes de generar», antes de abrir: el total se enseña multiplicado por las vistas. */
+  const abrirTodas = async () => {
+    const primera = porGenerar[0];
+    if (!primera) return;
+    setPreparandoTodas(true);
+    setError(null);
+    const [estimacion, controles] = await Promise.all([
+      consultarEstimacionDeVista(),
+      consultarControlesDeVista(personaje.id, primera),
+    ]);
+    setPreparandoTodas(false);
+    if (!estimacion.ok) {
+      setError(estimacion.error);
+      return;
+    }
+    if (!controles.ok) {
+      setError(controles.error);
+      return;
+    }
+    setTodas({ estimacion: estimacion.datos, controles: controles.datos });
+  };
+
   return (
     <section aria-label="Cobertura de vistas" className="flex flex-col gap-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -111,6 +144,21 @@ export function PanelCobertura({
       </p>
 
       {error && <Aviso tono="error">{error}</Aviso>}
+      {resumen && <Aviso tono="info">{resumen}</Aviso>}
+
+      {/* Un botón para todas las que faltan: el coste total delante y, después, cuáles han salido y cuáles no. */}
+      {porGenerar.length > 1 && claveDeGeneracion.ok && (
+        <Boton
+          className="self-start"
+          variante="chispa"
+          icono={<WandSparkles className="size-4" />}
+          cargando={preparandoTodas}
+          disabled={pidiendo !== null}
+          onClick={() => void abrirTodas()}
+        >
+          Generar las {porGenerar.length} vistas que faltan
+        </Boton>
+      )}
 
       {!claveDeGeneracion.ok && cobertura.faltan.length > 0 && (
         <AvisoEstado
@@ -193,6 +241,29 @@ export function PanelCobertura({
             }}
           />
         </Dialogo>
+      )}
+
+      {todas && (
+        <DialogoTodasLasVistas
+          personajeId={personaje.id}
+          vistas={porGenerar}
+          estimacion={todas.estimacion}
+          controles={todas.controles}
+          abierto
+          onAbiertoCambio={(abierto) => {
+            if (!abierto) setTodas(null);
+          }}
+          onEncargadas={(encargadas) => {
+            const hechas = encargadas.encoladas.map((v) => ETIQUETA_VISTA[v].toLowerCase()).join(", ");
+            const faltan = encargadas.sinEncolar.map((s) => `«${s.etiqueta.toLowerCase()}» (${s.motivo})`).join("; ");
+            setResumen(
+              `Se han encargado ${encargadas.encoladas.length}: ${hechas}. Aparecerán en la ficha al terminar.${
+                faltan === "" ? "" : ` No se han encargado, y no se te han cobrado: ${faltan}`
+              }`,
+            );
+            setTodas(null);
+          }}
+        />
       )}
 
       {generando && (
