@@ -32,6 +32,8 @@ export function ConfirmacionGasto({
   firma,
   bloqueos,
   avisosConfirmados,
+  avisos = [],
+  onConfirmarAviso,
   ocupado,
   onEnviar,
 }: {
@@ -56,6 +58,13 @@ export function ConfirmacionGasto({
   bloqueos: readonly string[];
   /** Avisos «Necesita ajustes» que el usuario ha confirmado (0.18.0). */
   avisosConfirmados: readonly string[];
+  /**
+   * Avisos salvables que afectan a esta acción. Cada uno lleva su casilla **aquí mismo**, junto al botón que
+   * frenan: la confirmación es la misma que la del panel «Antes de generar» de arriba, así que marcar una marca
+   * las dos. Sin esto, el botón decía «falta confirmar el aviso» sin decir dónde.
+   */
+  avisos?: readonly { regla: string; motivo: string }[];
+  onConfirmarAviso?: (regla: string, valor: boolean) => void;
   ocupado: boolean;
   onEnviar: (confirmacion: ConfirmacionEnvio) => void;
 }) {
@@ -113,6 +122,16 @@ export function ConfirmacionGasto({
         marcada={sinTerceros}
         onCambio={setSinTerceros}
       />
+      {onConfirmarAviso &&
+        avisos.map((aviso) => (
+          <Casilla
+            key={aviso.regla}
+            etiqueta="Lo he leído y quiero generar igualmente"
+            descripcion={aviso.motivo}
+            marcada={avisosConfirmados.includes(aviso.regla)}
+            onCambio={(valor) => onConfirmarAviso(aviso.regla, valor)}
+          />
+        ))}
       {superaUmbral && (
         <Casilla
           etiqueta={`Sé que cada trabajo de esta acción pasa de ${formatearCreditos(umbral)}`}
