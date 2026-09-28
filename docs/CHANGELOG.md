@@ -2,6 +2,57 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.23.0] · 2026-09-28
+
+### Decisión firme del propietario
+
+- **Eliges cualquier modelo que ofrezca tu proveedor y ves lo que cuesta antes de generar** (ADR-0029). El
+  catálogo deja de ser solo lo que alguien midió con su dinero: se sincroniza con la tabla de precios que el
+  proveedor publica.
+
+### Añadido
+
+- **Catálogo dinámico con precios públicos.** KIE publica su tarifa en una API **sin clave y sin coste**, así que
+  la instalación la lee sin gastar la credencial de nadie ni un solo crédito. Cada precio se traduce al
+  identificador exacto de la API —el parámetro `model` de la página del market, comprobado contra su
+  documentación— y los modelos que esta instalación sabe pedir entran con el estado nuevo
+  **«precio publicado»**: se pueden elegir, estimar, confirmar, reservar y generar.
+- **Familias de imagen nuevas, elegibles con su coste delante**: GPT Image 2, 2.5 Flare, 2.5 Sunburst y 1.5;
+  Nano Banana 2, Pro, 2 Lite y Edit; Seedream 4.5, 5.0 Lite y 5.0 Pro; Flux 2 Pro y Flex; Ideogram Character y
+  Character Remix; y Qwen Image Edit, Qwen 2 y Qwen 3. Los campos de cada una están leídos en la documentación
+  del modelo, no adivinados.
+- **Se dice siempre de dónde sale un precio.** En la ficha y en el selector: «publicado por el proveedor, no
+  medido en esta instalación» frente al precio medido con dinero real, que es el que sigue valiendo para
+  `validado`.
+- **Admin › Modelos: «Sincronizar precios»**, con la fecha de la última lectura, cuántos modelos publica el
+  proveedor y cuántos sabe pedir esta instalación. También se hace sola una vez al día en el worker.
+- **Variante del modelo cuando el proveedor cobra por resolución o por calidad** (GPT Image 2: 6 créditos a 1K,
+  10 a 2K, 16 a 4K). La ficha enseña todas sus tarifas con la que se envía marcada, y quien administra la cambia
+  desde «Variante»: cambia a la vez lo que se pide y lo que se paga.
+- **Aviso de desviación**: si el proveedor cobra algo distinto de lo que publica, la diferencia queda en el
+  historial del catálogo. El consumo que se apunta sigue siendo el real.
+
+### Seguridad y dinero
+
+- **Un modelo que esta instalación no sabe pedir no se puede elegir**, aunque tenga precio publicado: se ve en el
+  catálogo con el motivo escrito. Enviar a ciegas se paga aunque el proveedor rechace la petición.
+- **La sincronización nunca pisa un precio medido** aquí, ni cambia el estado, las capacidades o la unidad de un
+  modelo que ya existe: eso lo decide quien administra.
+- **Un precio que cambia no toca ningún trabajo ya creado.** Sube la versión de su tarifa y con ella el sello, así
+  que una estimación anterior queda caducada y hay que volver a confirmarla antes de gastar. Los créditos ya
+  consumidos no cambian.
+- **Las tarifas que no se saben antes de generar** (por megapíxel, por millón de tokens) no se importan: un precio
+  que no se conoce antes no se puede confirmar.
+
+### Actualizar desde la 0.22.x
+
+- `bun run db:backup` y `bun run db:migrate`: la migración `0030_catalogo_dinamico` añade el estado
+  `precio_publicado`, la marca de precio publicado en el registro de precios y la tabla de sincronizaciones.
+- **Reinicia el worker** (`bun run dev` no recarga su código): es quien sincroniza los precios una vez al día.
+- Nada que reconfigurar. Tu catálogo se queda exactamente como está hasta que pulses «Sincronizar precios» en
+  Admin › Modelos o pase la primera sincronización diaria; a partir de ahí aparecen los modelos publicados,
+  siempre sin tocar los precios que ya tenías medidos.
+
 ## [0.22.2] · 2026-09-28
 
 ### Seguridad

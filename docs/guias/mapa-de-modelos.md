@@ -56,6 +56,27 @@ que viste para ella: si al llegar el momento costara más, no se cambia y se te 
 Los servicios que se pagan por cuota del plan cuentan **0 créditos**: no es una estimación, es que no cobran por
 petición. De sus llamadas se guardan los **tokens**, que es lo único que mide de verdad cuánta cuota has gastado.
 
+## De dónde sale el precio que ves
+
+Desde la 0.23.0 hay dos orígenes, y **siempre se dice cuál es**:
+
+- **Medido en esta instalación.** Alguien generó de verdad con ese modelo y anotó lo que costó. Es el precio de
+  los modelos marcados como «validado».
+- **Publicado por el proveedor.** Sale de su propia tabla de precios, que Escenara lee sola una vez al día sin
+  usar tu clave y sin gastarte un crédito. Son los modelos marcados como **«precio publicado»**: puedes elegirlos
+  y confirmarlos como cualquier otro, con el aviso de que ese precio lo dice el proveedor y no lo hemos
+  comprobado aquí. Si al terminar el trabajo cobra otra cosa, se apunta lo que ha cobrado de verdad y la
+  diferencia queda registrada.
+
+Gracias a eso, en tu mapa aparecen **todos los modelos que tu proveedor ofrece y esta instalación sabe pedir**, no
+solo los que alguien midió antes. Un modelo que el proveedor publica pero cuyos parámetros no conocemos se ve en
+Admin › Modelos con su precio, y **no se puede elegir**: se dice por qué.
+
+Algunos modelos cuestan distinto según lo que se les pida (una imagen a 1K, 2K o 4K, o en calidad rápida o
+cuidada). Cada una de esas variantes tiene su precio, y cuál se envía lo decide quien administra la instalación
+desde Admin › Modelos. Si cambia, el coste que tuvieras en pantalla se marca como caducado y hay que volver a
+confirmarlo antes de generar: nunca se gasta con una cifra que ya no vale.
+
 ## Servicios compatibles con la API de OpenAI
 
 Más abajo en «Tu cuenta» puedes añadir servicios que hablan la API de OpenAI (por ejemplo NaN builders). De cada
