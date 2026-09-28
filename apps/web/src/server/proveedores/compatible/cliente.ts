@@ -183,14 +183,37 @@ interface CuerpoChat {
 const entero = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? Math.round(v) : null);
 
 /**
+ * Imagen que acompaña a una petición de texto. Va en base64 dentro de la propia petición (`data:` URL), no
+ * como enlace: un enlace obligaría a publicar la foto de alguien en una dirección accesible desde fuera.
+ */
+export interface ImagenParaChat {
+  mime: string;
+  base64: string;
+}
+
+/**
  * Pide un texto. `instrucciones` las compone **siempre el servidor** (van como mensaje `system`); `entrada` es el
  * contenido del usuario, ya limpio y delimitado por quien llama. `stream: false`: el texto se lee de una vez.
+ *
+ * Con `imagen`, el mensaje del usuario viaja en el formato multimodal de la API de OpenAI (`image_url` con una
+ * `data:` URL), que es el que entienden estos servicios. Sin ella, viaja como cadena, igual que siempre.
  *
  * Lo que devuelve **no es de fiar**: aquí solo se extrae la cadena, y quien la usa la trata como propuesta.
  */
 export async function pedirChat(
-  peticion: PeticionCompatible & { modelo: string; instrucciones: string; entrada: string },
+  peticion: PeticionCompatible & {
+    modelo: string;
+    instrucciones: string;
+    entrada: string;
+    imagen?: ImagenParaChat;
+  },
 ): Promise<TextoCompatible> {
+  const mensajeDelUsuario = peticion.imagen
+    ? [
+        { type: "text", text: peticion.entrada },
+        { type: "image_url", image_url: { url: `data:${peticion.imagen.mime};base64,${peticion.imagen.base64}` } },
+      ]
+    : peticion.entrada;
   const respuesta = await llamar(
     peticion,
     "chat/completions",
@@ -200,7 +223,7 @@ export async function pedirChat(
         model: peticion.modelo,
         messages: [
           { role: "system", content: peticion.instrucciones },
-          { role: "user", content: peticion.entrada },
+          { role: "user", content: mensajeDelUsuario },
         ],
         stream: false,
       }),

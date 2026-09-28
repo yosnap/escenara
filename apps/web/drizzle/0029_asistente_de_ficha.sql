@@ -1,0 +1,1 @@
+ALTER TYPE "public"."assistant_run_kind" ADD VALUE 'ficha_personaje';

@@ -259,8 +259,17 @@ export const claims = pgTable(
  * Para qué se llamó al modelo de texto. `traduccion` (0.17.0, decisión firme del propietario) es la que traduce
  * al inglés lo que el usuario escribe en español antes de componer el prompt: es otra llamada de pago, así que
  * se registra y se concilia igual que las del asistente.
+ *
+ * `ficha_personaje` (0.22.1) es la que propone los campos de la ficha de un personaje a partir de su
+ * descripción y, cuando el modelo las admite, de una imagen suya. No es de ningún proyecto.
  */
-export const tipoEjecucionAsistente = pgEnum("assistant_run_kind", ["concepto", "guion", "storyboard", "traduccion"]);
+export const tipoEjecucionAsistente = pgEnum("assistant_run_kind", [
+  "concepto",
+  "guion",
+  "storyboard",
+  "traduccion",
+  "ficha_personaje",
+]);
 
 export const estadoEjecucionAsistente = pgEnum("assistant_run_state", ["reservado", "listo", "fallido"]);
 

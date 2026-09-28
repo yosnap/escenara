@@ -211,8 +211,11 @@ export function leerPropuesta(
 /**
  * Primer objeto JSON equilibrado del texto. Cuenta llaves fuera de las cadenas, así que una llave dentro de
  * un texto («dijo {hola}») no descuadra el recuento.
+ *
+ * Se exporta porque todo lo que pide texto a un modelo tiene el mismo problema: la respuesta llega envuelta en
+ * prosa o en un bloque de código. Una segunda copia de este recuento sería una copia que se queda atrás.
  */
-function primerObjetoJson(crudo: string): Record<string, unknown> | null {
+export function primerObjetoJson(crudo: string): Record<string, unknown> | null {
   if (typeof crudo !== "string") return null;
   const inicio = crudo.indexOf("{");
   if (inicio < 0) return null;

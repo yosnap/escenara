@@ -64,6 +64,16 @@ export async function referenciasElegibles(personajeId: string): Promise<Referen
 }
 
 /**
+ * La **mejor imagen** del personaje: la primera que elegiría la cobertura de vistas, que en un personaje
+ * inventado es su retrato y en uno real, su foto frontal. `null` si todavía no tiene ninguna utilizable.
+ *
+ * La usa «Completar la ficha con IA» (0.22.1) para enseñarle al modelo de texto a quién está describiendo.
+ */
+export async function mejorReferenciaDe(personajeId: string, tipo: FilaPersonaje["kind"]): Promise<string | null> {
+  return mejoresReferencias(tipo, await referenciasElegibles(personajeId), 1)[0] ?? null;
+}
+
+/**
  * Contexto de generación de un personaje: la versión vigente, su bloque de texto y las referencias que se
  * enviarán, ya elegidas por cobertura y recortadas al tope del modelo.
  *
