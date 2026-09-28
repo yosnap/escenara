@@ -14,9 +14,10 @@ import { escenaPropia, escenasDe, proyectoPropio } from "../asistente/consulta";
 import { ErrorProyecto } from "../asistente/errores";
 import { db } from "../db/cliente";
 import { type FilaEscena, type FilaMedio, type FilaProyecto, media, scenes } from "../db/esquema";
+import { transcribirPorMapa } from "../mapa/transcripcion";
 import { type Actor, aDto } from "../media/servicio";
 import { escenaInvalidada, firmaVigente } from "./proyecto";
-import { BYTES_MAXIMOS_TRANSCRIPCION, transcribir } from "./transcripcion";
+import { BYTES_MAXIMOS_TRANSCRIPCION } from "./transcripcion";
 
 /**
  * Subtítulos de las escenas (RF08, 0.21.0).
@@ -132,7 +133,11 @@ export async function transcribirEscena(
   const extension = (fila.originalName.split(".").pop() ?? "").toLowerCase();
   // Se le pasa la **clave del almacenamiento**, no el archivo: así va del almacenamiento al disco por trozos y no
   // se materializa nunca entero en memoria.
-  const segmentos = await transcribir(fila.storageKey, extension);
+  const segmentos = await transcribirPorMapa({
+    usuarioId: actor.id,
+    claveAlmacenamiento: fila.storageKey,
+    extension,
+  });
   const propuestos = acotarSubtitulos(subtitulosDesdeTranscripcion(segmentos));
   const [guardada] = await db()
     .update(scenes)

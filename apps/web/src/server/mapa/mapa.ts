@@ -210,3 +210,83 @@ async function escribir(usuarioId: string | null, tipo: TipoDeMapa, entradas: re
 export async function volverALoRecomendado(usuarioId: string, tipo: TipoDeMapa): Promise<void> {
   await escribir(usuarioId, tipo, []);
 }
+
+/**
+ * Entradas que este usuario **podría** añadir a su mapa de ese tipo: los modelos del catálogo de la instalación
+ * cuya credencial tiene, los modelos de cada uno de sus servicios compatibles y, en los subtítulos, la propia
+ * máquina.
+ *
+ * No se ofrece lo que no se puede pagar: un modelo de un proveedor del que no hay clave válida no es una opción,
+ * es una decepción con un clic de por medio.
+ */
+export async function opcionesDe(usuarioId: string, tipo: TipoDeMapa): Promise<EntradaMapaVista[]> {
+  const opciones: EntradaMapaVista[] = [];
+  if (tipo === "transcripcion") {
+    opciones.push({
+      proveedor: "local",
+      compatibleId: null,
+      modelo: "",
+      nombreProveedor: nombreDeProveedor("local"),
+      utilizable: true,
+      motivo: "",
+    });
+  }
+  const capacidad = CAPACIDAD_DE_TIPO[tipo];
+  if (capacidad) {
+    for (const modelo of await modelosElegibles(capacidad)) {
+      const proveedor = modelo.proveedor as Proveedor;
+      if (proveedor === "compatible" || proveedor === "local") continue;
+      if (!(await usarCredencialValida(usuarioId, proveedor)).ok) continue;
+      opciones.push({
+        proveedor,
+        compatibleId: null,
+        modelo: modelo.modelo,
+        nombreProveedor: nombreDeProveedor(proveedor),
+        utilizable: true,
+        motivo: "",
+      });
+    }
+  }
+  // Los servicios compatibles solo saben de texto, voz y subtítulos: no se ofrecen donde no sirven.
+  if (tipo === "texto" || tipo === "voz" || tipo === "transcripcion") {
+    for (const servicio of await usarCompatibles(usuarioId)) {
+      for (const modelo of servicio.modelos) {
+        opciones.push({
+          proveedor: "compatible",
+          compatibleId: servicio.id,
+          modelo,
+          nombreProveedor: servicio.nombre,
+          utilizable: true,
+          motivo: "",
+        });
+      }
+    }
+  }
+  return opciones;
+}
+
+/**
+ * Lo que quien administra puede recomendar para ese tipo: los modelos del catálogo de la capacidad que le
+ * corresponde, más la propia máquina en los subtítulos.
+ *
+ * **No incluye servicios compatibles**: son de cada usuario y no existen a nivel de instalación, así que
+ * recomendarlos sería recomendar algo que casi nadie tiene.
+ */
+export async function opcionesRecomendables(
+  tipo: TipoDeMapa,
+): Promise<{ proveedor: string; modelo: string; etiqueta: string }[]> {
+  const opciones: { proveedor: string; modelo: string; etiqueta: string }[] = [];
+  if (tipo === "transcripcion") {
+    opciones.push({ proveedor: "local", modelo: "", etiqueta: `${nombreDeProveedor("local")} (sin coste)` });
+  }
+  const capacidad = CAPACIDAD_DE_TIPO[tipo];
+  if (!capacidad) return opciones;
+  for (const modelo of await modelosElegibles(capacidad)) {
+    opciones.push({
+      proveedor: modelo.proveedor,
+      modelo: modelo.modelo,
+      etiqueta: `${modelo.nombreProveedor} · ${modelo.nombre}`,
+    });
+  }
+  return opciones;
+}

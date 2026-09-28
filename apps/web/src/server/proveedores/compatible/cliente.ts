@@ -109,7 +109,9 @@ async function llamar(
   const cabeceras = {
     Authorization: `Bearer ${peticion.clave}`,
     Accept: "application/json",
-    ...(opciones.body === undefined ? {} : { "Content-Type": "application/json" }),
+    // Solo en los cuerpos JSON: en un `multipart/form-data` la cabecera la tiene que poner `fetch`, porque lleva
+    // dentro el separador que él mismo genera.
+    ...(typeof opciones.body === "string" ? { "Content-Type": "application/json" } : {}),
   };
   const senal = AbortSignal.timeout(ms);
   try {
@@ -221,4 +223,95 @@ export async function pedirChat(
     tokensEntrada: entero(cuerpo.usage?.prompt_tokens),
     tokensSalida: entero(cuerpo.usage?.completion_tokens),
   };
+}
+
+// ── Audio ────────────────────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Leer un texto en voz alta (`POST {base}/audio/speech`, 0.21.1). La respuesta **no es JSON**: son los bytes del
+ * audio, así que aquí se devuelven tal cual junto con el tipo que declare el servicio.
+ *
+ * Como el resto de estos servicios, se paga por cuota del plan y no por petición.
+ */
+export const MS_AUDIO = 120_000;
+
+export interface VozCompatible {
+  audio: Uint8Array<ArrayBuffer>;
+  mime: string;
+}
+
+export async function pedirVoz(
+  peticion: PeticionCompatible & { modelo: string; voz: string; texto: string; velocidad?: number },
+): Promise<VozCompatible> {
+  const respuesta = await llamar(
+    peticion,
+    "audio/speech",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        model: peticion.modelo,
+        input: peticion.texto,
+        voice: peticion.voz,
+        response_format: "mp3",
+        ...(peticion.velocidad === undefined ? {} : { speed: peticion.velocidad }),
+      }),
+    },
+    MS_AUDIO,
+  );
+  await exigirRespuestaCorrecta(respuesta);
+  const bytes = new Uint8Array(await respuesta.arrayBuffer());
+  if (bytes.byteLength === 0) throw new ErrorCompatible("respuesta-inesperada", "ha devuelto un audio vacío");
+  const copia = new Uint8Array(new ArrayBuffer(bytes.byteLength));
+  copia.set(bytes);
+  return { audio: copia, mime: respuesta.headers.get("content-type")?.split(";")[0] ?? "audio/mpeg" };
+}
+
+/** Un trozo de la transcripción con sus tiempos en segundos, tal como los da `verbose_json`. */
+export interface SegmentoCompatible {
+  inicio: number;
+  fin: number;
+  texto: string;
+}
+
+interface CuerpoTranscripcion {
+  text?: unknown;
+  language?: unknown;
+  segments?: unknown;
+}
+
+/**
+ * Transcribir un audio (`POST {base}/audio/transcriptions`, multipart, 0.21.1). Se pide `verbose_json` porque es
+ * el único formato que trae **marcas de tiempo**, y sin ellas los subtítulos habría que repartirlos a ojo.
+ *
+ * Comprobado contra NaN builders el 2026-09-28: el modelo se llama `whisper` (no `whisper-large-v3`) y devuelve
+ * `text`, `language` y `segments`.
+ */
+export async function transcribirAudioCompatible(
+  peticion: PeticionCompatible & { modelo: string; audio: Blob; nombre: string },
+): Promise<SegmentoCompatible[]> {
+  const formulario = new FormData();
+  formulario.append("file", peticion.audio, peticion.nombre);
+  formulario.append("model", peticion.modelo);
+  formulario.append("response_format", "verbose_json");
+  const respuesta = await llamar(peticion, "audio/transcriptions", { method: "POST", body: formulario }, MS_AUDIO);
+  await exigirRespuestaCorrecta(respuesta);
+  let cuerpo: CuerpoTranscripcion;
+  try {
+    cuerpo = (await respuesta.json()) as CuerpoTranscripcion;
+  } catch {
+    throw new ErrorCompatible("respuesta-inesperada");
+  }
+  if (!Array.isArray(cuerpo.segments)) throw new ErrorCompatible("respuesta-inesperada");
+  const segmentos: SegmentoCompatible[] = [];
+  for (const crudo of cuerpo.segments) {
+    const s = crudo as { start?: unknown; end?: unknown; text?: unknown } | null;
+    if (typeof s?.start !== "number" || typeof s.end !== "number" || typeof s.text !== "string") continue;
+    // Un segmento con tiempos imposibles se descarta: un subtítulo colocado donde nadie ha hablado es peor que
+    // no tenerlo.
+    if (!Number.isFinite(s.start) || !Number.isFinite(s.end) || s.end <= s.start || s.start < 0) continue;
+    const texto = s.text.trim();
+    if (texto !== "") segmentos.push({ inicio: s.start, fin: s.end, texto });
+  }
+  if (segmentos.length === 0) throw new ErrorCompatible("respuesta-inesperada", "no ha devuelto ningún segmento");
+  return segmentos;
 }
