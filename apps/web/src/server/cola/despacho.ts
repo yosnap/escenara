@@ -16,7 +16,7 @@ import { hechosDePersonajeCitado, parametrosDeControles } from "../controles/hec
 import { evaluar, frenosQueGatean } from "../controles/motor";
 import { mensajeDeFreno } from "../controles/puerta";
 import { db } from "../db/cliente";
-import { type FilaMedio, type FilaTrabajo, generationJobs, media, usageLedger } from "../db/esquema";
+import { characters, type FilaMedio, type FilaTrabajo, generationJobs, media, usageLedger } from "../db/esquema";
 import { archivoDe } from "../generacion/comprobaciones";
 import { olvidarSaldo } from "../generacion/estimacion";
 import type { Herramientas } from "../generacion/herramientas";
@@ -877,8 +877,14 @@ async function mediosDeReferencia(fila: FilaTrabajo, maximo = Number.POSITIVE_IN
     ids = ids.filter((id) => vigentes.has(id));
     const { minimoReferenciasPersonaje: minimo } = await leerAjustes();
     // El mínimo lo sostienen solo las fotos originales: una vista generada se envía como guía, pero no
-    // sustituye a una foto de la persona (0.14.0).
-    if (ids.filter((id) => vigentes.get(id) === "foto_original").length < minimo) {
+    // sustituye a una foto de la persona (0.14.0). **Salvo en un personaje inventado**, que no tiene ni admite
+    // fotos: ahí lo sostienen sus imágenes generadas, igual que en la ficha (`contarReferencias`).
+    const [personaje] = await db()
+      .select({ virtual: characters.virtual })
+      .from(characters)
+      .where(eq(characters.id, fila.characterId));
+    const cuentan = personaje?.virtual ? ids.length : ids.filter((id) => vigentes.get(id) === "foto_original").length;
+    if (cuentan < minimo) {
       throw new ErrorPersonajeNoUsable(
         `Las fotos de referencia del personaje han cambiado desde que pediste el trabajo y ya no llegan al mínimo de ${minimo}. No se ha enviado nada y no se te ha cobrado: añade más fotos y vuelve a pedirlo.`,
       );

@@ -1,0 +1,1 @@
+- [Catálogo por variantes 0.23.0](proyecto-catalogo-variantes-0230.md) — recomendé fila por variante con clave de catálogo ≠ id de API; el sello se parsea por «@v»

@@ -1,11 +1,12 @@
-import { count, eq } from "drizzle-orm";
+import { and, count, eq, inArray, sql } from "drizzle-orm";
 import { ETIQUETA_VISTA, esVista, promptDeVista, type Vista, vistasPorGenerar } from "@/lib/captura-personaje";
 import type { TrabajoVista } from "@/lib/generacion";
 import { MAXIMO_REFERENCIAS, type TipoPersonaje } from "@/lib/personajes";
 import { leerObjeto } from "../almacenamiento";
 import { filaDeLaConfirmacion } from "../cola/encolar";
 import { db } from "../db/cliente";
-import { characterReferences, characters, type FilaTrabajo, media } from "../db/esquema";
+import { characterReferences, characters, type FilaTrabajo, generationJobs, media } from "../db/esquema";
+import { exigirAvisoUmbral } from "../generacion/comprobaciones";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { crearFotograma } from "../generacion/servicio";
 import { vistaDeFila } from "../generacion/trabajos";
@@ -173,12 +174,24 @@ export async function pedirVistasQueFaltan(
   h: Herramientas = HERRAMIENTAS,
 ): Promise<VistasEncargadas> {
   const personaje = await filaPropia(actor, id);
-  const faltan = vistasPorGenerar(await coberturaDe(personaje.id, personaje.kind));
+  // Lo que ya está **en marcha** no falta: sin esto, pulsar dos veces (o volver a abrir el diálogo, que genera
+  // otra clave) encargaba y cobraba una segunda tanda de las mismas vistas mientras la primera se generaba.
+  const enMarcha = await vistasEnMarcha(personaje.id);
+  const faltan = vistasPorGenerar(await coberturaDe(personaje.id, personaje.kind)).filter((v) => !enMarcha.has(v));
   if (faltan.length === 0) {
-    throw new ErrorPersonaje(409, "Este personaje ya tiene todas sus vistas: no hay ninguna que generar.");
+    throw new ErrorPersonaje(
+      409,
+      enMarcha.size > 0
+        ? "Las vistas que faltan ya se están generando: espera a que terminen. No se ha encargado nada más."
+        : "Este personaje ya tiene todas sus vistas: no hay ninguna que generar.",
+    );
   }
   const clave = typeof peticion.claveIdempotencia === "string" ? peticion.claveIdempotencia : "";
   if (clave === "") throw new ErrorPersonaje(400, "Falta la confirmación de este encargo. Vuelve a intentarlo.");
+  // El aviso de gasto alto se mide sobre **el total del encargo**, no por imagen: seis vistas de 30 créditos
+  // son 180, y cada una por separado nunca habría pasado del aviso.
+  const porVista = typeof peticion.creditosConfirmados === "number" ? peticion.creditosConfirmados : 0;
+  await exigirAvisoUmbral(porVista * faltan.length, peticion.avisoUmbralAceptado);
 
   const encargadas: VistasEncargadas = { trabajos: [], encoladas: [], sinEncolar: [] };
   for (const vista of faltan) {
@@ -194,10 +207,16 @@ export async function pedirVistasQueFaltan(
       encargadas.trabajos.push(envio.trabajo);
       encargadas.encoladas.push(vista);
     } catch (error) {
+      // Solo los motivos pensados para el usuario salen tal cual; un fallo interno no se enseña crudo.
+      const paraElUsuario = error instanceof ErrorPersonaje || (error as { name?: string })?.name === "ErrorGeneracion";
+      if (!paraElUsuario) console.error(`[personajes] vista ${vista} sin encolar: ${(error as Error)?.message}`);
       encargadas.sinEncolar.push({
         vista,
         etiqueta: ETIQUETA_VISTA[vista],
-        motivo: error instanceof Error && error.message !== "" ? error.message : "No se ha podido encolar.",
+        motivo:
+          paraElUsuario && error instanceof Error && error.message !== ""
+            ? error.message
+            : "Ha fallado algo en Escenara al encargarla. No se ha enviado ni cobrado; vuelve a intentarlo.",
       });
     }
   }
@@ -210,6 +229,26 @@ export async function pedirVistasQueFaltan(
     );
   }
   return encargadas;
+}
+
+/** Vistas de este personaje que tienen un trabajo encargado y todavía sin terminar. */
+async function vistasEnMarcha(personajeId: string): Promise<Set<Vista>> {
+  const filas = await db()
+    .select({ entrada: generationJobs.input })
+    .from(generationJobs)
+    .where(
+      and(
+        eq(generationJobs.characterId, personajeId),
+        inArray(generationJobs.state, ["preparando", "en_cola", "esperando_limite", "enviando", "enviado", "en_curso"]),
+        sql`${generationJobs.input}->>'vistaSintetica' is not null`,
+      ),
+    );
+  const vistas = new Set<Vista>();
+  for (const f of filas) {
+    const v = (f.entrada as { vistaSintetica?: unknown }).vistaSintetica;
+    if (esVista(v)) vistas.add(v);
+  }
+  return vistas;
 }
 
 /**
