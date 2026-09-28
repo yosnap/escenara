@@ -1,6 +1,6 @@
 import { and, eq, lt, sql } from "drizzle-orm";
 import type { Proveedor } from "@/lib/boveda";
-import { type Ajustes, leerAjustes } from "../ajustes";
+import { type Ajustes, eurosPorCreditoDe, leerAjustes } from "../ajustes";
 import { db, type Ejecutor } from "../db/cliente";
 import { assistantRuns, type FilaApunte, type FilaEjecucionAsistente, usageLedger } from "../db/esquema";
 import { exigirPresupuestoDisponible, versionDeSello } from "../presupuesto/reserva";
@@ -88,7 +88,7 @@ export async function reservarEjecucion(datos: NuevaEjecucion): Promise<Ejecucio
         model: datos.modelo,
         entryType: "reserva",
         credits: datos.creditos,
-        amountEur: datos.creditos * ajustes.eurosPorCredito,
+        amountEur: datos.creditos * eurosPorCreditoDe(ajustes, datos.proveedor),
         informed: false,
         priceVersion: versionDeSello(datos.sello),
         priceStamp: datos.sello,
@@ -191,6 +191,8 @@ async function apuntarCierre(
     priceVersion: reserva.priceVersion,
     priceStamp: reserva.priceStamp,
   };
+  // Con el cambio del proveedor que cobra: mezclar créditos de dos proveedores en un solo euro no significa nada.
+  const euros = eurosPorCreditoDe(ajustes, comun.provider);
   if (!apuntes.some((a) => a.entryType === "consumo")) {
     await tx
       .insert(usageLedger)
@@ -198,7 +200,7 @@ async function apuntarCierre(
         ...comun,
         entryType: "consumo",
         credits: creditos,
-        amountEur: creditos * ajustes.eurosPorCredito,
+        amountEur: creditos * euros,
         informed: creditosInformados !== null,
         note: motivo,
       })
@@ -211,7 +213,7 @@ async function apuntarCierre(
         ...comun,
         entryType: "liberacion",
         credits: -reserva.credits,
-        amountEur: -reserva.credits * ajustes.eurosPorCredito,
+        amountEur: -reserva.credits * euros,
         informed: false,
         note: "Liberación de la reserva al cerrar la llamada al asistente.",
       })

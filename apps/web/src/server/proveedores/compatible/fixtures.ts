@@ -52,7 +52,13 @@ export const CHAT_200 = {
   id: "chatcmpl-grabada",
   object: "chat.completion",
   model: "glm5.3-flash",
-  choices: [{ index: 0, message: { role: "assistant", content: "on a rooftop at dawn, looking at the camera" }, finish_reason: "stop" }],
+  choices: [
+    {
+      index: 0,
+      message: { role: "assistant", content: "on a rooftop at dawn, looking at the camera" },
+      finish_reason: "stop",
+    },
+  ],
   usage: { prompt_tokens: 57, completion_tokens: 433, completion_tokens_details: { reasoning_tokens: 407 } },
 };
 

@@ -183,6 +183,13 @@
       "when": 1790563549464,
       "tag": "0025_proveedores_compatibles",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1790564508674,
+      "tag": "0026_mapa_de_modelos",
+      "breakpoints": true
     }
   ]
 }

@@ -1,15 +1,15 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { PROVEEDORES_PUBLICOS } from "@/lib/boveda";
 import { CAPACIDAD_DE_TIPO, type ModeloVista } from "@/lib/catalogo";
+import { mensajeDeFalloDeProveedor } from "@/lib/diagnostico-proveedor";
 import {
   type IntentoDeVoz,
   mensajeDeCambioDeProveedor,
   mensajeDeFalloDeVoz,
   sugerenciaDeReserva,
 } from "@/lib/diagnostico-voz";
-import { mensajeDeFalloDeProveedor } from "@/lib/diagnostico-proveedor";
 import { type ParametrosVoz, parametrosVozDe } from "@/lib/voz";
-import { leerAjustes } from "../ajustes";
+import { eurosPorCreditoDe, leerAjustes } from "../ajustes";
 import { usarCredencialValida } from "../boveda/credenciales";
 import { hechosDePersonajeCitado, parametrosDeControles } from "../controles/hechos";
 import { evaluar, frenosQueGatean } from "../controles/motor";
@@ -439,7 +439,7 @@ async function relevoDeVoz(fila: FilaTrabajo, error: unknown, h: Herramientas): 
       model: alternativa.modelo.modelo,
       priceStamp: alternativa.precio.sello,
       credits: autorizada.creditos,
-      amountEur: autorizada.creditos * (await leerAjustes()).eurosPorCredito,
+      amountEur: autorizada.creditos * eurosPorCreditoDe(await leerAjustes(), alternativa.modelo.proveedor),
     })
     .where(and(eq(usageLedger.jobId, cambiada.id), eq(usageLedger.entryType, "reserva")));
   let preparado: Preparado;
@@ -506,17 +506,14 @@ async function tratarFalloDeLlamada(
           [...previos, { proveedor: fila.provider, modelo: fila.model, codigo, cobro: "sin-cobro" }],
           sugerenciaDeReserva(previos.length > 0 || (await alternativaDeVoz(fila.userId, fila.provider)) !== null),
         )
-      : mensajeDeFalloDeProveedor(
-          ENCABEZADO_DE_TRABAJO[fila.kind],
-          [
-            {
-              proveedor: PROVEEDORES_PUBLICOS[fila.provider].nombre,
-              modelo: fila.model,
-              codigo,
-              cobro: "sin-cobro",
-            },
-          ],
-        );
+      : mensajeDeFalloDeProveedor(ENCABEZADO_DE_TRABAJO[fila.kind], [
+          {
+            proveedor: PROVEEDORES_PUBLICOS[fila.provider].nombre,
+            modelo: fila.model,
+            codigo,
+            cobro: "sin-cobro",
+          },
+        ]);
     return cerrarSinCoste(fila, error.motivo, mensaje);
   }
   const nombre = PROVEEDORES_PUBLICOS[fila.provider].nombre;

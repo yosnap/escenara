@@ -16,7 +16,7 @@ import {
   type ProyectoVista,
   puedeAprobarse,
 } from "@/lib/proyectos";
-import { type Ajustes, leerAjustes } from "../ajustes";
+import { type Ajustes, eurosPorCreditoDe, leerAjustes } from "../ajustes";
 import type { HechosEscena, ParametrosControles } from "../controles/contrato";
 import { REGLAS_VERSION } from "../controles/contrato";
 import { parametrosDeControles } from "../controles/hechos";
@@ -111,7 +111,12 @@ export function estimarEscena(escena: FilaEscena, elecciones: EleccionesDelPlan,
     creditosFotograma,
     creditosAnimacion,
     creditos,
-    euros: creditos * ajustes.eurosPorCredito,
+    // Cada mitad se convierte con el cambio **de su** proveedor y luego se suman los euros: sumar primero los
+    // créditos de dos proveedores distintos y multiplicar por una sola cifra daría un importe inventado.
+    euros:
+      (creditosFotograma * eurosPorCreditoDe(ajustes, fotograma.modelo.proveedor) +
+        creditosAnimacion * eurosPorCreditoDe(ajustes, animacion.modelo.proveedor)) *
+      (1 + margen / 100),
     modeloFotograma: fotograma.modelo.nombre,
     modeloAnimacion: animacion.modelo.nombre,
     // Los segundos que se estiman son los que se van a pedir: la duración del proyecto (que la escena copia) si
@@ -217,7 +222,8 @@ export function planDeEscenas(
   const plan: PlanVista = {
     creditosAsistente,
     totalCreditos,
-    totalEuros: totalCreditos * ajustes.eurosPorCredito,
+    // Se suman los **euros** ya calculados de cada escena, no sus créditos: pueden ser de proveedores distintos.
+    totalEuros: estimables.reduce((suma, e) => suma + (e.estimacion?.euros ?? 0), 0),
     presupuestoCreditos: proyecto.authorizedCredits,
     escenasSinEstimacion: escenasVista.length - estimables.length,
     afirmacionesPorVerificar: porVerificar.length,

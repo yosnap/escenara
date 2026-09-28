@@ -66,6 +66,7 @@ export * from "./esquema-boveda";
 export * from "./esquema-catalogo";
 export * from "./esquema-controles";
 export * from "./esquema-generacion";
+export * from "./esquema-mapa";
 export * from "./esquema-personajes";
 export * from "./esquema-presets";
 export * from "./esquema-presupuesto";

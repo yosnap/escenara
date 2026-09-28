@@ -18,7 +18,7 @@ export type ProveedorBoveda = (typeof PROVEEDORES)[number];
  * es un servicio concreto sino el género «compatible con la API de OpenAI». Cuál era se guarda en
  * `provider_name`, porque el enum no puede crecer con cada servicio que alguien dé de alta.
  */
-export const PROVEEDORES_APUNTE = [...PROVEEDORES, "compatible"] as const;
+export const PROVEEDORES_APUNTE = [...PROVEEDORES, "compatible", "local"] as const;
 export type Proveedor = (typeof PROVEEDORES_APUNTE)[number];
 
 /** `true` solo para los proveedores de la bóveda: es lo que decide si se puede cobrar con una clave del usuario. */
@@ -60,6 +60,14 @@ export const PROVEEDORES_PUBLICOS: Record<Proveedor, ProveedorPublico> = {
     urlClave: "https://elevenlabs.io/app/settings/api-keys",
     etiquetaUrlClave: "elevenlabs.io · Settings › API keys",
     ayuda: "Empieza por «sk_» y es una cadena larga. Con una clave restringida basta el permiso de «Text to Speech».",
+  },
+  local: {
+    id: "local",
+    nombre: "Esta instalación",
+    para: "Lo que se hace en el propio servidor, sin clave y sin coste: hoy, los subtítulos.",
+    urlClave: "/admin/ajustes",
+    etiquetaUrlClave: "Admin › Ajustes",
+    ayuda: "No necesita clave: lo configura quien administra la instalación.",
   },
   compatible: {
     id: "compatible",

@@ -1,7 +1,7 @@
 import { and, eq, isNull, type SQL, sql } from "drizzle-orm";
 import type { Proveedor } from "@/lib/boveda";
 import { formatearCreditos } from "@/lib/generacion";
-import { type Ajustes, leerAjustes } from "../ajustes";
+import { type Ajustes, eurosPorCreditoDe, leerAjustes } from "../ajustes";
 import { db, type Ejecutor } from "../db/cliente";
 import { type FilaApunte, type FilaTrabajo, generationJobs, usageLedger } from "../db/esquema";
 import { ErrorGeneracion } from "../generacion/errores";
@@ -107,7 +107,7 @@ export async function reservar(tx: Ejecutor, datos: DatosReserva, ajustes: Ajust
         model: datos.modelo,
         entryType: "reserva",
         credits: datos.creditos,
-        amountEur: datos.creditos * ajustes.eurosPorCredito,
+        amountEur: datos.creditos * eurosPorCreditoDe(ajustes, datos.proveedor),
         informed: false,
         priceVersion: versionDeSello(datos.sello),
         priceStamp: datos.sello,
@@ -177,6 +177,9 @@ export async function apuntarCierre(
     priceVersion: reserva.priceVersion,
     priceStamp: reserva.priceStamp,
   };
+  // El euro se calcula con el cambio **del proveedor que cobra**: los créditos de dos proveedores no son la
+  // misma unidad y convertirlos con una cifra ajena daría un importe inventado.
+  const euros = eurosPorCreditoDe(ajustes, comun.provider);
   if (!apuntes.has("consumo")) {
     await tx
       .insert(usageLedger)
@@ -184,7 +187,7 @@ export async function apuntarCierre(
         ...comun,
         entryType: "consumo",
         credits: creditos,
-        amountEur: creditos * ajustes.eurosPorCredito,
+        amountEur: creditos * euros,
         informed: creditosInformados !== null,
         note: motivo,
       })
@@ -197,7 +200,7 @@ export async function apuntarCierre(
         ...comun,
         entryType: "liberacion",
         credits: -reserva.credits,
-        amountEur: -reserva.credits * ajustes.eurosPorCredito,
+        amountEur: -reserva.credits * euros,
         informed: false,
         note: "Liberación de la reserva al conciliar el trabajo.",
       })
@@ -360,7 +363,7 @@ export async function ajustarGasto(
       model: trabajo.model,
       entryType: "ajuste",
       credits: delta,
-      amountEur: delta * ajustes.eurosPorCredito,
+      amountEur: delta * eurosPorCreditoDe(ajustes, trabajo.provider),
       informed: true,
       note:
         delta === 0

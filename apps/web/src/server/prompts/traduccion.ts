@@ -56,6 +56,8 @@ export interface EstadoTraduccion {
   comprobado: string;
   sello: string;
   nombreModelo: string;
+  /** Proveedor que cobraría esa traducción: es con cuyo cambio se convierte a euros. */
+  proveedor: string;
 }
 
 export const TRADUCCION_APAGADA: EstadoTraduccion = {
@@ -64,6 +66,7 @@ export const TRADUCCION_APAGADA: EstadoTraduccion = {
   comprobado: "",
   sello: "",
   nombreModelo: "",
+  proveedor: "",
 };
 
 /**
@@ -94,6 +97,7 @@ export async function estadoDeTraduccion(): Promise<EstadoTraduccion> {
       comprobado: precio.comprobado,
       sello: precio.sello,
       nombreModelo: modelo.nombre,
+      proveedor: modelo.proveedor,
     };
   } catch (error) {
     // Traducción encendida sin modelo utilizable: se dice en la estimación en lugar de sorprender al confirmar.

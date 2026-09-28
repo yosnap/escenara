@@ -1,4 +1,4 @@
-import { beforeAll, afterAll, beforeEach, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from "bun:test";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { loadEnvConfig } from "@next/env";
@@ -165,7 +165,12 @@ describe.skipIf(!hayBaseDeDatos)("reserva de las llamadas de texto", () => {
     // Dos servicios compatibles, en orden: el primero con cuatro modelos, el segundo de último recurso.
     await guardarCompatible(
       ana.id,
-      { nombre: "NaN builders", urlBase: BASE_NAN, clave: CLAVE_NAN, modelos: ["gemma4", "deepseek-v4-flash", "glm5.3-flash"] },
+      {
+        nombre: "NaN builders",
+        urlBase: BASE_NAN,
+        clave: CLAVE_NAN,
+        modelos: ["gemma4", "deepseek-v4-flash", "glm5.3-flash"],
+      },
       buscar,
     );
     await guardarCompatible(
@@ -191,7 +196,12 @@ describe.skipIf(!hayBaseDeDatos)("reserva de las llamadas de texto", () => {
     // Todos los servicios vuelven a estar válidos: un test que marque uno inválido no puede contaminar al siguiente.
     await guardarCompatible(
       ana.id,
-      { nombre: "NaN builders", urlBase: BASE_NAN, clave: CLAVE_NAN, modelos: ["gemma4", "deepseek-v4-flash", "glm5.3-flash"] },
+      {
+        nombre: "NaN builders",
+        urlBase: BASE_NAN,
+        clave: CLAVE_NAN,
+        modelos: ["gemma4", "deepseek-v4-flash", "glm5.3-flash"],
+      },
       buscar,
     );
     await guardarCompatible(
@@ -226,10 +236,7 @@ describe.skipIf(!hayBaseDeDatos)("reserva de las llamadas de texto", () => {
     respuestasPorModelo = { gemma4: { cuerpo: CHAT_401, estado: 401 } };
     await generar("una escena que traduce el segundo servicio");
     // No se han probado los demás modelos de NaN builders: la clave no sirve para ninguno.
-    expect(llamadas).toEqual([
-      "api.nan.builders/gemma4",
-      "api.ejemplo-compatible.dev/modelo-de-ultimo-recurso",
-    ]);
+    expect(llamadas).toEqual(["api.nan.builders/gemma4", "api.ejemplo-compatible.dev/modelo-de-ultimo-recurso"]);
     const guardados = await listarCompatibles(ana.id);
     expect(guardados.find((p) => p.nombre === "NaN builders")?.estado).toBe("invalida");
     expect(guardados.find((p) => p.nombre === "Otro servicio")?.estado).toBe("valida");

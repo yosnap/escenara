@@ -18,7 +18,18 @@ import { users } from "./esquema-auth";
  * (`openai_providers`). En los apuntes de gasto y en las ejecuciones del asistente, cuál de ellos era se guarda
  * en `provider_name`, porque el enum no puede crecer con cada servicio que alguien añada.
  */
-export const proveedorCredencial = pgEnum("credential_provider", ["kie", "google", "elevenlabs", "compatible"]);
+/**
+ * `local` (0.21.1) tampoco es un proveedor de la bóveda: es «esta máquina», y existe para que el mapa de modelos
+ * pueda tener una entrada que **no cuesta nada ni necesita clave** (hoy, la transcripción con el binario de la
+ * instalación). Nunca aparece en un apunte de gasto con créditos distintos de 0.
+ */
+export const proveedorCredencial = pgEnum("credential_provider", [
+  "kie",
+  "google",
+  "elevenlabs",
+  "compatible",
+  "local",
+]);
 export const estadoCredencial = pgEnum("credential_status", ["valida", "invalida"]);
 
 /**

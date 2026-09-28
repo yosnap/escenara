@@ -55,7 +55,14 @@ describe("URL base: protección frente a SSRF", () => {
 describe("la clave nunca sale en un error", () => {
   test("ni cuando el proveedor la repite dentro del suyo", async () => {
     const buscar: Buscador = async () => respuestaGrabada(CHAT_401, 401);
-    const error = await pedirChat({ urlBase: BASE, clave: CLAVE, modelo: "gemma4", instrucciones: "i", entrada: "e", buscar })
+    const error = await pedirChat({
+      urlBase: BASE,
+      clave: CLAVE,
+      modelo: "gemma4",
+      instrucciones: "i",
+      entrada: "e",
+      buscar,
+    })
       .then(() => null)
       .catch((e: unknown) => e as ErrorCompatible);
     expect(error).toBeInstanceOf(ErrorCompatible);
@@ -101,9 +108,27 @@ describe("la causa concreta sí llega, saneada", () => {
     const mensaje = mensajeDeFalloDeProveedor(
       "No se ha podido traducir tu texto al inglés",
       [
-        { proveedor: "KIE.ai", modelo: "gpt-5-6-sol", codigo: "tiempo-agotado", cobro: "se-desconoce", detalle: "tras 90 s" },
-        { proveedor: "NaN builders", modelo: "gemma4", codigo: "limite", cobro: "sin-cobro", detalle: "máximo 5 peticiones simultáneas" },
-        { proveedor: "NaN builders", modelo: "deepseek-v4-flash", codigo: "sin-credito", cobro: "sin-cobro", detalle: "la cuota se repone el 2026-10-01" },
+        {
+          proveedor: "KIE.ai",
+          modelo: "gpt-5-6-sol",
+          codigo: "tiempo-agotado",
+          cobro: "se-desconoce",
+          detalle: "tras 90 s",
+        },
+        {
+          proveedor: "NaN builders",
+          modelo: "gemma4",
+          codigo: "limite",
+          cobro: "sin-cobro",
+          detalle: "máximo 5 peticiones simultáneas",
+        },
+        {
+          proveedor: "NaN builders",
+          modelo: "deepseek-v4-flash",
+          codigo: "sin-credito",
+          cobro: "sin-cobro",
+          detalle: "la cuota se repone el 2026-10-01",
+        },
       ],
       "",
     );
@@ -120,7 +145,11 @@ describe("la causa concreta sí llega, saneada", () => {
 
 describe("lectura de las respuestas grabadas", () => {
   test("GET /models devuelve los identificadores", async () => {
-    const modelos = await listarModelos({ urlBase: BASE, clave: CLAVE, buscar: async () => respuestaGrabada(MODELOS_200) });
+    const modelos = await listarModelos({
+      urlBase: BASE,
+      clave: CLAVE,
+      buscar: async () => respuestaGrabada(MODELOS_200),
+    });
     expect(modelos).toContain("gemma4");
     expect(modelos).toContain("glm5.3-flash");
     expect(modelos).toHaveLength(14);
