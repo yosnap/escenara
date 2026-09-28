@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { EVALUACION_LISTA, REGLAS_VERSION } from "@/lib/controles";
+import { PRODUCTO_ELEGIDO_VACIO } from "@/lib/productos";
 import type { EscenaVista, EstimacionEscena, PlanVista } from "@/lib/proyectos";
 import { DIRECCION_SIN_ELEGIR, impedimentosDelPlan } from "@/lib/proyectos";
 import { TablaPlan } from "./proyecto";
@@ -34,6 +35,7 @@ const escena = (id: string, orden: number, est: EstimacionEscena | null): Escena
   orden,
   texto: "",
   direccion: DIRECCION_SIN_ELEGIR,
+  producto: PRODUCTO_ELEGIDO_VACIO,
   referenciaIdentidad: null,
   accion: `Escena de prueba ${orden}`,
   segundos: 4,

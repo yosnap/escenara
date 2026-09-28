@@ -2,6 +2,7 @@ import { ProgresoEtapas } from "@/components/ui/feedback";
 import { InsigniaAfirmacion, InsigniaEstadoEscena, InsigniaEstadoProyecto, TablaPlan } from "@/components/ui/proyecto";
 import { EVALUACION_LISTA, REGLAS_VERSION } from "@/lib/controles";
 import { etapasDeTrabajo, textoDeCancelacion } from "@/lib/produccion";
+import { PRODUCTO_ELEGIDO_VACIO } from "@/lib/productos";
 import {
   DIRECCION_SIN_ELEGIR,
   ESTADOS_AFIRMACION,
@@ -24,6 +25,7 @@ import { Muestra, Seccion } from "../seccion";
 
 const escena = (id: string, orden: number, accion: string, creditos: number | null): EscenaVista => ({
   direccion: DIRECCION_SIN_ELEGIR,
+  producto: PRODUCTO_ELEGIDO_VACIO,
   referenciaIdentidad: null,
   id,
   proyectoId: "p1",

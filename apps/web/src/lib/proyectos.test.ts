@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { PRODUCTO_ELEGIDO_VACIO } from "@/lib/productos";
 import { EVALUACION_LISTA, REGLAS_VERSION } from "./controles";
 import {
   DIRECCION_SIN_ELEGIR,
@@ -35,6 +36,7 @@ const estimacion = (creditos: number, comprobado = "2026-09-27"): EstimacionEsce
 
 const escena = (id: string, orden: number, accion: string, est: EstimacionEscena | null): EscenaVista => ({
   direccion: DIRECCION_SIN_ELEGIR,
+  producto: PRODUCTO_ELEGIDO_VACIO,
   referenciaIdentidad: null,
   id,
   proyectoId: "p1",
