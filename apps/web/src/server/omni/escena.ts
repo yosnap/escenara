@@ -20,6 +20,7 @@ import type {
 import { decidir } from "../decisiones/reglas";
 import { dirigirClipPara, familiaDe } from "../direccion/clip";
 import { direccionDeLaEscena } from "../direccion/escena";
+import { conHojaDeIdentidad } from "../direccion/hoja-identidad";
 import {
   exigirAvisoUmbral,
   exigirClaveIdempotencia,
@@ -371,7 +372,14 @@ export async function producirEscenaHablada(
    * Con identidad registrada la cara la pone el registro del proveedor, así que no hay referencia que elegir
    * ni nada que comparar: se apunta `vistas`, que es con lo que se registró el personaje.
    */
-  const elegido = conIdentidad ? null : await referenciasParaGenerar(personaje, modelo.parametros.maximoReferencias);
+  const elegido = conIdentidad
+    ? null
+    : await referenciasParaGenerar(
+        personaje,
+        modelo.parametros.maximoReferencias,
+        // La hoja 3×3 cuenta igual que en el resto: la elegida por defecto, o la prueba que activó el usuario.
+        conHojaDeIdentidad(personaje, escena.id),
+      );
   const referencias = elegido?.referencias ?? [];
   const parametros = adaptador.montarEntrada(modelo, {
     escena: promptFinal,

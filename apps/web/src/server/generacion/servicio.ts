@@ -538,7 +538,9 @@ export async function crearFotograma(
   const base = peticion.seisC
     ? {
         escena: componerSeisC({ ...peticion.seisC, contextoLibre: escenaEnIngles }, peticion.cambiarSolo),
-        compuesto: null,
+        // El texto no sale de la plantilla, pero la plantilla se validó y es la que aprobó la escena: se sigue
+        // registrando para que la aprobación y la auditoría de «con qué versión se hizo» no queden en nulo.
+        compuesto: original.compuesto,
       }
     : escenaEnIngles === prompt
       ? original
