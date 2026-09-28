@@ -62,9 +62,11 @@ export function TarjetaEscenaVoz({
           salga sin diálogo: si no, se oirán dos voces diciendo lo mismo.
         </Aviso>
       )}
+      {/* Salió bien, pero con el otro proveedor: se dice en qué cuenta se ha gastado y por qué. */}
+      {escena.avisoProveedor && !escena.trabajoEnMarcha && <Aviso tono="info">{escena.avisoProveedor}</Aviso>}
       {/* El fallo es **de la voz**, no de la escena: su clip puede estar perfectamente producido. */}
       {escena.fallo && !escena.trabajoEnMarcha && (
-        <Aviso tono="error">La última vez que se generó la voz de esta escena falló: {escena.fallo}</Aviso>
+        <Aviso tono="error">La última vez que se generó la voz de esta escena falló. {escena.fallo}</Aviso>
       )}
       {escena.trabajoEnMarcha && (
         <Aviso tono="info">La voz de esta escena está en marcha: {escena.trabajoEnMarcha}.</Aviso>

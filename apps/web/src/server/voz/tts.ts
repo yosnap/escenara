@@ -16,12 +16,12 @@ import {
   exigirRitmo,
   proveedorDeCredencial,
 } from "../generacion/comprobaciones";
-import { ErrorGeneracion } from "../generacion/errores";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
-import { type EleccionDeTrabajo, elegirParaTipo, exigirSelloVigente } from "../generacion/precios";
+import { exigirSelloVigente } from "../generacion/precios";
 import { condicionEnCurso } from "../generacion/trabajos";
 import type { Actor } from "../media/servicio";
 import { acotarCoste } from "../presupuesto/acotar";
+import { type EleccionDeVoz, eleccionDeVozDe } from "./eleccion";
 import { vozDelProyecto } from "./proyecto";
 
 /**
@@ -57,9 +57,12 @@ export interface VozEncolada {
   nueva: boolean;
 }
 
-/** Modelo de voz y precio con el que se trabajaría. Sin precio registrado, esto lanza y no se estima nada. */
-export function eleccionDeVoz(modelo?: string | null): Promise<EleccionDeTrabajo> {
-  return elegirParaTipo("voz", modelo);
+/**
+ * Modelo de voz y precio con los que se trabajaría **para este usuario**, con su proveedor de reserva si lo hay.
+ * Sin modelo con precio o sin credencial de su proveedor, esto lanza con el motivo y no se estima nada.
+ */
+export function eleccionDeVoz(usuarioId: string, modelo?: string | null): Promise<EleccionDeVoz> {
+  return eleccionDeVozDe(usuarioId, modelo);
 }
 
 /**
@@ -152,9 +155,12 @@ export async function generarVozDeEscena(
   const voz = await exigirVozDisponible(proyecto);
   const dialogo = dialogoDeLaEscena(escena);
 
-  const eleccion = await eleccionDeVoz(modeloPedido ?? voz.modelo);
+  const opciones = await eleccionDeVoz(actor.id, modeloPedido);
+  const eleccion = opciones.elegida;
   const { modelo, precio } = eleccion;
-  const creditos = Math.ceil(precio.creditos);
+  // Lo que se confirma y lo que se aparta es el **mayor** de los dos precios: así un cambio automático al
+  // proveedor de reserva nunca gasta más de lo que el usuario tenía delante (`voz/eleccion.ts`).
+  const creditos = opciones.creditos;
   exigirSelloVigente(confirmacion.selloEstimacion, precio.sello, true);
   exigirConfirmacion(confirmacion.creditosConfirmados, creditos);
   await exigirAvisoUmbral(creditos, confirmacion.avisoUmbralAceptado);
@@ -193,12 +199,12 @@ export async function generarVozDeEscena(
 
   // A partir de aquí ya no queda ninguna regla: el motor las ha aplicado todas.
   const proveedor = proveedorDeCredencial(modelo);
-  if (proveedor !== voz.proveedor) {
-    throw new ErrorGeneracion(
-      409,
-      "El modelo de voz de esta instalación ha cambiado de proveedor desde que se fijó la voz del proyecto. Vuelve a elegir la voz antes de generar.",
-    );
-  }
+  /**
+   * La voz fijada en el proyecto guarda con qué proveedor se eligió. Que ahora se envíe a otro **no es un
+   * problema**: las voces son las mismas (los identificadores de ElevenLabs), y el cambio automático existe
+   * precisamente para que una avería de un proveedor no deje el proyecto parado. Lo que sí se hace es dejarlo
+   * escrito en el trabajo, para que después se pueda decir en qué cuenta se gastó.
+   */
   const firma = firmaDeVoz("pista", voz, escena.scriptText);
   const { fila, nueva } = await encolar({
     usuarioId: actor.id,

@@ -48,9 +48,8 @@ const { guardarAjustes, leerAjustes } = await import("../ajustes");
 const { guardarCredencial } = await import("../boveda/credenciales");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
-const { generationJobs, media, musicTracks, projects, rateLimits, scenes, usageLedger, users } = await import(
-  "../db/esquema"
-);
+const { generationJobs, media, musicTracks, projects, providerCredentials, rateLimits, scenes, usageLedger, users } =
+  await import("../db/esquema");
 const { crearMedio } = await import("../media/servicio");
 const { olvidarSaldos } = await import("../generacion/estimacion");
 const { consultarTrabajo } = await import("../generacion/seguimiento");
@@ -65,6 +64,7 @@ type Buscador = import("../proveedores/codigos").Buscador;
 type Herramientas = import("../generacion/herramientas").Herramientas;
 
 const CLAVE = "sk-voz-clave-de-kie-inventada-aaaaaaaa";
+const CLAVE_ELEVEN = "sk_clave-de-elevenlabs-inventada-bbbbbbbb";
 const MODELO_VOZ = "elevenlabs/text-to-speech-multilingual-v2";
 
 /**
@@ -87,9 +87,55 @@ const tareas = new Map<string, { state: string; urls?: string[]; creditos?: numb
 const enviados = new Map<string, Record<string, unknown>>();
 let siguienteTarea = 0;
 
+/**
+ * Lo que responden los proveedores simulados en cada test. Se toca desde los tests del cambio automático: es la
+ * forma de provocar un rechazo probado (que sí permite cambiar de proveedor) sin llamar a nadie.
+ */
+const respuestas = {
+  /** Código HTTP del `createTask` de KIE; 200 es el camino normal. */
+  kieCrearTarea: 200,
+  /** Código HTTP de la generación de ElevenLabs. */
+  elevenGenerar: 200,
+};
+
+/** Alineación por carácter tal como la devolvió la API real: una entrada por carácter en las tres listas. */
+const alineacionDe = (texto: string) => ({
+  characters: [...texto],
+  character_start_times_seconds: [...texto].map((_, i) => Math.round(i * 0.05 * 100) / 100),
+  character_end_times_seconds: [...texto].map((_, i) => Math.round((i + 1) * 0.05 * 100) / 100),
+});
+
 const buscar: Buscador = async (url, opciones) => {
+  // ── ElevenLabs: síncrono, devuelve el audio y sus marcas en la misma respuesta.
+  if (url.includes("api.elevenlabs.io")) {
+    if (url.includes("/voices")) {
+      return new Response(JSON.stringify({ voices: [{ voice_id: "EXAVITQu4vr4xnSDxMaL" }] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    if (respuestas.elevenGenerar !== 200) {
+      return new Response(JSON.stringify({ detail: "no" }), { status: respuestas.elevenGenerar });
+    }
+    const texto = String((JSON.parse(String(opciones?.body ?? "{}")) as { text?: unknown }).text ?? "");
+    enviados.set(`eleven_${++siguienteTarea}`, { voice: url.split("/text-to-speech/")[1]?.split("/")[0] ?? "", texto });
+    return new Response(
+      JSON.stringify({
+        audio_base64: Buffer.from(MP3).toString("base64"),
+        normalized_alignment: alineacionDe(texto),
+      }),
+      { status: 200, headers: { "Content-Type": "application/json", "character-cost": "22", "request-id": "req_1" } },
+    );
+  }
   if (url.includes("/chat/credit")) return sobre(1_000_000);
   if (url.includes("createTask")) {
+    // Un 401 de KIE es un **rechazo probado**: se sabe que no ha creado tarea y, por tanto, que no ha cobrado.
+    if (respuestas.kieCrearTarea !== 200) {
+      return new Response(JSON.stringify({ code: respuestas.kieCrearTarea, msg: "no" }), {
+        status: respuestas.kieCrearTarea,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
     const taskId = `voz_${++siguienteTarea}`;
     const cuerpo = JSON.parse(String(opciones?.body ?? "{}")) as { input?: Record<string, unknown> };
     enviados.set(taskId, cuerpo.input ?? {});
@@ -218,6 +264,8 @@ describe.skipIf(!hayBaseDeDatos)("voz y subtítulos de un proyecto", () => {
     olvidarSaldos();
     tareas.clear();
     enviados.clear();
+    respuestas.kieCrearTarea = 200;
+    respuestas.elevenGenerar = 200;
     await db().delete(generationJobs).where(eq(generationJobs.userId, ana.id));
     await db().delete(usageLedger).where(eq(usageLedger.userId, ana.id));
     await db().delete(projects).where(eq(projects.userId, ana.id));
@@ -1044,6 +1092,119 @@ describe.skipIf(!hayBaseDeDatos)("voz y subtítulos de un proyecto", () => {
     expect((await filaDeEscena(primera.id)).lastFailureReason).toBe(suyo);
     // El fallo anterior de la voz deja de mostrarse: lo último que le ha pasado es que salió bien.
     expect((await estadoDeVozDe()).escenas[0]?.fallo).toBeNull();
+  });
+
+  // ── Proveedor de voz de reserva y cambio automático (0.21.0) ───────────────────────────────────────────
+
+  /** Deja al usuario con clave de ElevenLabs además de la de KIE, o se la quita. */
+  async function conClaveDeElevenLabs(tenerla: boolean): Promise<void> {
+    if (tenerla) await guardarCredencial(ana.id, "elevenlabs", CLAVE_ELEVEN, buscar);
+    else await db().delete(providerCredentials).where(eq(providerCredentials.provider, "elevenlabs"));
+    olvidarSaldos();
+  }
+
+  /** Lleva la voz de una escena hasta donde llegue y devuelve su trabajo, sin exigir que haya salido bien. */
+  async function intentarVoz(escenaId: string, estado: VozProyectoVista) {
+    const pedida = await accion({ accion: "generar-voz", escenaId, ...confirmacion(estado) });
+    expect(pedida.estado).toBe(200);
+    await enviarEncolados(h, `worker-voz-${crypto.randomUUID()}`);
+    return await ultimoTrabajoDeVoz(escenaId);
+  }
+
+  test("KIE falla sin clave de ElevenLabs: el mensaje dice qué falló, que no se ha cobrado y qué hacer", async () => {
+    await conClaveDeElevenLabs(false);
+    const estado = await conVozFijada();
+    const [primera] = await escenasDelProyecto();
+    if (!primera) throw new Error("Falta la escena de prueba.");
+    respuestas.kieCrearTarea = 401;
+
+    const trabajo = await intentarVoz(primera.id, estado);
+    expect(trabajo?.state).toBe("fallido");
+    // No se ha cambiado de proveedor: no había a quién.
+    expect(trabajo?.provider).toBe("kie");
+    const mensaje = trabajo?.errorMessage ?? "";
+    // Qué falló: proveedor, modelo y causa concreta.
+    expect(mensaje).toContain("KIE.ai");
+    expect(mensaje).toContain(MODELO_VOZ);
+    expect(mensaje).toContain("ha rechazado la credencial");
+    // Si se ha cobrado o no.
+    expect(mensaje).toContain("No se te ha cobrado nada");
+    // Qué puede hacer, y que existe un proveedor de reserva que no tiene configurado.
+    expect(mensaje).toContain("Revisa tu clave");
+    expect(mensaje).toContain("ElevenLabs");
+    // Y nada genérico.
+    expect(mensaje).not.toContain("vuelve a intentarlo");
+  });
+
+  test("KIE falla con clave de ElevenLabs: se cambia solo y se avisa de en qué cuenta se ha gastado", async () => {
+    await conClaveDeElevenLabs(true);
+    const estado = await conVozFijada();
+    const [primera] = await escenasDelProyecto();
+    if (!primera) throw new Error("Falta la escena de prueba.");
+    respuestas.kieCrearTarea = 401;
+
+    const trabajo = await intentarVoz(primera.id, estado);
+    // El trabajo es el mismo, con otro proveedor: ni reserva nueva ni confirmación nueva.
+    expect(trabajo?.provider).toBe("elevenlabs");
+    expect(trabajo?.state).toBe("listo");
+    const aviso = trabajo?.errorMessage ?? "";
+    expect(aviso).toContain("KIE.ai");
+    expect(aviso).toContain("ha rechazado la credencial");
+    expect(aviso).toContain("no se te ha cobrado nada");
+    expect(aviso).toContain("La voz se ha generado con ElevenLabs");
+
+    // Y la pantalla lo enseña en la escena, no solo el servidor.
+    const despues = await estadoDeVozDe();
+    expect(despues.escenas[0]?.avisoProveedor).toContain("ElevenLabs");
+    expect(despues.escenas[0]?.audio).not.toBeNull();
+    // El coste apuntado es el que informó ElevenLabs (character-cost), no la estimación.
+    const consumo = (await apuntesDeGasto()).find((a) => a.entryType === "consumo");
+    // La reserva pasó a nombre de ElevenLabs al cambiar, así que el historial de gasto dice la verdad.
+    expect(consumo?.provider).toBe("elevenlabs");
+    expect(consumo?.credits).toBe(22);
+    expect((await apuntesDeGasto()).every((a) => a.provider === "elevenlabs")).toBe(true);
+    // Las marcas medidas se guardan como transcripción y proponen los subtítulos.
+    expect(despues.escenas[0]?.subtitulos.length).toBeGreaterThan(0);
+  });
+
+  test("fallan los dos: el mensaje cuenta los dos intentos, con su causa y su cobro", async () => {
+    await conClaveDeElevenLabs(true);
+    const estado = await conVozFijada();
+    const [primera] = await escenasDelProyecto();
+    if (!primera) throw new Error("Falta la escena de prueba.");
+    respuestas.kieCrearTarea = 401;
+    respuestas.elevenGenerar = 429;
+
+    const trabajo = await intentarVoz(primera.id, estado);
+    expect(trabajo?.state).toBe("fallido");
+    const mensaje = trabajo?.errorMessage ?? "";
+    // El primero, con su causa y su cobro.
+    expect(mensaje).toContain("KIE.ai");
+    expect(mensaje).toContain("ha rechazado la credencial");
+    // Qué se intentó después, con su causa y su cobro.
+    expect(mensaje).toContain("Se probó entonces con ElevenLabs");
+    expect(mensaje).toContain("ha pedido esperar por exceso de peticiones");
+    expect(mensaje).toContain("No se te ha cobrado nada");
+    // Y qué hacer, que es lo que toca para el último fallo.
+    expect(mensaje).toContain("Espera un minuto");
+  });
+
+  test("un fallo que NO prueba que KIE no cobró no cambia de proveedor y lo dice así", async () => {
+    await conClaveDeElevenLabs(true);
+    const estado = await conVozFijada();
+    const [primera] = await escenasDelProyecto();
+    if (!primera) throw new Error("Falta la escena de prueba.");
+    // 500: puede haber fallado después de aceptar el trabajo, así que no se sabe si ha cobrado.
+    respuestas.kieCrearTarea = 500;
+
+    const trabajo = await intentarVoz(primera.id, estado);
+    expect(trabajo?.provider).toBe("kie");
+    expect(trabajo?.state).toBe("desconocido");
+    const mensaje = trabajo?.errorMessage ?? "";
+    expect(mensaje).toContain("ha devuelto un error interno suyo");
+    expect(mensaje).toContain("No se sabe si te ha cobrado");
+    expect(mensaje).not.toContain("Se probó entonces");
+    expect(mensaje).toContain("Revisa el historial de tu cuenta en KIE.ai");
   });
 
   test("con el TTS apagado en el panel, la pantalla dice por qué y no ofrece gastar", async () => {

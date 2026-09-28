@@ -101,9 +101,45 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - **El fallo del transcriptor ya no revela la configuración de la máquina.** El mensaje interno lleva el binario y
   la ruta del modelo; ahora eso queda en el log y el usuario recibe una explicación sin detalles.
 
+#### Proveedor de voz de reserva · decisión firme del propietario
+
+- **El cambio de proveedor de voz es automático.** Si el proveedor principal rechaza la petición de forma que
+  **prueba que no ha cobrado** y tienes clave del de reserva, se envía al otro sin preguntar y se te dice después
+  en qué cuenta se ha pagado. Si el fallo **no** prueba que no haya cobrado (una avería suya, un corte de red),
+  no se cambia y no se reenvía nada: podrías pagar dos veces.
+
+#### Proveedor de voz de reserva · añadido
+
+- **ElevenLabs como proveedor de voz de reserva**, con **credencial propia del usuario** cifrada en la bóveda
+  igual que la de KIE. Su prueba de clave usa `GET /v1/voices`, no la suscripción, porque una clave restringida
+  al permiso de voz —la que conviene crear— responde `missing_permissions` en esa otra.
+- **Adaptador de ElevenLabs** según el contrato de ADR-0015, con su modelo `eleven_multilingual_v2` en el catálogo
+  y **precio medido**: 22 créditos de su plan por 79 caracteres, comprobado contra la API real el 2026-09-28.
+- **Los proveedores síncronos caben en la cola.** ElevenLabs devuelve el audio en la misma llamada, así que
+  `generarVoz` puede traer el resultado consigo y el trabajo se cierra en la misma pasada, por el camino de
+  cierre de siempre: mismo apunte de gasto, mismo medio en la biblioteca y mismos enganches de escena.
+- **Los subtítulos usan las marcas por carácter** que devuelve el proveedor junto al audio. Son medidas sobre lo
+  que acaba de generar, así que valen más que repartir el tiempo entre las frases a ojo. Se guardan como
+  transcripción y proponen los subtítulos **solo si nadie los ha corregido a mano**.
+- **La pantalla de voz dice con quién se genera**, con quién se cambiaría y, cuando el cambio ocurre, con quién se
+  generó de verdad y en qué cuenta se ha pagado.
+
+#### Proveedor de voz de reserva · cambiado
+
+- **Lo que confirmas es el mayor de los dos precios** cuando hay proveedor de reserva. Es lo único que cubre los
+  dos caminos sin interrumpirte a mitad de un envío que ya autorizaste, y hace que un cambio automático no pueda
+  gastar más de lo que tenías delante. Lo que se apunta como gastado es siempre lo que informe el proveedor que de
+  verdad haya cobrado.
+- **Al cambiar de proveedor, la reserva pasa a su nombre.** No se mueve ni un crédito —cubría a los dos—, pero el
+  historial de gasto deja de atribuirle a uno un cobro que hizo el otro.
+- **Todos los mensajes de error de la voz dicen qué falló de verdad** (proveedor, modelo y causa concreta), **si
+  se ha cobrado o no**, qué se intentó y qué puedes hacer. Se acabaron los «no se ha podido, vuelve a intentarlo».
+  El texto del proveedor, las rutas del servidor y la configuración de la máquina siguen sin salir nunca.
+
 ### Actualizar desde la 0.20.x
 
-- **Aplica la migración antes de arrancar el código nuevo**: `bun run db:backup` y luego `bun run db:migrate`. La
+- **Aplica las migraciones antes de arrancar el código nuevo**: `bun run db:backup` y luego `bun run db:migrate`.
+  La `0024` añade el valor `elevenlabs` al tipo de proveedor de credencial y no cambia ninguna fila. La
   `0023` añade el modo y la voz al proyecto, la voz, la transcripción y los subtítulos a cada escena, y crea
   `music_tracks` y `voice_samples`. Añade además el valor `voz` al tipo de trabajo de la cola. **No cambia nada de
   lo que ya había**: todos los proyectos existentes quedan en modo «voz del clip», que es exactamente como
@@ -112,8 +148,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
   la compilación de `whisper.cpp` en Linux, y FFmpeg (que ya hacía falta desde la 0.20.0). Sin él, la propuesta
   desde el texto del diálogo sigue funcionando.
 - **La pista de voz de pago viene apagada.** Para ofrecerla hay que encenderla en Admin › Ajustes › «Voz y
-  subtítulos» **y** medir y registrar el precio del modelo de voz en Admin › Modelos: sin precio no se estima ni se
-  gasta.
+  subtítulos». Además hace falta una clave del proveedor que la sirva: el modelo de voz de KIE sigue sin precio
+  registrado —y no respondió en la prueba real del 2026-09-28—, así que en la práctica la voz se genera con
+  **ElevenLabs**, cuya clave se añade en «Tu cuenta».
 
 ## [0.20.7] · 2026-09-28
 

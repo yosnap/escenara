@@ -100,6 +100,37 @@ export class ErrorCatalogo extends Error {
   }
 }
 
+/**
+ * Resultado de pedir una voz. `taskId` identifica la llamada y siempre está; `inmediata` solo lo traen los
+ * proveedores **síncronos**, que devuelven el audio en la misma respuesta.
+ *
+ * Que el audio venga en bytes y no en una URL es deliberado: una URL de descarga que no existe obligaría a
+ * inventar un almacén intermedio, y el camino de guardado de la cola ya sabe crear un medio a partir de un
+ * archivo. Lo único que cambia es de dónde salen los bytes.
+ */
+export interface VozPedida {
+  taskId: string;
+  inmediata?: {
+    audio: Uint8Array<ArrayBuffer>;
+    mime: string;
+    nombre: string;
+    /** Lo que el proveedor dice que ha costado; `null` si no lo informa. */
+    creditosInformados: number | null;
+    /** Marcas medidas sobre el audio generado, si el proveedor las da. */
+    marcas: MarcasDeVoz | null;
+  };
+}
+
+/**
+ * Marcas de tiempo medidas sobre el audio generado, por carácter. Valen más que repartir el tiempo entre las
+ * frases a ojo: son lo que de verdad se ha dicho y cuándo.
+ */
+export interface MarcasDeVoz {
+  caracteres: string[];
+  inicios: number[];
+  finales: number[];
+}
+
 /** Tarea del proveedor tal como la entiende Escenara. */
 export interface TareaProveedor {
   /** Estado tal cual lo informa el proveedor. */
@@ -246,10 +277,14 @@ export interface Adaptador {
   /** Crea la tarea de vídeo y devuelve su identificador. */
   generarVideo(peticion: PeticionAdaptador): Promise<string>;
   /**
-   * Crea la tarea de voz y devuelve su identificador (capacidad `tts`, 0.21.0). **Opcional**: un proveedor sin
-   * modelos de voz sigue siendo un adaptador válido, y un proyecto suyo solo puede usar la voz del clip.
+   * Pide la voz (capacidad `tts`, 0.21.0). **Opcional**: un proveedor sin modelos de voz sigue siendo un
+   * adaptador válido, y un proyecto suyo solo puede usar la voz del clip.
+   *
+   * Devuelve siempre un identificador de tarea, y **además el resultado cuando el proveedor es síncrono**
+   * (ElevenLabs contesta con el audio en la misma llamada, 0.21.0). Quien despacha decide qué hacer con cada
+   * caso; el adaptador no sabe nada de la cola.
    */
-  generarVoz?(peticion: PeticionAdaptador): Promise<string>;
+  generarVoz?(peticion: PeticionAdaptador): Promise<VozPedida>;
   consultar(peticion: PeticionConsulta): Promise<TareaProveedor>;
   /**
    * Pide un texto al modelo (0.17.0). **Opcional**: un proveedor sin modelos de texto sigue siendo un

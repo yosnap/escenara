@@ -125,6 +125,15 @@ export function PanelVozProyecto({
                     ? "No hay precio registrado para el modelo de voz, así que no se puede estimar lo que costaría oírla."
                     : `Generar la muestra cuesta ${formatearCreditos(d.creditosPorEscena)} estimados, una sola vez por voz y por estos parámetros. Después se guarda y volver a oírla no cuesta nada.`}
                 </p>
+                {/* Con quién se va a pagar, y a quién se cambiaría solo. Quien paga tiene que saberlo antes. */}
+                {d.nombreProveedor !== "" && (
+                  <p className="text-sm text-texto-suave">
+                    Se genera con <strong className="text-texto">{d.nombreProveedor}</strong>, con tu clave suya.
+                    {d.reserva
+                      ? ` Si rechazara la petición sin cobrar, se probaría solo con ${d.reserva.nombre} y se te diría: la estimación ya cubre el más caro de los dos.`
+                      : ""}
+                  </p>
+                )}
                 <Boton
                   variante="secundario"
                   tamano="sm"

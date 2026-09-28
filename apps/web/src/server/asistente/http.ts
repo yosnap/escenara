@@ -33,14 +33,9 @@ export function respuestaError(error: unknown): Response {
    * máquina que no tiene por qué ver cualquier usuario con sesión. Queda en el log, que es de quien administra.
    */
   if (error instanceof ErrorTranscripcion) {
-    console.error("[voz] transcriptor no disponible:", error.message);
-    return Response.json(
-      {
-        error:
-          "Esta instalación no puede sacar los subtítulos del audio ahora mismo: falta el transcriptor o no está bien configurado. Avisa a quien la administra; mientras tanto, puedes proponerlos desde el diálogo o escribirlos a mano.",
-      },
-      { status: 503 },
-    );
+    // El detalle interno (la orden configurada y la ruta de su modelo) queda solo en el registro del servidor.
+    console.error("[voz] transcripción:", error.interno);
+    return Response.json({ error: error.message }, { status: error.estado });
   }
   console.error("[proyectos]", error);
   return Response.json({ error: "Error interno al procesar el proyecto." }, { status: 500 });

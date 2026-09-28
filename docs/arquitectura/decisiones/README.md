@@ -30,7 +30,7 @@ Cada decisión relevante se documenta en un fichero `adr-NNNN-slug.md` dentro de
 | [0022](adr-0022-el-prompt-es-material-del-servidor.md) | El prompt compuesto es material del servidor y del admin, no del navegador | 0.17.0 | Propuesto (decisión **firme** del propietario) |
 | [0023](adr-0023-motor-de-reglas-de-controles-previos.md) | Motor de reglas de controles previos, y su precedencia sobre los modelos de decisión | 0.18.0 | Propuesto (decisiones provisionales pendientes del propietario) |
 | [0024](adr-0024-cancelacion-y-reintentos-de-produccion.md) | Cancelación y reintentos en la producción de escenas: nada se reenvía y nada se cancela en el proveedor | 0.19.0 | Propuesto (decisiones provisionales pendientes del propietario) |
-| [0025](adr-0025-voz-del-proyecto-y-transcripcion-local.md) | La voz se elige por proyecto, se genera con el proveedor del catálogo y la transcripción es local | 0.21.0 | Propuesto (modo de voz firme; proveedor, transcriptor y música provisionales) |
+| [0025](adr-0025-voz-del-proyecto-y-transcripcion-local.md) | La voz se elige por proyecto, con ElevenLabs de reserva y cambio automático, y la transcripción es local | 0.21.0 | Propuesto (modo de voz y cambio de proveedor firmes; transcriptor y música provisionales) |
 
 ## Plantilla
 

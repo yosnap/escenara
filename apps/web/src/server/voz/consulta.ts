@@ -52,10 +52,15 @@ interface TrabajosDeVoz {
    * rejilla de producción, así que un fallo de la voz ahí marcaría la escena entera como fallida.
    */
   fallos: Map<string, string>;
+  /**
+   * Avisos de un trabajo que **salió bien**: hoy solo el del cambio automático de proveedor. No es un error, pero
+   * quien paga tiene derecho a saber en qué cuenta se gastó y por qué.
+   */
+  avisos: Map<string, string>;
 }
 
 async function trabajosDeVoz(escenaIds: readonly string[]): Promise<TrabajosDeVoz> {
-  const vacio: TrabajosDeVoz = { enMarcha: new Map(), fallos: new Map() };
+  const vacio: TrabajosDeVoz = { enMarcha: new Map(), fallos: new Map(), avisos: new Map() };
   if (escenaIds.length === 0) return vacio;
   const filas = await db()
     .select({
@@ -67,7 +72,7 @@ async function trabajosDeVoz(escenaIds: readonly string[]): Promise<TrabajosDeVo
     .where(and(inArray(generationJobs.sceneId, [...escenaIds]), eq(generationJobs.kind, "voz")))
     // De la más antigua a la más nueva: así lo último que se escribe de cada escena es lo último que le pasó.
     .orderBy(asc(generationJobs.createdAt));
-  const salida: TrabajosDeVoz = { enMarcha: new Map(), fallos: new Map() };
+  const salida: TrabajosDeVoz = { enMarcha: new Map(), fallos: new Map(), avisos: new Map() };
   for (const fila of filas) {
     if (!fila.escena) continue;
     if (ESTADOS_ACTIVOS.includes(fila.estado)) {
@@ -78,6 +83,8 @@ async function trabajosDeVoz(escenaIds: readonly string[]): Promise<TrabajosDeVo
     const mensaje = fila.mensaje?.trim() ?? "";
     if (fila.estado === "fallido" && mensaje !== "") salida.fallos.set(fila.escena, mensaje);
     else salida.fallos.delete(fila.escena);
+    if (fila.estado === "listo" && mensaje !== "") salida.avisos.set(fila.escena, mensaje);
+    else if (fila.estado === "listo") salida.avisos.delete(fila.escena);
   }
   return salida;
 }
@@ -90,7 +97,7 @@ async function trabajosDeVoz(escenaIds: readonly string[]): Promise<TrabajosDeVo
  * `creditosPorEscena` es `null` y la pantalla se niega a ofrecer el gasto, igual que hace el resto de la
  * aplicación desde la 0.11.0.
  */
-export async function disponibilidadDeVoz(): Promise<DisponibilidadVoz> {
+export async function disponibilidadDeVoz(usuarioId: string): Promise<DisponibilidadVoz> {
   const { vozTtsActivo } = await leerAjustes();
   const [transcripcion, parametros] = await Promise.all([transcriptorDisponible(), parametrosDeControles()]);
   const base = {
@@ -100,7 +107,13 @@ export async function disponibilidadDeVoz(): Promise<DisponibilidadVoz> {
   };
   // Sin modelo utilizable no hay nada que evaluar del modelo, pero la evaluación sigue existiendo: es la forma que
   // espera la pantalla, y un objeto vacío la obligaría a distinguir dos casos que no se distinguen en nada.
-  const sinModelo = { ...base, controles: evaluarParaMostrar({ tipo: "voz" as const, parametros }) };
+  const sinModelo = {
+    ...base,
+    controles: evaluarParaMostrar({ tipo: "voz" as const, parametros }),
+    proveedor: "",
+    nombreProveedor: "",
+    reserva: null,
+  };
   if (!vozTtsActivo) {
     return {
       ...sinModelo,
@@ -113,16 +126,23 @@ export async function disponibilidadDeVoz(): Promise<DisponibilidadVoz> {
     };
   }
   try {
-    const eleccion = await eleccionDeVoz();
+    const opciones = await eleccionDeVoz(usuarioId);
+    const eleccion = opciones.elegida;
     const { modelo, precio } = eleccion;
     return {
       ...base,
+      proveedor: modelo.proveedor,
+      nombreProveedor: modelo.nombreProveedor,
+      reserva:
+        opciones.reserva === null
+          ? null
+          : { proveedor: opciones.reserva.modelo.proveedor, nombre: opciones.reserva.modelo.nombreProveedor },
       // Los mismos hechos del modelo que evalúa la puerta al encolar: si la pantalla los evaluara de otra forma,
       // diría «listo» donde el servidor va a pedir una confirmación.
       controles: evaluarParaMostrar({ tipo: "voz", parametros, modelo: hechosDeModelo("voz", eleccion) }),
       ttsDisponible: true,
       motivoTts: "",
-      creditosPorEscena: Math.ceil(precio.creditos),
+      creditosPorEscena: opciones.creditos,
       sello: precio.sello,
       modelo: modelo.modelo,
     };
@@ -160,6 +180,7 @@ function vistaDeEscena(
     avisos: avisosDeSubtitulos(escena.subtitles),
     trabajoEnMarcha: trabajos.enMarcha.get(escena.id) ?? null,
     fallo: trabajos.fallos.get(escena.id) ?? null,
+    avisoProveedor: trabajos.avisos.get(escena.id) ?? null,
   };
 }
 
@@ -172,7 +193,7 @@ export async function estadoDeVoz(actor: Actor, proyectoId: unknown): Promise<Vo
       escenas.flatMap((e) => [e.clipMediaId, e.voiceMediaId]),
     ),
     trabajosDeVoz(escenas.map((e) => e.id)),
-    disponibilidadDeVoz(),
+    disponibilidadDeVoz(actor.id),
     musicaDe(actor, proyecto.id),
     // Solo tiene sentido en modo `pista`: en `clip` que el clip hable es justo lo que se quiere.
     proyecto.voiceMode === "pista" ? clipsConDialogoHablado(db(), proyecto.id) : Promise.resolve<string[]>([]),

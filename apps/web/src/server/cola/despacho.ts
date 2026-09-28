@@ -1,6 +1,12 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { PROVEEDORES_PUBLICOS } from "@/lib/boveda";
 import { CAPACIDAD_DE_TIPO, type ModeloVista } from "@/lib/catalogo";
+import {
+  type IntentoDeVoz,
+  mensajeDeCambioDeProveedor,
+  mensajeDeFalloDeVoz,
+  sugerenciaDeReserva,
+} from "@/lib/diagnostico-voz";
 import { type ParametrosVoz, parametrosVozDe } from "@/lib/voz";
 import { leerAjustes } from "../ajustes";
 import { usarCredencialValida } from "../boveda/credenciales";
@@ -8,16 +14,18 @@ import { hechosDePersonajeCitado, parametrosDeControles } from "../controles/hec
 import { evaluar, frenosQueGatean } from "../controles/motor";
 import { mensajeDeFreno } from "../controles/puerta";
 import { db } from "../db/cliente";
-import { type FilaMedio, type FilaTrabajo, generationJobs, media } from "../db/esquema";
+import { type FilaMedio, type FilaTrabajo, generationJobs, media, usageLedger } from "../db/esquema";
 import { archivoDe } from "../generacion/comprobaciones";
 import { olvidarSaldo } from "../generacion/estimacion";
 import type { Herramientas } from "../generacion/herramientas";
+import { cerrarVozSincrona } from "../generacion/seguimiento";
 import { referenciaCompatible } from "../media/conversion-referencia";
 import { mediosDeReferenciaVigentes } from "../personajes/consulta";
 import { cerrarTrabajoYGasto } from "../presupuesto/reserva";
 import { registrarFalloDeEscena } from "../produccion/cierre";
-import { type Adaptador, ErrorProveedor } from "../proveedores/contrato";
+import { type Adaptador, ErrorProveedor, type VozPedida } from "../proveedores/contrato";
 import { resolver } from "../proveedores/registro";
+import { alternativaDeVoz } from "../voz/eleccion";
 import { prepararCallback } from "./callback";
 import { marcarEnviando, reintentar, renovarToma } from "./toma";
 
@@ -86,19 +94,43 @@ export async function despachar(fila: FilaTrabajo, workerId: string, h: Herramie
   }
 
   // ── Mitad 2: llamar al proveedor. A partir de aquí no hay vuelta a la cola.
-  let taskId: string;
+  let llamada: Llamada;
   try {
-    taskId = await llamarAlProveedor(fila, preparado, h);
+    llamada = await llamarAlProveedor(fila, preparado, h);
   } catch (error) {
-    return { fila: await tratarFalloDeLlamada(fila, error), enviado: false };
+    /**
+     * Cambio **automático** al proveedor de voz de reserva (decisión firme del propietario, 2026-09-28).
+     *
+     * Solo cuando el fallo **prueba** que el primero no creó nada y por tanto no cobró (`rechazoProbado`): ahí y
+     * solo ahí se puede enviar a otro sin arriesgar un doble cobro. Un 5xx, un tiempo agotado o una respuesta que
+     * no se entiende **no** prueban nada, así que esos siguen el camino de siempre (`desconocido`, reserva
+     * retenida) y nunca se reenvían a nadie.
+     *
+     * El dinero ya está cubierto: la confirmación y la reserva se hicieron con **el mayor** de los dos precios
+     * (`voz/tts.ts › eleccionDeVoz`), así que el cambio nunca gasta más de lo que el usuario tenía delante.
+     */
+    const reserva = await relevoDeVoz(fila, error, h);
+    if (reserva) return reserva;
+    return { fila: await tratarFalloDeLlamada(fila, error, h), enviado: false };
   }
   // El saldo del proveedor acaba de cambiar: la próxima estimación lo vuelve a preguntar.
   olvidarSaldo(fila.userId);
 
   // ── Persistencia del identificador, con reintentos **solo de la escritura**.
-  const guardada = await guardarTarea(fila, taskId, preparado.callbackTokenHash);
-  if (guardada) return { fila: guardada, enviado: true };
-  return { fila: await marcarTareaPerdida(fila, taskId), enviado: false };
+  const guardada = await guardarTarea(fila, llamada.taskId, preparado.callbackTokenHash);
+  if (!guardada) return { fila: await marcarTareaPerdida(fila, llamada.taskId), enviado: false };
+  /**
+   * Proveedor **síncrono** (ElevenLabs, 0.21.0): el audio ya está aquí, así que el trabajo se cierra en esta
+   * misma pasada en lugar de esperar a una consulta que no existe. Se hace **después** de guardar el
+   * identificador para que, si el proceso se cayera justo ahora, quede constancia de que se llamó y se pagó.
+   *
+   * El cierre es el de siempre (`cerrarVozSincrona` → `guardarResultado`): mismo apunte de gasto, mismo medio en
+   * la biblioteca y mismos enganches de escena y de muestra. Aquí no se repite ni una regla.
+   */
+  if (llamada.inmediata) {
+    return { fila: await cerrarVozSincrona(guardada, llamada.inmediata), enviado: true };
+  }
+  return { fila: guardada, enviado: true };
 }
 
 /** Lo que hace falta para llamar al proveedor, ya resuelto y sin tocar la base de datos. */
@@ -220,7 +252,10 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
   return { adaptador, clave: credencial.clave, entrada, ...callback };
 }
 
-function llamarAlProveedor(fila: FilaTrabajo, preparado: Preparado, h: Herramientas): Promise<string> {
+/** Lo que devuelve la llamada: el identificador siempre, y el audio ya hecho si el proveedor es síncrono. */
+type Llamada = VozPedida;
+
+async function llamarAlProveedor(fila: FilaTrabajo, preparado: Preparado, h: Herramientas): Promise<Llamada> {
   const peticion = {
     clave: preparado.clave,
     modelo: fila.model,
@@ -228,8 +263,8 @@ function llamarAlProveedor(fila: FilaTrabajo, preparado: Preparado, h: Herramien
     buscar: h.buscar,
     callbackUrl: preparado.callbackUrl,
   };
-  if (fila.kind === "animacion") return preparado.adaptador.generarVideo(peticion);
-  if (fila.kind !== "voz") return preparado.adaptador.generarImagen(peticion);
+  if (fila.kind === "animacion") return { taskId: await preparado.adaptador.generarVideo(peticion) };
+  if (fila.kind !== "voz") return { taskId: await preparado.adaptador.generarImagen(peticion) };
   const generarVoz = preparado.adaptador.generarVoz;
   if (!generarVoz) {
     // El adaptador dejó de ofrecer voz entre encolar y enviar. No se ha llamado a nadie, así que es un fallo sin
@@ -332,28 +367,125 @@ async function marcarTareaPerdida(fila: FilaTrabajo, taskId: string): Promise<Fi
 }
 
 /**
+ * Intenta el trabajo de voz con el **proveedor de reserva** tras un rechazo probado del primero. Devuelve `null`
+ * cuando no procede: no es un trabajo de voz, el fallo no prueba que no se haya cobrado, este usuario no tiene
+ * credencial del otro proveedor o esta instalación no tiene ningún modelo suyo utilizable.
+ *
+ * Cambia el proveedor y el modelo **de la misma fila**, así que no hay un trabajo nuevo, ni una reserva nueva, ni
+ * una confirmación nueva: es el mismo gasto que el usuario ya autorizó, encaminado a otro sitio.
+ */
+async function relevoDeVoz(fila: FilaTrabajo, error: unknown, h: Herramientas): Promise<Despachado | null> {
+  if (fila.kind !== "voz") return null;
+  if (!(error instanceof ErrorProveedor) || !error.rechazoProbado) return null;
+  const alternativa = await alternativaDeVoz(fila.userId, fila.provider);
+  if (!alternativa) return null;
+  const fallido: IntentoDeVoz = {
+    proveedor: fila.provider,
+    modelo: fila.model,
+    codigo: error.codigo,
+    cobro: "sin-cobro",
+  };
+  console.warn(
+    `[cola] relevo de voz en el trabajo ${fila.id}: ${fila.provider} → ${alternativa.modelo.proveedor} (${error.codigo})`,
+  );
+  const [cambiada] = await db()
+    .update(generationJobs)
+    .set({ provider: alternativa.modelo.proveedor as FilaTrabajo["provider"], model: alternativa.modelo.modelo })
+    .where(and(eq(generationJobs.id, fila.id), eq(generationJobs.state, "enviando"), isNull(generationJobs.taskId)))
+    .returning();
+  if (!cambiada) return null;
+  /**
+   * La reserva ya apartada pasa a nombre del proveedor nuevo. **No cambia ni un crédito**: se apartó con el mayor
+   * de los dos precios, así que cubre los dos caminos. Lo que cambia es de quién dice el registro de gasto que es
+   * el dinero, y eso tiene que ser verdad: el cierre copia proveedor y modelo de la reserva, así que sin esto el
+   * usuario vería en su historial un cobro de KIE que en realidad le hizo ElevenLabs.
+   */
+  await db()
+    .update(usageLedger)
+    .set({
+      provider: alternativa.modelo.proveedor as FilaTrabajo["provider"],
+      model: alternativa.modelo.modelo,
+      priceStamp: alternativa.precio.sello,
+    })
+    .where(and(eq(usageLedger.jobId, cambiada.id), eq(usageLedger.entryType, "reserva")));
+  let preparado: Preparado;
+  try {
+    preparado = await preparar(cambiada, cambiada.lockedBy ?? "", h);
+  } catch (segundoError) {
+    return { fila: await tratarFalloDeLlamada(cambiada, segundoError, h, [fallido]), enviado: false };
+  }
+  let llamada: Llamada;
+  try {
+    llamada = await llamarAlProveedor(cambiada, preparado, h);
+  } catch (segundoError) {
+    return { fila: await tratarFalloDeLlamada(cambiada, segundoError, h, [fallido]), enviado: false };
+  }
+  olvidarSaldo(cambiada.userId);
+  const guardada = await guardarTarea(cambiada, llamada.taskId, preparado.callbackTokenHash);
+  if (!guardada) return { fila: await marcarTareaPerdida(cambiada, llamada.taskId), enviado: false };
+  // Quien paga tiene derecho a saber en qué cuenta se ha gastado y por qué, aunque haya salido bien.
+  const aviso = mensajeDeCambioDeProveedor(fallido, {
+    proveedor: alternativa.modelo.proveedor as FilaTrabajo["provider"],
+    modelo: alternativa.modelo.modelo,
+  });
+  await db().update(generationJobs).set({ errorMessage: aviso }).where(eq(generationJobs.id, guardada.id));
+  const conAviso = { ...guardada, errorMessage: aviso };
+  if (llamada.inmediata) {
+    return { fila: await cerrarVozSincrona(conAviso, llamada.inmediata, aviso), enviado: true };
+  }
+  return { fila: conAviso, enviado: true };
+}
+
+/**
  * Qué hacer con un fallo de la llamada al proveedor. **Ninguna rama vuelve a la cola**: o no se sabe qué ha
  * pasado (`desconocido`, reserva retenida) o el proveedor ha rechazado la petición con una respuesta, y
  * entonces se sabe que no creó nada y el trabajo se cierra soltando la reserva.
+ *
+ * `previos` son los intentos que ya se hicieron contra otro proveedor: entran en el mensaje para que quien lo lea
+ * sepa **qué se ha probado**, y no solo qué ha fallado lo último.
  */
-async function tratarFalloDeLlamada(fila: FilaTrabajo, error: unknown): Promise<FilaTrabajo> {
+async function tratarFalloDeLlamada(
+  fila: FilaTrabajo,
+  error: unknown,
+  _h: Herramientas,
+  previos: readonly IntentoDeVoz[] = [],
+): Promise<FilaTrabajo> {
   // Solo se da por «no cobrado» lo que el proveedor ha **rechazado con una respuesta que lo prueba**
   // (`ErrorProveedor.rechazoProbado`: clave inválida, sin saldo, exceso de ritmo). Un 5xx, un 200 sin
   // identificador de tarea, una red caída o un tiempo agotado no prueban nada: pueden venir de un trabajo ya
   // aceptado, y decidir «no cobrado» por descarte es justo lo que provoca los dobles cobros.
+  const esDeVoz = fila.kind === "voz";
+  const codigo = error instanceof ErrorProveedor ? error.codigo : "respuesta-inesperada";
   if (error instanceof ErrorProveedor && error.rechazoProbado) {
-    return cerrarSinCoste(fila, error.motivo, `${error.message} No se ha enviado nada y no se te ha cobrado.`);
+    const mensaje = esDeVoz
+      ? mensajeDeFalloDeVoz(
+          [...previos, { proveedor: fila.provider, modelo: fila.model, codigo, cobro: "sin-cobro" }],
+          sugerenciaDeReserva(previos.length > 0 || (await alternativaDeVoz(fila.userId, fila.provider)) !== null),
+        )
+      : `${error.message} No se ha enviado nada y no se te ha cobrado.`;
+    return cerrarSinCoste(fila, error.motivo, mensaje);
   }
   const nombre = PROVEEDORES_PUBLICOS[fila.provider].nombre;
   const explicacion = error instanceof ErrorProveedor ? error.message : "El envío ha fallado de forma inesperada.";
   if (!(error instanceof ErrorProveedor)) {
     console.error(`[cola] fallo tras llamar al proveedor en el trabajo ${fila.id}: ${detalle(error)}`);
   }
+  /**
+   * No se sabe si se ha cobrado, así que **no se cambia de proveedor y no se reenvía nada**. El mensaje lo dice
+   * con esas palabras: es la diferencia entre «no te han cobrado» y «no sabemos si te han cobrado», y quien paga
+   * necesita distinguirlas para decidir si mira su cuenta antes de volver a pedirlo.
+   */
+  const mensaje = esDeVoz
+    ? mensajeDeFalloDeVoz(
+        [...previos, { proveedor: fila.provider, modelo: fila.model, codigo, cobro: "se-desconoce" }],
+        `Revisa el historial de tu cuenta en ${nombre} antes de volver a pedirlo.`,
+      )
+    : `${explicacion} No sabemos si el proveedor ha aceptado el trabajo, así que no se reenviará: revisa el historial de tu cuenta en ${nombre} antes de pedirlo otra vez.`;
   // Reserva retenida a propósito: quizá se ha pagado y todavía no lo sabemos.
   return marcar(fila.id, {
     state: "desconocido",
     failureReason: error instanceof ErrorProveedor ? error.motivo : "respuesta",
-    errorMessage: `${explicacion} No sabemos si el proveedor ha aceptado el trabajo, así que no se reenviará: revisa el historial de tu cuenta en ${nombre} antes de pedirlo otra vez.`,
+    errorMessage: mensaje,
     lockedBy: null,
     lockedUntil: null,
     finishedAt: new Date(),

@@ -24,6 +24,27 @@ todas sus escenas se generan con ellos.
 
 Si lo intentas desde otra pantalla o con una herramienta propia, el servidor lo rechaza y te dice por qué.
 
+## Quién genera la voz, y por qué puede cambiar
+
+Escenara puede tener **dos proveedores de voz**: el principal de la instalación y uno **de reserva**, cada uno con
+tu propia clave. El panel de la voz te dice con cuál se va a generar y con cuál se cambiaría.
+
+El cambio es **automático y no te pregunta**, pero solo ocurre en un caso muy concreto: cuando el primero
+**rechaza la petición de forma que demuestra que no ha cobrado nada** (tu clave no vale allí, esa cuenta no tiene
+saldo, te ha pedido esperar). Entonces se prueba con el otro y, si sale, te lo dice: verás en la escena con qué
+proveedor se generó y en qué cuenta se ha pagado.
+
+Si el primero falla de una forma que **no prueba** que no haya cobrado (una avería suya, un corte de red, una
+respuesta que no se entiende), **no se cambia y no se reenvía nada**: podrías acabar pagando dos veces. El mensaje
+te lo dice con esas palabras y te pide que mires el historial de esa cuenta antes de volver a pedirlo.
+
+Como el cambio no te pregunta, **la estimación que confirmas es siempre la del más caro de los dos**. Así lo que
+se gaste, vaya por donde vaya, nunca pasa de lo que tenías delante. Lo que se apunta como gastado es lo que
+informe el proveedor que de verdad haya cobrado, no la estimación.
+
+Si solo tienes la clave de uno, no hay cambio posible: si falla, se te dice y se te recuerda que puedes añadir la
+del otro en «Tu cuenta» para que el siguiente intento lo pruebe solo.
+
 ## Oír una voz antes de elegirla
 
 Cada voz tiene su **muestra**. La primera vez cuesta una llamada, y la pantalla te dice cuánto **antes** de
@@ -49,6 +70,8 @@ que dependían de ello. Cuando eso ocurre:
 
 Hay tres formas de llenarlos, y todas dejan un punto de partida que **tú corriges**:
 
+1. **Las marcas del propio proveedor de voz**, cuando la pista se genera con un proveedor que las devuelve: son
+   los tiempos medidos sobre el audio que acaba de crear, así que llegan solas y no cuestan nada aparte.
 1. **Transcribir** el audio (la pista de voz, o el clip si estás en modo «voz del clip»). Los tiempos son los
    medidos. Transcribir **no cuesta nada**: se hace en la propia máquina y no sale nada de ella. Si tu instalación
    no tiene el transcriptor instalado, la pantalla lo dice: no se inventan subtítulos.
@@ -94,6 +117,10 @@ La pantalla siempre dice el motivo en lugar de esconder el botón. Los habituale
   precio no se estima y no se gasta: quien administra tiene que medirlo una vez y registrarlo en Admin › Modelos.
 - **«Elige la voz del proyecto antes de generar.»** Estás en modo «pista» y aún no has fijado ninguna.
 - **«Esta escena no tiene diálogo.»** No hay nada que leer: escribe lo que dice en el plan del proyecto.
+
+Los mensajes de error de la voz **siempre dicen cuatro cosas**: qué proveedor y qué modelo han fallado y por qué
+(tiempo agotado, avería suya, clave rechazada, sin saldo…), **si se te ha cobrado o no**, qué se intentó después y
+qué puedes hacer tú. Si alguna vez lees un «no se ha podido, vuelve a intentarlo», es un fallo nuestro: cuéntalo.
 
 Si la generación de la voz de una escena falla, la tarjeta de esa escena te lo dice. Es un fallo **de la voz**: su
 clip sigue estando bien producido y la pantalla de producción no la marca como fallida.

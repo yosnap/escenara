@@ -1,6 +1,8 @@
 import { and, eq, ne, sql } from "drizzle-orm";
+import { segmentosDesdeMarcas, subtitulosDesdeTranscripcion } from "@/lib/voz";
 import { db, type Ejecutor } from "../db/cliente";
 import { type FilaTrabajo, projects, scenes } from "../db/esquema";
+import type { MarcasDeVoz } from "../proveedores/contrato";
 
 /**
  * Lo que la producción de una escena apunta cuando un trabajo suyo **termina** (RF06, 0.19.0).
@@ -103,6 +105,34 @@ export async function registrarResultadoDeEscena(fila: FilaTrabajo, medioId: str
       })
       .where(eq(scenes.id, escenaId));
     await ajustarEstadoDelProyecto(tx, escena.projectId);
+  });
+}
+
+/**
+ * Guarda en la escena las **marcas de tiempo medidas** que ha devuelto el proveedor de voz junto al audio
+ * (0.21.0). Se guardan como transcripción, que es lo que son: lo que se ha dicho y cuándo, medido.
+ *
+ * Si la escena no tiene subtítulos **editados por una persona**, se proponen además desde esas marcas: unos
+ * tiempos medidos son mejores que repartir el tiempo entre las frases a ojo, y quedan igualmente a la espera de
+ * que alguien los revise. Lo que ha corregido una persona **no se toca nunca** desde aquí.
+ */
+export async function guardarMarcasDeVoz(fila: FilaTrabajo, marcas: MarcasDeVoz): Promise<void> {
+  if (!fila.sceneId) return;
+  const segmentos = segmentosDesdeMarcas(marcas);
+  if (segmentos.length === 0) return;
+  const escenaId = fila.sceneId;
+  await db().transaction(async (tx) => {
+    const [escena] = await tx.select().from(scenes).where(eq(scenes.id, escenaId)).limit(1).for("update");
+    if (!escena) return;
+    const editados = escena.subtitlesEditedAt !== null && escena.subtitles.length > 0;
+    await tx
+      .update(scenes)
+      .set({
+        transcript: segmentos,
+        ...(editados ? {} : { subtitles: subtitulosDesdeTranscripcion(segmentos) }),
+        updatedAt: new Date(),
+      })
+      .where(eq(scenes.id, escenaId));
   });
 }
 

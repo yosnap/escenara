@@ -1,6 +1,7 @@
 # ADR-0025 · La voz se elige por proyecto, se genera con el proveedor del catálogo y la transcripción es local
 
-- **Estado:** propuesto (decisión firme del propietario sobre el modo de voz; proveedor, transcriptor y música son decisiones provisionales del 2026-09-28, pendientes de confirmar)
+- **Estado:** propuesto (firmes: el modo de voz y el cambio automático de proveedor; provisionales y pendientes de confirmar: transcriptor y música)
+- **Actualizado:** 2026-09-28 con el addendum de ElevenLabs directo
 - **Fecha:** 2026-09-28
 - **Versión del proyecto:** 0.21.0
 
@@ -78,6 +79,51 @@ inventan subtítulos**. No sale nada de la máquina, así que **no deja ningún 
 **La música solo se sube**, con declaración de derechos escrita que exige el servidor y que se guarda con su fecha.
 No se genera música en esta versión.
 
+## Addendum · 2026-09-28 · ElevenLabs directo como proveedor de reserva, con cambio automático
+
+La decisión 1 se tomó sobre la promesa de que el «market» de KIE serviría el modelo de voz. **No lo ha hecho**: el
+2026-09-28, con la clave del propietario, `jobs/createTask` devolvió *Internal Error* (500) sin cobrar en
+`elevenlabs/text-to-speech-multilingual-v2` y también en `turbo-2-5`, con los campos correctamente envueltos bajo
+`input`; el modelo de texto `gpt-5-6-sol` del mismo proveedor tampoco respondió (120 s). Es KIE degradado, no un
+problema de la forma del cuerpo.
+
+La misma tarde, la API de ElevenLabs respondió a la primera: 200 en 2,5 s, con el audio y las marcas por carácter.
+
+**Se añade ElevenLabs como proveedor de voz con credencial propia del usuario**, y el cambio entre los dos es
+**automático** (decisión firme del propietario, 2026-09-28). El proyecto no elige proveedor: elige voz. Y las voces
+son las mismas, porque se guardan por su identificador de ElevenLabs.
+
+Tres reglas gobiernan el cambio, y las tres son de dinero:
+
+1. **Solo se cambia cuando se puede probar que el primero no cobró.** Se reutiliza la lista blanca de rechazos
+   probados de la 0.12.0 (`ErrorProveedor.rechazoProbado`: credencial rechazada, sin saldo, exceso de ritmo,
+   formato). Un 5xx, un tiempo agotado o una respuesta que no se entiende **no** prueban nada: ahí el trabajo
+   queda `desconocido` con su reserva retenida y **no se reenvía a nadie**, exactamente como antes.
+2. **Lo que se confirma y lo que se aparta es el mayor de los dos precios.** Así un cambio automático nunca gasta
+   más de lo que el usuario tenía delante, y no hace falta interrumpirle a mitad de un envío que ya autorizó para
+   pedirle una segunda confirmación que quizá no llegue nunca. Se descartó reconfirmar: dejaba al usuario con el
+   primer proveedor ya fallado y un trabajo esperando un clic.
+3. **El registro de gasto dice la verdad sobre quién cobró.** Al cambiar, la reserva ya apartada pasa a nombre del
+   proveedor nuevo —sin mover ni un crédito, porque cubre a los dos—, y el consumo se apunta con lo que informa la
+   cabecera `character-cost` de la respuesta, no con la estimación.
+
+**El proveedor de reserva es síncrono**, lo que obliga a una pieza nueva en el contrato de adaptadores: `generarVoz`
+devuelve el identificador y, si el proveedor ya tiene el resultado, también el audio. Quien despacha lo cierra en la
+misma pasada por el camino de cierre de siempre. Consultar a ElevenLabs devuelve `desconocido` a propósito: si eso
+se alcanza es que el proceso se cayó entre pagar y guardar, y volver a llamar sería pagar dos veces.
+
+**Las marcas por carácter que devuelve el proveedor se usan para los subtítulos**: son medidas sobre el audio que
+acaba de generar, así que valen más que repartir el tiempo entre las frases a ojo. Se guardan como transcripción y
+proponen los subtítulos solo si nadie los ha corregido a mano.
+
+**Norma nueva sobre los mensajes de error** (propietario, 2026-09-28): un fallo de voz dice **qué** falló
+(proveedor, modelo y causa concreta), **si se ha cobrado o no**, **qué se intentó** (los dos proveedores, si hubo
+dos) y **qué puede hacer** quien lo lee. «No se ha podido, vuelve a intentarlo» queda prohibido. Lo que nunca sale:
+el texto literal del proveedor, rutas del servidor ni la configuración de la máquina. Vive en `lib/diagnostico-voz.ts`.
+
+**Migración 0024**: `credential_provider` gana el valor `elevenlabs`. El mismo enum lo usan la bóveda, los apuntes
+de gasto, los trabajos, los precios y las muestras, así que un solo valor cubre los cinco.
+
 ## Consecuencias
 
 - **Se gana** una voz coherente en todo el proyecto sin cobrarle nada nuevo a quien no la necesita: el modo de
@@ -87,8 +133,11 @@ No se genera música en esta versión.
 - **Se pierde** la sincronía labial en modo `pista`: el clip no mueve los labios con lo que dice el audio. Es el
   precio de fijar el timbre, y está fuera del alcance de esta versión.
 - **Se pierde** poder ajustar la voz de una escena concreta. Es deliberado.
-- **Habrá que revisar** el proveedor de voz en cuanto se mida su precio con dinero real: si la tarifa resulta
-  inasumible, la alternativa es ElevenLabs con credencial propia del usuario, y el contrato de adaptadores ya la
-  admite sin tocar nada de la pantalla.
+- **Ya se revisó** el proveedor de voz: KIE no sirvió el modelo y ElevenLabs entró como reserva con cambio
+  automático (ver el addendum). El contrato de adaptadores lo admitió con una sola pieza nueva, la del resultado
+  inmediato, y la pantalla no cambió de forma.
+- **Se gana** que una avería de un proveedor no deje el proyecto parado, y **se pierde** la certeza de en qué
+  cuenta se va a pagar antes de pulsar: por eso la pantalla dice con cuál se intentará, con cuál se cambiaría, y
+  después con cuál se generó de verdad.
 - **Habrá que revisar** el transcriptor cuando se mida su tiempo en el servidor del piloto (0.33.0): el modelo
   pequeño es el de fábrica precisamente porque cabe en un servidor modesto.

@@ -117,13 +117,15 @@ export async function pedirMuestra(
   // encolar. La interfaz esconde el botón, pero la ruta es pública para cualquier usuario con sesión.
   await exigirTtsEncendido();
   const claveIdempotencia = exigirClaveIdempotencia(confirmacion.claveIdempotencia);
-  const { modelo, adaptador, precio } = await eleccionDeVoz();
+  const opciones = await eleccionDeVoz(actor.id);
+  const { modelo, adaptador, precio } = opciones.elegida;
   const proveedor = proveedorDeCredencial(modelo);
   // La muestra ya pagada se devuelve **antes** de mirar el coste: no hay nada que confirmar si no se va a gastar.
   const yaPagada = (await muestrasDe(actor, modelo.modelo, parametros)).get(voz);
   if (yaPagada) return { trabajo: null, medio: yaPagada };
 
-  const creditos = Math.ceil(precio.creditos);
+  // El mayor de los dos proveedores, igual que en la voz de una escena: cubre el cambio automático.
+  const creditos = opciones.creditos;
   exigirSelloVigente(confirmacion.selloEstimacion, precio.sello, true);
   exigirConfirmacion(confirmacion.creditosConfirmados, creditos);
   await exigirAvisoUmbral(creditos, confirmacion.avisoUmbralAceptado);

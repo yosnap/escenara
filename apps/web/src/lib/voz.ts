@@ -321,6 +321,49 @@ export function subtitulosDesdeTexto(texto: string, segundos: number): Subtitulo
   return salida;
 }
 
+/**
+ * Segmentos a partir de las **marcas por carácter** que devuelve el proveedor de voz junto al audio (0.21.0).
+ *
+ * Se corta por frase, igual que la propuesta desde el texto, pero los tiempos **no se reparten**: son el primer
+ * carácter y el último de esa frase, medidos sobre el audio que se acaba de generar. Es lo más cercano a la
+ * verdad que se puede guardar sin transcribir nada.
+ *
+ * Lo que no cuadra se descarta entero: si las tres listas no tienen el mismo largo, no hay marcas que valgan.
+ */
+export function segmentosDesdeMarcas(marcas: {
+  caracteres: readonly string[];
+  inicios: readonly number[];
+  finales: readonly number[];
+}): Subtitulo[] {
+  const { caracteres, inicios, finales } = marcas;
+  if (caracteres.length === 0 || caracteres.length !== inicios.length || caracteres.length !== finales.length) {
+    return [];
+  }
+  const segmentos: Subtitulo[] = [];
+  let texto = "";
+  let desde: number | null = null;
+  let hasta = 0;
+  const cerrar = () => {
+    const limpio = texto.replace(/\s+/g, " ").trim();
+    if (limpio !== "" && desde !== null && hasta > desde) {
+      segmentos.push({ desde: Math.round(desde * 100) / 100, hasta: Math.round(hasta * 100) / 100, texto: limpio });
+    }
+    texto = "";
+    desde = null;
+  };
+  for (const [i, caracter] of caracteres.entries()) {
+    const inicio = inicios[i] ?? 0;
+    const final = finales[i] ?? inicio;
+    if (caracter.trim() !== "" && desde === null) desde = inicio;
+    texto += caracter;
+    hasta = Math.max(hasta, final);
+    // Fin de frase: se cierra el segmento con los tiempos medidos de lo que lleva dentro.
+    if (/[.!?…]/.test(caracter)) cerrar();
+  }
+  cerrar();
+  return segmentos;
+}
+
 /** Subtítulos a partir de los segmentos de una transcripción: los tiempos son los medidos, no repartidos. */
 export function subtitulosDesdeTranscripcion(segmentos: readonly Subtitulo[]): Subtitulo[] {
   return segmentos
@@ -446,6 +489,11 @@ export interface EscenaVozVista {
    * su propio trabajo: el fallo de una pista de voz no es un fallo de la escena, que se produce con su clip.
    */
   fallo: string | null;
+  /**
+   * Aviso de un trabajo de voz que **salió bien**: hoy solo el del cambio automático al proveedor de reserva.
+   * Dice con qué proveedor se generó de verdad y por qué, que es en la cuenta en la que se ha pagado.
+   */
+  avisoProveedor: string | null;
 }
 
 /** Estado de voz y subtítulos del proyecto entero. */
@@ -481,6 +529,15 @@ export interface DisponibilidadVoz {
   sello: string;
   /** Modelo de voz que usaría esta instalación; vacío cuando no hay ninguno utilizable. */
   modelo: string;
+  /** Proveedor con el que se intentaría primero; vacío cuando no hay ninguno utilizable. */
+  proveedor: string;
+  nombreProveedor: string;
+  /**
+   * Proveedor de reserva al que se cambiaría **solo** si el primero rechaza la petición sin cobrar; `null` si
+   * este usuario no tiene ninguno más configurado. El cambio es automático y no vuelve a preguntar: lo que se
+   * confirma es el mayor de los dos precios.
+   */
+  reserva: { proveedor: string; nombre: string } | null;
   /** `true` si el transcriptor local está instalado y utilizable. No cuesta nada. */
   transcripcionDisponible: boolean;
   motivoTranscripcion: string;

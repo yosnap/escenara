@@ -10,6 +10,7 @@ import {
   type PrecioModelo,
   type TareaProveedor,
   type TextoProveedor,
+  type VozPedida,
 } from "../contrato";
 import { consultarTarea, crearTarea, ErrorKie, saldoCreditos, subirReferencia } from "./cliente";
 import { CAMPOS_DE_URL, type ContextoEntrada, entradaDeModelo } from "./entradas";
@@ -71,9 +72,16 @@ export const adaptadorKie: Adaptador = {
 
   generarImagen: crear,
   generarVideo: crear,
-  // La voz se pide igual que el vídeo: una tarea con `model` e `input`. Lo que cambia es la entrada, y eso lo
-  // monta `entradas.ts` con los campos documentados de ese modelo.
-  generarVoz: crear,
+  /**
+   * La voz se pide igual que el vídeo: `jobs/createTask` con `{ model, input }`, con los campos del modelo
+   * **envueltos bajo `input`** (`cliente.ts › crearTarea`), que es lo que espera el «market». Lo que cambia por
+   * modelo es la entrada, y eso lo monta `entradas.ts`.
+   *
+   * KIE es **asíncrono**, así que nunca devuelve el audio aquí: solo el identificador de la tarea.
+   */
+  async generarVoz(peticion: PeticionAdaptador): Promise<VozPedida> {
+    return { taskId: await crear(peticion) };
+  },
 
   consultar({ clave, taskId, buscar }: PeticionConsulta): Promise<TareaProveedor> {
     return normalizando(() => consultarTarea(clave, taskId, buscar));

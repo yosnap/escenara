@@ -21,8 +21,17 @@ import { volcarAcotado } from "../revision/archivo";
  * **No deja ningún apunte en el registro de gasto** porque no hay gasto: no sale nada de la máquina.
  */
 
+/**
+ * Fallo de la transcripción local. Lleva **dos textos a propósito**: `message` es lo que ve quien lo pide y dice
+ * qué ha fallado de verdad y qué puede hacer; `interno` añade la orden configurada y la ruta de su modelo, que
+ * son configuración de la máquina y solo van al registro del servidor y al panel de administración.
+ */
 export class ErrorTranscripcion extends Error {
-  constructor(mensaje: string) {
+  constructor(
+    mensaje: string,
+    readonly interno: string = mensaje,
+    readonly estado: number = 503,
+  ) {
     super(mensaje);
     this.name = "ErrorTranscripcion";
   }
@@ -77,21 +86,36 @@ async function ejecutar(orden: readonly string[]): Promise<Salida> {
  * cambia mientras el servidor corre, pero instalarlo sí puede pasar sin reiniciar, y quedarse diciendo que no está
  * sería un error que no se cura solo. Es la misma política que la comprobación de FFmpeg de la 0.20.0.
  */
-const cache = globalThis as { __escenaraTranscriptor?: { disponible: boolean; motivo: string } };
+const cache = globalThis as { __escenaraTranscriptor?: EstadoTranscriptor };
+
+/**
+ * `motivo` es para quien pide los subtítulos: dice qué falla y qué puede hacer, **sin** nombrar la orden ni la
+ * ruta del modelo, que son configuración de la máquina. `interno` lleva ese detalle y solo va al registro.
+ */
+export interface EstadoTranscriptor {
+  disponible: boolean;
+  motivo: string;
+  interno: string;
+}
+
+/** Lo que ve el usuario cuando el transcriptor no está: el hecho, quién lo arregla y qué puede hacer mientras. */
+const MOTIVO_INSTALACION =
+  "El transcriptor de esta instalación no está instalado o no arranca, así que ahora mismo no se pueden sacar los subtítulos del audio. No es un fallo de tu proyecto ni cuesta nada: avisa a quien administra la instalación y, mientras tanto, propón los subtítulos desde el diálogo o escríbelos a mano.";
 
 /** Olvida la comprobación cacheada. Es para los tests y para cuando se cambia el binario en el panel. */
 export function olvidarTranscriptor(): void {
   cache.__escenaraTranscriptor = undefined;
 }
 
-export async function transcriptorDisponible(): Promise<{ disponible: boolean; motivo: string }> {
+export async function transcriptorDisponible(): Promise<EstadoTranscriptor> {
   if (cache.__escenaraTranscriptor?.disponible) return cache.__escenaraTranscriptor;
   const { transcripcionBinario: binario, transcripcionModelo: modelo } = await leerAjustes();
   if (binario.trim() === "") {
     return {
       disponible: false,
       motivo:
-        "No hay ningún transcriptor configurado. Indica su orden en Admin › Ajustes › Voz y subtítulos (de fábrica «whisper-cli»).",
+        "Esta instalación no tiene configurado ningún transcriptor, así que no puede sacar los subtítulos del audio. Quien la administra lo indica en Admin › Ajustes › Voz y subtítulos. Mientras tanto puedes proponerlos desde el diálogo o escribirlos a mano.",
+      interno: "No hay ninguna orden de transcriptor configurada.",
     };
   }
   const instalacion = `Instálalo («brew install whisper-cpp» en macOS, el paquete o la compilación de whisper.cpp en Linux) o corrige su orden en Admin › Ajustes › Voz y subtítulos.`;
@@ -101,25 +125,34 @@ export async function transcriptorDisponible(): Promise<{ disponible: boolean; m
     // whisper.cpp devuelve un código distinto de 0 en `--help` según la versión, así que lo que se comprueba es
     // que **haya escrito su ayuda**: ejecutarse es lo que importa, no con qué código termina.
     if (!ok && `${salida}${error}`.trim() === "") {
-      return { disponible: false, motivo: `«${binario}» está instalado pero no se ha podido ejecutar. ${instalacion}` };
+      return {
+        disponible: false,
+        motivo: MOTIVO_INSTALACION,
+        interno: `«${binario}» está instalado pero no se ha podido ejecutar. ${instalacion}`,
+      };
     }
   } catch {
-    return { disponible: false, motivo: `No se encuentra «${binario}» en esta máquina. ${instalacion}` };
+    return {
+      disponible: false,
+      motivo: MOTIVO_INSTALACION,
+      interno: `No se encuentra «${binario}» en esta máquina. ${instalacion}`,
+    };
   }
   if (modelo.trim() !== "" && !(await Bun.file(modelo).exists())) {
     return {
       disponible: false,
-      motivo: `El fichero de modelo «${modelo}» no existe en esta máquina. Corrige su ruta en Admin › Ajustes › Voz y subtítulos, o déjala vacía para usar el modelo del propio binario.`,
+      motivo: MOTIVO_INSTALACION,
+      interno: `El fichero de modelo «${modelo}» no existe en esta máquina. Corrige su ruta en Admin › Ajustes › Voz y subtítulos, o déjala vacía para usar el modelo del propio binario.`,
     };
   }
-  cache.__escenaraTranscriptor = { disponible: true, motivo: "" };
+  cache.__escenaraTranscriptor = { disponible: true, motivo: "", interno: "" };
   return cache.__escenaraTranscriptor;
 }
 
 /** Lo mismo, pero lanzando: es lo que se llama antes de prometer unos subtítulos que no se pueden sacar. */
 export async function exigirTranscriptor(): Promise<void> {
-  const { disponible, motivo } = await transcriptorDisponible();
-  if (!disponible) throw new ErrorTranscripcion(motivo);
+  const { disponible, motivo, interno } = await transcriptorDisponible();
+  if (!disponible) throw new ErrorTranscripcion(motivo, interno);
 }
 
 /** `hh:mm:ss.mmm` o `mm:ss.mmm` a segundos. Una marca que no se entiende devuelve `null`. */
@@ -189,7 +222,9 @@ export async function transcribir(claveAlmacenamiento: string, extension: string
   try {
     await volcarAcotado(leerObjeto(claveAlmacenamiento).stream(), entrada, BYTES_MAXIMOS_TRANSCRIPCION, () => {
       throw new ErrorTranscripcion(
-        `Ese archivo pesa más de ${Math.round(BYTES_MAXIMOS_TRANSCRIPCION / (1024 * 1024))} MB y no se transcribe en este servidor. Escribe los subtítulos a mano o propónlos desde el diálogo.`,
+        `Ese archivo pesa más de ${Math.round(BYTES_MAXIMOS_TRANSCRIPCION / (1024 * 1024))} MB, que es el máximo que transcribe este servidor. No ha costado nada: no sale de la máquina. Escribe los subtítulos a mano o propónlos desde el diálogo.`,
+        "El archivo pasa del tope de la transcripción.",
+        413,
       );
     });
     const conversion = await ejecutar([
@@ -207,7 +242,9 @@ export async function transcribir(claveAlmacenamiento: string, extension: string
     ]);
     if (!conversion.ok) {
       throw new ErrorTranscripcion(
-        "No se ha podido leer el audio de ese archivo. Comprueba que el clip tiene pista de audio y que FFmpeg está instalado.",
+        "No se ha podido leer el audio de ese archivo: puede que el clip no tenga pista de audio o que su formato no se entienda. No ha costado nada, porque la transcripción es local. Prueba con otra escena o propón los subtítulos desde el diálogo.",
+        `FFmpeg no ha podido convertir el archivo a WAV: ${conversion.error.slice(0, 300)}`,
+        409,
       );
     }
     const orden = [
@@ -227,9 +264,9 @@ export async function transcribir(claveAlmacenamiento: string, extension: string
       .text()
       .catch(() => "");
     if (!resultado.ok && escrito === "") {
-      console.error(`[voz] el transcriptor ha fallado: ${resultado.error.slice(0, 500)}`);
       throw new ErrorTranscripcion(
-        `El transcriptor «${binario}» no ha podido transcribir este audio. Revisa su instalación y su fichero de modelo en Admin › Ajustes › Voz y subtítulos.`,
+        "El transcriptor de esta instalación no ha podido transcribir este audio. No ha costado nada, porque no sale de la máquina: avisa a quien la administra y, mientras tanto, propón los subtítulos desde el diálogo o escríbelos a mano.",
+        `El transcriptor «${binario}» ha fallado: ${resultado.error.slice(0, 500)}`,
       );
     }
     return segmentosDeWebVtt(escrito);
