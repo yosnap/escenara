@@ -23,6 +23,19 @@ import { esUuidGeneracion } from "./trabajos";
 /** Ritmo máximo de envíos por usuario: un accidente (o un script) no puede vaciarle la cuenta. */
 export const RITMO_ENVIOS: Limite = { ventanaSegundos: 60 * 60, maximo: 40 };
 
+/**
+ * Descripción de un clip **dirigido**, donde puede ir vacía (0.25.2).
+ *
+ * Al animar una imagen que ya existe, lo que se ve lo dice la imagen y el encuadre lo dice la dirección: exigir
+ * además un párrafo describiendo la escena era pedir por segunda vez algo que ya está pedido, y dejaba el
+ * botón apagado sin nada que tocar. Si escribe algo, se limpia y se acota igual que siempre.
+ */
+export function limpiarPromptOpcional(prompt: unknown): string {
+  const texto = typeof prompt === "string" ? prompt.trim().replace(/\s+/g, " ") : "";
+  if (texto === "") return "";
+  return limpiarPrompt(texto);
+}
+
 export function limpiarPrompt(prompt: unknown): string {
   const texto = typeof prompt === "string" ? prompt.trim().replace(/\s+/g, " ") : "";
   if (texto.length < PROMPT_MINIMO) {

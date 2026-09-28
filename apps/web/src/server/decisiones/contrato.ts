@@ -38,6 +38,12 @@ export interface EntradaDecision {
    * escenas descritas sin foto, que son generaciones legítimas y con su propio modelo.
    */
   sinReferencia?: boolean;
+  /**
+   * El clip está **dirigido** (0.25.2): el encuadre, la cámara y el gesto los ponen los botones de dirección, y
+   * lo que se ve lo pone la imagen de partida. Sin esto, la regla que exige descripción rechazaría animar una
+   * imagen que ya tienes sin escribir además un párrafo describiéndola, que es pedir dos veces lo mismo.
+   */
+  dirigido?: boolean;
   /** Créditos estimados del trabajo. */
   creditos: number;
 }

@@ -47,6 +47,7 @@ import {
   imagenPropia,
   limpiarDialogo,
   limpiarPrompt,
+  limpiarPromptOpcional,
   proveedorDeCredencial,
 } from "./comprobaciones";
 import { ErrorGeneracion } from "./errores";
@@ -764,7 +765,13 @@ export async function crearAnimacion(
   peticion: PeticionAnimacion,
   h: Herramientas = HERRAMIENTAS,
 ): Promise<Envio> {
-  const prompt = limpiarPrompt(peticion.prompt);
+  /**
+   * Un clip **dirigido** puede ir sin descripción: la imagen de partida ya dice lo que se ve y la dirección
+   * pone el encuadre, la cámara y el gesto. Sin dirección se sigue exigiendo, como antes: entonces la
+   * descripción es lo **único** que describe el clip.
+   */
+  const dirigiendo = peticion.direccion !== undefined || peticion.direccionElegida !== undefined;
+  const prompt = dirigiendo ? limpiarPromptOpcional(peticion.prompt) : limpiarPrompt(peticion.prompt);
   exigirDerechos(peticion.derechos);
   const claveIdempotencia = exigirClaveIdempotencia(peticion.claveIdempotencia);
   const partida = await partidaDelClip(actor.id, peticion);
@@ -863,6 +870,7 @@ export async function crearAnimacion(
     contexto,
     conVoz: modelo.conVoz,
     conReferencia: true,
+    ...(dirigiendo ? { dirigido: true } : {}),
     creditos,
   });
   // Igual que en el fotograma: la descripción y el contexto se traducen al inglés antes de componer, y solo
@@ -907,8 +915,20 @@ export async function crearAnimacion(
   const escenaDirigida = dirigido?.escena ?? escenaEnIngles;
   // En formato mudo el diálogo **no viaja**, aunque el guion tenga texto: el clip lleva la boca cerrada.
   const dialogoFinal = dirigido ? dirigido.dialogo : dialogo;
-  const base =
-    escenaDirigida === prompt
+  /**
+   * **La dirección sustituye a la plantilla, no se mete dentro de ella.**
+   *
+   * Es la misma regla que ya seguían las 6C del fotograma, y por el mismo motivo: un clip dirigido trae su
+   * bloque de cámara, su gesto en su sitio y su regla de toma única. Pasarlo como valor de `{{escena}}` de
+   * `clip-social` ponía **dos** cabeceras de cámara, dos veces la toma única y un look que competía con el
+   * registro estético ya elegido. Cada concepto se pide una sola vez.
+   *
+   * La plantilla se sigue componiendo antes (valida la combinación con el modelo) y se sigue registrando: la
+   * auditoría tiene que poder decir con qué versión se aprobó el trabajo.
+   */
+  const base = dirigido
+    ? { escena: escenaDirigida, compuesto: original.compuesto }
+    : escenaDirigida === prompt
       ? original
       : await baseDelPrompt(actor, peticion, "animacion", modelo, tipo, escenaDirigida, segundos);
   const promptFinal = promptConContexto(base.escena, contextoEnIngles);

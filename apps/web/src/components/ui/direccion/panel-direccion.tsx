@@ -32,6 +32,7 @@ import { Casilla } from "../choice";
 import { Aviso } from "../feedback";
 import { AreaTexto, Campo, EntradaTexto } from "../field";
 import { Selector } from "../select";
+import { DireccionesGuardadas } from "./direcciones-guardadas";
 import { ElectorVisual, type OpcionVisual } from "./elector-visual";
 import {
   type CategoriaPictograma,
@@ -59,6 +60,29 @@ import {
  *
  * Todos los desplegables son el `Selector` del catálogo: aquí no hay ningún `<select>` nativo.
  */
+
+/**
+ * Los campos que se ponen al aplicar una dirección guardada, uno a uno por el mismo `onCambio` que usan los
+ * botones. Quien dirige una escena ignora el acento (es del proyecto entero), y así no hace falta un segundo
+ * camino para escribirlo.
+ */
+const CAMPOS_DE_LA_DIRECCION = [
+  "formatoClip",
+  "plano",
+  "angulo",
+  "camara",
+  "microaccion",
+  "momentoMicroaccion",
+  "direccionVocal",
+  "optica",
+  "luz",
+  "localizacion",
+  "registroEstetico",
+  "instruccionesExtra",
+  "modoExperto",
+  "descripcionExperta",
+  "acento",
+] as const satisfies readonly (keyof DireccionElegidaConAcento)[];
 
 /** Opción vacía: el catálogo no obliga a elegir, y «sin elegir» tiene un significado distinto en cada campo. */
 const SIN_ELEGIR = "";
@@ -96,6 +120,7 @@ export function PanelDireccion({
   guion,
   segundos,
   conAcento,
+  conFotograma = true,
   deshabilitado,
   onCambio,
 }: {
@@ -111,6 +136,19 @@ export function PanelDireccion({
    * entero, y ofrecerlo por escena haría creer que el acento puede cambiar de plano a plano.
    */
   conAcento?: boolean;
+  /**
+   * `true` donde **esta pantalla dirige también el fotograma** del que sale el clip: la escena de un proyecto,
+   * que lo genera con sus 6C. En «Crear» va en `false` y el bloque del fotograma no se enseña:
+   *
+   * - con una imagen de tu biblioteca no se genera ningún fotograma, así que la óptica, la luz y el sitio no
+   *   describen nada que vaya a existir;
+   * - con un fotograma nuevo, esos campos se eligen en su propio paso, y repetirlos aquí sería pedir lo mismo
+   *   dos veces con dos respuestas posibles.
+   *
+   * El registro estético no se va con ellos: modula la cámara del **clip** y sí llega a su prompt, así que se
+   * queda arriba, con el resto de la dirección del clip.
+   */
+  conFotograma?: boolean;
   deshabilitado?: boolean;
   onCambio: <C extends keyof DireccionElegidaConAcento>(campo: C, valor: DireccionElegidaConAcento[C]) => void;
 }) {
@@ -161,6 +199,21 @@ export function PanelDireccion({
         <Clapperboard className="size-5 text-acento" />
         Dirección del clip
       </h4>
+
+      {/*
+        Lo que has guardado con nombre. Aplicar una dirección rellena estos mismos controles y no genera nada:
+        se sigue confirmando el coste como siempre.
+      */}
+      <DireccionesGuardadas
+        direccion={direccion}
+        opciones={opciones}
+        deshabilitado={deshabilitado}
+        onAplicar={(guardada) => {
+          for (const campo of CAMPOS_DE_LA_DIRECCION) {
+            onCambio(campo, guardada[campo] as DireccionElegidaConAcento[typeof campo]);
+          }
+        }}
+      />
 
       <Selector
         etiqueta="Formato"
@@ -269,41 +322,47 @@ export function PanelDireccion({
       )}
       {habla && conAcento && <p className="text-sm text-texto-suave">{AYUDA_ACENTO}</p>}
 
-      <h4 className="mt-2 font-semibold text-texto">El fotograma</h4>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Selector
-          etiqueta="Óptica"
-          valor={direccion.optica}
-          deshabilitado={botonesApagados}
-          opciones={opcionesDe(opciones.optica, "Sin elegir")}
-          onCambio={(v) => onCambio("optica", v ?? SIN_ELEGIR)}
-        />
-        <Selector
-          etiqueta="Luz"
-          valor={direccion.luz}
-          deshabilitado={botonesApagados}
-          opciones={opcionesDe(opciones.luz, "Sin elegir")}
-          onCambio={(v) => onCambio("luz", v ?? SIN_ELEGIR)}
-        />
-        <Selector
-          etiqueta="Sitio"
-          valor={direccion.localizacion}
-          deshabilitado={botonesApagados}
-          opciones={opcionesDe(opciones.localizacion, "Sin elegir")}
-          onCambio={(v) => onCambio("localizacion", v ?? SIN_ELEGIR)}
-        />
-        <Selector
-          etiqueta="Registro estético"
-          valor={direccion.registroEstetico}
-          deshabilitado={botonesApagados}
-          opciones={REGISTROS_ESTETICOS.map((r) => ({
-            value: r,
-            label: NOMBRE_REGISTRO_ESTETICO[r],
-            descripcion: DESCRIPCION_REGISTRO_ESTETICO[r],
-          }))}
-          onCambio={(v) => v && onCambio("registroEstetico", v as DireccionElegidaConAcento["registroEstetico"])}
-        />
-      </div>
+      {/* El registro estético es del clip: modula su cámara y su acabado, y por eso se elige con la cámara. */}
+      <Selector
+        etiqueta="Registro estético"
+        valor={direccion.registroEstetico}
+        deshabilitado={botonesApagados}
+        opciones={REGISTROS_ESTETICOS.map((r) => ({
+          value: r,
+          label: NOMBRE_REGISTRO_ESTETICO[r],
+          descripcion: DESCRIPCION_REGISTRO_ESTETICO[r],
+        }))}
+        onCambio={(v) => v && onCambio("registroEstetico", v as DireccionElegidaConAcento["registroEstetico"])}
+      />
+
+      {conFotograma && (
+        <>
+          <h4 className="mt-2 font-semibold text-texto">El fotograma</h4>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Selector
+              etiqueta="Óptica"
+              valor={direccion.optica}
+              deshabilitado={botonesApagados}
+              opciones={opcionesDe(opciones.optica, "Sin elegir")}
+              onCambio={(v) => onCambio("optica", v ?? SIN_ELEGIR)}
+            />
+            <Selector
+              etiqueta="Luz"
+              valor={direccion.luz}
+              deshabilitado={botonesApagados}
+              opciones={opcionesDe(opciones.luz, "Sin elegir")}
+              onCambio={(v) => onCambio("luz", v ?? SIN_ELEGIR)}
+            />
+            <Selector
+              etiqueta="Sitio"
+              valor={direccion.localizacion}
+              deshabilitado={botonesApagados}
+              opciones={opcionesDe(opciones.localizacion, "Sin elegir")}
+              onCambio={(v) => onCambio("localizacion", v ?? SIN_ELEGIR)}
+            />
+          </div>
+        </>
+      )}
 
       <h4 className="mt-2 font-semibold text-texto">Escríbelo tú</h4>
       {!experto && (

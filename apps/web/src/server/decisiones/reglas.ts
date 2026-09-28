@@ -11,8 +11,10 @@ import type { Decision, Decisor, EntradaDecision } from "./contrato";
  */
 
 const REGLAS: readonly ((e: EntradaDecision) => Decision | null)[] = [
+  // Un clip dirigido puede ir sin descripción: la imagen de partida y los botones de dirección ya dicen qué se
+  // ve y cómo está encuadrado. Lo que no está dirigido sigue necesitando una descripción de verdad.
   (e) =>
-    e.escena.trim().length < PROMPT_MINIMO
+    e.escena.trim().length < PROMPT_MINIMO && e.dirigido !== true
       ? {
           estado: "rechazado",
           evidencia: `La descripción de la escena tiene ${e.escena.trim().length} caracteres y hacen falta al menos ${PROMPT_MINIMO}.`,

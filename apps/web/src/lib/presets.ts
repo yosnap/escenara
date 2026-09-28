@@ -93,7 +93,48 @@ export const CATEGORIAS_SOLO_ADMIN: readonly CategoriaPreset[] = ["anclajes"];
 
 export const esCategoriaSoloAdmin = (categoria: CategoriaPreset) => CATEGORIAS_SOLO_ADMIN.includes(categoria);
 
+/**
+ * Categorías de las que **manda la dirección del clip** (y el método 6C del fotograma): el formato, el
+ * encuadre, la cámara, el gesto, la luz, el sitio, el registro, la duración y el look.
+ *
+ * Cada concepto se elige en **un solo sitio** (0.25.2). Cuando la dirección está a la vista, la botonera de la
+ * plantilla no vuelve a ofrecer nada de esto: dos botones para lo mismo no son dos formas de pedirlo, son dos
+ * respuestas que no se sabe cuál gana. Lo que la dirección no cubre —especialidad, vestuario, acción,
+ * proporción— sigue eligiéndose en la plantilla como siempre.
+ *
+ * La duración está aquí porque se elige con el modelo, arriba del todo, y el look porque la dirección ya tiene
+ * la luz y el registro estético, que es de lo que está hecho.
+ */
+export const CATEGORIAS_DE_LA_DIRECCION: readonly CategoriaPreset[] = [
+  "formato-clip",
+  "plano",
+  "angulo",
+  "optica",
+  "luz",
+  "localizacion",
+  "camara",
+  "microaccion",
+  "registro-estetico",
+  "duracion",
+  "estilo",
+];
+
 export const esCategoriaMultiple = (categoria: CategoriaPreset) => CATEGORIAS_MULTIPLES.includes(categoria);
+
+/**
+ * Categorías que el usuario **todavía elige en la botonera de la plantilla**: las que la plantilla declara,
+ * en el orden del catálogo, menos las que ya se eligen en la dirección. Vacía = la plantilla no tiene nada que
+ * ofrecer y su panel desaparece.
+ *
+ * Vive aquí, y no en el componente, porque es la regla de «cada concepto en un solo sitio» y se prueba sola.
+ */
+export function categoriasElegibles(
+  variables: readonly { tipo: string; categoria?: CategoriaPreset }[],
+  cubiertas: readonly CategoriaPreset[] = [],
+): CategoriaPreset[] {
+  const declaradas = new Set(variables.flatMap((v) => (v.categoria && v.tipo !== "texto" ? [v.categoria] : [])));
+  return CATEGORIAS_PRESET.filter((c) => declaradas.has(c) && !cubiertas.includes(c));
+}
 
 // ── Valores de un preset ────────────────────────────────────────────────────────────────────────────────
 
