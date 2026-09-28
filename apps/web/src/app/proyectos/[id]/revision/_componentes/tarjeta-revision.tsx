@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { Boton } from "@/components/ui/button";
 import { Casilla } from "@/components/ui/choice";
 import { Aviso } from "@/components/ui/feedback";
+import type { CorreccionHumana } from "@/lib/coherencia";
 import { formatearCreditos } from "@/lib/generacion";
 import {
   type AccionRevision,
@@ -20,6 +21,7 @@ import {
 import { ComparadorContinuidad } from "./comparador-continuidad";
 import { DecisionHumana } from "./decision-humana";
 import { ListaComprobaciones } from "./lista-comprobaciones";
+import { PanelCoherencia } from "./panel-coherencia";
 
 /**
  * Una escena en la pantalla de revisión: su clip junto a sus referencias, lo que se midió del archivo con su valor, y
@@ -36,6 +38,8 @@ export function TarjetaRevision({
   onComprobar,
   onDecidir,
   onMultimodal,
+  onCoherencia,
+  onCorregirCoherencia,
 }: {
   escena: EscenaRevisionVista;
   proyecto: RevisionProyectoVista;
@@ -43,6 +47,8 @@ export function TarjetaRevision({
   onComprobar: () => void;
   onDecidir: (accion: AccionRevision, motivo: string) => void;
   onMultimodal: (confirmacion: { avisoUmbralAceptado: boolean; claveIdempotencia: string }) => void;
+  onCoherencia: () => void;
+  onCorregirCoherencia: (decisionId: string, correccion: CorreccionHumana) => void;
 }) {
   const revisable = esRevisable(escena);
 
@@ -120,6 +126,13 @@ export function TarjetaRevision({
           <DecisionHumana ocupado={ocupado} onDecidir={onDecidir} />
 
           <RevisionConModelo escena={escena} proyecto={proyecto} ocupado={ocupado} onPedir={onMultimodal} />
+
+          <PanelCoherencia
+            decisiones={escena.coherencia}
+            ocupado={ocupado}
+            onComprobar={onCoherencia}
+            onCorregir={onCorregirCoherencia}
+          />
         </>
       )}
 

@@ -15,6 +15,7 @@ import { SeccionAccesoSocial } from "./seccion-acceso-social";
 import { Seccion } from "./seccion-ajustes";
 import { SeccionAsistente } from "./seccion-asistente";
 import { SeccionCalidad } from "./seccion-calidad";
+import { SeccionCoherencia } from "./seccion-coherencia";
 import { SeccionControles } from "./seccion-controles";
 import { SeccionPresupuesto } from "./seccion-presupuesto";
 import { SeccionRevision } from "./seccion-revision";
@@ -246,6 +247,16 @@ export function FormularioAjustes({
       <SeccionControles valores={valores} errorDe={errorDe} onCambio={cambiar} />
 
       <SeccionRevision valores={valores} errorDe={errorDe} onCambio={cambiar} />
+
+      <SeccionCoherencia
+        valores={valores}
+        errorDe={errorDe}
+        onCambio={cambiar}
+        pistaTypesafe={pista("typesafeApiKey")}
+        bovedaLista={bovedaLista}
+        onGuardarSecreto={(valor) => guardarSecreto("typesafeApiKey", valor)}
+        onQuitarSecreto={() => quitarSecreto("typesafeApiKey")}
+      />
       <SeccionVoz valores={valores} errorDe={errorDe} onCambio={cambiar} />
 
       <SeccionPresupuesto

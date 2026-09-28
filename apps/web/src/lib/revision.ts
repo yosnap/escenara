@@ -1,3 +1,4 @@
+import type { DecisionVista } from "./coherencia";
 import type { Medio } from "./media/tipos";
 
 /**
@@ -190,6 +191,11 @@ export interface EscenaRevisionVista {
   bloquea: boolean;
   /** Por qué bloquea, en lenguaje llano y con su acción. Vacío cuando no bloquea. */
   motivoBloqueo: string;
+  /**
+   * Decisiones de coherencia vigentes de esta escena (0.24.0). Van **en sombra**: se enseñan con su evidencia y su
+   * confianza, y no bloquean nada ni cuentan para la severidad. Lista vacía mientras no se haya comprobado.
+   */
+  coherencia: DecisionVista[];
 }
 
 /** Estado de revisión del proyecto entero: es lo que pinta `/proyectos/[id]/revision`. */

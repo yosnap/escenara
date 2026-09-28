@@ -49,6 +49,11 @@ function esConsentimientoRepetido(error: unknown): boolean {
 export interface DatosConsentimiento {
   titular: unknown;
   mayoriaDeEdad: unknown;
+  /**
+   * Autorización para la comprobación de identidad (0.24.0). **Opcional**, a diferencia de la mayoría de edad:
+   * sin ella el personaje funciona igual que hasta la 0.23.x y sus vistas generadas no cuentan para la cobertura.
+   */
+  coherencia?: unknown;
   alcance?: unknown;
   /** Medio de la biblioteca con el documento firmado; obligatorio para un tercero. */
   documentoId?: unknown;
@@ -191,10 +196,12 @@ export async function registrarConsentimiento(
         characterId: personaje.id,
         holderType: titular,
         adultDeclared: true,
+        coherenceDeclared: datos.coherencia === true,
         usageScope: alcance,
         documentMediaId: documentoId,
         registeredBy: actor.id,
       });
+      if (datos.coherencia !== true) await retirarVeredictosDeIdentidad(tx, personaje.id);
     });
   } catch (error) {
     // El índice único parcial de «un consentimiento sin revocar por personaje» ha saltado: son dos registros
@@ -209,6 +216,17 @@ export async function registrarConsentimiento(
 }
 
 /**
+ * Retira los veredictos de identidad del personaje: se obtuvieron enviando su cara con una autorización que ya no
+ * está vigente, así que sus vistas generadas dejan de cubrir hasta que se vuelvan a comprobar con una nueva.
+ */
+async function retirarVeredictosDeIdentidad(ejecutor: Pick<ReturnType<typeof db>, "update">, personajeId: string) {
+  await ejecutor
+    .update(characterReferences)
+    .set({ identityVerdict: "sin_comprobar", identityReason: "" })
+    .where(eq(characterReferences.characterId, personajeId));
+}
+
+/**
  * Revoca el consentimiento vigente. El personaje queda bloqueado al momento y no puede volver a generar:
  * lo que ya se generó se conserva, con su aviso en la interfaz.
  */
@@ -220,6 +238,7 @@ export async function revocarConsentimiento(actor: Actor, id: unknown, motivo: u
     .where(and(eq(consentRecords.characterId, personaje.id), isNull(consentRecords.revokedAt)))
     .returning({ id: consentRecords.id });
   if (!revocado) throw new ErrorPersonaje(409, "Este personaje no tiene ningún consentimiento vigente que revocar.");
+  await retirarVeredictosDeIdentidad(db(), personaje.id);
   await recalcularEstado(personaje.id);
   return fichaDePersonaje(actor, personaje.id);
 }

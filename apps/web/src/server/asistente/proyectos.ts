@@ -10,6 +10,7 @@ import {
   TITULO_MAXIMO,
 } from "@/lib/proyectos";
 import { leerAjustes } from "../ajustes";
+import { olvidarPercibidoDeProyecto } from "../coherencia/registro";
 import { db } from "../db/cliente";
 import { type FilaProyecto, projects, scenes } from "../db/esquema";
 import type { Actor } from "../media/servicio";
@@ -156,5 +157,8 @@ export async function editarProyecto(actor: Actor, id: unknown, datos: DatosProy
  */
 export async function borrarProyecto(actor: Actor, id: unknown): Promise<void> {
   const proyecto = await proyectoPropio(actor, id);
-  await db().delete(projects).where(eq(projects.id, proyecto.id));
+  await db().transaction(async (tx) => {
+    await olvidarPercibidoDeProyecto(tx, proyecto.id);
+    await tx.delete(projects).where(eq(projects.id, proyecto.id));
+  });
 }

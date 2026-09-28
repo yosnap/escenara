@@ -1,4 +1,5 @@
 import { inArray } from "drizzle-orm";
+import type { DecisionVista } from "@/lib/coherencia";
 import type { Medio } from "@/lib/media/tipos";
 import { resumenDeEscena } from "@/lib/proyectos";
 import {
@@ -10,6 +11,7 @@ import {
 } from "@/lib/revision";
 import { leerAjustes } from "../ajustes";
 import { escenaPropia, escenasDe, proyectoPropio } from "../asistente/consulta";
+import { decisionesPorEscena } from "../coherencia/registro";
 import { db } from "../db/cliente";
 import { characterVersions, type FilaEscena, type FilaMedio, type FilaProyecto, media } from "../db/esquema";
 import { type Actor, aDto } from "../media/servicio";
@@ -68,6 +70,7 @@ function vistaDeEscena(
   revisiones: readonly RevisionVista[],
   hojaId: string | null,
   medios: Map<string, Medio>,
+  coherencia: readonly DecisionVista[],
 ): EscenaRevisionVista {
   const vigentes = vigentesPorTipo(revisiones);
   const bloqueante = revisiones.find(mantieneCritico) ?? null;
@@ -86,6 +89,8 @@ function vistaDeEscena(
     severidad: severidadDeEscena([vigentes.automatica, vigentes.humana, vigentes.multimodal]),
     bloquea: bloqueante !== null,
     motivoBloqueo: bloqueante === null ? "" : motivoDeCritico(bloqueante),
+    // En sombra: se enseña y no entra en `severidad` ni en `bloquea`. Verlo no puede cambiar lo que bloquea.
+    coherencia: [...coherencia],
   };
 }
 
@@ -111,8 +116,18 @@ export async function estadoDeRevision(
     ...filas.flatMap((e) => [e.clipMediaId, e.approvedFrameMediaId]),
     ...filas.map(hojaDe),
   ]);
+  const coherencia = await decisionesPorEscena(
+    actor.id,
+    filas.map((e) => e.id),
+  );
   const escenas = filas.map((fila) =>
-    vistaDeEscena(fila, (porEscena.get(fila.id) ?? []).map(vistaDeRevision), hojaDe(fila), medios),
+    vistaDeEscena(
+      fila,
+      (porEscena.get(fila.id) ?? []).map(vistaDeRevision),
+      hojaDe(fila),
+      medios,
+      coherencia.get(fila.id) ?? [],
+    ),
   );
   return {
     proyectoId: proyecto.id,

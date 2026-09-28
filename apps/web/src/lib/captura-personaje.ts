@@ -277,6 +277,11 @@ export interface CoberturaVista {
   /** Referencias que cubren esta vista, con su origen: una vista generada **no** cubre como foto original. */
   originales: number;
   generadas: number;
+  /**
+   * De las generadas, las que **Jev ha dado por la misma persona** (0.24.0). Son las que cubren en un personaje
+   * real: una vista que no se parece no guía, guía mal.
+   */
+  generadasVerificadas: number;
 }
 
 export interface Cobertura {
@@ -287,10 +292,18 @@ export interface Cobertura {
   sinClasificar: number;
 }
 
+/** Veredicto de identidad de una referencia (0.24.0). `sin_comprobar` **no** significa «sospechosa». */
+export type IdentidadReferencia = "sin_comprobar" | "pasa" | "revisar" | "no_pasa";
+
 /** Referencia reducida a lo que necesita la cobertura. */
 export interface ReferenciaParaCobertura {
   vistaClave: Vista | null;
   origen: OrigenReferencia;
+  /**
+   * Veredicto de la comprobación de identidad (0.24.0). En una foto original y en lo anterior a esta versión es
+   * `sin_comprobar`, que es como estaba todo hasta ahora.
+   */
+  identidad?: IdentidadReferencia;
 }
 
 /**
@@ -317,9 +330,13 @@ export function agruparPorVista<T extends ReferenciaParaCobertura>(referencias: 
  * cobertura cambia sola y no hay que migrar ninguna columna.
  */
 /**
- * `generadasCubren`: en un personaje **inventado** sus vistas generadas cubren, porque no tiene ni admite fotos
- * reales y su cara **es** la generada. En uno real solo cubren las fotos originales (una vista generada podría no
- * parecerse): eso cambiará cuando haya verificación de parecido.
+ * `generadasCubren`: en un personaje **inventado** sus vistas generadas cubren sin más, porque no tiene ni admite
+ * fotos reales y su cara **es** la generada.
+ *
+ * En uno **real** cubre la foto original y, desde la 0.24.0, también la vista generada **que Jev ha dado por la
+ * misma persona**. Hasta entonces ninguna generada cubría nunca, precisamente porque podía no parecerse; ahora eso
+ * se comprueba y el veredicto es el que decide. Una generada `sin_comprobar`, `revisar` o `no_pasa` sigue sin
+ * cubrir: lo que no se ha verificado no vale como verificado.
  */
 export function calcularCobertura(
   tipo: TipoPersonaje,
@@ -328,17 +345,21 @@ export function calcularCobertura(
 ): Cobertura {
   const vistas = vistasMinimas(tipo).map<CoberturaVista>((vista) => {
     const suyas = referencias.filter((r) => r.vistaClave === vista);
+    const generadas = suyas.filter((r) => r.origen === "vista_generada");
     return {
       vista,
       etiqueta: ETIQUETA_VISTA[vista],
       indicacion: INDICACION_VISTA[vista],
       originales: suyas.filter((r) => r.origen === "foto_original").length,
-      generadas: suyas.filter((r) => r.origen === "vista_generada").length,
+      generadas: generadas.length,
+      generadasVerificadas: generadas.filter((r) => r.identidad === "pasa").length,
     };
   });
+  const cubre = (v: CoberturaVista) =>
+    v.originales > 0 || v.generadasVerificadas > 0 || (generadasCubren && v.generadas > 0);
   return {
     vistas,
-    faltan: vistas.filter((v) => v.originales === 0 && (!generadasCubren || v.generadas === 0)).map((v) => v.vista),
+    faltan: vistas.filter((v) => !cubre(v)).map((v) => v.vista),
     sinClasificar: referencias.filter((r) => r.vistaClave === null).length,
   };
 }

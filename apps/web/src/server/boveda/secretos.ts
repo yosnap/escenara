@@ -14,6 +14,7 @@ export const CLAVES_SECRETAS = [
   "googleClientSecret",
   "githubClientSecret",
   "secretoCallback",
+  "typesafeApiKey",
 ] as const;
 export type ClaveSecreta = (typeof CLAVES_SECRETAS)[number];
 
@@ -25,6 +26,12 @@ export const NOMBRE_SECRETO: Record<ClaveSecreta, string> = {
   googleClientSecret: "Secreto de cliente de Google",
   githubClientSecret: "Secreto de cliente de GitHub",
   secretoCallback: "Secreto de los callbacks del proveedor",
+  /**
+   * Clave de TypeSafe con la que Jev decide la coherencia (0.24.0). Es **de la instalación y no de cada usuario**
+   * (ADR-0030): lo que se comprueba es una regla de esta plataforma, no una generación que el usuario paga con su
+   * propia cuenta, y pedirle una clave más para algo que él no elige sería cobrarle la política de la casa.
+   */
+  typesafeApiKey: "Clave de TypeSafe (Jev)",
 };
 
 const LARGO_MAXIMO = 500;

@@ -8,6 +8,7 @@ import type { Medio } from "@/lib/media/tipos";
 import {
   ALCANCES_USO,
   type AlcanceUso,
+  AVISO_COHERENCIA,
   AVISO_CONTROL_NO_GARANTIA,
   AVISO_DATOS_AL_PROVEEDOR,
   AVISO_MAYORIA_DE_EDAD,
@@ -31,6 +32,11 @@ import {
 export interface EstadoConsentimiento {
   titular: TitularConsentimiento;
   mayoriaDeEdad: boolean;
+  /**
+   * Autorización para la comprobación de identidad (0.24.0). **Opcional**: sin ella el personaje funciona
+   * exactamente igual que hasta la 0.23.x, solo que sus vistas generadas no cuentan para la cobertura.
+   */
+  coherencia: boolean;
   alcance: AlcanceUso;
   /** Documento firmado elegido o subido; solo se usa con el titular «otra persona». */
   documento: Medio[];
@@ -39,6 +45,7 @@ export interface EstadoConsentimiento {
 export const CONSENTIMIENTO_INICIAL: EstadoConsentimiento = {
   titular: "yo",
   mayoriaDeEdad: false,
+  coherencia: false,
   alcance: "personal",
   documento: [],
 };
@@ -102,6 +109,14 @@ export function FormularioConsentimiento({
         }))}
         valor={valor.alcance}
         onCambio={(v) => cambiar("alcance", v as AlcanceUso)}
+      />
+
+      <Casilla
+        etiqueta="Autorizo la comprobación de parecido (opcional)"
+        descripcion={AVISO_COHERENCIA}
+        marcada={valor.coherencia}
+        deshabilitado={deshabilitado}
+        onCambio={(v) => cambiar("coherencia", v)}
       />
 
       <Casilla
