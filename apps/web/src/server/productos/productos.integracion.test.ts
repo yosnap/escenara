@@ -478,6 +478,14 @@ describe.skipIf(!hayBaseDeDatos)("productos con sus fotos, su elección y su bor
       const aviso = con.comprobaciones.find((c) => c.regla === "producto-sin-hueco-de-referencia");
       expect(con.comprobaciones.map((c) => c.regla)).toContain("producto-sin-hueco-de-referencia");
       expect(aviso?.motivo).toContain(producto.nombre);
+      // La acción poco fiable también se avisa antes de pulsar, con su propia casilla.
+      const pocoFiable = await evaluarControles(actorAna, {
+        tipo: "animacion",
+        medioId: imagen,
+        productoId: producto.id,
+        productoAccion: "skincare-abrir-tapa",
+      });
+      expect(pocoFiable.comprobaciones.map((c) => c.regla)).toContain("producto-accion-poco-fiable");
       // Un producto ajeno no se evalúa ni se dice que existe.
       const ajeno = await evaluarControles(
         { id: beto.id, esAdmin: false },
