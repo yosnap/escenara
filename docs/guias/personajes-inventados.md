@@ -1,9 +1,10 @@
 # Personajes inventados
 
-**Versión:** 0.22.0 · **Para:** quien usa Escenara
+**Versión:** 0.22.1 · **Para:** quien usa Escenara
 
 Un **personaje inventado** no existe: lo describes con palabras, Escenara genera cuatro retratos y eliges el que
-te convenza. A partir de ahí se usa como cualquier otro personaje —sale en tus escenas y mantiene la misma cara—,
+te convenza. Desde la 0.22.1 solo tienes que poner **el nombre y una descripción**: el resto de su ficha lo
+propone la IA y sus vistas se generan de una vez. A partir de ahí se usa como cualquier otro personaje —sale en tus escenas y mantiene la misma cara—,
 pero **sin fotos de ninguna persona real**.
 
 Sirve para lo que más se pide en UGC: un presentador propio para una marca, sin tener que pedirle permiso a nadie
@@ -30,6 +31,9 @@ del producto, no una verificación**: Escenara no puede comprobar a quién se pa
    pelo, complexión, ropa y gesto. Cuanto más concreto, menos lotería.
 4. Marca la declaración y créalo.
 
+Al entrar en su ficha verás **los pasos que le faltan**, en orden y con el que toca marcado: retratos, elegir la
+cara, completar la ficha con IA y generar las vistas. No hay que recordarse nada.
+
 **No puedes nombrar a personas reales** en su nombre ni en su descripción: «se parece a…» está bloqueado, y el
 aviso aparece mientras escribes. Si lo que quieres es la cara de alguien concreto, lo que necesitas es un
 personaje normal con su consentimiento.
@@ -47,10 +51,27 @@ En su ficha, pestaña **Retratos y vistas**:
 El retrato elegido se guarda marcado como **vista generada**, no como foto: la ficha lo dice siempre con su
 distintivo, porque no es una foto de nadie.
 
-## 3. Completa sus vistas
+## 3. Completa su ficha con IA
 
-Con el retrato ya elegido, las demás vistas (perfil, tres cuartos, cuerpo entero) se generan como en cualquier
-otro personaje, desde **Referencias → Cobertura**, cada una con su coste confirmado. Son las que mantienen la cara
+En la pestaña **Ficha**, pulsa **«Completar la ficha con IA»**. Antes de nada te dice con qué modelo se haría —el
+primero de tu mapa de modelos de texto— y qué cuesta: los créditos que valga esa llamada, o que ese servicio se
+paga por cuota de tu plan y **no cuesta créditos**.
+
+Si ese modelo admite imágenes, se le envía además **la cara del personaje**, y la propuesta sale mucho más
+ajustada; si no las admite, sale solo de la descripción y se te dice. Puedes poner delante un servicio que sí las
+admita desde «Tu cuenta».
+
+Lo que propone **no se guarda solo**: lo ves campo a campo, con lo que hay ahora al lado, y aceptas todo o solo
+los campos que te convenzan. Al aceptar se rellena el formulario; la versión nueva de la ficha la crea, como
+siempre, **«Guardar la ficha»**.
+
+## 4. Genera todas sus vistas
+
+Con el retrato ya elegido, en **Retratos y vistas** tienes **«Generar las N vistas que faltan»**: te dice cuántas
+son y el total (el precio de una imagen por cada una) antes de confirmar. Después se encargan de una en una, con
+las mismas puertas de siempre. Si alguna no se puede encargar, se te dice **cuál y por qué**, y esa no se cobra.
+
+También puedes seguir generándolas de una en una desde la tarjeta de cada vista. Son las que mantienen la cara
 estable cuando cambia el encuadre.
 
 ## Preguntas que suelen salir

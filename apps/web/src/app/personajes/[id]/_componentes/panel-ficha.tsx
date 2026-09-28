@@ -1,6 +1,6 @@
 "use client";
 
-import { Eye, Save } from "lucide-react";
+import { Eye, Save, WandSparkles } from "lucide-react";
 import { useState } from "react";
 import { Boton } from "@/components/ui/button";
 import { Aviso } from "@/components/ui/feedback";
@@ -16,6 +16,7 @@ import {
   limpiarCampoFicha,
 } from "@/lib/ficha-personaje";
 import { type ContextoAplicado, DESCRIPCION_MAXIMA, MOTIVO_CAMBIO_MAXIMO, type PersonajeVista } from "@/lib/personajes";
+import { DialogoFichaConIA } from "./dialogo-ficha-ia";
 
 /**
  * Pestaña «Ficha»: los campos de apariencia que se añaden al prompt como contexto de generación.
@@ -45,6 +46,7 @@ export function PanelFicha({
   const [aviso, setAviso] = useState<string | null>(null);
   const [contexto, setContexto] = useState<ContextoAplicado | null>(null);
   const [pidiendoContexto, setPidiendoContexto] = useState(false);
+  const [conIA, setConIA] = useState(false);
 
   const cambiado =
     descripcion !== personaje.descripcion || CAMPOS_FICHA.some((campo) => campos[campo] !== personaje.ficha[campo]);
@@ -160,6 +162,15 @@ export function PanelFicha({
       {aviso && <Aviso tono="correcto">{aviso}</Aviso>}
 
       <div className="flex flex-wrap gap-3">
+        {/* La propuesta rellena estos mismos campos: lo que crea la versión sigue siendo «Guardar la ficha». */}
+        <Boton
+          variante="chispa"
+          icono={<WandSparkles className="size-4" />}
+          disabled={guardando}
+          onClick={() => setConIA(true)}
+        >
+          Completar la ficha con IA
+        </Boton>
         <Boton icono={<Save className="size-4" />} cargando={guardando} disabled={!cambiado} onClick={guardar}>
           Guardar la ficha
         </Boton>
@@ -182,6 +193,18 @@ export function PanelFicha({
       </div>
 
       {contexto && <PanelContextoPersonaje contexto={contexto} />}
+
+      <DialogoFichaConIA
+        personaje={personaje}
+        abierto={conIA}
+        onAbiertoCambio={setConIA}
+        onAceptar={(propuestos) => {
+          setCampos({ ...campos, ...propuestos });
+          setAviso(
+            "Los campos aceptados están puestos en el formulario. Revísalos y pulsa «Guardar la ficha»: hasta entonces no se ha cambiado nada.",
+          );
+        }}
+      />
     </div>
   );
 }

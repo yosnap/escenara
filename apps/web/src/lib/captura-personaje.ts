@@ -324,6 +324,17 @@ export function calcularCobertura(tipo: TipoPersonaje, referencias: readonly Ref
   };
 }
 
+/**
+ * Vistas que se pueden **generar de una vez** (0.22.1): las que no tienen ninguna foto original y tampoco una
+ * vista generada. Es exactamente lo que acepta `pedirVistaSintetica`, así que el navegador puede enseñar el
+ * coste total sin que el servidor rechace después la mitad de lo que se ha confirmado.
+ *
+ * Una vista que ya tiene una generada **no** entra: encadenar generadas sería gastar créditos cada vez.
+ */
+export function vistasPorGenerar(cobertura: Cobertura): Vista[] {
+  return cobertura.vistas.filter((v) => v.originales === 0 && v.generadas === 0).map((v) => v.vista);
+}
+
 /** Largo en caracteres hexadecimales de la huella perceptual (dHash de 64 bits). */
 export const LARGO_HUELLA = 16;
 

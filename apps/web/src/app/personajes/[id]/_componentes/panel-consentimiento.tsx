@@ -13,6 +13,7 @@ import {
   type EstadoConsentimiento,
   FormularioConsentimiento,
 } from "@/components/ui/personajes/formulario-consentimiento";
+import { fechaLarga } from "@/lib/fechas";
 import {
   AVISO_CONTROL_NO_GARANTIA,
   ETIQUETA_ALCANCE,
@@ -47,7 +48,8 @@ export function PanelConsentimiento({
   const [revocando, setRevocando] = useState(false);
   const [motivo, setMotivo] = useState("");
   const consentimiento = personaje.consentimiento;
-  const fecha = (iso: string) => new Date(iso).toLocaleString("es-ES", { dateStyle: "long", timeStyle: "short" });
+  // Con zona fija: la misma fecha en el servidor y en el navegador, para que React no descarte la hidratación.
+  const fecha = fechaLarga;
 
   return (
     <section aria-label="Consentimiento" className="flex flex-col gap-4">

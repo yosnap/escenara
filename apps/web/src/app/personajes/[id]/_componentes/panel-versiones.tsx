@@ -6,6 +6,7 @@ import { Boton } from "@/components/ui/button";
 import { Aviso, EstadoVacio } from "@/components/ui/feedback";
 import { MiniaturaMedio } from "@/components/ui/media/miniatura-medio";
 import { generarHojaDePersonaje, listarVersiones } from "@/components/ui/personajes/api-personajes";
+import { fechaYHora } from "@/lib/fechas";
 import { ETIQUETA_TIPO_APROBACION, type HistorialVersiones, type PersonajeVista } from "@/lib/personajes";
 import { CompararVersiones } from "./comparar-versiones";
 
@@ -140,7 +141,7 @@ export function PanelVersiones({
                   )}
                 </h3>
                 <p className="text-sm text-texto-suave">
-                  {new Date(version.creadaEn).toLocaleString("es-ES")} · {version.totalReferencias}{" "}
+                  {fechaYHora(version.creadaEn)} · {version.totalReferencias}{" "}
                   {version.totalReferencias === 1 ? "foto" : "fotos"}
                 </p>
               </div>

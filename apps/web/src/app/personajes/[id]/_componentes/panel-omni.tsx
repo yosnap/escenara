@@ -6,6 +6,7 @@ import { Boton } from "@/components/ui/button";
 import { Aviso } from "@/components/ui/feedback";
 import { registrarEnOmni } from "@/components/ui/personajes/api-personajes";
 import { Selector } from "@/components/ui/select";
+import { soloFecha } from "@/lib/fechas";
 import { AVISO_REGISTRO_OMNI } from "@/lib/omni";
 import type { PersonajeVista } from "@/lib/personajes";
 
@@ -69,7 +70,7 @@ export function PanelOmni({
         <p className="flex items-center gap-1.5 text-sm text-texto-suave">
           <BadgeCheck className="size-4 text-acento" aria-hidden />
           Registrado con la <strong className="text-texto">versión {registro.versionNumero}</strong> de su ficha el{" "}
-          {new Date(registro.registradoEn).toLocaleDateString("es-ES")}.
+          {soloFecha(registro.registradoEn)}.
           {registro.vigente
             ? ""
             : " Su ficha ha cambiado desde entonces, así que hay que registrarlo otra vez antes de producir."}

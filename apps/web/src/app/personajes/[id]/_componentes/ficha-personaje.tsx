@@ -36,6 +36,7 @@ import { PanelOmni, type ProyectoOmni } from "./panel-omni";
 import { PanelReferencias, type ResultadoAnadir } from "./panel-referencias";
 import { PanelRetratos } from "./panel-retratos";
 import { PanelVersiones } from "./panel-versiones";
+import { PasosInventado } from "./pasos-inventado";
 
 /**
  * Ficha de un personaje: su estado con lo que le falta, sus fotos de referencia, su consentimiento y el
@@ -186,6 +187,11 @@ export function FichaPersonaje({
             </span>
           }
         />
+      )}
+
+      {/* En un inventado, la guía va antes que las pestañas: recién creado, es lo único que hay que leer. */}
+      {personaje.inventado && personaje.puedeEditar && (
+        <PasosInventado personaje={personaje} retratos={retratos.length} />
       )}
 
       {error && <Aviso tono="error">{error}</Aviso>}

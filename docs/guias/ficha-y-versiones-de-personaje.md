@@ -1,6 +1,6 @@
 # La ficha y las versiones de un personaje
 
-**Versión:** 0.19.4 · **Para:** quien usa Escenara
+**Versión:** 0.22.1 · **Para:** quien usa Escenara
 
 Las fotos fijan la cara de un personaje. Lo que no fijan es todo lo demás: la edad que aparenta, la ropa que
 suele llevar, la estética con la que quieres retratarlo o cómo está delante de la cámara. Desde la 0.15.0 eso
@@ -9,6 +9,16 @@ archivo que se rellena y se olvida: es parte de lo que se le pide al modelo.
 
 Y como la ficha cambia lo que se envía, **cada cambio de apariencia crea una versión**. Así siempre se puede
 decir con qué apariencia se generó cada cosa.
+
+## Rellenarla con IA
+
+Desde la 0.22.1 no hace falta escribirla a mano: **«Completar la ficha con IA»**, en la pestaña «Ficha», le pide
+los cinco campos al primer modelo de tu **mapa de modelos de texto**, a partir de la descripción del personaje y
+—si ese modelo admite imágenes— de su cara.
+
+Antes de llamar a nadie se te dice con qué modelo se haría y qué cuesta: los créditos de esa llamada, o que ese
+servicio se paga por cuota de tu plan y no cuesta créditos. Lo que propone **no se guarda solo**: lo revisas campo
+a campo, aceptas todo o solo lo que te convenza, y la versión nueva la sigue creando «Guardar la ficha».
 
 ## Dónde está
 

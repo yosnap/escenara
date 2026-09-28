@@ -6,7 +6,7 @@ import { db } from "../db/cliente";
 import { assistantRuns, type FilaEjecucionAsistente, usageLedger } from "../db/esquema";
 import { elegirModelo } from "../proveedores/catalogo";
 import type { Buscador } from "../proveedores/codigos";
-import { pedirChat } from "../proveedores/compatible/cliente";
+import { type ImagenParaChat, pedirChat } from "../proveedores/compatible/cliente";
 import { ErrorCatalogo } from "../proveedores/contrato";
 import { MS_TEXTO } from "../proveedores/kie/texto";
 import { adaptadorDe } from "../proveedores/registro";
@@ -38,6 +38,12 @@ export interface PeticionDeTexto {
   /** Base de la clave de idempotencia; cada entrada del mapa usa la suya, derivada de esta. */
   claveIdempotencia: string;
   buscar?: Buscador;
+  /**
+   * Imagen que acompaña al texto (0.22.1). **Solo la reciben las entradas de un servicio compatible**: el
+   * modelo de texto de KIE no admite imágenes, así que una entrada de pago se llama igual que siempre, con la
+   * descripción sola. Quien llama sabe si la imagen llegó por `conImagen`.
+   */
+  imagen?: ImagenParaChat;
 }
 
 export interface TextoDelMapa {
@@ -47,7 +53,74 @@ export interface TextoDelMapa {
   modelo: string;
   /** `true` si no fue la entrada principal: quien paga tiene derecho a saber que se cambió. */
   deReserva: boolean;
+  /** `true` si la entrada que contestó recibió de verdad la imagen; `false` si solo recibió el texto. */
+  conImagen: boolean;
   intentos: IntentoProveedor[];
+}
+
+/** Lo que costaría una llamada de texto por la **entrada principal** del mapa de este usuario. */
+export interface EstimacionDeTexto {
+  /** `false` cuando el mapa no tiene ninguna entrada utilizable; entonces `motivo` dice qué falta. */
+  hayEntradas: boolean;
+  motivo: string;
+  /** Créditos de la entrada principal. **0 cuando se paga por cuota del plan**, que no es lo mismo que gratis. */
+  creditos: number;
+  /** `true` si la entrada principal se paga por cuota del plan y no por petición. */
+  porCuota: boolean;
+  /** Sello del precio con el que se calculó; vacío si se paga por cuota, que no tiene precio que sellar. */
+  sello: string;
+  nombreProveedor: string;
+  modelo: string;
+  /** `true` si esa entrada admite que se le envíe una imagen junto con el texto. */
+  admiteImagen: boolean;
+}
+
+const SIN_ENTRADAS =
+  "Tu mapa de modelos de texto no tiene ninguna entrada utilizable. Revísalo en «Tu cuenta»: puede que falte la clave del proveedor que elegiste.";
+
+/**
+ * Estimación de una llamada de texto: la de la **entrada principal**, que es el techo. Una reserva que se pague
+ * por cuota cuesta menos, nunca más, así que confirmar la principal nunca cobra de menos.
+ *
+ * Es una **lectura**: no llama a ningún proveedor, no reserva nada y no encola nada.
+ */
+export async function estimarTextoPorMapa(usuarioId: string): Promise<EstimacionDeTexto> {
+  const entradas = (await resolverMapa(usuarioId, TIPO_TEXTO)).filter((e) => e.proveedor !== "local");
+  const principal = entradas[0];
+  if (!principal) {
+    return {
+      hayEntradas: false,
+      motivo: SIN_ENTRADAS,
+      creditos: 0,
+      porCuota: false,
+      sello: "",
+      nombreProveedor: "",
+      modelo: "",
+      admiteImagen: false,
+    };
+  }
+  const comun = {
+    hayEntradas: true,
+    motivo: "",
+    nombreProveedor: principal.nombreProveedor,
+    modelo: principal.modelo,
+    // Solo un servicio compatible con la API de OpenAI admite el formato multimodal de mensajes.
+    admiteImagen: principal.proveedor === "compatible",
+  };
+  if (principal.proveedor === "compatible") {
+    return { ...comun, creditos: 0, porCuota: true, sello: "" };
+  }
+  try {
+    const modelo = await elegirModelo("text_generation", principal.modelo);
+    const precio = await adaptadorDe(modelo.proveedor).estimar(modelo.modelo);
+    return { ...comun, creditos: Math.ceil(precio.creditos), porCuota: false, sello: precio.sello };
+  } catch (error) {
+    // Un modelo sin precio registrado no se puede estimar, y sin estimación no se gasta: se dice cuál y por qué.
+    if (error instanceof ErrorCatalogo) {
+      return { ...comun, motivo: error.message, hayEntradas: false, creditos: 0, porCuota: false, sello: "" };
+    }
+    throw error;
+  }
 }
 
 /**
@@ -72,9 +145,7 @@ export class ErrorDeTexto extends Error {
 
   /** Mensaje completo, con todas las entradas probadas y su causa concreta. */
   mensaje(encabezado: string): string {
-    if (!this.hayEntradas) {
-      return `${encabezado}: tu mapa de modelos de texto no tiene ninguna entrada utilizable. Revísalo en «Tu cuenta»: puede que falte la clave del proveedor que elegiste.`;
-    }
+    if (!this.hayEntradas) return `${encabezado}: ${SIN_ENTRADAS.charAt(0).toLowerCase()}${SIN_ENTRADAS.slice(1)}`;
     return mensajeDeFalloDeProveedor(encabezado, this.intentos, sugerenciaDeMapa(this.intentos));
   }
 }
@@ -108,6 +179,8 @@ export async function pedirTextoPorMapa(peticion: PeticionDeTexto): Promise<Text
     nombreProveedor: resultado.entrada.nombreProveedor,
     modelo: resultado.entrada.modelo,
     deReserva: resultado.intentos.length > 0,
+    // La imagen solo la recibe un servicio compatible: si contestó una entrada de pago, no la vio.
+    conImagen: peticion.imagen !== undefined && resultado.entrada.proveedor === "compatible",
     intentos: resultado.intentos,
   };
 }
@@ -137,6 +210,7 @@ async function entradaPorCuota(
     instrucciones: peticion.instrucciones,
     entrada: peticion.entrada,
     buscar: peticion.buscar,
+    ...(peticion.imagen ? { imagen: peticion.imagen } : {}),
   });
   await apuntarPorCuota(peticion, entrada, claveIdempotencia, respuesta.tokensEntrada, respuesta.tokensSalida);
   return respuesta.texto;

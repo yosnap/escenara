@@ -1,3 +1,4 @@
+import type { PropuestaDeFicha } from "@/lib/asistente-personaje";
 import type { RechazoDeReferencia, Vista } from "@/lib/captura-personaje";
 import type { EvaluacionVista } from "@/lib/controles";
 import type { CampoFicha } from "@/lib/ficha-personaje";
@@ -190,6 +191,49 @@ export const consultarControlesDeRetrato = (id: string) =>
 /** Encola la generación de una vista que falta. La indicación al proveedor la escribe el servidor. */
 export const pedirVistaSintetica = (id: string, confirmacion: ConfirmacionVistaSintetica) =>
   pedir<{ trabajo: TrabajoVista; vista: Vista }>(`/api/personajes/${id}/vista-sintetica`, json("POST", confirmacion));
+
+/**
+ * Encarga **todas las vistas que faltan** de una vez (0.22.1). Qué falta lo decide el servidor con la misma
+ * regla que usa la pantalla para enseñar el coste total, así que el número que se confirma es el que se
+ * encarga. Lo que no se pueda encolar vuelve en `sinEncolar` con su motivo, **sin cobrar**.
+ */
+export const pedirVistasQueFaltan = (id: string, confirmacion: Omit<ConfirmacionVistaSintetica, "vista">) =>
+  pedir<VistasEncargadas>(`/api/personajes/${id}/vistas`, json("POST", confirmacion));
+
+export interface VistasEncargadas {
+  trabajos: TrabajoVista[];
+  encoladas: Vista[];
+  sinEncolar: { vista: Vista; etiqueta: string; motivo: string }[];
+}
+
+/**
+ * Lo que costaría completar la ficha con IA y con qué modelo se haría. Es una lectura: no gasta nada y no
+ * llama a ningún proveedor.
+ */
+export const consultarEstimacionDeFichaIA = (id: string) =>
+  pedir<EstimacionDeTextoVista>(`/api/personajes/${id}/ficha-ia`);
+
+/** Estimación de una llamada de texto por el mapa del usuario, tal como la devuelve el servidor. */
+export interface EstimacionDeTextoVista {
+  hayEntradas: boolean;
+  motivo: string;
+  creditos: number;
+  /** `true` si ese servicio se paga por cuota del plan y no por petición: entonces no cuesta créditos. */
+  porCuota: boolean;
+  sello: string;
+  nombreProveedor: string;
+  modelo: string;
+  admiteImagen: boolean;
+}
+
+/**
+ * Pide al modelo de texto una propuesta de ficha. **No guarda nada**: lo que vuelve se revisa campo a campo y
+ * se acepta con `guardarFicha`, que es la edición de siempre y crea versión.
+ */
+export const proponerFichaConIA = (
+  id: string,
+  confirmacion: { claveIdempotencia: string; creditosConfirmados?: number; selloEstimacion?: string },
+) => pedir<PropuestaDeFicha>(`/api/personajes/${id}/ficha-ia`, json("POST", confirmacion));
 
 export const quitarReferencias = (id: string, ids: string[]) =>
   pedir<PersonajeVista>(`/api/personajes/${id}/referencias`, json("DELETE", { ids }));

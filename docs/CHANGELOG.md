@@ -2,6 +2,46 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.22.1] · 2026-09-28
+
+### Añadido
+
+- **Asistente de la ficha del personaje.** «Completar la ficha con IA», en la pestaña «Ficha»: el modelo de
+  **texto de tu mapa** propone los rasgos físicos, el estilo visual, el vestuario, la personalidad y la voz
+  prevista a partir de la descripción y —si ese modelo admite imágenes— de la cara del personaje, que viaja en la
+  propia petición en el formato multimodal de la API de OpenAI. Con un nombre y una descripción basta.
+- **La propuesta se revisa campo a campo.** No guarda nada: se acepta entera o por campos, rellena el formulario
+  y la versión nueva la crea «Guardar la ficha», igual que cualquier otra edición tuya. Se dice siempre quién la
+  escribió, si vio la imagen y, cuando no la vio, por qué.
+- **«Generar las vistas que faltan»**, en «Vistas del personaje»: calcula cuáles faltan, enseña el **total**
+  (precio de una imagen por cada vista) y, tras confirmar, encola una por vista. Cada una lleva su reserva, su
+  clave de idempotencia y sus controles previos; las que no se puedan encargar se dicen con su motivo y **no se
+  cobran**.
+- **Guía del alta de un personaje inventado** en su ficha: los cuatro pasos en orden —retratos, elegir la cara,
+  completar la ficha con IA y generar las vistas—, con el que toca marcado. El estado se deduce del personaje, así
+  que un paso hecho a mano cuenta igual.
+
+### Cambiado
+
+- El mapa de modelos de texto sabe **estimar su entrada principal** sin llamar a nadie: dice los créditos que
+  costaría o que ese servicio se paga por cuota del plan y no cuesta créditos. No se mezclan ni se suman monedas
+  de proveedores distintos, y solo se pide confirmar un precio cuando lo hay.
+
+### Corregido
+
+- **Las pestañas de la ficha del personaje ya responden al primer clic.** Formateaban fechas sin zona horaria, así
+  que el servidor y el navegador escribían textos distintos, React descartaba el HTML recibido y volvía a pintar
+  la página entera: durante esa repintada la ficha se veía pero no respondía. Las fechas de la interfaz se
+  formatean ahora con la zona fija de Europe/Madrid (`lib/fechas.ts`), y un test lo vigila.
+
+### Actualizar desde la 0.22.0
+
+- `bun run db:backup` y `bun run db:migrate`: la migración `0029_asistente_de_ficha` añade el tipo de ejecución
+  de texto `ficha_personaje`, que es como se registra y se concilia cada propuesta de ficha.
+- Nada que reconfigurar. Para que la propuesta vea la cara del personaje, pon delante de tu mapa de modelos de
+  texto un servicio compatible que admita imágenes (por ejemplo `gemma4`); si el primero no las admite, la ficha
+  se propone solo con la descripción y se dice.
+
 ## [0.22.0] · 2026-09-28
 
 ### Decisiones firmes del propietario

@@ -1,5 +1,5 @@
 import { count, eq } from "drizzle-orm";
-import { ETIQUETA_VISTA, esVista, promptDeVista, type Vista } from "@/lib/captura-personaje";
+import { ETIQUETA_VISTA, esVista, promptDeVista, type Vista, vistasPorGenerar } from "@/lib/captura-personaje";
 import type { TrabajoVista } from "@/lib/generacion";
 import { MAXIMO_REFERENCIAS, type TipoPersonaje } from "@/lib/personajes";
 import { leerObjeto } from "../almacenamiento";
@@ -137,6 +137,79 @@ export async function pedirVistaSintetica(
     h,
   );
   return { ...envio, vista };
+}
+
+/** Una vista que no se ha podido encargar, con el motivo por el que no. No se ha cobrado. */
+export interface VistaNoEncolada {
+  vista: Vista;
+  etiqueta: string;
+  motivo: string;
+}
+
+export interface VistasEncargadas {
+  trabajos: TrabajoVista[];
+  /** Vistas que sí se han encargado, en el orden en que se encolaron. */
+  encoladas: Vista[];
+  /** Las que no, con su motivo. Ninguna de estas se ha cobrado. */
+  sinEncolar: VistaNoEncolada[];
+}
+
+/**
+ * Encarga **de una vez todas las vistas que faltan** (0.22.1). No es un camino nuevo: cada vista pasa por
+ * `pedirVistaSintetica`, así que cada una lleva su reserva, su confirmación de coste, su clave de idempotencia
+ * y sus controles previos. Lo único que se hace aquí es recorrerlas.
+ *
+ * Qué falta lo decide el servidor con la **misma** función que usa la pantalla para enseñar el coste total
+ * (`vistasPorGenerar`), así que el número de vistas que se confirma es el que se encarga.
+ *
+ * Si alguna no se puede encolar, **se dice cuál y por qué** y las demás siguen: parar todo porque la cuarta
+ * chocó con el tope de trabajos simultáneos dejaría al usuario sin las tres que sí cabían. Ninguna de las que
+ * no salen se cobra.
+ */
+export async function pedirVistasQueFaltan(
+  actor: Actor,
+  id: unknown,
+  peticion: Omit<PeticionVistaSintetica, "vista">,
+  h: Herramientas = HERRAMIENTAS,
+): Promise<VistasEncargadas> {
+  const personaje = await filaPropia(actor, id);
+  const faltan = vistasPorGenerar(await coberturaDe(personaje.id, personaje.kind));
+  if (faltan.length === 0) {
+    throw new ErrorPersonaje(409, "Este personaje ya tiene todas sus vistas: no hay ninguna que generar.");
+  }
+  const clave = typeof peticion.claveIdempotencia === "string" ? peticion.claveIdempotencia : "";
+  if (clave === "") throw new ErrorPersonaje(400, "Falta la confirmación de este encargo. Vuelve a intentarlo.");
+
+  const encargadas: VistasEncargadas = { trabajos: [], encoladas: [], sinEncolar: [] };
+  for (const vista of faltan) {
+    try {
+      // Cada vista lleva **su propia** clave derivada de la confirmación: repetir el encargo entero devuelve
+      // los mismos trabajos en lugar de encolar (y pagar) una segunda tanda.
+      const envio = await pedirVistaSintetica(
+        actor,
+        personaje.id,
+        { ...peticion, vista, claveIdempotencia: `${clave}:${vista}` },
+        h,
+      );
+      encargadas.trabajos.push(envio.trabajo);
+      encargadas.encoladas.push(vista);
+    } catch (error) {
+      encargadas.sinEncolar.push({
+        vista,
+        etiqueta: ETIQUETA_VISTA[vista],
+        motivo: error instanceof Error && error.message !== "" ? error.message : "No se ha podido encolar.",
+      });
+    }
+  }
+  // Si no ha salido ni una, esto no es un encargo a medias: es un fallo, y se responde como tal con su motivo.
+  if (encargadas.encoladas.length === 0) {
+    const primera = encargadas.sinEncolar[0];
+    throw new ErrorPersonaje(
+      409,
+      `No se ha encargado ninguna vista y no se te ha cobrado nada. ${primera?.motivo ?? ""}`.trim(),
+    );
+  }
+  return encargadas;
 }
 
 /**

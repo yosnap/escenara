@@ -39,6 +39,26 @@ export async function medidasDeImagen(datos: Uint8Array): Promise<{ ancho: numbe
   }
 }
 
+/**
+ * Lado máximo de una imagen que se le manda a un modelo de texto multimodal. 768 px es el lado con el que
+ * trabajan estos modelos, y sube en base64 dentro de la propia petición: con la imagen de la biblioteca
+ * (1920 × 1080) la petición pesaría varias veces más sin que el modelo viera nada nuevo.
+ */
+const LADO_PARA_MODELO = 768;
+
+/**
+ * Imagen reducida y en JPEG, lista para viajar en base64 dentro de una petición de texto multimodal. Nunca
+ * amplía: una foto pequeña se manda tal como es.
+ */
+export async function imagenParaModelo(datos: Uint8Array): Promise<{ mime: string; base64: string }> {
+  const reducida = await sharp(datos, ENTRADA_ACOTADA)
+    .rotate()
+    .resize({ width: LADO_PARA_MODELO, height: LADO_PARA_MODELO, fit: "inside", withoutEnlargement: true })
+    .jpeg({ quality: 80 })
+    .toBuffer();
+  return { mime: "image/jpeg", base64: reducida.toString("base64") };
+}
+
 /** Una celda de la hoja de contacto: la imagen y el rótulo que va debajo. */
 export interface CeldaHoja {
   datos: Uint8Array;
