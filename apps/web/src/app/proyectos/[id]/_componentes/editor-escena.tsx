@@ -149,6 +149,20 @@ export function EditorEscena({
         onCambio={(campo, valor) => setDireccion((antes) => ({ ...antes, [campo]: valor }))}
       />
 
+      {/*
+        Con qué referencia se generó: es parte de saber qué se ha pagado, sobre todo con la prueba de la hoja
+        activada, donde la mitad de las escenas salen solo con ella.
+      */}
+      {escena.referenciaIdentidad && (
+        <p className="text-sm text-texto-suave">
+          Se generó con:{" "}
+          <strong className="font-semibold">
+            {escena.referenciaIdentidad === "hoja_3x3" ? "la hoja de identidad 3×3" : "las fotos del personaje"}
+          </strong>
+          .
+        </p>
+      )}
+
       <p className="text-sm text-texto-suave">
         El texto que se le envía al modelo lo compone Escenara con tu escena, la plantilla y la ficha de tu personaje, y
         va en inglés porque responden mejor. Tú decides el qué.

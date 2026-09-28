@@ -122,6 +122,15 @@ export const characters = pgTable(
      */
     identitySheetMediaId: uuid("identity_sheet_media_id").references(() => media.id, { onDelete: "set null" }),
     identitySheetStatus: estadoHojaIdentidad("identity_sheet_status").notNull().default("candidata"),
+    /**
+     * **El usuario acepta probar la hoja** en la mitad de sus escenas para poder compararla con sus fotos
+     * sueltas (decisión firme del propietario, 2026-09-28). Desactivado de fábrica.
+     *
+     * Existe porque la comparación cambia **lo que se genera y se paga**: una escena repartida al grupo de la
+     * hoja sale solo con ella, no con sus fotos. Que exista una hoja candidata no basta para decidir eso por
+     * él; hace falta que lo diga. Sin este interruptor se usan siempre las fotos sueltas.
+     */
+    identitySheetTrial: boolean("identity_sheet_trial").notNull().default(false),
     state: estadoPersonaje("state").notNull().default("borrador"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

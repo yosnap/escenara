@@ -61,6 +61,8 @@ export interface DatosPersonaje {
    * cómo se le pide al modelo que lo dibuje.
    */
   esteticaDeModelo?: unknown;
+  /** Aceptar que la mitad de sus escenas se hagan solo con la hoja 3×3, para poder compararla. */
+  probarHojaIdentidad?: unknown;
   /** Por qué se cambia. Se guarda en la versión que produce el cambio; no versiona por sí mismo. */
   motivo?: unknown;
 }
@@ -206,6 +208,20 @@ export async function actualizarPersonaje(
       );
     }
     valores.beautyOptIn = cambios.esteticaDeModelo === true;
+  }
+  /**
+   * La prueba de la hoja solo se puede activar si hay hoja que probar: encenderla sin hoja no haría nada y
+   * dejaría al usuario creyendo que está comparando algo.
+   */
+  if (cambios.probarHojaIdentidad !== undefined) {
+    const activar = cambios.probarHojaIdentidad === true;
+    if (activar && !fila.identitySheetMediaId) {
+      throw new ErrorPersonaje(
+        409,
+        "Este personaje todavía no tiene hoja de identidad, así que no hay nada que probar. Genérala primero.",
+      );
+    }
+    valores.identitySheetTrial = activar;
   }
   const motivo = texto(cambios.motivo, MOTIVO_CAMBIO_MAXIMO, "el motivo del cambio");
   if (Object.keys(valores).length === 0) return vistaDePersonaje(fila, actor, { completa: true, conReferencias: true });

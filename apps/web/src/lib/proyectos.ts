@@ -1,5 +1,5 @@
 import type { EstadoControl, EvaluacionVista } from "./controles";
-import type { FormatoClip, MomentoMicroaccion, RegistroEstetico } from "./direccion";
+import type { FormatoClip, MomentoMicroaccion, ReferenciaIdentidad, RegistroEstetico } from "./direccion";
 import { formatearCreditos, formatearEuros } from "./generacion";
 import type { Medio } from "./media/tipos";
 
@@ -233,6 +233,11 @@ export interface EscenaVista {
   motivoInvalidacion: string;
   /** Trabajo de generación asociado, si ya se ha producido. */
   trabajoId: string | null;
+  /**
+   * Con qué referencia del personaje se generó (0.25.0): sus fotos sueltas o su hoja 3×3. `null` mientras no
+   * haya nada generado. Se enseña para que el usuario sepa con qué se hizo lo que ha pagado.
+   */
+  referenciaIdentidad: ReferenciaIdentidad | null;
   /**
    * Fotograma real de la escena (0.19.0): el aprobado si hay uno y, si no, el último que se generó. `null`
    * mientras no se haya producido nada.

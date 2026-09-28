@@ -24,6 +24,7 @@ import { Muestra, Seccion } from "../seccion";
 
 const escena = (id: string, orden: number, accion: string, creditos: number | null): EscenaVista => ({
   direccion: DIRECCION_SIN_ELEGIR,
+  referenciaIdentidad: null,
   id,
   proyectoId: "p1",
   orden,

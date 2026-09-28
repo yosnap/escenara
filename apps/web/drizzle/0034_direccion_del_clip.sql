@@ -17,10 +17,12 @@ ALTER TYPE "public"."preset_category" ADD VALUE 'microaccion';--> statement-brea
 ALTER TYPE "public"."preset_category" ADD VALUE 'registro-estetico';--> statement-breakpoint
 ALTER TYPE "public"."preset_category" ADD VALUE 'anclajes';--> statement-breakpoint
 ALTER TYPE "public"."coherence_check" ADD VALUE 'direccion_fiel';--> statement-breakpoint
+ALTER TABLE "characters" ADD COLUMN "beauty_opt_in" boolean DEFAULT false NOT NULL;--> statement-breakpoint
 ALTER TABLE "characters" ADD COLUMN "voice_axes" jsonb DEFAULT '{}'::jsonb NOT NULL;--> statement-breakpoint
 ALTER TABLE "characters" ADD COLUMN "voice_preset_id" text DEFAULT '' NOT NULL;--> statement-breakpoint
 ALTER TABLE "characters" ADD COLUMN "identity_sheet_media_id" uuid;--> statement-breakpoint
 ALTER TABLE "characters" ADD COLUMN "identity_sheet_status" character_identity_sheet_status DEFAULT 'candidata' NOT NULL;--> statement-breakpoint
+ALTER TABLE "characters" ADD COLUMN "identity_sheet_trial" boolean DEFAULT false NOT NULL;--> statement-breakpoint
 ALTER TABLE "generation_jobs" ADD COLUMN "identity_reference_kind" "generation_identity_reference" DEFAULT 'vistas' NOT NULL;--> statement-breakpoint
 ALTER TABLE "projects" ADD COLUMN "speech_accent" "project_speech_accent" DEFAULT 'es_ES_madrid' NOT NULL;--> statement-breakpoint
 ALTER TABLE "scenes" ADD COLUMN "clip_format" "scene_clip_format" DEFAULT 'ugc_a_camara' NOT NULL;--> statement-breakpoint

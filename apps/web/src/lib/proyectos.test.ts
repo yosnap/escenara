@@ -35,6 +35,7 @@ const estimacion = (creditos: number, comprobado = "2026-09-27"): EstimacionEsce
 
 const escena = (id: string, orden: number, accion: string, est: EstimacionEscena | null): EscenaVista => ({
   direccion: DIRECCION_SIN_ELEGIR,
+  referenciaIdentidad: null,
   id,
   proyectoId: "p1",
   orden,

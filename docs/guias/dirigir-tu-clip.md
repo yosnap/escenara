@@ -157,6 +157,7 @@ Probado con clips reales el 28/09/2026:
 Todavía sin comprobar: si el **acento** suena como se pide (hay que escucharlo) y los movimientos avanzados
 que no se han probado.
 
-La **hoja de identidad 3×3** (nueve retratos en una imagen) nace como **candidata** y no se usa por defecto:
-primero hay que comprobar con datos si da mejor parecido que las fotos sueltas, y eso se ve en el panel de
-quien administra.
+La **hoja de identidad 3×3** (nueve retratos en una imagen) nace como **candidata** y **no se usa** salvo que
+tú lo pidas. En la ficha del personaje hay un interruptor, apagado de fábrica: «Probar la hoja en la mitad de
+mis escenas». Si lo enciendes, la mitad de sus escenas se harán solo con la hoja para poder comparar cuál da
+mejor parecido; cuestan lo mismo y cada escena te dice con cuál se hizo. Puedes apagarlo cuando quieras.

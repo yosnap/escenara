@@ -14,7 +14,7 @@ import { type DireccionDeClip, dirigirClip, dirigirClipPara, familiaDe } from ".
 import { camposDeLaRespuesta } from "./extraccion";
 import { pedidoDeDireccion, resumirDireccion } from "./fidelidad";
 import { componerSeisC, type SeisC } from "./fotograma";
-import { motivoSinHoja, promptHojaIdentidad } from "./hoja-identidad";
+import { conHojaDeIdentidad, motivoSinHoja, promptHojaIdentidad } from "./hoja-identidad";
 import {
   ACENTO_INGLES,
   ANCLAJES_REALISMO,
@@ -572,5 +572,42 @@ describe("avisos que llegan al usuario", () => {
     expect(corto.avisos.some((a) => a.includes("4 s"))).toBe(true);
     // A 10 s el gesto cabe, así que solo queda el aviso medido del «antes».
     expect(largo.avisos).toEqual([AVISO_GESTO_ANTES_POCO_FIABLE]);
+  });
+});
+
+describe("la hoja 3×3 solo se prueba si el usuario lo activa", () => {
+  const CON_HOJA = { identitySheetMediaId: "m1", identitySheetStatus: "candidata", identitySheetTrial: true };
+
+  test("con hoja candidata pero sin interruptor, nunca se usa la hoja", () => {
+    // Es lo que decide qué se genera y qué se paga: no se hace a espaldas de quien paga.
+    const sinPermiso = { ...CON_HOJA, identitySheetTrial: false };
+    const asuntos = ["escena-1", "escena-2", "escena-3", "escena-4", "escena-5", "escena-6"];
+    expect(asuntos.every((a) => conHojaDeIdentidad(sinPermiso, a) === false)).toBe(true);
+  });
+
+  test("sin hoja generada no se usa nada, aunque el interruptor esté puesto", () => {
+    expect(conHojaDeIdentidad({ ...CON_HOJA, identitySheetMediaId: null }, "escena-1")).toBe(false);
+  });
+
+  test("con interruptor, el reparto es mitad y mitad y determinista", () => {
+    const asuntos = Array.from({ length: 200 }, (_, i) => `escena-${i}`);
+    const conHoja = asuntos.filter((a) => conHojaDeIdentidad(CON_HOJA, a)).length;
+    // Ni todo a un lado ni todo al otro: un reparto que no reparte no permite comparar nada.
+    expect(conHoja).toBeGreaterThan(60);
+    expect(conHoja).toBeLessThan(140);
+    // Y el mismo asunto cae siempre del mismo lado: un reintento no cambia de grupo ni ensucia la medida.
+    for (const asunto of asuntos.slice(0, 20)) {
+      expect(conHojaDeIdentidad(CON_HOJA, asunto)).toBe(conHojaDeIdentidad(CON_HOJA, asunto));
+    }
+  });
+
+  test("una hoja descartada no se usa ni con el interruptor puesto", () => {
+    expect(conHojaDeIdentidad({ ...CON_HOJA, identitySheetStatus: "descartada" }, "escena-1")).toBe(false);
+  });
+
+  test("una hoja por defecto se usa siempre: esa ya la eligió su dueño", () => {
+    const porDefecto = { ...CON_HOJA, identitySheetStatus: "por_defecto", identitySheetTrial: false };
+    expect(conHojaDeIdentidad(porDefecto, "escena-1")).toBe(true);
+    expect(conHojaDeIdentidad(porDefecto, "escena-2")).toBe(true);
   });
 });

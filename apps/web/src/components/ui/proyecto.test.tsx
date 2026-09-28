@@ -34,6 +34,7 @@ const escena = (id: string, orden: number, est: EstimacionEscena | null): Escena
   orden,
   texto: "",
   direccion: DIRECCION_SIN_ELEGIR,
+  referenciaIdentidad: null,
   accion: `Escena de prueba ${orden}`,
   segundos: 4,
   estado: "borrador",

@@ -1,1 +1,0 @@
-ALTER TABLE "characters" ADD COLUMN "beauty_opt_in" boolean DEFAULT false NOT NULL;

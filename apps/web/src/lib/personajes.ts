@@ -1,4 +1,5 @@
 import type { Cobertura, IdentidadReferencia, MotivoRechazo, RechazoDeReferencia, Vista } from "./captura-personaje";
+import type { EstadoHojaIdentidad } from "./direccion";
 import type { DiferenciaFicha, FichaPersonaje } from "./ficha-personaje";
 import type { Medio } from "./media/tipos";
 import type { RegistroOmniVista } from "./omni";
@@ -335,6 +336,13 @@ export interface PersonajeVista {
    * expresamente. Siempre `false` en una persona real, donde ni se ofrece ni se aplica.
    */
   esteticaDeModelo: boolean;
+  /** Hoja de identidad 3×3 del personaje, si la tiene generada; `null` si todavía no hay ninguna. */
+  hojaIdentidad: { medioId: string; estado: EstadoHojaIdentidad } | null;
+  /**
+   * `true` si su dueño ha aceptado **probar la hoja** en la mitad de sus escenas. Desactivado de fábrica: la
+   * prueba cambia lo que se genera y lo que se paga, así que la decide él.
+   */
+  probarHojaIdentidad: boolean;
   /**
    * Registro en el proveedor para escenas habladas (0.22.0); `null` si nunca se ha registrado. Dice con qué
    * versión de la ficha se hizo y si esa versión sigue siendo la vigente.

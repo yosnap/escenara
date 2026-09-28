@@ -1,5 +1,5 @@
 {
-  "id": "6811112a-ce2a-486b-9d4c-71839e5c0b2b",
+  "id": "50bcdc16-d5f6-46f3-902c-24882f0f391c",
   "prevId": "2bddc06b-bdf1-47ec-b80d-9290067ad7d8",
   "version": "7",
   "dialect": "postgresql",
@@ -1084,6 +1084,13 @@
           "notNull": true,
           "default": false
         },
+        "beauty_opt_in": {
+          "name": "beauty_opt_in",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "voice_axes": {
           "name": "voice_axes",
           "type": "jsonb",
@@ -1111,6 +1118,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'candidata'"
+        },
+        "identity_sheet_trial": {
+          "name": "identity_sheet_trial",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "state": {
           "name": "state",

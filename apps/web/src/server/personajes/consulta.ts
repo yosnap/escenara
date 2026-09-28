@@ -320,6 +320,10 @@ export async function vistaDePersonaje(
     estado: estadoDePersonaje(datos),
     inventado: fila.virtual,
     esteticaDeModelo: fila.virtual && fila.beautyOptIn,
+    hojaIdentidad: fila.identitySheetMediaId
+      ? { medioId: fila.identitySheetMediaId, estado: fila.identitySheetStatus }
+      : null,
+    probarHojaIdentidad: fila.identitySheetTrial,
     // El registro Omni solo se resuelve para su dueño: dice qué cara suya está alojada en el proveedor.
     ...(opciones.completa && esDueno
       ? { registroOmni: vistaDeRegistro(await ultimoRegistro(fila.id), version, version?.id ?? null) }
@@ -497,6 +501,10 @@ async function vistasDeLista(
       estado: estadoDePersonaje(datos),
       inventado: fila.virtual,
       esteticaDeModelo: fila.virtual && fila.beautyOptIn,
+      hojaIdentidad: fila.identitySheetMediaId
+        ? { medioId: fila.identitySheetMediaId, estado: fila.identitySheetStatus }
+        : null,
+      probarHojaIdentidad: fila.identitySheetTrial,
       totalReferencias: datos.referencias,
       totalGeneradas: resumen.generadas.get(fila.id) ?? 0,
       minimoReferencias: minimo,
@@ -654,6 +662,10 @@ export async function pendientesDeRevision(actor: Actor, pagina = 1): Promise<Pa
       estado: estadoDePersonaje(datos),
       inventado: personaje.virtual,
       esteticaDeModelo: personaje.virtual && personaje.beautyOptIn,
+      hojaIdentidad: personaje.identitySheetMediaId
+        ? { medioId: personaje.identitySheetMediaId, estado: personaje.identitySheetStatus }
+        : null,
+      probarHojaIdentidad: personaje.identitySheetTrial,
       totalReferencias: datos.referencias,
       totalGeneradas: resumen.generadas.get(personaje.id) ?? 0,
       minimoReferencias: minimo,

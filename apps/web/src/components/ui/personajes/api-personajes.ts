@@ -71,6 +71,8 @@ export const editarPersonaje = (id: string, cambios: Partial<DatosNuevoPersonaje
 export type CambiosFicha = Partial<Record<CampoFicha | "descripcion" | "motivo", string>> & {
   /** Estética de modelo, solo en inventados. No versiona la ficha: no cambia quién es. */
   esteticaDeModelo?: boolean;
+  /** Probar la hoja 3×3 en la mitad de sus escenas. Tampoco versiona: no cambia quién es. */
+  probarHojaIdentidad?: boolean;
 };
 
 /**

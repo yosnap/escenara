@@ -97,11 +97,11 @@ export async function referenciasParaGenerar(
   personaje: FilaPersonaje,
   maximoDelModelo: number,
   /**
-   * Reparto del experimento en sombra de la hoja 3×3 (0.25.0). Cuando el personaje tiene una hoja
-   * **candidata**, quien llama decide con qué referencia va **esta** generación, para que los dos grupos de la
-   * comparación se llenen. Sin él, o con la hoja descartada, se usan siempre las fotos sueltas.
+   * Reparto del experimento de la hoja 3×3 (0.25.0): si **esta** generación va con la hoja o con las fotos
+   * sueltas. Lo decide quien llama, y solo puede ser `true` cuando el dueño del personaje ha activado la
+   * prueba: la comparación cambia lo que se genera y se paga, así que no se hace a su espalda.
    *
-   * La hoja `por_defecto` no pasa por aquí: esa ya es la referencia del personaje y la elige el propietario.
+   * La hoja `por_defecto` no pasa por aquí: esa ya es la referencia del personaje y la elige su dueño.
    */
   conHoja = false,
 ): Promise<PersonajeParaGenerar> {

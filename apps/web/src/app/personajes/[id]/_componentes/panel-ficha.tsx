@@ -49,10 +49,12 @@ export function PanelFicha({
   const [pidiendoContexto, setPidiendoContexto] = useState(false);
   const [conIA, setConIA] = useState(false);
   const [esteticaDeModelo, setEsteticaDeModelo] = useState(personaje.esteticaDeModelo);
+  const [probarHoja, setProbarHoja] = useState(personaje.probarHojaIdentidad);
 
   const cambiado =
     descripcion !== personaje.descripcion ||
     esteticaDeModelo !== personaje.esteticaDeModelo ||
+    probarHoja !== personaje.probarHojaIdentidad ||
     CAMPOS_FICHA.some((campo) => campos[campo] !== personaje.ficha[campo]);
 
   const guardar = async () => {
@@ -65,6 +67,7 @@ export function PanelFicha({
       motivo,
       // Solo viaja en un personaje inventado: en uno real el servidor la rechaza, y con razón.
       ...(personaje.inventado ? { esteticaDeModelo } : {}),
+      ...(personaje.hojaIdentidad ? { probarHojaIdentidad: probarHoja } : {}),
     });
     setGuardando(false);
     if (!respuesta.ok) {
@@ -82,6 +85,7 @@ export function PanelFicha({
     setCampos({ ...respuesta.datos.ficha });
     setDescripcion(respuesta.datos.descripcion);
     setEsteticaDeModelo(respuesta.datos.esteticaDeModelo);
+    setProbarHoja(respuesta.datos.probarHojaIdentidad);
     setContexto(null);
     onPersonaje(respuesta.datos);
   };
@@ -148,6 +152,22 @@ export function PanelFicha({
             descripcion="Desmarcada, se describe como una persona normal. Marcada, se le pide al modelo un acabado de campaña. Solo existe en personajes inventados: a una persona real nunca se la embellece."
             marcada={esteticaDeModelo}
             onCambio={setEsteticaDeModelo}
+          />
+        </div>
+      )}
+
+      {/*
+        Probar la hoja 3×3. **Desactivado de fábrica** y solo cuando ya hay hoja (decisión firme del
+        propietario, 2026-09-28): activarlo cambia lo que se genera y lo que se paga —la mitad de sus escenas
+        saldrán solo con la hoja—, así que lo decide él y se dice con esas palabras.
+      */}
+      {personaje.hojaIdentidad && (
+        <div className="rounded-2xl border border-borde bg-superficie p-4">
+          <Casilla
+            etiqueta="Probar la hoja en la mitad de mis escenas"
+            descripcion="La mitad de tus escenas de este personaje se harán solo con la hoja 3×3 en vez de con sus fotos, para que Jev pueda comparar cuál da mejor parecido. Cuestan lo mismo. Puedes desactivarlo cuando quieras."
+            marcada={probarHoja}
+            onCambio={setProbarHoja}
           />
         </div>
       )}

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { RETRATOS_HOJA_IDENTIDAD } from "@/lib/direccion";
 import { ANCLAJES_REALISMO, IDENTIDAD_DE_REFERENCIA } from "./ingles";
 
@@ -52,4 +53,32 @@ export function motivoSinHoja(referencias: number, minimo: number): string {
     return `Para componer la hoja de identidad hacen falta al menos ${minimo} fotos suyas utilizables y ahora mismo hay ${referencias}. Añade más y vuelve a intentarlo.`;
   }
   return "";
+}
+
+/**
+ * Reparto del experimento de la hoja de identidad 3×3 (0.25.0): si **esta** generación sale con la hoja o con
+ * las fotos sueltas del personaje.
+ *
+ * **Solo se reparte si su dueño ha activado la prueba** (decisión firme del propietario, 2026-09-28). Que
+ * exista una hoja candidata no basta: repartir cambia lo que se genera y lo que se paga —la escena del grupo
+ * de la hoja sale **solo** con ella, no con sus fotos—, y eso no se decide a espaldas de quien paga. Sin el
+ * interruptor, siempre las fotos sueltas.
+ *
+ * Cuando sí está activado, el reparto es **determinista** por el asunto que se genera (la escena, o la clave
+ * de idempotencia si no hay escena): repetir el mismo envío cae siempre del mismo lado, así que un reintento
+ * no cambia de grupo ni ensucia la medida. No es aleatorio a propósito: un `Math.random()` haría que dos
+ * ejecuciones del mismo trabajo usaran referencias distintas.
+ *
+ * Con la hoja `por_defecto` no hay experimento: esa ya es la referencia del personaje, y también la eligió él.
+ */
+export function conHojaDeIdentidad(
+  personaje: { identitySheetMediaId: string | null; identitySheetStatus: string; identitySheetTrial: boolean },
+  asunto: string,
+): boolean {
+  if (!personaje.identitySheetMediaId) return false;
+  if (personaje.identitySheetStatus === "por_defecto") return true;
+  if (personaje.identitySheetStatus !== "candidata" || !personaje.identitySheetTrial) return false;
+  // Paridad de una huella estable del asunto: mitad y mitad, y siempre la misma para el mismo asunto.
+  const huella = createHash("sha256").update(asunto).digest();
+  return (huella[0] ?? 0) % 2 === 0;
 }

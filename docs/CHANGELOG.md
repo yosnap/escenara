@@ -68,6 +68,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
   inventados. Con una persona real no aparece, y si llegara, se rechaza.
 - **Comparación de la hoja 3×3 frente a las vistas sueltas** en Admin › Coherencia, con muestra mínima de 20 en
   cada grupo. Por debajo de ahí enseña recuentos y no saca conclusiones.
+- **«Probar la hoja en la mitad de mis escenas»**, un interruptor en la ficha del personaje, **desactivado de
+  fábrica**. Solo con él activado se reparten sus escenas entre la hoja y sus fotos: la prueba cambia con qué
+  se genera, así que la decide quien paga. Cada escena dice con cuál de las dos se hizo.
 
 ### Medido con dinero real (spike del 2026-09-28, 504 créditos)
 

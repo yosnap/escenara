@@ -16,6 +16,7 @@ import { decidir } from "../decisiones/reglas";
 import { dirigirClipPara, familiaDe } from "../direccion/clip";
 import type { DireccionSinTextoLibre } from "../direccion/escena";
 import { type CambiarSolo, componerSeisC, type SeisC } from "../direccion/fotograma";
+import { conHojaDeIdentidad } from "../direccion/hoja-identidad";
 import {
   type EleccionDelMapa,
   eleccionDeGeneracion,
@@ -183,33 +184,6 @@ async function baseDelPrompt(
     textoEditado: peticion.promptEditado,
   });
   return { escena: compuesto.texto, compuesto };
-}
-
-/**
- * Reparto del **experimento en sombra** de la hoja de identidad 3×3 (0.25.0).
- *
- * Mientras la hoja está `candidata` hay que llenar los dos grupos de la comparación, o el panel no podrá
- * concluir nunca y la hoja se quedará candidata para siempre por no haberla usado. Así que la mitad de las
- * generaciones de ese personaje salen con la hoja y la otra mitad con sus vistas sueltas.
- *
- * El reparto es **determinista** por el asunto que se genera (la escena, o la clave de idempotencia cuando no
- * hay escena): repetir el mismo envío cae siempre del mismo lado, así que un reintento no cambia de grupo ni
- * ensucia la medida. Y no es aleatorio a propósito: un `Math.random()` haría que dos ejecuciones del mismo
- * trabajo dieran referencias distintas.
- *
- * Con la hoja `por_defecto` no se reparte nada: esa ya es la referencia del personaje. Con `descartada`
- * tampoco: se usan las vistas.
- */
-function conHojaDeIdentidad(
-  personaje: { identitySheetMediaId: string | null; identitySheetStatus: string },
-  asunto: string,
-): boolean {
-  if (!personaje.identitySheetMediaId) return false;
-  if (personaje.identitySheetStatus === "por_defecto") return true;
-  if (personaje.identitySheetStatus !== "candidata") return false;
-  // Paridad de una huella estable del asunto: mitad y mitad, y siempre la misma para el mismo asunto.
-  const huella = createHash("sha256").update(asunto).digest();
-  return (huella[0] ?? 0) % 2 === 0;
 }
 
 /** Lo que el trabajo guarda de la plantilla usada: identificadores y la marca de editado. */
