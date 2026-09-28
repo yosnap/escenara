@@ -1,4 +1,5 @@
 import type { RechazoDeReferencia, Vista } from "@/lib/captura-personaje";
+import type { EvaluacionVista } from "@/lib/controles";
 import type { CampoFicha } from "@/lib/ficha-personaje";
 import type { Estimacion, TrabajoVista } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
@@ -148,6 +149,8 @@ export interface ConfirmacionVistaSintetica {
   claveIdempotencia: string;
   modelo?: string;
   selloEstimacion?: string;
+  /** Claves de los avisos salvables que el usuario ha confirmado en «Antes de generar». */
+  avisosConfirmados: string[];
 }
 
 /**
@@ -155,6 +158,15 @@ export interface ConfirmacionVistaSintetica {
  * no al cargar la ficha: así ver un personaje no provoca una consulta de saldo al proveedor.
  */
 export const consultarEstimacionDeVista = () => pedir<Estimacion>("/api/generacion/estimacion?tipo=fotograma");
+
+/**
+ * «Antes de generar» de una vista que falta: lo mismo que dirá la puerta al encolarla, con sus avisos
+ * confirmables. Es una lectura: no gasta nada.
+ */
+export const consultarControlesDeVista = (id: string, vista: Vista) =>
+  pedir<EvaluacionVista>(
+    `/api/generacion/controles?${new URLSearchParams({ tipo: "fotograma", personajeId: id, vista }).toString()}`,
+  );
 
 /** Encola la generación de una vista que falta. La indicación al proveedor la escribe el servidor. */
 export const pedirVistaSintetica = (id: string, confirmacion: ConfirmacionVistaSintetica) =>

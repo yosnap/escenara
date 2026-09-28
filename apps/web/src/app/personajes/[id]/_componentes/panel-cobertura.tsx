@@ -8,7 +8,7 @@ import { Aviso, AvisoEstado } from "@/components/ui/feedback";
 import { MiniaturaMedio } from "@/components/ui/media/miniatura-medio";
 import { Dialogo } from "@/components/ui/overlay";
 import { type DiapositivaPase, PaseAutomatico } from "@/components/ui/pase-automatico";
-import { consultarEstimacionDeVista } from "@/components/ui/personajes/api-personajes";
+import { consultarControlesDeVista, consultarEstimacionDeVista } from "@/components/ui/personajes/api-personajes";
 import { DistintivoOrigen } from "@/components/ui/personajes/distintivo-origen";
 import { MarcoEnfoque } from "@/components/ui/personajes/marco-enfoque";
 import { VisorCaptura } from "@/components/ui/personajes/visor-captura";
@@ -21,6 +21,7 @@ import {
   type UmbralesCalidad,
   type Vista,
 } from "@/lib/captura-personaje";
+import type { EvaluacionVista } from "@/lib/controles";
 import type { Estimacion } from "@/lib/generacion";
 import type { PersonajeVista, ReferenciaVista } from "@/lib/personajes";
 import { DialogoVistaSintetica } from "./dialogo-vista-sintetica";
@@ -56,7 +57,11 @@ export function PanelCobertura({
 }) {
   const cobertura: Cobertura | undefined = personaje.cobertura;
   const [capturando, setCapturando] = useState<Vista | null>(null);
-  const [generando, setGenerando] = useState<{ vista: Vista; estimacion: Estimacion } | null>(null);
+  const [generando, setGenerando] = useState<{
+    vista: Vista;
+    estimacion: Estimacion;
+    controles: EvaluacionVista;
+  } | null>(null);
   const [pidiendo, setPidiendo] = useState<Vista | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -70,13 +75,21 @@ export function PanelCobertura({
   const abrirGeneracion = async (vista: Vista) => {
     setPidiendo(vista);
     setError(null);
-    const respuesta = await consultarEstimacionDeVista();
+    // Coste y «Antes de generar» a la vez: el diálogo no se abre sin saber qué va a decir la puerta.
+    const [estimacion, controles] = await Promise.all([
+      consultarEstimacionDeVista(),
+      consultarControlesDeVista(personaje.id, vista),
+    ]);
     setPidiendo(null);
-    if (!respuesta.ok) {
-      setError(respuesta.error);
+    if (!estimacion.ok) {
+      setError(estimacion.error);
       return;
     }
-    setGenerando({ vista, estimacion: respuesta.datos });
+    if (!controles.ok) {
+      setError(controles.error);
+      return;
+    }
+    setGenerando({ vista, estimacion: estimacion.datos, controles: controles.datos });
   };
 
   return (
@@ -187,6 +200,7 @@ export function PanelCobertura({
           personajeId={personaje.id}
           vista={generando.vista}
           estimacion={generando.estimacion}
+          controles={generando.controles}
           abierto
           onAbiertoCambio={(abierto) => {
             if (!abierto) setGenerando(null);

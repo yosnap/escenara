@@ -2,6 +2,16 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.20.4] · 2026-09-28
+
+### Corregido
+
+- **El diálogo de generar una vista ya puede confirmar avisos.** Ahora muestra el panel «Antes de generar», el
+  mismo de «Crear», con la casilla de cada aviso confirmable. Hasta ahora, cualquier aviso salvable (por ejemplo,
+  fotos del personaje añadidas «de todas formas» y señaladas por el control de calidad) lo dejaba atascado, porque
+  el servidor pedía confirmarlo y el diálogo no tenía dónde. La evaluación ya no incluye el aviso de vistas sin
+  cubrir, que no aplica a la vista que se va a generar.
+
 ## [0.20.3] · 2026-09-28
 
 ### Cambiado

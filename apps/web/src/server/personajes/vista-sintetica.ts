@@ -42,6 +42,8 @@ export interface PeticionVistaSintetica {
   claveIdempotencia: unknown;
   modelo?: unknown;
   selloEstimacion?: unknown;
+  /** Claves de los avisos salvables que el usuario ha confirmado expresamente en «Antes de generar». */
+  avisosConfirmados?: unknown;
 }
 
 /**
@@ -125,6 +127,9 @@ export async function pedirVistaSintetica(
       claveIdempotencia: peticion.claveIdempotencia as string,
       modelo: peticion.modelo as string | undefined,
       selloEstimacion: peticion.selloEstimacion as string | undefined,
+      avisosConfirmados: Array.isArray(peticion.avisosConfirmados)
+        ? peticion.avisosConfirmados.filter((a): a is string => typeof a === "string")
+        : [],
       personajeId: personaje.id,
       sinTerceros: peticion.sinTerceros === true,
       vistaSintetica: vista,

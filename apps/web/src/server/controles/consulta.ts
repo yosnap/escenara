@@ -1,3 +1,4 @@
+import type { Vista } from "@/lib/captura-personaje";
 import type { EvaluacionVista } from "@/lib/controles";
 import type { TipoTrabajo } from "@/lib/generacion";
 import { hechosDeEscena, techoDelProyecto } from "../asistente/plan";
@@ -10,7 +11,7 @@ import { personajePorId } from "../personajes/contexto";
 import { personajePropio } from "../personajes/puede-generar";
 import { creditosDelEnvio } from "../prompts/traduccion";
 import type { Buscador } from "../proveedores/codigos";
-import { recopilarHechos } from "./hechos";
+import { conVistaQueCompleta, recopilarHechos } from "./hechos";
 import { evaluarParaMostrar } from "./puerta";
 
 /**
@@ -35,6 +36,8 @@ export interface PeticionDeControles {
   medioId?: string | null;
   /** Escena del plan que se produciría. */
   escenaId?: string | null;
+  /** Vista del personaje que se va a generar porque le falta: evalúa como lo hará la puerta de esa vista. */
+  vistaSintetica?: Vista | null;
 }
 
 export async function evaluarControles(
@@ -50,10 +53,13 @@ export async function evaluarControles(
   // para una escena ajena o inexistente, así que `conEscena` es no nulo exactamente cuando llegó `escenaId`.
   // Resolver el proyecto por otro camino sería leer el presupuesto de un proyecto de otra persona.
   const proyecto = conEscena ? await techoDelProyecto(conEscena.escena.projectId) : null;
-  const hechos = await recopilarHechos(
-    actor,
-    { tipo: peticion.tipo, eleccion, creditos, personajeId, personaje, escena: conEscena?.hechos ?? null, proyecto },
-    buscar,
+  const hechos = conVistaQueCompleta(
+    await recopilarHechos(
+      actor,
+      { tipo: peticion.tipo, eleccion, creditos, personajeId, personaje, escena: conEscena?.hechos ?? null, proyecto },
+      buscar,
+    ),
+    personajeId ? peticion.vistaSintetica : null,
   );
   return evaluarParaMostrar(hechos);
 }
