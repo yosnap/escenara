@@ -164,6 +164,8 @@ export function VistaProduccion({ inicial }: { inicial: ProduccionVista }) {
           firma={`proyecto|${firmaDeEscenas}|${firmaDeAvisos(confirmados)}`}
           bloqueos={bloqueosDelModelo}
           avisosConfirmados={confirmados}
+          avisos={avisosConfirmables(produccion.controlesDelModelo)}
+          onConfirmarAviso={confirmar}
           ocupado={ocupado}
           onEnviar={(confirmacion: ConfirmacionEnvio) =>
             void ejecutar(() => producirProyecto(produccion.proyectoId, confirmacion))
@@ -190,6 +192,7 @@ export function VistaProduccion({ inicial }: { inicial: ProduccionVista }) {
                 produccion={produccion}
                 ocupado={ocupado}
                 avisosConfirmados={confirmados}
+                onConfirmarAviso={confirmar}
                 onProducir={(c) => void ejecutar(() => producirEscena(escena.id, c))}
                 onAprobar={(c) => void ejecutar(() => aprobarFotograma(escena.id, c))}
                 onRegenerar={(c) => void ejecutar(() => regenerarEscena(escena.id, c))}

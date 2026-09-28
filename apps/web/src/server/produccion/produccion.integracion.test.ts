@@ -55,6 +55,7 @@ const { aprobarFotograma, claveDerivada, producirEscena, producirProyecto, regen
   "./producir"
 );
 const { cancelarEscena } = await import("./cancelar");
+const { enviarEncolados } = await import("../cola/pasada");
 
 type Sesion = Awaited<ReturnType<typeof crearSesionDePrueba>>;
 type Actor = import("../media/servicio").Actor;
@@ -826,6 +827,29 @@ describe.skipIf(!hayBaseDeDatos)("producción de las escenas de un proyecto", ()
     const [proyecto] = await db().select().from(projects).where(eq(projects.id, proyectoId)).limit(1);
     // Quedan dos escenas por producir, así que el proyecto está en producción, no listo.
     expect(proyecto?.state).toBe("en_produccion");
+  });
+
+  test("el clip de una escena con protagonista sale por la cola real, no se descarta por su personaje", async () => {
+    const escena = (await estadoDeProduccionDe(proyectoId)).escenas[0];
+    if (!escena) throw new Error("Falta la escena de prueba.");
+    await producirEscena(actor, escena.id, await confirmacion(), h);
+    const [fotograma] = await trabajosDe(escena.id);
+    if (!fotograma) throw new Error("Falta el trabajo de la escena.");
+    const tareaFoto = await marcarEnviado(fotograma.id);
+    tareas.set(tareaFoto, { state: "success", urls: ["https://res.kie.ai/fotograma.png"], creditos: 4 });
+    await consultarTrabajo(actor, fotograma.id, { forzar: true }, h);
+    await aprobarFotograma(actor, escena.id, await confirmacion("clip"), h);
+    const clip = (await trabajosDe(escena.id)).find((t) => t.kind === "animacion");
+    if (!clip) throw new Error("Falta el clip de la escena.");
+    // El clip hereda el personaje, pero su referencia es el fotograma aprobado, que no es una foto del personaje:
+    // el despacho no puede descartarlo por eso ni exigirle el mínimo de fotos originales.
+    expect(clip.characterId).not.toBeNull();
+
+    await enviarEncolados(h);
+
+    const [enviado] = await db().select().from(generationJobs).where(eq(generationJobs.id, clip.id));
+    expect(enviado?.state).toBe("enviado");
+    expect(enviado?.failureReason ?? "").toBe("");
   });
 
   test("un clip listo que no llegó a guardarse en la escena impide pagar otro", async () => {

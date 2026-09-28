@@ -21,7 +21,7 @@ import { ErrorProyecto } from "../asistente/errores";
 import { comprometidoDelProyecto, type EleccionesDelPlan, eleccionesDelPlan } from "../asistente/plan";
 import { posicionesEnCola } from "../cola/toma";
 import type { HechosEscena, ParametrosControles } from "../controles/contrato";
-import { hechosDeModelo, parametrosDeControles } from "../controles/hechos";
+import { hechosDeModelo, hechosDePersonajeCitado, parametrosDeControles } from "../controles/hechos";
 import { evaluarParaMostrar } from "../controles/puerta";
 import { db } from "../db/cliente";
 import {
@@ -313,10 +313,14 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
     creditosPorClip: porClip,
     selloClip: elecciones.animacion?.precio.sello ?? "",
     selloFotograma: elecciones.fotograma?.precio.sello ?? "",
+    // Modelo **y protagonista**: la puerta del encolado evalúa también al personaje (consentimiento, fotos
+    // señaladas, cobertura de vistas), así que sus avisos confirmables tienen que salir aquí con su casilla. Sin
+    // él, la pantalla decía «Listo» y el servidor rechazaba pidiendo una confirmación que no había dónde dar.
     controlesDelModelo: evaluarParaMostrar({
       tipo: "fotograma",
       parametros: contexto.parametros,
       ...(elecciones.fotograma ? { modelo: hechosDeModelo("fotograma", elecciones.fotograma) } : {}),
+      ...(proyecto.mainCharacterId ? { personaje: await hechosDePersonajeCitado(proyecto.mainCharacterId) } : {}),
     }),
     // El recuento es del usuario, no del proyecto: es el mismo que cierra la puerta al encolar.
     enVuelo,

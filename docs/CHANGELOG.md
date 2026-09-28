@@ -2,6 +2,27 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.20.7] · 2026-09-28
+
+### Corregido
+
+- **Los clips de escenas con personaje ya se envían.** Al preparar el envío de un clip, sus referencias se
+  filtraban contra las fotos del personaje; la única referencia de un clip es su fotograma aprobado, que no es
+  una foto del personaje, así que se descartaba y el clip fallaba sin coste con «ya no llegan al mínimo de 3
+  fotos». Esa comprobación es solo de los fotogramas, que son los que envían las fotos del personaje.
+- **Cada botón de gasto de la producción lleva la casilla de sus avisos.** El botón decía «falta confirmar el
+  aviso» y la casilla estaba en el panel de arriba de la página; ahora está también junto al botón, y marcar una
+  marca las dos.
+
+## [0.20.6] · 2026-09-28
+
+### Corregido
+
+- **Producir un proyecto ya deja confirmar los avisos del personaje.** La pantalla de producción evaluaba el
+  modelo pero no al protagonista, así que decía «Listo para generar» y el servidor rechazaba el envío pidiendo
+  confirmar un aviso (fotos señaladas, vistas sin cubrir) que no aparecía en ninguna parte. Ahora el panel
+  «Antes de generar» lo muestra con su casilla.
+
 ## [0.20.5] · 2026-09-28
 
 ### Corregido

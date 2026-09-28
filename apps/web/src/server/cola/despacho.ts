@@ -424,7 +424,10 @@ function dialogoDe(fila: FilaTrabajo): string {
 async function mediosDeReferencia(fila: FilaTrabajo, maximo = Number.POSITIVE_INFINITY): Promise<FilaMedio[]> {
   const guardadas = (fila.input as { referencias?: unknown }).referencias;
   let ids = Array.isArray(guardadas) ? guardadas.filter((id): id is string => typeof id === "string") : [];
-  if (fila.characterId) {
+  // Solo un **fotograma** envía las fotos del personaje. Un clip envía su fotograma aprobado, que no es una
+  // referencia del personaje: filtrarlo contra ellas lo descartaba y ningún clip con personaje llegaba a salir.
+  // El consentimiento del personaje del clip ya lo ha revisado la puerta de `preparar`.
+  if (fila.characterId && fila.kind === "fotograma") {
     // Solo lo que sigue siendo referencia del personaje y fuera de la papelera, respetando el orden guardado.
     const referencias = await mediosDeReferenciaVigentes(fila.characterId);
     const vigentes = new Map(referencias.map((r) => [r.mediaId, r.origen]));
