@@ -10,6 +10,7 @@ import type { TipoTrabajoCola } from "./generacion";
 
 export const CAPACIDADES = [
   "image_edit",
+  "text_to_image",
   "image_to_video",
   "text_to_video",
   "text_generation",
@@ -22,7 +23,8 @@ export type Capacidad = (typeof CAPACIDADES)[number];
 export const esCapacidad = (v: unknown): v is Capacidad => CAPACIDADES.includes(v as Capacidad);
 
 export const ETIQUETA_CAPACIDAD: Record<Capacidad, string> = {
-  image_edit: "Imagen con referencia",
+  image_edit: "Imagen a partir de otra imagen",
+  text_to_image: "Imagen a partir de texto",
   image_to_video: "Vídeo a partir de una imagen",
   text_to_video: "Vídeo a partir de texto",
   text_generation: "Texto y guion",
@@ -33,6 +35,8 @@ export const ETIQUETA_CAPACIDAD: Record<Capacidad, string> = {
 
 export const DESCRIPCION_CAPACIDAD: Record<Capacidad, string> = {
   image_edit: "Genera un fotograma a partir de una o varias imágenes de referencia y una descripción.",
+  text_to_image:
+    "Genera una imagen solo a partir de la descripción, sin ninguna imagen de partida (el retrato de un personaje inventado o una escena que todavía no tiene foto).",
   image_to_video: "Anima una imagen y devuelve un clip corto.",
   text_to_video: "Genera un clip solo a partir de la descripción, sin imagen de referencia.",
   text_generation: "Escribe o reescribe texto (guion, descripciones, alternativas).",
@@ -196,7 +200,7 @@ export interface ModeloVista {
   actualizado: string;
 }
 
-/** Una tarifa publicada del mismo modelo que no es la que está en uso. */
+/** Una tarifa registrada del mismo modelo: otra resolución, otra calidad u otra duración. */
 export interface TarifaVista {
   unidad: string;
   creditos: number;
@@ -204,6 +208,78 @@ export interface TarifaVista {
   enUso: boolean;
   /** Fecha (AAAA-MM-DD) en la que se leyó del proveedor. */
   comprobado: string;
+  /** `true` cuando el precio lo publica el proveedor y no se ha medido en esta instalación. */
+  publicado: boolean;
+  /** De dónde sale ese precio (medición o tarifa publicada), tal como se guardó. */
+  fuente: string;
+  /** Sello de esa tarifa: es lo que caduca una estimación cuando su precio cambia. */
+  sello: string;
+}
+
+/**
+ * Segundos que nombra la unidad de una tarifa de vídeo («clip de 8 s a 720p» → 8). `null` cuando la unidad no
+ * nombra ninguna duración concreta, que es lo mismo que decir «esta tarifa no depende de cuánto dure».
+ *
+ * Existe porque el precio de una duración **es una tarifa más** del modelo, con su propia unidad y su propio
+ * sello (ADR-0029 §6): así la duración que se elige es también la que se confirma y la que se paga.
+ */
+export function segundosDeUnidad(unidad: string): number | null {
+  const encontrado = /\bde (\d+(?:[.,]\d+)?) s\b/.exec(unidad);
+  if (!encontrado?.[1]) return null;
+  const segundos = Number(encontrado[1].replace(",", "."));
+  return Number.isFinite(segundos) && segundos > 0 ? segundos : null;
+}
+
+/** Coste de una duración concreta del modelo, con la unidad que se cobra y el origen de su precio. */
+export interface DuracionConCoste {
+  segundos: number;
+  creditos: number;
+  unidad: string;
+  /** `true` cuando ese precio lo publica el proveedor y no se ha medido aquí. Se dice siempre en pantalla. */
+  publicado: boolean;
+}
+
+/**
+ * Duraciones del modelo que **se pueden cobrar sin inventar nada**: las que el modelo admite y además tienen
+ * su tarifa registrada, con el coste de cada una.
+ *
+ * Cuando ninguna tarifa del modelo nombra una duración (su precio es el mismo dure lo que dure, como en
+ * Veo 3), se devuelven todas las que admite con el precio vigente: ahí la duración no cambia lo que se paga.
+ */
+export function duracionesConCoste(modelo: ModeloVista): DuracionConCoste[] {
+  const admitidas = modelo.parametros.duraciones;
+  if (admitidas.length === 0) return [];
+  const porDuracion = new Map<number, DuracionConCoste>();
+  for (const tarifa of modelo.tarifas) {
+    const segundos = segundosDeUnidad(tarifa.unidad);
+    if (segundos === null || !admitidas.includes(segundos)) continue;
+    const previa = porDuracion.get(segundos);
+    // Dos tarifas para la misma duración (otra resolución): manda la más cara, como en la sincronización.
+    if (!previa || tarifa.creditos > previa.creditos) {
+      porDuracion.set(segundos, {
+        segundos,
+        creditos: Math.ceil(tarifa.creditos),
+        unidad: tarifa.unidad,
+        publicado: tarifa.publicado,
+      });
+    }
+  }
+  if (porDuracion.size === 0) {
+    const precio = modelo.precio;
+    if (!precio) return [];
+    return admitidas.map((segundos) => ({
+      segundos,
+      creditos: Math.ceil(precio.creditos),
+      unidad: precio.unidad,
+      publicado: precio.publicado,
+    }));
+  }
+  return [...porDuracion.values()].sort((a, b) => a.segundos - b.segundos);
+}
+
+/** Unidad con la que se cobra esa duración, o `null` si no hay ninguna tarifa registrada para ella. */
+export function unidadParaDuracion(modelo: ModeloVista, segundos: number): string | null {
+  return duracionesConCoste(modelo).find((d) => d.segundos === segundos)?.unidad ?? null;
 }
 
 /**
@@ -222,7 +298,12 @@ export interface ModeloElegible {
   creditos: number;
   /** `true` si el precio es la tarifa publicada por el proveedor y no una medida aquí. */
   precioPublicado: boolean;
-  /** Duraciones que admite el clip, para decir cuántos segundos saldrá. */
+  /**
+   * Duraciones que admite el clip **y cuyo precio se puede calcular**, con lo que cuesta cada una. Una
+   * duración sin tarifa registrada no se ofrece: sin precio no se estima ni se gasta.
+   */
+  duracionesConCoste: DuracionConCoste[];
+  /** Duraciones que se pueden pedir, en segundos. Es la lista de {@link duracionesConCoste}. */
   duraciones: number[];
   /**
    * Cuántas fotos de referencia admite como máximo. Al generar con un personaje se le envían **varias**
@@ -233,6 +314,7 @@ export interface ModeloElegible {
 
 /** Recorta un modelo del catálogo a lo que puede ver quien va a generar. */
 export function recortarModelo(modelo: ModeloVista): ModeloElegible {
+  const duraciones = duracionesConCoste(modelo);
   return {
     modelo: modelo.modelo,
     nombre: modelo.nombre,
@@ -241,7 +323,8 @@ export function recortarModelo(modelo: ModeloVista): ModeloElegible {
     estado: modelo.estado,
     creditos: Math.ceil(modelo.precio?.creditos ?? 0),
     precioPublicado: modelo.precio?.publicado ?? false,
-    duraciones: modelo.parametros.duraciones,
+    duracionesConCoste: duraciones,
+    duraciones: duraciones.map((d) => d.segundos),
     maximoReferencias: modelo.parametros.maximoReferencias,
   };
 }

@@ -416,8 +416,22 @@ export interface Adaptador {
    * otra decisión, y no la hay todavía.
    */
   modelosPublicados?(buscar: Buscador): Promise<ModeloPublicado[]>;
-  /** Precio registrado del modelo. Nunca se inventa: sin precio no se estima ni se gasta. */
-  estimar(modelo: string): Promise<PrecioModelo>;
+  /**
+   * Precio registrado del modelo. Nunca se inventa: sin precio no se estima ni se gasta.
+   *
+   * `unidad` elige **qué tarifa** de ese modelo se cobra cuando tiene varias (una resolución, una calidad o
+   * una duración concreta, ADR-0029 §6). Sin ella se usa la que el modelo tiene en uso. La unidad viaja después
+   * dentro del sello, así que lo que se estima y lo que se confirma es siempre la misma tarifa.
+   */
+  estimar(modelo: string, unidad?: string): Promise<PrecioModelo>;
+  /**
+   * Modelo **gemelo que genera sin imagen de partida** (0.23.4), o `null` si el proveedor no tiene ninguno para
+   * ese motor. Opcional: un proveedor sin modelos de texto a imagen sigue siendo válido.
+   *
+   * Sirve para que una generación sin foto (el retrato de un personaje inventado, «Crear» sin imagen) salga del
+   * mismo motor que el usuario ya tenía elegido en su mapa, en lugar de saltar a otro cualquiera.
+   */
+  gemeloSinReferencia?(modelo: string): string | null;
   /** Comprueba la credencial y devuelve el saldo si el proveedor lo informa. */
   probarCredencial(peticion: { clave: string; buscar: Buscador }): Promise<number | null>;
 }

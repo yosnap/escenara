@@ -53,6 +53,14 @@ function leerAvisosConfirmados(valor: unknown): string[] {
   });
 }
 
+/** Duración del clip que llega del navegador: entera, en segundos y dentro de lo que dura un clip. */
+function leerSegundos(valor: unknown): number {
+  if (typeof valor !== "number" || !Number.isInteger(valor) || valor < 1 || valor > 600) {
+    throw new ErrorGeneracion(400, "Esa duración no es válida.");
+  }
+  return valor;
+}
+
 export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
   exigirMismoOrigen(peticion);
   const cuerpo = await leerCuerpo(peticion);
@@ -93,6 +101,9 @@ export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
       : await crearAnimacion(actor, {
           ...comun,
           trabajoPadreId: cuerpo.trabajoPadreId as string,
+          // Duración confirmada del clip (0.23.4): cada duración es una tarifa distinta, así que la que llega
+          // aquí es la que se estimó y la que se va a pagar. Fuera de un proyecto la elige el usuario.
+          ...(cuerpo.segundos === undefined ? {} : { segundos: leerSegundos(cuerpo.segundos) }),
           // Como el resto de los campos: si llega, tiene que ser texto.
           dialogo: cuerpo.dialogo === undefined ? "" : (cuerpo.dialogo as string),
           // Obligatoria si el fotograma del que sale el clip se hizo con un personaje.

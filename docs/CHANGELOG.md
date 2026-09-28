@@ -2,6 +2,41 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.23.4] · 2026-09-28
+
+### Añadido
+
+- **Texto a imagen.** Hay generaciones que no parten de ninguna foto —el retrato de un personaje inventado y, desde
+  ahora, «Crear» sin elegir personaje ni imagen— y pedírselas a un modelo de edición era pedirle que editara una
+  imagen que no existe. El catálogo importa los modelos de texto a imagen de cada familia (GPT Image 1.5/2/2.5,
+  Seedream 4.5 y 5, Flux 2, Ideogram v3, Qwen 2 y 3; nano banana ya sabía hacer las dos cosas) con su precio
+  publicado, y «Tu cuenta › Modelos» dice de cada uno si es **imagen a imagen** o **texto a imagen**.
+- **Elegir la duración del clip en «Crear»**, con lo que cuesta cada una. Gemini Omni ofrece 4, 6, 8 y 10 s porque
+  el proveedor publica el precio de cada duración (63, 84, 105 y 126 créditos a 720p, y los 63 de 4 s son los que
+  se pagaron de verdad). Una duración sin tarifa registrada no se ofrece: un precio que no se sabe antes no se
+  puede confirmar.
+
+### Corregido
+
+- **Sin foto de partida se usa el gemelo de tu modelo.** Cuando no hay imagen, se genera con el modelo de texto a
+  imagen **de la misma familia** que tengas primero en tu mapa de imagen; si esa familia no tiene, con el primer
+  modelo de texto a imagen de tu mapa, y si no, con el recomendado. Se estima, se confirma, se reserva y se envía
+  **el mismo** modelo y **la misma tarifa**.
+- **Los textos de duración ya no contradicen al modelo.** «Crear» decía que el clip era de 8 s «para una acción con
+  principio y fin» y después el modelo solo ofrecía 4. Ahora la duración sale del modelo elegido y de lo que sabe
+  cobrar, y los presets de duración dejan de prometer nada por su cuenta.
+- **Un fallo al preparar el envío dice su causa.** Antes decía «No se ha podido preparar el envío. Se volverá a
+  intentar» y lo repetía tres veces aunque fuera algo que no se arregla solo. Ahora dice qué ha pasado
+  («Escenara no sabe con qué parámetros pedirle nada a este modelo», «falta la imagen de partida»), que **no se ha
+  enviado nada al proveedor y no se te ha cobrado**, y qué puedes hacer. Lo que no es pasajero no se reintenta.
+
+### Seguridad del dinero
+
+- **La duración elegida viaja entera**: estimación → confirmación → trabajo → envío. Antes de llamar al proveedor se
+  comprueba que el clip que se va a pedir es el de la tarifa que se apartó; si no coincide, no se envía nada.
+- **La tarifa confirmada manda sobre la que el catálogo tenga elegida hoy**: el trabajo guarda su unidad y es esa la
+  que se envía.
+
 ## [0.23.3] · 2026-09-28
 
 ### Seguridad del dinero

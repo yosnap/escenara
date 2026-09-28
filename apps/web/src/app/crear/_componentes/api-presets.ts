@@ -18,10 +18,17 @@ async function pedir<T>(url: string, init?: RequestInit): Promise<Resultado<T>> 
  * Presets y plantillas para el tipo de trabajo y el modelo indicados, con el motivo por el que el modelo no
  * admite cada opción. Es una lectura: no encola nada ni mueve dinero.
  */
-export const consultarCatalogoDePresets = (tipo: "fotograma" | "animacion", modelo?: string) =>
-  pedir<CatalogoParaCrear>(
-    `/api/prompts/catalogo?tipo=${tipo}${modelo ? `&modelo=${encodeURIComponent(modelo)}` : ""}`,
-  );
+export const consultarCatalogoDePresets = (
+  tipo: "fotograma" | "animacion",
+  modelo?: string,
+  opciones: { sinImagen?: boolean; segundos?: number } = {},
+) => {
+  const parametros = new URLSearchParams({ tipo });
+  if (modelo) parametros.set("modelo", modelo);
+  if (opciones.sinImagen) parametros.set("sinImagen", "1");
+  if (opciones.segundos !== undefined) parametros.set("segundos", String(opciones.segundos));
+  return pedir<CatalogoParaCrear>(`/api/prompts/catalogo?${parametros}`);
+};
 
 /** Edita **tu** copia de un preset. La de la instalación responde 403 y la de otro usuario, 404. */
 export const editarPresetPropio = (

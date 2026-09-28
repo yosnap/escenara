@@ -71,7 +71,7 @@ export async function exigirRitmoDeRegistro(usuarioId: string): Promise<void> {
  * una decisión de quien administra, y escribirlo a fuego aquí significaría que cambiarlo es cambiar el código.
  * Si ninguno está utilizable, se propaga el motivo del último intento y **no se produce nada**.
  */
-export async function eleccionOmni(usuarioId?: string): Promise<EleccionDeTrabajo> {
+export async function eleccionOmni(usuarioId?: string, segundos?: number): Promise<EleccionDeTrabajo> {
   /**
    * Con usuario, manda **su mapa de vídeo** (0.22.0): es él quien elige con qué motor hablan sus escenas, y hay
    * dos (Gemini Omni Flash, el recomendado, y MiniMax H3). Solo se miran las entradas que saben producir una
@@ -79,13 +79,17 @@ export async function eleccionOmni(usuarioId?: string): Promise<EleccionDeTrabaj
    */
   if (usuarioId) {
     const { eleccionDeGeneracion } = await import("../mapa/generacion");
-    const { elegida } = await eleccionDeGeneracion(usuarioId, "animacion", null, true);
+    const { elegida } = await eleccionDeGeneracion(usuarioId, "animacion", null, {
+      soloOmni: true,
+      // Con la duración de la escena: cada duración tiene su tarifa, y la que se lee es la que se va a pagar.
+      ...(segundos === undefined ? {} : { segundos }),
+    });
     if (esModeloOmni(elegida.eleccion.modelo.modelo)) return elegida.eleccion;
   }
   let ultimo: unknown = null;
   for (const modelo of MODELOS_OMNI) {
     try {
-      return await elegirParaTipo("animacion", modelo);
+      return await elegirParaTipo("animacion", modelo, segundos === undefined ? {} : { segundos });
     } catch (error) {
       ultimo = error;
     }

@@ -20,6 +20,9 @@ const ESTIMACION: Estimacion = {
   comprobado: "2026-09-27",
   precioAntiguo: false,
   traduccion: null,
+  segundos: 4,
+  duraciones: [{ segundos: 4, creditos: 60, unidad: "vídeo de 4 s", publicado: false }],
+  sinReferencia: false,
   sello: "kie:veo3_lite:vídeo de 4 s@v1",
 };
 

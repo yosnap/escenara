@@ -1,5 +1,6 @@
+import { duracionesConCoste, type ModeloVista, segundosDeUnidad } from "@/lib/catalogo";
 import type { Medio } from "@/lib/media/tipos";
-import { creditosDeEscenaOmni, usaIdentidadRegistrada, type VozOmniDelProyecto } from "@/lib/omni";
+import { creditosDeEscenaOmni, precioOmniEstimado, usaIdentidadRegistrada, type VozOmniDelProyecto } from "@/lib/omni";
 import { duracionParaModelo } from "@/lib/produccion";
 import { firmaDeVoz, nombreDeVoz } from "@/lib/voz";
 import { escenaPropia } from "../asistente/consulta";
@@ -74,6 +75,24 @@ export const segundosDeEscenaOmni = (duraciones: readonly number[], proyecto: Fi
   duracionParaModelo(duraciones, proyecto.clipSeconds);
 
 /**
+ * Créditos de una escena hablada a partir de la tarifa leída. Si la tarifa **es** la de esa duración («clip de
+ * 6 s»), se cobra tal cual: volver a escalarla sería cobrarla dos veces. Solo cuando no hay tarifa propia de esa
+ * duración se estima en proporción, y desde los segundos de la tarifa que sí se leyó.
+ */
+export function creditosDeTarifa(
+  precio: { unidad: string; creditos: number },
+  segundos: number,
+  modelo: string,
+): number {
+  const segundosDeTarifa = segundosDeUnidad(precio.unidad);
+  if (segundosDeTarifa === segundos) return Math.ceil(precio.creditos);
+  if (segundosDeTarifa !== null && segundos > 0) {
+    return Math.max(Math.ceil(precio.creditos), Math.ceil((precio.creditos * segundos) / segundosDeTarifa));
+  }
+  return creditosDeEscenaOmni(precio.creditos, segundos, modelo);
+}
+
+/**
  * Créditos de una escena hablada con la duración del proyecto. Se calcula en un solo sitio para que la cifra que
  * se muestra, la que se confirma y la que se aparta sean la misma.
  */
@@ -81,10 +100,31 @@ export async function creditosDeEscenaHablada(
   usuarioId: string,
   proyecto: FilaProyecto,
 ): Promise<{ creditos: number; sello: string }> {
-  const { modelo, precio } = await eleccionOmni(usuarioId);
-  const segundos = segundosDeEscenaOmni(modelo.parametros.duraciones, proyecto);
-  return { creditos: creditosDeEscenaOmni(precio.creditos, segundos, modelo.modelo), sello: precio.sello };
+  /**
+   * Se lee **dos veces a propósito**: primero para saber qué modelo sería y qué duración admite, y después con
+   * esa duración para leer **su** tarifa. Desde la 0.23.4 cada duración de Gemini Omni tiene su precio publicado
+   * (63, 84, 105 y 126 créditos a 4, 6, 8 y 10 s), así que la escena se cobra por la tarifa de su duración en
+   * lugar de escalar la de 4 s. Solo se escala lo que no tenga tarifa propia, y se dice que es estimado.
+   */
+  const { modelo: primero } = await eleccionOmni(usuarioId);
+  const segundos = segundosDeEscenaOmni(duracionesDeOmni(primero), proyecto);
+  const { modelo, precio } = await eleccionOmni(usuarioId, segundos);
+  return { creditos: creditosDeTarifa(precio, segundos, modelo.modelo), sello: precio.sello };
 }
+
+/**
+ * `true` cuando el precio de esa duración es una **estimación en proporción** y no una tarifa registrada. Desde
+ * la 0.23.4 casi nunca lo es: el proveedor publica el precio de cada duración de Gemini Omni, así que lo que se
+ * enseña es su tarifa. Se sigue diciendo cuando no la hay, porque un precio deducido no es un precio medido.
+ */
+export const precioDeDuracionEstimado = (modelo: ModeloVista, segundos: number): boolean =>
+  !duracionesConCoste(modelo).some((d) => d.segundos === segundos) && precioOmniEstimado(segundos, modelo.modelo);
+
+/** Duraciones que el modelo admite **y sabe cobrar**: las demás no se pueden confirmar, así que no se piden. */
+export const duracionesDeOmni = (modelo: ModeloVista): number[] => {
+  const cobrables = duracionesConCoste(modelo).map((d) => d.segundos);
+  return cobrables.length > 0 ? cobrables : modelo.parametros.duraciones;
+};
 
 /**
  * Registro con el que se va a producir: el del protagonista, su versión de ficha vigente y la voz del proyecto.
@@ -228,10 +268,11 @@ export async function producirEscenaHablada(
   exigirDerechos(confirmacion.derechos);
   exigirRevisionDeReferencias(confirmacion.sinTerceros);
   const claveIdempotencia = exigirClaveIdempotencia(confirmacion.claveIdempotencia);
-  const eleccion = await eleccionOmni(actor.id);
+  const { modelo: primero } = await eleccionOmni(actor.id);
+  const eleccion = await eleccionOmni(actor.id, segundosDeEscenaOmni(duracionesDeOmni(primero), proyecto));
   const { modelo, adaptador, precio } = eleccion;
-  const segundos = segundosDeEscenaOmni(modelo.parametros.duraciones, proyecto);
-  const creditos = creditosDeEscenaOmni(precio.creditos, segundos, modelo.modelo);
+  const segundos = segundosDeEscenaOmni(duracionesDeOmni(modelo), proyecto);
+  const creditos = creditosDeTarifa(precio, segundos, modelo.modelo);
   exigirSelloVigente(confirmacion.selloEstimacion, precio.sello, true);
   const totales = await creditosDelEnvio(creditos);
   exigirConfirmacion(confirmacion.creditosConfirmados, totales);

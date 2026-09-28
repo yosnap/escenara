@@ -10,7 +10,7 @@ import { Aviso } from "@/components/ui/feedback";
 import { VisorMedio } from "@/components/ui/media/visor-medio";
 import {
   consultarControlesDeRetrato,
-  consultarEstimacionDeVista,
+  consultarEstimacionSinImagen,
   consultarRetratos,
   descartarRetratos,
   elegirRetrato,
@@ -69,7 +69,8 @@ export function PanelRetratos({
     setOcupado(true);
     setError(null);
     const [precio, previo] = await Promise.all([
-      consultarEstimacionDeVista(),
+      // Un retrato de un personaje inventado nace de su descripción: su modelo es de texto a imagen.
+      consultarEstimacionSinImagen(),
       consultarControlesDeRetrato(personaje.id),
     ]);
     setOcupado(false);

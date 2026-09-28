@@ -37,21 +37,37 @@ export default async function PaginaCrear({ searchParams }: { searchParams: Prom
   const kie = credenciales.find((c) => c.proveedor === "kie") ?? null;
   const puedeGenerar = Boolean(kie && kie.estado === "valida");
   // La estimación no necesita credencial (el saldo se queda en `null`): así el coste se ve siempre.
-  const [estimaciones, modelosFotograma, modelosClip, deposito, cola, personajes, catalogoFoto, catalogoClip] =
-    puedeGenerar
-      ? await Promise.all([
-          estimarTodo(sesion.user.id),
-          modelosParaCrear("image_edit"),
-          modelosParaCrear("image_to_video"),
-          depositoDe(sesion.user.id),
-          estadoDeCola(sesion.user.id),
-          personajesElegibles({ id: sesion.user.id, esAdmin: esAdmin(sesion) }),
-          // Presets y plantillas con el modelo predeterminado de cada capacidad: así la botonera está pintada
-          // al cargar la página, sin efectos en el navegador.
-          catalogoParaCrear(sesion.user.id, "fotograma"),
-          catalogoParaCrear(sesion.user.id, "animacion"),
-        ])
-      : [null, [], [], null, null, [], null, null];
+  /**
+   * Al cargar «Crear» todavía no hay ninguna imagen elegida, salvo que se llegue desde la ficha de un
+   * personaje. Así que la estimación del fotograma se pide **como se va a generar**: sin imagen de partida, con
+   * el modelo de texto a imagen (0.23.4). Al elegir personaje o foto se vuelve a pedir con el de edición.
+   */
+  const sinImagenAlCargar = !personajePedido;
+  const [
+    estimaciones,
+    modelosFotograma,
+    modelosSinImagen,
+    modelosClip,
+    deposito,
+    cola,
+    personajes,
+    catalogoFoto,
+    catalogoClip,
+  ] = puedeGenerar
+    ? await Promise.all([
+        estimarTodo(sesion.user.id, undefined, {}, { fotograma: { sinReferencia: sinImagenAlCargar } }),
+        modelosParaCrear("image_edit"),
+        modelosParaCrear("text_to_image"),
+        modelosParaCrear("image_to_video"),
+        depositoDe(sesion.user.id),
+        estadoDeCola(sesion.user.id),
+        personajesElegibles({ id: sesion.user.id, esAdmin: esAdmin(sesion) }),
+        // Presets y plantillas con el modelo predeterminado de cada capacidad: así la botonera está pintada
+        // al cargar la página, sin efectos en el navegador.
+        catalogoParaCrear(sesion.user.id, "fotograma", null, { sinReferencia: sinImagenAlCargar }),
+        catalogoParaCrear(sesion.user.id, "animacion"),
+      ])
+    : [null, [], [], [], null, null, [], null, null];
 
   // Llegando desde la ficha con un personaje preseleccionado, el contexto se resuelve **aquí**: así la zona de
   // claridad ya está rellena al cargar la página, sin efectos en el navegador.
@@ -126,6 +142,7 @@ export default async function PaginaCrear({ searchParams }: { searchParams: Prom
             estimacionFotograma={estimaciones.fotograma}
             estimacionAnimacion={estimaciones.animacion}
             modelosFotograma={modelosFotograma}
+            modelosSinImagen={modelosSinImagen}
             modelosClip={modelosClip}
             deposito={deposito}
             cola={cola}

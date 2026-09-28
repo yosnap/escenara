@@ -33,7 +33,8 @@ export const DESCRIPCION_DE_TIPO: Record<TipoDeMapa, string> = {
   texto: "Traducir los prompts al inglés y escribir el guion con el asistente.",
   voz: "Leer el diálogo de tus escenas cuando el proyecto usa pista de voz aparte.",
   transcripcion: "Sacar los subtítulos del audio ya generado.",
-  imagen: "Los fotogramas de tus escenas, las imágenes de «Crear» y las vistas generadas de tus personajes.",
+  imagen:
+    "Los fotogramas de tus escenas, las imágenes de «Crear» y las vistas generadas de tus personajes. Hay dos formas de generar una imagen y las dos están aquí: a partir de otra imagen y a partir del texto a secas.",
   video: "Los clips de tus escenas, y las escenas habladas cuando el proyecto usa el modo Omni.",
 };
 
@@ -46,6 +47,26 @@ export interface EntradaMapa {
   modelo: string;
 }
 
+/**
+ * De qué parte un modelo de imagen (0.23.4). Importa al ordenar el mapa: **una escena sin foto de partida no
+ * la puede hacer un modelo de edición**, así que se usa el gemelo de texto a imagen de la misma familia y, si
+ * no lo hay, el primer modelo de texto a imagen de tu lista.
+ */
+export const FORMAS_DE_IMAGEN = ["imagen_a_imagen", "texto_a_imagen", "ambas"] as const;
+export type FormaDeImagen = (typeof FORMAS_DE_IMAGEN)[number];
+
+export const ETIQUETA_FORMA_DE_IMAGEN: Record<FormaDeImagen, string> = {
+  imagen_a_imagen: "Imagen a imagen",
+  texto_a_imagen: "Texto a imagen",
+  ambas: "Imagen a imagen y texto a imagen",
+};
+
+export const DESCRIPCION_FORMA_DE_IMAGEN: Record<FormaDeImagen, string> = {
+  imagen_a_imagen: "Necesita una imagen de partida: una foto del personaje o la que elijas.",
+  texto_a_imagen: "Genera solo con la descripción, sin ninguna imagen de partida.",
+  ambas: "Sirve para las dos cosas: con imagen de partida y sin ella.",
+};
+
 /** Entrada con lo que hace falta para pintarla y para decir por qué no se puede usar. */
 export interface EntradaMapaVista extends EntradaMapa {
   /** Nombre visible del proveedor: el del catálogo público, o el que el usuario le puso a su servicio. */
@@ -54,6 +75,8 @@ export interface EntradaMapaVista extends EntradaMapa {
   nombreModelo?: string;
   /** Coste en palabras («63 créditos por clip de 4 s a 720p», «Cuota de tu plan»); vacío si no se conoce. */
   coste?: string;
+  /** De qué parte, solo en el apartado de imagen. `null` cuando no aplica o no se sabe. */
+  forma?: FormaDeImagen | null;
   /** `true` si ahora mismo se puede usar: hay credencial válida y, en `compatible`, el servicio sigue existiendo. */
   utilizable: boolean;
   /** Por qué no se puede usar, en una frase con la acción concreta. Vacío cuando sí se puede. */

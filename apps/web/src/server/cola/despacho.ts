@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { PROVEEDORES_PUBLICOS } from "@/lib/boveda";
 import { esVista, proporcionDeVista } from "@/lib/captura-personaje";
-import { CAPACIDAD_DE_TIPO, type ModeloVista } from "@/lib/catalogo";
+import { CAPACIDAD_DE_TIPO, type ModeloVista, segundosDeUnidad } from "@/lib/catalogo";
 import { mensajeDeFalloDeProveedor } from "@/lib/diagnostico-proveedor";
 import {
   type IntentoDeVoz,
@@ -29,10 +29,23 @@ import { referenciaCompatible } from "../media/conversion-referencia";
 import { mediosDeReferenciaVigentes } from "../personajes/consulta";
 import { cerrarTrabajoYGasto } from "../presupuesto/reserva";
 import { registrarFalloDeEscena } from "../produccion/cierre";
-import { type Adaptador, ErrorProveedor, type VozPedida } from "../proveedores/contrato";
+import { type Adaptador, ErrorCatalogo, ErrorProveedor, type VozPedida } from "../proveedores/contrato";
 import { resolver } from "../proveedores/registro";
 import { creditosDeLaOpcion } from "../voz/eleccion";
 import { prepararCallback } from "./callback";
+import {
+  audioDeReferenciaDe,
+  capacidadDelTrabajo,
+  compatibleIdDe,
+  dialogoDe,
+  personajesOmniDe,
+  reservasAutorizadas,
+  reservasPendientes,
+  segundosDe,
+  sinReferenciaDe,
+  unidadConfirmadaDe,
+  urlBaseDe,
+} from "./entrada-del-trabajo";
 import { marcarEnviando, reintentar, renovarToma } from "./toma";
 
 /**
@@ -88,7 +101,33 @@ export async function despachar(fila: FilaTrabajo, workerId: string, h: Herramie
       return { fila: await cerrarSinCoste(fila, error.motivo, error.message), enviado: false };
     }
     console.error(`[cola] no se ha podido preparar el trabajo ${fila.id}: ${detalle(error)}`);
-    await reintentar(fila, "No se ha podido preparar el envío. Se volverá a intentar.", "interno");
+    /**
+     * **Norma de errores visibles.** Un fallo de preparación que no se va a arreglar solo —esta instalación no
+     * sabe montar la petición de ese modelo, falta la imagen de partida, la tarifa confirmada ya no existe— se
+     * cuenta con su causa concreta y **no se reintenta**: reintentar tres veces lo mismo solo retrasa el aviso
+     * y hace creer que el problema es del proveedor. Nada de esto ha llegado al proveedor, así que no ha
+     * costado nada, y eso también se dice.
+     */
+    if (error instanceof ErrorDeMontaje) {
+      return { fila: await cerrarSinCoste(fila, "interno", error.message), enviado: false };
+    }
+    if (error instanceof ErrorCatalogo) {
+      return {
+        fila: await cerrarSinCoste(
+          fila,
+          "interno",
+          `${error.message} No se ha enviado nada al proveedor y no se te ha cobrado: elige otro modelo en «Tu cuenta» o vuelve a pedirlo cuando quien administra lo arregle.`,
+        ),
+        enviado: false,
+      };
+    }
+    // Lo que sí puede ser pasajero (la base de datos, el almacenamiento, una subida cortada) se reintenta, y el
+    // mensaje dice qué se estaba haciendo en lugar de «no se ha podido preparar el envío».
+    await reintentar(
+      fila,
+      "No se ha podido preparar el envío por un fallo interno de esta instalación (no del proveedor). No se ha enviado nada y no se te ha cobrado; se volverá a intentar.",
+      "interno",
+    );
     return { fila: (await filaDe(fila.id)) ?? fila, enviado: false };
   }
 
@@ -150,6 +189,30 @@ interface Preparado {
   callbackTokenHash?: string;
 }
 
+/**
+ * La duración que se va a pedir tiene que ser **la de la tarifa que se reservó**. Es la última barrera del
+ * dinero antes de llamar: si al encolar se apartó el precio de un clip de 4 s y ahora se pidieran 8, el
+ * proveedor cobraría más de lo que el usuario vio y autorizó.
+ *
+ * No es reintentable: nada de esto se arregla solo.
+ */
+function exigirDuracionCobrada(fila: FilaTrabajo, modelo: ModeloVista, unidadConfirmada: string | null): void {
+  const segundos = segundosDe(fila);
+  if (segundos === null || unidadConfirmada === null) return;
+  const deLaTarifa = segundosDeUnidad(unidadConfirmada);
+  if (deLaTarifa === null || deLaTarifa === segundos) return;
+  throw new ErrorDeMontaje(
+    `El clip que se iba a enviar dura ${segundos} s y lo que se apartó fue el precio de «${unidadConfirmada}» de ${modelo.nombre}. No se ha enviado nada al proveedor y no se te ha cobrado: vuelve a pedir el clip y confirma su coste.`,
+  );
+}
+
+/**
+ * Esta instalación no puede montar la petición de ese modelo (no sabe con qué campos pedírselo, le falta la
+ * imagen de partida o la tarifa confirmada ya no existe). **No se reintenta**: un fallo de catálogo no se
+ * arregla esperando, y reintentarlo tres veces solo retrasa el aviso.
+ */
+class ErrorDeMontaje extends Error {}
+
 /** La credencial del usuario no sirve: no es un fallo reintentable, es algo que tiene que arreglar él. */
 class ErrorSinCredencial extends Error {}
 
@@ -168,7 +231,16 @@ class ErrorPersonajeNoUsable extends Error {
 }
 
 async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): Promise<Preparado> {
-  const { modelo, adaptador } = await resolver(CAPACIDAD_DE_TIPO[fila.kind], fila.model);
+  const { modelo: delCatalogo, adaptador } = await resolver(capacidadDelTrabajo(fila), fila.model);
+  /**
+   * La tarifa que se confirmó manda sobre la que el catálogo tenga elegida hoy (0.23.4): la variante y la
+   * duración que se envían son las que el usuario vio y las que están reservadas. Si esa tarifa ya no existe,
+   * el montaje de la entrada lo dice y el trabajo se cierra **sin enviar nada**, en lugar de pedir una cosa
+   * y haber apartado el precio de otra.
+   */
+  const confirmada = unidadConfirmadaDe(fila);
+  const modelo = confirmada === null ? delCatalogo : { ...delCatalogo, unidad: confirmada };
+  exigirDuracionCobrada(fila, modelo, confirmada);
   // ── Reevaluación de los controles previos, **antes** de subir nada. El encolado los evaluó, pero entre
   // encolar y enviar el usuario puede haber revocado el consentimiento o borrado fotos, y en un reintento puede
   // haber pasado más rato todavía. Sin esto, revocar no impediría que la cara saliera hacia el proveedor: solo
@@ -252,17 +324,18 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
     return { adaptador, clave: credencial.clave, entrada: entradaOmni, ...callbackOmni };
   }
   /**
-   * Retrato candidato de un personaje inventado (0.22.0): nace de su descripción y no tiene ninguna foto que
-   * subir. El modelo recibe el prompt sin referencias, que es lo que lo convierte en un retrato nuevo en lugar
-   * de en la edición de una foto.
+   * Trabajo **sin imagen de partida**: el retrato candidato de un personaje inventado (0.22.0) o una escena
+   * descrita sin foto (0.23.4). No hay nada que subir y el modelo es de texto a imagen, así que recibe el
+   * prompt a secas: eso es lo que lo convierte en una imagen nueva en lugar de en la edición de una foto.
    */
-  if ((fila.input as { retratoInventado?: unknown }).retratoInventado === true) {
-    // Retrato de cabeza y hombros: 3:4, la misma proporción que las vistas de la cabeza.
+  if (sinReferenciaDe(fila)) {
+    const esRetrato = (fila.input as { retratoInventado?: unknown }).retratoInventado === true;
     const entradaRetrato = adaptador.montarEntrada(modelo, {
       escena: fila.prompt,
       dialogo: "",
       urls: [],
-      proporcion: proporcionDeVista("frontal"),
+      // Un retrato es de cabeza y hombros: 3:4, la misma proporción que las vistas de la cabeza.
+      ...(esRetrato ? { proporcion: proporcionDeVista("frontal") } : {}),
     });
     const callbackRetrato = await prepararCallback(fila);
     return { adaptador, clave: credencial.clave, entrada: entradaRetrato, ...callbackRetrato };
@@ -589,7 +662,13 @@ type OpcionRelevable = { entrada: { compatibleId: string | null }; eleccion: Ele
 
 async function opcionesDelTipo(fila: FilaTrabajo): Promise<OpcionRelevable[]> {
   if (fila.kind === "voz") return opcionesDeVoz(fila.userId, dialogoDe(fila));
-  return opcionesDeGeneracion(fila.userId, fila.kind);
+  const segundos = segundosDe(fila);
+  // El relevo se busca **en las mismas condiciones** del trabajo: su duración y su forma de generar. Si no, la
+  // reserva se compararía con el precio de otra cosa.
+  return opcionesDeGeneracion(fila.userId, fila.kind, {
+    sinReferencia: sinReferenciaDe(fila),
+    ...(segundos === null ? {} : { segundos }),
+  });
 }
 
 /** La reserva, resuelta contra lo que hay ahora mismo: su modelo, su adaptador y su precio. `null` si ya no vale. */
@@ -759,48 +838,6 @@ async function filaDe(id: string): Promise<FilaTrabajo | null> {
 }
 
 /**
- * Duración que se le pidió al proveedor al encolar, tal como quedó en la entrada guardada; `null` en un trabajo
- * anterior a que la duración se eligiera, que se queda con la que declare su modelo.
- */
-function segundosDe(fila: FilaTrabajo): number | null {
-  const parametros = (fila.input as { parametros?: unknown }).parametros;
-  if (!parametros || typeof parametros !== "object") return null;
-  const segundos = (parametros as { segundos?: unknown }).segundos;
-  return typeof segundos === "number" && segundos > 0 ? segundos : null;
-}
-
-/**
- * Reservas autorizadas de una voz, **en orden**, tal como quedaron guardadas al encolar (0.21.1). Cada una trae
- * su tope en la moneda de su proveedor: es lo único a donde puede ir el relevo automático, porque es lo único
- * cuyo coste el usuario ha visto y ha autorizado.
- */
-function reservasAutorizadas(fila: FilaTrabajo): ReservaAutorizada[] {
-  const guardadas = (fila.input as { reservas?: unknown }).reservas;
-  if (!Array.isArray(guardadas)) return [];
-  const salida: ReservaAutorizada[] = [];
-  for (const cruda of guardadas) {
-    const r = cruda as Record<string, unknown>;
-    if (typeof r?.proveedor !== "string" || typeof r.modelo !== "string" || typeof r.creditos !== "number") continue;
-    salida.push({
-      proveedor: r.proveedor,
-      compatibleId: typeof r.compatibleId === "string" ? r.compatibleId : null,
-      modelo: r.modelo,
-      creditos: r.creditos,
-      familia: r.familia === "kokoro" ? "kokoro" : "elevenlabs",
-      urlBase: typeof r.urlBase === "string" ? r.urlBase : "",
-    });
-  }
-  return salida;
-}
-
-/** Reservas de este trabajo que quedan por probar: las que van después del proveedor y modelo que acaban de fallar. */
-function reservasPendientes(fila: FilaTrabajo): ReservaAutorizada[] {
-  const todas = reservasAutorizadas(fila);
-  const yaUsada = todas.findIndex((r) => r.proveedor === fila.provider && r.modelo === fila.model);
-  return yaUsada === -1 ? todas : todas.slice(yaUsada + 1);
-}
-
-/**
  * Clave con la que se paga este trabajo.
  *
  * Los proveedores de la bóveda tienen una clave por usuario. Un servicio **compatible con la API de OpenAI** no:
@@ -826,43 +863,6 @@ async function claveDelTrabajo(fila: FilaTrabajo): Promise<{ clave: string }> {
     );
   }
   return { clave: credencial.clave };
-}
-
-/** Dirección base del servicio compatible que quedó guardada al encolar; vacía en los demás proveedores. */
-function urlBaseDe(fila: FilaTrabajo): string {
-  const url = (fila.input as { urlBase?: unknown }).urlBase;
-  return typeof url === "string" ? url : "";
-}
-
-/** Muestra de voz que este trabajo usa como audio de referencia; vacío en todo lo que no la use. */
-function audioDeReferenciaDe(fila: FilaTrabajo): string {
-  const guardado = (fila.input as { audioDeReferencia?: unknown }).audioDeReferencia;
-  return typeof guardado === "string" ? guardado : "";
-}
-
-/**
- * Personajes registrados en el proveedor que este trabajo tiene que citar (modo `omni`, 0.22.0), tal como
- * quedaron guardados al encolar. Vacío en todo lo demás, que es todo lo anterior a la 0.22.0.
- */
-function personajesOmniDe(fila: FilaTrabajo): string[] {
-  const guardados = (fila.input as { personajesOmni?: unknown }).personajesOmni;
-  if (!Array.isArray(guardados)) return [];
-  return guardados.filter((id): id is string => typeof id === "string" && id !== "");
-}
-
-/** Identificador del servicio compatible con el que se encoló, si lo hubo. */
-function compatibleIdDe(fila: FilaTrabajo): string {
-  const guardado = (fila.input as { compatibleId?: unknown }).compatibleId;
-  if (typeof guardado === "string" && guardado !== "") return guardado;
-  // Tras un relevo, el servicio es el de la reserva a la que se encaminó.
-  const usada = reservasAutorizadas(fila).find((r) => r.proveedor === fila.provider && r.modelo === fila.model);
-  return usada?.compatibleId ?? "";
-}
-
-/** Lo que dice el personaje, tal como se guardó al encolar. Lo usan el clip y la voz. */
-function dialogoDe(fila: FilaTrabajo): string {
-  const dialogo = (fila.input as { dialogo?: unknown }).dialogo;
-  return typeof dialogo === "string" ? dialogo : "";
 }
 
 /**
@@ -902,7 +902,11 @@ async function mediosDeReferencia(fila: FilaTrabajo, maximo = Number.POSITIVE_IN
   }
   ids = ids.slice(0, maximo);
   if (ids.length === 0) {
-    if (!fila.sourceMediaId) throw new Error("El trabajo no tiene imagen de referencia.");
+    if (!fila.sourceMediaId) {
+      throw new ErrorDeMontaje(
+        "Falta la imagen de partida de este trabajo: se pidió a un modelo que edita una imagen y ya no queda ninguna que enviarle. No se ha enviado nada al proveedor y no se te ha cobrado: vuelve a pedirlo eligiendo la imagen o el personaje.",
+      );
+    }
     ids.push(fila.sourceMediaId);
   }
   // Un medio en la papelera no se envía nunca: su archivo puede desaparecer en cualquier momento.
@@ -916,7 +920,11 @@ async function mediosDeReferencia(fila: FilaTrabajo, maximo = Number.POSITIVE_IN
     const medio = porId.get(id);
     return medio ? [medio] : [];
   });
-  if (origenes.length === 0) throw new Error("Las imágenes de referencia ya no existen.");
+  if (origenes.length === 0) {
+    throw new ErrorDeMontaje(
+      "Las imágenes con las que se iba a generar ya no están en tu biblioteca. No se ha enviado nada al proveedor y no se te ha cobrado: vuelve a pedirlo con otra imagen.",
+    );
+  }
   return origenes;
 }
 

@@ -50,7 +50,13 @@ export async function evaluarControles(
   peticion: PeticionDeControles,
   buscar: Buscador = fetch,
 ): Promise<EvaluacionVista> {
-  const eleccion = await elegirParaTipo(peticion.tipo, peticion.modelo);
+  /**
+   * Un retrato de personaje inventado se genera **sin imagen de partida** (0.23.4), así que se evalúa con el
+   * modelo de texto a imagen que se le enviaría de verdad: evaluar con el de edición mediría otro precio.
+   */
+  const eleccion = await elegirParaTipo(peticion.tipo, peticion.modelo, {
+    sinReferencia: peticion.retratoInventado === true,
+  });
   const creditos = await creditosDelEnvio(Math.ceil(eleccion.precio.creditos));
   const conEscena = peticion.escenaId ? await hechosDeEscena(actor, peticion.escenaId) : null;
   const { personajeId, personaje } = await personajeDelEnvio(actor, peticion);

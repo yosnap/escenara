@@ -4,6 +4,45 @@
 - **Fecha:** 2026-09-28
 - **Versión del proyecto:** 0.23.0
 
+## Addendum 0.23.4 · el tipo de imagen y la duración también son catálogo
+
+Dos cosas que esta decisión dejaba fuera y que se han visto usando el producto (propietario, 2026-09-28):
+
+1. **El catálogo solo tenía imagen a imagen.** Se importaban únicamente las variantes `…-image-to-image` y se
+   descartaban a propósito los precios de «texto a imagen». Pero hay generaciones que **no parten de ninguna
+   foto** —los retratos candidatos de un personaje inventado y «Crear» sin imagen—, y a un modelo de edición se
+   le estaba pidiendo que editara una imagen que no existe. Desde la 0.23.4:
+
+   - hay una capacidad nueva, `text_to_image`, y se importan los modelos de texto a imagen de cada familia con
+     su tarifa publicada. Su identificador sale de donde ya salía todo: el `?model=` de la tabla pública o, para
+     una página que ofrece las dos formas, una entrada de la tabla corta con su operación (`/gpt-image-2-5#text-to-image`);
+   - **nano banana no se duplica**: su campo de referencias es opcional (documentado), así que el mismo modelo
+     declara las dos capacidades y su constructor **no envía el campo** cuando no hay referencias;
+   - sin foto de partida se usa el **gemelo de la misma familia** del modelo que el usuario tenga primero en su
+     mapa de imagen; si esa familia no tiene gemelo, el primer modelo de texto a imagen de su mapa, y si tampoco,
+     el recomendado. El gemelo lo resuelve el adaptador (`gemeloSinReferencia`), no el servicio: sigue sin haber
+     nombres de proveedor fuera de él;
+   - la estimación, la confirmación, la reserva y el envío usan **el mismo modelo**: el modo de generación (con o
+     sin imagen) viaja con la petición y es el mismo con el que se estimó.
+
+2. **La duración de un clip es una tarifa más.** KIE publica el precio de **cada duración** de Gemini Omni (63,
+   84, 105 y 126 créditos a 4, 6, 8 y 10 s en 720p, leído el 2026-09-28) y los 63 de 4 s coinciden con lo que
+   cobró de verdad. Así que ya no hace falta escalar nada: cada duración se registra como una fila de
+   `model_prices` con su unidad («clip de 8 s a 720p»), su versión y su sello, exactamente igual que las
+   variantes de resolución del punto 6.
+
+   De ahí, la pieza que este ADR dejaba pendiente («que la unidad elegida viaje de la estimación al despacho»)
+   queda resuelta **para la duración**: se elige en «Crear», se estima con ella, se confirma con su sello, se
+   guarda en el trabajo (`unidadPrecio`) y el worker comprueba antes de llamar que el clip que va a pedir es el
+   de la tarifa que se apartó. La variante de resolución de las imágenes sigue eligiéndola quien administra.
+
+   Regla que lo mantiene honesto: **una duración sin tarifa registrada no se ofrece**. El modelo puede admitirla,
+   pero si no se sabe lo que cuesta no se puede confirmar, así que no aparece.
+
+Y una consecuencia que no es de catálogo pero nace de aquí: un fallo al **preparar** el envío (un modelo que esta
+instalación no sabe pedir, una tarifa que ya no existe, una imagen de partida que falta) **no es transitorio**. Se
+cuenta con su causa concreta, diciendo que no se ha enviado ni cobrado, y no se reintenta.
+
 ## Contexto
 
 Hasta la 0.22.x el catálogo de modelos era un **fichero versionado** (`catalogo.json`) con lo que alguien

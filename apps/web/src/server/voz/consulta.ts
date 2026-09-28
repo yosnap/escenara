@@ -1,7 +1,7 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { ESTADOS_ACTIVOS, ETIQUETA_ESTADO } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
-import { precioOmniEstimado, VOCES_OMNI } from "@/lib/omni";
+import { VOCES_OMNI } from "@/lib/omni";
 import { resumenDeEscena } from "@/lib/proyectos";
 import {
   avisosDeSubtitulos,
@@ -23,7 +23,13 @@ import { evaluarParaMostrar } from "../controles/puerta";
 import { db } from "../db/cliente";
 import { type FilaEscena, type FilaMedio, type FilaProyecto, generationJobs, media } from "../db/esquema";
 import { type Actor, aDto } from "../media/servicio";
-import { creditosDeEscenaHablada, registroParaProducir, segundosDeEscenaOmni } from "../omni/escena";
+import {
+  creditosDeEscenaHablada,
+  duracionesDeOmni,
+  precioDeDuracionEstimado,
+  registroParaProducir,
+  segundosDeEscenaOmni,
+} from "../omni/escena";
 import { eleccionOmni } from "../omni/registro";
 import { creditosDelEnvio } from "../prompts/traduccion";
 import { ErrorCatalogo } from "../proveedores/contrato";
@@ -293,7 +299,7 @@ async function estadoOmni(actor: Actor, proyecto: FilaProyecto): Promise<EstadoO
     const { creditos } = await creditosDeEscenaHablada(actor.id, proyecto);
     const { modelo } = await eleccionOmni(actor.id);
     creditosPorEscena = await creditosDelEnvio(creditos);
-    precioEstimado = precioOmniEstimado(segundosDeEscenaOmni(modelo.parametros.duraciones, proyecto), modelo.modelo);
+    precioEstimado = precioDeDuracionEstimado(modelo, segundosDeEscenaOmni(duracionesDeOmni(modelo), proyecto));
   } catch {
     // Sin modelo Omni con precio registrado no se inventa ninguna cifra: la pantalla dirá que no se puede.
     creditosPorEscena = null;

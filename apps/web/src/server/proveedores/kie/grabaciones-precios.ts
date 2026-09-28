@@ -6,7 +6,10 @@
  * Es un recorte a propósito, elegido para que aparezca cada caso que hay que distinguir:
  *
  * - un modelo con varias resoluciones (`gpt image 2`) y otro con varias calidades (`ideogram character`);
- * - un precio de «texto a imagen», que no se importa porque no genera a partir de una referencia;
+ * - un precio de «texto a imagen», que desde la 0.23.4 se importa como su propio modelo (es el que genera sin
+ *   imagen de partida);
+ * - las cuatro duraciones publicadas de Gemini Omni 1.1 Flash, con su recargo por vídeo de entrada, que no es
+ *   el precio de generar;
  * - un recargo por imagen de entrada (`seedream 5 Pro, input image`, `MiniMax H3, image input`), que **no** es
  *   el precio de generar;
  * - una tarifa por segundo (`MiniMax H3, reference to video`), que sí se puede estimar porque la duración se
@@ -105,6 +108,57 @@ export const REGISTROS_DE_PRECIO: RegistroDePrecio[] = [
     creditUnit: "per image",
     usdPrice: "0.03",
     anchor: "https://kie.ai/gpt-image-2?model=gpt-image-2-text-to-image",
+  },
+  /**
+   * Gemini Omni 1.1 Flash, tal cual lo publica KIE el 2026-09-28: **una tarifa por duración** a cada
+   * resolución, más el recargo de «with video input», que no es el precio de generar. Los 63 créditos de 4 s
+   * son exactamente los que cobró de verdad, así que las otras tres duraciones se pueden ofrecer con su precio
+   * publicado sin inventar ninguna proporción.
+   */
+  {
+    modelDescription: "google/gemini-omni-flash-1-1, video, 4s 720p no video input",
+    interfaceType: "video",
+    provider: "Google",
+    creditPrice: "63",
+    creditUnit: "per video",
+    usdPrice: "0.315",
+    anchor: "https://kie.ai/gemini-omni-1-1-flash",
+  },
+  {
+    modelDescription: "google/gemini-omni-flash-1-1, video, 6s 720p no video input",
+    interfaceType: "video",
+    provider: "Google",
+    creditPrice: "84",
+    creditUnit: "per video",
+    usdPrice: "0.42",
+    anchor: "https://kie.ai/gemini-omni-1-1-flash",
+  },
+  {
+    modelDescription: "google/gemini-omni-flash-1-1, video, 8s 720p no video input",
+    interfaceType: "video",
+    provider: "Google",
+    creditPrice: "105",
+    creditUnit: "per video",
+    usdPrice: "0.525",
+    anchor: "https://kie.ai/gemini-omni-1-1-flash",
+  },
+  {
+    modelDescription: "google/gemini-omni-flash-1-1, video, 10s 720p no video input",
+    interfaceType: "video",
+    provider: "Google",
+    creditPrice: "126",
+    creditUnit: "per video",
+    usdPrice: "0.63",
+    anchor: "https://kie.ai/gemini-omni-1-1-flash",
+  },
+  {
+    modelDescription: "google/gemini-omni-flash-1-1, video, 720p with video input",
+    interfaceType: "video",
+    provider: "Google",
+    creditPrice: "168",
+    creditUnit: "per video",
+    usdPrice: "0.84",
+    anchor: "https://kie.ai/gemini-omni-1-1-flash",
   },
   {
     modelDescription: "seedream 4.5, image-to-image",

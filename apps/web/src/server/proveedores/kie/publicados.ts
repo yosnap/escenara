@@ -3,7 +3,15 @@ import type { Buscador } from "../codigos";
 import type { ModeloPublicado, TarifaPublicada } from "../contrato";
 import type { Operacion, TarifaTraducida } from "./correspondencia";
 import { traducirTarifas } from "./correspondencia";
-import { familiaDe, parametrosDeFamilia, unidadDeVariante, varianteDeTarifa } from "./familias";
+import {
+  type FamiliaDeVideo,
+  familiaDe,
+  familiaDeVideoDe,
+  parametrosDeFamilia,
+  unidadDeClip,
+  unidadDeVariante,
+  varianteDeTarifa,
+} from "./familias";
 import { descargarTarifas } from "./precios-publicos";
 
 /**
@@ -32,7 +40,9 @@ const MOTIVO_TARIFA_VARIABLE =
  * Fuera quedan `per megapixel`, `per million tokens` y similares: dependen de lo que salga, no de lo que se
  * pide, y un precio que no se sabe antes no se puede confirmar.
  */
-const UNIDADES_POR_TRABAJO = ["per image", "per video", "per generation", "per request"];
+// «per vedio» es una errata del proveedor en las tarifas de Gemini Omni: significa «per video», y descartarla
+// dejaría sin precio justo las duraciones que se quieren ofrecer.
+const UNIDADES_POR_TRABAJO = ["per image", "per video", "per vedio", "per generation", "per request"];
 const UNIDAD_POR_SEGUNDO = "per second";
 
 const esPorTrabajo = (unidad: string) => UNIDADES_POR_TRABAJO.includes(unidad.trim().toLowerCase());
@@ -44,6 +54,7 @@ const esPorSegundo = (unidad: string) => unidad.trim().toLowerCase() === UNIDAD_
  */
 const CAPACIDAD_DE_OPERACION: Partial<Record<Operacion, Capacidad>> = {
   "image-to-image": "image_edit",
+  "text-to-image": "text_to_image",
   "image-to-video": "image_to_video",
   "text-to-video": "text_to_video",
 };
@@ -98,11 +109,58 @@ function tarifaDeReferencia(tarifas: readonly TarifaTraducida[]): TarifaPublicad
   return { unidad, creditos: barata.creditos, referencia: barata.ancla };
 }
 
+/**
+ * Tarifas de un modelo de vídeo **por duración**: una fila por cada duración que el modelo admite y que el
+ * proveedor tarifa a la resolución que esta instalación pide. Nada se escala ni se interpola: una duración sin
+ * tarifa publicada no se ofrece, porque un precio que no se sabe antes no se puede confirmar.
+ */
+function tarifasDeVideo(familia: FamiliaDeVideo, tarifas: readonly TarifaTraducida[]): TarifaPublicada[] {
+  const porDuracion = new Map<number, TarifaPublicada>();
+  for (const tarifa of tarifas) {
+    if (!esPorTrabajo(tarifa.unidadPublicada)) continue;
+    const { segundos, resolucion } = tarifa.variante;
+    if (!familia.duraciones.includes(segundos)) continue;
+    if (resolucion.toLowerCase() !== familia.resolucion.toLowerCase()) continue;
+    const unidad = unidadDeClip(segundos, familia.resolucion);
+    const previa = porDuracion.get(segundos);
+    // Dos registros para la misma duración: se queda el más caro, igual que en las imágenes.
+    if (!previa || tarifa.creditos > previa.creditos) {
+      porDuracion.set(segundos, { unidad, creditos: tarifa.creditos, referencia: tarifa.ancla });
+    }
+  }
+  return [...porDuracion.entries()].sort(([a], [b]) => a - b).map(([, tarifa]) => tarifa);
+}
+
 /** Catálogo publicado por KIE, ya en lenguaje de Escenara. No consume créditos ni necesita credencial. */
 export async function modelosPublicadosDeKie(buscar: Buscador = fetch): Promise<ModeloPublicado[]> {
   const traducidas = traducirTarifas(await descargarTarifas(buscar));
   const publicados: ModeloPublicado[] = [];
   for (const [modelo, tarifas] of porModelo(traducidas)) {
+    const video = familiaDeVideoDe(modelo);
+    if (video) {
+      const suyas = tarifasDeVideo(video, tarifas);
+      publicados.push({
+        modelo,
+        nombre: video.nombre,
+        capacidades: [...video.capacidades],
+        conVoz: true,
+        parametros: {
+          duraciones: suyas.flatMap((t) => {
+            const segundos = Number(/de (\d+) s/.exec(t.unidad)?.[1] ?? "");
+            return Number.isFinite(segundos) && segundos > 0 ? [segundos] : [];
+          }),
+          proporciones: ["9:16"],
+          resoluciones: [video.resolucion],
+          formatosReferencia: ["image/jpeg", "image/png", "image/webp"],
+          maximoReferencias: 7,
+        },
+        tarifas: suyas,
+        montable: suyas.length > 0,
+        notas: suyas.length > 0 ? video.notas : MOTIVO_TARIFA_VARIABLE,
+        referencia: tarifas[0]?.ancla ?? "",
+      });
+      continue;
+    }
     const familia = familiaDe(modelo);
     const nombre = familia?.nombre ?? tarifas[0]?.nombre ?? modelo;
     if (familia) {

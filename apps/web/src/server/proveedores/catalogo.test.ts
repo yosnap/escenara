@@ -107,13 +107,14 @@ describe("lo que puede ver quien genera", () => {
   test("el recorte solo lleva lo necesario para elegir y confirmar", () => {
     const recortado = recortarModelo(completo);
     expect(Object.keys(recortado).sort()).toEqual(
-      // `maximoReferencias` lo añade 0.13.0: «Crear» necesita saber cuántas fotos del personaje se envían, y
-      // `precioPublicado` la 0.23.0: quien va a gastar tiene que ver si ese precio lo hemos medido o lo publica
-      // el proveedor.
+      // `maximoReferencias` lo añade 0.13.0: «Crear» necesita saber cuántas fotos del personaje se envían;
+      // `precioPublicado` la 0.23.0 (quien va a gastar tiene que ver si ese precio lo hemos medido o lo publica
+      // el proveedor); y `duracionesConCoste` la 0.23.4, para poder elegir la duración viendo lo que cuesta.
       [
         "conVoz",
         "creditos",
         "duraciones",
+        "duracionesConCoste",
         "estado",
         "maximoReferencias",
         "modelo",
@@ -122,6 +123,8 @@ describe("lo que puede ver quien genera", () => {
         "unidad",
       ].sort(),
     );
+    // Sin ninguna tarifa por duración, las dos que admite se cobran al precio vigente: ahí la duración no cambia
+    // lo que se paga, y por eso las dos se pueden ofrecer.
     expect(recortado).toMatchObject({ modelo: "veo3_lite", creditos: 60, conVoz: true, duraciones: [4, 6] });
   });
 

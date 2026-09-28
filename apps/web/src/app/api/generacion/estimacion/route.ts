@@ -7,9 +7,15 @@ import { exigirRitmoDeConsultas, manejador } from "@/server/generacion/http";
 export const dynamic = "force-dynamic";
 
 /**
- * Coste estimado y saldo del usuario: `?tipo=fotograma|animacion` y, opcionalmente, `&modelo=` para pedir
- * la estimación de otro modelo del catálogo (solo `compatible` o `validado`; sin `modelo` se usa el
- * predeterminado de la capacidad). El saldo se cachea 30 s por usuario.
+ * Coste estimado y saldo del usuario: `?tipo=fotograma|animacion` y, opcionalmente:
+ *
+ * - `&modelo=` para pedir la estimación de otro modelo del catálogo (sin él se usa el del mapa del usuario);
+ * - `&sinImagen=1` cuando no hay ninguna imagen de partida: entonces el modelo es de **texto a imagen** y el
+ *   precio es el suyo, no el del modelo de edición (0.23.4);
+ * - `&segundos=` para la duración del clip: cada duración es una tarifa distinta, así que la que se estima
+ *   tiene que ser la que se va a pedir.
+ *
+ * El saldo se cachea 30 s por usuario.
  */
 export const GET = manejador(async (peticion: Request, _: unknown, actor) => {
   const parametros = new URL(peticion.url).searchParams;
@@ -20,6 +26,17 @@ export const GET = manejador(async (peticion: Request, _: unknown, actor) => {
   if (modelo !== null && !esIdentificadorDeModelo(modelo)) {
     throw new ErrorGeneracion(400, "Ese modelo no es válido.");
   }
+  const sinReferencia = parametros.get("sinImagen") === "1";
+  const pedidos = parametros.get("segundos");
+  const segundos = pedidos === null ? undefined : Number(pedidos);
+  if (segundos !== undefined && (!Number.isInteger(segundos) || segundos < 1 || segundos > 600)) {
+    throw new ErrorGeneracion(400, "Esa duración no es válida.");
+  }
   await exigirRitmoDeConsultas(actor, "estimacion");
-  return Response.json(await estimar(actor.id, tipo, undefined, modelo));
+  return Response.json(
+    await estimar(actor.id, tipo, undefined, modelo, {
+      sinReferencia,
+      ...(segundos === undefined ? {} : { segundos }),
+    }),
+  );
 });

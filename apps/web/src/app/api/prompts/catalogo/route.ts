@@ -20,5 +20,16 @@ export const GET = manejador(async (peticion: Request, _: unknown, actor) => {
   const modelo = parametros.get("modelo");
   // El identificador del modelo llega del navegador: se acota antes de buscarlo en el catálogo.
   if (modelo !== null && !esIdentificadorDeModelo(modelo)) throw new ErrorPreset(400, "Ese modelo no es válido.");
-  return Response.json(await catalogoParaCrear(actor.id, tipo, modelo));
+  const sinReferencia = parametros.get("sinImagen") === "1";
+  const pedidos = parametros.get("segundos");
+  const segundos = pedidos === null ? undefined : Number(pedidos);
+  if (segundos !== undefined && (!Number.isInteger(segundos) || segundos < 1 || segundos > 600)) {
+    throw new ErrorPreset(400, "Esa duración no es válida.");
+  }
+  return Response.json(
+    await catalogoParaCrear(actor.id, tipo, modelo, {
+      sinReferencia,
+      ...(segundos === undefined ? {} : { segundos }),
+    }),
+  );
 });

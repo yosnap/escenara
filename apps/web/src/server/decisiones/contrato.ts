@@ -32,6 +32,12 @@ export interface EntradaDecision {
   conVoz: boolean;
   /** Hay imagen de referencia propia. */
   conReferencia: boolean;
+  /**
+   * El fotograma nace **de la descripción y de ninguna imagen** (0.23.4), y lo va a generar un modelo de texto
+   * a imagen. Sin esto, la regla que exige referencia rechazaría los retratos de un personaje inventado y las
+   * escenas descritas sin foto, que son generaciones legítimas y con su propio modelo.
+   */
+  sinReferencia?: boolean;
   /** Créditos estimados del trabajo. */
   creditos: number;
 }

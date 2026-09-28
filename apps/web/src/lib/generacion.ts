@@ -1,4 +1,5 @@
 import type { Proveedor } from "./boveda";
+import type { DuracionConCoste } from "./catalogo";
 import type { TipoMedio } from "./media/reglas";
 import type { Medio } from "./media/tipos";
 import type { EtapaTrabajo } from "./produccion";
@@ -243,6 +244,22 @@ export interface Estimacion {
    * vuelve a pagar. `null` cuando la traducción está apagada y se envía el texto original.
    */
   traduccion: CosteTraduccion | null;
+  /**
+   * Duración del clip que se ha estimado, en segundos; `null` en lo que no dura (una imagen) o en un modelo
+   * cuyo precio no depende de la duración. Viaja en la confirmación: lo que se paga es **esta** duración, no la
+   * que el catálogo declare después.
+   */
+  segundos: number | null;
+  /**
+   * Duraciones que este modelo admite y cuyo precio se puede calcular, con lo que cuesta cada una. Es lo que
+   * la pantalla puede ofrecer: una duración sin tarifa registrada no se enseña, porque no se puede confirmar.
+   */
+  duraciones: DuracionConCoste[];
+  /**
+   * `true` cuando esta estimación es de un modelo que genera **sin imagen de partida** (texto a imagen). Se
+   * dice en pantalla: no es el mismo modelo ni el mismo precio que editando una foto.
+   */
+  sinReferencia: boolean;
 }
 
 /** Lo que costaría la traducción al inglés de un texto nuevo, con su precio y su fecha. */

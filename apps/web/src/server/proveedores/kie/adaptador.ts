@@ -25,6 +25,7 @@ import {
   subirReferencia,
 } from "./cliente";
 import { CAMPOS_DE_URL, type ContextoEntrada, entradaDeModelo, tieneEntrada } from "./entradas";
+import { gemeloDeTextoAImagen } from "./familias";
 import { modelosPublicadosDeKie } from "./publicados";
 import { generarTextoKie } from "./texto";
 
@@ -49,7 +50,16 @@ import { generarTextoKie } from "./texto";
  * `jobs/createTask` asíncrono y con la **misma credencial de KIE** del usuario, así que no hace falta una segunda
  * clave (ADR-0026). Qué modelo concreto se puede usar lo decide el catálogo, no esta lista.
  */
-const CAPACIDADES: readonly Capacidad[] = ["image_edit", "image_to_video", "text_to_video", "text_generation", "tts"];
+const CAPACIDADES: readonly Capacidad[] = [
+  "image_edit",
+  // `text_to_image` se añade en la 0.23.4: hay generaciones que no parten de ninguna foto y pedírselas a un
+  // modelo de edición sería pedirle que editara una imagen que no existe.
+  "text_to_image",
+  "image_to_video",
+  "text_to_video",
+  "text_generation",
+  "tts",
+];
 
 /** Todo fallo del cliente sale de aquí como `ErrorProveedor`, con su código propio y su mensaje. */
 async function normalizando<T>(accion: () => Promise<T>): Promise<T> {
@@ -145,8 +155,12 @@ export const adaptadorKie: Adaptador = {
     return modelosPublicadosDeKie(buscar);
   },
 
-  estimar(modelo: string): Promise<PrecioModelo> {
-    return precioDeModelo("kie", modelo);
+  gemeloSinReferencia(modelo: string): string | null {
+    return gemeloDeTextoAImagen(modelo);
+  },
+
+  estimar(modelo: string, unidad?: string): Promise<PrecioModelo> {
+    return precioDeModelo("kie", modelo, unidad);
   },
 
   probarCredencial({ clave, buscar }): Promise<number | null> {
