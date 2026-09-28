@@ -65,6 +65,10 @@ export async function registrarResultadoDeEscena(fila: FilaTrabajo, medioId: str
      * Se guarda además la **firma** con la que se encoló, no la que el proyecto tenga ahora: es lo único que
      * permite decir después si ese audio sigue correspondiendo a la voz y al diálogo vigentes. Y se limpia el
      * motivo de invalidación, porque el audio que acaba de llegar ya es el de ahora.
+     *
+     * **No toca `lastFailureReason`**: esa columna es del clip y la lee la rejilla de producción. Borrarla aquí
+     * haría desaparecer el motivo real de un clip que sí falló solo porque su voz salió bien, que son dos cosas
+     * distintas. Lo que le pase a la voz se cuenta desde su propio trabajo.
      */
     if (fila.kind === "voz") {
       const firma = (fila.input as { firmaVoz?: unknown }).firmaVoz;
@@ -75,7 +79,6 @@ export async function registrarResultadoDeEscena(fila: FilaTrabajo, medioId: str
           voiceJobId: fila.id,
           voiceSignature: typeof firma === "string" ? firma : "",
           voiceInvalidationReason: "",
-          lastFailureReason: "",
           updatedAt: new Date(),
         })
         .where(eq(scenes.id, escenaId));
@@ -106,8 +109,13 @@ export async function registrarResultadoDeEscena(fila: FilaTrabajo, medioId: str
 /**
  * Un trabajo de escena ha fallado. Se apunta el motivo **apto para el usuario** y nada más: ni se reintenta, ni
  * se consume presupuesto de reintentos, ni se marca la escena como producida.
+ *
+ * Un trabajo de **voz** no escribe aquí: `lastFailureReason` es el fallo del clip y lo lee la rejilla de
+ * producción, así que un fallo de la pista de voz marcaría la escena entera como fallida sin serlo. El fallo de la
+ * voz vive en su propio trabajo, y la pantalla de voz lo lee de ahí (`voz/consulta.ts`).
  */
 export async function registrarFalloDeEscena(fila: FilaTrabajo, motivo: string): Promise<void> {
+  if (fila.kind === "voz") return;
   if (!fila.sceneId || motivo.trim() === "") return;
   await db()
     .update(scenes)

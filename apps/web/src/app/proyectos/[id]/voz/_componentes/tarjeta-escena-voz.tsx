@@ -55,6 +55,17 @@ export function TarjetaEscenaVoz({
       {escena.invalidada && (
         <Aviso tono="error">{escena.invalidacion || "Lo generado ya no corresponde a la voz de este proyecto."}</Aviso>
       )}
+      {/* El clip ya producido dice el diálogo en la imagen: no es una invalidación, pero hay que reproducirlo. */}
+      {escena.clipHablado && (
+        <Aviso tono="info">
+          El clip de esta escena se produjo con el diálogo hablado dentro. Vuelve a producirla en Producción para que
+          salga sin diálogo: si no, se oirán dos voces diciendo lo mismo.
+        </Aviso>
+      )}
+      {/* El fallo es **de la voz**, no de la escena: su clip puede estar perfectamente producido. */}
+      {escena.fallo && !escena.trabajoEnMarcha && (
+        <Aviso tono="error">La última vez que se generó la voz de esta escena falló: {escena.fallo}</Aviso>
+      )}
       {escena.trabajoEnMarcha && (
         <Aviso tono="info">La voz de esta escena está en marcha: {escena.trabajoEnMarcha}.</Aviso>
       )}

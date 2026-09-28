@@ -57,6 +57,12 @@ const firmaDeMuestra = (
  * abiertas) cobraba dos veces el mismo audio: la clave de idempotencia es nueva en cada clic, así que no cortaba.
  * Se compara por la **firma** de la muestra, que es la voz más sus parámetros: otra voz u otros mandos son otra
  * muestra y sí se pueden pedir a la vez.
+ *
+ * La comprobación va **fuera** de la transacción de `encolar`, así que dos peticiones exactamente simultáneas
+ * (doble clic de milisegundos, dos pestañas enviando a la vez) podrían pasar las dos. Queda así a sabiendas: el
+ * caso que cuesta dinero de verdad —perder la respuesta y reintentar minutos después— sí queda cerrado, y meter
+ * esto dentro de `encolar` significaría añadirle un caso propio de la voz a la transacción que comparten todos los
+ * tipos de trabajo. Si alguna vez importa, el sitio es junto a `exigirEscenaSinRepetir`.
  */
 async function exigirMuestraSinRepetir(usuarioId: string, firma: string): Promise<void> {
   const enCurso = await db()

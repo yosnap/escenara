@@ -41,8 +41,8 @@ que dependían de ello. Cuando eso ocurre:
   de aplicarlo;
 - si pasas a «pista de voz aparte» y ya tienes clips producidos **con el diálogo hablado dentro**, también te lo
   dice: si les añades la pista sin volver a producir el clip, se oirían dos voces diciendo lo mismo;
-- corregir los subtítulos de una escena **no la da por buena**: mientras su audio siga siendo el de la voz
-  anterior, la pantalla te la sigue señalando para regenerarla;
+- corregir los subtítulos de una escena **no la da por buena**: mientras lo que se oye siga sin corresponder a lo
+  que dice ahora (su pista de voz o el audio de su clip), la pantalla te la sigue señalando;
 - después, regeneras las que quieras **una a una**, confirmando el coste de cada una.
 
 ## Subtítulos
@@ -94,3 +94,6 @@ La pantalla siempre dice el motivo en lugar de esconder el botón. Los habituale
   precio no se estima y no se gasta: quien administra tiene que medirlo una vez y registrarlo en Admin › Modelos.
 - **«Elige la voz del proyecto antes de generar.»** Estás en modo «pista» y aún no has fijado ninguna.
 - **«Esta escena no tiene diálogo.»** No hay nada que leer: escribe lo que dice en el plan del proyecto.
+
+Si la generación de la voz de una escena falla, la tarjeta de esa escena te lo dice. Es un fallo **de la voz**: su
+clip sigue estando bien producido y la pantalla de producción no la marca como fallida.

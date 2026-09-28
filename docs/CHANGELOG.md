@@ -26,6 +26,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 - **Pantalla de voz y subtítulos del proyecto** en `/proyectos/[id]/voz`: modo de voz, selector de voz con muestra,
   estado escena a escena, editor de subtítulos y música de fondo.
+- **Las voces se guardan por su identificador de ElevenLabs**, no por su nombre, y la pantalla sigue enseñando el
+  nombre. El identificador entra en la firma de la voz, en el proyecto, en la escena y en la clave de las muestras:
+  cambiarlo más adelante invalidaría de golpe todas las escenas con voz y toda la caché de muestras pagadas.
 - **Selector de voz con muestra cacheada**: oír una voz cuesta **una sola vez** por voz y por combinación de
   parámetros. La muestra ya pagada se devuelve sin llamar a nadie, y la pantalla dice cuándo va a costar y cuánto.
 - **Pista de voz por escena** (modo «pista»), por la **misma cola** que los fotogramas y los clips: reserva atómica,
@@ -83,8 +86,18 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
   acabar con dos voces en el mismo plano.
 - **El texto de un subtítulo se normaliza antes de exportarlo**: un salto de Windows, una línea en blanco o la
   secuencia `-->` dentro del texto partían el fichero SRT o WebVTT en bloques falsos.
-- **Transcribir ya no carga el archivo entero en memoria**: se vuelca a disco en flujo y se rechaza lo que pase de
-  200 MB, en lugar de dejar que varias transcripciones a la vez se llevaran la memoria del proceso.
+- **Transcribir ya no carga el archivo entero en memoria**: va del almacenamiento al disco **por trozos**, contando
+  los bytes al escribirlos, y se rechaza lo que pase de 64 MB (un clip de 8 s son unos pocos). Antes, varias
+  transcripciones a la vez se llevaban la memoria del proceso.
+- **Corregir subtítulos tampoco da por buena una escena en modo «voz del clip»**, donde la voz vive dentro del clip
+  y no hay pista propia que mirar. El guardián de la firma pregunta ahora lo mismo que el resto de la aplicación,
+  así que vale para los dos modos.
+- **Un fallo de la pista de voz ya no marca la escena como fallida en producción**, ni que salga bien borra el
+  motivo real de un clip que sí falló: son dos cosas distintas. El fallo de la voz se cuenta desde su propio
+  trabajo, en la pantalla de voz.
+- **El aviso de los clips ya producidos con el diálogo dentro sobrevive al clic que lo confirma**: se recalcula en
+  cada carga, aparece en la escena que hay que volver a producir y desaparece solo cuando se produce. Además mira
+  **con qué se produjo ese clip** en lugar del texto de ahora, así que ya no avisa de clips que son mudos.
 - **El fallo del transcriptor ya no revela la configuración de la máquina.** El mensaje interno lleva el binario y
   la ruta del modelo; ahora eso queda en el log y el usuario recibe una explicación sin detalles.
 

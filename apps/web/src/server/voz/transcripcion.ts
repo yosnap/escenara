@@ -3,6 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Subtitulo } from "@/lib/voz";
 import { leerAjustes } from "../ajustes";
+import { leerObjeto } from "../almacenamiento";
+import { volcarAcotado } from "../revision/archivo";
 
 /**
  * Transcripción del audio de una escena, **en esta máquina y sin coste** (decisión provisional del propietario,
@@ -28,6 +30,13 @@ export class ErrorTranscripcion extends Error {
 
 /** Lo que se le da como mucho a la transcripción. Un clip de la producción son 4 u 8 s: más que esto es un fallo. */
 const MS_MAXIMO = 120_000;
+/**
+ * Lo más grande que se baja a transcribir. Un clip de 8 s en 720p son unos pocos MB y una pista de voz de una
+ * escena, menos todavía: **64 MiB ya es diez veces lo que cabe esperar**, el mismo techo que usa la revisión de
+ * continuidad para lo mismo. Se cuenta **al escribir**, así que un almacenamiento que informe de menos tampoco
+ * llena el disco.
+ */
+export const BYTES_MAXIMOS_TRANSCRIPCION = 64 * 1024 * 1024;
 /** Salida que se lee como mucho del proceso, para que un archivo raro no decida cuánta memoria gasta el servidor. */
 const CARACTERES_MAXIMOS = 512 * 1024;
 
@@ -154,16 +163,21 @@ export function segmentosDeWebVtt(vtt: string): Subtitulo[] {
 }
 
 /**
- * Transcribe un archivo de audio o de vídeo y devuelve sus segmentos con marcas de tiempo.
+ * Transcribe el audio de un objeto del almacenamiento y devuelve sus segmentos con marcas de tiempo.
  *
- * El archivo se vuelca a disco en flujo y se convierte a WAV mono de 16 kHz con FFmpeg, que es lo único que acepta
- * `whisper.cpp`. Los dos temporales se borran siempre, también si algo falla: son el audio de alguien.
+ * Recibe **la clave del almacenamiento y no un `File`** a propósito: así el archivo va del almacenamiento al disco
+ * **por trozos**, sin materializarse nunca entero en memoria. Bajarlo antes a un `ArrayBuffer` para envolverlo en
+ * un `File` costaba dos copias del archivo en el proceso, y varias transcripciones a la vez se llevaban la RAM por
+ * delante.
+ *
+ * Ya en disco, se convierte a WAV mono de 16 kHz con FFmpeg, que es lo único que acepta `whisper.cpp`. Los dos
+ * temporales se borran siempre, también si algo falla: son el audio de alguien.
  *
  * Una transcripción **vacía es un resultado legítimo** (un clip sin voz no dice nada) y se devuelve como lista
  * vacía. Lo que no es legítimo es que el binario falle: eso lanza, para que la pantalla lo diga en lugar de
  * mostrar una escena «transcrita» sin nada dentro.
  */
-export async function transcribir(origen: Blob, extension: string): Promise<Subtitulo[]> {
+export async function transcribir(claveAlmacenamiento: string, extension: string): Promise<Subtitulo[]> {
   await exigirTranscriptor();
   const { transcripcionBinario: binario, transcripcionModelo: modelo } = await leerAjustes();
   const base = join(tmpdir(), `escenara-voz-${crypto.randomUUID()}`);
@@ -173,9 +187,11 @@ export async function transcribir(origen: Blob, extension: string): Promise<Subt
   const wav = `${base}-16k.wav`;
   const vtt = `${wav}.vtt`;
   try {
-    // `Bun.write` vuelca el `Blob` **en flujo**: el archivo no se materializa en memoria, que es lo que hacía que
-    // varias transcripciones de clips grandes a la vez se comieran la RAM del proceso.
-    await Bun.write(entrada, origen);
+    await volcarAcotado(leerObjeto(claveAlmacenamiento).stream(), entrada, BYTES_MAXIMOS_TRANSCRIPCION, () => {
+      throw new ErrorTranscripcion(
+        `Ese archivo pesa más de ${Math.round(BYTES_MAXIMOS_TRANSCRIPCION / (1024 * 1024))} MB y no se transcribe en este servidor. Escribe los subtítulos a mano o propónlos desde el diálogo.`,
+      );
+    });
     const conversion = await ejecutar([
       "ffmpeg",
       "-y",

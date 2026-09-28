@@ -106,9 +106,18 @@ export function parametrosVozDe(crudo: unknown): ParametrosVoz {
 }
 
 /**
- * Voz ofrecida en la interfaz. `id` es el nombre de voz que espera el campo `voice` del modelo: son los nombres
- * de voz publicados por ElevenLabs, y **quien valida el nombre es el proveedor**, no esta lista. Sin clonación de
- * voz en esta versión (decisión provisional del propietario, 2026-09-28).
+ * Voz ofrecida en la interfaz.
+ *
+ * `id` es el **identificador de voz de ElevenLabs**, que es lo que espera el campo `voice` del modelo, y `nombre`
+ * es lo único que se enseña. Se guarda el identificador y no el nombre **a propósito**: el `id` entra en
+ * {@link firmaDeVoz}, se guarda en `projects.voice_id`, en `scenes.voice_signature` y en la clave única de las
+ * muestras, así que cambiarlo después volvería a firmar todo de golpe: todas las escenas con voz quedarían
+ * invalidadas y toda la caché de muestras dejaría de valer, y cada una se volvería a pagar. Un nombre es una
+ * etiqueta y puede cambiar; el identificador es lo que identifica la voz.
+ *
+ * Los veintiún identificadores prediseñados de ElevenLabs se comprobaron contra su API el 2026-09-28; aquí se
+ * ofrece un subconjunto con variedad de timbre y de género. **Quien valida el identificador es el proveedor**, no
+ * esta lista. Sin clonación de voz en esta versión (decisión provisional del propietario, 2026-09-28).
  */
 export interface VozOfrecida {
   id: string;
@@ -117,12 +126,17 @@ export interface VozOfrecida {
 }
 
 export const VOCES_OFRECIDAS: readonly VozOfrecida[] = [
-  { id: "Rachel", nombre: "Rachel", descripcion: "Femenina, tono neutro y narrativo." },
-  { id: "Bella", nombre: "Bella", descripcion: "Femenina, cercana y cálida." },
-  { id: "Elli", nombre: "Elli", descripcion: "Femenina, joven y expresiva." },
-  { id: "Adam", nombre: "Adam", descripcion: "Masculina, grave y pausada." },
-  { id: "Antoni", nombre: "Antoni", descripcion: "Masculina, cercana y conversacional." },
-  { id: "Josh", nombre: "Josh", descripcion: "Masculina, joven y enérgica." },
+  { id: "EXAVITQu4vr4xnSDxMaL", nombre: "Sarah", descripcion: "Femenina, tono neutro y narrativo." },
+  { id: "Xb7hH8MSUJpSbSDYk0k2", nombre: "Alice", descripcion: "Femenina, clara y segura." },
+  { id: "cgSgspJ2msm6clMCkdW9", nombre: "Jessica", descripcion: "Femenina, joven y expresiva." },
+  { id: "XrExE9yKIg1WjnnlVkGX", nombre: "Matilda", descripcion: "Femenina, cercana y cálida." },
+  { id: "pFZP5JQG7iQjIQuC4Bku", nombre: "Lily", descripcion: "Femenina, suave y pausada." },
+  { id: "JBFqnCBsd6RMkjVDRZzb", nombre: "George", descripcion: "Masculina, grave y pausada." },
+  { id: "pNInz6obpgDQGcFmaJgB", nombre: "Adam", descripcion: "Masculina, profunda y narrativa." },
+  { id: "IKne3meq5aSn9XLyUdCD", nombre: "Charlie", descripcion: "Masculina, cercana y conversacional." },
+  { id: "TX3LPaxmHKxFdv7VOQHJ", nombre: "Liam", descripcion: "Masculina, joven y enérgica." },
+  { id: "nPczCjzI2devNBz1zQrb", nombre: "Brian", descripcion: "Masculina, seria y con autoridad." },
+  { id: "SAz9YHcvj6GT2YYXdXww", nombre: "River", descripcion: "Neutra, serena y sin marcar género." },
 ];
 
 export const esVozOfrecida = (v: unknown): v is string => VOCES_OFRECIDAS.some((voz) => voz.id === v);
@@ -413,6 +427,12 @@ export interface EscenaVozVista {
   audio: Medio | null;
   /** `true` cuando el audio o los subtítulos se generaron con otra voz, otro modo u otro diálogo. */
   invalidada: boolean;
+  /**
+   * `true` en modo `pista` cuando el clip **ya producido** lleva el diálogo hablado dentro (se produjo en modo
+   * `clip`). No es una invalidación —el clip sigue valiendo como imagen y no hay voz que regenerar—, pero hay que
+   * volver a producir esa escena o se oirán dos voces diciendo lo mismo.
+   */
+  clipHablado: boolean;
   invalidacion: string;
   subtitulos: Subtitulo[];
   /** `true` si los subtítulos los ha tocado una persona. Lo exportado siempre son estos. */
@@ -421,6 +441,11 @@ export interface EscenaVozVista {
   avisos: AvisoSubtitulo[];
   /** Estado del trabajo de voz en marcha, si hay uno. */
   trabajoEnMarcha: string | null;
+  /**
+   * Motivo del último trabajo de voz que falló, si es lo último que le ha pasado a la voz de esta escena. Sale de
+   * su propio trabajo: el fallo de una pista de voz no es un fallo de la escena, que se produce con su clip.
+   */
+  fallo: string | null;
 }
 
 /** Estado de voz y subtítulos del proyecto entero. */

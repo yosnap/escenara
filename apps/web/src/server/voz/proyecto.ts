@@ -10,7 +10,7 @@ import {
 import { proyectoPropioBloqueado } from "../asistente/consulta";
 import { ErrorProyecto } from "../asistente/errores";
 import { db, type Ejecutor } from "../db/cliente";
-import { type FilaEscena, type FilaProyecto, projects, scenes } from "../db/esquema";
+import { type FilaEscena, type FilaProyecto, generationJobs, projects, scenes } from "../db/esquema";
 import type { Actor } from "../media/servicio";
 
 /**
@@ -59,12 +59,38 @@ export function escenaInvalidada(proyecto: FilaProyecto, escena: FilaEscena): bo
  * exactamente el problema que el modo `pista` viene a resolver.
  *
  * No entra en {@link escenaInvalidada} porque el clip **no queda invalidado**: sigue valiendo como imagen y no hay
- * nada que regenerar por el cambio de modo. Lo que hace falta es que el usuario lo sepa antes de aceptar, así que
- * se cuenta aparte y se le dice.
+ * nada que regenerar por el cambio de modo. Lo que hace falta es que el usuario lo sepa, así que se cuenta aparte,
+ * se le dice antes de aceptar y **la pantalla lo vuelve a calcular en cada carga** (`voz/consulta.ts`).
+ *
+ * Se recalcula en lugar de escribirse en la escena a propósito: así el aviso sobrevive al clic que lo confirma,
+ * aparece también para quien nunca lo vio, y **desaparece solo** en cuanto esa escena se vuelve a producir en modo
+ * `pista`, sin que nadie tenga que acordarse de borrar una marca.
  */
-async function clipsConDialogoHablado(tx: Ejecutor, proyectoId: string): Promise<number> {
+export async function clipsConDialogoHablado(tx: Ejecutor, proyectoId: string): Promise<string[]> {
   const escenas: FilaEscena[] = await tx.select().from(scenes).where(eq(scenes.projectId, proyectoId));
-  return escenas.filter((escena) => escena.clipMediaId !== null && escena.scriptText.trim() !== "").length;
+  const conClip = escenas.filter((escena) => escena.clipMediaId !== null && escena.clipJobId !== null);
+  if (conClip.length === 0) return [];
+  /**
+   * Se mira **el trabajo con el que se produjo cada clip**, no el modo de ahora ni el diálogo de ahora: lo que
+   * importa es si a ese clip se le pidió que dijera algo. Un proyecto que fue `pista`, luego `clip` y otra vez
+   * `pista` tiene clips mudos y clips hablados mezclados, y contarlos todos avisaría de escenas que no hace falta
+   * volver a producir.
+   */
+  const trabajos = await tx
+    .select({ id: generationJobs.id, entrada: generationJobs.input })
+    .from(generationJobs)
+    .where(
+      inArray(
+        generationJobs.id,
+        conClip.map((escena) => escena.clipJobId as string),
+      ),
+    );
+  const hablados = new Set(
+    trabajos
+      .filter(({ entrada }) => String((entrada as { dialogo?: unknown }).dialogo ?? "").trim() !== "")
+      .map(({ id }) => id),
+  );
+  return conClip.filter((escena) => hablados.has(escena.clipJobId as string)).map((escena) => escena.id);
 }
 
 /**
@@ -119,8 +145,8 @@ export async function fijarModoVoz(
     const futuro = { ...proyecto, voiceMode: modo };
     // Pasar a `pista` con clips ya producidos es la única forma de acabar con dos voces en el mismo plano, así que
     // se cuenta aparte y entra en el mismo aviso que hay que confirmar.
-    const conDialogoHablado = modo === "pista" ? await clipsConDialogoHablado(tx, proyecto.id) : 0;
-    await exigirConfirmacionDelCambio(tx, proyecto, futuro, confirmado, "de modo de voz", conDialogoHablado);
+    const conDialogoHablado = modo === "pista" ? await clipsConDialogoHablado(tx, proyecto.id) : [];
+    await exigirConfirmacionDelCambio(tx, proyecto, futuro, confirmado, "de modo de voz", conDialogoHablado.length);
     const [actualizado] = await tx
       .update(projects)
       .set({ voiceMode: modo, updatedAt: new Date() })

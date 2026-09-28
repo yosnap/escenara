@@ -14,10 +14,9 @@ import { escenaPropia, escenasDe, proyectoPropio } from "../asistente/consulta";
 import { ErrorProyecto } from "../asistente/errores";
 import { db } from "../db/cliente";
 import { type FilaEscena, type FilaMedio, type FilaProyecto, media, scenes } from "../db/esquema";
-import { archivoDe } from "../generacion/comprobaciones";
 import { type Actor, aDto } from "../media/servicio";
-import { firmaVigente } from "./proyecto";
-import { transcribir } from "./transcripcion";
+import { escenaInvalidada, firmaVigente } from "./proyecto";
+import { BYTES_MAXIMOS_TRANSCRIPCION, transcribir } from "./transcripcion";
 
 /**
  * Subtítulos de las escenas (RF08, 0.21.0).
@@ -55,12 +54,10 @@ function origenDeLaTranscripcion(proyecto: FilaProyecto, escena: FilaEscena): { 
 }
 
 /**
- * Lo más grande que se manda a transcribir. El techo de la subida es de la biblioteca y vale para lo que se
- * guarda; este es el de **este camino**, que además convierte con FFmpeg y escribe dos temporales. Sin él, varias
- * transcripciones de clips largos a la vez se llevaban por delante la memoria del proceso.
+ * Corte temprano por tamaño, con lo que dice la ficha del medio. El de verdad lo pone `transcribir`, que cuenta los
+ * bytes **al escribirlos**; este solo evita empezar a bajar algo que ya se sabe que no cabe, y decirlo con un
+ * mensaje de esta pantalla en lugar de con uno del transcriptor.
  */
-const BYTES_MAXIMOS_TRANSCRIPCION = 200 * 1024 * 1024;
-
 function exigirArchivoTranscribible(fila: FilaMedio): void {
   if (fila.sizeBytes > BYTES_MAXIMOS_TRANSCRIPCION) {
     throw new ErrorProyecto(
@@ -81,16 +78,21 @@ function exigirArchivoTranscribible(fila: FilaMedio): void {
  * Por eso: si la escena **tiene audio y ese audio ya no corresponde**, se conservan tal cual la firma y el motivo
  * de invalidación. La invalidación solo la limpia quien la arregla, que es regenerar el audio con la voz vigente
  * (`produccion/cierre.ts`).
+ *
+ * La pregunta «¿está invalidada?» se le hace a {@link escenaInvalidada}, que es quien la responde en todas partes,
+ * en lugar de repetirla aquí con otras palabras. Eso hace que la regla valga para los **dos modos**: en `pista` el
+ * audio es la pista generada y en `clip` la voz vive dentro del propio clip, donde `voiceMediaId` es siempre
+ * `null`. Mirar solo la pista dejaba el modo `clip` con el mismo agujero: corregir el diálogo y pulsar «proponer
+ * subtítulos» daba la escena por vigente mientras el clip seguía diciendo la frase antigua en la imagen.
  */
 function firmaTrasEditarSubtitulos(
   proyecto: FilaProyecto,
   escena: FilaEscena,
 ): Pick<FilaEscena, "voiceSignature" | "voiceInvalidationReason"> {
-  const vigente = firmaVigente(proyecto, escena);
-  if (escena.voiceMediaId !== null && escena.voiceSignature !== vigente) {
+  if (escenaInvalidada(proyecto, escena)) {
     return { voiceSignature: escena.voiceSignature, voiceInvalidationReason: escena.voiceInvalidationReason };
   }
-  return { voiceSignature: vigente, voiceInvalidationReason: "" };
+  return { voiceSignature: firmaVigente(proyecto, escena), voiceInvalidationReason: "" };
 }
 
 /**
@@ -127,11 +129,10 @@ export async function transcribirEscena(
     throw new ErrorProyecto(409, `Ya no está el archivo del que salían los subtítulos de esta escena (${que}).`);
   }
   exigirArchivoTranscribible(fila);
-  const archivo = await archivoDe(fila);
   const extension = (fila.originalName.split(".").pop() ?? "").toLowerCase();
-  // El archivo se vuelca a disco **en flujo**, sin materializarlo entero en memoria: un clip de la biblioteca
-  // puede pesar decenas de MB y aquí se atendían varias transcripciones a la vez.
-  const segmentos = await transcribir(archivo, extension);
+  // Se le pasa la **clave del almacenamiento**, no el archivo: así va del almacenamiento al disco por trozos y no
+  // se materializa nunca entero en memoria.
+  const segmentos = await transcribir(fila.storageKey, extension);
   const propuestos = acotarSubtitulos(subtitulosDesdeTranscripcion(segmentos));
   const [guardada] = await db()
     .update(scenes)

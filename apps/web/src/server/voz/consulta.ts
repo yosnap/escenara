@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { ESTADOS_ACTIVOS, ETIQUETA_ESTADO } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
 import { resumenDeEscena } from "@/lib/proyectos";
@@ -20,7 +20,7 @@ import { type Actor, aDto } from "../media/servicio";
 import { ErrorCatalogo } from "../proveedores/contrato";
 import { muestrasDe } from "./muestra";
 import { musicaDe } from "./musica";
-import { escenaInvalidada, vozDelProyecto } from "./proyecto";
+import { clipsConDialogoHablado, escenaInvalidada, vozDelProyecto } from "./proyecto";
 import { transcriptorDisponible } from "./transcripcion";
 import { eleccionDeVoz } from "./tts";
 
@@ -42,22 +42,44 @@ async function mediosDeLaVoz(actor: Actor, ids: readonly (string | null)[]): Pro
   return new Map(filas.map((fila) => [fila.id, aDto(fila, actor)]));
 }
 
-/** Trabajos de voz que siguen vivos, por escena: es lo que la pantalla muestra como «en marcha». */
-async function vocesEnMarcha(escenaIds: readonly string[]): Promise<Map<string, string>> {
-  if (escenaIds.length === 0) return new Map();
+/** Lo que hay que saber de los trabajos de voz de una escena: si hay uno vivo y qué pasó con el último. */
+interface TrabajosDeVoz {
+  enMarcha: Map<string, string>;
+  /**
+   * Motivo del **último** trabajo de voz fallido de cada escena, cuando es lo último que le ha pasado a su voz.
+   *
+   * Sale del propio trabajo y no de `scenes.lastFailureReason` a propósito: esa columna es del clip y la lee la
+   * rejilla de producción, así que un fallo de la voz ahí marcaría la escena entera como fallida.
+   */
+  fallos: Map<string, string>;
+}
+
+async function trabajosDeVoz(escenaIds: readonly string[]): Promise<TrabajosDeVoz> {
+  const vacio: TrabajosDeVoz = { enMarcha: new Map(), fallos: new Map() };
+  if (escenaIds.length === 0) return vacio;
   const filas = await db()
-    .select({ escena: generationJobs.sceneId, estado: generationJobs.state })
+    .select({
+      escena: generationJobs.sceneId,
+      estado: generationJobs.state,
+      mensaje: generationJobs.errorMessage,
+    })
     .from(generationJobs)
-    .where(
-      and(
-        inArray(generationJobs.sceneId, [...escenaIds]),
-        eq(generationJobs.kind, "voz"),
-        inArray(generationJobs.state, [...ESTADOS_ACTIVOS]),
-      ),
-    );
-  const mapa = new Map<string, string>();
-  for (const fila of filas) if (fila.escena) mapa.set(fila.escena, ETIQUETA_ESTADO[fila.estado]);
-  return mapa;
+    .where(and(inArray(generationJobs.sceneId, [...escenaIds]), eq(generationJobs.kind, "voz")))
+    // De la más antigua a la más nueva: así lo último que se escribe de cada escena es lo último que le pasó.
+    .orderBy(asc(generationJobs.createdAt));
+  const salida: TrabajosDeVoz = { enMarcha: new Map(), fallos: new Map() };
+  for (const fila of filas) {
+    if (!fila.escena) continue;
+    if (ESTADOS_ACTIVOS.includes(fila.estado)) {
+      salida.enMarcha.set(fila.escena, ETIQUETA_ESTADO[fila.estado]);
+      continue;
+    }
+    // Un trabajo posterior que sale bien borra el fallo del anterior: lo que se muestra es lo último que pasó.
+    const mensaje = fila.mensaje?.trim() ?? "";
+    if (fila.estado === "fallido" && mensaje !== "") salida.fallos.set(fila.escena, mensaje);
+    else salida.fallos.delete(fila.escena);
+  }
+  return salida;
 }
 
 /**
@@ -119,7 +141,8 @@ function vistaDeEscena(
   proyecto: FilaProyecto,
   escena: FilaEscena,
   medios: Map<string, Medio>,
-  enMarcha: Map<string, string>,
+  trabajos: TrabajosDeVoz,
+  clipsHablados: ReadonlySet<string>,
 ): EscenaVozVista {
   return {
     id: escena.id,
@@ -130,27 +153,32 @@ function vistaDeEscena(
     clip: escena.clipMediaId === null ? null : (medios.get(escena.clipMediaId) ?? null),
     audio: escena.voiceMediaId === null ? null : (medios.get(escena.voiceMediaId) ?? null),
     invalidada: escenaInvalidada(proyecto, escena),
+    clipHablado: clipsHablados.has(escena.id),
     invalidacion: escena.voiceInvalidationReason,
     subtitulos: escena.subtitles,
     editados: escena.subtitlesEditedAt !== null,
     avisos: avisosDeSubtitulos(escena.subtitles),
-    trabajoEnMarcha: enMarcha.get(escena.id) ?? null,
+    trabajoEnMarcha: trabajos.enMarcha.get(escena.id) ?? null,
+    fallo: trabajos.fallos.get(escena.id) ?? null,
   };
 }
 
 export async function estadoDeVoz(actor: Actor, proyectoId: unknown): Promise<VozProyectoVista> {
   const proyecto = await proyectoPropio(actor, proyectoId);
   const escenas = await escenasDe(proyecto.id);
-  const [medios, enMarcha, disponibilidad, musica] = await Promise.all([
+  const [medios, trabajos, disponibilidad, musica, hablados] = await Promise.all([
     mediosDeLaVoz(
       actor,
       escenas.flatMap((e) => [e.clipMediaId, e.voiceMediaId]),
     ),
-    vocesEnMarcha(escenas.map((e) => e.id)),
+    trabajosDeVoz(escenas.map((e) => e.id)),
     disponibilidadDeVoz(),
     musicaDe(actor, proyecto.id),
+    // Solo tiene sentido en modo `pista`: en `clip` que el clip hable es justo lo que se quiere.
+    proyecto.voiceMode === "pista" ? clipsConDialogoHablado(db(), proyecto.id) : Promise.resolve<string[]>([]),
   ]);
-  const vistas = escenas.map((escena) => vistaDeEscena(proyecto, escena, medios, enMarcha));
+  const clipsHablados = new Set(hablados);
+  const vistas = escenas.map((escena) => vistaDeEscena(proyecto, escena, medios, trabajos, clipsHablados));
   /**
    * Muestras ya pagadas de la voz que usaría este proyecto. Se leen con los parámetros **del proyecto**: la misma
    * voz con otra estabilidad suena distinto, así que una muestra con otros parámetros no responde a la pregunta.

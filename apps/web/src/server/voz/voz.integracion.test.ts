@@ -35,7 +35,7 @@ if (hayBaseDeDatos) {
   await usarBaseDeDatosDePrueba("escenara_pruebas_voz");
 }
 
-const { eq, sql } = await import("drizzle-orm");
+const { and, desc, eq, sql } = await import("drizzle-orm");
 const rutaProyectos = await import("@/app/api/proyectos/route");
 const rutaEscenas = await import("@/app/api/proyectos/[id]/escenas/route");
 const rutaEscena = await import("@/app/api/escenas/[id]/route");
@@ -66,6 +66,13 @@ type Herramientas = import("../generacion/herramientas").Herramientas;
 
 const CLAVE = "sk-voz-clave-de-kie-inventada-aaaaaaaa";
 const MODELO_VOZ = "elevenlabs/text-to-speech-multilingual-v2";
+
+/**
+ * Identificadores de voz de ElevenLabs, sacados del propio catálogo de la aplicación: lo que se guarda y lo que
+ * viaja al proveedor es el identificador, no el nombre que se enseña.
+ */
+const { VOCES_OFRECIDAS } = await import("@/lib/voz");
+const [VOZ_A, VOZ_B, VOZ_C, VOZ_D] = VOCES_OFRECIDAS.map((v) => v.id) as [string, string, string, string];
 
 // ── Proveedor simulado ─────────────────────────────────────────────────────────────────────────────────────
 
@@ -314,7 +321,7 @@ describe.skipIf(!hayBaseDeDatos)("voz y subtítulos de un proyecto", () => {
   const mensajeDe = (datos: unknown) => (datos as { error?: string }).error ?? "";
 
   /** Deja el proyecto en modo `pista` con una voz fijada, que es el punto de partida de casi todo. */
-  async function conVozFijada(voz = "Rachel"): Promise<VozProyectoVista> {
+  async function conVozFijada(voz = VOZ_A): Promise<VozProyectoVista> {
     expect((await accion({ accion: "fijar-modo", modo: "pista", confirmarInvalidacion: true })).estado).toBe(200);
     const fijada = await accion({ accion: "fijar-voz", voz, parametros: parametros(), confirmarInvalidacion: true });
     expect(fijada.estado).toBe(200);
@@ -342,7 +349,7 @@ describe.skipIf(!hayBaseDeDatos)("voz y subtítulos de un proyecto", () => {
     const pedida = await accion({ accion: "generar-voz", escenaId, ...confirmacion(estado) });
     expect(pedida.estado).toBe(200);
     await enviarEncolados(h, `worker-voz-${crypto.randomUUID()}`);
-    const [trabajo] = await db().select().from(generationJobs).where(eq(generationJobs.sceneId, escenaId));
+    const trabajo = await ultimoTrabajoDeVoz(escenaId);
     if (!trabajo?.taskId) throw new Error("El trabajo de voz no ha llegado al proveedor simulado.");
     tareas.set(trabajo.taskId, { state: "success", urls: ["https://tempfile.kie.ai/voz.mp3"], creditos: 3 });
     await consultarTrabajo(actor, trabajo.id, { forzar: true }, h);
@@ -364,18 +371,35 @@ describe.skipIf(!hayBaseDeDatos)("voz y subtítulos de un proyecto", () => {
   const escenasDelProyecto = () =>
     db().select().from(scenes).where(eq(scenes.projectId, proyectoId)).orderBy(scenes.sortOrder);
 
+  /** El trabajo de voz más reciente de una escena: con varios intentos, el que importa es el último. */
+  const ultimoTrabajoDeVoz = async (escenaId: string) => {
+    const [fila] = await db()
+      .select()
+      .from(generationJobs)
+      .where(and(eq(generationJobs.sceneId, escenaId), eq(generationJobs.kind, "voz")))
+      .orderBy(desc(generationJobs.createdAt))
+      .limit(1);
+    return fila ?? null;
+  };
+
+  const filaDeEscena = async (escenaId: string) => {
+    const [fila] = await db().select().from(scenes).where(eq(scenes.id, escenaId)).limit(1);
+    if (!fila) throw new Error("La escena ha desaparecido.");
+    return fila;
+  };
+
   const apuntesDeGasto = async () => db().select().from(usageLedger).where(eq(usageLedger.userId, ana.id));
 
   // ── Criterio: la misma voz en todas las escenas, y ninguna puede tener la suya ──────────────────────────
 
   test("todas las escenas se generan con la misma voz y los mismos parámetros del proyecto", async () => {
-    const estado = await conVozFijada("Adam");
+    const estado = await conVozFijada(VOZ_B);
     const escenas = await escenasDelProyecto();
     for (const escena of escenas) await generarVozDe(escena.id, estado);
     const entradas = [...enviados.values()];
     expect(entradas).toHaveLength(2);
     for (const entrada of entradas) {
-      expect(entrada.voice).toBe("Adam");
+      expect(entrada.voice).toBe(VOZ_B);
       expect(entrada.stability).toBe(0.5);
       expect(entrada.similarity_boost).toBe(0.75);
       expect(entrada.speed).toBe(1);
@@ -392,25 +416,25 @@ describe.skipIf(!hayBaseDeDatos)("voz y subtítulos de un proyecto", () => {
     const intento = await accion({
       accion: "fijar-voz",
       escenaId: escena.id,
-      voz: "Bella",
+      voz: VOZ_C,
       parametros: parametros(),
       confirmarInvalidacion: true,
     });
     expect(intento.estado).toBe(409);
     expect(mensajeDe(intento.datos)).toContain("todo el proyecto");
     // Y la voz del proyecto sigue siendo la de antes: no se ha colado ningún cambio parcial.
-    expect((await estadoDeVozDe()).voz?.voz).toBe("Rachel");
+    expect((await estadoDeVozDe()).voz?.voz).toBe(VOZ_A);
   });
 
   test("una voz que esta instalación no ofrece se rechaza", async () => {
     await conVozFijada();
-    const intento = await accion({ accion: "fijar-voz", voz: "Inventada", parametros: parametros() });
+    const intento = await accion({ accion: "fijar-voz", voz: "voz-que-no-existe", parametros: parametros() });
     expect(intento.estado).toBe(400);
   });
 
   test("un parámetro fuera de la horquilla documentada se rechaza con sus límites", async () => {
     await conVozFijada();
-    const intento = await accion({ accion: "fijar-voz", voz: "Bella", parametros: parametros({ velocidad: 3 }) });
+    const intento = await accion({ accion: "fijar-voz", voz: VOZ_C, parametros: parametros({ velocidad: 3 }) });
     expect(intento.estado).toBe(400);
     expect(mensajeDe(intento.datos)).toContain("velocidad");
   });
@@ -418,28 +442,28 @@ describe.skipIf(!hayBaseDeDatos)("voz y subtítulos de un proyecto", () => {
   // ── Criterio: cambiar la voz invalida y no regenera sin confirmar el coste ──────────────────────────────
 
   test("cambiar la voz invalida los audios y no regenera nada sin confirmación", async () => {
-    const estado = await conVozFijada("Rachel");
+    const estado = await conVozFijada(VOZ_A);
     const [primera] = await escenasDelProyecto();
     if (!primera) throw new Error("Falta la escena de prueba.");
     await generarVozDe(primera.id, estado);
     const trabajosAntes = (await db().select().from(generationJobs).where(eq(generationJobs.userId, ana.id))).length;
 
     // Sin confirmar: se rechaza diciendo cuántas escenas perdería, y no cambia nada.
-    const sinConfirmar = await accion({ accion: "fijar-voz", voz: "Adam", parametros: parametros() });
+    const sinConfirmar = await accion({ accion: "fijar-voz", voz: VOZ_B, parametros: parametros() });
     expect(sinConfirmar.estado).toBe(409);
     expect(mensajeDe(sinConfirmar.datos)).toContain("1 escena");
-    expect((await estadoDeVozDe()).voz?.voz).toBe("Rachel");
+    expect((await estadoDeVozDe()).voz?.voz).toBe(VOZ_A);
 
     // Confirmando: la voz cambia, la escena queda marcada como invalidada y **no se ha encolado nada nuevo**.
     const confirmado = await accion({
       accion: "fijar-voz",
-      voz: "Adam",
+      voz: VOZ_B,
       parametros: parametros(),
       confirmarInvalidacion: true,
     });
     expect(confirmado.estado).toBe(200);
     const despues = confirmado.datos as VozProyectoVista;
-    expect(despues.voz?.voz).toBe("Adam");
+    expect(despues.voz?.voz).toBe(VOZ_B);
     expect(despues.porRegenerar).toBe(1);
     expect(despues.costeRegenerar).toBe(despues.disponibilidad.creditosPorEscena);
     expect(despues.escenas[0]?.invalidada).toBe(true);
@@ -455,7 +479,7 @@ describe.skipIf(!hayBaseDeDatos)("voz y subtítulos de un proyecto", () => {
     const [primera] = await escenasDelProyecto();
     if (!primera) throw new Error("Falta la escena de prueba.");
     await generarVozDe(primera.id, estado);
-    const intento = await accion({ accion: "fijar-voz", voz: "Rachel", parametros: parametros({ estabilidad: 0.9 }) });
+    const intento = await accion({ accion: "fijar-voz", voz: VOZ_A, parametros: parametros({ estabilidad: 0.9 }) });
     expect(intento.estado).toBe(409);
   });
 
@@ -672,7 +696,7 @@ describe.skipIf(!hayBaseDeDatos)("voz y subtítulos de un proyecto", () => {
     expect(estado.voz).toBeNull();
     const [primera] = await escenasDelProyecto();
     if (!primera) throw new Error("Falta la escena de prueba.");
-    const eleccion = await accion({ accion: "fijar-voz", voz: "Rachel", parametros: parametros() });
+    const eleccion = await accion({ accion: "fijar-voz", voz: VOZ_A, parametros: parametros() });
     expect(eleccion.estado).toBe(409);
     expect(mensajeDe(eleccion.datos)).toContain("voz del propio clip");
     const generada = await accion({ accion: "generar-voz", escenaId: primera.id, ...confirmacion(estado) });
@@ -722,7 +746,7 @@ describe.skipIf(!hayBaseDeDatos)("voz y subtítulos de un proyecto", () => {
     const estado = await conVozFijada();
     await guardarAjustes({ vozTtsActivo: false }, null);
     try {
-      const intento = await muestra("Bella", estado);
+      const intento = await muestra(VOZ_C, estado);
       expect(intento.estado).toBe(503);
       expect(intento.datos.error).toContain("no ofrece la pista de voz");
       const [{ total } = { total: 0 }] = await db()
@@ -737,27 +761,27 @@ describe.skipIf(!hayBaseDeDatos)("voz y subtítulos de un proyecto", () => {
 
   test("la misma muestra pedida dos veces sin esperar no se cobra dos veces", async () => {
     const estado = await conVozFijada();
-    const primera = await muestra("Bella", estado);
+    const primera = await muestra(VOZ_C, estado);
     expect(primera.estado).toBe(200);
     expect(primera.datos.trabajoId).not.toBeNull();
     // Clave de idempotencia nueva, como en un segundo clic tras perder la respuesta: aun así se rechaza.
-    const segunda = await muestra("Bella", estado);
+    const segunda = await muestra(VOZ_C, estado);
     expect(segunda.estado).toBe(409);
     expect(segunda.datos.error).toContain("ya se está generando");
     // Otra voz sí se puede pedir a la vez: la guardia es por muestra, no por usuario.
-    expect((await muestra("Elli", estado)).estado).toBe(200);
+    expect((await muestra(VOZ_D, estado)).estado).toBe(200);
     const trabajos = await db().select().from(generationJobs).where(eq(generationJobs.userId, ana.id));
     expect(trabajos).toHaveLength(2);
   });
 
   test("guardar subtítulos no revalida un audio generado con otra voz, y la escena se puede regenerar", async () => {
-    const estado = await conVozFijada("Rachel");
+    const estado = await conVozFijada(VOZ_A);
     const [primera] = await escenasDelProyecto();
     if (!primera) throw new Error("Falta la escena de prueba.");
     await generarVozDe(primera.id, estado);
     const cambiada = await accion({
       accion: "fijar-voz",
-      voz: "Adam",
+      voz: VOZ_B,
       parametros: parametros(),
       confirmarInvalidacion: true,
     });
@@ -783,13 +807,12 @@ describe.skipIf(!hayBaseDeDatos)("voz y subtítulos de un proyecto", () => {
 
   test("transcribir tampoco revalida el audio de otra voz", async () => {
     olvidarTranscriptor();
-    const estado = await conVozFijada("Rachel");
+    const estado = await conVozFijada(VOZ_A);
     const [primera] = await escenasDelProyecto();
     if (!primera) throw new Error("Falta la escena de prueba.");
     await generarVozDe(primera.id, estado);
     expect(
-      (await accion({ accion: "fijar-voz", voz: "Adam", parametros: parametros(), confirmarInvalidacion: true }))
-        .estado,
+      (await accion({ accion: "fijar-voz", voz: VOZ_B, parametros: parametros(), confirmarInvalidacion: true })).estado,
     ).toBe(200);
     // El audio invalidado es el que se transcribe: sigue estando y sigue sin corresponder. Se sustituye por un WAV
     // de verdad (el proveedor simulado devuelve un MP3 de juguete que FFmpeg no sabe leer) sin tocar la firma.
@@ -827,19 +850,58 @@ describe.skipIf(!hayBaseDeDatos)("voz y subtítulos de un proyecto", () => {
     expect(escena?.editados).toBe(false);
   });
 
-  test("pasar a modo pista avisa de los clips ya producidos con el diálogo dentro", async () => {
-    const [primera, segunda] = await escenasDelProyecto();
-    if (!primera || !segunda) throw new Error("Faltan escenas de prueba.");
+  /** Deja una escena con su clip ya producido por un trabajo que pidió (o no) que el personaje dijera el diálogo. */
+  async function conClipProducido(escenaId: string, dialogo: string): Promise<void> {
     const clip = await crearMedio(actor, new File([MP3], "clip.mp3", { type: "audio/mpeg" }));
-    await db().update(scenes).set({ clipMediaId: clip.id }).where(eq(scenes.id, primera.id));
+    const [trabajo] = await db()
+      .insert(generationJobs)
+      .values({
+        userId: ana.id,
+        kind: "animacion",
+        provider: "kie",
+        model: "veo3_fast",
+        prompt: "Plano de prueba",
+        input: { dialogo },
+        sceneId: escenaId,
+        state: "listo",
+        estimatedCredits: 60,
+        idempotencyKey: crypto.randomUUID(),
+      })
+      .returning();
+    await db()
+      .update(scenes)
+      .set({ clipMediaId: clip.id, clipJobId: trabajo?.id ?? null })
+      .where(eq(scenes.id, escenaId));
+  }
+
+  test("pasar a modo pista avisa de los clips ya producidos con el diálogo dentro", async () => {
+    const [primera] = await escenasDelProyecto();
+    if (!primera) throw new Error("Falta la escena de prueba.");
+    await conClipProducido(primera.id, "Buenos días, hoy empieza bien.");
 
     const intento = await accion({ accion: "fijar-modo", modo: "pista" });
     expect(intento.estado).toBe(409);
     expect(mensajeDe(intento.datos)).toContain("dos voces distintas");
     // Sigue en modo clip: el aviso no aplica nada por su cuenta.
     expect((await estadoDeVozDe()).modo).toBe("clip");
+
     expect((await accion({ accion: "fijar-modo", modo: "pista", confirmarInvalidacion: true })).estado).toBe(200);
-    expect((await estadoDeVozDe()).modo).toBe("pista");
+    const despues = await estadoDeVozDe();
+    expect(despues.modo).toBe("pista");
+    // El aviso sobrevive al clic que lo confirmó: se recalcula en cada carga, no se guardó en ninguna marca.
+    expect(despues.escenas[0]?.clipHablado).toBe(true);
+    // Y no es una invalidación: el clip sigue valiendo y no hay voz que regenerar.
+    expect(despues.escenas[0]?.invalidada).toBe(false);
+    expect(despues.porRegenerar).toBe(0);
+  });
+
+  test("un clip producido sin diálogo no dispara el aviso: se mira su trabajo, no el texto de ahora", async () => {
+    const [primera] = await escenasDelProyecto();
+    if (!primera) throw new Error("Falta la escena de prueba.");
+    // Producido ya en modo pista: el clip es mudo aunque la escena tenga diálogo escrito.
+    await conClipProducido(primera.id, "");
+    expect((await accion({ accion: "fijar-modo", modo: "pista" })).estado).toBe(200);
+    expect((await estadoDeVozDe()).escenas[0]?.clipHablado).toBe(false);
   });
 
   test("un texto de subtítulo con la flecha de tiempos o líneas en blanco no rompe el fichero", async () => {
@@ -926,6 +988,62 @@ describe.skipIf(!hayBaseDeDatos)("voz y subtítulos de un proyecto", () => {
       avisosConfirmados: ["precio-caducado"],
     });
     expect(buena.estado).toBe(200);
+  });
+
+  test("en modo clip, proponer subtítulos tampoco da por buena una escena cuyo clip dice otra cosa", async () => {
+    const [primera] = await escenasDelProyecto();
+    if (!primera) throw new Error("Falta la escena de prueba.");
+    // Modo clip (el de fábrica): la voz vive **dentro** del clip, así que `voiceMediaId` es null.
+    await conClipProducido(primera.id, primera.scriptText);
+    expect((await accion({ accion: "proponer-subtitulos", escenaId: primera.id })).estado).toBe(200);
+    expect((await estadoDeVozDe()).escenas[0]?.invalidada).toBe(false);
+
+    // Cambiar el diálogo invalida: el clip sigue diciendo la frase antigua en la imagen.
+    const editada = await rutaEscena.PATCH(
+      pedir(ana, `/api/escenas/${primera.id}`, "PATCH", { texto: "Ahora dice una cosa completamente distinta." }),
+      ctx(primera.id),
+    );
+    expect(editada.status).toBe(200);
+    expect((await estadoDeVozDe()).escenas[0]?.invalidada).toBe(true);
+
+    // Y proponer los subtítulos del diálogo nuevo **no** puede darla por vigente: el clip no ha cambiado.
+    const propuestos = await accion({
+      accion: "proponer-subtitulos",
+      escenaId: primera.id,
+      confirmarSobrescribir: true,
+    });
+    expect(propuestos.estado).toBe(200);
+    const escena = (propuestos.datos as VozProyectoVista).escenas[0];
+    expect(escena?.invalidada).toBe(true);
+    expect(escena?.invalidacion).toContain("diálogo");
+    expect((propuestos.datos as VozProyectoVista).porRegenerar).toBe(1);
+  });
+
+  test("un fallo de la voz no marca la escena como fallida en producción, y su éxito no borra el del clip", async () => {
+    const estado = await conVozFijada();
+    const [primera] = await escenasDelProyecto();
+    if (!primera) throw new Error("Falta la escena de prueba.");
+    // El clip de esta escena falló de verdad: ese motivo es el que lee la rejilla de producción.
+    const suyo = "El clip de esta escena no se pudo generar.";
+    await db().update(scenes).set({ lastFailureReason: suyo }).where(eq(scenes.id, primera.id));
+
+    // Un trabajo de voz que falla no escribe en esa columna.
+    const pedida = await accion({ accion: "generar-voz", escenaId: primera.id, ...confirmacion(estado) });
+    expect(pedida.estado).toBe(200);
+    await enviarEncolados(h, `worker-voz-${crypto.randomUUID()}`);
+    const trabajo = await ultimoTrabajoDeVoz(primera.id);
+    if (!trabajo?.taskId) throw new Error("El trabajo de voz no ha llegado al proveedor simulado.");
+    tareas.set(trabajo.taskId, { state: "fail", creditos: 0 });
+    await consultarTrabajo(actor, trabajo.id, { forzar: true }, h);
+    expect((await filaDeEscena(primera.id)).lastFailureReason).toBe(suyo);
+    // Pero el fallo de la voz sí se cuenta, desde su propio trabajo.
+    expect((await estadoDeVozDe()).escenas[0]?.fallo).not.toBeNull();
+
+    // Y que la voz salga bien tampoco borra el motivo del clip: son dos cosas distintas.
+    await generarVozDe(primera.id, estado);
+    expect((await filaDeEscena(primera.id)).lastFailureReason).toBe(suyo);
+    // El fallo anterior de la voz deja de mostrarse: lo último que le ha pasado es que salió bien.
+    expect((await estadoDeVozDe()).escenas[0]?.fallo).toBeNull();
   });
 
   test("con el TTS apagado en el panel, la pantalla dice por qué y no ofrece gastar", async () => {

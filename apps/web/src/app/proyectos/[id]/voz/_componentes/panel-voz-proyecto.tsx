@@ -15,6 +15,7 @@ import {
   LIMITES_PARAMETROS_VOZ,
   MODOS_VOZ,
   type ModoVoz,
+  nombreDeVoz,
   PARAMETROS_VOZ_POR_DEFECTO,
   type ParametrosVoz,
   type VozProyectoVista,
@@ -143,7 +144,7 @@ export function PanelVozProyecto({
             </Boton>
             {vozFijada !== null && (
               <p className="text-sm text-texto-suave">
-                Ahora suena con <strong className="text-texto">{vozFijada.voz}</strong>, fijada el{" "}
+                Ahora suena con <strong className="text-texto">{nombreDeVoz(vozFijada.voz)}</strong>, fijada el{" "}
                 {new Date(vozFijada.fijadaEn).toLocaleDateString("es-ES")}.
               </p>
             )}
