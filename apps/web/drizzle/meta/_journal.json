@@ -253,6 +253,13 @@
       "when": 1790595755336,
       "tag": "0035_direccion-texto-libre",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1790601103846,
+      "tag": "0036_direcciones-guardadas",
+      "breakpoints": true
     }
   ]
 }
