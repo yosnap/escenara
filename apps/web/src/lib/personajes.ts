@@ -331,6 +331,11 @@ export interface PersonajeVista {
    */
   inventado: boolean;
   /**
+   * `true` si este personaje **inventado** se describe con estética de modelo, porque el usuario lo ha pedido
+   * expresamente. Siempre `false` en una persona real, donde ni se ofrece ni se aplica.
+   */
+  esteticaDeModelo: boolean;
+  /**
    * Registro en el proveedor para escenas habladas (0.22.0); `null` si nunca se ha registrado. Dice con qué
    * versión de la ficha se hizo y si esa versión sigue siendo la vigente.
    */

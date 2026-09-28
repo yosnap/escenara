@@ -68,7 +68,10 @@ export const editarPersonaje = (id: string, cambios: Partial<DatosNuevoPersonaje
   pedir<PersonajeVista>(`/api/personajes/${id}`, json("PATCH", cambios));
 
 /** Cambios de la ficha de apariencia. Van con el motivo: es lo que explica por qué existe la versión nueva. */
-export type CambiosFicha = Partial<Record<CampoFicha | "descripcion" | "motivo", string>>;
+export type CambiosFicha = Partial<Record<CampoFicha | "descripcion" | "motivo", string>> & {
+  /** Estética de modelo, solo en inventados. No versiona la ficha: no cambia quién es. */
+  esteticaDeModelo?: boolean;
+};
 
 /**
  * Guarda la ficha. El servidor decide si eso crea versión: si el texto es el mismo, no se gasta un número.

@@ -91,7 +91,7 @@ async function personajeDirigidoDe(proyecto: FilaProyecto): Promise<PersonajeDir
   const sinPersonaje: PersonajeDirigido = { descripcion: "", real: true, atractivoElegido: false, ejesVoz: {} };
   if (!proyecto.mainCharacterId) return sinPersonaje;
   const [personaje] = await db()
-    .select({ virtual: characters.virtual, voiceAxes: characters.voiceAxes })
+    .select({ virtual: characters.virtual, voiceAxes: characters.voiceAxes, beautyOptIn: characters.beautyOptIn })
     .from(characters)
     .where(eq(characters.id, proyecto.mainCharacterId))
     .limit(1);
@@ -100,7 +100,8 @@ async function personajeDirigidoDe(proyecto: FilaProyecto): Promise<PersonajeDir
   return {
     descripcion: "",
     real: !personaje.virtual,
-    atractivoElegido: false,
+    // Solo cuenta en un personaje inventado; el compositor lo vuelve a comprobar por su cuenta.
+    atractivoElegido: personaje.virtual && personaje.beautyOptIn,
     ejesVoz: personaje.voiceAxes,
   };
 }

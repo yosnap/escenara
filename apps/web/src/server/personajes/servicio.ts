@@ -56,6 +56,11 @@ export interface DatosPersonaje {
   vestuario?: unknown;
   personalidad?: unknown;
   voz?: unknown;
+  /**
+   * Estética de modelo, **solo en inventados**. No versiona la ficha: no cambia quién es el personaje, cambia
+   * cómo se le pide al modelo que lo dibuje.
+   */
+  esteticaDeModelo?: unknown;
   /** Por qué se cambia. Se guarda en la versión que produce el cambio; no versiona por sí mismo. */
   motivo?: unknown;
 }
@@ -188,6 +193,19 @@ export async function actualizarPersonaje(
         (valor): valor is string => typeof valor === "string",
       ),
     );
+  }
+  /**
+   * La estética de modelo solo existe en un personaje **inventado**. En uno real no se guarda ni `false`: se
+   * rechaza, porque aceptarla en silencio dejaría creer que la casilla existe para él.
+   */
+  if (cambios.esteticaDeModelo !== undefined) {
+    if (!fila.virtual) {
+      throw new ErrorPersonaje(
+        409,
+        "La estética de modelo solo se puede pedir en un personaje inventado. Con una persona real nunca se describe su atractivo: su identidad sale de sus fotos.",
+      );
+    }
+    valores.beautyOptIn = cambios.esteticaDeModelo === true;
   }
   const motivo = texto(cambios.motivo, MOTIVO_CAMBIO_MAXIMO, "el motivo del cambio");
   if (Object.keys(valores).length === 0) return vistaDePersonaje(fila, actor, { completa: true, conReferencias: true });

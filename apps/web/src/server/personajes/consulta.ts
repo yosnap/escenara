@@ -319,6 +319,7 @@ export async function vistaDePersonaje(
       : null,
     estado: estadoDePersonaje(datos),
     inventado: fila.virtual,
+    esteticaDeModelo: fila.virtual && fila.beautyOptIn,
     // El registro Omni solo se resuelve para su dueño: dice qué cara suya está alojada en el proveedor.
     ...(opciones.completa && esDueno
       ? { registroOmni: vistaDeRegistro(await ultimoRegistro(fila.id), version, version?.id ?? null) }
@@ -495,6 +496,7 @@ async function vistasDeLista(
       versionVigente: versionDeLista(resumen.versiones.get(fila.id)),
       estado: estadoDePersonaje(datos),
       inventado: fila.virtual,
+      esteticaDeModelo: fila.virtual && fila.beautyOptIn,
       totalReferencias: datos.referencias,
       totalGeneradas: resumen.generadas.get(fila.id) ?? 0,
       minimoReferencias: minimo,
@@ -651,6 +653,7 @@ export async function pendientesDeRevision(actor: Actor, pagina = 1): Promise<Pa
       versionVigente: versionDeLista(resumen.versiones.get(personaje.id)),
       estado: estadoDePersonaje(datos),
       inventado: personaje.virtual,
+      esteticaDeModelo: personaje.virtual && personaje.beautyOptIn,
       totalReferencias: datos.referencias,
       totalGeneradas: resumen.generadas.get(personaje.id) ?? 0,
       minimoReferencias: minimo,

@@ -101,6 +101,15 @@ export const characters = pgTable(
      * Vacío por defecto y no con los ejes de fábrica: así se distingue un personaje que todavía no ha elegido
      * voz de uno que ha elegido precisamente la de fábrica, y solo el segundo invalida algo al cambiarla.
      */
+    /**
+     * **Estética de modelo, solo en personajes inventados y solo si el usuario la pide** (decisión firme del
+     * propietario, 2026-09-28). Es lo que pone a `true` el `atractivoElegido` del método 6C.
+     *
+     * Con una persona real **no se aplica nunca**, valga lo que valga esta columna: la puerta está en el
+     * compositor (`direccion/fotograma.ts`), no en la interfaz, porque una puerta que solo vive en un
+     * formulario se salta con una petición.
+     */
+    beautyOptIn: boolean("beauty_opt_in").notNull().default(false),
     voiceAxes: jsonb<Record<string, string>>("voice_axes").notNull().default({}),
     voicePresetId: text("voice_preset_id").notNull().default(""),
     /**

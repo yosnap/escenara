@@ -347,7 +347,7 @@ export async function producirEscenaHablada(
     ...(await direccionDeLaEscena(actor.id, escena, proyecto, {
       descripcion: "",
       real: !personaje.virtual,
-      atractivoElegido: false,
+      atractivoElegido: personaje.virtual && personaje.beautyOptIn,
       ejesVoz: personaje.voiceAxes,
     })),
     escena: escenaEnIngles,
