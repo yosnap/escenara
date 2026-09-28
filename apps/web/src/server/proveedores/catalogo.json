@@ -268,7 +268,7 @@
       "modelo": "kokoro",
       "nombre": "Kokoro v1.0 (voz)",
       "capacidades": ["tts"],
-      "estado": "descubierto",
+      "estado": "validado",
       "predeterminado": false,
       "conVoz": true,
       "unidad": "pista de voz de una escena",
@@ -284,8 +284,8 @@
         "fuente": "No cobra por petición: los servicios compatibles con la API de OpenAI se pagan con la cuota del plan que tenga contratado el usuario. 0 créditos no es una estimación, es el precio: lo que consume es cuota, no créditos de Escenara.",
         "comprobado": "2026-09-28"
       },
-      "evidencia": "",
-      "notas": "TTS de 82M parámetros con 67 paquetes de voz, comprobado en https://nan.builders/docs/models el 2026-09-28: latencia por debajo de un segundo y límite de 15 peticiones por minuto. SUS VOCES TIENEN OTROS IDENTIFICADORES (ef_dora, em_alex, af_heart...), así que pertenece a otra «familia de voces» que ElevenLabs: una voz fijada con ElevenLabs no se puede leer aquí y el mapa de modelos lo dice en lugar de cambiar el timbre. No da marcas por carácter, así que los subtítulos salen del diálogo o de transcribir. Queda «descubierto» hasta que se ejecute de verdad y se registre su evidencia."
+      "evidencia": "Llamada real del 2026-09-28 a https://api.nan.builders/v1/audio/speech con la clave del propietario: voces ef_dora y em_alex, 200 en 0,9 s, MP3 de 5 s por 79 caracteres en español; transcrito con whisper, la frase sale exacta. Sin coste por petición (cuota del plan).",
+      "notas": "TTS de 82M parámetros con 67 paquetes de voz, comprobado en https://nan.builders/docs/models el 2026-09-28: latencia por debajo de un segundo y límite de 15 peticiones por minuto. SUS VOCES TIENEN OTROS IDENTIFICADORES (ef_dora, em_alex, af_heart...), así que pertenece a otra «familia de voces» que ElevenLabs: una voz fijada con ElevenLabs no se puede leer aquí y el mapa de modelos lo dice en lugar de cambiar el timbre. No da marcas por carácter, así que los subtítulos salen del diálogo o de transcribir. Validado con una llamada real el 2026-09-28."
     },
     {
       "proveedor": "kie",
