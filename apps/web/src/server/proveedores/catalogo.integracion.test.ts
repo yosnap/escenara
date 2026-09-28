@@ -183,6 +183,7 @@ describe.skipIf(!hayBaseDeDatos)("catálogo de modelos", () => {
       expect(antes.map((m) => m.modelo).sort()).toEqual(
         [
           "gemini-omni-video",
+          "google/gemini-omni-flash-1-1",
           "gpt-image-2-5-flare-image-to-image",
           "grok-imagine/image-to-video",
           "grok-imagine/text-to-video",
@@ -222,6 +223,7 @@ describe.skipIf(!hayBaseDeDatos)("catálogo de modelos", () => {
       const deVideo = await listarModelos({ capacidad: "image_to_video" });
       expect(deVideo.map((m) => m.modelo).sort()).toEqual([
         "gemini-omni-video",
+        "google/gemini-omni-flash-1-1",
         "grok-imagine/image-to-video",
         HAILUO,
         "kling/v3-turbo-image-to-video",
