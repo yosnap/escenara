@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import type { CodigoPrueba, CredencialVista, Proveedor } from "@/lib/boveda";
+import type { CodigoPrueba, CredencialVista, Proveedor, ProveedorBoveda } from "@/lib/boveda";
 import { db } from "../db/cliente";
 import { providerCredentials } from "../db/esquema";
 import { dentroDelLimite, type Limite } from "../limite";
@@ -56,7 +56,7 @@ export async function listarCredenciales(usuarioId: string): Promise<CredencialV
  */
 export async function guardarCredencial(
   usuarioId: string,
-  proveedor: Proveedor,
+  proveedor: ProveedorBoveda,
   secreto: string,
   buscar?: Buscador,
 ): Promise<ResultadoCredencial> {
@@ -92,7 +92,7 @@ export async function guardarCredencial(
 /** Vuelve a probar la credencial guardada y actualiza su estado. */
 export async function probarCredencial(
   usuarioId: string,
-  proveedor: Proveedor,
+  proveedor: ProveedorBoveda,
   buscar?: Buscador,
 ): Promise<ResultadoCredencial> {
   if (!bovedaDisponible()) return { ok: false, motivo: "boveda", mensaje: AVISO_BOVEDA_USUARIO };
@@ -139,7 +139,7 @@ export async function probarCredencial(
 }
 
 /** Borra la credencial del usuario. Devuelve `false` si no había ninguna. */
-export async function borrarCredencial(usuarioId: string, proveedor: Proveedor): Promise<boolean> {
+export async function borrarCredencial(usuarioId: string, proveedor: ProveedorBoveda): Promise<boolean> {
   const borradas = await db()
     .delete(providerCredentials)
     .where(and(eq(providerCredentials.userId, usuarioId), eq(providerCredentials.provider, proveedor)))
@@ -148,7 +148,8 @@ export async function borrarCredencial(usuarioId: string, proveedor: Proveedor):
 }
 
 /**
- * Secreto en claro de una credencial, **solo para código de servidor** (los adaptadores de generación
+ * Secreto en claro de una credencial, **solo para código de servidor**. Con `compatible` no hay nunca fila (esos
+ * servicios viven en `openai_providers`), así que devuelve `null`: es lo correcto, no un caso que falte. (los adaptadores de generación
  * desde la 0.10.0). Nunca se devuelve a una acción de servidor ni a una ruta de API tal cual.
  * `null` si no hay credencial; si el valor guardado no se puede descifrar, se devuelve `null` y se
  * registra el motivo sin el valor.

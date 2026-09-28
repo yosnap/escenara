@@ -1,6 +1,6 @@
 import { esProveedor, PROVEEDORES_PUBLICOS } from "@/lib/boveda";
 import type { EstimacionTexto } from "@/lib/proyectos";
-import { leerAjustes } from "../ajustes";
+import { eurosPorCreditoDe, leerAjustes } from "../ajustes";
 import { listarCredenciales } from "../boveda/credenciales";
 import type { EleccionDeTrabajo } from "../generacion/precios";
 import { ErrorCatalogo } from "../proveedores/contrato";
@@ -88,7 +88,7 @@ export async function estadoDelAsistente(usuarioId: string): Promise<EstadoAsist
       modelo: eleccion.modelo.modelo,
       nombreModelo: eleccion.modelo.nombre,
       creditos,
-      euros: creditos * ajustes.eurosPorCredito,
+      euros: creditos * eurosPorCreditoDe(ajustes, proveedor),
       comprobado: eleccion.precio.comprobado,
       sello: eleccion.precio.sello,
     },

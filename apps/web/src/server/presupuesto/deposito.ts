@@ -22,6 +22,8 @@ import { assistantRuns, generationJobs, reviewResults, usageLedger } from "../db
 export interface Comprometido {
   reservado: number;
   consumido: number;
+  /** Euros ya apuntados, sumados de los apuntes: cada uno usó el cambio de su proveedor. */
+  consumidoEuros: number;
   /** Parte de `reservado` retenida en trabajos `desconocido`, llamadas de texto y revisiones sin cerrar. */
   retenido: number;
   trabajosEnRevision: number;
@@ -40,6 +42,12 @@ export async function comprometidoDe(usuarioId: string, ejecutor: Ejecutor = db(
     .select({
       reservado: sql<number>`coalesce(sum(case when ${usageLedger.entryType} in ('reserva', 'liberacion') then ${usageLedger.credits} else 0 end), 0)::float8`,
       consumido: sql<number>`coalesce(sum(case when ${usageLedger.entryType} in ('consumo', 'ajuste') then ${usageLedger.credits} else 0 end), 0)::float8`,
+      /**
+       * Euros consumidos: se suman los **importes ya apuntados**, no los créditos (0.21.1). Cada apunte guarda su
+       * importe con el cambio del proveedor que cobró, y desde que hay más de un proveedor los créditos de dos de
+       * ellos no son la misma unidad: multiplicarlos todos por una sola cifra daba un euro inventado.
+       */
+      consumidoEuros: sql<number>`coalesce(sum(case when ${usageLedger.entryType} in ('consumo', 'ajuste') then coalesce(${usageLedger.amountEur}, 0) else 0 end), 0)::float8`,
       // Lo apartado en trabajos que nadie puede soltar solo: el proveedor no contestó y no se sabe si cobró.
       // Y lo apartado en llamadas de texto y en revisiones multimodales que no llegaron a cerrarse, por lo mismo.
       retenido: sql<number>`coalesce(sum(case when ${usageLedger.entryType} in ('reserva', 'liberacion') and (${generationJobs.state} = 'desconocido' or ${assistantRuns.state} = 'reservado' or ${reviewResults.state} = 'reservado') then ${usageLedger.credits} else 0 end), 0)::float8`,
@@ -56,6 +64,7 @@ export async function comprometidoDe(usuarioId: string, ejecutor: Ejecutor = db(
   return {
     reservado: Math.max(0, fila?.reservado ?? 0),
     consumido: fila?.consumido ?? 0,
+    consumidoEuros: fila?.consumidoEuros ?? 0,
     retenido: Math.max(0, fila?.retenido ?? 0),
     trabajosEnRevision: fila?.enRevision ?? 0,
     llamadasDeTextoColgadas: fila?.textosColgados ?? 0,
@@ -85,7 +94,7 @@ export function deposito(comprometido: Comprometido, ajustes: Ajustes): Deposito
     consumido,
     disponible: autorizado === null ? null : Math.max(0, autorizado - reservado - consumido),
     topeTrabajo,
-    consumidoEuros: consumido * ajustes.eurosPorCredito,
+    consumidoEuros: comprometido.consumidoEuros,
   };
 }
 

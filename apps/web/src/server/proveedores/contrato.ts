@@ -163,6 +163,12 @@ export interface ContextoEntrada {
    * con qué timbre leer, y un adaptador no debe inventarse uno por defecto.
    */
   voz?: { voz: string; parametros: ParametrosVoz };
+  /**
+   * Dirección base del servicio compatible con la API de OpenAI con el que se va a generar (0.21.1). Solo llega
+   * en esos trabajos: es lo único que un adaptador **no** puede saber por sí mismo, porque el servicio lo da de
+   * alta cada usuario en su cuenta.
+   */
+  urlBaseCompatible?: string;
 }
 
 /** Lo que necesita el adaptador para pedir una generación. La clave solo viaja hasta aquí. */

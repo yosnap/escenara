@@ -182,9 +182,9 @@ export function FormularioAjustes({
             )}
           </Campo>
           <Campo
-            etiqueta="Euros por crédito (aproximado)"
+            etiqueta="Euros por crédito de KIE (aproximado)"
             ayuda="Solo para mostrar la estimación en euros. KIE vende 1.000 créditos por unos 5 USD."
-            error={errorDe("eurosPorCredito")}
+            error={errorDe("eurosPorCreditoKie")}
           >
             {(p) => (
               <EntradaTexto
@@ -193,9 +193,47 @@ export function FormularioAjustes({
                 min={0}
                 step={0.0001}
                 inputMode="decimal"
-                value={Number.isNaN(valores.eurosPorCredito) ? "" : valores.eurosPorCredito}
+                value={Number.isNaN(valores.eurosPorCreditoKie) ? "" : valores.eurosPorCreditoKie}
                 onChange={(e) =>
-                  cambiar("eurosPorCredito", e.target.value === "" ? Number.NaN : Number(e.target.value))
+                  cambiar("eurosPorCreditoKie", e.target.value === "" ? Number.NaN : Number(e.target.value))
+                }
+              />
+            )}
+          </Campo>
+          <Campo
+            etiqueta="Euros por crédito de Google (aproximado)"
+            ayuda="Solo para mostrar la estimación en euros. Déjalo en 0 mientras no lo hayas medido."
+            error={errorDe("eurosPorCreditoGoogle")}
+          >
+            {(p) => (
+              <EntradaTexto
+                {...p}
+                type="number"
+                min={0}
+                step={0.0001}
+                inputMode="decimal"
+                value={Number.isNaN(valores.eurosPorCreditoGoogle) ? "" : valores.eurosPorCreditoGoogle}
+                onChange={(e) =>
+                  cambiar("eurosPorCreditoGoogle", e.target.value === "" ? Number.NaN : Number(e.target.value))
+                }
+              />
+            )}
+          </Campo>
+          <Campo
+            etiqueta="Euros por crédito de ElevenLabs (aproximado)"
+            ayuda="Solo para mostrar la estimación en euros. Depende del plan contratado: mídelo antes de ponerlo."
+            error={errorDe("eurosPorCreditoElevenlabs")}
+          >
+            {(p) => (
+              <EntradaTexto
+                {...p}
+                type="number"
+                min={0}
+                step={0.0001}
+                inputMode="decimal"
+                value={Number.isNaN(valores.eurosPorCreditoElevenlabs) ? "" : valores.eurosPorCreditoElevenlabs}
+                onChange={(e) =>
+                  cambiar("eurosPorCreditoElevenlabs", e.target.value === "" ? Number.NaN : Number(e.target.value))
                 }
               />
             )}

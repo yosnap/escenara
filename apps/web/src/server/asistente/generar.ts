@@ -4,7 +4,7 @@ import { esProveedor } from "@/lib/boveda";
 import { limpiarTextoDePrompt } from "@/lib/ficha-personaje";
 import { CONCEPTO_MAXIMO, ESCENAS_SUGERIDAS, type ProyectoDetalle } from "@/lib/proyectos";
 import { db } from "../db/cliente";
-import { type FilaProyecto, projects } from "../db/esquema";
+import { assistantRuns, type FilaProyecto, projects } from "../db/esquema";
 import {
   exigirClaveIdempotencia,
   exigirConfirmacion,
@@ -13,17 +13,18 @@ import {
 } from "../generacion/comprobaciones";
 import { exigirSelloVigente } from "../generacion/precios";
 import { dentroDelLimite, type Limite } from "../limite";
+import { ErrorDeTexto, ErrorPeticionRepetida, pedirTextoPorMapa, type TextoDelMapa } from "../mapa/texto";
 import type { Actor } from "../media/servicio";
 import { filaPropia } from "../personajes/consulta";
 import { contextoDeVersion } from "../personajes/contexto";
 import { ultimaVersion } from "../personajes/ficha";
 import { exigirPersonajeUsable } from "../personajes/puede-generar";
 import type { Buscador } from "../proveedores/codigos";
-import { ErrorProveedor } from "../proveedores/contrato";
+import { ErrorCatalogo } from "../proveedores/contrato";
 import { proyectoPropio } from "./consulta";
 import { ErrorProyecto } from "./errores";
 import { sustituirEscenas } from "./escenas";
-import { cerrarGastoDeEjecucion, ejecucionDeLaConfirmacion, reservarEjecucion } from "./gasto";
+import { ejecucionDeLaConfirmacion } from "./gasto";
 import { detalleProyecto, exigirTopeDelProyecto } from "./plan";
 import { exigirAsistenteDisponible } from "./texto";
 
@@ -127,50 +128,41 @@ export async function escribirGuion(
   // más esta llamada tiene que caber (decisión provisional del propietario, 2026-09-27).
   await exigirTopeDelProyecto(proyecto.id, creditos);
 
-  const { ejecucion, nueva } = await reservarEjecucion({
-    usuarioId: actor.id,
-    proyectoId: proyecto.id,
-    kind: "guion",
-    proveedor,
-    modelo: modelo.modelo,
-    claveIdempotencia,
-    creditos,
-    sello: precio.sello,
-  });
-  // Esta confirmación ya se había ejecutado: se devuelve el proyecto como está y **no se llama al proveedor**.
-  if (!nueva) return detalleProyecto(actor, proyecto.id);
+  // Esta confirmación ya se había ejecutado: se devuelve el proyecto como está y **no se llama a nadie**.
+  if (await ejecucionDeLaConfirmacion(actor.id, `${claveIdempotencia}:0`)) return detalleProyecto(actor, proyecto.id);
 
-  let respuesta: { texto: string; creditos: number | null };
+  /**
+   * El guion se pide **recorriendo el mapa de modelos de texto** del usuario (0.21.1): la entrada principal y,
+   * si falla de forma que prueba que no cobró, la siguiente. Cada entrada reserva y cierra su propio gasto en su
+   * moneda, así que no hay forma de cobrar dos veces ni de sumar créditos de proveedores distintos.
+   */
+  let resultado: TextoDelMapa;
   try {
-    respuesta = await generarTexto({
-      clave,
-      modelo: modelo.modelo,
+    resultado = await pedirTextoPorMapa({
+      usuarioId: actor.id,
+      proyectoId: proyecto.id,
+      kind: "guion",
       instrucciones: INSTRUCCIONES_ASISTENTE,
       entrada,
+      claveIdempotencia,
       buscar,
     });
   } catch (error) {
-    if (!(error instanceof ErrorProveedor)) {
-      await cerrarGastoDeEjecucion(ejecucion.id, 0, "La llamada no salió de Escenara.", "fallido", 0, "Error interno.");
-      throw error;
+    if (error instanceof ErrorDeTexto) {
+      throw new ErrorProyecto(
+        502,
+        error.mensaje("No se ha podido escribir el guion, así que el proyecto se ha quedado como estaba"),
+      );
     }
-    // Solo se apunta «no ha costado nada» cuando el código **prueba** que el proveedor rechazó la petición. Si
-    // no se sabe, se conserva la estimación como consumo: soltar lo que quizá se ha pagado sería mentir.
-    await cerrarGastoDeEjecucion(
-      ejecucion.id,
-      error.rechazoProbado ? 0 : null,
-      error.rechazoProbado
-        ? "El proveedor rechazó la petición sin ejecutarla."
-        : "El proveedor no confirmó el resultado.",
-      "fallido",
-      0,
-      error.message,
-    );
-    throw new ErrorProyecto(502, error.message);
+    // La misma confirmación ya estaba en marcha: se devuelve el proyecto como está y no se llama a nadie.
+    if (error instanceof ErrorPeticionRepetida) return detalleProyecto(actor, proyecto.id);
+    if (error instanceof ErrorCatalogo) throw new ErrorProyecto(error.estado, error.message);
+    throw error;
   }
 
+  const ultima = await ejecucionDeLaConfirmacion(actor.id, `${claveIdempotencia}:${resultado.intentos.length}`);
   try {
-    const propuesta = leerPropuesta(respuesta.texto, proyecto.clipSeconds);
+    const propuesta = leerPropuesta(resultado.texto, proyecto.clipSeconds);
     const escenasEscritas = await db().transaction(async (tx) => {
       const total = await sustituirEscenas(tx, proyecto.id, propuesta.escenas);
       if (propuesta.concepto !== "") {
@@ -181,26 +173,26 @@ export async function escribirGuion(
       }
       return total;
     });
-    await cerrarGastoDeEjecucion(
-      ejecucion.id,
-      respuesta.creditos,
-      "Guion propuesto por el asistente, pendiente de que lo revise el usuario.",
-      "listo",
-      escenasEscritas,
-    );
+    // Cuántas escenas propuso es informativo, pero se guarda en la ejecución que de verdad la escribió.
+    if (ultima) {
+      await db().update(assistantRuns).set({ scenesProposed: escenasEscritas }).where(eq(assistantRuns.id, ultima.id));
+    }
   } catch (error) {
-    // La llamada ya se ha pagado aunque no se pueda usar lo que ha contestado: se apunta lo que costó.
-    const mensaje =
-      error instanceof ErrorPropuesta || error instanceof ErrorProyecto ? error.message : "Error interno.";
-    await cerrarGastoDeEjecucion(
-      ejecucion.id,
-      respuesta.creditos,
-      "La respuesta del modelo no se pudo usar.",
-      "fallido",
-      0,
-      mensaje,
-    );
-    if (error instanceof ErrorPropuesta) throw new ErrorProyecto(502, error.message);
+    // Lo que contestó no se puede usar, pero la llamada ya está hecha y su gasto ya está cerrado con lo que
+    // costó de verdad: aquí solo se anota el motivo para quien mire su historial.
+    if (ultima) {
+      await db()
+        .update(assistantRuns)
+        .set({ errorMessage: error instanceof Error ? error.message : "Error interno." })
+        .where(eq(assistantRuns.id, ultima.id));
+    }
+    if (error instanceof ErrorPropuesta) {
+      // Se dice **quién** contestó lo que no se pudo usar: con una reserva puesta, no fue la entrada principal.
+      throw new ErrorProyecto(
+        502,
+        `${resultado.nombreProveedor} (${resultado.modelo}) ha contestado, pero su texto no se pudo usar como guion: ${error.message}`,
+      );
+    }
     throw error;
   }
   return detalleProyecto(actor, proyecto.id);

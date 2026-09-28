@@ -14,8 +14,17 @@ export interface Ajustes {
   cuotaMb: number;
   /** Créditos estimados por encima de los cuales un trabajo exige un aviso extra antes de gastar. */
   avisoCreditos: number;
-  /** Cambio aproximado de crédito a euros, solo para mostrar la estimación en euros. */
-  eurosPorCredito: number;
+  /**
+   * Cambio aproximado de crédito a euros, **por proveedor** (0.21.1). Un crédito de KIE y uno de ElevenLabs no
+   * valen lo mismo y nunca debieron compartir una cifra: mezclarlos daba un número que no significaba nada.
+   * Solo sirve para mostrar la estimación en euros; lo que manda en los topes son los créditos de cada proveedor.
+   *
+   * Los proveedores que se pagan por cuota del plan (`compatible`) y lo que se hace en la propia máquina
+   * (`local`) cuentan **0 €**: su llamada no tiene precio por petición, así que inventarle uno sería mentir.
+   */
+  eurosPorCreditoKie: number;
+  eurosPorCreditoGoogle: number;
+  eurosPorCreditoElevenlabs: number;
   /**
    * Créditos que cada usuario tiene autorizados a comprometer en Escenara (reservados + consumidos);
    * 0 = sin presupuesto propio, manda solo el saldo del proveedor. No es dinero de Escenara: es el tope
@@ -184,7 +193,10 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   cuotaMb: 2048,
   avisoCreditos: 200,
   // KIE vende 1.000 créditos por unos 5 USD (comprobado el 2026-09-27); se redondea al alza a propósito.
-  eurosPorCredito: 0.005,
+  eurosPorCreditoKie: 0.005,
+  // Google y ElevenLabs aún no tienen tarifa medida en esta instalación: 0 € hasta que quien administra la mida.
+  eurosPorCreditoGoogle: 0,
+  eurosPorCreditoElevenlabs: 0,
   presupuestoCreditos: 2000,
   presupuestoTrabajo: 500,
   trabajosSimultaneos: 3,
@@ -284,9 +296,17 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
     valido: entero(0, 1_000_000),
     mensaje: "Indica un número entero de créditos (0 = avisar siempre).",
   },
-  eurosPorCredito: {
+  eurosPorCreditoKie: {
     valido: decimal(0, 100),
-    mensaje: "Indica el precio de un crédito en euros, con cuatro decimales como mucho.",
+    mensaje: "Indica el precio de un crédito de KIE en euros, con cuatro decimales como mucho.",
+  },
+  eurosPorCreditoGoogle: {
+    valido: decimal(0, 100),
+    mensaje: "Indica el precio de un crédito de Google en euros, con cuatro decimales como mucho.",
+  },
+  eurosPorCreditoElevenlabs: {
+    valido: decimal(0, 100),
+    mensaje: "Indica el precio de un crédito de ElevenLabs en euros, con cuatro decimales como mucho.",
   },
   presupuestoCreditos: {
     valido: entero(0, 100_000_000),
@@ -463,4 +483,18 @@ export async function guardarAjustes(cambios: Partial<Record<keyof Ajustes, unkn
   // Fuerza la relectura: este proceso ve el cambio al momento.
   olvidarAjustes();
   return leerAjustes();
+}
+
+/**
+ * Cambio de crédito a euros **del proveedor que va a cobrar**. Nunca se usa el de otro: los créditos de dos
+ * proveedores no son la misma unidad, así que convertirlos con una cifra ajena daría un euro inventado.
+ *
+ * `compatible` y `local` valen 0 € a propósito: se pagan por cuota del plan o no se pagan, y su llamada no tiene
+ * precio por petición.
+ */
+export function eurosPorCreditoDe(ajustes: Ajustes, proveedor: string): number {
+  if (proveedor === "kie") return ajustes.eurosPorCreditoKie;
+  if (proveedor === "google") return ajustes.eurosPorCreditoGoogle;
+  if (proveedor === "elevenlabs") return ajustes.eurosPorCreditoElevenlabs;
+  return 0;
 }

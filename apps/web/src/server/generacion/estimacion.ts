@@ -1,7 +1,7 @@
 import { esProveedor, type Proveedor } from "@/lib/boveda";
 import { precioCaducado } from "@/lib/catalogo";
 import type { Estimacion, TipoTrabajo } from "@/lib/generacion";
-import { leerAjustes } from "../ajustes";
+import { eurosPorCreditoDe, leerAjustes } from "../ajustes";
 import { usarCredencial } from "../boveda/credenciales";
 import { type EstadoTraduccion, estadoDeTraduccion } from "../prompts/traduccion";
 import type { Buscador } from "../proveedores/codigos";
@@ -143,7 +143,7 @@ function conEleccion(
     conVoz: modelo.conVoz,
     unidad: precio.unidad,
     creditos,
-    euros: creditos * ajustes.eurosPorCredito,
+    euros: creditos * eurosPorCreditoDe(ajustes, modelo.proveedor),
     saldo,
     // Solo se niega cuando se conoce el saldo y no llega.
     alcanza: saldo === null || saldo >= totales,
@@ -158,7 +158,7 @@ function conEleccion(
     traduccion: traduccion.activa
       ? {
           creditos: traduccion.creditos,
-          euros: traduccion.creditos * ajustes.eurosPorCredito,
+          euros: traduccion.creditos * eurosPorCreditoDe(ajustes, traduccion.proveedor),
           comprobado: traduccion.comprobado,
           nombreModelo: traduccion.nombreModelo,
         }

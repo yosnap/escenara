@@ -1,4 +1,4 @@
-import type { CodigoPrueba, Proveedor } from "@/lib/boveda";
+import type { CodigoPrueba, ProveedorBoveda } from "@/lib/boveda";
 import { type Buscador, codigoDeEstado, codigoDeFallo, MS_MAXIMO } from "../proveedores/codigos";
 import { contarVoces, ErrorElevenLabs } from "../proveedores/elevenlabs/cliente";
 
@@ -104,7 +104,7 @@ async function probarGoogle(secreto: string, buscar: Buscador): Promise<Resultad
   return Array.isArray(cuerpo.models) ? { ok: true, codigo: "ok" } : { ok: false, codigo: "respuesta-inesperada" };
 }
 
-const PRUEBAS: Record<Proveedor, (secreto: string, buscar: Buscador) => Promise<ResultadoPrueba>> = {
+const PRUEBAS: Record<ProveedorBoveda, (secreto: string, buscar: Buscador) => Promise<ResultadoPrueba>> = {
   kie: probarKie,
   google: probarGoogle,
   elevenlabs: probarElevenLabs,
@@ -115,7 +115,7 @@ const PRUEBAS: Record<Proveedor, (secreto: string, buscar: Buscador) => Promise<
  * producción siempre es `fetch`.
  */
 export async function probarClave(
-  proveedor: Proveedor,
+  proveedor: ProveedorBoveda,
   secreto: string,
   buscar: Buscador = fetch,
 ): Promise<ResultadoPrueba> {

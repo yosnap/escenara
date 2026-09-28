@@ -2,6 +2,87 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.21.1] · 2026-09-28
+
+### Decisiones firmes del propietario
+
+- **Mapa de modelos por tipo de generación** (ADR-0026). Para el texto, la voz y los subtítulos, cada usuario
+  tiene una **lista ordenada** de con quién se intenta: la primera es la principal y las siguientes son reservas
+  que se prueban solas. Sustituye a las tres elecciones fijas que había escritas en el código.
+- **Errores visibles.** Todo fallo que ve una persona dice **cuatro cosas**: qué falló de verdad (proveedor,
+  modelo y causa concreta), si se ha cobrado o no se sabe, qué se intentó después y qué puede hacer. «Vuelve a
+  intentarlo en un momento» queda prohibido.
+- **Los créditos de dos proveedores no son la misma unidad**: no se suman, no se comparan y no se convierten
+  entre sí. Cada coste se enseña, se confirma y se aparta en la moneda de quien va a cobrar.
+- **En texto, tus servicios compatibles van primero.** Mientras no guardes tu propio mapa, las traducciones y el
+  asistente usan antes los modelos de tus servicios compatibles (por ejemplo NaN builders con gemma4,
+  glm5.3-flash o qwen3.8-flash, que se pagan por cuota del plan) y dejan el modelo de texto de pago de la
+  plataforma como última reserva.
+
+### Añadido
+
+- **Servicios compatibles con la API de OpenAI en la bóveda**, por usuario y varios a la vez: nombre visible,
+  dirección base, clave cifrada y lista ordenada de modelos. Plantilla precargada de **NaN builders**. La clave
+  se comprueba con `GET {base}/models`, que no consume cuota.
+- **Adaptador de texto** genérico (`POST {base}/chat/completions`, `stream: false`) y **adaptador de voz**
+  (`POST {base}/audio/speech`, modelo `kokoro`), más **transcripción** (`POST {base}/audio/transcriptions`,
+  modelo `whisper`, `verbose_json` con marcas de tiempo).
+- **Pantalla del mapa** en «Tu cuenta»: reordenar, añadir y quitar opciones por tipo, con lo que recomienda la
+  instalación a la vista y el motivo concreto cuando una opción no se puede usar.
+- **Recomendaciones de la plataforma** en Admin › Modelos: qué se recomienda por tipo y en qué orden. Sin nada
+  escrito, se deduce del catálogo, así que una instalación migrada se comporta igual que antes.
+- **Cambio de crédito a euros por proveedor** en Admin › Ajustes. El valor que hubiera se conserva como el de
+  KIE. Los proveedores de cuota y lo que se hace en la propia máquina cuentan 0 €.
+- **Dos modelos de vídeo de KIE**, medidos con dinero real el 2026-09-28: `gemini-omni-video` (63 créditos por
+  4 s en 9:16 a 720p, dice el diálogo en español con exactitud) y `grok-imagine/text-to-video` (14,4 créditos
+  por 6 s a 480p, prompt solo en inglés y sin diálogo, para animación y anuncios). El modelo predeterminado no
+  cambia.
+
+### Cambiado
+
+- **La traducción de prompts y el asistente de guion** recorren el mapa de texto en lugar de usar el modelo
+  predeterminado del catálogo. Cada entrada reserva y cierra su propio gasto con la regla de lista blanca de
+  siempre; las de cuota apuntan **0 créditos** y guardan los **tokens** de `usage`.
+- **La voz** recorre el mapa en lugar de la pareja fija «ElevenLabs vía KIE → ElevenLabs directo». Al encolar se
+  guardan los topes autorizados de **cada** reserva, en su moneda, y el relevo solo va a donde el usuario vio el
+  coste y solo si cabe en él.
+- **Los subtítulos** recorren el mapa: el transcriptor local primero (gratis y sin que el audio salga de la
+  máquina) y, si falla, un servicio compatible.
+- **Las voces se ofrecen por familia**: los identificadores de ElevenLabs y los de `kokoro` no son los mismos,
+  así que una opción de otra familia no puede leer la voz fijada y no se usa como reserva.
+- **Los euros consumidos** se suman de los importes ya apuntados, no multiplicando créditos de proveedores
+  distintos por una sola cifra.
+- **Los mensajes de fallo de fotograma, clip y voz** pasan por el mismo compositor: proveedor, modelo, causa
+  concreta, qué pasó con el dinero y qué hacer.
+
+### Seguridad
+
+- La dirección base de un servicio compatible **la escribe el usuario**, así que es el único proveedor con
+  riesgo de SSRF: solo `https`, sin credenciales ni puertos no estándar, el host tiene que resolver **solo** a
+  IP públicas, la conexión se fija a la IP comprobada y **no se siguen redirecciones**. Se comprueba al guardar
+  y en cada llamada.
+- Del error de un servicio ajeno **no se conserva su texto**: solo un código propio y las precisiones que saque
+  una lista blanca (cuántas peticiones simultáneas admite, cuándo se repone la cuota). Ninguna clave aparece en
+  un mensaje, aunque el proveedor la repita en el suyo.
+
+### Migración
+
+- `0025_proveedores_compatibles`: servicios compatibles por usuario, `provider_name` y tokens en las ejecuciones
+  del asistente y en el registro de gasto.
+- `0026_mapa_de_modelos`: entradas del mapa por usuario y tipo, proveedor `local`, y el ajuste `eurosPorCredito`
+  pasa a `eurosPorCreditoKie` sin perder su valor.
+- `0027_servicios_de_cuota`: los servicios compatibles guardan la declaración de que cobran por cuota del plan.
+  Solo se admiten los declarados; uno dado de alta antes de esta migración queda sin usar hasta que se vuelva a
+  guardar marcando la casilla.
+
+### Seguridad del dinero
+
+- **Un servicio compatible solo se usa si declaras que cobra por cuota de tu plan.** La dirección la escribes
+  tú y podría ser de un servicio de pago por uso: sin esa declaración no se da por gratis ni se apunta a 0.
+- **Tras un fallo que no prueba si hubo cobro, ya no se vuelve a ninguna entrada de pago** del mapa, aunque entre
+  medias falle una gratuita: solo se prueban las gratuitas.
+- **El cambio automático de la voz solo va a la reserva cuyo coste ves en pantalla**, no a las siguientes.
+
 ## [0.21.0] · 2026-09-28
 
 ### Decisiones del propietario

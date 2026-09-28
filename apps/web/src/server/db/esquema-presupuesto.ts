@@ -64,6 +64,11 @@ export const usageLedger = pgTable(
      */
     reviewId: uuid("review_id"),
     provider: proveedorCredencial("provider").notNull(),
+    /**
+     * Nombre visible del servicio cuando `provider` es `compatible` (0.21.1): el enum solo dice que era un
+     * servicio compatible con la API de OpenAI, y quien mira su historial necesita saber cuál. Vacío en el resto.
+     */
+    providerName: text("provider_name").notNull().default(""),
     model: text("model").notNull(),
     entryType: tipoApunte("entry_type").notNull(),
     /** Créditos del apunte, con signo: una liberación es negativa. */

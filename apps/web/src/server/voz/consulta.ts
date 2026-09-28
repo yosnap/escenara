@@ -7,8 +7,10 @@ import {
   creditosDeVoz,
   type DisponibilidadVoz,
   type EscenaVozVista,
+  familiaDeModeloDeVoz,
   PARAMETROS_VOZ_POR_DEFECTO,
   VOCES_OFRECIDAS,
+  VOCES_POR_FAMILIA,
   type VozProyectoVista,
 } from "@/lib/voz";
 import { leerAjustes } from "../ajustes";
@@ -114,6 +116,7 @@ export async function disponibilidadDeVoz(usuarioId: string): Promise<Disponibil
     proveedor: "",
     nombreProveedor: "",
     reserva: null,
+    totalReservas: 0,
   };
   if (!vozTtsActivo) {
     return {
@@ -133,17 +136,22 @@ export async function disponibilidadDeVoz(usuarioId: string): Promise<Disponibil
     const { modelo, precio } = eleccion;
     return {
       ...base,
+      // Las voces que se ofrecen son **las de la familia del modelo elegido**: los identificadores de ElevenLabs
+      // y los de kokoro no son los mismos, y enseñar una voz que ese modelo no tiene sería ofrecer un error.
+      voces: VOCES_POR_FAMILIA[familiaDeModeloDeVoz(modelo.modelo)],
       proveedor: modelo.proveedor,
       nombreProveedor: modelo.nombreProveedor,
+      // La primera reserva del mapa es la que se narra en la pantalla; `totalReservas` dice cuántas hay.
       reserva:
-        opciones.reserva === null
+        opciones.reservas[0] === undefined
           ? null
           : {
-              proveedor: opciones.reserva.modelo.proveedor,
-              nombre: opciones.reserva.modelo.nombreProveedor,
-              modelo: opciones.reserva.modelo.modelo,
-              creditos: opciones.reserva.precio.creditos,
+              proveedor: opciones.reservas[0].eleccion.modelo.proveedor,
+              nombre: opciones.reservas[0].eleccion.modelo.nombreProveedor,
+              modelo: opciones.reservas[0].eleccion.modelo.modelo,
+              creditos: opciones.reservas[0].eleccion.precio.creditos,
             },
+      totalReservas: opciones.reservas.length,
       // Los mismos hechos del modelo que evalúa la puerta al encolar: si la pantalla los evaluara de otra forma,
       // diría «listo» donde el servidor va a pedir una confirmación.
       controles: evaluarParaMostrar({ tipo: "voz", parametros, modelo: hechosDeModelo("voz", eleccion) }),

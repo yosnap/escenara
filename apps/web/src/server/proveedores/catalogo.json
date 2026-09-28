@@ -18,6 +18,12 @@
       "nombre": "ElevenLabs",
       "docs": "https://elevenlabs.io/docs",
       "notas": "Proveedor de voz de reserva (0.21.0, ADR-0025), con credencial propia del usuario. SÍNCRONO: POST /v1/text-to-speech/{voice_id}/with-timestamps devuelve el audio y las marcas por carácter en la misma respuesta, así que no pasa por ninguna consulta de estado. La prueba de credencial usa GET /v1/voices, porque /v1/user/subscription devuelve missing_permissions con claves restringidas."
+    },
+    {
+      "slug": "compatible",
+      "nombre": "Servicio compatible con OpenAI",
+      "docs": "https://platform.openai.com/docs/api-reference",
+      "notas": "No es un proveedor concreto, es un género (0.21.1): cada usuario da de alta en «Tu cuenta» los servicios que hablan la API de OpenAI, con su nombre, su dirección base y su clave. SÍNCRONO en voz (POST {base}/audio/speech devuelve el audio) y en texto (POST {base}/chat/completions). Se paga por CUOTA DEL PLAN, no por petición: su precio registrado es 0 créditos y sus apuntes de gasto son de 0. La dirección la escribe el usuario, así que es el único proveedor con protección frente a SSRF en cada llamada."
     }
   ],
   "modelos": [
@@ -256,6 +262,98 @@
       },
       "evidencia": "Ejecutado de verdad el 2026-09-28 con el adaptador de la app y la clave del propietario: 200 en 2,5 s, audio MP3 en audio_base64, marcas por carácter en alignment y normalized_alignment, quality_check correcto y character-cost = 22 para 79 caracteres. GET /v1/voices lista las voces prediseñadas; GET /v1/user/subscription devuelve missing_permissions con claves restringidas, así que la prueba de credencial usa /v1/voices.",
       "notas": "Proveedor de voz de reserva (0.21.0, ADR-0025), con credencial propia del usuario. Es SÍNCRONO: devuelve el audio en la misma respuesta, así que no pasa por jobs/createTask ni por ninguna consulta de estado. El precio son créditos del plan de ElevenLabs por llamada y crece con la longitud del texto: 22 por 79 caracteres es lo medido con un diálogo de escena corriente, y por eso se registra por llamada, que es la unidad que se pide y se confirma. Un diálogo mucho más largo costará más de lo estimado; el cierre apunta SIEMPRE lo que informa character-cost, no la estimación."
+    },
+    {
+      "proveedor": "compatible",
+      "modelo": "kokoro",
+      "nombre": "Kokoro v1.0 (voz)",
+      "capacidades": ["tts"],
+      "estado": "descubierto",
+      "predeterminado": false,
+      "conVoz": true,
+      "unidad": "pista de voz de una escena",
+      "parametros": {
+        "duraciones": [],
+        "proporciones": [],
+        "resoluciones": [],
+        "formatosReferencia": [],
+        "maximoReferencias": 0
+      },
+      "precio": {
+        "creditos": 0,
+        "fuente": "No cobra por petición: los servicios compatibles con la API de OpenAI se pagan con la cuota del plan que tenga contratado el usuario. 0 créditos no es una estimación, es el precio: lo que consume es cuota, no créditos de Escenara.",
+        "comprobado": "2026-09-28"
+      },
+      "evidencia": "",
+      "notas": "TTS de 82M parámetros con 67 paquetes de voz, comprobado en https://nan.builders/docs/models el 2026-09-28: latencia por debajo de un segundo y límite de 15 peticiones por minuto. SUS VOCES TIENEN OTROS IDENTIFICADORES (ef_dora, em_alex, af_heart...), así que pertenece a otra «familia de voces» que ElevenLabs: una voz fijada con ElevenLabs no se puede leer aquí y el mapa de modelos lo dice en lugar de cambiar el timbre. No da marcas por carácter, así que los subtítulos salen del diálogo o de transcribir. Queda «descubierto» hasta que se ejecute de verdad y se registre su evidencia."
+    },
+    {
+      "proveedor": "kie",
+      "modelo": "gemini-omni-video",
+      "nombre": "Gemini Omni 1.1 Flash (vídeo)",
+      "capacidades": ["image_to_video", "text_to_video"],
+      "estado": "validado",
+      "predeterminado": false,
+      "conVoz": true,
+      "unidad": "clip de 4 s a 720p",
+      "parametros": {
+        "duraciones": [4],
+        "proporciones": ["9:16", "16:9"],
+        "resoluciones": ["720p"],
+        "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
+        "maximoReferencias": 7
+      },
+      "precio": {
+        "creditos": 63,
+        "fuente": "Medido con dinero real el 2026-09-28 con la clave del propietario: clip de 4 s en 9:16 a 720p, 63 créditos y 59 s de espera, salida de 720x1280 con audio. El catálogo se limita a 4 s y 720p a propósito: es lo único medido, y escalar el precio a otras duraciones o resoluciones sería inventarse una tarifa.",
+        "comprobado": "2026-09-28"
+      },
+      "evidencia": "Ejecutado de verdad el 2026-09-28 contra la API de KIE: 4 s, 9:16, 720p, 63 créditos, 59 s, 720x1280 con audio. Dijo el diálogo en español con exactitud.",
+      "notas": "DICE EL DIÁLOGO EN ESPAÑOL CON EXACTITUD (medido el 2026-09-28), así que sirve para escenas con personaje hablando: el diálogo va en el prompt y NO se traduce. Acepta hasta 7 referencias por image_urls, y la primera hace de fotograma inicial. Su API tiene además character_ids y audio_ids (identidades y voces guardadas en el proveedor) que esta versión NO expone: son una decisión de producto con consentimiento de por medio."
+    },
+    {
+      "proveedor": "kie",
+      "modelo": "grok-imagine/text-to-video",
+      "nombre": "Grok Imagine (texto a vídeo)",
+      "capacidades": ["text_to_video"],
+      "estado": "validado",
+      "predeterminado": false,
+      "conVoz": false,
+      "unidad": "clip de 6 s a 480p",
+      "parametros": {
+        "duraciones": [6],
+        "proporciones": ["9:16", "16:9"],
+        "resoluciones": ["480p"],
+        "formatosReferencia": [],
+        "maximoReferencias": 0
+      },
+      "precio": {
+        "creditos": 14.4,
+        "fuente": "Medido con dinero real el 2026-09-28 con la clave del propietario: clip de 6 s en 9:16 a 480p, 14,4 créditos y 38 s de espera, salida de 416x752 con audio. Solo se registra lo medido: otras duraciones y resoluciones existen en el proveedor pero no tienen precio comprobado.",
+        "comprobado": "2026-09-28"
+      },
+      "evidencia": "Ejecutado de verdad el 2026-09-28 contra la API de KIE: 6 s, 9:16, 480p, 14,4 créditos, 38 s, 416x752 con audio.",
+      "notas": "SU PROMPT VA SOLO EN INGLÉS, así que depende de la traducción del servidor. NO ESTÁ PENSADO PARA ESCENAS CON UN PERSONAJE REAL HABLANDO: es para animación, dibujo y anuncios sin diálogo, y no se recomienda para la producción de un proyecto con protagonista. El proveedor admite un modo «spicy» que esta instalación NO ofrece: mode va fijo en «normal»."
+    },
+    {
+      "proveedor": "kie",
+      "modelo": "grok-imagine/image-to-video",
+      "nombre": "Grok Imagine (imagen a vídeo)",
+      "capacidades": ["image_to_video"],
+      "estado": "descubierto",
+      "predeterminado": false,
+      "conVoz": false,
+      "unidad": "clip de 6 s a 480p",
+      "parametros": {
+        "duraciones": [6],
+        "proporciones": ["9:16", "16:9"],
+        "resoluciones": ["480p"],
+        "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
+        "maximoReferencias": 7
+      },
+      "precio": null,
+      "evidencia": "",
+      "notas": "La misma familia que grok-imagine/text-to-video, con hasta 7 referencias por image_urls. Queda «descubierto» y SIN PRECIO: lo medido el 2026-09-28 fue la variante de texto a vídeo, y el precio de esta no se ha comprobado. Sin precio no se estima y no se gasta. Mismas advertencias: prompt solo en inglés, sin diálogo y no recomendado para un personaje real hablando."
     }
   ]
 }

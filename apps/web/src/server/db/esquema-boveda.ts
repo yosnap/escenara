@@ -1,4 +1,4 @@
-import { pgEnum, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { boolean, integer, pgEnum, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { users } from "./esquema-auth";
 
 /**
@@ -12,7 +12,24 @@ import { users } from "./esquema-auth";
  * igual que KIE. El mismo enum lo usan los apuntes de gasto, los trabajos, los precios del catálogo y las
  * muestras de voz, así que un solo valor nuevo cubre los cinco.
  */
-export const proveedorCredencial = pgEnum("credential_provider", ["kie", "google", "elevenlabs"]);
+/**
+ * `compatible` se añade en la 0.21.1 y **no es un proveedor concreto**: es el género «servicio compatible con la
+ * API de OpenAI» que cada usuario da de alta con su nombre, su URL base y su lista de modelos
+ * (`openai_providers`). En los apuntes de gasto y en las ejecuciones del asistente, cuál de ellos era se guarda
+ * en `provider_name`, porque el enum no puede crecer con cada servicio que alguien añada.
+ */
+/**
+ * `local` (0.21.1) tampoco es un proveedor de la bóveda: es «esta máquina», y existe para que el mapa de modelos
+ * pueda tener una entrada que **no cuesta nada ni necesita clave** (hoy, la transcripción con el binario de la
+ * instalación). Nunca aparece en un apunte de gasto con créditos distintos de 0.
+ */
+export const proveedorCredencial = pgEnum("credential_provider", [
+  "kie",
+  "google",
+  "elevenlabs",
+  "compatible",
+  "local",
+]);
 export const estadoCredencial = pgEnum("credential_status", ["valida", "invalida"]);
 
 /**
@@ -44,6 +61,56 @@ export const providerCredentials = pgTable(
 );
 
 /**
+ * Servicios compatibles con la API de OpenAI que da de alta **cada usuario** (0.21.1). A diferencia de
+ * `provider_credentials`, aquí puede haber varios por persona: son proveedores de texto que se cobran por cuota o
+ * por plan, no por petición, y sirven de **reserva** cuando el modelo de texto del catálogo falla.
+ *
+ * La URL base la escribe el usuario, así que es la única entrada de la bóveda que puede apuntar a donde quiera:
+ * se valida contra la protección frente a SSRF antes de guardarla y antes de cada llamada (solo https, host que
+ * resuelve a IP públicas y conexión fijada a la IP comprobada).
+ */
+export const openaiProviders = pgTable(
+  "openai_providers",
+  {
+    /**
+     * Lo genera el servidor **antes** de insertar: es parte del contexto de cifrado del secreto
+     * (`compatible:<userId>:<id>`), que tiene que ser estable desde la primera escritura.
+     */
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Nombre visible que le pone el usuario («NaN builders»). Único por usuario. */
+    name: text("name").notNull(),
+    /** URL base del servicio, sin barra final («https://api.nan.builders/v1»). */
+    baseUrl: text("base_url").notNull(),
+    /** Valor cifrado (`v1.<idClave>.<iv>.<tag>.<datos>`) con contexto `compatible:<userId>:<id>`. */
+    secret: text("secret").notNull(),
+    hint: text("hint").notNull(),
+    /** Modelos de texto **en el orden en que se prueban**. El primero es el preferido. */
+    models: text("models").array().notNull().default([]),
+    /**
+     * `true` si el usuario ha declarado que este servicio **cobra por cuota de su plan y no por petición**. Es lo
+     * único que permite tratar sus llamadas como sin coste por petición (apuntar 0 créditos y seguir hacia él
+     * aunque no se sepa si la entrada anterior cobró): la URL la escribe el usuario y podría apuntar a un servicio
+     * de pago por uso, así que no se deduce del tipo de proveedor. Hoy solo se admiten servicios de cuota.
+     */
+    quotaBilling: boolean("quota_billing").notNull().default(false),
+    status: estadoCredencial("status").notNull().default("valida"),
+    /** Código propio del último resultado; nunca texto del proveedor. */
+    lastTestCode: text("last_test_code"),
+    /** Dato público de la última prueba (cuántos modelos ofrece); nunca texto libre del proveedor. */
+    lastTestDetail: text("last_test_detail"),
+    /** Orden en que se recorren los proveedores de un usuario cuando hay más de uno. */
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    testedAt: timestamp("tested_at", { withTimezone: true }),
+    rotatedAt: timestamp("rotated_at", { withTimezone: true }),
+  },
+  (t) => [unique("openai_providers_usuario_nombre_uq").on(t.userId, t.name)],
+);
+
+/**
  * Secretos de la instalación que se configuran en Admin › Ajustes (contraseña SMTP y secretos OAuth).
  * Tabla aparte de `settings` para que ningún secreto pueda acabar en una columna en claro.
  */
@@ -57,4 +124,5 @@ export const installationSecrets = pgTable("installation_secrets", {
 });
 
 export type FilaCredencial = typeof providerCredentials.$inferSelect;
+export type FilaCompatible = typeof openaiProviders.$inferSelect;
 export type FilaSecreto = typeof installationSecrets.$inferSelect;

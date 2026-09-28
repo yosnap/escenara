@@ -1,6 +1,6 @@
 import { and, eq, lt, sql } from "drizzle-orm";
 import type { Proveedor } from "@/lib/boveda";
-import { leerAjustes } from "../ajustes";
+import { eurosPorCreditoDe, leerAjustes } from "../ajustes";
 import { ErrorProyecto } from "../asistente/errores";
 import { db, type Ejecutor } from "../db/cliente";
 import { type FilaApunte, type FilaRevision, reviewResults, usageLedger } from "../db/esquema";
@@ -70,7 +70,7 @@ export async function crearRevisionReservada(
         model: reserva.modelo,
         entryType: "reserva",
         credits: reserva.creditos,
-        amountEur: reserva.creditos * ajustes.eurosPorCredito,
+        amountEur: reserva.creditos * eurosPorCreditoDe(ajustes, reserva.proveedor),
         informed: false,
         priceVersion: versionDeSello(reserva.sello),
         priceStamp: reserva.sello,
@@ -120,6 +120,8 @@ export async function cerrarGastoDeRevision(
       priceVersion: reserva.priceVersion,
       priceStamp: reserva.priceStamp,
     };
+    // Con el cambio del proveedor que cobra, nunca con el de otro.
+    const euros = eurosPorCreditoDe(ajustes, comun.provider);
     /**
      * Los créditos que se devuelven son **los que quedan apuntados**, nunca los que traía esta llamada.
      *
@@ -140,7 +142,7 @@ export async function cerrarGastoDeRevision(
           ...comun,
           entryType: "consumo",
           credits: propuestos,
-          amountEur: propuestos * ajustes.eurosPorCredito,
+          amountEur: propuestos * euros,
           informed: creditosInformados !== null,
           note: motivo,
         })
@@ -166,7 +168,7 @@ export async function cerrarGastoDeRevision(
           ...comun,
           entryType: "liberacion",
           credits: -reserva.credits,
-          amountEur: -reserva.credits * ajustes.eurosPorCredito,
+          amountEur: -reserva.credits * euros,
           informed: false,
           note: "Liberación de la reserva al cerrar la revisión multimodal.",
         })

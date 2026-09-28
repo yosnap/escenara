@@ -20,6 +20,9 @@ export type { ContextoEntrada };
  *   **sin `aspect_ratio`** (toma el de la imagen).
  * - `kling/v3-turbo-image-to-video`: `image_urls`, `duration` y `resolution` como texto, sin
  *   `aspect_ratio`; solo acepta JPEG o PNG (la conversión la hace la generación antes de subir).
+ * - `gemini-omni-video`: `image_urls` (hasta 7), `duration` y `resolution` como texto, `aspect_ratio`.
+ * - `grok-imagine/text-to-video` y `grok-imagine/image-to-video`: `mode`, `duration` y `resolution` como texto,
+ *   `aspect_ratio`, y `image_urls` solo la segunda. **Prompt solo en inglés y sin diálogo.**
  *
  * Un modelo del catálogo sin constructor aquí no se puede enviar: mejor no generar que enviar a ciegas.
  */
@@ -106,6 +109,51 @@ const CONSTRUCTORES = new Map<string, Constructor>(
         timestamps: true,
       };
     },
+
+    /**
+     * Gemini Omni 1.1 Flash (0.21.1). Medido con dinero real el 2026-09-28: 4 s en 9:16 a 720p costaron **63
+     * créditos** y tardaron 59 s, y **dijo el diálogo en español con exactitud**, que es justo lo que hace falta
+     * para una escena con personaje hablando.
+     *
+     * La duración y la resolución van **como texto**, y acepta hasta siete referencias por `image_urls` (la
+     * primera hace de fotograma inicial). `character_ids` y `audio_ids` existen en su API pero **no se exponen**:
+     * son identidades y voces guardadas en el proveedor, y eso es una decisión de producto con consentimiento de
+     * por medio, no un campo más.
+     */
+    "gemini-omni-video": (contexto, modelo) =>
+      conProporcion(modelo, {
+        prompt: promptAnimacion(contexto.escena, contexto.dialogo),
+        image_urls: contexto.urls,
+        duration: String(duracion(modelo, contexto)),
+        resolution: primeraResolucion(modelo),
+      }),
+
+    /**
+     * Grok Imagine (0.21.1), en sus dos variantes. Medido con dinero real el 2026-09-28: 6 s en 9:16 a 480p
+     * costaron **14,4 créditos** y tardaron 38 s, con audio.
+     *
+     * **Su prompt va solo en inglés**, así que depende de la traducción del servidor, y no lleva diálogo: está
+     * pensado para animación, dibujo y anuncios **sin personaje hablando**. Su ficha del catálogo lo dice.
+     *
+     * `mode` se fija en `normal` a propósito: el proveedor admite además un modo «spicy» que esta instalación no
+     * ofrece.
+     */
+    "grok-imagine/text-to-video": (contexto, modelo) =>
+      conProporcion(modelo, {
+        prompt: promptAnimacion(contexto.escena, ""),
+        mode: "normal",
+        duration: String(duracion(modelo, contexto)),
+        resolution: primeraResolucion(modelo),
+      }),
+
+    "grok-imagine/image-to-video": (contexto, modelo) =>
+      conProporcion(modelo, {
+        prompt: promptAnimacion(contexto.escena, ""),
+        image_urls: contexto.urls,
+        mode: "normal",
+        duration: String(duracion(modelo, contexto)),
+        resolution: primeraResolucion(modelo),
+      }),
 
     "kling/v3-turbo-image-to-video": (contexto, modelo) =>
       conProporcion(modelo, {

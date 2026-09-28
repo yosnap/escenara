@@ -31,6 +31,7 @@ Cada decisión relevante se documenta en un fichero `adr-NNNN-slug.md` dentro de
 | [0023](adr-0023-motor-de-reglas-de-controles-previos.md) | Motor de reglas de controles previos, y su precedencia sobre los modelos de decisión | 0.18.0 | Propuesto (decisiones provisionales pendientes del propietario) |
 | [0024](adr-0024-cancelacion-y-reintentos-de-produccion.md) | Cancelación y reintentos en la producción de escenas: nada se reenvía y nada se cancela en el proveedor | 0.19.0 | Propuesto (decisiones provisionales pendientes del propietario) |
 | [0025](adr-0025-voz-del-proyecto-y-transcripcion-local.md) | La voz se elige por proyecto, con ElevenLabs de reserva y cambio automático, y la transcripción es local | 0.21.0 | Propuesto (modo de voz y cambio de proveedor firmes; transcriptor y música provisionales) |
+| [0026](adr-0026-mapa-de-modelos-por-tipo.md) | Cada usuario tiene una lista ordenada de con qué se genera cada tipo, con reserva automática solo si se prueba que no hubo cobro y cada coste en la moneda de su proveedor | 0.21.1 | Aceptada |
 
 ## Plantilla
 
