@@ -199,3 +199,12 @@ El contrato real está en `apps/web/src/server/proveedores/contrato.ts` (ADR-001
 4. **Escribir su adaptador** implementando `Adaptador`: `subirReferencia`, `generarImagen`, `generarVideo`, `consultar`, `estimar`, `probarCredencial` y `montarEntrada` (los campos exactos de cada modelo), con sus fallos traducidos a los motivos normalizados (`credencial`, `saldo`, `contenido`, `limite`, `temporal`, `respuesta`). `temporal` es el que significa «no se sabe si la petición llegó»: tras uno de esos **nunca** se reenvía nada.
 5. **Declararlo** en `apps/web/src/server/proveedores/registro.ts`. Si además va a cobrar trabajos, añadirlo a `PROVEEDORES` en `apps/web/src/lib/boveda.ts` para que pueda tener credencial del usuario.
 6. **Escribir su prueba de contrato** con respuestas grabadas del servicio real (ver `apps/web/src/server/proveedores/kie/grabaciones.ts`), incluidos todos los errores normalizados. La suite no llama a ningún proveedor: cada llamada de verdad cuesta dinero de alguien.
+
+## Persona con producto: prueba real del 2026-09-28
+
+Medido con dinero real (14,5 créditos en total), con un retrato del personaje y dos fotos de producto como referencias:
+
+- **nano-banana-2-lite, persona + producto** (4 créditos): la cara se mantiene y la etiqueta del envase sale **legible y sin inventar texto**. Es el camino recomendado para fotogramas con producto.
+- **seedream/4.5-edit, etiqueta en primer plano** (6,5 créditos): conserva la etiqueta, pero leyó «shot on a modern phone» al pie de la letra y **metió un móvil en la mano** del personaje. Desde la 0.26.0 las frases de registro piden «el aspecto de una foto de móvil» y dicen expresamente que el móvil que graba no sale en el plano.
+- **Logo de marca real** (nano-banana-2-lite, 4 créditos): el proveedor **no lo rechaza**: reproduce el logo tal cual y cobra lo normal. El filtro del proveedor no protege frente al uso de marcas ajenas; lo cubre la declaración de derechos de marca que exige Escenara.
+- **Omni con `character_ids` + `image_urls`**: sin medir (el personaje de prueba no estaba registrado en Omni). Mientras tanto, una escena hablada con producto renuncia a la identidad registrada y lo avisa antes de cobrar.

@@ -285,7 +285,7 @@
       "descripcion": "El personaje habla mirando a cámara.",
       "orden": 10,
       "valores": {
-        "prompt": "A phone-shot social video of a person talking straight to camera",
+        "prompt": "A social video with the look of footage filmed on a smartphone, of a person talking straight to camera; the phone that films is never visible in the frame",
         "formatoClip": "ugc_a_camara"
       }
     },
@@ -970,7 +970,7 @@
       "descripcion": "Luz del sitio y cámara en mano, como un vídeo grabado sin pensarlo.",
       "orden": 10,
       "valores": {
-        "prompt": "shot handheld on a phone, slightly off-centre, with the small imperfections of an unplanned take",
+        "prompt": "with the look of a handheld smartphone shot, slightly off-centre, with the small imperfections of an unplanned take; the phone that takes it is never visible in the frame",
         "registro": "ugc_real"
       }
     },
@@ -981,7 +981,7 @@
       "descripcion": "Luz trabajada y encuadre limpio. La persona sigue siendo ella.",
       "orden": 20,
       "valores": {
-        "prompt": "shot on a modern phone with a clean, deliberate composition and a shallow depth of field",
+        "prompt": "with the look of a modern smartphone camera, a clean, deliberate composition and a shallow depth of field; the phone that takes it is never visible in the frame",
         "registro": "influencer"
       }
     },
