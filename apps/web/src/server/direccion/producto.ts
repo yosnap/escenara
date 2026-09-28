@@ -49,6 +49,13 @@ export interface ProductoEnPrompt {
  * retoque de una persona real: un fragmento de preset redactado por quien administra no puede quedar por
  * delante de ella y contradecirla.
  */
+/**
+ * Excepción a la regla general de «nada escrito»: va **detrás** de ella siempre que hay un producto, para que la
+ * prohibición de texto no borre la etiqueta. Sin producto no se añade y la prohibición queda entera.
+ */
+export const EXCEPCION_TEXTO_PRODUCTO =
+  "Exception to the no-text rule: the product's own label, logo and printed words stay exactly as they are in the product reference images.";
+
 export const REGLA_ETIQUETA_PRODUCTO =
   "The product itself must not be redesigned: keep its label, its packaging, its shape, its colours and every printed word exactly as they are in the product reference images. Do not translate, rewrite, restyle, blur or invent any text, logo or symbol on the product, and do not add any new marking to it.";
 

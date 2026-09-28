@@ -347,7 +347,7 @@ describe("método 6C del fotograma", () => {
     const prompt = componerSeisC(SEIS);
     expect(prompt.lastIndexOf("Realism:")).toBeGreaterThan(prompt.lastIndexOf("Light:"));
     expect(prompt).toContain(ANCLAJES_REALISMO);
-    expect(prompt).toContain("watermarks or new logos");
+    expect(prompt).toContain("no watermarks");
     expect(prompt).toContain("no distorted or duplicated body parts");
   });
 
@@ -364,7 +364,7 @@ describe("método 6C del fotograma", () => {
       accion: "",
     });
     expect(vacio).toContain("Realism:");
-    expect(vacio).toContain("watermarks or new logos");
+    expect(vacio).toContain("no watermarks");
   });
 
   test("con un personaje real no aparece ningún adjetivo de atractivo, ni pidiéndolo", () => {
@@ -585,7 +585,7 @@ describe("hoja de identidad 3×3", () => {
   test("cierra con los anclajes, así que la hoja no lleva rótulos escritos", () => {
     const prompt = promptHojaIdentidad("");
     expect(prompt.trimEnd().endsWith(ANCLAJES_REALISMO)).toBe(true);
-    expect(prompt).toContain("No added text");
+    expect(prompt).toContain("no written words");
   });
 
   test("sin fotos suficientes se dice cuántas faltan en vez de generar algo peor", () => {

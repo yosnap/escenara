@@ -309,6 +309,13 @@ export async function producirEscenaHablada(
   const producto = await productoParaGenerar(actor.id, escena.productId, escena.productAction);
   // Lo que de verdad se va a enviar: con producto no se cita la identidad registrada aunque el motor la tenga.
   const citaIdentidad = conIdentidad && producto === null;
+  /**
+   * Sin la identidad registrada, la voz tiene que ir como muestra de audio, igual que en el motor de referencias.
+   * El registro no la carga, así que se lee aquí: sin ella el clip saldría con una voz inventada y se cobraría.
+   */
+  const sinRegistro = conIdentidad && !citaIdentidad ? await referenciasParaProducir(actor, proyecto) : null;
+  const muestraEnviada = sinRegistro ? (sinRegistro.muestra ?? null) : muestra;
+  const faltaEnviada = sinRegistro?.falta || falta;
   const conProducto = producto
     ? hechosDelProducto(
         producto,
@@ -348,8 +355,8 @@ export async function producirEscenaHablada(
    * A partir de aquí ya no queda ninguna regla: el motor las ha aplicado todas, y la de `omni-sin-registro` es la
    * que garantiza que estos tres existen. La comprobación es el otro lado de esa puerta, no una segunda regla.
    */
-  if (!personaje || !version || (conIdentidad && (!registro || !voz)) || (!conIdentidad && !muestra)) {
-    throw new ErrorOmni(409, `Este proyecto no puede producir escenas habladas todavía: ${falta}`);
+  if (!personaje || !version || (citaIdentidad && (!registro || !voz)) || (!citaIdentidad && !muestraEnviada)) {
+    throw new ErrorOmni(409, `Este proyecto no puede producir escenas habladas todavía: ${faltaEnviada}`);
   }
   const proveedor = proveedorDeCredencial(modelo);
   // Lo que dice el personaje sale **en español y sin traducir**: es lo que se va a oír. La descripción de lo que
@@ -455,7 +462,7 @@ export async function producirEscenaHablada(
        * referencias, son las fotos del personaje, y la muestra de la voz va aparte porque es audio y no imagen.
        */
       referencias: referencias.map((r) => r.id),
-      ...(muestra ? { audioDeReferencia: muestra.id } : {}),
+      ...(muestraEnviada ? { audioDeReferencia: muestraEnviada.id } : {}),
       parametros: { ...parametros, segundos },
       dialogo,
       escena: prompt,
@@ -474,7 +481,7 @@ export async function producirEscenaHablada(
        * motor de referencias la identidad es **el personaje y su muestra de voz**, no un identificador remoto.
        */
       firmaVoz: firmaDeVoz("omni", null, escena.scriptText, {
-        audioId: citaIdentidad && voz ? voz.audioId : (muestra?.id ?? ""),
+        audioId: citaIdentidad && voz ? voz.audioId : (muestraEnviada?.id ?? ""),
         personajeOmniId: citaIdentidad && registro ? registro.remoteCharacterId : personaje.id,
       }),
     },

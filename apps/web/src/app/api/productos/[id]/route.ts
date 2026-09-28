@@ -53,7 +53,7 @@ export const PATCH = manejador(async (peticion: Request, contexto: ContextoId, a
   }
 });
 
-/** Borra el producto y sus derivados (medios generados con él), en el almacenamiento incluido. */
+/** Borra la ficha del producto y sus referencias propias. Lo generado con él se queda en la biblioteca. */
 export const DELETE = manejador(async (_: Request, contexto: ContextoId, actor) =>
   Response.json(await borrarProducto(actor, await leerId(contexto))),
 );

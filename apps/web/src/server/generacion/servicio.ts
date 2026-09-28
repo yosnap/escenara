@@ -634,7 +634,12 @@ export async function crearFotograma(
          * nadie en el plano no hay cara que sostener, y reservarle un hueco dejaría fuera una foto del
          * producto por nada.
          */
-        personaje ? (await referenciasVigentesDe(personaje.id)).length : sinReferencia ? 0 : 1,
+        // Las del personaje solo viajan cuando se genera **con** él; heredado de una imagen suelta, viaja esa sola.
+        personaje && peticion.personajeId && !peticion.retratoInventado
+          ? (await referenciasVigentesDe(personaje.id)).length
+          : sinReferencia
+            ? 0
+            : 1,
         // En el fotograma no hay identidad registrada que perder: eso solo pasa en la escena hablada.
         false,
       )

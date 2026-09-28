@@ -11,6 +11,7 @@ import {
 } from "./ingles";
 import {
   bloqueProducto,
+  EXCEPCION_TEXTO_PRODUCTO,
   esInsercionDeCaptura,
   INSERCION_DE_CAPTURA,
   type ProductoEnPrompt,
@@ -161,6 +162,8 @@ export function componerSeisC(seis: SeisC, cambiarSolo?: CambiarSolo): string {
         // Con una persona real, la regla de no retoque se repite **después** del catálogo: ningún fragmento
         // redactado por alguien puede quedar por delante de ella.
         base.personajeReal && !soloProducto ? SIN_RETOQUE_FINAL : "",
+        // Detrás de «nada escrito», para que no borre la etiqueta del producto.
+        producto ? EXCEPCION_TEXTO_PRODUCTO : "",
       ]),
     ),
   );

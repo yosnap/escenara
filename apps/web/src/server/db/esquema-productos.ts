@@ -13,8 +13,8 @@ import { users } from "./esquema-auth";
  * - una foto de la biblioteca puede ser referencia de **varios** productos: `product_references` es una
  *   relación, no una copia, igual que `character_references`. Borrar un producto **no borra las fotos del
  *   usuario**, que puede estar usándolas en otro sitio;
- * - lo que sí desaparece con el producto son sus **derivados**: los medios generados con él, que se localizan
- *   por `generation_jobs.product_id`;
+ * - lo generado con él **tampoco se borra** (decisión del propietario, 2026-09-28): los medios siguen en la
+ *   biblioteca y sus trabajos solo pierden `generation_jobs.product_id`;
  * - cada referencia declara **qué papel hace** (`kind`). No es decorativo: la frontal con la etiqueta es la que
  *   se compara con el resultado y el detalle del mecanismo es el que hace falta para abrir la tapa. Sin el
  *   papel habría que adivinar cuál es cuál.
