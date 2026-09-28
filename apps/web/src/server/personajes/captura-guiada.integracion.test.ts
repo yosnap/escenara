@@ -470,7 +470,7 @@ describe.skipIf(!hayBaseDeDatos)("captura guiada de referencias", () => {
     expect(otraVez.status).toBe(409);
     expect((await otraVez.json()).error).toContain("vista generada");
 
-    // Y una vista que **sí** tiene foto original se rechaza con su propio motivo, no con el de la generada.
+    // Y una vista que **sí** tiene foto original ya se puede generar (desde 2026-09-28): no se rechaza.
     const conFoto = await rutaVistaSintetica.POST(
       pedir(ana, `/api/personajes/${personaje.id}/vista-sintetica`, "POST", {
         vista: "frontal",
@@ -481,8 +481,7 @@ describe.skipIf(!hayBaseDeDatos)("captura guiada de referencias", () => {
       }),
       ctx(personaje.id),
     );
-    expect(conFoto.status).toBe(409);
-    expect((await conFoto.json()).error).toContain("Ya tienes una foto");
+    expect(conFoto.status).toBe(201);
 
     // Reañadir la vista generada desde la biblioteca **no la convierte en foto original**: se quita del
     // personaje y se vuelve a añadir como una foto más, y entra otra vez marcada como generada.

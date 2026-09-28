@@ -2,6 +2,15 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.20.3] · 2026-09-28
+
+### Cambiado
+
+- **Se puede generar una vista aunque ya tenga fotos** (decisión del propietario). Una foto de perfil de cuerpo
+  entero no siempre sirve como perfil de cara, y con buenas fotos se puede sacar una mejor. Se sigue avisando de
+  que lo que sale es una vista generada y no una foto, se confirma el coste como siempre y hay una sola vista
+  generada por vista: para otra, se quita la anterior.
+
 ## [0.20.2] · 2026-09-28
 
 ### Añadido

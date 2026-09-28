@@ -292,7 +292,7 @@ function TarjetaVista({
         <Boton tamano="sm" icono={<Camera className="size-4" />} onClick={onCapturar} disabled={ocupado}>
           {cubierta ? "Otra foto" : "Hacer la foto"}
         </Boton>
-        {!cubierta && vista.generadas === 0 && conClave && (
+        {vista.generadas === 0 && conClave && (
           <Boton
             tamano="sm"
             variante="secundario"
@@ -301,7 +301,7 @@ function TarjetaVista({
             disabled={ocupado && !generando}
             onClick={onGenerar}
           >
-            Generarla
+            {cubierta ? "Generar una" : "Generarla"}
           </Boton>
         )}
       </div>
