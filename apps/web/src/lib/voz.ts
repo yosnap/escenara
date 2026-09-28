@@ -1,6 +1,7 @@
 import type { Proveedor } from "./boveda";
 import type { EvaluacionVista } from "./controles";
 import type { Medio } from "./media/tipos";
+import type { VozOmniDelProyecto, VozOmniOfrecida } from "./omni";
 
 /**
  * Voz, subtítulos y música de un proyecto (RF08, 0.21.0). Lo que comparten el servidor y el navegador: aquí no
@@ -634,6 +635,29 @@ export interface VozProyectoVista {
   costeRegenerar: number | null;
   /** Por qué no se puede estimar, en llano. Vacío si sí se puede. */
   motivoSinCoste: string;
+  /**
+   * Modo `omni` (0.22.0): la voz registrada del proyecto y lo que falta para poder producir con ella. `null`
+   * fuera de ese modo, que es donde no hay nada que registrar.
+   */
+  omni: EstadoOmniVista | null;
+}
+
+/** Lo que la pantalla necesita saber del modo Omni: qué hay registrado, qué falta y qué cuesta una escena. */
+export interface EstadoOmniVista {
+  /** Voz registrada del proyecto; `null` mientras no se haya registrado ninguna. */
+  voz: VozOmniDelProyecto | null;
+  /** Las treinta voces que ofrece el proveedor, con su género y su tono. */
+  voces: readonly VozOmniOfrecida[];
+  /** `true` cuando la voz y el personaje están registrados y se puede producir. */
+  listo: boolean;
+  /** Qué falta, en llano. Vacío cuando no falta nada. */
+  falta: string;
+  /** Créditos de **una escena** con la duración del proyecto; `null` si no hay modelo Omni con precio. */
+  creditosPorEscena: number | null;
+  /** `true` cuando ese precio es proporcional y no medido (solo los 4 s están medidos). */
+  precioEstimado: boolean;
+  /** Nombre del personaje registrado, para poder decir quién habla. Vacío si no hay ninguno. */
+  personaje: string;
 }
 
 /** Qué puede hacer esta instalación con la voz. Si algo falta, se dice **por qué**, no se oculta el botón. */
@@ -680,6 +704,8 @@ export interface DisponibilidadVoz {
 export const ACCIONES_VOZ = [
   "fijar-modo",
   "fijar-voz",
+  /** Registra en el proveedor la voz Omni del proyecto (0.22.0). No cuesta créditos. */
+  "registrar-voz-omni",
   "generar-voz",
   "transcribir",
   "guardar-subtitulos",

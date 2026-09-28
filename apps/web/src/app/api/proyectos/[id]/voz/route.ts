@@ -24,6 +24,7 @@ import {
   leerVolumen,
 } from "@/server/voz/entrada";
 import { anadirMusica, cambiarVolumenDeMusica, quitarMusica } from "@/server/voz/musica";
+import { registrarVozOmni, validarEleccionVozOmni } from "@/server/voz/omni";
 import { fijarModoVoz, fijarVoz } from "@/server/voz/proyecto";
 import { guardarSubtitulos, proponerSubtitulos, transcribirEscena } from "@/server/voz/subtitulos";
 import { generarVozDeEscena } from "@/server/voz/tts";
@@ -86,6 +87,13 @@ export const POST = manejador(async (peticion: Request, contexto: ContextoId, ac
       );
       break;
     }
+    case "registrar-voz-omni":
+      /**
+       * Registrar la voz Omni **no cuesta créditos** (medido el 2026-09-28), así que no lleva confirmación de
+       * coste; lo que sí lleva es la confirmación de lo que invalida, igual que cambiar la voz del modo `pista`.
+       */
+      await registrarVozOmni(actor, proyectoId, validarEleccionVozOmni(cuerpo), leerConfirmadoInvalidar(cuerpo));
+      break;
     case "anadir-musica":
       await anadirMusica(actor, proyectoId, leerMusica(cuerpo));
       break;

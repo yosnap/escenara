@@ -1,12 +1,15 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { ESTADOS_ACTIVOS, ETIQUETA_ESTADO } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
+import { precioOmniEstimado, VOCES_OMNI } from "@/lib/omni";
 import { resumenDeEscena } from "@/lib/proyectos";
 import {
   avisosDeSubtitulos,
   creditosDeVoz,
   type DisponibilidadVoz,
   type EscenaVozVista,
+  type EstadoOmniVista,
+  type FirmaOmni,
   familiaDeModeloDeVoz,
   PARAMETROS_VOZ_POR_DEFECTO,
   VOCES_OFRECIDAS,
@@ -20,9 +23,13 @@ import { evaluarParaMostrar } from "../controles/puerta";
 import { db } from "../db/cliente";
 import { type FilaEscena, type FilaMedio, type FilaProyecto, generationJobs, media } from "../db/esquema";
 import { type Actor, aDto } from "../media/servicio";
+import { creditosDeEscenaHablada, registroParaProducir, segundosDeEscenaOmni } from "../omni/escena";
+import { eleccionOmni } from "../omni/registro";
+import { creditosDelEnvio } from "../prompts/traduccion";
 import { ErrorCatalogo } from "../proveedores/contrato";
 import { muestrasDe } from "./muestra";
 import { musicaDe } from "./musica";
+import { firmaOmniDelProyecto, vozOmniDelProyecto } from "./omni";
 import { clipsConDialogoHablado, escenaInvalidada, vozDelProyecto } from "./proyecto";
 import { transcriptorDisponible } from "./transcripcion";
 import { eleccionDeVoz } from "./tts";
@@ -179,6 +186,7 @@ function vistaDeEscena(
   trabajos: TrabajosDeVoz,
   clipsHablados: ReadonlySet<string>,
   disponibilidad: DisponibilidadVoz,
+  firmaOmni: FirmaOmni | null,
 ): EscenaVozVista {
   return {
     id: escena.id,
@@ -188,7 +196,7 @@ function vistaDeEscena(
     dialogo: escena.scriptText,
     clip: escena.clipMediaId === null ? null : (medios.get(escena.clipMediaId) ?? null),
     audio: escena.voiceMediaId === null ? null : (medios.get(escena.voiceMediaId) ?? null),
-    invalidada: escenaInvalidada(proyecto, escena),
+    invalidada: escenaInvalidada(proyecto, escena, firmaOmni),
     clipHablado: clipsHablados.has(escena.id),
     invalidacion: escena.voiceInvalidationReason,
     subtitulos: escena.subtitles,
@@ -224,8 +232,13 @@ export async function estadoDeVoz(actor: Actor, proyectoId: unknown): Promise<Vo
     proyecto.voiceMode === "pista" ? clipsConDialogoHablado(db(), proyecto.id) : Promise.resolve<string[]>([]),
   ]);
   const clipsHablados = new Set(hablados);
+  /**
+   * En modo `omni` lo que hace válida una escena es **qué identidad y qué voz están registradas ahora**: se lee
+   * una vez para todo el proyecto y se le pasa a cada escena. Fuera de ese modo no hay nada que leer.
+   */
+  const firmaOmni = proyecto.voiceMode === "omni" ? await firmaOmniDelProyecto(proyecto) : null;
   const vistas = escenas.map((escena) =>
-    vistaDeEscena(proyecto, escena, medios, trabajos, clipsHablados, disponibilidad),
+    vistaDeEscena(proyecto, escena, medios, trabajos, clipsHablados, disponibilidad, firmaOmni),
   );
   /**
    * Muestras ya pagadas de la voz que usaría este proyecto. Se leen con los parámetros **del proyecto**: la misma
@@ -263,5 +276,35 @@ export async function estadoDeVoz(actor: Actor, proyectoId: unknown): Promise<Vo
     porRegenerar,
     costeRegenerar: soloTranscripcion ? 0 : creditos === null ? null : costeDeLoInvalidado,
     motivoSinCoste: soloTranscripcion || creditos !== null ? "" : disponibilidad.motivoTts,
+    omni: proyecto.voiceMode === "omni" ? await estadoOmni(actor, proyecto) : null,
+  };
+}
+
+/**
+ * Estado del modo Omni: la voz registrada, qué falta para producir y lo que cuesta una escena. Todo sale de los
+ * mismos sitios que usa la puerta al producir, así que la pantalla no puede prometer algo que el servidor
+ * rechace.
+ */
+async function estadoOmni(actor: Actor, proyecto: FilaProyecto): Promise<EstadoOmniVista> {
+  const { falta, personaje } = await registroParaProducir(actor, proyecto);
+  let creditosPorEscena: number | null = null;
+  let precioEstimado = false;
+  try {
+    const { creditos } = await creditosDeEscenaHablada(proyecto);
+    const { modelo } = await eleccionOmni();
+    creditosPorEscena = await creditosDelEnvio(creditos);
+    precioEstimado = precioOmniEstimado(segundosDeEscenaOmni(modelo.parametros.duraciones, proyecto));
+  } catch {
+    // Sin modelo Omni con precio registrado no se inventa ninguna cifra: la pantalla dirá que no se puede.
+    creditosPorEscena = null;
+  }
+  return {
+    voz: vozOmniDelProyecto(proyecto),
+    voces: VOCES_OMNI,
+    listo: falta === "",
+    falta,
+    creditosPorEscena,
+    precioEstimado,
+    personaje: personaje?.name ?? "",
   };
 }
