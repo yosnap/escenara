@@ -26,6 +26,7 @@ export const comprobacionCoherencia = pgEnum("coherence_check", [
   "emocion",
   "direccion_fiel",
   "producto_fiel",
+  "angulo_fiel",
 ]);
 
 /** Cómo se aplicó: en `sombra` el veredicto se guarda y no cambia nada; en `activa` decide. */
@@ -36,8 +37,14 @@ export const veredictoCoherencia = pgEnum("coherence_verdict", ["pasa", "revisar
 /** Lo que dijo una persona del veredicto. Es la etiqueta de referencia con la que se mide el acierto. */
 export const correccionCoherencia = pgEnum("coherence_correction", ["acierta", "se_equivoca"]);
 
-/** Qué se miró. Sirve para buscar las decisiones de una escena o de una foto sin adivinar por el tipo. */
-export const sujetoCoherencia = pgEnum("coherence_subject", ["referencia", "escena", "trabajo"]);
+/**
+ * Qué se miró. Sirve para buscar las decisiones de una escena o de una foto sin adivinar por el tipo.
+ *
+ * `proyecto` (0.27.0) es el sujeto de `angulo_fiel`: un proyecto es **un anuncio** con **un** ángulo, así que lo
+ * que se juzga es su guion entero y no una escena suelta. Una escena aislada no puede decir si el anuncio mezcla
+ * dos ángulos, que es justo lo que hay que detectar.
+ */
+export const sujetoCoherencia = pgEnum("coherence_subject", ["referencia", "escena", "trabajo", "proyecto"]);
 
 export const coherenceDecisions = pgTable(
   "coherence_decisions",

@@ -77,6 +77,40 @@ export const JEV_EMOCION_OPUESTA = {
   usage: { input_tokens: 331, output_tokens: 12 },
 };
 
+/**
+ * `choice` del ángulo del anuncio (0.27.0): el guion responde **al ángulo elegido** y la oferta aparece como se
+ * definió.
+ */
+export const JEV_ANGULO_FIEL = {
+  model: "jev-1.13.0",
+  answers: {
+    coherencia: {
+      type: "choice",
+      choice: "fiel",
+      probabilities: { fiel: 0.89, mezcla: 0.06, otro: 0.03, oferta_distinta: 0.02 },
+      confidence: 0.91,
+    },
+  },
+  usage: { input_tokens: 620, output_tokens: 14 },
+};
+
+/**
+ * `choice` del ángulo: el guion **mezcla dos ángulos**, que es el error más común del sistema de anuncios. La
+ * evidencia tiene que poder nombrarlo, y por eso la primitiva es `choice` y no una escala.
+ */
+export const JEV_ANGULO_MEZCLA = {
+  model: "jev-1.13.0",
+  answers: {
+    coherencia: {
+      type: "choice",
+      choice: "mezcla",
+      probabilities: { fiel: 0.04, mezcla: 0.87, otro: 0.06, oferta_distinta: 0.03 },
+      confidence: 0.9,
+    },
+  },
+  usage: { input_tokens: 655, output_tokens: 14 },
+};
+
 /** `POST /v1/systemone` con una clave revocada → 401. */
 export const JEV_401 = { error: { message: "invalid api key: ts-XXXXXXXXXXXX is not recognised", type: "auth_error" } };
 

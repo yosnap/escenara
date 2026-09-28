@@ -136,6 +136,45 @@ export const PREGUNTAS: Record<Comprobacion, DefinicionPregunta> = {
     encajan: [],
     etiquetas: { si: "es el mismo producto", no: "no es el mismo producto" },
   },
+  /**
+   * **Fidelidad al ángulo** (0.27.0): lo que promete esta versión. Es `choice` y no `score` ni `noul`, y las tres
+   * razones son las tres cosas distintas que pueden ir mal, que un número no distinguiría:
+   *
+   * - el guion **habla de otro ángulo** (se escribió para otra cosa);
+   * - el guion **mezcla dos** (el error más común de la fase, y el que hay que poder nombrar con evidencia);
+   * - el guion acierta el ángulo pero **la oferta no aparece como se definió** (o aparece inventada).
+   *
+   * Con una escala, «mezcla dos ángulos» y «le falta la oferta» caerían en la misma casilla intermedia y la
+   * evidencia no podría decir cuál de las dos es. Con categorías, la respuesta **es** la evidencia.
+   *
+   * La lista de los otros ángulos del catálogo entra en el estado, no en la pregunta: es lo que permite que el
+   * veredicto diga **cuáles** se mezclan sin que el texto de la pregunta cambie al ampliar el catálogo.
+   */
+  angulo_fiel: {
+    pregunta: {
+      type: "choice",
+      instructions:
+        "The script of a short video ad is given, together with the single advertising angle it was written for (its name, its definition and an example), the offer exactly as the advertiser defined it, and the names and definitions of the other angles in the catalogue. An advertising angle is the entry point of the ad: the pain, desire or belief it speaks from. The hard rule is one angle per ad. Decide which of the following describes this script. Judge the script only against the angle and the offer that are given; do not judge whether the ad is good, well written or persuasive. An offer detail that the advertiser did not define and the script states as a fact (a price, a guarantee, a deadline or a gift that is not in the offer) means the offer is not as defined.",
+      criteria: {
+        fiel: "The script speaks from the given angle only, and the offer appears as the advertiser defined it",
+        mezcla: "The script speaks from the given angle but also from one or more of the other angles",
+        otro: "The script speaks from a different angle than the one given, not from it",
+        oferta_distinta:
+          "The script speaks from the given angle only, but the offer is missing, altered, or states details the advertiser did not define",
+      },
+    },
+    /**
+     * Solo `fiel` encaja. `mezcla` no es «casi bien»: mezclar ángulos es exactamente el fallo que esta versión
+     * existe para detectar, y contarlo como aceptable dejaría el veredicto sin nada que decir.
+     */
+    encajan: ["fiel"],
+    etiquetas: {
+      fiel: "el guion responde al ángulo elegido y la oferta aparece como la definiste",
+      mezcla: "el guion mezcla el ángulo elegido con otros",
+      otro: "el guion responde a otro ángulo, no al que elegiste",
+      oferta_distinta: "el guion responde al ángulo, pero la oferta no aparece como la definiste",
+    },
+  },
 };
 
 /**
@@ -157,6 +196,8 @@ export function evidenciaDe(
     producto_fiel: `Probabilidad de que sea el mismo producto, con la misma etiqueta: ${porcentaje}.`,
     direccion_fiel: `Fidelidad a lo que dirigiste: ${porcentaje}.`,
     emocion: `Respuesta: ${definicion.etiquetas[respuesta.elegida] ?? respuesta.elegida} (${porcentaje} de encaje).`,
+    // En el ángulo, **la respuesta es la evidencia**: decir «45 % de encaje» no diría con qué ángulo se mezcla.
+    angulo_fiel: `Respuesta: ${definicion.etiquetas[respuesta.elegida] ?? respuesta.elegida}.`,
   };
   const cabeza = CABEZAS[comprobacion] ?? `Encaje con lo pedido: ${porcentaje}.`;
   const recorte = hechos.trim().slice(0, 600);

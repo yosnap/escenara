@@ -1,10 +1,12 @@
 import { leerAjustes } from "../ajustes";
 import { ErrorProyecto } from "../asistente/errores";
 import { esAdmin, sesionDePeticion } from "../auth/sesion";
+import { ErrorGeneracion } from "../generacion/errores";
 import { dentroDelLimite, type Limite } from "../limite";
 import type { Actor } from "../media/servicio";
 import { ErrorProducto } from "../productos/errores";
 import { ErrorPreset } from "../prompts/errores";
+import { ErrorCatalogo } from "../proveedores/contrato";
 import { ErrorAnuncio } from "./errores";
 
 /**
@@ -26,6 +28,13 @@ export function respuestaError(error: unknown): Response {
   if (error instanceof ErrorProyecto) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorProducto) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorPreset) return Response.json({ error: error.message }, { status: error.estado });
+  /**
+   * Los dos que llegan por el camino de **pedir hooks y guion** (0.27.0): el de generación lo lanzan la clave de
+   * idempotencia, la confirmación del coste y el sello del precio, y el del catálogo, un modelo de texto sin
+   * precio registrado. Los dos traen su código y un mensaje que ya dice qué hacer.
+   */
+  if (error instanceof ErrorGeneracion) return Response.json({ error: error.message }, { status: error.estado });
+  if (error instanceof ErrorCatalogo) return Response.json({ error: error.message }, { status: error.estado });
   // Solo el tipo y el mensaje: un error de Drizzle vuelca la consulta con sus parámetros, y aquí los parámetros
   // son el texto de la oferta y el brief de alguien.
   const fallo = error instanceof Error ? `${error.name}: ${error.message}` : String(error);

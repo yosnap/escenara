@@ -135,6 +135,12 @@ export interface Ajustes {
   coherenciaDireccionFiel: ModoCoherencia;
   /** Fidelidad del producto (0.26.0): la etiqueta y el envase no cambian. Nace en sombra. */
   coherenciaProductoFiel: ModoCoherencia;
+  /**
+   * Fidelidad al ángulo del anuncio (0.27.0): que el guion responda al ángulo del brief, no mezcle otros y diga
+   * la oferta como se definió. Nace en **sombra** y pasa a decidir cuando haya datos de acierto (decisión del
+   * propietario, 2026-09-28). Es texto contra texto: no gasta ninguna llamada de percepción.
+   */
+  coherenciaAnguloFiel: ModoCoherencia;
   /** Confianza mínima (0–1) para actuar. Por debajo, el veredicto es «míralo tú» y no decide nada. */
   coherenciaUmbralIdentidad: number;
   coherenciaUmbralGuion: number;
@@ -142,6 +148,7 @@ export interface Ajustes {
   coherenciaUmbralEmocion: number;
   coherenciaUmbralDireccionFiel: number;
   coherenciaUmbralProductoFiel: number;
+  coherenciaUmbralAnguloFiel: number;
   /**
    * Modelos de **percepción** que se prueban primero dentro del mapa del usuario: el de imagen describe la cara y
    * el encuadre, el omnimodal describe la voz y el ambiente. Si el usuario no los tiene dados de alta, se recorre
@@ -290,12 +297,14 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   coherenciaEmocion: "sombra",
   coherenciaDireccionFiel: "sombra",
   coherenciaProductoFiel: "sombra",
+  coherenciaAnguloFiel: "sombra",
   coherenciaUmbralIdentidad: UMBRAL_POR_DEFECTO,
   coherenciaUmbralGuion: UMBRAL_POR_DEFECTO,
   coherenciaUmbralResultado: UMBRAL_POR_DEFECTO,
   coherenciaUmbralEmocion: UMBRAL_POR_DEFECTO,
   coherenciaUmbralDireccionFiel: UMBRAL_POR_DEFECTO,
   coherenciaUmbralProductoFiel: UMBRAL_POR_DEFECTO,
+  coherenciaUmbralAnguloFiel: UMBRAL_POR_DEFECTO,
   // Los dos de NaN builders: `gemma4` es el más barato que ve, y `mimo-v2.5` es de los dos únicos que oyen.
   coherenciaModeloImagen: "gemma4",
   coherenciaModeloAudio: "mimo-v2.5",
@@ -454,12 +463,14 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
   coherenciaEmocion: { valido: esModoCoherencia, mensaje: MENSAJE_MODO },
   coherenciaDireccionFiel: { valido: esModoCoherencia, mensaje: MENSAJE_MODO },
   coherenciaProductoFiel: { valido: esModoCoherencia, mensaje: MENSAJE_MODO },
+  coherenciaAnguloFiel: { valido: esModoCoherencia, mensaje: MENSAJE_MODO },
   coherenciaUmbralIdentidad: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   coherenciaUmbralGuion: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   coherenciaUmbralResultado: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   coherenciaUmbralEmocion: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   coherenciaUmbralDireccionFiel: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   coherenciaUmbralProductoFiel: { valido: umbral, mensaje: MENSAJE_UMBRAL },
+  coherenciaUmbralAnguloFiel: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   coherenciaModeloImagen: { valido: identificadorModelo, mensaje: MENSAJE_MODELO },
   coherenciaModeloAudio: { valido: identificadorModelo, mensaje: MENSAJE_MODELO },
   coherenciaEurosPorMillonTokens: {
@@ -618,6 +629,7 @@ export function coherenciaDe(ajustes: Ajustes, comprobacion: Comprobacion): { mo
     emocion: ajustes.coherenciaEmocion,
     direccion_fiel: ajustes.coherenciaDireccionFiel,
     producto_fiel: ajustes.coherenciaProductoFiel,
+    angulo_fiel: ajustes.coherenciaAnguloFiel,
   };
   const umbrales: Record<Comprobacion, number> = {
     identidad: ajustes.coherenciaUmbralIdentidad,
@@ -626,6 +638,7 @@ export function coherenciaDe(ajustes: Ajustes, comprobacion: Comprobacion): { mo
     emocion: ajustes.coherenciaUmbralEmocion,
     direccion_fiel: ajustes.coherenciaUmbralDireccionFiel,
     producto_fiel: ajustes.coherenciaUmbralProductoFiel,
+    angulo_fiel: ajustes.coherenciaUmbralAnguloFiel,
   };
   return { modo: modos[comprobacion], umbral: umbrales[comprobacion] };
 }
