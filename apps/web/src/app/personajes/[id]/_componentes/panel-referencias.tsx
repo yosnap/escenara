@@ -189,7 +189,8 @@ export function PanelReferencias({
         onUsarDeTodasFormas={(medioIds) => void anadir(medioIds)}
       />
 
-      {hueco > 0 && (
+      {/* Un personaje inventado no admite fotos reales: sus imágenes salen del retrato elegido y de sus vistas. */}
+      {hueco > 0 && !personaje.inventado && (
         <div className="flex flex-col gap-3">
           <SelectorMedios
             etiqueta="Añadir más fotos"

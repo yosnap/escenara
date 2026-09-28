@@ -622,6 +622,25 @@ describe.skipIf(!hayBaseDeDatos)("escenas habladas con Omni", () => {
     expect(await db().select().from(usageLedger).where(eq(usageLedger.userId, ana.id))).not.toHaveLength(0);
   });
 
+  test("otra cuenta no puede invalidar el registro Omni de un personaje que no es suyo", async () => {
+    await todoRegistrado();
+    const { omniAudioId } = await filaDeProyecto();
+    const intruso = await crearSesionDePrueba("user");
+    try {
+      await expect(
+        volverARegistrar({ id: intruso.id, esAdmin: false }, personajeId, omniAudioId, "intento ajeno", h),
+      ).rejects.toThrow();
+      // El registro de la dueña sigue vigente: nada se ha marcado como reemplazado.
+      const registros = await db()
+        .select()
+        .from(characterOmniRegistrations)
+        .where(eq(characterOmniRegistrations.characterId, personajeId));
+      expect(registros.filter((r) => r.supersededAt === null)).toHaveLength(1);
+    } finally {
+      await db().delete(users).where(eq(users.id, intruso.id));
+    }
+  });
+
   // ── Personaje inventado ──────────────────────────────────────────────────────────────────────────────────
 
   test("un personaje inventado se crea con su declaración, sin documento y sin mayoría de edad", async () => {
