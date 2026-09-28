@@ -316,7 +316,16 @@ export function agruparPorVista<T extends ReferenciaParaCobertura>(referencias: 
  * Cobertura de vistas de un personaje. Derivada, no guardada: si mañana cambian las vistas mínimas, la
  * cobertura cambia sola y no hay que migrar ninguna columna.
  */
-export function calcularCobertura(tipo: TipoPersonaje, referencias: readonly ReferenciaParaCobertura[]): Cobertura {
+/**
+ * `generadasCubren`: en un personaje **inventado** sus vistas generadas cubren, porque no tiene ni admite fotos
+ * reales y su cara **es** la generada. En uno real solo cubren las fotos originales (una vista generada podría no
+ * parecerse): eso cambiará cuando haya verificación de parecido.
+ */
+export function calcularCobertura(
+  tipo: TipoPersonaje,
+  referencias: readonly ReferenciaParaCobertura[],
+  generadasCubren = false,
+): Cobertura {
   const vistas = vistasMinimas(tipo).map<CoberturaVista>((vista) => {
     const suyas = referencias.filter((r) => r.vistaClave === vista);
     return {
@@ -329,7 +338,7 @@ export function calcularCobertura(tipo: TipoPersonaje, referencias: readonly Ref
   });
   return {
     vistas,
-    faltan: vistas.filter((v) => v.originales === 0).map((v) => v.vista),
+    faltan: vistas.filter((v) => v.originales === 0 && (!generadasCubren || v.generadas === 0)).map((v) => v.vista),
     sinClasificar: referencias.filter((r) => r.vistaClave === null).length,
   };
 }

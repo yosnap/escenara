@@ -100,6 +100,7 @@ export async function hechosDePersonaje(personaje: FilaPersonaje, primerRetrato 
   const cobertura = calcularCobertura(
     personaje.kind,
     referencias.map((r) => ({ vistaClave: esVista(r.viewKey) ? r.viewKey : null, origen: r.origin })),
+    personaje.virtual,
   );
   return {
     nombre: personaje.name,

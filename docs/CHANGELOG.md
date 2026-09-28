@@ -2,6 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.23.2] · 2026-09-28
+
+### Corregido
+
+- **En un personaje inventado, sus vistas generadas cubren.** Antes «Antes de generar» decía que faltaban todas las
+  vistas y la ficha marcaba «Faltan 5 de 5» aunque las tuviera: solo contaban fotos originales, que un inventado no
+  tiene ni admite. La ficha habla de «imágenes» y no de «fotos originales» en un inventado.
+
 ## [0.23.1] · 2026-09-28
 
 ### Cambiado

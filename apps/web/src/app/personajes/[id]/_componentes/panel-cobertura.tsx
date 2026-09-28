@@ -134,13 +134,15 @@ export function PanelCobertura({
             ? "Todas las vistas cubiertas"
             : `Faltan ${cobertura.faltan.length} de ${cobertura.vistas.length}`}
           {personaje.totalGeneradas > 0 &&
-            ` · ${personaje.totalGeneradas} ${personaje.totalGeneradas === 1 ? "vista generada" : "vistas generadas"} (no cuentan como foto)`}
+            ` · ${personaje.totalGeneradas} ${personaje.totalGeneradas === 1 ? "vista generada" : "vistas generadas"}${personaje.inventado ? "" : " (no cuentan como foto)"}`}
         </p>
       </div>
 
       <p className="text-sm text-texto-suave">
-        Con estas vistas el parecido se mantiene entre fotogramas. La cobertura es una guía: lo que decide si el
-        personaje puede generar es el mínimo de {personaje.minimoReferencias} fotos originales.
+        Con estas vistas el parecido se mantiene entre fotogramas.{" "}
+        {personaje.inventado
+          ? `Es un personaje inventado: sus imágenes generadas cuentan, y hacen falta ${personaje.minimoReferencias} para poder generar con él.`
+          : `La cobertura es una guía: lo que decide si el personaje puede generar es el mínimo de ${personaje.minimoReferencias} fotos originales.`}
       </p>
 
       {error && <Aviso tono="error">{error}</Aviso>}
@@ -203,6 +205,7 @@ export function PanelCobertura({
               vista={v}
               fotos={porVista.get(v.vista) ?? []}
               sinClasificar={cobertura.sinClasificar}
+              inventado={personaje.inventado}
               conClave={claveDeGeneracion.ok}
               ocupado={pidiendo !== null}
               onCapturar={() => setCapturando(v.vista)}
@@ -327,6 +330,7 @@ function TarjetaVista({
   vista,
   fotos,
   sinClasificar,
+  inventado,
   conClave,
   onCapturar,
   onGenerar,
@@ -338,6 +342,8 @@ function TarjetaVista({
   fotos: readonly ReferenciaVista[];
   /** Cuántas fotos del personaje están sin clasificar: puede que esta vista ya esté entre ellas. */
   sinClasificar: number;
+  /** En un personaje inventado sus vistas generadas cubren: no tiene fotos reales. */
+  inventado: boolean;
   /** `false` cuando no hay clave utilizable del proveedor: entonces no se ofrece generar la vista. */
   conClave: boolean;
   onCapturar: () => void;
@@ -345,7 +351,7 @@ function TarjetaVista({
   ocupado: boolean;
   generando: boolean;
 }) {
-  const cubierta = vista.originales > 0;
+  const cubierta = vista.originales > 0 || (inventado && vista.generadas > 0);
   return (
     <div className="flex h-full flex-col gap-3 rounded-tarjeta border-2 border-borde bg-superficie p-3">
       <MarcoEnfoque vista={vista.vista} silueta={fotos.length === 0} className="w-full">
@@ -359,12 +365,17 @@ function TarjetaVista({
           {vista.etiqueta}
         </p>
         <p className="text-sm text-texto-suave">
-          {cubierta
-            ? `${vista.originales} ${vista.originales === 1 ? "foto" : "fotos"}`
-            : vista.generadas > 0
-              ? "Solo hay una vista generada: no cuenta como foto"
-              : "Falta"}
-          {cubierta && vista.generadas > 0 && ` · ${vista.generadas} generada${vista.generadas === 1 ? "" : "s"}`}
+          {cubierta && vista.originales === 0
+            ? `${vista.generadas} ${vista.generadas === 1 ? "imagen generada" : "imágenes generadas"}`
+            : cubierta
+              ? `${vista.originales} ${vista.originales === 1 ? "foto" : "fotos"}`
+              : vista.generadas > 0
+                ? "Solo hay una vista generada: no cuenta como foto"
+                : "Falta"}
+          {cubierta &&
+            vista.originales > 0 &&
+            vista.generadas > 0 &&
+            ` · ${vista.generadas} generada${vista.generadas === 1 ? "" : "s"}`}
         </p>
         {!cubierta && sinClasificar > 0 && (
           <p className="text-sm text-texto-suave">

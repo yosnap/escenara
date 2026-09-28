@@ -220,6 +220,7 @@ export async function coberturaDe(
   personajeId: string,
   tipo: TipoPersonaje,
   ejecutor: Ejecutor = db(),
+  inventado = false,
 ): Promise<Cobertura> {
   const filas = await ejecutor
     .select({ referencia: characterReferences })
@@ -227,7 +228,7 @@ export async function coberturaDe(
     .innerJoin(media, eq(media.id, characterReferences.mediaId))
     .where(and(eq(characterReferences.characterId, personajeId), isNull(media.deletedAt)))
     .orderBy(asc(characterReferences.sortOrder), asc(characterReferences.createdAt));
-  return calcularCobertura(tipo, paraCobertura(filas.map((f) => f.referencia)));
+  return calcularCobertura(tipo, paraCobertura(filas.map((f) => f.referencia)), inventado);
 }
 
 /** Referencias de un personaje, en el orden que fijó el usuario. */
@@ -331,7 +332,7 @@ export async function vistaDePersonaje(
             return medio ? [vistaReferencia(r, medio)] : [];
           }),
           // Mismo cálculo que usa la vista sintética (`coberturaDe`), sobre las mismas referencias utilizables.
-          cobertura: calcularCobertura(fila.kind, paraCobertura(vigentes)),
+          cobertura: calcularCobertura(fila.kind, paraCobertura(vigentes), fila.virtual),
         }
       : {}),
     ...(opciones.completa
