@@ -309,6 +309,13 @@
       "when": 1790628508393,
       "tag": "0043_hooks-propuestos",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1790636310271,
+      "tag": "0045_montaje-y-exportacion",
+      "breakpoints": true
     }
   ]
 }

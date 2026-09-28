@@ -161,6 +161,37 @@ const REGLAS: readonly Regla[] = [
     };
   },
 
+  // ── Material del montaje: no se monta un vídeo con escenas que no tienen clip (RF08, 0.32.0) ─────────
+  (h) => {
+    const sinClip = h.exportacion?.escenasSinClip ?? [];
+    if (sinClip.length === 0) return null;
+    const escenas = [...sinClip].sort((a, b) => a - b).join(", ");
+    return {
+      regla: "montaje-sin-material",
+      estado: "bloqueado",
+      motivo:
+        sinClip.length === 1
+          ? `La escena ${escenas} está en el montaje y todavía no tiene clip guardado.`
+          : `${sinClip.length} escenas del montaje todavía no tienen clip guardado (${escenas}).`,
+      accion: "Prodúcelas o quítalas de la línea de tiempo antes de exportar.",
+      enlace: "/proyectos",
+      http: 409,
+      excepcion: "proyecto",
+    };
+  },
+  (h) =>
+    h.exportacion?.fragmentos === 0
+      ? {
+          regla: "montaje-vacio",
+          estado: "bloqueado",
+          motivo: "La línea de tiempo de este montaje está vacía.",
+          accion: "Añade al menos una escena con clip antes de exportar.",
+          enlace: "/proyectos",
+          http: 409,
+          excepcion: "proyecto",
+        }
+      : null,
+
   // ── Espacio: guardar el resultado no puede quedarse sin sitio después de pagarlo ─────────────────────
   (h) => {
     if (!h.cuota) return null;

@@ -70,6 +70,7 @@ export * from "./esquema-controles";
 export * from "./esquema-direcciones";
 export * from "./esquema-generacion";
 export * from "./esquema-mapa";
+export * from "./esquema-montaje";
 export * from "./esquema-personajes";
 export * from "./esquema-presets";
 export * from "./esquema-presupuesto";

@@ -13,9 +13,19 @@ import type { TipoTrabajoCola } from "@/lib/generacion";
 /** Versión del conjunto de reglas activo; vive en `lib/controles.ts` porque también se muestra (RF13). */
 export { REGLAS_VERSION } from "@/lib/controles";
 
-/** Qué se está evaluando. Una escena del plan de un proyecto, o un envío suelto de «Crear». */
-export const SUJETOS_CONTROL = ["escena", "trabajo"] as const;
+/**
+ * Qué se está evaluando. Una escena del plan de un proyecto, un envío suelto de «Crear» o, desde la 0.32.0, el
+ * **montaje** de un proyecto que se va a exportar.
+ */
+export const SUJETOS_CONTROL = ["escena", "trabajo", "montaje"] as const;
 export type SujetoControl = (typeof SUJETOS_CONTROL)[number];
+
+/**
+ * Qué se iba a hacer, para el registro de la evaluación. Los tres tipos de trabajo de la cola, más `montaje`
+ * (0.32.0), que **no** es un trabajo de la cola de proveedores: no cuesta créditos y no sale de la máquina, pero
+ * pasa por el mismo motor de reglas, así que su evaluación se guarda igual.
+ */
+export type TipoEvaluado = TipoTrabajoCola | "montaje";
 
 /** Tipo de excepción con la que se rechaza el envío, para no cambiar los códigos ni las clases de 0.10.0–0.17.0. */
 export type FamiliaError = "generacion" | "proyecto" | "personaje";
@@ -163,6 +173,16 @@ export interface HechosEscena {
 export interface HechosExportacion {
   /** Escenas con un crítico abierto, por su número de orden y con su motivo en lenguaje llano. */
   criticos: { orden: number; motivo: string }[];
+  /**
+   * Fragmentos de la línea de tiempo del montaje (0.32.0). `undefined` cuando lo que se evalúa no es un montaje
+   * —la exportación de subtítulos, por ejemplo—, y entonces la regla del material no se evalúa.
+   */
+  fragmentos?: number;
+  /**
+   * Escenas del montaje que ya no tienen clip guardado, por su número de orden (0.32.0). Sin material no hay
+   * nada que montar, y el mensaje tiene que decir **cuál** falta.
+   */
+  escenasSinClip?: number[];
 }
 
 /**
@@ -238,7 +258,7 @@ export interface ParametrosControles {
  * falta alguno: olvidarse de un grupo es un error de programación, no una configuración.
  */
 export interface Hechos {
-  tipo: TipoTrabajoCola;
+  tipo: TipoEvaluado;
   credencial?: HechosCredencial;
   modelo?: HechosModelo;
   /** `null` cuando el envío no lleva personaje (imagen suelta de 0.10.0); ausente = no se evalúa. */

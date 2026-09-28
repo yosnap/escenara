@@ -47,10 +47,12 @@ export function arrancarWorker(h: Herramientas = HERRAMIENTAS, msEntrePasadas = 
 
   const pasada = async () => {
     await latir(id, atendidos);
-    const { enviados, avanzados, recuperados } = await pasadaDeCola(h, id);
-    atendidos += enviados + avanzados;
-    if (enviados + avanzados + recuperados > 0) {
-      console.log(`[worker] enviados ${enviados}, avanzados ${avanzados}, recuperados ${recuperados}`);
+    const { enviados, avanzados, recuperados, montadas } = await pasadaDeCola(h, id);
+    atendidos += enviados + avanzados + montadas;
+    if (enviados + avanzados + recuperados + montadas > 0) {
+      console.log(
+        `[worker] enviados ${enviados}, avanzados ${avanzados}, recuperados ${recuperados}, montajes ${montadas}`,
+      );
     }
   };
 

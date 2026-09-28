@@ -4,6 +4,7 @@ import { ErrorGeneracion } from "../generacion/errores";
 import { dentroDelLimite, type Limite } from "../limite";
 import { ErrorMedio } from "../media/errores";
 import type { Actor } from "../media/servicio";
+import { ErrorMontaje } from "../montaje/errores";
 import { ErrorOmni } from "../omni/errores";
 import { ErrorPersonaje } from "../personajes/errores";
 import { ErrorProducto } from "../productos/errores";
@@ -29,6 +30,8 @@ export function respuestaError(error: unknown): Response {
   if (error instanceof ErrorProducto) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorGeneracion) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorOmni) return Response.json({ error: error.message }, { status: error.estado });
+  // El del montaje (0.32.0) trae también los 503 del entorno: FFmpeg sin instalar o sin fuente para la etiqueta.
+  if (error instanceof ErrorMontaje) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorCatalogo) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorMedio) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorPreset) return Response.json({ error: error.message }, { status: error.estado });

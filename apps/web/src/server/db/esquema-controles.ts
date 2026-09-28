@@ -14,7 +14,8 @@ import { jsonb } from "./jsonb";
  * tipada (RF13), y la precedencia es la de esta versión: **las reglas mandan sobre el modelo de decisión**.
  */
 
-export const sujetoControl = pgEnum("control_subject", ["escena", "trabajo"]);
+/** `montaje` se añade en la 0.32.0: exportar pasa por el mismo motor de reglas, así que se registra igual. */
+export const sujetoControl = pgEnum("control_subject", ["escena", "trabajo", "montaje"]);
 
 export const estadoControl = pgEnum("control_state", ["listo", "ajustes", "revision", "bloqueado"]);
 
@@ -44,7 +45,7 @@ export const controlEvaluations = pgTable(
      * un hueco.
      */
     subjectId: uuid("subject_id"),
-    /** Tipo de trabajo que se iba a encolar (`fotograma` o `animacion`). */
+    /** Qué se iba a hacer (`fotograma`, `animacion`, `voz` o, desde la 0.32.0, `montaje`). */
     jobKind: text("job_kind").notNull(),
     state: estadoControl("state").notNull(),
     /** Versión del conjunto de reglas con el que se evaluó. */

@@ -119,5 +119,21 @@ export function exigirFrenosDuros(hechos: Hechos): Evaluacion {
   return evaluacion;
 }
 
+/**
+ * Igual que {@link exigirFrenosDuros}, pero **guardando la evaluación**. Es la puerta del render del montaje
+ * (0.32.0): no se le exigen todos los grupos de hechos porque no hay ni modelo, ni credencial, ni personaje, ni
+ * dinero que comparar —montar un vídeo no gasta créditos—, pero la decisión sí es auditable como cualquier otra.
+ *
+ * No admite confirmaciones: las reglas que cierran esta puerta (un crítico abierto, una escena sin clip) son
+ * `bloqueado` y no se salvan con una casilla, aquí ni en ningún otro sitio.
+ */
+export async function exigirFrenosDurosRegistrados(sujeto: SujetoDeEvaluacion, hechos: Hechos): Promise<Evaluacion> {
+  const evaluacion = evaluar(hechos);
+  await registrarEvaluacion(sujeto, evaluacion, []);
+  const primero = frenosQueGatean(evaluacion)[0];
+  if (primero) lanzar(primero);
+  return evaluacion;
+}
+
 /** Evalúa sin cerrar ninguna puerta ni guardar nada: es lo que pinta el panel «Antes de generar». */
 export const evaluarParaMostrar = (hechos: Hechos): EvaluacionVista => vistaDeEvaluacion(evaluar(hechos));
