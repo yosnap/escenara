@@ -67,9 +67,10 @@ function tarifasDeFamilia(modelo: string, tarifas: readonly TarifaTraducida[]): 
     const variante = varianteDeTarifa(familia, tarifa.variante);
     if (!variante) continue;
     const unidad = unidadDeVariante(variante);
-    // Dos registros para la misma variante (el proveedor repite algunos): se queda el más barato, nunca el caro.
+    // Dos registros para la misma variante (el proveedor repite algunos): se queda **el más caro**. Estimar por lo
+    // alto solo hace confirmar de más; estimar por lo bajo haría reservar menos de lo que después se cobra.
     const previa = porUnidad.get(unidad);
-    if (!previa || tarifa.creditos < previa.creditos) {
+    if (!previa || tarifa.creditos > previa.creditos) {
       porUnidad.set(unidad, { unidad, creditos: tarifa.creditos, referencia: tarifa.ancla });
     }
   }
