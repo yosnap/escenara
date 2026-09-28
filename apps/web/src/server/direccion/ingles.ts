@@ -161,7 +161,7 @@ export const REGISTRO_ANCLAJE_INGLES: Record<RegistroEstetico, string> = {
 export const ANCLAJES_REALISMO = [
   "Photographic realism: real skin with visible pores and small imperfections, natural asymmetry, a light film of grain.",
   "Hands, fingers, teeth and eyes are anatomically correct and unaltered.",
-  "No text, no captions, no subtitles, no watermarks, no logos, no written words and no distorted or duplicated body parts anywhere in the image.",
+  "No added text, captions, subtitles, watermarks or new logos, and no distorted or duplicated body parts anywhere in the image; the only printed words allowed are those already on the objects in the reference images, kept exactly as they are.",
 ].join(" ");
 
 /**

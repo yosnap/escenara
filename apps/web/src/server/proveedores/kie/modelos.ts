@@ -26,9 +26,10 @@ import { CLIP } from "@/lib/generacion";
  * que es lo que menos texto incrustado provoca en Veo, y se pone al principio del prompt.
  */
 const SIN_TEXTO_IMAGEN =
-  "No text, no captions, no subtitles, no speech bubbles, no watermarks, no logos, no written words anywhere in the image.";
+  "No added text, captions, subtitles, speech bubbles, watermarks or new logos anywhere in the image; the only printed words allowed are those already on the objects in the reference images, kept exactly as they are.";
 
-const SIN_TEXTO_VIDEO = "No subtitles, no captions, no text, no on-screen words, no watermarks, no logos.";
+const SIN_TEXTO_VIDEO =
+  "No subtitles, captions, on-screen text, watermarks or new logos; the only printed words allowed are those already on the objects in the reference images, kept exactly as they are.";
 
 /**
  * Qué se tiene que oír, en inglés como el resto de los negativos. Veo siempre genera audio y **falla sin cobrar**

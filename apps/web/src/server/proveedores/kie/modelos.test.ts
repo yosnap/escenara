@@ -14,9 +14,9 @@ describe("prompt del fotograma", () => {
   test("lleva la descripción visual y prohíbe cualquier texto en la imagen", () => {
     const prompt = promptFotograma(ESCENA);
     expect(prompt).toStartWith(ESCENA);
-    expect(prompt).toContain("No text");
-    expect(prompt).toContain("no subtitles");
-    expect(prompt).toContain("no speech bubbles");
+    expect(prompt).toContain("No added text");
+    expect(prompt).toContain("subtitles");
+    expect(prompt).toContain("speech bubbles");
   });
 
   test("no hay forma de que lo que dice el personaje llegue al modelo de imagen", () => {
