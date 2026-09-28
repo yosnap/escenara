@@ -11,6 +11,7 @@ import { listarCredenciales } from "@/server/boveda/credenciales";
 import { umbralesDe } from "@/server/personajes/calidad";
 import { obtenerPersonaje } from "@/server/personajes/consulta";
 import { ErrorPersonaje } from "@/server/personajes/errores";
+import { medioDeLaHoja } from "@/server/personajes/hoja-identidad";
 import { mediosDeCandidatos } from "@/server/personajes/inventado";
 import { proyectosEnModoOmni } from "@/server/voz/omni";
 import { CabeceraApp } from "../../_app/cabecera-app";
@@ -41,6 +42,8 @@ export default async function PaginaPersonaje({ params }: { params: Promise<{ id
   const retratos = personaje.inventado && personaje.puedeEditar ? await mediosDeCandidatos(actor, id) : [];
   // Con qué voz se puede registrar: la de sus proyectos en modo Omni. Sin ninguno, la ficha lo dice y no ofrece.
   const proyectosOmni = personaje.puedeEditar ? await proyectosEnModoOmni(actor.id) : [];
+  // La hoja 3×3, si la tiene generada: es lo que se enseña en la pestaña de referencias.
+  const hojaIdentidad = personaje.puedeEditar ? await medioDeLaHoja(actor, id) : null;
 
   return (
     <div className="min-h-dvh bg-fondo">
@@ -56,6 +59,7 @@ export default async function PaginaPersonaje({ params }: { params: Promise<{ id
           umbrales={umbralesDe(await leerAjustes())}
           claveDeGeneracion={claveDeGeneracion}
           retratos={retratos}
+          hojaIdentidad={hojaIdentidad}
           proyectosOmni={proyectosOmni}
         />
       </main>

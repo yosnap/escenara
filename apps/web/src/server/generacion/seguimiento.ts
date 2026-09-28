@@ -6,6 +6,7 @@ import { usarCredencial } from "../boveda/credenciales";
 import { db } from "../db/cliente";
 import { type FilaTrabajo, generationJobs } from "../db/esquema";
 import { type Actor, crearMedio, eliminarDefinitivamente, enviarAPapelera, limiteSubida } from "../media/servicio";
+import { adjuntarHojaDeIdentidad } from "../personajes/hoja-identidad";
 import { adjuntarVistaGenerada } from "../personajes/vista-sintetica";
 import { cerrarGasto } from "../presupuesto/reserva";
 import { guardarMarcasDeVoz, registrarFalloDeEscena, registrarResultadoDeEscena } from "../produccion/cierre";
@@ -264,6 +265,8 @@ async function guardarArchivoDelTrabajo(
       // Y si era la muestra de una voz (0.21.0), su audio entra en la caché de muestras en lugar de en una escena:
       // es lo que hace que oír esa voz cueste una sola vez.
       await adjuntarMuestraDeVoz(cerrada, medio.id);
+      // Y si era la hoja de identidad 3×3 (0.25.0), queda guardada como hoja del personaje, siempre candidata.
+      await adjuntarHojaDeIdentidad(cerrada, medio.id);
       // Y si el trabajo producía una escena, la escena apunta lo que acaba de pasar (0.19.0). Un fotograma no
       // se aprueba solo: animar cuesta otro dinero y lo autoriza una persona.
       await registrarResultadoDeEscena(cerrada, medio.id);

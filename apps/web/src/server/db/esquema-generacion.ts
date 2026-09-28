@@ -24,6 +24,9 @@ import { jsonb } from "./jsonb";
  */
 export const tipoTrabajo = pgEnum("generation_job_kind", ["fotograma", "animacion", "voz"]);
 
+/** Con qué referencia de identidad se generó un trabajo (0.25.0). Ver `identity_reference_kind`. */
+export const referenciaIdentidad = pgEnum("generation_identity_reference", ["vistas", "hoja_3x3"]);
+
 /**
  * Estado propio, nunca el del proveedor tal cual: un estado que no se reconoce es `desconocido`.
  *
@@ -197,6 +200,14 @@ export const generationJobs = pgTable(
      * `null` si el trabajo se envió sin callbacks.
      */
     callbackTokenHash: text("callback_token_hash"),
+    /**
+     * Con qué referencia de identidad se generó esto (0.25.0): las **vistas sueltas** del personaje o su **hoja
+     * 3×3**. Es el dato que permite comparar las dos y decidir con medidas, en vez de con impresiones, si la
+     * hoja merece ser la referencia por defecto.
+     *
+     * `vistas` por defecto porque es lo que hacían todos los trabajos anteriores a esta versión.
+     */
+    identityReferenceKind: referenciaIdentidad("identity_reference_kind").notNull().default("vistas"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     sentAt: timestamp("sent_at", { withTimezone: true }),
     polledAt: timestamp("polled_at", { withTimezone: true }),

@@ -2,6 +2,107 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.25.0] · 2026-09-28
+
+### Decisión firme del propietario
+
+- **La dirección del clip es el núcleo de valor**: el usuario dirige cada clip parte por parte —formato, plano,
+  ángulo, cámara, micro-acción con su momento, guion, voz y acento— y el resultado tiene que ser fiel a lo
+  pedido. **Jev comprueba esa fidelidad** y lo dice cuando no se cumple; Laya se evalúa más adelante, cuando
+  haya datos de acierto.
+- **La regla de toma única no es opcional.** Todo clip se cierra pidiendo una sola toma continua sin cortes y la
+  cámara quieta al terminar el movimiento, se haya elegido movimiento o no. Sin ella el modelo corta a media
+  frase.
+- **Con una persona real nunca se embellece ni se la altera.** Su identidad sale de sus referencias y el
+  prompt pide expresamente que no se la retoque, no se la adelgace y no se le cambie el atractivo. Y un rasgo
+  que diga su ficha —pecas, lunares, cicatrices, tono de piel, bronceado— es **cómo es ya**, no un efecto que
+  aplicar: se reproduce igual que en las referencias y no se exagera, lo pida la escena o la luz lo que pida.
+  Las descripciones de belleza solo existen para personajes **inventados** y **solo si el usuario las elige**,
+  nunca por defecto.
+- **El bloque de anclajes de realismo (C6) lo compone quien administra y el usuario no puede quitarlo**: es lo
+  que separa una foto creíble de un render, y cierra siempre el prompt del fotograma.
+
+### Añadido
+
+- **Dirección del clip en seis partes**, elegida con botones y sin escribir una palabra de inglés: formato del
+  clip (UGC a cámara o voz en off), plano, ángulo, movimiento de cámara, micro-acción con su momento (antes,
+  mientras o después de hablar), guion palabra por palabra, voz y acento.
+- **Método 6C para el fotograma**: personaje, cámara, ropa, contexto, luz y anclajes de realismo, en ese orden y
+  siempre los seis. La luz deja de ir mezclada dentro del look y el plano, el ángulo y la óptica dejan de ir
+  mezclados dentro del formato.
+- **Acento por proyecto**: España peninsular (de fábrica), rioplatense, bogotano, CDMX y latinoamericano neutro.
+  Se respeta en todas las escenas del proyecto y entra en la descripción de la voz que se registra.
+- **Voz de cinco ejes fijada por personaje** —género, edad, gravedad, textura y entrega—, compuesta con el
+  acento del proyecto. Cambiarla cambia su firma, que es lo que invalida el registro de voz del proveedor.
+- **Clip mudo de verdad** en formato voz en off: se pide boca cerrada y sin voz, y el guion **no viaja** al
+  proveedor aunque esté escrito. Se avisa de qué se ha hecho con él.
+- **Nueve catálogos nuevos editables desde `/admin/presets`**: formato de clip, plano, ángulo, óptica, luz,
+  sitio, movimiento de cámara (por niveles: básico, con variación y avanzado), micro-acción (veinte gestos con
+  su momento de fábrica) y registro estético, más el bloque fijo de anclajes.
+- **Extracción de las 6C desde una foto de referencia** con la percepción de la 0.24.0: devuelve campos
+  revisables y editables, nunca una conversación, y **no se genera nada hasta que el usuario los confirma**. No
+  extrae la identidad: eso sale de las referencias del personaje.
+- **Modo «cambiar solo…»** (ropa, sitio o postura) partiendo de un fotograma aprobado, con segunda imagen de
+  referencia opcional. Es el mismo mecanismo del antes/después: dos salidas de la misma imagen con un rasgo
+  cambiado.
+- **Comprobación `direccion_fiel` de Jev**, en **modo sombra**: mide si el clip tiene el plano, el movimiento,
+  el gesto y el momento que se pidieron, y si es una sola toma. Se configura en Admin › Ajustes › Coherencia.
+- **Hoja de identidad 3×3 y registro de qué referencia se usó** en cada generación (`vistas` o `hoja_3x3`), para
+  poder comparar las dos con datos. La hoja nace **candidata** y no se usa por defecto.
+
+### Cambiado
+
+- La plantilla `clip-social` **ya no lleva una cámara fija**: hasta la 0.24.x ponía `Camera: steady, with a
+  subtle handheld feel.` en todos los clips de todos los proyectos. Ahora la cámara la elige quien dirige.
+- La plantilla `fotograma-social` se reescribe con el orden C1→C6 y termina siempre con los anclajes.
+- Una plantilla puede declarar hasta **14** variables (antes 12): el método 6C separa en categorías propias lo
+  que antes iba mezclado.
+- El fragmento en inglés de un preset admite hasta **600** caracteres (antes 300), por el bloque de anclajes.
+- **Una instalación que ya existía recibe las plantillas nuevas** como una versión más, con la anterior
+  guardada en el historial (que es el camino de vuelta). Si quien administra había editado la plantilla, no se
+  toca: su decisión manda sobre la semilla.
+
+- **Panel de dirección en el editor de escenas**: formato, plano, ángulo, cámara, micro-acción con su momento,
+  matiz de voz y las cuatro C del fotograma, con la previsualización en castellano de lo que se ha pedido.
+- **Casilla «estética de modelo» en la ficha del personaje inventado**, desmarcada de fábrica y solo visible en
+  inventados. Con una persona real no aparece, y si llegara, se rechaza.
+- **Comparación de la hoja 3×3 frente a las vistas sueltas** en Admin › Coherencia, con muestra mínima de 20 en
+  cada grupo. Por debajo de ahí enseña recuentos y no saca conclusiones.
+- **Generar la hoja 3×3 desde la ficha del personaje**, con su coste estimado, su confirmación y el motor de
+  controles de siempre. Al terminar se ve, y desde ahí se puede hacer la referencia del personaje o
+  descartarla. Si el personaje todavía no puede generar, se dice qué le falta y no se ofrece.
+- **Rellenar el fotograma desde una foto** en «Crear»: eliges una imagen y se leen de ella la cámara, la ropa,
+  el sitio y la luz, en campos que corriges antes de generar. No cuesta créditos y no genera nada hasta que lo
+  confirmas. De quién sale en la foto no se lee nada.
+  **Leer una foto la sube a un servicio externo**, así que se pide permiso antes: con la foto de un personaje
+  tuyo hace falta su declaración de coherencia, y con una foto suelta, que lo confirmes expresamente. Sin eso
+  no sale nada de aquí. Hay además un tope diario de comprobaciones con modelo, para que la cuota del plan no
+  se pueda agotar con reintentos.
+- **«Probar la hoja en la mitad de mis escenas»**, un interruptor en la ficha del personaje, **desactivado de
+  fábrica**. Solo con él activado se reparten sus escenas entre la hoja y sus fotos: la prueba cambia con qué
+  se genera, así que la decide quien paga. Cada escena dice con cuál de las dos se hizo.
+
+### Medido con dinero real (spike del 2026-09-28, 504 créditos)
+
+- **La regla de toma única funciona: ni un corte en 5 de 5 clips.** Era el riesgo alto de la versión.
+- **El movimiento de cámara se respeta** (acercamiento lento), y también el plano, el ángulo, el sitio y el
+  registro estético.
+- **En un clip de 4 s no cabe un gesto antes o después de hablar**: la frase ocupa el clip entero. Por eso,
+  cuando no hay hueco, el gesto se coloca dentro del habla y **se avisa con la causa** en lugar de prometer un
+  «antes» que no puede ocurrir.
+
+### Medido con dinero real (segundo spike, clips de 8 s, 315 créditos)
+
+- **Un movimiento de cámara avanzado sí se respeta**: el push-in a los ojos sale continuo y sin corte, así que
+  pasa a estar marcado como «con variación» en vez de «avanzado».
+- **El gesto «antes de hablar» casi nunca se respeta**: el modelo empieza a hablar en el primer fotograma y
+  deja el hueco al final. Ahora se avisa de ello al elegirlo, y «después de hablar» sí se cumple.
+- **El clip mudo ya no prohíbe el audio.** Prohibirlo hacía que el proveedor fallara (sin cobrar): ahora solo
+  se describe la boca cerrada y el ambiente se pide en positivo.
+
+### Pendiente
+
+- **El acento sigue sin juzgar**: los clips traen audio, pero eso se decide escuchándolos.
 ## [0.24.1] · 2026-09-28
 
 ### Corregido

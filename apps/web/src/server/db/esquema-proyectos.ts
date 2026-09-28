@@ -30,6 +30,35 @@ export const formatoProyecto = pgEnum("project_format", ["reel_vertical", "corto
  */
 export const modoVoz = pgEnum("project_voice_mode", ["clip", "pista", "omni"]);
 
+/**
+ * Enumerados de la **dirección del clip** (0.25.0). Son los que son estructura del producto; lo que es catálogo
+ * (plano, ángulo, óptica, luz, localización, cámara y micro-acción) vive en los presets y lo edita quien
+ * administra sin migrar nada. Sus etiquetas en castellano están en `lib/direccion.ts`.
+ */
+export const formatoClip = pgEnum("scene_clip_format", ["ugc_a_camara", "voz_en_off"]);
+
+export const momentoMicroaccion = pgEnum("scene_micro_action_timing", ["antes", "durante", "despues"]);
+
+export const nivelCamara = pgEnum("scene_camera_level", ["basico", "variacion", "avanzado"]);
+
+export const registroEstetico = pgEnum("scene_aesthetic_register", ["influencer", "ugc_real"]);
+
+export const cambioUnico = pgEnum("scene_change_only", ["ninguno", "outfit", "localizacion", "pose"]);
+
+/**
+ * Acento del habla del proyecto. **Por proyecto y no por escena** (decisión firme del propietario, 2026-09-28):
+ * si cada escena pudiera elegir, el acento cambiaría de plano a plano igual que cambiaba el timbre antes de la
+ * 0.21.0. España peninsular de fábrica, porque las voces del proveedor no declaran acento y sin pedirlo salen
+ * con acento latinoamericano.
+ */
+export const acentoHabla = pgEnum("project_speech_accent", [
+  "es_ES_madrid",
+  "es_AR_rioplatense",
+  "es_CO_bogota",
+  "es_MX_cdmx",
+  "es_419_neutro",
+]);
+
 export const projects = pgTable(
   "projects",
   {
@@ -95,6 +124,11 @@ export const projects = pgTable(
     omniVoiceExample: text("omni_voice_example").notNull().default(""),
     omniAudioId: text("omni_audio_id").notNull().default(""),
     omniVoiceSetAt: timestamp("omni_voice_set_at", { withTimezone: true }),
+    /**
+     * Acento con el que hablan **todas** las escenas de este proyecto (0.25.0). Cambiarlo cambia la descripción
+     * de voz que se registró en el proveedor, así que invalida ese registro igual que cambiarla a mano.
+     */
+    speechAccent: acentoHabla("speech_accent").notNull().default("es_ES_madrid"),
     /** Quién aprobó el plan y cuándo; `null` mientras el proyecto sea un borrador. */
     planApprovedBy: uuid("plan_approved_by").references(() => users.id, { onDelete: "set null" }),
     planApprovedAt: timestamp("plan_approved_at", { withTimezone: true }),
@@ -216,6 +250,49 @@ export const scenes = pgTable(
     subtitles: jsonb<{ desde: number; hasta: number; texto: string }[]>("subtitles").notNull().default([]),
     /** Cuándo los tocó una persona por última vez; `null` si nadie los ha editado todavía. */
     subtitlesEditedAt: timestamp("subtitles_edited_at", { withTimezone: true }),
+    /**
+     * **Dirección del clip** (RF04, RF05 y RF06, 0.25.0). Lo que hasta la 0.24.0 estaba cableado en la plantilla
+     * `clip-social` —una cámara fija para todos los clips de todos los proyectos— lo elige aquí el usuario.
+     *
+     * Todos con valor por defecto: una escena escrita antes de esta versión sigue produciendo exactamente lo que
+     * producía, con un plano a cámara y la cámara quieta.
+     *
+     * `scriptText` y `action` **se conservan**: el guion sigue siendo el guion, y `action` pasa a ser la
+     * descripción libre de lo que hace el personaje, complementaria al gesto del catálogo.
+     */
+    clipFormat: formatoClip("clip_format").notNull().default("ugc_a_camara"),
+    /** Plano y ángulo (C2 del método 6C). Claves de preset; vacío = lo resuelve el servidor con el catálogo. */
+    shotType: text("shot_type").notNull().default(""),
+    cameraAngle: text("camera_angle").notNull().default(""),
+    /** Movimiento de cámara del catálogo. **Vacío = cámara quieta**, que es un valor y no una ausencia. */
+    cameraMove: text("camera_move").notNull().default(""),
+    /** Nivel del movimiento elegido. Informativo: avisa de cuánto se arriesga el usuario a que no se respete. */
+    cameraLevel: nivelCamara("camera_level").notNull().default("basico"),
+    /** Gesto del catálogo y cuándo ocurre respecto al diálogo. Vacío = ninguno. */
+    microAction: text("micro_action").notNull().default(""),
+    microActionTiming: momentoMicroaccion("micro_action_timing").notNull().default("durante"),
+    /** Dirección vocal corta y libre: «en tono cercano», «con energía». Se traduce como el resto del texto. */
+    dialogueDirection: text("dialogue_direction").notNull().default(""),
+    /**
+     * **Las 6C del fotograma** (0.25.0). Son claves de preset de las categorías nuevas; el bloque de anclajes
+     * (C6) **no se guarda por escena** porque no lo elige el usuario: es configuración de quien administra.
+     */
+    lightPreset: text("light_preset").notNull().default(""),
+    locationPreset: text("location_preset").notNull().default(""),
+    opticsPreset: text("optics_preset").notNull().default(""),
+    aestheticRegister: registroEstetico("aesthetic_register").notNull().default("ugc_real"),
+    /** Foto de la que se extrajeron las 6C, si el usuario partió de una referencia suya. */
+    referenceImageMediaId: uuid("reference_image_media_id").references(() => media.id, { onDelete: "set null" }),
+    /**
+     * Modo «cambiar solo…»: se parte de un fotograma ya aprobado y se cambia **una** C dejando el resto literal.
+     * Es también el mecanismo del antes/después. El fotograma base va **sin clave ajena**, como el resto de los
+     * identificadores de trabajo de esta tabla.
+     */
+    changeOnly: cambioUnico("change_only").notNull().default("ninguno"),
+    changeOnlyBaseFrameId: uuid("change_only_base_frame_id").references(() => media.id, { onDelete: "set null" }),
+    changeOnlyReferenceMediaId: uuid("change_only_reference_media_id").references(() => media.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

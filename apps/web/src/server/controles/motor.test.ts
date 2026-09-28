@@ -43,6 +43,7 @@ const todoBien = (): Hechos => ({
     planAprobado: true,
     aprobada: true,
     motivoInvalidacion: "",
+    guionEnClipMudo: false,
     precioCambiado: false,
     fichaCambiada: false,
     plantillaCambiada: false,
@@ -337,4 +338,26 @@ describe("el catálogo sembrado frente a la regla de referencias", () => {
       expect(modelo.parametros?.maximoReferencias ?? 0).toBeGreaterThan(0);
     }
   });
+});
+
+/** La escena del fixture, ya sin opcionalidad: sin ella no hay nada que comprobar de una escena. */
+const escenaDe = (hechos: Hechos) => {
+  if (!hechos.escena) throw new Error("El fixture tiene que traer escena.");
+  return hechos.escena;
+};
+
+test("un guion escrito en una escena de voz en off avisa, y se puede confirmar", () => {
+  // El clip saldrá mudo y esa frase no viaja: es dinero, así que se confirma expresamente.
+  const base = todoBien();
+  const evaluacion = evaluar({ ...base, escena: { ...escenaDe(base), guionEnClipMudo: true } });
+  const aviso = evaluacion.frenos.find((f) => f.regla === "guion-en-clip-mudo");
+  expect(aviso?.estado).toBe("ajustes");
+  expect(aviso?.confirmable).toBe(true);
+  expect(aviso?.motivo).toContain("mudo");
+});
+
+test("sin guion en voz en off no hay nada que avisar", () => {
+  const base = todoBien();
+  const evaluacion = evaluar({ ...base, escena: { ...escenaDe(base), guionEnClipMudo: false } });
+  expect(evaluacion.frenos.some((f) => f.regla === "guion-en-clip-mudo")).toBe(false);
 });

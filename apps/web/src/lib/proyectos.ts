@@ -1,4 +1,5 @@
 import type { EstadoControl, EvaluacionVista } from "./controles";
+import type { FormatoClip, MomentoMicroaccion, ReferenciaIdentidad, RegistroEstetico } from "./direccion";
 import { formatearCreditos, formatearEuros } from "./generacion";
 import type { Medio } from "./media/tipos";
 
@@ -178,6 +179,39 @@ export interface EstimacionEscena {
   selloAnimacion: string;
 }
 
+/** Dirección vocal libre: «en tono cercano», «con energía». Corta a propósito: es un matiz, no un guion. */
+export const DIRECCION_VOCAL_MAXIMA = 120;
+
+/** Lo que la escena tiene elegido de la dirección. Todo vacío = nada elegido, que también es un estado. */
+export interface DireccionDeEscenaVista {
+  formatoClip: FormatoClip;
+  plano: string;
+  angulo: string;
+  camara: string;
+  microaccion: string;
+  momentoMicroaccion: MomentoMicroaccion;
+  direccionVocal: string;
+  optica: string;
+  luz: string;
+  localizacion: string;
+  registroEstetico: RegistroEstetico;
+}
+
+/** Una escena sin dirigir: es con lo que nacen las escenas y lo que producían las versiones anteriores. */
+export const DIRECCION_SIN_ELEGIR: DireccionDeEscenaVista = {
+  formatoClip: "ugc_a_camara",
+  plano: "",
+  angulo: "",
+  camara: "",
+  microaccion: "",
+  momentoMicroaccion: "durante",
+  direccionVocal: "",
+  optica: "",
+  luz: "",
+  localizacion: "",
+  registroEstetico: "ugc_real",
+};
+
 export interface EscenaVista {
   id: string;
   proyectoId: string;
@@ -186,6 +220,11 @@ export interface EscenaVista {
   texto: string;
   /** Lo que se ve: encuadre y acción. Es la base del prompt del fotograma. */
   accion: string;
+  /**
+   * Cómo está dirigida esta escena (0.25.0). Son **claves de catálogo y enumerados**, nunca el texto que se le
+   * envía al modelo: el prompt lo compone el servidor y no sale de ahí (ADR-0022).
+   */
+  direccion: DireccionDeEscenaVista;
   segundos: number;
   estado: EstadoEscena;
   /** Quién aprobó la escena y cuándo; `null` mientras sea borrador. */
@@ -194,6 +233,11 @@ export interface EscenaVista {
   motivoInvalidacion: string;
   /** Trabajo de generación asociado, si ya se ha producido. */
   trabajoId: string | null;
+  /**
+   * Con qué referencia del personaje se generó (0.25.0): sus fotos sueltas o su hoja 3×3. `null` mientras no
+   * haya nada generado. Se enseña para que el usuario sepa con qué se hizo lo que ha pagado.
+   */
+  referenciaIdentidad: ReferenciaIdentidad | null;
   /**
    * Fotograma real de la escena (0.19.0): el aprobado si hay uno y, si no, el último que se generó. `null`
    * mientras no se haya producido nada.

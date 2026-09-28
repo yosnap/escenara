@@ -1,7 +1,14 @@
 import { and, eq, inArray, max, sql } from "drizzle-orm";
 import { detectarAfirmaciones } from "@/lib/asistente";
+import { esFormatoClip, esMomentoMicroaccion, esRegistroEstetico } from "@/lib/direccion";
 import { limpiarTextoDePrompt } from "@/lib/ficha-personaje";
-import { ACCION_MAXIMA, ESCENAS_MAXIMAS, motivoDeInvalidacion, TEXTO_ESCENA_MAXIMO } from "@/lib/proyectos";
+import {
+  ACCION_MAXIMA,
+  DIRECCION_VOCAL_MAXIMA,
+  ESCENAS_MAXIMAS,
+  motivoDeInvalidacion,
+  TEXTO_ESCENA_MAXIMO,
+} from "@/lib/proyectos";
 import { db, type Ejecutor } from "../db/cliente";
 import { claims, type FilaEscena, generationJobs, projects, scenes } from "../db/esquema";
 import type { Actor } from "../media/servicio";
@@ -29,6 +36,22 @@ import { ErrorProyecto } from "./errores";
 export interface DatosEscena {
   texto?: unknown;
   accion?: unknown;
+  /**
+   * Dirección del clip y 6C del fotograma (0.25.0). Son **claves de preset y enumerados**, nunca texto que
+   * viaje al proveedor: lo que el navegador manda es qué ha elegido, y el fragmento en inglés lo pone el
+   * servidor desde el catálogo (ADR-0022).
+   */
+  formatoClip?: unknown;
+  plano?: unknown;
+  angulo?: unknown;
+  camara?: unknown;
+  microaccion?: unknown;
+  momentoMicroaccion?: unknown;
+  direccionVocal?: unknown;
+  optica?: unknown;
+  luz?: unknown;
+  localizacion?: unknown;
+  registroEstetico?: unknown;
 }
 
 /**
@@ -41,8 +64,43 @@ function camposLimpios(datos: DatosEscena) {
   const campos: Partial<typeof scenes.$inferInsert> = {};
   if (datos.texto !== undefined) campos.scriptText = limpiarTextoDePrompt(datos.texto, TEXTO_ESCENA_MAXIMO);
   if (datos.accion !== undefined) campos.action = limpiarTextoDePrompt(datos.accion, ACCION_MAXIMA);
+
+  // Dirección del clip (0.25.0). Los enumerados pasan por su guarda y lo que no lo sea **no se guarda**: un
+  // valor desconocido no puede llegar a la fila. Las claves de preset son texto corto y se limpian igual que
+  // el resto; que existan en el catálogo lo comprueba quien compone, y una que no exista es «no elegido».
+  if (esFormatoClip(datos.formatoClip)) campos.clipFormat = datos.formatoClip;
+  if (esMomentoMicroaccion(datos.momentoMicroaccion)) campos.microActionTiming = datos.momentoMicroaccion;
+  if (esRegistroEstetico(datos.registroEstetico)) campos.aestheticRegister = datos.registroEstetico;
+  const claves = [
+    ["plano", "shotType"],
+    ["angulo", "cameraAngle"],
+    ["camara", "cameraMove"],
+    ["microaccion", "microAction"],
+    ["optica", "opticsPreset"],
+    ["luz", "lightPreset"],
+    ["localizacion", "locationPreset"],
+  ] as const;
+  for (const [entrada, columna] of claves) {
+    const valor = datos[entrada];
+    if (valor === undefined) continue;
+    if (typeof valor !== "string") throw new ErrorProyecto(400, `La opción de ${entrada} tiene que ser texto.`);
+    campos[columna] = limpiarClaveDePreset(valor);
+  }
+  if (datos.direccionVocal !== undefined) {
+    campos.dialogueDirection = limpiarTextoDePrompt(datos.direccionVocal, DIRECCION_VOCAL_MAXIMA);
+  }
   return campos;
 }
+
+/**
+ * Clave de preset: minúsculas, números y guiones, y poco más. No es texto libre y no viaja al prompt —lo que
+ * viaja es el fragmento que el catálogo tiene guardado para ella—, así que aquí lo único que hace falta es que
+ * no pueda ser otra cosa.
+ */
+const limpiarClaveDePreset = (valor: string): string => {
+  const limpia = valor.trim().toLowerCase().slice(0, 64);
+  return /^[a-z0-9-]*$/.test(limpia) ? limpia : "";
+};
 
 /** Devuelve una escena aprobada a borrador con el motivo escrito. No toca a las demás. */
 function invalidacion(escena: FilaEscena, que: string): Partial<typeof scenes.$inferInsert> {

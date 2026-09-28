@@ -18,6 +18,9 @@ import type {
   FilaVersionPersonaje,
 } from "../db/esquema";
 import { decidir } from "../decisiones/reglas";
+import { dirigirClipPara, familiaDe } from "../direccion/clip";
+import { direccionDeLaEscena } from "../direccion/escena";
+import { conHojaDeIdentidad } from "../direccion/hoja-identidad";
 import {
   exigirAvisoUmbral,
   exigirClaveIdempotencia,
@@ -332,14 +335,32 @@ export async function producirEscenaHablada(
     conReferencia: true,
     creditos,
   });
+  // El matiz de voz se traduce con el resto del texto libre; el diálogo no, que es lo que se va a oír.
+  const matizDeVoz = escena.dialogueDirection.trim();
   const enIngles = await traducirAlIngles(
     actor.id,
-    [{ texto: prompt }, { texto: contexto, personajeId: personaje.id }],
+    [{ texto: prompt }, { texto: contexto, personajeId: personaje.id }, { texto: matizDeVoz }],
     h.buscar,
   );
   const escenaEnIngles = enIngles.get(prompt) ?? prompt;
   const contextoEnIngles = enIngles.get(contexto) ?? contexto;
-  const promptFinal = promptConContexto(escenaEnIngles, contextoEnIngles);
+  // La dirección del clip (0.25.0) se aplica con el texto libre ya en inglés. En formato mudo el diálogo no
+  // viaja, aunque el guion tenga texto: el clip sale con la boca cerrada y sin voz.
+  const dirigido = dirigirClipPara(familiaDe(modelo.modelo), {
+    ...(await direccionDeLaEscena(actor.id, escena, proyecto, {
+      descripcion: "",
+      real: !personaje.virtual,
+      atractivoElegido: personaje.virtual && personaje.beautyOptIn,
+      ejesVoz: personaje.voiceAxes,
+    })),
+    direccionVocal: matizDeVoz === "" ? "" : (enIngles.get(matizDeVoz) ?? matizDeVoz),
+    escena: escenaEnIngles,
+    dialogo,
+    // La duración resuelta para el modelo, no la planificada de la escena: es la que decide si el gesto cabe.
+    segundos,
+  });
+  const dialogoFinal = dirigido.dialogo;
+  const promptFinal = promptConContexto(dirigido.escena, contextoEnIngles);
   /**
    * Qué se le manda al proveedor según el motor:
    *
@@ -347,12 +368,22 @@ export async function producirEscenaHablada(
    * - **referencias**: las fotos del personaje y la muestra de la voz del proyecto, que se suben al despachar
    *   (aquí solo se guardan sus identificadores: las URL del proveedor caducan y no se guardan nunca).
    */
-  const referencias = conIdentidad
-    ? []
-    : (await referenciasParaGenerar(personaje, modelo.parametros.maximoReferencias)).referencias;
+  /**
+   * Con identidad registrada la cara la pone el registro del proveedor, así que no hay referencia que elegir
+   * ni nada que comparar: se apunta `vistas`, que es con lo que se registró el personaje.
+   */
+  const elegido = conIdentidad
+    ? null
+    : await referenciasParaGenerar(
+        personaje,
+        modelo.parametros.maximoReferencias,
+        // La hoja 3×3 cuenta igual que en el resto: la elegida por defecto, o la prueba que activó el usuario.
+        conHojaDeIdentidad(personaje, escena.id),
+      );
+  const referencias = elegido?.referencias ?? [];
   const parametros = adaptador.montarEntrada(modelo, {
     escena: promptFinal,
-    dialogo,
+    dialogo: dialogoFinal,
     urls: [],
     segundos,
     ...(conIdentidad && registro ? { personajesOmni: [registro.remoteCharacterId] } : {}),
@@ -364,6 +395,7 @@ export async function producirEscenaHablada(
     provider: proveedor,
     model: modelo.modelo,
     prompt: promptFinal,
+    identityReferenceKind: elegido?.referenciaIdentidad ?? "vistas",
     input: {
       prompt: promptFinal,
       /**

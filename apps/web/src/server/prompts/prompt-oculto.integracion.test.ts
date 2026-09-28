@@ -53,10 +53,11 @@ type Actor = import("../media/servicio").Actor;
 
 const CLAVE = "sk-ana-clave-de-kie-inventada-eeee";
 /**
- * Frase que solo está en la plantilla sembrada del fotograma. No la escribe nadie, así que si aparece en una
- * respuesta es porque se ha filtrado el prompt compuesto.
+ * Frase que solo está en la plantilla sembrada del fotograma: el cierre del bloque de anclajes (C6), que desde
+ * la 0.25.0 termina siempre el prompt del fotograma. No la escribe nadie, así que si aparece en una respuesta
+ * es porque se ha filtrado el prompt compuesto.
  */
-const CENTINELA = "Photographic, no text and no logos in the image";
+const CENTINELA = "no distorted or duplicated body parts anywhere in the image";
 /** Lo que escribe la persona: esto **sí** puede salir hacia su navegador, es suyo. */
 const ESCENA = "en una azotea al amanecer, mirando a cámara";
 

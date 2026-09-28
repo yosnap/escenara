@@ -1,5 +1,16 @@
 import { and, count, eq, isNull, sql } from "drizzle-orm";
 import {
+  esFormatoClip,
+  esMomentoMicroaccion,
+  esNivelCamara,
+  esRegistroEstetico,
+  type FormatoClip,
+  type MomentoMicroaccion,
+  type NivelCamara,
+  type RegistroEstetico,
+} from "@/lib/direccion";
+import { limpiarTextoDePrompt } from "@/lib/ficha-personaje";
+import {
   type CategoriaPreset,
   esCategoriaPreset,
   esProporcion,
@@ -42,6 +53,11 @@ export interface DatosPreset {
   proporcion?: string;
   /** Segundos que exige, solo en `duracion`. 0 = ninguno. */
   segundos?: number;
+  /** Campos de la dirección del clip (0.25.0), cada uno solo en su categoría. */
+  nivel?: NivelCamara;
+  momento?: MomentoMicroaccion;
+  formatoClip?: FormatoClip;
+  registro?: RegistroEstetico;
   orden: number;
   activo: boolean;
 }
@@ -88,6 +104,12 @@ function exigirValores(datos: DatosPreset): ValoresPreset {
     }
     valores.segundos = segundos;
   }
+  // Campos de la dirección (0.25.0). No son texto: el nivel avisa de cuánto se arriesga el usuario y el momento
+  // propone cuándo ocurre el gesto, así que perderlos al editar una copia dejaría el catálogo mudo sin decirlo.
+  if (datos.categoria === "camara" && esNivelCamara(datos.nivel)) valores.nivel = datos.nivel;
+  if (datos.categoria === "microaccion" && esMomentoMicroaccion(datos.momento)) valores.momento = datos.momento;
+  if (datos.categoria === "formato-clip" && esFormatoClip(datos.formatoClip)) valores.formatoClip = datos.formatoClip;
+  if (datos.categoria === "registro-estetico" && esRegistroEstetico(datos.registro)) valores.registro = datos.registro;
   return valores;
 }
 
@@ -224,9 +246,16 @@ async function claveLibre(
   throw new ErrorPreset(409, "No queda ninguna clave libre para esa copia: renombra las que ya tienes.");
 }
 
-/** Lo que pide una copia propia: su descripción limpia, o lo que tenía si la descripción llega vacía. */
+/**
+ * Lo que pide una copia propia: su descripción limpia, o lo que tenía si la descripción llega vacía.
+ *
+ * Pasa por **la misma limpieza que la ficha del personaje** (`limpiarTextoDePrompt`) y no por un `trim` a
+ * secas. Desde la 0.25.0 estas descripciones son fragmentos de cámara, plano, luz o micro-acción, y el
+ * fragmento de cámara se coloca en la **cabecera** del prompt del clip, que es la posición que más obedece el
+ * modelo: es exactamente el sitio donde no puede colarse nada que no sea contenido.
+ */
 function promptDeDescripcion(descripcion: unknown, previo: string | undefined): string | undefined {
-  const texto = typeof descripcion === "string" ? descripcion.replace(/\s+/g, " ").trim() : "";
+  const texto = typeof descripcion === "string" ? limpiarTextoDePrompt(descripcion, PRESET_PROMPT_MAXIMO) : "";
   return texto === "" ? previo : texto;
 }
 
@@ -241,11 +270,15 @@ export async function editarPresetPropio(usuarioId: string, id: string, datos: D
   // El fragmento en inglés **no viaja al navegador** (ADR-0022), así que en una copia propia **lo que se le pide
   // al modelo es su descripción**: es lo único que la persona ve y escribe. Conservar el fragmento del original
   // hacía que renombrar «De calle» a «Playa» siguiera pidiendo ropa de calle sin que nada lo dijera. Los
-  // valores anteriores incluyen la proporción y la duración que exige.
+  // valores anteriores incluyen la proporción, la duración y los campos de la dirección que declare.
   const previos = valoresDeTexto(anterior.values);
   const valores = normalizar({
     ...(previos.proporcion === undefined ? {} : { proporcion: previos.proporcion }),
     ...(previos.segundos === undefined ? {} : { segundos: previos.segundos }),
+    ...(previos.nivel === undefined ? {} : { nivel: previos.nivel }),
+    ...(previos.momento === undefined ? {} : { momento: previos.momento }),
+    ...(previos.formatoClip === undefined ? {} : { formatoClip: previos.formatoClip }),
+    ...(previos.registro === undefined ? {} : { registro: previos.registro }),
     ...datos,
     prompt: datos.prompt ?? promptDeDescripcion(datos.descripcion, previos.prompt),
     clave: anterior.slug,

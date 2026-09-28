@@ -39,6 +39,18 @@ export const categoriaPreset = pgEnum("preset_category", [
   "vestuario",
   "duracion",
   "accion",
+  // Categorías de la dirección del clip y del método 6C (0.25.0). `anclajes` es el bloque C6, que compone quien
+  // administra y el usuario no puede editar ni quitar.
+  "formato-clip",
+  "plano",
+  "angulo",
+  "optica",
+  "luz",
+  "localizacion",
+  "camara",
+  "microaccion",
+  "registro-estetico",
+  "anclajes",
 ]);
 
 export const presets = pgTable(

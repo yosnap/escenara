@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import type { ReferenciaIdentidad } from "@/lib/direccion";
 import { leerAjustes } from "../ajustes";
 import { db } from "../db/cliente";
 import { characters, type FilaMedio, type FilaPersonaje, type FilaVersionPersonaje, media } from "../db/esquema";
@@ -27,6 +28,11 @@ export interface PersonajeParaGenerar {
   version: FilaVersionPersonaje;
   /** Bloque de contexto que se añadirá al prompt; vacío si la ficha no dice nada. */
   contexto: string;
+  /**
+   * Con qué referencia sale esta generación. Se guarda en el trabajo y es lo único que permite comparar
+   * después la hoja 3×3 con las vistas sueltas: sin esta etiqueta la comparación sería una impresión.
+   */
+  referenciaIdentidad: ReferenciaIdentidad;
 }
 
 /**
@@ -90,7 +96,23 @@ export async function personajePropio(actor: Actor, personajeId: unknown): Promi
 export async function referenciasParaGenerar(
   personaje: FilaPersonaje,
   maximoDelModelo: number,
+  /**
+   * Reparto del experimento de la hoja 3×3 (0.25.0): si **esta** generación va con la hoja o con las fotos
+   * sueltas. Lo decide quien llama, y solo puede ser `true` cuando el dueño del personaje ha activado la
+   * prueba: la comparación cambia lo que se genera y se paga, así que no se hace a su espalda.
+   *
+   * La hoja `por_defecto` no pasa por aquí: esa ya es la referencia del personaje y la elige su dueño.
+   */
+  conHoja = false,
 ): Promise<PersonajeParaGenerar> {
+  if (conHoja && personaje.identitySheetMediaId) {
+    const [hoja] = await db().select().from(media).where(eq(media.id, personaje.identitySheetMediaId)).limit(1);
+    if (hoja && hoja.deletedAt === null) {
+      const { version, contexto } = await contextoParaGenerar(personaje, maximoDelModelo);
+      // La hoja va **sola**: si fuera con las vistas sueltas, la comparación mediría las dos cosas a la vez.
+      return { personaje, referencias: [hoja], version, contexto, referenciaIdentidad: "hoja_3x3" };
+    }
+  }
   // Versión vigente, contexto y las mejores referencias por cobertura, recortadas al tope del modelo. Solo
   // entran las utilizables: una referencia en la papelera no se envía a ningún proveedor.
   const { version, contexto, referencias: elegidas } = await contextoParaGenerar(personaje, maximoDelModelo);
@@ -104,5 +126,5 @@ export async function referenciasParaGenerar(
   if (referencias.length === 0) {
     throw new ErrorPersonaje(409, "Las fotos de referencia de este personaje ya no están disponibles.");
   }
-  return { personaje, referencias, version, contexto };
+  return { personaje, referencias, version, contexto, referenciaIdentidad: "vistas" };
 }

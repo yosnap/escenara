@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Aviso } from "@/components/ui/feedback";
 import { MUESTRA_MINIMA, NOMBRE_MODO } from "@/lib/coherencia";
+import { NOMBRE_REFERENCIA_IDENTIDAD } from "@/lib/direccion";
 import { aciertoPorComprobacion } from "@/server/coherencia/registro";
+import { compararReferenciasDeIdentidad } from "@/server/direccion/metrica-identidad";
 
 export const metadata: Metadata = { title: "Coherencia · Admin · Escenara" };
 export const dynamic = "force-dynamic";
@@ -21,6 +23,7 @@ const DIAS = 90;
  */
 export default async function PaginaCoherencia() {
   const filas = await aciertoPorComprobacion(DIAS);
+  const identidad = await compararReferenciasDeIdentidad();
   const total = filas.reduce((suma, f) => suma + f.total, 0);
   const euros = filas.reduce((suma, f) => suma + f.euros, 0);
 
@@ -86,6 +89,56 @@ export default async function PaginaCoherencia() {
           </table>
         </div>
       )}
+
+      {/*
+        Hoja 3×3 frente a vistas sueltas (0.25.0). La hoja nace candidata y **no** asciende sola: esto propone,
+        decide el propietario. Sin muestra en los dos lados no se saca ninguna conclusión.
+      */}
+      <section className="flex flex-col gap-3">
+        <h2 className="text-2xl font-bold text-texto">Hoja de identidad 3×3 frente a vistas sueltas</h2>
+        <p className="max-w-3xl text-texto-suave">
+          De las generaciones que Jev ha comprobado, qué porcentaje pasó el parecido según con qué referencia se
+          hicieron. Hace falta una muestra de {identidad.muestraMinima} en <strong>cada</strong> grupo para que la
+          comparación signifique algo.
+        </p>
+        <div className="overflow-x-auto rounded-tarjeta border border-borde">
+          <table className="w-full text-left">
+            <thead className="bg-elevada text-texto-suave text-sm">
+              <tr>
+                <th className="p-3 font-semibold">Referencia</th>
+                <th className="p-3 font-semibold">Comprobadas</th>
+                <th className="p-3 font-semibold">Pasan</th>
+                <th className="p-3 font-semibold">Porcentaje</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[identidad.vistas, identidad.hoja].map((grupo) => (
+                <tr key={grupo.referencia} className="border-borde border-t">
+                  <td className="p-3 text-texto">{NOMBRE_REFERENCIA_IDENTIDAD[grupo.referencia]}</td>
+                  <td className="p-3 text-texto-suave">{grupo.total}</td>
+                  <td className="p-3 text-texto-suave">{grupo.pasan}</td>
+                  <td className="p-3 text-texto">
+                    {grupo.porcentaje === null ? (
+                      <span className="text-sm text-texto-suave">
+                        Muestra corta: faltan {Math.max(0, identidad.muestraMinima - grupo.total)}.
+                      </span>
+                    ) : (
+                      `${grupo.porcentaje} %`
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <Aviso tono="info">
+          {!identidad.concluyente
+            ? "Todavía no hay muestra suficiente en los dos grupos, así que esta comparación no dice nada. La hoja sigue siendo candidata y no se usa por defecto."
+            : identidad.ganaLaHoja
+              ? "Con esta muestra, la hoja da mejor parecido que las vistas sueltas. Sigue siendo candidata: el cambio a referencia por defecto lo aprueba el propietario, no este panel."
+              : "Con esta muestra, la hoja no supera a las vistas sueltas. Se queda como candidata."}
+        </Aviso>
+      </section>
 
       <p className="text-sm text-texto-suave">
         Coste de Jev en estos {DIAS} días: {euros.toLocaleString("es-ES", { maximumFractionDigits: 4 })} €. Lo paga esta

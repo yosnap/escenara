@@ -1,6 +1,7 @@
 import { asc, eq, inArray, sql } from "drizzle-orm";
 import { precioCaducado } from "@/lib/catalogo";
 import { EVALUACION_LISTA, type EvaluacionVista, peorEstado } from "@/lib/controles";
+import type { ReferenciaIdentidad } from "@/lib/direccion";
 import { formatearCreditos } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
 import { duracionParaModelo } from "@/lib/produccion";
@@ -185,13 +186,14 @@ function hechosDeFilaEscena(
     plantillaCambiada:
       fila.approvedTemplateVersionId !== null && fila.approvedTemplateVersionId !== contexto.versionPlantilla,
     afirmacionesPorVerificar: afirmaciones.filter((a) => a.sceneId === fila.id && a.state === "por_verificar").length,
+    guionEnClipMudo: fila.clipFormat === "voz_en_off" && fila.scriptText.trim() !== "",
   };
 }
 
 function vistaEscena(
   fila: FilaEscena,
   afirmaciones: FilaAfirmacion[],
-  trabajoId: string | null,
+  trabajo: TrabajoDeEscena | null,
   estimacion: EstimacionEscena | null,
   controles: EvaluacionVista,
   fotograma: Medio | null = null,
@@ -202,11 +204,29 @@ function vistaEscena(
     orden: fila.sortOrder,
     texto: fila.scriptText,
     accion: fila.action,
+    direccion: {
+      formatoClip: fila.clipFormat,
+      plano: fila.shotType,
+      angulo: fila.cameraAngle,
+      camara: fila.cameraMove,
+      microaccion: fila.microAction,
+      momentoMicroaccion: fila.microActionTiming,
+      direccionVocal: fila.dialogueDirection,
+      optica: fila.opticsPreset,
+      luz: fila.lightPreset,
+      localizacion: fila.locationPreset,
+      registroEstetico: fila.aestheticRegister,
+    },
     segundos: fila.plannedSeconds,
     estado: fila.state,
     aprobadaEn: fila.approvedAt?.toISOString() ?? null,
     motivoInvalidacion: fila.invalidationReason,
-    trabajoId,
+    trabajoId: trabajo?.id ?? null,
+    /**
+     * Con qué referencia se generó, para que el usuario sepa qué está viendo y qué ha pagado. `null` mientras
+     * no haya nada generado: una escena en borrador no se hizo con ninguna.
+     */
+    referenciaIdentidad: trabajo?.referenciaIdentidad ?? null,
     fotograma,
     estimacion,
     afirmaciones: afirmaciones.filter((a) => a.sceneId === fila.id).map(vistaAfirmacion),
@@ -332,16 +352,36 @@ export async function exigirTopeDelProyecto(proyectoId: string, creditos: number
 }
 
 /** Trabajo de generación asociado a cada escena, si lo hay. El más reciente manda. */
-async function trabajosPorEscena(escenaIds: string[]): Promise<Map<string, { id: string; medioId: string | null }>> {
+async function trabajosPorEscena(escenaIds: string[]): Promise<Map<string, TrabajoDeEscena>> {
   if (escenaIds.length === 0) return new Map();
   const filas = await db()
-    .select({ id: generationJobs.id, escenaId: generationJobs.sceneId, medioId: generationJobs.resultMediaId })
+    .select({
+      id: generationJobs.id,
+      escenaId: generationJobs.sceneId,
+      medioId: generationJobs.resultMediaId,
+      referenciaIdentidad: generationJobs.identityReferenceKind,
+    })
     .from(generationJobs)
     .where(inArray(generationJobs.sceneId, escenaIds))
     .orderBy(asc(generationJobs.createdAt));
-  const mapa = new Map<string, { id: string; medioId: string | null }>();
-  for (const fila of filas) if (fila.escenaId) mapa.set(fila.escenaId, { id: fila.id, medioId: fila.medioId });
+  const mapa = new Map<string, TrabajoDeEscena>();
+  for (const fila of filas) {
+    if (fila.escenaId) {
+      mapa.set(fila.escenaId, {
+        id: fila.id,
+        medioId: fila.medioId,
+        referenciaIdentidad: fila.referenciaIdentidad,
+      });
+    }
+  }
   return mapa;
+}
+
+/** Último trabajo de una escena, con la referencia de identidad que usó: es lo que se le enseña al usuario. */
+interface TrabajoDeEscena {
+  id: string;
+  medioId: string | null;
+  referenciaIdentidad: ReferenciaIdentidad;
 }
 
 /**
@@ -351,7 +391,7 @@ async function trabajosPorEscena(escenaIds: string[]): Promise<Map<string, { id:
 async function fotogramasDeEscenas(
   actor: Actor,
   escenas: readonly FilaEscena[],
-  trabajos: Map<string, { id: string; medioId: string | null }>,
+  trabajos: Map<string, TrabajoDeEscena>,
 ): Promise<Map<string, Medio>> {
   const porEscena = new Map<string, string>();
   for (const escena of escenas) {
@@ -446,7 +486,7 @@ export async function detalleProyecto(actor: Actor, id: unknown): Promise<Proyec
     vistaEscena(
       escena,
       afirmaciones,
-      trabajos.get(escena.id)?.id ?? null,
+      trabajos.get(escena.id) ?? null,
       estimacionONula(escena, elecciones, ajustes),
       // Los controles de la escena se evalúan con el **mismo motor** que cierra la puerta al producirla, con
       // datos que ya están cargados: ni una consulta más por escena.
@@ -614,6 +654,7 @@ export async function hechosDeEscena(
       plantillaCambiada:
         escena.approvedTemplateVersionId !== null && escena.approvedTemplateVersionId !== vigente.versionPlantilla,
       afirmacionesPorVerificar: afirmaciones.filter((a) => a.state === "por_verificar").length,
+      guionEnClipMudo: escena.clipFormat === "voz_en_off" && escena.scriptText.trim() !== "",
     },
   };
 }

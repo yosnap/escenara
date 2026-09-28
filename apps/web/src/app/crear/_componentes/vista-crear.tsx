@@ -27,6 +27,7 @@ import { consultarEstimacion, crearTrabajo, type Resultado } from "./api-generac
 import { consultarCatalogoDePresets, duplicarPreset } from "./api-presets";
 import { BloqueConfirmacion } from "./bloque-confirmacion";
 import { DialogoPresetPropio } from "./dialogo-preset-propio";
+import { PanelExtraccion } from "./panel-extraccion";
 import type { ConfirmacionCoste } from "./panel-generar";
 import {
   confirmacionDePlantilla,
@@ -432,6 +433,15 @@ export function VistaCrear({
             />
           )}
         </Campo>
+        {/*
+          Rellenar los campos desde una foto: no cuesta créditos y no genera nada hasta que el usuario lo
+          confirma. Lo que devuelve va al campo de arriba, que es el que se envía.
+        */}
+        <PanelExtraccion
+          deshabilitado={enviando !== null}
+          onUsar={(texto) => setPrompt(prompt.trim() === "" ? texto : `${prompt.trim()} ${texto}`)}
+        />
+
         {/* Los botones son el corazón de «Crear»: la escena que se escribe arriba es una de las variables. */}
         <PanelPlantilla
           catalogo={catalogoFoto}

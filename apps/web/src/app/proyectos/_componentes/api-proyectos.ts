@@ -1,3 +1,4 @@
+import type { OpcionesDeDireccion } from "@/lib/direccion";
 import type { ProyectoDetalle } from "@/lib/proyectos";
 
 /** Cliente de la API de proyectos para el navegador. */
@@ -44,6 +45,9 @@ export const anadirEscena = (proyectoId: string, datos: Record<string, unknown>)
 
 export const reordenarEscenas = (proyectoId: string, orden: string[]) =>
   pedir<ProyectoDetalle>(`/api/proyectos/${proyectoId}/escenas`, json("PATCH", { orden }));
+
+/** Catálogo de la dirección del clip. Solo nombres en castellano: el fragmento en inglés no sale (ADR-0022). */
+export const catalogoDeDireccion = () => pedir<OpcionesDeDireccion>("/api/direccion");
 
 export const editarEscena = (escenaId: string, cambios: Record<string, unknown>) =>
   pedir<ProyectoDetalle>(`/api/escenas/${escenaId}`, json("PATCH", cambios));

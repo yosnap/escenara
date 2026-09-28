@@ -327,6 +327,26 @@ const REGLAS: readonly Regla[] = [
       confirmable: true,
     };
   },
+  /**
+   * Guion escrito en una escena de **voz en off** (0.25.0): el clip saldrá mudo y esa frase no se le envía al
+   * modelo. Es confirmable y no un freno —montar la narración encima es legítimo—, pero se confirma porque es
+   * dinero: pagar un clip sin la voz que uno escribió, sin que nadie lo diga, es lo que prohíbe la norma de
+   * errores visibles con causa.
+   */
+  (h) => {
+    if (!h.escena?.guionEnClipMudo) return null;
+    return {
+      regla: "guion-en-clip-mudo",
+      estado: "ajustes",
+      motivo:
+        "Esta escena es de voz en off, así que el clip saldrá mudo: el personaje no dirá el guion que has escrito y esa frase no se le envía al modelo.",
+      accion:
+        "Cambia el formato a «UGC a cámara» si quieres que lo diga, o confirma que el guion es para montar la narración encima.",
+      http: 409,
+      excepcion: "generacion",
+      confirmable: true,
+    };
+  },
   (h) => {
     if (!h.parametros.exigirPrecioFresco || !h.modelo?.precioCaducado) return null;
     const fecha = h.modelo.precioComprobado === "" ? "nunca" : `el ${formatearFecha(h.modelo.precioComprobado)}`;

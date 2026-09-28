@@ -22,7 +22,7 @@ import type { PreguntaJev } from "./jev";
  */
 
 /** Versión de este conjunto de preguntas. Se sube **a mano** cuando cambia el texto de alguna. */
-export const VERSION_PREGUNTAS = "coherencia-1";
+export const VERSION_PREGUNTAS = "coherencia-2";
 
 /** Niveles de las preguntas `score`, de peor a mejor. El orden es el que da el valor numérico. */
 const NIVELES_ENCAJE = [
@@ -95,6 +95,24 @@ export const PREGUNTAS: Record<Comprobacion, DefinicionPregunta> = {
       opuesta: "la emoción contradice el tono del guion",
     },
   },
+  /**
+   * **Fidelidad de la dirección** (0.25.0): lo que esta versión promete. Es `score` por lo mismo que `guion`:
+   * «hace lo que se pidió» tiene grados —la cámara acierta y el gesto no, el gesto acierta y llega tarde— y una
+   * escala ordenada permite subir el listón cambiando un umbral en vez de cambiar la pregunta.
+   *
+   * El corte se nombra aparte y primero: un clip partido a media frase es el fallo que más duele, y dejarlo
+   * dentro del montón haría que se diluyera en la nota.
+   */
+  direccion_fiel: {
+    pregunta: {
+      type: "score",
+      instructions:
+        "A generated video clip was described by a vision model that only reported what it perceived. The direction the user asked for is also given: the shot size, the camera angle, the camera movement, the micro-action and when it happens relative to the speech, and whether the character speaks at all. Decide how faithfully the clip follows that direction. A clip that contains a cut, an edit or a scene change does not follow it, whatever else it gets right. A silent clip in which the character moves their lips or speaks does not follow it either.",
+      criteria: NIVELES_ENCAJE,
+    },
+    encajan: [],
+    etiquetas: {},
+  },
 };
 
 /**
@@ -112,9 +130,11 @@ export function evidenciaDe(
   const cabeza =
     comprobacion === "identidad"
       ? `Probabilidad de que sea la misma persona: ${porcentaje}.`
-      : comprobacion === "emocion"
-        ? `Respuesta: ${definicion.etiquetas[respuesta.elegida] ?? respuesta.elegida} (${porcentaje} de encaje).`
-        : `Encaje con lo pedido: ${porcentaje}.`;
+      : comprobacion === "direccion_fiel"
+        ? `Fidelidad a lo que dirigiste: ${porcentaje}.`
+        : comprobacion === "emocion"
+          ? `Respuesta: ${definicion.etiquetas[respuesta.elegida] ?? respuesta.elegida} (${porcentaje} de encaje).`
+          : `Encaje con lo pedido: ${porcentaje}.`;
   const recorte = hechos.trim().slice(0, 600);
   return recorte === "" ? cabeza : `${cabeza} Lo que se miró: ${recorte}`;
 }

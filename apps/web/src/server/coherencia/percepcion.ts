@@ -1,4 +1,5 @@
 import { leerAjustes } from "../ajustes";
+import { dentroDelLimite, quedaCupo } from "../limite";
 import { ErrorDeTexto, pedirTextoPorMapa, type TextoDelMapa } from "../mapa/texto";
 import type { Buscador } from "../proveedores/codigos";
 import type { AudioParaChat, ImagenParaChat } from "../proveedores/compatible/cliente";
@@ -48,13 +49,53 @@ const INSTRUCCIONES_AUDIO = [
   "Answer in English, in at most six short sentences.",
 ].join(" ");
 
+/**
+ * Extracción de las **6C** desde una foto que el usuario sube como referencia (0.25.0). Es percepción, no
+ * juicio, y por eso vive aquí: describe la cámara, la ropa, el sitio y la luz de esa foto para rellenar los
+ * campos del fotograma.
+ *
+ * **C1 no se extrae nunca**: la identidad sale de las referencias del personaje, no de lo que un modelo opine
+ * de una cara, y pedirle que describa a la persona abriría la puerta a los juicios de atractivo que la decisión
+ * de identidad prohíbe. Se pide en campos `CLAVE: valor` para que la respuesta se pueda **revisar y corregir**
+ * antes de generar, en lugar de leerse como una conversación.
+ */
+const INSTRUCCIONES_REFERENCIA = [
+  "You are a perception step, not a judge.",
+  "Look at this photograph and report how it was taken and what is in it, in exactly four lines and nothing else.",
+  "CAMERA: the shot size, the angle and the lens look.",
+  "WARDROBE: the clothing, the styling and the visible accessories.",
+  "CONTEXT: the location and what is in the background.",
+  "LIGHT: the kind of light, the shadows, the grain and the mood.",
+  "Do not describe the person, do not identify anyone, do not guess their age, gender, mood or attractiveness, and do not add any other line.",
+  "Answer in English, one short sentence per line.",
+].join(" ");
+
+/**
+ * Percepción de un **clip**, que llega como una tira de fotogramas en orden (`coherencia/fotogramas.ts`): los
+ * servicios que esta instalación usa para percibir ven imágenes, no vídeo, y una tira ordenada es lo que más
+ * se parece a ver el clip con lo que hay.
+ *
+ * Se le dice expresamente que las viñetas son el **mismo plano en el tiempo** y no fotos distintas: sin eso,
+ * el modelo describe ocho imágenes sueltas y cualquier movimiento de cámara parece un cambio de escena, que es
+ * justo lo contrario de lo que hay que medir.
+ */
+const INSTRUCCIONES_CLIP = [
+  "You are a perception step, not a judge.",
+  "This image is a filmstrip: several frames taken from a single video clip, in chronological order from left to right. They are the same shot over time, not separate photographs.",
+  "Report, in this order: the framing and camera angle in the first frame; whether the framing moves across the frames and how (push in, pull back, orbit, tracking, or static); whether there is any abrupt change of scene, background or framing that would indicate a cut; what the person does with their head, hands and body across the frames; and whether their mouth is open and moving, as if speaking, or closed and still.",
+  "Do not identify anyone, do not guess the story, do not invent anything you cannot see and do not give a score.",
+  "Answer in English, in at most eight short sentences.",
+].join(" ");
+
 /** Qué se está percibiendo. Cada una tiene sus instrucciones y su modelo preferido. */
-export type ClasePercepcion = "cara" | "escena" | "audio";
+export type ClasePercepcion = "cara" | "escena" | "audio" | "referencia" | "clip";
 
 const INSTRUCCIONES: Record<ClasePercepcion, string> = {
   cara: INSTRUCCIONES_CARA,
   escena: INSTRUCCIONES_ESCENA,
   audio: INSTRUCCIONES_AUDIO,
+  referencia: INSTRUCCIONES_REFERENCIA,
+  clip: INSTRUCCIONES_CLIP,
 };
 
 /**
@@ -84,6 +125,39 @@ export interface Percepcion {
   modelo: string;
 }
 
+/**
+ * Tope **diario de percepciones** por usuario (0.25.0).
+ *
+ * Percibir no cuesta créditos, pero sí **cuota del plan de quien la paga**, y hasta ahora nada lo acotaba: el
+ * tope de `coherencia/decidir.ts` cuenta decisiones, y una percepción ocurre **antes** de decidir. Con la
+ * 0.25.0 hay tres percepciones por comprobación de escena y una más por cada foto que se lee, así que un bucle
+ * de reintentos podía vaciar la cuota de la instalación sin gastar un solo crédito.
+ *
+ * Se comprueba **antes** de llamar a nadie, y se cuenta el mismo número que el de decisiones: percibir sin
+ * poder decidir después no sirve de nada, así que no tiene sentido permitir más de lo uno que de lo otro.
+ */
+async function limiteDePercepcion(): Promise<{ maximo: number; ventanaSegundos: number }> {
+  const ajustes = await leerAjustes();
+  return { maximo: ajustes.coherenciaDecisionesPorDia, ventanaSegundos: 24 * 60 * 60 };
+}
+
+export async function hayCupoDePercepcion(usuarioId: string): Promise<boolean> {
+  return dentroDelLimite(`percepcion:${usuarioId}`, await limiteDePercepcion());
+}
+
+/**
+ * Mira si queda cupo **sin consumirlo**, para poder cortar antes de un trabajo caro: sacar la tira de
+ * fotogramas de un clip son dos procesos de FFmpeg, y hacerlos para descubrir después que no hay cupo es
+ * pagar el CPU para nada.
+ */
+export async function quedaCupoDePercepcion(usuarioId: string): Promise<boolean> {
+  return quedaCupo(`percepcion:${usuarioId}`, await limiteDePercepcion());
+}
+
+/** Lo que se le dice cuando se ha agotado. Dice que no se ha cobrado nada, porque no se ha cobrado nada. */
+export const SIN_CUPO_DE_PERCEPCION =
+  "Has llegado al tope de comprobaciones con modelo que permite esta instalación en 24 horas. No se ha enviado nada ni se ha cobrado nada; vuelve a intentarlo más tarde o pide a quien administra que suba el tope en Admin › Ajustes › Coherencia.";
+
 /** Largo máximo de los hechos. Jev acepta 32k para el estado; esto es de sobra y acota lo que se guarda. */
 const HECHOS_MAXIMOS = 2000;
 
@@ -106,6 +180,9 @@ export async function percibir(peticion: PeticionPercepcion): Promise<Percepcion
   if (!peticion.imagen && !peticion.audio) {
     throw new ErrorPercepcion("No hay nada que mirar ni que escuchar en esta comprobación.");
   }
+  // El tope se mira **antes** de enviar nada: pasarse y disculparse después no es un tope, y lo que se protege
+  // aquí es la cuota de quien paga el plan.
+  if (!(await hayCupoDePercepcion(peticion.usuarioId))) throw new ErrorPercepcion(SIN_CUPO_DE_PERCEPCION);
   const ajustes = await leerAjustes();
   const preferido = peticion.audio ? ajustes.coherenciaModeloAudio : ajustes.coherenciaModeloImagen;
   let resultado: TextoDelMapa;

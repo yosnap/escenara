@@ -5,12 +5,15 @@ import { leerObjeto } from "../almacenamiento";
 import { escenaPropia } from "../asistente/consulta";
 import { db } from "../db/cliente";
 import { characters, type FilaEscena, type FilaMedio, type FilaProyecto, media } from "../db/esquema";
+import { leerCatalogoDeDireccion, nombreDePreset } from "../direccion/catalogo";
+import { type DireccionPedida, pedidoDeDireccion } from "../direccion/fidelidad";
 import { imagenParaModelo } from "../media/procesado";
 import type { Actor } from "../media/servicio";
 import { audioDelClip, ErrorAudioDelClip } from "./audio";
 import { decidirCoherencia } from "./decidir";
+import { ErrorFotogramasDelClip, fotogramasDelClip } from "./fotogramas";
 import { declaraCoherencia } from "./identidad";
-import { ErrorPercepcion, percibir } from "./percepcion";
+import { ErrorPercepcion, percibir, quedaCupoDePercepcion, SIN_CUPO_DE_PERCEPCION } from "./percepcion";
 import { ultimaDecisionDe } from "./registro";
 
 /**
@@ -109,13 +112,24 @@ export async function comprobarEscena(actor: Actor, escenaId: unknown): Promise<
       const decision = await ultimaDecisionDe(actor.id, escena.id, comprobacion);
       if (decision) resultado.decisiones.push(decision);
     } catch (error) {
-      if (error instanceof ErrorPercepcion || error instanceof ErrorAudioDelClip) {
+      if (
+        error instanceof ErrorPercepcion ||
+        error instanceof ErrorAudioDelClip ||
+        error instanceof ErrorFotogramasDelClip
+      ) {
         resultado.sinComprobar.push({ comprobacion, motivo: error.message });
         return;
       }
       throw error;
     }
   };
+
+  /**
+   * Si no queda cupo de percepción, no se empieza nada: las tres comprobaciones que perciben harían el trabajo
+   * caro (convertir el audio, sacar la tira de fotogramas) para chocar después contra el mismo tope. Se dice
+   * una vez, con la causa, en lugar de tres veces al final.
+   */
+  const conCupo = await quedaCupoDePercepcion(actor.id);
 
   const pedido = pedidoDe(escena);
   const sujeto = { tipo: "escena" as const, id: escena.id, proyectoId: proyecto.id };
@@ -137,6 +151,7 @@ export async function comprobarEscena(actor: Actor, escenaId: unknown): Promise<
 
   // Resultado: se mira el fotograma aprobado, que es la imagen de la que sale el clip.
   await anotar("resultado", async () => {
+    if (!conCupo) return SIN_CUPO_DE_PERCEPCION;
     if (!escena.approvedFrameMediaId) {
       return "Esta escena todavía no tiene fotograma aprobado, así que no hay resultado que mirar.";
     }
@@ -163,6 +178,7 @@ export async function comprobarEscena(actor: Actor, escenaId: unknown): Promise<
 
   // Emoción: la voz y el ambiente del clip contra el tono del guion.
   await anotar("emocion", async () => {
+    if (!conCupo) return SIN_CUPO_DE_PERCEPCION;
     const clip = await clipDe(escena);
     if (!clip) return "Esta escena todavía no tiene clip, así que no hay voz que escuchar.";
     if (pedido.script_line === "") return "Sin guion escrito no hay tono con el que comparar la voz.";
@@ -186,7 +202,57 @@ export async function comprobarEscena(actor: Actor, escenaId: unknown): Promise<
     return decision.motivo;
   });
 
+  // Fidelidad de la dirección: si el clip hace lo que el usuario dirigió. Se mira el **clip**, no el fotograma:
+  // el plano y la luz ya los mide `resultado`, y lo que aquí importa es el movimiento, el gesto y el corte.
+  await anotar("direccion_fiel", async () => {
+    if (!conCupo) return SIN_CUPO_DE_PERCEPCION;
+    const clip = await clipDe(escena);
+    if (!clip) return "Esta escena todavía no tiene clip, así que no hay nada que comparar con lo que dirigiste.";
+    const sinPermiso = await motivoSinPermiso(proyecto);
+    if (sinPermiso) return sinPermiso;
+    /**
+     * Se mira **el clip**, no el fotograma. Lo que se pregunta es si la cámara se mueve como se pidió, si hay
+     * un corte y si en un clip mudo mueve los labios: nada de eso se puede ver en una foto fija, y juzgarlo
+     * sobre una daría siempre la misma respuesta vacía. Llega como tira de fotogramas en orden porque los
+     * servicios de percepción ven imágenes y no vídeo.
+     */
+    const imagen = await fotogramasDelClip(clip.storageKey, clip.mimeType);
+    const percepcion = await percibir({
+      usuarioId: actor.id,
+      proyectoId: proyecto.id,
+      clase: "clip",
+      claveIdempotencia: `coherencia:direccion:${escena.id}`,
+      imagen,
+    });
+    const decision = await decidirCoherencia({
+      usuarioId: actor.id,
+      comprobacion: "direccion_fiel",
+      sujeto,
+      percepcion,
+      referencia: pedidoDeDireccion(await direccionPedidaDe(actor.id, escena)),
+    });
+    return decision.motivo;
+  });
+
   return resultado;
+}
+
+/**
+ * Lo que el usuario dirigió, con los **nombres del catálogo en castellano**: son los que él pulsó y los únicos
+ * que puede reconocer en la evidencia de un veredicto.
+ */
+async function direccionPedidaDe(usuarioId: string, escena: FilaEscena): Promise<DireccionPedida> {
+  const catalogo = await leerCatalogoDeDireccion(usuarioId);
+  const nombre = (categoria: Parameters<typeof nombreDePreset>[1], clave: string) =>
+    nombreDePreset(catalogo, categoria, clave);
+  return {
+    formato: escena.clipFormat,
+    plano: nombre("plano", escena.shotType),
+    angulo: nombre("angulo", escena.cameraAngle),
+    movimientoCamara: nombre("camara", escena.cameraMove),
+    microaccion: nombre("microaccion", escena.microAction),
+    momentoMicroaccion: escena.microActionTiming,
+  };
 }
 
 /** Decisiones ya guardadas de una escena, sin comprobar nada nuevo. Es lo que pinta la pantalla al abrirse. */
@@ -194,7 +260,7 @@ export async function coherenciaGuardadaDe(actor: Actor, escenaId: unknown): Pro
   const { escena } = await escenaPropia(actor, escenaId);
   const ajustes = await leerAjustes();
   const decisiones: DecisionVista[] = [];
-  for (const comprobacion of ["guion", "resultado", "emocion"] as const) {
+  for (const comprobacion of ["guion", "resultado", "emocion", "direccion_fiel"] as const) {
     if (coherenciaDe(ajustes, comprobacion).modo === "apagada") continue;
     const decision = await ultimaDecisionDe(actor.id, escena.id, comprobacion);
     if (decision) decisiones.push(decision);

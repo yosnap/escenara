@@ -38,3 +38,21 @@ export async function dentroDelLimite(clave: string, limite: Limite): Promise<bo
 export async function limpiarLimitesCaducados(maximaEdadMs = 24 * 60 * 60 * 1000): Promise<void> {
   await db().execute(sql`delete from rate_limits where last_request < ${Date.now() - maximaEdadMs}`);
 }
+
+/**
+ * Mira si queda cupo **sin consumirlo**. Sirve para cortar antes de un trabajo caro (convertir un vídeo,
+ * sacar una tira de fotogramas) cuando ya se sabe que la llamada de después no se va a poder hacer.
+ *
+ * Quien de verdad decide sigue siendo {@link dentroDelLimite} en el momento de usar el cupo: esto es una
+ * mirada, y entre la mirada y el uso puede entrar otra petición. Cortar de más nunca hace daño aquí; lo que
+ * haría daño es dejar pasar de más, y eso lo sigue impidiendo el contador de verdad.
+ */
+export async function quedaCupo(clave: string, limite: Limite): Promise<boolean> {
+  const inicioVentana = Date.now() - limite.ventanaSegundos * 1000;
+  const filas = await db().execute<{ count: number; last_request: number }>(sql`
+    select count, last_request from rate_limits where key = ${clave}
+  `);
+  const fila = (filas as unknown as { count: number; last_request: number }[])[0];
+  if (!fila || fila.last_request < inicioVentana) return true;
+  return fila.count < limite.maximo;
+}
