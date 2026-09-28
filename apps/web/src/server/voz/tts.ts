@@ -21,7 +21,7 @@ import { exigirSelloVigente } from "../generacion/precios";
 import { condicionEnCurso } from "../generacion/trabajos";
 import type { Actor } from "../media/servicio";
 import { acotarCoste } from "../presupuesto/acotar";
-import { type EleccionDeVoz, eleccionDeVozDe } from "./eleccion";
+import { creditosDeLaOpcion, type EleccionDeVoz, eleccionDeVozDe } from "./eleccion";
 import { vozDelProyecto } from "./proyecto";
 
 /**
@@ -61,8 +61,8 @@ export interface VozEncolada {
  * Modelo de voz y precio con los que se trabajaría **para este usuario**, con su proveedor de reserva si lo hay.
  * Sin modelo con precio o sin credencial de su proveedor, esto lanza con el motivo y no se estima nada.
  */
-export function eleccionDeVoz(usuarioId: string, modelo?: string | null): Promise<EleccionDeVoz> {
-  return eleccionDeVozDe(usuarioId, modelo);
+export function eleccionDeVoz(usuarioId: string, dialogo = "", modelo?: string | null): Promise<EleccionDeVoz> {
+  return eleccionDeVozDe(usuarioId, dialogo, modelo);
 }
 
 /**
@@ -155,11 +155,15 @@ export async function generarVozDeEscena(
   const voz = await exigirVozDisponible(proyecto);
   const dialogo = dialogoDeLaEscena(escena);
 
-  const opciones = await eleccionDeVoz(actor.id, modeloPedido);
+  /**
+   * El precio se calcula **con el diálogo de esta escena**, no con una tarifa plana: los modelos de voz cobran por
+   * carácter, así que un monólogo cuesta decenas de veces lo que una frase. Es lo que hace que el coste esté
+   * acotado de verdad y que la reserva cubra lo que se va a gastar.
+   */
+  const opciones = await eleccionDeVoz(actor.id, dialogo, modeloPedido);
   const eleccion = opciones.elegida;
   const { modelo, precio } = eleccion;
-  // Lo que se confirma y lo que se aparta es el **mayor** de los dos precios: así un cambio automático al
-  // proveedor de reserva nunca gasta más de lo que el usuario tenía delante (`voz/eleccion.ts`).
+  // En la moneda del proveedor por el que se va a gastar. Los créditos de dos proveedores no se comparan.
   const creditos = opciones.creditos;
   exigirSelloVigente(confirmacion.selloEstimacion, precio.sello, true);
   exigirConfirmacion(confirmacion.creditosConfirmados, creditos);
@@ -223,7 +227,23 @@ export async function generarVozDeEscena(
        * si el usuario cambiara la voz entre encolar y enviar, lo que se paga tiene que seguir siendo lo que
        * confirmó. `firmaVoz` es lo que permite decir después si ese audio sigue valiendo.
        */
-      input: { dialogo, voz: { voz: voz.voz, parametros: voz.parametros }, firmaVoz: firma },
+      /**
+       * `reserva` es el tope que el usuario vio para el proveedor de reserva, **en su moneda**: el relevo
+       * automático solo puede ir a ese proveedor y modelo, y solo si lo que cuesta cabe aquí (`despacho.ts`).
+       */
+      input: {
+        dialogo,
+        voz: { voz: voz.voz, parametros: voz.parametros },
+        firmaVoz: firma,
+        reserva:
+          opciones.reserva === null
+            ? null
+            : {
+                proveedor: opciones.reserva.modelo.proveedor,
+                modelo: opciones.reserva.modelo.modelo,
+                creditos: creditosDeLaOpcion(opciones.reserva, dialogo),
+              },
+      },
       sceneId: escena.id,
       estimatedCredits: creditos,
     },

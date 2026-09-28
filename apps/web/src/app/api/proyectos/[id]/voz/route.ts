@@ -1,3 +1,4 @@
+import { esProveedor } from "@/lib/boveda";
 import { esAccionVoz } from "@/lib/voz";
 import { escenaPropia } from "@/server/asistente/consulta";
 import { ErrorProyecto } from "@/server/asistente/errores";
@@ -63,12 +64,24 @@ export const POST = manejador(async (peticion: Request, contexto: ContextoId, ac
       const eleccion = leerEleccionDeVoz(cuerpo);
       const { disponibilidad } = await estadoDeVoz(actor, proyectoId);
       if (!disponibilidad.ttsDisponible) throw new ErrorProyecto(503, disponibilidad.motivoTts);
+      if (!esProveedor(disponibilidad.proveedor)) {
+        throw new ErrorProyecto(503, disponibilidad.motivoTts || "Esta instalación no puede pagar la voz todavía.");
+      }
       await fijarVoz(
         actor,
         proyectoId,
-        // El proveedor y el modelo los decide el catálogo de esta instalación, **no la petición**: el navegador
-        // elige la voz y sus mandos, no con qué servicio se paga.
-        { proveedor: "kie", modelo: disponibilidad.modelo, voz: eleccion.voz, parametros: eleccion.parametros },
+        /**
+         * El proveedor y el modelo los decide el catálogo de esta instalación, **no la petición**: el navegador
+         * elige la voz y sus mandos, no con qué servicio se paga. Se guarda **el proveedor de verdad** del modelo
+         * elegido y no uno fijo: entra en la firma de la voz y en el panel, así que un valor inventado sería un
+         * dato falso en la base y una firma que dice de quién es una voz que no es suya.
+         */
+        {
+          proveedor: disponibilidad.proveedor,
+          modelo: disponibilidad.modelo,
+          voz: eleccion.voz,
+          parametros: eleccion.parametros,
+        },
         leerConfirmadoInvalidar(cuerpo),
       );
       break;

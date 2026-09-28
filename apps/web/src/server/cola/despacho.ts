@@ -25,7 +25,7 @@ import { cerrarTrabajoYGasto } from "../presupuesto/reserva";
 import { registrarFalloDeEscena } from "../produccion/cierre";
 import { type Adaptador, ErrorProveedor, type VozPedida } from "../proveedores/contrato";
 import { resolver } from "../proveedores/registro";
-import { alternativaDeVoz } from "../voz/eleccion";
+import { alternativaDeVoz, creditosDeLaOpcion } from "../voz/eleccion";
 import { prepararCallback } from "./callback";
 import { marcarEnviando, reintentar, renovarToma } from "./toma";
 
@@ -106,8 +106,8 @@ export async function despachar(fila: FilaTrabajo, workerId: string, h: Herramie
      * no se entiende **no** prueban nada, así que esos siguen el camino de siempre (`desconocido`, reserva
      * retenida) y nunca se reenvían a nadie.
      *
-     * El dinero ya está cubierto: la confirmación y la reserva se hicieron con **el mayor** de los dos precios
-     * (`voz/tts.ts › eleccionDeVoz`), así que el cambio nunca gasta más de lo que el usuario tenía delante.
+     * El dinero está acotado por el tope que el usuario vio para la reserva, en su moneda, guardado al encolar
+     * (`relevoDeVoz`), así que el cambio nunca gasta más de lo que el usuario tenía delante.
      */
     const reserva = await relevoDeVoz(fila, error, h);
     if (reserva) return reserva;
@@ -385,20 +385,51 @@ async function relevoDeVoz(fila: FilaTrabajo, error: unknown, h: Herramientas): 
     codigo: error.codigo,
     cobro: "sin-cobro",
   };
+  /**
+   * **El relevo solo puede ir a donde el usuario ya autorizó.** Al encolar se le enseñó, en la moneda del
+   * proveedor de reserva, cuánto costaría este diálogo allí, y esa cifra quedó en la entrada del trabajo. Los
+   * créditos de dos proveedores no se comparan entre sí, así que el tope es ese y solo ese:
+   *
+   * - si al encolar no había reserva (el usuario añadió su clave después), no se cambia;
+   * - si la alternativa de ahora es otro proveedor u otro modelo, no se cambia;
+   * - si lo que cuesta ahora el diálogo allí supera lo que vio, no se cambia.
+   *
+   * En los tres casos se falla sin coste diciendo qué se podía haber probado y por qué no.
+   */
+  const autorizada = reservaAutorizada(fila);
+  const nombre = PROVEEDORES_PUBLICOS[alternativa.modelo.proveedor as FilaTrabajo["provider"]].nombre;
+  const creditosAlternativa = creditosDeLaOpcion(alternativa, dialogoDe(fila));
+  const motivoSinRelevo =
+    autorizada === null ||
+    autorizada.proveedor !== alternativa.modelo.proveedor ||
+    autorizada.modelo !== alternativa.modelo.modelo
+      ? `Se podía haber probado con ${nombre}, pero cuando pediste esta voz no tenías ${nombre} disponible y no autorizaste su coste: no se cambia de proveedor sin que lo hayas visto. Vuelve a pedir la voz de esta escena y se te mostrará lo que cuesta con ${nombre}.`
+      : creditosAlternativa > autorizada.creditos
+        ? `Se podía haber probado con ${nombre}, pero generar este diálogo allí cuesta ahora ${creditosAlternativa} créditos de ${nombre} y tú autorizaste ${autorizada.creditos}: no se cambia de proveedor para gastar más de lo que viste. Vuelve a pedir la voz de esta escena y se te mostrará el coste actualizado.`
+        : null;
+  if (motivoSinRelevo !== null || autorizada === null) {
+    return {
+      fila: await cerrarSinCoste(fila, error.motivo, mensajeDeFalloDeVoz([fallido], motivoSinRelevo ?? "")),
+      enviado: false,
+    };
+  }
   console.warn(
     `[cola] relevo de voz en el trabajo ${fila.id}: ${fila.provider} → ${alternativa.modelo.proveedor} (${error.codigo})`,
   );
   const [cambiada] = await db()
     .update(generationJobs)
-    .set({ provider: alternativa.modelo.proveedor as FilaTrabajo["provider"], model: alternativa.modelo.modelo })
+    .set({
+      provider: alternativa.modelo.proveedor as FilaTrabajo["provider"],
+      model: alternativa.modelo.modelo,
+      estimatedCredits: autorizada.creditos,
+    })
     .where(and(eq(generationJobs.id, fila.id), eq(generationJobs.state, "enviando"), isNull(generationJobs.taskId)))
     .returning();
   if (!cambiada) return null;
   /**
-   * La reserva ya apartada pasa a nombre del proveedor nuevo. **No cambia ni un crédito**: se apartó con el mayor
-   * de los dos precios, así que cubre los dos caminos. Lo que cambia es de quién dice el registro de gasto que es
-   * el dinero, y eso tiene que ser verdad: el cierre copia proveedor y modelo de la reserva, así que sin esto el
-   * usuario vería en su historial un cobro de KIE que en realidad le hizo ElevenLabs.
+   * La reserva ya apartada pasa a nombre del proveedor nuevo **y a su importe autorizado**, en su moneda: el
+   * cierre copia proveedor, modelo e importe de la reserva, así que sin esto el usuario vería en su historial un
+   * cobro de KIE que en realidad le hizo ElevenLabs, o un tope expresado en la moneda equivocada.
    */
   await db()
     .update(usageLedger)
@@ -406,6 +437,8 @@ async function relevoDeVoz(fila: FilaTrabajo, error: unknown, h: Herramientas): 
       provider: alternativa.modelo.proveedor as FilaTrabajo["provider"],
       model: alternativa.modelo.modelo,
       priceStamp: alternativa.precio.sello,
+      credits: autorizada.creditos,
+      amountEur: autorizada.creditos * (await leerAjustes()).eurosPorCredito,
     })
     .where(and(eq(usageLedger.jobId, cambiada.id), eq(usageLedger.entryType, "reserva")));
   let preparado: Preparado;
@@ -538,7 +571,16 @@ function segundosDe(fila: FilaTrabajo): number | null {
   return typeof segundos === "number" && segundos > 0 ? segundos : null;
 }
 
-/** Lo que dice el personaje, tal como se guardó al encolar. Solo lo usa el clip. */
+/** Tope autorizado para el proveedor de reserva de una voz, tal como se guardó al encolar; `null` si no lo hubo. */
+function reservaAutorizada(fila: FilaTrabajo): { proveedor: string; modelo: string; creditos: number } | null {
+  const reserva = (fila.input as { reserva?: unknown }).reserva;
+  if (!reserva || typeof reserva !== "object") return null;
+  const { proveedor, modelo, creditos } = reserva as Record<string, unknown>;
+  if (typeof proveedor !== "string" || typeof modelo !== "string" || typeof creditos !== "number") return null;
+  return { proveedor, modelo, creditos };
+}
+
+/** Lo que dice el personaje, tal como se guardó al encolar. Lo usan el clip y la voz. */
 function dialogoDe(fila: FilaTrabajo): string {
   const dialogo = (fila.input as { dialogo?: unknown }).dialogo;
   return typeof dialogo === "string" ? dialogo : "";

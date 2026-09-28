@@ -1,5 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { PROVEEDORES_PUBLICOS } from "@/lib/boveda";
+import { mensajeDeFalloDeVoz } from "@/lib/diagnostico-voz";
 import { CLIP, LARGO_ESTADO_PROVEEDOR, TIPO_RESULTADO, type TrabajoVista } from "@/lib/generacion";
 import { usarCredencial } from "../boveda/credenciales";
 import { db } from "../db/cliente";
@@ -196,13 +197,16 @@ async function guardarResultado(
     const { archivo, origen } = await h.descargar(url, limiteSubida(permitidos));
     return await guardarArchivoDelTrabajo(actor, fila, tarea, archivo, origen);
   } catch (error) {
+    // El detalle de la excepción solo al registro: viene del almacenamiento o de la descarga y puede llevar
+    // claves de objeto, rutas del servidor o el texto de S3.
     const detalle = error instanceof Error ? error.message : "Error al guardar el resultado.";
     console.error(`[generacion] no se ha podido guardar el resultado del trabajo ${fila.id}: ${detalle}`);
+    const nombre = PROVEEDORES_PUBLICOS[fila.provider].nombre;
     return guardarEstado(fila.id, {
       state: "listo",
       providerState: tarea.estado,
       consumedCredits: tarea.creditos,
-      errorMessage: `El trabajo se ha generado, pero no se ha podido guardar en tu biblioteca: ${detalle} Vuelve a consultarlo para reintentar la descarga.`,
+      errorMessage: `${nombre} (${fila.model}) ha generado el trabajo y sí se ha cobrado, pero no se ha podido guardar en tu biblioteca. El archivo sigue en el proveedor un rato: vuelve a consultarlo para reintentar la descarga, que no cuesta nada. Si sigue fallando, díselo a quien administra esta instalación.`,
     });
   }
 }
@@ -298,19 +302,30 @@ export async function cerrarVozSincrona(
     haFallado: false,
   };
   await cerrarGasto(fila.id, tarea.creditos, "Trabajo terminado en el proveedor.");
-  if (resultado.marcas) await guardarMarcasDeVoz(fila, resultado.marcas);
   const archivo = new File([resultado.audio], resultado.nombre, { type: resultado.mime });
   try {
     // `origen` es `null`: el audio no se ha descargado de ninguna URL, ha venido en la propia respuesta.
     await guardarArchivoDelTrabajo(actor, fila, tarea, archivo, null, aviso);
+    // Las marcas se guardan **después** del archivo: si el guardado fallara, la escena se quedaría con la
+    // transcripción de un audio que no existe, y con unos subtítulos propuestos sobre algo que nadie puede oír.
+    if (resultado.marcas) await guardarMarcasDeVoz(fila, resultado.marcas);
   } catch (error) {
+    /**
+     * **El dinero ya se ha ido.** El proveedor ha cobrado esta llamada y su audio no se ha podido guardar; como no
+     * hay ninguna tarea que volver a consultar —ElevenLabs contesta una sola vez—, ese audio **no se recupera**, y
+     * pedirlo otra vez vuelve a cobrar. Es justo el caso en el que el mensaje más importa, así que dice las cuatro
+     * cosas: quién, qué, que **sí se ha cobrado** y qué puede hacer quien lo lee.
+     *
+     * El texto de la excepción se queda **solo en el registro**: viene del almacenamiento y puede llevar claves de
+     * objeto o rutas del servidor.
+     */
     const detalle = error instanceof Error ? error.message : "Error al guardar el resultado.";
-    console.error(`[generacion] no se ha podido guardar la voz del trabajo ${fila.id}: ${detalle}`);
+    console.error(`[generacion] voz pagada y no guardada en el trabajo ${fila.id}: ${detalle}`);
     await guardarEstado(fila.id, {
       state: "listo",
       providerState: "listo",
       consumedCredits: tarea.creditos,
-      errorMessage: `La voz se ha generado, pero no se ha podido guardar en tu biblioteca: ${detalle}`,
+      errorMessage: `${PROVEEDORES_PUBLICOS[fila.provider].nombre} (${fila.model}) generó la voz y esa llamada sí se ha cobrado, pero no se ha podido guardar en tu biblioteca por un fallo del almacenamiento de esta instalación, no de tu proyecto ni del proveedor. Ese audio no se puede recuperar: la llamada solo responde una vez, así que generarla otra vez volverá a costar. Avisa a quien administra esta instalación antes de repetirlo.`,
     });
   }
   return (await filaPropia(fila.userId, fila.id)) ?? fila;

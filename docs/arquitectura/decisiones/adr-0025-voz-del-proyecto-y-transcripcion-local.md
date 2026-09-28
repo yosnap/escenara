@@ -99,13 +99,21 @@ Tres reglas gobiernan el cambio, y las tres son de dinero:
    probados de la 0.12.0 (`ErrorProveedor.rechazoProbado`: credencial rechazada, sin saldo, exceso de ritmo,
    formato). Un 5xx, un tiempo agotado o una respuesta que no se entiende **no** prueban nada: ahí el trabajo
    queda `desconocido` con su reserva retenida y **no se reenvía a nadie**, exactamente como antes.
-2. **Lo que se confirma y lo que se aparta es el mayor de los dos precios.** Así un cambio automático nunca gasta
-   más de lo que el usuario tenía delante, y no hace falta interrumpirle a mitad de un envío que ya autorizó para
-   pedirle una segunda confirmación que quizá no llegue nunca. Se descartó reconfirmar: dejaba al usuario con el
-   primer proveedor ya fallado y un trabajo esperando un clic.
-3. **El registro de gasto dice la verdad sobre quién cobró.** Al cambiar, la reserva ya apartada pasa a nombre del
-   proveedor nuevo —sin mover ni un crédito, porque cubre a los dos—, y el consumo se apunta con lo que informa la
-   cabecera `character-cost` de la respuesta, no con la estimación.
+2. **Cada proveedor se estima en su propia moneda, y por carácter.** Los créditos de KIE y los del plan de
+   ElevenLabs no son la misma unidad, así que no se comparan con `max` ni se suman (primer diseño, descartado en
+   revisión). Se confirma y se aparta el coste del proveedor elegido; el del proveedor de reserva se enseña al
+   usuario junto al primero y se guarda en la entrada del trabajo al encolar (`input.reserva`: proveedor, modelo
+   y créditos). Como los modelos de voz cobran por carácter, las dos cifras escalan con la longitud del diálogo
+   (`lib/voz.ts › creditosDeVoz`, regla de tres sobre el precio medido) y no con una tarifa plana.
+3. **El relevo solo va a lo autorizado.** Solo procede si la alternativa es el mismo proveedor y modelo guardados
+   al encolar y si lo que cuesta ahora cabe en esa cifra; si no (la clave se añadió después, cambió el modelo o
+   subió el precio), no se cambia y el mensaje dice qué se podía haber probado y por qué no. Se descartó
+   reconfirmar a mitad de envío: dejaba al usuario con el primer proveedor fallado y un trabajo esperando un clic.
+4. **El registro de gasto dice la verdad sobre quién cobró.** Al cambiar, la reserva pasa a nombre del proveedor
+   nuevo y a su importe autorizado, y el consumo se apunta con lo que informa la cabecera `character-cost` de la
+   respuesta, no con la estimación. Queda pendiente del propietario: el valor en euros del presupuesto usa un
+   único `eurosPorCredito` de la instalación, pensado para KIE; los créditos de ElevenLabs necesitarían su propia
+   equivalencia.
 
 **El proveedor de reserva es síncrono**, lo que obliga a una pieza nueva en el contrato de adaptadores: `generarVoz`
 devuelve el identificador y, si el proveedor ya tiene el resultado, también el audio. Quien despacha lo cierra en la

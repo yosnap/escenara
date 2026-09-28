@@ -86,6 +86,12 @@ const tareas = new Map<string, { state: string; urls?: string[]; creditos?: numb
 /** Lo que se le mandó al proveedor en cada tarea: es donde se comprueba con qué voz se pidió cada escena. */
 const enviados = new Map<string, Record<string, unknown>>();
 let siguienteTarea = 0;
+/**
+ * Prefijo propio de esta ejecución para las tareas simuladas. La base de pruebas se comparte entre ejecuciones (y
+ * entre worktrees), y `generation_jobs` tiene una restricción única por proveedor y tarea: sin él, una fila que
+ * dejara otra ejecución con `voz_8` haría fallar aquí el octavo envío.
+ */
+const EJECUCION = crypto.randomUUID().slice(0, 8);
 
 /**
  * Lo que responden los proveedores simulados en cada test. Se toca desde los tests del cambio automático: es la
@@ -136,7 +142,7 @@ const buscar: Buscador = async (url, opciones) => {
         headers: { "Content-Type": "application/json" },
       });
     }
-    const taskId = `voz_${++siguienteTarea}`;
+    const taskId = `voz_${EJECUCION}_${++siguienteTarea}`;
     const cuerpo = JSON.parse(String(opciones?.body ?? "{}")) as { input?: Record<string, unknown> };
     enviados.set(taskId, cuerpo.input ?? {});
     tareas.set(taskId, { state: "waiting" });
@@ -1187,6 +1193,49 @@ describe.skipIf(!hayBaseDeDatos)("voz y subtítulos de un proyecto", () => {
     expect(mensaje).toContain("No se te ha cobrado nada");
     // Y qué hacer, que es lo que toca para el último fallo.
     expect(mensaje).toContain("Espera un minuto");
+  });
+
+  test("el cambio solo va a lo que el usuario vio: sin reserva al encolar, no se cambia aunque haya clave después", async () => {
+    await conClaveDeElevenLabs(false);
+    const estado = await conVozFijada();
+    const [primera] = await escenasDelProyecto();
+    if (!primera) throw new Error("Falta la escena de prueba.");
+    // Sin clave de ElevenLabs al pedirla, la pantalla no enseña ningún coste de reserva.
+    expect(estado.escenas[0]?.creditosReserva).toBeNull();
+    respuestas.kieCrearTarea = 401;
+
+    const pedida = await accion({ accion: "generar-voz", escenaId: primera.id, ...confirmacion(estado) });
+    expect(pedida.estado).toBe(200);
+    // La clave aparece **después** de encolar: su coste nunca se enseñó ni se autorizó.
+    await conClaveDeElevenLabs(true);
+    await enviarEncolados(h, `worker-voz-${crypto.randomUUID()}`);
+
+    const trabajo = await ultimoTrabajoDeVoz(primera.id);
+    expect(trabajo?.provider).toBe("kie");
+    expect(trabajo?.state).toBe("fallido");
+    const mensaje = trabajo?.errorMessage ?? "";
+    expect(mensaje).toContain("Se podía haber probado con ElevenLabs");
+    expect(mensaje).toContain("no autorizaste su coste");
+    expect(mensaje).toContain("No se te ha cobrado nada");
+    expect((await apuntesDeGasto()).every((a) => a.provider === "kie")).toBe(true);
+  });
+
+  test("el coste de la reserva se enseña en su moneda y es el importe que queda reservado al cambiar", async () => {
+    await conClaveDeElevenLabs(true);
+    const estado = await conVozFijada();
+    const [primera] = await escenasDelProyecto();
+    if (!primera) throw new Error("Falta la escena de prueba.");
+    const autorizado = estado.escenas[0]?.creditosReserva ?? 0;
+    expect(autorizado).toBeGreaterThan(0);
+    respuestas.kieCrearTarea = 401;
+
+    const trabajo = await intentarVoz(primera.id, estado);
+    expect(trabajo?.provider).toBe("elevenlabs");
+    // Lo que se aparta pasa a ser lo que el usuario vio para ElevenLabs, no la cifra de KIE.
+    expect(trabajo?.estimatedCredits).toBe(autorizado);
+    const reserva = (await apuntesDeGasto()).find((a) => a.entryType === "reserva");
+    expect(reserva?.provider).toBe("elevenlabs");
+    expect(reserva?.credits).toBe(autorizado);
   });
 
   test("un fallo que NO prueba que KIE no cobró no cambia de proveedor y lo dice así", async () => {

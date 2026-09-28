@@ -4,6 +4,7 @@ import type { Medio } from "@/lib/media/tipos";
 import { resumenDeEscena } from "@/lib/proyectos";
 import {
   avisosDeSubtitulos,
+  creditosDeVoz,
   type DisponibilidadVoz,
   type EscenaVozVista,
   PARAMETROS_VOZ_POR_DEFECTO,
@@ -126,6 +127,7 @@ export async function disponibilidadDeVoz(usuarioId: string): Promise<Disponibil
     };
   }
   try {
+    // Sin diálogo: es el precio de referencia del modelo. Lo que cuesta **cada escena** lo lleva la escena.
     const opciones = await eleccionDeVoz(usuarioId);
     const eleccion = opciones.elegida;
     const { modelo, precio } = eleccion;
@@ -136,7 +138,12 @@ export async function disponibilidadDeVoz(usuarioId: string): Promise<Disponibil
       reserva:
         opciones.reserva === null
           ? null
-          : { proveedor: opciones.reserva.modelo.proveedor, nombre: opciones.reserva.modelo.nombreProveedor },
+          : {
+              proveedor: opciones.reserva.modelo.proveedor,
+              nombre: opciones.reserva.modelo.nombreProveedor,
+              modelo: opciones.reserva.modelo.modelo,
+              creditos: opciones.reserva.precio.creditos,
+            },
       // Los mismos hechos del modelo que evalúa la puerta al encolar: si la pantalla los evaluara de otra forma,
       // diría «listo» donde el servidor va a pedir una confirmación.
       controles: evaluarParaMostrar({ tipo: "voz", parametros, modelo: hechosDeModelo("voz", eleccion) }),
@@ -163,6 +170,7 @@ function vistaDeEscena(
   medios: Map<string, Medio>,
   trabajos: TrabajosDeVoz,
   clipsHablados: ReadonlySet<string>,
+  disponibilidad: DisponibilidadVoz,
 ): EscenaVozVista {
   return {
     id: escena.id,
@@ -178,6 +186,15 @@ function vistaDeEscena(
     subtitulos: escena.subtitles,
     editados: escena.subtitlesEditedAt !== null,
     avisos: avisosDeSubtitulos(escena.subtitles),
+    // Lo que costaría **esta** escena, con su diálogo: es la cifra que se confirma y la que se aparta.
+    creditos:
+      disponibilidad.creditosPorEscena === null
+        ? null
+        : creditosDeVoz(disponibilidad.modelo, disponibilidad.creditosPorEscena, escena.scriptText),
+    creditosReserva:
+      disponibilidad.reserva === null
+        ? null
+        : creditosDeVoz(disponibilidad.reserva.modelo, disponibilidad.reserva.creditos, escena.scriptText),
     trabajoEnMarcha: trabajos.enMarcha.get(escena.id) ?? null,
     fallo: trabajos.fallos.get(escena.id) ?? null,
     avisoProveedor: trabajos.avisos.get(escena.id) ?? null,
@@ -199,7 +216,9 @@ export async function estadoDeVoz(actor: Actor, proyectoId: unknown): Promise<Vo
     proyecto.voiceMode === "pista" ? clipsConDialogoHablado(db(), proyecto.id) : Promise.resolve<string[]>([]),
   ]);
   const clipsHablados = new Set(hablados);
-  const vistas = escenas.map((escena) => vistaDeEscena(proyecto, escena, medios, trabajos, clipsHablados));
+  const vistas = escenas.map((escena) =>
+    vistaDeEscena(proyecto, escena, medios, trabajos, clipsHablados, disponibilidad),
+  );
   /**
    * Muestras ya pagadas de la voz que usaría este proyecto. Se leen con los parámetros **del proyecto**: la misma
    * voz con otra estabilidad suena distinto, así que una muestra con otros parámetros no responde a la pregunta.
@@ -222,6 +241,8 @@ export async function estadoDeVoz(actor: Actor, proyectoId: unknown): Promise<Vo
    */
   const soloTranscripcion = proyecto.voiceMode === "clip";
   const creditos = disponibilidad.creditosPorEscena;
+  // Suma de lo que costaría cada escena invalidada **con su propio diálogo**, no una tarifa por el número de ellas.
+  const costeDeLoInvalidado = vistas.filter((e) => e.invalidada).reduce((total, e) => total + (e.creditos ?? 0), 0);
   return {
     proyectoId: proyecto.id,
     titulo: proyecto.title,
@@ -232,7 +253,7 @@ export async function estadoDeVoz(actor: Actor, proyectoId: unknown): Promise<Vo
     musica,
     muestras,
     porRegenerar,
-    costeRegenerar: soloTranscripcion ? 0 : creditos === null ? null : creditos * porRegenerar,
+    costeRegenerar: soloTranscripcion ? 0 : creditos === null ? null : costeDeLoInvalidado,
     motivoSinCoste: soloTranscripcion || creditos !== null ? "" : disponibilidad.motivoTts,
   };
 }

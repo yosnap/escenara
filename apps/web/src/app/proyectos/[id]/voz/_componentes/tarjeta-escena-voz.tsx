@@ -103,9 +103,12 @@ export function TarjetaEscenaVoz({
                 {escena.audio ? "Regenerar la voz" : "Generar la voz"}
               </Boton>
               <p className="text-sm text-texto-suave">
-                {disponibilidad.creditosPorEscena === null
+                {escena.creditos === null
                   ? "Sin precio registrado no se puede estimar el coste, así que no se genera."
-                  : `Cuesta ${formatearCreditos(disponibilidad.creditosPorEscena)} estimados. Se te pedirá confirmarlo.`}
+                  : `Cuesta ${formatearCreditos(escena.creditos)} estimados para los ${escena.dialogo.trim().length} caracteres de su diálogo: la voz se cobra por carácter. Se te pedirá confirmarlo.`}
+                {escena.creditosReserva !== null && disponibilidad.reserva
+                  ? ` Si ${disponibilidad.nombreProveedor} la rechazara sin cobrar, se generaría solo con ${disponibilidad.reserva.nombre} por hasta ${formatearCreditos(escena.creditosReserva)} de ${disponibilidad.reserva.nombre}, en su cuenta.`
+                  : ""}
               </p>
             </div>
           ) : (

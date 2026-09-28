@@ -38,9 +38,12 @@ Si el primero falla de una forma que **no prueba** que no haya cobrado (una aver
 respuesta que no se entiende), **no se cambia y no se reenvía nada**: podrías acabar pagando dos veces. El mensaje
 te lo dice con esas palabras y te pide que mires el historial de esa cuenta antes de volver a pedirlo.
 
-Como el cambio no te pregunta, **la estimación que confirmas es siempre la del más caro de los dos**. Así lo que
-se gaste, vaya por donde vaya, nunca pasa de lo que tenías delante. Lo que se apunta como gastado es lo que
-informe el proveedor que de verdad haya cobrado, no la estimación.
+Como el cambio no te pregunta, **cada escena te enseña lo que costaría en los dos**, cada uno en sus propios
+créditos (los de un proveedor no valen lo mismo que los del otro, así que no se suman ni se comparan). La voz se
+cobra por carácter, así que la cifra depende de lo largo que sea el diálogo. El cambio solo se hace al proveedor
+y modelo que viste al pedirlo y solo si lo que cuesta allí cabe en lo que viste; si no (por ejemplo, porque
+añadiste la clave del otro después de pedir la voz), no se cambia y se te dice por qué. Lo que se apunta como
+gastado es lo que informe el proveedor que de verdad haya cobrado, no la estimación.
 
 Si solo tienes la clave de uno, no hay cambio posible: si falla, se te dice y se te recuerda que puedes añadir la
 del otro en «Tu cuenta» para que el siguiente intento lo pruebe solo.

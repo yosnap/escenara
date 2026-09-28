@@ -222,8 +222,9 @@ export function VistaVoz({ inicial }: { inicial: VozProyectoVista }) {
             disponibilidad={estado.disponibilidad}
             ocupado={ocupado}
             onGenerarVoz={() => {
-              if (creditos === null) return;
-              setGasto({ tipo: "escena", escenaId: escena.id, orden: escena.orden, creditos });
+              // Lo que se confirma es lo que cuesta **esta** escena con su diálogo, no una tarifa del proyecto.
+              if (escena.creditos === null) return;
+              setGasto({ tipo: "escena", escenaId: escena.id, orden: escena.orden, creditos: escena.creditos });
             }}
             onTranscribir={() => sustituirSubtitulos({ tipo: "transcribir", escenaId: escena.id }, false)}
             onProponer={() => sustituirSubtitulos({ tipo: "proponer", escenaId: escena.id }, false)}
