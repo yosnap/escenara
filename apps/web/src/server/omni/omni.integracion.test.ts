@@ -750,4 +750,49 @@ describe.skipIf(!hayBaseDeDatos)("escenas habladas con Omni", () => {
     expect(conRetrato.totalReferencias).toBe(0);
     expect(conRetrato.totalGeneradas).toBe(1);
   });
+  // ── Lo que señaló la revisión de código ──────────────────────────────────────────────────────────────────
+
+  test("registrar no cuesta créditos, pero tiene ritmo: pasado el tope se rechaza sin llamar al proveedor", async () => {
+    const { RITMO_REGISTROS_OMNI, exigirRitmoDeRegistro } = await import("./registro");
+    // Se consume el ritmo entero sin tocar al proveedor: lo que se comprueba es la puerta, no el registro.
+    for (let i = 0; i < RITMO_REGISTROS_OMNI.maximo; i++) await exigirRitmoDeRegistro(ana.id);
+    const fallo = await error(() => registrarVoz());
+    expect(fallo.estado).toBe(429);
+    expect(fallo.message).toContain("no cuesta créditos");
+    // Nada ha salido hacia el proveedor: el corte está antes de la credencial y de la llamada.
+    expect(respuestas.registrosDeVoz).toBe(0);
+  });
+
+  test("en modo Omni no se exige el modelo de fotograma: ni su precio ni su duración impiden producir", async () => {
+    await todoRegistrado();
+    const estado = await produccion();
+    // No hay fotograma en este modo, así que su precio no entra en el gasto ni en los impedimentos.
+    expect(estado.creditosPorFotograma).toBe(0);
+    expect(estado.impedimentos.join(" ")).not.toContain("modelo con precio registrado");
+    expect(estado.impedimentos.join(" ")).not.toContain("genera clips de");
+
+    /**
+     * La regla que lo sostiene, sobre la función pura: en modo Omni quien decide si se puede producir es el
+     * modelo de escenas habladas (`impedimentosDeOmni`), así que aquí no llegan ni el precio del fotograma ni la
+     * duración del modelo de animación genérico. Con esa forma, no hay ningún impedimento que dar.
+     */
+    const { impedimentosDeProduccion } = await import("../produccion/consulta");
+    expect(
+      impedimentosDeProduccion({
+        planAprobado: true,
+        protagonista: personajeId,
+        sinPrecio: false,
+        segundosDelClip: null,
+        segundosDelProyecto: 4,
+        presupuesto: 100_000,
+        comprometido: 0,
+        creditosFotograma: CREDITOS_OMNI,
+        porProducir: 2,
+      }),
+    ).toEqual([]);
+
+    // Y se produce de verdad, que es lo que el impedimento estaba bloqueando antes.
+    await producirProyecto(actor, proyectoId, await confirmacion(), h);
+    expect(await trabajosDelProyecto()).toHaveLength(2);
+  });
 });

@@ -18,8 +18,13 @@
  * Nombres que la lista reconoce. Son personas públicas muy conocidas de varios ámbitos (política, cine, música,
  * deporte, tecnología). Se guardan **en minúsculas y sin acentos**, que es como se comparan.
  *
- * La lista es corta a propósito: alargarla con nombres comunes («Ana García») convertiría el control en un
- * rechazo constante de descripciones legítimas, que es la forma más rápida de que alguien deje de leerlo.
+ * Hay **nombres completos y también apellidos o apodos** por los que se conoce a esas mismas personas
+ * («Messi», «Obama», «Bardem»): pedir «que se parezca a Messi» es exactamente lo mismo que nombrarlo entero, y
+ * una lista que solo mirara el nombre completo se saltaba con quitar una palabra.
+ *
+ * Lo que **no** entra son apellidos que también son apellidos corrientes («García», «Cruz» a secas): ahí el
+ * control se convertiría en un rechazo constante de descripciones legítimas, que es la forma más rápida de que
+ * alguien deje de leerlo. Sigue siendo **un control, no una verificación**.
  */
 const NOMBRES: readonly string[] = [
   "barack obama",
@@ -68,6 +73,36 @@ const NOMBRES: readonly string[] = [
   "zendaya",
   "papa francisco",
   "dalai lama",
+  // Apellidos y apodos por los que se conoce a esas mismas personas. Pedir «como Messi» es nombrarlo igual.
+  "obama",
+  "trump",
+  "biden",
+  "putin",
+  "merkel",
+  "macron",
+  "musk",
+  "bezos",
+  "zuckerberg",
+  "beyonce",
+  "shakira",
+  "madonna",
+  "zendaya",
+  "messi",
+  "cristiano",
+  "ronaldo",
+  "nadal",
+  "lebron",
+  "brad pitt",
+  "jolie",
+  "dicaprio",
+  "scarlett",
+  "keanu",
+  "bardem",
+  "almodovar",
+  "banderas",
+  "rosalia",
+  "the rock",
+  "la roca",
 ];
 
 /** Minúsculas y sin acentos ni signos: comparar «Peñélope» y «penelope» tiene que dar lo mismo. */
@@ -90,7 +125,12 @@ const normalizar = (texto: string): string =>
 export function nombresRealesEn(texto: string): string[] {
   const limpio = ` ${normalizar(texto)} `;
   if (limpio.trim() === "") return [];
-  return NOMBRES.filter((nombre) => limpio.includes(` ${nombre} `));
+  const encontrados = NOMBRES.filter((nombre) => limpio.includes(` ${nombre} `));
+  /**
+   * «Scarlett Johansson» hace saltar también «Scarlett», que está en la lista como apodo. Se queda **el más
+   * largo**: enumerar los dos en el mensaje haría parecer que se han encontrado dos personas distintas.
+   */
+  return encontrados.filter((nombre) => !encontrados.some((otro) => otro !== nombre && otro.includes(nombre)));
 }
 
 /** `true` si el texto nombra a alguien de la lista. */

@@ -21,6 +21,7 @@ import {
 import { archivoDe } from "../generacion/comprobaciones";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { type EleccionDeTrabajo, elegirParaTipo } from "../generacion/precios";
+import { dentroDelLimite, type Limite } from "../limite";
 import type { Actor } from "../media/servicio";
 import { contextoParaGenerar } from "../personajes/contexto";
 import { ErrorProveedor } from "../proveedores/contrato";
@@ -43,6 +44,23 @@ import { ErrorOmni } from "./errores";
  * Este fichero **no decide de quién es el personaje ni si hay consentimiento**: eso lo deciden quienes llaman
  * (`personajes/omni.ts` y `voz/omni.ts`), que son los que tienen el actor y el motor de controles delante.
  */
+
+/**
+ * Ritmo máximo de registros por usuario. No es dinero —los dos endpoints son gratuitos—, pero **sí envía una
+ * cara a un proveedor** y consume su API con la clave de alguien: un script (o un botón repetido) no puede
+ * convertir eso en cientos de peticiones. Es más holgado que el de los envíos de pago porque aquí no se gasta.
+ */
+export const RITMO_REGISTROS_OMNI: Limite = { ventanaSegundos: 60 * 60, maximo: 60 };
+
+/** Corta el ritmo de registros con su motivo. Lo cruzan los dos: la voz del proyecto y el personaje. */
+export async function exigirRitmoDeRegistro(usuarioId: string): Promise<void> {
+  if (!(await dentroDelLimite(`omni:registro:${usuarioId}`, RITMO_REGISTROS_OMNI))) {
+    throw new ErrorOmni(
+      429,
+      "Has registrado demasiadas voces o personajes seguidos. Espera un rato: registrar no cuesta créditos, pero sí envía imágenes al proveedor.",
+    );
+  }
+}
 
 /**
  * Modelo, adaptador y precio con los que se producen las escenas habladas: **el primero de `MODELOS_OMNI` que el
@@ -156,6 +174,7 @@ export async function registrarVozEnProveedor(
       `Esta instalación no sabe registrar voces en ${modelo.nombreProveedor}, así que no puede usar el modo Omni. Elige «Voz del clip» o «Pista de voz aparte».`,
     );
   }
+  await exigirRitmoDeRegistro(usuarioId);
   const clave = await claveDe(usuarioId, modelo.proveedor, modelo.nombreProveedor);
   try {
     const registrar = adaptador.registrarVoz;
@@ -211,6 +230,7 @@ export async function registrarPersonajeEnProveedor(
       `Esta instalación no sabe registrar personajes en ${modelo.nombreProveedor}, así que no puede usar el modo Omni. Elige otro modo de voz en el proyecto.`,
     );
   }
+  await exigirRitmoDeRegistro(usuarioId);
   const clave = await claveDe(usuarioId, modelo.proveedor, modelo.nombreProveedor);
   const archivos = [datos.imagenes.retrato, ...(datos.imagenes.cuerpo ? [datos.imagenes.cuerpo] : [])];
   try {
