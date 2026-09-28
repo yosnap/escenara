@@ -147,20 +147,44 @@ function TarjetaTipo({ inicial, opciones }: { inicial: MapaVista; opciones: Entr
       )}
 
       <div className="flex flex-wrap items-end gap-3">
-        {disponibles.length > 0 && entradas.length < ENTRADAS_MAXIMAS && (
+        {opciones.length > 0 ? (
           <>
             <Selector
-              etiqueta="Añadir una opción"
+              etiqueta="Elegir un modelo"
               className="min-w-64 flex-1"
-              marcador="Elige con qué más se puede intentar"
+              marcador="Todos los modelos que puedes usar para esto"
               valor={añadir}
-              opciones={disponibles.map((o) => ({ value: clave(o), label: etiquetaDeEntrada(o) }))}
+              opciones={opciones.map((o) => {
+                const yaEsta = entradas.some((e) => clave(e) === clave(o));
+                return {
+                  value: clave(o),
+                  label: etiquetaDeEntrada(o),
+                  descripcion: [o.coste, yaEsta ? "ya en tu lista" : ""].filter(Boolean).join(" · "),
+                };
+              })}
               onCambio={setAñadir}
               deshabilitado={ocupado}
             />
             <Boton
-              variante="secundario"
               disabled={ocupado || añadir === null}
+              onClick={() => {
+                const elegida = opciones.find((o) => clave(o) === añadir);
+                if (!elegida) return;
+                setAñadir(null);
+                // Principal: el elegido primero y el resto detrás, sin repetirlo.
+                void guardar([elegida, ...entradas.filter((e) => clave(e) !== clave(elegida))]);
+              }}
+            >
+              Usar como principal
+            </Boton>
+            <Boton
+              variante="secundario"
+              disabled={
+                ocupado ||
+                añadir === null ||
+                entradas.length >= ENTRADAS_MAXIMAS ||
+                entradas.some((e) => clave(e) === añadir)
+              }
               onClick={() => {
                 const elegida = disponibles.find((o) => clave(o) === añadir);
                 if (!elegida) return;
@@ -168,9 +192,13 @@ function TarjetaTipo({ inicial, opciones }: { inicial: MapaVista; opciones: Entr
                 void guardar([...entradas, elegida]);
               }}
             >
-              Añadir
+              Añadir como reserva
             </Boton>
           </>
+        ) : (
+          <p className="text-sm text-texto-suave">
+            No hay ningún modelo que puedas usar para esto: falta la clave de su proveedor en «Credenciales de IA».
+          </p>
         )}
         {mapa.propio && (
           <Boton

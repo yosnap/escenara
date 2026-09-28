@@ -2,6 +2,15 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.22.4] · 2026-09-28
+
+### Cambiado
+
+- **En cada tipo del mapa hay siempre un selector con todos los modelos que puedes usar**, con su nombre y su coste,
+  y dos acciones: «Usar como principal» (lo pone el primero aunque ya esté en tu lista) y «Añadir como reserva».
+  Antes el selector desaparecía cuando lo recomendado ya incluía todos los modelos. Lo recomendado es solo el
+  punto de partida.
+
 ## [0.22.3] · 2026-09-28
 
 ### Corregido
