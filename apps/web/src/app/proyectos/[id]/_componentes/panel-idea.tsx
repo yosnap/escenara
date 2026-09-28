@@ -141,7 +141,7 @@ export function PanelIdea({
   };
 
   return (
-    <Paso numero={1} titulo="La idea">
+    <Paso numero={2} titulo="La idea">
       <div className="flex flex-col gap-4">
         {hecho && <Aviso tono="correcto">{hecho}</Aviso>}
 

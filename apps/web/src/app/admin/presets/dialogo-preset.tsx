@@ -7,12 +7,14 @@ import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo, EntradaTexto } from "@/components/ui/field";
 import { Dialogo } from "@/components/ui/overlay";
 import { Selector } from "@/components/ui/select";
+import { CATEGORIA_ANGULO } from "@/lib/anuncio";
 import {
   CATEGORIAS_PRESET,
   type CategoriaPreset,
   ETIQUETA_CATEGORIA,
   PRESET_DESCRIPCION_MAXIMA,
   PRESET_PROMPT_MAXIMO,
+  PRESET_TEXTO_ES_MAXIMO,
   type PresetVista,
 } from "@/lib/presets";
 import type { DatosPreset } from "@/server/prompts/presets-admin";
@@ -34,6 +36,9 @@ const VACIO = (categoria: CategoriaPreset): DatosPreset => ({
   prompt: "",
   proporcion: categoria === "formato" ? "9:16" : "",
   segundos: categoria === "duracion" ? 4 : 0,
+  porDondeEntra: "",
+  ejemplo: "",
+  exigeDeclaracion: false,
   orden: 100,
   activo: true,
 });
@@ -46,6 +51,9 @@ const deVista = (preset: PresetVista): DatosPreset => ({
   prompt: preset.valores.prompt,
   proporcion: preset.valores.proporcion ?? "",
   segundos: preset.valores.segundos ?? 0,
+  porDondeEntra: preset.valores.porDondeEntra ?? "",
+  ejemplo: preset.valores.ejemplo ?? "",
+  exigeDeclaracion: preset.valores.exigeDeclaracion === true,
   orden: preset.orden,
   activo: preset.activo,
 });
@@ -166,6 +174,46 @@ export function DialogoPreset({
             />
           )}
         </Campo>
+
+        {datos.categoria === CATEGORIA_ANGULO && (
+          <>
+            <Campo
+              etiqueta="Por dónde entra (español)"
+              ayuda={`Lo que se lee en el brief debajo del nombre: «Lo que le molesta cada día». Máximo ${PRESET_TEXTO_ES_MAXIMO} caracteres.`}
+            >
+              {(props) => (
+                <EntradaTexto
+                  {...props}
+                  value={datos.porDondeEntra ?? ""}
+                  maxLength={PRESET_TEXTO_ES_MAXIMO}
+                  onChange={(e) => setDatos({ ...datos, porDondeEntra: e.target.value })}
+                  placeholder="Lo que le molesta cada día"
+                />
+              )}
+            </Campo>
+            <Campo
+              etiqueta="Ejemplo escrito (español)"
+              ayuda="Una frase de ejemplo de este ángulo. Es lo que hace entenderlo de un vistazo, y el asistente la recibe como guía."
+            >
+              {(props) => (
+                <AreaTexto
+                  {...props}
+                  value={datos.ejemplo ?? ""}
+                  maxLength={PRESET_TEXTO_ES_MAXIMO}
+                  className="min-h-20"
+                  onChange={(e) => setDatos({ ...datos, ejemplo: e.target.value })}
+                  placeholder="El encrespado que aparece a los diez minutos de salir de casa."
+                />
+              )}
+            </Campo>
+            <Interruptor
+              etiqueta="Pide declarar que lo que se afirma es cierto"
+              descripcion="Enciéndelo si este ángulo afirma algo sobre el mundo que se puede desmentir (un mecanismo, un beneficio, una pérdida, una comparación). Sin esa declaración registrada, quien lo elija no podrá pedir el guion."
+              activo={datos.exigeDeclaracion === true}
+              onCambio={(v) => setDatos({ ...datos, exigeDeclaracion: v })}
+            />
+          </>
+        )}
 
         {datos.categoria === "formato" && (
           <Campo

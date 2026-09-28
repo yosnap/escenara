@@ -1,24 +1,39 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { claseBoton } from "@/components/ui/button";
 import { Aviso } from "@/components/ui/feedback";
 import { InsigniaEstadoProyecto } from "@/components/ui/proyecto";
 import type { PersonajeElegible } from "@/lib/personajes";
 import { ETIQUETA_FORMATO, type ProyectoDetalle } from "@/lib/proyectos";
+import type { DatosDelAnuncio } from "@/server/anuncio/pantalla";
+import { PanelBrief } from "./anuncio/panel-brief";
 import { ListaEscenas } from "./lista-escenas";
 import { PanelAprobacion } from "./panel-aprobacion";
 import { PanelIdea } from "./panel-idea";
 
 /**
- * Página de un proyecto, de arriba abajo en el orden en que se trabaja: idea → concepto → guion por escenas →
- * plan con su coste y aprobación.
+ * Página de un proyecto, de arriba abajo en el orden en que se trabaja: brief del anuncio (ángulo y oferta) →
+ * idea y concepto → guion por escenas → plan con su coste y aprobación.
+ *
+ * El brief va **primero** porque es lo que decide el anuncio (0.27.0), y es **opcional**: sin él, los tres pasos
+ * siguientes funcionan exactamente como antes de esa versión.
  *
  * Todo el estado del proyecto vive aquí y baja a los paneles: cada acción del servidor devuelve el proyecto
  * **completo** (con su plan recalculado), así que la pantalla nunca muestra un coste que ya no es el vigente.
  */
-export function VistaProyecto({ inicial, personajes }: { inicial: ProyectoDetalle; personajes: PersonajeElegible[] }) {
+export function VistaProyecto({
+  inicial,
+  personajes,
+  anuncio,
+}: {
+  inicial: ProyectoDetalle;
+  personajes: PersonajeElegible[];
+  anuncio: DatosDelAnuncio;
+}) {
+  const router = useRouter();
   const [detalle, setDetalle] = useState(inicial);
   const [error, setError] = useState<string | null>(null);
   const { proyecto } = detalle;
@@ -66,6 +81,7 @@ export function VistaProyecto({ inicial, personajes }: { inicial: ProyectoDetall
 
       {error && <Aviso tono="error">{error}</Aviso>}
 
+      <PanelBrief proyecto={proyecto} datos={anuncio} onError={setError} onRecargar={() => router.refresh()} />
       <PanelIdea detalle={detalle} personajes={personajes} onCambio={aplicar} onError={setError} />
       <ListaEscenas detalle={detalle} onCambio={aplicar} onError={setError} />
       <PanelAprobacion detalle={detalle} onCambio={aplicar} onError={setError} />

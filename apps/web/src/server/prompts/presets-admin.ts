@@ -18,6 +18,7 @@ import {
   PRESET_DESCRIPCION_MAXIMA,
   PRESET_NOMBRE_MAXIMO,
   PRESET_PROMPT_MAXIMO,
+  PRESET_TEXTO_ES_MAXIMO,
   type PresetVista,
   type ValoresPreset,
 } from "@/lib/presets";
@@ -59,6 +60,14 @@ export interface DatosPreset {
   momento?: MomentoMicroaccion;
   formatoClip?: FormatoClip;
   registro?: RegistroEstetico;
+  /**
+   * Campos del catálogo de ángulos del anuncio (0.27.0), solo en `angulo-anuncio`. Van **en castellano**: son lo
+   * que se lee en el brief y la definición de referencia con la que se comprueba el guion.
+   */
+  porDondeEntra?: string;
+  ejemplo?: string;
+  /** `true` si elegir este ángulo obliga a declarar que lo que se afirma es cierto antes de pedir guion. */
+  exigeDeclaracion?: boolean;
   orden: number;
   activo: boolean;
 }
@@ -68,6 +77,15 @@ function exigirTexto(valor: unknown, campo: string, maximo: number, minimo = 1):
   if (texto.length < minimo) throw new ErrorPreset(400, `${campo} no puede quedar vacío.`);
   if (texto.length > maximo) throw new ErrorPreset(400, `${campo} no puede pasar de ${maximo} caracteres.`);
   return texto;
+}
+
+/**
+ * Un texto en castellano del catálogo de ángulos: opcional, de una frase. Se recorta en lugar de rechazarse porque
+ * no es una restricción comprobable contra nada, es lo que se lee en pantalla.
+ */
+function textoEnCastellano(valor: unknown): string {
+  const texto = typeof valor === "string" ? valor.trim().replace(/\s+/g, " ") : "";
+  return texto.slice(0, PRESET_TEXTO_ES_MAXIMO);
 }
 
 function exigirClave(valor: unknown): string {
@@ -111,6 +129,21 @@ function exigirValores(datos: DatosPreset): ValoresPreset {
   if (datos.categoria === "microaccion" && esMomentoMicroaccion(datos.momento)) valores.momento = datos.momento;
   if (datos.categoria === "formato-clip" && esFormatoClip(datos.formatoClip)) valores.formatoClip = datos.formatoClip;
   if (datos.categoria === "registro-estetico" && esRegistroEstetico(datos.registro)) valores.registro = datos.registro;
+  /**
+   * Catálogo de ángulos del anuncio (0.27.0). Se guardan aquí y no se descartan porque **sin ellos el ángulo queda
+   * mudo**: «por dónde entra» y el ejemplo son lo que hace entenderlo de un vistazo en el brief, y quién exige
+   * declaración de veracidad lo dice cada preset, no una lista en el código. Editar un ángulo sin conservarlos lo
+   * dejaría sin ejemplo y, peor, sin su obligación de declarar.
+   *
+   * Vacío = no lo tiene, no una cadena vacía guardada: así el brief distingue «no lo dice» de «lo dice vacío».
+   */
+  if (datos.categoria === CATEGORIA_ANGULO) {
+    const porDondeEntra = textoEnCastellano(datos.porDondeEntra);
+    const ejemplo = textoEnCastellano(datos.ejemplo);
+    if (porDondeEntra !== "") valores.porDondeEntra = porDondeEntra;
+    if (ejemplo !== "") valores.ejemplo = ejemplo;
+    if (datos.exigeDeclaracion === true) valores.exigeDeclaracion = true;
+  }
   return valores;
 }
 
