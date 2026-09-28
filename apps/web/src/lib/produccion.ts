@@ -256,6 +256,17 @@ export interface EscenaProduccionVista {
   motivoUltimoFallo: string;
   /** La escena se editó después de generarla: lo producido ya no corresponde a lo que dice. */
   cambiadaDesdeLaGeneracion: boolean;
+  /**
+   * La escena lleva producto (0.26.0). Decide si se pide la casilla del derecho de uso de la marca: solo
+   * aparece cuando hay una marca en juego, y sin ella no se genera.
+   */
+  conProducto: boolean;
+  /**
+   * **Falta insertar la captura** (producto digital, 0.26.0): lo que hay hecho es el fotograma con la
+   * pantalla apagada, así que lo siguiente no es el clip sino meter la captura dentro de esa pantalla. Es
+   * otra generación con su coste, y el botón tiene que decirlo.
+   */
+  faltaInsertarCaptura: boolean;
   /** Versiones anteriores, de la más reciente a la más antigua. */
   versiones: VersionDeEscena[];
 }

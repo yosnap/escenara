@@ -162,6 +162,18 @@ export const generationJobs = pgTable(
     productId: uuid("product_id").references(() => products.id, { onDelete: "set null" }),
     /** Clave de la acción de producto que se pidió. Se conserva aunque el producto desaparezca. */
     productAction: text("product_action").notNull().default(""),
+    /**
+     * Paso del **producto digital** con el que se pidió este trabajo (0.26.0): `pantalla_negra` para el
+     * fotograma del dispositivo apagado e `insertar_captura` para la edición que mete la captura dentro.
+     * Vacío en todo lo demás, que es todo lo que no es un fotograma de un producto digital.
+     */
+    digitalStep: text("digital_step").notNull().default(""),
+    /**
+     * Casilla **«tengo derecho a usar esta marca»** (0.26.0), con su fecha. Obligatoria en cuanto el envío
+     * lleva producto, y `null` cuando no lleva ninguno: es una declaración del usuario sobre una marca, así
+     * que hay que poder demostrar cuándo la hizo, igual que con la de la imagen.
+     */
+    brandRightsAt: timestamp("brand_rights_at", { withTimezone: true }),
     resultMediaId: uuid("result_media_id").references(() => media.id, { onDelete: "set null" }),
     estimatedCredits: integer("estimated_credits").notNull(),
     /** Créditos que informa el proveedor; si no llegan, se conserva la estimación marcada como tal. */

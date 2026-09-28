@@ -9,7 +9,14 @@ import {
   SIN_NOMBRAR_LA_TECNICA,
   SIN_RETOQUE_FINAL,
 } from "./ingles";
-import { bloqueProducto, type ProductoEnPrompt, REGLA_ETIQUETA_PRODUCTO, sustituyeAlSujeto } from "./producto";
+import {
+  bloqueProducto,
+  esInsercionDeCaptura,
+  INSERCION_DE_CAPTURA,
+  type ProductoEnPrompt,
+  REGLA_ETIQUETA_PRODUCTO,
+  sustituyeAlSujeto,
+} from "./producto";
 
 /**
  * **Método 6C**: la estructura del prompt del **fotograma** del que sale el clip.
@@ -123,6 +130,12 @@ export function componerSeisC(seis: SeisC, cambiarSolo?: CambiarSolo): string {
       }
     : seis;
   const producto = base.producto ?? null;
+  /**
+   * **Paso 2 del producto digital**: esto no es un fotograma nuevo, es una edición de uno que ya existe y que
+   * el usuario ya ha pagado. Describirle otra vez las seis C sería invitarle a rehacer la foto entera; lo que
+   * se le pide es que cambie el rectángulo de la pantalla y deje lo demás igual.
+   */
+  if (esInsercionDeCaptura(producto)) return componerInsercionDeCaptura();
   // Con el plano del producto solo no sale nadie: el sujeto es el producto, y describir además a un personaje
   // metería a una persona en un fotograma que se pidió sin ninguna.
   const soloProducto = sustituyeAlSujeto(producto);
@@ -152,6 +165,27 @@ export function componerSeisC(seis: SeisC, cambiarSolo?: CambiarSolo): string {
     ),
   );
   return bloques.filter((b) => b !== "").join("\n");
+}
+
+/**
+ * El prompt del **segundo paso del producto digital**: la captura dentro de la pantalla apagada.
+ *
+ * Lleva la regla de la etiqueta igual que cualquier otro envío con producto —aquí la «etiqueta» es la
+ * interfaz de la app, y reescribir sus textos es exactamente el fallo que hay que impedir— y cierra con los
+ * anclajes mínimos, que son los que evitan que la pantalla salga como un cartel pegado encima.
+ */
+export function componerInsercionDeCaptura(): string {
+  return [
+    etiqueta("Screen insert", INSERCION_DE_CAPTURA),
+    etiqueta("Product", REGLA_ETIQUETA_PRODUCTO),
+    etiqueta(
+      "Realism",
+      unir([
+        "The screen is part of the photograph: it sits behind the glass, at the same distance and with the same focus as the device",
+        SIN_NOMBRAR_LA_TECNICA,
+      ]),
+    ),
+  ].join("\n");
 }
 
 const QUE_CAMBIA: Record<Exclude<CambioUnico, "ninguno">, string> = {

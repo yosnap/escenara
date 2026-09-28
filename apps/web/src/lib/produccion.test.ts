@@ -63,6 +63,8 @@ const escena = (cambios: Partial<EscenaProduccionVista> = {}): EscenaProduccionV
   presupuestoReintentos: 0,
   motivoUltimoFallo: "",
   cambiadaDesdeLaGeneracion: false,
+  conProducto: false,
+  faltaInsertarCaptura: false,
   versiones: [],
   ...cambios,
 });

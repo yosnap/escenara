@@ -37,6 +37,8 @@ import { presetsDeProduccion } from "./presets";
 export interface ConfirmacionProduccion {
   /** Casilla «tengo derecho a usar esta imagen». */
   derechos: boolean;
+  /** Casilla «tengo derecho a usar esta marca» (0.26.0). Obligatoria en cuanto la escena lleva producto. */
+  derechoMarca?: boolean;
   /** Revisión de las referencias del personaje (ADR-0009). */
   sinTerceros: boolean;
   /** Créditos que el usuario tenía delante **por trabajo**. */
@@ -142,6 +144,7 @@ async function encolarPrimerTrabajo(
       proyecto,
       {
         derechos: confirmacion.derechos,
+        derechoMarca: confirmacion.derechoMarca,
         sinTerceros: confirmacion.sinTerceros,
         creditosConfirmados: confirmacion.creditosConfirmados,
         selloEstimacion: confirmacion.selloEstimacion,
@@ -193,6 +196,7 @@ async function encolarFotograma(
             },
           }),
       derechos: confirmacion.derechos,
+      derechoMarca: confirmacion.derechoMarca,
       sinTerceros: confirmacion.sinTerceros,
       creditosConfirmados: confirmacion.creditosConfirmados,
       selloEstimacion: confirmacion.selloEstimacion,
@@ -251,6 +255,7 @@ async function encolarAnimacion(
       // Lo que dice el personaje va aparte de la descripción visual y solo lo usan los modelos con voz.
       dialogo: dialogoDelClip(escena, proyecto),
       derechos: confirmacion.derechos,
+      derechoMarca: confirmacion.derechoMarca,
       sinTerceros: confirmacion.sinTerceros,
       creditosConfirmados: confirmacion.creditosConfirmados,
       selloEstimacion: confirmacion.selloEstimacion,
@@ -268,6 +273,54 @@ async function encolarAnimacion(
     h,
   );
 }
+
+/**
+ * **Segundo paso del producto digital** en una escena: meter la captura dentro de la pantalla apagada.
+ *
+ * Se encola con el mismo camino de dinero que cualquier otro fotograma —su estimación, su confirmación y su
+ * clave propia—, porque es otra generación y se paga aparte. Parte del fotograma que el usuario acaba de
+ * aprobar, así que lo que se edita es exactamente lo que ha visto.
+ */
+async function encolarInsercionDeCaptura(
+  actor: Actor,
+  escena: FilaEscena,
+  proyecto: FilaProyecto,
+  medioId: string,
+  confirmacion: ConfirmacionProduccion,
+  clave: string,
+  h: Herramientas,
+): Promise<void> {
+  const personaje = await personajeDirigidoDe(proyecto);
+  await crearFotograma(
+    actor,
+    {
+      prompt: textoVisualDe(escena),
+      medioId,
+      escenaId: escena.id,
+      pasoDigital: "insertar_captura",
+      // El compositor de la inserción no usa las seis C (lo que se pide es cambiar solo la pantalla), pero la
+      // escena sigue componiéndose por ese camino y no por el de plantilla: así el trabajo queda igual que los
+      // demás de la escena.
+      seisC: await seisCDeLaEscena(actor.id, escena, personaje, ""),
+      derechos: confirmacion.derechos,
+      derechoMarca: confirmacion.derechoMarca,
+      sinTerceros: confirmacion.sinTerceros,
+      creditosConfirmados: confirmacion.creditosConfirmados,
+      selloEstimacion: confirmacion.selloEstimacion,
+      avisoUmbralAceptado: confirmacion.avisoUmbralAceptado,
+      avisosConfirmados: confirmacion.avisosConfirmados,
+      claveIdempotencia: clave,
+    },
+    h,
+  );
+}
+
+/**
+ * `true` cuando lo que toca después de este fotograma **no** es el clip, sino insertar la captura: la escena
+ * lleva un producto digital y lo que hay hecho es el fotograma de la pantalla apagada.
+ */
+const faltaInsertarLaCaptura = (escena: FilaEscena, fotograma: FilaTrabajo): boolean =>
+  escena.productId !== null && fotograma.digitalStep === "pantalla_negra";
 
 // ── Reintentos de lo que pudo cobrarse ────────────────────────────────────────────────────────────────────
 
@@ -441,6 +494,23 @@ export async function aprobarFotograma(
     .update(scenes)
     .set({ approvedFrameMediaId: fotograma.resultMediaId, approvedFrameJobId: fotograma.id, updatedAt: new Date() })
     .where(eq(scenes.id, escena.id));
+  /**
+   * **Producto digital**: entre el fotograma y el clip va el paso de insertar la captura. Se aprueba el
+   * fotograma de la pantalla apagada, se paga la inserción, y cuando esa está lista se vuelve a aprobar: ese
+   * segundo «aprobar» es el que encarga el clip. Los dos pasos se ven y se confirman por separado.
+   */
+  if (faltaInsertarLaCaptura(escena, fotograma)) {
+    await encolarInsercionDeCaptura(
+      actor,
+      escena,
+      proyecto,
+      fotograma.resultMediaId,
+      confirmacion,
+      claveDerivada(confirmacion.claveIdempotencia, "insercion", fotograma.id),
+      h,
+    );
+    return estadoDeProduccion(actor, proyecto.id);
+  }
   /**
    * La clave lleva el fotograma aprobado —aprobar dos veces el mismo no encarga dos clips— y **también la última
    * animación**: si el clip anterior falló sin coste, repetir tiene que encargar otro y no devolver el fallido.

@@ -38,6 +38,8 @@ interface Confirmacion {
   selloEstimacion: string;
   creditosConfirmados: number;
   derechos: boolean;
+  /** Casilla «tengo derecho a usar esta marca»: el servidor la exige en cuanto el envío lleva producto. */
+  derechoMarca: boolean;
   avisoUmbralAceptado: boolean;
   /** La misma confirmación lleva siempre la misma clave: repetirla no genera un segundo trabajo. */
   claveIdempotencia: string;
@@ -52,6 +54,13 @@ interface Confirmacion {
 
 export interface ConfirmacionFotograma extends Confirmacion {
   tipo: "fotograma";
+  /**
+   * Producto elegido (0.26.0). En el fotograma cuenta porque un producto **digital** empieza aquí: este
+   * fotograma es el del dispositivo con la pantalla apagada.
+   */
+  producto?: ProductoElegido;
+  /** `insertar_captura` convierte este envío en el segundo paso: la captura dentro de esa pantalla. */
+  pasoDigital?: "insertar_captura";
   /** Imagen suelta de la biblioteca; alternativa a `personajeId`. */
   medioId?: string;
   /** Personaje elegido: se le envían **varias** referencias suyas, hasta el tope del modelo. */

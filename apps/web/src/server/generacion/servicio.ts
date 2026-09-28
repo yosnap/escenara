@@ -1,11 +1,11 @@
 import type { Vista } from "@/lib/captura-personaje";
-import { duracionesConCoste, type ModeloVista, segundosDeUnidad } from "@/lib/catalogo";
+import { CAPACIDAD_DE_TIPO, duracionesConCoste, type ModeloVista, segundosDeUnidad } from "@/lib/catalogo";
 import type { DireccionElegidaConAcento } from "@/lib/direccion";
 import { CLIP, type TipoTrabajo, type TrabajoVista } from "@/lib/generacion";
 import type { TipoPersonaje } from "@/lib/personajes";
 import type { SeleccionPresets } from "@/lib/presets";
 import { duracionParaModelo } from "@/lib/produccion";
-import type { ProductoElegido } from "@/lib/productos";
+import type { PasoProductoDigital, ProductoElegido } from "@/lib/productos";
 import { leerAjustes } from "../ajustes";
 import { duracionDeClipDeEscena, proyectoDeEscena } from "../asistente/consulta";
 import { hechosDeEscena, techoDelProyecto } from "../asistente/plan";
@@ -16,8 +16,9 @@ import type { FilaMedio, FilaTrabajo } from "../db/esquema";
 import { decidir } from "../decisiones/reglas";
 import { dirigirClipPara, familiaDe } from "../direccion/clip";
 import { type DireccionSinTextoLibre, direccionDesdeEleccion, type PersonajeDirigido } from "../direccion/escena";
-import { type CambiarSolo, componerSeisC, type SeisC } from "../direccion/fotograma";
+import { type CambiarSolo, componerInsercionDeCaptura, componerSeisC, type SeisC } from "../direccion/fotograma";
 import { conHojaDeIdentidad } from "../direccion/hoja-identidad";
+import { bloqueProductoSuelto, esInsercionDeCaptura } from "../direccion/producto";
 import {
   type EleccionDelMapa,
   eleccionDeGeneracion,
@@ -36,6 +37,7 @@ import {
 import { personajePropio, referenciasParaGenerar } from "../personajes/puede-generar";
 import { acotarCoste } from "../presupuesto/acotar";
 import { productoDelTrabajo } from "../productos/columnas";
+import { completarModelosSugeridos } from "../productos/modelos-sugeridos";
 import { hechosDelProducto, productoEnPrompt, productoParaGenerar } from "../productos/prompt";
 import { componerDesdePlantilla, type PromptCompuesto } from "../prompts/render";
 import { creditosDelEnvio, traducirAlIngles } from "../prompts/traduccion";
@@ -44,6 +46,7 @@ import {
   exigirAvisoUmbral,
   exigirClaveIdempotencia,
   exigirConfirmacion,
+  exigirDerechoDeMarca,
   exigirDerechos,
   exigirMedioElegido,
   exigirRevisionDeReferencias,
@@ -84,6 +87,12 @@ interface Confirmacion {
   creditosConfirmados: number;
   /** Casilla «tengo derecho a usar esta imagen». */
   derechos: boolean;
+  /**
+   * Casilla **«tengo derecho a usar esta marca»** (0.26.0). Solo se pide cuando el envío lleva producto —es
+   * entonces cuando hay una marca en juego— y sin ella el envío no sale. Se guarda con su fecha en el
+   * trabajo: es una declaración, y hay que poder demostrar cuándo se hizo.
+   */
+  derechoMarca?: boolean;
   /** Aviso aceptado cuando la estimación pasa del umbral configurado en Admin › Ajustes. */
   avisoUmbralAceptado?: boolean;
   /** Clave que genera el navegador al confirmar: la misma confirmación nunca se cobra dos veces. */
@@ -286,6 +295,21 @@ export interface PeticionFotograma extends Confirmacion {
    * con un personaje sin ninguna de sus fotos.
    */
   retratoInventado?: boolean;
+  /**
+   * **Paso del producto digital** (0.26.0). Solo tiene sentido con un producto de tipo digital:
+   *
+   * - sin él, el fotograma es el **primer paso**: el dispositivo con la pantalla apagada;
+   * - con `insertar_captura`, es el **segundo**: se parte del fotograma anterior (`medioId`) y se mete
+   *   dentro de la pantalla la captura del producto.
+   *
+   * Cada paso es una generación con su estimación, su confirmación y su clave: son dos cobros, y se ven.
+   */
+  pasoDigital?: PasoProductoDigital;
+  /**
+   * **Producto elegido en «Crear»** (0.26.0). En la producción de un proyecto no llega: ahí lo pone la escena,
+   * que es donde se eligió y lo que manda.
+   */
+  productoElegido?: ProductoElegido;
 }
 
 export interface PeticionAnimacion extends Confirmacion {
@@ -593,18 +617,41 @@ export async function crearFotograma(
    * porque sus avisos —la identidad que no cabe, la marca que el filtro puede rechazar— son de los que hay
    * que dar antes de cobrar nada.
    */
-  const columnasProducto = await productoDelTrabajo(actor.id, conEscena?.escena.id ?? null, undefined);
-  const producto = await productoParaGenerar(actor.id, columnasProducto.productId, columnasProducto.productAction);
+  const columnasProducto = await productoDelTrabajo(actor.id, conEscena?.escena.id ?? null, peticion.productoElegido);
+  const producto = await productoParaGenerar(actor.id, columnasProducto.productId, columnasProducto.productAction, {
+    ...(peticion.pasoDigital ? { pasoSolicitado: peticion.pasoDigital } : {}),
+  });
+  // Con producto hay una marca en juego, y usarla es una declaración aparte de la de la imagen.
+  if (producto) exigirDerechoDeMarca(peticion.derechoMarca);
   const conProducto = producto
     ? hechosDelProducto(
         producto,
-        cupoDeGaleria(adaptador, modelo),
-        // Las que de verdad se le pueden enviar: una imagen suelta es una, y un personaje, las suyas vigentes.
-        personaje ? (await referenciasVigentesDe(personaje.id)).length : 1,
+        // Sin imagen de partida se genera con un modelo de **texto a imagen**: ahí no viaja ninguna foto.
+        sinReferencia ? 0 : cupoDeGaleria(adaptador, modelo),
+        /**
+         * Las que de verdad se le pueden enviar: una imagen suelta es una, y un personaje, las suyas vigentes.
+         * **Ninguna** cuando no hay imagen de partida, que es lo que pasa en el plano del producto solo: sin
+         * nadie en el plano no hay cara que sostener, y reservarle un hueco dejaría fuera una foto del
+         * producto por nada.
+         */
+        personaje ? (await referenciasVigentesDe(personaje.id)).length : sinReferencia ? 0 : 1,
         // En el fotograma no hay identidad registrada que perder: eso solo pasa en la escena hablada.
         false,
       )
     : null;
+  if (conProducto) {
+    await completarModelosSugeridos(conProducto.hechos, sinReferencia ? "text_to_image" : CAPACIDAD_DE_TIPO.fotograma);
+  }
+  /**
+   * Insertar la captura **exige** que la captura viaje: si en este modelo no cabe, no hay nada que insertar y
+   * el paso no se puede hacer. No es un aviso que se confirme, es que el envío no tiene sentido.
+   */
+  if (producto?.pasoDigital === "insertar_captura" && conProducto?.reparto.producto === 0) {
+    throw new ErrorGeneracion(
+      409,
+      `${modelo.nombre} no admite una segunda imagen de referencia, así que no se le puede dar la captura para meterla en la pantalla. Elige un modelo de imagen que acepte dos referencias y vuelve a estimar el coste.`,
+    );
+  }
 
   // ── Punto único: el motor decide si esto se puede generar ─────────────────────────────────────────────
   await exigirControles(
@@ -719,20 +766,35 @@ export async function crearFotograma(
    *
    * La plantilla sigue siendo el camino de «Crear», donde no hay escena que dirija nada.
    */
-  const base = peticion.seisC
-    ? {
-        escena: componerSeisC(
-          { ...peticion.seisC, contextoLibre: escenaEnIngles, producto: productoDelPrompt },
-          peticion.cambiarSolo,
-        ),
-        // El texto no sale de la plantilla, pero la plantilla se validó y es la que aprobó la escena: se sigue
-        // registrando para que la aprobación y la auditoría de «con qué versión se hizo» no queden en nulo.
-        compuesto: original.compuesto,
-      }
-    : escenaEnIngles === prompt
-      ? original
-      : await baseDelPrompt(actor, peticion, "fotograma", modelo, conFicha.tipo, escenaEnIngles);
-  const promptFinal = promptConContexto(base.escena, contextoEnIngles);
+  /**
+   * **El producto también entra en el prompt cuando no hay seis C** (0.26.0), que es el camino de «Crear»: lo
+   * compone una plantilla y no tiene hueco donde meter un bloque, así que el producto va detrás de lo que
+   * ponga ella. Sin esto, elegir un producto en «Crear» no cambiaba una sola palabra de lo que se pedía.
+   *
+   * Y el **segundo paso del producto digital** sustituye el prompt entero: lo que se pide ahí no es una foto
+   * nueva, es meter la captura en la pantalla de la que ya existe.
+   */
+  const base =
+    productoDelPrompt && esInsercionDeCaptura(productoDelPrompt)
+      ? { escena: componerInsercionDeCaptura(), compuesto: original.compuesto }
+      : peticion.seisC
+        ? {
+            escena: componerSeisC(
+              { ...peticion.seisC, contextoLibre: escenaEnIngles, producto: productoDelPrompt },
+              peticion.cambiarSolo,
+            ),
+            // El texto no sale de la plantilla, pero la plantilla se validó y es la que aprobó la escena: se sigue
+            // registrando para que la aprobación y la auditoría de «con qué versión se hizo» no queden en nulo.
+            compuesto: original.compuesto,
+          }
+        : escenaEnIngles === prompt
+          ? original
+          : await baseDelPrompt(actor, peticion, "fotograma", modelo, conFicha.tipo, escenaEnIngles);
+  const escenaDelFotograma =
+    productoDelPrompt && !peticion.seisC && !esInsercionDeCaptura(productoDelPrompt)
+      ? `${base.escena}\n${bloqueProductoSuelto(productoDelPrompt)}`
+      : base.escena;
+  const promptFinal = promptConContexto(escenaDelFotograma, contextoEnIngles);
 
   const parametros = adaptador.montarEntrada(modelo, { escena: promptFinal, dialogo: "", urls: [] });
   const valores: NuevoTrabajoEncolado = {
@@ -792,6 +854,9 @@ export async function crearFotograma(
     // El fotograma de una escena hereda su producto. En «Crear» no llega ninguno: allí el producto se elige
     // junto a la dirección del clip, que es donde se ve lo que se le va a pedir.
     ...columnasProducto,
+    // Qué paso del producto digital es este envío, y la declaración de marca con su fecha.
+    digitalStep: producto?.pasoDigital ?? "",
+    brandRightsAt: producto ? new Date() : null,
     characterId: personajeId,
     characterVersionId: conFicha.versionId,
     ...columnasDePlantilla(base.compuesto),
@@ -887,7 +952,9 @@ export async function crearAnimacion(
    * llevarlo: las referencias que no caben y la marca que el filtro del proveedor puede rechazar.
    */
   const columnasProducto = await productoDelTrabajo(actor.id, partida.escenaId, peticion.productoElegido);
+  // El clip **no** es un paso del producto digital: anima el fotograma que ya tiene la captura puesta.
   const producto = await productoParaGenerar(actor.id, columnasProducto.productId, columnasProducto.productAction);
+  if (producto) exigirDerechoDeMarca(peticion.derechoMarca);
   const conProducto = producto
     ? hechosDelProducto(
         producto,
@@ -898,6 +965,7 @@ export async function crearAnimacion(
         false,
       )
     : null;
+  if (conProducto) await completarModelosSugeridos(conProducto.hechos, CAPACIDAD_DE_TIPO.animacion);
 
   // ── Punto único: el mismo motor, con los hechos del clip ──────────────────────────────────────────────
   await exigirControles(
@@ -1091,6 +1159,8 @@ export async function crearAnimacion(
     // El producto con el que se pidió: el de la escena cuando el clip sale de un proyecto y el elegido en
     // «Crear» cuando no hay escena.
     ...columnasProducto,
+    // El clip no es un paso del producto digital, pero sí lleva la declaración de marca con su fecha.
+    brandRightsAt: producto ? new Date() : null,
     parentJobId: partida.trabajoPadreId,
     characterId: partida.personajeId,
     characterVersionId: partida.versionPersonajeId,

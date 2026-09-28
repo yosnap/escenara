@@ -45,6 +45,7 @@ import {
   sinIncompatibles,
 } from "./panel-plantilla";
 import { PasoClip } from "./paso-clip";
+import { PasoInsertarCaptura } from "./paso-insertar-captura";
 import { type OrigenDelClip, PasoImagenDePartida, PasoOrigen } from "./paso-origen";
 import { PasoSujeto } from "./paso-sujeto";
 import { ResultadoTrabajo } from "./resultado-trabajo";
@@ -312,7 +313,12 @@ export function VistaCrear({
     await refrescarCatalogo("fotograma", respuesta.datos.modelo, undefined, ahoraSinImagen);
   };
 
-  const generarFotograma = async (confirmacion: ConfirmacionCoste) => {
+  /**
+   * Genera un fotograma. Con `pasoDigital` es el **segundo paso del producto digital**: se parte del
+   * fotograma que ya está hecho y se mete dentro de su pantalla la captura del producto. Es otra generación
+   * con otro coste, así que se confirma aparte, como cualquier otro gasto.
+   */
+  const generarFotograma = async (confirmacion: ConfirmacionCoste, pasoDigital?: "insertar_captura") => {
     // Sin personaje ni imagen también se genera: el servidor usa el gemelo texto a imagen del modelo elegido.
     setEnviando("fotograma");
     setError(null);
@@ -321,7 +327,19 @@ export function VistaCrear({
       // La revisión se envía siempre: una imagen suelta puede ser el resultado de otro trabajo hecho con un
       // personaje, y entonces el servidor la exige igual (hereda ese personaje).
       sinTerceros,
-      ...(personaje ? { personajeId: personaje.id } : referencia ? { medioId: referencia.id } : {}),
+      ...(pasoDigital
+        ? // La inserción parte del fotograma que se acaba de ver, no del personaje: lo que se edita es esa imagen.
+          { medioId: fotograma?.medio?.id, pasoDigital }
+        : personaje
+          ? { personajeId: personaje.id }
+          : referencia
+            ? { medioId: referencia.id }
+            : {}),
+      /**
+       * El producto del clip viaja también con el fotograma: con un producto digital, el fotograma **es** el
+       * primer paso (el dispositivo con la pantalla apagada), y con uno físico es donde se ve en la mano.
+       */
+      producto: productoClip,
       // La versión que se estaba mirando: si el servidor usaría otra, responde 409 y no se gasta nada.
       ...(personaje && contexto?.personajeId === personaje.id && contexto.versionId !== ""
         ? { versionPersonaje: contexto.versionId }
@@ -637,6 +655,7 @@ export function VistaCrear({
             <BloqueConfirmacion
               controles={controlesFoto}
               estimacion={estimacionFoto}
+              conProducto={productoClip.productoId !== ""}
               etiqueta="Generar fotograma"
               firma={`fotograma|${personaje?.id ?? ""}|${contexto?.personajeId === personaje?.id ? contexto?.versionId : ""}|${referencia?.id ?? ""}|${descripcion}|${estimacionFoto.modelo}|${estimacionFoto.sello}|${firmaDePlantilla(previaFoto, plantillaFoto)}`}
               bloqueos={bloqueosFotograma}
@@ -652,6 +671,20 @@ export function VistaCrear({
               <div className="flex flex-col gap-4">
                 <SeguimientoTrabajo key={fotograma.id} inicial={fotograma} onCambio={alCambiarFotograma} />
                 {fotograma.medio && <ResultadoTrabajo trabajo={fotograma} />}
+                {/*
+                  Producto digital: el fotograma que hay es el de la pantalla apagada, y el paso siguiente es
+                  meter la captura dentro. Se cobra aparte y se confirma aparte, y aquí se ve por qué.
+                */}
+                {fotograma.medio && productoClip.productoId !== "" && (
+                  <PasoInsertarCaptura
+                    productoId={productoClip.productoId}
+                    controles={controlesFoto}
+                    estimacion={estimacionFoto}
+                    firma={`insercion|${fotograma.medio.id}|${productoClip.productoId}|${estimacionFoto.modelo}|${estimacionFoto.sello}`}
+                    enviando={enviando === "fotograma"}
+                    onGenerar={(confirmacion) => void generarFotograma(confirmacion, "insertar_captura")}
+                  />
+                )}
               </div>
             </Paso>
           )}

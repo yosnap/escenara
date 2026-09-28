@@ -90,6 +90,8 @@ export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
     ...plantilla,
     creditosConfirmados: cuerpo.creditosConfirmados as number,
     derechos: cuerpo.derechos === true,
+    // Casilla de derecho de uso de la marca (0.26.0): el servicio la exige en cuanto el envío lleva producto.
+    derechoMarca: cuerpo.derechoMarca === true,
     avisoUmbralAceptado: cuerpo.avisoUmbralAceptado === true,
     claveIdempotencia: cuerpo.claveIdempotencia as string,
     modelo: cuerpo.modelo,
@@ -103,6 +105,16 @@ export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
           medioId: cuerpo.medioId as string | undefined,
           personajeId: cuerpo.personajeId as string | undefined,
           sinTerceros: cuerpo.sinTerceros === true,
+          /**
+           * Paso del producto digital (0.26.0). Solo se admite el segundo por su nombre: el primero es lo que
+           * hace un fotograma de un producto digital sin decir nada, y nombrarlo aquí no añadiría nada.
+           */
+          ...(cuerpo.pasoDigital === "insertar_captura" ? { pasoDigital: "insertar_captura" as const } : {}),
+          /**
+           * Producto elegido (0.26.0): en «Crear» el fotograma también puede llevarlo, porque el producto
+           * digital empieza justo ahí, en el fotograma de la pantalla apagada.
+           */
+          ...(productoElegido ? { productoElegido } : {}),
         })
       : await crearAnimacion(actor, {
           ...comun,

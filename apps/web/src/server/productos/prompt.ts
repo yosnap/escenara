@@ -1,10 +1,18 @@
 import { and, eq } from "drizzle-orm";
-import { esProductoSolo } from "@/lib/productos";
+import {
+  DIGITAL_SIN_CAPTURA,
+  esAccionPocoFiable,
+  esAccionSinHabla,
+  esProductoSolo,
+  type PasoProductoDigital,
+  type TipoProducto,
+} from "@/lib/productos";
 import type { HechosProducto } from "../controles/contrato";
 import { db } from "../db/cliente";
 import { products } from "../db/esquema-productos";
 import { fragmento, leerCatalogoDeDireccion, nombreDePreset } from "../direccion/catalogo";
 import type { ProductoEnPrompt } from "../direccion/producto";
+import { ErrorProducto } from "./errores";
 import { fotosDelProducto, type RepartoDeReferencias, repartirReferencias } from "./referencias";
 
 /**
@@ -32,6 +40,16 @@ export interface ProductoParaGenerar {
   claveAccion: string;
   /** `true` con la acción de b-roll: el producto solo, sin nadie en el plano. */
   soloProducto: boolean;
+  tipo: TipoProducto;
+  /**
+   * Paso del producto digital de **este** envío. `null` en un producto físico y en el clip, que anima lo que
+   * ya está hecho.
+   */
+  pasoDigital: PasoProductoDigital | null;
+  /** `true` cuando la acción elegida es un plano visual donde nadie habla. */
+  sinHabla: boolean;
+  /** `true` en las acciones que hoy salen mal a menudo (las de piel). Se avisa antes de gastar. */
+  pocoFiable: boolean;
   /** Lo que el usuario declaró: en el producto se ve una marca. Decide el aviso del filtro del proveedor. */
   marcaVisible: boolean;
   /** Fotos que pueden viajar como referencia, por orden de prioridad. Puede estar vacío. */
@@ -49,6 +67,12 @@ export async function productoParaGenerar(
   usuarioId: string,
   productoId: string | null,
   accion: string,
+  /**
+   * Presente **solo en un fotograma**, que es el único envío que puede ser un paso del producto digital: sin
+   * `pasoSolicitado` el fotograma de un producto digital es el primero (la pantalla apagada), y el clip, que
+   * no pasa nada aquí, anima el resultado de los dos pasos.
+   */
+  digital?: { pasoSolicitado?: PasoProductoDigital },
 ): Promise<ProductoParaGenerar | null> {
   if (!productoId) return null;
   const [fila] = await db()
@@ -57,6 +81,33 @@ export async function productoParaGenerar(
     .where(and(eq(products.id, productoId), eq(products.ownerId, usuarioId)))
     .limit(1);
   if (!fila) return null;
+  const tipo = fila.kind;
+  if (digital?.pasoSolicitado && tipo !== "digital") {
+    throw new ErrorProducto(
+      400,
+      `«${fila.name}» es un producto físico, así que no tiene pantalla donde insertar una captura. Los dos pasos son solo para los productos digitales.`,
+    );
+  }
+  /**
+   * El fotograma de un producto **digital** es siempre uno de los dos pasos, y por defecto el primero: pedir
+   * la interfaz de la app en la misma generación devuelve una imitación inventada de tu app.
+   */
+  const pasoDigital: PasoProductoDigital | null =
+    tipo === "digital" && digital ? (digital.pasoSolicitado ?? "pantalla_negra") : null;
+  /**
+   * Qué fotos viajan en cada paso:
+   *
+   * - con la **pantalla apagada**, ninguna: enseñarle la captura mientras se le pide una pantalla negra es
+   *   pedirle dos cosas contrarias, y lo que devuelve es una imitación de la captura;
+   * - al **insertar**, solo la captura: cualquier otra foto del producto podría acabar dentro de la pantalla.
+   */
+  const fotos =
+    pasoDigital === "pantalla_negra"
+      ? []
+      : await fotosDelProducto(fila.id, accion, pasoDigital === "insertar_captura" ? "captura_pantalla" : undefined);
+  if (pasoDigital === "insertar_captura" && fotos.length === 0) {
+    throw new ErrorProducto(409, DIGITAL_SIN_CAPTURA);
+  }
   const catalogo = await leerCatalogoDeDireccion(usuarioId);
   return {
     id: fila.id,
@@ -66,8 +117,12 @@ export async function productoParaGenerar(
     nombreAccion: nombreDePreset(catalogo, "accion-producto", accion),
     claveAccion: accion,
     soloProducto: esProductoSolo(accion),
+    tipo,
+    pasoDigital,
+    sinHabla: esAccionSinHabla(accion),
+    pocoFiable: esAccionPocoFiable(accion),
     marcaVisible: fila.brandVisible,
-    fotos: await fotosDelProducto(fila.id, accion),
+    fotos,
   };
 }
 
@@ -90,13 +145,22 @@ export function hechosDelProducto(
   identidadRegistradaPerdida: boolean,
 ): { hechos: HechosProducto; reparto: RepartoDeReferencias } {
   const reparto = repartirReferencias(referenciasDeGaleria, referenciasPersonaje, producto.fotos.length);
+  // El producto tiene fotos y no cabe ninguna: eso tiene su propio aviso, con los modelos que sí las llevan.
+  const sinHuecoDeReferencia = producto.fotos.length > 0 && reparto.producto === 0;
   return {
     hechos: {
       nombre: producto.nombre,
-      sinFotos: producto.fotos.length === 0,
-      referenciasNoCaben: !reparto.cabenTodas,
+      // Con la pantalla apagada no falta ninguna foto: es que en ese paso no se envía ninguna a propósito.
+      sinFotos: producto.fotos.length === 0 && producto.pasoDigital !== "pantalla_negra",
+      // Decir «algunas se quedan fuera» cuando no cabe ninguna sería decir menos de lo que pasa: ese caso
+      // tiene su propio aviso y los dos juntos serían el mismo aviso dos veces.
+      referenciasNoCaben: !reparto.cabenTodas && !sinHuecoDeReferencia,
+      sinHuecoDeReferencia,
       identidadRegistradaPerdida,
       marcaVisible: producto.marcaVisible,
+      pocoFiable: producto.pocoFiable,
+      nombreAccion: producto.nombreAccion,
+      modelosConFoto: [],
     },
     reparto,
   };
@@ -116,4 +180,6 @@ export const productoEnPrompt = (
   accion: producto.accion,
   soloProducto: producto.soloProducto,
   conReferencias,
+  pasoDigital: producto.pasoDigital,
+  sinHabla: producto.sinHabla,
 });
