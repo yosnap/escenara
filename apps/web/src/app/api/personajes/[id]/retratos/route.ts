@@ -25,7 +25,7 @@ export const POST = manejador(async (peticion: Request, contexto: ContextoId, ac
   if (cuerpo.accion === "elegir") {
     return Response.json(await elegirRetrato(actor, id, cuerpo.medioId));
   }
-  const { trabajos } = await generarRetratosCandidatos(actor, id, {
+  const { trabajos, aviso } = await generarRetratosCandidatos(actor, id, {
     creditosConfirmados: Number(cuerpo.creditosConfirmados),
     derechos: cuerpo.derechos === true,
     claveIdempotencia: String(cuerpo.claveIdempotencia ?? ""),
@@ -36,5 +36,5 @@ export const POST = manejador(async (peticion: Request, contexto: ContextoId, ac
       ? { avisosConfirmados: cuerpo.avisosConfirmados.filter((c): c is string => typeof c === "string") }
       : {}),
   });
-  return Response.json({ trabajos }, { status: 201 });
+  return Response.json({ trabajos, aviso }, { status: 201 });
 });

@@ -102,6 +102,8 @@ export function PanelRetratos({
     setAviso(
       `${respuesta.datos.trabajos.length} ${respuesta.datos.trabajos.length === 1 ? "retrato" : "retratos"} en marcha. Cuando terminen aparecerán aquí al recargar la página.`,
     );
+    // Si no se pudieron encargar todos, el motivo se enseña: no basta con un número menor.
+    if (respuesta.datos.aviso) setError(respuesta.datos.aviso);
   };
 
   /** Vuelve a leer los candidatos del servidor: los que ya terminaron aparecen sin recargar la página. */

@@ -24,6 +24,7 @@ import { type EleccionDeTrabajo, elegirParaTipo } from "../generacion/precios";
 import type { Actor } from "../media/servicio";
 import { contextoParaGenerar } from "../personajes/contexto";
 import { ErrorProveedor } from "../proveedores/contrato";
+import { saldoCreditos } from "../proveedores/kie/cliente";
 import { ErrorOmni } from "./errores";
 
 /**
@@ -116,6 +117,29 @@ function falloDeRegistro(
 }
 
 /**
+ * Créditos que el saldo de KIE ha bajado durante un registro. Los dos endpoints de registro **no cobran** (medido
+ * el 2026-09-28), pero eso es un hecho de hoy, no una garantía: se mira el saldo antes y después para que un
+ * cambio de tarifa del proveedor no pase inadvertido. Es una observación de buena fe —otro trabajo del mismo
+ * usuario en paralelo también mueve el saldo— y si no se puede leer el saldo queda `null`, sin frenar el registro.
+ */
+async function conSaldoObservado<T>(
+  proveedor: string,
+  clave: string,
+  buscar: Herramientas["buscar"],
+  llamada: () => Promise<T>,
+): Promise<{ valor: T; creditosObservados: number | null }> {
+  const leer = async () => (proveedor === "kie" ? await saldoCreditos(clave, buscar).catch(() => null) : null);
+  const antes = await leer();
+  const valor = await llamada();
+  const despues = await leer();
+  const creditosObservados = antes === null || despues === null ? null : Math.max(0, antes - despues);
+  if (creditosObservados !== null && creditosObservados > 0) {
+    console.warn(`[omni] el saldo de ${proveedor} ha bajado ${creditosObservados} créditos durante un registro`);
+  }
+  return { valor, creditosObservados };
+}
+
+/**
  * Registra la voz del proyecto y devuelve su `audioId`. El nombre que se le da al proveedor es el del proyecto:
  * ahí dentro solo sirve para reconocerla, y mandar algo del personaje sería mandar un dato que no hace falta.
  */
@@ -134,8 +158,9 @@ export async function registrarVozEnProveedor(
   }
   const clave = await claveDe(usuarioId, modelo.proveedor, modelo.nombreProveedor);
   try {
-    return {
-      audioId: await adaptador.registrarVoz({
+    const registrar = adaptador.registrarVoz;
+    const { valor: audioId } = await conSaldoObservado(modelo.proveedor, clave, h.buscar, () =>
+      registrar({
         clave,
         voz: datos.voz,
         nombre: datos.nombre.slice(0, NOMBRE_VOZ_OMNI_MAXIMO),
@@ -143,8 +168,8 @@ export async function registrarVozEnProveedor(
         ejemplo: datos.ejemplo.slice(0, EJEMPLO_VOZ_OMNI_MAXIMO),
         buscar: h.buscar,
       }),
-      eleccion,
-    };
+    );
+    return { audioId, eleccion };
   } catch (error) {
     throw falloDeRegistro(
       error,
@@ -173,7 +198,12 @@ export async function registrarPersonajeEnProveedor(
   usuarioId: string,
   datos: { nombre: string; descripcion: string; audioId: string; imagenes: ImagenesDelRegistro },
   h: Herramientas = HERRAMIENTAS,
-): Promise<{ remoteCharacterId: string; imagenUrl: string; imagenCuerpoUrl: string }> {
+): Promise<{
+  remoteCharacterId: string;
+  imagenUrl: string;
+  imagenCuerpoUrl: string;
+  creditosObservados: number | null;
+}> {
   const { modelo, adaptador } = await eleccionOmni();
   if (!adaptador.registrarPersonaje) {
     throw new ErrorOmni(
@@ -188,18 +218,22 @@ export async function registrarPersonajeEnProveedor(
     for (const fila of archivos) {
       urls.push(await adaptador.subirReferencia({ clave, archivo: await archivoDe(fila), buscar: h.buscar }));
     }
-    const registrado = await adaptador.registrarPersonaje({
-      clave,
-      nombre: datos.nombre,
-      descripcion: datos.descripcion.slice(0, DESCRIPCION_PERSONAJE_OMNI_MAXIMA),
-      imagenes: urls,
-      vocesRegistradas: [datos.audioId],
-      buscar: h.buscar,
-    });
+    const registrar = adaptador.registrarPersonaje;
+    const { valor: registrado, creditosObservados } = await conSaldoObservado(modelo.proveedor, clave, h.buscar, () =>
+      registrar({
+        clave,
+        nombre: datos.nombre,
+        descripcion: datos.descripcion.slice(0, DESCRIPCION_PERSONAJE_OMNI_MAXIMA),
+        imagenes: urls,
+        vocesRegistradas: [datos.audioId],
+        buscar: h.buscar,
+      }),
+    );
     return {
       remoteCharacterId: registrado.id,
       imagenUrl: registrado.imagenUrl,
       imagenCuerpoUrl: registrado.imagenCuerpoUrl,
+      creditosObservados,
     };
   } catch (error) {
     throw falloDeRegistro(
@@ -224,6 +258,8 @@ export async function guardarRegistro(datos: {
   imagenUrl: string;
   imagenCuerpoUrl: string;
   imagenes: ImagenesDelRegistro;
+  /** Lo que bajó el saldo durante el registro; `null` si no se pudo leer. Hoy debería ser 0. */
+  creditosObservados?: number | null;
 }): Promise<FilaRegistroOmni> {
   const [fila] = await db()
     .insert(characterOmniRegistrations)
@@ -236,8 +272,9 @@ export async function guardarRegistro(datos: {
       remoteBodyImageUrl: datos.imagenCuerpoUrl,
       portraitMediaId: datos.imagenes.retrato.id,
       bodyMediaId: datos.imagenes.cuerpo?.id ?? null,
-      // Los dos endpoints de registro son gratuitos: se escribe el 0 para poder auditarlo.
-      creditsSpent: 0,
+      // Los dos endpoints de registro son gratuitos (medido): se guarda lo que de verdad bajó el saldo, que debería
+      // ser 0, para poder auditarlo si un día el proveedor empieza a cobrarlos.
+      creditsSpent: datos.creditosObservados ?? 0,
       registeredBy: datos.actor.id,
     })
     .returning();
