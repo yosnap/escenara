@@ -36,6 +36,7 @@ Cada decisión relevante se documenta en un fichero `adr-NNNN-slug.md` dentro de
 | [0028](adr-0028-escenas-habladas-con-identidad-registrada.md) | Las escenas habladas citan una identidad y una voz registradas en el proveedor, y el modelo sale del catálogo con Gemini Omni 1.1 Flash como recomendado | 0.22.0 | Propuesto (camino Omni firme; modo `omni` y registro por versión provisionales) |
 | [0029](adr-0029-catalogo-dinamico-con-precios-publicos.md) | El catálogo se sincroniza con la tabla de precios pública del proveedor: estado «precio publicado», elegible solo si esta instalación sabe montar su entrada | 0.23.0 | Propuesto (elegir cualquier modelo con su coste delante es firme; estado, sincronización diaria y variante en el admin provisionales) |
 | [0030](adr-0030-coherencia-percibir-decidir-registrar.md) | Coherencia en tres pasos (percibir con el mapa, decidir con Jev, registrar para medir); identidad activa y el resto en sombra; la cara de una persona real solo se percibe con su autorización expresa | 0.24.0 | Aceptada (identidad activa y el resto en sombra son firmes; umbrales y modelos de percepción provisionales) |
+| [0031](adr-0031-composicion-del-prompt-dirigido.md) | El orden del prompt dirigido vive en el código y los textos de cada opción en el catálogo; la regla de toma única y el bloque de anclajes van siempre; con una persona real no entra ningún adjetivo de atractivo | 0.25.0 | Aceptada (las tres reglas que no se negocian son firmes; el orden de los siete bloques es provisional hasta el spike) |
 
 ## Plantilla
 
