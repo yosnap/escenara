@@ -242,6 +242,16 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
     const callbackOmni = await prepararCallback(fila);
     return { adaptador, clave: credencial.clave, entrada: entradaOmni, ...callbackOmni };
   }
+  /**
+   * Retrato candidato de un personaje inventado (0.22.0): nace de su descripción y no tiene ninguna foto que
+   * subir. El modelo recibe el prompt sin referencias, que es lo que lo convierte en un retrato nuevo en lugar
+   * de en la edición de una foto.
+   */
+  if ((fila.input as { retratoInventado?: unknown }).retratoInventado === true) {
+    const entradaRetrato = adaptador.montarEntrada(modelo, { escena: fila.prompt, dialogo: "", urls: [] });
+    const callbackRetrato = await prepararCallback(fila);
+    return { adaptador, clave: credencial.clave, entrada: entradaRetrato, ...callbackRetrato };
+  }
   // Un trabajo con personaje lleva **varias** referencias (0.13.0); uno con imagen suelta, una sola. Se
   // suben en el mismo orden que se guardaron: la primera es la que más peso tiene en la identidad.
   const origenes = await mediosDeReferencia(fila, Math.max(1, modelo.parametros.maximoReferencias));

@@ -27,6 +27,7 @@ import {
 } from "./analisis-referencia";
 import { esUuidPersonaje, filaPropia, recalcularEstado, siguienteOrden, vistaDePersonaje } from "./consulta";
 import { ErrorPersonaje } from "./errores";
+import { exigirSinFotosReales, exigirTextoSinPersonasReales } from "./inventado";
 import {
   asegurarVersionVigente,
   referenciasParaVersionar,
@@ -176,6 +177,18 @@ export async function actualizarPersonaje(
     if (valor !== null && typeof valor !== "string") throw new ErrorPersonaje(400, `${campo} tiene que ser texto.`);
     valores[COLUMNA_FICHA[campo]] = limpiarCampoFicha(valor);
   }
+  /**
+   * Un personaje inventado no puede describirse nombrando a una persona real (0.22.0), ni al crearlo ni al
+   * editarlo después: si solo se comprobara al crearlo, bastaría con guardar dos veces para saltárselo. Se miran
+   * **los textos que se van a guardar**, no los que había.
+   */
+  if (fila.virtual) {
+    exigirTextoSinPersonasReales(
+      ...[valores.name, valores.description, ...CAMPOS_FICHA.map((campo) => valores[COLUMNA_FICHA[campo]])].filter(
+        (valor): valor is string => typeof valor === "string",
+      ),
+    );
+  }
   const motivo = texto(cambios.motivo, MOTIVO_CAMBIO_MAXIMO, "el motivo del cambio");
   if (Object.keys(valores).length === 0) return vistaDePersonaje(fila, actor, { completa: true, conReferencias: true });
   // Las referencias se leen antes de abrir la transacción: no las cambia esta operación, y así la transacción
@@ -247,6 +260,11 @@ function idsDeReferencias(peticion: unknown): ReferenciaPedida[] {
  */
 export async function anadirReferencias(actor: Actor, id: unknown, peticion: unknown): Promise<ReferenciasAnadidas> {
   const personaje = await filaPropia(actor, id);
+  /**
+   * Un personaje inventado no admite fotos (0.22.0). Esta es la **única** puerta por la que entra una foto de la
+   * biblioteca: sus retratos generados no pasan por aquí, sino por el cierre del trabajo que los genera.
+   */
+  exigirSinFotosReales(personaje);
   const pedidas = idsDeReferencias(peticion);
   const pedidos = [...new Set(pedidas.map((p) => p.medioId as string))];
 

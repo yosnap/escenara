@@ -36,8 +36,15 @@ export interface PersonajeParaGenerar {
  * que el motivo que se muestra al rechazar un encolado coincide con el que ve el usuario en su personaje. Con
  * el registro vigente a secas, un consentimiento revocado se confundiría con «no hay ninguno».
  */
-export async function motivosParaNoGenerar(personajeId: string): Promise<string[]> {
-  const { minimoReferenciasPersonaje: minimo } = await leerAjustes();
+export async function motivosParaNoGenerar(personajeId: string, minimoPedido?: number): Promise<string[]> {
+  /**
+   * `minimoPedido` solo lo usa el primer retrato de un personaje inventado (0.22.0): ese envío **es** lo que
+   * crea su primera referencia, así que exigirle las fotos que todavía no tiene sería impedir justo lo que las
+   * consigue. Es el mismo razonamiento que `conVistaQueCompleta`, y no toca el consentimiento: eso se sigue
+   * exigiendo igual.
+   */
+  const { minimoReferenciasPersonaje } = await leerAjustes();
+  const minimo = minimoPedido ?? minimoReferenciasPersonaje;
   const [consentimiento, referencias] = await Promise.all([
     ultimoConsentimientoDe(personajeId),
     contarReferencias(personajeId),

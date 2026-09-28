@@ -22,6 +22,7 @@ import type {
   HechosEscena,
   HechosExportacion,
   HechosModelo,
+  HechosOmni,
   HechosPersonaje,
   ParametrosControles,
 } from "./contrato";
@@ -88,11 +89,12 @@ export function hechosDeModelo(tipo: TipoTrabajoCola, eleccion: EleccionDeTrabaj
  * función que usa la ficha y que revalida el despacho (`personajes/puede-generar.ts`), así que el motivo que
  * se muestra en el panel es exactamente el que se muestra en el personaje.
  */
-export async function hechosDePersonaje(personaje: FilaPersonaje): Promise<HechosPersonaje> {
+export async function hechosDePersonaje(personaje: FilaPersonaje, primerRetrato = false): Promise<HechosPersonaje> {
   // **Solo las vigentes**: una referencia cuyo medio está en la papelera no se envía a ningún proveedor, así que
   // no puede cubrir una vista ni dejar de señalarse por calidad.
   const [impedimentos, referencias] = await Promise.all([
-    motivosParaNoGenerar(personaje.id),
+    // El primer retrato de un personaje inventado es lo que le da sus referencias: no se le exigen antes.
+    motivosParaNoGenerar(personaje.id, primerRetrato ? 0 : undefined),
     referenciasVigentesDe(personaje.id),
   ]);
   const cobertura = calcularCobertura(
@@ -181,6 +183,13 @@ export interface SujetoDeHechos {
   escena: HechosEscena | null;
   /** Techo del proyecto al que pertenece; `null` si no pertenece a ninguno o no tiene techo. */
   proyecto: TechoDeProyecto | null;
+  /** Identidad hablada registrada (0.22.0); ausente fuera del modo `omni`. */
+  omni?: HechosOmni;
+  /**
+   * Este envío es el **primer retrato** de un personaje inventado (0.22.0), es decir, lo que va a crear su
+   * primera referencia. Con él no se le exigen las fotos que todavía no tiene; todo lo demás se evalúa igual.
+   */
+  primerRetrato?: boolean;
 }
 
 /**
@@ -193,7 +202,7 @@ export async function recopilarHechos(actor: Actor, sujeto: SujetoDeHechos, busc
     parametrosDeControles(),
     hechosDeCredencial(actor.id, sujeto.eleccion, buscar),
     sujeto.personaje
-      ? hechosDePersonaje(sujeto.personaje)
+      ? hechosDePersonaje(sujeto.personaje, sujeto.primerRetrato ?? false)
       : sujeto.personajeId
         ? hechosDePersonajeCitado(sujeto.personajeId)
         : null,
@@ -209,6 +218,7 @@ export async function recopilarHechos(actor: Actor, sujeto: SujetoDeHechos, busc
     cuota,
     presupuesto,
     escena: sujeto.escena,
+    ...(sujeto.omni ? { omni: sujeto.omni } : {}),
   };
 }
 

@@ -1,6 +1,7 @@
 import type { Cobertura, MotivoRechazo, RechazoDeReferencia, Vista } from "./captura-personaje";
 import type { DiferenciaFicha, FichaPersonaje } from "./ficha-personaje";
 import type { Medio } from "./media/tipos";
+import type { RegistroOmniVista } from "./omni";
 
 /**
  * Personajes y consentimiento tal como los ven el servidor y el navegador (RF02 y RF10). Aquí no hay nada
@@ -297,6 +298,16 @@ export interface PersonajeVista {
   /** Versión vigente de la ficha: la que se cita al generar. `null` solo mientras se está creando. */
   versionVigente: { id: string; numero: number; creadaEn: string; hoja: Medio | null } | null;
   estado: EstadoPersonaje;
+  /**
+   * `true` cuando es un personaje **inventado** (0.22.0): no existe, su cara se genera y no admite fotos reales.
+   * La interfaz lo dice siempre y no ofrece subir fotos; quien lo impide es el servidor.
+   */
+  inventado: boolean;
+  /**
+   * Registro en el proveedor para escenas habladas (0.22.0); `null` si nunca se ha registrado. Dice con qué
+   * versión de la ficha se hizo y si esa versión sigue siendo la vigente.
+   */
+  registroOmni?: RegistroOmniVista | null;
   /**
    * Cuántas **fotos originales** utilizables tiene. Las vistas generadas no se suman aquí: no cuentan para el
    * mínimo que exige la instalación (decisión 3 de la fase 14).

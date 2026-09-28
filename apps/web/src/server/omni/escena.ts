@@ -1,4 +1,4 @@
-import { creditosDeEscenaOmni, MODELO_OMNI } from "@/lib/omni";
+import { creditosDeEscenaOmni, MODELO_OMNI, type VozOmniDelProyecto } from "@/lib/omni";
 import { duracionParaModelo } from "@/lib/produccion";
 import { firmaDeVoz } from "@/lib/voz";
 import { escenaPropia } from "../asistente/consulta";
@@ -7,7 +7,14 @@ import { techoDelProyecto } from "../asistente/plan";
 import { encolar, filaDeLaConfirmacion, type NuevoTrabajoEncolado } from "../cola/encolar";
 import { recopilarHechos } from "../controles/hechos";
 import { exigirControles } from "../controles/puerta";
-import type { FilaEscena, FilaProyecto, FilaTrabajo } from "../db/esquema";
+import type {
+  FilaEscena,
+  FilaPersonaje,
+  FilaProyecto,
+  FilaRegistroOmni,
+  FilaTrabajo,
+  FilaVersionPersonaje,
+} from "../db/esquema";
 import { decidir } from "../decisiones/reglas";
 import {
   exigirAvisoUmbral,
@@ -78,13 +85,26 @@ export async function creditosDeEscenaHablada(proyecto: FilaProyecto): Promise<{
  * Sin él no se produce nada y se dice exactamente qué falta, porque registrar **no cuesta créditos** y por tanto
  * la salida siempre está a un clic.
  */
-async function registroParaProducir(actor: Actor, proyecto: FilaProyecto) {
+export async function registroParaProducir(
+  actor: Actor,
+  proyecto: FilaProyecto,
+): Promise<{
+  personaje: FilaPersonaje | null;
+  version: FilaVersionPersonaje | null;
+  registro: FilaRegistroOmni | null;
+  voz: VozOmniDelProyecto | null;
+  /** Qué falta para poder producir, en llano; vacío cuando no falta nada. Es lo que evalúa el motor. */
+  falta: string;
+}> {
   const voz = vozOmniDelProyecto(proyecto);
   if (!voz) {
-    throw new ErrorOmni(
-      409,
-      "Este proyecto está en modo Omni pero todavía no tiene voz registrada, así que ninguna escena puede hablar. Elige la voz del proyecto y regístrala: no cuesta créditos.",
-    );
+    return {
+      personaje: null,
+      version: null,
+      registro: null,
+      voz: null,
+      falta: "todavía no tiene ninguna voz registrada: elígela y regístrala en «Voz y subtítulos».",
+    };
   }
   if (!proyecto.mainCharacterId) {
     throw new ErrorProyecto(
@@ -95,16 +115,33 @@ async function registroParaProducir(actor: Actor, proyecto: FilaProyecto) {
   const personaje = await personajePropio(actor, proyecto.mainCharacterId);
   const version = await ultimaVersion(personaje.id);
   if (!version) {
-    throw new ErrorOmni(409, "Este personaje no tiene todavía ninguna versión de su ficha con la que registrarlo.");
+    return {
+      personaje,
+      version: null,
+      registro: null,
+      voz,
+      falta: `«${personaje.name}» no tiene todavía ninguna versión de su ficha con la que registrarlo.`,
+    };
   }
   const registro = await registroVigente(personaje.id, version.id, voz.audioId);
-  if (!registro) {
-    throw new ErrorOmni(
-      409,
-      `«${personaje.name}» no está registrado en el proveedor con la voz de este proyecto, así que sus escenas no pueden salir con la misma cara y la misma voz. Regístralo desde su ficha: no cuesta créditos.`,
-    );
-  }
-  return { personaje, version, registro, voz };
+  return {
+    personaje,
+    version,
+    registro,
+    voz,
+    falta: registro
+      ? ""
+      : `«${personaje.name}» no está registrado con la voz de este proyecto (o su ficha ha cambiado desde que se registró).`,
+  };
+}
+
+/**
+ * Hechos de la identidad hablada para el motor de controles. Se leen igual aquí y en la pantalla, así que el
+ * panel no puede decir «listo» donde la puerta va a bloquear.
+ */
+export async function hechosOmni(actor: Actor, proyecto: FilaProyecto) {
+  const { falta } = await registroParaProducir(actor, proyecto);
+  return { registrado: falta === "", falta };
 }
 
 /**
@@ -134,7 +171,7 @@ export async function producirEscenaHablada(
   if (repetida) return { trabajo: repetida, nueva: false };
   await exigirRitmo(actor.id);
 
-  const { personaje, version, registro, voz } = await registroParaProducir(actor, proyecto);
+  const { personaje, version, registro, voz, falta } = await registroParaProducir(actor, proyecto);
 
   // ── Punto único: el mismo motor que cierra la puerta de cualquier otro envío ───────────────────────────
   await exigirControles(
@@ -145,18 +182,27 @@ export async function producirEscenaHablada(
         tipo: "animacion",
         eleccion,
         creditos: totales,
-        personajeId: personaje.id,
+        personajeId: personaje?.id ?? null,
         personaje,
         // La aprobación de la escena ya la comprueba `produccion/producir.ts` antes de llegar aquí, igual que en
         // el camino de siempre: el clip no es una segunda decisión de guion.
         escena: null,
         proyecto: await techoDelProyecto(proyecto.id),
+        // Sin registro vigente, el motor bloquea con su motivo: es la regla `omni-sin-registro`.
+        omni: { registrado: falta === "", falta },
       },
       h.buscar,
     ),
     confirmacion.avisosConfirmados ?? [],
   );
 
+  /**
+   * A partir de aquí ya no queda ninguna regla: el motor las ha aplicado todas, y la de `omni-sin-registro` es la
+   * que garantiza que estos tres existen. La comprobación es el otro lado de esa puerta, no una segunda regla.
+   */
+  if (!personaje || !version || !registro || !voz) {
+    throw new ErrorOmni(409, `Este proyecto no puede producir escenas habladas todavía: ${falta}`);
+  }
   const proveedor = proveedorDeCredencial(modelo);
   // Lo que dice el personaje sale **en español y sin traducir**: es lo que se va a oír. La descripción de lo que
   // se ve sí se traduce, como en todos los demás modelos (decisión firme del propietario, 2026-09-27).

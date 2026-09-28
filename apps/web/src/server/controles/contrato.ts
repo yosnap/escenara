@@ -156,6 +156,22 @@ export interface HechosExportacion {
   criticos: { orden: number; motivo: string }[];
 }
 
+/**
+ * Identidad hablada registrada en el proveedor (modo `omni`, 0.22.0). Este grupo **solo llega cuando el proyecto
+ * está en ese modo**: en los demás no hay nada que registrar y la regla no se evalúa.
+ *
+ * Es la única regla nueva del motor en 0.22.0. Las otras dos del alcance de la fase —un personaje inventado no
+ * admite fotos reales y su texto no puede nombrar a personas reales— se aplican **donde se puede hacer algo con
+ * ellas**, al añadir la foto y al guardar la ficha (`personajes/inventado.ts`): un personaje inventado con una
+ * foto real no llega a existir, así que una regla aquí no podría saltar nunca.
+ */
+export interface HechosOmni {
+  /** `true` cuando el protagonista está registrado con la voz vigente del proyecto. */
+  registrado: boolean;
+  /** Qué falta exactamente, en llano. Vacío cuando no falta nada. */
+  falta: string;
+}
+
 /** Parámetros de las reglas, editables en Admin › Ajustes (no hay editor de reglas en la interfaz). */
 export interface ParametrosControles {
   /** Avisar cuando falten vistas mínimas del personaje o haya fotos señaladas por calidad. */
@@ -193,6 +209,11 @@ export interface Hechos {
    * exportación, que es todo lo de 0.10.0–0.19.1: un crítico abierto no impide producir ni regenerar.
    */
   exportacion?: HechosExportacion;
+  /**
+   * Identidad hablada registrada (0.22.0). Ausente en todo lo que no es una escena de un proyecto en modo `omni`,
+   * que es todo lo de 0.10.0–0.21.1.
+   */
+  omni?: HechosOmni;
   parametros: ParametrosControles;
 }
 

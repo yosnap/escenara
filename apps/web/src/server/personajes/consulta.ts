@@ -24,6 +24,7 @@ import {
   users,
 } from "../db/esquema";
 import { type Actor, aDto } from "../media/servicio";
+import { ultimoRegistro } from "../omni/registro";
 import { motivosGuardados } from "./analisis-referencia";
 import { ErrorPersonaje } from "./errores";
 import {
@@ -34,6 +35,7 @@ import {
   personajePuedeGenerar,
 } from "./estado";
 import { fichaDeFila, ultimaVersion } from "./ficha";
+import { vistaDeRegistro } from "./omni";
 import { registrarAccesoAConsentimiento, registrarAccesoAListado } from "./registro-acceso";
 
 /**
@@ -297,6 +299,11 @@ export async function vistaDePersonaje(
         }
       : null,
     estado: estadoDePersonaje(datos),
+    inventado: fila.virtual,
+    // El registro Omni solo se resuelve para su dueño: dice qué cara suya está alojada en el proveedor.
+    ...(opciones.completa && esDueno
+      ? { registroOmni: vistaDeRegistro(await ultimoRegistro(fila.id), version, version?.id ?? null) }
+      : {}),
     totalReferencias: utilizables,
     totalGeneradas: generadas,
     minimoReferencias: minimo,
@@ -468,6 +475,7 @@ async function vistasDeLista(
       ficha: FICHA_VACIA,
       versionVigente: versionDeLista(resumen.versiones.get(fila.id)),
       estado: estadoDePersonaje(datos),
+      inventado: fila.virtual,
       totalReferencias: datos.referencias,
       totalGeneradas: resumen.generadas.get(fila.id) ?? 0,
       minimoReferencias: minimo,
@@ -623,6 +631,7 @@ export async function pendientesDeRevision(actor: Actor, pagina = 1): Promise<Pa
       ficha: FICHA_VACIA,
       versionVigente: versionDeLista(resumen.versiones.get(personaje.id)),
       estado: estadoDePersonaje(datos),
+      inventado: personaje.virtual,
       totalReferencias: datos.referencias,
       totalGeneradas: resumen.generadas.get(personaje.id) ?? 0,
       minimoReferencias: minimo,

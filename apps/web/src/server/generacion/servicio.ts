@@ -216,6 +216,13 @@ export interface PeticionFotograma extends Confirmacion {
    * al terminar el trabajo, y un valor puesto desde fuera convertiría una foto en una etiqueta falsa.
    */
   vistaSintetica?: Vista;
+  /**
+   * Este fotograma es un **retrato candidato de un personaje inventado** (0.22.0): no sale de ninguna foto, sino
+   * de su descripción, y es lo que le dará su primera referencia. Lo pone el servidor
+   * (`personajes/inventado.ts`), nunca el navegador: si lo pudiera poner un cliente, sería la forma de generar
+   * con un personaje sin ninguna de sus fotos.
+   */
+  retratoInventado?: boolean;
 }
 
 export interface PeticionAnimacion extends Confirmacion {
@@ -342,7 +349,9 @@ export async function crearFotograma(
   // personaje. Heredarlo significa cumplir sus reglas como cualquier otro.
   const medioId = peticion.personajeId ? null : exigirMedioElegido(peticion.medioId);
   const personajeId = peticion.personajeId ?? (medioId === null ? null : await personajeDeLaCadena(actor.id, medioId));
-  if (personajeId) exigirRevisionDeReferencias(peticion.sinTerceros);
+  // Un personaje inventado no tiene fotos, así que no hay terceros que revisar en ellas: lo que se envía es su
+  // descripción. Exigir esa casilla aquí sería pedir una declaración sobre unas fotos que no existen.
+  if (personajeId && !peticion.retratoInventado) exigirRevisionDeReferencias(peticion.sinTerceros);
   const personaje = peticion.personajeId
     ? await personajePropio(actor, peticion.personajeId)
     : personajeId
@@ -366,6 +375,7 @@ export async function crearFotograma(
           creditos: totales,
           personajeId,
           personaje,
+          ...(peticion.retratoInventado ? { primerRetrato: true } : {}),
           escena: conEscena?.hechos ?? null,
           proyecto: conEscena ? await techoDelProyecto(conEscena.escena.projectId) : null,
         },
@@ -380,12 +390,22 @@ export async function crearFotograma(
   // acota el tipo (el motor ya ha bloqueado un proveedor sin soporte), y la cola necesita ese valor acotado.
   const proveedor = proveedorDeCredencial(modelo);
   const elegido =
-    personaje && peticion.personajeId
+    personaje && peticion.personajeId && !peticion.retratoInventado
       ? await referenciasParaGenerar(personaje, modelo.parametros.maximoReferencias)
       : null;
-  const referencias: FilaMedio[] = elegido ? elegido.referencias : [await imagenPropia(actor.id, medioId)];
+  /**
+   * El retrato candidato de un personaje inventado **no tiene referencia**: nace de su descripción, que es
+   * justamente lo que lo hace inventado. Todos los demás caminos siguen exigiendo una imagen de origen.
+   */
+  const referencias: FilaMedio[] = elegido
+    ? elegido.referencias
+    : peticion.retratoInventado
+      ? []
+      : [await imagenPropia(actor.id, medioId)];
   const [origen] = referencias;
-  if (!origen) throw new ErrorGeneracion(400, "Elige un personaje o una imagen de referencia.");
+  if (!origen && !peticion.retratoInventado) {
+    throw new ErrorGeneracion(400, "Elige un personaje o una imagen de referencia.");
+  }
   // La ficha del personaje es **contexto de generación**: el servidor la compone a partir de la versión
   // vigente y la añade al prompt. Un fotograma heredado (imagen suelta que salió de otro trabajo con
   // personaje) recibe el contexto de ese mismo personaje, porque es la misma cara.
@@ -460,8 +480,11 @@ export async function crearFotograma(
       // Marca de «este resultado es una vista generada del personaje»: la lee el cierre del trabajo para
       // añadirla como referencia etiquetada. Solo la pone el servidor.
       ...(peticion.vistaSintetica && personajeId ? { vistaSintetica: peticion.vistaSintetica } : {}),
+      // Marca de «este fotograma nace de una descripción y no de ninguna foto» (0.22.0). La lee el worker para
+      // no buscar referencias que no existen, y el cierre para añadir el retrato elegido como vista generada.
+      ...(peticion.retratoInventado ? { retratoInventado: true } : {}),
     },
-    sourceMediaId: origen.id,
+    sourceMediaId: origen?.id ?? null,
     sceneId: conEscena?.escena.id ?? null,
     characterId: personajeId,
     characterVersionId: conFicha.versionId,
