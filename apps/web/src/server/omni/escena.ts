@@ -7,7 +7,7 @@ import { escenaPropia } from "../asistente/consulta";
 import { ErrorProyecto } from "../asistente/errores";
 import { techoDelProyecto } from "../asistente/plan";
 import { encolar, filaDeLaConfirmacion, type NuevoTrabajoEncolado } from "../cola/encolar";
-import { recopilarHechos } from "../controles/hechos";
+import { hechosDelReparto, recopilarHechos } from "../controles/hechos";
 import { exigirControles } from "../controles/puerta";
 import type {
   FilaEscena,
@@ -327,6 +327,10 @@ export async function producirEscenaHablada(
   if (producto) exigirDerechoDeMarca(confirmacion.derechoMarca);
   if (conProducto) await completarModelosSugeridos(conProducto.hechos, CAPACIDAD_DE_TIPO.animacion);
 
+  // El reparto de la escena (0.28.0): en una escena hablada con dos personajes, **cada persona real** necesita
+  // su consentimiento, y el motor dice por su nombre a cuál le falta.
+  const conReparto = await hechosDelReparto(escena);
+
   // ── Punto único: el mismo motor que cierra la puerta de cualquier otro envío ───────────────────────────
   await exigirControles(
     { usuarioId: actor.id, sujeto: "escena", sujetoId: escena.id, tipo: "animacion" },
@@ -344,6 +348,7 @@ export async function producirEscenaHablada(
         proyecto: await techoDelProyecto(proyecto.id),
         // Sin registro vigente, el motor bloquea con su motivo: es la regla `omni-sin-registro`.
         omni: { registrado: falta === "", falta },
+        ...(conReparto ? { reparto: conReparto } : {}),
         ...(conProducto ? { producto: conProducto.hechos } : {}),
       },
       h.buscar,

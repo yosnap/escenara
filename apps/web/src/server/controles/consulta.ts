@@ -13,7 +13,7 @@ import { personajePropio } from "../personajes/puede-generar";
 import { hechosDelProducto, productoParaGenerar } from "../productos/prompt";
 import { creditosDelEnvio } from "../prompts/traduccion";
 import type { Buscador } from "../proveedores/codigos";
-import { conVistaQueCompleta, recopilarHechos } from "./hechos";
+import { conVistaQueCompleta, hechosDelReparto, recopilarHechos } from "./hechos";
 import { evaluarParaMostrar } from "./puerta";
 
 /**
@@ -93,6 +93,7 @@ export async function evaluarControles(
         false,
       )
     : null;
+  const conReparto = conEscena ? await hechosDelReparto(conEscena.escena) : null;
   const hechos = conVistaQueCompleta(
     await recopilarHechos(
       actor,
@@ -104,6 +105,9 @@ export async function evaluarControles(
         personaje,
         escena: conEscena?.hechos ?? null,
         proyecto,
+        // El reparto de la escena (0.28.0): es lo que hace que el panel enumere **por su nombre** a cada persona
+        // real a la que le falta el consentimiento, y no solo al protagonista del proyecto.
+        ...(conReparto ? { reparto: conReparto } : {}),
         primerRetrato: peticion.retratoInventado === true && personaje?.virtual === true,
         ...(conProducto ? { producto: conProducto.hechos } : {}),
       },

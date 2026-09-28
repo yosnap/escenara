@@ -10,7 +10,7 @@ import { leerAjustes } from "../ajustes";
 import { duracionDeClipDeEscena, proyectoDeEscena } from "../asistente/consulta";
 import { hechosDeEscena, techoDelProyecto } from "../asistente/plan";
 import { encolar, filaDeLaConfirmacion, type NuevoTrabajoEncolado } from "../cola/encolar";
-import { conVistaQueCompleta, recopilarHechos } from "../controles/hechos";
+import { conVistaQueCompleta, hechosDelReparto, hechosDelRepartoDeEscena, recopilarHechos } from "../controles/hechos";
 import { exigirControles } from "../controles/puerta";
 import type { FilaMedio, FilaTrabajo } from "../db/esquema";
 import { decidir } from "../decisiones/reglas";
@@ -658,6 +658,8 @@ export async function crearFotograma(
     );
   }
 
+  const conReparto = conEscena ? await hechosDelReparto(conEscena.escena) : null;
+
   // ── Punto único: el motor decide si esto se puede generar ─────────────────────────────────────────────
   await exigirControles(
     {
@@ -678,6 +680,8 @@ export async function crearFotograma(
           ...(peticion.retratoInventado ? { primerRetrato: true } : {}),
           escena: conEscena?.hechos ?? null,
           proyecto: conEscena ? await techoDelProyecto(conEscena.escena.projectId) : null,
+          // Reparto de la escena (0.28.0): el consentimiento se gatea **por cada persona real** que sale en ella.
+          ...(conReparto ? { reparto: conReparto } : {}),
           ...(conProducto ? { producto: conProducto.hechos } : {}),
         },
         h.buscar,
@@ -972,6 +976,8 @@ export async function crearAnimacion(
     : null;
   if (conProducto) await completarModelosSugeridos(conProducto.hechos, CAPACIDAD_DE_TIPO.animacion);
 
+  const conRepartoDelClip = await hechosDelRepartoDeEscena(partida.escenaId);
+
   // ── Punto único: el mismo motor, con los hechos del clip ──────────────────────────────────────────────
   await exigirControles(
     // El sujeto es la escena cuando el clip pertenece a una: es lo que hay que poder auditar después, y guardar
@@ -994,6 +1000,9 @@ export async function crearAnimacion(
         // vuelve a mirar: ya se comprobó al producir el fotograma, y el clip no es otra decisión de guion.
         escena: null,
         proyecto: partida.escenaId ? await techoDelProyecto(await proyectoDeEscena(partida.escenaId)) : null,
+        // El clip hereda también el reparto de su escena: si el consentimiento de la segunda persona se ha
+        // revocado entre el fotograma y el clip, el clip no sale.
+        ...(conRepartoDelClip ? { reparto: conRepartoDelClip } : {}),
         ...(conProducto ? { producto: conProducto.hechos } : {}),
       },
       h.buscar,

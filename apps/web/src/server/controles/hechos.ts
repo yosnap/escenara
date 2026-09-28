@@ -4,7 +4,7 @@ import { precioCaducado } from "@/lib/catalogo";
 import { TIPO_RESULTADO, type TipoTrabajoCola } from "@/lib/generacion";
 import { leerAjustes } from "../ajustes";
 import { usarCredencialValida } from "../boveda/credenciales";
-import type { FilaPersonaje } from "../db/esquema";
+import type { FilaEscena, FilaPersonaje } from "../db/esquema";
 import { saldoDelUsuario } from "../generacion/estimacion";
 import type { EleccionDeTrabajo } from "../generacion/precios";
 import { type Actor, espacioUsado, limiteSubida } from "../media/servicio";
@@ -14,6 +14,7 @@ import { motivosParaNoGenerar } from "../personajes/puede-generar";
 import { acotarCoste } from "../presupuesto/acotar";
 import { comprometidoDe, topesDe } from "../presupuesto/deposito";
 import type { Buscador } from "../proveedores/codigos";
+import { compartenVoz, escenaParaReparto, miembrosDelReparto, turnosDelReparto } from "../reparto/consulta";
 import { criticosAbiertosDeProyecto } from "../revision/resultados";
 import type {
   Hechos,
@@ -25,6 +26,7 @@ import type {
   HechosOmni,
   HechosPersonaje,
   HechosProducto,
+  HechosReparto,
   ParametrosControles,
 } from "./contrato";
 
@@ -111,6 +113,41 @@ export async function hechosDePersonaje(personaje: FilaPersonaje, primerRetrato 
   };
 }
 
+/**
+ * **Reparto de la escena** (0.28.0): sus personajes con los impedimentos de cada uno, si comparten voz y si el
+ * diálogo está repartido.
+ *
+ * Los impedimentos salen de la **misma** función que usa la ficha y que ya gateaba al protagonista
+ * (`motivosParaNoGenerar`), una vez por personaje: así el motivo que se da por el segundo personaje es
+ * exactamente el mismo que se da por el primero, y no hay dos formas de decir que falta un consentimiento.
+ *
+ * Una escena **sin reparto** devuelve `null`: no hay nada que evaluar y el grupo no llega. Eso no abre ninguna
+ * puerta, porque el protagonista del proyecto lo sigue gateando la regla `consentimiento` con `hechos.personaje`.
+ */
+export async function hechosDelReparto(escena: FilaEscena): Promise<HechosReparto | null> {
+  const [miembros, turnos] = await Promise.all([miembrosDelReparto(escena.id), turnosDelReparto(escena.id)]);
+  if (miembros.length === 0) return null;
+  const personajes = await Promise.all(
+    miembros.map(async (miembro) => ({
+      nombre: miembro.nombre,
+      inventado: miembro.inventado,
+      impedimentos: await motivosParaNoGenerar(miembro.personajeId),
+    })),
+  );
+  return { formato: escena.castFormat, personajes, mismaVoz: compartenVoz(miembros), turnos: turnos.length };
+}
+
+/**
+ * Lo mismo a partir del identificador de una escena **ya comprobada como propia** por quien llama (la puerta del
+ * clip, que hereda la escena de su fotograma). Sin escena, `undefined`: el grupo no llega y no se evalúa.
+ */
+export async function hechosDelRepartoDeEscena(escenaId: string | null): Promise<HechosReparto | undefined> {
+  if (!escenaId) return undefined;
+  const escena = await escenaParaReparto(escenaId);
+  if (!escena) return undefined;
+  return (await hechosDelReparto(escena)) ?? undefined;
+}
+
 /** Espacio libre en la biblioteca frente al peor caso del tipo de resultado. */
 export async function hechosDeCuota(actor: Actor, tipo: TipoTrabajoCola): Promise<HechosCuota> {
   const { usadoBytes, cuotaBytes } = await espacioUsado(actor);
@@ -190,6 +227,11 @@ export interface SujetoDeHechos {
   /** Producto que se presenta (0.26.0); ausente cuando el envío no lleva ninguno. */
   producto?: HechosProducto;
   /**
+   * Reparto de la escena (0.28.0); ausente cuando el envío no sale de una escena con reparto. Lo resuelve quien
+   * llama con {@link hechosDelReparto}, porque es la escena la que lo tiene y no el envío.
+   */
+  reparto?: HechosReparto;
+  /**
    * Este envío es el **primer retrato** de un personaje inventado (0.22.0), es decir, lo que va a crear su
    * primera referencia. Con él no se le exigen las fotos que todavía no tiene; todo lo demás se evalúa igual.
    */
@@ -224,6 +266,7 @@ export async function recopilarHechos(actor: Actor, sujeto: SujetoDeHechos, busc
     escena: sujeto.escena,
     ...(sujeto.omni ? { omni: sujeto.omni } : {}),
     ...(sujeto.producto ? { producto: sujeto.producto } : {}),
+    ...(sujeto.reparto ? { reparto: sujeto.reparto } : {}),
   };
 }
 

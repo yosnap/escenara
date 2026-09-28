@@ -39,6 +39,13 @@ const todoBien = (): Hechos => ({
     comprometidoProyecto: 0,
   },
   cuota: { previstoBytes: 1_000, libresBytes: 10_000_000 },
+  // Reparto de un solo personaje (0.28.0): es lo que tiene cualquier escena tras la migración, y no dice nada.
+  reparto: {
+    formato: "solo",
+    personajes: [{ nombre: "Lucía", inventado: false, impedimentos: [] }],
+    mismaVoz: false,
+    turnos: 0,
+  },
   escena: {
     planAprobado: true,
     aprobada: true,
@@ -166,6 +173,35 @@ const CASOS: { regla: string; estado: Exclude<EstadoControl, "listo">; romper: (
     },
   },
   {
+    regla: "reparto-consentimiento",
+    estado: "bloqueado",
+    romper: (h) => {
+      if (h.reparto) {
+        h.reparto.personajes = [
+          { nombre: "Lucía", inventado: false, impedimentos: [] },
+          { nombre: "Elisa", inventado: false, impedimentos: ["Falta su consentimiento firmado."] },
+        ];
+      }
+    },
+  },
+  {
+    regla: "reparto-misma-voz",
+    estado: "ajustes",
+    romper: (h) => {
+      if (h.reparto) h.reparto.mismaVoz = true;
+    },
+  },
+  {
+    regla: "reparto-sin-turnos",
+    estado: "ajustes",
+    romper: (h) => {
+      if (h.reparto) {
+        h.reparto.formato = "dualcast";
+        h.reparto.turnos = 0;
+      }
+    },
+  },
+  {
     regla: "precio-antiguo",
     estado: "ajustes",
     romper: (h) => {
@@ -211,7 +247,7 @@ describe("motor de controles previos", () => {
     });
   }
 
-  test("las 18 reglas están cubiertas por este test", () => {
+  test("todas las reglas del motor están cubiertas por este test", () => {
     // Si alguien añade una regla sin añadir su caso, esto falla: una regla sin test es una regla sin motivo
     // comprobado. Se disparan todas a la vez y se comparan las claves.
     const hechos = todoBien();

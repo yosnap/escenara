@@ -19,6 +19,7 @@ import { db, type Ejecutor } from "../db/cliente";
 import { claims, type FilaEscena, generationJobs, projects, scenes } from "../db/esquema";
 import type { Actor } from "../media/servicio";
 import { leerProductoElegido, productoPropio } from "../productos/eleccion";
+import { sembrarRepartoInicial } from "../reparto/siembra";
 import { invalidarVozDeEscena } from "../voz/proyecto";
 import { escenaPropia, escenasDe, proyectoPropio, proyectoPropioBloqueado } from "./consulta";
 import { ErrorProyecto } from "./errores";
@@ -222,6 +223,9 @@ export async function crearEscena(actor: Actor, proyectoId: unknown, datos: Dato
       .values({ projectId: proyecto.id, sortOrder: orden, plannedSeconds: proyecto.clipSeconds, ...campos })
       .returning();
     if (!escena) throw new ErrorProyecto(500, "No se ha podido añadir la escena.");
+    // El reparto nace con el protagonista del proyecto (0.28.0), igual que lo dejó la migración en las escenas
+    // ya escritas: sin esto, la puerta de consentimiento por personaje no vería a las escenas nuevas.
+    await sembrarRepartoInicial(tx, escena.id, proyecto.mainCharacterId);
     await sincronizarAfirmaciones(tx, escena.id, escena.scriptText);
     await tocarProyecto(tx, proyecto.id);
     return escena;
@@ -337,6 +341,13 @@ export async function sustituirEscenas(
 ): Promise<number> {
   const actuales = await escenasDe(proyectoId, tx);
   const ids = actuales.map((e) => e.id);
+  // El protagonista del proyecto, para sembrar el reparto de cada escena que propone el asistente.
+  const [proyecto] = await tx
+    .select({ protagonista: projects.mainCharacterId })
+    .from(projects)
+    .where(eq(projects.id, proyectoId))
+    .limit(1);
+  const protagonista = proyecto?.protagonista ?? null;
   // Se mira el estado **y** si alguna escena tiene ya un trabajo detrás, aunque no haya terminado: ese trabajo
   // se ha pagado y borrar su escena dejaría el gasto sin nada que lo explique.
   const conTrabajo =
@@ -365,7 +376,10 @@ export async function sustituirEscenas(
         plannedSeconds: propuesta.segundos,
       })
       .returning();
-    if (escena) await sincronizarAfirmaciones(tx, escena.id, escena.scriptText);
+    if (escena) {
+      await sembrarRepartoInicial(tx, escena.id, protagonista);
+      await sincronizarAfirmaciones(tx, escena.id, escena.scriptText);
+    }
   }
   await invalidarPlan(tx, proyectoId);
   return orden;

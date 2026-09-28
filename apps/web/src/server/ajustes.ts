@@ -99,6 +99,15 @@ export interface Ajustes {
    */
   controlesMaximoAvisos: number;
   /**
+   * **Dos personajes en una escena** (0.28.0). Los dos formatos vienen **activados**: están medidos con dinero
+   * real (2026-09-29) y dos `character_ids` cuestan lo mismo que uno. Apagarlos es el rollback de la fase, y se
+   * hace desde aquí sin desplegar: con uno apagado, ninguna escena puede elegir ese formato.
+   */
+  /** Permitir el formato podcast: dos clips, un personaje en cada uno, con mirada cruzada. */
+  repartoPodcastActivo: boolean;
+  /** Permitir el formato dualcast: los dos personajes en el mismo plano, uno hablando y el otro escuchando. */
+  repartoDualcastActivo: boolean;
+  /**
    * Revisión de continuidad de las escenas producidas (RF07). Las comprobaciones técnicas **no cuestan nada** y
    * aquí solo se ajustan sus umbrales; qué fallo es crítico vive en el código (`lib/revision.ts`), porque es una
    * decisión de producto y no un umbral.
@@ -281,6 +290,10 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   // es exactamente lo que el panel «Antes de generar» tiene que poder decir antes de gastar.
   controlesExigirPrecioFresco: true,
   controlesMaximoAvisos: 3,
+  // Los dos formatos de dos personajes vienen activados: el precio y la fidelidad de las dos caras están
+  // medidos, así que no hay nada que probar antes de ofrecerlos.
+  repartoPodcastActivo: true,
+  repartoDualcastActivo: true,
   // Medio segundo: los clips de 4 s de KIE miden 4,0–4,1 s según el contenedor, así que una diferencia menor que
   // esto no es un formato incorrecto, es cómo se cierra un MP4.
   revisionToleranciaDuracion: 0.5,
@@ -447,6 +460,8 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
     valido: entero(1, 10),
     mensaje: "Indica de 1 a 10 avisos confirmables a la vez.",
   },
+  repartoPodcastActivo: { valido: booleano, mensaje: "Debe ser sí o no." },
+  repartoDualcastActivo: { valido: booleano, mensaje: "Debe ser sí o no." },
   revisionToleranciaDuracion: {
     valido: decimal(0, 5),
     mensaje: "Indica la tolerancia de duración en segundos, de 0 a 5 (0 = exigir la duración exacta).",

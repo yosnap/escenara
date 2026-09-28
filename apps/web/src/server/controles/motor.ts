@@ -115,6 +115,33 @@ const REGLAS: readonly Regla[] = [
         }
       : null,
 
+  /**
+   * **Consentimiento de cada persona real del reparto** (0.28.0, decisión firme del propietario). Con dos
+   * personas en la escena hacen falta **dos** consentimientos, y el mensaje dice **quién** falta: «Elisa» no es
+   * lo mismo que «el personaje», y sin el nombre el usuario no sabe cuál de las dos fichas abrir.
+   *
+   * Es la misma regla de 0.13.0, aplicada a todos los del reparto en lugar de solo al protagonista del proyecto.
+   * La regla `consentimiento` de arriba sigue cubriendo el envío sin escena («Crear»), donde no hay reparto.
+   */
+  (h) => {
+    const conProblema = (h.reparto?.personajes ?? []).filter((p) => p.impedimentos.length > 0);
+    if (conProblema.length === 0) return null;
+    const nombres = lista(conProblema.map((p) => `«${p.nombre}»`));
+    const detalle = conProblema.map((p) => `${p.nombre}: ${p.impedimentos.join(" ")}`).join(" ");
+    return {
+      regla: "reparto-consentimiento",
+      estado: "bloqueado",
+      motivo:
+        conProblema.length === 1
+          ? `${nombres} sale en esta escena y todavía no se puede usar para generar. ${detalle}`
+          : `En esta escena salen ${nombres} y ninguno se puede usar para generar todavía. ${detalle}`,
+      accion: "Arréglalo en la ficha de cada uno y vuelve a intentarlo: cada persona real necesita su consentimiento.",
+      enlace: "/personajes",
+      http: 409,
+      excepcion: "personaje",
+    };
+  },
+
   // ── Identidad hablada registrada: sin registro, la escena no puede salir con esa cara ni esa voz ────
   (h) =>
     h.omni && !h.omni.registrado
@@ -344,6 +371,41 @@ const REGLAS: readonly Regla[] = [
         "Cambia el formato a «UGC a cámara» si quieres que lo diga, o confirma que el guion es para montar la narración encima.",
       http: 409,
       excepcion: "generacion",
+      confirmable: true,
+    };
+  },
+  /**
+   * **Los dos personajes suenan igual** (0.28.0). No bloquea: puede que sea lo que se busca (dos hermanas, un
+   * clon). Pero una conversación con un solo timbre no se entiende, y eso se dice **antes** de cobrar el clip.
+   */
+  (h) => {
+    if (!h.reparto?.mismaVoz) return null;
+    return {
+      regla: "reparto-misma-voz",
+      estado: "ajustes",
+      motivo:
+        "Los dos personajes de esta escena tienen la misma voz registrada, así que la conversación saldrá con un solo timbre y no se distinguirá quién habla.",
+      accion: "Cambia la voz de uno de los dos en su ficha, o confirma que quieres que suenen igual.",
+      enlace: "/personajes",
+      http: 409,
+      excepcion: "personaje",
+      confirmable: true,
+    };
+  },
+  /**
+   * **Dos personajes y el diálogo sin repartir** (0.28.0). Sin turnos, el proveedor decide quién dice qué, y lo
+   * decide al azar (medido el 2026-09-29). Se puede generar así —a veces sale—, pero se confirma: es dinero.
+   */
+  (h) => {
+    if (!h.reparto || h.reparto.formato === "solo" || h.reparto.turnos > 0) return null;
+    return {
+      regla: "reparto-sin-turnos",
+      estado: "ajustes",
+      motivo:
+        "En esta escena hablan dos personajes y el diálogo no está repartido por turnos: el modelo decidirá quién dice cada frase, y suele repartirlas al azar.",
+      accion: "Reparte el diálogo en turnos (quién habla y qué dice), o confirma que te vale como salga.",
+      http: 409,
+      excepcion: "proyecto",
       confirmable: true,
     };
   },
