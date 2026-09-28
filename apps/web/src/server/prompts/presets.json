@@ -1064,6 +1064,96 @@
       "valores": {
         "prompt": "Product-only shot with no people in frame, the product presented on a clean surface"
       }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "moda-cuerpo-entero",
+      "nombre": "Cuerpo entero",
+      "descripcion": "Se le ve la prenda puesta de arriba abajo, de pie y quieta.",
+      "orden": 110,
+      "valores": {
+        "prompt": "Full-length shot of the person wearing the garment, standing still, the whole outfit visible from head to feet, the fabric falling naturally"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "moda-detalle-tejido",
+      "nombre": "Detalle del tejido",
+      "descripcion": "Primer plano de la tela: su trama, su brillo y su caída.",
+      "orden": 120,
+      "valores": {
+        "prompt": "Extreme close-up of the garment fabric, showing its weave, its texture and the way the light falls on it, the person's hand gently holding the cloth"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "moda-giro-360",
+      "nombre": "Giro de 360°",
+      "descripcion": "Gira sobre sí mismo para que se vea la prenda por detrás.",
+      "orden": 130,
+      "valores": {
+        "prompt": "The person turns slowly all the way around on the spot so the garment is seen from the front, the side and the back, the fabric moving with the turn"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "moda-pasarela",
+      "nombre": "Pasarela",
+      "descripcion": "Camina hacia la cámara como en un desfile.",
+      "orden": 140,
+      "valores": {
+        "prompt": "The person walks straight towards the camera with a steady runway walk, the garment moving with each step, the walk ending facing the lens"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "moda-pose-editorial",
+      "nombre": "Pose de editorial",
+      "descripcion": "Posa quieto, como en una foto de revista.",
+      "orden": 150,
+      "valores": {
+        "prompt": "The person holds a still editorial fashion pose, shoulders and hands deliberately placed, the garment kept clean and uncreased"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "moda-detalle-accesorio",
+      "nombre": "Detalle del accesorio",
+      "descripcion": "Primer plano del bolso, el reloj o el zapato.",
+      "orden": 160,
+      "valores": {
+        "prompt": "Close-up of the accessory worn or held by the person, filling the frame, its material and its fittings clearly visible"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "skincare-abrir-tapa",
+      "nombre": "Abrir la tapa",
+      "descripcion": "Abre el envase enseñando el tapón o el dosificador.",
+      "orden": 210,
+      "valores": {
+        "prompt": "The person opens the product, and the cap, pump or dropper matches the mechanism shown in the product reference image of that part: same shape, same fitting, same way of opening"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "skincare-extender",
+      "nombre": "Extender el producto",
+      "descripcion": "Se extiende la crema por la zona y el producto va desapareciendo hasta absorberse.",
+      "orden": 220,
+      "valores": {
+        "prompt": "The person spreads the product over one area of the skin with their fingertips, and the amount of product on the skin gets smaller as it is spread, until it is fully absorbed and the skin is left with a soft natural finish"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "skincare-masajear",
+      "nombre": "Masajear",
+      "descripcion": "Se masajea el rostro con las yemas de los dedos.",
+      "orden": 230,
+      "valores": {
+        "prompt": "The person massages their face with the fingertips in slow upward circles, the skin moving softly under the fingers"
+      }
     }
   ],
   "plantillas": [

@@ -14,6 +14,7 @@ import {
   type NivelCamara,
   type RegistroEstetico,
 } from "@/lib/direccion";
+import { AVISO_GUION_EN_ACCION_SIN_HABLA } from "@/lib/productos";
 import {
   ACENTO_INGLES,
   ANCLAJES_REALISMO,
@@ -22,9 +23,16 @@ import {
   MODO_MUDO,
   REGISTRO_CAMARA_INGLES,
   REGLA_ANTI_CORTE,
+  SIN_HABLA_EN_ACCION,
   SIN_RETOQUE_FINAL,
 } from "./ingles";
-import { bloqueProducto, type ProductoEnPrompt, REGLA_ETIQUETA_PRODUCTO, sustituyeAlSujeto } from "./producto";
+import {
+  accionSinHabla,
+  bloqueProducto,
+  type ProductoEnPrompt,
+  REGLA_ETIQUETA_PRODUCTO,
+  sustituyeAlSujeto,
+} from "./producto";
 
 /**
  * **Compositor de la dirección del clip**: convierte lo que el usuario ha elegido con botones en el texto que se
@@ -204,10 +212,22 @@ export function dirigirClip(direccion: DireccionDeClip, opciones: OpcionesDeDire
    * clip diga «a cámara», y el guion escrito **no viaja**, igual que en la voz en off.
    */
   const soloProducto = sustituyeAlSujeto(producto);
-  const habla = formatoHabla(direccion.formato) && !soloProducto;
+  /**
+   * **Acciones de producto sin habla** (0.26.0): una pasarela, un giro de 360 o una crema que se extiende son
+   * planos visuales y quien sale no está diciendo nada. El clip va mudo aunque el formato sea «a cámara», y el
+   * guion escrito no se envía, exactamente igual que en la voz en off y en el b-roll.
+   */
+  const visualSinHabla = accionSinHabla(producto);
+  const habla = formatoHabla(direccion.formato) && !soloProducto && !visualSinHabla;
   const dialogo = habla ? direccion.dialogo.trim() : "";
   if (!habla && direccion.dialogo.trim() !== "") {
-    avisos.push(soloProducto ? AVISO_GUION_EN_BROLL_DE_PRODUCTO : AVISO_GUION_EN_CLIP_MUDO);
+    avisos.push(
+      soloProducto
+        ? AVISO_GUION_EN_BROLL_DE_PRODUCTO
+        : visualSinHabla
+          ? AVISO_GUION_EN_ACCION_SIN_HABLA
+          : AVISO_GUION_EN_CLIP_MUDO,
+    );
   }
 
   // En el b-roll no hay nadie que pueda gesticular: el gesto elegido no se envía.
@@ -249,7 +269,9 @@ export function dirigirClip(direccion: DireccionDeClip, opciones: OpcionesDeDire
     // El diálogo, cuando el constructor del modelo no lo coloca él (`kie/modelos.ts › promptEscenaHablada`).
     opciones.dialogoDentro && dialogo !== "" ? `The character says, in Spanish, exactly: "${dialogo}"` : "",
     parrafo([gestoDespues]),
-    habla ? bloqueVoz(direccion) : MODO_MUDO,
+    // Sin habla se describe lo que se ve y el ambiente **en positivo**: a estos modelos no se les prohíbe el
+    // audio, porque prohibírselo es lo que les hace fallar (medido el 2026-09-28).
+    habla ? bloqueVoz(direccion) : visualSinHabla ? SIN_HABLA_EN_ACCION : MODO_MUDO,
     // Los anclajes cierran el modo experto: sin ellos, una descripción escrita entera por el usuario saldría sin
     // nada que pida piel de verdad ni anatomía correcta, y eso no es suyo para quitarlo.
     experto ? anclajesDelClip(direccion) : "",

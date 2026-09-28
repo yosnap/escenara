@@ -155,3 +155,107 @@ export const AVISO_PRODUCTO_SIN_ACCION =
 export const ACCION_PRODUCTO_SOLO = "producto-solo";
 
 export const esProductoSolo = (accion: string): boolean => accion === ACCION_PRODUCTO_SOLO;
+
+/**
+ * **El plano del producto solo no necesita personaje** (decisión firme del propietario, 2026-09-28): se puede
+ * pedir sin ningún personaje dado de alta y sin consentimiento de nadie, porque en el plano no sale ninguna
+ * persona. Exigir un personaje para un plano sin personas sería pedir un permiso sobre alguien que no aparece.
+ */
+export const BROLL_SIN_PERSONAJE =
+  "Este plano es del producto solo: no sale ninguna persona, así que no hace falta elegir personaje ni confirmar el consentimiento de nadie.";
+
+// ── Familias de acción ──────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * A qué familia pertenece una acción. La familia se deduce del **prefijo de la clave** y no de una lista
+ * cerrada: así una acción nueva que añada quien administra desde `/admin/presets` cae en su familia sin tocar
+ * código, que es justo lo que se prometió al hacer las acciones presets.
+ */
+export const FAMILIAS_ACCION_PRODUCTO = ["general", "moda", "skincare"] as const;
+export type FamiliaAccionProducto = (typeof FAMILIAS_ACCION_PRODUCTO)[number];
+
+export const NOMBRE_FAMILIA_ACCION: Record<FamiliaAccionProducto, string> = {
+  general: "Con el producto en la mano",
+  moda: "Moda",
+  skincare: "Cuidado de la piel",
+};
+
+export const familiaDeAccion = (clave: string): FamiliaAccionProducto => {
+  if (clave.startsWith("moda-")) return "moda";
+  if (clave.startsWith("skincare-")) return "skincare";
+  return "general";
+};
+
+/**
+ * Acciones **poco fiables**: las de cuidado de la piel. No es una opinión, es lo medido en la fuente de la
+ * versión —abrir un tapón, extender una crema que va desapareciendo y masajear el rostro son de lo que peor
+ * sale—, así que se dice antes de gastar en lugar de dejar que lo descubra el usuario pagando.
+ */
+export const esAccionPocoFiable = (clave: string): boolean => familiaDeAccion(clave) === "skincare";
+
+export const AVISO_ACCION_POCO_FIABLE =
+  "Esta acción sale mal a menudo: los modelos de hoy fallan al abrir un envase, al extender el producto y al seguir una mano sobre la piel. Puedes pedirla, pero cuenta con repetirla.";
+
+/**
+ * Acciones en las que **nadie habla**: son planos visuales —un giro, una pasarela, un detalle del tejido, una
+ * crema que se extiende— donde una frase a cámara no pinta nada. El guion escrito no se envía y se dice.
+ *
+ * No se prohíbe el audio, se describe lo que sí hay (ver `SIN_HABLA_EN_POSITIVO` en el servidor): pedirle a
+ * estos modelos «sin sonido» es lo que les hace devolver un clip roto o con la boca moviéndose igual.
+ */
+export const ACCIONES_SIN_HABLA: readonly string[] = [
+  "moda-detalle-tejido",
+  "moda-giro-360",
+  "moda-pasarela",
+  "moda-pose-editorial",
+  "moda-detalle-accesorio",
+  "skincare-extender",
+  "skincare-masajear",
+];
+
+export const esAccionSinHabla = (clave: string): boolean => ACCIONES_SIN_HABLA.includes(clave);
+
+/** Lo que se le dice cuando ha escrito un guion y la acción elegida no lleva a nadie hablando. */
+export const AVISO_GUION_EN_ACCION_SIN_HABLA =
+  "Esta acción es un plano visual: nadie habla a cámara, así que el guion que has escrito no se le envía al modelo. Lo que sí se describe es lo que se ve y el ambiente del sitio.";
+
+// ── Producto digital: dos pasos ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * **El producto digital se hace en dos pasos** (decisión firme del propietario, 2026-09-28), y no en uno:
+ *
+ * 1. `pantalla_negra`: el fotograma del personaje sosteniendo el móvil o el portátil con la **pantalla
+ *    apagada**. Pedirle al modelo la interfaz de la app aquí devuelve una imitación inventada de tu app;
+ * 2. `insertar_captura`: una edición de ese fotograma que **mete tu captura** en esa pantalla con la
+ *    perspectiva, la proporción y el recorte correctos. Es la captura de verdad, no una imitación.
+ *
+ * Después se anima el resultado, que es el clip de siempre. **Cada paso cuesta y se confirma aparte**: son dos
+ * generaciones distintas, y cobrar dos veces sin decirlo sería justo lo que la norma de errores prohíbe.
+ */
+export const PASOS_PRODUCTO_DIGITAL = ["pantalla_negra", "insertar_captura"] as const;
+export type PasoProductoDigital = (typeof PASOS_PRODUCTO_DIGITAL)[number];
+
+export const esPasoProductoDigital = (v: unknown): v is PasoProductoDigital =>
+  PASOS_PRODUCTO_DIGITAL.includes(v as PasoProductoDigital);
+
+export const NOMBRE_PASO_DIGITAL: Record<PasoProductoDigital, string> = {
+  pantalla_negra: "1. Fotograma con la pantalla apagada",
+  insertar_captura: "2. Insertar tu captura en la pantalla",
+};
+
+export const DESCRIPCION_PASO_DIGITAL: Record<PasoProductoDigital, string> = {
+  pantalla_negra:
+    "El personaje sostiene el móvil o el portátil con la pantalla negra y bien visible. Así no se inventa una interfaz que no es la tuya.",
+  insertar_captura:
+    "Se parte de ese fotograma y se mete tu captura dentro de la pantalla, con su perspectiva y su proporción, entera y sin recortarla. No cambia nada más de la imagen.",
+};
+
+/** El tercer paso no es una generación de producto: es el clip de siempre. Se enumera para que se vea el camino. */
+export const PASO_DIGITAL_ANIMAR = "3. Animar el resultado";
+
+export const DESCRIPCION_PASO_DIGITAL_ANIMAR =
+  "El clip parte del fotograma con la captura ya puesta, así que la pantalla se mueve con la mano.";
+
+/** Sin captura de pantalla no hay segundo paso: no hay nada que insertar. Se dice con su causa. */
+export const DIGITAL_SIN_CAPTURA =
+  "Este producto digital no tiene ninguna captura de pantalla entre sus fotos, así que no hay nada que insertar en la pantalla. Añádela en la ficha del producto con el papel «Captura de pantalla».";

@@ -59,6 +59,27 @@ const Brazo = ({ d }: { d: string }) => <path d={d} className="opacity-40" />;
 
 const Suelo = () => <path d="M 6 38 H 58" className="opacity-25" strokeDasharray="2 3" />;
 
+/** La prenda: en moda el producto no se sostiene, se lleva puesto, así que ocupa el sitio del bote. */
+const Prenda = ({ x, y }: { x: number; y: number }) => (
+  <g className="text-acento" transform={`translate(${x} ${y})`}>
+    <path d="M -7 -5 L -3 -8 h 6 l 4 3 l -3 3 l -1 -1 v 11 h -6 v -11 l -1 1 z" />
+  </g>
+);
+
+/** El rostro de perfil: es lo que se mira en las acciones de piel, donde el producto ya está en la mano. */
+const Rostro = () => (
+  <g className="opacity-40" transform="translate(26 20)">
+    <path d="M 0 -10 C 8 -10 12 -4 12 2 C 12 9 7 14 0 14 C -6 14 -10 9 -10 2 C -10 -4 -7 -10 0 -10 z" />
+  </g>
+);
+
+/** Las esquinas del encuadre: dicen que lo que importa es que quepa entero. */
+const Encuadre = () => (
+  <g className="opacity-25">
+    <path d="M 12 6 h -4 v 4 M 52 6 h 4 v 4 M 12 40 h -4 v -4 M 52 40 h 4 v -4" />
+  </g>
+);
+
 const ACCIONES: Record<string, { dibujo: ReactNode; frase: string }> = {
   sostenerlo: {
     dibujo: (
@@ -155,6 +176,125 @@ const ACCIONES: Record<string, { dibujo: ReactNode; frase: string }> = {
       </>
     ),
     frase: "El producto solo, sin nadie: un plano para intercalar en el montaje.",
+  },
+
+  // ── Moda ──────────────────────────────────────────────────────────────────────────────────────────────
+  "moda-cuerpo-entero": {
+    dibujo: (
+      <>
+        <Suelo />
+        <Figura x={32} y={8} />
+        <Prenda x={32} y={20} />
+        <Encuadre />
+      </>
+    ),
+    frase: "Se le ve de arriba abajo, con la prenda entera en el plano.",
+  },
+  "moda-detalle-tejido": {
+    dibujo: (
+      <>
+        <g className="text-acento" transform="translate(32 22)">
+          <rect x="-16" y="-11" width="32" height="22" rx="3" />
+          <path d="M -16 -4 h 32 M -16 3 h 32" strokeDasharray="2 2" />
+          <path d="M -9 -11 v 22 M -2 -11 v 22 M 5 -11 v 22" strokeDasharray="2 2" />
+        </g>
+        <Brazo d="M 8 34 L 20 28" />
+      </>
+    ),
+    frase: "Primer plano de la tela: se ve la trama y cómo cae.",
+  },
+  "moda-giro-360": {
+    dibujo: (
+      <>
+        <Suelo />
+        <Figura x={32} y={12} />
+        <Prenda x={32} y={24} />
+        <g className="text-acento">
+          <path d="M 16 36 A 16 6 0 1 0 48 36" markerEnd="url(#punta-producto)" />
+        </g>
+      </>
+    ),
+    frase: "Gira sobre sí mismo y la prenda se ve también por detrás.",
+  },
+  "moda-pasarela": {
+    dibujo: (
+      <>
+        <Suelo />
+        <Figura x={32} y={10} />
+        <Prenda x={32} y={22} />
+        <g className="text-acento">
+          <path d="M 32 36 L 32 42" markerEnd="url(#punta-producto)" />
+        </g>
+      </>
+    ),
+    frase: "Camina hacia la cámara como en un desfile.",
+  },
+  "moda-pose-editorial": {
+    dibujo: (
+      <>
+        <Suelo />
+        <Figura x={32} y={12} />
+        <Prenda x={32} y={24} />
+        <Brazo d="M 25 28 L 18 22" />
+        <Encuadre />
+      </>
+    ),
+    frase: "Posa quieto, como en una foto de revista.",
+  },
+  "moda-detalle-accesorio": {
+    dibujo: (
+      <>
+        <Brazo d="M 8 34 L 22 30" />
+        <g className="text-acento" transform="translate(36 22)">
+          <rect x="-11" y="-7" width="22" height="16" rx="2" />
+          <path d="M -5 -7 A 5 5 0 0 1 5 -7" />
+        </g>
+      </>
+    ),
+    frase: "Primer plano del bolso, el reloj o el zapato.",
+  },
+
+  // ── Cuidado de la piel ────────────────────────────────────────────────────────────────────────────────
+  "skincare-abrir-tapa": {
+    dibujo: (
+      <>
+        <Suelo />
+        <Figura />
+        <Brazo d="M 29 26 L 39 24" />
+        <Bote x={44} y={25} />
+        <g className="text-acento" transform="translate(44 8)">
+          <path d="M -2.5 3 h 5 v -3 h -5 z" />
+          <path d="M 0 3 L 0 9" strokeDasharray="2 2" />
+        </g>
+      </>
+    ),
+    frase: "Le quita la tapa: el tapón es el de tu foto del mecanismo.",
+  },
+  "skincare-extender": {
+    dibujo: (
+      <>
+        <Rostro />
+        <g className="text-acento">
+          <circle cx="40" cy="20" r="3.5" />
+          <circle cx="44" cy="26" r="2.2" className="opacity-60" />
+          <circle cx="47" cy="31" r="1.2" className="opacity-30" />
+        </g>
+        <Brazo d="M 58 36 L 48 30" />
+      </>
+    ),
+    frase: "Se extiende el producto por una zona y va desapareciendo hasta absorberse.",
+  },
+  "skincare-masajear": {
+    dibujo: (
+      <>
+        <Rostro />
+        <g className="text-acento">
+          <path d="M 40 26 A 5 5 0 1 1 39 21" markerEnd="url(#punta-producto)" />
+        </g>
+        <Brazo d="M 58 36 L 46 30" />
+      </>
+    ),
+    frase: "Se masajea el rostro con las yemas de los dedos.",
   },
 };
 
