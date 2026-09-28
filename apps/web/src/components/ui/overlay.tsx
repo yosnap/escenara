@@ -40,7 +40,7 @@ export function Dialogo({
       <D.Portal>
         <D.Backdrop className="fixed inset-0 z-40 bg-black/45 backdrop-blur-sm transition-opacity duration-(--motion-base) data-ending-style:opacity-0 data-starting-style:opacity-0" />
         <D.Popup
-          className={`fixed top-1/2 left-1/2 z-50 ${ANCHO_DIALOGO[tamano]} -translate-x-1/2 -translate-y-1/2 rounded-tarjeta border border-borde bg-superficie p-6 text-texto shadow-2xl transition-all duration-(--motion-base) data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0`}
+          className={`fixed top-1/2 left-1/2 z-50 ${ANCHO_DIALOGO[tamano]} max-h-[calc(100dvh-2rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto overscroll-contain rounded-tarjeta border border-borde bg-superficie p-6 text-texto shadow-2xl transition-all duration-(--motion-base) data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0`}
         >
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>

@@ -2,6 +2,16 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.20.5] · 2026-09-28
+
+### Corregido
+
+- **Los diálogos ya no se salen de la pantalla.** Uno más alto que la ventana (como el de generar una vista, con
+  su panel «Antes de generar») dejaba el botón final fuera de alcance, y un clic fuera lo cerraba. Ahora caben en
+  la ventana y se desplazan por dentro.
+- **Confirmar un aviso al generar una vista ya llega al servidor.** La ruta de la vista generada no pasaba las
+  confirmaciones de «Antes de generar», así que el aviso volvía a rechazar el envío aunque estuviera confirmado.
+
 ## [0.20.4] · 2026-09-28
 
 ### Corregido
