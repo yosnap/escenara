@@ -136,7 +136,9 @@ async function sembrarModelo(modelo: ModeloSemilla, proveedorId: string): Promis
 }
 
 async function sembrarPrecio(modelo: ModeloSemilla): Promise<boolean> {
-  if (!modelo.precio || !esProveedor(modelo.proveedor)) return false;
+  // Los servicios compatibles también llevan precio (0: se pagan por cuota del plan). Sin su fila, un modelo
+  // compatible validado seguiría «sin precio» y no se podría elegir nunca.
+  if (!modelo.precio || !(esProveedor(modelo.proveedor) || modelo.proveedor === "compatible")) return false;
   const [existente] = await db()
     .select({ id: modelPrices.id })
     .from(modelPrices)

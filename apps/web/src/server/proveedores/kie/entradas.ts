@@ -128,6 +128,15 @@ const CONSTRUCTORES = new Map<string, Constructor>(
         resolution: primeraResolucion(modelo),
       }),
 
+    // Gemini Omni 1.1 Flash: los mismos campos que Gemini Omni (medido el 2026-09-28, mismo precio y más rápido).
+    "google/gemini-omni-flash-1-1": (contexto, modelo) =>
+      conProporcion(modelo, {
+        prompt: promptAnimacion(contexto.escena, contexto.dialogo),
+        image_urls: contexto.urls,
+        duration: String(duracion(modelo, contexto)),
+        resolution: primeraResolucion(modelo),
+      }),
+
     /**
      * Grok Imagine (0.21.1), en sus dos variantes. Medido con dinero real el 2026-09-28: 6 s en 9:16 a 480p
      * costaron **14,4 créditos** y tardaron 38 s, con audio.

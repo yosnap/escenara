@@ -40,14 +40,14 @@ if (hayBaseDeDatos) {
   await usarBaseDeDatosDePrueba("escenara_pruebas_relevo");
 }
 
-const { and, eq } = await import("drizzle-orm");
+const { and, eq, sql } = await import("drizzle-orm");
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
 const { assistantRuns, media, models, usageLedger, users } = await import("../db/esquema");
 const { guardarAjustes } = await import("../ajustes");
 const { guardarCredencial } = await import("../boveda/credenciales");
-const { guardarCompatible, listarCompatibles } = await import("../boveda/compatibles");
+const { guardarCompatible, listarCompatibles, modelosDelServicio } = await import("../boveda/compatibles");
 const { crearMedio } = await import("../media/servicio");
 const { crearFotograma } = await import("../generacion/servicio");
 const { estimar, olvidarSaldos } = await import("../generacion/estimacion");
@@ -57,7 +57,7 @@ const { escribirGuion } = await import("../asistente/generar");
 const { olvidarCatalogo } = await import("../proveedores/catalogo");
 const { ErrorGeneracion } = await import("../generacion/errores");
 const { ErrorProyecto } = await import("../asistente/errores");
-const { guardarMapa, mapaVista, recomendadasDe, volverALoRecomendado } = await import("./mapa");
+const { guardarMapa, mapaVista, opcionesDe, recomendadasDe, volverALoRecomendado } = await import("./mapa");
 const { transcribirPorMapa } = await import("./transcripcion");
 const { eleccionDeVozDelMapa } = await import("./voz");
 const { ErrorCatalogo } = await import("../proveedores/contrato");
@@ -92,6 +92,9 @@ let textoCompatible = JSON.stringify([TRADUCIDA]);
 
 const sobre = (data: unknown) => respuestaGrabada({ code: 200, msg: "success", data });
 
+/** Cada petición de la lista de modelos: a qué servicio fue y con qué clave. */
+const peticionesDeModelos: { host: string; autorizacion: string | null }[] = [];
+
 const buscar: Buscador = async (url, init) => {
   if (url.includes("/chat/credit")) return sobre(5000);
   if (url.includes("/codex/v1/responses")) {
@@ -101,7 +104,10 @@ const buscar: Buscador = async (url, init) => {
       credits_consumed: 0.5,
     });
   }
-  if (url.endsWith("/models")) return respuestaGrabada(MODELOS_200);
+  if (url.endsWith("/models")) {
+    peticionesDeModelos.push({ host: new URL(url).host, autorizacion: new Headers(init.headers).get("authorization") });
+    return respuestaGrabada(MODELOS_200);
+  }
   if (url.endsWith("/chat/completions")) {
     const cuerpo = JSON.parse(String(init.body)) as { model: string };
     llamadas.push(`${new URL(url).host}/${cuerpo.model}`);
@@ -226,6 +232,9 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
 
   beforeEach(async () => {
     llamadas.length = 0;
+    // Cada test vuelve a dar de alta los servicios: sin esto, el límite de pruebas de clave por hora del usuario
+    // (20) lo agotarían los propios tests, no nadie probando claves de verdad.
+    await db().execute(sql`delete from rate_limits where key = ${`boveda:prueba:${ana.id}`}`);
     falloDeKie = 500;
     respuestasPorModelo = {};
     textoCompatible = JSON.stringify([TRADUCIDA]);
@@ -266,6 +275,72 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
     expect(resultado.ok).toBe(false);
     if (!resultado.ok) expect(resultado.error).toContain("cuota");
     expect((await listarCompatibles(ana.id)).some((p) => p.nombre === "Pago por uso")).toBe(false);
+  });
+
+  test("la lista de modelos se pide con la clave escrita o con la guardada, y la guardada nunca va a otra dirección", async () => {
+    peticionesDeModelos.length = 0;
+    // Con la clave recién escrita, sin guardar nada.
+    const nueva = await modelosDelServicio(ana.id, { urlBase: BASE_OTRO, clave: CLAVE_OTRO }, buscar);
+    expect(nueva.ok).toBe(true);
+    if (nueva.ok) expect(nueva.modelos.length).toBeGreaterThan(0);
+
+    // Editando un servicio guardado sin volver a pegar la clave: se usa la suya.
+    const nan = (await listarCompatibles(ana.id)).find((p) => p.nombre === "NaN builders");
+    const guardada = await modelosDelServicio(ana.id, { urlBase: BASE_NAN, clave: "", id: nan?.id }, buscar);
+    expect(guardada.ok).toBe(true);
+    expect(peticionesDeModelos.at(-1)).toEqual({ host: "api.nan.builders", autorizacion: `Bearer ${CLAVE_NAN}` });
+
+    // Si la dirección cambia, la clave guardada no sale hacia la nueva: hay que pegarla.
+    const antes = peticionesDeModelos.length;
+    const otra = await modelosDelServicio(ana.id, { urlBase: BASE_OTRO, clave: "", id: nan?.id }, buscar);
+    expect(otra.ok).toBe(false);
+    expect(peticionesDeModelos.length).toBe(antes);
+  });
+
+  test("cada apartado del mapa solo ofrece los modelos de su clase del servicio compatible", async () => {
+    await guardarCompatible(
+      ana.id,
+      {
+        nombre: "NaN builders",
+        urlBase: BASE_NAN,
+        clave: CLAVE_NAN,
+        modelos: ["gemma4", "deepseek-v4-flash", "glm5.3-flash", "whisper", "kokoro"],
+        soloCuota: true,
+      },
+      buscar,
+    );
+    const deServicio = async (tipo: "texto" | "voz" | "transcripcion") =>
+      (await opcionesDe(ana.id, tipo))
+        .filter((o) => o.proveedor === "compatible" && o.nombreProveedor === "NaN builders")
+        .map((o) => o.modelo);
+    expect(await deServicio("transcripcion")).toEqual(["whisper"]);
+    expect(await deServicio("voz")).toEqual(["kokoro"]);
+    expect(await deServicio("texto")).toEqual(["gemma4", "deepseek-v4-flash", "glm5.3-flash"]);
+  });
+
+  test("editar un servicio sin volver a pegar la clave mantiene la guardada, salvo si cambia la dirección", async () => {
+    peticionesDeModelos.length = 0;
+    const editado = await guardarCompatible(
+      ana.id,
+      { nombre: "NaN builders", urlBase: BASE_NAN, clave: "", modelos: ["glm5.3-flash", "gemma4"], soloCuota: true },
+      buscar,
+    );
+    expect(editado.ok).toBe(true);
+    // Se comprobó con la clave que ya tenía, y se guardó el orden nuevo.
+    expect(peticionesDeModelos.at(-1)).toEqual({ host: "api.nan.builders", autorizacion: `Bearer ${CLAVE_NAN}` });
+    const nan = (await listarCompatibles(ana.id)).find((p) => p.nombre === "NaN builders");
+    expect(nan?.modelos).toEqual(["glm5.3-flash", "gemma4"]);
+
+    // Con otra dirección, la clave guardada no viaja: hay que pegarla.
+    const antes = peticionesDeModelos.length;
+    const movido = await guardarCompatible(
+      ana.id,
+      { nombre: "NaN builders", urlBase: BASE_OTRO, clave: "", modelos: ["gemma4"], soloCuota: true },
+      buscar,
+    );
+    expect(movido.ok).toBe(false);
+    if (!movido.ok) expect(movido.error).toContain("pega la clave");
+    expect(peticionesDeModelos.length).toBe(antes);
   });
 
   test("429 en un modelo pasa al siguiente modelo del mismo servicio", async () => {

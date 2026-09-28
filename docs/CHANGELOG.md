@@ -2,6 +2,39 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.21.2] · 2026-09-28
+
+### Añadido
+
+- **Cargar los modelos de un servicio compatible desde su API.** En «Tu cuenta», «Cargar modelos del servicio» pide
+  su lista (`GET /models`, sin consumir cuota) y la ofrece clasificada en **texto, voz y transcripción**; los de
+  imagen, vectores y reordenación no se ofrecen. Si falta alguno, se puede seguir escribiendo a mano.
+- **Gemini Omni 1.1 Flash** (`google/gemini-omni-flash-1-1`) en el catálogo: 63 créditos por 4 s en 9:16 a 720p,
+  medido con dinero real, igual que Gemini Omni y un 35 % más rápido. A 360p KIE cobra lo mismo, así que no se ofrece.
+- **Kokoro de NaN builders validado** con una llamada real en español (voces Dora y Alex): ya se puede elegir en el
+  apartado «Voz» del mapa para proyectos con voz de kokoro.
+
+### Cambiado
+
+- **Ordenar es arrastrar y soltar**, también con teclado: los modelos del servicio y el mapa de modelos dejan las
+  flechas.
+- **Cada apartado del mapa ofrece solo los modelos de su clase**: whisper en subtítulos, kokoro en voz y los de chat
+  en texto. Antes ofrecía los de texto también como subtítulos.
+- **Editar un servicio compatible sin volver a pegar la clave** mantiene la guardada, salvo si cambia la dirección:
+  la clave de un servicio nunca viaja a otra dirección.
+- La sección de servicios se llama «Servicios de texto de tu plan» y explica que se usan primero.
+- Gemini Omni pasa a llamarse «Gemini Omni (vídeo)»: el nombre anterior era el de Flash.
+
+### Corregido
+
+- La semilla del catálogo no guardaba el precio de los modelos de servicios compatibles, así que un modelo
+  compatible validado seguía «sin precio» y no se podía elegir.
+
+### Actualizar desde la 0.21.1
+
+- `bun run db:backup` y `bun run db:migrate`: sin migraciones nuevas, pero la semilla añade Gemini Omni 1.1 Flash y
+  el precio de kokoro. Para validar kokoro en una instalación existente, hazlo en Admin › Modelos con su evidencia.
+
 ## [0.21.1] · 2026-09-28
 
 ### Decisiones firmes del propietario
