@@ -260,6 +260,13 @@
       "when": 1790601103846,
       "tag": "0036_direcciones-guardadas",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1790611194142,
+      "tag": "0037_productos-y-acciones",
+      "breakpoints": true
     }
   ]
 }

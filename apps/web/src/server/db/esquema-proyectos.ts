@@ -4,6 +4,7 @@ import { users } from "./esquema-auth";
 import { proveedorCredencial } from "./esquema-boveda";
 import { characters, characterVersions } from "./esquema-personajes";
 import { promptTemplateVersions } from "./esquema-presets";
+import { products } from "./esquema-productos";
 import { jsonb } from "./jsonb";
 
 /**
@@ -304,6 +305,16 @@ export const scenes = pgTable(
     changeOnlyReferenceMediaId: uuid("change_only_reference_media_id").references(() => media.id, {
       onDelete: "set null",
     }),
+    /**
+     * **El producto de la escena** (0.26.0) y qué se hace con él. `null` = ninguno, que es lo normal.
+     *
+     * Va a `set null` al borrar el producto **a propósito**: la escena sigue siendo una escena sin él. Quien la
+     * borra se lleva sus derivados, no el trabajo de escribirla. `product_action` se vacía en la misma
+     * operación, porque una acción sin producto no describe nada.
+     */
+    productId: uuid("product_id").references(() => products.id, { onDelete: "set null" }),
+    /** Clave del catálogo de acciones de producto. Vacío = no se ha dicho qué se hace con él. */
+    productAction: text("product_action").notNull().default(""),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
