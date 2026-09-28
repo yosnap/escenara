@@ -1,6 +1,7 @@
 import {
   type Acento,
   AVISO_DOS_MOVIMIENTOS,
+  AVISO_GESTO_ANTES_POCO_FIABLE,
   AVISO_GUION_EN_CLIP_MUDO,
   AVISO_MOVIMIENTO_AVANZADO,
   avisoGestoNoCabe,
@@ -165,6 +166,10 @@ export function dirigirClip(direccion: DireccionDeClip, opciones: OpcionesDeDire
   const apretado =
     gesto !== "" && direccion.momentoMicroaccion !== "durante" && gestoNoCabe(palabras, direccion.segundos);
   if (apretado) avisos.push(avisoGestoNoCabe(direccion.segundos));
+  // Medido: el «antes» no se respeta ni con hueco de sobra. Se avisa, pero se envía lo que pidió el usuario.
+  if (gesto !== "" && direccion.momentoMicroaccion === "antes" && !apretado) {
+    avisos.push(AVISO_GESTO_ANTES_POCO_FIABLE);
+  }
   const momento = apretado ? "durante" : direccion.momentoMicroaccion;
   const gestoAntes = gesto !== "" && momento === "antes" ? gesto : "";
   const gestoDespues = gesto !== "" && momento !== "antes" ? gesto : "";

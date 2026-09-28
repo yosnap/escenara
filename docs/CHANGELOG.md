@@ -78,10 +78,18 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
   cuando no hay hueco, el gesto se coloca dentro del habla y **se avisa con la causa** en lugar de prometer un
   «antes» que no puede ocurrir.
 
+### Medido con dinero real (segundo spike, clips de 8 s, 315 créditos)
+
+- **Un movimiento de cámara avanzado sí se respeta**: el push-in a los ojos sale continuo y sin corte, así que
+  pasa a estar marcado como «con variación» en vez de «avanzado».
+- **El gesto «antes de hablar» casi nunca se respeta**: el modelo empieza a hablar en el primer fotograma y
+  deja el hueco al final. Ahora se avisa de ello al elegirlo, y «después de hablar» sí se cumple.
+- **El clip mudo ya no prohíbe el audio.** Prohibirlo hacía que el proveedor fallara (sin cobrar): ahora solo
+  se describe la boca cerrada y el ambiente se pide en positivo.
+
 ### Pendiente
 
-- **Segundo spike con clips de 8 s**: la ordenación del gesto, los niveles de cámara con variación y avanzados,
-  y el acento (que hay que escuchar) siguen sin medir.
+- **El acento sigue sin juzgar**: los clips traen audio, pero eso se decide escuchándolos.
 ## [0.24.1] · 2026-09-28
 
 ### Corregido

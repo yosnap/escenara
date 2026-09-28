@@ -134,6 +134,31 @@ entre los tres que se perdieron.
 
 Vídeos y resumen quedaron fuera del repositorio, en el espacio de trabajo de la sesión.
 
+### Segundo spike, clips de 8 s (2026-09-28, con dinero real)
+
+Aprobado con tope duro de 504 créditos; gastados **315** (tres clips a 105; el cuarto falló **sin cobrar**).
+Mismo modelo y montaje que el primero, con `--segundos 8`.
+
+| Pregunta | Resultado |
+|---|---|
+| ¿Un movimiento **avanzado** se respeta? | **Sí.** El push-in a los ojos va de plano medio a primerísimo, continuo, sin corte y cerrando en los ojos |
+| ¿El gesto **antes** de hablar? | **No.** Con hueco de sobra (frase de 16 palabras en 8 s), el modelo **empieza a hablar en el primer fotograma** y deja el silencio al final |
+| ¿El gesto **después** de hablar? | **Sí**, porque coincide con donde el modelo deja el hueco |
+| ¿El clip **mudo**? | **Falló, sin cobrar.** El prompt decía «no voice of any kind», y estos modelos se caen cuando se les prohíbe el audio |
+| ¿Corte? | **Ninguno** en los tres clips que salieron |
+
+Lo que cambió en el producto:
+
+- **El clip mudo deja de prohibir el audio.** Solo se describe lo que se ve (boca cerrada, labios quietos) y
+  el ambiente lo pone en positivo el constructor del modelo, que es lo que ya hacía desde la 0.19.0. El texto
+  de esta versión había vuelto a introducir la prohibición que se sabía que rompe.
+- **El gesto «antes de hablar» avisa de que casi nunca se respeta.** Se envía igual —es lo que el usuario
+  pidió—, pero se le dice qué va a pasar y que «después» sí se cumple.
+- **`push-in a los ojos` baja de «avanzado» a «con variación»**, porque está medido. Los demás avanzados
+  siguen sin medir y se quedan como están.
+
+Sigue pendiente **el acento**: hay audio en todos los clips, pero eso se juzga de oído.
+
 ## Infraestructura y servicios del operador
 
 | Servicio | Para qué | Local | Producción | Documentación | Estado |

@@ -39,12 +39,25 @@ loadEnvConfig(path.resolve(import.meta.dirname, "../../.."), true, console, true
  * ni a generar retratos, que serían créditos gastados en algo que el spike no mide.
  */
 const MODELO = "google/gemini-omni-flash-1-1";
-const SEGUNDOS = 4;
+/**
+ * Duración de los clips. Es `--segundos` porque el primer spike demostró que **la duración es la variable**:
+ * en 4 s una frase normal ocupa el clip entero y no deja hueco para un gesto antes o después.
+ */
+const SEGUNDOS = Number(
+  (() => {
+    const i = process.argv.indexOf("--segundos");
+    return i >= 0 ? (process.argv[i + 1] ?? "4") : "4";
+  })(),
+);
 const RESOLUCION = "720p";
 const PROPORCION = "9:16";
 
-/** Créditos publicados de esa combinación (4 s, 720p, sin vídeo de entrada). Se reconfirma al arrancar. */
-const CREDITOS_PUBLICADOS = 63;
+/**
+ * Créditos publicados por duración (720p, sin vídeo de entrada), tal como los publica el tarifario de KIE.
+ * Se **reconfirman contra el proveedor** al arrancar: esto es solo para poder enseñar el plan sin llamar.
+ */
+const CREDITOS_POR_DURACION: Record<number, number> = { 4: 63, 6: 84, 8: 105, 10: 126 };
+const CREDITOS_PUBLICADOS = CREDITOS_POR_DURACION[SEGUNDOS] ?? 105;
 
 /** Lo que dice el personaje en todos los clips. La misma frase en todos: lo que varía es **una** cosa. */
 const DIALOGO = "Te voy a contar una cosa que casi nadie sabe, y que a mí me cambió la semana.";
@@ -60,6 +73,8 @@ interface CasoDelSpike {
   microaccion: string;
   momento: "antes" | "durante" | "despues";
   acento: "es_ES_madrid" | "es_AR_rioplatense";
+  /** Formato del clip. `voz_en_off` es el caso mudo: se comprueba que no hable ni mueva los labios. */
+  formato?: "ugc_a_camara" | "voz_en_off";
 }
 
 /**
@@ -127,6 +142,25 @@ const CASOS: readonly CasoDelSpike[] = [
     pregunta: "¿Se oye peninsular?",
     varia: "acento: España (Madrid)",
     camara: "",
+    microaccion: "",
+    momento: "durante",
+    acento: "es_ES_madrid",
+  },
+  {
+    clave: "mudo-voz-en-off",
+    pregunta: "¿Sale mudo, con la boca cerrada?",
+    varia: "formato: voz en off (clip mudo)",
+    formato: "voz_en_off",
+    camara: "",
+    microaccion: "",
+    momento: "durante",
+    acento: "es_ES_madrid",
+  },
+  {
+    clave: "camara-avanzada",
+    pregunta: "¿Respeta un movimiento avanzado?",
+    varia: "cámara: push-in a los ojos (avanzado)",
+    camara: "push-in-ojos",
     microaccion: "",
     momento: "durante",
     acento: "es_ES_madrid",
@@ -243,13 +277,14 @@ function promptDe(caso: CasoDelSpike): string {
   const movimiento = fragmento("camara", caso.camara);
   const { escena } = dirigirClip(
     {
-      formato: "ugc_a_camara",
+      formato: caso.formato ?? "ugc_a_camara",
       movimientosCamara: movimiento === "" ? [] : [movimiento],
       nivelCamara: "basico",
       plano: fragmento("plano", "medio"),
       angulo: fragmento("angulo", "tres-cuartos"),
       registroEstetico: "ugc_real",
       sujeto: "A woman in her thirties",
+      personajeReal: false,
       escena: fragmento("localizacion", "cocina"),
       microaccion: fragmento("microaccion", caso.microaccion),
       momentoMicroaccion: caso.momento,
@@ -257,6 +292,7 @@ function promptDe(caso: CasoDelSpike): string {
       direccionVocal: "",
       ejesVoz: EJES_VOZ_POR_DEFECTO,
       acento: caso.acento,
+      segundos: SEGUNDOS,
     },
     // Sin personaje registrado no hay hueco aparte para la frase: va dentro del texto, como en la familia
     // genérica. Es lo único que cambia respecto a lo que enviará la producción con Omni.

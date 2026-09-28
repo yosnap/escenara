@@ -347,6 +347,17 @@ export const SEGUNDOS_DE_GESTO = 0.8;
 export const gestoNoCabe = (palabras: number, segundos: number): boolean =>
   palabras / PALABRAS_POR_SEGUNDO + SEGUNDOS_DE_GESTO > segundos;
 
+/**
+ * Aviso del gesto **antes de hablar**, medido el 2026-09-28 (segundo spike, 8 s).
+ *
+ * Con hueco de sobra —una frase de dieciséis palabras en un clip de 8 s— el modelo **empieza a hablar en el
+ * primer fotograma** y deja el silencio al final. El «antes» no se respeta; el «después» sí, porque coincide
+ * con dónde el modelo deja el hueco. Se dice en vez de prometerlo: el usuario puede elegirlo igual, pero
+ * sabiendo qué va a pasar.
+ */
+export const AVISO_GESTO_ANTES_POCO_FIABLE =
+  "El modelo empieza a hablar nada más arrancar el clip, así que un gesto «antes de hablar» casi nunca sale donde lo pides: suele acabar mientras habla. «Después de hablar» sí se respeta.";
+
 export const avisoGestoNoCabe = (segundos: number): string =>
   `La frase ocupa casi todo el clip de ${segundos} s, así que no queda hueco para el gesto antes ni después de hablar: saldrá mientras habla. Acorta el guion o alarga el clip si lo quieres separado.`;
 

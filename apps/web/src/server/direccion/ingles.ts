@@ -27,11 +27,18 @@ export const REGLA_ANTI_CORTE =
 // ── Formato del clip ────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * El clip mudo **se dice en positivo y se dice dos veces**: boca cerrada y nadie habla. Decirlo solo una vez, o
- * solo prohibir la voz, deja al modelo poniendo un balbuceo o moviendo los labios sin sonido.
+ * Clip mudo: **solo se describe lo que se ve**, nunca se prohíbe el audio.
+ *
+ * Medido el 2026-09-28 (segundo spike, 8 s): con «no voice of any kind» el proveedor **falla sin cobrar**.
+ * Es exactamente lo que ya estaba documentado en `kie/modelos.ts` desde la 0.19.0 —estos modelos siempre
+ * generan audio y se caen cuando no saben cuál poner, y prohibirlo se cae igual—, y el primer texto de esta
+ * versión lo había vuelto a introducir.
+ *
+ * Lo que sí funciona: decir que la boca está cerrada (que es visual) y dejar que el constructor del modelo
+ * añada el ambiente en positivo, que es lo que hace `AUDIO_SOLO_AMBIENTE` cuando no hay diálogo.
  */
 export const MODO_MUDO =
-  "The character does not speak: mouth closed, lips still, no dialogue, no lip movement and no voice of any kind in this clip.";
+  "The character is not talking in this clip: their mouth stays closed and their lips are still, with no dialogue and no lip movement.";
 
 export const FORMATO_CLIP_INGLES: Record<FormatoClip, string> = {
   ugc_a_camara: "A phone-shot social video of a person talking straight to camera",

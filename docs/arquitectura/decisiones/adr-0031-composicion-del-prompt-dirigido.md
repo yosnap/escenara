@@ -1,6 +1,6 @@
 # ADR-0031 · Composición del prompt dirigido: el orden vive en el código
 
-- **Estado**: aceptada (el orden, confirmado en lo medido; la ordenación del gesto, pendiente de un spike con clips de 8 s)
+- **Estado**: aceptada y **medida** en dos spikes (2026-09-28). Solo el acento queda por juzgar de oído
 - **Fecha**: 2026-09-28
 - **Versión**: 0.25.0
 - **Relacionadas**: ADR-0022 (el prompt lo compone el servidor y no sale hacia el navegador), ADR-0024
@@ -115,9 +115,21 @@ regla nueva, que es aritmética y no opinión: cuando la frase no deja hueco, el
 habla y se avisa (`lib/direccion.ts › gestoNoCabe`). Prometer un «antes» que no cabe sería prometer algo que no
 puede ocurrir.
 
-**Qué habrá que revisar.** El orden de los siete bloques sigue **parcialmente sin confirmar** en su parte de
-ordenación del gesto: hace falta repetirlo con clips de 8 s. Los niveles `variacion` y `avanzado` del catálogo
-de cámara **siguen sin medir** (el clip de órbita lenta se perdió con los tres primeros), así que son una
-estimación razonada y el catálogo los marca como tales. El acento está **pendiente de escucharlo**. Mientras
-tanto, `direccion_fiel` mide en sombra cuánto se respeta la dirección, y esa medida es la que dirá si algún
-movimiento avanzado hay que retirarlo del catálogo o marcarlo como poco fiable.
+**Qué dijo el segundo spike (clips de 8 s, 315 créditos de los 504 aprobados).** Cierra lo que faltaba, y con
+un resultado que obliga a matizar el orden:
+
+- **el momento del gesto no es dirigible hacia atrás.** Con hueco de sobra, el modelo empieza a hablar en el
+  primer fotograma y deja el silencio al final: «después» se cumple porque coincide con ese hueco, y «antes»
+  no se cumple casi nunca. El orden del prompt **se mantiene** —es lo que el usuario pidió y no hace daño—,
+  pero el producto **avisa** en vez de prometerlo. Dirigir es ofrecer lo que el modelo puede dar y decir la
+  verdad sobre el resto;
+- **un movimiento avanzado sí se respeta**: el push-in a los ojos salió continuo y sin corte, así que baja a
+  «con variación» en el catálogo. Los demás avanzados siguen sin medir;
+- **prohibir el audio rompe el clip mudo.** El proveedor falló sin cobrar con «no voice of any kind». El
+  producto vuelve a la regla que ya conocía desde la 0.19.0: describir el ambiente en positivo y limitarse a
+  decir, en lo visual, que la boca está cerrada. Es la lección más barata de las dos tandas y la que más cerca
+  estuvo de llegar al usuario.
+
+**Qué habrá que revisar.** El **acento** sigue sin juzgar: hay audio en los clips, pero eso se decide de oído.
+Los movimientos avanzados que no se han medido siguen marcados como tales. Y `direccion_fiel` mide en sombra
+cuánto se respeta la dirección, que es lo que dirá si alguno hay que retirarlo del catálogo.

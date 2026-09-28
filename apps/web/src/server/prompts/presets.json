@@ -703,11 +703,11 @@
       "categoria": "camara",
       "clave": "push-in-ojos",
       "nombre": "Push-in a los ojos",
-      "descripcion": "Se acerca a los ojos justo en la frase importante.",
+      "descripcion": "Se acerca a los ojos justo en la frase importante. Medido: el modelo lo respeta.",
       "orden": 100,
       "valores": {
         "prompt": "The camera pushes in towards the eyes and lands on them as the key line is spoken",
-        "nivel": "avanzado"
+        "nivel": "variacion"
       }
     },
     {

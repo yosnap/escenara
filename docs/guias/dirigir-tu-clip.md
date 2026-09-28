@@ -40,9 +40,10 @@ Qué hace la cámara durante el clip. Están ordenados por cuánto se puede conf
 - **Avanzados** (mira el clip antes de darlo por bueno): push-in a los ojos en la frase clave, contrapicado
   heroico, foco que cambia al fondo, cámara lenta.
 
-> **Los gestos necesitan sitio.** En un clip de 4 segundos una frase normal ocupa el clip entero y no queda
-> hueco para asentir antes o después: si eso pasa, se te dice y el gesto sale mientras habla. Acorta el guion o
-> pon clips de 8 segundos si lo quieres separado.
+> **«Antes de hablar» casi nunca sale.** Probado con clips reales: el modelo empieza a hablar en cuanto
+> arranca el clip y deja el silencio al final, así que un gesto «antes» suele acabar mientras habla.
+> **«Después de hablar» sí se respeta.** Y en un clip de 4 segundos una frase normal ocupa el clip entero, así
+> que no hay hueco para ningún gesto suelto: si eso pasa, se te dice.
 
 **Solo un movimiento por clip.** Si eliges dos, se te avisa y se envía el primero: los modelos, cuando les
 pides dos movimientos, parten el plano en dos. Si de verdad quieres los dos, parte la escena en dos y pon uno
@@ -148,11 +149,13 @@ antes de darle poder. Quien administra puede apagarla en Admin › Ajustes › C
 
 Probado con clips reales el 28/09/2026:
 
-- **la regla de una sola toma funciona**: ninguno de los cinco clips salió cortado;
-- **el movimiento de cámara se respeta**, y también el plano, el ángulo, el sitio y el acabado.
+- **la regla de una sola toma funciona**: ninguno de los ocho clips salió cortado;
+- **el movimiento de cámara se respeta**, incluido uno de los avanzados (el acercamiento a los ojos), y
+  también el plano, el ángulo, el sitio y el acabado;
+- **«después de hablar» se respeta y «antes de hablar» no**, por cómo reparte el modelo el tiempo del clip.
 
-Todavía sin comprobar: si el **acento** suena como se pide, si los movimientos **avanzados** se respetan, y si
-el gesto se coloca en su momento cuando el clip es de 8 segundos.
+Todavía sin comprobar: si el **acento** suena como se pide (hay que escucharlo) y los movimientos avanzados
+que no se han probado.
 
 La **hoja de identidad 3×3** (nueve retratos en una imagen) nace como **candidata** y no se usa por defecto:
 primero hay que comprobar con datos si da mejor parecido que las fotos sueltas, y eso se ve en el panel de

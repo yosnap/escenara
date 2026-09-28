@@ -3,6 +3,7 @@ import {
   ACENTO_POR_DEFECTO,
   ACENTOS,
   AVISO_DOS_MOVIMIENTOS,
+  AVISO_GESTO_ANTES_POCO_FIABLE,
   AVISO_GUION_EN_CLIP_MUDO,
   EJES_VOZ_POR_DEFECTO,
   type EjesVoz,
@@ -149,10 +150,11 @@ describe("composición del prompt del clip", () => {
     expect(apretado.escena.indexOf(LARGO)).toBeLessThan(apretado.escena.indexOf("nods once"));
   });
 
-  test("con hueco de sobra el gesto sí va antes y no se avisa de nada", () => {
+  test("con hueco de sobra el gesto sí va antes en el prompt, y solo se avisa de que el modelo no lo respeta", () => {
     const holgado = dirigirClip({ ...DIRECCION, segundos: 8, dialogo: "Mira esto." }, { dialogoDentro: true });
-    expect(holgado.avisos).toEqual([]);
+    // Lo que el usuario pidió se envía; lo que se le dice es que este modelo casi nunca lo cumple.
     expect(holgado.escena.indexOf("nods once")).toBeLessThan(holgado.escena.indexOf("Mira esto."));
+    expect(holgado.avisos).toEqual([AVISO_GESTO_ANTES_POCO_FIABLE]);
   });
 
   test("con persona real, la regla de no retoque se repite DESPUÉS del texto del catálogo", () => {
@@ -171,8 +173,8 @@ describe("composición del prompt del clip", () => {
     expect(dirigirClip({ ...DIRECCION, personajeReal: false }).escena).not.toContain(SIN_RETOQUE_FINAL);
   });
 
-  test("con una sola elección no hay ningún aviso", () => {
-    expect(dirigirClip(DIRECCION).avisos).toEqual([]);
+  test("con una sola elección y el gesto donde el modelo lo respeta, no hay ningún aviso", () => {
+    expect(dirigirClip({ ...DIRECCION, momentoMicroaccion: "despues" }).avisos).toEqual([]);
   });
 });
 
@@ -531,6 +533,26 @@ describe("hoja de identidad 3×3", () => {
   });
 });
 
+describe("lo que midió el segundo spike (8 s)", () => {
+  test("el clip mudo no prohíbe el audio: prohibirlo hacía fallar al proveedor", () => {
+    const { escena } = dirigirClip({ ...DIRECCION, formato: "voz_en_off" });
+    expect(escena).toContain("mouth stays closed");
+    // Ni una prohibición de sonido: el ambiente lo pone en positivo el constructor del modelo.
+    expect(escena).not.toContain("no voice");
+    expect(escena).not.toContain("no sound");
+  });
+
+  test("el gesto «antes» avisa de que el modelo casi nunca lo respeta, aunque haya hueco", () => {
+    const conHueco = dirigirClip({ ...DIRECCION, segundos: 8, momentoMicroaccion: "antes", dialogo: "Mira." });
+    expect(conHueco.avisos).toContain(AVISO_GESTO_ANTES_POCO_FIABLE);
+  });
+
+  test("el gesto «después» no avisa: es el que sí se respeta", () => {
+    const despues = dirigirClip({ ...DIRECCION, segundos: 8, momentoMicroaccion: "despues", dialogo: "Mira." });
+    expect(despues.avisos).toEqual([]);
+  });
+});
+
 describe("avisos que llegan al usuario", () => {
   test("el matiz de voz ya traducido entra en el bloque de voz", () => {
     const { escena } = dirigirClip({ ...DIRECCION, direccionVocal: "in a tired, quiet tone" });
@@ -548,6 +570,7 @@ describe("avisos que llegan al usuario", () => {
     const corto = dirigirClip({ ...DIRECCION, segundos: 4, momentoMicroaccion: "antes", dialogo: LARGO });
     const largo = dirigirClip({ ...DIRECCION, segundos: 10, momentoMicroaccion: "antes", dialogo: LARGO });
     expect(corto.avisos.some((a) => a.includes("4 s"))).toBe(true);
-    expect(largo.avisos).toEqual([]);
+    // A 10 s el gesto cabe, así que solo queda el aviso medido del «antes».
+    expect(largo.avisos).toEqual([AVISO_GESTO_ANTES_POCO_FIABLE]);
   });
 });
