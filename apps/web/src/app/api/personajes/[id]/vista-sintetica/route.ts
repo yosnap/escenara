@@ -6,7 +6,8 @@ export const dynamic = "force-dynamic";
 /**
  * Encola la generación de una vista que le falta al personaje:
  * `{ vista, creditosConfirmados, derechos, sinTerceros, claveIdempotencia, modelo?, selloEstimacion?,
- * avisoUmbralAceptado? }`.
+ * avisoUmbralAceptado?, avisosConfirmados? }`. `avisosConfirmados` son las claves de los avisos salvables de
+ * «Antes de generar» que el usuario ha confirmado: sin ellas, un aviso así rechaza el envío.
  *
  * No hay atajo de dinero ni de consentimiento: por dentro es un fotograma normal de la cola, con su reserva
  * de presupuesto, su confirmación de coste y las mismas puertas que «Crear». La indicación que se le manda al
@@ -26,6 +27,7 @@ export const POST = manejador(async (peticion: Request, contexto: ContextoId, ac
     claveIdempotencia: cuerpo.claveIdempotencia,
     modelo: cuerpo.modelo,
     selloEstimacion: cuerpo.selloEstimacion,
+    avisosConfirmados: cuerpo.avisosConfirmados,
   });
   return Response.json({ trabajo, vista }, { status: nueva ? 201 : 200 });
 });
