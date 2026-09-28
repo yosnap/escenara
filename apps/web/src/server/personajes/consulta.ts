@@ -294,8 +294,9 @@ export async function vistaDePersonaje(
   const generadas = vigentes.filter((r) => r.origin === "vista_generada").length;
   const datos = { consentimiento: efectivo(consentimiento), referencias: utilizables, minimoReferencias: minimo };
   const esDueno = fila.ownerId === actor.id;
-  // La portada es siempre una foto original, por lo mismo que en los listados.
-  const primeraOriginal = referencias.find((r) => r.origin === "foto_original");
+  // La portada de una persona real es siempre una foto original, por lo mismo que en los listados; la de un
+  // inventado es su primera imagen, porque todas son generadas y sin ella se quedaría sin cara.
+  const primeraOriginal = referencias.find((r) => fila.virtual || r.origin === "foto_original");
   const portada = esDueno && primeraOriginal ? (medios.get(primeraOriginal.mediaId) ?? null) : null;
   const propietario = opciones.conPropietario
     ? { id: fila.ownerId, nombre: opciones.nombreDelDueno ?? (await nombreDeDueno(fila.ownerId)).nombre }
@@ -420,11 +421,14 @@ async function resumenDeLista(filas: FilaPersonaje[], actor: Actor): Promise<Res
       .where(and(inArray(characterReferences.characterId, ids), isNull(media.deletedAt)))
       .groupBy(characterReferences.characterId, characterReferences.origin),
     db().execute<{ character_id: string; media_id: string }>(
-      // Solo fotos originales: la miniatura de un listado va sin etiqueta al lado, y una vista generada
-      // presentada así parecería una foto de la persona.
+      // Solo fotos originales en una persona real: la miniatura de un listado va sin etiqueta al lado, y una
+      // vista generada presentada así parecería una foto de la persona. Un inventado usa su primera imagen.
       sql`select distinct on (cr.character_id) cr.character_id, cr.media_id
-          from character_references cr join media m on m.id = cr.media_id
-          where cr.character_id in (${lista}) and m.deleted_at is null and cr.origin = 'foto_original'
+          from character_references cr
+          join media m on m.id = cr.media_id
+          join characters c on c.id = cr.character_id
+          where cr.character_id in (${lista}) and m.deleted_at is null
+            and (cr.origin = 'foto_original' or c.virtual)
           order by cr.character_id, cr.sort_order asc, cr.created_at asc`,
     ),
     db()

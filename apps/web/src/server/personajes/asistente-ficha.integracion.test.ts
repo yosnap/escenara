@@ -44,7 +44,8 @@ const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
 const { assistantRuns, characters, generationJobs, users } = await import("../db/esquema");
-const { coberturaDe } = await import("./consulta");
+const { coberturaDe, listarPersonajes } = await import("./consulta");
+const { ordenarReferencias } = await import("./servicio");
 const { vistasPorGenerar } = await import("@/lib/captura-personaje");
 const { guardarCompatible, listarCompatibles } = await import("../boveda/compatibles");
 const { guardarMapa } = await import("../mapa/mapa");
@@ -254,6 +255,39 @@ describe.skipIf(!hayBaseDeDatos)("asistente de la ficha del personaje", () => {
     expect(ejecucion?.estimatedCredits).toBe(0);
     expect(ejecucion?.consumedCredits).toBe(0);
     expect(ejecucion?.state).toBe("listo");
+  });
+
+  test("un inventado tiene imagen de personaje y se cambia poniendo otra foto la primera", async () => {
+    // Sus imágenes son todas generadas: antes se quedaba sin cara porque la portada solo aceptaba fotos originales.
+    const inventado = await crearPersonajeInventado(actorAna, {
+      nombre: `Lía ${sufijo}`,
+      descripcion: "Mujer de unos treinta años, pelo rizado.",
+      declaracion: true,
+    });
+    const primera = await crearMedio(actorAna, new File([await foto(21)], "ia-21.png", { type: "image/png" }));
+    const segunda = await crearMedio(actorAna, new File([await foto(22)], "ia-22.png", { type: "image/png" }));
+    const respuesta = await rutaReferencias.POST(
+      pedir(ana, `/api/personajes/${inventado.id}/referencias`, "POST", {
+        referencias: [
+          { medioId: primera.id, vistaClave: "frontal", usarDeTodasFormas: true },
+          { medioId: segunda.id, vistaClave: "perfil_izquierdo", usarDeTodasFormas: true },
+        ],
+        generadasConIA: true,
+      }),
+      ctx(inventado.id),
+    );
+    const ficha = (await respuesta.json()) as PersonajeVista;
+    expect(ficha.portada?.id).toBe(primera.id);
+    const enLista = (await listarPersonajes(actorAna)).find((p) => p.id === inventado.id);
+    expect(enLista?.portada?.id).toBe(primera.id);
+
+    const ids = (ficha.referencias ?? []).map((r) => r.id);
+    const deLaSegunda = (ficha.referencias ?? []).find((r) => r.medio.id === segunda.id)?.id ?? "";
+    const cambiada = await ordenarReferencias(actorAna, inventado.id, [
+      deLaSegunda,
+      ...ids.filter((id) => id !== deLaSegunda),
+    ]);
+    expect(cambiada.portada?.id).toBe(segunda.id);
   });
 
   test("un texto que no se puede leer como ficha no cambia nada y dice quién contestó", async () => {

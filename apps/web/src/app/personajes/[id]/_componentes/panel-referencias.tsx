@@ -79,9 +79,14 @@ export function PanelReferencias({
   const [rechazadas, setRechazadas] = useState<RechazoDeReferencia[]>([]);
   const referencias = personaje.referencias ?? [];
   const hueco = MAXIMO_REFERENCIAS - referencias.length;
-  // La portada la elige el servidor: es la **primera foto original**, no la primera referencia. Si la primera
-  // fuera una vista generada, marcar la posición 0 diría que la portada es algo que no lo es.
-  const portada = referencias.find((r) => r.origen === "foto_original")?.id ?? null;
+  // La portada la elige el servidor con la misma regla: en una persona real, la **primera foto original** (una
+  // vista generada no se presenta nunca como foto suya); en un inventado, la primera imagen, porque todas son
+  // generadas y no hay otra forma de ponerle cara.
+  const puedeSerPortada = (r: ReferenciaVista) => personaje.inventado || r.origen === "foto_original";
+  const portada = referencias.find(puedeSerPortada)?.id ?? null;
+  /** La pone la primera de todas: la primera que puede ser portada es la portada. */
+  const usarComoPortada = (referenciaId: string) =>
+    void onCambio("ordenar", [referenciaId, ...referencias.map((r) => r.id).filter((id) => id !== referenciaId)]);
 
   /**
    * Manda la tanda al servidor. `deTodasFormas` reenvía las fotos marcadas que el usuario acepta usar; como el
@@ -160,6 +165,11 @@ export function PanelReferencias({
             {ETIQUETA_MOTIVO[motivo]}: {ACCION_MOTIVO[motivo]}
           </p>
         ))}
+        {puedeSerPortada(referencia) && referencia.id !== portada && (
+          <Boton variante="secundario" tamano="sm" disabled={ocupado} onClick={() => usarComoPortada(referencia.id)}>
+            Usar como imagen del personaje
+          </Boton>
+        )}
         <BotonIcono
           etiqueta={`Quitar ${referencia.medio.nombre} del personaje`}
           disabled={ocupado}
