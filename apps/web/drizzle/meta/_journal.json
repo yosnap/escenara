@@ -302,6 +302,13 @@
       "when": 1790625808095,
       "tag": "0042_veredicto-angulo-fiel",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1790628508393,
+      "tag": "0043_hooks-propuestos",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import type { AnguloVista } from "@/lib/anuncio";
 import { ESCENAS_SUGERIDAS } from "@/lib/proyectos";
 import { proyectoPropio } from "../asistente/consulta";
@@ -8,7 +8,7 @@ import { adBriefs } from "../db/esquema-anuncio";
 import { type FilaProyecto, projects } from "../db/esquema-proyectos";
 import { exigirClaveIdempotencia, exigirConfirmacion } from "../generacion/comprobaciones";
 import { exigirSelloVigente } from "../generacion/precios";
-import { dentroDelLimite } from "../limite";
+import { dentroDelLimite, quedaCupo } from "../limite";
 import { estimarTextoPorMapa } from "../mapa/texto";
 import type { Actor } from "../media/servicio";
 import type { Buscador } from "../proveedores/codigos";
@@ -235,14 +235,12 @@ export async function crearVariantes(
   }
   // Que quepan todas se comprueba **antes** de gastar ritmo: si no caben, no se ha consumido nada de nadie.
   await exigirHuecoDeProyectos(actor, elegidos.length);
-  // El ritmo se cuenta por llamada al modelo, no por petición: crear doce variantes son doce llamadas.
-  for (let i = 0; i < elegidos.length; i++) {
-    if (!(await dentroDelLimite(`anuncio:hooks:${actor.id}`, RITMO_HOOKS))) {
-      throw new ErrorAnuncio(
-        429,
-        "Con estas variantes pasarías del ritmo de peticiones al modelo de texto de esta hora. Elige menos ángulos o espera un rato.",
-      );
-    }
+  // Sin ningún hueco de ritmo no se empieza; el resto se gasta llamada a llamada (crear doce variantes son doce).
+  if (!(await quedaCupo(`anuncio:hooks:${actor.id}`, RITMO_HOOKS))) {
+    throw new ErrorAnuncio(
+      429,
+      "Has pedido demasiados hooks esta hora y ahora no cabe ninguna variante. Espera un rato y vuelve a intentarlo.",
+    );
   }
 
   const grupoId = proyecto.variantGroupId ?? crypto.randomUUID();
@@ -253,6 +251,19 @@ export async function crearVariantes(
 
   const variantes: ResultadoDeVariante[] = [];
   for (const angulo of elegidos) {
+    // Si el ritmo se agota a mitad de tanda, las que faltan no se crean ni se cobran: se dice cuáles.
+    if (!(await dentroDelLimite(`anuncio:hooks:${actor.id}`, RITMO_HOOKS))) {
+      variantes.push({
+        proyectoId: "",
+        titulo: "",
+        angulo: angulo.clave,
+        nombreAngulo: angulo.nombre,
+        propuesta: null,
+        error:
+          "No se ha creado: pasarías del ritmo de peticiones al modelo de texto de esta hora. No se ha cobrado nada.",
+      });
+      continue;
+    }
     const hermano = await crearHermano(actor, proyecto, brief, angulo, grupoId);
     if (angulo.exigeDeclaracion) {
       await registrarDeclaracion(actor, hermano.id, angulo.clave, true, httpPeticion);
@@ -264,11 +275,14 @@ export async function crearVariantes(
 
 /** Que quepan todas: crear seis proyectos cuando solo cabe uno dejaría el grupo a medias. */
 async function exigirHuecoDeProyectos(actor: Actor, cuantos: number): Promise<void> {
-  const suyos = await db().select({ id: projects.id }).from(projects).where(eq(projects.userId, actor.id));
-  if (suyos.length + cuantos > PROYECTOS_MAXIMOS) {
+  const [{ total: suyos } = { total: 0 }] = await db()
+    .select({ total: sql<number>`count(*)::int` })
+    .from(projects)
+    .where(eq(projects.userId, actor.id));
+  if (suyos + cuantos > PROYECTOS_MAXIMOS) {
     throw new ErrorAnuncio(
       409,
-      `Tienes ${suyos.length} proyectos y el máximo son ${PROYECTOS_MAXIMOS}: estas ${cuantos} variantes no caben. Borra algún proyecto o elige menos ángulos.`,
+      `Tienes ${suyos} proyectos y el máximo son ${PROYECTOS_MAXIMOS}: estas ${cuantos} variantes no caben. Borra algún proyecto o elige menos ángulos.`,
     );
   }
 }
@@ -288,6 +302,19 @@ async function crearHermano(
   grupoId: string,
 ): Promise<FilaProyecto> {
   return db().transaction(async (tx) => {
+    // Dos tandas a la vez sobre el mismo grupo se turnan aquí: la segunda ve el ángulo que dejó la primera.
+    await tx.select({ id: projects.id }).from(projects).where(eq(projects.id, origen.id)).for("update");
+    const ocupados = await tx
+      .select({ id: projects.id })
+      .from(projects)
+      .where(and(eq(projects.variantGroupId, grupoId), eq(projects.anglePresetKey, angulo.clave)))
+      .limit(1);
+    if (ocupados.length > 0) {
+      throw new ErrorAnuncio(
+        409,
+        `Ya existe una variante de este grupo con el ángulo «${angulo.nombre}» (otra petición se ha adelantado). No se ha cobrado nada por esta.`,
+      );
+    }
     const [hermano] = await tx
       .insert(projects)
       .values({
@@ -342,7 +369,14 @@ async function pedirGuionDeVariante(
     });
     return { ...comun, propuesta, error: "" };
   } catch (error) {
-    if (error instanceof ErrorAnuncio) return { ...comun, propuesta: null, error: error.message };
+    // Sin propuesta no hay nada que ver en ese proyecto: no se deja un hermano vacío en la lista de nadie.
+    await db()
+      .delete(projects)
+      .where(eq(projects.id, hermano.id))
+      .catch(() => undefined);
+    if (error instanceof ErrorAnuncio) {
+      return { ...comun, proyectoId: "", titulo: "", propuesta: null, error: error.message };
+    }
     throw error;
   }
 }

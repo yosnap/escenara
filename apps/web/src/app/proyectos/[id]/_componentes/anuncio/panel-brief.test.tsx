@@ -48,6 +48,7 @@ const datos = (parcial: Partial<DatosDelAnuncio> = {}): DatosDelAnuncio => ({
     admiteImagen: false,
   },
   hooksPedidos: 5,
+  hooksGuardados: null,
   anguloFiel: null,
   modoAnguloFiel: "sombra",
   ...parcial,

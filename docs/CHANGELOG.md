@@ -24,6 +24,7 @@ nacía de una idea suelta; desde esta versión las dos palancas que deciden van 
   escenas, con el ángulo y la oferta ya decididos. Con su estimación y su confirmación de coste, como el resto
   del texto. El hook elegido se escribe como **primera frase del guion** y su movimiento de cámara y su gesto
   llegan a la dirección de la primera escena, sin duplicar el dato.
+  Los cinco hooks pagados **se guardan en el proyecto** antes de responder: si la respuesta se pierde, siguen ahí.
 - **Variantes por ángulo**: crear proyectos **hermanos** del mismo producto y la misma oferta, uno por ángulo,
   con **una sola confirmación de coste agregada** y hasta doce de una vez. Cada hermano nace como
   «Título · Ángulo» y solo se escribe texto: **no se genera ningún vídeo**.

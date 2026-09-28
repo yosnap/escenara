@@ -288,6 +288,7 @@ export function PanelBrief({
           seguidas en la pantalla.
         */}
         <PanelDeHooks
+          guardada={datos.hooksGuardados}
           proyectoId={proyecto.id}
           estimacion={datos.estimacion}
           puerta={puerta}

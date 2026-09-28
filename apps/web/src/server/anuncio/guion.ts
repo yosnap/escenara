@@ -295,7 +295,7 @@ export async function pedirHooksYGuion(
   }
 
   const { escritas, motivo } = await escribirEscenas(proyecto, propuesta);
-  return {
+  const pagada: PropuestaDeHooks = {
     hooks: propuesta.hooks,
     escenasEscritas: escritas,
     motivoGuionNoEscrito: motivo,
@@ -303,6 +303,22 @@ export async function pedirHooksYGuion(
     modelo: resultado.modelo,
     deReserva: resultado.deReserva,
   };
+  // Antes de responder: si la respuesta no llega, los hooks pagados siguen estando en el proyecto.
+  await db()
+    .update(adBriefs)
+    .set({ proposedHooks: pagada as unknown as Record<string, unknown> })
+    .where(eq(adBriefs.projectId, proyecto.id));
+  return pagada;
+}
+
+/** La última propuesta de hooks pagada de un proyecto, o `null` si nunca se pidió (o se pidió sin brief). */
+export async function hooksGuardadosDe(proyectoId: string): Promise<PropuestaDeHooks | null> {
+  const [fila] = await db()
+    .select({ hooks: adBriefs.proposedHooks })
+    .from(adBriefs)
+    .where(eq(adBriefs.projectId, proyectoId))
+    .limit(1);
+  return (fila?.hooks as PropuestaDeHooks | null | undefined) ?? null;
 }
 
 /**

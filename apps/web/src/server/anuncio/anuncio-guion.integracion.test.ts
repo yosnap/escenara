@@ -49,7 +49,8 @@ const { crearOferta } = await import("./ofertas");
 const { guardarBrief } = await import("./brief");
 const { puedePedirGuion } = await import("./puerta-guion");
 const { registrarDeclaracion } = await import("./declaracion");
-const { estimacionDeHooksYGuion, proponerHooksYGuion } = await import("./guion");
+const { estimacionDeHooksYGuion, hooksGuardadosDe, proponerHooksYGuion } = await import("./guion");
+const { escribirGuion } = await import("../asistente/generar");
 const { aplicarHook } = await import("./hook");
 const { crearVariantes, estimarVariantes } = await import("./variantes");
 const { comprobarAnguloDelAnuncio, anguloFielGuardadoDe } = await import("../coherencia/anuncio");
@@ -483,6 +484,52 @@ describe.skipIf(!hayBaseDeDatos)("hooks, guion y variantes del anuncio", () => {
   });
 
   // ── 5. `angulo_fiel` de Jev, en sombra ─────────────────────────────────────────────────────────────────
+
+  describe("lo que se ha pagado no se pierde ni se deja a medias", () => {
+    test("los hooks pagados quedan guardados en el proyecto antes de responder", async () => {
+      const proyectoId = await proyectoConBrief("comodidad", "Hooks guardados");
+      expect(await hooksGuardadosDe(proyectoId)).toBeNull();
+      const propuesta = await proponerHooksYGuion(actorAna, proyectoId, await confirmacion(), buscar);
+      const guardados = await hooksGuardadosDe(proyectoId);
+      expect(guardados?.hooks.map((h) => h.texto)).toEqual(propuesta.hooks.map((h) => h.texto));
+    });
+
+    test("una variante cuya respuesta no sirve no deja un hermano vacío en la lista", async () => {
+      const proyectoId = await proyectoConBrief("comodidad", "Variante que falla");
+      const buena = respuestaDelModelo;
+      respuestaDelModelo = "esto no es una propuesta";
+      try {
+        const creadas = await crearVariantes(
+          actorAna,
+          proyectoId,
+          { angulos: ["identidad"], ...(await confirmacion(1)) },
+          new Request("http://localhost/api", { method: "POST" }),
+          buscar,
+        );
+        expect(creadas.variantes[0]?.error).not.toBe("");
+        expect(creadas.variantes[0]?.proyectoId).toBe("");
+        const del = await db().select().from(projects).where(eq(projects.variantGroupId, creadas.grupoId));
+        // Solo queda el proyecto de partida: el hermano sin guion no se deja.
+        expect(del.map((p) => p.id)).toEqual([proyectoId]);
+      } finally {
+        respuestaDelModelo = buena;
+      }
+    });
+
+    test("el asistente de guion de siempre tampoco escribe un ángulo que exige declaración sin declararlo", async () => {
+      const proyectoId = await proyectoConBrief("mecanismo", "Ruta clásica");
+      const antes = textosPedidos.length;
+      await expect(
+        escribirGuion(
+          actorAna,
+          proyectoId,
+          { claveIdempotencia: crypto.randomUUID(), creditosConfirmados: 0, selloEstimacion: "" },
+          buscar,
+        ),
+      ).rejects.toThrow(/declaración/i);
+      expect(textosPedidos).toHaveLength(antes);
+    });
+  });
 
   describe("el veredicto del ángulo", () => {
     test("registra veredicto, evidencia y confianza, y en sombra no bloquea nada", async () => {

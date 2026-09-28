@@ -22,7 +22,8 @@ import { aplicarHook, pedirHooks } from "./api-anuncio";
  * palabra «estimación» y la fecha del precio, y la clave de idempotencia que se mantiene mientras no cambie lo que
  * se confirma —repetir el clic no encarga (ni cobra) una segunda propuesta—.
  *
- * Los cinco hooks **no se guardan**: son una propuesta que vive en la pantalla hasta que se elige uno. Elegirlo es
+ * Los cinco hooks se guardan en el proyecto nada más pagarlos (si la respuesta se pierde, siguen ahí al recargar).
+ * Elegirlo es
  * gratis, escribe la frase delante del guion y lleva su arranque a la dirección de la primera escena. Si la escena
  * ya tenía cámara o gesto elegidos a mano, no se pisan y se dice por qué.
  */
@@ -31,6 +32,7 @@ export function PanelDeHooks({
   estimacion,
   puerta,
   hooksPedidos,
+  guardada,
   escenas,
   deshabilitado,
   onError,
@@ -40,6 +42,8 @@ export function PanelDeHooks({
   estimacion: EstimacionDeTexto;
   puerta: PuertaDelGuion;
   hooksPedidos: number;
+  /** La última propuesta ya pagada, si la hay: se enseña al abrir para que un corte de red no la pierda. */
+  guardada: PropuestaDeHooks | null;
   /** Escenas que se piden, las sugeridas para el formato del proyecto. */
   escenas: number;
   deshabilitado?: boolean;
@@ -47,8 +51,8 @@ export function PanelDeHooks({
   /** El guion del proyecto ha cambiado: quien lo use recarga las escenas de la pantalla. */
   onCambio: () => void;
 }) {
-  const [propuesta, setPropuesta] = useState<PropuestaDeHooks | null>(null);
-  const [textos, setTextos] = useState<string[]>([]);
+  const [propuesta, setPropuesta] = useState<PropuestaDeHooks | null>(guardada);
+  const [textos, setTextos] = useState<string[]>(guardada?.hooks.map((h) => h.texto) ?? []);
   const [pidiendo, setPidiendo] = useState(false);
   const [aplicando, setAplicando] = useState("");
   const [aplicado, setAplicado] = useState<HookAplicado | null>(null);

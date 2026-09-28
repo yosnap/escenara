@@ -1,4 +1,4 @@
-import { index, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { index, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { users } from "./esquema-auth";
 import { products } from "./esquema-productos";
 import { projects } from "./esquema-proyectos";
@@ -90,6 +90,12 @@ export const adBriefs = pgTable(
     /** `set null`: si la oferta se borra, el brief se queda sin ella y lo dice, en vez de desaparecer. */
     offerId: uuid("offer_id").references(() => offers.id, { onDelete: "set null" }),
     notes: text("notes").notNull().default(""),
+    /**
+     * La última propuesta de hooks **ya pagada**. Se guarda antes de responder porque, si la respuesta no llega al
+     * navegador, repetir la petición no vuelve a llamar (ni a cobrar) y sin esto los hooks se perderían. Se
+     * sustituye por la siguiente propuesta; elegir un hook no la borra.
+     */
+    proposedHooks: jsonb("proposed_hooks").$type<Record<string, unknown> | null>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

@@ -28,7 +28,9 @@ export const PATCH = manejador(async (peticion: Request, contexto: ContextoId, a
   if (!esCorreccion(cuerpo.correccion)) {
     throw new ErrorAnuncio(400, "Di si el veredicto tiene razón o se equivoca.");
   }
-  if (!(await corregirDecision(actor.id, cuerpo.decisionId, cuerpo.correccion))) {
+  // Solo el veredicto de **este** proyecto: uno propio de otro proyecto no se etiqueta desde aquí.
+  const actual = await anguloFielGuardadoDe(actor, proyecto.id);
+  if (actual?.id !== cuerpo.decisionId || !(await corregirDecision(actor.id, cuerpo.decisionId, cuerpo.correccion))) {
     throw new ErrorAnuncio(404, "Ese veredicto del ángulo ya no existe: vuelve a comprobarlo y dilo otra vez.");
   }
   return Response.json({ decision: await anguloFielGuardadoDe(actor, proyecto.id), motivo: "" });

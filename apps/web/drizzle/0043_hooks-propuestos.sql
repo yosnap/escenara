@@ -1,0 +1,1 @@
+ALTER TABLE "ad_briefs" ADD COLUMN "proposed_hooks" jsonb;

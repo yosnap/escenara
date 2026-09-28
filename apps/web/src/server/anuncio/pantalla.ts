@@ -8,7 +8,7 @@ import type { Actor } from "../media/servicio";
 import { listarProductos } from "../productos/consulta";
 import { obtenerBrief } from "./brief";
 import { listarAngulos } from "./catalogo";
-import { estimacionDeHooksYGuion } from "./guion";
+import { estimacionDeHooksYGuion, hooksGuardadosDe, type PropuestaDeHooks } from "./guion";
 import { listarOfertas } from "./ofertas";
 import { type PuertaDelGuion, puedePedirGuion } from "./puerta-guion";
 
@@ -41,6 +41,8 @@ export interface DatosDelAnuncio {
   puerta: PuertaDelGuion;
   estimacion: EstimacionDeTexto;
   hooksPedidos: number;
+  /** La última propuesta de hooks ya pagada: si la respuesta se perdió o se recargó la página, sigue aquí. */
+  hooksGuardados: PropuestaDeHooks | null;
   /** El último veredicto del ángulo, si ya se pidió alguna vez. `null` = todavía no se ha comprobado. */
   anguloFiel: DecisionVista | null;
   /** Modo de `angulo_fiel` en esta instalación: en sombra se dice que no decide nada. */
@@ -48,16 +50,18 @@ export interface DatosDelAnuncio {
 }
 
 export async function datosDelAnuncio(actor: Actor, proyectoId: string): Promise<DatosDelAnuncio> {
-  const [ajustes, brief, angulos, ofertas, productos, puerta, estimacion, anguloFiel] = await Promise.all([
-    leerAjustes(),
-    obtenerBrief(actor, proyectoId),
-    listarAngulos(),
-    listarOfertas(actor),
-    listarProductos(actor),
-    puedePedirGuion(proyectoId),
-    estimacionDeHooksYGuion(actor.id),
-    anguloFielGuardadoDe(actor, proyectoId),
-  ]);
+  const [ajustes, brief, angulos, ofertas, productos, puerta, estimacion, anguloFiel, hooksGuardados] =
+    await Promise.all([
+      leerAjustes(),
+      obtenerBrief(actor, proyectoId),
+      listarAngulos(),
+      listarOfertas(actor),
+      listarProductos(actor),
+      puedePedirGuion(proyectoId),
+      estimacionDeHooksYGuion(actor.id),
+      anguloFielGuardadoDe(actor, proyectoId),
+      hooksGuardadosDe(proyectoId),
+    ]);
   return {
     activo: ajustes.anuncioBriefActivo,
     // Variar exige un brief del que variar, así que con el brief apagado esto no ofrece nada aunque esté encendido.
@@ -69,6 +73,7 @@ export async function datosDelAnuncio(actor: Actor, proyectoId: string): Promise
     puerta,
     estimacion,
     hooksPedidos: HOOKS_PEDIDOS,
+    hooksGuardados,
     anguloFiel,
     modoAnguloFiel: coherenciaDe(ajustes, "angulo_fiel").modo,
   };

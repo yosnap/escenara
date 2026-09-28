@@ -103,3 +103,18 @@ export async function exigirPuedePedirGuion(proyectoId: string): Promise<void> {
   const puerta = await puedePedirGuion(proyectoId);
   if (!puerta.puede) throw new ErrorAnuncio(409, puerta.motivo);
 }
+
+/**
+ * Lo único que la ruta del asistente de siempre tiene que respetar del brief: **la declaración de veracidad**.
+ *
+ * Esa ruta no exige producto, ángulo ni oferta —escribir el guion a mano o con la idea sigue siendo válido—, pero
+ * si el proyecto ya tiene un ángulo que afirma algo comprobable, el guion no se escribe sin que esté declarado, lo
+ * pida quien lo pida. Devuelve el motivo, o una cadena vacía si puede seguir.
+ */
+export async function motivoSinDeclaracion(proyectoId: string): Promise<string> {
+  const [brief] = await db().select().from(adBriefs).where(eq(adBriefs.projectId, proyectoId)).limit(1);
+  if (!brief || brief.anglePresetKey === "") return "";
+  const angulo = await buscarAngulo(brief.anglePresetKey);
+  if (!angulo?.exigeDeclaracion || (await hayDeclaracion(proyectoId, angulo.clave))) return "";
+  return `${AVISO_DECLARACION_NECESARIA} Falta la declaración del ángulo «${angulo.nombre}»: acéptala en el brief y vuelve a pedir el guion.`;
+}
