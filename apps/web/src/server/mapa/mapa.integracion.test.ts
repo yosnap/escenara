@@ -318,6 +318,31 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
     expect(await deServicio("texto")).toEqual(["gemma4", "deepseek-v4-flash", "glm5.3-flash"]);
   });
 
+  test("editar un servicio sin volver a pegar la clave mantiene la guardada, salvo si cambia la dirección", async () => {
+    peticionesDeModelos.length = 0;
+    const editado = await guardarCompatible(
+      ana.id,
+      { nombre: "NaN builders", urlBase: BASE_NAN, clave: "", modelos: ["glm5.3-flash", "gemma4"], soloCuota: true },
+      buscar,
+    );
+    expect(editado.ok).toBe(true);
+    // Se comprobó con la clave que ya tenía, y se guardó el orden nuevo.
+    expect(peticionesDeModelos.at(-1)).toEqual({ host: "api.nan.builders", autorizacion: `Bearer ${CLAVE_NAN}` });
+    const nan = (await listarCompatibles(ana.id)).find((p) => p.nombre === "NaN builders");
+    expect(nan?.modelos).toEqual(["glm5.3-flash", "gemma4"]);
+
+    // Con otra dirección, la clave guardada no viaja: hay que pegarla.
+    const antes = peticionesDeModelos.length;
+    const movido = await guardarCompatible(
+      ana.id,
+      { nombre: "NaN builders", urlBase: BASE_OTRO, clave: "", modelos: ["gemma4"], soloCuota: true },
+      buscar,
+    );
+    expect(movido.ok).toBe(false);
+    if (!movido.ok) expect(movido.error).toContain("pega la clave");
+    expect(peticionesDeModelos.length).toBe(antes);
+  });
+
   test("429 en un modelo pasa al siguiente modelo del mismo servicio", async () => {
     respuestasPorModelo = { gemma4: { cuerpo: CHAT_429, estado: 429 } };
     await generar("una escena que traduce el segundo modelo");

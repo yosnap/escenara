@@ -21,7 +21,8 @@ import { modelosDelServicioAccion } from "../acciones-compatibles";
  * Alta o sustitución de un servicio compatible con la API de OpenAI. Es una **zona de claridad**: decide con qué
  * cuenta se va a consumir cuota, así que ni degradados ni animación.
  *
- * La clave se escribe entera siempre, también al sustituir: el servidor no la devuelve nunca.
+ * El servidor no devuelve nunca la clave. Al editar, dejarla vacía mantiene la guardada (solo para la misma
+ * dirección); al dar de alta hay que pegarla.
  */
 export interface DatosFormulario {
   nombre: string;
@@ -243,7 +244,11 @@ export function FormularioCompatible({
 
       <Campo
         etiqueta="Clave de API"
-        ayuda="Se guarda cifrada y no se vuelve a mostrar. Al guardar se comprueba con una llamada que no consume cuota."
+        ayuda={
+          inicial
+            ? `Déjala vacía para mantener la guardada (termina en ${inicial.pista}). Si cambias la dirección, tendrás que pegarla de nuevo.`
+            : "Se guarda cifrada y no se vuelve a mostrar. Al guardar se comprueba con una llamada que no consume cuota."
+        }
         error={error}
       >
         {(p) => (
