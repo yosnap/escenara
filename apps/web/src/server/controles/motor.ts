@@ -347,6 +347,66 @@ const REGLAS: readonly Regla[] = [
       confirmable: true,
     };
   },
+  /**
+   * **Avisos del producto** (0.26.0). Los tres son salvables y ninguno bloquea: el usuario decide si le
+   * compensa. Lo que no se puede hacer es cobrarle sin decírselo, que es la norma de errores visibles.
+   */
+  (h) => {
+    if (!h.producto?.identidadRegistradaPerdida) return null;
+    return {
+      regla: "producto-sin-identidad-registrada",
+      estado: "ajustes",
+      motivo: `Para que «${h.producto.nombre}» salga con su etiqueta hay que enviarle sus fotos al modelo, y eso es incompatible con la identidad que tienes registrada en el proveedor: esta escena se generará con las fotos del personaje en lugar de con su identidad registrada, así que su cara y su voz pueden variar respecto a las demás escenas.`,
+      accion:
+        "Si necesitas que la cara sea idéntica entre escenas, quita el producto de esta escena y haz un plano del producto solo para montarlo aparte. Si prefieres el producto aquí, confírmalo.",
+      http: 409,
+      excepcion: "generacion",
+      confirmable: true,
+    };
+  },
+  (h) => {
+    if (!h.producto?.referenciasNoCaben) return null;
+    return {
+      regla: "producto-referencias-no-caben",
+      estado: "ajustes",
+      motivo: `${h.modelo?.nombre ?? "Este modelo"} admite ${h.modelo?.maximoReferencias ?? 1} ${(h.modelo?.maximoReferencias ?? 1) === 1 ? "imagen de referencia" : "imágenes de referencia"}, y entre el personaje y «${h.producto.nombre}» hay más: algunas se quedan fuera. Se envían primero la identidad del personaje y la foto frontal del producto, así que lo que sobra puede salir distinto.`,
+      accion:
+        "Elige un modelo que admita más referencias, o quita fotos del producto dejando la frontal con la etiqueta. Si te vale así, confírmalo.",
+      http: 409,
+      excepcion: "generacion",
+      confirmable: true,
+    };
+  },
+  (h) => {
+    if (!h.producto?.sinFotos) return null;
+    return {
+      regla: "producto-sin-fotos",
+      estado: "ajustes",
+      motivo: `«${h.producto.nombre}» no tiene ninguna foto de referencia que enviar, así que el modelo no sabe qué aspecto tiene: se le pedirá un envase sin marca y el resultado no será tu producto.`,
+      accion: "Añade al menos la foto frontal con la etiqueta en la ficha del producto, o confirma que te vale así.",
+      http: 409,
+      excepcion: "generacion",
+      confirmable: true,
+    };
+  },
+  /**
+   * Marcas ajenas. No hay detección propia de marcas y no la va a haber: lo que hay es el aviso de que el
+   * filtro del proveedor puede rechazarlo —un rechazo suyo **no cobra**, porque prueba que no llegó a crear
+   * ninguna tarea— y la declaración expresa de que el uso está autorizado, que es lo que el usuario confirma.
+   */
+  (h) => {
+    if (!h.producto?.marcaVisible) return null;
+    return {
+      regla: "producto-con-marca",
+      estado: "ajustes",
+      motivo: `Has declarado que en «${h.producto.nombre}» se ve una marca. El filtro del proveedor puede rechazar un logo de marca, y en ese caso no se genera nada, no se te cobra y se te dice el motivo.`,
+      accion:
+        "Confirma que tienes autorización para usar esa marca y que aceptas que el proveedor pueda rechazar el envío.",
+      http: 409,
+      excepcion: "generacion",
+      confirmable: true,
+    };
+  },
   (h) => {
     if (!h.parametros.exigirPrecioFresco || !h.modelo?.precioCaducado) return null;
     const fecha = h.modelo.precioComprobado === "" ? "nunca" : `el ${formatearFecha(h.modelo.precioComprobado)}`;
