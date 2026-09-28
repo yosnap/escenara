@@ -278,7 +278,7 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
   const proyecto = await proyectoPropio(actor, proyectoId);
   const [filasEscena, elecciones, ajustes, comprometido] = await Promise.all([
     escenasDe(proyecto.id),
-    eleccionesDelPlan(),
+    eleccionesDelPlan(actor.id),
     leerAjustes(),
     comprometidoDelProyecto(proyecto.id),
   ]);
@@ -491,8 +491,8 @@ export function impedimentoDeDuracion(segundosDelClip: number | null, segundosDe
  * Lo mismo, leyendo el modelo de animación vigente, para los caminos que encolan **una** escena sin pasar por
  * `producirProyecto`: producir, aprobar y regenerar tienen que negarse igual que el botón del proyecto.
  */
-export async function exigirDuracionProducible(proyecto: FilaProyecto): Promise<void> {
-  const { animacion } = await eleccionesDelPlan();
+export async function exigirDuracionProducible(actor: Actor, proyecto: FilaProyecto): Promise<void> {
+  const { animacion } = await eleccionesDelPlan(actor.id);
   if (!animacion) return; // Sin modelo con precio, el propio envío ya se rechaza por no poder estimarse.
   const motivo = impedimentoDeDuracion(
     duracionParaModelo(animacion.modelo.parametros.duraciones, proyecto.clipSeconds),

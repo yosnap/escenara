@@ -324,7 +324,7 @@ export async function producirEscena(
   h: Herramientas = HERRAMIENTAS,
 ): Promise<ProduccionVista> {
   const { escena, proyecto } = await escenaPropia(actor, escenaId);
-  await exigirDuracionProducible(proyecto);
+  await exigirDuracionProducible(actor, proyecto);
   const anteriores = await ultimosTrabajos(escena.id);
   const omni = proyecto.voiceMode === "omni";
   await encolarPrimerTrabajo(
@@ -368,7 +368,7 @@ export async function aprobarFotograma(
       "En modo Omni no hay fotograma que aprobar: cada escena se genera entera con la cara y la voz registradas del protagonista. Produce la escena directamente.",
     );
   }
-  await exigirDuracionProducible(proyecto);
+  await exigirDuracionProducible(actor, proyecto);
   const [fotograma, animacion] = await ultimosTrabajos(escena.id);
   if (fotograma?.state !== "listo" || !fotograma.resultMediaId) {
     throw new ErrorProyecto(409, "Espera a que el fotograma de esta escena esté listo y guardado antes de aprobarlo.");
@@ -421,7 +421,7 @@ export async function regenerarEscena(
   h: Herramientas = HERRAMIENTAS,
 ): Promise<ProduccionVista> {
   const { escena, proyecto } = await escenaPropia(actor, escenaId);
-  await exigirDuracionProducible(proyecto);
+  await exigirDuracionProducible(actor, proyecto);
   const anteriores = await ultimosTrabajos(escena.id);
   const enMarcha = anteriores.find((t) => t !== null && !trabajoTerminado(t.state));
   if (enMarcha) {

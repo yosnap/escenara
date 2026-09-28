@@ -12,6 +12,7 @@ import { conVistaQueCompleta, recopilarHechos } from "../controles/hechos";
 import { exigirControles } from "../controles/puerta";
 import type { FilaMedio } from "../db/esquema";
 import { decidir } from "../decisiones/reglas";
+import { type EleccionDelMapa, eleccionDeGeneracion, type OpcionDeGeneracion } from "../mapa/generacion";
 import type { Actor } from "../media/servicio";
 import {
   contextoDeVersion,
@@ -40,7 +41,7 @@ import {
 } from "./comprobaciones";
 import { ErrorGeneracion } from "./errores";
 import { HERRAMIENTAS, type Herramientas } from "./herramientas";
-import { type EleccionDeTrabajo, elegirParaTipo, exigirSelloVigente } from "./precios";
+import { exigirSelloVigente } from "./precios";
 import { esUuidGeneracion, filaPropia, personajeDeLaCadena, vistaDeFila } from "./trabajos";
 
 /**
@@ -181,6 +182,24 @@ function exigirVersionConfirmada(confirmada: string | undefined, seUsaria: strin
 }
 
 /**
+ * Reservas autorizadas que se guardan con el trabajo: a dónde puede relevarse si el proveedor rechaza la
+ * petición **probando que no ha cobrado**, y con qué tope en la moneda de cada uno. Sin esto, el worker no
+ * podría cambiar de proveedor sin gastar más de lo que el usuario tenía delante (`cola/despacho.ts`).
+ */
+const reservasGuardadas = (reservas: readonly OpcionDeGeneracion[]) =>
+  reservas.length === 0
+    ? {}
+    : {
+        reservas: reservas.map((r) => ({
+          proveedor: r.eleccion.modelo.proveedor,
+          compatibleId: r.entrada.compatibleId,
+          modelo: r.eleccion.modelo.modelo,
+          creditos: r.creditos,
+          urlBase: "",
+        })),
+      };
+
+/**
  * Resultado de un alta. `nueva` es `false` cuando la confirmación ya se había encolado (misma clave de
  * idempotencia): el trabajo que se devuelve es el que ya existía.
  */
@@ -253,12 +272,23 @@ function entradaGuardada(
   return { prompt, referencias, parametros: resto };
 }
 
-/** Modelo elegido, su adaptador y sus créditos ya comprobados contra lo que confirmó el usuario. */
-async function eleccionConfirmada(tipo: TipoTrabajo, peticion: Confirmacion): Promise<EleccionDeTrabajo> {
-  const eleccion = await elegirParaTipo(tipo, peticion.modelo);
-  // Quien elige modelo tiene que devolver el sello del precio que vio; sin modelo se usa el predeterminado.
-  exigirSelloVigente(peticion.selloEstimacion, eleccion.precio.sello, Boolean(peticion.modelo));
-  return eleccion;
+/**
+ * Con qué se genera este trabajo y a dónde podría relevarse, ya comprobado contra lo que confirmó el usuario.
+ *
+ * Desde la 0.22.0 sale del **mapa de modelos** del usuario (0.21.1 para la voz, ahora también para imagen y
+ * vídeo): la primera entrada utilizable es con la que se intenta y las siguientes quedan autorizadas como
+ * reservas, con su coste **en la moneda de cada proveedor**. Si el usuario ha elegido modelo a mano en «Crear»,
+ * manda su elección y no hay reservas: no ha visto el coste de ninguna otra.
+ */
+async function eleccionConfirmada(
+  usuarioId: string,
+  tipo: TipoTrabajo,
+  peticion: Confirmacion,
+): Promise<EleccionDelMapa> {
+  const delMapa = await eleccionDeGeneracion(usuarioId, tipo, peticion.modelo);
+  // Quien elige modelo tiene que devolver el sello del precio que vio; sin modelo se usa el del mapa.
+  exigirSelloVigente(peticion.selloEstimacion, delMapa.elegida.eleccion.precio.sello, Boolean(peticion.modelo));
+  return delMapa;
 }
 
 /** Trabajo que ya salió de esta misma confirmación, si lo hay. */
@@ -320,7 +350,8 @@ export async function crearFotograma(
   const prompt = limpiarPrompt(peticion.prompt);
   exigirDerechos(peticion.derechos);
   const claveIdempotencia = exigirClaveIdempotencia(peticion.claveIdempotencia);
-  const eleccion = await eleccionConfirmada("fotograma", peticion);
+  const { elegida, reservas } = await eleccionConfirmada(actor.id, "fotograma", peticion);
+  const eleccion = elegida.eleccion;
   const { modelo, adaptador, precio } = eleccion;
   const creditos = Math.ceil(precio.creditos);
   // Lo que el usuario confirma es **todo** lo que va a pagar por este envío: la generación y, si esta instalación
@@ -477,6 +508,7 @@ export async function crearFotograma(
           }
         : {}),
       ...(contextoEnIngles === "" ? {} : { contextoPersonaje: contextoEnIngles }),
+      ...reservasGuardadas(reservas),
       // Marca de «este resultado es una vista generada del personaje»: la lee el cierre del trabajo para
       // añadirla como referencia etiquetada. Solo la pone el servidor.
       ...(peticion.vistaSintetica && personajeId ? { vistaSintetica: peticion.vistaSintetica } : {}),
@@ -516,7 +548,8 @@ export async function crearAnimacion(
   const prompt = limpiarPrompt(peticion.prompt);
   exigirDerechos(peticion.derechos);
   const claveIdempotencia = exigirClaveIdempotencia(peticion.claveIdempotencia);
-  const eleccion = await eleccionConfirmada("animacion", peticion);
+  const { elegida, reservas } = await eleccionConfirmada(actor.id, "animacion", peticion);
+  const eleccion = elegida.eleccion;
   const { modelo, adaptador, precio } = eleccion;
   const creditos = Math.ceil(precio.creditos);
   const totales = await creditosDelEnvio(creditos);
@@ -634,6 +667,7 @@ export async function crearAnimacion(
           }
         : {}),
       ...(contextoEnIngles === "" ? {} : { contextoPersonaje: contextoEnIngles }),
+      ...reservasGuardadas(reservas),
     },
     sourceMediaId: origen.id,
     // El clip hereda la escena del fotograma: su aprobación es la misma y ya se comprobó al producirlo.

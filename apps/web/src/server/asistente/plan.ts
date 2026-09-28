@@ -35,6 +35,7 @@ import {
   usageLedger,
 } from "../db/esquema";
 import { type EleccionDeTrabajo, elegirParaTipo } from "../generacion/precios";
+import { eleccionDeGeneracion } from "../mapa/generacion";
 import { type Actor, aDto } from "../media/servicio";
 import { ultimaVersion } from "../personajes/ficha";
 import { plantillaVigenteDe } from "../prompts/consulta";
@@ -76,13 +77,19 @@ export interface EleccionesDelPlan {
  * Elige los modelos del plan. Un catálogo sin modelo o sin precio **no es un error**: deja el plan sin
  * estimación y lo dice, en lugar de dejar la página del proyecto inaccesible.
  */
-export async function eleccionesDelPlan(): Promise<EleccionesDelPlan> {
-  const [fotograma, animacion] = await Promise.all([elegir("fotograma"), elegir("animacion")]);
+/**
+ * Con qué se generarían el fotograma y el clip de una escena. Con `usuarioId` sale de **su mapa de modelos**
+ * (0.22.0); sin él, del catálogo de la instalación, que es lo que hacía la 0.21.x. Se le pasa siempre que quien
+ * pregunta tiene un actor delante: lo que se estima tiene que ser lo que se va a enviar.
+ */
+export async function eleccionesDelPlan(usuarioId?: string): Promise<EleccionesDelPlan> {
+  const [fotograma, animacion] = await Promise.all([elegir("fotograma", usuarioId), elegir("animacion", usuarioId)]);
   return { fotograma, animacion };
 }
 
-async function elegir(tipo: "fotograma" | "animacion"): Promise<EleccionDeTrabajo | null> {
+async function elegir(tipo: "fotograma" | "animacion", usuarioId?: string): Promise<EleccionDeTrabajo | null> {
   try {
+    if (usuarioId) return (await eleccionDeGeneracion(usuarioId, tipo)).elegida.eleccion;
     return await elegirParaTipo(tipo);
   } catch (error) {
     if (error instanceof ErrorCatalogo) return null;
@@ -385,7 +392,11 @@ export async function vistaDeProyecto(fila: FilaProyecto, totalEscenas: number, 
 
 /** Proyectos del actor con su total estimado, para la lista. Una consulta de escenas para todos, no una por fila. */
 export async function listarProyectos(actor: Actor): Promise<ProyectoVista[]> {
-  const [filas, elecciones, ajustes] = await Promise.all([proyectosDe(actor), eleccionesDelPlan(), leerAjustes()]);
+  const [filas, elecciones, ajustes] = await Promise.all([
+    proyectosDe(actor),
+    eleccionesDelPlan(actor.id),
+    leerAjustes(),
+  ]);
   const escenasPorProyecto = await escenasDeProyectos(filas.map((f) => f.id));
   return Promise.all(
     filas.map((fila) => {
@@ -419,7 +430,7 @@ export async function detalleProyecto(actor: Actor, id: unknown): Promise<Proyec
   const fila = await proyectoPropio(actor, id);
   const [filasEscena, elecciones, ajustes, asistente, creditosAsistente] = await Promise.all([
     escenasDe(fila.id),
-    eleccionesDelPlan(),
+    eleccionesDelPlan(actor.id),
     leerAjustes(),
     estadoDelAsistente(actor.id),
     gastoDelAsistente(fila.id),
@@ -487,7 +498,7 @@ export async function aprobarPlan(actor: Actor, id: unknown, peticion: PeticionA
   const proyecto = await proyectoPropio(actor, id);
   const proyectoId = proyecto.id;
   const ajustes = await leerAjustes();
-  const elecciones = await eleccionesDelPlan();
+  const elecciones = await eleccionesDelPlan(actor.id);
   // Lo que se congela además del modelo y el precio: con qué versión de la ficha y de la plantilla se iba a
   // componer el prompt. Sin guardarlas, «la ficha ha cambiado desde que aprobaste» no se podría comprobar.
   const congelado = await versionesACongelar(actor, proyecto);
@@ -586,7 +597,7 @@ export async function hechosDeEscena(
 ): Promise<{ escena: FilaEscena; hechos: HechosEscena }> {
   const { escena, proyecto } = await escenaPropia(actor, escenaId);
   const [elecciones, vigente, afirmaciones] = await Promise.all([
-    eleccionesDelPlan(),
+    eleccionesDelPlan(actor.id),
     versionesACongelar(actor, proyecto),
     afirmacionesDe([escena.id]),
   ]);

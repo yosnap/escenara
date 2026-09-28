@@ -1,5 +1,6 @@
 import { and, asc, eq, isNull } from "drizzle-orm";
 import type { Proveedor } from "@/lib/boveda";
+import type { Capacidad } from "@/lib/catalogo";
 import { categoriaDeModelo } from "@/lib/compatible";
 import {
   type EntradaMapa,
@@ -47,13 +48,33 @@ const aEntrada = (fila: FilaMapa): EntradaMapa => ({
  * Capacidad del catálogo de la que salen las entradas recomendadas por defecto, mientras quien administra no
  * haya escrito las suyas. `transcripcion` no tiene: lo que se recomienda ahí es la propia máquina, que no cuesta.
  */
-const CAPACIDAD_DE_TIPO: Record<TipoDeMapa, "text_generation" | "tts" | "image_edit" | "text_to_video" | null> = {
-  texto: "text_generation",
-  voz: "tts",
-  transcripcion: null,
-  imagen: "image_edit",
-  video: "text_to_video",
+const CAPACIDADES_DE_TIPO: Record<TipoDeMapa, readonly Capacidad[]> = {
+  texto: ["text_generation"],
+  voz: ["tts"],
+  transcripcion: [],
+  imagen: ["image_edit"],
+  /**
+   * El vídeo tiene **dos** capacidades y las dos entran en el mismo apartado del mapa: un clip normal sale de un
+   * fotograma (`image_to_video`) y una escena hablada de Omni no parte de ninguna imagen (`text_to_video`).
+   * Separarlas en dos apartados obligaría al usuario a ordenar dos veces lo mismo.
+   */
+  video: ["image_to_video", "text_to_video"],
 };
+
+/** Modelos elegibles de todas las capacidades de ese tipo, sin repetir uno que sirva para varias. */
+async function modelosDelTipo(tipo: TipoDeMapa) {
+  const vistos = new Set<string>();
+  const modelos = [];
+  for (const capacidad of CAPACIDADES_DE_TIPO[tipo]) {
+    for (const modelo of await modelosElegibles(capacidad)) {
+      const clave = `${modelo.proveedor}|${modelo.modelo}`;
+      if (vistos.has(clave)) continue;
+      vistos.add(clave);
+      modelos.push(modelo);
+    }
+  }
+  return modelos;
+}
 
 /**
  * Recomendación de la plataforma para ese tipo, en su orden.
@@ -66,9 +87,7 @@ export async function recomendadasDe(tipo: TipoDeMapa): Promise<EntradaMapa[]> {
   const escritas = await filas(null, tipo);
   if (escritas.length > 0) return escritas.map(aEntrada);
   if (tipo === "transcripcion") return [{ proveedor: "local", compatibleId: null, modelo: "" }];
-  const capacidad = CAPACIDAD_DE_TIPO[tipo];
-  if (!capacidad) return [];
-  const elegibles = await modelosElegibles(capacidad);
+  const elegibles = await modelosDelTipo(tipo);
   return elegibles.map((m) => ({ proveedor: m.proveedor as Proveedor, compatibleId: null, modelo: m.modelo }));
 }
 
@@ -247,21 +266,18 @@ export async function opcionesDe(usuarioId: string, tipo: TipoDeMapa): Promise<E
       motivo: "",
     });
   }
-  const capacidad = CAPACIDAD_DE_TIPO[tipo];
-  if (capacidad) {
-    for (const modelo of await modelosElegibles(capacidad)) {
-      const proveedor = modelo.proveedor as Proveedor;
-      if (proveedor === "compatible" || proveedor === "local") continue;
-      if (!(await usarCredencialValida(usuarioId, proveedor)).ok) continue;
-      opciones.push({
-        proveedor,
-        compatibleId: null,
-        modelo: modelo.modelo,
-        nombreProveedor: nombreDeProveedor(proveedor),
-        utilizable: true,
-        motivo: "",
-      });
-    }
+  for (const modelo of await modelosDelTipo(tipo)) {
+    const proveedor = modelo.proveedor as Proveedor;
+    if (proveedor === "compatible" || proveedor === "local") continue;
+    if (!(await usarCredencialValida(usuarioId, proveedor)).ok) continue;
+    opciones.push({
+      proveedor,
+      compatibleId: null,
+      modelo: modelo.modelo,
+      nombreProveedor: nombreDeProveedor(proveedor),
+      utilizable: true,
+      motivo: "",
+    });
   }
   // Los servicios compatibles solo saben de texto, voz y subtítulos: no se ofrecen donde no sirven.
   if (tipo === "texto" || tipo === "voz" || tipo === "transcripcion") {
@@ -296,9 +312,7 @@ export async function opcionesRecomendables(
   if (tipo === "transcripcion") {
     opciones.push({ proveedor: "local", modelo: "", etiqueta: `${nombreDeProveedor("local")} (sin coste)` });
   }
-  const capacidad = CAPACIDAD_DE_TIPO[tipo];
-  if (!capacidad) return opciones;
-  for (const modelo of await modelosElegibles(capacidad)) {
+  for (const modelo of await modelosDelTipo(tipo)) {
     opciones.push({
       proveedor: modelo.proveedor,
       modelo: modelo.modelo,
