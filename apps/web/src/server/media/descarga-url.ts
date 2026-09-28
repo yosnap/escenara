@@ -139,7 +139,39 @@ function traducirError(error: unknown): ErrorMedio {
 
 export type Resolvedor = (host: string) => Promise<string[]>;
 
-const resolverDns: Resolvedor = async (host) => (await lookup(host, { all: true })).map((d) => d.address);
+export const resolverDns: Resolvedor = async (host) => (await lookup(host, { all: true })).map((d) => d.address);
+
+/**
+ * IP públicas a las que resuelve el host de esa URL, en el orden en que conviene probarlas. Es la mitad
+ * reutilizable de la protección frente a SSRF de la 0.5.0: **todas** las direcciones del host tienen que ser
+ * públicas, así que un dominio que mezcle una pública con una interna se rechaza entero.
+ *
+ * La usa además el cliente de los proveedores compatibles con OpenAI (0.21.1), donde la URL base la escribe el
+ * usuario y por tanto es la única llamada a un proveedor que no va a una dirección fija.
+ */
+export async function ipsPublicasDe(url: URL, resolver: Resolvedor = resolverDns): Promise<string[]> {
+  return resolverDestino(url, esIpPublica, resolver, Date.now() + TIEMPO_MAXIMO_MS);
+}
+
+/**
+ * Conecta a una IP ya comprobada en lugar de dejar que la conexión vuelva a resolver el nombre, para que un DNS
+ * que cambie de respuesta entre la comprobación y la conexión («DNS rebinding») no pueda desviarla. El dominio
+ * viaja en `Host` y en el SNI, y el certificado TLS se valida contra él.
+ *
+ * A diferencia de la descarga de medios, aquí `opciones` las pone quien llama (método, cuerpo, cabeceras) y
+ * **las redirecciones no se siguen**: una API no redirige, y seguir una sería salir del destino comprobado.
+ */
+export function pedirAIpFijada(url: URL, ip: string, opciones: RequestInit): Promise<Response> {
+  const fijada = new URL(url);
+  fijada.hostname = isIP(ip) === 6 ? `[${ip}]` : ip;
+  const esNombre = !isIP(url.hostname.replace(/^\[|\]$/g, ""));
+  return fetch(fijada, {
+    ...opciones,
+    redirect: "error",
+    headers: { ...(opciones.headers as Record<string, string> | undefined), Host: url.host },
+    ...(url.protocol === "https:" && esNombre ? { tls: { serverName: url.hostname } } : {}),
+  } as RequestInit);
+}
 
 /**
  * Resuelve el host y devuelve las IP candidatas, IPv4 primero (muchas redes no tienen salida IPv6).

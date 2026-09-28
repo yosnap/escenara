@@ -3,9 +3,11 @@ import { headers } from "next/headers";
 import { auth } from "@/server/auth/auth";
 import { exigirSesion } from "@/server/auth/sesion";
 import { bovedaDisponible } from "@/server/boveda/cifrado";
+import { listarCompatibles } from "@/server/boveda/compatibles";
 import { listarCredenciales } from "@/server/boveda/credenciales";
 import { CabeceraApp } from "../_app/cabecera-app";
 import { CambiarContrasena } from "./_componentes/cambiar-contrasena";
+import { Compatibles } from "./_componentes/compatibles";
 import { Credenciales } from "./_componentes/credenciales";
 import { Passkeys } from "./_componentes/passkeys";
 import { Perfil } from "./_componentes/perfil";
@@ -18,11 +20,12 @@ export const dynamic = "force-dynamic";
 export default async function PaginaCuenta() {
   const sesion = await exigirSesion("/cuenta");
   const cabeceras = await headers();
-  const [passkeys, sesiones, cuentas, credenciales] = await Promise.all([
+  const [passkeys, sesiones, cuentas, credenciales, compatibles] = await Promise.all([
     (await auth()).api.listPasskeys({ headers: cabeceras }),
     (await auth()).api.listSessions({ headers: cabeceras }),
     (await auth()).api.listUserAccounts({ headers: cabeceras }),
     listarCredenciales(sesion.user.id),
+    listarCompatibles(sesion.user.id),
   ]);
   const tieneContrasena = cuentas.some((c) => c.providerId === "credential");
 
@@ -37,6 +40,7 @@ export default async function PaginaCuenta() {
         <Perfil nombre={sesion.user.name} email={sesion.user.email} verificado={sesion.user.emailVerified} />
         <Preferencias idioma={sesion.user.idioma === "en" ? "en" : "es"} />
         <Credenciales credenciales={credenciales} bovedaLista={bovedaDisponible()} />
+        <Compatibles proveedores={compatibles} bovedaLista={bovedaDisponible()} />
         {tieneContrasena && <CambiarContrasena />}
         <Passkeys
           passkeys={passkeys.map((p) => ({

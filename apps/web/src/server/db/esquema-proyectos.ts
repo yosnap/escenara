@@ -266,6 +266,8 @@ export const assistantRuns = pgTable(
     projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }),
     kind: tipoEjecucionAsistente("kind").notNull(),
     provider: proveedorCredencial("provider").notNull(),
+    /** Nombre visible del servicio cuando `provider` es `compatible` (0.21.1); vacío en el resto. */
+    providerName: text("provider_name").notNull().default(""),
     model: text("model").notNull(),
     idempotencyKey: text("idempotency_key").notNull(),
     state: estadoEjecucionAsistente("state").notNull().default("reservado"),
@@ -282,6 +284,13 @@ export const assistantRuns = pgTable(
      * igual que el exceso de un trabajo de generación.
      */
     excessCredits: real("excess_credits"),
+    /**
+     * Tokens que informa el proveedor (`usage`), cuando los informa (0.21.1). Un servicio compatible con la API
+     * de OpenAI se cobra por cuota o por plan, así que su llamada vale **0 créditos**: lo único que mide de
+     * verdad cuánto se ha consumido de esa cuota son los tokens, y por eso se guardan.
+     */
+    promptTokens: integer("prompt_tokens"),
+    completionTokens: integer("completion_tokens"),
     /** Mensaje apto para el usuario; nunca texto crudo del proveedor. */
     errorMessage: text("error_message"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

@@ -6,10 +6,23 @@
 /** Mensaje para quien no administra cuando la instalación no tiene clave maestra. */
 export const AVISO_BOVEDA_USUARIO = "Esta instalación aún no admite credenciales: pídeselo a quien la administra.";
 
+/**
+ * Proveedores **de la bóveda**: los que tienen una clave por usuario, su tarjeta en «Tu cuenta» y su prueba sin
+ * coste. Son los únicos con los que se puede pagar una generación.
+ */
 export const PROVEEDORES = ["kie", "google", "elevenlabs"] as const;
-export type Proveedor = (typeof PROVEEDORES)[number];
+export type ProveedorBoveda = (typeof PROVEEDORES)[number];
 
-export const esProveedor = (v: unknown): v is Proveedor => PROVEEDORES.includes(v as Proveedor);
+/**
+ * Proveedores que pueden aparecer en un **apunte de gasto**: los de la bóveda más `compatible` (0.21.1), que no
+ * es un servicio concreto sino el género «compatible con la API de OpenAI». Cuál era se guarda en
+ * `provider_name`, porque el enum no puede crecer con cada servicio que alguien dé de alta.
+ */
+export const PROVEEDORES_APUNTE = [...PROVEEDORES, "compatible"] as const;
+export type Proveedor = (typeof PROVEEDORES_APUNTE)[number];
+
+/** `true` solo para los proveedores de la bóveda: es lo que decide si se puede cobrar con una clave del usuario. */
+export const esProveedor = (v: unknown): v is ProveedorBoveda => PROVEEDORES.includes(v as ProveedorBoveda);
 
 export interface ProveedorPublico {
   id: Proveedor;
@@ -47,6 +60,14 @@ export const PROVEEDORES_PUBLICOS: Record<Proveedor, ProveedorPublico> = {
     urlClave: "https://elevenlabs.io/app/settings/api-keys",
     etiquetaUrlClave: "elevenlabs.io · Settings › API keys",
     ayuda: "Empieza por «sk_» y es una cadena larga. Con una clave restringida basta el permiso de «Text to Speech».",
+  },
+  compatible: {
+    id: "compatible",
+    nombre: "Servicio compatible con OpenAI",
+    para: "Texto de reserva cuando el modelo de siempre falla. Se paga con la cuota de tu plan en ese servicio.",
+    urlClave: "/cuenta",
+    etiquetaUrlClave: "Tu cuenta",
+    ayuda: "Se configura entero (nombre, dirección, clave y modelos) en «Servicios de reserva para el texto».",
   },
 };
 

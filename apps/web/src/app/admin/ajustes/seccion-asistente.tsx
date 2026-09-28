@@ -38,6 +38,12 @@ export function SeccionAsistente({
         onCambio={(v) => onCambio("traducirPrompts", v)}
       />
       <Interruptor
+        etiqueta="Usar los servicios de reserva cuando falle el modelo de texto"
+        descripcion="Si el modelo de texto del catálogo no responde, devuelve un error o no tiene precio, la traducción y el asistente vuelven a pedir el mismo texto a los servicios compatibles con la API de OpenAI que cada usuario tenga en «Tu cuenta», recorriendo sus modelos en orden. Esos servicios se pagan por cuota del plan, no por petición: sus llamadas se apuntan con 0 créditos y lo que se guarda son los tokens."
+        activo={valores.relevoTextoActivo}
+        onCambio={(v) => onCambio("relevoTextoActivo", v)}
+      />
+      <Interruptor
         etiqueta="Mostrar el prompt a los usuarios"
         descripcion="Apagado: el prompt compuesto solo se ve en este panel (ADR-0022). Está preparado para los planes de pago; encenderlo enseña a cada usuario el texto exacto que se envía con sus trabajos."
         activo={valores.mostrarPromptAlUsuario}

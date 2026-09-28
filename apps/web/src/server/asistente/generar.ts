@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { ErrorPropuesta, INSTRUCCIONES_ASISTENTE, leerPropuesta, peticionDeGuion } from "@/lib/asistente";
 import { esProveedor } from "@/lib/boveda";
+import { detalleDeTiempo, type IntentoProveedor, mensajeDeFalloDeProveedor } from "@/lib/diagnostico-proveedor";
 import { limpiarTextoDePrompt } from "@/lib/ficha-personaje";
 import { CONCEPTO_MAXIMO, ESCENAS_SUGERIDAS, type ProyectoDetalle } from "@/lib/proyectos";
 import { db } from "../db/cliente";
@@ -19,7 +20,9 @@ import { contextoDeVersion } from "../personajes/contexto";
 import { ultimaVersion } from "../personajes/ficha";
 import { exigirPersonajeUsable } from "../personajes/puede-generar";
 import type { Buscador } from "../proveedores/codigos";
+import { relevoDeTexto, sugerenciaDeRelevo } from "../proveedores/compatible/relevo";
 import { ErrorProveedor } from "../proveedores/contrato";
+import { MS_TEXTO } from "../proveedores/kie/texto";
 import { proyectoPropio } from "./consulta";
 import { ErrorProyecto } from "./errores";
 import { sustituirEscenas } from "./escenas";
@@ -141,6 +144,13 @@ export async function escribirGuion(
   if (!nueva) return detalleProyecto(actor, proyecto.id);
 
   let respuesta: { texto: string; creditos: number | null };
+  /**
+   * Cuando el modelo de pago falla, el guion se pide a los servicios de reserva del usuario (0.21.1), igual que
+   * la traducción y con el mismo recorrido: sus modelos en orden, 429/402/5xx al siguiente y 401/403 parando ese
+   * servicio. `ejecucion` ya se ha cerrado con la regla de lista blanca antes de llegar aquí, así que la reserva
+   * no puede cobrar dos veces: lo suyo se apunta aparte y con 0 créditos.
+   */
+  let escritoPor: { proveedor: string; modelo: string } | null = null;
   try {
     respuesta = await generarTexto({
       clave,
@@ -166,7 +176,34 @@ export async function escribirGuion(
       0,
       error.message,
     );
-    throw new ErrorProyecto(502, error.message);
+    const fallido: IntentoProveedor = {
+      proveedor: modelo.nombreProveedor,
+      modelo: modelo.modelo,
+      codigo: error.codigo,
+      cobro: error.rechazoProbado ? "sin-cobro" : "se-desconoce",
+      detalle: error.codigo === "tiempo-agotado" ? detalleDeTiempo(MS_TEXTO) : "",
+    };
+    const relevo = await relevoDeTexto({
+      usuarioId: actor.id,
+      proyectoId: proyecto.id,
+      kind: "guion",
+      instrucciones: INSTRUCCIONES_ASISTENTE,
+      entrada,
+      claveIdempotencia: `${claveIdempotencia}:reserva`,
+      buscar,
+    });
+    if (!relevo.ok) {
+      throw new ErrorProyecto(
+        502,
+        mensajeDeFalloDeProveedor(
+          "No se ha podido escribir el guion, así que el proyecto se ha quedado como estaba",
+          [fallido, ...relevo.intentos],
+          sugerenciaDeRelevo(relevo.hayProveedores),
+        ),
+      );
+    }
+    respuesta = { texto: relevo.texto, creditos: null };
+    escritoPor = { proveedor: relevo.nombre, modelo: relevo.modelo };
   }
 
   try {
@@ -181,26 +218,41 @@ export async function escribirGuion(
       }
       return total;
     });
-    await cerrarGastoDeEjecucion(
-      ejecucion.id,
-      respuesta.creditos,
-      "Guion propuesto por el asistente, pendiente de que lo revise el usuario.",
-      "listo",
-      escenasEscritas,
-    );
+    // Con el guion escrito por la reserva, la ejecución del modelo de pago ya se cerró como fallida y el apunte
+    // de la reserva es el suyo propio, de 0 créditos: volver a cerrar esta diría que el modelo de pago funcionó.
+    if (!escritoPor) {
+      await cerrarGastoDeEjecucion(
+        ejecucion.id,
+        respuesta.creditos,
+        "Guion propuesto por el asistente, pendiente de que lo revise el usuario.",
+        "listo",
+        escenasEscritas,
+      );
+    }
   } catch (error) {
     // La llamada ya se ha pagado aunque no se pueda usar lo que ha contestado: se apunta lo que costó.
     const mensaje =
       error instanceof ErrorPropuesta || error instanceof ErrorProyecto ? error.message : "Error interno.";
-    await cerrarGastoDeEjecucion(
-      ejecucion.id,
-      respuesta.creditos,
-      "La respuesta del modelo no se pudo usar.",
-      "fallido",
-      0,
-      mensaje,
-    );
-    if (error instanceof ErrorPropuesta) throw new ErrorProyecto(502, error.message);
+    if (!escritoPor) {
+      await cerrarGastoDeEjecucion(
+        ejecucion.id,
+        respuesta.creditos,
+        "La respuesta del modelo no se pudo usar.",
+        "fallido",
+        0,
+        mensaje,
+      );
+    }
+    if (error instanceof ErrorPropuesta) {
+      // Se dice **quién** contestó lo que no se pudo usar: con la reserva puesta, no fue el modelo de siempre.
+      const quien = escritoPor
+        ? `${escritoPor.proveedor} (${escritoPor.modelo})`
+        : `${modelo.nombreProveedor} (${modelo.modelo})`;
+      throw new ErrorProyecto(
+        502,
+        `${quien} ha contestado, pero su texto no se pudo usar como guion: ${error.message}`,
+      );
+    }
     throw error;
   }
   return detalleProyecto(actor, proyecto.id);

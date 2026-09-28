@@ -65,6 +65,17 @@ export interface Ajustes {
    */
   traduccionDiasCache: number;
   /**
+   * Reserva de las llamadas de texto (0.21.1). Con esto encendido, cuando el modelo de texto del catálogo falla
+   * —tiempo agotado, error del proveedor, sin precio o sin credencial— la traducción y el asistente vuelven a
+   * pedir el mismo texto a los servicios **compatibles con la API de OpenAI** que el usuario tenga en «Tu
+   * cuenta», recorriendo sus modelos en orden.
+   *
+   * **Encendida de fábrica**: esos servicios se cobran por cuota del plan y no por petición, así que la reserva
+   * no puede generar un cargo inesperado. Apagarla es decidir que un fallo del modelo principal deja el trabajo
+   * sin hacer.
+   */
+  relevoTextoActivo: boolean;
+  /**
    * Mostrar al usuario el prompt compuesto. **Apagado y preparado para el futuro** (planes de pago): desde la
    * 0.17.0 el prompt final es material del panel de administración y no sale hacia el navegador de un usuario
    * normal (ADR-0022).
@@ -197,6 +208,8 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   // Traducir cuesta créditos y el modelo de texto aún no está validado: se enciende a propósito.
   traducirPrompts: false,
   traduccionDiasCache: 180,
+  // Encendida: la reserva no cuesta créditos y evita que un fallo del modelo principal pare el trabajo.
+  relevoTextoActivo: true,
   mostrarPromptAlUsuario: false,
   // El aviso de cobertura **viene apagado**: añade una confirmación a un flujo que ya funciona y solo tiene
   // sentido cuando la instalación usa la captura guiada de vistas (0.14.0) de verdad. Encenderlo es decidir que
@@ -318,6 +331,7 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
     valido: entero(0, 3650),
     mensaje: "Indica de 0 a 3650 días (0 = no guardar traducciones entre sesiones).",
   },
+  relevoTextoActivo: { valido: booleano, mensaje: "Debe ser sí o no." },
   mostrarPromptAlUsuario: { valido: booleano, mensaje: "Debe ser sí o no." },
   controlesExigirCoberturaVistas: { valido: booleano, mensaje: "Debe ser sí o no." },
   controlesExigirPrecioFresco: { valido: booleano, mensaje: "Debe ser sí o no." },

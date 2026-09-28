@@ -176,6 +176,13 @@
       "when": 1790562174630,
       "tag": "0024_proveedor_elevenlabs",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1790563549464,
+      "tag": "0025_proveedores_compatibles",
+      "breakpoints": true
     }
   ]
 }

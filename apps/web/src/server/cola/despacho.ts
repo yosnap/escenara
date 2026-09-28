@@ -7,6 +7,7 @@ import {
   mensajeDeFalloDeVoz,
   sugerenciaDeReserva,
 } from "@/lib/diagnostico-voz";
+import { mensajeDeFalloDeProveedor } from "@/lib/diagnostico-proveedor";
 import { type ParametrosVoz, parametrosVozDe } from "@/lib/voz";
 import { leerAjustes } from "../ajustes";
 import { usarCredencialValida } from "../boveda/credenciales";
@@ -444,6 +445,16 @@ async function relevoDeVoz(fila: FilaTrabajo, error: unknown, h: Herramientas): 
  * `previos` son los intentos que ya se hicieron contra otro proveedor: entran en el mensaje para que quien lo lea
  * sepa **qué se ha probado**, y no solo qué ha fallado lo último.
  */
+/**
+ * Qué se ha quedado sin hacer, por tipo de trabajo. Es la primera de las cuatro cosas que tiene que decir un
+ * mensaje de fallo (norma de errores visibles, 2026-09-28): la avería sin su consecuencia no sirve de nada.
+ */
+const ENCABEZADO_DE_TRABAJO: Record<FilaTrabajo["kind"], string> = {
+  fotograma: "No se ha podido generar el fotograma",
+  animacion: "No se ha podido generar el clip",
+  voz: "No se ha podido generar la voz",
+};
+
 async function tratarFalloDeLlamada(
   fila: FilaTrabajo,
   error: unknown,
@@ -462,11 +473,20 @@ async function tratarFalloDeLlamada(
           [...previos, { proveedor: fila.provider, modelo: fila.model, codigo, cobro: "sin-cobro" }],
           sugerenciaDeReserva(previos.length > 0 || (await alternativaDeVoz(fila.userId, fila.provider)) !== null),
         )
-      : `${error.message} No se ha enviado nada y no se te ha cobrado.`;
+      : mensajeDeFalloDeProveedor(
+          ENCABEZADO_DE_TRABAJO[fila.kind],
+          [
+            {
+              proveedor: PROVEEDORES_PUBLICOS[fila.provider].nombre,
+              modelo: fila.model,
+              codigo,
+              cobro: "sin-cobro",
+            },
+          ],
+        );
     return cerrarSinCoste(fila, error.motivo, mensaje);
   }
   const nombre = PROVEEDORES_PUBLICOS[fila.provider].nombre;
-  const explicacion = error instanceof ErrorProveedor ? error.message : "El envío ha fallado de forma inesperada.";
   if (!(error instanceof ErrorProveedor)) {
     console.error(`[cola] fallo tras llamar al proveedor en el trabajo ${fila.id}: ${detalle(error)}`);
   }
@@ -480,7 +500,11 @@ async function tratarFalloDeLlamada(
         [...previos, { proveedor: fila.provider, modelo: fila.model, codigo, cobro: "se-desconoce" }],
         `Revisa el historial de tu cuenta en ${nombre} antes de volver a pedirlo.`,
       )
-    : `${explicacion} No sabemos si el proveedor ha aceptado el trabajo, así que no se reenviará: revisa el historial de tu cuenta en ${nombre} antes de pedirlo otra vez.`;
+    : mensajeDeFalloDeProveedor(
+        ENCABEZADO_DE_TRABAJO[fila.kind],
+        [{ proveedor: nombre, modelo: fila.model, codigo, cobro: "se-desconoce" }],
+        `No se reenviará solo: revisa el historial de tu cuenta en ${nombre} antes de pedirlo otra vez.`,
+      );
   // Reserva retenida a propósito: quizá se ha pagado y todavía no lo sabemos.
   return marcar(fila.id, {
     state: "desconocido",
