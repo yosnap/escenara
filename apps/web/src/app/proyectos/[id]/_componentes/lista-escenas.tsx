@@ -1,12 +1,13 @@
 "use client";
 
 import { Plus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Boton } from "@/components/ui/button";
 import { EstadoVacio } from "@/components/ui/feedback";
 import { Paso } from "@/components/ui/paso";
+import type { OpcionesDeDireccion } from "@/lib/direccion";
 import { ESCENAS_MAXIMAS, type ProyectoDetalle } from "@/lib/proyectos";
-import { anadirEscena, reordenarEscenas } from "../../_componentes/api-proyectos";
+import { anadirEscena, catalogoDeDireccion, reordenarEscenas } from "../../_componentes/api-proyectos";
 import { EditorEscena } from "./editor-escena";
 
 /**
@@ -26,6 +27,20 @@ export function ListaEscenas({
   onError: (mensaje: string) => void;
 }) {
   const [ocupado, setOcupado] = useState(false);
+  /**
+   * El catálogo de la dirección se lee **una vez** para toda la lista: es el mismo para todas las escenas y
+   * pedirlo por escena serían tantas peticiones como escenas para la misma respuesta.
+   */
+  const [opcionesDireccion, setOpcionesDireccion] = useState<OpcionesDeDireccion | null>(null);
+  useEffect(() => {
+    let vivo = true;
+    catalogoDeDireccion().then((r) => {
+      if (vivo && r.ok) setOpcionesDireccion(r.datos);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, []);
   const { escenas, proyecto } = detalle;
 
   const ejecutar = async (
@@ -78,6 +93,7 @@ export function ListaEscenas({
                   primera={indice === 0}
                   ultima={indice === escenas.length - 1}
                   ocupado={ocupado}
+                  opcionesDireccion={opcionesDireccion}
                   onSubir={() => mover(indice, -1)}
                   onBajar={() => mover(indice, 1)}
                   onCambio={onCambio}

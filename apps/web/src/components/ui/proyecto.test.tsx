@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { EVALUACION_LISTA, REGLAS_VERSION } from "@/lib/controles";
 import type { EscenaVista, EstimacionEscena, PlanVista } from "@/lib/proyectos";
-import { impedimentosDelPlan } from "@/lib/proyectos";
+import { DIRECCION_SIN_ELEGIR, impedimentosDelPlan } from "@/lib/proyectos";
 import { TablaPlan } from "./proyecto";
 
 /**
@@ -33,6 +33,7 @@ const escena = (id: string, orden: number, est: EstimacionEscena | null): Escena
   proyectoId: "p1",
   orden,
   texto: "",
+  direccion: DIRECCION_SIN_ELEGIR,
   accion: `Escena de prueba ${orden}`,
   segundos: 4,
   estado: "borrador",

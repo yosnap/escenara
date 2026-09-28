@@ -9,6 +9,7 @@ import { MiniaturaMedio } from "@/components/ui/media/miniatura-medio";
 import { Dialogo } from "@/components/ui/overlay";
 import { InsigniaEstadoEscena } from "@/components/ui/proyecto";
 import { ETIQUETA_ESTADO_CONTROL } from "@/lib/controles";
+import type { OpcionesDeDireccion } from "@/lib/direccion";
 import {
   ACCION_MAXIMA,
   type EscenaVista,
@@ -18,6 +19,7 @@ import {
 } from "@/lib/proyectos";
 import { borrarEscena, editarEscena } from "../../_componentes/api-proyectos";
 import { PanelAfirmaciones } from "./panel-afirmaciones";
+import { PanelDireccion } from "./panel-direccion";
 
 /**
  * Una escena: lo que se cuenta y lo que se ve. Cuánto dura lo decide el proyecto entero, así que aquí solo se
@@ -32,6 +34,7 @@ export function EditorEscena({
   primera,
   ultima,
   ocupado,
+  opcionesDireccion,
   onSubir,
   onBajar,
   onCambio,
@@ -41,6 +44,8 @@ export function EditorEscena({
   primera: boolean;
   ultima: boolean;
   ocupado: boolean;
+  /** Catálogo de la dirección, ya leído por la pantalla. `null` mientras se está cargando. */
+  opcionesDireccion: OpcionesDeDireccion | null;
   onSubir: () => void;
   onBajar: () => void;
   onCambio: (detalle: ProyectoDetalle) => void;
@@ -48,12 +53,13 @@ export function EditorEscena({
 }) {
   const [texto, setTexto] = useState(escena.texto);
   const [accion, setAccion] = useState(escena.accion);
+  const [direccion, setDireccion] = useState(escena.direccion);
   const [guardando, setGuardando] = useState(false);
   const [borrando, setBorrando] = useState(false);
 
   const guardar = async () => {
     setGuardando(true);
-    const resultado = await editarEscena(escena.id, { texto, accion });
+    const resultado = await editarEscena(escena.id, { texto, accion, ...direccion });
     setGuardando(false);
     if (resultado.ok) onCambio(resultado.datos);
     else onError(resultado.error);
@@ -133,6 +139,13 @@ export function EditorEscena({
           <AreaTexto {...p} value={accion} maxLength={ACCION_MAXIMA} onChange={(e) => setAccion(e.target.value)} />
         )}
       </Campo>
+
+      <PanelDireccion
+        direccion={direccion}
+        opciones={opcionesDireccion}
+        deshabilitado={ocupado || escena.estado === "producida"}
+        onCambio={(campo, valor) => setDireccion((antes) => ({ ...antes, [campo]: valor }))}
+      />
 
       <p className="text-sm text-texto-suave">
         El texto que se le envía al modelo lo compone Escenara con tu escena, la plantilla y la ficha de tu personaje, y

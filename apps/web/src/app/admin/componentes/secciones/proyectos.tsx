@@ -3,6 +3,7 @@ import { InsigniaAfirmacion, InsigniaEstadoEscena, InsigniaEstadoProyecto, Tabla
 import { EVALUACION_LISTA, REGLAS_VERSION } from "@/lib/controles";
 import { etapasDeTrabajo, textoDeCancelacion } from "@/lib/produccion";
 import {
+  DIRECCION_SIN_ELEGIR,
   ESTADOS_AFIRMACION,
   ESTADOS_ESCENA,
   ESTADOS_PROYECTO,
@@ -22,6 +23,7 @@ import { Muestra, Seccion } from "../seccion";
  */
 
 const escena = (id: string, orden: number, accion: string, creditos: number | null): EscenaVista => ({
+  direccion: DIRECCION_SIN_ELEGIR,
   id,
   proyectoId: "p1",
   orden,

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { EVALUACION_LISTA, REGLAS_VERSION } from "./controles";
 import {
+  DIRECCION_SIN_ELEGIR,
   type EscenaVista,
   type EstimacionEscena,
   filasDelPlan,
@@ -33,6 +34,7 @@ const estimacion = (creditos: number, comprobado = "2026-09-27"): EstimacionEsce
 });
 
 const escena = (id: string, orden: number, accion: string, est: EstimacionEscena | null): EscenaVista => ({
+  direccion: DIRECCION_SIN_ELEGIR,
   id,
   proyectoId: "p1",
   orden,
