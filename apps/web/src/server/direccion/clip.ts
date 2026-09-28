@@ -3,9 +3,11 @@ import {
   AVISO_DOS_MOVIMIENTOS,
   AVISO_GUION_EN_CLIP_MUDO,
   AVISO_MOVIMIENTO_AVANZADO,
+  avisoGestoNoCabe,
   type EjesVoz,
   type FormatoClip,
   formatoHabla,
+  gestoNoCabe,
   type MomentoMicroaccion,
   type NivelCamara,
   type RegistroEstetico,
@@ -72,6 +74,12 @@ export interface DireccionDeClip {
   direccionVocal: string;
   ejesVoz: EjesVoz;
   acento: Acento;
+  /**
+   * Duración del clip en segundos. Decide si el gesto cabe fuera del diálogo: con una frase que ocupa todo el
+   * clip no hay hueco para asentir antes ni después, y prometerlo sería prometer algo que no puede pasar
+   * (medido en el spike del 2026-09-28).
+   */
+  segundos: number;
 }
 
 /** Lo compuesto, con lo que hay que contarle al usuario antes de que pague. */
@@ -145,8 +153,14 @@ export function dirigirClip(direccion: DireccionDeClip, opciones: OpcionesDeDire
   if (!habla && direccion.dialogo.trim() !== "") avisos.push(AVISO_GUION_EN_CLIP_MUDO);
 
   const gesto = direccion.microaccion.trim();
-  const gestoAntes = gesto !== "" && direccion.momentoMicroaccion === "antes" ? gesto : "";
-  const gestoDespues = gesto !== "" && direccion.momentoMicroaccion !== "antes" ? gesto : "";
+  // Si la frase llena el clip, el gesto se queda **dentro** del habla: es lo único que cabe, y se dice.
+  const palabras = dialogo === "" ? 0 : dialogo.split(/\s+/).filter(Boolean).length;
+  const apretado =
+    gesto !== "" && direccion.momentoMicroaccion !== "durante" && gestoNoCabe(palabras, direccion.segundos);
+  if (apretado) avisos.push(avisoGestoNoCabe(direccion.segundos));
+  const momento = apretado ? "durante" : direccion.momentoMicroaccion;
+  const gestoAntes = gesto !== "" && momento === "antes" ? gesto : "";
+  const gestoDespues = gesto !== "" && momento !== "antes" ? gesto : "";
 
   const escena = [
     bloqueCamara(direccion),

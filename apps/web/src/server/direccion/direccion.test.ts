@@ -13,6 +13,7 @@ import { type DireccionDeClip, dirigirClip, dirigirClipPara, familiaDe } from ".
 import { camposDeLaRespuesta } from "./extraccion";
 import { pedidoDeDireccion, resumirDireccion } from "./fidelidad";
 import { componerSeisC, type SeisC } from "./fotograma";
+import { motivoSinHoja, promptHojaIdentidad } from "./hoja-identidad";
 import { ACENTO_INGLES, ANCLAJES_REALISMO, ATRACTIVO_ELEGIDO, MODO_MUDO, REGLA_ANTI_CORTE } from "./ingles";
 import { describirVoz, resumirVoz } from "./voz";
 
@@ -26,6 +27,8 @@ import { describirVoz, resumirVoz } from "./voz";
  */
 
 const DIALOGO = "Esto es lo que quiero que diga, tal cual.";
+/** Una frase que no cabe en cuatro segundos: es la que se usó en el spike. */
+const LARGO = "Te voy a contar una cosa que casi nadie sabe, y que a mí me cambió la semana entera de arriba abajo.";
 
 const DIRECCION: DireccionDeClip = {
   formato: "ugc_a_camara",
@@ -42,6 +45,7 @@ const DIRECCION: DireccionDeClip = {
   direccionVocal: "in a close, unhurried tone",
   ejesVoz: EJES_VOZ_POR_DEFECTO,
   acento: "es_ES_madrid",
+  segundos: 8,
 };
 
 /** Posición del primer trozo que contiene ese texto. −1 si no está. */
@@ -124,6 +128,23 @@ describe("composición del prompt del clip", () => {
     expect(dos.avisos).toContain(AVISO_DOS_MOVIMIENTOS);
     expect(dos.escena).toContain("pushes in slowly");
     expect(dos.escena).not.toContain("arcs slowly around");
+  });
+
+  test("si la frase llena el clip, el gesto se queda dentro del habla y se dice por qué", () => {
+    // Medido en el spike del 2026-09-28: con una frase larga en 4 s el personaje habla de principio a fin.
+    const apretado = dirigirClip(
+      { ...DIRECCION, segundos: 4, momentoMicroaccion: "antes", dialogo: LARGO },
+      { dialogoDentro: true },
+    );
+    expect(apretado.avisos.some((a) => a.includes("no queda hueco para el gesto"))).toBe(true);
+    // Y el gesto pasa detrás, que es donde de verdad va a caber: no se promete un «antes» imposible.
+    expect(apretado.escena.indexOf(LARGO)).toBeLessThan(apretado.escena.indexOf("nods once"));
+  });
+
+  test("con hueco de sobra el gesto sí va antes y no se avisa de nada", () => {
+    const holgado = dirigirClip({ ...DIRECCION, segundos: 8, dialogo: "Mira esto." }, { dialogoDentro: true });
+    expect(holgado.avisos).toEqual([]);
+    expect(holgado.escena.indexOf("nods once")).toBeLessThan(holgado.escena.indexOf("Mira esto."));
   });
 
   test("con una sola elección no hay ningún aviso", () => {
@@ -450,5 +471,32 @@ describe("comprobación de Jev de la dirección, en sombra", () => {
     expect(resumen).toContain("Plano medio");
     expect(resumen).toContain("Una sola toma, sin cortes.");
     expect(resumen).not.toContain("shot");
+  });
+});
+
+describe("hoja de identidad 3×3", () => {
+  test("describe las nueve casillas, no «nueve retratos» a secas", () => {
+    const prompt = promptHojaIdentidad("A woman in her thirties");
+    expect(prompt).toContain("3 by 3 grid of 9 portraits");
+    for (const vista of ["front view", "three-quarters to the left", "full left profile", "full right profile"]) {
+      expect(prompt).toContain(vista);
+    }
+  });
+
+  test("la identidad sale de las referencias y no se retoca, también en la hoja", () => {
+    const prompt = promptHojaIdentidad("A woman in her thirties");
+    expect(prompt).toContain("do not make them more or less attractive");
+    expect(prompt).toContain("never exaggerate, intensify or add more of it");
+  });
+
+  test("cierra con los anclajes, así que la hoja no lleva rótulos escritos", () => {
+    const prompt = promptHojaIdentidad("");
+    expect(prompt.trimEnd().endsWith(ANCLAJES_REALISMO)).toBe(true);
+    expect(prompt).toContain("no written words");
+  });
+
+  test("sin fotos suficientes se dice cuántas faltan en vez de generar algo peor", () => {
+    expect(motivoSinHoja(1, 3)).toContain("al menos 3");
+    expect(motivoSinHoja(3, 3)).toBe("");
   });
 });

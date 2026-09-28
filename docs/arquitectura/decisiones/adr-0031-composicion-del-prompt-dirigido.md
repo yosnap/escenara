@@ -1,6 +1,6 @@
 # ADR-0031 · Composición del prompt dirigido: el orden vive en el código
 
-- **Estado**: aceptada
+- **Estado**: aceptada (el orden, confirmado en lo medido; la ordenación del gesto, pendiente de un spike con clips de 8 s)
 - **Fecha**: 2026-09-28
 - **Versión**: 0.25.0
 - **Relacionadas**: ADR-0022 (el prompt lo compone el servidor y no sale hacia el navegador), ADR-0024
@@ -104,8 +104,20 @@ elección escrita en castellano.
 es una propiedad medida del modelo, no una preferencia, y cambiarlo sin medirlo empeoraría el resultado sin que
 nadie supiera por qué.
 
-**Qué habrá que revisar.** El orden de los siete bloques es **provisional** hasta que lo confirme el spike de
-bajo coste, que gasta generaciones reales y está pendiente de la aprobación del propietario. Mientras tanto,
-`direccion_fiel` mide en sombra cuánto se respeta la dirección, y esa medida es la que dirá si el orden hay que
-tocarlo, si algún movimiento de cámara avanzado no lo respeta ningún modelo y si conviene retirarlo del
-catálogo o marcarlo como poco fiable.
+**Qué dijo el spike (2026-09-28, 504 créditos, cinco clips utilizables).** El orden **no queda contradicho**:
+con la cámara primero, el acercamiento lento se respetó y el encuadre, el ángulo, el sitio y el registro
+salieron como se pidieron. Y lo más importante: **ninguno de los cinco clips tiene un corte**, que era el
+riesgo alto de la fase. La regla de toma única se queda como está.
+
+Lo que el spike **no** pudo confirmar es el momento del gesto, y por un motivo que no es del modelo: en un clip
+de 4 s una frase normal ocupa el clip entero y no deja hueco para asentir antes ni después. De ahí sale una
+regla nueva, que es aritmética y no opinión: cuando la frase no deja hueco, el gesto se coloca **dentro** del
+habla y se avisa (`lib/direccion.ts › gestoNoCabe`). Prometer un «antes» que no cabe sería prometer algo que no
+puede ocurrir.
+
+**Qué habrá que revisar.** El orden de los siete bloques sigue **parcialmente sin confirmar** en su parte de
+ordenación del gesto: hace falta repetirlo con clips de 8 s. Los niveles `variacion` y `avanzado` del catálogo
+de cámara **siguen sin medir** (el clip de órbita lenta se perdió con los tres primeros), así que son una
+estimación razonada y el catálogo los marca como tales. El acento está **pendiente de escucharlo**. Mientras
+tanto, `direccion_fiel` mide en sombra cuánto se respeta la dirección, y esa medida es la que dirá si algún
+movimiento avanzado hay que retirarlo del catálogo o marcarlo como poco fiable.

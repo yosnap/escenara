@@ -105,6 +105,8 @@ export interface EleccionesDeEscena {
 
 /** Lo que aportan el personaje y el proyecto, ya resuelto por quien los conoce. */
 export interface ContextoDeDireccion {
+  /** Duración del clip, que es lo que decide si el gesto cabe fuera del diálogo. */
+  segundos: number;
   /** Quién sale, en inglés. Con persona real, la cita de sus referencias y ningún adjetivo de atractivo. */
   sujeto: string;
   /** Lo que se ve, escrito por el usuario y **ya traducido** (`prompts/traduccion.ts`). */
@@ -139,6 +141,7 @@ export function direccionDeClipDesde(
     direccionVocal: contexto.direccionVocal,
     ejesVoz: ejes,
     acento: contexto.acento ?? ACENTO_POR_DEFECTO,
+    segundos: contexto.segundos,
   };
 }
 

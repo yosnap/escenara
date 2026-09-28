@@ -266,6 +266,54 @@ export const NOMBRE_REFERENCIA_IDENTIDAD: Record<ReferenciaIdentidad, string> = 
   hoja_3x3: "Hoja de identidad 3×3",
 };
 
+/** Una rama de la comparación. `porcentaje` es `null` mientras no haya muestra suficiente para enseñarlo. */
+export interface GrupoIdentidad {
+  referencia: ReferenciaIdentidad;
+  total: number;
+  pasan: number;
+  porcentaje: number | null;
+}
+
+/**
+ * La comparación entre las dos referencias. `concluyente` es lo que separa un dato de una impresión: mientras
+ * sea `false`, la pantalla enseña recuentos y **no** saca conclusiones.
+ */
+export interface ComparacionIdentidad {
+  vistas: GrupoIdentidad;
+  hoja: GrupoIdentidad;
+  muestraMinima: number;
+  concluyente: boolean;
+  /** `true` si la hoja supera a las vistas **con muestra suficiente**. Proponerla no es ascenderla. */
+  ganaLaHoja: boolean;
+}
+
+// ── Catálogo tal como lo ve el navegador ───────────────────────────────────────────────────────────────
+
+/**
+ * Una opción del catálogo, **sin su fragmento en inglés**. El prompt no sale hacia el navegador y sus piezas
+ * tampoco (ADR-0022): lo que el usuario lee es el nombre y la descripción que escribió quien administra.
+ */
+export interface OpcionDireccion {
+  clave: string;
+  nombre: string;
+  descripcion: string;
+  /** Solo en la cámara: avisa de cuánto se arriesga a que el modelo no lo respete. */
+  nivel?: NivelCamara;
+  /** Solo en la micro-acción: el momento que propone el catálogo antes de que el usuario lo cambie. */
+  momento?: MomentoMicroaccion;
+}
+
+/** Las siete categorías que el usuario elige. Los anclajes no están: no son suyos. */
+export interface OpcionesDeDireccion {
+  plano: OpcionDireccion[];
+  angulo: OpcionDireccion[];
+  optica: OpcionDireccion[];
+  luz: OpcionDireccion[];
+  localizacion: OpcionDireccion[];
+  camara: OpcionDireccion[];
+  microaccion: OpcionDireccion[];
+}
+
 // ── Avisos de la dirección ──────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -279,6 +327,28 @@ export const AVISO_DOS_MOVIMIENTOS =
 /** Lo que se le dice al usuario cuando su formato es mudo pero ha escrito guion. */
 export const AVISO_GUION_EN_CLIP_MUDO =
   "Este clip es de voz en off, así que el personaje sale con la boca cerrada y el guion no se le envía al modelo: se usará al montar la narración encima.";
+
+/**
+ * Palabras por segundo de habla natural en castellano. Sirve para estimar si la frase cabe en el clip, que es
+ * lo único que decide si hay hueco para un gesto antes o después de hablar.
+ */
+export const PALABRAS_POR_SEGUNDO = 2.5;
+
+/** Lo que ocupa un gesto corto (asentir, sonreír) fuera del habla. */
+export const SEGUNDOS_DE_GESTO = 0.8;
+
+/**
+ * `true` cuando el gesto **no cabe** fuera del diálogo en un clip de esa duración.
+ *
+ * Sale del spike del 2026-09-28: con una frase de dieciséis palabras en un clip de 4 s, el personaje habla de
+ * principio a fin y no queda hueco para asentir antes ni después. No es un fallo del modelo, es aritmética, y
+ * por eso se avisa en vez de prometer un gesto que no va a caber.
+ */
+export const gestoNoCabe = (palabras: number, segundos: number): boolean =>
+  palabras / PALABRAS_POR_SEGUNDO + SEGUNDOS_DE_GESTO > segundos;
+
+export const avisoGestoNoCabe = (segundos: number): string =>
+  `La frase ocupa casi todo el clip de ${segundos} s, así que no queda hueco para el gesto antes ni después de hablar: saldrá mientras habla. Acorta el guion o alarga el clip si lo quieres separado.`;
 
 /** Lo que se le dice cuando pide un movimiento avanzado. No lo impide: lo avisa. */
 export const AVISO_MOVIMIENTO_AVANZADO =

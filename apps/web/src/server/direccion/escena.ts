@@ -58,6 +58,7 @@ export async function direccionDeLaEscena(
     direccionVocal: "",
     ejesVoz: ejesVozDe(personaje.ejesVoz),
     acento: proyecto.speechAccent,
+    segundos: escena.plannedSeconds,
   };
 }
 
