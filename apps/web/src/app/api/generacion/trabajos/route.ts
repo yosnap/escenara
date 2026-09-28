@@ -5,6 +5,7 @@ import { ErrorGeneracion } from "@/server/generacion/errores";
 import { exigirMismoOrigen, leerCuerpo, manejador } from "@/server/generacion/http";
 import { crearAnimacion, crearFotograma } from "@/server/generacion/servicio";
 import { listarTrabajos } from "@/server/generacion/trabajos";
+import { leerProductoElegido } from "@/server/productos/eleccion";
 import { leerSeleccionDePresets } from "@/server/prompts/entrada";
 
 export const dynamic = "force-dynamic";
@@ -82,6 +83,7 @@ export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
   }
   const plantilla = leerSeleccionDePresets(cuerpo);
   const direccionElegida = leerDireccionElegida(cuerpo.direccion);
+  const productoElegido = leerProductoElegido(cuerpo.producto);
   const comun = {
     avisosConfirmados: leerAvisosConfirmados(cuerpo.avisosConfirmados),
     prompt: String(cuerpo.prompt ?? ""),
@@ -120,6 +122,12 @@ export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
            * el borde. El texto en inglés lo compone el servidor con su catálogo, nunca el navegador (ADR-0022).
            */
           ...(direccionElegida ? { direccionElegida } : {}),
+          /**
+           * Producto elegido en «Crear» (0.26.0): el identificador de un producto suyo y la clave de la acción.
+           * Que sea suyo lo comprueba el servicio; aquí solo se valida la forma. De momento se guarda y no
+           * cambia el prompt.
+           */
+          ...(productoElegido ? { productoElegido } : {}),
           // Obligatoria si el fotograma del que sale el clip se hizo con un personaje.
           sinTerceros: cuerpo.sinTerceros === true,
         });

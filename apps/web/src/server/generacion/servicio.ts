@@ -5,6 +5,7 @@ import { CLIP, type TipoTrabajo, type TrabajoVista } from "@/lib/generacion";
 import type { TipoPersonaje } from "@/lib/personajes";
 import type { SeleccionPresets } from "@/lib/presets";
 import { duracionParaModelo } from "@/lib/produccion";
+import type { ProductoElegido } from "@/lib/productos";
 import { leerAjustes } from "../ajustes";
 import { duracionDeClipDeEscena, proyectoDeEscena } from "../asistente/consulta";
 import { hechosDeEscena, techoDelProyecto } from "../asistente/plan";
@@ -33,6 +34,7 @@ import {
 } from "../personajes/contexto";
 import { personajePropio, referenciasParaGenerar } from "../personajes/puede-generar";
 import { acotarCoste } from "../presupuesto/acotar";
+import { productoDelTrabajo } from "../productos/columnas";
 import { componerDesdePlantilla, type PromptCompuesto } from "../prompts/render";
 import { creditosDelEnvio, traducirAlIngles } from "../prompts/traduccion";
 import type { Adaptador } from "../proveedores/contrato";
@@ -314,6 +316,14 @@ export interface PeticionAnimacion extends Confirmacion {
    * Se ignora si llega junto a `direccion`: esa la pone el servidor desde la escena y manda siempre.
    */
   direccionElegida?: DireccionElegidaConAcento;
+  /**
+   * **Producto elegido en «Crear»** (0.26.0): el identificador de un producto suyo y la clave de la acción. Se
+   * comprueba aquí que sea suyo. En la producción de un proyecto no llega: el producto lo pone la escena, que
+   * es donde se eligió.
+   *
+   * En esta versión **solo se guarda**: no cambia el prompt ni lo que se le envía al proveedor.
+   */
+  productoElegido?: ProductoElegido;
   /**
    * **Solo la pone el servidor** (la producción de un proyecto), nunca la ruta HTTP: la escena y el personaje
    * del proyecto cuando el clip parte de una imagen traída de la biblioteca. Sin esto el clip quedaba suelto:
@@ -713,6 +723,9 @@ export async function crearFotograma(
     },
     sourceMediaId: origen?.id ?? null,
     sceneId: conEscena?.escena.id ?? null,
+    // El fotograma de una escena hereda su producto. En «Crear» no llega ninguno: allí el producto se elige
+    // junto a la dirección del clip, que es donde se ve lo que se le va a pedir.
+    ...(await productoDelTrabajo(actor.id, conEscena?.escena.id ?? null, undefined)),
     characterId: personajeId,
     characterVersionId: conFicha.versionId,
     ...columnasDePlantilla(base.compuesto),
@@ -978,6 +991,9 @@ export async function crearAnimacion(
     sourceMediaId: origen.id,
     // El clip hereda la escena del fotograma: su aprobación es la misma y ya se comprobó al producirlo.
     sceneId: partida.escenaId,
+    // El producto con el que se pidió: el de la escena cuando el clip sale de un proyecto y el elegido en
+    // «Crear» cuando no hay escena. Es lo que permite borrar sus derivados al borrar el producto.
+    ...(await productoDelTrabajo(actor.id, partida.escenaId, peticion.productoElegido)),
     parentJobId: partida.trabajoPadreId,
     characterId: partida.personajeId,
     characterVersionId: partida.versionPersonajeId,

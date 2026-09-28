@@ -18,6 +18,7 @@ import {
 import { db, type Ejecutor } from "../db/cliente";
 import { claims, type FilaEscena, generationJobs, projects, scenes } from "../db/esquema";
 import type { Actor } from "../media/servicio";
+import { leerProductoElegido, productoPropio } from "../productos/eleccion";
 import { invalidarVozDeEscena } from "../voz/proyecto";
 import { escenaPropia, escenasDe, proyectoPropio, proyectoPropioBloqueado } from "./consulta";
 import { ErrorProyecto } from "./errores";
@@ -65,6 +66,11 @@ export interface DatosEscena {
   instruccionesExtra?: unknown;
   modoExperto?: unknown;
   descripcionExperta?: unknown;
+  /**
+   * **Producto de la escena** (0.26.0): `{ productoId, accion }`. Va aparte de la dirección porque es una fila
+   * del usuario y no una clave de catálogo, y su dueño se comprueba contra la base de datos antes de guardarlo.
+   */
+  producto?: unknown;
 }
 
 /**
@@ -110,6 +116,20 @@ function camposLimpios(datos: DatosEscena) {
     campos.expertDescription = limpiarTextoDePrompt(datos.descripcionExperta, DESCRIPCION_EXPERTA_MAXIMA);
   }
   return campos;
+}
+
+/**
+ * El producto de la escena, ya comprobado. Vacío `{}` si no llega ninguno: lo que no se manda, no se toca.
+ *
+ * Es async y por eso vive fuera de `camposLimpios`: elegir un producto exige comprobar en la base de datos que
+ * es de quien lo elige, y conocer un identificador ajeno no puede bastar para meterlo en una escena propia.
+ * Quitar el producto (`productoId` vacío) vacía también la acción: una acción sin producto no describe nada.
+ */
+async function camposDeProducto(actor: Actor, datos: DatosEscena): Promise<Partial<typeof scenes.$inferInsert>> {
+  if (datos.producto === undefined) return {};
+  const elegido = await productoPropio(actor.id, leerProductoElegido(datos.producto));
+  if (elegido.productoId === "") return { productId: null, productAction: "" };
+  return { productId: elegido.productoId, productAction: elegido.accion };
 }
 
 /**
@@ -175,6 +195,9 @@ export async function sincronizarAfirmaciones(tx: Ejecutor, escenaId: string, te
 /** Añade una escena al final del proyecto. */
 export async function crearEscena(actor: Actor, proyectoId: unknown, datos: DatosEscena): Promise<FilaEscena> {
   const proyecto = await proyectoPropio(actor, proyectoId);
+  // El producto se comprueba **antes** de abrir la transacción: es una lectura de otra tabla y no tiene por
+  // qué correr dentro, y así un producto ajeno responde 404 sin haber empezado a escribir nada.
+  const producto = await camposDeProducto(actor, datos);
   return db().transaction(async (tx) => {
     const [{ ultimo } = { ultimo: null }] = await tx
       .select({ ultimo: max(scenes.sortOrder) })
@@ -193,7 +216,7 @@ export async function crearEscena(actor: Actor, proyectoId: unknown, datos: Dato
         `Este proyecto ya tiene ${total} ${total === 1 ? "escena" : "escenas"} y el máximo son ${ESCENAS_MAXIMAS}. Borra alguna antes de añadir otra.`,
       );
     }
-    const campos = camposLimpios(datos);
+    const campos = { ...camposLimpios(datos), ...producto };
     const [escena] = await tx
       .insert(scenes)
       .values({ projectId: proyecto.id, sortOrder: orden, plannedSeconds: proyecto.clipSeconds, ...campos })
@@ -208,7 +231,7 @@ export async function crearEscena(actor: Actor, proyectoId: unknown, datos: Dato
 /** Edita una escena a mano. Si estaba aprobada, deja de estarlo y se dice por qué. */
 export async function editarEscena(actor: Actor, escenaId: unknown, datos: DatosEscena): Promise<FilaEscena> {
   const { escena } = await escenaPropia(actor, escenaId);
-  const campos = camposLimpios(datos);
+  const campos = { ...camposLimpios(datos), ...(await camposDeProducto(actor, datos)) };
   if (Object.keys(campos).length === 0) return escena;
   // Editar una escena que ya se ha generado no borra nada (el gasto está hecho y el resultado sigue en la
   // biblioteca), pero deja de corresponder a lo que dice: la rejilla de producción lo avisa y el historial lo

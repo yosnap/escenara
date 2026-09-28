@@ -57,12 +57,13 @@ export function EditorEscena({
   const [texto, setTexto] = useState(escena.texto);
   const [accion, setAccion] = useState(escena.accion);
   const [direccion, setDireccion] = useState(escena.direccion);
+  const [producto, setProducto] = useState(escena.producto);
   const [guardando, setGuardando] = useState(false);
   const [borrando, setBorrando] = useState(false);
 
   const guardar = async () => {
     setGuardando(true);
-    const resultado = await editarEscena(escena.id, { texto, accion, ...direccion });
+    const resultado = await editarEscena(escena.id, { texto, accion, ...direccion, producto });
     setGuardando(false);
     if (resultado.ok) onCambio(resultado.datos);
     else onError(resultado.error);
@@ -152,6 +153,8 @@ export function EditorEscena({
         opciones={opcionesDireccion}
         guion={texto}
         segundos={escena.segundos}
+        producto={producto}
+        onProducto={setProducto}
         deshabilitado={ocupado || escena.estado === "producida"}
         onCambio={(campo, valor) => {
           if (campo === "acento") return;

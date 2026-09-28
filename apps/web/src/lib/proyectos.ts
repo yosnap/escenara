@@ -2,6 +2,7 @@ import type { EstadoControl, EvaluacionVista } from "./controles";
 import { type Acento, DIRECCION_ELEGIDA_VACIA, type DireccionElegida, type ReferenciaIdentidad } from "./direccion";
 import { formatearCreditos, formatearEuros } from "./generacion";
 import type { Medio } from "./media/tipos";
+import type { ProductoElegido } from "./productos";
 
 /**
  * Proyectos, escenas y afirmaciones (RF05, 0.17.0) tal como los comparten el servidor y el navegador. Aquí
@@ -205,6 +206,12 @@ export interface EscenaVista {
    * envía al modelo: el prompt lo compone el servidor y no sale de ahí (ADR-0022).
    */
   direccion: DireccionDeEscenaVista;
+  /**
+   * El producto de la escena y qué se hace con él (0.26.0). Va **aparte de la dirección** porque no es lo
+   * mismo: la dirección son claves de catálogo que valen en cualquier proyecto, y un producto es una fila del
+   * usuario. Vacío = esta escena no lleva producto, que es lo normal.
+   */
+  producto: ProductoElegido;
   segundos: number;
   estado: EstadoEscena;
   /** Quién aprobó la escena y cuándo; `null` mientras sea borrador. */

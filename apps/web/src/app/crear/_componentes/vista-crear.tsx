@@ -28,6 +28,7 @@ import {
   type PresetVisible,
   VARIABLE_TEXTO_MAXIMA,
 } from "@/lib/presets";
+import { PRODUCTO_ELEGIDO_VACIO, type ProductoElegido } from "@/lib/productos";
 import { consultarCatalogoDeDireccion, consultarEstimacion, crearTrabajo, type Resultado } from "./api-generacion";
 import { consultarCatalogoDePresets, duplicarPreset } from "./api-presets";
 import { BloqueConfirmacion } from "./bloque-confirmacion";
@@ -143,6 +144,11 @@ export function VistaCrear({
   const [origenElegido, setOrigenElegido] = useState<OrigenDelClip>("fotograma");
   /** Cómo se dirige el clip. En «Crear» no hay escena que lo guarde, así que viaja con la confirmación. */
   const [direccionClip, setDireccionClip] = useState<DireccionElegidaConAcento>(DIRECCION_CON_ACENTO_VACIA);
+  /**
+   * El producto del clip (0.26.0). Va aparte de la dirección: la dirección son claves de catálogo y el producto
+   * es una fila tuya. De momento **solo se guarda** con el trabajo; el prompt no cambia todavía.
+   */
+  const [productoClip, setProductoClip] = useState<ProductoElegido>(PRODUCTO_ELEGIDO_VACIO);
   const [opcionesDireccion, setOpcionesDireccion] = useState<OpcionesDeDireccion | null>(null);
   const [estimacionFoto, setEstimacionFoto] = useState(estimacionFotograma);
   const [estimacionClip, setEstimacionClip] = useState(estimacionAnimacion);
@@ -351,6 +357,7 @@ export function VistaCrear({
       modelo: estimacionClip.modelo,
       // Lo que has elegido para dirigirlo: claves, nunca texto. El prompt lo compone el servidor (ADR-0022).
       direccion: direccionClip,
+      producto: productoClip,
       ...confirmacionDePlantilla(previaClip, plantillaClip),
       ...confirmacion,
     });
@@ -665,6 +672,8 @@ export function VistaCrear({
         dialogo={dialogo}
         opcionesDireccion={opcionesDireccion}
         direccion={direccionClip}
+        producto={productoClip}
+        onProducto={setProductoClip}
         catalogo={catalogoClip}
         plantilla={plantillaClip}
         previa={previaClip}
@@ -673,7 +682,7 @@ export function VistaCrear({
         exigeRevision={clipExigeRevision}
         sinTerceros={sinTercerosClip}
         enviando={enviando === "animacion"}
-        firma={`animacion|${fotograma?.id ?? ""}|${imagenDelClip?.id ?? ""}|${intentoClip}|${descripcion}|${frase}|${JSON.stringify(direccionClip)}|${estimacionClip.modelo}|${segundosClip}|${estimacionClip.sello}|${firmaDePlantilla(previaClip, plantillaClip)}`}
+        firma={`animacion|${fotograma?.id ?? ""}|${imagenDelClip?.id ?? ""}|${intentoClip}|${descripcion}|${frase}|${JSON.stringify(direccionClip)}|${JSON.stringify(productoClip)}|${estimacionClip.modelo}|${segundosClip}|${estimacionClip.sello}|${firmaDePlantilla(previaClip, plantillaClip)}`}
         clipEnMarcha={animacion}
         clipsAnteriores={clipsAnteriores}
         accionesDePreset={(preset) => (

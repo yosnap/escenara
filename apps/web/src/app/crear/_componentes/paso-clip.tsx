@@ -15,6 +15,7 @@ import { DIALOGO_MAXIMO, type Estimacion, type TrabajoVista } from "@/lib/genera
 import type { Medio } from "@/lib/media/tipos";
 import { AVISO_SIN_TERCEROS } from "@/lib/personajes";
 import type { CatalogoParaCrear, PresetVisible } from "@/lib/presets";
+import type { ProductoElegido } from "@/lib/productos";
 import { BloqueConfirmacion } from "./bloque-confirmacion";
 import type { ConfirmacionCoste } from "./panel-generar";
 import { type EstadoPlantilla, PanelPlantilla, type Previsualizacion } from "./panel-plantilla";
@@ -47,6 +48,8 @@ export function PasoClip({
   dialogo,
   opcionesDireccion,
   direccion,
+  producto,
+  onProducto,
   catalogo,
   plantilla,
   previa,
@@ -80,6 +83,9 @@ export function PasoClip({
   dialogo: string;
   opcionesDireccion: OpcionesDeDireccion | null;
   direccion: DireccionElegidaConAcento;
+  /** El producto del clip y qué se hace con él. Se elige en el mismo panel que la dirección. */
+  producto: ProductoElegido;
+  onProducto: (elegido: ProductoElegido) => void;
   catalogo: CatalogoParaCrear;
   plantilla: EstadoPlantilla;
   previa: Previsualizacion;
@@ -171,6 +177,8 @@ export function PasoClip({
             conAcento
             // En «Crear» el fotograma no se dirige aquí: o es una imagen tuya (no se genera) o tiene su propio paso.
             conFotograma={false}
+            producto={producto}
+            onProducto={onProducto}
             deshabilitado={enviando}
             onCambio={onDireccion}
           />

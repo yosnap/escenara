@@ -1,6 +1,7 @@
 import type { EvaluacionVista } from "@/lib/controles";
 import type { DireccionElegidaConAcento, OpcionesDeDireccion } from "@/lib/direccion";
 import type { Deposito, EstadoCola, Estimacion, TipoTrabajo, TrabajoVista } from "@/lib/generacion";
+import type { ProductoElegido } from "@/lib/productos";
 
 /** Cliente de la API de generación para el navegador. */
 
@@ -73,6 +74,11 @@ export interface ConfirmacionAnimacion extends Confirmacion {
    * y compone el prompt, que no sale hacia aquí (ADR-0022).
    */
   direccion?: DireccionElegidaConAcento;
+  /**
+   * Producto del clip: el identificador de uno **tuyo** y la clave de la acción del catálogo. Que sea tuyo lo
+   * comprueba el servidor; uno ajeno responde 404.
+   */
+  producto?: ProductoElegido;
   /**
    * Duración del clip que se ha confirmado, en segundos. Es la de la estimación que se tenía delante: cada
    * duración es una tarifa distinta del modelo, y lo que se paga es esta.
