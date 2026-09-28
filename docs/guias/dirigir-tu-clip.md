@@ -12,6 +12,28 @@ las palabras del oficio.
 
 ![Panel de dirección de una escena](../assets/capturas/0.25.0-direccion-claro.webp)
 
+**Cada cosa se elige en un solo sitio.** Donde está el panel de dirección no vuelven a salir más abajo los
+mismos botones —el plano, el ángulo, el movimiento, la micro-acción, el registro, el look o la duración— y, si
+a la botonera de la plantilla no le queda nada propio que ofrecer, no aparece. Lo que elijas aquí es lo que se
+le pide al modelo, y se le pide una sola vez.
+
+## Guardar una dirección y volver a usarla
+
+Encima de los botones tienes **Mis direcciones**. Cuando tengas una forma de dirigir que te funciona, pulsa
+**Guardar esta dirección**, ponle un nombre y la tendrás en la lista para usarla de un clic, tanto en «Crear»
+como en la escena de un proyecto. Puedes cambiarle el nombre y borrarla.
+
+- **Usarla no genera nada**: rellena los botones y ahí se queda. El coste se confirma después, como siempre.
+- Se guarda todo lo del clip: el formato, el plano, el ángulo, el movimiento, la micro-acción y su momento, el
+  registro, la voz y el acento, las instrucciones adicionales y el modo experto con su descripción. En la
+  escena de un proyecto se guardan además los campos del fotograma, y el acento no se toca: ese es del
+  proyecto entero.
+- **Son tuyas**: nadie más las ve ni las usa.
+- Si quien administra ha quitado alguna opción desde que la guardaste, esa opción se deja sin elegir y se te
+  dice cuál: el resto se aplica igual.
+
+![Mis direcciones, encima de los botones de dirección](../assets/capturas/0.25.2-mis-direcciones-claro.webp)
+
 ## Las seis partes de un clip
 
 Cada escena se dirige con seis decisiones. Ninguna es obligatoria salvo el formato: lo que no elijas se queda
@@ -117,6 +139,9 @@ Con el segundo camino **el paso del fotograma desaparece entero**: no hay formul
 estimar, porque no se va a generar ninguna. Pasas directamente a dirigir y generar el clip. **Elegir la imagen
 no cuesta nada**; lo único que se paga es el clip.
 
+Tampoco tienes que describir la escena: la imagen ya dice lo que se ve y la dirección pone el encuadre. Si
+quieres añadir algo, escríbelo en **instrucciones adicionales**.
+
 ![Los dos caminos de «Crear»](../assets/capturas/0.25.1-crear-dos-caminos-claro.webp)
 
 En la escena de un proyecto es lo mismo: al lado del fotograma puedes traer una imagen tuya y la escena la toma
@@ -147,7 +172,10 @@ reconozcas.
 
 ## El fotograma: las seis C
 
-El clip nace de un fotograma, y el fotograma se dirige con seis bloques que van siempre en el mismo orden:
+El clip nace de un fotograma, y el fotograma se dirige con seis bloques que van siempre en el mismo orden.
+**Esto se elige donde el fotograma se genera**: en la escena de un proyecto, con el clip; y en «Crear», en el
+paso del fotograma. Cuando animas una imagen que ya tienes no hay nada de esto que elegir, porque no se va a
+generar ningún fotograma, y por eso el panel de dirección no te lo ofrece.
 
 | | Qué fija |
 |---|---|
