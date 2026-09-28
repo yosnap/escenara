@@ -38,7 +38,7 @@ const rutaPreset = await import("@/app/api/prompts/presets/[id]/route");
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
-const { generationJobs, promptTemplates, users } = await import("../db/esquema");
+const { generationJobs, presets: tablaPresets, promptTemplates, users } = await import("../db/esquema");
 const { guardarCredencial } = await import("../boveda/credenciales");
 const { crearMedio } = await import("../media/servicio");
 const { crearAnimacion, crearFotograma } = await import("../generacion/servicio");
@@ -962,6 +962,21 @@ describe.skipIf(!hayBaseDeDatos)("presets y plantillas de prompt", () => {
     expect(editada.nombre).toBe("Viajes a mi manera");
     expect(editada.orden).toBe(copia.orden);
     expect(editada.activo).toBe(copia.activo);
+  });
+
+  test("en una copia propia lo que se pide al modelo es su descripción, no el texto del original", async () => {
+    // Caso real: «De calle» duplicado y renombrado a «Playa» seguía pidiendo ropa de calle sin que nada lo dijera.
+    const copia = await duplicarPreset(ana.id, porClave("calle").id);
+    await editarPresetPropio(ana.id, copia.id, {
+      categoria: copia.categoria,
+      clave: copia.clave,
+      nombre: "Playa",
+      descripcion: "  Traje de baño para  la playa ",
+      orden: 0,
+      activo: true,
+    });
+    const [fila] = await db().select().from(tablaPresets).where(eq(tablaPresets.id, copia.id)).limit(1);
+    expect(JSON.parse(fila?.values ?? "{}").prompt).toBe("Traje de baño para la playa");
   });
 
   test("sin plantilla, generar sigue funcionando como antes de la 0.16.0", async () => {
