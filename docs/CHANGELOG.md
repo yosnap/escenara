@@ -2,6 +2,19 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.24.1] · 2026-09-28
+
+### Corregido
+
+- **Tus copias de un preset piden lo que dice su descripción.** Al editar una copia propia (por ejemplo, «De
+  calle» renombrado a «Playa») solo se veían el nombre y la descripción, pero al modelo le seguía llegando el texto
+  del original, oculto: un anuncio en traje de baño salía con ropa de calle. Ahora la descripción que escribes es
+  lo que se le pide, y el diálogo lo dice. Las copias que ya tenías se han corregido igual.
+- **La escena manda sobre la ropa, el lugar y la luz.** La ficha del personaje se añadía con su vestuario y su
+  estilo habituales (luz de ventana, fondo neutro), y el modelo copiaba además la ropa de las fotos de
+  referencia. Ahora el bloque de la ficha dice que de las fotos solo se toman la cara y el cuerpo, y que el
+  vestuario y el estilo de la ficha solo valen si la escena no dice otra cosa.
+
 ## [0.24.0] · 2026-09-28
 
 ### Decisión firme del propietario

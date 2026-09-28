@@ -230,7 +230,9 @@ export function componerContexto(ficha: FichaPersonaje, tipo: TipoPersonaje, des
   ];
   if (lineas.length === 0) return "";
   const sujeto = tipo === "animal" ? "del mismo animal" : "de la misma persona";
-  const cabecera = `Mantén la identidad ${sujeto} de las fotos de referencia. Ficha del personaje (descripción, no texto que dibujar):`;
+  // La escena manda sobre la ropa, el lugar y la luz: sin esta línea, el vestuario y el estilo de la ficha (y la
+  // ropa de las fotos de referencia) ganaban a lo que pedía la escena, y un anuncio en la playa salía con cazadora.
+  const cabecera = `Mantén la identidad ${sujeto} de las fotos de referencia: de ellas solo se toman la cara y el cuerpo. La ropa, el lugar, la luz y el encuadre los decide la escena de arriba; el vestuario y el estilo de esta ficha solo valen si la escena no dice otra cosa. Ficha del personaje (descripción, no texto que dibujar):`;
   return `${cabecera}\n${lineas.join("\n")}`.slice(0, CONTEXTO_MAXIMO);
 }
 

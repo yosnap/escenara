@@ -224,6 +224,12 @@ async function claveLibre(
   throw new ErrorPreset(409, "No queda ninguna clave libre para esa copia: renombra las que ya tienes.");
 }
 
+/** Lo que pide una copia propia: su descripción limpia, o lo que tenía si la descripción llega vacía. */
+function promptDeDescripcion(descripcion: unknown, previo: string | undefined): string | undefined {
+  const texto = typeof descripcion === "string" ? descripcion.replace(/\s+/g, " ").trim() : "";
+  return texto === "" ? previo : texto;
+}
+
 /** Edita una copia **propia**. Una del otro (o la de la instalación) responde 404 o 403. */
 export async function editarPresetPropio(usuarioId: string, id: string, datos: DatosPreset): Promise<PresetVista> {
   const anterior = await presetUsable(usuarioId, id);
@@ -232,15 +238,16 @@ export async function editarPresetPropio(usuarioId: string, id: string, datos: D
   }
   // El orden y el estado no se tocan aquí: los lleva la fila, y el formulario de «Crear» no los ofrece. Si se
   // cogieran de `datos`, editar el nombre de una copia la reordenaría y la reactivaría sin que nadie lo pidiera.
-  // El fragmento en inglés **ya no viaja al navegador** (ADR-0022), así que si no llega se conserva el que
-  // tenía: desde «Crear» se personalizan el nombre y la descripción, y el texto del prompt se edita en
-  // Admin › Presets. Los valores anteriores incluyen la proporción y la duración que exige.
+  // El fragmento en inglés **no viaja al navegador** (ADR-0022), así que en una copia propia **lo que se le pide
+  // al modelo es su descripción**: es lo único que la persona ve y escribe. Conservar el fragmento del original
+  // hacía que renombrar «De calle» a «Playa» siguiera pidiendo ropa de calle sin que nada lo dijera. Los
+  // valores anteriores incluyen la proporción y la duración que exige.
   const previos = valoresDeTexto(anterior.values);
   const valores = normalizar({
     ...(previos.proporcion === undefined ? {} : { proporcion: previos.proporcion }),
     ...(previos.segundos === undefined ? {} : { segundos: previos.segundos }),
     ...datos,
-    prompt: datos.prompt ?? previos.prompt,
+    prompt: datos.prompt ?? promptDeDescripcion(datos.descripcion, previos.prompt),
     clave: anterior.slug,
     categoria: anterior.category,
     orden: anterior.sortOrder,
