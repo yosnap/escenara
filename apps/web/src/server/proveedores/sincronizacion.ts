@@ -1,6 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import { esProveedor } from "@/lib/boveda";
 import type { Capacidad } from "@/lib/catalogo";
+import { readServerConfig } from "@/lib/config";
 import { db } from "../db/cliente";
 import {
   modelCapabilities,
@@ -153,7 +154,9 @@ async function registrarTarifa(
       .where(
         and(eq(modelPrices.provider, proveedor), eq(modelPrices.model, modelo), eq(modelPrices.unit, tarifa.unidad)),
       )
-      .limit(1);
+      .limit(1)
+      // La fila queda bloqueada hasta el final: dos sincronizaciones a la vez no suben la versión dos veces.
+      .for("update");
     if (!fila) {
       await tx
         .insert(modelPrices)
@@ -176,6 +179,26 @@ async function registrarTarifa(
       await tx.update(modelPrices).set({ checkedAt: hoy, source: fuente }).where(eq(modelPrices.id, fila.id));
       return "sin cambios";
     }
+    /**
+     * **Un cambio grande no se aplica solo.** La tabla viene de una API pública sin clave: una bajada brusca haría
+     * reservar menos de lo que después se cobra, y una subida brusca puede ser un error suyo. Por encima de
+     * {@link VARIACION_MAXIMA} se deja el precio como estaba y se anota en el historial para que quien administra
+     * lo revise y lo aplique a mano en Admin › Modelos si es correcto.
+     */
+    const variacion = Math.abs(tarifa.creditos - fila.credits) / Math.max(fila.credits, 0.0001);
+    if (variacion > VARIACION_MAXIMA) {
+      await tx.insert(modelCatalogChanges).values({
+        modelId: modeloId,
+        field: "precio",
+        fromValue: `${fila.credits} créditos por ${fila.unit}`,
+        toValue: `${tarifa.creditos} créditos por ${tarifa.unidad} (no aplicado: cambia más de un ${Math.round(VARIACION_MAXIMA * 100)} %)`,
+        evidence: fuente,
+      });
+      console.warn(
+        `[catalogo] precio publicado de ${modelo} (${fila.unit}) sin aplicar: ${fila.credits} → ${tarifa.creditos} créditos`,
+      );
+      return "sin cambios";
+    }
     await tx
       .update(modelPrices)
       .set({
@@ -196,6 +219,9 @@ async function registrarTarifa(
     return "actualizada";
   });
 }
+
+/** Variación máxima de un precio publicado que se aplica sola: un 50 % arriba o abajo. */
+const VARIACION_MAXIMA = 0.5;
 
 /** Sincroniza el catálogo de un proveedor con lo que publica. Nunca lanza: un fallo se registra y se informa. */
 export async function sincronizarProveedor(
@@ -310,6 +336,29 @@ export async function ultimasSincronizaciones(): Promise<UltimaSincronizacion[]>
  * llama el worker en su pasada: barato de comprobar y, casi siempre, no hace nada.
  */
 export async function sincronizarLoQueTocaHoy(buscar: Buscador = fetch): Promise<ResultadoSincronizacion[]> {
+  /**
+   * Un solo worker sincroniza a la vez: con varios, todos verían «toca hoy» a la vez y descargarían y escribirían
+   * la misma tabla en paralelo. El cerrojo consultivo de PostgreSQL es de la sesión y se suelta al terminar.
+   */
+  // Conexión propia para el cerrojo: con el pool de `db()`, tomarlo y soltarlo podría caer en sesiones distintas.
+  const conexion = new Bun.SQL(readServerConfig().databaseUrl, { max: 1 });
+  try {
+    const [cerrojo] = await conexion`select pg_try_advisory_lock(${CERROJO_SINCRONIZACION}) as tomado`;
+    if (!(cerrojo as { tomado?: boolean } | undefined)?.tomado) return [];
+    try {
+      return await sincronizarPendientes(buscar);
+    } finally {
+      await conexion`select pg_advisory_unlock(${CERROJO_SINCRONIZACION})`;
+    }
+  } finally {
+    await conexion.close();
+  }
+}
+
+/** Número fijo del cerrojo consultivo de la sincronización de precios. */
+const CERROJO_SINCRONIZACION = 23_000_001;
+
+async function sincronizarPendientes(buscar: Buscador): Promise<ResultadoSincronizacion[]> {
   const ultimas = new Map((await ultimasSincronizaciones()).map((u) => [u.proveedor, u]));
   const hechas: ResultadoSincronizacion[] = [];
   for (const proveedor of proveedoresConPreciosPublicos()) {

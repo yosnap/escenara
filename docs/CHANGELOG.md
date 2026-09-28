@@ -2,6 +2,18 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.23.3] · 2026-09-28
+
+### Seguridad del dinero
+
+- **Solo se puede elegir como variante lo que Escenara sabe enviar.** En modelos de vídeo medidos (MiniMax H3,
+  Gemini Omni) la sincronización registraba también la tarifa de un segundo, y elegirla como variante habría
+  reservado el precio de un segundo por un clip entero.
+- **Un precio publicado que cambia más de un 50 % no se aplica solo**: se deja el anterior y se anota en el historial
+  para que quien administra lo revise.
+- **Si KIE publica dos precios para lo mismo, se usa el más caro**: estimar por lo alto solo hace confirmar de más.
+- **Un solo worker sincroniza a la vez** (cerrojo en la base de datos) y cada precio se bloquea al actualizarlo.
+
 ## [0.23.2] · 2026-09-28
 
 ### Corregido

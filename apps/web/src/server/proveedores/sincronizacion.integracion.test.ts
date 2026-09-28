@@ -44,6 +44,7 @@ const { consultarTrabajo } = await import("../generacion/seguimiento");
 const { enviarEncolados } = await import("../cola/pasada");
 const { historialCatalogo, listarModelos, modelosElegibles, elegirModelo } = await import("./catalogo");
 const { sembrarCatalogo } = await import("./semilla");
+const { cambiarVarianteDeModelo } = await import("./catalogo-admin");
 const { sincronizarProveedor } = await import("./sincronizacion");
 const { buscadorDePrecios, REGISTROS_DE_PRECIO } = await import("./kie/grabaciones-precios");
 type Buscador = import("./codigos").Buscador;
@@ -278,6 +279,20 @@ describe.skipIf(!hayBaseDeDatos)("catálogo dinámico con precios públicos", ()
     });
   });
 
+  describe("variantes que se pueden elegir", () => {
+    test("una tarifa por segundo de un modelo de vídeo medido no se puede elegir como variante", async () => {
+      await sincronizarProveedor("kie", { buscar });
+      const h3 = await delCatalogo("minimax-h3/reference-to-video");
+      const otra = h3?.tarifas.find((t) => t.unidad !== h3.unidad);
+      expect(otra).toBeDefined();
+      const error = await cambiarVarianteDeModelo({ modeloId: h3?.id ?? "", unidad: otra?.unidad ?? "" }, ana.id).catch(
+        (e) => e,
+      );
+      expect(error.estado).toBe(409);
+      expect((await delCatalogo("minimax-h3/reference-to-video"))?.unidad).toBe(h3?.unidad);
+    });
+  });
+
   describe("un precio que cambia no toca lo ya confirmado", () => {
     test("sube el precio publicado, caduca la estimación anterior y deja historial", async () => {
       const estimacion = await estimar(ana.id, "fotograma", buscar, GPT2);
@@ -317,6 +332,21 @@ describe.skipIf(!hayBaseDeDatos)("catálogo dinámico con precios públicos", ()
       // Se devuelve a su precio publicado para el resto de la suite.
       registrosDelTest = REGISTROS_DE_PRECIO;
       await sincronizarProveedor("kie", { buscar });
+    });
+
+    test("un cambio de más del 50 % no se aplica solo: se anota para revisarlo", async () => {
+      // El proveedor «baja» GPT Image 2 a 1K de 6 a 1 crédito: reservar 1 y cobrar 6 sería el peligro.
+      registrosDelTest = REGISTROS_DE_PRECIO.map((r) =>
+        r.modelDescription.trim() === "gpt image 2, image-to-image, 1k" ? { ...r, creditPrice: "1" } : r,
+      );
+      const resultado = await sincronizarProveedor("kie", { buscar });
+      expect(resultado.preciosActualizados).toBe(0);
+      expect((await delCatalogo(GPT2))?.precio?.creditos).toBe(6);
+      const pendiente = (await historialCatalogo(200)).find(
+        (c) => c.modelo === GPT2 && c.campo === "precio" && c.hasta.includes("no aplicado"),
+      );
+      expect(pendiente?.hasta).toContain("no aplicado");
+      registrosDelTest = REGISTROS_DE_PRECIO;
     });
   });
 

@@ -21,6 +21,7 @@ import {
   textoDeParametros,
 } from "./catalogo";
 import { ErrorCatalogo } from "./contrato";
+import { familiaDe, varianteDeUnidad } from "./kie/familias";
 
 /**
  * Cambios del catálogo. **Solo el admin** los hace: quien llama a estas funciones ya ha comprobado el rol
@@ -150,6 +151,23 @@ export async function cambiarVarianteDeModelo(cambio: CambioVariante, autorId: s
     throw new ErrorCatalogo(409, `${modelo.nombre} no tiene ninguna tarifa registrada para «${unidad}».`);
   }
   if (unidad === modelo.unidad) return { modelo, estimacionesAfectadas: 0 };
+  /**
+   * Solo variantes **que la instalación sabe enviar**: las de una familia del catálogo dinámico cuya resolución y
+   * calidad salen de la unidad. Un modelo sin familia (Omni, MiniMax H3…) o una tarifa que no es por trabajo
+   * (por segundo, por megapíxel) no se puede elegir como variante: se reservaría el precio de un segundo y el
+   * proveedor cobraría el clip entero.
+   */
+  const familia = familiaDe(modelo.modelo);
+  const variante = varianteDeUnidad(unidad);
+  const montable = familia?.variantes.some(
+    (v) => v.resolucion === variante.resolucion && v.calidad === variante.calidad,
+  );
+  if (!familia || !montable) {
+    throw new ErrorCatalogo(
+      409,
+      `«${unidad}» no es una variante que Escenara sepa enviar a ${modelo.nombre}: su precio no corresponde a una generación completa. Se mantiene la actual.`,
+    );
+  }
   const afectadas = await trabajosEnMarcha(modelo.modelo);
   // La resolución que se envía es la de la variante: es lo que se ha estimado y lo que se va a cobrar.
   const parametros = parametrosDeTexto(textoDeParametros(modelo.parametros));
