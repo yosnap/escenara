@@ -58,6 +58,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - Una plantilla puede declarar hasta **14** variables (antes 12): el método 6C separa en categorías propias lo
   que antes iba mezclado.
 - El fragmento en inglés de un preset admite hasta **600** caracteres (antes 300), por el bloque de anclajes.
+- **Una instalación que ya existía recibe las plantillas nuevas** como una versión más, con la anterior
+  guardada en el historial (que es el camino de vuelta). Si quien administra había editado la plantilla, no se
+  toca: su decisión manda sobre la semilla.
 
 ### Pendiente
 

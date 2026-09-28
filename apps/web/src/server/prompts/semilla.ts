@@ -48,15 +48,44 @@ interface PlantillaSemilla {
 
 const SEMILLA = semillaJson as unknown as { presets: PresetSemilla[]; plantillas: PlantillaSemilla[] };
 
+/**
+ * Textos que **esta semilla sembró en versiones anteriores**, por clave de plantilla.
+ *
+ * Existen para poder distinguir una plantilla que nadie ha tocado de una que quien administra ha hecho suya.
+ * La semilla no pisa una decisión de nadie, pero una instalación que se actualiza tampoco puede quedarse sin
+ * las plantillas nuevas de la versión: sin esta lista, quien ya tuviera Escenara instalado seguiría con la
+ * cámara fija de la 0.24.x para siempre y no habría forma de saber por qué.
+ *
+ * Si el texto vigente está aquí, se publica una **versión nueva** con el de ahora y la anterior queda en el
+ * historial, que es el camino de vuelta. Si no está, lo ha editado una persona y no se toca.
+ */
+const TEXTOS_SEMBRADOS_ANTERIORES: Record<string, readonly string[]> = {
+  "fotograma-social": [
+    "{{especialidad}}.\nSubject: {{personaje}}.\nScene: {{escena}}.\nWardrobe: {{vestuario}}.\nLook: {{estilo}}.\nFraming: {{formato}}.\nAction: {{accion}}.\nPhotographic, no text and no logos in the image.",
+  ],
+  "clip-social": [
+    "A continuous {{duracion}}-second shot of {{personaje}}.\nScene: {{escena}}.\nLook: {{estilo}}.\nAction: {{accion}}.\nCamera: steady, with a subtle handheld feel.",
+  ],
+};
+
+/** Motivo que queda escrito en el historial de la versión que publica la semilla al actualizar. */
+const MOTIVO_ACTUALIZACION =
+  "Plantilla nueva de la versión, publicada por la semilla porque la anterior seguía siendo la sembrada y nadie la había editado. La anterior queda en el historial.";
+
 export interface ResultadoSemillaPresets {
   presetsCreados: number;
   plantillasCreadas: number;
+  /** Plantillas a las que se les ha publicado una versión nueva porque nadie las había tocado. */
+  plantillasActualizadas: number;
 }
 
 export async function sembrarPresets(): Promise<ResultadoSemillaPresets> {
-  const resultado: ResultadoSemillaPresets = { presetsCreados: 0, plantillasCreadas: 0 };
+  const resultado: ResultadoSemillaPresets = { presetsCreados: 0, plantillasCreadas: 0, plantillasActualizadas: 0 };
   for (const preset of SEMILLA.presets) if (await sembrarPreset(preset)) resultado.presetsCreados++;
-  for (const plantilla of SEMILLA.plantillas) if (await sembrarPlantilla(plantilla)) resultado.plantillasCreadas++;
+  for (const plantilla of SEMILLA.plantillas) {
+    if (await sembrarPlantilla(plantilla)) resultado.plantillasCreadas++;
+    else if (await actualizarPlantillaSembrada(plantilla)) resultado.plantillasActualizadas++;
+  }
   return resultado;
 }
 
@@ -135,4 +164,64 @@ async function sembrarPlantilla(plantilla: PlantillaSemilla): Promise<boolean> {
     creada = true;
   });
   return creada;
+}
+
+/**
+ * Publica una **versión nueva** de una plantilla de la instalación cuando su texto vigente es todavía el que
+ * sembró una versión anterior, es decir, cuando nadie la ha editado.
+ *
+ * Es la única forma de que una instalación ya montada reciba las plantillas nuevas de una versión sin pisarle
+ * el trabajo a quien administra. Lo que se hace es exactamente lo que haría él desde el panel: subir el número
+ * de versión y dejar la anterior en el historial, que es el camino de vuelta si la nueva no convence.
+ *
+ * Devuelve `true` solo si ha publicado algo.
+ */
+async function actualizarPlantillaSembrada(plantilla: PlantillaSemilla): Promise<boolean> {
+  const anteriores = TEXTOS_SEMBRADOS_ANTERIORES[plantilla.clave];
+  if (!anteriores || anteriores.length === 0) return false;
+  const [fila] = await db()
+    .select({ id: promptTemplates.id, template: promptTemplates.template, version: promptTemplates.version })
+    .from(promptTemplates)
+    .where(and(isNull(promptTemplates.ownerId), eq(promptTemplates.slug, plantilla.clave)))
+    .limit(1);
+  if (!fila) return false;
+  // Ya está en el texto de ahora: no hay nada que publicar y volver a hacerlo crearía versiones vacías.
+  if (fila.template === plantilla.plantilla) return false;
+  // Lo ha tocado una persona: su decisión manda sobre la semilla, igual que con los presets.
+  if (!anteriores.includes(fila.template)) return false;
+
+  const variables = variablesDeTexto(JSON.stringify(plantilla.variables ?? []));
+  if (variables.length === 0) throw new Error(`La plantilla ${plantilla.clave} de la semilla no declara variables.`);
+  const restricciones = restriccionesDeTexto(JSON.stringify(plantilla.restricciones ?? {}));
+  const numero = fila.version + 1;
+  await db().transaction(async (tx) => {
+    await tx
+      .update(promptTemplates)
+      .set({
+        name: plantilla.nombre,
+        description: plantilla.descripcion,
+        template: plantilla.plantilla,
+        variables: textoDeVariables(variables),
+        modelRestrictions: textoDeRestricciones(restricciones),
+        version: numero,
+        updatedAt: new Date(),
+      })
+      // La condición repite el texto anterior: si otra siembra simultánea se adelantó, esta no publica nada.
+      .where(
+        and(
+          eq(promptTemplates.id, fila.id),
+          isNull(promptTemplates.ownerId),
+          eq(promptTemplates.template, fila.template),
+        ),
+      );
+    await tx.insert(promptTemplateVersions).values({
+      templateId: fila.id,
+      number: numero,
+      template: plantilla.plantilla,
+      variables: textoDeVariables(variables),
+      modelRestrictions: textoDeRestricciones(restricciones),
+      changeReason: MOTIVO_ACTUALIZACION,
+    });
+  });
+  return true;
 }

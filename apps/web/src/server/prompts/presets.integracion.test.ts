@@ -31,14 +31,20 @@ if (hayBaseDeDatos) {
   await usarBaseDeDatosDePrueba("escenara_pruebas_presets");
 }
 
-const { eq } = await import("drizzle-orm");
+const { and, eq, isNull } = await import("drizzle-orm");
 const rutaCatalogo = await import("@/app/api/prompts/catalogo/route");
 const rutaDuplicar = await import("@/app/api/prompts/presets/[id]/duplicar/route");
 const rutaPreset = await import("@/app/api/prompts/presets/[id]/route");
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
-const { generationJobs, presets: tablaPresets, promptTemplates, users } = await import("../db/esquema");
+const {
+  generationJobs,
+  presets: tablaPresets,
+  promptTemplates,
+  promptTemplateVersions,
+  users,
+} = await import("../db/esquema");
 const { guardarCredencial } = await import("../boveda/credenciales");
 const { crearMedio } = await import("../media/servicio");
 const { crearAnimacion, crearFotograma } = await import("../generacion/servicio");
@@ -269,8 +275,55 @@ describe.skipIf(!hayBaseDeDatos)("presets y plantillas de prompt", () => {
   test("sembrar dos veces no duplica nada: la semilla solo crea lo que falta", async () => {
     const { sembrarPresets } = await import("./semilla");
     const segunda = await sembrarPresets();
-    expect(segunda).toEqual({ presetsCreados: 0, plantillasCreadas: 0 });
+    expect(segunda).toEqual({ presetsCreados: 0, plantillasCreadas: 0, plantillasActualizadas: 0 });
     expect((await listarPresetsDeLaInstalacion()).length).toBe(presets.length);
+  });
+
+  test("una instalación con la plantilla anterior recibe la nueva como versión, y la vieja queda en el historial", async () => {
+    const { sembrarPresets } = await import("./semilla");
+    const antigua =
+      "A continuous {{duracion}}-second shot of {{personaje}}.\nScene: {{escena}}.\nLook: {{estilo}}.\nAction: {{accion}}.\nCamera: steady, with a subtle handheld feel.";
+    const [clip] = await db()
+      .select()
+      .from(promptTemplates)
+      .where(and(isNull(promptTemplates.ownerId), eq(promptTemplates.slug, "clip-social")))
+      .limit(1);
+    if (!clip) throw new Error("No está sembrada la plantilla del clip.");
+    const nueva = clip.template;
+    // Se deja como la tendría una instalación que viene de la 0.24.x y no la ha tocado nadie.
+    await db().update(promptTemplates).set({ template: antigua }).where(eq(promptTemplates.id, clip.id));
+
+    const resultado = await sembrarPresets();
+    expect(resultado.plantillasActualizadas).toBe(1);
+    const [despues] = await db().select().from(promptTemplates).where(eq(promptTemplates.id, clip.id)).limit(1);
+    expect(despues?.template).toBe(nueva);
+    // La cámara fija ya no está, y la regla de toma única sí.
+    expect(despues?.template).not.toContain("steady, with a subtle handheld feel");
+    expect(despues?.template).toContain("no cuts");
+    // Y la anterior sigue en el historial: es el camino de vuelta.
+    const historial = await db()
+      .select()
+      .from(promptTemplateVersions)
+      .where(eq(promptTemplateVersions.templateId, clip.id));
+    expect(historial.some((v) => v.template === antigua || v.template === nueva)).toBe(true);
+  });
+
+  test("una plantilla que ha editado quien administra no la pisa la semilla", async () => {
+    const { sembrarPresets } = await import("./semilla");
+    const suya = "Lo que yo quiera: {{escena}}.";
+    const [clip] = await db()
+      .select()
+      .from(promptTemplates)
+      .where(and(isNull(promptTemplates.ownerId), eq(promptTemplates.slug, "clip-social")))
+      .limit(1);
+    if (!clip) throw new Error("No está sembrada la plantilla del clip.");
+    const original = clip.template;
+    await db().update(promptTemplates).set({ template: suya }).where(eq(promptTemplates.id, clip.id));
+
+    expect((await sembrarPresets()).plantillasActualizadas).toBe(0);
+    const [despues] = await db().select().from(promptTemplates).where(eq(promptTemplates.id, clip.id)).limit(1);
+    expect(despues?.template).toBe(suya);
+    await db().update(promptTemplates).set({ template: original }).where(eq(promptTemplates.id, clip.id));
   });
 
   test("todos los presets de la instalación son editables desde el admin", async () => {
