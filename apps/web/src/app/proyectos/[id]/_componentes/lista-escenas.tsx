@@ -67,7 +67,7 @@ export function ListaEscenas({
   };
 
   return (
-    <Paso numero={2} titulo="El guion, escena a escena">
+    <Paso numero={3} titulo="El guion, escena a escena">
       <div className="flex flex-col gap-4">
         {escenas.length === 0 ? (
           <EstadoVacio

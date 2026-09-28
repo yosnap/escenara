@@ -69,7 +69,7 @@ export function PanelAprobacion({
   };
 
   return (
-    <Paso numero={3} titulo="El plan y su coste">
+    <Paso numero={4} titulo="El plan y su coste">
       <div className="flex flex-col gap-4">
         {hecho && <Aviso tono="correcto">{hecho}</Aviso>}
 

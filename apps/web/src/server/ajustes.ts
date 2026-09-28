@@ -135,6 +135,12 @@ export interface Ajustes {
   coherenciaDireccionFiel: ModoCoherencia;
   /** Fidelidad del producto (0.26.0): la etiqueta y el envase no cambian. Nace en sombra. */
   coherenciaProductoFiel: ModoCoherencia;
+  /**
+   * Fidelidad al ángulo del anuncio (0.27.0): que el guion responda al ángulo del brief, no mezcle otros y diga
+   * la oferta como se definió. Nace en **sombra** y pasa a decidir cuando haya datos de acierto (decisión del
+   * propietario, 2026-09-28). Es texto contra texto: no gasta ninguna llamada de percepción.
+   */
+  coherenciaAnguloFiel: ModoCoherencia;
   /** Confianza mínima (0–1) para actuar. Por debajo, el veredicto es «míralo tú» y no decide nada. */
   coherenciaUmbralIdentidad: number;
   coherenciaUmbralGuion: number;
@@ -142,6 +148,7 @@ export interface Ajustes {
   coherenciaUmbralEmocion: number;
   coherenciaUmbralDireccionFiel: number;
   coherenciaUmbralProductoFiel: number;
+  coherenciaUmbralAnguloFiel: number;
   /**
    * Modelos de **percepción** que se prueban primero dentro del mapa del usuario: el de imagen describe la cara y
    * el encuadre, el omnimodal describe la voz y el ambiente. Si el usuario no los tiene dados de alta, se recorre
@@ -160,6 +167,19 @@ export interface Ajustes {
    * usuario podría gastar la cuenta del operador pulsando «Comprobar» en bucle.
    */
   coherenciaDecisionesPorDia: number;
+  /**
+   * **Estrategia del anuncio** (0.27.0): el brief (ángulo y oferta antes del guion) y las variantes por ángulo.
+   *
+   * Las dos **encendidas de fábrica**: no cuestan nada por sí mismas —el brief es un formulario y las variantes
+   * crean proyectos, no clips— y son el camino que esta versión propone. Se apagan desde el panel si una
+   * instalación prefiere el guion a mano, y apagarlas no borra ningún brief ya escrito.
+   */
+  anuncioBriefActivo: boolean;
+  /**
+   * Ofrecer crear variantes del mismo producto y oferta, una por ángulo. Depende del brief: sin brief no hay
+   * ángulo del que variar, así que con `anuncioBriefActivo` apagado esto no ofrece nada aunque esté encendido.
+   */
+  anuncioVariantesActivas: boolean;
   /**
    * Voz y subtítulos (RF08, 0.21.0). **La voz se elige por proyecto**, no aquí: lo que se ajusta en el panel es
    * si esta instalación ofrece la pista de voz de pago y con qué transcriptor local trabaja.
@@ -277,18 +297,23 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   coherenciaEmocion: "sombra",
   coherenciaDireccionFiel: "sombra",
   coherenciaProductoFiel: "sombra",
+  coherenciaAnguloFiel: "sombra",
   coherenciaUmbralIdentidad: UMBRAL_POR_DEFECTO,
   coherenciaUmbralGuion: UMBRAL_POR_DEFECTO,
   coherenciaUmbralResultado: UMBRAL_POR_DEFECTO,
   coherenciaUmbralEmocion: UMBRAL_POR_DEFECTO,
   coherenciaUmbralDireccionFiel: UMBRAL_POR_DEFECTO,
   coherenciaUmbralProductoFiel: UMBRAL_POR_DEFECTO,
+  coherenciaUmbralAnguloFiel: UMBRAL_POR_DEFECTO,
   // Los dos de NaN builders: `gemma4` es el más barato que ve, y `mimo-v2.5` es de los dos únicos que oyen.
   coherenciaModeloImagen: "gemma4",
   coherenciaModeloAudio: "mimo-v2.5",
   // Sin tarifa medida en esta instalación: 0 € hasta que quien administra la mida, como con el resto.
   coherenciaEurosPorMillonTokens: 0,
   coherenciaDecisionesPorDia: 60,
+  // El brief y las variantes arrancan **encendidos**: no gastan nada y son el camino de esta versión.
+  anuncioBriefActivo: true,
+  anuncioVariantesActivas: true,
   // La pista de voz de pago arranca apagada: el modo «voz del clip» no gasta nada más y es el de fábrica.
   vozTtsActivo: false,
   transcripcionBinario: "whisper-cli",
@@ -438,12 +463,14 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
   coherenciaEmocion: { valido: esModoCoherencia, mensaje: MENSAJE_MODO },
   coherenciaDireccionFiel: { valido: esModoCoherencia, mensaje: MENSAJE_MODO },
   coherenciaProductoFiel: { valido: esModoCoherencia, mensaje: MENSAJE_MODO },
+  coherenciaAnguloFiel: { valido: esModoCoherencia, mensaje: MENSAJE_MODO },
   coherenciaUmbralIdentidad: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   coherenciaUmbralGuion: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   coherenciaUmbralResultado: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   coherenciaUmbralEmocion: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   coherenciaUmbralDireccionFiel: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   coherenciaUmbralProductoFiel: { valido: umbral, mensaje: MENSAJE_UMBRAL },
+  coherenciaUmbralAnguloFiel: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   coherenciaModeloImagen: { valido: identificadorModelo, mensaje: MENSAJE_MODELO },
   coherenciaModeloAudio: { valido: identificadorModelo, mensaje: MENSAJE_MODELO },
   coherenciaEurosPorMillonTokens: {
@@ -454,6 +481,8 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
     valido: entero(1, 10000),
     mensaje: "Indica de 1 a 10000 comprobaciones de coherencia por usuario y día.",
   },
+  anuncioBriefActivo: { valido: booleano, mensaje: "Debe ser sí o no." },
+  anuncioVariantesActivas: { valido: booleano, mensaje: "Debe ser sí o no." },
   vozTtsActivo: { valido: booleano, mensaje: "Debe ser sí o no." },
   transcripcionBinario: {
     // Nombre de orden o ruta, sin espacios ni metacaracteres: se ejecuta como proceso, así que aquí se acota lo
@@ -600,6 +629,7 @@ export function coherenciaDe(ajustes: Ajustes, comprobacion: Comprobacion): { mo
     emocion: ajustes.coherenciaEmocion,
     direccion_fiel: ajustes.coherenciaDireccionFiel,
     producto_fiel: ajustes.coherenciaProductoFiel,
+    angulo_fiel: ajustes.coherenciaAnguloFiel,
   };
   const umbrales: Record<Comprobacion, number> = {
     identidad: ajustes.coherenciaUmbralIdentidad,
@@ -608,6 +638,7 @@ export function coherenciaDe(ajustes: Ajustes, comprobacion: Comprobacion): { mo
     emocion: ajustes.coherenciaUmbralEmocion,
     direccion_fiel: ajustes.coherenciaUmbralDireccionFiel,
     producto_fiel: ajustes.coherenciaUmbralProductoFiel,
+    angulo_fiel: ajustes.coherenciaUmbralAnguloFiel,
   };
   return { modo: modos[comprobacion], umbral: umbrales[comprobacion] };
 }

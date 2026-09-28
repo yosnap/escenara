@@ -27,7 +27,8 @@ import { coherenceDecisions, type FilaDecisionCoherencia, projects } from "../db
 
 /** A qué se refiere la decisión. `subjectId` es la fila que se miró; los otros dos sitúan la consulta. */
 export interface SujetoCoherencia {
-  tipo: "referencia" | "escena" | "trabajo";
+  /** `proyecto` es el de `angulo_fiel` (0.27.0): lo que se juzga es el guion del anuncio entero. */
+  tipo: "referencia" | "escena" | "trabajo" | "proyecto";
   id: string;
   personajeId?: string | null;
   proyectoId?: string | null;

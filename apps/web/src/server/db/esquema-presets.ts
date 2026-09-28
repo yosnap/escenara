@@ -53,6 +53,14 @@ export const categoriaPreset = pgEnum("preset_category", [
   "anclajes",
   // Acciones de producto (0.26.0): qué hace el personaje con el producto delante de la cámara.
   "accion-producto",
+  /**
+   * Ángulos del anuncio (0.27.0): desde qué dolor o deseo entra. Es una categoría **que solo amplía quien
+   * administra** (decisión del propietario, 2026-09-28), para que Jev tenga siempre una definición de referencia
+   * de cada ángulo; el usuario elige uno en el brief, no crea los suyos.
+   *
+   * La clave lleva sufijo porque `angulo` ya es el ángulo de **cámara** de la dirección del clip (0.25.0).
+   */
+  "angulo-anuncio",
 ]);
 
 export const presets = pgTable(

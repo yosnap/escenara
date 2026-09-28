@@ -20,6 +20,11 @@
  *
  * `producto_fiel` (0.26.0) mide lo que promete la suya: que el producto que sale sea el mismo, con la misma
  * etiqueta y el mismo envase que sus fotos de referencia. Nace en sombra por lo mismo.
+ *
+ * `angulo_fiel` (0.27.0) mide lo que promete esta versión: que el guion responda **al ángulo elegido**, no mezcle
+ * otros y diga la oferta como se definió. Es la única que no mira nada generado: compara texto con texto, así que
+ * no cuesta ninguna llamada de percepción. Nace en sombra y pasará a decidir cuando haya datos de acierto
+ * (decisión del propietario, 2026-09-28).
  */
 export const COMPROBACIONES = [
   "identidad",
@@ -28,6 +33,7 @@ export const COMPROBACIONES = [
   "emocion",
   "direccion_fiel",
   "producto_fiel",
+  "angulo_fiel",
 ] as const;
 export type Comprobacion = (typeof COMPROBACIONES)[number];
 
@@ -69,6 +75,7 @@ export const NOMBRE_COMPROBACION: Record<Comprobacion, string> = {
   emocion: "La emoción encaja con el tono",
   direccion_fiel: "El clip hace lo que se dirigió",
   producto_fiel: "Es el mismo producto, con la misma etiqueta",
+  angulo_fiel: "El guion responde al ángulo elegido",
 };
 
 export const DESCRIPCION_COMPROBACION: Record<Comprobacion, string> = {
@@ -83,6 +90,8 @@ export const DESCRIPCION_COMPROBACION: Record<Comprobacion, string> = {
     "Después de generar: si el clip tiene el plano, el movimiento de cámara, el gesto y el momento que se pidieron, y si es una sola toma sin cortes.",
   producto_fiel:
     "Después de generar: si el producto que se ve es el mismo que el de sus fotos, con la misma etiqueta, el mismo envase y el mismo texto impreso.",
+  angulo_fiel:
+    "Antes de generar: si el guion del anuncio responde al ángulo del brief, no mezcla otros ángulos y dice la oferta como se definió. Es texto contra texto: no cuesta ninguna llamada de percepción.",
 };
 
 export const NOMBRE_VEREDICTO: Record<VeredictoCoherencia, string> = {

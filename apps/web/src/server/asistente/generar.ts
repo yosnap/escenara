@@ -3,6 +3,7 @@ import { ErrorPropuesta, INSTRUCCIONES_ASISTENTE, leerPropuesta, peticionDeGuion
 import { esProveedor } from "@/lib/boveda";
 import { limpiarTextoDePrompt } from "@/lib/ficha-personaje";
 import { CONCEPTO_MAXIMO, ESCENAS_SUGERIDAS, type ProyectoDetalle } from "@/lib/proyectos";
+import { motivoSinDeclaracion } from "../anuncio/puerta-guion";
 import { db } from "../db/cliente";
 import { assistantRuns, type FilaProyecto, projects } from "../db/esquema";
 import {
@@ -87,6 +88,9 @@ export async function escribirGuion(
   if (proyecto.idea.trim() === "") {
     throw new ErrorProyecto(400, "Escribe primero la idea del proyecto: es lo que el asistente convierte en guion.");
   }
+  // Un ángulo que afirma algo comprobable no se escribe sin su declaración, tampoco por esta ruta (0.27.0).
+  const sinDeclaracion = await motivoSinDeclaracion(proyecto.id);
+  if (sinDeclaracion !== "") throw new ErrorProyecto(409, sinDeclaracion);
   const claveIdempotencia = exigirClaveIdempotencia(peticion.claveIdempotencia);
   const eleccion = await exigirAsistenteDisponible(actor.id);
   const { modelo, adaptador, precio } = eleccion;

@@ -2,6 +2,49 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.27.0] · 2026-09-28
+
+La estrategia del anuncio: un anuncio no es creatividad, es un sistema con tres palancas. El **ángulo** (a quién
+le hablas y desde qué dolor o deseo) pesa el 80 %, la **oferta** empaqueta lo que se da y la **creatividad** —el
+hook, el montaje— amplifica las dos anteriores, pero no salva un anuncio con mal ángulo. Hasta ahora el guion
+nacía de una idea suelta; desde esta versión las dos palancas que deciden van **delante**.
+
+### Añadido
+
+- **El brief del anuncio**, primer paso de cada proyecto: de qué producto es, a quién le habla, la **versión
+  mejor de sí mismo** que compra quien lo ve, **un** ángulo de los doce y la oferta. Es **opcional**: sin brief,
+  el proyecto se escribe y se produce exactamente como antes.
+- **Los doce ángulos** como catálogo editable, con su definición, por dónde entra y un ejemplo escrito: problema,
+  identidad, mecanismo, beneficio, objeciones, emocional, estatus, miedo, comodidad, precio, comparación y
+  rompemitos. **Un solo ángulo por vídeo**: mezclar varios es el error más común y aquí no se puede ni guardar.
+- **La oferta como ficha reutilizable** atada a un producto: qué se da (lo único obligatorio), precio, garantía,
+  urgencia y regalo. Lo que dejes vacío **no aparece** en el guion: no se inventa un precio ni una garantía. Se
+  puede **duplicar** a otro producto y se edita en un solo sitio para las doce variantes.
+- **Hooks y guion desde el brief**: el asistente propone **cinco arranques** para elegir y editar y un guion por
+  escenas, con el ángulo y la oferta ya decididos. Con su estimación y su confirmación de coste, como el resto
+  del texto. El hook elegido se escribe como **primera frase del guion** y su movimiento de cámara y su gesto
+  llegan a la dirección de la primera escena, sin duplicar el dato.
+  Los cinco hooks pagados **se guardan en el proyecto** antes de responder: si la respuesta se pierde, siguen ahí.
+- **Variantes por ángulo**: crear proyectos **hermanos** del mismo producto y la misma oferta, uno por ángulo,
+  con **una sola confirmación de coste agregada** y hasta doce de una vez. Cada hermano nace como
+  «Título · Ángulo» y solo se escribe texto: **no se genera ningún vídeo**.
+- **Declaración de veracidad** en los ángulos que afirman algo comprobable —mecanismo, beneficio, miedo y
+  comparación—: aviso claro, el texto entero delante y una casilla. Sin ella no se pide el guion, y el mensaje
+  dice exactamente qué falta. Se guarda con su fecha y su IP, como el consentimiento.
+- **Jev comprueba el ángulo** con el veredicto `angulo_fiel`: si el guion responde al ángulo elegido, si **mezcla
+  otros** (y dice cuáles) y si la oferta aparece como se definió. Se pide **a mano**, va **en sombra** —se
+  registra y no bloquea nada— y se puede decir si tiene razón o se equivoca.
+- **Admin › Ajustes › Estrategia del anuncio**: interruptores del brief y de las variantes. El catálogo de
+  ángulos se edita en Admin › Presets, categoría «Ángulo del anuncio», con su «por dónde entra», su ejemplo y si
+  pide declaración; solo lo amplía quien administra, porque su definición es con lo que se comprueba el guion.
+- **Guía «La estrategia del anuncio»** en la documentación y ADR-0032 con el brief a nivel de proyecto.
+
+### Corregido
+
+- **Editar un ángulo del anuncio ya no lo deja mudo.** Guardar un preset de la categoría «Ángulo del anuncio»
+  desde el admin descartaba su «por dónde entra», su ejemplo y, peor, su obligación de declarar veracidad. Ahora
+  los tres se conservan y se editan desde el mismo diálogo.
+
 ## [0.26.2] · 2026-09-28
 
 ### Corregido

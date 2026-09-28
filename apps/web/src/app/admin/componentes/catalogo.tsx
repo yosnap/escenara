@@ -1,6 +1,7 @@
 "use client";
 
 import { SeccionAcciones } from "./secciones/acciones";
+import { SeccionAnuncio } from "./secciones/anuncio";
 import { SeccionControles } from "./secciones/controles";
 import { SeccionCreador } from "./secciones/creador";
 import { SeccionCuentas } from "./secciones/cuentas";
@@ -30,6 +31,7 @@ const INDICE = [
   ["presets", "Presets y prompt"],
   ["direccion", "Dirección del clip"],
   ["proyectos", "Proyectos y plan"],
+  ["anuncio", "Estrategia del anuncio"],
   ["cuentas", "Cuentas"],
   ["secretos", "Secretos"],
   ["estados", "Estados y presupuesto"],
@@ -73,6 +75,7 @@ export function Catalogo() {
         <SeccionPresets />
         <SeccionDireccion />
         <SeccionProyectos />
+        <SeccionAnuncio />
         <SeccionCuentas />
         <SeccionSecretos />
         <SeccionEstados />
