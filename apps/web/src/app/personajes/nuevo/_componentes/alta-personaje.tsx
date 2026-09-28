@@ -118,6 +118,7 @@ export function AltaPersonaje({ minimoReferencias }: { minimoReferencias: number
     const registro = await registrarConsentimiento(id, {
       titular: consentimiento.titular,
       mayoriaDeEdad: consentimiento.mayoriaDeEdad,
+      coherencia: consentimiento.coherencia,
       alcance: consentimiento.alcance,
       ...(exigeDocumento(consentimiento.titular) && consentimiento.documento[0]
         ? { documentoId: consentimiento.documento[0].id }

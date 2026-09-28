@@ -41,6 +41,12 @@ export const alcanceUso = pgEnum("consent_scope", ["personal", "comercial"]);
 
 export const origenReferencia = pgEnum("reference_origin", ["foto_original", "vista_generada"]);
 
+/**
+ * Veredicto de la comprobación de identidad de una referencia (0.24.0). `sin_comprobar` es el estado de todo lo
+ * anterior a esta versión y el de todo lo que no se compara: **no** significa «sospechosa».
+ */
+export const veredictoIdentidad = pgEnum("reference_identity_verdict", ["sin_comprobar", "pasa", "revisar", "no_pasa"]);
+
 export const characters = pgTable(
   "characters",
   {
@@ -109,6 +115,17 @@ export const consentRecords = pgTable(
      * guardados aquí, la declaración queda con su cuenta y su fecha, que es lo que hay que poder demostrar.
      */
     syntheticDeclared: boolean("synthetic_declared").notNull().default(false),
+    /**
+     * Declaración de que el titular acepta que **su cara se envíe al servicio de comprobación de coherencia**
+     * (0.24.0). Es una declaración aparte y no se deduce de ninguna otra a propósito: comprobar que una vista
+     * generada es la misma persona obliga a mandar su cara a un modelo que **no es** el que genera, y un
+     * consentimiento firmado para generar vídeo no dice nada de eso.
+     *
+     * Sin ella, un personaje **real** no se comprueba: su vista generada se queda `sin_comprobar`, no cubre en la
+     * cobertura y la ficha explica qué falta. Un personaje **inventado** no la necesita, porque no hay ninguna
+     * persona cuya cara salga de aquí.
+     */
+    coherenceDeclared: boolean("coherence_declared").notNull().default(false),
     usageScope: alcanceUso("usage_scope").notNull().default("personal"),
     /**
      * Documento firmado del tercero, guardado como medio de la biblioteca. `set null` a propósito: si el
@@ -176,6 +193,18 @@ export const characterReferences = pgTable(
      * es un rechazo (lo rechazado no se guarda): es la razón por la que la ficha la sigue señalando.
      */
     rejectionReason: text("rejection_reason"),
+    /**
+     * Veredicto **vigente** de la comprobación de identidad (0.24.0): si esta vista generada es la misma persona
+     * que la cara de referencia del personaje.
+     *
+     * Aquí y no derivado de `coherence_decisions` porque es lo que lee la cobertura en cada carga de la ficha, y
+     * porque es el veredicto *actual* de esta foto: la historia de cómo se llegó a él está en esa tabla. Solo
+     * tiene sentido en una `vista_generada` de un personaje **real**; en un inventado su cara **es** la generada
+     * y en una foto original no hay nada que comparar, así que las dos se quedan en `sin_comprobar`.
+     */
+    identityVerdict: veredictoIdentidad("identity_verdict").notNull().default("sin_comprobar"),
+    /** Por qué, escrito para el usuario. Vacío mientras no se haya comprobado. */
+    identityReason: text("identity_reason").notNull().default(""),
     sortOrder: integer("sort_order").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

@@ -49,6 +49,11 @@ function esConsentimientoRepetido(error: unknown): boolean {
 export interface DatosConsentimiento {
   titular: unknown;
   mayoriaDeEdad: unknown;
+  /**
+   * Autorización para la comprobación de identidad (0.24.0). **Opcional**, a diferencia de la mayoría de edad:
+   * sin ella el personaje funciona igual que hasta la 0.23.x y sus vistas generadas no cuentan para la cobertura.
+   */
+  coherencia?: unknown;
   alcance?: unknown;
   /** Medio de la biblioteca con el documento firmado; obligatorio para un tercero. */
   documentoId?: unknown;
@@ -191,6 +196,7 @@ export async function registrarConsentimiento(
         characterId: personaje.id,
         holderType: titular,
         adultDeclared: true,
+        coherenceDeclared: datos.coherencia === true,
         usageScope: alcance,
         documentMediaId: documentoId,
         registeredBy: actor.id,

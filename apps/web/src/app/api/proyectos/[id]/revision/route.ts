@@ -8,12 +8,15 @@ import {
   leerId,
   manejador,
 } from "@/server/asistente/http";
+import { comprobarEscena } from "@/server/coherencia/escena";
+import { corregirDecision } from "@/server/coherencia/registro";
 import { estadoDeRevision, estadoDeRevisionDeEscena } from "@/server/revision/consulta";
 import { revisarAutomaticamente } from "@/server/revision/ejecutar";
 import {
   accionHumana,
   esAccionPantalla,
   leerConfirmacionMultimodal,
+  leerCorreccionCoherencia,
   leerEscenaId,
   leerMotivo,
 } from "@/server/revision/entrada";
@@ -40,7 +43,11 @@ export const GET = manejador(async (_: Request, contexto: ContextoId, actor) =>
  * - `rechazar`: no vale, con motivo. Avisa, no bloquea;
  * - `marcar-critico`: no vale y **no se exporta** hasta resolverlo, con motivo;
  * - `multimodal`: pide la opinión de un modelo. **Cuesta créditos**, así que exige la confirmación del coste con su
- *   sello y nunca se lanza sola.
+ *   sello y nunca se lanza sola;
+ * - `coherencia`: comprueba con Jev si la escena cubre el guion, si el resultado encaja y si la emoción pega
+ *   (0.24.0). Va **en sombra**: queda registrada con su evidencia y **no** cambia la severidad ni lo que bloquea;
+ * - `coherencia-correccion`: la persona dice si ese veredicto tiene razón o se equivoca. Es la única etiqueta de
+ *   referencia que hay, y es de lo que sale el panel de acierto.
  */
 export const POST = manejador(async (peticion: Request, contexto: ContextoId, actor) => {
   exigirMismoOrigen(peticion);
@@ -59,6 +66,14 @@ export const POST = manejador(async (peticion: Request, contexto: ContextoId, ac
 
   if (cuerpo.accion === "comprobar") {
     await revisarAutomaticamente(actor, escenaId);
+  } else if (cuerpo.accion === "coherencia") {
+    // En sombra: lo que devuelve queda registrado y se enseña, y no cambia la severidad ni lo que bloquea.
+    await comprobarEscena(actor, escenaId);
+  } else if (cuerpo.accion === "coherencia-correccion") {
+    const { decisionId, correccion } = leerCorreccionCoherencia(cuerpo);
+    if (!(await corregirDecision(actor.id, decisionId, correccion))) {
+      throw new ErrorProyecto(404, "Esa comprobación de coherencia no existe.");
+    }
   } else if (cuerpo.accion === "multimodal") {
     await revisarConModelo(actor, escenaId, leerConfirmacionMultimodal(cuerpo));
   } else {

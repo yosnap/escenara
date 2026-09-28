@@ -62,6 +62,12 @@ export function PanelConsentimiento({
               ["Titular", ETIQUETA_TITULAR[consentimiento.titular]],
               ["Alcance de uso", ETIQUETA_ALCANCE[consentimiento.alcance]],
               ["Mayoría de edad declarada", consentimiento.mayoriaDeEdad ? "Sí" : "No"],
+              [
+                "Comprobación de parecido autorizada",
+                consentimiento.coherenciaDeclarada
+                  ? "Sí"
+                  : "No: sus vistas generadas no cuentan como fotos de referencia",
+              ],
               ["Registrado", fecha(consentimiento.registradoEn)],
               ...(consentimiento.revisadoEn
                 ? ([

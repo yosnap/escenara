@@ -1,4 +1,4 @@
-import type { Cobertura, MotivoRechazo, RechazoDeReferencia, Vista } from "./captura-personaje";
+import type { Cobertura, IdentidadReferencia, MotivoRechazo, RechazoDeReferencia, Vista } from "./captura-personaje";
 import type { DiferenciaFicha, FichaPersonaje } from "./ficha-personaje";
 import type { Medio } from "./media/tipos";
 import type { RegistroOmniVista } from "./omni";
@@ -173,6 +173,17 @@ export const AVISO_SIN_TERCEROS =
 export const AVISO_DATOS_AL_PROVEEDOR =
   "Al generar con este personaje se envían a KIE sus fotos de referencia y el texto de su ficha (rasgos, estilo, vestuario, personalidad y descripción), que forma parte del prompt. Si esta instalación traduce los prompts al inglés, ese texto pasa además por el modelo de texto de KIE, y su traducción se guarda con tu cuenta hasta que borres el personaje.";
 
+/**
+ * Lo que hay que declarar para que la comprobación de identidad de 0.24.0 pueda mirar la cara de esta persona.
+ *
+ * Va aparte del resto y **no se deduce de ninguna otra declaración**: comprobar si una vista generada es la misma
+ * persona obliga a mandar dos fotos suyas a un servicio que **no es** el que genera, y un consentimiento firmado
+ * para producir vídeo no dice nada de eso. Sin esta casilla no se envía nada y las vistas generadas no cuentan
+ * para la cobertura, que es exactamente lo que pasaba hasta la 0.23.x.
+ */
+export const AVISO_COHERENCIA =
+  "Autorizo que, para comprobar que una imagen generada sigue siendo esta misma persona, se envíen dos fotos suyas al servicio de percepción configurado en esta instalación (hoy, un servicio compatible con la API de OpenAI que tú mismo has dado de alta). De ahí solo sale una descripción escrita de los rasgos, que es lo que se compara. Sin esta autorización la comprobación no se hace y sus vistas generadas no cuentan como fotos de referencia.";
+
 export const AVISO_CONTROL_NO_GARANTIA =
   "Este registro es un control del producto, no una verificación. Escenara no comprueba identidades ni edades: guarda tu declaración con tu cuenta y la fecha, y quien administra la instalación revisa los documentos de terceros.";
 
@@ -196,6 +207,13 @@ export interface ReferenciaVista {
    * van **todos**, no solo el primero: una foto puede estar a la vez borrosa y oscura.
    */
   motivosMarcada: MotivoRechazo[];
+  /**
+   * Veredicto de la comprobación de identidad (0.24.0). Solo dice algo en una `vista_generada`; en una foto
+   * original es siempre `sin_comprobar`, porque es ella la que define la cara y no hay nada que comparar.
+   */
+  identidad: IdentidadReferencia;
+  /** Por qué, escrito para el usuario. Vacío mientras no se haya comprobado. */
+  identidadMotivo: string;
   orden: number;
 }
 
@@ -205,6 +223,8 @@ export interface ConsentimientoVista {
   titular: TitularConsentimiento;
   /** Declaración de mayoría de edad, obligatoria para registrar. */
   mayoriaDeEdad: boolean;
+  /** Autorización para la comprobación de identidad (0.24.0). `false` en todo lo anterior a esa versión. */
+  coherenciaDeclarada: boolean;
   alcance: AlcanceUso;
   /** Documento firmado del tercero; `null` cuando el titular no lo exige. */
   documento: Medio | null;

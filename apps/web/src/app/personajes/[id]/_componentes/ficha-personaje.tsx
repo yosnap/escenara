@@ -13,6 +13,7 @@ import {
   anadirImagenesGeneradas,
   anadirReferencias,
   asignarVistasDeReferencias,
+  comprobarIdentidadDeReferencia,
   ordenarReferencias,
   quitarReferencias,
   type Resultado,
@@ -116,11 +117,30 @@ export function FichaPersonaje({
   const cambiarVista = (referenciaId: string, vista: Vista | null) =>
     void aplicar(asignarVistasDeReferencias(personaje.id, [{ id: referenciaId, vistaClave: vista }]));
 
+  /**
+   * Comprueba el parecido de una vista generada. Si **no** se ha podido comprobar, se enseña el motivo arriba: es
+   * información (falta la autorización, falta un servicio que vea, Jev no contestó), no un fallo silencioso.
+   */
+  const comprobarParecido = async (referenciaId: string) => {
+    setOcupado(true);
+    setError(null);
+    const respuesta = await comprobarIdentidadDeReferencia(personaje.id, referenciaId);
+    setOcupado(false);
+    if (!respuesta.ok) {
+      setError(respuesta.error);
+      return;
+    }
+    if (!respuesta.datos.comprobada) setError(respuesta.datos.motivo);
+    setPersonaje(respuesta.datos.personaje);
+    router.refresh();
+  };
+
   const registrar = (estado: EstadoConsentimiento) =>
     aplicar(
       registrarConsentimiento(personaje.id, {
         titular: estado.titular,
         mayoriaDeEdad: estado.mayoriaDeEdad,
+        coherencia: estado.coherencia,
         alcance: estado.alcance,
         ...(exigeDocumento(estado.titular) && estado.documento[0] ? { documentoId: estado.documento[0].id } : {}),
       }),
@@ -259,6 +279,7 @@ export function FichaPersonaje({
                     onCambio={cambiarReferencias}
                     onAnadir={anadirFotos}
                     onVista={cambiarVista}
+                    onIdentidad={(referenciaId) => void comprobarParecido(referenciaId)}
                     ocupado={ocupado}
                   />
                 </div>

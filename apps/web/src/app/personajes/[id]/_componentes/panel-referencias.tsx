@@ -8,6 +8,7 @@ import { type ElementoOrdenable, ListaOrdenable } from "@/components/ui/lista-or
 import { MiniaturaMedio } from "@/components/ui/media/miniatura-medio";
 import { SelectorMedios } from "@/components/ui/media/selector-medios";
 import { DistintivoOrigen } from "@/components/ui/personajes/distintivo-origen";
+import { EstadoIdentidad } from "@/components/ui/personajes/estado-identidad";
 import { FotosRechazadas } from "@/components/ui/personajes/fotos-rechazadas";
 import { Selector } from "@/components/ui/select";
 import {
@@ -56,6 +57,7 @@ export function PanelReferencias({
   onCambio,
   onAnadir,
   onVista,
+  onIdentidad,
   ocupado,
 }: {
   personaje: PersonajeVista;
@@ -65,6 +67,8 @@ export function PanelReferencias({
   onAnadir: (medioIds: string[], deTodasFormas?: string[]) => Promise<ResultadoAnadir>;
   /** Asigna la vista de una foto que ya está en el personaje; `null` la deja sin clasificar. */
   onVista: (referenciaId: string, vista: Vista | null) => void;
+  /** Comprueba el parecido de una vista generada (0.24.0). Devuelve el motivo si no se ha podido comprobar. */
+  onIdentidad: (referenciaId: string) => void;
   ocupado: boolean;
 }) {
   const [nuevas, setNuevas] = useState<Medio[]>([]);
@@ -140,6 +144,16 @@ export function PanelReferencias({
         )}
         {referencia.origen === "vista_generada" && !personaje.inventado && (
           <p className="text-xs text-texto-suave">No cuenta como foto original del personaje.</p>
+        )}
+        {/* El parecido solo se comprueba en lo generado: una foto tuya **es** la referencia, no se compara. */}
+        {referencia.origen === "vista_generada" && (
+          <EstadoIdentidad
+            identidad={referencia.identidad}
+            motivo={referencia.identidadMotivo}
+            inventado={personaje.inventado}
+            ocupado={ocupado}
+            onComprobar={() => onIdentidad(referencia.id)}
+          />
         )}
         {referencia.motivosMarcada.map((motivo) => (
           <p key={motivo} className="text-xs font-medium text-aviso">

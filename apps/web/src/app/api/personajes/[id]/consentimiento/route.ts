@@ -14,6 +14,7 @@ export const POST = manejador(async (peticion: Request, contexto: ContextoId, ac
     await registrarConsentimiento(actor, id, {
       titular: cuerpo.titular,
       mayoriaDeEdad: cuerpo.mayoriaDeEdad,
+      coherencia: cuerpo.coherencia,
       alcance: cuerpo.alcance,
       documentoId: cuerpo.documentoId,
     }),

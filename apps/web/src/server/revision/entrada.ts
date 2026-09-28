@@ -1,3 +1,4 @@
+import { type CorreccionHumana, esCorreccion } from "@/lib/coherencia";
 import { type AccionRevision, esAccionRevision, MOTIVO_MAXIMO } from "@/lib/revision";
 import { ErrorProyecto } from "../asistente/errores";
 import type { ConfirmacionMultimodal } from "./multimodal";
@@ -13,7 +14,16 @@ import type { ConfirmacionMultimodal } from "./multimodal";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Acciones de la pantalla de revisión, incluidas las que no son decisiones humanas. */
-export const ACCIONES_PANTALLA = ["comprobar", "aceptar", "rechazar", "marcar-critico", "multimodal"] as const;
+export const ACCIONES_PANTALLA = [
+  "comprobar",
+  "aceptar",
+  "rechazar",
+  "marcar-critico",
+  "multimodal",
+  /** Coherencia con Jev (0.24.0): comprobar la escena y corregir un veredicto. Las dos van **en sombra**. */
+  "coherencia",
+  "coherencia-correccion",
+] as const;
 export type AccionPantalla = (typeof ACCIONES_PANTALLA)[number];
 
 export const esAccionPantalla = (v: unknown): v is AccionPantalla => ACCIONES_PANTALLA.includes(v as AccionPantalla);
@@ -28,6 +38,21 @@ export function leerEscenaId(cuerpo: Record<string, unknown>): string {
 /** Acción humana de la pantalla, si lo es. */
 export const accionHumana = (accion: AccionPantalla): AccionRevision | null =>
   esAccionRevision(accion) ? accion : null;
+
+/** Decisión que se corrige y qué dice la persona de ella. Es la etiqueta con la que se mide el acierto. */
+export function leerCorreccionCoherencia(cuerpo: Record<string, unknown>): {
+  decisionId: string;
+  correccion: CorreccionHumana;
+} {
+  const decisionId = cuerpo.decisionId;
+  if (typeof decisionId !== "string" || !UUID.test(decisionId)) {
+    throw new ErrorProyecto(400, "Esa comprobación de coherencia no existe.");
+  }
+  if (!esCorreccion(cuerpo.correccion)) {
+    throw new ErrorProyecto(400, "Di si la comprobación tiene razón o se equivoca.");
+  }
+  return { decisionId, correccion: cuerpo.correccion };
+}
 
 /** Motivo escrito por la persona que revisa. Aquí solo se acota el tamaño; el mínimo lo exige el servicio. */
 export function leerMotivo(cuerpo: Record<string, unknown>): string {

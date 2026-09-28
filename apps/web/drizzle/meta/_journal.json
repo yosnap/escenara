@@ -232,6 +232,13 @@
       "when": 1790577737513,
       "tag": "0032_duraciones_y_texto_a_imagen",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1790579830336,
+      "tag": "0033_coherencia_jev_laya",
+      "breakpoints": true
     }
   ]
 }

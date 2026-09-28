@@ -192,11 +192,34 @@ export interface ImagenParaChat {
 }
 
 /**
+ * Formatos de audio que admite la entrada multimodal. Son los que la convención de OpenAI nombra en
+ * `input_audio.format`, y los mismos que devuelve el resto de esta aplicación.
+ */
+export const FORMATOS_AUDIO_CHAT = ["mp3", "wav", "ogg", "flac", "m4a"] as const;
+export type FormatoAudioChat = (typeof FORMATOS_AUDIO_CHAT)[number];
+
+/**
+ * Audio que acompaña a una petición de texto, para los modelos **omnimodales** (0.24.0). Va en base64 dentro de la
+ * propia petición, por el mismo motivo que la imagen: un enlace obligaría a publicar la voz de alguien en una
+ * dirección accesible desde fuera.
+ *
+ * **Formato comprobado el 2026-09-28**: la referencia pública de NaN builders (`https://nan.builders/openapi.json`)
+ * documenta `text` e `image_url` como partes del mensaje y declara que `mimo-v2.5` y `mimo-v2.6-flash` aceptan
+ * audio, pero **no publica la forma de esa parte**. Se usa la convención de la API de OpenAI, que es la que estos
+ * servicios dicen seguir: `{ type: "input_audio", input_audio: { data, format } }`. Si un servicio no la
+ * entendiera, contestaría un 400 y la percepción lo diría con su mensaje en vez de inventarse hechos.
+ */
+export interface AudioParaChat {
+  formato: FormatoAudioChat;
+  base64: string;
+}
+
+/**
  * Pide un texto. `instrucciones` las compone **siempre el servidor** (van como mensaje `system`); `entrada` es el
  * contenido del usuario, ya limpio y delimitado por quien llama. `stream: false`: el texto se lee de una vez.
  *
- * Con `imagen`, el mensaje del usuario viaja en el formato multimodal de la API de OpenAI (`image_url` con una
- * `data:` URL), que es el que entienden estos servicios. Sin ella, viaja como cadena, igual que siempre.
+ * Con `imagen` o con `audio`, el mensaje del usuario viaja en el formato multimodal de la API de OpenAI, que es el
+ * que entienden estos servicios. Sin ninguno de los dos, viaja como cadena, igual que siempre.
  *
  * Lo que devuelve **no es de fiar**: aquí solo se extrae la cadena, y quien la usa la trata como propuesta.
  */
@@ -206,14 +229,26 @@ export async function pedirChat(
     instrucciones: string;
     entrada: string;
     imagen?: ImagenParaChat;
+    audio?: AudioParaChat;
   },
 ): Promise<TextoCompatible> {
-  const mensajeDelUsuario = peticion.imagen
-    ? [
-        { type: "text", text: peticion.entrada },
-        { type: "image_url", image_url: { url: `data:${peticion.imagen.mime};base64,${peticion.imagen.base64}` } },
-      ]
-    : peticion.entrada;
+  const partes: unknown[] = [];
+  if (peticion.imagen || peticion.audio) {
+    partes.push({ type: "text", text: peticion.entrada });
+    if (peticion.imagen) {
+      partes.push({
+        type: "image_url",
+        image_url: { url: `data:${peticion.imagen.mime};base64,${peticion.imagen.base64}` },
+      });
+    }
+    if (peticion.audio) {
+      partes.push({
+        type: "input_audio",
+        input_audio: { data: peticion.audio.base64, format: peticion.audio.formato },
+      });
+    }
+  }
+  const mensajeDelUsuario = partes.length > 0 ? partes : peticion.entrada;
   const respuesta = await llamar(
     peticion,
     "chat/completions",

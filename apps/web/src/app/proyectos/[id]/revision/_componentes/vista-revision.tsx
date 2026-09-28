@@ -11,7 +11,13 @@ import {
   type RevisionProyectoVista,
   textoDeBloqueo,
 } from "@/lib/revision";
-import { comprobarClip, decidirRevision, revisarConModelo } from "./api-revision";
+import {
+  comprobarClip,
+  comprobarCoherencia,
+  corregirCoherencia,
+  decidirRevision,
+  revisarConModelo,
+} from "./api-revision";
 import { TarjetaRevision } from "./tarjeta-revision";
 
 /**
@@ -105,6 +111,10 @@ export function VistaRevision({ inicial }: { inicial: RevisionProyectoVista }) {
                   El aviso de gasto alto y la clave de la confirmación llegan desde la tarjeta: el aviso nunca se da
                   por aceptado aquí, y la clave es la suya, estable mientras no cambie lo que se confirma.
                 */
+                onCoherencia={() => void ejecutar(() => comprobarCoherencia(revision.proyectoId, escena.id))}
+                onCorregirCoherencia={(decisionId, correccion) =>
+                  void ejecutar(() => corregirCoherencia(revision.proyectoId, escena.id, decisionId, correccion))
+                }
                 onMultimodal={(confirmacion) =>
                   void ejecutar(() =>
                     revisarConModelo(revision.proyectoId, escena.id, {

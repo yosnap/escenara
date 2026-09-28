@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import { type Comprobacion, esModoCoherencia, type ModoCoherencia, UMBRAL_POR_DEFECTO } from "@/lib/coherencia";
 import { db } from "./db/cliente";
 import { settings } from "./db/esquema";
 
@@ -118,6 +119,37 @@ export interface Ajustes {
    */
   revisionMultimodalActiva: boolean;
   /**
+   * Coherencia con Jev (RF13, 0.24.0). Cada comprobación tiene **su modo** y **su umbral de confianza**: no hay
+   * ninguna frontera universal, y el propio PRD (§9) avisa de que tomar la confianza por una tasa de acierto es
+   * el error clásico.
+   *
+   * De fábrica: la identidad **activa** (su veredicto decide si una vista generada cubre) y las otras tres en
+   * **sombra** (se registran con su evidencia y no bloquean nada), que es lo que el propietario decidió el
+   * 2026-09-28 para poder medir su acierto antes de darles poder.
+   */
+  coherenciaIdentidad: ModoCoherencia;
+  coherenciaGuion: ModoCoherencia;
+  coherenciaResultado: ModoCoherencia;
+  coherenciaEmocion: ModoCoherencia;
+  /** Confianza mínima (0–1) para actuar. Por debajo, el veredicto es «míralo tú» y no decide nada. */
+  coherenciaUmbralIdentidad: number;
+  coherenciaUmbralGuion: number;
+  coherenciaUmbralResultado: number;
+  coherenciaUmbralEmocion: number;
+  /**
+   * Modelos de **percepción** que se prueban primero dentro del mapa del usuario: el de imagen describe la cara y
+   * el encuadre, el omnimodal describe la voz y el ambiente. Si el usuario no los tiene dados de alta, se recorre
+   * su mapa tal cual: aquí no se inventa ninguna entrada que él no haya añadido.
+   */
+  coherenciaModeloImagen: string;
+  coherenciaModeloAudio: string;
+  /**
+   * Euros por millón de tokens de entrada de Jev, para poder decir lo que cuesta la comprobación. **0 de fábrica**:
+   * lo paga la instalación con su propia clave y su tarifa la mide quien administra, igual que el cambio de
+   * crédito a euros de cada proveedor. Con 0, el panel enseña los tokens y no un euro inventado.
+   */
+  coherenciaEurosPorMillonTokens: number;
+  /**
    * Voz y subtítulos (RF08, 0.21.0). **La voz se elige por proyecto**, no aquí: lo que se ajusta en el panel es
    * si esta instalación ofrece la pista de voz de pago y con qué transcriptor local trabaja.
    */
@@ -226,6 +258,21 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   revisionExigirAudio: false,
   // Apagada: cuesta créditos y es una opinión, no un veredicto. Encenderla es decidir que se ofrece ese gasto.
   revisionMultimodalActiva: false,
+  // La identidad decide (su veredicto es el que hace que una vista generada cubra); las otras tres registran y
+  // no bloquean nada, para poder medir su acierto antes de darles poder (propietario, 2026-09-28).
+  coherenciaIdentidad: "activa",
+  coherenciaGuion: "sombra",
+  coherenciaResultado: "sombra",
+  coherenciaEmocion: "sombra",
+  coherenciaUmbralIdentidad: UMBRAL_POR_DEFECTO,
+  coherenciaUmbralGuion: UMBRAL_POR_DEFECTO,
+  coherenciaUmbralResultado: UMBRAL_POR_DEFECTO,
+  coherenciaUmbralEmocion: UMBRAL_POR_DEFECTO,
+  // Los dos de NaN builders: `gemma4` es el más barato que ve, y `mimo-v2.5` es de los dos únicos que oyen.
+  coherenciaModeloImagen: "gemma4",
+  coherenciaModeloAudio: "mimo-v2.5",
+  // Sin tarifa medida en esta instalación: 0 € hasta que quien administra la mida, como con el resto.
+  coherenciaEurosPorMillonTokens: 0,
   // La pista de voz de pago arranca apagada: el modo «voz del clip» no gasta nada más y es el de fábrica.
   vozTtsActivo: false,
   transcripcionBinario: "whisper-cli",
@@ -288,6 +335,20 @@ function urlPublicaValida(v: unknown): boolean {
 
 // Identificador de cliente OAuth: solo los caracteres que usan Google y GitHub, o vacío para desactivarlo.
 const idCliente = (v: unknown) => texto(300)(v) && /^[a-z0-9._~-]*$/i.test(v as string);
+
+/**
+ * Umbral de confianza: de 0,5 a 0,99. Por debajo de 0,5 no hay umbral que valga (la respuesta ya es más probable
+ * que su contraria), y 1 exigiría una certeza que ningún modelo devuelve, así que nada pasaría nunca.
+ */
+const umbral = (v: unknown) =>
+  typeof v === "number" && Number.isFinite(v) && v >= 0.5 && v <= 0.99 && Math.round(v * 100) === v * 100;
+
+const MENSAJE_UMBRAL = "Indica la confianza mínima de 0,50 a 0,99, con dos decimales.";
+const MENSAJE_MODO = "Elige «apagada», «sombra» o «activa».";
+const MENSAJE_MODELO = "Escribe el identificador del modelo, sin espacios (por ejemplo «gemma4»).";
+
+/** Identificador de modelo de un servicio compatible, con la misma forma que admite `lib/compatible.ts`. */
+const identificadorModelo = (v: unknown) => texto(120)(v) && /^[\w.:@/-]*$/.test(v as string);
 
 const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensaje: string }> = {
   registroAbierto: { valido: booleano, mensaje: "Debe ser sí o no." },
@@ -355,6 +416,20 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
   },
   revisionExigirAudio: { valido: booleano, mensaje: "Debe ser sí o no." },
   revisionMultimodalActiva: { valido: booleano, mensaje: "Debe ser sí o no." },
+  coherenciaIdentidad: { valido: esModoCoherencia, mensaje: MENSAJE_MODO },
+  coherenciaGuion: { valido: esModoCoherencia, mensaje: MENSAJE_MODO },
+  coherenciaResultado: { valido: esModoCoherencia, mensaje: MENSAJE_MODO },
+  coherenciaEmocion: { valido: esModoCoherencia, mensaje: MENSAJE_MODO },
+  coherenciaUmbralIdentidad: { valido: umbral, mensaje: MENSAJE_UMBRAL },
+  coherenciaUmbralGuion: { valido: umbral, mensaje: MENSAJE_UMBRAL },
+  coherenciaUmbralResultado: { valido: umbral, mensaje: MENSAJE_UMBRAL },
+  coherenciaUmbralEmocion: { valido: umbral, mensaje: MENSAJE_UMBRAL },
+  coherenciaModeloImagen: { valido: identificadorModelo, mensaje: MENSAJE_MODELO },
+  coherenciaModeloAudio: { valido: identificadorModelo, mensaje: MENSAJE_MODELO },
+  coherenciaEurosPorMillonTokens: {
+    valido: decimal(0, 1000),
+    mensaje: "Indica lo que cuesta un millón de tokens de entrada de Jev en euros, con cuatro decimales como mucho.",
+  },
   vozTtsActivo: { valido: booleano, mensaje: "Debe ser sí o no." },
   transcripcionBinario: {
     // Nombre de orden o ruta, sin espacios ni metacaracteres: se ejecuta como proceso, así que aquí se acota lo
@@ -492,6 +567,23 @@ export async function guardarAjustes(cambios: Partial<Record<keyof Ajustes, unkn
  * `compatible` y `local` valen 0 € a propósito: se pagan por cuota del plan o no se pagan, y su llamada no tiene
  * precio por petición.
  */
+/** Modo y umbral configurados para una comprobación de coherencia. Es el único sitio que los empareja. */
+export function coherenciaDe(ajustes: Ajustes, comprobacion: Comprobacion): { modo: ModoCoherencia; umbral: number } {
+  const modos: Record<Comprobacion, ModoCoherencia> = {
+    identidad: ajustes.coherenciaIdentidad,
+    guion: ajustes.coherenciaGuion,
+    resultado: ajustes.coherenciaResultado,
+    emocion: ajustes.coherenciaEmocion,
+  };
+  const umbrales: Record<Comprobacion, number> = {
+    identidad: ajustes.coherenciaUmbralIdentidad,
+    guion: ajustes.coherenciaUmbralGuion,
+    resultado: ajustes.coherenciaUmbralResultado,
+    emocion: ajustes.coherenciaUmbralEmocion,
+  };
+  return { modo: modos[comprobacion], umbral: umbrales[comprobacion] };
+}
+
 export function eurosPorCreditoDe(ajustes: Ajustes, proveedor: string): number {
   if (proveedor === "kie") return ajustes.eurosPorCreditoKie;
   if (proveedor === "google") return ajustes.eurosPorCreditoGoogle;

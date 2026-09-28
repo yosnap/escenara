@@ -2,6 +2,57 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.24.0] · 2026-09-28
+
+### Decisión firme del propietario
+
+- **La identidad decide; el guion, la emoción y la voz solo miran.** Cuando Jev da una vista generada por la misma
+  persona, esa vista **cuenta como foto de referencia** de un personaje real. Las otras tres comprobaciones nacen
+  en **modo sombra**: se registran con su evidencia y no bloquean ni cambian nada, para poder medir su acierto
+  antes de darles poder (ADR-0030).
+- **La cara de una persona real solo se comprueba si su consentimiento lo dice.** Comparar dos fotos suyas obliga a
+  mandarlas a un servicio de percepción que no es el que genera, y un consentimiento firmado para producir vídeo no
+  cubre eso. Sin esa autorización no sale ni un byte y sus vistas generadas siguen sin contar, exactamente como
+  hasta la 0.23.x. Un personaje inventado no la necesita.
+
+### Añadido
+
+- **Comprobación de parecido en las vistas generadas.** En la ficha del personaje, cada vista generada trae su
+  veredicto («es la misma persona», «míralo tú», «no parece la misma persona») con el motivo y un botón para
+  comprobarla o volver a comprobarla. La que pasa deja de faltar en la cobertura.
+- **Coherencia de una escena en la pantalla de revisión**: si la escena cubre el guion, si el resultado encaja con
+  lo descrito y si la emoción de la voz pega con el tono. Cada veredicto trae su evidencia y su confianza, y dos
+  botones —«tiene razón» y «se equivoca»— que son la **única** etiqueta con la que se mide si acierta.
+- **Percepción con el mapa de modelos**: la cara, el fotograma y la voz los describe un servicio compatible con la
+  API de OpenAI del propio usuario (`gemma4` para imagen y `mimo-v2.5` para audio, de fábrica), recorriendo sus
+  reservas con la regla de dinero de siempre. Se paga por la **cuota del plan**, así que se apunta con **0
+  créditos** y lo que se guarda son los tokens.
+- **Admin › Ajustes › Coherencia**: modo y umbral de confianza de cada comprobación, modelos de percepción, tarifa
+  de Jev y la clave de TypeSafe (cifrada en la bóveda, de la instalación y no de cada usuario).
+- **Admin › Coherencia**: acierto de cada comprobación, falsos pases y frenos de más, medido solo con lo que las
+  personas han corregido. Con menos de 20 correcciones enseña el recuento y **no** el porcentaje, y dice por qué.
+
+### Cambiado
+
+- La confianza se muestra siempre con su advertencia: dice cómo de concentrada está la respuesta del modelo, **no**
+  cuántas veces acierta.
+- El registro de gasto del usuario no incluye lo que cuesta Jev: lo paga la instalación con su propia clave, y
+  meterlo ahí inflaría el consumo de quien no lo ha hecho. Se ve agregado en Admin › Coherencia.
+
+### Actualizar desde la 0.23.x
+
+- `bun run db:backup` y `bun run db:migrate`: la migración `0031_coherencia_jev_laya` crea `coherence_decisions`,
+  añade el veredicto de identidad a las referencias de personaje y la declaración de coherencia a los
+  consentimientos. **Nada de lo que ya había cambia de comportamiento por migrar.**
+- En **Admin › Ajustes › Coherencia**, pega la clave de TypeSafe. Sin ella las comprobaciones no se hacen y la
+  pantalla lo dice; no falla nada más.
+- Cada usuario que quiera comprobar necesita un **servicio compatible con la API de OpenAI que vea imágenes** en
+  «Tu cuenta» (y que oiga audio, para la emoción de la voz). Sin él, la pantalla dice qué falta.
+- Para comprobar el parecido de un personaje **real**, vuelve a registrar su consentimiento marcando la
+  autorización nueva. Mientras no lo hagas, todo sigue como en la 0.23.x.
+- Opcional: pon la tarifa de Jev en euros por millón de tokens de entrada. Con 0 se enseñan los tokens y no un
+  euro inventado.
+
 ## [0.23.4] · 2026-09-28
 
 ### Añadido

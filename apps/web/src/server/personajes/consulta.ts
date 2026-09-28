@@ -178,6 +178,7 @@ export function vistaConsentimiento(fila: FilaConsentimiento, documento: Medio |
     id: fila.id,
     titular: fila.holderType,
     mayoriaDeEdad: fila.adultDeclared,
+    coherenciaDeclarada: fila.coherenceDeclared,
     alcance: fila.usageScope,
     documento,
     registradoEn: fila.registeredAt.toISOString(),
@@ -201,13 +202,19 @@ function vistaReferencia(fila: FilaReferencia, medio: Medio): ReferenciaVista {
         ? { ancho: fila.width, alto: fila.height, nitidez: fila.sharpness, luminosidad: fila.brightness }
         : null,
     motivosMarcada: motivosGuardados(fila.rejectionReason),
+    identidad: fila.identityVerdict,
+    identidadMotivo: fila.identityReason,
     orden: fila.sortOrder,
   };
 }
 
 /** Referencias reducidas a lo que necesita la cobertura de vistas. */
 const paraCobertura = (filas: FilaReferencia[]): ReferenciaParaCobertura[] =>
-  filas.map((f) => ({ vistaClave: esVista(f.viewKey) ? f.viewKey : null, origen: f.origin }));
+  filas.map((f) => ({
+    vistaClave: esVista(f.viewKey) ? f.viewKey : null,
+    origen: f.origin,
+    identidad: f.identityVerdict,
+  }));
 
 /**
  * Cobertura de vistas de un personaje leída de la base de datos. Es el **único** sitio que la calcula, así que

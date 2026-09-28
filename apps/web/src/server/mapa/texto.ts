@@ -6,7 +6,7 @@ import { db } from "../db/cliente";
 import { assistantRuns, type FilaEjecucionAsistente, usageLedger } from "../db/esquema";
 import { elegirModelo } from "../proveedores/catalogo";
 import type { Buscador } from "../proveedores/codigos";
-import { type ImagenParaChat, pedirChat } from "../proveedores/compatible/cliente";
+import { type AudioParaChat, type ImagenParaChat, pedirChat } from "../proveedores/compatible/cliente";
 import { ErrorCatalogo } from "../proveedores/contrato";
 import { MS_TEXTO } from "../proveedores/kie/texto";
 import { adaptadorDe } from "../proveedores/registro";
@@ -44,6 +44,23 @@ export interface PeticionDeTexto {
    * descripción sola. Quien llama sabe si la imagen llegó por `conImagen`.
    */
   imagen?: ImagenParaChat;
+  /**
+   * Audio que acompaña al texto (0.24.0), para la **percepción** de la voz y del ambiente. Igual que la imagen,
+   * solo lo reciben las entradas de un servicio compatible: ningún modelo de pago del catálogo oye audio.
+   */
+  audio?: AudioParaChat;
+  /**
+   * Limita el recorrido a las entradas que **pueden ver y oír** (los servicios compatibles con la API de OpenAI),
+   * y con ello a las que se pagan por cuota del plan. Lo usa la percepción de 0.24.0: mandarle una imagen a una
+   * entrada de pago que no la admite sería pagar por una descripción de nada.
+   */
+  soloMultimodal?: boolean;
+  /**
+   * Modelos que se prueban **antes** que el resto, en este orden, cuando el mapa del usuario los tiene. Es lo que
+   * permite que la percepción de imagen pida `gemma4` y la de audio `mimo-v2.5` sin sacarlas del mapa: si el
+   * usuario no los tiene, se recorre su mapa tal cual y no se inventa ninguna entrada que él no haya dado de alta.
+   */
+  modelosPreferidos?: readonly string[];
   /**
    * Solo se puede gastar lo que el usuario vio y confirmó: la entrada principal (si es de pago y la confirmó) y
    * las que se pagan por cuota del plan. Ninguna **otra** entrada de pago del mapa se prueba, porque su coste no
@@ -168,9 +185,12 @@ export async function pedirTextoPorMapa(peticion: PeticionDeTexto): Promise<Text
   const entradas = await resolverMapa(peticion.usuarioId, TIPO_TEXTO);
   // `local` no sabe escribir texto: la transcripción es lo único que hoy se hace en la propia máquina.
   const sinLocal = entradas.filter((e) => e.proveedor !== "local");
+  // Ver y oír solo lo saben los servicios compatibles, que además se pagan por cuota y no por petición.
+  const delTipo = peticion.soloMultimodal ? sinLocal.filter((e) => e.proveedor === "compatible") : sinLocal;
+  const ordenadas = ordenarPorPreferencia(delTipo, peticion.modelosPreferidos ?? []);
   const utiles = peticion.limitarAConfirmado
-    ? sinLocal.filter((e, i) => i === 0 || e.proveedor === "compatible")
-    : sinLocal;
+    ? ordenadas.filter((e, i) => i === 0 || e.proveedor === "compatible")
+    : ordenadas;
   const resultado = await recorrerMapa(
     utiles,
     (entrada, posicion) => intentarEntrada(peticion, entrada, posicion),
@@ -192,6 +212,23 @@ export async function pedirTextoPorMapa(peticion: PeticionDeTexto): Promise<Text
     conImagen: peticion.imagen !== undefined && resultado.entrada.proveedor === "compatible",
     intentos: resultado.intentos,
   };
+}
+
+/**
+ * Sube al principio las entradas cuyo modelo está en `preferidos`, en el orden de `preferidos`, y deja el resto
+ * detrás **tal como estaba**. No añade ni quita nada: el mapa sigue siendo el del usuario, solo cambia por cuál se
+ * empieza cuando la llamada necesita algo que un modelo concreto hace mejor.
+ */
+function ordenarPorPreferencia(entradas: readonly EntradaResuelta[], preferidos: readonly string[]): EntradaResuelta[] {
+  if (preferidos.length === 0) return [...entradas];
+  const posicionDe = (entrada: EntradaResuelta) => {
+    const i = preferidos.indexOf(entrada.modelo);
+    return i === -1 ? preferidos.length : i;
+  };
+  return [...entradas]
+    .map((entrada, orden) => ({ entrada, orden, preferencia: posicionDe(entrada) }))
+    .sort((a, b) => a.preferencia - b.preferencia || a.orden - b.orden)
+    .map((e) => e.entrada);
 }
 
 async function intentarEntrada(peticion: PeticionDeTexto, entrada: EntradaResuelta, posicion: number): Promise<string> {
@@ -220,6 +257,7 @@ async function entradaPorCuota(
     entrada: peticion.entrada,
     buscar: peticion.buscar,
     ...(peticion.imagen ? { imagen: peticion.imagen } : {}),
+    ...(peticion.audio ? { audio: peticion.audio } : {}),
   });
   await apuntarPorCuota(peticion, entrada, claveIdempotencia, respuesta.tokensEntrada, respuesta.tokensSalida);
   return respuesta.texto;

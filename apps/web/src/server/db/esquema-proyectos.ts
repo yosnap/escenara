@@ -262,6 +262,10 @@ export const claims = pgTable(
  *
  * `ficha_personaje` (0.22.1) es la que propone los campos de la ficha de un personaje a partir de su
  * descripción y, cuando el modelo las admite, de una imagen suya. No es de ningún proyecto.
+ *
+ * `percepcion` (0.24.0) es la que describe **hechos** de una imagen o de un audio para la comprobación de
+ * coherencia. Va siempre por un servicio compatible, que se paga por cuota del plan, así que su apunte es de 0
+ * créditos con los tokens informados.
  */
 export const tipoEjecucionAsistente = pgEnum("assistant_run_kind", [
   "concepto",
@@ -269,6 +273,7 @@ export const tipoEjecucionAsistente = pgEnum("assistant_run_kind", [
   "storyboard",
   "traduccion",
   "ficha_personaje",
+  "percepcion",
 ]);
 
 export const estadoEjecucionAsistente = pgEnum("assistant_run_state", ["reservado", "listo", "fallido"]);

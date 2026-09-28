@@ -256,9 +256,29 @@ export const ordenarReferencias = (id: string, ids: string[]) =>
 export const asignarVistasDeReferencias = (id: string, vistas: { id: string; vistaClave: Vista | null }[]) =>
   pedir<PersonajeVista>(`/api/personajes/${id}/referencias`, json("PATCH", { vistas }));
 
+/**
+ * Comprueba si una vista generada es la misma persona que la cara de referencia (0.24.0). Devuelve el personaje
+ * recalculado, así que la cobertura que se ve después es la de verdad.
+ *
+ * `comprobada: false` **no es un error de red**: es que no se ha podido comprobar (falta la autorización del
+ * consentimiento, falta un servicio que vea, o Jev no ha contestado) y `motivo` dice cuál de las tres.
+ */
+export const comprobarIdentidadDeReferencia = (id: string, referenciaId: string) =>
+  pedir<{
+    comprobada: boolean;
+    motivo: string;
+    veredicto: string | null;
+    evidencia: string;
+    confianza: number;
+    decisionId: string;
+    personaje: PersonajeVista;
+  }>(`/api/personajes/${id}/identidad`, json("POST", { referenciaId }));
+
 export interface DatosConsentimientoEnvio {
   titular: string;
   mayoriaDeEdad: boolean;
+  /** Autorización para la comprobación de identidad (0.24.0). Opcional. */
+  coherencia: boolean;
   alcance: string;
   documentoId?: string;
 }
