@@ -1,19 +1,15 @@
 import { createHash } from "node:crypto";
 import { and, eq, inArray, like, lt, sql } from "drizzle-orm";
 import { INSTRUCCIONES_TRADUCCION, leerTraducciones, peticionDeTraduccion } from "@/lib/asistente";
-import { esProveedor } from "@/lib/boveda";
-import { detalleDeTiempo, type IntentoProveedor, mensajeDeFalloDeProveedor } from "@/lib/diagnostico-proveedor";
+import { type IntentoProveedor, mensajeDeFalloDeProveedor } from "@/lib/diagnostico-proveedor";
 import { leerAjustes } from "../ajustes";
-import { cerrarGastoDeEjecucion, reservarEjecucion } from "../asistente/gasto";
 import { eleccionDeTexto } from "../asistente/texto";
 import { db, type Ejecutor } from "../db/cliente";
 import { assistantRuns, translationCache } from "../db/esquema";
-import { exigirCredencial } from "../generacion/comprobaciones";
 import { ErrorGeneracion } from "../generacion/errores";
+import { ErrorDeTexto, ErrorPeticionRepetida, pedirTextoPorMapa, type TextoDelMapa } from "../mapa/texto";
 import type { Buscador } from "../proveedores/codigos";
-import { relevoDeTexto, sugerenciaDeRelevo } from "../proveedores/compatible/relevo";
-import { ErrorCatalogo, ErrorProveedor } from "../proveedores/contrato";
-import { MS_TEXTO } from "../proveedores/kie/texto";
+import { ErrorCatalogo } from "../proveedores/contrato";
 
 /**
  * Traducción al inglés de lo que el usuario escribe en español, **en el servidor y antes de componer el prompt**
@@ -202,12 +198,15 @@ export async function borrarTraduccionesDePersonaje(ejecutor: Ejecutor, personaj
 }
 
 /**
- * Traduce los textos que faltan. Primero con el modelo de texto del catálogo, que es el que cobra créditos, y si
- * falla con los servicios compatibles con la API de OpenAI del usuario (`relevoDeTexto`).
+ * Traduce los textos que faltan **recorriendo el mapa de modelos de texto** del usuario (0.21.1): la entrada
+ * principal primero y, si falla de forma que prueba que no cobró, la siguiente.
  *
- * **Sin doble cobro:** el gasto del modelo principal lo cierra su propia regla de lista blanca antes de pasar a
- * la reserva, y la reserva apunta lo suyo con 0 créditos. Y si todo falla, el error dice **todos** los intentos
- * con su causa concreta, no «vuelve a intentarlo».
+ * **Sin doble cobro:** cada entrada cierra su propio gasto con la regla de lista blanca de siempre, y las que se
+ * pagan por cuota del plan apuntan 0 créditos. Y si ninguna puede, el error dice **todas** las entradas probadas
+ * con su causa concreta, nunca «vuelve a intentarlo».
+ *
+ * Lo que se confirmó antes de generar es el coste de la **entrada principal**, que es el techo: una reserva que
+ * se pague por cuota cuesta menos, nunca más.
  */
 async function pedirTraduccion(
   usuarioId: string,
@@ -215,200 +214,54 @@ async function pedirTraduccion(
   buscar: Buscador,
 ): Promise<Map<string, string>> {
   const originales = pendientes.map((p) => p.texto);
-  const entrada = peticionDeTraduccion(originales);
   const claveIdempotencia = await claveDeTraduccion(usuarioId, pendientes);
-  const principal = await intentoPrincipal(usuarioId, pendientes, entrada, claveIdempotencia, buscar);
-  if (principal.traducidas) return principal.traducidas;
-  if (principal.detener) throw principal.detener;
-
-  const relevo = await relevoDeTexto({
-    usuarioId,
-    kind: "traduccion",
-    instrucciones: INSTRUCCIONES_TRADUCCION,
-    entrada,
-    claveIdempotencia: `${claveIdempotencia}:reserva`,
-    buscar,
-  });
-  const intentos = [principal.intento, ...relevo.intentos];
-  if (!relevo.ok) throw falloDeTraduccion(intentos, sugerenciaDeRelevo(relevo.hayProveedores));
-
-  const traducidas = leerTraducciones(relevo.texto, originales);
-  if (traducidas.size !== originales.length) {
-    intentos.push({
-      proveedor: relevo.nombre,
-      modelo: relevo.modelo,
-      codigo: "respuesta-inesperada",
-      cobro: "sin-cobro",
-      detalle: "contestó, pero su texto no se pudo usar como traducción",
-    });
-    throw falloDeTraduccion(intentos, "");
-  }
-  await guardarEnCache(usuarioId, `${relevo.nombre}/${relevo.modelo}`, pendientes, traducidas);
-  return traducidas;
-}
-
-/**
- * Resultado del intento con el modelo de pago del catálogo: o la traducción, o el intento fallido que hay que
- * contar en el mensaje, o un motivo para **no** pasar a la reserva (`detener`).
- */
-interface IntentoPrincipal {
-  traducidas?: Map<string, string>;
-  intento: IntentoProveedor;
-  /** Error que corta aquí: no es un fallo del proveedor y probar otro no arreglaría nada. */
-  detener?: ErrorGeneracion;
-}
-
-const SIN_INTENTO = (proveedor: string, modelo: string, codigo: IntentoProveedor["codigo"], detalle: string) => ({
-  proveedor,
-  modelo,
-  codigo,
-  cobro: "sin-cobro" as const,
-  detalle,
-});
-
-async function intentoPrincipal(
-  usuarioId: string,
-  pendientes: TextoATraducir[],
-  entrada: string,
-  claveIdempotencia: string,
-  buscar: Buscador,
-): Promise<IntentoPrincipal> {
-  // Sin modelo de texto utilizable no hay ni llamada: se cuenta como intento para que el mensaje lo diga, y la
-  // reserva sigue teniendo sentido porque el problema es de esta instalación, no del texto.
-  let eleccion: Awaited<ReturnType<typeof eleccionDeTexto>>;
+  let resultado: TextoDelMapa;
   try {
-    eleccion = await eleccionDeTexto();
-  } catch (error) {
-    if (!(error instanceof ErrorCatalogo)) throw error;
-    return {
-      intento: SIN_INTENTO(
-        "El modelo de texto de esta instalación",
-        "ninguno",
-        "formato",
-        "no hay modelo de texto con precio registrado",
-      ),
-    };
-  }
-  const { modelo, adaptador, precio } = eleccion;
-  const generarTexto = adaptador.generarTexto;
-  if (!generarTexto || !esProveedor(modelo.proveedor)) {
-    return {
-      intento: SIN_INTENTO(
-        modelo.nombreProveedor,
-        modelo.modelo,
-        "formato",
-        "esta instalación todavía no sabe pedirle texto",
-      ),
-    };
-  }
-  const proveedor = modelo.proveedor;
-  let clave: string;
-  try {
-    clave = await exigirCredencial(usuarioId, proveedor);
-  } catch (error) {
-    if (!(error instanceof ErrorGeneracion)) throw error;
-    return { intento: SIN_INTENTO(modelo.nombreProveedor, modelo.modelo, "rechazada", "no hay clave tuya utilizable") };
-  }
-
-  const creditos = Math.ceil(precio.creditos);
-  const { ejecucion, nueva } = await reservarEjecucion({
-    usuarioId,
-    proyectoId: null,
-    kind: "traduccion",
-    proveedor,
-    modelo: modelo.modelo,
-    claveIdempotencia,
-    creditos,
-    sello: precio.sello,
-  });
-  if (!nueva) {
-    // Otra petición del mismo texto llegó primero. No se llama otra vez —sería pagar dos veces lo mismo—, pero sí
-    // se vuelve a mirar la caché: si la otra ya terminó, están todas y esto puede seguir sin gastar nada.
-    const yaTraducidas = await deLaCache(usuarioId, pendientes);
-    if (yaTraducidas.size === pendientes.length)
-      return { traducidas: yaTraducidas, intento: SIN_INTENTO(modelo.nombreProveedor, modelo.modelo, "ok", "") };
-    // Y si no están, no se afirma nada sobre el cobro: no se sabe si la otra llamada ha terminado, ha fallado o
-    // sigue en curso, y lo único seguro es que aquí no se ha enviado nada a generar. **No se pasa a la reserva**:
-    // traducir otra vez el mismo texto en paralelo es justo lo que la clave de idempotencia evita.
-    return {
-      intento: SIN_INTENTO(modelo.nombreProveedor, modelo.modelo, "ok", ""),
-      detener: new ErrorGeneracion(
-        409,
-        "Tu texto se está traduciendo en otra petición que acabas de hacer. No se ha enviado nada a generar: espera unos segundos y vuelve a intentarlo.",
-      ),
-    };
-  }
-
-  let respuesta: { texto: string; creditos: number | null };
-  try {
-    respuesta = await generarTexto({
-      clave,
-      modelo: modelo.modelo,
+    resultado = await pedirTextoPorMapa({
+      usuarioId,
+      kind: "traduccion",
       instrucciones: INSTRUCCIONES_TRADUCCION,
-      entrada,
+      entrada: peticionDeTraduccion(originales),
+      claveIdempotencia,
       buscar,
     });
   } catch (error) {
-    if (!(error instanceof ErrorProveedor)) {
-      await cerrarGastoDeEjecucion(ejecucion.id, 0, "La llamada no salió de Escenara.", "fallido", 0, "Error interno.");
-      throw error;
+    if (error instanceof ErrorDeTexto) throw new ErrorGeneracion(502, error.mensaje(ENCABEZADO_FALLO));
+    if (error instanceof ErrorPeticionRepetida) {
+      // Otra petición del mismo texto llegó primero. No se llama otra vez —sería pagar dos veces lo mismo—, pero
+      // sí se vuelve a mirar la caché: si la otra ya terminó, están todas y esto sigue sin gastar nada.
+      const yaTraducidas = await deLaCache(usuarioId, pendientes);
+      if (yaTraducidas.size === pendientes.length) return yaTraducidas;
+      // Y si no están, no se afirma nada sobre el cobro: no se sabe si la otra llamada ha terminado, ha fallado o
+      // sigue en curso, y lo único seguro es que aquí no se ha enviado nada a generar.
+      throw new ErrorGeneracion(
+        409,
+        "Tu texto se está traduciendo en otra petición que acabas de hacer. No se ha enviado nada a generar: espera unos segundos y vuelve a intentarlo.",
+      );
     }
-    // Lista blanca: solo se apunta «no ha costado nada» cuando el código **prueba** que no hubo tarea. Es la regla
-    // de dinero de siempre y **no se toca**: es lo que garantiza que la reserva no cobre dos veces lo mismo.
-    await cerrarGastoDeEjecucion(
-      ejecucion.id,
-      error.rechazoProbado ? 0 : null,
-      error.rechazoProbado
-        ? "El proveedor rechazó la traducción sin ejecutarla."
-        : "El proveedor no confirmó la traducción.",
-      "fallido",
-      0,
-      error.message,
-    );
-    return {
-      intento: {
-        proveedor: modelo.nombreProveedor,
-        modelo: modelo.modelo,
-        codigo: error.codigo,
-        cobro: error.rechazoProbado ? "sin-cobro" : "se-desconoce",
-        detalle: error.codigo === "tiempo-agotado" ? detalleDeTiempo(MS_TEXTO) : "",
-      },
-    };
+    if (error instanceof ErrorCatalogo) throw new ErrorGeneracion(error.estado, error.message);
+    throw error;
   }
 
-  const traducidas = leerTraducciones(
-    respuesta.texto,
-    pendientes.map((p) => p.texto),
-  );
-  if (traducidas.size !== pendientes.length) {
-    await cerrarGastoDeEjecucion(
-      ejecucion.id,
-      respuesta.creditos,
-      "La respuesta del modelo no se pudo usar como traducción.",
-      "fallido",
-      0,
-      "Traducción ilegible.",
+  const traducidas = leerTraducciones(resultado.texto, originales);
+  if (traducidas.size !== originales.length) {
+    throw falloDeTraduccion(
+      [
+        ...resultado.intentos,
+        {
+          proveedor: resultado.nombreProveedor,
+          modelo: resultado.modelo,
+          codigo: "respuesta-inesperada",
+          // Ha contestado, así que si cobraba por petición ya ha cobrado: eso se dice.
+          cobro: "cobrado",
+          detalle: "contestó, pero su texto no se pudo usar como traducción",
+        },
+      ],
+      "",
     );
-    return {
-      intento: {
-        proveedor: modelo.nombreProveedor,
-        modelo: modelo.modelo,
-        codigo: "respuesta-inesperada",
-        // Ha contestado, así que ha cobrado: eso se dice, aunque lo que contestó no sirviera.
-        cobro: "cobrado",
-        detalle: "contestó, pero su texto no se pudo usar como traducción",
-      },
-    };
   }
-  await guardarEnCache(usuarioId, modelo.modelo, pendientes, traducidas);
-  await cerrarGastoDeEjecucion(
-    ejecucion.id,
-    respuesta.creditos,
-    "Traducción al inglés del texto que escribió el usuario.",
-    "listo",
-    traducidas.size,
-  );
-  return { traducidas, intento: SIN_INTENTO(modelo.nombreProveedor, modelo.modelo, "ok", "") };
+  await guardarEnCache(usuarioId, `${resultado.nombreProveedor}/${resultado.modelo}`, pendientes, traducidas);
+  return traducidas;
 }
 
 /** Traducciones de esos textos que ya estén en la caché de este usuario. */

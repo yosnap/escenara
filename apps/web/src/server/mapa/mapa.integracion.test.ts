@@ -3,10 +3,17 @@ import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { loadEnvConfig } from "@next/env";
 import sharp from "sharp";
-import { CHAT_200, CHAT_401, CHAT_402, CHAT_429, MODELOS_200, respuestaGrabada } from "./fixtures";
+import {
+  CHAT_200,
+  CHAT_401,
+  CHAT_402,
+  CHAT_429,
+  MODELOS_200,
+  respuestaGrabada,
+} from "../proveedores/compatible/fixtures";
 
 /**
- * Reserva de las llamadas de texto (0.21.1): cuando el modelo de texto de pago falla, la traducción de prompts y
+ * Mapa de modelos de texto (0.21.1): cuando el modelo de texto de pago falla, la traducción de prompts y
  * el asistente de guion vuelven a pedir el mismo texto a los servicios compatibles con la API de OpenAI del
  * usuario, recorriendo sus modelos en orden.
  *
@@ -28,30 +35,31 @@ process.env.ESCENARA_CLAVE_MAESTRA ??= randomBytes(32).toString("base64");
 
 const hayBaseDeDatos = Boolean(process.env.DATABASE_URL);
 if (hayBaseDeDatos) {
-  const { usarBaseDeDatosDePrueba } = await import("../../db/bd-de-prueba");
+  const { usarBaseDeDatosDePrueba } = await import("../db/bd-de-prueba");
   await usarBaseDeDatosDePrueba("escenara_pruebas_relevo");
 }
 
 const { and, eq } = await import("drizzle-orm");
-const { crearSesionDePrueba } = await import("../../auth/sesion-de-prueba");
-const { aplicarMigraciones } = await import("../../db/migrar");
-const { db } = await import("../../db/cliente");
-const { assistantRuns, models, usageLedger, users } = await import("../../db/esquema");
-const { guardarAjustes } = await import("../../ajustes");
-const { guardarCredencial } = await import("../../boveda/credenciales");
-const { guardarCompatible, listarCompatibles } = await import("../../boveda/compatibles");
-const { crearMedio } = await import("../../media/servicio");
-const { crearFotograma } = await import("../../generacion/servicio");
-const { estimar, olvidarSaldos } = await import("../../generacion/estimacion");
+const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
+const { aplicarMigraciones } = await import("../db/migrar");
+const { db } = await import("../db/cliente");
+const { assistantRuns, models, usageLedger, users } = await import("../db/esquema");
+const { guardarAjustes } = await import("../ajustes");
+const { guardarCredencial } = await import("../boveda/credenciales");
+const { guardarCompatible, listarCompatibles } = await import("../boveda/compatibles");
+const { crearMedio } = await import("../media/servicio");
+const { crearFotograma } = await import("../generacion/servicio");
+const { estimar, olvidarSaldos } = await import("../generacion/estimacion");
 const { creditosAConfirmar } = await import("@/lib/generacion");
-const { crearProyecto } = await import("../../asistente/proyectos");
-const { escribirGuion } = await import("../../asistente/generar");
-const { olvidarCatalogo } = await import("../catalogo");
-const { ErrorGeneracion } = await import("../../generacion/errores");
-const { ErrorProyecto } = await import("../../asistente/errores");
-type Buscador = import("../codigos").Buscador;
-type Herramientas = import("../../generacion/herramientas").Herramientas;
-type Actor = import("../../media/servicio").Actor;
+const { crearProyecto } = await import("../asistente/proyectos");
+const { escribirGuion } = await import("../asistente/generar");
+const { olvidarCatalogo } = await import("../proveedores/catalogo");
+const { ErrorGeneracion } = await import("../generacion/errores");
+const { ErrorProyecto } = await import("../asistente/errores");
+const { guardarMapa, mapaVista, recomendadasDe, volverALoRecomendado } = await import("./mapa");
+type Buscador = import("../proveedores/codigos").Buscador;
+type Herramientas = import("../generacion/herramientas").Herramientas;
+type Actor = import("../media/servicio").Actor;
 
 const CLAVE_KIE = "sk-ana-clave-de-kie-inventada-ffff";
 const CLAVE_NAN = "sk-nan-clave-de-ana-inventada-1234";
@@ -121,7 +129,7 @@ async function foto(): Promise<Uint8Array<ArrayBuffer>> {
   return copia;
 }
 
-describe.skipIf(!hayBaseDeDatos)("reserva de las llamadas de texto", () => {
+describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
   type Sesion = Awaited<ReturnType<typeof crearSesionDePrueba>>;
   let ana: Sesion;
   let admin: Sesion;
@@ -150,7 +158,6 @@ describe.skipIf(!hayBaseDeDatos)("reserva de las llamadas de texto", () => {
         trabajosSimultaneos: 20,
         traducirPrompts: true,
         asistenteActivo: true,
-        relevoTextoActivo: true,
       },
       admin.id,
     );
@@ -188,6 +195,20 @@ describe.skipIf(!hayBaseDeDatos)("reserva de las llamadas de texto", () => {
     await db().delete(users).where(eq(users.id, admin.id));
   });
 
+  /** El mapa de texto de Ana: la entrada de pago primero y sus servicios compatibles de reserva detrás. */
+  const ponerMapaCompleto = async () => {
+    const guardados = await listarCompatibles(ana.id);
+    const nan = guardados.find((p) => p.nombre === "NaN builders");
+    const otro = guardados.find((p) => p.nombre === "Otro servicio");
+    await guardarMapa(ana.id, "texto", [
+      { proveedor: "kie", compatibleId: null, modelo: "gpt-5-6-sol" },
+      { proveedor: "compatible", compatibleId: nan?.id ?? "", modelo: "gemma4" },
+      { proveedor: "compatible", compatibleId: nan?.id ?? "", modelo: "deepseek-v4-flash" },
+      { proveedor: "compatible", compatibleId: nan?.id ?? "", modelo: "glm5.3-flash" },
+      { proveedor: "compatible", compatibleId: otro?.id ?? "", modelo: "modelo-de-ultimo-recurso" },
+    ]);
+  };
+
   beforeEach(async () => {
     llamadas.length = 0;
     falloDeKie = 500;
@@ -209,6 +230,7 @@ describe.skipIf(!hayBaseDeDatos)("reserva de las llamadas de texto", () => {
       { nombre: "Otro servicio", urlBase: BASE_OTRO, clave: CLAVE_OTRO, modelos: ["modelo-de-ultimo-recurso"] },
       buscar,
     );
+    await ponerMapaCompleto();
   });
 
   // ── El recorrido ───────────────────────────────────────────────────────────────────────────────────────
@@ -324,19 +346,45 @@ describe.skipIf(!hayBaseDeDatos)("reserva de las llamadas de texto", () => {
     expect(apuntes[0]?.providerName).toBe("NaN builders");
   });
 
-  test("con el modelo de pago funcionando, la reserva ni se toca", async () => {
+  test("con la entrada principal funcionando, las reservas ni se tocan", async () => {
     falloDeKie = null;
     await generar("una escena que traduce quien siempre");
     expect(llamadas).toHaveLength(0);
   });
 
-  test("apagada en Admin › Ajustes, un fallo del modelo de pago deja el trabajo sin hacer", async () => {
-    await guardarAjustes({ relevoTextoActivo: false }, admin.id);
+  test("sin entradas de reserva en el mapa, un fallo de la principal deja el trabajo sin hacer", async () => {
+    await guardarMapa(ana.id, "texto", [{ proveedor: "kie", compatibleId: null, modelo: "gpt-5-6-sol" }]);
     const fallo = (await generar("una escena sin reserva").catch((e: unknown) => e)) as Error;
     expect(fallo).toBeInstanceOf(ErrorGeneracion);
     expect(llamadas).toHaveLength(0);
     expect(fallo.message).toContain("KIE.ai (gpt-5-6-sol)");
-    await guardarAjustes({ relevoTextoActivo: true }, admin.id);
+    await ponerMapaCompleto();
+  });
+
+  test("sin mapa propio se usa el recomendado por la plataforma, deducido del catálogo", async () => {
+    await volverALoRecomendado(ana.id, "texto");
+    const vista = await mapaVista(ana.id, "texto");
+    expect(vista.propio).toBe(false);
+    // La recomendación por defecto es el modelo de texto elegible del catálogo: exactamente lo de antes del mapa.
+    expect(vista.entradas[0]?.modelo).toBe("gpt-5-6-sol");
+    expect(vista.entradas[0]?.utilizable).toBe(true);
+    expect((await recomendadasDe("texto"))[0]?.proveedor).toBe("kie");
+    // Y con el recomendado no hay reserva: al fallar el de pago no se prueba ningún servicio compatible.
+    await expect(generar("una escena con el mapa recomendado")).rejects.toThrow(ErrorGeneracion);
+    expect(llamadas).toHaveLength(0);
+    await ponerMapaCompleto();
+  });
+
+  test("una entrada cuyo proveedor no tiene credencial no se intenta, y la pantalla dice por qué", async () => {
+    await guardarMapa(ana.id, "texto", [
+      { proveedor: "elevenlabs", compatibleId: null, modelo: "un-modelo-de-texto" },
+      { proveedor: "kie", compatibleId: null, modelo: "gpt-5-6-sol" },
+    ]);
+    const vista = await mapaVista(ana.id, "texto");
+    expect(vista.propio).toBe(true);
+    expect(vista.entradas[0]?.utilizable).toBe(false);
+    expect(vista.entradas[0]?.motivo).toContain("ElevenLabs");
+    await ponerMapaCompleto();
   });
 
   // ── El asistente de guion ──────────────────────────────────────────────────────────────────────────────
