@@ -112,10 +112,12 @@ con las **flechas**, **Espacio** para soltarla y **Escape** para dejarlo como es
 para quien use un lector de pantalla. Si el servidor no puede guardar el orden nuevo, se vuelve al anterior y se
 dice. Reordenar **crea una versión** del personaje, igual que añadir o quitar fotos.
 
-## Generar una vista que falta
+## Generar una vista
 
 Cuando falta una vista y no puedes hacer la foto, la tarjeta ofrece **«Generarla»**: Escenara le pide al
-proveedor una imagen de esa vista a partir de las fotos que ya tienes del personaje.
+proveedor una imagen de esa vista a partir de las fotos que ya tienes del personaje. Y si la vista ya tiene fotos
+pero no te convencen (un perfil de cuerpo entero no siempre sirve como perfil de cara), la tarjeta ofrece
+**«Generar una»**, igual que para una vista que falta.
 
 Antes de gastar nada verás el **coste estimado** y tendrás que confirmar, igual que en «Crear»: es dinero de tu
 cuenta en el proveedor. El trabajo va a la cola normal, así que puedes cerrar el navegador y seguirlo en el
@@ -127,7 +129,7 @@ Y lo importante:
   imagen, y nunca se presenta como una foto tuya;
 - **no cuenta** para el mínimo de fotos originales del personaje, ni puede ser su portada;
 - **no cubre** la vista: la cobertura sigue pidiendo la foto de verdad, porque una foto real guía mejor;
-- solo se ofrece para una vista que falta **y que no tenga ya una generada**. Si ya la tienes (con foto o con una vista generada anterior), Escenara se niega a gastar créditos en repetirla;
+- se ofrece para cualquier vista **que no tenga ya una generada**: una por vista, para no encadenar gastos sin querer. Si quieres otra, quita la anterior y vuelve a generarla;
 - si la quitas y la vuelves a añadir desde tu biblioteca, sigue entrando **marcada como generada**: no hay forma de convertirla en una foto tuya.
 
 Para generar hace falta tu clave de KIE en «Tu cuenta». Sin ella, el panel lo dice y no ofrece generar nada;

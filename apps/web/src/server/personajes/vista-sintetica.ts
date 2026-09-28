@@ -45,8 +45,8 @@ export interface PeticionVistaSintetica {
 }
 
 /**
- * La vista tiene que ser del catálogo del personaje, estar entre las que le **faltan** y **no tener ya una
- * vista generada**. Lo segundo y lo tercero son la misma promesa dicha en el docstring de arriba y en la guía
+ * La vista tiene que ser del catálogo del personaje y **no tener ya una vista generada**. Hasta la 0.20.2
+ * además tenía que faltar; desde el 2026-09-28 se puede generar también una vista que ya tiene fotos. Lo segundo y lo tercero son la misma promesa dicha en el docstring de arriba y en la guía
  * de usuario —«solo se ofrece una vez»—, y sin la tercera comprobación se podían encadenar vistas generadas de
  * la misma vista, gastando créditos cada vez, porque una generada no cubre la vista y `faltan` seguía
  * incluyéndola.
@@ -61,12 +61,9 @@ async function vistaQueFalta(personajeId: string, tipo: TipoPersonaje, valor: un
   if (!estado) {
     throw new ErrorPersonaje(400, `«${ETIQUETA_VISTA[valor]}» no es una de las vistas que necesita este personaje.`);
   }
-  if (estado.originales > 0) {
-    throw new ErrorPersonaje(
-      409,
-      `Ya tienes una foto de «${ETIQUETA_VISTA[valor].toLowerCase()}», así que no hace falta gastar créditos en generarla. Si no te sirve, quítala y vuelve a intentarlo.`,
-    );
-  }
+  // Una vista que ya tiene foto **sí** se puede generar (decisión del propietario, 2026-09-28): una foto de perfil
+  // de cuerpo entero no siempre sirve como perfil de cara, y con buenas fotos se puede sacar una mejor. Lo que
+  // no se encadena es la generada: una por vista, y para otra se quita la anterior.
   if (estado.generadas > 0) {
     throw new ErrorPersonaje(
       409,
