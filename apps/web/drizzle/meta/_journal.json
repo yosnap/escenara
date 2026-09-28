@@ -260,6 +260,34 @@
       "when": 1790601103846,
       "tag": "0036_direcciones-guardadas",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1790611194142,
+      "tag": "0037_productos-y-acciones",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1790613105283,
+      "tag": "0038_veredicto-producto-fiel",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1790614942392,
+      "tag": "0039_paso-digital-y-derecho-de-marca",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1790618809622,
+      "tag": "0040_movil-fuera-del-plano",
+      "breakpoints": true
     }
   ]
 }

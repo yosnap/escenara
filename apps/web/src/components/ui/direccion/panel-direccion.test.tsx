@@ -23,6 +23,7 @@ const OPCIONES: OpcionesDeDireccion = {
   localizacion: [{ clave: "cocina", nombre: "Cocina", descripcion: "Una cocina luminosa." }],
   camara: [{ clave: "push-in-ojos", nombre: "Acercarse a los ojos", descripcion: "La cámara se acerca." }],
   microaccion: [{ clave: "asentir", nombre: "Asentir", descripcion: "Asiente una vez." }],
+  accionProducto: [],
 };
 
 const pintar = (conFotograma: boolean) =>

@@ -57,3 +57,18 @@ describe("prompt del clip", () => {
     expect(entrada.image_urls).toEqual(["https://tempfile.kie.ai/a.png"]);
   });
 });
+
+describe("prohibición de texto y etiqueta del producto", () => {
+  test("sin producto la prohibición queda entera y no hay excepción", async () => {
+    const { EXCEPCION_TEXTO_PRODUCTO } = await import("../../direccion/producto");
+    const prompt = promptFotograma("Una mujer en la playa.");
+    expect(prompt).toContain("no logos");
+    expect(prompt).not.toContain(EXCEPCION_TEXTO_PRODUCTO);
+  });
+
+  test("con producto la excepción va detrás de la prohibición, para que no borre la etiqueta", async () => {
+    const { EXCEPCION_TEXTO_PRODUCTO, REGLA_ETIQUETA_PRODUCTO } = await import("../../direccion/producto");
+    const prompt = promptFotograma(`Una mujer con un bote. ${REGLA_ETIQUETA_PRODUCTO}`);
+    expect(prompt.lastIndexOf(EXCEPCION_TEXTO_PRODUCTO)).toBeGreaterThan(prompt.lastIndexOf("no logos"));
+  });
+});

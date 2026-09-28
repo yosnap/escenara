@@ -2,6 +2,7 @@ import {
   type Acento,
   AVISO_DOS_MOVIMIENTOS,
   AVISO_GESTO_ANTES_POCO_FIABLE,
+  AVISO_GUION_EN_BROLL_DE_PRODUCTO,
   AVISO_GUION_EN_CLIP_MUDO,
   AVISO_MOVIMIENTO_AVANZADO,
   avisoGestoNoCabe,
@@ -13,6 +14,7 @@ import {
   type NivelCamara,
   type RegistroEstetico,
 } from "@/lib/direccion";
+import { AVISO_GUION_EN_ACCION_SIN_HABLA } from "@/lib/productos";
 import {
   ACENTO_INGLES,
   ANCLAJES_REALISMO,
@@ -21,8 +23,16 @@ import {
   MODO_MUDO,
   REGISTRO_CAMARA_INGLES,
   REGLA_ANTI_CORTE,
+  SIN_HABLA_EN_ACCION,
   SIN_RETOQUE_FINAL,
 } from "./ingles";
+import {
+  accionSinHabla,
+  bloqueProducto,
+  type ProductoEnPrompt,
+  REGLA_ETIQUETA_PRODUCTO,
+  sustituyeAlSujeto,
+} from "./producto";
 
 /**
  * **Compositor de la dirección del clip**: convierte lo que el usuario ha elegido con botones en el texto que se
@@ -42,6 +52,12 @@ import {
  * 5. **micro-acción `durante` o `despues`** — el gesto que acompaña o sigue a la frase;
  * 6. **voz y acento** — cómo suena quien habla;
  * 7. **regla anti-corte** — siempre, la última.
+ *
+ * El **producto** (0.26.0) entra en dos sitios de ese orden y no en uno: qué se ve y qué se hace con él van
+ * **con el sujeto**, porque es parte de quién y qué sale en el plano; y la regla de que su etiqueta no se toca
+ * va al final, justo antes de la toma única, por lo mismo que la regla de no retoque de una persona real: lo
+ * último es lo que mejor se obedece, y ningún fragmento de catálogo puede quedar por delante y contradecirla.
+ * La toma única **sigue siendo la última**: eso no lo mueve nada.
  *
  * Orden provisional hasta que lo confirme el spike de bajo coste (paso 1 de la fase): está pendiente de la
  * aprobación del propietario porque comprobarlo cuesta generaciones reales.
@@ -107,6 +123,13 @@ export interface DireccionDeClip {
    * (medido en el spike del 2026-09-28).
    */
   segundos: number;
+  /**
+   * El producto que se presenta en el clip, ya resuelto a inglés (0.26.0). `null` = ninguno, que es lo normal.
+   *
+   * Con la acción de b-roll el producto **sustituye al sujeto**: no sale nadie y el clip va mudo aunque el
+   * formato diga otra cosa, porque no hay quien hable.
+   */
+  producto?: ProductoEnPrompt | null;
 }
 
 /** Lo compuesto, con lo que hay que contarle al usuario antes de que pague. */
@@ -183,11 +206,32 @@ export function dirigirClip(direccion: DireccionDeClip, opciones: OpcionesDeDire
     if (direccion.nivelCamara === "avanzado") avisos.push(AVISO_MOVIMIENTO_AVANZADO);
   }
 
-  const habla = formatoHabla(direccion.formato);
+  const producto = direccion.producto ?? null;
+  /**
+   * El b-roll del producto no tiene quien hable: no sale nadie en el plano. Sale mudo aunque el formato del
+   * clip diga «a cámara», y el guion escrito **no viaja**, igual que en la voz en off.
+   */
+  const soloProducto = sustituyeAlSujeto(producto);
+  /**
+   * **Acciones de producto sin habla** (0.26.0): una pasarela, un giro de 360 o una crema que se extiende son
+   * planos visuales y quien sale no está diciendo nada. El clip va mudo aunque el formato sea «a cámara», y el
+   * guion escrito no se envía, exactamente igual que en la voz en off y en el b-roll.
+   */
+  const visualSinHabla = accionSinHabla(producto);
+  const habla = formatoHabla(direccion.formato) && !soloProducto && !visualSinHabla;
   const dialogo = habla ? direccion.dialogo.trim() : "";
-  if (!habla && direccion.dialogo.trim() !== "") avisos.push(AVISO_GUION_EN_CLIP_MUDO);
+  if (!habla && direccion.dialogo.trim() !== "") {
+    avisos.push(
+      soloProducto
+        ? AVISO_GUION_EN_BROLL_DE_PRODUCTO
+        : visualSinHabla
+          ? AVISO_GUION_EN_ACCION_SIN_HABLA
+          : AVISO_GUION_EN_CLIP_MUDO,
+    );
+  }
 
-  const gesto = experto ? "" : direccion.microaccion.trim();
+  // En el b-roll no hay nadie que pueda gesticular: el gesto elegido no se envía.
+  const gesto = experto || soloProducto ? "" : direccion.microaccion.trim();
   // Si la frase llena el clip, el gesto se queda **dentro** del habla: es lo único que cabe, y se dice.
   const palabras = dialogo === "" ? 0 : dialogo.split(/\s+/).filter(Boolean).length;
   const apretado =
@@ -212,20 +256,30 @@ export function dirigirClip(direccion: DireccionDeClip, opciones: OpcionesDeDire
      * en el guion técnico, y así se suman a la escena en lugar de competir con la cámara ni con la voz.
      */
     parrafo([
-      direccion.sujeto,
+      // En el b-roll no sale nadie: el sujeto **es** el producto, y dejar aquí la descripción del personaje
+      // metería a una persona en un plano que se pidió sin ninguna.
+      soloProducto ? "" : direccion.sujeto,
       experto ? direccion.descripcionExperta : direccion.escena,
       experto ? "" : direccion.instruccionesExtra,
     ]),
+    // El producto va con el sujeto: es parte de qué sale en el plano, y trae pegada la acción que se eligió.
+    producto ? bloqueProducto(producto) : "",
     // El gesto previo va **delante** del diálogo: el modelo lo ejecuta antes de abrir la boca.
     parrafo([gestoAntes]),
     // El diálogo, cuando el constructor del modelo no lo coloca él (`kie/modelos.ts › promptEscenaHablada`).
     opciones.dialogoDentro && dialogo !== "" ? `The character says, in Spanish, exactly: "${dialogo}"` : "",
     parrafo([gestoDespues]),
-    habla ? bloqueVoz(direccion) : MODO_MUDO,
+    // Sin habla se describe lo que se ve y el ambiente **en positivo**: a estos modelos no se les prohíbe el
+    // audio, porque prohibírselo es lo que les hace fallar (medido el 2026-09-28).
+    habla ? bloqueVoz(direccion) : visualSinHabla ? SIN_HABLA_EN_ACCION : MODO_MUDO,
     // Los anclajes cierran el modo experto: sin ellos, una descripción escrita entera por el usuario saldría sin
     // nada que pida piel de verdad ni anatomía correcta, y eso no es suyo para quitarlo.
     experto ? anclajesDelClip(direccion) : "",
-    direccion.personajeReal ? SIN_RETOQUE_FINAL : "",
+    // La etiqueta del producto va después del catálogo y antes de la toma única: lo último se obedece mejor, y
+    // la toma única no se mueve de la última posición.
+    producto ? REGLA_ETIQUETA_PRODUCTO : "",
+    // En el b-roll no hay persona a la que no retocar: la regla habla de alguien que no está en el plano.
+    direccion.personajeReal && !soloProducto ? SIN_RETOQUE_FINAL : "",
     REGLA_ANTI_CORTE,
   ]
     .filter((bloque) => bloque !== "")

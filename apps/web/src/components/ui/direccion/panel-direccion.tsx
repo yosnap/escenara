@@ -27,10 +27,12 @@ import {
   type OpcionesDeDireccion,
   REGISTROS_ESTETICOS,
 } from "@/lib/direccion";
+import type { ProductoElegido } from "@/lib/productos";
 import { DIRECCION_VOCAL_MAXIMA } from "@/lib/proyectos";
 import { Casilla } from "../choice";
 import { Aviso } from "../feedback";
 import { AreaTexto, Campo, EntradaTexto } from "../field";
+import { SelectorProducto } from "../productos/selector-producto";
 import { Selector } from "../select";
 import { DireccionesGuardadas } from "./direcciones-guardadas";
 import { ElectorVisual, type OpcionVisual } from "./elector-visual";
@@ -121,6 +123,8 @@ export function PanelDireccion({
   segundos,
   conAcento,
   conFotograma = true,
+  producto,
+  onProducto,
   deshabilitado,
   onCambio,
 }: {
@@ -149,6 +153,16 @@ export function PanelDireccion({
    * queda arriba, con el resto de la dirección del clip.
    */
   conFotograma?: boolean;
+  /**
+   * **El producto del clip** (0.26.0) y qué se hace con él. Viaja aparte de la dirección porque no es lo mismo:
+   * la dirección son claves de catálogo que valen en cualquier proyecto, y un producto es una fila del usuario.
+   *
+   * Se enseña aquí, y solo aquí, porque los dos sitios que dirigen un clip usan este panel: así el producto se
+   * elige junto a la cámara y el gesto, sin duplicar controles. `undefined` en las pantallas que todavía no lo
+   * ofrecen, y entonces el bloque no aparece.
+   */
+  producto?: ProductoElegido;
+  onProducto?: (elegido: ProductoElegido) => void;
   deshabilitado?: boolean;
   onCambio: <C extends keyof DireccionElegidaConAcento>(campo: C, valor: DireccionElegidaConAcento[C]) => void;
 }) {
@@ -334,6 +348,19 @@ export function PanelDireccion({
         }))}
         onCambio={(v) => v && onCambio("registroEstetico", v as DireccionElegidaConAcento["registroEstetico"])}
       />
+
+      {/*
+        El producto va con la dirección del clip y no en otra pantalla: qué se hace con él es lo mismo que
+        elegir el gesto, y separarlo obligaría a describir dos veces la misma escena.
+      */}
+      {producto && onProducto && (
+        <SelectorProducto
+          producto={producto}
+          acciones={opciones.accionProducto}
+          deshabilitado={botonesApagados}
+          onCambio={onProducto}
+        />
+      )}
 
       {conFotograma && (
         <>

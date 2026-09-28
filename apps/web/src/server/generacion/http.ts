@@ -4,6 +4,7 @@ import { dentroDelLimite, type Limite } from "../limite";
 import { ErrorMedio } from "../media/errores";
 import type { Actor } from "../media/servicio";
 import { ErrorPersonaje } from "../personajes/errores";
+import { ErrorProducto } from "../productos/errores";
 import { ErrorPreset } from "../prompts/errores";
 import { ErrorCatalogo } from "../proveedores/contrato";
 import { ErrorGeneracion } from "./errores";
@@ -38,6 +39,8 @@ export function respuestaError(error: unknown): Response {
   // referencias) o a un proyecto (plan sin aprobar, presupuesto del proyecto): la puerta los lanza con la clase
   // y el código de su familia, y el usuario tiene que ver el motivo, no un «error interno».
   if (error instanceof ErrorPersonaje) return Response.json({ error: error.message }, { status: error.estado });
+  // El del producto (0.26.0) llega al elegirlo en un clip o en una escena: uno ajeno responde 404.
+  if (error instanceof ErrorProducto) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorProyecto) return Response.json({ error: error.message }, { status: error.estado });
   console.error("[generacion]", error);
   return Response.json({ error: "Error interno al procesar el trabajo." }, { status: 500 });

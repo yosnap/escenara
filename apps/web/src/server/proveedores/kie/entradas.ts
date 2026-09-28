@@ -70,7 +70,14 @@ function conProporcion(modelo: ModeloVista, entrada: Record<string, unknown>): R
  * entre escenas.
  */
 const entradaOmni: Constructor = (contexto, modelo) => {
-  if (contexto.personajesOmni && contexto.personajesOmni.length > 0) {
+  /**
+   * **Con referencias mandan las referencias** (0.26.0). `character_ids` e `image_urls` son excluyentes en
+   * este modelo, así que cuando el trabajo trae imágenes que enviar —las fotos del personaje y las del
+   * producto— la identidad registrada no se cita: enviar las dos cosas sería darle dos caras a la vez y pagar
+   * por que elija una. Que se pierde la identidad registrada se avisa **antes** de cobrar, en la puerta de
+   * controles (regla `producto-sin-identidad-registrada`).
+   */
+  if (contexto.personajesOmni && contexto.personajesOmni.length > 0 && contexto.urls.length === 0) {
     return conProporcion(modelo, {
       prompt: promptEscenaHablada(contexto.escena, contexto.dialogo),
       duration: String(duracion(modelo, contexto)),
@@ -234,6 +241,24 @@ const CONSTRUCTORES = new Map<string, Constructor>(
  * de los dos sitios se ve en el catálogo pero no se puede elegir.
  */
 export const tieneEntrada = (modelo: string) => CONSTRUCTORES.has(modelo) || familiaDe(modelo) !== undefined;
+
+/**
+ * Modelos cuyas referencias **no son una galería**: lo que reciben son fotogramas del clip, y una imagen de
+ * más no describe mejor la escena, la cambia. Veo 3.1 toma la segunda como **último fotograma**
+ * (`FIRST_AND_LAST_FRAMES_2_VIDEO`, medido el 2026-09-27), y Hailuo 2.3 solo acepta `image_url`, una sola.
+ *
+ * Con estos modelos, las fotos de un producto **no viajan**: el producto se describe en el texto y se avisa
+ * antes de pagar de que no va a llegar ninguna foto suya (regla `producto-referencias-no-caben`).
+ */
+const REFERENCIAS_QUE_SON_FOTOGRAMAS: Record<string, number> = {
+  veo3_fast: 1,
+  veo3_lite: 1,
+  "hailuo/2-3-image-to-video-standard": 1,
+};
+
+/** Cuántas de las referencias de un modelo son galería de verdad. Por defecto, todas. */
+export const referenciasDeGaleria = (modelo: ModeloVista): number =>
+  REFERENCIAS_QUE_SON_FOTOGRAMAS[modelo.modelo] ?? modelo.parametros.maximoReferencias;
 
 /** Entrada lista para `jobs/createTask` con los campos que espera ese modelo concreto. */
 export function entradaDeModelo(modelo: ModeloVista, contexto: ContextoEntrada): Record<string, unknown> {

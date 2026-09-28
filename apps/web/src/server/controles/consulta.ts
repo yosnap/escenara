@@ -7,8 +7,10 @@ import { exigirMedioElegido } from "../generacion/comprobaciones";
 import { elegirParaTipo } from "../generacion/precios";
 import { personajeDeLaCadena } from "../generacion/trabajos";
 import type { Actor } from "../media/servicio";
+import { referenciasVigentesDe } from "../personajes/consulta";
 import { personajePorId } from "../personajes/contexto";
 import { personajePropio } from "../personajes/puede-generar";
+import { hechosDelProducto, productoParaGenerar } from "../productos/prompt";
 import { creditosDelEnvio } from "../prompts/traduccion";
 import type { Buscador } from "../proveedores/codigos";
 import { conVistaQueCompleta, recopilarHechos } from "./hechos";
@@ -64,6 +66,23 @@ export async function evaluarControles(
   // para una escena ajena o inexistente, así que `conEscena` es no nulo exactamente cuando llegó `escenaId`.
   // Resolver el proyecto por otro camino sería leer el presupuesto de un proyecto de otra persona.
   const proyecto = conEscena ? await techoDelProyecto(conEscena.escena.projectId) : null;
+  /**
+   * El producto de la escena (0.26.0), para que el panel enseñe **los mismos avisos** que va a dar la puerta:
+   * la identidad que no cabe, las referencias que se quedan fuera y la marca que el filtro puede rechazar.
+   * En «Crear» no hay escena, y allí el producto se elige junto a la dirección del clip: su aviso llega al
+   * confirmar, que es cuando se sabe cuál es.
+   */
+  const producto = conEscena?.escena.productId
+    ? await productoParaGenerar(actor.id, conEscena.escena.productId, conEscena.escena.productAction)
+    : null;
+  const conProducto = producto
+    ? hechosDelProducto(
+        producto,
+        eleccion.adaptador.referenciasDeGaleria?.(eleccion.modelo) ?? eleccion.modelo.parametros.maximoReferencias,
+        personaje ? (await referenciasVigentesDe(personaje.id)).length : 1,
+        false,
+      )
+    : null;
   const hechos = conVistaQueCompleta(
     await recopilarHechos(
       actor,
@@ -76,6 +95,7 @@ export async function evaluarControles(
         escena: conEscena?.hechos ?? null,
         proyecto,
         primerRetrato: peticion.retratoInventado === true && personaje?.virtual === true,
+        ...(conProducto ? { producto: conProducto.hechos } : {}),
       },
       buscar,
     ),

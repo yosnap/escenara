@@ -220,6 +220,7 @@ function vistaEscena(
       modoExperto: fila.expertMode,
       descripcionExperta: fila.expertDescription,
     },
+    producto: { productoId: fila.productId ?? "", accion: fila.productAction },
     segundos: fila.plannedSeconds,
     estado: fila.state,
     aprobadaEn: fila.approvedAt?.toISOString() ?? null,

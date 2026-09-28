@@ -5,6 +5,7 @@ import { users } from "./esquema-auth";
 import { proveedorCredencial } from "./esquema-boveda";
 import { characters, characterVersions } from "./esquema-personajes";
 import { promptTemplates, promptTemplateVersions } from "./esquema-presets";
+import { products } from "./esquema-productos";
 import { scenes } from "./esquema-proyectos";
 import { jsonb } from "./jsonb";
 
@@ -148,6 +149,31 @@ export const generationJobs = pgTable(
      * hecho histórico de un trabajo que ya se pagó.
      */
     sceneId: uuid("scene_id").references(() => scenes.id, { onDelete: "set null" }),
+    /**
+     * **Producto con el que se pidió el trabajo** (0.26.0), si se pidió con uno. Es lo que permite borrar los
+     * derivados al borrar el producto: sin esta columna, un fotograma con la etiqueta de un producto retirado
+     * seguiría en la biblioteca sin forma de encontrarlo.
+     *
+     * `set null` y **no** cascada, a diferencia del personaje: el trabajo puede llevar además la cara de un
+     * personaje, y borrarlo por el producto se llevaría por delante el historial y los apuntes de gasto de ese
+     * personaje. Lo que se borra al borrar el producto es el **medio resultante**; la fila del trabajo se
+     * queda, con su prompt y su coste, que son hechos históricos.
+     */
+    productId: uuid("product_id").references(() => products.id, { onDelete: "set null" }),
+    /** Clave de la acción de producto que se pidió. Se conserva aunque el producto desaparezca. */
+    productAction: text("product_action").notNull().default(""),
+    /**
+     * Paso del **producto digital** con el que se pidió este trabajo (0.26.0): `pantalla_negra` para el
+     * fotograma del dispositivo apagado e `insertar_captura` para la edición que mete la captura dentro.
+     * Vacío en todo lo demás, que es todo lo que no es un fotograma de un producto digital.
+     */
+    digitalStep: text("digital_step").notNull().default(""),
+    /**
+     * Casilla **«tengo derecho a usar esta marca»** (0.26.0), con su fecha. Obligatoria en cuanto el envío
+     * lleva producto, y `null` cuando no lleva ninguno: es una declaración del usuario sobre una marca, así
+     * que hay que poder demostrar cuándo la hizo, igual que con la de la imagen.
+     */
+    brandRightsAt: timestamp("brand_rights_at", { withTimezone: true }),
     resultMediaId: uuid("result_media_id").references(() => media.id, { onDelete: "set null" }),
     estimatedCredits: integer("estimated_credits").notNull(),
     /** Créditos que informa el proveedor; si no llegan, se conserva la estimación marcada como tal. */
@@ -227,6 +253,7 @@ export const generationJobs = pgTable(
     index("generation_jobs_personaje_idx").on(t.characterId),
     // Índice del proyecto: la página de un proyecto busca los trabajos de sus escenas.
     index("generation_jobs_escena_idx").on(t.sceneId),
+    index("generation_jobs_producto_idx").on(t.productId),
   ],
 );
 

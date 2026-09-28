@@ -51,6 +51,8 @@ export const categoriaPreset = pgEnum("preset_category", [
   "microaccion",
   "registro-estetico",
   "anclajes",
+  // Acciones de producto (0.26.0): qué hace el personaje con el producto delante de la cámara.
+  "accion-producto",
 ]);
 
 export const presets = pgTable(

@@ -24,6 +24,7 @@ import type {
   HechosModelo,
   HechosOmni,
   HechosPersonaje,
+  HechosProducto,
   ParametrosControles,
 } from "./contrato";
 
@@ -186,6 +187,8 @@ export interface SujetoDeHechos {
   proyecto: TechoDeProyecto | null;
   /** Identidad hablada registrada (0.22.0); ausente fuera del modo `omni`. */
   omni?: HechosOmni;
+  /** Producto que se presenta (0.26.0); ausente cuando el envío no lleva ninguno. */
+  producto?: HechosProducto;
   /**
    * Este envío es el **primer retrato** de un personaje inventado (0.22.0), es decir, lo que va a crear su
    * primera referencia. Con él no se le exigen las fotos que todavía no tiene; todo lo demás se evalúa igual.
@@ -220,6 +223,7 @@ export async function recopilarHechos(actor: Actor, sujeto: SujetoDeHechos, busc
     presupuesto,
     escena: sujeto.escena,
     ...(sujeto.omni ? { omni: sujeto.omni } : {}),
+    ...(sujeto.producto ? { producto: sujeto.producto } : {}),
   };
 }
 

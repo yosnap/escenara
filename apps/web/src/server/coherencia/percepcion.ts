@@ -87,8 +87,25 @@ const INSTRUCCIONES_CLIP = [
   "Answer in English, in at most eight short sentences.",
 ].join(" ");
 
+/**
+ * Percepción de un **producto** (0.26.0): su envase y, sobre todo, **lo que pone en él**.
+ *
+ * Se le pide el texto **literal**, palabra por palabra, porque es exactamente lo que hay que comparar: un bote
+ * cuya etiqueta dice otra cosa es otro producto, por mucho que la forma y el color coincidan. Sin pedir el
+ * texto literal, el modelo resume («una etiqueta oscura con letras claras») y con ese resumen nadie puede
+ * decir si la etiqueta cambió.
+ */
+const INSTRUCCIONES_PRODUCTO = [
+  "You are a perception step, not a judge.",
+  "Describe only the product you can actually see: its shape, its material, its colours, the shape and position of its cap or opening, and its proportions.",
+  "Then transcribe every word, letter and number printed on it, literally and in the order they appear, including the brand name; if a word is unreadable, say so instead of guessing it.",
+  "Then describe any logo or symbol on it: what it depicts, where it sits and how big it is.",
+  "Do not identify the brand from memory, do not guess what the product is for, do not describe any person holding it and do not give a score.",
+  "Answer in English, in at most eight short sentences.",
+].join(" ");
+
 /** Qué se está percibiendo. Cada una tiene sus instrucciones y su modelo preferido. */
-export type ClasePercepcion = "cara" | "escena" | "audio" | "referencia" | "clip";
+export type ClasePercepcion = "cara" | "escena" | "audio" | "referencia" | "clip" | "producto";
 
 const INSTRUCCIONES: Record<ClasePercepcion, string> = {
   cara: INSTRUCCIONES_CARA,
@@ -96,6 +113,7 @@ const INSTRUCCIONES: Record<ClasePercepcion, string> = {
   audio: INSTRUCCIONES_AUDIO,
   referencia: INSTRUCCIONES_REFERENCIA,
   clip: INSTRUCCIONES_CLIP,
+  producto: INSTRUCCIONES_PRODUCTO,
 };
 
 /**

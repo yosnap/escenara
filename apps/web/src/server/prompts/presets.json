@@ -285,7 +285,7 @@
       "descripcion": "El personaje habla mirando a cámara.",
       "orden": 10,
       "valores": {
-        "prompt": "A phone-shot social video of a person talking straight to camera",
+        "prompt": "A social video with the look of footage filmed on a smartphone, of a person talking straight to camera; the phone that films is never visible in the frame",
         "formatoClip": "ugc_a_camara"
       }
     },
@@ -970,7 +970,7 @@
       "descripcion": "Luz del sitio y cámara en mano, como un vídeo grabado sin pensarlo.",
       "orden": 10,
       "valores": {
-        "prompt": "shot handheld on a phone, slightly off-centre, with the small imperfections of an unplanned take",
+        "prompt": "with the look of a handheld smartphone shot, slightly off-centre, with the small imperfections of an unplanned take; the phone that takes it is never visible in the frame",
         "registro": "ugc_real"
       }
     },
@@ -981,7 +981,7 @@
       "descripcion": "Luz trabajada y encuadre limpio. La persona sigue siendo ella.",
       "orden": 20,
       "valores": {
-        "prompt": "shot on a modern phone with a clean, deliberate composition and a shallow depth of field",
+        "prompt": "with the look of a modern smartphone camera, a clean, deliberate composition and a shallow depth of field; the phone that takes it is never visible in the frame",
         "registro": "influencer"
       }
     },
@@ -993,6 +993,166 @@
       "orden": 10,
       "valores": {
         "prompt": "Photographic realism: real skin with visible pores and small imperfections, natural asymmetry, a light film of grain. Hands, fingers, teeth and eyes are anatomically correct and unaltered. Do not render this as an illustration, a 3D render, CGI or a digital painting: it is a photograph. No text, no captions, no subtitles, no watermarks, no logos, no written words and no distorted or duplicated body parts anywhere in the image."
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "sostenerlo",
+      "nombre": "Sostenerlo",
+      "descripcion": "Lo tiene en la mano, a la vista, sin taparlo con los dedos.",
+      "orden": 10,
+      "valores": {
+        "prompt": "The person holds the product in one hand, clearly visible, fingers away from the label"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "mirarlo",
+      "nombre": "Mirarlo",
+      "descripcion": "Lo mira mientras lo tiene delante, como quien lo está descubriendo.",
+      "orden": 20,
+      "valores": {
+        "prompt": "The person looks down at the product they are holding, attentive, as if discovering it"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "senalarlo",
+      "nombre": "Señalarlo",
+      "descripcion": "Lo señala con el dedo para que te fijes en él.",
+      "orden": 30,
+      "valores": {
+        "prompt": "The person points at the product with one finger to draw attention to it"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "ensenarlo-a-camara",
+      "nombre": "Enseñarlo a cámara",
+      "descripcion": "Lo gira hacia la cámara con la etiqueta de frente.",
+      "orden": 40,
+      "valores": {
+        "prompt": "The person turns the product towards the camera, front label facing the lens, held steady"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "abrirlo",
+      "nombre": "Abrirlo",
+      "descripcion": "Le quita la tapa o lo abre delante de la cámara.",
+      "orden": 50,
+      "valores": {
+        "prompt": "The person opens the product, removing its cap or lid, hands visible in frame"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "aplicarlo",
+      "nombre": "Aplicarlo o usarlo",
+      "descripcion": "Lo usa de verdad: se lo aplica, lo prueba, lo pone en marcha.",
+      "orden": 60,
+      "valores": {
+        "prompt": "The person actually uses the product, applying or operating it naturally"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "producto-solo",
+      "nombre": "El producto solo",
+      "descripcion": "Plano del producto sin nadie: para intercalar en el montaje.",
+      "orden": 70,
+      "valores": {
+        "prompt": "Product-only shot with no people in frame, the product presented on a clean surface"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "moda-cuerpo-entero",
+      "nombre": "Cuerpo entero",
+      "descripcion": "Se le ve la prenda puesta de arriba abajo, de pie y quieta.",
+      "orden": 110,
+      "valores": {
+        "prompt": "Full-length shot of the person wearing the garment, standing still, the whole outfit visible from head to feet, the fabric falling naturally"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "moda-detalle-tejido",
+      "nombre": "Detalle del tejido",
+      "descripcion": "Primer plano de la tela: su trama, su brillo y su caída.",
+      "orden": 120,
+      "valores": {
+        "prompt": "Extreme close-up of the garment fabric, showing its weave, its texture and the way the light falls on it, the person's hand gently holding the cloth"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "moda-giro-360",
+      "nombre": "Giro de 360°",
+      "descripcion": "Gira sobre sí mismo para que se vea la prenda por detrás.",
+      "orden": 130,
+      "valores": {
+        "prompt": "The person turns slowly all the way around on the spot so the garment is seen from the front, the side and the back, the fabric moving with the turn"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "moda-pasarela",
+      "nombre": "Pasarela",
+      "descripcion": "Camina hacia la cámara como en un desfile.",
+      "orden": 140,
+      "valores": {
+        "prompt": "The person walks straight towards the camera with a steady runway walk, the garment moving with each step, the walk ending facing the lens"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "moda-pose-editorial",
+      "nombre": "Pose de editorial",
+      "descripcion": "Posa quieto, como en una foto de revista.",
+      "orden": 150,
+      "valores": {
+        "prompt": "The person holds a still editorial fashion pose, shoulders and hands deliberately placed, the garment kept clean and uncreased"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "moda-detalle-accesorio",
+      "nombre": "Detalle del accesorio",
+      "descripcion": "Primer plano del bolso, el reloj o el zapato.",
+      "orden": 160,
+      "valores": {
+        "prompt": "Close-up of the accessory worn or held by the person, filling the frame, its material and its fittings clearly visible"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "skincare-abrir-tapa",
+      "nombre": "Abrir la tapa",
+      "descripcion": "Abre el envase enseñando el tapón o el dosificador.",
+      "orden": 210,
+      "valores": {
+        "prompt": "The person opens the product, and the cap, pump or dropper matches the mechanism shown in the product reference image of that part: same shape, same fitting, same way of opening"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "skincare-extender",
+      "nombre": "Extender el producto",
+      "descripcion": "Se extiende la crema por la zona y el producto va desapareciendo hasta absorberse.",
+      "orden": 220,
+      "valores": {
+        "prompt": "The person spreads the product over one area of the skin with their fingertips, and the amount of product on the skin gets smaller as it is spread, until it is fully absorbed and the skin is left with a soft natural finish"
+      }
+    },
+    {
+      "categoria": "accion-producto",
+      "clave": "skincare-masajear",
+      "nombre": "Masajear",
+      "descripcion": "Se masajea el rostro con las yemas de los dedos.",
+      "orden": 230,
+      "valores": {
+        "prompt": "The person massages their face with the fingertips in slow upward circles, the skin moving softly under the fingers"
       }
     }
   ],

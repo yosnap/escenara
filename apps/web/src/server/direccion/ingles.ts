@@ -40,8 +40,21 @@ export const REGLA_ANTI_CORTE =
 export const MODO_MUDO =
   "The character is not talking in this clip: their mouth stays closed and their lips are still, with no dialogue and no lip movement.";
 
+/**
+ * **Acción de producto sin habla** (0.26.0): una pasarela, un giro, un detalle del tejido o una crema que se
+ * extiende son planos visuales, y quien sale no está diciendo nada.
+ *
+ * Se describe **en positivo** —dónde está su atención, qué se mueve y qué ambiente se oye— en lugar de
+ * enumerar lo que no hay, por lo mismo que {@link MODO_MUDO}: pedirle silencio a estos modelos los hace
+ * fallar. Lo único que se dice en negativo es visual, la boca cerrada, y ni siquiera se les pide callar el
+ * ambiente: el constructor del modelo lo pone en positivo.
+ */
+export const SIN_HABLA_EN_ACCION =
+  "This is a visual shot carried by the movement and the texture, not by speech: the person keeps their attention on what they are doing, their mouth stays closed and their lips are still, and the soundtrack is the natural room tone of the place.";
+
 export const FORMATO_CLIP_INGLES: Record<FormatoClip, string> = {
-  ugc_a_camara: "A phone-shot social video of a person talking straight to camera",
+  ugc_a_camara:
+    "A social video with the look of footage filmed on a smartphone, of a person talking straight to camera; the phone that films is never visible in the frame",
   voz_en_off: "A silent b-roll clip meant to sit under a voice-over",
 };
 
@@ -115,8 +128,10 @@ export const ejesVozEnIngles = (ejes: EjesVoz): string[] =>
  * entra en el bloque de cámara y otro en el de luz.
  */
 export const REGISTRO_CAMARA_INGLES: Record<RegistroEstetico, string> = {
-  influencer: "shot on a modern phone with a clean, deliberate composition and a shallow depth of field",
-  ugc_real: "shot handheld on a phone, slightly off-centre, with the small imperfections of an unplanned take",
+  influencer:
+    "with the look of a modern smartphone camera, a clean, deliberate composition and a shallow depth of field; the phone that takes it is never visible in the frame",
+  ugc_real:
+    "with the look of a handheld smartphone shot, slightly off-centre, with the small imperfections of an unplanned take; the phone that takes it is never visible in the frame",
 };
 
 export const REGISTRO_LUZ_INGLES: Record<RegistroEstetico, string> = {

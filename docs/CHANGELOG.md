@@ -2,6 +2,51 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.26.0] · 2026-09-28
+
+Los productos: presentar, mostrar y manipular algo delante de la cámara **sin que su etiqueta cambie**.
+
+### Añadido
+
+- **Productos**, pantalla nueva. Un producto es una ficha tuya con su nombre, su descripción, su tipo (físico
+  o digital) y sus **fotos con un papel cada una**: frontal con la etiqueta, envase, mecanismo, captura de
+  pantalla o el producto solo. Se reutiliza entre clips, escenas y proyectos. Nadie más lo ve.
+- **Elegir producto y acción al dirigir un clip**, en «Crear» y en la escena de un proyecto, con pictograma y
+  frase llana por acción: sostenerlo, mirarlo, señalarlo, enseñarlo a cámara, abrirlo, aplicarlo y el
+  **producto solo**. Las acciones son presets: quien administra las edita sin tocar código.
+- **Acciones de moda**: cuerpo entero, detalle del tejido, giro de 360°, pasarela, pose de editorial y detalle
+  del accesorio. **Acciones de cuidado de la piel**: abrir la tapa (usando tu foto del mecanismo), extender el
+  producto hasta que se absorbe y masajear. Las de piel salen marcadas **«poco fiable»** y avisan antes de
+  cobrar: con los modelos de hoy fallan a menudo.
+- **El plano del producto solo se pide sin personaje**: no sale ninguna persona, así que no hace falta elegir
+  personaje ni confirmar el consentimiento de nadie. Sale mudo, porque no hay quien hable.
+- **Producto digital en tres pasos**: fotograma con la **pantalla apagada**, **inserción de tu captura** en esa
+  pantalla (con su perspectiva, su proporción y sin recortarla) y, después, el clip. Los dos primeros son dos
+  generaciones distintas, cada una con su estimación y su confirmación, y los dos se ven antes de empezar.
+- **La etiqueta no se toca**: a todo lo que lleva producto se le pide expresamente que no rediseñe el envase
+  ni reescriba, traduzca o invente ningún texto ni logo. Y **Jev lo comprueba** después con el veredicto
+  `producto_fiel`, transcribiendo el texto impreso palabra por palabra y comparándolo con tu foto frontal.
+- **Avisos antes de pagar**, todos confirmables y ninguno bloquea: se pierde la identidad registrada, no caben
+  todas las referencias, el modelo elegido no admite la foto del producto, el producto no tiene fotos, se ve
+  una marca (el filtro puede rechazarlo y entonces **no se cobra**) y la acción es poco fiable.
+- **Casilla «Tengo derecho a usar esta marca»**, aparte de la de la imagen. Solo aparece cuando el envío lleva
+  producto y **bloquea el envío** mientras no se marca. Queda registrada con su fecha en el trabajo.
+- Guía [Presentar un producto](guias/productos.md).
+
+### Cambiado
+
+- **Con producto no se cita la identidad registrada** en el proveedor: sus referencias y esa identidad son
+  excluyentes, así que la cara y la voz salen de las fotos del personaje. Se avisa antes de cobrar, con la
+  alternativa de hacer el producto en un plano aparte.
+- **Con un modelo que no admite la foto del producto** —Veo, cuya segunda imagen es el último fotograma del
+  clip y no una galería—, el producto viaja solo descrito con palabras. **No se cambia de modelo por tu
+  cuenta**, porque cambiar de modelo cambia la tarifa: se te dice cuáles sí la llevan y eliges tú.
+- **Borrar un producto no borra nada de lo generado**: se va su ficha y sus referencias, y se quedan los
+  vídeos y fotogramas en tu biblioteca con su archivo, los trabajos con su coste y su historial, y las escenas
+  con su guion, solo que ya sin producto.
+- En «Crear», el producto elegido entra también en el **fotograma**: con uno físico se ve en la mano, y con
+  uno digital ese fotograma **es** el primer paso.
+
 ## [0.25.2] · 2026-09-28
 
 Parche de la 0.25.1: debajo de la dirección volvía a salir la misma botonera —look, duración, plano, ángulo,

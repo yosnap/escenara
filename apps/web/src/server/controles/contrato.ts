@@ -181,6 +181,40 @@ export interface HechosOmni {
   falta: string;
 }
 
+/**
+ * Producto que se presenta en el envío (0.26.0). Este grupo **solo llega cuando hay producto**; sin él no hay
+ * nada que avisar y ninguna de sus reglas se evalúa.
+ *
+ * Los tres avisos que salen de aquí son de los que cuestan dinero si nadie los dice: se pierde la identidad
+ * registrada, no caben todas las referencias o el filtro del proveedor puede rechazar una marca. Los tres son
+ * **salvables**: el usuario los confirma y sigue, que es su decisión, no la nuestra.
+ */
+export interface HechosProducto {
+  nombre: string;
+  /** El producto no tiene ninguna foto que enviar, así que el modelo no sabe qué aspecto tiene. */
+  sinFotos: boolean;
+  /** El tope de referencias del modelo deja fuera fotos del personaje o del producto. */
+  referenciasNoCaben: boolean;
+  /**
+   * El producto tiene fotos y en este modelo **no cabe ninguna**: su segunda imagen no es una galería (en Veo
+   * es el último fotograma del clip). El producto viajaría solo descrito con palabras.
+   */
+  sinHuecoDeReferencia: boolean;
+  /** Modelos de la misma capacidad en los que sí cabe la foto del producto. Solo se rellena si hace falta. */
+  modelosConFoto: string[];
+  /** La acción elegida es de las que hoy salen mal a menudo (las de piel). */
+  pocoFiable: boolean;
+  /** El nombre en castellano de la acción elegida: es el que el usuario leyó en el botón. */
+  nombreAccion: string;
+  /**
+   * `true` cuando llevar el producto obliga a renunciar a la identidad registrada en el proveedor: sus
+   * referencias y su `character_ids` son excluyentes, así que la cara y la voz pasan a salir de las fotos.
+   */
+  identidadRegistradaPerdida: boolean;
+  /** El usuario declaró que en el producto se ve una marca. Decide el aviso del filtro del proveedor. */
+  marcaVisible: boolean;
+}
+
 /** Parámetros de las reglas, editables en Admin › Ajustes (no hay editor de reglas en la interfaz). */
 export interface ParametrosControles {
   /** Avisar cuando falten vistas mínimas del personaje o haya fotos señaladas por calidad. */
@@ -223,6 +257,11 @@ export interface Hechos {
    * que es todo lo de 0.10.0–0.21.1.
    */
   omni?: HechosOmni;
+  /**
+   * Producto que se presenta (0.26.0). Ausente cuando el envío no lleva ninguno, que es todo lo anterior a
+   * esta versión y la mayoría de los clips.
+   */
+  producto?: HechosProducto;
   parametros: ParametrosControles;
 }
 

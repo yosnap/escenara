@@ -248,6 +248,9 @@ function vistaDeEscena(
     presupuestoReintentos: fila.retryBudget,
     motivoUltimoFallo: fila.lastFailureReason,
     cambiadaDesdeLaGeneracion: fila.changedSinceGeneration,
+    conProducto: fila.productId !== null,
+    // Lo mismo que decide el servidor al aprobar el fotograma: un paso, un cobro y un botón que lo dice.
+    faltaInsertarCaptura: fila.productId !== null && (fotograma?.digitalStep ?? "") === "pantalla_negra",
     versiones: versionesDe(trabajos, vigentes, medios),
   };
 }

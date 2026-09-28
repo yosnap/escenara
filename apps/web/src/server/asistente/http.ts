@@ -6,6 +6,7 @@ import { ErrorMedio } from "../media/errores";
 import type { Actor } from "../media/servicio";
 import { ErrorOmni } from "../omni/errores";
 import { ErrorPersonaje } from "../personajes/errores";
+import { ErrorProducto } from "../productos/errores";
 import { ErrorPreset } from "../prompts/errores";
 import { ErrorCatalogo } from "../proveedores/contrato";
 import { ErrorTranscripcion } from "../voz/transcripcion";
@@ -24,6 +25,8 @@ export function respuestaError(error: unknown): Response {
   // asignar protagonista (consentimiento revocado, pocas fotos) y el del catálogo, al estimar sin precio.
   if (error instanceof ErrorProyecto) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorPersonaje) return Response.json({ error: error.message }, { status: error.estado });
+  // El del producto (0.26.0) llega al elegirlo en un clip o en una escena: uno ajeno responde 404.
+  if (error instanceof ErrorProducto) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorGeneracion) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorOmni) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorCatalogo) return Response.json({ error: error.message }, { status: error.estado });

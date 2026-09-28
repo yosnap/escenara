@@ -1,6 +1,6 @@
 {
   "name": "@escenara/web",
-  "version": "0.25.2",
+  "version": "0.26.0",
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "module",

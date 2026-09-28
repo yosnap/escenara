@@ -9,6 +9,7 @@ import { leerCatalogoDeDireccion, nombreDePreset } from "../direccion/catalogo";
 import { type DireccionPedida, pedidoDeDireccion } from "../direccion/fidelidad";
 import { imagenParaModelo } from "../media/procesado";
 import type { Actor } from "../media/servicio";
+import { productoParaGenerar } from "../productos/prompt";
 import { audioDelClip, ErrorAudioDelClip } from "./audio";
 import { decidirCoherencia } from "./decidir";
 import { ErrorFotogramasDelClip, fotogramasDelClip } from "./fotogramas";
@@ -234,6 +235,73 @@ export async function comprobarEscena(actor: Actor, escenaId: unknown): Promise<
     return decision.motivo;
   });
 
+  /**
+   * Fidelidad del producto: si lo que ha salido es **el mismo producto, con la misma etiqueta**.
+   *
+   * Se mira lo mismo que mira el usuario cuando lo juzga: el **clip** si la escena ya lo tiene —porque el
+   * producto se gira, se abre y se manipula, y la etiqueta puede cambiar a mitad de plano—, y el fotograma
+   * aprobado mientras no haya clip. La referencia es la **primera foto del producto**, que es la frontal con
+   * la etiqueta: la que esta versión promete conservar.
+   *
+   * Las dos se describen por separado y con instrucciones distintas —el producto se transcribe palabra por
+   * palabra— y es Jev quien las compara. Describirlas juntas dejaría comparar al modelo de percepción, que es
+   * justo lo que aquí no queremos que haga.
+   */
+  await anotar("producto_fiel", async () => {
+    if (!conCupo) return SIN_CUPO_DE_PERCEPCION;
+    if (!escena.productId) return "Esta escena no lleva ningún producto, así que no hay nada que comparar.";
+    const producto = await productoParaGenerar(actor.id, escena.productId, escena.productAction);
+    const fotoId = producto?.fotos[0];
+    if (!producto || !fotoId) {
+      return "Este producto no tiene ninguna foto de referencia, así que no hay con qué comparar lo generado. Añade al menos la frontal con la etiqueta.";
+    }
+    const clip = await clipDe(escena);
+    if (!clip && !escena.approvedFrameMediaId) {
+      return "Esta escena todavía no tiene fotograma aprobado ni clip, así que no hay resultado en el que mirar el producto.";
+    }
+    // El fotograma y el clip llevan la cara del personaje: la misma puerta de privacidad que el resto.
+    const sinPermiso = await motivoSinPermiso(proyecto);
+    if (sinPermiso) return sinPermiso;
+    const referencia = await imagenDe(fotoId);
+    if (!referencia) return "La foto de referencia de este producto ya no se puede leer.";
+    const resultadoVisto = clip
+      ? await fotogramasDelClip(clip.storageKey, clip.mimeType)
+      : await imagenDe(escena.approvedFrameMediaId);
+    if (!resultadoVisto) {
+      return "Esta escena todavía no tiene fotograma aprobado ni clip, así que no hay resultado en el que mirar el producto.";
+    }
+    const [hechosResultado, hechosProducto] = await Promise.all([
+      percibir({
+        usuarioId: actor.id,
+        proyectoId: proyecto.id,
+        clase: "producto",
+        claveIdempotencia: `coherencia:producto:${escena.id}:${clip ? "clip" : "fotograma"}`,
+        imagen: resultadoVisto,
+      }),
+      percibir({
+        usuarioId: actor.id,
+        proyectoId: proyecto.id,
+        clase: "producto",
+        claveIdempotencia: `coherencia:producto:${escena.id}:referencia:${fotoId}`,
+        imagen: referencia,
+      }),
+    ]);
+    const decision = await decidirCoherencia({
+      usuarioId: actor.id,
+      comprobacion: "producto_fiel",
+      sujeto,
+      percepcion: hechosResultado,
+      referencia: {
+        product_reference: hechosProducto.hechos,
+        // Lo que el usuario escribió y pulsó, en castellano: es lo que puede reconocer en la evidencia.
+        product_name: producto.nombre,
+        product_description: producto.descripcionOriginal || "sin descripción",
+        product_action: producto.nombreAccion || "sin elegir",
+      },
+    });
+    return decision.motivo;
+  });
+
   return resultado;
 }
 
@@ -260,7 +328,7 @@ export async function coherenciaGuardadaDe(actor: Actor, escenaId: unknown): Pro
   const { escena } = await escenaPropia(actor, escenaId);
   const ajustes = await leerAjustes();
   const decisiones: DecisionVista[] = [];
-  for (const comprobacion of ["guion", "resultado", "emocion", "direccion_fiel"] as const) {
+  for (const comprobacion of ["guion", "resultado", "emocion", "direccion_fiel", "producto_fiel"] as const) {
     if (coherenciaDe(ajustes, comprobacion).modo === "apagada") continue;
     const decision = await ultimaDecisionDe(actor.id, escena.id, comprobacion);
     if (decision) decisiones.push(decision);

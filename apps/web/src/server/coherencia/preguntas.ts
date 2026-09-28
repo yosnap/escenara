@@ -22,7 +22,7 @@ import type { PreguntaJev } from "./jev";
  */
 
 /** Versión de este conjunto de preguntas. Se sube **a mano** cuando cambia el texto de alguna. */
-export const VERSION_PREGUNTAS = "coherencia-2";
+export const VERSION_PREGUNTAS = "coherencia-3";
 
 /** Niveles de las preguntas `score`, de peor a mejor. El orden es el que da el valor numérico. */
 const NIVELES_ENCAJE = [
@@ -113,6 +113,29 @@ export const PREGUNTAS: Record<Comprobacion, DefinicionPregunta> = {
     encajan: [],
     etiquetas: {},
   },
+  /**
+   * **Fidelidad del producto** (0.26.0): lo que promete esta versión. Es `noul` y no `score`, al revés que la
+   * dirección, porque la pregunta **sí** es de sí o no: o es el mismo producto con la misma etiqueta, o es
+   * otro. Un bote con el mismo color y otro nombre no es «parcialmente el mismo producto»; es otro, y medirlo
+   * con una escala dejaría que un 60 % pareciera aceptable.
+   *
+   * Lo que decide es el **texto impreso**, y por eso la percepción del producto lo transcribe literalmente:
+   * la forma y el color los copia cualquier modelo, y la etiqueta es justo lo que se inventa.
+   */
+  producto_fiel: {
+    pregunta: {
+      type: "noul",
+      instructions:
+        "Two descriptions are given: one of the reference photo of a product, and one of a generated image or filmstrip in which that product is meant to appear. Both were written by a vision model that only described what it saw. Decide whether the product in the generated result is the same product, with the same label and the same packaging. Judge the printed text first: the brand name and the words on the label must match the reference, letter for letter as far as both descriptions allow. Then judge the shape of the container, its cap or opening, its colours and its logo. Ignore differences in framing, angle, distance, lighting, reflections and how much of the product is visible or occluded by a hand, which change between photographs of the same product. If the generated description does not mention any product at all, it is not the same product.",
+      criteria: {
+        true: "The printed text, the packaging and the logo match: this is the same product",
+        false:
+          "The printed text, the packaging or the logo clearly differ, or no product is visible: this is not the same product",
+      },
+    },
+    encajan: [],
+    etiquetas: { si: "es el mismo producto", no: "no es el mismo producto" },
+  },
 };
 
 /**
@@ -127,14 +150,15 @@ export function evidenciaDe(
 ): string {
   const definicion = PREGUNTAS[comprobacion];
   const porcentaje = `${Math.round(respuesta.encaja * 100)} %`;
-  const cabeza =
-    comprobacion === "identidad"
-      ? `Probabilidad de que sea la misma persona: ${porcentaje}.`
-      : comprobacion === "direccion_fiel"
-        ? `Fidelidad a lo que dirigiste: ${porcentaje}.`
-        : comprobacion === "emocion"
-          ? `Respuesta: ${definicion.etiquetas[respuesta.elegida] ?? respuesta.elegida} (${porcentaje} de encaje).`
-          : `Encaje con lo pedido: ${porcentaje}.`;
+  // Cada comprobación encabeza su evidencia con lo que de verdad ha medido: «encaje con lo pedido» no dice
+  // nada en una pregunta de sí o no, y un porcentaje sin decir de qué es no es evidencia de nada.
+  const CABEZAS: Partial<Record<Comprobacion, string>> = {
+    identidad: `Probabilidad de que sea la misma persona: ${porcentaje}.`,
+    producto_fiel: `Probabilidad de que sea el mismo producto, con la misma etiqueta: ${porcentaje}.`,
+    direccion_fiel: `Fidelidad a lo que dirigiste: ${porcentaje}.`,
+    emocion: `Respuesta: ${definicion.etiquetas[respuesta.elegida] ?? respuesta.elegida} (${porcentaje} de encaje).`,
+  };
+  const cabeza = CABEZAS[comprobacion] ?? `Encaje con lo pedido: ${porcentaje}.`;
   const recorte = hechos.trim().slice(0, 600);
   return recorte === "" ? cabeza : `${cabeza} Lo que se miró: ${recorte}`;
 }

@@ -182,6 +182,7 @@ export function TarjetaEscena({
           bloqueos={bloqueos}
           avisosConfirmados={avisosConfirmados}
           avisos={avisos}
+          conProducto={escena.conProducto}
           onConfirmarAviso={onConfirmarAviso}
           ocupado={ocupado}
           onEnviar={onProducir}
@@ -192,21 +193,37 @@ export function TarjetaEscena({
           no puede ser regenerar el fotograma y pagarlo otra vez. */}
       {(fotogramaPorAprobar(escena) || clipPorEncolar(escena)) && !trabajoEnMarcha(escena.animacion) && (
         <ConfirmacionGasto
-          titulo={escena.fotogramaAprobado ? "Animar el fotograma aprobado" : "Aprobar el fotograma y animarlo"}
-          explicacion={
-            escena.fotogramaAprobado
-              ? `Este fotograma ya está aprobado y todavía no tiene clip: se encola su clip de ${escena.segundos} s en 9:16.`
-              : `Al aprobarlo se encola su clip de ${escena.segundos} s en 9:16. Míralo con las zonas seguras antes de decidir.`
+          titulo={
+            escena.faltaInsertarCaptura
+              ? "Aprobar la pantalla apagada e insertar tu captura"
+              : escena.fotogramaAprobado
+                ? "Animar el fotograma aprobado"
+                : "Aprobar el fotograma y animarlo"
           }
-          creditos={produccion.creditosPorClip}
+          explicacion={
+            escena.faltaInsertarCaptura
+              ? "Este es el paso 1 del producto digital: el dispositivo con la pantalla apagada. Al aprobarlo se encola el paso 2, que mete tu captura dentro de esa pantalla con su perspectiva y sin recortarla. El clip llega después, cuando apruebes el resultado."
+              : escena.fotogramaAprobado
+                ? `Este fotograma ya está aprobado y todavía no tiene clip: se encola su clip de ${escena.segundos} s en 9:16.`
+                : `Al aprobarlo se encola su clip de ${escena.segundos} s en 9:16. Míralo con las zonas seguras antes de decidir.`
+          }
+          // El paso de la inserción es un fotograma, así que cuesta lo que un fotograma y no lo que un clip.
+          creditos={escena.faltaInsertarCaptura ? produccion.creditosPorFotograma : produccion.creditosPorClip}
           umbral={produccion.umbralAvisoCreditos}
-          sello={produccion.selloClip}
-          etiqueta={escena.fotogramaAprobado ? "Animar el fotograma" : "Aprobar y animar"}
+          sello={escena.faltaInsertarCaptura ? produccion.selloFotograma : produccion.selloClip}
+          etiqueta={
+            escena.faltaInsertarCaptura
+              ? "Insertar la captura"
+              : escena.fotogramaAprobado
+                ? "Animar el fotograma"
+                : "Aprobar y animar"
+          }
           // La última animación entra en la firma: tras un clip fallido, volver a animar es otra confirmación.
           firma={`aprobar|${escena.fotograma?.id ?? ""}|${escena.animacion?.id ?? ""}|${avisosConfirmados.join(",")}`}
           bloqueos={bloqueos}
           avisosConfirmados={avisosConfirmados}
           avisos={avisos}
+          conProducto={escena.conProducto}
           onConfirmarAviso={onConfirmarAviso}
           ocupado={ocupado}
           onEnviar={onAprobar}
@@ -229,6 +246,7 @@ export function TarjetaEscena({
           bloqueos={bloqueos}
           avisosConfirmados={avisosConfirmados}
           avisos={avisos}
+          conProducto={escena.conProducto}
           onConfirmarAviso={onConfirmarAviso}
           ocupado={ocupado}
           onEnviar={onOtroClip}
@@ -247,6 +265,7 @@ export function TarjetaEscena({
           bloqueos={bloqueos}
           avisosConfirmados={avisosConfirmados}
           avisos={avisos}
+          conProducto={escena.conProducto}
           onConfirmarAviso={onConfirmarAviso}
           ocupado={ocupado}
           onEnviar={onRegenerar}

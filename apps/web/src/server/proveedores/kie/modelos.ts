@@ -1,4 +1,5 @@
 import { CLIP } from "@/lib/generacion";
+import { EXCEPCION_TEXTO_PRODUCTO, REGLA_ETIQUETA_PRODUCTO } from "../../direccion/producto";
 
 /**
  * Entrada y prompt de cada modelo de KIE que usa esta versión. Los parámetros se comprobaron en
@@ -31,6 +32,13 @@ const SIN_TEXTO_IMAGEN =
 const SIN_TEXTO_VIDEO = "No subtitles, no captions, no text, no on-screen words, no watermarks, no logos.";
 
 /**
+ * La prohibición de texto va la última y el modelo la obedece por encima de todo: con un producto en la escena
+ * borraría su etiqueta. Por eso, cuando la escena lleva la regla de la etiqueta, la excepción va detrás.
+ */
+const sinTexto = (prohibicion: string, escena: string): string =>
+  escena.includes(REGLA_ETIQUETA_PRODUCTO) ? `${prohibicion} ${EXCEPCION_TEXTO_PRODUCTO}` : prohibicion;
+
+/**
  * Qué se tiene que oír, en inglés como el resto de los negativos. Veo siempre genera audio y **falla sin cobrar**
  * («The Google model was unable to generate audio for this request») cuando no sabe qué sonido poner. Medido con
  * dinero real el 2026-09-27: sin frase que decir se cae, y **prohibir la voz** («nobody speaks, no voice…») se cae
@@ -42,7 +50,7 @@ const AUDIO_SOLO_AMBIENTE =
 
 /** Prompt del fotograma: solo la descripción visual. */
 export function promptFotograma(escena: string): string {
-  return `${escena}\n\n${SIN_TEXTO_IMAGEN}`;
+  return `${escena}\n\n${sinTexto(SIN_TEXTO_IMAGEN, escena)}`;
 }
 
 /**
@@ -54,8 +62,8 @@ export function promptAnimacion(escena: string, dialogo = ""): string {
   const habla = dialogo
     ? `La persona mira a cámara y dice en español, con voz natural y labios sincronizados: ${dialogo}\n\n`
     : "";
-  if (!dialogo) return `${escena}\n\n${AUDIO_SOLO_AMBIENTE}\n\n${SIN_TEXTO_VIDEO}`;
-  return `${habla}${escena}\n\n${SIN_TEXTO_VIDEO} ${AUDIO_HABLADO}`;
+  if (!dialogo) return `${escena}\n\n${AUDIO_SOLO_AMBIENTE}\n\n${sinTexto(SIN_TEXTO_VIDEO, escena)}`;
+  return `${habla}${escena}\n\n${sinTexto(SIN_TEXTO_VIDEO, escena)} ${AUDIO_HABLADO}`;
 }
 
 /**
@@ -72,8 +80,8 @@ export function promptAnimacion(escena: string, dialogo = ""): string {
 export function promptEscenaHablada(escena: string, dialogo: string): string {
   const habla =
     dialogo.trim() === "" ? "" : `The character looks at the camera, saying in Spanish: "${dialogo.trim()}"\n\n`;
-  if (habla === "") return `${escena}\n\n${AUDIO_SOLO_AMBIENTE}\n\n${SIN_TEXTO_VIDEO}`;
-  return `${habla}${escena}\n\n${SIN_TEXTO_VIDEO} ${AUDIO_HABLADO}`;
+  if (habla === "") return `${escena}\n\n${AUDIO_SOLO_AMBIENTE}\n\n${sinTexto(SIN_TEXTO_VIDEO, escena)}`;
+  return `${habla}${escena}\n\n${sinTexto(SIN_TEXTO_VIDEO, escena)} ${AUDIO_HABLADO}`;
 }
 
 export function entradaFotograma(escena: string, referencias: string[]): Record<string, unknown> {

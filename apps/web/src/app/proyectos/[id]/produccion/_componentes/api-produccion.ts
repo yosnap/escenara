@@ -26,6 +26,8 @@ const json = (cuerpo: unknown): RequestInit => ({
 /** Confirmación de coste que viaja en cada acción que gasta. */
 export interface ConfirmacionEnvio {
   derechos: boolean;
+  /** Casilla «tengo derecho a usar esta marca» (0.26.0): obligatoria cuando la escena lleva producto. */
+  derechoMarca: boolean;
   sinTerceros: boolean;
   creditosConfirmados: number;
   selloEstimacion: string;

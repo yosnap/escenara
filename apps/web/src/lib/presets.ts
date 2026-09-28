@@ -38,6 +38,8 @@ export const CATEGORIAS_PRESET = [
   "microaccion",
   "registro-estetico",
   "anclajes",
+  // Acciones de producto (0.26.0).
+  "accion-producto",
 ] as const;
 export type CategoriaPreset = (typeof CATEGORIAS_PRESET)[number];
 
@@ -60,6 +62,7 @@ export const ETIQUETA_CATEGORIA: Record<CategoriaPreset, string> = {
   microaccion: "Micro-acción",
   "registro-estetico": "Registro estético",
   anclajes: "Anclajes de realismo",
+  "accion-producto": "Acción con el producto",
 };
 
 export const AYUDA_CATEGORIA: Record<CategoriaPreset, string> = {
@@ -79,6 +82,7 @@ export const AYUDA_CATEGORIA: Record<CategoriaPreset, string> = {
   microaccion: "El gesto concreto del personaje y cuándo lo hace.",
   "registro-estetico": "Cómo de cuidado es el acabado: de campaña o de móvil.",
   anclajes: "Lo que hace que la imagen parezca una foto y no un render. Solo lo edita quien administra.",
+  "accion-producto": "Qué hace el personaje con el producto: sostenerlo, señalarlo, abrirlo, o el producto solo.",
 };
 
 /** Categorías que se pueden elegir varias veces a la vez. El resto son de elección única. */
@@ -117,6 +121,8 @@ export const CATEGORIAS_DE_LA_DIRECCION: readonly CategoriaPreset[] = [
   "registro-estetico",
   "duracion",
   "estilo",
+  // La acción con el producto se elige junto a la dirección (0.26.0), nunca en la botonera de la plantilla.
+  "accion-producto",
 ];
 
 export const esCategoriaMultiple = (categoria: CategoriaPreset) => CATEGORIAS_MULTIPLES.includes(categoria);

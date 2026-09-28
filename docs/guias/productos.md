@@ -1,0 +1,97 @@
+# Presentar un producto
+
+Un producto es lo que enseñas delante de la cámara: un bote, una prenda o una app en la pantalla del móvil. Lo
+das de alta una vez en **Productos**, con sus fotos, y a partir de ahí lo eliges en cualquier clip: en
+**«Crear»** y en la **escena de un proyecto**, en el mismo panel donde diriges.
+
+Lo que Escenara promete con un producto es una cosa concreta: **su etiqueta y su envase no se tocan**. Ni se
+reescribe el texto, ni se cambia el color, ni se inventa un logo. Después de generar, Jev compara el resultado
+con tu foto frontal y te dice si el producto sigue siendo el tuyo.
+
+## Darlo de alta
+
+En **Productos › Nuevo** pones el nombre, una frase de qué es y de qué tipo es:
+
+- **Físico**: algo que se coge con la mano.
+- **Digital**: una app o un programa que se ve en una pantalla.
+
+Después le añades fotos de tu biblioteca, y a cada una le dices **para qué sirve**:
+
+| Papel | Para qué |
+|---|---|
+| Frontal con la etiqueta | De frente y con el texto legible. **Es la que se compara con el resultado**: si solo vas a subir una, sube esta. |
+| El envase entero | Para que se vea su forma y su tamaño. |
+| Detalle de la tapa o el mecanismo | El tapón o el dosificador de cerca. Obligatoria en la práctica si vas a abrirlo. |
+| Captura de pantalla | La pantalla de tu app tal cual. Es la que se inserta en un producto digital. |
+| El producto solo | Sobre fondo limpio, sin nadie sosteniéndolo. |
+
+Si declaras que en el producto **se ve una marca**, se te avisará antes de cada envío: el filtro del proveedor
+puede rechazar un logo, y en ese caso no se genera nada y **no se te cobra**.
+
+## Elegirlo en un clip
+
+En el panel de dirección, bloque **El producto**: eliges cuál y **qué se hace con él**. Cada acción lleva su
+dibujo y una frase de lo que verás.
+
+- **Con el producto en la mano**: sostenerlo, mirarlo, señalarlo, enseñarlo a cámara, abrirlo, aplicarlo, o el
+  **producto solo**.
+- **Moda**: cuerpo entero, detalle del tejido, giro de 360°, pasarela, pose de editorial y detalle del
+  accesorio.
+- **Cuidado de la piel**: abrir la tapa, extender el producto hasta que se absorbe, y masajear.
+
+Las de **cuidado de la piel** salen marcadas como **poco fiables**, y no es una fórmula: con los modelos de
+hoy, abrir un envase y seguir una mano sobre la piel falla a menudo. Puedes pedirlas, pero se te dice antes de
+gastar y conviene contar con repetirlas.
+
+Las acciones **visuales** —una pasarela, un giro, un detalle del tejido, una crema que se extiende— salen **sin
+que nadie hable**: si has escrito un guion, se te avisa de que en ese plano no se dice, porque lo que se está
+mirando es otra cosa.
+
+### El producto solo, sin nadie
+
+La acción **«El producto solo»** es un plano de b-roll para intercalar en el montaje: no sale ninguna persona.
+Por eso **no hace falta elegir personaje ni confirmar el consentimiento de nadie**, y puedes pedirlo sin haber
+dado de alta ningún personaje. El clip sale mudo, porque no hay quien hable.
+
+## Un producto digital se hace en tres pasos
+
+Pedirle al modelo «un móvil con mi app» devuelve una imitación inventada de tu app: iconos que no son, textos
+que no son y a veces un logo que no es el tuyo. Por eso va en pasos:
+
+1. **Fotograma con la pantalla apagada.** El personaje sostiene el móvil o el portátil con la pantalla negra,
+   entera y bien visible.
+2. **Insertar tu captura.** Se parte de ese fotograma y se mete tu captura dentro de la pantalla, con su
+   perspectiva, su proporción, completa y sin recortarla. No cambia nada más de la imagen.
+3. **Animar el resultado**, que es el clip de siempre.
+
+**Los dos primeros son dos generaciones distintas**: cada una te dice lo que cuesta y la confirmas tú. En
+«Crear» aparece el botón «Insertar tu captura» debajo del fotograma; en la escena de un proyecto, el botón de
+aprobar el fotograma encola la inserción, y cuando esa está lista vuelves a aprobar y sale el clip.
+
+Sin una foto con el papel **Captura de pantalla** no hay nada que insertar, y se te dice antes de pedirlo.
+
+## Lo que se te avisa antes de pagar
+
+Todos estos avisos salen **antes** de gastar y se confirman con una casilla; ninguno te impide seguir:
+
+- **Se pierde la identidad registrada.** Para que tu producto salga con su etiqueta hay que enviarle sus fotos
+  al modelo, y eso es incompatible con la cara y la voz que tengas registradas en el proveedor. Si necesitas
+  que la cara sea idéntica entre escenas, haz el producto en un plano aparte y móntalo.
+- **El modelo elegido no admite la foto del producto.** Pasa con Veo: su segunda imagen es el último fotograma
+  del clip, no una galería. Entonces el producto viaja solo descrito con palabras. **Escenara no te cambia el
+  modelo por su cuenta** —cambiar de modelo cambia la tarifa—: te dice cuáles sí la llevan y eliges tú, con su
+  coste delante.
+- **No caben todas las referencias.** Se envían primero la identidad del personaje y la foto frontal.
+- **El producto no tiene fotos.** Se le pedirá un envase sin marca, y el resultado no será tu producto.
+- **En el producto se ve una marca.** El filtro del proveedor puede rechazarlo; si lo rechaza, no se cobra.
+- **La acción es poco fiable** (las de piel).
+
+Y una casilla que **sí bloquea**: **«Tengo derecho a usar esta marca»**. Aparece solo cuando el envío lleva
+producto y, mientras no la marques, el botón de generar no se activa. Tu declaración queda registrada con su
+fecha en el trabajo.
+
+## Borrar un producto
+
+Borrar un producto borra **su ficha y nada más**. Los vídeos y fotogramas que hiciste con él se quedan en tu
+biblioteca, los trabajos conservan su coste y su historial, y las escenas siguen existiendo con su guion: solo
+dejan de estar ligadas al producto. Las fotos que le pusiste siguen siendo tuyas y siguen en la biblioteca.

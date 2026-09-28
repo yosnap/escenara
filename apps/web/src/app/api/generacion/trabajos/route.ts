@@ -5,6 +5,7 @@ import { ErrorGeneracion } from "@/server/generacion/errores";
 import { exigirMismoOrigen, leerCuerpo, manejador } from "@/server/generacion/http";
 import { crearAnimacion, crearFotograma } from "@/server/generacion/servicio";
 import { listarTrabajos } from "@/server/generacion/trabajos";
+import { leerProductoElegido } from "@/server/productos/eleccion";
 import { leerSeleccionDePresets } from "@/server/prompts/entrada";
 
 export const dynamic = "force-dynamic";
@@ -82,12 +83,15 @@ export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
   }
   const plantilla = leerSeleccionDePresets(cuerpo);
   const direccionElegida = leerDireccionElegida(cuerpo.direccion);
+  const productoElegido = leerProductoElegido(cuerpo.producto);
   const comun = {
     avisosConfirmados: leerAvisosConfirmados(cuerpo.avisosConfirmados),
     prompt: String(cuerpo.prompt ?? ""),
     ...plantilla,
     creditosConfirmados: cuerpo.creditosConfirmados as number,
     derechos: cuerpo.derechos === true,
+    // Casilla de derecho de uso de la marca (0.26.0): el servicio la exige en cuanto el envío lleva producto.
+    derechoMarca: cuerpo.derechoMarca === true,
     avisoUmbralAceptado: cuerpo.avisoUmbralAceptado === true,
     claveIdempotencia: cuerpo.claveIdempotencia as string,
     modelo: cuerpo.modelo,
@@ -101,6 +105,16 @@ export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
           medioId: cuerpo.medioId as string | undefined,
           personajeId: cuerpo.personajeId as string | undefined,
           sinTerceros: cuerpo.sinTerceros === true,
+          /**
+           * Paso del producto digital (0.26.0). Solo se admite el segundo por su nombre: el primero es lo que
+           * hace un fotograma de un producto digital sin decir nada, y nombrarlo aquí no añadiría nada.
+           */
+          ...(cuerpo.pasoDigital === "insertar_captura" ? { pasoDigital: "insertar_captura" as const } : {}),
+          /**
+           * Producto elegido (0.26.0): en «Crear» el fotograma también puede llevarlo, porque el producto
+           * digital empieza justo ahí, en el fotograma de la pantalla apagada.
+           */
+          ...(productoElegido ? { productoElegido } : {}),
         })
       : await crearAnimacion(actor, {
           ...comun,
@@ -120,6 +134,12 @@ export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
            * el borde. El texto en inglés lo compone el servidor con su catálogo, nunca el navegador (ADR-0022).
            */
           ...(direccionElegida ? { direccionElegida } : {}),
+          /**
+           * Producto elegido en «Crear» (0.26.0): el identificador de un producto suyo y la clave de la acción.
+           * Que sea suyo lo comprueba el servicio; aquí solo se valida la forma. De momento se guarda y no
+           * cambia el prompt.
+           */
+          ...(productoElegido ? { productoElegido } : {}),
           // Obligatoria si el fotograma del que sale el clip se hizo con un personaje.
           sinTerceros: cuerpo.sinTerceros === true,
         });

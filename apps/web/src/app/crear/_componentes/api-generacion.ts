@@ -1,6 +1,7 @@
 import type { EvaluacionVista } from "@/lib/controles";
 import type { DireccionElegidaConAcento, OpcionesDeDireccion } from "@/lib/direccion";
 import type { Deposito, EstadoCola, Estimacion, TipoTrabajo, TrabajoVista } from "@/lib/generacion";
+import type { ProductoElegido } from "@/lib/productos";
 
 /** Cliente de la API de generación para el navegador. */
 
@@ -37,6 +38,8 @@ interface Confirmacion {
   selloEstimacion: string;
   creditosConfirmados: number;
   derechos: boolean;
+  /** Casilla «tengo derecho a usar esta marca»: el servidor la exige en cuanto el envío lleva producto. */
+  derechoMarca: boolean;
   avisoUmbralAceptado: boolean;
   /** La misma confirmación lleva siempre la misma clave: repetirla no genera un segundo trabajo. */
   claveIdempotencia: string;
@@ -51,6 +54,13 @@ interface Confirmacion {
 
 export interface ConfirmacionFotograma extends Confirmacion {
   tipo: "fotograma";
+  /**
+   * Producto elegido (0.26.0). En el fotograma cuenta porque un producto **digital** empieza aquí: este
+   * fotograma es el del dispositivo con la pantalla apagada.
+   */
+  producto?: ProductoElegido;
+  /** `insertar_captura` convierte este envío en el segundo paso: la captura dentro de esa pantalla. */
+  pasoDigital?: "insertar_captura";
   /** Imagen suelta de la biblioteca; alternativa a `personajeId`. */
   medioId?: string;
   /** Personaje elegido: se le envían **varias** referencias suyas, hasta el tope del modelo. */
@@ -73,6 +83,11 @@ export interface ConfirmacionAnimacion extends Confirmacion {
    * y compone el prompt, que no sale hacia aquí (ADR-0022).
    */
   direccion?: DireccionElegidaConAcento;
+  /**
+   * Producto del clip: el identificador de uno **tuyo** y la clave de la acción del catálogo. Que sea tuyo lo
+   * comprueba el servidor; uno ajeno responde 404.
+   */
+  producto?: ProductoElegido;
   /**
    * Duración del clip que se ha confirmado, en segundos. Es la de la estimación que se tenía delante: cada
    * duración es una tarifa distinta del modelo, y lo que se paga es esta.

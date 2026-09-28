@@ -1,4 +1,4 @@
-import { duracionesConCoste, type ModeloVista, segundosDeUnidad } from "@/lib/catalogo";
+import { CAPACIDAD_DE_TIPO, duracionesConCoste, type ModeloVista, segundosDeUnidad } from "@/lib/catalogo";
 import type { Medio } from "@/lib/media/tipos";
 import { creditosDeEscenaOmni, precioOmniEstimado, usaIdentidadRegistrada, type VozOmniDelProyecto } from "@/lib/omni";
 import { duracionParaModelo } from "@/lib/produccion";
@@ -25,6 +25,7 @@ import {
   exigirAvisoUmbral,
   exigirClaveIdempotencia,
   exigirConfirmacion,
+  exigirDerechoDeMarca,
   exigirDerechos,
   exigirRevisionDeReferencias,
   exigirRitmo,
@@ -35,10 +36,13 @@ import {
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { exigirSelloVigente } from "../generacion/precios";
 import type { Actor } from "../media/servicio";
+import { referenciasVigentesDe } from "../personajes/consulta";
 import { contextoDeVersion, promptConContexto } from "../personajes/contexto";
 import { ultimaVersion } from "../personajes/ficha";
 import { personajePropio, referenciasParaGenerar } from "../personajes/puede-generar";
 import { acotarCoste } from "../presupuesto/acotar";
+import { completarModelosSugeridos } from "../productos/modelos-sugeridos";
+import { hechosDelProducto, productoEnPrompt, productoParaGenerar } from "../productos/prompt";
 import { creditosDelEnvio, traducirAlIngles } from "../prompts/traduccion";
 import { muestrasDe } from "../voz/muestra";
 import { vozOmniDelProyecto } from "../voz/omni";
@@ -63,6 +67,8 @@ import { eleccionOmni, registroVigente } from "./registro";
 /** Lo que el navegador confirma para producir una escena hablada. Es la confirmación de siempre. */
 export interface ConfirmacionEscenaHablada {
   derechos: boolean;
+  /** Casilla «tengo derecho a usar esta marca» (0.26.0). Obligatoria en cuanto la escena lleva producto. */
+  derechoMarca?: boolean;
   sinTerceros: boolean;
   creditosConfirmados: number;
   selloEstimacion: string;
@@ -291,6 +297,36 @@ export async function producirEscenaHablada(
     modelo.modelo,
   );
 
+  /**
+   * **El producto de la escena** (0.26.0) y lo que cuesta llevarlo en modo Omni.
+   *
+   * `character_ids` y las imágenes de referencia son excluyentes en este modelo, así que una escena con
+   * producto **renuncia a la identidad registrada**: la cara sale de las fotos del personaje y la voz deja de
+   * ser la registrada, con lo que puede variar entre escenas. Es una decisión del usuario y por eso se avisa
+   * antes de cobrar (`producto-sin-identidad-registrada`) con la alternativa de hacer el producto en un plano
+   * aparte y montarlo.
+   */
+  const producto = await productoParaGenerar(actor.id, escena.productId, escena.productAction);
+  // Lo que de verdad se va a enviar: con producto no se cita la identidad registrada aunque el motor la tenga.
+  const citaIdentidad = conIdentidad && producto === null;
+  /**
+   * Sin la identidad registrada, la voz tiene que ir como muestra de audio, igual que en el motor de referencias.
+   * El registro no la carga, así que se lee aquí: sin ella el clip saldría con una voz inventada y se cobraría.
+   */
+  const sinRegistro = conIdentidad && !citaIdentidad ? await referenciasParaProducir(actor, proyecto) : null;
+  const muestraEnviada = sinRegistro ? (sinRegistro.muestra ?? null) : muestra;
+  const faltaEnviada = sinRegistro?.falta || falta;
+  const conProducto = producto
+    ? hechosDelProducto(
+        producto,
+        adaptador.referenciasDeGaleria?.(modelo) ?? modelo.parametros.maximoReferencias,
+        personaje ? (await referenciasVigentesDe(personaje.id)).length : 1,
+        conIdentidad,
+      )
+    : null;
+  if (producto) exigirDerechoDeMarca(confirmacion.derechoMarca);
+  if (conProducto) await completarModelosSugeridos(conProducto.hechos, CAPACIDAD_DE_TIPO.animacion);
+
   // ── Punto único: el mismo motor que cierra la puerta de cualquier otro envío ───────────────────────────
   await exigirControles(
     { usuarioId: actor.id, sujeto: "escena", sujetoId: escena.id, tipo: "animacion" },
@@ -308,6 +344,7 @@ export async function producirEscenaHablada(
         proyecto: await techoDelProyecto(proyecto.id),
         // Sin registro vigente, el motor bloquea con su motivo: es la regla `omni-sin-registro`.
         omni: { registrado: falta === "", falta },
+        ...(conProducto ? { producto: conProducto.hechos } : {}),
       },
       h.buscar,
     ),
@@ -318,8 +355,8 @@ export async function producirEscenaHablada(
    * A partir de aquí ya no queda ninguna regla: el motor las ha aplicado todas, y la de `omni-sin-registro` es la
    * que garantiza que estos tres existen. La comprobación es el otro lado de esa puerta, no una segunda regla.
    */
-  if (!personaje || !version || (conIdentidad && (!registro || !voz)) || (!conIdentidad && !muestra)) {
-    throw new ErrorOmni(409, `Este proyecto no puede producir escenas habladas todavía: ${falta}`);
+  if (!personaje || !version || (citaIdentidad && (!registro || !voz)) || (!citaIdentidad && !muestraEnviada)) {
+    throw new ErrorOmni(409, `Este proyecto no puede producir escenas habladas todavía: ${faltaEnviada}`);
   }
   const proveedor = proveedorDeCredencial(modelo);
   // Lo que dice el personaje sale **en español y sin traducir**: es lo que se va a oír. La descripción de lo que
@@ -349,6 +386,7 @@ export async function producirEscenaHablada(
       { texto: matizDeVoz },
       { texto: instrucciones },
       { texto: descripcionExperta },
+      { texto: producto?.descripcionOriginal ?? "" },
     ],
     h.buscar,
   );
@@ -369,6 +407,14 @@ export async function producirEscenaHablada(
     descripcionExperta: enInglesO(descripcionExperta),
     escena: escenaEnIngles,
     dialogo,
+    producto:
+      producto && conProducto
+        ? productoEnPrompt(
+            producto,
+            producto.descripcionOriginal === "" ? "" : (enIngles.get(producto.descripcionOriginal) ?? ""),
+            conProducto.reparto.producto > 0,
+          )
+        : null,
     // La duración resuelta para el modelo, no la planificada de la escena: es la que decide si el gesto cabe.
     segundos,
   });
@@ -385,7 +431,7 @@ export async function producirEscenaHablada(
    * Con identidad registrada la cara la pone el registro del proveedor, así que no hay referencia que elegir
    * ni nada que comparar: se apunta `vistas`, que es con lo que se registró el personaje.
    */
-  const elegido = conIdentidad
+  const elegido = citaIdentidad
     ? null
     : await referenciasParaGenerar(
         personaje,
@@ -399,7 +445,7 @@ export async function producirEscenaHablada(
     dialogo: dialogoFinal,
     urls: [],
     segundos,
-    ...(conIdentidad && registro ? { personajesOmni: [registro.remoteCharacterId] } : {}),
+    ...(citaIdentidad && registro ? { personajesOmni: [registro.remoteCharacterId] } : {}),
   });
 
   const valores: NuevoTrabajoEncolado = {
@@ -416,7 +462,7 @@ export async function producirEscenaHablada(
        * referencias, son las fotos del personaje, y la muestra de la voz va aparte porque es audio y no imagen.
        */
       referencias: referencias.map((r) => r.id),
-      ...(muestra ? { audioDeReferencia: muestra.id } : {}),
+      ...(muestraEnviada ? { audioDeReferencia: muestraEnviada.id } : {}),
       parametros: { ...parametros, segundos },
       dialogo,
       escena: prompt,
@@ -425,19 +471,25 @@ export async function producirEscenaHablada(
        * Identidad registrada con la que se encoló. El worker envía **esta** y no la que el personaje tenga
        * registrada al llegar su turno: lo que se paga tiene que ser lo que el usuario confirmó.
        */
-      ...(conIdentidad && registro ? { personajesOmni: [registro.remoteCharacterId] } : {}),
+      ...(citaIdentidad && registro ? { personajesOmni: [registro.remoteCharacterId] } : {}),
+      // Fotos del producto que viajan con esta escena, ya repartidas contra el tope del modelo.
+      ...(conProducto && producto && conProducto.reparto.producto > 0
+        ? { referenciasProducto: producto.fotos.slice(0, conProducto.reparto.producto) }
+        : {}),
       /**
        * Firma de la voz con la que sale, para poder decir después si lo generado sigue correspondiendo. Con un
        * motor de referencias la identidad es **el personaje y su muestra de voz**, no un identificador remoto.
        */
       firmaVoz: firmaDeVoz("omni", null, escena.scriptText, {
-        audioId: conIdentidad && voz ? voz.audioId : (muestra?.id ?? ""),
-        personajeOmniId: conIdentidad && registro ? registro.remoteCharacterId : personaje.id,
+        audioId: citaIdentidad && voz ? voz.audioId : (muestraEnviada?.id ?? ""),
+        personajeOmniId: citaIdentidad && registro ? registro.remoteCharacterId : personaje.id,
       }),
     },
     // El origen es la primera referencia cuando la hay: es lo que el historial enseña como punto de partida.
     sourceMediaId: referencias[0]?.id ?? null,
     sceneId: escena.id,
+    // La declaración de marca se guarda con su fecha, igual que la de la imagen.
+    brandRightsAt: producto ? new Date() : null,
     characterId: personaje.id,
     characterVersionId: version.id,
     referencesReviewedAt: new Date(),

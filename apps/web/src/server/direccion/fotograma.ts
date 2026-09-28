@@ -9,6 +9,15 @@ import {
   SIN_NOMBRAR_LA_TECNICA,
   SIN_RETOQUE_FINAL,
 } from "./ingles";
+import {
+  bloqueProducto,
+  EXCEPCION_TEXTO_PRODUCTO,
+  esInsercionDeCaptura,
+  INSERCION_DE_CAPTURA,
+  type ProductoEnPrompt,
+  REGLA_ETIQUETA_PRODUCTO,
+  sustituyeAlSujeto,
+} from "./producto";
 
 /**
  * **Método 6C**: la estructura del prompt del **fotograma** del que sale el clip.
@@ -66,6 +75,13 @@ export interface SeisC {
    * anclajes saldría de plástico, así que aquí no hay «sin anclajes».
    */
   anclajes: string;
+  /**
+   * El producto que se presenta en el fotograma, ya resuelto a inglés (0.26.0). `null` = ninguno.
+   *
+   * Va en su propio bloque, **entre la acción y los anclajes**: es una C más de lo que se ve, y lleva pegada
+   * la regla de que su etiqueta no se toca. C6 sigue cerrando siempre, que es lo que promete el método.
+   */
+  producto?: ProductoEnPrompt | null;
 }
 
 /**
@@ -114,13 +130,24 @@ export function componerSeisC(seis: SeisC, cambiarSolo?: CambiarSolo): string {
         ...(cambio.que === "pose" ? { accion: cambio.valor } : {}),
       }
     : seis;
+  const producto = base.producto ?? null;
+  /**
+   * **Paso 2 del producto digital**: esto no es un fotograma nuevo, es una edición de uno que ya existe y que
+   * el usuario ya ha pagado. Describirle otra vez las seis C sería invitarle a rehacer la foto entera; lo que
+   * se le pide es que cambie el rectángulo de la pantalla y deje lo demás igual.
+   */
+  if (esInsercionDeCaptura(producto)) return componerInsercionDeCaptura();
+  // Con el plano del producto solo no sale nadie: el sujeto es el producto, y describir además a un personaje
+  // metería a una persona en un fotograma que se pidió sin ninguna.
+  const soloProducto = sustituyeAlSujeto(producto);
   const bloques = [
-    c1Personaje(base),
+    soloProducto ? "" : c1Personaje(base),
     etiqueta("Camera", unir([base.plano, base.angulo, base.optica, REGISTRO_CAMARA_INGLES[base.registroEstetico]])),
-    etiqueta("Wardrobe", base.ropa),
+    soloProducto ? "" : etiqueta("Wardrobe", base.ropa),
     etiqueta("Context", unir([base.localizacion, base.contextoLibre])),
     etiqueta("Light", unir([base.luz, REGISTRO_LUZ_INGLES[base.registroEstetico]])),
     etiqueta("Action", base.accion),
+    producto ? etiqueta("Product", unir([bloqueProducto(producto), REGLA_ETIQUETA_PRODUCTO])) : "",
   ];
   if (cambio) bloques.push(bloqueCambiarSolo(cambio));
   // C6 va la última **siempre**, y nunca viene vacío: sin catálogo se usa el bloque del código.
@@ -134,11 +161,34 @@ export function componerSeisC(seis: SeisC, cambiarSolo?: CambiarSolo): string {
         SIN_NOMBRAR_LA_TECNICA,
         // Con una persona real, la regla de no retoque se repite **después** del catálogo: ningún fragmento
         // redactado por alguien puede quedar por delante de ella.
-        base.personajeReal ? SIN_RETOQUE_FINAL : "",
+        base.personajeReal && !soloProducto ? SIN_RETOQUE_FINAL : "",
+        // Detrás de «nada escrito», para que no borre la etiqueta del producto.
+        producto ? EXCEPCION_TEXTO_PRODUCTO : "",
       ]),
     ),
   );
   return bloques.filter((b) => b !== "").join("\n");
+}
+
+/**
+ * El prompt del **segundo paso del producto digital**: la captura dentro de la pantalla apagada.
+ *
+ * Lleva la regla de la etiqueta igual que cualquier otro envío con producto —aquí la «etiqueta» es la
+ * interfaz de la app, y reescribir sus textos es exactamente el fallo que hay que impedir— y cierra con los
+ * anclajes mínimos, que son los que evitan que la pantalla salga como un cartel pegado encima.
+ */
+export function componerInsercionDeCaptura(): string {
+  return [
+    etiqueta("Screen insert", INSERCION_DE_CAPTURA),
+    etiqueta("Product", REGLA_ETIQUETA_PRODUCTO),
+    etiqueta(
+      "Realism",
+      unir([
+        "The screen is part of the photograph: it sits behind the glass, at the same distance and with the same focus as the device",
+        SIN_NOMBRAR_LA_TECNICA,
+      ]),
+    ),
+  ].join("\n");
 }
 
 const QUE_CAMBIA: Record<Exclude<CambioUnico, "ninguno">, string> = {

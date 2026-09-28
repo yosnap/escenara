@@ -59,6 +59,7 @@ describe("aplicar una dirección guardada", () => {
     localizacion: [],
     camara: [{ clave: "push-in-ojos", nombre: "Acercarse a los ojos", descripcion: "" }],
     microaccion: [{ clave: "asentir", nombre: "Asentir", descripcion: "" }],
+    accionProducto: [],
   };
 
   const guardada = {
