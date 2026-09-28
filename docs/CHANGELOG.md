@@ -41,7 +41,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ### Actualizar desde la 0.23.x
 
-- `bun run db:backup` y `bun run db:migrate`: la migración `0031_coherencia_jev_laya` crea `coherence_decisions`,
+- `bun run db:backup` y `bun run db:migrate`: la migración `0033_coherencia_jev_laya` crea `coherence_decisions`,
   añade el veredicto de identidad a las referencias de personaje y la declaración de coherencia a los
   consentimientos. **Nada de lo que ya había cambia de comportamiento por migrar.**
 - En **Admin › Ajustes › Coherencia**, pega la clave de TypeSafe. Sin ella las comprobaciones no se hacen y la
