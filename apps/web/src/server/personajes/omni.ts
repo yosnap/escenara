@@ -95,6 +95,7 @@ export async function registrarPersonajeOmni(
     imagenUrl: registrado.imagenUrl,
     imagenCuerpoUrl: registrado.imagenCuerpoUrl,
     imagenes,
+    creditosObservados: registrado.creditosObservados,
   });
 }
 
@@ -113,6 +114,9 @@ export async function volverARegistrar(
   motivo: string,
   h: Herramientas = HERRAMIENTAS,
 ): Promise<FilaRegistroOmni> {
+  // La propiedad se comprueba **antes** de tocar nada: sin esto, cualquiera podía marcar como reemplazado el
+  // registro del personaje de otra cuenta y dejarle la producción bloqueada.
+  await personajePropio(actor, personajeId);
   const anterior = await ultimoRegistro(personajeId);
   if (anterior && anterior.supersededAt === null) await marcarReemplazado(anterior.id, motivo);
   return registrarPersonajeOmni(actor, personajeId, audioId, h);

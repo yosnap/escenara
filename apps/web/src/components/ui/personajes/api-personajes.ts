@@ -225,7 +225,7 @@ export const consultarRetratos = (id: string) => pedir<{ candidatos: Medio[] }>(
  * estimación y su confirmación, así que viaja lo mismo que confirma cualquier otro envío.
  */
 export const generarRetratos = (id: string, confirmacion: ConfirmacionRetratos) =>
-  pedir<{ trabajos: TrabajoVista[] }>(
+  pedir<{ trabajos: TrabajoVista[]; aviso: string }>(
     `/api/personajes/${id}/retratos`,
     json("POST", { accion: "generar", ...confirmacion }),
   );

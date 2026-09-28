@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { ETIQUETA_VISTA } from "@/lib/captura-personaje";
 import type { TrabajoVista } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
@@ -141,7 +141,7 @@ export async function generarRetratosCandidatos(
   id: unknown,
   confirmacion: ConfirmacionRetratos,
   h: Herramientas = HERRAMIENTAS,
-): Promise<{ trabajos: TrabajoVista[] }> {
+): Promise<{ trabajos: TrabajoVista[]; aviso: string }> {
   const personaje = await filaPropia(actor, id);
   if (!personaje.virtual) {
     throw new ErrorPersonaje(
@@ -162,6 +162,7 @@ export async function generarRetratosCandidatos(
   }
 
   const trabajos: TrabajoVista[] = [];
+  let aviso = "";
   for (let candidato = 1; candidato <= RETRATOS_CANDIDATOS; candidato++) {
     try {
       const envio = await crearFotograma(
@@ -187,12 +188,16 @@ export async function generarRetratosCandidatos(
       trabajos.push(envio.trabajo);
     } catch (error) {
       // Si no ha salido ninguno, el error es la respuesta a lo que se pidió; si alguno salió, se para y se
-      // devuelve lo encolado: ya tiene su reserva apartada y decir que no se ha hecho nada sería falso.
+      // devuelve lo encolado: ya tiene su reserva apartada y decir que no se ha hecho nada sería falso. Pero el
+      // motivo de los que faltan **se dice** (norma de errores visibles): tope, presupuesto, ritmo…
       if (trabajos.length === 0) throw error;
+      const motivo = error instanceof Error && error.message !== "" ? error.message : "No se ha podido encolar.";
+      const faltan = RETRATOS_CANDIDATOS - trabajos.length;
+      aviso = `Se han encargado ${trabajos.length} de ${RETRATOS_CANDIDATOS} retratos; los ${faltan} que faltan no se han encargado y no se te han cobrado. Motivo: ${motivo}`;
       break;
     }
   }
-  return { trabajos };
+  return { trabajos, aviso };
 }
 
 /** Un retrato candidato ya generado: su medio y el trabajo del que salió. */
@@ -206,12 +211,17 @@ export async function retratosCandidatos(personajeId: string): Promise<RetratoCa
   const filas = await db()
     .select({ id: generationJobs.id, medioId: generationJobs.resultMediaId, entrada: generationJobs.input })
     .from(generationJobs)
-    .where(and(eq(generationJobs.characterId, personajeId), eq(generationJobs.state, "listo")))
+    .where(
+      and(
+        eq(generationJobs.characterId, personajeId),
+        eq(generationJobs.state, "listo"),
+        // Se filtra en la consulta y no después del límite: si no, 20 trabajos de otra clase ocultaban los retratos.
+        sql`${generationJobs.input}->>'retratoInventado' = 'true'`,
+      ),
+    )
     .orderBy(desc(generationJobs.createdAt))
     .limit(20);
-  return filas
-    .filter((f) => (f.entrada as { retratoInventado?: unknown }).retratoInventado === true && f.medioId !== null)
-    .map((f) => ({ trabajoId: f.id, medioId: f.medioId as string }));
+  return filas.filter((f) => f.medioId !== null).map((f) => ({ trabajoId: f.id, medioId: f.medioId as string }));
 }
 
 /**
