@@ -9,6 +9,7 @@ import {
   SIN_NOMBRAR_LA_TECNICA,
   SIN_RETOQUE_FINAL,
 } from "./ingles";
+import { bloqueProducto, type ProductoEnPrompt, REGLA_ETIQUETA_PRODUCTO, sustituyeAlSujeto } from "./producto";
 
 /**
  * **Método 6C**: la estructura del prompt del **fotograma** del que sale el clip.
@@ -66,6 +67,13 @@ export interface SeisC {
    * anclajes saldría de plástico, así que aquí no hay «sin anclajes».
    */
   anclajes: string;
+  /**
+   * El producto que se presenta en el fotograma, ya resuelto a inglés (0.26.0). `null` = ninguno.
+   *
+   * Va en su propio bloque, **entre la acción y los anclajes**: es una C más de lo que se ve, y lleva pegada
+   * la regla de que su etiqueta no se toca. C6 sigue cerrando siempre, que es lo que promete el método.
+   */
+  producto?: ProductoEnPrompt | null;
 }
 
 /**
@@ -114,13 +122,18 @@ export function componerSeisC(seis: SeisC, cambiarSolo?: CambiarSolo): string {
         ...(cambio.que === "pose" ? { accion: cambio.valor } : {}),
       }
     : seis;
+  const producto = base.producto ?? null;
+  // Con el plano del producto solo no sale nadie: el sujeto es el producto, y describir además a un personaje
+  // metería a una persona en un fotograma que se pidió sin ninguna.
+  const soloProducto = sustituyeAlSujeto(producto);
   const bloques = [
-    c1Personaje(base),
+    soloProducto ? "" : c1Personaje(base),
     etiqueta("Camera", unir([base.plano, base.angulo, base.optica, REGISTRO_CAMARA_INGLES[base.registroEstetico]])),
-    etiqueta("Wardrobe", base.ropa),
+    soloProducto ? "" : etiqueta("Wardrobe", base.ropa),
     etiqueta("Context", unir([base.localizacion, base.contextoLibre])),
     etiqueta("Light", unir([base.luz, REGISTRO_LUZ_INGLES[base.registroEstetico]])),
     etiqueta("Action", base.accion),
+    producto ? etiqueta("Product", unir([bloqueProducto(producto), REGLA_ETIQUETA_PRODUCTO])) : "",
   ];
   if (cambio) bloques.push(bloqueCambiarSolo(cambio));
   // C6 va la última **siempre**, y nunca viene vacío: sin catálogo se usa el bloque del código.
@@ -134,7 +147,7 @@ export function componerSeisC(seis: SeisC, cambiarSolo?: CambiarSolo): string {
         SIN_NOMBRAR_LA_TECNICA,
         // Con una persona real, la regla de no retoque se repite **después** del catálogo: ningún fragmento
         // redactado por alguien puede quedar por delante de ella.
-        base.personajeReal ? SIN_RETOQUE_FINAL : "",
+        base.personajeReal && !soloProducto ? SIN_RETOQUE_FINAL : "",
       ]),
     ),
   );

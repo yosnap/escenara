@@ -430,6 +430,13 @@ export const AVISO_GUION_EN_CLIP_MUDO =
   "Este clip es de voz en off, así que el personaje sale con la boca cerrada y el guion no se le envía al modelo: se usará al montar la narración encima.";
 
 /**
+ * B-roll del producto: no sale nadie en el plano, así que no hay quien diga el guion. Se avisa con la causa
+ * concreta en lugar de generar un clip mudo sin decir por qué lo es.
+ */
+export const AVISO_GUION_EN_BROLL_DE_PRODUCTO =
+  "Has elegido un plano del producto solo, así que no sale nadie que pueda hablar: el clip saldrá mudo y el guion no se le envía al modelo. Usa esa frase al montar la narración encima, o elige otra acción con el producto si quieres que alguien la diga.";
+
+/**
  * Palabras por segundo de habla natural en castellano. Sirve para estimar si la frase cabe en el clip, que es
  * lo único que decide si hay hueco para un gesto antes o después de hablar.
  */
