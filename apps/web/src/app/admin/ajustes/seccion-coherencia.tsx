@@ -30,6 +30,7 @@ const CAMPOS: Record<Comprobacion, { modo: keyof Ajustes; umbral: keyof Ajustes 
   guion: { modo: "coherenciaGuion", umbral: "coherenciaUmbralGuion" },
   resultado: { modo: "coherenciaResultado", umbral: "coherenciaUmbralResultado" },
   emocion: { modo: "coherenciaEmocion", umbral: "coherenciaUmbralEmocion" },
+  direccion_fiel: { modo: "coherenciaDireccionFiel", umbral: "coherenciaUmbralDireccionFiel" },
 };
 
 export function SeccionCoherencia({
@@ -52,7 +53,7 @@ export function SeccionCoherencia({
   return (
     <Seccion
       titulo="Coherencia"
-      descripcion="Comprobar que lo generado encaja: que una vista es la misma persona, que la escena cubre el guion y que la emoción pega con su tono. Se percibe con el mapa de modelos del usuario (por cuota de su plan, 0 créditos) y decide Jev con la clave de esta instalación."
+      descripcion="Comprobar que lo generado encaja: que una vista es la misma persona, que la escena cubre el guion, que la emoción pega con su tono y que el clip hace lo que se dirigió. Se percibe con el mapa de modelos del usuario (por cuota de su plan, 0 créditos) y decide Jev con la clave de esta instalación."
       icono={<ScanFace />}
     >
       <CampoSecreto

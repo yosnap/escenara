@@ -48,13 +48,35 @@ const INSTRUCCIONES_AUDIO = [
   "Answer in English, in at most six short sentences.",
 ].join(" ");
 
+/**
+ * Extracción de las **6C** desde una foto que el usuario sube como referencia (0.25.0). Es percepción, no
+ * juicio, y por eso vive aquí: describe la cámara, la ropa, el sitio y la luz de esa foto para rellenar los
+ * campos del fotograma.
+ *
+ * **C1 no se extrae nunca**: la identidad sale de las referencias del personaje, no de lo que un modelo opine
+ * de una cara, y pedirle que describa a la persona abriría la puerta a los juicios de atractivo que la decisión
+ * de identidad prohíbe. Se pide en campos `CLAVE: valor` para que la respuesta se pueda **revisar y corregir**
+ * antes de generar, en lugar de leerse como una conversación.
+ */
+const INSTRUCCIONES_REFERENCIA = [
+  "You are a perception step, not a judge.",
+  "Look at this photograph and report how it was taken and what is in it, in exactly four lines and nothing else.",
+  "CAMERA: the shot size, the angle and the lens look.",
+  "WARDROBE: the clothing, the styling and the visible accessories.",
+  "CONTEXT: the location and what is in the background.",
+  "LIGHT: the kind of light, the shadows, the grain and the mood.",
+  "Do not describe the person, do not identify anyone, do not guess their age, gender, mood or attractiveness, and do not add any other line.",
+  "Answer in English, one short sentence per line.",
+].join(" ");
+
 /** Qué se está percibiendo. Cada una tiene sus instrucciones y su modelo preferido. */
-export type ClasePercepcion = "cara" | "escena" | "audio";
+export type ClasePercepcion = "cara" | "escena" | "audio" | "referencia";
 
 const INSTRUCCIONES: Record<ClasePercepcion, string> = {
   cara: INSTRUCCIONES_CARA,
   escena: INSTRUCCIONES_ESCENA,
   audio: INSTRUCCIONES_AUDIO,
+  referencia: INSTRUCCIONES_REFERENCIA,
 };
 
 /**

@@ -5,6 +5,8 @@ import { leerObjeto } from "../almacenamiento";
 import { escenaPropia } from "../asistente/consulta";
 import { db } from "../db/cliente";
 import { characters, type FilaEscena, type FilaMedio, type FilaProyecto, media } from "../db/esquema";
+import { leerCatalogoDeDireccion, nombreDePreset } from "../direccion/catalogo";
+import { type DireccionPedida, pedidoDeDireccion } from "../direccion/fidelidad";
 import { imagenParaModelo } from "../media/procesado";
 import type { Actor } from "../media/servicio";
 import { audioDelClip, ErrorAudioDelClip } from "./audio";
@@ -186,7 +188,53 @@ export async function comprobarEscena(actor: Actor, escenaId: unknown): Promise<
     return decision.motivo;
   });
 
+  // Fidelidad de la dirección: si el clip hace lo que el usuario dirigió. Se mira el **clip**, no el fotograma:
+  // el plano y la luz ya los mide `resultado`, y lo que aquí importa es el movimiento, el gesto y el corte.
+  await anotar("direccion_fiel", async () => {
+    const clip = await clipDe(escena);
+    if (!clip) return "Esta escena todavía no tiene clip, así que no hay nada que comparar con lo que dirigiste.";
+    const sinPermiso = await motivoSinPermiso(proyecto);
+    if (sinPermiso) return sinPermiso;
+    const imagen = await imagenDe(escena.approvedFrameMediaId);
+    if (!imagen) {
+      return "Esta escena todavía no tiene fotograma aprobado, así que no hay con qué mirar cómo salió la dirección.";
+    }
+    const percepcion = await percibir({
+      usuarioId: actor.id,
+      proyectoId: proyecto.id,
+      clase: "escena",
+      claveIdempotencia: `coherencia:direccion:${escena.id}`,
+      imagen,
+    });
+    const decision = await decidirCoherencia({
+      usuarioId: actor.id,
+      comprobacion: "direccion_fiel",
+      sujeto,
+      percepcion,
+      referencia: pedidoDeDireccion(await direccionPedidaDe(actor.id, escena)),
+    });
+    return decision.motivo;
+  });
+
   return resultado;
+}
+
+/**
+ * Lo que el usuario dirigió, con los **nombres del catálogo en castellano**: son los que él pulsó y los únicos
+ * que puede reconocer en la evidencia de un veredicto.
+ */
+async function direccionPedidaDe(usuarioId: string, escena: FilaEscena): Promise<DireccionPedida> {
+  const catalogo = await leerCatalogoDeDireccion(usuarioId);
+  const nombre = (categoria: Parameters<typeof nombreDePreset>[1], clave: string) =>
+    nombreDePreset(catalogo, categoria, clave);
+  return {
+    formato: escena.clipFormat,
+    plano: nombre("plano", escena.shotType),
+    angulo: nombre("angulo", escena.cameraAngle),
+    movimientoCamara: nombre("camara", escena.cameraMove),
+    microaccion: nombre("microaccion", escena.microAction),
+    momentoMicroaccion: escena.microActionTiming,
+  };
 }
 
 /** Decisiones ya guardadas de una escena, sin comprobar nada nuevo. Es lo que pinta la pantalla al abrirse. */
@@ -194,7 +242,7 @@ export async function coherenciaGuardadaDe(actor: Actor, escenaId: unknown): Pro
   const { escena } = await escenaPropia(actor, escenaId);
   const ajustes = await leerAjustes();
   const decisiones: DecisionVista[] = [];
-  for (const comprobacion of ["guion", "resultado", "emocion"] as const) {
+  for (const comprobacion of ["guion", "resultado", "emocion", "direccion_fiel"] as const) {
     if (coherenciaDe(ajustes, comprobacion).modo === "apagada") continue;
     const decision = await ultimaDecisionDe(actor.id, escena.id, comprobacion);
     if (decision) decisiones.push(decision);
