@@ -1,4 +1,5 @@
 import type { Capacidad } from "./catalogo";
+import type { FormatoClip, MomentoMicroaccion, NivelCamara, RegistroEstetico } from "./direccion";
 
 /**
  * Presets y plantillas de prompt (RF04, 0.16.0). Aquí solo está la forma que comparten el servidor y el
@@ -19,7 +20,25 @@ import type { Capacidad } from "./catalogo";
 
 // ── Categorías de preset ────────────────────────────────────────────────────────────────────────────────
 
-export const CATEGORIAS_PRESET = ["especialidad", "formato", "estilo", "vestuario", "duracion", "accion"] as const;
+export const CATEGORIAS_PRESET = [
+  "especialidad",
+  "formato",
+  "estilo",
+  "vestuario",
+  "duracion",
+  "accion",
+  // Dirección del clip y método 6C (0.25.0).
+  "formato-clip",
+  "plano",
+  "angulo",
+  "optica",
+  "luz",
+  "localizacion",
+  "camara",
+  "microaccion",
+  "registro-estetico",
+  "anclajes",
+] as const;
 export type CategoriaPreset = (typeof CATEGORIAS_PRESET)[number];
 
 export const esCategoriaPreset = (v: unknown): v is CategoriaPreset => CATEGORIAS_PRESET.includes(v as CategoriaPreset);
@@ -31,6 +50,16 @@ export const ETIQUETA_CATEGORIA: Record<CategoriaPreset, string> = {
   vestuario: "Vestuario",
   duracion: "Duración",
   accion: "Acción",
+  "formato-clip": "Formato del clip",
+  plano: "Plano",
+  angulo: "Ángulo",
+  optica: "Óptica",
+  luz: "Luz",
+  localizacion: "Sitio",
+  camara: "Movimiento de cámara",
+  microaccion: "Micro-acción",
+  "registro-estetico": "Registro estético",
+  anclajes: "Anclajes de realismo",
 };
 
 export const AYUDA_CATEGORIA: Record<CategoriaPreset, string> = {
@@ -40,10 +69,29 @@ export const AYUDA_CATEGORIA: Record<CategoriaPreset, string> = {
   formato: "Proporción de la imagen. Solo se puede elegir lo que admite el modelo.",
   duracion: "Cuántos segundos dura el clip. Solo se puede elegir lo que admite el modelo.",
   accion: "Qué hace delante de la cámara.",
+  "formato-clip": "Qué clase de clip es: hablado a cámara o mudo para voz en off.",
+  plano: "Cuánto se ve del personaje: del plano general al primerísimo primer plano.",
+  angulo: "Desde dónde se mira: de frente, de tres cuartos, picado, contrapicado…",
+  optica: "Qué lente simula la imagen y cuánto fondo desenfoca.",
+  luz: "Qué luz hay: su tipo, sus sombras y su grano.",
+  localizacion: "Dónde pasa la escena y qué se ve detrás.",
+  camara: "Qué hace la cámara durante el clip. Solo uno por clip.",
+  microaccion: "El gesto concreto del personaje y cuándo lo hace.",
+  "registro-estetico": "Cómo de cuidado es el acabado: de campaña o de móvil.",
+  anclajes: "Lo que hace que la imagen parezca una foto y no un render. Solo lo edita quien administra.",
 };
 
 /** Categorías que se pueden elegir varias veces a la vez. El resto son de elección única. */
 export const CATEGORIAS_MULTIPLES: readonly CategoriaPreset[] = ["accion"];
+
+/**
+ * Categorías que **el usuario no elige**: las compone quien administra y entran solas en el prompt. Hoy solo el
+ * bloque de anclajes (C6), que es lo que separa una foto creíble de un render (decisión firme del propietario,
+ * 2026-09-28).
+ */
+export const CATEGORIAS_SOLO_ADMIN: readonly CategoriaPreset[] = ["anclajes"];
+
+export const esCategoriaSoloAdmin = (categoria: CategoriaPreset) => CATEGORIAS_SOLO_ADMIN.includes(categoria);
 
 export const esCategoriaMultiple = (categoria: CategoriaPreset) => CATEGORIAS_MULTIPLES.includes(categoria);
 
@@ -61,9 +109,21 @@ export interface ValoresPreset {
   proporcion?: string;
   /** Segundos exigidos; solo en la categoría `duracion`. */
   segundos?: number;
+  /** Nivel del movimiento; solo en `camara`. Es informativo: avisa, no impide. */
+  nivel?: NivelCamara;
+  /** Momento del gesto por defecto; solo en `microaccion`. El usuario puede cambiarlo en la escena. */
+  momento?: MomentoMicroaccion;
+  /** Formato al que corresponde; solo en `formato-clip`. */
+  formatoClip?: FormatoClip;
+  /** Registro estético al que corresponde; solo en `registro-estetico`. */
+  registro?: RegistroEstetico;
 }
 
-export const PRESET_PROMPT_MAXIMO = 300;
+/**
+ * Largo del fragmento en inglés de un preset. Subido de 300 a 600 en la 0.25.0 por el bloque de anclajes (C6),
+ * que no es un fragmento suelto sino el cierre entero del prompt del fotograma y no cabía en 300.
+ */
+export const PRESET_PROMPT_MAXIMO = 600;
 export const PRESET_NOMBRE_MAXIMO = 60;
 export const PRESET_DESCRIPCION_MAXIMA = 240;
 
@@ -181,7 +241,14 @@ export const PLANTILLA_MAXIMA = 1200;
 export const PROMPT_RENDERIZADO_MAXIMO = 1500;
 /** Tope de una variable de tipo `texto`. Es la escena que escribe el usuario, no una biografía. */
 export const VARIABLE_TEXTO_MAXIMA = 600;
-export const MAXIMO_VARIABLES = 12;
+/**
+ * Tope de variables de una plantilla. Es un guarda contra una plantilla que convierta una confirmación en
+ * trabajo para el servidor, no un límite de diseño.
+ *
+ * Subido de 12 a 14 en la 0.25.0: el método 6C separa en categorías propias lo que antes iba mezclado —la luz
+ * sale del look, y el plano, el ángulo y la óptica salen del formato—, y el fotograma pasa a declarar trece.
+ */
+export const MAXIMO_VARIABLES = 14;
 
 /** Restricciones que la plantilla exige del modelo, además de las que traigan los presets elegidos. */
 export interface RestriccionesPlantilla {

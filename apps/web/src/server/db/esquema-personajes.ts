@@ -35,6 +35,16 @@ export const tipoPersonaje = pgEnum("character_kind", ["persona", "animal"]);
 
 export const estadoPersonaje = pgEnum("character_state", ["borrador", "en_revision", "listo", "bloqueado"]);
 
+/**
+ * Estado de la hoja de identidad 3×3 (0.25.0). `candidata` es el único valor con el que puede nacer: la hoja se
+ * mide antes de ascender.
+ */
+export const estadoHojaIdentidad = pgEnum("character_identity_sheet_status", [
+  "candidata",
+  "por_defecto",
+  "descartada",
+]);
+
 export const titularConsentimiento = pgEnum("consent_holder", ["yo", "tercero", "animal_propio", "inventado"]);
 
 export const alcanceUso = pgEnum("consent_scope", ["personal", "comercial"]);
@@ -80,6 +90,29 @@ export const characters = pgTable(
      * vistas de una cara sin consentimiento de nadie.
      */
     virtual: boolean("virtual").notNull().default(false),
+    /**
+     * **La voz se fija por personaje** (0.25.0), no por escena: es parte de quién es, como su cara. Son los
+     * cinco ejes de `lib/direccion.ts` (género, edad, gravedad, textura y entrega) y, opcionalmente, una de las
+     * voces predefinidas del proveedor sobre la que se matizan.
+     *
+     * Cambiarlos **crea versión de personaje** e invalida su registro de voz en el proveedor, por lo mismo que
+     * lo invalida cambiar la ficha: lo que se registró era la voz de antes.
+     *
+     * Vacío por defecto y no con los ejes de fábrica: así se distingue un personaje que todavía no ha elegido
+     * voz de uno que ha elegido precisamente la de fábrica, y solo el segundo invalida algo al cambiarla.
+     */
+    voiceAxes: jsonb<Record<string, string>>("voice_axes").notNull().default({}),
+    voicePresetId: text("voice_preset_id").notNull().default(""),
+    /**
+     * **Hoja de identidad 3×3** (0.25.0): una sola imagen con nueve retratos del personaje (frente, perfiles,
+     * tres cuartos, miradas y expresiones), generada desde sus referencias.
+     *
+     * Nace **siempre** como `candidata` y no sustituye a las vistas sueltas por decreto (decisión firme del
+     * propietario, 2026-09-28): Jev compara en sombra los clips hechos con una y con otras, y la hoja pasa a
+     * `por_defecto` solo si gana en esa métrica y el propietario lo aprueba.
+     */
+    identitySheetMediaId: uuid("identity_sheet_media_id").references(() => media.id, { onDelete: "set null" }),
+    identitySheetStatus: estadoHojaIdentidad("identity_sheet_status").notNull().default("candidata"),
     state: estadoPersonaje("state").notNull().default("borrador"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

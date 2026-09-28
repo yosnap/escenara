@@ -18,8 +18,14 @@ import { jsonb } from "./jsonb";
  *   clave ajena de vuelta cerraría además un ciclo entre módulos del esquema.
  */
 
-/** Qué se comprobó. Los mismos cuatro valores que `lib/coherencia.ts`. */
-export const comprobacionCoherencia = pgEnum("coherence_check", ["identidad", "guion", "resultado", "emocion"]);
+/** Qué se comprobó. Los mismos valores que `lib/coherencia.ts`. */
+export const comprobacionCoherencia = pgEnum("coherence_check", [
+  "identidad",
+  "guion",
+  "resultado",
+  "emocion",
+  "direccion_fiel",
+]);
 
 /** Cómo se aplicó: en `sombra` el veredicto se guarda y no cambia nada; en `activa` decide. */
 export const modoCoherencia = pgEnum("coherence_mode", ["sombra", "activa"]);
