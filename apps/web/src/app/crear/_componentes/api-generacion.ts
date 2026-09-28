@@ -155,5 +155,5 @@ export interface ExtraccionVista {
  * Lee las 6C de una foto del usuario. **No cuesta créditos** (se paga con la cuota de su plan) y **no genera
  * nada**: devuelve campos para que los revise.
  */
-export const extraerCamposDeFoto = (medioId: string) =>
-  pedir<ExtraccionVista>("/api/direccion/extraer", json({ medioId }));
+export const extraerCamposDeFoto = (medioId: string, confirmoEnvio: boolean) =>
+  pedir<ExtraccionVista>("/api/direccion/extraer", json({ medioId, confirmoEnvio }));

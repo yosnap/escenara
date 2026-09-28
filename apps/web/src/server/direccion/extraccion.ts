@@ -1,4 +1,8 @@
+import { eq } from "drizzle-orm";
+import { declaraCoherencia } from "../coherencia/identidad";
 import { percibir } from "../coherencia/percepcion";
+import { db } from "../db/cliente";
+import { characterReferences, characters } from "../db/esquema";
 import type { ImagenParaChat } from "../proveedores/compatible/cliente";
 
 /**
@@ -115,3 +119,48 @@ export const avisoDeCamposSinLeer = (sinLeer: readonly (keyof SeisCExtraidas)[])
   sinLeer.length === 0
     ? ""
     : `De esta foto no se ha podido leer ${sinLeer.map((c) => NOMBRE_CAMPO_EXTRAIDO[c].toLowerCase()).join(", ")}. Escríbelo tú antes de generar.`;
+
+/**
+ * **Puerta de privacidad de la extracción.** Leer los campos de una foto significa **subirla entera** a un
+ * servicio de percepción externo. Que las instrucciones prohíban describir a la persona acota lo que vuelve,
+ * no lo que sale: el dato personal que abandona la instalación es la foto.
+ *
+ * La 0.24.0 fijó el invariante —la cara de una persona real solo se percibe si su consentimiento lo dice— y
+ * aquí se aplica igual, con la diferencia de que no hay proyecto ni personaje principal del que deducir de
+ * quién es la cara. Así que hay dos casos:
+ *
+ * - **la foto es referencia de un personaje suyo**: manda el consentimiento de ese personaje. Si es real y no
+ *   ha declarado la coherencia, no se envía y se dice cómo arreglarlo. Un personaje inventado no la necesita;
+ * - **la foto es suelta**: nadie sabe quién sale en ella, así que decide el usuario **con la verdad delante**.
+ *   Sin su confirmación explícita no se envía nada.
+ *
+ * Devuelve el motivo por el que no se puede leer, o cadena vacía si se puede.
+ */
+export async function motivoSinPermisoParaLeer(
+  medioId: string,
+  /** El usuario ha confirmado expresamente que se suba esa foto al servicio de percepción. */
+  confirmado: boolean,
+): Promise<string> {
+  const personajes = await db()
+    .select({ id: characters.id, nombre: characters.name, virtual: characters.virtual })
+    .from(characterReferences)
+    .innerJoin(characters, eq(characters.id, characterReferences.characterId))
+    .where(eq(characterReferences.mediaId, medioId));
+
+  if (personajes.length === 0) {
+    return confirmado ? "" : AVISO_FOTO_SUELTA;
+  }
+  for (const personaje of personajes) {
+    if (personaje.virtual) continue;
+    if (await declaraCoherencia(personaje.id)) continue;
+    return `Esta foto es una referencia de «${personaje.nombre}», y leer sus campos obliga a enviarla a un servicio de percepción que no es el que genera. Su consentimiento no lo cubre: añade esa declaración en su consentimiento y vuelve a intentarlo.`;
+  }
+  return "";
+}
+
+/**
+ * Lo que hay que decirle al usuario antes de leer una foto suelta. Se enseña **antes** de que pulse, y su
+ * confirmación viaja con la petición: sin ella el servidor no envía la imagen a ningún sitio.
+ */
+export const AVISO_FOTO_SUELTA =
+  "Para leer los campos de esta foto hay que subirla a un servicio de percepción externo. No se lee quién sale en ella, pero la imagen sí sale de aquí. Confirma que quieres enviarla.";

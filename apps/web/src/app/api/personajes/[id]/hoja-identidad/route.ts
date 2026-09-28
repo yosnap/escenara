@@ -18,6 +18,7 @@ export const POST = manejador(async (peticion: Request, contexto: ContextoId, ac
   const resultado = await generarHojaDeIdentidad(actor, id, {
     creditosConfirmados: Number(cuerpo.creditosConfirmados),
     derechos: cuerpo.derechos === true,
+    sinTerceros: cuerpo.sinTerceros === true,
     claveIdempotencia: String(cuerpo.claveIdempotencia ?? ""),
     ...(typeof cuerpo.selloEstimacion === "string" ? { selloEstimacion: cuerpo.selloEstimacion } : {}),
     ...(typeof cuerpo.modelo === "string" ? { modelo: cuerpo.modelo } : {}),

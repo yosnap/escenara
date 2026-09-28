@@ -3,6 +3,7 @@
 import { ScanSearch } from "lucide-react";
 import { useState } from "react";
 import { Boton } from "@/components/ui/button";
+import { Casilla } from "@/components/ui/choice";
 import { Aviso } from "@/components/ui/feedback";
 import { Campo, EntradaTexto } from "@/components/ui/field";
 import { SelectorMedios } from "@/components/ui/media/selector-medios";
@@ -45,6 +46,7 @@ export function PanelExtraccion({
   const [fotos, setFotos] = useState<Medio[]>([]);
   const [campos, setCampos] = useState<SeisCExtraidas | null>(null);
   const [sinLeer, setSinLeer] = useState<string>("");
+  const [confirmoEnvio, setConfirmoEnvio] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,7 +55,7 @@ export function PanelExtraccion({
     if (!foto) return;
     setOcupado(true);
     setError(null);
-    const respuesta = await extraerCamposDeFoto(foto.id);
+    const respuesta = await extraerCamposDeFoto(foto.id, confirmoEnvio);
     setOcupado(false);
     if (!respuesta.ok) {
       // La causa concreta la trae el servidor (qué servicio falta y dónde se añade): se enseña tal cual.
@@ -98,12 +100,28 @@ export function PanelExtraccion({
         onCambio={setFotos}
       />
 
+      {/*
+        Leer campos **sube la foto** a un servicio externo. Se dice antes de pulsar y se confirma: el servidor
+        no envía nada sin esto, y con la foto de un personaje real exige además su declaración de coherencia.
+      */}
+      {fotos.length > 0 && (
+        <div className="rounded-tarjeta border border-borde bg-superficie p-3">
+          <Casilla
+            etiqueta="Envía esta foto al servicio de percepción para leer sus campos"
+            descripcion="La imagen sale de aquí y se sube al servicio que tengas configurado. No se lee quién sale en ella. Si es la foto de un personaje tuyo, hace falta además su declaración de coherencia."
+            marcada={confirmoEnvio}
+            onCambio={setConfirmoEnvio}
+            deshabilitado={deshabilitado}
+          />
+        </div>
+      )}
+
       <Boton
         variante="secundario"
         tamano="sm"
         className="self-start"
         cargando={ocupado}
-        disabled={deshabilitado || fotos.length === 0}
+        disabled={deshabilitado || fotos.length === 0 || !confirmoEnvio}
         onClick={() => void leer()}
       >
         Leer los campos de esta foto

@@ -1,10 +1,10 @@
 import { eq } from "drizzle-orm";
 import { leerObjeto } from "@/server/almacenamiento";
 import { ErrorProyecto } from "@/server/asistente/errores";
-import { exigirMismoOrigen, leerCuerpo, manejador } from "@/server/asistente/http";
+import { exigirMismoOrigen, exigirRitmoDeEscritura, leerCuerpo, manejador } from "@/server/asistente/http";
 import { db } from "@/server/db/cliente";
 import { media } from "@/server/db/esquema";
-import { avisoDeCamposSinLeer, extraerSeisC } from "@/server/direccion/extraccion";
+import { avisoDeCamposSinLeer, extraerSeisC, motivoSinPermisoParaLeer } from "@/server/direccion/extraccion";
 import { imagenParaModelo } from "@/server/media/procesado";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +21,9 @@ export const dynamic = "force-dynamic";
  */
 export const POST = manejador(async (peticion: Request, _contexto: unknown, actor) => {
   exigirMismoOrigen(peticion);
+  // Leer campos llama a un servicio externo: el mismo ritmo que el resto de la escritura, para que un bucle de
+  // reintentos del navegador no agote la cuota de quien paga el plan.
+  await exigirRitmoDeEscritura(actor, "extraer");
   const cuerpo = await leerCuerpo(peticion);
   const medioId = typeof cuerpo.medioId === "string" ? cuerpo.medioId : "";
   if (medioId === "") throw new ErrorProyecto(400, "Falta la foto de la que leer los campos.");
@@ -30,6 +33,20 @@ export const POST = manejador(async (peticion: Request, _contexto: unknown, acto
   if (!fila || fila.ownerId !== actor.id || fila.deletedAt !== null) {
     throw new ErrorProyecto(404, "Esa foto no existe.");
   }
+  // De un vídeo no se leen campos: sin esto se cargaría el fichero entero en memoria para que `sharp` fallara
+  // con un 500 mudo.
+  if (!fila.mimeType.startsWith("image/")) {
+    throw new ErrorProyecto(400, "De ese archivo no se pueden leer campos porque no es una imagen.");
+  }
+
+  /**
+   * Puerta de privacidad: leer los campos **sube la foto** a un servicio de percepción externo. Si es la
+   * referencia de un personaje real, manda su consentimiento; si es una foto suelta, decide el usuario con la
+   * verdad delante, y sin su confirmación no sale nada de aquí.
+   */
+  const sinPermiso = await motivoSinPermisoParaLeer(medioId, cuerpo.confirmoEnvio === true);
+  if (sinPermiso !== "") throw new ErrorProyecto(409, sinPermiso);
+
   const imagen = await imagenParaModelo(new Uint8Array(await leerObjeto(fila.storageKey).arrayBuffer()));
   const extraccion = await extraerSeisC({ usuarioId: actor.id, medioId, imagen });
   /**

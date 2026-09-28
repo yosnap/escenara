@@ -1,4 +1,5 @@
 import { leerAjustes } from "../ajustes";
+import { dentroDelLimite, quedaCupo } from "../limite";
 import { ErrorDeTexto, pedirTextoPorMapa, type TextoDelMapa } from "../mapa/texto";
 import type { Buscador } from "../proveedores/codigos";
 import type { AudioParaChat, ImagenParaChat } from "../proveedores/compatible/cliente";
@@ -124,6 +125,39 @@ export interface Percepcion {
   modelo: string;
 }
 
+/**
+ * Tope **diario de percepciones** por usuario (0.25.0).
+ *
+ * Percibir no cuesta créditos, pero sí **cuota del plan de quien la paga**, y hasta ahora nada lo acotaba: el
+ * tope de `coherencia/decidir.ts` cuenta decisiones, y una percepción ocurre **antes** de decidir. Con la
+ * 0.25.0 hay tres percepciones por comprobación de escena y una más por cada foto que se lee, así que un bucle
+ * de reintentos podía vaciar la cuota de la instalación sin gastar un solo crédito.
+ *
+ * Se comprueba **antes** de llamar a nadie, y se cuenta el mismo número que el de decisiones: percibir sin
+ * poder decidir después no sirve de nada, así que no tiene sentido permitir más de lo uno que de lo otro.
+ */
+async function limiteDePercepcion(): Promise<{ maximo: number; ventanaSegundos: number }> {
+  const ajustes = await leerAjustes();
+  return { maximo: ajustes.coherenciaDecisionesPorDia, ventanaSegundos: 24 * 60 * 60 };
+}
+
+export async function hayCupoDePercepcion(usuarioId: string): Promise<boolean> {
+  return dentroDelLimite(`percepcion:${usuarioId}`, await limiteDePercepcion());
+}
+
+/**
+ * Mira si queda cupo **sin consumirlo**, para poder cortar antes de un trabajo caro: sacar la tira de
+ * fotogramas de un clip son dos procesos de FFmpeg, y hacerlos para descubrir después que no hay cupo es
+ * pagar el CPU para nada.
+ */
+export async function quedaCupoDePercepcion(usuarioId: string): Promise<boolean> {
+  return quedaCupo(`percepcion:${usuarioId}`, await limiteDePercepcion());
+}
+
+/** Lo que se le dice cuando se ha agotado. Dice que no se ha cobrado nada, porque no se ha cobrado nada. */
+export const SIN_CUPO_DE_PERCEPCION =
+  "Has llegado al tope de comprobaciones con modelo que permite esta instalación en 24 horas. No se ha enviado nada ni se ha cobrado nada; vuelve a intentarlo más tarde o pide a quien administra que suba el tope en Admin › Ajustes › Coherencia.";
+
 /** Largo máximo de los hechos. Jev acepta 32k para el estado; esto es de sobra y acota lo que se guarda. */
 const HECHOS_MAXIMOS = 2000;
 
@@ -146,6 +180,9 @@ export async function percibir(peticion: PeticionPercepcion): Promise<Percepcion
   if (!peticion.imagen && !peticion.audio) {
     throw new ErrorPercepcion("No hay nada que mirar ni que escuchar en esta comprobación.");
   }
+  // El tope se mira **antes** de enviar nada: pasarse y disculparse después no es un tope, y lo que se protege
+  // aquí es la cuota de quien paga el plan.
+  if (!(await hayCupoDePercepcion(peticion.usuarioId))) throw new ErrorPercepcion(SIN_CUPO_DE_PERCEPCION);
   const ajustes = await leerAjustes();
   const preferido = peticion.audio ? ajustes.coherenciaModeloAudio : ajustes.coherenciaModeloImagen;
   let resultado: TextoDelMapa;

@@ -265,6 +265,16 @@ export interface PeticionFotograma extends Confirmacion {
    */
   vistaSintetica?: Vista;
   /**
+   * Este fotograma es la **hoja de identidad 3×3** de un personaje (0.25.0). Lo pone el servidor
+   * (`personajes/hoja-identidad.ts`), nunca el navegador.
+   *
+   * Hace dos cosas: marca el trabajo para que su resultado quede guardado como hoja del personaje al cerrarse,
+   * y **excluye la petición del reparto del experimento**. La hoja se compone siempre desde las fotos sueltas:
+   * generarla citando la hoja anterior daría una copia de una copia, y contaminaría con su propio predecesor
+   * la métrica que compara las dos referencias.
+   */
+  hojaDeIdentidad?: boolean;
+  /**
    * Este fotograma es un **retrato candidato de un personaje inventado** (0.22.0): no sale de ninguna foto, sino
    * de su descripción, y es lo que le dará su primera referencia. Lo pone el servidor
    * (`personajes/inventado.ts`), nunca el navegador: si lo pudiera poner un cliente, sería la forma de generar
@@ -467,7 +477,8 @@ export async function crearFotograma(
       ? await referenciasParaGenerar(
           personaje,
           modelo.parametros.maximoReferencias,
-          conHojaDeIdentidad(personaje, peticion.escenaId ?? peticion.claveIdempotencia),
+          // La hoja nunca se genera desde sí misma: se compone siempre desde las fotos sueltas.
+          !peticion.hojaDeIdentidad && conHojaDeIdentidad(personaje, peticion.escenaId ?? peticion.claveIdempotencia),
         )
       : null;
   /**
@@ -576,6 +587,7 @@ export async function crearFotograma(
       // Marca de «este resultado es una vista generada del personaje»: la lee el cierre del trabajo para
       // añadirla como referencia etiquetada. Solo la pone el servidor.
       ...(peticion.vistaSintetica && personajeId ? { vistaSintetica: peticion.vistaSintetica } : {}),
+      ...(peticion.hojaDeIdentidad && personajeId ? { hojaDeIdentidad: true } : {}),
       // Marca de «este fotograma nace de una descripción y no de ninguna foto» (0.22.0). La lee el worker para
       // no buscar referencias que no existen, y el cierre para añadir el retrato elegido como vista generada.
       ...(peticion.retratoInventado ? { retratoInventado: true } : {}),

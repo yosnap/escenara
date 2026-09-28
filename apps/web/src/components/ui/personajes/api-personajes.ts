@@ -200,6 +200,8 @@ export const anadirImagenesGeneradas = (id: string, medioIds: string[]) =>
 export interface ConfirmacionHojaIdentidad {
   creditosConfirmados: number;
   derechos: boolean;
+  /** «En estas fotos no aparece ninguna otra persona ni ningún menor»: la hoja envía sus fotos al proveedor. */
+  sinTerceros: boolean;
   avisoUmbralAceptado: boolean;
   claveIdempotencia: string;
   modelo?: string;

@@ -74,6 +74,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - **Rellenar el fotograma desde una foto** en «Crear»: eliges una imagen y se leen de ella la cámara, la ropa,
   el sitio y la luz, en campos que corriges antes de generar. No cuesta créditos y no genera nada hasta que lo
   confirmas. De quién sale en la foto no se lee nada.
+  **Leer una foto la sube a un servicio externo**, así que se pide permiso antes: con la foto de un personaje
+  tuyo hace falta su declaración de coherencia, y con una foto suelta, que lo confirmes expresamente. Sin eso
+  no sale nada de aquí. Hay además un tope diario de comprobaciones con modelo, para que la cuota del plan no
+  se pueda agotar con reintentos.
 - **«Probar la hoja en la mitad de mis escenas»**, un interruptor en la ficha del personaje, **desactivado de
   fábrica**. Solo con él activado se reparten sus escenas entre la hoja y sus fotos: la prueba cambia con qué
   se genera, así que la decide quien paga. Cada escena dice con cuál de las dos se hizo.

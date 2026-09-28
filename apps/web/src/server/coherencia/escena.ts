@@ -13,7 +13,7 @@ import { audioDelClip, ErrorAudioDelClip } from "./audio";
 import { decidirCoherencia } from "./decidir";
 import { ErrorFotogramasDelClip, fotogramasDelClip } from "./fotogramas";
 import { declaraCoherencia } from "./identidad";
-import { ErrorPercepcion, percibir } from "./percepcion";
+import { ErrorPercepcion, percibir, quedaCupoDePercepcion, SIN_CUPO_DE_PERCEPCION } from "./percepcion";
 import { ultimaDecisionDe } from "./registro";
 
 /**
@@ -124,6 +124,13 @@ export async function comprobarEscena(actor: Actor, escenaId: unknown): Promise<
     }
   };
 
+  /**
+   * Si no queda cupo de percepción, no se empieza nada: las tres comprobaciones que perciben harían el trabajo
+   * caro (convertir el audio, sacar la tira de fotogramas) para chocar después contra el mismo tope. Se dice
+   * una vez, con la causa, en lugar de tres veces al final.
+   */
+  const conCupo = await quedaCupoDePercepcion(actor.id);
+
   const pedido = pedidoDe(escena);
   const sujeto = { tipo: "escena" as const, id: escena.id, proyectoId: proyecto.id };
 
@@ -144,6 +151,7 @@ export async function comprobarEscena(actor: Actor, escenaId: unknown): Promise<
 
   // Resultado: se mira el fotograma aprobado, que es la imagen de la que sale el clip.
   await anotar("resultado", async () => {
+    if (!conCupo) return SIN_CUPO_DE_PERCEPCION;
     if (!escena.approvedFrameMediaId) {
       return "Esta escena todavía no tiene fotograma aprobado, así que no hay resultado que mirar.";
     }
@@ -170,6 +178,7 @@ export async function comprobarEscena(actor: Actor, escenaId: unknown): Promise<
 
   // Emoción: la voz y el ambiente del clip contra el tono del guion.
   await anotar("emocion", async () => {
+    if (!conCupo) return SIN_CUPO_DE_PERCEPCION;
     const clip = await clipDe(escena);
     if (!clip) return "Esta escena todavía no tiene clip, así que no hay voz que escuchar.";
     if (pedido.script_line === "") return "Sin guion escrito no hay tono con el que comparar la voz.";
@@ -196,6 +205,7 @@ export async function comprobarEscena(actor: Actor, escenaId: unknown): Promise<
   // Fidelidad de la dirección: si el clip hace lo que el usuario dirigió. Se mira el **clip**, no el fotograma:
   // el plano y la luz ya los mide `resultado`, y lo que aquí importa es el movimiento, el gesto y el corte.
   await anotar("direccion_fiel", async () => {
+    if (!conCupo) return SIN_CUPO_DE_PERCEPCION;
     const clip = await clipDe(escena);
     if (!clip) return "Esta escena todavía no tiene clip, así que no hay nada que comparar con lo que dirigiste.";
     const sinPermiso = await motivoSinPermiso(proyecto);

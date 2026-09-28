@@ -3,6 +3,7 @@ import type { TrabajoVista } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
 import type { PersonajeVista } from "@/lib/personajes";
 import { db } from "../db/cliente";
+import type { FilaTrabajo } from "../db/esquema";
 import { characters, media } from "../db/esquema";
 import { AVISO_HOJA_IDENTIDAD, motivoSinHoja, promptHojaIdentidad } from "../direccion/hoja-identidad";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
@@ -28,6 +29,12 @@ import { ErrorPersonaje } from "./errores";
 export interface ConfirmacionHoja {
   creditosConfirmados: number;
   derechos: boolean;
+  /**
+   * «En estas fotos no aparece ninguna otra persona ni ningún menor». La hoja **envía las fotos de referencia
+   * del personaje** al proveedor, exactamente igual que cualquier otro fotograma suyo, así que la declaración
+   * es igual de pertinente aquí y la exige `crearFotograma`.
+   */
+  sinTerceros: boolean;
   claveIdempotencia: string;
   selloEstimacion?: string;
   modelo?: string;
@@ -55,7 +62,11 @@ export async function generarHojaDeIdentidad(
       // El prompt de la hoja lo compone el servidor: el usuario no escribe nada aquí.
       prompt: promptHojaIdentidad(personaje.description.trim()),
       personajeId: personaje.id,
+      // Marca el trabajo: su resultado se guarda como hoja del personaje, y la petición queda fuera del
+      // reparto del experimento (una hoja no se genera nunca desde otra hoja).
+      hojaDeIdentidad: true,
       derechos: confirmacion.derechos,
+      sinTerceros: confirmacion.sinTerceros,
       creditosConfirmados: confirmacion.creditosConfirmados,
       // La clave se deriva del personaje: repetir el clic no encarga dos hojas.
       claveIdempotencia: claveDerivada(confirmacion.claveIdempotencia, "hoja-identidad", personaje.id),
@@ -71,17 +82,36 @@ export async function generarHojaDeIdentidad(
   return { trabajo: envio.trabajo, aviso: AVISO_HOJA_IDENTIDAD };
 }
 
+/** `true` si ese trabajo era la hoja de identidad. La marca la pone el servidor al encolarlo. */
+export const esTrabajoDeHoja = (fila: FilaTrabajo): boolean =>
+  (fila.input as { hojaDeIdentidad?: unknown }).hojaDeIdentidad === true;
+
 /**
- * Deja la hoja ya generada como la del personaje, en estado `candidata`.
+ * Deja la hoja recién generada como la del personaje, en estado `candidata`.
  *
- * Lo llama quien recoge el resultado del trabajo. **Siempre `candidata`**, nunca otro estado: ascenderla es
- * una decisión del propietario con la métrica delante, no una consecuencia de haberla generado.
+ * Se llama **al cerrar el trabajo**, junto a los otros enganches de cierre (vista generada, muestra de voz,
+ * resultado de escena). **Siempre `candidata`**, nunca otro estado: ascenderla es una decisión de su dueño con
+ * la métrica delante, no una consecuencia de haberla generado. Y **apaga la prueba**: la hoja que se estaba
+ * comparando ya no existe, así que seguir repartiendo mezclaría medidas de dos imágenes distintas.
+ *
+ * No lanza nunca hacia fuera: si esto falla, el trabajo ya está pagado y la imagen guardada en la biblioteca, y
+ * perder el cierre por no poder escribir una relación sería mucho peor. Queda en el registro.
  */
-export async function guardarHojaDeIdentidad(personajeId: string, medioId: string): Promise<void> {
-  await db()
-    .update(characters)
-    .set({ identitySheetMediaId: medioId, identitySheetStatus: "candidata", updatedAt: new Date() })
-    .where(eq(characters.id, personajeId));
+export async function adjuntarHojaDeIdentidad(fila: FilaTrabajo, medioId: string): Promise<void> {
+  if (!esTrabajoDeHoja(fila) || !fila.characterId) return;
+  try {
+    await db()
+      .update(characters)
+      .set({
+        identitySheetMediaId: medioId,
+        identitySheetStatus: "candidata",
+        identitySheetTrial: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(characters.id, fila.characterId));
+  } catch (error) {
+    console.error(`[personajes] hoja de identidad sin adjuntar en el trabajo ${fila.id}: ${(error as Error).name}`);
+  }
 }
 
 /**

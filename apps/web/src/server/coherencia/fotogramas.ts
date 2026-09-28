@@ -29,7 +29,13 @@ export class ErrorFotogramasDelClip extends Error {
   }
 }
 
-/** Duración del clip en segundos. Si no se puede leer se asume una corta: mejor repetir muestras que perderlas. */
+/**
+ * Duración del clip en segundos. Si no se puede leer, **no se inventa**: se lanza.
+ *
+ * Asumir una duración corta parecía prudente y era lo contrario: con 4 s asumidos en un clip de 10 s la tira
+ * cubre solo los cuatro primeros segundos, y Jev acaba diciendo «no hay movimiento al final» de un final que
+ * no ha visto. Un veredicto sobre media tira es peor que ninguno.
+ */
 async function duracionDe(ruta: string): Promise<number> {
   const proceso = Bun.spawn(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", ruta], {
     stdout: "pipe",
@@ -38,7 +44,12 @@ async function duracionDe(ruta: string): Promise<number> {
   const texto = await new Response(proceso.stdout).text();
   await proceso.exited;
   const segundos = Number.parseFloat(texto.trim());
-  return Number.isFinite(segundos) && segundos > 0 ? segundos : 4;
+  if (!(Number.isFinite(segundos) && segundos > 0)) {
+    throw new ErrorFotogramasDelClip(
+      "No se ha podido leer la duración de este clip, así que no se puede comprobar si hace lo que dirigiste.",
+    );
+  }
+  return segundos;
 }
 
 /**

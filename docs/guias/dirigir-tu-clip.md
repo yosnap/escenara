@@ -127,6 +127,10 @@ tu personaje.
 
 ![Rellenar el fotograma desde una foto](../assets/capturas/0.25.0-extraccion-claro.webp)
 
+Antes de leer nada se te pide permiso, porque **la foto se sube a un servicio externo**: si es la foto de un
+personaje tuyo hace falta su declaración de coherencia, y si es una foto suelta, que lo confirmes tú. Sin eso
+la imagen no sale de aquí.
+
 **No se genera nada hasta que confirmas esos campos.** Lo que un modelo cree ver no es necesariamente lo que
 tú quieres pedir, y darlo por bueno sin mirarlo sería gastarte el dinero en la interpretación de otro. Si algo
 no se ha podido leer, se te dice cuál y lo escribes tú.
