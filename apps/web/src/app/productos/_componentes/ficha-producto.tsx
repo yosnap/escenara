@@ -238,7 +238,7 @@ export function FichaProducto({ inicial }: { inicial: ProductoVista }) {
         titulo={`¿Borrar «${producto.nombre}»?`}
         descripcion={
           borrando
-            ? `Se borran ${borrando.derivados} ${borrando.derivados === 1 ? "medio generado" : "medios generados"} con él y sus ${borrando.referencias} ${borrando.referencias === 1 ? "foto asociada" : "fotos asociadas"}. ${borrando.escenas === 0 ? "Ninguna escena lo usa." : `${borrando.escenas} ${borrando.escenas === 1 ? "escena se queda" : "escenas se quedan"} sin producto, pero no se borran.`} Tus fotos de la biblioteca no se tocan.`
+            ? `Se borra su ficha y se sueltan sus ${borrando.referencias} ${borrando.referencias === 1 ? "foto asociada" : "fotos asociadas"}. ${borrando.generados === 0 ? "Todavía no has generado nada con él." : `${borrando.generados} ${borrando.generados === 1 ? "vídeo o fotograma generado" : "vídeos y fotogramas generados"} con él se quedan en tu biblioteca: solo dejan de estar ligados al producto.`} ${borrando.escenas === 0 ? "Ninguna escena lo usa." : `${borrando.escenas} ${borrando.escenas === 1 ? "escena se queda" : "escenas se quedan"} sin producto, pero no se borran.`} Tus fotos de la biblioteca no se tocan.`
             : undefined
         }
         pie={
@@ -247,7 +247,7 @@ export function FichaProducto({ inicial }: { inicial: ProductoVista }) {
               Cancelar
             </Boton>
             <Boton variante="peligro" onClick={confirmarBorrado} disabled={ocupado}>
-              {ocupado ? "Borrando…" : "Borrar de todas formas"}
+              {ocupado ? "Borrando…" : "Borrar el producto"}
             </Boton>
           </>
         }
