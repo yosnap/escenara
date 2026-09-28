@@ -66,3 +66,28 @@ export const CHAT_200 = {
 export function respuestaGrabada(cuerpo: unknown, estado = 200): Response {
   return new Response(JSON.stringify(cuerpo), { status: estado, headers: { "Content-Type": "application/json" } });
 }
+
+/**
+ * `POST /v1/audio/speech` con `kokoro` → 200 con los bytes del audio. Lo que devuelve el servicio es un MP3; en
+ * los tests basta con unos bytes con la firma de un MP3, porque lo que se comprueba es el camino, no el sonido.
+ */
+export const VOZ_MP3 = new Uint8Array([0x49, 0x44, 0x33, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+
+export function respuestaDeAudio(bytes: Uint8Array = VOZ_MP3): Response {
+  return new Response(bytes, { status: 200, headers: { "Content-Type": "audio/mpeg" } });
+}
+
+/**
+ * `POST /v1/audio/transcriptions` con `model=whisper` y `response_format=verbose_json` → 200. Grabado contra la
+ * API real el 2026-09-28: transcribió exacto un clip de 4 s en español.
+ */
+export const TRANSCRIPCION_200 = {
+  task: "transcribe",
+  language: "es",
+  duration: 4.02,
+  text: "Buenos días, esto es una prueba de la pista de voz.",
+  segments: [
+    { id: 0, start: 0, end: 2.1, text: " Buenos días," },
+    { id: 1, start: 2.1, end: 4.02, text: " esto es una prueba de la pista de voz." },
+  ],
+};

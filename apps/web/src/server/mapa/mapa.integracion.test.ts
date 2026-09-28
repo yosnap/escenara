@@ -10,6 +10,7 @@ import {
   CHAT_429,
   MODELOS_200,
   respuestaGrabada,
+  TRANSCRIPCION_200,
 } from "../proveedores/compatible/fixtures";
 
 /**
@@ -43,7 +44,7 @@ const { and, eq } = await import("drizzle-orm");
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
-const { assistantRuns, models, usageLedger, users } = await import("../db/esquema");
+const { assistantRuns, media, models, usageLedger, users } = await import("../db/esquema");
 const { guardarAjustes } = await import("../ajustes");
 const { guardarCredencial } = await import("../boveda/credenciales");
 const { guardarCompatible, listarCompatibles } = await import("../boveda/compatibles");
@@ -57,6 +58,9 @@ const { olvidarCatalogo } = await import("../proveedores/catalogo");
 const { ErrorGeneracion } = await import("../generacion/errores");
 const { ErrorProyecto } = await import("../asistente/errores");
 const { guardarMapa, mapaVista, recomendadasDe, volverALoRecomendado } = await import("./mapa");
+const { transcribirPorMapa } = await import("./transcripcion");
+const { eleccionDeVozDelMapa } = await import("./voz");
+const { ErrorCatalogo } = await import("../proveedores/contrato");
 type Buscador = import("../proveedores/codigos").Buscador;
 type Herramientas = import("../generacion/herramientas").Herramientas;
 type Actor = import("../media/servicio").Actor;
@@ -105,6 +109,7 @@ const buscar: Buscador = async (url, init) => {
     if (programada) return respuestaGrabada(programada.cuerpo, programada.estado);
     return respuestaGrabada({ ...CHAT_200, choices: [{ message: { content: textoCompatible } }] });
   }
+  if (url.endsWith("/audio/transcriptions")) return respuestaGrabada(TRANSCRIPCION_200);
   if (url.includes("file-stream-upload")) return sobre({ downloadUrl: "https://tempfile.kie.ai/referencia.png" });
   if (url.includes("createTask")) return sobre({ taskId: `task_${Date.now()}` });
   if (url.includes("recordInfo")) return sobre({ state: "waiting", failMsg: "" });
@@ -135,6 +140,7 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
   let admin: Sesion;
   let actorAna: Actor;
   let medioId = "";
+  let claveDelMedio = "";
   let proyectoId = "";
 
   beforeAll(async () => {
@@ -145,6 +151,8 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
     await guardarCredencial(ana.id, "kie", CLAVE_KIE, buscar);
     const medio = await crearMedio(actorAna, new File([await foto()], "referencia.png", { type: "image/png" }));
     medioId = medio.id;
+    const [filaMedio] = await db().select().from(media).where(eq(media.id, medio.id));
+    claveDelMedio = filaMedio?.storageKey ?? "";
     await db()
       .update(models)
       .set({ state: "compatible", evidence: "Simulado en el test de integración de la reserva." })
@@ -412,6 +420,56 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
     expect(fallo.message).toContain("máximo 5 peticiones simultáneas");
     expect(fallo.message).toContain("Otro servicio (modelo-de-ultimo-recurso)");
     expect(fallo.message).not.toContain("Vuelve a intentarlo en un momento");
+  });
+
+  // ── Subtítulos ─────────────────────────────────────────────────────────────────────────────────────────
+
+  test("los subtítulos caen del transcriptor local al servicio compatible, y no cuestan nada", async () => {
+    const guardados = await listarCompatibles(ana.id);
+    const nan = guardados.find((p) => p.nombre === "NaN builders");
+    await guardarMapa(ana.id, "transcripcion", [
+      { proveedor: "local", compatibleId: null, modelo: "" },
+      { proveedor: "compatible", compatibleId: nan?.id ?? "", modelo: "whisper" },
+    ]);
+    const apuntesAntes = (await db().select().from(usageLedger).where(eq(usageLedger.userId, ana.id))).length;
+    // El binario local no está instalado en el entorno de los tests: es justo el caso que la reserva resuelve.
+    const subtitulos = await transcribirPorMapa({
+      usuarioId: ana.id,
+      claveAlmacenamiento: claveDelMedio,
+      extension: "mp3",
+      buscar,
+    });
+    expect(subtitulos).toHaveLength(2);
+    expect(subtitulos[0]?.texto).toBe("Buenos días,");
+    expect(subtitulos[1]?.hasta).toBe(4.02);
+    // Ninguna de las dos cobra por petición, así que esto no deja ni un apunte de gasto nuevo.
+    const apuntesDespues = (await db().select().from(usageLedger).where(eq(usageLedger.userId, ana.id))).length;
+    expect(apuntesDespues).toBe(apuntesAntes);
+  });
+
+  test("sin ninguna entrada utilizable, los subtítulos lo dicen y ofrecen escribirlos a mano", async () => {
+    await guardarMapa(ana.id, "transcripcion", [{ proveedor: "elevenlabs", compatibleId: null, modelo: "no-existe" }]);
+    const fallo = (await transcribirPorMapa({
+      usuarioId: ana.id,
+      claveAlmacenamiento: claveDelMedio,
+      extension: "mp3",
+      buscar,
+    }).catch((e: unknown) => e)) as Error;
+    expect(fallo.message).toContain("mapa de subtítulos");
+    expect(fallo.message).toContain("escribirlos a mano");
+    await guardarMapa(ana.id, "transcripcion", [{ proveedor: "local", compatibleId: null, modelo: "" }]);
+  });
+
+  // ── Voz ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  test("una opción de otra familia de voces no vale para una voz ya fijada", async () => {
+    const guardados = await listarCompatibles(ana.id);
+    const nan = guardados.find((p) => p.nombre === "NaN builders");
+    await guardarMapa(ana.id, "voz", [{ proveedor: "compatible", compatibleId: nan?.id ?? "", modelo: "kokoro" }]);
+    // kokoro está en el catálogo como «descubierto», así que todavía no es elegible: eso ya se dice con su motivo.
+    const fallo = (await eleccionDeVozDelMapa(ana.id, "hola", "elevenlabs").catch((e: unknown) => e)) as Error;
+    expect(fallo).toBeInstanceOf(ErrorCatalogo);
+    expect(fallo.message).toContain("mapa de voz");
   });
 
   // ── Ayudas ─────────────────────────────────────────────────────────────────────────────────────────────

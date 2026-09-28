@@ -139,9 +139,54 @@ export const VOCES_OFRECIDAS: readonly VozOfrecida[] = [
   { id: "SAz9YHcvj6GT2YYXdXww", nombre: "River", descripcion: "Neutra, serena y sin marcar género." },
 ];
 
-export const esVozOfrecida = (v: unknown): v is string => VOCES_OFRECIDAS.some((voz) => voz.id === v);
+/**
+ * **Familia de voces** (0.21.1): dos proveedores de voz no comparten los identificadores de sus voces. Los de
+ * ElevenLabs son cadenas opacas (`EXAVITQu4vr4xnSDxMaL`) y los de kokoro son nombres (`ef_dora`), así que una
+ * voz fijada en un proyecto **solo vale dentro de su familia**.
+ *
+ * De aquí sale una regla concreta del mapa de modelos: una entrada de reserva cuya familia no sea la de la voz
+ * del proyecto **no aplica**, y el mensaje lo dice en lugar de generar el diálogo con otro timbre.
+ */
+export const FAMILIAS_DE_VOZ = ["elevenlabs", "kokoro"] as const;
+export type FamiliaDeVoz = (typeof FAMILIAS_DE_VOZ)[number];
 
-export const nombreDeVoz = (id: string): string => VOCES_OFRECIDAS.find((v) => v.id === id)?.nombre ?? id;
+/**
+ * Voces de kokoro, comprobadas en la documentación de NaN builders el 2026-09-28: «82M parameter TTS with 67
+ * voice packs». Aquí solo están las **documentadas por nombre** en esa página; las demás existen pero no se
+ * ofrecen porque no se ha comprobado su identificador, y ofrecer una voz que quizá no existe es peor que no
+ * ofrecerla. Quien valida el identificador es el proveedor, no esta lista.
+ */
+export const VOCES_KOKORO: readonly VozOfrecida[] = [
+  { id: "ef_dora", nombre: "Dora", descripcion: "Femenina, en español." },
+  { id: "em_alex", nombre: "Alex", descripcion: "Masculina, en español." },
+  { id: "af_heart", nombre: "Heart", descripcion: "Femenina, en inglés." },
+];
+
+export const VOCES_POR_FAMILIA: Record<FamiliaDeVoz, readonly VozOfrecida[]> = {
+  elevenlabs: VOCES_OFRECIDAS,
+  kokoro: VOCES_KOKORO,
+};
+
+/**
+ * Familia de voces que usa ese modelo. `kokoro` es el de los servicios compatibles con la API de OpenAI; todo lo
+ * demás que hay hoy en el catálogo es ElevenLabs, directo o a través del «market» de KIE.
+ */
+export const familiaDeModeloDeVoz = (modelo: string): FamiliaDeVoz =>
+  modelo.includes("kokoro") ? "kokoro" : "elevenlabs";
+
+/** Familia a la que pertenece una voz ya fijada. Es lo que decide si una reserva puede leerla. */
+export function familiaDeVoz(id: string): FamiliaDeVoz | null {
+  for (const familia of FAMILIAS_DE_VOZ) {
+    if (VOCES_POR_FAMILIA[familia].some((v) => v.id === id)) return familia;
+  }
+  return null;
+}
+
+export const esVozOfrecida = (v: unknown): v is string =>
+  FAMILIAS_DE_VOZ.some((f) => VOCES_POR_FAMILIA[f].some((voz) => voz.id === v));
+
+export const nombreDeVoz = (id: string): string =>
+  FAMILIAS_DE_VOZ.flatMap((f) => VOCES_POR_FAMILIA[f]).find((v) => v.id === id)?.nombre ?? id;
 
 /**
  * Voz fijada en el proyecto. `null` mientras no se haya elegido ninguna, que es el estado de un proyecto en modo
@@ -587,6 +632,11 @@ export interface DisponibilidadVoz {
    * relevo solo procede si lo que cuesta de verdad cabe en esa cifra. `creditos` es su precio de referencia.
    */
   reserva: { proveedor: string; nombre: string; modelo: string; creditos: number } | null;
+  /**
+   * Cuántas reservas hay en total en el mapa de este usuario (0.21.1). `reserva` es la primera, que es la que se
+   * narra; esto permite decir «y otras dos» sin enumerarlas todas en una frase.
+   */
+  totalReservas: number;
   /** `true` si el transcriptor local está instalado y utilizable. No cuesta nada. */
   transcripcionDisponible: boolean;
   motivoTranscripcion: string;

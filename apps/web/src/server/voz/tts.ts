@@ -19,9 +19,10 @@ import {
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { exigirSelloVigente } from "../generacion/precios";
 import { condicionEnCurso } from "../generacion/trabajos";
+import { aReservaAutorizada } from "../mapa/voz";
 import type { Actor } from "../media/servicio";
 import { acotarCoste } from "../presupuesto/acotar";
-import { creditosDeLaOpcion, type EleccionDeVoz, eleccionDeVozDe } from "./eleccion";
+import { type EleccionDeVoz, eleccionDeVozDe } from "./eleccion";
 import { vozDelProyecto } from "./proyecto";
 
 /**
@@ -61,8 +62,13 @@ export interface VozEncolada {
  * Modelo de voz y precio con los que se trabajaría **para este usuario**, con su proveedor de reserva si lo hay.
  * Sin modelo con precio o sin credencial de su proveedor, esto lanza con el motivo y no se estima nada.
  */
-export function eleccionDeVoz(usuarioId: string, dialogo = "", modelo?: string | null): Promise<EleccionDeVoz> {
-  return eleccionDeVozDe(usuarioId, dialogo, modelo);
+export function eleccionDeVoz(
+  usuarioId: string,
+  dialogo = "",
+  modelo?: string | null,
+  vozFijada?: string | null,
+): Promise<EleccionDeVoz> {
+  return eleccionDeVozDe(usuarioId, dialogo, modelo, vozFijada);
 }
 
 /**
@@ -160,7 +166,8 @@ export async function generarVozDeEscena(
    * carácter, así que un monólogo cuesta decenas de veces lo que una frase. Es lo que hace que el coste esté
    * acotado de verdad y que la reserva cubra lo que se va a gastar.
    */
-  const opciones = await eleccionDeVoz(actor.id, dialogo, modeloPedido);
+  // La voz del proyecto acota las opciones: una de otra familia no puede leerla y cambiaría el timbre.
+  const opciones = await eleccionDeVoz(actor.id, dialogo, modeloPedido, voz.voz);
   const eleccion = opciones.elegida;
   const { modelo, precio } = eleccion;
   // En la moneda del proveedor por el que se va a gastar. Los créditos de dos proveedores no se comparan.
@@ -228,21 +235,21 @@ export async function generarVozDeEscena(
        * confirmó. `firmaVoz` es lo que permite decir después si ese audio sigue valiendo.
        */
       /**
-       * `reserva` es el tope que el usuario vio para el proveedor de reserva, **en su moneda**: el relevo
-       * automático solo puede ir a ese proveedor y modelo, y solo si lo que cuesta cabe aquí (`despacho.ts`).
+       * `reservas` son los topes que el usuario vio para cada reserva de su mapa, **cada uno en la moneda de su
+       * proveedor**: el relevo automático solo puede ir a esos proveedores y modelos, y solo si lo que cuesta
+       * cabe en el suyo (`despacho.ts`). Quedan congelados aquí: si el usuario cambia su mapa entre encolar y
+       * enviar, lo que se paga sigue siendo lo que confirmó.
+       *
+       * `urlBase` viaja con ellos porque un servicio compatible con la API de OpenAI lo elige cada usuario y el
+       * adaptador no puede saber a qué dirección llamar.
        */
       input: {
         dialogo,
         voz: { voz: voz.voz, parametros: voz.parametros },
         firmaVoz: firma,
-        reserva:
-          opciones.reserva === null
-            ? null
-            : {
-                proveedor: opciones.reserva.modelo.proveedor,
-                modelo: opciones.reserva.modelo.modelo,
-                creditos: creditosDeLaOpcion(opciones.reserva, dialogo),
-              },
+        urlBase: opciones.urlBase,
+        compatibleId: opciones.compatibleId,
+        reservas: opciones.reservas.map(aReservaAutorizada),
       },
       sceneId: escena.id,
       estimatedCredits: creditos,

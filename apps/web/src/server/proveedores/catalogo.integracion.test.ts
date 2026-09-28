@@ -185,6 +185,7 @@ describe.skipIf(!hayBaseDeDatos)("catálogo de modelos", () => {
           "gpt-image-2-5-flare-image-to-image",
           HAILUO,
           "kling/v3-turbo-image-to-video",
+          "kokoro",
           NANO,
           SEEDREAM,
           "veo3_fast",
@@ -222,10 +223,10 @@ describe.skipIf(!hayBaseDeDatos)("catálogo de modelos", () => {
         "veo3_fast",
         "veo3_lite",
       ]);
-      // Los dos modelos de voz están sembrados, pero **solo uno es elegible**: el de KIE sigue «descubierto» y
-      // sin precio medido, así que no se puede elegir; el de ElevenLabs sí trae precio y es el que queda.
+      // Los tres modelos de voz están sembrados, pero **solo uno es elegible**: el de KIE y el de kokoro siguen
+      // «descubiertos», así que no se pueden elegir; el de ElevenLabs sí está validado y es el que queda.
       expect((await listarModelos({ capacidad: "tts" })).map((m) => m.modelo).sort()).toEqual(
-        [VOZ, VOZ_RESERVA].sort(),
+        [VOZ, VOZ_RESERVA, "kokoro"].sort(),
       );
       expect((await modelosElegibles("tts")).map((m) => m.modelo)).toEqual([VOZ_RESERVA]);
     });

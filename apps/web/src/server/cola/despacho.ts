@@ -8,8 +8,9 @@ import {
   mensajeDeFalloDeVoz,
   sugerenciaDeReserva,
 } from "@/lib/diagnostico-voz";
-import { type ParametrosVoz, parametrosVozDe } from "@/lib/voz";
+import { familiaDeVoz, type ParametrosVoz, parametrosVozDe } from "@/lib/voz";
 import { eurosPorCreditoDe, leerAjustes } from "../ajustes";
+import { usarCompatibles } from "../boveda/compatibles";
 import { usarCredencialValida } from "../boveda/credenciales";
 import { hechosDePersonajeCitado, parametrosDeControles } from "../controles/hechos";
 import { evaluar, frenosQueGatean } from "../controles/motor";
@@ -20,13 +21,14 @@ import { archivoDe } from "../generacion/comprobaciones";
 import { olvidarSaldo } from "../generacion/estimacion";
 import type { Herramientas } from "../generacion/herramientas";
 import { cerrarVozSincrona } from "../generacion/seguimiento";
+import { opcionesDeVoz, type ReservaAutorizada } from "../mapa/voz";
 import { referenciaCompatible } from "../media/conversion-referencia";
 import { mediosDeReferenciaVigentes } from "../personajes/consulta";
 import { cerrarTrabajoYGasto } from "../presupuesto/reserva";
 import { registrarFalloDeEscena } from "../produccion/cierre";
 import { type Adaptador, ErrorProveedor, type VozPedida } from "../proveedores/contrato";
 import { resolver } from "../proveedores/registro";
-import { alternativaDeVoz, creditosDeLaOpcion } from "../voz/eleccion";
+import { creditosDeLaOpcion } from "../voz/eleccion";
 import { prepararCallback } from "./callback";
 import { marcarEnviando, reintentar, renovarToma } from "./toma";
 
@@ -202,13 +204,7 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
       );
     }
   }
-  const credencial = await usarCredencialValida(fila.userId, fila.provider);
-  if (!credencial.ok) {
-    const nombre = PROVEEDORES_PUBLICOS[fila.provider].nombre;
-    throw new ErrorSinCredencial(
-      `No hay una clave de ${nombre} utilizable en tu cuenta. Añádela en «Tu cuenta» y vuelve a pedir el trabajo.`,
-    );
-  }
+  const credencial = await claveDelTrabajo(fila);
   /**
    * Una pista de voz (0.21.0) no lleva ninguna imagen: no hay nada que subir ni que revalidar contra las fotos de
    * un personaje. Lo que se le manda es **el texto y la voz que quedaron guardados al encolar**, nunca los que
@@ -221,6 +217,8 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
       dialogo: dialogoDe(fila),
       urls: [],
       ...(voz === null ? {} : { voz }),
+      // Solo la usa el adaptador de los servicios compatibles: es la dirección que eligió el usuario.
+      urlBaseCompatible: urlBaseDe(fila),
     });
     const callbackVoz = await prepararCallback(fila);
     return { adaptador, clave: credencial.clave, entrada: entradaVoz, ...callbackVoz };
@@ -368,106 +366,193 @@ async function marcarTareaPerdida(fila: FilaTrabajo, taskId: string): Promise<Fi
 }
 
 /**
- * Intenta el trabajo de voz con el **proveedor de reserva** tras un rechazo probado del primero. Devuelve `null`
- * cuando no procede: no es un trabajo de voz, el fallo no prueba que no se haya cobrado, este usuario no tiene
- * credencial del otro proveedor o esta instalación no tiene ningún modelo suyo utilizable.
+ * Intenta el trabajo de voz con **la siguiente reserva autorizada** tras un rechazo probado del anterior
+ * (0.21.1: son N, en el orden del mapa de modelos del usuario). Devuelve `null` cuando no procede: no es un
+ * trabajo de voz o el fallo no prueba que no se haya cobrado.
  *
  * Cambia el proveedor y el modelo **de la misma fila**, así que no hay un trabajo nuevo, ni una reserva nueva, ni
  * una confirmación nueva: es el mismo gasto que el usuario ya autorizó, encaminado a otro sitio.
+ *
+ * **El relevo solo puede ir a donde el usuario ya autorizó.** Al encolar se le enseñó, en la moneda de cada
+ * reserva, cuánto costaría este diálogo allí, y esas cifras quedaron en la entrada del trabajo. Los créditos de
+ * dos proveedores no se comparan entre sí, así que el tope de cada una es el suyo y solo el suyo:
+ *
+ * - si al encolar no había ninguna reserva (el usuario añadió la clave después), no se cambia;
+ * - si esa reserva ya no se puede resolver (clave borrada, modelo retirado, sin precio), se salta;
+ * - si lo que cuesta ahora el diálogo allí supera lo que vio, se salta;
+ * - si su familia de voces no es la de la voz fijada, se salta: leería el diálogo con otro timbre.
+ *
+ * Cuando no queda ninguna, se falla sin coste diciendo **qué se podía haber probado y por qué no**.
  */
 async function relevoDeVoz(fila: FilaTrabajo, error: unknown, h: Herramientas): Promise<Despachado | null> {
   if (fila.kind !== "voz") return null;
   if (!(error instanceof ErrorProveedor) || !error.rechazoProbado) return null;
-  const alternativa = await alternativaDeVoz(fila.userId, fila.provider);
-  if (!alternativa) return null;
-  const fallido: IntentoDeVoz = {
-    proveedor: fila.provider,
-    modelo: fila.model,
-    codigo: error.codigo,
-    cobro: "sin-cobro",
-  };
-  /**
-   * **El relevo solo puede ir a donde el usuario ya autorizó.** Al encolar se le enseñó, en la moneda del
-   * proveedor de reserva, cuánto costaría este diálogo allí, y esa cifra quedó en la entrada del trabajo. Los
-   * créditos de dos proveedores no se comparan entre sí, así que el tope es ese y solo ese:
-   *
-   * - si al encolar no había reserva (el usuario añadió su clave después), no se cambia;
-   * - si la alternativa de ahora es otro proveedor u otro modelo, no se cambia;
-   * - si lo que cuesta ahora el diálogo allí supera lo que vio, no se cambia.
-   *
-   * En los tres casos se falla sin coste diciendo qué se podía haber probado y por qué no.
-   */
-  const autorizada = reservaAutorizada(fila);
-  const nombre = PROVEEDORES_PUBLICOS[alternativa.modelo.proveedor as FilaTrabajo["provider"]].nombre;
-  const creditosAlternativa = creditosDeLaOpcion(alternativa, dialogoDe(fila));
-  const motivoSinRelevo =
-    autorizada === null ||
-    autorizada.proveedor !== alternativa.modelo.proveedor ||
-    autorizada.modelo !== alternativa.modelo.modelo
-      ? `Se podía haber probado con ${nombre}, pero cuando pediste esta voz no tenías ${nombre} disponible y no autorizaste su coste: no se cambia de proveedor sin que lo hayas visto. Vuelve a pedir la voz de esta escena y se te mostrará lo que cuesta con ${nombre}.`
-      : creditosAlternativa > autorizada.creditos
-        ? `Se podía haber probado con ${nombre}, pero generar este diálogo allí cuesta ahora ${creditosAlternativa} créditos de ${nombre} y tú autorizaste ${autorizada.creditos}: no se cambia de proveedor para gastar más de lo que viste. Vuelve a pedir la voz de esta escena y se te mostrará el coste actualizado.`
-        : null;
-  if (motivoSinRelevo !== null || autorizada === null) {
+  const pendientes = reservasPendientes(fila);
+  const intentos: IntentoDeVoz[] = [
+    { proveedor: fila.provider, modelo: fila.model, codigo: error.codigo, cobro: "sin-cobro" },
+  ];
+  if (pendientes.length === 0) {
+    /**
+     * No hay ninguna reserva autorizada. Si **ahora** el usuario tiene otra opción utilizable (añadió la clave
+     * después de encolar), eso hay que decirlo con todas las letras: no se cambia de proveedor sin que haya
+     * visto lo que cuesta allí, y lo que no se puede es callarse que existía una alternativa.
+     */
+    const otras = (await opcionesDeVoz(fila.userId)).filter((o) => o.eleccion.modelo.proveedor !== fila.provider);
+    const otra = otras[0];
+    if (!otra) return null;
+    const nombre = otra.eleccion.modelo.nombreProveedor;
     return {
-      fila: await cerrarSinCoste(fila, error.motivo, mensajeDeFalloDeVoz([fallido], motivoSinRelevo ?? "")),
+      fila: await cerrarSinCoste(
+        fila,
+        error.motivo,
+        mensajeDeFalloDeVoz(
+          intentos,
+          `Se podía haber probado con ${nombre}, pero cuando pediste esta voz no lo tenías disponible y no autorizaste su coste: no se cambia de proveedor sin que lo hayas visto. Vuelve a pedir la voz de esta escena y se te mostrará lo que cuesta con ${nombre}.`,
+        ),
+      ),
       enviado: false,
     };
   }
-  console.warn(
-    `[cola] relevo de voz en el trabajo ${fila.id}: ${fila.provider} → ${alternativa.modelo.proveedor} (${error.codigo})`,
+
+  let actual = fila;
+  const descartadas: string[] = [];
+  for (const reserva of pendientes) {
+    const motivo = await motivoParaNoRelevar(actual, reserva);
+    if (motivo !== null) {
+      descartadas.push(motivo);
+      continue;
+    }
+    console.warn(`[cola] relevo de voz en el trabajo ${actual.id}: ${actual.provider} → ${reserva.proveedor}`);
+    const cambiada = await encaminarA(actual, reserva);
+    if (!cambiada) return null;
+    actual = cambiada;
+
+    let preparado: Preparado;
+    try {
+      preparado = await preparar(actual, actual.lockedBy ?? "", h);
+    } catch (segundoError) {
+      if (esRechazoProbado(segundoError)) {
+        intentos.push(intentoDe(actual, segundoError));
+        continue;
+      }
+      return { fila: await tratarFalloDeLlamada(actual, segundoError, h, intentos), enviado: false };
+    }
+    let llamada: Llamada;
+    try {
+      llamada = await llamarAlProveedor(actual, preparado, h);
+    } catch (segundoError) {
+      if (esRechazoProbado(segundoError)) {
+        intentos.push(intentoDe(actual, segundoError));
+        continue;
+      }
+      return { fila: await tratarFalloDeLlamada(actual, segundoError, h, intentos), enviado: false };
+    }
+    olvidarSaldo(actual.userId);
+    const guardada = await guardarTarea(actual, llamada.taskId, preparado.callbackTokenHash);
+    if (!guardada) return { fila: await marcarTareaPerdida(actual, llamada.taskId), enviado: false };
+    // Quien paga tiene derecho a saber en qué cuenta se ha gastado y por qué, aunque haya salido bien.
+    const primero = intentos[0];
+    const aviso = primero
+      ? mensajeDeCambioDeProveedor(primero, {
+          proveedor: reserva.proveedor as FilaTrabajo["provider"],
+          modelo: reserva.modelo,
+        })
+      : "";
+    await db().update(generationJobs).set({ errorMessage: aviso }).where(eq(generationJobs.id, guardada.id));
+    const conAviso = { ...guardada, errorMessage: aviso };
+    if (llamada.inmediata) {
+      return { fila: await cerrarVozSincrona(conAviso, llamada.inmediata, aviso), enviado: true };
+    }
+    return { fila: conAviso, enviado: true };
+  }
+
+  // Se han acabado las reservas: se cierra sin coste contando todos los intentos y todo lo que se descartó.
+  return {
+    fila: await cerrarSinCoste(actual, error.motivo, mensajeDeFalloDeVoz(intentos, descartadas.join(" "))),
+    enviado: false,
+  };
+}
+
+const esRechazoProbado = (error: unknown) => error instanceof ErrorProveedor && error.rechazoProbado;
+
+const intentoDe = (fila: FilaTrabajo, error: unknown): IntentoDeVoz => ({
+  proveedor: fila.provider,
+  modelo: fila.model,
+  codigo: error instanceof ErrorProveedor ? error.codigo : "respuesta-inesperada",
+  cobro: "sin-cobro",
+});
+
+/** Por qué esta reserva no se puede usar, o `null` si sí se puede. El motivo entra en el mensaje del usuario. */
+async function motivoParaNoRelevar(fila: FilaTrabajo, reserva: ReservaAutorizada): Promise<string | null> {
+  const nombre = await nombreDeLaReserva(fila.userId, reserva);
+  const voz = vozDe(fila);
+  if (voz && familiaDeVoz(voz.voz) !== null && familiaDeVoz(voz.voz) !== reserva.familia) {
+    return `Se podía haber probado con ${nombre}, pero sus voces son otras y no incluyen la que tiene fijada este proyecto: generar ahí habría cambiado el timbre del personaje a mitad de proyecto.`;
+  }
+  const disponible = await reservaDisponible(fila.userId, reserva);
+  if (!disponible) {
+    return `Se podía haber probado con ${nombre}, pero ahora mismo no está utilizable en tu cuenta: puede que falte su clave o que su modelo ya no tenga precio registrado en esta instalación.`;
+  }
+  const ahora = creditosDeLaOpcion(disponible, dialogoDe(fila));
+  if (ahora > reserva.creditos) {
+    return `Se podía haber probado con ${nombre}, pero generar este diálogo allí cuesta ahora ${ahora} créditos de ${nombre} y tú autorizaste ${reserva.creditos}: no se cambia de proveedor para gastar más de lo que viste. Vuelve a pedir la voz de esta escena y se te mostrará el coste actualizado.`;
+  }
+  return null;
+}
+
+/** La reserva, resuelta contra lo que hay ahora mismo: su modelo, su adaptador y su precio. `null` si ya no vale. */
+async function reservaDisponible(usuarioId: string, reserva: ReservaAutorizada) {
+  const opciones = await opcionesDeVoz(usuarioId);
+  const opcion = opciones.find(
+    (o) =>
+      o.eleccion.modelo.proveedor === reserva.proveedor &&
+      o.eleccion.modelo.modelo === reserva.modelo &&
+      o.entrada.compatibleId === reserva.compatibleId,
   );
+  return opcion?.eleccion ?? null;
+}
+
+/** Nombre visible de una reserva: el del proveedor, o el que el usuario le puso a su servicio compatible. */
+async function nombreDeLaReserva(usuarioId: string, reserva: ReservaAutorizada): Promise<string> {
+  if (reserva.proveedor !== "compatible") {
+    return PROVEEDORES_PUBLICOS[reserva.proveedor as FilaTrabajo["provider"]]?.nombre ?? reserva.proveedor;
+  }
+  const servicios = await usarCompatibles(usuarioId);
+  return servicios.find((s) => s.id === reserva.compatibleId)?.nombre ?? "tu servicio compatible";
+}
+
+/**
+ * Apunta la fila y su reserva de presupuesto al proveedor nuevo **y a su importe autorizado**, en su moneda: el
+ * cierre copia proveedor, modelo e importe de la reserva, así que sin esto el usuario vería en su historial un
+ * cobro de KIE que en realidad le hizo otro, o un tope expresado en la moneda equivocada.
+ */
+async function encaminarA(fila: FilaTrabajo, reserva: ReservaAutorizada): Promise<FilaTrabajo | null> {
   const [cambiada] = await db()
     .update(generationJobs)
     .set({
-      provider: alternativa.modelo.proveedor as FilaTrabajo["provider"],
-      model: alternativa.modelo.modelo,
-      estimatedCredits: autorizada.creditos,
+      provider: reserva.proveedor as FilaTrabajo["provider"],
+      model: reserva.modelo,
+      estimatedCredits: reserva.creditos,
+      // La dirección del servicio viaja en la entrada: el adaptador de los compatibles no puede saberla.
+      input: {
+        ...(fila.input as Record<string, unknown>),
+        urlBase: reserva.urlBase,
+        compatibleId: reserva.compatibleId,
+      },
     })
     .where(and(eq(generationJobs.id, fila.id), eq(generationJobs.state, "enviando"), isNull(generationJobs.taskId)))
     .returning();
   if (!cambiada) return null;
-  /**
-   * La reserva ya apartada pasa a nombre del proveedor nuevo **y a su importe autorizado**, en su moneda: el
-   * cierre copia proveedor, modelo e importe de la reserva, así que sin esto el usuario vería en su historial un
-   * cobro de KIE que en realidad le hizo ElevenLabs, o un tope expresado en la moneda equivocada.
-   */
   await db()
     .update(usageLedger)
     .set({
-      provider: alternativa.modelo.proveedor as FilaTrabajo["provider"],
-      model: alternativa.modelo.modelo,
-      priceStamp: alternativa.precio.sello,
-      credits: autorizada.creditos,
-      amountEur: autorizada.creditos * eurosPorCreditoDe(await leerAjustes(), alternativa.modelo.proveedor),
+      provider: reserva.proveedor as FilaTrabajo["provider"],
+      model: reserva.modelo,
+      credits: reserva.creditos,
+      amountEur: reserva.creditos * eurosPorCreditoDe(await leerAjustes(), reserva.proveedor),
     })
     .where(and(eq(usageLedger.jobId, cambiada.id), eq(usageLedger.entryType, "reserva")));
-  let preparado: Preparado;
-  try {
-    preparado = await preparar(cambiada, cambiada.lockedBy ?? "", h);
-  } catch (segundoError) {
-    return { fila: await tratarFalloDeLlamada(cambiada, segundoError, h, [fallido]), enviado: false };
-  }
-  let llamada: Llamada;
-  try {
-    llamada = await llamarAlProveedor(cambiada, preparado, h);
-  } catch (segundoError) {
-    return { fila: await tratarFalloDeLlamada(cambiada, segundoError, h, [fallido]), enviado: false };
-  }
-  olvidarSaldo(cambiada.userId);
-  const guardada = await guardarTarea(cambiada, llamada.taskId, preparado.callbackTokenHash);
-  if (!guardada) return { fila: await marcarTareaPerdida(cambiada, llamada.taskId), enviado: false };
-  // Quien paga tiene derecho a saber en qué cuenta se ha gastado y por qué, aunque haya salido bien.
-  const aviso = mensajeDeCambioDeProveedor(fallido, {
-    proveedor: alternativa.modelo.proveedor as FilaTrabajo["provider"],
-    modelo: alternativa.modelo.modelo,
-  });
-  await db().update(generationJobs).set({ errorMessage: aviso }).where(eq(generationJobs.id, guardada.id));
-  const conAviso = { ...guardada, errorMessage: aviso };
-  if (llamada.inmediata) {
-    return { fila: await cerrarVozSincrona(conAviso, llamada.inmediata, aviso), enviado: true };
-  }
-  return { fila: conAviso, enviado: true };
+  return cambiada;
 }
 
 /**
@@ -504,7 +589,7 @@ async function tratarFalloDeLlamada(
     const mensaje = esDeVoz
       ? mensajeDeFalloDeVoz(
           [...previos, { proveedor: fila.provider, modelo: fila.model, codigo, cobro: "sin-cobro" }],
-          sugerenciaDeReserva(previos.length > 0 || (await alternativaDeVoz(fila.userId, fila.provider)) !== null),
+          sugerenciaDeReserva(previos.length > 0 || reservasPendientes(fila).length > 0),
         )
       : mensajeDeFalloDeProveedor(ENCABEZADO_DE_TRABAJO[fila.kind], [
           {
@@ -592,13 +677,78 @@ function segundosDe(fila: FilaTrabajo): number | null {
   return typeof segundos === "number" && segundos > 0 ? segundos : null;
 }
 
-/** Tope autorizado para el proveedor de reserva de una voz, tal como se guardó al encolar; `null` si no lo hubo. */
-function reservaAutorizada(fila: FilaTrabajo): { proveedor: string; modelo: string; creditos: number } | null {
-  const reserva = (fila.input as { reserva?: unknown }).reserva;
-  if (!reserva || typeof reserva !== "object") return null;
-  const { proveedor, modelo, creditos } = reserva as Record<string, unknown>;
-  if (typeof proveedor !== "string" || typeof modelo !== "string" || typeof creditos !== "number") return null;
-  return { proveedor, modelo, creditos };
+/**
+ * Reservas autorizadas de una voz, **en orden**, tal como quedaron guardadas al encolar (0.21.1). Cada una trae
+ * su tope en la moneda de su proveedor: es lo único a donde puede ir el relevo automático, porque es lo único
+ * cuyo coste el usuario ha visto y ha autorizado.
+ */
+function reservasAutorizadas(fila: FilaTrabajo): ReservaAutorizada[] {
+  const guardadas = (fila.input as { reservas?: unknown }).reservas;
+  if (!Array.isArray(guardadas)) return [];
+  const salida: ReservaAutorizada[] = [];
+  for (const cruda of guardadas) {
+    const r = cruda as Record<string, unknown>;
+    if (typeof r?.proveedor !== "string" || typeof r.modelo !== "string" || typeof r.creditos !== "number") continue;
+    salida.push({
+      proveedor: r.proveedor,
+      compatibleId: typeof r.compatibleId === "string" ? r.compatibleId : null,
+      modelo: r.modelo,
+      creditos: r.creditos,
+      familia: r.familia === "kokoro" ? "kokoro" : "elevenlabs",
+      urlBase: typeof r.urlBase === "string" ? r.urlBase : "",
+    });
+  }
+  return salida;
+}
+
+/** Reservas de este trabajo que quedan por probar: las que van después del proveedor y modelo que acaban de fallar. */
+function reservasPendientes(fila: FilaTrabajo): ReservaAutorizada[] {
+  const todas = reservasAutorizadas(fila);
+  const yaUsada = todas.findIndex((r) => r.proveedor === fila.provider && r.modelo === fila.model);
+  return yaUsada === -1 ? todas : todas.slice(yaUsada + 1);
+}
+
+/**
+ * Clave con la que se paga este trabajo.
+ *
+ * Los proveedores de la bóveda tienen una clave por usuario. Un servicio **compatible con la API de OpenAI** no:
+ * el usuario puede tener varios, así que la suya se busca por el identificador que quedó guardado en el trabajo
+ * al encolar. Si ya no está, no se envía nada y se dice qué hacer.
+ */
+async function claveDelTrabajo(fila: FilaTrabajo): Promise<{ clave: string }> {
+  if (fila.provider === "compatible") {
+    const id = compatibleIdDe(fila);
+    const servicio = (await usarCompatibles(fila.userId)).find((s) => s.id === id || s.urlBase === urlBaseDe(fila));
+    if (!servicio) {
+      throw new ErrorSinCredencial(
+        "El servicio compatible con el que se iba a generar esto ya no está guardado en tu cuenta, o su clave está marcada como no válida. Vuelve a añadirlo en «Tu cuenta» y pide el trabajo otra vez.",
+      );
+    }
+    return { clave: servicio.clave };
+  }
+  const credencial = await usarCredencialValida(fila.userId, fila.provider);
+  if (!credencial.ok) {
+    const nombre = PROVEEDORES_PUBLICOS[fila.provider].nombre;
+    throw new ErrorSinCredencial(
+      `No hay una clave de ${nombre} utilizable en tu cuenta. Añádela en «Tu cuenta» y vuelve a pedir el trabajo.`,
+    );
+  }
+  return { clave: credencial.clave };
+}
+
+/** Dirección base del servicio compatible que quedó guardada al encolar; vacía en los demás proveedores. */
+function urlBaseDe(fila: FilaTrabajo): string {
+  const url = (fila.input as { urlBase?: unknown }).urlBase;
+  return typeof url === "string" ? url : "";
+}
+
+/** Identificador del servicio compatible con el que se encoló, si lo hubo. */
+function compatibleIdDe(fila: FilaTrabajo): string {
+  const guardado = (fila.input as { compatibleId?: unknown }).compatibleId;
+  if (typeof guardado === "string" && guardado !== "") return guardado;
+  // Tras un relevo, el servicio es el de la reserva a la que se encaminó.
+  const usada = reservasAutorizadas(fila).find((r) => r.proveedor === fila.provider && r.modelo === fila.model);
+  return usada?.compatibleId ?? "";
 }
 
 /** Lo que dice el personaje, tal como se guardó al encolar. Lo usan el clip y la voz. */

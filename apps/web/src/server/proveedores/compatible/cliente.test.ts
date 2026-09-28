@@ -1,8 +1,25 @@
 import { describe, expect, test } from "bun:test";
 import { detalleDeErrorAjeno, mensajeDeFalloDeProveedor } from "@/lib/diagnostico-proveedor";
 import type { Buscador } from "../codigos";
-import { ErrorCompatible, listarModelos, pedirChat, textoDeUrlBase, validarUrlBase } from "./cliente";
-import { CHAT_200, CHAT_401, CHAT_402, CHAT_429, MODELOS_200, respuestaGrabada } from "./fixtures";
+import {
+  ErrorCompatible,
+  listarModelos,
+  pedirChat,
+  pedirVoz,
+  textoDeUrlBase,
+  transcribirAudioCompatible,
+  validarUrlBase,
+} from "./cliente";
+import {
+  CHAT_200,
+  CHAT_401,
+  CHAT_402,
+  CHAT_429,
+  MODELOS_200,
+  respuestaDeAudio,
+  respuestaGrabada,
+  TRANSCRIPCION_200,
+} from "./fixtures";
 
 /**
  * Cliente de los servicios compatibles con la API de OpenAI (0.21.1). **No llama a nadie**: contesta con las
@@ -185,5 +202,87 @@ describe("lectura de las respuestas grabadas", () => {
     await expect(
       pedirChat({ urlBase: BASE, clave: CLAVE, modelo: "gemma4", instrucciones: "i", entrada: "e", buscar }),
     ).rejects.toThrow(ErrorCompatible);
+  });
+});
+
+describe("audio: voz y transcripción con respuestas grabadas", () => {
+  test("kokoro devuelve los bytes del audio y su tipo, y la petición lleva la voz elegida", async () => {
+    let cuerpo: Record<string, unknown> = {};
+    const buscar: Buscador = async (url, init) => {
+      expect(url).toBe(`${BASE}/audio/speech`);
+      cuerpo = JSON.parse(String(init.body)) as Record<string, unknown>;
+      return respuestaDeAudio();
+    };
+    const voz = await pedirVoz({
+      urlBase: BASE,
+      clave: CLAVE,
+      modelo: "kokoro",
+      voz: "ef_dora",
+      texto: "Buenos días.",
+      velocidad: 1,
+      buscar,
+    });
+    expect(voz.mime).toBe("audio/mpeg");
+    expect(voz.audio.byteLength).toBeGreaterThan(0);
+    expect(cuerpo).toEqual({
+      model: "kokoro",
+      input: "Buenos días.",
+      voice: "ef_dora",
+      response_format: "mp3",
+      speed: 1,
+    });
+  });
+
+  test("un audio vacío no se da por bueno: sería una escena muda sin decirlo", async () => {
+    const buscar: Buscador = async () => new Response(new Uint8Array(), { status: 200 });
+    await expect(
+      pedirVoz({ urlBase: BASE, clave: CLAVE, modelo: "kokoro", voz: "ef_dora", texto: "hola", buscar }),
+    ).rejects.toThrow(ErrorCompatible);
+  });
+
+  test("whisper devuelve los segmentos con sus tiempos, en multipart y pidiendo verbose_json", async () => {
+    let campos: Record<string, string> = {};
+    const buscar: Buscador = async (url, init) => {
+      expect(url).toBe(`${BASE}/audio/transcriptions`);
+      const formulario = init.body as FormData;
+      campos = {
+        model: String(formulario.get("model")),
+        response_format: String(formulario.get("response_format")),
+      };
+      // La cabecera del multipart la pone `fetch`: si la pusiéramos nosotros, faltaría el separador.
+      expect((init.headers as Record<string, string>)["Content-Type"]).toBeUndefined();
+      return respuestaGrabada(TRANSCRIPCION_200);
+    };
+    const segmentos = await transcribirAudioCompatible({
+      urlBase: BASE,
+      clave: CLAVE,
+      modelo: "whisper",
+      audio: new Blob([new Uint8Array([1, 2, 3])]),
+      nombre: "audio.mp3",
+      buscar,
+    });
+    expect(campos).toEqual({ model: "whisper", response_format: "verbose_json" });
+    expect(segmentos).toHaveLength(2);
+    expect(segmentos[0]).toEqual({ inicio: 0, fin: 2.1, texto: "Buenos días," });
+    expect(segmentos[1]?.fin).toBe(4.02);
+  });
+
+  test("un segmento con tiempos imposibles se descarta en lugar de colocar texto donde nadie habló", async () => {
+    const buscar: Buscador = async () =>
+      respuestaGrabada({
+        segments: [
+          { start: 5, end: 1, text: "al revés" },
+          { start: 0, end: 1, text: "bien" },
+        ],
+      });
+    const segmentos = await transcribirAudioCompatible({
+      urlBase: BASE,
+      clave: CLAVE,
+      modelo: "whisper",
+      audio: new Blob([new Uint8Array([1])]),
+      nombre: "a.mp3",
+      buscar,
+    });
+    expect(segmentos).toEqual([{ inicio: 0, fin: 1, texto: "bien" }]);
   });
 });
