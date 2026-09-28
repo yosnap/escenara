@@ -138,7 +138,7 @@ export function PanelReferencias({
             onVista={(vista) => onVista(referencia.id, vista)}
           />
         )}
-        {referencia.origen === "vista_generada" && (
+        {referencia.origen === "vista_generada" && !personaje.inventado && (
           <p className="text-xs text-texto-suave">No cuenta como foto original del personaje.</p>
         )}
         {referencia.motivosMarcada.map((motivo) => (
@@ -161,10 +161,19 @@ export function PanelReferencias({
   return (
     <section id={ANCLA_REFERENCIAS} aria-label="Fotos de referencia" className="flex flex-col gap-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-2xl font-bold text-texto">Fotos de referencia</h2>
+        <h2 className="text-2xl font-bold text-texto">
+          {personaje.inventado ? "Imágenes de referencia" : "Fotos de referencia"}
+        </h2>
         <p className="text-sm text-texto-suave">
-          {referencias.length} de {MAXIMO_REFERENCIAS} · {personaje.totalReferencias} original
-          {personaje.totalReferencias === 1 ? "" : "es"} de {personaje.minimoReferencias} para poder generar
+          {referencias.length} de {MAXIMO_REFERENCIAS} · {personaje.totalReferencias}{" "}
+          {personaje.inventado
+            ? personaje.totalReferencias === 1
+              ? "imagen"
+              : "imágenes"
+            : personaje.totalReferencias === 1
+              ? "original"
+              : "originales"}{" "}
+          de {personaje.minimoReferencias} para poder generar
         </p>
       </div>
 

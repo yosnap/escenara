@@ -177,7 +177,9 @@ export async function pedirVistasQueFaltan(
   // Lo que ya está **en marcha** no falta: sin esto, pulsar dos veces (o volver a abrir el diálogo, que genera
   // otra clave) encargaba y cobraba una segunda tanda de las mismas vistas mientras la primera se generaba.
   const enMarcha = await vistasEnMarcha(personaje.id);
-  const faltan = vistasPorGenerar(await coberturaDe(personaje.id, personaje.kind)).filter((v) => !enMarcha.has(v));
+  const faltan = vistasPorGenerar(await coberturaDe(personaje.id, personaje.kind, undefined, personaje.virtual)).filter(
+    (v) => !enMarcha.has(v),
+  );
   if (faltan.length === 0) {
     throw new ErrorPersonaje(
       409,

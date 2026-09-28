@@ -1,5 +1,6 @@
 import { describe, expect, it, test } from "bun:test";
 import {
+  calcularCobertura,
   clasificarRechazos,
   esMotivoTecnico,
   esRechazoBloqueante,
@@ -64,5 +65,17 @@ describe("proporción de las vistas", () => {
     expect(proporcionDeVista("perfil_izquierdo")).toBe("3:4");
     expect(proporcionDeVista("tres_cuartos")).toBe("3:4");
     expect(proporcionDeVista("cuerpo_completo")).toBe("9:16");
+  });
+});
+
+describe("cobertura de un personaje inventado", () => {
+  test("sus vistas generadas cubren; en uno real solo cubren las fotos", () => {
+    const refs = [
+      { vistaClave: "frontal" as const, origen: "vista_generada" as const },
+      { vistaClave: "tres_cuartos" as const, origen: "vista_generada" as const },
+    ];
+    expect(calcularCobertura("persona", refs, true).faltan).not.toContain("frontal");
+    expect(calcularCobertura("persona", refs, true).faltan).not.toContain("tres_cuartos");
+    expect(calcularCobertura("persona", refs).faltan).toContain("frontal");
   });
 });
