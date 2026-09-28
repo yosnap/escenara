@@ -44,6 +44,12 @@ export interface PeticionDeTexto {
    * descripción sola. Quien llama sabe si la imagen llegó por `conImagen`.
    */
   imagen?: ImagenParaChat;
+  /**
+   * Solo se puede gastar lo que el usuario vio y confirmó: la entrada principal (si es de pago y la confirmó) y
+   * las que se pagan por cuota del plan. Ninguna **otra** entrada de pago del mapa se prueba, porque su coste no
+   * se enseñó. Si la principal es de cuota, no se confirmó nada, así que solo se prueban entradas de cuota.
+   */
+  limitarAConfirmado?: boolean;
 }
 
 export interface TextoDelMapa {
@@ -161,7 +167,10 @@ function sugerenciaDeMapa(intentos: readonly IntentoProveedor[]): string {
 export async function pedirTextoPorMapa(peticion: PeticionDeTexto): Promise<TextoDelMapa> {
   const entradas = await resolverMapa(peticion.usuarioId, TIPO_TEXTO);
   // `local` no sabe escribir texto: la transcripción es lo único que hoy se hace en la propia máquina.
-  const utiles = entradas.filter((e) => e.proveedor !== "local");
+  const sinLocal = entradas.filter((e) => e.proveedor !== "local");
+  const utiles = peticion.limitarAConfirmado
+    ? sinLocal.filter((e, i) => i === 0 || e.proveedor === "compatible")
+    : sinLocal;
   const resultado = await recorrerMapa(
     utiles,
     (entrada, posicion) => intentarEntrada(peticion, entrada, posicion),

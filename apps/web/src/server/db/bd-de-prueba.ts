@@ -22,11 +22,18 @@ const registro = globalThis as { __escenaraBdReal?: string; __escenaraBdsDePrueb
 
 const nombreDeUrl = (url: string) => new URL(url).pathname.replace(/^\//, "");
 
-export async function usarBaseDeDatosDePrueba(nombre: string): Promise<void> {
+export async function usarBaseDeDatosDePrueba(pedido: string): Promise<void> {
   const url = new URL(readServerConfig().databaseUrl);
   // La primera llamada del proceso es la que ve la base real; después `DATABASE_URL` ya está reescrita.
   registro.__escenaraBdReal ??= url.pathname.replace(/^\//, "");
   const real = registro.__escenaraBdReal;
+  /**
+   * Cada copia de trabajo (worktree) tiene su propia base real (`escenara_v023`…) y **sus propias bases de
+   * prueba**: se les añade el nombre de la real. Sin esto, dos copias pasando la batería a la vez escribían en
+   * las mismas `escenara_pruebas_*` y se tumbaban los tests la una a la otra. La copia principal (`escenara`)
+   * conserva los nombres de siempre.
+   */
+  const nombre = real === "escenara" ? pedido : `${pedido}__${real}`.slice(0, 63);
   if (real === nombre) throw new Error(`La base de datos de prueba no puede llamarse igual que la real (${nombre}).`);
   if (!/^[a-z0-9_]+$/.test(nombre)) throw new Error("El nombre de la base de datos de prueba no es válido.");
 
