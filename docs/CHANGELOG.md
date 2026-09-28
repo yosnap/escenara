@@ -2,6 +2,16 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.26.1] · 2026-09-28
+
+### Corregido
+
+- **Un personaje inventado ya tiene imagen.** La imagen del personaje (la de la lista y la ficha) solo podía ser
+  una foto original, y un inventado no tiene ninguna: todas sus imágenes son generadas, así que se quedaba con la
+  inicial. Ahora un inventado usa su primera imagen; una persona real sigue usando su primera foto original.
+- **Cambiar la imagen del personaje sin adivinar cómo.** Cada foto que puede serlo lleva el botón «Usar como
+  imagen del personaje», que la pone la primera. Arrastrar para ordenar sigue funcionando igual.
+
 ## [0.26.0] · 2026-09-28
 
 Los productos: presentar, mostrar y manipular algo delante de la cámara **sin que su etiqueta cambie**.
