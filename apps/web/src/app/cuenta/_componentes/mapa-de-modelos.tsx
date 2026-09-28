@@ -1,9 +1,10 @@
 "use client";
 
-import { ArrowDown, ArrowUp, Route, Trash2 } from "lucide-react";
+import { Route, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Boton } from "@/components/ui/button";
 import { Aviso } from "@/components/ui/feedback";
+import { type ElementoOrdenable, ListaOrdenable } from "@/components/ui/lista-ordenable";
 import { Selector } from "@/components/ui/select";
 import {
   DESCRIPCION_DE_TIPO,
@@ -77,14 +78,38 @@ function TarjetaTipo({ inicial, opciones }: { inicial: MapaVista; opciones: Entr
   };
 
   const entradas = mapa.entradas;
-  const mover = (indice: number, salto: number) => {
-    const destino = indice + salto;
-    if (destino < 0 || destino >= entradas.length) return;
-    const copia = [...entradas];
-    const [movida] = copia.splice(indice, 1);
-    if (movida) copia.splice(destino, 0, movida);
-    void guardar(copia);
+  /** Nuevo orden al soltar: se guarda entero y, si el servidor lo rechaza, la lista vuelve a como estaba. */
+  const reordenar = async (claves: string[]): Promise<string | null> => {
+    const porClave = new Map(entradas.map((e) => [clave(e), e]));
+    const nuevas = claves.map((c) => porClave.get(c)).filter((e): e is EntradaMapaVista => e !== undefined);
+    setOcupado(true);
+    const respuesta = await guardarMapaAccion(mapa.tipo, nuevas);
+    aplicar(respuesta);
+    return respuesta.ok ? null : respuesta.error;
   };
+
+  const elementos: ElementoOrdenable[] = entradas.map((entrada, indice) => ({
+    clave: clave(entrada),
+    etiqueta: etiquetaDeEntrada(entrada),
+    contenido: (
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
+        <span className="min-w-24 text-sm font-bold text-texto">
+          {indice === 0 ? "Principal" : `Reserva ${indice}`}
+        </span>
+        <span className="flex-1 text-texto">{etiquetaDeEntrada(entrada)}</span>
+        <Boton
+          tamano="sm"
+          variante="fantasma"
+          disabled={ocupado || entradas.length === 1}
+          onClick={() => void guardar(entradas.filter((_, i) => i !== indice))}
+          aria-label={`Quitar ${etiquetaDeEntrada(entrada)}`}
+        >
+          <Trash2 className="size-4" />
+        </Boton>
+        {!entrada.utilizable && <span className="w-full text-sm font-medium text-error">{entrada.motivo}</span>}
+      </div>
+    ),
+  }));
 
   const disponibles = opciones.filter((o) => !entradas.some((e) => clave(e) === clave(o)));
 
@@ -102,49 +127,14 @@ function TarjetaTipo({ inicial, opciones }: { inicial: MapaVista; opciones: Entr
       )}
       {error && <Aviso tono="error">{error}</Aviso>}
 
-      <ol className="flex flex-col gap-2">
-        {entradas.map((entrada, indice) => (
-          <li
-            key={clave(entrada)}
-            className="flex flex-wrap items-center gap-3 rounded-control border border-borde px-3.5 py-2.5"
-          >
-            <span className="min-w-24 text-sm font-bold text-texto">
-              {indice === 0 ? "Principal" : `Reserva ${indice}`}
-            </span>
-            <span className="flex-1 text-texto">{etiquetaDeEntrada(entrada)}</span>
-            {!entrada.utilizable && <span className="w-full text-sm font-medium text-error">{entrada.motivo}</span>}
-            <div className="flex gap-1">
-              <Boton
-                tamano="sm"
-                variante="fantasma"
-                disabled={ocupado || indice === 0}
-                onClick={() => mover(indice, -1)}
-                aria-label={`Subir ${etiquetaDeEntrada(entrada)}`}
-              >
-                <ArrowUp className="size-4" />
-              </Boton>
-              <Boton
-                tamano="sm"
-                variante="fantasma"
-                disabled={ocupado || indice === entradas.length - 1}
-                onClick={() => mover(indice, 1)}
-                aria-label={`Bajar ${etiquetaDeEntrada(entrada)}`}
-              >
-                <ArrowDown className="size-4" />
-              </Boton>
-              <Boton
-                tamano="sm"
-                variante="fantasma"
-                disabled={ocupado || entradas.length === 1}
-                onClick={() => void guardar(entradas.filter((_, i) => i !== indice))}
-                aria-label={`Quitar ${etiquetaDeEntrada(entrada)}`}
-              >
-                <Trash2 className="size-4" />
-              </Boton>
-            </div>
-          </li>
-        ))}
-      </ol>
+      <ListaOrdenable
+        elementos={elementos}
+        etiquetaLista={`Orden de ${NOMBRE_DE_TIPO[mapa.tipo].toLowerCase()}`}
+        deshabilitado={ocupado || entradas.length < 2}
+        className="flex flex-col gap-2"
+        claseElemento="flex items-center gap-2 rounded-control border border-borde px-2 py-1.5"
+        onOrden={reordenar}
+      />
 
       {mapa.recomendadas.length > 0 && (
         <p className="text-sm text-texto-suave">
