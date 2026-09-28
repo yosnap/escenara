@@ -549,6 +549,28 @@ describe.skipIf(!hayBaseDeDatos)("la dirección del clip, usable de punta a punt
     expect(ultimoPrompt()).toContain("Que el bote se vea entero");
   });
 
+  test("un clip desde una imagen de la biblioteca en un proyecto sigue siendo de su escena", async () => {
+    // Antes salía como clip suelto (sin escena): sin la duración del proyecto, sin sus topes y sin quedar
+    // registrado en la escena.
+    const detalle = await crearProyecto(actorAna, { titulo: "Imagen traída", formato: "anuncio", idea: "probar" });
+    const creada = await crearEscena(actorAna, detalle.proyecto.id, { texto: "Hola.", accion: "Habla a cámara." });
+    const { trabajo } = await crearAnimacion(
+      actorAna,
+      {
+        medioId: fotogramaDeAna,
+        escenaDelProyecto: { escenaId: creada.id, personajeId: null },
+        prompt: "Habla a cámara.",
+        creditosConfirmados: creditosClip,
+        selloEstimacion: selloClip,
+        derechos: true,
+        claveIdempotencia: crypto.randomUUID(),
+      },
+      h,
+    );
+    const [fila] = await db().select().from(generationJobs).where(eq(generationJobs.id, trabajo.id)).limit(1);
+    expect(fila?.sceneId).toBe(creada.id);
+  });
+
   test("beto no ve ni toca nada de ana", async () => {
     const { estado } = await animar(beto, confirmacionDeClip({ medioId: fotogramaDeAna }));
     expect(estado).toBe(404);

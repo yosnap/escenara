@@ -352,6 +352,12 @@ export function VistaCrear({
     setOrigenElegido(origen);
     setError(null);
     if (origen === "fotograma") setImagenDeBiblioteca([]);
+    // Pasar a una imagen propia olvida el fotograma generado antes: si no, el clip seguiría saliendo (y
+    // cobrándose) de esa otra imagen aunque la pantalla enseñara la elegida.
+    if (origen === "imagen") {
+      setFotograma(null);
+      setAnimacion(null);
+    }
     setSinTercerosClip(false);
   };
 

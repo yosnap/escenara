@@ -238,6 +238,11 @@ async function encolarAnimacion(
     {
       prompt: textoVisualDe(escena),
       ...partida,
+      // Un clip que parte de una imagen de la biblioteca no hereda escena ni personaje de ningún trabajo: se los
+      // da la escena, que es de quien es el clip.
+      ...("medioId" in partida
+        ? { escenaDelProyecto: { escenaId: escena.id, personajeId: proyecto.mainCharacterId } }
+        : {}),
       reintentoDeEscena: reintento,
       // La dirección la resuelve el servidor desde la escena: el encuadre, la cámara, el gesto en su momento y
       // la regla de toma única. Sin nada elegido sale un plano a cámara con la cámara quieta, que es lo que

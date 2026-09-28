@@ -313,6 +313,13 @@ export interface PeticionAnimacion extends Confirmacion {
    * Se ignora si llega junto a `direccion`: esa la pone el servidor desde la escena y manda siempre.
    */
   direccionElegida?: DireccionElegidaConAcento;
+  /**
+   * **Solo la pone el servidor** (la producción de un proyecto), nunca la ruta HTTP: la escena y el personaje
+   * del proyecto cuando el clip parte de una imagen traída de la biblioteca. Sin esto el clip quedaba suelto:
+   * sin escena (ni su duración, ni sus topes, ni su clip registrado) y sin el personaje del proyecto (ni su
+   * consentimiento, ni el borrado en cascada).
+   */
+  escenaDelProyecto?: { escenaId: string; personajeId: string | null };
 }
 
 /**
@@ -360,7 +367,9 @@ async function partidaDelClip(usuarioId: string, peticion: PeticionAnimacion): P
   }
   // Que la imagen exista y sea suya lo decide esta lectura, no quien llama: una ajena responde 404.
   const medio = await imagenPropia(usuarioId, medioId);
-  const personajeId = await personajeDeLaCadena(usuarioId, medio.id);
+  // La cara que sale en la imagen manda; si la imagen es una foto suelta, en un proyecto es la del protagonista.
+  const personajeId =
+    (await personajeDeLaCadena(usuarioId, medio.id)) ?? peticion.escenaDelProyecto?.personajeId ?? null;
   /**
    * La versión de ficha que se cita es la **vigente** del personaje heredado: la imagen puede ser de hace meses
    * y el clip se genera ahora. Sin personaje no hay ninguna que citar.
@@ -370,7 +379,7 @@ async function partidaDelClip(usuarioId: string, peticion: PeticionAnimacion): P
     medioId: medio.id,
     // No hay trabajo padre: el clip nace de una imagen, no de una generación de esta cadena.
     trabajoPadreId: null,
-    escenaId: null,
+    escenaId: peticion.escenaDelProyecto?.escenaId ?? null,
     personajeId,
     versionPersonajeId: conFicha.versionId,
     // La imagen es la referencia: no se citó ninguna hoja 3×3 al hacerla desde aquí.
