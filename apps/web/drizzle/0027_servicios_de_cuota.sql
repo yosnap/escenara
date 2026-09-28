@@ -1,0 +1,1 @@
+ALTER TABLE "openai_providers" ADD COLUMN "quota_billing" boolean DEFAULT false NOT NULL;

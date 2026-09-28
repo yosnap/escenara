@@ -249,7 +249,9 @@ export async function generarVozDeEscena(
         firmaVoz: firma,
         urlBase: opciones.urlBase,
         compatibleId: opciones.compatibleId,
-        reservas: opciones.reservas.map(aReservaAutorizada),
+        // Solo la primera reserva, que es la única cuyo coste enseña la pantalla: autorizar las demás sería cambiar
+        // de proveedor a un importe que el usuario no ha visto.
+        reservas: opciones.reservas.slice(0, 1).map(aReservaAutorizada),
       },
       sceneId: escena.id,
       estimatedCredits: creditos,

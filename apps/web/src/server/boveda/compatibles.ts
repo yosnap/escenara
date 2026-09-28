@@ -65,6 +65,8 @@ export interface DatosCompatible {
   urlBase: unknown;
   clave: unknown;
   modelos: unknown;
+  /** Declaración del usuario: el servicio cobra por cuota de su plan, no por petición. */
+  soloCuota?: unknown;
 }
 
 /**
@@ -85,6 +87,13 @@ export async function guardarCompatible(
   }
   if (typeof datos.clave !== "string" || !formatoValido(datos.clave.trim())) {
     return { ok: false, error: "Esa clave no tiene el aspecto esperado. Cópiala completa, sin espacios." };
+  }
+  if (datos.soloCuota !== true) {
+    return {
+      ok: false,
+      error:
+        "De momento Escenara solo usa servicios que cobran por cuota de tu plan y no por petición: sin una tarifa por petición no puede estimar ni confirmar lo que costaría cada llamada. Si este servicio es de cuota, márcalo en la casilla.",
+    };
   }
   const clave = datos.clave.trim();
   let urlBase: string;
@@ -121,6 +130,7 @@ export async function guardarCompatible(
     secret: cifrar(clave, contexto(usuarioId, id)),
     hint: pistaDe(clave),
     models: modelos,
+    quotaBilling: true,
     status: "valida" as const,
     lastTestCode: "ok",
     lastTestDetail: `${ofrecidos.length} modelos disponibles`,
@@ -221,7 +231,8 @@ export async function usarCompatibles(usuarioId: string): Promise<CompatibleUtil
   const filas = await filasDe(usuarioId);
   const utilizables: CompatibleUtilizable[] = [];
   for (const fila of filas) {
-    if (fila.status !== "valida" || fila.models.length === 0) continue;
+    // Sin la declaración de cuota no se usa: sus llamadas podrían cobrar por petición sin que nadie lo estimara.
+    if (fila.status !== "valida" || fila.models.length === 0 || !fila.quotaBilling) continue;
     const clave = descifrarFila(fila);
     if (clave) utilizables.push({ id: fila.id, nombre: fila.name, urlBase: fila.baseUrl, clave, modelos: fila.models });
   }

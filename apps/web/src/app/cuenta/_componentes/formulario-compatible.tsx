@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Boton } from "@/components/ui/button";
+import { Casilla } from "@/components/ui/choice";
 import { EntradaContrasena } from "@/components/ui/entrada-contrasena";
 import { AreaTexto, Campo, EntradaTexto } from "@/components/ui/field";
 import { type CompatibleVista, MODELOS_MAXIMOS, PLANTILLAS } from "@/lib/compatible";
@@ -17,6 +18,7 @@ export interface DatosFormulario {
   urlBase: string;
   clave: string;
   modelos: string[];
+  soloCuota: boolean;
 }
 
 export function FormularioCompatible({
@@ -37,6 +39,8 @@ export function FormularioCompatible({
   const [urlBase, setUrlBase] = useState(inicial?.urlBase ?? "");
   const [modelos, setModelos] = useState((inicial?.modelos ?? []).join("\n"));
   const [clave, setClave] = useState("");
+  // Un servicio ya guardado se guardó declarado como de cuota: es la única clase que se admite.
+  const [soloCuota, setSoloCuota] = useState(Boolean(inicial));
 
   const aplicarPlantilla = (indice: number) => {
     const plantilla = PLANTILLAS[indice];
@@ -44,6 +48,7 @@ export function FormularioCompatible({
     setNombre(plantilla.nombre);
     setUrlBase(plantilla.urlBase);
     setModelos(plantilla.modelos.join("\n"));
+    setSoloCuota(true);
   };
 
   const guardar = async () => {
@@ -52,6 +57,7 @@ export function FormularioCompatible({
       urlBase,
       clave,
       modelos: modelos.split("\n").map((m) => m.trim()),
+      soloCuota,
     });
     if (ok) setClave("");
   };
@@ -118,6 +124,14 @@ export function FormularioCompatible({
           />
         )}
       </Campo>
+
+      <Casilla
+        etiqueta="Este servicio cobra por cuota de mi plan, no por petición"
+        descripcion="Escenara solo admite de momento servicios de cuota: sus llamadas se apuntan con 0 créditos y se pueden usar como reserva sin riesgo de un segundo cobro. Si el servicio cobra por petición (por ejemplo, la API de OpenAI de pago por uso), no lo añadas: Escenara no podría estimar ni confirmar lo que cuesta cada llamada."
+        marcada={soloCuota}
+        deshabilitado={ocupado}
+        onCambio={setSoloCuota}
+      />
 
       <Campo
         etiqueta="Clave de API"

@@ -1,4 +1,4 @@
-import { integer, pgEnum, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { boolean, integer, pgEnum, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { users } from "./esquema-auth";
 
 /**
@@ -89,6 +89,13 @@ export const openaiProviders = pgTable(
     hint: text("hint").notNull(),
     /** Modelos de texto **en el orden en que se prueban**. El primero es el preferido. */
     models: text("models").array().notNull().default([]),
+    /**
+     * `true` si el usuario ha declarado que este servicio **cobra por cuota de su plan y no por petición**. Es lo
+     * único que permite tratar sus llamadas como sin coste por petición (apuntar 0 créditos y seguir hacia él
+     * aunque no se sepa si la entrada anterior cobró): la URL la escribe el usuario y podría apuntar a un servicio
+     * de pago por uso, así que no se deduce del tipo de proveedor. Hoy solo se admiten servicios de cuota.
+     */
+    quotaBilling: boolean("quota_billing").notNull().default(false),
     status: estadoCredencial("status").notNull().default("valida"),
     /** Código propio del último resultado; nunca texto del proveedor. */
     lastTestCode: text("last_test_code"),

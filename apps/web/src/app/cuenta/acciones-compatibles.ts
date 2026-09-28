@@ -25,6 +25,7 @@ export async function guardarCompatibleAccion(datos: {
   urlBase: string;
   clave: string;
   modelos: string[];
+  soloCuota: boolean;
 }): Promise<RespuestaCompatible> {
   const sesion = await exigirSesion("/cuenta");
   try {

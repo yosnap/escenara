@@ -22,7 +22,12 @@ import type { EntradaResuelta } from "./mapa";
  *    agotado del modelo de pago no deje el trabajo sin hacer teniendo el usuario una reserva gratuita, que es
  *    justo lo que el propietario pidió (firme, 2026-09-28).
  *
- * Lo que **nunca** pasa: encadenar dos entradas **de pago** cuando no se sabe si la primera cobró.
+ * Lo que **nunca** pasa: encadenar dos entradas **de pago** cuando no se sabe si la primera cobró. Por eso el
+ * recorrido **recuerda** que hubo un cobro dudoso: a partir de ahí solo se prueban entradas gratuitas, aunque
+ * entre medias falle una gratuita (pago dudoso → gratuita que falla → pago sería un segundo cargo posible).
+ *
+ * «Gratuita» es un hecho declarado, no una deducción: un servicio compatible solo se admite si el usuario ha
+ * declarado que cobra por cuota de su plan (`openai_providers.quota_billing`), y `local` es la propia máquina.
  *
  * Y un rechazo de credencial (401/403) en un servicio compatible **salta el resto de entradas de ese mismo
  * servicio**: probar sus demás modelos sería repetir el mismo rechazo con cada uno.
@@ -95,8 +100,11 @@ export async function recorrerMapa<T>(
 ): Promise<ResultadoRecorrido<T>> {
   const intentos: IntentoProveedor[] = [];
   const saltados = new Set<string>();
+  // Una entrada de pago falló sin probar que no cobró: desde aquí solo se prueban entradas gratuitas.
+  let cobroDudoso = false;
   for (const [posicion, entrada] of entradas.entries()) {
     if (entrada.compatibleId !== null && saltados.has(entrada.compatibleId)) continue;
+    if (cobroDudoso && !esGratuita(entrada)) continue;
     try {
       return { ok: true, valor: await intentar(entrada, posicion), entrada, intentos, saltados: [...saltados] };
     } catch (error) {
@@ -105,8 +113,9 @@ export async function recorrerMapa<T>(
       const { intento, seguir, saltarCompatible } = clasificacion;
       intentos.push(intento);
       if (saltarCompatible) saltados.add(saltarCompatible);
-      if (!seguir && !siguienteEsGratuita(entradas, posicion, saltados)) {
-        return { ok: false, intentos, saltados: [...saltados] };
+      if (!seguir) {
+        cobroDudoso = true;
+        if (!siguienteEsGratuita(entradas, posicion, saltados)) return { ok: false, intentos, saltados: [...saltados] };
       }
     }
   }
@@ -121,7 +130,11 @@ function siguienteEsGratuita(
 ): boolean {
   for (const entrada of entradas.slice(posicion + 1)) {
     if (entrada.compatibleId !== null && saltados.has(entrada.compatibleId)) continue;
-    return entrada.proveedor === "compatible" || entrada.proveedor === "local";
+    return esGratuita(entrada);
   }
   return false;
 }
+
+/** Entrada que no cobra por petición: un servicio compatible declarado de cuota o la propia máquina. */
+const esGratuita = (entrada: EntradaResuelta): boolean =>
+  entrada.proveedor === "compatible" || entrada.proveedor === "local";

@@ -185,12 +185,19 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
         urlBase: BASE_NAN,
         clave: CLAVE_NAN,
         modelos: ["gemma4", "deepseek-v4-flash", "glm5.3-flash"],
+        soloCuota: true,
       },
       buscar,
     );
     await guardarCompatible(
       ana.id,
-      { nombre: "Otro servicio", urlBase: BASE_OTRO, clave: CLAVE_OTRO, modelos: ["modelo-de-ultimo-recurso"] },
+      {
+        nombre: "Otro servicio",
+        urlBase: BASE_OTRO,
+        clave: CLAVE_OTRO,
+        modelos: ["modelo-de-ultimo-recurso"],
+        soloCuota: true,
+      },
       buscar,
     );
   });
@@ -230,18 +237,36 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
         urlBase: BASE_NAN,
         clave: CLAVE_NAN,
         modelos: ["gemma4", "deepseek-v4-flash", "glm5.3-flash"],
+        soloCuota: true,
       },
       buscar,
     );
     await guardarCompatible(
       ana.id,
-      { nombre: "Otro servicio", urlBase: BASE_OTRO, clave: CLAVE_OTRO, modelos: ["modelo-de-ultimo-recurso"] },
+      {
+        nombre: "Otro servicio",
+        urlBase: BASE_OTRO,
+        clave: CLAVE_OTRO,
+        modelos: ["modelo-de-ultimo-recurso"],
+        soloCuota: true,
+      },
       buscar,
     );
     await ponerMapaCompleto();
   });
 
   // ── El recorrido ───────────────────────────────────────────────────────────────────────────────────────
+
+  test("un servicio sin declarar que cobra por cuota no se admite: podría cobrar por petición sin estimarlo", async () => {
+    const resultado = await guardarCompatible(
+      ana.id,
+      { nombre: "Pago por uso", urlBase: BASE_OTRO, clave: CLAVE_OTRO, modelos: ["un-modelo"] },
+      buscar,
+    );
+    expect(resultado.ok).toBe(false);
+    if (!resultado.ok) expect(resultado.error).toContain("cuota");
+    expect((await listarCompatibles(ana.id)).some((p) => p.nombre === "Pago por uso")).toBe(false);
+  });
 
   test("429 en un modelo pasa al siguiente modelo del mismo servicio", async () => {
     respuestasPorModelo = { gemma4: { cuerpo: CHAT_429, estado: 429 } };

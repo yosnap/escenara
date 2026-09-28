@@ -71,6 +71,17 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
   del asistente y en el registro de gasto.
 - `0026_mapa_de_modelos`: entradas del mapa por usuario y tipo, proveedor `local`, y el ajuste `eurosPorCredito`
   pasa a `eurosPorCreditoKie` sin perder su valor.
+- `0027_servicios_de_cuota`: los servicios compatibles guardan la declaración de que cobran por cuota del plan.
+  Solo se admiten los declarados; uno dado de alta antes de esta migración queda sin usar hasta que se vuelva a
+  guardar marcando la casilla.
+
+### Seguridad del dinero
+
+- **Un servicio compatible solo se usa si declaras que cobra por cuota de tu plan.** La dirección la escribes
+  tú y podría ser de un servicio de pago por uso: sin esa declaración no se da por gratis ni se apunta a 0.
+- **Tras un fallo que no prueba si hubo cobro, ya no se vuelve a ninguna entrada de pago** del mapa, aunque entre
+  medias falle una gratuita: solo se prueban las gratuitas.
+- **El cambio automático de la voz solo va a la reserva cuyo coste ves en pantalla**, no a las siguientes.
 
 ## [0.21.0] · 2026-09-28
 
