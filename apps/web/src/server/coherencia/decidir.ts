@@ -5,7 +5,7 @@ import type { Buscador } from "../proveedores/codigos";
 import { decidirConJev, ErrorJev, mensajeDeErrorJev, type RespuestaJev } from "./jev";
 import type { Percepcion } from "./percepcion";
 import { evidenciaDe, PREGUNTAS, VERSION_PREGUNTAS } from "./preguntas";
-import { guardarDecision, type SujetoCoherencia } from "./registro";
+import { decisionesRecientesDe, guardarDecision, type SujetoCoherencia } from "./registro";
 
 /**
  * **Decidir y registrar**: el paso que junta los hechos percibidos con la pregunta tipada de Jev, enruta el
@@ -84,6 +84,14 @@ export async function decidirCoherencia(peticion: PeticionDecision): Promise<Res
     return SIN_DECISION(
       modo,
       "Esta instalación no tiene guardada la clave de TypeSafe, así que la coherencia no se ha comprobado. Guárdala en Admin › Ajustes › Coherencia.",
+    );
+  }
+
+  // Jev lo paga la instalación: sin tope, un usuario podría gastar su cuenta a golpe de botón.
+  if ((await decisionesRecientesDe(peticion.usuarioId)) >= ajustes.coherenciaDecisionesPorDia) {
+    return SIN_DECISION(
+      modo,
+      `Has llegado al tope de ${ajustes.coherenciaDecisionesPorDia} comprobaciones de coherencia en 24 horas que permite esta instalación. No se ha cobrado nada; vuelve a intentarlo más tarde o pide a quien la administra que suba el tope en Admin › Ajustes › Coherencia.`,
     );
   }
 

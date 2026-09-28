@@ -2,6 +2,7 @@ import { and, count, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { ESTADOS_CANCELABLES, type EstadoTrabajo } from "@/lib/generacion";
 import type { ResumenBorradoPersonaje } from "@/lib/personajes";
 import { borrarObjeto } from "../almacenamiento";
+import { olvidarPercibidoDePersonaje } from "../coherencia/registro";
 import { db } from "../db/cliente";
 import {
   characterApprovals,
@@ -251,6 +252,9 @@ export async function borrarPersonaje(actor: Actor, id: unknown): Promise<Borrad
     // material suyo y no puede sobrevivir a la revocación de su consentimiento (decisión provisional del
     // propietario, 2026-09-27). La cascada de la clave ajena lo haría igual; se hace explícito para que se lea.
     await borrarTraduccionesDePersonaje(tx, personaje.id);
+    // Lo que se percibió de su cara y su voz para comprobar la coherencia tampoco sobrevive (antes de borrar el
+    // personaje, que es lo que deja a nulo el personaje principal de sus proyectos).
+    await olvidarPercibidoDePersonaje(tx, personaje.id);
     await tx.delete(consentRecords).where(eq(consentRecords.characterId, personaje.id));
     await tx.delete(characterApprovals).where(eq(characterApprovals.characterId, personaje.id));
     await tx.delete(characterVersions).where(eq(characterVersions.characterId, personaje.id));

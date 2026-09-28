@@ -182,7 +182,7 @@ export const AVISO_DATOS_AL_PROVEEDOR =
  * para la cobertura, que es exactamente lo que pasaba hasta la 0.23.x.
  */
 export const AVISO_COHERENCIA =
-  "Autorizo que, para comprobar que una imagen generada sigue siendo esta misma persona, se envíen dos fotos suyas al servicio de percepción configurado en esta instalación (hoy, un servicio compatible con la API de OpenAI que tú mismo has dado de alta). De ahí solo sale una descripción escrita de los rasgos, que es lo que se compara. Sin esta autorización la comprobación no se hace y sus vistas generadas no cuentan como fotos de referencia.";
+  "Autorizo que, para comprobar que lo generado sigue siendo esta misma persona y encaja con el guion, se envíen al servicio de percepción configurado en esta instalación (hoy, un servicio compatible con la API de OpenAI que tú mismo has dado de alta) dos fotos suyas, el fotograma aprobado de sus escenas y hasta 30 segundos de la voz de sus clips. De ahí solo sale una descripción escrita, que es lo que se compara. Sin esta autorización la comprobación no se hace y sus vistas generadas no cuentan como fotos de referencia.";
 
 export const AVISO_CONTROL_NO_GARANTIA =
   "Este registro es un control del producto, no una verificación. Escenara no comprueba identidades ni edades: guarda tu declaración con tu cuenta y la fecha, y quien administra la instalación revisa los documentos de terceros.";

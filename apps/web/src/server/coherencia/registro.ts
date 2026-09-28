@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray } from "drizzle-orm";
+import { and, count, desc, eq, gte, inArray, or } from "drizzle-orm";
 import {
   type AciertoComprobacion,
   COMPROBACIONES,
@@ -11,7 +11,7 @@ import {
 } from "@/lib/coherencia";
 import { coherenciaDe, leerAjustes } from "../ajustes";
 import { db, type Ejecutor } from "../db/cliente";
-import { coherenceDecisions, type FilaDecisionCoherencia } from "../db/esquema";
+import { coherenceDecisions, type FilaDecisionCoherencia, projects } from "../db/esquema";
 
 /**
  * **Registrar**: guardar cada decisión con sus hechos, su respuesta y su confianza, y leer de ahí el acierto.
@@ -236,4 +236,42 @@ export async function aciertoPorComprobacion(dias = 90): Promise<AciertoComproba
       euros: Math.round(suyas.reduce((suma, f) => suma + f.decisionEur, 0) * 10_000) / 10_000,
     };
   });
+}
+
+/** Lo que queda en la evidencia de una decisión cuyo sujeto se ha borrado. */
+export const EVIDENCIA_BORRADA =
+  "El personaje o el proyecto de esta decisión se ha borrado y, con él, lo que se percibió.";
+
+/**
+ * Borra lo percibido (la descripción de la cara, de la voz o del fotograma) de las decisiones de un personaje que
+ * se borra, incluidas las de las escenas de sus proyectos. El veredicto, la confianza y la corrección se quedan:
+ * no describen a nadie y son lo que mide el acierto.
+ */
+export async function olvidarPercibidoDePersonaje(ejecutor: Ejecutor, personajeId: string): Promise<void> {
+  const proyectos = ejecutor
+    .select({ id: projects.id })
+    .from(projects)
+    .where(eq(projects.mainCharacterId, personajeId));
+  await ejecutor
+    .update(coherenceDecisions)
+    .set({ facts: "", evidence: EVIDENCIA_BORRADA })
+    .where(or(eq(coherenceDecisions.characterId, personajeId), inArray(coherenceDecisions.projectId, proyectos)));
+}
+
+/** Lo mismo para un proyecto que se borra: sus escenas se van y lo percibido de ellas también. */
+export async function olvidarPercibidoDeProyecto(ejecutor: Ejecutor, proyectoId: string): Promise<void> {
+  await ejecutor
+    .update(coherenceDecisions)
+    .set({ facts: "", evidence: EVIDENCIA_BORRADA })
+    .where(eq(coherenceDecisions.projectId, proyectoId));
+}
+
+/** Decisiones guardadas del usuario en las últimas 24 horas: es lo que cuenta contra el tope diario. */
+export async function decisionesRecientesDe(usuarioId: string): Promise<number> {
+  const desde = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const [fila] = await db()
+    .select({ n: count() })
+    .from(coherenceDecisions)
+    .where(and(eq(coherenceDecisions.userId, usuarioId), gte(coherenceDecisions.createdAt, desde)));
+  return fila?.n ?? 0;
 }

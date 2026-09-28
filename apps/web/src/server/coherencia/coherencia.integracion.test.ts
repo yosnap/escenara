@@ -31,7 +31,11 @@ const { and, eq } = await import("drizzle-orm");
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
-const { characterReferences, coherenceDecisions, consentRecords, usageLedger, users } = await import("../db/esquema");
+const { characterReferences, coherenceDecisions, consentRecords, projects, scenes, usageLedger, users } = await import(
+  "../db/esquema"
+);
+const { comprobarEscena } = await import("./escena");
+const { borrarProyecto } = await import("../asistente/proyectos");
 const { crearMedio } = await import("../media/servicio");
 const { guardarAjustes, olvidarAjustes } = await import("../ajustes");
 const { guardarSecreto } = await import("../boveda/secretos");
@@ -321,5 +325,88 @@ describe.skipIf(!hayBaseDeDatos)("identidad en modo activo", () => {
       .where(eq(consentRecords.characterId, personaje.id))
       .limit(1);
     expect(consentimiento?.coherenceDeclared).toBe(true);
+  });
+  test("sin la declaración, la escena no manda ni el fotograma ni la voz", async () => {
+    const { personajeId } = await personajeConVistaGenerada("Beatriz", false);
+    const fotograma = await crearMedio(actor, new File([await foto()], "fotograma.png", { type: "image/png" }));
+    const [proyecto] = await db()
+      .insert(projects)
+      .values({ userId: actor.id, title: "Sin declaración", mainCharacterId: personajeId })
+      .returning();
+    const [escena] = await db()
+      .insert(scenes)
+      .values({ projectId: proyecto?.id ?? "", sortOrder: 0, approvedFrameMediaId: fotograma.id })
+      .returning();
+
+    const resultado = await comprobarEscena(actor, escena?.id);
+    const motivo = resultado.sinComprobar.find((s) => s.comprobacion === "resultado")?.motivo ?? "";
+    expect(motivo).toContain("consentimiento");
+    expect(llamadasDePercepcion).toBe(0);
+  });
+
+  test("revocar el consentimiento retira el veredicto y la vista deja de cubrir", async () => {
+    const { personajeId, referenciaId } = await personajeConVistaGenerada("Carmen", true);
+    await comprobar(personajeId, referenciaId);
+    expect((await coberturaDe(personajeId, "persona")).faltan).not.toContain("frontal");
+
+    await rutaConsentimiento.DELETE(
+      pedir(ana, `/api/personajes/${personajeId}/consentimiento`, "DELETE", { motivo: "Ya no quiero." }),
+      ctx(personajeId),
+    );
+    const [fila] = await db()
+      .select()
+      .from(characterReferences)
+      .where(eq(characterReferences.id, referenciaId))
+      .limit(1);
+    expect(fila?.identityVerdict).toBe("sin_comprobar");
+  });
+
+  test("con el tope diario agotado no se llama a Jev y se dice que no se ha cobrado", async () => {
+    await guardarAjustes({ coherenciaDecisionesPorDia: 1 }, null);
+    olvidarAjustes();
+    try {
+      const { personajeId, referenciaId } = await personajeConVistaGenerada("Diana", true);
+      const resultado = await comprobar(personajeId, referenciaId);
+      expect(resultado.comprobada).toBe(false);
+      expect(resultado.motivo).toContain("tope");
+      expect(llamadasAJev).toBe(0);
+    } finally {
+      await guardarAjustes({ coherenciaDecisionesPorDia: 60 }, null);
+      olvidarAjustes();
+    }
+  });
+
+  test("borrar el proyecto olvida lo percibido de sus escenas y conserva el veredicto", async () => {
+    const [proyecto] = await db().insert(projects).values({ userId: actor.id, title: "Para borrar" }).returning();
+    const proyectoId = proyecto?.id ?? "";
+    const [decision] = await db()
+      .insert(coherenceDecisions)
+      .values({
+        userId: actor.id,
+        check: "resultado",
+        mode: "sombra",
+        subject: "escena",
+        subjectId: proyectoId,
+        projectId: proyectoId,
+        verdict: "pasa",
+        confidence: 0.9,
+        threshold: 0.75,
+        fit: 0.9,
+        probabilities: { si: 0.9 },
+        facts: "Mujer de pelo castaño con lunar en la mejilla.",
+        evidence: "Encaja.",
+        decisionModel: "jev-1.13.0",
+        rulesVersion: "1",
+      })
+      .returning();
+
+    await borrarProyecto(actor, proyectoId);
+    const [despues] = await db()
+      .select()
+      .from(coherenceDecisions)
+      .where(eq(coherenceDecisions.id, decision?.id ?? ""))
+      .limit(1);
+    expect(despues?.facts).toBe("");
+    expect(despues?.verdict).toBe("pasa");
   });
 });

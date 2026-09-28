@@ -187,10 +187,12 @@ export async function pedirTextoPorMapa(peticion: PeticionDeTexto): Promise<Text
   const sinLocal = entradas.filter((e) => e.proveedor !== "local");
   // Ver y oír solo lo saben los servicios compatibles, que además se pagan por cuota y no por petición.
   const delTipo = peticion.soloMultimodal ? sinLocal.filter((e) => e.proveedor === "compatible") : sinLocal;
-  const ordenadas = ordenarPorPreferencia(delTipo, peticion.modelosPreferidos ?? []);
-  const utiles = peticion.limitarAConfirmado
-    ? ordenadas.filter((e, i) => i === 0 || e.proveedor === "compatible")
-    : ordenadas;
+  // Primero se acota a lo confirmado y después se reordena: la entrada confirmada es la principal **del mapa**
+  // (`i === 0` antes de cualquier reordenación), no la que quede delante tras subir los modelos preferidos.
+  const confirmadas = peticion.limitarAConfirmado
+    ? delTipo.filter((e) => e === sinLocal[0] || e.proveedor === "compatible")
+    : delTipo;
+  const utiles = ordenarPorPreferencia(confirmadas, peticion.modelosPreferidos ?? []);
   const resultado = await recorrerMapa(
     utiles,
     (entrada, posicion) => intentarEntrada(peticion, entrada, posicion),

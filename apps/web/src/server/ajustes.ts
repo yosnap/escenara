@@ -150,6 +150,11 @@ export interface Ajustes {
    */
   coherenciaEurosPorMillonTokens: number;
   /**
+   * Tope de decisiones de Jev por usuario en 24 horas. Jev lo paga la instalación con su clave, así que sin tope un
+   * usuario podría gastar la cuenta del operador pulsando «Comprobar» en bucle.
+   */
+  coherenciaDecisionesPorDia: number;
+  /**
    * Voz y subtítulos (RF08, 0.21.0). **La voz se elige por proyecto**, no aquí: lo que se ajusta en el panel es
    * si esta instalación ofrece la pista de voz de pago y con qué transcriptor local trabaja.
    */
@@ -273,6 +278,7 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   coherenciaModeloAudio: "mimo-v2.5",
   // Sin tarifa medida en esta instalación: 0 € hasta que quien administra la mida, como con el resto.
   coherenciaEurosPorMillonTokens: 0,
+  coherenciaDecisionesPorDia: 60,
   // La pista de voz de pago arranca apagada: el modo «voz del clip» no gasta nada más y es el de fábrica.
   vozTtsActivo: false,
   transcripcionBinario: "whisper-cli",
@@ -429,6 +435,10 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
   coherenciaEurosPorMillonTokens: {
     valido: decimal(0, 1000),
     mensaje: "Indica lo que cuesta un millón de tokens de entrada de Jev en euros, con cuatro decimales como mucho.",
+  },
+  coherenciaDecisionesPorDia: {
+    valido: entero(1, 10000),
+    mensaje: "Indica de 1 a 10000 comprobaciones de coherencia por usuario y día.",
   },
   vozTtsActivo: { valido: booleano, mensaje: "Debe ser sí o no." },
   transcripcionBinario: {

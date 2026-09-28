@@ -86,7 +86,7 @@ async function caraDeReferencia(personaje: FilaPersonaje, excluirMedioId: string
 }
 
 /** `true` si el consentimiento vigente del personaje declara que su cara puede ir al servicio de coherencia. */
-async function declaraCoherencia(personajeId: string): Promise<boolean> {
+export async function declaraCoherencia(personajeId: string): Promise<boolean> {
   const [fila] = await db()
     .select({ declarada: consentRecords.coherenceDeclared })
     .from(consentRecords)

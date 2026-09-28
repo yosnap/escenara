@@ -160,10 +160,31 @@ export function SeccionCoherencia({
         )}
       </Campo>
 
+      <Campo
+        etiqueta="Comprobaciones de coherencia por usuario y día"
+        ayuda="Jev lo paga esta instalación con su clave: el tope evita que un usuario gaste la cuenta pulsando «Comprobar» en bucle. Cuenta las últimas 24 horas."
+        error={errorDe("coherenciaDecisionesPorDia")}
+      >
+        {(p) => (
+          <EntradaTexto
+            {...p}
+            type="number"
+            min={1}
+            step={1}
+            inputMode="numeric"
+            className="max-w-48"
+            value={Number.isNaN(valores.coherenciaDecisionesPorDia) ? "" : valores.coherenciaDecisionesPorDia}
+            onChange={(e) =>
+              onCambio("coherenciaDecisionesPorDia", e.target.value === "" ? Number.NaN : Number(e.target.value))
+            }
+          />
+        )}
+      </Campo>
+
       <p className="text-sm text-texto-suave">
-        La cara de una <strong>persona real</strong> solo se envía a la percepción si su consentimiento lo autoriza
-        expresamente. Sin esa autorización, la comprobación no se hace y sus vistas generadas no cuentan para la
-        cobertura, igual que antes de la 0.24.0. Un personaje inventado no la necesita.
+        La cara y la voz de una <strong>persona real</strong> solo se envían a la percepción si su consentimiento lo
+        autoriza expresamente. Sin esa autorización, la comprobación no se hace y sus vistas generadas no cuentan para
+        la cobertura, igual que antes de la 0.24.0. Un personaje inventado no la necesita.
       </p>
     </Seccion>
   );

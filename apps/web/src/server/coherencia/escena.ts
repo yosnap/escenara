@@ -4,11 +4,12 @@ import { coherenciaDe, leerAjustes } from "../ajustes";
 import { leerObjeto } from "../almacenamiento";
 import { escenaPropia } from "../asistente/consulta";
 import { db } from "../db/cliente";
-import { type FilaEscena, type FilaMedio, media } from "../db/esquema";
+import { characters, type FilaEscena, type FilaMedio, type FilaProyecto, media } from "../db/esquema";
 import { imagenParaModelo } from "../media/procesado";
 import type { Actor } from "../media/servicio";
 import { audioDelClip, ErrorAudioDelClip } from "./audio";
 import { decidirCoherencia } from "./decidir";
+import { declaraCoherencia } from "./identidad";
 import { ErrorPercepcion, percibir } from "./percepcion";
 import { ultimaDecisionDe } from "./registro";
 
@@ -55,6 +56,27 @@ async function clipDe(escena: FilaEscena): Promise<FilaMedio | null> {
   if (!escena.clipMediaId) return null;
   const [fila] = await db().select().from(media).where(eq(media.id, escena.clipMediaId)).limit(1);
   return fila && fila.deletedAt === null ? fila : null;
+}
+
+/**
+ * Puerta de privacidad de lo que sale de una escena: el fotograma lleva la cara del personaje y el clip su voz.
+ * Solo se perciben si el personaje es inventado o si su consentimiento vigente declara la coherencia. Sin
+ * personaje principal no se sabe de quién es la cara, así que tampoco se envía nada.
+ * Devuelve el motivo por el que no se puede enviar, o `null` si se puede.
+ */
+async function motivoSinPermiso(proyecto: FilaProyecto): Promise<string | null> {
+  if (!proyecto.mainCharacterId) {
+    return "Este proyecto no tiene personaje principal, así que no se sabe de quién es la cara o la voz de la escena y no se envía nada al servicio de percepción.";
+  }
+  const [personaje] = await db()
+    .select({ id: characters.id, virtual: characters.virtual })
+    .from(characters)
+    .where(eq(characters.id, proyecto.mainCharacterId))
+    .limit(1);
+  if (!personaje)
+    return "El personaje de este proyecto ya no existe, así que no se envía nada al servicio de percepción.";
+  if (personaje.virtual || (await declaraCoherencia(personaje.id))) return null;
+  return "Para mirar el fotograma o escuchar el clip hay que enviar la cara y la voz del personaje a un modelo de percepción, y su consentimiento no lo cubre. Añade esa declaración en su consentimiento y vuelve a comprobarlo.";
 }
 
 /**
@@ -115,7 +137,12 @@ export async function comprobarEscena(actor: Actor, escenaId: unknown): Promise<
 
   // Resultado: se mira el fotograma aprobado, que es la imagen de la que sale el clip.
   await anotar("resultado", async () => {
-    const imagen = await imagenDe(escena.approvedFrameMediaId ?? null);
+    if (!escena.approvedFrameMediaId) {
+      return "Esta escena todavía no tiene fotograma aprobado, así que no hay resultado que mirar.";
+    }
+    const sinPermiso = await motivoSinPermiso(proyecto);
+    if (sinPermiso) return sinPermiso;
+    const imagen = await imagenDe(escena.approvedFrameMediaId);
     if (!imagen) return "Esta escena todavía no tiene fotograma aprobado, así que no hay resultado que mirar.";
     const percepcion = await percibir({
       usuarioId: actor.id,
@@ -139,6 +166,8 @@ export async function comprobarEscena(actor: Actor, escenaId: unknown): Promise<
     const clip = await clipDe(escena);
     if (!clip) return "Esta escena todavía no tiene clip, así que no hay voz que escuchar.";
     if (pedido.script_line === "") return "Sin guion escrito no hay tono con el que comparar la voz.";
+    const sinPermiso = await motivoSinPermiso(proyecto);
+    if (sinPermiso) return sinPermiso;
     const audio = await audioDelClip(clip.storageKey, clip.mimeType);
     const percepcion = await percibir({
       usuarioId: actor.id,
