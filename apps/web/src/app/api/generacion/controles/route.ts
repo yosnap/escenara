@@ -50,6 +50,7 @@ export const GET = manejador(async (peticion: Request, _: unknown, actor) => {
       medioId: uuidOpcional(parametros.get("medioId"), "identificador de imagen"),
       escenaId: uuidOpcional(parametros.get("escenaId"), "identificador de escena"),
       vistaSintetica: vistaOpcional(parametros.get("vista")),
+      retratoInventado: parametros.get("retrato") === "1",
     }),
   );
 });

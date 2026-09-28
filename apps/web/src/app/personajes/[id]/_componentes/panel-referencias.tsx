@@ -3,6 +3,7 @@
 import { Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Boton, BotonIcono } from "@/components/ui/button";
+import { Casilla } from "@/components/ui/choice";
 import { type ElementoOrdenable, ListaOrdenable } from "@/components/ui/lista-ordenable";
 import { MiniaturaMedio } from "@/components/ui/media/miniatura-medio";
 import { SelectorMedios } from "@/components/ui/media/selector-medios";
@@ -67,6 +68,8 @@ export function PanelReferencias({
   ocupado: boolean;
 }) {
   const [nuevas, setNuevas] = useState<Medio[]>([]);
+  /** Declaración de que lo que se añade a un inventado está generado con IA. Se pide en cada tanda. */
+  const [declaradasIA, setDeclaradasIA] = useState(false);
   /** Fotos de la última tanda que se intentó añadir: son las que ponen cara a cada rechazo. */
   const [tanda, setTanda] = useState<Medio[]>([]);
   const [rechazadas, setRechazadas] = useState<RechazoDeReferencia[]>([]);
@@ -189,20 +192,37 @@ export function PanelReferencias({
         onUsarDeTodasFormas={(medioIds) => void anadir(medioIds)}
       />
 
-      {/* Un personaje inventado no admite fotos reales: sus imágenes salen del retrato elegido y de sus vistas. */}
-      {hueco > 0 && !personaje.inventado && (
+      {/* Un personaje inventado no admite fotos reales: solo imágenes generadas con IA, con su declaración. */}
+      {hueco > 0 && (
         <div className="flex flex-col gap-3">
           <SelectorMedios
-            etiqueta="Añadir más fotos"
-            ayuda="Solo imágenes. Las que quites de aquí siguen en tu biblioteca: lo que se deshace es la relación con el personaje."
+            etiqueta={personaje.inventado ? "Añadir imágenes generadas con IA" : "Añadir más fotos"}
+            ayuda={
+              personaje.inventado
+                ? "Imágenes de este personaje hechas con IA, en Escenara o con otro generador (por ejemplo, ChatGPT). Entran como imágenes generadas, nunca como foto."
+                : "Solo imágenes. Las que quites de aquí siguen en tu biblioteca: lo que se deshace es la relación con el personaje."
+            }
             tipos={["imagen"]}
             multiple
             sinDocumentos
             valor={nuevas}
             onCambio={setNuevas}
           />
+          {personaje.inventado && nuevas.length > 0 && (
+            <Casilla
+              etiqueta="Estas imágenes están generadas con IA y no son de ninguna persona real"
+              marcada={declaradasIA}
+              onCambio={setDeclaradasIA}
+              deshabilitado={ocupado}
+            />
+          )}
           {nuevas.length > 0 && (
-            <Boton className="self-start" cargando={ocupado} onClick={() => void anadir()}>
+            <Boton
+              className="self-start"
+              cargando={ocupado}
+              disabled={personaje.inventado && !declaradasIA}
+              onClick={() => void anadir()}
+            >
               Añadir {nuevas.length === 1 ? "la foto" : `las ${nuevas.length} fotos`}
             </Boton>
           )}

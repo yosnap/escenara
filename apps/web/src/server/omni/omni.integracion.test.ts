@@ -55,6 +55,7 @@ const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
 const {
   characterOmniRegistrations,
+  characterReferences,
   characters,
   consentRecords,
   generationJobs,
@@ -75,6 +76,7 @@ const { enviarEncolados } = await import("../cola/pasada");
 const { listarModelos, olvidarCatalogo } = await import("../proveedores/catalogo");
 const { cambiarEstadoDeModelo, cambiarPrecioDeModelo } = await import("../proveedores/catalogo-admin");
 const { registrarPersonajeOmni, volverARegistrar } = await import("../personajes/omni");
+const { contarReferencias } = await import("../personajes/consulta");
 const { registrarVozOmni, validarEleccionVozOmni } = await import("../voz/omni");
 const { crearPersonajeInventado, elegirRetrato, generarRetratosCandidatos } = await import("../personajes/inventado");
 const { VOCES_OMNI } = await import("@/lib/omni");
@@ -700,6 +702,35 @@ describe.skipIf(!hayBaseDeDatos)("escenas habladas con Omni", () => {
     expect(conConsentimiento.status).toBe(409);
   });
 
+  test("un inventado admite imágenes generadas con IA declaradas: entran como generadas y cuentan para el mínimo", async () => {
+    const personaje = await crearPersonajeInventado(actor, {
+      nombre: `Vera ${crypto.randomUUID().slice(0, 6)}`,
+      descripcion: "Mujer de unos cuarenta años, pecas y pelo rubio rizado.",
+      declaracion: true,
+    });
+    const medios = [];
+    for (let i = 0; i < 3; i++) {
+      medios.push(await crearMedio(actor, new File([await fotoDeReferencia()], `ia-${i}.png`, { type: "image/png" })));
+    }
+    const respuesta = await rutaReferencias.POST(
+      pedir(ana, `/api/personajes/${personaje.id}/referencias`, "POST", {
+        referencias: medios.map((m) => ({ medioId: m.id, usarDeTodasFormas: true })),
+        generadasConIA: true,
+      }),
+      ctx(personaje.id),
+    );
+    expect(respuesta.status).toBe(200);
+    const filas = await db()
+      .select()
+      .from(characterReferences)
+      .where(eq(characterReferences.characterId, personaje.id));
+    // Nunca como foto: son imágenes generadas.
+    expect(filas.length).toBeGreaterThan(0);
+    expect(filas.every((f) => f.origin === "vista_generada")).toBe(true);
+    // Y sostienen el mínimo: ya no faltan fotos para generar con él.
+    expect(await contarReferencias(personaje.id)).toBe(filas.length);
+  });
+
   test("los retratos candidatos de un personaje inventado se generan sin foto y uno se elige como su cara", async () => {
     const personaje = await crearPersonajeInventado(actor, {
       nombre: `Nora ${crypto.randomUUID().slice(0, 6)}`,
@@ -747,7 +778,8 @@ describe.skipIf(!hayBaseDeDatos)("escenas habladas con Omni", () => {
     const conRetrato = await elegirRetrato(actor, personaje.id, elegido.medioId);
     // Se guarda **marcado como vista generada**, nunca como foto: no lo es.
     expect(conRetrato.referencias?.[0]?.origen).toBe("vista_generada");
-    expect(conRetrato.totalReferencias).toBe(0);
+    // Y sí cuenta para el mínimo: en un inventado lo sostienen sus imágenes generadas, no fotos que no tiene.
+    expect(conRetrato.totalReferencias).toBe(1);
     expect(conRetrato.totalGeneradas).toBe(1);
   });
 });
