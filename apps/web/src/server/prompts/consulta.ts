@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, inArray, isNull, or } from "drizzle-orm";
 import type { Capacidad } from "@/lib/catalogo";
+import { esFormatoClip, esMomentoMicroaccion, esNivelCamara, esRegistroEstetico } from "@/lib/direccion";
 import {
   type CategoriaPreset,
   esCategoriaPreset,
@@ -69,6 +70,12 @@ export function valoresDeTexto(crudo: string): ValoresPreset {
     ...(typeof segundos === "number" && Number.isInteger(segundos) && segundos > 0 && segundos <= 600
       ? { segundos }
       : {}),
+    // Campos de la dirección del clip (0.25.0). Se validan con los mismos guardas que los leen: un valor que no
+    // esté en su enumerado se descarta, y quien lo lea se queda con el valor de fábrica de su categoría.
+    ...(esNivelCamara(o.nivel) ? { nivel: o.nivel } : {}),
+    ...(esMomentoMicroaccion(o.momento) ? { momento: o.momento } : {}),
+    ...(esFormatoClip(o.formatoClip) ? { formatoClip: o.formatoClip } : {}),
+    ...(esRegistroEstetico(o.registro) ? { registro: o.registro } : {}),
   };
 }
 

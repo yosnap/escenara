@@ -1,5 +1,5 @@
 {
-  "comentario": "Semilla versionada de presets y plantillas de prompt (0.16.0). Ojo con los formatos: la proporcion viaja en `valores.proporcion`, que se valida contra el catalogo del modelo, y NO en el texto del prompt. El texto pasa por la misma limpieza anti-inyeccion que la ficha del personaje, que quita las medidas de salida (\"9:16\", \"1080p\"): escribelo en palabras (\"vertical full-bleed framing\"). Es el catálogo inicial de la instalación: seis especialidades, cuatro formatos y cinco looks, más vestuarios, duraciones y acciones. La descripción va en español (es lo que se lee en el botón) y `valores.prompt` en inglés (es lo que entra en el prompt), según la decisión provisional del 2026-09-27. La semilla no pisa lo que haya cambiado quien administra: solo crea lo que falta. Para añadir un preset, añade una entrada aquí con una clave nueva y vuelve a migrar.",
+  "comentario": "Semilla versionada de presets y plantillas de prompt (0.16.0). Ojo con los formatos: la proporcion viaja en `valores.proporcion`, que se valida contra el catalogo del modelo, y NO en el texto del prompt. El texto pasa por la misma limpieza anti-inyeccion que la ficha del personaje, que quita las medidas de salida (\"9:16\", \"1080p\"): escribelo en palabras (\"vertical full-bleed framing\"). Es el catalogo inicial de la instalacion: seis especialidades, cuatro formatos y cinco looks, mas vestuarios, duraciones y acciones, y desde la 0.25.0 los catalogos de la direccion del clip (formato-clip, plano, angulo, optica, luz, localizacion, camara, microaccion y registro-estetico) mas el bloque fijo de anclajes (C6), que cierra siempre el prompt del fotograma y que el usuario no puede editar ni quitar. La descripción va en español (es lo que se lee en el botón) y `valores.prompt` en inglés (es lo que entra en el prompt), según la decisión provisional del 2026-09-27. La semilla no pisa lo que haya cambiado quien administra: solo crea lo que falta. Para añadir un preset, añade una entrada aquí con una clave nueva y vuelve a migrar.",
   "presets": [
     {
       "categoria": "especialidad",
@@ -7,7 +7,9 @@
       "nombre": "Moda",
       "descripcion": "El vestuario y el estilismo son el centro del plano.",
       "orden": 10,
-      "valores": { "prompt": "Fashion content where the outfit and the styling are the subject of the shot" }
+      "valores": {
+        "prompt": "Fashion content where the outfit and the styling are the subject of the shot"
+      }
     },
     {
       "categoria": "especialidad",
@@ -15,7 +17,9 @@
       "nombre": "Fitness",
       "descripcion": "Entrenamiento: cuerpo en movimiento, gimnasio o aire libre.",
       "orden": 20,
-      "valores": { "prompt": "Fitness content with athletic body language, in a gym or an outdoor training spot" }
+      "valores": {
+        "prompt": "Fitness content with athletic body language, in a gym or an outdoor training spot"
+      }
     },
     {
       "categoria": "especialidad",
@@ -23,7 +27,9 @@
       "nombre": "Gastronomía",
       "descripcion": "El plato se ve y se entiende dentro del encuadre.",
       "orden": 30,
-      "valores": { "prompt": "Food content where the dish stays clearly readable inside the frame" }
+      "valores": {
+        "prompt": "Food content where the dish stays clearly readable inside the frame"
+      }
     },
     {
       "categoria": "especialidad",
@@ -31,7 +37,9 @@
       "nombre": "Viajes",
       "descripcion": "Un sitio reconocible detrás, con sensación de estar allí.",
       "orden": 40,
-      "valores": { "prompt": "Travel content with a recognisable location behind the subject" }
+      "valores": {
+        "prompt": "Travel content with a recognisable location behind the subject"
+      }
     },
     {
       "categoria": "especialidad",
@@ -39,7 +47,9 @@
       "nombre": "Belleza",
       "descripcion": "Piel, pelo y maquillaje en plano corto y con detalle.",
       "orden": 50,
-      "valores": { "prompt": "Beauty content in close framing, with skin, hair and make-up detail" }
+      "valores": {
+        "prompt": "Beauty content in close framing, with skin, hair and make-up detail"
+      }
     },
     {
       "categoria": "especialidad",
@@ -47,16 +57,20 @@
       "nombre": "Mascotas",
       "descripcion": "El animal comparte plano con quien lo cuida.",
       "orden": 60,
-      "valores": { "prompt": "Pet content where the animal shares the frame with its owner" }
+      "valores": {
+        "prompt": "Pet content where the animal shares the frame with its owner"
+      }
     },
-
     {
       "categoria": "formato",
       "clave": "reel-9-16",
       "nombre": "Reel 9:16",
       "descripcion": "Vertical a sangre, sin espacio reservado arriba.",
       "orden": 10,
-      "valores": { "prompt": "vertical full-bleed framing, subject centred", "proporcion": "9:16" }
+      "valores": {
+        "prompt": "vertical full-bleed framing, subject centred",
+        "proporcion": "9:16"
+      }
     },
     {
       "categoria": "formato",
@@ -75,7 +89,10 @@
       "nombre": "Cuadrado 1:1",
       "descripcion": "Cuadrado para cuadrícula. Hoy ningún modelo del catálogo lo admite.",
       "orden": 30,
-      "valores": { "prompt": "square framing, subject centred", "proporcion": "1:1" }
+      "valores": {
+        "prompt": "square framing, subject centred",
+        "proporcion": "1:1"
+      }
     },
     {
       "categoria": "formato",
@@ -83,16 +100,20 @@
       "nombre": "Horizontal 16:9",
       "descripcion": "Apaisado. Hoy ningún modelo del catálogo lo admite.",
       "orden": 40,
-      "valores": { "prompt": "horizontal framing, room on both sides", "proporcion": "16:9" }
+      "valores": {
+        "prompt": "horizontal framing, room on both sides",
+        "proporcion": "16:9"
+      }
     },
-
     {
       "categoria": "estilo",
       "clave": "natural",
       "nombre": "Natural",
       "descripcion": "Luz de día, contraste suave y color como es.",
       "orden": 10,
-      "valores": { "prompt": "natural daylight, soft contrast, true-to-life colour" }
+      "valores": {
+        "prompt": "natural daylight, soft contrast, true-to-life colour"
+      }
     },
     {
       "categoria": "estilo",
@@ -100,7 +121,9 @@
       "nombre": "Editorial",
       "descripcion": "Revista: luz dura controlada y mucho contraste.",
       "orden": 20,
-      "valores": { "prompt": "editorial magazine look, controlled hard light, rich contrast" }
+      "valores": {
+        "prompt": "editorial magazine look, controlled hard light, rich contrast"
+      }
     },
     {
       "categoria": "estilo",
@@ -108,7 +131,9 @@
       "nombre": "Nocturno neón",
       "descripcion": "Noche con luces de color y reflejos en el suelo.",
       "orden": 30,
-      "valores": { "prompt": "night-time neon look, coloured practical lights, wet reflections on the ground" }
+      "valores": {
+        "prompt": "night-time neon look, coloured practical lights, wet reflections on the ground"
+      }
     },
     {
       "categoria": "estilo",
@@ -116,7 +141,9 @@
       "nombre": "Luz dorada",
       "descripcion": "Última hora de sol: contraluz cálido y sombras largas.",
       "orden": 40,
-      "valores": { "prompt": "golden hour backlight, warm haze, long shadows" }
+      "valores": {
+        "prompt": "golden hour backlight, warm haze, long shadows"
+      }
     },
     {
       "categoria": "estilo",
@@ -124,16 +151,19 @@
       "nombre": "Estudio",
       "descripcion": "Fondo liso y luz uniforme de plató.",
       "orden": 50,
-      "valores": { "prompt": "studio look, seamless backdrop, even softbox lighting" }
+      "valores": {
+        "prompt": "studio look, seamless backdrop, even softbox lighting"
+      }
     },
-
     {
       "categoria": "vestuario",
       "clave": "calle",
       "nombre": "De calle",
       "descripcion": "Lo de todos los días.",
       "orden": 10,
-      "valores": { "prompt": "everyday streetwear" }
+      "valores": {
+        "prompt": "everyday streetwear"
+      }
     },
     {
       "categoria": "vestuario",
@@ -141,7 +171,9 @@
       "nombre": "Deportivo",
       "descripcion": "Ropa de entrenar.",
       "orden": 20,
-      "valores": { "prompt": "athletic sportswear" }
+      "valores": {
+        "prompt": "athletic sportswear"
+      }
     },
     {
       "categoria": "vestuario",
@@ -149,7 +181,9 @@
       "nombre": "Elegante",
       "descripcion": "Conjunto de noche, bien cortado.",
       "orden": 30,
-      "valores": { "prompt": "tailored evening outfit" }
+      "valores": {
+        "prompt": "tailored evening outfit"
+      }
     },
     {
       "categoria": "vestuario",
@@ -157,16 +191,20 @@
       "nombre": "De casa",
       "descripcion": "Cómodo, en casa.",
       "orden": 40,
-      "valores": { "prompt": "relaxed loungewear at home" }
+      "valores": {
+        "prompt": "relaxed loungewear at home"
+      }
     },
-
     {
       "categoria": "duracion",
       "clave": "clip-4",
       "nombre": "4 segundos",
       "descripcion": "Plano corto: un gesto o una frase suelta. Lo que cuesta y si se puede pedir lo dice el modelo que elijas.",
       "orden": 10,
-      "valores": { "prompt": "four", "segundos": 4 }
+      "valores": {
+        "prompt": "four",
+        "segundos": 4
+      }
     },
     {
       "categoria": "duracion",
@@ -174,7 +212,10 @@
       "nombre": "6 segundos",
       "descripcion": "Da tiempo a una frase entera. Solo se puede elegir con los modelos que sepan cobrar esta duración.",
       "orden": 20,
-      "valores": { "prompt": "six", "segundos": 6 }
+      "valores": {
+        "prompt": "six",
+        "segundos": 6
+      }
     },
     {
       "categoria": "duracion",
@@ -182,16 +223,20 @@
       "nombre": "8 segundos",
       "descripcion": "Para una acción con principio y fin. Solo se puede elegir con los modelos que sepan cobrar esta duración.",
       "orden": 30,
-      "valores": { "prompt": "eight", "segundos": 8 }
+      "valores": {
+        "prompt": "eight",
+        "segundos": 8
+      }
     },
-
     {
       "categoria": "accion",
       "clave": "saluda",
       "nombre": "Saluda a cámara",
       "descripcion": "Mira al objetivo y saluda con la mano.",
       "orden": 10,
-      "valores": { "prompt": "waving at the camera" }
+      "valores": {
+        "prompt": "waving at the camera"
+      }
     },
     {
       "categoria": "accion",
@@ -199,7 +244,9 @@
       "nombre": "Camina hacia cámara",
       "descripcion": "Se acerca andando, sin prisa.",
       "orden": 20,
-      "valores": { "prompt": "walking towards the camera" }
+      "valores": {
+        "prompt": "walking towards the camera"
+      }
     },
     {
       "categoria": "accion",
@@ -207,7 +254,9 @@
       "nombre": "Enseña algo",
       "descripcion": "Sostiene algo delante y lo muestra.",
       "orden": 30,
-      "valores": { "prompt": "holding something up and showing it to the camera" }
+      "valores": {
+        "prompt": "holding something up and showing it to the camera"
+      }
     },
     {
       "categoria": "accion",
@@ -215,7 +264,9 @@
       "nombre": "Se ríe",
       "descripcion": "Risa natural, sin posar.",
       "orden": 40,
-      "valores": { "prompt": "laughing naturally" }
+      "valores": {
+        "prompt": "laughing naturally"
+      }
     },
     {
       "categoria": "accion",
@@ -223,17 +274,736 @@
       "nombre": "Da una vuelta",
       "descripcion": "Gira para que se vea el conjunto entero.",
       "orden": 50,
-      "valores": { "prompt": "turning around so the whole outfit is visible" }
+      "valores": {
+        "prompt": "turning around so the whole outfit is visible"
+      }
+    },
+    {
+      "categoria": "formato-clip",
+      "clave": "ugc-a-camara",
+      "nombre": "UGC a cámara",
+      "descripcion": "El personaje habla mirando a cámara.",
+      "orden": 10,
+      "valores": {
+        "prompt": "A phone-shot social video of a person talking straight to camera",
+        "formatoClip": "ugc_a_camara"
+      }
+    },
+    {
+      "categoria": "formato-clip",
+      "clave": "voz-en-off",
+      "nombre": "Voz en off / b-roll",
+      "descripcion": "Clip mudo: la narración se monta encima.",
+      "orden": 20,
+      "valores": {
+        "prompt": "A silent b-roll clip meant to sit under a voice-over",
+        "formatoClip": "voz_en_off"
+      }
+    },
+    {
+      "categoria": "plano",
+      "clave": "general",
+      "nombre": "Plano general",
+      "descripcion": "Se ve el cuerpo entero y el sitio donde está.",
+      "orden": 10,
+      "valores": {
+        "prompt": "Wide shot showing the whole body and the place around it"
+      }
+    },
+    {
+      "categoria": "plano",
+      "clave": "americano",
+      "nombre": "Plano americano",
+      "descripcion": "De las rodillas hacia arriba.",
+      "orden": 20,
+      "valores": {
+        "prompt": "Cowboy shot framed from mid-thigh up"
+      }
+    },
+    {
+      "categoria": "plano",
+      "clave": "medio",
+      "nombre": "Plano medio",
+      "descripcion": "De la cintura hacia arriba. El de siempre para hablar a cámara.",
+      "orden": 30,
+      "valores": {
+        "prompt": "Medium shot framed from the waist up"
+      }
+    },
+    {
+      "categoria": "plano",
+      "clave": "primer-plano",
+      "nombre": "Primer plano",
+      "descripcion": "Cara y hombros. La expresión manda.",
+      "orden": 40,
+      "valores": {
+        "prompt": "Close-up on the face and shoulders"
+      }
+    },
+    {
+      "categoria": "plano",
+      "clave": "primerisimo",
+      "nombre": "Primerísimo primer plano",
+      "descripcion": "Solo la cara, muy cerca.",
+      "orden": 50,
+      "valores": {
+        "prompt": "Extreme close-up filling the frame with the face"
+      }
+    },
+    {
+      "categoria": "angulo",
+      "clave": "frente",
+      "nombre": "De frente",
+      "descripcion": "La cámara a la altura de los ojos, de frente.",
+      "orden": 10,
+      "valores": {
+        "prompt": "Camera at eye level, straight on"
+      }
+    },
+    {
+      "categoria": "angulo",
+      "clave": "tres-cuartos",
+      "nombre": "Tres cuartos",
+      "descripcion": "Girado un poco: el ángulo que más favorece.",
+      "orden": 20,
+      "valores": {
+        "prompt": "Camera at a three-quarter angle to the face"
+      }
+    },
+    {
+      "categoria": "angulo",
+      "clave": "perfil",
+      "nombre": "De perfil",
+      "descripcion": "La cara de lado.",
+      "orden": 30,
+      "valores": {
+        "prompt": "Camera in full profile to the face"
+      }
+    },
+    {
+      "categoria": "angulo",
+      "clave": "picado",
+      "nombre": "Picado",
+      "descripcion": "La cámara mira desde arriba.",
+      "orden": 40,
+      "valores": {
+        "prompt": "Camera above eye level, looking down"
+      }
+    },
+    {
+      "categoria": "angulo",
+      "clave": "contrapicado",
+      "nombre": "Contrapicado",
+      "descripcion": "La cámara mira desde abajo: da presencia.",
+      "orden": 50,
+      "valores": {
+        "prompt": "Camera below eye level, looking up"
+      }
+    },
+    {
+      "categoria": "angulo",
+      "clave": "cenital",
+      "nombre": "Cenital",
+      "descripcion": "Desde justo arriba, mirando al suelo.",
+      "orden": 60,
+      "valores": {
+        "prompt": "Camera directly overhead, looking straight down"
+      }
+    },
+    {
+      "categoria": "angulo",
+      "clave": "holandes",
+      "nombre": "Holandés",
+      "descripcion": "El horizonte inclinado: inquieta.",
+      "orden": 70,
+      "valores": {
+        "prompt": "Camera tilted off the horizon, a dutch angle"
+      }
+    },
+    {
+      "categoria": "angulo",
+      "clave": "contraluz",
+      "nombre": "Contraluz",
+      "descripcion": "La luz detrás del personaje.",
+      "orden": 80,
+      "valores": {
+        "prompt": "Camera facing into the light, with the subject backlit"
+      }
+    },
+    {
+      "categoria": "angulo",
+      "clave": "gran-angular",
+      "nombre": "Gran angular",
+      "descripcion": "Muy cerca y muy abierto, como un selfi con el brazo estirado.",
+      "orden": 90,
+      "valores": {
+        "prompt": "Camera very close with a wide lens, arm's-length selfie framing"
+      }
+    },
+    {
+      "categoria": "optica",
+      "clave": "movil",
+      "nombre": "Lente de móvil",
+      "descripcion": "Lo que se ve al grabar con el teléfono, sin más.",
+      "orden": 10,
+      "valores": {
+        "prompt": "Modern phone camera lens, natural perspective, everything in focus"
+      }
+    },
+    {
+      "categoria": "optica",
+      "clave": "retrato",
+      "nombre": "Retrato",
+      "descripcion": "El fondo desenfocado detrás del personaje.",
+      "orden": 20,
+      "valores": {
+        "prompt": "Portrait lens with a shallow depth of field and a softly blurred background"
+      }
+    },
+    {
+      "categoria": "optica",
+      "clave": "angular",
+      "nombre": "Angular",
+      "descripcion": "Entra más sitio y las distancias se exageran.",
+      "orden": 30,
+      "valores": {
+        "prompt": "Wide-angle lens with exaggerated depth and a slight edge distortion"
+      }
+    },
+    {
+      "categoria": "optica",
+      "clave": "tele",
+      "nombre": "Teleobjetivo",
+      "descripcion": "El fondo se acerca y se aplana.",
+      "orden": 40,
+      "valores": {
+        "prompt": "Telephoto lens that compresses the background against the subject"
+      }
+    },
+    {
+      "categoria": "luz",
+      "clave": "natural-ventana",
+      "nombre": "Luz de ventana",
+      "descripcion": "La luz de una ventana, suave y de lado.",
+      "orden": 10,
+      "valores": {
+        "prompt": "Soft daylight from a window, falling from one side, gentle shadows"
+      }
+    },
+    {
+      "categoria": "luz",
+      "clave": "hora-dorada",
+      "nombre": "Hora dorada",
+      "descripcion": "El sol bajo del final de la tarde.",
+      "orden": 20,
+      "valores": {
+        "prompt": "Low late-afternoon sun, warm golden light and long shadows"
+      }
+    },
+    {
+      "categoria": "luz",
+      "clave": "flash-directo",
+      "nombre": "Flash directo",
+      "descripcion": "El flash del móvil de frente: sombras duras y piel brillante.",
+      "orden": 30,
+      "valores": {
+        "prompt": "Direct on-camera flash, hard shadows behind the subject and shine on the skin"
+      }
+    },
+    {
+      "categoria": "luz",
+      "clave": "interior-calido",
+      "nombre": "Interior cálido",
+      "descripcion": "Lámparas de casa por la noche.",
+      "orden": 40,
+      "valores": {
+        "prompt": "Warm indoor lamplight at night, pools of light and deep shadow"
+      }
+    },
+    {
+      "categoria": "luz",
+      "clave": "nublado",
+      "nombre": "Nublado",
+      "descripcion": "Luz plana, sin sombras marcadas.",
+      "orden": 50,
+      "valores": {
+        "prompt": "Flat overcast daylight with soft, open shadows"
+      }
+    },
+    {
+      "categoria": "luz",
+      "clave": "neon-nocturno",
+      "nombre": "Neón nocturno",
+      "descripcion": "Luz de carteles de colores en la calle.",
+      "orden": 60,
+      "valores": {
+        "prompt": "Coloured neon and street signage light at night, mixed colour casts"
+      }
+    },
+    {
+      "categoria": "localizacion",
+      "clave": "dormitorio",
+      "nombre": "Dormitorio",
+      "descripcion": "Una habitación de casa, vivida.",
+      "orden": 10,
+      "valores": {
+        "prompt": "In a lived-in bedroom, personal objects visible behind"
+      }
+    },
+    {
+      "categoria": "localizacion",
+      "clave": "cocina",
+      "nombre": "Cocina",
+      "descripcion": "La cocina de casa.",
+      "orden": 20,
+      "valores": {
+        "prompt": "In a home kitchen, worktop and everyday objects behind"
+      }
+    },
+    {
+      "categoria": "localizacion",
+      "clave": "calle",
+      "nombre": "Calle",
+      "descripcion": "Una calle de ciudad, con gente pasando lejos.",
+      "orden": 30,
+      "valores": {
+        "prompt": "On a city street, passers-by blurred in the distance"
+      }
+    },
+    {
+      "categoria": "localizacion",
+      "clave": "cafeteria",
+      "nombre": "Cafetería",
+      "descripcion": "Una cafetería con mesas al fondo.",
+      "orden": 40,
+      "valores": {
+        "prompt": "Inside a café, tables and other customers out of focus behind"
+      }
+    },
+    {
+      "categoria": "localizacion",
+      "clave": "gimnasio",
+      "nombre": "Gimnasio",
+      "descripcion": "Un gimnasio con máquinas detrás.",
+      "orden": 50,
+      "valores": {
+        "prompt": "Inside a gym, equipment visible behind"
+      }
+    },
+    {
+      "categoria": "localizacion",
+      "clave": "fondo-liso",
+      "nombre": "Fondo liso",
+      "descripcion": "Una pared lisa, sin nada que distraiga.",
+      "orden": 60,
+      "valores": {
+        "prompt": "Against a plain, uncluttered wall with nothing distracting behind"
+      }
+    },
+    {
+      "categoria": "camara",
+      "clave": "quieta-con-gestos",
+      "nombre": "Quieta, con gestos",
+      "descripcion": "La cámara no se mueve; el que se mueve es el personaje.",
+      "orden": 10,
+      "valores": {
+        "prompt": "The camera stays locked off and does not move at all",
+        "nivel": "basico"
+      }
+    },
+    {
+      "categoria": "camara",
+      "clave": "plano-fijo",
+      "nombre": "Plano fijo",
+      "descripcion": "Un plano fijo de principio a fin.",
+      "orden": 20,
+      "valores": {
+        "prompt": "The camera holds one fixed frame from the first frame to the last",
+        "nivel": "basico"
+      }
+    },
+    {
+      "categoria": "camara",
+      "clave": "zoom-lento-cara",
+      "nombre": "Zoom lento a la cara",
+      "descripcion": "Se acerca despacio durante todo el clip.",
+      "orden": 30,
+      "valores": {
+        "prompt": "The camera pushes in slowly and evenly towards the face across the whole shot",
+        "nivel": "basico"
+      }
+    },
+    {
+      "categoria": "camara",
+      "clave": "zoom-rapido-inicio",
+      "nombre": "Zoom rápido al empezar",
+      "descripcion": "Un acercamiento rápido justo al empezar a hablar, y quieta el resto.",
+      "orden": 40,
+      "valores": {
+        "prompt": "The camera snaps in quickly at the very start, then holds completely still for the rest of the shot",
+        "nivel": "basico"
+      }
+    },
+    {
+      "categoria": "camara",
+      "clave": "en-mano-sutil",
+      "nombre": "En mano, sutil",
+      "descripcion": "Un temblor mínimo, como si la sujetara alguien.",
+      "orden": 50,
+      "valores": {
+        "prompt": "The camera has the faint natural sway of being held in a hand",
+        "nivel": "basico"
+      }
+    },
+    {
+      "categoria": "camara",
+      "clave": "acercamiento-sutil",
+      "nombre": "Acercamiento sutil",
+      "descripcion": "Se acerca un poco, casi sin notarse.",
+      "orden": 60,
+      "valores": {
+        "prompt": "The camera drifts in very slightly, barely perceptibly",
+        "nivel": "variacion"
+      }
+    },
+    {
+      "categoria": "camara",
+      "clave": "retroceso-revela",
+      "nombre": "Retroceso que revela",
+      "descripcion": "Se aleja y aparece el sitio entero.",
+      "orden": 70,
+      "valores": {
+        "prompt": "The camera pulls back steadily to reveal the whole place around the subject",
+        "nivel": "variacion"
+      }
+    },
+    {
+      "categoria": "camara",
+      "clave": "orbita-lenta",
+      "nombre": "Órbita lenta",
+      "descripcion": "Gira despacio alrededor del personaje.",
+      "orden": 80,
+      "valores": {
+        "prompt": "The camera arcs slowly around the subject, keeping them centred",
+        "nivel": "variacion"
+      }
+    },
+    {
+      "categoria": "camara",
+      "clave": "seguimiento-caminar",
+      "nombre": "Seguimiento al caminar",
+      "descripcion": "Camina y la cámara va con él.",
+      "orden": 90,
+      "valores": {
+        "prompt": "The camera tracks alongside the subject as they walk, keeping the same distance",
+        "nivel": "variacion"
+      }
+    },
+    {
+      "categoria": "camara",
+      "clave": "push-in-ojos",
+      "nombre": "Push-in a los ojos",
+      "descripcion": "Se acerca a los ojos justo en la frase importante.",
+      "orden": 100,
+      "valores": {
+        "prompt": "The camera pushes in towards the eyes and lands on them as the key line is spoken",
+        "nivel": "avanzado"
+      }
+    },
+    {
+      "categoria": "camara",
+      "clave": "contrapicado-heroico",
+      "nombre": "Contrapicado heroico",
+      "descripcion": "Se agacha y sube: da grandeza.",
+      "orden": 110,
+      "valores": {
+        "prompt": "The camera rises from a low angle up towards the subject, a heroic move",
+        "nivel": "avanzado"
+      }
+    },
+    {
+      "categoria": "camara",
+      "clave": "bokeh-al-fondo",
+      "nombre": "Foco que cambia al fondo",
+      "descripcion": "El foco pasa del personaje al fondo.",
+      "orden": 120,
+      "valores": {
+        "prompt": "The focus racks from the subject to the background, turning the near plane into bokeh",
+        "nivel": "avanzado"
+      }
+    },
+    {
+      "categoria": "camara",
+      "clave": "camara-lenta",
+      "nombre": "Cámara lenta",
+      "descripcion": "Todo se mueve más despacio de lo normal.",
+      "orden": 130,
+      "valores": {
+        "prompt": "The action plays in slow motion while the camera holds steady",
+        "nivel": "avanzado"
+      }
+    },
+    {
+      "categoria": "microaccion",
+      "clave": "mirar-a-camara",
+      "nombre": "Mira a cámara",
+      "descripcion": "Levanta la vista y mira al objetivo.",
+      "orden": 10,
+      "valores": {
+        "prompt": "The character looks up and meets the camera",
+        "momento": "antes"
+      }
+    },
+    {
+      "categoria": "microaccion",
+      "clave": "sonreir",
+      "nombre": "Sonríe",
+      "descripcion": "Una sonrisa corta y de verdad.",
+      "orden": 20,
+      "valores": {
+        "prompt": "The character breaks into a short, genuine smile",
+        "momento": "durante"
+      }
+    },
+    {
+      "categoria": "microaccion",
+      "clave": "asentir",
+      "nombre": "Asiente",
+      "descripcion": "Un gesto corto de que sí.",
+      "orden": 30,
+      "valores": {
+        "prompt": "The character nods once, briefly",
+        "momento": "despues"
+      }
+    },
+    {
+      "categoria": "microaccion",
+      "clave": "negar",
+      "nombre": "Niega con la cabeza",
+      "descripcion": "Un «no» corto.",
+      "orden": 40,
+      "valores": {
+        "prompt": "The character shakes their head once, briefly",
+        "momento": "durante"
+      }
+    },
+    {
+      "categoria": "microaccion",
+      "clave": "levantar-cejas",
+      "nombre": "Levanta las cejas",
+      "descripcion": "Sorpresa contenida.",
+      "orden": 50,
+      "valores": {
+        "prompt": "The character raises their eyebrows in mild surprise",
+        "momento": "antes"
+      }
+    },
+    {
+      "categoria": "microaccion",
+      "clave": "encogerse-hombros",
+      "nombre": "Se encoge de hombros",
+      "descripcion": "«Qué le vamos a hacer».",
+      "orden": 60,
+      "valores": {
+        "prompt": "The character shrugs their shoulders",
+        "momento": "despues"
+      }
+    },
+    {
+      "categoria": "microaccion",
+      "clave": "tocarse-pelo",
+      "nombre": "Se toca el pelo",
+      "descripcion": "Se aparta el pelo de la cara.",
+      "orden": 70,
+      "valores": {
+        "prompt": "The character pushes their hair back from their face",
+        "momento": "antes"
+      }
+    },
+    {
+      "categoria": "microaccion",
+      "clave": "cruzar-brazos",
+      "nombre": "Cruza los brazos",
+      "descripcion": "Se cierra un poco.",
+      "orden": 80,
+      "valores": {
+        "prompt": "The character folds their arms across their chest",
+        "momento": "despues"
+      }
+    },
+    {
+      "categoria": "microaccion",
+      "clave": "senalar-camara",
+      "nombre": "Señala a cámara",
+      "descripcion": "Apunta al objetivo con el dedo.",
+      "orden": 90,
+      "valores": {
+        "prompt": "The character points a finger straight at the camera",
+        "momento": "durante"
+      }
+    },
+    {
+      "categoria": "microaccion",
+      "clave": "senalar-abajo",
+      "nombre": "Señala abajo",
+      "descripcion": "Apunta hacia abajo, a lo que hay debajo del vídeo.",
+      "orden": 100,
+      "valores": {
+        "prompt": "The character points downwards, off the bottom of the frame",
+        "momento": "despues"
+      }
+    },
+    {
+      "categoria": "microaccion",
+      "clave": "acercarse-camara",
+      "nombre": "Se acerca a cámara",
+      "descripcion": "Se inclina hacia el objetivo.",
+      "orden": 110,
+      "valores": {
+        "prompt": "The character leans in closer to the camera",
+        "momento": "antes"
+      }
+    },
+    {
+      "categoria": "microaccion",
+      "clave": "apartarse-camara",
+      "nombre": "Se aparta de cámara",
+      "descripcion": "Se echa hacia atrás.",
+      "orden": 120,
+      "valores": {
+        "prompt": "The character leans back away from the camera",
+        "momento": "despues"
+      }
+    },
+    {
+      "categoria": "microaccion",
+      "clave": "reirse",
+      "nombre": "Se ríe",
+      "descripcion": "Una risa corta.",
+      "orden": 130,
+      "valores": {
+        "prompt": "The character lets out a short laugh",
+        "momento": "despues"
+      }
+    },
+    {
+      "categoria": "microaccion",
+      "clave": "suspirar",
+      "nombre": "Suspira",
+      "descripcion": "Coge aire y lo suelta.",
+      "orden": 140,
+      "valores": {
+        "prompt": "The character takes a breath and lets it out",
+        "momento": "antes"
+      }
+    },
+    {
+      "categoria": "microaccion",
+      "clave": "mirar-lado",
+      "nombre": "Mira a un lado",
+      "descripcion": "Aparta la vista un momento.",
+      "orden": 150,
+      "valores": {
+        "prompt": "The character glances away to one side for a moment",
+        "momento": "durante"
+      }
+    },
+    {
+      "categoria": "microaccion",
+      "clave": "beber",
+      "nombre": "Bebe un sorbo",
+      "descripcion": "Da un trago a lo que tiene en la mano.",
+      "orden": 160,
+      "valores": {
+        "prompt": "The character takes a sip from what they are holding",
+        "momento": "antes"
+      }
+    },
+    {
+      "categoria": "microaccion",
+      "clave": "gesticular-manos",
+      "nombre": "Gesticula con las manos",
+      "descripcion": "Acompaña lo que dice con las manos.",
+      "orden": 170,
+      "valores": {
+        "prompt": "The character gestures with both hands while talking",
+        "momento": "durante"
+      }
+    },
+    {
+      "categoria": "microaccion",
+      "clave": "ajustarse-ropa",
+      "nombre": "Se ajusta la ropa",
+      "descripcion": "Se recoloca la prenda.",
+      "orden": 180,
+      "valores": {
+        "prompt": "The character adjusts their clothing",
+        "momento": "antes"
+      }
+    },
+    {
+      "categoria": "microaccion",
+      "clave": "guinar",
+      "nombre": "Guiña un ojo",
+      "descripcion": "Complicidad.",
+      "orden": 190,
+      "valores": {
+        "prompt": "The character winks at the camera",
+        "momento": "despues"
+      }
+    },
+    {
+      "categoria": "microaccion",
+      "clave": "pensar",
+      "nombre": "Se queda pensando",
+      "descripcion": "Una pausa antes de seguir.",
+      "orden": 200,
+      "valores": {
+        "prompt": "The character pauses, thinking, before going on",
+        "momento": "antes"
+      }
+    },
+    {
+      "categoria": "registro-estetico",
+      "clave": "ugc-real",
+      "nombre": "Real y cercano (UGC)",
+      "descripcion": "Luz del sitio y cámara en mano, como un vídeo grabado sin pensarlo.",
+      "orden": 10,
+      "valores": {
+        "prompt": "shot handheld on a phone, slightly off-centre, with the small imperfections of an unplanned take",
+        "registro": "ugc_real"
+      }
+    },
+    {
+      "categoria": "registro-estetico",
+      "clave": "influencer",
+      "nombre": "Cuidado (estilo influencer)",
+      "descripcion": "Luz trabajada y encuadre limpio. La persona sigue siendo ella.",
+      "orden": 20,
+      "valores": {
+        "prompt": "shot on a modern phone with a clean, deliberate composition and a shallow depth of field",
+        "registro": "influencer"
+      }
+    },
+    {
+      "categoria": "anclajes",
+      "clave": "realismo-fotografico",
+      "nombre": "Anclajes de realismo",
+      "descripcion": "Lo que hace que la imagen parezca una foto y no un render. Cierra siempre el prompt y el usuario no puede quitarlo.",
+      "orden": 10,
+      "valores": {
+        "prompt": "Photographic realism: real skin with visible pores and small imperfections, natural asymmetry, a light film of grain. Hands, fingers, teeth and eyes are anatomically correct and unaltered. Do not render this as an illustration, a 3D render, CGI or a digital painting: it is a photograph. No text, no captions, no subtitles, no watermarks, no logos, no written words and no distorted or duplicated body parts anywhere in the image."
+      }
     }
   ],
   "plantillas": [
     {
       "clave": "fotograma-social",
       "nombre": "Fotograma para redes",
-      "descripcion": "El fotograma de siempre, armado con los botones: especialidad, formato, look, vestuario y acción.",
+      "descripcion": "El fotograma armado con el método 6C: personaje, cámara, ropa, contexto, luz y los anclajes de realismo, que cierran siempre.",
       "capacidad": "image_edit",
       "orden": 10,
-      "plantilla": "{{especialidad}}.\nSubject: {{personaje}}.\nScene: {{escena}}.\nWardrobe: {{vestuario}}.\nLook: {{estilo}}.\nFraming: {{formato}}.\nAction: {{accion}}.\nPhotographic, no text and no logos in the image.",
+      "plantilla": "{{especialidad}}.\nSubject: {{personaje}}.\nCamera: {{plano}}. {{angulo}}. {{optica}}. {{registro}}.\nFraming: {{formato}}.\nWardrobe: {{vestuario}}.\nContext: {{localizacion}}. {{escena}}.\nLight: {{luz}}. {{estilo}}.\nAction: {{accion}}.\nRealism: {{anclajes}}",
       "variables": [
         {
           "nombre": "especialidad",
@@ -242,16 +1012,40 @@
           "etiqueta": "Especialidad",
           "obligatoria": true
         },
-        { "nombre": "personaje", "tipo": "personaje", "etiqueta": "Personaje", "obligatoria": false },
-        { "nombre": "escena", "tipo": "texto", "etiqueta": "Qué quieres ver", "obligatoria": true },
         {
-          "nombre": "vestuario",
-          "tipo": "enumerado",
-          "categoria": "vestuario",
-          "etiqueta": "Vestuario",
+          "nombre": "personaje",
+          "tipo": "personaje",
+          "etiqueta": "Personaje",
           "obligatoria": false
         },
-        { "nombre": "estilo", "tipo": "enumerado", "categoria": "estilo", "etiqueta": "Look", "obligatoria": true },
+        {
+          "nombre": "plano",
+          "tipo": "enumerado",
+          "categoria": "plano",
+          "etiqueta": "Plano",
+          "obligatoria": false
+        },
+        {
+          "nombre": "angulo",
+          "tipo": "enumerado",
+          "categoria": "angulo",
+          "etiqueta": "Ángulo",
+          "obligatoria": false
+        },
+        {
+          "nombre": "optica",
+          "tipo": "enumerado",
+          "categoria": "optica",
+          "etiqueta": "Óptica",
+          "obligatoria": false
+        },
+        {
+          "nombre": "registro",
+          "tipo": "enumerado",
+          "categoria": "registro-estetico",
+          "etiqueta": "Registro estético",
+          "obligatoria": false
+        },
         {
           "nombre": "formato",
           "tipo": "enumerado",
@@ -259,17 +1053,67 @@
           "etiqueta": "Formato",
           "obligatoria": true
         },
-        { "nombre": "accion", "tipo": "enumerado", "categoria": "accion", "etiqueta": "Acción", "obligatoria": false }
+        {
+          "nombre": "vestuario",
+          "tipo": "enumerado",
+          "categoria": "vestuario",
+          "etiqueta": "Vestuario",
+          "obligatoria": false
+        },
+        {
+          "nombre": "localizacion",
+          "tipo": "enumerado",
+          "categoria": "localizacion",
+          "etiqueta": "Sitio",
+          "obligatoria": false
+        },
+        {
+          "nombre": "escena",
+          "tipo": "texto",
+          "etiqueta": "Qué quieres ver",
+          "obligatoria": true
+        },
+        {
+          "nombre": "luz",
+          "tipo": "enumerado",
+          "categoria": "luz",
+          "etiqueta": "Luz",
+          "obligatoria": false
+        },
+        {
+          "nombre": "estilo",
+          "tipo": "enumerado",
+          "categoria": "estilo",
+          "etiqueta": "Look",
+          "obligatoria": false
+        },
+        {
+          "nombre": "accion",
+          "tipo": "enumerado",
+          "categoria": "accion",
+          "etiqueta": "Acción",
+          "obligatoria": false
+        },
+        {
+          "nombre": "anclajes",
+          "tipo": "enumerado",
+          "categoria": "anclajes",
+          "etiqueta": "Anclajes de realismo",
+          "obligatoria": true
+        }
       ],
-      "restricciones": { "modelos": [], "minimoReferencias": 1 }
+      "restricciones": {
+        "modelos": [],
+        "minimoReferencias": 1
+      }
     },
     {
       "clave": "clip-social",
       "nombre": "Clip para redes",
-      "descripcion": "El clip que anima el fotograma: duración, look y acción. El formato lo hereda de la imagen.",
+      "descripcion": "El clip dirigido: encuadre y cámara primero, luego el personaje y su gesto, y la regla de toma única al final. La cámara ya no es fija: la elige quien dirige la escena.",
       "capacidad": "image_to_video",
       "orden": 10,
-      "plantilla": "A continuous {{duracion}}-second shot of {{personaje}}.\nScene: {{escena}}.\nLook: {{estilo}}.\nAction: {{accion}}.\nCamera: steady, with a subtle handheld feel.",
+      "plantilla": "A continuous {{duracion}}-second shot, filmed as one single take.\nCamera: {{plano}}. {{angulo}}. {{camara}}. {{registro}}.\nSubject: {{personaje}}.\nScene: {{escena}}.\n{{microaccion}}.\nLook: {{estilo}}.\nSingle continuous take: one uninterrupted shot from first frame to last, no cuts, no edits, no transitions, no scene changes. The camera settles and holds still once the movement ends, and the action finishes inside the shot.",
       "variables": [
         {
           "nombre": "duracion",
@@ -280,12 +1124,65 @@
           "minimo": 1,
           "maximo": 60
         },
-        { "nombre": "personaje", "tipo": "personaje", "etiqueta": "Personaje", "obligatoria": false },
-        { "nombre": "escena", "tipo": "texto", "etiqueta": "Qué quieres ver", "obligatoria": true },
-        { "nombre": "estilo", "tipo": "enumerado", "categoria": "estilo", "etiqueta": "Look", "obligatoria": false },
-        { "nombre": "accion", "tipo": "enumerado", "categoria": "accion", "etiqueta": "Acción", "obligatoria": false }
+        {
+          "nombre": "plano",
+          "tipo": "enumerado",
+          "categoria": "plano",
+          "etiqueta": "Plano",
+          "obligatoria": false
+        },
+        {
+          "nombre": "angulo",
+          "tipo": "enumerado",
+          "categoria": "angulo",
+          "etiqueta": "Ángulo",
+          "obligatoria": false
+        },
+        {
+          "nombre": "camara",
+          "tipo": "enumerado",
+          "categoria": "camara",
+          "etiqueta": "Movimiento de cámara",
+          "obligatoria": false
+        },
+        {
+          "nombre": "registro",
+          "tipo": "enumerado",
+          "categoria": "registro-estetico",
+          "etiqueta": "Registro estético",
+          "obligatoria": false
+        },
+        {
+          "nombre": "personaje",
+          "tipo": "personaje",
+          "etiqueta": "Personaje",
+          "obligatoria": false
+        },
+        {
+          "nombre": "escena",
+          "tipo": "texto",
+          "etiqueta": "Qué quieres ver",
+          "obligatoria": true
+        },
+        {
+          "nombre": "microaccion",
+          "tipo": "enumerado",
+          "categoria": "microaccion",
+          "etiqueta": "Micro-acción",
+          "obligatoria": false
+        },
+        {
+          "nombre": "estilo",
+          "tipo": "enumerado",
+          "categoria": "estilo",
+          "etiqueta": "Look",
+          "obligatoria": false
+        }
       ],
-      "restricciones": { "modelos": [], "minimoReferencias": 1 }
+      "restricciones": {
+        "modelos": [],
+        "minimoReferencias": 1
+      }
     }
   ]
 }

@@ -5,6 +5,7 @@ import { limpiarTextoEditado, renderizarPlantilla, textosDeEscena, valoresDeVari
 import {
   type CategoriaPreset,
   esCategoriaMultiple,
+  esCategoriaSoloAdmin,
   MAXIMO_VARIABLES,
   type PresetElegible,
   recortarPreset,
@@ -12,7 +13,14 @@ import {
   type VariablePlantilla,
 } from "@/lib/presets";
 import { exigirCombinacionPosible } from "./compatibilidad";
-import { plantillaUsable, presetsUsables, restriccionesDeTexto, variablesDeTexto, versionVigente } from "./consulta";
+import {
+  listarPresets,
+  plantillaUsable,
+  presetsUsables,
+  restriccionesDeTexto,
+  variablesDeTexto,
+  versionVigente,
+} from "./consulta";
 import { ErrorPreset } from "./errores";
 
 /**
@@ -129,6 +137,42 @@ async function elegidosAutorizados(
   return filas.map(recortarPreset);
 }
 
+/**
+ * Rellena las categorías que **el usuario no elige** (hoy solo `anclajes`, el bloque C6): se coge el primer
+ * preset activo de la categoría, que es el orden en que los ha dejado quien administra.
+ *
+ * Existe porque C6 no es una opción: es lo que separa una foto creíble de un render, y pedírselo al usuario
+ * sería dejarle quitarlo (decisión firme del propietario, 2026-09-28). Tampoco puede ser texto fijo dentro de
+ * la plantilla, porque quien administra sí tiene que poder componerlo.
+ */
+async function soloAdminAutorrellenados(
+  usuarioId: string,
+  variables: readonly VariablePlantilla[],
+  yaElegidos: readonly PresetElegible[],
+): Promise<PresetElegible[]> {
+  const pendientes = new Set<CategoriaPreset>();
+  for (const variable of variables) {
+    if (variable.tipo === "texto" || variable.tipo === "personaje" || !variable.categoria) continue;
+    if (!esCategoriaSoloAdmin(variable.categoria)) continue;
+    if (yaElegidos.some((p) => p.categoria === variable.categoria)) continue;
+    pendientes.add(variable.categoria);
+  }
+  if (pendientes.size === 0) return [];
+  const todos = await listarPresets({ usuarioId });
+  const rellenados: PresetElegible[] = [];
+  for (const categoria of pendientes) {
+    const elegido = todos.find((p) => p.categoria === categoria && p.activo);
+    if (!elegido) {
+      throw new ErrorPreset(
+        409,
+        `Esta instalación no tiene ninguna opción activa de ${categoria} y el prompt no se puede cerrar sin ella. Pídeselo a quien administra.`,
+      );
+    }
+    rellenados.push(recortarPreset(elegido));
+  }
+  return rellenados;
+}
+
 /** Compone el prompt final de una plantilla. Ninguna parte de esta función habla con ningún proveedor. */
 export async function componerDesdePlantilla(peticion: PeticionRender): Promise<PromptCompuesto> {
   const plantilla = await plantillaUsable(peticion.usuarioId, peticion.plantillaId);
@@ -156,10 +200,16 @@ export async function componerDesdePlantilla(peticion: PeticionRender): Promise<
     throw new ErrorPreset(409, `La plantilla «${plantilla.name}» declara demasiadas variables: revísala.`);
   }
   const restricciones = restriccionesDeTexto(version.modelRestrictions);
-  const elegidos = await elegidosAutorizados(peticion, variables);
+  const pedidos = await elegidosAutorizados(peticion, variables);
+  // El bloque de anclajes entra solo, aunque el usuario no haya elegido nada: no es una opción suya.
+  const rellenados = await soloAdminAutorrellenados(peticion.usuarioId, variables, pedidos);
+  const elegidos = [...pedidos, ...rellenados];
+  // Lo autorrellenado entra también en la selección: es lo que la lee para saber qué preset va en qué hueco.
+  const seleccion: SeleccionPresets = { ...peticion.presets };
+  for (const preset of rellenados) seleccion[preset.categoria] = [preset.id];
   const valores = valoresDeVariables(variables, {
     ordenados: elegidos,
-    seleccion: peticion.presets,
+    seleccion,
     // **Todas** las variables de texto reciben la escena, no solo la que se llame «escena»: es la misma regla
     // que aplica la previsualización del navegador, con la misma función.
     textos: textosDeEscena(variables, peticion.escena),
