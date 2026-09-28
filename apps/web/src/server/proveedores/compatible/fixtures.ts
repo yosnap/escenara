@@ -71,9 +71,11 @@ export function respuestaGrabada(cuerpo: unknown, estado = 200): Response {
  * `POST /v1/audio/speech` con `kokoro` → 200 con los bytes del audio. Lo que devuelve el servicio es un MP3; en
  * los tests basta con unos bytes con la firma de un MP3, porque lo que se comprueba es el camino, no el sonido.
  */
-export const VOZ_MP3 = new Uint8Array([0x49, 0x44, 0x33, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+export const VOZ_MP3: Uint8Array<ArrayBuffer> = new Uint8Array(
+  new Uint8Array([0x49, 0x44, 0x33, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]),
+);
 
-export function respuestaDeAudio(bytes: Uint8Array = VOZ_MP3): Response {
+export function respuestaDeAudio(bytes: Uint8Array<ArrayBuffer> = VOZ_MP3): Response {
   return new Response(bytes, { status: 200, headers: { "Content-Type": "audio/mpeg" } });
 }
 

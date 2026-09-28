@@ -182,7 +182,10 @@ describe.skipIf(!hayBaseDeDatos)("catálogo de modelos", () => {
       const antes = await listarModelos();
       expect(antes.map((m) => m.modelo).sort()).toEqual(
         [
+          "gemini-omni-video",
           "gpt-image-2-5-flare-image-to-image",
+          "grok-imagine/image-to-video",
+          "grok-imagine/text-to-video",
           HAILUO,
           "kling/v3-turbo-image-to-video",
           "kokoro",
@@ -218,6 +221,8 @@ describe.skipIf(!hayBaseDeDatos)("catálogo de modelos", () => {
     test("el catálogo se puede filtrar por capacidad", async () => {
       const deVideo = await listarModelos({ capacidad: "image_to_video" });
       expect(deVideo.map((m) => m.modelo).sort()).toEqual([
+        "gemini-omni-video",
+        "grok-imagine/image-to-video",
         HAILUO,
         "kling/v3-turbo-image-to-video",
         "veo3_fast",
@@ -247,9 +252,12 @@ describe.skipIf(!hayBaseDeDatos)("catálogo de modelos", () => {
         // comprueba en la suite de voz con su propio contexto.
         if (modelo.capacidades.includes("tts")) continue;
         const entrada = adaptadorKie.montarEntrada(modelo, contexto);
-        // Toda entrada lleva prompt y recibe la referencia por el campo que espera ese modelo.
+        // Toda entrada lleva prompt y recibe la referencia por el campo que espera ese modelo. Un modelo que no
+        // acepta ninguna (texto a vídeo puro) no la recibe: pedírsela sería enviarle un campo que rechaza.
         expect(typeof entrada.prompt).toBe("string");
-        expect(JSON.stringify(entrada)).toContain(urls[0] as string);
+        if (modelo.parametros.maximoReferencias > 0) {
+          expect(JSON.stringify(entrada)).toContain(urls[0] as string);
+        }
         // La proporción solo va si el modelo la admite.
         expect(entrada.aspect_ratio === undefined).toBe(modelo.parametros.proporciones.length === 0);
         // El diálogo solo llega a los modelos con voz.
@@ -264,6 +272,24 @@ describe.skipIf(!hayBaseDeDatos)("catálogo de modelos", () => {
         duration: "6",
         resolution: "768P",
       });
+      /**
+       * Los dos modelos de vídeo de la 0.21.1, con lo que de verdad se midió el 2026-09-28. Gemini Omni recibe el
+       * diálogo (lo dice en español con exactitud) y hasta siete referencias; Grok Imagine **no recibe diálogo**
+       * y su modo va fijo en «normal», porque el «spicy» del proveedor no se ofrece aquí.
+       */
+      expect(adaptadorKie.montarEntrada(porModelo.get("gemini-omni-video") as never, contexto)).toMatchObject({
+        image_urls: urls,
+        duration: "4",
+        resolution: "720p",
+        aspect_ratio: "9:16",
+      });
+      expect(
+        JSON.stringify(adaptadorKie.montarEntrada(porModelo.get("gemini-omni-video") as never, contexto)),
+      ).toContain("Hola a todos");
+      const grok = adaptadorKie.montarEntrada(porModelo.get("grok-imagine/text-to-video") as never, contexto);
+      expect(grok).toMatchObject({ mode: "normal", duration: "6", resolution: "480p", aspect_ratio: "9:16" });
+      expect(JSON.stringify(grok)).not.toContain("Hola a todos");
+      expect(JSON.stringify(grok)).not.toContain("spicy");
       // Kling solo acepta JPEG o PNG: es lo que obliga a convertir el fotograma WebP antes de subirlo.
       expect(porModelo.get("kling/v3-turbo-image-to-video")?.parametros.formatosReferencia).toEqual([
         "image/jpeg",
