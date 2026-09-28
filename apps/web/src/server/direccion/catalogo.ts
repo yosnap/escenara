@@ -1,17 +1,6 @@
-import {
-  ACENTO_POR_DEFECTO,
-  type Acento,
-  type EjesVoz,
-  ejesVozDe,
-  type FormatoClip,
-  type MomentoMicroaccion,
-  type NivelCamara,
-  type RegistroEstetico,
-} from "@/lib/direccion";
+import type { MomentoMicroaccion, NivelCamara } from "@/lib/direccion";
 import type { CategoriaPreset, PresetVista } from "@/lib/presets";
 import { listarPresets } from "../prompts/consulta";
-import type { DireccionDeClip } from "./clip";
-import type { SeisC } from "./fotograma";
 import { ANCLAJES_REALISMO } from "./ingles";
 
 /**

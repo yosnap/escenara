@@ -5,10 +5,12 @@ import { useRef, useState } from "react";
 import { Boton } from "@/components/ui/button";
 import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo } from "@/components/ui/field";
+import { Dialogo } from "@/components/ui/overlay";
 import { Paso } from "@/components/ui/paso";
 import { SelectorPersonaje } from "@/components/ui/personaje";
 import { Selector } from "@/components/ui/select";
 import { type ClaveConfirmacion, claveEstable } from "@/lib/asistente";
+import { ACENTOS, type Acento, AYUDA_ACENTO, NOMBRE_ACENTO } from "@/lib/direccion";
 import { formatearCreditos, formatearEuros } from "@/lib/generacion";
 import type { PersonajeElegible } from "@/lib/personajes";
 import { DURACIONES_DISPONIBLES } from "@/lib/produccion";
@@ -50,6 +52,12 @@ export function PanelIdea({
   const [idea, setIdea] = useState(proyecto.idea);
   const [segundos, setSegundos] = useState(proyecto.segundosClip);
   const [concepto, setConcepto] = useState(proyecto.concepto);
+  const [acento, setAcento] = useState<Acento>(proyecto.acento);
+  /**
+   * Lo que hay que confirmar antes de cambiar el acento: el servidor dice **cuántas escenas pierde** y no se
+   * cambia nada hasta que el usuario lo acepta. Es el mismo trato que la voz del proyecto.
+   */
+  const [acentoPorConfirmar, setAcentoPorConfirmar] = useState<{ acento: Acento; motivo: string } | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [escribiendo, setEscribiendo] = useState(false);
   const [hecho, setHecho] = useState<string | null>(null);
@@ -103,6 +111,35 @@ export function PanelIdea({
     onCambio(resultado.datos);
   };
 
+  /**
+   * Cambia el acento. Primero se intenta sin confirmar: si el servidor dice que hay escenas que perderían su
+   * voz o su clip, responde 409 con la cuenta exacta y **no cambia nada**. Entonces se le enseña al usuario ese
+   * mismo motivo y se vuelve a pedir con su confirmación. Nunca se inventa aquí cuántas escenas son.
+   */
+  const cambiarAcento = async (elegido: Acento, confirmado = false): Promise<void> => {
+    const anterior = acento;
+    setAcento(elegido);
+    setGuardando(true);
+    const resultado = await editarProyecto(proyecto.id, {
+      acento: elegido,
+      ...(confirmado ? { confirmarInvalidacion: true } : {}),
+    });
+    setGuardando(false);
+    if (resultado.ok) {
+      setAcentoPorConfirmar(null);
+      setHecho("Guardado.");
+      onCambio(resultado.datos);
+      return;
+    }
+    setAcento(anterior);
+    if (!confirmado) {
+      setAcentoPorConfirmar({ acento: elegido, motivo: resultado.error });
+      return;
+    }
+    setAcentoPorConfirmar(null);
+    onError(resultado.error);
+  };
+
   return (
     <Paso numero={1} titulo="La idea">
       <div className="flex flex-col gap-4">
@@ -145,6 +182,23 @@ export function PanelIdea({
                 {segundos} s que por {MAS_LARGA} s (medido el 27 de septiembre de 2026).
               </>
             )}
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Selector
+            etiqueta="Acento del habla"
+            opciones={ACENTOS.map((a) => ({ value: a, label: NOMBRE_ACENTO[a] }))}
+            valor={acento}
+            deshabilitado={guardando}
+            onCambio={(v) => {
+              if (!v) return;
+              void cambiarAcento(v as Acento);
+            }}
+          />
+          <p className="text-sm text-texto-suave">
+            {AYUDA_ACENTO} Es del proyecto entero: si cada escena eligiera el suyo, el acento cambiaría de plano a
+            plano.
           </p>
         </div>
 
@@ -198,6 +252,28 @@ export function PanelIdea({
           )}
         </div>
       </div>
+
+      <Dialogo
+        abierto={acentoPorConfirmar !== null}
+        onAbiertoCambio={(abierto) => {
+          if (!abierto) setAcentoPorConfirmar(null);
+        }}
+        titulo="Cambiar el acento del proyecto"
+        descripcion={acentoPorConfirmar?.motivo ?? ""}
+        pie={
+          <>
+            <Boton variante="secundario" onClick={() => setAcentoPorConfirmar(null)}>
+              Dejarlo como está
+            </Boton>
+            <Boton
+              onClick={() => acentoPorConfirmar && void cambiarAcento(acentoPorConfirmar.acento, true)}
+              disabled={guardando}
+            >
+              Cambiar el acento
+            </Boton>
+          </>
+        }
+      />
     </Paso>
   );
 }

@@ -1,5 +1,5 @@
 import type { EstadoControl, EvaluacionVista } from "./controles";
-import type { FormatoClip, MomentoMicroaccion, ReferenciaIdentidad, RegistroEstetico } from "./direccion";
+import { type Acento, DIRECCION_ELEGIDA_VACIA, type DireccionElegida, type ReferenciaIdentidad } from "./direccion";
 import { formatearCreditos, formatearEuros } from "./generacion";
 import type { Medio } from "./media/tipos";
 
@@ -182,35 +182,15 @@ export interface EstimacionEscena {
 /** Dirección vocal libre: «en tono cercano», «con energía». Corta a propósito: es un matiz, no un guion. */
 export const DIRECCION_VOCAL_MAXIMA = 120;
 
-/** Lo que la escena tiene elegido de la dirección. Todo vacío = nada elegido, que también es un estado. */
-export interface DireccionDeEscenaVista {
-  formatoClip: FormatoClip;
-  plano: string;
-  angulo: string;
-  camara: string;
-  microaccion: string;
-  momentoMicroaccion: MomentoMicroaccion;
-  direccionVocal: string;
-  optica: string;
-  luz: string;
-  localizacion: string;
-  registroEstetico: RegistroEstetico;
-}
+/**
+ * Lo que la escena tiene elegido de la dirección. Es **la misma forma** que manda «Crear» con la confirmación
+ * del clip (`DireccionElegida`), y a propósito: dirigir un clip significa lo mismo en los dos sitios, así que
+ * una sola definición evita que se separen. El acento no está aquí porque es del proyecto entero.
+ */
+export type DireccionDeEscenaVista = DireccionElegida;
 
 /** Una escena sin dirigir: es con lo que nacen las escenas y lo que producían las versiones anteriores. */
-export const DIRECCION_SIN_ELEGIR: DireccionDeEscenaVista = {
-  formatoClip: "ugc_a_camara",
-  plano: "",
-  angulo: "",
-  camara: "",
-  microaccion: "",
-  momentoMicroaccion: "durante",
-  direccionVocal: "",
-  optica: "",
-  luz: "",
-  localizacion: "",
-  registroEstetico: "ugc_real",
-};
+export const DIRECCION_SIN_ELEGIR: DireccionDeEscenaVista = DIRECCION_ELEGIDA_VACIA;
 
 export interface EscenaVista {
   id: string;
@@ -270,6 +250,11 @@ export interface ProyectoVista {
   presupuestoCreditos: number;
   /** Duración de los clips de este proyecto, en segundos. Es la que se le pide al modelo de vídeo. */
   segundosClip: number;
+  /**
+   * Acento con el que hablan **todas** las escenas (0.25.0). Es del proyecto y no de la escena: si cada escena
+   * pudiera elegirlo, el acento cambiaría de plano a plano.
+   */
+  acento: Acento;
   totalEscenas: number;
   /** Total estimado de todas las escenas, en créditos. */
   totalEstimado: number;

@@ -284,6 +284,17 @@ export const scenes = pgTable(
     /** Foto de la que se extrajeron las 6C, si el usuario partió de una referencia suya. */
     referenceImageMediaId: uuid("reference_image_media_id").references(() => media.id, { onDelete: "set null" }),
     /**
+     * Texto libre de la dirección, **en castellano** y sin nada de inglés de prompt: lo traduce el servidor al
+     * componer, igual que el resto del texto que escribe el usuario.
+     *
+     * - `extraInstructions` se **suma** a lo elegido con botones y no quita nada;
+     * - con `expertMode`, `expertDescription` sustituye a la descripción que componen los botones. Lo que no
+     *   sustituye nunca: la toma única, los anclajes de realismo y las reglas de persona real.
+     */
+    extraInstructions: text("extra_instructions").notNull().default(""),
+    expertMode: boolean("expert_mode").notNull().default(false),
+    expertDescription: text("expert_description").notNull().default(""),
+    /**
      * Modo «cambiar solo…»: se parte de un fotograma ya aprobado y se cambia **una** C dejando el resto literal.
      * Es también el mecanismo del antes/después. El fotograma base va **sin clave ajena**, como el resto de los
      * identificadores de trabajo de esta tabla.

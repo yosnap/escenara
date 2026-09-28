@@ -1,6 +1,12 @@
 import { and, eq, inArray, max, sql } from "drizzle-orm";
 import { detectarAfirmaciones } from "@/lib/asistente";
-import { esFormatoClip, esMomentoMicroaccion, esRegistroEstetico } from "@/lib/direccion";
+import {
+  DESCRIPCION_EXPERTA_MAXIMA,
+  esFormatoClip,
+  esMomentoMicroaccion,
+  esRegistroEstetico,
+  INSTRUCCIONES_EXTRA_MAXIMAS,
+} from "@/lib/direccion";
 import { limpiarTextoDePrompt } from "@/lib/ficha-personaje";
 import {
   ACCION_MAXIMA,
@@ -52,6 +58,13 @@ export interface DatosEscena {
   luz?: unknown;
   localizacion?: unknown;
   registroEstetico?: unknown;
+  /**
+   * Texto libre de la dirección (0.25.1): lo que el usuario añade a lo elegido con botones y, en modo experto,
+   * la descripción entera. Se escribe en castellano y pasa por la misma limpieza que el resto del texto libre.
+   */
+  instruccionesExtra?: unknown;
+  modoExperto?: unknown;
+  descripcionExperta?: unknown;
 }
 
 /**
@@ -88,6 +101,13 @@ function camposLimpios(datos: DatosEscena) {
   }
   if (datos.direccionVocal !== undefined) {
     campos.dialogueDirection = limpiarTextoDePrompt(datos.direccionVocal, DIRECCION_VOCAL_MAXIMA);
+  }
+  if (datos.instruccionesExtra !== undefined) {
+    campos.extraInstructions = limpiarTextoDePrompt(datos.instruccionesExtra, INSTRUCCIONES_EXTRA_MAXIMAS);
+  }
+  if (datos.modoExperto !== undefined) campos.expertMode = datos.modoExperto === true;
+  if (datos.descripcionExperta !== undefined) {
+    campos.expertDescription = limpiarTextoDePrompt(datos.descripcionExperta, DESCRIPCION_EXPERTA_MAXIMA);
   }
   return campos;
 }

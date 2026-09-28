@@ -52,6 +52,10 @@ const DIRECCION: DireccionDeClip = {
   momentoMicroaccion: "antes",
   dialogo: DIALOGO,
   direccionVocal: "in a close, unhurried tone",
+  instruccionesExtra: "",
+  modoExperto: false,
+  descripcionExperta: "",
+  anclajes: "",
   ejesVoz: EJES_VOZ_POR_DEFECTO,
   acento: "es_ES_madrid",
   segundos: 8,
@@ -175,6 +179,54 @@ describe("composición del prompt del clip", () => {
 
   test("con una sola elección y el gesto donde el modelo lo respeta, no hay ningún aviso", () => {
     expect(dirigirClip({ ...DIRECCION, momentoMicroaccion: "despues" }).avisos).toEqual([]);
+  });
+});
+
+describe("texto libre del usuario en el clip", () => {
+  test("las instrucciones adicionales se suman a lo elegido y van con la escena", () => {
+    const { escena } = dirigirClip({ ...DIRECCION, instruccionesExtra: "holding the jar label to camera" });
+    // Se suman: nada de lo elegido con botones desaparece por escribir algo.
+    expect(escena).toContain("Medium shot framed from the waist up");
+    expect(escena).toContain("holding the jar label to camera");
+    // Y van en su sitio: pegadas a la escena, antes del bloque de voz y de la regla de toma única.
+    expect(escena.indexOf("holding the jar label to camera")).toBeLessThan(escena.indexOf("The voice is"));
+    expect(escena).toContain(REGLA_ANTI_CORTE);
+  });
+
+  test("el modo experto sustituye lo elegido, pero no lo que no se negocia", () => {
+    const { escena } = dirigirClip({
+      ...DIRECCION,
+      modoExperto: true,
+      descripcionExperta: "She walks into the garage and leans on the car while she talks",
+      anclajes: ANCLAJES_REALISMO,
+    });
+    expect(escena).toContain("She walks into the garage");
+    // Los botones dejan de aplicarse: ni encuadre, ni ángulo, ni movimiento, ni gesto.
+    expect(escena).not.toContain("Medium shot framed from the waist up");
+    expect(escena).not.toContain("The camera pushes in slowly");
+    expect(escena).not.toContain("The character nods once");
+    // Lo que sigue estando siempre: sujeto con sus reglas, anclajes, no retoque y toma única.
+    expect(escena).toContain("A woman in her thirties");
+    expect(escena).toContain(ANCLAJES_REALISMO);
+    expect(escena).toContain(SIN_RETOQUE_FINAL);
+    expect(escena).toContain(REGLA_ANTI_CORTE);
+    // Y la voz y el acento siguen siendo suyos: describen quién habla, no lo que se ve.
+    expect(escena).toContain("neutral Madrid accent");
+  });
+
+  test("un modo experto marcado pero sin descripción no apaga nada", () => {
+    const { escena } = dirigirClip({ ...DIRECCION, modoExperto: true, descripcionExperta: "   " });
+    expect(escena).toContain("Medium shot framed from the waist up");
+  });
+
+  test("sin anclajes del catálogo, el modo experto usa los del código", () => {
+    const { escena } = dirigirClip({
+      ...DIRECCION,
+      modoExperto: true,
+      descripcionExperta: "A quiet shot of her hands",
+      anclajes: "",
+    });
+    expect(escena).toContain(ANCLAJES_REALISMO);
   });
 });
 

@@ -7,6 +7,7 @@ import { ErrorProyecto } from "../asistente/errores";
 import { db } from "../db/cliente";
 import { characters, type FilaEscena, type FilaProyecto, type FilaTrabajo, scenes } from "../db/esquema";
 import { direccionDeLaEscena, type PersonajeDirigido, seisCDeLaEscena } from "../direccion/escena";
+import { imagenPropia } from "../generacion/comprobaciones";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { crearAnimacion, crearFotograma } from "../generacion/servicio";
 import type { Actor } from "../media/servicio";
@@ -221,7 +222,11 @@ async function encolarAnimacion(
   actor: Actor,
   escena: FilaEscena,
   proyecto: FilaProyecto,
-  trabajoPadreId: string,
+  /**
+   * De dónde sale el clip: el trabajo del fotograma generado o, cuando el usuario ha traído una imagen de su
+   * biblioteca como fotograma de partida (0.25.1), esa imagen. El servicio comprueba que sea suya al leerla.
+   */
+  partida: { trabajoPadreId: string } | { medioId: string },
   confirmacion: ConfirmacionProduccion,
   clave: string,
   h: Herramientas,
@@ -232,7 +237,7 @@ async function encolarAnimacion(
     actor,
     {
       prompt: textoVisualDe(escena),
-      trabajoPadreId,
+      ...partida,
       reintentoDeEscena: reintento,
       // La dirección la resuelve el servidor desde la escena: el encuadre, la cámara, el gesto en su momento y
       // la regla de toma única. Sin nada elegido sale un plano a cámara con la cámara quieta, que es lo que
@@ -440,11 +445,67 @@ export async function aprobarFotograma(
     actor,
     escena,
     proyecto,
-    fotograma.id,
+    { trabajoPadreId: fotograma.id },
     confirmacion,
     claveDerivada(confirmacion.claveIdempotencia, "animacion", fotograma.id, animacion?.id ?? "primera"),
     h,
     esReintentoAutorizado(escena, [animacion]),
+  );
+  return estadoDeProduccion(actor, proyecto.id);
+}
+
+/**
+ * **Otro clip con el mismo fotograma** (0.25.1). El fotograma ya está aprobado y pagado, así que para probar otra
+ * dirección o cambiar el texto no hace falta volver a generarlo: se anima otra vez el mismo.
+ *
+ * Qué se conserva: **todo**. Los clips anteriores siguen en la biblioteca y en el historial de la escena; aquí
+ * no se borra ni se sustituye ningún archivo. Lo que se toma es lo que la escena tiene guardado **ahora**: su
+ * dirección y su texto, que es justo lo que el usuario acaba de cambiar.
+ *
+ * Qué cuesta: un clip, con su estimación y su confirmación, como cualquier otro gasto. La clave se deriva del
+ * fotograma **y del último clip**, así que repetir el clic no encarga dos y pedir otro después de uno terminado
+ * sí encarga uno nuevo.
+ */
+export async function otroClipDeEscena(
+  actor: Actor,
+  escenaId: unknown,
+  confirmacion: ConfirmacionProduccion,
+  h: Herramientas = HERRAMIENTAS,
+): Promise<ProduccionVista> {
+  const { escena, proyecto } = await escenaPropia(actor, escenaId);
+  if (proyecto.voiceMode === "omni") {
+    throw new ErrorProyecto(
+      409,
+      "En modo Omni la escena se genera entera de una vez, así que no hay fotograma que volver a animar: regenera la escena para probar otra dirección.",
+    );
+  }
+  await exigirDuracionProducible(actor, proyecto);
+  const [fotograma, animacion] = await ultimosTrabajos(escena.id);
+  // Se anima el fotograma **aprobado**: es el que el usuario dio por bueno, y es el que ya tiene clip.
+  const aprobadoMedioId = escena.approvedFrameMediaId;
+  if (!aprobadoMedioId) {
+    throw new ErrorProyecto(
+      409,
+      "Esta escena todavía no tiene un fotograma aprobado que animar. Aprueba su fotograma —o elige una imagen tuya como fotograma de partida— y se encolará su clip.",
+    );
+  }
+  // Un fotograma traído de la biblioteca no tiene trabajo que lo generara: se anima la imagen directamente.
+  const partida = escena.approvedFrameJobId
+    ? { trabajoPadreId: escena.approvedFrameJobId }
+    : { medioId: aprobadoMedioId };
+  // Un clip todavía vivo se cobraría dos veces si se encolara otro al lado: se dice y no se gasta.
+  if (animacion !== null && !["listo", "fallido", "cancelado"].includes(animacion.state)) {
+    throw new ErrorProyecto(409, "Esta escena ya tiene un clip en marcha: espera a que termine antes de pedir otro.");
+  }
+  await encolarAnimacion(
+    actor,
+    escena,
+    proyecto,
+    partida,
+    confirmacion,
+    claveDerivada(confirmacion.claveIdempotencia, "otro-clip", aprobadoMedioId, animacion?.id ?? "primera"),
+    h,
+    esReintentoAutorizado(escena, [fotograma, animacion]),
   );
   return estadoDeProduccion(actor, proyecto.id);
 }
@@ -542,6 +603,48 @@ export async function regenerarEscena(
     );
   });
   await marcarEnProduccion(proyecto.id);
+  return estadoDeProduccion(actor, proyecto.id);
+}
+
+/**
+ * **Fotograma de partida traído de la biblioteca** (0.25.1): en lugar de generar un fotograma y pagarlo, el
+ * usuario elige una imagen suya —un fotograma de otro día, una vista del personaje, una foto que subió— y la
+ * escena la toma como fotograma aprobado. Desde ahí se dirige y se anima como cualquier otra.
+ *
+ * Qué comprueba: que la imagen exista, sea suya y sea una imagen (`imagenPropia` responde 404 para una ajena,
+ * que es lo que cierra el acceso a la biblioteca de otro). Nada más: aquí **no se gasta nada**, solo se apunta
+ * cuál es el fotograma de la escena. El coste que se confirma después es el del clip y solo el del clip.
+ *
+ * Qué pasa si luego se edita la escena: exactamente lo mismo que con un fotograma generado. `approvedFrameMediaId`
+ * es lo que mira la edición para marcar `changedSinceGeneration`, así que la invalidación es la misma.
+ */
+export async function usarFotogramaDeBiblioteca(
+  actor: Actor,
+  escenaId: unknown,
+  medioId: unknown,
+): Promise<ProduccionVista> {
+  const { escena, proyecto } = await escenaPropia(actor, escenaId);
+  if (escena.state === "producida") {
+    throw new ErrorProyecto(
+      409,
+      "Esta escena ya está producida. Regenérala si quieres partir de otro fotograma: así lo generado antes se conserva en su historial.",
+    );
+  }
+  if (typeof medioId !== "string" || medioId === "") {
+    throw new ErrorProyecto(400, "Elige una imagen de tu biblioteca para usarla como fotograma.");
+  }
+  // De quién es la imagen lo decide esta lectura: una ajena responde 404 y no se llega a escribir nada.
+  const medio = await imagenPropia(actor.id, medioId);
+  await db()
+    .update(scenes)
+    .set({
+      approvedFrameMediaId: medio.id,
+      // No lo generó ningún trabajo de esta escena: se anima la imagen directamente.
+      approvedFrameJobId: null,
+      referenceImageMediaId: medio.id,
+      updatedAt: new Date(),
+    })
+    .where(eq(scenes.id, escena.id));
   return estadoDeProduccion(actor, proyecto.id);
 }
 

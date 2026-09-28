@@ -1,4 +1,5 @@
 import { eq, sql } from "drizzle-orm";
+import { type Acento, esAcento } from "@/lib/direccion";
 import { limpiarTextoDePrompt } from "@/lib/ficha-personaje";
 import { DURACION_PREDETERMINADA, duracionesEnTexto, esDuracionDisponible } from "@/lib/produccion";
 import {
@@ -13,6 +14,7 @@ import { leerAjustes } from "../ajustes";
 import { olvidarPercibidoDeProyecto } from "../coherencia/registro";
 import { db } from "../db/cliente";
 import { type FilaProyecto, projects, scenes } from "../db/esquema";
+import { aplicarCambioDeAcento } from "../direccion/acento";
 import type { Actor } from "../media/servicio";
 import { filaPropia } from "../personajes/consulta";
 import { exigirPersonajeUsable } from "../personajes/puede-generar";
@@ -39,6 +41,12 @@ export interface DatosProyecto {
   personajeId?: unknown;
   presupuestoCreditos?: unknown;
   segundosClip?: unknown;
+  /**
+   * Acento con el que hablan todas las escenas (0.25.1). Cambiarlo invalida lo generado con el anterior, así que
+   * necesita `confirmarInvalidacion` cuando hay algo que perder: es el mismo trato que la voz del proyecto.
+   */
+  acento?: unknown;
+  confirmarInvalidacion?: unknown;
 }
 
 function tituloLimpio(valor: unknown): string {
@@ -70,6 +78,12 @@ function duracionValida(valor: unknown): number {
     throw new ErrorProyecto(400, `Los clips solo pueden durar ${duracionesEnTexto()}.`);
   }
   return numero;
+}
+
+/** Acento del habla. Uno que no esté en el catálogo se rechaza con su motivo, no se cambia en silencio. */
+function acentoValido(valor: unknown): Acento {
+  if (!esAcento(valor)) throw new ErrorProyecto(400, "Ese acento no está entre los que ofrece Escenara.");
+  return valor;
 }
 
 /**
@@ -129,8 +143,18 @@ export async function editarProyecto(actor: Actor, id: unknown, datos: DatosProy
   if (datos.personajeId !== undefined) cambios.mainCharacterId = await personajeValido(actor, datos.personajeId);
   if (datos.presupuestoCreditos !== undefined) cambios.authorizedCredits = creditosValidos(datos.presupuestoCreditos);
   if (datos.segundosClip !== undefined) cambios.clipSeconds = duracionValida(datos.segundosClip);
+  if (datos.acento !== undefined) cambios.speechAccent = acentoValido(datos.acento);
   await db().transaction(async (tx) => {
     await tx.update(projects).set(cambios).where(eq(projects.id, proyecto.id));
+    /**
+     * El acento es del proyecto entero y entra en la voz y en el prompt del clip, así que cambiarlo deja sin
+     * valer lo que salió con el anterior. Se trata como la voz: se dice cuántas escenas pierde, se confirma y no
+     * se regenera nada por su cuenta. Va dentro de la misma transacción para que no haya un instante en el que
+     * el proyecto pida un acento y sus escenas se den por buenas con otro.
+     */
+    if (cambios.speechAccent !== undefined && cambios.speechAccent !== proyecto.speechAccent) {
+      await aplicarCambioDeAcento(tx, proyecto.id, cambios.speechAccent, datos.confirmarInvalidacion === true);
+    }
     /**
      * La duración es del proyecto entero, así que sus escenas la copian, en la misma transacción: lo que se
      * muestra de cada escena y lo que se le pide al modelo tienen que ser lo mismo. No invalida nada aprobado,

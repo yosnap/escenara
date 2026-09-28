@@ -216,6 +216,9 @@ function vistaEscena(
       luz: fila.lightPreset,
       localizacion: fila.locationPreset,
       registroEstetico: fila.aestheticRegister,
+      instruccionesExtra: fila.extraInstructions,
+      modoExperto: fila.expertMode,
+      descripcionExperta: fila.expertDescription,
     },
     segundos: fila.plannedSeconds,
     estado: fila.state,
@@ -238,7 +241,7 @@ function vistaEscena(
 export function planDeEscenas(
   proyecto: FilaProyecto,
   escenasVista: EscenaVista[],
-  ajustes: Ajustes,
+  _ajustes: Ajustes,
   creditosAsistente = 0,
 ): PlanVista {
   const estimables = escenasVista.filter((e) => e.estimacion !== null);
@@ -422,6 +425,7 @@ export async function vistaDeProyecto(fila: FilaProyecto, totalEscenas: number, 
     personajeNombre: await nombreDePersonaje(fila.mainCharacterId),
     presupuestoCreditos: fila.authorizedCredits,
     segundosClip: fila.clipSeconds,
+    acento: fila.speechAccent,
     totalEscenas,
     totalEstimado,
     creadoEn: fila.createdAt.toISOString(),

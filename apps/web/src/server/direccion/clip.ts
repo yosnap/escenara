@@ -15,6 +15,7 @@ import {
 } from "@/lib/direccion";
 import {
   ACENTO_INGLES,
+  ANCLAJES_REALISMO,
   ejesVozEnIngles,
   FORMATO_CLIP_INGLES,
   MODO_MUDO,
@@ -73,6 +74,24 @@ export interface DireccionDeClip {
   personajeReal: boolean;
   /** Lo que se ve, escrito por el usuario y ya traducido al inglés (`prompts/traduccion.ts`). */
   escena: string;
+  /**
+   * Lo que el usuario ha añadido por escrito, ya traducido al inglés. **Se suma** a lo elegido con botones y va
+   * en su sitio: pegado a la descripción de la escena, detrás del sujeto y delante del gesto. No quita nada.
+   */
+  instruccionesExtra: string;
+  /**
+   * `true` cuando manda {@link descripcionExperta} y los botones de dirección **no se aplican**. Lo que sigue
+   * aplicándose siempre: la toma única, los anclajes y, con una persona real, la prohibición de retocarla.
+   */
+  modoExperto: boolean;
+  /** La descripción entera escrita por el usuario, ya traducida al inglés. Solo se usa con `modoExperto`. */
+  descripcionExperta: string;
+  /**
+   * Bloque de anclajes de realismo del catálogo (C6). En el clip normal no hace falta —el fotograma del que sale
+   * ya viene anclado y el catálogo pone su parte con el registro estético—, pero en modo experto no queda
+   * ninguna descripción del sistema, así que los anclajes se ponen aquí: el usuario no puede quitarlos.
+   */
+  anclajes: string;
   /** Gesto del catálogo, ya en inglés. Vacío = ninguno. */
   microaccion: string;
   momentoMicroaccion: MomentoMicroaccion;
@@ -135,6 +154,10 @@ function bloqueVoz(direccion: DireccionDeClip): string {
   ]);
 }
 
+/** Anclajes del clip: los del catálogo de quien administra y, si no hay, los del código. Nunca vacío. */
+const anclajesDelClip = (direccion: DireccionDeClip): string =>
+  direccion.anclajes.trim() === "" ? ANCLAJES_REALISMO : direccion.anclajes.trim();
+
 export interface OpcionesDeDireccion {
   /**
    * Escribe el diálogo **dentro** del texto de la escena, para los modelos cuya entrada no tiene un hueco
@@ -153,14 +176,18 @@ export interface OpcionesDeDireccion {
  */
 export function dirigirClip(direccion: DireccionDeClip, opciones: OpcionesDeDireccion = {}): ClipDirigido {
   const avisos: string[] = [];
-  if (direccion.movimientosCamara.filter((m) => m.trim() !== "").length > 1) avisos.push(AVISO_DOS_MOVIMIENTOS);
-  if (direccion.nivelCamara === "avanzado") avisos.push(AVISO_MOVIMIENTO_AVANZADO);
+  const experto = direccion.modoExperto && direccion.descripcionExperta.trim() !== "";
+  // En modo experto los botones no se envían, así que avisar de su nivel o de dos movimientos sería mentir.
+  if (!experto) {
+    if (direccion.movimientosCamara.filter((m) => m.trim() !== "").length > 1) avisos.push(AVISO_DOS_MOVIMIENTOS);
+    if (direccion.nivelCamara === "avanzado") avisos.push(AVISO_MOVIMIENTO_AVANZADO);
+  }
 
   const habla = formatoHabla(direccion.formato);
   const dialogo = habla ? direccion.dialogo.trim() : "";
   if (!habla && direccion.dialogo.trim() !== "") avisos.push(AVISO_GUION_EN_CLIP_MUDO);
 
-  const gesto = direccion.microaccion.trim();
+  const gesto = experto ? "" : direccion.microaccion.trim();
   // Si la frase llena el clip, el gesto se queda **dentro** del habla: es lo único que cabe, y se dice.
   const palabras = dialogo === "" ? 0 : dialogo.split(/\s+/).filter(Boolean).length;
   const apretado =
@@ -175,14 +202,29 @@ export function dirigirClip(direccion: DireccionDeClip, opciones: OpcionesDeDire
   const gestoDespues = gesto !== "" && momento !== "antes" ? gesto : "";
 
   const escena = [
-    bloqueCamara(direccion),
-    parrafo([direccion.sujeto, direccion.escena]),
+    // En modo experto no hay bloque de cámara: lo que describe el plano es el texto del usuario.
+    experto ? "" : bloqueCamara(direccion),
+    /**
+     * El sujeto va siempre, también en modo experto: es donde viven las reglas de persona real (identidad de
+     * las referencias, nada de embellecer). El usuario describe el plano, no a quién sale en él.
+     *
+     * Las instrucciones adicionales van **aquí**, justo detrás de lo que se ve y delante del gesto: es su sitio
+     * en el guion técnico, y así se suman a la escena en lugar de competir con la cámara ni con la voz.
+     */
+    parrafo([
+      direccion.sujeto,
+      experto ? direccion.descripcionExperta : direccion.escena,
+      experto ? "" : direccion.instruccionesExtra,
+    ]),
     // El gesto previo va **delante** del diálogo: el modelo lo ejecuta antes de abrir la boca.
     parrafo([gestoAntes]),
     // El diálogo, cuando el constructor del modelo no lo coloca él (`kie/modelos.ts › promptEscenaHablada`).
     opciones.dialogoDentro && dialogo !== "" ? `The character says, in Spanish, exactly: "${dialogo}"` : "",
     parrafo([gestoDespues]),
     habla ? bloqueVoz(direccion) : MODO_MUDO,
+    // Los anclajes cierran el modo experto: sin ellos, una descripción escrita entera por el usuario saldría sin
+    // nada que pida piel de verdad ni anatomía correcta, y eso no es suyo para quitarlo.
+    experto ? anclajesDelClip(direccion) : "",
     direccion.personajeReal ? SIN_RETOQUE_FINAL : "",
     REGLA_ANTI_CORTE,
   ]
