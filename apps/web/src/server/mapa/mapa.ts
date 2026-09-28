@@ -315,7 +315,8 @@ export async function opcionesDe(usuarioId: string, tipo: TipoDeMapa): Promise<E
       }
     }
   }
-  return opciones;
+  // Con su nombre legible y su coste: es lo que el usuario necesita para elegir.
+  return Promise.all(opciones.map(async (o) => ({ ...o, ...(await descripcionDe(o)) })));
 }
 
 /**
