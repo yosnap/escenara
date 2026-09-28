@@ -12,6 +12,12 @@
       "nombre": "Google Gemini",
       "docs": "https://ai.google.dev/gemini-api/docs",
       "notas": "Aplazado (ADR-0009): sin facturación activa la cuota es 0. El hueco queda listo; su adaptador no existe todavía."
+    },
+    {
+      "slug": "elevenlabs",
+      "nombre": "ElevenLabs",
+      "docs": "https://elevenlabs.io/docs",
+      "notas": "Proveedor de voz de reserva (0.21.0, ADR-0025), con credencial propia del usuario. SÍNCRONO: POST /v1/text-to-speech/{voice_id}/with-timestamps devuelve el audio y las marcas por carácter en la misma respuesta, así que no pasa por ninguna consulta de estado. La prueba de credencial usa GET /v1/voices, porque /v1/user/subscription devuelve missing_permissions con claves restringidas."
     }
   ],
   "modelos": [
@@ -206,6 +212,50 @@
       },
       "evidencia": "Ejecutado de verdad el 2026-09-27 con el adaptador de la app: traducir una frase costó 0,05 créditos en 3 s, un lote de dos o tres textos de la ficha entre 0,28 y 0,34, y el guion de cuatro escenas del asistente entre 0,5 y 0,93 créditos en 8 a 37 s. El JSON del guion y el de la traducción se leen bien, y un texto con intento de inyección devuelve cadena vacía, que la app descarta.",
       "notas": "Modelo de texto del asistente de guion (0.17.0). Endpoint síncrono POST codex/v1/responses, distinto del jobs/createTask del resto, e informa credits_consumed en la propia respuesta. El asistente y la traducción siguen apagados de fábrica: quien administra los enciende en Admin › Ajustes. La latencia medida llega a 37 s, así que el adaptador espera hasta 90 s."
+    },
+    {
+      "proveedor": "kie",
+      "modelo": "elevenlabs/text-to-speech-multilingual-v2",
+      "nombre": "ElevenLabs Multilingual v2 (voz)",
+      "capacidades": ["tts"],
+      "estado": "descubierto",
+      "predeterminado": true,
+      "conVoz": true,
+      "unidad": "pista de voz de una escena",
+      "parametros": {
+        "duraciones": [],
+        "proporciones": [],
+        "resoluciones": [],
+        "formatosReferencia": [],
+        "maximoReferencias": 0
+      },
+      "precio": null,
+      "evidencia": "",
+      "notas": "Modelo de voz del «market» de KIE (0.21.0), con la misma credencial de KIE del usuario. Parámetros comprobados en https://docs.kie.ai/market/elevenlabs/text-to-speech-multilingual-v2 el 2026-09-28, SIN llamar a la API: text (hasta 5.000 caracteres), voice, stability, similarity_boost, style, speed, language_code y timestamps, por el mismo jobs/createTask asíncrono que el vídeo. Queda «descubierto» y SIN PRECIO a propósito: KIE no publica la tarifa de este modelo en su documentación ni en su página del modelo, así que no hay ninguna cifra que registrar. Sin precio no se estima y no se gasta: la pantalla de voz lo dice y no ofrece generar. Para poder usarlo hay que medirlo una vez con dinero real y registrar el precio medido en Admin › Modelos."
+    },
+    {
+      "proveedor": "elevenlabs",
+      "modelo": "eleven_multilingual_v2",
+      "nombre": "ElevenLabs Multilingual v2",
+      "capacidades": ["tts"],
+      "estado": "validado",
+      "predeterminado": false,
+      "conVoz": true,
+      "unidad": "pista de voz de una escena",
+      "parametros": {
+        "duraciones": [],
+        "proporciones": [],
+        "resoluciones": [],
+        "formatosReferencia": [],
+        "maximoReferencias": 0
+      },
+      "precio": {
+        "creditos": 22,
+        "fuente": "Medido contra la API real el 2026-09-28 con la clave del propietario: POST /v1/text-to-speech/{voice_id}/with-timestamps, 79 caracteres de diálogo, cabecera de respuesta character-cost = 22. Son créditos del plan de ElevenLabs por llamada, no dólares: su tarifa en USD depende del plan contratado, así que no se convierte.",
+        "comprobado": "2026-09-28"
+      },
+      "evidencia": "Ejecutado de verdad el 2026-09-28 con el adaptador de la app y la clave del propietario: 200 en 2,5 s, audio MP3 en audio_base64, marcas por carácter en alignment y normalized_alignment, quality_check correcto y character-cost = 22 para 79 caracteres. GET /v1/voices lista las voces prediseñadas; GET /v1/user/subscription devuelve missing_permissions con claves restringidas, así que la prueba de credencial usa /v1/voices.",
+      "notas": "Proveedor de voz de reserva (0.21.0, ADR-0025), con credencial propia del usuario. Es SÍNCRONO: devuelve el audio en la misma respuesta, así que no pasa por jobs/createTask ni por ninguna consulta de estado. El precio son créditos del plan de ElevenLabs por llamada y crece con la longitud del texto: 22 por 79 caracteres es lo medido con un diálogo de escena corriente, y por eso se registra por llamada, que es la unidad que se pide y se confirma. Un diálogo mucho más largo costará más de lo estimado; el cierre apunta SIEMPRE lo que informa character-cost, no la estimación."
     }
   ]
 }

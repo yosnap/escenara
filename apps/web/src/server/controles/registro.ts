@@ -1,4 +1,4 @@
-import type { TipoTrabajo } from "@/lib/generacion";
+import type { TipoTrabajoCola } from "@/lib/generacion";
 import { db } from "../db/cliente";
 import { controlEvaluations, type ReglaDisparada } from "../db/esquema";
 import type { Evaluacion, SujetoControl } from "./contrato";
@@ -17,7 +17,7 @@ export interface SujetoDeEvaluacion {
   sujeto: SujetoControl;
   /** Escena que se produce, o `null` en el camino rápido de «Crear». */
   sujetoId: string | null;
-  tipo: TipoTrabajo;
+  tipo: TipoTrabajoCola;
 }
 
 export async function registrarEvaluacion(

@@ -7,7 +7,7 @@ import {
   esEstadoActivo,
   formatearTranscurrido,
   LARGO_ESTADO_PROVEEDOR,
-  type TipoTrabajo,
+  type TipoTrabajoCola,
 } from "@/lib/generacion";
 import { cn } from "./cn";
 import { MascotaChispa } from "./mascota";
@@ -45,7 +45,12 @@ export function InsigniaEstado({ estado }: { estado: EstadoTrabajo }) {
   );
 }
 
-const ETIQUETA_TIPO: Record<TipoTrabajo, string> = { fotograma: "Fotograma", animacion: "Clip de 4 s" };
+const ETIQUETA_TIPO: Record<TipoTrabajoCola, string> = {
+  fotograma: "Fotograma",
+  animacion: "Clip de 4 s",
+  // «Crear» no pide voces, pero la tarjeta de espera es la misma que usa la pantalla de voz de un proyecto.
+  voz: "Voz de la escena",
+};
 
 /** Tarjeta de espera: estado real, estado crudo del proveedor, tiempo transcurrido y Chispa acompañando. */
 export function EsperaTrabajo({
@@ -57,7 +62,7 @@ export function EsperaTrabajo({
   cola,
   children,
 }: {
-  tipo: TipoTrabajo;
+  tipo: TipoTrabajoCola;
   estado: EstadoTrabajo;
   estadoProveedor: string | null;
   transcurridoSegundos: number;

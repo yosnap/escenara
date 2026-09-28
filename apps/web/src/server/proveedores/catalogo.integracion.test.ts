@@ -50,6 +50,9 @@ const SEEDREAM = "seedream/4.5-edit";
 const HAILUO = "hailuo/2-3-image-to-video-standard";
 /** Modelo de texto del asistente de guion (0.17.0), sembrado como `descubierto`. */
 const TEXTO = "gpt-5-6-sol";
+const VOZ = "elevenlabs/text-to-speech-multilingual-v2";
+/** Modelo de voz de ElevenLabs directo (0.21.0): es el proveedor de reserva y sí trae precio medido. */
+const VOZ_RESERVA = "eleven_multilingual_v2";
 
 let llamadas = { credito: 0, subida: 0, crearTarea: 0, consulta: 0 };
 /** Identificador de tarea único por proceso: una tarea del proveedor es un solo trabajo (clave única). */
@@ -188,6 +191,10 @@ describe.skipIf(!hayBaseDeDatos)("catálogo de modelos", () => {
           "veo3_lite",
           // Modelo de texto del asistente de guion (0.17.0), validado con su coste medido llamada a llamada.
           TEXTO,
+          // Modelo de voz del «market» de KIE (0.21.0). Se siembra sin precio a propósito: sin precio medido no
+          // se puede elegir, así que está en el catálogo pero no entre los elegibles.
+          VOZ,
+          VOZ_RESERVA,
         ].sort(),
       );
       const resultado = await sembrarCatalogo();
@@ -215,7 +222,12 @@ describe.skipIf(!hayBaseDeDatos)("catálogo de modelos", () => {
         "veo3_fast",
         "veo3_lite",
       ]);
-      expect(await listarModelos({ capacidad: "tts" })).toEqual([]);
+      // Los dos modelos de voz están sembrados, pero **solo uno es elegible**: el de KIE sigue «descubierto» y
+      // sin precio medido, así que no se puede elegir; el de ElevenLabs sí trae precio y es el que queda.
+      expect((await listarModelos({ capacidad: "tts" })).map((m) => m.modelo).sort()).toEqual(
+        [VOZ, VOZ_RESERVA].sort(),
+      );
+      expect((await modelosElegibles("tts")).map((m) => m.modelo)).toEqual([VOZ_RESERVA]);
     });
 
     test("de cada modelo sembrado se sabe montar su entrada con sus rarezas reales", async () => {
@@ -230,6 +242,9 @@ describe.skipIf(!hayBaseDeDatos)("catálogo de modelos", () => {
         // Los modelos de texto no pasan por `jobs/createTask` ni reciben referencias: tienen su propio endpoint
         // (`codex/v1/responses`) y su propia entrada, así que aquí no hay ninguna que montar.
         if (modelo.capacidades.includes("text_generation")) continue;
+        // El de voz tampoco: no recibe referencias y su entrada necesita la voz fijada del proyecto, que se
+        // comprueba en la suite de voz con su propio contexto.
+        if (modelo.capacidades.includes("tts")) continue;
         const entrada = adaptadorKie.montarEntrada(modelo, contexto);
         // Toda entrada lleva prompt y recibe la referencia por el campo que espera ese modelo.
         expect(typeof entrada.prompt).toBe("string");

@@ -53,20 +53,28 @@ export async function conClipEnDisco<T>(clave: string, mime: string, usar: (ruta
  * promesa sobre un archivo que puede haber cambiado, y un `Content-Length` que miente no puede decidir cuánto disco
  * se llena. El que manda es lo que de verdad ha pasado por aquí.
  *
+ * El tope y el error los pone quien llama: lo usan la revisión de continuidad (0.20.0) y la transcripción de voz
+ * (0.21.0), que bajan lo mismo por motivos distintos y tienen que decirlo con sus propias palabras.
+ *
  * Se exporta para poder probarlo con un flujo hecho a mano: un almacenamiento de verdad informa siempre del tamaño
  * real, así que el caso que esto cubre —el que informa de menos— no se puede montar contra él.
  */
-export async function volcarAcotado(flujo: ReadableStream<Uint8Array>, ruta: string): Promise<void> {
+export async function volcarAcotado(
+  flujo: ReadableStream<Uint8Array>,
+  ruta: string,
+  maximo = BYTES_MAXIMOS,
+  alPasarse: () => never = () => {
+    throw new ErrorMedida(
+      `El clip pesa más de ${Math.round(BYTES_MAXIMOS / 1024 / 1024)} MB y no se comprueba en este servidor: míralo tú antes de darlo por bueno.`,
+    );
+  },
+): Promise<void> {
   const destino = Bun.file(ruta).writer();
   let bytes = 0;
   try {
     for await (const trozo of flujo) {
       bytes += (trozo as Uint8Array).byteLength;
-      if (bytes > BYTES_MAXIMOS) {
-        throw new ErrorMedida(
-          `El clip pesa más de ${Math.round(BYTES_MAXIMOS / 1024 / 1024)} MB y no se comprueba en este servidor: míralo tú antes de darlo por bueno.`,
-        );
-      }
+      if (bytes > maximo) alPasarse();
       destino.write(trozo as Uint8Array);
     }
     await destino.flush();

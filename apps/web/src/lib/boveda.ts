@@ -6,7 +6,7 @@
 /** Mensaje para quien no administra cuando la instalación no tiene clave maestra. */
 export const AVISO_BOVEDA_USUARIO = "Esta instalación aún no admite credenciales: pídeselo a quien la administra.";
 
-export const PROVEEDORES = ["kie", "google"] as const;
+export const PROVEEDORES = ["kie", "google", "elevenlabs"] as const;
 export type Proveedor = (typeof PROVEEDORES)[number];
 
 export const esProveedor = (v: unknown): v is Proveedor => PROVEEDORES.includes(v as Proveedor);
@@ -39,6 +39,14 @@ export const PROVEEDORES_PUBLICOS: Record<Proveedor, ProveedorPublico> = {
     urlClave: "https://aistudio.google.com/apikey",
     etiquetaUrlClave: "aistudio.google.com/apikey",
     ayuda: "Empieza por «AIza» y tiene unos 39 caracteres.",
+  },
+  elevenlabs: {
+    id: "elevenlabs",
+    nombre: "ElevenLabs",
+    para: "La voz de los diálogos de tus proyectos. Se paga con los créditos de tu plan de ElevenLabs.",
+    urlClave: "https://elevenlabs.io/app/settings/api-keys",
+    etiquetaUrlClave: "elevenlabs.io · Settings › API keys",
+    ayuda: "Empieza por «sk_» y es una cadena larga. Con una clave restringida basta el permiso de «Text to Speech».",
   },
 };
 

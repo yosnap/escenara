@@ -1,5 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { PROVEEDORES_PUBLICOS } from "@/lib/boveda";
+import { mensajeDeFalloDeVoz } from "@/lib/diagnostico-voz";
 import { CLIP, LARGO_ESTADO_PROVEEDOR, TIPO_RESULTADO, type TrabajoVista } from "@/lib/generacion";
 import { usarCredencial } from "../boveda/credenciales";
 import { db } from "../db/cliente";
@@ -7,10 +8,11 @@ import { type FilaTrabajo, generationJobs } from "../db/esquema";
 import { type Actor, crearMedio, eliminarDefinitivamente, enviarAPapelera, limiteSubida } from "../media/servicio";
 import { adjuntarVistaGenerada } from "../personajes/vista-sintetica";
 import { cerrarGasto } from "../presupuesto/reserva";
-import { registrarFalloDeEscena, registrarResultadoDeEscena } from "../produccion/cierre";
+import { guardarMarcasDeVoz, registrarFalloDeEscena, registrarResultadoDeEscena } from "../produccion/cierre";
 import { duracionDeModelo } from "../proveedores/catalogo";
-import { ErrorProveedor, type TareaProveedor } from "../proveedores/contrato";
+import { ErrorProveedor, type TareaProveedor, type VozPedida } from "../proveedores/contrato";
 import { adaptadorDe } from "../proveedores/registro";
+import { adjuntarMuestraDeVoz } from "../voz/muestra";
 import { ErrorGeneracion } from "./errores";
 import { HERRAMIENTAS, type Herramientas } from "./herramientas";
 import { filaPropia, vistaDeFila } from "./trabajos";
@@ -193,6 +195,39 @@ async function guardarResultado(
   await db().update(generationJobs).set({ stage: "descargando" }).where(eq(generationJobs.id, fila.id));
   try {
     const { archivo, origen } = await h.descargar(url, limiteSubida(permitidos));
+    return await guardarArchivoDelTrabajo(actor, fila, tarea, archivo, origen);
+  } catch (error) {
+    // El detalle de la excepción solo al registro: viene del almacenamiento o de la descarga y puede llevar
+    // claves de objeto, rutas del servidor o el texto de S3.
+    const detalle = error instanceof Error ? error.message : "Error al guardar el resultado.";
+    console.error(`[generacion] no se ha podido guardar el resultado del trabajo ${fila.id}: ${detalle}`);
+    const nombre = PROVEEDORES_PUBLICOS[fila.provider].nombre;
+    return guardarEstado(fila.id, {
+      state: "listo",
+      providerState: tarea.estado,
+      consumedCredits: tarea.creditos,
+      errorMessage: `${nombre} (${fila.model}) ha generado el trabajo y sí se ha cobrado, pero no se ha podido guardar en tu biblioteca. El archivo sigue en el proveedor un rato: vuelve a consultarlo para reintentar la descarga, que no cuesta nada. Si sigue fallando, díselo a quien administra esta instalación.`,
+    });
+  }
+}
+
+/**
+ * Guarda el archivo del trabajo en la biblioteca y lo cierra. Es la parte común de los dos caminos: el
+ * asíncrono, que descarga el resultado de una URL que caduca, y el **síncrono** (ElevenLabs, 0.21.0), que ya
+ * tiene los bytes en la mano. Ni el apunte de gasto ni los enganches de escena y de muestra se repiten en
+ * ningún otro sitio.
+ */
+async function guardarArchivoDelTrabajo(
+  actor: Actor,
+  fila: FilaTrabajo,
+  tarea: TareaProveedor,
+  archivo: File,
+  origen: string | null,
+  /** Aviso que sobrevive al cierre: hoy solo el del cambio automático de proveedor de voz (0.21.0). */
+  aviso = "",
+): Promise<TrabajoVista> {
+  const permitidos = TIPO_RESULTADO[fila.kind];
+  {
     // La duración del clip es la que se le pidió de verdad al proveedor, que quedó guardada en la entrada del
     // trabajo. Solo si ese trabajo es anterior a que la duración se eligiera se cae en la del catálogo.
     const parametrosPedidos = (fila.input.parametros ?? {}) as Record<string, unknown>;
@@ -215,7 +250,9 @@ async function guardarResultado(
         providerState: tarea.estado,
         consumedCredits: tarea.creditos,
         resultMediaId: medio.id,
-        errorMessage: null,
+        // Un trabajo que sale bien no deja mensaje, **salvo** el del cambio de proveedor: es un aviso, no un
+        // error, y decirle a quien paga en qué cuenta se ha gastado no puede depender de que nada más falle.
+        errorMessage: aviso === "" ? null : aviso,
         finishedAt: new Date(),
       })
       .where(and(eq(generationJobs.id, fila.id), isNull(generationJobs.resultMediaId)))
@@ -224,6 +261,9 @@ async function guardarResultado(
       // Si el trabajo era una vista sintética del personaje, su resultado entra en la ficha **etiquetado**
       // como vista generada. Solo en la rama que cierra el trabajo, así que no se adjunta dos veces.
       await adjuntarVistaGenerada(cerrada, medio.id);
+      // Y si era la muestra de una voz (0.21.0), su audio entra en la caché de muestras en lugar de en una escena:
+      // es lo que hace que oír esa voz cueste una sola vez.
+      await adjuntarMuestraDeVoz(cerrada, medio.id);
       // Y si el trabajo producía una escena, la escena apunta lo que acaba de pasar (0.19.0). Un fotograma no
       // se aprueba solo: animar cuesta otro dinero y lo autoriza una persona.
       await registrarResultadoDeEscena(cerrada, medio.id);
@@ -235,16 +275,60 @@ async function guardarResultado(
       .then(() => eliminarDefinitivamente(actor, medio.id))
       .catch((error) => console.error(`[generacion] resultado duplicado sin borrar (${medio.id}):`, error));
     return vistaDeFila(await filaPropia(actor.id, fila.id));
+  }
+}
+
+/**
+ * Cierra un trabajo de voz de un proveedor **síncrono**, que ha contestado con el audio en la misma llamada
+ * (ElevenLabs, 0.21.0). No consulta nada, no descarga nada y no vuelve a llamar a nadie: los bytes ya están.
+ *
+ * Los créditos son los que **informa el proveedor** en su respuesta, no la estimación: si no informa ninguno se
+ * cierra con la estimación del trabajo, igual que cualquier otro cierre sin cifra del proveedor.
+ *
+ * Y si trae marcas de tiempo medidas sobre el audio, se guardan en la escena: valen más que repartir el tiempo
+ * entre las frases a ojo.
+ */
+export async function cerrarVozSincrona(
+  fila: FilaTrabajo,
+  resultado: NonNullable<VozPedida["inmediata"]>,
+  aviso = "",
+): Promise<FilaTrabajo> {
+  const actor: Actor = { id: fila.userId, esAdmin: false };
+  const tarea: TareaProveedor = {
+    estado: "listo",
+    estadoPropio: "listo",
+    urls: [],
+    creditos: resultado.creditosInformados,
+    haFallado: false,
+  };
+  await cerrarGasto(fila.id, tarea.creditos, "Trabajo terminado en el proveedor.");
+  const archivo = new File([resultado.audio], resultado.nombre, { type: resultado.mime });
+  try {
+    // `origen` es `null`: el audio no se ha descargado de ninguna URL, ha venido en la propia respuesta.
+    await guardarArchivoDelTrabajo(actor, fila, tarea, archivo, null, aviso);
+    // Las marcas se guardan **después** del archivo: si el guardado fallara, la escena se quedaría con la
+    // transcripción de un audio que no existe, y con unos subtítulos propuestos sobre algo que nadie puede oír.
+    if (resultado.marcas) await guardarMarcasDeVoz(fila, resultado.marcas);
   } catch (error) {
+    /**
+     * **El dinero ya se ha ido.** El proveedor ha cobrado esta llamada y su audio no se ha podido guardar; como no
+     * hay ninguna tarea que volver a consultar —ElevenLabs contesta una sola vez—, ese audio **no se recupera**, y
+     * pedirlo otra vez vuelve a cobrar. Es justo el caso en el que el mensaje más importa, así que dice las cuatro
+     * cosas: quién, qué, que **sí se ha cobrado** y qué puede hacer quien lo lee.
+     *
+     * El texto de la excepción se queda **solo en el registro**: viene del almacenamiento y puede llevar claves de
+     * objeto o rutas del servidor.
+     */
     const detalle = error instanceof Error ? error.message : "Error al guardar el resultado.";
-    console.error(`[generacion] no se ha podido guardar el resultado del trabajo ${fila.id}: ${detalle}`);
-    return guardarEstado(fila.id, {
+    console.error(`[generacion] voz pagada y no guardada en el trabajo ${fila.id}: ${detalle}`);
+    await guardarEstado(fila.id, {
       state: "listo",
-      providerState: tarea.estado,
+      providerState: "listo",
       consumedCredits: tarea.creditos,
-      errorMessage: `El trabajo se ha generado, pero no se ha podido guardar en tu biblioteca: ${detalle} Vuelve a consultarlo para reintentar la descarga.`,
+      errorMessage: `${PROVEEDORES_PUBLICOS[fila.provider].nombre} (${fila.model}) generó la voz y esa llamada sí se ha cobrado, pero no se ha podido guardar en tu biblioteca por un fallo del almacenamiento de esta instalación, no de tu proyecto ni del proveedor. Ese audio no se puede recuperar: la llamada solo responde una vez, así que generarla otra vez volverá a costar. Avisa a quien administra esta instalación antes de repetirlo.`,
     });
   }
+  return (await filaPropia(fila.userId, fila.id)) ?? fila;
 }
 
 async function guardarEstado(id: string, cambios: Partial<typeof generationJobs.$inferInsert>): Promise<TrabajoVista> {

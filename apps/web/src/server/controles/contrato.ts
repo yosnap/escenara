@@ -1,5 +1,5 @@
 import type { EstadoControl } from "@/lib/controles";
-import type { TipoTrabajo } from "@/lib/generacion";
+import type { TipoTrabajoCola } from "@/lib/generacion";
 
 /**
  * Contrato del motor de controles previos (RF12, 0.18.0): los **hechos** que se le dan y los **frenos** que
@@ -179,7 +179,7 @@ export interface ParametrosControles {
  * falta alguno: olvidarse de un grupo es un error de programación, no una configuración.
  */
 export interface Hechos {
-  tipo: TipoTrabajo;
+  tipo: TipoTrabajoCola;
   credencial?: HechosCredencial;
   modelo?: HechosModelo;
   /** `null` cuando el envío no lleva personaje (imagen suelta de 0.10.0); ausente = no se evalúa. */

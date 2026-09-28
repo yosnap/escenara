@@ -92,7 +92,7 @@ async function exigirEscenaSinRepetir(tx: Ejecutor, peticion: PeticionEncolado):
   const escenaId = peticion.escena?.escenaId;
   if (!escenaId) return;
   const tipo = peticion.valores.kind;
-  const nombre = tipo === "animacion" ? "un clip" : "un fotograma";
+  const nombre = tipo === "animacion" ? "un clip" : tipo === "voz" ? "una pista de voz" : "un fotograma";
   const [{ total } = { total: 0 }] = await tx
     .select({ total: sql<number>`count(*)::int` })
     .from(generationJobs)

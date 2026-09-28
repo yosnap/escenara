@@ -1,5 +1,5 @@
 import { CAPACIDAD_DE_TIPO, type ModeloVista } from "@/lib/catalogo";
-import type { TipoTrabajo } from "@/lib/generacion";
+import type { TipoTrabajoCola } from "@/lib/generacion";
 import type { Adaptador, PrecioModelo } from "../proveedores/contrato";
 import { resolver } from "../proveedores/registro";
 import { ErrorGeneracion } from "./errores";
@@ -26,13 +26,13 @@ export interface EleccionDeTrabajo {
  * Elige el modelo del tipo de trabajo (el que pida el usuario o el predeterminado de su capacidad) y lee
  * su precio. Un modelo retirado, sin la capacidad necesaria o sin precio no llega a enviarse.
  */
-export async function elegirParaTipo(tipo: TipoTrabajo, modelo?: string | null): Promise<EleccionDeTrabajo> {
+export async function elegirParaTipo(tipo: TipoTrabajoCola, modelo?: string | null): Promise<EleccionDeTrabajo> {
   const { modelo: elegido, adaptador } = await resolver(CAPACIDAD_DE_TIPO[tipo], modelo);
   return { modelo: elegido, adaptador, precio: await adaptador.estimar(elegido.modelo) };
 }
 
 /** Precio vigente del modelo con el que se haría ese trabajo. */
-export async function precioDe(tipo: TipoTrabajo, modelo?: string | null): Promise<Precio> {
+export async function precioDe(tipo: TipoTrabajoCola, modelo?: string | null): Promise<Precio> {
   return (await elegirParaTipo(tipo, modelo)).precio;
 }
 

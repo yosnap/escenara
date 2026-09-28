@@ -2,6 +2,160 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.21.0] · 2026-09-28
+
+### Decisiones del propietario
+
+- **La voz se elige por proyecto, no por escena.** Hay dos modos y son excluyentes: **«voz del clip»** (de fábrica,
+  el modelo de vídeo pone el diálogo en boca del personaje con los labios sincronizados, sin ningún gasto nuevo) y
+  **«pista de voz aparte»** (los clips se piden sin diálogo y el audio se genera escena a escena con la **misma voz
+  y los mismos parámetros**). Intentar fijar la voz de una sola escena se rechaza con su motivo: si cada escena
+  tuviera la suya, el timbre cambiaría de plano a plano.
+
+### Decisiones provisionales del propietario (2026-09-28, pendientes de confirmar)
+
+- **Proveedor de voz**: el modelo `elevenlabs/text-to-speech-multilingual-v2` del «market» de KIE, con la **misma
+  credencial de KIE** del usuario, así que no hace falta una segunda clave. Entra en el catálogo **sin precio**: KIE
+  no publica su tarifa, y sin precio registrado no se estima ni se gasta. La pantalla lo dice y no ofrece generar
+  hasta que quien administra lo mida una vez y registre el precio en Admin › Modelos. Sin clonación de voz.
+- **Transcripción local y sin coste**, con el binario de `whisper.cpp` en la propia máquina: no sale nada de ella y
+  **no deja ningún apunte de gasto externo**.
+- **Música solo subida por el usuario**, con declaración de derechos escrita. No se genera música.
+
+### Añadido
+
+- **Pantalla de voz y subtítulos del proyecto** en `/proyectos/[id]/voz`: modo de voz, selector de voz con muestra,
+  estado escena a escena, editor de subtítulos y música de fondo.
+- **Las voces se guardan por su identificador de ElevenLabs**, no por su nombre, y la pantalla sigue enseñando el
+  nombre. El identificador entra en la firma de la voz, en el proyecto, en la escena y en la clave de las muestras:
+  cambiarlo más adelante invalidaría de golpe todas las escenas con voz y toda la caché de muestras pagadas.
+- **Selector de voz con muestra cacheada**: oír una voz cuesta **una sola vez** por voz y por combinación de
+  parámetros. La muestra ya pagada se devuelve sin llamar a nadie, y la pantalla dice cuándo va a costar y cuánto.
+- **Pista de voz por escena** (modo «pista»), por la **misma cola** que los fotogramas y los clips: reserva atómica,
+  idempotencia por confirmación, tope de trabajos simultáneos y de escenas en vuelo, cierre del gasto con lo que
+  informe el proveedor y la regla de que tras un fallo sin respuesta no se reenvía nada. Pasa además por el **motor
+  de controles**, igual que cualquier otro gasto.
+- **Transcripción local con marcas de tiempo** y propuesta de subtítulos a partir de ella. Si no hay transcriptor
+  instalado, se dice con su mensaje de instalación: **no se inventan subtítulos**.
+- **Propuesta de subtítulos desde el texto del diálogo** cuando no hay audio todavía: reparte el tiempo en
+  proporción a los caracteres de cada frase y la pantalla dice que es una propuesta, no una medición.
+- **Editor de subtítulos** por escena con texto, tiempos, división de líneas y previsualización sobre el clip con
+  las **zonas seguras** de las plataformas verticales dibujadas. Los avisos de legibilidad (línea larga, tres
+  líneas, subtítulo demasiado rápido) **avisan y no bloquean**; los tiempos imposibles sí se rechazan.
+- **Exportación a SRT y a WebVTT** desde los **subtítulos editados**, nunca desde la transcripción cruda, con los
+  tiempos corridos escena a escena.
+- **Música de fondo** con su **declaración de derechos obligatoria** (la exige el servidor, no la interfaz), su
+  fecha y su volumen para la mezcla de la 0.22.0. Quitarla no borra el archivo de la biblioteca.
+- **Ajustes nuevos en Admin › Ajustes › «Voz y subtítulos»**: ofrecer la pista de voz de pago (**apagada** de
+  fábrica), orden del transcriptor local y ruta de su fichero de modelo.
+- **Capacidad `tts` en el contrato de adaptadores** y en el adaptador de KIE, con `generarVoz` opcional: un
+  proveedor sin modelos de voz sigue siendo válido y sus proyectos usan la voz del clip.
+
+### Cambiado
+
+- **Cambiar el modo, la voz, un parámetro o el diálogo invalida lo que dependía de ello.** Se compara una **firma**
+  guardada con la vigente, así que no hay ninguna bandera que se pueda desincronizar. Invalidar es **marcar, no
+  borrar**: el audio pagado sigue en la biblioteca. Un cambio que deje sin valer escenas ya generadas exige
+  confirmarlo diciendo cuántas son, y **nada se regenera solo**: cada escena se regenera a mano confirmando su
+  coste.
+- **En modo «pista», el clip se pide sin diálogo** (solo sonido ambiente): si el clip también lo dijera, se oirían
+  dos voces distintas diciendo lo mismo.
+
+### Corregido
+
+- **Transcribir un archivo que ya era un `.wav` fallaba**: el temporal de entrada y el convertido eran el mismo
+  fichero y FFmpeg se negaba a escribir encima de lo que estaba leyendo.
+
+### Seguridad
+
+- **La muestra de voz no miraba el interruptor del panel.** Con «Voz y subtítulos» apagado en Admin › Ajustes, la
+  ruta de la muestra seguía encolando y cobrando: la interfaz escondía el botón, pero la ruta es pública para
+  cualquier usuario con sesión. La comprobación vive ahora en un solo sitio y la usan los dos caminos de gasto.
+- **Corregir unos subtítulos ya no «revalida» un audio generado con otra voz.** La firma es una sola para el audio
+  y para los subtítulos, así que escribirla desde el camino de los subtítulos borraba la invalidación del audio: la
+  escena se daba por vigente, dejaba de contar para regenerar y el servidor se negaba a regenerarla («ya tiene su
+  voz de ahora»). El montaje final habría salido con un plano en la voz antigua.
+- **Un aviso salvable del motor dejaba la voz bloqueada sin salida.** La confirmación de avisos se declaraba pero
+  no se leía del cuerpo ni la enviaba la pantalla, así que un aviso confirmable (por ejemplo, precio comprobado
+  hace demasiado) no tenía forma de confirmarse. Ahora viaja la evaluación del motor y el diálogo de coste ofrece
+  su casilla, igual que en producción.
+- **La misma muestra pedida dos veces ya no se cobra dos veces.** La caché solo se rellena al cerrar el trabajo, así
+  que perder la respuesta del primer clic (una recarga, dos pestañas) pagaba otra vez el mismo audio.
+- **Transcribir o proponer ya no pisan unos subtítulos corregidos a mano** sin pedir confirmación.
+- **Pasar a «pista de voz aparte» avisa de los clips ya producidos con el diálogo dentro**, que es la única forma de
+  acabar con dos voces en el mismo plano.
+- **El texto de un subtítulo se normaliza antes de exportarlo**: un salto de Windows, una línea en blanco o la
+  secuencia `-->` dentro del texto partían el fichero SRT o WebVTT en bloques falsos.
+- **Transcribir ya no carga el archivo entero en memoria**: va del almacenamiento al disco **por trozos**, contando
+  los bytes al escribirlos, y se rechaza lo que pase de 64 MB (un clip de 8 s son unos pocos). Antes, varias
+  transcripciones a la vez se llevaban la memoria del proceso.
+- **Corregir subtítulos tampoco da por buena una escena en modo «voz del clip»**, donde la voz vive dentro del clip
+  y no hay pista propia que mirar. El guardián de la firma pregunta ahora lo mismo que el resto de la aplicación,
+  así que vale para los dos modos.
+- **Un fallo de la pista de voz ya no marca la escena como fallida en producción**, ni que salga bien borra el
+  motivo real de un clip que sí falló: son dos cosas distintas. El fallo de la voz se cuenta desde su propio
+  trabajo, en la pantalla de voz.
+- **El aviso de los clips ya producidos con el diálogo dentro sobrevive al clic que lo confirma**: se recalcula en
+  cada carga, aparece en la escena que hay que volver a producir y desaparece solo cuando se produce. Además mira
+  **con qué se produjo ese clip** en lugar del texto de ahora, así que ya no avisa de clips que son mudos.
+- **El fallo del transcriptor ya no revela la configuración de la máquina.** El mensaje interno lleva el binario y
+  la ruta del modelo; ahora eso queda en el log y el usuario recibe una explicación sin detalles.
+
+#### Proveedor de voz de reserva · decisión firme del propietario
+
+- **El cambio de proveedor de voz es automático.** Si el proveedor principal rechaza la petición de forma que
+  **prueba que no ha cobrado** y tienes clave del de reserva, se envía al otro sin preguntar y se te dice después
+  en qué cuenta se ha pagado. Si el fallo **no** prueba que no haya cobrado (una avería suya, un corte de red),
+  no se cambia y no se reenvía nada: podrías pagar dos veces.
+
+#### Proveedor de voz de reserva · añadido
+
+- **ElevenLabs como proveedor de voz de reserva**, con **credencial propia del usuario** cifrada en la bóveda
+  igual que la de KIE. Su prueba de clave usa `GET /v1/voices`, no la suscripción, porque una clave restringida
+  al permiso de voz —la que conviene crear— responde `missing_permissions` en esa otra.
+- **Adaptador de ElevenLabs** según el contrato de ADR-0015, con su modelo `eleven_multilingual_v2` en el catálogo
+  y **precio medido**: 22 créditos de su plan por 79 caracteres, comprobado contra la API real el 2026-09-28.
+- **Los proveedores síncronos caben en la cola.** ElevenLabs devuelve el audio en la misma llamada, así que
+  `generarVoz` puede traer el resultado consigo y el trabajo se cierra en la misma pasada, por el camino de
+  cierre de siempre: mismo apunte de gasto, mismo medio en la biblioteca y mismos enganches de escena.
+- **Los subtítulos usan las marcas por carácter** que devuelve el proveedor junto al audio. Son medidas sobre lo
+  que acaba de generar, así que valen más que repartir el tiempo entre las frases a ojo. Se guardan como
+  transcripción y proponen los subtítulos **solo si nadie los ha corregido a mano**.
+- **La pantalla de voz dice con quién se genera**, con quién se cambiaría y, cuando el cambio ocurre, con quién se
+  generó de verdad y en qué cuenta se ha pagado.
+
+#### Proveedor de voz de reserva · cambiado
+
+- **La voz se estima por carácter y en la moneda de cada proveedor.** Cada escena te enseña lo que costaría su
+  diálogo con el proveedor elegido y con el de reserva, cada uno en sus créditos: los de uno no valen lo mismo que
+  los del otro, así que no se suman ni se comparan. Un monólogo ya no se estima con el precio de una frase.
+- **El cambio automático solo va a lo que viste.** Se hace al proveedor y modelo que se te enseñaron al pedir la
+  voz y solo si lo que cuesta allí cabe en esa cifra; si añadiste la clave después o el precio subió, no se
+  cambia y el mensaje te dice por qué. Al cambiar, la reserva pasa a nombre del proveedor que cobra y a su importe,
+  y lo que se apunta como gastado es lo que ese proveedor informe.
+- **La voz del proyecto guarda el proveedor real del modelo**, no uno fijo.
+- **Si una voz ya pagada no se puede guardar**, el mensaje dice qué proveedor la cobró, que sí se ha cobrado, que
+  no se puede recuperar sin volver a pagar y qué hacer.
+- **Todos los mensajes de error de la voz dicen qué falló de verdad** (proveedor, modelo y causa concreta), **si
+  se ha cobrado o no**, qué se intentó y qué puedes hacer. Se acabaron los «no se ha podido, vuelve a intentarlo».
+  El texto del proveedor, las rutas del servidor y la configuración de la máquina siguen sin salir nunca.
+
+### Actualizar desde la 0.20.x
+
+- **Aplica las migraciones antes de arrancar el código nuevo**: `bun run db:backup` y luego `bun run db:migrate`.
+  La `0024` añade el valor `elevenlabs` al tipo de proveedor de credencial y no cambia ninguna fila. La
+  `0023` añade el modo y la voz al proyecto, la voz, la transcripción y los subtítulos a cada escena, y crea
+  `music_tracks` y `voice_samples`. Añade además el valor `voz` al tipo de trabajo de la cola. **No cambia nada de
+  lo que ya había**: todos los proyectos existentes quedan en modo «voz del clip», que es exactamente como
+  funcionaban.
+- **Si quieres subtítulos automáticos, instala el transcriptor**: `brew install whisper-cpp` en macOS, el paquete o
+  la compilación de `whisper.cpp` en Linux, y FFmpeg (que ya hacía falta desde la 0.20.0). Sin él, la propuesta
+  desde el texto del diálogo sigue funcionando.
+- **La pista de voz de pago viene apagada.** Para ofrecerla hay que encenderla en Admin › Ajustes › «Voz y
+  subtítulos». Además hace falta una clave del proveedor que la sirva: el modelo de voz de KIE sigue sin precio
+  registrado —y no respondió en la prueba real del 2026-09-28—, así que en la práctica la voz se genera con
+  **ElevenLabs**, cuya clave se añade en «Tu cuenta».
+
 ## [0.20.7] · 2026-09-28
 
 ### Corregido

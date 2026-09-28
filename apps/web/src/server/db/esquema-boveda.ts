@@ -7,7 +7,12 @@ import { users } from "./esquema-auth";
  * único que se muestra en la interfaz para reconocer una clave.
  */
 
-export const proveedorCredencial = pgEnum("credential_provider", ["kie", "google"]);
+/**
+ * `elevenlabs` se añade en la 0.21.0: es el proveedor de voz de reserva, con **credencial propia del usuario**
+ * igual que KIE. El mismo enum lo usan los apuntes de gasto, los trabajos, los precios del catálogo y las
+ * muestras de voz, así que un solo valor nuevo cubre los cinco.
+ */
+export const proveedorCredencial = pgEnum("credential_provider", ["kie", "google", "elevenlabs"]);
 export const estadoCredencial = pgEnum("credential_status", ["valida", "invalida"]);
 
 /**

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
-import { DIALOGO_MAXIMO, PROMPT_MINIMO } from "@/lib/generacion";
+import { PROMPT_MINIMO } from "@/lib/generacion";
 import { falloConCoste, type ProduccionVista, trabajoTerminado } from "@/lib/produccion";
 import { escenaPropia, escenasDe, proyectoPropio } from "../asistente/consulta";
 import { ErrorProyecto } from "../asistente/errores";
@@ -11,6 +11,7 @@ import { crearAnimacion, crearFotograma } from "../generacion/servicio";
 import type { Actor } from "../media/servicio";
 import { plantillaVigenteDe } from "../prompts/consulta";
 import { invalidarRevisionesDeEscena } from "../revision/resultados";
+import { dialogoDelClip } from "../voz/modo";
 import { marcarEnProduccion } from "./cierre";
 import { escenasPorProducir, estadoDeProduccion, exigirDuracionProducible, ultimoTrabajoDeEscena } from "./consulta";
 import { presetsDeProduccion } from "./presets";
@@ -150,7 +151,7 @@ async function encolarAnimacion(
       trabajoPadreId,
       reintentoDeEscena: reintento,
       // Lo que dice el personaje va aparte de la descripción visual y solo lo usan los modelos con voz.
-      dialogo: escena.scriptText.trim().slice(0, DIALOGO_MAXIMO),
+      dialogo: dialogoDelClip(escena, proyecto),
       derechos: confirmacion.derechos,
       sinTerceros: confirmacion.sinTerceros,
       creditosConfirmados: confirmacion.creditosConfirmados,

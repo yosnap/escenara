@@ -14,6 +14,23 @@ export type TipoTrabajo = (typeof TIPOS_TRABAJO)[number];
 export const esTipoTrabajo = (v: unknown): v is TipoTrabajo => TIPOS_TRABAJO.includes(v as TipoTrabajo);
 
 /**
+ * Tipos de trabajo que puede llevar la cola, que son **uno más** que los de «Crear»: la pista de voz de una escena
+ * (0.21.0) también cuesta dinero y también se pide al proveedor, pero no se puede pedir desde «Crear».
+ *
+ * La distinción no es cosmética: `TipoTrabajo` es lo que el navegador puede elegir, y dejar que pidiera una voz por
+ * ahí sería una llamada de pago sin proyecto, sin escena y sin la voz fijada que le da sentido. La voz se pide
+ * siempre desde la pantalla de voz de un proyecto en modo `pista`.
+ */
+export const TIPOS_TRABAJO_COLA = [...TIPOS_TRABAJO, "voz"] as const;
+export type TipoTrabajoCola = (typeof TIPOS_TRABAJO_COLA)[number];
+
+export const ETIQUETA_TIPO_TRABAJO: Record<TipoTrabajoCola, string> = {
+  fotograma: "Fotograma",
+  animacion: "Clip",
+  voz: "Voz de la escena",
+};
+
+/**
  * Estado propio del trabajo. `desconocido` es el estado honesto cuando el proveedor no ha contestado:
  * nunca se da por «listo» ni se vuelve a enviar (podría cobrarse dos veces).
  */
@@ -105,9 +122,10 @@ export const ETIQUETA_MOTIVO_FALLO: Record<MotivoFallo, string> = {
 export const CLIP = { segundos: 8, proporcion: "9:16", resolucion: "720p" } as const;
 
 /** Tipo de archivo que puede devolver cada trabajo: se usa para la cuota y para validar el resultado. */
-export const TIPO_RESULTADO: Record<TipoTrabajo, readonly TipoMedio[]> = {
+export const TIPO_RESULTADO: Record<TipoTrabajoCola, readonly TipoMedio[]> = {
   fotograma: ["imagen"],
   animacion: ["video"],
+  voz: ["audio"],
 };
 
 /** El estado crudo del proveedor se guarda y se muestra recortado: es una etiqueta, no un texto libre. */
@@ -126,7 +144,7 @@ export const DIALOGO_MAXIMO = 200;
 /** Trabajo tal como lo devuelve la API. Nunca lleva la clave del proveedor ni su texto de error. */
 export interface TrabajoVista {
   id: string;
-  tipo: TipoTrabajo;
+  tipo: TipoTrabajoCola;
   proveedor: Proveedor;
   modelo: string;
   estado: EstadoTrabajo;
@@ -190,7 +208,7 @@ export interface TrabajoVista {
 
 /** Estimación de coste de un trabajo. Siempre se muestra etiquetada como estimación. */
 export interface Estimacion {
-  tipo: TipoTrabajo;
+  tipo: TipoTrabajoCola;
   /** Identificador del modelo en el proveedor. */
   modelo: string;
   /** Nombre legible del modelo, tal como está en el catálogo. */

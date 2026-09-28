@@ -1,4 +1,4 @@
-import type { TipoTrabajo } from "@/lib/generacion";
+import type { TipoTrabajoCola } from "@/lib/generacion";
 import type { EleccionDeTrabajo } from "../generacion/precios";
 
 /**
@@ -20,9 +20,16 @@ export type Acotacion =
       motivo: string;
     };
 
-export function acotarCoste(tipo: TipoTrabajo, eleccion: EleccionDeTrabajo): Acotacion {
+export function acotarCoste(tipo: TipoTrabajoCola, eleccion: EleccionDeTrabajo): Acotacion {
   const creditos = Math.ceil(eleccion.precio.creditos);
-  if (tipo === "fotograma" || eleccion.modelo.parametros.duraciones.length > 0) {
+  /**
+   * Un fotograma es una unidad. Una pista de voz **no** lo es —los modelos de voz cobran por carácter—, pero sí
+   * está acotada: el diálogo se conoce y se congela al encolar (queda en la entrada del trabajo y no se vuelve a
+   * leer del proyecto), así que su coste se estima con la longitud real del texto y no con una tarifa plana
+   * (`lib/voz.ts › creditosDeVoz`). Lo que no está acotado es un clip cuyo modelo no declara cuánto dura, porque
+   * entonces la longitud (y el precio) los decide el proveedor.
+   */
+  if (tipo === "fotograma" || tipo === "voz" || eleccion.modelo.parametros.duraciones.length > 0) {
     return { acotado: true, creditos };
   }
   // Cuando no se puede acotar, el techo lo pone el usuario después (`cola/cancelar.ts › autorizarLimite`):

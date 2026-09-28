@@ -5,6 +5,7 @@ import { ACCION_MAXIMA, ESCENAS_MAXIMAS, motivoDeInvalidacion, TEXTO_ESCENA_MAXI
 import { db, type Ejecutor } from "../db/cliente";
 import { claims, type FilaEscena, generationJobs, projects, scenes } from "../db/esquema";
 import type { Actor } from "../media/servicio";
+import { invalidarVozDeEscena } from "../voz/proyecto";
 import { escenaPropia, escenasDe, proyectoPropio, proyectoPropioBloqueado } from "./consulta";
 import { ErrorProyecto } from "./errores";
 
@@ -147,7 +148,12 @@ export async function editarEscena(actor: Actor, escenaId: unknown, datos: Datos
       .where(eq(scenes.id, escena.id))
       .returning();
     if (!actualizada) throw new ErrorProyecto(404, "Esa escena no existe.");
-    if (campos.scriptText !== undefined) await sincronizarAfirmaciones(tx, escena.id, actualizada.scriptText);
+    if (campos.scriptText !== undefined) {
+      await sincronizarAfirmaciones(tx, escena.id, actualizada.scriptText);
+      // El diálogo es lo que se oye y lo que se lee: cambiarlo deja sin valer la pista de voz y los subtítulos
+      // que ya había (0.21.0). No se borra ni se regenera nada; solo se dice por qué dejaron de corresponder.
+      if (actualizada.scriptText !== escena.scriptText) await invalidarVozDeEscena(escena.id, tx);
+    }
     if (escena.state === "aprobada") await invalidarPlan(tx, escena.projectId);
     await tocarProyecto(tx, escena.projectId);
     return actualizada;

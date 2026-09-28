@@ -162,6 +162,20 @@
       "when": 1790549287472,
       "tag": "0022_revision_de_continuidad",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1790558205591,
+      "tag": "0023_voz_y_subtitulos",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790562174630,
+      "tag": "0024_proveedor_elevenlabs",
+      "breakpoints": true
     }
   ]
 }

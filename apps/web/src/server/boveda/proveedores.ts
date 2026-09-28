@@ -1,5 +1,6 @@
 import type { CodigoPrueba, Proveedor } from "@/lib/boveda";
 import { type Buscador, codigoDeEstado, codigoDeFallo, MS_MAXIMO } from "../proveedores/codigos";
+import { contarVoces, ErrorElevenLabs } from "../proveedores/elevenlabs/cliente";
 
 export type { Buscador };
 
@@ -61,6 +62,23 @@ async function probarKie(secreto: string, buscar: Buscador): Promise<ResultadoPr
 }
 
 /**
+ * ElevenLabs: lista de voces (`GET /v1/voices`, cabecera `xi-api-key`).
+ *
+ * **No se usa `/v1/user/subscription`**: comprobado el 2026-09-28 con la API real, devuelve
+ * `missing_permissions` con una clave restringida, así que una clave perfectamente buena acotada al permiso de
+ * «Text to Speech» —que es justo la que conviene crear para Escenara— habría quedado marcada como inválida.
+ */
+async function probarElevenLabs(secreto: string, buscar: Buscador): Promise<ResultadoPrueba> {
+  try {
+    const voces = await contarVoces(secreto, buscar);
+    return { ok: true, codigo: "ok", detalle: `${voces} ${voces === 1 ? "voz" : "voces"} disponibles` };
+  } catch (error) {
+    if (error instanceof ErrorElevenLabs) return { ok: false, codigo: error.codigo };
+    return { ok: false, codigo: codigoDeFallo(error) };
+  }
+}
+
+/**
  * Google Gemini: lista de modelos con `pageSize=1`.
  * `GET https://generativelanguage.googleapis.com/v1beta/models?pageSize=1` con cabecera `x-goog-api-key`
  * (la clave nunca va en la URL: quedaría en los registros de cualquier proxy).
@@ -89,6 +107,7 @@ async function probarGoogle(secreto: string, buscar: Buscador): Promise<Resultad
 const PRUEBAS: Record<Proveedor, (secreto: string, buscar: Buscador) => Promise<ResultadoPrueba>> = {
   kie: probarKie,
   google: probarGoogle,
+  elevenlabs: probarElevenLabs,
 };
 
 /**

@@ -1,5 +1,5 @@
 import type { EvaluacionVista } from "./controles";
-import type { EstadoTrabajo, MotivoFallo } from "./generacion";
+import type { EstadoTrabajo, MotivoFallo, TipoTrabajoCola } from "./generacion";
 import type { Medio } from "./media/tipos";
 import type { EstadoEscena } from "./proyectos";
 
@@ -190,7 +190,7 @@ export const ZONAS_SEGURAS: readonly ZonaSegura[] = [
 /** Un trabajo de la producción de una escena, reducido a lo que la rejilla necesita. */
 export interface TrabajoDeEscena {
   id: string;
-  tipo: "fotograma" | "animacion";
+  tipo: TipoTrabajoCola;
   estado: EstadoTrabajo;
   /** Estado crudo del proveedor, tal cual, si se conoce. */
   estadoProveedor: string | null;
@@ -213,7 +213,7 @@ export interface TrabajoDeEscena {
 /** Una versión anterior de una escena: qué se generó, con qué y cuánto costó. */
 export interface VersionDeEscena {
   trabajoId: string;
-  tipo: "fotograma" | "animacion";
+  tipo: TipoTrabajoCola;
   modelo: string;
   estado: EstadoTrabajo;
   creditosEstimados: number;

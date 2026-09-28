@@ -6,6 +6,7 @@ import type { Actor } from "../media/servicio";
 import { ErrorPersonaje } from "../personajes/errores";
 import { ErrorPreset } from "../prompts/errores";
 import { ErrorCatalogo } from "../proveedores/contrato";
+import { ErrorTranscripcion } from "../voz/transcripcion";
 import { ErrorProyecto } from "./errores";
 
 /**
@@ -25,6 +26,17 @@ export function respuestaError(error: unknown): Response {
   if (error instanceof ErrorCatalogo) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorMedio) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorPreset) return Response.json({ error: error.message }, { status: error.estado });
+  /**
+   * El transcriptor local es una **dependencia del entorno** (0.21.0), igual que FFmpeg: que falte no es un error
+   * interno, es algo que quien administra tiene que instalar. Se responde 503 y se dice qué pasa, pero **sin el
+   * detalle**: el mensaje interno lleva el binario y la ruta del modelo configurados, y eso es información de la
+   * máquina que no tiene por qué ver cualquier usuario con sesión. Queda en el log, que es de quien administra.
+   */
+  if (error instanceof ErrorTranscripcion) {
+    // El detalle interno (la orden configurada y la ruta de su modelo) queda solo en el registro del servidor.
+    console.error("[voz] transcripción:", error.interno);
+    return Response.json({ error: error.message }, { status: error.estado });
+  }
   console.error("[proyectos]", error);
   return Response.json({ error: "Error interno al procesar el proyecto." }, { status: 500 });
 }

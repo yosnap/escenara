@@ -1,6 +1,8 @@
 import { and, eq, ne, sql } from "drizzle-orm";
+import { segmentosDesdeMarcas, subtitulosDesdeTranscripcion } from "@/lib/voz";
 import { db, type Ejecutor } from "../db/cliente";
 import { type FilaTrabajo, projects, scenes } from "../db/esquema";
+import type { MarcasDeVoz } from "../proveedores/contrato";
 
 /**
  * Lo que la producción de una escena apunta cuando un trabajo suyo **termina** (RF06, 0.19.0).
@@ -58,6 +60,33 @@ export async function registrarResultadoDeEscena(fila: FilaTrabajo, medioId: str
   await db().transaction(async (tx) => {
     const [escena] = await tx.select().from(scenes).where(eq(scenes.id, escenaId)).limit(1).for("update");
     if (!escena) return;
+    /**
+     * Pista de voz de la escena (0.21.0). No cambia el estado de la escena: lo que la da por **producida** es su
+     * clip, y una escena con voz y sin clip sigue sin estar producida.
+     *
+     * Se guarda además la **firma** con la que se encoló, no la que el proyecto tenga ahora: es lo único que
+     * permite decir después si ese audio sigue correspondiendo a la voz y al diálogo vigentes. Y se limpia el
+     * motivo de invalidación, porque el audio que acaba de llegar ya es el de ahora.
+     *
+     * **No toca `lastFailureReason`**: esa columna es del clip y la lee la rejilla de producción. Borrarla aquí
+     * haría desaparecer el motivo real de un clip que sí falló solo porque su voz salió bien, que son dos cosas
+     * distintas. Lo que le pase a la voz se cuenta desde su propio trabajo.
+     */
+    if (fila.kind === "voz") {
+      const firma = (fila.input as { firmaVoz?: unknown }).firmaVoz;
+      await tx
+        .update(scenes)
+        .set({
+          voiceMediaId: medioId,
+          voiceJobId: fila.id,
+          voiceSignature: typeof firma === "string" ? firma : "",
+          voiceInvalidationReason: "",
+          updatedAt: new Date(),
+        })
+        .where(eq(scenes.id, escenaId));
+      await tocarProyecto(tx, escena.projectId);
+      return;
+    }
     if (fila.kind === "fotograma") {
       await tx.update(scenes).set({ lastFailureReason: "", updatedAt: new Date() }).where(eq(scenes.id, escenaId));
       await tocarProyecto(tx, escena.projectId);
@@ -80,10 +109,43 @@ export async function registrarResultadoDeEscena(fila: FilaTrabajo, medioId: str
 }
 
 /**
+ * Guarda en la escena las **marcas de tiempo medidas** que ha devuelto el proveedor de voz junto al audio
+ * (0.21.0). Se guardan como transcripción, que es lo que son: lo que se ha dicho y cuándo, medido.
+ *
+ * Si la escena no tiene subtítulos **editados por una persona**, se proponen además desde esas marcas: unos
+ * tiempos medidos son mejores que repartir el tiempo entre las frases a ojo, y quedan igualmente a la espera de
+ * que alguien los revise. Lo que ha corregido una persona **no se toca nunca** desde aquí.
+ */
+export async function guardarMarcasDeVoz(fila: FilaTrabajo, marcas: MarcasDeVoz): Promise<void> {
+  if (!fila.sceneId) return;
+  const segmentos = segmentosDesdeMarcas(marcas);
+  if (segmentos.length === 0) return;
+  const escenaId = fila.sceneId;
+  await db().transaction(async (tx) => {
+    const [escena] = await tx.select().from(scenes).where(eq(scenes.id, escenaId)).limit(1).for("update");
+    if (!escena) return;
+    const editados = escena.subtitlesEditedAt !== null && escena.subtitles.length > 0;
+    await tx
+      .update(scenes)
+      .set({
+        transcript: segmentos,
+        ...(editados ? {} : { subtitles: subtitulosDesdeTranscripcion(segmentos) }),
+        updatedAt: new Date(),
+      })
+      .where(eq(scenes.id, escenaId));
+  });
+}
+
+/**
  * Un trabajo de escena ha fallado. Se apunta el motivo **apto para el usuario** y nada más: ni se reintenta, ni
  * se consume presupuesto de reintentos, ni se marca la escena como producida.
+ *
+ * Un trabajo de **voz** no escribe aquí: `lastFailureReason` es el fallo del clip y lo lee la rejilla de
+ * producción, así que un fallo de la pista de voz marcaría la escena entera como fallida sin serlo. El fallo de la
+ * voz vive en su propio trabajo, y la pantalla de voz lo lee de ahí (`voz/consulta.ts`).
  */
 export async function registrarFalloDeEscena(fila: FilaTrabajo, motivo: string): Promise<void> {
+  if (fila.kind === "voz") return;
   if (!fila.sceneId || motivo.trim() === "") return;
   await db()
     .update(scenes)
