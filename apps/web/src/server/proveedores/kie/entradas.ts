@@ -2,6 +2,7 @@ import type { ModeloVista } from "@/lib/catalogo";
 import { CLIP } from "@/lib/generacion";
 import { duracionParaModelo } from "@/lib/produccion";
 import { type ContextoEntrada, ErrorCatalogo } from "../contrato";
+import { CAMPOS_DE_URL_DE_FAMILIA, familiaDe, varianteDeUnidad } from "./familias";
 import { entradaAnimacion, entradaFotograma, promptAnimacion, promptEscenaHablada, promptFotograma } from "./modelos";
 
 export type { ContextoEntrada };
@@ -38,6 +39,8 @@ export const CAMPOS_DE_URL = [
   // MiniMax H3 recibe las referencias y la muestra de voz por sus propios campos, y caducan igual (0.22.0).
   "reference_image_urls",
   "reference_audio_urls",
+  // Y las familias del catálogo dinámico traen los suyos (0.23.0): nano banana 2 usa «image_input».
+  ...CAMPOS_DE_URL_DE_FAMILIA,
 ] as const;
 
 /** Primer valor admitido por el modelo, o el de `CLIP` si el modelo no declara ninguno. */
@@ -225,17 +228,40 @@ const CONSTRUCTORES = new Map<string, Constructor>(
   }),
 );
 
-export const tieneEntrada = (modelo: string) => CONSTRUCTORES.has(modelo);
+/**
+ * `true` si esta instalación sabe montar la entrada de ese modelo: o tiene constructor propio (los medidos con
+ * dinero real) o pertenece a una **familia** del catálogo dinámico (0.23.0). Un modelo que no esté en ninguno
+ * de los dos sitios se ve en el catálogo pero no se puede elegir.
+ */
+export const tieneEntrada = (modelo: string) => CONSTRUCTORES.has(modelo) || familiaDe(modelo) !== undefined;
 
 /** Entrada lista para `jobs/createTask` con los campos que espera ese modelo concreto. */
 export function entradaDeModelo(modelo: ModeloVista, contexto: ContextoEntrada): Record<string, unknown> {
+  // Un modelo sin voz no recibe nunca lo que dice el personaje: lo dibujaría o lo ignoraría.
+  const limpio: ContextoEntrada = { ...contexto, dialogo: modelo.conVoz ? contexto.dialogo : "" };
   const montar = CONSTRUCTORES.get(modelo.modelo);
-  if (!montar) {
+  if (montar) return montar(limpio, modelo);
+  const familia = familiaDe(modelo.modelo);
+  if (!familia) {
     throw new ErrorCatalogo(
       503,
       `Esta instalación no sabe con qué parámetros pedirle nada a ${modelo.nombre}. Elige otro modelo.`,
     );
   }
-  // Un modelo sin voz no recibe nunca lo que dice el personaje: lo dibujaría o lo ignoraría.
-  return montar({ ...contexto, dialogo: modelo.conVoz ? contexto.dialogo : "" }, modelo);
+  /**
+   * La variante sale de la **unidad registrada**, que es la que se ha estimado y confirmado. Si esa unidad no
+   * es ninguna de las que ofrece la familia, no se envía nada: se habría confirmado un precio y pedido otra
+   * cosa, y eso lo paga el usuario.
+   */
+  const variante = varianteDeUnidad(modelo.unidad);
+  const ofrecida = familia.variantes.find(
+    (v) => v.resolucion === variante.resolucion && v.calidad === variante.calidad,
+  );
+  if (!ofrecida) {
+    throw new ErrorCatalogo(
+      409,
+      `La unidad registrada de ${modelo.nombre} («${modelo.unidad}») no es ninguna de las que publica el proveedor. Vuelve a sincronizar sus precios antes de generar con él.`,
+    );
+  }
+  return familia.montar(limpio, ofrecida, modelo.parametros);
 }

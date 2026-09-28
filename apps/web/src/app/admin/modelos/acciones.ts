@@ -6,9 +6,11 @@ import { historialCatalogo, listarModelos } from "@/server/proveedores/catalogo"
 import {
   cambiarEstadoDeModelo,
   cambiarPrecioDeModelo,
+  cambiarVarianteDeModelo,
   marcarPredeterminado,
 } from "@/server/proveedores/catalogo-admin";
 import { ErrorCatalogo } from "@/server/proveedores/contrato";
+import { sincronizarProveedor, ultimasSincronizaciones } from "@/server/proveedores/sincronizacion";
 
 /**
  * Cambios del catálogo de modelos. Cada acción vuelve a exigir el rol de administrador contra la base de
@@ -62,4 +64,36 @@ export async function marcarPredeterminadoAccion(datos: {
   capacidad: Capacidad;
 }): Promise<ResultadoModelo> {
   return aplicar((autorId) => marcarPredeterminado(datos, autorId));
+}
+
+/** Cambia la variante que se envía de un modelo (la resolución o la calidad por la que cobra el proveedor). */
+export async function cambiarVarianteAccion(datos: { modeloId: string; unidad: string }): Promise<ResultadoModelo> {
+  return aplicar((autorId) => cambiarVarianteDeModelo(datos, autorId));
+}
+
+export type ResultadoSincronizar =
+  | { ok: true; modelos: ModeloVista[]; historial: CambioCatalogo[]; resumen: string }
+  | { ok: false; error: string };
+
+/**
+ * Lee la tabla de precios que publica un proveedor y actualiza el catálogo (0.23.0). No usa la credencial de
+ * nadie ni gasta créditos: la tabla es pública. Nunca pisa un precio medido en esta instalación.
+ */
+export async function sincronizarPreciosAccion(proveedor: string): Promise<ResultadoSincronizar> {
+  const sesion = await exigirAdmin(RUTA);
+  const resultado = await sincronizarProveedor(proveedor, { autorId: sesion.user.id });
+  if (!resultado.ok) return { ok: false, error: resultado.motivo };
+  const [modelos, historial] = await Promise.all([listarModelos(), historialCatalogo()]);
+  return {
+    ok: true,
+    modelos,
+    historial,
+    resumen: `${resultado.publicados} modelos publicados, ${resultado.montables} que esta instalación sabe pedir. ${resultado.modelosCreados} altas, ${resultado.preciosCreados} precios nuevos y ${resultado.preciosActualizados} actualizados.`,
+  };
+}
+
+/** Cuándo se leyó por última vez la tarifa de cada proveedor que la publica. */
+export async function ultimasSincronizacionesAccion() {
+  await exigirAdmin(RUTA);
+  return ultimasSincronizaciones();
 }

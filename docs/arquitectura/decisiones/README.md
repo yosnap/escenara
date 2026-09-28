@@ -34,6 +34,7 @@ Cada decisión relevante se documenta en un fichero `adr-NNNN-slug.md` dentro de
 | [0026](adr-0026-mapa-de-modelos-por-tipo.md) | Cada usuario tiene una lista ordenada de con qué se genera cada tipo, con reserva automática solo si se prueba que no hubo cobro y cada coste en la moneda de su proveedor | 0.21.1 | Aceptada |
 | [0027](adr-0027-personajes-inventados.md) | Un personaje inventado no tiene fotos, declara que no representa a nadie y su cara se genera entre cuatro retratos candidatos | 0.22.0 | Propuesto (existir es firme; retratos, lista de nombres y marcado provisionales) |
 | [0028](adr-0028-escenas-habladas-con-identidad-registrada.md) | Las escenas habladas citan una identidad y una voz registradas en el proveedor, y el modelo sale del catálogo con Gemini Omni 1.1 Flash como recomendado | 0.22.0 | Propuesto (camino Omni firme; modo `omni` y registro por versión provisionales) |
+| [0029](adr-0029-catalogo-dinamico-con-precios-publicos.md) | El catálogo se sincroniza con la tabla de precios pública del proveedor: estado «precio publicado», elegible solo si esta instalación sabe montar su entrada | 0.23.0 | Propuesto (elegir cualquier modelo con su coste delante es firme; estado, sincronización diaria y variante en el admin provisionales) |
 
 ## Plantilla
 

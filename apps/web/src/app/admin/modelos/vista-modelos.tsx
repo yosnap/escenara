@@ -13,8 +13,9 @@ import {
   type ModeloVista,
 } from "@/lib/catalogo";
 import type { ResultadoModelo } from "./acciones";
-import { BotonesPredeterminado, DialogoEstado, DialogoPrecio } from "./dialogos-modelo";
+import { BotonesPredeterminado, DialogoEstado, DialogoPrecio, DialogoVariante } from "./dialogos-modelo";
 import { HistorialCatalogo } from "./historial-catalogo";
+import { SincronizarPrecios, type UltimaLectura } from "./sincronizar-precios";
 
 /**
  * Catálogo filtrable por capacidad, proveedor y estado, con la edición de precio y de estado de cada
@@ -27,11 +28,16 @@ export function VistaModelos({
   inicial,
   historialInicial,
   conAdaptador,
+  conPreciosPublicos,
+  ultimasLecturas,
 }: {
   inicial: ModeloVista[];
   historialInicial: CambioCatalogo[];
   /** Proveedores a los que esta instalación ya sabe hablar. */
   conAdaptador: string[];
+  /** Proveedores cuya tarifa pública sabe leer esta instalación (0.23.0). */
+  conPreciosPublicos: string[];
+  ultimasLecturas: UltimaLectura[];
 }) {
   const [modelos, setModelos] = useState(inicial);
   const [historial, setHistorial] = useState(historialInicial);
@@ -63,6 +69,16 @@ export function VistaModelos({
 
   return (
     <div className="flex flex-col gap-6">
+      <SincronizarPrecios
+        proveedores={conPreciosPublicos}
+        ultimas={ultimasLecturas}
+        onCatalogo={(nuevos, nuevoHistorial, texto) => {
+          setModelos(nuevos);
+          setHistorial(nuevoHistorial);
+          setAviso(texto);
+        }}
+      />
+
       <div className="grid gap-3 sm:grid-cols-3">
         <Selector
           etiqueta="Capacidad"
@@ -117,6 +133,7 @@ export function VistaModelos({
                 acciones={
                   <>
                     <DialogoPrecio modelo={modelo} onResultado={alCambiar} />
+                    <DialogoVariante modelo={modelo} onResultado={alCambiar} />
                     <DialogoEstado modelo={modelo} onResultado={alCambiar} />
                     <BotonesPredeterminado modelo={modelo} onResultado={alCambiar} />
                   </>

@@ -30,11 +30,13 @@ const VEO: ModeloVista = {
   precio: {
     unidad: "vídeo de 4 s",
     creditos: 60,
+    publicado: false,
     fuente: "Medido con la cuenta de KIE del propietario",
     comprobado: "2026-09-27",
     sello: "kie:veo3_lite:vídeo de 4 s@v1",
     caducado: false,
   },
+  tarifas: [],
   actualizado: "2026-09-27T00:00:00.000Z",
 };
 
@@ -60,6 +62,7 @@ const HAILUO: ModeloVista = {
   precio: {
     unidad: "vídeo de 6 s",
     creditos: 30,
+    publicado: false,
     fuente: "Comparativa real del 2026-09-27",
     comprobado: "2026-01-10",
     sello: "kie:hailuo/2-3-image-to-video-standard:vídeo de 6 s@v1",

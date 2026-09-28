@@ -89,6 +89,7 @@ function modelo(parcial: Partial<ModeloVista> & Pick<ModeloVista, "modelo">): Mo
     version: 1,
     predeterminado: false,
     precio: null,
+    tarifas: [],
     actualizado: "2026-09-27T00:00:00.000Z",
     ...parcial,
   };

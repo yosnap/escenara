@@ -44,32 +44,42 @@ export const DESCRIPCION_CAPACIDAD: Record<Capacidad, string> = {
 /**
  * Estado del registro de un modelo:
  *
- * - `descubierto`: está en el catálogo del proveedor, pero Escenara no lo ha ejecutado nunca;
+ * - `descubierto`: está en el catálogo del proveedor, pero Escenara no lo ha ejecutado nunca **ni sabe con qué
+ *   parámetros pedírselo**. No se puede elegir;
+ * - `precio_publicado` (0.23.0): el proveedor publica su tarifa y esta instalación sabe montar su entrada, así
+ *   que **se puede elegir y estimar** con el precio publicado, diciendo que está publicado y no medido;
  * - `compatible`: se ha ejecutado de verdad y se conocen sus parámetros y su precio medido;
  * - `validado`: además, quien administra lo ha revisado con su evidencia y lo da por bueno;
  * - `retirado`: no se puede elegir ni enviar (lo ha quitado el proveedor o no interesa mantenerlo).
  */
-export const ESTADOS_MODELO = ["descubierto", "compatible", "validado", "retirado"] as const;
+export const ESTADOS_MODELO = ["descubierto", "precio_publicado", "compatible", "validado", "retirado"] as const;
 export type EstadoModelo = (typeof ESTADOS_MODELO)[number];
 
 export const esEstadoModelo = (v: unknown): v is EstadoModelo => ESTADOS_MODELO.includes(v as EstadoModelo);
 
 export const ETIQUETA_ESTADO_MODELO: Record<EstadoModelo, string> = {
   descubierto: "Descubierto",
+  precio_publicado: "Precio publicado",
   compatible: "Compatible",
   validado: "Validado",
   retirado: "Retirado",
 };
 
 export const DESCRIPCION_ESTADO_MODELO: Record<EstadoModelo, string> = {
-  descubierto: "Aparece en el proveedor, pero Escenara no lo ha ejecutado nunca. No se puede elegir.",
+  descubierto: "Aparece en el proveedor, pero Escenara no sabe con qué parámetros pedírselo. No se puede elegir.",
+  precio_publicado:
+    "El proveedor publica su tarifa y esta instalación sabe pedírselo. Se puede elegir y estimar, pero su precio está publicado, no medido aquí.",
   compatible: "Ejecutado de verdad: se conocen sus parámetros y su precio medido.",
   validado: "Revisado por quien administra, con su evidencia (coste medido y ejemplo o informe).",
   retirado: "Fuera de uso: no se puede elegir ni enviar.",
 };
 
-/** Solo estos dos estados se pueden elegir en «Crear» y enviar al proveedor. */
-export const ESTADOS_SELECCIONABLES: readonly EstadoModelo[] = ["compatible", "validado"];
+/**
+ * Estados que se pueden elegir y enviar al proveedor. `precio_publicado` entra desde la 0.23.0: con la tarifa
+ * pública del proveedor **sí se puede estimar antes de generar**, que es la única condición que pone la regla
+ * del dinero. Lo que cambia frente a los otros dos es de dónde sale el precio, y eso se dice en pantalla.
+ */
+export const ESTADOS_SELECCIONABLES: readonly EstadoModelo[] = ["precio_publicado", "compatible", "validado"];
 
 export const esSeleccionable = (estado: EstadoModelo) => ESTADOS_SELECCIONABLES.includes(estado);
 
@@ -137,6 +147,12 @@ export interface PrecioVista {
   unidad: string;
   creditos: number;
   fuente: string;
+  /**
+   * `true` cuando el precio es la **tarifa que publica el proveedor** y no una medición de esta instalación
+   * (0.23.0). Se enseña siempre: no es lo mismo «lo hemos pagado y costó esto» que «el proveedor dice que
+   * cuesta esto». Si al cerrar el trabajo el proveedor informa otra cifra, la diferencia queda registrada.
+   */
+  publicado: boolean;
   /** Fecha (AAAA-MM-DD) en la que se comprobó. */
   comprobado: string;
   /**
@@ -171,7 +187,23 @@ export interface ModeloVista {
   /** Opción por defecto de su capacidad en «Crear». */
   predeterminado: boolean;
   precio: PrecioVista | null;
+  /**
+   * Las demás tarifas que el proveedor publica para este mismo modelo (0.23.0): otras resoluciones u otras
+   * calidades. Solo se puede usar una a la vez —la de `precio`—, y cambiarla es una decisión de quien
+   * administra. Están aquí para que esa decisión se tome viendo lo que cuesta cada una.
+   */
+  tarifas: TarifaVista[];
   actualizado: string;
+}
+
+/** Una tarifa publicada del mismo modelo que no es la que está en uso. */
+export interface TarifaVista {
+  unidad: string;
+  creditos: number;
+  /** `true` si es la que el modelo tiene elegida ahora mismo. */
+  enUso: boolean;
+  /** Fecha (AAAA-MM-DD) en la que se leyó del proveedor. */
+  comprobado: string;
 }
 
 /**
@@ -188,6 +220,8 @@ export interface ModeloElegible {
   estado: EstadoModelo;
   /** Créditos por unidad, redondeados como se cobran. */
   creditos: number;
+  /** `true` si el precio es la tarifa publicada por el proveedor y no una medida aquí. */
+  precioPublicado: boolean;
   /** Duraciones que admite el clip, para decir cuántos segundos saldrá. */
   duraciones: number[];
   /**
@@ -206,6 +240,7 @@ export function recortarModelo(modelo: ModeloVista): ModeloElegible {
     unidad: modelo.unidad,
     estado: modelo.estado,
     creditos: Math.ceil(modelo.precio?.creditos ?? 0),
+    precioPublicado: modelo.precio?.publicado ?? false,
     duraciones: modelo.parametros.duraciones,
     maximoReferencias: modelo.parametros.maximoReferencias,
   };
@@ -217,7 +252,7 @@ export interface CambioCatalogo {
   modeloId: string;
   /** Identificador del modelo en el proveedor, para poder leer el historial sin cruzarlo. */
   modelo: string;
-  campo: "alta" | "estado" | "precio" | "predeterminado";
+  campo: "alta" | "estado" | "precio" | "predeterminado" | "variante" | "desviacion";
   desde: string;
   hasta: string;
   evidencia: string;

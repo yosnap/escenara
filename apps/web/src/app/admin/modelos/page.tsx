@@ -5,6 +5,7 @@ import { modelMapEntries } from "@/server/db/esquema";
 import { opcionesRecomendables, recomendadasDe } from "@/server/mapa/mapa";
 import { historialCatalogo, listarModelos } from "@/server/proveedores/catalogo";
 import { proveedoresConAdaptador } from "@/server/proveedores/registro";
+import { proveedoresConPreciosPublicos, ultimasSincronizaciones } from "@/server/proveedores/sincronizacion";
 import { Recomendadas, type TipoRecomendable } from "./recomendadas";
 import { VistaModelos } from "./vista-modelos";
 
@@ -13,7 +14,11 @@ export const dynamic = "force-dynamic";
 
 /** Catálogo de proveedores y modelos (el layout del admin ya exige el rol). */
 export default async function PaginaModelos() {
-  const [modelos, historial] = await Promise.all([listarModelos(), historialCatalogo()]);
+  const [modelos, historial, ultimasLecturas] = await Promise.all([
+    listarModelos(),
+    historialCatalogo(),
+    ultimasSincronizaciones(),
+  ]);
   const escritas = await db().select({ kind: modelMapEntries.kind }).from(modelMapEntries);
   const tipos: TipoRecomendable[] = await Promise.all(
     TIPOS_EN_USO.map(async (tipo) => ({
@@ -38,7 +43,13 @@ export default async function PaginaModelos() {
         </p>
       </div>
       <Recomendadas tipos={tipos} />
-      <VistaModelos inicial={modelos} historialInicial={historial} conAdaptador={proveedoresConAdaptador} />
+      <VistaModelos
+        inicial={modelos}
+        historialInicial={historial}
+        conAdaptador={proveedoresConAdaptador}
+        conPreciosPublicos={proveedoresConPreciosPublicos()}
+        ultimasLecturas={ultimasLecturas}
+      />
     </main>
   );
 }

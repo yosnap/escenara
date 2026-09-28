@@ -236,6 +236,12 @@ export const modelPrices = pgTable(
     unit: text("unit").notNull(),
     credits: real("credits").notNull(),
     source: text("source").notNull(),
+    /**
+     * `true` cuando el precio es la **tarifa publicada** por el proveedor y no una medición de esta instalación
+     * (0.23.0). Es un hecho, no una frase dentro de `source`: de él depende que la pantalla diga «publicado por
+     * el proveedor, no medido aquí» y que una diferencia con lo cobrado se registre como desviación.
+     */
+    published: boolean("published").notNull().default(false),
     checkedAt: timestamp("checked_at", { withTimezone: true }).notNull().defaultNow(),
     version: integer("version").notNull().default(1),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),

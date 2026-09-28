@@ -1,4 +1,4 @@
-import { BadgeCheck, CircleDot, CircleSlash, FlaskConical, MicOff, TriangleAlert } from "lucide-react";
+import { BadgeCheck, CircleDot, CircleSlash, FlaskConical, MicOff, Tag, TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
 import {
   DESCRIPCION_CAPACIDAD,
@@ -23,6 +23,7 @@ import { Selector } from "./select";
 
 const ASPECTO_ESTADO: Record<EstadoModelo, { icono: ReactNode; clase: string }> = {
   descubierto: { icono: <CircleDot />, clase: "text-texto-suave" },
+  precio_publicado: { icono: <Tag />, clase: "text-acento" },
   compatible: { icono: <FlaskConical />, clase: "text-acento" },
   validado: { icono: <BadgeCheck />, clase: "text-correcto" },
   retirado: { icono: <CircleSlash />, clase: "text-error" },
@@ -62,12 +63,18 @@ export function PrecioDeModelo({ modelo }: { modelo: ModeloVista }) {
   if (!modelo.precio) {
     return <p className="text-sm font-medium text-texto">Sin precio registrado: no se puede estimar ni generar.</p>;
   }
-  const { creditos, unidad, fuente, comprobado, caducado } = modelo.precio;
+  const { creditos, unidad, fuente, comprobado, caducado, publicado } = modelo.precio;
   return (
     <div className="flex flex-col gap-1">
       <p className="font-mono text-lg font-semibold text-texto">
         {formatearCreditos(creditos)} <span className="font-sans text-sm font-normal text-texto-suave">/ {unidad}</span>
       </p>
+      {publicado && (
+        <p className="text-sm font-semibold text-texto">
+          Precio <strong className="font-bold">publicado por el proveedor</strong>, no medido en esta instalación. Lo
+          que se apunte al terminar será lo que informe él, y si difiere queda registrada la diferencia.
+        </p>
+      )}
       <p className="text-sm text-texto-suave">
         {fuente}, comprobado el {comprobado}.
       </p>
@@ -77,6 +84,31 @@ export function PrecioDeModelo({ modelo }: { modelo: ModeloVista }) {
           Hace más de 90 días que no se comprueba: puede haber cambiado.
         </p>
       )}
+    </div>
+  );
+}
+
+/**
+ * Las demás tarifas publicadas del mismo modelo (0.23.0): otras resoluciones u otras calidades. Solo se usa
+ * una a la vez —la marcada— y cambiarla es una decisión de quien administra, que así la toma viendo lo que
+ * cuesta cada una.
+ */
+function OtrasTarifas({ modelo }: { modelo: ModeloVista }) {
+  if (modelo.tarifas.length < 2) return null;
+  return (
+    <div className="flex flex-col gap-1 rounded-control bg-elevada p-3">
+      <p className="text-sm font-semibold text-texto">El proveedor cobra este modelo según lo que se le pida:</p>
+      <ul className="flex flex-col gap-0.5">
+        {modelo.tarifas.map((tarifa) => (
+          <li key={tarifa.unidad} className="text-sm text-texto-suave">
+            <span className={cn("font-mono", tarifa.enUso && "font-semibold text-texto")}>
+              {formatearCreditos(tarifa.creditos)}
+            </span>{" "}
+            por {tarifa.unidad}
+            {tarifa.enUso && <span className="font-semibold text-texto"> · es la que se envía</span>}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -128,6 +160,7 @@ export function FichaModelo({ modelo, acciones }: { modelo: ModeloVista; accione
       )}
 
       <PrecioDeModelo modelo={modelo} />
+      <OtrasTarifas modelo={modelo} />
 
       {!modelo.conVoz && modelo.capacidades.some((c) => c === "image_to_video" || c === "text_to_video") && (
         <AvisoSinVoz />
@@ -149,10 +182,12 @@ export function FichaModelo({ modelo, acciones }: { modelo: ModeloVista; accione
 export function opcionDeModelo(modelo: ModeloElegible): Opcion {
   const coste = formatearCreditos(modelo.creditos);
   const voz = modelo.conVoz ? "" : " · sin voz";
+  // De dónde sale el precio se dice en el propio selector: no es lo mismo «lo hemos pagado» que «dicen que cuesta».
+  const origen = modelo.precioPublicado ? " · precio publicado por el proveedor" : "";
   return {
     value: modelo.modelo,
     label: modelo.nombre,
-    descripcion: `${coste} por ${modelo.unidad} · ${ETIQUETA_ESTADO_MODELO[modelo.estado].toLowerCase()}${voz}`,
+    descripcion: `${coste} por ${modelo.unidad} · ${ETIQUETA_ESTADO_MODELO[modelo.estado].toLowerCase()}${voz}${origen}`,
   };
 }
 
