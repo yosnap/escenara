@@ -1,5 +1,6 @@
 import { and, asc, eq, isNull } from "drizzle-orm";
 import type { Proveedor } from "@/lib/boveda";
+import { categoriaDeModelo } from "@/lib/compatible";
 import {
   type EntradaMapa,
   type EntradaMapaVista,
@@ -92,7 +93,9 @@ export async function entradasDe(
    */
   const compatibles = await usarCompatibles(usuarioId);
   const suyas: EntradaMapa[] = compatibles.flatMap((c) =>
-    c.modelos.map((modelo) => ({ proveedor: "compatible" as Proveedor, compatibleId: c.id, modelo })),
+    c.modelos
+      .filter((modelo) => categoriaDeModelo(modelo) === "texto")
+      .map((modelo) => ({ proveedor: "compatible" as Proveedor, compatibleId: c.id, modelo })),
   );
   return { entradas: [...suyas, ...recomendadas], propio: false };
 }
@@ -263,7 +266,8 @@ export async function opcionesDe(usuarioId: string, tipo: TipoDeMapa): Promise<E
   // Los servicios compatibles solo saben de texto, voz y subtítulos: no se ofrecen donde no sirven.
   if (tipo === "texto" || tipo === "voz" || tipo === "transcripcion") {
     for (const servicio of await usarCompatibles(usuarioId)) {
-      for (const modelo of servicio.modelos) {
+      // Cada tipo solo ofrece los modelos de su clase: whisper en subtítulos, kokoro en voz, los de chat en texto.
+      for (const modelo of servicio.modelos.filter((m) => categoriaDeModelo(m) === tipo)) {
         opciones.push({
           proveedor: "compatible",
           compatibleId: servicio.id,

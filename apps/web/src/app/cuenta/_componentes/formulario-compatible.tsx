@@ -8,14 +8,14 @@ import { EntradaContrasena } from "@/components/ui/entrada-contrasena";
 import { AreaTexto, Campo, EntradaTexto } from "@/components/ui/field";
 import { type ElementoOrdenable, ListaOrdenable } from "@/components/ui/lista-ordenable";
 import { SelectorMultiple } from "@/components/ui/multi-select";
-import { type CompatibleVista, MODELOS_MAXIMOS, PLANTILLAS } from "@/lib/compatible";
+import {
+  type CompatibleVista,
+  categoriaDeModelo,
+  MODELOS_MAXIMOS,
+  NOMBRE_DE_CATEGORIA,
+  PLANTILLAS,
+} from "@/lib/compatible";
 import { modelosDelServicioAccion } from "../acciones-compatibles";
-
-/**
- * Modelos que un servicio lista pero que no escriben texto (transcripción, voz, imagen, vectores…). Se quitan de
- * la lista para elegir: aquí solo sirven los de texto. Es una criba por nombre; lo que se cuele se puede quitar.
- */
-const NO_ES_TEXTO = /whisper|kokoro|tts|speech|audio|embed|rerank|moderation|flux|image|dall-?e|sora|veo|video/i;
 
 /**
  * Alta o sustitución de un servicio compatible con la API de OpenAI. Es una **zona de claridad**: decide con qué
@@ -75,7 +75,8 @@ export function FormularioCompatible({
       setErrorCarga(respuesta.error);
       return;
     }
-    setDisponibles(respuesta.modelos.filter((m) => !NO_ES_TEXTO.test(m)).sort());
+    // Los de imagen, vectores o reordenación no los usa Escenara: no se ofrecen.
+    setDisponibles(respuesta.modelos.filter((m) => categoriaDeModelo(m) !== "otro").sort());
     setAMano(false);
   };
 
@@ -86,6 +87,9 @@ export function FormularioCompatible({
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <span className="w-16 shrink-0 text-sm text-texto-suave">{indice === 0 ? "Preferido" : `${indice + 1}.º`}</span>
         <span className="min-w-0 flex-1 truncate font-mono text-sm">{modelo}</span>
+        <span className="shrink-0 text-xs text-texto-suave">
+          {NOMBRE_DE_CATEGORIA[categoriaDeModelo(modelo) as keyof typeof NOMBRE_DE_CATEGORIA] ?? ""}
+        </span>
         <BotonIcono
           etiqueta={`Quitar ${modelo}`}
           disabled={ocupado}
@@ -157,7 +161,7 @@ export function FormularioCompatible({
 
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          <span className="text-base font-semibold text-texto">Modelos de texto</span>
+          <span className="text-base font-semibold text-texto">Modelos</span>
           <Boton
             tamano="sm"
             variante="secundario"
@@ -174,7 +178,7 @@ export function FormularioCompatible({
         <p className="text-sm text-texto-suave">
           {clave.trim() === "" && !inicial
             ? "Escribe la dirección y pega la clave para pedirle al servicio su lista de modelos (no consume cuota)."
-            : `Se prueban en el orden de abajo: el primero es el preferido y se pasa al siguiente si no está disponible. Arrástralos para cambiar el orden. Como mucho ${MODELOS_MAXIMOS}.`}
+            : `Los de texto se usan para traducir y escribir el guion, los de voz para leer diálogos y los de transcripción para los subtítulos; cada uno aparece en su apartado del mapa. Dentro de cada clase se prueban en el orden de abajo: arrástralos para cambiarlo. Como mucho ${MODELOS_MAXIMOS}.`}
         </p>
         {errorCarga && <p className="text-sm font-medium text-error">{errorCarga}</p>}
 
@@ -194,8 +198,12 @@ export function FormularioCompatible({
         ) : (
           disponibles && (
             <SelectorMultiple
-              etiqueta={`Elige de los ${disponibles.length} modelos de texto del servicio`}
-              opciones={disponibles.map((m) => ({ value: m, label: m }))}
+              etiqueta={`Elige de los ${disponibles.length} modelos útiles del servicio (texto, voz y transcripción)`}
+              opciones={disponibles.map((m) => ({
+                value: m,
+                label: m,
+                descripcion: NOMBRE_DE_CATEGORIA[categoriaDeModelo(m) as keyof typeof NOMBRE_DE_CATEGORIA],
+              }))}
               valor={modelos.filter((m) => disponibles.includes(m)).map((m) => ({ value: m, label: m }))}
               onCambio={(valor) => {
                 const marcados = valor.map((o) => o.value);

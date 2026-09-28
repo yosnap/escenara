@@ -57,7 +57,7 @@ const { escribirGuion } = await import("../asistente/generar");
 const { olvidarCatalogo } = await import("../proveedores/catalogo");
 const { ErrorGeneracion } = await import("../generacion/errores");
 const { ErrorProyecto } = await import("../asistente/errores");
-const { guardarMapa, mapaVista, recomendadasDe, volverALoRecomendado } = await import("./mapa");
+const { guardarMapa, mapaVista, opcionesDe, recomendadasDe, volverALoRecomendado } = await import("./mapa");
 const { transcribirPorMapa } = await import("./transcripcion");
 const { eleccionDeVozDelMapa } = await import("./voz");
 const { ErrorCatalogo } = await import("../proveedores/contrato");
@@ -295,6 +295,27 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
     const otra = await modelosDelServicio(ana.id, { urlBase: BASE_OTRO, clave: "", id: nan?.id }, buscar);
     expect(otra.ok).toBe(false);
     expect(peticionesDeModelos.length).toBe(antes);
+  });
+
+  test("cada apartado del mapa solo ofrece los modelos de su clase del servicio compatible", async () => {
+    await guardarCompatible(
+      ana.id,
+      {
+        nombre: "NaN builders",
+        urlBase: BASE_NAN,
+        clave: CLAVE_NAN,
+        modelos: ["gemma4", "deepseek-v4-flash", "glm5.3-flash", "whisper", "kokoro"],
+        soloCuota: true,
+      },
+      buscar,
+    );
+    const deServicio = async (tipo: "texto" | "voz" | "transcripcion") =>
+      (await opcionesDe(ana.id, tipo))
+        .filter((o) => o.proveedor === "compatible" && o.nombreProveedor === "NaN builders")
+        .map((o) => o.modelo);
+    expect(await deServicio("transcripcion")).toEqual(["whisper"]);
+    expect(await deServicio("voz")).toEqual(["kokoro"]);
+    expect(await deServicio("texto")).toEqual(["gemma4", "deepseek-v4-flash", "glm5.3-flash"]);
   });
 
   test("429 en un modelo pasa al siguiente modelo del mismo servicio", async () => {
