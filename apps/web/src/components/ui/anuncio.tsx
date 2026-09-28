@@ -279,7 +279,7 @@ const TONO: Record<VeredictoCoherencia, string> = {
 };
 
 /**
- * El veredicto de `angulo_fiel` con su evidencia —**qué ángulos se mezclan**— y su confianza, y los dos botones de
+ * El veredicto de `angulo_fiel` con su evidencia —si el guion **mezcla ángulos**— y su confianza, y los dos botones de
  * corrección humana, que son la única etiqueta con la que se mide si acierta (0.24.0).
  *
  * Se pide **a mano**: ni abrir la pantalla ni guardar el brief lo disparan, porque lo paga el tope diario de Jev de

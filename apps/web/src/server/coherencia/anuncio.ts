@@ -112,7 +112,7 @@ export async function comprobarAnguloDelAnuncio(actor: Actor, proyectoId: unknow
       angle_definition: angulo.definicion,
       angle_entry_point: angulo.porDondeEntra,
       angle_example: angulo.ejemplo,
-      // Los otros ángulos con su definición: es lo que permite nombrar **cuál** se mezcla.
+      // Los otros ángulos con su definición: es con lo que se compara para decidir si se mezclan.
       other_angles: angulos
         .filter((a) => a.clave !== angulo.clave)
         .map((a) => `${a.nombre}: ${a.definicion}`)

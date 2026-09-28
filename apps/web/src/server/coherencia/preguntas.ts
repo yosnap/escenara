@@ -147,14 +147,15 @@ export const PREGUNTAS: Record<Comprobacion, DefinicionPregunta> = {
    * Con una escala, «mezcla dos ángulos» y «le falta la oferta» caerían en la misma casilla intermedia y la
    * evidencia no podría decir cuál de las dos es. Con categorías, la respuesta **es** la evidencia.
    *
-   * La lista de los otros ángulos del catálogo entra en el estado, no en la pregunta: es lo que permite que el
-   * veredicto diga **cuáles** se mezclan sin que el texto de la pregunta cambie al ampliar el catálogo.
+   * La lista de los otros ángulos del catálogo entra en el estado, no en la pregunta, para que el texto de la
+   * pregunta no cambie al ampliar el catálogo. La respuesta es una categoría: el veredicto dice que **se mezclan**
+   * ángulos y enseña el guion que se miró, pero no nombra cuál es el intruso.
    */
   angulo_fiel: {
     pregunta: {
       type: "choice",
       instructions:
-        "The script of a short video ad is given, together with the single advertising angle it was written for (its name, its definition and an example), the offer exactly as the advertiser defined it, and the names and definitions of the other angles in the catalogue. An advertising angle is the entry point of the ad: the pain, desire or belief it speaks from. The hard rule is one angle per ad. Decide which of the following describes this script. Judge the script only against the angle and the offer that are given; do not judge whether the ad is good, well written or persuasive. An offer detail that the advertiser did not define and the script states as a fact (a price, a guarantee, a deadline or a gift that is not in the offer) means the offer is not as defined.",
+        "The script of a short video ad is given, together with the single advertising angle it was written for (its name, its definition and an example), the offer exactly as the advertiser defined it, and the names and definitions of the other angles in the catalogue. An advertising angle is the entry point of the ad: the pain, desire or belief it speaks from. The hard rule is one angle per ad. Decide which of the following describes this script. Judge the script only against the angle and the offer that are given; do not judge whether the ad is good, well written or persuasive. Stating the offer's own details (its price, guarantee, deadline or gift) in a closing line or call to action is not another angle: it is the offer, and it does not make the script mix angles as long as the script keeps speaking from the given angle. An offer detail that the advertiser did not define and the script states as a fact (a price, a guarantee, a deadline or a gift that is not in the offer) means the offer is not as defined.",
       criteria: {
         fiel: "The script speaks from the given angle only, and the offer appears as the advertiser defined it",
         mezcla: "The script speaks from the given angle but also from one or more of the other angles",

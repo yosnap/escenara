@@ -556,7 +556,7 @@ describe.skipIf(!hayBaseDeDatos)("hooks, guion y variantes del anuncio", () => {
       expect(await anguloFielGuardadoDe(actorAna, proyectoId)).not.toBeNull();
     });
 
-    test("un guion que mezcla dos ángulos sale negativo y la evidencia lo nombra, y aun así no bloquea", async () => {
+    test("un guion que mezcla dos ángulos sale negativo y la evidencia lo dice, y aun así no bloquea", async () => {
       const proyectoId = await proyectoConBrief("comodidad");
       await proponerHooksYGuion(actorAna, proyectoId, await confirmacion(), buscar);
       respuestaDeJev = fixtures.JEV_ANGULO_MEZCLA;

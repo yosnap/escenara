@@ -3,6 +3,7 @@ import {
   ErrorPropuestaDeAnuncio,
   guionConHook,
   HOOKS_PEDIDOS,
+  INSTRUCCIONES_HOOKS_Y_GUION,
   leerPropuestaDeAnuncio,
   peticionDeHooksYGuion,
 } from "./anuncio-guion";
@@ -212,5 +213,13 @@ describe("el hook como primera frase del guion", () => {
 
   test("con el guion vacío, el hook es el guion", () => {
     expect(guionConHook("¿Y si no es tu pelo?", "   ")).toBe("¿Y si no es tu pelo?");
+  });
+});
+
+describe("las instrucciones al modelo anclan el ángulo en todo el guion", () => {
+  test("el ángulo vale para todas las escenas y contar la oferta en el cierre no es cambiar de ángulo", () => {
+    expect(INSTRUCCIONES_HOOKS_Y_GUION).toContain("El ángulo vale para todas las escenas");
+    expect(INSTRUCCIONES_HOOKS_Y_GUION).toContain("la primera escena entra por el punto de entrada del ángulo");
+    expect(INSTRUCCIONES_HOOKS_Y_GUION).toContain("no es cambiar de ángulo");
   });
 });
