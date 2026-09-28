@@ -33,6 +33,7 @@ import { DialogoBorrarPersonaje } from "./dialogo-borrar-personaje";
 import { type EstadoDeClave, PanelCobertura } from "./panel-cobertura";
 import { PanelConsentimiento } from "./panel-consentimiento";
 import { PanelFicha } from "./panel-ficha";
+import { PanelHojaIdentidad } from "./panel-hoja-identidad";
 import { PanelOmni, type ProyectoOmni } from "./panel-omni";
 import { PanelReferencias, type ResultadoAnadir } from "./panel-referencias";
 import { PanelRetratos } from "./panel-retratos";
@@ -51,12 +52,15 @@ export function FichaPersonaje({
   umbrales,
   claveDeGeneracion,
   retratos,
+  hojaIdentidad,
   proyectosOmni,
 }: {
   inicial: PersonajeVista;
   umbrales: UmbralesCalidad;
   /** Retratos candidatos de un personaje inventado, resueltos por la página; vacío en los demás. */
   retratos: Medio[];
+  /** Hoja de identidad 3×3 ya generada, resuelta por la página; `null` si todavía no hay ninguna. */
+  hojaIdentidad: Medio | null;
   /** Proyectos suyos en modo Omni, para poder registrarlo con la voz de uno de ellos (0.22.0). */
   proyectosOmni: ProyectoOmni[];
   /** Si se puede generar con la clave del usuario, y si no, por qué: lo decide el servidor en la página. */
@@ -281,6 +285,15 @@ export function FichaPersonaje({
                     onVista={cambiarVista}
                     onIdentidad={(referenciaId) => void comprobarParecido(referenciaId)}
                     ocupado={ocupado}
+                  />
+                  {/* La hoja 3×3 va con las referencias: es otra forma de darle su cara al modelo. */}
+                  <PanelHojaIdentidad
+                    personaje={personaje}
+                    hoja={hojaIdentidad}
+                    onPersonaje={(actualizado) => {
+                      setPersonaje(actualizado);
+                      router.refresh();
+                    }}
                   />
                 </div>
               ),

@@ -125,6 +125,8 @@ Sube una foto de referencia y el programa lee de ella la **cámara**, la **ropa*
 te los deja escritos en campos que puedes corregir. No lee quién es la persona: eso sale de las referencias de
 tu personaje.
 
+![Rellenar el fotograma desde una foto](../assets/capturas/0.25.0-extraccion-claro.webp)
+
 **No se genera nada hasta que confirmas esos campos.** Lo que un modelo cree ver no es necesariamente lo que
 tú quieres pedir, y darlo por bueno sin mirarlo sería gastarte el dinero en la interpretación de otro. Si algo
 no se ha podido leer, se te dice cuál y lo escribes tú.
@@ -156,6 +158,10 @@ Probado con clips reales el 28/09/2026:
 
 Todavía sin comprobar: si el **acento** suena como se pide (hay que escucharlo) y los movimientos avanzados
 que no se han probado.
+
+Puedes **generarla desde la ficha del personaje**, en la pestaña de referencias: cuesta lo mismo que un
+fotograma y se confirma como cualquier otra generación. Desde ahí también la descartas o la haces la
+referencia fija del personaje.
 
 La **hoja de identidad 3×3** (nueve retratos en una imagen) nace como **candidata** y **no se usa** salvo que
 tú lo pidas. En la ficha del personaje hay un interruptor, apagado de fábrica: «Probar la hoja en la mitad de

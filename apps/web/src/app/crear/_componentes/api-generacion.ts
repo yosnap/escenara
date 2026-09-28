@@ -133,3 +133,27 @@ export const consultarEstimacion = (
   if (opciones.segundos !== undefined) parametros.set("segundos", String(opciones.segundos));
   return pedir<Estimacion>(`/api/generacion/estimacion?${parametros}`);
 };
+
+/** Las cuatro C que se pueden leer de una foto. La identidad no está: sale de las referencias del personaje. */
+export interface SeisCExtraidas {
+  camara: string;
+  ropa: string;
+  contexto: string;
+  luz: string;
+}
+
+/** Lo que devuelve la lectura: campos revisables y el aviso de los que no se han podido leer. */
+export interface ExtraccionVista {
+  campos: SeisCExtraidas;
+  /** Campos que el modelo no supo leer, escrito para el usuario. Vacío si los leyó todos. */
+  aviso: string;
+  /** Siempre `false`: confirmar es pulsar el botón, no una respuesta del servidor. */
+  confirmada: boolean;
+}
+
+/**
+ * Lee las 6C de una foto del usuario. **No cuesta créditos** (se paga con la cuota de su plan) y **no genera
+ * nada**: devuelve campos para que los revise.
+ */
+export const extraerCamposDeFoto = (medioId: string) =>
+  pedir<ExtraccionVista>("/api/direccion/extraer", json({ medioId }));

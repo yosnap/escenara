@@ -68,6 +68,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
   inventados. Con una persona real no aparece, y si llegara, se rechaza.
 - **Comparación de la hoja 3×3 frente a las vistas sueltas** en Admin › Coherencia, con muestra mínima de 20 en
   cada grupo. Por debajo de ahí enseña recuentos y no saca conclusiones.
+- **Generar la hoja 3×3 desde la ficha del personaje**, con su coste estimado, su confirmación y el motor de
+  controles de siempre. Al terminar se ve, y desde ahí se puede hacer la referencia del personaje o
+  descartarla. Si el personaje todavía no puede generar, se dice qué le falta y no se ofrece.
+- **Rellenar el fotograma desde una foto** en «Crear»: eliges una imagen y se leen de ella la cámara, la ropa,
+  el sitio y la luz, en campos que corriges antes de generar. No cuesta créditos y no genera nada hasta que lo
+  confirmas. De quién sale en la foto no se lee nada.
 - **«Probar la hoja en la mitad de mis escenas»**, un interruptor en la ficha del personaje, **desactivado de
   fábrica**. Solo con él activado se reparten sus escenas entre la hoja y sus fotos: la prueba cambia con qué
   se genera, así que la decide quien paga. Cada escena dice con cuál de las dos se hizo.

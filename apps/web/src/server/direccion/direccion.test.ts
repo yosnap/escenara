@@ -11,10 +11,10 @@ import {
   firmaDeVoz,
 } from "@/lib/direccion";
 import { type DireccionDeClip, dirigirClip, dirigirClipPara, familiaDe } from "./clip";
-import { camposDeLaRespuesta } from "./extraccion";
+import { avisoDeCamposSinLeer, camposDeLaRespuesta } from "./extraccion";
 import { pedidoDeDireccion, resumirDireccion } from "./fidelidad";
 import { componerSeisC, type SeisC } from "./fotograma";
-import { conHojaDeIdentidad, motivoSinHoja, promptHojaIdentidad } from "./hoja-identidad";
+import { AVISO_HOJA_IDENTIDAD, conHojaDeIdentidad, motivoSinHoja, promptHojaIdentidad } from "./hoja-identidad";
 import {
   ACENTO_INGLES,
   ANCLAJES_REALISMO,
@@ -454,6 +454,15 @@ describe("extracción de las 6C desde una foto de referencia", () => {
     expect(sinLeer).toEqual(["contexto"]);
   });
 
+  test("el aviso de los campos sin leer los nombra en castellano, para que el usuario los escriba", () => {
+    const aviso = avisoDeCamposSinLeer(["ropa", "contexto"]);
+    expect(aviso).toContain("ropa");
+    expect(aviso).toContain("sitio");
+    expect(aviso).toContain("Escríbelo tú antes de generar");
+    // Sin huecos no se avisa de nada: un aviso vacío es ruido.
+    expect(avisoDeCamposSinLeer([])).toBe("");
+  });
+
   test("una respuesta que no es de campos no rellena nada", () => {
     const { campos, sinLeer } = camposDeLaRespuesta("Sure! Here is a lovely description of the photo you sent.");
     expect(Object.values(campos).every((v) => v === "")).toBe(true);
@@ -530,6 +539,11 @@ describe("hoja de identidad 3×3", () => {
   test("sin fotos suficientes se dice cuántas faltan en vez de generar algo peor", () => {
     expect(motivoSinHoja(1, 3)).toContain("al menos 3");
     expect(motivoSinHoja(3, 3)).toBe("");
+  });
+
+  test("el aviso de generarla dice lo que cuesta y que no se usa por defecto", () => {
+    expect(AVISO_HOJA_IDENTIDAD).toContain("cuesta lo mismo que un fotograma");
+    expect(AVISO_HOJA_IDENTIDAD).toContain("candidata");
   });
 });
 

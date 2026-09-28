@@ -4,7 +4,7 @@ import { ErrorProyecto } from "@/server/asistente/errores";
 import { exigirMismoOrigen, leerCuerpo, manejador } from "@/server/asistente/http";
 import { db } from "@/server/db/cliente";
 import { media } from "@/server/db/esquema";
-import { extraerSeisC } from "@/server/direccion/extraccion";
+import { avisoDeCamposSinLeer, extraerSeisC } from "@/server/direccion/extraccion";
 import { imagenParaModelo } from "@/server/media/procesado";
 
 export const dynamic = "force-dynamic";
@@ -32,5 +32,14 @@ export const POST = manejador(async (peticion: Request, _contexto: unknown, acto
   }
   const imagen = await imagenParaModelo(new Uint8Array(await leerObjeto(fila.storageKey).arrayBuffer()));
   const extraccion = await extraerSeisC({ usuarioId: actor.id, medioId, imagen });
-  return Response.json(extraccion);
+  /**
+   * Solo salen los **campos revisables** y el aviso de los que no se han podido leer. Los hechos en crudo que
+   * devolvió la percepción se quedan en el servidor, como el resto del material de prompt (ADR-0022): lo que
+   * el usuario necesita es lo que va a corregir, no la descripción en inglés de la que salió.
+   */
+  return Response.json({
+    campos: extraccion.campos,
+    aviso: avisoDeCamposSinLeer(extraccion.sinLeer),
+    confirmada: extraccion.confirmada,
+  });
 });

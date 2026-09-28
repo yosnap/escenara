@@ -1,13 +1,15 @@
 import { eq } from "drizzle-orm";
 import type { TrabajoVista } from "@/lib/generacion";
+import type { Medio } from "@/lib/media/tipos";
+import type { PersonajeVista } from "@/lib/personajes";
 import { db } from "../db/cliente";
-import { characters } from "../db/esquema";
+import { characters, media } from "../db/esquema";
 import { AVISO_HOJA_IDENTIDAD, motivoSinHoja, promptHojaIdentidad } from "../direccion/hoja-identidad";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { crearFotograma } from "../generacion/servicio";
-import type { Actor } from "../media/servicio";
+import { type Actor, aDto } from "../media/servicio";
 import { claveDerivada } from "../produccion/producir";
-import { contarReferencias, filaPropia } from "./consulta";
+import { contarReferencias, filaPropia, obtenerPersonaje } from "./consulta";
 import { ErrorPersonaje } from "./errores";
 
 /**
@@ -80,4 +82,43 @@ export async function guardarHojaDeIdentidad(personajeId: string, medioId: strin
     .update(characters)
     .set({ identitySheetMediaId: medioId, identitySheetStatus: "candidata", updatedAt: new Date() })
     .where(eq(characters.id, personajeId));
+}
+
+/**
+ * Descarta la hoja o la hace **la referencia por defecto** del personaje.
+ *
+ * No cuesta nada y no genera nada: la hoja ya está pagada. Lo que cambia es con qué se generará a partir de
+ * ahora, y por eso es una decisión de su dueño. Ascenderla apaga además la prueba: si ya es la referencia de
+ * todas sus escenas, repartir la mitad no mediría nada.
+ */
+export async function cambiarEstadoDeHoja(actor: Actor, id: unknown, estado: unknown): Promise<PersonajeVista> {
+  const personaje = await filaPropia(actor, id);
+  if (!personaje.identitySheetMediaId) {
+    throw new ErrorPersonaje(409, "Este personaje todavía no tiene hoja de identidad que cambiar.");
+  }
+  if (estado !== "por_defecto" && estado !== "descartada") {
+    throw new ErrorPersonaje(400, "La hoja solo se puede marcar como referencia por defecto o descartarla.");
+  }
+  await db()
+    .update(characters)
+    .set({
+      identitySheetStatus: estado,
+      // Con la hoja ya por defecto no hay nada que repartir, y descartada tampoco.
+      identitySheetTrial: false,
+      updatedAt: new Date(),
+    })
+    .where(eq(characters.id, personaje.id));
+  return obtenerPersonaje(actor, personaje.id);
+}
+
+/** La hoja ya generada, lista para enseñarla; `null` si el personaje no tiene ninguna o se borró del medio. */
+export async function medioDeLaHoja(actor: Actor, personajeId: string): Promise<Medio | null> {
+  const [personaje] = await db()
+    .select({ hoja: characters.identitySheetMediaId })
+    .from(characters)
+    .where(eq(characters.id, personajeId))
+    .limit(1);
+  if (!personaje?.hoja) return null;
+  const [fila] = await db().select().from(media).where(eq(media.id, personaje.hoja)).limit(1);
+  return fila && fila.deletedAt === null ? aDto(fila, actor) : null;
 }

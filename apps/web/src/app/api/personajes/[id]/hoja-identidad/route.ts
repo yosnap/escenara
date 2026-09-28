@@ -1,4 +1,4 @@
-import { generarHojaDeIdentidad } from "@/server/personajes/hoja-identidad";
+import { cambiarEstadoDeHoja, generarHojaDeIdentidad } from "@/server/personajes/hoja-identidad";
 import { type ContextoId, leerCuerpo, leerId, manejador } from "@/server/personajes/http";
 
 export const dynamic = "force-dynamic";
@@ -25,4 +25,16 @@ export const POST = manejador(async (peticion: Request, contexto: ContextoId, ac
     ...(Array.isArray(cuerpo.avisosConfirmados) ? { avisosConfirmados: cuerpo.avisosConfirmados.map(String) } : {}),
   });
   return Response.json(resultado, { status: 201 });
+});
+
+/**
+ * Cambia el estado de la hoja: **descartarla** o hacerla la **referencia por defecto** del personaje.
+ *
+ * No cuesta nada: la hoja ya está generada y pagada. Lo que cambia es con qué se generará a partir de ahora,
+ * y por eso lo decide su dueño y no un panel de métricas.
+ */
+export const PATCH = manejador(async (peticion: Request, contexto: ContextoId, actor) => {
+  const id = await leerId(contexto);
+  const cuerpo = await leerCuerpo(peticion);
+  return Response.json(await cambiarEstadoDeHoja(actor, id, cuerpo.estado));
 });

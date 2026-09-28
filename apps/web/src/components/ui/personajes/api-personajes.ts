@@ -1,6 +1,7 @@
 import type { PropuestaDeFicha } from "@/lib/asistente-personaje";
 import type { RechazoDeReferencia, Vista } from "@/lib/captura-personaje";
 import type { EvaluacionVista } from "@/lib/controles";
+import type { EstadoHojaIdentidad } from "@/lib/direccion";
 import type { CampoFicha } from "@/lib/ficha-personaje";
 import type { Estimacion, TrabajoVista } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
@@ -193,6 +194,31 @@ export const anadirImagenesGeneradas = (id: string, medioIds: string[]) =>
       referencias: medioIds.map((medioId) => ({ medioId, usarDeTodasFormas: true })),
       generadasConIA: true,
     }),
+  );
+
+/** Lo que se confirma al encargar la hoja: es una generación como cualquier otra. */
+export interface ConfirmacionHojaIdentidad {
+  creditosConfirmados: number;
+  derechos: boolean;
+  avisoUmbralAceptado: boolean;
+  claveIdempotencia: string;
+  modelo?: string;
+  selloEstimacion?: string;
+  avisosConfirmados: string[];
+}
+
+/** Encarga la hoja de identidad 3×3. Cuesta como un fotograma y pasa por el camino de dinero de siempre. */
+export const generarHojaDeIdentidad = (id: string, confirmacion: ConfirmacionHojaIdentidad) =>
+  pedir<{ trabajo: TrabajoVista; aviso: string }>(`/api/personajes/${id}/hoja-identidad`, json("POST", confirmacion));
+
+/** Cambia el estado de la hoja: descartarla o hacerla la referencia por defecto del personaje. */
+export const cambiarEstadoDeHoja = (id: string, estado: EstadoHojaIdentidad) =>
+  pedir<PersonajeVista>(`/api/personajes/${id}/hoja-identidad`, json("PATCH", { estado }));
+
+/** Controles previos de la hoja de identidad: los de un fotograma con las fotos del personaje. */
+export const consultarControlesDeHoja = (id: string) =>
+  pedir<EvaluacionVista>(
+    `/api/generacion/controles?${new URLSearchParams({ tipo: "fotograma", personajeId: id }).toString()}`,
   );
 
 /** Controles previos de los retratos candidatos de un personaje inventado: sin exigirle fotos que aún no tiene. */
