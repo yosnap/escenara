@@ -1,6 +1,7 @@
 import { and, count, desc, eq, inArray, isNull } from "drizzle-orm";
 import { ETIQUETA_VISTA } from "@/lib/captura-personaje";
 import type { TrabajoVista } from "@/lib/generacion";
+import type { Medio } from "@/lib/media/tipos";
 import { motivoNombreReal, nombresRealesEn } from "@/lib/nombres-reales";
 import { DECLARACION_PERSONAJE_INVENTADO, MOTIVO_SIN_FOTOS_REALES, RETRATOS_CANDIDATOS } from "@/lib/omni";
 import {
@@ -21,7 +22,7 @@ import {
 } from "../db/esquema";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { crearFotograma } from "../generacion/servicio";
-import type { Actor } from "../media/servicio";
+import { type Actor, aDto } from "../media/servicio";
 import { claveDerivada } from "../produccion/producir";
 import { filaPropia, recalcularEstado, siguienteOrden } from "./consulta";
 import { ErrorPersonaje } from "./errores";
@@ -259,12 +260,23 @@ export async function elegirRetrato(actor: Actor, id: unknown, medioId: unknown)
   return fichaDePersonaje(actor, personaje.id);
 }
 
-/** Medios de los candidatos, para que la pantalla los pueda enseñar juntos. */
-export async function mediosDeCandidatos(personajeId: string): Promise<string[]> {
+/**
+ * Retratos candidatos con su medio resuelto, para que la pantalla los pueda enseñar juntos. Los que ya son
+ * referencia del personaje quedan fuera: esos ya son su cara, no un candidato por elegir.
+ */
+export async function mediosDeCandidatos(actor: Actor, personajeId: string): Promise<Medio[]> {
   const candidatos = await retratosCandidatos(personajeId);
   if (candidatos.length === 0) return [];
+  const yaReferencia = new Set(
+    (
+      await db()
+        .select({ mediaId: characterReferences.mediaId })
+        .from(characterReferences)
+        .where(eq(characterReferences.characterId, personajeId))
+    ).map((f) => f.mediaId),
+  );
   const filas = await db()
-    .select({ id: media.id })
+    .select()
     .from(media)
     .where(
       and(
@@ -275,5 +287,5 @@ export async function mediosDeCandidatos(personajeId: string): Promise<string[]>
         isNull(media.deletedAt),
       ),
     );
-  return filas.map((f) => f.id);
+  return filas.filter((fila) => !yaReferencia.has(fila.id)).map((fila) => aDto(fila, actor));
 }

@@ -29,6 +29,18 @@ export default async function PaginaNuevoPersonaje() {
             consentimiento vigente el personaje no se puede usar para generar.
           </p>
         </div>
+        {/* El otro camino: un personaje que no existe y cuya cara se genera. No pide fotos ni consentimiento
+            de nadie, porque no hay nadie a quien pedírselo. */}
+        <div className="flex flex-col gap-2 rounded-tarjeta border-2 border-borde bg-superficie p-5">
+          <p className="font-semibold text-texto">¿No es una persona real?</p>
+          <p className="text-texto-suave">
+            Un personaje inventado nace de una descripción: se generan cuatro retratos y eliges uno. No admite fotos de
+            personas reales y todo lo que genere queda marcado como contenido sintético.
+          </p>
+          <Link href="/personajes/nuevo/inventado" className={claseBoton("secundario", "sm", "self-start")}>
+            Crear un personaje inventado
+          </Link>
+        </div>
         <AltaPersonaje minimoReferencias={minimoReferenciasPersonaje} />
       </main>
     </div>

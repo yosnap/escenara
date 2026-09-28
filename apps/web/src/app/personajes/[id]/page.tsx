@@ -11,6 +11,7 @@ import { listarCredenciales } from "@/server/boveda/credenciales";
 import { umbralesDe } from "@/server/personajes/calidad";
 import { obtenerPersonaje } from "@/server/personajes/consulta";
 import { ErrorPersonaje } from "@/server/personajes/errores";
+import { mediosDeCandidatos } from "@/server/personajes/inventado";
 import { CabeceraApp } from "../../_app/cabecera-app";
 import { FichaPersonaje } from "./_componentes/ficha-personaje";
 
@@ -34,6 +35,9 @@ export default async function PaginaPersonaje({ params }: { params: Promise<{ id
   // necesita saber si hay clave utilizable: sin ella se dice qué falta y no se ofrece generar, igual que en
   // «Crear». Lo que decide sigue siendo el servidor al encolar.
   const claveDeGeneracion = await estadoDeLaClave(sesion.user.id);
+  // Los retratos candidatos solo existen en un personaje inventado: en los demás no se consulta nada.
+  const actor = { id: sesion.user.id, esAdmin: esAdmin(sesion) };
+  const retratos = personaje.inventado && personaje.puedeEditar ? await mediosDeCandidatos(actor, id) : [];
 
   return (
     <div className="min-h-dvh bg-fondo">
@@ -48,6 +52,7 @@ export default async function PaginaPersonaje({ params }: { params: Promise<{ id
           inicial={personaje}
           umbrales={umbralesDe(await leerAjustes())}
           claveDeGeneracion={claveDeGeneracion}
+          retratos={retratos}
         />
       </main>
     </div>

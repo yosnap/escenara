@@ -9,7 +9,7 @@ export const GET = manejador(async (_: Request, contexto: ContextoId, actor) => 
   const id = await leerId(contexto);
   // Que el personaje sea tuyo lo comprueba la ficha; sin eso, esto respondería con medios de otra cuenta.
   await obtenerPersonaje(actor, id);
-  return Response.json({ candidatos: await mediosDeCandidatos(id) });
+  return Response.json({ candidatos: await mediosDeCandidatos(actor, id) });
 });
 
 /**

@@ -72,6 +72,13 @@ export const DESCRIPCION_TITULAR: Record<TitularConsentimiento, string> = {
     "No existe: nace de una descripción y su cara se genera. No hay ninguna persona a la que pedir permiso, así que no hay documento que subir ni mayoría de edad que declarar; lo que se registra es que es inventado y no representa a nadie real. No admite fotos de personas.",
 };
 
+/**
+ * Titulares que se pueden **elegir al registrar** un consentimiento. `inventado` queda fuera: no se registra
+ * sobre un personaje que ya existe, sino que nace con él (`/personajes/nuevo/inventado`), y ofrecerlo aquí
+ * permitiría marcar como inventado a uno que sí tiene fotos de alguien.
+ */
+export const TITULARES_REGISTRABLES = TITULARES_CONSENTIMIENTO.filter((t) => t !== "inventado");
+
 /** El titular `tercero` es el único que exige documento firmado y revisión humana. */
 export const exigeDocumento = (titular: TitularConsentimiento) => titular === "tercero";
 

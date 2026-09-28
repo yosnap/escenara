@@ -47,7 +47,6 @@ const rutaInventados = await import("@/app/api/personajes/inventados/route");
 const rutaReferencias = await import("@/app/api/personajes/[id]/referencias/route");
 const rutaConsentimiento = await import("@/app/api/personajes/[id]/consentimiento/route");
 const rutaPersonaje = await import("@/app/api/personajes/[id]/route");
-const rutaOmni = await import("@/app/api/personajes/[id]/omni/route");
 const { exigirBaseDeDatosDePrueba } = await import("../db/bd-de-prueba");
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
 const { guardarAjustes, leerAjustes } = await import("../ajustes");

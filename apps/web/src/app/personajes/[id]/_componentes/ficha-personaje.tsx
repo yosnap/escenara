@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/personajes/api-personajes";
 import type { EstadoConsentimiento } from "@/components/ui/personajes/formulario-consentimiento";
 import { ETIQUETA_VISTA, type UmbralesCalidad, type Vista } from "@/lib/captura-personaje";
+import type { Medio } from "@/lib/media/tipos";
 import {
   ETIQUETA_TIPO_PERSONAJE,
   exigeDocumento,
@@ -31,6 +32,7 @@ import { type EstadoDeClave, PanelCobertura } from "./panel-cobertura";
 import { PanelConsentimiento } from "./panel-consentimiento";
 import { PanelFicha } from "./panel-ficha";
 import { PanelReferencias, type ResultadoAnadir } from "./panel-referencias";
+import { PanelRetratos } from "./panel-retratos";
 import { PanelVersiones } from "./panel-versiones";
 
 /**
@@ -44,9 +46,12 @@ export function FichaPersonaje({
   inicial,
   umbrales,
   claveDeGeneracion,
+  retratos,
 }: {
   inicial: PersonajeVista;
   umbrales: UmbralesCalidad;
+  /** Retratos candidatos de un personaje inventado, resueltos por la página; vacío en los demás. */
+  retratos: Medio[];
   /** Si se puede generar con la clave del usuario, y si no, por qué: lo decide el servidor en la página. */
   claveDeGeneracion: EstadoDeClave;
 }) {
@@ -210,9 +215,20 @@ export function FichaPersonaje({
             },
             {
               valor: "referencias",
-              etiqueta: "Referencias",
+              etiqueta: personaje.inventado ? "Retratos y vistas" : "Referencias",
               contenido: (
                 <div className="flex flex-col gap-8">
+                  {/* Un personaje inventado no sube fotos: su cara sale de aquí, y las vistas, del retrato. */}
+                  {personaje.inventado && (
+                    <PanelRetratos
+                      personaje={personaje}
+                      medios={retratos}
+                      onPersonaje={(actualizado) => {
+                        setPersonaje(actualizado);
+                        router.refresh();
+                      }}
+                    />
+                  )}
                   <PanelCobertura
                     personaje={personaje}
                     umbrales={umbrales}
@@ -223,6 +239,7 @@ export function FichaPersonaje({
                     }}
                     onVistaEncolada={(vista) => setVistaEncolada(ETIQUETA_VISTA[vista])}
                   />
+                  {/* Sin añadir fotos en un personaje inventado: el servidor las rechaza y la pantalla no las ofrece. */}
                   <PanelReferencias
                     personaje={personaje}
                     onCambio={cambiarReferencias}

@@ -53,6 +53,29 @@ function conProporcion(modelo: ModeloVista, entrada: Record<string, unknown>): R
   return valor ? { ...entrada, aspect_ratio: valor } : entrada;
 }
 
+/**
+ * Entrada de los modelos de **Gemini Omni**, que la comparten: con un personaje registrado la identidad y la voz
+ * **son** `character_ids`, así que no se envía ninguna referencia. Enviar además `image_urls` sería darle dos
+ * caras a la vez y pagar por que elija una; medido el 2026-09-28, con `character_ids` sola la cara es idéntica
+ * entre escenas.
+ */
+const entradaOmni: Constructor = (contexto, modelo) => {
+  if (contexto.personajesOmni && contexto.personajesOmni.length > 0) {
+    return conProporcion(modelo, {
+      prompt: promptEscenaHablada(contexto.escena, contexto.dialogo),
+      duration: String(duracion(modelo, contexto)),
+      resolution: primeraResolucion(modelo),
+      character_ids: [...contexto.personajesOmni],
+    });
+  }
+  return conProporcion(modelo, {
+    prompt: promptAnimacion(contexto.escena, contexto.dialogo),
+    image_urls: contexto.urls,
+    duration: String(duracion(modelo, contexto)),
+    resolution: primeraResolucion(modelo),
+  });
+};
+
 /** Un `Map` y no un objeto: así un nombre de modelo no puede resolverse por el prototipo de `Object`. */
 const CONSTRUCTORES = new Map<string, Constructor>(
   Object.entries({
@@ -122,36 +145,20 @@ const CONSTRUCTORES = new Map<string, Constructor>(
      * y citarlo es lo que hace que todas las escenas del proyecto salgan iguales. `audio_ids` sigue sin exponerse
      * aquí: la voz viaja dentro del personaje registrado, no suelta por escena.
      */
-    "gemini-omni-video": (contexto, modelo) => {
-      /**
-       * Escena hablada (0.22.0): con un personaje registrado, la identidad y la voz **son** `character_ids`, así
-       * que no se envía ninguna referencia. Enviar además `image_urls` sería darle dos caras a la vez y pagar por
-       * que elija una; medido el 2026-09-28, con `character_ids` sola la cara es idéntica entre escenas.
-       */
-      if (contexto.personajesOmni && contexto.personajesOmni.length > 0) {
-        return conProporcion(modelo, {
-          prompt: promptEscenaHablada(contexto.escena, contexto.dialogo),
-          duration: String(duracion(modelo, contexto)),
-          resolution: primeraResolucion(modelo),
-          character_ids: [...contexto.personajesOmni],
-        });
-      }
-      return conProporcion(modelo, {
-        prompt: promptAnimacion(contexto.escena, contexto.dialogo),
-        image_urls: contexto.urls,
-        duration: String(duracion(modelo, contexto)),
-        resolution: primeraResolucion(modelo),
-      });
-    },
+    "gemini-omni-video": entradaOmni,
 
-    // Gemini Omni 1.1 Flash: los mismos campos que Gemini Omni (medido el 2026-09-28, mismo precio y más rápido).
-    "google/gemini-omni-flash-1-1": (contexto, modelo) =>
-      conProporcion(modelo, {
-        prompt: promptAnimacion(contexto.escena, contexto.dialogo),
-        image_urls: contexto.urls,
-        duration: String(duracion(modelo, contexto)),
-        resolution: primeraResolucion(modelo),
-      }),
+    /**
+     * Gemini Omni 1.1 Flash (0.22.0), el predeterminado de las escenas habladas. Medido con dinero real el
+     * 2026-09-28: 4 s en 9:16 a 720p costaron **63 créditos** —lo mismo que `gemini-omni-video`— y tardaron
+     * **38 s en lugar de 59 s**, con el diálogo en español igual de exacto.
+     *
+     * Recibe lo mismo que su hermano y con los mismos tipos: `duration` y `resolution` **como texto**,
+     * `aspect_ratio`, y `character_ids` cuando la escena la dice un personaje registrado. `first_frame_url` y
+     * `last_frame_url` existen en su API pero **son excluyentes** con `image_urls`, `audio_ids` y
+     * `character_ids`, así que esta versión no los usa: mezclar los dos caminos es pedir un clip que el
+     * proveedor rechaza después de haber cobrado la petición.
+     */
+    "google/gemini-omni-flash-1-1": entradaOmni,
 
     /**
      * Grok Imagine (0.21.1), en sus dos variantes. Medido con dinero real el 2026-09-28: 6 s en 9:16 a 480p
