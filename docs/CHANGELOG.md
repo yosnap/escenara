@@ -2,6 +2,19 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.22.3] · 2026-09-28
+
+### Corregido
+
+- **Reordenar el mapa de modelos de vídeo volvía la lista a su sitio.** El mapa admitía como mucho 6 modelos por tipo
+  y lo recomendado de vídeo ya son 8, así que guardar tu orden fallaba. Ahora admite hasta 20, y si algo no se
+  puede guardar el mensaje dice por qué.
+
+### Cambiado
+
+- **Cada modelo del mapa se ve por su nombre y con su coste** («Gemini Omni 1.1 Flash (vídeo) · KIE.ai — 63 créditos
+  por clip de 4 s a 720p»), en lugar del identificador técnico.
+
 ## [0.22.2] · 2026-09-28
 
 ### Seguridad

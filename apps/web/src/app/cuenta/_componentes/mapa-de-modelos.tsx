@@ -96,7 +96,10 @@ function TarjetaTipo({ inicial, opciones }: { inicial: MapaVista; opciones: Entr
         <span className="min-w-24 text-sm font-bold text-texto">
           {indice === 0 ? "Principal" : `Reserva ${indice}`}
         </span>
-        <span className="flex-1 text-texto">{etiquetaDeEntrada(entrada)}</span>
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="text-texto">{etiquetaDeEntrada(entrada)}</span>
+          {entrada.coste ? <span className="text-sm text-texto-suave">{entrada.coste}</span> : null}
+        </span>
         <Boton
           tamano="sm"
           variante="fantasma"

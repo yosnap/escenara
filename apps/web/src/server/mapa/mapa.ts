@@ -13,7 +13,7 @@ import { type CompatibleUtilizable, usarCompatibles } from "../boveda/compatible
 import { usarCredencialValida } from "../boveda/credenciales";
 import { db, type Ejecutor } from "../db/cliente";
 import { type FilaMapa, modelMapEntries } from "../db/esquema";
-import { modelosElegibles } from "../proveedores/catalogo";
+import { listarModelos, modelosElegibles } from "../proveedores/catalogo";
 
 /**
  * Lectura y escritura del **mapa de modelos** (0.21.1). Dos clases de fila en la misma tabla:
@@ -178,19 +178,39 @@ export async function mapaVista(usuarioId: string, tipo: TipoDeMapa): Promise<Ma
   return { tipo, propio, entradas: await vista(entradas), recomendadas: await vista(recomendadas) };
 }
 
+/** Nombre legible y coste de una entrada, sacados del catálogo; los servicios compatibles se pagan por cuota. */
+async function descripcionDe(entrada: EntradaMapa): Promise<{ nombreModelo: string; coste: string }> {
+  if (entrada.proveedor === "compatible") return { nombreModelo: "", coste: "Cuota de tu plan" };
+  if (entrada.proveedor === "local") return { nombreModelo: "", coste: "Sin coste" };
+  const modelo = (await listarModelos({ proveedor: entrada.proveedor })).find((m) => m.modelo === entrada.modelo);
+  if (!modelo) return { nombreModelo: "", coste: "" };
+  const precio = modelo.precio;
+  return {
+    nombreModelo: modelo.nombre,
+    coste: precio
+      ? `${formatearCreditosTexto(precio.creditos)} por ${precio.unidad || modelo.unidad}`
+      : "Sin precio registrado: no se puede usar todavía",
+  };
+}
+
+const formatearCreditosTexto = (creditos: number) =>
+  `${creditos.toLocaleString("es-ES", { maximumFractionDigits: 2 })} ${creditos === 1 ? "crédito" : "créditos"}`;
+
 async function aVista(
   usuarioId: string,
   entrada: EntradaMapa,
   compatibles: readonly CompatibleUtilizable[],
 ): Promise<EntradaMapaVista> {
   const resuelta = await resolverEntrada(usuarioId, entrada, compatibles);
+  const descripcion = await descripcionDe(entrada);
   if (resuelta) {
-    return { ...entrada, nombreProveedor: resuelta.nombreProveedor, utilizable: true, motivo: "" };
+    return { ...entrada, ...descripcion, nombreProveedor: resuelta.nombreProveedor, utilizable: true, motivo: "" };
   }
   const nombre =
     entrada.proveedor === "compatible" ? "Un servicio tuyo que ya no está" : nombreDeProveedor(entrada.proveedor);
   return {
     ...entrada,
+    ...descripcion,
     nombreProveedor: nombre,
     utilizable: false,
     motivo:

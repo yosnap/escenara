@@ -50,6 +50,10 @@ export interface EntradaMapa {
 export interface EntradaMapaVista extends EntradaMapa {
   /** Nombre visible del proveedor: el del catálogo público, o el que el usuario le puso a su servicio. */
   nombreProveedor: string;
+  /** Nombre del modelo tal como se lee («Gemini Omni 1.1 Flash (vídeo)»); vacío si no está en el catálogo. */
+  nombreModelo?: string;
+  /** Coste en palabras («63 créditos por clip de 4 s a 720p», «Cuota de tu plan»); vacío si no se conoce. */
+  coste?: string;
   /** `true` si ahora mismo se puede usar: hay credencial válida y, en `compatible`, el servicio sigue existiendo. */
   utilizable: boolean;
   /** Por qué no se puede usar, en una frase con la acción concreta. Vacío cuando sí se puede. */
@@ -67,13 +71,19 @@ export interface MapaVista {
 
 /** «NaN builders · gemma4», o «Esta instalación» cuando la entrada no elige modelo. */
 export function etiquetaDeEntrada(entrada: EntradaMapaVista): string {
-  return entrada.modelo === "" ? entrada.nombreProveedor : `${entrada.nombreProveedor} · ${entrada.modelo}`;
+  if (entrada.modelo === "") return entrada.nombreProveedor;
+  // El nombre legible del modelo si el catálogo lo tiene; el identificador técnico solo cuando no.
+  return `${entrada.nombreModelo || entrada.modelo} · ${entrada.nombreProveedor}`;
 }
 
 /** Nombre visible de un proveedor de la bóveda; los servicios compatibles traen el suyo propio. */
 export const nombreDeProveedor = (proveedor: Proveedor): string => PROVEEDORES_PUBLICOS[proveedor]?.nombre ?? proveedor;
 
-export const ENTRADAS_MAXIMAS = 6;
+/**
+ * Entradas de un tipo del mapa. Holgado a propósito: la recomendación de la plataforma puede traer todos los
+ * modelos elegibles de su capacidad (en vídeo ya son ocho), y con 6 reordenarla no se podía guardar.
+ */
+export const ENTRADAS_MAXIMAS = 20;
 
 /** Limpia y valida una lista de entradas que llega del navegador. `null` si no sirve. */
 export function entradasValidas(valores: unknown): EntradaMapa[] | null {

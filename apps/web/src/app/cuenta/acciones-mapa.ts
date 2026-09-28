@@ -1,6 +1,6 @@
 "use server";
 
-import { entradasValidas, esTipoDeMapa, type MapaVista } from "@/lib/mapa-modelos";
+import { ENTRADAS_MAXIMAS, entradasValidas, esTipoDeMapa, type MapaVista } from "@/lib/mapa-modelos";
 import { exigirSesion } from "@/server/auth/sesion";
 import { guardarMapa, mapaVista, volverALoRecomendado } from "@/server/mapa/mapa";
 
@@ -17,7 +17,16 @@ export async function guardarMapaAccion(tipo: string, entradas: unknown): Promis
   if (!esTipoDeMapa(tipo)) return { ok: false, error: "Ese tipo de generación no existe." };
   const limpias = entradasValidas(entradas);
   if (!limpias) {
-    return { ok: false, error: "Deja al menos una opción y comprueba que todas tienen proveedor y modelo." };
+    const total = Array.isArray(entradas) ? entradas.length : 0;
+    return {
+      ok: false,
+      error:
+        total === 0
+          ? "Tiene que quedar al menos un modelo: si los quitas todos, no habría con qué generar."
+          : total > ENTRADAS_MAXIMAS
+            ? `Como mucho ${ENTRADAS_MAXIMAS} modelos por tipo: quita alguno de los que no vayas a usar.`
+            : "Alguna de las opciones no es un modelo válido. Recarga la página y vuelve a intentarlo.",
+    };
   }
   try {
     await guardarMapa(sesion.user.id, tipo, limpias);
