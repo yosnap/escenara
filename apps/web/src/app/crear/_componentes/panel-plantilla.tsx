@@ -9,6 +9,7 @@ import {
   CATEGORIAS_PRESET,
   type CatalogoParaCrear,
   type CategoriaPreset,
+  categoriasElegibles,
   type PlantillaVisible,
   type PresetVisible,
   type SeleccionPresets,
@@ -23,14 +24,14 @@ import {
  * por elegir y qué no encaja con el modelo—, con la misma función pura y sin componer nada.
  */
 
-/** Categorías que se ofrecen: solo las que la plantilla elegida declara, en el orden del catálogo. */
-function categoriasDeLaPlantilla(plantilla: PlantillaVisible | null): CategoriaPreset[] {
-  if (!plantilla) return [];
-  const declaradas = new Set(
-    plantilla.variables.flatMap((v) => (v.categoria && v.tipo !== "texto" ? [v.categoria] : [])),
-  );
-  return CATEGORIAS_PRESET.filter((c) => declaradas.has(c));
-}
+/**
+ * Categorías que se ofrecen: las que la plantilla elegida declara, en el orden del catálogo, **menos las que
+ * ya se eligen en la dirección del clip** (0.25.2). Cada concepto se elige en un solo sitio.
+ */
+const categoriasDeLaPlantilla = (
+  plantilla: PlantillaVisible | null,
+  cubiertas: readonly CategoriaPreset[] = [],
+): CategoriaPreset[] => (plantilla ? categoriasElegibles(plantilla.variables, cubiertas) : []);
 
 export interface EstadoPlantilla {
   plantillaId: string;
@@ -42,6 +43,14 @@ export const ESTADO_PLANTILLA_VACIO: EstadoPlantilla = { plantillaId: "", selecc
 /** Lo que decide si se puede generar: la plantilla elegida, qué falta y qué no encaja. Nunca el prompt. */
 export interface Previsualizacion {
   plantilla: PlantillaVisible | null;
+  /**
+   * `false` cuando la dirección del clip ya cubre **todo** lo que la plantilla ofrecía: entonces la plantilla
+   * no pinta nada, no se envía y su texto no se compone. Es lo que evita que el mismo concepto se pida dos
+   * veces, en la pantalla y en el prompt.
+   */
+  enUso: boolean;
+  /** Categorías que aún se eligen aquí, en el orden del catálogo. Vacía = no queda nada que ofrecer. */
+  categorias: CategoriaPreset[];
   faltan: string[];
   /** Todo lo que impide componer el prompt, en lenguaje llano (incluye lo que falta y los números fuera de rango). */
   motivos: string[];
@@ -58,18 +67,32 @@ export function previsualizar(
   estado: EstadoPlantilla,
   escena: string,
   tipoPersonaje: TipoPersonaje | null,
+  /** Categorías que ya se eligen en la dirección del clip. Vacía donde no hay dirección a la vista. */
+  cubiertas: readonly CategoriaPreset[] = [],
 ): Previsualizacion {
+  const vacia = { plantilla: null, enUso: false, categorias: [], faltan: [], motivos: [], elegidos: [] };
   const plantilla = catalogo.plantillas.find((p) => p.id === estado.plantillaId) ?? null;
-  if (!plantilla) return { plantilla: null, faltan: [], motivos: [], elegidos: [] };
-  const { faltan, motivos } = faltanPorElegir(plantilla.variables, {
-    ordenados: catalogo.presets,
-    seleccion: estado.seleccion,
-    escena,
-    tipoPersonaje,
-  });
-  const marcados = new Set(CATEGORIAS_PRESET.flatMap((c) => estado.seleccion[c] ?? []));
+  if (!plantilla) return vacia;
+  const categorias = categoriasDeLaPlantilla(plantilla, cubiertas);
+  /**
+   * La dirección lo cubre todo: esta plantilla no se usa. No se pinta, no se envía y **su texto no se compone**,
+   * así que tampoco puede faltar nada suyo. Lo que ofrecía llega al prompt por la dirección.
+   */
+  if (categorias.length === 0 && cubiertas.length > 0) return { ...vacia, plantilla };
+  /**
+   * Lo que falta se mide **solo sobre lo que aquí se puede elegir**: una variable que cubre la dirección no
+   * puede faltar en un sitio donde ya no se ofrece, y decir que falta dejaría el botón de generar apagado sin
+   * que hubiera nada que tocar.
+   */
+  const { faltan, motivos } = faltanPorElegir(
+    plantilla.variables.filter((v) => !v.categoria || !cubiertas.includes(v.categoria)),
+    { ordenados: catalogo.presets, seleccion: estado.seleccion, escena, tipoPersonaje },
+  );
+  const marcados = new Set(categorias.flatMap((c) => estado.seleccion[c] ?? []));
   return {
     plantilla,
+    enUso: true,
+    categorias,
     faltan,
     motivos,
     elegidos: catalogo.presets
@@ -99,18 +122,19 @@ export function sinIncompatibles(estado: EstadoPlantilla, catalogo: CatalogoPara
 
 /** Lo que se añade a la confirmación cuando hay plantilla elegida. */
 export function confirmacionDePlantilla(previa: Previsualizacion, estado: EstadoPlantilla) {
-  if (!previa.plantilla) return {};
+  if (!previa.plantilla || !previa.enUso) return {};
   return {
     plantillaId: previa.plantilla.id,
     plantillaVersionId: previa.plantilla.versionId,
-    presets: estado.seleccion,
+    // Solo lo elegido en las categorías que esta pantalla ofrece: lo demás lo pone la dirección.
+    presets: Object.fromEntries(previa.categorias.map((c) => [c, estado.seleccion[c] ?? []])),
   };
 }
 
 /** Firma de lo que se está confirmando, para que la clave de idempotencia se renueve si cambia. */
 export function firmaDePlantilla(previa: Previsualizacion, estado: EstadoPlantilla): string {
-  if (!previa.plantilla) return "";
-  const elegidos = CATEGORIAS_PRESET.map((c) => `${c}=${(estado.seleccion[c] ?? []).join("+")}`).join(",");
+  if (!previa.plantilla || !previa.enUso) return "";
+  const elegidos = previa.categorias.map((c) => `${c}=${(estado.seleccion[c] ?? []).join("+")}`).join(",");
   return `${previa.plantilla.id}|${previa.plantilla.versionId}|${elegidos}`;
 }
 
@@ -132,11 +156,16 @@ export function PanelPlantilla({
   /** Acciones de un preset que ya es del usuario (editar su copia, borrarla). */
   accionesDePreset?: (preset: PresetVisible) => ReactNode;
 }) {
-  const categorias = categoriasDeLaPlantilla(previa.plantilla);
-  const grupos = categorias.map((categoria) => ({
+  const grupos = previa.categorias.map((categoria) => ({
     categoria,
     presets: catalogo.presets.filter((p) => p.categoria === categoria),
   }));
+
+  /**
+   * La dirección cubre todo lo que esta plantilla ofrecía: el panel **desaparece** en lugar de quedarse con
+   * un título y nada debajo. Lo que se elegía aquí se elige arriba, y solo arriba.
+   */
+  if (previa.plantilla !== null && !previa.enUso) return null;
 
   return (
     <div className="flex flex-col gap-5">

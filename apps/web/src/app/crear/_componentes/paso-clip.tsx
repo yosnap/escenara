@@ -169,6 +169,8 @@ export function PasoClip({
             guion={dialogo}
             segundos={segundos}
             conAcento
+            // En «Crear» el fotograma no se dirige aquí: o es una imagen tuya (no se genera) o tiene su propio paso.
+            conFotograma={false}
             deshabilitado={enviando}
             onCambio={onDireccion}
           />

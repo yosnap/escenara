@@ -2,6 +2,37 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.25.2] · 2026-09-28
+
+Parche de la 0.25.1: debajo de la dirección volvía a salir la misma botonera —look, duración, plano, ángulo,
+movimiento, micro-acción y registro estético— y no había forma de guardar una dirección para volver a usarla.
+
+### Añadido
+
+- **Mis direcciones**: guarda con nombre lo que has elegido para dirigir un clip —formato, plano, ángulo,
+  movimiento, micro-acción y su momento, registro, voz y acento, instrucciones adicionales, modo experto y su
+  descripción, y los campos del fotograma cuando los hay— y vuelve a ponerlo de un clic, en «Crear» y en la
+  escena de un proyecto. Se puede renombrar y borrar. **Son tuyas**: nadie más las ve ni las usa. Aplicar una
+  dirección rellena los controles y **no genera nada**; el coste se confirma después, como siempre.
+- Si quien administra ha **desactivado una opción** desde que la guardaste, esa opción se ignora al aplicarla y
+  se te dice cuál, en lugar de enviarse en silencio o de invalidar la dirección entera.
+
+### Cambiado
+
+- **Cada concepto se elige en un solo sitio.** Donde está la dirección, la botonera de la plantilla ya no
+  vuelve a ofrecer el plano, el ángulo, el movimiento, la micro-acción, el registro estético, el look ni la
+  duración, y si no le queda nada que ofrecer **desaparece**. Nada se pierde por el camino: lo que se elegía
+  ahí llega al prompt por la dirección.
+- **El texto que se le envía al modelo tampoco se repite.** La dirección **sustituye** a la plantilla del clip
+  en lugar de meterse dentro de ella, como ya hacían las 6C del fotograma: antes, un clip dirigido salía con
+  dos cabeceras de cámara y con la regla de toma única escrita dos veces.
+- En «Crear», el panel de dirección **ya no enseña el bloque del fotograma** (óptica, luz y sitio): con una
+  imagen de tu biblioteca no se genera ningún fotograma, y con uno nuevo esos campos se eligen en su paso. El
+  registro estético se queda con la dirección del clip, que es a lo que afecta.
+- **Animar una imagen que ya tienes no exige además describir la escena**: la imagen dice lo que se ve y la
+  dirección pone el encuadre. Si quieres añadir algo, están las instrucciones adicionales. Un clip **sin**
+  dirigir sigue necesitando su descripción, que ahí es lo único que describe el clip.
+
 ## [0.25.1] · 2026-09-28
 
 Parche de la 0.25.0: la dirección estaba en el motor pero no se podía usar. Cuatro huecos que encontró el

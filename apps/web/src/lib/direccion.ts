@@ -458,3 +458,74 @@ export const avisoGestoNoCabe = (segundos: number): string =>
 /** Lo que se le dice cuando pide un movimiento avanzado. No lo impide: lo avisa. */
 export const AVISO_MOVIMIENTO_AVANZADO =
   "Este movimiento de cámara es exigente y el modelo no siempre lo respeta. Mira el clip antes de darlo por bueno.";
+
+// ── Direcciones guardadas ───────────────────────────────────────────────────────────────────────────────
+
+/**
+ * **Una dirección guardada con nombre**: lo que el usuario eligió una vez y quiere volver a usar sin
+ * reconstruirlo botón a botón. Es suya y solo suya; compartirlas es otra cosa y no está en esta versión.
+ *
+ * Guarda **claves del catálogo y texto limpio**, igual que lo que viaja al confirmar un clip: aquí no hay ni
+ * una palabra del prompt en inglés (ADR-0022). Recuperarla rellena los controles y **no genera nada**.
+ */
+export interface DireccionGuardada {
+  id: string;
+  nombre: string;
+  direccion: DireccionElegidaConAcento;
+  /** Cuándo se guardó o se renombró por última vez, en ISO. */
+  actualizada: string;
+}
+
+export const NOMBRE_DIRECCION_MAXIMO = 60;
+
+/** Las categorías del catálogo que la dirección guarda por clave, con el rótulo que el usuario leyó. */
+const CAMPOS_DE_CATALOGO = [
+  ["plano", "Plano"],
+  ["angulo", "Ángulo"],
+  ["camara", "Movimiento de cámara"],
+  ["microaccion", "Micro-acción"],
+  ["optica", "Óptica"],
+  ["luz", "Luz"],
+  ["localizacion", "Sitio"],
+] as const satisfies readonly (readonly [keyof OpcionesDeDireccion, string])[];
+
+/** Lo que sale de aplicar una dirección guardada: lo que se pone en los controles y lo que se ha caído. */
+export interface DireccionAplicada {
+  direccion: DireccionElegidaConAcento;
+  /** Rótulos de las opciones que ya no existen en el catálogo. Vacío = se ha aplicado entera. */
+  ignoradas: string[];
+  /** Lo que se le dice al usuario, en castellano. Vacío cuando no se ha ignorado nada. */
+  aviso: string;
+}
+
+/**
+ * Aplica una dirección guardada contra el catálogo de **ahora**.
+ *
+ * Quien administra puede desactivar una opción después de que alguien la guardara. Esa clave no se envía como
+ * si nada —el servidor la trataría como «no elegido» y el usuario creería haber pedido algo que no pidió— ni
+ * bloquea la dirección entera: **se ignora y se avisa**, que es lo único honesto.
+ *
+ * Es una función pura: el mismo catálogo y la misma dirección dan siempre el mismo resultado.
+ */
+export function aplicarDireccionGuardada(
+  guardada: DireccionElegidaConAcento,
+  opciones: OpcionesDeDireccion,
+): DireccionAplicada {
+  const direccion = { ...guardada };
+  const ignoradas: string[] = [];
+  for (const [campo, rotulo] of CAMPOS_DE_CATALOGO) {
+    const clave = guardada[campo];
+    if (clave === "") continue;
+    if (opciones[campo].some((opcion) => opcion.clave === clave)) continue;
+    direccion[campo] = "";
+    ignoradas.push(rotulo);
+  }
+  return {
+    direccion,
+    ignoradas,
+    aviso:
+      ignoradas.length === 0
+        ? ""
+        : `Esta dirección se guardó con opciones que ya no están en el catálogo (${ignoradas.join(", ")}): se han dejado sin elegir. Elige otras antes de generar.`,
+  };
+}

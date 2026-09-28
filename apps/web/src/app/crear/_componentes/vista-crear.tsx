@@ -22,7 +22,12 @@ import {
 } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
 import type { ContextoAplicado, PersonajeElegible } from "@/lib/personajes";
-import { type CatalogoParaCrear, type PresetVisible, VARIABLE_TEXTO_MAXIMA } from "@/lib/presets";
+import {
+  CATEGORIAS_DE_LA_DIRECCION,
+  type CatalogoParaCrear,
+  type PresetVisible,
+  VARIABLE_TEXTO_MAXIMA,
+} from "@/lib/presets";
 import { consultarCatalogoDeDireccion, consultarEstimacion, crearTrabajo, type Resultado } from "./api-generacion";
 import { consultarCatalogoDePresets, duplicarPreset } from "./api-presets";
 import { BloqueConfirmacion } from "./bloque-confirmacion";
@@ -201,7 +206,20 @@ export function VistaCrear({
    * si toca. Se pide siempre en ese caso, que es el lado seguro: pedirla de más no hace daño, no pedirla sí.
    */
   const clipExigeRevision = fotograma ? fotograma.personajeId !== null : imagenDelClip !== null;
-  const previaClip = previsualizar(catalogoClip, plantillaClip, descripcion, personajeDelClip?.tipo ?? null);
+  /**
+   * Lo que la dirección del clip ya cubre. El paso del clip **siempre** lleva su panel de dirección, así que el
+   * plano, el ángulo, la cámara, el gesto, el registro, la duración y el look se eligen ahí y solo ahí. No
+   * depende de que el catálogo haya terminado de cargarse: si dependiera, la botonera duplicada aparecería un
+   * instante al abrir la pantalla y bloquearía el botón con un «falta elegir» que no le falta a nadie.
+   */
+  const cubiertasPorLaDireccion = CATEGORIAS_DE_LA_DIRECCION;
+  const previaClip = previsualizar(
+    catalogoClip,
+    plantillaClip,
+    descripcion,
+    personajeDelClip?.tipo ?? null,
+    cubiertasPorLaDireccion,
+  );
 
   const bloqueosFotograma = [
     // Sin personaje ni imagen no falta nada: se genera a partir de la descripción con un modelo de texto a
