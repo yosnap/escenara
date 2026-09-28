@@ -2,8 +2,8 @@ import { eq } from "drizzle-orm";
 import {
   firmaDeVoz,
   type ModoVoz,
-  type ParametrosVoz,
   nombreDeVoz,
+  type ParametrosVoz,
   parametrosVozDe,
   type VozDelProyecto,
 } from "@/lib/voz";

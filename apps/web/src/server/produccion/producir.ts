@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
-import { DIALOGO_MAXIMO, PROMPT_MINIMO } from "@/lib/generacion";
+import { PROMPT_MINIMO } from "@/lib/generacion";
 import { falloConCoste, type ProduccionVista, trabajoTerminado } from "@/lib/produccion";
 import { escenaPropia, escenasDe, proyectoPropio } from "../asistente/consulta";
 import { ErrorProyecto } from "../asistente/errores";
@@ -11,6 +11,7 @@ import { crearAnimacion, crearFotograma } from "../generacion/servicio";
 import type { Actor } from "../media/servicio";
 import { plantillaVigenteDe } from "../prompts/consulta";
 import { invalidarRevisionesDeEscena } from "../revision/resultados";
+import { dialogoDelClip } from "../voz/modo";
 import { marcarEnProduccion } from "./cierre";
 import { escenasPorProducir, estadoDeProduccion, exigirDuracionProducible, ultimoTrabajoDeEscena } from "./consulta";
 import { presetsDeProduccion } from "./presets";
@@ -75,20 +76,6 @@ function textoVisualDe(escena: FilaEscena): string {
     );
   }
   return texto;
-}
-
-/**
- * Lo que el clip tiene que decir, según el modo de voz del proyecto (RF08, 0.21.0).
- *
- * - modo `clip`: el diálogo de la escena, que es lo que el modelo de vídeo pone en boca del personaje con los
- *   labios sincronizados. Es lo que hacía la 0.19.0 y sigue siendo el modo de fábrica;
- * - modo `pista`: **cadena vacía**, así que el prompt pide solo sonido ambiente (`promptAnimacion`). El diálogo lo
- *   dirá la pista de voz que se genera aparte, y si el clip también lo dijera se oirían dos voces distintas
- *   diciendo lo mismo, que es exactamente el problema que el modo de pista viene a resolver.
- */
-function dialogoDelClip(escena: FilaEscena, proyecto: FilaProyecto): string {
-  if (proyecto.voiceMode === "pista") return "";
-  return escena.scriptText.trim().slice(0, DIALOGO_MAXIMO);
 }
 
 /** El protagonista del proyecto es lo que da identidad al fotograma: sin él no se produce. */

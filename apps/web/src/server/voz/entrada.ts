@@ -111,7 +111,8 @@ export function leerSubtitulos(cuerpo: Record<string, unknown>): Subtitulo[] {
     throw new ErrorProyecto(400, `Una escena no puede tener más de ${SUBTITULOS_MAXIMOS} subtítulos.`);
   }
   return crudo.map((linea, i) => {
-    if (!linea || typeof linea !== "object") throw new ErrorProyecto(400, `El subtítulo ${i + 1} no tiene la forma esperada.`);
+    if (!linea || typeof linea !== "object")
+      throw new ErrorProyecto(400, `El subtítulo ${i + 1} no tiene la forma esperada.`);
     const { desde, hasta, texto } = linea as { desde?: unknown; hasta?: unknown; texto?: unknown };
     if (typeof desde !== "number" || typeof hasta !== "number" || !Number.isFinite(desde) || !Number.isFinite(hasta)) {
       throw new ErrorProyecto(400, `El subtítulo ${i + 1} no tiene tiempos numéricos.`);
@@ -124,7 +125,11 @@ export function leerSubtitulos(cuerpo: Record<string, unknown>): Subtitulo[] {
 }
 
 /** Pista de música que se añade, con su declaración de derechos. El mínimo de la declaración lo exige el servicio. */
-export function leerMusica(cuerpo: Record<string, unknown>): { medioId: string; notaDerechos: string; volumen: number } {
+export function leerMusica(cuerpo: Record<string, unknown>): {
+  medioId: string;
+  notaDerechos: string;
+  volumen: number;
+} {
   const medioId = cuerpo.medioId;
   if (typeof medioId !== "string" || !UUID.test(medioId)) throw new ErrorProyecto(404, "Ese archivo no existe.");
   const nota = cuerpo.notaDerechos;

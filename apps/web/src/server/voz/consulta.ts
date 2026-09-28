@@ -5,8 +5,8 @@ import { resumenDeEscena } from "@/lib/proyectos";
 import {
   avisosDeSubtitulos,
   type DisponibilidadVoz,
-  PARAMETROS_VOZ_POR_DEFECTO,
   type EscenaVozVista,
+  PARAMETROS_VOZ_POR_DEFECTO,
   VOCES_OFRECIDAS,
   type VozProyectoVista,
 } from "@/lib/voz";
@@ -14,13 +14,13 @@ import { leerAjustes } from "../ajustes";
 import { escenasDe, proyectoPropio } from "../asistente/consulta";
 import { db } from "../db/cliente";
 import { type FilaEscena, type FilaMedio, type FilaProyecto, generationJobs, media } from "../db/esquema";
-import { ErrorCatalogo } from "../proveedores/contrato";
 import { type Actor, aDto } from "../media/servicio";
+import { ErrorCatalogo } from "../proveedores/contrato";
 import { muestrasDe } from "./muestra";
 import { musicaDe } from "./musica";
 import { escenaInvalidada, vozDelProyecto } from "./proyecto";
-import { eleccionDeVoz } from "./tts";
 import { transcriptorDisponible } from "./transcripcion";
+import { eleccionDeVoz } from "./tts";
 
 /**
  * Lectura del estado de voz y subtítulos de un proyecto (RF08, 0.21.0).
@@ -133,7 +133,10 @@ export async function estadoDeVoz(actor: Actor, proyectoId: unknown): Promise<Vo
   const proyecto = await proyectoPropio(actor, proyectoId);
   const escenas = await escenasDe(proyecto.id);
   const [medios, enMarcha, disponibilidad, musica] = await Promise.all([
-    mediosDeLaVoz(actor, escenas.flatMap((e) => [e.clipMediaId, e.voiceMediaId])),
+    mediosDeLaVoz(
+      actor,
+      escenas.flatMap((e) => [e.clipMediaId, e.voiceMediaId]),
+    ),
     vocesEnMarcha(escenas.map((e) => e.id)),
     disponibilidadDeVoz(),
     musicaDe(actor, proyecto.id),
@@ -147,7 +150,11 @@ export async function estadoDeVoz(actor: Actor, proyectoId: unknown): Promise<Vo
     disponibilidad.modelo === ""
       ? {}
       : Object.fromEntries(
-          await muestrasDe(actor, disponibilidad.modelo, vozDelProyecto(proyecto)?.parametros ?? PARAMETROS_VOZ_POR_DEFECTO),
+          await muestrasDe(
+            actor,
+            disponibilidad.modelo,
+            vozDelProyecto(proyecto)?.parametros ?? PARAMETROS_VOZ_POR_DEFECTO,
+          ),
         );
   const porRegenerar = vistas.filter((e) => e.invalidada).length;
   /**

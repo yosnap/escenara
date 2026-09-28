@@ -1,5 +1,5 @@
 import { and, asc, eq } from "drizzle-orm";
-import { NOTA_DERECHOS_MAXIMA, NOTA_DERECHOS_MINIMA, type MusicaVista } from "@/lib/voz";
+import { type MusicaVista, NOTA_DERECHOS_MAXIMA, NOTA_DERECHOS_MINIMA } from "@/lib/voz";
 import { proyectoPropio } from "../asistente/consulta";
 import { ErrorProyecto } from "../asistente/errores";
 import { db } from "../db/cliente";

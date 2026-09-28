@@ -10,8 +10,8 @@ import { formatearCreditos } from "@/lib/generacion";
 import type { ModoVoz, ParametrosVoz, Subtitulo, VozProyectoVista } from "@/lib/voz";
 import {
   anadirMusica,
-  cambiarVolumen,
   type ConfirmacionVozEnvio,
+  cambiarVolumen,
   fijarModo,
   fijarVozDelProyecto,
   generarVoz,
@@ -131,10 +131,16 @@ export function VistaVoz({ inicial }: { inicial: VozProyectoVista }) {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <a href={`/api/proyectos/${estado.proyectoId}/voz/subtitulos?formato=srt`} className={claseBoton("secundario", "sm")}>
+          <a
+            href={`/api/proyectos/${estado.proyectoId}/voz/subtitulos?formato=srt`}
+            className={claseBoton("secundario", "sm")}
+          >
             Descargar SRT
           </a>
-          <a href={`/api/proyectos/${estado.proyectoId}/voz/subtitulos?formato=vtt`} className={claseBoton("secundario", "sm")}>
+          <a
+            href={`/api/proyectos/${estado.proyectoId}/voz/subtitulos?formato=vtt`}
+            className={claseBoton("secundario", "sm")}
+          >
             Descargar WebVTT
           </a>
         </div>
@@ -145,8 +151,8 @@ export function VistaVoz({ inicial }: { inicial: VozProyectoVista }) {
 
       {estado.porRegenerar > 0 && (
         <Aviso tono="error">
-          {estado.porRegenerar} {estado.porRegenerar === 1 ? "escena tiene" : "escenas tienen"} la voz o los
-          subtítulos invalidados.{" "}
+          {estado.porRegenerar} {estado.porRegenerar === 1 ? "escena tiene" : "escenas tienen"} la voz o los subtítulos
+          invalidados.{" "}
           {estado.costeRegenerar === null
             ? estado.motivoSinCoste
             : estado.costeRegenerar === 0
@@ -167,9 +173,10 @@ export function VistaVoz({ inicial }: { inicial: VozProyectoVista }) {
       />
 
       {estado.escenas.length === 0 ? (
-        <EstadoVacio titulo="Este proyecto todavía no tiene escenas">
-          Escribe su guion en el plan del proyecto y vuelve aquí para ponerle voz y subtítulos.
-        </EstadoVacio>
+        <EstadoVacio
+          titulo="Este proyecto todavía no tiene escenas"
+          texto="Escribe su guion en el plan del proyecto y vuelve aquí para ponerle voz y subtítulos."
+        />
       ) : (
         estado.escenas.map((escena) => (
           <TarjetaEscenaVoz
@@ -208,7 +215,11 @@ export function VistaVoz({ inicial }: { inicial: VozProyectoVista }) {
             setUmbral(false);
           }
         }}
-        titulo={gasto?.tipo === "muestra" ? "Oír una muestra de esta voz" : `Generar la voz de la escena ${gasto?.tipo === "escena" ? gasto.orden : ""}`}
+        titulo={
+          gasto?.tipo === "muestra"
+            ? "Oír una muestra de esta voz"
+            : `Generar la voz de la escena ${gasto?.tipo === "escena" ? gasto.orden : ""}`
+        }
         descripcion="Esta llamada cuesta créditos de tu cuenta del proveedor. No se envía nada hasta que lo confirmes."
         pie={
           <div className="flex flex-wrap justify-end gap-2">

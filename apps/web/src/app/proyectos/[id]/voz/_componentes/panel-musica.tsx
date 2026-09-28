@@ -3,9 +3,8 @@
 import { Music, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Boton, BotonIcono } from "@/components/ui/button";
-import { AreaTexto } from "@/components/ui/field";
-import { Campo } from "@/components/ui/field";
-import { NOTA_DERECHOS_MAXIMA, NOTA_DERECHOS_MINIMA, VOLUMEN_MUSICA_POR_DEFECTO, type MusicaVista } from "@/lib/voz";
+import { AreaTexto, Campo } from "@/components/ui/field";
+import { type MusicaVista, NOTA_DERECHOS_MAXIMA, NOTA_DERECHOS_MINIMA, VOLUMEN_MUSICA_POR_DEFECTO } from "@/lib/voz";
 
 /**
  * Música de fondo del proyecto (RF08, 0.21.0). **Solo se sube, no se genera**, y **sin declaración de derechos
@@ -51,7 +50,7 @@ export function PanelMusica({
             <li key={pista.id} className="flex flex-col gap-2 rounded-tarjeta border-2 border-borde bg-elevada p-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate font-semibold text-texto">{pista.medio?.nombreOriginal ?? "Archivo borrado"}</p>
+                  <p className="truncate font-semibold text-texto">{pista.medio?.nombre ?? "Archivo borrado"}</p>
                   <p className="text-sm text-texto-suave">
                     Derechos: {pista.notaDerechos} · declarado el{" "}
                     {new Date(pista.declaradoEn).toLocaleDateString("es-ES")}
@@ -59,17 +58,20 @@ export function PanelMusica({
                 </div>
                 <BotonIcono
                   etiqueta="Quitar esta pista del proyecto"
-                  icono={<Trash2 />}
-                  variante="fantasma"
                   disabled={ocupado}
                   onClick={() => onQuitar(pista.id)}
-                />
+                >
+                  <Trash2 />
+                </BotonIcono>
               </div>
               {pista.medio && (
                 // biome-ignore lint/a11y/useMediaCaption: es música de fondo, no tiene diálogo que subtitular
                 <audio controls src={pista.medio.url} className="w-full" />
               )}
-              <Campo etiqueta={`Volumen: ${Math.round(pista.volumen * 100)} %`} ayuda="Con el que entrará en la mezcla final.">
+              <Campo
+                etiqueta={`Volumen: ${Math.round(pista.volumen * 100)} %`}
+                ayuda="Con el que entrará en la mezcla final."
+              >
                 {(p) => (
                   <input
                     {...p}

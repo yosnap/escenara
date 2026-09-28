@@ -3,6 +3,8 @@ import type { Medio } from "@/lib/media/tipos";
 import { firmaDeVoz, type ParametrosVoz, VOCES_OFRECIDAS } from "@/lib/voz";
 import { ErrorProyecto } from "../asistente/errores";
 import { encolar, filaDeLaConfirmacion } from "../cola/encolar";
+import { recopilarHechos } from "../controles/hechos";
+import { exigirControles } from "../controles/puerta";
 import { db } from "../db/cliente";
 import { type FilaTrabajo, media, voiceSamples } from "../db/esquema";
 import {
@@ -12,6 +14,7 @@ import {
   exigirRitmo,
   proveedorDeCredencial,
 } from "../generacion/comprobaciones";
+import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { exigirSelloVigente } from "../generacion/precios";
 import { type Actor, aDto } from "../media/servicio";
 import { acotarCoste } from "../presupuesto/acotar";
@@ -73,6 +76,7 @@ export async function pedirMuestra(
   voz: string,
   parametros: ParametrosVoz,
   confirmacion: ConfirmacionVoz,
+  h: Herramientas = HERRAMIENTAS,
 ): Promise<{ trabajo: FilaTrabajo | null; medio: Medio | null }> {
   if (!VOCES_OFRECIDAS.some((v) => v.id === voz)) {
     throw new ErrorProyecto(400, "Esa voz no está entre las que ofrece esta instalación.");
@@ -91,6 +95,29 @@ export async function pedirMuestra(
   const yaHecho = await filaDeLaConfirmacion(actor.id, claveIdempotencia);
   if (yaHecho) return { trabajo: yaHecho, medio: null };
   await exigirRitmo(actor.id);
+
+  /**
+   * Misma puerta que cualquier otro gasto (ADR-0023). Una muestra **no pertenece a ningún proyecto**, así que no
+   * lleva techo de proyecto ni escena: lo que se evalúa es la credencial, el precio, la cuota y el dinero del
+   * usuario.
+   */
+  await exigirControles(
+    { usuarioId: actor.id, sujeto: "trabajo", sujetoId: null, tipo: "voz" },
+    await recopilarHechos(
+      actor,
+      {
+        tipo: "voz",
+        eleccion: { modelo, adaptador, precio },
+        creditos,
+        personajeId: null,
+        personaje: null,
+        escena: null,
+        proyecto: null,
+      },
+      h.buscar,
+    ),
+    confirmacion.avisosConfirmados ?? [],
+  );
 
   const { fila } = await encolar({
     usuarioId: actor.id,

@@ -1,7 +1,7 @@
 import { esProveedor, PROVEEDORES_PUBLICOS } from "@/lib/boveda";
 import { calcularCobertura, esVista, type Vista } from "@/lib/captura-personaje";
 import { precioCaducado } from "@/lib/catalogo";
-import { TIPO_RESULTADO, type TipoTrabajo } from "@/lib/generacion";
+import { TIPO_RESULTADO, type TipoTrabajoCola } from "@/lib/generacion";
 import { leerAjustes } from "../ajustes";
 import { usarCredencialValida } from "../boveda/credenciales";
 import type { FilaPersonaje } from "../db/esquema";
@@ -71,7 +71,7 @@ export async function hechosDeCredencial(
 }
 
 /** Modelo elegido y su precio, con la acotación del coste ya resuelta. */
-export function hechosDeModelo(tipo: TipoTrabajo, eleccion: EleccionDeTrabajo): HechosModelo {
+export function hechosDeModelo(tipo: TipoTrabajoCola, eleccion: EleccionDeTrabajo): HechosModelo {
   const acotacion = acotarCoste(tipo, eleccion);
   return {
     nombre: eleccion.modelo.nombre,
@@ -108,7 +108,7 @@ export async function hechosDePersonaje(personaje: FilaPersonaje): Promise<Hecho
 }
 
 /** Espacio libre en la biblioteca frente al peor caso del tipo de resultado. */
-export async function hechosDeCuota(actor: Actor, tipo: TipoTrabajo): Promise<HechosCuota> {
+export async function hechosDeCuota(actor: Actor, tipo: TipoTrabajoCola): Promise<HechosCuota> {
   const { usadoBytes, cuotaBytes } = await espacioUsado(actor);
   return {
     previstoBytes: limiteSubida(TIPO_RESULTADO[tipo]),
@@ -169,7 +169,7 @@ async function hechosDePersonajeAusente(personajeId: string): Promise<HechosPers
 }
 
 export interface SujetoDeHechos {
-  tipo: TipoTrabajo;
+  tipo: TipoTrabajoCola;
   eleccion: EleccionDeTrabajo;
   /** Créditos totales del envío: la generación más su traducción, si esta instalación traduce. */
   creditos: number;

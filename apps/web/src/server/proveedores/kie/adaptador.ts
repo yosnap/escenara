@@ -36,13 +36,7 @@ import { generarTextoKie } from "./texto";
  * `jobs/createTask` asíncrono y con la **misma credencial de KIE** del usuario, así que no hace falta una segunda
  * clave (ADR-0026). Qué modelo concreto se puede usar lo decide el catálogo, no esta lista.
  */
-const CAPACIDADES: readonly Capacidad[] = [
-  "image_edit",
-  "image_to_video",
-  "text_to_video",
-  "text_generation",
-  "tts",
-];
+const CAPACIDADES: readonly Capacidad[] = ["image_edit", "image_to_video", "text_to_video", "text_generation", "tts"];
 
 /** Todo fallo del cliente sale de aquí como `ErrorProveedor`, con su código propio y su mensaje. */
 async function normalizando<T>(accion: () => Promise<T>): Promise<T> {

@@ -35,7 +35,8 @@ export function TarjetaEscenaVoz({
 }) {
   const conPista = modo === "pista";
   const origen = conPista ? "la pista de voz" : "el audio del clip";
-  const puedeTranscribir = disponibilidad.transcripcionDisponible && (conPista ? escena.audio !== null : escena.clip !== null);
+  const puedeTranscribir =
+    disponibilidad.transcripcionDisponible && (conPista ? escena.audio !== null : escena.clip !== null);
 
   return (
     <article className="flex flex-col gap-4 rounded-tarjeta border-2 border-borde bg-superficie p-5">
@@ -51,8 +52,12 @@ export function TarjetaEscenaVoz({
         </p>
       </header>
 
-      {escena.invalidada && <Aviso tono="error">{escena.invalidacion || "Lo generado ya no corresponde a la voz de este proyecto."}</Aviso>}
-      {escena.trabajoEnMarcha && <Aviso tono="info">La voz de esta escena está en marcha: {escena.trabajoEnMarcha}.</Aviso>}
+      {escena.invalidada && (
+        <Aviso tono="error">{escena.invalidacion || "Lo generado ya no corresponde a la voz de este proyecto."}</Aviso>
+      )}
+      {escena.trabajoEnMarcha && (
+        <Aviso tono="info">La voz de esta escena está en marcha: {escena.trabajoEnMarcha}.</Aviso>
+      )}
 
       {escena.dialogo.trim() === "" ? (
         <p className="text-sm text-texto-suave">

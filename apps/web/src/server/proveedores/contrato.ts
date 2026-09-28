@@ -1,7 +1,7 @@
 import { type CodigoPrueba, MENSAJE_PRUEBA } from "@/lib/boveda";
 import type { Capacidad, ModeloVista } from "@/lib/catalogo";
-import type { ParametrosVoz } from "@/lib/voz";
 import type { EstadoTrabajo } from "@/lib/generacion";
+import type { ParametrosVoz } from "@/lib/voz";
 import type { Buscador } from "./codigos";
 
 /**

@@ -19,24 +19,16 @@
       "proveedor": "kie",
       "modelo": "nano-banana-2-lite",
       "nombre": "Nano Banana 2 Lite",
-      "capacidades": [
-        "image_edit"
-      ],
+      "capacidades": ["image_edit"],
       "estado": "validado",
       "predeterminado": true,
       "conVoz": false,
       "unidad": "imagen",
       "parametros": {
         "duraciones": [],
-        "proporciones": [
-          "9:16"
-        ],
+        "proporciones": ["9:16"],
         "resoluciones": [],
-        "formatosReferencia": [
-          "image/jpeg",
-          "image/png",
-          "image/webp"
-        ],
+        "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
         "maximoReferencias": 10
       },
       "precio": {
@@ -51,24 +43,16 @@
       "proveedor": "kie",
       "modelo": "seedream/4.5-edit",
       "nombre": "Seedream 4.5 Edit",
-      "capacidades": [
-        "image_edit"
-      ],
+      "capacidades": ["image_edit"],
       "estado": "compatible",
       "predeterminado": false,
       "conVoz": false,
       "unidad": "imagen",
       "parametros": {
         "duraciones": [],
-        "proporciones": [
-          "9:16"
-        ],
+        "proporciones": ["9:16"],
         "resoluciones": [],
-        "formatosReferencia": [
-          "image/jpeg",
-          "image/png",
-          "image/webp"
-        ],
+        "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
         "maximoReferencias": 10
       },
       "precio": {
@@ -83,28 +67,16 @@
       "proveedor": "kie",
       "modelo": "gpt-image-2-5-flare-image-to-image",
       "nombre": "GPT Image 2.5 Flare (imagen a imagen)",
-      "capacidades": [
-        "image_edit"
-      ],
+      "capacidades": ["image_edit"],
       "estado": "compatible",
       "predeterminado": false,
       "conVoz": false,
       "unidad": "imagen",
       "parametros": {
         "duraciones": [],
-        "proporciones": [
-          "9:16"
-        ],
-        "resoluciones": [
-          "1K",
-          "2K",
-          "4K"
-        ],
-        "formatosReferencia": [
-          "image/jpeg",
-          "image/png",
-          "image/webp"
-        ],
+        "proporciones": ["9:16"],
+        "resoluciones": ["1K", "2K", "4K"],
+        "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
         "maximoReferencias": 1
       },
       "precio": {
@@ -119,31 +91,16 @@
       "proveedor": "kie",
       "modelo": "veo3_fast",
       "nombre": "Veo 3.1 Fast",
-      "capacidades": [
-        "image_to_video",
-        "text_to_video"
-      ],
+      "capacidades": ["image_to_video", "text_to_video"],
       "estado": "validado",
       "predeterminado": true,
       "conVoz": true,
       "unidad": "vídeo de 4 u 8 s",
       "parametros": {
-        "duraciones": [
-          8,
-          4
-        ],
-        "proporciones": [
-          "9:16"
-        ],
-        "resoluciones": [
-          "720p",
-          "1080p"
-        ],
-        "formatosReferencia": [
-          "image/jpeg",
-          "image/png",
-          "image/webp"
-        ],
+        "duraciones": [8, 4],
+        "proporciones": ["9:16"],
+        "resoluciones": ["720p", "1080p"],
+        "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
         "maximoReferencias": 2
       },
       "precio": {
@@ -158,31 +115,16 @@
       "proveedor": "kie",
       "modelo": "veo3_lite",
       "nombre": "Veo 3.1 Lite",
-      "capacidades": [
-        "image_to_video",
-        "text_to_video"
-      ],
+      "capacidades": ["image_to_video", "text_to_video"],
       "estado": "validado",
       "predeterminado": false,
       "conVoz": true,
       "unidad": "vídeo de 4 u 8 s",
       "parametros": {
-        "duraciones": [
-          8,
-          4
-        ],
-        "proporciones": [
-          "9:16"
-        ],
-        "resoluciones": [
-          "720p",
-          "1080p"
-        ],
-        "formatosReferencia": [
-          "image/jpeg",
-          "image/png",
-          "image/webp"
-        ],
+        "duraciones": [8, 4],
+        "proporciones": ["9:16"],
+        "resoluciones": ["720p", "1080p"],
+        "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
         "maximoReferencias": 2
       },
       "precio": {
@@ -197,28 +139,16 @@
       "proveedor": "kie",
       "modelo": "hailuo/2-3-image-to-video-standard",
       "nombre": "Hailuo 2.3 Standard",
-      "capacidades": [
-        "image_to_video"
-      ],
+      "capacidades": ["image_to_video"],
       "estado": "compatible",
       "predeterminado": false,
       "conVoz": false,
       "unidad": "vídeo de 6 s",
       "parametros": {
-        "duraciones": [
-          6,
-          10
-        ],
+        "duraciones": [6, 10],
         "proporciones": [],
-        "resoluciones": [
-          "768P",
-          "1080P"
-        ],
-        "formatosReferencia": [
-          "image/jpeg",
-          "image/png",
-          "image/webp"
-        ],
+        "resoluciones": ["768P", "1080P"],
+        "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
         "maximoReferencias": 1
       },
       "precio": {
@@ -233,25 +163,16 @@
       "proveedor": "kie",
       "modelo": "kling/v3-turbo-image-to-video",
       "nombre": "Kling 3.0 Turbo",
-      "capacidades": [
-        "image_to_video"
-      ],
+      "capacidades": ["image_to_video"],
       "estado": "compatible",
       "predeterminado": false,
       "conVoz": true,
       "unidad": "vídeo de 4 s",
       "parametros": {
-        "duraciones": [
-          4
-        ],
+        "duraciones": [4],
         "proporciones": [],
-        "resoluciones": [
-          "720p"
-        ],
-        "formatosReferencia": [
-          "image/jpeg",
-          "image/png"
-        ],
+        "resoluciones": ["720p"],
+        "formatosReferencia": ["image/jpeg", "image/png"],
         "maximoReferencias": 1
       },
       "precio": {
@@ -266,9 +187,7 @@
       "proveedor": "kie",
       "modelo": "gpt-5-6-sol",
       "nombre": "GPT 5.6 Sol (texto)",
-      "capacidades": [
-        "text_generation"
-      ],
+      "capacidades": ["text_generation"],
       "estado": "validado",
       "predeterminado": true,
       "conVoz": false,
@@ -292,9 +211,7 @@
       "proveedor": "kie",
       "modelo": "elevenlabs/text-to-speech-multilingual-v2",
       "nombre": "ElevenLabs Multilingual v2 (voz)",
-      "capacidades": [
-        "tts"
-      ],
+      "capacidades": ["tts"],
       "estado": "descubierto",
       "predeterminado": true,
       "conVoz": true,

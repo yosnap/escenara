@@ -16,7 +16,8 @@ export const dynamic = "force-dynamic";
 export const POST = manejador(async (peticion: Request, _contexto: unknown, actor) => {
   exigirMismoOrigen(peticion);
   const cuerpo = await leerCuerpo(peticion);
-  if (!esVozOfrecida(cuerpo.voz)) throw new ErrorProyecto(400, "Esa voz no está entre las que ofrece esta instalación.");
+  if (!esVozOfrecida(cuerpo.voz))
+    throw new ErrorProyecto(400, "Esa voz no está entre las que ofrece esta instalación.");
   await exigirRitmoDeEscritura(actor, "voz:muestra");
   const { trabajo, medio } = await pedirMuestra(
     actor,

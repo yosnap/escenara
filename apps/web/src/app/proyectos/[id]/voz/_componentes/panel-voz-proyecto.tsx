@@ -65,8 +65,8 @@ export function PanelVozProyecto({
 
       {estado.modo === "clip" ? (
         <Aviso tono="info">
-          La voz la genera el modelo de vídeo dentro de cada clip, con los labios sincronizados. No hay ninguna voz
-          que elegir y los subtítulos salen de transcribir el audio del clip, que no cuesta nada.
+          La voz la genera el modelo de vídeo dentro de cada clip, con los labios sincronizados. No hay ninguna voz que
+          elegir y los subtítulos salen de transcribir el audio del clip, que no cuesta nada.
         </Aviso>
       ) : !d.ttsDisponible ? (
         <Aviso tono="error">{d.motivoTts}</Aviso>

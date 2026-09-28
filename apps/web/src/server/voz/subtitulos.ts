@@ -175,7 +175,11 @@ export async function exportarSubtitulos(
       "Este proyecto todavía no tiene ningún subtítulo guardado. Genera o escribe los subtítulos de sus escenas antes de exportarlos.",
     );
   }
-  const slug = proyecto.title.trim().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "").toLowerCase();
+  const slug = proyecto.title
+    .trim()
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-|-$/g, "")
+    .toLowerCase();
   return {
     nombre: `${slug === "" ? "proyecto" : slug}.${formato}`,
     contenido: componerSubtitulos(conSubtitulos, formato),

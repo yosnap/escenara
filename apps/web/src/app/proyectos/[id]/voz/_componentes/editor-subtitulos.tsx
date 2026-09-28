@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus, SplitSquareVertical, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Boton, BotonIcono } from "@/components/ui/button";
 import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, EntradaTexto } from "@/components/ui/field";
@@ -9,8 +9,8 @@ import {
   avisosDeSubtitulos,
   CARACTERES_POR_LINEA,
   dividirEnLineas,
-  erroresDeSubtitulos,
   type EscenaVozVista,
+  erroresDeSubtitulos,
   type Subtitulo,
   ZONA_SEGURA,
 } from "@/lib/voz";
@@ -23,6 +23,22 @@ import {
  * falla. Los avisos de legibilidad (línea larga, tres líneas, demasiado rápido) **no bloquean**: quien edita puede
  * tener sus razones, y un editor que no deja guardar por un aviso es un editor que se sortea escribiendo peor.
  */
+/**
+ * Subtítulo mientras se edita. `clave` no se guarda ni se envía: es la identidad de la fila en la lista, para que
+ * React no reutilice el contenido de una fila en otra cuando se borra una del medio.
+ */
+interface LineaEditable extends Subtitulo {
+  clave: string;
+}
+
+let contadorDeClaves = 0;
+const nuevaClave = () => `subtitulo-${++contadorDeClaves}`;
+
+const conClave = (subtitulos: readonly Subtitulo[]): LineaEditable[] =>
+  subtitulos.map((s) => ({ ...s, clave: nuevaClave() }));
+
+const sinClave = ({ desde, hasta, texto }: LineaEditable): Subtitulo => ({ desde, hasta, texto });
+
 export function EditorSubtitulos({
   escena,
   ocupado,
@@ -32,7 +48,8 @@ export function EditorSubtitulos({
   ocupado: boolean;
   onGuardar: (subtitulos: Subtitulo[]) => void;
 }) {
-  const [lineas, setLineas] = useState<Subtitulo[]>(escena.subtitulos);
+  const idBase = useId();
+  const [lineas, setLineas] = useState<LineaEditable[]>(() => conClave(escena.subtitulos));
   const [activa, setActiva] = useState(0);
   const errores = erroresDeSubtitulos(lineas);
   const avisos = avisosDeSubtitulos(lineas);
@@ -44,7 +61,7 @@ export function EditorSubtitulos({
   const anadir = () => {
     const ultima = lineas.at(-1);
     const desde = ultima ? ultima.hasta : 0;
-    setLineas([...lineas, { desde, hasta: Math.min(escena.segundos, desde + 1.5), texto: "" }]);
+    setLineas([...lineas, { desde, hasta: Math.min(escena.segundos, desde + 1.5), texto: "", clave: nuevaClave() }]);
     setActiva(lineas.length);
   };
 
@@ -53,21 +70,19 @@ export function EditorSubtitulos({
       <div className="flex min-w-0 flex-1 flex-col gap-3">
         {lineas.length === 0 && (
           <p className="text-sm text-texto-suave">
-            Esta escena no tiene subtítulos todavía. Transcribe su audio, propónlos desde el diálogo o añádelos a
-            mano.
+            Esta escena no tiene subtítulos todavía. Transcribe su audio, propónlos desde el diálogo o añádelos a mano.
           </p>
         )}
         {lineas.map((linea, indice) => (
-          <div
-            // Los subtítulos se pueden reordenar en el tiempo pero no cambian de sitio en la lista: el índice es su
-            // identidad estable mientras se editan.
-            key={`subtitulo-${indice}`}
-            className="flex flex-col gap-2 rounded-tarjeta border-2 border-borde bg-elevada p-3"
-          >
+          <div key={linea.clave} className="flex flex-col gap-2 rounded-tarjeta border-2 border-borde bg-elevada p-3">
             <div className="flex items-end gap-2">
-              <label className="flex flex-col gap-1 text-xs font-semibold text-texto-suave">
+              <label
+                htmlFor={`${idBase}-${linea.clave}-desde`}
+                className="flex flex-col gap-1 text-xs font-semibold text-texto-suave"
+              >
                 Desde (s)
                 <EntradaTexto
+                  id={`${idBase}-${linea.clave}-desde`}
                   type="number"
                   min={0}
                   max={escena.segundos}
@@ -78,9 +93,13 @@ export function EditorSubtitulos({
                   onFocus={() => setActiva(indice)}
                 />
               </label>
-              <label className="flex flex-col gap-1 text-xs font-semibold text-texto-suave">
+              <label
+                htmlFor={`${idBase}-${linea.clave}-hasta`}
+                className="flex flex-col gap-1 text-xs font-semibold text-texto-suave"
+              >
                 Hasta (s)
                 <EntradaTexto
+                  id={`${idBase}-${linea.clave}-hasta`}
                   type="number"
                   min={0}
                   max={escena.segundos}
@@ -127,7 +146,7 @@ export function EditorSubtitulos({
           <Boton variante="secundario" tamano="sm" icono={<Plus />} onClick={anadir}>
             Añadir subtítulo
           </Boton>
-          <Boton tamano="sm" disabled={ocupado || errores.length > 0} onClick={() => onGuardar(lineas)}>
+          <Boton tamano="sm" disabled={ocupado || errores.length > 0} onClick={() => onGuardar(lineas.map(sinClave))}>
             Guardar los subtítulos
           </Boton>
         </div>

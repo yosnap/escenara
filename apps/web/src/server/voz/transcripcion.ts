@@ -168,11 +168,25 @@ export async function transcribir(datos: ArrayBuffer, extension: string): Promis
   const { transcripcionBinario: binario, transcripcionModelo: modelo } = await leerAjustes();
   const base = join(tmpdir(), `escenara-voz-${crypto.randomUUID()}`);
   const entrada = `${base}.${extension.replace(/[^a-z0-9]/gi, "") || "bin"}`;
-  const wav = `${base}.wav`;
-  const vtt = `${base}.wav.vtt`;
+  // El WAV convertido lleva su propio sufijo: si el archivo de origen ya era un `.wav`, entrada y salida serían
+  // el mismo fichero y FFmpeg se negaría a escribir encima de lo que está leyendo.
+  const wav = `${base}-16k.wav`;
+  const vtt = `${wav}.vtt`;
   try {
     await writeFile(entrada, Buffer.from(datos));
-    const conversion = await ejecutar(["ffmpeg", "-y", "-i", entrada, "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le", wav]);
+    const conversion = await ejecutar([
+      "ffmpeg",
+      "-y",
+      "-i",
+      entrada,
+      "-ar",
+      "16000",
+      "-ac",
+      "1",
+      "-c:a",
+      "pcm_s16le",
+      wav,
+    ]);
     if (!conversion.ok) {
       throw new ErrorTranscripcion(
         "No se ha podido leer el audio de ese archivo. Comprueba que el clip tiene pista de audio y que FFmpeg está instalado.",

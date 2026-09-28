@@ -3,7 +3,10 @@ import { DIALOGO_VOZ_MAXIMO, firmaDeVoz, type VozDelProyecto } from "@/lib/voz";
 import { leerAjustes } from "../ajustes";
 import { escenaPropia } from "../asistente/consulta";
 import { ErrorProyecto } from "../asistente/errores";
+import { techoDelProyecto } from "../asistente/plan";
 import { encolar, filaDeLaConfirmacion } from "../cola/encolar";
+import { recopilarHechos } from "../controles/hechos";
+import { exigirControles } from "../controles/puerta";
 import { db } from "../db/cliente";
 import { type FilaEscena, type FilaProyecto, type FilaTrabajo, generationJobs } from "../db/esquema";
 import {
@@ -14,8 +17,9 @@ import {
   proveedorDeCredencial,
 } from "../generacion/comprobaciones";
 import { ErrorGeneracion } from "../generacion/errores";
-import { condicionEnCurso } from "../generacion/trabajos";
+import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { type EleccionDeTrabajo, elegirParaTipo, exigirSelloVigente } from "../generacion/precios";
+import { condicionEnCurso } from "../generacion/trabajos";
 import type { Actor } from "../media/servicio";
 import { acotarCoste } from "../presupuesto/acotar";
 import { vozDelProyecto } from "./proyecto";
@@ -43,6 +47,8 @@ export interface ConfirmacionVoz {
   selloEstimacion: string;
   claveIdempotencia: string;
   avisoUmbralAceptado?: boolean;
+  /** Avisos del motor de controles que el usuario ha confirmado expresamente, por su clave. */
+  avisosConfirmados?: readonly string[];
 }
 
 export interface VozEncolada {
@@ -130,6 +136,7 @@ export async function generarVozDeEscena(
   escenaId: string,
   confirmacion: ConfirmacionVoz,
   modeloPedido?: string | null,
+  h: Herramientas = HERRAMIENTAS,
 ): Promise<VozEncolada> {
   const claveIdempotencia = exigirClaveIdempotencia(confirmacion.claveIdempotencia);
   const { escena, proyecto } = await escenaPropia(actor, escenaId);
@@ -150,6 +157,32 @@ export async function generarVozDeEscena(
   await exigirRitmo(actor.id);
   await exigirEscenaSinVoz(proyecto, escena);
 
+  // ── Punto único: el motor decide si esto se puede generar ───────────────────────────────────────────
+  /**
+   * La voz pasa por **la misma puerta** que cualquier otro gasto (ADR-0023): credencial utilizable, precio
+   * vigente, cuota de la biblioteca y los tres techos del dinero. Lo que no lleva es personaje ni escena del
+   * plan: una pista de voz no genera ninguna cara y no produce la escena, así que sus reglas de consentimiento
+   * y de plan aprobado no aplican y sus grupos de hechos van vacíos.
+   */
+  await exigirControles(
+    { usuarioId: actor.id, sujeto: "escena", sujetoId: escena.id, tipo: "voz" },
+    await recopilarHechos(
+      actor,
+      {
+        tipo: "voz",
+        eleccion,
+        creditos,
+        personajeId: null,
+        personaje: null,
+        escena: null,
+        proyecto: await techoDelProyecto(proyecto.id),
+      },
+      h.buscar,
+    ),
+    confirmacion.avisosConfirmados ?? [],
+  );
+
+  // A partir de aquí ya no queda ninguna regla: el motor las ha aplicado todas.
   const proveedor = proveedorDeCredencial(modelo);
   if (proveedor !== voz.proveedor) {
     throw new ErrorGeneracion(
