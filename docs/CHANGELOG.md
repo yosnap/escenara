@@ -2,6 +2,53 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.25.1] · 2026-09-28
+
+Parche de la 0.25.0: la dirección estaba en el motor pero no se podía usar. Cuatro huecos que encontró el
+propietario al probarla, y dos formas nuevas de llegar al clip sin pagar un fotograma de más.
+
+### Añadido
+
+- **El acento se puede elegir**. Era una columna del proyecto sin ningún control: ahora está en la cabecera del
+  proyecto —España peninsular de fábrica, Madrid, rioplatense, bogotano, CDMX y latinoamericano neutro— y
+  también en «Crear», donde no hay proyecto que lo fije. Cambiarlo en un proyecto **dice cuántas escenas
+  generadas deja sin valer y pide confirmación** antes de aplicarlo, igual que cambiar la voz; no borra ni
+  regenera nada.
+- **La dirección del clip está en «Crear»**. El mismo panel que en la escena de un proyecto: formato, plano,
+  ángulo, movimiento de cámara, micro-acción con su momento, voz y acento, con los mismos avisos antes de pagar.
+- **Otro clip con el mismo fotograma**, en «Crear» y en la escena de un proyecto: se cambia la dirección o el
+  texto y se genera otro sin volver a pagar el fotograma. **Los clips anteriores se conservan** en la biblioteca
+  y en el historial de la escena; cada clip nuevo lleva su estimación y su confirmación.
+- **«Cambiar y volver a generar»** desde un clip terminado: vuelve a abrir la dirección tal como se usó en él
+  —lo visible, nunca el prompt en inglés— para ajustar lo que haga falta y lanzar otro.
+- **Empezar desde una imagen que ya tienes**: «Crear» empieza eligiendo entre dos caminos, «crear un fotograma
+  nuevo» o «usar una imagen que ya tengo». Con el segundo, **el paso del fotograma desaparece entero** —ni
+  formulario, ni plantilla, ni estimación de algo que no se va a pedir— y se pasa directamente a dirigir y
+  generar el clip. En la escena de un proyecto se puede traer igual una imagen de la biblioteca como fotograma
+  de partida. Lo único que se paga es el clip. La imagen tiene que ser tuya, y si salió de un trabajo hecho con
+  un personaje, el clip **hereda ese personaje y sus reglas**.
+- **Instrucciones adicionales (en español)**: un campo libre que se **suma** a lo elegido con botones y entra en
+  el prompt en su sitio, traducido como el resto y limpiado contra inyección de parámetros del proveedor.
+- **Modo experto**: escribes tú la descripción entera en español y los botones de dirección dejan de aplicarse.
+  El acento y la voz siguen siendo tuyos, y **no se pueden quitar** la regla de toma única, los anclajes de
+  realismo ni, con una persona real, la prohibición de retocarla. El prompt en inglés sigue oculto: solo lo ve
+  quien administra.
+- **Ayuda visual**: cada opción de plano, ángulo y movimiento de cámara lleva su **pictograma** —un esquema de
+  dónde está la cámara respecto a la figura o por dónde se mueve— y una frase llana de lo que verá el
+  espectador. El momento del gesto lleva una mini línea de tiempo. Componentes reutilizables, en el catálogo
+  `/admin/componentes`.
+
+### Cambiado
+
+- El panel de dirección vive en `components/ui/direccion/` y lo usan las dos pantallas: dirigir significa lo
+  mismo en las dos y tenerlo duplicado las habría separado.
+- «Crear» empieza por elegir de dónde sale el clip y tiene un paso propio para dirigirlo, al que se puede llegar
+  sin haber generado ningún fotograma.
+
+### Base de datos
+
+- Migración `0035`: la escena guarda sus instrucciones adicionales, si está en modo experto y su descripción.
+
 ## [0.25.0] · 2026-09-28
 
 ### Decisión firme del propietario
