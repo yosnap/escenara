@@ -16,6 +16,16 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ### Añadido
 
+- **Imagen y vídeo en el mapa de modelos.** Se eligen y se ordenan en «Tu cuenta» como el texto, la voz y los
+  subtítulos: el usuario decide con qué se genera y en qué orden, y quien administra **solo recomienda**. «Crear»,
+  las vistas de un personaje y la producción toman el modelo del mapa de su tipo, con sus reservas y la misma
+  regla de dinero del recorrido (a la siguiente solo se pasa cuando está probado que la anterior no cobró).
+- **Pantalla del modo Omni** en «Voz y subtítulos»: el coste por escena delante —marcado como estimado cuando esa
+  duración no se ha medido—, el selector de las treinta voces con su género y su tono, la descripción con el
+  acento de España de fábrica, y el estado del registro del personaje con «Registrar de nuevo» en su ficha.
+- **MiniMax H3** (`minimax-h3/reference-to-video`) como **segundo motor de escenas habladas**, elegible desde el
+  mapa de vídeo: no registra nada en el proveedor, la cara son las fotos del personaje y la voz, una muestra ya
+  pagada de la voz del proyecto. Medido con dinero real: 40 créditos por 5 s a 768P y 143 s.
 - **Personaje inventado**, en «Personajes → Nuevo personaje → Crear un personaje inventado»: se describe, se
   generan **cuatro retratos candidatos** con su coste confirmado y se elige uno. El elegido se guarda marcado como
   vista generada —nunca como foto— y de él salen las demás vistas. Los que no se eligen quedan en la biblioteca.
@@ -32,8 +42,20 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ### Cambiado
 
+- **Gemini Omni 1.1 Flash es la recomendación de la plataforma** para las escenas habladas: genera voz, ambiente
+  e imagen en una sola llamada, sin pista de voz aparte ni mezcla posterior. MiniMax H3 queda como alternativa.
+- **El modelo de las escenas habladas sale del catálogo y del mapa**, no del código: la lista del código solo dice
+  para qué modelos sabe montar la entrada esta instalación y en qué orden los prefiere.
+- Una **reserva del mismo proveedor** ya no se prueba tras un rechazo probado: los tres códigos que prueban que no
+  hubo cobro son de la cuenta, así que otro modelo suyo repetiría el mismo rechazo.
+- Los **registros de Omni tienen ritmo máximo** por usuario: no cuestan créditos, pero envían imágenes al
+  proveedor con la clave de alguien.
+- El filtro de **nombres de personas reales** de un personaje inventado reconoce también apellidos y apodos
+  («Messi», «Obama», «Bardem»), no solo el nombre completo.
 - En modo `omni` la rejilla de producción **no ofrece aprobar fotograma**: la escena es un solo trabajo y su coste
-  es el del clip (63 créditos por 4 s, medido; las demás duraciones, proporcionales y marcadas como estimadas).
+  es el del clip (63 créditos por 4 s con Flash y 40 por 5 s con H3, medidos; las demás duraciones,
+  proporcionales y marcadas como estimadas). Y tampoco exige que el modelo de imagen tenga precio: en este modo
+  no se genera ningún fotograma.
 - El formulario de consentimiento ya no ofrece el titular «inventado»: un personaje inventado nace inventado, y no
   se le puede registrar después un consentimiento de imagen.
 

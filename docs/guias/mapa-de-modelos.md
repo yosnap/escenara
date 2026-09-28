@@ -8,15 +8,21 @@ Para cada tipo hay una lista:
 - la **primera opción** es la principal, la que se usa siempre que funcione;
 - las siguientes son **reservas**: se prueban solas, sin preguntarte, cuando la anterior falla.
 
-Los tipos que hoy usan el mapa son tres:
+Desde la 0.22.0 el mapa cubre **los cinco tipos**, imagen y vídeo incluidos:
 
 | Tipo | Para qué | Quién puede estar |
 |---|---|---|
 | **Texto** | Traducir tus prompts al inglés y escribir el guion con el asistente | Modelos de texto del catálogo con tu clave, y tus servicios compatibles con OpenAI |
 | **Voz** | Leer el diálogo cuando el proyecto usa pista de voz aparte | Modelos de voz del catálogo con tu clave, y `kokoro` en tus servicios compatibles |
 | **Subtítulos** | Sacar los subtítulos del audio ya generado | Esta instalación (gratis) y `whisper` en tus servicios compatibles |
+| **Imagen** | Los fotogramas de tus escenas, las imágenes de «Crear» y las vistas generadas de tus personajes | Modelos de imagen del catálogo con tu clave |
+| **Vídeo** | Los clips de tus escenas y, en modo Omni, las escenas habladas | Modelos de vídeo del catálogo con tu clave |
 
-Los fotogramas y los clips todavía no se eligen aquí: siguen saliendo del catálogo de la instalación.
+En imagen y vídeo **no aparecen los servicios compatibles con la API de OpenAI**: esos son de texto, voz y
+transcripción, y ofrecerlos aquí sería ofrecer algo que no saben hacer.
+
+Cuando en «Crear» eliges tú el modelo a mano, **manda tu elección** para ese envío: es una decisión tuya sobre
+ese trabajo concreto, y por eso no hay reservas detrás (no has visto lo que costaría en ninguna otra).
 
 ## Si no tocas nada
 

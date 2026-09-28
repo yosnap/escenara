@@ -37,7 +37,14 @@ el diálogo en español exacto, y los dos registros **no cuestan créditos**.
 5. **Un identificador que el proveedor ya no reconoce se vuelve a registrar una sola vez**, sin coste, y el anterior
    se conserva marcado como reemplazado: explica con qué identidad salió lo que ya se generó. Una vez y no en
    bucle, porque reintentar contra un proveedor que rechaza convierte su avería en una tormenta nuestra.
-6. **El diálogo no se traduce** (va en el prompt como `saying in Spanish: "…"`, la forma medida); la descripción de
+6. **Dos motores, elegibles desde el mapa de vídeo del usuario** (decisión firme del propietario, 2026-09-28):
+   Gemini Omni 1.1 Flash, que **es la recomendación de la plataforma**, y **MiniMax H3**
+   (`minimax-h3/reference-to-video`), que no registra nada: la cara son las fotos del personaje
+   (`reference_image_urls`) y la voz, una muestra ya pagada de la voz del proyecto (`reference_audio_urls`), así
+   que su timbre es el del mapa de voz. Medido el 2026-09-28: 40 créditos por 5 s a 768P y 143 s, frente a los 63
+   créditos por 4 s y 38 s de Flash. Más barato y bastante más lento, y con la voz en dos llamadas en lugar de
+   una: por eso es alternativa y no recomendado.
+7. **El diálogo no se traduce** (va en el prompt como `saying in Spanish: "…"`, la forma medida); la descripción de
    lo que se ve sí, como en todos los demás modelos.
 
 ## Consecuencias
@@ -45,8 +52,11 @@ el diálogo en español exacto, y los dos registros **no cuestan créditos**.
 - El modo `omni` **no genera fotogramas**, así que en él no hay paso de «aprobar el fotograma»: la escena se produce
   entera de una vez y su coste es el del clip. La rejilla de producción lo dice y no ofrece un botón que el
   servidor va a rechazar.
-- El precio está **medido solo para 4 s** (63 créditos a 720p en 9:16). Las demás duraciones se estiman
+- El precio está **medido solo para la duración de cada motor** (4 s en Flash, 5 s en H3). Las demás se estiman
   proporcionales y se marcan como estimadas hasta medirlas.
+- Con MiniMax H3 hacen falta **dos cosas que no son registros**: la voz del proyecto elegida y su muestra ya
+  pagada. La muestra **no se paga al producir**: se paga una vez desde el selector de voz, donde el usuario ve su
+  coste. Esconder ese gasto dentro de «producir una escena» sería cobrar algo que no se ha confirmado ahí.
 - Una escena hablada se encola como el resto de los clips (`kind = "animacion"`), pero **sin trabajo padre**. Eso
   mantiene intactos la cola, el cierre del gasto y la conciliación: no hay un segundo camino de dinero.
 - El worker envía **los identificadores que se guardaron al encolar**, no los que el personaje tenga registrados al
