@@ -16,6 +16,13 @@ function uuidOpcional(valor: string | null, queEs: string): string | null {
   return valor;
 }
 
+/** Clave de acción con el producto: minúsculas, números y guiones, o no viene. */
+function claveOpcional(valor: string | null): string | null {
+  if (valor === null || valor === "") return null;
+  if (!/^[a-z0-9_-]{1,60}$/.test(valor)) throw new ErrorGeneracion(400, "Esa acción con el producto no es válida.");
+  return valor;
+}
+
 /** Vista que se va a generar para un personaje: o es una del catálogo, o no viene. */
 function vistaOpcional(valor: string | null): Vista | null {
   if (valor === null || valor === "") return null;
@@ -51,6 +58,8 @@ export const GET = manejador(async (peticion: Request, _: unknown, actor) => {
       escenaId: uuidOpcional(parametros.get("escenaId"), "identificador de escena"),
       vistaSintetica: vistaOpcional(parametros.get("vista")),
       retratoInventado: parametros.get("retrato") === "1",
+      productoId: uuidOpcional(parametros.get("productoId"), "producto"),
+      productoAccion: claveOpcional(parametros.get("accion")),
     }),
   );
 });

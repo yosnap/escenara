@@ -273,7 +273,24 @@ export function VistaCrear({
    */
   const refrescarControlesDelClip = async (medioId: string | undefined, modelo: string) => {
     if (!medioId) return;
-    const fallo = await controlesClip.refrescar({ tipo: "animacion", modelo, medioId });
+    const fallo = await controlesClip.refrescar(sujetoDelClip(modelo, medioId, productoClip));
+    if (fallo) setError(fallo);
+  };
+
+  /** Lo que se evalúa del clip: el modelo, la imagen que anima y el producto, que trae sus propios avisos. */
+  const sujetoDelClip = (modelo: string, medioId: string, producto: ProductoElegido) => ({
+    tipo: "animacion" as const,
+    modelo,
+    medioId,
+    ...(producto.productoId ? { productoId: producto.productoId, accion: producto.accion } : {}),
+  });
+
+  /** Elegir o quitar el producto cambia lo evaluado: se vuelve a preguntar al servidor para que el aviso salga ya. */
+  const elegirProductoDelClip = async (producto: ProductoElegido) => {
+    setProductoClip(producto);
+    const medioId = fotograma?.medio?.id ?? imagenDelClip?.id;
+    if (!medioId) return;
+    const fallo = await controlesClip.refrescar(sujetoDelClip(estimacionClip.modelo, medioId, producto));
     if (fallo) setError(fallo);
   };
 
@@ -424,11 +441,7 @@ export function VistaCrear({
     const respuesta = await consultarEstimacion("animacion", estimacionClip.modelo);
     if (respuesta.ok) setEstimacionClip(respuesta.datos);
     // El clip es otro envío: sus controles se evalúan con el fotograma ya generado, que es su referencia.
-    const fallo = await controlesClip.refrescar({
-      tipo: "animacion",
-      modelo: estimacionClip.modelo,
-      medioId: trabajo.medio.id,
-    });
+    const fallo = await controlesClip.refrescar(sujetoDelClip(estimacionClip.modelo, trabajo.medio.id, productoClip));
     if (fallo) setError(fallo);
   };
 
@@ -455,11 +468,7 @@ export function VistaCrear({
     } else {
       setEstimacionClip(respuesta.datos);
       if (fotograma?.medio) {
-        await controlesClip.refrescar({
-          tipo: "animacion",
-          modelo: respuesta.datos.modelo,
-          medioId: fotograma.medio.id,
-        });
+        await controlesClip.refrescar(sujetoDelClip(respuesta.datos.modelo, fotograma.medio.id, productoClip));
       }
     }
     // Y los formatos y las duraciones que se pueden ofrecer también son del modelo: se vuelven a pedir en
@@ -706,7 +715,7 @@ export function VistaCrear({
         opcionesDireccion={opcionesDireccion}
         direccion={direccionClip}
         producto={productoClip}
-        onProducto={setProductoClip}
+        onProducto={elegirProductoDelClip}
         catalogo={catalogoClip}
         plantilla={plantillaClip}
         previa={previaClip}

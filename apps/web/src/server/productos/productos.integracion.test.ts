@@ -463,6 +463,29 @@ describe.skipIf(!hayBaseDeDatos)("productos con sus fotos, su elección y su bor
       return { entrada: enviado?.entrada ?? {}, prompt: String(enviado?.entrada.prompt ?? "") };
     }
 
+    test("en «Crear» el panel enseña el aviso del producto antes de confirmar, para poder confirmarlo con su casilla", async () => {
+      const { evaluarControles } = await import("../controles/consulta");
+      const producto = await productoConDosFotos(`Panel-${randomBytes(3).toString("hex")}`);
+      const imagen = await subirFoto(ana, "panel.png");
+      const sin = await evaluarControles(actorAna, { tipo: "animacion", medioId: imagen });
+      expect(sin.comprobaciones.map((c) => c.regla)).not.toContain("producto-sin-hueco-de-referencia");
+      const con = await evaluarControles(actorAna, {
+        tipo: "animacion",
+        medioId: imagen,
+        productoId: producto.id,
+        productoAccion: "ensenarlo-a-camara",
+      });
+      const aviso = con.comprobaciones.find((c) => c.regla === "producto-sin-hueco-de-referencia");
+      expect(con.comprobaciones.map((c) => c.regla)).toContain("producto-sin-hueco-de-referencia");
+      expect(aviso?.motivo).toContain(producto.nombre);
+      // Un producto ajeno no se evalúa ni se dice que existe.
+      const ajeno = await evaluarControles(
+        { id: beto.id, esAdmin: false },
+        { tipo: "animacion", productoId: producto.id },
+      );
+      expect(ajeno.comprobaciones.map((c) => c.regla)).not.toContain("producto-sin-hueco-de-referencia");
+    });
+
     /** Producto con dos fotos: la frontal con la etiqueta y el envase. */
     async function productoConDosFotos(nombre: string) {
       const producto = await crearProductoDe(ana, nombre);
