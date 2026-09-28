@@ -5,7 +5,7 @@ import {
   DESCRIPCION_PERSONAJE_OMNI_MAXIMA,
   DESCRIPCION_VOZ_OMNI_MAXIMA,
   EJEMPLO_VOZ_OMNI_MAXIMO,
-  MODELO_OMNI,
+  MODELOS_OMNI,
   NOMBRE_VOZ_OMNI_MAXIMO,
 } from "@/lib/omni";
 import { usarCredencialValida } from "../boveda/credenciales";
@@ -43,9 +43,30 @@ import { ErrorOmni } from "./errores";
  * (`personajes/omni.ts` y `voz/omni.ts`), que son los que tienen el actor y el motor de controles delante.
  */
 
-/** Modelo, adaptador y precio de Gemini Omni; falla con su motivo si esta instalación no lo tiene utilizable. */
+/**
+ * Modelo, adaptador y precio con los que se producen las escenas habladas: **el primero de `MODELOS_OMNI` que el
+ * catálogo tenga utilizable y con precio**, que hoy es Gemini Omni 1.1 Flash.
+ *
+ * Sale del catálogo y no de una constante a propósito: retirar un modelo, cambiar su precio o validar otro es
+ * una decisión de quien administra, y escribirlo a fuego aquí significaría que cambiarlo es cambiar el código.
+ * Si ninguno está utilizable, se propaga el motivo del último intento y **no se produce nada**.
+ */
 export async function eleccionOmni(): Promise<EleccionDeTrabajo> {
-  return elegirParaTipo("animacion", MODELO_OMNI);
+  let ultimo: unknown = null;
+  for (const modelo of MODELOS_OMNI) {
+    try {
+      return await elegirParaTipo("animacion", modelo);
+    } catch (error) {
+      ultimo = error;
+    }
+  }
+  throw (
+    ultimo ??
+    new ErrorOmni(
+      503,
+      "Esta instalación no tiene ningún modelo de escenas habladas utilizable, así que no puede usar el modo Omni.",
+    )
+  );
 }
 
 /**
@@ -68,7 +89,13 @@ async function claveDe(usuarioId: string, proveedor: string, nombreProveedor: st
  * Traduce un fallo del proveedor al mensaje de la norma de errores visibles. El registro **es gratuito**, así
  * que el cobro que se declara es siempre `sin-cobro`: no es una suposición, es lo que se midió.
  */
-function falloDeRegistro(error: unknown, nombreProveedor: string, que: string, sugerencia: string): ErrorOmni {
+function falloDeRegistro(
+  error: unknown,
+  nombreProveedor: string,
+  modelo: string,
+  que: string,
+  sugerencia: string,
+): ErrorOmni {
   if (!(error instanceof ErrorProveedor)) return new ErrorOmni(502, `${que}. ${sugerencia}`);
   return new ErrorOmni(
     502,
@@ -77,7 +104,7 @@ function falloDeRegistro(error: unknown, nombreProveedor: string, que: string, s
       [
         {
           proveedor: nombreProveedor,
-          modelo: MODELO_OMNI,
+          modelo,
           codigo: error.codigo as CodigoPrueba,
           // Los dos endpoints de registro no cobran nada (medido el 2026-09-28): tampoco cuando fallan.
           cobro: "sin-cobro",
@@ -122,6 +149,7 @@ export async function registrarVozEnProveedor(
     throw falloDeRegistro(
       error,
       modelo.nombreProveedor,
+      modelo.modelo,
       "No se ha podido registrar la voz de este proyecto, así que no se ha cambiado nada",
       "Vuelve a intentarlo: registrar una voz no cuesta créditos.",
     );
@@ -177,6 +205,7 @@ export async function registrarPersonajeEnProveedor(
     throw falloDeRegistro(
       error,
       modelo.nombreProveedor,
+      modelo.modelo,
       "No se ha podido registrar este personaje para escenas habladas, así que no se ha generado nada",
       "Vuelve a intentarlo: registrar un personaje no cuesta créditos.",
     );

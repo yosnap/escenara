@@ -17,8 +17,22 @@
  * consentimiento y quedan registrados con su cuenta y su fecha.
  */
 
-/** Modelo de vídeo con el que se producen las escenas habladas. Lo declara el catálogo; aquí solo se nombra. */
-export const MODELO_OMNI = "gemini-omni-video";
+/**
+ * Modelos de vídeo que saben producir una **escena hablada**, es decir, que aceptan `character_ids` y una voz
+ * registrada, **en orden de preferencia**.
+ *
+ * Esto no es el catálogo: el catálogo dice qué modelos hay, en qué estado están y cuánto cuestan, y es él quien
+ * decide si uno se puede usar. Lo que dice esta lista es **para cuáles sabe montar la entrada esta instalación**
+ * (`kie/entradas.ts`), que es una propiedad del código y no de los datos: un modelo del catálogo sin constructor
+ * no se puede enviar. De los que estén utilizables se coge el primero de esta lista.
+ *
+ * Gemini Omni 1.1 Flash es el predeterminado desde la 0.22.0 (decisión firme del propietario, 2026-09-28):
+ * medido con dinero real ese día, cuesta lo mismo que `gemini-omni-video` —63 créditos por 4 s en 9:16 a 720p—
+ * y tarda **38 s en lugar de 59 s**, con el diálogo en español igual de exacto.
+ */
+export const MODELOS_OMNI = ["google/gemini-omni-flash-1-1", "gemini-omni-video"] as const;
+
+export const esModeloOmni = (modelo: string): boolean => MODELOS_OMNI.includes(modelo as (typeof MODELOS_OMNI)[number]);
 
 /** Límites de los dos registros, tal como los documenta KIE (docs.kie.ai, comprobado el 2026-09-28). */
 export const NOMBRE_VOZ_OMNI_MAXIMO = 210;

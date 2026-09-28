@@ -1,4 +1,4 @@
-import { creditosDeEscenaOmni, MODELO_OMNI, type VozOmniDelProyecto } from "@/lib/omni";
+import { creditosDeEscenaOmni, type VozOmniDelProyecto } from "@/lib/omni";
 import { duracionParaModelo } from "@/lib/produccion";
 import { firmaDeVoz } from "@/lib/voz";
 import { escenaPropia } from "../asistente/consulta";
@@ -303,6 +303,3 @@ export async function escenaHabladaPropia(
   }
   return { escena, proyecto };
 }
-
-/** Nombre del modelo con el que se producen las escenas habladas. Se enseña en la pantalla y en los errores. */
-export const MODELO_DE_ESCENA_HABLADA = MODELO_OMNI;

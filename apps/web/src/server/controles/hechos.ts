@@ -156,9 +156,9 @@ export interface TechoDeProyecto {
  * que devuelve sus impedimentos. Dejarlo en «sin personaje» sería saltarse la puerta del consentimiento por un
  * borrado a medias.
  */
-export async function hechosDePersonajeCitado(personajeId: string): Promise<HechosPersonaje> {
+export async function hechosDePersonajeCitado(personajeId: string, primerRetrato = false): Promise<HechosPersonaje> {
   const personaje = await personajePorId(personajeId);
-  return personaje ? hechosDePersonaje(personaje) : hechosDePersonajeAusente(personajeId);
+  return personaje ? hechosDePersonaje(personaje, primerRetrato) : hechosDePersonajeAusente(personajeId);
 }
 
 async function hechosDePersonajeAusente(personajeId: string): Promise<HechosPersonaje> {

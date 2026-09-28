@@ -182,9 +182,15 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
       evaluar({
         tipo: fila.kind,
         parametros: await parametrosDeControles(),
-        // Si la ficha del personaje ya no está, esto bloquea en lugar de dejar pasar: un borrado a medias no
-        // puede convertirse en un envío sin consentimiento.
-        personaje: await hechosDePersonajeCitado(fila.characterId),
+        /**
+         * Si la ficha del personaje ya no está, esto bloquea en lugar de dejar pasar. Y el **primer retrato de
+         * un personaje inventado** (0.22.0) se revalida sin exigirle las fotos que todavía no tiene: es este
+         * mismo trabajo el que se las va a dar, igual que al encolarlo.
+         */
+        personaje: await hechosDePersonajeCitado(
+          fila.characterId,
+          (fila.input as { retratoInventado?: unknown }).retratoInventado === true,
+        ),
         modelo: {
           nombre: modelo.nombre,
           maximoReferencias: modelo.parametros.maximoReferencias,
