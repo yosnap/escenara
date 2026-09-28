@@ -12,6 +12,8 @@ import { conVistaQueCompleta, recopilarHechos } from "../controles/hechos";
 import { exigirControles } from "../controles/puerta";
 import type { FilaMedio } from "../db/esquema";
 import { decidir } from "../decisiones/reglas";
+import { type DireccionDeClip, dirigirClipPara, familiaDe } from "../direccion/clip";
+import { type CambiarSolo, componerSeisC, type SeisC } from "../direccion/fotograma";
 import {
   type EleccionDelMapa,
   eleccionDeGeneracion,
@@ -124,6 +126,19 @@ interface Confirmacion {
    * limpieza anti-inyección: editar el texto no es una puerta para colar parámetros del proveedor.
    */
   promptEditado?: string;
+  /**
+   * **Dirección del clip** (0.25.0): lo que el usuario eligió con botones, ya resuelto a trozos de prompt en
+   * inglés por `direccion/catalogo.ts`. Lo pone **el servidor** de producción a partir de la escena, nunca el
+   * navegador: si el navegador pudiera mandarla, podría mandar texto suyo al proveedor saltándose el catálogo.
+   *
+   * Se aplica **después de traducir**, porque su hueco `escena` es el texto libre del usuario ya en inglés.
+   * Sin ella todo funciona como en la 0.24.x.
+   */
+  direccion?: Omit<DireccionDeClip, "escena" | "dialogo">;
+  /** Las 6C del fotograma, igual: las resuelve el servidor y se aplican después de traducir. */
+  seisC?: Omit<SeisC, "contextoLibre">;
+  /** Modo «cambiar solo…», cuando se parte de un fotograma ya aprobado. */
+  cambiarSolo?: CambiarSolo;
 }
 
 /**
@@ -493,11 +508,16 @@ export async function crearFotograma(
   );
   const escenaEnIngles = enIngles.get(prompt) ?? prompt;
   const contextoEnIngles = enIngles.get(conFicha.contexto) ?? conFicha.contexto;
-  // Si no ha hecho falta traducir nada, se reutiliza lo ya compuesto en lugar de componerlo otra vez.
+  // Las 6C se componen con el texto libre ya en inglés. El bloque de anclajes (C6) lo cierra `componerSeisC` y
+  // no depende de esto: va siempre, aunque el usuario no haya elegido nada.
+  const escenaCompuesta = peticion.seisC
+    ? componerSeisC({ ...peticion.seisC, contextoLibre: escenaEnIngles }, peticion.cambiarSolo)
+    : escenaEnIngles;
+  // Si no ha hecho falta traducir nada ni dirigir nada, se reutiliza lo ya compuesto en lugar de rehacerlo.
   const base =
-    escenaEnIngles === prompt
+    escenaCompuesta === prompt
       ? original
-      : await baseDelPrompt(actor, peticion, "fotograma", modelo, conFicha.tipo, escenaEnIngles);
+      : await baseDelPrompt(actor, peticion, "fotograma", modelo, conFicha.tipo, escenaCompuesta);
   const promptFinal = promptConContexto(base.escena, contextoEnIngles);
 
   const parametros = adaptador.montarEntrada(modelo, { escena: promptFinal, dialogo: "", urls: [] });
@@ -703,12 +723,25 @@ export async function crearAnimacion(
   );
   const escenaEnIngles = enIngles.get(prompt) ?? prompt;
   const contextoEnIngles = enIngles.get(contexto) ?? contexto;
+  // La dirección se aplica **aquí**, con el texto libre ya en inglés y después de todas las puertas gratis: es
+  // lo que pone el encuadre, la cámara, el gesto en su momento y la regla de toma única alrededor de la escena.
+  const dirigido = peticion.direccion
+    ? dirigirClipPara(familiaDe(modelo.modelo), { ...peticion.direccion, escena: escenaEnIngles, dialogo })
+    : null;
+  const escenaDirigida = dirigido?.escena ?? escenaEnIngles;
+  // En formato mudo el diálogo **no viaja**, aunque el guion tenga texto: el clip lleva la boca cerrada.
+  const dialogoFinal = dirigido ? dirigido.dialogo : dialogo;
   const base =
-    escenaEnIngles === prompt
+    escenaDirigida === prompt
       ? original
-      : await baseDelPrompt(actor, peticion, "animacion", modelo, tipo, escenaEnIngles, segundos);
+      : await baseDelPrompt(actor, peticion, "animacion", modelo, tipo, escenaDirigida, segundos);
   const promptFinal = promptConContexto(base.escena, contextoEnIngles);
-  const parametros = adaptador.montarEntrada(modelo, { escena: promptFinal, dialogo, urls: [], segundos });
+  const parametros = adaptador.montarEntrada(modelo, {
+    escena: promptFinal,
+    dialogo: dialogoFinal,
+    urls: [],
+    segundos,
+  });
   const valores: NuevoTrabajoEncolado = {
     userId: actor.id,
     kind: "animacion",
@@ -719,7 +752,7 @@ export async function crearAnimacion(
       ...entradaGuardada(adaptador, promptFinal, [origen.id], { ...parametros, segundos }),
       // La tarifa confirmada: es la de **esta** duración, y es la que el worker vuelve a comprobar antes de enviar.
       unidadPrecio: precio.unidad,
-      dialogo,
+      dialogo: dialogoFinal,
       escena: prompt,
       ...(base.compuesto
         ? {

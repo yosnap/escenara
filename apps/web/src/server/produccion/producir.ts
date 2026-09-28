@@ -5,7 +5,8 @@ import { falloConCoste, type ProduccionVista, trabajoTerminado } from "@/lib/pro
 import { escenaPropia, escenasDe, proyectoPropio } from "../asistente/consulta";
 import { ErrorProyecto } from "../asistente/errores";
 import { db } from "../db/cliente";
-import { type FilaEscena, type FilaProyecto, type FilaTrabajo, scenes } from "../db/esquema";
+import { characters, type FilaEscena, type FilaProyecto, type FilaTrabajo, scenes } from "../db/esquema";
+import { direccionDeLaEscena, type PersonajeDirigido } from "../direccion/escena";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { crearAnimacion, crearFotograma } from "../generacion/servicio";
 import type { Actor } from "../media/servicio";
@@ -77,6 +78,31 @@ function textoVisualDe(escena: FilaEscena): string {
     );
   }
   return texto;
+}
+
+/**
+ * Lo que el protagonista aporta a la dirección: si es una persona real y cómo es su voz.
+ *
+ * `descripcion` va **vacía** a propósito: la ficha del personaje ya entra en el prompt por su propio camino
+ * (`contextoDeVersion`, desde la 0.15.0), y repetirla aquí la diría dos veces. Lo que sí añade la dirección es
+ * la instrucción de no retocar a una persona real, que sale de `real`.
+ */
+async function personajeDirigidoDe(proyecto: FilaProyecto): Promise<PersonajeDirigido> {
+  const sinPersonaje: PersonajeDirigido = { descripcion: "", real: true, atractivoElegido: false, ejesVoz: {} };
+  if (!proyecto.mainCharacterId) return sinPersonaje;
+  const [personaje] = await db()
+    .select({ virtual: characters.virtual, voiceAxes: characters.voiceAxes })
+    .from(characters)
+    .where(eq(characters.id, proyecto.mainCharacterId))
+    .limit(1);
+  // Sin fila se trata como persona real: es el lado que **no** embellece, y equivocarse hacia ahí no hace daño.
+  if (!personaje) return sinPersonaje;
+  return {
+    descripcion: "",
+    real: !personaje.virtual,
+    atractivoElegido: false,
+    ejesVoz: personaje.voiceAxes,
+  };
 }
 
 /** El protagonista del proyecto es lo que da identidad al fotograma: sin él no se produce. */
@@ -190,6 +216,10 @@ async function encolarAnimacion(
       prompt: textoVisualDe(escena),
       trabajoPadreId,
       reintentoDeEscena: reintento,
+      // La dirección la resuelve el servidor desde la escena: el encuadre, la cámara, el gesto en su momento y
+      // la regla de toma única. Sin nada elegido sale un plano a cámara con la cámara quieta, que es lo que
+      // salía antes de esta versión.
+      direccion: await direccionDeLaEscena(actor.id, escena, proyecto, await personajeDirigidoDe(proyecto)),
       // Lo que dice el personaje va aparte de la descripción visual y solo lo usan los modelos con voz.
       dialogo: dialogoDelClip(escena, proyecto),
       derechos: confirmacion.derechos,

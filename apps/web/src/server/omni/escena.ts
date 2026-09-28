@@ -18,6 +18,8 @@ import type {
   FilaVersionPersonaje,
 } from "../db/esquema";
 import { decidir } from "../decisiones/reglas";
+import { dirigirClipPara, familiaDe } from "../direccion/clip";
+import { direccionDeLaEscena } from "../direccion/escena";
 import {
   exigirAvisoUmbral,
   exigirClaveIdempotencia,
@@ -339,7 +341,20 @@ export async function producirEscenaHablada(
   );
   const escenaEnIngles = enIngles.get(prompt) ?? prompt;
   const contextoEnIngles = enIngles.get(contexto) ?? contexto;
-  const promptFinal = promptConContexto(escenaEnIngles, contextoEnIngles);
+  // La dirección del clip (0.25.0) se aplica con el texto libre ya en inglés. En formato mudo el diálogo no
+  // viaja, aunque el guion tenga texto: el clip sale con la boca cerrada y sin voz.
+  const dirigido = dirigirClipPara(familiaDe(modelo.modelo), {
+    ...(await direccionDeLaEscena(actor.id, escena, proyecto, {
+      descripcion: "",
+      real: !personaje.virtual,
+      atractivoElegido: false,
+      ejesVoz: personaje.voiceAxes,
+    })),
+    escena: escenaEnIngles,
+    dialogo,
+  });
+  const dialogoFinal = dirigido.dialogo;
+  const promptFinal = promptConContexto(dirigido.escena, contextoEnIngles);
   /**
    * Qué se le manda al proveedor según el motor:
    *
@@ -352,7 +367,7 @@ export async function producirEscenaHablada(
     : (await referenciasParaGenerar(personaje, modelo.parametros.maximoReferencias)).referencias;
   const parametros = adaptador.montarEntrada(modelo, {
     escena: promptFinal,
-    dialogo,
+    dialogo: dialogoFinal,
     urls: [],
     segundos,
     ...(conIdentidad && registro ? { personajesOmni: [registro.remoteCharacterId] } : {}),
