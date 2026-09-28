@@ -14,9 +14,11 @@ import {
   autorizarReintentos,
   type ConfirmacionEnvio,
   cancelarEscena,
+  otroClipDeEscena,
   producirEscena,
   producirProyecto,
   regenerarEscena,
+  usarFotogramaDeBiblioteca,
 } from "./api-produccion";
 import { ConfirmacionGasto } from "./confirmacion-gasto";
 import { TarjetaEscena } from "./tarjeta-escena";
@@ -196,6 +198,10 @@ export function VistaProduccion({ inicial }: { inicial: ProduccionVista }) {
                 onProducir={(c) => void ejecutar(() => producirEscena(escena.id, c))}
                 onAprobar={(c) => void ejecutar(() => aprobarFotograma(escena.id, c))}
                 onRegenerar={(c) => void ejecutar(() => regenerarEscena(escena.id, c))}
+                onOtroClip={(c) => void ejecutar(() => otroClipDeEscena(escena.id, c))}
+                onFotogramaDeBiblioteca={(medioId) =>
+                  void ejecutar(() => usarFotogramaDeBiblioteca(escena.id, medioId))
+                }
                 onCancelar={() => void cancelar(escena.id)}
                 onReintentos={(reintentos) => void ejecutar(() => autorizarReintentos(escena.id, reintentos))}
               />

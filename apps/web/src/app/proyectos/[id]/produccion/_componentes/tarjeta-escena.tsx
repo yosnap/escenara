@@ -3,6 +3,7 @@
 import { CheckCircle2 } from "lucide-react";
 import { InsigniaControl } from "@/components/ui/controles";
 import { Aviso } from "@/components/ui/feedback";
+import { SelectorMedios } from "@/components/ui/media/selector-medios";
 import { InsigniaEstadoEscena } from "@/components/ui/proyecto";
 import { avisosConfirmables, bloqueosDeControles } from "@/lib/controles";
 import { formatearCreditos } from "@/lib/generacion";
@@ -37,6 +38,8 @@ export function TarjetaEscena({
   onProducir,
   onAprobar,
   onRegenerar,
+  onOtroClip,
+  onFotogramaDeBiblioteca,
   onCancelar,
   onReintentos,
   onConfirmarAviso,
@@ -48,6 +51,10 @@ export function TarjetaEscena({
   onProducir: (confirmacion: ConfirmacionEnvio) => void;
   onAprobar: (confirmacion: ConfirmacionEnvio) => void;
   onRegenerar: (confirmacion: ConfirmacionEnvio) => void;
+  /** Otro clip con el mismo fotograma aprobado, con la dirección de ahora. No toca los anteriores. */
+  onOtroClip: (confirmacion: ConfirmacionEnvio) => void;
+  /** Toma una imagen de la biblioteca como fotograma de partida. No gasta nada. */
+  onFotogramaDeBiblioteca: (medioId: string) => void;
   onCancelar: () => void;
   onReintentos: (reintentos: number) => void;
   /** Confirma un aviso salvable: la misma confirmación que el panel «Antes de generar» de la producción. */
@@ -111,6 +118,23 @@ export function TarjetaEscena({
             <EsperaEscena trabajo={escena.fotograma} etiqueta="Fotograma" />
           ) : (
             <p className="text-sm text-texto-suave">Todavía no se ha generado.</p>
+          )}
+          {/*
+            Empezar por una imagen que ya tienes: un fotograma de otro día, una vista del personaje o una foto
+            tuya. Elegirla **no gasta nada**; lo único que se paga después es el clip.
+          */}
+          {!escena.fotogramaAprobado && escena.estado !== "producida" && !enVuelo && (
+            <SelectorMedios
+              etiqueta="O usa una imagen tuya como fotograma"
+              ayuda="Se toma tal cual como primer fotograma del clip, sin generar ninguno ni pagar por él."
+              tipos={["imagen"]}
+              sinDocumentos
+              valor={[]}
+              onCambio={(medios) => {
+                const elegida = medios[0];
+                if (elegida) onFotogramaDeBiblioteca(elegida.id);
+              }}
+            />
           )}
         </div>
         <div className="flex flex-col gap-2">
@@ -186,6 +210,28 @@ export function TarjetaEscena({
           onConfirmarAviso={onConfirmarAviso}
           ocupado={ocupado}
           onEnviar={onAprobar}
+        />
+      )}
+
+      {/*
+        Otro clip con el mismo fotograma: para probar otra dirección o cambiar el texto no hace falta volver a
+        generar —ni a pagar— el fotograma. Lo que ya hay no se sustituye: sigue en tu biblioteca y en el historial.
+      */}
+      {escena.clip !== null && !trabajoEnMarcha(escena.animacion) && escena.fotogramaAprobado && (
+        <ConfirmacionGasto
+          titulo="Otro clip con este fotograma"
+          explicacion={`Se encola otro clip de ${escena.segundos} s del mismo fotograma, con la dirección y el texto que tiene ahora la escena. El clip anterior no se borra: se conserva en tu biblioteca y en el historial.`}
+          creditos={produccion.creditosPorClip}
+          umbral={produccion.umbralAvisoCreditos}
+          sello={produccion.selloClip}
+          etiqueta="Generar otro clip"
+          firma={`otro-clip|${escena.fotogramaAprobado.id}|${escena.animacion?.id ?? ""}|${avisosConfirmados.join(",")}`}
+          bloqueos={bloqueos}
+          avisosConfirmados={avisosConfirmados}
+          avisos={avisos}
+          onConfirmarAviso={onConfirmarAviso}
+          ocupado={ocupado}
+          onEnviar={onOtroClip}
         />
       )}
 

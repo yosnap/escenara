@@ -1,4 +1,11 @@
 import { and, desc, eq, gt, inArray, isNotNull, ne, or, type SQL } from "drizzle-orm";
+import {
+  type DireccionElegidaConAcento,
+  esAcento,
+  esFormatoClip,
+  esMomentoMicroaccion,
+  esRegistroEstetico,
+} from "@/lib/direccion";
 import { ESTADOS_ACTIVOS, type TrabajoVista } from "@/lib/generacion";
 import { etapaDeTrabajo } from "@/lib/produccion";
 import { leerAjustes } from "../ajustes";
@@ -82,6 +89,7 @@ export function vistaDe(
     personajeId: fila.characterId,
     medio: medio ? aDto(medio, { id: fila.userId, esAdmin: false }) : null,
     trabajoPadreId: fila.parentJobId,
+    direccion: direccionGuardada(fila),
     derechosConfirmados: fila.rightsConfirmedAt !== null,
     motivoFallo: fila.failureReason,
     intentos: fila.attempts,
@@ -94,6 +102,39 @@ export function vistaDe(
     enviadoEn: iso(fila.sentAt),
     ultimaConsulta: iso(fila.polledAt),
     terminadoEn: iso(fila.finishedAt),
+  };
+}
+
+/**
+ * La dirección elegida que quedó guardada con el trabajo (0.25.1). Son **claves**, no texto de prompt, así que
+ * pueden salir hacia el navegador: es justo lo que el usuario eligió y leyó en los botones.
+ *
+ * Se vuelve a validar al leerla en lugar de confiar en lo guardado: la fila es JSON y un trabajo viejo no la
+ * tiene. Si no encaja, se devuelve `null` y la pantalla ofrece dirigir desde cero.
+ */
+function direccionGuardada(fila: FilaTrabajo): DireccionElegidaConAcento | null {
+  const guardada = (fila.input as { direccionElegida?: unknown }).direccionElegida;
+  if (!guardada || typeof guardada !== "object") return null;
+  const c = guardada as Record<string, unknown>;
+  if (!esFormatoClip(c.formatoClip) || !esMomentoMicroaccion(c.momentoMicroaccion)) return null;
+  if (!esRegistroEstetico(c.registroEstetico) || !esAcento(c.acento)) return null;
+  const clave = (v: unknown) => (typeof v === "string" ? v : "");
+  return {
+    formatoClip: c.formatoClip,
+    plano: clave(c.plano),
+    angulo: clave(c.angulo),
+    camara: clave(c.camara),
+    microaccion: clave(c.microaccion),
+    momentoMicroaccion: c.momentoMicroaccion,
+    direccionVocal: clave(c.direccionVocal),
+    optica: clave(c.optica),
+    luz: clave(c.luz),
+    localizacion: clave(c.localizacion),
+    registroEstetico: c.registroEstetico,
+    instruccionesExtra: clave(c.instruccionesExtra),
+    modoExperto: c.modoExperto === true,
+    descripcionExperta: clave(c.descripcionExperta),
+    acento: c.acento,
   };
 }
 

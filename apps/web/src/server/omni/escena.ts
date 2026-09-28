@@ -337,11 +337,22 @@ export async function producirEscenaHablada(
   });
   // El matiz de voz se traduce con el resto del texto libre; el diálogo no, que es lo que se va a oír.
   const matizDeVoz = escena.dialogueDirection.trim();
+  // Igual que el matiz de voz: las instrucciones adicionales y la descripción del modo experto las escribe el
+  // usuario en castellano y el prompt va en inglés.
+  const instrucciones = escena.extraInstructions.trim();
+  const descripcionExperta = escena.expertDescription.trim();
   const enIngles = await traducirAlIngles(
     actor.id,
-    [{ texto: prompt }, { texto: contexto, personajeId: personaje.id }, { texto: matizDeVoz }],
+    [
+      { texto: prompt },
+      { texto: contexto, personajeId: personaje.id },
+      { texto: matizDeVoz },
+      { texto: instrucciones },
+      { texto: descripcionExperta },
+    ],
     h.buscar,
   );
+  const enInglesO = (texto: string) => (texto === "" ? "" : (enIngles.get(texto) ?? texto));
   const escenaEnIngles = enIngles.get(prompt) ?? prompt;
   const contextoEnIngles = enIngles.get(contexto) ?? contexto;
   // La dirección del clip (0.25.0) se aplica con el texto libre ya en inglés. En formato mudo el diálogo no
@@ -353,7 +364,9 @@ export async function producirEscenaHablada(
       atractivoElegido: personaje.virtual && personaje.beautyOptIn,
       ejesVoz: personaje.voiceAxes,
     })),
-    direccionVocal: matizDeVoz === "" ? "" : (enIngles.get(matizDeVoz) ?? matizDeVoz),
+    direccionVocal: enInglesO(matizDeVoz),
+    instruccionesExtra: enInglesO(instrucciones),
+    descripcionExperta: enInglesO(descripcionExperta),
     escena: escenaEnIngles,
     dialogo,
     // La duración resuelta para el modelo, no la planificada de la escena: es la que decide si el gesto cabe.

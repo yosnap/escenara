@@ -4,6 +4,12 @@ Hasta ahora escribías qué se veía y qué se decía, y la cámara la ponía el
 fijo con un temblor ligero. Desde la 0.25.0 diriges tú, parte por parte, como un director. No hace falta que
 sepas inglés ni que veas ningún texto técnico: eliges con botones y el programa se encarga del resto.
 
+Diriges igual en los dos sitios donde se hacen clips: en **«Crear»** y en la **escena de un proyecto**. Cada
+opción de plano, ángulo y movimiento lleva su dibujo y una frase de lo que verás, para que no haga falta saberse
+las palabras del oficio.
+
+![Pictogramas de plano, ángulo y movimiento](../assets/capturas/0.25.1-pictogramas-direccion-claro.webp)
+
 ![Panel de dirección de una escena](../assets/capturas/0.25.0-direccion-claro.webp)
 
 ## Las seis partes de un clip
@@ -76,8 +82,59 @@ entrega. Es parte de quién es, igual que su cara, y así no cambia de timbre de
 > Cambiar la voz de un personaje crea una versión nueva suya e invalida su registro de voz en el proveedor.
 > Se te dice antes de hacerlo.
 
-El **acento se elige por proyecto** y se respeta en todas sus escenas: España (peninsular neutro),
-rioplatense, bogotano, CDMX o latinoamericano neutro. De fábrica es el de España.
+El **acento se elige por proyecto**, en la cabecera del proyecto, y se respeta en todas sus escenas: España
+(peninsular neutro), rioplatense, bogotano, CDMX o latinoamericano neutro. De fábrica es el de España. En
+«Crear» no hay proyecto, así que el acento se elige con el propio clip.
+
+> Cambiar el acento de un proyecto que ya tiene escenas generadas **deja sin valer su voz y sus clips**: los
+> dijeron con otro acento. Se te dice cuántas son y se te pide que lo confirmes. No se borra ni se regenera
+> nada: tú decides qué vuelves a generar y pagas.
+
+## Escríbelo tú
+
+Los botones cubren lo habitual, pero no todo. Debajo de ellos hay dos formas de escribir tú:
+
+- **Instrucciones adicionales (en español)**: se **suman** a lo que has elegido, no lo sustituyen. «Que sostenga
+  el bote con la etiqueta hacia la cámara.» Entra en el prompt en su sitio, junto a la descripción de la escena;
+- **modo experto**: escribes la descripción entera del clip y los botones de dirección dejan de aplicarse. Se
+  quedan a la vista, apagados, para que veas qué has dejado sin efecto.
+
+En los dos casos escribes en español: la traducción la hace el programa. Lo que no puedes quitar, ni escribiendo
+la descripción entera: la **toma única**, los **anclajes de realismo** y, con una persona real, la prohibición
+de retocarla. Y lo que escribas es contenido, nunca ajustes del proveedor: si cuelas algo como `--seed=42`, se
+quita.
+
+El acento y la voz siguen siendo tuyos también en modo experto: describen quién habla, no lo que se ve.
+
+## Empezar desde una imagen que ya tienes
+
+No hace falta generar un fotograma nuevo para cada vídeo. Lo primero que eliges en «Crear» son dos caminos:
+
+- **crear un fotograma nuevo**: eliges a quién sale y qué está haciendo, y se genera su imagen;
+- **usar una imagen que ya tengo**: un fotograma de otro día, una vista de tu personaje o una foto que subas.
+
+Con el segundo camino **el paso del fotograma desaparece entero**: no hay formulario que rellenar ni imagen que
+estimar, porque no se va a generar ninguna. Pasas directamente a dirigir y generar el clip. **Elegir la imagen
+no cuesta nada**; lo único que se paga es el clip.
+
+![Los dos caminos de «Crear»](../assets/capturas/0.25.1-crear-dos-caminos-claro.webp)
+
+En la escena de un proyecto es lo mismo: al lado del fotograma puedes traer una imagen tuya y la escena la toma
+como su fotograma aprobado.
+
+Si esa imagen salió de un trabajo hecho con un personaje tuyo, el clip hereda ese personaje y todas sus reglas:
+su consentimiento tiene que seguir vigente y vuelves a confirmar la revisión de sus fotos.
+
+## Otro clip con el mismo fotograma
+
+Cuando un clip esté listo, tienes dos botones al lado:
+
+- **Cambiar y volver a generar**: vuelve a abrir la dirección tal como se usó en ese clip, para que cambies lo
+  que quieras —el plano, el movimiento, el texto— y lances otro desde el mismo fotograma;
+- **Otro clip con este fotograma**: lo mismo, empezando por lo que tengas puesto ahora.
+
+**Nada se sustituye.** Los clips anteriores siguen en tu biblioteca y en el historial de la escena. Cada clip
+nuevo lleva su estimación y su confirmación de coste, como cualquier otro gasto.
 
 ## Una sola toma, siempre
 

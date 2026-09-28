@@ -106,6 +106,9 @@ export const NOMBRE_ACENTO: Record<Acento, string> = {
   es_419_neutro: "Latinoamericano neutro",
 };
 
+export const AYUDA_ACENTO =
+  "Con qué acento habla el personaje en todas las escenas. Sin elegirlo, las voces del proveedor salen con acento latinoamericano.";
+
 // ── Voz: los cinco ejes ─────────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -313,6 +316,97 @@ export interface OpcionesDeDireccion {
   camara: OpcionDireccion[];
   microaccion: OpcionDireccion[];
 }
+
+// ── Texto libre del usuario ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * **Instrucciones adicionales**: lo que el usuario escribe en castellano y se suma a lo que ha elegido con
+ * botones, sin quitarle nada. Entra en el prompt **en su sitio** —junto a la descripción de la escena, después
+ * del sujeto y antes del gesto— y pasa por la misma limpieza anti-inyección que el resto del texto libre.
+ *
+ * Corta a propósito: es un añadido a lo elegido, no una descripción alternativa. Para eso está el modo experto.
+ */
+export const INSTRUCCIONES_EXTRA_MAXIMAS = 400;
+
+/**
+ * **Modo experto**: el usuario escribe la descripción entera en castellano y los botones de dirección dejan de
+ * aplicarse. Lo que **no** se puede quitar y se sigue aplicando siempre: la regla de toma única, los anclajes de
+ * realismo y, con una persona real, la prohibición de retocarla.
+ *
+ * El acento y la voz siguen siendo suyos: no describen la imagen, describen quién habla.
+ */
+export const DESCRIPCION_EXPERTA_MAXIMA = 1200;
+
+export const AYUDA_INSTRUCCIONES_EXTRA =
+  "En castellano, lo que quieras añadir a lo que has elegido arriba. No sustituye a nada: se suma.";
+
+export const AYUDA_MODO_EXPERTO =
+  "Escribes tú la descripción entera del clip y los botones de dirección dejan de aplicarse. El acento y la voz siguen siendo los que elijas.";
+
+export const AVISO_MODO_EXPERTO =
+  "En modo experto mandas tú: el plano, el ángulo, el movimiento y el gesto que elijas arriba no se le envían al modelo. Lo que no se quita nunca: una sola toma sin cortes, los anclajes de realismo y, si el personaje es una persona real, la prohibición de retocarla.";
+
+// ── Lo que el usuario ha elegido ────────────────────────────────────────────────────────────────────────
+
+/**
+ * **La dirección elegida**, tal como viaja entre el navegador y el servidor: claves del catálogo y enumerados,
+ * nunca el texto que se le envía al modelo (ADR-0022). El servidor la traduce a fragmentos en inglés con su
+ * propio catálogo, así que un cliente no puede colar texto suyo en el prompt por este camino.
+ *
+ * Es la misma forma en los dos sitios donde se dirige un clip: la escena de un proyecto, que la guarda en su
+ * fila, y «Crear», que la manda con la confirmación del clip. Una sola definición para los dos.
+ */
+export interface DireccionElegida {
+  formatoClip: FormatoClip;
+  plano: string;
+  angulo: string;
+  camara: string;
+  microaccion: string;
+  momentoMicroaccion: MomentoMicroaccion;
+  /** Matiz corto de la voz, en castellano. El servidor lo traduce con el resto del texto libre. */
+  direccionVocal: string;
+  optica: string;
+  luz: string;
+  localizacion: string;
+  registroEstetico: RegistroEstetico;
+  /** Lo que el usuario añade por escrito, en castellano. Se suma a lo elegido con botones. */
+  instruccionesExtra: string;
+  /** `true` cuando el usuario escribe la descripción entera y los botones dejan de aplicarse. */
+  modoExperto: boolean;
+  /** La descripción entera del modo experto, en castellano. Se ignora con `modoExperto` en `false`. */
+  descripcionExperta: string;
+}
+
+/** Sin dirigir: es con lo que nacen las escenas y lo que producían las versiones anteriores. */
+export const DIRECCION_ELEGIDA_VACIA: DireccionElegida = {
+  formatoClip: "ugc_a_camara",
+  plano: "",
+  angulo: "",
+  camara: "",
+  microaccion: "",
+  momentoMicroaccion: "durante",
+  direccionVocal: "",
+  optica: "",
+  luz: "",
+  localizacion: "",
+  registroEstetico: "ugc_real",
+  instruccionesExtra: "",
+  modoExperto: false,
+  descripcionExperta: "",
+};
+
+/**
+ * La dirección con su acento. En un proyecto el acento es del proyecto entero y no de la escena; en «Crear» no
+ * hay proyecto, así que se elige con el resto del clip y viaja con él.
+ */
+export interface DireccionElegidaConAcento extends DireccionElegida {
+  acento: Acento;
+}
+
+export const DIRECCION_CON_ACENTO_VACIA: DireccionElegidaConAcento = {
+  ...DIRECCION_ELEGIDA_VACIA,
+  acento: ACENTO_POR_DEFECTO,
+};
 
 // ── Avisos de la dirección ──────────────────────────────────────────────────────────────────────────────
 

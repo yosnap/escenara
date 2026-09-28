@@ -90,6 +90,7 @@ export function ListaEscenas({
               <li key={escena.id}>
                 <EditorEscena
                   escena={escena}
+                  acento={proyecto.acento}
                   primera={indice === 0}
                   ultima={indice === escenas.length - 1}
                   ocupado={ocupado}

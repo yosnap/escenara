@@ -1,6 +1,6 @@
-import { createHash } from "node:crypto";
 import type { Vista } from "@/lib/captura-personaje";
 import { duracionesConCoste, type ModeloVista, segundosDeUnidad } from "@/lib/catalogo";
+import type { DireccionElegidaConAcento } from "@/lib/direccion";
 import { CLIP, type TipoTrabajo, type TrabajoVista } from "@/lib/generacion";
 import type { TipoPersonaje } from "@/lib/personajes";
 import type { SeleccionPresets } from "@/lib/presets";
@@ -11,10 +11,10 @@ import { hechosDeEscena, techoDelProyecto } from "../asistente/plan";
 import { encolar, filaDeLaConfirmacion, type NuevoTrabajoEncolado } from "../cola/encolar";
 import { conVistaQueCompleta, recopilarHechos } from "../controles/hechos";
 import { exigirControles } from "../controles/puerta";
-import type { FilaMedio } from "../db/esquema";
+import type { FilaMedio, FilaTrabajo } from "../db/esquema";
 import { decidir } from "../decisiones/reglas";
 import { dirigirClipPara, familiaDe } from "../direccion/clip";
-import type { DireccionSinTextoLibre } from "../direccion/escena";
+import { type DireccionSinTextoLibre, direccionDesdeEleccion, type PersonajeDirigido } from "../direccion/escena";
 import { type CambiarSolo, componerSeisC, type SeisC } from "../direccion/fotograma";
 import { conHojaDeIdentidad } from "../direccion/hoja-identidad";
 import {
@@ -284,8 +284,20 @@ export interface PeticionFotograma extends Confirmacion {
 }
 
 export interface PeticionAnimacion extends Confirmacion {
-  /** Fotograma ya generado que se anima (su medio es el primer fotograma del clip). */
-  trabajoPadreId: string;
+  /**
+   * Fotograma ya generado que se anima (su medio es el primer fotograma del clip). Alternativa a `medioId`:
+   * hace falta uno de los dos.
+   */
+  trabajoPadreId?: string;
+  /**
+   * **Imagen de la biblioteca que se anima directamente** (0.25.1), sin generar antes ningún fotograma: un
+   * fotograma de otro día, una vista del personaje o una foto subida. Tiene que ser del usuario —lo comprueba
+   * `imagenPropia`, que responde 404 para una ajena— y, si salió de un trabajo hecho con un personaje, el clip
+   * **hereda ese personaje** y todas sus reglas, igual que la imagen suelta del fotograma.
+   *
+   * Lo que se confirma y se cobra es solo el clip: no hay fotograma que pagar.
+   */
+  medioId?: string;
   /**
    * Revisión de referencias (ADR-0009). Obligatoria cuando el fotograma del que sale el clip se hizo con un
    * personaje: el clip envía la misma cara.
@@ -293,6 +305,107 @@ export interface PeticionAnimacion extends Confirmacion {
   sinTerceros?: boolean;
   /** Lo que dice el personaje, opcional. Solo lo usa el clip: en el fotograma saldría escrito. */
   dialogo?: string;
+  /**
+   * **Dirección elegida en «Crear»** (0.25.1): claves del catálogo y enumerados, nunca texto de prompt. La
+   * resuelve el servidor con `direccionDesdeEleccion`, que es el mismo camino que usa la producción de una
+   * escena: el navegador elige, el catálogo traduce (ADR-0022).
+   *
+   * Se ignora si llega junto a `direccion`: esa la pone el servidor desde la escena y manda siempre.
+   */
+  direccionElegida?: DireccionElegidaConAcento;
+  /**
+   * **Solo la pone el servidor** (la producción de un proyecto), nunca la ruta HTTP: la escena y el personaje
+   * del proyecto cuando el clip parte de una imagen traída de la biblioteca. Sin esto el clip quedaba suelto:
+   * sin escena (ni su duración, ni sus topes, ni su clip registrado) y sin el personaje del proyecto (ni su
+   * consentimiento, ni el borrado en cascada).
+   */
+  escenaDelProyecto?: { escenaId: string; personajeId: string | null };
+}
+
+/**
+ * **De dónde sale el clip**: el primer fotograma que se va a animar y todo lo que arrastra con él.
+ *
+ * Hay dos caminos y los dos acaban aquí, con la misma forma:
+ *
+ * - **un fotograma ya generado**: hereda su escena, su personaje y la versión de ficha con la que se hizo, y el
+ *   clip queda colgado de él como trabajo hijo;
+ * - **una imagen de la biblioteca** (0.25.1): no hay trabajo padre ni escena. El dueño se comprueba al leerla
+ *   (`imagenPropia` responde 404 para una ajena) y, si la imagen salió de un trabajo hecho con un personaje, el
+ *   clip **hereda ese personaje**: es la misma cara, así que cumple sus reglas. Es exactamente lo que ya hacía
+ *   el fotograma con una imagen suelta.
+ */
+interface PartidaDelClip {
+  /** Imagen que será el primer fotograma del clip. */
+  medioId: string;
+  trabajoPadreId: string | null;
+  escenaId: string | null;
+  personajeId: string | null;
+  versionPersonajeId: string | null;
+  referenciaIdentidad: FilaTrabajo["identityReferenceKind"];
+}
+
+async function partidaDelClip(usuarioId: string, peticion: PeticionAnimacion): Promise<PartidaDelClip> {
+  if (peticion.trabajoPadreId) {
+    if (!esUuidGeneracion(peticion.trabajoPadreId)) throw new ErrorGeneracion(404, "El trabajo no existe.");
+    const padre = await filaPropia(usuarioId, peticion.trabajoPadreId);
+    if (padre.kind !== "fotograma") throw new ErrorGeneracion(400, "Solo se animan fotogramas.");
+    if (padre.state !== "listo" || !padre.resultMediaId) {
+      throw new ErrorGeneracion(409, "Espera a que el fotograma esté listo y guardado antes de animarlo.");
+    }
+    return {
+      medioId: padre.resultMediaId,
+      trabajoPadreId: padre.id,
+      escenaId: padre.sceneId,
+      personajeId: padre.characterId,
+      versionPersonajeId: padre.characterVersionId,
+      referenciaIdentidad: padre.identityReferenceKind,
+    };
+  }
+  const medioId = peticion.medioId;
+  if (!medioId) {
+    throw new ErrorGeneracion(400, "Elige el fotograma de partida: un fotograma ya generado o una imagen tuya.");
+  }
+  // Que la imagen exista y sea suya lo decide esta lectura, no quien llama: una ajena responde 404.
+  const medio = await imagenPropia(usuarioId, medioId);
+  // La cara que sale en la imagen manda; si la imagen es una foto suelta, en un proyecto es la del protagonista.
+  const personajeId =
+    (await personajeDeLaCadena(usuarioId, medio.id)) ?? peticion.escenaDelProyecto?.personajeId ?? null;
+  /**
+   * La versión de ficha que se cita es la **vigente** del personaje heredado: la imagen puede ser de hace meses
+   * y el clip se genera ahora. Sin personaje no hay ninguna que citar.
+   */
+  const conFicha = await fichaHeredada(personajeId, 1);
+  return {
+    medioId: medio.id,
+    // No hay trabajo padre: el clip nace de una imagen, no de una generación de esta cadena.
+    trabajoPadreId: null,
+    escenaId: peticion.escenaDelProyecto?.escenaId ?? null,
+    personajeId,
+    versionPersonajeId: conFicha.versionId,
+    // La imagen es la referencia: no se citó ninguna hoja 3×3 al hacerla desde aquí.
+    referenciaIdentidad: "vistas",
+  };
+}
+
+/**
+ * Lo que el personaje del fotograma aporta a la dirección del clip en «Crear». La ficha **no** va en la
+ * descripción: entra por su propio camino como contexto (`promptConContexto`), así que aquí solo van las reglas
+ * que dependen de quién es.
+ *
+ * Sin personaje se trata como **persona real**: es el lado que no embellece, y equivocarse hacia ahí no hace
+ * daño. Es el mismo criterio de `personajeDirigidoDe` en la producción de proyectos.
+ */
+async function personajeDelFotograma(personajeId: string | null): Promise<PersonajeDirigido> {
+  const sinPersonaje: PersonajeDirigido = { descripcion: "", real: true, atractivoElegido: false, ejesVoz: {} };
+  if (!personajeId) return sinPersonaje;
+  const personaje = await personajePorId(personajeId);
+  if (!personaje) return sinPersonaje;
+  return {
+    descripcion: "",
+    real: !personaje.virtual,
+    atractivoElegido: personaje.virtual && personaje.beautyOptIn,
+    ejesVoz: personaje.voiceAxes,
+  };
 }
 
 /**
@@ -654,16 +767,14 @@ export async function crearAnimacion(
   const prompt = limpiarPrompt(peticion.prompt);
   exigirDerechos(peticion.derechos);
   const claveIdempotencia = exigirClaveIdempotencia(peticion.claveIdempotencia);
-  if (!esUuidGeneracion(peticion.trabajoPadreId)) throw new ErrorGeneracion(404, "El trabajo no existe.");
-  const padre = await filaPropia(actor.id, peticion.trabajoPadreId);
-  if (padre.kind !== "fotograma") throw new ErrorGeneracion(400, "Solo se animan fotogramas.");
+  const partida = await partidaDelClip(actor.id, peticion);
   /**
    * **La duración se decide antes de estimar nada**, porque cada duración es una tarifa distinta del modelo: si
    * se estimara con una y se pidiera otra, lo reservado no cubriría lo que se cobra. Manda la del proyecto
    * cuando el clip produce una escena —esa ya la eligió el usuario para todo el proyecto— y, fuera de un
    * proyecto, la que se haya confirmado en «Crear».
    */
-  const pedidos = padre.sceneId ? await duracionDeClipDeEscena(padre.sceneId) : (peticion.segundos ?? null);
+  const pedidos = partida.escenaId ? await duracionDeClipDeEscena(partida.escenaId) : (peticion.segundos ?? null);
   const { elegida, reservas } = await eleccionConfirmada(actor.id, "animacion", peticion, {
     ...(pedidos === null ? {} : { segundos: pedidos }),
   });
@@ -678,14 +789,11 @@ export async function crearAnimacion(
   // Igual que en el fotograma: tras el corte de idempotencia y **antes** del motor.
   await exigirRitmo(actor.id);
 
-  if (padre.state !== "listo" || !padre.resultMediaId) {
-    throw new ErrorGeneracion(409, "Espera a que el fotograma esté listo y guardado antes de animarlo.");
-  }
   // El clip hereda el personaje del fotograma, así que hereda también sus reglas: si el consentimiento se ha
   // revocado entre el fotograma y el clip, el clip no sale. Y la revisión de referencias se vuelve a confirmar,
   // porque es otra confirmación distinta sobre otro envío distinto.
-  if (padre.characterId) exigirRevisionDeReferencias(peticion.sinTerceros);
-  const personaje = padre.characterId ? await personajePorId(padre.characterId) : null;
+  if (partida.personajeId) exigirRevisionDeReferencias(peticion.sinTerceros);
+  const personaje = partida.personajeId ? await personajePorId(partida.personajeId) : null;
 
   // ── Punto único: el mismo motor, con los hechos del clip ──────────────────────────────────────────────
   await exigirControles(
@@ -693,8 +801,8 @@ export async function crearAnimacion(
     // «trabajo» con un `subject_id` de escena haría imposible filtrar las evaluaciones de un proyecto.
     {
       usuarioId: actor.id,
-      sujeto: padre.sceneId ? "escena" : "trabajo",
-      sujetoId: padre.sceneId,
+      sujeto: partida.escenaId ? "escena" : "trabajo",
+      sujetoId: partida.escenaId,
       tipo: "animacion",
     },
     await recopilarHechos(
@@ -703,12 +811,12 @@ export async function crearAnimacion(
         tipo: "animacion",
         eleccion,
         creditos: totales,
-        personajeId: padre.characterId,
+        personajeId: partida.personajeId,
         personaje,
         // El clip hereda la escena del fotograma, así que hereda también su presupuesto. Su **aprobación** no se
         // vuelve a mirar: ya se comprobó al producir el fotograma, y el clip no es otra decisión de guion.
         escena: null,
-        proyecto: padre.sceneId ? await techoDelProyecto(await proyectoDeEscena(padre.sceneId)) : null,
+        proyecto: partida.escenaId ? await techoDelProyecto(await proyectoDeEscena(partida.escenaId)) : null,
       },
       h.buscar,
     ),
@@ -716,13 +824,27 @@ export async function crearAnimacion(
   );
 
   const proveedor = proveedorDeCredencial(modelo);
-  const origen = await imagenPropia(actor.id, padre.resultMediaId);
+  const origen = await imagenPropia(actor.id, partida.medioId);
   // Un modelo sin voz no recibe nunca lo que dice el personaje (Hailuo 2.3 no tiene audio).
   const dialogo = modelo.conVoz ? limpiarDialogo(peticion.dialogo) : "";
   // El clip lleva el contexto de **la misma versión que el fotograma**, no de la vigente: si la ficha ha
   // cambiado entre los dos, animar tiene que seguir siendo el mismo personaje que se generó.
-  exigirVersionConfirmada(peticion.versionPersonaje, padre.characterVersionId);
-  const { contexto, tipo } = await contextoDeLaVersion(padre.characterVersionId);
+  exigirVersionConfirmada(peticion.versionPersonaje, partida.versionPersonajeId);
+  const { contexto, tipo } = await contextoDeLaVersion(partida.versionPersonajeId);
+  /**
+   * La dirección del clip. La de la producción de un proyecto la resuelve el servidor desde la escena y manda
+   * siempre; la de «Crear» llega como **claves elegidas** y se resuelve aquí con el catálogo del usuario, que es
+   * el único sitio donde una clave se convierte en texto de prompt (ADR-0022).
+   */
+  const direccion =
+    peticion.direccion ??
+    (peticion.direccionElegida
+      ? await direccionDesdeEleccion(
+          actor.id,
+          peticion.direccionElegida,
+          await personajeDelFotograma(partida.personajeId),
+        )
+      : null);
   // La plantilla del clip compone el texto con la duración y el look elegidos. La duración que declare el
   // preset se valida contra la que se le envía de verdad al proveedor (`segundos`), que es la unidad con la
   // que está medido el precio: pedir otra se rechaza con su motivo en lugar de cobrarse mal. Se compone primero
@@ -748,20 +870,33 @@ export async function crearAnimacion(
   // idioma en que se escribió.
   // El matiz de voz del usuario viaja con el resto del texto libre: está escrito en castellano y el prompt va
   // en inglés. El diálogo sigue sin traducirse, que es lo que se va a oír.
-  const matizDeVoz = peticion.direccion?.direccionVocalOriginal ?? "";
+  const matizDeVoz = direccion?.direccionVocalOriginal ?? "";
+  // Las instrucciones adicionales y la descripción del modo experto viajan con el resto del texto libre: las
+  // escribe el usuario en castellano y el prompt va en inglés. Ya vienen limpias del borde.
+  const instrucciones = direccion?.instruccionesExtraOriginal ?? "";
+  const descripcionExperta = direccion?.descripcionExpertaOriginal ?? "";
   const enIngles = await traducirAlIngles(
     actor.id,
-    [{ texto: prompt }, { texto: contexto, personajeId: padre.characterId }, { texto: matizDeVoz }],
+    [
+      { texto: prompt },
+      { texto: contexto, personajeId: partida.personajeId },
+      { texto: matizDeVoz },
+      { texto: instrucciones },
+      { texto: descripcionExperta },
+    ],
     h.buscar,
   );
   const escenaEnIngles = enIngles.get(prompt) ?? prompt;
   const contextoEnIngles = enIngles.get(contexto) ?? contexto;
+  const enInglesO = (texto: string) => (texto === "" ? "" : (enIngles.get(texto) ?? texto));
   // La dirección se aplica **aquí**, con el texto libre ya en inglés y después de todas las puertas gratis: es
   // lo que pone el encuadre, la cámara, el gesto en su momento y la regla de toma única alrededor de la escena.
-  const dirigido = peticion.direccion
+  const dirigido = direccion
     ? dirigirClipPara(familiaDe(modelo.modelo), {
-        ...peticion.direccion,
-        direccionVocal: matizDeVoz === "" ? "" : (enIngles.get(matizDeVoz) ?? matizDeVoz),
+        ...direccion,
+        direccionVocal: enInglesO(matizDeVoz),
+        instruccionesExtra: enInglesO(instrucciones),
+        descripcionExperta: enInglesO(descripcionExperta),
         escena: escenaEnIngles,
         dialogo,
         // La duración **resuelta para este modelo**, que es la que se sella en el precio y la que decide si el
@@ -793,13 +928,19 @@ export async function crearAnimacion(
      * El clip **hereda** la referencia de su fotograma: la cara que se anima es la que salió de ahí, así que
      * el veredicto de identidad del clip mide la misma referencia que el fotograma usó.
      */
-    identityReferenceKind: padre.identityReferenceKind,
+    identityReferenceKind: partida.referenciaIdentidad,
     input: {
       ...entradaGuardada(adaptador, promptFinal, [origen.id], { ...parametros, segundos }),
       // La tarifa confirmada: es la de **esta** duración, y es la que el worker vuelve a comprobar antes de enviar.
       unidadPrecio: precio.unidad,
       dialogo: dialogoFinal,
       escena: prompt,
+      /**
+       * Lo que el usuario eligió, **en claves**, para poder volver a abrirlo tal cual en «Cambiar y volver a
+       * generar» (0.25.1). No es el prompt: son los identificadores que leyó en los botones, así que puede
+       * salir hacia su navegador sin romper ADR-0022. En un proyecto no se guarda: lo elegido vive en la escena.
+       */
+      ...(peticion.direccionElegida ? { direccionElegida: peticion.direccionElegida } : {}),
       ...(base.compuesto
         ? {
             plantilla: {
@@ -816,12 +957,12 @@ export async function crearAnimacion(
     },
     sourceMediaId: origen.id,
     // El clip hereda la escena del fotograma: su aprobación es la misma y ya se comprobó al producirlo.
-    sceneId: padre.sceneId,
-    parentJobId: padre.id,
-    characterId: padre.characterId,
-    characterVersionId: padre.characterVersionId,
+    sceneId: partida.escenaId,
+    parentJobId: partida.trabajoPadreId,
+    characterId: partida.personajeId,
+    characterVersionId: partida.versionPersonajeId,
     ...columnasDePlantilla(base.compuesto),
-    referencesReviewedAt: padre.characterId ? new Date() : null,
+    referencesReviewedAt: partida.personajeId ? new Date() : null,
     estimatedCredits: creditos,
   };
   const { fila, nueva } = await encolar({
@@ -832,7 +973,7 @@ export async function crearAnimacion(
     valores,
     sello: precio.sello,
     creditosDelEnvio: totales,
-    escena: await topeDeEscenasEnVuelo(padre.sceneId, peticion.reintentoDeEscena),
+    escena: await topeDeEscenasEnVuelo(partida.escenaId, peticion.reintentoDeEscena),
   });
   return { trabajo: await vistaDeFila(fila), nueva };
 }

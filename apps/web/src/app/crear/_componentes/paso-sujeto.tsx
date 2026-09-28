@@ -17,6 +17,7 @@ import { AVISO_SIN_TERCEROS, type PersonajeElegible } from "@/lib/personajes";
  * propio, solo lo que se elige y las acciones que lo cambian.
  */
 export function PasoSujeto({
+  numero,
   personajes,
   personajeId,
   personaje,
@@ -33,6 +34,8 @@ export function PasoSujeto({
   onSinTerceros,
   onModelo,
 }: {
+  /** Su sitio en la lista de pasos: cambia según el camino que haya elegido el usuario. */
+  numero: number;
   personajes: PersonajeElegible[];
   personajeId: string | null;
   personaje: PersonajeElegible | null;
@@ -56,7 +59,7 @@ export function PasoSujeto({
   onModelo: (modelo: string) => void;
 }) {
   return (
-    <Paso numero={1} titulo="Elige a quién generas">
+    <Paso numero={numero} titulo="Elige a quién generas">
       <SelectorPersonaje
         personajes={personajes}
         valor={personajeId}

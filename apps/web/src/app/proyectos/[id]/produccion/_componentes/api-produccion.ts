@@ -49,6 +49,20 @@ export const producirEscena = (escenaId: string, confirmacion: ConfirmacionEnvio
 export const aprobarFotograma = (escenaId: string, confirmacion: ConfirmacionEnvio) =>
   accionDeEscena(escenaId, { accion: "aprobar-fotograma", ...confirmacion });
 
+/**
+ * Otro clip con el **mismo** fotograma aprobado (0.25.1), con la dirección y el texto que la escena tiene ahora.
+ * Los clips anteriores se conservan: no se sustituye nada.
+ */
+export const otroClipDeEscena = (escenaId: string, confirmacion: ConfirmacionEnvio) =>
+  accionDeEscena(escenaId, { accion: "otro-clip", ...confirmacion });
+
+/**
+ * Toma una imagen de tu biblioteca como fotograma de partida de la escena. **No gasta nada**: lo único que se
+ * paga después es el clip.
+ */
+export const usarFotogramaDeBiblioteca = (escenaId: string, medioId: string) =>
+  accionDeEscena(escenaId, { accion: "fotograma-de-biblioteca", medioId });
+
 export const regenerarEscena = (escenaId: string, confirmacion: ConfirmacionEnvio) =>
   accionDeEscena(escenaId, { accion: "regenerar", ...confirmacion });
 

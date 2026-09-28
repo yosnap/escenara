@@ -1,5 +1,6 @@
 import type { Proveedor } from "./boveda";
 import type { DuracionConCoste } from "./catalogo";
+import type { DireccionElegidaConAcento } from "./direccion";
 import type { TipoMedio } from "./media/reglas";
 import type { Medio } from "./media/tipos";
 import type { EtapaTrabajo } from "./produccion";
@@ -181,6 +182,14 @@ export interface TrabajoVista {
   /** Medio resultante ya guardado en la biblioteca, o `null` mientras no exista. */
   medio: Medio | null;
   trabajoPadreId: string | null;
+  /**
+   * La dirección que se eligió para este clip (0.25.1): **claves del catálogo**, lo que el usuario vio escrito
+   * en los botones, nunca el prompt en inglés (ADR-0022). Es lo que permite «Cambiar y volver a generar»: se
+   * vuelve a abrir la dirección tal como estaba y se ajusta lo que haga falta.
+   *
+   * `null` en los trabajos que no se dirigieron y en los de un proyecto, donde lo elegido vive en la escena.
+   */
+  direccion: DireccionElegidaConAcento | null;
   derechosConfirmados: boolean;
   /** Motivo normalizado del fallo, si lo hay. */
   motivoFallo: MotivoFallo | null;

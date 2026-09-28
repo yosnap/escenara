@@ -1,4 +1,5 @@
 import type { EvaluacionVista } from "@/lib/controles";
+import type { DireccionElegidaConAcento, OpcionesDeDireccion } from "@/lib/direccion";
 import type { Deposito, EstadoCola, Estimacion, TipoTrabajo, TrabajoVista } from "@/lib/generacion";
 
 /** Cliente de la API de generación para el navegador. */
@@ -60,7 +61,18 @@ export interface ConfirmacionFotograma extends Confirmacion {
 
 export interface ConfirmacionAnimacion extends Confirmacion {
   tipo: "animacion";
-  trabajoPadreId: string;
+  /** Fotograma ya generado que se anima. Alternativa a `medioId`: hace falta uno de los dos. */
+  trabajoPadreId?: string;
+  /**
+   * Imagen de la biblioteca que se anima **directamente**, sin generar ningún fotograma antes (0.25.1). Que sea
+   * tuya lo comprueba el servidor: una ajena responde 404.
+   */
+  medioId?: string;
+  /**
+   * Dirección del clip: **claves del catálogo**, nunca texto de prompt. El servidor las traduce con su catálogo
+   * y compone el prompt, que no sale hacia aquí (ADR-0022).
+   */
+  direccion?: DireccionElegidaConAcento;
   /**
    * Duración del clip que se ha confirmado, en segundos. Es la de la estimación que se tenía delante: cada
    * duración es una tarifa distinta del modelo, y lo que se paga es esta.
@@ -78,6 +90,12 @@ export interface ConfirmacionAnimacion extends Confirmacion {
 /** Envía la generación. `creditosConfirmados` son los créditos que el usuario tenía delante. */
 export const crearTrabajo = (peticion: ConfirmacionFotograma | ConfirmacionAnimacion) =>
   pedir<TrabajoVista>("/api/generacion/trabajos", json(peticion));
+
+/**
+ * Catálogo de la dirección del clip: plano, ángulo, óptica, luz, sitio, cámara y micro-acción en castellano y
+ * **sin su fragmento en inglés** (ADR-0022). Es una lectura: no encola nada.
+ */
+export const consultarCatalogoDeDireccion = () => pedir<OpcionesDeDireccion>("/api/direccion");
 
 export const consultarTrabajo = (id: string) => pedir<TrabajoVista>(`/api/generacion/trabajos/${id}`);
 

@@ -1,5 +1,6 @@
 import { esIdentificadorDeModelo } from "@/lib/catalogo";
 import { esTipoTrabajo } from "@/lib/generacion";
+import { leerDireccionElegida } from "@/server/direccion/eleccion";
 import { ErrorGeneracion } from "@/server/generacion/errores";
 import { exigirMismoOrigen, leerCuerpo, manejador } from "@/server/generacion/http";
 import { crearAnimacion, crearFotograma } from "@/server/generacion/servicio";
@@ -24,7 +25,9 @@ export const GET = manejador(async (_: Request, __: unknown, actor) =>
  *   claveIdempotencia }`. Con `personajeId` se envían varias referencias del personaje y hace falta además
  *   `sinTerceros` (la revisión de referencias de ADR-0009); el personaje tiene que tener consentimiento
  *   vigente y referencias suficientes, o se rechaza con 409.
- * - animación: `{ tipo: "animacion", trabajoPadreId, dialogo?, … }` (`dialogo` es lo que dice el personaje,
+ * - animación: `{ tipo: "animacion", trabajoPadreId | medioId, dialogo?, direccion?, … }`. Con `medioId` se
+ *   anima una imagen de la biblioteca del usuario sin generar ningún fotograma antes; con `direccion` se dirige
+ *   el clip con claves del catálogo (nunca texto de prompt) (`dialogo` es lo que dice el personaje,
  *   que solo se usa en el clip: en el fotograma los modelos lo dibujarían como texto)
  *
  * `avisoUmbralAceptado` es obligatorio cuando la estimación pasa del aviso de Admin › Ajustes, y
@@ -78,6 +81,7 @@ export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
     throw new ErrorGeneracion(400, "La versión de la ficha confirmada no es válida.");
   }
   const plantilla = leerSeleccionDePresets(cuerpo);
+  const direccionElegida = leerDireccionElegida(cuerpo.direccion);
   const comun = {
     avisosConfirmados: leerAvisosConfirmados(cuerpo.avisosConfirmados),
     prompt: String(cuerpo.prompt ?? ""),
@@ -100,12 +104,22 @@ export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
         })
       : await crearAnimacion(actor, {
           ...comun,
-          trabajoPadreId: cuerpo.trabajoPadreId as string,
+          trabajoPadreId: cuerpo.trabajoPadreId as string | undefined,
+          /**
+           * Imagen de la biblioteca que se anima directamente (0.25.1), sin generar antes ningún fotograma.
+           * Que sea suya lo comprueba el servicio al leerla: una ajena responde 404.
+           */
+          medioId: cuerpo.medioId as string | undefined,
           // Duración confirmada del clip (0.23.4): cada duración es una tarifa distinta, así que la que llega
           // aquí es la que se estimó y la que se va a pagar. Fuera de un proyecto la elige el usuario.
           ...(cuerpo.segundos === undefined ? {} : { segundos: leerSegundos(cuerpo.segundos) }),
           // Como el resto de los campos: si llega, tiene que ser texto.
           dialogo: cuerpo.dialogo === undefined ? "" : (cuerpo.dialogo as string),
+          /**
+           * Dirección del clip elegida en «Crear» (0.25.1): claves del catálogo y enumerados, validadas aquí en
+           * el borde. El texto en inglés lo compone el servidor con su catálogo, nunca el navegador (ADR-0022).
+           */
+          ...(direccionElegida ? { direccionElegida } : {}),
           // Obligatoria si el fotograma del que sale el clip se hizo con un personaje.
           sinTerceros: cuerpo.sinTerceros === true,
         });

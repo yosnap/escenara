@@ -4,12 +4,13 @@ import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Boton, BotonIcono } from "@/components/ui/button";
 import { InsigniaControl } from "@/components/ui/controles";
+import { PanelDireccion } from "@/components/ui/direccion/panel-direccion";
 import { AreaTexto, Campo } from "@/components/ui/field";
 import { MiniaturaMedio } from "@/components/ui/media/miniatura-medio";
 import { Dialogo } from "@/components/ui/overlay";
 import { InsigniaEstadoEscena } from "@/components/ui/proyecto";
 import { ETIQUETA_ESTADO_CONTROL } from "@/lib/controles";
-import type { OpcionesDeDireccion } from "@/lib/direccion";
+import type { Acento, OpcionesDeDireccion } from "@/lib/direccion";
 import {
   ACCION_MAXIMA,
   type EscenaVista,
@@ -19,7 +20,6 @@ import {
 } from "@/lib/proyectos";
 import { borrarEscena, editarEscena } from "../../_componentes/api-proyectos";
 import { PanelAfirmaciones } from "./panel-afirmaciones";
-import { PanelDireccion } from "./panel-direccion";
 
 /**
  * Una escena: lo que se cuenta y lo que se ve. Cuánto dura lo decide el proyecto entero, así que aquí solo se
@@ -31,6 +31,7 @@ import { PanelDireccion } from "./panel-direccion";
  */
 export function EditorEscena({
   escena,
+  acento,
   primera,
   ultima,
   ocupado,
@@ -41,6 +42,8 @@ export function EditorEscena({
   onError,
 }: {
   escena: EscenaVista;
+  /** Acento del proyecto. Se enseña con la dirección para que se vea con qué va a hablar, pero se edita arriba. */
+  acento: Acento;
   primera: boolean;
   ultima: boolean;
   ocupado: boolean;
@@ -140,13 +143,20 @@ export function EditorEscena({
         )}
       </Campo>
 
+      {/*
+        El acento no se elige aquí: es del proyecto entero y está en su cabecera. Ofrecerlo por escena haría
+        creer que puede cambiar de plano a plano, que es justo lo que no puede.
+      */}
       <PanelDireccion
-        direccion={direccion}
+        direccion={{ ...direccion, acento }}
         opciones={opcionesDireccion}
         guion={texto}
         segundos={escena.segundos}
         deshabilitado={ocupado || escena.estado === "producida"}
-        onCambio={(campo, valor) => setDireccion((antes) => ({ ...antes, [campo]: valor }))}
+        onCambio={(campo, valor) => {
+          if (campo === "acento") return;
+          setDireccion((antes) => ({ ...antes, [campo]: valor }));
+        }}
       />
 
       {/*
