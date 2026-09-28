@@ -45,6 +45,10 @@ const todoBien = (): Hechos => ({
     personajes: [{ nombre: "Lucía", inventado: false, impedimentos: [] }],
     mismaVoz: false,
     turnos: 0,
+    clips: 1,
+    palabrasDelClipMasLargo: 0,
+    segundosPorClip: 4,
+    sinRegistrar: [],
   },
   escena: {
     planAprobado: true,
@@ -198,6 +202,30 @@ const CASOS: { regla: string; estado: Exclude<EstadoControl, "listo">; romper: (
       if (h.reparto) {
         h.reparto.formato = "dualcast";
         h.reparto.turnos = 0;
+      }
+    },
+  },
+  {
+    regla: "reparto-sin-registro",
+    estado: "bloqueado",
+    romper: (h) => {
+      if (h.reparto) {
+        h.reparto.formato = "dualcast";
+        h.reparto.sinRegistrar = [
+          { nombre: "Elisa", falta: "no está registrada en el proveedor con la voz de este proyecto." },
+        ];
+      }
+    },
+  },
+  {
+    regla: "reparto-dialogo-largo",
+    estado: "ajustes",
+    romper: (h) => {
+      if (h.reparto) {
+        h.reparto.formato = "dualcast";
+        h.reparto.segundosPorClip = 4;
+        // Treinta palabras a 2,5 por segundo son doce segundos: en un clip de 4 s se corta a media frase.
+        h.reparto.palabrasDelClipMasLargo = 30;
       }
     },
   },

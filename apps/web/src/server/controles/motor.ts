@@ -4,6 +4,7 @@ import { type EstadoControl, peorEstado } from "@/lib/controles";
 import { formatearCreditos } from "@/lib/generacion";
 import { formatearTamano } from "@/lib/media/reglas";
 import { formatearFecha } from "@/lib/proyectos";
+import { noCabeElDialogo, PALABRAS_POR_SEGUNDO, segundosNecesarios } from "@/lib/reparto-envio";
 import { accionSinPresupuesto, motivoSinPresupuesto } from "../presupuesto/mensajes";
 import {
   type Evaluacion,
@@ -136,6 +137,27 @@ const REGLAS: readonly Regla[] = [
           ? `${nombres} sale en esta escena y todavía no se puede usar para generar. ${detalle}`
           : `En esta escena salen ${nombres} y ninguno se puede usar para generar todavía. ${detalle}`,
       accion: "Arréglalo en la ficha de cada uno y vuelve a intentarlo: cada persona real necesita su consentimiento.",
+      enlace: "/personajes",
+      http: 409,
+      excepcion: "personaje",
+    };
+  },
+
+  /**
+   * **Sin registro en el proveedor no sale esa cara** (0.28.0). Es la hermana de `omni-sin-registro`, aplicada al
+   * segundo personaje: sin su registro, el modelo pondría una cara inventada en su lado del plano y el clip se
+   * cobraría igual. Bloquea, y dice el nombre de quién falta y que registrarlo **no cuesta créditos**.
+   */
+  (h) => {
+    const faltan = h.reparto?.sinRegistrar ?? [];
+    if (faltan.length === 0) return null;
+    const detalle = faltan.map((f) => `«${f.nombre}» ${f.falta}`).join(" ");
+    return {
+      regla: "reparto-sin-registro",
+      estado: "bloqueado",
+      motivo: `En esta escena hablan dos personajes y ${faltan.length === 1 ? "uno" : "ninguno"} está listo en el proveedor. ${detalle}`,
+      accion:
+        "Regístralo desde su ficha y vuelve a producir: el registro es gratuito y se reutiliza en todas las escenas.",
       enlace: "/personajes",
       http: 409,
       excepcion: "personaje",
@@ -404,6 +426,26 @@ const REGLAS: readonly Regla[] = [
       motivo:
         "En esta escena hablan dos personajes y el diálogo no está repartido por turnos: el modelo decidirá quién dice cada frase, y suele repartirlas al azar.",
       accion: "Reparte el diálogo en turnos (quién habla y qué dice), o confirma que te vale como salga.",
+      http: 409,
+      excepcion: "proyecto",
+      confirmable: true,
+    };
+  },
+  /**
+   * **El diálogo no cabe en el clip** (0.28.0). Se estima a 2,5 palabras por segundo, que es el ritmo corriente
+   * de alguien hablando en castellano sin prisa. Es **una estimación y se dice que lo es**: no bloquea, porque un
+   * personaje puede hablar más rápido, pero un clip cortado a media frase es dinero tirado y eso se avisa antes.
+   */
+  (h) => {
+    const reparto = h.reparto;
+    if (!reparto || reparto.segundosPorClip <= 0) return null;
+    if (!noCabeElDialogo(reparto.palabrasDelClipMasLargo, reparto.segundosPorClip)) return null;
+    const necesarios = segundosNecesarios(reparto.palabrasDelClipMasLargo);
+    return {
+      regla: "reparto-dialogo-largo",
+      estado: "ajustes",
+      motivo: `Los turnos más largos de esta escena son ${reparto.palabrasDelClipMasLargo} palabras y harían falta unos ${necesarios} s para decirlas, pero el clip es de ${reparto.segundosPorClip} s: se va a cortar a media frase.`,
+      accion: `Acorta los turnos a unas ${Math.floor(reparto.segundosPorClip * PALABRAS_POR_SEGUNDO)} palabras, alarga el clip del proyecto, o confirma que quieres generarlo así.`,
       http: 409,
       excepcion: "proyecto",
       confirmable: true,

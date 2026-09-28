@@ -8,6 +8,7 @@ import { imagenParaModelo } from "../media/procesado";
 import { mejorReferenciaDe } from "../personajes/contexto";
 import { decidirCoherencia, type ResultadoDecision } from "./decidir";
 import { ErrorPercepcion, percibir } from "./percepcion";
+import type { SujetoCoherencia } from "./registro";
 
 /**
  * **Identidad**: comprobar que una vista generada es la **misma persona** que la cara de referencia del personaje.
@@ -83,6 +84,79 @@ async function caraDeReferencia(personaje: FilaPersonaje, excluirMedioId: string
   const otras = filas.filter((f) => f.medioId !== excluirMedioId);
   // Una foto original guía mejor que otra generada, así que va primero si la hay.
   return otras.find((f) => f.origen === "foto_original")?.medioId ?? otras[0]?.medioId ?? null;
+}
+
+/**
+ * **La cara de un personaje concreto en lo que ha salido** (0.28.0): compara lo generado con la cara de referencia
+ * **de ese** personaje, no con la de una sola cara de la escena.
+ *
+ * Es la misma comprobación de siempre (`identidad`, con su modo y su umbral) mirando otro sujeto: en un dualcast
+ * se llama **una vez por personaje**, cada uno con su referencia y con el lado del cuadro en el que se le pidió
+ * salir, para que el veredicto pueda decir «la cara de la derecha no es la de Marco» en lugar de «alguna cara no
+ * cuadra». En un podcast se llama una vez por clip, que es de un personaje.
+ *
+ * La **puerta de privacidad es la misma y va por delante**: la cara de una persona real solo se percibe si su
+ * consentimiento lo declara expresamente. Y nunca lanza por un fallo ajeno: devuelve el motivo y no decide.
+ */
+export async function identidadDeLaCaraGenerada(entrada: {
+  personaje: Pick<FilaPersonaje, "id" | "name" | "kind" | "virtual" | "ownerId">;
+  sujeto: SujetoCoherencia;
+  /** Lo generado, ya reducido para el modelo: la tira de fotogramas del clip o el fotograma aprobado. */
+  generada: { mime: string; base64: string };
+  /** Base de la clave de idempotencia de las dos percepciones. Lleva dentro de qué escena y de quién es. */
+  claveIdempotencia: string;
+  /** Lado del cuadro en el que se le pidió salir, en castellano; vacío en una escena de un solo personaje. */
+  lado: string;
+}): Promise<{ decision: ResultadoDecision | null; motivo: string }> {
+  const { personaje } = entrada;
+  if (!personaje.virtual && !(await declaraCoherencia(personaje.id))) {
+    return { decision: null, motivo: `«${personaje.name}»: ${SIN_DECLARACION}` };
+  }
+  // La referencia es la **misma** que guía a la generación, así que lo que se compara es lo que de verdad se pidió.
+  const referenciaMedioId = await mejorReferenciaDe(personaje.id, personaje.kind);
+  if (!referenciaMedioId) {
+    return {
+      decision: null,
+      motivo: `«${personaje.name}» no tiene ninguna foto de referencia con la que comparar la cara que ha salido.`,
+    };
+  }
+  const original = await imagenDeMedio(referenciaMedioId);
+  if (!original) {
+    return { decision: null, motivo: `La foto de referencia de «${personaje.name}» ya no se puede leer.` };
+  }
+  let hechosGenerada: Awaited<ReturnType<typeof percibir>>;
+  let hechosOriginal: Awaited<ReturnType<typeof percibir>>;
+  try {
+    // Las dos caras se describen por separado y con las mismas instrucciones, igual que en la comprobación de una
+    // vista: describirlas juntas dejaría comparar al modelo de percepción, que es lo que aquí no queremos.
+    hechosGenerada = await percibir({
+      usuarioId: personaje.ownerId,
+      clase: "cara",
+      claveIdempotencia: `${entrada.claveIdempotencia}:generada`,
+      imagen: entrada.generada,
+    });
+    hechosOriginal = await percibir({
+      usuarioId: personaje.ownerId,
+      clase: "cara",
+      claveIdempotencia: `${entrada.claveIdempotencia}:referencia`,
+      imagen: original,
+    });
+  } catch (error) {
+    if (error instanceof ErrorPercepcion) return { decision: null, motivo: error.message };
+    throw error;
+  }
+  const decision = await decidirCoherencia({
+    usuarioId: personaje.ownerId,
+    comprobacion: "identidad",
+    sujeto: entrada.sujeto,
+    percepcion: hechosGenerada,
+    referencia: {
+      reference_face: hechosOriginal.hechos,
+      // El lado entra en el estado y no en la pregunta: es lo que permite decir **cuál** de las dos caras falla.
+      generated_view: entrada.lado === "" ? "escena generada" : `escena generada, ${entrada.lado}`,
+    },
+  });
+  return { decision, motivo: decision.motivo };
 }
 
 /** `true` si el consentimiento vigente del personaje declara que su cara puede ir al servicio de coherencia. */

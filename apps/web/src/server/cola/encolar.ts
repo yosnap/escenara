@@ -78,6 +78,14 @@ export interface PeticionEncolado {
      * reintento, ni se pierde uno cuando el alta se deshace.
      */
     reintento: boolean;
+    /**
+     * Cuántos clips **espera** esta escena (0.28.0): 1 siempre, y **2** en un podcast, que son dos clips con un
+     * personaje cada uno. Es lo único que permite que la segunda petición de un podcast no choque contra la regla
+     * de «esta escena ya tiene un clip en marcha», que existe para que nadie pague dos veces el mismo plano.
+     *
+     * Ausente es 1, que es lo que era verdad para todo hasta esta versión.
+     */
+    clips?: number;
   } | null;
 }
 
@@ -93,17 +101,46 @@ async function exigirEscenaSinRepetir(tx: Ejecutor, peticion: PeticionEncolado):
   if (!escenaId) return;
   const tipo = peticion.valores.kind;
   const nombre = tipo === "animacion" ? "un clip" : tipo === "voz" ? "una pista de voz" : "un fotograma";
+  // Un podcast son **dos** clips de la misma escena, y los dos son legítimos: lo que no puede haber es uno más.
+  const esperados = tipo === "animacion" ? Math.max(1, peticion.escena?.clips ?? 1) : 1;
   const [{ total } = { total: 0 }] = await tx
     .select({ total: sql<number>`count(*)::int` })
     .from(generationJobs)
     .where(and(eq(generationJobs.sceneId, escenaId), eq(generationJobs.kind, tipo), condicionEnCurso()));
-  if (total > 0) {
+  if (total >= esperados) {
     throw new ErrorGeneracion(
       409,
-      `Esta escena ya tiene ${nombre} en marcha. Espera a que termine o cancélalo antes de pedir otro: si no, se pagarían los dos.`,
+      esperados === 1
+        ? `Esta escena ya tiene ${nombre} en marcha. Espera a que termine o cancélalo antes de pedir otro: si no, se pagarían los dos.`
+        : `Esta escena ya tiene sus ${esperados} clips en marcha. Espera a que terminen o cancélalos antes de pedir otros: si no, se pagarían todos.`,
     );
   }
   if (tipo !== "animacion") return;
+  /**
+   * En un podcast **no hay fotograma** del que partir (es una escena hablada de Omni), así que los clips ya
+   * conseguidos se cuentan tal cual: los `listo` de esta escena. Sin esto, un intercambio ya terminado dejaría
+   * pedir un tercer clip con otra confirmación.
+   */
+  if (esperados > 1) {
+    const [{ hechos } = { hechos: 0 }] = await tx
+      .select({ hechos: sql<number>`count(*)::int` })
+      .from(generationJobs)
+      .where(
+        and(
+          eq(generationJobs.sceneId, escenaId),
+          eq(generationJobs.kind, "animacion"),
+          eq(generationJobs.state, "listo"),
+          isNotNull(generationJobs.resultMediaId),
+        ),
+      );
+    if (hechos + total >= esperados) {
+      throw new ErrorGeneracion(
+        409,
+        `Esta escena ya tiene sus ${esperados} clips. Regenérala si quieres otros distintos: pedirlos otra vez sería pagar dos veces lo mismo.`,
+      );
+    }
+    return;
+  }
   const [escena] = await tx
     .select({ clip: scenes.clipMediaId, fotogramaJobId: scenes.approvedFrameJobId })
     .from(scenes)

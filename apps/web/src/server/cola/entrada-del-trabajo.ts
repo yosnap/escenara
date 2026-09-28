@@ -1,4 +1,6 @@
 import { CAPACIDAD_DE_TIPO } from "@/lib/catalogo";
+import { esLadoReparto, esMiradaReparto } from "@/lib/reparto";
+import type { PresenteDeEnvio, RepartoDeEnvio, TurnoDeEnvio } from "@/lib/reparto-envio";
 import type { FilaTrabajo } from "../db/esquema";
 import type { ReservaAutorizada } from "../mapa/voz";
 
@@ -110,6 +112,41 @@ export function compatibleIdDe(fila: FilaTrabajo): string {
   // Tras un relevo, el servicio es el de la reserva a la que se encaminó.
   const usada = reservasAutorizadas(fila).find((r) => r.proveedor === fila.provider && r.modelo === fila.model);
   return usada?.compatibleId ?? "";
+}
+
+/**
+ * **Reparto de dos personajes** de este trabajo (0.28.0), tal como quedó guardado al encolar: quién sale, por qué
+ * lado, adónde mira y qué dice en cada turno.
+ *
+ * Se lee de aquí y **no se vuelve a calcular** desde la escena: entre encolar y despachar el usuario puede haber
+ * cambiado los turnos o el lado, y lo que se paga tiene que ser lo que confirmó. La lectura es tolerante y
+ * devuelve `null` en todo lo anterior a esta versión, que es todo lo que no tiene reparto.
+ */
+export function repartoDeEnvioDe(fila: FilaTrabajo): RepartoDeEnvio | null {
+  const guardado = (fila.input as { reparto?: unknown }).reparto;
+  if (!guardado || typeof guardado !== "object") return null;
+  const r = guardado as Record<string, unknown>;
+  if (r.formato !== "podcast" && r.formato !== "dualcast") return null;
+  if (!Array.isArray(r.presentes) || !Array.isArray(r.turnos)) return null;
+  const presentes: PresenteDeEnvio[] = [];
+  for (const crudo of r.presentes) {
+    const p = (crudo ?? {}) as Record<string, unknown>;
+    if (typeof p.nombre !== "string" || !esLadoReparto(p.lado) || !esMiradaReparto(p.mirada)) continue;
+    presentes.push({ nombre: p.nombre, lado: p.lado, mirada: p.mirada, habla: p.habla === true });
+  }
+  if (presentes.length === 0) return null;
+  const turnos: TurnoDeEnvio[] = [];
+  for (const crudo of r.turnos) {
+    const t = (crudo ?? {}) as Record<string, unknown>;
+    if (typeof t.nombre !== "string" || typeof t.texto !== "string" || t.texto === "") continue;
+    turnos.push({ nombre: t.nombre, texto: t.texto, direccion: typeof t.direccion === "string" ? t.direccion : "" });
+  }
+  return {
+    formato: r.formato,
+    presentes,
+    turnos,
+    orden: typeof r.orden === "number" && r.orden > 0 ? r.orden : 1,
+  };
 }
 
 /** Lo que dice el personaje, tal como se guardó al encolar. Lo usan el clip y la voz. */

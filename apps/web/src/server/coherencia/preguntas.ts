@@ -22,7 +22,7 @@ import type { PreguntaJev } from "./jev";
  */
 
 /** Versión de este conjunto de preguntas. Se sube **a mano** cuando cambia el texto de alguna. */
-export const VERSION_PREGUNTAS = "coherencia-3";
+export const VERSION_PREGUNTAS = "coherencia-4";
 
 /** Niveles de las preguntas `score`, de peor a mejor. El orden es el que da el valor numérico. */
 const NIVELES_ENCAJE = [
@@ -175,6 +175,40 @@ export const PREGUNTAS: Record<Comprobacion, DefinicionPregunta> = {
       oferta_distinta: "el guion responde al ángulo, pero la oferta no aparece como la definiste",
     },
   },
+  /**
+   * **Fidelidad del reparto del diálogo** (0.28.0): lo que promete esta versión. Es `choice` por lo mismo que el
+   * ángulo: las tres cosas que pueden ir mal son distintas y un número no las distinguiría.
+   *
+   * - **habla quien no debía**: el fallo que más duele, porque el clip parece bien hasta que se escucha;
+   * - **el orden cambió**: cada frase la dice quien tocaba, pero el intercambio no se entiende;
+   * - **la frase no es la que se escribió**: el modelo la parafraseó, y lo que se paga es lo que se va a oír.
+   *
+   * Lo que se le da es la transcripción por voces que ha hecho la percepción —sin identificar a nadie: «primera
+   * voz», «segunda voz»— y los turnos tal como se pidieron. Lo que se juzga es si encajan, no si el diálogo es
+   * bueno.
+   */
+  reparto_fiel: {
+    pregunta: {
+      type: "choice",
+      instructions:
+        "A generated video clip of a conversation was listened to by an audio model that only transcribed what it heard, turn by turn, distinguishing the voices it could tell apart without identifying anyone. The dialogue that was asked for is also given: an ordered list of turns, each with the name of the character who should say it and the literal Spanish line they should say. Decide how the clip relates to what was asked for. Judge only the attribution, the order and the wording of the lines; do not judge the acting, the voice quality or whether the dialogue is good. A clip in which a person who had no turn speaks does not follow the dialogue, whatever else it gets right. If the clip was meant to have a single speaker and two different speaking voices are heard, that also counts as someone speaking who should not.",
+      criteria: {
+        fiel: "Every line is spoken by the character it was assigned to, in the order asked for, and nobody else speaks",
+        habla_otro: "Someone who had no turn speaks, or a line is spoken by the wrong character",
+        orden_cambiado: "Each line is spoken by the right character, but the order of the turns is different",
+        frase_distinta:
+          "The right characters speak in the right order, but at least one line is not what was written: it is paraphrased, shortened or replaced",
+      },
+    },
+    /** Solo `fiel` encaja: repartir el diálogo al azar es exactamente el fallo que esta comprobación existe para ver. */
+    encajan: ["fiel"],
+    etiquetas: {
+      fiel: "cada frase la dice quien tenía que decirla, en el orden que pediste",
+      habla_otro: "habla alguien que no tenía turno, o una frase la dice el personaje equivocado",
+      orden_cambiado: "las frases son de quien tocaba, pero el orden de los turnos ha cambiado",
+      frase_distinta: "el orden y el reparto están bien, pero alguna frase no es la que escribiste",
+    },
+  },
 };
 
 /**
@@ -198,6 +232,8 @@ export function evidenciaDe(
     emocion: `Respuesta: ${definicion.etiquetas[respuesta.elegida] ?? respuesta.elegida} (${porcentaje} de encaje).`,
     // En el ángulo, **la respuesta es la evidencia**: decir «45 % de encaje» no diría con qué ángulo se mezcla.
     angulo_fiel: `Respuesta: ${definicion.etiquetas[respuesta.elegida] ?? respuesta.elegida}.`,
+    // En el reparto, igual que en el ángulo: la respuesta **es** la evidencia. «60 %» no diría quién habló de más.
+    reparto_fiel: `Respuesta: ${definicion.etiquetas[respuesta.elegida] ?? respuesta.elegida}.`,
   };
   const cabeza = CABEZAS[comprobacion] ?? `Encaje con lo pedido: ${porcentaje}.`;
   const recorte = hechos.trim().slice(0, 600);

@@ -234,6 +234,20 @@ export interface HechosReparto {
   mismaVoz: boolean;
   /** Turnos de diálogo repartidos. 0 = el diálogo no se ha repartido y el proveedor lo hará al azar. */
   turnos: number;
+  /**
+   * **Clips que se van a pagar** (0.28.0): 1 en `solo` y en `dualcast`, 2 en `podcast`. No decide nada por sí
+   * mismo; está aquí para que el motor pueda nombrar en el aviso cuántos clips cuesta la escena.
+   */
+  clips: number;
+  /** Palabras del clip más largo del reparto: es lo que se compara con la duración para saber si cabe. */
+  palabrasDelClipMasLargo: number;
+  /** Segundos que va a tener cada clip, ya resueltos contra el modelo; 0 cuando todavía no se sabe. */
+  segundosPorClip: number;
+  /**
+   * Personas del reparto **sin registro vigente en el proveedor** (0.28.0), con lo que le falta a cada una. Un
+   * dualcast sin los dos registros no puede salir: el modelo pondría una cara inventada y se cobraría igual.
+   */
+  sinRegistrar: { nombre: string; falta: string }[];
 }
 
 /** Parámetros de las reglas, editables en Admin › Ajustes (no hay editor de reglas en la interfaz). */

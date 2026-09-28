@@ -31,9 +31,17 @@ const { and, eq } = await import("drizzle-orm");
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
-const { characterReferences, coherenceDecisions, consentRecords, projects, scenes, usageLedger, users } = await import(
-  "../db/esquema"
-);
+const {
+  characterReferences,
+  coherenceDecisions,
+  consentRecords,
+  projects,
+  rateLimits,
+  sceneCharacters,
+  scenes,
+  usageLedger,
+  users,
+} = await import("../db/esquema");
 const { productReferences, products } = await import("../db/esquema-productos");
 const { comprobarEscena } = await import("./escena");
 const { borrarProyecto } = await import("../asistente/proyectos");
@@ -159,7 +167,10 @@ describe.skipIf(!hayBaseDeDatos)("identidad en modo activo", () => {
   /** Personaje real de Ana con una foto original y una «vista generada» ya adjuntada como referencia. */
   async function personajeConVistaGenerada(nombre: string, declaraCoherencia: boolean) {
     const creada = await rutaPersonajes.POST(
-      pedir(ana, "/api/personajes", "POST", { nombre, tipo: "persona" }),
+      pedir(ana, "/api/personajes", "POST", {
+        nombre: `${nombre} ${crypto.randomUUID().slice(0, 6)}`,
+        tipo: "persona",
+      }),
       undefined,
     );
     const personaje = (await creada.json()) as PersonajeVista;
@@ -457,6 +468,124 @@ describe.skipIf(!hayBaseDeDatos)("identidad en modo activo", () => {
       await guardarAjustes({ coherenciaDecisionesPorDia: 60 }, null);
       olvidarAjustes();
     }
+  });
+
+  /**
+   * **La cara de cada personaje contra su propia referencia** (0.28.0). Con dos personajes en el plano no basta una
+   * comprobación: se hace **una por cada uno**, con la referencia de ese personaje y con el lado del cuadro en el
+   * que se le pidió salir, para que el veredicto pueda decir **cuál** de las dos caras no cuadra.
+   */
+  test("la identidad se evalúa contra la referencia de cada personaje del reparto", async () => {
+    // Esta suite crea unos cuantos personajes: el ritmo de escritura se limpia para que no corte el alta de estos.
+    await db().delete(rateLimits);
+    const primera = await personajeConVistaGenerada("Rosa", true);
+    const segunda = await personajeConVistaGenerada("Sara", true);
+    const fotograma = await crearMedio(actor, new File([await foto()], "dualcast.png", { type: "image/png" }));
+    const [proyecto] = await db()
+      .insert(projects)
+      .values({ userId: actor.id, title: "Dualcast", mainCharacterId: primera.personajeId })
+      .returning();
+    const [escena] = await db()
+      .insert(scenes)
+      .values({
+        projectId: proyecto?.id ?? "",
+        sortOrder: 0,
+        approvedFrameMediaId: fotograma.id,
+        castFormat: "dualcast",
+      })
+      .returning();
+    await db()
+      .insert(sceneCharacters)
+      .values([
+        {
+          sceneId: escena?.id ?? "",
+          characterId: primera.personajeId,
+          role: "hablante",
+          side: "izquierda",
+          gazeDirection: "camara",
+          sortOrder: 1,
+        },
+        {
+          sceneId: escena?.id ?? "",
+          characterId: segunda.personajeId,
+          role: "acompanante",
+          side: "derecha",
+          gazeDirection: "camara",
+          sortOrder: 2,
+        },
+      ]);
+
+    const resultado = await comprobarEscena(actor, escena?.id);
+    const identidades = resultado.decisiones.filter((d) => d.comprobacion === "identidad");
+    expect(identidades).toHaveLength(2);
+    // Cada una dice de quién habla y por qué lado del plano: sin eso serían dos filas iguales.
+    expect(identidades.map((d) => d.sobre).join(" | ")).toContain("a la izquierda del plano");
+    expect(identidades.map((d) => d.sobre).join(" | ")).toContain("a la derecha del plano");
+    const guardadas = await db()
+      .select()
+      .from(coherenceDecisions)
+      .where(and(eq(coherenceDecisions.subjectId, escena?.id ?? ""), eq(coherenceDecisions.check, "identidad")));
+    expect(new Set(guardadas.map((d) => d.characterId))).toEqual(new Set([primera.personajeId, segunda.personajeId]));
+  });
+
+  /**
+   * **`reparto_fiel` en sombra** (0.28.0): registra su veredicto con su evidencia y **no bloquea nada**. Aquí se
+   * pregunta directamente a Jev porque escuchar el clip de verdad necesita convertir su audio, y lo que esta prueba
+   * tiene que fijar es la pregunta, el registro y que en sombra no decide.
+   */
+  test("reparto_fiel registra su veredicto y su evidencia, y en sombra no decide nada", async () => {
+    respuestaDeJev = fixtures.JEV_REPARTO_HABLA_OTRO;
+    await guardarAjustes({ coherenciaRepartoFiel: "sombra" }, null);
+    olvidarAjustes();
+    const { decidirCoherencia } = await import("./decidir");
+    const [proyecto] = await db().insert(projects).values({ userId: actor.id, title: "Reparto" }).returning();
+    const [escena] = await db()
+      .insert(scenes)
+      .values({ projectId: proyecto?.id ?? "", sortOrder: 0, castFormat: "podcast" })
+      .returning();
+
+    const decision = await decidirCoherencia({
+      usuarioId: actor.id,
+      comprobacion: "reparto_fiel",
+      sujeto: { tipo: "escena", id: escena?.id ?? "", proyectoId: proyecto?.id ?? "" },
+      percepcion: {
+        hechos: "Two voices. first voice: «hola». second voice: «hola».",
+        proveedor: "NaN",
+        modelo: "mimo",
+      },
+      referencia: { cast_format: "podcast", requested_turns: '1. Rosa: "hola"' },
+    });
+
+    expect(decision.modo).toBe("sombra");
+    // En sombra hay veredicto y **no decide**: es lo que permite medir su acierto antes de darle poder.
+    expect(decision.decide).toBe(false);
+    expect(decision.veredicto).toBe("no_pasa");
+    expect(decision.evidencia).toContain("habla alguien que no tenía turno");
+    const [guardada] = await db()
+      .select()
+      .from(coherenceDecisions)
+      .where(and(eq(coherenceDecisions.subjectId, escena?.id ?? ""), eq(coherenceDecisions.check, "reparto_fiel")))
+      .limit(1);
+    expect(guardada?.mode).toBe("sombra");
+    expect(guardada?.evidence).not.toBe("");
+  });
+
+  test("en una escena de un personaje, reparto_fiel dice por qué no se comprueba y no llama a nadie", async () => {
+    await db().delete(rateLimits);
+    const { personajeId } = await personajeConVistaGenerada("Teresa", true);
+    const [proyecto] = await db()
+      .insert(projects)
+      .values({ userId: actor.id, title: "Un personaje", mainCharacterId: personajeId })
+      .returning();
+    const [escena] = await db()
+      .insert(scenes)
+      .values({ projectId: proyecto?.id ?? "", sortOrder: 0 })
+      .returning();
+
+    const resultado = await comprobarEscena(actor, escena?.id);
+    const motivo = resultado.sinComprobar.find((s) => s.comprobacion === "reparto_fiel")?.motivo ?? "";
+    expect(motivo).toContain("un solo personaje");
+    expect(resultado.decisiones.some((d) => d.comprobacion === "reparto_fiel")).toBe(false);
   });
 
   test("borrar el proyecto olvida lo percibido de sus escenas y conserva el veredicto", async () => {

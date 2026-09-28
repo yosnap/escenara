@@ -33,6 +33,7 @@ const CAMPOS: Record<Comprobacion, { modo: keyof Ajustes; umbral: keyof Ajustes 
   direccion_fiel: { modo: "coherenciaDireccionFiel", umbral: "coherenciaUmbralDireccionFiel" },
   producto_fiel: { modo: "coherenciaProductoFiel", umbral: "coherenciaUmbralProductoFiel" },
   angulo_fiel: { modo: "coherenciaAnguloFiel", umbral: "coherenciaUmbralAnguloFiel" },
+  reparto_fiel: { modo: "coherenciaRepartoFiel", umbral: "coherenciaUmbralRepartoFiel" },
 };
 
 export function SeccionCoherencia({

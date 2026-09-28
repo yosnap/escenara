@@ -111,6 +111,23 @@ export const JEV_ANGULO_MEZCLA = {
   usage: { input_tokens: 655, output_tokens: 14 },
 };
 
+/**
+ * `choice` del reparto del diálogo (0.28.0): **habla alguien que no tenía turno**, que es el fallo que esta
+ * comprobación existe para ver. Con una escala caería en una casilla intermedia y la evidencia no podría nombrarlo.
+ */
+export const JEV_REPARTO_HABLA_OTRO = {
+  model: "jev-1.13.0",
+  answers: {
+    coherencia: {
+      type: "choice",
+      choice: "habla_otro",
+      probabilities: { fiel: 0.05, habla_otro: 0.86, orden_cambiado: 0.06, frase_distinta: 0.03 },
+      confidence: 0.89,
+    },
+  },
+  usage: { input_tokens: 540, output_tokens: 14 },
+};
+
 /** `POST /v1/systemone` con una clave revocada → 401. */
 export const JEV_401 = { error: { message: "invalid api key: ts-XXXXXXXXXXXX is not recognised", type: "auth_error" } };
 

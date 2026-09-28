@@ -2,6 +2,7 @@ import { esProveedor, PROVEEDORES_PUBLICOS } from "@/lib/boveda";
 import { calcularCobertura, esVista, type Vista } from "@/lib/captura-personaje";
 import { precioCaducado } from "@/lib/catalogo";
 import { TIPO_RESULTADO, type TipoTrabajoCola } from "@/lib/generacion";
+import { palabrasDeTurnos } from "@/lib/reparto-envio";
 import { leerAjustes } from "../ajustes";
 import { usarCredencialValida } from "../boveda/credenciales";
 import type { FilaEscena, FilaPersonaje } from "../db/esquema";
@@ -124,7 +125,15 @@ export async function hechosDePersonaje(personaje: FilaPersonaje, primerRetrato 
  * Una escena **sin reparto** devuelve `null`: no hay nada que evaluar y el grupo no llega. Eso no abre ninguna
  * puerta, porque el protagonista del proyecto lo sigue gateando la regla `consentimiento` con `hechos.personaje`.
  */
-export async function hechosDelReparto(escena: FilaEscena): Promise<HechosReparto | null> {
+export async function hechosDelReparto(
+  escena: FilaEscena,
+  /**
+   * Lo que solo sabe quien va a enviar (0.28.0): los segundos que va a tener cada clip, ya resueltos contra el
+   * modelo, y a quién le falta el registro en el proveedor. Sin esto se evalúa igual todo lo demás: el camino del
+   * fotograma y el del clip clásico no tienen ni duración de Omni ni registros que mirar.
+   */
+  envio?: { segundosPorClip?: number; sinRegistrar?: { nombre: string; falta: string }[] },
+): Promise<HechosReparto | null> {
   const [miembros, turnos] = await Promise.all([miembrosDelReparto(escena.id), turnosDelReparto(escena.id)]);
   if (miembros.length === 0) return null;
   const personajes = await Promise.all(
@@ -134,7 +143,24 @@ export async function hechosDelReparto(escena: FilaEscena): Promise<HechosRepart
       impedimentos: await motivosParaNoGenerar(miembro.personajeId),
     })),
   );
-  return { formato: escena.castFormat, personajes, mismaVoz: compartenVoz(miembros), turnos: turnos.length };
+  /**
+   * Las palabras se miden **por clip**, no en total: en podcast cada clip dice solo los turnos de su personaje, y
+   * sumarlos todos avisaría de que no cabe un diálogo que sí cabe. En dualcast el clip es uno y dice todos.
+   */
+  const palabras =
+    escena.castFormat === "podcast"
+      ? Math.max(0, ...miembros.map((m) => palabrasDeTurnos(turnos.filter((t) => t.personajeId === m.personajeId))))
+      : palabrasDeTurnos(turnos);
+  return {
+    formato: escena.castFormat,
+    personajes,
+    mismaVoz: compartenVoz(miembros),
+    turnos: turnos.length,
+    clips: escena.castFormat === "podcast" ? miembros.length : 1,
+    palabrasDelClipMasLargo: palabras,
+    segundosPorClip: envio?.segundosPorClip ?? 0,
+    sinRegistrar: envio?.sinRegistrar ?? [],
+  };
 }
 
 /**

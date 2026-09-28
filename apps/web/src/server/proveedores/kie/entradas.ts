@@ -79,7 +79,12 @@ const entradaOmni: Constructor = (contexto, modelo) => {
    */
   if (contexto.personajesOmni && contexto.personajesOmni.length > 0 && contexto.urls.length === 0) {
     return conProporcion(modelo, {
-      prompt: promptEscenaHablada(contexto.escena, contexto.dialogo),
+      /**
+       * **Con reparto, el prompt lleva los lados y los turnos** (0.28.0), y `character_ids` lleva exactamente los
+       * que trae el contexto: **dos** en un dualcast y **uno** en cada clip de podcast. No se deduce nada aquí; lo
+       * decidió y lo guardó quien encoló, que es quien sabe qué confirmó el usuario.
+       */
+      prompt: promptEscenaHablada(contexto.escena, contexto.dialogo, contexto.reparto),
       duration: String(duracion(modelo, contexto)),
       resolution: primeraResolucion(modelo),
       character_ids: [...contexto.personajesOmni],

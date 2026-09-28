@@ -154,6 +154,49 @@ export async function ultimaDecisionDe(
   return fila ? aVista(fila) : null;
 }
 
+/** Una decisión concreta por su identificador, filtrada por dueño. `null` si no es suya o no se guardó. */
+export async function decisionPorId(
+  usuarioId: string,
+  decisionId: string,
+  ejecutor: Ejecutor = db(),
+): Promise<DecisionVista | null> {
+  if (decisionId === "") return null;
+  const [fila] = await ejecutor
+    .select()
+    .from(coherenceDecisions)
+    .where(and(eq(coherenceDecisions.userId, usuarioId), eq(coherenceDecisions.id, decisionId)))
+    .limit(1);
+  return fila ? aVista(fila) : null;
+}
+
+/**
+ * Última decisión de una comprobación sobre un sujeto **para un personaje concreto** (0.28.0). Hace falta porque
+ * en una escena de dos personajes la identidad se comprueba una vez por cada uno: sin filtrar por personaje, las
+ * dos decisiones se leerían como si la segunda hubiera sustituido a la primera.
+ */
+export async function ultimaDecisionDePersonaje(
+  usuarioId: string,
+  sujetoId: string,
+  comprobacion: Comprobacion,
+  personajeId: string,
+  ejecutor: Ejecutor = db(),
+): Promise<DecisionVista | null> {
+  const [fila] = await ejecutor
+    .select()
+    .from(coherenceDecisions)
+    .where(
+      and(
+        eq(coherenceDecisions.userId, usuarioId),
+        eq(coherenceDecisions.subjectId, sujetoId),
+        eq(coherenceDecisions.check, comprobacion),
+        eq(coherenceDecisions.characterId, personajeId),
+      ),
+    )
+    .orderBy(desc(coherenceDecisions.createdAt))
+    .limit(1);
+  return fila ? aVista(fila) : null;
+}
+
 /**
  * Última decisión de **cada comprobación** para cada una de esas escenas, en una sola consulta.
  *

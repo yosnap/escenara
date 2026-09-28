@@ -1,6 +1,7 @@
 import { type CodigoPrueba, MENSAJE_PRUEBA } from "@/lib/boveda";
 import type { Capacidad, ModeloVista, ParametrosModelo } from "@/lib/catalogo";
 import type { EstadoTrabajo } from "@/lib/generacion";
+import type { RepartoDeEnvio } from "@/lib/reparto-envio";
 import type { ParametrosVoz } from "@/lib/voz";
 import type { Buscador } from "./codigos";
 
@@ -188,6 +189,15 @@ export interface ContextoEntrada {
    * que trabajan con referencias en lugar de con una identidad registrada.
    */
   audiosDeReferencia?: readonly string[];
+  /**
+   * **Reparto de dos personajes** de este envío (0.28.0): quién sale, por qué lado, adónde mira y qué dice en
+   * cada turno. Llega solo en las escenas habladas con formato `podcast` o `dualcast`, y en podcast llega **una
+   * por clip**, porque cada clip es un envío distinto con un personaje distinto.
+   *
+   * Es lo que hace que el prompt ate cada cara a su lado del cuadro y que el diálogo no se reparta al azar. Un
+   * adaptador que no lo entienda lo ignora y manda la escena como siempre, así que no puede romper nada.
+   */
+  reparto?: RepartoDeEnvio;
 }
 
 /** Lo que necesita el adaptador para pedir una generación. La clave solo viaja hasta aquí. */
