@@ -34,6 +34,7 @@ const { db } = await import("../db/cliente");
 const { characterReferences, coherenceDecisions, consentRecords, projects, scenes, usageLedger, users } = await import(
   "../db/esquema"
 );
+const { productReferences, products } = await import("../db/esquema-productos");
 const { comprobarEscena } = await import("./escena");
 const { borrarProyecto } = await import("../asistente/proyectos");
 const { crearMedio } = await import("../media/servicio");
@@ -342,6 +343,88 @@ describe.skipIf(!hayBaseDeDatos)("identidad en modo activo", () => {
     const motivo = resultado.sinComprobar.find((s) => s.comprobacion === "resultado")?.motivo ?? "";
     expect(motivo).toContain("consentimiento");
     expect(llamadasDePercepcion).toBe(0);
+  });
+
+  /**
+   * **`producto_fiel` en sombra** (0.26.0): se registra con su evidencia y **no bloquea nada**. Es la misma
+   * puerta de consentimiento, el mismo tope diario y el mismo registro que el resto desde la 0.24.0.
+   */
+  test("producto_fiel se registra en sombra, con su evidencia, y no bloquea nada", async () => {
+    const { personajeId } = await personajeConVistaGenerada("Olivia", true);
+    const fotograma = await crearMedio(actor, new File([await foto()], "fotograma.png", { type: "image/png" }));
+    const frontal = await crearMedio(actor, new File([await foto()], "frontal-bote.png", { type: "image/png" }));
+    const [producto] = await db()
+      .insert(products)
+      .values({
+        ownerId: actor.id,
+        name: "Crema Aurora",
+        description: "Bote blanco con tapón dorado y etiqueta negra.",
+        kind: "fisico",
+        brandVisible: true,
+      })
+      .returning();
+    await db()
+      .insert(productReferences)
+      .values({ productId: producto?.id ?? "", mediaId: frontal.id, kind: "etiqueta", sortOrder: 1 });
+    const [proyecto] = await db()
+      .insert(projects)
+      .values({ userId: actor.id, title: "Con producto", mainCharacterId: personajeId })
+      .returning();
+    const [escena] = await db()
+      .insert(scenes)
+      .values({
+        projectId: proyecto?.id ?? "",
+        sortOrder: 0,
+        approvedFrameMediaId: fotograma.id,
+        productId: producto?.id ?? null,
+        productAction: "ensenarlo-a-camara",
+      })
+      .returning();
+
+    const resultado = await comprobarEscena(actor, escena?.id);
+    const veredicto = resultado.decisiones.find((d) => d.comprobacion === "producto_fiel");
+    expect(veredicto).toBeDefined();
+    expect(veredicto?.modo).toBe("sombra");
+    expect(veredicto?.veredicto).toBe("pasa");
+    expect(veredicto?.evidencia).toContain("mismo producto");
+
+    // Dos percepciones distintas: lo generado y la foto del producto, descritas por separado.
+    const [decision] = await db()
+      .select()
+      .from(coherenceDecisions)
+      .where(and(eq(coherenceDecisions.subjectId, escena?.id ?? ""), eq(coherenceDecisions.check, "producto_fiel")))
+      .limit(1);
+    expect(decision?.mode).toBe("sombra");
+    expect(decision?.facts).not.toBe("");
+    expect(decision?.evidence).not.toBe("");
+  });
+
+  test("sin fotos del producto, producto_fiel dice por qué no se ha comprobado y no llama a nadie", async () => {
+    const { personajeId } = await personajeConVistaGenerada("Pilar", true);
+    const fotograma = await crearMedio(actor, new File([await foto()], "fotograma2.png", { type: "image/png" }));
+    const [producto] = await db()
+      .insert(products)
+      .values({ ownerId: actor.id, name: "Sin fotos", description: "", kind: "fisico", brandVisible: false })
+      .returning();
+    const [proyecto] = await db()
+      .insert(projects)
+      .values({ userId: actor.id, title: "Sin fotos del producto", mainCharacterId: personajeId })
+      .returning();
+    const [escena] = await db()
+      .insert(scenes)
+      .values({
+        projectId: proyecto?.id ?? "",
+        sortOrder: 0,
+        approvedFrameMediaId: fotograma.id,
+        productId: producto?.id ?? null,
+        productAction: "sostenerlo",
+      })
+      .returning();
+
+    const resultado = await comprobarEscena(actor, escena?.id);
+    const motivo = resultado.sinComprobar.find((s) => s.comprobacion === "producto_fiel")?.motivo ?? "";
+    expect(motivo).toContain("foto de referencia");
+    expect(resultado.decisiones.some((d) => d.comprobacion === "producto_fiel")).toBe(false);
   });
 
   test("revocar el consentimiento retira el veredicto y la vista deja de cubrir", async () => {

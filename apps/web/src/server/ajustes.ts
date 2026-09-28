@@ -133,12 +133,15 @@ export interface Ajustes {
   coherenciaEmocion: ModoCoherencia;
   /** Fidelidad de la dirección del clip (0.25.0). Nace en sombra: primero se mide, después decide. */
   coherenciaDireccionFiel: ModoCoherencia;
+  /** Fidelidad del producto (0.26.0): la etiqueta y el envase no cambian. Nace en sombra. */
+  coherenciaProductoFiel: ModoCoherencia;
   /** Confianza mínima (0–1) para actuar. Por debajo, el veredicto es «míralo tú» y no decide nada. */
   coherenciaUmbralIdentidad: number;
   coherenciaUmbralGuion: number;
   coherenciaUmbralResultado: number;
   coherenciaUmbralEmocion: number;
   coherenciaUmbralDireccionFiel: number;
+  coherenciaUmbralProductoFiel: number;
   /**
    * Modelos de **percepción** que se prueban primero dentro del mapa del usuario: el de imagen describe la cara y
    * el encuadre, el omnimodal describe la voz y el ambiente. Si el usuario no los tiene dados de alta, se recorre
@@ -273,11 +276,13 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   coherenciaResultado: "sombra",
   coherenciaEmocion: "sombra",
   coherenciaDireccionFiel: "sombra",
+  coherenciaProductoFiel: "sombra",
   coherenciaUmbralIdentidad: UMBRAL_POR_DEFECTO,
   coherenciaUmbralGuion: UMBRAL_POR_DEFECTO,
   coherenciaUmbralResultado: UMBRAL_POR_DEFECTO,
   coherenciaUmbralEmocion: UMBRAL_POR_DEFECTO,
   coherenciaUmbralDireccionFiel: UMBRAL_POR_DEFECTO,
+  coherenciaUmbralProductoFiel: UMBRAL_POR_DEFECTO,
   // Los dos de NaN builders: `gemma4` es el más barato que ve, y `mimo-v2.5` es de los dos únicos que oyen.
   coherenciaModeloImagen: "gemma4",
   coherenciaModeloAudio: "mimo-v2.5",
@@ -432,11 +437,13 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
   coherenciaResultado: { valido: esModoCoherencia, mensaje: MENSAJE_MODO },
   coherenciaEmocion: { valido: esModoCoherencia, mensaje: MENSAJE_MODO },
   coherenciaDireccionFiel: { valido: esModoCoherencia, mensaje: MENSAJE_MODO },
+  coherenciaProductoFiel: { valido: esModoCoherencia, mensaje: MENSAJE_MODO },
   coherenciaUmbralIdentidad: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   coherenciaUmbralGuion: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   coherenciaUmbralResultado: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   coherenciaUmbralEmocion: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   coherenciaUmbralDireccionFiel: { valido: umbral, mensaje: MENSAJE_UMBRAL },
+  coherenciaUmbralProductoFiel: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   coherenciaModeloImagen: { valido: identificadorModelo, mensaje: MENSAJE_MODELO },
   coherenciaModeloAudio: { valido: identificadorModelo, mensaje: MENSAJE_MODELO },
   coherenciaEurosPorMillonTokens: {
@@ -592,6 +599,7 @@ export function coherenciaDe(ajustes: Ajustes, comprobacion: Comprobacion): { mo
     resultado: ajustes.coherenciaResultado,
     emocion: ajustes.coherenciaEmocion,
     direccion_fiel: ajustes.coherenciaDireccionFiel,
+    producto_fiel: ajustes.coherenciaProductoFiel,
   };
   const umbrales: Record<Comprobacion, number> = {
     identidad: ajustes.coherenciaUmbralIdentidad,
@@ -599,6 +607,7 @@ export function coherenciaDe(ajustes: Ajustes, comprobacion: Comprobacion): { mo
     resultado: ajustes.coherenciaUmbralResultado,
     emocion: ajustes.coherenciaUmbralEmocion,
     direccion_fiel: ajustes.coherenciaUmbralDireccionFiel,
+    producto_fiel: ajustes.coherenciaUmbralProductoFiel,
   };
   return { modo: modos[comprobacion], umbral: umbrales[comprobacion] };
 }

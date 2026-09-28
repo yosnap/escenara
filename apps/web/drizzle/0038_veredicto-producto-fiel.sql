@@ -1,0 +1,1 @@
+ALTER TYPE "public"."coherence_check" ADD VALUE 'producto_fiel';

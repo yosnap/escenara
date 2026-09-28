@@ -17,8 +17,18 @@
  *
  * `direccion_fiel` (0.25.0) mide lo que esta versión promete: que el clip haga lo que el usuario dirigió. Nace
  * **en sombra**, como nacieron las tres de la 0.24.0: primero se mide su acierto, después se le da poder.
+ *
+ * `producto_fiel` (0.26.0) mide lo que promete la suya: que el producto que sale sea el mismo, con la misma
+ * etiqueta y el mismo envase que sus fotos de referencia. Nace en sombra por lo mismo.
  */
-export const COMPROBACIONES = ["identidad", "guion", "resultado", "emocion", "direccion_fiel"] as const;
+export const COMPROBACIONES = [
+  "identidad",
+  "guion",
+  "resultado",
+  "emocion",
+  "direccion_fiel",
+  "producto_fiel",
+] as const;
 export type Comprobacion = (typeof COMPROBACIONES)[number];
 
 export const esComprobacion = (v: unknown): v is Comprobacion => COMPROBACIONES.includes(v as Comprobacion);
@@ -58,6 +68,7 @@ export const NOMBRE_COMPROBACION: Record<Comprobacion, string> = {
   resultado: "El resultado encaja con lo descrito",
   emocion: "La emoción encaja con el tono",
   direccion_fiel: "El clip hace lo que se dirigió",
+  producto_fiel: "Es el mismo producto, con la misma etiqueta",
 };
 
 export const DESCRIPCION_COMPROBACION: Record<Comprobacion, string> = {
@@ -70,6 +81,8 @@ export const DESCRIPCION_COMPROBACION: Record<Comprobacion, string> = {
   emocion: "Después de generar: si la emoción de la cara y la de la voz encajan con el tono del guion.",
   direccion_fiel:
     "Después de generar: si el clip tiene el plano, el movimiento de cámara, el gesto y el momento que se pidieron, y si es una sola toma sin cortes.",
+  producto_fiel:
+    "Después de generar: si el producto que se ve es el mismo que el de sus fotos, con la misma etiqueta, el mismo envase y el mismo texto impreso.",
 };
 
 export const NOMBRE_VEREDICTO: Record<VeredictoCoherencia, string> = {
