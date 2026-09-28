@@ -37,6 +37,17 @@ export const fijarVozDelProyecto = (
   confirmarInvalidacion = false,
 ) => pedir<VozProyectoVista>(ruta(proyectoId), { accion: "fijar-voz", voz, parametros, confirmarInvalidacion });
 
+/**
+ * Registra en el proveedor la **voz Omni** del proyecto (0.22.0). **No cuesta créditos**, así que no viaja
+ * ninguna confirmación de gasto; `confirmarInvalidacion` sí hace falta cuando el cambio deja sin valer escenas
+ * que salieron con la voz anterior.
+ */
+export const registrarVozOmni = (
+  proyectoId: string,
+  eleccion: { voz: string; descripcion: string; ejemplo: string },
+  confirmarInvalidacion = false,
+) => pedir<VozProyectoVista>(ruta(proyectoId), { accion: "registrar-voz-omni", ...eleccion, confirmarInvalidacion });
+
 /** Lo que confirma el navegador para gastar. La clave es lo que impide que un doble clic pague dos veces. */
 export interface ConfirmacionVozEnvio {
   creditosConfirmados: number;

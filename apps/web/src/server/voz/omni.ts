@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import {
   DESCRIPCION_VOZ_OMNI_MAXIMA,
   DESCRIPCION_VOZ_OMNI_MINIMA,
@@ -54,6 +54,22 @@ export async function firmaOmniDelProyecto(proyecto: FilaProyecto): Promise<Firm
   const registro = await registroVigente(proyecto.mainCharacterId, version.id, proyecto.omniAudioId);
   if (!registro) return null;
   return { audioId: proyecto.omniAudioId, personajeOmniId: registro.remoteCharacterId };
+}
+
+/**
+ * Proyectos de este usuario que están en modo `omni`, con si ya tienen su voz registrada. Es lo que la ficha del
+ * personaje necesita para poder ofrecer registrarlo: la voz con la que se registra es **la del proyecto**, así
+ * que sin proyecto en ese modo no hay nada con lo que registrar.
+ */
+export async function proyectosEnModoOmni(
+  usuarioId: string,
+): Promise<{ id: string; titulo: string; conVoz: boolean }[]> {
+  const filas = await db()
+    .select({ id: projects.id, titulo: projects.title, audioId: projects.omniAudioId })
+    .from(projects)
+    .where(and(eq(projects.userId, usuarioId), eq(projects.voiceMode, "omni")))
+    .orderBy(desc(projects.updatedAt));
+  return filas.map((f) => ({ id: f.id, titulo: f.titulo, conVoz: f.audioId !== "" }));
 }
 
 /** Lo que llega del navegador para registrar la voz Omni, ya validado en el borde. */

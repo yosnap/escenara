@@ -5,6 +5,25 @@
 - **Versión**: 0.21.1
 - **Relacionadas**: ADR-0005 (bóveda de credenciales), ADR-0009 (proveedor inicial), ADR-0015 (contrato de adaptadores), ADR-0020 (traducción de prompts), ADR-0025 (voz del proyecto y transcripción local)
 
+## Addendum 0.22.0 · imagen y vídeo entran en el mapa
+
+Desde la 0.22.0 el mapa cubre **los cinco tipos**: imagen y vídeo dejan de salir del catálogo de la instalación y
+los elige y ordena cada usuario, con quien administra recomendando. Lo que **no** cambia es nada de lo decidido
+aquí: la regla de dinero del recorrido manda sobre el orden, los créditos de dos proveedores no se comparan ni se
+suman, y sin precio registrado no se estima ni se gasta.
+
+Tres precisiones que añade esa ampliación:
+
+- **el vídeo tiene dos capacidades en el mismo apartado** (`image_to_video` y `text_to_video`): un clip normal
+  sale de un fotograma y una escena hablada de Gemini Omni no parte de ninguna imagen. Separarlas obligaría a
+  ordenar dos veces lo mismo;
+- **los servicios compatibles con la API de OpenAI no entran** en imagen ni en vídeo: no saben hacerlo;
+- **una reserva del mismo proveedor no se prueba** tras un rechazo probado. Los tres códigos que prueban que no
+  hubo cobro son de la cuenta (clave rechazada, sin saldo, exceso de ritmo), así que otro modelo suyo repetiría
+  el mismo rechazo y retrasaría el mensaje al usuario;
+- cuando el usuario **elige modelo a mano** en «Crear», manda su elección para ese envío y no hay reservas: no ha
+  visto el coste de ninguna otra.
+
 ## Contexto
 
 Hasta la 0.21.0, **con qué se generaba cada cosa** estaba decidido en tres sitios distintos y ninguno se podía

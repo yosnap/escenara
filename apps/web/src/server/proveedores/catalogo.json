@@ -313,6 +313,30 @@
     },
     {
       "proveedor": "kie",
+      "modelo": "minimax-h3/reference-to-video",
+      "nombre": "MiniMax H3 (referencia a vídeo)",
+      "capacidades": ["image_to_video"],
+      "estado": "validado",
+      "predeterminado": false,
+      "conVoz": true,
+      "unidad": "clip de 5 s a 768P",
+      "parametros": {
+        "duraciones": [5],
+        "proporciones": ["9:16"],
+        "resoluciones": ["768P", "2K"],
+        "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
+        "maximoReferencias": 9
+      },
+      "precio": {
+        "creditos": 40,
+        "fuente": "Medido con dinero real el 2026-09-28 con la clave del propietario: clip de 5 s en 9:16 a 768P, 40 créditos y 143 s de espera, salida de 768x1344 con audio. Las demás duraciones se estiman en proporción y se marcan como estimadas hasta medirlas.",
+        "comprobado": "2026-09-28"
+      },
+      "evidencia": "Ejecutado de verdad el 2026-09-28 contra la API de KIE: 5 s, 9:16, 768P, 40 créditos, 143 s, 768x1344 con audio. La cara salió fiel al retrato de referencia y el diálogo en español con exactitud.",
+      "notas": "SEGUNDO MOTOR DE ESCENAS HABLADAS (0.22.0), más barato que Gemini Omni Flash y bastante más lento. No registra identidades en el proveedor: la cara sale de reference_image_urls (hasta 9: el retrato y las vistas del personaje) y la voz de reference_audio_urls (hasta 3: la muestra de la voz del proyecto), así que el timbre es el del mapa de voz del usuario. duration es un entero de 4 a 15 y resolution es 768P o 2K; el catálogo se limita a lo medido."
+    },
+    {
+      "proveedor": "kie",
       "modelo": "google/gemini-omni-flash-1-1",
       "nombre": "Gemini Omni 1.1 Flash (vídeo)",
       "capacidades": ["image_to_video", "text_to_video"],

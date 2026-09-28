@@ -12,8 +12,12 @@ import { PROVEEDORES_PUBLICOS, type Proveedor } from "./boveda";
 export const TIPOS_DE_MAPA = ["texto", "voz", "transcripcion", "imagen", "video"] as const;
 export type TipoDeMapa = (typeof TIPOS_DE_MAPA)[number];
 
-/** Tipos que hoy consultan de verdad el mapa. `imagen` y `video` caben en el modelo de datos y aún no se usan. */
-export const TIPOS_EN_USO: readonly TipoDeMapa[] = ["texto", "voz", "transcripcion"];
+/**
+ * Tipos que consultan de verdad el mapa. Desde la 0.22.0 son **todos**: imagen y vídeo se añaden con la misma
+ * regla que los demás (el usuario elige y ordena, quien administra solo recomienda) y con la misma regla de
+ * dinero del recorrido.
+ */
+export const TIPOS_EN_USO: readonly TipoDeMapa[] = TIPOS_DE_MAPA;
 
 export const esTipoDeMapa = (v: unknown): v is TipoDeMapa => TIPOS_DE_MAPA.includes(v as TipoDeMapa);
 
@@ -29,8 +33,8 @@ export const DESCRIPCION_DE_TIPO: Record<TipoDeMapa, string> = {
   texto: "Traducir los prompts al inglés y escribir el guion con el asistente.",
   voz: "Leer el diálogo de tus escenas cuando el proyecto usa pista de voz aparte.",
   transcripcion: "Sacar los subtítulos del audio ya generado.",
-  imagen: "Los fotogramas. Todavía se elige en el catálogo de la instalación.",
-  video: "Los clips. Todavía se elige en el catálogo de la instalación.",
+  imagen: "Los fotogramas de tus escenas, las imágenes de «Crear» y las vistas generadas de tus personajes.",
+  video: "Los clips de tus escenas, y las escenas habladas cuando el proyecto usa el modo Omni.",
 };
 
 /** Una entrada del mapa tal como viaja al navegador. */

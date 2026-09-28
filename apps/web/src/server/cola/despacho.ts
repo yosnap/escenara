@@ -20,7 +20,9 @@ import { type FilaMedio, type FilaTrabajo, generationJobs, media, usageLedger } 
 import { archivoDe } from "../generacion/comprobaciones";
 import { olvidarSaldo } from "../generacion/estimacion";
 import type { Herramientas } from "../generacion/herramientas";
+import type { EleccionDeTrabajo } from "../generacion/precios";
 import { cerrarVozSincrona } from "../generacion/seguimiento";
+import { opcionesDeGeneracion } from "../mapa/generacion";
 import { opcionesDeVoz, type ReservaAutorizada } from "../mapa/voz";
 import { referenciaCompatible } from "../media/conversion-referencia";
 import { mediosDeReferenciaVigentes } from "../personajes/consulta";
@@ -112,7 +114,7 @@ export async function despachar(fila: FilaTrabajo, workerId: string, h: Herramie
      * El dinero está acotado por el tope que el usuario vio para la reserva, en su moneda, guardado al encolar
      * (`relevoDeVoz`), así que el cambio nunca gasta más de lo que el usuario tenía delante.
      */
-    const reserva = await relevoDeVoz(fila, error, h);
+    const reserva = await relevoDelMapa(fila, error, h);
     if (reserva) return reserva;
     return { fila: await tratarFalloDeLlamada(fila, error, h), enviado: false };
   }
@@ -276,10 +278,32 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
    * usuario y la del proyecto. Volver a deducirla cambiaría el clip que se paga.
    */
   const segundos = segundosDe(fila);
+  /**
+   * Audio de referencia de una escena hablada con un motor **de referencias** (MiniMax H3, 0.22.0): la muestra
+   * ya pagada de la voz del proyecto. Se sube igual que una imagen —el almacenamiento temporal del proveedor
+   * acepta cualquier archivo— y su URL caduca igual, así que tampoco se guarda nunca en el trabajo.
+   */
+  const audios: string[] = [];
+  const audioId = audioDeReferenciaDe(fila);
+  if (audioId) {
+    const [audio] = await db()
+      .select()
+      .from(media)
+      .where(and(eq(media.id, audioId), isNull(media.deletedAt)));
+    if (!audio) {
+      throw new ErrorSinCredencial(
+        "La muestra de voz con la que se iba a generar esta escena ya no está en tu biblioteca, así que el clip no sonaría con la voz de este proyecto. Vuelve a oír esa voz en «Voz y subtítulos» y pide la escena otra vez.",
+      );
+    }
+    audios.push(
+      await adaptador.subirReferencia({ clave: credencial.clave, archivo: await archivoDe(audio), buscar: h.buscar }),
+    );
+  }
   const entrada = adaptador.montarEntrada(modelo, {
     escena: fila.prompt,
     dialogo: dialogoDe(fila),
     urls,
+    ...(audios.length > 0 ? { audiosDeReferencia: audios } : {}),
     ...(segundos === null ? {} : { segundos }),
   });
   const callback = await prepararCallback(fila);
@@ -419,10 +443,15 @@ async function marcarTareaPerdida(fila: FilaTrabajo, taskId: string): Promise<Fi
  *
  * Cuando no queda ninguna, se falla sin coste diciendo **qué se podía haber probado y por qué no**.
  */
-async function relevoDeVoz(fila: FilaTrabajo, error: unknown, h: Herramientas): Promise<Despachado | null> {
-  if (fila.kind !== "voz") return null;
+async function relevoDelMapa(fila: FilaTrabajo, error: unknown, h: Herramientas): Promise<Despachado | null> {
   if (!(error instanceof ErrorProveedor) || !error.rechazoProbado) return null;
-  const pendientes = reservasPendientes(fila);
+  /**
+   * Una reserva **del mismo proveedor** no sirve tras un rechazo probado, y por eso se descarta antes de nada:
+   * los tres códigos que prueban que no hubo cobro son de la cuenta, no del modelo (la clave está rechazada, la
+   * cuenta no tiene saldo o el proveedor ha pedido esperar). Probar otro modelo suyo sería repetir el mismo
+   * rechazo y retrasar el mensaje al usuario.
+   */
+  const pendientes = reservasPendientes(fila).filter((r) => r.proveedor !== fila.provider);
   const intentos: IntentoDeVoz[] = [
     { proveedor: fila.provider, modelo: fila.model, codigo: error.codigo, cobro: "sin-cobro" },
   ];
@@ -432,7 +461,7 @@ async function relevoDeVoz(fila: FilaTrabajo, error: unknown, h: Herramientas): 
      * después de encolar), eso hay que decirlo con todas las letras: no se cambia de proveedor sin que haya
      * visto lo que cuesta allí, y lo que no se puede es callarse que existía una alternativa.
      */
-    const otras = (await opcionesDeVoz(fila.userId)).filter((o) => o.eleccion.modelo.proveedor !== fila.provider);
+    const otras = (await opcionesDelTipo(fila)).filter((o) => o.eleccion.modelo.proveedor !== fila.provider);
     const otra = otras[0];
     if (!otra) return null;
     const nombre = otra.eleccion.modelo.nombreProveedor;
@@ -457,7 +486,7 @@ async function relevoDeVoz(fila: FilaTrabajo, error: unknown, h: Herramientas): 
       descartadas.push(motivo);
       continue;
     }
-    console.warn(`[cola] relevo de voz en el trabajo ${actual.id}: ${actual.provider} → ${reserva.proveedor}`);
+    console.warn(`[cola] relevo en el trabajo ${actual.id}: ${actual.provider} → ${reserva.proveedor}`);
     const cambiada = await encaminarA(actual, reserva);
     if (!cambiada) return null;
     actual = cambiada;
@@ -520,24 +549,42 @@ const intentoDe = (fila: FilaTrabajo, error: unknown): IntentoDeVoz => ({
 /** Por qué esta reserva no se puede usar, o `null` si sí se puede. El motivo entra en el mensaje del usuario. */
 async function motivoParaNoRelevar(fila: FilaTrabajo, reserva: ReservaAutorizada): Promise<string | null> {
   const nombre = await nombreDeLaReserva(fila.userId, reserva);
-  const voz = vozDe(fila);
+  /**
+   * La familia de voces solo acota a la **voz**: los identificadores de ElevenLabs y los de kokoro no son los
+   * mismos, así que una reserva de otra familia leería el diálogo con otro timbre. En imagen y vídeo no hay nada
+   * equivalente: lo que acota ahí es el precio autorizado y que el modelo siga existiendo.
+   */
+  const voz = fila.kind === "voz" ? vozDe(fila) : null;
   if (voz && familiaDeVoz(voz.voz) !== null && familiaDeVoz(voz.voz) !== reserva.familia) {
     return `Se podía haber probado con ${nombre}, pero sus voces son otras y no incluyen la que tiene fijada este proyecto: generar ahí habría cambiado el timbre del personaje a mitad de proyecto.`;
   }
-  const disponible = await reservaDisponible(fila.userId, reserva);
+  const disponible = await reservaDisponible(fila, reserva);
   if (!disponible) {
     return `Se podía haber probado con ${nombre}, pero ahora mismo no está utilizable en tu cuenta: puede que falte su clave o que su modelo ya no tenga precio registrado en esta instalación.`;
   }
-  const ahora = creditosDeLaOpcion(disponible, dialogoDe(fila));
+  const ahora =
+    fila.kind === "voz" ? creditosDeLaOpcion(disponible, dialogoDe(fila)) : Math.ceil(disponible.precio.creditos);
   if (ahora > reserva.creditos) {
     return `Se podía haber probado con ${nombre}, pero generar este diálogo allí cuesta ahora ${ahora} créditos de ${nombre} y tú autorizaste ${reserva.creditos}: no se cambia de proveedor para gastar más de lo que viste. Vuelve a pedir la voz de esta escena y se te mostrará el coste actualizado.`;
   }
   return null;
 }
 
+/**
+ * Opciones utilizables **del apartado del mapa que le toca a este trabajo**: voz para una pista de voz, imagen
+ * para un fotograma y vídeo para un clip. Es la misma lectura que hizo la estimación al encolar, así que el
+ * relevo solo puede ir a donde el usuario ya vio que se podía ir.
+ */
+type OpcionRelevable = { entrada: { compatibleId: string | null }; eleccion: EleccionDeTrabajo };
+
+async function opcionesDelTipo(fila: FilaTrabajo): Promise<OpcionRelevable[]> {
+  if (fila.kind === "voz") return opcionesDeVoz(fila.userId, dialogoDe(fila));
+  return opcionesDeGeneracion(fila.userId, fila.kind);
+}
+
 /** La reserva, resuelta contra lo que hay ahora mismo: su modelo, su adaptador y su precio. `null` si ya no vale. */
-async function reservaDisponible(usuarioId: string, reserva: ReservaAutorizada) {
-  const opciones = await opcionesDeVoz(usuarioId);
+async function reservaDisponible(fila: FilaTrabajo, reserva: ReservaAutorizada) {
+  const opciones = await opcionesDelTipo(fila);
   const opcion = opciones.find(
     (o) =>
       o.eleccion.modelo.proveedor === reserva.proveedor &&
@@ -775,6 +822,12 @@ async function claveDelTrabajo(fila: FilaTrabajo): Promise<{ clave: string }> {
 function urlBaseDe(fila: FilaTrabajo): string {
   const url = (fila.input as { urlBase?: unknown }).urlBase;
   return typeof url === "string" ? url : "";
+}
+
+/** Muestra de voz que este trabajo usa como audio de referencia; vacío en todo lo que no la use. */
+function audioDeReferenciaDe(fila: FilaTrabajo): string {
+  const guardado = (fila.input as { audioDeReferencia?: unknown }).audioDeReferencia;
+  return typeof guardado === "string" ? guardado : "";
 }
 
 /**

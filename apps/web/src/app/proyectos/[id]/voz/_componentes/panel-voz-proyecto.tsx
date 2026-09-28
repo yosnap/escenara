@@ -20,6 +20,7 @@ import {
   type ParametrosVoz,
   type VozProyectoVista,
 } from "@/lib/voz";
+import { PanelVozOmni } from "./panel-voz-omni";
 
 /**
  * Modo y voz **del proyecto** (RF08, 0.21.0). La pantalla dice en todo momento lo mismo que el servidor: la voz vale
@@ -34,12 +35,15 @@ export function PanelVozProyecto({
   onModo,
   onVoz,
   onMuestra,
+  onVozOmni,
 }: {
   estado: VozProyectoVista;
   ocupado: boolean;
   onModo: (modo: ModoVoz, confirmar: boolean) => void;
   onVoz: (voz: string, parametros: ParametrosVoz, confirmar: boolean) => void;
   onMuestra: (voz: string, parametros: ParametrosVoz) => void;
+  /** Registra la voz Omni del proyecto (0.22.0). No cuesta créditos. */
+  onVozOmni: (voz: string, descripcion: string, ejemplo: string) => void;
 }) {
   const vozFijada = estado.voz;
   const [voz, setVoz] = useState(vozFijada?.voz ?? estado.disponibilidad.voces[0]?.id ?? "");
@@ -69,6 +73,9 @@ export function PanelVozProyecto({
           La voz la genera el modelo de vídeo dentro de cada clip, con los labios sincronizados. No hay ninguna voz que
           elegir y los subtítulos salen de transcribir el audio del clip, que no cuesta nada.
         </Aviso>
+      ) : estado.modo === "omni" ? (
+        // En Omni no hay pista TTS que configurar: la voz va dentro del personaje registrado.
+        estado.omni && <PanelVozOmni omni={estado.omni} ocupado={ocupado} onRegistrarVoz={onVozOmni} />
       ) : !d.ttsDisponible ? (
         <Aviso tono="error">{d.motivoTts}</Aviso>
       ) : (

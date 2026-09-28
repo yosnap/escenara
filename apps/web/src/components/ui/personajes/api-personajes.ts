@@ -252,3 +252,11 @@ export const generarRetratos = (id: string, confirmacion: ConfirmacionRetratos) 
 /** Elige uno de los candidatos como cara del personaje. **No cuesta nada**: ya están pagados. */
 export const elegirRetrato = (id: string, medioId: string) =>
   pedir<PersonajeVista>(`/api/personajes/${id}/retratos`, json("POST", { accion: "elegir", medioId }));
+
+/**
+ * Registra al personaje en el proveedor para las escenas habladas de un proyecto (0.22.0). **No cuesta
+ * créditos**, pero envía su retrato, así que el servidor exige consentimiento vigente. `volverARegistrar`
+ * reemplaza un identificador que el proveedor ya no reconoce.
+ */
+export const registrarEnOmni = (id: string, proyectoId: string, volverARegistrar = false) =>
+  pedir<PersonajeVista>(`/api/personajes/${id}/omni`, json("POST", { proyectoId, volverARegistrar }));

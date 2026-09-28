@@ -3,11 +3,12 @@ import { precioCaducado } from "@/lib/catalogo";
 import type { Estimacion, TipoTrabajo } from "@/lib/generacion";
 import { eurosPorCreditoDe, leerAjustes } from "../ajustes";
 import { usarCredencial } from "../boveda/credenciales";
+import { eleccionDeGeneracion } from "../mapa/generacion";
 import { type EstadoTraduccion, estadoDeTraduccion } from "../prompts/traduccion";
 import type { Buscador } from "../proveedores/codigos";
 import { ErrorCatalogo, ErrorProveedor } from "../proveedores/contrato";
 import { adaptadorDe } from "../proveedores/registro";
-import { type EleccionDeTrabajo, elegirParaTipo } from "./precios";
+import type { EleccionDeTrabajo } from "./precios";
 
 /**
  * Coste estimado de un trabajo y si el saldo del usuario alcanza. Los créditos vienen del catálogo de
@@ -92,11 +93,17 @@ export async function estimar(
   buscar: Buscador = fetch,
   modelo?: string | null,
 ): Promise<Estimacion> {
-  const [eleccion, ajustes, traduccion] = await Promise.all([
-    elegirParaTipo(tipo, modelo),
+  /**
+   * Con qué se generaría **según el mapa de este usuario** (0.22.0), salvo que haya elegido modelo a mano en
+   * «Crear»: entonces manda su elección. Es la misma resolución que usa la puerta al encolar, así que lo que se
+   * estima es lo que se va a enviar.
+   */
+  const [{ elegida }, ajustes, traduccion] = await Promise.all([
+    eleccionDeGeneracion(usuarioId, tipo, modelo),
     leerAjustes(),
     estadoDeTraduccion(),
   ]);
+  const eleccion = elegida.eleccion;
   const saldos = await saldoDe(usuarioId, buscar, [eleccion]);
   return conEleccion(eleccion, ajustes, saldos, tipo, traduccion);
 }
@@ -110,12 +117,14 @@ export async function estimarTodo(
   buscar: Buscador = fetch,
   modelos: Partial<Record<TipoTrabajo, string>> = {},
 ): Promise<Record<TipoTrabajo, Estimacion>> {
-  const [fotograma, animacion, ajustes, traduccion] = await Promise.all([
-    elegirParaTipo("fotograma", modelos.fotograma),
-    elegirParaTipo("animacion", modelos.animacion),
+  const [porFotograma, porAnimacion, ajustes, traduccion] = await Promise.all([
+    eleccionDeGeneracion(usuarioId, "fotograma", modelos.fotograma),
+    eleccionDeGeneracion(usuarioId, "animacion", modelos.animacion),
     leerAjustes(),
     estadoDeTraduccion(),
   ]);
+  const fotograma = porFotograma.elegida.eleccion;
+  const animacion = porAnimacion.elegida.eleccion;
   const saldos = await saldoDe(usuarioId, buscar, [fotograma, animacion]);
   return {
     fotograma: conEleccion(fotograma, ajustes, saldos, "fotograma", traduccion),
