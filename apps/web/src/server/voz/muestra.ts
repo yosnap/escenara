@@ -6,7 +6,7 @@ import { encolar, filaDeLaConfirmacion } from "../cola/encolar";
 import { recopilarHechos } from "../controles/hechos";
 import { exigirControles } from "../controles/puerta";
 import { db } from "../db/cliente";
-import { type FilaTrabajo, media, voiceSamples } from "../db/esquema";
+import { type FilaTrabajo, generationJobs, media, voiceSamples } from "../db/esquema";
 import {
   exigirAvisoUmbral,
   exigirClaveIdempotencia,
@@ -16,10 +16,11 @@ import {
 } from "../generacion/comprobaciones";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { exigirSelloVigente } from "../generacion/precios";
+import { condicionEnCurso } from "../generacion/trabajos";
 import { type Actor, aDto } from "../media/servicio";
 import { acotarCoste } from "../presupuesto/acotar";
 import type { ConfirmacionVoz } from "./tts";
-import { eleccionDeVoz } from "./tts";
+import { eleccionDeVoz, exigirTtsEncendido } from "./tts";
 
 /**
  * Muestra de una voz (RF08, 0.21.0): **una por voz y por parámetros, cacheada**, con su coste mostrado antes de
@@ -47,6 +48,31 @@ const firmaDeMuestra = (
   voz: string,
   parametros: ParametrosVoz,
 ) => firmaDeVoz("pista", { proveedor, modelo, voz, parametros, fijadaEn: "" }, TEXTO_DE_MUESTRA);
+
+/**
+ * Una muestra en marcha **es una muestra ya pagada aunque todavía no esté en la caché**: la caché solo se rellena
+ * al cerrar el trabajo, así que entre el clic y el cierre no hay nada que impida volver a pedir la misma.
+ *
+ * Sin esta guardia, perder la respuesta del primer clic (una recarga, el móvil que pierde cobertura, dos pestañas
+ * abiertas) cobraba dos veces el mismo audio: la clave de idempotencia es nueva en cada clic, así que no cortaba.
+ * Se compara por la **firma** de la muestra, que es la voz más sus parámetros: otra voz u otros mandos son otra
+ * muestra y sí se pueden pedir a la vez.
+ */
+async function exigirMuestraSinRepetir(usuarioId: string, firma: string): Promise<void> {
+  const enCurso = await db()
+    .select({ input: generationJobs.input })
+    .from(generationJobs)
+    .where(and(eq(generationJobs.userId, usuarioId), eq(generationJobs.kind, "voz"), condicionEnCurso()));
+  const repetida = enCurso.some(
+    ({ input }) => (input as { muestraDeVoz?: { firma?: unknown } }).muestraDeVoz?.firma === firma,
+  );
+  if (repetida) {
+    throw new ErrorProyecto(
+      409,
+      "Esa muestra ya se está generando. Espera a que termine antes de volver a pedirla: si no, se pagarían las dos.",
+    );
+  }
+}
 
 /** Muestras que este usuario ya tiene pagadas, por voz. Es lo que la pantalla usa para no volver a cobrarlas. */
 export async function muestrasDe(actor: Actor, modelo: string, parametros: ParametrosVoz): Promise<Map<string, Medio>> {
@@ -81,6 +107,9 @@ export async function pedirMuestra(
   if (!VOCES_OFRECIDAS.some((v) => v.id === voz)) {
     throw new ErrorProyecto(400, "Esa voz no está entre las que ofrece esta instalación.");
   }
+  // El interruptor del panel primero: una instalación con la voz apagada no llega a estimar nada, y mucho menos a
+  // encolar. La interfaz esconde el botón, pero la ruta es pública para cualquier usuario con sesión.
+  await exigirTtsEncendido();
   const claveIdempotencia = exigirClaveIdempotencia(confirmacion.claveIdempotencia);
   const { modelo, adaptador, precio } = await eleccionDeVoz();
   const proveedor = proveedorDeCredencial(modelo);
@@ -95,6 +124,8 @@ export async function pedirMuestra(
   const yaHecho = await filaDeLaConfirmacion(actor.id, claveIdempotencia);
   if (yaHecho) return { trabajo: yaHecho, medio: null };
   await exigirRitmo(actor.id);
+  const firma = firmaDeMuestra(proveedor, modelo.modelo, voz, parametros);
+  await exigirMuestraSinRepetir(actor.id, firma);
 
   /**
    * Misma puerta que cualquier otro gasto (ADR-0023). Una muestra **no pertenece a ningún proyecto**, así que no
@@ -135,7 +166,7 @@ export async function pedirMuestra(
         voz: { voz, parametros },
         // Marca que este trabajo es una muestra: es lo que hace que su resultado entre en la caché y no en una
         // escena. Sin ella, el audio se guardaría en la biblioteca y nadie sabría de qué voz era.
-        muestraDeVoz: { voz, firma: firmaDeMuestra(proveedor, modelo.modelo, voz, parametros) },
+        muestraDeVoz: { voz, firma },
       },
       // Una muestra **no es de ninguna escena**: no toca ningún proyecto y no cuenta como escena en vuelo.
       sceneId: null,

@@ -4,7 +4,6 @@ import {
   type EscenaConSubtitulos,
   erroresDeSubtitulos,
   type FormatoSubtitulos,
-  firmaDeVoz,
   SUBTITULO_MAXIMO,
   SUBTITULOS_MAXIMOS,
   type Subtitulo,
@@ -14,10 +13,10 @@ import {
 import { escenaPropia, escenasDe, proyectoPropio } from "../asistente/consulta";
 import { ErrorProyecto } from "../asistente/errores";
 import { db } from "../db/cliente";
-import { type FilaEscena, type FilaProyecto, media, scenes } from "../db/esquema";
+import { type FilaEscena, type FilaMedio, type FilaProyecto, media, scenes } from "../db/esquema";
 import { archivoDe } from "../generacion/comprobaciones";
 import { type Actor, aDto } from "../media/servicio";
-import { vozDelProyecto } from "./proyecto";
+import { firmaVigente } from "./proyecto";
 import { transcribir } from "./transcripcion";
 
 /**
@@ -56,32 +55,92 @@ function origenDeLaTranscripcion(proyecto: FilaProyecto, escena: FilaEscena): { 
 }
 
 /**
+ * Lo más grande que se manda a transcribir. El techo de la subida es de la biblioteca y vale para lo que se
+ * guarda; este es el de **este camino**, que además convierte con FFmpeg y escribe dos temporales. Sin él, varias
+ * transcripciones de clips largos a la vez se llevaban por delante la memoria del proceso.
+ */
+const BYTES_MAXIMOS_TRANSCRIPCION = 200 * 1024 * 1024;
+
+function exigirArchivoTranscribible(fila: FilaMedio): void {
+  if (fila.sizeBytes > BYTES_MAXIMOS_TRANSCRIPCION) {
+    throw new ErrorProyecto(
+      413,
+      `Ese archivo pesa demasiado para transcribirlo aquí (el máximo son ${Math.round(BYTES_MAXIMOS_TRANSCRIPCION / (1024 * 1024))} MB). Escribe los subtítulos a mano o propónlos desde el diálogo.`,
+    );
+  }
+}
+
+/**
+ * Qué firma le toca a la escena después de tocar sus **subtítulos**.
+ *
+ * La firma es una sola para el audio y para los subtítulos, así que escribirla desde aquí sin mirar borraría la
+ * invalidación del audio: una escena cuyo audio se generó con otra voz volvería a darse por vigente solo porque
+ * alguien corrigió una línea de texto, la pantalla dejaría de pedir regenerarla y `exigirEscenaSinVoz` se negaría
+ * a hacerlo. El montaje final saldría con un plano en la voz antigua.
+ *
+ * Por eso: si la escena **tiene audio y ese audio ya no corresponde**, se conservan tal cual la firma y el motivo
+ * de invalidación. La invalidación solo la limpia quien la arregla, que es regenerar el audio con la voz vigente
+ * (`produccion/cierre.ts`).
+ */
+function firmaTrasEditarSubtitulos(
+  proyecto: FilaProyecto,
+  escena: FilaEscena,
+): Pick<FilaEscena, "voiceSignature" | "voiceInvalidationReason"> {
+  const vigente = firmaVigente(proyecto, escena);
+  if (escena.voiceMediaId !== null && escena.voiceSignature !== vigente) {
+    return { voiceSignature: escena.voiceSignature, voiceInvalidationReason: escena.voiceInvalidationReason };
+  }
+  return { voiceSignature: vigente, voiceInvalidationReason: "" };
+}
+
+/**
+ * Unos subtítulos que ha corregido una persona **no se pisan sin más**. Transcribir o proponer es barato y se
+ * pulsa sin pensar; media hora de ajuste de tiempos no se recupera de ninguna parte, porque lo editado no se
+ * guarda en ningún otro sitio (`transcript` conserva lo medido, no lo corregido).
+ */
+function exigirSobrescribirSubtitulos(escena: FilaEscena, confirmado: boolean, que: string): void {
+  if (confirmado) return;
+  if (escena.subtitlesEditedAt === null || escena.subtitles.length === 0) return;
+  throw new ErrorProyecto(
+    409,
+    `Los subtítulos de la escena ${escena.sortOrder} los has corregido a mano y ${que} los sustituye por completo. Lo que has editado no se guarda en ningún otro sitio: confírmalo para sustituirlos.`,
+  );
+}
+
+/**
  * Transcribe el audio de una escena y **propone** sus subtítulos. Guarda las dos cosas: la transcripción tal como
  * la midió el transcriptor y los subtítulos propuestos, que quedan a la espera de que alguien los revise.
  *
  * No marca los subtítulos como editados: nadie los ha mirado todavía. Lo que se exporta sigue siendo esta columna,
  * pero la pantalla dice claramente que aún no los ha revisado ninguna persona.
  */
-export async function transcribirEscena(actor: Actor, escenaId: string): Promise<FilaEscena> {
+export async function transcribirEscena(
+  actor: Actor,
+  escenaId: string,
+  confirmarSobrescribir = false,
+): Promise<FilaEscena> {
   const { escena, proyecto } = await escenaPropia(actor, escenaId);
+  exigirSobrescribirSubtitulos(escena, confirmarSobrescribir, "transcribir el audio");
   const { id, que } = origenDeLaTranscripcion(proyecto, escena);
   const [fila] = await db().select().from(media).where(eq(media.id, id)).limit(1);
   if (!fila || fila.deletedAt !== null) {
     throw new ErrorProyecto(409, `Ya no está el archivo del que salían los subtítulos de esta escena (${que}).`);
   }
+  exigirArchivoTranscribible(fila);
   const archivo = await archivoDe(fila);
   const extension = (fila.originalName.split(".").pop() ?? "").toLowerCase();
-  const segmentos = await transcribir(await archivo.arrayBuffer(), extension);
+  // El archivo se vuelca a disco **en flujo**, sin materializarlo entero en memoria: un clip de la biblioteca
+  // puede pesar decenas de MB y aquí se atendían varias transcripciones a la vez.
+  const segmentos = await transcribir(archivo, extension);
   const propuestos = acotarSubtitulos(subtitulosDesdeTranscripcion(segmentos));
   const [guardada] = await db()
     .update(scenes)
     .set({
       transcript: segmentos,
       subtitles: propuestos,
-      // La firma se guarda ahora: estos subtítulos corresponden a esta voz y a este diálogo.
-      voiceSignature: firmaDeVoz(proyecto.voiceMode, vozDelProyecto(proyecto), escena.scriptText),
-      voiceInvalidationReason: "",
-      // Nadie los ha revisado todavía: `subtitlesEditedAt` sigue siendo el de la última edición humana.
+      ...firmaTrasEditarSubtitulos(proyecto, escena),
+      // Nadie los ha revisado todavía: `subtitlesEditedAt` vuelve a `null`, porque estos ya no son los editados.
+      subtitlesEditedAt: null,
       updatedAt: new Date(),
     })
     .where(eq(scenes.id, escena.id))
@@ -95,8 +154,13 @@ export async function transcribirEscena(actor: Actor, escenaId: string): Promise
  * camino cuando no hay transcriptor instalado o cuando el audio aún no está: reparte el tiempo en proporción a los
  * caracteres de cada frase, y la pantalla dice que es una propuesta que hay que ajustar.
  */
-export async function proponerSubtitulos(actor: Actor, escenaId: string): Promise<FilaEscena> {
+export async function proponerSubtitulos(
+  actor: Actor,
+  escenaId: string,
+  confirmarSobrescribir = false,
+): Promise<FilaEscena> {
   const { escena, proyecto } = await escenaPropia(actor, escenaId);
+  exigirSobrescribirSubtitulos(escena, confirmarSobrescribir, "proponerlos desde el diálogo");
   if (escena.scriptText.trim() === "") {
     throw new ErrorProyecto(409, "Esta escena no tiene diálogo, así que no hay texto del que sacar subtítulos.");
   }
@@ -105,8 +169,8 @@ export async function proponerSubtitulos(actor: Actor, escenaId: string): Promis
     .update(scenes)
     .set({
       subtitles: propuestos,
-      voiceSignature: firmaDeVoz(proyecto.voiceMode, vozDelProyecto(proyecto), escena.scriptText),
-      voiceInvalidationReason: "",
+      ...firmaTrasEditarSubtitulos(proyecto, escena),
+      subtitlesEditedAt: null,
       updatedAt: new Date(),
     })
     .where(eq(scenes.id, escena.id))
@@ -140,8 +204,7 @@ export async function guardarSubtitulos(
     .set({
       subtitles: acotarSubtitulos(subtitulos),
       subtitlesEditedAt: new Date(),
-      voiceSignature: firmaDeVoz(proyecto.voiceMode, vozDelProyecto(proyecto), escena.scriptText),
-      voiceInvalidationReason: "",
+      ...firmaTrasEditarSubtitulos(proyecto, escena),
       updatedAt: new Date(),
     })
     .where(eq(scenes.id, escena.id))
@@ -175,9 +238,13 @@ export async function exportarSubtitulos(
       "Este proyecto todavía no tiene ningún subtítulo guardado. Genera o escribe los subtítulos de sus escenas antes de exportarlos.",
     );
   }
+  // El nombre viaja en una cabecera ASCII, así que se quitan las tildes y se deja solo lo que cabe ahí. Un
+  // `Content-Disposition` con letras no ASCII lo interpreta cada navegador a su manera.
   const slug = proyecto.title
     .trim()
-    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .replace(/[^a-zA-Z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     .toLowerCase();
   return {

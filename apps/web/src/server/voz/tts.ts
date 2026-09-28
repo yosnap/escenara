@@ -63,10 +63,11 @@ export function eleccionDeVoz(modelo?: string | null): Promise<EleccionDeTrabajo
 }
 
 /**
- * Comprueba que esta instalación **y** este proyecto pueden generar voz. Se llama antes de mirar el dinero: un
- * proyecto en modo `clip` o una instalación con la voz apagada no tienen que llegar a estimar nada.
+ * El interruptor del panel es **una puerta, no un adorno de interfaz**: si quien administra apaga la voz, ningún
+ * camino de gasto de voz puede seguir. Vive aquí, en un solo sitio, porque lo usan la pista de una escena y la
+ * muestra de una voz, y dos copias de la misma comprobación se desincronizan.
  */
-export async function exigirVozDisponible(proyecto: FilaProyecto): Promise<VozDelProyecto> {
+export async function exigirTtsEncendido(): Promise<void> {
   const { vozTtsActivo } = await leerAjustes();
   if (!vozTtsActivo) {
     throw new ErrorProyecto(
@@ -74,6 +75,14 @@ export async function exigirVozDisponible(proyecto: FilaProyecto): Promise<VozDe
       "Esta instalación no ofrece la pista de voz aparte. Quien administra puede encenderla en Admin › Ajustes › Voz y subtítulos.",
     );
   }
+}
+
+/**
+ * Comprueba que esta instalación **y** este proyecto pueden generar voz. Se llama antes de mirar el dinero: un
+ * proyecto en modo `clip` o una instalación con la voz apagada no tienen que llegar a estimar nada.
+ */
+export async function exigirVozDisponible(proyecto: FilaProyecto): Promise<VozDelProyecto> {
+  await exigirTtsEncendido();
   if (proyecto.voiceMode !== "pista") {
     throw new ErrorProyecto(
       409,

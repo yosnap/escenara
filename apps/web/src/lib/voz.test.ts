@@ -8,6 +8,7 @@ import {
   esModoVoz,
   firmaDeVoz,
   LIMITES_PARAMETROS_VOZ,
+  normalizarTextoDeSubtitulo,
   PARAMETROS_VOZ_POR_DEFECTO,
   parametrosVozDe,
   SEGUNDOS_MINIMOS_SUBTITULO,
@@ -141,6 +142,41 @@ describe("subtítulos", () => {
         { desde: 3, hasta: 4, texto: "  " },
       ]),
     ).toEqual([{ desde: 0, hasta: 1, texto: "Vale" }]);
+  });
+});
+
+describe("normalizar el texto de un subtítulo", () => {
+  test("la secuencia de los tiempos dentro del texto no abre un bloque nuevo", () => {
+    const sucio = "Dijo 00:00:01,000 --> 00:00:02,000 y se fue";
+    expect(normalizarTextoDeSubtitulo(sucio)).not.toContain("-->");
+    expect(componerSubtitulos([{ orden: 1, segundos: 4, subtitulos: [{ desde: 0, hasta: 1, texto: sucio }] }], "srt"))
+      // Un solo bloque: el único "-->" del fichero es el de los tiempos de verdad.
+      .toMatch(/^1\n00:00:00,000 --> 00:00:01,000\n[^\n]+\n$/);
+  });
+
+  test("una línea en blanco dentro del texto no parte el fichero", () => {
+    expect(normalizarTextoDeSubtitulo("Primera\n\n\nSegunda")).toBe("Primera\nSegunda");
+  });
+
+  test("los saltos de Windows se colapsan y los espacios de los extremos se quitan", () => {
+    expect(normalizarTextoDeSubtitulo("  Hola \r\n  mundo  ")).toBe("Hola\nmundo");
+  });
+
+  test("un bloque que queda vacío tras normalizar no se emite y no descoloca la numeración", () => {
+    const srt = componerSubtitulos(
+      [
+        {
+          orden: 1,
+          segundos: 4,
+          subtitulos: [
+            { desde: 0, hasta: 1, texto: "   \r\n  " },
+            { desde: 1, hasta: 2, texto: "Lo único que se lee" },
+          ],
+        },
+      ],
+      "srt",
+    );
+    expect(srt).toBe("1\n00:00:01,000 --> 00:00:02,000\nLo único que se lee\n");
   });
 });
 

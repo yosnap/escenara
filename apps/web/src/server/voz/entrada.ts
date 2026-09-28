@@ -4,6 +4,7 @@ import {
   LIMITES_PARAMETROS_VOZ,
   type ModoVoz,
   NOTA_DERECHOS_MAXIMA,
+  normalizarTextoDeSubtitulo,
   type ParametrosVoz,
   parametroVozValido,
   SUBTITULO_MAXIMO,
@@ -23,6 +24,10 @@ import type { ConfirmacionVoz } from "./tts";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Tope de claves de aviso por petición y longitud de cada una: son identificadores de regla, no texto libre. */
+const AVISOS_CONFIRMADOS_MAXIMOS = 20;
+const CLAVE_REGLA_MAXIMA = 60;
+
 /** Identificador de la escena. Que sea tuya y de este proyecto lo comprueba la ruta y el servicio, no esto. */
 export function leerEscenaId(cuerpo: Record<string, unknown>): string {
   const id = cuerpo.escenaId;
@@ -38,6 +43,10 @@ export function leerModoVoz(cuerpo: Record<string, unknown>): ModoVoz {
 /** `true` cuando el usuario ha confirmado expresamente que este cambio invalida lo ya generado. */
 export const leerConfirmadoInvalidar = (cuerpo: Record<string, unknown>): boolean =>
   cuerpo.confirmarInvalidacion === true;
+
+/** `true` cuando el usuario acepta que unos subtítulos que corrigió a mano se sustituyan por otros. */
+export const leerConfirmadoSobrescribir = (cuerpo: Record<string, unknown>): boolean =>
+  cuerpo.confirmarSobrescribir === true;
 
 /**
  * Voz y parámetros que se van a fijar **en el proyecto**.
@@ -100,7 +109,28 @@ export function leerConfirmacionVoz(cuerpo: Record<string, unknown>): Confirmaci
     selloEstimacion: sello,
     claveIdempotencia: clave,
     avisoUmbralAceptado: cuerpo.avisoUmbralAceptado === true,
+    avisosConfirmados: leerAvisosConfirmados(cuerpo),
   };
+}
+
+/**
+ * Avisos salvables del motor de controles que el usuario ha confirmado, por su clave de regla.
+ *
+ * Sin esto, un aviso confirmable (por ejemplo, un precio comprobado hace demasiado) dejaría la voz **bloqueada sin
+ * salida**: el motor pediría una confirmación que ninguna petición podía traer. No se comprueba aquí si cada clave
+ * existe: eso lo decide el motor, que es quien sabe qué avisos ha emitido; aquí solo se acota la forma.
+ */
+function leerAvisosConfirmados(cuerpo: Record<string, unknown>): string[] {
+  const crudo = cuerpo.avisosConfirmados;
+  if (crudo === undefined) return [];
+  if (!Array.isArray(crudo) || crudo.length > AVISOS_CONFIRMADOS_MAXIMOS) {
+    throw new ErrorProyecto(400, "Las confirmaciones de los avisos no tienen la forma esperada.");
+  }
+  const claves = crudo.filter((v): v is string => typeof v === "string" && v !== "" && v.length <= CLAVE_REGLA_MAXIMA);
+  if (claves.length !== crudo.length) {
+    throw new ErrorProyecto(400, "Las confirmaciones de los avisos no tienen la forma esperada.");
+  }
+  return [...new Set(claves)];
 }
 
 /** Subtítulos editados que llegan del editor. Los tiempos los exige el servicio; aquí se acota la forma. */
@@ -120,7 +150,13 @@ export function leerSubtitulos(cuerpo: Record<string, unknown>): Subtitulo[] {
     if (typeof texto !== "string" || texto.length > SUBTITULO_MAXIMO) {
       throw new ErrorProyecto(400, `El texto del subtítulo ${i + 1} no puede pasar de ${SUBTITULO_MAXIMO} caracteres.`);
     }
-    return { desde: Math.round(desde * 100) / 100, hasta: Math.round(hasta * 100) / 100, texto };
+    // El texto se normaliza **en el borde**: lo que se guarda es lo que se va a escribir en el SRT y en el WebVTT,
+    // y esos formatos se rompen con una línea en blanco o con la secuencia de los tiempos dentro del texto.
+    return {
+      desde: Math.round(desde * 100) / 100,
+      hasta: Math.round(hasta * 100) / 100,
+      texto: normalizarTextoDeSubtitulo(texto),
+    };
   });
 }
 

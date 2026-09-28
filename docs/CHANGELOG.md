@@ -63,6 +63,31 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - **Transcribir un archivo que ya era un `.wav` fallaba**: el temporal de entrada y el convertido eran el mismo
   fichero y FFmpeg se negaba a escribir encima de lo que estaba leyendo.
 
+### Seguridad
+
+- **La muestra de voz no miraba el interruptor del panel.** Con «Voz y subtítulos» apagado en Admin › Ajustes, la
+  ruta de la muestra seguía encolando y cobrando: la interfaz escondía el botón, pero la ruta es pública para
+  cualquier usuario con sesión. La comprobación vive ahora en un solo sitio y la usan los dos caminos de gasto.
+- **Corregir unos subtítulos ya no «revalida» un audio generado con otra voz.** La firma es una sola para el audio
+  y para los subtítulos, así que escribirla desde el camino de los subtítulos borraba la invalidación del audio: la
+  escena se daba por vigente, dejaba de contar para regenerar y el servidor se negaba a regenerarla («ya tiene su
+  voz de ahora»). El montaje final habría salido con un plano en la voz antigua.
+- **Un aviso salvable del motor dejaba la voz bloqueada sin salida.** La confirmación de avisos se declaraba pero
+  no se leía del cuerpo ni la enviaba la pantalla, así que un aviso confirmable (por ejemplo, precio comprobado
+  hace demasiado) no tenía forma de confirmarse. Ahora viaja la evaluación del motor y el diálogo de coste ofrece
+  su casilla, igual que en producción.
+- **La misma muestra pedida dos veces ya no se cobra dos veces.** La caché solo se rellena al cerrar el trabajo, así
+  que perder la respuesta del primer clic (una recarga, dos pestañas) pagaba otra vez el mismo audio.
+- **Transcribir o proponer ya no pisan unos subtítulos corregidos a mano** sin pedir confirmación.
+- **Pasar a «pista de voz aparte» avisa de los clips ya producidos con el diálogo dentro**, que es la única forma de
+  acabar con dos voces en el mismo plano.
+- **El texto de un subtítulo se normaliza antes de exportarlo**: un salto de Windows, una línea en blanco o la
+  secuencia `-->` dentro del texto partían el fichero SRT o WebVTT en bloques falsos.
+- **Transcribir ya no carga el archivo entero en memoria**: se vuelca a disco en flujo y se rechaza lo que pase de
+  200 MB, en lugar de dejar que varias transcripciones a la vez se llevaran la memoria del proceso.
+- **El fallo del transcriptor ya no revela la configuración de la máquina.** El mensaje interno lleva el binario y
+  la ruta del modelo; ahora eso queda en el log y el usuario recibe una explicación sin detalles.
+
 ### Actualizar desde la 0.20.x
 
 - **Aplica la migración antes de arrancar el código nuevo**: `bun run db:backup` y luego `bun run db:migrate`. La

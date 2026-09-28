@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import {
   firmaDeVoz,
   type ModoVoz,
@@ -53,6 +53,21 @@ export function escenaInvalidada(proyecto: FilaProyecto, escena: FilaEscena): bo
 }
 
 /**
+ * Escenas cuyo **clip ya producido lleva el diálogo hablado dentro**. Solo importa al pasar a modo `pista`: esos
+ * clips se generaron en modo `clip`, así que el personaje ya dice el texto en la imagen. Si encima se les añade la
+ * pista de voz, el montaje final tiene **dos voces distintas diciendo lo mismo** en cada escena, que es
+ * exactamente el problema que el modo `pista` viene a resolver.
+ *
+ * No entra en {@link escenaInvalidada} porque el clip **no queda invalidado**: sigue valiendo como imagen y no hay
+ * nada que regenerar por el cambio de modo. Lo que hace falta es que el usuario lo sepa antes de aceptar, así que
+ * se cuenta aparte y se le dice.
+ */
+async function clipsConDialogoHablado(tx: Ejecutor, proyectoId: string): Promise<number> {
+  const escenas: FilaEscena[] = await tx.select().from(scenes).where(eq(scenes.projectId, proyectoId));
+  return escenas.filter((escena) => escena.clipMediaId !== null && escena.scriptText.trim() !== "").length;
+}
+
+/**
  * Marca como invalidado lo que ya no corresponde al modo o a la voz de ahora, y devuelve cuántas escenas lo están.
  * **No borra ni regenera nada.**
  *
@@ -61,16 +76,13 @@ export function escenaInvalidada(proyecto: FilaProyecto, escena: FilaEscena): bo
  */
 async function marcarInvalidadas(tx: Ejecutor, proyecto: FilaProyecto, motivo: string): Promise<number> {
   const escenas: FilaEscena[] = await tx.select().from(scenes).where(eq(scenes.projectId, proyecto.id));
-  let invalidadas = 0;
-  for (const escena of escenas) {
-    if (!escenaInvalidada(proyecto, escena)) continue;
-    invalidadas++;
-    await tx
-      .update(scenes)
-      .set({ voiceInvalidationReason: motivo, updatedAt: new Date() })
-      .where(eq(scenes.id, escena.id));
-  }
-  return invalidadas;
+  const invalidadas = escenas.filter((escena) => escenaInvalidada(proyecto, escena)).map((escena) => escena.id);
+  if (invalidadas.length === 0) return 0;
+  await tx
+    .update(scenes)
+    .set({ voiceInvalidationReason: motivo, updatedAt: new Date() })
+    .where(inArray(scenes.id, invalidadas));
+  return invalidadas.length;
 }
 
 /**
@@ -105,7 +117,10 @@ export async function fijarModoVoz(
     const proyecto = await proyectoPropioBloqueado(actor, proyectoId, tx);
     if (proyecto.voiceMode === modo) return { proyecto, invalidadas: 0 };
     const futuro = { ...proyecto, voiceMode: modo };
-    await exigirConfirmacionDelCambio(tx, proyecto, futuro, confirmado, "de modo de voz");
+    // Pasar a `pista` con clips ya producidos es la única forma de acabar con dos voces en el mismo plano, así que
+    // se cuenta aparte y entra en el mismo aviso que hay que confirmar.
+    const conDialogoHablado = modo === "pista" ? await clipsConDialogoHablado(tx, proyecto.id) : 0;
+    await exigirConfirmacionDelCambio(tx, proyecto, futuro, confirmado, "de modo de voz", conDialogoHablado);
     const [actualizado] = await tx
       .update(projects)
       .set({ voiceMode: modo, updatedAt: new Date() })
@@ -186,14 +201,23 @@ async function exigirConfirmacionDelCambio(
   futuro: FilaProyecto,
   confirmado: boolean,
   que: string,
+  clipsHablados = 0,
 ): Promise<void> {
   if (confirmado) return;
   const afectadas = await escenasAfectadas(tx, proyecto.id, futuro);
-  if (afectadas === 0) return;
-  throw new ErrorProyecto(
-    409,
-    `Este cambio ${que} invalida la voz o los subtítulos de ${afectadas} ${afectadas === 1 ? "escena" : "escenas"} que ya están generados. No se borra nada y no se regenera nada por su cuenta: confirma el cambio para aplicarlo y luego regenera escena a escena confirmando su coste.`,
-  );
+  if (afectadas === 0 && clipsHablados === 0) return;
+  const partes: string[] = [];
+  if (afectadas > 0) {
+    partes.push(
+      `Este cambio ${que} invalida la voz o los subtítulos de ${afectadas} ${afectadas === 1 ? "escena" : "escenas"} que ya están generados. No se borra nada y no se regenera nada por su cuenta: confirma el cambio para aplicarlo y luego regenera escena a escena confirmando su coste.`,
+    );
+  }
+  if (clipsHablados > 0) {
+    partes.push(
+      `Además, ${clipsHablados} ${clipsHablados === 1 ? "escena ya tiene su clip producido con el diálogo" : "escenas ya tienen su clip producido con el diálogo"} hablado dentro. Si les añades la pista de voz sin volver a producir el clip, se oirán dos voces distintas diciendo lo mismo: vuelve a producir esas escenas después del cambio.`,
+    );
+  }
+  throw new ErrorProyecto(409, partes.join(" "));
 }
 
 /**

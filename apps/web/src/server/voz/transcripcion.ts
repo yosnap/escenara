@@ -1,4 +1,4 @@
-import { unlink, writeFile } from "node:fs/promises";
+import { unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Subtitulo } from "@/lib/voz";
@@ -156,14 +156,14 @@ export function segmentosDeWebVtt(vtt: string): Subtitulo[] {
 /**
  * Transcribe un archivo de audio o de vídeo y devuelve sus segmentos con marcas de tiempo.
  *
- * El archivo se convierte antes a WAV mono de 16 kHz con FFmpeg, que es lo único que acepta `whisper.cpp`, y los
- * dos temporales se borran siempre, también si algo falla: son el audio de alguien.
+ * El archivo se vuelca a disco en flujo y se convierte a WAV mono de 16 kHz con FFmpeg, que es lo único que acepta
+ * `whisper.cpp`. Los dos temporales se borran siempre, también si algo falla: son el audio de alguien.
  *
  * Una transcripción **vacía es un resultado legítimo** (un clip sin voz no dice nada) y se devuelve como lista
  * vacía. Lo que no es legítimo es que el binario falle: eso lanza, para que la pantalla lo diga en lugar de
  * mostrar una escena «transcrita» sin nada dentro.
  */
-export async function transcribir(datos: ArrayBuffer, extension: string): Promise<Subtitulo[]> {
+export async function transcribir(origen: Blob, extension: string): Promise<Subtitulo[]> {
   await exigirTranscriptor();
   const { transcripcionBinario: binario, transcripcionModelo: modelo } = await leerAjustes();
   const base = join(tmpdir(), `escenara-voz-${crypto.randomUUID()}`);
@@ -173,7 +173,9 @@ export async function transcribir(datos: ArrayBuffer, extension: string): Promis
   const wav = `${base}-16k.wav`;
   const vtt = `${wav}.vtt`;
   try {
-    await writeFile(entrada, Buffer.from(datos));
+    // `Bun.write` vuelca el `Blob` **en flujo**: el archivo no se materializa en memoria, que es lo que hacía que
+    // varias transcripciones de clips grandes a la vez se comieran la RAM del proceso.
+    await Bun.write(entrada, origen);
     const conversion = await ejecutar([
       "ffmpeg",
       "-y",

@@ -43,19 +43,24 @@ export interface ConfirmacionVozEnvio {
   selloEstimacion: string;
   claveIdempotencia: string;
   avisoUmbralAceptado: boolean;
+  /** Avisos salvables del motor que el usuario ha confirmado, por su clave de regla. */
+  avisosConfirmados: readonly string[];
 }
 
 /** Genera la pista de voz de una escena. **Cuesta créditos**: viaja la confirmación con su sello y su clave. */
 export const generarVoz = (proyectoId: string, escenaId: string, confirmacion: ConfirmacionVozEnvio) =>
   pedir<VozProyectoVista>(ruta(proyectoId), { accion: "generar-voz", escenaId, ...confirmacion });
 
-/** Transcribe el audio de la escena. **No cuesta nada**: el transcriptor es local. */
-export const transcribir = (proyectoId: string, escenaId: string) =>
-  pedir<VozProyectoVista>(ruta(proyectoId), { accion: "transcribir", escenaId });
+/**
+ * Transcribe el audio de la escena. **No cuesta nada**: el transcriptor es local. `confirmarSobrescribir` hace
+ * falta cuando los subtítulos de esa escena los ha corregido una persona.
+ */
+export const transcribir = (proyectoId: string, escenaId: string, confirmarSobrescribir = false) =>
+  pedir<VozProyectoVista>(ruta(proyectoId), { accion: "transcribir", escenaId, confirmarSobrescribir });
 
 /** Propone subtítulos a partir del texto del diálogo, sin transcribir. **No cuesta nada.** */
-export const proponerSubtitulos = (proyectoId: string, escenaId: string) =>
-  pedir<VozProyectoVista>(ruta(proyectoId), { accion: "proponer-subtitulos", escenaId });
+export const proponerSubtitulos = (proyectoId: string, escenaId: string, confirmarSobrescribir = false) =>
+  pedir<VozProyectoVista>(ruta(proyectoId), { accion: "proponer-subtitulos", escenaId, confirmarSobrescribir });
 
 /** Guarda los subtítulos editados. **Son los que se exportan.** */
 export const guardarSubtitulos = (proyectoId: string, escenaId: string, subtitulos: Subtitulo[]) =>

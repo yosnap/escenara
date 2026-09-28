@@ -12,6 +12,8 @@ import {
 } from "@/lib/voz";
 import { leerAjustes } from "../ajustes";
 import { escenasDe, proyectoPropio } from "../asistente/consulta";
+import { hechosDeModelo, parametrosDeControles } from "../controles/hechos";
+import { evaluarParaMostrar } from "../controles/puerta";
 import { db } from "../db/cliente";
 import { type FilaEscena, type FilaMedio, type FilaProyecto, generationJobs, media } from "../db/esquema";
 import { type Actor, aDto } from "../media/servicio";
@@ -68,15 +70,18 @@ async function vocesEnMarcha(escenaIds: readonly string[]): Promise<Map<string, 
  */
 export async function disponibilidadDeVoz(): Promise<DisponibilidadVoz> {
   const { vozTtsActivo } = await leerAjustes();
-  const transcripcion = await transcriptorDisponible();
+  const [transcripcion, parametros] = await Promise.all([transcriptorDisponible(), parametrosDeControles()]);
   const base = {
     voces: VOCES_OFRECIDAS,
     transcripcionDisponible: transcripcion.disponible,
     motivoTranscripcion: transcripcion.motivo,
   };
+  // Sin modelo utilizable no hay nada que evaluar del modelo, pero la evaluación sigue existiendo: es la forma que
+  // espera la pantalla, y un objeto vacío la obligaría a distinguir dos casos que no se distinguen en nada.
+  const sinModelo = { ...base, controles: evaluarParaMostrar({ tipo: "voz" as const, parametros }) };
   if (!vozTtsActivo) {
     return {
-      ...base,
+      ...sinModelo,
       ttsDisponible: false,
       motivoTts:
         "Esta instalación no ofrece la pista de voz aparte. Los proyectos usan la voz del propio clip; quien administra puede encenderla en Admin › Ajustes › Voz y subtítulos.",
@@ -86,9 +91,13 @@ export async function disponibilidadDeVoz(): Promise<DisponibilidadVoz> {
     };
   }
   try {
-    const { modelo, precio } = await eleccionDeVoz();
+    const eleccion = await eleccionDeVoz();
+    const { modelo, precio } = eleccion;
     return {
       ...base,
+      // Los mismos hechos del modelo que evalúa la puerta al encolar: si la pantalla los evaluara de otra forma,
+      // diría «listo» donde el servidor va a pedir una confirmación.
+      controles: evaluarParaMostrar({ tipo: "voz", parametros, modelo: hechosDeModelo("voz", eleccion) }),
       ttsDisponible: true,
       motivoTts: "",
       creditosPorEscena: Math.ceil(precio.creditos),
@@ -101,7 +110,7 @@ export async function disponibilidadDeVoz(): Promise<DisponibilidadVoz> {
       error instanceof ErrorCatalogo
         ? error.message
         : "No se ha podido leer el modelo de voz del catálogo de esta instalación.";
-    return { ...base, ttsDisponible: false, motivoTts: motivo, creditosPorEscena: null, sello: "", modelo: "" };
+    return { ...sinModelo, ttsDisponible: false, motivoTts: motivo, creditosPorEscena: null, sello: "", modelo: "" };
   }
 }
 

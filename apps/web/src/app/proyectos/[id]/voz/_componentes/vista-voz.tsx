@@ -6,6 +6,7 @@ import { Boton, claseBoton } from "@/components/ui/button";
 import { Casilla } from "@/components/ui/choice";
 import { Aviso, EstadoVacio } from "@/components/ui/feedback";
 import { Dialogo } from "@/components/ui/overlay";
+import { avisosConfirmables, bloqueosDeControles } from "@/lib/controles";
 import { formatearCreditos } from "@/lib/generacion";
 import type { ModoVoz, ParametrosVoz, Subtitulo, VozProyectoVista } from "@/lib/voz";
 import {
@@ -42,7 +43,15 @@ export function VistaVoz({ inicial }: { inicial: VozProyectoVista }) {
   const [aviso, setAviso] = useState<string | null>(null);
   const [gasto, setGasto] = useState<PendienteDeGasto | null>(null);
   const [invalidacion, setInvalidacion] = useState<PendienteDeInvalidar | null>(null);
+  const [sobrescribir, setSobrescribir] = useState<PendienteDeSobrescribir | null>(null);
   const [umbral, setUmbral] = useState(false);
+  /**
+   * Avisos salvables del motor que el usuario ha confirmado. Van en la misma petición que el gasto, porque es el
+   * servidor quien los exige: sin esta casilla, un aviso confirmable dejaba la voz bloqueada sin ninguna salida.
+   */
+  const [confirmados, setConfirmados] = useState<string[]>([]);
+  const avisos = avisosConfirmables(estado.disponibilidad.controles);
+  const bloqueos = bloqueosDeControles(estado.disponibilidad.controles, confirmados);
 
   const ejecutar = async (accion: () => Promise<Resultado<VozProyectoVista>>) => {
     setOcupado(true);
@@ -81,6 +90,32 @@ export function VistaVoz({ inicial }: { inicial: VozProyectoVista }) {
     setError(resultado.error);
   };
 
+  /**
+   * Transcribir o proponer sustituye los subtítulos por completo. El primer intento va **sin** confirmar a
+   * propósito: es el servidor quien sabe si esa escena tiene subtítulos corregidos a mano, y no el navegador
+   * adivinándolo con una copia de la misma regla.
+   */
+  const sustituirSubtitulos = async (pendiente: PendienteDeSobrescribir, confirmar: boolean) => {
+    setOcupado(true);
+    setError(null);
+    setAviso(null);
+    const resultado = await (pendiente.tipo === "transcribir"
+      ? transcribir(estado.proyectoId, pendiente.escenaId, confirmar)
+      : proponerSubtitulos(estado.proyectoId, pendiente.escenaId, confirmar));
+    setOcupado(false);
+    if (resultado.ok) {
+      setEstado(resultado.datos);
+      setSobrescribir(null);
+      return;
+    }
+    if (!confirmar) {
+      setSobrescribir({ ...pendiente, motivo: resultado.error });
+      return;
+    }
+    setSobrescribir(null);
+    setError(resultado.error);
+  };
+
   const confirmarGasto = async () => {
     if (!gasto) return;
     const confirmacion: ConfirmacionVozEnvio = {
@@ -89,6 +124,7 @@ export function VistaVoz({ inicial }: { inicial: VozProyectoVista }) {
       // Clave nueva por confirmación: repetirla no cobra dos veces, y cada confirmación es un gasto distinto.
       claveIdempotencia: crypto.randomUUID(),
       avisoUmbralAceptado: umbral,
+      avisosConfirmados: confirmados,
     };
     setGasto(null);
     setUmbral(false);
@@ -189,8 +225,8 @@ export function VistaVoz({ inicial }: { inicial: VozProyectoVista }) {
               if (creditos === null) return;
               setGasto({ tipo: "escena", escenaId: escena.id, orden: escena.orden, creditos });
             }}
-            onTranscribir={() => ejecutar(() => transcribir(estado.proyectoId, escena.id))}
-            onProponer={() => ejecutar(() => proponerSubtitulos(estado.proyectoId, escena.id))}
+            onTranscribir={() => sustituirSubtitulos({ tipo: "transcribir", escenaId: escena.id }, false)}
+            onProponer={() => sustituirSubtitulos({ tipo: "proponer", escenaId: escena.id }, false)}
             onGuardar={(subtitulos: Subtitulo[]) =>
               ejecutar(() => guardarSubtitulos(estado.proyectoId, escena.id, subtitulos))
             }
@@ -226,7 +262,7 @@ export function VistaVoz({ inicial }: { inicial: VozProyectoVista }) {
             <Boton variante="secundario" onClick={() => setGasto(null)}>
               No, cancelar
             </Boton>
-            <Boton disabled={ocupado} onClick={confirmarGasto}>
+            <Boton disabled={ocupado || bloqueos.length > 0} onClick={confirmarGasto}>
               Sí, gastar {gasto ? formatearCreditos(gasto.creditos) : ""}
             </Boton>
           </div>
@@ -248,6 +284,30 @@ export function VistaVoz({ inicial }: { inicial: VozProyectoVista }) {
             marcada={umbral}
             onCambio={setUmbral}
           />
+          {/* Un aviso salvable del motor se confirma **aquí**, junto al botón que gasta: es donde el servidor lo
+              va a pedir, y sin esta casilla no habría forma de dársela. */}
+          {avisos.map((avisoControl) => (
+            <Casilla
+              key={avisoControl.regla}
+              etiqueta="Lo he leído y quiero generar igualmente"
+              descripcion={`${avisoControl.motivo} ${avisoControl.accion}`}
+              marcada={confirmados.includes(avisoControl.regla)}
+              onCambio={(valor) =>
+                setConfirmados((previos) =>
+                  valor
+                    ? [...new Set([...previos, avisoControl.regla])]
+                    : previos.filter((regla) => regla !== avisoControl.regla),
+                )
+              }
+            />
+          ))}
+          {bloqueos.length > 0 && (
+            <ul className="flex list-inside list-disc flex-col gap-1 text-sm text-texto">
+              {bloqueos.map((motivo) => (
+                <li key={motivo}>{motivo}</li>
+              ))}
+            </ul>
+          )}
         </div>
       </Dialogo>
 
@@ -276,6 +336,32 @@ export function VistaVoz({ inicial }: { inicial: VozProyectoVista }) {
       >
         <p className="text-texto">{invalidacion?.motivo}</p>
       </Dialogo>
+
+      {/* Sustituir unos subtítulos corregidos a mano. No cuesta nada, pero lo editado no está en ningún otro sitio. */}
+      <Dialogo
+        abierto={sobrescribir !== null}
+        onAbiertoCambio={(abierto) => {
+          if (!abierto) setSobrescribir(null);
+        }}
+        titulo="Esto sustituye unos subtítulos que has corregido"
+        pie={
+          <div className="flex flex-wrap justify-end gap-2">
+            <Boton variante="secundario" onClick={() => setSobrescribir(null)}>
+              No, conservar los míos
+            </Boton>
+            <Boton
+              disabled={ocupado}
+              onClick={() => {
+                if (sobrescribir) void sustituirSubtitulos(sobrescribir, true);
+              }}
+            >
+              Sí, sustituirlos
+            </Boton>
+          </div>
+        }
+      >
+        <p className="text-texto">{sobrescribir?.motivo}</p>
+      </Dialogo>
     </>
   );
 }
@@ -284,6 +370,9 @@ export function VistaVoz({ inicial }: { inicial: VozProyectoVista }) {
 type PendienteDeGasto =
   | { tipo: "escena"; escenaId: string; orden: number; creditos: number }
   | { tipo: "muestra"; voz: string; parametros: ParametrosVoz; creditos: number };
+
+/** Sustitución de subtítulos pendiente de confirmar porque pisaría lo que corrigió una persona. */
+type PendienteDeSobrescribir = { tipo: "transcribir" | "proponer"; escenaId: string; motivo?: string };
 
 /** Cambio pendiente de confirmar porque invalida lo generado. `motivo` lo escribe el servidor. */
 type PendienteDeInvalidar =

@@ -39,6 +39,10 @@ que dependían de ello. Cuando eso ocurre:
 - **no se regenera nada solo**. Nunca se gasta sin que lo confirmes;
 - si el cambio deja sin valer escenas ya generadas, la pantalla **te dice cuántas son** y te pide confirmarlo antes
   de aplicarlo;
+- si pasas a «pista de voz aparte» y ya tienes clips producidos **con el diálogo hablado dentro**, también te lo
+  dice: si les añades la pista sin volver a producir el clip, se oirían dos voces diciendo lo mismo;
+- corregir los subtítulos de una escena **no la da por buena**: mientras su audio siga siendo el de la voz
+  anterior, la pantalla te la sigue señalando para regenerarla;
 - después, regeneras las que quieras **una a una**, confirmando el coste de cada una.
 
 ## Subtítulos
@@ -47,10 +51,13 @@ Hay tres formas de llenarlos, y todas dejan un punto de partida que **tú corrig
 
 1. **Transcribir** el audio (la pista de voz, o el clip si estás en modo «voz del clip»). Los tiempos son los
    medidos. Transcribir **no cuesta nada**: se hace en la propia máquina y no sale nada de ella. Si tu instalación
-   no tiene el transcriptor instalado, la pantalla lo dice con su mensaje: no se inventan subtítulos.
+   no tiene el transcriptor instalado, la pantalla lo dice: no se inventan subtítulos.
 2. **Proponer desde el diálogo**, cuando aún no hay audio. Reparte el tiempo de la escena en proporción a lo que
    ocupa cada frase. Es una **propuesta**, no una medición: habrá que ajustarla.
 3. **Escribirlos a mano**, añadiendo líneas con sus tiempos.
+
+Transcribir y proponer **sustituyen los subtítulos por completo**. Si los que hay los has corregido tú, Escenara
+te lo dice y te pide confirmarlo antes: lo que editas no se guarda en ningún otro sitio.
 
 En el editor puedes cambiar el texto, los tiempos y **dónde se parte cada línea**. A la derecha ves el subtítulo
 **sobre el clip**, con las zonas que la aplicación de destino tapa en vertical dibujadas: lo de arriba, su interfaz;

@@ -13,6 +13,7 @@ import { estadoDeVoz } from "@/server/voz/consulta";
 import {
   leerConfirmacionVoz,
   leerConfirmadoInvalidar,
+  leerConfirmadoSobrescribir,
   leerEleccionDeVoz,
   leerEscenaId,
   leerModoVoz,
@@ -90,9 +91,10 @@ export const POST = manejador(async (peticion: Request, contexto: ContextoId, ac
       const escenaId = leerEscenaId(cuerpo);
       const { proyecto } = await escenaPropia(actor, escenaId);
       if (proyecto.id !== proyectoId) throw new ErrorProyecto(404, "Esa escena no existe.");
+      const sobrescribir = leerConfirmadoSobrescribir(cuerpo);
       if (cuerpo.accion === "generar-voz") await generarVozDeEscena(actor, escenaId, leerConfirmacionVoz(cuerpo));
-      else if (cuerpo.accion === "transcribir") await transcribirEscena(actor, escenaId);
-      else if (cuerpo.accion === "proponer-subtitulos") await proponerSubtitulos(actor, escenaId);
+      else if (cuerpo.accion === "transcribir") await transcribirEscena(actor, escenaId, sobrescribir);
+      else if (cuerpo.accion === "proponer-subtitulos") await proponerSubtitulos(actor, escenaId, sobrescribir);
       else await guardarSubtitulos(actor, escenaId, leerSubtitulos(cuerpo));
     }
   }

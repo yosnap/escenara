@@ -41,13 +41,16 @@ const rutaEscenas = await import("@/app/api/proyectos/[id]/escenas/route");
 const rutaEscena = await import("@/app/api/escenas/[id]/route");
 const rutaVoz = await import("@/app/api/proyectos/[id]/voz/route");
 const rutaSubtitulos = await import("@/app/api/proyectos/[id]/voz/subtitulos/route");
+const rutaMuestra = await import("@/app/api/voz/muestra/route");
 const { exigirBaseDeDatosDePrueba } = await import("../db/bd-de-prueba");
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
 const { guardarAjustes, leerAjustes } = await import("../ajustes");
 const { guardarCredencial } = await import("../boveda/credenciales");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
-const { generationJobs, musicTracks, projects, rateLimits, scenes, usageLedger, users } = await import("../db/esquema");
+const { generationJobs, media, musicTracks, projects, rateLimits, scenes, usageLedger, users } = await import(
+  "../db/esquema"
+);
 const { crearMedio } = await import("../media/servicio");
 const { olvidarSaldos } = await import("../generacion/estimacion");
 const { consultarTrabajo } = await import("../generacion/seguimiento");
@@ -343,6 +346,19 @@ describe.skipIf(!hayBaseDeDatos)("voz y subtítulos de un proyecto", () => {
     if (!trabajo?.taskId) throw new Error("El trabajo de voz no ha llegado al proveedor simulado.");
     tareas.set(trabajo.taskId, { state: "success", urls: ["https://tempfile.kie.ai/voz.mp3"], creditos: 3 });
     await consultarTrabajo(actor, trabajo.id, { forzar: true }, h);
+  }
+
+  /** Petición de muestra de voz tal como la manda el navegador, con su respuesta ya leída. */
+  async function muestra(
+    voz: string,
+    estado: VozProyectoVista,
+    extra: Record<string, unknown> = {},
+  ): Promise<{ estado: number; datos: { error?: string; medio?: unknown; trabajoId?: string | null } }> {
+    const respuesta = await rutaMuestra.POST(
+      pedir(ana, "/api/voz/muestra", "POST", { voz, parametros: parametros(), ...confirmacion(estado), ...extra }),
+      undefined,
+    );
+    return { estado: respuesta.status, datos: await respuesta.json() };
   }
 
   const escenasDelProyecto = () =>
@@ -698,6 +714,218 @@ describe.skipIf(!hayBaseDeDatos)("voz y subtítulos de un proyecto", () => {
     } finally {
       await guardarAjustes({ presupuestoTrabajo: 0 }, null);
     }
+  });
+
+  // ── Hallazgos de la revisión de código ─────────────────────────────────────────────────────────────────
+
+  test("con el TTS apagado, la muestra tampoco gasta: el interruptor es una puerta, no un adorno", async () => {
+    const estado = await conVozFijada();
+    await guardarAjustes({ vozTtsActivo: false }, null);
+    try {
+      const intento = await muestra("Bella", estado);
+      expect(intento.estado).toBe(503);
+      expect(intento.datos.error).toContain("no ofrece la pista de voz");
+      const [{ total } = { total: 0 }] = await db()
+        .select({ total: sql<number>`count(*)::int` })
+        .from(generationJobs)
+        .where(eq(generationJobs.userId, ana.id));
+      expect(total).toBe(0);
+    } finally {
+      await guardarAjustes({ vozTtsActivo: true }, null);
+    }
+  });
+
+  test("la misma muestra pedida dos veces sin esperar no se cobra dos veces", async () => {
+    const estado = await conVozFijada();
+    const primera = await muestra("Bella", estado);
+    expect(primera.estado).toBe(200);
+    expect(primera.datos.trabajoId).not.toBeNull();
+    // Clave de idempotencia nueva, como en un segundo clic tras perder la respuesta: aun así se rechaza.
+    const segunda = await muestra("Bella", estado);
+    expect(segunda.estado).toBe(409);
+    expect(segunda.datos.error).toContain("ya se está generando");
+    // Otra voz sí se puede pedir a la vez: la guardia es por muestra, no por usuario.
+    expect((await muestra("Elli", estado)).estado).toBe(200);
+    const trabajos = await db().select().from(generationJobs).where(eq(generationJobs.userId, ana.id));
+    expect(trabajos).toHaveLength(2);
+  });
+
+  test("guardar subtítulos no revalida un audio generado con otra voz, y la escena se puede regenerar", async () => {
+    const estado = await conVozFijada("Rachel");
+    const [primera] = await escenasDelProyecto();
+    if (!primera) throw new Error("Falta la escena de prueba.");
+    await generarVozDe(primera.id, estado);
+    const cambiada = await accion({
+      accion: "fijar-voz",
+      voz: "Adam",
+      parametros: parametros(),
+      confirmarInvalidacion: true,
+    });
+    expect((cambiada.datos as VozProyectoVista).porRegenerar).toBe(1);
+
+    // Tocar los subtítulos no puede «arreglar» un audio que sigue siendo el de la voz anterior.
+    const guardados = await accion({
+      accion: "guardar-subtitulos",
+      escenaId: primera.id,
+      subtitulos: [{ desde: 0, hasta: 1.5, texto: "Una línea corregida" }],
+    });
+    expect(guardados.estado).toBe(200);
+    const despues = guardados.datos as VozProyectoVista;
+    expect(despues.escenas[0]?.invalidada).toBe(true);
+    expect(despues.escenas[0]?.invalidacion).not.toBe("");
+    expect(despues.porRegenerar).toBe(1);
+
+    // Y la escena se puede regenerar de verdad: antes «ya tiene su voz de ahora» la dejaba sin salida.
+    const nuevoEstado = await estadoDeVozDe();
+    const regenerada = await accion({ accion: "generar-voz", escenaId: primera.id, ...confirmacion(nuevoEstado) });
+    expect(regenerada.estado).toBe(200);
+  });
+
+  test("transcribir tampoco revalida el audio de otra voz", async () => {
+    olvidarTranscriptor();
+    const estado = await conVozFijada("Rachel");
+    const [primera] = await escenasDelProyecto();
+    if (!primera) throw new Error("Falta la escena de prueba.");
+    await generarVozDe(primera.id, estado);
+    expect(
+      (await accion({ accion: "fijar-voz", voz: "Adam", parametros: parametros(), confirmarInvalidacion: true }))
+        .estado,
+    ).toBe(200);
+    // El audio invalidado es el que se transcribe: sigue estando y sigue sin corresponder. Se sustituye por un WAV
+    // de verdad (el proveedor simulado devuelve un MP3 de juguete que FFmpeg no sabe leer) sin tocar la firma.
+    const audio = await crearMedio(actor, new File([wavDeSilencio()], "voz.wav", { type: "audio/wav" }));
+    await db().update(scenes).set({ voiceMediaId: audio.id }).where(eq(scenes.id, primera.id));
+    const transcrita = await accion({ accion: "transcribir", escenaId: primera.id });
+    expect(transcrita.estado).toBe(200);
+    expect((transcrita.datos as VozProyectoVista).escenas[0]?.invalidada).toBe(true);
+    expect((transcrita.datos as VozProyectoVista).porRegenerar).toBe(1);
+  });
+
+  test("transcribir o proponer no pisan unos subtítulos corregidos a mano sin confirmarlo", async () => {
+    olvidarTranscriptor();
+    await conVozFijada();
+    const [primera] = await escenasDelProyecto();
+    if (!primera) throw new Error("Falta la escena de prueba.");
+    const medio = await crearMedio(actor, new File([wavDeSilencio()], "voz.wav", { type: "audio/wav" }));
+    await db().update(scenes).set({ voiceMediaId: medio.id }).where(eq(scenes.id, primera.id));
+    const mios = [{ desde: 0.5, hasta: 2, texto: "Esto lo he escrito yo" }];
+    expect((await accion({ accion: "guardar-subtitulos", escenaId: primera.id, subtitulos: mios })).estado).toBe(200);
+
+    for (const accionSubtitulos of ["transcribir", "proponer-subtitulos"]) {
+      const intento = await accion({ accion: accionSubtitulos, escenaId: primera.id });
+      expect(intento.estado).toBe(409);
+      expect(mensajeDe(intento.datos)).toContain("a mano");
+      // Lo editado sigue intacto mientras no se confirme.
+      expect((await estadoDeVozDe()).escenas[0]?.subtitulos).toEqual(mios);
+    }
+
+    const confirmada = await accion({ accion: "transcribir", escenaId: primera.id, confirmarSobrescribir: true });
+    expect(confirmada.estado).toBe(200);
+    const escena = (confirmada.datos as VozProyectoVista).escenas[0];
+    expect(escena?.subtitulos[0]?.texto).toContain("Hola desde la escena");
+    // Y dejan de contar como editados: los de ahora no los ha revisado nadie.
+    expect(escena?.editados).toBe(false);
+  });
+
+  test("pasar a modo pista avisa de los clips ya producidos con el diálogo dentro", async () => {
+    const [primera, segunda] = await escenasDelProyecto();
+    if (!primera || !segunda) throw new Error("Faltan escenas de prueba.");
+    const clip = await crearMedio(actor, new File([MP3], "clip.mp3", { type: "audio/mpeg" }));
+    await db().update(scenes).set({ clipMediaId: clip.id }).where(eq(scenes.id, primera.id));
+
+    const intento = await accion({ accion: "fijar-modo", modo: "pista" });
+    expect(intento.estado).toBe(409);
+    expect(mensajeDe(intento.datos)).toContain("dos voces distintas");
+    // Sigue en modo clip: el aviso no aplica nada por su cuenta.
+    expect((await estadoDeVozDe()).modo).toBe("clip");
+    expect((await accion({ accion: "fijar-modo", modo: "pista", confirmarInvalidacion: true })).estado).toBe(200);
+    expect((await estadoDeVozDe()).modo).toBe("pista");
+  });
+
+  test("un texto de subtítulo con la flecha de tiempos o líneas en blanco no rompe el fichero", async () => {
+    await conVozFijada();
+    const [primera] = await escenasDelProyecto();
+    if (!primera) throw new Error("Falta la escena de prueba.");
+    const guardados = await accion({
+      accion: "guardar-subtitulos",
+      escenaId: primera.id,
+      subtitulos: [{ desde: 0, hasta: 2, texto: "Uno\r\n\r\n00:00:09,000 --> 00:00:10,000\r\nDos" }],
+    });
+    expect(guardados.estado).toBe(200);
+    const respuesta = await rutaSubtitulos.GET(
+      pedir(ana, `/api/proyectos/${proyectoId}/voz/subtitulos?formato=srt`),
+      ctx(proyectoId),
+    );
+    const srt = await respuesta.text();
+    // Un solo bloque y un solo "-->": el del tiempo de verdad.
+    expect(srt.match(/-->/g)).toHaveLength(1);
+    expect(srt).not.toContain("\r");
+    expect(srt.startsWith("1\n00:00:00,000 --> 00:00:02,000\n")).toBe(true);
+  });
+
+  test("el nombre del fichero de subtítulos es ASCII aunque el título lleve tildes", async () => {
+    await accion({ accion: "guardar-subtitulos", escenaId: (await escenasDelProyecto())[0]?.id ?? "", subtitulos: [] });
+    const [primera] = await escenasDelProyecto();
+    if (!primera) throw new Error("Falta la escena de prueba.");
+    await db().update(projects).set({ title: "Rutina de mañana ñ" }).where(eq(projects.id, proyectoId));
+    expect(
+      (
+        await accion({
+          accion: "guardar-subtitulos",
+          escenaId: primera.id,
+          subtitulos: [{ desde: 0, hasta: 1, texto: "Hola" }],
+        })
+      ).estado,
+    ).toBe(200);
+    const respuesta = await rutaSubtitulos.GET(
+      pedir(ana, `/api/proyectos/${proyectoId}/voz/subtitulos?formato=srt`),
+      ctx(proyectoId),
+    );
+    const cabecera = respuesta.headers.get("Content-Disposition") ?? "";
+    expect(cabecera).toContain("rutina-de-manana-n.srt");
+    // Solo ASCII imprimible: una cabecera con tildes la interpreta cada navegador a su manera.
+    expect([...cabecera].every((c) => c >= " " && c <= "~")).toBe(true);
+  });
+
+  test("un archivo demasiado grande no se transcribe: no se carga en memoria para averiguarlo", async () => {
+    olvidarTranscriptor();
+    await conVozFijada();
+    const [primera] = await escenasDelProyecto();
+    if (!primera) throw new Error("Falta la escena de prueba.");
+    const medio = await crearMedio(actor, new File([wavDeSilencio()], "voz.wav", { type: "audio/wav" }));
+    // Se falsea el tamaño en la ficha: subir 200 MB de verdad en un test no comprueba nada más.
+    await db()
+      .update(media)
+      .set({ sizeBytes: 300 * 1024 * 1024 })
+      .where(eq(media.id, medio.id));
+    await db().update(scenes).set({ voiceMediaId: medio.id }).where(eq(scenes.id, primera.id));
+    const intento = await accion({ accion: "transcribir", escenaId: primera.id });
+    expect(intento.estado).toBe(413);
+    expect(mensajeDe(intento.datos)).toContain("MB");
+  });
+
+  test("las confirmaciones de avisos se leen del cuerpo y una lista con basura se rechaza", async () => {
+    const estado = await conVozFijada();
+    const [primera] = await escenasDelProyecto();
+    if (!primera) throw new Error("Falta la escena de prueba.");
+    // La evaluación del motor viaja a la pantalla: es lo que permite ofrecer la casilla de cada aviso salvable.
+    expect(Array.isArray(estado.disponibilidad.controles.comprobaciones)).toBe(true);
+    const mala = await accion({
+      accion: "generar-voz",
+      escenaId: primera.id,
+      ...confirmacion(estado),
+      avisosConfirmados: [{ regla: "precio-caducado" }],
+    });
+    expect(mala.estado).toBe(400);
+    expect(mensajeDe(mala.datos)).toContain("avisos");
+    // Una lista de claves bien formada se acepta y el envío sigue su camino normal.
+    const buena = await accion({
+      accion: "generar-voz",
+      escenaId: primera.id,
+      ...confirmacion(estado),
+      avisosConfirmados: ["precio-caducado"],
+    });
+    expect(buena.estado).toBe(200);
   });
 
   test("con el TTS apagado en el panel, la pantalla dice por qué y no ofrece gastar", async () => {

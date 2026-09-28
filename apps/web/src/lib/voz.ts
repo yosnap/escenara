@@ -1,4 +1,5 @@
 import type { Proveedor } from "./boveda";
+import type { EvaluacionVista } from "./controles";
 import type { Medio } from "./media/tipos";
 
 /**
@@ -189,6 +190,31 @@ export const SEGUNDOS_MINIMOS_SUBTITULO = 0.7;
 export const SUBTITULO_MAXIMO = 500;
 export const SUBTITULOS_MAXIMOS = 200;
 
+/**
+ * Deja el texto de un subtítulo en algo que se puede meter en un SRT o en un WebVTT sin romperlos.
+ *
+ * Los dos formatos separan los bloques con una **línea en blanco** y marcan los tiempos con `-->`, así que un texto
+ * que traiga cualquiera de las dos cosas parte el fichero en cues falsos y descoloca la numeración. No es una
+ * escalada entre cuentas —es el fichero del propio usuario—, pero sí un archivo corrupto que se publica.
+ *
+ * Se normaliza en lugar de rechazar: quien pega un texto con saltos de Windows no está atacando nada, y decirle
+ * que su texto «no es válido» no le ayudaría a arreglarlo.
+ */
+export function normalizarTextoDeSubtitulo(texto: string): string {
+  return (
+    texto
+      .replace(/\r\n?/g, "\n")
+      // La flecha de tiempos se sustituye por una flecha de verdad: se lee igual y no abre un cue.
+      .replace(/--+>/g, "→")
+      // Nunca una línea en blanco dentro de un subtítulo: ahí acaba el bloque.
+      .replace(/\n[ \t]*\n+/g, "\n")
+      .split("\n")
+      .map((linea) => linea.trim())
+      .join("\n")
+      .trim()
+  );
+}
+
 /** Aviso de legibilidad de un subtítulo. Avisa, no bloquea: quien edita decide. */
 export interface AvisoSubtitulo {
   indice: number;
@@ -329,11 +355,16 @@ export function componerSubtitulos(escenas: readonly EscenaConSubtitulos[], form
   let numero = 0;
   for (const escena of [...escenas].sort((a, b) => a.orden - b.orden)) {
     for (const s of escena.subtitulos) {
+      // El texto se normaliza también aquí, y no solo al guardarlo: lo que sale del fichero no puede depender de
+      // por qué camino entró la fila (una migración, un guardado antiguo, un script).
+      const texto = normalizarTextoDeSubtitulo(s.texto);
+      // Un bloque sin texto no se emite: descolocaría la numeración y no diría nada.
+      if (texto === "") continue;
       numero++;
       const desde = marca(desplazamiento + s.desde, separador);
       const hasta = marca(desplazamiento + s.hasta, separador);
       // El número de bloque solo lo lleva el SRT; en WebVTT es opcional y se omite.
-      bloques.push(`${formato === "srt" ? `${numero}\n` : ""}${desde} --> ${hasta}\n${s.texto}`);
+      bloques.push(`${formato === "srt" ? `${numero}\n` : ""}${desde} --> ${hasta}\n${texto}`);
     }
     desplazamiento += escena.segundos;
   }
@@ -429,6 +460,12 @@ export interface DisponibilidadVoz {
   transcripcionDisponible: boolean;
   motivoTranscripcion: string;
   voces: readonly VozOfrecida[];
+  /**
+   * Evaluación del motor de controles para un envío de voz, con el **modelo** de esta instalación. Viaja para que
+   * el diálogo de coste pueda ofrecer la casilla de cada aviso confirmable exactamente cuando el servidor la va a
+   * exigir: un aviso salvable sin dónde confirmarlo deja la voz bloqueada sin salida.
+   */
+  controles: EvaluacionVista;
 }
 
 /** Acciones de la pantalla de voz y subtítulos. */

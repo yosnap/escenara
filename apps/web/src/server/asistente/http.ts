@@ -28,10 +28,20 @@ export function respuestaError(error: unknown): Response {
   if (error instanceof ErrorPreset) return Response.json({ error: error.message }, { status: error.estado });
   /**
    * El transcriptor local es una **dependencia del entorno** (0.21.0), igual que FFmpeg: que falte no es un error
-   * interno que haya que ocultar, es algo que quien administra tiene que instalar. 503 con el mensaje de
-   * instalación, que ya viene escrito para el usuario.
+   * interno, es algo que quien administra tiene que instalar. Se responde 503 y se dice qué pasa, pero **sin el
+   * detalle**: el mensaje interno lleva el binario y la ruta del modelo configurados, y eso es información de la
+   * máquina que no tiene por qué ver cualquier usuario con sesión. Queda en el log, que es de quien administra.
    */
-  if (error instanceof ErrorTranscripcion) return Response.json({ error: error.message }, { status: 503 });
+  if (error instanceof ErrorTranscripcion) {
+    console.error("[voz] transcriptor no disponible:", error.message);
+    return Response.json(
+      {
+        error:
+          "Esta instalación no puede sacar los subtítulos del audio ahora mismo: falta el transcriptor o no está bien configurado. Avisa a quien la administra; mientras tanto, puedes proponerlos desde el diálogo o escribirlos a mano.",
+      },
+      { status: 503 },
+    );
+  }
   console.error("[proyectos]", error);
   return Response.json({ error: "Error interno al procesar el proyecto." }, { status: 500 });
 }
