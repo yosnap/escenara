@@ -2,6 +2,15 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.20.6] · 2026-09-28
+
+### Corregido
+
+- **Producir un proyecto ya deja confirmar los avisos del personaje.** La pantalla de producción evaluaba el
+  modelo pero no al protagonista, así que decía «Listo para generar» y el servidor rechazaba el envío pidiendo
+  confirmar un aviso (fotos señaladas, vistas sin cubrir) que no aparecía en ninguna parte. Ahora el panel
+  «Antes de generar» lo muestra con su casilla.
+
 ## [0.20.5] · 2026-09-28
 
 ### Corregido
