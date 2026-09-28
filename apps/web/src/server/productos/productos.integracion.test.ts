@@ -14,8 +14,10 @@ import sharp from "sharp";
  * - se elige producto y acción **en «Crear»** y queda guardado en la fila del trabajo;
  * - se elige producto y acción **en una escena** y queda guardado en la escena, y el clip de esa escena hereda
  *   el producto de la escena y no lo que mande el navegador;
- * - **borrar el producto borra sus derivados** (el medio generado con él y su objeto del almacenamiento) y deja
- *   la escena sin producto **sin romperla**: la escena sigue existiendo con su guion.
+ * - el producto **llega al proveedor**: sus fotos viajan como referencia junto a la del personaje respetando el
+ *   tope del modelo, y la acción y la regla de la etiqueta entran en el prompt, con la toma única la última;
+ * - **borrar el producto no borra nada de lo generado**: el vídeo hecho con él se queda en la biblioteca con su
+ *   archivo y solo pierde el vínculo, y la escena se queda sin producto **sin romperse**, con su guion.
  *
  * **Ningún test llama a KIE**: el proveedor se simula por los puntos de inyección que ya existen
  * (`Herramientas`), nunca sustituyendo `globalThis.fetch`.
@@ -66,11 +68,22 @@ const sobre = (data: unknown) =>
     headers: { "Content-Type": "application/json" },
   });
 
-const buscar: Buscador = async (url) => {
+/** Lo que se le ha pedido al proveedor, en orden. Es lo que comprueban los tests de lo que llega al modelo. */
+const enviados: { modelo: string; entrada: Record<string, unknown> }[] = [];
+/** Cuántas referencias se han subido: una por imagen que de verdad viaja. */
+let subidas = 0;
+
+const buscar: Buscador = async (url, opciones) => {
   if (url.includes("/chat/credit")) return sobre(100000);
-  if (url.includes("file-stream-upload")) return sobre({ downloadUrl: "https://tempfile.kie.ai/ref.png" });
-  if (url.includes("createTask"))
+  if (url.includes("file-stream-upload")) {
+    subidas++;
+    return sobre({ downloadUrl: `https://tempfile.kie.ai/ref-${subidas}.png` });
+  }
+  if (url.includes("createTask")) {
+    const cuerpo = JSON.parse(String(opciones?.body ?? "{}")) as { model?: string; input?: Record<string, unknown> };
+    enviados.push({ modelo: cuerpo.model ?? "", entrada: cuerpo.input ?? {} });
     return sobre({ taskId: `task_${++siguienteTarea}_${randomBytes(6).toString("hex")}` });
+  }
   if (url.includes("recordInfo")) {
     return sobre({
       state: "success",
@@ -137,6 +150,8 @@ describe.skipIf(!hayBaseDeDatos)("productos con sus fotos, su elección y su bor
 
   beforeEach(async () => {
     olvidarSaldos();
+    enviados.length = 0;
+    subidas = 0;
     for (const id of [ana.id, beto.id]) {
       await db().delete(generationJobs).where(eq(generationJobs.userId, id));
     }
@@ -285,8 +300,32 @@ describe.skipIf(!hayBaseDeDatos)("productos con sus fotos, su elección y su bor
         }),
         undefined,
       );
-      expect(respuesta.status).toBe(201);
-      const trabajo = (await respuesta.json()) as { id: string };
+      /**
+       * Este producto todavía no tiene fotos, así que la puerta avisa **antes** de cobrar nada: sin foto el
+       * modelo no sabe qué aspecto tiene y el resultado no sería su producto. Es un aviso salvable, no un
+       * bloqueo: se confirma y se sigue.
+       */
+      expect(respuesta.status).toBe(409);
+      expect(((await respuesta.json()) as { error: string }).error).toContain("no tiene ninguna foto de referencia");
+
+      const confirmada = await rutaTrabajos.POST(
+        pedir(ana, "/api/generacion/trabajos", "POST", {
+          tipo: "animacion",
+          medioId: imagen,
+          prompt: "En una cocina luminosa, enseña el bote a cámara.",
+          dialogo: "Mira lo que he encontrado.",
+          segundos: segundosClip,
+          creditosConfirmados: creditosClip,
+          selloEstimacion: selloClip,
+          derechos: true,
+          claveIdempotencia: crypto.randomUUID(),
+          producto: { productoId: producto.id, accion: "ensenarlo-a-camara" },
+          avisosConfirmados: ["producto-sin-fotos", "producto-con-marca"],
+        }),
+        undefined,
+      );
+      expect(confirmada.status).toBe(201);
+      const trabajo = (await confirmada.json()) as { id: string };
       const [fila] = await db().select().from(generationJobs).where(eq(generationJobs.id, trabajo.id)).limit(1);
       expect(fila?.productId).toBe(producto.id);
       expect(fila?.productAction).toBe("ensenarlo-a-camara");
@@ -362,10 +401,140 @@ describe.skipIf(!hayBaseDeDatos)("productos con sus fotos, su elección y su bor
     });
   });
 
-  // ── 5. Borrar el producto ──────────────────────────────────────────────────────────────────────────────
+  // ── 5. El producto llega al proveedor ──────────────────────────────────────────────────────────────────
+
+  describe("el producto llega al proveedor", () => {
+    /** Encola un clip de «Crear» con este producto y lo despacha, devolviendo lo que se le pidió al modelo. */
+    async function clipConProducto(
+      productoId: string,
+      accion: string,
+      dialogo = "Mira lo que he encontrado.",
+      modelo?: string,
+    ) {
+      const imagen = await subirFoto(ana, `origen-${randomBytes(3).toString("hex")}.png`);
+      // Con modelo propio hay que volver a estimar: el sello y los créditos son los de **ese** modelo.
+      const { estimar: estimarPara } = await import("../generacion/estimacion");
+      const estimacion = modelo ? await estimarPara(ana.id, "animacion", buscar, modelo) : null;
+      const respuesta = await rutaTrabajos.POST(
+        pedir(ana, "/api/generacion/trabajos", "POST", {
+          tipo: "animacion",
+          medioId: imagen,
+          ...(modelo ? { modelo } : {}),
+          prompt: "En una cocina luminosa, enseña el bote a cámara.",
+          dialogo,
+          segundos: estimacion?.segundos ?? segundosClip,
+          creditosConfirmados: estimacion?.creditos ?? creditosClip,
+          selloEstimacion: estimacion?.sello ?? selloClip,
+          derechos: true,
+          claveIdempotencia: crypto.randomUUID(),
+          producto: { productoId, accion },
+          direccion: { formatoClip: "ugc_a_camara", registroEstetico: "ugc_real", momentoMicroaccion: "durante" },
+          // Los avisos del producto se confirman: es lo que hace el usuario en la pantalla.
+          avisosConfirmados: ["producto-con-marca", "producto-sin-fotos", "producto-referencias-no-caben"],
+        }),
+        undefined,
+      );
+      expect(respuesta.status).toBe(201);
+      await enviarEncolados(h);
+      const enviado = enviados.at(-1);
+      expect(enviado).toBeDefined();
+      return { entrada: enviado?.entrada ?? {}, prompt: String(enviado?.entrada.prompt ?? "") };
+    }
+
+    /** Producto con dos fotos: la frontal con la etiqueta y el envase. */
+    async function productoConDosFotos(nombre: string) {
+      const producto = await crearProductoDe(ana, nombre);
+      await rutaProducto.PATCH(
+        pedir(ana, `/api/productos/${producto.id}`, "PATCH", {
+          accion: "anadir-fotos",
+          fotos: [
+            // A propósito en orden inverso: la frontal con la etiqueta tiene que ir **primera** al proveedor.
+            { medioId: await subirFoto(ana, "envase.png"), papel: "envase" },
+            { medioId: await subirFoto(ana, "frontal.png"), papel: "etiqueta" },
+          ],
+        }),
+        contexto(producto.id),
+      );
+      return producto;
+    }
+
+    test("con un modelo de galería, las fotos del producto viajan detrás de la de partida", async () => {
+      const producto = await productoConDosFotos(`Al proveedor ${randomBytes(3).toString("hex")}`);
+      // Omni acepta hasta siete referencias **de galería**, así que aquí sí cabe el producto.
+      const { entrada } = await clipConProducto(producto.id, "ensenarlo-a-camara", "Mira esto.", "gemini-omni-video");
+
+      const referencias = (entrada.image_urls ?? []) as string[];
+      // La de partida y las dos del producto, en ese orden: la identidad primero.
+      expect(referencias).toHaveLength(3);
+      expect(subidas).toBe(3);
+      expect(referencias.length).toBeLessThanOrEqual(7);
+    });
+
+    test("con Veo, cuyas referencias son fotogramas del clip, el producto no manda fotos y se avisa", async () => {
+      const producto = await productoConDosFotos(`Sin hueco ${randomBytes(3).toString("hex")}`);
+      const imagen = await subirFoto(ana, "origen-veo.png");
+      const sinConfirmar = await rutaTrabajos.POST(
+        pedir(ana, "/api/generacion/trabajos", "POST", {
+          tipo: "animacion",
+          medioId: imagen,
+          prompt: "Enseña el bote a cámara.",
+          segundos: segundosClip,
+          creditosConfirmados: creditosClip,
+          selloEstimacion: selloClip,
+          derechos: true,
+          claveIdempotencia: crypto.randomUUID(),
+          producto: { productoId: producto.id, accion: "ensenarlo-a-camara" },
+          avisosConfirmados: ["producto-con-marca"],
+        }),
+        undefined,
+      );
+      // Veo admite dos imágenes, pero la segunda es el **último fotograma**, no una referencia: no cabe
+      // ninguna foto del producto y hay que decirlo antes de cobrar.
+      expect(sinConfirmar.status).toBe(409);
+      expect(((await sinConfirmar.json()) as { error: string }).error).toContain("se quedan fuera");
+
+      const { entrada, prompt } = await clipConProducto(producto.id, "ensenarlo-a-camara");
+      expect((entrada.image_urls as string[]).length).toBe(1);
+      expect(subidas).toBe(1);
+      // Sin foto suya no se le promete ninguna: se le pide un envase sin marca en lugar de inventarse una.
+      expect(prompt).toContain("no invented logo");
+    });
+
+    test("la acción y la regla de la etiqueta entran en el prompt, con la toma única la última", async () => {
+      const producto = await productoConDosFotos(`En el prompt ${randomBytes(3).toString("hex")}`);
+      const { prompt } = await clipConProducto(producto.id, "ensenarlo-a-camara");
+
+      // La acción elegida, tal como la traduce el catálogo.
+      expect(prompt).toContain("turns the product towards the camera");
+      // Y la regla que esta versión promete: la etiqueta no se toca.
+      expect(prompt).toContain("must not be redesigned");
+      expect(prompt).toContain("Do not translate, rewrite, restyle, blur or invent any text");
+      // La regla de la etiqueta va **después** de la acción y **antes** de la toma única, que cierra siempre.
+      const accion = prompt.indexOf("turns the product towards the camera");
+      const etiqueta = prompt.indexOf("must not be redesigned");
+      const tomaUnica = prompt.indexOf("Single continuous take");
+      expect(accion).toBeLessThan(etiqueta);
+      expect(etiqueta).toBeLessThan(tomaUnica);
+      // Y la toma única sigue siendo lo último del texto que compone la dirección.
+      expect(prompt.slice(tomaUnica)).not.toContain("must not be redesigned");
+    });
+
+    test("el plano del producto solo sale mudo y sin nadie, y se dice por qué", async () => {
+      const producto = await productoConDosFotos(`B-roll ${randomBytes(3).toString("hex")}`);
+      const { entrada, prompt } = await clipConProducto(producto.id, "producto-solo", "Esto no se dice.");
+
+      expect(prompt).toContain("no person and no hands in frame");
+      expect(prompt).toContain("mouth stays closed");
+      // El guion escrito **no viaja**: no hay quien lo diga.
+      expect(prompt).not.toContain("Esto no se dice");
+      expect(String(entrada.prompt ?? "")).not.toContain("Esto no se dice");
+    });
+  });
+
+  // ── 6. Borrar el producto ──────────────────────────────────────────────────────────────────────────────
 
   describe("borrar un producto", () => {
-    test("borra sus derivados y deja la escena sin producto sin romperla", async () => {
+    test("deja los vídeos en la biblioteca y la escena sin producto, sin romperla", async () => {
       const producto = await crearProductoDe(ana, `Por borrar ${randomBytes(3).toString("hex")}`);
       const foto = await subirFoto(ana, "referencia.png");
       await rutaProducto.PATCH(
@@ -381,7 +550,7 @@ describe.skipIf(!hayBaseDeDatos)("productos con sus fotos, su elección y su bor
       const escena = await crearEscena(actorAna, proyecto.id, { texto: "Enseña el bote." });
       await editarEscena(actorAna, escena.id, { producto: { productoId: producto.id, accion: "sostenerlo" } });
 
-      // Y un clip terminado hecho con él: ese es su derivado.
+      // Y un clip terminado hecho con él: es lo que **no** se puede perder al borrar el producto.
       const imagen = await subirFoto(ana, "origen3.png");
       const respuesta = await rutaTrabajos.POST(
         pedir(ana, "/api/generacion/trabajos", "POST", {
@@ -394,6 +563,8 @@ describe.skipIf(!hayBaseDeDatos)("productos con sus fotos, su elección y su bor
           derechos: true,
           claveIdempotencia: crypto.randomUUID(),
           producto: { productoId: producto.id, accion: "ensenarlo-a-camara" },
+          // Los avisos del producto se confirman antes de pagar: marca visible y la foto que no cabe en Veo.
+          avisosConfirmados: ["producto-con-marca", "producto-referencias-no-caben"],
         }),
         undefined,
       );
@@ -406,11 +577,11 @@ describe.skipIf(!hayBaseDeDatos)("productos con sus fotos, su elección y su bor
         .from(generationJobs)
         .where(and(eq(generationJobs.userId, ana.id), eq(generationJobs.productId, producto.id)))
         .limit(1);
-      const derivadoId = trabajo?.resultMediaId ?? "";
-      expect(derivadoId).not.toBe("");
-      const [derivado] = await db().select().from(media).where(eq(media.id, derivadoId)).limit(1);
-      const claveDelDerivado = derivado?.storageKey ?? "";
-      expect(claveDelDerivado).not.toBe("");
+      const generadoId = trabajo?.resultMediaId ?? "";
+      expect(generadoId).not.toBe("");
+      const [generado] = await db().select().from(media).where(eq(media.id, generadoId)).limit(1);
+      const claveDelGenerado = generado?.storageKey ?? "";
+      expect(claveDelGenerado).not.toBe("");
 
       // Y ahora se borra.
       const borrado = await rutaProducto.DELETE(
@@ -418,13 +589,14 @@ describe.skipIf(!hayBaseDeDatos)("productos con sus fotos, su elección y su bor
         contexto(producto.id),
       );
       expect(borrado.status).toBe(200);
-      const resultado = (await borrado.json()) as { clavesBorradas: string[]; escenasLiberadas: number };
-      expect(resultado.clavesBorradas).toContain(claveDelDerivado);
+      const resultado = (await borrado.json()) as { escenasLiberadas: number; trabajosLiberados: number };
       expect(resultado.escenasLiberadas).toBe(1);
+      expect(resultado.trabajosLiberados).toBe(1);
 
-      // El derivado ya no está: ni la fila ni el objeto.
-      expect(await db().select().from(media).where(eq(media.id, derivadoId))).toHaveLength(0);
-      expect(await leerObjeto(claveDelDerivado).exists()).toBe(false);
+      // Lo generado con él **se queda**: la fila en la biblioteca y su archivo en el almacenamiento.
+      const [sigueElGenerado] = await db().select().from(media).where(eq(media.id, generadoId)).limit(1);
+      expect(sigueElGenerado?.deletedAt).toBeNull();
+      expect(await leerObjeto(claveDelGenerado).exists()).toBe(true);
 
       // La escena sigue existiendo, con su guion, y sin producto.
       const [quedaLaEscena] = await db().select().from(scenes).where(eq(scenes.id, escena.id)).limit(1);
@@ -436,7 +608,7 @@ describe.skipIf(!hayBaseDeDatos)("productos con sus fotos, su elección y su bor
       const [sigueLaFoto] = await db().select().from(media).where(eq(media.id, foto)).limit(1);
       expect(sigueLaFoto?.deletedAt).toBeNull();
 
-      // Y el trabajo se queda, con su coste, pero ya sin producto: es un hecho histórico.
+      // Y el trabajo se queda, con su coste y su acción, pero ya sin producto: es un hecho histórico.
       const [trasBorrar] = await db()
         .select()
         .from(generationJobs)
