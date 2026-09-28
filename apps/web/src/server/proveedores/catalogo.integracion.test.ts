@@ -228,12 +228,12 @@ describe.skipIf(!hayBaseDeDatos)("catálogo de modelos", () => {
         "veo3_fast",
         "veo3_lite",
       ]);
-      // Los tres modelos de voz están sembrados, pero **solo uno es elegible**: el de KIE y el de kokoro siguen
-      // «descubiertos», así que no se pueden elegir; el de ElevenLabs sí está validado y es el que queda.
+      // Los tres modelos de voz están sembrados y **dos son elegibles**: el de ElevenLabs y kokoro (validado con una
+      // llamada real y con su precio de 0 por cuota). El de KIE sigue «descubierto» y sin precio.
       expect((await listarModelos({ capacidad: "tts" })).map((m) => m.modelo).sort()).toEqual(
         [VOZ, VOZ_RESERVA, "kokoro"].sort(),
       );
-      expect((await modelosElegibles("tts")).map((m) => m.modelo)).toEqual([VOZ_RESERVA]);
+      expect((await modelosElegibles("tts")).map((m) => m.modelo).sort()).toEqual([VOZ_RESERVA, "kokoro"].sort());
     });
 
     test("de cada modelo sembrado se sabe montar su entrada con sus rarezas reales", async () => {
