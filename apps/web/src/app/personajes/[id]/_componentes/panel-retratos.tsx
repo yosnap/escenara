@@ -9,7 +9,7 @@ import { PanelCoste } from "@/components/ui/coste";
 import { Aviso } from "@/components/ui/feedback";
 import { VisorMedio } from "@/components/ui/media/visor-medio";
 import {
-  consultarControlesDeVista,
+  consultarControlesDeRetrato,
   consultarEstimacionDeVista,
   consultarRetratos,
   elegirRetrato,
@@ -69,7 +69,7 @@ export function PanelRetratos({
     setError(null);
     const [precio, previo] = await Promise.all([
       consultarEstimacionDeVista(),
-      consultarControlesDeVista(personaje.id, "frontal"),
+      consultarControlesDeRetrato(personaje.id),
     ]);
     setOcupado(false);
     if (!precio.ok) {

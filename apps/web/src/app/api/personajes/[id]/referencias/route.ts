@@ -19,7 +19,7 @@ export const POST = manejador(async (peticion: Request, contexto: ContextoId, ac
   const id = await leerId(contexto);
   const cuerpo = await leerCuerpo(peticion);
   await exigirRitmoDeAnalisis(actor);
-  return Response.json(await anadirReferencias(actor, id, cuerpo.referencias));
+  return Response.json(await anadirReferencias(actor, id, cuerpo.referencias, cuerpo.generadasConIA));
 });
 
 /**

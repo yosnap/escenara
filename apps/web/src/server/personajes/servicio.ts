@@ -258,13 +258,24 @@ function idsDeReferencias(peticion: unknown): ReferenciaPedida[] {
  * es, entra como `foto_original`. Sin esta comprobación, reañadir una vista generada desde la biblioteca la
  * convertiría en una foto original y subiría el recuento que sostiene el mínimo del personaje.
  */
-export async function anadirReferencias(actor: Actor, id: unknown, peticion: unknown): Promise<ReferenciasAnadidas> {
+export async function anadirReferencias(
+  actor: Actor,
+  id: unknown,
+  peticion: unknown,
+  /**
+   * Declaración de quien las añade: **son imágenes generadas con IA** (en Escenara o fuera, p. ej. con otro
+   * generador) y no fotos de una persona real. Es lo único que un personaje inventado admite de la biblioteca.
+   */
+  generadasConIA: unknown = false,
+): Promise<ReferenciasAnadidas> {
   const personaje = await filaPropia(actor, id);
   /**
-   * Un personaje inventado no admite fotos (0.22.0). Esta es la **única** puerta por la que entra una foto de la
-   * biblioteca: sus retratos generados no pasan por aquí, sino por el cierre del trabajo que los genera.
+   * Un personaje inventado no admite fotos reales (0.22.0). Esta es la **única** puerta por la que entra una
+   * imagen de la biblioteca, así que aquí se exige la declaración de que son imágenes generadas con IA; entran
+   * siempre como `vista_generada`, nunca como foto.
    */
-  exigirSinFotosReales(personaje);
+  const inventadoConIA = personaje.virtual && generadasConIA === true;
+  if (!inventadoConIA) exigirSinFotosReales(personaje);
   const pedidas = idsDeReferencias(peticion);
   const pedidos = [...new Set(pedidas.map((p) => p.medioId as string))];
 
@@ -342,7 +353,7 @@ export async function anadirReferencias(actor: Actor, id: unknown, peticion: unk
             characterId: personaje.id,
             mediaId: a.medioId,
             // Resultado de un trabajo = imagen generada, diga lo que diga el navegador.
-            origin: (trabajo ? "vista_generada" : "foto_original") as OrigenReferencia,
+            origin: (trabajo || inventadoConIA ? "vista_generada" : "foto_original") as OrigenReferencia,
             declaredView: vistaLibre.get(a.medioId) ?? "",
             // Si el trabajo pidió una vista concreta, esa manda sobre lo que declare quien la añade.
             viewKey: (trabajo ? vistaSinteticaDe(trabajo) : null) ?? a.vistaClave ?? "",

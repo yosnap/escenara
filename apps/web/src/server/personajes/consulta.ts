@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { type Cobertura, calcularCobertura, esVista, type ReferenciaParaCobertura } from "@/lib/captura-personaje";
 import { FICHA_VACIA } from "@/lib/ficha-personaje";
 import type { Medio } from "@/lib/media/tipos";
@@ -78,16 +78,26 @@ export const efectivo = (fila: FilaConsentimiento | null): ConsentimientoEfectiv
  * Las **vistas generadas** tampoco cuentan (0.14.0): son una ayuda de encuadre, no una foto de la persona, y
  * un personaje sostenido solo por imágenes generadas no tiene identidad que guiar.
  */
+/** Referencias que sostienen el mínimo: las fotos de un personaje real, o todas las imágenes de uno inventado. */
+const contadas = (
+  resumen: { referencias: Map<string, number>; generadas: Map<string, number> },
+  fila: { id: string; virtual: boolean },
+): number => (resumen.referencias.get(fila.id) ?? 0) + (fila.virtual ? (resumen.generadas.get(fila.id) ?? 0) : 0);
+
 export async function contarReferencias(personajeId: string, ejecutor: Ejecutor = db()): Promise<number> {
   const [fila] = await ejecutor
     .select({ total: count() })
     .from(characterReferences)
     .innerJoin(media, eq(media.id, characterReferences.mediaId))
+    .innerJoin(characters, eq(characters.id, characterReferences.characterId))
     .where(
       and(
         eq(characterReferences.characterId, personajeId),
         isNull(media.deletedAt),
-        eq(characterReferences.origin, "foto_original"),
+        // En un personaje real el mínimo lo sostienen sus fotos; en uno **inventado** no hay fotos que valgan:
+        // lo sostienen su retrato elegido y sus imágenes generadas. Sin esto, un inventado nunca podía salir de
+        // borrador.
+        or(eq(characterReferences.origin, "foto_original"), eq(characters.virtual, true)),
       ),
     );
   return fila?.total ?? 0;
@@ -271,8 +281,9 @@ export async function vistaDePersonaje(
   // Las que están en la papelera se siguen mostrando (para que se vea qué ha pasado), pero no cuentan.
   const vigentes = referencias.filter((r) => medios.get(r.mediaId)?.enPapelera === false);
   // El mínimo lo sostienen solo las fotos originales: una vista generada no cuenta como foto del personaje.
-  const utilizables = vigentes.filter((r) => r.origin === "foto_original").length;
-  const generadas = vigentes.length - utilizables;
+  // En un inventado cuentan sus imágenes generadas: no tiene ni admite fotos reales.
+  const utilizables = fila.virtual ? vigentes.length : vigentes.filter((r) => r.origin === "foto_original").length;
+  const generadas = vigentes.filter((r) => r.origin === "vista_generada").length;
   const datos = { consentimiento: efectivo(consentimiento), referencias: utilizables, minimoReferencias: minimo };
   const esDueno = fila.ownerId === actor.id;
   // La portada es siempre una foto original, por lo mismo que en los listados.
@@ -461,7 +472,7 @@ async function vistasDeLista(
   return filas.map((fila) => {
     const datos = {
       consentimiento: resumen.consentimientos.get(fila.id) ?? null,
-      referencias: resumen.referencias.get(fila.id) ?? 0,
+      referencias: contadas(resumen, fila),
       minimoReferencias: minimo,
     };
     const esDueno = fila.ownerId === actor.id;
@@ -543,7 +554,7 @@ export async function personajesElegibles(actor: Actor): Promise<PersonajeElegib
   const { minimoReferenciasPersonaje: minimo } = await leerAjustes();
   const resumen = await resumenDeLista(filas, actor);
   return filas.map((fila) => {
-    const referencias = resumen.referencias.get(fila.id) ?? 0;
+    const referencias = contadas(resumen, fila);
     return {
       id: fila.id,
       nombre: fila.name,
@@ -618,7 +629,7 @@ export async function pendientesDeRevision(actor: Actor, pagina = 1): Promise<Pa
   const elementos = filas.map(({ personaje, consentimiento }) => {
     const datos = {
       consentimiento: efectivo(consentimiento),
-      referencias: resumen.referencias.get(personaje.id) ?? 0,
+      referencias: contadas(resumen, personaje),
       minimoReferencias: minimo,
     };
     return {

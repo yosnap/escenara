@@ -168,6 +168,25 @@ export const consultarControlesDeVista = (id: string, vista: Vista) =>
     `/api/generacion/controles?${new URLSearchParams({ tipo: "fotograma", personajeId: id, vista }).toString()}`,
   );
 
+/**
+ * Añade a un personaje **inventado** imágenes generadas con IA (en Escenara o fuera). Entran como imágenes
+ * generadas, nunca como foto, y exigen la declaración de que no son de una persona real.
+ */
+export const anadirImagenesGeneradas = (id: string, medioIds: string[]) =>
+  pedir<ReferenciasAnadidas>(
+    `/api/personajes/${id}/referencias`,
+    json("POST", {
+      referencias: medioIds.map((medioId) => ({ medioId, usarDeTodasFormas: true })),
+      generadasConIA: true,
+    }),
+  );
+
+/** Controles previos de los retratos candidatos de un personaje inventado: sin exigirle fotos que aún no tiene. */
+export const consultarControlesDeRetrato = (id: string) =>
+  pedir<EvaluacionVista>(
+    `/api/generacion/controles?${new URLSearchParams({ tipo: "fotograma", personajeId: id, retrato: "1" }).toString()}`,
+  );
+
 /** Encola la generación de una vista que falta. La indicación al proveedor la escribe el servidor. */
 export const pedirVistaSintetica = (id: string, confirmacion: ConfirmacionVistaSintetica) =>
   pedir<{ trabajo: TrabajoVista; vista: Vista }>(`/api/personajes/${id}/vista-sintetica`, json("POST", confirmacion));

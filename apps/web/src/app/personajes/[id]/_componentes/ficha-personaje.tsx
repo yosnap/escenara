@@ -10,6 +10,7 @@ import { Aviso, AvisoEstado } from "@/components/ui/feedback";
 import { Pestanas } from "@/components/ui/overlay";
 import { anilloDeEstado, InsigniaEstadoPersonaje } from "@/components/ui/personaje";
 import {
+  anadirImagenesGeneradas,
   anadirReferencias,
   asignarVistasDeReferencias,
   ordenarReferencias,
@@ -91,7 +92,10 @@ export function FichaPersonaje({
   const anadirFotos = async (medioIds: string[], deTodasFormas: string[] = []): Promise<ResultadoAnadir> => {
     setOcupado(true);
     setError(null);
-    const respuesta = await anadirReferencias(personaje.id, medioIds, deTodasFormas);
+    // En un inventado solo entran imágenes generadas con IA, con su declaración (la pide el panel).
+    const respuesta = personaje.inventado
+      ? await anadirImagenesGeneradas(personaje.id, medioIds)
+      : await anadirReferencias(personaje.id, medioIds, deTodasFormas);
     setOcupado(false);
     if (!respuesta.ok) {
       const rechazos = respuesta.rechazos ?? [];
@@ -239,7 +243,7 @@ export function FichaPersonaje({
                     }}
                     onVistaEncolada={(vista) => setVistaEncolada(ETIQUETA_VISTA[vista])}
                   />
-                  {/* Sin añadir fotos en un personaje inventado: el servidor las rechaza y la pantalla no las ofrece. */}
+                  {/* En un personaje inventado solo se añaden imágenes generadas con IA, con su declaración. */}
                   <PanelReferencias
                     personaje={personaje}
                     onCambio={cambiarReferencias}

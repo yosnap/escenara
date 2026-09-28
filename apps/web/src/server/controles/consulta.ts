@@ -38,6 +38,11 @@ export interface PeticionDeControles {
   escenaId?: string | null;
   /** Vista del personaje que se va a generar porque le falta: evalúa como lo hará la puerta de esa vista. */
   vistaSintetica?: Vista | null;
+  /**
+   * Retrato candidato de un personaje **inventado**: evalúa como lo hará su puerta, que no le exige las fotos que
+   * precisamente ese retrato le va a dar. Solo vale si el personaje es inventado; en otro se ignora.
+   */
+  retratoInventado?: boolean;
 }
 
 export async function evaluarControles(
@@ -56,7 +61,16 @@ export async function evaluarControles(
   const hechos = conVistaQueCompleta(
     await recopilarHechos(
       actor,
-      { tipo: peticion.tipo, eleccion, creditos, personajeId, personaje, escena: conEscena?.hechos ?? null, proyecto },
+      {
+        tipo: peticion.tipo,
+        eleccion,
+        creditos,
+        personajeId,
+        personaje,
+        escena: conEscena?.hechos ?? null,
+        proyecto,
+        primerRetrato: peticion.retratoInventado === true && personaje?.virtual === true,
+      },
       buscar,
     ),
     personajeId ? peticion.vistaSintetica : null,
