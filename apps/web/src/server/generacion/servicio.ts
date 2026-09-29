@@ -681,6 +681,7 @@ export async function crearFotograma(
           personajeId,
           personaje,
           ...(peticion.retratoInventado ? { primerRetrato: true } : {}),
+          ...(peticion.vistaSintetica ? { vistaSintetica: true } : {}),
           escena: conEscena?.hechos ?? null,
           proyecto: conEscena ? await techoDelProyecto(conEscena.escena.projectId) : null,
           // Reparto de la escena (0.28.0): el consentimiento se gatea **por cada persona real** que sale en ella.

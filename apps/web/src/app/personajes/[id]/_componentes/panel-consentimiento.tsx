@@ -66,7 +66,9 @@ export function PanelConsentimiento({
                 "Comprobación de parecido autorizada",
                 consentimiento.coherenciaDeclarada
                   ? "Sí"
-                  : "No: sus vistas generadas no cuentan como fotos de referencia",
+                  : consentimiento.titular === "inventado"
+                    ? "No se aplica: las vistas generadas de este personaje inventado sí cuentan"
+                    : "No: sus vistas generadas no cuentan como fotos de referencia",
               ],
               ["Registrado", fecha(consentimiento.registradoEn)],
               ...(consentimiento.revisadoEn

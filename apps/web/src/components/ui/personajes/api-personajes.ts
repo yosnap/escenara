@@ -352,13 +352,13 @@ export const crearPersonajeInventado = (datos: {
  * Lo que se confirma para generar los retratos. Es la confirmación de dinero de siempre **sin la revisión de
  * referencias**: un personaje inventado no tiene fotos en las que pueda aparecer un tercero.
  */
-export type ConfirmacionRetratos = Omit<ConfirmacionVistaSintetica, "vista" | "sinTerceros">;
+export type ConfirmacionRetratos = Omit<ConfirmacionVistaSintetica, "vista" | "sinTerceros"> & { cantidad: number };
 
 /** Retratos candidatos ya generados de un personaje inventado, por identificador de medio. */
 export const consultarRetratos = (id: string) => pedir<{ candidatos: Medio[] }>(`/api/personajes/${id}/retratos`);
 
 /**
- * Genera los cuatro retratos candidatos a partir de la descripción. **Cuesta**: cada uno es un fotograma con su
+ * Genera la cantidad elegida de retratos candidatos a partir de la descripción. **Cuesta**: cada uno es un fotograma con su
  * estimación y su confirmación, así que viaja lo mismo que confirma cualquier otro envío.
  */
 export const generarRetratos = (id: string, confirmacion: ConfirmacionRetratos) =>

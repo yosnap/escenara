@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { type Acento, esAcento } from "@/lib/direccion";
 import { limpiarTextoDePrompt } from "@/lib/ficha-personaje";
 import { DURACION_PREDETERMINADA, duracionesEnTexto, esDuracionDisponible } from "@/lib/produccion";
@@ -166,11 +166,29 @@ export async function editarProyecto(actor: Actor, id: unknown, datos: DatosProy
     }
     /**
      * La duración es del proyecto entero, así que sus escenas la copian, en la misma transacción: lo que se
-     * muestra de cada escena y lo que se le pide al modelo tienen que ser lo mismo. No invalida nada aprobado,
-     * porque **no cambia el coste** (KIE cobra igual 4 s que 8 s, medido el 2026-09-27), pero una escena que ya
-     * tiene clip deja de corresponder a lo que dice, y la rejilla de producción lo avisa como cualquier edición.
+     * muestra de cada escena y lo que se le pide al modelo tienen que ser lo mismo. Entre 4 y 8 s, Veo cobra lo
+     * mismo; entrar o salir de 6 s cambia de modelo y precio, por lo que exige aprobar de nuevo el plan.
+     * Los clips ya generados se conservan y la rejilla de producción avisa de que han quedado desactualizados.
      */
     if (cambios.clipSeconds !== undefined && cambios.clipSeconds !== proyecto.clipSeconds) {
+      if (cambios.clipSeconds === 6 || proyecto.clipSeconds === 6) {
+        await tx
+          .update(projects)
+          .set({
+            state: sql`case when ${projects.state} = 'planificado' then 'borrador' else ${projects.state} end`,
+            planApprovedAt: null,
+            planApprovedBy: null,
+          })
+          .where(eq(projects.id, proyecto.id));
+        await tx
+          .update(scenes)
+          .set({
+            state: "borrador",
+            approvedAt: null,
+            invalidationReason: "La duración y el coste del clip han cambiado. Revisa y aprueba de nuevo el plan.",
+          })
+          .where(and(eq(scenes.projectId, proyecto.id), eq(scenes.state, "aprobada")));
+      }
       await tx
         .update(scenes)
         .set({

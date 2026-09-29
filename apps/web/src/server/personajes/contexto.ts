@@ -41,7 +41,12 @@ import { asegurarVersionVigente } from "./versiones";
  */
 export const contextoDeVersion = (version: FilaVersionPersonaje, tipo: FilaPersonaje["kind"]): string => {
   const instantanea = instantaneaDeVersion(version);
-  const ficha = componerContexto(instantanea.ficha, tipo, instantanea.descripcion);
+  const ficha = componerContexto(
+    instantanea.ficha,
+    tipo,
+    instantanea.descripcion,
+    instantanea.renderStyle === "animado",
+  );
   if (instantanea.renderStyle !== "animado") return ficha;
   return [ficha, bloqueDeEstiloAnimado(instantanea.styleGuide ?? GUIA_ESTILO_VACIA)].filter(Boolean).join("\n");
 };

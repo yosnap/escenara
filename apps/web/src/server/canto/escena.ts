@@ -7,6 +7,8 @@ import { parametrosDeControles, recopilarHechos } from "../controles/hechos";
 import { exigirControles, exigirFrenosDuros } from "../controles/puerta";
 import type { FilaEscena, FilaProyecto, FilaTrabajo } from "../db/esquema";
 import { decidir } from "../decisiones/reglas";
+import { dirigirClipPara } from "../direccion/clip";
+import { direccionDeLaEscena } from "../direccion/escena";
 import {
   exigirAvisoUmbral,
   exigirClaveIdempotencia,
@@ -15,6 +17,7 @@ import {
   exigirRevisionDeReferencias,
   exigirRitmo,
   limpiarPrompt,
+  limpiarPromptOpcional,
   proveedorDeCredencial,
 } from "../generacion/comprobaciones";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
@@ -178,10 +181,26 @@ export async function producirEscenaCantada(
    * guion, que al menos dice de qué va el plano.
    */
   const prompt = limpiarPrompt(escena.action.trim() !== "" ? escena.action : escena.scriptText);
+  const direccion = await direccionDeLaEscena(actor.id, escena, proyecto, {
+    // La identidad ya entra por la versión del retrato; no se repite dentro de la dirección.
+    descripcion: "",
+    real: !personaje.virtual,
+    atractivoElegido: personaje.virtual && personaje.beautyOptIn,
+    ejesVoz: personaje.voiceAxes,
+  });
+  const dirigido = dirigirClipPara("generica", {
+    ...direccion,
+    escena: prompt,
+    dialogo: "",
+    segundos,
+    direccionVocal: "",
+    instruccionesExtra: limpiarPromptOpcional(direccion.instruccionesExtraOriginal),
+    descripcionExperta: limpiarPromptOpcional(direccion.descripcionExpertaOriginal),
+  });
   const contexto = estado.retrato.contexto;
   await exigirDecisionFavorable({
     tipo: "animacion",
-    escena: prompt,
+    escena: dirigido.escena,
     // Sin diálogo: el modelo no tiene que decir nada, tiene que sincronizarse con el audio.
     dialogo: "",
     contexto,
@@ -191,7 +210,7 @@ export async function producirEscenaCantada(
   });
   // La instrucción de sincronía del adaptador ya está en inglés. La descripción visual se conserva como la
   // escribió el usuario; este camino no encarga una traducción de pago fuera del coste confirmado.
-  const promptFinal = promptConContexto(prompt, contexto);
+  const promptFinal = promptConContexto(dirigido.escena, contexto);
 
   /**
    * La entrada se monta **sin URL**: las del proveedor caducan, así que se vuelve a montar al despachar con el
@@ -227,7 +246,7 @@ export async function producirEscenaCantada(
       // La tarifa confirmada: es la de **estos** segundos y **esta** resolución, y es la que el worker vuelve a
       // comprobar antes de enviar (`despacho.ts › exigirDuracionCobrada`).
       unidadPrecio: precio.unidad,
-      escena: prompt,
+      escena: dirigido.escena,
       // Lo que convierte este trabajo en un clip cantado para el despacho: es lo que le dice que su capacidad es
       // `audio_to_video` y no `image_to_video`, y por tanto en qué lista buscar su modelo.
       canto: true,

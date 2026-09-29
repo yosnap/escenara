@@ -44,10 +44,9 @@ export interface PersonajeParaGenerar {
  */
 export async function motivosParaNoGenerar(personajeId: string, minimoPedido?: number): Promise<string[]> {
   /**
-   * `minimoPedido` solo lo usa el primer retrato de un personaje inventado (0.22.0): ese envío **es** lo que
-   * crea su primera referencia, así que exigirle las fotos que todavía no tiene sería impedir justo lo que las
-   * consigue. Es el mismo razonamiento que `conVistaQueCompleta`, y no toca el consentimiento: eso se sigue
-   * exigiendo igual.
+   * `minimoPedido = 0` permite el primer retrato de un inventado, que crea la primera referencia.
+   * `minimoPedido = 1` permite construir vistas desde el maestro aprobado hasta completar el mínimo habitual.
+   * Ninguna excepción altera el requisito de consentimiento.
    */
   const { minimoReferenciasPersonaje } = await leerAjustes();
   const minimo = minimoPedido ?? minimoReferenciasPersonaje;
@@ -65,7 +64,7 @@ export async function motivosParaNoGenerar(personajeId: string, minimoPedido?: n
     referencias,
     minimoReferencias: minimo,
   });
-  if (minimoPedido === undefined && personaje[0]?.renderStyle === "animado" && !personaje[0].masterFrameMediaId) {
+  if (minimoPedido !== 0 && personaje[0]?.renderStyle === "animado" && !personaje[0].masterFrameMediaId) {
     motivos.push("Aprueba un retrato maestro animado antes de generar vistas o escenas.");
   }
   return motivos;

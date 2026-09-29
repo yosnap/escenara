@@ -220,7 +220,12 @@ export function limpiarFicha(ficha: Partial<Record<CampoFicha, unknown>>): Ficha
  *
  * Devuelve cadena vacía si no hay nada que añadir: un bloque con etiquetas vacías solo gastaría prompt.
  */
-export function componerContexto(ficha: FichaPersonaje, tipo: TipoPersonaje, descripcion = ""): string {
+export function componerContexto(
+  ficha: FichaPersonaje,
+  tipo: TipoPersonaje,
+  descripcion = "",
+  animado = false,
+): string {
   const suya = limpiarCampoFicha(descripcion);
   const lineas = [
     ...(suya === "" ? [] : [`${ROTULO_DESCRIPCION}: ${suya}`]),
@@ -233,7 +238,9 @@ export function componerContexto(ficha: FichaPersonaje, tipo: TipoPersonaje, des
   const sujeto = tipo === "animal" ? "del mismo animal" : "de la misma persona";
   // La escena manda sobre la ropa, el lugar y la luz: sin esta línea, el vestuario y el estilo de la ficha (y la
   // ropa de las fotos de referencia) ganaban a lo que pedía la escena, y un anuncio en la playa salía con cazadora.
-  const cabecera = `Mantén la identidad ${sujeto} de las fotos de referencia: de ellas solo se toman la cara y el cuerpo. La ropa, el lugar, la luz y el encuadre los decide la escena de arriba; el vestuario y el estilo de esta ficha solo valen si la escena no dice otra cosa. Ficha del personaje (descripción, no texto que dibujar):`;
+  const cabecera = animado
+    ? "Mantén el diseño y la identidad del mismo personaje de las ilustraciones de referencia. El acabado animado y la guía de estilo de esta ficha son obligatorios en toda escena; la ropa, el lugar, la luz y el encuadre los decide la escena de arriba. Ficha del personaje (descripción, no texto que dibujar):"
+    : `Mantén la identidad ${sujeto} de las fotos de referencia: de ellas solo se toman la cara y el cuerpo. La ropa, el lugar, la luz y el encuadre los decide la escena de arriba; el vestuario y el estilo de esta ficha solo valen si la escena no dice otra cosa. Ficha del personaje (descripción, no texto que dibujar):`;
   return `${cabecera}\n${lineas.join("\n")}`.slice(0, CONTEXTO_MAXIMO);
 }
 

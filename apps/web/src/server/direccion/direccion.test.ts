@@ -19,6 +19,7 @@ import {
   ACENTO_INGLES,
   ANCLAJES_REALISMO,
   ATRACTIVO_ELEGIDO,
+  MODO_CANTO,
   MODO_MUDO,
   REGLA_ANTI_CORTE,
   SIN_RETOQUE_FINAL,
@@ -65,6 +66,21 @@ const DIRECCION: DireccionDeClip = {
 const posicionDe = (texto: string, aguja: string) => texto.indexOf(aguja);
 
 describe("composición del prompt del clip", () => {
+  test("el canto conserva plano y cámara y pide labios sincronizados sin boca cerrada", () => {
+    const resultado = dirigirClipPara("generica", {
+      ...DIRECCION,
+      formato: "cantar",
+      dialogo: "Melodía original sobre la sílaba la",
+    });
+    expect(resultado.escena).toContain("Medium shot framed from the waist up");
+    expect(resultado.escena).toContain("pushes in slowly");
+    expect(resultado.escena).toContain(MODO_CANTO);
+    expect(resultado.escena).not.toContain(MODO_MUDO);
+    expect(resultado.escena).not.toContain("Melodía original sobre la sílaba la");
+    expect(resultado.dialogo).toBe("");
+    expect(resultado.avisos).not.toContain(AVISO_GUION_EN_CLIP_MUDO);
+  });
+
   test("el orden es cámara, gesto previo, guion, gesto posterior, voz y acento", () => {
     const { escena } = dirigirClip({ ...DIRECCION, momentoMicroaccion: "antes" }, { dialogoDentro: true });
     const camara = posicionDe(escena, "pushes in slowly");
@@ -108,6 +124,26 @@ describe("composición del prompt del clip", () => {
   test("la regla anti-corte es la última: nada va detrás de ella", () => {
     const { escena } = dirigirClip(DIRECCION);
     expect(escena.trimEnd().endsWith(REGLA_ANTI_CORTE)).toBe(true);
+  });
+
+  test("un clip animado conserva el dibujo sin lenguaje de metraje fotográfico", () => {
+    const { escena } = dirigirClip({
+      ...DIRECCION,
+      animado: true,
+      personajeReal: false,
+      sujeto: "Nora, a flat editorial illustration",
+      modoExperto: true,
+      descripcionExperta: "Nora walks into the cafe",
+      anclajes: "Photographic realism: visible pores and film grain",
+    });
+    expect(escena).toContain("approved master reference");
+    expect(escena).toContain("animated finish");
+    expect(escena).not.toContain("Photographic realism");
+    expect(escena).not.toContain("smartphone");
+    expect(escena.trimEnd().endsWith(REGLA_ANTI_CORTE)).toBe(true);
+    const normal = dirigirClip({ ...DIRECCION, animado: true, personajeReal: false });
+    expect(normal.escena).toContain("vertical animated social video");
+    expect(normal.escena).not.toContain("smartphone");
   });
 
   test("en voz en off el prompt marca boca cerrada y sin voz, y el diálogo no viaja", () => {
@@ -400,6 +436,21 @@ describe("método 6C del fotograma", () => {
     // C1 es idéntica en los dos: el registro no toca quién es.
     const c1 = (p: string) => p.slice(0, p.indexOf("Camera:"));
     expect(c1(influencer)).toBe(c1(ugc));
+  });
+
+  test("un fotograma animado descarta el preset fotográfico y cierra con su estilo", () => {
+    const prompt = componerSeisC({
+      ...SEIS,
+      animado: true,
+      personajeReal: false,
+      personaje: "Nora, a flat editorial illustration",
+      anclajes: "Photographic realism: visible pores and film grain",
+    });
+    expect(prompt).toContain("Animated style:");
+    expect(prompt).toContain("approved master reference");
+    expect(prompt).not.toContain("Photographic realism");
+    expect(prompt).not.toContain("Do not render this as an illustration");
+    expect(prompt).not.toContain("smartphone");
   });
 });
 

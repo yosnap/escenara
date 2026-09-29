@@ -94,12 +94,28 @@ export function hechosDeModelo(tipo: TipoTrabajoCola, eleccion: EleccionDeTrabaj
  * función que usa la ficha y que revalida el despacho (`personajes/puede-generar.ts`), así que el motivo que
  * se muestra en el panel es exactamente el que se muestra en el personaje.
  */
-export async function hechosDePersonaje(personaje: FilaPersonaje, primerRetrato = false): Promise<HechosPersonaje> {
+export interface ConstruccionDePersonaje {
+  primerRetrato?: boolean;
+  vistaSintetica?: boolean;
+}
+
+export async function hechosDePersonaje(
+  personaje: FilaPersonaje,
+  construccion: ConstruccionDePersonaje = {},
+): Promise<HechosPersonaje> {
   // **Solo las vigentes**: una referencia cuyo medio está en la papelera no se envía a ningún proveedor, así que
   // no puede cubrir una vista ni dejar de señalarse por calidad.
   const [impedimentos, referencias] = await Promise.all([
-    // El primer retrato de un personaje inventado es lo que le da sus referencias: no se le exigen antes.
-    motivosParaNoGenerar(personaje.id, primerRetrato ? 0 : undefined),
+    // El retrato inicial nace sin referencias. Después, cada vista de un inventado puede construirse desde
+    // el maestro ya aprobado hasta llegar al mínimo habitual de tres imágenes para las escenas.
+    motivosParaNoGenerar(
+      personaje.id,
+      construccion.primerRetrato && personaje.virtual
+        ? 0
+        : construccion.vistaSintetica && personaje.virtual
+          ? 1
+          : undefined,
+    ),
     referenciasVigentesDe(personaje.id),
   ]);
   const cobertura = calcularCobertura(
@@ -223,9 +239,12 @@ export interface TechoDeProyecto {
  * que devuelve sus impedimentos. Dejarlo en «sin personaje» sería saltarse la puerta del consentimiento por un
  * borrado a medias.
  */
-export async function hechosDePersonajeCitado(personajeId: string, primerRetrato = false): Promise<HechosPersonaje> {
+export async function hechosDePersonajeCitado(
+  personajeId: string,
+  construccion: ConstruccionDePersonaje = {},
+): Promise<HechosPersonaje> {
   const personaje = await personajePorId(personajeId);
-  return personaje ? hechosDePersonaje(personaje, primerRetrato) : hechosDePersonajeAusente(personajeId);
+  return personaje ? hechosDePersonaje(personaje, construccion) : hechosDePersonajeAusente(personajeId);
 }
 
 async function hechosDePersonajeAusente(personajeId: string): Promise<HechosPersonaje> {
@@ -266,6 +285,8 @@ export interface SujetoDeHechos {
    * primera referencia. Con él no se le exigen las fotos que todavía no tiene; todo lo demás se evalúa igual.
    */
   primerRetrato?: boolean;
+  /** La vista de un inventado puede completar su mínimo desde un maestro ya aprobado. */
+  vistaSintetica?: boolean;
 }
 
 /**
@@ -278,7 +299,10 @@ export async function recopilarHechos(actor: Actor, sujeto: SujetoDeHechos, busc
     parametrosDeControles(),
     hechosDeCredencial(actor.id, sujeto.eleccion, buscar),
     sujeto.personaje
-      ? hechosDePersonaje(sujeto.personaje, sujeto.primerRetrato ?? false)
+      ? hechosDePersonaje(sujeto.personaje, {
+          primerRetrato: sujeto.primerRetrato,
+          vistaSintetica: sujeto.vistaSintetica,
+        })
       : sujeto.personajeId
         ? hechosDePersonajeCitado(sujeto.personajeId)
         : null,

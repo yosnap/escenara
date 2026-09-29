@@ -119,6 +119,14 @@ describe("composición del contexto", () => {
     expect(componerContexto(ficha({ rasgos: "gato atigrado" }), "animal")).toContain("del mismo animal");
   });
 
+  test("la ficha animada conserva el acabado de sus ilustraciones de referencia", () => {
+    const bloque = componerContexto(ficha({ estilo: "Ilustración plana" }), "persona", "Nora", true);
+    expect(bloque).toContain("ilustraciones de referencia");
+    expect(bloque).toContain("acabado animado");
+    expect(bloque).not.toContain("fotos de referencia");
+    expect(bloque).not.toContain("el estilo de esta ficha solo vale");
+  });
+
   test("el bloque nunca pasa del tope, aunque todos los campos vayan llenos", () => {
     const lleno = ficha({
       rasgos: "r".repeat(CAMPO_FICHA_MAXIMO),

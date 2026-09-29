@@ -124,17 +124,22 @@ export const direccionDeLaEscena = (
   proyecto: FilaProyecto,
   personaje: PersonajeDirigido,
 ): Promise<DireccionSinTextoLibre> =>
-  direccionDesdeEleccion(usuarioId, eleccionDeLaEscena(escena, proyecto), personaje);
+  direccionDesdeEleccion(usuarioId, eleccionDeLaEscena(escena, proyecto), personaje).then((direccion) => ({
+    ...direccion,
+    animado: proyecto.renderStyle === "animado",
+  }));
 
 /** Las 6C del fotograma de una escena, sin el texto libre del contexto. */
 export async function seisCDeLaEscena(
   usuarioId: string,
   escena: FilaEscena,
+  proyecto: FilaProyecto,
   personaje: PersonajeDirigido,
   ropa: string,
 ): Promise<Omit<SeisC, "contextoLibre">> {
   const catalogo = await leerCatalogoDeDireccion(usuarioId);
   return {
+    animado: proyecto.renderStyle === "animado",
     personaje: personaje.descripcion,
     personajeReal: personaje.real,
     atractivoElegido: !personaje.real && personaje.atractivoElegido,

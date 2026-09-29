@@ -24,6 +24,17 @@ import type { Acento, EjesVoz, FormatoClip, RegistroEstetico } from "@/lib/direc
 export const REGLA_ANTI_CORTE =
   "Single continuous take: one uninterrupted shot from first frame to last, no cuts, no edits, no transitions, no scene changes. The camera settles and holds still once the movement ends, and the action finishes inside the shot.";
 
+/** Cierre de estilo para personajes inventados animados: nunca se mezcla con los anclajes fotográficos. */
+export const ANCLAJES_ANIMADOS =
+  "Keep the exact character design, face, proportions, linework, colours and animated finish of the approved master reference throughout the shot. This is animation, not live-action footage or photographic skin. Hands, fingers, teeth and eyes remain coherent with the chosen drawing style. No captions, subtitles, watermarks, floating logos, unrelated written words or distorted or duplicated body parts. Preserve the physical label of any referenced product.";
+
+/** El formato describe una pieza social, sin convertir su acabado animado en metraje de móvil. */
+export const FORMATO_CLIP_ANIMADO_INGLES: Record<FormatoClip, string> = {
+  ugc_a_camara: "A vertical animated social video of the character addressing the camera",
+  voz_en_off: "A vertical animated b-roll clip meant to sit under a voice-over",
+  cantar: "A vertical animated video of the character performing to camera, lip-syncing to the supplied audio track",
+};
+
 // ── Formato del clip ────────────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -39,6 +50,10 @@ export const REGLA_ANTI_CORTE =
  */
 export const MODO_MUDO =
   "The character is not talking in this clip: their mouth stays closed and their lips are still, with no dialogue and no lip movement.";
+
+/** El canto recibe una pista propia: los labios siguen ese audio y no se genera una frase nueva. */
+export const MODO_CANTO =
+  "The character performs the supplied audio track with visible, natural lip movement synchronised to its notes and rhythm. Do not invent spoken words or a second voice.";
 
 /**
  * **Acción de producto sin habla** (0.26.0): una pasarela, un giro, un detalle del tejido o una crema que se

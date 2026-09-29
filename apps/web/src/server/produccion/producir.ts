@@ -188,7 +188,7 @@ async function encolarFotograma(
        * el plano, el ángulo, la óptica, la luz y el sitio, y el bloque de anclajes tiene que cerrar el prompt.
        * `vestuario` sale de la ficha del personaje, que ya entra por su propio camino como contexto.
        */
-      seisC: await seisCDeLaEscena(actor.id, escena, personaje, ""),
+      seisC: await seisCDeLaEscena(actor.id, escena, proyecto, personaje, ""),
       ...(escena.changeOnly === "ninguno"
         ? {}
         : {
@@ -314,7 +314,7 @@ async function encolarInsercionDeCaptura(
       // El compositor de la inserción no usa las seis C (lo que se pide es cambiar solo la pantalla), pero la
       // escena sigue componiéndose por ese camino y no por el de plantilla: así el trabajo queda igual que los
       // demás de la escena.
-      seisC: await seisCDeLaEscena(actor.id, escena, personaje, ""),
+      seisC: await seisCDeLaEscena(actor.id, escena, proyecto, personaje, ""),
       derechos: confirmacion.derechos,
       derechoMarca: confirmacion.derechoMarca,
       sinTerceros: confirmacion.sinTerceros,

@@ -1,5 +1,6 @@
 import type { CambioUnico, RegistroEstetico } from "@/lib/direccion";
 import {
+  ANCLAJES_ANIMADOS,
   ANCLAJES_REALISMO,
   ATRACTIVO_ELEGIDO,
   IDENTIDAD_DE_REFERENCIA,
@@ -44,6 +45,8 @@ import {
 
 /** Las seis C ya resueltas a inglés. El catálogo (`catalogo.ts`) es quien las traduce desde lo que se eligió. */
 export interface SeisC {
+  /** Acabado del proyecto. Con animación se conserva el maestro y no se piden fotos ni piel real. */
+  animado?: boolean;
   /** C1: quién es. Con personaje real, la ficha y sus referencias; nunca adjetivos de atractivo. */
   personaje: string;
   /**
@@ -142,23 +145,30 @@ export function componerSeisC(seis: SeisC, cambiarSolo?: CambiarSolo): string {
   const soloProducto = sustituyeAlSujeto(producto);
   const bloques = [
     soloProducto ? "" : c1Personaje(base),
-    etiqueta("Camera", unir([base.plano, base.angulo, base.optica, REGISTRO_CAMARA_INGLES[base.registroEstetico]])),
+    etiqueta(
+      "Camera",
+      unir([base.plano, base.angulo, base.optica, base.animado ? "" : REGISTRO_CAMARA_INGLES[base.registroEstetico]]),
+    ),
     soloProducto ? "" : etiqueta("Wardrobe", base.ropa),
     etiqueta("Context", unir([base.localizacion, base.contextoLibre])),
-    etiqueta("Light", unir([base.luz, REGISTRO_LUZ_INGLES[base.registroEstetico]])),
+    etiqueta("Light", unir([base.luz, base.animado ? "" : REGISTRO_LUZ_INGLES[base.registroEstetico]])),
     etiqueta("Action", base.accion),
     producto ? etiqueta("Product", unir([bloqueProducto(producto), REGLA_ETIQUETA_PRODUCTO])) : "",
   ];
   if (cambio) bloques.push(bloqueCambiarSolo(cambio));
   // C6 va la última **siempre**, y nunca viene vacío: sin catálogo se usa el bloque del código.
-  const anclajes = base.anclajes.trim() === "" ? ANCLAJES_REALISMO : base.anclajes.trim();
+  const anclajes = base.animado
+    ? ANCLAJES_ANIMADOS
+    : base.anclajes.trim() === ""
+      ? ANCLAJES_REALISMO
+      : base.anclajes.trim();
   bloques.push(
     etiqueta(
-      "Realism",
+      base.animado ? "Animated style" : "Realism",
       unir([
         anclajes,
-        REGISTRO_ANCLAJE_INGLES[base.registroEstetico],
-        SIN_NOMBRAR_LA_TECNICA,
+        base.animado ? "" : REGISTRO_ANCLAJE_INGLES[base.registroEstetico],
+        base.animado ? "" : SIN_NOMBRAR_LA_TECNICA,
         // Con una persona real, la regla de no retoque se repite **después** del catálogo: ningún fragmento
         // redactado por alguien puede quedar por delante de ella.
         base.personajeReal && !soloProducto ? SIN_RETOQUE_FINAL : "",

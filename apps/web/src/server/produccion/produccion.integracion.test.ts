@@ -993,9 +993,13 @@ describe.skipIf(!hayBaseDeDatos)("producción de las escenas de un proyecto", ()
     await aprobarFotograma(actor, otra.id, await confirmacion("clip"), h);
     expect(await clipDe(otra.id)).toMatchObject({ modelo: "veo3_fast", duracion: 4, segundos: 4 });
 
-    // Una duración que no está medida no se acepta: el navegador no decide qué se le pide al proveedor.
-    await expect(editarProyecto(actor, proyectoId, { segundosClip: 6 })).rejects.toThrow(/solo pueden durar/);
+    // Los 6 s de Hailuo sí están medidos, pero pasar a otro precio exige aprobar de nuevo el plan.
+    await editarProyecto(actor, proyectoId, { segundosClip: 6 });
+    const aSeis = await estadoDeProduccionDe(proyectoId);
+    expect(aSeis.planAprobado).toBe(false);
+    expect(aSeis.impedimentos.join(" ")).toContain("duración");
     await editarProyecto(actor, proyectoId, { segundosClip: 8 });
+    await expect(editarProyecto(actor, proyectoId, { segundosClip: 10 })).rejects.toThrow(/solo pueden durar/);
   });
 
   test("sin trabajos ajenos: los de otro usuario no cuentan para el tope de escenas en vuelo", async () => {

@@ -119,11 +119,10 @@ export const falloConCoste = (motivo: MotivoFallo | null): boolean =>
 /**
  * Duraciones de clip que esta versión ofrece, en segundos, de la predeterminada a la opcional.
  *
- * Las dos están **medidas con dinero real** el 2026-09-27: KIE cobra los mismos 60 créditos por un clip de 4 s
- * que por uno de 8 s, así que la duración corta no abarata nada y la larga es la de fábrica. El resto de
- * proporciones y resoluciones llega en 0.26.0.
+ * Las tres están medidas con dinero real: Veo cobra 60 créditos tanto a 4 como a 8 s, y Hailuo 2.3 Standard
+ * cobra 30 créditos a 6 s (2026-09-27). La duración elegida debe ser compatible con el modelo vigente.
  */
-export const DURACIONES_DISPONIBLES: readonly number[] = [8, 4];
+export const DURACIONES_DISPONIBLES: readonly number[] = [8, 6, 4];
 
 /** Duración de clip de un proyecto nuevo. La misma que el valor por omisión de la columna del proyecto. */
 export const DURACION_PREDETERMINADA = 8;
@@ -133,8 +132,9 @@ export const RESOLUCION_DISPONIBLE = "720p";
 
 export const esDuracionDisponible = (segundos: number): boolean => DURACIONES_DISPONIBLES.includes(segundos);
 
-/** Las duraciones ofrecidas escritas para leerlas en un aviso: «8 o 4 s». */
-export const duracionesEnTexto = (): string => `${DURACIONES_DISPONIBLES.join(" o ")} s`;
+/** Las duraciones ofrecidas escritas para leerlas en un aviso. */
+export const duracionesEnTexto = (): string =>
+  `${DURACIONES_DISPONIBLES.slice(0, -1).join(", ")} o ${DURACIONES_DISPONIBLES.at(-1)} s`;
 
 /**
  * Duración que se le pide de verdad al modelo para un clip de este proyecto: la del proyecto si el modelo la

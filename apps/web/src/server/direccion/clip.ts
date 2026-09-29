@@ -17,9 +17,12 @@ import {
 import { AVISO_GUION_EN_ACCION_SIN_HABLA } from "@/lib/productos";
 import {
   ACENTO_INGLES,
+  ANCLAJES_ANIMADOS,
   ANCLAJES_REALISMO,
   ejesVozEnIngles,
+  FORMATO_CLIP_ANIMADO_INGLES,
   FORMATO_CLIP_INGLES,
+  MODO_CANTO,
   MODO_MUDO,
   REGISTRO_CAMARA_INGLES,
   REGLA_ANTI_CORTE,
@@ -68,6 +71,8 @@ import {
 
 /** Lo que el usuario ha dirigido, ya resuelto a trozos de prompt en inglés. */
 export interface DireccionDeClip {
+  /** Acabado animado del proyecto; evita aplicar lenguaje fotográfico al clip. */
+  animado?: boolean;
   formato: FormatoClip;
   /**
    * Movimientos de cámara elegidos, ya traducidos por el catálogo. Se admite recibir más de uno **para poder
@@ -160,12 +165,12 @@ function parrafo(partes: readonly string[]): string {
 function bloqueCamara(direccion: DireccionDeClip): string {
   const movimiento = direccion.movimientosCamara[0]?.trim() ?? "";
   return parrafo([
-    FORMATO_CLIP_INGLES[direccion.formato],
+    (direccion.animado ? FORMATO_CLIP_ANIMADO_INGLES : FORMATO_CLIP_INGLES)[direccion.formato],
     direccion.plano,
     direccion.angulo,
     // Sin movimiento elegido la cámara se queda quieta, y se dice: callarlo deja al modelo inventando un travelling.
     movimiento === "" ? "The camera stays locked off and does not move" : movimiento,
-    REGISTRO_CAMARA_INGLES[direccion.registroEstetico],
+    direccion.animado ? "" : REGISTRO_CAMARA_INGLES[direccion.registroEstetico],
   ]);
 }
 
@@ -181,7 +186,11 @@ function bloqueVoz(direccion: DireccionDeClip): string {
 
 /** Anclajes del clip: los del catálogo de quien administra y, si no hay, los del código. Nunca vacío. */
 const anclajesDelClip = (direccion: DireccionDeClip): string =>
-  direccion.anclajes.trim() === "" ? ANCLAJES_REALISMO : direccion.anclajes.trim();
+  direccion.animado
+    ? ANCLAJES_ANIMADOS
+    : direccion.anclajes.trim() === ""
+      ? ANCLAJES_REALISMO
+      : direccion.anclajes.trim();
 
 export interface OpcionesDeDireccion {
   /**
@@ -226,7 +235,7 @@ export function dirigirClip(direccion: DireccionDeClip, opciones: OpcionesDeDire
     !visualSinHabla &&
     (!direccion.trend || direccion.trend.permiteHabla);
   const dialogo = habla ? direccion.dialogo.trim() : "";
-  if (!habla && direccion.dialogo.trim() !== "") {
+  if (!habla && direccion.formato !== "cantar" && direccion.dialogo.trim() !== "") {
     avisos.push(
       soloProducto
         ? AVISO_GUION_EN_BROLL_DE_PRODUCTO
@@ -270,7 +279,7 @@ export function dirigirClip(direccion: DireccionDeClip, opciones: OpcionesDeDire
     ]),
     // El producto va con el sujeto: es parte de qué sale en el plano, y trae pegada la acción que se eligió.
     producto ? bloqueProducto(producto) : "",
-    direccion.trend && producto
+    direccion.trend && producto && !direccion.animado
       ? "Integrate the product naturally inside the photographed scene, held in a hand, resting in the background or visible on a real device screen as the action calls for. Never add a graphic overlay or floating logo"
       : "",
     // El gesto previo va **delante** del diálogo: el modelo lo ejecuta antes de abrir la boca.
@@ -280,10 +289,16 @@ export function dirigirClip(direccion: DireccionDeClip, opciones: OpcionesDeDire
     parrafo([gestoDespues]),
     // Sin habla se describe lo que se ve y el ambiente **en positivo**: a estos modelos no se les prohíbe el
     // audio, porque prohibírselo es lo que les hace fallar (medido el 2026-09-28).
-    habla ? bloqueVoz(direccion) : visualSinHabla ? SIN_HABLA_EN_ACCION : MODO_MUDO,
+    direccion.formato === "cantar"
+      ? MODO_CANTO
+      : habla
+        ? bloqueVoz(direccion)
+        : visualSinHabla
+          ? SIN_HABLA_EN_ACCION
+          : MODO_MUDO,
     // Los anclajes cierran el modo experto: sin ellos, una descripción escrita entera por el usuario saldría sin
     // nada que pida piel de verdad ni anatomía correcta, y eso no es suyo para quitarlo.
-    experto ? anclajesDelClip(direccion) : "",
+    experto || direccion.animado ? anclajesDelClip(direccion) : "",
     // La etiqueta del producto va después del catálogo y antes de la toma única: lo último se obedece mejor, y
     // la toma única no se mueve de la última posición.
     producto ? REGLA_ETIQUETA_PRODUCTO : "",

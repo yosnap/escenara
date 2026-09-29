@@ -24,6 +24,7 @@ const { contextoAnimadoDeEscena } = await import("./contexto-escena");
 const { contextoDeVersion, mejorReferenciaDe } = await import("../personajes/contexto");
 const { ultimaVersion } = await import("../personajes/ficha");
 const { adjuntarVistaGenerada } = await import("../personajes/vista-sintetica");
+const { hechosDePersonajeCitado } = await import("../controles/hechos");
 
 type Sesion = Awaited<ReturnType<typeof crearSesionDePrueba>>;
 
@@ -135,6 +136,39 @@ describe.skipIf(!hayBaseDeDatos)("animados: identidad, estilo heredado y version
     expect(actual?.number).toBe((anterior?.number ?? 0) + 1);
     expect(fila?.masterFrameMediaId).toBeNull();
     expect(referencias).toHaveLength(0);
+  });
+
+  test("un maestro aprobado permite generar las vistas que completan el mínimo, pero aún no una escena", async () => {
+    const inventado = await crearPersonajeInventado(actor, {
+      nombre: `Maestro ${crypto.randomUUID()}`,
+      descripcion: "Una ilustradora de pelo naranja, chaqueta amarilla y ojos verdes grandes.",
+      declaracion: true,
+      estiloAnimado: "ilustracion-plana",
+    });
+    const [maestro] = await db()
+      .insert(media)
+      .values({
+        ownerId: actor.id,
+        kind: "imagen",
+        storageKey: `pruebas/animados/${crypto.randomUUID()}.png`,
+        originalName: "maestro.png",
+        mimeType: "image/png",
+        sizeBytes: 100,
+      })
+      .returning();
+    if (!maestro) throw new Error("No se creó el maestro de prueba.");
+    await db().update(characters).set({ masterFrameMediaId: maestro.id }).where(eq(characters.id, inventado.id));
+    await db()
+      .insert(characterReferences)
+      .values({ characterId: inventado.id, mediaId: maestro.id, origin: "vista_generada", viewKey: "frontal" });
+
+    expect((await hechosDePersonajeCitado(inventado.id)).impedimentos.join(" ")).toContain("Faltan 2");
+    expect((await hechosDePersonajeCitado(inventado.id, { vistaSintetica: true })).impedimentos).toEqual([]);
+
+    await db().update(characters).set({ masterFrameMediaId: null }).where(eq(characters.id, inventado.id));
+    expect((await hechosDePersonajeCitado(inventado.id, { vistaSintetica: true })).impedimentos.join(" ")).toContain(
+      "Aprueba un retrato maestro animado",
+    );
   });
 
   test("una vista que termina tras cambiar el estilo no vuelve a entrar; una del estilo actual sí", async () => {

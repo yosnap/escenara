@@ -16,17 +16,23 @@ import {
   elegirRetrato,
   generarRetratos,
 } from "@/components/ui/personajes/api-personajes";
+import { Selector } from "@/components/ui/select";
 import { bloqueosDeControles, type EvaluacionVista, firmaDeAvisos } from "@/lib/controles";
 import { creditosAConfirmar, type Estimacion, formatearCreditos } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
 import { RETRATOS_CANDIDATOS } from "@/lib/omni";
 import type { PersonajeVista } from "@/lib/personajes";
 
+const OPCIONES_CANTIDAD = Array.from({ length: RETRATOS_CANDIDATOS }, (_, i) => ({
+  value: String(i + 1),
+  label: String(i + 1),
+}));
+
 /**
- * Retratos de un personaje **inventado** (0.22.0): se generan cuatro a partir de su descripción y se elige uno.
+ * Retratos de un personaje **inventado** (0.22.0): se generan de uno a cuatro y se elige uno.
  *
  * El coste va delante y es el de siempre: se estima un fotograma, se multiplica por los cuatro candidatos y se
- * confirma antes de encolar nada. Elegir **no cuesta**: los cuatro ya están pagados y el que no se elige se
+ * confirma antes de encolar nada. Elegir **no cuesta**: los candidatos ya están pagados y el que no se elige se
  * queda en la biblioteca de su dueño.
  *
  * El retrato elegido se guarda **marcado como vista generada**, nunca como foto: no lo es, y la ficha lo dice
@@ -51,12 +57,13 @@ export function PanelRetratos({
   const [aviso, setAviso] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [candidatos, setCandidatos] = useState<Medio[]>(medios);
+  const [cantidad, setCantidad] = useState(RETRATOS_CANDIDATOS);
   /** Clave de esta confirmación: se conserva mientras no cambie lo que se confirma, para no pagar dos veces. */
   const clave = useRef<{ firma: string; valor: string } | null>(null);
 
   const porRetrato = estimacion ? creditosAConfirmar(estimacion) : null;
-  const total = porRetrato === null ? null : porRetrato * RETRATOS_CANDIDATOS;
-  const firma = `${estimacion?.sello ?? ""}|${porRetrato}|${firmaDeAvisos(confirmados)}`;
+  const total = porRetrato === null ? null : porRetrato * cantidad;
+  const firma = `${estimacion?.sello ?? ""}|${porRetrato}|${cantidad}|${firmaDeAvisos(confirmados)}`;
   const bloqueos = [
     ...(derechos ? [] : ["Falta confirmar que puedes usar lo que se genere."]),
     ...(estimacion?.superaUmbral && !avisoAceptado ? ["Falta aceptar el aviso de gasto."] : []),
@@ -89,6 +96,7 @@ export function PanelRetratos({
     setError(null);
     const respuesta = await generarRetratos(personaje.id, {
       creditosConfirmados: porRetrato,
+      cantidad,
       derechos,
       avisoUmbralAceptado: avisoAceptado,
       claveIdempotencia: clave.current.valor,
@@ -141,8 +149,8 @@ export function PanelRetratos({
       <div>
         <h2 className="text-xl font-bold text-texto">Retratos</h2>
         <p className="mt-1 text-texto-suave">
-          Este personaje es inventado: su cara se genera a partir de su descripción. Se hacen {RETRATOS_CANDIDATOS} y
-          eliges uno; los demás se quedan en tu biblioteca.{" "}
+          Este personaje es inventado: su cara se genera a partir de su descripción. Puedes pedir de uno a cuatro
+          retratos y elegir uno; los demás se quedan en tu biblioteca.{" "}
           {personaje.estiloAnimado !== "realista" && "El elegido será su fotograma maestro animado."}
         </p>
       </div>
@@ -209,22 +217,42 @@ export function PanelRetratos({
       )}
 
       {estimacion === null ? (
-        <Boton
-          variante="secundario"
-          className="self-start"
-          cargando={ocupado}
-          onClick={() => {
-            void preparar();
-            void recargarCandidatos();
-          }}
-        >
-          Ver lo que cuesta generar {RETRATOS_CANDIDATOS} retratos
-        </Boton>
+        <div className="flex flex-col gap-3">
+          <Selector
+            etiqueta="Retratos que quieres generar"
+            opciones={OPCIONES_CANTIDAD}
+            valor={String(cantidad)}
+            deshabilitado={ocupado}
+            onCambio={(valor) => {
+              if (valor) setCantidad(Number(valor));
+            }}
+          />
+          <Boton
+            variante="secundario"
+            className="self-start"
+            cargando={ocupado}
+            onClick={() => {
+              void preparar();
+              void recargarCandidatos();
+            }}
+          >
+            Ver lo que cuesta generar {cantidad} {cantidad === 1 ? "retrato" : "retratos"}
+          </Boton>
+        </div>
       ) : (
         <PanelCoste estimacion={estimacion}>
           <div className="flex flex-col gap-3">
+            <Selector
+              etiqueta="Retratos que quieres generar"
+              opciones={OPCIONES_CANTIDAD}
+              valor={String(cantidad)}
+              deshabilitado={ocupado}
+              onCambio={(valor) => {
+                if (valor) setCantidad(Number(valor));
+              }}
+            />
             <p className="text-sm text-texto-suave">
-              Son {RETRATOS_CANDIDATOS} imágenes, así que el total estimado es{" "}
+              Son {cantidad} imágenes, así que el total estimado es{" "}
               <strong className="text-texto">{total === null ? "—" : formatearCreditos(total)}</strong>. Cada una se
               encola y se cobra por separado.
             </p>
@@ -274,7 +302,7 @@ export function PanelRetratos({
             disabled={bloqueos.length > 0}
             onClick={() => void generar()}
           >
-            Generar {RETRATOS_CANDIDATOS} retratos
+            Generar {cantidad} {cantidad === 1 ? "retrato" : "retratos"}
           </Boton>
         </>
       )}

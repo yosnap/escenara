@@ -109,6 +109,7 @@ export async function evaluarControles(
         // real a la que le falta el consentimiento, y no solo al protagonista del proyecto.
         ...(conReparto ? { reparto: conReparto } : {}),
         primerRetrato: peticion.retratoInventado === true && personaje?.virtual === true,
+        vistaSintetica: Boolean(peticion.vistaSintetica),
         ...(conProducto ? { producto: conProducto.hechos } : {}),
       },
       buscar,

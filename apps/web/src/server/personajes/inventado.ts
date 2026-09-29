@@ -45,7 +45,7 @@ import { medidasDelMedio } from "./vista-sintetica";
  *   se registra en su lugar, con la cuenta y la fecha, es que es inventado y no representa a nadie real;
  * - lo que generen va marcado como contenido sintético, que es lo que recogerá la exportación de la 0.23.0.
  *
- * El retrato se elige entre **cuatro candidatos** generados con el modelo de imagen del mapa: cada uno cuesta lo
+ * El retrato se elige entre **uno a cuatro candidatos** generados con el modelo de imagen del mapa: cada uno cuesta lo
  * que cuesta un fotograma, con su estimación y su confirmación, y se encolan de uno en uno por el mismo camino
  * de dinero que cualquier otro envío.
  */
@@ -135,6 +135,7 @@ export interface ConfirmacionRetratos {
   creditosConfirmados: number;
   derechos: boolean;
   claveIdempotencia: string;
+  cantidad?: number;
   selloEstimacion?: string;
   modelo?: string;
   avisoUmbralAceptado?: boolean;
@@ -142,10 +143,10 @@ export interface ConfirmacionRetratos {
 }
 
 /**
- * Encola los cuatro retratos candidatos del personaje inventado a partir de su descripción.
+ * Encola de uno a cuatro retratos candidatos del personaje inventado a partir de su descripción.
  *
  * Cada candidato es **un trabajo con su propio coste**, y los créditos que se confirman son los de uno: el
- * diálogo de gasto multiplica por cuatro lo que enseña, y cada envío se mide contra el mismo tope que cualquier
+ * diálogo de gasto multiplica por la cantidad elegida lo que enseña, y cada envío se mide contra el mismo tope que cualquier
  * otro. Si uno se rechaza (por un tope, por el presupuesto), se para ahí y se devuelve lo que sí se ha encolado:
  * lo encolado es un hecho con su reserva apartada.
  */
@@ -155,6 +156,10 @@ export async function generarRetratosCandidatos(
   confirmacion: ConfirmacionRetratos,
   h: Herramientas = HERRAMIENTAS,
 ): Promise<{ trabajos: TrabajoVista[]; aviso: string }> {
+  const cantidad = confirmacion.cantidad ?? RETRATOS_CANDIDATOS;
+  if (!Number.isInteger(cantidad) || cantidad < 1 || cantidad > RETRATOS_CANDIDATOS) {
+    throw new ErrorPersonaje(400, `Elige entre 1 y ${RETRATOS_CANDIDATOS} retratos.`);
+  }
   const personaje = await filaPropia(actor, id);
   if (!personaje.virtual) {
     throw new ErrorPersonaje(
@@ -176,7 +181,7 @@ export async function generarRetratosCandidatos(
 
   const trabajos: TrabajoVista[] = [];
   let aviso = "";
-  for (let candidato = 1; candidato <= RETRATOS_CANDIDATOS; candidato++) {
+  for (let candidato = 1; candidato <= cantidad; candidato++) {
     try {
       const envio = await crearFotograma(
         actor,
@@ -205,8 +210,8 @@ export async function generarRetratosCandidatos(
       // motivo de los que faltan **se dice** (norma de errores visibles): tope, presupuesto, ritmo…
       if (trabajos.length === 0) throw error;
       const motivo = error instanceof Error && error.message !== "" ? error.message : "No se ha podido encolar.";
-      const faltan = RETRATOS_CANDIDATOS - trabajos.length;
-      aviso = `Se han encargado ${trabajos.length} de ${RETRATOS_CANDIDATOS} retratos; los ${faltan} que faltan no se han encargado y no se te han cobrado. Motivo: ${motivo}`;
+      const faltan = cantidad - trabajos.length;
+      aviso = `Se han encargado ${trabajos.length} de ${cantidad} retratos; los ${faltan} que faltan no se han encargado y no se te han cobrado. Motivo: ${motivo}`;
       break;
     }
   }

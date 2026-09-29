@@ -177,13 +177,12 @@ describe("aviso de gasto alto", () => {
 });
 
 describe("duraciones disponibles", () => {
-  it("se ofrecen las dos duraciones medidas, con 8 s de fábrica", () => {
-    expect(DURACIONES_DISPONIBLES).toEqual([8, 4]);
+  it("se ofrecen las tres duraciones medidas, con 8 s de fábrica", () => {
+    expect(DURACIONES_DISPONIBLES).toEqual([8, 6, 4]);
     expect(DURACION_PREDETERMINADA).toBe(8);
     expect(esDuracionDisponible(4)).toBe(true);
     expect(esDuracionDisponible(8)).toBe(true);
-    // Los 6 s que documenta el proveedor no están medidos: no se ofrecen.
-    expect(esDuracionDisponible(6)).toBe(false);
+    expect(esDuracionDisponible(6)).toBe(true);
   });
 
   it("al modelo se le pide la duración del proyecto si la admite, y la suya si no", () => {

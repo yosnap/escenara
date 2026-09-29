@@ -24,6 +24,7 @@ import { AVISO_SIN_TERCEROS } from "@/lib/personajes";
  */
 export function DialogoVistaSintetica({
   personajeId,
+  inventado,
   vista,
   estimacion,
   controles,
@@ -32,6 +33,7 @@ export function DialogoVistaSintetica({
   onEncolada,
 }: {
   personajeId: string;
+  inventado: boolean;
   vista: Vista;
   /** Estimación ya pedida al servidor al abrir el diálogo: aquí no se calcula ningún precio. */
   estimacion: Estimacion;
@@ -102,7 +104,11 @@ export function DialogoVistaSintetica({
   return (
     <Dialogo
       titulo={`Generar «${ETIQUETA_VISTA[vista].toLowerCase()}»`}
-      descripcion="Se creará una imagen a partir de las fotos que ya tienes de este personaje."
+      descripcion={
+        inventado
+          ? "Se creará una imagen a partir del retrato maestro y las vistas que ya tienes."
+          : "Se creará una imagen a partir de las fotos que ya tienes de este personaje."
+      }
       abierto={abierto}
       onAbiertoCambio={onAbiertoCambio}
       tamano="md"
@@ -110,9 +116,10 @@ export function DialogoVistaSintetica({
       <div className="flex flex-col gap-4">
         <Aviso tono="info">
           Lo que salga de aquí es una <strong className="font-semibold">vista generada</strong>, no una foto: se
-          guardará marcada como tal, se mostrará siempre con su distintivo y{" "}
-          <strong className="font-semibold">no cuenta</strong> para el mínimo de fotos originales del personaje. Si lo
-          que quieres es cubrir esa vista de verdad, haz la foto: sale gratis y guía mucho mejor.
+          guardará marcada como tal y se mostrará siempre con su distintivo.{" "}
+          {inventado
+            ? "En un personaje inventado cuenta para el mínimo de imágenes que guía sus escenas."
+            : "No cuenta para el mínimo de fotos originales; hacer la foto es gratis y guía mucho mejor."}
         </Aviso>
 
         <PanelCoste estimacion={estimacion}>

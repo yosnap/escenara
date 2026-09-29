@@ -249,6 +249,7 @@ export function PanelCobertura({
       {todas && (
         <DialogoTodasLasVistas
           personajeId={personaje.id}
+          inventado={personaje.inventado}
           vistas={porGenerar}
           estimacion={todas.estimacion}
           controles={todas.controles}
@@ -272,6 +273,7 @@ export function PanelCobertura({
       {generando && (
         <DialogoVistaSintetica
           personajeId={personaje.id}
+          inventado={personaje.inventado}
           vista={generando.vista}
           estimacion={generando.estimacion}
           controles={generando.controles}

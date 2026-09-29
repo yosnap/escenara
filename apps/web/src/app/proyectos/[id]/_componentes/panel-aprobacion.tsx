@@ -63,7 +63,7 @@ export function PanelAprobacion({
     const resultado = await aprobarPlan(proyecto.id, creditos, plan.totalCreditos);
     setOcupado(false);
     if (resultado.ok) {
-      setHecho("Plan aprobado: queda autorizado con este coste. Producir las escenas llega en una versión siguiente.");
+      setHecho("Plan aprobado con este coste. Ya puedes producir las escenas.");
       onCambio(resultado.datos);
     } else onError(resultado.error);
   };

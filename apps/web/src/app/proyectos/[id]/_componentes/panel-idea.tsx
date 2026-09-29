@@ -18,16 +18,12 @@ import { CONCEPTO_MAXIMO, ESCENAS_SUGERIDAS, formatearFecha, IDEA_MAXIMA, type P
 import { editarProyecto, pedirGuion } from "../../_componentes/api-proyectos";
 
 /**
- * Opciones de duración del clip. Las dos están medidas con dinero real y **cuestan lo mismo**, así que la corta no
- * se ofrece como ahorro: se dice al lado que no lo es.
+ * Opciones de duración del clip con precio medido. El coste depende del modelo elegido.
  */
 const OPCIONES_DURACION = DURACIONES_DISPONIBLES.map((segundos) => ({
   value: String(segundos),
   label: `${segundos} segundos`,
 }));
-
-/** La duración más larga de las ofrecidas: es la de fábrica y la referencia del aviso de que no se ahorra nada. */
-const MAS_LARGA = Math.max(...DURACIONES_DISPONIBLES);
 
 /**
  * Idea, protagonista, duración del clip y concepto, con el asistente al lado.
@@ -179,15 +175,9 @@ export function PanelIdea({
             }}
           />
           <p className="text-sm text-texto-suave">
-            Es lo que dura cada escena del vídeo, y el asistente propone escenas de esa duración.{" "}
-            {segundos === MAS_LARGA ? (
-              <>Es la duración de fábrica: el proveedor cobra lo mismo por un clip corto que por uno largo.</>
-            ) : (
-              <>
-                <strong className="text-texto">Elegirla no ahorra nada</strong>: el proveedor cobra lo mismo por{" "}
-                {segundos} s que por {MAS_LARGA} s (medido el 27 de septiembre de 2026).
-              </>
-            )}
+            Es lo que dura cada escena del vídeo, y el asistente propone escenas de esa duración. Elige una duración
+            admitida por tu modelo de vídeo y revisa el coste en el plan antes de producir. Veo cobra lo mismo por 4 y 8
+            s; Hailuo 2.3 Standard tiene precio medido a 6 s (27 de septiembre de 2026).
           </p>
         </div>
 

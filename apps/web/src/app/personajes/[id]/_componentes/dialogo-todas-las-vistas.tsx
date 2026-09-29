@@ -24,6 +24,7 @@ import { AVISO_SIN_TERCEROS } from "@/lib/personajes";
  */
 export function DialogoTodasLasVistas({
   personajeId,
+  inventado,
   vistas,
   estimacion,
   controles,
@@ -32,6 +33,7 @@ export function DialogoTodasLasVistas({
   onEncargadas,
 }: {
   personajeId: string;
+  inventado: boolean;
   /** Vistas que faltan, tal como las calcula `vistasPorGenerar`. Es lo que el servidor va a encargar. */
   vistas: readonly Vista[];
   /** Coste de **una** imagen, ya pedido al servidor: aquí no se calcula ningún precio. */
@@ -105,8 +107,11 @@ export function DialogoTodasLasVistas({
       <div className="flex flex-col gap-4">
         <Aviso tono="info">
           Lo que salga de aquí son <strong className="font-semibold">vistas generadas</strong>, no fotos: se guardan
-          marcadas como tales y <strong className="font-semibold">no cuentan</strong> para el mínimo de fotos
-          originales. Se encargan {vistas.map((v) => ETIQUETA_VISTA[v].toLowerCase()).join(", ")}.
+          marcadas como tales.{" "}
+          {inventado
+            ? "En un personaje inventado cuentan para el mínimo de imágenes que guía sus escenas."
+            : "No cuentan para el mínimo de fotos originales."}{" "}
+          Se encargan {vistas.map((v) => ETIQUETA_VISTA[v].toLowerCase()).join(", ")}.
         </Aviso>
 
         <PanelCoste estimacion={estimacion}>

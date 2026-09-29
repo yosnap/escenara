@@ -14,6 +14,7 @@ import {
   DESCRIPCION_REGISTRO_ESTETICO,
   type DireccionElegidaConAcento,
   FORMATOS_CLIP,
+  formatoCanta,
   formatoHabla,
   gestoNoCabe,
   INSTRUCCIONES_EXTRA_MAXIMAS,
@@ -168,6 +169,7 @@ export function PanelDireccion({
 }) {
   if (!opciones) return null;
   const habla = formatoHabla(direccion.formatoClip);
+  const canta = formatoCanta(direccion.formatoClip);
   const camaraElegida = opciones.camara.find((o) => o.clave === direccion.camara);
   const gestoElegido = opciones.microaccion.find((o) => o.clave === direccion.microaccion);
   // En modo experto los botones de encuadre y gesto **no se aplican**: se dejan a la vista y apagados, que es lo
@@ -185,7 +187,7 @@ export function PanelDireccion({
     ? []
     : [
         camaraElegida?.nivel === "avanzado" ? AVISO_MOVIMIENTO_AVANZADO : "",
-        gestoElegido && direccion.momentoMicroaccion !== "durante" && gestoNoCabe(palabras, segundos)
+        !canta && gestoElegido && direccion.momentoMicroaccion !== "durante" && gestoNoCabe(palabras, segundos)
           ? avisoGestoNoCabe(segundos)
           : "",
       ].filter((aviso) => aviso !== "");
@@ -203,7 +205,7 @@ export function PanelDireccion({
           ? `${gestoElegido.nombre} (${NOMBRE_MOMENTO_MICROACCION[direccion.momentoMicroaccion].toLowerCase()})`
           : "",
         direccion.instruccionesExtra.trim() === "" ? "" : "y lo que has añadido por escrito",
-        habla ? "" : "sin voz",
+        canta ? "sincronía con tu audio" : habla ? "" : "sin voz",
       ].filter((parte) => parte !== "");
 
   return (
@@ -447,7 +449,9 @@ export function PanelDireccion({
       <Aviso tono="info">
         Le pedirás: <strong className="font-semibold">{resumen.join(" · ")}</strong>. Siempre en{" "}
         <strong className="font-semibold">una sola toma, sin cortes</strong>, elijas lo que elijas.
-        {!habla && " El guion no se le envía al modelo: el personaje sale con la boca cerrada."}
+        {canta
+          ? " Lo que se oye sale de tu audio; el texto del guion no se envía como letra y los labios siguen la pista."
+          : !habla && " El guion no se le envía al modelo: el personaje sale con la boca cerrada."}
       </Aviso>
     </section>
   );

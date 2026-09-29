@@ -262,13 +262,13 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
         parametros: await parametrosDeControles(),
         /**
          * Si la ficha del personaje ya no está, esto bloquea en lugar de dejar pasar. Y el **primer retrato de
-         * un personaje inventado** (0.22.0) se revalida sin exigirle las fotos que todavía no tiene: es este
-         * mismo trabajo el que se las va a dar, igual que al encolarlo.
+         * un personaje inventado** (0.22.0) se revalida sin exigirle las fotos que todavía no tiene. Una vista
+         * sintética de un inventado también puede completar su mínimo desde el maestro ya aprobado.
          */
-        personaje: await hechosDePersonajeCitado(
-          fila.characterId,
-          (fila.input as { retratoInventado?: unknown }).retratoInventado === true,
-        ),
+        personaje: await hechosDePersonajeCitado(fila.characterId, {
+          primerRetrato: (fila.input as { retratoInventado?: unknown }).retratoInventado === true,
+          vistaSintetica: (fila.input as { vistaSintetica?: unknown }).vistaSintetica !== undefined,
+        }),
         modelo: {
           nombre: modelo.nombre,
           maximoReferencias: modelo.parametros.maximoReferencias,
@@ -903,7 +903,7 @@ async function mediosDeReferencia(fila: FilaTrabajo, maximo = Number.POSITIVE_IN
     const referencias = await mediosDeReferenciaVigentes(fila.characterId);
     const vigentes = new Map(referencias.map((r) => [r.mediaId, r.origen]));
     ids = ids.filter((id) => vigentes.has(id));
-    const { minimoReferenciasPersonaje: minimo } = await leerAjustes();
+    const { minimoReferenciasPersonaje } = await leerAjustes();
     // El mínimo lo sostienen solo las fotos originales: una vista generada se envía como guía, pero no
     // sustituye a una foto de la persona (0.14.0). **Salvo en un personaje inventado**, que no tiene ni admite
     // fotos: ahí lo sostienen sus imágenes generadas, igual que en la ficha (`contarReferencias`).
@@ -911,10 +911,12 @@ async function mediosDeReferencia(fila: FilaTrabajo, maximo = Number.POSITIVE_IN
       .select({ virtual: characters.virtual })
       .from(characters)
       .where(eq(characters.id, fila.characterId));
+    const vistaSintetica = esVista((fila.input as { vistaSintetica?: unknown }).vistaSintetica);
+    const minimo = personaje?.virtual && vistaSintetica ? 1 : minimoReferenciasPersonaje;
     const cuentan = personaje?.virtual ? ids.length : ids.filter((id) => vigentes.get(id) === "foto_original").length;
     if (cuentan < minimo) {
       throw new ErrorPersonajeNoUsable(
-        `Las fotos de referencia del personaje han cambiado desde que pediste el trabajo y ya no llegan al mínimo de ${minimo}. No se ha enviado nada y no se te ha cobrado: añade más fotos y vuelve a pedirlo.`,
+        `Las imágenes de referencia del personaje han cambiado desde que pediste el trabajo y ya no llegan al mínimo de ${minimo}. No se ha enviado nada y no se te ha cobrado: añade más imágenes y vuelve a pedirlo.`,
       );
     }
   }

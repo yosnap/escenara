@@ -855,6 +855,29 @@ describe.skipIf(!hayBaseDeDatos)("escenas habladas con Omni", () => {
       expect(medio?.deletedAt ?? null).toBeNull();
     }
   });
+
+  test("se puede encargar un solo retrato y la cantidad no puede superar cuatro", async () => {
+    const personaje = await crearPersonajeInventado(actor, {
+      nombre: `Mika ${crypto.randomUUID().slice(0, 6)}`,
+      descripcion: "Mujer adulta ficticia de pelo azul y chaqueta coral.",
+      declaracion: true,
+    });
+    const { precioDe } = await import("../generacion/precios");
+    const { creditosDelEnvio } = await import("../prompts/traduccion");
+    const precio = await precioDe("fotograma");
+    const confirmacion = {
+      cantidad: 1,
+      creditosConfirmados: await creditosDelEnvio(Math.ceil(precio.creditos)),
+      derechos: true,
+      claveIdempotencia: crypto.randomUUID(),
+      selloEstimacion: precio.sello,
+      avisoUmbralAceptado: true,
+    };
+    expect((await generarRetratosCandidatos(actor, personaje.id, confirmacion, h)).trabajos).toHaveLength(1);
+    await expect(generarRetratosCandidatos(actor, personaje.id, { ...confirmacion, cantidad: 5 }, h)).rejects.toThrow(
+      /entre 1 y 4 retratos/,
+    );
+  });
   // ── Lo que señaló la revisión de código ──────────────────────────────────────────────────────────────────
 
   test("registrar no cuesta créditos, pero tiene ritmo: pasado el tope se rechaza sin llamar al proveedor", async () => {

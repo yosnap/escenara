@@ -18,7 +18,7 @@ export const GET = manejador(async (_: Request, contexto: ContextoId, actor) => 
 });
 
 /**
- * Genera los cuatro retratos candidatos a partir de la descripción del personaje inventado, o elige uno de los
+ * Genera de uno a cuatro retratos candidatos a partir de la descripción del personaje inventado, o elige uno de los
  * ya generados: `{ accion: "generar" | "elegir", ... }`.
  *
  * Generar **cuesta**: cada candidato es un fotograma con su estimación, su confirmación y su reserva, igual que
@@ -37,6 +37,7 @@ export const POST = manejador(async (peticion: Request, contexto: ContextoId, ac
     creditosConfirmados: Number(cuerpo.creditosConfirmados),
     derechos: cuerpo.derechos === true,
     claveIdempotencia: String(cuerpo.claveIdempotencia ?? ""),
+    ...(cuerpo.cantidad === undefined ? {} : { cantidad: Number(cuerpo.cantidad) }),
     ...(typeof cuerpo.selloEstimacion === "string" ? { selloEstimacion: cuerpo.selloEstimacion } : {}),
     ...(typeof cuerpo.modelo === "string" ? { modelo: cuerpo.modelo } : {}),
     ...(cuerpo.avisoUmbralAceptado === true ? { avisoUmbralAceptado: true } : {}),
