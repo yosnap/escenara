@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="dg" viewBox="0 0 800 874" width="800" height="874" role="img" aria-labelledby="consentimiento-titulo consentimiento-desc">
+  <title id="consentimiento-titulo">Flujo del consentimiento de un personaje</title>
+  <desc id="consentimiento-desc">Quién sale en las fotos decide el camino. Soy yo o un animal mío: tu declaración con tu cuenta y la fecha, y el personaje queda vigente. Otra persona: documento de consentimiento firmado en JPEG o PNG, queda en revisión hasta que quien administra lo acepta, y entonces queda vigente. En los tres casos se declara que la persona es mayor de edad y el uso comercial se declara aparte. Después: revocar bloquea al momento y el registro revocado se conserva como prueba; registrar un consentimiento nuevo lo vuelve a dejar vigente. Borrar el personaje se lleva sus vídeos y fotogramas; las fotos y el documento firmado se quedan en la biblioteca.</desc>
+  <style>
+    .dg{--f:var(--dg-fondo,#F7F8FC);--s:var(--dg-superficie,#FFFFFF);--sa:var(--dg-superficie-alta,#EFF1F8);--t:var(--dg-texto,#182032);--ts:var(--dg-texto-suave,#485269);--b:var(--dg-borde,#858EA1);--a:var(--dg-acento,#2753D7);--as:var(--dg-acento-suave,#E3EAFC);--c:var(--dg-chispa,#B53D1C);--cs:var(--dg-chispa-suave,#FDE7DF);--e:var(--dg-exito,#166A51);--es:var(--dg-exito-suave,#DDF1E9);--v:var(--dg-aviso,#875016);--vs:var(--dg-aviso-suave,#F8EBD6);--p:var(--dg-peligro,#A43343);--ps:var(--dg-peligro-suave,#F8E1E5)}
+    @media (prefers-color-scheme:dark){.dg{--f:var(--dg-fondo,#0D1018);--s:var(--dg-superficie,#171B27);--sa:var(--dg-superficie-alta,#222839);--t:var(--dg-texto,#F5F6FA);--ts:var(--dg-texto-suave,#B8C0D1);--b:var(--dg-borde,#737F98);--a:var(--dg-acento,#8EB8FF);--as:var(--dg-acento-suave,#1B2A4D);--c:var(--dg-chispa,#FFAD78);--cs:var(--dg-chispa-suave,#3A2418);--e:var(--dg-exito,#66D6AB);--es:var(--dg-exito-suave,#12362B);--v:var(--dg-aviso,#F5C97A);--vs:var(--dg-aviso-suave,#3A2E14);--p:var(--dg-peligro,#FF9EAD);--ps:var(--dg-peligro-suave,#3D1C24)}}
+    .dg text{font-family:Manrope,Inter,ui-sans-serif,system-ui,sans-serif;fill:var(--t);font-size:15px}
+    .dg .dg-lienzo{fill:var(--f)}
+    .dg .dg-caja{fill:var(--s);stroke:var(--b);stroke-width:1.5}
+    .dg .dg-panel{fill:var(--sa);stroke:none}
+    .dg .dg-acento{fill:var(--as);stroke:var(--a);stroke-width:1.5}
+    .dg .dg-chispa{fill:var(--cs);stroke:var(--c);stroke-width:1.5}
+    .dg .dg-exito{fill:var(--es);stroke:var(--e);stroke-width:1.5}
+    .dg .dg-aviso{fill:var(--vs);stroke:var(--v);stroke-width:1.5}
+    .dg .dg-peligro{fill:var(--ps);stroke:var(--p);stroke-width:1.5}
+    .dg .dg-linea{fill:none;stroke:var(--b);stroke-width:2}
+    .dg .dg-flecha{fill:var(--b)}
+    .dg .dg-marca{fill:var(--a)}
+    .dg .dg-titulo{font-size:24px;font-weight:700}
+    .dg .dg-negrita{font-weight:700;font-size:17px}
+    .dg .dg-suave{fill:var(--ts);font-size:14px}
+    .dg .dg-etiqueta{font-size:13px;font-weight:600}
+    .dg .dg-sobre-marca{fill:var(--s);font-weight:700;font-size:15px}
+    .dg .dg-t-acento{fill:var(--a)}
+    .dg .dg-t-chispa{fill:var(--c)}
+    .dg .dg-t-exito{fill:var(--e)}
+    .dg .dg-t-peligro{fill:var(--p)}
+  </style>
+  <defs>
+    <marker id="consentimiento-punta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dg-flecha"/></marker>
+  </defs>
+  <rect class="dg-lienzo" width="800" height="874" rx="20"/>
+  <text class="dg-titulo" x="24" y="44">El consentimiento de un personaje</text>
+  <text class="dg-suave" x="24" y="70">Sin consentimiento vigente no se genera nada con un personaje.</text>
+  <text class="dg-suave" x="24" y="90">Se rellena en una zona de claridad, sin animación.</text>
+  <rect class="dg-caja" x="250" y="112" width="300" height="48" rx="14"/>
+  <text class="dg-negrita" x="400" y="141" text-anchor="middle">¿Quién sale en las fotos?</text>
+  <path class="dg-linea" d="M400 160V214"/>
+  <path class="dg-linea" d="M143 214H657"/>
+  <rect class="dg-aviso" x="180" y="172" width="440" height="28" rx="14"/>
+  <text class="dg-etiqueta" x="400" y="191" text-anchor="middle">En los tres casos declaras que es mayor de edad</text>
+  <path class="dg-linea" d="M143 214V236" marker-end="url(#consentimiento-punta)"/>
+  <rect class="dg-acento" x="24" y="238" width="238" height="52" rx="14"/>
+  <text class="dg-negrita" x="143" y="269" text-anchor="middle">Soy yo</text>
+  <path class="dg-linea" d="M143 290V316" marker-end="url(#consentimiento-punta)"/>
+  <rect class="dg-caja" x="24" y="318" width="238" height="72" rx="14"/>
+  <text class="dg-negrita" x="143" y="348" text-anchor="middle">Tu declaración</text>
+  <text class="dg-suave" x="143" y="370" text-anchor="middle">con tu cuenta y la fecha</text>
+  <rect class="dg-exito" x="24" y="514" width="238" height="64" rx="14"/>
+  <text class="dg-negrita dg-t-exito" x="143" y="540" text-anchor="middle">Vigente</text>
+  <text class="dg-suave" x="143" y="562" text-anchor="middle">ya se puede generar</text>
+  <path class="dg-linea" d="M400 214V236" marker-end="url(#consentimiento-punta)"/>
+  <rect class="dg-acento" x="281" y="238" width="238" height="52" rx="14"/>
+  <text class="dg-negrita" x="400" y="269" text-anchor="middle">Un animal mío</text>
+  <path class="dg-linea" d="M400 290V316" marker-end="url(#consentimiento-punta)"/>
+  <rect class="dg-caja" x="281" y="318" width="238" height="72" rx="14"/>
+  <text class="dg-negrita" x="400" y="348" text-anchor="middle">Tu declaración</text>
+  <text class="dg-suave" x="400" y="370" text-anchor="middle">con tu cuenta y la fecha</text>
+  <rect class="dg-exito" x="281" y="514" width="238" height="64" rx="14"/>
+  <text class="dg-negrita dg-t-exito" x="400" y="540" text-anchor="middle">Vigente</text>
+  <text class="dg-suave" x="400" y="562" text-anchor="middle">ya se puede generar</text>
+  <path class="dg-linea" d="M657 214V236" marker-end="url(#consentimiento-punta)"/>
+  <rect class="dg-acento" x="538" y="238" width="238" height="52" rx="14"/>
+  <text class="dg-negrita" x="657" y="269" text-anchor="middle">Otra persona</text>
+  <path class="dg-linea" d="M657 290V316" marker-end="url(#consentimiento-punta)"/>
+  <rect class="dg-caja" x="538" y="318" width="238" height="72" rx="14"/>
+  <text class="dg-negrita" x="657" y="348" text-anchor="middle">Documento firmado</text>
+  <text class="dg-suave" x="657" y="370" text-anchor="middle">JPEG o PNG, sin reducir</text>
+  <rect class="dg-exito" x="538" y="514" width="238" height="64" rx="14"/>
+  <text class="dg-negrita dg-t-exito" x="657" y="540" text-anchor="middle">Vigente</text>
+  <text class="dg-suave" x="657" y="562" text-anchor="middle">ya se puede generar</text>
+  <path class="dg-linea" d="M143 390V512" marker-end="url(#consentimiento-punta)"/>
+  <path class="dg-linea" d="M400 390V512" marker-end="url(#consentimiento-punta)"/>
+  <path class="dg-linea" d="M657 390V414" marker-end="url(#consentimiento-punta)"/>
+  <rect class="dg-aviso" x="538" y="416" width="238" height="72" rx="14"/>
+  <text class="dg-negrita" x="657" y="446" text-anchor="middle">En revisión</text>
+  <text class="dg-suave" x="657" y="468" text-anchor="middle">quien administra lo acepta</text>
+  <path class="dg-linea" d="M657 488V512" marker-end="url(#consentimiento-punta)"/>
+  <text class="dg-suave" x="400" y="608" text-anchor="middle">El uso comercial se declara aparte del personal.</text>
+  <rect class="dg-caja" x="24" y="630" width="752" height="220" rx="16"/>
+  <text class="dg-negrita" x="44" y="662">Después del registro</text>
+  <rect class="dg-exito" x="44" y="682" width="150" height="84" rx="14"/>
+  <text class="dg-negrita" x="119" y="718" text-anchor="middle">Vigente</text>
+  <text class="dg-suave" x="119" y="740" text-anchor="middle">genera con él</text>
+  <path class="dg-linea" d="M196 724H258" marker-end="url(#consentimiento-punta)"/>
+  <text class="dg-etiqueta" x="228" y="712" text-anchor="middle">Revocar</text>
+  <rect class="dg-peligro" x="262" y="682" width="226" height="84" rx="14"/>
+  <text class="dg-negrita" x="375" y="718" text-anchor="middle">Bloqueado al momento</text>
+  <text class="dg-suave" x="375" y="740" text-anchor="middle">el registro se guarda</text>
+  <path class="dg-linea" d="M490 724H562" marker-end="url(#consentimiento-punta)"/>
+  <text class="dg-etiqueta" x="526" y="712" text-anchor="middle">Registrar</text>
+  <rect class="dg-exito" x="566" y="682" width="190" height="84" rx="14"/>
+  <text class="dg-negrita" x="661" y="718" text-anchor="middle">Vigente de nuevo</text>
+  <text class="dg-suave" x="661" y="740" text-anchor="middle">revoca el anterior</text>
+  <text class="dg-suave" x="44" y="802">Borrar el personaje se lleva sus vídeos y fotogramas.</text>
+  <text class="dg-suave" x="44" y="824">Las fotos y el documento firmado se quedan en tu biblioteca.</text>
+</svg>

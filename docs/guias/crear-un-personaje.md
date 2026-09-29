@@ -42,6 +42,8 @@ peor el parecido y se puede usar de todas formas, también al elegirla de tu bib
 
 ## 3. Registra el consentimiento
 
+![Flujo del consentimiento: quién sale en las fotos, qué hace falta en cada caso, revisión, revocación y borrado](../assets/diagramas/consentimiento.svg)
+
 El consentimiento se rellena en una **zona de claridad**: fondo neutro, sin animación y con el texto legal
 delante. Hay tres casos:
 

@@ -2,6 +2,8 @@
 
 Guía para generar tu primer fotograma y tu primer clip en Escenara, desde el navegador y sin tocar código. Disponible a partir de la versión **0.10.0**.
 
+![Flujo de Escenara: personaje, fotograma, clip, voz, montaje y exportación, con lo que cuesta cada paso](../assets/diagramas/flujo-general.svg)
+
 ## Antes de empezar
 
 1. **Tu clave de KIE.ai.** Escenara no vende créditos ni usa una clave común: generas con tu propia cuenta y pagas al proveedor. Consigue la clave en [kie.ai/api-key](https://kie.ai/api-key) y guárdala en **Tu cuenta › Credenciales de IA**. Solo se guarda si la prueba pasa, y queda cifrada en el servidor: nadie, ni quien administra, puede volver a verla.
