@@ -1,27 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { Boton } from "@/components/ui/button";
 import { Aviso, EstadoVacio } from "@/components/ui/feedback";
-import { ETIQUETA_CAPACIDAD } from "@/lib/catalogo";
-import { ETIQUETA_CATEGORIA, ETIQUETA_TIPO_VARIABLE, type PlantillaVista, type VersionPlantilla } from "@/lib/presets";
-import {
-  activarPlantillaAccion,
-  historialPlantillaAccion,
-  ordenarPlantillaAccion,
-  type ResultadoPlantillas,
-} from "./acciones";
-import { DialogoCaducarTrend } from "./dialogo-caducar-trend";
-import { DialogoDuplicarTrend } from "./dialogo-duplicar-trend";
+import { ListaOrdenable } from "@/components/ui/lista-ordenable";
+import { type Capacidad, ETIQUETA_CAPACIDAD } from "@/lib/catalogo";
+import { moverEnLista } from "@/lib/lista-ordenable";
+import type { PlantillaVista, VersionPlantilla } from "@/lib/presets";
+import { historialPlantillaAccion, ordenarGrupoPlantillasAccion, type ResultadoPlantillas } from "./acciones";
 import { DialogoPlantilla } from "./dialogo-plantilla";
+import { TarjetaPlantilla } from "./tarjeta-plantilla";
 
 /**
  * Plantillas de la instalación con su versión vigente, sus variables y su historial. El historial se pide al
  * desplegarlo, no al cargar la página: son cincuenta filas por plantilla como mucho, pero no hacen falta hasta
  * que alguien quiere verlas.
  */
-
-const PASO_ORDEN = 10;
 
 export function VistaPlantillas({ inicial }: { inicial: PlantillaVista[] }) {
   const [plantillas, setPlantillas] = useState(inicial);
@@ -57,9 +50,29 @@ export function VistaPlantillas({ inicial }: { inicial: PlantillaVista[] }) {
     setHistoriales((previos) => ({ ...previos, [id]: resultado.versiones }));
   };
 
-  const mover = async (plantilla: PlantillaVista, direccion: -1 | 1) => {
-    alCambiar(await ordenarPlantillaAccion(plantilla.id, Math.max(0, plantilla.orden + direccion * PASO_ORDEN)));
+  /** Orden completo de una capacidad. Devuelve el error, o `null` si se ha guardado (es lo que espera la lista). */
+  const ordenar = async (capacidad: Capacidad, ids: string[]): Promise<string | null> => {
+    const resultado = await ordenarGrupoPlantillasAccion(capacidad, ids);
+    if (!resultado.ok) {
+      setError(resultado.error);
+      return resultado.error;
+    }
+    setPlantillas(resultado.plantillas);
+    setError(null);
+    setAviso("Orden guardado.");
+    return null;
   };
+
+  /** Subir y bajar intercambian con la vecina y pasan por la misma acción que arrastrar. */
+  const mover = async (plantilla: PlantillaVista, direccion: -1 | 1) => {
+    const grupo = plantillas.filter((p) => p.capacidad === plantilla.capacidad).map((p) => p.id);
+    const desde = grupo.indexOf(plantilla.id);
+    const hasta = desde + direccion;
+    if (hasta < 0 || hasta >= grupo.length) return;
+    await ordenar(plantilla.capacidad, moverEnLista(grupo, desde, hasta));
+  };
+
+  const capacidades = [...new Set(plantillas.map((p) => p.capacidad))];
 
   return (
     <div className="flex flex-col gap-6">
@@ -77,120 +90,33 @@ export function VistaPlantillas({ inicial }: { inicial: PlantillaVista[] }) {
         />
       )}
 
-      <ul className="flex flex-col gap-4">
-        {plantillas.map((plantilla) => (
-          <li
-            key={plantilla.id}
-            className="flex flex-col gap-3 rounded-tarjeta border-2 border-borde bg-superficie p-5"
-          >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="flex flex-col gap-1">
-                <p className="flex flex-wrap items-center gap-2">
-                  <strong className="text-lg font-bold text-texto">{plantilla.nombre}</strong>
-                  <span className="font-mono text-sm text-texto-suave">{plantilla.clave}</span>
-                  <span className="rounded-full bg-elevada px-3 py-1 text-sm font-semibold text-texto">
-                    Versión {plantilla.version}
-                  </span>
-                  {plantilla.kind === "trend" && (
-                    <span className="rounded-full bg-elevada px-3 py-1 text-sm font-semibold text-texto">
-                      Trend · {plantilla.trendStatus}
-                    </span>
-                  )}
-                  {!plantilla.activa && (
-                    <span className="rounded-full bg-elevada px-3 py-1 text-sm font-semibold text-error">
-                      Desactivada
-                    </span>
-                  )}
-                </p>
-                <p className="text-texto-suave">{plantilla.descripcion}</p>
-                <p className="text-sm text-texto-suave">
-                  {ETIQUETA_CAPACIDAD[plantilla.capacidad]} · orden #{plantilla.orden}
-                  {plantilla.restricciones.minimoReferencias > 0
-                    ? ` · exige ${plantilla.restricciones.minimoReferencias} foto(s) de referencia`
-                    : ""}
-                  {plantilla.restricciones.modelos.length > 0
-                    ? ` · solo ${plantilla.restricciones.modelos.join(", ")}`
-                    : ""}
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Boton variante="fantasma" tamano="sm" onClick={() => void mover(plantilla, -1)}>
-                  Subir
-                </Boton>
-                <Boton variante="fantasma" tamano="sm" onClick={() => void mover(plantilla, 1)}>
-                  Bajar
-                </Boton>
-                <DialogoPlantilla
-                  key={`${plantilla.id}:${plantilla.actualizado}`}
-                  plantilla={plantilla}
-                  onResultado={alCambiar}
-                />
-                {plantilla.kind === "trend" && <DialogoDuplicarTrend plantilla={plantilla} onResultado={alCambiar} />}
-                {plantilla.kind === "trend" && plantilla.trendStatus !== "caducada" && (
-                  <DialogoCaducarTrend plantilla={plantilla} onResultado={alCambiar} />
-                )}
-                <Boton
-                  variante={plantilla.activa ? "secundario" : "primario"}
-                  tamano="sm"
-                  disabled={plantilla.trendStatus === "caducada"}
-                  onClick={async () => alCambiar(await activarPlantillaAccion(plantilla.id, !plantilla.activa))}
-                >
-                  {plantilla.activa ? "Desactivar" : "Activar"}
-                </Boton>
-              </div>
-            </div>
-
-            <pre className="overflow-x-auto whitespace-pre-wrap rounded-control bg-elevada p-3 font-mono text-sm text-texto">
-              {plantilla.plantilla}
-            </pre>
-
-            <ul className="flex flex-wrap gap-2">
-              {plantilla.variables.map((variable) => (
-                <li
-                  key={variable.nombre}
-                  className="rounded-full bg-elevada px-3 py-1 text-sm text-texto"
-                  title={ETIQUETA_TIPO_VARIABLE[variable.tipo]}
-                >
-                  <span className="font-mono">{variable.nombre}</span>
-                  <span className="text-texto-suave">
-                    {" "}
-                    ·{" "}
-                    {variable.categoria
-                      ? ETIQUETA_CATEGORIA[variable.categoria]
-                      : ETIQUETA_TIPO_VARIABLE[variable.tipo]}
-                    {variable.obligatoria ? " · obligatoria" : ""}
-                  </span>
-                </li>
-              ))}
-            </ul>
-
-            <Boton
-              variante="fantasma"
-              tamano="sm"
-              className="self-start"
-              onClick={() => void verHistorial(plantilla.id)}
-            >
-              {abierto === plantilla.id ? "Ocultar versiones" : "Ver versiones"}
-            </Boton>
-
-            {abierto === plantilla.id && (
-              <ol className="flex flex-col gap-2">
-                {(historiales[plantilla.id] ?? []).map((version) => (
-                  <li key={version.id} className="rounded-control bg-elevada p-3">
-                    <p className="font-semibold text-texto">
-                      Versión {version.numero} · {new Date(version.creadoEn).toLocaleString("es-ES")}
-                    </p>
-                    <p className="text-texto-suave">{version.motivo}</p>
-                    <pre className="mt-2 overflow-x-auto whitespace-pre-wrap font-mono text-sm text-texto">
-                      {version.plantilla}
-                    </pre>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </li>
-        ))}
-      </ul>
+      {capacidades.map((capacidad) => {
+        const grupo = plantillas.filter((p) => p.capacidad === capacidad);
+        return (
+          <section key={capacidad} aria-label={ETIQUETA_CAPACIDAD[capacidad]} className="flex flex-col gap-3">
+            <h2 className="text-2xl font-bold text-texto">{ETIQUETA_CAPACIDAD[capacidad]}</h2>
+            <ListaOrdenable
+              etiquetaLista={`Plantillas de ${ETIQUETA_CAPACIDAD[capacidad]}`}
+              className="flex flex-col gap-4"
+              onOrden={(ids) => ordenar(capacidad, ids)}
+              elementos={grupo.map((plantilla) => ({
+                clave: plantilla.id,
+                etiqueta: plantilla.nombre,
+                contenido: (
+                  <TarjetaPlantilla
+                    plantilla={plantilla}
+                    abierto={abierto === plantilla.id}
+                    historial={historiales[plantilla.id] ?? []}
+                    onMover={(direccion) => void mover(plantilla, direccion)}
+                    onHistorial={() => void verHistorial(plantilla.id)}
+                    onResultado={alCambiar}
+                  />
+                ),
+              }))}
+            />
+          </section>
+        );
+      })}
     </div>
   );
 }
