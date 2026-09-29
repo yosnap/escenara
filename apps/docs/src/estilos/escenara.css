@@ -138,21 +138,31 @@ figure.diagrama svg {
   color: transparent;
 }
 
-/* Acordeones de las guías (<details><summary>): un motivo por bloque, cerrado hasta que se pulsa. */
+/*
+ * Acordeones de las guías (<details><summary>): un motivo por bloque, cerrado hasta que se pulsa.
+ * Starlight pone a <details> un borde izquierdo y un relleno interior, y desplaza <summary> hacia fuera; aquí se
+ * anulan para que el fondo del hover cubra el título entero, hasta el borde, con las esquinas redondeadas.
+ */
 .sl-markdown-content details {
   margin-block: 0.6rem;
+  padding: 0;
   border: 1px solid var(--sl-color-gray-5);
   border-radius: 0.75rem;
   background: var(--sl-color-gray-6);
   overflow: clip;
 }
 
+.sl-markdown-content details:hover,
+.sl-markdown-content details:has(> summary:focus-visible) {
+  border-color: var(--sl-color-accent);
+}
+
 .sl-markdown-content details > summary {
-  cursor: pointer;
+  margin: 0;
   padding: 0.8rem 1rem;
+  cursor: pointer;
   font-weight: 700;
   color: var(--sl-color-white);
-  list-style-position: inside;
 }
 
 .sl-markdown-content details > summary:hover {
@@ -165,6 +175,7 @@ figure.diagrama svg {
 }
 
 .sl-markdown-content details[open] > summary {
+  margin-bottom: 0;
   border-bottom: 1px solid var(--sl-color-gray-5);
 }
 
