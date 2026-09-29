@@ -7,6 +7,7 @@ import { generationJobs, usageLedger } from "../db/esquema";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { consultarTrabajo } from "../generacion/seguimiento";
 import { limpiarLimitesCaducados } from "../limite";
+import { pasadaDeExportaciones } from "../montaje/cola";
 import { cerrarGasto } from "../presupuesto/reserva";
 import { purgarTraduccionesViejas } from "../prompts/traduccion";
 import { proveedoresConAdaptador } from "../proveedores/registro";
@@ -40,6 +41,8 @@ const detalle = (error: unknown) => (error instanceof Error ? error.message : St
 export interface ResultadoPasada {
   /** Trabajos que han salido hacia el proveedor en esta pasada. */
   enviados: number;
+  /** Exportaciones de montaje montadas en esta pasada (0.32.0). No cuestan créditos: son FFmpeg local. */
+  montadas: number;
   /** Trabajos ya enviados que han cambiado de estado al consultarlos. */
   avanzados: number;
   /** Trabajos rescatados de un worker caído o cerrados por haberse quedado a medias. */
@@ -227,6 +230,15 @@ export async function pasadaDeCola(
   }
   const enviados = await enviarEncolados(h, workerId);
   const avanzados = await avanzarEnviados(h);
+  /**
+   * Exportaciones de montaje (0.32.0). Van **después** de atender al proveedor a propósito: un render ocupa la CPU
+   * de esta máquina durante minutos, y lo que no puede esperar es un trabajo que ya está pagado esperando turno.
+   * No cuesta créditos y nunca interrumpe la pasada: un montaje que falla queda apuntado con su causa.
+   */
+  const montadas = await pasadaDeExportaciones(workerId).catch((error) => {
+    console.error(`[cola] pasada de exportaciones: ${detalle(error)}`);
+    return 0;
+  });
   const reservasSueltas = await barrerReservasHuerfanas();
   // Traducciones que nadie usa desde hace tiempo: la caché existe para no pagar dos veces, no para guardar texto
   // de alguien para siempre.
@@ -246,6 +258,7 @@ export async function pasadaDeCola(
   });
   return {
     enviados,
+    montadas,
     avanzados,
     recuperados: aSeguimiento + cerrados + enRevision + abandonadas,
     reservasSueltas: reservasSueltas + textosColgados + revisionesColgadas,

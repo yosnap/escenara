@@ -1,7 +1,6 @@
-import type { TipoTrabajoCola } from "@/lib/generacion";
 import { db } from "../db/cliente";
 import { controlEvaluations, type ReglaDisparada } from "../db/esquema";
-import type { Evaluacion, SujetoControl } from "./contrato";
+import type { Evaluacion, SujetoControl, TipoEvaluado } from "./contrato";
 
 /**
  * Guarda la evaluación que ha decidido si algo se encolaba o no. Es el registro auditable de RF12 y la base
@@ -15,9 +14,9 @@ import type { Evaluacion, SujetoControl } from "./contrato";
 export interface SujetoDeEvaluacion {
   usuarioId: string;
   sujeto: SujetoControl;
-  /** Escena que se produce, o `null` en el camino rápido de «Crear». */
+  /** Escena que se produce, montaje que se exporta, o `null` en el camino rápido de «Crear». */
   sujetoId: string | null;
-  tipo: TipoTrabajoCola;
+  tipo: TipoEvaluado;
 }
 
 export async function registrarEvaluacion(

@@ -59,6 +59,38 @@ Consecuencias que hay que sostener:
 Queda pendiente para la política de privacidad: nombrar KIE como **encargado del tratamiento** también para texto,
 no solo para imagen y vídeo, y decir el plazo de conservación de las traducciones.
 
+## La etiqueta de contenido sintético en lo que se exporta (0.32.0)
+
+Desde la 0.32.0 Escenara **entrega el vídeo terminado**. El [artículo 50 del Reglamento de IA de la UE](https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-50),
+aplicable desde el 2 de agosto de 2026, distingue la divulgación de contenidos que constituyen una falsificación
+ultrarrealista por quien los utiliza de la marca legible por máquina que puede corresponder al proveedor del sistema.
+La etiqueta visible de Escenara es una medida de transparencia del producto, **no una declaración de cumplimiento
+integral** de ambas obligaciones.
+
+Cómo se cumple, y hasta dónde:
+
+- **El rótulo es fijo y lo dibuja el servidor.** Dice `Contenido generado con IA`, se compone dentro del propio
+  render y no viaja como texto del usuario: no se puede sustituir por otra frase ni por una imagen.
+- **La etiqueta es obligatoria en toda exportación por diseño del producto.** Cuenta igual una persona real, una
+  inventada o un personaje completamente animado. Esto no presupone que todos esos casos encajen jurídicamente
+  en la definición de falsificación ultrarrealista. Lo impide el servidor al guardar el montaje, no la pantalla.
+- **Se elige la posición, no la existencia**: arriba o abajo, siempre dentro de la zona segura para que la interfaz
+  de la plataforma no la tape.
+- **Sin poder dibujarla no se exporta.** Si a la instalación le falta una fuente o el soporte de texto de FFmpeg, la
+  exportación se detiene con el motivo. Entregar el MP4 sin etiqueta contradiría la regla de transparencia que
+  Escenara aplica a todos los vídeos que exporta.
+- **Lo que la etiqueta no es.** No es una marca legible por máquina ni una firma de procedencia: **C2PA y los
+  metadatos de procedencia quedan para la 0.41.0**. Hasta entonces un vídeo recortado puede perder el rótulo sin
+  dejar rastro comprobable; la obligación que resulte aplicable a cada operador requiere una revisión separada.
+- **No sustituye a la declaración de la plataforma.** TikTok, Reels y Shorts piden marcar el contenido generado con
+  IA al publicar. La guía de usuario lo dice, pero Escenara **no puede comprobarlo**, porque no publica por ti.
+- **También en vídeos sin personas o completamente animados es obligatoria.** El propietario mantendrá esta regla
+  hasta la revisión legal prevista para la 0.41.0.
+
+Queda pendiente para los documentos públicos: describir esta etiqueta en la **guía de etiquetado de contenido
+sintético** de la lista de abajo, y decir que la obligación de declarar en la plataforma sigue siendo de quien
+publica.
+
 ## Documentos públicos necesarios antes de 1.0.0
 
 Para cantar con audio propio, la persona que sube el archivo declara si es música propia, música con licencia

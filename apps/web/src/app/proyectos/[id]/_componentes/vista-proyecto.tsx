@@ -76,6 +76,12 @@ export function VistaProyecto({
               Producir las escenas
             </Link>
           )}
+          {/* Montar es el paso siguiente a producir, así que se ofrece desde el mismo sitio (0.32.0). */}
+          {proyecto.estado !== "borrador" && (
+            <Link href={`/proyectos/${proyecto.id}/montaje`} className={claseBoton("secundario", "sm")}>
+              Montaje y exportación
+            </Link>
+          )}
           <Link href="/crear/historial" className={claseBoton("secundario", "sm")}>
             Historial de trabajos
           </Link>

@@ -221,8 +221,7 @@ export interface Ajustes {
   /**
    * **Cantar con audio propio** (RF06 y RF10, 0.29.0). Los cuatro ajustes de la función; la declaración de
    * derechos **no** es configurable a propósito: es una puerta de derechos, no un umbral.
-   */
-  /**
+   *
    * Ofrecer el formato «cantar». **Apagado de fábrica**: cuesta créditos por segundo de audio y ningún modelo
    * de canto está medido con dinero real en esta instalación, así que encenderlo es una decisión con coste.
    * Apagarlo deja de ofrecerlo y de generarlo, pero **no borra** ninguna declaración ya registrada.
@@ -245,6 +244,17 @@ export interface Ajustes {
    * fábrica (3 frente a 12 créditos/s): si alguien quiere gastar más por más resolución, que sea decidiéndolo.
    */
   cantoResolucion: string;
+  /**
+   * **Montaje y exportación** (RF08, 0.32.0). Encendido de fábrica: el render pasa por FFmpeg en la propia
+   * máquina, **no gasta créditos** y es el final del camino de esta versión. Se apaga desde el panel si una
+   * instalación prefiere montar los clips con sus propias herramientas, y apagarlo no borra ningún montaje ya
+   * guardado ni ninguna exportación ya hecha.
+   *
+   * Aunque esté encendido hace falta **FFmpeg instalado**: es una dependencia del entorno, igual que para la
+   * revisión de continuidad (0.20.0) y para la transcripción (0.21.0). Si falta, la pantalla lo dice con el
+   * mensaje de instalación y no ofrece exportar.
+   */
+  montajeActivo: boolean;
   /**
    * Orden del transcriptor local, que es el que saca los subtítulos del audio (decisión provisional del
    * propietario, 2026-09-28: **local, sin coste y sin clave**). `whisper-cli` es el binario de `whisper.cpp`
@@ -383,6 +393,8 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   cantoModelo: MODELO_CANTO_POR_DEFECTO,
   cantoSegundosMaximos: SEGUNDOS_CANTO_POR_DEFECTO,
   cantoResolucion: "480p",
+  // El montaje arranca **encendido**: no gasta créditos y es lo que cierra el recorrido de esta versión.
+  montajeActivo: true,
   transcripcionBinario: "whisper-cli",
   transcripcionModelo: "",
   minimoReferenciasPersonaje: 3,
@@ -570,6 +582,7 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
     valido: esResolucionCanto,
     mensaje: `Elige la resolución del clip cantado: ${RESOLUCIONES_CANTO.join(" o ")}.`,
   },
+  montajeActivo: { valido: booleano, mensaje: "Debe ser sí o no." },
   transcripcionBinario: {
     // Nombre de orden o ruta, sin espacios ni metacaracteres: se ejecuta como proceso, así que aquí se acota lo
     // que puede llegar a ser un argumento del intérprete de órdenes.

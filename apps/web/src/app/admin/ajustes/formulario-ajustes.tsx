@@ -20,6 +20,7 @@ import { SeccionCanto } from "./seccion-canto";
 import { SeccionCoherencia } from "./seccion-coherencia";
 import { SeccionControles } from "./seccion-controles";
 import { SeccionDosPersonajes } from "./seccion-dos-personajes";
+import { SeccionMontaje } from "./seccion-montaje";
 import { SeccionPresupuesto } from "./seccion-presupuesto";
 import { SeccionRevision } from "./seccion-revision";
 import { SeccionVoz } from "./seccion-voz";
@@ -275,6 +276,9 @@ export function FormularioAjustes({
       />
       <SeccionVoz valores={valores} errorDe={errorDe} onCambio={cambiar} />
       <SeccionCanto valores={valores} errorDe={errorDe} onCambio={cambiar} />
+
+      {/* Después de la voz: montar es lo último del recorrido de un proyecto (0.32.0). */}
+      <SeccionMontaje valores={valores} onCambio={cambiar} />
 
       <SeccionPresupuesto
         valores={valores}

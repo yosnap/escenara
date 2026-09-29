@@ -120,6 +120,10 @@ export function VistaProduccion({ inicial }: { inicial: ProduccionVista }) {
           <Link href={`/proyectos/${produccion.proyectoId}/voz`} className={claseBoton("secundario", "sm")}>
             Voz y subtítulos
           </Link>
+          {/* El paso siguiente cuando ya hay clips: montarlos y exportar el MP4 (0.32.0). No cuesta créditos. */}
+          <Link href={`/proyectos/${produccion.proyectoId}/montaje`} className={claseBoton("secundario", "sm")}>
+            Montaje y exportación
+          </Link>
           <Link href="/crear/historial" className={claseBoton("secundario", "sm")}>
             Historial de trabajos
           </Link>

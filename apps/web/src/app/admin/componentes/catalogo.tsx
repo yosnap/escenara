@@ -12,6 +12,7 @@ import { SeccionFormularios } from "./secciones/formularios";
 import { SeccionGeneracion } from "./secciones/generacion";
 import { SeccionMediaPicker } from "./secciones/media-picker";
 import { SeccionModelos } from "./secciones/modelos";
+import { SeccionMontaje } from "./secciones/montaje";
 import { SeccionMovimiento } from "./secciones/movimiento";
 import { SeccionPersonajes } from "./secciones/personajes";
 import { SeccionPresets } from "./secciones/presets";
@@ -36,6 +37,7 @@ const INDICE = [
   ["proyectos", "Proyectos y plan"],
   ["anuncio", "Estrategia del anuncio"],
   ["reparto", "Dos personajes"],
+  ["montaje", "Montaje y exportación"],
   ["cuentas", "Cuentas"],
   ["secretos", "Secretos"],
   ["estados", "Estados y presupuesto"],
@@ -82,6 +84,7 @@ export function Catalogo() {
         <SeccionProyectos />
         <SeccionAnuncio />
         <SeccionReparto />
+        <SeccionMontaje />
         <SeccionCuentas />
         <SeccionSecretos />
         <SeccionEstados />
