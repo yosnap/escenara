@@ -184,6 +184,8 @@ export interface CantoVista {
   coste: CosteCantoVista | null;
   /** Todo lo que impide generar. Vacío = se puede pedir. */
   impedimentos: ImpedimentoCanto[];
+  /** Avisos que se pueden aceptar expresamente al confirmar el coste. */
+  avisos: { regla: string; motivo: string }[];
 }
 
 /** Coste de un clip cantado, con de dónde sale su precio. Siempre se enseña etiquetado como estimación. */

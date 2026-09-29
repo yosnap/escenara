@@ -1,12 +1,12 @@
 {
   "name": "@escenara/web",
-  "version": "0.27.1",
+  "version": "0.29.0",
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "module",
   "scripts": {
     "dev": "bun --bun next dev --port 3021",
-    "build": "bun --bun next build",
+    "build": "bun --bun next build --webpack",
     "start": "bun --bun next start --port 3021",
     "worker": "bun scripts/worker.ts",
     "typecheck": "tsc --noEmit",

@@ -1,10 +1,11 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { type ModeloCanto, segundosFacturados } from "@/lib/canto";
 import { MIME_ADMITIDOS } from "@/lib/media/reglas";
+import { motivoDeInvalidacion } from "@/lib/proyectos";
 import { cantoDe, leerAjustes } from "../ajustes";
 import { escenaPropia } from "../asistente/consulta";
 import { db } from "../db/cliente";
-import { type FilaEscena, type FilaMedio, type FilaProyecto, media, scenes } from "../db/esquema";
+import { type FilaEscena, type FilaMedio, type FilaProyecto, media, projects, scenes } from "../db/esquema";
 import type { Actor } from "../media/servicio";
 import { duracionDeAudio } from "./duracion";
 import { ErrorCanto } from "./errores";
@@ -85,6 +86,37 @@ export interface AudioDeLaEscena {
   facturados: number | null;
 }
 
+/** Cambiar el audio cambia el coste y el contenido aprobado del plan. */
+async function guardarAudio(escena: FilaEscena, medioId: string | null): Promise<FilaEscena> {
+  if (escena.singingAudioMediaId === medioId) return escena;
+  return db().transaction(async (tx) => {
+    const [actualizada] = await tx
+      .update(scenes)
+      .set({
+        singingAudioMediaId: medioId,
+        ...(escena.state === "aprobada"
+          ? {
+              state: "borrador" as const,
+              approvedAt: null,
+              invalidationReason: motivoDeInvalidacion("Has cambiado el audio de canto"),
+            }
+          : {}),
+        ...(escena.clipMediaId !== null ? { changedSinceGeneration: true } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(scenes.id, escena.id))
+      .returning();
+    if (!actualizada) throw new ErrorCanto(500, "No se ha podido guardar el audio de esta escena.");
+    if (escena.state === "aprobada") {
+      await tx
+        .update(projects)
+        .set({ state: "borrador", planApprovedAt: null, planApprovedBy: null, updatedAt: new Date() })
+        .where(and(eq(projects.id, escena.projectId), eq(projects.state, "planificado")));
+    }
+    return actualizada;
+  });
+}
+
 /**
  * Audio de canto de la escena, con su duración medida. `null` si la escena no tiene ninguno **o si el medio ya
  * no está**: un audio borrado deja la escena sin él, y eso es lo que la puerta cuenta como «falta elegirlo».
@@ -114,7 +146,6 @@ export async function elegirAudioDeCanto(
   medioId: unknown,
 ): Promise<{ escena: FilaEscena; proyecto: FilaProyecto; audio: AudioDeLaEscena }> {
   const { escena, proyecto } = await escenaPropia(actor, escenaId);
-  await exigirCantoActivo();
   const medio = await audioPropio(actor.id, medioId);
   const { modelo, segundosMaximos } = cantoDe(await leerAjustes());
   const motivoIncompatible = motivoAudioIncompatible(medio, modelo);
@@ -132,12 +163,7 @@ export async function elegirAudioDeCanto(
       `Este audio dura ${duracion.toLocaleString("es-ES", { maximumFractionDigits: 1 })} s y el tope de esta instalación es de ${segundosMaximos} s, que es el tramo con el que el proveedor publica su tarifa. Recórtalo a ${segundosMaximos} s como máximo y vuelve a subirlo, o reparte la canción en varias escenas de ${segundosMaximos} s. No se ha elegido nada y no se te ha cobrado.`,
     );
   }
-  const [actualizada] = await db()
-    .update(scenes)
-    .set({ singingAudioMediaId: medio.id, updatedAt: new Date() })
-    .where(eq(scenes.id, escena.id))
-    .returning();
-  if (!actualizada) throw new ErrorCanto(500, "No se ha podido guardar el audio de esta escena.");
+  const actualizada = await guardarAudio(escena, medio.id);
   return {
     escena: actualizada,
     proyecto,
@@ -154,25 +180,6 @@ export async function quitarAudioDeCanto(
   escenaId: unknown,
 ): Promise<{ escena: FilaEscena; proyecto: FilaProyecto }> {
   const { escena, proyecto } = await escenaPropia(actor, escenaId);
-  const [actualizada] = await db()
-    .update(scenes)
-    .set({ singingAudioMediaId: null, updatedAt: new Date() })
-    .where(eq(scenes.id, escena.id))
-    .returning();
-  if (!actualizada) throw new ErrorCanto(500, "No se ha podido quitar el audio de esta escena.");
+  const actualizada = await guardarAudio(escena, null);
   return { escena: actualizada, proyecto };
-}
-
-/**
- * El canto está encendido en esta instalación. Se comprueba **antes de escribir**, no al leer: apagarlo deja de
- * ofrecerlo y de generarlo, pero no borra ninguna escena ni ninguna declaración ya hecha, que sería perder
- * trabajo de alguien por un interruptor.
- */
-export async function exigirCantoActivo(): Promise<void> {
-  if (!cantoDe(await leerAjustes()).activo) {
-    throw new ErrorCanto(
-      409,
-      "El formato «cantar con tu audio» está desactivado en esta instalación. Quien la administra puede encenderlo en Admin › Ajustes.",
-    );
-  }
 }

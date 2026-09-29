@@ -233,6 +233,7 @@ function vistaDeEscena(
   const vigentes = [fotograma?.id, animacion?.id].filter((id): id is string => id !== undefined);
   return {
     id: fila.id,
+    formatoClip: fila.clipFormat,
     orden: fila.sortOrder,
     resumen: resumenDeEscena({ accion: fila.action, texto: fila.scriptText, orden: fila.sortOrder }),
     estado: fila.state,
@@ -274,6 +275,7 @@ export const escenasPorProducir = (
   const trabajo = (e: EscenaProduccionVista) => (modo === "omni" ? e.animacion : e.fotograma);
   return escenas.filter(
     (e) =>
+      e.formatoClip !== "cantar" &&
       e.estado !== "borrador" &&
       !trabajoEnMarcha(trabajo(e)) &&
       !(trabajo(e)?.estado === "listo" && trabajo(e)?.medio !== null) &&

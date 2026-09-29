@@ -18,6 +18,7 @@ import {
   puedeAprobarse,
 } from "@/lib/proyectos";
 import { type Ajustes, eurosPorCreditoDe, leerAjustes } from "../ajustes";
+import { estimacionCantoDelPlan } from "../canto/estimacion-plan";
 import type { HechosEscena, ParametrosControles } from "../controles/contrato";
 import { REGLAS_VERSION } from "../controles/contrato";
 import { parametrosDeControles } from "../controles/hechos";
@@ -146,6 +147,18 @@ const estimacionONula = (escena: FilaEscena, elecciones: EleccionesDelPlan, ajus
     throw error;
   }
 };
+
+/** El canto se estima con el audio elegido; los demás formatos conservan el cálculo anterior. */
+async function estimacionDelFormato(
+  escena: FilaEscena,
+  usuarioId: string,
+  elecciones: EleccionesDelPlan,
+  ajustes: Ajustes,
+): Promise<EstimacionEscena | null> {
+  return escena.clipFormat === "cantar"
+    ? estimacionCantoDelPlan(escena, usuarioId, ajustes)
+    : estimacionONula(escena, elecciones, ajustes);
+}
 
 const vistaAfirmacion = (fila: FilaAfirmacion): AfirmacionVista => ({
   id: fila.id,
@@ -444,12 +457,12 @@ export async function listarProyectos(actor: Actor): Promise<ProyectoVista[]> {
   ]);
   const escenasPorProyecto = await escenasDeProyectos(filas.map((f) => f.id));
   return Promise.all(
-    filas.map((fila) => {
+    filas.map(async (fila) => {
       const suyas = escenasPorProyecto.get(fila.id) ?? [];
-      const total = suyas.reduce(
-        (suma, escena) => suma + (estimacionONula(escena, elecciones, ajustes)?.creditos ?? 0),
-        0,
+      const estimaciones = await Promise.all(
+        suyas.map((escena) => estimacionDelFormato(escena, actor.id, elecciones, ajustes)),
       );
+      const total = estimaciones.reduce((suma, estimacion) => suma + (estimacion?.creditos ?? 0), 0);
       return vistaDeProyecto(fila, suyas.length, total);
     }),
   );
@@ -487,12 +500,19 @@ export async function detalleProyecto(actor: Actor, id: unknown): Promise<Proyec
     contextoDeControles(actor, fila, elecciones),
   ]);
   const fotogramas = await fotogramasDeEscenas(actor, filasEscena, trabajos);
+  const estimaciones = new Map(
+    await Promise.all(
+      filasEscena.map(
+        async (escena) => [escena.id, await estimacionDelFormato(escena, actor.id, elecciones, ajustes)] as const,
+      ),
+    ),
+  );
   const escenasVista = filasEscena.map((escena) =>
     vistaEscena(
       escena,
       afirmaciones,
       trabajos.get(escena.id) ?? null,
-      estimacionONula(escena, elecciones, ajustes),
+      estimaciones.get(escena.id) ?? null,
       // Los controles de la escena se evalúan con el **mismo motor** que cierra la puerta al producirla, con
       // datos que ya están cargados: ni una consulta más por escena.
       evaluarParaMostrar({
@@ -551,18 +571,19 @@ export async function aprobarPlan(actor: Actor, id: unknown, peticion: PeticionA
     const [fila] = await tx.select().from(projects).where(eq(projects.id, proyectoId)).limit(1).for("update");
     if (!fila) throw new ErrorProyecto(404, "Ese proyecto no existe.");
     const filasEscena = await escenasDe(proyectoId, tx);
+    const estimaciones = new Map(
+      await Promise.all(
+        filasEscena.map(
+          async (escena) => [escena.id, await estimacionDelFormato(escena, actor.id, elecciones, ajustes)] as const,
+        ),
+      ),
+    );
     const ids = filasEscena.map((e) => e.id);
     const afirmaciones = ids.length === 0 ? [] : await tx.select().from(claims).where(inArray(claims.sceneId, ids));
     const escenasVista = filasEscena.map((escena) =>
       // Aquí solo interesa el coste: la aprobación se está decidiendo en esta misma transacción, así que los
       // controles de la escena se dejan vacíos y los recalcula `detalleProyecto` al devolver el resultado.
-      vistaEscena(
-        escena,
-        afirmaciones,
-        null,
-        estimacionONula(escena, elecciones, ajustes),
-        EVALUACION_LISTA(REGLAS_VERSION),
-      ),
+      vistaEscena(escena, afirmaciones, null, estimaciones.get(escena.id) ?? null, EVALUACION_LISTA(REGLAS_VERSION)),
     );
     // El presupuesto que se está fijando es el que manda en la comprobación, no el que había guardado.
     const plan = planDeEscenas(
@@ -581,7 +602,7 @@ export async function aprobarPlan(actor: Actor, id: unknown, peticion: PeticionA
 
     const ahora = new Date();
     for (const escena of filasEscena) {
-      const estimacion = estimacionONula(escena, elecciones, ajustes);
+      const estimacion = estimaciones.get(escena.id) ?? null;
       if (!estimacion) continue;
       await tx
         .update(scenes)
@@ -589,8 +610,9 @@ export async function aprobarPlan(actor: Actor, id: unknown, peticion: PeticionA
           state: escena.state === "producida" ? "producida" : "aprobada",
           approvedBy: actor.id,
           approvedAt: ahora,
-          approvedFrameModel: elecciones.fotograma?.modelo.modelo ?? "",
-          approvedAnimationModel: elecciones.animacion?.modelo.modelo ?? "",
+          approvedFrameModel: escena.clipFormat === "cantar" ? "" : (elecciones.fotograma?.modelo.modelo ?? ""),
+          approvedAnimationModel:
+            escena.clipFormat === "cantar" ? ajustes.cantoModelo : (elecciones.animacion?.modelo.modelo ?? ""),
           approvedFrameStamp: estimacion.selloFotograma,
           approvedAnimationStamp: estimacion.selloAnimacion,
           approvedCharacterVersionId: congelado.versionPersonaje,

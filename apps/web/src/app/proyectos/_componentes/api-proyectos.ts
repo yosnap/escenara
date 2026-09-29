@@ -40,6 +40,8 @@ export const crearProyecto = (datos: NuevoProyecto) => pedir<ProyectoDetalle>("/
 export const editarProyecto = (id: string, cambios: Record<string, unknown>) =>
   pedir<ProyectoDetalle>(`/api/proyectos/${id}`, json("PATCH", cambios));
 
+export const consultarProyecto = (id: string) => pedir<ProyectoDetalle>(`/api/proyectos/${id}`);
+
 export const anadirEscena = (proyectoId: string, datos: Record<string, unknown>) =>
   pedir<ProyectoDetalle>(`/api/proyectos/${proyectoId}/escenas`, json("POST", datos));
 

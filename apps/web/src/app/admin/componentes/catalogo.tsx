@@ -2,6 +2,7 @@
 
 import { SeccionAcciones } from "./secciones/acciones";
 import { SeccionAnuncio } from "./secciones/anuncio";
+import { SeccionCanto } from "./secciones/canto";
 import { SeccionControles } from "./secciones/controles";
 import { SeccionCreador } from "./secciones/creador";
 import { SeccionCuentas } from "./secciones/cuentas";
@@ -30,6 +31,7 @@ const INDICE = [
   ["personajes", "Personajes"],
   ["presets", "Presets y prompt"],
   ["direccion", "Dirección del clip"],
+  ["canto", "Cantar con audio propio"],
   ["proyectos", "Proyectos y plan"],
   ["anuncio", "Estrategia del anuncio"],
   ["cuentas", "Cuentas"],
@@ -74,6 +76,7 @@ export function Catalogo() {
         <SeccionPersonajes />
         <SeccionPresets />
         <SeccionDireccion />
+        <SeccionCanto />
         <SeccionProyectos />
         <SeccionAnuncio />
         <SeccionCuentas />

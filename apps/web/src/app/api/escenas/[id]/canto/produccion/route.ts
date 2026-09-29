@@ -1,8 +1,10 @@
+import { falloConCoste } from "@/lib/produccion";
 import { vistaDelCanto } from "@/server/canto/consulta";
+import { ErrorCanto } from "@/server/canto/errores";
 import { escenaDeCantoPropia, producirEscenaCantada } from "@/server/canto/escena";
 import { type ContextoId, leerCuerpo, leerId, manejador } from "@/server/canto/http";
 import { marcarEnProduccion } from "@/server/produccion/cierre";
-import { estadoDeProduccion } from "@/server/produccion/consulta";
+import { estadoDeProduccion, ultimoTrabajoDeEscena } from "@/server/produccion/consulta";
 import { leerConfirmacion } from "@/server/produccion/entrada";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +28,14 @@ export const POST = manejador(async (peticion: Request, contexto: ContextoId, ac
   const confirmacion = leerConfirmacion(cuerpo);
   const id = await leerId(contexto);
   const { escena, proyecto } = await escenaDeCantoPropia(actor, id);
+  const anterior = await ultimoTrabajoDeEscena(escena.id, "animacion");
+  const reintentoDeEscena = anterior?.state === "fallido" && falloConCoste(anterior.failureReason);
+  if (reintentoDeEscena && escena.retriesUsed >= escena.retryBudget) {
+    throw new ErrorCanto(
+      409,
+      `El clip anterior pudo haberse cobrado. Autoriza un reintento para esta escena antes de pedir otro (llevas ${escena.retriesUsed} de ${escena.retryBudget}). No se ha reservado nada.`,
+    );
+  }
   const { trabajo, nueva } = await producirEscenaCantada(actor, escena, proyecto, {
     derechos: confirmacion.derechos,
     sinTerceros: confirmacion.sinTerceros,
@@ -34,6 +44,7 @@ export const POST = manejador(async (peticion: Request, contexto: ContextoId, ac
     claveIdempotencia: confirmacion.claveIdempotencia,
     avisoUmbralAceptado: confirmacion.avisoUmbralAceptado,
     avisosConfirmados: confirmacion.avisosConfirmados,
+    reintentoDeEscena,
   });
   // El proyecto pasa a estar en producción, igual que con cualquier otra escena que se encola.
   await marcarEnProduccion(proyecto.id);

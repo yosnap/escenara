@@ -60,4 +60,10 @@ no solo para imagen y vídeo, y decir el plazo de conservación de las traduccio
 
 ## Documentos públicos necesarios antes de 1.0.0
 
+Para cantar con audio propio, la persona que sube el archivo declara si es música propia, música con licencia
+(identificando la licencia) o audio hablado propio. Se registra el texto aceptado, su fecha y la IP. Esta declaración
+no verifica la titularidad ni sustituye la autorización de imagen y voz del personaje. La generación queda bloqueada
+si falta cualquiera de las dos autorizaciones. La política pública deberá explicar que el audio y el retrato se
+transmiten al proveedor de generación al confirmar el clip, además de su conservación y borrado.
+
 Términos de uso, política de privacidad, política de contenido aceptable, política de cookies (si aplica), plantilla de consentimiento de imagen y voz para terceros y guía de etiquetado de contenido sintético.

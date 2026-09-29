@@ -85,6 +85,9 @@ export async function vistaDelCanto(actor: Actor, escena: FilaEscena, proyecto: 
     },
     coste,
     impedimentos,
+    avisos: evaluacion.frenos
+      .filter((f) => f.gatea && f.confirmable)
+      .map((f) => ({ regla: f.regla, motivo: f.motivo })),
   };
 }
 
