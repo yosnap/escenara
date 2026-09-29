@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun --bun next dev --port 3021",
-    "build": "bun --bun next build",
+    "build": "bun --bun next build --webpack",
     "start": "bun --bun next start --port 3021",
     "worker": "bun scripts/worker.ts",
     "typecheck": "tsc --noEmit",
