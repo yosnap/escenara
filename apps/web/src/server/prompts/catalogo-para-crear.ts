@@ -6,6 +6,7 @@ import {
   recortarPlantillaVisible,
   recortarPresetVisible,
 } from "@/lib/presets";
+import { leerAjustes } from "../ajustes";
 import { resolver } from "../proveedores/registro";
 import { limitesDelModelo, motivoDelPreset } from "./compatibilidad";
 import { listarPlantillas, listarPresets } from "./consulta";
@@ -36,12 +37,23 @@ export async function catalogoParaCrear(
 ): Promise<CatalogoParaCrear> {
   const capacidad = tipo === "fotograma" && modo.sinReferencia ? "text_to_image" : CAPACIDAD_DE_TIPO[tipo];
   const { modelo } = await resolver(capacidad, modeloPedido ?? null);
-  const [todos, plantillas] = await Promise.all([listarPresets({ usuarioId }), listarPlantillas({ usuarioId })]);
+  const [todos, plantillas, ajustes] = await Promise.all([
+    listarPresets({ usuarioId }),
+    listarPlantillas({ usuarioId }),
+    leerAjustes(),
+  ]);
   const activos = todos.filter((p) => p.activo).map(recortarPresetVisible);
   return {
     presets: activos,
     incompatibles: motivosPorPreset(activos, modelo, modo.segundos),
-    plantillas: plantillas.filter((p) => p.activa && p.capacidad === capacidad).map(recortarPlantillaVisible),
+    plantillas: plantillas
+      .filter(
+        (p) =>
+          p.activa &&
+          p.capacidad === capacidad &&
+          (p.kind === "base" || (p.deLaInstalacion && ajustes.trendsVisibles && p.trendStatus === "vigente")),
+      )
+      .map(recortarPlantillaVisible),
     modelo: modelo.modelo,
     limites: limitesDelModelo(modelo, modo.segundos),
   };

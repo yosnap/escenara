@@ -33,6 +33,12 @@ if (hayBaseDeDatos) {
 
 const { and, eq, isNull } = await import("drizzle-orm");
 const rutaCatalogo = await import("@/app/api/prompts/catalogo/route");
+const rutaTrends = await import("@/app/api/prompts/trends/route");
+const rutaDetalleTrend = await import("@/app/api/prompts/trends/[id]/route");
+const rutaAdminTrends = await import("@/app/api/admin/trends/route");
+const rutaAdminTrend = await import("@/app/api/admin/trends/[id]/route");
+const rutaCaducarTrend = await import("@/app/api/admin/trends/[id]/caducar/route");
+const rutaDuplicarTrend = await import("@/app/api/admin/trends/[id]/duplicar/route");
 const rutaDuplicar = await import("@/app/api/prompts/presets/[id]/duplicar/route");
 const rutaPreset = await import("@/app/api/prompts/presets/[id]/route");
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
@@ -48,6 +54,7 @@ const {
 const { guardarCredencial } = await import("../boveda/credenciales");
 const { crearMedio } = await import("../media/servicio");
 const { crearAnimacion, crearFotograma } = await import("../generacion/servicio");
+const { estimar } = await import("../generacion/estimacion");
 const { pasadaDeCola } = await import("../cola/pasada");
 const { listarPlantillas, listarPresets, listarPresetsDeLaInstalacion } = await import("./consulta");
 const { duplicarPreset, editarPresetDeLaInstalacion, editarPresetPropio } = await import("./presets-admin");
@@ -269,6 +276,139 @@ describe.skipIf(!hayBaseDeDatos)("presets y plantillas de prompt", () => {
       expect(plantilla.version).toBeGreaterThanOrEqual(1);
       expect(plantilla.versionId).not.toBe("");
       expect(plantilla.deLaInstalacion).toBe(true);
+    }
+  });
+
+  test("admin publica un trend sin desplegar, usuario confirma el coste y la caducidad lo bloquea", async () => {
+    const admin = await crearSesionDePrueba("admin");
+    const inicial = await catalogo(ana, "animacion");
+    expect(inicial.plantillas.some((p) => p.kind === "base")).toBe(true);
+    expect(inicial.plantillas.every((p) => p.kind === "base")).toBe(true);
+    const clave = `trend-prueba-${crypto.randomUUID().slice(0, 8)}`;
+    const duplicada = `${clave}-copia`;
+    const datos = {
+      clave,
+      nombre: "Rutina con objeto",
+      descripcion: "Un gesto cotidiano en una toma sin cortes.",
+      capacidad: "image_to_video",
+      plantilla: "A quiet morning action in one shot: {{escena}}. Natural setting.",
+      variables: [{ nombre: "escena", tipo: "texto", etiqueta: "Escena", obligatoria: true }],
+      restricciones: { modelos: [], minimoReferencias: 1 },
+      orden: 990,
+      activa: true,
+      kind: "trend",
+      trendStatus: "revision",
+      trendPlatform: "",
+      targetSeconds: 8,
+      referenceUrl: "https://example.test/referencia-solo-admin",
+      trendAllowsSpeech: false,
+    };
+    try {
+      const denegada = await rutaAdminTrends.POST(pedir(ana, "/api/admin/trends", "POST", true, datos), undefined);
+      expect(denegada.status).toBe(403);
+      const creada = await rutaAdminTrends.POST(pedir(admin, "/api/admin/trends", "POST", true, datos), undefined);
+      expect(creada.status).toBe(201);
+      const trend = ((await creada.json()) as { trend: PlantillaVista }).trend;
+      const antes = await rutaTrends.GET(pedir(ana, "/api/prompts/trends"), undefined);
+      expect(JSON.stringify(await antes.json())).not.toContain(trend.id);
+
+      const patch = { ...datos, trendStatus: "vigente" };
+      expect(
+        (await rutaAdminTrend.PATCH(pedir(ana, `/api/admin/trends/${trend.id}`, "PATCH", true, patch), ctx(trend.id)))
+          .status,
+      ).toBe(403);
+      const publicada = await rutaAdminTrend.PATCH(
+        pedir(admin, `/api/admin/trends/${trend.id}`, "PATCH", true, patch),
+        ctx(trend.id),
+      );
+      expect(publicada.status).toBe(200);
+      const visible = await rutaTrends.GET(pedir(ana, "/api/prompts/trends"), undefined);
+      const cuerpoVisible = JSON.stringify(await visible.json());
+      expect(cuerpoVisible).toContain(trend.id);
+      expect(cuerpoVisible).not.toContain("A quiet morning action");
+      expect(cuerpoVisible).not.toContain("example.test");
+      expect((await catalogo(ana, "animacion")).plantillas.some((p) => p.id === trend.id)).toBe(true);
+
+      const estimacion = await estimar(ana.id, "animacion", buscar, undefined, { segundos: 8 });
+      expect(estimacion.creditos).toBeGreaterThan(0);
+      const { trabajo: fotograma } = await generarConPlantilla({
+        especialidad: [porClave("moda").id],
+        estilo: [porClave("natural").id],
+        formato: [porClave("reel-9-16").id],
+      });
+      await pasadaDeCola(h);
+      await pasadaDeCola(h);
+      const solicitud = {
+        prompt: "a person in a kitchen handles a product",
+        dialogo: "Este diálogo no debe salir.",
+        derechos: true,
+        trabajoPadreId: fotograma.id,
+        plantillaId: trend.id,
+        plantillaVersionId: trend.versionId,
+        segundos: 8,
+        creditosConfirmados: estimacion.creditos,
+        selloEstimacion: estimacion.sello,
+        claveIdempotencia: crypto.randomUUID(),
+      };
+      const { ErrorGeneracion } = await import("../generacion/errores");
+      const otraDuracion = await crearAnimacion(actorAna, { ...solicitud, segundos: 4 }, h).catch((e: unknown) => e);
+      expect(otraDuracion).toBeInstanceOf(ErrorGeneracion);
+      expect((otraDuracion as Error).message).toContain("requiere 8 s");
+      const sinConfirmar = await crearAnimacion(actorAna, { ...solicitud, creditosConfirmados: 0 }, h).catch(
+        (e: unknown) => e,
+      );
+      expect(sinConfirmar).toBeInstanceOf(ErrorGeneracion);
+      const { trabajo } = await crearAnimacion(actorAna, solicitud, h);
+      const compuesto = await promptDeTrabajo(trabajo.id);
+      expect(compuesto).toContain("A quiet morning action");
+      expect(compuesto).toContain("no cuts");
+      expect(compuesto).not.toContain("Este diálogo no debe salir");
+      const [filaTrend] = await db().select().from(generationJobs).where(eq(generationJobs.id, trabajo.id));
+      if (!filaTrend) throw new Error("No se ha guardado el trabajo del trend.");
+      const { vistaDe } = await import("../generacion/trabajos");
+      expect(vistaDe(filaTrend, null, null, true).prompt).toBeUndefined();
+      await pasadaDeCola(h);
+      await pasadaDeCola(h);
+
+      expect(
+        (await rutaCaducarTrend.POST(pedir(admin, `/api/admin/trends/${trend.id}/caducar`, "POST"), ctx(trend.id)))
+          .status,
+      ).toBe(200);
+      expect(
+        JSON.stringify(await (await rutaTrends.GET(pedir(ana, "/api/prompts/trends"), undefined)).json()),
+      ).not.toContain(trend.id);
+      const copia = await rutaDuplicarTrend.POST(
+        pedir(admin, `/api/admin/trends/${trend.id}/duplicar`, "POST", true, { clave: duplicada }),
+        ctx(trend.id),
+      );
+      expect(copia.status).toBe(201);
+      const nueva = ((await copia.json()) as { trend: PlantillaVista }).trend;
+      const vigente = await rutaAdminTrend.PATCH(
+        pedir(admin, `/api/admin/trends/${nueva.id}`, "PATCH", true, {
+          ...datos,
+          clave: duplicada,
+          trendStatus: "vigente",
+        }),
+        ctx(nueva.id),
+      );
+      expect(vigente.status).toBe(200);
+      const detalleCaducado = await rutaDetalleTrend.GET(pedir(ana, `/api/prompts/trends/${trend.id}`), ctx(trend.id));
+      expect(detalleCaducado.status).toBe(409);
+      const oferta = (await detalleCaducado.json()) as { alternativa: { id: string }; error: string };
+      expect(oferta.alternativa.id).toBe(nueva.id);
+      expect(JSON.stringify(oferta)).not.toContain("A quiet morning action");
+      const caducado = await crearAnimacion(
+        actorAna,
+        { ...solicitud, claveIdempotencia: crypto.randomUUID() },
+        h,
+      ).catch((e: unknown) => e);
+      expect(caducado).toBeInstanceOf(ErrorPreset);
+      expect((caducado as Error).message).toContain("Rutina con objeto");
+      expect((caducado as Error).message).toContain("vigente");
+    } finally {
+      await db().delete(promptTemplates).where(eq(promptTemplates.slug, duplicada));
+      await db().delete(promptTemplates).where(eq(promptTemplates.slug, clave));
+      await admin.borrar();
     }
   });
 

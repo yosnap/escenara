@@ -330,6 +330,13 @@
       "when": 1790639605132,
       "tag": "0047_derechos-musicales-y-audio-de-canto",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1790640615531,
+      "tag": "0048_trends-virales",
+      "breakpoints": true
     }
   ]
 }

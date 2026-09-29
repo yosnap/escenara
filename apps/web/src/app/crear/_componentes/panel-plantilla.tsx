@@ -78,7 +78,7 @@ export function previsualizar(
    * La dirección lo cubre todo: esta plantilla no se usa. No se pinta, no se envía y **su texto no se compone**,
    * así que tampoco puede faltar nada suyo. Lo que ofrecía llega al prompt por la dirección.
    */
-  if (categorias.length === 0 && cubiertas.length > 0) return { ...vacia, plantilla };
+  if (categorias.length === 0 && cubiertas.length > 0 && plantilla.kind !== "trend") return { ...vacia, plantilla };
   /**
    * Lo que falta se mide **solo sobre lo que aquí se puede elegir**: una variable que cubre la dirección no
    * puede faltar en un sitio donde ya no se ofrece, y decir que falta dejaría el botón de generar apagado sin
@@ -171,15 +171,15 @@ export function PanelPlantilla({
     <div className="flex flex-col gap-5">
       {catalogo.plantillas.length > 1 && (
         <Selector
-          etiqueta="Plantilla"
+          etiqueta="Plantilla o trend vigente"
           valor={estado.plantillaId}
           deshabilitado={deshabilitado}
           // Cambiar de plantilla cambia qué variables hay: la selección deja de valer.
           onCambio={(v) => onCambio({ plantillaId: v ?? "", seleccion: {} })}
           opciones={catalogo.plantillas.map((p) => ({
             value: p.id,
-            label: p.nombre,
-            descripcion: p.descripcion,
+            label: p.kind === "trend" ? `Trend · ${p.nombre}` : p.nombre,
+            descripcion: p.kind === "trend" ? `${p.descripcion} · ${p.targetSeconds} s` : p.descripcion,
           }))}
         />
       )}
@@ -191,6 +191,17 @@ export function PanelPlantilla({
         </p>
       ) : (
         <>
+          {previa.plantilla.kind === "trend" && (
+            <div className="rounded-tarjeta bg-elevada p-4 text-sm text-texto">
+              <p className="font-bold">Vista previa: {previa.plantilla.nombre}</p>
+              <p>{previa.plantilla.descripcion}</p>
+              <p>
+                {previa.plantilla.targetSeconds} s ·{" "}
+                {previa.plantilla.trendAllowsSpeech ? "Permite diálogo" : "Sin habla a cámara"}. El producto se integra
+                en la escena; no se superpone un logotipo.
+              </p>
+            </div>
+          )}
           <BotoneraPresets
             grupos={grupos.filter((g) => g.presets.length > 0)}
             seleccion={estado.seleccion}

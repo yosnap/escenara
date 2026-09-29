@@ -3,7 +3,7 @@ import { media } from "./esquema";
 import { users } from "./esquema-auth";
 import { proveedorCredencial } from "./esquema-boveda";
 import { characters, characterVersions } from "./esquema-personajes";
-import { promptTemplateVersions } from "./esquema-presets";
+import { promptTemplates, promptTemplateVersions } from "./esquema-presets";
 import { products } from "./esquema-productos";
 import { jsonb } from "./jsonb";
 
@@ -236,6 +236,9 @@ export const scenes = pgTable(
     approvedTemplateVersionId: uuid("approved_template_version_id").references(() => promptTemplateVersions.id, {
       onDelete: "set null",
     }),
+    /** Plantilla de trend seleccionada y versión concreta, para conservar el formato que produjo la escena. */
+    templateId: uuid("template_id").references(() => promptTemplates.id, { onDelete: "set null" }),
+    templateVersion: integer("template_version"),
     /** Créditos estimados de la escena en el momento de aprobar. */
     estimatedCredits: real("estimated_credits").notNull().default(0),
     /** Por qué dejó de estar aprobada, en lenguaje llano y con la acción concreta. Vacío si nunca lo estuvo. */

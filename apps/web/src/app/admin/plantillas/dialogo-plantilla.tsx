@@ -40,6 +40,12 @@ const VACIO: DatosPlantilla = {
   orden: 100,
   activa: true,
   motivo: "",
+  kind: "base",
+  trendStatus: null,
+  trendPlatform: "",
+  targetSeconds: null,
+  referenceUrl: "",
+  trendAllowsSpeech: false,
 };
 
 const deVista = (plantilla: PlantillaVista): DatosPlantilla => ({
@@ -53,6 +59,12 @@ const deVista = (plantilla: PlantillaVista): DatosPlantilla => ({
   orden: plantilla.orden,
   activa: plantilla.activa,
   motivo: "",
+  kind: plantilla.kind,
+  trendStatus: plantilla.trendStatus,
+  trendPlatform: plantilla.trendPlatform,
+  targetSeconds: plantilla.targetSeconds,
+  referenceUrl: plantilla.referenceUrl,
+  trendAllowsSpeech: plantilla.trendAllowsSpeech,
 });
 
 /** Previsualización con el nombre de cada variable como valor: se ve la forma, no un texto real. */
@@ -117,7 +129,11 @@ export function DialogoPlantilla({
       onAbiertoCambio={setAbierto}
       tamano="xl"
       disparador={
-        <Boton variante={editando ? "secundario" : "primario"} tamano="sm">
+        <Boton
+          variante={editando ? "secundario" : "primario"}
+          tamano="sm"
+          disabled={plantilla?.trendStatus === "caducada"}
+        >
           {editando ? "Editar" : "Nueva plantilla"}
         </Boton>
       }
@@ -138,6 +154,23 @@ export function DialogoPlantilla({
         <div className="flex flex-col gap-4">
           {!editando && (
             <>
+              <Selector
+                etiqueta="Tipo de plantilla"
+                valor={datos.kind ?? "base"}
+                onCambio={(v) =>
+                  setDatos({
+                    ...datos,
+                    kind: v as "base" | "trend",
+                    capacidad: v === "trend" ? "image_to_video" : datos.capacidad,
+                    trendStatus: v === "trend" ? "revision" : null,
+                    targetSeconds: v === "trend" ? 8 : null,
+                  })
+                }
+                opciones={[
+                  { value: "base", label: "Base" },
+                  { value: "trend", label: "Trend" },
+                ]}
+              />
               <Campo etiqueta="Clave" ayuda="Minúsculas, números y guiones. No se puede cambiar después.">
                 {(props) => (
                   <EntradaTexto
@@ -148,11 +181,65 @@ export function DialogoPlantilla({
                   />
                 )}
               </Campo>
+              {datos.kind !== "trend" && (
+                <Selector
+                  etiqueta="Capacidad"
+                  valor={datos.capacidad}
+                  onCambio={(v) => setDatos({ ...datos, capacidad: (v as Capacidad) ?? "image_edit" })}
+                  opciones={CAPACIDADES.map((c) => ({ value: c, label: ETIQUETA_CAPACIDAD[c] }))}
+                />
+              )}
+            </>
+          )}
+
+          {datos.kind === "trend" && (
+            <>
               <Selector
-                etiqueta="Capacidad"
-                valor={datos.capacidad}
-                onCambio={(v) => setDatos({ ...datos, capacidad: (v as Capacidad) ?? "image_edit" })}
-                opciones={CAPACIDADES.map((c) => ({ value: c, label: ETIQUETA_CAPACIDAD[c] }))}
+                etiqueta="Vigencia"
+                valor={datos.trendStatus ?? "revision"}
+                onCambio={(v) => setDatos({ ...datos, trendStatus: v as "vigente" | "revision" | "caducada" })}
+                opciones={[
+                  { value: "revision", label: "En revisión" },
+                  { value: "vigente", label: "Vigente" },
+                  { value: "caducada", label: "Caducada" },
+                ]}
+              />
+              <Campo etiqueta="Plataforma de origen" ayuda="Informativa; no se envía al proveedor.">
+                {(props) => (
+                  <EntradaTexto
+                    {...props}
+                    value={datos.trendPlatform ?? ""}
+                    onChange={(e) => setDatos({ ...datos, trendPlatform: e.target.value })}
+                  />
+                )}
+              </Campo>
+              <Campo etiqueta="Duración objetivo (s)">
+                {(props) => (
+                  <EntradaTexto
+                    {...props}
+                    type="number"
+                    min={1}
+                    max={600}
+                    value={datos.targetSeconds ?? ""}
+                    onChange={(e) => setDatos({ ...datos, targetSeconds: Number(e.target.value) })}
+                  />
+                )}
+              </Campo>
+              <Campo etiqueta="URL de referencia" ayuda="Solo visible para administración; HTTPS.">
+                {(props) => (
+                  <EntradaTexto
+                    {...props}
+                    type="url"
+                    value={datos.referenceUrl ?? ""}
+                    onChange={(e) => setDatos({ ...datos, referenceUrl: e.target.value })}
+                  />
+                )}
+              </Campo>
+              <Interruptor
+                etiqueta="Permitir habla"
+                descripcion="Apagado: el guion nunca entra en el clip."
+                activo={datos.trendAllowsSpeech === true}
+                onCambio={(v) => setDatos({ ...datos, trendAllowsSpeech: v })}
               />
             </>
           )}

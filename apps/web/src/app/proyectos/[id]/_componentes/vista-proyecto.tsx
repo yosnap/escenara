@@ -7,6 +7,7 @@ import { claseBoton } from "@/components/ui/button";
 import { Aviso } from "@/components/ui/feedback";
 import { InsigniaEstadoProyecto } from "@/components/ui/proyecto";
 import type { PersonajeElegible } from "@/lib/personajes";
+import type { TrendPublico } from "@/lib/presets";
 import { ETIQUETA_FORMATO, type ProyectoDetalle } from "@/lib/proyectos";
 import type { DatosDelAnuncio } from "@/server/anuncio/pantalla";
 import { PanelBrief } from "./anuncio/panel-brief";
@@ -28,10 +29,12 @@ export function VistaProyecto({
   inicial,
   personajes,
   anuncio,
+  trends,
 }: {
   inicial: ProyectoDetalle;
   personajes: PersonajeElegible[];
   anuncio: DatosDelAnuncio;
+  trends: TrendPublico[];
 }) {
   const router = useRouter();
   const [detalle, setDetalle] = useState(inicial);
@@ -83,7 +86,7 @@ export function VistaProyecto({
 
       <PanelBrief proyecto={proyecto} datos={anuncio} onError={setError} onRecargar={() => router.refresh()} />
       <PanelIdea detalle={detalle} personajes={personajes} onCambio={aplicar} onError={setError} />
-      <ListaEscenas detalle={detalle} personajes={personajes} onCambio={aplicar} onError={setError} />
+      <ListaEscenas detalle={detalle} personajes={personajes} trends={trends} onCambio={aplicar} onError={setError} />
       <PanelAprobacion detalle={detalle} onCambio={aplicar} onError={setError} />
     </>
   );

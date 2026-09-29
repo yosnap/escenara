@@ -120,6 +120,15 @@ export const promptTemplates = pgTable(
     slug: text("slug").notNull(),
     name: text("name").notNull(),
     description: text("description").notNull().default(""),
+    kind: text("kind", { enum: ["base", "trend"] })
+      .notNull()
+      .default("base"),
+    trendStatus: text("trend_status", { enum: ["vigente", "revision", "caducada"] }),
+    trendSince: timestamp("trend_since", { withTimezone: true }),
+    trendPlatform: text("trend_platform").notNull().default(""),
+    targetSeconds: integer("target_seconds"),
+    referenceUrl: text("reference_url").notNull().default(""),
+    trendAllowsSpeech: boolean("trend_allows_speech").notNull().default(false),
     /** Capacidad de destino: es lo que decide con qué modelos puede usarse (catálogo de 0.11.0). */
     capability: capacidadModelo("capability").notNull(),
     /** Texto con variables `{{nombre}}`, en inglés. Valor vigente; su instantánea vive en las versiones. */
@@ -161,6 +170,7 @@ export const promptTemplateVersions = pgTable(
     template: text("template").notNull(),
     variables: text("variables").notNull().default("[]"),
     modelRestrictions: text("model_restrictions").notNull().default("{}"),
+    trendAllowsSpeech: boolean("trend_allows_speech").notNull().default(false),
     /** Motivo del cambio, escrito por quien administra. */
     changeReason: text("change_reason").notNull().default(""),
     createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),

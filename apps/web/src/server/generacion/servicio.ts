@@ -1,6 +1,6 @@
 import type { Vista } from "@/lib/captura-personaje";
 import { CAPACIDAD_DE_TIPO, duracionesConCoste, type ModeloVista, segundosDeUnidad } from "@/lib/catalogo";
-import type { DireccionElegidaConAcento } from "@/lib/direccion";
+import { DIRECCION_CON_ACENTO_VACIA, type DireccionElegidaConAcento } from "@/lib/direccion";
 import { CLIP, type TipoTrabajo, type TrabajoVista } from "@/lib/generacion";
 import type { TipoPersonaje } from "@/lib/personajes";
 import type { SeleccionPresets } from "@/lib/presets";
@@ -39,8 +39,10 @@ import { acotarCoste } from "../presupuesto/acotar";
 import { productoDelTrabajo } from "../productos/columnas";
 import { completarModelosSugeridos } from "../productos/modelos-sugeridos";
 import { hechosDelProducto, productoEnPrompt, productoParaGenerar } from "../productos/prompt";
+import { plantillaUsable } from "../prompts/consulta";
 import { componerDesdePlantilla, type PromptCompuesto } from "../prompts/render";
 import { creditosDelEnvio, traducirAlIngles } from "../prompts/traduccion";
+import { exigirTrendVigente } from "../prompts/trends";
 import type { Adaptador } from "../proveedores/contrato";
 import {
   exigirAvisoUmbral,
@@ -836,6 +838,7 @@ export async function crearFotograma(
             plantilla: {
               id: base.compuesto.plantillaId,
               version: base.compuesto.versionNumero,
+              ...(base.compuesto.trend ? { kind: "trend" } : {}),
               editado: base.compuesto.editado,
               presets: base.compuesto.presetsElegidos,
             },
@@ -924,6 +927,14 @@ export async function crearAnimacion(
    * descripción es lo **único** que describe el clip.
    */
   const dirigiendo = peticion.direccion !== undefined || peticion.direccionElegida !== undefined;
+  let duracionObjetivoTrend: number | null = null;
+  if (peticion.plantillaId) {
+    const plantilla = await plantillaUsable(actor.id, peticion.plantillaId);
+    if (plantilla.kind === "trend") {
+      await exigirTrendVigente(plantilla);
+      duracionObjetivoTrend = plantilla.targetSeconds;
+    }
+  }
   const prompt = dirigiendo ? limpiarPromptOpcional(peticion.prompt) : limpiarPrompt(peticion.prompt);
   exigirDerechos(peticion.derechos);
   const claveIdempotencia = exigirClaveIdempotencia(peticion.claveIdempotencia);
@@ -935,6 +946,12 @@ export async function crearAnimacion(
    * proyecto, la que se haya confirmado en «Crear».
    */
   const pedidos = partida.escenaId ? await duracionDeClipDeEscena(partida.escenaId) : (peticion.segundos ?? null);
+  if (duracionObjetivoTrend !== null && pedidos !== duracionObjetivoTrend) {
+    throw new ErrorGeneracion(
+      409,
+      `Este trend requiere ${duracionObjetivoTrend} s. Revisa la duración y el coste antes de confirmar. No se ha reservado nada.`,
+    );
+  }
   const { elegida, reservas } = await eleccionConfirmada(actor.id, "animacion", peticion, {
     ...(pedidos === null ? {} : { segundos: pedidos }),
   });
@@ -1023,7 +1040,7 @@ export async function crearAnimacion(
    * siempre; la de «Crear» llega como **claves elegidas** y se resuelve aquí con el catálogo del usuario, que es
    * el único sitio donde una clave se convierte en texto de prompt (ADR-0022).
    */
-  const direccion =
+  const direccionElegida =
     peticion.direccion ??
     (peticion.direccionElegida
       ? await direccionDesdeEleccion(
@@ -1043,14 +1060,28 @@ export async function crearAnimacion(
    */
   const segundos = duracionCobrada(modelo, precio.unidad, pedidos);
   const original = await baseDelPrompt(actor, peticion, "animacion", modelo, tipo, prompt, segundos);
+  const direccion =
+    direccionElegida ??
+    (original.compuesto?.trend
+      ? await direccionDesdeEleccion(
+          actor.id,
+          DIRECCION_CON_ACENTO_VACIA,
+          await personajeDelFotograma(partida.personajeId),
+        )
+      : null);
+  if (original.compuesto?.trend && direccion?.modoExperto)
+    throw new ErrorGeneracion(
+      409,
+      "El modo experto sustituiría el formato del trend. Desactívalo para generar este clip.",
+    );
   await exigirDecisionFavorable({
     tipo: "animacion",
     escena: original.escena,
-    dialogo,
+    dialogo: original.compuesto?.trend && !original.compuesto.trend.permiteHabla ? "" : dialogo,
     contexto,
     conVoz: modelo.conVoz,
     conReferencia: true,
-    ...(dirigiendo ? { dirigido: true } : {}),
+    ...(direccion ? { dirigido: true } : {}),
     creditos,
   });
   // Igual que en el fotograma: la descripción y el contexto se traducen al inglés antes de componer, y solo
@@ -1092,11 +1123,14 @@ export async function crearAnimacion(
   const dirigido = direccion
     ? dirigirClipPara(familiaDe(modelo.modelo), {
         ...direccion,
+        trend: original.compuesto?.trend ?? null,
         producto: productoDelPrompt,
         direccionVocal: enInglesO(matizDeVoz),
         instruccionesExtra: enInglesO(instrucciones),
         descripcionExperta: enInglesO(descripcionExperta),
-        escena: escenaEnIngles,
+        escena: original.compuesto?.trend
+          ? (await baseDelPrompt(actor, peticion, "animacion", modelo, tipo, escenaEnIngles, segundos)).escena
+          : escenaEnIngles,
         dialogo,
         // La duración **resuelta para este modelo**, que es la que se sella en el precio y la que decide si el
         // gesto cabe fuera del diálogo. La planificada de la escena puede no ser la que acepta el modelo.
@@ -1157,6 +1191,7 @@ export async function crearAnimacion(
             plantilla: {
               id: base.compuesto.plantillaId,
               version: base.compuesto.versionNumero,
+              ...(base.compuesto.trend ? { kind: "trend" } : {}),
               editado: base.compuesto.editado,
               presets: base.compuesto.presetsElegidos,
             },

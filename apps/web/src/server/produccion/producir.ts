@@ -12,7 +12,7 @@ import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { crearAnimacion, crearFotograma } from "../generacion/servicio";
 import type { Actor } from "../media/servicio";
 import { producirEscenaHablada } from "../omni/escena";
-import { plantillaVigenteDe } from "../prompts/consulta";
+import { listarPlantillas, plantillaVigenteDe } from "../prompts/consulta";
 import { invalidarRevisionesDeEscena } from "../revision/resultados";
 import { dialogoDelClip } from "../voz/modo";
 import { marcarEnProduccion } from "./cierre";
@@ -137,6 +137,11 @@ async function encolarPrimerTrabajo(
     );
   }
   if (proyecto.voiceMode === "omni") {
+    if (escena.templateId)
+      throw new ErrorProyecto(
+        409,
+        "El trend de esta escena necesita un clip dirigido. Cambia el proyecto al modo de voz del clip o pista.",
+      );
     await producirEscenaHablada(
       actor,
       escena,
@@ -235,11 +240,20 @@ async function encolarAnimacion(
   h: Herramientas,
   reintento = false,
 ): Promise<void> {
-  const plantilla = await plantillaVigenteDe(actor.id, "image_to_video");
+  const plantilla = escena.templateId
+    ? ((await listarPlantillas({ usuarioId: actor.id })).find((p) => p.id === escena.templateId) ?? null)
+    : await plantillaVigenteDe(actor.id, "image_to_video");
+  if (escena.templateId && (plantilla?.kind !== "trend" || plantilla.version !== escena.templateVersion)) {
+    throw new ErrorProyecto(
+      409,
+      "El trend de la escena ha cambiado o ya no está disponible. Revísalo y confirma otra vez.",
+    );
+  }
   await crearAnimacion(
     actor,
     {
-      prompt: textoVisualDe(escena),
+      // En un trend mudo el guion no puede convertirse en la descripción visual por el fallback histórico.
+      prompt: textoVisualDe(escena.templateId ? { ...escena, scriptText: "" } : escena),
       ...partida,
       // Un clip que parte de una imagen de la biblioteca no hereda escena ni personaje de ningún trabajo: se los
       // da la escena, que es de quien es el clip.

@@ -89,6 +89,8 @@ export interface Ajustes {
    * normal (ADR-0022).
    */
   mostrarPromptAlUsuario: boolean;
+  /** Interruptor del catálogo de trends para usuarios; por defecto se muestran los vigentes. */
+  trendsVisibles: boolean;
   /**
    * Parámetros del motor de controles previos (RF12, 0.18.0). Las **reglas viven en el código**
    * (`server/controles/motor.ts`, deterministas y puras) y aquí solo se ajustan sus umbrales: no hay editor
@@ -325,6 +327,7 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   traducirPrompts: false,
   traduccionDiasCache: 180,
   mostrarPromptAlUsuario: false,
+  trendsVisibles: true,
   // El aviso de cobertura **viene apagado**: añade una confirmación a un flujo que ya funciona y solo tiene
   // sentido cuando la instalación usa la captura guiada de vistas (0.14.0) de verdad. Encenderlo es decidir que
   // a partir de ahora generar con un personaje sin todas sus vistas exige confirmarlo.
@@ -505,6 +508,7 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
     mensaje: "Indica de 0 a 3650 días (0 = no guardar traducciones entre sesiones).",
   },
   mostrarPromptAlUsuario: { valido: booleano, mensaje: "Debe ser sí o no." },
+  trendsVisibles: { valido: booleano, mensaje: "Debe ser sí o no." },
   controlesExigirCoberturaVistas: { valido: booleano, mensaje: "Debe ser sí o no." },
   controlesExigirPrecioFresco: { valido: booleano, mensaje: "Debe ser sí o no." },
   controlesMaximoAvisos: {

@@ -11,6 +11,8 @@ import {
   ordenarPlantillaAccion,
   type ResultadoPlantillas,
 } from "./acciones";
+import { DialogoCaducarTrend } from "./dialogo-caducar-trend";
+import { DialogoDuplicarTrend } from "./dialogo-duplicar-trend";
 import { DialogoPlantilla } from "./dialogo-plantilla";
 
 /**
@@ -34,6 +36,8 @@ export function VistaPlantillas({ inicial }: { inicial: PlantillaVista[] }) {
       return;
     }
     setPlantillas(resultado.plantillas);
+    setHistoriales({});
+    setAbierto(null);
     setError(null);
     setAviso("Guardado.");
   };
@@ -87,6 +91,11 @@ export function VistaPlantillas({ inicial }: { inicial: PlantillaVista[] }) {
                   <span className="rounded-full bg-elevada px-3 py-1 text-sm font-semibold text-texto">
                     Versión {plantilla.version}
                   </span>
+                  {plantilla.kind === "trend" && (
+                    <span className="rounded-full bg-elevada px-3 py-1 text-sm font-semibold text-texto">
+                      Trend · {plantilla.trendStatus}
+                    </span>
+                  )}
                   {!plantilla.activa && (
                     <span className="rounded-full bg-elevada px-3 py-1 text-sm font-semibold text-error">
                       Desactivada
@@ -111,10 +120,19 @@ export function VistaPlantillas({ inicial }: { inicial: PlantillaVista[] }) {
                 <Boton variante="fantasma" tamano="sm" onClick={() => void mover(plantilla, 1)}>
                   Bajar
                 </Boton>
-                <DialogoPlantilla plantilla={plantilla} onResultado={alCambiar} />
+                <DialogoPlantilla
+                  key={`${plantilla.id}:${plantilla.actualizado}`}
+                  plantilla={plantilla}
+                  onResultado={alCambiar}
+                />
+                {plantilla.kind === "trend" && <DialogoDuplicarTrend plantilla={plantilla} onResultado={alCambiar} />}
+                {plantilla.kind === "trend" && plantilla.trendStatus !== "caducada" && (
+                  <DialogoCaducarTrend plantilla={plantilla} onResultado={alCambiar} />
+                )}
                 <Boton
                   variante={plantilla.activa ? "secundario" : "primario"}
                   tamano="sm"
+                  disabled={plantilla.trendStatus === "caducada"}
                   onClick={async () => alCambiar(await activarPlantillaAccion(plantilla.id, !plantilla.activa))}
                 >
                   {plantilla.activa ? "Desactivar" : "Activar"}

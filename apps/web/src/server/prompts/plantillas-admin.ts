@@ -50,8 +50,54 @@ export interface DatosPlantilla {
   restricciones: RestriccionesPlantilla;
   orden: number;
   activa: boolean;
+  kind?: "base" | "trend";
+  trendStatus?: "vigente" | "revision" | "caducada" | null;
+  trendPlatform?: string;
+  targetSeconds?: number | null;
+  referenceUrl?: string;
+  trendAllowsSpeech?: boolean;
   /** Motivo del cambio; obligatorio cuando el cambio crea versión. */
   motivo?: string;
+}
+
+function metadatosTrend(datos: DatosPlantilla) {
+  if (datos.kind !== "trend")
+    return {
+      kind: "base" as const,
+      trendStatus: null,
+      trendSince: null,
+      trendPlatform: "",
+      targetSeconds: null,
+      referenceUrl: "",
+      trendAllowsSpeech: false,
+    };
+  if (datos.capacidad !== "image_to_video") throw new ErrorPreset(400, "Un trend necesita una plantilla de animación.");
+  if (!["vigente", "revision", "caducada"].includes(datos.trendStatus ?? "revision"))
+    throw new ErrorPreset(400, "Elige la vigencia del trend.");
+  if (!Number.isInteger(datos.targetSeconds) || (datos.targetSeconds ?? 0) < 1 || (datos.targetSeconds ?? 0) > 600)
+    throw new ErrorPreset(400, "La duración objetivo debe estar entre 1 y 600 segundos.");
+  const referenceUrl = (datos.referenceUrl ?? "").trim();
+  if (referenceUrl) {
+    let url: URL;
+    try {
+      url = new URL(referenceUrl);
+    } catch {
+      throw new ErrorPreset(400, "La referencia debe ser una URL HTTPS válida.");
+    }
+    if (url.protocol !== "https:" || !url.hostname || url.username || url.password || referenceUrl.length > 500)
+      throw new ErrorPreset(400, "La referencia debe ser una URL HTTPS sin credenciales y de hasta 500 caracteres.");
+  }
+  if (datos.trendAllowsSpeech !== undefined && typeof datos.trendAllowsSpeech !== "boolean")
+    throw new ErrorPreset(400, "Indica si el trend permite habla.");
+  return {
+    kind: "trend" as const,
+    trendStatus: datos.trendStatus ?? "revision",
+    trendSince: null,
+    trendPlatform: exigirTexto(datos.trendPlatform, "La plataforma", 80, 0),
+    targetSeconds: datos.targetSeconds ?? null,
+    referenceUrl,
+    trendAllowsSpeech: datos.trendAllowsSpeech === true,
+  };
 }
 
 function exigirTexto(valor: unknown, campo: string, maximo: number, minimo = 1): string {
@@ -141,6 +187,8 @@ function exigirPlantillaCoherente(texto: string, variables: VariablePlantilla[])
 }
 
 function exigirRestricciones(restricciones: RestriccionesPlantilla): RestriccionesPlantilla {
+  if (!restricciones || typeof restricciones !== "object" || Array.isArray(restricciones))
+    throw new ErrorPreset(400, "Indica las restricciones de la plantilla.");
   const modelos = (Array.isArray(restricciones.modelos) ? restricciones.modelos : []).map((m) => String(m).trim());
   for (const modelo of modelos) {
     if (!esIdentificadorDeModelo(modelo)) throw new ErrorPreset(400, `«${modelo}» no es un identificador de modelo.`);
@@ -180,6 +228,7 @@ export async function crearPlantillaDeLaInstalacion(datos: DatosPlantilla, autor
   }
   const { texto, variables, restricciones } = normalizarContenido(datos);
   const capacidad = exigirCapacidad(datos.capacidad);
+  const trend = metadatosTrend(datos);
   const comun = {
     name: exigirTexto(datos.nombre, "El nombre", PRESET_NOMBRE_MAXIMO),
     description: exigirTexto(datos.descripcion, "La descripción", PRESET_DESCRIPCION_MAXIMA),
@@ -194,7 +243,13 @@ export async function crearPlantillaDeLaInstalacion(datos: DatosPlantilla, autor
   await db().transaction(async (tx) => {
     const [fila] = await tx
       .insert(promptTemplates)
-      .values({ slug: clave, capability: capacidad, ...comun })
+      .values({
+        slug: clave,
+        capability: capacidad,
+        ...comun,
+        ...trend,
+        trendSince: trend.kind === "trend" ? new Date() : null,
+      })
       .onConflictDoNothing()
       .returning({ id: promptTemplates.id });
     if (!fila) return;
@@ -204,6 +259,7 @@ export async function crearPlantillaDeLaInstalacion(datos: DatosPlantilla, autor
       template: texto,
       variables: comun.variables,
       modelRestrictions: comun.modelRestrictions,
+      trendAllowsSpeech: trend.trendAllowsSpeech,
       changeReason: exigirTexto(datos.motivo ?? "Alta de la plantilla.", "El motivo", 300),
       createdBy: autorId,
     });
@@ -224,6 +280,11 @@ export async function editarPlantillaDeLaInstalacion(
   autorId: string,
 ): Promise<PlantillaVista> {
   const anterior = await plantillaDeLaInstalacion(id);
+  if ((datos.kind ?? "base") !== anterior.kind)
+    throw new ErrorPreset(400, "No se puede cambiar el tipo de una plantilla existente.");
+  if (anterior.kind === "trend" && anterior.trendStatus === "caducada")
+    throw new ErrorPreset(409, "Un trend caducado solo se puede duplicar.");
+  const trend = metadatosTrend(datos);
   const { texto, variables, restricciones } = normalizarContenido(datos);
   const vigente = await versionVigente(anterior.id);
   const variablesTexto = textoDeVariables(variables);
@@ -232,7 +293,8 @@ export async function editarPlantillaDeLaInstalacion(
     vigente.template !== texto ||
     textoDeVariables(variablesDeTexto(vigente.variables)) !== variablesTexto ||
     textoDeRestricciones(restriccionesDeTexto(vigente.modelRestrictions)) !== restriccionesTexto;
-  const motivo = cambiaContenido ? exigirTexto(datos.motivo, "El motivo del cambio", 300, 4) : "";
+  const cambiaVoz = vigente.trendAllowsSpeech !== trend.trendAllowsSpeech;
+  const motivo = cambiaContenido || cambiaVoz ? exigirTexto(datos.motivo, "El motivo del cambio", 300, 4) : "";
 
   await db().transaction(async (tx) => {
     await tx
@@ -243,19 +305,22 @@ export async function editarPlantillaDeLaInstalacion(
         template: texto,
         variables: variablesTexto,
         modelRestrictions: restriccionesTexto,
+        ...trend,
+        trendSince: anterior.trendSince,
         sortOrder: exigirOrden(datos.orden),
         active: datos.activa === true,
-        version: cambiaContenido ? vigente.number + 1 : anterior.version,
+        version: cambiaContenido || cambiaVoz ? vigente.number + 1 : anterior.version,
         updatedAt: new Date(),
       })
       .where(and(eq(promptTemplates.id, anterior.id), isNull(promptTemplates.ownerId)));
-    if (!cambiaContenido) return;
+    if (!cambiaContenido && !cambiaVoz) return;
     await tx.insert(promptTemplateVersions).values({
       templateId: anterior.id,
       number: vigente.number + 1,
       template: texto,
       variables: variablesTexto,
       modelRestrictions: restriccionesTexto,
+      trendAllowsSpeech: trend.trendAllowsSpeech,
       changeReason: motivo,
       createdBy: autorId,
     });
@@ -266,11 +331,51 @@ export async function editarPlantillaDeLaInstalacion(
 /** Activa o desactiva una plantilla de la instalación. Una desactivada no compone ningún prompt. */
 export async function activarPlantillaDeLaInstalacion(id: string, activa: boolean): Promise<PlantillaVista> {
   const anterior = await plantillaDeLaInstalacion(id);
+  if (anterior.kind === "trend" && anterior.trendStatus === "caducada")
+    throw new ErrorPreset(409, "Un trend caducado solo se puede duplicar.");
   await db()
     .update(promptTemplates)
     .set({ active: activa === true, updatedAt: new Date() })
     .where(and(eq(promptTemplates.id, anterior.id), isNull(promptTemplates.ownerId)));
   return await vistaPorId(anterior.id);
+}
+
+export async function caducarTrend(id: string): Promise<PlantillaVista> {
+  const anterior = await plantillaDeLaInstalacion(id);
+  if (anterior.kind !== "trend") throw new ErrorPreset(400, "Esta plantilla no es un trend.");
+  await db()
+    .update(promptTemplates)
+    .set({ trendStatus: "caducada", updatedAt: new Date() })
+    .where(eq(promptTemplates.id, id));
+  return vistaPorId(id);
+}
+
+export async function duplicarTrend(id: string, clave: string, autorId: string): Promise<PlantillaVista> {
+  const anterior = await plantillaDeLaInstalacion(id);
+  if (anterior.kind !== "trend") throw new ErrorPreset(400, "Esta plantilla no es un trend.");
+  const copia = await crearPlantillaDeLaInstalacion(
+    {
+      clave,
+      nombre: anterior.name,
+      descripcion: anterior.description,
+      capacidad: anterior.capability,
+      plantilla: anterior.template,
+      variables: variablesDeTexto(anterior.variables),
+      restricciones: restriccionesDeTexto(anterior.modelRestrictions),
+      orden: anterior.sortOrder,
+      activa: anterior.active,
+      kind: "trend",
+      trendStatus: "revision",
+      trendPlatform: anterior.trendPlatform,
+      targetSeconds: anterior.targetSeconds,
+      referenceUrl: anterior.referenceUrl,
+      trendAllowsSpeech: anterior.trendAllowsSpeech,
+      motivo: `Duplicado de ${anterior.slug}.`,
+    },
+    autorId,
+  );
+  await db().update(promptTemplates).set({ duplicatedFrom: id }).where(eq(promptTemplates.id, copia.id));
+  return vistaPorId(copia.id);
 }
 
 /** Cambia el orden de una plantilla de la instalación. */

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Interruptor } from "@/components/ui/choice";
 import { BotoneraPresets, PanelLoElegido } from "@/components/ui/preset";
+import { Selector } from "@/components/ui/select";
 import type { CategoriaPreset, PresetVisible, SeleccionPresets } from "@/lib/presets";
 import { Muestra, Seccion } from "../seccion";
 
@@ -51,6 +53,8 @@ const INCOMPATIBLES = { f2: "Nano Banana 2 Lite solo admite 9:16." };
 
 export function SeccionPresets() {
   const [seleccion, setSeleccion] = useState<SeleccionPresets>({ especialidad: ["e1"], formato: ["f1"] });
+  const [vigencia, setVigencia] = useState<string | null>("revision");
+  const [habla, setHabla] = useState(false);
 
   return (
     <Seccion
@@ -59,6 +63,26 @@ export function SeccionPresets() {
       descripcion="Los botones con los que se arma «Crear» y la zona de claridad de lo que has elegido. Un preset que el modelo elegido no admite sale deshabilitado con el motivo escrito, nunca solo por color. El prompt compuesto no se le muestra al usuario (ADR-0022): lo ve quien administra."
     >
       <div className="flex flex-col gap-6">
+        <Muestra titulo="Metadatos de trend en administración">
+          <div className="flex w-full flex-col gap-3">
+            <Selector
+              etiqueta="Vigencia"
+              valor={vigencia}
+              onCambio={setVigencia}
+              opciones={[
+                { value: "revision", label: "En revisión" },
+                { value: "vigente", label: "Vigente" },
+                { value: "caducada", label: "Caducada" },
+              ]}
+            />
+            <Interruptor
+              etiqueta="Permitir habla"
+              descripcion="Desactivado de fábrica en los trends."
+              activo={habla}
+              onCambio={setHabla}
+            />
+          </div>
+        </Muestra>
         <Muestra titulo="Botonera por categoría">
           <div className="w-full">
             <BotoneraPresets

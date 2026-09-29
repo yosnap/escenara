@@ -6,8 +6,10 @@ import { historialDePlantilla, listarPlantillas } from "@/server/prompts/consult
 import { ErrorPreset } from "@/server/prompts/errores";
 import {
   activarPlantillaDeLaInstalacion,
+  caducarTrend,
   crearPlantillaDeLaInstalacion,
   type DatosPlantilla,
+  duplicarTrend,
   editarPlantillaDeLaInstalacion,
   ordenarPlantillaDeLaInstalacion,
 } from "@/server/prompts/plantillas-admin";
@@ -50,6 +52,14 @@ export async function activarPlantillaAccion(id: string, activa: boolean): Promi
 
 export async function ordenarPlantillaAccion(id: string, orden: number): Promise<ResultadoPlantillas> {
   return aplicar(() => ordenarPlantillaDeLaInstalacion(id, orden));
+}
+
+export async function caducarTrendAccion(id: string): Promise<ResultadoPlantillas> {
+  return aplicar(() => caducarTrend(id));
+}
+
+export async function duplicarTrendAccion(id: string, clave: string): Promise<ResultadoPlantillas> {
+  return aplicar((autorId) => duplicarTrend(id, clave, autorId));
 }
 
 /** Historial de versiones de una plantilla de la instalación. Solo lectura. */

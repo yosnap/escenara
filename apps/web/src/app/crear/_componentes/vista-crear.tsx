@@ -153,6 +153,7 @@ export function VistaCrear({
   const [opcionesDireccion, setOpcionesDireccion] = useState<OpcionesDeDireccion | null>(null);
   const [estimacionFoto, setEstimacionFoto] = useState(estimacionFotograma);
   const [estimacionClip, setEstimacionClip] = useState(estimacionAnimacion);
+  const [calculandoTrend, setCalculandoTrend] = useState(false);
   const [enviando, setEnviando] = useState<"fotograma" | "animacion" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [catalogoFoto, setCatalogoFoto] = useState(catalogoFotogramaInicial);
@@ -187,7 +188,8 @@ export function VistaCrear({
   const sinImagen = personajeId === null && imagen.length === 0;
   const modelosDelFotograma = sinImagen ? modelosSinImagen : modelosFotograma;
   const modeloClip = modelosClip.find((m) => m.modelo === estimacionClip.modelo) ?? null;
-  const clipConVoz = modeloClip?.conVoz ?? estimacionClip.conVoz;
+  const trendElegido = catalogoClip.plantillas.find((p) => p.id === plantillaClip.plantillaId && p.kind === "trend");
+  const clipConVoz = (modeloClip?.conVoz ?? estimacionClip.conVoz) && trendElegido?.trendAllowsSpeech !== false;
   const referencia = imagen[0] ?? null;
   const personaje = personajes.find((p) => p.id === personajeId) ?? null;
   const modeloFoto = modelosDelFotograma.find((m) => m.modelo === estimacionFoto.modelo) ?? null;
@@ -378,7 +380,7 @@ export function VistaCrear({
 
   const generarAnimacion = async (confirmacion: ConfirmacionCoste) => {
     // El clip sale de un fotograma generado o de una imagen tuya; sin ninguno de los dos no hay nada que animar.
-    if (!fotograma && !imagenDelClip) return;
+    if ((!fotograma && !imagenDelClip) || calculandoTrend) return;
     setEnviando("animacion");
     setError(null);
     const respuesta = await crearTrabajo({
@@ -399,6 +401,7 @@ export function VistaCrear({
     setEnviando(null);
     if (!respuesta.ok) {
       setError(mensajeDeFallo(respuesta));
+      if (trendElegido) void refrescarCatalogo("animacion", estimacionClip.modelo, segundosClip);
       return;
     }
     setAnimacion(respuesta.datos);
@@ -438,7 +441,9 @@ export function VistaCrear({
   const alCambiarFotograma = async (trabajo: TrabajoVista) => {
     setFotograma(trabajo);
     if (trabajo.estado !== "listo" || !trabajo.medio) return;
-    const respuesta = await consultarEstimacion("animacion", estimacionClip.modelo);
+    const respuesta = await consultarEstimacion("animacion", estimacionClip.modelo, {
+      ...(trendElegido ? { plantillaId: trendElegido.id, segundos: trendElegido.targetSeconds ?? undefined } : {}),
+    });
     if (respuesta.ok) setEstimacionClip(respuesta.datos);
     // El clip es otro envío: sus controles se evalúan con el fotograma ya generado, que es su referencia.
     const fallo = await controlesClip.refrescar(sujetoDelClip(estimacionClip.modelo, trabajo.medio.id, productoClip));
@@ -455,6 +460,7 @@ export function VistaCrear({
     const respuesta = await consultarEstimacion(tipo, modelo, {
       ...(tipo === "fotograma" ? { sinImagen } : {}),
       ...(segundos === undefined ? {} : { segundos }),
+      ...(tipo === "animacion" && trendElegido ? { plantillaId: trendElegido.id } : {}),
     });
     if (!respuesta.ok) {
       setError(respuesta.error);
@@ -474,6 +480,32 @@ export function VistaCrear({
     // Y los formatos y las duraciones que se pueden ofrecer también son del modelo: se vuelven a pedir en
     // lugar de deducirlos aquí, que es lo que dejaría ofrecer algo que el servidor va a rechazar.
     await refrescarCatalogo(tipo, respuesta.datos.modelo, respuesta.datos.segundos ?? undefined);
+  };
+
+  /** Cambiar a un trend cambia la duración y su tarifa; el estado visible solo cambia tras recibir el precio. */
+  const elegirPlantillaDelClip = async (siguiente: EstadoPlantilla) => {
+    if (siguiente.plantillaId === plantillaClip.plantillaId) {
+      setPlantillaClip(siguiente);
+      return;
+    }
+    const elegida = catalogoClip.plantillas.find((p) => p.id === siguiente.plantillaId);
+    if (elegida?.kind !== "trend" && !trendElegido) {
+      setPlantillaClip(siguiente);
+      return;
+    }
+    setCalculandoTrend(true);
+    setError(null);
+    const respuesta = await consultarEstimacion("animacion", estimacionClip.modelo, {
+      ...(elegida?.kind === "trend" ? { plantillaId: elegida.id, segundos: elegida.targetSeconds ?? undefined } : {}),
+    });
+    setCalculandoTrend(false);
+    if (!respuesta.ok) {
+      setError(respuesta.error);
+      return;
+    }
+    setEstimacionClip(respuesta.datos);
+    setPlantillaClip(siguiente);
+    if (elegida?.kind === "trend" && !elegida.trendAllowsSpeech) setDialogo("");
   };
 
   /** Presets y plantillas para el modelo indicado. Lectura: no encola nada ni mueve dinero. */
@@ -723,7 +755,7 @@ export function VistaCrear({
         controles={controlesClip}
         exigeRevision={clipExigeRevision}
         sinTerceros={sinTercerosClip}
-        enviando={enviando === "animacion"}
+        enviando={enviando === "animacion" || calculandoTrend}
         firma={`animacion|${fotograma?.id ?? ""}|${imagenDelClip?.id ?? ""}|${intentoClip}|${descripcion}|${frase}|${JSON.stringify(direccionClip)}|${JSON.stringify(productoClip)}|${estimacionClip.modelo}|${segundosClip}|${estimacionClip.sello}|${firmaDePlantilla(previaClip, plantillaClip)}`}
         clipEnMarcha={animacion}
         clipsAnteriores={clipsAnteriores}
@@ -739,7 +771,7 @@ export function VistaCrear({
         onDuracion={(segundos) => void elegirModelo("animacion", estimacionClip.modelo, segundos)}
         onDialogo={setDialogo}
         onDireccion={(campo, valor) => setDireccionClip((antes) => ({ ...antes, [campo]: valor }))}
-        onPlantilla={setPlantillaClip}
+        onPlantilla={(estado) => void elegirPlantillaDelClip(estado)}
         onDuplicar={(preset) => void duplicar("animacion", preset)}
         onSinTerceros={setSinTercerosClip}
         onGenerar={generarAnimacion}

@@ -160,12 +160,13 @@ export const consultarControles = (peticion: {
 export const consultarEstimacion = (
   tipo: TipoTrabajo,
   modelo?: string,
-  opciones: { sinImagen?: boolean; segundos?: number } = {},
+  opciones: { sinImagen?: boolean; segundos?: number; plantillaId?: string } = {},
 ) => {
   const parametros = new URLSearchParams({ tipo });
   if (modelo) parametros.set("modelo", modelo);
   if (opciones.sinImagen) parametros.set("sinImagen", "1");
   if (opciones.segundos !== undefined) parametros.set("segundos", String(opciones.segundos));
+  if (opciones.plantillaId) parametros.set("plantillaId", opciones.plantillaId);
   return pedir<Estimacion>(`/api/generacion/estimacion?${parametros}`);
 };
 

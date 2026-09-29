@@ -2,6 +2,16 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.30.0] · 2026-09-29
+
+### Añadido
+
+- **Trends virales**: formatos cortos versionados que se eligen en «Crear» o en una escena del proyecto. La vista previa en castellano explica qué ocurre, si hay habla y la duración. La estimación del modelo se actualiza al elegir el trend; el total y su sello se confirman antes de generar.
+- **Marca dentro de la escena**: si se elige un producto, aparece como referencia física y se conserva su etiqueta. El trend mudo omite el diálogo y mantiene la instrucción de toma única.
+- **Vigencia administrada**: alta, edición, nueva versión, caducidad y duplicado desde Admin › Plantillas. Un trend caducado deja de generar y señala una copia vigente equivalente si existe. El catálogo de componentes muestra su estado.
+- **Cinco plantillas iniciales** redactadas para la instalación. Todas quedan **en revisión** y ocultas al usuario hasta que el propietario apruebe la prueba real de pago de cada formato.
+- Guía [Usar y administrar trends](guias/trends-virales.md) y [ADR-0036](arquitectura/decisiones/adr-0036-trends-versionados.md).
+
 ## [0.29.0] · 2026-09-29
 
 ### Añadido

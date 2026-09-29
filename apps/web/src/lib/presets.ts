@@ -339,6 +339,13 @@ export interface PlantillaVista {
   clave: string;
   nombre: string;
   descripcion: string;
+  kind: "base" | "trend";
+  trendStatus: "vigente" | "revision" | "caducada" | null;
+  trendSince: string | null;
+  trendPlatform: string;
+  targetSeconds: number | null;
+  referenceUrl: string;
+  trendAllowsSpeech: boolean;
   capacidad: Capacidad;
   plantilla: string;
   variables: VariablePlantilla[];
@@ -354,11 +361,28 @@ export interface PlantillaVista {
   actualizado: string;
 }
 
+/** Datos de un trend que se pueden enseñar sin revelar su prompt ni la URL de referencia del admin. */
+export interface TrendPublico {
+  id: string;
+  nombre: string;
+  descripcion: string;
+  duracionObjetivo: number | null;
+  vistaPrevia: {
+    resumen: string;
+    duracion: string;
+    habla: string;
+    campos: { nombre: string; etiqueta: string; obligatoria: boolean }[];
+  };
+}
+
 /** Lo que «Crear» necesita de una plantilla. */
 export interface PlantillaElegible {
   id: string;
   nombre: string;
   descripcion: string;
+  kind: "base" | "trend";
+  targetSeconds: number | null;
+  trendAllowsSpeech: boolean;
   capacidad: Capacidad;
   plantilla: string;
   variables: VariablePlantilla[];
@@ -384,6 +408,9 @@ export function recortarPlantilla(plantilla: PlantillaVista): PlantillaElegible 
     id: plantilla.id,
     nombre: plantilla.nombre,
     descripcion: plantilla.descripcion,
+    kind: plantilla.kind,
+    targetSeconds: plantilla.targetSeconds,
+    trendAllowsSpeech: plantilla.trendAllowsSpeech,
     capacidad: plantilla.capacidad,
     plantilla: plantilla.plantilla,
     variables: plantilla.variables,

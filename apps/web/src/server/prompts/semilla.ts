@@ -44,6 +44,12 @@ interface PlantillaSemilla {
   plantilla: string;
   variables: unknown;
   restricciones: unknown;
+  kind?: "trend";
+  trendStatus?: "revision";
+  targetSeconds?: number;
+  trendPlatform?: string;
+  referenceUrl?: string;
+  trendAllowsSpeech?: boolean;
 }
 
 const SEMILLA = semillaJson as unknown as { presets: PresetSemilla[]; plantillas: PlantillaSemilla[] };
@@ -149,6 +155,13 @@ async function sembrarPlantilla(plantilla: PlantillaSemilla): Promise<boolean> {
         variables: textoDeVariables(variables),
         modelRestrictions: textoDeRestricciones(restricciones),
         sortOrder: plantilla.orden,
+        kind: plantilla.kind ?? "base",
+        trendStatus: plantilla.kind === "trend" ? "revision" : null,
+        trendSince: plantilla.kind === "trend" ? new Date() : null,
+        targetSeconds: plantilla.kind === "trend" ? plantilla.targetSeconds : null,
+        trendPlatform: plantilla.trendPlatform ?? "",
+        referenceUrl: plantilla.referenceUrl ?? "",
+        trendAllowsSpeech: plantilla.trendAllowsSpeech === true,
       })
       .onConflictDoNothing()
       .returning({ id: promptTemplates.id });
@@ -159,6 +172,7 @@ async function sembrarPlantilla(plantilla: PlantillaSemilla): Promise<boolean> {
       template: plantilla.plantilla,
       variables: textoDeVariables(variables),
       modelRestrictions: textoDeRestricciones(restricciones),
+      trendAllowsSpeech: plantilla.trendAllowsSpeech === true,
       changeReason: "Semilla versionada de presets y plantillas (presets.json).",
     });
     creada = true;

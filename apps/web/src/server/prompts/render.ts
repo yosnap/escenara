@@ -22,6 +22,7 @@ import {
   versionVigente,
 } from "./consulta";
 import { ErrorPreset } from "./errores";
+import { exigirTrendVigente } from "./trends";
 
 /**
  * Composición del prompt desde una plantilla (RF04, 0.16.0). Es **el servidor** el que compone, siempre, a
@@ -81,6 +82,7 @@ export interface PromptCompuesto {
   plantillaId: string;
   versionId: string;
   versionNumero: number;
+  trend: { permiteHabla: boolean; segundos: number } | null;
   /** `true` si el texto es el que editó el usuario y no el que compuso la plantilla. */
   editado: boolean;
   /** Nombres de los presets elegidos, en el orden en que entran. Es lo que se le muestra al usuario. */
@@ -176,6 +178,20 @@ async function soloAdminAutorrellenados(
 /** Compone el prompt final de una plantilla. Ninguna parte de esta función habla con ningún proveedor. */
 export async function componerDesdePlantilla(peticion: PeticionRender): Promise<PromptCompuesto> {
   const plantilla = await plantillaUsable(peticion.usuarioId, peticion.plantillaId);
+  if (plantilla.kind === "trend") {
+    await exigirTrendVigente(plantilla);
+    if (peticion.segundos !== plantilla.targetSeconds) {
+      throw new ErrorPreset(
+        409,
+        `El trend «${plantilla.name}» requiere ${plantilla.targetSeconds} s. Revisa el coste para esa duración y confirma de nuevo.`,
+      );
+    }
+    if (peticion.textoEditado)
+      throw new ErrorPreset(
+        400,
+        "El formato del trend no admite sustituir su prompt. Edita la escena o elige otra plantilla.",
+      );
+  }
   if (!plantilla.active) throw new ErrorPreset(409, `La plantilla «${plantilla.name}» está desactivada.`);
   // La capacidad de la plantilla tiene que ser la del tipo de trabajo: la plantilla del fotograma habla de
   // encuadre y la del clip, de duración y movimiento. Cruzarlas compondría un prompt que no describe lo que se
@@ -246,6 +262,10 @@ export async function componerDesdePlantilla(peticion: PeticionRender): Promise<
     plantillaId: plantilla.id,
     versionId: version.id,
     versionNumero: version.number,
+    trend:
+      plantilla.kind === "trend"
+        ? { permiteHabla: version.trendAllowsSpeech, segundos: plantilla.targetSeconds ?? 0 }
+        : null,
     editado: editado !== "",
     presetsElegidos: elegidos.map((p) => ({ categoria: p.categoria, nombre: p.nombre })),
   };

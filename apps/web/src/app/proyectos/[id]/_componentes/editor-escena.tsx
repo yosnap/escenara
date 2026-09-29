@@ -5,13 +5,16 @@ import { useState } from "react";
 import { Boton, BotonIcono } from "@/components/ui/button";
 import { InsigniaControl } from "@/components/ui/controles";
 import { PanelDireccion } from "@/components/ui/direccion/panel-direccion";
+import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo } from "@/components/ui/field";
 import { MiniaturaMedio } from "@/components/ui/media/miniatura-medio";
 import { Dialogo } from "@/components/ui/overlay";
 import { InsigniaEstadoEscena } from "@/components/ui/proyecto";
+import { Selector } from "@/components/ui/select";
 import { ETIQUETA_ESTADO_CONTROL } from "@/lib/controles";
 import type { Acento, OpcionesDeDireccion } from "@/lib/direccion";
 import type { PersonajeElegible } from "@/lib/personajes";
+import type { TrendPublico } from "@/lib/presets";
 import {
   ACCION_MAXIMA,
   type EscenaVista,
@@ -34,6 +37,7 @@ import { PanelReparto } from "./reparto/panel-reparto";
  */
 export function EditorEscena({
   escena,
+  trends,
   acento,
   primera,
   ultima,
@@ -46,6 +50,7 @@ export function EditorEscena({
   onError,
 }: {
   escena: EscenaVista;
+  trends: TrendPublico[];
   /** Acento del proyecto. Se enseña con la dirección para que se vea con qué va a hablar, pero se edita arriba. */
   acento: Acento;
   primera: boolean;
@@ -64,12 +69,20 @@ export function EditorEscena({
   const [accion, setAccion] = useState(escena.accion);
   const [direccion, setDireccion] = useState(escena.direccion);
   const [producto, setProducto] = useState(escena.producto);
+  const [trendId, setTrendId] = useState(escena.trendId ?? "");
+  const trend = trends.find((p) => p.id === trendId);
   const [guardando, setGuardando] = useState(false);
   const [borrando, setBorrando] = useState(false);
 
   const guardar = async () => {
     setGuardando(true);
-    const resultado = await editarEscena(escena.id, { texto, accion, ...direccion, producto });
+    const resultado = await editarEscena(escena.id, {
+      texto,
+      accion,
+      ...direccion,
+      producto,
+      trendId: trendId || null,
+    });
     setGuardando(false);
     if (resultado.ok) onCambio(resultado.datos);
     else onError(resultado.error);
@@ -179,6 +192,43 @@ export function EditorEscena({
         ) : (
           <p className="text-sm text-texto-suave">Guarda la escena para elegir el audio y declarar sus derechos.</p>
         ))}
+      <section className="flex flex-col gap-3 rounded-tarjeta bg-elevada p-4">
+        <h3 className="font-bold text-texto">Trend del clip</h3>
+        <Selector
+          etiqueta="Formato vigente"
+          valor={trendId}
+          marcador="Sin trend"
+          opciones={[
+            { value: "", label: "Sin trend" },
+            ...trends.map((p) => ({
+              value: p.id,
+              label: p.nombre,
+              descripcion: `${p.descripcion} · ${p.duracionObjetivo} s`,
+              deshabilitada: p.duracionObjetivo !== escena.segundos,
+            })),
+          ]}
+          onCambio={(valor) => setTrendId(valor ?? "")}
+          deshabilitado={ocupado || escena.estado === "producida"}
+        />
+        {trend && (
+          <Aviso tono="info">
+            Vista previa: {trend.vistaPrevia.resumen}. {trend.vistaPrevia.duracion};{" "}
+            {trend.vistaPrevia.habla.toLowerCase()}. Coste previsto de esta escena:{" "}
+            {escena.estimacion
+              ? textoEstimacion(escena.estimacion.creditos, escena.estimacion.euros, escena.estimacion.comprobado)
+              : "sin tarifa registrada"}
+            . La cifra se confirma en el plan antes de generar.
+          </Aviso>
+        )}
+        {trendId && !trend && (
+          <Aviso tono="error">
+            Este trend ya no está vigente. Elige uno de los disponibles o quítalo y guarda la escena.
+          </Aviso>
+        )}
+        {trends.length === 0 && (
+          <p className="text-sm text-texto-suave">Todavía no hay trends aprobados por la administración.</p>
+        )}
+      </section>
 
       {/*
         Con qué referencia se generó: es parte de saber qué se ha pagado, sobre todo con la prueba de la hoja
