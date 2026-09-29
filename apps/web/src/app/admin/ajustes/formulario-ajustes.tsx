@@ -105,6 +105,15 @@ export function FormularioAjustes({
         />
       </Seccion>
 
+      <Seccion titulo="Trends" descripcion="Disponibilidad de las plantillas de formato corto." icono={<ShieldCheck />}>
+        <Interruptor
+          etiqueta="Mostrar trends vigentes"
+          descripcion="Ocultarlos impide elegirlos y generarlos hasta volver a activar esta opción."
+          activo={valores.trendsVisibles}
+          onCambio={(v) => cambiar("trendsVisibles", v)}
+        />
+      </Seccion>
+
       <Seccion
         titulo="Almacenamiento"
         descripcion="Espacio para fotos, vídeos y audios de cada usuario."

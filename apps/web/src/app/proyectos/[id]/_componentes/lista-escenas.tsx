@@ -6,6 +6,7 @@ import { Boton } from "@/components/ui/button";
 import { EstadoVacio } from "@/components/ui/feedback";
 import { Paso } from "@/components/ui/paso";
 import type { OpcionesDeDireccion } from "@/lib/direccion";
+import type { TrendPublico } from "@/lib/presets";
 import { ESCENAS_MAXIMAS, type ProyectoDetalle } from "@/lib/proyectos";
 import { anadirEscena, catalogoDeDireccion, reordenarEscenas } from "../../_componentes/api-proyectos";
 import { EditorEscena } from "./editor-escena";
@@ -19,10 +20,12 @@ import { EditorEscena } from "./editor-escena";
  */
 export function ListaEscenas({
   detalle,
+  trends,
   onCambio,
   onError,
 }: {
   detalle: ProyectoDetalle;
+  trends: TrendPublico[];
   onCambio: (detalle: ProyectoDetalle) => void;
   onError: (mensaje: string) => void;
 }) {
@@ -90,6 +93,7 @@ export function ListaEscenas({
               <li key={escena.id}>
                 <EditorEscena
                   escena={escena}
+                  trends={trends}
                   acento={proyecto.acento}
                   primera={indice === 0}
                   ultima={indice === escenas.length - 1}

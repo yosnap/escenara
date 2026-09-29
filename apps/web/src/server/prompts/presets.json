@@ -1491,6 +1491,75 @@
         "modelos": [],
         "minimoReferencias": 1
       }
+    },
+    {
+      "clave": "trend-unboxing-primera-persona",
+      "nombre": "Unboxing en primera persona",
+      "descripcion": "Unas manos abren y descubren el producto en un único plano cercano.",
+      "capacidad": "image_to_video",
+      "orden": 210,
+      "kind": "trend",
+      "trendStatus": "revision",
+      "targetSeconds": 8,
+      "plantilla": "First-person unboxing in one continuous close shot. Hands open the package and reveal the object naturally. Scene detail: {{escena}}. Keep the object physically inside the scene throughout.",
+      "variables": [
+        { "nombre": "escena", "tipo": "texto", "etiqueta": "Qué ocurre en la escena", "obligatoria": true }
+      ],
+      "restricciones": { "modelos": [], "minimoReferencias": 1 }
+    },
+    {
+      "clave": "trend-antes-despues-rutina",
+      "nombre": "Antes y después de una rutina",
+      "descripcion": "El cambio de una rutina se revela dentro de una misma toma, sin montaje ni salto.",
+      "capacidad": "image_to_video",
+      "orden": 220,
+      "kind": "trend",
+      "trendStatus": "revision",
+      "targetSeconds": 8,
+      "plantilla": "Show a subtle before-and-after change within one uninterrupted shot, using movement in the same space rather than a cut or transition. Scene detail: {{escena}}. If a product appears, it remains a physical object in the scene.",
+      "variables": [
+        { "nombre": "escena", "tipo": "texto", "etiqueta": "Qué cambia en la rutina", "obligatoria": true }
+      ],
+      "restricciones": { "modelos": [], "minimoReferencias": 1 }
+    },
+    {
+      "clave": "trend-producto-manana",
+      "nombre": "Producto en la rutina de la mañana",
+      "descripcion": "El producto aparece como parte natural de un gesto cotidiano al empezar el día.",
+      "capacidad": "image_to_video",
+      "orden": 230,
+      "kind": "trend",
+      "trendStatus": "revision",
+      "targetSeconds": 8,
+      "plantilla": "A calm morning routine in a lived-in room. The person reaches for and uses an object naturally without addressing the camera. Scene detail: {{escena}}. Keep the action simple enough for one shot.",
+      "variables": [{ "nombre": "escena", "tipo": "texto", "etiqueta": "Rutina y entorno", "obligatoria": true }],
+      "restricciones": { "modelos": [], "minimoReferencias": 1 }
+    },
+    {
+      "clave": "trend-asmr-producto",
+      "nombre": "ASMR con el producto",
+      "descripcion": "Primer plano de una manipulación lenta con sonidos propios del objeto y sin diálogo.",
+      "capacidad": "image_to_video",
+      "orden": 240,
+      "kind": "trend",
+      "trendStatus": "revision",
+      "targetSeconds": 8,
+      "plantilla": "An intimate close view of hands handling an object slowly, with attention to its natural texture and physical sounds. No music or staged performance. Scene detail: {{escena}}. The object stays in the real set.",
+      "variables": [{ "nombre": "escena", "tipo": "texto", "etiqueta": "Gesto y textura", "obligatoria": true }],
+      "restricciones": { "modelos": [], "minimoReferencias": 1 }
+    },
+    {
+      "clave": "trend-giro-producto",
+      "nombre": "Mano que muestra el producto en un giro",
+      "descripcion": "Una mano gira el objeto mientras la cámara realiza un único movimiento suave.",
+      "capacidad": "image_to_video",
+      "orden": 250,
+      "kind": "trend",
+      "trendStatus": "revision",
+      "targetSeconds": 8,
+      "plantilla": "One hand turns an object slowly toward the camera as the camera makes one gentle move around it. No cut, no choreography and no graphic insert. Scene detail: {{escena}}. Preserve a plausible physical grip.",
+      "variables": [{ "nombre": "escena", "tipo": "texto", "etiqueta": "Objeto y entorno", "obligatoria": true }],
+      "restricciones": { "modelos": [], "minimoReferencias": 1 }
     }
   ]
 }

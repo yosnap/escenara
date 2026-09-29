@@ -13,7 +13,7 @@ import { detalleProyecto } from "@/server/asistente/plan";
 export const dynamic = "force-dynamic";
 
 /**
- * Edita una escena a mano: `{ texto?, accion?, segundos?, promptFotograma?, promptAnimacion? }`.
+ * Edita una escena a mano: `{ texto?, accion?, trendId?, dirección?, producto? }`. `trendId: null` lo quita.
  *
  * Si estaba aprobada, deja de estarlo y la respuesta lo indica: el plan se revisa y se aprueba otra vez.
  */

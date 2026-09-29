@@ -130,6 +130,8 @@ export interface DireccionDeClip {
    * formato diga otra cosa, porque no hay quien hable.
    */
   producto?: ProductoEnPrompt | null;
+  /** Formato de trend ya compuesto en el servidor; el contenido y el permiso de habla no vienen del navegador. */
+  trend?: { permiteHabla: boolean } | null;
 }
 
 /** Lo compuesto, con lo que hay que contarle al usuario antes de que pague. */
@@ -218,7 +220,11 @@ export function dirigirClip(direccion: DireccionDeClip, opciones: OpcionesDeDire
    * guion escrito no se envía, exactamente igual que en la voz en off y en el b-roll.
    */
   const visualSinHabla = accionSinHabla(producto);
-  const habla = formatoHabla(direccion.formato) && !soloProducto && !visualSinHabla;
+  const habla =
+    formatoHabla(direccion.formato) &&
+    !soloProducto &&
+    !visualSinHabla &&
+    (!direccion.trend || direccion.trend.permiteHabla);
   const dialogo = habla ? direccion.dialogo.trim() : "";
   if (!habla && direccion.dialogo.trim() !== "") {
     avisos.push(
@@ -264,6 +270,9 @@ export function dirigirClip(direccion: DireccionDeClip, opciones: OpcionesDeDire
     ]),
     // El producto va con el sujeto: es parte de qué sale en el plano, y trae pegada la acción que se eligió.
     producto ? bloqueProducto(producto) : "",
+    direccion.trend && producto
+      ? "Integrate the product naturally inside the photographed scene, held in a hand, resting in the background or visible on a real device screen as the action calls for. Never add a graphic overlay or floating logo"
+      : "",
     // El gesto previo va **delante** del diálogo: el modelo lo ejecuta antes de abrir la boca.
     parrafo([gestoAntes]),
     // El diálogo, cuando el constructor del modelo no lo coloca él (`kie/modelos.ts › promptEscenaHablada`).

@@ -200,6 +200,8 @@ function vistaEscena(
 ): EscenaVista {
   return {
     id: fila.id,
+    trendId: fila.templateId,
+    trendVersion: fila.templateVersion,
     proyectoId: fila.projectId,
     orden: fila.sortOrder,
     texto: fila.scriptText,

@@ -19,6 +19,8 @@ import { db, type Ejecutor } from "../db/cliente";
 import { claims, type FilaEscena, generationJobs, projects, scenes } from "../db/esquema";
 import type { Actor } from "../media/servicio";
 import { leerProductoElegido, productoPropio } from "../productos/eleccion";
+import { plantillaUsable, versionVigente } from "../prompts/consulta";
+import { exigirTrendVigente } from "../prompts/trends";
 import { invalidarVozDeEscena } from "../voz/proyecto";
 import { escenaPropia, escenasDe, proyectoPropio, proyectoPropioBloqueado } from "./consulta";
 import { ErrorProyecto } from "./errores";
@@ -71,6 +73,33 @@ export interface DatosEscena {
    * del usuario y no una clave de catálogo, y su dueño se comprueba contra la base de datos antes de guardarlo.
    */
   producto?: unknown;
+  /** ID de trend vigente o null para volver al formato base. */
+  trendId?: unknown;
+}
+
+async function camposDeTrend(
+  actor: Actor,
+  datos: DatosEscena,
+  segundos: number,
+  modoVoz: string,
+): Promise<Partial<typeof scenes.$inferInsert>> {
+  if (datos.trendId === undefined) return {};
+  if (datos.trendId === null || datos.trendId === "") return { templateId: null, templateVersion: null };
+  if (modoVoz === "omni")
+    throw new ErrorProyecto(
+      409,
+      "Los trends usan el clip dirigido. Cambia el proyecto al modo de voz del clip o pista antes de elegir uno.",
+    );
+  if (typeof datos.trendId !== "string") throw new ErrorProyecto(400, "El identificador del trend no es válido.");
+  const plantilla = await plantillaUsable(actor.id, datos.trendId);
+  await exigirTrendVigente(plantilla);
+  if (plantilla.targetSeconds !== segundos)
+    throw new ErrorProyecto(
+      409,
+      `El trend «${plantilla.name}» dura ${plantilla.targetSeconds} s y el proyecto está configurado a ${segundos} s. Revisa el coste y la duración del proyecto.`,
+    );
+  const version = await versionVigente(plantilla.id);
+  return { templateId: plantilla.id, templateVersion: version.number };
 }
 
 /**
@@ -198,6 +227,7 @@ export async function crearEscena(actor: Actor, proyectoId: unknown, datos: Dato
   // El producto se comprueba **antes** de abrir la transacción: es una lectura de otra tabla y no tiene por
   // qué correr dentro, y así un producto ajeno responde 404 sin haber empezado a escribir nada.
   const producto = await camposDeProducto(actor, datos);
+  const trend = await camposDeTrend(actor, datos, proyecto.clipSeconds, proyecto.voiceMode);
   return db().transaction(async (tx) => {
     const [{ ultimo } = { ultimo: null }] = await tx
       .select({ ultimo: max(scenes.sortOrder) })
@@ -216,7 +246,7 @@ export async function crearEscena(actor: Actor, proyectoId: unknown, datos: Dato
         `Este proyecto ya tiene ${total} ${total === 1 ? "escena" : "escenas"} y el máximo son ${ESCENAS_MAXIMAS}. Borra alguna antes de añadir otra.`,
       );
     }
-    const campos = { ...camposLimpios(datos), ...producto };
+    const campos = { ...camposLimpios(datos), ...producto, ...trend };
     const [escena] = await tx
       .insert(scenes)
       .values({ projectId: proyecto.id, sortOrder: orden, plannedSeconds: proyecto.clipSeconds, ...campos })
@@ -230,8 +260,12 @@ export async function crearEscena(actor: Actor, proyectoId: unknown, datos: Dato
 
 /** Edita una escena a mano. Si estaba aprobada, deja de estarlo y se dice por qué. */
 export async function editarEscena(actor: Actor, escenaId: unknown, datos: DatosEscena): Promise<FilaEscena> {
-  const { escena } = await escenaPropia(actor, escenaId);
-  const campos = { ...camposLimpios(datos), ...(await camposDeProducto(actor, datos)) };
+  const { escena, proyecto } = await escenaPropia(actor, escenaId);
+  const campos = {
+    ...camposLimpios(datos),
+    ...(await camposDeProducto(actor, datos)),
+    ...(await camposDeTrend(actor, datos, proyecto.clipSeconds, proyecto.voiceMode)),
+  };
   if (Object.keys(campos).length === 0) return escena;
   // Editar una escena que ya se ha generado no borra nada (el gasto está hecho y el resultado sigue en la
   // biblioteca), pero deja de corresponder a lo que dice: la rejilla de producción lo avisa y el historial lo

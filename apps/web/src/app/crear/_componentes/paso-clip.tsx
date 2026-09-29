@@ -202,6 +202,13 @@ export function PasoClip({
             onDuplicar={onDuplicar}
             accionesDePreset={accionesDePreset}
           />
+          {previa.plantilla?.kind === "trend" && previa.enUso && (
+            <Aviso tono="info">
+              Este trend dura {previa.plantilla.targetSeconds} s. Coste estimado del clip: {estimacion.creditos}{" "}
+              créditos con {estimacion.nombreModelo}; precio comprobado el {estimacion.comprobado}. Revisa también la
+              traducción y el total exacto en la confirmación de abajo antes de gastar.
+            </Aviso>
+          )}
 
           {!clipEnMarcha && (
             <BloqueConfirmacion

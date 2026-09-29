@@ -194,6 +194,8 @@ export type DireccionDeEscenaVista = DireccionElegida;
 export const DIRECCION_SIN_ELEGIR: DireccionDeEscenaVista = DIRECCION_ELEGIDA_VACIA;
 
 export interface EscenaVista {
+  trendId?: string | null;
+  trendVersion?: number | null;
   id: string;
   proyectoId: string;
   orden: number;

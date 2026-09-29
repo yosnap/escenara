@@ -70,6 +70,7 @@ export function vistaDe(
   posicion: number | null = null,
   conPrompt = false,
 ): TrabajoVista {
+  const esTrend = (fila.input as { plantilla?: { kind?: unknown } }).plantilla?.kind === "trend";
   return {
     id: fila.id,
     tipo: fila.kind,
@@ -81,7 +82,7 @@ export function vistaDe(
     estadoProveedor: fila.providerState,
     taskId: fila.taskId,
     escena: escenaDe(fila),
-    ...(conPrompt ? { prompt: fila.prompt } : {}),
+    ...(conPrompt && !esTrend ? { prompt: fila.prompt } : {}),
     creditosEstimados: fila.estimatedCredits,
     creditosConsumidos: fila.consumedCredits,
     error: fila.errorMessage,

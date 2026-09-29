@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { leerAjustes } from "@/server/ajustes";
 import { datosDelAnuncio } from "@/server/anuncio/pantalla";
 import { ErrorProyecto } from "@/server/asistente/errores";
 import { detalleProyecto } from "@/server/asistente/plan";
 import { esAdmin, exigirSesion } from "@/server/auth/sesion";
 import { personajesElegibles } from "@/server/personajes/consulta";
+import { listarPlantillas } from "@/server/prompts/consulta";
+import { vistaPublicaTrend } from "@/server/prompts/trends";
 import { CabeceraApp } from "../../_app/cabecera-app";
 import { VistaProyecto } from "./_componentes/vista-proyecto";
 
@@ -25,16 +28,23 @@ export default async function PaginaProyecto({ params }: { params: Promise<{ id:
   });
   // El brief del anuncio se lee aquí, con el proyecto: así el primer pintado ya enseña el ángulo, la oferta y el
   // precio de verdad, y la pantalla no necesita ningún efecto que dispare peticiones al montarse.
-  const [personajes, anuncio] = await Promise.all([
+  const [personajes, anuncio, ajustes, plantillas] = await Promise.all([
     personajesElegibles(actor),
     datosDelAnuncio(actor, detalle.proyecto.id),
+    leerAjustes(),
+    listarPlantillas({ usuarioId: actor.id }),
   ]);
+  const trends = ajustes.trendsVisibles
+    ? plantillas
+        .filter((p) => p.kind === "trend" && p.deLaInstalacion && p.activa && p.trendStatus === "vigente")
+        .map(vistaPublicaTrend)
+    : [];
 
   return (
     <div className="min-h-dvh bg-fondo">
       <CabeceraApp sesion={sesion} />
       <main id="contenido" className="mx-auto flex max-w-5xl flex-col gap-6 px-5 py-8 md:px-8">
-        <VistaProyecto inicial={detalle} personajes={personajes} anuncio={anuncio} />
+        <VistaProyecto inicial={detalle} personajes={personajes} anuncio={anuncio} trends={trends} />
       </main>
     </div>
   );

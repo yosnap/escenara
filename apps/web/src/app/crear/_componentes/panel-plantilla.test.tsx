@@ -15,6 +15,9 @@ const PLANTILLA: PlantillaVisible = {
   id: "t1",
   nombre: "Clip social",
   descripcion: "",
+  kind: "base",
+  targetSeconds: null,
+  trendAllowsSpeech: false,
   capacidad: "image_to_video",
   variables: [
     { nombre: "duracion", tipo: "numero", etiqueta: "Duración", obligatoria: true, categoria: "duracion" },
@@ -78,6 +81,17 @@ const pintar = (previa: ReturnType<typeof previsualizar>) =>
   renderToStaticMarkup(<PanelPlantilla catalogo={CATALOGO} estado={ESTADO} previa={previa} onCambio={() => {}} />);
 
 describe("el paso del clip no repite las categorías de la dirección", () => {
+  test("un trend sigue visible y se envía aunque la dirección cubra sus categorías", () => {
+    const trend: PlantillaVisible = { ...PLANTILLA, id: "trend", kind: "trend", targetSeconds: 8 };
+    const catalogo = { ...CATALOGO, plantillas: [trend] };
+    const estado = { plantillaId: trend.id, seleccion: {} };
+    const previa = previsualizar(catalogo, estado, "Plano de producto", null, CATEGORIAS_DE_LA_DIRECCION);
+    expect(previa.enUso).toBe(true);
+    expect(confirmacionDePlantilla(previa, estado)).toMatchObject({ plantillaId: trend.id });
+    expect(
+      renderToStaticMarkup(<PanelPlantilla catalogo={catalogo} estado={estado} previa={previa} onCambio={() => {}} />),
+    ).toContain("Vista previa");
+  });
   test("con la dirección a la vista el panel desaparece, no bloquea y no se envía", () => {
     const previa = previsualizar(CATALOGO, ESTADO, "", null, CATEGORIAS_DE_LA_DIRECCION);
     expect(previa.enUso).toBe(false);

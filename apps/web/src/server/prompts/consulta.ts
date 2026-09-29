@@ -163,6 +163,13 @@ const vistaDePlantilla = (fila: FilaPlantilla, versionId: string): PlantillaVist
   clave: fila.slug,
   nombre: fila.name,
   descripcion: fila.description,
+  kind: fila.kind,
+  trendStatus: fila.trendStatus,
+  trendSince: fila.trendSince?.toISOString() ?? null,
+  trendPlatform: fila.trendPlatform,
+  targetSeconds: fila.targetSeconds,
+  referenceUrl: fila.referenceUrl,
+  trendAllowsSpeech: fila.trendAllowsSpeech,
   capacidad: fila.capability,
   plantilla: fila.template.slice(0, PLANTILLA_MAXIMA),
   variables: variablesDeTexto(fila.variables),
@@ -290,7 +297,7 @@ export async function listarPlantillas(opciones: { usuarioId?: string } = {}): P
  */
 export async function plantillaVigenteDe(usuarioId: string, capacidad: Capacidad): Promise<PlantillaVista | null> {
   const plantillas = await listarPlantillas({ usuarioId });
-  return plantillas.find((p) => p.activa && p.capacidad === capacidad) ?? null;
+  return plantillas.find((p) => p.kind === "base" && p.activa && p.capacidad === capacidad) ?? null;
 }
 
 /** Fila de una plantilla utilizable por quien pregunta: la suya o la de la instalación. */
