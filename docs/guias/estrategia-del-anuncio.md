@@ -118,7 +118,8 @@ Se pide **a mano**, nunca solo. Y de fábrica va **en sombra** (lo explica [Comp
 se registra con su evidencia y **no bloquea nada** —ni el plan, ni la producción, ni pedir otro guion—. Está para
 medir si acierta, y para eso hace falta que le digas si tiene razón o se equivoca con los dos botones de al lado.
 Cuando los números digan que acierta, quien administra puede cambiar su modo a «Activa» en Admin › Ajustes ›
-Coherencia; aun así, hoy el código no bloquea nada con este veredicto: el ángulo no se impone, se te enseña.
+Coherencia; aun así, hoy el código no bloquea nada con este veredicto: el ángulo no se impone, se te enseña. El panel lo dice con
+esas palabras cuando está en Activa: «todavía no bloquea nada».
 
 ## Lo que esta versión no hace todavía
 

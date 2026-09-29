@@ -2,6 +2,37 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.32.2] · 2026-09-30
+
+Parche: **el orden se cambia arrastrando en cinco listas más** y **seis textos de la pantalla dejan de contar
+algo que no era cierto**. Sin migraciones y sin cambios de precio.
+
+### Cambiado
+
+- **Arrastrar y soltar (con teclado y lector de pantalla, como en el montaje)** en las plantillas y los presets
+  del admin, en las recomendaciones de modelos, en las escenas del plan y en los turnos del diálogo. Plantillas y
+  presets se ordenan **dentro de su capacidad o categoría**: al soltar, una sola acción recibe el orden completo del
+  grupo, comprueba que son exactamente sus elementos y lo renumera de 10 en 10 en una transacción, sin empates.
+  Subir y Bajar siguen ahí y **intercambian con la vecina**. El campo «Orden» de los formularios desaparece: lo
+  nuevo va al final de su grupo.
+- **Las escenas del plan no guardan el orden al soltar**: aparece «Orden sin guardar» con «Guardar orden» y
+  «Descartar». El aviso dice qué cambia antes de guardar: reordenar no quita la aprobación de ninguna escena ni
+  repite ni cobra nada, y los clips ya producidos se quedan como están; cambian los números de escena, cuál abre
+  el vídeo (la primera lleva el gancho) y el orden que se propone al montar.
+
+### Corregido
+
+- El panel de coherencia de la escena ya no dice siempre «no deciden nada»: en sombra informa, en Activa solo
+  decide el parecido y las demás siguen solo informando, y cada fila lo dice según su modo.
+- El panel del ángulo del anuncio ya no dice que su veredicto «decide de verdad» en Activa: el ángulo todavía no
+  bloquea nada.
+- «La plantilla ha cambiado» pide revisar el **coste**, que es lo que la persona ve, y no un texto que no ve.
+- «Partir de una foto» y el aviso del servidor nombran la casilla como se llama de verdad: «Autorizo la comprobación
+  de parecido».
+- El aviso de un audio de canto cuya duración no se puede medir recomienda los cinco formatos admitidos
+  (MP3, WAV, OGG, M4A y AAC), escritos a partir de la misma lista que los valida.
+- El montaje muestra los segundos con coma decimal («0,2 s») con un formateador común.
+
 ## [0.32.1] · 2026-09-29
 
 Las guías, además de leerse en el repositorio, tienen **su propia web**: un sitio estático con índice por

@@ -52,7 +52,7 @@ Si falta algo obligatorio, la zona de claridad lo dice («Falta elegir: Especial
 en la lista de lo que impide generar y el botón no se activa.
 
 Y si quien administra cambia la plantilla entre que la miras y pulsas el botón, el envío se rechaza con «La
-plantilla ha cambiado: revisa el texto y confirma otra vez» **antes de gastar nada**. Si lo que pasó fue un fallo
+plantilla ha cambiado desde que viste el coste: revisa el coste otra vez y confirma» **antes de gastar nada**. Si lo que pasó fue un fallo
 de red y vuelves a pulsar, se te devuelve el trabajo que ya se encargó: no se paga dos veces.
 
 ## Duplicar un preset para hacerlo tuyo
@@ -63,10 +63,10 @@ Compartir presets y plantillas entre cuentas llega en una versión posterior.
 
 ## Si administras esta instalación
 
-- **Admin › Presets**: alta, edición, orden y activado de los presets de la instalación. La **descripción** va en español (es lo que se lee en el botón) y el **texto del prompt** en inglés (es lo que entra en el prompt). Un preset desactivado no se puede elegir ni enviar.
+- **Admin › Presets**: alta, edición, orden y activado de los presets de la instalación. El orden se cambia **arrastrando** cada preset por su asa dentro de su categoría (o con el teclado: Espacio para cogerlo, flechas para moverlo, Espacio para soltarlo y Escape para dejarlo como estaba). Al soltar se guarda el orden de la categoría entera, sin empates. **Subir** y **Bajar** siguen ahí y intercambian el preset con su vecino. Un preset nuevo va al final de su categoría; el formulario ya no tiene un campo «Orden». La **descripción** va en español (es lo que se lee en el botón) y el **texto del prompt** en inglés (es lo que entra en el prompt). Un preset desactivado no se puede elegir ni enviar.
   - En un preset de **formato**, la proporción va en su campo propio, **no dentro del texto del prompt**: es una restricción que se comprueba contra el modelo. El texto describe el encuadre en palabras («vertical full-bleed framing»), porque las medidas escritas («9:16», «1080p») se limpian del prompt por seguridad.
   - Para añadir presets a la **semilla** de una instalación nueva, la fuente es `apps/web/src/server/prompts/presets.json`: se añade una entrada con una clave nueva y se vuelve a migrar. La semilla **no pisa** lo que hayas cambiado desde el panel.
-- **Admin › Plantillas**: el texto con las variables `{{así}}`, sus variables declaradas y sus restricciones por modelo, con **previsualización** y **historial de versiones**.
+- **Admin › Plantillas**: el texto con las variables `{{así}}`, sus variables declaradas y sus restricciones por modelo, con **previsualización** y **historial de versiones**. Se agrupan por capacidad y se ordenan **arrastrando** por el asa dentro de cada una, igual que los presets (con teclado, o con **Subir** y **Bajar**, que intercambian con la vecina); una plantilla nueva va al final de su capacidad.
   - Cambiar el texto, las variables o las restricciones **crea una versión nueva** y exige un motivo. Cambiar el nombre, la descripción, el orden o el estado no crea versión.
   - **Editar una plantilla no cambia lo que ya se generó**: cada trabajo guarda la versión que usó y su prompt final.
 

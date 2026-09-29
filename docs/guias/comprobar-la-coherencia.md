@@ -78,8 +78,9 @@ En la pantalla de revisión de un proyecto, cada escena tiene ahora **«Comproba
 
 De fábrica las tres van **en sombra**, y eso quiere decir exactamente lo que parece: **no bloquean la exportación,
 no cambian el estado de la escena y no aceptan ni rechazan nada**. Aparecen con su veredicto («Encaja», «Míralo tú»
-o «No encaja»), su evidencia y su confianza, y ahí se quedan: decides tú. El panel de la escena lo dice siempre con
-las mismas palabras, esté el modo en sombra o en Activa.
+o «No encaja»), su evidencia y su confianza, y ahí se quedan: decides tú. El panel de la escena dice la verdad de cada
+modo, fila por fila: «En sombra: informa y no decide nada»; en Activa, «decide de verdad» solo en el parecido, y en las
+demás, «está en Activa, pero esta comprobación todavía solo informa».
 
 ### Los dos botones que de verdad importan
 
