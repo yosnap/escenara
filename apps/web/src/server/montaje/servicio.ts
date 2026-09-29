@@ -113,10 +113,15 @@ async function conEtiquetaCoherente(montaje: FilaMontaje, material: MaterialDelP
   if (!material.personajeConAparienciaReal || montaje.labelVisible) return montaje;
   const [actualizado] = await db()
     .update(montages)
-    .set({ labelVisible: true, updatedAt: new Date() })
-    .where(eq(montages.id, montaje.id))
+    // Encender la etiqueta cambia los píxeles del MP4: debe crear otra versión para no reutilizar una
+    // exportación anterior sin rótulo por la clave de idempotencia (montaje, versión).
+    .set({ labelVisible: true, version: montaje.version + 1, updatedAt: new Date() })
+    .where(and(eq(montages.id, montaje.id), eq(montages.version, montaje.version), eq(montages.labelVisible, false)))
     .returning();
-  return actualizado ?? { ...montaje, labelVisible: true };
+  if (actualizado) return actualizado;
+  const vigente = await montajeDeProyecto(montaje.projectId);
+  if (!vigente) throw new ErrorMontaje(404, "El montaje de este proyecto ya no existe.");
+  return vigente;
 }
 
 /**

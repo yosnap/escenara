@@ -13,6 +13,8 @@ import {
 import { FORMATOS_SUBTITULOS } from "@/lib/voz";
 import { urlSubtitulos } from "./api-montaje";
 
+const segundosLegibles = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 1 });
+
 /**
  * Una exportación terminada: qué salió, si sigue correspondiendo al montaje de ahora y cómo descargarlo.
  *
@@ -62,7 +64,9 @@ export function TarjetaExportacion({
 
       <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
         <Dato termino="Formato">{ETIQUETA_FORMATO_MONTAJE[exportacion.formato]}</Dato>
-        <Dato termino="Duración">{exportacion.duracion === null ? "—" : `${exportacion.duracion} s`}</Dato>
+        <Dato termino="Duración">
+          {exportacion.duracion === null ? "—" : `${segundosLegibles.format(exportacion.duracion)} s`}
+        </Dato>
         <Dato termino="Tamaño">{exportacion.tamano === null ? "—" : formatearTamano(exportacion.tamano)}</Dato>
         <Dato termino="Etiqueta de IA">
           {exportacion.etiquetaAplicada ? `Sí, ${ETIQUETA_POSICION[exportacion.etiquetaPosicion].toLowerCase()}` : "No"}

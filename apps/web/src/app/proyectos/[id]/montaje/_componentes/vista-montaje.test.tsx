@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { EVALUACION_LISTA, REGLAS_VERSION } from "@/lib/controles";
 import type { EscenaMontableVista, ExportacionVista, MontajeVista } from "@/lib/montaje";
 import { MOTIVO_ETIQUETA_OBLIGATORIA } from "@/lib/montaje";
+import { PanelExportacion } from "./panel-exportacion";
 import { VistaMontaje } from "./vista-montaje";
 
 /**
@@ -136,6 +137,13 @@ describe("la etiqueta obligatoria", () => {
 });
 
 describe("el panel de exportación", () => {
+  test("los cambios sin guardar bloquean el botón hasta guardar la versión que se va a montar", () => {
+    const pintarPanel = (sinGuardar: boolean) =>
+      renderToStaticMarkup(<PanelExportacion montaje={montaje()} sinGuardar={sinGuardar} onExportar={() => {}} />);
+    expect(pintarPanel(true)).toMatch(/<button[^>]*disabled=""[^>]*>[\s\S]*?Montar y exportar el MP4/);
+    expect(pintarPanel(false)).not.toMatch(/<button[^>]*disabled=""[^>]*>[\s\S]*?Montar y exportar el MP4/);
+  });
+
   test("dice que no cuesta créditos, porque es lo primero que alguien se pregunta", () => {
     const html = pintar();
     expect(html).toContain("No cuesta créditos");
@@ -146,6 +154,12 @@ describe("el panel de exportación", () => {
     const html = pintar({ exportaciones: [exportacion({ montajeVersion: 3, vigente: true })] });
     expect(html).toContain("Corresponde al montaje de ahora");
     expect(html).not.toContain("De una versión anterior del montaje");
+  });
+
+  test("la duración exportada se muestra redondeada, sin el ruido decimal de FFmpeg", () => {
+    const html = pintar({ exportaciones: [exportacion({ duracion: 15.015999794006348 })] });
+    expect(html).toContain("15 s");
+    expect(html).not.toContain("15.015999794006348");
   });
 
   test("una exportación de una versión anterior lo dice, con las dos versiones", () => {

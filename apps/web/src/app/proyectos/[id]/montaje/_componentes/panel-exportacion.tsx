@@ -33,7 +33,7 @@ export function PanelExportacion({
   onExportacionCambiada?: (exportacion: ExportacionVista) => void;
 }) {
   const frenos = frenosSinSalida(montaje.controles);
-  const puede = montaje.activo && frenos.length === 0;
+  const puede = montaje.activo && frenos.length === 0 && !sinGuardar;
   const enMarcha = montaje.exportaciones.find((e) => !exportacionTerminada(e.estado)) ?? null;
   const anteriores = montaje.exportaciones.filter((e) => e.id !== enMarcha?.id);
   const subtitulos = montaje.escenas.some((e) => e.subtitulos.some((s) => s.texto.trim() !== ""));

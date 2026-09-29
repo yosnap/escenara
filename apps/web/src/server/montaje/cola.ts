@@ -152,7 +152,14 @@ async function contextoDeExportacion(exportacion: FilaExportacion) {
   }
   // `esAdmin: false`: la cuota de la biblioteca se le aplica a quien pidió el montaje, sin excepciones por rol.
   const actor: Actor = { id: fila.proyecto.userId, esAdmin: false };
-  return { actor, montaje: fila.montaje, material: await materialDelProyecto(fila.proyecto) };
+  const material = await materialDelProyecto(fila.proyecto);
+  if (material.personajeConAparienciaReal && !exportacion.labelApplied) {
+    throw new ErrorMontaje(
+      409,
+      "El proyecto ahora tiene un protagonista con apariencia de persona. Esta exportación se pidió sin etiqueta: abre el montaje y vuelve a exportar con ella.",
+    );
+  }
+  return { actor, montaje: fila.montaje, material };
 }
 
 /**

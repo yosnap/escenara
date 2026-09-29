@@ -466,8 +466,10 @@ describe.skipIf(!hayBaseDeDatos)("montaje y exportación de un proyecto", () => 
     expect((await leerMontaje()).datos.etiquetaPosicion).toBe("arriba");
   });
 
-  test("un montaje ya guardado sin etiqueta se vuelve a encender al asignar un personaje real", async () => {
+  test("al asignar una persona, la versión cambia y no se reutiliza una exportación sin etiqueta", async () => {
     expect((await guardar({ etiquetaVisible: false })).estado).toBe(200);
+    const versionSinEtiqueta = (await leerMontaje()).datos.version;
+    expect((await exportar()).estado).toBe(202);
     const [personaje] = await db()
       .insert(characters)
       .values({ ownerId: ana.id, name: "Luis", kind: "persona" })
@@ -476,7 +478,34 @@ describe.skipIf(!hayBaseDeDatos)("montaje y exportación de un proyecto", () => 
       .update(projects)
       .set({ mainCharacterId: personaje?.id ?? null })
       .where(eq(projects.id, proyectoId));
-    expect((await leerMontaje()).datos.etiquetaVisible).toBe(true);
+    const actual = (await leerMontaje()).datos;
+    expect(actual.etiquetaVisible).toBe(true);
+    expect(actual.version).toBe(versionSinEtiqueta + 1);
+    expect(actual.exportaciones[0]?.vigente).toBe(false);
+    expect((await exportar()).estado).toBe(202);
+    const filas = await db().select().from(montageExports);
+    expect(filas).toHaveLength(2);
+    expect(filas.find((fila) => fila.montageVersion === versionSinEtiqueta)?.labelApplied).toBe(false);
+    expect(filas.find((fila) => fila.montageVersion === actual.version)?.labelApplied).toBe(true);
+  });
+
+  test("el worker no monta una exportación sin etiqueta si se asignó una persona mientras esperaba", async () => {
+    expect((await guardar({ etiquetaVisible: false })).estado).toBe(200);
+    expect((await exportar()).estado).toBe(202);
+    const [personaje] = await db()
+      .insert(characters)
+      .values({ ownerId: ana.id, name: "Eva", kind: "persona" })
+      .returning();
+    await db()
+      .update(projects)
+      .set({ mainCharacterId: personaje?.id ?? null })
+      .where(eq(projects.id, proyectoId));
+
+    expect(await pasadaDeExportaciones("worker-prueba-etiqueta-tardia")).toBe(0);
+    const [fila] = await db().select().from(montageExports);
+    expect(fila?.state).toBe("fallido");
+    expect(fila?.errorMessage).toContain("sin etiqueta");
+    expect(fila?.resultMediaId).toBeNull();
   });
 
   test("el montaje de otra persona no existe", async () => {
