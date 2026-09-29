@@ -11,6 +11,7 @@ import { Dialogo } from "@/components/ui/overlay";
 import { InsigniaEstadoEscena } from "@/components/ui/proyecto";
 import { ETIQUETA_ESTADO_CONTROL } from "@/lib/controles";
 import type { Acento, OpcionesDeDireccion } from "@/lib/direccion";
+import type { PersonajeElegible } from "@/lib/personajes";
 import {
   ACCION_MAXIMA,
   type EscenaVista,
@@ -20,6 +21,7 @@ import {
 } from "@/lib/proyectos";
 import { borrarEscena, editarEscena } from "../../_componentes/api-proyectos";
 import { PanelAfirmaciones } from "./panel-afirmaciones";
+import { PanelReparto } from "./reparto/panel-reparto";
 
 /**
  * Una escena: lo que se cuenta y lo que se ve. Cuánto dura lo decide el proyecto entero, así que aquí solo se
@@ -36,6 +38,7 @@ export function EditorEscena({
   ultima,
   ocupado,
   opcionesDireccion,
+  personajes,
   onSubir,
   onBajar,
   onCambio,
@@ -49,6 +52,8 @@ export function EditorEscena({
   ocupado: boolean;
   /** Catálogo de la dirección, ya leído por la pantalla. `null` mientras se está cargando. */
   opcionesDireccion: OpcionesDeDireccion | null;
+  /** Personajes propios entre los que elegir el segundo del reparto (0.28.0). */
+  personajes: readonly PersonajeElegible[];
   onSubir: () => void;
   onBajar: () => void;
   onCambio: (detalle: ProyectoDetalle) => void;
@@ -180,6 +185,18 @@ export function EditorEscena({
         El texto que se le envía al modelo lo compone Escenara con tu escena, la plantilla y la ficha de tu personaje, y
         va en inglés porque responden mejor. Tú decides el qué.
       </p>
+
+      {/*
+        Quién sale en esta escena y qué dice cada uno (0.28.0). Va debajo de la dirección porque el reparto es lo
+        último que se decide de un plano y lo primero que cambia lo que cuesta: dos personajes en podcast son dos
+        clips. Una escena de un personaje se comporta exactamente como antes de esta versión.
+      */}
+      <PanelReparto
+        escenaId={escena.id}
+        personajes={personajes}
+        deshabilitado={ocupado || escena.estado === "producida"}
+        onError={onError}
+      />
 
       <PanelAfirmaciones afirmaciones={escena.afirmaciones} onCambio={onCambio} onError={onError} />
 

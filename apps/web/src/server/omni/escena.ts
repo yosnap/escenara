@@ -48,6 +48,8 @@ import { acotarCoste } from "../presupuesto/acotar";
 import { completarModelosSugeridos } from "../productos/modelos-sugeridos";
 import { hechosDelProducto, productoEnPrompt, productoParaGenerar } from "../productos/prompt";
 import { creditosDelEnvio, traducirAlIngles } from "../prompts/traduccion";
+import { miembrosDelReparto } from "../reparto/consulta";
+import { exigirFormatoActivo } from "../reparto/servicio";
 import { muestrasDe } from "../voz/muestra";
 import { vozOmniDelProyecto } from "../voz/omni";
 import { vozDelProyecto } from "../voz/proyecto";
@@ -283,6 +285,22 @@ export async function producirEscenaHablada(
   h: Herramientas = HERRAMIENTAS,
 ): Promise<{ trabajos: FilaTrabajo[]; nuevas: number; fallo: string | null }> {
   const prompt = limpiarPrompt(escena.action.trim() !== "" ? escena.action : escena.scriptText);
+  if (escena.castFormat !== "solo") {
+    await exigirFormatoActivo(escena.castFormat);
+    const miembros = await miembrosDelReparto(escena.id);
+    if (miembros.length !== 2) {
+      throw new ErrorOmni(
+        409,
+        "El reparto necesita exactamente dos personajes propios antes de generar. Añade el segundo en la escena.",
+      );
+    }
+    if (escena.productId !== null) {
+      throw new ErrorOmni(
+        409,
+        "Quita el producto de esta escena antes de generar: sus fotos no pueden viajar junto con las dos identidades registradas de Omni.",
+      );
+    }
+  }
   exigirDerechos(confirmacion.derechos);
   exigirRevisionDeReferencias(confirmacion.sinTerceros);
   const claveIdempotencia = exigirClaveIdempotencia(confirmacion.claveIdempotencia);
@@ -575,7 +593,7 @@ export async function producirEscenaHablada(
         valores,
         sello: precio.sello,
         // El tope por trabajo se mide con lo que cuesta **un** clip: es lo que este trabajo va a gastar.
-        creditosDelEnvio: porClip,
+        creditosDelEnvio: orden === 1 ? porClip : creditos,
         escena: {
           ...(await topeDeEscenas(escena.id, confirmacion.reintentoDeEscena ?? false)),
           clips: clipsEsperados,

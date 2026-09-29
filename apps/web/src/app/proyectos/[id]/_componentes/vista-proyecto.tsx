@@ -83,7 +83,7 @@ export function VistaProyecto({
 
       <PanelBrief proyecto={proyecto} datos={anuncio} onError={setError} onRecargar={() => router.refresh()} />
       <PanelIdea detalle={detalle} personajes={personajes} onCambio={aplicar} onError={setError} />
-      <ListaEscenas detalle={detalle} onCambio={aplicar} onError={setError} />
+      <ListaEscenas detalle={detalle} personajes={personajes} onCambio={aplicar} onError={setError} />
       <PanelAprobacion detalle={detalle} onCambio={aplicar} onError={setError} />
     </>
   );

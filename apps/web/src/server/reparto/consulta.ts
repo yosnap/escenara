@@ -115,7 +115,9 @@ export async function repartoDeEscena(escena: FilaEscena, ejecutor: Ejecutor = d
     grupoPodcast: escena.podcastGroupId,
     miembros: miembros.map(({ firmaDeVoz: _, ...miembro }) => miembro),
     turnos,
-    mismaVoz: compartenVoz(miembros),
+    // En el camino Omni actual los dos registros citan el mismo audioId del proyecto. Aunque las fichas tengan
+    // presets distintos, el clip saldrá con esa misma voz: se avisa con la voz que realmente se envía.
+    mismaVoz: escena.castFormat !== "solo" && miembros.length === 2 ? true : compartenVoz(miembros),
   };
 }
 

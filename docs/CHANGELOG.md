@@ -2,6 +2,21 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.28.0] · 2026-09-29
+
+### Añadido
+
+- **Dos personajes por escena**: «Reparto» permite elegir solo, podcast o dualcast, añadir un segundo personaje propio, asignar papel, lado y mirada, y escribir el diálogo por turnos. Lo que dice cada uno se envía literalmente, sin traducir. La pantalla previsualiza en castellano lo pedido y avisa si el diálogo no cabe en la duración.
+- **Podcast y dualcast**: el podcast genera dos clips ordenados, uno por personaje; el dualcast, uno con los dos. Antes de confirmar se muestra la estimación por clip y total, con fecha del precio. Una sola confirmación del total conserva la reserva independiente de cada clip. Se avisa de voces iguales, turnos sin repartir y diálogo demasiado largo.
+- **Consentimiento por persona**: cada persona real que aparece debe tener su consentimiento vigente. La pantalla dice por nombre a quién le falta y dónde resolverlo. Se admite mezclar un personaje inventado con uno real, con la declaración y el consentimiento que correspondan.
+- **Revisión con Jev**: identidad comprobada por cara, con el nombre de cada personaje en el veredicto, y `reparto_fiel` para comprobar quién dijo cada frase. Esta última comprobación nace en sombra.
+- **Admin › Ajustes › Dos personajes**: interruptores de podcast y dualcast; el catálogo de componentes muestra el resumen de lo pedido y la zona de consentimiento. El veredicto `reparto_fiel` se configura en Coherencia.
+- Guía [Podcast y dualcast](guias/podcast-y-dualcast.md) y [ADR-0033](arquitectura/decisiones/adr-0033-reparto-de-dos-personajes.md).
+
+### Corregido
+
+- La estimación de una escena de dos personajes incluye, una sola vez, el coste máximo de traducción que el servidor exige al confirmar. Antes, la cifra visible podía ser menor que la confirmación requerida y el servidor rechazaba el envío.
+
 ## [0.27.0] · 2026-09-28
 
 La estrategia del anuncio: un anuncio no es creatividad, es un sistema con tres palancas. El **ángulo** (a quién

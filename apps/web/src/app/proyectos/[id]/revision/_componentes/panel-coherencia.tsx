@@ -62,7 +62,14 @@ export function PanelCoherencia({
           {decisiones.map((decision) => (
             <li key={decision.id} className="flex flex-col gap-2 rounded-control bg-superficie p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="font-semibold text-texto">{decision.nombre}</p>
+                {/*
+                  Con dos personajes la identidad se comprueba **una vez por cara** (0.28.0), así que las dos
+                  decisiones se distinguen por de quién hablan: sin esto, se leerían como la misma fila repetida.
+                */}
+                <p className="font-semibold text-texto">
+                  {decision.nombre}
+                  {decision.sobre ? <span className="font-normal text-texto-suave"> · {decision.sobre}</span> : null}
+                </p>
                 <span
                   className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-sm font-semibold ${TONO[decision.veredicto]}`}
                 >

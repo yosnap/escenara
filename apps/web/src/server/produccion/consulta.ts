@@ -49,6 +49,7 @@ import { ultimaVersion } from "../personajes/ficha";
 import { plantillaVigenteDe } from "../prompts/consulta";
 import { creditosDelEnvio } from "../prompts/traduccion";
 import { ErrorCatalogo } from "../proveedores/contrato";
+import { type RepartoDePantalla, repartoDePantallaDeEscena } from "../reparto/pantalla";
 
 /**
  * Lectura del estado de producción de un proyecto (RF06, 0.19.0).
@@ -226,11 +227,21 @@ function vistaDeEscena(
   controles: EvaluacionVista,
   puestos: Map<string, number>,
   medios: Map<string, Medio>,
+  /** Reparto de dos personajes de esta escena (0.28.0); `null` en una escena de un personaje. */
+  reparto: RepartoDePantalla | null,
 ): EscenaProduccionVista {
   // El trabajo vigente de cada tipo es el más reciente: la lista viene ordenada por fecha descendente.
   const fotograma = trabajos.find((t) => t.kind === "fotograma") ?? null;
   const animacion = trabajos.find((t) => t.kind === "animacion") ?? null;
-  const vigentes = [fotograma?.id, animacion?.id].filter((id): id is string => id !== undefined);
+  // Un podcast tiene dos trabajos vigentes: el más reciente de cada plano. Los anteriores quedan en el historial.
+  const pedidosPodcast =
+    fila.castFormat === "podcast" ? trabajos.filter((t) => t.kind === "animacion" && t.castClipOrder !== null) : [];
+  // El último intento puede haber encolado solo el primer clip. En ese caso no se le atribuye el segundo de una
+  // pareja anterior: el historial conserva aquella pareja, y aquí se ve únicamente lo pedido en este intento.
+  const clipsPodcast = pedidosPodcast[0]?.castClipOrder === 2 ? pedidosPodcast.slice(0, 2) : pedidosPodcast.slice(0, 1);
+  const vigentes = [fotograma?.id, animacion?.id, ...clipsPodcast.map((t) => t.id)].filter(
+    (id): id is string => id !== undefined,
+  );
   return {
     id: fila.id,
     orden: fila.sortOrder,
@@ -251,6 +262,19 @@ function vistaDeEscena(
     conProducto: fila.productId !== null,
     // Lo mismo que decide el servidor al aprobar el fotograma: un paso, un cobro y un botón que lo dice.
     faltaInsertarCaptura: fila.productId !== null && (fotograma?.digitalStep ?? "") === "pantalla_negra",
+    reparto,
+    /**
+     * Los clips de un podcast, **en el orden del intercambio**. Se reconocen por el turno que el encolado les
+     * escribió (`castClipOrder`), que es lo único que distingue dos clips de la misma escena, y el nombre sale del
+     * reparto vigente: si el reparto ha cambiado desde que se pidieron, se queda vacío en lugar de mentir.
+     */
+    clipsHablados: clipsPodcast
+      .map((t) => ({
+        orden: t.castClipOrder ?? 1,
+        nombre: reparto?.reparto.miembros.find((miembro) => miembro.personajeId === t.characterId)?.nombre ?? "",
+        trabajo: vistaDeTrabajo(t, puestos.get(t.id) ?? null, medios),
+      }))
+      .sort((a, b) => a.orden - b.orden),
     versiones: versionesDe(trabajos, vigentes, medios),
   };
 }
@@ -302,18 +326,25 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
     ...[...porEscena.values()].flat().map((t) => t.resultMediaId),
     ...filasEscena.flatMap((e) => [e.approvedFrameMediaId, e.clipMediaId]),
   ]);
-  const escenas = filasEscena.map((fila) =>
-    vistaDeEscena(
-      fila,
-      porEscena.get(fila.id) ?? [],
-      // El mismo motor que cierra la puerta al producirla, con datos ya cargados: ni una consulta más por escena.
-      evaluarParaMostrar({
-        tipo: "fotograma",
-        parametros: contexto.parametros,
-        escena: hechosDeFila(fila, proyecto, afirmaciones, contexto),
-      }),
-      puestos,
-      medios,
+  const escenas = await Promise.all(
+    filasEscena.map(async (fila) =>
+      vistaDeEscena(
+        fila,
+        porEscena.get(fila.id) ?? [],
+        // El mismo motor que cierra la puerta al producirla, con datos ya cargados: ni una consulta más por escena.
+        evaluarParaMostrar({
+          tipo: "fotograma",
+          parametros: contexto.parametros,
+          escena: hechosDeFila(fila, proyecto, afirmaciones, contexto),
+        }),
+        puestos,
+        medios,
+        /**
+         * El reparto se lee **solo** en las escenas de dos personajes (0.28.0). Una escena de un personaje —que es
+         * todo lo anterior a esta versión— no paga ni una consulta más: su tarjeta es exactamente la de siempre.
+         */
+        fila.castFormat === "solo" ? null : await repartoDePantallaDeEscena(actor, fila, proyecto),
+      ),
     ),
   );
 

@@ -60,7 +60,11 @@ const invalidacion = (escena: FilaEscena): Partial<typeof scenes.$inferInsert> =
 async function anotarCambio(tx: Ejecutor, escena: FilaEscena): Promise<void> {
   await tx
     .update(scenes)
-    .set({ ...invalidacion(escena), updatedAt: new Date() })
+    .set({
+      ...invalidacion(escena),
+      ...(escena.approvedFrameMediaId !== null || escena.clipMediaId !== null ? { changedSinceGeneration: true } : {}),
+      updatedAt: new Date(),
+    })
     .where(eq(scenes.id, escena.id));
   if (escena.state === "aprobada") {
     await tx
@@ -75,7 +79,7 @@ async function anotarCambio(tx: Ejecutor, escena: FilaEscena): Promise<void> {
  * Comprueba que el formato pedido está **activo en esta instalación**. Podcast y dualcast se apagan desde
  * Admin › Ajustes sin desplegar (es el rollback de la fase), y apagados no se puede elegir ninguno de los dos.
  */
-async function exigirFormatoActivo(formato: FormatoReparto): Promise<void> {
+export async function exigirFormatoActivo(formato: FormatoReparto): Promise<void> {
   if (formato === "solo") return;
   const ajustes = await leerAjustes();
   if (formato === "podcast" && !ajustes.repartoPodcastActivo) {
@@ -123,14 +127,24 @@ export async function elegirFormatoDeReparto(actor: Actor, escenaId: unknown, fo
   if (!esFormatoReparto(formato)) {
     throw new ErrorProyecto(400, "Ese formato de reparto no existe: es un personaje, podcast o dualcast.");
   }
-  const { escena } = await escenaPropia(actor, escenaId);
+  const { escena, proyecto } = await escenaPropia(actor, escenaId);
   await exigirFormatoActivo(formato);
+  if (formato !== "solo" && proyecto.voiceMode !== "omni") {
+    throw new ErrorProyecto(
+      409,
+      "Podcast y dualcast necesitan un proyecto en modo Omni. Cambia el modo de voz del proyecto antes de montar el reparto.",
+    );
+  }
+  if (formato !== "solo" && escena.productId !== null) {
+    throw new ErrorProyecto(
+      409,
+      "Esta escena lleva un producto. Quita el producto antes de elegir podcast o dualcast: Omni no puede enviar sus fotos junto con dos identidades registradas.",
+    );
+  }
   const actualizada = await db().transaction(async (tx) => {
     const miembros = await miembrosDelReparto(escena.id, tx);
-    if (formato === "solo" && miembros.length > 1) {
-      for (const sobra of miembros.slice(1)) {
-        await tx.delete(sceneCharacters).where(eq(sceneCharacters.id, sobra.id));
-      }
+    if (formato === "solo") {
+      for (const sobra of miembros.slice(1)) await tx.delete(sceneCharacters).where(eq(sceneCharacters.id, sobra.id));
       await tx.delete(sceneDialogueTurns).where(eq(sceneDialogueTurns.sceneId, escena.id));
     }
     // Los valores por defecto se rehacen con el formato nuevo: la mirada cruzada de un podcast no es la de un

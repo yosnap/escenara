@@ -358,6 +358,14 @@ describeSiHayBase("reparto de dos personajes", () => {
     expect(reparto.turnos).toEqual([]);
     const turnos = await db().select().from(sceneDialogueTurns).where(eq(sceneDialogueTurns.sceneId, escenaId));
     expect(turnos).toEqual([]);
+
+    await patch(ana, escenaId, { formato: "podcast" });
+    await patch(ana, escenaId, {
+      accion: "dialogo",
+      turnos: [{ personajeId: lucia.id, texto: "También con un solo miembro." }],
+    });
+    const otraVezSolo = await patch(ana, escenaId, { formato: "solo" });
+    expect(otraVezSolo.turnos).toEqual([]);
   });
 
   test("dos personajes con la misma voz avisan, y el aviso se puede confirmar", async () => {

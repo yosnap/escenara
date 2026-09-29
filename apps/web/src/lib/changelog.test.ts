@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import path from "node:path";
+import paqueteRaiz from "../../../../package.json";
 import paquete from "../../package.json";
 import { analizarChangelog, fragmentosEnLinea } from "./changelog";
 
@@ -50,6 +51,7 @@ describe("analizarChangelog", () => {
     );
     expect(ultima?.version).toBe(paquete.version);
     expect((await Bun.file(path.join(RAIZ, "VERSION")).text()).trim()).toBe(paquete.version);
+    expect(paqueteRaiz.version).toBe(paquete.version);
   });
 });
 

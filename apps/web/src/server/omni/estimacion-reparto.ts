@@ -2,6 +2,7 @@ import { noCabeElDialogo, palabrasDeTurnos, segundosNecesarios } from "@/lib/rep
 import { escenaPropia } from "../asistente/consulta";
 import type { FilaEscena, FilaProyecto } from "../db/esquema";
 import type { Actor } from "../media/servicio";
+import { creditosDelEnvio } from "../prompts/traduccion";
 import { clipsDePodcast, miembrosDelReparto, turnosDelReparto } from "../reparto/consulta";
 import { creditosDeEscenaHablada, duracionesDeOmni, precioDeDuracionEstimado, segundosDeEscenaOmni } from "./escena";
 import { eleccionOmni } from "./registro";
@@ -37,6 +38,11 @@ export interface EstimacionReparto {
   creditos: number;
   /** Sello del precio con el que se ha estimado. Si cambia, el servidor rechaza la confirmación. */
   sello: string;
+  /**
+   * Fecha (AAAA-MM-DD) en la que se comprobó ese precio. Va con la cifra a la pantalla: «estimación» sin decir de
+   * cuándo es el precio no permite juzgar si sigue siendo verdad.
+   */
+  comprobado: string;
   /** Segundos de cada clip, ya resueltos contra lo que el modelo admite. */
   segundosPorClip: number;
   /** `true` cuando el precio de esa duración es una estimación en proporción y no una tarifa registrada. */
@@ -63,13 +69,22 @@ export async function estimarReparto(
     clips: [],
     creditos: 0,
     sello: "",
+    comprobado: "",
     segundosPorClip: 0,
     precioEstimado: false,
     avisos: [],
     impedimentos: [],
   };
   let creditosPorClip: number;
+  /**
+   * Lo que cuesta el **primer** clip: la tarifa del modelo **más la traducción del texto de la escena**, que se
+   * paga una sola vez porque se traduce una sola vez. Es la misma suma que exige `omni/escena.ts` al confirmar
+   * (`creditosDelEnvio(creditos) + creditos × (clips − 1)`), y tiene que salir de aquí igual: sin la traducción, la
+   * pantalla enseñaba un total que el servidor rechazaba con «el coste confirmado no es el vigente».
+   */
+  let creditosDelPrimerClip: number;
   let sello: string;
+  let comprobado: string;
   let segundos: number;
   let precioEstimado: boolean;
   try {
@@ -77,7 +92,9 @@ export async function estimarReparto(
     const { modelo } = await eleccionOmni(actor.id);
     segundos = segundosDeEscenaOmni(duracionesDeOmni(modelo), proyecto);
     creditosPorClip = creditos;
+    creditosDelPrimerClip = await creditosDelEnvio(creditos);
     sello = selloLeido;
+    comprobado = (await eleccionOmni(actor.id, segundos)).precio.comprobado;
     precioEstimado = precioDeDuracionEstimado(modelo, segundos);
   } catch (error) {
     return {
@@ -99,7 +116,8 @@ export async function estimarReparto(
       ? (await clipsDePodcast(escena)).map((clip, indice) => ({
           orden: indice + 1,
           nombre: clip.nombre,
-          creditos: creditosPorClip,
+          // La traducción va en el primero y no se cobra dos veces: el texto de la escena se traduce una vez.
+          creditos: indice === 0 ? creditosDelPrimerClip : creditosPorClip,
           turnos: clip.turnos.length,
           palabras: palabrasDeTurnos(clip.turnos),
         }))
@@ -107,7 +125,7 @@ export async function estimarReparto(
           {
             orden: 1,
             nombre: miembros.map((m) => m.nombre).join(" y ") || "sin reparto",
-            creditos: creditosPorClip,
+            creditos: creditosDelPrimerClip,
             turnos: turnos.length,
             palabras: palabrasDeTurnos(turnos),
           },
@@ -115,6 +133,19 @@ export async function estimarReparto(
 
   const avisos: string[] = [];
   const impedimentos: string[] = [];
+  if (escena.castFormat !== "solo" && miembros.length !== 2) {
+    impedimentos.push(
+      "El reparto necesita exactamente dos personajes antes de generar. Añade el segundo en la escena.",
+    );
+  }
+  if (escena.castFormat !== "solo" && proyecto.voiceMode !== "omni") {
+    impedimentos.push("Podcast y dualcast necesitan un proyecto en modo Omni. Cambia el modo de voz del proyecto.");
+  }
+  if (escena.castFormat !== "solo" && escena.productId !== null) {
+    impedimentos.push(
+      "Quita el producto de esta escena: sus fotos no pueden viajar junto con las dos identidades registradas de Omni.",
+    );
+  }
   for (const clip of clips) {
     if (!noCabeElDialogo(clip.palabras, segundos)) continue;
     avisos.push(
@@ -136,6 +167,7 @@ export async function estimarReparto(
     clips,
     creditos: clips.reduce((suma, clip) => suma + clip.creditos, 0),
     sello,
+    comprobado,
     segundosPorClip: segundos,
     precioEstimado,
     avisos,

@@ -406,9 +406,9 @@ const REGLAS: readonly Regla[] = [
       regla: "reparto-misma-voz",
       estado: "ajustes",
       motivo:
-        "Los dos personajes de esta escena tienen la misma voz registrada, así que la conversación saldrá con un solo timbre y no se distinguirá quién habla.",
-      accion: "Cambia la voz de uno de los dos en su ficha, o confirma que quieres que suenen igual.",
-      enlace: "/personajes",
+        "Los dos personajes usan la voz Omni registrada del proyecto, así que la conversación saldrá con un solo timbre y no se distinguirá quién habla.",
+      accion:
+        "Este formato todavía no admite dos voces Omni distintas. Confirma que quieres generar con el mismo timbre.",
       http: 409,
       excepcion: "personaje",
       confirmable: true,

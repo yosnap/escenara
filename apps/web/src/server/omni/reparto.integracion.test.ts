@@ -681,6 +681,19 @@ describeSiHayBase("escenas habladas con dos personajes", () => {
     }
   });
 
+  test("apagar un formato impide producir escenas que ya lo tenían elegido", async () => {
+    await registrarTodo([lucia.id, elisa.id]);
+    await conversacionDeDos("dualcast");
+    await aprobarPlan();
+    await guardarAjustes({ repartoDualcastActivo: false }, null);
+
+    const fallo = await error(() => producir());
+    expect(fallo.estado).toBe(409);
+    expect(fallo.message).toContain("desactivado");
+    expect(await trabajosDeLaEscena()).toEqual([]);
+    expect(enviados).toEqual([]);
+  });
+
   test("avisa cuando los turnos no caben en la duración del clip, y se puede confirmar", async () => {
     await registrarTodo([lucia.id, elisa.id]);
     await patch({ formato: "dualcast" });

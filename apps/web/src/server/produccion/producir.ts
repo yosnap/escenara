@@ -123,6 +123,12 @@ async function encolarPrimerTrabajo(
   h: Herramientas,
   reintento = false,
 ): Promise<void> {
+  if (escena.castFormat !== "solo" && proyecto.voiceMode !== "omni") {
+    throw new ErrorProyecto(
+      409,
+      "Esta escena tiene dos personajes y necesita el modo Omni. Cambia el modo de voz del proyecto antes de producirla.",
+    );
+  }
   if (proyecto.voiceMode === "omni") {
     await producirEscenaHablada(
       actor,
@@ -363,9 +369,15 @@ export async function producirProyecto(
 ): Promise<ProduccionVista> {
   const estado = await estadoDeProduccion(actor, proyectoId);
   if (estado.impedimentos.length > 0) throw new ErrorProyecto(409, estado.impedimentos[0] ?? "No se puede producir.");
-  const pendientes = escenasPorProducir(estado.escenas);
+  const pendientes = escenasPorProducir(estado.escenas, estado.modoVoz);
   if (pendientes.length === 0) {
     throw new ErrorProyecto(409, "No hay ninguna escena pendiente de producir en este proyecto.");
+  }
+  if (pendientes.some((escena) => escena.reparto !== null)) {
+    throw new ErrorProyecto(
+      409,
+      "Hay escenas con dos personajes pendientes. Confirma cada una en su tarjeta: el podcast cuesta dos clips y necesita su estimación total propia.",
+    );
   }
   const caben = Math.max(0, estado.maximoEnVuelo - estado.enVuelo);
   if (caben === 0) {

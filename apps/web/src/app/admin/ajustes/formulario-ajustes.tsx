@@ -18,6 +18,7 @@ import { SeccionAsistente } from "./seccion-asistente";
 import { SeccionCalidad } from "./seccion-calidad";
 import { SeccionCoherencia } from "./seccion-coherencia";
 import { SeccionControles } from "./seccion-controles";
+import { SeccionDosPersonajes } from "./seccion-dos-personajes";
 import { SeccionPresupuesto } from "./seccion-presupuesto";
 import { SeccionRevision } from "./seccion-revision";
 import { SeccionVoz } from "./seccion-voz";
@@ -246,6 +247,8 @@ export function FormularioAjustes({
       <SeccionAsistente valores={valores} errorDe={errorDe} onCambio={cambiar} />
 
       <SeccionAnuncio valores={valores} onCambio={cambiar} />
+
+      <SeccionDosPersonajes valores={valores} onCambio={cambiar} />
 
       <SeccionControles valores={valores} errorDe={errorDe} onCambio={cambiar} />
 

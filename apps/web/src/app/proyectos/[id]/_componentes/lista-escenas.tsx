@@ -6,6 +6,7 @@ import { Boton } from "@/components/ui/button";
 import { EstadoVacio } from "@/components/ui/feedback";
 import { Paso } from "@/components/ui/paso";
 import type { OpcionesDeDireccion } from "@/lib/direccion";
+import type { PersonajeElegible } from "@/lib/personajes";
 import { ESCENAS_MAXIMAS, type ProyectoDetalle } from "@/lib/proyectos";
 import { anadirEscena, catalogoDeDireccion, reordenarEscenas } from "../../_componentes/api-proyectos";
 import { EditorEscena } from "./editor-escena";
@@ -19,10 +20,13 @@ import { EditorEscena } from "./editor-escena";
  */
 export function ListaEscenas({
   detalle,
+  personajes,
   onCambio,
   onError,
 }: {
   detalle: ProyectoDetalle;
+  /** Personajes propios: son los únicos entre los que se puede elegir el segundo del reparto (0.28.0). */
+  personajes: readonly PersonajeElegible[];
   onCambio: (detalle: ProyectoDetalle) => void;
   onError: (mensaje: string) => void;
 }) {
@@ -95,6 +99,7 @@ export function ListaEscenas({
                   ultima={indice === escenas.length - 1}
                   ocupado={ocupado}
                   opcionesDireccion={opcionesDireccion}
+                  personajes={personajes}
                   onSubir={() => mover(indice, -1)}
                   onBajar={() => mover(indice, 1)}
                   onCambio={onCambio}

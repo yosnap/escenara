@@ -154,7 +154,8 @@ export async function hechosDelReparto(
   return {
     formato: escena.castFormat,
     personajes,
-    mismaVoz: compartenVoz(miembros),
+    // Ambos registros Omni usan el audioId del proyecto; la firma de la ficha por sí sola no describe el envío.
+    mismaVoz: escena.castFormat !== "solo" && miembros.length === 2 ? true : compartenVoz(miembros),
     turnos: turnos.length,
     clips: escena.castFormat === "podcast" ? miembros.length : 1,
     palabrasDelClipMasLargo: palabras,
