@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import type { Medio } from "@/lib/media/tipos";
-import { firmaDeVoz, type ParametrosVoz, VOCES_OFRECIDAS } from "@/lib/voz";
+import { esVozOfrecida, firmaDeVoz, type ParametrosVoz } from "@/lib/voz";
 import { ErrorProyecto } from "../asistente/errores";
 import { encolar, filaDeLaConfirmacion } from "../cola/encolar";
 import { recopilarHechos } from "../controles/hechos";
@@ -110,7 +110,7 @@ export async function pedirMuestra(
   confirmacion: ConfirmacionVoz,
   h: Herramientas = HERRAMIENTAS,
 ): Promise<{ trabajo: FilaTrabajo | null; medio: Medio | null }> {
-  if (!VOCES_OFRECIDAS.some((v) => v.id === voz)) {
+  if (!esVozOfrecida(voz)) {
     throw new ErrorProyecto(400, "Esa voz no está entre las que ofrece esta instalación.");
   }
   // El interruptor del panel primero: una instalación con la voz apagada no llega a estimar nada, y mucho menos a
