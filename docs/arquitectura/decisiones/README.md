@@ -38,6 +38,9 @@ Cada decisión relevante se documenta en un fichero `adr-NNNN-slug.md` dentro de
 | [0030](adr-0030-coherencia-percibir-decidir-registrar.md) | Coherencia en tres pasos (percibir con el mapa, decidir con Jev, registrar para medir); identidad activa y el resto en sombra; la cara de una persona real solo se percibe con su autorización expresa | 0.24.0 | Aceptada (identidad activa y el resto en sombra son firmes; umbrales y modelos de percepción provisionales) |
 | [0031](adr-0031-composicion-del-prompt-dirigido.md) | El orden del prompt dirigido vive en el código y los textos de cada opción en el catálogo; la regla de toma única y el bloque de anclajes van siempre; con una persona real no entra ningún adjetivo de atractivo | 0.25.0 | Aceptada (las tres reglas que no se negocian son firmes; el orden de los siete bloques es provisional hasta el spike) |
 | [0032](adr-0032-brief-del-anuncio-por-proyecto.md) | Un proyecto es un anuncio: el brief vive en el proyecto con **un** ángulo escalar, la oferta es una entidad reutilizable atada al producto, las variantes son proyectos hermanos y el hook es el primer turno del guion | 0.27.0 | Aceptada (el brief opcional y el ángulo único son firmes; el tope de doce variantes y los cuatro ángulos que piden declaración son provisionales) |
+| [0035](adr-0035-montaje-y-render-con-ffmpeg.md) | El montaje es una línea de tiempo simple con guardado explícito y versión, y el render un trabajo de FFmpeg en el worker con cola propia: sin coste, idempotente por montaje y versión, y sin exportar si no se puede dibujar la etiqueta de contenido sintético | 0.32.0 | Aceptada (el alcance del editor, el render local y la etiqueta obligatoria son firmes; la mezcla de la música, el consejo de 60 s, la falta de cancelación y no repetir una escena son provisionales) |
+
+Los números **0033 y 0034** quedan reservados para las versiones que se integran antes de la 0.32.0.
 
 ## Plantilla
 

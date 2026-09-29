@@ -2,6 +2,60 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.32.0] · 2026-09-29
+
+El montaje. Hasta aquí Escenara acababa con los clips sueltos en la biblioteca y publicar exigía un editor de
+vídeo aparte. Desde esta versión el proyecto se monta en una **línea de tiempo simple** —orden, recorte, mezcla de
+voz y música, subtítulos— y se exporta a un **MP4 de 1080 × 1920** montado con FFmpeg **en la propia máquina**:
+ningún proveedor, **ni un crédito**.
+
+### Añadido
+
+- **La línea de tiempo del proyecto** en `/proyectos/[id]/montaje`: los clips de las escenas en su orden, con
+  recorte de entrada y de salida, y una previsualización vertical con las zonas seguras dibujadas. Se ordena
+  arrastrando **y con el teclado**, y además con botones de subir y bajar en cada tarjeta: montar un vídeo no
+  puede exigir ratón. Recortar **no toca los clips**: siguen enteros en la biblioteca.
+- **Guardado explícito y con bloqueo optimista.** Reordenar y recortar no guardan nada hasta que pulsas: el
+  montaje se edita a ratos y salvar en cada arrastre convertiría cada tanteo en una versión nueva. Si otra pestaña
+  se adelanta, se dice, se vuelve a leer lo guardado y **lo editado se queda en la pantalla**.
+- **Mezcla de voz y música de 0 % a 200 %**, con el audio de los clips, las pistas de voz del proyecto en el
+  segundo de su fragmento y la música autorizada desde el principio. La mezcla no se normaliza a propósito:
+  añadir música no puede bajar la voz sin que nadie lo haya pedido.
+- **Subtítulos quemados o adjuntos.** Por defecto van aparte —es lo que prefieren TikTok, Reels y Shorts— en
+  **SRT o WebVTT**, con los tiempos ya corridos por los recortes, y se **guardan con la exportación**: el fichero
+  que descargas es el que se montó, no uno recompuesto después.
+- **Etiqueta de contenido generado con IA** con su posición arriba o abajo, en zona de claridad. Cuando el
+  proyecto usa un personaje **con apariencia de persona** (real o inventada) el interruptor **no se puede
+  apagar**, y lo impide el servidor, no la pantalla. Si la máquina no puede dibujarla —le falta una fuente o el
+  soporte de texto de FFmpeg—, **no se exporta**, y el mensaje dice qué instalar.
+- **Exportación sin coste con progreso real**: el render va en el worker por etapas de FFmpeg leídas de su
+  `-progress` (preparando, normalizando, montando, guardando), y el panel dice desde el principio que **no gasta
+  créditos**. Al terminar se ofrecen el MP4 y los subtítulos con enlace temporal renovable.
+- **Comprobación previa antes de montar nada**, con el motor de controles de la 0.18.0: un **fallo crítico
+  abierto** de la revisión, una escena **sin clip**, un montaje vacío o sin espacio en la biblioteca frenan la
+  exportación **diciendo cuál** y llevando a arreglarlo.
+- **Exportación idempotente por montaje y versión**: pedirla dos veces no deja dos ficheros comiéndose la cuota de
+  nadie. El proyecto **sigue editable** después de exportar, y las exportaciones anteriores dicen si siguen
+  correspondiendo al montaje de ahora, para que publicar el vídeo de antes del último cambio no pase por descuido.
+- **Admin › Ajustes › Montaje** con el interruptor `montajeActivo`, y el marco vertical, el recorte y el volumen
+  en el catálogo de componentes.
+- **Guía «Montar y exportar tu vídeo»**, nota legal de la etiqueta de contenido sintético y **ADR-0035** (la línea
+  de tiempo simple y el render con FFmpeg en el worker).
+
+### Actualizar desde la 0.21.0
+
+- `bun run db:backup` y `bun run db:migrate`: la migración `0045_montaje-y-exportacion` crea `montages` (uno por
+  proyecto) y `montage_exports` (qué se montó, con qué versión, qué salió y qué etiqueta llevaba). **Nada de lo
+  que ya había cambia de comportamiento por migrar**: un proyecto sin montaje se comporta como antes hasta que
+  abres la pantalla.
+- **FFmpeg y ffprobe** tienen que estar instalados en la máquina del worker, con soporte de texto (`drawtext`) y
+  una fuente disponible para la etiqueta. Si faltan, la exportación no se encola y la pantalla dice qué instalar,
+  en vez de fallar a mitad del render.
+- El montaje llega **encendido** —no gasta créditos— y se puede apagar en **Admin › Ajustes › Montaje**. Apagado,
+  la pantalla explica quién lo enciende y dónde en vez de fallar.
+- Topes de esta versión: **300 s** por montaje, **60 fragmentos**, **15 min** de render, **128 MiB** por archivo
+  de entrada y **1 GiB** por exportación. El resultado ocupa cuota de la biblioteca como cualquier archivo.
+
 ## [0.27.0] · 2026-09-28
 
 La estrategia del anuncio: un anuncio no es creatividad, es un sistema con tres palancas. El **ángulo** (a quién
