@@ -7,6 +7,7 @@ import type { SeleccionPresets } from "@/lib/presets";
 import { duracionParaModelo } from "@/lib/produccion";
 import type { PasoProductoDigital, ProductoElegido } from "@/lib/productos";
 import { leerAjustes } from "../ajustes";
+import { contextoAnimadoDeEscena } from "../animados/contexto-escena";
 import { duracionDeClipDeEscena, proyectoDeEscena } from "../asistente/consulta";
 import { hechosDeEscena, techoDelProyecto } from "../asistente/plan";
 import { encolar, filaDeLaConfirmacion, type NuevoTrabajoEncolado } from "../cola/encolar";
@@ -724,6 +725,9 @@ export async function crearFotograma(
   const conFicha = elegido
     ? { versionId: elegido.version.id, contexto: elegido.contexto, tipo: elegido.personaje.kind }
     : await fichaHeredada(personajeId, modelo.parametros.maximoReferencias);
+  const contextoTotal = [conFicha.contexto, await contextoAnimadoDeEscena(conEscena?.escena.id ?? null, personaje)]
+    .filter(Boolean)
+    .join("\n");
   exigirVersionConfirmada(peticion.versionPersonaje, conFicha.versionId);
   // Se compone una vez con **el texto original**: valida la combinación de plantilla, presets y modelo, y es lo
   // que miden las reglas de la decisión. Todo esto es gratis, y tiene que fallar **antes** de que se pague nada.
@@ -734,7 +738,7 @@ export async function crearFotograma(
     escena: original.escena,
     dialogo: "",
     // El contexto de la ficha va aparte de la escena: las reglas miden la descripción que escribió la persona.
-    contexto: conFicha.contexto,
+    contexto: contextoTotal,
     conVoz: modelo.conVoz,
     conReferencia: !sinReferencia,
     ...(sinReferencia ? { sinReferencia: true } : {}),
@@ -747,14 +751,14 @@ export async function crearFotograma(
     actor.id,
     [
       { texto: prompt },
-      { texto: conFicha.contexto, personajeId },
+      { texto: contextoTotal, personajeId },
       // La descripción del producto la escribe el usuario en castellano y el prompt va en inglés.
       { texto: producto?.descripcionOriginal ?? "" },
     ],
     h.buscar,
   );
   const escenaEnIngles = enIngles.get(prompt) ?? prompt;
-  const contextoEnIngles = enIngles.get(conFicha.contexto) ?? conFicha.contexto;
+  const contextoEnIngles = enIngles.get(contextoTotal) ?? contextoTotal;
   /**
    * El producto tal como entra en las 6C. `conReferencias` dice la verdad sobre lo que va a recibir el modelo:
    * si no le cabe ninguna foto suya, se le pide un envase sin marca en lugar de prometerle una foto que no va
@@ -1034,7 +1038,10 @@ export async function crearAnimacion(
   // El clip lleva el contexto de **la misma versión que el fotograma**, no de la vigente: si la ficha ha
   // cambiado entre los dos, animar tiene que seguir siendo el mismo personaje que se generó.
   exigirVersionConfirmada(peticion.versionPersonaje, partida.versionPersonajeId);
-  const { contexto, tipo } = await contextoDeLaVersion(partida.versionPersonajeId);
+  const { contexto: contextoPersonaje, tipo } = await contextoDeLaVersion(partida.versionPersonajeId);
+  const contexto = [contextoPersonaje, await contextoAnimadoDeEscena(partida.escenaId, personaje)]
+    .filter(Boolean)
+    .join("\n");
   /**
    * La dirección del clip. La de la producción de un proyecto la resuelve el servidor desde la escena y manda
    * siempre; la de «Crear» llega como **claves elegidas** y se resuelve aquí con el catálogo del usuario, que es

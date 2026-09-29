@@ -74,6 +74,11 @@ export type CambiosFicha = Partial<Record<CampoFicha | "descripcion" | "motivo",
   esteticaDeModelo?: boolean;
   /** Probar la hoja 3×3 en la mitad de sus escenas. Tampoco versiona: no cambia quién es. */
   probarHojaIdentidad?: boolean;
+  estiloAnimado?: string;
+  guiaPaleta?: string;
+  guiaTrazo?: string;
+  guiaDetalle?: string;
+  guiaReferencias?: string[];
 };
 
 /**
@@ -332,8 +337,16 @@ export const revisarConsentimiento = (id: string, aceptado: boolean, nota: strin
  * Crea un **personaje inventado**: no existe, su cara se genera y no admite fotos reales. `declaracion` es la
  * declaración de que no representa a ninguna persona real, y sin ella el servidor no lo crea.
  */
-export const crearPersonajeInventado = (datos: { nombre: string; descripcion: string; declaracion: boolean }) =>
-  pedir<PersonajeVista>("/api/personajes/inventados", json("POST", datos));
+export const crearPersonajeInventado = (datos: {
+  nombre: string;
+  descripcion: string;
+  declaracion: boolean;
+  estiloAnimado: string;
+  guiaPaleta?: string;
+  guiaTrazo?: string;
+  guiaDetalle?: string;
+  guiaReferencias?: string[];
+}) => pedir<PersonajeVista>("/api/personajes/inventados", json("POST", datos));
 
 /**
  * Lo que se confirma para generar los retratos. Es la confirmación de dinero de siempre **sin la revisión de

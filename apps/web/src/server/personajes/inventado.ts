@@ -11,6 +11,7 @@ import {
   type PersonajeVista,
   type TipoPersonaje,
 } from "@/lib/personajes";
+import { guiaDeEstiloPedida } from "../animados/estilos";
 import { db } from "../db/cliente";
 import {
   characterReferences,
@@ -27,6 +28,7 @@ import { claveDerivada } from "../produccion/producir";
 import { filaPropia, recalcularEstado, siguienteOrden } from "./consulta";
 import { ErrorPersonaje } from "./errores";
 import { crearPersonaje, fichaDePersonaje } from "./servicio";
+import { versionarEnTransaccion } from "./versiones";
 import { medidasDelMedio } from "./vista-sintetica";
 
 /**
@@ -72,6 +74,11 @@ export interface DatosPersonajeInventado {
   tipo?: unknown;
   /** Declaración de que es inventado y no representa a nadie real. Obligatoria. */
   declaracion: unknown;
+  estiloAnimado?: unknown;
+  guiaPaleta?: unknown;
+  guiaTrazo?: unknown;
+  guiaDetalle?: unknown;
+  guiaReferencias?: unknown;
 }
 
 /**
@@ -101,9 +108,15 @@ export async function crearPersonajeInventado(actor: Actor, datos: DatosPersonaj
   exigirTextoSinPersonasReales(nombre, descripcion);
   const tipo: TipoPersonaje = datos.tipo === "animal" ? "animal" : "persona";
 
-  const creado = await crearPersonaje(actor, { nombre, tipo, descripcion });
+  const estilo = await guiaDeEstiloPedida({
+    estilo: datos.estiloAnimado,
+    paleta: datos.guiaPaleta,
+    trazo: datos.guiaTrazo,
+    detalle: datos.guiaDetalle,
+    referencias: datos.guiaReferencias,
+  });
+  const creado = await crearPersonaje(actor, { nombre, tipo, descripcion }, estilo);
   await db().transaction(async (tx) => {
-    await tx.update(characters).set({ virtual: true, updatedAt: new Date() }).where(eq(characters.id, creado.id));
     await tx.insert(consentRecords).values({
       characterId: creado.id,
       holderType: "inventado",
@@ -251,24 +264,59 @@ export async function elegirRetrato(actor: Actor, id: unknown, medioId: unknown)
   if (!fila) throw new ErrorPersonaje(404, "Ese retrato ya no está en tu biblioteca.");
 
   const analisis = await medidasDelMedio(medioId);
-  await db()
-    .insert(characterReferences)
-    .values({
-      characterId: personaje.id,
-      mediaId: medioId,
-      // Nunca `foto_original`: este retrato lo ha generado un modelo y la ficha tiene que decirlo siempre.
-      origin: "vista_generada",
-      viewKey: "frontal",
-      declaredView: ETIQUETA_VISTA.frontal,
-      width: analisis?.metricas.ancho ?? null,
-      height: analisis?.metricas.alto ?? null,
-      sharpness: analisis?.metricas.nitidez ?? null,
-      brightness: analisis?.metricas.luminosidad ?? null,
-      phash: analisis?.huella ?? null,
-      sortOrder: await siguienteOrden(personaje.id),
-    })
-    .onConflictDoNothing();
-  await recalcularEstado(personaje.id);
+  await db().transaction(async (tx) => {
+    await tx.execute(sql`select 1 from characters where id = ${personaje.id} for update`);
+    const [vigente] = await tx.select().from(characters).where(eq(characters.id, personaje.id)).limit(1);
+    if (!vigente) throw new ErrorPersonaje(404, "El personaje ya no existe.");
+    const [candidato] = await tx
+      .select({ id: generationJobs.id })
+      .from(generationJobs)
+      .where(
+        and(
+          eq(generationJobs.characterId, personaje.id),
+          eq(generationJobs.resultMediaId, medioId),
+          sql`${generationJobs.input}->>'retratoInventado' = 'true'`,
+          sql`${generationJobs.input}->>'retratoDescartado' is null`,
+        ),
+      )
+      .limit(1);
+    if (!candidato)
+      throw new ErrorPersonaje(409, "El estilo cambió y este retrato ya no es candidato. Genera uno nuevo.");
+    await tx
+      .insert(characterReferences)
+      .values({
+        characterId: personaje.id,
+        mediaId: medioId,
+        // Nunca `foto_original`: este retrato lo ha generado un modelo y la ficha tiene que decirlo siempre.
+        origin: "vista_generada",
+        viewKey: "frontal",
+        declaredView: ETIQUETA_VISTA.frontal,
+        width: analisis?.metricas.ancho ?? null,
+        height: analisis?.metricas.alto ?? null,
+        sharpness: analisis?.metricas.nitidez ?? null,
+        brightness: analisis?.metricas.luminosidad ?? null,
+        phash: analisis?.huella ?? null,
+        sortOrder: await siguienteOrden(personaje.id),
+      })
+      .onConflictDoNothing();
+    if (vigente.renderStyle === "animado") {
+      await tx.update(characters).set({ masterFrameMediaId: medioId }).where(eq(characters.id, personaje.id));
+    }
+    const referencias = await tx
+      .select({ mediaId: characterReferences.mediaId, vista: characterReferences.viewKey })
+      .from(characterReferences)
+      .innerJoin(media, eq(media.id, characterReferences.mediaId))
+      .where(and(eq(characterReferences.characterId, personaje.id), isNull(media.deletedAt)))
+      .orderBy(characterReferences.sortOrder, characterReferences.createdAt);
+    await versionarEnTransaccion(
+      tx,
+      vigente.renderStyle === "animado" ? { ...vigente, masterFrameMediaId: medioId } : vigente,
+      { ids: referencias.map((r) => r.mediaId), vistas: referencias.map((r) => r.vista ?? "") },
+      actor.id,
+      "Retrato maestro aprobado",
+    );
+    await recalcularEstado(personaje.id, tx);
+  });
   return fichaDePersonaje(actor, personaje.id);
 }
 

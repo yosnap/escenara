@@ -1,4 +1,5 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
+import { bloqueDeEstiloAnimado, GUIA_ESTILO_VACIA } from "@/lib/animados";
 import { esVista } from "@/lib/captura-personaje";
 import { CAPACIDAD_DE_TIPO } from "@/lib/catalogo";
 import { componerContexto, componerPrompt, mejoresReferencias, type ReferenciaElegible } from "@/lib/ficha-personaje";
@@ -40,7 +41,9 @@ import { asegurarVersionVigente } from "./versiones";
  */
 export const contextoDeVersion = (version: FilaVersionPersonaje, tipo: FilaPersonaje["kind"]): string => {
   const instantanea = instantaneaDeVersion(version);
-  return componerContexto(instantanea.ficha, tipo, instantanea.descripcion);
+  const ficha = componerContexto(instantanea.ficha, tipo, instantanea.descripcion);
+  if (instantanea.renderStyle !== "animado") return ficha;
+  return [ficha, bloqueDeEstiloAnimado(instantanea.styleGuide ?? GUIA_ESTILO_VACIA)].filter(Boolean).join("\n");
 };
 
 /** Referencias utilizables del personaje con lo que necesita la elección por cobertura. */
@@ -70,7 +73,38 @@ export async function referenciasElegibles(personajeId: string): Promise<Referen
  * La usa «Completar la ficha con IA» (0.22.1) para enseñarle al modelo de texto a quién está describiendo.
  */
 export async function mejorReferenciaDe(personajeId: string, tipo: FilaPersonaje["kind"]): Promise<string | null> {
+  const personaje = await personajePorId(personajeId);
+  if (personaje?.renderStyle === "animado" && personaje.masterFrameMediaId) {
+    const [maestro] = await db()
+      .select({ id: media.id })
+      .from(media)
+      .where(and(eq(media.id, personaje.masterFrameMediaId), isNull(media.deletedAt)))
+      .limit(1);
+    if (maestro) return maestro.id;
+  }
   return mejoresReferencias(tipo, await referenciasElegibles(personajeId), 1)[0] ?? null;
+}
+
+/** El retrato maestro va delante de las demás vistas, también cuando el modelo solo admite una imagen. */
+function referenciasConMaestro(
+  personaje: FilaPersonaje,
+  version: FilaVersionPersonaje | null,
+  elegibles: ReferenciaElegible[],
+  maximo: number,
+): string[] {
+  const deVersion = version ? deLaVersion(version, elegibles) : elegibles;
+  const maestro = personaje.renderStyle === "animado" ? personaje.masterFrameMediaId : null;
+  if (!maestro || !deVersion.some((r) => r.mediaId === maestro)) {
+    return mejoresReferencias(personaje.kind, deVersion, maximo);
+  }
+  return [
+    maestro,
+    ...mejoresReferencias(
+      personaje.kind,
+      deVersion.filter((r) => r.mediaId !== maestro),
+      maximo - 1,
+    ),
+  ];
 }
 
 /**
@@ -89,7 +123,7 @@ export async function contextoParaGenerar(
   return {
     version,
     contexto: contextoDeVersion(version, personaje.kind),
-    referencias: mejoresReferencias(personaje.kind, deLaVersion(version, elegibles), maximoDelModelo),
+    referencias: referenciasConMaestro(personaje, version, elegibles, maximoDelModelo),
   };
 }
 
@@ -126,7 +160,7 @@ export async function contextoAplicado(actor: Actor, id: unknown, modeloPedido?:
   const maximo = elegido.parametros.maximoReferencias;
   const elegibles = await referenciasElegibles(personaje.id);
   const version = await ultimaVersion(personaje.id);
-  const ids = mejoresReferencias(personaje.kind, version ? deLaVersion(version, elegibles) : elegibles, maximo);
+  const ids = referenciasConMaestro(personaje, version, elegibles, maximo);
   const porId = new Map(elegibles.map((r) => [r.mediaId, r]));
   const filas = ids.length === 0 ? [] : await db().select().from(media).where(inArray(media.id, ids));
   const medios = new Map(filas.map((f) => [f.id, aDto(f, actor)]));

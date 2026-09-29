@@ -91,14 +91,17 @@ function acentoValido(valor: unknown): Acento {
  * referencias suficientes). Se comprueba al asignarlo, no al producir: así el aviso llega cuando se puede
  * arreglar. `null` quita el protagonista.
  */
-async function personajeValido(actor: Actor, valor: unknown): Promise<string | null> {
+async function personajeValido(
+  actor: Actor,
+  valor: unknown,
+): Promise<{ id: string; renderStyle: "realista" | "animado" } | null> {
   if (valor === null || valor === "" || valor === undefined) return null;
   if (!esUuidProyecto(valor)) throw new ErrorProyecto(400, "Ese personaje no existe.");
   // Reutiliza las puertas de 0.13.0–0.15.0: dueño (404 si es de otro) y personaje usable (consentimiento
   // vigente y mínimo de referencias), cada una con su motivo escrito. Es una lectura: no crea versiones.
   const personaje = await filaPropia(actor, valor);
   await exigirPersonajeUsable(personaje.id, personaje.name);
-  return personaje.id;
+  return { id: personaje.id, renderStyle: personaje.renderStyle };
 }
 
 export async function crearProyecto(actor: Actor, datos: DatosProyecto): Promise<ProyectoDetalle> {
@@ -110,6 +113,7 @@ export async function crearProyecto(actor: Actor, datos: DatosProyecto): Promise
   if (total >= PROYECTOS_MAXIMOS) {
     throw new ErrorProyecto(409, `No puedes tener más de ${PROYECTOS_MAXIMOS} proyectos. Borra alguno antes.`);
   }
+  const protagonista = await personajeValido(actor, datos.personajeId);
   const [fila] = await db()
     .insert(projects)
     .values({
@@ -117,7 +121,8 @@ export async function crearProyecto(actor: Actor, datos: DatosProyecto): Promise
       title: tituloLimpio(datos.titulo),
       format: formatoValido(datos.formato),
       idea: limpiarTextoDePrompt(datos.idea, IDEA_MAXIMA),
-      mainCharacterId: await personajeValido(actor, datos.personajeId),
+      mainCharacterId: protagonista?.id ?? null,
+      renderStyle: protagonista?.renderStyle ?? "realista",
       authorizedCredits:
         datos.presupuestoCreditos === undefined
           ? ajustes.presupuestoProyecto
@@ -140,7 +145,11 @@ export async function editarProyecto(actor: Actor, id: unknown, datos: DatosProy
   if (datos.formato !== undefined) cambios.format = formatoValido(datos.formato);
   if (datos.idea !== undefined) cambios.idea = limpiarTextoDePrompt(datos.idea, IDEA_MAXIMA);
   if (datos.concepto !== undefined) cambios.concept = limpiarTextoDePrompt(datos.concepto, CONCEPTO_MAXIMO);
-  if (datos.personajeId !== undefined) cambios.mainCharacterId = await personajeValido(actor, datos.personajeId);
+  if (datos.personajeId !== undefined) {
+    const protagonista = await personajeValido(actor, datos.personajeId);
+    cambios.mainCharacterId = protagonista?.id ?? null;
+    cambios.renderStyle = protagonista?.renderStyle ?? "realista";
+  }
   if (datos.presupuestoCreditos !== undefined) cambios.authorizedCredits = creditosValidos(datos.presupuestoCreditos);
   if (datos.segundosClip !== undefined) cambios.clipSeconds = duracionValida(datos.segundosClip);
   if (datos.acento !== undefined) cambios.speechAccent = acentoValido(datos.acento);

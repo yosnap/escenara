@@ -1,20 +1,28 @@
-import { and, count, eq, inArray, sql } from "drizzle-orm";
+import { and, count, eq, inArray, isNull, sql } from "drizzle-orm";
 import { ETIQUETA_VISTA, esVista, promptDeVista, type Vista, vistasPorGenerar } from "@/lib/captura-personaje";
 import type { TrabajoVista } from "@/lib/generacion";
 import { MAXIMO_REFERENCIAS, type TipoPersonaje } from "@/lib/personajes";
 import { leerObjeto } from "../almacenamiento";
 import { filaDeLaConfirmacion } from "../cola/encolar";
 import { db } from "../db/cliente";
-import { characterReferences, characters, type FilaTrabajo, generationJobs, media } from "../db/esquema";
+import {
+  characterReferences,
+  characters,
+  characterVersions,
+  type FilaTrabajo,
+  generationJobs,
+  media,
+} from "../db/esquema";
 import { exigirAvisoUmbral } from "../generacion/comprobaciones";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { crearFotograma } from "../generacion/servicio";
 import { vistaDeFila } from "../generacion/trabajos";
 import type { Actor } from "../media/servicio";
 import { type AnalisisImagen, analizarImagen } from "./calidad";
-import { coberturaDe, filaPropia, siguienteOrden } from "./consulta";
+import { coberturaDe, filaPropia } from "./consulta";
 import { ErrorPersonaje } from "./errores";
-import { versionarSiCambia } from "./versiones";
+import { instantaneaDeVersion } from "./ficha";
+import { versionarEnTransaccion } from "./versiones";
 
 /**
  * Vistas sintéticas (decisión 3 de la fase 14): cuando a un personaje le falta una vista de la cobertura, se
@@ -283,41 +291,72 @@ export function vistaSinteticaDe(fila: FilaTrabajo): Vista | null {
  */
 export async function adjuntarVistaGenerada(fila: FilaTrabajo, medioId: string): Promise<void> {
   const vista = vistaSinteticaDe(fila);
-  if (!vista || !fila.characterId) return;
+  const personajeId = fila.characterId;
+  if (!vista || !personajeId) return;
   try {
-    const [yaTiene] = await db()
-      .select({ total: count() })
-      .from(characterReferences)
-      .where(eq(characterReferences.characterId, fila.characterId));
-    if ((yaTiene?.total ?? 0) >= MAXIMO_REFERENCIAS) {
-      console.warn(`[personajes] vista generada sin adjuntar (tope de referencias) en el trabajo ${fila.id}`);
-      return;
-    }
     // Se mide igual que una foto, aunque no se rechace nada: sin huella, la misma vista generada dos veces no
     // se detectaría como repetida, y sin medidas la ficha no podría decir con qué se guardó.
     const analisis = await medidasDelMedio(medioId);
-    await db()
-      .insert(characterReferences)
-      .values({
-        characterId: fila.characterId,
-        mediaId: medioId,
-        origin: "vista_generada",
-        viewKey: vista,
-        declaredView: ETIQUETA_VISTA[vista],
-        width: analisis?.metricas.ancho ?? null,
-        height: analisis?.metricas.alto ?? null,
-        sharpness: analisis?.metricas.nitidez ?? null,
-        brightness: analisis?.metricas.luminosidad ?? null,
-        phash: analisis?.huella ?? null,
-        sortOrder: await siguienteOrden(fila.characterId),
-      })
-      .onConflictDoNothing();
-    // Una referencia más cambia lo que se le envía al proveedor, así que crea versión igual que añadirla a
-    // mano (0.15.0). Lo hace el worker, sin sesión: la versión se atribuye al dueño del personaje.
-    const [personaje] = await db().select().from(characters).where(eq(characters.id, fila.characterId)).limit(1);
-    if (personaje) {
-      await versionarSiCambia(personaje, personaje.ownerId, `Se añadió la vista generada «${ETIQUETA_VISTA[vista]}».`);
-    }
+    await db().transaction(async (tx) => {
+      // El cambio de estilo también bloquea esta fila. Así nunca entra una vista antigua después de
+      // invalidar las referencias, aunque el proveedor termine justo durante la edición de la ficha.
+      await tx.execute(sql`select 1 from characters where id = ${personajeId} for update`);
+      const [personaje] = await tx.select().from(characters).where(eq(characters.id, personajeId)).limit(1);
+      if (!personaje) return;
+      if (fila.characterVersionId) {
+        const [version] = await tx
+          .select()
+          .from(characterVersions)
+          .where(eq(characterVersions.id, fila.characterVersionId))
+          .limit(1);
+        const origen = version ? instantaneaDeVersion(version) : null;
+        if (
+          origen &&
+          (origen.renderStyle !== personaje.renderStyle ||
+            JSON.stringify(origen.styleGuide) !== JSON.stringify(personaje.styleGuide))
+        )
+          return;
+      }
+      const [estado] = await tx
+        .select({ total: count(), ultimoOrden: sql<number>`coalesce(max(${characterReferences.sortOrder}), 0)` })
+        .from(characterReferences)
+        .where(eq(characterReferences.characterId, personaje.id));
+      if ((estado?.total ?? 0) >= MAXIMO_REFERENCIAS) {
+        console.warn(`[personajes] vista generada sin adjuntar (tope de referencias) en el trabajo ${fila.id}`);
+        return;
+      }
+      const [anadida] = await tx
+        .insert(characterReferences)
+        .values({
+          characterId: personajeId,
+          mediaId: medioId,
+          origin: "vista_generada",
+          viewKey: vista,
+          declaredView: ETIQUETA_VISTA[vista],
+          width: analisis?.metricas.ancho ?? null,
+          height: analisis?.metricas.alto ?? null,
+          sharpness: analisis?.metricas.nitidez ?? null,
+          brightness: analisis?.metricas.luminosidad ?? null,
+          phash: analisis?.huella ?? null,
+          sortOrder: (estado?.ultimoOrden ?? 0) + 1,
+        })
+        .onConflictDoNothing()
+        .returning({ id: characterReferences.id });
+      if (!anadida) return;
+      const referencias = await tx
+        .select({ mediaId: characterReferences.mediaId, vista: characterReferences.viewKey })
+        .from(characterReferences)
+        .innerJoin(media, eq(media.id, characterReferences.mediaId))
+        .where(and(eq(characterReferences.characterId, personaje.id), isNull(media.deletedAt)))
+        .orderBy(characterReferences.sortOrder, characterReferences.createdAt);
+      await versionarEnTransaccion(
+        tx,
+        personaje,
+        { ids: referencias.map((r) => r.mediaId), vistas: referencias.map((r) => r.vista ?? "") },
+        personaje.ownerId,
+        `Se añadió la vista generada «${ETIQUETA_VISTA[vista]}».`,
+      );
+    });
   } catch (error) {
     console.error(
       `[personajes] no se ha podido adjuntar la vista generada del trabajo ${fila.id}: ${(error as Error).name}`,

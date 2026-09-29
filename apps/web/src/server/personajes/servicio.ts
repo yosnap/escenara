@@ -1,4 +1,5 @@
 import { and, count, eq, inArray, isNull, sql } from "drizzle-orm";
+import type { GuiaEstiloAnimado } from "@/lib/animados";
 import { esVista, type Vista } from "@/lib/captura-personaje";
 import { CAMPOS_FICHA, type CampoFicha, limpiarCampoFicha } from "@/lib/ficha-personaje";
 import {
@@ -15,8 +16,9 @@ import {
   type TipoPersonaje,
   VISTA_MAXIMA,
 } from "@/lib/personajes";
+import { guiaDeEstiloPedida } from "../animados/estilos";
 import { db } from "../db/cliente";
-import { characterReferences, characters, media } from "../db/esquema";
+import { characterReferences, characters, generationJobs, media, projects, scenes } from "../db/esquema";
 import { trabajosQueGeneraron } from "../generacion/trabajos";
 import type { Actor } from "../media/servicio";
 import {
@@ -63,6 +65,12 @@ export interface DatosPersonaje {
   esteticaDeModelo?: unknown;
   /** Aceptar que la mitad de sus escenas se hagan solo con la hoja 3×3, para poder compararla. */
   probarHojaIdentidad?: unknown;
+  /** El estilo visual y sus matices solo se aceptan en un personaje inventado. */
+  estiloAnimado?: unknown;
+  guiaPaleta?: unknown;
+  guiaTrazo?: unknown;
+  guiaDetalle?: unknown;
+  guiaReferencias?: unknown;
   /** Por qué se cambia. Se guarda en la versión que produce el cambio; no versiona por sí mismo. */
   motivo?: unknown;
 }
@@ -118,7 +126,11 @@ function esNombreRepetido(error: unknown): boolean {
   return false;
 }
 
-export async function crearPersonaje(actor: Actor, datos: DatosPersonaje): Promise<PersonajeVista> {
+export async function crearPersonaje(
+  actor: Actor,
+  datos: DatosPersonaje,
+  inventado?: { renderStyle: "realista" | "animado"; styleGuide: GuiaEstiloAnimado },
+): Promise<PersonajeVista> {
   const nombre = texto(datos.nombre, NOMBRE_MAXIMO, "el nombre del personaje", true);
   const tipo = tipoValido(datos.tipo);
   const especie = texto(datos.especie, ESPECIE_MAXIMA, "la especie o las notas");
@@ -135,7 +147,14 @@ export async function crearPersonaje(actor: Actor, datos: DatosPersonaje): Promi
       }
       const [creada] = await tx
         .insert(characters)
-        .values({ ownerId: actor.id, name: nombre, kind: tipo, speciesNotes: especie, description: descripcion })
+        .values({
+          ownerId: actor.id,
+          name: nombre,
+          kind: tipo,
+          speciesNotes: especie,
+          description: descripcion,
+          ...(inventado ? { virtual: true, renderStyle: inventado.renderStyle, styleGuide: inventado.styleGuide } : {}),
+        })
         .returning();
       if (!creada) throw new ErrorPersonaje(500, "No se ha podido crear el personaje.");
       return creada;
@@ -223,6 +242,34 @@ export async function actualizarPersonaje(
     }
     valores.identitySheetTrial = activar;
   }
+  if (
+    cambios.estiloAnimado !== undefined ||
+    cambios.guiaPaleta !== undefined ||
+    cambios.guiaTrazo !== undefined ||
+    cambios.guiaDetalle !== undefined ||
+    cambios.guiaReferencias !== undefined
+  ) {
+    if (!fila.virtual) {
+      throw new ErrorPersonaje(
+        409,
+        "Solo un personaje inventado puede tener estilo animado. Las personas reales conservan su apariencia original.",
+      );
+    }
+    const guia = await guiaDeEstiloPedida({
+      estilo: cambios.estiloAnimado ?? (fila.renderStyle === "animado" ? fila.styleGuide.preset : "realista"),
+      anterior: fila.renderStyle === "animado" ? fila.styleGuide : undefined,
+      paleta: cambios.guiaPaleta ?? fila.styleGuide.paleta,
+      trazo: cambios.guiaTrazo ?? fila.styleGuide.trazo,
+      detalle: cambios.guiaDetalle ?? fila.styleGuide.detalle,
+      referencias: cambios.guiaReferencias ?? fila.styleGuide.referencias,
+    });
+    valores.renderStyle = guia.renderStyle;
+    valores.styleGuide = guia.styleGuide;
+  }
+  const estiloCambia =
+    (valores.renderStyle !== undefined && valores.renderStyle !== fila.renderStyle) ||
+    (valores.styleGuide !== undefined && JSON.stringify(valores.styleGuide) !== JSON.stringify(fila.styleGuide));
+  if (estiloCambia) valores.masterFrameMediaId = null;
   const motivo = texto(cambios.motivo, MOTIVO_CAMBIO_MAXIMO, "el motivo del cambio");
   if (Object.keys(valores).length === 0) return vistaDePersonaje(fila, actor, { completa: true, conReferencias: true });
   // Las referencias se leen antes de abrir la transacción: no las cambia esta operación, y así la transacción
@@ -234,13 +281,38 @@ export async function actualizarPersonaje(
     // una apariencia que ya cambió.
     const actualizada = await db().transaction(async (tx) => {
       await tx.execute(sql`select 1 from characters where id = ${fila.id} for update`);
+      if (estiloCambia) {
+        // Las vistas y retratos del acabado anterior siguen en la biblioteca, pero ya no guían la identidad.
+        await tx.delete(characterReferences).where(eq(characterReferences.characterId, fila.id));
+        await tx
+          .update(generationJobs)
+          .set({ input: sql`${generationJobs.input} || '{"retratoDescartado": true}'::jsonb` })
+          .where(
+            and(eq(generationJobs.characterId, fila.id), sql`${generationJobs.input}->>'retratoInventado' = 'true'`),
+          );
+        await tx
+          .update(projects)
+          .set({ renderStyle: valores.renderStyle ?? fila.renderStyle, updatedAt: new Date() })
+          .where(eq(projects.mainCharacterId, fila.id));
+        await tx
+          .update(scenes)
+          .set({ changedSinceGeneration: true, updatedAt: new Date() })
+          .where(sql`${scenes.projectId} in (select id from projects where main_character_id = ${fila.id})`);
+      }
       const [guardada] = await tx
         .update(characters)
         .set({ ...valores, updatedAt: new Date() })
         .where(eq(characters.id, fila.id))
         .returning();
       if (!guardada) throw new ErrorPersonaje(404, "El personaje no existe.");
-      await versionarEnTransaccion(tx, guardada, referencias, actor.id, motivo);
+      await versionarEnTransaccion(
+        tx,
+        guardada,
+        estiloCambia ? { ids: [], vistas: [] } : referencias,
+        actor.id,
+        motivo,
+      );
+      if (estiloCambia) await recalcularEstado(fila.id, tx);
       return guardada;
     });
     return vistaDePersonaje(actualizada, actor, { completa: true, conReferencias: true });

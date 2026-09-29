@@ -129,7 +129,11 @@ export function PanelRetratos({
     }
     setCandidatos(candidatos.filter((c) => c.id !== medioId));
     onPersonaje(respuesta.datos);
-    setAviso("Ese retrato es ya la cara del personaje. Desde sus referencias puedes generar las demás vistas.");
+    setAviso(
+      personaje.estiloAnimado === "realista"
+        ? "Ese retrato es ya la cara del personaje. Desde sus referencias puedes generar las demás vistas."
+        : "Retrato maestro aprobado. Guiará las vistas, los clips y la comprobación de identidad de este personaje animado.",
+    );
   };
 
   return (
@@ -138,9 +142,17 @@ export function PanelRetratos({
         <h2 className="text-xl font-bold text-texto">Retratos</h2>
         <p className="mt-1 text-texto-suave">
           Este personaje es inventado: su cara se genera a partir de su descripción. Se hacen {RETRATOS_CANDIDATOS} y
-          eliges uno; los demás se quedan en tu biblioteca.
+          eliges uno; los demás se quedan en tu biblioteca.{" "}
+          {personaje.estiloAnimado !== "realista" && "El elegido será su fotograma maestro animado."}
         </p>
       </div>
+
+      {personaje.fotogramaMaestro && (
+        <div className="max-w-48">
+          <p className="mb-2 text-sm font-semibold text-texto">Fotograma maestro aprobado</p>
+          <VisorMedio medio={personaje.fotogramaMaestro} />
+        </div>
+      )}
 
       {error && <Aviso tono="error">{error}</Aviso>}
       {aviso && <Aviso tono="info">{aviso}</Aviso>}
@@ -189,7 +201,7 @@ export function PanelRetratos({
                 disabled={ocupado}
                 onClick={() => void elegir(medio.id)}
               >
-                Elegir este
+                {personaje.estiloAnimado === "realista" ? "Elegir este" : "Aprobar como maestro"}
               </Boton>
             </div>
           ))}

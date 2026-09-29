@@ -331,6 +331,12 @@ export interface PersonajeVista {
    * La interfaz lo dice siempre y no ofrece subir fotos; quien lo impide es el servidor.
    */
   inventado: boolean;
+  /** Acabado guardado para retratos, vistas y clips. Solo los inventados pueden ser animados. */
+  estiloAnimado: string;
+  /** Solo en la ficha del dueño: puede contener detalles privados de apariencia. */
+  guiaEstilo?: { paleta: string; trazo: string; detalle: string; referencias: string[] };
+  /** Retrato animado elegido y aprobado como ancla; `null` antes de elegirlo. */
+  fotogramaMaestro: Medio | null;
   /**
    * `true` si este personaje **inventado** se describe con estética de modelo, porque el usuario lo ha pedido
    * expresamente. Siempre `false` en una persona real, donde ni se ofrece ni se aplica.

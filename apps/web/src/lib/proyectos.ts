@@ -255,6 +255,8 @@ export interface ProyectoVista {
   concepto: string;
   personajeId: string | null;
   personajeNombre: string | null;
+  /** Acabado heredado del protagonista y aplicado también a los planos de apoyo. */
+  estiloVisual: "realista" | "animado";
   /** Presupuesto autorizado del proyecto en créditos; 0 = sin fijar todavía. */
   presupuestoCreditos: number;
   /** Duración de los clips de este proyecto, en segundos. Es la que se le pide al modelo de vídeo. */

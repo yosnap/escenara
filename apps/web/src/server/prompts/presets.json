@@ -1302,6 +1302,36 @@
         "porDondeEntra": "Desmonta una creencia",
         "ejemplo": "El rizo no se define echando más producto."
       }
+    },
+    {
+      "categoria": "estilo-animado",
+      "clave": "ilustracion-plana",
+      "nombre": "Ilustración plana",
+      "descripcion": "Formas limpias, color sólido y sombras sencillas; sin parecer una fotografía.",
+      "orden": 10,
+      "valores": {
+        "prompt": "Flat editorial illustration, clean graphic shapes, solid colour areas, restrained two-tone shading, stable character silhouette and face design; no photographic texture or realistic skin"
+      }
+    },
+    {
+      "categoria": "estilo-animado",
+      "clave": "tres-d-estilizado",
+      "nombre": "3D estilizado",
+      "descripcion": "Volúmenes suaves y materiales de dibujo tridimensional, sin realismo fotográfico.",
+      "orden": 20,
+      "valores": {
+        "prompt": "Stylized three-dimensional animation, sculpted soft shapes, simplified materials, expressive proportions, coherent surface colours and stable character design; no live-action or photorealistic skin"
+      }
+    },
+    {
+      "categoria": "estilo-animado",
+      "clave": "anime",
+      "nombre": "Anime",
+      "descripcion": "Dibujo de líneas definidas, color por capas y expresiones claras, sin imitar una obra concreta.",
+      "orden": 30,
+      "valores": {
+        "prompt": "Original anime-inspired hand-drawn animation, crisp linework, layered cel shading, expressive but consistent facial design and stable colour palette; no named franchise, artist or studio"
+      }
     }
   ],
   "plantillas": [

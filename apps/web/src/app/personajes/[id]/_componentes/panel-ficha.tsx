@@ -7,6 +7,11 @@ import { Casilla } from "@/components/ui/choice";
 import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo, EntradaTexto } from "@/components/ui/field";
 import { consultarContexto, guardarFicha } from "@/components/ui/personajes/api-personajes";
+import {
+  CamposEstiloAnimado,
+  type MaticesAnimados,
+  type OpcionEstiloAnimado,
+} from "@/components/ui/personajes/campos-estilo-animado";
 import { PanelContextoPersonaje } from "@/components/ui/personajes/panel-contexto";
 import {
   AYUDA_CAMPO_FICHA,
@@ -33,12 +38,15 @@ import { DialogoFichaConIA } from "./dialogo-ficha-ia";
  */
 export function PanelFicha({
   personaje,
+  estilosAnimados,
   onPersonaje,
 }: {
   personaje: PersonajeVista;
+  estilosAnimados: OpcionEstiloAnimado[];
   /** Personaje recalculado por el servidor, con su versión vigente ya actualizada. */
   onPersonaje: (personaje: PersonajeVista) => void;
 }) {
+  const guia = personaje.guiaEstilo ?? { paleta: "", trazo: "", detalle: "", referencias: [] };
   const [campos, setCampos] = useState<Record<CampoFicha, string>>({ ...personaje.ficha });
   const [descripcion, setDescripcion] = useState(personaje.descripcion);
   const [motivo, setMotivo] = useState("");
@@ -50,11 +58,21 @@ export function PanelFicha({
   const [conIA, setConIA] = useState(false);
   const [esteticaDeModelo, setEsteticaDeModelo] = useState(personaje.esteticaDeModelo);
   const [probarHoja, setProbarHoja] = useState(personaje.probarHojaIdentidad);
+  const [estilo, setEstilo] = useState(personaje.estiloAnimado);
+  const [matices, setMatices] = useState<MaticesAnimados>({
+    ...guia,
+    referencias: guia.referencias.join("\n"),
+  });
 
   const cambiado =
     descripcion !== personaje.descripcion ||
     esteticaDeModelo !== personaje.esteticaDeModelo ||
     probarHoja !== personaje.probarHojaIdentidad ||
+    estilo !== personaje.estiloAnimado ||
+    matices.paleta !== guia.paleta ||
+    matices.trazo !== guia.trazo ||
+    matices.detalle !== guia.detalle ||
+    matices.referencias !== guia.referencias.join("\n") ||
     CAMPOS_FICHA.some((campo) => campos[campo] !== personaje.ficha[campo]);
 
   const guardar = async () => {
@@ -66,7 +84,19 @@ export function PanelFicha({
       descripcion,
       motivo,
       // Solo viaja en un personaje inventado: en uno real el servidor la rechaza, y con razón.
-      ...(personaje.inventado ? { esteticaDeModelo } : {}),
+      ...(personaje.inventado
+        ? {
+            esteticaDeModelo,
+            estiloAnimado: estilo,
+            guiaPaleta: matices.paleta,
+            guiaTrazo: matices.trazo,
+            guiaDetalle: matices.detalle,
+            guiaReferencias: matices.referencias
+              .split("\n")
+              .map((linea) => linea.trim())
+              .filter(Boolean),
+          }
+        : {}),
       ...(personaje.hojaIdentidad ? { probarHojaIdentidad: probarHoja } : {}),
     });
     setGuardando(false);
@@ -86,6 +116,9 @@ export function PanelFicha({
     setDescripcion(respuesta.datos.descripcion);
     setEsteticaDeModelo(respuesta.datos.esteticaDeModelo);
     setProbarHoja(respuesta.datos.probarHojaIdentidad);
+    setEstilo(respuesta.datos.estiloAnimado);
+    const nuevaGuia = respuesta.datos.guiaEstilo ?? { paleta: "", trazo: "", detalle: "", referencias: [] };
+    setMatices({ ...nuevaGuia, referencias: nuevaGuia.referencias.join("\n") });
     setContexto(null);
     onPersonaje(respuesta.datos);
   };
@@ -145,6 +178,16 @@ export function PanelFicha({
         2026-09-28). Con una persona real no se enseña, y aunque alguien la enviara el servidor la rechaza: su
         identidad sale de sus fotos y describir su atractivo sería inventar a otra persona con su cara.
       */}
+      {personaje.inventado && (
+        <CamposEstiloAnimado
+          opciones={estilosAnimados}
+          estilo={estilo}
+          onEstilo={setEstilo}
+          matices={matices}
+          onMatices={setMatices}
+        />
+      )}
+
       {personaje.inventado && (
         <div className="rounded-2xl border border-borde bg-superficie p-4">
           <Casilla

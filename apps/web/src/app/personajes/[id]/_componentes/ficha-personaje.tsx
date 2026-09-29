@@ -54,6 +54,7 @@ export function FichaPersonaje({
   retratos,
   hojaIdentidad,
   proyectosOmni,
+  estilosAnimados,
 }: {
   inicial: PersonajeVista;
   umbrales: UmbralesCalidad;
@@ -63,6 +64,7 @@ export function FichaPersonaje({
   hojaIdentidad: Medio | null;
   /** Proyectos suyos en modo Omni, para poder registrarlo con la voz de uno de ellos (0.22.0). */
   proyectosOmni: ProyectoOmni[];
+  estilosAnimados: { clave: string; nombre: string; descripcion: string }[];
   /** Si se puede generar con la clave del usuario, y si no, por qué: lo decide el servidor en la página. */
   claveDeGeneracion: EstadoDeClave;
 }) {
@@ -244,6 +246,7 @@ export function FichaPersonaje({
               contenido: (
                 <PanelFicha
                   personaje={personaje}
+                  estilosAnimados={estilosAnimados}
                   onPersonaje={(actualizado) => {
                     setPersonaje(actualizado);
                     router.refresh();

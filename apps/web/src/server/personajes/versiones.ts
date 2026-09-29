@@ -79,7 +79,7 @@ async function insertarVersion(
     .values({
       characterId: personaje.id,
       number: numero,
-      sheet: hojaDeFicha(instantanea.ficha, instantanea.descripcion),
+      sheet: hojaDeFicha(instantanea.ficha, instantanea.descripcion, instantanea),
       referenceMediaIds: instantanea.referencias,
       referenceViewKeys: instantanea.vistas,
       sheetMediaId: opciones.hojaMedioId ?? null,

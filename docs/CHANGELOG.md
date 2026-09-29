@@ -2,6 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.31.0] · 2026-09-29
+
+### Añadido
+
+- **Personajes animados inventados** en ilustración plana, 3D estilizado y anime, con guía de estilo editable desde Admin › Presets y retrato maestro aprobado.
+- El proyecto y sus escenas heredan el acabado. Cada trabajo conserva la versión de la guía; Jev compara la identidad con el maestro. Cambiar de estilo retira las vistas anteriores y exige un nuevo retrato.
+- Guía [Crear un personaje animado](guias/personajes-animados.md) y [ADR-0037](arquitectura/decisiones/adr-0037-animados-con-identidad-maestra.md). La etiqueta visible de contenido sintético seguirá siendo obligatoria al exportar, también para dibujos.
+
 ## [0.30.0] · 2026-09-29
 
 ### Añadido
