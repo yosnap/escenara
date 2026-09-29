@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
@@ -71,5 +71,25 @@ describe("buscarFugas", () => {
     );
     expect(buscarFugas(limpio)).toEqual([]);
     rmSync(limpio, { recursive: true, force: true });
+  });
+});
+
+describe("buscarFugas: enlaces y rutas locales", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "escenara-docs-enlaces-"));
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+  test("un enlace simbólico en lo publicado es una fuga", () => {
+    symlinkSync("/etc/hosts", path.join(dir, "medios.txt"));
+    expect(buscarFugas(dir).map((f) => f.motivo)).toContain("enlace simbólico");
+  });
+
+  test("las rutas de un directorio personal, de un volumen o de plans/ delatan material local", () => {
+    const limpio = mkdtempSync(path.join(tmpdir(), "escenara-docs-rutas-"));
+    writeFileSync(path.join(limpio, "a.html"), "<p>/Users/alguien/x y /Volumes/Disco/y y plans/fase.md</p>");
+    const motivos = buscarFugas(limpio).map((f) => f.motivo);
+    rmSync(limpio, { recursive: true, force: true });
+    expect(motivos).toEqual(
+      expect.arrayContaining(["ruta de un directorio personal", "ruta de un volumen local", "ruta plans/"]),
+    );
   });
 });

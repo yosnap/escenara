@@ -76,7 +76,7 @@ primer clip, está en [Tu primer vídeo](tu-primer-video.md).
 
 Algunos servicios hablan la misma API que OpenAI y cobran por **cuota del plan**, no por petición (por ejemplo,
 NaN builders). Sirven de **reserva** para texto, voz (`kokoro`) y subtítulos (`whisper`). Se añaden más abajo, en
-**Servicios de texto de tu plan**, con **«Añadir servicio compatible»**:
+**Servicios de texto de tu plan**, con **«Añadir un servicio»**:
 
 | Campo | Qué poner |
 |---|---|

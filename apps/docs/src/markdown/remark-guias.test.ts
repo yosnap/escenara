@@ -3,7 +3,7 @@ import path from "node:path";
 import type { Root } from "mdast";
 import { VFile } from "vfile";
 import { DIR_DIAGRAMAS, DIR_GUIAS } from "../indice";
-import { destinoDeEnlace, mediosEnlazados, remarkGuias } from "./remark-guias";
+import { destinoDeEnlace, exigirImagenPublicable, mediosEnlazados, remarkGuias } from "./remark-guias";
 
 const SLUGS = new Set(["tu-primer-video", "mapa-de-modelos"]);
 
@@ -78,7 +78,7 @@ describe("remarkGuias", () => {
     const nodo = arbol.children[0];
     expect(nodo?.type).toBe("html");
     const html = nodo?.type === "html" ? nodo.value : "";
-    expect(html).toStartWith('<figure class="diagrama" aria-label="El flujo"><svg');
+    expect(html).toStartWith('<figure class="diagrama"><svg');
     expect(html).not.toContain("<?xml");
   });
 
@@ -100,5 +100,18 @@ describe("mediosEnlazados", () => {
       expect(m.ruta).toMatch(/^\/medios\/(audio|capturas)\//);
       expect(m.origen.startsWith(path.dirname(DIR_DIAGRAMAS))).toBe(true);
     }
+  });
+});
+
+describe("exigirImagenPublicable", () => {
+  test("una imagen de fuera de docs/assets no se publica", () => {
+    expect(() => exigirImagenPublicable("../README.md", DIR_GUIAS, "guia.md")).toThrow("no está en docs/assets");
+    expect(() => exigirImagenPublicable("../../package.json", DIR_GUIAS, "guia.md")).toThrow("no está en docs/assets");
+  });
+
+  test("las de docs/assets, las externas y las rutas de la aplicación pasan", () => {
+    expect(() => exigirImagenPublicable("../assets/diagramas/flujo-general.svg", DIR_GUIAS, "guia.md")).not.toThrow();
+    expect(() => exigirImagenPublicable("https://ejemplo.com/a.png", DIR_GUIAS, "guia.md")).not.toThrow();
+    expect(() => exigirImagenPublicable("/proyectos/1/foto.png", DIR_GUIAS, "guia.md")).not.toThrow();
   });
 });

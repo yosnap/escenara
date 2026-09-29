@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 import type { Html, Image, Parent, PhrasingContent, Root, RootContent } from "mdast";
 import type { VFile } from "vfile";
@@ -39,6 +39,19 @@ export function rutaDeMedio(absoluta: string): string | null {
   return `${RUTA_MEDIOS}/${path.relative(DIR_ASSETS, absoluta).split(path.sep).join("/")}`;
 }
 
+/**
+ * Una imagen incrustada solo se publica si su ruta **real** (tras resolver enlaces simbólicos) está dentro de
+ * `docs/assets`. Sin esto, `![](../../datos-privados/foto.png)` acabaría en `dist/_astro` con el build en verde.
+ */
+export function exigirImagenPublicable(url: string, dirOrigen: string, guia: string): void {
+  if (EXTERNA.test(url) || url.startsWith("/")) return;
+  const absoluta = path.resolve(dirOrigen, decodeURI(url.split("#", 1)[0] ?? ""));
+  if (!existsSync(absoluta)) return; // Astro avisa de la imagen que falta.
+  if (!dentroDe(realpathSync(DIR_ASSETS), realpathSync(absoluta))) {
+    throw new Error(`${guia} incrusta ${url}, que no está en docs/assets: no se publica.`);
+  }
+}
+
 /** Enlaces de un Markdown que no son imágenes: `[texto](destino)`, sin el `!` delante. */
 const ENLACE = /(?<!!)\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
 
@@ -61,12 +74,8 @@ export function mediosEnlazados(archivosDeGuias: string[]): { ruta: string; orig
   return [...medios].map(([ruta, origen]) => ({ ruta, origen }));
 }
 
-function escaparAtributo(texto: string): string {
-  return texto.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
-}
-
 /** Lee un diagrama SVG y lo deja listo para ir en línea: así hereda las variables CSS del tema activo. */
-export function svgEnLinea(archivo: string, alt: string): string {
+export function svgEnLinea(archivo: string): string {
   const svg = readFileSync(archivo, "utf8")
     .replace(/<\?xml[^>]*\?>/g, "")
     .replace(/<!DOCTYPE[^>]*>/gi, "")
@@ -75,24 +84,25 @@ export function svgEnLinea(archivo: string, alt: string): string {
   if (!/^<svg[\s>]/.test(svg) || !/role="img"/.test(svg) || !/<title[\s>]/.test(svg)) {
     throw new Error(`El diagrama ${path.basename(archivo)} debe ser un <svg role="img"> con <title>.`);
   }
-  return `<figure class="diagrama" aria-label="${escaparAtributo(alt)}">${svg}</figure>`;
+  return `<figure class="diagrama">${svg}</figure>`;
 }
 
-function diagramaDe(nodo: RootContent, dirOrigen: string): Html | null {
+function diagramaDe(nodo: RootContent, dirOrigen: string, guia: string): Html | null {
   if (nodo.type !== "paragraph") return null;
   const hijos = nodo.children.filter((h) => !(h.type === "text" && h.value.trim() === ""));
   const imagen = hijos[0];
   if (hijos.length !== 1 || imagen?.type !== "image") return null;
   const absoluta = path.resolve(dirOrigen, decodeURI((imagen as Image).url));
+  exigirImagenPublicable((imagen as Image).url, dirOrigen, guia);
   if (!dentroDe(DIR_DIAGRAMAS, absoluta) || !absoluta.endsWith(".svg")) return null;
   if (!imagen.alt?.trim()) throw new Error(`El diagrama ${path.basename(absoluta)} necesita texto alternativo.`);
-  return { type: "html", value: svgEnLinea(absoluta, imagen.alt) };
+  return { type: "html", value: svgEnLinea(absoluta) };
 }
 
-function recorrer(padre: Parent, dirOrigen: string, slugs: ReadonlySet<string>): void {
+function recorrer(padre: Parent, dirOrigen: string, slugs: ReadonlySet<string>, guia: string): void {
   const nuevos: RootContent[] = [];
   for (const hijo of padre.children as RootContent[]) {
-    const diagrama = diagramaDe(hijo, dirOrigen);
+    const diagrama = diagramaDe(hijo, dirOrigen, guia);
     if (diagrama) {
       nuevos.push(diagrama);
       continue;
@@ -100,7 +110,7 @@ function recorrer(padre: Parent, dirOrigen: string, slugs: ReadonlySet<string>):
     if (hijo.type === "link") {
       const destino = destinoDeEnlace(hijo.url, dirOrigen, slugs);
       if (destino === null) {
-        recorrer(hijo, dirOrigen, slugs);
+        recorrer(hijo, dirOrigen, slugs, guia);
         nuevos.push(...(hijo.children as PhrasingContent[]));
         continue;
       }
@@ -109,7 +119,8 @@ function recorrer(padre: Parent, dirOrigen: string, slugs: ReadonlySet<string>):
     if (hijo.type === "definition") {
       hijo.url = destinoDeEnlace(hijo.url, dirOrigen, slugs) ?? "#";
     }
-    if ("children" in hijo) recorrer(hijo, dirOrigen, slugs);
+    if (hijo.type === "image") exigirImagenPublicable(hijo.url, dirOrigen, guia);
+    if ("children" in hijo) recorrer(hijo, dirOrigen, slugs, guia);
     nuevos.push(hijo);
   }
   padre.children = nuevos as Parent["children"];
@@ -131,6 +142,6 @@ export function remarkGuias(opciones: { slugs: Iterable<string> }) {
     const primero = arbol.children.findIndex((n) => n.type !== "html" && n.type !== "yaml");
     const titulo = arbol.children[primero];
     if (titulo?.type === "heading" && titulo.depth === 1) arbol.children.splice(primero, 1);
-    recorrer(arbol, dirOrigen, slugs);
+    recorrer(arbol, dirOrigen, slugs, archivo.path ? path.basename(archivo.path) : "una guía");
   };
 }

@@ -23,6 +23,9 @@ const TEXTOS_PROHIBIDOS: [RegExp, string][] = [
   [/datos-privados\//, "ruta datos-privados/"],
   [/claves-api\.local/, "documento privado de claves"],
   [/escenara-planes/, "repositorio privado de planes"],
+  [/(?:^|[^\w-])plans\//, "ruta plans/"],
+  [/\/Users\/[A-Za-z0-9._-]+\//, "ruta de un directorio personal"],
+  [/\/Volumes\/[A-Za-z0-9._ -]+\//, "ruta de un volumen local"],
 ];
 
 /** Formas conocidas de claves y secretos. Se buscan en todo lo publicado. */
@@ -43,10 +46,13 @@ const CLAVES: [RegExp, string][] = [
 
 const TEXTO = new Set([".html", ".js", ".mjs", ".css", ".json", ".xml", ".txt", ".svg", ".md", ".map", ".webmanifest"]);
 
-function listar(dir: string): string[] {
-  return readdirSync(dir, { withFileTypes: true, recursive: true })
-    .filter((e) => e.isFile())
-    .map((e) => path.join(e.parentPath, e.name));
+function listar(dir: string): { archivos: string[]; enlaces: string[] } {
+  const entradas = readdirSync(dir, { withFileTypes: true, recursive: true });
+  return {
+    archivos: entradas.filter((e) => e.isFile()).map((e) => path.join(e.parentPath, e.name)),
+    // Un enlace simbólico en lo publicado puede apuntar a cualquier sitio: nunca es legítimo.
+    enlaces: entradas.filter((e) => e.isSymbolicLink()).map((e) => path.join(e.parentPath, e.name)),
+  };
 }
 
 /** Lee el texto de un archivo publicado; los fragmentos del buscador van comprimidos con gzip. */
@@ -54,10 +60,12 @@ function textoDe(archivo: string): string | null {
   const ext = path.extname(archivo);
   if (TEXTO.has(ext)) return readFileSync(archivo, "utf8");
   if (ext === ".pf_fragment" || ext === ".pf_index" || ext === ".pf_meta") {
+    const crudo = readFileSync(archivo);
     try {
-      return gunzipSync(readFileSync(archivo)).toString("utf8");
+      return gunzipSync(crudo).toString("utf8");
     } catch {
-      return null;
+      // Si no se puede descomprimir, se revisa tal cual: saltárselo dejaría un hueco en la comprobación.
+      return crudo.toString("utf8");
     }
   }
   return null;
@@ -75,7 +83,11 @@ export function fugasEnTexto(texto: string, archivo: string): Fuga[] {
 /** Recorre la carpeta del build y devuelve todo lo que no debería estar publicado. */
 export function buscarFugas(dirPublicado: string): Fuga[] {
   const fugas: Fuga[] = [];
-  for (const archivo of listar(dirPublicado)) {
+  const { archivos, enlaces } = listar(dirPublicado);
+  for (const enlace of enlaces) {
+    fugas.push({ archivo: path.relative(dirPublicado, enlace).split(path.sep).join("/"), motivo: "enlace simbólico" });
+  }
+  for (const archivo of archivos) {
     const relativo = path.relative(dirPublicado, archivo).split(path.sep).join("/");
     for (const [patron, motivo] of RUTAS_PROHIBIDAS) {
       if (patron.test(relativo)) fugas.push({ archivo: relativo, motivo });

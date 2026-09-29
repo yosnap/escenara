@@ -6,10 +6,7 @@ import { cargarIndice, DIR_DIAGRAMAS, idDeGuia } from "../indice";
 import { svgEnLinea } from "../markdown/remark-guias";
 
 const secciones = cargarIndice();
-const flujo = svgEnLinea(
-  path.join(DIR_DIAGRAMAS, "flujo-general.svg"),
-  "Flujo de Escenara: personaje, fotograma, clip, voz, montaje y exportación.",
-);
+const flujo = svgEnLinea(path.join(DIR_DIAGRAMAS, "flujo-general.svg"));
 const primera = secciones[0]?.guias[0];
 const instalacion = secciones.find((s) => s.titulo === "Configurar la instalación")?.guias[0];
 const acciones = [

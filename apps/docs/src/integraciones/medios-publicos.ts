@@ -1,8 +1,9 @@
-import { createReadStream, existsSync, statSync } from "node:fs";
+import { createReadStream, existsSync, lstatSync, readdirSync, realpathSync, statSync } from "node:fs";
 import { cp, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AstroIntegration } from "astro";
+import { DIR_DOCS } from "../indice";
 
 /** Un origen de `docs/` que se publica en una ruta fija, sin copiarlo al repositorio. */
 export interface MedioPublico {
@@ -31,6 +32,24 @@ export function resolverMedio(medios: MedioPublico[], url: string): string | nul
 }
 
 /**
+ * Un medio solo se publica si su ruta real está dentro de `docs/` y ni él ni nada de lo que contiene es un enlace
+ * simbólico: un enlace dentro de `docs/assets` que apuntara a `docs/privado` se copiaría al build sin que nadie lo viera.
+ */
+export function exigirMedioSinEnlaces(origen: string): void {
+  const raiz = realpathSync(DIR_DOCS);
+  const real = realpathSync(origen);
+  const relativa = path.relative(raiz, real);
+  if (relativa.startsWith("..") || path.isAbsolute(relativa)) {
+    throw new Error(`El medio ${origen} está fuera de docs/: no se publica.`);
+  }
+  const revisar = (ruta: string): void => {
+    if (lstatSync(ruta).isSymbolicLink()) throw new Error(`El medio ${ruta} es un enlace simbólico: no se publica.`);
+    if (statSync(ruta).isDirectory()) for (const hijo of readdirSync(ruta)) revisar(path.join(ruta, hijo));
+  };
+  revisar(origen);
+}
+
+/**
  * Sirve en desarrollo y copia en el build los medios de `docs/` que no pasan por el Markdown
  * (audio de ejemplo, favicon). Solo lo que se declara aquí sale en la web.
  */
@@ -52,6 +71,7 @@ export function mediosPublicos(medios: MedioPublico[]): AstroIntegration {
         const salida = fileURLToPath(dir);
         for (const medio of medios) {
           if (!existsSync(medio.origen)) throw new Error(`No existe el medio publicado ${medio.origen}.`);
+          exigirMedioSinEnlaces(medio.origen);
           const destino = path.join(salida, medio.ruta);
           await mkdir(path.dirname(destino), { recursive: true });
           await cp(medio.origen, destino, { recursive: true });
