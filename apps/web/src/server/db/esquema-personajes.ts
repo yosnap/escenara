@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import {
   boolean,
+  check,
   index,
   integer,
   pgEnum,
@@ -13,6 +14,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { GUIA_ESTILO_VACIA, type GuiaEstiloAnimado } from "@/lib/animados";
 import { media } from "./esquema";
 import { users } from "./esquema-auth";
 import { jsonb } from "./jsonb";
@@ -34,6 +36,8 @@ import { jsonb } from "./jsonb";
 export const tipoPersonaje = pgEnum("character_kind", ["persona", "animal"]);
 
 export const estadoPersonaje = pgEnum("character_state", ["borrador", "en_revision", "listo", "bloqueado"]);
+
+export const estiloRenderPersonaje = pgEnum("character_render_style", ["realista", "animado"]);
 
 /**
  * Estado de la hoja de identidad 3×3 (0.25.0). `candidata` es el único valor con el que puede nacer: la hoja se
@@ -90,6 +94,11 @@ export const characters = pgTable(
      * vistas de una cara sin consentimiento de nadie.
      */
     virtual: boolean("virtual").notNull().default(false),
+    /** Solo un personaje inventado puede usar un aspecto animado. */
+    renderStyle: estiloRenderPersonaje("render_style").notNull().default("realista"),
+    styleGuide: jsonb<GuiaEstiloAnimado>("style_guide").notNull().default(GUIA_ESTILO_VACIA),
+    /** Retrato animado aprobado que guía las vistas y las comprobaciones de identidad. */
+    masterFrameMediaId: uuid("master_frame_media_id").references(() => media.id, { onDelete: "set null" }),
     /**
      * **La voz se fija por personaje** (0.25.0), no por escena: es parte de quién es, como su cara. Son los
      * cinco ejes de `lib/direccion.ts` (género, edad, gravedad, textura y entrega) y, opcionalmente, una de las
@@ -136,6 +145,7 @@ export const characters = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
+    check("characters_animado_solo_inventado", sql`${t.renderStyle} = 'realista' or ${t.virtual} = true`),
     // Dos personajes del mismo usuario no se llaman igual: elegir en «Crear» sería una lotería.
     unique("characters_propietario_nombre_uq").on(t.ownerId, t.name),
     index("characters_propietario_idx").on(t.ownerId, t.createdAt),
@@ -304,6 +314,8 @@ export interface HojaDeFicha {
   personalidad: string;
   voz: string;
   descripcion: string;
+  renderStyle?: "realista" | "animado";
+  styleGuide?: GuiaEstiloAnimado;
 }
 
 /**

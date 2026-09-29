@@ -51,15 +51,24 @@ export async function motivosParaNoGenerar(personajeId: string, minimoPedido?: n
    */
   const { minimoReferenciasPersonaje } = await leerAjustes();
   const minimo = minimoPedido ?? minimoReferenciasPersonaje;
-  const [consentimiento, referencias] = await Promise.all([
+  const [consentimiento, referencias, personaje] = await Promise.all([
     ultimoConsentimientoDe(personajeId),
     contarReferencias(personajeId),
+    db()
+      .select({ renderStyle: characters.renderStyle, masterFrameMediaId: characters.masterFrameMediaId })
+      .from(characters)
+      .where(eq(characters.id, personajeId))
+      .limit(1),
   ]);
-  return impedimentosDePersonaje({
+  const motivos = impedimentosDePersonaje({
     consentimiento: efectivo(consentimiento),
     referencias,
     minimoReferencias: minimo,
   });
+  if (minimoPedido === undefined && personaje[0]?.renderStyle === "animado" && !personaje[0].masterFrameMediaId) {
+    motivos.push("Aprueba un retrato maestro animado antes de generar vistas o escenas.");
+  }
+  return motivos;
 }
 
 /** `true` si el personaje puede usarse para generar ahora mismo. */
@@ -105,7 +114,7 @@ export async function referenciasParaGenerar(
    */
   conHoja = false,
 ): Promise<PersonajeParaGenerar> {
-  if (conHoja && personaje.identitySheetMediaId) {
+  if (conHoja && personaje.renderStyle !== "animado" && personaje.identitySheetMediaId) {
     const [hoja] = await db().select().from(media).where(eq(media.id, personaje.identitySheetMediaId)).limit(1);
     if (hoja && hoja.deletedAt === null) {
       const { version, contexto } = await contextoParaGenerar(personaje, maximoDelModelo);

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { claseBoton } from "@/components/ui/button";
 import { exigirSesion } from "@/server/auth/sesion";
+import { listarPresets } from "@/server/prompts/consulta";
 import { CabeceraApp } from "../../../_app/cabecera-app";
 import { AltaPersonajeInventado } from "./_componentes/alta-personaje-inventado";
 
@@ -16,6 +17,9 @@ export const dynamic = "force-dynamic";
  */
 export default async function PaginaNuevoPersonajeInventado() {
   const sesion = await exigirSesion("/personajes/nuevo/inventado");
+  const estilos = (await listarPresets({ categoria: "estilo-animado" }))
+    .filter((preset) => preset.activo)
+    .map((preset) => ({ clave: preset.clave, nombre: preset.nombre, descripcion: preset.descripcion }));
   return (
     <div className="min-h-dvh bg-fondo">
       <CabeceraApp sesion={sesion} />
@@ -30,7 +34,7 @@ export default async function PaginaNuevoPersonajeInventado() {
             reales, y todo lo que genere queda marcado como contenido sintético.
           </p>
         </div>
-        <AltaPersonajeInventado />
+        <AltaPersonajeInventado estilos={estilos} />
       </main>
     </div>
   );

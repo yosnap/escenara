@@ -281,6 +281,7 @@ export async function vistaDePersonaje(
   ]);
   const idsMedios = [
     ...referencias.map((r) => r.mediaId),
+    ...(fila.masterFrameMediaId ? [fila.masterFrameMediaId] : []),
     ...(consentimiento?.documentMediaId ? [consentimiento.documentMediaId] : []),
     // La hoja de personaje solo se resuelve para su dueño: es un montaje con las fotos de una persona.
     ...(version?.sheetMediaId && fila.ownerId === actor.id ? [version.sheetMediaId] : []),
@@ -320,6 +321,18 @@ export async function vistaDePersonaje(
       : null,
     estado: estadoDePersonaje(datos),
     inventado: fila.virtual,
+    estiloAnimado: fila.renderStyle === "animado" ? fila.styleGuide.preset : "realista",
+    ...(esDueno
+      ? {
+          guiaEstilo: {
+            paleta: fila.styleGuide.paleta,
+            trazo: fila.styleGuide.trazo,
+            detalle: fila.styleGuide.detalle,
+            referencias: fila.styleGuide.referencias,
+          },
+        }
+      : {}),
+    fotogramaMaestro: esDueno && fila.masterFrameMediaId ? (medios.get(fila.masterFrameMediaId) ?? null) : null,
     esteticaDeModelo: fila.virtual && fila.beautyOptIn,
     hojaIdentidad: fila.identitySheetMediaId
       ? { medioId: fila.identitySheetMediaId, estado: fila.identitySheetStatus }
@@ -504,6 +517,8 @@ async function vistasDeLista(
       versionVigente: versionDeLista(resumen.versiones.get(fila.id)),
       estado: estadoDePersonaje(datos),
       inventado: fila.virtual,
+      estiloAnimado: fila.renderStyle === "animado" ? fila.styleGuide.preset : "realista",
+      fotogramaMaestro: null,
       esteticaDeModelo: fila.virtual && fila.beautyOptIn,
       hojaIdentidad: fila.identitySheetMediaId
         ? { medioId: fila.identitySheetMediaId, estado: fila.identitySheetStatus }
@@ -665,6 +680,8 @@ export async function pendientesDeRevision(actor: Actor, pagina = 1): Promise<Pa
       versionVigente: versionDeLista(resumen.versiones.get(personaje.id)),
       estado: estadoDePersonaje(datos),
       inventado: personaje.virtual,
+      estiloAnimado: personaje.renderStyle === "animado" ? personaje.styleGuide.preset : "realista",
+      fotogramaMaestro: null,
       esteticaDeModelo: personaje.virtual && personaje.beautyOptIn,
       hojaIdentidad: personaje.identitySheetMediaId
         ? { medioId: personaje.identitySheetMediaId, estado: personaje.identitySheetStatus }

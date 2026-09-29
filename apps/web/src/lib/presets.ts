@@ -45,6 +45,7 @@ export const CATEGORIAS_PRESET = [
    * del clip, que es `angulo`; de ahí el sufijo.
    */
   "angulo-anuncio",
+  "estilo-animado",
 ] as const;
 export type CategoriaPreset = (typeof CATEGORIAS_PRESET)[number];
 
@@ -69,6 +70,7 @@ export const ETIQUETA_CATEGORIA: Record<CategoriaPreset, string> = {
   anclajes: "Anclajes de realismo",
   "accion-producto": "Acción con el producto",
   "angulo-anuncio": "Ángulo del anuncio",
+  "estilo-animado": "Estilo animado",
 };
 
 export const AYUDA_CATEGORIA: Record<CategoriaPreset, string> = {
@@ -91,6 +93,7 @@ export const AYUDA_CATEGORIA: Record<CategoriaPreset, string> = {
   "accion-producto": "Qué hace el personaje con el producto: sostenerlo, señalarlo, abrirlo, o el producto solo.",
   "angulo-anuncio":
     "Desde qué dolor o deseo entra el anuncio. Uno solo por vídeo: mezclar varios es el error más común.",
+  "estilo-animado": "Acabado de un personaje inventado. Se guarda con su versión y guía retratos y clips.",
 };
 
 /** Categorías que se pueden elegir varias veces a la vez. El resto son de elección única. */

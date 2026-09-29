@@ -61,6 +61,8 @@ export const categoriaPreset = pgEnum("preset_category", [
    * La clave lleva sufijo porque `angulo` ya es el ángulo de **cámara** de la dirección del clip (0.25.0).
    */
   "angulo-anuncio",
+  /** Acabados iniciales para personajes inventados; sus textos se editan en Admin. */
+  "estilo-animado",
 ]);
 
 export const presets = pgTable(

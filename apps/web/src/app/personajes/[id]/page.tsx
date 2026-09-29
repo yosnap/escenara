@@ -13,6 +13,7 @@ import { obtenerPersonaje } from "@/server/personajes/consulta";
 import { ErrorPersonaje } from "@/server/personajes/errores";
 import { medioDeLaHoja } from "@/server/personajes/hoja-identidad";
 import { mediosDeCandidatos } from "@/server/personajes/inventado";
+import { listarPresets } from "@/server/prompts/consulta";
 import { proyectosEnModoOmni } from "@/server/voz/omni";
 import { CabeceraApp } from "../../_app/cabecera-app";
 import { FichaPersonaje } from "./_componentes/ficha-personaje";
@@ -44,6 +45,12 @@ export default async function PaginaPersonaje({ params }: { params: Promise<{ id
   const proyectosOmni = personaje.puedeEditar ? await proyectosEnModoOmni(actor.id) : [];
   // La hoja 3×3, si la tiene generada: es lo que se enseña en la pestaña de referencias.
   const hojaIdentidad = personaje.puedeEditar ? await medioDeLaHoja(actor, id) : null;
+  const estilos =
+    personaje.inventado && personaje.puedeEditar
+      ? (await listarPresets({ categoria: "estilo-animado" }))
+          .filter((preset) => preset.activo)
+          .map((preset) => ({ clave: preset.clave, nombre: preset.nombre, descripcion: preset.descripcion }))
+      : [];
 
   return (
     <div className="min-h-dvh bg-fondo">
@@ -61,6 +68,7 @@ export default async function PaginaPersonaje({ params }: { params: Promise<{ id
           retratos={retratos}
           hojaIdentidad={hojaIdentidad}
           proyectosOmni={proyectosOmni}
+          estilosAnimados={estilos}
         />
       </main>
     </div>

@@ -17,6 +17,11 @@ export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
     descripcion: cuerpo.descripcion,
     tipo: cuerpo.tipo,
     declaracion: cuerpo.declaracion,
+    estiloAnimado: cuerpo.estiloAnimado,
+    guiaPaleta: cuerpo.guiaPaleta,
+    guiaTrazo: cuerpo.guiaTrazo,
+    guiaDetalle: cuerpo.guiaDetalle,
+    guiaReferencias: cuerpo.guiaReferencias,
   });
   return Response.json(personaje, { status: 201 });
 });

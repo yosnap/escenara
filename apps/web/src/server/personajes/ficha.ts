@@ -17,7 +17,11 @@ export const fichaDeFila = (fila: FilaPersonaje): FichaPersonaje => ({
   voz: fila.voice,
 });
 
-export const hojaDeFicha = (ficha: FichaPersonaje, descripcion: string): HojaDeFicha => ({ ...ficha, descripcion });
+export const hojaDeFicha = (
+  ficha: FichaPersonaje,
+  descripcion: string,
+  estilo?: Pick<FichaVersionada, "renderStyle" | "styleGuide">,
+): HojaDeFicha => ({ ...ficha, descripcion, renderStyle: estilo?.renderStyle, styleGuide: estilo?.styleGuide });
 
 /** Ficha guardada en una versión. Los valores ausentes se leen como vacíos: una versión antigua es válida. */
 export const fichaDeHoja = (hoja: HojaDeFicha): FichaPersonaje => ({
@@ -41,6 +45,8 @@ export const instantaneaDeFila = (fila: FilaPersonaje, referencias: ReferenciasV
   descripcion: fila.description,
   referencias: referencias.ids,
   vistas: referencias.vistas,
+  renderStyle: fila.renderStyle,
+  styleGuide: fila.styleGuide,
 });
 
 /**
@@ -52,6 +58,8 @@ export const instantaneaDeVersion = (version: FilaVersionPersonaje): FichaVersio
   descripcion: version.sheet.descripcion ?? "",
   referencias: version.referenceMediaIds,
   vistas: version.referenceMediaIds.map((_, i) => version.referenceViewKeys[i] ?? ""),
+  renderStyle: version.sheet.renderStyle ?? "realista",
+  styleGuide: version.sheet.styleGuide,
 });
 
 /** Última versión del personaje, o `null` si todavía no tiene ninguna (personajes anteriores a 0.15.0). */

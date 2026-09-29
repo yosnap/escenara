@@ -9,6 +9,11 @@ import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo, EntradaTexto } from "@/components/ui/field";
 import { Paso } from "@/components/ui/paso";
 import { crearPersonajeInventado } from "@/components/ui/personajes/api-personajes";
+import {
+  CamposEstiloAnimado,
+  type MaticesAnimados,
+  type OpcionEstiloAnimado,
+} from "@/components/ui/personajes/campos-estilo-animado";
 import { nombresRealesEn } from "@/lib/nombres-reales";
 import { DECLARACION_PERSONAJE_INVENTADO, MOTIVO_SIN_FOTOS_REALES } from "@/lib/omni";
 import { DESCRIPCION_MAXIMA, NOMBRE_MAXIMO } from "@/lib/personajes";
@@ -23,17 +28,23 @@ const DESCRIPCION_MINIMA = 20;
  * El aviso de nombres reales aparece **mientras se escribe**, con la misma lista que aplica el servidor: no es
  * una validación distinta, es la misma dicha antes de pulsar.
  */
-export function AltaPersonajeInventado() {
+export function AltaPersonajeInventado({ estilos }: { estilos: OpcionEstiloAnimado[] }) {
   const router = useRouter();
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [declaracion, setDeclaracion] = useState(false);
+  const [estilo, setEstilo] = useState("realista");
+  const [matices, setMatices] = useState<MaticesAnimados>({ paleta: "", trazo: "", detalle: "", referencias: "" });
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const nombreLimpio = nombre.trim();
   const descripcionLimpia = descripcion.trim();
   const reales = nombresRealesEn(`${nombreLimpio} ${descripcionLimpia}`);
+  const referencias = matices.referencias
+    .split("\n")
+    .map((linea) => linea.trim())
+    .filter(Boolean);
   const bloqueos = [
     ...(nombreLimpio === "" ? ["Falta el nombre del personaje."] : []),
     ...(descripcionLimpia.length < DESCRIPCION_MINIMA
@@ -41,6 +52,7 @@ export function AltaPersonajeInventado() {
       : []),
     ...(reales.length > 0 ? ["El texto nombra a una persona real."] : []),
     ...(declaracion ? [] : ["Falta la declaración de que es un personaje inventado."]),
+    ...(referencias.length > 3 ? ["La guía admite hasta tres referencias descriptivas."] : []),
   ];
 
   const guardar = async () => {
@@ -50,6 +62,15 @@ export function AltaPersonajeInventado() {
       nombre: nombreLimpio,
       descripcion: descripcionLimpia,
       declaracion,
+      estiloAnimado: estilo,
+      ...(estilo === "realista"
+        ? {}
+        : {
+            guiaPaleta: matices.paleta,
+            guiaTrazo: matices.trazo,
+            guiaDetalle: matices.detalle,
+            guiaReferencias: referencias,
+          }),
     });
     setGuardando(false);
     if (!creado.ok) {
@@ -96,7 +117,17 @@ export function AltaPersonajeInventado() {
         )}
       </Paso>
 
-      <Paso numero={2} titulo="Declaración">
+      <Paso numero={2} titulo="Estilo visual">
+        <CamposEstiloAnimado
+          opciones={estilos}
+          estilo={estilo}
+          onEstilo={setEstilo}
+          matices={matices}
+          onMatices={setMatices}
+        />
+      </Paso>
+
+      <Paso numero={3} titulo="Declaración">
         <Aviso tono="info">{MOTIVO_SIN_FOTOS_REALES}</Aviso>
         <Casilla
           etiqueta={DECLARACION_PERSONAJE_INVENTADO}
@@ -107,7 +138,7 @@ export function AltaPersonajeInventado() {
         />
       </Paso>
 
-      <Paso numero={3} titulo="Y después">
+      <Paso numero={4} titulo="Y después">
         <div className="flex flex-col gap-4 rounded-tarjeta border border-borde bg-superficie p-5">
           <p className="text-texto-suave">
             Al crearlo irás a su ficha, donde se generan <strong className="text-texto">cuatro retratos</strong> a

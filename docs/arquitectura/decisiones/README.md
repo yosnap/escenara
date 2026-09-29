@@ -41,6 +41,7 @@ Cada decisión relevante se documenta en un fichero `adr-NNNN-slug.md` dentro de
 | [0033](adr-0033-reparto-de-dos-personajes.md) | Dos personajes por escena: podcast en dos clips o dualcast en uno, diálogo literal por turnos, consentimiento individual y confirmación del coste total | 0.28.0 | Aceptada (formatos y doble consentimiento firmes; límites de montaje y texto legal específico pendientes de revisión) |
 | [0034](adr-0034-canto-con-audio-propio.md) | El usuario aporta el audio, declara sus derechos y confirma el coste por segundo antes de sincronizar el retrato | 0.29.0 | Propuesta; prueba real pendiente de aprobación |
 | [0036](adr-0036-trends-versionados.md) | El trend es una plantilla versionada con vigencia explícita; solo una copia vigente puede generar | 0.30.0 | Propuesta; cinco formatos en revisión hasta la prueba real |
+| [0037](adr-0037-animados-con-identidad-maestra.md) | El estilo animado pertenece al personaje inventado, se versiona y se ancla en un retrato maestro heredado por el proyecto | 0.31.0 | Aceptada; calidad visual pendiente de prueba real |
 
 ## Plantilla
 

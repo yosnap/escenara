@@ -1,3 +1,4 @@
+import { type EstiloRender, GUIA_ESTILO_VACIA, type GuiaEstiloAnimado } from "./animados";
 import { type ReferenciaParaCobertura, type Vista, vistasMinimas } from "./captura-personaje";
 import type { TipoPersonaje } from "./personajes";
 
@@ -243,7 +244,7 @@ export function componerPrompt(escena: string, contexto: string): string {
 
 /** Campos de la ficha (y la descripción) que han cambiado entre dos versiones. */
 export interface DiferenciaFicha {
-  campo: CampoFicha | "descripcion" | "referencias" | "vistas";
+  campo: CampoFicha | "descripcion" | "referencias" | "vistas" | "estiloVisual" | "guiaEstilo";
   etiqueta: string;
   antes: string;
   despues: string;
@@ -254,6 +255,8 @@ const ETIQUETA_DIFERENCIA: Record<DiferenciaFicha["campo"], string> = {
   descripcion: "Descripción",
   referencias: "Fotos de referencia",
   vistas: "Vistas de las fotos",
+  estiloVisual: "Estilo visual",
+  guiaEstilo: "Guía de estilo",
 };
 
 /** Instantánea de lo que versiona: la ficha, la descripción y las referencias incluidas con su vista. */
@@ -268,6 +271,8 @@ export interface FichaVersionada {
    * una foto cambia lo que se envía, aunque la lista de fotos sea la misma.
    */
   vistas: string[];
+  renderStyle?: EstiloRender;
+  styleGuide?: GuiaEstiloAnimado;
 }
 
 /** Cuántas referencias de una instantánea tienen vista asignada. Es lo que se muestra al comparar versiones. */
@@ -279,6 +284,26 @@ const clasificadas = (instantanea: FichaVersionada): number => instantanea.vista
  */
 export function diferenciasDeFicha(antes: FichaVersionada, despues: FichaVersionada): DiferenciaFicha[] {
   const cambios: DiferenciaFicha[] = [];
+  const estiloAntes = antes.renderStyle ?? "realista";
+  const estiloDespues = despues.renderStyle ?? "realista";
+  if (estiloAntes !== estiloDespues) {
+    cambios.push({
+      campo: "estiloVisual",
+      etiqueta: ETIQUETA_DIFERENCIA.estiloVisual,
+      antes: estiloAntes,
+      despues: estiloDespues,
+    });
+  }
+  const guiaAntes = antes.styleGuide ?? GUIA_ESTILO_VACIA;
+  const guiaDespues = despues.styleGuide ?? GUIA_ESTILO_VACIA;
+  if (JSON.stringify(guiaAntes) !== JSON.stringify(guiaDespues)) {
+    cambios.push({
+      campo: "guiaEstilo",
+      etiqueta: ETIQUETA_DIFERENCIA.guiaEstilo,
+      antes: guiaAntes.preset || "Sin guía",
+      despues: guiaDespues.preset || "Sin guía",
+    });
+  }
   for (const campo of CAMPOS_FICHA) {
     if (antes.ficha[campo] !== despues.ficha[campo]) {
       cambios.push({

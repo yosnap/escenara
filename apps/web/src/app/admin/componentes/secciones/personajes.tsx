@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { InsigniaEstadoPersonaje, SelectorPersonaje } from "@/components/ui/personaje";
+import { CamposEstiloAnimado, type MaticesAnimados } from "@/components/ui/personajes/campos-estilo-animado";
 import { DistintivoOrigen } from "@/components/ui/personajes/distintivo-origen";
 import {
   bloqueosDeConsentimiento,
@@ -87,6 +88,13 @@ const RECHAZOS: RechazoDeReferencia[] = [
 
 export function SeccionPersonajes() {
   const [elegido, setElegido] = useState<string | null>("1");
+  const [estiloAnimado, setEstiloAnimado] = useState("ilustracion-plana");
+  const [maticesAnimados, setMaticesAnimados] = useState<MaticesAnimados>({
+    paleta: "cobalto, coral y crema",
+    trazo: "línea limpia",
+    detalle: "mismo peinado y chaqueta",
+    referencias: "figuras geométricas suaves",
+  });
   const [consentimiento, setConsentimiento] = useState<EstadoConsentimiento>(CONSENTIMIENTO_INICIAL);
   return (
     <Seccion
@@ -103,6 +111,25 @@ export function SeccionPersonajes() {
         <Muestra titulo="Selector de personaje (los que no pueden generar salen deshabilitados)">
           <div className="w-full">
             <SelectorPersonaje personajes={EJEMPLOS} valor={elegido} onCambio={setElegido} />
+          </div>
+        </Muestra>
+        <Muestra titulo="Guía de estilo de un personaje inventado animado">
+          <div className="w-full">
+            <CamposEstiloAnimado
+              opciones={[
+                {
+                  clave: "ilustracion-plana",
+                  nombre: "Ilustración plana",
+                  descripcion: "Color sólido y formas limpias.",
+                },
+                { clave: "tres-d-estilizado", nombre: "3D estilizado", descripcion: "Volúmenes suaves." },
+                { clave: "anime", nombre: "Anime", descripcion: "Dibujo por capas y líneas definidas." },
+              ]}
+              estilo={estiloAnimado}
+              onEstilo={setEstiloAnimado}
+              matices={maticesAnimados}
+              onMatices={setMaticesAnimados}
+            />
           </div>
         </Muestra>
         <Muestra titulo="Origen de una referencia (una vista generada nunca se presenta como foto)">

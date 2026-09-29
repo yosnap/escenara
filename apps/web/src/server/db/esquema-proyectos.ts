@@ -1,4 +1,17 @@
-import { boolean, index, integer, pgEnum, pgTable, real, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import {
+  boolean,
+  check,
+  index,
+  integer,
+  pgEnum,
+  pgTable,
+  real,
+  text,
+  timestamp,
+  unique,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { media } from "./esquema";
 import { users } from "./esquema-auth";
 import { proveedorCredencial } from "./esquema-boveda";
@@ -109,6 +122,10 @@ export const projects = pgTable(
      * proyecto y su guion son trabajo de la persona y siguen valiendo sin protagonista asignado.
      */
     mainCharacterId: uuid("main_character_id").references(() => characters.id, { onDelete: "set null" }),
+    /** El proyecto hereda el acabado del protagonista; los planos sin personaje también lo conservan. */
+    renderStyle: text("render_style", { enum: ["realista", "animado"] })
+      .notNull()
+      .default("realista"),
     /**
      * Presupuesto autorizado de este proyecto, en créditos (RF14). 0 = sin fijar, y sin fijar **no se puede
      * aprobar el plan**: un plan sin techo no se autoriza solo.
@@ -185,6 +202,7 @@ export const projects = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
+    check("projects_render_style_valido", sql`${t.renderStyle} in ('realista', 'animado')`),
     index("projects_usuario_idx").on(t.userId, t.updatedAt),
     // Las variantes de un grupo se leen juntas, y el ángulo es con lo que se comparan las campañas (0.27.0).
     index("projects_grupo_variantes_idx").on(t.variantGroupId),

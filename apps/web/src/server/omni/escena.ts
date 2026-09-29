@@ -4,6 +4,7 @@ import type { Medio } from "@/lib/media/tipos";
 import { creditosDeEscenaOmni, precioOmniEstimado, usaIdentidadRegistrada, type VozOmniDelProyecto } from "@/lib/omni";
 import { duracionParaModelo } from "@/lib/produccion";
 import { firmaDeVoz, nombreDeVoz } from "@/lib/voz";
+import { contextoAnimadoDeEscena } from "../animados/contexto-escena";
 import { escenaPropia } from "../asistente/consulta";
 import { ErrorProyecto } from "../asistente/errores";
 import { techoDelProyecto } from "../asistente/plan";
@@ -347,6 +348,8 @@ export async function producirEscenaHablada(
     proyecto,
     modelo.modelo,
   );
+  // También el camino Omni debe cerrar la mezcla de acabados antes de reservar presupuesto.
+  await contextoAnimadoDeEscena(escena.id, personaje);
 
   /**
    * **El producto de la escena** (0.26.0) y lo que cuesta llevarlo en modo Omni.

@@ -155,6 +155,12 @@ export function PanelIdea({
           onCambio={(id) => guardar({ personajeId: id })}
           deshabilitado={guardando}
         />
+        {proyecto.estiloVisual === "animado" && (
+          <Aviso tono="info">
+            Proyecto animado: las escenas y los planos de apoyo heredan la guía visual del protagonista. Sus clips deben
+            conservar el diseño del retrato maestro aprobado.
+          </Aviso>
+        )}
 
         <div className="flex flex-col gap-2">
           <Selector

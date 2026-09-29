@@ -23,7 +23,7 @@
 - [ ] Bloqueo de desnudez sexual, acoso, suplantación y respaldo falso de personas reales.
 - [x] Terceros solo con documento de consentimiento y revisión; nunca publicables en la comunidad. **0.13.0**: el titular «otra persona» exige un documento firmado subido y el personaje queda en revisión hasta que un administrador lo acepta (ADR-0017). La comunidad llega en 0.28.0 y estos personajes no se publicarán.
 - [x] Borrado de personaje con todos sus derivados. **0.13.0**: borra el personaje, su consentimiento, sus relaciones con las fotos y los medios generados con él, fila y objeto del almacenamiento, con registro de las claves borradas. Las fotos de referencia se conservan en la biblioteca del usuario a propósito (son suyas y pueden estar en otro personaje). Escenas y exportaciones aún no existen: se añadirán al mismo borrado cuando lleguen.
-- [ ] Etiqueta visible de contenido sintético por defecto y metadatos C2PA en exportaciones realistas.
+- [ ] Etiqueta visible de contenido sintético en todas las exportaciones, incluidas las totalmente animadas (0.31.0). C2PA sigue pendiente de 0.41.0.
 - [ ] Sugerencias de salud informativas, revisables y sin promesas de diagnóstico ni curación.
 - [x] Aviso de qué proveedor procesará los archivos **y los textos** antes de enviarlos. **0.17.0**: el formulario de consentimiento dice que al generar con ese personaje se envían a KIE sus fotos **y el texto de su ficha** (rasgos, estilo, vestuario, personalidad y descripción), que forma parte del prompt; y que si la instalación traduce los prompts al inglés, ese texto pasa además por el **modelo de texto** de KIE. La zona de coste de «Crear» dice lo mismo antes de gastar.
 - [ ] Credenciales cifradas, excluidas de logs y nunca devueltas íntegras al navegador.
