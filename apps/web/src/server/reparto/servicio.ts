@@ -128,6 +128,11 @@ export async function elegirFormatoDeReparto(actor: Actor, escenaId: unknown, fo
     throw new ErrorProyecto(400, "Ese formato de reparto no existe: es un personaje, podcast o dualcast.");
   }
   const { escena, proyecto } = await escenaPropia(actor, escenaId);
+  if (formato !== "solo" && escena.clipFormat === "cantar")
+    throw new ErrorProyecto(
+      409,
+      "El canto usa un personaje. Cambia el formato del clip antes de elegir podcast o dualcast.",
+    );
   await exigirFormatoActivo(formato);
   if (formato !== "solo" && proyecto.voiceMode !== "omni") {
     throw new ErrorProyecto(

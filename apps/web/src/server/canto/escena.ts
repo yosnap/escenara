@@ -87,6 +87,11 @@ export async function producirEscenaCantada(
   confirmacion: ConfirmacionCanto,
   h: Herramientas = HERRAMIENTAS,
 ): Promise<{ trabajo: FilaTrabajo; nueva: boolean }> {
+  if (escena.templateId || escena.castFormat !== "solo")
+    throw new ErrorCanto(
+      409,
+      "Esta escena mezcla canto con un trend o un reparto de dos personajes. Quita el trend y vuelve al reparto «solo» antes de confirmar. No se ha cobrado nada.",
+    );
   exigirDerechos(confirmacion.derechos);
   exigirRevisionDeReferencias(confirmacion.sinTerceros);
   const claveIdempotencia = exigirClaveIdempotencia(confirmacion.claveIdempotencia);

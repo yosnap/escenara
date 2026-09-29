@@ -11,10 +11,11 @@ if (process.env.DATABASE_URL) {
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
-const { media, projects, scenes, musicRightsDeclarations } = await import("../db/esquema");
+const { generationJobs, media, projects, scenes, musicRightsDeclarations } = await import("../db/esquema");
 const { eq } = await import("drizzle-orm");
 const rutaDeclaracion = await import("@/app/api/canto/declaracion/route");
 const rutaEscena = await import("@/app/api/escenas/[id]/canto/route");
+const { producirEscenaCantada } = await import("./escena");
 
 type Sesion = Awaited<ReturnType<typeof crearSesionDePrueba>>;
 const contexto = (id: string) => ({ params: Promise.resolve({ id }) });
@@ -120,5 +121,34 @@ describe.skipIf(!process.env.DATABASE_URL)("derechos y propiedad del audio de ca
         )
       ).status,
     ).toBe(400);
+  });
+
+  test("un reparto doble no entra en la producción de canto ni crea un trabajo", async () => {
+    const [escena] = await db()
+      .update(scenes)
+      .set({ castFormat: "podcast" })
+      .where(eq(scenes.id, escenaBeto))
+      .returning();
+    if (!escena) throw new Error("Falta la escena de prueba.");
+    const [proyecto] = await db().select().from(projects).where(eq(projects.id, escena.projectId));
+    if (!proyecto) throw new Error("Falta el proyecto de prueba.");
+    try {
+      await expect(
+        producirEscenaCantada({ id: beto.id, esAdmin: false }, escena, proyecto, {
+          derechos: true,
+          sinTerceros: true,
+          creditosConfirmados: 1,
+          selloEstimacion: "precio-de-prueba",
+          claveIdempotencia: crypto.randomUUID(),
+        }),
+      ).rejects.toThrow("mezcla canto");
+      const trabajos = await db()
+        .select({ id: generationJobs.id })
+        .from(generationJobs)
+        .where(eq(generationJobs.sceneId, escenaBeto));
+      expect(trabajos).toHaveLength(0);
+    } finally {
+      await db().update(scenes).set({ castFormat: "solo" }).where(eq(scenes.id, escenaBeto));
+    }
   });
 });

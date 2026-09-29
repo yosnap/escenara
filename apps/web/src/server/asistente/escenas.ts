@@ -229,6 +229,12 @@ export async function crearEscena(actor: Actor, proyectoId: unknown, datos: Dato
   // qué correr dentro, y así un producto ajeno responde 404 sin haber empezado a escribir nada.
   const producto = await camposDeProducto(actor, datos);
   const trend = await camposDeTrend(actor, datos, proyecto.clipSeconds, proyecto.voiceMode);
+  const campos = { ...camposLimpios(datos), ...producto, ...trend };
+  if (campos.clipFormat === "cantar" && campos.templateId)
+    throw new ErrorProyecto(
+      409,
+      "Una escena de canto usa tu audio y no admite un trend. Quita el trend antes de guardarla.",
+    );
   return db().transaction(async (tx) => {
     const [{ ultimo } = { ultimo: null }] = await tx
       .select({ ultimo: max(scenes.sortOrder) })
@@ -247,7 +253,6 @@ export async function crearEscena(actor: Actor, proyectoId: unknown, datos: Dato
         `Este proyecto ya tiene ${total} ${total === 1 ? "escena" : "escenas"} y el máximo son ${ESCENAS_MAXIMAS}. Borra alguna antes de añadir otra.`,
       );
     }
-    const campos = { ...camposLimpios(datos), ...producto, ...trend };
     const [escena] = await tx
       .insert(scenes)
       .values({ projectId: proyecto.id, sortOrder: orden, plannedSeconds: proyecto.clipSeconds, ...campos })
@@ -270,6 +275,15 @@ export async function editarEscena(actor: Actor, escenaId: unknown, datos: Datos
     ...(await camposDeProducto(actor, datos)),
     ...(await camposDeTrend(actor, datos, proyecto.clipSeconds, proyecto.voiceMode)),
   };
+  const formatoFinal = campos.clipFormat ?? escena.clipFormat;
+  const plantillaFinal = campos.templateId === undefined ? escena.templateId : campos.templateId;
+  if (formatoFinal === "cantar" && plantillaFinal)
+    throw new ErrorProyecto(
+      409,
+      "Una escena de canto usa tu audio y no admite un trend. Quita el trend antes de guardarla.",
+    );
+  if (formatoFinal === "cantar" && escena.castFormat !== "solo")
+    throw new ErrorProyecto(409, "El canto usa un personaje. Vuelve al reparto «solo» antes de guardar esta escena.");
   if (Object.keys(campos).length === 0) return escena;
   // Editar una escena que ya se ha generado no borra nada (el gasto está hecho y el resultado sigue en la
   // biblioteca), pero deja de corresponder a lo que dice: la rejilla de producción lo avisa y el historial lo

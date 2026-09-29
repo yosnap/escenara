@@ -81,7 +81,7 @@ export function EditorEscena({
       accion,
       ...direccion,
       producto,
-      trendId: trendId || null,
+      trendId: direccion.formatoClip === "cantar" ? null : trendId || null,
     });
     setGuardando(false);
     if (resultado.ok) onCambio(resultado.datos);
@@ -177,6 +177,7 @@ export function EditorEscena({
         deshabilitado={ocupado || escena.estado === "producida"}
         onCambio={(campo, valor) => {
           if (campo === "acento") return;
+          if (campo === "formatoClip" && valor === "cantar") setTrendId("");
           setDireccion((antes) => ({ ...antes, [campo]: valor }));
         }}
       />
@@ -192,43 +193,45 @@ export function EditorEscena({
         ) : (
           <p className="text-sm text-texto-suave">Guarda la escena para elegir el audio y declarar sus derechos.</p>
         ))}
-      <section className="flex flex-col gap-3 rounded-tarjeta bg-elevada p-4">
-        <h3 className="font-bold text-texto">Trend del clip</h3>
-        <Selector
-          etiqueta="Formato vigente"
-          valor={trendId}
-          marcador="Sin trend"
-          opciones={[
-            { value: "", label: "Sin trend" },
-            ...trends.map((p) => ({
-              value: p.id,
-              label: p.nombre,
-              descripcion: `${p.descripcion} · ${p.duracionObjetivo} s`,
-              deshabilitada: p.duracionObjetivo !== escena.segundos,
-            })),
-          ]}
-          onCambio={(valor) => setTrendId(valor ?? "")}
-          deshabilitado={ocupado || escena.estado === "producida"}
-        />
-        {trend && (
-          <Aviso tono="info">
-            Vista previa: {trend.vistaPrevia.resumen}. {trend.vistaPrevia.duracion};{" "}
-            {trend.vistaPrevia.habla.toLowerCase()}. Coste previsto de esta escena:{" "}
-            {escena.estimacion
-              ? textoEstimacion(escena.estimacion.creditos, escena.estimacion.euros, escena.estimacion.comprobado)
-              : "sin tarifa registrada"}
-            . La cifra se confirma en el plan antes de generar.
-          </Aviso>
-        )}
-        {trendId && !trend && (
-          <Aviso tono="error">
-            Este trend ya no está vigente. Elige uno de los disponibles o quítalo y guarda la escena.
-          </Aviso>
-        )}
-        {trends.length === 0 && (
-          <p className="text-sm text-texto-suave">Todavía no hay trends aprobados por la administración.</p>
-        )}
-      </section>
+      {direccion.formatoClip !== "cantar" && (
+        <section className="flex flex-col gap-3 rounded-tarjeta bg-elevada p-4">
+          <h3 className="font-bold text-texto">Trend del clip</h3>
+          <Selector
+            etiqueta="Formato vigente"
+            valor={trendId}
+            marcador="Sin trend"
+            opciones={[
+              { value: "", label: "Sin trend" },
+              ...trends.map((p) => ({
+                value: p.id,
+                label: p.nombre,
+                descripcion: `${p.descripcion} · ${p.duracionObjetivo} s`,
+                deshabilitada: p.duracionObjetivo !== escena.segundos,
+              })),
+            ]}
+            onCambio={(valor) => setTrendId(valor ?? "")}
+            deshabilitado={ocupado || escena.estado === "producida"}
+          />
+          {trend && (
+            <Aviso tono="info">
+              Vista previa: {trend.vistaPrevia.resumen}. {trend.vistaPrevia.duracion};{" "}
+              {trend.vistaPrevia.habla.toLowerCase()}. Coste previsto de esta escena:{" "}
+              {escena.estimacion
+                ? textoEstimacion(escena.estimacion.creditos, escena.estimacion.euros, escena.estimacion.comprobado)
+                : "sin tarifa registrada"}
+              . La cifra se confirma en el plan antes de generar.
+            </Aviso>
+          )}
+          {trendId && !trend && (
+            <Aviso tono="error">
+              Este trend ya no está vigente. Elige uno de los disponibles o quítalo y guarda la escena.
+            </Aviso>
+          )}
+          {trends.length === 0 && (
+            <p className="text-sm text-texto-suave">Todavía no hay trends aprobados por la administración.</p>
+          )}
+        </section>
+      )}
 
       {/*
         Con qué referencia se generó: es parte de saber qué se ha pagado, sobre todo con la prueba de la hoja
