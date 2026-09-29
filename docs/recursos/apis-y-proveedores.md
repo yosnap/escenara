@@ -219,3 +219,23 @@ Spike de la fase 0.28.0 (podcast y dualcast) con dinero real: **189 créditos en
 - **Fidelidad desigual**: el personaje inventado sale idéntico a su retrato; la persona real sale reconocible (pelo, gafas, complexión) pero **rejuvenecida y sin su maquillaje**. Con personas reales conviene comprobar la identidad antes de dar el clip por bueno.
 - **Podcast (dos clips, un `character_id` cada uno)**: la **mirada cruzada sí se obedece** (una mira al borde derecho del cuadro y la otra al izquierdo), y el set descrito sale de la misma familia en los dos, pero no idéntico (muebles y encuadre varían). El **lado del cuadro no siempre se respeta** en el clip de un solo personaje, y en los dos se coló el brazo o la rodilla de un segundo cuerpo pese a pedir «no hay nadie más en el plano».
 - **Forma exacta de la petición**: `{ prompt, character_ids: [id1, id2], duration: "4", resolution: "720p", aspect_ratio: "9:16" }`. En el prompt cada personaje se nombra **con el mismo nombre con el que se registró** («Elisa», «Elisabeth») y se ata a su sitio («the woman on the LEFT of the frame is Elisa»), con un turno por línea: quién habla, qué dice literal en español y qué hace la otra mientras.
+
+## Canto con audio propio, medido 2026-09-29
+
+Spike de la fase 0.29.0 en la cuenta del propietario, con un MP3 de 11,52 s sintetizado localmente y el retrato
+vertical de Elisa. Se autorizó un máximo de 200 créditos. Dos tareas de `infinitalk/from-audio` a 480p
+terminaron en «Internal Error» del proveedor después de informar «generating»: **0 créditos cobrados** en
+ambas. La alternativa `kling/v1-avatar-standard` a 720p terminó correctamente. Escenara estimó **96 créditos**
+(12 s facturables × 8 créditos/s), pero KIE informó **88 créditos consumidos**. No se infiere otra tarifa para
+futuros envíos: el coste se sigue confirmando con el catálogo y se cierra con el dato del proveedor.
+
+`ffprobe` midió el resultado de Kling: H.264, **848 × 1072**, AAC estéreo y **12,267 s**. La pista de audio
+coincide con el archivo aportado (PSNR de 174 dB después de igualar frecuencia y canales). Ese archivo suena
+al propietario como un sintetizador sin voz cantada reconocible. En la revisión del vídeo, los labios no
+guardan relación con el sonido: **este spike valida el envío y la conservación del audio, no el canto ni el
+lip-sync**. El proveedor sustituyó
+el fondo crema pedido por una cafetería y dejó letras ilegibles cerca del final. El tamaño vertical del
+retrato no garantiza 9:16: este modelo no recibe un parámetro de proporción. El montaje local guardado sí sale
+a 1080 × 1920 con etiqueta sintética y audio, sin coste de proveedor; conserva el encuadre con franjas negras.
+Véase el [recorrido de referencia](../guias/recorridos-de-referencia-0.29-0.32.md) para el proyecto y capturas.
+Queda pendiente repetirlo con una voz cantada original dentro de los 112 créditos aún autorizados.

@@ -8,7 +8,7 @@ En **Crear**, elige una imagen de partida y abre «Plantilla o trend vigente» e
 
 En un **proyecto**, cada escena tiene un selector «Trend del clip». Solo se pueden elegir formatos cuya duración coincide con la del proyecto. El plan vuelve a mostrar y a confirmar el coste antes de producir. Si el formato no permite habla, el guion no entra en el prompt del clip; puedes poner la voz en off más adelante. Si eliges un producto, se pide como parte de la escena y se aplican sus avisos y la comprobación de fidelidad.
 
-Si un trend caduca entre la elección y la confirmación, el servidor bloquea la generación sin reservar créditos. El mensaje señala la copia vigente equivalente cuando existe. Vuelve a elegirla y revisa otra vez el coste.
+Si un trend caduca entre la elección y la confirmación, el servidor bloquea la generación sin reservar créditos. El mensaje señala la copia vigente equivalente cuando existe. Vuelve a elegirla y revisa otra vez el coste. Si el modelo de vídeo no admite la foto del producto como referencia, la pantalla avisa de que la etiqueta puede variar y pide confirmar el aviso antes de animar. El fotograma puede reutilizarse tras un fallo del clip si autorizas el reintento; al cambiar la escena o el modelo, revisa si hace falta un nuevo fotograma.
 
 ## Dar de alta y mantener uno
 
@@ -18,4 +18,4 @@ Quien administra abre **Admin › Plantillas**, crea una plantilla de tipo «Tre
 
 Después de una prueba real aprobada por el propietario, puede poner la plantilla **vigente**. Cuando el formato envejezca, usa «Caducar trend». Una caducada no se edita ni genera: se duplica, se revisa la nueva versión y se publica cuando corresponda. El interruptor de **Admin › Ajustes** oculta todos los trends sin desplegar.
 
-Las cinco plantillas iniciales permanecen en **revisión**. No se han generado pruebas de pago ni se afirma que su resultado sea reconocible hasta que el propietario autorice el spike.
+Las cinco plantillas iniciales se crearon en **revisión**. Para la prueba se activaron unboxing y giro a 6 s; al fallar Hailuo sin cobro, se duplicaron en variantes de 5 s con MiniMax H3. Tras generar los ejemplos, ambas versiones volvieron a **revisión** hasta que el propietario valore su calidad y decida publicarlas. La cuenta de administración conserva el [proyecto de prueba de dos trends](/proyectos/4fb19dba-589e-4a90-b3b6-18fe19ee3479), los fallos, los clips terminados y el MP4. La [guía de recorridos](recorridos-de-referencia-0.29-0.32.md) documenta los costes y los límites visuales observados; los otros tres formatos tampoco se han publicado.

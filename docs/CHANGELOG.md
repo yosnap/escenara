@@ -55,6 +55,14 @@ ningún proveedor, **ni un crédito**.
   la pantalla explica quién lo enciende y dónde en vez de fallar.
 - Topes de esta versión: **300 s** por montaje, **60 fragmentos**, **15 min** de render, **128 MiB** por archivo
   de entrada y **1 GiB** por exportación. El resultado ocupa cuota de la biblioteca como cualquier archivo.
+
+### Verificado en la cuenta del propietario
+
+- Un proyecto de tres escenas conserva el orden **2, 1, 3**, los recortes de **4, 5 y 6 s**, subtítulos, música
+  al 25 % y la etiqueta obligatoria. El MP4 descargado midió **H.264, 1080 × 1920, AAC estéreo y 15,016 s**
+  con `ffprobe`; la exportación no consumió créditos. El [recorrido de referencia](guias/recorridos-de-referencia-0.29-0.32.md)
+  enlaza el proyecto y las capturas.
+
 ## [0.31.0] · 2026-09-29
 
 ### Añadido
@@ -63,15 +71,27 @@ ningún proveedor, **ni un crédito**.
 - El proyecto y sus escenas heredan el acabado. Cada trabajo conserva la versión de la guía; Jev compara la identidad con el maestro. Cambiar de estilo retira las vistas anteriores y exige un nuevo retrato.
 - Guía [Crear un personaje animado](guias/personajes-animados.md) y [ADR-0037](arquitectura/decisiones/adr-0037-animados-con-identidad-maestra.md). La etiqueta visible de contenido sintético seguirá siendo obligatoria al exportar, también para dibujos.
 
+### Comprobado y corregido
+
+- En la cuenta del propietario se generaron **cuatro clips reales de 6 s**: dos escenas de Nora en ilustración plana, una de Bruno en 3D estilizado y una de Mika en anime. Los retratos maestros, vistas, fotogramas, clips, escenas y prompts permanecen guardados. Consumo medido: **196 créditos de KIE** dentro del límite autorizado de 200.
+- Se corrigió el compositor 6C: los fotogramas animados ya no reciben anclajes fotográficos ni instrucciones de cámara de móvil. La primera prueba de Nora mostró el defecto; sus fotogramas se regeneraron tras la corrección y las versiones anteriores siguen en el historial. El retrato maestro y dos vistas generadas permiten empezar a producir, con aviso si faltan vistas recomendadas. El número de retratos candidatos puede limitarse entre uno y cuatro antes de confirmar el gasto.
+- Hailuo 2.3 Standard admite aquí escenas de **6 s** y produce estos clips sin diálogo. La prueba de habla queda pendiente de otro presupuesto: los 4 créditos no consumidos no cubren un clip hablado.
+
 ## [0.30.0] · 2026-09-29
 
 ### Añadido
 
 - **Trends virales**: formatos cortos versionados que se eligen en «Crear» o en una escena del proyecto. La vista previa en castellano explica qué ocurre, si hay habla y la duración. La estimación del modelo se actualiza al elegir el trend; el total y su sello se confirman antes de generar.
-- **Marca dentro de la escena**: si se elige un producto, aparece como referencia física y se conserva su etiqueta. El trend mudo omite el diálogo y mantiene la instrucción de toma única.
+- **Marca dentro de la escena**: si se elige un producto, se pide como objeto físico. Su foto solo viaja al clip con modelos que admiten esa referencia; con los demás se avisa de que la etiqueta puede variar y se exige confirmación expresa. El trend mudo omite el diálogo y mantiene la instrucción de toma única.
 - **Vigencia administrada**: alta, edición, nueva versión, caducidad y duplicado desde Admin › Plantillas. Un trend caducado deja de generar y señala una copia vigente equivalente si existe. El catálogo de componentes muestra su estado.
-- **Cinco plantillas iniciales** redactadas para la instalación. Todas quedan **en revisión** y ocultas al usuario hasta que el propietario apruebe la prueba real de pago de cada formato.
+- **Cinco plantillas iniciales** redactadas para la instalación. Nacen **en revisión** y ocultas al usuario hasta que el propietario apruebe la prueba real de pago de cada formato.
 - Guía [Usar y administrar trends](guias/trends-virales.md) y [ADR-0036](arquitectura/decisiones/adr-0036-trends-versionados.md).
+
+### Corregido tras la prueba de referencia
+
+- La tarjeta de producción enseña los avisos del producto propios del **clip** antes de pagar la animación. En la primera prueba, Hailuo no admitía la foto del tarro como referencia de vídeo y el servidor exigía confirmar ese riesgo, pero la pantalla no ofrecía la casilla.
+- Un clip fallido puede repetirse con el fotograma aprobado después de autorizar un reintento; la pantalla ya no obliga a pagar otro fotograma. Los proyectos ofrecen también **5 s**, duración medida con MiniMax H3, para poder cambiar de modelo cuando Hailuo devuelve un error interno.
+- Dos trends de 5 s se generaron con MiniMax H3 y quedaron en la cuenta del propietario con sus plantillas, producto, prompts y trabajos anteriores. Consumo real: **96 de 100 créditos** autorizados. El MP4 conjunto se exportó sin coste y `ffprobe` verificó H.264, 1080 × 1920, AAC y 10,013 s. El unboxing no es una primera persona perfecta y la rotulación fina del tarro varía: la [guía de recorridos](guias/recorridos-de-referencia-0.29-0.32.md) lo muestra sin ocultar esos límites.
 
 ## [0.29.0] · 2026-09-29
 
@@ -82,6 +102,13 @@ ningún proveedor, **ni un crédito**.
 - **Coste por segundo**: se muestran duración facturable, tarifa publicada, resolución, estimación y sello del precio antes de confirmar. La reserva y los reintentos se verifican en el servidor. El canto está apagado por defecto hasta aprobar una prueba real de pago.
 - **Admin › Ajustes › Canto**: interruptor, modelo, tope de duración y resolución. El catálogo de componentes incluye la declaración y el resumen de la pantalla.
 - Guía [Cantar con tu audio](guias/cantar-con-audio-propio.md), [ADR-0034](arquitectura/decisiones/adr-0034-canto-con-audio-propio.md) y nota de derechos en [Cumplimiento y privacidad](legal/cumplimiento-y-privacidad.md).
+
+### Corregido tras la prueba de referencia
+
+- La dirección guardada de la escena de canto (plano, ángulo, cámara y gesto) llega ahora al encargo del clip. La vista previa explica que los labios siguen el audio propio; antes decía por error que debían permanecer cerrados.
+- La producción de un proyecto compuesto solo por canto deja de mostrar el aviso de duración del modelo de animación normal; las escenas normales siguen mostrando ese aviso si se cambia su duración, aunque ya tengan un fotograma generado.
+- Dos trabajos de InfiniteTalk fallaron por error interno del proveedor sin cobro. Kling AI Avatar Standard generó un clip de prueba con el MP3 original: **88 créditos medidos** frente a 96 estimados, dentro del límite autorizado de 200. La migración 0051 completa solo las fichas Kling antiguas descubiertas que nunca modificó el admin, para ofrecer su familia y tarifa de canto. El montaje etiquetado quedó guardado sin gastar créditos y `ffprobe` comprobó H.264, 1080 × 1920, AAC estéreo y 12 s. **La revisión del propietario detectó que los labios no siguen el sonido:** el MP3 sintetizado no tiene voz cantada reconocible y esta prueba no valida todavía el canto. Se conserva como caso de fallo de calidad y se repetirá con una voz adecuada.
+- La vista previa del clip indica las dimensiones reales del archivo: Kling devolvió 848 × 1072 aunque el montaje final sea 9:16. La descarga del MP4 exportado pide al almacenamiento que lo entregue como adjunto; el enlace anterior podía abrir el vídeo en el navegador al cruzar de origen.
 
 ### Corregido
 
