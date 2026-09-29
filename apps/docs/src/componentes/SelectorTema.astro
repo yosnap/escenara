@@ -1,0 +1,95 @@
+---
+/**
+ * Selector de tema con tres botones (sistema, claro, oscuro) en lugar del <select> nativo de Starlight.
+ * Usa la misma clave de localStorage que Starlight, así su script sin parpadeo sigue funcionando.
+ */
+import { Icon } from "@astrojs/starlight/components";
+
+const opciones = [
+  { valor: "auto", etiqueta: "Tema del sistema", icono: "laptop" },
+  { valor: "light", etiqueta: "Tema claro", icono: "sun" },
+  { valor: "dark", etiqueta: "Tema oscuro", icono: "moon" },
+] as const;
+---
+
+<escenara-selector-tema>
+  <div class="grupo" role="group" aria-label="Tema de color">
+    {
+      opciones.map((o) => (
+        <button type="button" data-tema={o.valor} aria-pressed="false" aria-label={o.etiqueta} title={o.etiqueta}>
+          <Icon name={o.icono} size="1rem" />
+        </button>
+      ))
+    }
+  </div>
+</escenara-selector-tema>
+
+<style>
+  .grupo {
+    display: inline-flex;
+    gap: 0.125rem;
+    padding: 0.125rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 999px;
+  }
+  button {
+    display: grid;
+    place-items: center;
+    width: 1.875rem;
+    height: 1.875rem;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--sl-color-gray-3);
+    cursor: pointer;
+  }
+  button:hover {
+    color: var(--sl-color-white);
+  }
+  button[aria-pressed="true"] {
+    background: var(--sl-color-accent-low);
+    color: var(--sl-color-accent-high);
+  }
+  button:focus-visible {
+    outline: 2px solid var(--sl-color-accent);
+    outline-offset: 1px;
+  }
+</style>
+
+<script>
+  type Tema = "auto" | "dark" | "light";
+  const CLAVE = "starlight-theme";
+
+  const leerTema = (): Tema => {
+    const guardado = typeof localStorage !== "undefined" ? localStorage.getItem(CLAVE) : null;
+    return guardado === "light" || guardado === "dark" ? guardado : "auto";
+  };
+  const temaDelSistema = (): "light" | "dark" =>
+    matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+
+  function aplicar(tema: Tema): void {
+    document.documentElement.dataset.theme = tema === "auto" ? temaDelSistema() : tema;
+    try {
+      localStorage.setItem(CLAVE, tema === "auto" ? "" : tema);
+    } catch {
+      // Sin almacenamiento (modo privado estricto): el tema se aplica igual en esta visita.
+    }
+    for (const boton of document.querySelectorAll<HTMLButtonElement>("escenara-selector-tema button")) {
+      boton.setAttribute("aria-pressed", String(boton.dataset.tema === tema));
+    }
+  }
+
+  matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => {
+    if (leerTema() === "auto") aplicar("auto");
+  });
+
+  class SelectorTema extends HTMLElement {
+    connectedCallback(): void {
+      aplicar(leerTema());
+      for (const boton of this.querySelectorAll<HTMLButtonElement>("button")) {
+        boton.addEventListener("click", () => aplicar((boton.dataset.tema as Tema | undefined) ?? "auto"));
+      }
+    }
+  }
+  if (!customElements.get("escenara-selector-tema")) customElements.define("escenara-selector-tema", SelectorTema);
+</script>

@@ -1,0 +1,59 @@
+---
+import path from "node:path";
+import { CardGrid, LinkCard } from "@astrojs/starlight/components";
+import StarlightPage from "@astrojs/starlight/components/StarlightPage.astro";
+import { cargarIndice, DIR_DIAGRAMAS, idDeGuia } from "../indice";
+import { svgEnLinea } from "../markdown/remark-guias";
+
+const secciones = cargarIndice();
+const flujo = svgEnLinea(
+  path.join(DIR_DIAGRAMAS, "flujo-general.svg"),
+  "Flujo de Escenara: personaje, fotograma, clip, voz, montaje y exportación.",
+);
+const primera = secciones[0]?.guias[0];
+const instalacion = secciones.find((s) => s.titulo === "Configurar la instalación")?.guias[0];
+const acciones = [
+  primera && { text: "Empieza por tu primer vídeo", link: `/${idDeGuia(primera.slug)}/`, icon: "right-arrow" as const },
+  instalacion && {
+    text: "Configurar la instalación",
+    link: `/${idDeGuia(instalacion.slug)}/`,
+    variant: "minimal" as const,
+  },
+].filter((a) => Boolean(a)) as { text: string; link: string; icon?: "right-arrow"; variant?: "minimal" }[];
+---
+
+<StarlightPage
+  frontmatter={{
+    title: "Da vida a cada escena",
+    description: "Guías de Escenara, el estudio abierto de personajes y vídeo: del personaje al vídeo exportado.",
+    template: "splash",
+    hero: {
+      tagline:
+        "Guías de Escenara, el estudio abierto de personajes y vídeo. Crea personajes, dirige historias y exporta tus vídeos con tus propias claves.",
+      actions: acciones,
+    },
+  }}
+>
+  <h2>Del personaje al vídeo publicado</h2>
+  <p>
+    Cada vídeo sigue el mismo camino. Cada paso tiene su guía, y antes de gastar nada la pantalla te dice qué costará y
+    con qué proveedor.
+  </p>
+  <Fragment set:html={flujo} />
+
+  <h2>Todas las guías</h2>
+  <CardGrid>
+    {
+      secciones.map((s) => {
+        const guia = s.guias[0];
+        return guia ? (
+          <LinkCard
+            title={s.titulo}
+            description={s.guias.map((g) => g.titulo).join(" · ")}
+            href={`/${idDeGuia(guia.slug)}/`}
+          />
+        ) : null;
+      })
+    }
+  </CardGrid>
+</StarlightPage>

@@ -1,0 +1,20 @@
+---
+import StarlightPage from "@astrojs/starlight/components/StarlightPage.astro";
+import { cargarIndice, idDeGuia } from "../indice";
+
+const primera = cargarIndice()[0]?.guias[0];
+---
+
+<StarlightPage
+  frontmatter={{
+    title: "Esta página no existe",
+    template: "splash",
+    hero: {
+      tagline: "Puede que la guía haya cambiado de nombre. Búscala con el buscador de arriba o vuelve a la portada.",
+      actions: [
+        { text: "Ir a la portada", link: "/", icon: "right-arrow" },
+        ...(primera ? [{ text: primera.titulo, link: `/${idDeGuia(primera.slug)}/`, variant: "minimal" as const }] : []),
+      ],
+    },
+  }}
+/>

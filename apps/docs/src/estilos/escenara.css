@@ -1,0 +1,139 @@
+/*
+ * Marca de Escenara sobre Starlight. Colores de docs/branding/escenara.brand.json (tema claro y oscuro).
+ * Los diagramas (docs/assets/diagramas) leen las variables --dg-*: por eso van en línea y cambian con el tema.
+ * Fuera de la web (GitHub, visor de imágenes) usan sus colores de reserva según prefers-color-scheme.
+ */
+
+:root {
+  --sl-font: Manrope, Inter, ui-sans-serif, system-ui, sans-serif;
+  --sl-font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Oscuro (Starlight parte del oscuro) */
+  --sl-color-accent-low: #1b2a4d;
+  --sl-color-accent: #8eb8ff;
+  --sl-color-accent-high: #cfe0ff;
+  --sl-color-white: #f5f6fa;
+  --sl-color-gray-1: #e6e9f2;
+  --sl-color-gray-2: #b8c0d1;
+  --sl-color-gray-3: #939cb0;
+  --sl-color-gray-4: #737f98;
+  --sl-color-gray-5: #2c3347;
+  --sl-color-gray-6: #171b27;
+  --sl-color-black: #0d1018;
+
+  --escenara-chispa: #ffad78;
+  --escenara-degradado: linear-gradient(100deg, #7c9bff, #ff6fa8 45%, #ff8f6b 75%, #ffd66b);
+
+  --dg-fondo: #0d1018;
+  --dg-superficie: #171b27;
+  --dg-superficie-alta: #222839;
+  --dg-texto: #f5f6fa;
+  --dg-texto-suave: #b8c0d1;
+  --dg-borde: #737f98;
+  --dg-acento: #8eb8ff;
+  --dg-acento-suave: #1b2a4d;
+  --dg-chispa: #ffad78;
+  --dg-chispa-suave: #3a2418;
+  --dg-exito: #66d6ab;
+  --dg-exito-suave: #12362b;
+  --dg-aviso: #f5c97a;
+  --dg-aviso-suave: #3a2e14;
+  --dg-peligro: #ff9ead;
+  --dg-peligro-suave: #3d1c24;
+}
+
+:root[data-theme="light"] {
+  --sl-color-accent-low: #e3eafc;
+  --sl-color-accent: #2753d7;
+  --sl-color-accent-high: #1c3c9e;
+  --sl-color-white: #182032;
+  --sl-color-gray-1: #232c40;
+  --sl-color-gray-2: #384157;
+  --sl-color-gray-3: #485269;
+  --sl-color-gray-4: #6b7489;
+  --sl-color-gray-5: #c9cedb;
+  --sl-color-gray-6: #eff1f8;
+  --sl-color-gray-7: #f7f8fc;
+  --sl-color-black: #ffffff;
+
+  --escenara-chispa: #b53d1c;
+  --escenara-degradado: linear-gradient(100deg, #3d6bff, #e8458b 45%, #f0663d 75%, #ffc83d);
+
+  --dg-fondo: #f7f8fc;
+  --dg-superficie: #ffffff;
+  --dg-superficie-alta: #eff1f8;
+  --dg-texto: #182032;
+  --dg-texto-suave: #485269;
+  --dg-borde: #858ea1;
+  --dg-acento: #2753d7;
+  --dg-acento-suave: #e3eafc;
+  --dg-chispa: #b53d1c;
+  --dg-chispa-suave: #fde7df;
+  --dg-exito: #166a51;
+  --dg-exito-suave: #ddf1e9;
+  --dg-aviso: #875016;
+  --dg-aviso-suave: #f8ebd6;
+  --dg-peligro: #a43343;
+  --dg-peligro-suave: #f8e1e5;
+}
+
+.sl-markdown-content h2,
+.sl-markdown-content h3 {
+  letter-spacing: -0.01em;
+}
+
+/* Citas y avisos: marco completo, nunca una franja de color a un lado. */
+.sl-markdown-content blockquote {
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.75rem;
+  background: var(--sl-color-gray-6);
+  padding: 0.75rem 1rem;
+}
+
+.starlight-aside {
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.75rem;
+}
+
+.sl-markdown-content img {
+  border-radius: 0.75rem;
+  border: 1px solid var(--sl-color-gray-5);
+}
+
+.sl-markdown-content table {
+  display: block;
+  overflow-x: auto;
+}
+
+figure.diagrama {
+  margin-block: 1.5rem;
+  padding: 0;
+  overflow-x: auto;
+}
+
+figure.diagrama svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 880px;
+  margin-inline: auto;
+}
+
+/* En el móvil el diagrama no se encoge hasta ser ilegible: se desplaza en horizontal. */
+@media (max-width: 40rem) {
+  figure.diagrama svg {
+    min-width: 36rem;
+  }
+}
+
+.card,
+.sl-link-card {
+  border-radius: 1rem;
+}
+
+.hero h1 {
+  background: var(--escenara-degradado);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
