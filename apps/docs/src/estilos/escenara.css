@@ -137,3 +137,41 @@ figure.diagrama svg {
   background-clip: text;
   color: transparent;
 }
+
+/* Acordeones de las guías (<details><summary>): un motivo por bloque, cerrado hasta que se pulsa. */
+.sl-markdown-content details {
+  margin-block: 0.6rem;
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.75rem;
+  background: var(--sl-color-gray-6);
+  overflow: clip;
+}
+
+.sl-markdown-content details > summary {
+  cursor: pointer;
+  padding: 0.8rem 1rem;
+  font-weight: 700;
+  color: var(--sl-color-white);
+  list-style-position: inside;
+}
+
+.sl-markdown-content details > summary:hover {
+  background: var(--sl-color-accent-low);
+}
+
+.sl-markdown-content details > summary:focus-visible {
+  outline: 2px solid var(--sl-color-accent);
+  outline-offset: -2px;
+}
+
+.sl-markdown-content details[open] > summary {
+  border-bottom: 1px solid var(--sl-color-gray-5);
+}
+
+.sl-markdown-content details > :not(summary) {
+  margin-inline: 1rem;
+}
+
+.sl-markdown-content details > :last-child {
+  margin-bottom: 1rem;
+}
