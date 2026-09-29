@@ -307,6 +307,12 @@ export async function producirEscenaHablada(
   const { modelo: primero } = await eleccionOmni(actor.id);
   const eleccion = await eleccionOmni(actor.id, segundosDeEscenaOmni(duracionesDeOmni(primero), proyecto));
   const { modelo, adaptador, precio } = eleccion;
+  if (escena.castFormat !== "solo" && !usaIdentidadRegistrada(modelo.modelo)) {
+    throw new ErrorOmni(
+      409,
+      `El modelo ${modelo.nombre} no admite dos identidades registradas. Elige un modelo Gemini Omni para podcast o dualcast antes de confirmar el gasto. No se ha cobrado nada.`,
+    );
+  }
   const segundos = segundosDeEscenaOmni(duracionesDeOmni(modelo), proyecto);
   const creditos = creditosDeTarifa(precio, segundos, modelo.modelo);
   exigirSelloVigente(confirmacion.selloEstimacion, precio.sello, true);
@@ -513,6 +519,12 @@ export async function producirEscenaHablada(
     throw new ErrorOmni(409, `Esta escena no se puede producir todavía: ${detalle}`);
   }
   const clipsDelEnvio: (ClipDelReparto | null)[] = envios && envios.clips.length > 0 ? envios.clips : [null];
+  if (clipsDelEnvio.length !== clipsEsperados) {
+    throw new ErrorOmni(
+      409,
+      `El reparto pide ${clipsEsperados} clips, pero solo se han preparado ${clipsDelEnvio.length}. Revisa el reparto antes de confirmar: no se ha reservado ni cobrado nada.`,
+    );
+  }
 
   const trabajos: FilaTrabajo[] = [...yaEncoladas];
   let nuevas = 0;

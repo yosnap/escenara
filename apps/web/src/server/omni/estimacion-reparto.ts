@@ -1,3 +1,4 @@
+import { usaIdentidadRegistrada } from "@/lib/omni";
 import { noCabeElDialogo, palabrasDeTurnos, segundosNecesarios } from "@/lib/reparto-envio";
 import { escenaPropia } from "../asistente/consulta";
 import type { FilaEscena, FilaProyecto } from "../db/esquema";
@@ -87,6 +88,7 @@ export async function estimarReparto(
   let comprobado: string;
   let segundos: number;
   let precioEstimado: boolean;
+  let modeloAdmiteReparto: boolean;
   try {
     const { creditos, sello: selloLeido } = await creditosDeEscenaHablada(actor.id, proyecto);
     const { modelo } = await eleccionOmni(actor.id);
@@ -96,6 +98,7 @@ export async function estimarReparto(
     sello = selloLeido;
     comprobado = (await eleccionOmni(actor.id, segundos)).precio.comprobado;
     precioEstimado = precioDeDuracionEstimado(modelo, segundos);
+    modeloAdmiteReparto = usaIdentidadRegistrada(modelo.modelo);
   } catch (error) {
     return {
       ...vacia,
@@ -136,6 +139,11 @@ export async function estimarReparto(
   if (escena.castFormat !== "solo" && miembros.length !== 2) {
     impedimentos.push(
       "El reparto necesita exactamente dos personajes antes de generar. Añade el segundo en la escena.",
+    );
+  }
+  if (escena.castFormat !== "solo" && !modeloAdmiteReparto) {
+    impedimentos.push(
+      "El modelo elegido no admite dos identidades registradas. Elige un modelo Gemini Omni antes de generar.",
     );
   }
   if (escena.castFormat !== "solo" && proyecto.voiceMode !== "omni") {

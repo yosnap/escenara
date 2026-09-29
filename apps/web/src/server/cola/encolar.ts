@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, lt, ne, sql } from "drizzle-orm";
+import { and, eq, isNotNull, lt, ne, or, sql } from "drizzle-orm";
 import type { Proveedor } from "@/lib/boveda";
 import { leerAjustes } from "../ajustes";
 import { db, type Ejecutor } from "../db/cliente";
@@ -103,6 +103,26 @@ async function exigirEscenaSinRepetir(tx: Ejecutor, peticion: PeticionEncolado):
   const nombre = tipo === "animacion" ? "un clip" : tipo === "voz" ? "una pista de voz" : "un fotograma";
   // Un podcast son **dos** clips de la misma escena, y los dos son legítimos: lo que no puede haber es uno más.
   const esperados = tipo === "animacion" ? Math.max(1, peticion.escena?.clips ?? 1) : 1;
+  if (esperados > 1 && peticion.valores.castClipOrder != null) {
+    const [mismoPlano] = await tx
+      .select({ id: generationJobs.id })
+      .from(generationJobs)
+      .where(
+        and(
+          eq(generationJobs.sceneId, escenaId),
+          eq(generationJobs.kind, "animacion"),
+          eq(generationJobs.castClipOrder, peticion.valores.castClipOrder),
+          or(condicionEnCurso(), and(eq(generationJobs.state, "listo"), isNotNull(generationJobs.resultMediaId))),
+        ),
+      )
+      .limit(1);
+    if (mismoPlano) {
+      throw new ErrorGeneracion(
+        409,
+        `El clip ${peticion.valores.castClipOrder} de este podcast ya está en marcha o terminado. No lo vuelvas a pedir con otra confirmación: podría cobrarse dos veces.`,
+      );
+    }
+  }
   const [{ total } = { total: 0 }] = await tx
     .select({ total: sql<number>`count(*)::int` })
     .from(generationJobs)

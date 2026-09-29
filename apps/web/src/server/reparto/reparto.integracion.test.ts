@@ -195,6 +195,9 @@ describeSiHayBase("reparto de dos personajes", () => {
     );
     expect(creado.status).toBe(201);
     proyectoId = ((await creado.json()) as ProyectoDetalle).proyecto.id;
+    // El reparto de dos solo está disponible en proyectos Omni; la ficha no necesita un registro remoto
+    // para probar su edición y sus controles.
+    await db().update(projects).set({ voiceMode: "omni" }).where(eq(projects.id, proyectoId));
     const conEscena = await rutaEscenasDeProyecto.POST(
       pedir(ana, `/api/proyectos/${proyectoId}/escenas`, "POST", {
         texto: "Esto me ha cambiado la rutina.",

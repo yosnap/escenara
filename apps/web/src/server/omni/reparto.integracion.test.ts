@@ -591,6 +591,21 @@ describeSiHayBase("escenas habladas con dos personajes", () => {
     expect(trabajos[0]?.reservationId).not.toBeNull();
   });
 
+  test("tras un encolado parcial, otra confirmación no vuelve a reservar el primer clip", async () => {
+    await registrarTodo([lucia.id, elisa.id]);
+    await conversacionDeDos("podcast");
+    await aprobarPlan();
+    await guardarAjustes({ trabajosSimultaneos: 1 }, null);
+    const primera = await producir();
+    expect(primera.trabajos).toHaveLength(1);
+    await guardarAjustes({ trabajosSimultaneos: 20 }, null);
+
+    const fallo = await error(() => producir());
+    expect(fallo.estado).toBe(409);
+    expect(fallo.message).toContain("clip 1");
+    expect(await trabajosDeLaEscena()).toHaveLength(1);
+  });
+
   test("repetir la misma confirmación no encarga ni un clip más", async () => {
     await registrarTodo([lucia.id, elisa.id]);
     await conversacionDeDos("podcast");
