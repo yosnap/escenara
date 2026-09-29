@@ -1,5 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import type { Comprobacion, DecisionVista } from "@/lib/coherencia";
+import { ETIQUETA_LADO_REPARTO, type LadoReparto } from "@/lib/reparto";
 import { coherenciaDe, leerAjustes } from "../ajustes";
 import { leerObjeto } from "../almacenamiento";
 import { escenaPropia } from "../asistente/consulta";
@@ -10,12 +11,13 @@ import { type DireccionPedida, pedidoDeDireccion } from "../direccion/fidelidad"
 import { imagenParaModelo } from "../media/procesado";
 import type { Actor } from "../media/servicio";
 import { productoParaGenerar } from "../productos/prompt";
+import { miembrosDelReparto, turnosDelReparto } from "../reparto/consulta";
 import { audioDelClip, ErrorAudioDelClip } from "./audio";
-import { decidirCoherencia } from "./decidir";
+import { decidirCoherencia, type ResultadoDecision } from "./decidir";
 import { ErrorFotogramasDelClip, fotogramasDelClip } from "./fotogramas";
-import { declaraCoherencia } from "./identidad";
+import { declaraCoherencia, identidadDeLaCaraGenerada } from "./identidad";
 import { ErrorPercepcion, percibir, quedaCupoDePercepcion, SIN_CUPO_DE_PERCEPCION } from "./percepcion";
-import { ultimaDecisionDe } from "./registro";
+import { decisionPorId, ultimaDecisionDe, ultimaDecisionDePersonaje } from "./registro";
 
 /**
  * Coherencia **de una escena**: las tres comprobaciones que nacen **en modo sombra** (propietario, 2026-09-28).
@@ -302,7 +304,151 @@ export async function comprobarEscena(actor: Actor, escenaId: unknown): Promise<
     return decision.motivo;
   });
 
+  /**
+   * **El diálogo se repartió como se pidió** (0.28.0), en una escena de dos personajes.
+   *
+   * Se escucha **el clip**, no se mira: quién dice cada frase está en el audio y no en una imagen. La percepción
+   * transcribe los turnos por voces sin identificar a nadie (`clase: "dialogo"`), y lo que Jev compara es esa
+   * transcripción con los turnos tal como el usuario los escribió, en castellano y literales.
+   *
+   * Una escena de un personaje no se comprueba: no hay reparto que juzgar, y preguntarlo gastaría una percepción
+   * para responder siempre lo mismo.
+   */
+  await anotar("reparto_fiel", async () => {
+    if (!conCupo) return SIN_CUPO_DE_PERCEPCION;
+    if (escena.castFormat === "solo") {
+      return "Esta escena es de un solo personaje, así que no hay diálogo repartido que comprobar.";
+    }
+    const turnos = await turnosDelReparto(escena.id);
+    if (turnos.length === 0) {
+      return "El diálogo de esta escena no está repartido por turnos, así que no hay reparto pedido con el que comparar lo que se oye.";
+    }
+    const clip = await clipDe(escena);
+    if (!clip) return "Esta escena todavía no tiene clip, así que no hay conversación que escuchar.";
+    const sinPermiso = await motivoSinPermiso(proyecto);
+    if (sinPermiso) return sinPermiso;
+    const audio = await audioDelClip(clip.storageKey, clip.mimeType);
+    const percepcion = await percibir({
+      usuarioId: actor.id,
+      proyectoId: proyecto.id,
+      clase: "dialogo",
+      claveIdempotencia: `coherencia:reparto:${escena.id}:${clip.id}`,
+      audio,
+    });
+    const decision = await decidirCoherencia({
+      usuarioId: actor.id,
+      comprobacion: "reparto_fiel",
+      sujeto,
+      percepcion,
+      referencia: {
+        cast_format: escena.castFormat,
+        // Los turnos van tal como se pidieron, con el nombre de quién habla y su frase **literal**, sin traducir.
+        requested_turns: turnos.map((t, i) => `${i + 1}. ${t.nombre}: "${t.texto}"`).join("\n"),
+      },
+    });
+    return decision.motivo;
+  });
+
+  /**
+   * **La cara de cada personaje es la suya** (0.28.0): con dos personajes se comprueba **dos veces**, cada una
+   * contra la referencia de su personaje y con el lado del cuadro en el que se le pidió salir.
+   *
+   * Va fuera de `anotar` porque son varias decisiones de la **misma** comprobación sobre la misma escena, y lo que
+   * las distingue es de quién habla cada una: se añaden a mano, con su etiqueta en castellano.
+   */
+  if (coherenciaDe(ajustes, "identidad").modo !== "apagada") {
+    for (const { motivo, decision, sobre } of await identidadesDelReparto(actor, escena, proyecto, conCupo)) {
+      if (motivo !== "") {
+        resultado.sinComprobar.push({ comprobacion: "identidad", motivo });
+        continue;
+      }
+      if (decision?.decisionId) {
+        const guardada = await decisionPorId(actor.id, decision.decisionId);
+        if (guardada) resultado.decisiones.push({ ...guardada, sobre });
+      }
+    }
+  }
+
   return resultado;
+}
+
+/**
+ * Comprueba la identidad de **cada** personaje del reparto contra su propia referencia. Devuelve una entrada por
+ * personaje: o su decisión, o el motivo por el que no se ha podido comprobar la suya.
+ *
+ * Lo que se mira es el **clip** si la escena ya lo tiene, y el fotograma aprobado mientras no lo haya: es lo mismo
+ * que mira el usuario cuando juzga si la cara es la que pidió. Con un solo personaje **no se hace nada**: su cara
+ * ya la cubre la comprobación de sus vistas generadas, y repetirla aquí gastaría dos percepciones por escena.
+ */
+async function identidadesDelReparto(
+  actor: Actor,
+  escena: FilaEscena,
+  proyecto: FilaProyecto,
+  conCupo: boolean,
+): Promise<{ motivo: string; decision: ResultadoDecision | null; sobre: string }[]> {
+  if (escena.castFormat === "solo") return [];
+  const miembros = await miembrosDelReparto(escena.id);
+  if (miembros.length < 2) return [];
+  const etiqueta = (nombre: string, lado: LadoReparto) => `${nombre}, ${ETIQUETA_LADO_REPARTO[lado].toLowerCase()}`;
+  if (!conCupo) {
+    return miembros.map((m) => ({ motivo: SIN_CUPO_DE_PERCEPCION, decision: null, sobre: etiqueta(m.nombre, m.lado) }));
+  }
+  const clip = await clipDe(escena);
+  if (!clip && !escena.approvedFrameMediaId) {
+    return [
+      {
+        motivo: "Esta escena todavía no tiene clip ni fotograma aprobado, así que no hay ninguna cara que comparar.",
+        decision: null,
+        sobre: "",
+      },
+    ];
+  }
+  const visto = clip
+    ? await fotogramasDelClip(clip.storageKey, clip.mimeType)
+    : await imagenDe(escena.approvedFrameMediaId);
+  if (!visto) {
+    return [
+      { motivo: "No se ha podido leer lo generado de esta escena para comparar las caras.", decision: null, sobre: "" },
+    ];
+  }
+  const filas = await db()
+    .select({
+      id: characters.id,
+      name: characters.name,
+      kind: characters.kind,
+      virtual: characters.virtual,
+      ownerId: characters.ownerId,
+    })
+    .from(characters)
+    .where(
+      inArray(
+        characters.id,
+        miembros.map((m) => m.personajeId),
+      ),
+    );
+  const porId = new Map(filas.map((f) => [f.id, f]));
+  const salida: { motivo: string; decision: ResultadoDecision | null; sobre: string }[] = [];
+  for (const miembro of miembros) {
+    const sobre = etiqueta(miembro.nombre, miembro.lado);
+    const personaje = porId.get(miembro.personajeId);
+    if (!personaje) {
+      salida.push({
+        motivo: `«${miembro.nombre}» ya no existe, así que no hay con qué comparar su cara.`,
+        decision: null,
+        sobre,
+      });
+      continue;
+    }
+    const { decision, motivo } = await identidadDeLaCaraGenerada({
+      personaje,
+      sujeto: { tipo: "escena", id: escena.id, personajeId: personaje.id, proyectoId: proyecto.id },
+      generada: visto,
+      claveIdempotencia: `coherencia:identidad:escena:${escena.id}:${personaje.id}:${clip ? clip.id : "fotograma"}`,
+      lado: ETIQUETA_LADO_REPARTO[miembro.lado].toLowerCase(),
+    });
+    salida.push({ motivo, decision, sobre });
+  }
+  return salida;
 }
 
 /**
@@ -328,10 +474,32 @@ export async function coherenciaGuardadaDe(actor: Actor, escenaId: unknown): Pro
   const { escena } = await escenaPropia(actor, escenaId);
   const ajustes = await leerAjustes();
   const decisiones: DecisionVista[] = [];
-  for (const comprobacion of ["guion", "resultado", "emocion", "direccion_fiel", "producto_fiel"] as const) {
+  for (const comprobacion of [
+    "guion",
+    "resultado",
+    "emocion",
+    "direccion_fiel",
+    "producto_fiel",
+    "reparto_fiel",
+  ] as const) {
     if (coherenciaDe(ajustes, comprobacion).modo === "apagada") continue;
     const decision = await ultimaDecisionDe(actor.id, escena.id, comprobacion);
     if (decision) decisiones.push(decision);
+  }
+  /**
+   * La identidad de una escena de dos personajes es **una decisión por personaje** (0.28.0): se leen las dos, cada
+   * una con la etiqueta de quién es, porque una sola diría «la cara no cuadra» sin decir cuál de las dos.
+   */
+  if (escena.castFormat !== "solo" && coherenciaDe(ajustes, "identidad").modo !== "apagada") {
+    for (const miembro of await miembrosDelReparto(escena.id)) {
+      const decision = await ultimaDecisionDePersonaje(actor.id, escena.id, "identidad", miembro.personajeId);
+      if (decision) {
+        decisiones.push({
+          ...decision,
+          sobre: `${miembro.nombre}, ${ETIQUETA_LADO_REPARTO[miembro.lado].toLowerCase()}`,
+        });
+      }
+    }
   }
   return decisiones;
 }

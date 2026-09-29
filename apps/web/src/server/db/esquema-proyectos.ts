@@ -47,6 +47,31 @@ export const registroEstetico = pgEnum("scene_aesthetic_register", ["influencer"
 export const cambioUnico = pgEnum("scene_change_only", ["ninguno", "outfit", "localizacion", "pose"]);
 
 /**
+ * **Dos personajes en una escena** (0.28.0). `solo` es lo de siempre y el valor de fábrica: una escena escrita
+ * antes de esta versión produce exactamente lo que producía.
+ *
+ * - `podcast`: dos clips, **un** personaje en cada uno, mirando al lado donde estaría el otro. Es la vía fiable
+ *   y la que el montaje (0.32.0) alterna;
+ * - `dualcast`: un solo clip con los dos en el plano. Medido el 2026-09-29: dos `character_ids` cuestan lo mismo
+ *   que uno, pero el lado del cuadro y el set solo se respetan si el prompt nombra a cada uno con el nombre con
+ *   el que se registró y le ata su lado.
+ */
+export const formatoReparto = pgEnum("scene_cast_format", ["solo", "podcast", "dualcast"]);
+
+/** Qué hace cada personaje del reparto: habla, o escucha y reacciona. */
+export const papelReparto = pgEnum("scene_cast_role", ["hablante", "acompanante"]);
+
+/** Por qué lado del cuadro está. Dos personajes nunca comparten lado. */
+export const ladoReparto = pgEnum("scene_cast_side", ["izquierda", "derecha"]);
+
+/**
+ * Adónde mira. `camara` es lo de siempre; en podcast la **mirada cruzada** (cada uno hacia el lado del otro) es
+ * lo único que hace que dos clips independientes parezcan la misma conversación (medido el 2026-09-29: la mirada
+ * se obedece, el lado del cuadro y el set no siempre).
+ */
+export const miradaReparto = pgEnum("scene_cast_gaze", ["camara", "izquierda", "derecha"]);
+
+/**
  * Acento del habla del proyecto. **Por proyecto y no por escena** (decisión firme del propietario, 2026-09-28):
  * si cada escena pudiera elegir, el acento cambiaría de plano a plano igual que cambiaba el timbre antes de la
  * 0.21.0. España peninsular de fábrica, porque las voces del proveedor no declaran acento y sin pedirlo salen
@@ -338,12 +363,99 @@ export const scenes = pgTable(
     productId: uuid("product_id").references(() => products.id, { onDelete: "set null" }),
     /** Clave del catálogo de acciones de producto. Vacío = no se ha dicho qué se hace con él. */
     productAction: text("product_action").notNull().default(""),
+    /**
+     * **Formato del reparto** (0.28.0). `solo` por defecto: lo que hace que una escena anterior a esta versión
+     * siga produciendo lo mismo sin tocarla.
+     *
+     * Quién sale, por qué lado y adónde mira vive en `scene_characters`, y el diálogo repartido en
+     * `scene_dialogue_turns`. `script_text` se conserva como el guion plano y sigue siendo la fuente cuando hay
+     * un solo personaje.
+     */
+    castFormat: formatoReparto("cast_format").notNull().default("solo"),
+    /**
+     * **Grupo del intercambio de podcast**: es lo que empareja los clips de una misma conversación para que el
+     * montaje (0.32.0) pueda alternar los planos. `null` en todo lo que no es un podcast.
+     *
+     * No es clave ajena a ninguna tabla, igual que `projects.variant_group_id`: no hay entidad «intercambio» que
+     * dé de alta nada. Es el valor que comparten, generado al elegir el formato.
+     */
+    podcastGroupId: uuid("podcast_group_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     unique("scenes_proyecto_orden_uq").on(t.projectId, t.sortOrder),
     index("scenes_proyecto_idx").on(t.projectId, t.sortOrder),
+    // Los clips de un mismo intercambio se leen juntos para poder alternarlos en el montaje (0.32.0).
+    index("scenes_grupo_podcast_idx").on(t.podcastGroupId),
+  ],
+);
+
+/**
+ * **El reparto de una escena** (0.28.0): quién sale, qué hace, por qué lado del cuadro y adónde mira.
+ *
+ * Sustituye al personaje único de la escena **sin romperlo**: hasta esta versión el personaje salía del proyecto
+ * (`projects.main_character_id`) y la escena no guardaba ninguno. La migración crea una fila `hablante` por cada
+ * escena cuyo proyecto tiene protagonista, así que una escena `solo` se comporta exactamente igual que antes.
+ *
+ * Cascada en las dos claves: sin escena no hay reparto, y sin personaje la fila no dice quién sale. Borrar un
+ * personaje **no borra la escena**: lo que desaparece es su sitio en el reparto, y el guion sigue siendo el guion.
+ */
+export const sceneCharacters = pgTable(
+  "scene_characters",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sceneId: uuid("scene_id")
+      .notNull()
+      .references(() => scenes.id, { onDelete: "cascade" }),
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => characters.id, { onDelete: "cascade" }),
+    role: papelReparto("role").notNull().default("hablante"),
+    side: ladoReparto("side").notNull().default("izquierda"),
+    gazeDirection: miradaReparto("gaze_direction").notNull().default("camara"),
+    /** Sitio que ocupa en el reparto, empezando en 1. En podcast es también el orden de los clips. */
+    sortOrder: integer("sort_order").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // El mismo personaje no puede estar dos veces en la misma escena: sería hablar consigo mismo.
+    unique("scene_characters_escena_personaje_uq").on(t.sceneId, t.characterId),
+    index("scene_characters_escena_idx").on(t.sceneId, t.sortOrder),
+    // Índice del borrado del personaje: hay que localizar los repartos en los que salía.
+    index("scene_characters_personaje_idx").on(t.characterId),
+  ],
+);
+
+/**
+ * **El diálogo repartido por turnos** (0.28.0). Es una estructura de datos y no un texto libre a propósito: con
+ * el diálogo en un párrafo, el proveedor reparte las frases al azar (riesgo medido el 2026-09-29).
+ *
+ * `text` es lo que se dice, **literal y en castellano**: no se traduce nunca, como el resto del diálogo desde
+ * 0.27.0. `direction` es la dirección vocal de ese turno («en tono cercano»), que sí es texto de dirección y
+ * viaja traducido como el resto de la dirección del clip.
+ */
+export const sceneDialogueTurns = pgTable(
+  "scene_dialogue_turns",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sceneId: uuid("scene_id")
+      .notNull()
+      .references(() => scenes.id, { onDelete: "cascade" }),
+    /** Orden del turno dentro de la escena, empezando en 1. Reescribir los turnos reescribe estos números. */
+    sortOrder: integer("sort_order").notNull(),
+    /** Quién lo dice. Solo puede ser un personaje **del reparto de esa escena**; lo comprueba el servicio. */
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => characters.id, { onDelete: "cascade" }),
+    text: text("text").notNull().default(""),
+    direction: text("direction").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("scene_dialogue_turns_escena_orden_uq").on(t.sceneId, t.sortOrder),
+    index("scene_dialogue_turns_escena_idx").on(t.sceneId, t.sortOrder),
+    index("scene_dialogue_turns_personaje_idx").on(t.characterId),
   ],
 );
 
@@ -496,6 +608,8 @@ export const translationCache = pgTable(
 
 export type FilaProyecto = typeof projects.$inferSelect;
 export type FilaEscena = typeof scenes.$inferSelect;
+export type FilaRepartoEscena = typeof sceneCharacters.$inferSelect;
+export type FilaTurnoDialogo = typeof sceneDialogueTurns.$inferSelect;
 export type FilaAfirmacion = typeof claims.$inferSelect;
 export type FilaEjecucionAsistente = typeof assistantRuns.$inferSelect;
 export type FilaTraduccion = typeof translationCache.$inferSelect;

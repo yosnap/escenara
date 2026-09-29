@@ -4,6 +4,7 @@ import { type EstadoControl, peorEstado } from "@/lib/controles";
 import { formatearCreditos } from "@/lib/generacion";
 import { formatearTamano } from "@/lib/media/reglas";
 import { formatearFecha } from "@/lib/proyectos";
+import { noCabeElDialogo, PALABRAS_POR_SEGUNDO, segundosNecesarios } from "@/lib/reparto-envio";
 import { accionSinPresupuesto, motivoSinPresupuesto } from "../presupuesto/mensajes";
 import {
   type Evaluacion,
@@ -114,6 +115,54 @@ const REGLAS: readonly Regla[] = [
           excepcion: "personaje",
         }
       : null,
+
+  /**
+   * **Consentimiento de cada persona real del reparto** (0.28.0, decisión firme del propietario). Con dos
+   * personas en la escena hacen falta **dos** consentimientos, y el mensaje dice **quién** falta: «Elisa» no es
+   * lo mismo que «el personaje», y sin el nombre el usuario no sabe cuál de las dos fichas abrir.
+   *
+   * Es la misma regla de 0.13.0, aplicada a todos los del reparto en lugar de solo al protagonista del proyecto.
+   * La regla `consentimiento` de arriba sigue cubriendo el envío sin escena («Crear»), donde no hay reparto.
+   */
+  (h) => {
+    const conProblema = (h.reparto?.personajes ?? []).filter((p) => p.impedimentos.length > 0);
+    if (conProblema.length === 0) return null;
+    const nombres = lista(conProblema.map((p) => `«${p.nombre}»`));
+    const detalle = conProblema.map((p) => `${p.nombre}: ${p.impedimentos.join(" ")}`).join(" ");
+    return {
+      regla: "reparto-consentimiento",
+      estado: "bloqueado",
+      motivo:
+        conProblema.length === 1
+          ? `${nombres} sale en esta escena y todavía no se puede usar para generar. ${detalle}`
+          : `En esta escena salen ${nombres} y ninguno se puede usar para generar todavía. ${detalle}`,
+      accion: "Arréglalo en la ficha de cada uno y vuelve a intentarlo: cada persona real necesita su consentimiento.",
+      enlace: "/personajes",
+      http: 409,
+      excepcion: "personaje",
+    };
+  },
+
+  /**
+   * **Sin registro en el proveedor no sale esa cara** (0.28.0). Es la hermana de `omni-sin-registro`, aplicada al
+   * segundo personaje: sin su registro, el modelo pondría una cara inventada en su lado del plano y el clip se
+   * cobraría igual. Bloquea, y dice el nombre de quién falta y que registrarlo **no cuesta créditos**.
+   */
+  (h) => {
+    const faltan = h.reparto?.sinRegistrar ?? [];
+    if (faltan.length === 0) return null;
+    const detalle = faltan.map((f) => `«${f.nombre}» ${f.falta}`).join(" ");
+    return {
+      regla: "reparto-sin-registro",
+      estado: "bloqueado",
+      motivo: `En esta escena hablan dos personajes y ${faltan.length === 1 ? "uno" : "ninguno"} está listo en el proveedor. ${detalle}`,
+      accion:
+        "Regístralo desde su ficha y vuelve a producir: el registro es gratuito y se reutiliza en todas las escenas.",
+      enlace: "/personajes",
+      http: 409,
+      excepcion: "personaje",
+    };
+  },
 
   // ── Identidad hablada registrada: sin registro, la escena no puede salir con esa cara ni esa voz ────
   (h) =>
@@ -344,6 +393,61 @@ const REGLAS: readonly Regla[] = [
         "Cambia el formato a «UGC a cámara» si quieres que lo diga, o confirma que el guion es para montar la narración encima.",
       http: 409,
       excepcion: "generacion",
+      confirmable: true,
+    };
+  },
+  /**
+   * **Los dos personajes suenan igual** (0.28.0). No bloquea: puede que sea lo que se busca (dos hermanas, un
+   * clon). Pero una conversación con un solo timbre no se entiende, y eso se dice **antes** de cobrar el clip.
+   */
+  (h) => {
+    if (!h.reparto?.mismaVoz) return null;
+    return {
+      regla: "reparto-misma-voz",
+      estado: "ajustes",
+      motivo:
+        "Los dos personajes usan la voz Omni registrada del proyecto, así que la conversación saldrá con un solo timbre y no se distinguirá quién habla.",
+      accion:
+        "Este formato todavía no admite dos voces Omni distintas. Confirma que quieres generar con el mismo timbre.",
+      http: 409,
+      excepcion: "personaje",
+      confirmable: true,
+    };
+  },
+  /**
+   * **Dos personajes y el diálogo sin repartir** (0.28.0). Sin turnos, el proveedor decide quién dice qué, y lo
+   * decide al azar (medido el 2026-09-29). Se puede generar así —a veces sale—, pero se confirma: es dinero.
+   */
+  (h) => {
+    if (!h.reparto || h.reparto.formato === "solo" || h.reparto.turnos > 0) return null;
+    return {
+      regla: "reparto-sin-turnos",
+      estado: "ajustes",
+      motivo:
+        "En esta escena hablan dos personajes y el diálogo no está repartido por turnos: el modelo decidirá quién dice cada frase, y suele repartirlas al azar.",
+      accion: "Reparte el diálogo en turnos (quién habla y qué dice), o confirma que te vale como salga.",
+      http: 409,
+      excepcion: "proyecto",
+      confirmable: true,
+    };
+  },
+  /**
+   * **El diálogo no cabe en el clip** (0.28.0). Se estima a 2,5 palabras por segundo, que es el ritmo corriente
+   * de alguien hablando en castellano sin prisa. Es **una estimación y se dice que lo es**: no bloquea, porque un
+   * personaje puede hablar más rápido, pero un clip cortado a media frase es dinero tirado y eso se avisa antes.
+   */
+  (h) => {
+    const reparto = h.reparto;
+    if (!reparto || reparto.segundosPorClip <= 0) return null;
+    if (!noCabeElDialogo(reparto.palabrasDelClipMasLargo, reparto.segundosPorClip)) return null;
+    const necesarios = segundosNecesarios(reparto.palabrasDelClipMasLargo);
+    return {
+      regla: "reparto-dialogo-largo",
+      estado: "ajustes",
+      motivo: `Los turnos más largos de esta escena son ${reparto.palabrasDelClipMasLargo} palabras y harían falta unos ${necesarios} s para decirlas, pero el clip es de ${reparto.segundosPorClip} s: se va a cortar a media frase.`,
+      accion: `Acorta los turnos a unas ${Math.floor(reparto.segundosPorClip * PALABRAS_POR_SEGUNDO)} palabras, alarga el clip del proyecto, o confirma que quieres generarlo así.`,
+      http: 409,
+      excepcion: "proyecto",
       confirmable: true,
     };
   },

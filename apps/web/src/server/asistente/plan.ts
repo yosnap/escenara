@@ -20,7 +20,7 @@ import {
 import { type Ajustes, eurosPorCreditoDe, leerAjustes } from "../ajustes";
 import type { HechosEscena, ParametrosControles } from "../controles/contrato";
 import { REGLAS_VERSION } from "../controles/contrato";
-import { parametrosDeControles } from "../controles/hechos";
+import { hechosDelReparto, parametrosDeControles } from "../controles/hechos";
 import { evaluarParaMostrar, exigirFrenosDuros } from "../controles/puerta";
 import { db, type Ejecutor } from "../db/cliente";
 import {
@@ -679,6 +679,14 @@ export async function hechosDeEscena(
  */
 export async function exigirEscenaAprobada(actor: Actor, escenaId: unknown): Promise<FilaEscena> {
   const { escena, hechos } = await hechosDeEscena(actor, escenaId);
-  exigirFrenosDuros({ tipo: "fotograma", escena: hechos, parametros: await parametrosDeControles() });
+  // El reparto (0.28.0) sí se aporta: no depende del envío concreto, y con dos personas reales y un solo
+  // consentimiento **conviene cortar aquí**, diciendo cuál falta, antes de llegar a elegir modelo.
+  const reparto = await hechosDelReparto(escena);
+  exigirFrenosDuros({
+    tipo: "fotograma",
+    escena: hechos,
+    ...(reparto ? { reparto } : {}),
+    parametros: await parametrosDeControles(),
+  });
   return escena;
 }

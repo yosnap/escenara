@@ -104,8 +104,25 @@ const INSTRUCCIONES_PRODUCTO = [
   "Answer in English, in at most eight short sentences.",
 ].join(" ");
 
+/**
+ * Percepción del **diálogo de una conversación** (0.28.0): quién dice qué, turno por turno.
+ *
+ * Va aparte de `audio` porque lo que hace falta es otra cosa: `audio` describe la emoción y el ambiente y le
+ * prohíbe expresamente distinguir al hablante, y aquí lo único que importa es **cuántas voces se oyen y en qué
+ * orden dicen cada frase**. Se le pide que las llame «primera voz» y «segunda voz» y que **no identifique a
+ * nadie**: para saber si el diálogo se repartió como se pidió no hace falta saber de quién es la voz, solo que son
+ * dos distintas y qué dice cada una.
+ */
+const INSTRUCCIONES_DIALOGO = [
+  "You are a perception step, not a judge.",
+  "Listen to this audio and report how many distinct speaking voices you can hear, then transcribe the dialogue turn by turn in the order it happens, literally and in the original language.",
+  "Label each turn with the voice that says it as 'first voice' and 'second voice', in the order they first speak; if a turn is overlapped or unintelligible, say so instead of guessing it.",
+  "Do not identify anyone, do not name anyone, do not guess their age or gender, do not describe the emotion and do not give a score.",
+  "Answer in English, one short line per turn.",
+].join(" ");
+
 /** Qué se está percibiendo. Cada una tiene sus instrucciones y su modelo preferido. */
-export type ClasePercepcion = "cara" | "escena" | "audio" | "referencia" | "clip" | "producto";
+export type ClasePercepcion = "cara" | "escena" | "audio" | "referencia" | "clip" | "producto" | "dialogo";
 
 const INSTRUCCIONES: Record<ClasePercepcion, string> = {
   cara: INSTRUCCIONES_CARA,
@@ -114,6 +131,7 @@ const INSTRUCCIONES: Record<ClasePercepcion, string> = {
   referencia: INSTRUCCIONES_REFERENCIA,
   clip: INSTRUCCIONES_CLIP,
   producto: INSTRUCCIONES_PRODUCTO,
+  dialogo: INSTRUCCIONES_DIALOGO,
 };
 
 /**

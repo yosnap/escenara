@@ -40,6 +40,7 @@ import {
   dialogoDe,
   personajesOmniDe,
   referenciasDeProductoDe,
+  repartoDeEnvioDe,
   reservasAutorizadas,
   reservasPendientes,
   segundosDe,
@@ -314,11 +315,14 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
   const personajesOmni = personajesOmniDe(fila);
   if (personajesOmni.length > 0) {
     const segundosOmni = segundosDe(fila);
+    // El reparto de dos personajes (0.28.0) va como se guardó: los lados y los turnos que confirmó el usuario.
+    const reparto = repartoDeEnvioDe(fila);
     const entradaOmni = adaptador.montarEntrada(modelo, {
       escena: fila.prompt,
       dialogo: dialogoDe(fila),
       urls: [],
       personajesOmni,
+      ...(reparto ? { reparto } : {}),
       ...(segundosOmni === null ? {} : { segundos: segundosOmni }),
     });
     const callbackOmni = await prepararCallback(fila);

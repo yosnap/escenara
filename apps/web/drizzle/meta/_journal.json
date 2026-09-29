@@ -309,6 +309,20 @@
       "when": 1790628508393,
       "tag": "0043_hooks-propuestos",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1790635841509,
+      "tag": "0044_dos-personajes",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1790637757736,
+      "tag": "0046_reparto-fiel-y-turno-del-clip",
+      "breakpoints": true
     }
   ]
 }

@@ -148,7 +148,7 @@ export function ConfirmacionGasto({
         ))}
       {superaUmbral && (
         <Casilla
-          etiqueta={`Sé que cada trabajo de esta acción pasa de ${formatearCreditos(umbral)}`}
+          etiqueta={`Sé que ${total ? "esta acción" : "este trabajo"} pasa de ${formatearCreditos(umbral)}`}
           descripcion="Aviso de gasto alto de esta instalación: hay que aceptarlo expresamente antes de enviarlo."
           marcada={avisoAceptado}
           onCambio={setAvisoAceptado}

@@ -215,6 +215,41 @@ export interface HechosProducto {
   marcaVisible: boolean;
 }
 
+/**
+ * **Reparto de dos personajes** (0.28.0). Este grupo llega cuando la escena tiene reparto, y con un solo
+ * personaje también: es el que hace que el consentimiento se evalúe **por cada persona real de la escena** y no
+ * solo por el protagonista del proyecto.
+ *
+ * `personajes` son **todos** los del reparto, con sus impedimentos ya deducidos por la misma función que usa la
+ * ficha (`personajes/puede-generar.ts › motivosParaNoGenerar`). Un personaje inventado llega con los suyos
+ * vacíos si los tiene en orden: inventado + persona real en la misma escena está permitido, y lo que se le exige
+ * a cada uno es lo suyo (al inventado su declaración, al real su consentimiento).
+ */
+export interface HechosReparto {
+  /** Formato elegido: `solo`, `podcast` o `dualcast`. Decide cuántos clips se pagan, no si se puede generar. */
+  formato: "solo" | "podcast" | "dualcast";
+  /** Todos los del reparto, en su orden, con nombre e impedimentos. */
+  personajes: { nombre: string; inventado: boolean; impedimentos: string[] }[];
+  /** Dos personajes del reparto comparten voz registrada: la conversación sonaría con el mismo timbre. */
+  mismaVoz: boolean;
+  /** Turnos de diálogo repartidos. 0 = el diálogo no se ha repartido y el proveedor lo hará al azar. */
+  turnos: number;
+  /**
+   * **Clips que se van a pagar** (0.28.0): 1 en `solo` y en `dualcast`, 2 en `podcast`. No decide nada por sí
+   * mismo; está aquí para que el motor pueda nombrar en el aviso cuántos clips cuesta la escena.
+   */
+  clips: number;
+  /** Palabras del clip más largo del reparto: es lo que se compara con la duración para saber si cabe. */
+  palabrasDelClipMasLargo: number;
+  /** Segundos que va a tener cada clip, ya resueltos contra el modelo; 0 cuando todavía no se sabe. */
+  segundosPorClip: number;
+  /**
+   * Personas del reparto **sin registro vigente en el proveedor** (0.28.0), con lo que le falta a cada una. Un
+   * dualcast sin los dos registros no puede salir: el modelo pondría una cara inventada y se cobraría igual.
+   */
+  sinRegistrar: { nombre: string; falta: string }[];
+}
+
 /** Parámetros de las reglas, editables en Admin › Ajustes (no hay editor de reglas en la interfaz). */
 export interface ParametrosControles {
   /** Avisar cuando falten vistas mínimas del personaje o haya fotos señaladas por calidad. */
@@ -262,6 +297,11 @@ export interface Hechos {
    * esta versión y la mayoría de los clips.
    */
   producto?: HechosProducto;
+  /**
+   * Reparto de la escena (0.28.0). Ausente en un envío que no sale de una escena, que es todo el camino rápido
+   * de «Crear»; con una escena de un solo personaje llega igual, con un miembro.
+   */
+  reparto?: HechosReparto;
   parametros: ParametrosControles;
 }
 

@@ -22,6 +22,7 @@ import { ConfirmacionGasto } from "./confirmacion-gasto";
 import { EsperaEscena } from "./espera-escena";
 import { HistorialEscena } from "./historial-escena";
 import { PrevisualizacionZonas } from "./previsualizacion-zonas";
+import { RepartoProduccion } from "./reparto-produccion";
 
 /**
  * Una escena en la rejilla de producción: su estado real, su fotograma, su clip, lo que cuesta y lo que ha costado,
@@ -79,6 +80,15 @@ export function TarjetaEscena({
   const lista = escenaLista(escena);
   const sinProducir = escena.fotograma === null;
   const fotogramaListo = escena.fotograma?.estado === "listo" && escena.fotograma.medio !== null;
+  const puedeAprobar =
+    escena.reparto === null &&
+    (fotogramaPorAprobar(escena) || clipPorEncolar(escena)) &&
+    !trabajoEnMarcha(escena.animacion);
+  const puedePedirOtroClip =
+    escena.reparto === null &&
+    escena.clip !== null &&
+    !trabajoEnMarcha(escena.animacion) &&
+    escena.fotogramaAprobado !== null;
 
   return (
     <article className="flex flex-col gap-4 rounded-tarjeta border-2 border-borde bg-superficie p-5">
@@ -107,7 +117,7 @@ export function TarjetaEscena({
       )}
       {escena.motivoUltimoFallo !== "" && <Aviso tono="error">{escena.motivoUltimoFallo}</Aviso>}
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className={escena.reparto === null ? "grid gap-4 sm:grid-cols-2" : "hidden"}>
         <div className="flex flex-col gap-2">
           <h4 className="text-sm font-semibold text-texto-suave">Fotograma</h4>
           {escena.fotogramaAprobado ? (
@@ -170,7 +180,24 @@ export function TarjetaEscena({
         )}
       </dl>
 
-      {!enVuelo && sinProducir && escena.estado !== "borrador" && (
+      {/*
+        Escena de **dos personajes** (0.28.0): su reparto, lo que cuesta cada clip, el total y una sola confirmación
+        para los dos clips de un podcast. Se lleva también la confirmación de producir, que en una escena hablada no
+        es «generar el fotograma»: no hay fotograma.
+      */}
+      <RepartoProduccion
+        escena={escena}
+        produccion={produccion}
+        ocupado={ocupado}
+        avisosConfirmados={avisosConfirmados}
+        bloqueos={bloqueos}
+        avisosGenerales={avisos}
+        onConfirmarAviso={onConfirmarAviso}
+        onProducir={onProducir}
+        onRegenerar={onRegenerar}
+      />
+
+      {escena.reparto === null && !enVuelo && sinProducir && escena.estado !== "borrador" && (
         <ConfirmacionGasto
           titulo="Producir esta escena"
           explicacion="Se encola su fotograma. El clip llega después, cuando apruebes el fotograma."
@@ -191,7 +218,7 @@ export function TarjetaEscena({
 
       {/* También cuando el fotograma ya está aprobado y se quedó sin clip: su envío se pudo rechazar, y la salida
           no puede ser regenerar el fotograma y pagarlo otra vez. */}
-      {(fotogramaPorAprobar(escena) || clipPorEncolar(escena)) && !trabajoEnMarcha(escena.animacion) && (
+      {puedeAprobar && (
         <ConfirmacionGasto
           titulo={
             escena.faltaInsertarCaptura
@@ -234,7 +261,7 @@ export function TarjetaEscena({
         Otro clip con el mismo fotograma: para probar otra dirección o cambiar el texto no hace falta volver a
         generar —ni a pagar— el fotograma. Lo que ya hay no se sustituye: sigue en tu biblioteca y en el historial.
       */}
-      {escena.clip !== null && !trabajoEnMarcha(escena.animacion) && escena.fotogramaAprobado && (
+      {puedePedirOtroClip && (
         <ConfirmacionGasto
           titulo="Otro clip con este fotograma"
           explicacion={`Se encola otro clip de ${escena.segundos} s del mismo fotograma, con la dirección y el texto que tiene ahora la escena. El clip anterior no se borra: se conserva en tu biblioteca y en el historial.`}
@@ -242,7 +269,7 @@ export function TarjetaEscena({
           umbral={produccion.umbralAvisoCreditos}
           sello={produccion.selloClip}
           etiqueta="Generar otro clip"
-          firma={`otro-clip|${escena.fotogramaAprobado.id}|${escena.animacion?.id ?? ""}|${avisosConfirmados.join(",")}`}
+          firma={`otro-clip|${escena.fotogramaAprobado?.id ?? ""}|${escena.animacion?.id ?? ""}|${avisosConfirmados.join(",")}`}
           bloqueos={bloqueos}
           avisosConfirmados={avisosConfirmados}
           avisos={avisos}
@@ -253,7 +280,8 @@ export function TarjetaEscena({
         />
       )}
 
-      {!enVuelo && (fotogramaListo || escena.motivoUltimoFallo !== "" || lista) && (
+      {/* En una escena de dos personajes no hay fotograma que regenerar: lo que se pide otra vez son sus clips. */}
+      {escena.reparto === null && !enVuelo && (fotogramaListo || escena.motivoUltimoFallo !== "" || lista) && (
         <ConfirmacionGasto
           titulo="Regenerar solo esta escena"
           explicacion="Se encola otro fotograma de esta escena y nada más: las demás no se tocan. Lo generado antes se conserva en su historial y en tu biblioteca."

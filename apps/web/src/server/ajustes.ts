@@ -99,6 +99,15 @@ export interface Ajustes {
    */
   controlesMaximoAvisos: number;
   /**
+   * **Dos personajes en una escena** (0.28.0). Los dos formatos vienen **activados**: están medidos con dinero
+   * real (2026-09-29) y dos `character_ids` cuestan lo mismo que uno. Apagarlos es el rollback de la fase, y se
+   * hace desde aquí sin desplegar: con uno apagado, ninguna escena puede elegir ese formato.
+   */
+  /** Permitir el formato podcast: dos clips, un personaje en cada uno, con mirada cruzada. */
+  repartoPodcastActivo: boolean;
+  /** Permitir el formato dualcast: los dos personajes en el mismo plano, uno hablando y el otro escuchando. */
+  repartoDualcastActivo: boolean;
+  /**
    * Revisión de continuidad de las escenas producidas (RF07). Las comprobaciones técnicas **no cuestan nada** y
    * aquí solo se ajustan sus umbrales; qué fallo es crítico vive en el código (`lib/revision.ts`), porque es una
    * decisión de producto y no un umbral.
@@ -141,6 +150,12 @@ export interface Ajustes {
    * propietario, 2026-09-28). Es texto contra texto: no gasta ninguna llamada de percepción.
    */
   coherenciaAnguloFiel: ModoCoherencia;
+  /**
+   * Fidelidad del reparto del diálogo (0.28.0): que en una escena de dos personajes cada frase la diga quien
+   * tenía que decirla, en el orden que se pidió, y que el otro no hable. Nace en **sombra**: primero se mide su
+   * acierto y después se le da poder, igual que las demás.
+   */
+  coherenciaRepartoFiel: ModoCoherencia;
   /** Confianza mínima (0–1) para actuar. Por debajo, el veredicto es «míralo tú» y no decide nada. */
   coherenciaUmbralIdentidad: number;
   coherenciaUmbralGuion: number;
@@ -149,6 +164,7 @@ export interface Ajustes {
   coherenciaUmbralDireccionFiel: number;
   coherenciaUmbralProductoFiel: number;
   coherenciaUmbralAnguloFiel: number;
+  coherenciaUmbralRepartoFiel: number;
   /**
    * Modelos de **percepción** que se prueban primero dentro del mapa del usuario: el de imagen describe la cara y
    * el encuadre, el omnimodal describe la voz y el ambiente. Si el usuario no los tiene dados de alta, se recorre
@@ -281,6 +297,10 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   // es exactamente lo que el panel «Antes de generar» tiene que poder decir antes de gastar.
   controlesExigirPrecioFresco: true,
   controlesMaximoAvisos: 3,
+  // Los dos formatos de dos personajes vienen activados: el precio y la fidelidad de las dos caras están
+  // medidos, así que no hay nada que probar antes de ofrecerlos.
+  repartoPodcastActivo: true,
+  repartoDualcastActivo: true,
   // Medio segundo: los clips de 4 s de KIE miden 4,0–4,1 s según el contenedor, así que una diferencia menor que
   // esto no es un formato incorrecto, es cómo se cierra un MP4.
   revisionToleranciaDuracion: 0.5,
@@ -298,6 +318,8 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   coherenciaDireccionFiel: "sombra",
   coherenciaProductoFiel: "sombra",
   coherenciaAnguloFiel: "sombra",
+  // El reparto del diálogo nace en sombra: se mide su acierto antes de dejarle bloquear un clip ya pagado.
+  coherenciaRepartoFiel: "sombra",
   coherenciaUmbralIdentidad: UMBRAL_POR_DEFECTO,
   coherenciaUmbralGuion: UMBRAL_POR_DEFECTO,
   coherenciaUmbralResultado: UMBRAL_POR_DEFECTO,
@@ -305,6 +327,7 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   coherenciaUmbralDireccionFiel: UMBRAL_POR_DEFECTO,
   coherenciaUmbralProductoFiel: UMBRAL_POR_DEFECTO,
   coherenciaUmbralAnguloFiel: UMBRAL_POR_DEFECTO,
+  coherenciaUmbralRepartoFiel: UMBRAL_POR_DEFECTO,
   // Los dos de NaN builders: `gemma4` es el más barato que ve, y `mimo-v2.5` es de los dos únicos que oyen.
   coherenciaModeloImagen: "gemma4",
   coherenciaModeloAudio: "mimo-v2.5",
@@ -447,6 +470,8 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
     valido: entero(1, 10),
     mensaje: "Indica de 1 a 10 avisos confirmables a la vez.",
   },
+  repartoPodcastActivo: { valido: booleano, mensaje: "Debe ser sí o no." },
+  repartoDualcastActivo: { valido: booleano, mensaje: "Debe ser sí o no." },
   revisionToleranciaDuracion: {
     valido: decimal(0, 5),
     mensaje: "Indica la tolerancia de duración en segundos, de 0 a 5 (0 = exigir la duración exacta).",
@@ -464,6 +489,7 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
   coherenciaDireccionFiel: { valido: esModoCoherencia, mensaje: MENSAJE_MODO },
   coherenciaProductoFiel: { valido: esModoCoherencia, mensaje: MENSAJE_MODO },
   coherenciaAnguloFiel: { valido: esModoCoherencia, mensaje: MENSAJE_MODO },
+  coherenciaRepartoFiel: { valido: esModoCoherencia, mensaje: MENSAJE_MODO },
   coherenciaUmbralIdentidad: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   coherenciaUmbralGuion: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   coherenciaUmbralResultado: { valido: umbral, mensaje: MENSAJE_UMBRAL },
@@ -471,6 +497,7 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
   coherenciaUmbralDireccionFiel: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   coherenciaUmbralProductoFiel: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   coherenciaUmbralAnguloFiel: { valido: umbral, mensaje: MENSAJE_UMBRAL },
+  coherenciaUmbralRepartoFiel: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   coherenciaModeloImagen: { valido: identificadorModelo, mensaje: MENSAJE_MODELO },
   coherenciaModeloAudio: { valido: identificadorModelo, mensaje: MENSAJE_MODELO },
   coherenciaEurosPorMillonTokens: {
@@ -630,6 +657,7 @@ export function coherenciaDe(ajustes: Ajustes, comprobacion: Comprobacion): { mo
     direccion_fiel: ajustes.coherenciaDireccionFiel,
     producto_fiel: ajustes.coherenciaProductoFiel,
     angulo_fiel: ajustes.coherenciaAnguloFiel,
+    reparto_fiel: ajustes.coherenciaRepartoFiel,
   };
   const umbrales: Record<Comprobacion, number> = {
     identidad: ajustes.coherenciaUmbralIdentidad,
@@ -639,6 +667,7 @@ export function coherenciaDe(ajustes: Ajustes, comprobacion: Comprobacion): { mo
     direccion_fiel: ajustes.coherenciaUmbralDireccionFiel,
     producto_fiel: ajustes.coherenciaUmbralProductoFiel,
     angulo_fiel: ajustes.coherenciaUmbralAnguloFiel,
+    reparto_fiel: ajustes.coherenciaUmbralRepartoFiel,
   };
   return { modo: modos[comprobacion], umbral: umbrales[comprobacion] };
 }

@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { eq, sql } from "drizzle-orm";
 import { PROMPT_MINIMO } from "@/lib/generacion";
 import { falloConCoste, type ProduccionVista, trabajoTerminado } from "@/lib/produccion";
@@ -7,7 +6,7 @@ import { ErrorProyecto } from "../asistente/errores";
 import { db } from "../db/cliente";
 import { characters, type FilaEscena, type FilaProyecto, type FilaTrabajo, products, scenes } from "../db/esquema";
 import { direccionDeLaEscena, type PersonajeDirigido, seisCDeLaEscena } from "../direccion/escena";
-import { imagenPropia } from "../generacion/comprobaciones";
+import { claveDerivada, imagenPropia } from "../generacion/comprobaciones";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { crearAnimacion, crearFotograma } from "../generacion/servicio";
 import type { Actor } from "../media/servicio";
@@ -18,6 +17,9 @@ import { dialogoDelClip } from "../voz/modo";
 import { marcarEnProduccion } from "./cierre";
 import { escenasPorProducir, estadoDeProduccion, exigirDuracionProducible, ultimoTrabajoDeEscena } from "./consulta";
 import { presetsDeProduccion } from "./presets";
+
+/** La derivación de claves vive en `generacion/comprobaciones.ts`: la usan también los dos clips de un podcast. */
+export { claveDerivada };
 
 /**
  * Producción de las escenas de un proyecto aprobado (RF06, 0.19.0).
@@ -50,22 +52,6 @@ export interface ConfirmacionProduccion {
   avisoUmbralAceptado?: boolean;
   /** Avisos «Necesita ajustes» confirmados expresamente, por su clave de regla. */
   avisosConfirmados?: string[];
-}
-
-/**
- * Clave de idempotencia derivada de la que firmó el navegador y de qué se está encolando.
- *
- * Producir un proyecto es **un** clic del usuario y varios trabajos, así que cada uno necesita su propia clave y
- * las claves tienen que ser **estables**: repetir el mismo clic (doble pulsación, reintento tras un error de red)
- * tiene que devolver los trabajos que ya existen, no encargar otros. Derivarlas con `sha256` de la clave del
- * navegador más el destino da exactamente eso, y el formato es el UUID que exige `exigirClaveIdempotencia`.
- */
-export function claveDerivada(base: string, ...partes: readonly string[]): string {
-  const h = createHash("sha256")
-    .update([base, ...partes].join(":"))
-    .digest("hex");
-  // Versión 4 y variante 8 en su sitio: es un UUID con la forma correcta, derivado y no aleatorio.
-  return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-8${h.slice(17, 20)}-${h.slice(20, 32)}`;
 }
 
 /**
@@ -137,6 +123,12 @@ async function encolarPrimerTrabajo(
   h: Herramientas,
   reintento = false,
 ): Promise<void> {
+  if (escena.castFormat !== "solo" && proyecto.voiceMode !== "omni") {
+    throw new ErrorProyecto(
+      409,
+      "Esta escena tiene dos personajes y necesita el modo Omni. Cambia el modo de voz del proyecto antes de producirla.",
+    );
+  }
   if (proyecto.voiceMode === "omni") {
     await producirEscenaHablada(
       actor,
@@ -377,9 +369,15 @@ export async function producirProyecto(
 ): Promise<ProduccionVista> {
   const estado = await estadoDeProduccion(actor, proyectoId);
   if (estado.impedimentos.length > 0) throw new ErrorProyecto(409, estado.impedimentos[0] ?? "No se puede producir.");
-  const pendientes = escenasPorProducir(estado.escenas);
+  const pendientes = escenasPorProducir(estado.escenas, estado.modoVoz);
   if (pendientes.length === 0) {
     throw new ErrorProyecto(409, "No hay ninguna escena pendiente de producir en este proyecto.");
+  }
+  if (pendientes.some((escena) => escena.reparto !== null)) {
+    throw new ErrorProyecto(
+      409,
+      "Hay escenas con dos personajes pendientes. Confirma cada una en su tarjeta: el podcast cuesta dos clips y necesita su estimación total propia.",
+    );
   }
   const caben = Math.max(0, estado.maximoEnVuelo - estado.enVuelo);
   if (caben === 0) {

@@ -1,5 +1,7 @@
 import { CLIP } from "@/lib/generacion";
+import type { RepartoDeEnvio } from "@/lib/reparto-envio";
 import { EXCEPCION_TEXTO_PRODUCTO, REGLA_ETIQUETA_PRODUCTO } from "../../direccion/producto";
+import { bloqueDeReparto, hablaAlguien } from "./prompt-reparto";
 
 /**
  * Entrada y prompt de cada modelo de KIE que usa esta versión. Los parámetros se comprobaron en
@@ -77,7 +79,19 @@ export function promptAnimacion(escena: string, dialogo = ""): string {
  *
  * El diálogo **no se traduce nunca**: es lo que se va a oír. La descripción de la escena sí llega ya en inglés.
  */
-export function promptEscenaHablada(escena: string, dialogo: string): string {
+export function promptEscenaHablada(escena: string, dialogo: string, reparto?: RepartoDeEnvio): string {
+  /**
+   * **Dos personajes** (0.28.0). El bloque del reparto sustituye a la frase de «el personaje mira a cámara y
+   * dice»: quién habla, por qué lado está y qué hace el otro mientras no es una variante de esa frase, es otra
+   * cosa. Lo demás —la escena, los negativos y el audio— es idéntico, porque es el mismo clip.
+   */
+  if (reparto) {
+    const bloque = bloqueDeReparto(reparto);
+    if (!hablaAlguien(reparto)) {
+      return `${bloque}\n\n${escena}\n\n${AUDIO_SOLO_AMBIENTE}\n\n${sinTexto(SIN_TEXTO_VIDEO, escena)}`;
+    }
+    return `${bloque}\n\n${escena}\n\n${sinTexto(SIN_TEXTO_VIDEO, escena)} ${AUDIO_HABLADO}`;
+  }
   const habla =
     dialogo.trim() === "" ? "" : `The character looks at the camera, saying in Spanish: "${dialogo.trim()}"\n\n`;
   if (habla === "") return `${escena}\n\n${AUDIO_SOLO_AMBIENTE}\n\n${sinTexto(SIN_TEXTO_VIDEO, escena)}`;

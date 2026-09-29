@@ -25,6 +25,10 @@
  * otros y diga la oferta como se definió. Es la única que no mira nada generado: compara texto con texto, así que
  * no cuesta ninguna llamada de percepción. Nace en sombra y pasará a decidir cuando haya datos de acierto
  * (decisión del propietario, 2026-09-28).
+ *
+ * `reparto_fiel` (0.28.0) mide lo que promete esta versión: que en una escena de **dos personajes** el diálogo se
+ * reparta como se pidió —quién habla, en qué orden y que el otro no habla— en lugar de al azar. Nace en sombra por
+ * lo mismo que las demás.
  */
 export const COMPROBACIONES = [
   "identidad",
@@ -34,6 +38,7 @@ export const COMPROBACIONES = [
   "direccion_fiel",
   "producto_fiel",
   "angulo_fiel",
+  "reparto_fiel",
 ] as const;
 export type Comprobacion = (typeof COMPROBACIONES)[number];
 
@@ -76,6 +81,7 @@ export const NOMBRE_COMPROBACION: Record<Comprobacion, string> = {
   direccion_fiel: "El clip hace lo que se dirigió",
   producto_fiel: "Es el mismo producto, con la misma etiqueta",
   angulo_fiel: "El guion responde al ángulo elegido",
+  reparto_fiel: "El diálogo se repartió como se pidió",
 };
 
 export const DESCRIPCION_COMPROBACION: Record<Comprobacion, string> = {
@@ -92,6 +98,8 @@ export const DESCRIPCION_COMPROBACION: Record<Comprobacion, string> = {
     "Después de generar: si el producto que se ve es el mismo que el de sus fotos, con la misma etiqueta, el mismo envase y el mismo texto impreso.",
   angulo_fiel:
     "Antes de generar: si el guion del anuncio responde al ángulo del brief, no mezcla otros ángulos y dice la oferta como se definió. Es texto contra texto: no cuesta ninguna llamada de percepción.",
+  reparto_fiel:
+    "Después de generar, en una escena de dos personajes: si cada frase la dice quien tenía que decirla, en el orden que se pidió, y si el otro se queda escuchando en lugar de hablar también.",
 };
 
 export const NOMBRE_VEREDICTO: Record<VeredictoCoherencia, string> = {
@@ -138,6 +146,12 @@ export interface DecisionVista {
   modeloPercepcion: string;
   correccion: CorreccionHumana | null;
   fecha: string;
+  /**
+   * De **quién** habla esta decisión, cuando una escena tiene más de una del mismo tipo (0.28.0): en un dualcast
+   * la identidad se comprueba una vez por personaje, y sin esto las dos se verían como la misma fila repetida. Es
+   * una etiqueta ya escrita en castellano («Elisa, a la izquierda del plano»); vacía en todo lo demás.
+   */
+  sobre?: string;
 }
 
 /** Acierto medido de una comprobación contra las correcciones humanas. */

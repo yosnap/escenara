@@ -17,6 +17,7 @@
 ## Controles del producto
 
 - [x] Declaración de derechos y consentimiento antes de usar cualquier personaje (RF10). **0.13.0**: registro de consentimiento con titular, alcance de uso, fecha y cuenta; sin consentimiento vigente el personaje no genera nada, y la comprobación está en el servidor, no en la interfaz.
+- [x] **Dos personas reales en la misma escena (0.28.0)**: hacen falta dos consentimientos vigentes, uno por cada personaje. La puerta del servidor comprueba ambos y la pantalla nombra a quien le falte. **Criterio provisional**: basta el consentimiento individual de 0.13.0 para cada persona; aún no hay texto adicional específico sobre aparecer conversando con otra. Antes de publicar una política definitiva debe revisarse ese alcance con asesoramiento jurídico. Un personaje inventado aporta su declaración de personaje inventado y la persona real su consentimiento.
 - [ ] Autorización de voz independiente de la de imagen. *(0.13.0 registra el alcance de uso —personal o comercial— aparte de la imagen; la voz llega con la clonación de voz.)*
 - [x] Prohibición de menores como avatar: declaración, filtros del proveedor y moderación. Es un control, no una garantía. **0.13.0**: la declaración de mayoría de edad es obligatoria para registrar el consentimiento y, sin registro, el personaje queda bloqueado. Ver el aviso de alcance más abajo.
 - [ ] Bloqueo de desnudez sexual, acoso, suplantación y respaldo falso de personas reales.

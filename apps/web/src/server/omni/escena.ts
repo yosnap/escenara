@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { CAPACIDAD_DE_TIPO, duracionesConCoste, type ModeloVista, segundosDeUnidad } from "@/lib/catalogo";
 import type { Medio } from "@/lib/media/tipos";
 import { creditosDeEscenaOmni, precioOmniEstimado, usaIdentidadRegistrada, type VozOmniDelProyecto } from "@/lib/omni";
@@ -7,21 +8,24 @@ import { escenaPropia } from "../asistente/consulta";
 import { ErrorProyecto } from "../asistente/errores";
 import { techoDelProyecto } from "../asistente/plan";
 import { encolar, filaDeLaConfirmacion, type NuevoTrabajoEncolado } from "../cola/encolar";
-import { recopilarHechos } from "../controles/hechos";
+import { hechosDelReparto, recopilarHechos } from "../controles/hechos";
 import { exigirControles } from "../controles/puerta";
-import type {
-  FilaEscena,
-  FilaPersonaje,
-  FilaProyecto,
-  FilaRegistroOmni,
-  FilaTrabajo,
-  FilaVersionPersonaje,
+import { db } from "../db/cliente";
+import {
+  type FilaEscena,
+  type FilaPersonaje,
+  type FilaProyecto,
+  type FilaRegistroOmni,
+  type FilaTrabajo,
+  type FilaVersionPersonaje,
+  scenes,
 } from "../db/esquema";
 import { decidir } from "../decisiones/reglas";
 import { dirigirClipPara, familiaDe } from "../direccion/clip";
 import { direccionDeLaEscena } from "../direccion/escena";
 import { conHojaDeIdentidad } from "../direccion/hoja-identidad";
 import {
+  claveDerivada,
   exigirAvisoUmbral,
   exigirClaveIdempotencia,
   exigirConfirmacion,
@@ -44,11 +48,14 @@ import { acotarCoste } from "../presupuesto/acotar";
 import { completarModelosSugeridos } from "../productos/modelos-sugeridos";
 import { hechosDelProducto, productoEnPrompt, productoParaGenerar } from "../productos/prompt";
 import { creditosDelEnvio, traducirAlIngles } from "../prompts/traduccion";
+import { miembrosDelReparto } from "../reparto/consulta";
+import { exigirFormatoActivo } from "../reparto/servicio";
 import { muestrasDe } from "../voz/muestra";
 import { vozOmniDelProyecto } from "../voz/omni";
 import { vozDelProyecto } from "../voz/proyecto";
 import { ErrorOmni } from "./errores";
 import { eleccionOmni, registroVigente } from "./registro";
+import { type ClipDelReparto, clipsEsperadosDe, enviosDelReparto, faltasDeRegistroDelReparto } from "./reparto";
 
 /**
  * Producción de una **escena hablada** en modo `omni` (RF06 y RF08, 0.22.0).
@@ -263,8 +270,12 @@ export async function hechosOmni(actor: Actor, proyecto: FilaProyecto) {
 }
 
 /**
- * Encola la escena hablada. Devuelve el trabajo y si es nuevo: repetir la confirmación (doble clic, reintento tras
- * un error de red) devuelve el que ya existe y **no encarga un segundo clip**.
+ * Encola la escena hablada. Devuelve los trabajos encolados y cuántos son nuevos: repetir la confirmación (doble
+ * clic, reintento tras un error de red) devuelve los que ya existen y **no encarga ni un clip más**.
+ *
+ * **Un podcast son dos clips y una sola confirmación** (0.28.0): se estima la suma de los dos, se confirma
+ * exactamente esa suma y se encola cada uno con su propia clave derivada y su propia reserva. Que sean dos
+ * reservas es lo que hace que cancelar uno no cobre el otro y que un fallo de uno no tire el otro.
  */
 export async function producirEscenaHablada(
   actor: Actor,
@@ -272,22 +283,62 @@ export async function producirEscenaHablada(
   proyecto: FilaProyecto,
   confirmacion: ConfirmacionEscenaHablada,
   h: Herramientas = HERRAMIENTAS,
-): Promise<{ trabajo: FilaTrabajo; nueva: boolean }> {
+): Promise<{ trabajos: FilaTrabajo[]; nuevas: number; fallo: string | null }> {
   const prompt = limpiarPrompt(escena.action.trim() !== "" ? escena.action : escena.scriptText);
+  if (escena.castFormat !== "solo") {
+    await exigirFormatoActivo(escena.castFormat);
+    const miembros = await miembrosDelReparto(escena.id);
+    if (miembros.length !== 2) {
+      throw new ErrorOmni(
+        409,
+        "El reparto necesita exactamente dos personajes propios antes de generar. Añade el segundo en la escena.",
+      );
+    }
+    if (escena.productId !== null) {
+      throw new ErrorOmni(
+        409,
+        "Quita el producto de esta escena antes de generar: sus fotos no pueden viajar junto con las dos identidades registradas de Omni.",
+      );
+    }
+  }
   exigirDerechos(confirmacion.derechos);
   exigirRevisionDeReferencias(confirmacion.sinTerceros);
   const claveIdempotencia = exigirClaveIdempotencia(confirmacion.claveIdempotencia);
   const { modelo: primero } = await eleccionOmni(actor.id);
   const eleccion = await eleccionOmni(actor.id, segundosDeEscenaOmni(duracionesDeOmni(primero), proyecto));
   const { modelo, adaptador, precio } = eleccion;
+  if (escena.castFormat !== "solo" && !usaIdentidadRegistrada(modelo.modelo)) {
+    throw new ErrorOmni(
+      409,
+      `El modelo ${modelo.nombre} no admite dos identidades registradas. Elige un modelo Gemini Omni para podcast o dualcast antes de confirmar el gasto. No se ha cobrado nada.`,
+    );
+  }
   const segundos = segundosDeEscenaOmni(duracionesDeOmni(modelo), proyecto);
   const creditos = creditosDeTarifa(precio, segundos, modelo.modelo);
   exigirSelloVigente(confirmacion.selloEstimacion, precio.sello, true);
-  const totales = await creditosDelEnvio(creditos);
+  /**
+   * **El coste se confirma una vez y por el total** (0.28.0). Cada clip cuesta lo mismo —la misma tarifa y la
+   * misma duración—, y la traducción del texto de la escena se paga una sola vez porque se hace una sola vez. Así
+   * que el total es el de un envío más lo que cuesta cada clip de más. Confirmar el coste de **un** clip cuando
+   * son dos se rechaza aquí: es exactamente lo que `exigirConfirmacion` existe para impedir.
+   */
+  const clipsEsperados = await clipsEsperadosDe(escena);
+  const porClip = await creditosDelEnvio(creditos);
+  const totales = porClip + creditos * (clipsEsperados - 1);
   exigirConfirmacion(confirmacion.creditosConfirmados, totales);
   await exigirAvisoUmbral(totales, confirmacion.avisoUmbralAceptado);
-  const repetida = await filaDeLaConfirmacion(actor.id, claveIdempotencia);
-  if (repetida) return { trabajo: repetida, nueva: false };
+  /**
+   * Clave propia de cada clip, derivada de la que firmó el navegador. Con un solo clip **es** la del navegador,
+   * así que una escena de siempre se comporta exactamente igual que antes de esta versión.
+   */
+  const claveDelClip = (orden: number) =>
+    clipsEsperados === 1 ? claveIdempotencia : claveDerivada(claveIdempotencia, "clip-reparto", String(orden));
+  const yaEncoladas = (
+    await Promise.all(
+      Array.from({ length: clipsEsperados }, (_, i) => filaDeLaConfirmacion(actor.id, claveDelClip(i + 1))),
+    )
+  ).filter((fila): fila is FilaTrabajo => fila !== null);
+  if (yaEncoladas.length === clipsEsperados) return { trabajos: yaEncoladas, nuevas: 0, fallo: null };
   await exigirRitmo(actor.id);
 
   const conIdentidad = usaIdentidadRegistrada(modelo.modelo);
@@ -327,6 +378,16 @@ export async function producirEscenaHablada(
   if (producto) exigirDerechoDeMarca(confirmacion.derechoMarca);
   if (conProducto) await completarModelosSugeridos(conProducto.hechos, CAPACIDAD_DE_TIPO.animacion);
 
+  /**
+   * El reparto de la escena (0.28.0): en una escena hablada con dos personajes, **cada persona real** necesita su
+   * consentimiento, cada uno necesita **su registro en el proveedor** y el diálogo tiene que caber en el clip. Los
+   * tres se evalúan en el motor, antes de tocar un crédito, y el motivo nombra a quién le falta qué.
+   */
+  const conReparto = await hechosDelReparto(escena, {
+    segundosPorClip: segundos,
+    sinRegistrar: citaIdentidad ? await faltasDeRegistroDelReparto(escena, voz?.audioId ?? "") : [],
+  });
+
   // ── Punto único: el mismo motor que cierra la puerta de cualquier otro envío ───────────────────────────
   await exigirControles(
     { usuarioId: actor.id, sujeto: "escena", sujetoId: escena.id, tipo: "animacion" },
@@ -344,6 +405,7 @@ export async function producirEscenaHablada(
         proyecto: await techoDelProyecto(proyecto.id),
         // Sin registro vigente, el motor bloquea con su motivo: es la regla `omni-sin-registro`.
         omni: { registrado: falta === "", falta },
+        ...(conReparto ? { reparto: conReparto } : {}),
         ...(conProducto ? { producto: conProducto.hechos } : {}),
       },
       h.buscar,
@@ -440,73 +502,134 @@ export async function producirEscenaHablada(
         conHojaDeIdentidad(personaje, escena.id),
       );
   const referencias = elegido?.referencias ?? [];
-  const parametros = adaptador.montarEntrada(modelo, {
-    escena: promptFinal,
-    dialogo: dialogoFinal,
-    urls: [],
-    segundos,
-    ...(citaIdentidad && registro ? { personajesOmni: [registro.remoteCharacterId] } : {}),
-  });
 
-  const valores: NuevoTrabajoEncolado = {
-    userId: actor.id,
-    kind: "animacion",
-    provider: proveedor,
-    model: modelo.modelo,
-    prompt: promptFinal,
-    identityReferenceKind: elegido?.referenciaIdentidad ?? "vistas",
-    input: {
+  /**
+   * **Los envíos de esta escena** (0.28.0): uno, o dos si es un podcast. Se resuelven con el texto libre ya
+   * traducido, porque la dirección vocal de cada turno viaja en inglés como el resto de lo que se describe; lo que
+   * **no** pasa por la traducción es el texto del turno, que es lo que se va a oír.
+   *
+   * Sin reparto de dos, `envios` es `null` y se encola exactamente lo de siempre: un clip, con el
+   * `character_ids` del protagonista y el prompt de un personaje hablando a cámara.
+   */
+  const envios = citaIdentidad ? await enviosDelReparto(escena, voz?.audioId ?? "", enInglesO) : null;
+  if (envios && envios.faltan.length > 0) {
+    // No debería llegarse aquí: la regla `reparto-sin-registro` lo ha bloqueado antes de tocar el dinero. Si se
+    // llega, se dice quién falta y no se envía nada, en lugar de mandar una cara inventada y cobrarla.
+    const detalle = envios.faltan.map((f) => `«${f.nombre}» ${f.falta}`).join(" ");
+    throw new ErrorOmni(409, `Esta escena no se puede producir todavía: ${detalle}`);
+  }
+  const clipsDelEnvio: (ClipDelReparto | null)[] = envios && envios.clips.length > 0 ? envios.clips : [null];
+  if (clipsDelEnvio.length !== clipsEsperados) {
+    throw new ErrorOmni(
+      409,
+      `El reparto pide ${clipsEsperados} clips, pero solo se han preparado ${clipsDelEnvio.length}. Revisa el reparto antes de confirmar: no se ha reservado ni cobrado nada.`,
+    );
+  }
+
+  const trabajos: FilaTrabajo[] = [...yaEncoladas];
+  let nuevas = 0;
+  let fallo: string | null = null;
+  for (const clip of clipsDelEnvio) {
+    const orden = clip?.orden ?? 1;
+    const clave = claveDelClip(orden);
+    if (yaEncoladas.some((fila) => fila.idempotencyKey === clave)) continue;
+    const personajesOmni = clip ? clip.personajesOmni : citaIdentidad && registro ? [registro.remoteCharacterId] : [];
+    const parametros = adaptador.montarEntrada(modelo, {
+      escena: promptFinal,
+      dialogo: dialogoFinal,
+      urls: [],
+      segundos,
+      ...(personajesOmni.length > 0 ? { personajesOmni } : {}),
+      ...(clip ? { reparto: clip.reparto } : {}),
+    });
+    const valores: NuevoTrabajoEncolado = {
+      userId: actor.id,
+      kind: "animacion",
+      provider: proveedor,
+      model: modelo.modelo,
       prompt: promptFinal,
+      identityReferenceKind: elegido?.referenciaIdentidad ?? "vistas",
+      input: {
+        prompt: promptFinal,
+        /**
+         * Con identidad registrada no hay referencias: la cara la pone el registro del proveedor. Con un motor de
+         * referencias, son las fotos del personaje, y la muestra de la voz va aparte porque es audio y no imagen.
+         */
+        referencias: referencias.map((r) => r.id),
+        ...(muestraEnviada ? { audioDeReferencia: muestraEnviada.id } : {}),
+        parametros: { ...parametros, segundos },
+        dialogo,
+        escena: prompt,
+        ...(contextoEnIngles === "" ? {} : { contextoPersonaje: contextoEnIngles }),
+        /**
+         * Identidad registrada con la que se encoló. El worker envía **esta** y no la que el personaje tenga
+         * registrada al llegar su turno: lo que se paga tiene que ser lo que el usuario confirmó. Con dos
+         * personajes son **dos** en un dualcast y **uno** en cada clip de podcast.
+         */
+        ...(personajesOmni.length > 0 ? { personajesOmni } : {}),
+        // El reparto con el que se encoló: los lados y los turnos que confirmó el usuario, no los de después.
+        ...(clip ? { reparto: clip.reparto } : {}),
+        // Fotos del producto que viajan con esta escena, ya repartidas contra el tope del modelo.
+        ...(conProducto && producto && conProducto.reparto.producto > 0
+          ? { referenciasProducto: producto.fotos.slice(0, conProducto.reparto.producto) }
+          : {}),
+        /**
+         * Firma de la voz con la que sale, para poder decir después si lo generado sigue correspondiendo. Con un
+         * motor de referencias la identidad es **el personaje y su muestra de voz**, no un identificador remoto.
+         */
+        firmaVoz: firmaDeVoz("omni", null, escena.scriptText, {
+          audioId: citaIdentidad && voz ? voz.audioId : (muestraEnviada?.id ?? ""),
+          personajeOmniId: personajesOmni[0] ?? personaje.id,
+        }),
+      },
+      // El origen es la primera referencia cuando la hay: es lo que el historial enseña como punto de partida.
+      sourceMediaId: referencias[0]?.id ?? null,
+      sceneId: escena.id,
+      // Turno del clip en el intercambio: es lo que el montaje (0.32.0) lee para alternar los planos.
+      castClipOrder: clip ? clip.orden : null,
+      // La declaración de marca se guarda con su fecha, igual que la de la imagen.
+      brandRightsAt: producto ? new Date() : null,
+      // Cada clip de un podcast es de **su** personaje, con la ficha con la que está registrado.
+      characterId: clip ? clip.personajeId : personaje.id,
+      characterVersionId: clip && clip.personajeVersionId !== "" ? clip.personajeVersionId : version.id,
+      referencesReviewedAt: new Date(),
+      estimatedCredits: creditos,
+    };
+    try {
+      const { fila, nueva } = await encolar({
+        usuarioId: actor.id,
+        claveIdempotencia: clave,
+        proveedor,
+        // Se acota con el coste de **este clip**, que escala con su duración, no con el precio de referencia.
+        acotacion: acotarCoste("animacion", { ...eleccion, precio: { ...precio, creditos } }),
+        valores,
+        sello: precio.sello,
+        // El tope por trabajo se mide con lo que cuesta **un** clip: es lo que este trabajo va a gastar.
+        creditosDelEnvio: orden === 1 ? porClip : creditos,
+        escena: {
+          ...(await topeDeEscenas(escena.id, confirmacion.reintentoDeEscena ?? false)),
+          clips: clipsEsperados,
+        },
+      });
+      trabajos.push(fila);
+      if (nueva) nuevas++;
+    } catch (error) {
       /**
-       * Con identidad registrada no hay referencias: la cara la pone el registro del proveedor. Con un motor de
-       * referencias, son las fotos del personaje, y la muestra de la voz va aparte porque es audio y no imagen.
+       * **Un clip que no sale no tira el otro** (0.28.0). Si el primero ya está encolado con su reserva apartada,
+       * responder un error dejaría al usuario creyendo que no se ha hecho nada, y el clip pagado sin explicación.
+       * Se para aquí, se deja escrita la causa concreta en la escena —que es lo que ve en la pantalla de
+       * producción— y se devuelve lo que sí se encoló. Si no se ha encolado ninguno, el error se propaga tal cual.
        */
-      referencias: referencias.map((r) => r.id),
-      ...(muestraEnviada ? { audioDeReferencia: muestraEnviada.id } : {}),
-      parametros: { ...parametros, segundos },
-      dialogo,
-      escena: prompt,
-      ...(contextoEnIngles === "" ? {} : { contextoPersonaje: contextoEnIngles }),
-      /**
-       * Identidad registrada con la que se encoló. El worker envía **esta** y no la que el personaje tenga
-       * registrada al llegar su turno: lo que se paga tiene que ser lo que el usuario confirmó.
-       */
-      ...(citaIdentidad && registro ? { personajesOmni: [registro.remoteCharacterId] } : {}),
-      // Fotos del producto que viajan con esta escena, ya repartidas contra el tope del modelo.
-      ...(conProducto && producto && conProducto.reparto.producto > 0
-        ? { referenciasProducto: producto.fotos.slice(0, conProducto.reparto.producto) }
-        : {}),
-      /**
-       * Firma de la voz con la que sale, para poder decir después si lo generado sigue correspondiendo. Con un
-       * motor de referencias la identidad es **el personaje y su muestra de voz**, no un identificador remoto.
-       */
-      firmaVoz: firmaDeVoz("omni", null, escena.scriptText, {
-        audioId: citaIdentidad && voz ? voz.audioId : (muestraEnviada?.id ?? ""),
-        personajeOmniId: citaIdentidad && registro ? registro.remoteCharacterId : personaje.id,
-      }),
-    },
-    // El origen es la primera referencia cuando la hay: es lo que el historial enseña como punto de partida.
-    sourceMediaId: referencias[0]?.id ?? null,
-    sceneId: escena.id,
-    // La declaración de marca se guarda con su fecha, igual que la de la imagen.
-    brandRightsAt: producto ? new Date() : null,
-    characterId: personaje.id,
-    characterVersionId: version.id,
-    referencesReviewedAt: new Date(),
-    estimatedCredits: creditos,
-  };
-  const { fila, nueva } = await encolar({
-    usuarioId: actor.id,
-    claveIdempotencia,
-    proveedor,
-    // Se acota con el coste de **esta** escena, que escala con su duración, no con el precio de referencia.
-    acotacion: acotarCoste("animacion", { ...eleccion, precio: { ...precio, creditos } }),
-    valores,
-    sello: precio.sello,
-    creditosDelEnvio: totales,
-    escena: await topeDeEscenas(escena.id, confirmacion.reintentoDeEscena ?? false),
-  });
-  return { trabajo: fila, nueva };
+      if (trabajos.length === 0) throw error;
+      fallo = `El clip ${orden} de esta conversación no se ha podido encolar y el otro sigue en marcha: ${(error as Error).message}`;
+      await db()
+        .update(scenes)
+        .set({ lastFailureReason: fallo, updatedAt: new Date() })
+        .where(eq(scenes.id, escena.id));
+      break;
+    }
+  }
+  return { trabajos, nuevas, fallo };
 }
 
 /** Comprobación previa determinista (contrato de decisiones): un rechazo no llega ni a encolarse. */

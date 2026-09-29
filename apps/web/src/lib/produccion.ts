@@ -1,3 +1,4 @@
+import type { RepartoDePantalla } from "@/server/reparto/pantalla";
 import type { EvaluacionVista } from "./controles";
 import type { EstadoTrabajo, MotivoFallo, TipoTrabajoCola } from "./generacion";
 import type { Medio } from "./media/tipos";
@@ -267,8 +268,29 @@ export interface EscenaProduccionVista {
    * otra generación con su coste, y el botón tiene que decirlo.
    */
   faltaInsertarCaptura: boolean;
+  /**
+   * **Reparto de dos personajes** (0.28.0) con lo que costaría producirlo, quién sale y a quién le falta su
+   * consentimiento. `null` en una escena de **un** personaje: ahí no hay nada nuevo y la tarjeta es la de siempre.
+   */
+  reparto: RepartoDePantalla | null;
+  /**
+   * **Los clips de un podcast ya pedidos**, en el orden del intercambio y con el personaje de cada uno (0.28.0).
+   * Es lo que deja marcado para el montaje (0.32.0) qué plano va antes y de quién es cada cara.
+   *
+   * Vacío en todo lo que no es un podcast: un dualcast es un solo clip y sale por `animacion` como siempre.
+   */
+  clipsHablados: ClipHablado[];
   /** Versiones anteriores, de la más reciente a la más antigua. */
   versiones: VersionDeEscena[];
+}
+
+/** Un clip de un podcast: su turno en la conversación, de quién es la cara y en qué estado está. */
+export interface ClipHablado {
+  /** Turno del clip dentro del intercambio, desde 1. Es el orden con el que el montaje alterna los planos. */
+  orden: number;
+  /** Personaje que sale en él; vacío si el reparto ha cambiado desde que se pidió. */
+  nombre: string;
+  trabajo: TrabajoDeEscena;
 }
 
 /** Estado completo de la producción de un proyecto: es lo que pinta `/proyectos/[id]/produccion`. */
@@ -327,7 +349,9 @@ export const trabajoEnMarcha = (trabajo: TrabajoDeEscena | null): boolean =>
 
 /** `true` si la escena tiene algo en marcha: es lo que cuenta para el tope de escenas en vuelo. */
 export const escenaEnVuelo = (escena: EscenaProduccionVista): boolean =>
-  trabajoEnMarcha(escena.fotograma) || trabajoEnMarcha(escena.animacion);
+  trabajoEnMarcha(escena.fotograma) ||
+  trabajoEnMarcha(escena.animacion) ||
+  escena.clipsHablados.some((clip) => trabajoEnMarcha(clip.trabajo));
 
 /** `true` cuando hay un fotograma listo y guardado que el usuario todavía no ha aprobado. */
 export const fotogramaPorAprobar = (escena: EscenaProduccionVista): boolean =>

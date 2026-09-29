@@ -150,6 +150,15 @@ export const generationJobs = pgTable(
      */
     sceneId: uuid("scene_id").references(() => scenes.id, { onDelete: "set null" }),
     /**
+     * **Turno del clip dentro del intercambio** (0.28.0), desde 1. `null` en todo lo que no es un reparto de dos
+     * personajes, que es todo lo anterior a esta versión.
+     *
+     * Es lo único que un podcast deja escrito para el montaje (0.32.0): dos clips de la misma escena, cada uno con
+     * su personaje (`character_id`) y su sitio en la conversación. Sin esta columna, los dos clips serían dos
+     * filas indistinguibles y alternar los planos habría que adivinarlo por la fecha de creación.
+     */
+    castClipOrder: integer("cast_clip_order"),
+    /**
      * **Producto con el que se pidió el trabajo** (0.26.0), si se pidió con uno. Es lo que permite borrar los
      * derivados al borrar el producto: sin esta columna, un fotograma con la etiqueta de un producto retirado
      * seguiría en la biblioteca sin forma de encontrarlo.

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { and, eq, isNull } from "drizzle-orm";
 import { esProveedor, PROVEEDORES_PUBLICOS, type Proveedor } from "@/lib/boveda";
 import type { ModeloVista } from "@/lib/catalogo";
@@ -130,6 +131,23 @@ export async function exigirAvisoUmbral(creditos: number, aceptado: unknown) {
 export function exigirClaveIdempotencia(clave: unknown): string {
   if (!esUuidGeneracion(clave)) throw new ErrorGeneracion(400, "Falta la clave de la confirmación.");
   return clave;
+}
+
+/**
+ * Clave de idempotencia derivada de la que firmó el navegador y de qué se está encolando.
+ *
+ * Un clic del usuario puede ser **varios trabajos** (las escenas de un proyecto, los dos clips de un podcast), así
+ * que cada uno necesita su propia clave y las claves tienen que ser **estables**: repetir el mismo clic (doble
+ * pulsación, reintento tras un error de red) tiene que devolver los trabajos que ya existen, no encargar otros.
+ * Derivarlas con `sha256` de la clave del navegador más el destino da exactamente eso, y el formato es el UUID que
+ * exige {@link exigirClaveIdempotencia}.
+ */
+export function claveDerivada(base: string, ...partes: readonly string[]): string {
+  const h = createHash("sha256")
+    .update([base, ...partes].join(":"))
+    .digest("hex");
+  // Versión 4 y variante 8 en su sitio: es un UUID con la forma correcta, derivado y no aleatorio.
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-8${h.slice(17, 20)}-${h.slice(20, 32)}`;
 }
 
 /**

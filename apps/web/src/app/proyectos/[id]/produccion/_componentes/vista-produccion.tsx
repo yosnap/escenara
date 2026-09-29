@@ -37,10 +37,21 @@ export function VistaProduccion({ inicial }: { inicial: ProduccionVista }) {
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [confirmados, setConfirmados] = useState<string[]>([]);
+  const [confirmadosPorEscena, setConfirmadosPorEscena] = useState<Record<string, string[]>>({});
   const { produccion } = estado;
 
   const confirmar = (regla: string, valor: boolean) => {
     setConfirmados((previos) => (valor ? [...new Set([...previos, regla])] : previos.filter((r) => r !== regla)));
+  };
+
+  const confirmarReparto = (escenaId: string, regla: string, valor: boolean) => {
+    setConfirmadosPorEscena((previos) => {
+      const reglas = previos[escenaId] ?? [];
+      return {
+        ...previos,
+        [escenaId]: valor ? [...new Set([...reglas, regla])] : reglas.filter((actual) => actual !== regla),
+      };
+    });
   };
 
   /** Ejecuta una acción del servidor y adopta el estado que devuelve. Nunca se compone nada en el navegador. */
@@ -75,6 +86,9 @@ export function VistaProduccion({ inicial }: { inicial: ProduccionVista }) {
   const hayAvisos = avisosConfirmables(produccion.controlesDelModelo).length > 0;
   const caben = Math.max(0, produccion.maximoEnVuelo - produccion.enVuelo);
   const deGolpe = Math.min(produccion.porProducir, caben);
+  const repartoPendiente = produccion.escenas.some(
+    (escena) => escena.reparto !== null && escena.estado !== "producida",
+  );
   const firmaDeEscenas = produccion.escenas.map((e) => e.fotograma?.id ?? "-").join(",");
 
   return (
@@ -144,7 +158,14 @@ export function VistaProduccion({ inicial }: { inicial: ProduccionVista }) {
         </Aviso>
       )}
 
-      {produccion.porProducir > 0 && produccion.impedimentos.length === 0 && deGolpe > 0 && (
+      {repartoPendiente && (
+        <Aviso tono="info">
+          Las escenas con dos personajes se confirman en su propia tarjeta: un podcast cuesta dos clips y un dualcast
+          uno. Así ves el total exacto de cada reparto antes de producirlo.
+        </Aviso>
+      )}
+
+      {produccion.porProducir > 0 && produccion.impedimentos.length === 0 && deGolpe > 0 && !repartoPendiente && (
         <ConfirmacionGasto
           titulo={
             deGolpe === produccion.porProducir
@@ -195,8 +216,10 @@ export function VistaProduccion({ inicial }: { inicial: ProduccionVista }) {
                 escena={escena}
                 produccion={produccion}
                 ocupado={ocupado}
-                avisosConfirmados={confirmados}
-                onConfirmarAviso={confirmar}
+                avisosConfirmados={[...confirmados, ...(confirmadosPorEscena[escena.id] ?? [])]}
+                onConfirmarAviso={(regla, valor) =>
+                  regla.startsWith("reparto-") ? confirmarReparto(escena.id, regla, valor) : confirmar(regla, valor)
+                }
                 onProducir={(c) => void ejecutar(() => producirEscena(escena.id, c))}
                 onAprobar={(c) => void ejecutar(() => aprobarFotograma(escena.id, c))}
                 onRegenerar={(c) => void ejecutar(() => regenerarEscena(escena.id, c))}
