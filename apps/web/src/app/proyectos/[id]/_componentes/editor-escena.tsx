@@ -150,7 +150,11 @@ export function EditorEscena({
 
       <Campo
         etiqueta="Lo que se cuenta o se dice"
-        ayuda={`Esta escena durará ${escena.segundos} s: la duración se elige una vez para todo el proyecto.`}
+        ayuda={
+          direccion.formatoClip === "cantar"
+            ? "En canto, el clip dura lo que dure el audio elegido y el coste se calcula con sus segundos facturables."
+            : `Esta escena durará ${escena.segundos} s: la duración se elige una vez para todo el proyecto.`
+        }
       >
         {(p) => (
           <AreaTexto {...p} value={texto} maxLength={TEXTO_ESCENA_MAXIMO} onChange={(e) => setTexto(e.target.value)} />

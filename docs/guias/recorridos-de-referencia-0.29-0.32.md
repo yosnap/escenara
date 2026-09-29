@@ -7,7 +7,7 @@ la interfaz en el momento de la prueba; el proyecto guardado es la fuente para r
 
 | Fase | Referencia en la cuenta | Qué enseña | Estado |
 |---|---|---|---|
-| 0.29 | [Prueba de Elisa con audio sintetizado](/proyectos/11bf3d6d-2470-4a58-886c-0f6654c3c37d) | Audio propio, retrato vertical, derechos, coste y revisión de sincronía | Clip y MP4 guardados; 88 créditos medidos; sincronía no válida |
+| 0.29 | [Prueba de Elisa con audio sintetizado](/proyectos/11bf3d6d-2470-4a58-886c-0f6654c3c37d) y [segunda prueba con voz grabada](/proyectos/57498e74-3b24-452b-85ab-17e93ece79b7) | Audio, retrato vertical, derechos, coste y revisión de sincronía | Dos clips y MP4 guardados; 184 de 200 créditos medidos; revisión perceptiva de la segunda prueba pendiente |
 | 0.30 | [Crema Aurora en dos escenas](/proyectos/4fb19dba-589e-4a90-b3b6-18fe19ee3479) y [plantillas en Admin › Plantillas](/admin/plantillas) | Producto físico, guion visual, vigencia, versiones y cambio de modelo | Dos clips y MP4 terminados; 96 créditos medidos |
 | 0.31 | [Nora, ilustración plana](/proyectos/8ee8d990-e52e-4e08-ba58-52d71ac5b461), [Bruno, 3D](/proyectos/0a2604ce-96e7-4809-835e-b99de5d99fbf), [Mika, anime](/proyectos/8a6e31e0-20e5-417e-b8a3-73e190045571) | Retrato maestro, vistas, fotogramas y cuatro clips animados | Producidos; 196 créditos medidos |
 | 0.32 | [Montaje de tres clips](/proyectos/78029792-b60f-4191-b2ca-9e7f6cc0455e/montaje) | Orden, recorte, música, subtítulos, etiqueta y MP4 | Exportado y descargado; cero créditos |
@@ -58,7 +58,31 @@ con etiqueta sintética arriba y exportación sin créditos. `ffprobe` confirma 
 imagen lateral ni recorta la cara. Están la [captura de la exportación](../assets/capturas/0.29.0-elisa-montaje-exportado.png)
 y un [fotograma del MP4 final](../assets/capturas/0.29.0-elisa-montaje-fotograma.jpg). Este ejemplo se conserva
 como referencia del **flujo técnico y de un fallo de calidad**, pero no debe presentarse como demostración de
-un personaje cantando. Quedan **112 créditos** del límite de 200 para una repetición con voz adecuada.
+un personaje cantando. La repetición se realizó con una grabación vocal dentro de los **112 créditos** que
+quedaban del límite de 200.
+
+Se generó una [segunda escena con Elisa](/proyectos/57498e74-3b24-452b-85ab-17e93ece79b7) a partir de una
+canción que el propietario confirmó como **composición y grabación originales de su estudio**. El archivo subido
+dura 25,29 s; el límite de canto obligó a guardar en la biblioteca otro MP3 de **12 s, recortado entre los
+segundos 8 y 20**, conservando el original. La idea explica la procedencia y el recorte; la escena guarda
+plano medio frontal, cámara fija, la petición de fondo liso y ausencia de rótulos. Se declaró **música propia**
+para el recorte y se confirmaron los derechos de la imagen de Elisa antes de generar. La pantalla estimó
+**96 créditos** y KIE comunicó **96 consumidos**. Con el primer intento suman **184 de los 200 créditos**
+autorizados; quedan 16. Las capturas de la [cola](../assets/capturas/0.29.0-elisa-voz-generando.png) y la
+[producción terminada](../assets/capturas/0.29.0-elisa-voz-clip-listo.png) conservan el trabajo
+y su resultado; el [montaje](../assets/capturas/0.29.0-elisa-voz-montaje-listo.png) guarda un fragmento de 12 s,
+audio al 100 %, sin música adicional ni subtítulos y con la etiqueta de contenido sintético arriba. La
+exportación no gastó créditos.
+
+`ffprobe` midió el segundo clip de Kling: **H.264, 848 × 1072, AAC estéreo, 12,267 s**. Su audio coincide
+técnicamente con el recorte elegido, pero esa medida **no demuestra sincronía labial**. El MP4 exportado mide
+**4.841.075 bytes, H.264, 1080 × 1920, AAC estéreo y 12,011 s**. El
+[fotograma del montaje](../assets/capturas/0.29.0-elisa-voz-montaje-fotograma.jpg) confirma que la etiqueta
+aparece en el archivo final. Kling conservó el rostro de Elisa, pero volvió a generar una cafetería en vez del
+fondo liso solicitado y añadió [texto amarillo ilegible](../assets/capturas/0.29.0-elisa-voz-fotograma-medio.jpg)
+en el centro y [al final](../assets/capturas/0.29.0-elisa-voz-fotograma-final.jpg). La valoración perceptiva
+del propietario sobre la relación entre labios, sílabas y pausas sigue pendiente; hasta entonces este clip
+documenta el flujo completo, pero **no valida el criterio de lip-sync**.
 
 ## 0.30 · Dos trends y cambio de modelo tras un fallo
 
