@@ -2,6 +2,32 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.32.1] · 2026-09-29
+
+Las guías, además de leerse en el repositorio, tienen **su propia web**: un sitio estático con índice por
+secciones, buscador, tema claro y oscuro y navegación anterior y siguiente, pensado para publicarse en
+**docs.escenara.com**. Se construye desde `docs/guias` sin copiar nada: cada guía sigue teniendo **una sola fuente**.
+
+### Añadido
+
+- **Web de documentación en `apps/docs`** con Astro Starlight, en español y con la marca de Escenara. Lee las
+  guías y las capturas de `docs/` en el build; los enlaces entre guías funcionan igual en la web que en el
+  repositorio, y los que apuntan a la aplicación o a documentos que no se publican se quedan como texto.
+- **Índice de publicación** en [`guias/indice.json`](guias/indice.json): secciones, orden, títulos y
+  descripciones. **Solo se publica lo que lista**, y un test comprueba que ninguna guía se queda fuera sin querer.
+- **Exclusión por construcción**: el build termina revisando lo publicado y falla si aparece `docs/privado`,
+  `plans`, `datos-privados` o algo con forma de clave, también dentro del índice del buscador.
+- **Dos guías nuevas** para quien administra la instalación:
+  [Configurar la API de cada proveedor](guias/configurar-la-api-de-cada-proveedor.md) y
+  [Dar de alta un modelo](guias/dar-de-alta-un-modelo.md).
+- **Cuatro diagramas** accesibles, legibles en tema claro y oscuro: el flujo de personaje a exportación, el mapa
+  de modelos con sus reservas, el consentimiento y los dos personajes (podcast y dualcast), enlazados desde
+  sus guías.
+- **`bun run docs:dev`**, **`docs:build`** y **`docs:preview`**, siempre en el puerto **3022**.
+- **Imagen Docker** con nginx sin privilegios y comprobación de salud, y el proceso
+  [Desplegar la documentación en Easypanel](procesos/desplegar-documentacion-easypanel.md) con el dominio,
+  HTTPS y el registro DNS.
+
 ## [0.32.0] · 2026-09-29
 
 El montaje. Hasta aquí Escenara acababa con los clips sueltos en la biblioteca y publicar exigía un editor de

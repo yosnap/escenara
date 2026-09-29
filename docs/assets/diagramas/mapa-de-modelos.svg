@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="dg" viewBox="0 0 800 960" width="800" height="960" role="img" aria-labelledby="mapa-titulo mapa-desc">
+  <title id="mapa-titulo">Mapa de modelos y reservas</title>
+  <desc id="mapa-desc">Cada tipo (texto, voz, subtítulos, imagen y vídeo) tiene una lista ordenada: principal y reservas. Ejemplo de texto: KIE.ai gpt-5-6-sol con créditos, y de reserva NaN builders gemma4 y deepseek-v4-flash con cuota del plan. Cuando la opción en uso falla: si se sabe que no cobró (rechazó por clave, saldo o límite) se prueba la siguiente. Si no se sabe (no contestó, tardó o dio error), solo se sigue cuando la siguiente se paga con cuota; si cobra por petición, se para y avisa de que no se sabe si ha cobrado. Si era la última opción, el mensaje dice qué falló, si se cobró, qué se probó y qué hacer.</desc>
+  <style>
+    .dg{--f:var(--dg-fondo,#F7F8FC);--s:var(--dg-superficie,#FFFFFF);--sa:var(--dg-superficie-alta,#EFF1F8);--t:var(--dg-texto,#182032);--ts:var(--dg-texto-suave,#485269);--b:var(--dg-borde,#858EA1);--a:var(--dg-acento,#2753D7);--as:var(--dg-acento-suave,#E3EAFC);--c:var(--dg-chispa,#B53D1C);--cs:var(--dg-chispa-suave,#FDE7DF);--e:var(--dg-exito,#166A51);--es:var(--dg-exito-suave,#DDF1E9);--v:var(--dg-aviso,#875016);--vs:var(--dg-aviso-suave,#F8EBD6);--p:var(--dg-peligro,#A43343);--ps:var(--dg-peligro-suave,#F8E1E5)}
+    @media (prefers-color-scheme:dark){.dg{--f:var(--dg-fondo,#0D1018);--s:var(--dg-superficie,#171B27);--sa:var(--dg-superficie-alta,#222839);--t:var(--dg-texto,#F5F6FA);--ts:var(--dg-texto-suave,#B8C0D1);--b:var(--dg-borde,#737F98);--a:var(--dg-acento,#8EB8FF);--as:var(--dg-acento-suave,#1B2A4D);--c:var(--dg-chispa,#FFAD78);--cs:var(--dg-chispa-suave,#3A2418);--e:var(--dg-exito,#66D6AB);--es:var(--dg-exito-suave,#12362B);--v:var(--dg-aviso,#F5C97A);--vs:var(--dg-aviso-suave,#3A2E14);--p:var(--dg-peligro,#FF9EAD);--ps:var(--dg-peligro-suave,#3D1C24)}}
+    .dg text{font-family:Manrope,Inter,ui-sans-serif,system-ui,sans-serif;fill:var(--t);font-size:15px}
+    .dg .dg-lienzo{fill:var(--f)}
+    .dg .dg-caja{fill:var(--s);stroke:var(--b);stroke-width:1.5}
+    .dg .dg-panel{fill:var(--sa);stroke:none}
+    .dg .dg-acento{fill:var(--as);stroke:var(--a);stroke-width:1.5}
+    .dg .dg-chispa{fill:var(--cs);stroke:var(--c);stroke-width:1.5}
+    .dg .dg-exito{fill:var(--es);stroke:var(--e);stroke-width:1.5}
+    .dg .dg-aviso{fill:var(--vs);stroke:var(--v);stroke-width:1.5}
+    .dg .dg-peligro{fill:var(--ps);stroke:var(--p);stroke-width:1.5}
+    .dg .dg-linea{fill:none;stroke:var(--b);stroke-width:2}
+    .dg .dg-flecha{fill:var(--b)}
+    .dg .dg-marca{fill:var(--a)}
+    .dg .dg-titulo{font-size:24px;font-weight:700}
+    .dg .dg-negrita{font-weight:700;font-size:17px}
+    .dg .dg-suave{fill:var(--ts);font-size:14px}
+    .dg .dg-etiqueta{font-size:13px;font-weight:600}
+    .dg .dg-sobre-marca{fill:var(--s);font-weight:700;font-size:15px}
+    .dg .dg-t-acento{fill:var(--a)}
+    .dg .dg-t-chispa{fill:var(--c)}
+    .dg .dg-t-exito{fill:var(--e)}
+    .dg .dg-t-peligro{fill:var(--p)}
+  </style>
+  <defs>
+    <marker id="mapa-punta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dg-flecha"/></marker>
+  </defs>
+  <rect class="dg-lienzo" width="800" height="960" rx="20"/>
+  <text class="dg-titulo" x="24" y="44">Mapa de modelos: cuándo se pasa a la reserva</text>
+  <text class="dg-suave" x="24" y="70">Cada tipo tiene su lista ordenada. Una reserva solo se prueba si es seguro</text>
+  <text class="dg-suave" x="24" y="90">que no habrá un segundo cargo.</text>
+  <rect class="dg-caja" x="24" y="110" width="752" height="300" rx="16"/>
+  <text class="dg-negrita" x="44" y="142">Cinco listas, una por tipo</text>
+  <rect class="dg-acento" x="44" y="156" width="64" height="26" rx="13"/>
+  <text class="dg-etiqueta dg-t-acento" x="76" y="174" text-anchor="middle">Texto</text>
+  <rect class="dg-acento" x="118" y="156" width="48" height="26" rx="13"/>
+  <text class="dg-etiqueta dg-t-acento" x="142" y="174" text-anchor="middle">Voz</text>
+  <rect class="dg-acento" x="176" y="156" width="104" height="26" rx="13"/>
+  <text class="dg-etiqueta dg-t-acento" x="228" y="174" text-anchor="middle">Subtítulos</text>
+  <rect class="dg-acento" x="290" y="156" width="72" height="26" rx="13"/>
+  <text class="dg-etiqueta dg-t-acento" x="326" y="174" text-anchor="middle">Imagen</text>
+  <rect class="dg-acento" x="372" y="156" width="64" height="26" rx="13"/>
+  <text class="dg-etiqueta dg-t-acento" x="404" y="174" text-anchor="middle">Vídeo</text>
+  <text class="dg-negrita" x="44" y="218">Ejemplo: texto</text>
+  <rect class="dg-panel" x="44" y="232" width="216" height="128" rx="12"/>
+  <text class="dg-suave" x="60" y="258">1 · Principal</text>
+  <text class="dg-negrita" x="60" y="286">KIE.ai</text>
+  <text x="60" y="308">gpt-5-6-sol</text>
+  <rect class="dg-chispa" x="60" y="324" width="88" height="26" rx="13"/>
+  <text class="dg-etiqueta dg-t-chispa" x="104" y="342" text-anchor="middle">Créditos</text>
+  <path class="dg-linea" d="M262 296H286" marker-end="url(#mapa-punta)"/>
+  <rect class="dg-panel" x="288" y="232" width="216" height="128" rx="12"/>
+  <text class="dg-suave" x="304" y="258">2 · Reserva</text>
+  <text class="dg-negrita" x="304" y="286">NaN builders</text>
+  <text x="304" y="308">gemma4</text>
+  <rect class="dg-exito" x="304" y="324" width="136" height="26" rx="13"/>
+  <text class="dg-etiqueta dg-t-exito" x="372" y="342" text-anchor="middle">Cuota del plan</text>
+  <path class="dg-linea" d="M506 296H530" marker-end="url(#mapa-punta)"/>
+  <rect class="dg-panel" x="532" y="232" width="216" height="128" rx="12"/>
+  <text class="dg-suave" x="548" y="258">3 · Reserva</text>
+  <text class="dg-negrita" x="548" y="286">NaN builders</text>
+  <text x="548" y="308">deepseek-v4-flash</text>
+  <rect class="dg-exito" x="548" y="324" width="136" height="26" rx="13"/>
+  <text class="dg-etiqueta dg-t-exito" x="616" y="342" text-anchor="middle">Cuota del plan</text>
+  <text class="dg-suave" x="44" y="392">Si eliges el modelo a mano en «Crear», manda tu elección y no hay reservas.</text>
+  <rect class="dg-caja" x="250" y="440" width="300" height="48" rx="14"/>
+  <text class="dg-negrita" x="400" y="469" text-anchor="middle">La opción en uso falla</text>
+  <path class="dg-linea" d="M400 488V518" marker-end="url(#mapa-punta)"/>
+  <rect class="dg-aviso" x="210" y="520" width="380" height="56" rx="14"/>
+  <text class="dg-negrita" x="400" y="553" text-anchor="middle">¿Se sabe que no te ha cobrado?</text>
+  <path class="dg-linea" d="M300 576V600H189V660" marker-end="url(#mapa-punta)"/>
+  <text class="dg-etiqueta" x="199" y="624">Sí: rechazó la petición</text>
+  <text class="dg-suave" x="199" y="644">clave, saldo o límite</text>
+  <path class="dg-linea" d="M500 576V600H611V660" marker-end="url(#mapa-punta)"/>
+  <text class="dg-etiqueta" x="601" y="624" text-anchor="end">No: no contestó,</text>
+  <text class="dg-suave" x="601" y="644" text-anchor="end">tardó o dio error suyo</text>
+  <rect class="dg-exito" x="24" y="662" width="330" height="72" rx="14"/>
+  <text class="dg-negrita" x="189" y="692" text-anchor="middle">Se prueba la siguiente</text>
+  <text class="dg-suave" x="189" y="714" text-anchor="middle">opción de tu lista</text>
+  <rect class="dg-aviso" x="446" y="662" width="330" height="72" rx="14"/>
+  <text class="dg-negrita" x="611" y="692" text-anchor="middle">¿La siguiente cobra</text>
+  <text class="dg-negrita" x="611" y="714" text-anchor="middle">por petición?</text>
+  <path class="dg-linea" d="M446 698H358" marker-end="url(#mapa-punta)"/>
+  <text class="dg-etiqueta" x="401" y="688" text-anchor="middle">No: cuota</text>
+  <path class="dg-linea" d="M611 734V790" marker-end="url(#mapa-punta)"/>
+  <text class="dg-etiqueta" x="621" y="766">Sí</text>
+  <path class="dg-linea" d="M189 734V790" marker-end="url(#mapa-punta)"/>
+  <text class="dg-suave" x="199" y="766">si era la última</text>
+  <rect class="dg-caja" x="24" y="792" width="330" height="92" rx="14"/>
+  <text class="dg-negrita" x="189" y="821" text-anchor="middle">Mensaje completo</text>
+  <text class="dg-suave" x="189" y="843" text-anchor="middle">qué falló, si se cobró,</text>
+  <text class="dg-suave" x="189" y="865" text-anchor="middle">qué se probó y qué hacer</text>
+  <rect class="dg-peligro" x="446" y="792" width="330" height="92" rx="14"/>
+  <text class="dg-negrita" x="611" y="821" text-anchor="middle">Se para y te lo dice</text>
+  <text class="dg-suave" x="611" y="843" text-anchor="middle">«No se sabe si te ha cobrado»:</text>
+  <text class="dg-suave" x="611" y="865" text-anchor="middle">mira tu cuenta antes de repetir</text>
+  <text class="dg-suave" x="24" y="914">Una reserva nunca cuesta más de lo que confirmaste para ella.</text>
+  <text class="dg-suave" x="24" y="936">Los créditos de proveedores distintos no se suman ni se comparan.</text>
+</svg>

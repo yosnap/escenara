@@ -1,0 +1,17 @@
+# Contexto de build = raíz del repositorio. Se deja pasar solo lo que la web necesita.
+*
+!package.json
+!bun.lock
+!apps/docs/
+apps/docs/node_modules/
+apps/docs/dist/
+apps/docs/.astro/
+!docs/guias/
+!docs/assets/
+!docs/branding/
+# Nunca, aunque cambie lo anterior
+**/.env
+**/.env.*
+docs/privado/
+datos-privados/
+plans/

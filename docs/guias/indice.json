@@ -1,0 +1,180 @@
+{
+  "$comentario": "Índice de la web de documentación: solo se publican las guías listadas aquí, en este orden y con estos títulos.",
+  "secciones": [
+    {
+      "titulo": "Primeros pasos",
+      "guias": [
+        {
+          "archivo": "tu-primer-video.md",
+          "titulo": "Tu primer vídeo",
+          "descripcion": "Genera tu primer fotograma y tu primer clip desde el navegador, con tu propia clave."
+        },
+        {
+          "archivo": "deposito-de-presupuesto.md",
+          "titulo": "El depósito de presupuesto y la cola",
+          "descripcion": "Cómo se reserva el gasto antes de generar y qué hace la cola con cada trabajo."
+        },
+        {
+          "archivo": "presets-y-plantillas.md",
+          "titulo": "Presets y plantillas",
+          "descripcion": "Crear con botones, previsualizar el prompt final y el catálogo de presets."
+        }
+      ]
+    },
+    {
+      "titulo": "Configurar la instalación",
+      "guias": [
+        {
+          "archivo": "configurar-la-api-de-cada-proveedor.md",
+          "titulo": "Configurar la API de cada proveedor",
+          "descripcion": "Dónde se consigue cada clave, dónde se guarda en Escenara y cómo se comprueba sin gastar."
+        },
+        {
+          "archivo": "dar-de-alta-un-modelo.md",
+          "titulo": "Dar de alta un modelo",
+          "descripcion": "Añadir un modelo al catálogo, fijar su precio con fuente y fecha y dejarlo listo para usarse."
+        },
+        {
+          "archivo": "mapa-de-modelos.md",
+          "titulo": "Con qué se genera cada cosa",
+          "descripcion": "El mapa de modelos por tipo, las reservas, qué cuesta cada opción y los servicios compatibles con OpenAI."
+        }
+      ]
+    },
+    {
+      "titulo": "Personajes",
+      "guias": [
+        {
+          "archivo": "crear-un-personaje.md",
+          "titulo": "Crear un personaje y registrar su consentimiento",
+          "descripcion": "Personaje con sus fotos de referencia, consentimiento, revocación y borrado con derivados."
+        },
+        {
+          "archivo": "buenas-referencias.md",
+          "titulo": "Buenas referencias",
+          "descripcion": "Captura guiada, vistas que cubrir, control de calidad y vistas generadas."
+        },
+        {
+          "archivo": "ficha-y-versiones-de-personaje.md",
+          "titulo": "La ficha y las versiones de un personaje",
+          "descripcion": "La ficha como contexto de generación, las versiones y la hoja de personaje."
+        },
+        {
+          "archivo": "personajes-inventados.md",
+          "titulo": "Personajes inventados",
+          "descripcion": "Un personaje que no existe: descripción, retratos candidatos y declaración."
+        },
+        {
+          "archivo": "comprobar-la-coherencia.md",
+          "titulo": "Comprobar la coherencia",
+          "descripcion": "Si una vista generada es la misma persona, si la escena cubre el guion y si la emoción encaja."
+        }
+      ]
+    },
+    {
+      "titulo": "Productos",
+      "guias": [
+        {
+          "archivo": "productos.md",
+          "titulo": "Presentar un producto",
+          "descripcion": "Alta de un producto con sus fotos por papel, cómo se usa en escena y qué se avisa antes de pagar."
+        },
+        {
+          "archivo": "estrategia-del-anuncio.md",
+          "titulo": "La estrategia del anuncio",
+          "descripcion": "Ángulo, oferta y creatividad: el brief por proyecto, los hooks y las variantes."
+        }
+      ]
+    },
+    {
+      "titulo": "Proyectos y producción",
+      "guias": [
+        {
+          "archivo": "asistente-de-guion.md",
+          "titulo": "El asistente de guion",
+          "descripcion": "Proyectos, guion por escenas, afirmaciones por verificar y aprobación del plan con su coste."
+        },
+        {
+          "archivo": "dirigir-tu-clip.md",
+          "titulo": "Dirigir tu clip",
+          "descripcion": "Las seis partes de la dirección, el método 6C del fotograma y el modo «cambiar solo…»."
+        },
+        {
+          "archivo": "producir-tu-proyecto.md",
+          "titulo": "Producir tu proyecto",
+          "descripcion": "La rejilla de producción, las etapas, la cancelación y los reintentos autorizados."
+        },
+        {
+          "archivo": "revisar-la-continuidad.md",
+          "titulo": "Revisar la continuidad",
+          "descripcion": "Comparar cada clip con la hoja de personaje y qué bloquea la exportación."
+        }
+      ]
+    },
+    {
+      "titulo": "Voz y subtítulos",
+      "guias": [
+        {
+          "archivo": "voz-y-subtitulos.md",
+          "titulo": "Voz y subtítulos",
+          "descripcion": "El modo de voz del proyecto, las muestras, el editor de subtítulos y la exportación a SRT o WebVTT."
+        },
+        {
+          "archivo": "escenas-habladas.md",
+          "titulo": "Escenas habladas",
+          "descripcion": "El modo Omni, sus dos motores, qué se registra y qué cuesta cada escena."
+        },
+        {
+          "archivo": "podcast-y-dualcast.md",
+          "titulo": "Podcast y dualcast",
+          "descripcion": "Dos personajes en una escena: reparto, diálogo por turnos, coste y consentimiento de cada persona."
+        }
+      ]
+    },
+    {
+      "titulo": "Cantar, trends y animados",
+      "guias": [
+        {
+          "archivo": "cantar-con-audio-propio.md",
+          "titulo": "Cantar con tu audio",
+          "descripcion": "Audio propio, derechos, retrato vertical y coste por segundo."
+        },
+        {
+          "archivo": "trends-virales.md",
+          "titulo": "Usar y administrar trends",
+          "descripcion": "Formatos vigentes, vista previa y coste; alta, versión y caducidad desde el admin."
+        },
+        {
+          "archivo": "personajes-animados.md",
+          "titulo": "Crear un personaje animado",
+          "descripcion": "Tres acabados, guía de estilo, retrato maestro y coste."
+        }
+      ]
+    },
+    {
+      "titulo": "Montaje y exportación",
+      "guias": [
+        {
+          "archivo": "montaje-y-exportacion.md",
+          "titulo": "Montar y exportar tu vídeo",
+          "descripcion": "Línea de tiempo, mezcla, subtítulos, etiqueta de contenido sintético y MP4 vertical sin créditos."
+        },
+        {
+          "archivo": "recorridos-de-referencia-0.29-0.32.md",
+          "titulo": "Recorridos de referencia 0.29–0.32",
+          "descripcion": "Proyectos de ejemplo con sus decisiones, costes y resultados medidos."
+        }
+      ]
+    },
+    {
+      "titulo": "Solución de problemas",
+      "guias": [
+        {
+          "archivo": "por-que-no-puedo-generar.md",
+          "titulo": "Por qué no puedo generar",
+          "descripcion": "Los estados de los controles previos, cada motivo y cómo se arregla."
+        }
+      ]
+    }
+  ]
+}

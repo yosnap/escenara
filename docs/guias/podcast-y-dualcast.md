@@ -12,6 +12,8 @@ En una escena hablada puedes montar una conversación entre **dos personajes tuy
 | **Podcast** | Dos clips, uno por personaje, en el orden del reparto | La suma de los dos clips, en una confirmación |
 | **Dualcast** | Un clip con las dos caras en el mismo plano | El de un clip |
 
+![Podcast frente a dualcast: dos clips con un personaje cada uno, o un clip con los dos en el mismo plano](../assets/diagramas/dos-personajes.svg)
+
 En el spike del 29/09/2026, un clip de 4 s a 720p con Gemini Omni Flash 1.1 costó **63 créditos** tanto con uno como con dos `character_ids`: tres clips costaron 189. Esa cifra es una medida de aquella prueba. La pantalla muestra la **estimación vigente**, con fecha del precio, segundos y coste de cada clip y total. Si la instalación traduce el texto del prompt, incorpora una vez el coste máximo de esa traducción. Si cambia la tarifa, el servidor rechaza la confirmación antigua; no cobra otro importe sin que lo veas.
 
 ## Montar el reparto

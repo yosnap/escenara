@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="dg" viewBox="0 0 800 836" width="800" height="836" role="img" aria-labelledby="dos-titulo dos-desc">
+  <title id="dos-titulo">Podcast y dualcast</title>
+  <desc id="dos-desc">Comparación de los dos formatos con dos personajes. Podcast: dos clips verticales, uno por personaje, en el orden del reparto; A habla en el primero y B en el segundo, con la mirada cruzada; se confirma la suma de los dos clips una sola vez y cancelar uno no cobra el otro. Dualcast: un solo clip vertical con las dos caras en el mismo plano; A habla y B escucha y reacciona; se confirma el coste de un clip y cada frase del diálogo lleva su personaje. Con dos personas reales hacen falta dos consentimientos vigentes.</desc>
+  <style>
+    .dg{--f:var(--dg-fondo,#F7F8FC);--s:var(--dg-superficie,#FFFFFF);--sa:var(--dg-superficie-alta,#EFF1F8);--t:var(--dg-texto,#182032);--ts:var(--dg-texto-suave,#485269);--b:var(--dg-borde,#858EA1);--a:var(--dg-acento,#2753D7);--as:var(--dg-acento-suave,#E3EAFC);--c:var(--dg-chispa,#B53D1C);--cs:var(--dg-chispa-suave,#FDE7DF);--e:var(--dg-exito,#166A51);--es:var(--dg-exito-suave,#DDF1E9);--v:var(--dg-aviso,#875016);--vs:var(--dg-aviso-suave,#F8EBD6);--p:var(--dg-peligro,#A43343);--ps:var(--dg-peligro-suave,#F8E1E5)}
+    @media (prefers-color-scheme:dark){.dg{--f:var(--dg-fondo,#0D1018);--s:var(--dg-superficie,#171B27);--sa:var(--dg-superficie-alta,#222839);--t:var(--dg-texto,#F5F6FA);--ts:var(--dg-texto-suave,#B8C0D1);--b:var(--dg-borde,#737F98);--a:var(--dg-acento,#8EB8FF);--as:var(--dg-acento-suave,#1B2A4D);--c:var(--dg-chispa,#FFAD78);--cs:var(--dg-chispa-suave,#3A2418);--e:var(--dg-exito,#66D6AB);--es:var(--dg-exito-suave,#12362B);--v:var(--dg-aviso,#F5C97A);--vs:var(--dg-aviso-suave,#3A2E14);--p:var(--dg-peligro,#FF9EAD);--ps:var(--dg-peligro-suave,#3D1C24)}}
+    .dg text{font-family:Manrope,Inter,ui-sans-serif,system-ui,sans-serif;fill:var(--t);font-size:15px}
+    .dg .dg-lienzo{fill:var(--f)}
+    .dg .dg-caja{fill:var(--s);stroke:var(--b);stroke-width:1.5}
+    .dg .dg-panel{fill:var(--sa);stroke:none}
+    .dg .dg-acento{fill:var(--as);stroke:var(--a);stroke-width:1.5}
+    .dg .dg-chispa{fill:var(--cs);stroke:var(--c);stroke-width:1.5}
+    .dg .dg-exito{fill:var(--es);stroke:var(--e);stroke-width:1.5}
+    .dg .dg-aviso{fill:var(--vs);stroke:var(--v);stroke-width:1.5}
+    .dg .dg-peligro{fill:var(--ps);stroke:var(--p);stroke-width:1.5}
+    .dg .dg-linea{fill:none;stroke:var(--b);stroke-width:2}
+    .dg .dg-flecha{fill:var(--b)}
+    .dg .dg-marca{fill:var(--a)}
+    .dg .dg-titulo{font-size:24px;font-weight:700}
+    .dg .dg-negrita{font-weight:700;font-size:17px}
+    .dg .dg-suave{fill:var(--ts);font-size:14px}
+    .dg .dg-etiqueta{font-size:13px;font-weight:600}
+    .dg .dg-sobre-marca{fill:var(--s);font-weight:700;font-size:15px}
+    .dg .dg-t-acento{fill:var(--a)}
+    .dg .dg-t-chispa{fill:var(--c)}
+    .dg .dg-t-exito{fill:var(--e)}
+    .dg .dg-t-peligro{fill:var(--p)}
+  </style>
+  <defs>
+    <marker id="dos-punta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dg-flecha"/></marker>
+  </defs>
+  <rect class="dg-lienzo" width="800" height="836" rx="20"/>
+  <text class="dg-titulo" x="24" y="44">Dos personajes en una escena</text>
+  <text class="dg-suave" x="24" y="70">Proyecto › Escenas › Reparto. Como máximo dos personajes, con voz Omni.</text>
+  <rect class="dg-caja" x="24" y="92" width="752" height="310" rx="16"/>
+  <text class="dg-titulo" x="48" y="130">Podcast</text>
+  <text class="dg-suave" x="48" y="156">Dos clips, uno por personaje, en el orden del reparto</text>
+  <rect class="dg-caja" x="56" y="176" width="100" height="176" rx="16"/>
+  <rect class="dg-panel" x="92" y="184" width="28" height="6" rx="3"/>
+  <circle class="dg-acento" cx="106" cy="244" r="18"/>
+  <path class="dg-acento" d="M71.80000000000001 301.6q0-34.199999999999996 34.199999999999996-34.199999999999996t34.199999999999996 34.199999999999996z"/>
+  <text class="dg-etiqueta" x="106" y="249" text-anchor="middle">A</text>
+  <path class="dg-linea" d="M130 230h20" marker-end="url(#dos-punta)"/>
+  <rect class="dg-caja" x="236" y="176" width="100" height="176" rx="16"/>
+  <rect class="dg-panel" x="272" y="184" width="28" height="6" rx="3"/>
+  <circle class="dg-chispa" cx="286" cy="244" r="18"/>
+  <path class="dg-chispa" d="M251.8 301.6q0-34.199999999999996 34.199999999999996-34.199999999999996t34.199999999999996 34.199999999999996z"/>
+  <text class="dg-etiqueta" x="286" y="249" text-anchor="middle">B</text>
+  <path class="dg-linea" d="M262 230h-20" marker-end="url(#dos-punta)"/>
+  <path class="dg-linea" d="M160 272H232" marker-end="url(#dos-punta)"/>
+  <text class="dg-suave" x="196" y="262" text-anchor="middle">después</text>
+  <text class="dg-etiqueta" x="106" y="376" text-anchor="middle">Clip 1 · habla A</text>
+  <text class="dg-etiqueta" x="286" y="376" text-anchor="middle">Clip 2 · habla B</text>
+  <text x="430" y="214">Mirada cruzada: cada uno mira</text>
+  <text x="430" y="238">hacia el lado del otro.</text>
+  <text x="430" y="276">Confirmas la suma de los dos clips</text>
+  <text x="430" y="300">en una sola confirmación.</text>
+  <text x="430" y="338">Cancelar uno no cobra el otro.</text>
+  <rect class="dg-caja" x="24" y="418" width="752" height="310" rx="16"/>
+  <text class="dg-titulo" x="48" y="456">Dualcast</text>
+  <text class="dg-suave" x="48" y="482">Un clip con las dos caras en el mismo plano</text>
+  <rect class="dg-caja" x="146" y="502" width="100" height="176" rx="16"/>
+  <rect class="dg-panel" x="182" y="510" width="28" height="6" rx="3"/>
+  <circle class="dg-acento" cx="171" cy="582" r="12"/>
+  <path class="dg-acento" d="M148.2 620.4q0-22.799999999999997 22.799999999999997-22.799999999999997t22.799999999999997 22.799999999999997z"/>
+  <text class="dg-etiqueta" x="171" y="587" text-anchor="middle">A</text>
+  <circle class="dg-chispa" cx="221" cy="582" r="12"/>
+  <path class="dg-chispa" d="M198.2 620.4q0-22.799999999999997 22.799999999999997-22.799999999999997t22.799999999999997 22.799999999999997z"/>
+  <text class="dg-etiqueta" x="221" y="587" text-anchor="middle">B</text>
+  <text class="dg-etiqueta" x="136" y="572" text-anchor="end">A habla</text>
+  <text class="dg-etiqueta" x="256" y="572">B escucha y reacciona</text>
+  <text class="dg-etiqueta" x="196" y="702" text-anchor="middle">Clip 1 · A y B juntos</text>
+  <text x="430" y="546">Confirmas el coste de un solo clip.</text>
+  <text x="430" y="584">Cada frase lleva su personaje</text>
+  <text x="430" y="608">en «El diálogo, turno a turno».</text>
+  <rect class="dg-aviso" x="24" y="748" width="752" height="64" rx="14"/>
+  <text class="dg-negrita" x="400" y="774" text-anchor="middle">Con dos personas reales hacen falta dos consentimientos</text>
+  <text class="dg-negrita" x="400" y="796" text-anchor="middle">vigentes: sin los dos no se genera.</text>
+</svg>

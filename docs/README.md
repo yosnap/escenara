@@ -2,7 +2,7 @@
 
 **Escenara** · Estudio abierto de personajes y vídeo · «Da vida a cada escena»
 
-Mapa de la documentación pública del proyecto. Versión actual: **0.32.0**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
+Mapa de la documentación pública del proyecto. Versión actual: **0.32.1**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
 
 ## Mapa de documentos
 
@@ -13,6 +13,9 @@ Mapa de la documentación pública del proyecto. Versión actual: **0.32.0**. Pa
 | Marca | [Tokens de marca](branding/escenara.brand.json) | Tokens editables de ambos temas | 0.4.0 |
 | Diseño | [Dirección visual «Escenario»](diseno/direccion-visual-escenario.md) | Capa vibrante, parallax, animación, componentes de creador y zonas de claridad | Propuesta marca 0.5.0 |
 | Arquitectura | [Visión de arquitectura](arquitectura/vision-arquitectura.md) | Componentes, flujo de generación, entidades y pila propuesta | Propuesta |
+| Guías | [Web de documentación](procesos/desplegar-documentacion-easypanel.md) | Las guías de `guias/` publicadas como web con buscador y tema claro y oscuro: `bun run docs:dev` (puerto 3022). El orden, los títulos y qué se publica salen de [guias/indice.json](guias/indice.json) | 0.32.1 |
+| Guías | [Configurar la API de cada proveedor](guias/configurar-la-api-de-cada-proveedor.md) | Dónde se consigue cada clave, dónde se guarda (Tu cuenta o Admin › Ajustes) y cómo se comprueba sin gastar | 0.32.1 |
+| Guías | [Dar de alta un modelo](guias/dar-de-alta-un-modelo.md) | Cómo entra un modelo en el catálogo, sus estados, el precio con fuente y fecha, la variante, el predeterminado y la recomendación de la instalación | 0.32.1 |
 | Guías | [Tu primer vídeo](guias/tu-primer-video.md) | Generar un fotograma y un clip de 4 s con tu clave de KIE | 0.10.0 |
 | Guías | [Crear un personaje](guias/crear-un-personaje.md) | Personaje con sus fotos de referencia, consentimiento, revocación y borrado con derivados | 0.13.0 |
 | Guías | [Buenas referencias](guias/buenas-referencias.md) | Captura guiada, vistas que cubrir, control de calidad y vistas generadas | 0.14.0 |
@@ -42,13 +45,15 @@ Mapa de la documentación pública del proyecto. Versión actual: **0.32.0**. Pa
 | Privado | `privado/claves-api.local.md` | Claves reales. **Fuera de git** (`.gitignore`) | Local |
 | Legal | [Cumplimiento y privacidad](legal/cumplimiento-y-privacidad.md) | Marco normativo y controles del producto | Lista de trabajo |
 | Procesos | [Flujo de versiones y ramas](procesos/flujo-versiones-y-ramas.md) | Numeración, ramas, ciclo de una versión y definición de terminado | Vigente |
+| Procesos | [Desplegar la documentación en Easypanel](procesos/desplegar-documentacion-easypanel.md) | Imagen de `apps/docs`, aplicación en Easypanel, dominio `docs.escenara.com`, HTTPS y registro DNS | 0.32.1 |
 | Cambios | [CHANGELOG](CHANGELOG.md) | Historial de versiones | Vivo |
 
 ## Dónde va cada cosa
 
 - `docs/`: documentación duradera del producto, la marca, la arquitectura, los recursos y los procesos.
 - `docs/privado/`: solo en local; claves y datos personales. Nunca en git.
-- `docs/guias/`: guías de uso de la plataforma para quien la usa, no para quien la desarrolla.
+- `docs/guias/`: guías de uso de la plataforma para quien la usa, no para quien la desarrolla. Una guía nueva se añade también a `guias/indice.json`, en su sección: solo lo que lista el índice sale en la web.
+- `docs/assets/diagramas/`: diagramas SVG de las guías, con colores por variables CSS (`--dg-*`) para que se lean en tema claro y oscuro, y con `<title>` y `<desc>`.
 - `docs/assets/`: imágenes y recursos de apoyo de la documentación.
 - `docs/assets/capturas/`: capturas de la plataforma para la guía de usuario y el README.
 

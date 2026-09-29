@@ -8,6 +8,8 @@ Para cada tipo hay una lista:
 - la **primera opción** es la principal, la que se usa siempre que funcione;
 - las siguientes son **reservas**: se prueban solas, sin preguntarte, cuando la anterior falla.
 
+![Mapa de modelos: una lista por tipo y la regla para pasar a la reserva sin un segundo cargo](../assets/diagramas/mapa-de-modelos.svg)
+
 Desde la 0.22.0 el mapa cubre **los cinco tipos**, imagen y vídeo incluidos:
 
 | Tipo | Para qué | Quién puede estar |

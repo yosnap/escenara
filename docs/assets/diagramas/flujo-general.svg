@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" class="dg" viewBox="0 0 800 564" width="800" height="564" role="img" aria-labelledby="flujo-titulo flujo-desc">
+  <title id="flujo-titulo">De la idea al vídeo publicado</title>
+  <desc id="flujo-desc">Flujo de Escenara en seis pasos: 1 personaje (fotos, ficha y consentimiento, con tus fotos), 2 fotograma (imagen inicial, cuesta créditos), 3 clip de 4 a 8 segundos desde el fotograma (créditos), 4 voz y subtítulos (créditos o cuota del plan), 5 montaje (sin créditos) y 6 exportación a MP4 vertical con etiqueta de IA (sin créditos). Antes de cada paso de pago hay controles previos, coste estimado y confirmación.</desc>
+  <style>
+    .dg{--f:var(--dg-fondo,#F7F8FC);--s:var(--dg-superficie,#FFFFFF);--sa:var(--dg-superficie-alta,#EFF1F8);--t:var(--dg-texto,#182032);--ts:var(--dg-texto-suave,#485269);--b:var(--dg-borde,#858EA1);--a:var(--dg-acento,#2753D7);--as:var(--dg-acento-suave,#E3EAFC);--c:var(--dg-chispa,#B53D1C);--cs:var(--dg-chispa-suave,#FDE7DF);--e:var(--dg-exito,#166A51);--es:var(--dg-exito-suave,#DDF1E9);--v:var(--dg-aviso,#875016);--vs:var(--dg-aviso-suave,#F8EBD6);--p:var(--dg-peligro,#A43343);--ps:var(--dg-peligro-suave,#F8E1E5)}
+    @media (prefers-color-scheme:dark){.dg{--f:var(--dg-fondo,#0D1018);--s:var(--dg-superficie,#171B27);--sa:var(--dg-superficie-alta,#222839);--t:var(--dg-texto,#F5F6FA);--ts:var(--dg-texto-suave,#B8C0D1);--b:var(--dg-borde,#737F98);--a:var(--dg-acento,#8EB8FF);--as:var(--dg-acento-suave,#1B2A4D);--c:var(--dg-chispa,#FFAD78);--cs:var(--dg-chispa-suave,#3A2418);--e:var(--dg-exito,#66D6AB);--es:var(--dg-exito-suave,#12362B);--v:var(--dg-aviso,#F5C97A);--vs:var(--dg-aviso-suave,#3A2E14);--p:var(--dg-peligro,#FF9EAD);--ps:var(--dg-peligro-suave,#3D1C24)}}
+    .dg text{font-family:Manrope,Inter,ui-sans-serif,system-ui,sans-serif;fill:var(--t);font-size:15px}
+    .dg .dg-lienzo{fill:var(--f)}
+    .dg .dg-caja{fill:var(--s);stroke:var(--b);stroke-width:1.5}
+    .dg .dg-panel{fill:var(--sa);stroke:none}
+    .dg .dg-acento{fill:var(--as);stroke:var(--a);stroke-width:1.5}
+    .dg .dg-chispa{fill:var(--cs);stroke:var(--c);stroke-width:1.5}
+    .dg .dg-exito{fill:var(--es);stroke:var(--e);stroke-width:1.5}
+    .dg .dg-aviso{fill:var(--vs);stroke:var(--v);stroke-width:1.5}
+    .dg .dg-peligro{fill:var(--ps);stroke:var(--p);stroke-width:1.5}
+    .dg .dg-linea{fill:none;stroke:var(--b);stroke-width:2}
+    .dg .dg-flecha{fill:var(--b)}
+    .dg .dg-marca{fill:var(--a)}
+    .dg .dg-titulo{font-size:24px;font-weight:700}
+    .dg .dg-negrita{font-weight:700;font-size:17px}
+    .dg .dg-suave{fill:var(--ts);font-size:14px}
+    .dg .dg-etiqueta{font-size:13px;font-weight:600}
+    .dg .dg-sobre-marca{fill:var(--s);font-weight:700;font-size:15px}
+    .dg .dg-t-acento{fill:var(--a)}
+    .dg .dg-t-chispa{fill:var(--c)}
+    .dg .dg-t-exito{fill:var(--e)}
+    .dg .dg-t-peligro{fill:var(--p)}
+  </style>
+  <defs>
+    <marker id="flujo-punta" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="dg-flecha"/></marker>
+  </defs>
+  <rect class="dg-lienzo" width="800" height="564" rx="20"/>
+  <text class="dg-titulo" x="24" y="44">De la idea al vídeo publicado</text>
+  <text class="dg-suave" x="24" y="70">Seis pasos. Cada uno tiene su guía y ninguno gasta sin que veas antes el coste.</text>
+  <rect class="dg-caja" x="24" y="96" width="220" height="150" rx="16"/>
+  <circle class="dg-marca" cx="56" cy="128" r="16"/>
+  <text class="dg-sobre-marca" x="56" y="133" text-anchor="middle">1</text>
+  <text class="dg-negrita" x="82" y="134">Personaje</text>
+  <text class="dg-suave" x="42" y="170">Fotos, ficha y</text>
+  <text class="dg-suave" x="42" y="192">consentimiento</text>
+  <rect class="dg-acento" x="42" y="206" width="96" height="26" rx="13"/>
+  <text class="dg-etiqueta dg-t-acento" x="90" y="224" text-anchor="middle">Tus fotos</text>
+  <path class="dg-linea" d="M248 171H286" marker-end="url(#flujo-punta)"/>
+  <rect class="dg-caja" x="290" y="96" width="220" height="150" rx="16"/>
+  <circle class="dg-marca" cx="322" cy="128" r="16"/>
+  <text class="dg-sobre-marca" x="322" y="133" text-anchor="middle">2</text>
+  <text class="dg-negrita" x="348" y="134">Fotograma</text>
+  <text class="dg-suave" x="308" y="170">Imagen inicial</text>
+  <text class="dg-suave" x="308" y="192">de la escena</text>
+  <rect class="dg-chispa" x="308" y="206" width="88" height="26" rx="13"/>
+  <text class="dg-etiqueta dg-t-chispa" x="352" y="224" text-anchor="middle">Créditos</text>
+  <path class="dg-linea" d="M514 171H552" marker-end="url(#flujo-punta)"/>
+  <rect class="dg-caja" x="556" y="96" width="220" height="150" rx="16"/>
+  <circle class="dg-marca" cx="588" cy="128" r="16"/>
+  <text class="dg-sobre-marca" x="588" y="133" text-anchor="middle">3</text>
+  <text class="dg-negrita" x="614" y="134">Clip</text>
+  <text class="dg-suave" x="574" y="170">De 4 a 8 s, desde</text>
+  <text class="dg-suave" x="574" y="192">el fotograma</text>
+  <rect class="dg-chispa" x="574" y="206" width="88" height="26" rx="13"/>
+  <text class="dg-etiqueta dg-t-chispa" x="618" y="224" text-anchor="middle">Créditos</text>
+  <rect class="dg-caja" x="24" y="300" width="220" height="150" rx="16"/>
+  <circle class="dg-marca" cx="56" cy="332" r="16"/>
+  <text class="dg-sobre-marca" x="56" y="337" text-anchor="middle">4</text>
+  <text class="dg-negrita" x="82" y="338">Voz</text>
+  <text class="dg-suave" x="42" y="374">Pista de voz</text>
+  <text class="dg-suave" x="42" y="396">y subtítulos</text>
+  <rect class="dg-chispa" x="42" y="410" width="152" height="26" rx="13"/>
+  <text class="dg-etiqueta dg-t-chispa" x="118" y="428" text-anchor="middle">Créditos o cuota</text>
+  <path class="dg-linea" d="M248 375H286" marker-end="url(#flujo-punta)"/>
+  <rect class="dg-caja" x="290" y="300" width="220" height="150" rx="16"/>
+  <circle class="dg-marca" cx="322" cy="332" r="16"/>
+  <text class="dg-sobre-marca" x="322" y="337" text-anchor="middle">5</text>
+  <text class="dg-negrita" x="348" y="338">Montaje</text>
+  <text class="dg-suave" x="308" y="374">Orden, recorte,</text>
+  <text class="dg-suave" x="308" y="396">voz y música</text>
+  <rect class="dg-exito" x="308" y="410" width="120" height="26" rx="13"/>
+  <text class="dg-etiqueta dg-t-exito" x="368" y="428" text-anchor="middle">Sin créditos</text>
+  <path class="dg-linea" d="M514 375H552" marker-end="url(#flujo-punta)"/>
+  <rect class="dg-caja" x="556" y="300" width="220" height="150" rx="16"/>
+  <circle class="dg-marca" cx="588" cy="332" r="16"/>
+  <text class="dg-sobre-marca" x="588" y="337" text-anchor="middle">6</text>
+  <text class="dg-negrita" x="614" y="338">Exportación</text>
+  <text class="dg-suave" x="574" y="374">MP4 vertical con</text>
+  <text class="dg-suave" x="574" y="396">etiqueta de IA</text>
+  <rect class="dg-exito" x="574" y="410" width="120" height="26" rx="13"/>
+  <text class="dg-etiqueta dg-t-exito" x="634" y="428" text-anchor="middle">Sin créditos</text>
+  <path class="dg-linea" d="M666 246V273H134V296" marker-end="url(#flujo-punta)"/>
+  <rect class="dg-panel" x="24" y="474" width="752" height="66" rx="12"/>
+  <text x="400" y="501" text-anchor="middle">Antes de cada paso que cuesta: controles previos, coste estimado</text>
+  <text x="400" y="524" text-anchor="middle">en la moneda del proveedor y tu confirmación.</text>
+</svg>
