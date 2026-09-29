@@ -1,6 +1,6 @@
 # El asistente de guion
 
-Guía de uso · versión 0.17.0
+Guía de uso · puesta al día en la versión 0.32.1
 
 En Escenara un vídeo empieza por un **proyecto**: una idea, un concepto, un guion por escenas y un **plan con su
 coste estimado**. Puedes escribirlo todo a mano, o pedirle al asistente que te proponga un primer borrador. Lo
@@ -14,12 +14,16 @@ apagado de fábrica. Si en tu instalación no está disponible, la página te di
 
 - «El asistente de guion está apagado en esta instalación»: quien la administra lo puede encender en
   Admin › Ajustes.
-- «No hay ningún modelo disponible para esto en el catálogo»: además del interruptor hace falta un modelo de
-  texto **probado** en Admin › Modelos. Se siembra uno, pero como «descubierto», que es el estado de lo que
-  Escenara no ha ejecutado nunca: hasta que alguien lo ejecute y lo marque compatible con su precio medido, no se
-  puede usar. Es a propósito: preferimos no estimar a ciegas.
-- «El asistente escribe con tu propia clave de KIE»: añádela en «Tu cuenta». Pagas tú, en tu cuenta del proveedor,
-  igual que al generar imágenes.
+- «No hay ningún modelo disponible para esto en el catálogo de esta instalación»: además del interruptor hace
+  falta un modelo de texto **elegible** en Admin › Modelos. La instalación trae uno ya validado (GPT 5.6 Sol, de
+  KIE); si alguien lo retira o lo deja sin marcar como compatible con su precio medido, no se puede usar. Es a
+  propósito: preferimos no estimar a ciegas.
+- «El asistente escribe con tu propia clave de KIE» (o del proveedor que toque): añádela en «Tu cuenta». Pagas tú,
+  en tu cuenta del proveedor, igual que al generar imágenes.
+
+Además, desde la 0.21.1 **el guion se pide con tu mapa de modelos de texto**: se usa el primero de la lista y, si
+falla de una manera que prueba que no te cobró, se pasa solo al siguiente. Cómo ordenarlo está en
+[Con qué se genera cada cosa](mapa-de-modelos.md).
 
 Sin asistente **no te falta nada**: escribir el guion a mano es el camino normal, no un apaño.
 
@@ -55,7 +59,10 @@ Lo que el asistente devuelve es **una propuesta**:
 
 De cada escena puedes cambiar **lo que se cuenta o se dice** y **lo que se ve** (encuadre y acción, que es la base
 del fotograma). La **duración** no se cambia escena a escena: se elige una vez para todo el proyecto, arriba en «La
-idea», y el asistente propone escenas de esa duración exacta (8 s de fábrica, 4 s si lo prefieres; cuestan lo mismo).
+idea», con el selector «Duración de cada clip», y el asistente propone escenas de esa duración exacta. Las
+duraciones que se ofrecen son **8, 6, 5 y 4 segundos** (8 s de fábrica), y la que elijas tiene que admitirla tu
+modelo de vídeo. No siempre cuestan lo mismo: con Veo, 4 s y 8 s cobran igual, pero otros modelos cobran distinto
+(el de 6 s, por ejemplo, tiene su propio precio medido). Revisa el coste en el plan antes de producir.
 
 El texto que se le envía al modelo **no se muestra y no se edita**: lo compone Escenara con tu escena, la
 plantilla, los presets y la ficha de tu personaje, y va en inglés porque los modelos responden mejor. Tú decides el
@@ -127,8 +134,9 @@ proyecto vuelve a «Borrador»: revisas el coste y vuelves a aprobar. No es una 
 ya no es lo que se enviaría. Reordenar o borrar escenas **no** invalida las demás, porque no cambia lo que
 costarían.
 
-Aprobar **no genera nada**: autoriza. Producir las escenas aprobadas llega en una versión siguiente, y cuando
-llegue pasará por esta misma puerta.
+Aprobar **no genera nada**: autoriza. Producir las escenas aprobadas ya se puede hacer, desde el botón
+**«Producir las escenas»** de la página del proyecto, y pasa por esta misma puerta: lo cuenta
+[Producir tu proyecto, escena a escena](producir-tu-proyecto.md).
 
 ## Preguntas rápidas
 
@@ -138,7 +146,8 @@ administra la instalación **tampoco** los ve: un guion es trabajo privado.
 **¿Qué pasa con lo que generé antes de esta versión?** Está agrupado en un proyecto «Sin título», con una escena
 por trabajo. No se ha borrado ni cambiado nada.
 
-**¿«Crear» sigue funcionando?** Sí, exactamente igual. Es el camino rápido para una imagen o un clip suelto.
+**¿«Crear» sigue funcionando?** Sí. Es el camino rápido para una imagen o un clip suelto, y hoy empieza por elegir
+de dónde sale el clip; mira [Tu primer vídeo](tu-primer-video.md) y [Dirigir tu clip](dirigir-tu-clip.md).
 
 **¿Cuánto cuesta el asistente?** Lo que diga el panel antes de pulsar, y se paga con tu clave. Al terminar, el
 proveedor informa lo que ha costado de verdad y eso es lo que queda apuntado en tu gasto. Ese gasto **también

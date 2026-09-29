@@ -3,8 +3,22 @@
 Desde la 0.24.0, Escenara puede comprobar que **lo generado encaja**: que una imagen sigue siendo la misma
 persona, que la escena cuenta lo que dice el guion y que la voz suena como debería sonar.
 
-Son **cuatro comprobaciones** y solo una de ellas decide algo. Las otras tres se limitan a mirar y a dejar
-escrito lo que opinan, para que puedas ver si aciertan antes de que nadie les dé poder sobre tu trabajo.
+Son **ocho comprobaciones**. Las cuatro primeras son las de esta guía (parecido, guion, resultado y emoción); las
+otras cuatro miran la dirección del clip, el producto, el ángulo del anuncio y el reparto de un diálogo, y se
+explican en sus guías. De fábrica solo la del parecido está en **«Activa»**: las otras siete van **«En sombra»**,
+que quiere decir que miran y dejan escrito lo que opinan, para que puedas ver si aciertan antes de que nadie les
+dé poder sobre tu trabajo.
+
+### «En sombra» y «Activa»
+
+Quien administra elige el modo de cada comprobación en **Admin › Ajustes › Coherencia**, con tres opciones:
+
+- **Apagada**: no se mira nada y no se gasta nada.
+- **En sombra**: la comprobación se hace, se guarda con su evidencia y **te enseña su veredicto, pero no bloquea
+  nada**. Decides tú, siempre.
+- **Activa**: su veredicto **decide de verdad**. Hoy eso solo tiene un efecto en el parecido de una persona (la
+  vista que pasa cuenta como foto de referencia y la que no, no). En las otras siete, aunque se pusieran en
+  Activa, la aplicación no bloquea ninguna exportación ni cambia el estado de la escena.
 
 ## Lo primero: no cambia nada sin que tú lo pidas
 
@@ -13,7 +27,7 @@ escrito lo que opinan, para que puedas ver si aciertan antes de que nadie les d�
   plan**, así que se apunta con 0 créditos y lo que se guarda son los tokens.
 - Si falta algo para comprobar, se te dice qué falta. No hay veredictos a medias ni huecos en silencio.
 
-## 1. ¿Es la misma persona? (esta sí decide)
+## 1. ¿Es la misma persona? (esta viene en «Activa»)
 
 Cuando generas una vista que le falta a un personaje —la de frente, el perfil, el cuerpo entero—, hasta ahora esa
 imagen **no contaba**: aparecía en su ficha con su distintivo de «generada» y la cobertura seguía diciendo que esa
@@ -30,11 +44,12 @@ El veredicto puede ser:
 | Veredicto | Qué significa | Qué pasa |
 |---|---|---|
 | **Es la misma persona** | Los rasgos coinciden y hay poca duda | Esa vista **cuenta** como foto de referencia y deja de faltar |
-| **Míralo tú** | Hay parecido, pero no la confianza suficiente para decidir solo | No cuenta todavía; mírala tú y decide |
+| **Mírala tú** | Hay parecido, pero no la confianza suficiente para decidir solo | No cuenta todavía; vuelve a comprobarla o sube una foto real |
 | **No parece la misma persona** | Algún rasgo estable es claramente distinto | No cuenta, y no conviene usarla para guiar la generación |
 
 Debajo siempre sale **por qué**: la probabilidad y lo que se miró. Un veredicto que no puedes discutir no sirve de
-nada.
+nada. Con «Mírala tú» **no hay ningún botón para decidir a mano**: solo **«Volver a comprobar»**, y la vista no
+cuenta hasta que otra comprobación dé «Es la misma persona» (o hasta que subas una foto real).
 
 ### Antes hay que autorizarlo (personas reales)
 
@@ -51,7 +66,7 @@ sencillamente no cuentan, como hasta la 0.23.x.
 Un personaje **inventado** no necesita autorización: no hay ninguna persona real cuya cara salga de ahí, y sus
 imágenes ya contaban desde la 0.23.2.
 
-## 2, 3 y 4. Guion, resultado y emoción (estas solo miran)
+## 2, 3 y 4. Guion, resultado y emoción (vienen «En sombra»)
 
 En la pantalla de revisión de un proyecto, cada escena tiene ahora **«Comprobar la coherencia»**. Sale de ahí:
 
@@ -61,9 +76,10 @@ En la pantalla de revisión de un proyecto, cada escena tiene ahora **«Comproba
 - **La emoción encaja con el tono**: se escucha la voz del clip —lo que dice, cómo suena, el ambiente de fondo— y
   se compara con el tono del guion.
 
-Las tres van **en sombra**, y eso quiere decir exactamente lo que parece: **no bloquean la exportación, no cambian
-el estado de la escena y no aceptan ni rechazan nada**. Aparecen con su veredicto, su evidencia y su confianza, y
-ahí se quedan.
+De fábrica las tres van **en sombra**, y eso quiere decir exactamente lo que parece: **no bloquean la exportación,
+no cambian el estado de la escena y no aceptan ni rechazan nada**. Aparecen con su veredicto («Encaja», «Míralo tú»
+o «No encaja»), su evidencia y su confianza, y ahí se quedan: decides tú. El panel de la escena lo dice siempre con
+las mismas palabras, esté el modo en sombra o en Activa.
 
 ### Los dos botones que de verdad importan
 
@@ -90,8 +106,11 @@ sistema no decide y te lo pasa a ti.
 
 1. Que quien administra haya guardado la **clave de TypeSafe** en Admin › Ajustes › Coherencia. Sin ella no se
    comprueba nada y la pantalla lo dice.
-2. Que tú tengas en «Tu cuenta» un **servicio compatible con la API de OpenAI que vea imágenes**, y que oiga audio
-   si quieres comprobar la emoción de la voz. Se paga con la cuota de tu plan y no cuesta créditos.
+2. Que tengas en tu **mapa de modelos** un servicio compatible con la API de OpenAI que vea imágenes, y que oiga
+   audio si quieres comprobar la emoción de la voz. Quien administra elige en Admin › Ajustes › Coherencia qué
+   modelo se prueba primero (de fábrica, «gemma4» para imágenes y «mimo-v2.5» para audio) y ese modelo tiene que
+   estar dado de alta en tu mapa; si no, se recorre tu mapa tal cual. Para el audio, hoy solo oyen «mimo-v2.5» y
+   «mimo-v2.6-flash» de NaN builders. Se paga con la cuota de tu plan y no cuesta créditos.
 3. Para el parecido de una persona real, su **autorización** en el consentimiento.
 
 Si falta cualquiera de las tres, se te dice cuál y todo lo demás sigue funcionando igual.

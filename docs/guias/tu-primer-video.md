@@ -1,6 +1,6 @@
 # Tu primer vídeo
 
-Guía para generar tu primer fotograma y tu primer clip en Escenara, desde el navegador y sin tocar código. Disponible a partir de la versión **0.10.0**.
+Guía para generar tu primer fotograma y tu primer clip en Escenara, desde el navegador y sin tocar código. Disponible desde la versión **0.10.0** y puesta al día con la **0.32.1**.
 
 ![Flujo de Escenara: personaje, fotograma, clip, voz, montaje y exportación, con lo que cuesta cada paso](../assets/diagramas/flujo-general.svg)
 
@@ -8,23 +8,34 @@ Guía para generar tu primer fotograma y tu primer clip en Escenara, desde el na
 
 1. **Tu clave de KIE.ai.** Escenara no vende créditos ni usa una clave común: generas con tu propia cuenta y pagas al proveedor. Consigue la clave en [kie.ai/api-key](https://kie.ai/api-key) y guárdala en **Tu cuenta › Credenciales de IA**. Solo se guarda si la prueba pasa, y queda cifrada en el servidor: nadie, ni quien administra, puede volver a verla.
 2. **Saldo de créditos en KIE.** Con los precios comprobados el 27 de septiembre de 2026, el fotograma por defecto cuesta 4 créditos y el clip por defecto de 4 s, 60. Unos 5 USD dan para unos 1.000 créditos. Si eliges otro modelo, el coste es el suyo y se muestra antes de confirmar.
-3. **Una foto de la persona o el personaje.** Súbela a tu biblioteca o tenla a mano. Solo imágenes (JPEG, PNG, WebP, GIF o AVIF) de hasta 10 MB.
+3. **Una foto de la persona, o un personaje tuyo.** Súbela a tu biblioteca o tenla a mano; si ya tienes un personaje con su consentimiento y sus fotos, lo eliges en «Crear» y no hace falta ninguna foto suelta. También puedes partir de una imagen que ya tengas y pagar solo el clip. Solo imágenes (JPEG, PNG, WebP, GIF o AVIF) de hasta 10 MB.
 
 Si te falta la clave, `/crear` te lo dice y te lleva a la página de cuenta.
 
-## Los cuatro pasos
+## Los pasos de «Crear»
 
-### 1. Elige la imagen de referencia
+«Crear» es una lista de pasos numerados. Son casi los mismos siempre, pero el camino que elijas al principio cambia cuáles ves. Cada opción de dirección (plano, cámara, gesto…) se explica en [Dirigir tu clip](dirigir-tu-clip.md).
 
-En **Crear**, sube la foto, arrástrala o elígela de tu biblioteca. El modelo intentará mantener la cara, el pelo y los rasgos de esa imagen.
+### 1. ¿De dónde sale el clip?
+
+Lo primero que eliges son dos caminos:
+
+- **Crear un fotograma nuevo**: eliges a quién sale y qué está haciendo, y se genera su imagen. Se paga el fotograma y, después, el clip. Es el camino que sigue el resto de esta guía.
+- **Usar una imagen que ya tengo**: un fotograma de otro día, una vista de tu personaje o una foto tuya. No se genera ni se paga ningún fotograma: tras elegir la imagen («Elige la imagen de partida») pasas directamente al paso **«El clip»**.
+
+### 2. Elige a quién generas
+
+Es el paso «Elige a quién generas»: un personaje tuyo, o una imagen suelta que subes, arrastras o eliges de tu biblioteca. El modelo intentará mantener la cara, el pelo y los rasgos. Si no eliges ninguna de las dos, la escena se genera solo con tu descripción, con un modelo de texto a imagen (otro modelo y otro precio, y la pantalla lo dice).
+
+Tienes que marcar la casilla **«En estas fotos no aparece ninguna otra persona ni ningún menor»**.
 
 **Puedes elegir el modelo.** Debajo de la imagen aparece el modelo del fotograma, y junto al clip el de la animación, con sus créditos y su estado. Solo salen los que esta instalación ha probado de verdad: los marcados como **validado** están además revisados por quien administra. Al cambiar de modelo, el coste estimado se vuelve a calcular.
 
-Marca la casilla **«tengo derecho a usar esta imagen»** cuando llegues al paso 3: es obligatoria y queda registrada en el trabajo con su fecha. Si la persona de la foto no eres tú, necesitas su permiso.
+Marca la casilla **«Tengo derecho a usar esta imagen»** cuando llegues a «Revisa el coste y confirma»: es obligatoria y queda registrada en el trabajo con su fecha. Si la persona de la foto no eres tú, necesitas su permiso.
 
 **Dónde va la imagen.** Para generar, Escenara sube la foto al almacenamiento temporal de KIE y le pasa ese enlace al modelo: durante unas horas el archivo es accesible para quien tenga la dirección, y después KIE lo borra. Tenlo en cuenta con fotos de otras personas. El archivo original sigue en tu biblioteca, en el almacenamiento de tu instalación.
 
-### 2. Describe la escena
+### 3. Describe la escena
 
 Di dónde está, qué hace y cómo se ve. Cuanto más concreto, mejor:
 
@@ -34,7 +45,7 @@ El fotograma sale vertical (9:16), el formato de Reels, TikTok y Shorts.
 
 **Lo que dice, aparte.** Si quieres que el personaje hable, escribe la frase en el campo **«Lo que dice (opcional)»**, no en la descripción de la escena. Si el modelo de clip que has elegido no genera voz, Escenara te lo dice y ese campo no se usa: para que hable, elige un modelo con voz. Los modelos de imagen, si ven una frase en el prompt, la **dibujan** en el fotograma como subtítulo, bocadillo o rótulo (lo comprobamos generando de verdad con tres modelos distintos), y el clip lo hereda. Por eso el fotograma se genera solo con la descripción visual, y la frase se usa únicamente en el clip, que sí tiene voz.
 
-### 3. Revisa el coste y confirma
+### 4. Revisa el coste y confirma
 
 El panel de coste es la zona clara de la pantalla y dice tres cosas:
 
@@ -48,7 +59,7 @@ Si un trabajo pasa del aviso configurado (200 créditos por defecto, ajustable e
 
 **Si se corta la conexión al enviar**, Escenara no te dirá que lo repitas sin más: te avisa de que puede haberse enviado y te manda al historial. Y si vuelves a pulsar el botón con la misma confirmación, el servidor reconoce que es la misma y te devuelve el trabajo que ya había creado, sin encargar otro.
 
-### 4. Espera y mira el resultado
+### 5. Espera y mira el resultado
 
 Verás el estado **real** que informa KIE, traducido: «en cola en el proveedor», «generando», «listo» o «ha fallado», con el tiempo transcurrido y Chispa haciéndote compañía. No hay barras de porcentaje porque el proveedor no informa de ningún porcentaje: preferimos decirte la verdad.
 
@@ -58,16 +69,17 @@ Cuando esté listo, el archivo se descarga al momento (la URL del proveedor cadu
 
 ## Animar el fotograma
 
-Desde el fotograma listo, el botón **Animar** genera un clip vertical usando ese fotograma como primer fotograma. La duración y el formato son los del modelo elegido (con el de por defecto, 4 segundos a 720p); todavía no se pueden ajustar a mano. Tiene su propia estimación y su propia confirmación: cada gasto se aprueba por separado.
+Cuando el fotograma está listo (o desde la imagen que has traído), el paso **«El clip»** genera un clip vertical usando esa imagen como primer fotograma. Ahí eliges el modelo del clip, su **duración** entre las que ese modelo sabe cobrar, lo que dice el personaje y la dirección con botones (plano, ángulo, movimiento de cámara, gesto…) y, si quieres, una plantilla o un [trend](trends-virales.md) vigente. La proporción es 9:16 y el clip sale a 720p. Pulsas **Animar**, con su propia estimación y su propia confirmación: cada gasto se aprueba por separado.
 
 ## Si algo va mal
 
 - **«Sin respuesta del proveedor».** No hemos podido saber cómo va el trabajo. Escenara **no lo reenvía nunca**, porque podría cobrarse dos veces. Verás el identificador de la tarea en KIE y un botón **Volver a consultar**: púlsalo cuando quieras y, si la tarea terminó, se recuperan el archivo y los créditos consumidos.
 - **«Ha fallado».** El proveedor no ha podido completar la generación. Prueba con otra descripción o con otra imagen.
 - **Se ha generado pero no se ha guardado.** Suele ser falta de espacio en tu biblioteca. Vacía la papelera o borra archivos y pulsa **Volver a consultar**: se reintenta solo la descarga, nunca la generación.
-- **«Tu saldo de KIE no llega».** Recarga créditos en el proveedor; Escenara no envía nada que no puedas pagar.
+- **«Tu cuenta de KIE.ai tiene N créditos y este trabajo necesita M».** Recarga créditos en el proveedor; Escenara no envía nada que no puedas pagar. (Al generar las vistas de un personaje, el mismo aviso se lee «Tu saldo de KIE no llega para…».)
 - **«Necesitas … libres en la biblioteca».** El espacio se comprueba antes de gastar, reservando el tamaño máximo que puede tener el archivo. Libera espacio y vuelve a intentarlo.
-- **«Ya tienes trabajos en marcha».** Se admiten tres a la vez por usuario, para que un error no se convierta en una factura.
+- **«Ya tienes N trabajos en marcha, que es el máximo de esta instalación».** De fábrica se admiten tres a la vez por usuario, para que un error no se convierta en una factura. Espera a que terminen antes de pedir otro.
+- Otros motivos por los que un botón no se activa, con su solución, están en [Por qué no puedo generar](por-que-no-puedo-generar.md).
 
 ## Qué se guarda de cada generación
 

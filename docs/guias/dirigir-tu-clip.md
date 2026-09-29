@@ -45,6 +45,8 @@ en su valor sensato y se te dice cuál es.
   oirá decir, palabra por palabra.
 - **Voz en off / b-roll**: un clip **mudo**. El personaje sale con la boca cerrada y no habla. La narración se
   monta encima después.
+- **Cantar con tu audio**: el personaje canta o dice, con los labios sincronizados, un audio que subes tú. Tiene su propia guía:
+  [Cantar con tu audio](cantar-con-audio-propio.md).
 
 Si eliges voz en off y tenías guion escrito, no se pierde: se te avisa de que no se envía al modelo y se
 guarda para el montaje.
@@ -59,14 +61,15 @@ Para hablar a cámara, el plano medio y el ángulo de tres cuartos son los que m
 
 ### 3. La cámara
 
-Qué hace la cámara durante el clip. Están ordenados por cuánto se puede confiar en que el modelo los respete:
+Qué hace la cámara durante el clip. Están ordenados en tres niveles por cuánto se puede confiar en que el modelo
+los respete:
 
-- **Básicos** (salen casi siempre): quieta con gestos, plano fijo, zoom lento a la cara, zoom rápido al empezar
-  a hablar, en mano sutil.
-- **Con variación** (salen bien la mayoría de las veces): acercamiento sutil, retroceso que revela, órbita
+- **Básico** (sale casi siempre): quieta con gestos, plano fijo, zoom lento a la cara, zoom rápido al empezar,
+  en mano sutil.
+- **Con variación** (sale bien la mayoría de las veces): acercamiento sutil, retroceso que revela, órbita
   lenta, seguimiento al caminar.
-- **Avanzados** (mira el clip antes de darlo por bueno): push-in a los ojos en la frase clave, contrapicado
-  heroico, foco que cambia al fondo, cámara lenta.
+- **Avanzado** (mira el clip antes de darlo por bueno): push-in a los ojos, contrapicado heroico, foco que
+  cambia al fondo, cámara lenta.
 
 > **«Antes de hablar» casi nunca sale.** Probado con clips reales: el modelo empieza a hablar en cuanto
 > arranca el clip y deja el silencio al final, así que un gesto «antes» suele acabar mientras habla.
@@ -213,7 +216,8 @@ tu personaje.
 ![Rellenar el fotograma desde una foto](../assets/capturas/0.25.0-extraccion-claro.webp)
 
 Antes de leer nada se te pide permiso, porque **la foto se sube a un servicio externo**: si es la foto de un
-personaje tuyo hace falta su declaración de coherencia, y si es una foto suelta, que lo confirmes tú. Sin eso
+personaje tuyo hace falta la autorización de comprobación de parecido de su consentimiento, y si es una foto
+suelta, que lo confirmes tú. Sin eso
 la imagen no sale de aquí.
 
 **No se genera nada hasta que confirmas esos campos.** Lo que un modelo cree ver no es necesariamente lo que
@@ -233,8 +237,8 @@ Cuando el clip está hecho, puedes pedir que se compruebe si **hace lo que dirig
 movimiento, el gesto y el momento que elegiste, y si es una sola toma sin cortes. El veredicto viene con su
 motivo y con dos botones —«tiene razón» y «se equivoca»— que son lo único con lo que se mide si acierta.
 
-De momento esta comprobación **no bloquea nada**: se registra y se te enseña, para poder medir cuánto acierta
-antes de darle poder. Quien administra puede apagarla en Admin › Ajustes › Coherencia.
+De fábrica esta comprobación va **en sombra** y **no bloquea nada**: se registra y se te enseña, para poder medir cuánto acierta
+antes de darle poder. Quien administra puede apagarla en Admin › Ajustes › Coherencia (mira [Comprobar la coherencia](comprobar-la-coherencia.md)).
 
 ## Lo que ya está comprobado y lo que no
 
@@ -248,11 +252,10 @@ Probado con clips reales el 28/09/2026:
 Todavía sin comprobar: si el **acento** suena como se pide (hay que escucharlo) y los movimientos avanzados
 que no se han probado.
 
-Puedes **generarla desde la ficha del personaje**, en la pestaña de referencias: cuesta lo mismo que un
-fotograma y se confirma como cualquier otra generación. Desde ahí también la descartas o la haces la
-referencia fija del personaje.
-
 La **hoja de identidad 3×3** (nueve retratos en una imagen) nace como **candidata** y **no se usa** salvo que
-tú lo pidas. En la ficha del personaje hay un interruptor, apagado de fábrica: «Probar la hoja en la mitad de
+tú lo pidas. Puedes **generarla desde la ficha del personaje**, en la pestaña «Referencias»: cuesta lo mismo que
+un fotograma y se confirma como cualquier otra generación. Desde ahí también la descartas («Descartarla») o la
+haces la referencia fija del personaje («Usarla siempre en este personaje»). En la ficha del personaje hay un
+interruptor, apagado de fábrica: «Probar la hoja en la mitad de
 mis escenas». Si lo enciendes, la mitad de sus escenas se harán solo con la hoja para poder comparar cuál da
 mejor parecido; cuestan lo mismo y cada escena te dice con cuál se hizo. Puedes apagarlo cuando quieras.

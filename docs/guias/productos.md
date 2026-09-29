@@ -10,7 +10,7 @@ con tu foto frontal y te dice si el producto sigue siendo el tuyo.
 
 ## Darlo de alta
 
-En **Productos › Nuevo** pones el nombre, una frase de qué es y de qué tipo es:
+En **Productos**, con el botón **«Nuevo producto»**, pones el nombre, una frase de qué es y de qué tipo es:
 
 - **Físico**: algo que se coge con la mano.
 - **Digital**: una app o un programa que se ve en una pantalla.
@@ -65,7 +65,7 @@ que no son y a veces un logo que no es el tuyo. Por eso va en pasos:
 3. **Animar el resultado**, que es el clip de siempre.
 
 **Los dos primeros son dos generaciones distintas**: cada una te dice lo que cuesta y la confirmas tú. En
-«Crear» aparece el botón «Insertar tu captura» debajo del fotograma; en la escena de un proyecto, el botón de
+«Crear» aparece el paso «2. Insertar tu captura en la pantalla» debajo del fotograma; en la escena de un proyecto, el botón de
 aprobar el fotograma encola la inserción, y cuando esa está lista vuelves a aprobar y sale el clip.
 
 Sin una foto con el papel **Captura de pantalla** no hay nada que insertar, y se te dice antes de pedirlo.

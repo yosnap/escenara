@@ -8,9 +8,9 @@ En una escena hablada puedes montar una conversación entre **dos personajes tuy
 
 | Formato | Qué se genera | Coste que confirmas |
 |---|---|---|
-| **Solo** | Un personaje, como hasta la 0.27.0 | El de un clip; la escena sigue el camino anterior |
-| **Podcast** | Dos clips, uno por personaje, en el orden del reparto | La suma de los dos clips, en una confirmación |
-| **Dualcast** | Un clip con las dos caras en el mismo plano | El de un clip |
+| **Un personaje** | Un personaje, como hasta la 0.27.0 | El de un clip; la escena sigue el camino anterior |
+| **Podcast (dos clips)** | Dos clips, uno por personaje, en el orden del reparto | La suma de los dos clips, en una confirmación |
+| **Dualcast (los dos en el plano)** | Un clip con las dos caras en el mismo plano | El de un clip |
 
 ![Podcast frente a dualcast: dos clips con un personaje cada uno, o un clip con los dos en el mismo plano](../assets/diagramas/dos-personajes.svg)
 
@@ -18,8 +18,8 @@ En el spike del 29/09/2026, un clip de 4 s a 720p con Gemini Omni Flash 1.1 cost
 
 ## Montar el reparto
 
-1. Abre el proyecto y una escena en **Escenas › Reparto**. «Solo» conserva la escena de un personaje.
-2. Elige **Podcast** o **Dualcast** y añade otro personaje de los tuyos. El límite es **dos**. Si un formato está apagado, la pantalla indica que se activa en **Admin › Ajustes › Dos personajes**.
+1. Abre el proyecto y una escena en **Escenas › Reparto**. «Un personaje» conserva la escena de un personaje.
+2. Elige **Podcast** o **Dualcast** y añade otro personaje de los tuyos. El límite es **dos**. Podcast y dualcast **no admiten una escena con producto**: quita el producto de la escena antes de elegirlos. Si un formato está apagado, la pantalla indica que se activa en **Admin › Ajustes › Dos personajes**.
 3. Ajusta **papel** (habla o acompaña), **lado** y **mirada**. En podcast se propone el lado opuesto y la mirada cruzada. En dualcast ambos comparten plano: quien no habla escucha y reacciona.
 4. En **El diálogo, turno a turno**, asigna a cada frase su personaje, escribe lo que dirá **literalmente** y, si quieres, una dirección vocal. Puedes ordenar y quitar turnos. El texto hablado **no se traduce**; la dirección vocal sí puede traducirse para componer la petición.
 5. Revisa **Lo que se ha pedido**: resume en castellano quién sale, dónde mira y qué dice. Nunca muestra el prompt interno. Si el diálogo no cabe en los segundos del clip, aparece un aviso con las palabras y los segundos necesarios. Puedes acortarlo o confirmar expresamente que quieres seguir.

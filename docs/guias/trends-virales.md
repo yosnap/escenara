@@ -2,6 +2,13 @@
 
 Un trend es un formato de clip corto. La tarjeta explica en castellano qué se verá, cuánto dura y si permite diálogo. La plantilla que compone el prompt se guarda en el servidor; la pantalla no muestra su texto interno.
 
+> **Antes de empezar: alguien de administración tiene que publicar un trend.** Solo se pueden elegir los trends
+> con vigencia **«Vigente»**, y los que están «En revisión» o «Caducada» no salen. Un administrador los publica en
+> **Admin › Plantillas**, abriendo una plantilla de tipo «Trend» y poniendo su **Vigencia** en «Vigente». Mientras no
+> haya ninguno publicado, el selector de trends de la escena solo dirá **«Todavía no hay trends aprobados por la
+> administración»** y no habrá nada que elegir. Las plantillas iniciales se crean en «En revisión», así que en una
+> instalación nueva hay que publicar alguna primero.
+
 ## Elegir uno
 
 En **Crear**, elige una imagen de partida y abre «Plantilla o trend vigente» en el paso del clip. Elige un trend, revisa su vista previa y los campos que pide. La duración se fija a la de ese formato y Escenara vuelve a pedir al servidor la estimación del modelo. El resumen de coste muestra créditos, fecha del precio, posibles costes de traducción y el total exacto que hay que confirmar.

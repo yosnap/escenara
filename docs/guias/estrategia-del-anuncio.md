@@ -89,7 +89,9 @@ Con el brief listo, «Pedir 5 hooks y el guion» propone **cinco arranques disti
 desde **tu** ángulo y **tu** oferta. Cuesta una llamada de texto de tu mapa de modelos, con su estimación y su
 confirmación, como el resto del texto de Escenara.
 
-Los cinco hooks **no se guardan**: son una propuesta. Los puedes reescribir y eliges uno. Al elegirlo:
+Los cinco hooks **no pasan al guion hasta que eliges uno**: son una propuesta. La última propuesta pagada se
+conserva y se enseña al volver a abrir la pantalla, para que un corte de red no te la haga perder. Los puedes
+reescribir y eliges uno. Al elegirlo:
 
 - se escribe como **primera frase del guion**, no como un campo aparte;
 - su movimiento de cámara y su gesto —elegidos del catálogo de dirección, no inventados— pasan a la **primera
@@ -112,10 +114,11 @@ guion en borrador, que después apruebas y produces uno a uno como siempre.
 El botón «Comprobar el ángulo» le pide a Jev tres cosas del guion: que responda al ángulo que elegiste, que **no
 mezcle otros** —y si los mezcla, dice **cuáles**— y que la oferta aparezca como la definiste.
 
-Se pide **a mano**, nunca solo. Y de momento va **en sombra**: se registra con su evidencia y **no bloquea nada**
-—ni el plan, ni la producción, ni pedir otro guion—. Está para medir si acierta, y para eso hace falta que le
-digas si tiene razón o se equivoca con los dos botones de al lado. Cuando los números digan que acierta, quien
-administra podrá ponerlo a decidir de verdad.
+Se pide **a mano**, nunca solo. Y de fábrica va **en sombra** (lo explica [Comprobar la coherencia](comprobar-la-coherencia.md)):
+se registra con su evidencia y **no bloquea nada** —ni el plan, ni la producción, ni pedir otro guion—. Está para
+medir si acierta, y para eso hace falta que le digas si tiene razón o se equivoca con los dos botones de al lado.
+Cuando los números digan que acierta, quien administra puede cambiar su modo a «Activa» en Admin › Ajustes ›
+Coherencia; aun así, hoy el código no bloquea nada con este veredicto: el ángulo no se impone, se te enseña.
 
 ## Lo que esta versión no hace todavía
 

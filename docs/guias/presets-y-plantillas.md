@@ -1,10 +1,10 @@
 # Presets y plantillas: crear con botones
 
-Desde la 0.16.0, «Crear» ya no es un campo de texto en blanco. Eliges con **botones** de qué va el vídeo, cómo se ve y qué hace el personaje, **ves el texto exacto que se le va a enviar al modelo** y, si quieres, lo cambias a mano. Todo antes de gastar un solo crédito.
+Desde la 0.16.0, «Crear» ya no es un campo de texto en blanco. Eliges con **botones** de qué va el vídeo, cómo se ve y qué hace el personaje, y ves el coste y lo que falta antes de gastar un solo crédito. El texto que se compone para el modelo no se enseña a los usuarios (ver más abajo).
 
 ## Los botones
 
-Cada botón es un **preset**. Hay seis familias:
+Cada botón es un **preset**. Las familias de origen son seis:
 
 | Familia | Qué decide | Ejemplos sembrados |
 |---|---|---|
@@ -16,6 +16,8 @@ Cada botón es un **preset**. Hay seis familias:
 | **Acción** | Qué hace delante de la cámara | Saluda, camina, enseña algo, se ríe, da una vuelta |
 
 Casi todas son de **una sola opción**: pulsar otra sustituye la anterior, y pulsar la misma la quita. **Acción** admite varias a la vez.
+
+Desde la 0.25.0 hay más familias, las de la dirección del clip: plano, ángulo, óptica, luz, localización, cámara, micro-acción, registro estético y anclajes, y después las de producto, ángulo del anuncio y estilo animado. Esas se eligen en el panel de dirección (mira [Dirigir tu clip](dirigir-tu-clip.md)) y no se repiten más abajo, así que qué botones de la tabla ves exactamente en «Crear» depende de lo que ya elijas en ese panel.
 
 El vestuario que elijas aquí **manda sobre el vestuario habitual** de la ficha del personaje: la ficha dice lo que suele llevar, y la escena dice lo que lleva hoy.
 
@@ -38,7 +40,9 @@ lo demás, con su nombre en español.
 
 Con eso y tu descripción, **el servidor compone** el texto que se le envía al modelo. Va **en inglés**, porque los
 modelos responden claramente mejor así. **Ese texto no se muestra y no se puede editar** (desde la 0.17.0): es
-material de Escenara y del panel de administración. Tú decides el qué —lo que eliges y lo que escribes— y el cómo
+material de Escenara y del panel de administración. Quien administra puede enseñarlo a los usuarios con el
+ajuste **«Mostrar el prompt a los usuarios»**, en Admin › Ajustes › Asistente de guion y proyectos; de fábrica
+está apagado. Tú decides el qué —lo que eliges y lo que escribes— y el cómo
 se escribe lo pone la plantilla de la instalación.
 
 Si tu instalación tiene la traducción encendida, lo que escribas en español se traduce al inglés antes de
