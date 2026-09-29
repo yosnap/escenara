@@ -57,6 +57,9 @@ const CAPACIDADES: readonly Capacidad[] = [
   "text_to_image",
   "image_to_video",
   "text_to_video",
+  // `audio_to_video` se añade en la 0.29.0: los modelos de lip-sync que animan un retrato con un audio subido.
+  // Se piden por el mismo `jobs/createTask` que el resto del vídeo; lo único propio son sus campos.
+  "audio_to_video",
   "text_generation",
   "tts",
 ];

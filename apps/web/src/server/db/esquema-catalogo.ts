@@ -29,6 +29,9 @@ export const capacidadModelo = pgEnum("model_capability", [
   "text_to_image",
   "image_to_video",
   "text_to_video",
+  // 0.29.0: lip-sync de un retrato a un audio subido. Capacidad propia porque el audio es **obligatorio**: un
+  // clip normal pedido a uno de estos modelos lo rechazaría el proveedor después de cobrar la petición.
+  "audio_to_video",
   "text_generation",
   "tts",
   "speech_to_text",

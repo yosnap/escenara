@@ -178,6 +178,140 @@ const REGLAS: readonly Regla[] = [
         }
       : null,
 
+  /**
+   * ── Cantar con audio propio (0.29.0) ────────────────────────────────────────────────────────────────
+   *
+   * Van **antes del dinero** y todas bloquean: lo que impiden es gastar en un clip que ya se sabe que no va a
+   * servir (un audio que el proveedor no tarifa, un retrato que daría un vídeo horizontal) o que no se puede
+   * generar sin una declaración de derechos. Ninguna es confirmable: no son avisos sobre una decisión del
+   * usuario, son requisitos que se arreglan en un clic y sin coste.
+   */
+  (h) =>
+    h.canto && !h.canto.activa
+      ? {
+          regla: "canto-apagado",
+          estado: "bloqueado",
+          motivo: "El formato «cantar con tu audio» está desactivado en esta instalación.",
+          accion: "Pídele a quien la administra que lo encienda en Admin › Ajustes, o cambia el formato de la escena.",
+          http: 409,
+          excepcion: "generacion",
+        }
+      : null,
+  (h) =>
+    h.canto?.activa && !h.canto.conAudio
+      ? {
+          regla: "canto-sin-audio",
+          estado: "bloqueado",
+          motivo: "Esta escena canta, pero todavía no tiene ningún audio elegido: no hay nada que sincronizar.",
+          accion: "Sube el audio a tu biblioteca y elígelo en la escena.",
+          enlace: "/biblioteca",
+          http: 409,
+          excepcion: "proyecto",
+        }
+      : null,
+  (h) =>
+    h.canto?.activa && h.canto.conAudio && h.canto.motivoAudioIncompatible
+      ? {
+          regla: "canto-audio-incompatible",
+          estado: "bloqueado",
+          motivo: h.canto.motivoAudioIncompatible,
+          accion: "Prepara otro audio compatible y selecciónalo en esta escena. No se ha reservado nada.",
+          http: 409,
+          excepcion: "proyecto",
+        }
+      : null,
+  /**
+   * **Declaración de derechos del audio** (RF10). Sin ella no se genera, y el mensaje dice exactamente qué falta:
+   * no «faltan requisitos», sino que hay que declarar con qué derecho se usa **ese** audio. La declaración vale
+   * por audio, así que una vez hecha sirve para todas las escenas que usen el mismo archivo.
+   */
+  (h) =>
+    h.canto?.activa && h.canto.conAudio && !h.canto.declarado
+      ? {
+          regla: "canto-sin-declaracion",
+          estado: "bloqueado",
+          motivo:
+            "Falta la declaración de derechos de este audio: hay que decir si la música es tuya, si la usas con licencia (y cuál) o si es una grabación hablada tuya.",
+          accion:
+            "Decláralo en la escena antes de generar. La declaración vale para este audio, así que solo hay que hacerla una vez aunque lo uses en varias escenas.",
+          http: 409,
+          excepcion: "proyecto",
+        }
+      : null,
+  /**
+   * **Duración por encima del tope**. Se rechaza antes de reservar un solo crédito y se dice **por cuánto** se
+   * pasa y a cuánto hay que recortarlo: un «es demasiado largo» sin la cifra obliga a probar a ciegas.
+   */
+  (h) => {
+    if (!h.canto?.activa || !h.canto.conAudio) return null;
+    const { duracion, segundosMaximos } = h.canto;
+    if (duracion === null) {
+      return {
+        regla: "canto-duracion-ilegible",
+        estado: "bloqueado",
+        motivo:
+          "No se ha podido medir cuánto dura este audio, y el clip se paga por segundo: sin la duración no se puede calcular lo que costaría ni confirmarlo.",
+        accion:
+          "Vuelve a subir el audio en un formato corriente (MP3, WAV o M4A). No se ha enviado nada al proveedor y no se te ha cobrado.",
+        enlace: "/biblioteca",
+        http: 409,
+        excepcion: "proyecto",
+      };
+    }
+    if (duracion <= segundosMaximos) return null;
+    return {
+      regla: "canto-audio-demasiado-largo",
+      estado: "bloqueado",
+      motivo: `Este audio dura ${duracion.toLocaleString("es-ES", { maximumFractionDigits: 1 })} s y el tope de esta instalación es de ${segundosMaximos} s, que es el tramo con el que el proveedor publica su tarifa: por encima de ahí no se puede calcular el coste.`,
+      accion: `Recorta el audio a ${segundosMaximos} s como máximo y vuelve a subirlo, o reparte la canción en varias escenas de ${segundosMaximos} s. No se ha reservado nada.`,
+      enlace: "/biblioteca",
+      http: 409,
+      excepcion: "proyecto",
+    };
+  },
+  (h) =>
+    h.canto?.activa && !h.canto.conRetrato
+      ? {
+          regla: "canto-sin-retrato",
+          estado: "bloqueado",
+          motivo:
+            "Esta escena canta y no hay ningún retrato del protagonista con el que hacerlo: la cara del clip sale de su retrato, no del texto.",
+          accion: "Añade una foto o un retrato vertical al personaje del proyecto y vuelve a intentarlo.",
+          enlace: "/personajes",
+          http: 409,
+          excepcion: "personaje",
+        }
+      : null,
+  (h) =>
+    h.canto?.activa && h.canto.conRetrato && h.canto.motivoRetratoIncompatible
+      ? {
+          regla: "canto-retrato-incompatible",
+          estado: "bloqueado",
+          motivo: h.canto.motivoRetratoIncompatible,
+          accion: "Elige o sube un retrato compatible al personaje. No se ha reservado nada.",
+          http: 409,
+          excepcion: "personaje",
+        }
+      : null,
+  /**
+   * **Retrato horizontal**. Ninguno de los modelos de canto acepta `aspect_ratio` (comprobado en su
+   * documentación, 2026-09-29): el formato del clip es el de la imagen de partida. Se dice **cuál es** la
+   * proporción que tiene y qué hacer, porque «no es vertical» sin la medida no se puede arreglar a la primera.
+   */
+  (h) =>
+    h.canto?.activa && h.canto.conRetrato && !h.canto.retratoVertical
+      ? {
+          regla: "canto-retrato-horizontal",
+          estado: "bloqueado",
+          motivo: `El retrato del personaje mide ${h.canto.proporcionRetrato}, y estos modelos no aceptan que se les pida el formato: el clip saldría con la misma proporción que la imagen, así que no sería vertical.`,
+          accion:
+            "Elige o sube un retrato vertical (por ejemplo 1080 × 1920) para este personaje y vuelve a pedir el clip. No se ha reservado nada.",
+          enlace: "/personajes",
+          http: 409,
+          excepcion: "personaje",
+        }
+      : null,
+
   // ── Aprobación del plan: sin plan aprobado no se produce ninguna escena (0.17.0) ─────────────────────
   (h) =>
     h.escena && !h.escena.planAprobado

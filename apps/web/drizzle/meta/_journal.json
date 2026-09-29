@@ -323,6 +323,13 @@
       "when": 1790637757736,
       "tag": "0046_reparto-fiel-y-turno-del-clip",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1790639605132,
+      "tag": "0047_derechos-musicales-y-audio-de-canto",
+      "breakpoints": true
     }
   ]
 }

@@ -48,6 +48,17 @@ const accionDeEscena = (escenaId: string, cuerpo: Record<string, unknown>) =>
 export const producirEscena = (escenaId: string, confirmacion: ConfirmacionEnvio) =>
   accionDeEscena(escenaId, { accion: "producir", ...confirmacion });
 
+export const producirCanto = async (
+  escenaId: string,
+  confirmacion: ConfirmacionEnvio,
+): Promise<Resultado<ProduccionVista>> => {
+  const resultado = await pedir<{ produccion: ProduccionVista }>(
+    `/api/escenas/${escenaId}/canto/produccion`,
+    json(confirmacion),
+  );
+  return resultado.ok ? { ok: true, datos: resultado.datos.produccion } : resultado;
+};
+
 export const aprobarFotograma = (escenaId: string, confirmacion: ConfirmacionEnvio) =>
   accionDeEscena(escenaId, { accion: "aprobar-fotograma", ...confirmacion });
 

@@ -56,6 +56,13 @@ export const FORMATO_CLIP_INGLES: Record<FormatoClip, string> = {
   ugc_a_camara:
     "A social video with the look of footage filmed on a smartphone, of a person talking straight to camera; the phone that films is never visible in the frame",
   voz_en_off: "A silent b-roll clip meant to sit under a voice-over",
+  /**
+   * `cantar` (0.29.0). Lo que se oye es el audio que sube el usuario y el modelo de lip-sync lo sincroniza, así
+   * que el prompt no pide ninguna frase: describe **cómo se comporta** quien canta, que es lo único que el
+   * texto puede aportar aquí.
+   */
+  cantar:
+    "A vertical social video of a person performing to camera, lip-syncing to the supplied audio track with natural mouth movement and expressive presence",
 };
 
 // ── Acento ──────────────────────────────────────────────────────────────────────────────────────────────

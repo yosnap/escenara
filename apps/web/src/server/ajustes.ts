@@ -1,4 +1,13 @@
 import { sql } from "drizzle-orm";
+import {
+  esResolucionCanto,
+  MODELO_CANTO_POR_DEFECTO,
+  MODELOS_CANTO,
+  RESOLUCIONES_CANTO,
+  type ResolucionCanto,
+  SEGUNDOS_CANTO_MAXIMOS,
+  SEGUNDOS_CANTO_POR_DEFECTO,
+} from "@/lib/canto";
 import { type Comprobacion, esModoCoherencia, type ModoCoherencia, UMBRAL_POR_DEFECTO } from "@/lib/coherencia";
 import { db } from "./db/cliente";
 import { settings } from "./db/esquema";
@@ -208,6 +217,33 @@ export interface Ajustes {
    */
   vozTtsActivo: boolean;
   /**
+   * **Cantar con audio propio** (RF06 y RF10, 0.29.0). Los cuatro ajustes de la función; la declaración de
+   * derechos **no** es configurable a propósito: es una puerta de derechos, no un umbral.
+   */
+  /**
+   * Ofrecer el formato «cantar». **Apagado de fábrica**: cuesta créditos por segundo de audio y ningún modelo
+   * de canto está medido con dinero real en esta instalación, así que encenderlo es una decisión con coste.
+   * Apagarlo deja de ofrecerlo y de generarlo, pero **no borra** ninguna declaración ya registrada.
+   */
+  cantoActivo: boolean;
+  /**
+   * Modelo de canto activo, con el identificador exacto del proveedor. `infinitalk/from-audio` de fábrica: es
+   * el más barato de los dos que esta instalación sabe pedir (3 créditos/s a 480p frente a los 8 de Kling AI
+   * Avatar Standard, tabla pública de KIE comprobada el 2026-09-29). Cambiarlo es un ajuste, no un despliegue.
+   */
+  cantoModelo: string;
+  /**
+   * Tope de duración del audio, en segundos. 15 de fábrica: es la unidad que publica el proveedor («up to 15
+   * seconds») y el único tramo del que hay evidencia. Un audio más largo se rechaza **antes de gastar**, con la
+   * propuesta de recortarlo.
+   */
+  cantoSegundosMaximos: number;
+  /**
+   * Resolución del clip cantado. 480p de fábrica porque es **cuatro veces más barata** que 720p en el modelo de
+   * fábrica (3 frente a 12 créditos/s): si alguien quiere gastar más por más resolución, que sea decidiéndolo.
+   */
+  cantoResolucion: string;
+  /**
    * Orden del transcriptor local, que es el que saca los subtítulos del audio (decisión provisional del
    * propietario, 2026-09-28: **local, sin coste y sin clave**). `whisper-cli` es el binario de `whisper.cpp`
    * (`brew install whisper-cpp`), el más sencillo de instalar en macOS y en Linux.
@@ -339,6 +375,11 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   anuncioVariantesActivas: true,
   // La pista de voz de pago arranca apagada: el modo «voz del clip» no gasta nada más y es el de fábrica.
   vozTtsActivo: false,
+  // El canto arranca apagado: se paga por segundo de audio y ningún modelo de canto está medido aquí todavía.
+  cantoActivo: false,
+  cantoModelo: MODELO_CANTO_POR_DEFECTO,
+  cantoSegundosMaximos: SEGUNDOS_CANTO_POR_DEFECTO,
+  cantoResolucion: "480p",
   transcripcionBinario: "whisper-cli",
   transcripcionModelo: "",
   minimoReferenciasPersonaje: 3,
@@ -511,6 +552,20 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
   anuncioBriefActivo: { valido: booleano, mensaje: "Debe ser sí o no." },
   anuncioVariantesActivas: { valido: booleano, mensaje: "Debe ser sí o no." },
   vozTtsActivo: { valido: booleano, mensaje: "Debe ser sí o no." },
+  cantoActivo: { valido: booleano, mensaje: "Debe ser sí o no." },
+  cantoModelo: {
+    // Solo uno de los que esta instalación **sabe pedir**: un identificador libre aquí sería un envío a ciegas.
+    valido: (v: unknown) => typeof v === "string" && MODELOS_CANTO.includes(v as (typeof MODELOS_CANTO)[number]),
+    mensaje: `Elige uno de los modelos de canto que esta instalación sabe pedir: ${MODELOS_CANTO.join(", ")}.`,
+  },
+  cantoSegundosMaximos: {
+    valido: entero(1, SEGUNDOS_CANTO_MAXIMOS),
+    mensaje: `Indica de 1 a ${SEGUNDOS_CANTO_MAXIMOS} segundos: por encima de ${SEGUNDOS_CANTO_MAXIMOS} el proveedor no publica tarifa, así que no se podría estimar el coste.`,
+  },
+  cantoResolucion: {
+    valido: esResolucionCanto,
+    mensaje: `Elige la resolución del clip cantado: ${RESOLUCIONES_CANTO.join(" o ")}.`,
+  },
   transcripcionBinario: {
     // Nombre de orden o ruta, sin espacios ni metacaracteres: se ejecuta como proceso, así que aquí se acota lo
     // que puede llegar a ser un argumento del intérprete de órdenes.
@@ -670,6 +725,29 @@ export function coherenciaDe(ajustes: Ajustes, comprobacion: Comprobacion): { mo
     reparto_fiel: ajustes.coherenciaUmbralRepartoFiel,
   };
   return { modo: modos[comprobacion], umbral: umbrales[comprobacion] };
+}
+
+/**
+ * Ajustes del canto ya **tipados**: `cantoModelo` y `cantoResolucion` se guardan como texto (la tabla de ajustes
+ * es genérica) pero solo pueden valer lo que valida {@link VALIDACION}, así que aquí se acotan en un solo sitio
+ * en lugar de comprobarlos en cada sitio que los lee.
+ *
+ * El valor por defecto se aplica también si alguien dejó una fila antigua con otro valor: con un modelo que esta
+ * instalación no sabe pedir, lo honesto es usar el que sí sabe, no intentar enviarlo.
+ */
+export function cantoDe(ajustes: Ajustes): {
+  activo: boolean;
+  modelo: (typeof MODELOS_CANTO)[number];
+  segundosMaximos: number;
+  resolucion: ResolucionCanto;
+} {
+  const modelo = MODELOS_CANTO.find((m) => m === ajustes.cantoModelo) ?? MODELO_CANTO_POR_DEFECTO;
+  return {
+    activo: ajustes.cantoActivo,
+    modelo,
+    segundosMaximos: Math.min(Math.max(1, ajustes.cantoSegundosMaximos), SEGUNDOS_CANTO_MAXIMOS),
+    resolucion: esResolucionCanto(ajustes.cantoResolucion) ? ajustes.cantoResolucion : "480p",
+  };
 }
 
 export function eurosPorCreditoDe(ajustes: Ajustes, proveedor: string): number {

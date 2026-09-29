@@ -425,3 +425,47 @@ test("sin guion en voz en off no hay nada que avisar", () => {
   const evaluacion = evaluar({ ...base, escena: { ...escenaDe(base), guionEnClipMudo: false } });
   expect(evaluacion.frenos.some((f) => f.regla === "guion-en-clip-mudo")).toBe(false);
 });
+
+describe("puertas del canto con audio propio", () => {
+  const cantoValido = (): NonNullable<Hechos["canto"]> => ({
+    activa: true,
+    conAudio: true,
+    motivoAudioIncompatible: "",
+    declarado: true,
+    duracion: 8,
+    segundosMaximos: 15,
+    conRetrato: true,
+    motivoRetratoIncompatible: "",
+    retratoVertical: true,
+    proporcionRetrato: "1080 × 1920 px",
+  });
+  const evaluarCanto = (canto: NonNullable<Hechos["canto"]>) =>
+    evaluar({ tipo: "animacion", parametros: PARAMETROS, canto });
+
+  test("sin declaración bloquea y explica qué se debe declarar", () => {
+    const freno = frenosQueGatean(evaluarCanto({ ...cantoValido(), declarado: false }))[0];
+    expect(freno?.regla).toBe("canto-sin-declaracion");
+    expect(freno?.motivo).toContain("derechos de este audio");
+    expect(freno?.accion).toContain("Decláralo");
+  });
+
+  test("audio largo propone recortarlo antes de gastar", () => {
+    const freno = frenosQueGatean(evaluarCanto({ ...cantoValido(), duracion: 16 }))[0];
+    expect(freno?.regla).toBe("canto-audio-demasiado-largo");
+    expect(freno?.accion).toContain("Recorta el audio a 15 s");
+  });
+
+  test("retrato horizontal nombra sus medidas y cómo cambiarlo", () => {
+    const freno = frenosQueGatean(
+      evaluarCanto({ ...cantoValido(), retratoVertical: false, proporcionRetrato: "1920 × 1080 px" }),
+    )[0];
+    expect(freno?.regla).toBe("canto-retrato-horizontal");
+    expect(freno?.motivo).toContain("1920 × 1080 px");
+    expect(freno?.accion).toContain("retrato vertical");
+  });
+
+  test("el ajuste apagado bloquea solo las escenas de canto", () => {
+    expect(frenosQueGatean(evaluarCanto({ ...cantoValido(), activa: false }))[0]?.regla).toBe("canto-apagado");
+    expect(evaluar({ tipo: "animacion", parametros: PARAMETROS }).frenos).toEqual([]);
+  });
+});

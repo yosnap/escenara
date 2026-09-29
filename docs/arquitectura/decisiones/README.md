@@ -39,6 +39,7 @@ Cada decisión relevante se documenta en un fichero `adr-NNNN-slug.md` dentro de
 | [0031](adr-0031-composicion-del-prompt-dirigido.md) | El orden del prompt dirigido vive en el código y los textos de cada opción en el catálogo; la regla de toma única y el bloque de anclajes van siempre; con una persona real no entra ningún adjetivo de atractivo | 0.25.0 | Aceptada (las tres reglas que no se negocian son firmes; el orden de los siete bloques es provisional hasta el spike) |
 | [0032](adr-0032-brief-del-anuncio-por-proyecto.md) | Un proyecto es un anuncio: el brief vive en el proyecto con **un** ángulo escalar, la oferta es una entidad reutilizable atada al producto, las variantes son proyectos hermanos y el hook es el primer turno del guion | 0.27.0 | Aceptada (el brief opcional y el ángulo único son firmes; el tope de doce variantes y los cuatro ángulos que piden declaración son provisionales) |
 | [0033](adr-0033-reparto-de-dos-personajes.md) | Dos personajes por escena: podcast en dos clips o dualcast en uno, diálogo literal por turnos, consentimiento individual y confirmación del coste total | 0.28.0 | Aceptada (formatos y doble consentimiento firmes; límites de montaje y texto legal específico pendientes de revisión) |
+| [0034](adr-0034-canto-con-audio-propio.md) | El usuario aporta el audio, declara sus derechos y confirma el coste por segundo antes de sincronizar el retrato | 0.29.0 | Propuesta; prueba real pendiente de aprobación |
 
 ## Plantilla
 

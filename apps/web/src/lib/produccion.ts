@@ -232,6 +232,8 @@ export interface VersionDeEscena {
 /** Una escena en la rejilla de producción, con su estado real y lo que se puede hacer con ella. */
 export interface EscenaProduccionVista {
   id: string;
+  /** El canto tiene su propio camino de audio y coste: no se ofrece el fotograma normal. */
+  formatoClip: import("./direccion").FormatoClip;
   orden: number;
   resumen: string;
   estado: EstadoEscena;

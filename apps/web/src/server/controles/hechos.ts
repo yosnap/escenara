@@ -19,6 +19,7 @@ import { compartenVoz, escenaParaReparto, miembrosDelReparto, turnosDelReparto }
 import { criticosAbiertosDeProyecto } from "../revision/resultados";
 import type {
   Hechos,
+  HechosCanto,
   HechosCredencial,
   HechosCuota,
   HechosEscena,
@@ -253,6 +254,8 @@ export interface SujetoDeHechos {
   omni?: HechosOmni;
   /** Producto que se presenta (0.26.0); ausente cuando el envío no lleva ninguno. */
   producto?: HechosProducto;
+  /** Escena que canta con un audio subido (0.29.0); ausente en todo lo demás. */
+  canto?: HechosCanto;
   /**
    * Reparto de la escena (0.28.0); ausente cuando el envío no sale de una escena con reparto. Lo resuelve quien
    * llama con {@link hechosDelReparto}, porque es la escena la que lo tiene y no el envío.
@@ -294,6 +297,7 @@ export async function recopilarHechos(actor: Actor, sujeto: SujetoDeHechos, busc
     ...(sujeto.omni ? { omni: sujeto.omni } : {}),
     ...(sujeto.producto ? { producto: sujeto.producto } : {}),
     ...(sujeto.reparto ? { reparto: sujeto.reparto } : {}),
+    ...(sujeto.canto ? { canto: sujeto.canto } : {}),
   };
 }
 

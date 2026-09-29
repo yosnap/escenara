@@ -156,6 +156,7 @@ describe("capacidades del adaptador", () => {
       "text_to_image",
       "image_to_video",
       "text_to_video",
+      "audio_to_video",
       "text_generation",
       "tts",
     ]);

@@ -16,6 +16,7 @@ import { Seccion } from "./seccion-ajustes";
 import { SeccionAnuncio } from "./seccion-anuncio";
 import { SeccionAsistente } from "./seccion-asistente";
 import { SeccionCalidad } from "./seccion-calidad";
+import { SeccionCanto } from "./seccion-canto";
 import { SeccionCoherencia } from "./seccion-coherencia";
 import { SeccionControles } from "./seccion-controles";
 import { SeccionDosPersonajes } from "./seccion-dos-personajes";
@@ -264,6 +265,7 @@ export function FormularioAjustes({
         onQuitarSecreto={() => quitarSecreto("typesafeApiKey")}
       />
       <SeccionVoz valores={valores} errorDe={errorDe} onCambio={cambiar} />
+      <SeccionCanto valores={valores} errorDe={errorDe} onCambio={cambiar} />
 
       <SeccionPresupuesto
         valores={valores}

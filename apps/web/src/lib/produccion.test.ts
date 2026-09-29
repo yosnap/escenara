@@ -48,6 +48,7 @@ const trabajo = (cambios: Partial<TrabajoDeEscena> = {}): TrabajoDeEscena => ({
 
 const escena = (cambios: Partial<EscenaProduccionVista> = {}): EscenaProduccionVista => ({
   id: "e1",
+  formatoClip: "ugc_a_camara",
   orden: 1,
   resumen: "Saluda a cámara",
   estado: "aprobada",

@@ -1,4 +1,5 @@
 import { eq, sql } from "drizzle-orm";
+import { formatoCanta } from "@/lib/direccion";
 import { PROMPT_MINIMO } from "@/lib/generacion";
 import { falloConCoste, type ProduccionVista, trabajoTerminado } from "@/lib/produccion";
 import { escenaPropia, escenasDe, proyectoPropio } from "../asistente/consulta";
@@ -123,6 +124,12 @@ async function encolarPrimerTrabajo(
   h: Herramientas,
   reintento = false,
 ): Promise<void> {
+  if (formatoCanta(escena.clipFormat)) {
+    throw new ErrorProyecto(
+      409,
+      "Esta escena usa el formato «cantar con tu audio». Confirma el coste de su audio y prodúcela desde /api/escenas/{id}/canto/produccion; el camino normal no sabe sincronizarlo. No se ha cobrado nada.",
+    );
+  }
   if (escena.castFormat !== "solo" && proyecto.voiceMode !== "omni") {
     throw new ErrorProyecto(
       409,
@@ -480,6 +487,12 @@ export async function aprobarFotograma(
   h: Herramientas = HERRAMIENTAS,
 ): Promise<ProduccionVista> {
   const { escena, proyecto } = await escenaPropia(actor, escenaId);
+  if (formatoCanta(escena.clipFormat)) {
+    throw new ErrorProyecto(
+      409,
+      "Una escena de canto usa el retrato del personaje y no tiene fotograma que aprobar. Produce su clip desde el camino de canto. No se ha cobrado nada.",
+    );
+  }
   if (proyecto.voiceMode === "omni") {
     throw new ErrorProyecto(
       409,
@@ -555,6 +568,12 @@ export async function otroClipDeEscena(
   h: Herramientas = HERRAMIENTAS,
 ): Promise<ProduccionVista> {
   const { escena, proyecto } = await escenaPropia(actor, escenaId);
+  if (formatoCanta(escena.clipFormat)) {
+    throw new ErrorProyecto(
+      409,
+      "Para obtener otro clip cantado, confirma el coste del audio desde la producción de canto. No se ha cobrado nada.",
+    );
+  }
   if (proyecto.voiceMode === "omni") {
     throw new ErrorProyecto(
       409,

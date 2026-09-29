@@ -2,6 +2,20 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.29.0] · 2026-09-29
+
+### Añadido
+
+- **Cantar o hablar con audio propio**: cada escena puede elegir un archivo de la biblioteca, medir su duración y sincronizar el retrato vertical del personaje con lo que se oye. El clip conserva la voz del archivo; Escenara no compone música ni sustituye la voz.
+- **Derechos antes de generar**: declaración de música propia, música con licencia identificada o audio hablado propio, registrada con fecha e IP. La declaración y el consentimiento vigente del personaje son obligatorios; no se verifican automáticamente los derechos musicales.
+- **Coste por segundo**: se muestran duración facturable, tarifa publicada, resolución, estimación y sello del precio antes de confirmar. La reserva y los reintentos se verifican en el servidor. El canto está apagado por defecto hasta aprobar una prueba real de pago.
+- **Admin › Ajustes › Canto**: interruptor, modelo, tope de duración y resolución. El catálogo de componentes incluye la declaración y el resumen de la pantalla.
+- Guía [Cantar con tu audio](guias/cantar-con-audio-propio.md), [ADR-0034](arquitectura/decisiones/adr-0034-canto-con-audio-propio.md) y nota de derechos en [Cumplimiento y privacidad](legal/cumplimiento-y-privacidad.md).
+
+### Corregido
+
+- Cambiar el audio invalida la aprobación de una escena y su plan. El plan usa el coste por segundo del canto en vez del precio del clip normal.
+
 ## [0.28.0] · 2026-09-29
 
 ### Añadido

@@ -15,6 +15,7 @@ import {
   type ConfirmacionEnvio,
   cancelarEscena,
   otroClipDeEscena,
+  producirCanto,
   producirEscena,
   producirProyecto,
   regenerarEscena,
@@ -221,6 +222,7 @@ export function VistaProduccion({ inicial }: { inicial: ProduccionVista }) {
                   regla.startsWith("reparto-") ? confirmarReparto(escena.id, regla, valor) : confirmar(regla, valor)
                 }
                 onProducir={(c) => void ejecutar(() => producirEscena(escena.id, c))}
+                onProducirCanto={(c) => void ejecutar(() => producirCanto(escena.id, c))}
                 onAprobar={(c) => void ejecutar(() => aprobarFotograma(escena.id, c))}
                 onRegenerar={(c) => void ejecutar(() => regenerarEscena(escena.id, c))}
                 onOtroClip={(c) => void ejecutar(() => otroClipDeEscena(escena.id, c))}

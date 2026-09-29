@@ -1,6 +1,7 @@
 import { type Capacidad, PARAMETROS_VACIOS } from "@/lib/catalogo";
 import type { Buscador } from "../codigos";
 import type { ModeloPublicado, TarifaPublicada } from "../contrato";
+import { CAPACIDADES_DE_CANTO, familiaDeCantoDe, parametrosDeCanto, tarifasDeCanto } from "./canto";
 import type { Operacion, TarifaTraducida } from "./correspondencia";
 import { traducirTarifas } from "./correspondencia";
 import {
@@ -136,6 +137,29 @@ export async function modelosPublicadosDeKie(buscar: Buscador = fetch): Promise<
   const traducidas = traducirTarifas(await descargarTarifas(buscar));
   const publicados: ModeloPublicado[] = [];
   for (const [modelo, tarifas] of porModelo(traducidas)) {
+    /**
+     * **Modelos de canto** (0.29.0). Van primero porque su precio se publica «per second» y el resto del
+     * importador solo sabe trabajar con tarifas por trabajo: si cayeran en la rama de siempre, se quedarían en
+     * «tarifa variable» y no se podrían elegir. Lo que hace su rama es convertir esa tarifa por segundo en una
+     * tarifa por cada duración facturable, que es lo que permite confirmar y reservar el clip exacto.
+     */
+    const canto = familiaDeCantoDe(modelo);
+    if (canto) {
+      const suyas = tarifasDeCanto(canto, tarifas);
+      publicados.push({
+        modelo,
+        nombre: canto.nombre,
+        capacidades: [...CAPACIDADES_DE_CANTO],
+        // El clip suena: lo que se oye es el audio que se le envía, no una voz que él genere.
+        conVoz: true,
+        parametros: parametrosDeCanto(canto),
+        tarifas: suyas,
+        montable: suyas.length > 0,
+        notas: suyas.length > 0 ? canto.notas : MOTIVO_TARIFA_VARIABLE,
+        referencia: tarifas[0]?.ancla ?? "",
+      });
+      continue;
+    }
     const video = familiaDeVideoDe(modelo);
     if (video) {
       const suyas = tarifasDeVideo(video, tarifas);

@@ -21,6 +21,7 @@ import {
 } from "@/lib/proyectos";
 import { borrarEscena, editarEscena } from "../../_componentes/api-proyectos";
 import { PanelAfirmaciones } from "./panel-afirmaciones";
+import { PanelCantoEscena } from "./panel-canto-escena";
 import { PanelReparto } from "./reparto/panel-reparto";
 
 /**
@@ -166,6 +167,18 @@ export function EditorEscena({
           setDireccion((antes) => ({ ...antes, [campo]: valor }));
         }}
       />
+
+      {direccion.formatoClip === "cantar" &&
+        (escena.direccion.formatoClip === "cantar" ? (
+          <PanelCantoEscena
+            key={escena.id}
+            escenaId={escena.id}
+            proyectoId={escena.proyectoId}
+            onProyectoCambio={onCambio}
+          />
+        ) : (
+          <p className="text-sm text-texto-suave">Guarda la escena para elegir el audio y declarar sus derechos.</p>
+        ))}
 
       {/*
         Con qué referencia se generó: es parte de saber qué se ha pagado, sobre todo con la prueba de la hoja
