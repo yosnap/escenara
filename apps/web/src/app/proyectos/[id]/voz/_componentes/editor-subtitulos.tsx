@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus, SplitSquareVertical, Trash2 } from "lucide-react";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Boton, BotonIcono } from "@/components/ui/button";
 import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, EntradaTexto } from "@/components/ui/field";
@@ -31,11 +31,13 @@ interface LineaEditable extends Subtitulo {
   clave: string;
 }
 
-let contadorDeClaves = 0;
-const nuevaClave = () => `subtitulo-${++contadorDeClaves}`;
-
+/**
+ * Las claves de las filas que llegan ya hechas salen de su posición, no de un contador global: la clave forma parte
+ * de los `id` del DOM y un contador compartido entre peticiones daría al servidor y al cliente números distintos
+ * (fallo de hidratación). Solo las filas añadidas después, ya en el cliente, usan un contador propio del editor.
+ */
 const conClave = (subtitulos: readonly Subtitulo[]): LineaEditable[] =>
-  subtitulos.map((s) => ({ ...s, clave: nuevaClave() }));
+  subtitulos.map((s, i) => ({ ...s, clave: `subtitulo-${i}` }));
 
 const sinClave = ({ desde, hasta, texto }: LineaEditable): Subtitulo => ({ desde, hasta, texto });
 
@@ -49,6 +51,7 @@ export function EditorSubtitulos({
   onGuardar: (subtitulos: Subtitulo[]) => void;
 }) {
   const idBase = useId();
+  const filasNuevas = useRef(0);
   const [lineas, setLineas] = useState<LineaEditable[]>(() => conClave(escena.subtitulos));
   const [activa, setActiva] = useState(0);
   const errores = erroresDeSubtitulos(lineas);
@@ -61,7 +64,10 @@ export function EditorSubtitulos({
   const anadir = () => {
     const ultima = lineas.at(-1);
     const desde = ultima ? ultima.hasta : 0;
-    setLineas([...lineas, { desde, hasta: Math.min(escena.segundos, desde + 1.5), texto: "", clave: nuevaClave() }]);
+    setLineas([
+      ...lineas,
+      { desde, hasta: Math.min(escena.segundos, desde + 1.5), texto: "", clave: `nuevo-${++filasNuevas.current}` },
+    ]);
     setActiva(lineas.length);
   };
 
