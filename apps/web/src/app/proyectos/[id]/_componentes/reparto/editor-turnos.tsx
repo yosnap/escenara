@@ -1,10 +1,11 @@
 "use client";
 
 import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Boton, BotonIcono } from "@/components/ui/button";
 import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo, EntradaTexto } from "@/components/ui/field";
+import { type ElementoOrdenable, ListaOrdenable } from "@/components/ui/lista-ordenable";
 import { Selector } from "@/components/ui/select";
 import {
   DIRECCION_TURNO_MAXIMA,
@@ -15,6 +16,9 @@ import {
 } from "@/lib/reparto";
 import { noCabeElDialogo, palabrasDeTurnos, segundosNecesarios } from "@/lib/reparto-envio";
 import type { TurnoPedido } from "./api-reparto";
+
+/** Un turno en el editor: la clave es solo de esta pantalla y permite arrastrarlo sin depender de su posición. */
+type TurnoEditable = TurnoPedido & { clave: string };
 
 /**
  * **El diálogo repartido por turnos** (0.28.0): en qué orden se habla, quién habla, qué dice **literal** y con qué
@@ -47,9 +51,17 @@ export function EditorTurnos({
   guardando: boolean;
   onGuardar: (turnos: TurnoPedido[]) => void;
 }) {
-  const [lista, setLista] = useState<TurnoPedido[]>([...turnos]);
+  const siguiente = useRef(0);
+  const nuevaClave = () => `turno-${siguiente.current++}`;
+  const [lista, setLista] = useState<TurnoEditable[]>(() => turnos.map((t) => ({ ...t, clave: nuevaClave() })));
   const primero = miembros[0];
   if (!primero) return null;
+
+  /** Nuevo orden al soltar. Va a la pantalla; se guarda con «Guardar el diálogo», como el resto de cambios. */
+  const reordenar = async (claves: string[]): Promise<string | null> => {
+    setLista((antes) => claves.flatMap((c) => antes.find((t) => t.clave === c) ?? []));
+    return null;
+  };
 
   const cambiar = (indice: number, cambios: Partial<TurnoPedido>) =>
     setLista((antes) => antes.map((t, i) => (i === indice ? { ...t, ...cambios } : t)));
@@ -74,6 +86,70 @@ export function EditorTurnos({
       : palabrasDeTurnos(lista);
   const noCabe = noCabeElDialogo(palabrasDelClipMasLargo, segundos);
 
+  const elementos: ElementoOrdenable[] = lista.map((turno, indice) => ({
+    clave: turno.clave,
+    etiqueta: `turno ${indice + 1}`,
+    contenido: (
+      <div className="flex flex-col gap-2 rounded-control bg-elevada p-3">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <span className="text-sm font-semibold text-texto">Turno {indice + 1}</span>
+          <div className="flex items-center gap-1">
+            <BotonIcono
+              etiqueta={`Subir el turno ${indice + 1}`}
+              disabled={deshabilitado || indice === 0}
+              onClick={() => mover(indice, -1)}
+            >
+              <ChevronUp className="size-5" />
+            </BotonIcono>
+            <BotonIcono
+              etiqueta={`Bajar el turno ${indice + 1}`}
+              disabled={deshabilitado || indice === lista.length - 1}
+              onClick={() => mover(indice, 1)}
+            >
+              <ChevronDown className="size-5" />
+            </BotonIcono>
+            <BotonIcono
+              etiqueta={`Quitar el turno ${indice + 1}`}
+              disabled={deshabilitado}
+              onClick={() => setLista((antes) => antes.filter((_, i) => i !== indice))}
+            >
+              <Trash2 className="size-5" />
+            </BotonIcono>
+          </div>
+        </div>
+        <Selector
+          etiqueta="Quién lo dice"
+          opciones={opciones}
+          valor={turno.personajeId}
+          deshabilitado={deshabilitado}
+          onCambio={(v) => cambiar(indice, { personajeId: v ?? primero.personajeId })}
+        />
+        <Campo etiqueta="Lo que dice, literal">
+          {(p) => (
+            <AreaTexto
+              {...p}
+              value={turno.texto}
+              maxLength={TEXTO_TURNO_MAXIMO}
+              disabled={deshabilitado}
+              onChange={(e) => cambiar(indice, { texto: e.target.value })}
+            />
+          )}
+        </Campo>
+        <Campo etiqueta="Dirección vocal" ayuda="Cómo lo dice: «en tono cercano», «con energía». Puede ir vacía.">
+          {(p) => (
+            <EntradaTexto
+              {...p}
+              value={turno.direccion}
+              maxLength={DIRECCION_TURNO_MAXIMA}
+              disabled={deshabilitado}
+              onChange={(e) => cambiar(indice, { direccion: e.target.value })}
+            />
+          )}
+        </Campo>
+      </div>
+    ),
+  }));
+
   return (
     <div className="flex flex-col gap-3">
       <div>
@@ -90,71 +166,13 @@ export function EditorTurnos({
         </p>
       )}
 
-      <ol className="flex flex-col gap-3">
-        {lista.map((turno, indice) => (
-          <li
-            // biome-ignore lint/suspicious/noArrayIndexKey: el orden **es** la identidad de un turno sin guardar
-            key={`turno-${indice}`}
-            className="flex flex-col gap-2 rounded-control bg-elevada p-3"
-          >
-            <div className="flex flex-wrap items-end justify-between gap-2">
-              <span className="text-sm font-semibold text-texto">Turno {indice + 1}</span>
-              <div className="flex items-center gap-1">
-                <BotonIcono
-                  etiqueta={`Subir el turno ${indice + 1}`}
-                  disabled={deshabilitado || indice === 0}
-                  onClick={() => mover(indice, -1)}
-                >
-                  <ChevronUp className="size-5" />
-                </BotonIcono>
-                <BotonIcono
-                  etiqueta={`Bajar el turno ${indice + 1}`}
-                  disabled={deshabilitado || indice === lista.length - 1}
-                  onClick={() => mover(indice, 1)}
-                >
-                  <ChevronDown className="size-5" />
-                </BotonIcono>
-                <BotonIcono
-                  etiqueta={`Quitar el turno ${indice + 1}`}
-                  disabled={deshabilitado}
-                  onClick={() => setLista((antes) => antes.filter((_, i) => i !== indice))}
-                >
-                  <Trash2 className="size-5" />
-                </BotonIcono>
-              </div>
-            </div>
-            <Selector
-              etiqueta="Quién lo dice"
-              opciones={opciones}
-              valor={turno.personajeId}
-              deshabilitado={deshabilitado}
-              onCambio={(v) => cambiar(indice, { personajeId: v ?? primero.personajeId })}
-            />
-            <Campo etiqueta="Lo que dice, literal">
-              {(p) => (
-                <AreaTexto
-                  {...p}
-                  value={turno.texto}
-                  maxLength={TEXTO_TURNO_MAXIMO}
-                  disabled={deshabilitado}
-                  onChange={(e) => cambiar(indice, { texto: e.target.value })}
-                />
-              )}
-            </Campo>
-            <Campo etiqueta="Dirección vocal" ayuda="Cómo lo dice: «en tono cercano», «con energía». Puede ir vacía.">
-              {(p) => (
-                <EntradaTexto
-                  {...p}
-                  value={turno.direccion}
-                  maxLength={DIRECCION_TURNO_MAXIMA}
-                  disabled={deshabilitado}
-                  onChange={(e) => cambiar(indice, { direccion: e.target.value })}
-                />
-              )}
-            </Campo>
-          </li>
-        ))}
-      </ol>
+      <ListaOrdenable
+        etiquetaLista="Turnos del diálogo, en el orden en el que se hablan"
+        className="flex flex-col gap-3"
+        deshabilitado={deshabilitado}
+        onOrden={reordenar}
+        elementos={elementos}
+      />
 
       {noCabe && (
         <Aviso tono="info">
@@ -175,6 +193,7 @@ export function EditorTurnos({
               ...antes,
               {
                 // Se alterna quien habla: en una conversación el turno siguiente es casi siempre del otro.
+                clave: nuevaClave(),
                 personajeId:
                   miembros.find((m) => m.personajeId !== antes.at(-1)?.personajeId)?.personajeId ?? primero.personajeId,
                 texto: "",
@@ -186,7 +205,12 @@ export function EditorTurnos({
           <Plus className="size-4" />
           Añadir un turno
         </Boton>
-        <Boton variante="secundario" tamano="sm" disabled={deshabilitado || guardando} onClick={() => onGuardar(lista)}>
+        <Boton
+          variante="secundario"
+          tamano="sm"
+          disabled={deshabilitado || guardando}
+          onClick={() => onGuardar(lista.map(({ clave: _clave, ...turno }) => turno))}
+        >
           {guardando ? "Guardando…" : "Guardar el diálogo"}
         </Boton>
       </div>
