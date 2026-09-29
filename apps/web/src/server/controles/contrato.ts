@@ -215,6 +215,45 @@ export interface HechosProducto {
   marcaVisible: boolean;
 }
 
+/**
+ * **Escena que canta con un audio subido** (0.29.0). Este grupo **solo llega cuando el formato de la escena es
+ * `cantar`**: en las demás no hay audio, ni declaración, ni proporción de retrato que juzgar, y ninguna de sus
+ * reglas se evalúa.
+ *
+ * Todas sus reglas **bloquean y ninguna es salvable**, y eso es a propósito:
+ *
+ * - sin **declaración de derechos** no se genera (RF10). No es un aviso que se confirme con una casilla: es la
+ *   declaración misma, que se registra aparte con su texto, su fecha y su IP;
+ * - un audio **más largo que el tope** se rechaza antes de reservar nada, porque el precio se paga por segundo y
+ *   el proveedor no tarifa por encima del tramo publicado;
+ * - un retrato **horizontal** daría un clip horizontal, y eso se paga igual: ninguno de estos modelos acepta
+ *   `aspect_ratio`, así que el formato lo fija la imagen y hay que cambiarla antes de gastar.
+ *
+ * Los textos vienen ya compuestos por `canto/hechos.ts`: el motor es puro y no consulta ni mide nada.
+ */
+export interface HechosCanto {
+  /** La función está encendida en esta instalación (Admin › Ajustes). */
+  activa: boolean;
+  /** Hay un audio elegido para la escena. */
+  conAudio: boolean;
+  /** Audio compatible con formato y tamaño del modelo activo; vacío si no hay audio. */
+  motivoAudioIncompatible: string;
+  /** Ese audio tiene declaración de derechos vigente de este usuario. */
+  declarado: boolean;
+  /** Duración medida del audio, en segundos; `null` si no hay audio o no se ha podido medir. */
+  duracion: number | null;
+  /** Tope vigente, en segundos. */
+  segundosMaximos: number;
+  /** Hay retrato de partida del personaje. */
+  conRetrato: boolean;
+  /** Motivo concreto si el retrato supera el tamaño o formato del modelo. */
+  motivoRetratoIncompatible: string;
+  /** Ese retrato es vertical. `false` con retrato horizontal o cuadrado. */
+  retratoVertical: boolean;
+  /** Proporción real del retrato, escrita como la leería una persona («1920 × 1080 px (horizontal…)»). */
+  proporcionRetrato: string;
+}
+
 /** Parámetros de las reglas, editables en Admin › Ajustes (no hay editor de reglas en la interfaz). */
 export interface ParametrosControles {
   /** Avisar cuando falten vistas mínimas del personaje o haya fotos señaladas por calidad. */
@@ -262,6 +301,11 @@ export interface Hechos {
    * esta versión y la mayoría de los clips.
    */
   producto?: HechosProducto;
+  /**
+   * Escena que canta con un audio subido (0.29.0). Ausente en todo lo que no es una escena `cantar`, que es todo
+   * lo anterior a esta versión y la mayoría de los clips.
+   */
+  canto?: HechosCanto;
   parametros: ParametrosControles;
 }
 

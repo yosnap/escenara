@@ -309,6 +309,13 @@
       "when": 1790628508393,
       "tag": "0043_hooks-propuestos",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1790640425202,
+      "tag": "0047_derechos-musicales-y-audio-de-canto",
+      "breakpoints": true
     }
   ]
 }

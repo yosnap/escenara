@@ -13,6 +13,13 @@ export const CAPACIDADES = [
   "text_to_image",
   "image_to_video",
   "text_to_video",
+  /**
+   * **Vídeo a partir de una imagen y un audio** (0.29.0): los modelos de lip-sync, que no saben animar una
+   * imagen sin audio. Es capacidad propia y no `image_to_video` a propósito: si compartieran capacidad, un
+   * clip normal podría acabar pidiéndose a un modelo que exige `audio_url` y el proveedor lo rechazaría
+   * después de haber cobrado la petición.
+   */
+  "audio_to_video",
   "text_generation",
   "tts",
   "speech_to_text",
@@ -27,6 +34,7 @@ export const ETIQUETA_CAPACIDAD: Record<Capacidad, string> = {
   text_to_image: "Imagen a partir de texto",
   image_to_video: "Vídeo a partir de una imagen",
   text_to_video: "Vídeo a partir de texto",
+  audio_to_video: "Vídeo a partir de una imagen y un audio",
   text_generation: "Texto y guion",
   tts: "Voz a partir de texto",
   speech_to_text: "Transcripción de voz",
@@ -39,6 +47,8 @@ export const DESCRIPCION_CAPACIDAD: Record<Capacidad, string> = {
     "Genera una imagen solo a partir de la descripción, sin ninguna imagen de partida (el retrato de un personaje inventado o una escena que todavía no tiene foto).",
   image_to_video: "Anima una imagen y devuelve un clip corto.",
   text_to_video: "Genera un clip solo a partir de la descripción, sin imagen de referencia.",
+  audio_to_video:
+    "Anima un retrato sincronizando sus labios con un audio que se le envía. El audio es obligatorio y el formato del clip lo fija la imagen.",
   text_generation: "Escribe o reescribe texto (guion, descripciones, alternativas).",
   tts: "Convierte un texto en voz.",
   speech_to_text: "Convierte una voz en texto.",

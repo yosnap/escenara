@@ -2,8 +2,16 @@ import type { ModeloVista } from "@/lib/catalogo";
 import { CLIP } from "@/lib/generacion";
 import { duracionParaModelo } from "@/lib/produccion";
 import { type ContextoEntrada, ErrorCatalogo } from "../contrato";
+import { resolucionDeUnidadDeCanto } from "./canto";
 import { CAMPOS_DE_URL_DE_FAMILIA, familiaDe, varianteDeUnidad } from "./familias";
-import { entradaAnimacion, entradaFotograma, promptAnimacion, promptEscenaHablada, promptFotograma } from "./modelos";
+import {
+  entradaAnimacion,
+  entradaFotograma,
+  promptAnimacion,
+  promptCanto,
+  promptEscenaHablada,
+  promptFotograma,
+} from "./modelos";
 
 export type { ContextoEntrada };
 
@@ -36,6 +44,8 @@ export const CAMPOS_DE_URL = [
   "image_urls",
   "input_urls",
   "image_url",
+  // El audio del canto viaja por su propio campo (0.29.0) y su URL caduca igual que la de una imagen.
+  "audio_url",
   // MiniMax H3 recibe las referencias y la muestra de voz por sus propios campos, y caducan igual (0.22.0).
   "reference_image_urls",
   "reference_audio_urls",
@@ -93,9 +103,58 @@ const entradaOmni: Constructor = (contexto, modelo) => {
   });
 };
 
+/**
+ * Entrada de los **modelos de canto** (capacidad `audio_to_video`, 0.29.0), que la comparten: un retrato, un
+ * audio y un prompt que describe la interpretación. Campos leídos en la documentación de los dos modelos
+ * (`kie.ai/infinitalk` y `kie.ai/kling-ai-avatar`, comprobados el 2026-09-29).
+ *
+ * Tres cosas que **no** se envían, y no por olvido:
+ *
+ * - **`aspect_ratio`**: ninguno de los dos lo acepta. El vertical lo fija el retrato, y por eso su proporción se
+ *   valida antes de gastar en lugar de pedírsela aquí;
+ * - **`duration`**: la duración del clip es la del audio. Pedir una distinta sería pedir que lo cortara;
+ * - **el diálogo**: lo que se oye es el audio subido. Una frase aquí le daría dos cosas que decir a la vez.
+ *
+ * Sin audio **no se monta nada**: se lanza. Un lip-sync sin pista que sincronizar lo rechazaría el proveedor
+ * después de haber cobrado la petición, y eso es exactamente lo que este error evita.
+ */
+const entradaCanto: Constructor = (contexto, modelo) => {
+  const audio = contexto.audiosDeReferencia?.[0] ?? "";
+  if (audio === "") {
+    throw new ErrorCatalogo(
+      409,
+      `${modelo.nombre} canta a partir de un audio y no ha llegado ninguno, así que no se le ha pedido nada y no se te ha cobrado. Elige el audio de la escena y vuelve a pedir el clip.`,
+    );
+  }
+  const retrato = contexto.urls[0] ?? "";
+  if (retrato === "") {
+    throw new ErrorCatalogo(
+      409,
+      `${modelo.nombre} necesita el retrato del personaje como imagen de partida y no ha llegado ninguno, así que no se le ha pedido nada y no se te ha cobrado. Comprueba que el personaje tiene su retrato y vuelve a pedir el clip.`,
+    );
+  }
+  return {
+    prompt: promptCanto(contexto.escena),
+    image_url: retrato,
+    audio_url: audio,
+    // InfiniteTalk acepta `resolution`; Kling Standard no documenta ese campo y fija su salida en 720p.
+    ...(modelo.modelo === "infinitalk/from-audio"
+      ? { resolution: resolucionDeUnidadDeCanto(modelo.unidad) ?? primeraResolucion(modelo) }
+      : {}),
+  };
+};
+
 /** Un `Map` y no un objeto: así un nombre de modelo no puede resolverse por el prototipo de `Object`. */
 const CONSTRUCTORES = new Map<string, Constructor>(
   Object.entries({
+    /**
+     * Los dos modelos de canto (0.29.0). Reciben exactamente lo mismo, así que comparten constructor; lo que
+     * cambia entre ellos es la tarifa y las resoluciones que el proveedor publica para cada uno.
+     */
+    "infinitalk/from-audio": entradaCanto,
+
+    "kling/v1-avatar-standard": entradaCanto,
+
     "nano-banana-2-lite": ({ escena, urls }) => entradaFotograma(escena, urls),
 
     "seedream/4.5-edit": ({ escena, urls }, modelo) =>

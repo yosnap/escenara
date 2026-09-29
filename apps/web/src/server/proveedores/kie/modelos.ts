@@ -84,6 +84,25 @@ export function promptEscenaHablada(escena: string, dialogo: string): string {
   return `${habla}${escena}\n\n${sinTexto(SIN_TEXTO_VIDEO, escena)} ${AUDIO_HABLADO}`;
 }
 
+/**
+ * Prompt de un **clip cantado** (capacidad `audio_to_video`, 0.29.0). Lo que se va a oír es el audio que el
+ * usuario ha subido, así que aquí no va ninguna frase: el texto solo describe **cómo se comporta** quien canta.
+ *
+ * Dos diferencias con `promptAnimacion`, y las dos importan:
+ *
+ * - **no se describe el sonido**. Veo se cae si no sabe qué audio generar, pero estos modelos no generan audio
+ *   ninguno: lo reciben. Pedirles un ambiente sería pedirles que taparan la canción;
+ * - **no se pide que diga nada**. La sincronía la hace el modelo con `audio_url`, y una frase en el prompt le
+ *   daría dos cosas distintas que decir con la misma boca.
+ *
+ * La prohibición de texto en pantalla se mantiene: un rótulo incrustado no se puede quitar después.
+ */
+export function promptCanto(escena: string): string {
+  const interpretacion =
+    "The person performs the supplied audio track to camera, with natural lip movement synchronised to it and expressive, unforced presence.";
+  return `${interpretacion}\n\n${escena}\n\n${sinTexto(SIN_TEXTO_VIDEO, escena)}`;
+}
+
 export function entradaFotograma(escena: string, referencias: string[]): Record<string, unknown> {
   return {
     prompt: promptFotograma(escena),

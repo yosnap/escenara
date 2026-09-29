@@ -74,6 +74,12 @@ const MODELO_POR_PAGINA: Record<string, string> = {
   "/gemini-omni": "gemini-omni-video",
   "/gemini-omni-1-1-flash": "google/gemini-omni-flash-1-1",
   "/minimax-h3": "minimax-h3/reference-to-video",
+  /**
+   * InfiniteTalk (0.29.0). Es el único modelo de canto cuyo `anchor` **no lleva `model=`**, así que su
+   * identificador sale de aquí: `infinitalk/from-audio`, el que publica su documentación. El de Kling AI Avatar
+   * sí lo lleva (`?model=kling%2Fv1-avatar-standard`) y se resuelve solo.
+   */
+  "/infinitalk": "infinitalk/from-audio",
 };
 
 /**

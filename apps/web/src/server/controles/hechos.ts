@@ -17,6 +17,7 @@ import type { Buscador } from "../proveedores/codigos";
 import { criticosAbiertosDeProyecto } from "../revision/resultados";
 import type {
   Hechos,
+  HechosCanto,
   HechosCredencial,
   HechosCuota,
   HechosEscena,
@@ -189,6 +190,8 @@ export interface SujetoDeHechos {
   omni?: HechosOmni;
   /** Producto que se presenta (0.26.0); ausente cuando el envío no lleva ninguno. */
   producto?: HechosProducto;
+  /** Escena que canta con un audio subido (0.29.0); ausente en todo lo demás. */
+  canto?: HechosCanto;
   /**
    * Este envío es el **primer retrato** de un personaje inventado (0.22.0), es decir, lo que va a crear su
    * primera referencia. Con él no se le exigen las fotos que todavía no tiene; todo lo demás se evalúa igual.
@@ -224,6 +227,7 @@ export async function recopilarHechos(actor: Actor, sujeto: SujetoDeHechos, busc
     escena: sujeto.escena,
     ...(sujeto.omni ? { omni: sujeto.omni } : {}),
     ...(sujeto.producto ? { producto: sujeto.producto } : {}),
+    ...(sujeto.canto ? { canto: sujeto.canto } : {}),
   };
 }
 

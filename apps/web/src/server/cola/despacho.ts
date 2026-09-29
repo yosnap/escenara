@@ -38,6 +38,7 @@ import {
   capacidadDelTrabajo,
   compatibleIdDe,
   dialogoDe,
+  esCantoDe,
   personajesOmniDe,
   referenciasDeProductoDe,
   reservasAutorizadas,
@@ -361,7 +362,7 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
     if (!(await renovarToma(fila.id, workerId))) {
       throw new Error(`El trabajo ${fila.id} ha dejado de ser de este worker mientras se preparaba.`);
     }
-    urls.push(await subirReferencia(adaptador, credencial.clave, origen, modelo, h));
+    urls.push(await subirReferencia(adaptador, credencial.clave, origen, modelo, h, esCantoDe(fila)));
   }
   /**
    * La entrada se vuelve a montar aquí (las URL del proveedor caducan y no se guardan), pero **la duración es la
@@ -380,10 +381,12 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
     const [audio] = await db()
       .select()
       .from(media)
-      .where(and(eq(media.id, audioId), isNull(media.deletedAt)));
+      .where(and(eq(media.id, audioId), eq(media.ownerId, fila.userId), isNull(media.deletedAt)));
     if (!audio) {
       throw new ErrorSinCredencial(
-        "La muestra de voz con la que se iba a generar esta escena ya no está en tu biblioteca, así que el clip no sonaría con la voz de este proyecto. Vuelve a oír esa voz en «Voz y subtítulos» y pide la escena otra vez.",
+        esCantoDe(fila)
+          ? "El audio con el que se iba a cantar ya no está en tu biblioteca. No se ha enviado nada al proveedor ni se te ha cobrado: elige otro audio y vuelve a pedir el clip."
+          : "La muestra de voz con la que se iba a generar esta escena ya no está en tu biblioteca, así que el clip no sonaría con la voz de este proyecto. Vuelve a oír esa voz en «Voz y subtítulos» y pide la escena otra vez.",
       );
     }
     audios.push(
@@ -967,7 +970,13 @@ async function subirReferencia(
   origen: FilaMedio,
   modelo: ModeloVista,
   h: Herramientas,
+  canto = false,
 ): Promise<string> {
   const archivo = await referenciaCompatible(await archivoDe(origen), modelo.parametros.formatosReferencia);
+  if (canto && archivo.size > 10 * 1024 * 1024) {
+    throw new ErrorDeMontaje(
+      `El retrato convertido para ${modelo.nombre} ocupa ${(archivo.size / 1024 / 1024).toFixed(1)} MB y el proveedor solo admite 10 MB. No se ha enviado nada ni se te ha cobrado: usa un retrato más pequeño.`,
+    );
+  }
   return adaptador.subirReferencia({ clave, archivo, buscar: h.buscar });
 }

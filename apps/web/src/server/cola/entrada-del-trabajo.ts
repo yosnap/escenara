@@ -13,7 +13,23 @@ import type { ReservaAutorizada } from "../mapa/voz";
  * que pasa es que se está buscando en la lista equivocada.
  */
 export function capacidadDelTrabajo(fila: FilaTrabajo) {
-  return fila.kind === "fotograma" && sinReferenciaDe(fila) ? "text_to_image" : CAPACIDAD_DE_TIPO[fila.kind];
+  if (fila.kind === "fotograma") return sinReferenciaDe(fila) ? "text_to_image" : CAPACIDAD_DE_TIPO.fotograma;
+  /**
+   * Un clip **cantado** (0.29.0) se encola como `animacion` —lo que produce es el clip de la escena, y el cierre
+   * de la cola ya sabe qué hacer con uno—, pero su modelo es de lip-sync y su capacidad es `audio_to_video`.
+   * Buscarlo entre los de `image_to_video` diría que el modelo «no sirve para esto» cuando lo que pasa es que se
+   * está buscando en la lista equivocada, igual que con el fotograma sin imagen de partida.
+   */
+  if (fila.kind === "animacion" && esCantoDe(fila)) return "audio_to_video";
+  return CAPACIDAD_DE_TIPO[fila.kind];
+}
+
+/**
+ * `true` si el trabajo se encoló como **clip cantado**: su clip sale de un audio subido y no de animar un
+ * fotograma. Lectura tolerante, como el resto: un trabajo anterior a esta versión devuelve `false`.
+ */
+export function esCantoDe(fila: FilaTrabajo): boolean {
+  return (fila.input as { canto?: unknown }).canto === true;
 }
 
 /** `true` si el trabajo se encoló para generarse sin ninguna imagen de partida. */

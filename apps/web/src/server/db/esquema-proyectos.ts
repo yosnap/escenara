@@ -36,7 +36,12 @@ export const modoVoz = pgEnum("project_voice_mode", ["clip", "pista", "omni"]);
  * (plano, ángulo, óptica, luz, localización, cámara y micro-acción) vive en los presets y lo edita quien
  * administra sin migrar nada. Sus etiquetas en castellano están en `lib/direccion.ts`.
  */
-export const formatoClip = pgEnum("scene_clip_format", ["ugc_a_camara", "voz_en_off"]);
+/**
+ * `cantar` se añade en la 0.29.0: el clip se genera a partir de un **audio que sube el usuario** y el personaje
+ * lo canta o lo dice con los labios sincronizados. No lleva guion que decir —lo que se oye es el audio— y se
+ * produce por su propio camino, sin fotograma que aprobar.
+ */
+export const formatoClip = pgEnum("scene_clip_format", ["ugc_a_camara", "voz_en_off", "cantar"]);
 
 export const momentoMicroaccion = pgEnum("scene_micro_action_timing", ["antes", "durante", "despues"]);
 
@@ -338,6 +343,17 @@ export const scenes = pgTable(
     productId: uuid("product_id").references(() => products.id, { onDelete: "set null" }),
     /** Clave del catálogo de acciones de producto. Vacío = no se ha dicho qué se hace con él. */
     productAction: text("product_action").notNull().default(""),
+    /**
+     * **Audio con el que canta esta escena** (0.29.0). `null` en todo lo que no es una escena `cantar`, que es
+     * todo lo anterior a esta versión.
+     *
+     * Va a `set null` al borrar el medio, no en cascada: la escena sigue siendo una escena sin él, y lo que se
+     * pierde es el audio, no el trabajo de escribirla. Sin audio, la puerta del canto dice que falta elegirlo.
+     *
+     * El modelo, el tope de duración y la resolución **no se guardan aquí**: salen del catálogo y de Admin ›
+     * Ajustes, y lo que se cobró queda en la entrada del trabajo con su tarifa confirmada.
+     */
+    singingAudioMediaId: uuid("singing_audio_media_id").references(() => media.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

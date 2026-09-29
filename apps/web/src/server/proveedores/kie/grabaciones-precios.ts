@@ -268,6 +268,54 @@ export const REGISTROS_DE_PRECIO: RegistroDePrecio[] = [
     usdPrice: "0.12",
     anchor: "https://kie.ai/wan-2-7-video?model=wan%2F2-7-image-to-video",
   },
+  /**
+   * **Modelos de canto** (0.29.0), transcritos literalmente de la descarga real del 2026-09-29, erratas del
+   * proveedor incluidas («Avtar», «secondss»): son justo lo que la traducción tiene que saber digerir.
+   *
+   * Los tres casos que hay que distinguir están aquí:
+   *
+   * - InfiniteTalk con sus **dos resoluciones** y un `anchor` **sin `model=`**, así que su identificador sale de
+   *   la tabla de páginas (`/infinitalk` → `infinitalk/from-audio`);
+   * - Kling AI Avatar **Standard**, con su `model=` en el ancla y su calificador de calidad;
+   * - Kling AI Avatar **Pro**, que es **otro modelo** y no una variante del anterior: esta instalación no sabe
+   *   pedirlo, así que tiene que entrar sin poder elegirse en lugar de colarse como si fuera el Standard.
+   */
+  {
+    modelDescription: "MeiGen-AI InfiniteTalk, lip sync, up to 15 secondss-480p",
+    interfaceType: "video",
+    provider: "Other",
+    creditPrice: "3.0",
+    creditUnit: "per second",
+    usdPrice: "0.015",
+    anchor: "https://kie.ai/infinitalk",
+  },
+  {
+    modelDescription: "MeiGen-AI InfiniteTalk, lip sync, up to 15 secondss-720p",
+    interfaceType: "video",
+    provider: "Other",
+    creditPrice: "12.0",
+    creditUnit: "per second",
+    usdPrice: "0.06",
+    anchor: "https://kie.ai/infinitalk",
+  },
+  {
+    modelDescription: "Kling AI Avtar , lip sync, Standard-up to 15 secondss-720p",
+    interfaceType: "video",
+    provider: "Kling",
+    creditPrice: "8.0",
+    creditUnit: "per second",
+    usdPrice: "0.04",
+    anchor: "https://kie.ai/kling-ai-avatar?model=kling%2Fv1-avatar-standard",
+  },
+  {
+    modelDescription: "Kling AI Avtar , lip sync, Pro-up to 15 secondss-1080p",
+    interfaceType: "video",
+    provider: "Kling",
+    creditPrice: "16.0",
+    creditUnit: "per second",
+    usdPrice: "0.08",
+    anchor: "https://kie.ai/kling-ai-avatar?model=kling%2Fai-avatar-v1-pro",
+  },
 ];
 
 export const RECUENTO = { all: REGISTROS_DE_PRECIO.length, image: 0, video: 0, music: 0, chat: 0 };

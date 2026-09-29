@@ -21,7 +21,12 @@
  * - `ugc_a_camara`: el personaje habla a cámara, con o sin micro-acción;
  * - `voz_en_off`: clip **mudo**; la narración se monta encima en 0.32.0.
  */
-export const FORMATOS_CLIP = ["ugc_a_camara", "voz_en_off"] as const;
+/**
+ * `cantar` (0.29.0) es el formato de las escenas cuyo clip se genera **a partir de un audio que sube el
+ * usuario**: el personaje lo canta o lo dice con los labios sincronizados. No lleva guion que decir —lo que se
+ * oye es el audio— y se produce por su propio camino (`server/canto/`), no animando un fotograma.
+ */
+export const FORMATOS_CLIP = ["ugc_a_camara", "voz_en_off", "cantar"] as const;
 export type FormatoClip = (typeof FORMATOS_CLIP)[number];
 
 export const esFormatoClip = (v: unknown): v is FormatoClip => FORMATOS_CLIP.includes(v as FormatoClip);
@@ -29,16 +34,27 @@ export const esFormatoClip = (v: unknown): v is FormatoClip => FORMATOS_CLIP.inc
 export const NOMBRE_FORMATO_CLIP: Record<FormatoClip, string> = {
   ugc_a_camara: "UGC a cámara",
   voz_en_off: "Voz en off / b-roll",
+  cantar: "Cantar con tu audio",
 };
 
 export const DESCRIPCION_FORMATO_CLIP: Record<FormatoClip, string> = {
   ugc_a_camara: "El personaje habla a cámara. Lo que escribas en el guion es lo que se le oirá decir.",
   voz_en_off:
     "Clip mudo: el personaje no habla y sale con la boca cerrada. La narración se monta encima al montar el vídeo.",
+  cantar:
+    "Subes un audio tuyo y el personaje lo canta o lo dice con los labios sincronizados. Hace falta declarar con qué derecho usas ese audio, y el formato vertical lo fija el retrato.",
 };
 
-/** `true` cuando ese formato lleva diálogo. Es la condición que apaga la voz y el guion en el prompt. */
+/**
+ * `true` cuando ese formato lleva diálogo. Es la condición que apaga la voz y el guion en el prompt.
+ *
+ * `cantar` es `false` a propósito: lo que se oye es el audio subido, no una frase que el modelo tenga que
+ * decir, así que el guion de la escena **no se le envía**. Enviarlo haría competir dos textos por la misma boca.
+ */
 export const formatoHabla = (formato: FormatoClip): boolean => formato === "ugc_a_camara";
+
+/** `true` cuando el clip de ese formato se genera a partir de un audio subido (0.29.0). */
+export const formatoCanta = (formato: FormatoClip): boolean => formato === "cantar";
 
 // ── Momento de la micro-acción ──────────────────────────────────────────────────────────────────────────
 
