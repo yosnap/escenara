@@ -4,6 +4,8 @@
 
 En una escena hablada puedes montar una conversación entre **dos personajes tuyos**. Elige el formato en **Proyecto › Escenas › Reparto**. Necesitas el modo de voz **Omni**, una voz registrada para el proyecto y cada personaje registrado con esa voz y con su ficha vigente. [Escenas habladas](escenas-habladas.md) explica esos registros; hacerlos no gasta créditos.
 
+![Vista previa del reparto y del consentimiento por personaje](../assets/capturas/0.28.0-reparto-claro.jpg)
+
 | Formato | Qué se genera | Coste que confirmas |
 |---|---|---|
 | **Solo** | Un personaje, como hasta la 0.27.0 | El de un clip; la escena sigue el camino anterior |
