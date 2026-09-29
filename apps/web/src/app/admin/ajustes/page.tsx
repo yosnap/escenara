@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Aviso } from "@/components/ui/feedback";
+import { SoloEnCliente } from "@/components/ui/solo-en-cliente";
 import { leerAjustes } from "@/server/ajustes";
 import { proveedoresActivos, urlRedireccion } from "@/server/auth/auth";
 import { AVISO_BOVEDA_ADMIN, bovedaDisponible } from "@/server/boveda/cifrado";
@@ -29,14 +30,22 @@ export default async function PaginaAjustes() {
         </p>
       </div>
       {!bovedaLista && <Aviso tono="error">{AVISO_BOVEDA_ADMIN}</Aviso>}
-      <FormularioAjustes
-        inicial={ajustes}
-        secretos={secretos}
-        proveedores={activos.map((p) => NOMBRE_PROVEEDOR[p])}
-        redirecciones={{ google: urlRedireccion("google"), github: urlRedireccion("github") }}
-        bovedaLista={bovedaLista}
-        variablesSobrantes={entorno.variables}
-      />
+      <SoloEnCliente
+        reserva={
+          <p role="status" className="rounded-tarjeta border-2 border-borde bg-superficie p-6 text-texto-suave">
+            Cargando los ajustes…
+          </p>
+        }
+      >
+        <FormularioAjustes
+          inicial={ajustes}
+          secretos={secretos}
+          proveedores={activos.map((p) => NOMBRE_PROVEEDOR[p])}
+          redirecciones={{ google: urlRedireccion("google"), github: urlRedireccion("github") }}
+          bovedaLista={bovedaLista}
+          variablesSobrantes={entorno.variables}
+        />
+      </SoloEnCliente>
     </main>
   );
 }
