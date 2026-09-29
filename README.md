@@ -45,6 +45,7 @@ Comprueba que todo está conectado en <http://localhost:3021/api/health>: debe r
 | Servicio | Dirección local |
 |---|---|
 | Aplicación web | `http://localhost:3021` |
+| Web de documentación | `http://localhost:3022` |
 | PostgreSQL | `localhost:5421` |
 | SeaweedFS (API S3) | `http://localhost:8321` |
 | Mailpit (bandeja de correo local) | `http://localhost:8421` (SMTP en `localhost:1021`) |
@@ -62,11 +63,14 @@ Los puertos son fijos. Si alguno está ocupado, libera el proceso que lo usa en 
 | `bun run services:up` / `bun run services:down` | Levanta o detiene PostgreSQL y SeaweedFS |
 | `bun run db:backup` / `bun run db:migrate` | Copia la base de datos a `backups/bd/` / aplica las migraciones pendientes |
 | `bun run db:generate` | Genera una migración SQL a partir de los cambios del esquema |
+| `bun run docs:dev` | Arranca la web de documentación en el puerto 3022, leyendo las guías de `docs/guias` |
+| `bun run docs:build` / `bun run docs:preview` | Construye la web de documentación en `apps/docs/dist` (y comprueba que no publica nada privado) / la sirve en el 3022 |
 
 ## Estructura
 
 ```text
 apps/web/        Aplicación Next.js sobre Bun (interfaz y API)
+apps/docs/       Web de documentación (Astro Starlight) construida desde docs/guias
 packages/        Paquetes compartidos (llegarán con los workers y adaptadores)
 docs/            Documentación del producto, marca, arquitectura y procesos
 docker-compose.yml  Servicios locales
@@ -75,6 +79,7 @@ docker-compose.yml  Servicios locales
 ## Documentación
 
 - [Mapa de la documentación](docs/README.md)
+- Web de las guías: `bun run docs:dev` y abre <http://localhost:3022>. Se publica en `docs.escenara.com` siguiendo [Desplegar la documentación en Easypanel](docs/procesos/desplegar-documentacion-easypanel.md)
 - [Visión de arquitectura](docs/arquitectura/vision-arquitectura.md) y [decisiones (ADR)](docs/arquitectura/decisiones/README.md)
 - [APIs y proveedores](docs/recursos/apis-y-proveedores.md)
 - [Guía de marca](docs/branding/ESCENARA_BRAND_GUIDE.md) y [dirección visual](docs/diseno/direccion-visual-escenario.md)
