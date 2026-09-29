@@ -71,13 +71,25 @@ export function TarjetaEscena({
   ];
   const firma = [escena.id, ...avisosConfirmados].join("|");
   // Los avisos que frenan a esta escena, sin repetir regla: los suyos y los del modelo y el protagonista.
-  const avisos = [
+  const avisosFotograma = [
     ...new Map(
       [...avisosConfirmables(escena.controles), ...avisosConfirmables(produccion.controlesDelModelo)].map((a) => [
         a.regla,
         a,
       ]),
     ).values(),
+  ];
+  const avisosClip = [
+    ...new Map(
+      [
+        ...avisosFotograma,
+        ...(escena.controlesDelProductoClip ? avisosConfirmables(escena.controlesDelProductoClip) : []),
+      ].map((a) => [a.regla, a]),
+    ).values(),
+  ];
+  const bloqueosClip = [
+    ...bloqueos,
+    ...(escena.controlesDelProductoClip ? bloqueosDeControles(escena.controlesDelProductoClip, avisosConfirmados) : []),
   ];
   const enVuelo = escenaEnVuelo(escena);
   const lista = escenaLista(escena);
@@ -206,7 +218,7 @@ export function TarjetaEscena({
             ocupado={ocupado}
             avisosConfirmados={avisosConfirmados}
             bloqueos={bloqueos}
-            avisosGenerales={avisos}
+            avisosGenerales={avisosFotograma}
             onConfirmarAviso={onConfirmarAviso}
             onProducir={onProducir}
             onRegenerar={onRegenerar}
@@ -223,7 +235,7 @@ export function TarjetaEscena({
               firma={`producir|${firma}`}
               bloqueos={bloqueos}
               avisosConfirmados={avisosConfirmados}
-              avisos={avisos}
+              avisos={avisosFotograma}
               conProducto={escena.conProducto}
               onConfirmarAviso={onConfirmarAviso}
               ocupado={ocupado}
@@ -262,9 +274,9 @@ export function TarjetaEscena({
               }
               // La última animación entra en la firma: tras un clip fallido, volver a animar es otra confirmación.
               firma={`aprobar|${escena.fotograma?.id ?? ""}|${escena.animacion?.id ?? ""}|${avisosConfirmados.join(",")}`}
-              bloqueos={bloqueos}
+              bloqueos={bloqueosClip}
               avisosConfirmados={avisosConfirmados}
-              avisos={avisos}
+              avisos={avisosClip}
               conProducto={escena.conProducto}
               onConfirmarAviso={onConfirmarAviso}
               ocupado={ocupado}
@@ -285,9 +297,9 @@ export function TarjetaEscena({
               sello={produccion.selloClip}
               etiqueta="Generar otro clip"
               firma={`otro-clip|${escena.fotogramaAprobado?.id ?? ""}|${escena.animacion?.id ?? ""}|${avisosConfirmados.join(",")}`}
-              bloqueos={bloqueos}
+              bloqueos={bloqueosClip}
               avisosConfirmados={avisosConfirmados}
-              avisos={avisos}
+              avisos={avisosClip}
               conProducto={escena.conProducto}
               onConfirmarAviso={onConfirmarAviso}
               ocupado={ocupado}
@@ -307,7 +319,7 @@ export function TarjetaEscena({
               firma={`regenerar|${escena.fotograma?.id ?? ""}|${avisosConfirmados.join(",")}`}
               bloqueos={bloqueos}
               avisosConfirmados={avisosConfirmados}
-              avisos={avisos}
+              avisos={avisosFotograma}
               conProducto={escena.conProducto}
               onConfirmarAviso={onConfirmarAviso}
               ocupado={ocupado}

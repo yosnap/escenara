@@ -34,3 +34,12 @@ export function leerObjeto(clave: string) {
 export function urlTemporal(clave: string): string {
   return s3().presign(clave, { expiresIn: VIGENCIA_URL_SEGUNDOS, method: "GET" });
 }
+
+/** El navegador ignora `download` en enlaces a otro origen: S3 debe responder como adjunto. */
+export function urlTemporalDescargaMontaje(clave: string): string {
+  return s3().presign(clave, {
+    expiresIn: VIGENCIA_URL_SEGUNDOS,
+    method: "GET",
+    contentDisposition: 'attachment; filename="escenara-montaje.mp4"',
+  });
+}

@@ -15,6 +15,7 @@ import { producirEscenaHablada } from "../omni/escena";
 import { listarPlantillas, plantillaVigenteDe } from "../prompts/consulta";
 import { invalidarRevisionesDeEscena } from "../revision/resultados";
 import { dialogoDelClip } from "../voz/modo";
+import { animacionDelFotograma } from "./animacion-del-fotograma";
 import { marcarEnProduccion } from "./cierre";
 import { escenasPorProducir, estadoDeProduccion, exigirDuracionProducible, ultimoTrabajoDeEscena } from "./consulta";
 import { presetsDeProduccion } from "./presets";
@@ -518,6 +519,7 @@ export async function aprobarFotograma(
   if (fotograma?.state !== "listo" || !fotograma.resultMediaId) {
     throw new ErrorProyecto(409, "Espera a que el fotograma de esta escena esté listo y guardado antes de aprobarlo.");
   }
+  const animacionActual = animacionDelFotograma(fotograma.id, animacion);
   /**
    * Primero se apunta la aprobación y después se gasta, y no al revés: si el encolado del clip se rechaza (por un
    * tope, por el presupuesto del proyecto), queda una escena con su fotograma aprobado y sin clip, que es un estado
@@ -556,9 +558,9 @@ export async function aprobarFotograma(
     proyecto,
     { trabajoPadreId: fotograma.id },
     confirmacion,
-    claveDerivada(confirmacion.claveIdempotencia, "animacion", fotograma.id, animacion?.id ?? "primera"),
+    claveDerivada(confirmacion.claveIdempotencia, "animacion", fotograma.id, animacionActual?.id ?? "primera"),
     h,
-    esReintentoAutorizado(escena, [animacion]),
+    esReintentoAutorizado(escena, [animacionActual]),
   );
   return estadoDeProduccion(actor, proyecto.id);
 }

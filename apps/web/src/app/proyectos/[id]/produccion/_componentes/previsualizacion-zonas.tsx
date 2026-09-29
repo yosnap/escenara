@@ -16,6 +16,7 @@ import { PROPORCION_DISPONIBLE, RESOLUCION_DISPONIBLE, ZONAS_SEGURAS } from "@/l
 export function PrevisualizacionZonas({ medio, etiqueta }: { medio: Medio; etiqueta: string }) {
   const [plataforma, setPlataforma] = useState<string | null>(null);
   const zona = ZONAS_SEGURAS.find((z) => z.plataforma === plataforma) ?? null;
+  const dimensiones = medio.ancho && medio.alto ? `${medio.ancho} × ${medio.alto} px` : "dimensiones no disponibles";
 
   return (
     <div className="flex flex-col gap-2">
@@ -59,7 +60,7 @@ export function PrevisualizacionZonas({ medio, etiqueta }: { medio: Medio; etiqu
       <p className="text-sm text-texto-suave">
         {zona
           ? `${zona.nota} Es una aproximación comprobada el 27/09/2026: cada aplicación cambia su interfaz cuando quiere.`
-          : `${etiqueta} en ${PROPORCION_DISPONIBLE} a ${RESOLUCION_DISPONIBLE}. Elige una plataforma para ver qué taparía su interfaz.`}
+          : `${etiqueta}: ${dimensiones}. El montaje final se exporta en ${PROPORCION_DISPONIBLE} a ${RESOLUCION_DISPONIBLE}. Elige una plataforma para ver qué taparía su interfaz.`}
       </p>
     </div>
   );

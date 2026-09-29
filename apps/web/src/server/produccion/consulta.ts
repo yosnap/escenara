@@ -50,6 +50,7 @@ import { plantillaVigenteDe } from "../prompts/consulta";
 import { creditosDelEnvio } from "../prompts/traduccion";
 import { ErrorCatalogo } from "../proveedores/contrato";
 import { type RepartoDePantalla, repartoDePantallaDeEscena } from "../reparto/pantalla";
+import { controlesProductoClip } from "./controles-producto-clip";
 
 /**
  * Lectura del estado de producción de un proyecto (RF06, 0.19.0).
@@ -225,6 +226,7 @@ function vistaDeEscena(
   fila: FilaEscena,
   trabajos: readonly FilaTrabajo[],
   controles: EvaluacionVista,
+  controlesDelProductoClip: EvaluacionVista | null,
   puestos: Map<string, number>,
   medios: Map<string, Medio>,
   /** Reparto de dos personajes de esta escena (0.28.0); `null` en una escena de un personaje. */
@@ -250,6 +252,7 @@ function vistaDeEscena(
     estado: fila.state,
     segundos: fila.plannedSeconds,
     controles,
+    ...(controlesDelProductoClip ? { controlesDelProductoClip } : {}),
     fotograma: fotograma ? vistaDeTrabajo(fotograma, puestos.get(fotograma.id) ?? null, medios) : null,
     animacion: animacion ? vistaDeTrabajo(animacion, puestos.get(animacion.id) ?? null, medios) : null,
     fotogramaAprobado: fila.approvedFrameMediaId === null ? null : (medios.get(fila.approvedFrameMediaId) ?? null),
@@ -329,25 +332,27 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
     ...filasEscena.flatMap((e) => [e.approvedFrameMediaId, e.clipMediaId]),
   ]);
   const escenas = await Promise.all(
-    filasEscena.map(async (fila) =>
-      vistaDeEscena(
+    filasEscena.map(async (fila) => {
+      const [controlesDelProductoClip, reparto] = await Promise.all([
+        controlesProductoClip(actor.id, fila, elecciones.animacion, contexto.parametros),
+        /** El reparto solo se consulta cuando hay dos personajes en la escena. */
+        fila.castFormat === "solo" ? null : repartoDePantallaDeEscena(actor, fila, proyecto),
+      ]);
+      return vistaDeEscena(
         fila,
         porEscena.get(fila.id) ?? [],
-        // El mismo motor que cierra la puerta al producirla, con datos ya cargados: ni una consulta más por escena.
+        // El mismo motor que cierra la puerta al producir el fotograma, con los datos ya cargados.
         evaluarParaMostrar({
           tipo: "fotograma",
           parametros: contexto.parametros,
           escena: hechosDeFila(fila, proyecto, afirmaciones, contexto),
         }),
+        controlesDelProductoClip,
         puestos,
         medios,
-        /**
-         * El reparto se lee **solo** en las escenas de dos personajes (0.28.0). Una escena de un personaje —que es
-         * todo lo anterior a esta versión— no paga ni una consulta más: su tarjeta es exactamente la de siempre.
-         */
-        fila.castFormat === "solo" ? null : await repartoDePantallaDeEscena(actor, fila, proyecto),
-      ),
-    ),
+        reparto,
+      );
+    }),
   );
 
   // Lo que el usuario confirma por trabajo es **todo** lo que va a pagar: la generación y su traducción.
@@ -410,6 +415,7 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
         comprometido,
         creditosFotograma: omni ? porClip : porFotograma,
         porProducir: porProducir.length,
+        tieneEscenasNormales: escenas.some((escena) => escena.formatoClip !== "cantar"),
       }),
     ],
   };
@@ -493,6 +499,7 @@ export function impedimentosDeProduccion(datos: {
   comprometido: number;
   creditosFotograma: number;
   porProducir: number;
+  tieneEscenasNormales: boolean;
 }): string[] {
   const impedimentos: string[] = [];
   if (!datos.planAprobado) impedimentos.push("El plan de este proyecto no está aprobado: apruébalo antes de producir.");
@@ -501,12 +508,16 @@ export function impedimentosDeProduccion(datos: {
       "Este proyecto no tiene protagonista asignado. Elige un personaje con consentimiento vigente: sus fotos son lo que da identidad a cada fotograma.",
     );
   }
-  if (datos.sinPrecio) {
+  if (datos.tieneEscenasNormales && datos.sinPrecio) {
     impedimentos.push(
       "Falta algún modelo con precio registrado, así que no se puede estimar ni producir. Pídeselo a quien administra.",
     );
   }
-  const duracion = impedimentoDeDuracion(datos.segundosDelClip, datos.segundosDelProyecto);
+  // El canto tiene modelo, duración y precio propios. Un proyecto con escenas normales conserva este aviso incluso
+  // después de generarlas: editar su duración obliga a revisar de nuevo el plan.
+  const duracion = datos.tieneEscenasNormales
+    ? impedimentoDeDuracion(datos.segundosDelClip, datos.segundosDelProyecto)
+    : null;
   if (duracion) impedimentos.push(duracion);
   if (datos.presupuesto > 0 && datos.porProducir > 0) {
     const libre = datos.presupuesto - datos.comprometido;

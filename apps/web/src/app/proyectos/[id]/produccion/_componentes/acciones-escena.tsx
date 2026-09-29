@@ -110,7 +110,8 @@ export function AccionesEscena({
             <div className="flex flex-col gap-3">
               <p className="text-texto">
                 Llevas {escena.reintentosUsados} de {escena.presupuestoReintentos} reintentos autorizados en esta
-                escena. Cada reintento vuelve a pagar el fotograma completo.
+                escena. El trabajo que repitas (fotograma, clip o canto) puede volver a cobrarse; verás su estimación
+                antes de enviarlo.
               </p>
               <Campo etiqueta="Reintentos que autorizas además de los ya consumidos" ayuda="De 1 a 10.">
                 {(p) => (

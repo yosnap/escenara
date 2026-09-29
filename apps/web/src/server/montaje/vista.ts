@@ -7,6 +7,7 @@ import {
   type MontajeVista,
 } from "@/lib/montaje";
 import { leerAjustes } from "../ajustes";
+import { urlTemporalDescargaMontaje } from "../almacenamiento";
 import { db } from "../db/cliente";
 import { type FilaExportacion, type FilaMontaje, media } from "../db/esquema";
 import { type Actor, aDto } from "../media/servicio";
@@ -73,7 +74,9 @@ export async function exportacionParaLaVista(
 /** El medio del resultado, o `null` si el usuario lo ha borrado o enviado a la papelera. */
 async function medioSiSigue(actor: Actor, medioId: string) {
   const [fila] = await db().select().from(media).where(eq(media.id, medioId)).limit(1);
-  return fila && fila.deletedAt === null ? aDto(fila, actor) : null;
+  return fila && fila.deletedAt === null
+    ? { ...aDto(fila, actor), url: urlTemporalDescargaMontaje(fila.storageKey) }
+    : null;
 }
 
 /** Todo lo que la pantalla de montaje necesita, en una sola respuesta. */

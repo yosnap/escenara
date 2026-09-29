@@ -916,6 +916,7 @@ describe.skipIf(!hayBaseDeDatos)("escenas habladas con Omni", () => {
         comprometido: 0,
         creditosFotograma: CREDITOS_OMNI,
         porProducir: 2,
+        tieneEscenasNormales: true,
       }),
     ).toEqual([]);
 

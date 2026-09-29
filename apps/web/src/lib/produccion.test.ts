@@ -177,12 +177,13 @@ describe("aviso de gasto alto", () => {
 });
 
 describe("duraciones disponibles", () => {
-  it("se ofrecen las tres duraciones medidas, con 8 s de fábrica", () => {
-    expect(DURACIONES_DISPONIBLES).toEqual([8, 6, 4]);
+  it("se ofrecen las cuatro duraciones medidas, con 8 s de fábrica", () => {
+    expect(DURACIONES_DISPONIBLES).toEqual([8, 6, 5, 4]);
     expect(DURACION_PREDETERMINADA).toBe(8);
     expect(esDuracionDisponible(4)).toBe(true);
     expect(esDuracionDisponible(8)).toBe(true);
     expect(esDuracionDisponible(6)).toBe(true);
+    expect(esDuracionDisponible(5)).toBe(true);
   });
 
   it("al modelo se le pide la duración del proyecto si la admite, y la suya si no", () => {
@@ -214,13 +215,11 @@ describe("estado de la escena", () => {
     // Con el clip ya hecho, o con su animación en marcha, no hay nada que encolar.
     expect(clipPorEncolar({ ...aprobada, clip: medio })).toBe(false);
     expect(clipPorEncolar({ ...aprobada, animacion: trabajo({ id: "t2", estado: "en_curso" }) })).toBe(false);
-    // Y si la animación falló con coste posible, esto pasa por los reintentos autorizados, no por animar otra vez.
-    expect(
-      clipPorEncolar({
-        ...aprobada,
-        animacion: trabajo({ id: "t2", estado: "fallido", motivoFallo: "respuesta" }),
-      }),
-    ).toBe(false);
+    // Si pudo cobrarse, el clip se repite con el mismo fotograma solo tras autorizar un reintento.
+    const fallida = { ...aprobada, animacion: trabajo({ id: "t2", estado: "fallido", motivoFallo: "respuesta" }) };
+    expect(clipPorEncolar(fallida)).toBe(false);
+    expect(clipPorEncolar({ ...fallida, presupuestoReintentos: 1 })).toBe(true);
+    expect(clipPorEncolar({ ...fallida, presupuestoReintentos: 1, reintentosUsados: 1 })).toBe(false);
     // Sin fotograma aprobado no se anima nada: primero lo mira una persona.
     expect(clipPorEncolar(escena({ fotograma: trabajo({ estado: "listo", medio }) }))).toBe(false);
   });

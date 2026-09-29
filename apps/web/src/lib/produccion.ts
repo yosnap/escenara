@@ -119,10 +119,11 @@ export const falloConCoste = (motivo: MotivoFallo | null): boolean =>
 /**
  * Duraciones de clip que esta versión ofrece, en segundos, de la predeterminada a la opcional.
  *
- * Las tres están medidas con dinero real: Veo cobra 60 créditos tanto a 4 como a 8 s, y Hailuo 2.3 Standard
- * cobra 30 créditos a 6 s (2026-09-27). La duración elegida debe ser compatible con el modelo vigente.
+ * Están medidas con dinero real: Veo cobra 60 créditos tanto a 4 como a 8 s, Hailuo 2.3 Standard cobra
+ * 30 créditos a 6 s y MiniMax H3 cobra 40 créditos a 5 s. La duración elegida debe ser compatible con el
+ * modelo vigente.
  */
-export const DURACIONES_DISPONIBLES: readonly number[] = [8, 6, 4];
+export const DURACIONES_DISPONIBLES: readonly number[] = [8, 6, 5, 4];
 
 /** Duración de clip de un proyecto nuevo. La misma que el valor por omisión de la columna del proyecto. */
 export const DURACION_PREDETERMINADA = 8;
@@ -240,6 +241,8 @@ export interface EscenaProduccionVista {
   segundos: number;
   /** Controles previos de la escena (mismo motor que cierra la puerta al producirla). */
   controles: EvaluacionVista;
+  /** Avisos del producto que afectan al clip y se confirman al animar el fotograma. */
+  controlesDelProductoClip?: EvaluacionVista;
   /** Trabajo del fotograma en marcha o el último que hubo; `null` si nunca se ha producido. */
   fotograma: TrabajoDeEscena | null;
   /** Trabajo de la animación, igual. */
@@ -375,8 +378,8 @@ const falloQuePudoCobrarse = (trabajo: TrabajoDeEscena | null): boolean =>
   trabajo !== null && trabajo.estado === "fallido" && falloConCoste(trabajo.motivoFallo);
 
 /**
- * `true` cuando el último trabajo de la escena falló con coste posible. Volver a enviarla no es gratis: pasa por
- * regenerarla, que consume un reintento autorizado (ADR-0024). Por eso una escena así **no entra en el lote** de
+ * `true` cuando el último trabajo de la escena falló con coste posible. Volver a enviarla no es gratis: consume
+ * un reintento autorizado (ADR-0024). Por eso una escena así **no entra en el lote** de
  * «producir lo pendiente»: el botón de lote no puede volver a pagar un fallo sin que nadie lo autorice.
  */
 export const esperaAutorizacionDeReintento = (escena: EscenaProduccionVista): boolean =>
@@ -385,14 +388,14 @@ export const esperaAutorizacionDeReintento = (escena: EscenaProduccionVista): bo
 /**
  * `true` cuando hay un fotograma aprobado, no hay clip y nada lo está animando: el clip no llegó a encolarse (su
  * envío se rechazó por un tope, por el techo del proyecto o por un control) y la salida honesta es volver a ofrecer
- * animarlo, no obligar a regenerar el fotograma y pagarlo otra vez. Si la animación falló con coste posible, no:
- * eso pasa por los reintentos autorizados.
+ * animarlo, no obligar a regenerar el fotograma y pagarlo otra vez. Si la animación pudo cobrarse, solo se
+ * ofrece tras autorizar un reintento de esa escena.
  */
 export const clipPorEncolar = (escena: EscenaProduccionVista): boolean =>
   escena.fotogramaAprobado !== null &&
   escena.clip === null &&
   !trabajoEnMarcha(escena.animacion) &&
-  !falloQuePudoCobrarse(escena.animacion);
+  (!falloQuePudoCobrarse(escena.animacion) || escena.reintentosUsados < escena.presupuestoReintentos);
 
 /** `true` cuando la escena ya tiene su clip guardado: es el hito de «escena lista». */
 export const escenaLista = (escena: EscenaProduccionVista): boolean => escena.clip !== null;

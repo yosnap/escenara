@@ -316,6 +316,7 @@ describe.skipIf(!hayBaseDeDatos)("montaje y exportación de un proyecto", () => 
     expect(exportacion.progreso).toBe(100);
     expect(exportacion.error).toBe("");
     expect(exportacion.medio).not.toBeNull();
+    expect(decodeURIComponent(exportacion.medio?.url ?? "")).toContain('attachment; filename="escenara-montaje.mp4"');
 
     const medidas = await medirConFfprobe(await ficheroExportado(exportacion.medio?.id ?? ""));
     expect(medidas.ancho).toBe(1080);
