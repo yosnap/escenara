@@ -14,6 +14,8 @@ Si un trend caduca entre la elección y la confirmación, el servidor bloquea la
 
 Quien administra abre **Admin › Plantillas**, crea una plantilla de tipo «Trend» y define nombre y descripción en castellano, texto de composición y variables, plataforma de referencia, duración objetivo, si permite habla y motivo de la versión. La referencia informativa del admin debe ser una URL HTTPS sin credenciales. Guarda primero en **revisión** y comprueba la vista del catálogo de componentes. La edición del texto, las variables o el permiso de habla crea otra versión y conserva las anteriores para los trabajos ya hechos.
 
+![Vigencia y permiso de habla del trend en el catálogo de componentes](../assets/capturas/0.30.0-trends-revision-claro.jpg)
+
 Después de una prueba real aprobada por el propietario, puede poner la plantilla **vigente**. Cuando el formato envejezca, usa «Caducar trend». Una caducada no se edita ni genera: se duplica, se revisa la nueva versión y se publica cuando corresponda. El interruptor de **Admin › Ajustes** oculta todos los trends sin desplegar.
 
 Las cinco plantillas iniciales permanecen en **revisión**. No se han generado pruebas de pago ni se afirma que su resultado sea reconocible hasta que el propietario autorice el spike.
