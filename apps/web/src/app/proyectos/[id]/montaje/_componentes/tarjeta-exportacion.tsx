@@ -3,7 +3,7 @@
 import { Download, RefreshCw } from "lucide-react";
 import { Boton, claseBoton } from "@/components/ui/button";
 import { Aviso } from "@/components/ui/feedback";
-import { formatearTamano } from "@/lib/media/reglas";
+import { formatearSegundos, formatearTamano } from "@/lib/media/reglas";
 import {
   ETIQUETA_ESTADO_EXPORTACION,
   ETIQUETA_FORMATO_MONTAJE,
@@ -12,8 +12,6 @@ import {
 } from "@/lib/montaje";
 import { FORMATOS_SUBTITULOS } from "@/lib/voz";
 import { urlSubtitulos } from "./api-montaje";
-
-const segundosLegibles = new Intl.NumberFormat("es-ES", { maximumFractionDigits: 1 });
 
 /**
  * Una exportación terminada: qué salió, si sigue correspondiendo al montaje de ahora y cómo descargarlo.
@@ -65,7 +63,7 @@ export function TarjetaExportacion({
       <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
         <Dato termino="Formato">{ETIQUETA_FORMATO_MONTAJE[exportacion.formato]}</Dato>
         <Dato termino="Duración">
-          {exportacion.duracion === null ? "—" : `${segundosLegibles.format(exportacion.duracion)} s`}
+          {exportacion.duracion === null ? "—" : formatearSegundos(exportacion.duracion, 1)}
         </Dato>
         <Dato termino="Tamaño">{exportacion.tamano === null ? "—" : formatearTamano(exportacion.tamano)}</Dato>
         <Dato termino="Etiqueta de IA">

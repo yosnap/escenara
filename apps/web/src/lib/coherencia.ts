@@ -58,6 +58,32 @@ export type ModoCoherencia = (typeof MODOS_COHERENCIA)[number];
 export const esModoCoherencia = (v: unknown): v is ModoCoherencia => MODOS_COHERENCIA.includes(v as ModoCoherencia);
 
 /**
+ * Las comprobaciones que, en modo `activa`, deciden algo de verdad. **Solo el parecido (identidad)**: una vista
+ * generada que no encaja con la cara de referencia deja de contar en la cobertura del personaje. Las demás, aunque
+ * estén en Activa, todavía solo informan: no bloquean nada hasta que haya datos de su acierto.
+ */
+export const COMPROBACIONES_QUE_DECIDEN: readonly Comprobacion[] = ["identidad"];
+
+/** Qué hace de verdad una comprobación en un modo: `apagada`, `informa` (registra y enseña) o `decide`. */
+export type EfectoDeComprobacion = "apagada" | "informa" | "decide";
+
+export function efectoDeComprobacion(comprobacion: Comprobacion, modo: ModoCoherencia): EfectoDeComprobacion {
+  if (modo === "apagada") return "apagada";
+  return modo === "activa" && COMPROBACIONES_QUE_DECIDEN.includes(comprobacion) ? "decide" : "informa";
+}
+
+/** Frase corta, en castellano, de lo que hace esta comprobación en su modo. Es lo que se lee junto a su veredicto. */
+export function textoDeEfecto(comprobacion: Comprobacion, modo: ModoCoherencia): string {
+  const efecto = efectoDeComprobacion(comprobacion, modo);
+  if (efecto === "apagada") return "Apagada: no se comprueba.";
+  if (efecto === "decide")
+    return "Activa: decide de verdad. Una vista que no encaja no cuenta en la cobertura del personaje.";
+  return modo === "activa"
+    ? "Está en Activa, pero esta comprobación todavía solo informa: no decide nada."
+    : "En sombra: informa y no decide nada.";
+}
+
+/**
  * Veredicto. `revisar` **no es un término medio del contenido**, es un término medio de la *confianza*: significa
  * «la respuesta no llega al umbral que esta instalación exige para actuar sola, míralo tú».
  */

@@ -4,6 +4,7 @@ import { Plus } from "lucide-react";
 import { Boton } from "@/components/ui/button";
 import { Aviso } from "@/components/ui/feedback";
 import { ListaOrdenable } from "@/components/ui/lista-ordenable";
+import { formatearSegundos } from "@/lib/media/reglas";
 import type { EscenaMontableVista } from "@/lib/montaje";
 import { type AvisoDuracion, type FragmentoEditable, SEGUNDOS_RAZONABLES_MONTAJE } from "@/lib/montaje-pantalla";
 import { TarjetaFragmento } from "./tarjeta-fragmento";
@@ -52,7 +53,7 @@ export function LineaDeTiempo({
           </h2>
           <p className="mt-1 text-texto-suave">
             {fragmentos.length} {fragmentos.length === 1 ? "fragmento" : "fragmentos"} ·{" "}
-            <strong className="font-mono text-texto">{duracionTotal} s</strong> en total
+            <strong className="font-mono text-texto">{formatearSegundos(duracionTotal)}</strong> en total
           </p>
         </div>
       </div>
@@ -108,7 +109,9 @@ export function LineaDeTiempo({
                 onClick={() => onAnadir(escena)}
               >
                 Escena {escena.orden}
-                <span className="font-normal text-texto-suave"> ({escena.duracionClip} s)</span>
+                {escena.duracionClip !== null && (
+                  <span className="font-normal text-texto-suave"> ({formatearSegundos(escena.duracionClip)})</span>
+                )}
               </Boton>
             ))}
           </div>

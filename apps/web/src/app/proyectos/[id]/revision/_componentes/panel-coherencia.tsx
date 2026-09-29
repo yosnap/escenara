@@ -6,14 +6,16 @@ import {
   type CorreccionHumana,
   type DecisionVista,
   NOMBRE_VEREDICTO,
+  textoDeEfecto,
   type VeredictoCoherencia,
 } from "@/lib/coherencia";
 
 /**
  * Coherencia de una escena en la pantalla de revisión (0.24.0).
  *
- * Va **en sombra**, y eso se dice con todas las letras: lo que aparece aquí no bloquea la exportación, no cambia la
- * severidad de la escena y no acepta ni rechaza nada. Está para dos cosas: que el usuario vea si el sistema ha
+ * Lo que aparece aquí no bloquea la exportación, no cambia la severidad de la escena y no acepta ni rechaza nada,
+ * y cada fila dice **la verdad de su modo**: en sombra informa, y en Activa solo decide el parecido (identidad).
+ * Está para dos cosas: que el usuario vea si el sistema ha
  * entendido su escena, y que pueda decir si acierta. Esa corrección es la **única** etiqueta con la que se mide si
  * la comprobación sirve, así que los dos botones son el corazón de esta versión, no un adorno.
  *
@@ -48,8 +50,10 @@ export function PanelCoherencia({
         </Boton>
       </div>
       <p className="text-sm text-texto-suave">
-        Estas comprobaciones <strong>no deciden nada</strong>: no bloquean la exportación ni cambian el estado de la
-        escena. Se registran para ver si aciertan, y para eso hace falta que digas si tienen razón.
+        Ninguna de estas comprobaciones bloquea la exportación ni cambia el estado de la escena. En sombra solo
+        informan; en Activa, únicamente la de <strong>parecido</strong> decide de verdad (una vista del personaje que no
+        encaja no cuenta en su cobertura) y las demás siguen solo informando. Se registran para ver si aciertan, y para
+        eso hace falta que digas si tienen razón.
       </p>
 
       {decisiones.length === 0 ? (
@@ -77,6 +81,9 @@ export function PanelCoherencia({
                 </span>
               </div>
               <p className="text-sm text-texto-suave">{decision.evidencia}</p>
+              <p className="text-xs font-semibold text-texto-suave">
+                {textoDeEfecto(decision.comprobacion, decision.modo)}
+              </p>
               <p className="text-xs text-texto-suave">
                 Confianza {Math.round(decision.confianza * 100)} % (umbral {Math.round(decision.umbral * 100)} %). La
                 confianza dice cómo de concentrada está la respuesta del modelo, no cuántas veces acierta. Decidió{" "}

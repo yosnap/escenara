@@ -8,6 +8,7 @@ import { Aviso } from "@/components/ui/feedback";
 import { Campo, EntradaTexto } from "@/components/ui/field";
 import { SelectorMedios } from "@/components/ui/media/selector-medios";
 import type { Medio } from "@/lib/media/tipos";
+import { ETIQUETA_AUTORIZO_PARECIDO } from "@/lib/personajes";
 import { extraerCamposDeFoto, type SeisCExtraidas } from "./api-generacion";
 
 /**
@@ -102,13 +103,13 @@ export function PanelExtraccion({
 
       {/*
         Leer campos **sube la foto** a un servicio externo. Se dice antes de pulsar y se confirma: el servidor
-        no envía nada sin esto, y con la foto de un personaje real exige además su declaración de coherencia.
+        no envía nada sin esto, y con la foto de un personaje real exige además la casilla de comprobación de parecido de su consentimiento.
       */}
       {fotos.length > 0 && (
         <div className="rounded-tarjeta border border-borde bg-superficie p-3">
           <Casilla
             etiqueta="Envía esta foto al servicio de percepción para leer sus campos"
-            descripcion="La imagen sale de aquí y se sube al servicio que tengas configurado. No se lee quién sale en ella. Si es la foto de un personaje tuyo, hace falta además su declaración de coherencia."
+            descripcion={`La imagen sale de aquí y se sube al servicio que tengas configurado. No se lee quién sale en ella. Si es la foto de un personaje tuyo, hace falta además que en su consentimiento esté marcada «${ETIQUETA_AUTORIZO_PARECIDO}».`}
             marcada={confirmoEnvio}
             onCambio={setConfirmoEnvio}
             deshabilitado={deshabilitado}

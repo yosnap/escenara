@@ -1,5 +1,5 @@
 import { and, eq, isNull } from "drizzle-orm";
-import { type ModeloCanto, segundosFacturados } from "@/lib/canto";
+import { MIME_AUDIO_DE_CANTO, type ModeloCanto, segundosFacturados, textoDeFormatosDeCanto } from "@/lib/canto";
 import { MIME_ADMITIDOS } from "@/lib/media/reglas";
 import { motivoDeInvalidacion } from "@/lib/proyectos";
 import { cantoDe, leerAjustes } from "../ajustes";
@@ -30,13 +30,12 @@ import { ErrorCanto } from "./errores";
 
 /** Formatos de audio que esta instalación acepta. Los mismos que la biblioteca: no hay una lista aparte. */
 const FORMATOS_AUDIO = MIME_ADMITIDOS.audio;
-const FORMATOS_PROVEEDOR = ["audio/mpeg", "audio/wav", "audio/ogg", "audio/mp4", "audio/aac"];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Límites publicados por KIE para el audio de cada modelo, antes de subirlo al proveedor. */
 export function motivoAudioIncompatible(medio: FilaMedio, modelo: ModeloCanto): string | null {
-  if (!FORMATOS_PROVEEDOR.includes(medio.mimeType)) {
-    return `El modelo ${modelo} no admite audio ${medio.mimeType}. Vuelve a subirlo como MP3, WAV, OGG, M4A o AAC.`;
+  if (!MIME_AUDIO_DE_CANTO.includes(medio.mimeType)) {
+    return `El modelo ${modelo} no admite audio ${medio.mimeType}. Vuelve a subirlo como ${textoDeFormatosDeCanto()}.`;
   }
   const maximoMb = modelo === "infinitalk/from-audio" ? 10 : 100;
   if (medio.sizeBytes > maximoMb * 1024 * 1024) {
@@ -154,7 +153,7 @@ export async function elegirAudioDeCanto(
   if (duracion === null) {
     throw new ErrorCanto(
       409,
-      "No se ha podido medir cuánto dura este audio, y el clip se paga por segundo: sin la duración no se puede calcular el coste ni confirmarlo. Vuelve a subirlo en un formato corriente (MP3, WAV o M4A). No se ha cobrado nada.",
+      `No se ha podido medir cuánto dura este audio, y el clip se paga por segundo: sin la duración no se puede calcular el coste ni confirmarlo. Vuelve a subirlo en uno de estos formatos: ${textoDeFormatosDeCanto()}. No se ha cobrado nada.`,
     );
   }
   if (duracion > segundosMaximos) {

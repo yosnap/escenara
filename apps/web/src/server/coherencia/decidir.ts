@@ -1,4 +1,10 @@
-import { type Comprobacion, type ModoCoherencia, type VeredictoCoherencia, veredictoDe } from "@/lib/coherencia";
+import {
+  type Comprobacion,
+  efectoDeComprobacion,
+  type ModoCoherencia,
+  type VeredictoCoherencia,
+  veredictoDe,
+} from "@/lib/coherencia";
 import { coherenciaDe, leerAjustes } from "../ajustes";
 import { leerSecreto } from "../boveda/secretos";
 import type { Buscador } from "../proveedores/codigos";
@@ -144,8 +150,9 @@ export async function decidirCoherencia(peticion: PeticionDecision): Promise<Res
 
   return {
     veredicto,
-    // Solo la comprobación **activa** decide. En sombra el veredicto queda escrito y no mueve nada.
-    decide: modo === "activa",
+    // Solo decide la comprobación que tiene poder (hoy, el parecido) y está en Activa. Las demás, aunque estén en
+    // Activa, y todas en sombra, dejan el veredicto escrito y no mueven nada.
+    decide: efectoDeComprobacion(peticion.comprobacion, modo) === "decide",
     modo,
     evidencia,
     confianza: respuesta.confianza,

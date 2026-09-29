@@ -1,5 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { aceptarArchivos, formatearDuracion, formatearTamano, LIMITE_BYTES, motivoRechazo, tipoDeMime } from "./reglas";
+import {
+  aceptarArchivos,
+  formatearDuracion,
+  formatearSegundos,
+  formatearTamano,
+  LIMITE_BYTES,
+  motivoRechazo,
+  tipoDeMime,
+} from "./reglas";
 
 describe("reglas de medios", () => {
   test("clasifica los MIME admitidos e ignora los parámetros", () => {
@@ -28,5 +36,18 @@ describe("reglas de medios", () => {
     expect(formatearTamano(200 * 1024 * 1024)).toBe("200 MB");
     expect(formatearDuracion(65.4)).toBe("1:05");
     expect(formatearDuracion(3725)).toBe("1:02:05");
+  });
+});
+
+describe("formatearSegundos", () => {
+  test("usa la coma decimal de es-ES y la unidad", () => {
+    expect(formatearSegundos(0.2)).toBe("0,2 s");
+    expect(formatearSegundos(8.1)).toBe("8,1 s");
+    expect(formatearSegundos(15)).toBe("15 s");
+  });
+
+  test("recorta a los decimales pedidos", () => {
+    expect(formatearSegundos(3.456)).toBe("3,46 s");
+    expect(formatearSegundos(3.456, 1)).toBe("3,5 s");
   });
 });

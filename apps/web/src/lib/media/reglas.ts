@@ -69,6 +69,14 @@ export function formatearTamano(bytes: number): string {
   return `${valor.toLocaleString("es-ES", { maximumFractionDigits: valor < 10 ? 1 : 0 })} ${unidades[i]}`;
 }
 
+/**
+ * Segundos con coma decimal y su unidad («0,2 s», «8,1 s»): los recortes y las duraciones del montaje tienen
+ * decimales y en castellano llevan coma. Es el formateador común de la pantalla: no se escribe `${x} s` a mano.
+ */
+export function formatearSegundos(segundos: number, decimales = 2): string {
+  return `${segundos.toLocaleString("es-ES", { maximumFractionDigits: decimales })} s`;
+}
+
 export function formatearDuracion(segundos: number): string {
   const total = Math.max(0, Math.round(segundos));
   const h = Math.floor(total / 3600);

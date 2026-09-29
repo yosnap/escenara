@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { ETIQUETA_AUTORIZO_PARECIDO } from "@/lib/personajes";
 import { declaraCoherencia } from "../coherencia/identidad";
 import { percibir } from "../coherencia/percepcion";
 import { db } from "../db/cliente";
@@ -153,7 +154,7 @@ export async function motivoSinPermisoParaLeer(
   for (const personaje of personajes) {
     if (personaje.virtual) continue;
     if (await declaraCoherencia(personaje.id)) continue;
-    return `Esta foto es una referencia de «${personaje.nombre}», y leer sus campos obliga a enviarla a un servicio de percepción que no es el que genera. Su consentimiento no lo cubre: añade esa declaración en su consentimiento y vuelve a intentarlo.`;
+    return `Esta foto es una referencia de «${personaje.nombre}», y leer sus campos obliga a enviarla a un servicio de percepción que no es el que genera. Su consentimiento no lo cubre: marca «${ETIQUETA_AUTORIZO_PARECIDO}» en su consentimiento y vuelve a intentarlo.`;
   }
   return "";
 }
