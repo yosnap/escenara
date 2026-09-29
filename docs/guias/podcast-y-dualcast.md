@@ -30,7 +30,7 @@ Sin turnos, el modelo decide quién dice cada frase. **Los dos registros de pers
 
 La zona **Consentimiento de quien sale** nombra a cada personaje al que le falta algo y te dirige a su ficha. Con **dos personas reales hacen falta dos consentimientos vigentes**, uno por persona; sin los dos la generación queda bloqueada. Si uno es inventado, debe tener su declaración de personaje inventado y la persona real su consentimiento. De forma provisional se usa el consentimiento individual de la 0.13.0; no se pide otro documento por aparecer juntos.
 
-En **Producción** verás la estimación por clip y total. Confirma una sola vez **el total exacto** y los avisos aplicables. El podcast reserva y cierra el coste de cada clip por separado: cancelar uno no cobra el otro. Cuando se hayan pedido, la tarjeta muestra los **dos clips en orden y con el nombre del personaje**. El montaje que alternará esos planos llega en la 0.32.0; aquí quedan marcados el orden y el personaje.
+En **Producción** verás la estimación por clip y total. Confirma una sola vez **el total exacto** y los avisos aplicables. El podcast reserva y cierra el coste de cada clip por separado: cancelar uno no cobra el otro. Cuando se hayan pedido, la tarjeta muestra los **dos clips en orden y con el nombre del personaje**. Esos dos clips se ordenan y se recortan después en [Montaje y exportación](montaje-y-exportacion.md); aquí quedan marcados el orden y el personaje.
 
 En **Revisión › Coherencia**, Jev muestra la identidad **por cara** y señala sobre qué personaje es cada decisión. `reparto_fiel` comprueba si cada frase la dijo quien se pidió. Nace **en sombra**: informa, no bloquea el clip.
 

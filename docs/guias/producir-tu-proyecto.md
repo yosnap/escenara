@@ -109,21 +109,23 @@ y te la muestra.
 
 ## Duración y formato
 
-Esta versión produce **clips de 8 s o de 4 s, en 9:16 a 720p**. La duración se elige **una vez para todo el
+Esta versión produce **clips de 8, 6, 5 o 4 s, en 9:16 a 720p**. La duración se elige **una vez para todo el
 proyecto**, en el paso «La idea», y todas sus escenas se producen con ella: verlo cada escena por separado no
 tendría sentido en un vídeo que se monta seguido.
 
 **Ocho segundos es lo de fábrica, y elegir cuatro no ahorra nada**: medido con dinero real el 27 de septiembre de
-2026, el proveedor cobra **lo mismo** por un clip de 4 s que por uno de 8 s. Las dos duraciones son las únicas con
-coste medido en esta instalación. Si el modelo predeterminado del catálogo no admite la duración de tu proyecto, la
+2026, el proveedor cobra **lo mismo** por un clip de 4 s que por uno de 8 s. De las cuatro duraciones, solo 8 y 4 s
+tienen coste medido en esta instalación. Si el modelo predeterminado del catálogo no admite la duración de tu proyecto, la
 producción se bloquea y lo dice, en lugar de encolar un clip que duraría otra cosa.
 
 Los formatos 16:9 y 1:1 y los proyectos largos llegan más adelante.
 
 ## Qué no hace todavía esta versión
 
-- **No revisa la continuidad** entre escenas (que la ropa y el peinado sean los mismos): llega después.
-- **No pone voz ni subtítulos**, y **no monta** las escenas en un vídeo final. Cada clip queda en tu biblioteca.
+- **No pone la voz, los subtítulos ni el montaje por sí sola.** La producción termina en clips sueltos en tu biblioteca:
+  la voz y los subtítulos se piden en [Voz y subtítulos](voz-y-subtitulos.md), la continuidad entre escenas se
+  revisa en [Revisar la continuidad](revisar-la-continuidad.md), y el vídeo final se monta y exporta en
+  [Montaje y exportación](montaje-y-exportacion.md).
 
 ## Si te pierdes
 
