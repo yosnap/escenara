@@ -12,14 +12,14 @@ import type { EvaluacionVista } from "./controles";
  *
  * La línea de tiempo es **simple a propósito** (decisión del propietario, 2026-09-29): orden, recorte de
  * entrada y de salida, volúmenes y subtítulos. Transiciones, efectos, curvas de audio y multipista quedan
- * fuera, y 16:9 y 1:1 llegan en la 0.36.0.
+ * fuera, y 16:9 y 1:1 llegan en la 0.41.0.
  */
 
 // ── Formato de salida ────────────────────────────────────────────────────────────────────────────────────────
 
 /**
  * Formatos de salida de esta versión. **Solo uno**: vertical 9:16, que es lo que se publica en TikTok, Reels y
- * Shorts. Es un enumerado de un solo valor y no una constante porque 0.36.0 añade los otros dos, y entonces lo
+ * Shorts. Es un enumerado de un solo valor y no una constante porque 0.41.0 añade los otros dos, y entonces lo
  * que cambia es esta lista y no la forma de los datos.
  */
 export const FORMATOS_MONTAJE = ["vertical_9_16"] as const;
@@ -65,7 +65,7 @@ export const TEXTO_ETIQUETA_SINTETICA = "Contenido generado con IA";
 
 /**
  * Por qué la etiqueta no se puede quitar. Se aplica a todo vídeo exportado por Escenara, también a personajes
- * completamente animados. Es una decisión de transparencia del producto hasta la revisión legal de la 0.41.0.
+ * completamente animados. Es una decisión de transparencia del producto hasta la revisión legal de la 0.46.0.
  */
 export const MOTIVO_ETIQUETA_OBLIGATORIA =
   "Toda exportación de Escenara lleva la etiqueta de contenido generado con IA, también si el personaje es animado. Puedes elegir dónde va, no quitarla.";

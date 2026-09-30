@@ -105,7 +105,7 @@ los enseñe juntos con sus resultados: hoy solo se listan los hermanos del grupo
   fábrica. Si el admin añade ángulos, el tope deja de coincidir con el catálogo y habrá que decidir si sube, si se
   configura o si se queda como límite por tanda.
 - **Los cuatro ángulos que piden declaración** (mecanismo, beneficio, miedo, comparación) son una decisión de
-  producto pendiente de la revisión legal de la 0.41.0. Quién la exige lo dice cada preset, no una lista en el
+  producto pendiente de la revisión legal de la 0.46.0. Quién la exige lo dice cada preset, no una lista en el
   código, precisamente para poder cambiarlo sin desplegar.
 - **Pasar `angulo_fiel` de sombra a activa** cuando el panel de acierto lo respalde, como el resto de las
   comprobaciones.

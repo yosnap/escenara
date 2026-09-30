@@ -33,7 +33,7 @@ import { jsonb } from "./jsonb";
  * del usuario, que la comprueba `media/servicio.ts` al guardar el resultado.
  */
 
-/** Formato de salida. Un solo valor en esta versión: 16:9 y 1:1 llegan en la 0.36.0. */
+/** Formato de salida. Un solo valor en esta versión: 16:9 y 1:1 llegan en la 0.41.0. */
 export const formatoMontaje = pgEnum("montage_format", ["vertical_9_16"]);
 
 /** Dónde va la etiqueta de contenido sintético. Se elige la posición, no si se pone. */

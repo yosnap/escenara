@@ -37,7 +37,7 @@ No se incorpora Ideogram Character hasta medir una mejora que justifique el cost
 los caminos existentes; si el motor hablado no conserva el dibujo, se usa el camino de lip-sync con audio propio.
 
 La etiqueta visible de contenido sintético sigue siendo obligatoria también en proyectos totalmente animados
-hasta la revisión legal de 0.41.0. No se interpreta que un dibujo exima automáticamente de transparencia.
+hasta la revisión legal de 0.46.0. No se interpreta que un dibujo exima automáticamente de transparencia.
 
 ## Consecuencias
 

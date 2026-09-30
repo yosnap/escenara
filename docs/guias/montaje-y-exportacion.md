@@ -66,7 +66,7 @@ Si la máquina donde está instalada Escenara **no puede dibujar la etiqueta** �
 texto de FFmpeg— la exportación **no se hace**, y el mensaje dice exactamente qué instalar. Se prefiere no entregar
 el vídeo antes que entregarlo sin la etiqueta.
 
-Lo que la etiqueta **no** es: una firma de procedencia. Los metadatos C2PA llegan en la 0.41.0. Y lo que **no**
+Lo que la etiqueta **no** es: una firma de procedencia. Los metadatos C2PA llegan en la 0.46.0. Y lo que **no**
 hace: no sustituye a la etiqueta que cada plataforma te pide marcar al publicar. Marca las dos.
 
 ## 4. Guardar
@@ -140,7 +140,7 @@ la escena 2; en él se ven tanto el rótulo como su subtítulo. SRT y WebVTT que
 ## Lo que esta versión no hace
 
 Sin transiciones, sin efectos, sin curvas de audio ni multipista, y con un único formato: **vertical 9:16**. Los
-formatos 16:9 y 1:1 llegan en la 0.36.0, y los metadatos de procedencia C2PA en la 0.41.0.
+formatos 16:9 y 1:1 llegan en la 0.41.0, y los metadatos de procedencia C2PA en la 0.46.0.
 
 ## Ver también
 
