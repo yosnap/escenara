@@ -81,8 +81,13 @@ async function soltar(id: string, workerId: string, cambios: Partial<typeof acco
  * Aplaza el borrado con retroceso (30 min, 1 h, 2 h… hasta 12 h) y deja el motivo, que se ve en `/cuenta/borrado` y en
  * Admin › Ajustes › Tus datos. El motivo nunca lleva datos de la cuenta.
  */
-async function aplazar(fila: FilaBorradoCuenta, workerId: string, motivo: string): Promise<"aplazado"> {
-  const espera = Math.min(MS_APLAZAMIENTO * 2 ** Math.max(0, fila.attempts - 1), 12 * 3600_000);
+async function aplazar(
+  fila: FilaBorradoCuenta,
+  workerId: string,
+  motivo: string,
+  esperaFija: number | null = null,
+): Promise<"aplazado"> {
+  const espera = esperaFija ?? Math.min(MS_APLAZAMIENTO * 2 ** Math.max(0, fila.attempts - 1), 12 * 3600_000);
   await soltar(fila.id, workerId, { availableAt: new Date(Date.now() + espera), lastError: motivo });
   console.info(`[datos] borrado de cuenta ${fila.id} aplazado: ${motivo}`);
   return "aplazado";
@@ -99,17 +104,21 @@ async function cerrarDesconocidosVencidos(
   fila: FilaBorradoCuenta,
   usuarioId: string,
   h: Herramientas,
-): Promise<number> {
+): Promise<{ apuntados: number; quedan: boolean }> {
   const { borradoCuentaDiasEsperaDesconocidos: dias } = await leerAjustes();
-  if (Date.now() < fila.scheduledFor.getTime() + dias * 24 * 3600_000) return 0;
+  if (Date.now() < fila.scheduledFor.getTime() + dias * 24 * 3600_000) return { apuntados: 0, quedan: false };
   const desconocidos = (await db().execute(sql`
     select j.id from generation_jobs j
     where j.user_id = ${usuarioId} and j.state = 'desconocido'
       and not exists (select 1 from usage_ledger l where l.job_id = j.id and l.entry_type = 'consumo')
-    limit 500
+    limit ${LOTE_DESCONOCIDOS + 1}
   `)) as unknown as { id: string }[];
+  // Por tandas y con tope de tiempo: cada consulta al proveedor puede tardar, y la pasada no puede pasar de la toma
+  // del borrado (15 min). Lo que no quepa, en la siguiente pasada.
+  const hasta = Date.now() + MS_TOPE_CONSULTAS;
   let apuntados = 0;
-  for (const t of desconocidos) {
+  for (const t of desconocidos.slice(0, LOTE_DESCONOCIDOS)) {
+    if (Date.now() > hasta) return { apuntados, quedan: true };
     // Última oportunidad de saber qué pasó de verdad; si el proveedor contesta, el trabajo se cierra por su camino.
     await reconciliar({ id: usuarioId, esAdmin: false }, t.id, h).catch(() => undefined);
     const [actual] = await db()
@@ -124,15 +133,21 @@ async function cerrarDesconocidosVencidos(
       .where(and(eq(generationJobs.id, t.id), eq(generationJobs.state, "desconocido")));
     apuntados++;
   }
-  return apuntados;
+  return { apuntados, quedan: desconocidos.length > LOTE_DESCONOCIDOS };
 }
+
+const LOTE_DESCONOCIDOS = 20;
+const MS_TOPE_CONSULTAS = 5 * 60_000;
+/** Cuando quedan trabajos por consultar, la siguiente tanda va enseguida, sin retroceso. */
+const MS_SIGUIENTE_TANDA = 60_000;
+const MOTIVO_TANDAS = "Consultando al proveedor por tandas los trabajos sin respuesta: sigue en la próxima pasada.";
 
 const NOTA_NO_CONCLUYENTE =
   "Resultado no concluyente: el proveedor no ha respondido. Su coste estimado se apunta como no confirmado.";
 
 /** Lo que impide empezar: se dice sin datos de la cuenta, porque queda en el registro y se enseña. */
 async function motivoParaEsperar(fila: FilaBorradoCuenta, usuarioId: string, h: Herramientas): Promise<string | null> {
-  await cerrarDesconocidosVencidos(fila, usuarioId, h);
+  if ((await cerrarDesconocidosVencidos(fila, usuarioId, h)).quedan) return MOTIVO_TANDAS;
   const [montajes, paquetes, ejecuciones, revisiones] = await Promise.all([
     db()
       .select({ total: count() })
@@ -302,7 +317,7 @@ export async function ejecutarBorradoCuenta(
         );
       }
       const espera = await motivoParaEsperar(fila, fila.userId, h);
-      if (espera) return await aplazar(fila, workerId, espera);
+      if (espera) return await aplazar(fila, workerId, espera, espera === MOTIVO_TANDAS ? MS_SIGUIENTE_TANDA : null);
       if (!(await borrarFilas(fila, fila.userId))) {
         await soltar(fila.id, workerId, {});
         return "cancelado";

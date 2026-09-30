@@ -264,6 +264,11 @@ export function Cronologia({
                       {e.creditosConsumidos !== null && `Consumido: ${creditos(e.creditosConsumidos)} créditos`}
                     </p>
                   )}
+                  {e.tipo === "trabajo" && e.estado === "desconocido" && (
+                    <p className="text-sm text-texto-suave">
+                      El proveedor no respondió; el coste es una estimación no confirmada.
+                    </p>
+                  )}
                   {/* alerta-permitida: causa de un fallo ya pasado, apuntada en el historial; no es un problema abierto */}
                   {e.fallo && <p className="text-sm text-error">{e.fallo}</p>}
                 </div>

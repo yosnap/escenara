@@ -19,6 +19,10 @@ const PATRONES: RegExp[] = [
   /x-amz-(?:signature|credential|security-token)=[^&\s"]+/gi,
   // Valor cifrado de la bóveda: `v1.<idClave>.<iv>.<tag>.<datos>`.
   /\bv1\.[a-z0-9_-]+\.[a-z0-9_-]{8,}\.[a-z0-9_-]{8,}\.[a-z0-9_-]{8,}/gi,
+  // Tokens JWT (cabecera y carga en base64url).
+  /\beyJ[a-z0-9_-]{8,}\.[a-z0-9_-]{8,}\.[a-z0-9_-]{8,}/gi,
+  // Cadenas largas de alta entropía (40+ caracteres con letras y dígitos mezclados, sin espacios).
+  /\b(?=[a-z0-9_+/=-]*\d)(?=[a-z0-9_+/=-]*[a-z])[a-z0-9_+/=-]{40,}/gi,
   // Claves de API con prefijo conocido.
   /\b(?:sk|pk|rk)-[a-z0-9_-]{16,}/gi,
   /\bxox[abpr]-[a-z0-9-]{10,}/gi,
@@ -27,6 +31,15 @@ const PATRONES: RegExp[] = [
   // «clave = valor» con nombre de secreto.
   /\b(?:api[_-]?key|secret|password|contrase[ñn]a|token|access[_-]?key)\s*[:=]\s*[^\s"]{6,}/gi,
 ];
+
+/**
+ * `true` si un valor tiene forma de secreto y no de palabra: al menos 12 caracteres y no solo letras (o 20 si lo son).
+ */
+export function pareceSecreto(valor: string): boolean {
+  if (valor.length < 12) return false;
+  if (/^[a-záéíóúüñ]+$/i.test(valor) && valor.length < 20) return false;
+  return true;
+}
 
 /** Valores exactos de los secretos de la instalación que no pueden salir nunca, de más largo a más corto. */
 export function secretosDeLaInstalacion(entorno: Record<string, string | undefined> = process.env): string[] {
@@ -45,8 +58,9 @@ export function secretosDeLaInstalacion(entorno: Record<string, string | undefin
     const valor = entorno[nombre];
     if (valor) valores.add(valor);
   }
-  // Un valor muy corto retiraría palabras normales del guion: solo se buscan los que parecen un secreto.
-  return [...valores].filter((v) => v.length >= 8).sort((a, b) => b.length - a.length);
+  // Solo se buscan los valores que **parecen** un secreto: una contraseña de palabra corriente («escenara») retiraría
+  // palabras normales del guion. Esas quedan cubiertas, si aparecen, por los patrones de clave de abajo.
+  return [...valores].filter(pareceSecreto).sort((a, b) => b.length - a.length);
 }
 
 /** Texto sin secretos. Devuelve también cuántos ha retirado, para dejarlo en el registro del worker. */

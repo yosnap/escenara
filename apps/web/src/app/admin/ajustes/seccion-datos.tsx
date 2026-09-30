@@ -100,6 +100,7 @@ export function SeccionDatos({
 function ReintentarFallidos() {
   const [enviando, setEnviando] = useState(false);
   const [hecho, setHecho] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
   return (
     <div className="flex flex-wrap items-center gap-3">
       <Boton
@@ -108,13 +109,22 @@ function ReintentarFallidos() {
         cargando={enviando}
         onClick={async () => {
           setEnviando(true);
-          const r = await reintentarArchivosFallidos();
-          setEnviando(false);
-          setHecho(r.reintentados);
+          setError(null);
+          try {
+            setHecho((await reintentarArchivosFallidos()).reintentados);
+          } catch (fallo) {
+            setHecho(null);
+            setError(
+              `No se han podido volver a poner en cola: ${fallo instanceof Error ? fallo.message : String(fallo)}. Comprueba que sigues con la sesión abierta y que la base de datos responde, y vuelve a intentarlo.`,
+            );
+          } finally {
+            setEnviando(false);
+          }
         }}
       >
         Reintentar los archivos fallidos
       </Boton>
+      {error && <Aviso tono="error">{error}</Aviso>}
       {hecho !== null && (
         <Aviso tono="correcto">
           {hecho} {hecho === 1 ? "archivo vuelve" : "archivos vuelven"} a la cola: el worker los intenta en la próxima
@@ -131,7 +141,8 @@ function EstadoDeTusDatos({ estado }: { estado: EstadoTusDatos }) {
     estado.objetosPendientes === 0 &&
     estado.objetosFallidos === 0 &&
     estado.aplazados.length === 0 &&
-    estado.noConcluyentes.length === 0;
+    estado.noConcluyentes.length === 0 &&
+    estado.creditosNoConfirmados === 0;
   if (limpio)
     return <Aviso tono="correcto">No hay archivos pendientes de borrar ni borrados de cuenta aplazados.</Aviso>;
   return (
@@ -152,6 +163,13 @@ function EstadoDeTusDatos({ estado }: { estado: EstadoTusDatos }) {
             .join(", ")}
           . Su coste se apuntó estimado y no confirmado: el proveedor pudo cobrarlo a la instalación; compruébalo en su
           panel.
+        </Aviso>
+      )}
+      {estado.creditosNoConfirmados > 0 && (
+        <Aviso tono="info">
+          Gasto no confirmado en cuentas borradas:{" "}
+          {estado.creditosNoConfirmados.toLocaleString("es-ES", { maximumFractionDigits: 1 })} créditos. El proveedor no
+          respondió; el coste es una estimación no confirmada (pudo cobrarlo o no a la instalación).
         </Aviso>
       )}
       {estado.aplazados.length > 0 && (

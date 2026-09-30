@@ -27,10 +27,12 @@ export interface EstadoTusDatos {
    * no confirmado. Quien administra puede comprobarlo en el panel del proveedor.
    */
   noConcluyentes: { id: string; terminado: string; trabajos: number }[];
+  /** Créditos que se apuntaron estimados porque el proveedor no respondió, en el gasto agregado de cuentas borradas. */
+  creditosNoConfirmados: number;
 }
 
 export async function estadoTusDatos(): Promise<EstadoTusDatos> {
-  const [objetos, filas, concluidos] = await Promise.all([
+  const [objetos, filas, concluidos, noConfirmados] = await Promise.all([
     estadoDeObjetosPorBorrar(),
     db()
       .select()
@@ -54,6 +56,7 @@ export async function estadoTusDatos(): Promise<EstadoTusDatos> {
         ),
       )
       .limit(50),
+    db().execute(sql`select coalesce(sum(unconfirmed_credits), 0)::float8 as total from usage_aggregates`),
   ]);
   return {
     objetosPendientes: objetos.pendientes,
@@ -73,5 +76,6 @@ export async function estadoTusDatos(): Promise<EstadoTusDatos> {
       terminado: (f.completedAt ?? f.requestedAt).toISOString(),
       trabajos: Number(f.summary.trabajosNoConcluyentes ?? 0),
     })),
+    creditosNoConfirmados: Number((noConfirmados as unknown as { total: number }[])[0]?.total ?? 0),
   };
 }

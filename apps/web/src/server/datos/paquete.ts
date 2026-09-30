@@ -273,11 +273,27 @@ export async function armarPaquete(
     medios: archivos.map((a) => a.medio),
   };
 
+  // El filtro de secretos pasa **solo por el texto libre del usuario** (título, idea, concepto, guion, acción, dirección
+  // y subtítulos). Los campos fijos (esquema, identificadores, rutas, estados) salen de la lista blanca y no se tocan:
+  // así una coincidencia con una palabra corriente nunca puede estropear el paquete.
   const cuenta = { retirados: 0 };
-  const limpio = limpiar(proyectoExportado, secretos, cuenta);
-  const textosLimpios = textos.map((t) => ({ ruta: t.ruta, contenido: limpiar(t.contenido, secretos, cuenta) }));
-  // Las rutas y los medios salen de la lista blanca, no del texto del usuario: se conservan tal cual.
-  limpio.medios = proyectoExportado.medios;
+  const texto = (v: string) => limpiar(v, secretos, cuenta);
+  const limpio: ProyectoExportado = {
+    ...proyectoExportado,
+    proyecto: {
+      ...proyectoExportado.proyecto,
+      titulo: texto(proyectoExportado.proyecto.titulo),
+      idea: texto(proyectoExportado.proyecto.idea),
+      concepto: texto(proyectoExportado.proyecto.concepto),
+    },
+    escenas: proyectoExportado.escenas.map((e) => ({
+      ...e,
+      guion: texto(e.guion),
+      accion: texto(e.accion),
+      direccion: limpiar(e.direccion, secretos, cuenta),
+    })),
+  };
+  const textosLimpios = textos.map((t) => ({ ruta: t.ruta, contenido: texto(t.contenido) }));
   return {
     paquete: { proyecto: limpio, archivos, textos: textosLimpios, titulo: limpio.proyecto.titulo },
     retirados: cuenta.retirados,

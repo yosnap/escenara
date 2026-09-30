@@ -31,9 +31,10 @@ export default async function PaginaBorradoProgramado() {
     .where(eq(projects.userId, sesion.user.id))
     .orderBy(projects.createdAt);
   // Pasado el plazo y aún sin empezar: se dice por qué espera (sin datos de nadie; lo escribe el worker).
-  const [{ sinRespuesta } = { sinRespuesta: 0 }] = (await db().execute(
-    sql`select count(*)::int as "sinRespuesta" from generation_jobs where user_id = ${sesion.user.id} and state = 'desconocido'`,
-  )) as unknown as { sinRespuesta: number }[];
+  const [{ sinRespuesta, estimados } = { sinRespuesta: 0, estimados: 0 }] = (await db().execute(sql`
+    select count(*)::int as "sinRespuesta", coalesce(sum(estimated_credits), 0)::float8 as estimados
+    from generation_jobs where user_id = ${sesion.user.id} and state = 'desconocido'
+  `)) as unknown as { sinRespuesta: number; estimados: number }[];
   const aplazado = borrado.state === "programado" && borrado.scheduledFor < new Date() && borrado.lastError !== "";
 
   return (
@@ -46,7 +47,7 @@ export default async function PaginaBorradoProgramado() {
             <Aviso tono="aviso">
               Pediste borrar tu cuenta el {fechaLarga(borrado.requestedAt)}. Se borrará todo a partir del{" "}
               {fechaLarga(borrado.scheduledFor)}. Hasta entonces está desactivada: no puedes usar Escenara, pero sí
-              arrepentirte.
+              arrepentirte: cancélalo aquí o restablece tu contraseña (restablecerla también lo cancela).
             </Aviso>
             {aplazado && (
               <Aviso tono="aviso">
@@ -56,9 +57,10 @@ export default async function PaginaBorradoProgramado() {
             )}
             {sinRespuesta > 0 && (
               <Aviso tono="info">
-                Tienes {sinRespuesta} {sinRespuesta === 1 ? "trabajo" : "trabajos"} sin respuesta del proveedor. El
-                borrado los espera unos días más; si siguen sin respuesta, se apunta su coste estimado como no
-                confirmado y el borrado sigue. No se te cobra nada más: el proveedor pudo cobrarlos a la instalación.
+                Tienes {sinRespuesta} {sinRespuesta === 1 ? "trabajo" : "trabajos"} sin respuesta del proveedor (
+                {Number(estimados).toLocaleString("es-ES", { maximumFractionDigits: 1 })} créditos estimados). El
+                proveedor no respondió; el coste es una estimación no confirmada. El borrado los espera unos días más;
+                si siguen sin respuesta, ese coste estimado queda apuntado como no confirmado y el borrado sigue.
               </Aviso>
             )}
             <CancelarBorrado />

@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { filtroDeLaUrl } from "./historial";
-import { retirarSecretos, secretosDeLaInstalacion } from "./secretos";
+import { pareceSecreto, retirarSecretos, secretosDeLaInstalacion } from "./secretos";
 import { ErrorZip, EscritorZip, esNombreSeguro, leerZip } from "./zip";
 
 /** Destino en memoria para el escritor. */
@@ -103,6 +103,29 @@ describe("filtro de secretos del texto exportado", () => {
       expect(limpio).not.toContain(fuera);
     }
     expect(retirados).toBeGreaterThanOrEqual(7);
+  });
+});
+
+describe("qué parece un secreto", () => {
+  test("una palabra corriente no; una clave, un JWT o una cadena larga de alta entropía sí", () => {
+    const secretos = secretosDeLaInstalacion({
+      DATABASE_URL: "postgresql://escenara:escenara@localhost:5432/escenara",
+      S3_ENDPOINT: "http://localhost:9000",
+      S3_REGION: "us-east-1",
+      S3_BUCKET: "escenara",
+      S3_ACCESS_KEY_ID: "escenara",
+      S3_SECRET_ACCESS_KEY: "contrasena",
+    });
+    expect(secretos).not.toContain("escenara");
+    expect(secretos).not.toContain("contrasena");
+    expect(pareceSecreto("escenara")).toBe(false);
+    expect(pareceSecreto("v047localsecreto")).toBe(true);
+    const texto =
+      "Guion de escenara. eyJhbGciOiJIUzI1.eyJzdWIiOjEyMzQ1Njc4.c2lnbmF0dXJlZmFrZQ y a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0";
+    const { texto: limpio } = retirarSecretos(texto, secretos);
+    expect(limpio).toContain("Guion de escenara.");
+    expect(limpio).not.toContain("eyJhbGci");
+    expect(limpio).not.toContain("a1b2c3d4e5f6");
   });
 });
 

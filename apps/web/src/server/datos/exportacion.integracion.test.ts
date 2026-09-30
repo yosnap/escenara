@@ -278,6 +278,27 @@ describe.skipIf(!hayBaseDeDatos)("exportación del proyecto a ZIP", () => {
     ).toHaveLength(0);
   });
 
+  test("un valor de configuración que es una palabra corriente («escenara») no estropea el paquete; una clave sk- sí se retira", async () => {
+    const previo = process.env.S3_ACCESS_KEY_ID;
+    // El cliente del almacenamiento ya está creado: cambiar la variable solo afecta a qué se busca en el texto.
+    process.env.S3_ACCESS_KEY_ID = "escenara";
+    try {
+      const p = await proyectoProducido(
+        { id: ana.id, esAdmin: false },
+        { guion: "Hola desde escenara. Mi clave es sk-proj-0123456789abcdefghijKLMN, no la digas." },
+      );
+      const { archivos } = await exportar(ana, p.proyectoId);
+      const json = JSON.parse(new TextDecoder().decode(archivos.get("proyecto.json")));
+      expect(validarProyectoExportado(json, archivos.keys())).toEqual([]);
+      expect(json.esquema).toBe("escenara.proyecto");
+      expect(json.escenas[0].guion).toContain("Hola desde escenara.");
+      expect(json.escenas[0].guion).toContain("[retirado]");
+      expect(json.escenas[0].guion).not.toContain("sk-proj-");
+    } finally {
+      process.env.S3_ACCESS_KEY_ID = previo;
+    }
+  });
+
   test("historial: cronología y gasto del proyecto solo para su dueño, sin texto del proveedor", async () => {
     const p = await proyectoProducido({ id: ana.id, esAdmin: false });
     await db()
