@@ -1,7 +1,7 @@
+import { and, eq, inArray } from "drizzle-orm";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
-import { and, eq, inArray } from "drizzle-orm";
 import { db } from "../db/cliente";
 import { accountDeletions } from "../db/esquema";
 import { auth } from "./auth";
@@ -32,7 +32,9 @@ export async function tieneBorradoProgramado(usuarioId: string): Promise<boolean
   const [fila] = await db()
     .select({ id: accountDeletions.id })
     .from(accountDeletions)
-    .where(and(eq(accountDeletions.userId, usuarioId), inArray(accountDeletions.state, ["programado", "borrando_objetos"])))
+    .where(
+      and(eq(accountDeletions.userId, usuarioId), inArray(accountDeletions.state, ["programado", "borrando_objetos"])),
+    )
     .limit(1);
   return fila !== undefined;
 }
@@ -69,7 +71,10 @@ export async function sesionDePeticion(
   peticion: Request,
   { permitirBorradoProgramado = false }: { permitirBorradoProgramado?: boolean } = {},
 ): Promise<Sesion | null> {
-  const sesion = await (await auth()).api.getSession({ headers: peticion.headers, query: { disableCookieCache: true } });
+  const sesion = await (await auth()).api.getSession({
+    headers: peticion.headers,
+    query: { disableCookieCache: true },
+  });
   if (!sesion || permitirBorradoProgramado) return sesion;
   return (await tieneBorradoProgramado(sesion.user.id)) ? null : sesion;
 }

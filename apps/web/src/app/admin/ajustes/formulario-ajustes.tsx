@@ -19,6 +19,7 @@ import { SeccionCalidad } from "./seccion-calidad";
 import { SeccionCanto } from "./seccion-canto";
 import { SeccionCoherencia } from "./seccion-coherencia";
 import { SeccionControles } from "./seccion-controles";
+import { SeccionDatos } from "./seccion-datos";
 import { SeccionDosPersonajes } from "./seccion-dos-personajes";
 import { SeccionLugares } from "./seccion-lugares";
 import { SeccionMontaje } from "./seccion-montaje";
@@ -263,6 +264,7 @@ export function FormularioAjustes({
 
       <SeccionDosPersonajes valores={valores} onCambio={cambiar} />
       <SeccionLugares valores={valores} onCambio={cambiar} />
+      <SeccionDatos valores={valores} errorDe={errorDe} onCambio={cambiar} />
 
       <SeccionControles valores={valores} errorDe={errorDe} onCambio={cambiar} />
 

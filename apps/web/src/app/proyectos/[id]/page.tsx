@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { DatosDelProyecto } from "@/components/ui/datos/datos-del-proyecto";
 import { pasoDeLaUrl } from "@/lib/multipaso";
 import { IDS_PASOS_PROYECTO } from "@/lib/pasos-proyecto";
 import { leerAjustes } from "@/server/ajustes";
@@ -7,6 +8,7 @@ import { datosDelAnuncio } from "@/server/anuncio/pantalla";
 import { ErrorProyecto } from "@/server/asistente/errores";
 import { detalleProyecto } from "@/server/asistente/plan";
 import { esAdmin, exigirSesion } from "@/server/auth/sesion";
+import { exportacionesDelProyecto } from "@/server/datos/exportacion-proyecto";
 import { clipsProducidosDelProyecto } from "@/server/montaje/audio-del-clip";
 import { personajesElegibles } from "@/server/personajes/consulta";
 import { listarPlantillas } from "@/server/prompts/consulta";
@@ -39,13 +41,14 @@ export default async function PaginaProyecto({
   });
   // El brief del anuncio se lee aquí, con el proyecto: así el primer pintado ya enseña el ángulo, la oferta y el
   // precio de verdad, y la pantalla no necesita ningún efecto que dispare peticiones al montarse.
-  const [personajes, anuncio, ajustes, plantillas, clips] = await Promise.all([
+  const [personajes, anuncio, ajustes, plantillas, clips, exportaciones] = await Promise.all([
     personajesElegibles(actor),
     datosDelAnuncio(actor, detalle.proyecto.id),
     leerAjustes(),
     listarPlantillas({ usuarioId: actor.id }),
     // Los clips ya producidos y su audio (0.35.0): es lo que ve primero un proyecto convertido desde «Crear».
     clipsProducidosDelProyecto(actor, detalle.proyecto.id),
+    exportacionesDelProyecto(actor, detalle.proyecto.id, 1),
   ]);
   const trends = ajustes.trendsVisibles
     ? plantillas
@@ -64,6 +67,11 @@ export default async function PaginaProyecto({
           trends={trends}
           clips={clips}
           pasoPedido={pasoPedido}
+        />
+        <DatosDelProyecto
+          proyectoId={detalle.proyecto.id}
+          titulo={detalle.proyecto.titulo}
+          ultimaExportacion={exportaciones[0] ?? null}
         />
       </main>
     </div>

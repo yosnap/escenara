@@ -1,4 +1,5 @@
 import { and, count, eq, inArray, ne, sql } from "drizzle-orm";
+import { FRASE_BORRADO_CUENTA as FRASE_CONFIRMACION, MINUTOS_SESION_RECIENTE } from "@/lib/tus-datos";
 import { leerAjustes } from "../ajustes";
 import { db } from "../db/cliente";
 import {
@@ -33,8 +34,6 @@ import { cerrarTrabajosAntesDeBorrar } from "./trabajos-al-borrar";
  * - quien es el **único administrador** no puede borrarse: la instalación se quedaría sin nadie que la gestione.
  */
 
-export const FRASE_CONFIRMACION = "borrar mi cuenta";
-export const MINUTOS_SESION_RECIENTE = 10;
 const ABIERTOS = ["programado", "borrando_objetos"] as const;
 
 export interface ResumenBorradoCuenta {

@@ -1,0 +1,48 @@
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { Aviso } from "@/components/ui/feedback";
+import { fechaLarga } from "@/lib/fechas";
+import { exigirSesion, RUTA_BORRADO_PROGRAMADO } from "@/server/auth/sesion";
+import { borradoAbiertoDe } from "@/server/datos/borrado-cuenta";
+import { CabeceraApp } from "../../_app/cabecera-app";
+import { CerrarSesion } from "../../_app/cerrar-sesion";
+import { CancelarBorrado } from "./cancelar-borrado";
+
+export const metadata: Metadata = { title: "Borrado de la cuenta programado" };
+export const dynamic = "force-dynamic";
+
+/**
+ * Lo único que ve una cuenta con el borrado programado: cuándo se borra y el botón para cancelarlo. Sin borrado
+ * programado, esta página no tiene sentido y lleva a la cuenta.
+ */
+export default async function PaginaBorradoProgramado() {
+  const sesion = await exigirSesion(RUTA_BORRADO_PROGRAMADO);
+  const borrado = await borradoAbiertoDe(sesion.user.id);
+  if (!borrado) redirect("/cuenta");
+
+  return (
+    <div className="min-h-dvh bg-fondo">
+      <CabeceraApp sesion={sesion} />
+      <main id="contenido" tabIndex={-1} className="mx-auto flex max-w-2xl flex-col gap-6 px-5 py-10 md:px-8">
+        <h1 className="text-4xl font-bold text-texto">Tu cuenta se va a borrar</h1>
+        {borrado.state === "programado" ? (
+          <>
+            <Aviso tono="aviso">
+              Pediste borrar tu cuenta el {fechaLarga(borrado.requestedAt)}. Se borrará todo a partir del{" "}
+              {fechaLarga(borrado.scheduledFor)}. Hasta entonces está desactivada: no puedes usar Escenara, pero sí
+              arrepentirte.
+            </Aviso>
+            <CancelarBorrado />
+          </>
+        ) : (
+          <Aviso tono="info">
+            El borrado ya ha empezado y no se puede cancelar: tus datos se están borrando ahora mismo.
+          </Aviso>
+        )}
+        <div>
+          <CerrarSesion />
+        </div>
+      </main>
+    </div>
+  );
+}

@@ -53,7 +53,13 @@ import { ErrorPersonaje } from "./errores";
  */
 
 /** Estados en los que el trabajo **ya ha tocado al proveedor** o retiene su reserva: impiden el borrado. */
-export const ESTADOS_QUE_IMPIDEN: readonly EstadoTrabajo[] = ["preparando", "enviando", "enviado", "en_curso", "desconocido"];
+export const ESTADOS_QUE_IMPIDEN: readonly EstadoTrabajo[] = [
+  "preparando",
+  "enviando",
+  "enviado",
+  "en_curso",
+  "desconocido",
+];
 
 const detalle = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
