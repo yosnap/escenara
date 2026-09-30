@@ -1,13 +1,16 @@
 "use client";
 
 import { Trophy } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import type { AlternativaVista, ComparativaVista } from "@/lib/comparativas";
 import { ETIQUETA_ESTADO, formatearCreditos } from "@/lib/generacion";
 import { Alerta } from "../alerta";
 import { Boton } from "../button";
 import { cn } from "../cn";
-import { Dialogo } from "../overlay";
+
+/** El diálogo de elegir ganadora se carga al pulsar: la página de resultados no lo necesita hasta entonces. */
+const DialogoGanadora = dynamic(() => import("./dialogo-ganadora").then((m) => m.DialogoGanadora), { ssr: false });
 
 /**
  * Resultados de una comparativa A/B **lado a lado**: cada alternativa con su estado real, su coste confirmado e
@@ -111,34 +114,18 @@ export function ResultadosAB({
           <Alternativa key={a.modelo} alternativa={a} ocupado={ocupado} onElegir={setPendiente} />
         ))}
       </div>
-      <Dialogo
-        abierto={pendiente !== null}
-        onAbiertoCambio={(abierto) => !abierto && setPendiente(null)}
-        titulo={`Usar el clip de ${pendiente?.nombre ?? ""} en la escena`}
-        descripcion="No cuesta nada ni genera nada: cambia el clip que entra en el montaje."
-        pie={
-          <>
-            <Boton variante="secundario" onClick={() => setPendiente(null)}>
-              Dejarlo como está
-            </Boton>
-            <Boton
-              cargando={ocupado}
-              onClick={() => {
-                const trabajoId = pendiente?.trabajoId;
-                setPendiente(null);
-                if (trabajoId) onElegir(trabajoId);
-              }}
-            >
-              Usar este clip
-            </Boton>
-          </>
-        }
-      >
-        <p className="text-texto">
-          El clip que tiene ahora la escena no se borra: sigue en tu biblioteca y en sus versiones. La revisión de la
-          escena deja de valer, porque lo revisado ya no es el clip que hay, y el montaje estrena versión.
-        </p>
-      </Dialogo>
+      {pendiente !== null && (
+        <DialogoGanadora
+          nombre={pendiente.nombre}
+          ocupado={ocupado}
+          onCerrar={() => setPendiente(null)}
+          onConfirmar={() => {
+            const trabajoId = pendiente.trabajoId;
+            setPendiente(null);
+            if (trabajoId) onElegir(trabajoId);
+          }}
+        />
+      )}
     </div>
   );
 }

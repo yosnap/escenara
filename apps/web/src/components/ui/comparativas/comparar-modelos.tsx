@@ -1,7 +1,7 @@
 import { Check, Plus, X } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ETIQUETA_CAPACIDAD } from "@/lib/catalogo";
+import { DESCRIPCION_ESTADO_MODELO, ETIQUETA_CAPACIDAD, ETIQUETA_ESTADO_MODELO } from "@/lib/catalogo";
 import { AVISO_SIN_GENERAR, MAXIMO_EN_TABLA, type ModeloComparable } from "@/lib/comparativas";
 import { formatearCreditos } from "@/lib/generacion";
 import { Alerta } from "../alerta";
@@ -9,7 +9,6 @@ import { claseBoton } from "../button";
 import { cn } from "../cn";
 import { DemoDePlantilla } from "../demo-plantilla";
 import { MiniaturaMedio } from "../media/miniatura-medio";
-import { InsigniaEstadoModelo } from "../modelo";
 import { TablaDesplazable } from "../tabla-desplazable";
 
 /**
@@ -120,7 +119,13 @@ export function TarjetaModeloComparable({
           </h3>
           <p className="text-sm text-texto-suave">{modelo.nombreProveedor}</p>
         </div>
-        <InsigniaEstadoModelo estado={modelo.estado} />
+        {/* Sin la insignia con icono del catálogo de modelos: su módulo arrastra el selector al navegador. */}
+        <span
+          title={DESCRIPCION_ESTADO_MODELO[modelo.estado]}
+          className="rounded-full bg-elevada px-3 py-1 text-sm font-semibold text-texto"
+        >
+          {ETIQUETA_ESTADO_MODELO[modelo.estado]}
+        </span>
       </header>
       <Precio modelo={modelo} />
       <p className="text-sm">

@@ -2,11 +2,14 @@
   "porDefectoKb": 200,
   "dentroDeLaMeta": [
     "/",
+    "/admin/calibracion",
     "/admin/coherencia",
     "/admin/decisiones",
     "/admin/personajes",
     "/admin/trabajos",
     "/admin/versiones",
+    "/comparar",
+    "/comparar/escena/[id]",
     "/crear/historial",
     "/cuenta/borrado",
     "/cuenta/historial",
@@ -23,8 +26,8 @@
   ],
   "rutas": {
     "/admin/componentes": {
-      "topeKb": 430,
-      "motivo": "Catálogo interno del admin: pinta todos los componentes a la vez (con las secciones Lugares y Tus datos). Medido: 426.4 KB."
+      "topeKb": 437,
+      "motivo": "Catálogo interno del admin: pinta todos los componentes a la vez (con las secciones Lugares, Tus datos y Comparativas y calibración). Medido: 434.0 KB."
     },
     "/proyectos/[id]": {
       "topeKb": 332,
@@ -67,8 +70,8 @@
       "motivo": "Biblioteca de medios completa del admin. Medido: 247.8 KB."
     },
     "/proyectos/[id]/produccion": {
-      "topeKb": 249,
-      "motivo": "Rejilla de producción con confirmaciones de gasto y selector de medios. Medido: 245.7 KB."
+      "topeKb": 248,
+      "motivo": "Rejilla de producción con confirmaciones de gasto, selector de medios y el enlace a comparar generando. Medido: 244.3 KB."
     },
     "/biblioteca": {
       "topeKb": 248,
