@@ -123,6 +123,11 @@ describe("duración total y sus avisos", () => {
     expect(aviso?.texto).toContain(`${SEGUNDOS_MAXIMOS_MONTAJE} s`);
     expect(aviso?.texto).toContain("Recorta");
   });
+
+  test("con un máximo más bajo en Admin › Ajustes, manda ese; nunca uno por encima del techo", () => {
+    expect(avisoDeDuracion(150, 120)?.texto).toContain("máximo de esta instalación son 120 s");
+    expect(avisoDeDuracion(310, 900)?.texto).toContain(`${SEGUNDOS_MAXIMOS_MONTAJE} s`);
+  });
 });
 
 describe("firma de guardado", () => {
@@ -134,6 +139,7 @@ describe("firma de guardado", () => {
     formatoSubtitulos: "srt",
     etiquetaVisible: true,
     etiquetaPosicion: "abajo",
+    encuadres: {},
     ...cambios,
   });
 
@@ -141,6 +147,24 @@ describe("firma de guardado", () => {
     const ida = moverFragmento(tres(), 0, 1);
     const vuelta = moverFragmento(ida, 1, -1);
     expect(firmaDeGuardado(borrador({ fragmentos: vuelta }))).toBe(firmaDeGuardado(borrador()));
+  });
+
+  test("un encuadre ajustado es un cambio que hay que guardar, y el orden de las claves no cuenta", () => {
+    const ajustado = borrador({ encuadres: { horizontal_16_9: { e1: { modo: "recorte", x: 0, y: 50 } } } });
+    expect(firmaDeGuardado(ajustado)).not.toBe(firmaDeGuardado(borrador()));
+    const a = borrador({
+      encuadres: {
+        cuadrado_1_1: { e1: { modo: "bandas" } },
+        horizontal_16_9: { e2: { modo: "recorte", x: 10, y: 20 } },
+      },
+    });
+    const b = borrador({
+      encuadres: {
+        horizontal_16_9: { e2: { modo: "recorte", x: 10, y: 20 } },
+        cuadrado_1_1: { e1: { modo: "bandas" } },
+      },
+    });
+    expect(firmaDeGuardado(a)).toBe(firmaDeGuardado(b));
   });
 
   test("las claves de la pantalla no entran en la firma: no son un cambio del montaje", () => {

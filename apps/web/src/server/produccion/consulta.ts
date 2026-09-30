@@ -12,6 +12,7 @@ import {
   type ProduccionVista,
   type TrabajoDeEscena,
   trabajoEnMarcha,
+  type VersionDeClip,
   type VersionDeEscena,
 } from "@/lib/produccion";
 import { resumenDeEscena } from "@/lib/proyectos";
@@ -20,6 +21,7 @@ import { leerAjustes } from "../ajustes";
 import { afirmacionesDe, escenasDe, proyectoPropio } from "../asistente/consulta";
 import { ErrorProyecto } from "../asistente/errores";
 import { comprometidoDelProyecto, type EleccionesDelPlan, eleccionesDelPlan } from "../asistente/plan";
+import { proporcionDelTrabajo } from "../cola/entrada-del-trabajo";
 import { posicionesEnCola } from "../cola/toma";
 import type { HechosEscena, ParametrosControles } from "../controles/contrato";
 import { hechosDeModelo, hechosDePersonajeCitado, parametrosDeControles } from "../controles/hechos";
@@ -36,7 +38,7 @@ import {
 } from "../db/esquema";
 import type { EleccionDeTrabajo } from "../generacion/precios";
 import { condicionEnCurso } from "../generacion/trabajos";
-import { type Actor, aDto } from "../media/servicio";
+import { type Actor, aDto, espacioUsado } from "../media/servicio";
 import {
   creditosDeEscenaHablada,
   duracionesDeOmni,
@@ -51,6 +53,7 @@ import { creditosDelEnvio } from "../prompts/traduccion";
 import { ErrorCatalogo } from "../proveedores/contrato";
 import { type RepartoDePantalla, repartoDePantallaDeEscena } from "../reparto/pantalla";
 import { controlesProductoClip } from "./controles-producto-clip";
+import { bytesDeVersionesSinUsar } from "./versiones";
 
 /**
  * Lectura del estado de producción de un proyecto (RF06, 0.19.0).
@@ -280,7 +283,38 @@ function vistaDeEscena(
       }))
       .sort((a, b) => a.orden - b.orden),
     versiones: versionesDe(trabajos, vigentes, medios),
+    bibliotecaDeClips: fila.castFormat === "podcast" ? [] : bibliotecaDeClips(fila, trabajos, medios),
   };
+}
+
+/**
+ * Todos los clips terminados de la escena que siguen en la biblioteca, de lo más reciente a lo más antiguo, con el
+ * que está en uso marcado. La lista de trabajos ya viene ordenada y cargada: no hay ni una consulta más.
+ */
+function bibliotecaDeClips(
+  fila: FilaEscena,
+  trabajos: readonly FilaTrabajo[],
+  medios: Map<string, Medio>,
+): VersionDeClip[] {
+  return trabajos.flatMap((t) => {
+    const medio = t.resultMediaId === null ? undefined : medios.get(t.resultMediaId);
+    // El podcast ya se deja fuera por la escena; el clip de un dualcast (turno 1) sí es una versión.
+    if (t.kind !== "animacion" || t.state !== "listo" || !medio || medio.enPapelera) {
+      return [];
+    }
+    return [
+      {
+        trabajoId: t.id,
+        modelo: t.model,
+        creditosConsumidos: t.consumedCredits,
+        creditosEstimados: t.estimatedCredits,
+        medio,
+        creadoEn: t.createdAt.toISOString(),
+        proporcion: proporcionDelTrabajo(t),
+        elegida: t.resultMediaId === fila.clipMediaId,
+      },
+    ];
+  });
 }
 
 /**
@@ -418,6 +452,7 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
         tieneEscenasNormales: escenas.some((escena) => escena.formatoClip !== "cantar"),
       }),
     ],
+    cuota: await cuotaDeVersiones(actor, proyecto.id),
   };
 }
 
@@ -579,4 +614,13 @@ export async function ultimoTrabajoDeEscena(
     .orderBy(desc(generationJobs.createdAt))
     .limit(1);
   return fila ?? null;
+}
+
+/** Cuota de la biblioteca y lo que ocupan las versiones sin usar del proyecto, para el aviso de cuota. */
+async function cuotaDeVersiones(actor: Actor, proyectoId: string) {
+  const [espacio, versionesSinUsarBytes] = await Promise.all([
+    espacioUsado(actor),
+    bytesDeVersionesSinUsar(proyectoId),
+  ]);
+  return { ...espacio, versionesSinUsarBytes };
 }

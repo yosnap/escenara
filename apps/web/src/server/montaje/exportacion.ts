@@ -1,9 +1,11 @@
 import { and, desc, eq, ne, sql } from "drizzle-orm";
 import { escenaSinAudio } from "@/lib/audio-del-clip";
+import { type FormatoMontaje, formatosDe, PLATAFORMA_DE_FORMATO } from "@/lib/formatos";
 import { duracionTotalDeFragmentos, erroresDeMontaje, subtitulosDelMontaje, tieneSubtitulos } from "@/lib/montaje";
 import type { FormatoSubtitulos } from "@/lib/voz";
 import { db } from "../db/cliente";
 import { type FilaExportacion, type FilaMontaje, montageExports, projects } from "../db/esquema";
+import { limitesDeProyecto } from "../limites-proyecto";
 import type { Actor } from "../media/servicio";
 import { ErrorMontaje } from "./errores";
 import { exigirHerramientasDeRender } from "./ffmpeg";
@@ -14,8 +16,8 @@ import { exigirMontajeActivo } from "./servicio";
 /**
  * Exportaciones de un montaje (RF08, 0.32.0): pedirlas, listarlas y cerrarlas.
  *
- * **Idempotente por montaje y versión**: pedir la exportación de la misma versión dos veces devuelve la misma
- * fila, no un segundo MP4 ocupando la cuota de alguien. Lo garantizan dos cosas, no una: la fila del montaje se
+ * **Idempotente por montaje, versión y formato** (el formato entra en 0.41.0): pedir la exportación de la misma
+ * versión en el mismo formato dos veces devuelve la misma fila, no un segundo MP4 ocupando la cuota de alguien. Lo garantizan dos cosas, no una: la fila del montaje se
  * bloquea mientras se decide (así dos peticiones simultáneas se ponen en fila) y hay un índice único parcial que
  * es la red por debajo.
  *
@@ -67,6 +69,8 @@ export async function pedirExportacion(
   actor: Actor,
   montaje: FilaMontaje,
   material: MaterialDelProyecto,
+  /** Formato de la salida; el vertical de siempre si no se dice (así responde igual quien pedía antes sin él). */
+  formato: FormatoMontaje = "vertical_9_16",
 ): Promise<{ exportacion: FilaExportacion; nueva: boolean }> {
   await exigirMontajeActivo();
   await exigirHerramientasDeRender();
@@ -77,13 +81,23 @@ export async function pedirExportacion(
     );
   }
 
-  const errores = erroresDeMontaje(montaje.fragments, escenasParaValidar(material));
+  // Un formato que el proyecto no tiene no se exporta: las pestañas del montaje son los formatos del proyecto, y
+  // añadir uno es gratis y explícito. Así no hay exportaciones de un formato que el usuario no ve en su pantalla.
+  if (!formatosDe(material.proyecto.formats).includes(formato)) {
+    throw new ErrorMontaje(
+      409,
+      `Este proyecto no tiene el formato «${PLATAFORMA_DE_FORMATO[formato]}». Añádelo en los formatos del montaje y vuelve a exportar.`,
+    );
+  }
+
+  const { segundosMaximos } = await limitesDeProyecto();
+  const errores = erroresDeMontaje(montaje.fragments, escenasParaValidar(material), segundosMaximos);
   if (errores.length > 0) throw new ErrorMontaje(409, errores.join(" "));
 
   const segundos = duracionTotalDeFragmentos(montaje.fragments);
   await exigirControlesDelMontaje(actor, montaje, material, segundos);
 
-  const { ancho, alto } = resolucionDe(montaje);
+  const { ancho, alto } = resolucionDe(formato);
   const subtitulos = subtitulosDeLaExportacion(montaje, material);
 
   return db().transaction(async (tx) => {
@@ -98,6 +112,7 @@ export async function pedirExportacion(
         and(
           eq(montageExports.montageId, montaje.id),
           eq(montageExports.montageVersion, montaje.version),
+          eq(montageExports.format, formato),
           ne(montageExports.state, "fallido"),
         ),
       )
@@ -109,7 +124,7 @@ export async function pedirExportacion(
         projectId: material.proyecto.id,
         montageId: montaje.id,
         montageVersion: montaje.version,
-        format: montaje.format,
+        format: formato,
         width: ancho,
         height: alto,
         labelApplied: true,

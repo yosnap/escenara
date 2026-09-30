@@ -1,7 +1,8 @@
 # Montar y exportar tu vídeo
 
 Cuando todas las escenas tienen su clip, falta lo último: ponerlos en orden, recortar lo que sobra, decidir cómo
-suenan la voz y la música, y sacar **un MP4 vertical listo para publicar**. Eso es el montaje, y está en
+suenan la voz y la música, y sacar **un MP4 listo para publicar** en cada formato del proyecto: vertical 9:16, 4:5,
+cuadrado 1:1 u horizontal 16:9. Eso es el montaje, y está en
 **Proyecto › Montaje** (`/proyectos/…/montaje`), al que llegas desde el plan del proyecto y desde producción.
 
 Dos cosas antes de empezar, para que no haya sorpresas:
@@ -32,8 +33,8 @@ Lo que puedes hacer con un fragmento:
 | **Volverlo a poner** | El botón con el número de la escena, en ese mismo apartado. Entra al final y sin recortar. |
 
 Arriba ves cuántos fragmentos hay y **cuántos segundos** suman. Por encima de **60 s** aparece un aviso: un reel se
-ve hasta el final mucho más a menudo por debajo de esa cifra. Es un consejo, no un freno; el tope de esta versión
-son **300 s** y **60 fragmentos**.
+ve hasta el final mucho más a menudo por debajo de esa cifra. Es un consejo, no un freno; el máximo son **300 s** (quien
+administra puede bajarlo en Admin › Ajustes) y **60 fragmentos**.
 
 Una escena solo puede estar **una vez** en la línea de tiempo: en el apartado de abajo únicamente se ofrecen las
 que están fuera.
@@ -77,7 +78,15 @@ el vídeo antes que entregarlo sin la etiqueta.
 Lo que la etiqueta **no** es: una firma de procedencia. Los metadatos C2PA llegan en la 0.46.0. Y lo que **no**
 hace: no sustituye a la etiqueta que cada plataforma te pide marcar al publicar. Marca las dos.
 
-## 4. Guardar
+## 4. Formatos y encuadre
+
+El panel **«Formatos y encuadre»** decide en qué formatos sale el montaje y qué parte de cada clip entra en cada
+uno. Añadir un formato **no vuelve a generar nada ni cuesta créditos**: sale del mismo clip con reencuadre. En la
+pestaña de cada formato arrastras cada vídeo para encuadrarlo, o usas los atajos (centrado, a un lado, arriba, abajo
+o entero con bandas), y ves las zonas seguras de esa plataforma. Si un recorte deja fuera más de la mitad del plano,
+se avisa. Todo lo explica [Formatos y proyectos largos](formatos-y-proyectos-largos.md).
+
+## 5. Guardar
 
 El guardado es **explícito**: reordenar y recortar no guardan nada hasta que pulsas **«Guardar el montaje»**, en la
 barra que se queda pegada abajo. Es a propósito, porque un montaje se tantea y cada arrastre no debe convertirse en
@@ -88,10 +97,12 @@ una versión nueva.
 - Si has abierto la pantalla **en dos sitios** y el otro se adelanta, el guardado se detiene, se te dice que el
   montaje ha cambiado y **lo que estabas editando se queda en la pantalla** para que lo repitas sobre lo último.
 
-## 5. Exportar y descargar
+## 6. Exportar y descargar
 
-El panel **«Exportar el vídeo»** resume lo que va a salir: duración, resolución **1080 × 1920**, subtítulos y
-etiqueta. Debajo, **«Antes de montar»** enseña la comprobación previa. El botón es **«Montar y exportar el MP4»**.
+El panel **«Exportar el vídeo»** resume lo que va a salir: duración, formato con su resolución (**1080 × 1920** en
+vertical, **1920 × 1080** en horizontal…), subtítulos y etiqueta. Con más de un formato en el proyecto, eliges
+**el formato de este MP4**. Debajo, **«Antes de montar»** enseña la comprobación previa. El botón es **«Montar y
+exportar el MP4 en…»** el formato elegido.
 
 Mientras se monta, el progreso va por las **etapas reales** de FFmpeg: preparando, normalizando, montando,
 guardando. No es una barra inventada; se lee del propio render. Al terminar tienes:
@@ -105,7 +116,8 @@ El MP4 se guarda en tu biblioteca y ocupa **cuota** como cualquier archivo tuyo.
 
 **Puedes seguir editando después de exportar.** Por eso cada exportación anterior dice si **«Corresponde al montaje
 de ahora»** o si es de antes del último cambio: así no publicas por descuido la versión vieja. Y pedir dos veces la
-exportación del **mismo** montaje no crea dos ficheros: se te devuelve la que ya hay.
+exportación del **mismo** montaje en el **mismo formato** no crea dos ficheros: se te devuelve la que ya hay. Cada
+formato es su propia exportación.
 
 No hay botón de cancelar: un render local no cuesta nada y se detiene solo si pasa de **15 minutos**, diciéndote que
 dividas el montaje.
@@ -122,7 +134,8 @@ La comprobación previa se hace **antes** de bajar el primer byte, y siempre dic
 | «La línea de tiempo de este montaje está vacía» | Lo has vaciado | Añade al menos una escena con clip desde el apartado de abajo |
 | «El fragmento N (escena M) dura menos de 0,2 s: recórtalo menos» | Un recorte se ha quedado demasiado corto | Recórtalo menos |
 | «Acaba en el segundo X y el clip dura Y» | El recorte se sale del clip | Baja la manecilla de salida |
-| «El montaje dura N s y el máximo de esta versión son 300 s» | Pieza demasiado larga para esta versión | Quita fragmentos o recorta más |
+| «El montaje dura N s y el máximo de esta instalación son 300 s» | Pieza más larga que el máximo (300 s, o menos si quien administra lo ha bajado) | Quita fragmentos o recorta más |
+| «Este proyecto no tiene el formato «…»» | Se ha pedido exportar en un formato que no está entre los del proyecto | Añádelo en «Formatos y encuadre» |
 | No hay espacio en la biblioteca | La cuota está llena y el MP4 no cabría | Borra material que no uses o pide más cuota a quien administra |
 | «No se encuentra «ffmpeg» en esta máquina…» (o «ffprobe») | Falta la herramienta en la máquina | Es cosa de quien administra la instalación: instalar FFmpeg con soporte de texto |
 | «El montaje está desactivado en esta instalación» | El interruptor de Admin › Ajustes › Montaje y exportación está apagado | Pídeselo a quien administra |
@@ -148,11 +161,13 @@ la escena 2; en él se ven tanto el rótulo como su subtítulo. SRT y WebVTT que
 
 ## Lo que esta versión no hace
 
-Sin transiciones, sin efectos, sin curvas de audio ni multipista, y con un único formato: **vertical 9:16**. Los
-formatos 16:9 y 1:1 llegan en la 0.41.0, y los metadatos de procedencia C2PA en la 0.46.0.
+Sin transiciones, sin efectos, sin curvas de audio ni multipista, sin reencuadre que siga al sujeto y sin montajes
+de más de 5 minutos. Los metadatos de procedencia C2PA llegan en la 0.46.0.
 
 ## Ver también
 
+- [Formatos y proyectos largos](formatos-y-proyectos-largos.md) — para qué plataforma es, encuadre por formato,
+  30 escenas y 5 minutos, y las versiones de cada escena.
 - [Voz y subtítulos](voz-y-subtitulos.md) — de dónde salen los subtítulos que se montan aquí.
 - [Producir tu proyecto](producir-tu-proyecto.md) — cómo se generan los clips que se montan.
 - [Revisar la continuidad](revisar-la-continuidad.md) — qué es un fallo crítico y por qué frena exportar.

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Boton, claseBoton } from "@/components/ui/button";
 import { Aviso, EstadoVacio } from "@/components/ui/feedback";
+import type { FormatoMontaje } from "@/lib/formatos";
 import type { EscenaMontableVista, MontajeVista } from "@/lib/montaje";
 import {
   aEditables,
@@ -19,9 +20,10 @@ import {
   reordenarPorClaves,
   sinClaves,
 } from "@/lib/montaje-pantalla";
-import { consultarMontaje, guardarMontaje, pedirExportacion } from "./api-montaje";
+import { cambiarFormatos, consultarMontaje, guardarMontaje, pedirExportacion } from "./api-montaje";
 import { LineaDeTiempo } from "./linea-de-tiempo";
 import { PanelExportacion } from "./panel-exportacion";
+import { PanelFormatos } from "./panel-formatos";
 import { PanelMezcla } from "./panel-mezcla";
 
 /**
@@ -72,6 +74,7 @@ export function VistaMontaje({ inicial, titulo }: { inicial: MontajeVista; titul
       // se va a rechazar solo produciría un error que el usuario no ha pedido.
       etiquetaVisible: montaje.etiquetaObligatoria ? true : borrador.etiquetaVisible,
       etiquetaPosicion: borrador.etiquetaPosicion,
+      encuadres: borrador.encuadres,
       version: montaje.version,
     });
     if (resultado.ok) {
@@ -91,11 +94,28 @@ export function VistaMontaje({ inicial, titulo }: { inicial: MontajeVista; titul
     );
   };
 
-  const exportar = async () => {
+  /**
+   * Cambia los formatos del proyecto. Se guarda al momento y no toca el borrador: la lista de formatos es del
+   * proyecto, no de la línea de tiempo, y lo que se estaba editando sigue en la pantalla.
+   */
+  const formatos = async (lista: FormatoMontaje[]) => {
     setOcupado(true);
     setError(null);
     setAviso(null);
-    const resultado = await pedirExportacion(montaje.proyectoId);
+    const resultado = await cambiarFormatos(montaje.proyectoId, lista);
+    setOcupado(false);
+    if (!resultado.ok) {
+      setError(resultado.error);
+      return;
+    }
+    setMontaje(resultado.datos);
+  };
+
+  const exportar = async (formato: FormatoMontaje) => {
+    setOcupado(true);
+    setError(null);
+    setAviso(null);
+    const resultado = await pedirExportacion(montaje.proyectoId, formato);
     setOcupado(false);
     if (!resultado.ok) {
       setError(resultado.error);
@@ -119,8 +139,8 @@ export function VistaMontaje({ inicial, titulo }: { inicial: MontajeVista; titul
           </Link>
           <h1 className="mt-1 text-4xl font-bold text-texto">Montaje: {titulo}</h1>
           <p className="mt-2 text-texto-suave">
-            Ordena los clips, recorta lo que sobra, mezcla la voz y la música y exporta un MP4 vertical listo para
-            publicar. El proyecto sigue editable después de exportar.
+            Ordena los clips, recorta lo que sobra, mezcla la voz y la música y exporta un MP4 listo para publicar en
+            cada formato del proyecto. El proyecto sigue editable después de exportar.
           </p>
         </div>
         <Link href={`/proyectos/${montaje.proyectoId}/voz`} className={claseBoton("secundario", "sm")}>
@@ -159,7 +179,7 @@ export function VistaMontaje({ inicial, titulo }: { inicial: MontajeVista; titul
             fragmentos={borrador.fragmentos}
             escenas={montaje.escenas}
             duracionTotal={duracion}
-            aviso={avisoDeDuracion(duracion)}
+            aviso={avisoDeDuracion(duracion, montaje.segundosMaximos)}
             deshabilitado={ocupado || !montaje.activo}
             onOrden={(claves) => editar("fragmentos", reordenarPorClaves(borrador.fragmentos, claves))}
             onRecorte={(clave, borde, segundos) =>
@@ -184,6 +204,17 @@ export function VistaMontaje({ inicial, titulo }: { inicial: MontajeVista; titul
             onCambio={editar}
           />
 
+          <PanelFormatos
+            formatos={montaje.formatos}
+            encuadres={borrador.encuadres}
+            fragmentos={borrador.fragmentos}
+            escenas={montaje.escenas}
+            etiquetaPosicion={borrador.etiquetaPosicion}
+            deshabilitado={ocupado || !montaje.activo}
+            onFormatos={(lista) => void formatos(lista)}
+            onEncuadres={(encuadres) => editar("encuadres", encuadres)}
+          />
+
           {/* El guardado es explícito y se queda pegado abajo: se edita a ratos y hay que poder guardar sin subir. */}
           <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-3 rounded-tarjeta border-2 border-borde bg-superficie/95 p-3 shadow-lg backdrop-blur">
             <Boton
@@ -205,7 +236,7 @@ export function VistaMontaje({ inicial, titulo }: { inicial: MontajeVista; titul
             montaje={montaje}
             exportando={ocupado}
             sinGuardar={sinGuardar}
-            onExportar={() => void exportar()}
+            onExportar={(formato) => void exportar(formato)}
             onExportacionCambiada={(exportacion) =>
               setMontaje((previo) => ({
                 ...previo,
@@ -229,5 +260,6 @@ function aBorrador(montaje: MontajeVista): BorradorMontaje {
     formatoSubtitulos: montaje.formatoSubtitulos,
     etiquetaVisible: montaje.etiquetaVisible,
     etiquetaPosicion: montaje.etiquetaPosicion,
+    encuadres: montaje.encuadres,
   };
 }

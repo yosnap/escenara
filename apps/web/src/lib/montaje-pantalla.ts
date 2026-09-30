@@ -1,3 +1,4 @@
+import type { EncuadresDelMontaje } from "./formatos";
 import { moverEnLista } from "./lista-ordenable";
 import {
   duracionTotalDeFragmentos,
@@ -133,11 +134,16 @@ export interface AvisoDuracion {
  * Qué decir de la duración total. Dos cosas distintas, y por eso dos tonos: pasarse del máximo **impide**
  * exportar (el servidor lo rechaza), y pasar del minuto solo es un consejo sobre el formato.
  */
-export function avisoDeDuracion(segundos: number): AvisoDuracion | null {
-  if (segundos > SEGUNDOS_MAXIMOS_MONTAJE) {
+export function avisoDeDuracion(
+  segundos: number,
+  /** Máximo de esta instalación (Admin › Ajustes); el techo si no se indica. */
+  segundosMaximos: number = SEGUNDOS_MAXIMOS_MONTAJE,
+): AvisoDuracion | null {
+  const maximo = Math.min(segundosMaximos, SEGUNDOS_MAXIMOS_MONTAJE);
+  if (segundos > maximo) {
     return {
       tono: "error",
-      texto: `El montaje dura ${Math.round(segundos)} s y el máximo de esta versión son ${SEGUNDOS_MAXIMOS_MONTAJE} s. Recorta algún fragmento o quita escenas: así como está no se puede exportar.`,
+      texto: `El montaje dura ${Math.round(segundos)} s y el máximo de esta instalación son ${maximo} s. Recorta algún fragmento o quita escenas: así como está no se puede exportar.`,
     };
   }
   if (segundos > SEGUNDOS_RAZONABLES_MONTAJE) {
@@ -196,7 +202,20 @@ export interface BorradorMontaje {
   formatoSubtitulos: FormatoSubtitulos;
   etiquetaVisible: boolean;
   etiquetaPosicion: PosicionEtiqueta;
+  /** Encuadres ajustados por formato y escena. Cambian los píxeles del MP4, así que se guardan con el montaje. */
+  encuadres: EncuadresDelMontaje;
 }
+
+/** Encuadres en un orden estable, para que dos objetos iguales den la misma firma. */
+const firmaDeEncuadres = (encuadres: EncuadresDelMontaje): string =>
+  Object.entries(encuadres)
+    .flatMap(([formato, porEscena]) =>
+      Object.entries(porEscena ?? {}).map(
+        ([escena, e]) => `${formato}/${escena}=${e.modo === "bandas" ? "bandas" : `${e.x},${e.y}`}`,
+      ),
+    )
+    .sort()
+    .join(";");
 
 /**
  * Firma de lo que se guardaría. Sirve para una sola cosa: saber si **hay algo sin guardar**, comparándola con la
@@ -217,5 +236,6 @@ export function firmaDeGuardado(borrador: BorradorMontaje): string {
     borrador.formatoSubtitulos,
     borrador.etiquetaVisible ? "etiqueta" : "sin-etiqueta",
     borrador.etiquetaPosicion,
+    firmaDeEncuadres(borrador.encuadres),
   ].join("·");
 }

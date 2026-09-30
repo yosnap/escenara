@@ -287,6 +287,53 @@ export interface EscenaProduccionVista {
   clipsHablados: ClipHablado[];
   /** Versiones anteriores, de la más reciente a la más antigua. */
   versiones: VersionDeEscena[];
+  /**
+   * **Biblioteca de versiones del clip** (0.41.0): todos los clips terminados de la escena, con su archivo, de lo
+   * más reciente a lo más antiguo, y cuál está en uso. Vacía en un podcast, que elige sus clips por turnos.
+   */
+  bibliotecaDeClips: VersionDeClip[];
+}
+
+/** Una versión del clip de una escena, tal como se ofrece para compararla y elegirla. */
+export interface VersionDeClip {
+  trabajoId: string;
+  modelo: string;
+  /** Lo que informó el proveedor; `null` si no lo informó (entonces se muestra la estimación y se dice). */
+  creditosConsumidos: number | null;
+  creditosEstimados: number;
+  medio: Medio;
+  creadoEn: string;
+  /** Proporción en la que se pidió («9:16»…); `null` si el trabajo no la guarda (los de antes de la 0.41.0). */
+  proporcion: string | null;
+  /** `true` en la que la escena usa ahora: la que entra en el montaje. */
+  elegida: boolean;
+}
+
+/** Espacio de la biblioteca del usuario, para avisar de la cuota al guardar versiones. */
+export interface CuotaDeVersiones {
+  usadoBytes: number;
+  /** `null` = sin límite. */
+  cuotaBytes: number | null;
+  /** Lo que ocupan las versiones de clip no elegidas de este proyecto: lo que se podría liberar. */
+  versionesSinUsarBytes: number;
+}
+
+/** Porcentaje de cuota a partir del cual se avisa: por encima, una versión más puede no caber. */
+export const CUOTA_AVISO_POR_CIENTO = 80;
+
+/**
+ * Aviso de cuota de la biblioteca de versiones, o `null` si no hay nada que decir. Las versiones se conservan
+ * todas mientras el proyecto exista, así que es aquí donde se dice cuánto ocupan y qué hacer si falta sitio.
+ */
+export function avisoDeCuota(cuota: CuotaDeVersiones, formatear: (bytes: number) => string): string | null {
+  if (cuota.cuotaBytes === null || cuota.cuotaBytes <= 0) return null;
+  const porCiento = Math.round((cuota.usadoBytes / cuota.cuotaBytes) * 100);
+  if (porCiento < CUOTA_AVISO_POR_CIENTO) return null;
+  const liberable =
+    cuota.versionesSinUsarBytes > 0
+      ? ` Las versiones que no usas de este proyecto ocupan ${formatear(cuota.versionesSinUsarBytes)}: puedes enviarlas a la papelera desde tu biblioteca y vaciarla.`
+      : "";
+  return `Tu biblioteca está al ${porCiento} % (${formatear(cuota.usadoBytes)} de ${formatear(cuota.cuotaBytes)}). Si se llena, el clip de la siguiente versión no se podrá guardar aunque el proveedor lo haya generado.${liberable}`;
 }
 
 /** Un clip de un podcast: su turno en la conversación, de quién es la cara y en qué estado está. */
@@ -342,6 +389,8 @@ export interface ProduccionVista {
   maximoEnVuelo: number;
   /** Lo que impide producir ahora mismo, en lenguaje llano. Vacío = se puede producir. */
   impedimentos: string[];
+  /** Cuota de la biblioteca, para avisar al guardar versiones (0.41.0). */
+  cuota: CuotaDeVersiones;
 }
 
 // ── Funciones puras de la rejilla ──────────────────────────────────────────────────────────────────────────

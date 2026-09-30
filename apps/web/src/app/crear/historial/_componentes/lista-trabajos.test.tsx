@@ -25,6 +25,7 @@ function fallido(cambios: Partial<TrabajoVista>): TrabajoVista {
     tipo: "animacion",
     proveedor: "kie",
     modelo: "google/gemini-omni-flash-1-1",
+    proporcion: null,
     estado: "fallido",
     etapa: null,
     estadoProveedor: "fail",
@@ -86,5 +87,14 @@ describe("causa del fallo en pantalla", () => {
     const html = renderToStaticMarkup(<ListaTrabajos iniciales={[fallido({})]} cola={COLA} />);
     expect(html).toContain(`${ETIQUETA_MOTIVO_FALLO.contenido}.`);
     expect(html).toContain(MENSAJE_FALLO_GENERICO);
+  });
+});
+
+describe("el formato en el historial", () => {
+  test("un trabajo pedido en un formato lo dice; uno sin proporción no inventa ninguna", () => {
+    const con = renderToStaticMarkup(<ListaTrabajos iniciales={[fallido({ proporcion: "16:9" })]} cola={COLA} />);
+    expect(con).toMatch(/Formato (<!-- -->)?16:9/);
+    const sin = renderToStaticMarkup(<ListaTrabajos iniciales={[fallido({})]} cola={COLA} />);
+    expect(sin).not.toContain("Formato ");
   });
 });

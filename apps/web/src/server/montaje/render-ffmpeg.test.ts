@@ -22,6 +22,7 @@ const base = {
   segundos: 12,
   ancho: 1080,
   alto: 1920,
+  formato: "vertical_9_16" as const,
   salida: "/tmp/escenara-montaje-x/montaje.mp4",
 };
 

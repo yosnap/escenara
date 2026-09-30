@@ -280,7 +280,7 @@ export function FormularioAjustes({
       <SeccionCanto valores={valores} errorDe={errorDe} onCambio={cambiar} />
 
       {/* Después de la voz: montar es lo último del recorrido de un proyecto (0.32.0). */}
-      <SeccionMontaje valores={valores} onCambio={cambiar} />
+      <SeccionMontaje valores={valores} errorDe={errorDe} onCambio={cambiar} />
 
       <SeccionPresupuesto
         valores={valores}

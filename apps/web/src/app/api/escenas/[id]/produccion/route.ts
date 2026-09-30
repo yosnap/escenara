@@ -8,6 +8,7 @@ import {
   manejador,
 } from "@/server/asistente/http";
 import { cancelarEscena } from "@/server/produccion/cancelar";
+import { estadoDeProduccion } from "@/server/produccion/consulta";
 import { leerConfirmacion } from "@/server/produccion/entrada";
 import {
   aprobarFotograma,
@@ -17,6 +18,7 @@ import {
   regenerarEscena,
   usarFotogramaDeBiblioteca,
 } from "@/server/produccion/producir";
+import { usarVersionDeEscena } from "@/server/produccion/versiones";
 
 export const dynamic = "force-dynamic";
 
@@ -32,9 +34,12 @@ export const dynamic = "force-dynamic";
  * - `regenerar`: encola otro fotograma de esta escena, conservando los anteriores como versiones. Después de un
  *   fallo con coste posible exige presupuesto de reintentos autorizado;
  * - `cancelar`: cancela lo que aún no ha salido y **avisa de lo que se cobrará**;
- * - `reintentos`: autoriza cuántos reintentos de pago más se permiten en esta escena.
+ * - `reintentos`: autoriza cuántos reintentos de pago más se permiten en esta escena;
+ * - `usar-version`: elige otro clip ya generado de la escena (`trabajoId`) de su biblioteca de versiones (0.41.0).
+ *   No genera ni borra nada: cambia el clip que entra en el montaje.
  *
- * Las cuatro primeras llevan la confirmación de coste de siempre; `cancelar` y `reintentos` no gastan nada.
+ * Las cuatro primeras llevan la confirmación de coste de siempre; `cancelar`, `reintentos` y `usar-version` no
+ * gastan nada.
  */
 const ACCIONES = [
   "producir",
@@ -44,6 +49,7 @@ const ACCIONES = [
   "regenerar",
   "cancelar",
   "reintentos",
+  "usar-version",
 ] as const;
 type Accion = (typeof ACCIONES)[number];
 
@@ -59,6 +65,11 @@ export const POST = manejador(async (peticion: Request, contexto: ContextoId, ac
   if (cuerpo.accion === "cancelar") return Response.json(await cancelarEscena(actor, id));
   if (cuerpo.accion === "reintentos") {
     return Response.json(await autorizarReintentos(actor, id, cuerpo.reintentos));
+  }
+  // Elegir otra versión del clip tampoco: el archivo ya está pagado y guardado.
+  if (cuerpo.accion === "usar-version") {
+    const proyectoId = await usarVersionDeEscena(actor, id, cuerpo.trabajoId);
+    return Response.json(await estadoDeProduccion(actor, proyectoId));
   }
   // Elegir el fotograma de partida no cuesta nada, así que no lleva confirmación de coste.
   if (cuerpo.accion === "fotograma-de-biblioteca") {

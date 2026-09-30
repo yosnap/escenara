@@ -76,6 +76,13 @@ export const otroClipDeEscena = (escenaId: string, confirmacion: ConfirmacionEnv
 export const usarFotogramaDeBiblioteca = (escenaId: string, medioId: string) =>
   accionDeEscena(escenaId, { accion: "fotograma-de-biblioteca", medioId });
 
+/**
+ * Elige otra versión ya generada del clip de la escena (0.41.0). **No gasta nada** ni borra la anterior: cambia el
+ * clip que entra en el montaje, y el montaje estrena versión.
+ */
+export const usarVersionDeClip = (escenaId: string, trabajoId: string) =>
+  accionDeEscena(escenaId, { accion: "usar-version", trabajoId });
+
 export const regenerarEscena = (escenaId: string, confirmacion: ConfirmacionEnvio) =>
   accionDeEscena(escenaId, { accion: "regenerar", ...confirmacion });
 

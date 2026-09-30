@@ -2,6 +2,7 @@ import { asc, eq, inArray, sql } from "drizzle-orm";
 import { CAPACIDAD_DE_TIPO, precioCaducado } from "@/lib/catalogo";
 import { EVALUACION_LISTA, type EvaluacionVista, peorEstado } from "@/lib/controles";
 import type { ReferenciaIdentidad } from "@/lib/direccion";
+import { formatosDe, formatosGenerables } from "@/lib/formatos";
 import type { FotoDeProductoDelClip } from "@/lib/foto-de-producto";
 import { formatearCreditos } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
@@ -38,6 +39,7 @@ import {
   usageLedger,
 } from "../db/esquema";
 import { type EleccionDeTrabajo, elegirParaTipo } from "../generacion/precios";
+import { limitesDe } from "../limites-proyecto";
 import { eleccionDeGeneracion } from "../mapa/generacion";
 import { type Actor, aDto } from "../media/servicio";
 import { eleccionOmni } from "../omni/registro";
@@ -92,6 +94,23 @@ export interface EleccionesDelPlan {
 export async function eleccionesDelPlan(usuarioId?: string): Promise<EleccionesDelPlan> {
   const [fotograma, animacion] = await Promise.all([elegir("fotograma", usuarioId), elegir("animacion", usuarioId)]);
   return { fotograma, animacion };
+}
+
+/** Los modelos del plan con sus proporciones del catálogo: es con lo que se decide en qué formato se puede generar. */
+export const modelosDelPlan = (elecciones: EleccionesDelPlan) =>
+  [elecciones.fotograma, elecciones.animacion].flatMap((e) =>
+    e ? [{ nombre: e.modelo.nombre, proporciones: e.modelo.parametros.proporciones }] : [],
+  );
+
+/**
+ * Los modelos con los que se genera **este** proyecto: los del plan o, en modo `omni`, **solo** el de escenas
+ * habladas, que es el único que se usa (sin fotograma ni animación aparte). Sin él, un formato aceptado al fijarlo
+ * se rechazaría después al producir.
+ */
+export async function modelosDelProyecto(usuarioId: string, elecciones: EleccionesDelPlan, modoVoz: string) {
+  if (modoVoz !== "omni") return modelosDelPlan(elecciones);
+  const omni = await eleccionOmni(usuarioId).catch(() => null);
+  return omni ? [{ nombre: omni.modelo.nombre, proporciones: omni.modelo.parametros.proporciones }] : [];
 }
 
 async function elegir(tipo: "fotograma" | "animacion", usuarioId?: string): Promise<EleccionDeTrabajo | null> {
@@ -454,6 +473,7 @@ export async function vistaDeProyecto(fila: FilaProyecto, totalEscenas: number, 
     estiloVisual: fila.renderStyle,
     presupuestoCreditos: fila.authorizedCredits,
     segundosClip: fila.clipSeconds,
+    formatos: formatosDe(fila.formats),
     acento: fila.speechAccent,
     totalEscenas,
     totalEstimado,
@@ -587,6 +607,8 @@ export async function detalleProyecto(actor: Actor, id: unknown): Promise<Proyec
     asistenteDisponible: asistente.disponible,
     motivoAsistente: asistente.motivo,
     estimacionAsistente: asistente.estimacion,
+    limites: limitesDe(ajustes),
+    formatosGenerables: formatosGenerables(await modelosDelProyecto(actor.id, elecciones, fila.voiceMode)),
   };
 }
 

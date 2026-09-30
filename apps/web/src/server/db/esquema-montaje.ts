@@ -11,6 +11,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { type EncuadresDelMontaje, FORMATOS_MONTAJE } from "@/lib/formatos";
 import type { Fragmento } from "@/lib/montaje";
 import { media } from "./esquema";
 import { projects } from "./esquema-proyectos";
@@ -34,7 +35,7 @@ import { jsonb } from "./jsonb";
  */
 
 /** Formato de salida. Un solo valor en esta versión: 16:9 y 1:1 llegan en la 0.41.0. */
-export const formatoMontaje = pgEnum("montage_format", ["vertical_9_16"]);
+export const formatoMontaje = pgEnum("montage_format", FORMATOS_MONTAJE);
 
 /** Dónde va la etiqueta de contenido sintético. Se elige la posición, no si se pone. */
 export const posicionEtiquetaMontaje = pgEnum("montage_label_position", ["arriba", "abajo"]);
@@ -92,6 +93,13 @@ export const montages = pgTable(
     labelVisible: boolean("label_visible").notNull().default(true),
     labelPosition: posicionEtiquetaMontaje("label_position").notNull().default("abajo"),
     format: formatoMontaje("format").notNull().default("vertical_9_16"),
+    /**
+     * Encuadre ajustado por formato y escena (0.41.0): qué parte del clip se queda al llevarlo a un formato que no
+     * es el suyo. Lo que no está es el automático (`lib/formatos.ts › encuadreAutomatico`), así que un montaje
+     * anterior, con esto vacío, se exporta exactamente igual que antes. Cambia los píxeles del MP4: se guarda con
+     * la línea de tiempo y sube la versión.
+     */
+    framings: jsonb<EncuadresDelMontaje>("framings").notNull().default({}),
     /** Sube con cada guardado. Es la mitad de la clave de idempotencia de la exportación. */
     version: integer("version").notNull().default(1),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -174,13 +182,13 @@ export const montageExports = pgTable(
     // Índice de la toma del worker: busca las que están en cola y las tomas caducadas.
     index("montage_exports_cola_idx").on(t.state, t.lockedUntil),
     /**
-     * **La idempotencia**: una sola exportación viva por montaje y versión. Es un índice único **parcial** que
-     * deja fuera las fallidas, porque un fallo sí se tiene que poder reintentar. Quien crea la exportación
+     * **La idempotencia**: una sola exportación viva por montaje, versión y formato (el formato entra en la
+     * 0.41.0). Es un índice único **parcial** que deja fuera las fallidas, porque un fallo sí se tiene que poder reintentar. Quien crea la exportación
      * además bloquea la fila del montaje (`server/montaje/exportacion.ts`), así que este índice es la red y no
      * el mecanismo: lo que se ve cuando se pulsa dos veces es la misma exportación, no un 500.
      */
-    uniqueIndex("montage_exports_montaje_version_uq")
-      .on(t.montageId, t.montageVersion)
+    uniqueIndex("montage_exports_montaje_version_formato_uq")
+      .on(t.montageId, t.montageVersion, t.format)
       .where(sql`${t.state} <> 'fallido'`),
   ],
 );

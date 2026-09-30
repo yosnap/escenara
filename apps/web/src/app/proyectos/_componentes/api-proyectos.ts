@@ -1,4 +1,5 @@
 import type { OpcionesDeDireccion } from "@/lib/direccion";
+import type { FormatoMontaje } from "@/lib/formatos";
 import type { ProyectoDetalle } from "@/lib/proyectos";
 
 /** Cliente de la API de proyectos para el navegador. */
@@ -33,6 +34,8 @@ export interface NuevoProyecto {
   idea: string;
   personajeId?: string | null;
   presupuestoCreditos?: number;
+  /** Formatos de salida; el primero es el principal, en el que se generan los clips (0.41.0). */
+  formatos?: FormatoMontaje[];
 }
 
 export const crearProyecto = (datos: NuevoProyecto) => pedir<ProyectoDetalle>("/api/proyectos", json("POST", datos));

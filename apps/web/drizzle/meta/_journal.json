@@ -407,6 +407,13 @@
       "when": 1790751240967,
       "tag": "0057_decisiones-registradas-y-sombra",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1790754383616,
+      "tag": "0058_formatos-encuadre-y-versiones-de-escena",
+      "breakpoints": true
     }
   ]
 }

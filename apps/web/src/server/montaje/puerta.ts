@@ -1,5 +1,5 @@
 import type { EvaluacionVista } from "@/lib/controles";
-import { RESOLUCION_MONTAJE } from "@/lib/montaje";
+import { type FormatoMontaje, RESOLUCION_MONTAJE } from "@/lib/formatos";
 import { BLOQUEAN_APROBACION } from "@/lib/proyectos";
 import { afirmacionesDe } from "../asistente/consulta";
 import type { Hechos } from "../controles/contrato";
@@ -120,5 +120,5 @@ export async function controlesDelMontajeParaMostrar(
   return evaluarParaMostrar(await hechosDelMontaje(actor, montaje, material, segundos));
 }
 
-/** Resolución de salida del montaje. Vive aquí para que la puerta y el render usen exactamente la misma. */
-export const resolucionDe = (montaje: FilaMontaje) => RESOLUCION_MONTAJE[montaje.format];
+/** Resolución de salida de un formato. Vive aquí para que la puerta y el render usen exactamente la misma. */
+export const resolucionDe = (formato: FormatoMontaje) => RESOLUCION_MONTAJE[formato];

@@ -1,5 +1,7 @@
 import { eq } from "drizzle-orm";
 import { REGLAS_VERSION } from "@/lib/controles";
+import { proporcionFijadaDelProyecto } from "@/lib/formatos";
+import { PROPORCION_DISPONIBLE } from "@/lib/produccion";
 import {
   type ComprobacionRevision,
   peorSeveridad,
@@ -48,6 +50,14 @@ export async function umbralesDeRevision(): Promise<UmbralesRevision> {
     exigirAudio: ajustes.revisionExigirAudio,
   };
 }
+
+/**
+ * Proporción con la que hay que comparar el clip de la escena: la del **formato principal del proyecto** (9:16 en
+ * los de siempre), que es la que el montaje espera. No se usa la que se pidió al generar: un clip de «Crear» pedido
+ * en 16:9 y convertido en escena de un proyecto vertical tiene que salir como proporción distinta, no darse por bueno.
+ */
+const proporcionEsperada = (formatosDelProyecto: unknown): string =>
+  proporcionFijadaDelProyecto(formatosDelProyecto) ?? PROPORCION_DISPONIBLE;
 
 /** El clip de la escena, o el motivo por el que todavía no hay nada que comprobar. */
 export async function clipDeEscena(escena: FilaEscena): Promise<FilaMedio> {
@@ -101,8 +111,9 @@ export function notasAutomaticas(comprobaciones: readonly ComprobacionRevision[]
  * guardaron, para que quien llama pueda responder sin volver a leer.
  */
 export async function revisarAutomaticamente(actor: Actor, escenaId: unknown): Promise<ComprobacionRevision[]> {
-  const { escena } = await escenaPropia(actor, escenaId);
+  const { escena, proyecto } = await escenaPropia(actor, escenaId);
   const clip = await clipDeEscena(escena);
+  const proporcion = proporcionEsperada(proyecto.formats);
   // Si faltan los binarios se dice **antes** de guardar nada: un panel con vistos verdes por no tener ffprobe
   // sería la peor de las mentiras posibles.
   await exigirHerramientasDeMedida().catch(comoErrorDeRevision);
@@ -113,7 +124,7 @@ export async function revisarAutomaticamente(actor: Actor, escenaId: unknown): P
    * y esconderlas detrás de un 500 dejaría al usuario sin saber qué hacer.
    */
   const comprobaciones = await conClipEnDisco(clip.storageKey, clip.mimeType, (ruta) =>
-    comprobacionesDeArchivo(ruta, pedidoDeEscena(escena.plannedSeconds), umbrales),
+    comprobacionesDeArchivo(ruta, pedidoDeEscena(escena.plannedSeconds, proporcion), umbrales),
   ).catch(comoErrorDeRevision);
   const { severidad, veredicto } = resultadoAutomatico(comprobaciones);
   /**

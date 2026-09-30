@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { Boton } from "@/components/ui/button";
 import { AreaTexto, Campo, EntradaTexto } from "@/components/ui/field";
+import { SelectorPlataforma } from "@/components/ui/formatos";
 import { Dialogo } from "@/components/ui/overlay";
 import { SelectorPersonaje } from "@/components/ui/personaje";
 import { Selector } from "@/components/ui/select";
+import { FORMATO_MONTAJE_POR_DEFECTO, type FormatoMontaje } from "@/lib/formatos";
 import type { PersonajeElegible } from "@/lib/personajes";
 import {
   AYUDA_FORMATO,
@@ -18,7 +20,7 @@ import {
 import { crearProyecto } from "./api-proyectos";
 
 /**
- * Alta de un proyecto: título, formato, idea, protagonista y presupuesto autorizado.
+ * Alta de un proyecto: título, formato, para qué plataforma es, idea, protagonista y presupuesto autorizado.
  *
  * Crear un proyecto **no gasta nada**: no llama a ningún proveedor ni reserva presupuesto. El presupuesto que
  * se escribe aquí es el techo que se comprobará al aprobar el plan.
@@ -28,6 +30,7 @@ export function DialogoNuevoProyecto({
   onAbiertoCambio,
   personajes,
   presupuestoSugerido,
+  formatosGenerables,
   onCreado,
   onError,
 }: {
@@ -35,6 +38,8 @@ export function DialogoNuevoProyecto({
   onAbiertoCambio: (v: boolean) => void;
   personajes: PersonajeElegible[];
   presupuestoSugerido: number;
+  /** Por formato, por qué no se puede generar en él con los modelos elegidos; `null` si se puede. */
+  formatosGenerables: Record<FormatoMontaje, string | null>;
   onCreado: (detalle: ProyectoDetalle) => void;
   onError: (mensaje: string) => void;
 }) {
@@ -43,6 +48,7 @@ export function DialogoNuevoProyecto({
   const [idea, setIdea] = useState("");
   const [personajeId, setPersonajeId] = useState<string | null>(null);
   const [presupuesto, setPresupuesto] = useState(presupuestoSugerido);
+  const [principal, setPrincipal] = useState<FormatoMontaje>(FORMATO_MONTAJE_POR_DEFECTO);
   const [guardando, setGuardando] = useState(false);
 
   const crear = async () => {
@@ -53,6 +59,7 @@ export function DialogoNuevoProyecto({
       idea,
       personajeId,
       presupuestoCreditos: Number.isNaN(presupuesto) ? 0 : presupuesto,
+      formatos: [principal],
     });
     setGuardando(false);
     if (!resultado.ok) {
@@ -105,6 +112,17 @@ export function DialogoNuevoProyecto({
             }))}
           />
         </div>
+
+        <SelectorPlataforma
+          etiqueta="¿Para qué es? Los clips se generan en este formato"
+          valor={principal}
+          motivos={formatosGenerables}
+          onCambio={setPrincipal}
+        />
+        <p className="-mt-2 text-sm text-texto-suave">
+          Los demás formatos se sacan después en el montaje, del mismo clip y sin coste. Un formato que tus modelos no
+          admiten sale deshabilitado con el motivo.
+        </p>
 
         <Campo
           etiqueta="Idea"

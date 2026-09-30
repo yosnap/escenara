@@ -119,6 +119,24 @@ audio propio**; mientras tanto, cambia el formato de la escena. Mira [Cantar con
 </details>
 
 <details>
+<summary>… solo admite 9:16 · El fotograma está en 4:5 y … solo hace clips en … · Este trabajo se pidió en 16:9 y … no admite esa proporción</summary>
+
+Son del **formato** (0.41.0), y ninguno cobra nada:
+
+- **el modelo no admite el formato elegido**: la opción ya salía deshabilitada en la pantalla; si llega por la API,
+  se rechaza antes de reservar. Elige un formato que admita o cambia de modelo. Los demás formatos se sacan en el
+  montaje, del mismo clip y sin coste;
+- **el fotograma está en una proporción que el modelo de vídeo no admite**: pasa a uno de los modelos que el mensaje
+  nombra o recorta la imagen en tu biblioteca («Editar imagen») y anima esa copia. Escenara no la recorta por su
+  cuenta;
+- **el modelo dejó de admitir la proporción entre pedirlo y enviarlo** (un relevo a otro proveedor, un cambio del
+  catálogo): el trabajo se cierra sin enviarse y sin cobro. Vuelve a pedirlo con un modelo que la admita.
+
+Más en [Formatos y proyectos largos](formatos-y-proyectos-largos.md).
+
+</details>
+
+<details>
 <summary>Esta escena canta, pero todavía no tiene ningún audio elegido · Falta la declaración de derechos de este audio · No se ha podido medir cuánto dura este audio · Este audio dura … y el tope de esta instalación es de …</summary>
 
 Son los requisitos del **audio** de una escena de canto, y todos se arreglan **antes de gastar nada**:

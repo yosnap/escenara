@@ -1,5 +1,6 @@
 import path from "node:path";
 import { and, eq, isNull } from "drizzle-orm";
+import { encuadreDe, nombreDeExportacion } from "@/lib/formatos";
 import { formatearTamano, LIMITE_BYTES } from "@/lib/media/reglas";
 import { duracionDeFragmento, duracionTotalDeFragmentos, type Fragmento } from "@/lib/montaje";
 import { db } from "../db/cliente";
@@ -15,7 +16,9 @@ import { resolucionDe } from "./puerta";
 import { listaDeConcatenacion, ordenDeIgualar, ordenDeMontar, type PistaDeMezcla } from "./render-ffmpeg";
 
 /**
- * **El render del montaje** (RF08, 0.32.0): de la línea de tiempo a un MP4 vertical en la biblioteca del usuario.
+ * **El render del montaje** (RF08, 0.32.0): de la línea de tiempo a un MP4 en la biblioteca del usuario, en el
+ * formato de la exportación (0.41.0: 9:16, 4:5, 1:1 o 16:9). Cada formato sale **del mismo clip** con su encuadre:
+ * reencuadrar no vuelve a generar nada ni llama a ningún proveedor.
  *
  * Lo hace el worker, no la petición del navegador: montar un vídeo tarda minutos y una petición HTTP colgada
  * durante minutos no es una barra de progreso, es un tiempo de espera agotado. El progreso que se ve son las
@@ -28,6 +31,13 @@ import { listaDeConcatenacion, ordenDeIgualar, ordenDeMontar, type PistaDeMezcla
  * llegaran a montar la misma exportación, solo uno la cierra y el otro borra su copia en lugar de dejar dos
  * ficheros comiéndose la cuota de alguien.
  */
+
+/**
+ * Cuánto vale la toma de una exportación por un worker. Se **renueva cada vez que se apunta el progreso**, así que
+ * un render largo (cinco minutos en 16:9 en una máquina modesta) no la pierde a mitad y otra pasada no puede tomar
+ * la misma exportación mientras se monta. Un worker caído deja de renovarla y la suelta al caducar.
+ */
+export const MS_TOMA_EXPORTACION = 20 * 60_000;
 
 /** Cada cuánto se escribe el progreso en la base de datos. Más a menudo sería una escritura por fotograma. */
 const MS_ENTRE_APUNTES = 1_500;
@@ -47,11 +57,18 @@ const ultimasLineas = (texto: string, cuantas = 6) =>
  * Apunta la etapa y el porcentaje de la exportación. Acota las escrituras en el tiempo: el progreso es
  * información, no un registro que haya que guardar fotograma a fotograma.
  */
-class Progreso {
+export class Progreso {
   private ultimoApunte = 0;
   private etapa: FilaExportacion["stage"] = "preparando";
 
-  constructor(private readonly exportacionId: string) {}
+  constructor(
+    private readonly exportacionId: string,
+    /**
+     * Worker que tiene la toma. Solo se apunta (y se renueva la toma) mientras siga siendo suya: un worker cuya toma
+     * caducó y que otra pasada ya ha vuelto a tomar no pisa el progreso ni alarga la toma del otro.
+     */
+    private readonly titular: string | null = null,
+  ) {}
 
   async entrarEn(etapa: FilaExportacion["stage"]): Promise<void> {
     this.etapa = etapa;
@@ -71,8 +88,16 @@ class Progreso {
     this.ultimoApunte = ahora;
     await db()
       .update(montageExports)
-      .set({ stage: this.etapa, progress: Math.round(porciento * 10) / 10 })
-      .where(eq(montageExports.id, this.exportacionId))
+      .set({
+        stage: this.etapa,
+        progress: Math.round(porciento * 10) / 10,
+        lockedUntil: new Date(ahora + MS_TOMA_EXPORTACION),
+      })
+      .where(
+        this.titular === null
+          ? eq(montageExports.id, this.exportacionId)
+          : and(eq(montageExports.id, this.exportacionId), eq(montageExports.lockedBy, this.titular)),
+      )
       .catch((error) => console.error(`[montaje] no se ha podido apuntar el progreso: ${detalle(error)}`));
   }
 }
@@ -107,8 +132,9 @@ export async function renderizarExportacion(
   // vídeo con cara humana sin su etiqueta es peor que un vídeo que no se ha exportado.
   if (exportacion.labelApplied) await exigirEtiquetaDibujable();
 
-  const progreso = new Progreso(exportacion.id);
-  const { ancho, alto } = resolucionDe(montaje);
+  const progreso = new Progreso(exportacion.id, exportacion.lockedBy);
+  const formato = exportacion.format;
+  const { ancho, alto } = resolucionDe(formato);
   const segundosTotales = duracionTotalDeFragmentos(montaje.fragments);
 
   return conCarpetaTemporal(async (carpeta) => {
@@ -134,6 +160,8 @@ export async function renderizarExportacion(
           salida,
           ancho,
           alto,
+          // El encuadre de **esta** escena en **este** formato, tal como se guardó con la versión del montaje.
+          encuadre: encuadreDe(montaje.framings, formato, preparado.escena.escena.id),
         }),
         MS_MAXIMO_IGUALAR,
         (segundos) => void progreso.avanzar(yaHechos + Math.min(segundos, duracion), segundosTotales),
@@ -167,6 +195,7 @@ export async function renderizarExportacion(
         segundos: segundosTotales,
         ancho,
         alto,
+        formato,
         salida,
       }),
       MS_MAXIMO_MONTAR,
@@ -323,7 +352,9 @@ async function guardarResultado(
       `El vídeo montado pesa ${formatearTamano(bytes)} y el máximo por archivo de la biblioteca es ${formatearTamano(LIMITE_BYTES.video)}. Recorta el montaje y vuelve a exportarlo.`,
     );
   }
-  const archivo = new File([await fichero.arrayBuffer()], "montaje.mp4", { type: "video/mp4" });
+  const archivo = new File([await fichero.arrayBuffer()], nombreDeExportacion(exportacion.format), {
+    type: "video/mp4",
+  });
   const medio = await crearMedio(actor, archivo, { duracion }, ["video"], null);
   const [cerrada] = await db()
     .update(montageExports)

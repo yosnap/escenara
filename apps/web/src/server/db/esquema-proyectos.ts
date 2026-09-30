@@ -12,6 +12,7 @@ import {
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
+import type { FormatoMontaje } from "@/lib/formatos";
 import { media } from "./esquema";
 import { users } from "./esquema-auth";
 import { proveedorCredencial } from "./esquema-boveda";
@@ -137,6 +138,12 @@ export const projects = pgTable(
      * KIE cobra lo mismo por 4 s que por 8 s, medido el 2026-09-27, así que la corta no ahorra nada.
      */
     clipSeconds: integer("clip_seconds").notNull().default(8),
+    /**
+     * Formatos de salida del proyecto (0.41.0), sin repetidos. **El primero es el principal**: es la proporción
+     * que se le pide al modelo al generar, y los demás salen del mismo clip en el montaje con reencuadre, sin
+     * regenerar nada. Nace en vertical 9:16, que es lo que eran todos los proyectos anteriores.
+     */
+    formats: jsonb<FormatoMontaje[]>("formats").notNull().default(["vertical_9_16"]),
     /**
      * Modo de voz del proyecto (RF08, 0.21.0; decisión firme del propietario, 2026-09-28). `clip` es el de
      * fábrica: la voz la genera el modelo de vídeo, como hasta la 0.20.x, y no hay pista TTS. `pista` pide los

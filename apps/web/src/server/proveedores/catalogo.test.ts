@@ -109,7 +109,8 @@ describe("lo que puede ver quien genera", () => {
     expect(Object.keys(recortado).sort()).toEqual(
       // `maximoReferencias` lo añade 0.13.0: «Crear» necesita saber cuántas fotos del personaje se envían;
       // `precioPublicado` la 0.23.0 (quien va a gastar tiene que ver si ese precio lo hemos medido o lo publica
-      // el proveedor); y `duracionesConCoste` la 0.23.4, para poder elegir la duración viendo lo que cuesta.
+      // el proveedor); `duracionesConCoste` la 0.23.4, para poder elegir la duración viendo lo que cuesta; y
+      // `proporciones` la 0.41.0, para avisar en «Crear» de una imagen que ese modelo no sabe animar.
       [
         "conVoz",
         "creditos",
@@ -120,6 +121,7 @@ describe("lo que puede ver quien genera", () => {
         "modelo",
         "nombre",
         "precioPublicado",
+        "proporciones",
         "unidad",
       ].sort(),
     );

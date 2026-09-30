@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckCircle2 } from "lucide-react";
+import { BibliotecaVersiones } from "@/components/ui/biblioteca-versiones";
 import { InsigniaControl } from "@/components/ui/controles";
 import { Aviso } from "@/components/ui/feedback";
 import { SelectorMedios } from "@/components/ui/media/selector-medios";
@@ -45,6 +46,7 @@ export function TarjetaEscena({
   onFotogramaDeBiblioteca,
   onCancelar,
   onReintentos,
+  onUsarVersion,
   onConfirmarAviso,
   avisosConfirmados,
 }: {
@@ -61,6 +63,8 @@ export function TarjetaEscena({
   onFotogramaDeBiblioteca: (medioId: string) => void;
   onCancelar: () => void;
   onReintentos: (reintentos: number) => void;
+  /** Elige otra versión ya generada del clip. No gasta nada ni borra la que había. */
+  onUsarVersion: (trabajoId: string) => void;
   /** Confirma un aviso salvable: la misma confirmación que el panel «Antes de generar» de la producción. */
   onConfirmarAviso: (regla: string, valor: boolean) => void;
   avisosConfirmados: readonly string[];
@@ -337,6 +341,12 @@ export function TarjetaEscena({
         ) : null)}
 
       <AccionesEscena escena={escena} ocupado={ocupado} onCancelar={onCancelar} onReintentos={onReintentos} />
+      <BibliotecaVersiones
+        versiones={escena.bibliotecaDeClips}
+        cuota={produccion.cuota}
+        ocupado={ocupado || trabajoEnMarcha(escena.animacion)}
+        onUsar={onUsarVersion}
+      />
       <HistorialEscena versiones={escena.versiones} />
     </article>
   );

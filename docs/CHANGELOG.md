@@ -2,6 +2,110 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.41.0] · 2026-09-30
+
+**Formatos y proyectos multiescena.** Un proyecto deja de ser solo un reel vertical corto: eliges **para qué
+plataforma es**, el mismo montaje sale en **9:16, 4:5, 1:1 y 16:9** reencuadrando los mismos clips **sin regenerar
+nada ni gastar créditos**, un proyecto admite hasta **30 escenas y 5 minutos**, y cada escena guarda **todas las
+versiones** de su clip para elegir la que entra en el vídeo. No cambia ninguna regla de coste, de consentimiento, de
+confirmación ni de idempotencia, y los proyectos y exportaciones verticales que ya había salen exactamente igual.
+Una migración que **no es puramente aditiva** (sustituye un índice único): lee «Actualizar desde la 0.39.0».
+
+### Añadido
+
+- **Selector por plataforma al generar**: «Reels · TikTok · Stories (9:16)», «Instagram feed y carrusel (4:5)»,
+  «Cuadrado (1:1)» y «YouTube · horizontal (16:9)». Al crear un proyecto (y en su paso «La idea», mientras el plan
+  no esté aprobado ni haya clips) eliges el **formato principal**, que es la proporción en la que se generan sus
+  clips. En «Crear» es la familia **Formato** de la botonera, con los mismos nombres y una opción nueva de 4:5.
+- **La proporción elegida se envía de verdad al proveedor** y queda guardada en el trabajo; el historial la enseña
+  como «Formato 16:9». Hasta ahora solo se validaba y se mandaba siempre la del modelo.
+- **Exportar el mismo montaje en varios formatos**: en Proyecto › Montaje, «Formatos y encuadre» con los formatos del
+  proyecto (el principal no se quita; los demás se añaden sin coste), una pestaña por formato con sus **zonas
+  seguras**, y en «Exportar el vídeo» la elección del formato de cada MP4 (1080 × 1920, 1080 × 1350, 1080 × 1080 o
+  1920 × 1080). Cada formato es su propia exportación.
+- **Encuadre por escena y formato**: se **arrastra** el vídeo dentro del marco (o se mueve con las flechas), o se
+  eligen los atajos centrado, izquierda, derecha, arriba, abajo o «entero, con bandas». La previsualización usa la
+  misma cuenta que FFmpeg, así que lo que se ve es lo que sale. Si un recorte deja fuera más de la mitad del plano,
+  se avisa en la escena y al exportar.
+- **Subtítulos quemados y etiqueta dentro de la zona segura de cada formato** (en 9:16, las mismas franjas de
+  siempre).
+- **La revisión de continuidad compara cada clip con el formato principal del proyecto**, no con 9:16 fijo: un clip
+  bien hecho en 16:9 o 1:1 en su proyecto no sale como fallo crítico, y uno de otra proporción (por ejemplo un clip
+  de «Crear» en 16:9 convertido en escena de un proyecto vertical) sale como proporción distinta.
+- En «Crear», si el **fotograma generado** está en una proporción que el modelo de vídeo no sabe animar, el paso del
+  clip lo avisa **antes de confirmar**, con un botón por cada modelo que sí la anima y la vía de recortarlo en la
+  biblioteca. Es la misma regla que aplica el servidor, que rechaza el envío sin reservar nada. Con una imagen propia
+  no se avisa ni se bloquea: se envía como siempre y el modelo la encaja.
+- **Biblioteca de versiones de cada escena**, en producción: todos sus clips con miniatura, modelo, coste (el del
+  proveedor o la estimación, dicho), tamaño y fecha, la que está en uso marcada y **«Usar esta»**, que cambia el
+  clip del montaje **sin borrar ninguna** y sin coste. El montaje estrena versión y la revisión de continuidad de esa
+  escena deja de valer, como al regenerar. Pasa las mismas puertas que convertir un clip en escena: la persona que
+  sale tiene que poder usarse **ahora** (consentimiento vigente y referencias suficientes), seguir en el reparto de
+  la escena (o ser el protagonista del proyecto, si la escena no tiene reparto propio), y el clip tiene que llevar
+  sus declaraciones; en un dualcast con las dos personas en el plano, las dos. Si no, se dice por qué y no cambia
+  nada. Las escenas de dualcast tienen biblioteca de versiones; las de podcast, no (sus clips van por turnos).
+- **Aviso de cuota**: con la biblioteca por encima del 80 %, la biblioteca de versiones lo dice y cuenta cuánto ocupan
+  las versiones sin usar del proyecto.
+- **Admin › Ajustes › Montaje, exportación y tamaño de los proyectos**: escenas por proyecto (1–30, 30 de fábrica) y
+  segundos de montaje (10–300, 300 de fábrica). Se pueden bajar, no subir por encima del techo de esta versión.
+- Guía nueva [Formatos y proyectos largos](guias/formatos-y-proyectos-largos.md), y ampliadas las de montaje,
+  producción, presets y «por qué no puedo generar».
+- Componentes nuevos en el catálogo `/admin/componentes` › «Formatos, encuadre y versiones»: el selector por
+  plataforma con un formato deshabilitado y su motivo, los formatos del montaje, el marco de cada formato, el ajuste
+  del encuadre con su aviso y la biblioteca de versiones con el aviso de cuota.
+
+### Cambiado
+
+- El tope de escenas por proyecto pasa de 24 a **30** (decisión del propietario), y el de segundos del montaje sigue
+  en 300 pero ahora es configurable a la baja. Los mensajes dicen «el máximo de esta instalación».
+- La **idempotencia de la exportación** pasa a ser por montaje, versión **y formato**. Pedir sin formato sigue
+  siendo el vertical de siempre, y devuelve la misma exportación que antes.
+- Las opciones de formato sembradas se llaman por su plataforma. El nombre y la descripción solo se cambian si
+  seguían con el texto de fábrica.
+- Los MP4 que no son verticales se guardan y se descargan con su formato en el nombre («montaje-16x9.mp4»); el
+  vertical conserva el de siempre.
+- La toma de una exportación se renueva mientras se monta, y el recorte se hace antes de escalar: un montaje largo en
+  16:9 no se queda sin toma a mitad ni lo coge otra pasada.
+- El asistente de guion y el guion del anuncio no piden (ni cobran) más escenas que el máximo de la instalación.
+- Pasar un proyecto a escenas habladas (Omni) comprueba que su modelo genera el formato principal del proyecto (en ese
+  modo solo cuenta el modelo Omni).
+- **Animar una vista del personaje** (cabeza 3:4) con un modelo de vídeo que no admite 3:4 (Veo, por ejemplo) ahora
+  se rechaza con su salida en lugar de enviarse: la vista es de verdad 3:4, y pedirle 9:16 al modelo habría cambiado
+  la imagen sin decirlo. Recórtala a 9:16 en la biblioteca o anímala con un modelo que la admita.
+- Solo el worker que tiene la toma de una exportación renueva esa toma y apunta su progreso.
+- Guardar el montaje descarta los encuadres de escenas que ya no existen, en lugar de rechazar el guardado.
+
+### Seguridad y coste
+
+- **Un modelo que no admite un formato no lo recibe nunca**: sale deshabilitado con su motivo, y por la API se
+  rechaza antes de reservar nada. Si al despachar el modelo (o la reserva a la que se releva) ya no lo admite, el
+  trabajo se cierra **sin enviarse y sin cobro**; las reservas que no admiten el formato elegido no se guardan.
+- Un fotograma en una proporción que el modelo de vídeo no admite **no se anima en silencio**: se pide elegir uno de
+  sus formatos. Escenara no recorta el fotograma por su cuenta.
+- Reencuadrar es FFmpeg local: **ni un trabajo, ni un apunte de gasto**, y el clip de la escena no se toca.
+
+### Actualizar desde la 0.39.0
+
+- **Para el worker antes de migrar** (y antes de desplegar la web nueva), y arráncalo con el código nuevo después.
+  Si el worker antiguo sigue en marcha con la base ya migrada, podría montar en 9:16 una exportación pedida en 16:9.
+- **Haz antes una copia**: `bun run db:backup`. Después, `bun run db:migrate`.
+- La migración `0058_formatos-encuadre-y-versiones-de-escena` es **idempotente pero no puramente aditiva**: añade tres valores al
+  formato del montaje (`vertical_4_5`, `cuadrado_1_1`, `horizontal_16_9`), la lista de formatos de cada proyecto
+  (`projects.formats`, que nace en vertical 9:16) y el mapa de encuadres de cada montaje (`montages.framings`, que
+  nace vacío: el automático, igual que antes), y un índice para leer las versiones de cada escena. Sustituye el
+  índice único de la exportación por uno que **incluye el formato**, creando el nuevo antes de quitar el anterior (el
+  anterior era más estricto, así que ninguna fila existente lo incumple). Renombra las opciones de formato de la
+  instalación **solo si siguen con el texto de fábrica**. No borra ninguna fila. **Solo se deshace restaurando la
+  copia de seguridad**: los valores de un enum no se pueden quitar, y en cuanto haya dos exportaciones de la misma
+  versión en formatos distintos el índice anterior ya no se puede volver a crear.
+- Crea los índices sin `CONCURRENTLY`: con pocas miles de trabajos es un instante; si `generation_jobs` fuera grande,
+  crea antes a mano `generation_jobs_escena_fecha_idx` con `CREATE INDEX CONCURRENTLY IF NOT EXISTS` y la migración
+  lo dará por hecho.
+- **Ajustes nuevos** con sus valores de fábrica (30 escenas y 300 s): no hay que hacer nada si te valen.
+- **Arranca el worker** después de migrar, ya con el código nuevo: cambian el render del montaje (formato, encuadre y
+  zonas seguras), el despacho de los trabajos (la proporción elegida) y la revisión de continuidad, y el worker no
+  recarga el código solo.
+
 ## [0.39.0] · 2026-09-30
 
 **Decisiones registradas y sombra.** Cada vez que los controles previos deciden si algo se genera, queda apuntado

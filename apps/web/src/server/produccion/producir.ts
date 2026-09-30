@@ -18,7 +18,7 @@ import { dialogoDelClip } from "../voz/modo";
 import { animacionDelFotograma } from "./animacion-del-fotograma";
 import { marcarEnProduccion } from "./cierre";
 import { escenasPorProducir, estadoDeProduccion, exigirDuracionProducible, ultimoTrabajoDeEscena } from "./consulta";
-import { presetsDeProduccion } from "./presets";
+import { plantillaYFormatoDelEnvio } from "./presets";
 
 /** La derivación de claves vive en `generacion/comprobaciones.ts`: la usan también los dos clips de un podcast. */
 export { claveDerivada };
@@ -211,13 +211,7 @@ async function encolarFotograma(
       // La plantilla vigente es la que congeló la aprobación: si ha cambiado, el control `aprobacion-plantilla` ya
       // lo ha dicho y esta escena no llega hasta aquí. Las opciones obligatorias que declare las resuelve el
       // servidor con el primer preset activo que encaje: producir no tiene botonera.
-      ...(plantilla
-        ? {
-            plantillaId: plantilla.id,
-            plantillaVersionId: plantilla.versionId,
-            presets: await presetsDeProduccion(actor.id, plantilla, proyecto.clipSeconds, plantilla.versionId),
-          }
-        : {}),
+      ...(await plantillaYFormatoDelEnvio(actor.id, plantilla, proyecto)),
     },
     h,
   );
@@ -286,13 +280,7 @@ async function encolarAnimacion(
       avisoUmbralAceptado: confirmacion.avisoUmbralAceptado,
       avisosConfirmados: confirmacion.avisosConfirmados,
       claveIdempotencia: clave,
-      ...(plantilla
-        ? {
-            plantillaId: plantilla.id,
-            plantillaVersionId: plantilla.versionId,
-            presets: await presetsDeProduccion(actor.id, plantilla, proyecto.clipSeconds, plantilla.versionId),
-          }
-        : {}),
+      ...(await plantillaYFormatoDelEnvio(actor.id, plantilla, proyecto)),
     },
     h,
   );

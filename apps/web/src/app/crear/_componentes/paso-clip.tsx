@@ -22,6 +22,7 @@ import type { ProductoElegido } from "@/lib/productos";
 import { errorDeRequisito, ID_DESCRIPCION, idRequisito, type Requisito } from "@/lib/requisitos";
 import { ENVIO_CLIP, ID_REVISION_CLIP, variableDeTexto } from "@/lib/requisitos-crear";
 import { textoDeDuraciones } from "@/lib/trends";
+import { AvisoProporcionDelFotograma } from "./aviso-proporcion-del-fotograma";
 import { BloqueConfirmacion } from "./bloque-confirmacion";
 import { CampoVariableTexto } from "./campo-variable-texto";
 import type { ConfirmacionCoste } from "./panel-generar";
@@ -49,6 +50,7 @@ import type { Controles } from "./use-controles";
 export function PasoClip({
   numero,
   origen,
+  proporcionDelFotograma = null,
   modelos,
   estimacion,
   conVoz,
@@ -93,6 +95,11 @@ export function PasoClip({
   numero: number;
   /** La imagen que será el primer fotograma, venga de donde venga. `null` mientras no haya ninguna. */
   origen: Medio | null;
+  /**
+   * Proporción del **fotograma generado** del que sale el clip, tal como la guarda su trabajo; `null` con una imagen
+   * propia. Es con lo que se decide el aviso de proporción, igual que en el servidor.
+   */
+  proporcionDelFotograma?: string | null;
   modelos: ModeloElegible[];
   estimacion: Estimacion;
   conVoz: boolean;
@@ -201,6 +208,15 @@ export function PasoClip({
           {/* Lo que falta, arriba y con cada punto como botón que lleva al campo. */}
           {!clipEnMarcha && <AvisoRequisitos requisitos={requisitos} onIr={onIrARequisito} />}
           {avisoModelo && <Aviso tono="aviso">{avisoModelo}</Aviso>}
+          {origen && (
+            <AvisoProporcionDelFotograma
+              proporcionDelFotograma={proporcionDelFotograma}
+              modelos={modelos}
+              modeloElegido={estimacion.modelo}
+              deshabilitado={enviando}
+              onModelo={cambiarModelo}
+            />
+          )}
           {modelos.length > 1 && (
             <SelectorModelo
               etiqueta="Modelo del clip"

@@ -1,6 +1,8 @@
-import { CAPACIDAD_DE_TIPO } from "@/lib/catalogo";
+import { esVista, proporcionDeVista } from "@/lib/captura-personaje";
+import { CAPACIDAD_DE_TIPO, type ModeloVista } from "@/lib/catalogo";
 import { esLadoReparto, esMiradaReparto } from "@/lib/reparto";
 import type { PresenteDeEnvio, RepartoDeEnvio, TurnoDeEnvio } from "@/lib/reparto-envio";
+import { type ParametrosVoz, parametrosVozDe } from "@/lib/voz";
 import type { FilaTrabajo } from "../db/esquema";
 import type { ReservaAutorizada } from "../mapa/voz";
 
@@ -169,4 +171,58 @@ export function repartoDeEnvioDe(fila: FilaTrabajo): RepartoDeEnvio | null {
 export function dialogoDe(fila: FilaTrabajo): string {
   const dialogo = (fila.input as { dialogo?: unknown }).dialogo;
   return typeof dialogo === "string" ? dialogo : "";
+}
+
+/**
+ * Proporción que se **eligió** para este trabajo al encolarlo (0.41.0: el formato de la pieza o del proyecto), o
+ * `null` si no se eligió ninguna y manda la del modelo. Es la que el despacho le vuelve a pedir al proveedor.
+ */
+export function proporcionElegidaDe(fila: Pick<FilaTrabajo, "input">): string | null {
+  const proporcion = (fila.input as { proporcion?: unknown }).proporcion;
+  return typeof proporcion === "string" && /^\d{1,2}:\d{1,2}$/.test(proporcion) ? proporcion : null;
+}
+
+/**
+ * Proporción con la que se generó, para enseñarla en el historial: la elegida o, en un trabajo anterior a poder
+ * elegirla, la que quedó en los parámetros enviados. `null` si el modelo no la acepta (toma la de la imagen).
+ */
+export function proporcionDelTrabajo(fila: Pick<FilaTrabajo, "input" | "kind">): string | null {
+  // Una vista del personaje sale en la suya (cabeza 3:4), no en la del preset.
+  const vista = (fila.input as { vistaSintetica?: unknown }).vistaSintetica;
+  if (fila.kind === "fotograma" && esVista(vista)) return proporcionDeVista(vista);
+  const enviada = (fila.input as { parametros?: { aspect_ratio?: unknown } }).parametros?.aspect_ratio;
+  return proporcionElegidaDe(fila) ?? (typeof enviada === "string" && enviada !== "" ? enviada : null);
+}
+
+/**
+ * Proporción que el despacho le pide al proveedor. Una **vista** del personaje sale con la suya (cabeza 3:4, cuerpo
+ * 9:16); lo demás, con la elegida al encolar o, si no se eligió ninguna, con la del modelo.
+ *
+ * Si se eligió una y el modelo que va a recibirla **no la admite** (un relevo a una reserva, un catálogo cambiado
+ * entre encolar y enviar), no se envía con otra en silencio: se devuelve el motivo para cerrar sin coste.
+ */
+export function proporcionPedidaDe(
+  fila: FilaTrabajo,
+  modelo: Pick<ModeloVista, "nombre" | "parametros">,
+): { proporcion?: string } | { error: string } {
+  const vista = (fila.input as { vistaSintetica?: unknown }).vistaSintetica;
+  if (fila.kind === "fotograma" && esVista(vista)) return { proporcion: proporcionDeVista(vista) };
+  const elegida = proporcionElegidaDe(fila);
+  if (elegida === null) return {};
+  if (modelo.parametros.proporciones.includes(elegida)) return { proporcion: elegida };
+  return {
+    error: `Este trabajo se pidió en ${elegida} y ${modelo.nombre} no admite esa proporción, así que no se ha enviado para no generarlo en otra. No se ha enviado nada al proveedor y no se te ha cobrado: vuelve a pedirlo con un modelo que la admita.`,
+  };
+}
+
+/**
+ * Voz y parámetros con los que se encoló la pista, tal como quedaron en la entrada guardada. `null` si el trabajo
+ * no los trae: sin voz, el adaptador rechaza la petición en lugar de inventarse un timbre.
+ */
+export function vozDe(fila: FilaTrabajo): { voz: string; parametros: ParametrosVoz } | null {
+  const guardada = (fila.input as { voz?: unknown }).voz;
+  if (!guardada || typeof guardada !== "object") return null;
+  const { voz, parametros } = guardada as { voz?: unknown; parametros?: unknown };
+  if (typeof voz !== "string" || voz === "") return null;
+  return { voz, parametros: parametrosVozDe(parametros) };
 }

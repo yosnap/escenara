@@ -10,7 +10,7 @@ import {
   sugerenciaDeReserva,
 } from "@/lib/diagnostico-voz";
 import { huecosDelPersonaje } from "@/lib/reparto-referencias";
-import { familiaDeVoz, type ParametrosVoz, parametrosVozDe } from "@/lib/voz";
+import { familiaDeVoz } from "@/lib/voz";
 import { eurosPorCreditoDe, leerAjustes } from "../ajustes";
 import { usarCompatibles } from "../boveda/compatibles";
 import { usarCredencialValida } from "../boveda/credenciales";
@@ -38,6 +38,7 @@ import {
   dialogoDe,
   esCantoDe,
   personajesOmniDe,
+  proporcionPedidaDe,
   referenciasDeProductoDe,
   repartoDeEnvioDe,
   reservasAutorizadas,
@@ -46,6 +47,7 @@ import {
   sinReferenciaDe,
   unidadConfirmadaDe,
   urlBaseDe,
+  vozDe,
 } from "./entrada-del-trabajo";
 import { ErrorPersonajeNoUsable, revalidarPersonajeDelTrabajo } from "./revalidar-personaje";
 import { marcarEnviando, reintentar, renovarToma } from "./toma";
@@ -255,6 +257,9 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
    * quedaron guardados al encolar, nunca los que el personaje tenga registrados ahora. Lo que se paga tiene que
    * ser lo que el usuario confirmó, y volver a leer el registro podría mandar otra cara.
    */
+  // La proporción elegida al encolar (0.41.0); si el modelo que la va a recibir no la admite, no se envía.
+  const formato = proporcionPedidaDe(fila, modelo);
+  if ("error" in formato) throw new ErrorDeMontaje(formato.error);
   const personajesOmni = personajesOmniDe(fila);
   if (personajesOmni.length > 0) {
     const segundosOmni = segundosDe(fila);
@@ -267,6 +272,7 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
       personajesOmni,
       ...(reparto ? { reparto } : {}),
       ...(segundosOmni === null ? {} : { segundos: segundosOmni }),
+      ...formato,
     });
     const callbackOmni = await prepararCallback(fila);
     return { adaptador, clave: credencial.clave, entrada: entradaOmni, ...callbackOmni };
@@ -282,8 +288,8 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
       escena: fila.prompt,
       dialogo: "",
       urls: [],
-      // Un retrato es de cabeza y hombros: 3:4, la misma proporción que las vistas de la cabeza.
-      ...(esRetrato ? { proporcion: proporcionDeVista("frontal") } : {}),
+      // Un retrato es de cabeza y hombros (3:4, como las vistas de la cabeza); lo demás, con la proporción elegida.
+      ...(esRetrato ? { proporcion: proporcionDeVista("frontal") } : formato),
     });
     const callbackRetrato = await prepararCallback(fila);
     return { adaptador, clave: credencial.clave, entrada: entradaRetrato, ...callbackRetrato };
@@ -341,13 +347,11 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
       await adaptador.subirReferencia({ clave: credencial.clave, archivo: await archivoDe(audio), buscar: h.buscar }),
     );
   }
-  const vistaPedida = (fila.input as { vistaSintetica?: unknown }).vistaSintetica;
   const entrada = adaptador.montarEntrada(modelo, {
     escena: fila.prompt,
     dialogo: dialogoDe(fila),
     urls,
-    // Una vista del personaje sale con su proporción (cabeza 3:4, cuerpo 9:16); lo demás, con la del modelo.
-    ...(fila.kind === "fotograma" && esVista(vistaPedida) ? { proporcion: proporcionDeVista(vistaPedida) } : {}),
+    ...formato,
     ...(audios.length > 0 ? { audiosDeReferencia: audios } : {}),
     ...(segundos === null ? {} : { segundos }),
   });
@@ -375,18 +379,6 @@ async function llamarAlProveedor(fila: FilaTrabajo, preparado: Preparado, h: Her
     throw new ErrorProveedor(fila.provider, "formato", "Este proveedor ya no puede generar voz en esta instalación.");
   }
   return generarVoz.call(preparado.adaptador, peticion);
-}
-
-/**
- * Voz y parámetros con los que se encoló la pista, tal como quedaron en la entrada guardada. `null` si el trabajo
- * no los trae: sin voz, el adaptador rechaza la petición en lugar de inventarse un timbre.
- */
-function vozDe(fila: FilaTrabajo): { voz: string; parametros: ParametrosVoz } | null {
-  const guardada = (fila.input as { voz?: unknown }).voz;
-  if (!guardada || typeof guardada !== "object") return null;
-  const { voz, parametros } = guardada as { voz?: unknown; parametros?: unknown };
-  if (typeof voz !== "string" || voz === "") return null;
-  return { voz, parametros: parametrosVozDe(parametros) };
 }
 
 /**

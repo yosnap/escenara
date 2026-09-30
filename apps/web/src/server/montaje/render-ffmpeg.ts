@@ -1,3 +1,4 @@
+import type { Encuadre, FormatoMontaje } from "@/lib/formatos";
 import type { PosicionEtiqueta } from "@/lib/montaje";
 import { FPS_MONTAJE } from "@/lib/montaje";
 import { ErrorMontaje } from "./errores";
@@ -60,11 +61,43 @@ export interface FragmentoNormalizable {
   salida: string;
   ancho: number;
   alto: number;
+  /**
+   * Cómo entra el clip en el formato (0.41.0). `bandas` es lo de siempre; `recorte` llena el formato y se queda con
+   * la parte que dicen `x` e `y`. Sin indicar, bandas: así se iguala exactamente igual que antes.
+   */
+  encuadre?: Encuadre;
 }
 
 /**
- * Orden que iguala **un** fragmento: recorta, escala sin deformar, rellena con negro hasta 1080 × 1920 y
- * re-codifica con los mismos parámetros que todos los demás.
+ * Filtro de vídeo que lleva el clip al tamaño de salida. **El clip de la biblioteca no se toca**: es la fuente, y
+ * de ella salen todos los formatos sin volver a generarla.
+ *
+ * - `bandas`: escala sin deformar hasta caber y rellena con negro (lo de la 0.32.0, argumento por argumento);
+ * - `recorte`: recorta la proporción del formato y escala. La posición del recorte es la fracción del sobrante que
+ *   queda a la izquierda o arriba, así que 0 pega el recorte al borde, 50 lo centra y 100 lo lleva al otro borde
+ *   (la misma cuenta que `object-position` en la previsualización).
+ */
+export function filtroDeEncuadre(ancho: string, alto: string, encuadre: Encuadre): string[] {
+  if (encuadre.modo === "bandas") {
+    return [
+      `[0:v]scale=${ancho}:${alto}:force_original_aspect_ratio=decrease`,
+      `pad=${ancho}:${alto}:(ow-iw)/2:(oh-ih)/2:color=black`,
+    ];
+  }
+  const x = numero(encuadre.x / 100, "encuadre horizontal");
+  const y = numero(encuadre.y / 100, "encuadre vertical");
+  // Se recorta **antes** de escalar: un vertical llevado a 16:9 se reduce a su franja y luego se escala, en lugar de
+  // ampliarlo entero a 1920 × 3413 para tirar dos tercios. Un tercio de los píxeles; con fuentes de medidas no
+  // exactas el recorte puede moverse uno o dos píxeles por redondear en la fuente, algo que no se ve.
+  return [
+    `[0:v]crop='min(iw,ih*${ancho}/${alto})':'min(ih,iw*${alto}/${ancho})':'(iw-ow)*${x}':'(ih-oh)*${y}'`,
+    `scale=${ancho}:${alto}`,
+  ];
+}
+
+/**
+ * Orden que iguala **un** fragmento: corta el trozo, lo lleva al formato de salida con su encuadre (bandas o
+ * recorte) y re-codifica con los mismos parámetros que todos los demás.
  *
  * El clip sin audio recibe una pista de silencio (`anullsrc`) en lugar de salir sin ella: un vídeo de la
  * concatenación con pista de audio y otro sin ella es lo que hace que el sonido se corte a mitad del montaje.
@@ -74,8 +107,7 @@ export function ordenDeIgualar(f: FragmentoNormalizable): string[] {
   const alto = entero(f.alto, "alto");
   const duracion = numero(f.duracion, "duración del fragmento");
   const filtro = [
-    `[0:v]scale=${ancho}:${alto}:force_original_aspect_ratio=decrease`,
-    `pad=${ancho}:${alto}:(ow-iw)/2:(oh-ih)/2:color=black`,
+    ...filtroDeEncuadre(ancho, alto, f.encuadre ?? { modo: "bandas" }),
     "setsar=1",
     `fps=${FPS_MONTAJE}[v]`,
   ].join(",");
@@ -138,6 +170,8 @@ export interface OpcionesDeMontaje {
   segundos: number;
   ancho: number;
   alto: number;
+  /** Formato de la salida: decide la zona segura de la etiqueta y de los subtítulos quemados. */
+  formato: FormatoMontaje;
   salida: string;
 }
 
@@ -154,8 +188,8 @@ export function ordenDeMontar(o: OpcionesDeMontaje): string[] {
 
   // ── Vídeo: subtítulos quemados y etiqueta, en ese orden (la etiqueta nunca queda debajo de un subtítulo).
   const pasosVideo = [
-    ...(o.subtitulos ? [filtroDeSubtitulos(rutaSegura(o.subtitulos))] : []),
-    ...(o.etiqueta ? [filtroDeEtiqueta(o.etiqueta, o.alto)] : []),
+    ...(o.subtitulos ? [filtroDeSubtitulos(rutaSegura(o.subtitulos), o.formato)] : []),
+    ...(o.etiqueta ? [filtroDeEtiqueta(o.etiqueta, o.alto, o.formato)] : []),
   ];
   filtros.push(`[0:v]${pasosVideo.length > 0 ? pasosVideo.join(",") : "null"}[vout]`);
 

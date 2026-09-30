@@ -21,6 +21,7 @@ import {
   producirProyecto,
   regenerarEscena,
   usarFotogramaDeBiblioteca,
+  usarVersionDeClip,
 } from "./api-produccion";
 import { ConfirmacionGasto } from "./confirmacion-gasto";
 import { TarjetaEscena } from "./tarjeta-escena";
@@ -235,6 +236,7 @@ export function VistaProduccion({ inicial }: { inicial: ProduccionVista }) {
                 }
                 onCancelar={() => void cancelar(escena.id)}
                 onReintentos={(reintentos) => void ejecutar(() => autorizarReintentos(escena.id, reintentos))}
+                onUsarVersion={(trabajoId) => void ejecutar(() => usarVersionDeClip(escena.id, trabajoId))}
               />
             </li>
           ))}

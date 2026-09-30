@@ -162,7 +162,12 @@
         {
           "archivo": "montaje-y-exportacion.md",
           "titulo": "Montar y exportar tu vídeo",
-          "descripcion": "Línea de tiempo, mezcla, subtítulos, etiqueta de contenido sintético y MP4 vertical sin créditos."
+          "descripcion": "Línea de tiempo, mezcla, subtítulos, etiqueta de contenido sintético y MP4 en cada formato sin créditos."
+        },
+        {
+          "archivo": "formatos-y-proyectos-largos.md",
+          "titulo": "Formatos y proyectos largos",
+          "descripcion": "Para qué plataforma es la pieza, el mismo montaje en 9:16, 4:5, 1:1 y 16:9 con encuadre por escena, 30 escenas y 5 minutos, y las versiones de cada escena."
         }
       ]
     },

@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Boton } from "@/components/ui/button";
 import { Aviso, EstadoVacio } from "@/components/ui/feedback";
 import { InsigniaEstadoProyecto } from "@/components/ui/proyecto";
+import type { FormatoMontaje } from "@/lib/formatos";
 import { formatearCreditos } from "@/lib/generacion";
 import type { PersonajeElegible } from "@/lib/personajes";
 import { ETIQUETA_FORMATO, type ProyectoVista, TITULO_SIN_TITULO } from "@/lib/proyectos";
@@ -20,10 +21,13 @@ export function ListaProyectos({
   inicial,
   personajes,
   presupuestoSugerido,
+  formatosGenerables,
 }: {
   inicial: ProyectoVista[];
   personajes: PersonajeElegible[];
   presupuestoSugerido: number;
+  /** Por formato, por qué no se puede generar en él con los modelos elegidos; `null` si se puede. */
+  formatosGenerables: Record<FormatoMontaje, string | null>;
 }) {
   const router = useRouter();
   const [proyectos, setProyectos] = useState(inicial);
@@ -82,6 +86,7 @@ export function ListaProyectos({
         onAbiertoCambio={setAbierto}
         personajes={personajes}
         presupuestoSugerido={presupuestoSugerido}
+        formatosGenerables={formatosGenerables}
         onCreado={(detalle) => {
           setError(null);
           setProyectos((previos) => [detalle.proyecto, ...previos]);

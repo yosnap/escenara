@@ -112,7 +112,8 @@ y te la muestra.
 
 ## Duración y formato
 
-Esta versión produce **clips de 8, 6, 5 o 4 s, en 9:16 a 720p**. La duración se elige **una vez para todo el
+Esta versión produce **clips de 8, 6, 5 o 4 s, a 720p, en el formato principal del proyecto** (9:16 de
+fábrica; mira [Formatos y proyectos largos](formatos-y-proyectos-largos.md)). La duración se elige **una vez para todo el
 proyecto**, en el paso «La idea», y todas sus escenas se producen con ella: verlo cada escena por separado no
 tendría sentido en un vídeo que se monta seguido.
 
@@ -121,7 +122,24 @@ tendría sentido en un vídeo que se monta seguido.
 tienen coste medido en esta instalación. Si el modelo predeterminado del catálogo no admite la duración de tu proyecto, la
 producción se bloquea y lo dice, en lugar de encolar un clip que duraría otra cosa.
 
-Los formatos 16:9 y 1:1 y los proyectos largos llegan más adelante.
+Un proyecto puede tener hasta **30 escenas**. Producirlas todas respeta el tope de escenas a la vez y el presupuesto
+autorizado, igual que con cuatro. Los demás formatos (4:5, 1:1, 16:9) se sacan en el montaje del mismo clip, sin
+volver a generar nada.
+
+## Las versiones de cada escena
+
+Generar otro clip de una escena **no borra el anterior**. En la tarjeta de la escena, **«Versiones del clip»** las
+enseña todas con su miniatura, modelo, coste (el del proveedor o, si no lo informó, la estimación, y se dice),
+tamaño y fecha, y marca la que está **en uso en el montaje**.
+
+- **«Usar esta»** cambia el clip que entra en el montaje. **No cuesta nada y no borra ninguna.**
+- El montaje estrena versión y la revisión de continuidad de esa escena deja de valer, como al regenerar.
+- Con un clip de la escena **generándose** no se puede elegir: al terminar taparía el que eliges.
+- No se puede elegir una versión cuya persona ya **no tiene consentimiento vigente** (o se ha quedado sin el mínimo de
+  fotos de referencia), que ya **no está en el reparto** de la escena (o no es el protagonista, si la escena no tiene
+  reparto propio) o que se generó sin sus declaraciones: se dice por qué y no cambia nada.
+- Todas ocupan **cuota**. Cuando tu biblioteca pasa del 80 %, se avisa aquí mismo y se dice cuánto ocupan las
+  versiones que no usas.
 
 ## Qué no hace todavía esta versión
 

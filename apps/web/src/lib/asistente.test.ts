@@ -40,6 +40,22 @@ describe("lo que se le pide al modelo", () => {
   });
 });
 
+describe("el máximo de escenas de la instalación", () => {
+  test("con el máximo bajado en Admin › Ajustes no se piden más escenas, aunque se pidan", () => {
+    const entrada = peticionDeGuion({
+      idea: "Un vídeo largo",
+      formato: "corto",
+      contextoPersonaje: "",
+      escenas: 20,
+      escenasMaximas: 10,
+    });
+    expect(entrada).toContain("Escenas: 10.");
+    expect(peticionDeGuion({ idea: "x", formato: "corto", contextoPersonaje: "", escenas: 40 })).toContain(
+      "Escenas: 30.",
+    );
+  });
+});
+
 describe("lectura de la propuesta", () => {
   test("lee el concepto y las escenas de un JSON limpio", () => {
     const leida = leerPropuesta(

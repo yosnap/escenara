@@ -2,6 +2,7 @@ import { formatearSegundos } from "@/lib/media/reglas";
 import type { Medio } from "@/lib/media/tipos";
 import { componerSubtitulos, type EscenaConSubtitulos, type FormatoSubtitulos, type Subtitulo } from "@/lib/voz";
 import type { EvaluacionVista } from "./controles";
+import type { EncuadresDelMontaje, FormatoMontaje } from "./formatos";
 
 /**
  * Montaje y exportación (RF08, 0.32.0) tal como los comparten el servidor y el navegador.
@@ -12,30 +13,20 @@ import type { EvaluacionVista } from "./controles";
  *
  * La línea de tiempo es **simple a propósito** (decisión del propietario, 2026-09-29): orden, recorte de
  * entrada y de salida, volúmenes y subtítulos. Transiciones, efectos, curvas de audio y multipista quedan
- * fuera, y 16:9 y 1:1 llegan en la 0.41.0.
+ * fuera. Desde la 0.41.0 el mismo montaje se exporta en 9:16, 4:5, 1:1 y 16:9 con reencuadre por escena.
  */
 
 // ── Formato de salida ────────────────────────────────────────────────────────────────────────────────────────
 
-/**
- * Formatos de salida de esta versión. **Solo uno**: vertical 9:16, que es lo que se publica en TikTok, Reels y
- * Shorts. Es un enumerado de un solo valor y no una constante porque 0.41.0 añade los otros dos, y entonces lo
- * que cambia es esta lista y no la forma de los datos.
- */
-export const FORMATOS_MONTAJE = ["vertical_9_16"] as const;
-export type FormatoMontaje = (typeof FORMATOS_MONTAJE)[number];
-
-export const esFormatoMontaje = (v: unknown): v is FormatoMontaje => FORMATOS_MONTAJE.includes(v as FormatoMontaje);
-
-export const FORMATO_MONTAJE_POR_DEFECTO: FormatoMontaje = "vertical_9_16";
-
-export const RESOLUCION_MONTAJE: Record<FormatoMontaje, { ancho: number; alto: number }> = {
-  vertical_9_16: { ancho: 1080, alto: 1920 },
-};
-
-export const ETIQUETA_FORMATO_MONTAJE: Record<FormatoMontaje, string> = {
-  vertical_9_16: "Vertical 1080 × 1920 (9:16)",
-};
+// Los formatos viven en `lib/formatos.ts` (0.41.0) y se reexportan aquí para quien ya los importaba del montaje.
+export {
+  ETIQUETA_FORMATO_MONTAJE,
+  esFormatoMontaje,
+  FORMATO_MONTAJE_POR_DEFECTO,
+  FORMATOS_MONTAJE,
+  type FormatoMontaje,
+  RESOLUCION_MONTAJE,
+} from "./formatos";
 
 /**
  * Fotogramas por segundo de la salida. Fijo: los clips llegan con cadencias distintas según el modelo y
@@ -84,7 +75,11 @@ export interface Fragmento {
 /** Fragmentos que caben en un montaje. Un reel son unas pocas escenas: sesenta es diez veces eso. */
 export const FRAGMENTOS_MAXIMOS = 60;
 
-/** Duración máxima del montaje. Un reel son 15–60 s; cinco minutos es el techo del render de esta versión. */
+/**
+ * **Techo** de la duración del montaje: cinco minutos (decisión del propietario, 0.41.0). Quien administra puede
+ * bajarlo en Admin › Ajustes (`proyectoSegundosMaximos`), nunca subirlo: más de cinco minutos queda fuera de esta
+ * versión por el coste y el tiempo de render.
+ */
 export const SEGUNDOS_MAXIMOS_MONTAJE = 300;
 
 /** Trozo mínimo utilizable: por debajo no se ve nada y solo complica la concatenación. */
@@ -127,7 +122,12 @@ export interface EscenaDelMontaje {
  * Es una lista y no un booleano porque el usuario tiene que poder arreglar las tres cosas a la vez: una escena
  * que ya no tiene clip, un recorte imposible y un montaje demasiado largo.
  */
-export function erroresDeMontaje(fragmentos: readonly Fragmento[], escenas: readonly EscenaDelMontaje[]): string[] {
+export function erroresDeMontaje(
+  fragmentos: readonly Fragmento[],
+  escenas: readonly EscenaDelMontaje[],
+  /** Duración máxima de esta instalación (Admin › Ajustes); el techo si no se indica. */
+  segundosMaximos: number = SEGUNDOS_MAXIMOS_MONTAJE,
+): string[] {
   const errores: string[] = [];
   if (fragmentos.length === 0) {
     return ["El montaje no tiene ningún fragmento. Añade al menos una escena a la línea de tiempo."];
@@ -166,10 +166,9 @@ export function erroresDeMontaje(fragmentos: readonly Fragmento[], escenas: read
     }
   }
   const total = duracionTotalDeFragmentos(fragmentos);
-  if (total > SEGUNDOS_MAXIMOS_MONTAJE) {
-    errores.push(
-      `El montaje dura ${Math.round(total)} s y el máximo de esta versión son ${SEGUNDOS_MAXIMOS_MONTAJE} s.`,
-    );
+  const maximo = Math.min(segundosMaximos, SEGUNDOS_MAXIMOS_MONTAJE);
+  if (total > maximo) {
+    errores.push(`El montaje dura ${Math.round(total)} s y el máximo de esta instalación son ${maximo} s.`);
   }
   return errores;
 }
@@ -295,7 +294,12 @@ export interface MontajeVista {
   proyectoId: string;
   /** Versión del montaje: sube con cada guardado y es lo que hace idempotente la exportación. */
   version: number;
-  formato: FormatoMontaje;
+  /** Formatos del proyecto: el primero es el principal, el que se generó. Son las pestañas del montaje. */
+  formatos: FormatoMontaje[];
+  /** Encuadre ajustado por formato y escena. Lo que no está es el automático (`lib/formatos.ts`). */
+  encuadres: EncuadresDelMontaje;
+  /** Duración máxima de un montaje en esta instalación (Admin › Ajustes). */
+  segundosMaximos: number;
   fragmentos: Fragmento[];
   volumenVoz: number;
   volumenMusica: number;
