@@ -6,6 +6,8 @@ import { AvisoSinVoz } from "@/components/ui/modelo";
 import { Paso } from "@/components/ui/paso";
 import { DIALOGO_MAXIMO, PROMPT_MINIMO } from "@/lib/generacion";
 import { type CatalogoParaCrear, type PresetVisible, VARIABLE_TEXTO_MAXIMA } from "@/lib/presets";
+import { errorDeRequisito, ID_DESCRIPCION, idRequisito, type Requisito } from "@/lib/requisitos";
+import { ENVIO_FOTOGRAMA } from "@/lib/requisitos-crear";
 import { PanelExtraccion } from "./panel-extraccion";
 import { type EstadoPlantilla, PanelPlantilla, type Previsualizacion } from "./panel-plantilla";
 
@@ -21,6 +23,7 @@ export function PasoEscena({
   catalogo,
   plantilla,
   previa,
+  requisitos,
   deshabilitado,
   accionesDePreset,
   onPrompt,
@@ -36,6 +39,8 @@ export function PasoEscena({
   catalogo: CatalogoParaCrear;
   plantilla: EstadoPlantilla;
   previa: Previsualizacion;
+  /** Lo que falta para generar el fotograma: aquí se marca el campo de la escena y la botonera de la plantilla. */
+  requisitos: readonly Requisito[];
   deshabilitado: boolean;
   accionesDePreset: (preset: PresetVisible) => ReactNode;
   onPrompt: (texto: string) => void;
@@ -48,6 +53,8 @@ export function PasoEscena({
     <Paso numero={numero} titulo="Describe la escena">
       <Campo
         etiqueta="Qué quieres ver"
+        requisito={ID_DESCRIPCION}
+        error={errorDeRequisito(requisitos, ID_DESCRIPCION)}
         ayuda={
           <>
             Dónde está, qué hace y cómo se ve. Mínimo {PROMPT_MINIMO} caracteres. El clip saldrá con el formato del
@@ -92,6 +99,8 @@ export function PasoEscena({
         onCambio={onPlantilla}
         onDuplicar={onDuplicar}
         accionesDePreset={accionesDePreset}
+        requisito={idRequisito(ENVIO_FOTOGRAMA, "plantilla")}
+        conError={previa.detalle.some((d) => !d.deTexto)}
       />
       {conVoz ? (
         <Campo

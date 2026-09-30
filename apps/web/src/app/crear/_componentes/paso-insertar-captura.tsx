@@ -81,6 +81,8 @@ export function PasoInsertarCaptura({
             etiqueta={NOMBRE_PASO_DIGITAL.insertar_captura}
             firma={firma}
             bloqueos={[]}
+            envio="insercion"
+            paso="fotograma"
             conProducto
             enviando={enviando}
             onGenerar={onGenerar}

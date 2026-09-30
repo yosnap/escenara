@@ -2,13 +2,17 @@
 
 import { Paso } from "@/components/ui/paso";
 import { PanelContextoPersonaje } from "@/components/ui/personajes/panel-contexto";
+import { AvisoRequisitos } from "@/components/ui/requisitos";
 import type { Estimacion, TrabajoVista } from "@/lib/generacion";
 import type { ContextoAplicado, PersonajeElegible } from "@/lib/personajes";
+import type { Requisito } from "@/lib/requisitos";
+import { ENVIO_FOTOGRAMA } from "@/lib/requisitos-crear";
 import { BloqueConfirmacion } from "./bloque-confirmacion";
 import type { ConfirmacionCoste } from "./panel-generar";
 import { PasoInsertarCaptura } from "./paso-insertar-captura";
 import { ResultadoTrabajo } from "./resultado-trabajo";
 import { SeguimientoTrabajo } from "./seguimiento-trabajo";
+import type { EstadoConfirmacion } from "./use-confirmacion-coste";
 import type { Controles } from "./use-controles";
 
 /**
@@ -25,7 +29,10 @@ export function PasoCosteFotograma({
   conProducto,
   firma,
   bloqueos,
+  requisitos,
+  confirmacion,
   enviando,
+  onIrARequisito,
   onGenerar,
 }: {
   numero: number;
@@ -36,12 +43,19 @@ export function PasoCosteFotograma({
   estimacion: Estimacion;
   conProducto: boolean;
   firma: string;
-  bloqueos: string[];
+  /** Lo propio del fotograma que falta (a quién, escena y plantilla). */
+  bloqueos: readonly Requisito[];
+  /** Todo lo que falta para generar, con los controles y las casillas de la confirmación: el aviso de arriba. */
+  requisitos: readonly Requisito[];
+  confirmacion: EstadoConfirmacion;
   enviando: boolean;
+  /** Lleva al paso y al campo al que apunta un requisito. */
+  onIrARequisito: (requisito: Requisito) => void;
   onGenerar: (confirmacion: ConfirmacionCoste) => void;
 }) {
   return (
     <Paso numero={numero} titulo="Revisa el coste y confirma">
+      <AvisoRequisitos requisitos={requisitos} onIr={onIrARequisito} />
       {personaje && contexto && contexto.personajeId === personaje.id && (
         <PanelContextoPersonaje contexto={contexto} cargando={pidiendoContexto} />
       )}
@@ -51,7 +65,10 @@ export function PasoCosteFotograma({
         conProducto={conProducto}
         etiqueta="Generar fotograma"
         firma={firma}
-        bloqueos={bloqueos}
+        bloqueos={[...bloqueos]}
+        envio={ENVIO_FOTOGRAMA}
+        paso="coste"
+        confirmacion={confirmacion}
         enviando={enviando}
         onGenerar={onGenerar}
       />

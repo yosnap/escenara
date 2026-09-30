@@ -9,6 +9,7 @@ import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo } from "@/components/ui/field";
 import { AvisoSinVoz, SelectorDuracion, SelectorModelo } from "@/components/ui/modelo";
 import { Paso } from "@/components/ui/paso";
+import { AvisoRequisitos } from "@/components/ui/requisitos";
 import type { ModeloElegible } from "@/lib/catalogo";
 import type { DireccionElegidaConAcento, OpcionesDeDireccion } from "@/lib/direccion";
 import { DIALOGO_MAXIMO, type Estimacion, type TrabajoVista } from "@/lib/generacion";
@@ -16,11 +17,15 @@ import type { Medio } from "@/lib/media/tipos";
 import { AVISO_SIN_TERCEROS } from "@/lib/personajes";
 import type { CatalogoParaCrear, PresetVisible } from "@/lib/presets";
 import type { ProductoElegido } from "@/lib/productos";
+import { errorDeRequisito, ID_DESCRIPCION, idRequisito, type Requisito } from "@/lib/requisitos";
+import { ENVIO_CLIP, ID_REVISION_CLIP, variableDeTexto } from "@/lib/requisitos-crear";
 import { BloqueConfirmacion } from "./bloque-confirmacion";
+import { CampoVariableTexto } from "./campo-variable-texto";
 import type { ConfirmacionCoste } from "./panel-generar";
 import { type EstadoPlantilla, PanelPlantilla, type Previsualizacion } from "./panel-plantilla";
 import { ResultadoTrabajo } from "./resultado-trabajo";
 import { SeguimientoTrabajo } from "./seguimiento-trabajo";
+import type { EstadoConfirmacion } from "./use-confirmacion-coste";
 import type { Controles } from "./use-controles";
 
 /**
@@ -53,7 +58,13 @@ export function PasoClip({
   catalogo,
   plantilla,
   previa,
-  previaMotivos,
+  requisitosBase,
+  requisitos,
+  avisoModelo,
+  segundosDelTrend,
+  descripcion,
+  conCampoDeTexto,
+  confirmacion,
   controles,
   exigeRevision,
   sinTerceros,
@@ -65,6 +76,8 @@ export function PasoClip({
   onModelo,
   onDuracion,
   onDialogo,
+  onDescripcion,
+  onIrARequisito,
   onDireccion,
   onPlantilla,
   onDuplicar,
@@ -89,7 +102,19 @@ export function PasoClip({
   catalogo: CatalogoParaCrear;
   plantilla: EstadoPlantilla;
   previa: Previsualizacion;
-  previaMotivos: string[];
+  /** Lo propio del clip que falta (plantilla y revisión de fotos): es lo que se marca en los campos de este paso. */
+  requisitosBase: readonly Requisito[];
+  /** Todo lo que falta para generar el clip, con los controles y las casillas de la confirmación: el aviso de arriba. */
+  requisitos: readonly Requisito[];
+  /** Si se cambió de modelo al elegir el trend, por qué. */
+  avisoModelo: string | null;
+  /** Duración que fija el trend elegido; los modelos sin tarifa para ella salen no disponibles. */
+  segundosDelTrend: number | null;
+  /** Lo escrito como descripción de la escena, sin recortar. */
+  descripcion: string;
+  /** Con una imagen tuya no hay paso «Describe la escena»: la variable de texto de la plantilla se escribe aquí. */
+  conCampoDeTexto: boolean;
+  confirmacion: EstadoConfirmacion;
   controles: Controles;
   /** `true` cuando el fotograma de partida lleva la cara de un personaje: hay que confirmar la revisión. */
   exigeRevision: boolean;
@@ -104,6 +129,9 @@ export function PasoClip({
   onModelo: (modelo: string) => void;
   onDuracion: (segundos: number) => void;
   onDialogo: (texto: string) => void;
+  onDescripcion: (texto: string) => void;
+  /** Lleva al paso y al campo al que apunta un requisito. */
+  onIrARequisito: (requisito: Requisito) => void;
   onDireccion: <C extends keyof DireccionElegidaConAcento>(campo: C, valor: DireccionElegidaConAcento[C]) => void;
   onPlantilla: (estado: EstadoPlantilla) => void;
   onDuplicar: (preset: PresetVisible) => void;
@@ -117,6 +145,8 @@ export function PasoClip({
   onOtroClip: (precargar: TrabajoVista | null) => void;
 }) {
   const hayOrigen = origen !== null;
+  const plantillaEnUso = previa.enUso ? previa.plantilla : null;
+  const variableDeLaEscena = plantillaEnUso ? variableDeTexto(plantillaEnUso.variables) : null;
   return (
     <Paso numero={numero} titulo="El clip">
       {!hayOrigen ? (
@@ -126,6 +156,9 @@ export function PasoClip({
         </p>
       ) : (
         <div className="flex flex-col gap-4">
+          {/* Lo que falta, arriba y con cada punto como botón que lleva al campo. */}
+          {!clipEnMarcha && <AvisoRequisitos requisitos={requisitos} onIr={onIrARequisito} />}
+          {avisoModelo && <Aviso tono="info">{avisoModelo}</Aviso>}
           {modelos.length > 1 && (
             <SelectorModelo
               etiqueta="Modelo del clip"
@@ -133,6 +166,17 @@ export function PasoClip({
               valor={estimacion.modelo}
               onCambio={onModelo}
               deshabilitado={enviando}
+              segundosRequeridos={segundosDelTrend ?? undefined}
+            />
+          )}
+          {conCampoDeTexto && plantillaEnUso && variableDeLaEscena && (
+            <CampoVariableTexto
+              variable={variableDeLaEscena}
+              plantilla={plantillaEnUso}
+              valor={descripcion}
+              deshabilitado={enviando}
+              error={errorDeRequisito(requisitosBase, ID_DESCRIPCION)}
+              onCambio={onDescripcion}
             />
           )}
           {/* La duración sale del modelo y de lo que sabe cobrar, no de un texto escrito a mano. */}
@@ -191,6 +235,8 @@ export function PasoClip({
               marcada={sinTerceros}
               deshabilitado={enviando}
               onCambio={onSinTerceros}
+              requisito={ID_REVISION_CLIP}
+              error={errorDeRequisito(requisitosBase, ID_REVISION_CLIP)}
             />
           )}
 
@@ -204,6 +250,8 @@ export function PasoClip({
             accionesDePreset={accionesDePreset}
             // La plantilla o el trend se eligen en el primer paso, «Formato»: aquí no se repite el selector.
             formatoAparte
+            requisito={idRequisito(ENVIO_CLIP, "plantilla")}
+            conError={previa.detalle.some((d) => !d.deTexto)}
           />
           {previa.plantilla?.kind === "trend" && previa.enUso && (
             <Aviso tono="info">
@@ -219,10 +267,10 @@ export function PasoClip({
               estimacion={estimacion}
               etiqueta={`Animar ${segundos} s`}
               firma={firma}
-              bloqueos={[
-                ...previaMotivos,
-                ...(exigeRevision && !sinTerceros ? ["Falta confirmar la revisión de las fotos del personaje."] : []),
-              ]}
+              bloqueos={[...requisitosBase]}
+              envio={ENVIO_CLIP}
+              paso="clip"
+              confirmacion={confirmacion}
               conProducto={producto.productoId !== ""}
               enviando={enviando}
               onGenerar={onGenerar}

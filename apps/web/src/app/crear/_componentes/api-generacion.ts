@@ -11,6 +11,15 @@ import type { ProductoElegido } from "@/lib/productos";
  */
 export type Resultado<T> = { ok: true; datos: T } | { ok: false; error: string; red?: boolean };
 
+/**
+ * Un fallo de red al enviar no dice si el trabajo se encargó o no: se avisa de eso en lugar de invitar a repetir.
+ * Volver a pulsar reenvía la misma confirmación (misma clave), así que tampoco se paga dos veces.
+ */
+export const mensajeDeFallo = (respuesta: Resultado<unknown> & { ok: false }) =>
+  respuesta.red
+    ? `${respuesta.error} Puede que el trabajo se haya enviado: revisa el historial antes de repetirlo.`
+    : respuesta.error;
+
 async function pedir<T>(url: string, init?: RequestInit): Promise<Resultado<T>> {
   try {
     const respuesta = await fetch(url, init);
