@@ -8,14 +8,10 @@ import {
   AVISO_ACCION_POCO_FIABLE,
   AVISO_GUION_EN_ACCION_SIN_HABLA,
   AVISO_PRODUCTO_SIN_ACCION,
-  AYUDA_ACCION_PRODUCTO,
   DESCRIPCION_PASO_DIGITAL,
   DESCRIPCION_PASO_DIGITAL_ANIMAR,
   esAccionPocoFiable,
   esAccionSinHabla,
-  type FamiliaAccionProducto,
-  familiaDeAccion,
-  NOMBRE_FAMILIA_ACCION,
   NOMBRE_PASO_DIGITAL,
   PASO_DIGITAL_ANIMAR,
   PASOS_PRODUCTO_DIGITAL,
@@ -23,17 +19,13 @@ import {
   type ProductoElegido,
   type ProductoResumen,
 } from "@/lib/productos";
-import { ElectorVisual, type OpcionVisual } from "../direccion/elector-visual";
+import { CabeceraGrupo } from "../direccion/cabecera-grupo";
 import { Aviso } from "../feedback";
 import { MiniaturaMedio } from "../media/miniatura-medio";
 import { Selector } from "../select";
 import { listarProductos } from "./api-productos";
-import {
-  DefinicionesPictogramaProducto,
-  fraseDeAccionProducto,
-  PictogramaProducto,
-  PictogramaSinProducto,
-} from "./pictogramas-producto";
+import { ElectorAccionProducto } from "./elector-accion-producto";
+import { DefinicionesPictogramaProducto } from "./pictogramas-producto";
 
 /**
  * **Elegir producto y acción** (0.26.0). Va dentro del panel de dirección, que es el único sitio donde se
@@ -81,40 +73,16 @@ export function SelectorProducto({
   }, []);
 
   const elegido = productos?.find((p) => p.id === producto.productoId) ?? null;
-  /**
-   * Las acciones se enseñan **por familias** (general, moda, cuidado de la piel): son catorce y en una sola
-   * rejilla no se encuentra ninguna. La familia sale del prefijo de la clave, así que una acción nueva de
-   * quien administra aparece en su sitio sin tocar esto.
-   */
-  const tarjeta = (a: OpcionDireccion): OpcionVisual => ({
-    valor: a.clave,
-    nombre: a.nombre,
-    frase: fraseDeAccionProducto(a.clave),
-    descripcion: a.descripcion,
-    pictograma: <PictogramaProducto clave={a.clave} />,
-    // Se dice en la propia tarjeta, antes de elegirla: es lo que decide si merece la pena gastar en ella.
-    ...(esAccionPocoFiable(a.clave) ? { etiqueta: "Poco fiable" } : {}),
-  });
-  const porFamilia = (familia: FamiliaAccionProducto): OpcionVisual[] =>
-    acciones.filter((a) => familiaDeAccion(a.clave) === familia).map(tarjeta);
-  const generales: OpcionVisual[] = [
-    {
-      valor: "",
-      nombre: "Sin elegir",
-      frase: "Lo decide el modelo: puede salir en la mano, en la mesa o fuera de plano.",
-      pictograma: <PictogramaSinProducto />,
-    },
-    ...porFamilia("general"),
-  ];
-  const otrasFamilias: FamiliaAccionProducto[] = ["moda", "skincare"];
-
   return (
-    <section className="flex flex-col gap-3 rounded-tarjeta border border-borde bg-superficie/60 p-4">
+    <section className="flex flex-col gap-8 rounded-tarjeta border border-borde bg-superficie/60 p-5">
       <DefinicionesPictogramaProducto />
-      <h5 className="flex items-center gap-2 font-semibold text-texto">
-        <Package className="size-5 text-acento" aria-hidden />
-        El producto
-      </h5>
+      <CabeceraGrupo
+        como="h5"
+        icono={Package}
+        titulo="El producto"
+        descripcion="El producto que sale en el clip y qué hace el personaje con él."
+        tono="producto"
+      />
 
       {error !== "" && <Aviso tono="error">{error}</Aviso>}
 
@@ -162,28 +130,12 @@ export function SelectorProducto({
 
       {producto.productoId !== "" && (
         <>
-          <ElectorVisual
-            etiqueta="Qué se hace con él"
-            ayuda={AYUDA_ACCION_PRODUCTO}
-            valor={producto.accion}
+          <ElectorAccionProducto
+            acciones={acciones}
+            accion={producto.accion}
             deshabilitado={deshabilitado}
-            opciones={generales}
-            onCambio={(v) => onCambio({ ...producto, accion: v })}
+            onCambio={(accion) => onCambio({ ...producto, accion })}
           />
-          {otrasFamilias.map((familia) => {
-            const opciones = porFamilia(familia);
-            if (opciones.length === 0) return null;
-            return (
-              <ElectorVisual
-                key={familia}
-                etiqueta={NOMBRE_FAMILIA_ACCION[familia]}
-                valor={producto.accion}
-                deshabilitado={deshabilitado}
-                opciones={opciones}
-                onCambio={(v) => onCambio({ ...producto, accion: v })}
-              />
-            );
-          })}
           {producto.accion === "" && <Aviso tono="info">{AVISO_PRODUCTO_SIN_ACCION}</Aviso>}
           {esAccionPocoFiable(producto.accion) && <Aviso tono="info">{AVISO_ACCION_POCO_FIABLE}</Aviso>}
           {esAccionSinHabla(producto.accion) && <Aviso tono="info">{AVISO_GUION_EN_ACCION_SIN_HABLA}</Aviso>}

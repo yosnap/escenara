@@ -1,6 +1,6 @@
 "use client";
 
-import { ImageUp, Sparkles } from "lucide-react";
+import { ImageUp, Route, Sparkles } from "lucide-react";
 import { ElectorVisual } from "@/components/ui/direccion/elector-visual";
 import { Aviso } from "@/components/ui/feedback";
 import { SelectorMedios } from "@/components/ui/media/selector-medios";
@@ -37,6 +37,7 @@ export function PasoOrigen({
     <Paso numero={numero} titulo="¿De dónde sale el clip?">
       <ElectorVisual
         etiqueta="Elige por dónde empiezas"
+        icono={Route}
         valor={origen}
         deshabilitado={deshabilitado}
         onCambio={(v) => onOrigen(v as OrigenDelClip)}
@@ -44,15 +45,14 @@ export function PasoOrigen({
           {
             valor: "fotograma",
             nombre: "Crear un fotograma nuevo",
-            frase: "Eliges a quién sale y qué está haciendo, y se genera su imagen.",
-            descripcion: "Se paga el fotograma y, después, el clip.",
+            frase: "Eliges quién sale y qué hace, y se genera su imagen. Se paga el fotograma y, después, el clip.",
             pictograma: <Sparkles className="size-8 text-acento" aria-hidden />,
           },
           {
             valor: "imagen",
             nombre: "Usar una imagen que ya tengo",
-            frase: "Un fotograma de otro día, una vista de tu personaje o una foto tuya.",
-            descripcion: "No se genera ni se paga ningún fotograma: solo el clip.",
+            frase:
+              "Un fotograma de otro día, una vista de tu personaje o una foto tuya. No se paga ningún fotograma: solo el clip.",
             pictograma: <ImageUp className="size-8 text-acento" aria-hidden />,
           },
         ]}

@@ -73,6 +73,28 @@ describe("tokens de marca", () => {
     }
   });
 
+  // Las cabeceras de grupo de la dirección y del producto pintan el título (texto grande y negrita) en cobalto y
+  // fucsia sobre la tarjeta: 3:1 sobre cualquiera de las tres superficies en ambos temas.
+  it("cobalto y fucsia cumplen 3:1 sobre fondo, superficie y superficie elevada", () => {
+    for (const nombre of ["light", "dark"] as const) {
+      for (const superficie of ["background", "surface", "surfaceRaised"]) {
+        for (const color of [marca.vibrant[nombre].cobalt, marca.vibrant[nombre].fuchsia]) {
+          expect(contraste(color as string, marca.theme[nombre][superficie] as string)).toBeGreaterThanOrEqual(3);
+        }
+      }
+    }
+  });
+
+  // La explicación de cada cabecera es texto normal en el acento o en el color creativo: 4,5:1 sobre la elevada.
+  it("el acento y el color creativo cumplen 4,5:1 sobre la superficie elevada", () => {
+    for (const nombre of ["light", "dark"] as const) {
+      const t = marca.theme[nombre];
+      for (const color of [t.primary, t.creative]) {
+        expect(contraste(color as string, t.surfaceRaised as string)).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+
   it("calcula el contraste de referencia blanco/negro", () => {
     expect(contraste("#FFFFFF", "#000000")).toBeCloseTo(21, 5);
   });

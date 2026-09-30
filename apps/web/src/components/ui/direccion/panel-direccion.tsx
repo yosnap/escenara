@@ -1,6 +1,6 @@
 "use client";
 
-import { Clapperboard } from "lucide-react";
+import { Clapperboard, Frame, ImagePlus, Move3d, PenLine, Timer, Video } from "lucide-react";
 import {
   ACENTOS,
   AVISO_MODO_EXPERTO,
@@ -35,6 +35,7 @@ import { Aviso } from "../feedback";
 import { AreaTexto, Campo, EntradaTexto } from "../field";
 import { SelectorProducto } from "../productos/selector-producto";
 import { Selector } from "../select";
+import { CabeceraGrupo } from "./cabecera-grupo";
 import { DireccionesGuardadas } from "./direcciones-guardadas";
 import { ElectorVisual, type OpcionVisual } from "./elector-visual";
 import {
@@ -209,12 +210,14 @@ export function PanelDireccion({
       ].filter((parte) => parte !== "");
 
   return (
-    <section className="flex flex-col gap-4 rounded-tarjeta border border-borde bg-elevada/40 p-4">
+    <section className="flex flex-col gap-10 rounded-tarjeta border border-borde bg-elevada/40 p-5">
       <DefinicionesPictograma />
-      <h4 className="flex items-center gap-2 font-semibold text-texto">
-        <Clapperboard className="size-5 text-acento" />
-        Dirección del clip
-      </h4>
+      <CabeceraGrupo
+        icono={Clapperboard}
+        titulo="Dirección del clip"
+        descripcion="Cómo se ve y cómo se mueve el clip. Lo que dejes sin elegir lo decide el modelo."
+        tono="direccion"
+      />
 
       {/*
         Lo que has guardado con nombre. Aplicar una dirección rellena estos mismos controles y no genera nada:
@@ -245,6 +248,7 @@ export function PanelDireccion({
 
       <ElectorVisual
         etiqueta="Plano"
+        icono={Frame}
         ayuda="Cuánto se le ve en el encuadre."
         valor={direccion.plano}
         deshabilitado={botonesApagados}
@@ -257,6 +261,7 @@ export function PanelDireccion({
 
       <ElectorVisual
         etiqueta="Ángulo"
+        icono={Move3d}
         ayuda="Desde dónde le mira la cámara."
         valor={direccion.angulo}
         deshabilitado={botonesApagados}
@@ -269,6 +274,7 @@ export function PanelDireccion({
 
       <ElectorVisual
         etiqueta="Movimiento de cámara"
+        icono={Video}
         ayuda="Solo uno por clip: el modelo no respeta dos, y dos dejan el plano partido."
         valor={direccion.camara}
         deshabilitado={botonesApagados}
@@ -295,6 +301,7 @@ export function PanelDireccion({
       {direccion.microaccion !== SIN_ELEGIR && (
         <ElectorVisual
           etiqueta="Cuándo ocurre el gesto"
+          icono={Timer}
           ayuda="La barra apagada es la frase; el tramo a color, el gesto."
           valor={direccion.momentoMicroaccion}
           deshabilitado={botonesApagados}
@@ -365,8 +372,14 @@ export function PanelDireccion({
       )}
 
       {conFotograma && (
-        <>
-          <h4 className="mt-2 font-semibold text-texto">El fotograma</h4>
+        <div className="flex flex-col gap-5">
+          <CabeceraGrupo
+            icono={ImagePlus}
+            titulo="El fotograma"
+            descripcion="La imagen de la que sale el clip: la óptica, la luz y el sitio."
+            tono="detalle"
+            nivel="grupo"
+          />
           <div className="grid gap-4 sm:grid-cols-2">
             <Selector
               etiqueta="Óptica"
@@ -390,54 +403,62 @@ export function PanelDireccion({
               onCambio={(v) => onCambio("localizacion", v ?? SIN_ELEGIR)}
             />
           </div>
-        </>
+        </div>
       )}
 
-      <h4 className="mt-2 font-semibold text-texto">Escríbelo tú</h4>
-      {!experto && (
-        <Campo etiqueta="Instrucciones adicionales (en español)" ayuda={AYUDA_INSTRUCCIONES_EXTRA}>
-          {(props) => (
-            <AreaTexto
-              {...props}
-              value={direccion.instruccionesExtra}
-              maxLength={INSTRUCCIONES_EXTRA_MAXIMAS}
-              disabled={deshabilitado}
-              className="min-h-20"
-              onChange={(e) => onCambio("instruccionesExtra", e.target.value)}
-              placeholder="Que sostenga el bote con la etiqueta hacia la cámara y que la luz entre por la izquierda."
-            />
-          )}
-        </Campo>
-      )}
-
-      <Casilla
-        etiqueta="Modo experto: escribo yo la descripción entera"
-        descripcion={AYUDA_MODO_EXPERTO}
-        marcada={direccion.modoExperto}
-        deshabilitado={deshabilitado}
-        onCambio={(v) => onCambio("modoExperto", v)}
-      />
-
-      {experto && (
-        <>
-          <Campo
-            etiqueta="Tu descripción del clip (en español)"
-            ayuda="Descríbelo como se lo contarías a alguien que va a rodarlo: qué se ve, cómo está encuadrado y qué pasa."
-          >
+      <div className="flex flex-col gap-5">
+        <CabeceraGrupo
+          icono={PenLine}
+          titulo="Escríbelo tú"
+          descripcion="Lo que no cabe en las opciones de arriba, con tus palabras."
+          tono="detalle"
+          nivel="grupo"
+        />
+        {!experto && (
+          <Campo etiqueta="Instrucciones adicionales (en español)" ayuda={AYUDA_INSTRUCCIONES_EXTRA}>
             {(props) => (
               <AreaTexto
                 {...props}
-                value={direccion.descripcionExperta}
-                maxLength={DESCRIPCION_EXPERTA_MAXIMA}
+                value={direccion.instruccionesExtra}
+                maxLength={INSTRUCCIONES_EXTRA_MAXIMAS}
                 disabled={deshabilitado}
-                className="min-h-32"
-                onChange={(e) => onCambio("descripcionExperta", e.target.value)}
+                className="min-h-20"
+                onChange={(e) => onCambio("instruccionesExtra", e.target.value)}
+                placeholder="Que sostenga el bote con la etiqueta hacia la cámara y que la luz entre por la izquierda."
               />
             )}
           </Campo>
-          <Aviso tono="info">{AVISO_MODO_EXPERTO}</Aviso>
-        </>
-      )}
+        )}
+
+        <Casilla
+          etiqueta="Modo experto: escribo yo la descripción entera"
+          descripcion={AYUDA_MODO_EXPERTO}
+          marcada={direccion.modoExperto}
+          deshabilitado={deshabilitado}
+          onCambio={(v) => onCambio("modoExperto", v)}
+        />
+
+        {experto && (
+          <>
+            <Campo
+              etiqueta="Tu descripción del clip (en español)"
+              ayuda="Descríbelo como se lo contarías a alguien que va a rodarlo: qué se ve, cómo está encuadrado y qué pasa."
+            >
+              {(props) => (
+                <AreaTexto
+                  {...props}
+                  value={direccion.descripcionExperta}
+                  maxLength={DESCRIPCION_EXPERTA_MAXIMA}
+                  disabled={deshabilitado}
+                  className="min-h-32"
+                  onChange={(e) => onCambio("descripcionExperta", e.target.value)}
+                />
+              )}
+            </Campo>
+            <Aviso tono="info">{AVISO_MODO_EXPERTO}</Aviso>
+          </>
+        )}
+      </div>
 
       {avisos.map((aviso) => (
         <Aviso key={aviso} tono="info">
