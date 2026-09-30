@@ -1,8 +1,10 @@
 import { ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Alerta } from "@/components/ui/alerta";
 import { claseBoton } from "@/components/ui/button";
 import { exigirSesion } from "@/server/auth/sesion";
+import { publicacionVisible } from "@/server/comunidad/consulta";
 import { listarPresets } from "@/server/prompts/consulta";
 import { CabeceraApp } from "../../../_app/cabecera-app";
 import { AltaPersonajeInventado } from "./_componentes/alta-personaje-inventado";
@@ -15,8 +17,20 @@ export const dynamic = "force-dynamic";
  * consentimiento de nadie, porque no hay nadie a quien pedírselo; lo que sí pide es la declaración de que no
  * representa a ninguna persona real, y esa queda registrada con la cuenta y la fecha.
  */
-export default async function PaginaNuevoPersonajeInventado() {
+export default async function PaginaNuevoPersonajeInventado({
+  searchParams,
+}: {
+  searchParams: Promise<{ inspiracion?: string }>;
+}) {
   const sesion = await exigirSesion("/personajes/nuevo/inventado");
+  // «Inspirarte en él» desde la comunidad: solo el texto de un personaje publicado y visible, con su atribución. Sus
+  // imágenes no se copian: el tuyo tendrá sus propios retratos.
+  const { inspiracion } = await searchParams;
+  const origen =
+    inspiracion && /^[0-9a-f-]{36}$/i.test(inspiracion)
+      ? await publicacionVisible(inspiracion).catch(() => null)
+      : null;
+  const inspirado = origen?.tipo === "personaje" ? origen : null;
   const estilos = (await listarPresets({ categoria: "estilo-animado" }))
     .filter((preset) => preset.activo)
     .map((preset) => ({ clave: preset.clave, nombre: preset.nombre, descripcion: preset.descripcion }));
@@ -34,7 +48,12 @@ export default async function PaginaNuevoPersonajeInventado() {
             reales, y todo lo que genere queda marcado como contenido sintético.
           </p>
         </div>
-        <AltaPersonajeInventado estilos={estilos} />
+        {inspirado && (
+          <Alerta tipo="info" anuncio="ninguno" titulo={`Te inspiras en «${inspirado.titulo}», de ${inspirado.firma}`}>
+            Partes de su descripción; cámbiala a tu gusto. Tu personaje será tuyo, con sus propios retratos, y privado.
+          </Alerta>
+        )}
+        <AltaPersonajeInventado estilos={estilos} descripcionInicial={inspirado?.descripcion ?? ""} />
       </main>
     </div>
   );

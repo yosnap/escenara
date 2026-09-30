@@ -171,6 +171,12 @@ export function ListaTrabajos({ iniciales, cola }: { iniciales: TrabajoVista[]; 
                   Ver en la biblioteca
                 </Link>
               )}
+              {/* La comunidad decide en su página si se puede publicar y por qué no (lista blanca de origen). */}
+              {trabajo.medio && trabajo.estado === "listo" && (
+                <Link href={`/comunidad/publicar?medio=${trabajo.medio.id}`} className={claseBoton("fantasma", "sm")}>
+                  Publicar en la comunidad
+                </Link>
+              )}
             </div>
           </li>
         ))}

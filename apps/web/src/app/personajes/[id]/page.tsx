@@ -3,11 +3,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { claseBoton } from "@/components/ui/button";
+import { EnlacePublicar } from "@/components/ui/comunidad/enlace-publicar";
 import { AVISO_BOVEDA_USUARIO } from "@/lib/boveda";
 import { leerAjustes } from "@/server/ajustes";
 import { esAdmin, exigirSesion } from "@/server/auth/sesion";
 import { bovedaDisponible } from "@/server/boveda/cifrado";
 import { listarCredenciales } from "@/server/boveda/credenciales";
+import { candidato } from "@/server/comunidad/consulta";
 import { umbralesDe } from "@/server/personajes/calidad";
 import { obtenerPersonaje } from "@/server/personajes/consulta";
 import { ErrorPersonaje } from "@/server/personajes/errores";
@@ -52,6 +54,11 @@ export default async function PaginaPersonaje({ params }: { params: Promise<{ id
           .map((preset) => ({ clave: preset.clave, nombre: preset.nombre, descripcion: preset.descripcion }))
       : [];
 
+  // Publicar en la comunidad: solo su dueño y con la comunidad encendida; la elegibilidad la decide el servidor.
+  const ajustes = await leerAjustes();
+  const paraPublicar =
+    personaje.puedeEditar && ajustes.comunidadActiva ? await candidato(actor, { tipo: "personaje", id }) : null;
+
   return (
     <div className="min-h-dvh bg-fondo">
       <CabeceraApp sesion={sesion} />
@@ -63,13 +70,14 @@ export default async function PaginaPersonaje({ params }: { params: Promise<{ id
             que decide sigue siendo el servidor, que los vuelve a aplicar. */}
         <FichaPersonaje
           inicial={personaje}
-          umbrales={umbralesDe(await leerAjustes())}
+          umbrales={umbralesDe(ajustes)}
           claveDeGeneracion={claveDeGeneracion}
           retratos={retratos}
           hojaIdentidad={hojaIdentidad}
           proyectosOmni={proyectosOmni}
           estilosAnimados={estilos}
         />
+        {paraPublicar && <EnlacePublicar candidato={paraPublicar} />}
       </main>
     </div>
   );

@@ -29,10 +29,17 @@ const DESCRIPCION_MINIMA = 20;
  * El aviso de nombres reales aparece **mientras se escribe**, con la misma lista que aplica el servidor: no es
  * una validación distinta, es la misma dicha antes de pulsar.
  */
-export function AltaPersonajeInventado({ estilos }: { estilos: OpcionEstiloAnimado[] }) {
+export function AltaPersonajeInventado({
+  estilos,
+  descripcionInicial = "",
+}: {
+  estilos: OpcionEstiloAnimado[];
+  /** Descripción de partida al inspirarse en un personaje de la comunidad (solo el texto, nunca sus imágenes). */
+  descripcionInicial?: string;
+}) {
   const router = useRouter();
   const [nombre, setNombre] = useState("");
-  const [descripcion, setDescripcion] = useState("");
+  const [descripcion, setDescripcion] = useState(descripcionInicial);
   const [declaracion, setDeclaracion] = useState(false);
   const [estilo, setEstilo] = useState("realista");
   const [matices, setMatices] = useState<MaticesAnimados>({ paleta: "", trazo: "", detalle: "", referencias: "" });

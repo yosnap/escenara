@@ -19,6 +19,7 @@ import { SeccionAsistente } from "./seccion-asistente";
 import { SeccionCalidad } from "./seccion-calidad";
 import { SeccionCanto } from "./seccion-canto";
 import { SeccionCoherencia } from "./seccion-coherencia";
+import { SeccionComunidad } from "./seccion-comunidad";
 import { SeccionControles } from "./seccion-controles";
 import { SeccionDatos } from "./seccion-datos";
 import { SeccionDosPersonajes } from "./seccion-dos-personajes";
@@ -269,6 +270,7 @@ export function FormularioAjustes({
       <SeccionDosPersonajes valores={valores} onCambio={cambiar} />
       <SeccionLugares valores={valores} onCambio={cambiar} />
       <SeccionDatos valores={valores} errorDe={errorDe} onCambio={cambiar} estado={tusDatos} />
+      <SeccionComunidad valores={valores} errorDe={errorDe} onCambio={cambiar} />
 
       <SeccionControles valores={valores} errorDe={errorDe} onCambio={cambiar} />
 

@@ -5,11 +5,14 @@
     "/admin/calibracion",
     "/admin/coherencia",
     "/admin/decisiones",
+    "/admin/moderacion",
     "/admin/personajes",
     "/admin/trabajos",
     "/admin/versiones",
     "/comparar",
     "/comparar/escena/[id]",
+    "/comunidad",
+    "/comunidad/publicar",
     "/crear/historial",
     "/cuenta/borrado",
     "/cuenta/historial",
@@ -26,8 +29,8 @@
   ],
   "rutas": {
     "/admin/componentes": {
-      "topeKb": 437,
-      "motivo": "Catálogo interno del admin: pinta todos los componentes a la vez (con las secciones Lugares, Tus datos y Comparativas y calibración). Medido: 434.0 KB."
+      "topeKb": 444,
+      "motivo": "Catálogo interno del admin: pinta todos los componentes a la vez (con las secciones Lugares, Tus datos, Comparativas y calibración y Comunidad). Medido: 440.6 KB."
     },
     "/proyectos/[id]": {
       "topeKb": 332,
@@ -54,8 +57,8 @@
       "motivo": "Catálogo de modelos con la lista ordenable de recomendadas. Medido: 259.2 KB."
     },
     "/admin/ajustes": {
-      "topeKb": 257,
-      "motivo": "Formulario de ajustes de la instalación, con el estado de Tus datos. Medido: 255.8 KB."
+      "topeKb": 262,
+      "motivo": "Formulario de ajustes de la instalación, con el estado de Tus datos y la sección Comunidad (interruptor, normas y tope de pendientes). Medido: 258.8 KB."
     },
     "/admin/presets": {
       "topeKb": 253,
