@@ -43,6 +43,7 @@ const GRUPOS = [
     nombre: "Sistema",
     paginas: [
       ["/admin/ajustes", "Ajustes"],
+      ["/admin/marca", "Marca"],
       ["/admin/coherencia", "Coherencia"],
       ["/admin/decisiones", "Decisiones"],
       ["/admin/componentes", "Componentes"],

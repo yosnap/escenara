@@ -5,7 +5,7 @@ import { proveedoresActivos, registroDisponible } from "@/server/auth/auth";
 import { obtenerSesion } from "@/server/auth/sesion";
 import { FormularioEntrar } from "../_componentes/formulario-entrar";
 
-export const metadata: Metadata = { title: "Entrar · Escenara" };
+export const metadata: Metadata = { title: "Entrar" };
 export const dynamic = "force-dynamic";
 
 const AVISOS: Record<string, string> = {

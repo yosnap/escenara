@@ -4,7 +4,7 @@ import { listarProductos } from "@/server/productos/consulta";
 import { CabeceraApp } from "../_app/cabecera-app";
 import { ListaProductos } from "./_componentes/lista-productos";
 
-export const metadata: Metadata = { title: "Tus productos · Escenara" };
+export const metadata: Metadata = { title: "Tus productos" };
 export const dynamic = "force-dynamic";
 
 /**

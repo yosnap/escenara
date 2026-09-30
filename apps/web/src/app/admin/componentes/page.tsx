@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Catalogo } from "./catalogo";
 
-export const metadata: Metadata = { title: "Componentes · Admin · Escenara" };
+export const metadata: Metadata = { title: "Componentes · Admin" };
 
 /** Catálogo de componentes reutilizables (el acceso lo decide el layout del admin). */
 export default function PaginaComponentes() {

@@ -4,7 +4,7 @@ import { ArrowDown, Sparkles, UserRound } from "lucide-react";
 import Link from "next/link";
 import { claseBoton } from "@/components/ui/button";
 import { Pegatina, TarjetaReel } from "@/components/ui/creator";
-import { Logotipo } from "@/components/ui/logotipo";
+import { EnlaceLogotipo } from "@/components/ui/enlace-logotipo";
 import { MascotaChispa } from "@/components/ui/mascota";
 import { type CapaParallax, EscenaParallax, IconoChispa } from "@/components/ui/motion";
 import { SelectorTema } from "@/components/ui/theme-toggle";
@@ -71,9 +71,7 @@ export function BarraPortada({ conSesion }: { conSesion: boolean }) {
   return (
     <header className="sticky top-0 z-30 border-b border-borde/30 bg-fondo/80 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3 md:px-8">
-        <a href="#inicio" className="text-texto" aria-label="Escenara, inicio">
-          <Logotipo />
-        </a>
+        <EnlaceLogotipo href="#inicio" accion="inicio" className="text-texto" />
         <nav aria-label="Secciones de la portada" className="hidden md:block">
           <ul className="flex gap-1">
             {ENLACES.map(([href, texto]) => (

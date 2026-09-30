@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { listarPresetsDeLaInstalacion } from "@/server/prompts/consulta";
 import { VistaPresets } from "./vista-presets";
 
-export const metadata: Metadata = { title: "Presets · Admin · Escenara" };
+export const metadata: Metadata = { title: "Presets · Admin" };
 export const dynamic = "force-dynamic";
 
 /** Catálogo de presets de la instalación (el layout del admin ya exige el rol). */

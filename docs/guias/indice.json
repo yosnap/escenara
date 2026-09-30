@@ -38,6 +38,11 @@
           "archivo": "mapa-de-modelos.md",
           "titulo": "Con qué se genera cada cosa",
           "descripcion": "El mapa de modelos por tipo, las reservas, qué cuesta cada opción y los servicios compatibles con OpenAI."
+        },
+        {
+          "archivo": "personaliza-tu-instancia.md",
+          "titulo": "Personaliza tu instancia",
+          "descripcion": "Nombre, logotipos, tipografía y colores de la instalación, con contraste comprobado, publicación atómica e historial."
         }
       ]
     },
@@ -168,6 +173,11 @@
           "archivo": "formatos-y-proyectos-largos.md",
           "titulo": "Formatos y proyectos largos",
           "descripcion": "Para qué plataforma es la pieza, el mismo montaje en 9:16, 4:5, 1:1 y 16:9 con encuadre por escena, 30 escenas y 5 minutos, y las versiones de cada escena."
+        },
+        {
+          "archivo": "tu-kit-de-marca.md",
+          "titulo": "Tu kit de marca",
+          "descripcion": "Tu logotipo en una esquina de tus exportaciones, sin tapar nunca la etiqueta de contenido generado con IA."
         }
       ]
     },

@@ -1,5 +1,8 @@
+import { Stamp } from "lucide-react";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import Link from "next/link";
+import { claseBoton } from "@/components/ui/button";
 import { TIPOS_EN_USO } from "@/lib/mapa-modelos";
 import { auth } from "@/server/auth/auth";
 import { exigirSesion } from "@/server/auth/sesion";
@@ -8,6 +11,7 @@ import { listarCompatibles } from "@/server/boveda/compatibles";
 import { listarCredenciales } from "@/server/boveda/credenciales";
 import { mapaVista, opcionesDe } from "@/server/mapa/mapa";
 import { CabeceraApp } from "../_app/cabecera-app";
+import { Bloque } from "./_componentes/bloque";
 import { CambiarContrasena } from "./_componentes/cambiar-contrasena";
 import { Compatibles } from "./_componentes/compatibles";
 import { Credenciales } from "./_componentes/credenciales";
@@ -17,7 +21,7 @@ import { Perfil } from "./_componentes/perfil";
 import { Preferencias } from "./_componentes/preferencias";
 import { Sesiones } from "./_componentes/sesiones";
 
-export const metadata: Metadata = { title: "Tu cuenta · Escenara" };
+export const metadata: Metadata = { title: "Tu cuenta" };
 export const dynamic = "force-dynamic";
 
 export default async function PaginaCuenta() {
@@ -53,6 +57,15 @@ export default async function PaginaCuenta() {
         <Credenciales credenciales={credenciales} bovedaLista={bovedaDisponible()} />
         <Compatibles proveedores={compatibles} bovedaLista={bovedaDisponible()} />
         <MapaDeModelos mapas={mapas} />
+        <Bloque
+          titulo="Tu kit de marca"
+          descripcion="Tu logotipo en una esquina de tus exportaciones. Solo tuyo."
+          icono={<Stamp />}
+        >
+          <Link href="/cuenta/kit" className={claseBoton("secundario")}>
+            Editar tu kit de marca
+          </Link>
+        </Bloque>
         {tieneContrasena && <CambiarContrasena />}
         <Passkeys
           passkeys={passkeys.map((p) => ({

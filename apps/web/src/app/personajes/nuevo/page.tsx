@@ -7,7 +7,7 @@ import { exigirSesion } from "@/server/auth/sesion";
 import { CabeceraApp } from "../../_app/cabecera-app";
 import { AltaPersonaje } from "./_componentes/alta-personaje";
 
-export const metadata: Metadata = { title: "Nuevo personaje · Escenara" };
+export const metadata: Metadata = { title: "Nuevo personaje" };
 export const dynamic = "force-dynamic";
 
 /** Alta de un personaje en pasos: tipo, nombre, fotos de referencia, consentimiento y resumen. */

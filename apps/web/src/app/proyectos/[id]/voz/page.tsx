@@ -6,7 +6,7 @@ import { estadoDeVoz } from "@/server/voz/consulta";
 import { CabeceraApp } from "../../../_app/cabecera-app";
 import { VistaVoz } from "./_componentes/vista-voz";
 
-export const metadata: Metadata = { title: "Voz y subtítulos · Escenara" };
+export const metadata: Metadata = { title: "Voz y subtítulos" };
 export const dynamic = "force-dynamic";
 
 /**

@@ -106,3 +106,22 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Logotipos subidos de la marca de la instalación: cada uno se ve solo en su tema (sin JavaScript, sin destello). */
+.marca-solo-oscuro {
+  display: none;
+}
+:root[data-theme="dark"] .marca-solo-claro {
+  display: none;
+}
+:root[data-theme="dark"] .marca-solo-oscuro {
+  display: inline-block;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .marca-solo-claro {
+    display: none;
+  }
+  :root:not([data-theme="light"]) .marca-solo-oscuro {
+    display: inline-block;
+  }
+}

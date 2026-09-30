@@ -2,6 +2,92 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.42.0] · 2026-09-30
+
+**Branding editable.** Quien administra una instalación puede cambiar su **marca** (nombre, lema, logotipos,
+tipografía y colores de los dos temas) desde **Admin › Marca**, verla en claro y en oscuro a la vez con componentes
+reales y **publicarla de golpe**, con borrador, historial y revertir en un clic. Y cada creador tiene su **kit de
+marca**: su logotipo en una esquina de **sus** exportaciones, sin tapar nunca la etiqueta de contenido generado con IA.
+**Sin marca publicada, todo sigue exactamente igual**: el CSS, los iconos y los títulos de siempre. No cambia ninguna
+regla de coste ni de consentimiento, y el kit no cuesta créditos. Una migración aditiva: lee «Actualizar desde la
+0.41.0».
+
+### Añadido
+
+- **Admin › Marca** (`/admin/marca`): editor por secciones (textos, colores, tipografía y logotipos), la
+  **previsualización simultánea del tema claro y el oscuro** con botones, campo, alertas, tarjeta, degradado y
+  logotipo reales, y **Guardar borrador**, **Publicar**, **Descartar borrador**, **Revertir a la versión N** y
+  **Volver a la marca de Escenara**. Cada versión publicada queda en el historial con su fecha y sus notas.
+- **Validación estricta** con el esquema de `escenara.brand.json`, en el editor y otra vez en el servidor: un
+  documento inválido no se guarda ni se publica, la respuesta dice **qué campo falla y por qué**, y la versión
+  anterior sigue activa e intacta.
+- **Contraste AA en los dos temas**: un texto por debajo de 4,5:1 sobre su fondo **bloquea la publicación**, con el
+  par y la razón («Tema oscuro: textMuted sobre background da 3,21:1 y necesita 4,5:1»); los bordes, el foco y los
+  colores vibrantes por debajo de lo suyo avisan.
+- **Publicación atómica**: validar, comprobar el contraste, retirar la anterior, generar los iconos y publicar van en
+  una sola transacción. Si algo falla a mitad no cambia nada y los archivos a medio subir se borran.
+- **Activos derivados al publicar**, desde el símbolo (o el logotipo horizontal): favicon de 16 y 32 px, iconos de la
+  aplicación de 192 y 512 px con su manifiesto e imagen para compartir de 1200 × 630, con sharp (ya estaba). La imagen
+  para compartir usa la **URL pública** de Admin › Ajustes; sin ella no se emite (nunca una dirección `localhost`).
+- **Fuentes propias autoalojadas**: WOFF2 de hasta 1 MB, con cabecera comprobada y **declaración de licencia
+  obligatoria** apuntada con fecha y cuenta. Se sirven desde la instalación: ninguna descarga de terceros al cargar.
+- **Logotipos** en PNG, JPEG o WebP, que se vuelven a codificar (sin metadatos y con la orientación del móvil ya
+  aplicada). **Los SVG no se admiten en esta versión**: un SVG es un documento que se interpreta, y uno preparado a
+  propósito de menos de 1 KB puede tener ocupado el servidor durante minutos al pasarlo a píxeles. Se rechaza al
+  momento, sin procesarlo, con «Convierte tu logotipo a PNG (con fondo transparente) o a WebP».
+- **Tu cuenta › Tu kit de marca** (`/cuenta/kit`): nombre, logotipo, esquina y si se aplica, con la previsualización
+  sobre un **fotograma real** (tu imagen más reciente) y la etiqueta en su sitio.
+- **El kit en el render de las exportaciones**, como capa opcional: el logotipo (como mucho el 20 % del ancho y el 8 %
+  del alto, dentro de la zona segura del formato) va en la esquina elegida o, si cae en la franja de la etiqueta, en
+  la contraria. Los subtítulos se pintan encima del logotipo y la etiqueta encima de todo. El kit se guarda con cada
+  exportación al pedirla.
+- Guías nuevas [Personaliza tu instancia](guias/personaliza-tu-instancia.md) y [Tu kit de marca](guias/tu-kit-de-marca.md),
+  y la guía de identidad explica que los tokens de una instalación pueden diferir del `escenara.brand.json` de
+  referencia.
+- Componentes nuevos en el catálogo `/admin/componentes` › «Marca y kit»: la previsualización de una marca en los dos
+  temas y la del kit sobre un fotograma, con la esquina que cambia para no tapar la etiqueta.
+
+### Cambiado
+
+- El logotipo de las cabeceras dice a los lectores de pantalla el nombre de la instalación, no «Escenara» fijo.
+- Cada página pone solo su parte del título y la plantilla añade el nombre de la instalación («Tus personajes ·
+  Escenara» sin marca publicada, «Tus personajes · Tu nombre» con ella). Sin marca, los títulos son los de siempre.
+- El icono de Escenara pasa de `app/icon.svg` a `public/icon.svg` y se declara en los metadatos (el mismo archivo):
+  el icono por fichero de Next mandaba sobre los metadatos y no dejaba poner el de una marca publicada.
+- `generarCss` comprueba cada valor con las listas estrictas antes de escribir nada; `tokens.css` sale idéntico.
+
+### Seguridad
+
+- Todo lo que acaba en CSS se valida con listas cerradas (colores `#RRGGBB`, familias sin comillas ni signos, enteros
+  en rango, claves fijas): ningún token, nombre de fuente ni texto puede inyectar CSS, HTML ni JavaScript.
+- Los archivos de marca se sirven con su tipo real (solo PNG, JPEG, WebP y WOFF2), `X-Content-Type-Options: nosniff` y
+  una CSP cerrada con `sandbox`. Los de un kit, solo a su dueño (lo ajeno responde 404).
+- **Procesado de imágenes acotado**: tiempo máximo por imagen y como mucho dos a la vez en la instalación; con más
+  subidas simultáneas se responde «espera unos segundos» en lugar de acumular trabajo. Las subidas se leen con tope de
+  tamaño aunque no digan cuánto pesan.
+- Los textos de marca rechazan las **marcas invisibles de dirección** (las que hacen que un nombre se lea al revés) y
+  otros invisibles innecesarios, pero admiten los que sí hacen falta: emojis compuestos (👩‍💻), banderas de
+  subdivisión y escrituras como el persa. Las familias no admiten palabras reservadas de CSS (`inherit`, `unset`…).
+- El lector de SVG de la librería de imágenes queda **bloqueado** en el servidor, y solo se procesa lo que se lee como
+  PNG, JPEG o WebP: un archivo con una firma falsa no puede colarse. Publicar también rechaza, con su causa, un
+  logotipo guardado con otro tipo.
+- Los logotipos del kit que se cambian o se quitan se borran en cuanto no los necesita ninguna exportación pendiente.
+- La marca de la instalación solo la cambia quien administra: se comprueba en la página **y en cada operación** de la
+  API, con el mismo origen exigido en las escrituras. Cada usuario solo ve y cambia su kit.
+
+### Actualizar desde la 0.41.0
+
+- **Haz antes una copia**: `bun run db:backup`. Después, `bun run db:migrate`.
+- La migración `0059_marca-editable-y-kit-del-creador` es **aditiva e idempotente**: crea los tipos y las tablas
+  `brand_versions` (versiones de la marca, con una sola publicada y un solo borrador a la vez), `brand_assets`
+  (logotipos, fuentes e iconos generados) y `creator_kits` (un kit por usuario), y añade a `montage_exports` la
+  columna `brand_kit`, que admite nulos: las exportaciones que ya había quedan sin kit, igual que hasta ahora. No
+  cambia ni borra ninguna fila. Volver a aplicarla no hace nada.
+- **Reinicia el worker** después de migrar, ya con el código nuevo: el render del montaje aplica el kit del creador y
+  el worker no recarga el código solo.
+- No hay ajustes nuevos ni variables de entorno nuevas. Sin publicar ninguna marca, la instalación se ve igual que en
+  la 0.41.0.
+
 ## [0.41.1] · 2026-09-30
 
 Parche: **cerrar otra sesión desde «Tu cuenta» ya no rompe la pantalla con «Session is not fresh»**. Sin migraciones, sin
@@ -13,6 +99,7 @@ cambios de precio.
   seguridad: 24 horas desde que entraste). Cuando la tuya era más antigua, el error salía como pantalla de fallo del
   servidor. Ahora se queda en «Tu cuenta» con un aviso claro: «Por seguridad, esta acción pide que hayas iniciado
   sesión hace poco. Cierra sesión, vuelve a entrar y repítela.» Vale también para cambiar la contraseña.
+
 
 ## [0.41.0] · 2026-09-30
 

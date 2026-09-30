@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { FormularioRestablecer } from "../_componentes/formulario-restablecer";
 
-export const metadata: Metadata = { title: "Nueva contraseña · Escenara" };
+export const metadata: Metadata = { title: "Nueva contraseña" };
 
 export default async function PaginaRestablecer({
   searchParams,

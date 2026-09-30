@@ -12,6 +12,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { type EncuadresDelMontaje, FORMATOS_MONTAJE } from "@/lib/formatos";
+import type { KitDeExportacion } from "@/lib/marca-kit";
 import type { Fragmento } from "@/lib/montaje";
 import { media } from "./esquema";
 import { projects } from "./esquema-proyectos";
@@ -160,6 +161,11 @@ export const montageExports = pgTable(
     labelApplied: boolean("label_applied").notNull().default(true),
     labelPosition: posicionEtiquetaMontaje("label_position").notNull().default("abajo"),
     burnedSubtitles: boolean("burned_subtitles").notNull().default(false),
+    /**
+     * Kit de marca del creador con el que se pidió (0.42.0): su logotipo y la esquina. Se guarda al pedirla, igual
+     * que los subtítulos, para que el vídeo salga con el kit de ese momento. `null` = sin kit (lo de siempre).
+     */
+    brandKit: jsonb<KitDeExportacion | null>("brand_kit"),
     /**
      * Subtítulos tal como se exportaron, en los dos formatos. Se guardan **con la exportación** y no se
      * recomponen al descargarlos: los de la escena se pueden editar después, y entonces el fichero adjunto ya no

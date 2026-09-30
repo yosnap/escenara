@@ -1,10 +1,13 @@
 import path from "node:path";
 import { and, eq, isNull } from "drizzle-orm";
 import { encuadreDe, nombreDeExportacion } from "@/lib/formatos";
+import { esKitDeExportacion, type KitDeExportacion } from "@/lib/marca-kit";
 import { formatearTamano, LIMITE_BYTES } from "@/lib/media/reglas";
 import { duracionDeFragmento, duracionTotalDeFragmentos, type Fragmento } from "@/lib/montaje";
+import { leerObjeto } from "../almacenamiento";
 import { db } from "../db/cliente";
 import { type FilaExportacion, type FilaMontaje, montageExports } from "../db/esquema";
+import { claveDelLogoDeExportacion } from "../marca/kit";
 import { type Actor, crearMedio, eliminarDefinitivamente, enviarAPapelera } from "../media/servicio";
 import { medirConFfprobe } from "../revision/medicion";
 import { conCarpetaTemporal, Descargador } from "./descarga";
@@ -142,6 +145,7 @@ export async function renderizarExportacion(
     const preparados = await prepararFragmentos(carpeta, montaje, material);
     const musica = await prepararMusica(carpeta, montaje, material);
     const rutaSubtitulos = await escribirSubtitulos(carpeta, exportacion);
+    const logo = await prepararLogoDelKit(carpeta, actor, exportacion);
 
     // ── Igualar: un proceso por fragmento, con los mismos parámetros para todos.
     await progreso.entrarEn("normalizando");
@@ -192,6 +196,7 @@ export async function renderizarExportacion(
         volumenClip: material.proyecto.voiceMode === "pista" ? 1 : montaje.voiceVolume,
         subtitulos: exportacion.burnedSubtitles && rutaSubtitulos !== null ? rutaSubtitulos : null,
         etiqueta: exportacion.labelApplied ? exportacion.labelPosition : null,
+        logo,
         segundos: segundosTotales,
         ancho,
         alto,
@@ -314,6 +319,33 @@ async function prepararMusica(
     });
   }
   return pistas;
+}
+
+/**
+ * Baja el logotipo del kit con el que se pidió la exportación (0.42.0). Sin kit, `null` y el render es el de siempre.
+ *
+ * Si el logotipo ya no existe (el usuario lo quitó y nadie lo retenía), la exportación **falla con la causa**: salir sin
+ * el logotipo que pidió sería entregar otra cosa sin decirlo, y volver a exportar toma el kit de ahora.
+ */
+async function prepararLogoDelKit(
+  carpeta: string,
+  actor: Actor,
+  exportacion: FilaExportacion,
+): Promise<{ ruta: string; esquina: KitDeExportacion["esquina"] } | null> {
+  const kit = exportacion.brandKit;
+  if (!kit) return null;
+  if (!esKitDeExportacion(kit))
+    throw new ErrorMontaje(500, "El kit de marca guardado con esta exportación no es válido.");
+  const clave = await claveDelLogoDeExportacion(kit, actor.id);
+  if (!clave) {
+    throw new ErrorMontaje(
+      409,
+      "El logotipo de tu kit de marca ha cambiado o se ha quitado desde que pediste esta exportación. Vuelve a exportar y saldrá con el kit de ahora.",
+    );
+  }
+  const ruta = path.join(carpeta, "logo-kit.png");
+  await Bun.write(ruta, await leerObjeto(clave).arrayBuffer());
+  return { ruta, esquina: kit.esquina };
 }
 
 /**

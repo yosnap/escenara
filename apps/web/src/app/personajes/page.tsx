@@ -7,7 +7,7 @@ import { listarPersonajes } from "@/server/personajes/consulta";
 import { CabeceraApp } from "../_app/cabecera-app";
 import { ListaPersonajes } from "./_componentes/lista-personajes";
 
-export const metadata: Metadata = { title: "Tus personajes · Escenara" };
+export const metadata: Metadata = { title: "Tus personajes" };
 export const dynamic = "force-dynamic";
 
 /**

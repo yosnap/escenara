@@ -5,7 +5,7 @@ import { espacioUsado } from "@/server/media/servicio";
 import { CabeceraApp } from "../_app/cabecera-app";
 import { VistaBiblioteca } from "./_componentes/vista-biblioteca";
 
-export const metadata: Metadata = { title: "Tu biblioteca · Escenara" };
+export const metadata: Metadata = { title: "Tu biblioteca" };
 export const dynamic = "force-dynamic";
 
 /** Biblioteca de medios de cada usuario: solo ve lo suyo, con sus colecciones y su espacio usado. */

@@ -7,7 +7,7 @@ import { personajesElegibles } from "@/server/personajes/consulta";
 import { CabeceraApp } from "../_app/cabecera-app";
 import { ListaProyectos } from "./_componentes/lista-proyectos";
 
-export const metadata: Metadata = { title: "Tus proyectos · Escenara" };
+export const metadata: Metadata = { title: "Tus proyectos" };
 export const dynamic = "force-dynamic";
 
 /**

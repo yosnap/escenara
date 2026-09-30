@@ -8,7 +8,7 @@ import { importarClavesDelEntorno } from "@/server/boveda/importar-entorno";
 import { listarSecretos } from "@/server/boveda/secretos";
 import { FormularioAjustes } from "./formulario-ajustes";
 
-export const metadata: Metadata = { title: "Ajustes · Admin · Escenara" };
+export const metadata: Metadata = { title: "Ajustes · Admin" };
 
 const NOMBRE_PROVEEDOR = { google: "Google", github: "GitHub" } as const;
 
