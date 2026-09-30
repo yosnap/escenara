@@ -18,8 +18,9 @@ lee «Actualizar desde la 0.45.0». Las escenas sin lugar producen exactamente l
   usan el lugar vuelven a borrador con el motivo escrito. Un lugar ajeno responde «no existe», también al usarlo.
 - **Declaración de derechos del lugar**, obligatoria para generar: de dónde son las fotos, si es un exterior o un
   interior (un interior exige declarar el permiso de quien lo gestiona), el uso, si se ve alguna marca y **que no sale
-  ningún menor**. **No admite gente reconocible**: se retira o se cambia la foto. Se retira sola al cambiar las fotos y
-  se puede revocar; lo ya generado se queda.
+  ningún menor**. La pantalla dice que **lo declarado es responsabilidad del usuario** (Escenara no revisa las fotos).
+  **No admite gente reconocible**: se retira o se cambia la foto. Se retira sola al añadir fotos o cambiar o quitar la
+  maestra, y se puede revocar; desde entonces no se genera con el lugar, tampoco lo que estaba en la cola.
 - **Retirar personas de una foto** del lugar, con una edición de imagen de **coste confirmado** (unos 4 créditos) por el
   mismo camino que cualquier fotograma. La foto editada entra como generada y, si salía de la maestra, pasa a serlo.
   **No se pixelan caras**: se midió que el generador copia el pixelado.
@@ -47,10 +48,19 @@ lee «Actualizar desde la 0.45.0». Las escenas sin lugar producen exactamente l
 - **El cupo de referencias se reparte a tres bandas** con la misma cuenta en el aviso, en el envío y en el worker: al
   menos una del personaje, al menos una del producto si lo hay, la maestra si queda sitio, y el resto 3/7 entre
   personaje y producto como en la 0.35.1. El aviso de antes de pagar dice también la maestra.
-- **Podcast**: los dos clips de una conversación comparten obligatoriamente el lugar y su versión. En las escenas
-  habladas con Omni el lugar viaja descrito.
-- **Un «500 Internal Error» del proveedor** se cuenta como fallo interno pasajero («vuelve a generarlo»), no como un
-  fallo sin causa. Visto con Gemini Omni: no cobró y al repetirlo salió bien.
+- **Podcast**: un podcast es una sola escena con dos clips, así que los dos llevan el mismo lugar y la misma versión.
+  En las escenas habladas con Omni el lugar viaja descrito.
+- **Borrar un lugar** no borra las fotos, lo generado ni **sus declaraciones** (quedan revocadas y con el nombre del
+  lugar); no se puede con trabajos en marcha que lo usan, y el worker no envía uno cuyo lugar se ha borrado (lo cierra
+  sin cobro y lo dice). Las escenas aprobadas que lo usaban vuelven a borrador con el motivo.
+- **El aviso de antes de pagar y el envío deciden con la misma función** si la maestra cuenta en el cupo (no en el
+  clip, ni en la escena hablada, ni al meter la captura de un producto digital), y la consulta de controles devuelve
+  las cifras del reparto. La consulta del paso de la captura se hace con ese paso.
+- **Un «500 Internal Error» del proveedor** (el texto «internal error», o un 500 sin texto) se cuenta como fallo
+  interno pasajero («vuelve a generarlo»). Un «please try again later» con saldo insuficiente o una petición inválida
+  sigue sin causa conocida. Visto con Gemini Omni: no cobró y al repetirlo salió bien.
+- Documento legal: nueva sección sobre las fotos de lugares, que pueden llevar personas, y a dónde se envían
+  (pendiente de revisión jurídica).
 - Guías ajustadas: productos (cupo a tres y producto sobre una superficie), dirigir tu clip (el sitio con un lugar),
   podcast y dualcast (set común) y por qué no puedo generar. Resultados del spike en APIs y proveedores.
 
@@ -60,7 +70,8 @@ lee «Actualizar desde la 0.45.0». Las escenas sin lugar producen exactamente l
 - La migración `0062_lugares` es **aditiva e idempotente**: crea los tipos y las tablas `places`, `place_references`,
   `place_versions` y `place_declarations`; añade `projects.default_place_id`, `scenes.place_id`, `place_inherited`
   (verdadero por defecto), `place_spot` y `place_shot` (`con_reparto` por defecto) y `generation_jobs.place_id` y
-  `place_version`, con sus índices y claves ajenas (`set null`: borrar un lugar no borra nada más); y el valor
+  `place_version`, con sus índices y claves ajenas (`set null`: borrar un lugar no borra nada más, tampoco sus
+  declaraciones, que guardan `place_name`); y el valor
   `lugar_fiel` en el tipo de las comprobaciones de coherencia. No cambia ni borra ninguna fila y volver a aplicarla no
   hace nada.
 - **Reinicia el worker** tras actualizar: ahora envía la maestra del lugar detrás de las demás fotos y revalida la

@@ -40,6 +40,10 @@ La opción 3:
 - **Cupo a tres bandas**: una sola función pura (`lib/reparto-referencias.ts › repartirReferencias`) que usan el aviso,
   el envío y el worker: personaje ≥ 1, producto ≥ 1 si lo hay, la maestra si queda sitio, y el resto 3/7 entre personaje
   y producto como en la 0.35.1.
+- **Borrar un lugar conserva la prueba**: sus declaraciones se quedan (`set null` con el nombre del lugar) y el
+  trabajo guarda con qué declaración se pidió; no se borra con trabajos en marcha y el worker no envía uno sin lugar.
+- **Una sola función decide si la maestra cuenta** (`reparto-del-envio.ts › repartoCompletoDelEnvio`), con las mismas
+  entradas en el aviso y en el envío: no en el clip, ni en Omni, ni al meter la captura de un producto digital.
 - **Acabados sin mezclar**: un lugar real en un proyecto realista, uno animado del mismo estilo en uno animado.
 
 ## Consecuencias

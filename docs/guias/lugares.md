@@ -54,9 +54,10 @@ candidato entra como plano general: si te gusta, **márcalo como maestra**; si n
 - **Si sale gente** (ver abajo), si se ve alguna marca y el uso: personal o comercial.
 - Y que **no sale ningún menor**, ni al fondo.
 
-La aplicación no juzga si algo es legal: la declaración es tuya y queda guardada con su fecha. Cambiar las fotos o la
-maestra **la retira sola**, porque hablaba de otras fotos: tendrás que volver a declararla. También la puedes revocar;
-desde ese momento no se genera con el lugar, y lo que ya generaste se queda.
+**Lo que declaras es responsabilidad tuya**, y la pantalla lo dice antes de declarar: Escenara no revisa las fotos ni
+comprueba si sale gente, y la declaración queda guardada con su fecha. Añadir fotos, cambiar la maestra o quitarla **la
+retira sola**, porque hablaba de otras fotos: tendrás que volver a declararla. También la puedes revocar; desde ese
+momento no se genera con el lugar (tampoco lo que ya estaba en la cola), y lo que ya generaste se queda.
 
 ## Si en la foto sale gente
 
@@ -106,8 +107,8 @@ escena es un clip hablado.
 
 ### Podcast y dualcast
 
-Los dos clips de un podcast comparten **el mismo lugar y la misma versión**: elegirlo en una escena del grupo lo aplica
-a las dos. Con la misma maestra el set sale igual en los dos clips. En las escenas habladas con Omni el lugar va
+Un podcast es **una sola escena** que produce dos clips, así que los dos llevan **el mismo lugar y la misma versión**:
+se eligen en esa escena. Con la misma maestra el set sale igual en los dos clips. En las escenas habladas con Omni el lugar va
 **descrito**; combinar la identidad registrada con el fotograma situado es un ajuste experimental de la instalación,
 apagado de fábrica.
 
@@ -125,5 +126,10 @@ envía nada a terceros** para comprobarlo. Ver [Comprobar la coherencia](comprob
 
 ## Borrar un lugar
 
-Se borra su ficha, sus versiones y su declaración. **Tus fotos y lo que hayas generado con él se quedan** en tu
-biblioteca; las escenas y los proyectos que lo usaban se quedan sin lugar, pero no se borran.
+Se borran su ficha y sus versiones. **Tus fotos y lo que hayas generado con él se quedan** en tu biblioteca, y sus
+**declaraciones también** (la vigente queda revocada): son la constancia de con qué se hizo lo generado. Las escenas y
+los proyectos que lo usaban se quedan sin lugar, pero no se borran; las escenas **aprobadas** vuelven a borrador con el
+motivo, porque sin el lugar generarían otra cosa.
+
+**Con trabajos en marcha que lo usan no se puede borrar**: se te dice cuántos hay. Espera a que terminen o cancélalos y
+vuelve a borrarlo.

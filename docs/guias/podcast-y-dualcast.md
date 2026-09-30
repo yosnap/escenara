@@ -22,8 +22,8 @@ En el spike del 29/09/2026, un clip de 4 s a 720p con Gemini Omni Flash 1.1 cost
 2. Elige **Podcast** o **Dualcast** y añade otro personaje de los tuyos. El límite es **dos**. Podcast y dualcast **no admiten una escena con producto**: quita el producto de la escena antes de elegirlos. Si un formato está apagado, la pantalla indica que se activa en **Admin › Ajustes › Dos personajes**.
 3. Ajusta **papel** (habla o acompaña), **lado** y **mirada**. En podcast se propone el lado opuesto y la mirada cruzada. En dualcast ambos comparten plano: quien no habla escucha y reacciona.
 4. En **El diálogo, turno a turno**, asigna a cada frase su personaje, escribe lo que dirá **literalmente** y, si quieres, una dirección vocal. Puedes ordenar los turnos arrastrándolos por su asa (o con el teclado, o con Subir y Bajar) y quitarlos. El texto hablado **no se traduce**; la dirección vocal sí puede traducirse para componer la petición.
-5. Si quieres un **set común**, elige un [lugar](lugares.md) en la escena (o hereda el del proyecto): los dos clips
-   de un podcast comparten obligatoriamente el mismo lugar y la misma versión. En las escenas habladas el lugar viaja
+5. Si quieres un **set común**, elige un [lugar](lugares.md) en la escena (o hereda el del proyecto). Un podcast es una
+   sola escena que produce dos clips, así que los dos llevan el mismo lugar y la misma versión. En las escenas habladas el lugar viaja
    **descrito**; con la misma foto maestra el set sale igual en los dos clips (medido a nivel de fotograma el
    30/09/2026).
 6. Revisa **Lo que se ha pedido**: resume en castellano quién sale, dónde mira y qué dice. Nunca muestra el prompt interno. Si el diálogo no cabe en los segundos del clip, aparece un aviso con las palabras y los segundos necesarios. Puedes acortarlo o confirmar expresamente que quieres seguir.
