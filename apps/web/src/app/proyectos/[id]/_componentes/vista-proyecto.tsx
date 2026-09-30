@@ -8,6 +8,7 @@ import { Aviso } from "@/components/ui/feedback";
 import { Multipaso, PanelDePaso, useMultipaso } from "@/components/ui/multipaso";
 import { InsigniaEstadoProyecto } from "@/components/ui/proyecto";
 import type { ClipsDelProyecto } from "@/lib/audio-del-clip";
+import { formatoPrincipal, PLATAFORMA_DE_FORMATO } from "@/lib/formatos";
 import { resolverPaso } from "@/lib/multipaso";
 import { pasoPredeterminadoDelProyecto, pasosDelProyecto } from "@/lib/pasos-proyecto";
 import type { PersonajeElegible } from "@/lib/personajes";
@@ -85,6 +86,9 @@ export function VistaProyecto({
           <h1 className="mt-1 text-4xl font-bold text-texto">{proyecto.titulo}</h1>
           <p className="mt-2 flex flex-wrap items-center gap-2 text-texto-suave">
             <span>{ETIQUETA_FORMATO[proyecto.formato]}</span>
+            <span aria-hidden>·</span>
+            {/* El formato principal: la proporción en la que se generan los clips. Los demás salen en el montaje. */}
+            <span>{PLATAFORMA_DE_FORMATO[formatoPrincipal(proyecto.formatos ?? [])]}</span>
             <span aria-hidden>·</span>
             <span>
               {proyecto.totalEscenas} {proyecto.totalEscenas === 1 ? "escena" : "escenas"}

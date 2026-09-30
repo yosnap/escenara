@@ -1,6 +1,12 @@
 import { and, eq, sql } from "drizzle-orm";
 import { type Acento, esAcento } from "@/lib/direccion";
 import { limpiarTextoDePrompt } from "@/lib/ficha-personaje";
+import {
+  FORMATOS_DEL_PROYECTO_POR_DEFECTO,
+  type FormatoMontaje,
+  formatoPrincipal,
+  formatosValidos,
+} from "@/lib/formatos";
 import { DURACION_PREDETERMINADA, duracionesEnTexto, esDuracionDisponible } from "@/lib/produccion";
 import {
   CONCEPTO_MAXIMO,
@@ -16,6 +22,7 @@ import { db } from "../db/cliente";
 import { type FilaProyecto, projects, scenes } from "../db/esquema";
 import { aplicarCambioDeAcento } from "../direccion/acento";
 import type { Actor } from "../media/servicio";
+import { exigirFormatoGenerable } from "../montaje/formatos-del-proyecto";
 import { filaPropia } from "../personajes/consulta";
 import { exigirPersonajeUsable } from "../personajes/puede-generar";
 import { esUuidProyecto, proyectoPropio } from "./consulta";
@@ -47,6 +54,8 @@ export interface DatosProyecto {
    */
   acento?: unknown;
   confirmarInvalidacion?: unknown;
+  /** Formatos de salida al crear el proyecto (0.41.0); el primero es el principal. Después, desde el montaje. */
+  formatos?: unknown;
 }
 
 function tituloLimpio(valor: unknown): string {
@@ -104,6 +113,18 @@ async function personajeValido(
   return { id: personaje.id, renderStyle: personaje.renderStyle };
 }
 
+/**
+ * Formatos con los que nace el proyecto: el vertical de siempre si no se dicen. El principal se comprueba contra
+ * los modelos elegidos, como en la pantalla: lo que no se puede generar no se acepta tampoco por la API.
+ */
+async function formatosDeAlta(actor: Actor, valor: unknown): Promise<FormatoMontaje[]> {
+  if (valor === undefined) return [...FORMATOS_DEL_PROYECTO_POR_DEFECTO];
+  const formatos = formatosValidos(valor);
+  if (!formatos) throw new ErrorProyecto(400, "Los formatos del proyecto son una lista sin repetidos de los que hay.");
+  await exigirFormatoGenerable(actor.id, formatoPrincipal(formatos));
+  return formatos;
+}
+
 export async function crearProyecto(actor: Actor, datos: DatosProyecto): Promise<ProyectoDetalle> {
   const ajustes = await leerAjustes();
   const [{ total } = { total: 0 }] = await db()
@@ -114,6 +135,7 @@ export async function crearProyecto(actor: Actor, datos: DatosProyecto): Promise
     throw new ErrorProyecto(409, `No puedes tener más de ${PROYECTOS_MAXIMOS} proyectos. Borra alguno antes.`);
   }
   const protagonista = await personajeValido(actor, datos.personajeId);
+  const formatos = await formatosDeAlta(actor, datos.formatos);
   const [fila] = await db()
     .insert(projects)
     .values({
@@ -128,6 +150,7 @@ export async function crearProyecto(actor: Actor, datos: DatosProyecto): Promise
           ? ajustes.presupuestoProyecto
           : creditosValidos(datos.presupuestoCreditos),
       clipSeconds: datos.segundosClip === undefined ? DURACION_PREDETERMINADA : duracionValida(datos.segundosClip),
+      formats: formatos,
     })
     .returning();
   if (!fila) throw new ErrorProyecto(500, "No se ha podido crear el proyecto.");

@@ -94,6 +94,11 @@ export function ListaTrabajos({ iniciales, cola }: { iniciales: TrabajoVista[]; 
               <div className="flex flex-wrap items-center gap-2">
                 <InsigniaEstado estado={trabajo.estado} />
                 <span className="font-mono text-sm text-texto-suave">{trabajo.modelo}</span>
+                {trabajo.proporcion && (
+                  <span className="rounded-full bg-elevada px-3 py-1 text-sm text-texto-suave">
+                    Formato {trabajo.proporcion}
+                  </span>
+                )}
                 {trabajo.posicionEnCola !== null && (
                   <span className="rounded-full bg-elevada px-3 py-1 text-sm text-texto-suave">
                     Puesto {trabajo.posicionEnCola} de la cola

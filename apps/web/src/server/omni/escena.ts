@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { CAPACIDAD_DE_TIPO, duracionesConCoste, type ModeloVista, segundosDeUnidad } from "@/lib/catalogo";
+import { proporcionFijadaDelProyecto } from "@/lib/formatos";
 import type { Medio } from "@/lib/media/tipos";
 import { creditosDeEscenaOmni, precioOmniEstimado, usaIdentidadRegistrada, type VozOmniDelProyecto } from "@/lib/omni";
 import { duracionParaModelo } from "@/lib/produccion";
@@ -38,6 +39,7 @@ import {
   limpiarPrompt,
   proveedorDeCredencial,
 } from "../generacion/comprobaciones";
+import { proporcionDelEnvio } from "../generacion/formato-del-envio";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { exigirSelloVigente } from "../generacion/precios";
 import type { Actor } from "../media/servicio";
@@ -534,6 +536,8 @@ export async function producirEscenaHablada(
     );
   }
 
+  // El formato principal del proyecto (0.41.0): se comprueba contra el modelo antes de reservar nada.
+  const proporcion = proporcionDelEnvio(proporcionFijadaDelProyecto(proyecto.formats), null, modelo);
   const trabajos: FilaTrabajo[] = [...yaEncoladas];
   let nuevas = 0;
   let fallo: string | null = null;
@@ -549,6 +553,7 @@ export async function producirEscenaHablada(
       segundos,
       ...(personajesOmni.length > 0 ? { personajesOmni } : {}),
       ...(clip ? { reparto: clip.reparto } : {}),
+      ...(proporcion ? { proporcion } : {}),
     });
     const valores: NuevoTrabajoEncolado = {
       userId: actor.id,
@@ -566,6 +571,7 @@ export async function producirEscenaHablada(
         referencias: referenciasDelPersonajeQueViajan(referencias, conProducto?.reparto ?? null).map((r) => r.id),
         ...(muestraEnviada ? { audioDeReferencia: muestraEnviada.id } : {}),
         parametros: { ...parametros, segundos },
+        ...(proporcion ? { proporcion } : {}),
         dialogo,
         escena: prompt,
         ...(contextoEnIngles === "" ? {} : { contextoPersonaje: contextoEnIngles }),

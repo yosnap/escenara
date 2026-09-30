@@ -10,6 +10,7 @@ import {
 import { ESTADOS_ACTIVOS, type TrabajoVista } from "@/lib/generacion";
 import { etapaDeTrabajo } from "@/lib/produccion";
 import { leerAjustes } from "../ajustes";
+import { proporcionDelTrabajo } from "../cola/entrada-del-trabajo";
 import { posicionEnCola, posicionesEnCola } from "../cola/toma";
 import { db } from "../db/cliente";
 import { type FilaMedio, type FilaTrabajo, generationJobs, media } from "../db/esquema";
@@ -77,6 +78,7 @@ export function vistaDe(
     tipo: fila.kind,
     proveedor: fila.provider,
     modelo: fila.model,
+    proporcion: proporcionDelTrabajo(fila),
     estado: fila.state,
     // Etapa real por la que va, deducida del estado y de lo que se apuntó al pasar por ella. Nunca un porcentaje.
     etapa: etapaDeTrabajo(fila.state, fila.stage),

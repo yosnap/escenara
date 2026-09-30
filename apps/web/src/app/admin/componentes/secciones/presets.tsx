@@ -38,8 +38,8 @@ const PRESETS: PresetVisible[] = [
   preset("e3", "especialidad", "Mascotas", "El animal comparte plano con quien lo cuida.", {
     deLaInstalacion: false,
   }),
-  preset("f1", "formato", "Reel 9:16", "Vertical a sangre.", { proporcion: "9:16" }),
-  preset("f2", "formato", "Cuadrado 1:1", "Cuadrado para cuadrícula.", { proporcion: "1:1" }),
+  preset("f1", "formato", "Reels · TikTok · Stories (9:16)", "Vertical a sangre.", { proporcion: "9:16" }),
+  preset("f2", "formato", "Cuadrado (1:1)", "Cuadrado para cuadrícula.", { proporcion: "1:1" }),
   preset("l1", "estilo", "Natural", "Luz de día, contraste suave."),
   preset("l2", "estilo", "Nocturno neón", "Noche con luces de color."),
 ];
@@ -104,7 +104,7 @@ export function SeccionPresets() {
             <PanelLoElegido
               elegidos={[
                 { categoria: "especialidad", nombre: "Moda" },
-                { categoria: "formato", nombre: "Reel 9:16" },
+                { categoria: "formato", nombre: "Reels · TikTok · Stories (9:16)" },
                 { categoria: "estilo", nombre: "Natural" },
               ]}
               faltan={[]}

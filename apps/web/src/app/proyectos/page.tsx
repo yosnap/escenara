@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
+import { formatosGenerables } from "@/lib/formatos";
 import { leerAjustes } from "@/server/ajustes";
-import { listarProyectos } from "@/server/asistente/plan";
+import { eleccionesDelPlan, listarProyectos, modelosDelPlan } from "@/server/asistente/plan";
 import { esAdmin, exigirSesion } from "@/server/auth/sesion";
 import { personajesElegibles } from "@/server/personajes/consulta";
 import { CabeceraApp } from "../_app/cabecera-app";
@@ -16,10 +17,11 @@ export const dynamic = "force-dynamic";
 export default async function PaginaProyectos() {
   const sesion = await exigirSesion("/proyectos");
   const actor = { id: sesion.user.id, esAdmin: esAdmin(sesion) };
-  const [proyectos, personajes, ajustes] = await Promise.all([
+  const [proyectos, personajes, ajustes, elecciones] = await Promise.all([
     listarProyectos(actor),
     personajesElegibles(actor),
     leerAjustes(),
+    eleccionesDelPlan(actor.id),
   ]);
 
   return (
@@ -34,7 +36,12 @@ export default async function PaginaProyectos() {
             apruebas el plan.
           </p>
         </div>
-        <ListaProyectos inicial={proyectos} personajes={personajes} presupuestoSugerido={ajustes.presupuestoProyecto} />
+        <ListaProyectos
+          inicial={proyectos}
+          personajes={personajes}
+          presupuestoSugerido={ajustes.presupuestoProyecto}
+          formatosGenerables={formatosGenerables(modelosDelPlan(elecciones))}
+        />
       </main>
     </div>
   );

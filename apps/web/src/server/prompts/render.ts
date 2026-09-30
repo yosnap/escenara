@@ -96,6 +96,11 @@ export interface PromptCompuesto {
   editado: boolean;
   /** Nombres de los presets elegidos, en el orden en que entran. Es lo que se le muestra al usuario. */
   presetsElegidos: { categoria: CategoriaPreset; nombre: string }[];
+  /**
+   * Proporción del preset de formato elegido («Reels · TikTok · Stories (9:16)»…), ya validada contra el modelo, o
+   * `null` si no se eligió ninguno. Es la que se le pide al proveedor (0.41.0): antes solo se validaba.
+   */
+  proporcion: string | null;
 }
 
 /** Tope de presets que se pueden mandar de una vez: la botonera nunca necesita más. */
@@ -286,5 +291,6 @@ export async function componerDesdePlantilla(peticion: PeticionRender): Promise<
         : null,
     editado: editado !== "",
     presetsElegidos: elegidos.map((p) => ({ categoria: p.categoria, nombre: p.nombre })),
+    proporcion: elegidos.find((p) => p.proporcion !== null)?.proporcion ?? null,
   };
 }

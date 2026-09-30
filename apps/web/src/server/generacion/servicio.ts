@@ -12,6 +12,7 @@ import { contextoAnimadoDeEscena } from "../animados/contexto-escena";
 import { duracionDeClipDeEscena, proyectoDeEscena } from "../asistente/consulta";
 import { hechosDeEscena, techoDelProyecto } from "../asistente/plan";
 import { encolar, filaDeLaConfirmacion, type NuevoTrabajoEncolado } from "../cola/encolar";
+import { proporcionDelTrabajo } from "../cola/entrada-del-trabajo";
 import { conVistaQueCompleta, hechosDelReparto, hechosDelRepartoDeEscena, recopilarHechos } from "../controles/hechos";
 import { exigirControles } from "../controles/puerta";
 import type { FilaMedio, FilaTrabajo } from "../db/esquema";
@@ -21,12 +22,7 @@ import { type DireccionSinTextoLibre, direccionDesdeEleccion, type PersonajeDiri
 import { type CambiarSolo, componerInsercionDeCaptura, componerSeisC, type SeisC } from "../direccion/fotograma";
 import { conHojaDeIdentidad } from "../direccion/hoja-identidad";
 import { bloqueProductoSuelto, esInsercionDeCaptura } from "../direccion/producto";
-import {
-  type EleccionDelMapa,
-  eleccionDeGeneracion,
-  type ModoDeGeneracion,
-  type OpcionDeGeneracion,
-} from "../mapa/generacion";
+import { type EleccionDelMapa, eleccionDeGeneracion, type ModoDeGeneracion } from "../mapa/generacion";
 import type { Actor } from "../media/servicio";
 import {
   contextoDeVersion,
@@ -63,6 +59,7 @@ import {
   proveedorDeCredencial,
 } from "./comprobaciones";
 import { ErrorGeneracion } from "./errores";
+import { exigirFormatoDelFotograma, proporcionDelEnvio, reservasGuardadas } from "./formato-del-envio";
 import { HERRAMIENTAS, type Herramientas } from "./herramientas";
 import { exigirSelloVigente } from "./precios";
 import { esUuidGeneracion, filaPropia, personajeDeLaCadena, vistaDeFila } from "./trabajos";
@@ -124,6 +121,8 @@ interface Confirmacion {
    * `vistaSintetica`: si lo pudiera poner el navegador, bastaría con no mandarlo para reintentar gratis.
    */
   reintentoDeEscena?: boolean;
+  /** Proporción que fija **el servidor** (el formato principal del proyecto, 0.41.0). Manda sobre el preset. */
+  proporcion?: string;
   /** Sello del precio con el que se hizo la estimación: si ha cambiado, se rechaza. */
   selloEstimacion?: string;
   /**
@@ -228,24 +227,6 @@ function exigirVersionConfirmada(confirmada: string | undefined, seUsaria: strin
     "La ficha ha cambiado desde que la revisaste: vuelve a mirar el contexto que se enviará y confirma otra vez.",
   );
 }
-
-/**
- * Reservas autorizadas que se guardan con el trabajo: a dónde puede relevarse si el proveedor rechaza la
- * petición **probando que no ha cobrado**, y con qué tope en la moneda de cada uno. Sin esto, el worker no
- * podría cambiar de proveedor sin gastar más de lo que el usuario tenía delante (`cola/despacho.ts`).
- */
-const reservasGuardadas = (reservas: readonly OpcionDeGeneracion[]) =>
-  reservas.length === 0
-    ? {}
-    : {
-        reservas: reservas.map((r) => ({
-          proveedor: r.eleccion.modelo.proveedor,
-          compatibleId: r.entrada.compatibleId,
-          modelo: r.eleccion.modelo.modelo,
-          creditos: r.creditos,
-          urlBase: "",
-        })),
-      };
 
 /**
  * Resultado de un alta. `nueva` es `false` cuando la confirmación ya se había encolado (misma clave de
@@ -384,6 +365,8 @@ interface PartidaDelClip {
   personajeId: string | null;
   versionPersonajeId: string | null;
   referenciaIdentidad: FilaTrabajo["identityReferenceKind"];
+  /** Proporción en la que se generó el fotograma de partida, si se sabe. */
+  proporcionFotograma?: string | null;
 }
 
 async function partidaDelClip(usuarioId: string, peticion: PeticionAnimacion): Promise<PartidaDelClip> {
@@ -401,6 +384,7 @@ async function partidaDelClip(usuarioId: string, peticion: PeticionAnimacion): P
       personajeId: padre.characterId,
       versionPersonajeId: padre.characterVersionId,
       referenciaIdentidad: padre.identityReferenceKind,
+      proporcionFotograma: proporcionDelTrabajo(padre),
     };
   }
   const medioId = peticion.medioId;
@@ -807,7 +791,13 @@ export async function crearFotograma(
       : base.escena;
   const promptFinal = promptConContexto(escenaDelFotograma, contextoEnIngles);
 
-  const parametros = adaptador.montarEntrada(modelo, { escena: promptFinal, dialogo: "", urls: [] });
+  const proporcion = proporcionDelEnvio(peticion.proporcion, base.compuesto, modelo);
+  const parametros = adaptador.montarEntrada(modelo, {
+    escena: promptFinal,
+    dialogo: "",
+    urls: [],
+    ...(proporcion ? { proporcion } : {}),
+  });
   const valores: NuevoTrabajoEncolado = {
     userId: actor.id,
     kind: "fotograma",
@@ -846,7 +836,8 @@ export async function crearFotograma(
           }
         : {}),
       ...(contextoEnIngles === "" ? {} : { contextoPersonaje: contextoEnIngles }),
-      ...reservasGuardadas(reservas),
+      ...reservasGuardadas(reservas, proporcion),
+      ...(proporcion ? { proporcion } : {}),
       // Marca de «este resultado es una vista generada del personaje»: la lee el cierre del trabajo para
       // añadirla como referencia etiquetada. Solo la pone el servidor.
       ...(peticion.vistaSintetica && personajeId ? { vistaSintetica: peticion.vistaSintetica } : {}),
@@ -1163,11 +1154,14 @@ export async function crearAnimacion(
       ? original
       : await baseDelPrompt(actor, peticion, "animacion", modelo, tipo, escenaDirigida, segundos);
   const promptFinal = promptConContexto(base.escena, contextoEnIngles);
+  const proporcion = proporcionDelEnvio(peticion.proporcion, base.compuesto, modelo);
+  exigirFormatoDelFotograma(partida.proporcionFotograma ?? null, proporcion, modelo);
   const parametros = adaptador.montarEntrada(modelo, {
     escena: promptFinal,
     dialogo: dialogoFinal,
     urls: [],
     segundos,
+    ...(proporcion ? { proporcion } : {}),
   });
   const valores: NuevoTrabajoEncolado = {
     userId: actor.id,
@@ -1205,7 +1199,8 @@ export async function crearAnimacion(
           }
         : {}),
       ...(contextoEnIngles === "" ? {} : { contextoPersonaje: contextoEnIngles }),
-      ...reservasGuardadas(reservas),
+      ...reservasGuardadas(reservas, proporcion),
+      ...(proporcion ? { proporcion } : {}),
       ...referenciasDeProductoGuardadas(producto, conProducto),
     },
     sourceMediaId: origen.id,

@@ -241,3 +241,12 @@ export const formatosGenerables = (modelos: readonly ModeloConProporciones[]): R
     FormatoMontaje,
     string | null
   >;
+
+/**
+ * Proporción que un proyecto **fija** al generar sus escenas: la de su formato principal. `undefined` en vertical
+ * 9:16, que es lo que se generaba antes de poder elegir: entonces no se fija nada y todo sale exactamente igual.
+ */
+export function proporcionFijadaDelProyecto(formatosGuardados: unknown): string | undefined {
+  const principal = formatoPrincipal(formatosDe(formatosGuardados));
+  return principal === FORMATO_MONTAJE_POR_DEFECTO ? undefined : PROPORCION_DE_FORMATO[principal];
+}

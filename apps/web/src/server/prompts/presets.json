@@ -64,8 +64,8 @@
     {
       "categoria": "formato",
       "clave": "reel-9-16",
-      "nombre": "Reel 9:16",
-      "descripcion": "Vertical a sangre, sin espacio reservado arriba.",
+      "nombre": "Reels · TikTok · Stories (9:16)",
+      "descripcion": "Vertical a sangre, para Reels, TikTok, Shorts y Stories.",
       "orden": 10,
       "valores": {
         "prompt": "vertical full-bleed framing, subject centred",
@@ -75,7 +75,7 @@
     {
       "categoria": "formato",
       "clave": "story-9-16",
-      "nombre": "Story 9:16",
+      "nombre": "Stories con rótulos (9:16)",
       "descripcion": "Vertical con aire arriba para los rótulos de la historia.",
       "orden": 20,
       "valores": {
@@ -85,9 +85,20 @@
     },
     {
       "categoria": "formato",
+      "clave": "feed-4-5",
+      "nombre": "Instagram feed y carrusel (4:5)",
+      "descripcion": "Vertical corto, para el feed y los carruseles. Imágenes: ningún modelo de vídeo lo genera.",
+      "orden": 25,
+      "valores": {
+        "prompt": "4:5 portrait framing for a social feed, subject centred",
+        "proporcion": "4:5"
+      }
+    },
+    {
+      "categoria": "formato",
       "clave": "cuadrado-1-1",
-      "nombre": "Cuadrado 1:1",
-      "descripcion": "Cuadrado para cuadrícula. Hoy ningún modelo del catálogo lo admite.",
+      "nombre": "Cuadrado (1:1)",
+      "descripcion": "Cuadrado para la cuadrícula del perfil. Solo con modelos que admitan 1:1.",
       "orden": 30,
       "valores": {
         "prompt": "square framing, subject centred",
@@ -97,8 +108,8 @@
     {
       "categoria": "formato",
       "clave": "horizontal-16-9",
-      "nombre": "Horizontal 16:9",
-      "descripcion": "Apaisado. Hoy ningún modelo del catálogo lo admite.",
+      "nombre": "YouTube · horizontal (16:9)",
+      "descripcion": "Apaisado, para YouTube y la web. Solo con modelos que admitan 16:9.",
       "orden": 40,
       "valores": {
         "prompt": "horizontal framing, room on both sides",
