@@ -1,4 +1,5 @@
 import { Alerta } from "@/components/ui/alerta";
+import { TablaDesplazable } from "@/components/ui/tabla-desplazable";
 import {
   AVISO_SIN_DATOS,
   type CalibracionVista,
@@ -52,25 +53,27 @@ export function TarjetaCalibracion({ calibracion }: { calibracion: CalibracionVi
         )}
       </header>
 
-      <table className="w-full border-collapse text-left text-sm">
-        <caption className="sr-only">Conjunto etiquetado por partición y etiqueta</caption>
-        <thead className="text-texto-suave">
-          <tr>
-            <th className="py-1 font-semibold">Partición</th>
-            <th className="py-1 font-semibold">Aceptadas</th>
-            <th className="py-1 font-semibold">Rechazadas</th>
-          </tr>
-        </thead>
-        <tbody>
-          {PARTICIONES.map((p) => (
-            <tr key={p} className="border-t border-borde/60">
-              <td className="py-1 text-texto">{NOMBRE_PARTICION[p]}</td>
-              <td className="py-1 font-mono text-texto">{conjunto[p].acepta}</td>
-              <td className="py-1 font-mono text-texto">{conjunto[p].rechaza}</td>
+      <TablaDesplazable etiqueta={`Conjunto etiquetado de «${calibracion.nombre}»`}>
+        <table className="w-full border-collapse text-left text-sm">
+          <caption className="sr-only">Conjunto etiquetado por partición y etiqueta</caption>
+          <thead className="text-texto-suave">
+            <tr>
+              <th className="py-1 font-semibold">Partición</th>
+              <th className="py-1 font-semibold">Aceptadas</th>
+              <th className="py-1 font-semibold">Rechazadas</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {PARTICIONES.map((p) => (
+              <tr key={p} className="border-t border-borde/60">
+                <td className="py-1 text-texto">{NOMBRE_PARTICION[p]}</td>
+                <td className="py-1 font-mono text-texto">{conjunto[p].acepta}</td>
+                <td className="py-1 font-mono text-texto">{conjunto[p].rechaza}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </TablaDesplazable>
 
       {ultima === null ? (
         <p className="text-sm text-texto-suave">Todavía no se ha calibrado esta pregunta.</p>

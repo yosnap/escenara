@@ -6,7 +6,7 @@ import { EnlaceApp } from "./enlace-app";
 
 /**
  * Cabecera de la aplicación para usuarios con sesión: proyectos, crear, personajes, productos, lugares, biblioteca,
- * cuenta y, si procede, admin.
+ * comparar, cuenta y, si procede, admin.
  *
  * **La navegación va en su propia fila**, igual que en el admin y por el mismo motivo: con «Proyectos» (0.17.0)
  * la tira de píldoras dejó de caber incluso a 1920 px y empujaba el selector de tema y «Cerrar sesión» a otra
@@ -47,6 +47,9 @@ export function CabeceraApp({ sesion }: { sesion: Sesion }) {
             </li>
             <li className="shrink-0">
               <EnlaceApp href="/biblioteca">Biblioteca</EnlaceApp>
+            </li>
+            <li className="shrink-0">
+              <EnlaceApp href="/comparar">Comparar</EnlaceApp>
             </li>
             <li className="shrink-0">
               <EnlaceApp href="/cuenta">Cuenta</EnlaceApp>
