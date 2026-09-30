@@ -134,7 +134,7 @@ export function SelectorProducto({
         </div>
       )}
 
-      {elegido && <AvisoFotoDeProducto foto={fotoDeProducto} referencias={elegido.referencias} />}
+      {elegido && <AvisoFotoDeProducto foto={fotoDeProducto} referencias={elegido.fotosVigentes} />}
 
       {elegido?.tipo === "digital" && <PasosDelProductoDigital />}
 

@@ -39,7 +39,7 @@ const rutaTrabajos = await import("@/app/api/generacion/trabajos/route");
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
-const { generationJobs, media, presets, scenes } = await import("../db/esquema");
+const { generationJobs, media, presets, projects, scenes } = await import("../db/esquema");
 const { guardarCredencial } = await import("../boveda/credenciales");
 const { crearMedio } = await import("../media/servicio");
 const { avanzarEnviados, enviarEncolados } = await import("../cola/pasada");
@@ -47,8 +47,11 @@ const { estimar, olvidarSaldos } = await import("../generacion/estimacion");
 const { crearProyecto } = await import("../asistente/proyectos");
 const { crearEscena, editarEscena } = await import("../asistente/escenas");
 const { detalleProyecto } = await import("../asistente/plan");
-const { modelosConFotoDeProducto, modelosParaCrearConFoto } = await import("./modelos-sugeridos");
-const { obtenerProducto } = await import("./consulta");
+const { evaluarControles } = await import("../controles/consulta");
+const { eleccionOmni } = await import("../omni/registro");
+const { admiteFotoDeProducto, modelosConFotoDeProducto, modelosParaCrearConFoto } = await import("./modelos-sugeridos");
+const { listarProductos, obtenerProducto } = await import("./consulta");
+const { enviarAPapelera } = await import("../media/servicio");
 const { leerObjeto } = await import("../almacenamiento");
 
 type ProductoVista = import("@/lib/productos").ProductoVista;
@@ -390,6 +393,17 @@ describe.skipIf(!hayBaseDeDatos)("productos con sus fotos, su elección y su bor
       expect(foto?.alternativas).toEqual(foto?.admite ? [] : conFoto);
     });
 
+    test("en un proyecto de escenas habladas con Omni, el aviso habla del modelo y del cupo de Omni", async () => {
+      const { proyecto } = await crearProyecto(actorAna, { titulo: "Habladas", formato: "reel_vertical" });
+      await crearEscena(actorAna, proyecto.id, { texto: "Presenta el producto." });
+      await db().update(projects).set({ voiceMode: "omni" }).where(eq(projects.id, proyecto.id));
+
+      const { modelo } = await eleccionOmni(ana.id);
+      const foto = (await detalleProyecto(actorAna, proyecto.id)).escenas[0]?.estimacion?.fotoDeProducto;
+      expect(foto?.modelo).toBe(modelo.nombre);
+      expect(foto?.admite).toBe(admiteFotoDeProducto(modelo));
+    });
+
     test("una acción sola, sin producto, no se guarda como si hubiera producto", async () => {
       const { proyecto } = await crearProyecto(actorAna, { titulo: "Sin producto", formato: "reel_vertical" });
       const escena = await crearEscena(actorAna, proyecto.id, { texto: "Habla a cámara." });
@@ -580,6 +594,42 @@ describe.skipIf(!hayBaseDeDatos)("productos con sus fotos, su elección y su bor
       expect(subidas).toBe(1);
       // Sin foto suya no se le promete ninguna: se le pide un envase sin marca en lugar de inventarse una.
       expect(prompt).toContain("no invented logo");
+    });
+
+    test("el control previo sugiere los modelos que sí llevan la foto, y con uno que la lleva no avisa", async () => {
+      const producto = await productoConDosFotos(`Control previo ${randomBytes(3).toString("hex")}`);
+      const imagen = await subirFoto(ana, "origen-control.png");
+      const evaluar = (modelo?: string) =>
+        evaluarControles(actorAna, {
+          tipo: "animacion",
+          medioId: imagen,
+          productoId: producto.id,
+          productoAccion: "ensenarlo-a-camara",
+          ...(modelo ? { modelo } : {}),
+        });
+
+      // Con el predeterminado (Veo, sin galería) avisa y dice cuáles sí la llevan: los mismos que el selector.
+      const conVeo = (await evaluar()).comprobaciones.find((c) => c.regla === "producto-sin-hueco-de-referencia");
+      expect(conVeo).toBeDefined();
+      expect(conVeo?.accion).not.toContain("no hay ningún otro modelo");
+      for (const nombre of await modelosConFotoDeProducto("image_to_video")) expect(conVeo?.accion).toContain(nombre);
+      expect(conVeo?.accion).toContain("MiniMax H3");
+
+      // Con un modelo de galería el aviso no sale.
+      const conOmni = await evaluar("gemini-omni-video");
+      expect(conOmni.comprobaciones.some((c) => c.regla === "producto-sin-hueco-de-referencia")).toBe(false);
+    });
+
+    test("las fotos en la papelera se cuentan aparte: solo las vigentes son las que se envían", async () => {
+      const producto = await productoConDosFotos(`Papelera ${randomBytes(3).toString("hex")}`);
+      const cuenta = async () => (await listarProductos(actorAna)).find((p) => p.id === producto.id);
+      expect(await cuenta()).toMatchObject({ referencias: 2, fotosVigentes: 2 });
+
+      const { fotos } = await obtenerProducto(actorAna, producto.id);
+      await enviarAPapelera(actorAna, fotos[0]?.medio.id ?? "");
+      expect(await cuenta()).toMatchObject({ referencias: 2, fotosVigentes: 1 });
+      await enviarAPapelera(actorAna, fotos[1]?.medio.id ?? "");
+      expect(await cuenta()).toMatchObject({ referencias: 2, fotosVigentes: 0 });
     });
 
     test("la acción y la regla de la etiqueta entran en el prompt, con la toma única la última", async () => {
