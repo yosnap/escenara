@@ -5,9 +5,9 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { loadEnvConfig } from "@next/env";
 import type { ClipsDelProyecto } from "@/lib/audio-del-clip";
-import type { EstadoConversion, ProyectoConvertido } from "@/lib/conversion";
+import type { EstadoConversion } from "@/lib/conversion";
 import type { MontajeVista } from "@/lib/montaje";
-import { copia, ffmpeg, fotoDeReferencia } from "./medios-de-prueba";
+import { ffmpeg } from "./medios-de-prueba";
 
 /**
  * **De «Crear» a un proyecto** (0.35.0) contra el PostgreSQL y el SeaweedFS locales y contra FFmpeg de verdad.
@@ -44,8 +44,6 @@ const rutaAudio = await import("@/app/api/escenas/[id]/audio-del-clip/route");
 const rutaProyecto = await import("@/app/api/proyectos/[id]/route");
 const rutaMontaje = await import("@/app/api/proyectos/[id]/montaje/route");
 const rutaExportar = await import("@/app/api/proyectos/[id]/montaje/exportacion/route");
-const rutaPersonajes = await import("@/app/api/personajes/route");
-const rutaReferencias = await import("@/app/api/personajes/[id]/referencias/route");
 const rutaConsentimiento = await import("@/app/api/personajes/[id]/consentimiento/route");
 const { exigirBaseDeDatosDePrueba } = await import("../db/bd-de-prueba");
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
@@ -58,7 +56,6 @@ const {
   media,
   montageExports,
   montages,
-  products,
   projects,
   promptTemplates,
   rateLimits,
@@ -72,26 +69,12 @@ const { leerObjeto } = await import("../almacenamiento");
 const { pasadaDeExportaciones } = await import("../montaje/cola");
 const { comprometidoDelProyecto, exigirTopeDelProyecto } = await import("../asistente/plan");
 const { estadoDeProduccion } = await import("../produccion/consulta");
-const { listarModelos } = await import("../proveedores/catalogo");
-const { adaptadorKie } = await import("../proveedores/kie/adaptador");
-const { entradaGuardada } = await import("../generacion/servicio");
 const { exportarSubtitulos, transcribirEscena } = await import("../voz/subtitulos");
 const { PROYECTOS_MAXIMOS } = await import("../asistente/proyectos");
+const { crearAyudas, ctx, pedir } = await import("./conversion.arnes");
 
 type Sesion = Awaited<ReturnType<typeof crearSesionDePrueba>>;
 type Actor = import("../media/servicio").Actor;
-
-const ctx = (id: string) => ({ params: Promise.resolve({ id }) });
-
-const pedir = (s: Sesion, url: string, metodo = "GET", cuerpo?: unknown) =>
-  new Request(`http://localhost${url}`, {
-    method: metodo,
-    headers: {
-      cookie: s.cookie,
-      ...(metodo === "GET" ? {} : { origin: "http://localhost", "Content-Type": "application/json" }),
-    },
-    ...(cuerpo === undefined ? {} : { body: JSON.stringify(cuerpo) }),
-  });
 
 const mensajeDe = (datos: unknown) => (datos as { error?: string }).error ?? "";
 
@@ -133,173 +116,12 @@ describe.skipIf(!hayBaseDeDatos)("convertir un clip de Crear en un proyecto", ()
 
   // ── Preparación ──────────────────────────────────────────────────────────────────────────────────────────
 
-  async function personajeConConsentimiento(): Promise<string> {
-    const creado = await rutaPersonajes.POST(
-      pedir(ana, "/api/personajes", "POST", { nombre: "Lucía", tipo: "persona" }),
-      undefined,
-    );
-    expect(creado.status).toBe(201);
-    const { id } = (await creado.json()) as { id: string };
-    const referencias = await Promise.all(
-      Array.from({ length: 3 }, async (_, i) => ({
-        medioId: (
-          await crearMedio(actor, new File([await fotoDeReferencia()], `lucia-${i}.png`, { type: "image/png" }))
-        ).id,
-      })),
-    );
-    const subidas = await rutaReferencias.POST(
-      pedir(ana, `/api/personajes/${id}/referencias`, "POST", { referencias }),
-      ctx(id),
-    );
-    expect(subidas.status).toBe(200);
-    const registro = await rutaConsentimiento.POST(
-      pedir(ana, `/api/personajes/${id}/consentimiento`, "POST", {
-        titular: "yo",
-        mayoriaDeEdad: true,
-        alcance: "personal",
-      }),
-      ctx(id),
-    );
-    expect(registro.status).toBe(200);
-    return id;
-  }
-
-  /** Vídeo vertical de `segundos` con un tono de 440 Hz (o sin audio). Se fabrica aquí y no sale de la máquina. */
-  async function medioDeVideo(nombre: string, segundos: number, conAudio = true): Promise<string> {
-    const ruta = path.join(carpeta, `${nombre}-${crypto.randomUUID()}.mp4`);
-    const { ok } = await ffmpeg([
-      "-loglevel",
-      "error",
-      "-y",
-      "-f",
-      "lavfi",
-      "-i",
-      `color=c=black:s=720x1280:d=${segundos}:r=25`,
-      ...(conAudio ? ["-f", "lavfi", "-i", `sine=frequency=440:duration=${segundos}`] : []),
-      "-c:v",
-      "libx264",
-      "-pix_fmt",
-      "yuv420p",
-      ...(conAudio ? ["-c:a", "aac", "-shortest"] : []),
-      "-t",
-      String(segundos),
-      ruta,
-    ]);
-    if (!ok) throw new Error("No se ha podido fabricar el clip de prueba con FFmpeg.");
-    const archivo = new File([copia(new Uint8Array(await Bun.file(ruta).arrayBuffer()))], `${nombre}.mp4`, {
-      type: "video/mp4",
-    });
-    return (await crearMedio(actor, archivo, { duracion: segundos }, ["video"])).id;
-  }
-
-  /** Audio de voz aparte: un tono de 880 Hz. Es lo que sería la pista de voz generada de la escena. */
-  async function medioDeVoz(segundos: number): Promise<string> {
-    const ruta = path.join(carpeta, `voz-${crypto.randomUUID()}.mp3`);
-    const { ok } = await ffmpeg([
-      "-loglevel",
-      "error",
-      "-y",
-      "-f",
-      "lavfi",
-      "-i",
-      `sine=frequency=880:duration=${segundos}`,
-      ruta,
-    ]);
-    if (!ok) throw new Error("No se ha podido fabricar la voz de prueba con FFmpeg.");
-    const archivo = new File([copia(new Uint8Array(await Bun.file(ruta).arrayBuffer()))], "voz.mp3", {
-      type: "audio/mpeg",
-    });
-    return (await crearMedio(actor, archivo, { duracion: segundos }, ["audio"])).id;
-  }
-
-  /**
-   * Un clip de «Crear» ya terminado y pagado: su trabajo, su archivo, su imagen de partida y su apunte de consumo.
-   * Es lo que deja el camino rápido de «Crear» al cerrar un clip (`scene_id` a nulo).
-   *
-   * La entrada se compone con **las mismas funciones** que usa `crearAnimacion`: `montarEntrada` del adaptador de
-   * KIE con el modelo sembrado y `entradaGuardada`, que es la que mete la duración en `parametros.segundos`. Así el
-   * test lee la forma que la aplicación escribe de verdad, no una inventada.
-   */
-  async function clipDeCrear(
-    parcial: Partial<typeof generationJobs.$inferInsert> = {},
-    entradaExtra: Record<string, unknown> = {},
-    segundos: number | null = 4,
-  ) {
-    const imagen = await crearMedio(actor, new File([await fotoDeReferencia()], "partida.png", { type: "image/png" }));
-    const resultMediaId = await medioDeVideo("clip", 2);
-    const modelo = (await listarModelos()).find((m) => m.modelo === "veo3_fast");
-    if (!modelo) throw new Error("El catálogo de prueba no tiene sembrado veo3_fast.");
-    const dialogo = "Esto me ha cambiado las mañanas.";
-    const parametros = adaptadorKie.montarEntrada(modelo, {
-      escena: "composed prompt",
-      dialogo,
-      urls: [],
-      ...(segundos === null ? {} : { segundos }),
-    });
-    const guardada = entradaGuardada(adaptadorKie, "composed prompt", [imagen.id], {
-      ...parametros,
-      ...(segundos === null ? {} : { segundos }),
-    });
-    if (segundos === null) delete (guardada.parametros as { segundos?: unknown }).segundos;
-    const entrada = {
-      ...guardada,
-      unidadPrecio: "vídeo de 8 s",
-      dialogo,
-      escena: "Lucía abre el bote en la cocina",
-      direccionElegida: {
-        formatoClip: "ugc_a_camara",
-        plano: "primer-plano",
-        angulo: "",
-        camara: "",
-        microaccion: "sonreir",
-        momentoMicroaccion: "despues",
-        direccionVocal: "cercano",
-        optica: "",
-        luz: "",
-        localizacion: "",
-        registroEstetico: "influencer",
-        instruccionesExtra: "",
-        modoExperto: false,
-        descripcionExperta: "",
-        acento: "es_MX_cdmx",
-      },
-      ...entradaExtra,
-    };
-    const [trabajo] = await db()
-      .insert(generationJobs)
-      .values({
-        userId: ana.id,
-        kind: "animacion",
-        provider: "kie",
-        model: "veo3_fast",
-        prompt: "composed prompt",
-        idempotencyKey: crypto.randomUUID(),
-        state: "listo",
-        stage: "listo",
-        input: entrada,
-        sourceMediaId: imagen.id,
-        resultMediaId,
-        characterId: personajeId,
-        rightsConfirmedAt: new Date(),
-        referencesReviewedAt: new Date(),
-        estimatedCredits: 60,
-        consumedCredits: 60,
-        finishedAt: new Date(),
-        ...parcial,
-      })
-      .returning();
-    if (!trabajo) throw new Error("No se ha podido escribir el clip de prueba.");
-    await db().insert(usageLedger).values({
-      userId: ana.id,
-      jobId: trabajo.id,
-      provider: "kie",
-      model: "veo3_fast",
-      entryType: "consumo",
-      credits: 60,
-      informed: true,
-    });
-    return trabajo;
-  }
+  const { personajeConConsentimiento, medioDeVoz, clipDeCrear, convertir, escenaDe } = crearAyudas(() => ({
+    ana,
+    actor,
+    carpeta,
+    personajeId,
+  }));
 
   const estado = async (trabajoId: string, sesion = ana) => {
     const respuesta = await rutaConvertir.GET(
@@ -307,14 +129,6 @@ describe.skipIf(!hayBaseDeDatos)("convertir un clip de Crear en un proyecto", ()
       ctx(trabajoId),
     );
     return { codigo: respuesta.status, datos: (await respuesta.json()) as EstadoConversion };
-  };
-
-  const convertir = async (trabajoId: string, sesion = ana) => {
-    const respuesta = await rutaConvertir.POST(
-      pedir(sesion, `/api/generacion/trabajos/${trabajoId}/proyecto`, "POST", {}),
-      ctx(trabajoId),
-    );
-    return { codigo: respuesta.status, datos: (await respuesta.json()) as ProyectoConvertido };
   };
 
   const quitarAudio = async (escenaId: string, quitado: unknown, sesion = ana) => {
@@ -326,12 +140,6 @@ describe.skipIf(!hayBaseDeDatos)("convertir un clip de Crear en un proyecto", ()
   };
 
   const apuntesDeAna = async () => (await db().select().from(usageLedger).where(eq(usageLedger.userId, ana.id))).length;
-
-  const escenaDe = async (proyectoId: string) => {
-    const [escena] = await db().select().from(scenes).where(eq(scenes.projectId, proyectoId));
-    if (!escena) throw new Error("El proyecto convertido no tiene escena.");
-    return escena;
-  };
 
   /**
    * Monta el proyecto con el worker y devuelve el volumen medio del MP4, en dB (`-inf` = silencio). Con `banda`, mide
@@ -590,64 +398,6 @@ describe.skipIf(!hayBaseDeDatos)("convertir un clip de Crear en un proyecto", ()
       await db().delete(generationJobs).where(eq(generationJobs.userId, ana.id));
       await db().delete(promptTemplates).where(eq(promptTemplates.id, trend.id));
     }
-  });
-
-  test("con producto: la escena hereda el producto y su acción, y sin declaración de marca no se convierte", async () => {
-    const [producto] = await db().insert(products).values({ ownerId: ana.id, name: "Champú de verano" }).returning();
-    if (!producto) throw new Error("No se ha podido crear el producto de prueba.");
-    const conMarca = await clipDeCrear({
-      productId: producto.id,
-      productAction: "sostener",
-      brandRightsAt: new Date(),
-    });
-    const { datos } = await convertir(conMarca.id);
-    const escena = await escenaDe(datos.proyectoId);
-    expect(escena.productId).toBe(producto.id);
-    expect(escena.productAction).toBe("sostener");
-
-    const sinMarca = await clipDeCrear({ productId: producto.id, productAction: "sostener", brandRightsAt: null });
-    const rechazo = await convertir(sinMarca.id);
-    expect(rechazo.codigo).toBe(409);
-    expect(mensajeDe(rechazo.datos)).toContain("derecho a usar la marca");
-    await db().delete(products).where(eq(products.id, producto.id));
-  });
-
-  test("con producto: la escena hereda las fotos con las que se pagó el clip, solo las vigentes", async () => {
-    const { productReferences } = await import("../db/esquema-productos");
-    const [producto] = await db().insert(products).values({ ownerId: ana.id, name: "Bote con fotos" }).returning();
-    if (!producto) throw new Error("No se ha podido crear el producto de prueba.");
-    const fotos = await Promise.all(
-      ["etiqueta", "envase", "suelto"].map(async (papel, i) => {
-        const medio = await crearMedio(
-          actor,
-          new File([await fotoDeReferencia()], `${papel}.png`, { type: "image/png" }),
-        );
-        await db()
-          .insert(productReferences)
-          .values({ productId: producto.id, mediaId: medio.id, kind: papel as "etiqueta", sortOrder: i });
-        return medio.id;
-      }),
-    );
-    const enviadas = { referenciasProducto: [fotos[0], fotos[1]] };
-    const datosDelClip = { productId: producto.id, productAction: "sostener", brandRightsAt: new Date() };
-    // Una de las dos fotos enviadas se borra antes de convertir: la escena solo se queda con la que sigue.
-    await db()
-      .update(media)
-      .set({ deletedAt: new Date() })
-      .where(eq(media.id, fotos[1] as string));
-    const clip = await clipDeCrear(datosDelClip, enviadas);
-    const { datos } = await convertir(clip.id);
-    expect((await escenaDe(datos.proyectoId)).productPhotoIds).toEqual([fotos[0] as string]);
-
-    // Si ya no queda ninguna vigente, vacío: las de por defecto.
-    await db()
-      .update(media)
-      .set({ deletedAt: new Date() })
-      .where(eq(media.id, fotos[0] as string));
-    const otro = await clipDeCrear(datosDelClip, enviadas);
-    const { datos: otros } = await convertir(otro.id);
-    expect((await escenaDe(otros.proyectoId)).productPhotoIds).toEqual([]);
-    await db().delete(products).where(eq(products.id, producto.id));
   });
 
   test("quitar el audio del clip sube la versión del montaje y el MP4 sale sin él", async () => {

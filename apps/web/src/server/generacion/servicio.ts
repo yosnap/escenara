@@ -28,7 +28,6 @@ import {
   type OpcionDeGeneracion,
 } from "../mapa/generacion";
 import type { Actor } from "../media/servicio";
-import { referenciasVigentesDe } from "../personajes/consulta";
 import {
   contextoDeVersion,
   contextoParaGenerar,

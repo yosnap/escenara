@@ -1,10 +1,9 @@
-import { eq } from "drizzle-orm";
 import type { ModeloVista } from "@/lib/catalogo";
 import type { HechosProducto } from "../controles/contrato";
-import { db } from "../db/cliente";
-import { type FilaPersonaje, media } from "../db/esquema";
+import type { FilaPersonaje } from "../db/esquema";
 import { conHojaDeIdentidad } from "../direccion/hoja-identidad";
 import { referenciasVigentesDe } from "../personajes/consulta";
+import { hojaQueViaja } from "../personajes/puede-generar";
 import type { Adaptador } from "../proveedores/contrato";
 import { hechosDelProducto, type ProductoParaGenerar } from "./prompt";
 import type { RepartoDeReferencias } from "./referencias";
@@ -38,16 +37,6 @@ export const cupoDeGaleria = (adaptador: Adaptador, modelo: ModeloVista): number
   adaptador.referenciasDeGaleria?.(modelo) ?? modelo.parametros.maximoReferencias;
 
 /**
- * Si de verdad viaja la hoja 3×3 en lugar de las fotos sueltas: el personaje la tiene, no es animado y su archivo
- * sigue ahí. Es la misma condición con la que `referenciasParaGenerar` elige qué se envía.
- */
-async function laHojaViaja(personaje: FilaPersonaje, conHoja: boolean): Promise<boolean> {
-  if (!conHoja || personaje.renderStyle === "animado" || !personaje.identitySheetMediaId) return false;
-  const [hoja] = await db().select().from(media).where(eq(media.id, personaje.identitySheetMediaId)).limit(1);
-  return hoja !== undefined && hoja.deletedAt === null;
-}
-
-/**
  * Si la hoja 3×3 sustituirá a las fotos sueltas en este envío. Sin `asunto` (la consulta no conoce la clave del
  * envío) solo se puede saber cuando la hoja es la de por defecto: la del experimento depende de esa clave.
  */
@@ -60,7 +49,7 @@ export async function fotosDelPersonajeEnElEnvio(envio: EnvioConProducto): Promi
   if (envio.tipo === "fotograma" && envio.sinReferencia) return 0;
   if (!envio.personaje) return 1;
   // Con la hoja solo viaja la hoja: contar las fotos sueltas dejaría huecos vacíos y avisaría de lo que no pasa.
-  if (await laHojaViaja(envio.personaje, envio.conHoja)) return 1;
+  if (await hojaQueViaja(envio.personaje, envio.conHoja)) return 1;
   return (await referenciasVigentesDe(envio.personaje.id)).length;
 }
 

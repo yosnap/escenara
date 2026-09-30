@@ -93,6 +93,17 @@ export async function personajePropio(actor: Actor, personajeId: unknown): Promi
 }
 
 /**
+ * La hoja 3×3 si **de verdad** sustituye a las fotos sueltas en este envío: se ha pedido, el personaje no es animado,
+ * tiene hoja y su archivo sigue fuera de la papelera. Es la única definición: la usan el envío y el reparto que
+ * avisa antes de pagar, para que no cuenten fotos que no viajan.
+ */
+export async function hojaQueViaja(personaje: FilaPersonaje, conHoja: boolean): Promise<FilaMedio | null> {
+  if (!conHoja || personaje.renderStyle === "animado" || !personaje.identitySheetMediaId) return null;
+  const [hoja] = await db().select().from(media).where(eq(media.id, personaje.identitySheetMediaId)).limit(1);
+  return hoja && hoja.deletedAt === null ? hoja : null;
+}
+
+/**
  * Referencias, versión y contexto con los que se va a generar: las mejores por cobertura de vistas,
  * recortadas a lo que admite el modelo.
  *
@@ -113,13 +124,11 @@ export async function referenciasParaGenerar(
    */
   conHoja = false,
 ): Promise<PersonajeParaGenerar> {
-  if (conHoja && personaje.renderStyle !== "animado" && personaje.identitySheetMediaId) {
-    const [hoja] = await db().select().from(media).where(eq(media.id, personaje.identitySheetMediaId)).limit(1);
-    if (hoja && hoja.deletedAt === null) {
-      const { version, contexto } = await contextoParaGenerar(personaje, maximoDelModelo);
-      // La hoja va **sola**: si fuera con las vistas sueltas, la comparación mediría las dos cosas a la vez.
-      return { personaje, referencias: [hoja], version, contexto, referenciaIdentidad: "hoja_3x3" };
-    }
+  const hoja = await hojaQueViaja(personaje, conHoja);
+  if (hoja) {
+    const { version, contexto } = await contextoParaGenerar(personaje, maximoDelModelo);
+    // La hoja va **sola**: si fuera con las vistas sueltas, la comparación mediría las dos cosas a la vez.
+    return { personaje, referencias: [hoja], version, contexto, referenciaIdentidad: "hoja_3x3" };
   }
   // Versión vigente, contexto y las mejores referencias por cobertura, recortadas al tope del modelo. Solo
   // entran las utilizables: una referencia en la papelera no se envía a ningún proveedor.

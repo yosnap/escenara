@@ -67,16 +67,20 @@ interface ClipLeido {
 }
 
 /**
- * Las fotos del producto con las que se pagó el clip, para que regenerarlo en el proyecto envíe **esas** y no las de
- * por defecto. Solo las que siguen vigentes: una que ya está en la papelera no se puede enviar. Sin ninguna
- * vigente, vacío, que es «las de por defecto».
+ * La **elección** de fotos del producto que hereda la escena. El trabajo guarda las fotos que viajaron, no si las
+ * eligió el usuario, así que se deduce: si son exactamente las que enviaría el servidor por defecto para ese clip
+ * (las primeras por prioridad), no hubo elección y la escena nace sin ella (`[]`), como cualquier escena. Si son
+ * otras, se copian. Solo cuentan las que siguen fuera de la papelera; sin ninguna vigente, `[]`.
  */
 async function fotosVigentesDelClip(fila: FilaTrabajo): Promise<string[]> {
   if (!fila.productId) return [];
   const enviadas = referenciasDeProductoDe(fila);
   if (enviadas.length === 0) return [];
-  const vigentes = await fotosVigentesDelProducto(fila.productId);
-  return vigentes.filter((id) => enviadas.includes(id));
+  const vigentes = await fotosVigentesDelProducto(fila.productId, fila.productAction);
+  const siguenVigentes = vigentes.filter((id) => enviadas.includes(id));
+  if (siguenVigentes.length === 0) return [];
+  const porDefecto = vigentes.slice(0, siguenVigentes.length);
+  return porDefecto.every((id) => siguenVigentes.includes(id)) ? [] : siguenVigentes;
 }
 
 /** Lo que el botón necesita saber de un clip antes de pulsarlo. Un clip ajeno responde 404. */

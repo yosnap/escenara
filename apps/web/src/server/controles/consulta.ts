@@ -110,7 +110,7 @@ export async function evaluarControles(
                 tipo: "fotograma",
                 personaje: personaje && peticion.personajeId && !peticion.retratoInventado ? personaje : null,
                 sinReferencia,
-                conHoja: personaje !== null && hojaEnElEnvio(personaje),
+                conHoja: personaje !== null && hojaEnElEnvio(personaje, peticion.escenaId ?? undefined),
               },
       })
     : null;

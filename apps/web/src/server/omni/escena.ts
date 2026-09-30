@@ -41,7 +41,6 @@ import {
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { exigirSelloVigente } from "../generacion/precios";
 import type { Actor } from "../media/servicio";
-import { referenciasVigentesDe } from "../personajes/consulta";
 import { contextoDeVersion, promptConContexto } from "../personajes/contexto";
 import { ultimaVersion } from "../personajes/ficha";
 import { personajePropio, referenciasParaGenerar } from "../personajes/puede-generar";
