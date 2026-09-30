@@ -8,16 +8,11 @@ import {
   INSTRUCCIONES_EXTRA_MAXIMAS,
 } from "@/lib/direccion";
 import { limpiarTextoDePrompt } from "@/lib/ficha-personaje";
-import {
-  ACCION_MAXIMA,
-  DIRECCION_VOCAL_MAXIMA,
-  ESCENAS_MAXIMAS,
-  motivoDeInvalidacion,
-  TEXTO_ESCENA_MAXIMO,
-} from "@/lib/proyectos";
+import { ACCION_MAXIMA, DIRECCION_VOCAL_MAXIMA, motivoDeInvalidacion, TEXTO_ESCENA_MAXIMO } from "@/lib/proyectos";
 import { motivoDuracionNoAdmitida } from "@/lib/trends";
 import { db, type Ejecutor } from "../db/cliente";
 import { claims, type FilaEscena, generationJobs, projects, scenes } from "../db/esquema";
+import { limitesDeProyecto } from "../limites-proyecto";
 import type { Actor } from "../media/servicio";
 import { leerProductoElegido, productoPropio } from "../productos/eleccion";
 import { ErrorProducto } from "../productos/errores";
@@ -257,6 +252,8 @@ export async function crearEscena(actor: Actor, proyectoId: unknown, datos: Dato
   const producto = await camposDeProducto(actor, datos);
   const trend = await camposDeTrend(actor, datos, proyecto.clipSeconds, proyecto.voiceMode);
   const campos = { ...camposLimpios(datos), ...producto, ...trend };
+  // El máximo de esta instalación (Admin › Ajustes, 0.41.0), siempre bajo el techo de 30 de esta versión.
+  const { escenasMaximas } = await limitesDeProyecto();
   if (campos.clipFormat === "cantar" && campos.templateId)
     throw new ErrorProyecto(
       409,
@@ -268,7 +265,7 @@ export async function crearEscena(actor: Actor, proyectoId: unknown, datos: Dato
       .from(scenes)
       .where(eq(scenes.projectId, proyecto.id));
     const orden = (ultimo ?? 0) + 1;
-    if (orden > ESCENAS_MAXIMAS) {
+    if (orden > escenasMaximas) {
       // Los proyectos que creó la migración pueden traer más escenas que el tope (una por trabajo antiguo). El
       // mensaje dice cuántas hay, en lugar de afirmar un máximo que ese proyecto ya se ha pasado.
       const [{ total } = { total: 0 }] = await tx
@@ -277,7 +274,7 @@ export async function crearEscena(actor: Actor, proyectoId: unknown, datos: Dato
         .where(eq(scenes.projectId, proyecto.id));
       throw new ErrorProyecto(
         409,
-        `Este proyecto ya tiene ${total} ${total === 1 ? "escena" : "escenas"} y el máximo son ${ESCENAS_MAXIMAS}. Borra alguna antes de añadir otra.`,
+        `Este proyecto ya tiene ${total} ${total === 1 ? "escena" : "escenas"} y el máximo de esta instalación son ${escenasMaximas}. Borra alguna antes de añadir otra.`,
       );
     }
     const [escena] = await tx
@@ -439,7 +436,8 @@ export async function sustituirEscenas(
     await tx.delete(scenes).where(eq(scenes.projectId, proyectoId));
   }
   let orden = 0;
-  for (const propuesta of propuestas.slice(0, ESCENAS_MAXIMAS)) {
+  const { escenasMaximas } = await limitesDeProyecto();
+  for (const propuesta of propuestas.slice(0, escenasMaximas)) {
     orden++;
     const [escena] = await tx
       .insert(scenes)

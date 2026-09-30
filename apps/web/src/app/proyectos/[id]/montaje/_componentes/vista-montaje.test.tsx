@@ -53,7 +53,9 @@ const exportacion = (parcial: Partial<ExportacionVista> = {}): ExportacionVista 
 const montaje = (parcial: Partial<MontajeVista> = {}): MontajeVista => ({
   proyectoId: "proyecto-1",
   version: 3,
-  formato: "vertical_9_16",
+  formatos: ["vertical_9_16"],
+  encuadres: {},
+  segundosMaximos: 300,
   fragmentos: [{ escenaId: "escena-1", entrada: 0, salida: 8 }],
   volumenVoz: 1,
   volumenMusica: 0.4,
@@ -208,5 +210,52 @@ describe("una escena con el audio del clip quitado", () => {
 
   test("con el audio puesto no se dice nada", () => {
     expect(pintar()).not.toContain("Sin el audio del clip");
+  });
+});
+
+describe("formatos y encuadre", () => {
+  const clipVertical = {
+    id: "m1",
+    tipo: "video",
+    url: "https://s3.local/clip.mp4",
+    ancho: 720,
+    alto: 1280,
+  } as unknown as NonNullable<EscenaMontableVista["medioClip"]>;
+
+  test("un proyecto solo vertical ofrece añadir los demás formatos, con su plataforma y sin coste", () => {
+    const html = pintar();
+    expect(html).toContain("Formatos y encuadre");
+    expect(html).toContain("Instagram feed y carrusel (4:5)");
+    expect(html).toContain("YouTube · horizontal (16:9)");
+    expect(html).toContain("no se vuelven a");
+    expect(html).toContain("Principal");
+  });
+
+  test("con varios formatos, el panel deja elegir en cuál sale el MP4 y el botón lo dice", () => {
+    const html = pintar({ formatos: ["vertical_9_16", "horizontal_16_9"] });
+    expect(html).toContain("Formato de este MP4");
+    expect(html).toContain("Sale de los mismos clips con reencuadre: no se regenera nada.");
+    expect(html).toContain("Montar y exportar el MP4 en 9:16 · Reels");
+  });
+
+  test("un recorte que deja fuera más de la mitad del plano se avisa antes de exportar", () => {
+    const html = renderToStaticMarkup(
+      <PanelExportacion
+        montaje={montaje({
+          formatos: ["horizontal_16_9", "vertical_9_16"],
+          escenas: [escena({ medioClip: clipVertical })],
+        })}
+        onExportar={() => {}}
+      />,
+    );
+    expect(html).toContain("En 16:9 · YouTube, un fragmento pierde más de la mitad del plano");
+    expect(html).toContain("Entero, con bandas");
+  });
+
+  test("un clip vertical en su formato no avisa de nada: se ve entero", () => {
+    const html = renderToStaticMarkup(
+      <PanelExportacion montaje={montaje({ escenas: [escena({ medioClip: clipVertical })] })} onExportar={() => {}} />,
+    );
+    expect(html).not.toContain("pierde más de la mitad del plano");
   });
 });

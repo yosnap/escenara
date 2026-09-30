@@ -12,7 +12,7 @@ import { moverEnLista } from "@/lib/lista-ordenable";
 import { efectosDelOrden, ordenAplicable } from "@/lib/orden-escenas";
 import type { PersonajeElegible } from "@/lib/personajes";
 import type { TrendPublico } from "@/lib/presets";
-import { ESCENAS_MAXIMAS, type ProyectoDetalle } from "@/lib/proyectos";
+import type { ProyectoDetalle } from "@/lib/proyectos";
 import { anadirEscena, catalogoDeDireccion, reordenarEscenas } from "../../_componentes/api-proyectos";
 import { EditorEscena } from "./editor-escena";
 
@@ -63,6 +63,8 @@ export function ListaEscenas({
     };
   }, []);
   const { proyecto } = detalle;
+  // El máximo de esta instalación (Admin › Ajustes): el servidor rechaza igual una escena de más, con su motivo.
+  const escenasMaximas = detalle.limites.escenasMaximas;
   /** Orden soltado y todavía sin guardar. Solo cuenta mientras siga siendo una permutación de las escenas. */
   const [pendiente, setPendiente] = useState<string[] | null>(ordenPendienteInicial);
   const actuales = detalle.escenas;
@@ -208,14 +210,14 @@ export function ListaEscenas({
           <div className="flex flex-wrap items-center gap-3">
             <Boton
               variante="secundario"
-              disabled={ocupado || ordenPendiente !== null || escenas.length >= ESCENAS_MAXIMAS}
+              disabled={ocupado || ordenPendiente !== null || escenas.length >= escenasMaximas}
               onClick={() => void ejecutar(() => anadirEscena(proyecto.id, {}))}
             >
               <Plus className="size-5" aria-hidden /> Añadir escena
             </Boton>
-            {escenas.length >= ESCENAS_MAXIMAS && (
+            {escenas.length >= escenasMaximas && (
               <span className="text-sm text-texto-suave">
-                Has llegado al máximo de {ESCENAS_MAXIMAS} escenas por proyecto.
+                Has llegado al máximo de {escenasMaximas} escenas por proyecto.
               </span>
             )}
           </div>

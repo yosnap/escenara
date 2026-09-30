@@ -1,3 +1,4 @@
+import type { EncuadresDelMontaje, FormatoMontaje } from "@/lib/formatos";
 import type { ExportacionVista, Fragmento, MontajeVista, PosicionEtiqueta } from "@/lib/montaje";
 import type { FormatoSubtitulos } from "@/lib/voz";
 
@@ -43,6 +44,8 @@ export interface GuardadoDeMontaje {
   formatoSubtitulos: FormatoSubtitulos;
   etiquetaVisible: boolean;
   etiquetaPosicion: PosicionEtiqueta;
+  /** Encuadres por formato y escena: cambian los píxeles del MP4, así que viajan con la línea de tiempo. */
+  encuadres: EncuadresDelMontaje;
   /** La que devolvió el servidor la última vez. Si otra pestaña se ha adelantado, responde 409 con su motivo. */
   version: number;
 }
@@ -55,11 +58,19 @@ export const guardarMontaje = (proyectoId: string, cambios: GuardadoDeMontaje) =
   pedir<MontajeVista>(ruta(proyectoId), "PUT", cambios);
 
 /**
- * Pide la exportación del montaje vigente. **No cuesta créditos.** Si ya había una de esta misma versión, el
- * servidor devuelve esa en lugar de montar otra vez, así que pedirla dos veces no duplica ningún fichero.
+ * Pide la exportación del montaje vigente en un formato. **No cuesta créditos** ni regenera ningún clip. Si ya había
+ * una de esta misma versión y formato, el servidor devuelve esa en lugar de montar otra vez, así que pedirla dos
+ * veces no duplica ningún fichero.
  */
-export const pedirExportacion = (proyectoId: string) =>
-  pedir<MontajeVista>(`${ruta(proyectoId)}/exportacion`, "POST", {});
+export const pedirExportacion = (proyectoId: string, formato: FormatoMontaje) =>
+  pedir<MontajeVista>(`${ruta(proyectoId)}/exportacion`, "POST", { formato });
+
+/**
+ * Cambia los formatos del proyecto (el primero es el principal). **No cuesta nada**: los formatos que no son el
+ * principal salen del mismo clip con reencuadre. Devuelve el montaje entero con la lista nueva.
+ */
+export const cambiarFormatos = (proyectoId: string, formatos: FormatoMontaje[]) =>
+  pedir<MontajeVista>(`${ruta(proyectoId)}/formatos`, "PUT", { formatos });
 
 /** Estado de una exportación mientras el worker monta: su etapa real, su progreso y, al final, el MP4. */
 export const consultarExportacion = (exportacionId: string) =>

@@ -1,5 +1,6 @@
 import type { EstadoControl, EvaluacionVista } from "./controles";
 import { type Acento, DIRECCION_ELEGIDA_VACIA, type DireccionElegida, type ReferenciaIdentidad } from "./direccion";
+import type { FormatoMontaje } from "./formatos";
 import type { FotoDeProductoDelClip } from "./foto-de-producto";
 import { formatearCreditos, formatearEuros } from "./generacion";
 import type { Medio } from "./media/tipos";
@@ -69,8 +70,12 @@ export const ESCENAS_SUGERIDAS: Record<FormatoProyecto, number> = {
 export const TITULO_MAXIMO = 80;
 export const IDEA_MAXIMA = 1200;
 export const CONCEPTO_MAXIMO = 900;
-/** Tope de escenas por proyecto: un plan más largo que esto no se revisa de verdad y cuesta un dinero serio. */
-export const ESCENAS_MAXIMAS = 24;
+/**
+ * **Techo** de escenas por proyecto (decisión del propietario, 0.41.0: 30). Quien administra puede bajarlo en
+ * Admin › Ajustes (`proyectoEscenasMaximas`), no subirlo: un plan más largo no se revisa de verdad y cuesta un
+ * dinero serio.
+ */
+export const ESCENAS_MAXIMAS = 30;
 
 /** Tope del presupuesto autorizado de un proyecto, en créditos. Un presupuesto sin techo no es un presupuesto. */
 export const PRESUPUESTO_MAXIMO = 100_000_000;
@@ -267,6 +272,8 @@ export interface ProyectoVista {
   presupuestoCreditos: number;
   /** Duración de los clips de este proyecto, en segundos. Es la que se le pide al modelo de vídeo. */
   segundosClip: number;
+  /** Formatos de salida (0.41.0). El primero es el principal: la proporción en la que se generan los clips. */
+  formatos: FormatoMontaje[];
   /**
    * Acento con el que hablan **todas** las escenas (0.25.0). Es del proyecto y no de la escena: si cada escena
    * pudiera elegirlo, el acento cambiaría de plano a plano.
@@ -304,6 +311,10 @@ export interface ProyectoDetalle {
   motivoAsistente: string;
   /** Lo que costaría pedirle el guion al asistente; `null` si no está disponible. */
   estimacionAsistente: EstimacionTexto | null;
+  /** Límites de esta instalación (Admin › Ajustes): escenas por proyecto y segundos de montaje. */
+  limites: { escenasMaximas: number; segundosMaximos: number };
+  /** Por formato, por qué no se puede generar en él con los modelos elegidos; `null` si se puede. */
+  formatosGenerables: Record<FormatoMontaje, string | null>;
 }
 
 /** Plan del proyecto: el desglose por escena, el total y si se puede aprobar. */

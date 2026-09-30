@@ -270,6 +270,8 @@ export const generationJobs = pgTable(
     index("generation_jobs_personaje_idx").on(t.characterId),
     // Índice del proyecto: la página de un proyecto busca los trabajos de sus escenas.
     index("generation_jobs_escena_idx").on(t.sceneId),
+    // Las versiones de una escena se leen por escena y de la más reciente a la más antigua (0.41.0).
+    index("generation_jobs_escena_fecha_idx").on(t.sceneId, t.createdAt),
     index("generation_jobs_producto_idx").on(t.productId),
   ],
 );

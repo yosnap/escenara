@@ -1,5 +1,6 @@
 import path from "node:path";
 import { and, eq, isNull } from "drizzle-orm";
+import { encuadreDe } from "@/lib/formatos";
 import { formatearTamano, LIMITE_BYTES } from "@/lib/media/reglas";
 import { duracionDeFragmento, duracionTotalDeFragmentos, type Fragmento } from "@/lib/montaje";
 import { db } from "../db/cliente";
@@ -15,7 +16,9 @@ import { resolucionDe } from "./puerta";
 import { listaDeConcatenacion, ordenDeIgualar, ordenDeMontar, type PistaDeMezcla } from "./render-ffmpeg";
 
 /**
- * **El render del montaje** (RF08, 0.32.0): de la línea de tiempo a un MP4 vertical en la biblioteca del usuario.
+ * **El render del montaje** (RF08, 0.32.0): de la línea de tiempo a un MP4 en la biblioteca del usuario, en el
+ * formato de la exportación (0.41.0: 9:16, 4:5, 1:1 o 16:9). Cada formato sale **del mismo clip** con su encuadre:
+ * reencuadrar no vuelve a generar nada ni llama a ningún proveedor.
  *
  * Lo hace el worker, no la petición del navegador: montar un vídeo tarda minutos y una petición HTTP colgada
  * durante minutos no es una barra de progreso, es un tiempo de espera agotado. El progreso que se ve son las
@@ -108,7 +111,8 @@ export async function renderizarExportacion(
   if (exportacion.labelApplied) await exigirEtiquetaDibujable();
 
   const progreso = new Progreso(exportacion.id);
-  const { ancho, alto } = resolucionDe(montaje);
+  const formato = exportacion.format;
+  const { ancho, alto } = resolucionDe(formato);
   const segundosTotales = duracionTotalDeFragmentos(montaje.fragments);
 
   return conCarpetaTemporal(async (carpeta) => {
@@ -134,6 +138,8 @@ export async function renderizarExportacion(
           salida,
           ancho,
           alto,
+          // El encuadre de **esta** escena en **este** formato, tal como se guardó con la versión del montaje.
+          encuadre: encuadreDe(montaje.framings, formato, preparado.escena.escena.id),
         }),
         MS_MAXIMO_IGUALAR,
         (segundos) => void progreso.avanzar(yaHechos + Math.min(segundos, duracion), segundosTotales),
@@ -167,6 +173,7 @@ export async function renderizarExportacion(
         segundos: segundosTotales,
         ancho,
         alto,
+        formato,
         salida,
       }),
       MS_MAXIMO_MONTAR,

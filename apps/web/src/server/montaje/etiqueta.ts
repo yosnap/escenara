@@ -1,6 +1,6 @@
+import { FORMATO_MONTAJE_POR_DEFECTO, type FormatoMontaje, ZONA_SEGURA_DE_FORMATO } from "@/lib/formatos";
 import type { PosicionEtiqueta } from "@/lib/montaje";
 import { TEXTO_ETIQUETA_SINTETICA } from "@/lib/montaje";
-import { ZONA_SEGURA } from "@/lib/voz";
 import { ErrorMontaje } from "./errores";
 import { ejecutar } from "./ffmpeg";
 
@@ -13,9 +13,9 @@ import { ejecutar } from "./ffmpeg";
  * - los subtítulos, que sí son texto del usuario, viajan **en un fichero** que lee el filtro `subtitles`. De la
  *   orden solo forma parte su ruta, que la componemos nosotros con un nombre fijo dentro de un temporal.
  *
- * Las dos posiciones respetan las **zonas seguras** de las plataformas verticales (`lib/voz.ts › ZONA_SEGURA`):
- * arriba lo tapa la interfaz de la app y abajo, los botones y el texto del pie. Una etiqueta que nadie ve no es
- * una etiqueta.
+ * Las dos posiciones respetan la **zona segura del formato** (`lib/formatos.ts › ZONA_SEGURA_DE_FORMATO`): arriba
+ * lo tapa la interfaz de la app y abajo, los botones y el texto del pie. Una etiqueta que nadie ve no es una
+ * etiqueta. El vertical 9:16 usa las mismas franjas de siempre.
  */
 
 /** Tamaño de la etiqueta en píxeles, para 1080 de ancho. Legible en un móvil sin comerse el plano. */
@@ -36,13 +36,21 @@ const PLAY_RES_Y = 288;
  */
 const PROHIBIDOS_EN_ETIQUETA = /[':\\%\n\r,;[\]]/;
 
-/** Filtro `drawtext` de la etiqueta. `alto` es el de la salida, para colocarla con la zona segura de verdad. */
-export function filtroDeEtiqueta(posicion: PosicionEtiqueta, alto: number): string {
+/**
+ * Filtro `drawtext` de la etiqueta. `alto` es el de la salida y `formato`, el que decide la zona segura: así la
+ * etiqueta cae dentro de lo que se ve en cada plataforma.
+ */
+export function filtroDeEtiqueta(
+  posicion: PosicionEtiqueta,
+  alto: number,
+  formato: FormatoMontaje = FORMATO_MONTAJE_POR_DEFECTO,
+): string {
   if (PROHIBIDOS_EN_ETIQUETA.test(TEXTO_ETIQUETA_SINTETICA)) {
     throw new ErrorMontaje(500, "El texto de la etiqueta de contenido sintético no es válido.");
   }
-  const margenArriba = Math.round((alto * ZONA_SEGURA.arribaPorCiento) / 100) + MARGEN_ETIQUETA;
-  const margenAbajo = Math.round((alto * ZONA_SEGURA.abajoPorCiento) / 100) + MARGEN_ETIQUETA;
+  const zona = ZONA_SEGURA_DE_FORMATO[formato];
+  const margenArriba = Math.round((alto * zona.arribaPorCiento) / 100) + MARGEN_ETIQUETA;
+  const margenAbajo = Math.round((alto * zona.abajoPorCiento) / 100) + MARGEN_ETIQUETA;
   const y = posicion === "arriba" ? `${margenArriba}` : `h-${margenAbajo}-text_h`;
   return [
     `drawtext=text='${TEXTO_ETIQUETA_SINTETICA}'`,
@@ -62,7 +70,7 @@ export function filtroDeEtiqueta(posicion: PosicionEtiqueta, alto: number): stri
  * interpreta `:`, `,` y `\`, así que una ruta con uno de esos caracteres se rechaza en lugar de escaparse a mano
  * (los temporales que componemos nosotros no los tienen nunca).
  */
-export function filtroDeSubtitulos(ruta: string): string {
+export function filtroDeSubtitulos(ruta: string, formato: FormatoMontaje = FORMATO_MONTAJE_POR_DEFECTO): string {
   if (!/^[A-Za-z0-9_./-]+$/.test(ruta)) {
     throw new ErrorMontaje(500, "La ruta del fichero de subtítulos temporal no es válida.");
   }
@@ -73,7 +81,7 @@ export function filtroDeSubtitulos(ruta: string): string {
    * píxel. En unidades del guion, el 22 % de 288 son 63, que sobre 1920 caen exactamente en los 422 px de la
    * zona segura de abajo (comprobado con un fotograma).
    */
-  const margen = Math.round((PLAY_RES_Y * ZONA_SEGURA.abajoPorCiento) / 100);
+  const margen = margenDeSubtitulos(formato);
   const estilo = [
     "FontSize=20",
     "PrimaryColour=&H00FFFFFF",
@@ -86,6 +94,13 @@ export function filtroDeSubtitulos(ruta: string): string {
   ].join(",");
   return `subtitles=filename=${ruta}:force_style='${estilo}'`;
 }
+
+/**
+ * Margen de abajo de los subtítulos quemados, en unidades del guion ASS, para un formato. Es la franja de abajo de
+ * su zona segura: en 9:16, 63 (lo de siempre); en 16:9, 40; en 1:1 y 4:5, 35.
+ */
+export const margenDeSubtitulos = (formato: FormatoMontaje): number =>
+  Math.round((PLAY_RES_Y * ZONA_SEGURA_DE_FORMATO[formato].abajoPorCiento) / 100);
 
 /**
  * ¿Puede esta máquina dibujar la etiqueta? `drawtext` necesita **libfreetype y una fuente instalada**, y un

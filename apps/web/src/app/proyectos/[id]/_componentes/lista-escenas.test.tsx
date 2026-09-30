@@ -18,6 +18,7 @@ const escena = (id: string, orden: number, estado: EscenaVista["estado"] = "borr
 const detalle = {
   proyecto: { id: "p1", acento: "coral" },
   escenas: [escena("a", 1), escena("b", 2, "aprobada"), escena("c", 3)],
+  limites: { escenasMaximas: 30, segundosMaximos: 300 },
 } as unknown as ProyectoDetalle;
 
 const pintar = (ordenPendienteInicial: string[] | null, d: ProyectoDetalle = detalle) =>
@@ -80,5 +81,16 @@ describe("lista de escenas con orden pendiente", () => {
     const tras = pintar(["c", "a", "b"], sinB);
     expect(tras).toContain("Orden sin guardar.");
     expect(tras.indexOf('data-escena="c"')).toBeLessThan(tras.indexOf('data-escena="a"'));
+  });
+});
+
+describe("el máximo de escenas de la instalación", () => {
+  test("con el máximo de Admin › Ajustes alcanzado, no ofrece añadir otra y dice cuál es", () => {
+    const html = pintar(null, { ...detalle, limites: { escenasMaximas: 3, segundosMaximos: 300 } });
+    expect(html).toMatch(/Has llegado al máximo de (<!-- -->)?3(<!-- -->)? escenas por proyecto\./);
+  });
+
+  test("por debajo del máximo no aparece el aviso", () => {
+    expect(pintar(null)).not.toContain("Has llegado al máximo");
   });
 });

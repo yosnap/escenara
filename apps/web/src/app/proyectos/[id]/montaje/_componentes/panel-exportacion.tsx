@@ -2,11 +2,21 @@
 
 import { Clapperboard } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { Boton } from "@/components/ui/button";
+import { GrupoOpciones } from "@/components/ui/choice";
 import { AvisoEstado } from "@/components/ui/feedback";
 import { DESCRIPCION_ESTADO_CONTROL, ETIQUETA_ESTADO_CONTROL, frenosSinSalida } from "@/lib/controles";
+import {
+  avisoDeRecorte,
+  ETIQUETA_FORMATO_MONTAJE,
+  encuadreDe,
+  type FormatoMontaje,
+  PESTANA_DE_FORMATO,
+  PLATAFORMA_DE_FORMATO,
+} from "@/lib/formatos";
 import { formatearSegundos } from "@/lib/media/reglas";
-import { ETIQUETA_FORMATO_MONTAJE, type ExportacionVista, type MontajeVista } from "@/lib/montaje";
+import type { ExportacionVista, MontajeVista } from "@/lib/montaje";
 import { exportacionTerminada } from "./almacen-exportacion";
 import { SeguimientoExportacion } from "./seguimiento-exportacion";
 
@@ -30,9 +40,27 @@ export function PanelExportacion({
   exportando?: boolean;
   /** Hay cambios sin guardar: lo que saldría es el montaje guardado, no lo que se ve. */
   sinGuardar?: boolean;
-  onExportar: () => void;
+  onExportar: (formato: FormatoMontaje) => void;
   onExportacionCambiada?: (exportacion: ExportacionVista) => void;
 }) {
+  const [elegido, setElegido] = useState<FormatoMontaje>(montaje.formatos[0] ?? "vertical_9_16");
+  // Si se quita del proyecto el formato elegido, se vuelve al principal en lugar de exportar uno que ya no está.
+  const formato = montaje.formatos.includes(elegido) ? elegido : (montaje.formatos[0] ?? "vertical_9_16");
+  const porId = new Map(montaje.escenas.map((e) => [e.escenaId, e]));
+  // Lo que se exporta es el montaje **guardado**, así que el aviso de recorte se calcula con sus encuadres.
+  const recortesFuertes = montaje.fragmentos.filter((f) => {
+    const clip = porId.get(f.escenaId)?.medioClip;
+    return (
+      avisoDeRecorte(
+        encuadreDe(montaje.encuadres, formato, f.escenaId),
+        {
+          ancho: clip?.ancho ?? null,
+          alto: clip?.alto ?? null,
+        },
+        formato,
+      ) !== null
+    );
+  }).length;
   const frenos = frenosSinSalida(montaje.controles);
   const puede = montaje.activo && frenos.length === 0 && !sinGuardar;
   const enMarcha = montaje.exportaciones.find((e) => !exportacionTerminada(e.estado)) ?? null;
@@ -59,7 +87,7 @@ export function PanelExportacion({
         <Dato termino="Duración">
           <span className="font-mono">{formatearSegundos(montaje.duracionTotal)}</span>
         </Dato>
-        <Dato termino="Formato">{ETIQUETA_FORMATO_MONTAJE[montaje.formato]}</Dato>
+        <Dato termino="Formato">{ETIQUETA_FORMATO_MONTAJE[formato]}</Dato>
         <Dato termino="Etiqueta de IA">
           {montaje.etiquetaVisible
             ? montaje.etiquetaObligatoria
@@ -112,15 +140,38 @@ export function PanelExportacion({
         />
       )}
 
+      {montaje.formatos.length > 1 && (
+        <GrupoOpciones
+          etiqueta="Formato de este MP4"
+          valor={formato}
+          onCambio={(v) => setElegido(v as FormatoMontaje)}
+          opciones={montaje.formatos.map((f) => ({
+            value: f,
+            etiqueta: PLATAFORMA_DE_FORMATO[f],
+            descripcion:
+              f === montaje.formatos[0]
+                ? `${ETIQUETA_FORMATO_MONTAJE[f]}. Es el formato en el que se generaron los clips.`
+                : `${ETIQUETA_FORMATO_MONTAJE[f]}. Sale de los mismos clips con reencuadre: no se regenera nada.`,
+          }))}
+        />
+      )}
+
+      {recortesFuertes > 0 && (
+        <AvisoEstado
+          estado="ajustes"
+          motivo={`En ${PESTANA_DE_FORMATO[formato]}, ${recortesFuertes === 1 ? "un fragmento pierde" : `${recortesFuertes} fragmentos pierden`} más de la mitad del plano con el recorte. Se puede exportar igual; si lo importante queda fuera, mueve su encuadre en «Formatos y encuadre» o elige «Entero, con bandas».`}
+        />
+      )}
+
       <Boton
         variante="chispa"
         className="self-start"
         icono={<Clapperboard className="size-5" aria-hidden />}
         disabled={!puede || enMarcha !== null}
         cargando={exportando}
-        onClick={onExportar}
+        onClick={() => onExportar(formato)}
       >
-        {enMarcha ? "Ya se está montando" : "Montar y exportar el MP4"}
+        {enMarcha ? "Ya se está montando" : `Montar y exportar el MP4 en ${PESTANA_DE_FORMATO[formato]}`}
       </Boton>
 
       {enMarcha && (
@@ -138,7 +189,8 @@ export function PanelExportacion({
             {enMarcha ? "Exportaciones anteriores" : "Exportaciones de este proyecto"}
           </h3>
           <p className="text-sm text-texto-suave">
-            Pedir dos veces el mismo montaje no crea dos ficheros: el servidor devuelve el que ya salió de esa versión.
+            Pedir dos veces el mismo montaje en el mismo formato no crea dos ficheros: el servidor devuelve el que ya
+            salió de esa versión.
           </p>
           {/* El mismo componente que la que está en marcha: una terminada no se sondea, pero sí sabe renovar su
               enlace de descarga, que es lo único que le hace falta a una exportación de hace un rato. */}

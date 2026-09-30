@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { type EncuadresDelMontaje, encuadreAutomatico, encuadreValido, mismoEncuadre } from "@/lib/formatos";
 import {
   erroresDeMontaje,
   esFormatoMontaje,
@@ -16,6 +17,7 @@ import { leerAjustes } from "../ajustes";
 import { proyectoPropio } from "../asistente/consulta";
 import { db } from "../db/cliente";
 import { type FilaMontaje, type FilaProyecto, montages } from "../db/esquema";
+import { limitesDeProyecto } from "../limites-proyecto";
 import type { Actor } from "../media/servicio";
 import { ErrorMontaje } from "./errores";
 import { escenasParaValidar, type MaterialDelProyecto, materialDelProyecto, montajeDeProyecto } from "./material";
@@ -45,6 +47,11 @@ export interface CambiosDeMontaje {
   formatoSubtitulos: FormatoSubtitulos;
   etiquetaVisible: boolean;
   etiquetaPosicion: PosicionEtiqueta;
+  /**
+   * Encuadres por formato y escena (0.41.0). `undefined` deja los guardados como están: quien guardaba sin ellos
+   * antes de esta versión no los borra por no mandarlos.
+   */
+  encuadres?: EncuadresDelMontaje;
   /**
    * Versión que el navegador creía vigente. Si no coincide con la guardada, se rechaza con 409: otra pestaña (o
    * la misma persona en otro ordenador) ha reordenado la línea de tiempo y pisarla sin avisar sería perder su
@@ -137,8 +144,11 @@ export async function guardarMontaje(
   const material = await materialDelProyecto(proyecto);
   const actual = (await montajeDeProyecto(proyecto.id)) ?? (await crearMontaje(proyecto, material));
 
-  const errores = erroresDeMontaje(cambios.fragmentos, escenasParaValidar(material));
+  const { segundosMaximos } = await limitesDeProyecto();
+  const errores = erroresDeMontaje(cambios.fragmentos, escenasParaValidar(material), segundosMaximos);
   if (errores.length > 0) throw new ErrorMontaje(400, errores.join(" "));
+  const encuadres =
+    cambios.encuadres === undefined ? actual.framings : encuadresDelProyecto(cambios.encuadres, material);
 
   // La etiqueta obligatoria se impone **aquí**, no en la pantalla: una petición que pida quitarla se rechaza en
   // lugar de guardarse a medias, para que el usuario sepa que no se ha hecho lo que pedía y por qué.
@@ -156,6 +166,7 @@ export async function guardarMontaje(
       subtitleFormat: cambios.formatoSubtitulos,
       labelVisible: true,
       labelPosition: cambios.etiquetaPosicion,
+      framings: encuadres,
       version: actual.version + 1,
       updatedAt: new Date(),
     })
@@ -168,6 +179,30 @@ export async function guardarMontaje(
     );
   }
   return { montaje: guardado, material };
+}
+
+/**
+ * Encuadres que se guardan: solo de escenas del proyecto, y sin los que coinciden con el automático (así «volver
+ * a automático» no deja una marca que diga lo mismo con otras palabras). Una escena ajena se rechaza diciendo cuál.
+ */
+function encuadresDelProyecto(encuadres: EncuadresDelMontaje, material: MaterialDelProyecto): EncuadresDelMontaje {
+  const propias = new Set(material.escenas.map((e) => e.escena.id));
+  const limpios: EncuadresDelMontaje = {};
+  for (const [formato, porEscena] of Object.entries(encuadres)) {
+    if (!esFormatoMontaje(formato)) continue;
+    const suyos: Record<string, NonNullable<EncuadresDelMontaje[typeof formato]>[string]> = {};
+    for (const [escenaId, encuadre] of Object.entries(porEscena ?? {})) {
+      if (!propias.has(escenaId)) {
+        throw new ErrorMontaje(
+          400,
+          "Hay un encuadre de una escena que no es de este proyecto. Vuelve a cargar el montaje.",
+        );
+      }
+      if (!mismoEncuadre(encuadre, encuadreAutomatico(formato))) suyos[escenaId] = encuadre;
+    }
+    if (Object.keys(suyos).length > 0) limpios[formato] = suyos;
+  }
+  return limpios;
 }
 
 // ── Lectura de la petición ──────────────────────────────────────────────────────────────────────────────────
@@ -209,8 +244,12 @@ export function leerCambiosDeMontaje(cuerpo: Record<string, unknown>): CambiosDe
     throw new ErrorMontaje(400, "La etiqueta va «arriba» o «abajo».");
   }
   if (cuerpo.formato !== undefined && !esFormatoMontaje(cuerpo.formato)) {
-    throw new ErrorMontaje(400, "Esta versión exporta solo en vertical 9:16.");
+    throw new ErrorMontaje(
+      400,
+      "Los formatos son «vertical_9_16», «vertical_4_5», «cuadrado_1_1» y «horizontal_16_9».",
+    );
   }
+  const encuadres = cuerpo.encuadres === undefined ? undefined : leerEncuadres(cuerpo.encuadres);
   if (typeof cuerpo.version !== "number" || !Number.isInteger(cuerpo.version) || cuerpo.version < 1) {
     throw new ErrorMontaje(400, "Falta la versión del montaje que estabas editando. Vuelve a cargar la pantalla.");
   }
@@ -222,6 +261,35 @@ export function leerCambiosDeMontaje(cuerpo: Record<string, unknown>): CambiosDe
     formatoSubtitulos: cuerpo.formatoSubtitulos,
     etiquetaVisible: cuerpo.etiquetaVisible,
     etiquetaPosicion: cuerpo.etiquetaPosicion,
+    ...(encuadres === undefined ? {} : { encuadres }),
     version: cuerpo.version,
   };
+}
+
+/** Tope de encuadres por petición: cuatro formatos por el techo de escenas de un proyecto, con holgura. */
+const ENCUADRES_MAXIMOS = 200;
+
+/** Lee los encuadres de la petición. Cada uno que no encaja se rechaza diciendo de qué formato es. */
+function leerEncuadres(crudo: unknown): EncuadresDelMontaje {
+  if (!esObjeto(crudo)) throw new ErrorMontaje(400, "Los encuadres van por formato y, dentro, por escena.");
+  const leidos: EncuadresDelMontaje = {};
+  let cuantos = 0;
+  for (const [formato, porEscena] of Object.entries(crudo)) {
+    if (!esFormatoMontaje(formato)) throw new ErrorMontaje(400, `«${formato.slice(0, 40)}» no es un formato.`);
+    if (!esObjeto(porEscena)) throw new ErrorMontaje(400, `Los encuadres de ${formato} van por escena.`);
+    const suyos: Record<string, NonNullable<ReturnType<typeof encuadreValido>>> = {};
+    for (const [escenaId, valor] of Object.entries(porEscena)) {
+      const encuadre = encuadreValido(valor);
+      if (!encuadre) {
+        throw new ErrorMontaje(
+          400,
+          `Un encuadre de ${formato} no es válido: «recorte» con x e y enteros de 0 a 100, o «bandas».`,
+        );
+      }
+      if (++cuantos > ENCUADRES_MAXIMOS) throw new ErrorMontaje(400, "Demasiados encuadres en una sola petición.");
+      suyos[escenaId] = encuadre;
+    }
+    leidos[formato] = suyos;
+  }
+  return leidos;
 }

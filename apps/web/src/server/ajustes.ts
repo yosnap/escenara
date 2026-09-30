@@ -270,6 +270,9 @@ export interface Ajustes {
    * mensaje de instalación y no ofrece exportar.
    */
   montajeActivo: boolean;
+  /** Escenas y segundos de montaje por proyecto, bajo el techo de la versión (`limites-proyecto.ts`, 0.41.0). */
+  proyectoEscenasMaximas: number;
+  proyectoSegundosMaximos: number;
   /**
    * Orden del transcriptor local, que es el que saca los subtítulos del audio (decisión provisional del
    * propietario, 2026-09-28: **local, sin coste y sin clave**). `whisper-cli` es el binario de `whisper.cpp`
@@ -416,6 +419,9 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   cantoResolucion: "480p",
   // El montaje arranca **encendido**: no gasta créditos y es lo que cierra el recorrido de esta versión.
   montajeActivo: true,
+  // 30 escenas y 5 minutos: el techo de esta versión (decisión del propietario, 0.41.0).
+  proyectoEscenasMaximas: 30,
+  proyectoSegundosMaximos: 300,
   transcripcionBinario: "whisper-cli",
   transcripcionModelo: "",
   minimoReferenciasPersonaje: 3,
@@ -612,6 +618,8 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
     mensaje: `Elige la resolución del clip cantado: ${RESOLUCIONES_CANTO.join(" o ")}.`,
   },
   montajeActivo: { valido: booleano, mensaje: "Debe ser sí o no." },
+  proyectoEscenasMaximas: { valido: entero(1, 30), mensaje: "Indica de 1 a 30 escenas por proyecto." },
+  proyectoSegundosMaximos: { valido: entero(10, 300), mensaje: "Indica de 10 a 300 segundos de montaje." },
   transcripcionBinario: {
     // Nombre de orden o ruta, sin espacios ni metacaracteres: se ejecuta como proceso, así que aquí se acota lo
     // que puede llegar a ser un argumento del intérprete de órdenes.

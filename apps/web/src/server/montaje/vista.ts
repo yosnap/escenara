@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { formatosDe } from "@/lib/formatos";
 import {
   duracionTotalDeFragmentos,
   type EscenaMontableVista,
@@ -10,6 +11,7 @@ import { leerAjustes } from "../ajustes";
 import { urlTemporalDescargaMontaje } from "../almacenamiento";
 import { db } from "../db/cliente";
 import { type FilaExportacion, type FilaMontaje, media } from "../db/esquema";
+import { limitesDe } from "../limites-proyecto";
 import { type Actor, aDto } from "../media/servicio";
 import { exportacionesDeProyecto } from "./exportacion";
 import type { MaterialDelProyecto } from "./material";
@@ -87,7 +89,7 @@ export async function montajeParaLaVista(
   material: MaterialDelProyecto,
 ): Promise<MontajeVista> {
   const segundos = duracionTotalDeFragmentos(montaje.fragments);
-  const [{ montajeActivo }, controles, filas] = await Promise.all([
+  const [ajustes, controles, filas] = await Promise.all([
     leerAjustes(),
     controlesDelMontajeParaMostrar(actor, montaje, material, segundos),
     exportacionesDeProyecto(material.proyecto.id),
@@ -96,7 +98,9 @@ export async function montajeParaLaVista(
   return {
     proyectoId: material.proyecto.id,
     version: montaje.version,
-    formato: montaje.format,
+    formatos: formatosDe(material.proyecto.formats),
+    encuadres: montaje.framings,
+    segundosMaximos: limitesDe(ajustes).segundosMaximos,
     fragmentos: montaje.fragments,
     volumenVoz: montaje.voiceVolume,
     volumenMusica: montaje.musicVolume,
@@ -109,7 +113,7 @@ export async function montajeParaLaVista(
     duracionTotal: segundos,
     escenas: escenasParaLaVista(actor, material),
     controles,
-    activo: montajeActivo,
+    activo: ajustes.montajeActivo,
     exportaciones,
     actualizadoEn: montaje.updatedAt.toISOString(),
   };
