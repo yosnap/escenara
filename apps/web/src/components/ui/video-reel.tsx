@@ -11,7 +11,8 @@ function movimientoPermitido() {
 /**
  * Vídeo corto en bucle y sin sonido para tarjetas 9:16. Se reproduce solo mientras está en pantalla y la
  * pestaña está visible, nunca con movimiento reducido o ahorro de datos (comprobado en cada cambio), y
- * siempre tiene un botón para pausarlo o reproducirlo (WCAG 2.2.2). Una pausa manual se respeta.
+ * siempre tiene un botón para pausarlo o reproducirlo (WCAG 2.2.2). Una pausa manual se respeta. El cartel se carga
+ * en diferido, como cualquier imagen de la página.
  */
 export function VideoReel({ src, poster, alt }: { src: string; poster?: string; alt?: string }) {
   const [reproduciendo, setReproduciendo] = useState(false);
@@ -60,10 +61,22 @@ export function VideoReel({ src, poster, alt }: { src: string; poster?: string; 
 
   return (
     <>
+      {/* El cartel va como imagen en diferido y no como `poster`: el atributo se descarga siempre, al abrir la página,
+          aunque la tarjeta esté lejos. Sin cartel y sin precarga, el vídeo es transparente hasta que se reproduce. */}
+      {poster && (
+        // biome-ignore lint/performance/noImgElement: cartel estático ya optimizado (WebP a su tamaño) que se carga en diferido
+        <img
+          src={poster}
+          alt=""
+          aria-hidden
+          loading="lazy"
+          decoding="async"
+          className="absolute inset-0 size-full object-cover"
+        />
+      )}
       <video
         ref={enganchar}
         src={src}
-        poster={poster}
         muted
         loop
         playsInline
