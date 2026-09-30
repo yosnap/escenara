@@ -28,7 +28,7 @@ Un botón con el icono de prohibido y un motivo escrito debajo es una opción qu
 Hoy, por ejemplo:
 
 - todos los modelos de imagen del catálogo sembrado admiten **solo 9:16**, así que los demás formatos salen deshabilitados con «Nano Banana 2 Lite solo admite 9:16». Están ahí porque el día que el catálogo declare esa proporción para un modelo dejarán de estarlo;
-- desde la 0.41.0 el formato que eliges **se envía de verdad** al proveedor y queda en el trabajo (lo ves en el historial). Si animas un fotograma en una proporción que el modelo de vídeo no admite, se te pide elegir una de las suyas: Escenara no recorta el fotograma por su cuenta ([Formatos y proyectos largos](formatos-y-proyectos-largos.md));
+- desde la 0.41.0 el formato que eliges **se envía de verdad** al proveedor y queda en el trabajo (lo ves en el historial). Si animas una imagen en una proporción que el modelo de vídeo no admite, el paso del clip te ofrece un modelo que sí la anima o recortarla en tu biblioteca: Escenara no la recorta por su cuenta ([Formatos y proyectos largos](formatos-y-proyectos-largos.md));
 - la **duración** solo ofrece la que se le envía de verdad al proveedor, que es la que tiene el precio medido: el proveedor cobra **por unidad** («vídeo de 4 s»), así que ofrecer 8 s con el precio de 4 s sería mentirte en la estimación. Las de 6 y 8 segundos están sembradas y lo explican en su descripción; para usarlas hay que registrar su precio en Admin › Modelos primero.
 
 Cambiar de modelo vuelve a calcular todo esto. Nunca se te ofrece un formato que no se pueda generar.

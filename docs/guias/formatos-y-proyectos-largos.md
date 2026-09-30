@@ -45,9 +45,12 @@ Dos detalles:
 
 - **4:5 es de imagen y carrusel.** Ningún modelo de vídeo del catálogo lo genera, así que un proyecto de vídeo no lo
   puede tener como principal; en el montaje sí se exporta en 4:5 con reencuadre.
-- Si animas un **fotograma en una proporción que el modelo de vídeo no admite** (por ejemplo un 4:5 con Veo, que
-  hace 9:16 y 16:9), no se manda sin más: se te avisa y te pide elegir para el clip uno de los que admite. Escenara
-  no recorta el fotograma por su cuenta.
+- Si animas una **imagen en una proporción que el modelo de vídeo no admite** (por ejemplo un 4:5 con Veo, que hace
+  9:16 y 16:9), el paso del clip lo avisa antes de confirmar y te ofrece las salidas: **pasar a un modelo que sí la
+  anima** (un botón por modelo) o **recortarla en tu Biblioteca** («Editar imagen») y animar esa copia. Escenara no
+  la recorta por su cuenta, y si se pidiera igual, no reserva nada.
+- En un proyecto de **escenas habladas** (Omni), su modelo también tiene que generar el formato principal: se
+  comprueba al pasar a ese modo.
 
 Si por lo que sea el modelo que va a recibir un trabajo **deja de admitir** su proporción entre que lo pides y se
 envía (un relevo a otro proveedor, un cambio del catálogo), el trabajo **no se envía con otra**: se cierra diciendo
@@ -81,6 +84,8 @@ Cuando un clip vertical se lleva a un formato más ancho, algo se queda fuera. T
 Lo que ves es lo que sale: la previsualización y el render usan la misma cuenta. Si el recorte **deja fuera más de la
 mitad del plano** —un vertical llevado a 16:9 conserva un tercio— se avisa en la escena y en el panel de
 exportación. Puedes exportar igual: es un aviso para que lo mires, no un freno.
+
+Si borras una escena después de ajustar su encuadre, el ajuste se descarta solo al guardar el montaje.
 
 Sin tocar nada, cada formato usa su encuadre **automático**: el vertical, el de siempre (entero, que para un clip
 vertical es idéntico); los demás, recorte centrado. El encuadre **se guarda con el montaje** («Guardar el montaje»)
@@ -139,6 +144,9 @@ fecha.
   que hay. Vuelve a comprobarla.
 - Si la escena tiene **un clip generándose**, espera a que termine: al acabar pasaría a ser el de la escena y taparía
   el que eliges.
+- Pasa las **mismas puertas que convertir un clip** en escena: la persona que sale tiene que poder usarse ahora
+  (consentimiento vigente), seguir en el reparto de la escena, y el clip tiene que llevar sus declaraciones. Si un
+  consentimiento se revocó después de generar esa versión, no se puede elegir: se dice por qué y no cambia nada.
 - Si el recorte que tenías en el montaje es más largo que la versión que eliges, el montaje te lo dirá al guardar o
   exportar («acaba en el segundo 8 y el clip dura 6»). Ajusta la manecilla de salida.
 

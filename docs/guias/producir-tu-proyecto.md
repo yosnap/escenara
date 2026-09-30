@@ -135,6 +135,8 @@ tamaño y fecha, y marca la que está **en uso en el montaje**.
 - **«Usar esta»** cambia el clip que entra en el montaje. **No cuesta nada y no borra ninguna.**
 - El montaje estrena versión y la revisión de continuidad de esa escena deja de valer, como al regenerar.
 - Con un clip de la escena **generándose** no se puede elegir: al terminar taparía el que eliges.
+- No se puede elegir una versión cuya persona ya **no tiene consentimiento vigente**, que ya **no está en el reparto**
+  de la escena o que se generó sin sus declaraciones: se dice por qué y no cambia nada.
 - Todas ocupan **cuota**. Cuando tu biblioteca pasa del 80 %, se avisa aquí mismo y se dice cuánto ocupan las
   versiones que no usas.
 

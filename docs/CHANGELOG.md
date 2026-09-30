@@ -9,7 +9,7 @@ plataforma es**, el mismo montaje sale en **9:16, 4:5, 1:1 y 16:9** reencuadrand
 nada ni gastar créditos**, un proyecto admite hasta **30 escenas y 5 minutos**, y cada escena guarda **todas las
 versiones** de su clip para elegir la que entra en el vídeo. No cambia ninguna regla de coste, de consentimiento, de
 confirmación ni de idempotencia, y los proyectos y exportaciones verticales que ya había salen exactamente igual.
-Una migración aditiva.
+Una migración que **no es puramente aditiva** (sustituye un índice único): lee «Actualizar desde la 0.39.0».
 
 ### Añadido
 
@@ -29,10 +29,17 @@ Una migración aditiva.
   se avisa en la escena y al exportar.
 - **Subtítulos quemados y etiqueta dentro de la zona segura de cada formato** (en 9:16, las mismas franjas de
   siempre).
+- **La revisión de continuidad compara cada clip con su formato** (el que se pidió o el principal del proyecto), no
+  con 9:16 fijo: un clip bien hecho en 16:9 o 1:1 no sale como fallo crítico.
+- En «Crear», si la imagen de partida no está en ninguna proporción que el modelo de vídeo sepa animar, el paso del
+  clip lo avisa **antes de confirmar**, con un botón por cada modelo que sí la anima y la vía de recortarla en la
+  biblioteca. El servidor dice lo mismo si llegara a pedirse, sin reservar nada.
 - **Biblioteca de versiones de cada escena**, en producción: todos sus clips con miniatura, modelo, coste (el del
   proveedor o la estimación, dicho), tamaño y fecha, la que está en uso marcada y **«Usar esta»**, que cambia el
   clip del montaje **sin borrar ninguna** y sin coste. El montaje estrena versión y la revisión de continuidad de esa
-  escena deja de valer, como al regenerar.
+  escena deja de valer, como al regenerar. Pasa las mismas puertas que convertir un clip en escena: la persona que
+  sale tiene que poder usarse **ahora** (consentimiento vigente), seguir en el reparto de la escena, y el clip tiene
+  que llevar sus declaraciones; si no, se dice por qué y no cambia nada.
 - **Aviso de cuota**: con la biblioteca por encima del 80 %, la biblioteca de versiones lo dice y cuenta cuánto ocupan
   las versiones sin usar del proyecto.
 - **Admin › Ajustes › Montaje, exportación y tamaño de los proyectos**: escenas por proyecto (1–30, 30 de fábrica) y
@@ -49,8 +56,15 @@ Una migración aditiva.
   en 300 pero ahora es configurable a la baja. Los mensajes dicen «el máximo de esta instalación».
 - La **idempotencia de la exportación** pasa a ser por montaje, versión **y formato**. Pedir sin formato sigue
   siendo el vertical de siempre, y devuelve la misma exportación que antes.
-- Las opciones de formato sembradas se llaman por su plataforma. Solo se renombran las que seguían con el nombre de
-  fábrica.
+- Las opciones de formato sembradas se llaman por su plataforma. El nombre y la descripción solo se cambian si
+  seguían con el texto de fábrica.
+- Los MP4 que no son verticales se guardan y se descargan con su formato en el nombre («montaje-16x9.mp4»); el
+  vertical conserva el de siempre.
+- La toma de una exportación se renueva mientras se monta, y el recorte se hace antes de escalar: un montaje largo en
+  16:9 no se queda sin toma a mitad ni lo coge otra pasada.
+- El asistente de guion y el guion del anuncio no piden (ni cobran) más escenas que el máximo de la instalación.
+- Pasar un proyecto a escenas habladas (Omni) comprueba que su modelo genera el formato principal del proyecto.
+- Guardar el montaje descarta los encuadres de escenas que ya no existen, en lugar de rechazar el guardado.
 
 ### Seguridad y coste
 
@@ -63,20 +77,25 @@ Una migración aditiva.
 
 ### Actualizar desde la 0.39.0
 
+- **Para el worker antes de migrar** (y antes de desplegar la web nueva), y arráncalo con el código nuevo después.
+  Si el worker antiguo sigue en marcha con la base ya migrada, podría montar en 9:16 una exportación pedida en 16:9.
 - **Haz antes una copia**: `bun run db:backup`. Después, `bun run db:migrate`.
-- La migración `0058_formatos-encuadre-y-versiones-de-escena` es **aditiva e idempotente**: añade tres valores al
+- La migración `0058_formatos-encuadre-y-versiones-de-escena` es **idempotente pero no puramente aditiva**: añade tres valores al
   formato del montaje (`vertical_4_5`, `cuadrado_1_1`, `horizontal_16_9`), la lista de formatos de cada proyecto
   (`projects.formats`, que nace en vertical 9:16) y el mapa de encuadres de cada montaje (`montages.framings`, que
   nace vacío: el automático, igual que antes), y un índice para leer las versiones de cada escena. Sustituye el
   índice único de la exportación por uno que **incluye el formato**, creando el nuevo antes de quitar el anterior (el
   anterior era más estricto, así que ninguna fila existente lo incumple). Renombra las opciones de formato de la
-  instalación **solo si siguen con el nombre de fábrica**. No borra ninguna fila.
+  instalación **solo si siguen con el texto de fábrica**. No borra ninguna fila. **Solo se deshace restaurando la
+  copia de seguridad**: los valores de un enum no se pueden quitar, y en cuanto haya dos exportaciones de la misma
+  versión en formatos distintos el índice anterior ya no se puede volver a crear.
 - Crea los índices sin `CONCURRENTLY`: con pocas miles de trabajos es un instante; si `generation_jobs` fuera grande,
   crea antes a mano `generation_jobs_escena_fecha_idx` con `CREATE INDEX CONCURRENTLY IF NOT EXISTS` y la migración
   lo dará por hecho.
 - **Ajustes nuevos** con sus valores de fábrica (30 escenas y 300 s): no hay que hacer nada si te valen.
-- **Reinicia el worker** después de migrar: cambian el render del montaje (formato, encuadre y zonas seguras) y el
-  despacho de los trabajos (la proporción elegida), y el worker no recarga el código solo.
+- **Arranca el worker** después de migrar, ya con el código nuevo: cambian el render del montaje (formato, encuadre y
+  zonas seguras), el despacho de los trabajos (la proporción elegida) y la revisión de continuidad, y el worker no
+  recarga el código solo.
 
 ## [0.39.0] · 2026-09-30
 

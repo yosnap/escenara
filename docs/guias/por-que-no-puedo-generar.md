@@ -126,8 +126,9 @@ Son del **formato** (0.41.0), y ninguno cobra nada:
 - **el modelo no admite el formato elegido**: la opción ya salía deshabilitada en la pantalla; si llega por la API,
   se rechaza antes de reservar. Elige un formato que admita o cambia de modelo. Los demás formatos se sacan en el
   montaje, del mismo clip y sin coste;
-- **el fotograma está en una proporción que el modelo de vídeo no admite**: elige para el clip uno de los formatos
-  que el mensaje nombra. Escenara no recorta el fotograma por su cuenta;
+- **el fotograma está en una proporción que el modelo de vídeo no admite**: pasa a uno de los modelos que el mensaje
+  nombra o recorta la imagen en tu biblioteca («Editar imagen») y anima esa copia. Escenara no la recorta por su
+  cuenta;
 - **el modelo dejó de admitir la proporción entre pedirlo y enviarlo** (un relevo a otro proveedor, un cambio del
   catálogo): el trabajo se cierra sin enviarse y sin cobro. Vuelve a pedirlo con un modelo que la admita.
 
