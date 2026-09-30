@@ -45,9 +45,13 @@ fotograma**, con la misma dirección y el mismo texto de la escena.
    consentimiento del personaje, tus derechos y los controles previos de siempre, y se paga con tu propia clave. Una
    comparativa son **las dos ejecuciones o ninguna**: si una no cabe (el techo del proyecto, tu presupuesto, la clave o
    el saldo del proveedor…), no sale ninguna, la otra se cancela antes de llegar al proveedor y se dice la causa con
-   «No se ha cobrado nada». Lo mismo si el precio ha cambiado desde que lo viste o lo confirmado no cuadra. Si pulsas dos
+   «No se ha cobrado nada» (si tu instalación traduce las descripciones, la traducción pudo cobrarse aparte, unos
+   céntimos, y queda guardada para la próxima vez). Lo mismo si el precio ha cambiado desde que lo viste o lo
+   confirmado no cuadra. Si pulsas dos
    veces, o repites tras un corte de red, no se encarga nada más.
-   - Solo puede haber **una comparativa en marcha por escena**, y no con otro clip de la escena generándose.
+   - Solo puede haber **una comparativa en marcha por escena**, y no con otro clip de la escena generándose. Mientras
+     tanto, la tarjeta de la escena en la producción lo dice y enlaza a la comparativa.
+   - Un modelo que no declara sus duraciones no se puede comparar generando: su coste no se puede acotar antes.
    - Si el último clip de la escena **falló con posible cobro**, cada ejecución de la comparativa consume **un reintento
      autorizado**, como al producir o regenerar: autoriza al menos dos en la producción antes de comparar.
 5. **Mira los resultados lado a lado.** La página se actualiza sola mientras alguno está en marcha, con el estado real

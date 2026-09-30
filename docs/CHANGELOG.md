@@ -28,8 +28,10 @@ se calibra contra lo que decidieron las personas, con una partición retenida. *
   consentimiento y los controles previos de siempre. **Todo o nada**: si una de las dos no cabe (techo del proyecto,
   presupuesto, credencial, saldo, ritmo, derechos, consentimiento o controles), no sale ninguna, la otra se cancela sin
   haber llegado al proveedor, su reserva vuelve y se dice la causa con «No se ha cobrado nada». Si lo confirmado no cuadra
-  o el precio ha cambiado, tampoco se encola nada. **Una sola comparativa a la vez por escena** (la segunda responde 409
-  con su causa). Si el último clip de la escena falló con posible cobro, la comparativa **consume un reintento autorizado
+  o el precio ha cambiado, tampoco se encola nada. **Una sola comparativa a la vez por escena, y nunca a la vez que otro
+  clip de la escena** (responde 409 con su causa; la tarjeta de producción lo avisa y enlaza a la comparativa). Si la
+  instalación traduce, el mensaje dice que la traducción pudo cobrarse aparte (céntimos). Un modelo sin duraciones
+  declaradas no se puede comparar generando. Si el último clip de la escena falló con posible cobro, la comparativa **consume un reintento autorizado
   por alternativa**, como «producir» o «regenerar». Repetir la misma confirmación no vuelve a encolar nada. Los resultados se ven
   lado a lado con su estado real, su coste confirmado e informado y, si fallan, la causa y **si pudo cobrarse**.
   **Elegir ganadora** la convierte en el clip de la escena (con las puertas de elegir una versión), aunque la otra siga
@@ -67,8 +69,8 @@ se calibra contra lo que decidieron las personas, con una partición retenida. *
   `labeled_examples` y `calibration_runs`, con sus índices, restricciones y claves ajenas. No cambia ni borra ninguna fila
   y volver a aplicarla no hace nada.
 - **Reinicia el worker** tras actualizar: ahora no envía las alternativas de una comparativa hasta que están encoladas
-  todas, las reconoce al cerrar un clip y cancela sin cobro, pasados 10 minutos, una comparativa que se quedó sin
-  lanzar. No hay
+  todas, las reconoce al cerrar un clip y termina de cancelar sin cobro una comparativa que se quedó sin lanzar (a los
+  10 minutos) o cuya cancelación se interrumpió. No hay
   ajustes ni variables de entorno nuevos.
 
 ## [0.47.0] · 2026-09-30

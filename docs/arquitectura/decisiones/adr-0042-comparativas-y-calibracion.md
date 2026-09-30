@@ -53,19 +53,33 @@ el sello y el precio, la idempotencia y la reserva atómica de siempre. Lo propi
   controles. **Mientras la comparativa no esté lanzada, el worker no toma ninguno de sus trabajos** (`cola/toma.ts`).
   Si todas caben, se marca lanzada; si una no cabe, las ya encoladas se cancelan sin haber salido, con su reserva
   liberada y los reintentos devueltos, y se responde con la causa y «No se ha cobrado nada». Una comparativa que se
-  queda sin lanzar (el proceso murió) la cancela el worker pasados 10 minutos por el mismo camino;
+  queda sin lanzar (el proceso murió) la cancela el worker pasados 10 minutos por el mismo camino. La cancelación es
+  **reanudable**: primero se marca y después se cancela trabajo a trabajo (devolviendo su reintento); si se interrumpe,
+  el barrido recoge también las canceladas que conservan trabajos cancelables. Y la cola **no admite** ninguna
+  alternativa de una comparativa cancelada, así que un barrido entre la primera y la segunda no deja una suelta.
+  «No se ha cobrado nada» se matiza si la instalación traduce: la traducción se paga antes de encolar y pudo cobrarse
+  (céntimos, queda en caché) aunque ningún clip saliera. Un modelo sin duraciones declaradas no se admite en una A/B:
+  su coste no se puede acotar y esperaría un límite aparte, lo que rompería el «todo o nada»;
+- **un clip normal y una comparativa no conviven en la escena**: la cola rechaza una alternativa si la escena tiene otro
+  clip en marcha que no es de su comparativa, y un clip normal si la escena tiene una comparativa lanzándose (los dos
+  bajo el candado del usuario). La tarjeta de producción lo dice y enlaza a la comparativa;
 - la clave es la marca: el encolado admite, **solo** para una clave y un modelo que estén en una comparativa de esa
   escena, tantos clips en marcha **de esa comparativa** como alternativas aunque la escena ya tenga el suyo; el worker no
   convierte una alternativa en el clip de la escena ni escribe su fallo en ella; y la producción no la cuenta como el
   último clip;
 - **no hay atajo en los reintentos** (ADR-0024): si el último fotograma o clip de la escena (alternativas incluidas)
   falló con posible cobro, la comparativa exige y consume **un reintento autorizado por alternativa**, en la misma
-  transacción que reserva, igual que «producir», «regenerar» u «otro clip». Sin autorización no se encola nada;
+  transacción que reserva, igual que «producir», «regenerar» u «otro clip». Sin autorización no se encola nada.
+  **Asimetría conocida:** el camino normal (`ultimoTrabajoDeEscena`) no cuenta una alternativa fallida como el último
+  clip de la escena, así que tras una alternativa fallida con posible cobro «producir» no pide reintento. Es coherente con
+  que la alternativa no es el clip de la escena; la A/B sí la cuenta porque es la que la repetiría;
 - elegir ganadora es elegir una versión (`usarVersionDeEscena`, 0.41.0), con todas sus puertas; se puede elegir una
   terminada aunque la otra siga en marcha (una alternativa no pasa a ser el clip al terminar). La ganadora que se ve es
   la que la escena usa ahora, también si se eligió desde sus versiones;
 - **idempotencia por comparativa**: repetir la misma confirmación devuelve la comparativa si se lanzó y, si no salió,
-  pide confirmar otra vez; nunca vuelve a encolar una alternativa.
+  pide confirmar otra vez; nunca vuelve a encolar una alternativa. La pantalla estrena clave tras un error del servidor
+  (si no, se quedaría en bucle) y la conserva tras un fallo de red. Dos envíos idénticos exactamente a la vez responden
+  uno con la comparativa y otro con 409 «ya se está lanzando», sin gasto.
 
 **Conjunto etiquetado** (`labeled_examples`): se reconstruye entero desde Admin › Calibración con las revisiones
 humanas registradas. De la pregunta de las afirmaciones, la opinión de la sombra más reciente y pagada de cada escena
