@@ -1,15 +1,17 @@
 "use client";
 
 import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { Alerta } from "@/components/ui/alerta";
 import { Boton, BotonIcono } from "@/components/ui/button";
+import { CargadorChispa } from "@/components/ui/chispa";
 import { InsigniaControl } from "@/components/ui/controles";
 import { DemoDePlantilla } from "@/components/ui/demo-plantilla";
 import { PanelDireccion } from "@/components/ui/direccion/panel-direccion";
 import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo } from "@/components/ui/field";
-import { SelectorLugar } from "@/components/ui/lugares/selector-lugar";
+import { LimiteDeCarga } from "@/components/ui/limite-de-carga";
 import { MiniaturaMedio } from "@/components/ui/media/miniatura-medio";
 import { Dialogo } from "@/components/ui/overlay";
 import { InsigniaEstadoEscena } from "@/components/ui/proyecto";
@@ -32,6 +34,12 @@ import {
 import { motivoDuracionNoAdmitida } from "@/lib/trends";
 import { borrarEscena, editarEscena } from "../../_componentes/api-proyectos";
 import { PanelAfirmaciones } from "./panel-afirmaciones";
+
+/** El bloque del lugar se descarga aparte: la página del proyecto va justa de JavaScript. */
+const SelectorLugar = dynamic(() => import("@/components/ui/lugares/selector-lugar").then((m) => m.SelectorLugar), {
+  loading: () => <CargadorChispa etiqueta="Cargando el lugar" />,
+});
+
 import { PanelCantoEscena } from "./panel-canto-escena";
 import { PanelReparto } from "./reparto/panel-reparto";
 
@@ -249,14 +257,16 @@ export function EditorEscena({
       />
 
       {direccion.formatoClip !== "cantar" && (
-        <SelectorLugar
-          valor={lugar}
-          onCambio={setLugar}
-          acabado={{ acabado: proyecto.estiloVisual, estilo: "" }}
-          heredadoId={proyecto.lugarId ?? null}
-          conPlanoSolo
-          deshabilitado={ocupado || escena.estado === "producida"}
-        />
+        <LimiteDeCarga>
+          <SelectorLugar
+            valor={lugar}
+            onCambio={setLugar}
+            acabado={{ acabado: proyecto.estiloVisual, estilo: "" }}
+            heredadoId={proyecto.lugarId ?? null}
+            conPlanoSolo
+            deshabilitado={ocupado || escena.estado === "producida"}
+          />
+        </LimiteDeCarga>
       )}
 
       {direccion.formatoClip === "cantar" &&
