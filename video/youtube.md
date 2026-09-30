@@ -1,5 +1,7 @@
 # Textos para YouTube
 
+Publicado en YouTube: https://youtu.be/MEdbVU6bI4Q (canal CodeIA).
+
 Vídeo: `video/salida/escenara-presentacion.mp4` (subtítulos incrustados) o
 `escenara-presentacion-sin-subtitulos.mp4` + `escenara-presentacion.srt` como
 pista de subtítulos (recomendado en YouTube: se pueden activar y desactivar).

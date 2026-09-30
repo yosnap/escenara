@@ -31,7 +31,11 @@
 ## Vídeo de presentación
 
 <!-- VIDEO-PRESENTACION -->
-_Próximamente: un recorrido en vídeo por Escenara. Aquí irá su miniatura, enlazada a YouTube._
+<p align="center">
+  <a href="https://youtu.be/MEdbVU6bI4Q"><img src="docs/assets/video/miniatura-presentacion.png" alt="Ver en YouTube el vídeo de presentación de Escenara (1:28)" width="720"></a>
+</p>
+
+<p align="center"><a href="https://youtu.be/MEdbVU6bI4Q">Ver el vídeo de presentación en YouTube</a> · 1:28 · con subtítulos</p>
 
 ## Qué puedes hacer hoy
 
