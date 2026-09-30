@@ -102,6 +102,7 @@ export function TarjetaEscena({
   const sinProducir = escena.fotograma === null;
   const fotogramaListo = escena.fotograma?.estado === "listo" && escena.fotograma.medio !== null;
   const puedeAprobar =
+    !escena.comparativaEnMarcha &&
     escena.reparto === null &&
     (fotogramaPorAprobar(escena) || clipPorEncolar(escena)) &&
     !trabajoEnMarcha(escena.animacion);
@@ -117,6 +118,7 @@ export function TarjetaEscena({
     escena.fotogramaAprobado !== null;
   // Comparar dos modelos animando el mismo fotograma: solo con un clip normal (sin reparto, sin Omni) y nada en marcha.
   const puedeComparar =
+    !escena.comparativaEnMarcha &&
     escena.reparto === null &&
     escena.formatoClip !== "cantar" &&
     produccion.modoVoz !== "omni" &&
@@ -149,6 +151,14 @@ export function TarjetaEscena({
         </Aviso>
       )}
       {escena.motivoUltimoFallo !== "" && <Aviso tono="error">{escena.motivoUltimoFallo}</Aviso>}
+      {escena.comparativaEnMarcha && (
+        <Aviso tono="info">
+          Hay una comparativa generándose en esta escena: hasta que termine no se puede pedir otro clip.{" "}
+          <Link href={`/comparar/escena/${escena.id}`} className="font-semibold underline">
+            Ver la comparativa
+          </Link>
+        </Aviso>
+      )}
 
       {escena.formatoClip === "cantar" && (
         <CantoProduccion

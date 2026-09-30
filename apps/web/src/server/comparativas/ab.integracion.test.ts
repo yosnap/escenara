@@ -8,8 +8,7 @@ import type { ProyectoDetalle } from "@/lib/proyectos";
 
 /**
  * Comparativa A/B con contenido nuevo, contra el PostgreSQL y el almacenamiento locales. **Ningún test llama a KIE**:
- * el proveedor se simula con un `fetch` propio que cuenta cada tarea creada, la descarga también y la clave es
- * inventada.
+ * el proveedor se simula con un `fetch` propio que cuenta cada tarea creada, la descarga también y la clave es inventada.
  *
  * - la confirmación exige el número de ejecuciones y el coste exactos: sin ellos no se encola nada;
  * - como mucho dos alternativas, en la escena elegida, cada una un trabajo normal con su reserva: las dos o ninguna;
@@ -485,6 +484,7 @@ describe.skipIf(!hayBaseDeDatos)("comparativa A/B de una escena", () => {
     const despues = await filaDeEscena(escenaId);
     expect(despues.clipJobId).toBe(antes.clipJobId);
     expect((await ultimoTrabajoDeEscena(escenaId, "animacion"))?.id).toBe(antes.clipJobId as string);
+    expect((await estadoDeProduccion(actor, proyectoId)).escenas[0]?.comparativaEnMarcha).toBe(true);
 
     // El worker las envía como cualquier clip: su revalidación antes de subir nada tampoco las confunde con el clip
     // de la escena.

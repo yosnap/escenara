@@ -12,6 +12,7 @@ import {
   type ProduccionVista,
   type TrabajoDeEscena,
   trabajoEnMarcha,
+  trabajoTerminado,
   type VersionDeClip,
   type VersionDeEscena,
 } from "@/lib/produccion";
@@ -288,6 +289,7 @@ function vistaDeEscena(
       .sort((a, b) => a.orden - b.orden),
     versiones: versionesDe(trabajos, vigentes, medios),
     bibliotecaDeClips: fila.castFormat === "podcast" ? [] : bibliotecaDeClips(fila, trabajos, medios),
+    comparativaEnMarcha: trabajos.some((t) => alternativas.has(t.id) && !trabajoTerminado(t.state)),
   };
 }
 
