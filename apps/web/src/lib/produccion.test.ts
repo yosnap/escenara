@@ -70,6 +70,7 @@ const escena = (cambios: Partial<EscenaProduccionVista> = {}): EscenaProduccionV
   reparto: null,
   clipsHablados: [],
   versiones: [],
+  bibliotecaDeClips: [],
   ...cambios,
 });
 

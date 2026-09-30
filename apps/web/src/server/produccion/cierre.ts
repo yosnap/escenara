@@ -28,7 +28,7 @@ const tocarProyecto = (tx: Ejecutor, proyectoId: string) =>
  * El proyecto pasa a `listo` cuando **todas** sus escenas están producidas, y a `en_produccion` mientras quede
  * alguna sin producir. No se toca un borrador: eso lo decide la aprobación del plan.
  */
-async function ajustarEstadoDelProyecto(tx: Ejecutor, proyectoId: string): Promise<void> {
+export async function ajustarEstadoDelProyecto(tx: Ejecutor, proyectoId: string): Promise<void> {
   const [{ pendientes } = { pendientes: 0 }] = await tx
     .select({ pendientes: sql<number>`count(*)::int` })
     .from(scenes)

@@ -170,3 +170,21 @@ export function dialogoDe(fila: FilaTrabajo): string {
   const dialogo = (fila.input as { dialogo?: unknown }).dialogo;
   return typeof dialogo === "string" ? dialogo : "";
 }
+
+/**
+ * Proporción que se **eligió** para este trabajo al encolarlo (0.41.0: el formato de la pieza o del proyecto), o
+ * `null` si no se eligió ninguna y manda la del modelo. Es la que el despacho le vuelve a pedir al proveedor.
+ */
+export function proporcionElegidaDe(fila: Pick<FilaTrabajo, "input">): string | null {
+  const proporcion = (fila.input as { proporcion?: unknown }).proporcion;
+  return typeof proporcion === "string" && /^\d{1,2}:\d{1,2}$/.test(proporcion) ? proporcion : null;
+}
+
+/**
+ * Proporción con la que se generó, para enseñarla en el historial: la elegida o, en un trabajo anterior a poder
+ * elegirla, la que quedó en los parámetros enviados. `null` si el modelo no la acepta (toma la de la imagen).
+ */
+export function proporcionDelTrabajo(fila: Pick<FilaTrabajo, "input">): string | null {
+  const enviada = (fila.input as { parametros?: { aspect_ratio?: unknown } }).parametros?.aspect_ratio;
+  return proporcionElegidaDe(fila) ?? (typeof enviada === "string" && enviada !== "" ? enviada : null);
+}
