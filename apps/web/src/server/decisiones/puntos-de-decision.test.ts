@@ -107,10 +107,6 @@ describe("puntos de decisión", () => {
       const codigo = await readFile(f, "utf8");
       if (/from\s*["'][^"']*calibracion\/(?:conjunto|calibrar)["']/.test(codigo)) importan.push(relativa(f));
     }
-    expect(importan.sort()).toEqual([
-      "app/admin/calibracion/page.tsx",
-      "app/api/admin/calibracion/route.ts",
-      "server/calibracion/calibrar.ts",
-    ]);
+    expect(importan.sort()).toEqual(["app/admin/calibracion/page.tsx", "app/api/admin/calibracion/route.ts"]);
   });
 });
