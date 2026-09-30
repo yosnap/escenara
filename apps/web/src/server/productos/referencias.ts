@@ -53,3 +53,16 @@ export function referenciasDelPersonajeQueViajan<T>(
 ): T[] {
   return reparto && reparto.personaje > 0 ? referencias.slice(0, reparto.personaje) : [...referencias];
 }
+
+/**
+ * Lo que se guarda en el trabajo de las fotos del producto: **solo las que caben**, en el orden de prioridad con
+ * el que se van a enviar. El worker no vuelve a repartir nada; envía esto, que es lo que se ha avisado y se ha
+ * confirmado.
+ */
+export function referenciasDeProductoGuardadas(
+  producto: { fotos: readonly string[] } | null,
+  conProducto: { reparto: { producto: number } } | null,
+): { referenciasProducto?: string[] } {
+  if (!producto || !conProducto || conProducto.reparto.producto === 0) return {};
+  return { referenciasProducto: producto.fotos.slice(0, conProducto.reparto.producto) };
+}

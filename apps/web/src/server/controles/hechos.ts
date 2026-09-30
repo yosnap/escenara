@@ -24,6 +24,7 @@ import type {
   HechosCuota,
   HechosEscena,
   HechosExportacion,
+  HechosLugar,
   HechosModelo,
   HechosOmni,
   HechosPersonaje,
@@ -151,6 +152,8 @@ export async function hechosDelReparto(
    */
   envio?: { segundosPorClip?: number; sinRegistrar?: { nombre: string; falta: string }[] },
 ): Promise<HechosReparto | null> {
+  // En el plano del lugar solo no sale nadie: no hay consentimiento de nadie que pedir.
+  if (escena.placeShot === "solo_lugar") return null;
   const [miembros, turnos] = await Promise.all([miembrosDelReparto(escena.id), turnosDelReparto(escena.id)]);
   if (miembros.length === 0) return null;
   const personajes = await Promise.all(
@@ -275,6 +278,8 @@ export interface SujetoDeHechos {
   producto?: HechosProducto;
   /** Escena que canta con un audio subido (0.29.0); ausente en todo lo demás. */
   canto?: HechosCanto;
+  /** Lugar del envío; ausente cuando no lleva ninguno. */
+  lugar?: HechosLugar;
   /**
    * Reparto de la escena (0.28.0); ausente cuando el envío no sale de una escena con reparto. Lo resuelve quien
    * llama con {@link hechosDelReparto}, porque es la escena la que lo tiene y no el envío.
@@ -322,6 +327,7 @@ export async function recopilarHechos(actor: Actor, sujeto: SujetoDeHechos, busc
     ...(sujeto.producto ? { producto: sujeto.producto } : {}),
     ...(sujeto.reparto ? { reparto: sujeto.reparto } : {}),
     ...(sujeto.canto ? { canto: sujeto.canto } : {}),
+    ...(sujeto.lugar ? { lugar: sujeto.lugar } : {}),
   };
 }
 

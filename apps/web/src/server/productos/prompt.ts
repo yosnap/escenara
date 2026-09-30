@@ -190,8 +190,15 @@ export function hechosDelProducto(
   referenciasDeGaleria: number,
   referenciasPersonaje: number,
   identidadRegistradaPerdida: boolean,
+  /** `1` si el envío lleva la maestra de un lugar: ocupa su hueco en el mismo reparto. */
+  referenciasLugar = 0,
 ): { hechos: HechosProducto; reparto: RepartoDeReferencias } {
-  const reparto = repartirReferencias(referenciasDeGaleria, referenciasPersonaje, producto.fotos.length);
+  const reparto = repartirReferencias(
+    referenciasDeGaleria,
+    referenciasPersonaje,
+    producto.fotos.length,
+    referenciasLugar,
+  );
   // El producto tiene fotos y no cabe ninguna: eso tiene su propio aviso, con los modelos que sí las llevan.
   const sinHuecoDeReferencia = producto.fotos.length > 0 && reparto.producto === 0;
   if (producto.fotosElegidas === "estricta" && reparto.producto < producto.fotos.length) {
@@ -216,6 +223,7 @@ export function hechosDelProducto(
         fotosProducto: producto.fotos.length,
         personaje: reparto.personaje,
         producto: reparto.producto,
+        ...(referenciasLugar > 0 ? { lugar: reparto.lugar } : {}),
       },
       sinHuecoDeReferencia,
       identidadRegistradaPerdida,

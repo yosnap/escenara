@@ -6,7 +6,7 @@ import { referenciasVigentesDe } from "../personajes/consulta";
 import { hojaQueViaja } from "../personajes/puede-generar";
 import type { Adaptador } from "../proveedores/contrato";
 import { hechosDelProducto, type ProductoParaGenerar } from "./prompt";
-import type { RepartoDeReferencias } from "./referencias";
+import { type RepartoDeReferencias, repartirReferencias } from "./referencias";
 
 /**
  * **El reparto de referencias de un envío con producto, calculado en un solo sitio.** El aviso de antes de pagar
@@ -53,6 +53,10 @@ export async function fotosDelPersonajeEnElEnvio(envio: EnvioConProducto): Promi
   return (await referenciasVigentesDe(envio.personaje.id)).length;
 }
 
+/** El cupo que se reparte en este envío: sin imagen de partida se genera con un modelo de texto a imagen. */
+const cupoDelEnvio = (envio: EnvioConProducto, adaptador: Adaptador, modelo: ModeloVista): number =>
+  envio.tipo === "fotograma" && envio.sinReferencia ? 0 : cupoDeGaleria(adaptador, modelo);
+
 /** El reparto del envío y los hechos de producto que evalúa el motor, con las mismas cifras. */
 export async function repartoDelEnvio(entrada: {
   envio: EnvioConProducto;
@@ -60,14 +64,48 @@ export async function repartoDelEnvio(entrada: {
   modelo: ModeloVista;
   producto: ProductoParaGenerar;
   identidadRegistradaPerdida?: boolean;
+  /** `1` si el envío lleva la maestra de un lugar (decisión del reparto a tres bandas). */
+  lugar?: number;
 }): Promise<{ hechos: HechosProducto; reparto: RepartoDeReferencias }> {
   const { envio, adaptador, modelo, producto } = entrada;
-  // Sin imagen de partida se genera con un modelo de **texto a imagen**: ahí no viaja ninguna foto.
-  const cupo = envio.tipo === "fotograma" && envio.sinReferencia ? 0 : cupoDeGaleria(adaptador, modelo);
   return hechosDelProducto(
     producto,
-    cupo,
+    cupoDelEnvio(envio, adaptador, modelo),
     await fotosDelPersonajeEnElEnvio(envio),
     entrada.identidadRegistradaPerdida ?? false,
+    entrada.lugar ?? 0,
   );
+}
+
+/**
+ * **El reparto de un envío con producto, con lugar o con los dos**, en un solo sitio. Lo piden con las mismas
+ * entradas el aviso de antes de pagar (`controles/consulta.ts`) y el envío (`generacion/servicio.ts`), así que las
+ * cifras que se enseñan y las fotos que viajan salen de la misma cuenta. `reparto` es `null` cuando el envío no
+ * lleva ni producto ni lugar, que es todo lo anterior a ellos.
+ */
+export async function repartoCompletoDelEnvio(entrada: {
+  envio: EnvioConProducto;
+  adaptador: Adaptador;
+  modelo: ModeloVista;
+  producto: ProductoParaGenerar | null;
+  /** `1` si el lugar tiene maestra que enviar, `0` si no hay lugar o va solo descrito. */
+  lugar: number;
+  identidadRegistradaPerdida?: boolean;
+}): Promise<{
+  conProducto: { hechos: HechosProducto; reparto: RepartoDeReferencias } | null;
+  reparto: RepartoDeReferencias | null;
+}> {
+  const { envio, adaptador, modelo, producto, lugar } = entrada;
+  if (producto) {
+    const conProducto = await repartoDelEnvio({ ...entrada, producto });
+    return { conProducto, reparto: conProducto.reparto };
+  }
+  if (lugar <= 0) return { conProducto: null, reparto: null };
+  const reparto = repartirReferencias(
+    cupoDelEnvio(envio, adaptador, modelo),
+    await fotosDelPersonajeEnElEnvio(envio),
+    0,
+    lugar,
+  );
+  return { conProducto: null, reparto };
 }

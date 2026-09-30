@@ -3,6 +3,7 @@ import { hechosDePersonajeCitado, parametrosDeControles } from "../controles/hec
 import { frenosQueGatean } from "../controles/motor";
 import { evaluarRegistrando, mensajeDeFreno } from "../controles/puerta";
 import type { FilaTrabajo } from "../db/esquema";
+import { declaracionVigente } from "../lugares/consulta";
 
 /** Motivo con el que se cierra un trabajo que no se puede enviar. */
 type MotivoFalloTrabajo = NonNullable<FilaTrabajo["failureReason"]>;
@@ -78,5 +79,14 @@ export async function revalidarPersonajeDelTrabajo(fila: FilaTrabajo, modelo: Mo
         freno.regla === "consentimiento" ? "consentimiento" : "interno",
       );
     }
+  }
+  /**
+   * El **lugar** también se revalida: revocar su declaración bloquea generar con él desde ese momento, y eso incluye
+   * lo que ya estaba en la cola. Lo generado antes se conserva.
+   */
+  if (fila.placeId && fila.kind !== "voz" && !(await declaracionVigente(fila.placeId))) {
+    throw new ErrorPersonajeNoUsable(
+      "La declaración de derechos del lugar se ha revocado desde que pediste el trabajo, así que ya no se genera con él. No se ha enviado nada y no se te ha cobrado: vuelve a declararla en la ficha del lugar o quítalo de la escena.",
+    );
   }
 }

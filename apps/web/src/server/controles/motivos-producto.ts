@@ -20,7 +20,9 @@ export function motivoReferenciasNoCaben(modelo: HechosModelo | undefined, produ
   const sobranDelProducto = Math.max(0, r.fotosProducto - r.producto);
   const sobranDelPersonaje = Math.max(0, r.fotosPersonaje - r.personaje);
   const delPersonaje = r.personaje === 1 ? "1 foto del personaje" : `${r.personaje} del personaje`;
-  const queSeEnvia = `${r.personaje === 1 ? "se envía" : "se envían"} ${delPersonaje} y ${r.producto} de «${producto.nombre}»`;
+  // Con lugar, su maestra ocupa un hueco del mismo cupo: se dice, porque es parte de por qué no cabe lo demás.
+  const conMaestra = (r.lugar ?? 0) > 0;
+  const queSeEnvia = `${r.personaje === 1 ? "se envía" : "se envían"} ${delPersonaje}${conMaestra ? "," : " y"} ${r.producto} de «${producto.nombre}»${conMaestra ? " y la foto maestra del lugar" : ""}`;
   const fuera =
     sobranDelProducto > 0 && sobranDelPersonaje > 0
       ? `${fotos(sobranDelProducto)} del producto y ${sobranDelPersonaje} del personaje se quedan fuera`

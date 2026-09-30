@@ -42,6 +42,14 @@ import {
 import { proporcionDelEnvio } from "../generacion/formato-del-envio";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { exigirSelloVigente } from "../generacion/precios";
+import {
+  conLugarSuelto,
+  hechosDelClipConLugar,
+  lugarDelEnvio,
+  lugarDelPrompt,
+  textosDelLugar,
+} from "../lugares/en-el-envio";
+import { columnasDelLugar } from "../lugares/para-generar";
 import type { Actor } from "../media/servicio";
 import { contextoDeVersion, promptConContexto } from "../personajes/contexto";
 import { ultimaVersion } from "../personajes/ficha";
@@ -288,6 +296,12 @@ export async function producirEscenaHablada(
   confirmacion: ConfirmacionEscenaHablada,
   h: Herramientas = HERRAMIENTAS,
 ): Promise<{ trabajos: FilaTrabajo[]; nuevas: number; fallo: string | null }> {
+  if (escena.placeShot === "solo_lugar") {
+    throw new ErrorOmni(
+      409,
+      "El plano del lugar solo se produce como fotograma y clip mudo, y en modo Omni cada escena es un clip hablado. Cambia el modo de voz del proyecto o haz el plano en otro proyecto y móntalo. No se ha cobrado nada.",
+    );
+  }
   const prompt = limpiarPrompt(escena.action.trim() !== "" ? escena.action : escena.scriptText);
   if (escena.castFormat !== "solo") {
     await exigirFormatoActivo(escena.castFormat);
@@ -387,6 +401,12 @@ export async function producirEscenaHablada(
     : null;
   if (producto) exigirDerechoDeMarca(confirmacion.derechoMarca);
   if (conProducto) await completarModelosSugeridos(conProducto.hechos, CAPACIDAD_DE_TIPO.animacion);
+  /**
+   * **El lugar de la escena**. En la escena hablada no se genera fotograma, así que el sitio viaja **descrito**: la
+   * cara idéntica la da la identidad registrada, y el set lo fija la descripción de la versión. Se resuelve una vez
+   * para toda la escena, así que los dos clips de un podcast llevan el mismo lugar y la misma versión.
+   */
+  const conLugar = await lugarDelEnvio(actor.id, escena, null, null);
 
   /**
    * El reparto de la escena (0.28.0): en una escena hablada con dos personajes, **cada persona real** necesita su
@@ -417,6 +437,7 @@ export async function producirEscenaHablada(
         omni: { registrado: falta === "", falta },
         ...(conReparto ? { reparto: conReparto } : {}),
         ...(conProducto ? { producto: conProducto.hechos } : {}),
+        ...hechosDelClipConLugar(conLugar),
       },
       h.buscar,
     ),
@@ -459,11 +480,12 @@ export async function producirEscenaHablada(
       { texto: instrucciones },
       { texto: descripcionExperta },
       { texto: producto?.descripcionOriginal ?? "" },
+      ...textosDelLugar(conLugar),
     ],
     h.buscar,
   );
   const enInglesO = (texto: string) => (texto === "" ? "" : (enIngles.get(texto) ?? texto));
-  const escenaEnIngles = enIngles.get(prompt) ?? prompt;
+  const escenaEnIngles = conLugarSuelto(enIngles.get(prompt) ?? prompt, lugarDelPrompt(conLugar, enIngles, null));
   const contextoEnIngles = enIngles.get(contexto) ?? contexto;
   // La dirección del clip (0.25.0) se aplica con el texto libre ya en inglés. En formato mudo el diálogo no
   // viaja, aunque el guion tenga texto: el clip sale con la boca cerrada y sin voz.
@@ -599,6 +621,7 @@ export async function producirEscenaHablada(
       // El origen es la primera referencia cuando la hay: es lo que el historial enseña como punto de partida.
       sourceMediaId: referencias[0]?.id ?? null,
       sceneId: escena.id,
+      ...columnasDelLugar(conLugar?.lugar ?? null),
       // Turno del clip en el intercambio: es lo que el montaje (0.32.0) lee para alternar los planos.
       castClipOrder: clip ? clip.orden : null,
       // La declaración de marca se guarda con su fecha, igual que la de la imagen.

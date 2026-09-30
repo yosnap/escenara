@@ -122,36 +122,36 @@ describe("el producto en las seis C del fotograma", () => {
 
 describe("reparto de referencias entre el personaje y el producto", () => {
   test("sin producto, todo el cupo es del personaje", () => {
-    expect(repartirReferencias(7, 5, 0)).toEqual({ personaje: 5, producto: 0, cabenTodas: true });
-    expect(repartirReferencias(7, 9, 0)).toEqual({ personaje: 7, producto: 0, cabenTodas: false });
+    expect(repartirReferencias(7, 5, 0)).toEqual({ personaje: 5, producto: 0, lugar: 0, cabenTodas: true });
+    expect(repartirReferencias(7, 9, 0)).toEqual({ personaje: 7, producto: 0, lugar: 0, cabenTodas: false });
   });
 
   test("sin personaje, todo el cupo es del producto", () => {
-    expect(repartirReferencias(7, 0, 5)).toEqual({ personaje: 0, producto: 5, cabenTodas: true });
-    expect(repartirReferencias(7, 0, 9)).toEqual({ personaje: 0, producto: 7, cabenTodas: false });
+    expect(repartirReferencias(7, 0, 5)).toEqual({ personaje: 0, producto: 5, lugar: 0, cabenTodas: true });
+    expect(repartirReferencias(7, 0, 9)).toEqual({ personaje: 0, producto: 7, lugar: 0, cabenTodas: false });
   });
 
   test("con siete huecos, cuatro son del personaje y tres del producto", () => {
-    expect(repartirReferencias(7, 6, 5)).toEqual({ personaje: 4, producto: 3, cabenTodas: false });
-    expect(repartirReferencias(7, 4, 3)).toEqual({ personaje: 4, producto: 3, cabenTodas: true });
+    expect(repartirReferencias(7, 6, 5)).toEqual({ personaje: 4, producto: 3, lugar: 0, cabenTodas: false });
+    expect(repartirReferencias(7, 4, 3)).toEqual({ personaje: 4, producto: 3, lugar: 0, cabenTodas: true });
   });
 
   test("lo que uno no usa lo aprovecha el otro", () => {
     // El personaje solo tiene una foto: el producto se lleva el resto del cupo.
-    expect(repartirReferencias(7, 1, 5)).toEqual({ personaje: 1, producto: 5, cabenTodas: true });
+    expect(repartirReferencias(7, 1, 5)).toEqual({ personaje: 1, producto: 5, lugar: 0, cabenTodas: true });
     // El producto solo tiene una: el personaje se lleva el resto.
-    expect(repartirReferencias(7, 6, 1)).toEqual({ personaje: 6, producto: 1, cabenTodas: true });
+    expect(repartirReferencias(7, 6, 1)).toEqual({ personaje: 6, producto: 1, lugar: 0, cabenTodas: true });
   });
 
   test("con dos huecos, uno para cada uno; con uno solo, manda la imagen de partida", () => {
-    expect(repartirReferencias(2, 4, 3)).toEqual({ personaje: 1, producto: 1, cabenTodas: false });
-    expect(repartirReferencias(1, 1, 3)).toEqual({ personaje: 1, producto: 0, cabenTodas: false });
+    expect(repartirReferencias(2, 4, 3)).toEqual({ personaje: 1, producto: 1, lugar: 0, cabenTodas: false });
+    expect(repartirReferencias(1, 1, 3)).toEqual({ personaje: 1, producto: 0, lugar: 0, cabenTodas: false });
   });
 
   test("un modelo sin referencias no envía nada, y solo avisa si había algo que enviar", () => {
-    expect(repartirReferencias(0, 2, 2)).toEqual({ personaje: 0, producto: 0, cabenTodas: false });
-    expect(repartirReferencias(0, 0, 0)).toEqual({ personaje: 0, producto: 0, cabenTodas: true });
-    expect(repartirReferencias(-1, 1, 1)).toEqual({ personaje: 0, producto: 0, cabenTodas: false });
+    expect(repartirReferencias(0, 2, 2)).toEqual({ personaje: 0, producto: 0, lugar: 0, cabenTodas: false });
+    expect(repartirReferencias(0, 0, 0)).toEqual({ personaje: 0, producto: 0, lugar: 0, cabenTodas: true });
+    expect(repartirReferencias(-1, 1, 1)).toEqual({ personaje: 0, producto: 0, lugar: 0, cabenTodas: false });
   });
 
   // [cupo, fotos del personaje, fotos del producto, se envían del personaje, se envían del producto]
@@ -186,6 +186,7 @@ describe("reparto de referencias entre el personaje y el producto", () => {
       expect(repartirReferencias(cupo, delPersonaje, delProducto)).toEqual({
         personaje: enviaPersonaje,
         producto: enviaProducto,
+        lugar: 0,
         cabenTodas: enviaPersonaje >= delPersonaje && enviaProducto >= delProducto,
       });
     });
@@ -226,7 +227,7 @@ describe("los hechos del producto llevan las cifras del reparto", () => {
 
   test("con una caja de cinco fotos y siete huecos, viajan cuatro del personaje y tres del producto", () => {
     const { hechos, reparto } = hechosDelProducto(caja(5), 7, 6, false);
-    expect(reparto).toEqual({ personaje: 4, producto: 3, cabenTodas: false });
+    expect(reparto).toEqual({ personaje: 4, producto: 3, lugar: 0, cabenTodas: false });
     expect(hechos.referenciasNoCaben).toBe(true);
     expect(hechos.referencias).toEqual({ cupo: 7, fotosPersonaje: 6, fotosProducto: 5, personaje: 4, producto: 3 });
   });

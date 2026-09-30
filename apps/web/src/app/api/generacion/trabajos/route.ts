@@ -5,6 +5,7 @@ import { ErrorGeneracion } from "@/server/generacion/errores";
 import { exigirMismoOrigen, leerCuerpo, manejador } from "@/server/generacion/http";
 import { crearAnimacion, crearFotograma } from "@/server/generacion/servicio";
 import { listarTrabajos } from "@/server/generacion/trabajos";
+import { leerLugarElegido } from "@/server/lugares/para-generar";
 import { leerProductoElegido } from "@/server/productos/eleccion";
 import { leerSeleccionDePresets } from "@/server/prompts/entrada";
 
@@ -115,6 +116,8 @@ export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
            * digital empieza justo ahí, en el fotograma de la pantalla apagada.
            */
           ...(productoElegido ? { productoElegido } : {}),
+          // Lugar elegido en «Crear»: su maestra entra en el fotograma. Que sea suyo lo comprueba el servicio.
+          lugarElegido: leerLugarElegido(cuerpo.lugar),
         })
       : await crearAnimacion(actor, {
           ...comun,

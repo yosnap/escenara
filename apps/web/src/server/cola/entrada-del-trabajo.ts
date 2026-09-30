@@ -123,6 +123,13 @@ export function referenciasDeProductoDe(fila: FilaTrabajo): string[] {
   return guardadas.filter((id): id is string => typeof id === "string" && id !== "");
 }
 
+/** La maestra del lugar que se guardó al encolar, si se le hizo sitio en el cupo. Va la última. */
+export function referenciasDeLugarDe(fila: FilaTrabajo): string[] {
+  const guardadas = (fila.input as { referenciasLugar?: unknown }).referenciasLugar;
+  if (!Array.isArray(guardadas)) return [];
+  return guardadas.filter((id): id is string => typeof id === "string" && id !== "").slice(0, 1);
+}
+
 /** Identificador del servicio compatible con el que se encoló, si lo hubo. */
 export function compatibleIdDe(fila: FilaTrabajo): string {
   const guardado = (fila.input as { compatibleId?: unknown }).compatibleId;

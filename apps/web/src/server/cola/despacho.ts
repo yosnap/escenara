@@ -39,6 +39,7 @@ import {
   esCantoDe,
   personajesOmniDe,
   proporcionPedidaDe,
+  referenciasDeLugarDe,
   referenciasDeProductoDe,
   repartoDeEnvioDe,
   reservasAutorizadas,
@@ -301,16 +302,15 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
    * Con **producto** (0.26.0) el cupo del modelo se comparte: sus fotos van detrás de las del personaje, y el
    * hueco que ocupan se le descuenta al personaje. El reparto ya se hizo al encolar —es lo que se avisó y lo
    * que el usuario confirmó—, así que aquí solo se respeta: se le quita al personaje exactamente el número de
-   * huecos que ocupan las fotos del producto que quedaron guardadas.
+   * huecos que ocupan las fotos del producto que quedaron guardadas y la maestra del lugar, que va la última.
    */
-  const fotosDeProducto = referenciasDeProductoDe(fila);
+  const fotosAjenas = [...referenciasDeProductoDe(fila), ...referenciasDeLugarDe(fila)];
   const origenes = await mediosDeReferencia(
     fila,
-    huecosDelPersonaje(modelo.parametros.maximoReferencias, fotosDeProducto.length),
+    huecosDelPersonaje(modelo.parametros.maximoReferencias, fotosAjenas.length),
   );
-  const origenesProducto = await mediosVigentes(fotosDeProducto);
   const urls: string[] = [];
-  for (const origen of [...origenes, ...origenesProducto]) {
+  for (const origen of [...origenes, ...(await mediosVigentes(fotosAjenas))]) {
     // Cada subida renueva la toma: con diez referencias, la preparación puede pasar de los tres minutos que
     // dura, y una toma caducada dejaría que otro worker preparase el mismo trabajo en paralelo.
     if (!(await renovarToma(fila.id, workerId))) {

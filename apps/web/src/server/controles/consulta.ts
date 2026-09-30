@@ -7,12 +7,13 @@ import type { FilaPersonaje } from "../db/esquema";
 import { exigirMedioElegido } from "../generacion/comprobaciones";
 import { elegirParaTipo } from "../generacion/precios";
 import { personajeDeLaCadena } from "../generacion/trabajos";
+import { hechosDelClipConLugar, hechosDelEnvioConLugar, imagenesDelLugar, lugarDelEnvio } from "../lugares/en-el-envio";
 import type { Actor } from "../media/servicio";
 import { personajePorId } from "../personajes/contexto";
 import { personajePropio } from "../personajes/puede-generar";
 import { completarModelosSugeridos } from "../productos/modelos-sugeridos";
 import { productoParaGenerar } from "../productos/prompt";
-import { hojaEnElEnvio, repartoDelEnvio } from "../productos/reparto-del-envio";
+import { hojaEnElEnvio, repartoCompletoDelEnvio } from "../productos/reparto-del-envio";
 import { creditosDelEnvio } from "../prompts/traduccion";
 import type { Buscador } from "../proveedores/codigos";
 import { conVistaQueCompleta, hechosDelReparto, recopilarHechos } from "./hechos";
@@ -55,6 +56,8 @@ export interface PeticionDeControles {
   productoAccion?: string | null;
   /** Fotos del producto que se han elegido enviar (solo «Crear»). Vacío = las de por defecto. */
   productoFotos?: string[];
+  /** Lugar elegido **sin escena** («Crear»): uno ajeno responde 404, igual que al confirmar. */
+  lugarId?: string | null;
 }
 
 export async function evaluarControles(
@@ -96,24 +99,32 @@ export async function evaluarControles(
         })
       : null;
   const sinReferencia = peticion.retratoInventado === true || (!peticion.personajeId && !peticion.medioId);
-  const conProducto = producto
-    ? await repartoDelEnvio({
-        producto,
-        adaptador: eleccion.adaptador,
-        modelo: eleccion.modelo,
-        // Las mismas entradas que el envío: el clip parte de una imagen, y el fotograma lleva las fotos del
-        // personaje **elegido**, no las del que hereda una imagen suelta.
-        envio:
-          peticion.tipo === "animacion"
-            ? { tipo: "clip" }
-            : {
-                tipo: "fotograma",
-                personaje: personaje && peticion.personajeId && !peticion.retratoInventado ? personaje : null,
-                sinReferencia,
-                conHoja: personaje !== null && hojaEnElEnvio(personaje, peticion.escenaId ?? undefined),
-              },
-      })
-    : null;
+  // El lugar compite por el mismo cupo: se resuelve igual que en el envío, con la misma función.
+  const conLugar = await lugarDelEnvio(
+    actor.id,
+    conEscena?.escena ?? null,
+    peticion.lugarId ? { lugarId: peticion.lugarId, sitio: "" } : null,
+    personaje,
+  );
+  // En el clip no viaja la maestra (ya está dentro del fotograma): solo cuentan la declaración y el acabado.
+  const esClip = peticion.tipo === "animacion";
+  const { conProducto, reparto } = await repartoCompletoDelEnvio({
+    producto,
+    lugar: imagenesDelLugar(conLugar),
+    adaptador: eleccion.adaptador,
+    modelo: eleccion.modelo,
+    // Las mismas entradas que el envío: el clip parte de una imagen, y el fotograma lleva las fotos del
+    // personaje **elegido**, no las del que hereda una imagen suelta.
+    envio:
+      peticion.tipo === "animacion"
+        ? { tipo: "clip" }
+        : {
+            tipo: "fotograma",
+            personaje: personaje && peticion.personajeId && !peticion.retratoInventado ? personaje : null,
+            sinReferencia,
+            conHoja: personaje !== null && hojaEnElEnvio(personaje, peticion.escenaId ?? undefined),
+          },
+  });
   // Sin esto el aviso «no admite la foto del producto» diría que no hay ningún modelo que la admita: la lista de
   // los que sí la llevan la completa quien avisa, con la misma capacidad con la que luego se envía.
   if (conProducto) {
@@ -144,6 +155,7 @@ export async function evaluarControles(
         primerRetrato: peticion.retratoInventado === true && personaje?.virtual === true,
         vistaSintetica: Boolean(peticion.vistaSintetica),
         ...(conProducto ? { producto: conProducto.hechos } : {}),
+        ...(esClip ? hechosDelClipConLugar(conLugar) : hechosDelEnvioConLugar(conLugar, reparto)),
       },
       buscar,
     ),
