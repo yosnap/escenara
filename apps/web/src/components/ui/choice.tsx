@@ -5,7 +5,7 @@ import { Radio } from "@base-ui/react/radio";
 import { RadioGroup } from "@base-ui/react/radio-group";
 import { Switch as SW } from "@base-ui/react/switch";
 import { Check } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 import { cn } from "./cn";
 
 interface BaseProps {
@@ -30,16 +30,35 @@ export function Casilla({
   marcada,
   marcadaInicial,
   onCambio,
-}: BaseProps & { marcada?: boolean; marcadaInicial?: boolean; onCambio?: (v: boolean) => void }) {
-  return (
+  error,
+  requisito,
+}: BaseProps & {
+  marcada?: boolean;
+  marcadaInicial?: boolean;
+  onCambio?: (v: boolean) => void;
+  /** Lo que falta de esta casilla: la marca con un aro de error completo y lo dice debajo. */
+  error?: string;
+  /** Marca de la casilla para llegar a ella desde un aviso de requisitos (`data-requisito`). */
+  requisito?: string;
+}) {
+  const idError = useId();
+  const casilla = (
     // biome-ignore lint/a11y/noLabelWithoutControl: Base UI renderiza el control dentro de la etiqueta
-    <label className={cn("flex min-h-11 cursor-pointer items-start gap-3 py-1", deshabilitado && "opacity-50")}>
+    <label
+      className={cn(
+        "flex min-h-11 cursor-pointer items-start gap-3 py-1",
+        deshabilitado && "opacity-50",
+        error && "rounded-control px-2 ring-2 ring-error",
+      )}
+    >
       <CB.Root
         checked={marcada}
         defaultChecked={marcadaInicial}
         onCheckedChange={(v) => onCambio?.(v)}
         disabled={deshabilitado}
-        className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border-2 border-borde bg-superficie transition-colors duration-(--motion-fast) data-checked:border-acento data-checked:bg-acento"
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? idError : undefined}
+        className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border-2 border-borde bg-superficie transition-colors duration-(--motion-fast) data-checked:border-acento data-checked:bg-acento aria-invalid:border-error"
       >
         <CB.Indicator className="text-sobre-acento data-unchecked:hidden">
           <Check className="size-4" strokeWidth={3} />
@@ -47,6 +66,18 @@ export function Casilla({
       </CB.Root>
       <Texto etiqueta={etiqueta} descripcion={descripcion} />
     </label>
+  );
+  // Sin marca ni error es la etiqueta de siempre: el envoltorio solo aparece cuando hay algo que señalar.
+  if (!error && !requisito) return casilla;
+  return (
+    <div className="flex flex-col gap-1" data-requisito={requisito}>
+      {casilla}
+      {error && (
+        <p id={idError} className="flex items-center gap-1 px-2 text-sm font-medium text-error">
+          <span aria-hidden>●</span> {error}
+        </p>
+      )}
+    </div>
   );
 }
 

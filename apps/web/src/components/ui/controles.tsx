@@ -98,6 +98,7 @@ export function PanelAntesDeGenerar({
   confirmados,
   cargando,
   deshabilitado,
+  requisito,
   onConfirmar,
 }: {
   evaluacion: EvaluacionVista;
@@ -106,10 +107,12 @@ export function PanelAntesDeGenerar({
   /** Se está volviendo a evaluar en el servidor: lo que se muestra puede ser de hace un momento. */
   cargando?: boolean;
   deshabilitado?: boolean;
+  /** Marca del panel para llegar a él desde un aviso de requisitos (`data-requisito`). */
+  requisito?: string;
   onConfirmar?: (regla: string, valor: boolean) => void;
 }) {
   return (
-    <section aria-label="Antes de generar" className="flex flex-col gap-3">
+    <section aria-label="Antes de generar" className="flex flex-col gap-3" data-requisito={requisito}>
       <AvisoEstado
         estado={evaluacion.estado}
         motivo={

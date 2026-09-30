@@ -3,23 +3,25 @@ import { useId } from "react";
 import { cn } from "./cn";
 
 export const claseControl =
-  "w-full rounded-control border border-borde bg-superficie px-3.5 py-2.5 text-base text-texto placeholder:text-texto-suave transition-colors duration-(--motion-fast) hover:border-acento focus-visible:border-acento aria-invalid:border-error disabled:opacity-50";
+  "w-full rounded-control border border-borde bg-superficie px-3.5 py-2.5 text-base text-texto placeholder:text-texto-suave transition-colors duration-(--motion-fast) hover:border-acento focus-visible:border-acento aria-invalid:border-error aria-invalid:ring-2 aria-invalid:ring-error disabled:opacity-50";
 
 interface CampoProps {
   etiqueta: string;
   ayuda?: ReactNode;
   error?: string;
+  /** Marca del campo para llegar a él desde un aviso de requisitos (`data-requisito`). */
+  requisito?: string;
   children: (props: { id: string; "aria-describedby"?: string; "aria-invalid"?: boolean }) => ReactNode;
 }
 
 /** Envoltorio de campo: etiqueta, ayuda y error asociados al control para lectores de pantalla. */
-export function Campo({ etiqueta, ayuda, error, children }: CampoProps) {
+export function Campo({ etiqueta, ayuda, error, requisito, children }: CampoProps) {
   const id = useId();
   const idAyuda = `${id}-ayuda`;
   const idError = `${id}-error`;
   const descritoPor = [ayuda && idAyuda, error && idError].filter(Boolean).join(" ") || undefined;
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1.5" data-requisito={requisito}>
       <label htmlFor={id} className="text-sm font-semibold text-texto">
         {etiqueta}
       </label>

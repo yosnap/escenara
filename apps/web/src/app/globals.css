@@ -68,6 +68,24 @@
   background-image: var(--gradient-atardecer);
 }
 
+/* Campo al que se acaba de llegar desde un aviso de requisitos: aro fijo que se ve sin animación; el latido solo
+   corre si la persona no ha pedido reducir el movimiento. */
+[data-resaltado] {
+  outline: 3px solid var(--color-error);
+  outline-offset: 4px;
+  border-radius: var(--radius-control);
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-resaltado] {
+    animation: latido-requisito 700ms ease-in-out 2;
+  }
+}
+@keyframes latido-requisito {
+  50% {
+    outline-offset: 9px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
