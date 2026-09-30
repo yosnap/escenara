@@ -6,6 +6,7 @@ import {
   estadoDeConversion,
   type HechosDelClip,
   motivoParaNoConvertir,
+  segundosDelClip,
   tituloDelProyecto,
   urlDelProyectoConvertido,
 } from "./conversion";
@@ -128,6 +129,14 @@ describe("qué se copia del clip", () => {
     expect(duracionDelProyecto(7)).toBe(8);
     expect(duracionDelProyecto("8")).toBe(8);
     expect(duracionDelProyecto(undefined)).toBe(8);
+  });
+
+  test("los segundos del clip se leen donde los guarda el motor, con el campo raíz de respaldo", () => {
+    expect(segundosDelClip({ parametros: { segundos: 4 }, segundos: 8 })).toBe(4);
+    expect(segundosDelClip({ parametros: {}, segundos: 6 })).toBe(6);
+    expect(segundosDelClip({ parametros: { aspect_ratio: "9:16" } })).toBeUndefined();
+    expect(segundosDelClip(null)).toBeUndefined();
+    expect(duracionDelProyecto(segundosDelClip({ parametros: { segundos: 10 } }))).toBe(8);
   });
 
   test("el título lleva el trend o el día, y nunca pasa del máximo", () => {

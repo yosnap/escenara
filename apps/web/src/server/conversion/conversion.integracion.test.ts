@@ -70,6 +70,9 @@ const { leerObjeto } = await import("../almacenamiento");
 const { pasadaDeExportaciones } = await import("../montaje/cola");
 const { comprometidoDelProyecto, exigirTopeDelProyecto } = await import("../asistente/plan");
 const { estadoDeProduccion } = await import("../produccion/consulta");
+const { listarModelos } = await import("../proveedores/catalogo");
+const { adaptadorKie } = await import("../proveedores/kie/adaptador");
+const { entradaGuardada } = await import("../generacion/servicio");
 
 type Sesion = Awaited<ReturnType<typeof crearSesionDePrueba>>;
 type Actor = import("../media/servicio").Actor;
@@ -236,13 +239,56 @@ describe.skipIf(!hayBaseDeDatos)("convertir un clip de Crear en un proyecto", ()
   /**
    * Un clip de «Crear» ya terminado y pagado: su trabajo, su archivo, su imagen de partida y su apunte de consumo.
    * Es lo que deja el camino rápido de «Crear» al cerrar un clip (`scene_id` a nulo).
+   *
+   * La entrada se compone con **las mismas funciones** que usa `crearAnimacion`: `montarEntrada` del adaptador de
+   * KIE con el modelo sembrado y `entradaGuardada`, que es la que mete la duración en `parametros.segundos`. Así el
+   * test lee la forma que la aplicación escribe de verdad, no una inventada.
    */
   async function clipDeCrear(
     parcial: Partial<typeof generationJobs.$inferInsert> = {},
     entradaExtra: Record<string, unknown> = {},
+    segundos: number | null = 4,
   ) {
     const imagen = await crearMedio(actor, new File([await fotoDeReferencia()], "partida.png", { type: "image/png" }));
     const resultMediaId = await medioDeVideo("clip", 2);
+    const modelo = (await listarModelos()).find((m) => m.modelo === "veo3_fast");
+    if (!modelo) throw new Error("El catálogo de prueba no tiene sembrado veo3_fast.");
+    const dialogo = "Esto me ha cambiado las mañanas.";
+    const parametros = adaptadorKie.montarEntrada(modelo, {
+      escena: "composed prompt",
+      dialogo,
+      urls: [],
+      ...(segundos === null ? {} : { segundos }),
+    });
+    const guardada = entradaGuardada(adaptadorKie, "composed prompt", [imagen.id], {
+      ...parametros,
+      ...(segundos === null ? {} : { segundos }),
+    });
+    if (segundos === null) delete (guardada.parametros as { segundos?: unknown }).segundos;
+    const entrada = {
+      ...guardada,
+      unidadPrecio: "vídeo de 8 s",
+      dialogo,
+      escena: "Lucía abre el bote en la cocina",
+      direccionElegida: {
+        formatoClip: "ugc_a_camara",
+        plano: "primer-plano",
+        angulo: "",
+        camara: "",
+        microaccion: "sonreir",
+        momentoMicroaccion: "despues",
+        direccionVocal: "cercano",
+        optica: "",
+        luz: "",
+        localizacion: "",
+        registroEstetico: "influencer",
+        instruccionesExtra: "",
+        modoExperto: false,
+        descripcionExperta: "",
+        acento: "es_MX_cdmx",
+      },
+      ...entradaExtra,
+    };
     const [trabajo] = await db()
       .insert(generationJobs)
       .values({
@@ -254,29 +300,7 @@ describe.skipIf(!hayBaseDeDatos)("convertir un clip de Crear en un proyecto", ()
         idempotencyKey: crypto.randomUUID(),
         state: "listo",
         stage: "listo",
-        input: {
-          escena: "Lucía abre el bote en la cocina",
-          dialogo: "Esto me ha cambiado las mañanas.",
-          segundos: 4,
-          direccionElegida: {
-            formatoClip: "ugc_a_camara",
-            plano: "primer-plano",
-            angulo: "",
-            camara: "",
-            microaccion: "sonreir",
-            momentoMicroaccion: "despues",
-            direccionVocal: "cercano",
-            optica: "",
-            luz: "",
-            localizacion: "",
-            registroEstetico: "influencer",
-            instruccionesExtra: "",
-            modoExperto: false,
-            descripcionExperta: "",
-            acento: "es_MX_cdmx",
-          },
-          ...entradaExtra,
-        },
+        input: entrada,
         sourceMediaId: imagen.id,
         resultMediaId,
         characterId: personajeId,
@@ -409,6 +433,23 @@ describe.skipIf(!hayBaseDeDatos)("convertir un clip de Crear en un proyecto", ()
     const produccion = await estadoDeProduccion(actor, datos.proyectoId);
     expect(produccion.escenas[0]?.clip?.id).toBe(clip.resultMediaId ?? "");
     expect(produccion.escenas[0]?.animacion?.id).toBe(clip.id);
+  });
+
+  test("el proyecto toma la duración con la que se generó el clip, y 8 s si no es de las de un proyecto", async () => {
+    const deCuatro = await clipDeCrear();
+    expect((deCuatro.input as { parametros?: { segundos?: unknown } }).parametros?.segundos).toBe(4);
+    expect((deCuatro.input as { segundos?: unknown }).segundos).toBeUndefined();
+    const cuatro = await convertir(deCuatro.id);
+    const [proyecto] = await db().select().from(projects).where(eq(projects.id, cuatro.datos.proyectoId));
+    expect(proyecto?.clipSeconds).toBe(4);
+    expect((await escenaDe(cuatro.datos.proyectoId)).plannedSeconds).toBe(4);
+
+    for (const segundos of [10, null]) {
+      const clip = await clipDeCrear({}, {}, segundos);
+      const { datos } = await convertir(clip.id);
+      const [fila] = await db().select().from(projects).where(eq(projects.id, datos.proyectoId));
+      expect(fila?.clipSeconds).toBe(8);
+    }
   });
 
   test("no hay doble cobro: ni trabajos ni apuntes nuevos, y el proyecto cuenta lo ya gastado una vez", async () => {

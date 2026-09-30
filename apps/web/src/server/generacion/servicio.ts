@@ -454,7 +454,7 @@ async function personajeDelFotograma(personajeId: string | null): Promise<Person
  * le enviará al proveedor. Nunca incluye las URL temporales del proveedor ni ningún secreto: cada modelo las
  * recibe por un campo distinto (`image_urls`, `input_urls`, `image_url`) y se quitan todos.
  */
-function entradaGuardada(
+export function entradaGuardada(
   adaptador: Adaptador,
   prompt: string,
   referencias: string[],

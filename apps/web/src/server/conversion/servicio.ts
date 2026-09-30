@@ -6,6 +6,7 @@ import {
   estadoDeConversion,
   type HechosDelClip,
   type ProyectoConvertido,
+  segundosDelClip,
   tituloDelProyecto,
   urlDelProyectoConvertido,
 } from "@/lib/conversion";
@@ -103,9 +104,10 @@ export async function convertirEnProyecto(actor: Actor, trabajoId: unknown): Pro
     }
 
     const { fila } = clip;
-    const entrada = fila.input as { escena?: unknown; dialogo?: unknown; segundos?: unknown };
+    const entrada = fila.input as { escena?: unknown; dialogo?: unknown };
     const direccion = direccionGuardada(fila);
-    const segundos = duracionDelProyecto(entrada.segundos);
+    // La duración con la que se generó el clip, que es la que su modelo ya aceptó y cobró.
+    const segundos = duracionDelProyecto(segundosDelClip(fila.input));
     const titulo = tituloDelProyecto(clip.trend?.nombre ?? null, fila.createdAt);
     const descripcion = limpiarTextoDePrompt(entrada.escena, IDEA_MAXIMA);
     const [proyecto] = await tx

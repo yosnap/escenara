@@ -144,6 +144,19 @@ export function columnasDeDireccion(d: DireccionElegida) {
 }
 
 /**
+ * Segundos que se le pidieron al modelo para este clip, tal como los guarda el motor: dentro de
+ * `input.parametros.segundos` (`generacion/servicio.ts › entradaGuardada`). El campo raíz `input.segundos` solo se
+ * mira como respaldo, por si algún trabajo antiguo lo guardó ahí.
+ */
+export function segundosDelClip(entrada: unknown): unknown {
+  if (typeof entrada !== "object" || entrada === null) return undefined;
+  const { parametros, segundos } = entrada as { parametros?: unknown; segundos?: unknown };
+  const pedidos =
+    typeof parametros === "object" && parametros !== null ? (parametros as { segundos?: unknown }).segundos : undefined;
+  return pedidos ?? segundos;
+}
+
+/**
  * Duración de los clips del proyecto: la del clip de origen si es una de las que ofrece un proyecto y, si no, la
  * de fábrica. El clip reutilizado dura lo que dura; esta cifra es la que se pediría **al regenerarlo**.
  */
