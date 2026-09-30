@@ -23,6 +23,8 @@ const plantilla = (
   trendSince: null,
   trendPlatform: "",
   targetSeconds: null,
+  duracionesAdmitidas: [],
+  direccionDecidida: [],
   referenceUrl: "",
   trendAllowsSpeech: false,
   capacidad,

@@ -18,6 +18,7 @@ import {
 } from "@/lib/presets";
 import type { DatosPlantilla } from "@/server/prompts/plantillas-admin";
 import { crearPlantillaAccion, editarPlantillaAccion, type ResultadoPlantillas } from "./acciones";
+import { CampoDireccionDecidida, CampoDuracionesAdmitidas, leerDuracionesEscritas } from "./campos-trend";
 
 /**
  * Alta y edición de una plantilla de la instalación, con **previsualización**: el texto se renderiza aquí mismo
@@ -43,6 +44,8 @@ const VACIO: DatosPlantilla = {
   trendStatus: null,
   trendPlatform: "",
   targetSeconds: null,
+  duracionesAdmitidas: [],
+  direccionDecidida: [],
   referenceUrl: "",
   trendAllowsSpeech: false,
 };
@@ -61,6 +64,8 @@ const deVista = (plantilla: PlantillaVista): DatosPlantilla => ({
   trendStatus: plantilla.trendStatus,
   trendPlatform: plantilla.trendPlatform,
   targetSeconds: plantilla.targetSeconds,
+  duracionesAdmitidas: plantilla.duracionesAdmitidas,
+  direccionDecidida: plantilla.direccionDecidida,
   referenceUrl: plantilla.referenceUrl,
   trendAllowsSpeech: plantilla.trendAllowsSpeech,
 });
@@ -84,6 +89,7 @@ export function DialogoPlantilla({
   const [abierto, setAbierto] = useState(false);
   const [datos, setDatos] = useState<DatosPlantilla>(plantilla ? deVista(plantilla) : VACIO);
   const [variablesJson, setVariablesJson] = useState(JSON.stringify(plantilla ? plantilla.variables : [], null, 2));
+  const [duracionesTexto, setDuracionesTexto] = useState((plantilla?.duracionesAdmitidas ?? []).join(", "));
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const editando = plantilla !== undefined;
@@ -99,8 +105,13 @@ export function DialogoPlantilla({
       setError("Las variables tienen que ser una lista en JSON.");
       return;
     }
+    const leidas = leerDuracionesEscritas(duracionesTexto);
+    if ("error" in leidas) {
+      setError(leidas.error);
+      return;
+    }
     setGuardando(true);
-    const conVariables = { ...datos, variables };
+    const conVariables = { ...datos, variables, duracionesAdmitidas: leidas.duraciones };
     const resultado = editando
       ? await editarPlantillaAccion(plantilla.id, conVariables)
       : await crearPlantillaAccion(conVariables);
@@ -136,7 +147,7 @@ export function DialogoPlantilla({
         </Boton>
       }
       titulo={editando ? `Editar «${plantilla.nombre}»` : "Nueva plantilla de la instalación"}
-      descripcion="Cambiar el texto, las variables o las restricciones crea una versión nueva. Lo ya generado no cambia."
+      descripcion="Cambiar el texto, las variables, las restricciones o lo que dicta un trend (habla, duraciones admitidas y lo que decide de la dirección) crea una versión nueva. Lo ya generado no cambia."
       pie={
         <>
           <Boton variante="fantasma" onClick={() => setAbierto(false)}>
@@ -161,7 +172,6 @@ export function DialogoPlantilla({
                     kind: v as "base" | "trend",
                     capacidad: v === "trend" ? "image_to_video" : datos.capacidad,
                     trendStatus: v === "trend" ? "revision" : null,
-                    targetSeconds: v === "trend" ? 8 : null,
                   })
                 }
                 opciones={[
@@ -211,18 +221,11 @@ export function DialogoPlantilla({
                   />
                 )}
               </Campo>
-              <Campo etiqueta="Duración objetivo (s)">
-                {(props) => (
-                  <EntradaTexto
-                    {...props}
-                    type="number"
-                    min={1}
-                    max={600}
-                    value={datos.targetSeconds ?? ""}
-                    onChange={(e) => setDatos({ ...datos, targetSeconds: Number(e.target.value) })}
-                  />
-                )}
-              </Campo>
+              <CampoDuracionesAdmitidas
+                valor={duracionesTexto}
+                disenada={datos.targetSeconds ?? null}
+                onCambio={setDuracionesTexto}
+              />
               <Campo etiqueta="URL de referencia" ayuda="Solo visible para administración; HTTPS.">
                 {(props) => (
                   <EntradaTexto
@@ -238,6 +241,10 @@ export function DialogoPlantilla({
                 descripcion="Apagado: el guion nunca entra en el clip."
                 activo={datos.trendAllowsSpeech === true}
                 onCambio={(v) => setDatos({ ...datos, trendAllowsSpeech: v })}
+              />
+              <CampoDireccionDecidida
+                valor={Array.isArray(datos.direccionDecidida) ? datos.direccionDecidida : []}
+                onCambio={(categorias) => setDatos({ ...datos, direccionDecidida: categorias })}
               />
             </>
           )}
@@ -357,7 +364,7 @@ export function DialogoPlantilla({
 
           <Campo
             etiqueta="Motivo del cambio"
-            ayuda="Obligatorio si cambias el texto, las variables o las restricciones: queda en el historial de versiones."
+            ayuda="Obligatorio si cambias el texto, las variables, las restricciones o lo que dicta el trend: queda en el historial de versiones."
           >
             {(props) => (
               <EntradaTexto
