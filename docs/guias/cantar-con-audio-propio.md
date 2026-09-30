@@ -22,9 +22,7 @@ Trátala como una función **experimental**. En las pruebas con dos canciones, e
 (subida, derechos, coste, generación y montaje), pero **los labios no siguieron el sonido con la claridad que se
 esperaba** y la sincronía del canto no quedó validada. Además, el proveedor puede añadir un fondo o un texto que no
 pediste, aunque escribas un fondo liso sin rótulos. Como referencia de coste, un clip de unos 12 s con Kling AI Avatar
-Standard a 720p se estimó en 96 créditos. La [guía de recorridos](recorridos-de-referencia-0.29-0.32.md) conserva las
-entradas, capturas y problemas observados.
-
-![Proyecto de Elisa preparado con dirección, audio y coste visible](../assets/capturas/0.29.0-elisa-canto-preparado.png)
+Standard a 720p se estimó en 96 créditos. Trata ese importe como una
+medida, no como un precio garantizado: el plan de la escena muestra siempre el coste vigente antes de generar.
 
 ![Ajustes de modelo, duración y resolución para canto](../assets/capturas/0.29.0-ajustes-canto-claro.jpg)

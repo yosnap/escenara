@@ -237,5 +237,5 @@ lip-sync**. El proveedor sustituyó
 el fondo crema pedido por una cafetería y dejó letras ilegibles cerca del final. El tamaño vertical del
 retrato no garantiza 9:16: este modelo no recibe un parámetro de proporción. El montaje local guardado sí sale
 a 1080 × 1920 con etiqueta sintética y audio, sin coste de proveedor; conserva el encuadre con franjas negras.
-Véase el [recorrido de referencia](../guias/recorridos-de-referencia-0.29-0.32.md) para el proyecto y capturas.
+Véase el [recorrido de referencia](../procesos/recorridos-de-referencia-0.29-0.32.md) para el proyecto y capturas.
 Queda pendiente repetirlo con una voz cantada original dentro de los 112 créditos aún autorizados.

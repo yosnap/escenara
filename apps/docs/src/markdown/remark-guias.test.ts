@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import type { Root } from "mdast";
 import { VFile } from "vfile";
@@ -94,11 +96,16 @@ describe("remarkGuias", () => {
 
 describe("mediosEnlazados", () => {
   test("recoge los medios enlazados desde las guías y nada de fuera de docs/assets", () => {
-    const medios = mediosEnlazados([path.join(DIR_GUIAS, "recorridos-de-referencia-0.29-0.32.md")]);
-    expect(medios.length).toBeGreaterThan(0);
-    for (const m of medios) {
-      expect(m.ruta).toMatch(/^\/medios\/(audio|capturas)\//);
-      expect(m.origen.startsWith(path.dirname(DIR_DIAGRAMAS))).toBe(true);
+    const dir = mkdtempSync(path.join(tmpdir(), "guias-"));
+    try {
+      const captura = path.join(path.dirname(DIR_DIAGRAMAS), "capturas", "0.32.0-montaje-claro.webp");
+      const guia = path.join(dir, "guia.md");
+      const relativa = encodeURI(path.relative(dir, captura));
+      writeFileSync(guia, `Ver la [captura](${relativa}) y la [otra guía](otra.md).\n\n![no cuenta](${relativa})\n`);
+      const medios = mediosEnlazados([guia]);
+      expect(medios).toEqual([{ ruta: "/medios/capturas/0.32.0-montaje-claro.webp", origen: captura }]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 });

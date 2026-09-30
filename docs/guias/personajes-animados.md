@@ -48,5 +48,4 @@ no atribuyas al dibujo una excepción legal automática. Consulta también [Mont
 En la cuenta de administración están los proyectos [Nora en dos escenas](/proyectos/8ee8d990-e52e-4e08-ba58-52d71ac5b461),
 [Bruno en 3D estilizado](/proyectos/0a2604ce-96e7-4809-835e-b99de5d99fbf) y
 [Mika en anime](/proyectos/8a6e31e0-20e5-417e-b8a3-73e190045571). Cada uno conserva idea, escena,
-fotograma, clip e historial. La [guía de recorridos de referencia](recorridos-de-referencia-0.29-0.32.md)
-explica los campos y los resultados medidos.
+fotograma, clip e historial.

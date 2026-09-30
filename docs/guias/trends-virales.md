@@ -43,4 +43,4 @@ Un trend nuevo empieza **«En revisión»**: nadie más que la administración l
 
 Cuando el formato envejezca, usa **«Caducar trend»**. Una plantilla caducada no se edita ni genera: se duplica, se revisa la copia y se publica cuando corresponda. El interruptor de **Admin › Ajustes** oculta todos los trends a la vez sin borrarlos.
 
-Las plantillas iniciales que trae Escenara están todas «En revisión», incluidas las variantes de 5 s: hay que publicarlas tú tras probarlas. La [guía de recorridos](recorridos-de-referencia-0.29-0.32.md) recoge los costes y los límites visuales que se observaron al probar dos de ellas.
+Las plantillas iniciales que trae Escenara están todas «En revisión», incluidas las variantes de 5 s: hay que publicarlas tú tras probarlas. Al probar dos de ellas se vio que el unboxing no es una primera persona perfecta y que la rotulación fina de un producto puede variar, así que revisa el resultado antes de publicar.

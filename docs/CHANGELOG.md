@@ -130,7 +130,7 @@ ningún proveedor, **ni un crédito**.
 
 - Un proyecto de tres escenas conserva el orden **2, 1, 3**, los recortes de **4, 5 y 6 s**, subtítulos, música
   al 25 % y la etiqueta obligatoria. El MP4 descargado midió **H.264, 1080 × 1920, AAC estéreo y 15,016 s**
-  con `ffprobe`; la exportación no consumió créditos. El [recorrido de referencia](guias/recorridos-de-referencia-0.29-0.32.md)
+  con `ffprobe`; la exportación no consumió créditos. El [recorrido de referencia](procesos/recorridos-de-referencia-0.29-0.32.md)
   enlaza el proyecto y las capturas.
 
 ## [0.31.0] · 2026-09-29
@@ -161,7 +161,7 @@ ningún proveedor, **ni un crédito**.
 
 - La tarjeta de producción enseña los avisos del producto propios del **clip** antes de pagar la animación. En la primera prueba, Hailuo no admitía la foto del tarro como referencia de vídeo y el servidor exigía confirmar ese riesgo, pero la pantalla no ofrecía la casilla.
 - Un clip fallido puede repetirse con el fotograma aprobado después de autorizar un reintento; la pantalla ya no obliga a pagar otro fotograma. Los proyectos ofrecen también **5 s**, duración medida con MiniMax H3, para poder cambiar de modelo cuando Hailuo devuelve un error interno.
-- Dos trends de 5 s se generaron con MiniMax H3 y quedaron en la cuenta del propietario con sus plantillas, producto, prompts y trabajos anteriores. Consumo real: **96 de 100 créditos** autorizados. El MP4 conjunto se exportó sin coste y `ffprobe` verificó H.264, 1080 × 1920, AAC y 10,013 s. El unboxing no es una primera persona perfecta y la rotulación fina del tarro varía: la [guía de recorridos](guias/recorridos-de-referencia-0.29-0.32.md) lo muestra sin ocultar esos límites.
+- Dos trends de 5 s se generaron con MiniMax H3 y quedaron en la cuenta del propietario con sus plantillas, producto, prompts y trabajos anteriores. Consumo real: **96 de 100 créditos** autorizados. El MP4 conjunto se exportó sin coste y `ffprobe` verificó H.264, 1080 × 1920, AAC y 10,013 s. El unboxing no es una primera persona perfecta y la rotulación fina del tarro varía: la [registro de recorridos](procesos/recorridos-de-referencia-0.29-0.32.md) lo muestra sin ocultar esos límites.
 
 ## [0.29.0] · 2026-09-29
 
@@ -179,7 +179,7 @@ ningún proveedor, **ni un crédito**.
 - La producción de un proyecto compuesto solo por canto deja de mostrar el aviso de duración del modelo de animación normal; las escenas normales siguen mostrando ese aviso si se cambia su duración, aunque ya tengan un fotograma generado.
 - Dos trabajos de InfiniteTalk fallaron por error interno del proveedor sin cobro. Kling AI Avatar Standard generó un clip de prueba con el MP3 original: **88 créditos medidos** frente a 96 estimados, dentro del límite autorizado de 200. La migración 0051 completa solo las fichas Kling antiguas descubiertas que nunca modificó el admin, para ofrecer su familia y tarifa de canto. El montaje etiquetado quedó guardado sin gastar créditos y `ffprobe` comprobó H.264, 1080 × 1920, AAC estéreo y 12 s. **La revisión del propietario detectó que los labios no siguen el sonido:** el MP3 sintetizado no tiene voz cantada reconocible y esta prueba no valida todavía el canto. Se conserva como caso de fallo de calidad y se repetirá con una voz adecuada.
 - La vista previa del clip indica las dimensiones reales del archivo: Kling devolvió 848 × 1072 aunque el montaje final sea 9:16. La descarga del MP4 exportado pide al almacenamiento que lo entregue como adjunto; el enlace anterior podía abrir el vídeo en el navegador al cruzar de origen.
-- La ayuda de la escena de canto indica ahora que manda la duración del audio. Antes mostraba los 8 s generales del proyecto incluso cuando el archivo elegido duraba 12 s y el plan cobraba 12. Una [segunda prueba vocal](guias/recorridos-de-referencia-0.29-0.32.md) conserva la composición y grabación originales del propietario, el recorte, la declaración, el clip de 96 créditos y el montaje etiquetado. Los dos intentos suman 184 de 200 créditos autorizados. El MP4 final tiene H.264 a 1080 × 1920 y audio AAC; el proveedor añadió fondo y letras ilegibles. La revisión perceptiva del lip-sync sigue pendiente.
+- La ayuda de la escena de canto indica ahora que manda la duración del audio. Antes mostraba los 8 s generales del proyecto incluso cuando el archivo elegido duraba 12 s y el plan cobraba 12. Una [segunda prueba vocal](procesos/recorridos-de-referencia-0.29-0.32.md) conserva la composición y grabación originales del propietario, el recorte, la declaración, el clip de 96 créditos y el montaje etiquetado. Los dos intentos suman 184 de 200 créditos autorizados. El MP4 final tiene H.264 a 1080 × 1920 y audio AAC; el proveedor añadió fondo y letras ilegibles. La revisión perceptiva del lip-sync sigue pendiente.
 
 ### Corregido
 

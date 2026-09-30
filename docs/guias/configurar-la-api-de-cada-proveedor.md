@@ -42,7 +42,7 @@ Da igual el proveedor, todos los campos de clave funcionan igual:
 Se configuran en **Tu cuenta** (`/cuenta`), en el bloque **Credenciales de IA**. Cada proveedor tiene su tarjeta
 con un único campo, **Clave de API**, un enlace a donde se consigue y el botón **Probar**.
 
-![Credenciales de IA en Tu cuenta, con la clave guardada y su prueba](../assets/capturas/0.9.0-credenciales-claro.webp)
+![Tarjetas de KIE.ai y Google Gemini en Credenciales de IA, todavía sin clave, con el campo Clave de API y el enlace a donde conseguirla](../assets/capturas/0.9.0-credenciales-claro.webp)
 
 ### KIE.ai
 

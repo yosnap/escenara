@@ -7,7 +7,7 @@ web del proveedor: primero tiene que estar en el **catálogo** de tu instalació
 elegirlo y un precio que permita **estimar antes de gastar**. Todo eso se gestiona en **Admin › Modelos**
 (`/admin/modelos`).
 
-![Admin › Modelos con el catálogo filtrado por capacidad, proveedor y estado](../assets/capturas/0.11.0-modelos-claro.webp)
+![Admin › Modelos con los filtros de capacidad, proveedor y estado sobre las tarjetas del catálogo](../assets/capturas/0.11.0-modelos-claro.webp)
 
 ## Cómo entra un modelo en el catálogo
 

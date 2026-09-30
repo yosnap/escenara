@@ -40,7 +40,7 @@ El modelo alternativo **Kling AI Avatar Standard** exigió activar su ficha anti
 mediante la migración 0051; los ajustes del admin pasaron a Kling a 720p. La pantalla estimó **12 × 8 = 96
 créditos**. El trabajo terminó y KIE comunicó **88 créditos realmente consumidos**, dentro de los 200
 autorizados. La [captura del clip listo](../assets/capturas/0.29.0-elisa-canto-terminado.png) y la
-[guía de canto](cantar-con-audio-propio.md) conservan el recorrido.
+[guía de canto](../guias/cantar-con-audio-propio.md) conservan el recorrido.
 
 `ffprobe` midió el clip del proveedor: **H.264, 848 × 1072, AAC estéreo, 12,267 s**. La pista de audio coincide
 con el MP3 aportado (PSNR de audio de 174 dB tras igualar frecuencia y canales). **Eso solo prueba que el audio
@@ -94,7 +94,7 @@ igual que sus variantes de 5 s: la publicación queda a decisión de quien admin
 probado y también siguen en revisión. La
 [captura del catálogo](../assets/capturas/0.30.0-catalogo-trends-revision.png) muestra el estado inicial y la
 [captura tras la prueba](../assets/capturas/0.30.0-trends-tras-prueba.png), las variantes guardadas.
-La [guía de trends](trends-virales.md) explica cómo publicar, versionar, caducar y duplicar sin desplegar.
+La [guía de trends](../guias/trends-virales.md) explica cómo publicar, versionar, caducar y duplicar sin desplegar.
 
 El proyecto de referencia de la cuenta tiene a **Elisa** como protagonista, presupuesto de **100 créditos** y
 escenas inicialmente de **6 s**. La primera describe un unboxing en primera persona del tarro físico de **Crema de noche
@@ -174,5 +174,5 @@ operación consumió **cero créditos**. Las capturas son [montaje](../assets/ca
 [etiqueta obligatoria](../assets/capturas/0.32.0-etiqueta-obligatoria.webp) y
 [exportación lista](../assets/capturas/0.32.0-exportacion-lista.webp).
 
-La [guía de montaje](montaje-y-exportacion.md) recoge qué impide exportar y cómo resolverlo. La reproducción
+La [guía de montaje](../guias/montaje-y-exportacion.md) recoge qué impide exportar y cómo resolverlo. La reproducción
 real tras subirlo a TikTok, Reels y Shorts sigue siendo una comprobación de quien administra.
