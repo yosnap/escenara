@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 import sharp, { type Sharp } from "sharp";
 import {
+  CONVERTIR_LOGOTIPO,
   LADO_MAXIMO_LOGO,
   LADO_MINIMO_LOGO,
   LIMITE_FUENTE,
@@ -71,6 +72,23 @@ function exigirMedidas(ancho: number | undefined, alto: number | undefined): { a
 /** Lado máximo del PNG del kit: sobra para una esquina de un vídeo 1080 × 1920. */
 const LADO_PNG_KIT = 1024;
 
+/**
+ * **El lector de SVG de libvips queda bloqueado en todo el proceso.** Ningún flujo de la aplicación lo necesita (la
+ * detección por firma no admite SVG en ningún sitio) y así ningún archivo con firma falsa puede acabar en él, sea cual
+ * sea el orden en que libvips pruebe sus lectores.
+ */
+sharp.block({ operation: ["VipsForeignLoadSvgFile", "VipsForeignLoadSvgBuffer", "VipsForeignLoadSvgSource"] });
+
+/** Formatos que se procesan, según lo que dice libvips que ha leído (además de la firma). */
+const FORMATOS_RASTER = new Set(["png", "jpeg", "webp"]);
+
+function exigirRaster(formato: string | undefined): "png" | "jpeg" | "webp" {
+  if (!formato || !FORMATOS_RASTER.has(formato)) {
+    throw new ErrorMarca(415, `El logotipo tiene que ser PNG, JPEG o WebP. ${CONVERTIR_LOGOTIPO}`);
+  }
+  return formato as "png" | "jpeg" | "webp";
+}
+
 /** Opciones comunes de sharp: tope de píxeles contra las «bombas» de descompresión y sin fallar por avisos menores. */
 const ENTRADA = { limitInputPixels: LADO_MAXIMO_LOGO * LADO_MAXIMO_LOGO } as const;
 
@@ -92,9 +110,10 @@ export async function prepararLogotipo(bytes: Uint8Array, enPng: boolean): Promi
   return conCupoDeImagen(async () => {
     try {
       const meta = await sharp(bytes, ENTRADA).timeout({ seconds: SEGUNDOS_MAXIMOS_PROCESADO }).metadata();
+      const leido = exigirRaster(meta.format);
       exigirMedidas(meta.width, meta.height);
       const imagen = sharp(bytes, ENTRADA).timeout({ seconds: SEGUNDOS_MAXIMOS_PROCESADO }).rotate();
-      const formato = enPng ? "png" : meta.format === "jpeg" ? "jpeg" : meta.format === "webp" ? "webp" : "png";
+      const formato = enPng ? "png" : leido;
       const salida = enPng
         ? imagen.resize(LADO_PNG_KIT, LADO_PNG_KIT, { fit: "inside", withoutEnlargement: true })
         : imagen;
@@ -267,11 +286,18 @@ export const generarDerivados: GeneradorDeDerivados = (documento, activos) =>
 
 const conTiempo = (imagen: Sharp) => imagen.timeout({ seconds: SEGUNDOS_MAXIMOS_PROCESADO });
 
+/** Bytes de un logotipo para derivar, solo si libvips lo lee como PNG, JPEG o WebP. */
+async function bytesRaster(id: string): Promise<Uint8Array> {
+  const bytes = await bytesDeActivo(id);
+  exigirRaster((await conTiempo(sharp(bytes, ENTRADA)).metadata()).format);
+  return bytes;
+}
+
 async function derivar(documento: DocumentoMarca, activos: ActivosDeVersion): Promise<Derivado[]> {
   const simbolo = activos.logos["simbolo-claro"] ?? activos.logos["horizontal-claro"];
   const horizontal = activos.logos["horizontal-claro"] ?? simbolo;
   if (!simbolo || !horizontal) return [];
-  const origen = await bytesDeActivo(simbolo);
+  const origen = await bytesRaster(simbolo);
   const fondo = documento.theme.light.surface;
   const lista: Derivado[] = [];
   for (const [rol, lado] of TAMANOS_CUADRADOS) {
@@ -297,7 +323,7 @@ async function derivar(documento: DocumentoMarca, activos: ActivosDeVersion): Pr
       .toBuffer();
     lista.push({ rol, bytes: new Uint8Array(datos), ancho: lado, alto: lado });
   }
-  const logoSocial = await conTiempo(sharp(horizontal === simbolo ? origen : await bytesDeActivo(horizontal), ENTRADA))
+  const logoSocial = await conTiempo(sharp(horizontal === simbolo ? origen : await bytesRaster(horizontal), ENTRADA))
     .resize(720, 300, { fit: "inside" })
     .png()
     .toBuffer({ resolveWithObject: true });

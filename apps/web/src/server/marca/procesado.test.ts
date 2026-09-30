@@ -52,6 +52,33 @@ describe("logotipos: solo raster, con cupo y tiempo máximo", () => {
     }
   });
 
+  test("un archivo con firma WebP falsa y un SVG de <use> anidados dentro no llega al lector de SVG y se rechaza en ms", async () => {
+    const svg = svgDeUsosAnidados(5);
+    const falso = new Uint8Array(12 + svg.byteLength);
+    falso.set(new TextEncoder().encode("RIFF"), 0);
+    new DataView(falso.buffer).setUint32(4, falso.byteLength - 8, true);
+    falso.set(new TextEncoder().encode("WEBP"), 8);
+    falso.set(svg, 12);
+    const inicio = performance.now();
+    const error = await errorDe(prepararLogotipo(falso, true));
+    expect(performance.now() - inicio).toBeLessThan(500);
+    expect(error).toBeInstanceOf(ErrorMarca);
+    expect([415, 422]).toContain(error?.estado as number);
+    // Y el lector de SVG de libvips está bloqueado en todo el proceso: ni un SVG de verdad se puede leer.
+    await expect(sharp(Buffer.from(svg)).metadata()).rejects.toThrow();
+    expect(procesadosEnCurso()).toBe(0);
+  });
+
+  test("un trabajo que lanza de forma síncrona también libera su hueco", async () => {
+    const error = await errorDe(
+      conCupoDeImagen(() => {
+        throw new Error("fallo síncrono");
+      }),
+    );
+    expect(error?.message).toBe("fallo síncrono");
+    expect(procesadosEnCurso()).toBe(0);
+  });
+
   test("con el cupo lleno, la siguiente imagen recibe un 503 con la causa al momento", async () => {
     const soltar: (() => void)[] = [];
     const ocupados = Array.from({ length: PROCESADOS_SIMULTANEOS }, () =>

@@ -1,4 +1,5 @@
 import { desc, eq, inArray, sql } from "drizzle-orm";
+import { CONVERTIR_LOGOTIPO } from "@/lib/marca-activos";
 import { documentoBase } from "@/lib/marca-base";
 import { describirPar, revisarContraste } from "@/lib/marca-contraste";
 import { type DocumentoMarca, validarDocumentoMarca } from "@/lib/marca-esquema";
@@ -33,6 +34,8 @@ import { olvidarMarcaAplicada } from "./publicada";
  * Todas las operaciones van bajo el mismo cerrojo de transacción: dos administradores publicando a la vez se ponen
  * en fila en lugar de pisarse. Todas comprueban que quien llama administra, no solo la página.
  */
+
+const TIPOS_LOGO_PUBLICABLES = new Set(["image/png", "image/jpeg", "image/webp"]);
 
 /** Cerrojo de la marca: una sola escritura de la marca a la vez en toda la instalación. */
 const cerrojo = (tx: Ejecutor) => tx.execute(sql`select pg_advisory_xact_lock(hashtext('escenara:marca'))`);
@@ -105,10 +108,17 @@ async function exigirActivos(ejecutor: Ejecutor, entrada: unknown): Promise<Acti
         { campo: `logos.${rol}`, mensaje: "El archivo ya no existe." },
       ]);
     }
+    // Solo imágenes raster: un archivo de otro tipo (por ejemplo, un SVG de antes de que dejaran de admitirse) no llega
+    // a publicarse ni a procesarse para los iconos.
+    if (!TIPOS_LOGO_PUBLICABLES.has(fila.mimeType)) {
+      throw new ErrorMarca(422, `Un logotipo de esta versión no es PNG, JPEG ni WebP. ${CONVERTIR_LOGOTIPO}`, [
+        { campo: `logos.${rol}`, mensaje: "Tipo de archivo no admitido." },
+      ]);
+    }
   }
   for (const fuente of fuentes) {
     const fila = porId.get(fuente.activoId);
-    if (fila?.scope !== "instalacion" || fila.kind !== "fuente" || !fila.family) {
+    if (fila?.scope !== "instalacion" || fila.kind !== "fuente" || !fila.family || fila.mimeType !== "font/woff2") {
       throw new ErrorMarca(422, "Una fuente de esta versión ya no existe: vuelve a subirla.", [
         { campo: "fuentes", mensaje: "El archivo ya no existe." },
       ]);

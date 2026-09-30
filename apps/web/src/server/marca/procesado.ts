@@ -31,7 +31,9 @@ export async function conCupoDeImagen<T>(
     );
   }
   estado.__escenaraProcesadosMarca = procesadosEnCurso() + 1;
-  const enMarcha = trabajo();
+  // Dentro de una promesa: si el trabajo lanza de forma síncrona, también se convierte en un rechazo y el hueco se
+  // libera igual.
+  const enMarcha = Promise.resolve().then(trabajo);
   // El cupo se libera cuando el trabajo termina de verdad, no cuando vence el reloj: así un trabajo atascado sigue
   // contando y no se acumulan más encima.
   void enMarcha

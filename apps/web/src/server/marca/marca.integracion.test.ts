@@ -492,6 +492,36 @@ describe.skipIf(!hayBaseDeDatos)("marca de la instalación y kit del creador", (
     expect(servida.headers.get("content-type")).toBe("font/woff2");
   });
 
+  test("un logotipo guardado con un tipo que no es raster (un SVG antiguo) no se guarda en el borrador ni se publica", async () => {
+    const id = crypto.randomUUID();
+    await db()
+      .insert(brandAssets)
+      .values({
+        id,
+        scope: "instalacion",
+        kind: "logotipo",
+        storageKey: `marca/instalacion/${id}.svg`,
+        mimeType: "image/svg+xml",
+        sizeBytes: 100,
+        sha256: "x",
+      });
+    const r = await guardar(documentoBase(), { logos: { "simbolo-claro": id }, fuentes: [] });
+    expect(r.estado).toBe(422);
+    expect(r.datos.error).toContain("no es PNG, JPEG ni WebP");
+    expect(r.datos.errores?.[0]?.campo).toBe("logos.simbolo-claro");
+    // Y si ya estaba en un borrador de antes, tampoco se publica.
+    await guardar(documentoBase());
+    await db()
+      .update(brandVersions)
+      .set({ assets: { logos: { "simbolo-claro": id }, fuentes: [] } })
+      .where(eq(brandVersions.state, "borrador"));
+    const p = await publicar();
+    expect(p.estado).toBe(422);
+    expect(p.datos.error).toContain("no es PNG, JPEG ni WebP");
+    expect((await estado()).publicada).toBeNull();
+    await db().delete(brandAssets).where(eq(brandAssets.id, id));
+  });
+
   test("un borrador no puede usar el logotipo del kit de otro usuario ni un archivo que no existe", async () => {
     const kit = await rutaLogoKit.POST(subida(ana, "/api/cuenta/kit/logotipo", await png(200, 100)), undefined);
     const idDelKit = ((await kit.json()) as { kit: KitVista }).kit.logo?.id as string;
