@@ -15,9 +15,15 @@ No cambia ninguna regla de coste, de consentimiento ni de confirmación, y el ej
   en la tarjeta. **«Quitar ejemplo»** lo deja como antes. No se genera nada, no llama a ningún proveedor, y ponerlo o
   quitarlo **no crea versión ni cambia el texto de la plantilla**. Solo administradores, y **solo medios del propio
   administrador que lo pone**: nunca el de otro usuario ni el de otro administrador. Tampoco valen los documentos de
-  consentimiento, las fotos de un personaje ni su hoja, un archivo en la papelera, el audio, **ni nada generado con un
-  personaje real** (ni lo que esté en una escena, un reparto o una exportación con personas reales). Sí valen los de
-  personajes inventados, animados o mascotas y los archivos subidos sin vínculo a ningún personaje.
+  consentimiento, las fotos de un personaje ni su hoja, un archivo en la papelera ni el audio. **Y la regla de origen es
+  una lista blanca, no una lista de prohibiciones**: un medio solo vale como ejemplo si es (A) una **subida directa** tuya
+  que no está en ningún trabajo, escena ni personaje (tampoco en ninguna versión anterior de un personaje, aunque la foto
+  se haya quitado después), o (B) el **resultado o el punto de partida de un trabajo hecho con un personaje sintético**
+  (inventado, animado o una mascota) y que nunca ha sido de un reparto de varias personas (dualcast, podcast…), mirando
+  todos los trabajos de la escena y no solo el vigente. Todo lo demás se rechaza, incluido lo que no se sabe de dónde
+  viene. La comprobación se repite en cada lectura: si un medio deja de cumplirlo (se añade una persona real al reparto,
+  por ejemplo), deja de verse. El diálogo avisa de que el ejemplo lo ven todos los usuarios y de que una foto real subida
+  directamente no se puede detectar: es responsabilidad de quien la elige.
 - **En «Crear»**, el ejemplo se ve en el selector «Plantilla o trend vigente» (las opciones que lo tienen lo dicen y el
   de la plantilla elegida aparece debajo) y en la **vista previa del trend**. Un clip lleva controles, va **silenciado**,
   no se descarga hasta que le das a reproducir y **nunca arranca solo**; una imagen y un clip llevan texto alternativo.
@@ -61,6 +67,10 @@ No cambia ninguna regla de coste, de consentimiento ni de confirmación, y el ej
   que lo puso), las dos con sus claves foráneas y que admiten nulos. No cambia ni borra ninguna fila y volver a aplicarla no hace nada.
 - **Sin ejemplos por defecto**: ninguna plantilla ni trend lleva ejemplo al actualizar. Los eliges tú desde Admin ›
   Plantillas, con clips o imágenes que ya tengas en la biblioteca.
+- La migración `0061_indices-de-medios-de-trabajos-y-escenas` es **aditiva e idempotente** (`CREATE INDEX IF NOT EXISTS`):
+  añade índices sobre las columnas de medios de `generation_jobs`, `scenes` y `montage_exports`, que la comprobación de
+  origen usa en cada lectura de un ejemplo. Son índices normales (el migrador va en una transacción y no admite
+  `CONCURRENTLY`); las tablas son pequeñas, pero migra con el worker parado.
 - No hace falta reiniciar el worker (no cambia nada de la cola ni del render). No hay ajustes nuevos ni variables de
   entorno nuevas.
 
