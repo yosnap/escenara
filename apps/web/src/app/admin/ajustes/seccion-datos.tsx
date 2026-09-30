@@ -97,7 +97,8 @@ export function SeccionDatos({
 /** Lo que no puede quedarse atascado en silencio: objetos por borrar y borrados de cuenta aplazados. */
 function EstadoDeTusDatos({ estado }: { estado: EstadoTusDatos }) {
   const limpio = estado.objetosPendientes === 0 && estado.objetosFallidos === 0 && estado.aplazados.length === 0;
-  if (limpio) return <Aviso tono="correcto">No hay archivos pendientes de borrar ni borrados de cuenta aplazados.</Aviso>;
+  if (limpio)
+    return <Aviso tono="correcto">No hay archivos pendientes de borrar ni borrados de cuenta aplazados.</Aviso>;
   return (
     <div className="flex flex-col gap-3">
       {(estado.objetosPendientes > 0 || estado.objetosFallidos > 0) && (
