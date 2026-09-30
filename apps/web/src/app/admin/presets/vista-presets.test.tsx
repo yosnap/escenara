@@ -39,7 +39,7 @@ describe("presets de la instalación", () => {
 
   test("se ordena dentro de cada categoría: una lista por categoría", () => {
     expect(html).toContain('aria-label="Presets de Especialidad"');
-    expect(html.match(/<ul aria-label="Presets de /g)).toHaveLength(2);
+    expect(html.match(/<ol aria-label="Presets de /g)).toHaveLength(2);
   });
 
   test("dice cómo se coge y se suelta con el teclado", () => {

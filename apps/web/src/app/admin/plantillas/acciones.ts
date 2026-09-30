@@ -13,7 +13,6 @@ import {
   duplicarTrend,
   editarPlantillaDeLaInstalacion,
   ordenarGrupoDePlantillas,
-  ordenarPlantillaDeLaInstalacion,
 } from "@/server/prompts/plantillas-admin";
 
 /**
@@ -50,10 +49,6 @@ export async function editarPlantillaAccion(id: string, datos: DatosPlantilla): 
 
 export async function activarPlantillaAccion(id: string, activa: boolean): Promise<ResultadoPlantillas> {
   return aplicar(() => activarPlantillaDeLaInstalacion(id, activa));
-}
-
-export async function ordenarPlantillaAccion(id: string, orden: number): Promise<ResultadoPlantillas> {
-  return aplicar(() => ordenarPlantillaDeLaInstalacion(id, orden));
 }
 
 /** Orden completo de las plantillas de una capacidad, tal como lo dejó quien administra al soltar. */

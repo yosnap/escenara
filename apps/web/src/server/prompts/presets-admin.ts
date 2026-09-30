@@ -214,18 +214,6 @@ export async function activarPresetDeLaInstalacion(id: string, activo: boolean):
   return vistaDePreset(fila);
 }
 
-/** Cambia el orden de un preset de la instalación: es lo que decide en qué posición sale su botón. */
-export async function ordenarPresetDeLaInstalacion(id: string, orden: number): Promise<PresetVista> {
-  const anterior = await presetDeLaInstalacion(id);
-  const [fila] = await db()
-    .update(presets)
-    .set({ sortOrder: exigirOrden(orden), updatedAt: new Date() })
-    .where(and(eq(presets.id, anterior.id), isNull(presets.ownerId)))
-    .returning();
-  if (!fila) throw new ErrorPreset(404, "Ese preset no es de la instalación.");
-  return vistaDePreset(fila);
-}
-
 /**
  * Deja los presets de una categoría en el orden recibido. `ids` tiene que ser **exactamente** el grupo (los
  * presets de la instalación de esa categoría): se renumeran de 10 en 10 en una sola transacción, sin empates, y

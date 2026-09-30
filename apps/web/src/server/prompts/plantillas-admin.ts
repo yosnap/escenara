@@ -315,7 +315,8 @@ export async function editarPlantillaDeLaInstalacion(
         modelRestrictions: restriccionesTexto,
         ...trend,
         trendSince: anterior.trendSince,
-        sortOrder: datos.orden === undefined ? anterior.sortOrder : exigirOrden(datos.orden),
+        // Solo se escribe el orden si se pide: releerlo aquí pisaría una reordenación concurrente del grupo.
+        ...(datos.orden === undefined ? {} : { sortOrder: exigirOrden(datos.orden) }),
         active: datos.activa === true,
         version: cambiaContenido || cambiaVoz ? vigente.number + 1 : anterior.version,
         updatedAt: new Date(),
@@ -383,16 +384,6 @@ export async function duplicarTrend(id: string, clave: string, autorId: string):
   );
   await db().update(promptTemplates).set({ duplicatedFrom: id }).where(eq(promptTemplates.id, copia.id));
   return vistaPorId(copia.id);
-}
-
-/** Cambia el orden de una plantilla de la instalación. */
-export async function ordenarPlantillaDeLaInstalacion(id: string, orden: number): Promise<PlantillaVista> {
-  const anterior = await plantillaDeLaInstalacion(id);
-  await db()
-    .update(promptTemplates)
-    .set({ sortOrder: exigirOrden(orden), updatedAt: new Date() })
-    .where(and(eq(promptTemplates.id, anterior.id), isNull(promptTemplates.ownerId)));
-  return await vistaPorId(anterior.id);
 }
 
 /**

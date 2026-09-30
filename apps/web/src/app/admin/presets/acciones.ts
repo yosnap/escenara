@@ -10,7 +10,6 @@ import {
   type DatosPreset,
   editarPresetDeLaInstalacion,
   ordenarGrupoDePresets,
-  ordenarPresetDeLaInstalacion,
 } from "@/server/prompts/presets-admin";
 
 /**
@@ -50,10 +49,6 @@ export async function editarPresetAccion(id: string, datos: DatosPreset): Promis
 
 export async function activarPresetAccion(id: string, activo: boolean): Promise<ResultadoPresets> {
   return aplicar(() => activarPresetDeLaInstalacion(id, activo));
-}
-
-export async function ordenarPresetAccion(id: string, orden: number): Promise<ResultadoPresets> {
-  return aplicar(() => ordenarPresetDeLaInstalacion(id, orden));
 }
 
 /** Orden completo de los presets de una categoría, tal como lo dejó quien administra al soltar. */

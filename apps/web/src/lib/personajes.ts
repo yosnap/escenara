@@ -174,6 +174,9 @@ export const AVISO_SIN_TERCEROS =
 export const AVISO_DATOS_AL_PROVEEDOR =
   "Al generar con este personaje se envían a KIE sus fotos de referencia y el texto de su ficha (rasgos, estilo, vestuario, personalidad y descripción), que forma parte del prompt. Si esta instalación traduce los prompts al inglés, ese texto pasa además por el modelo de texto de KIE, y su traducción se guarda con tu cuenta hasta que borres el personaje.";
 
+/** Nombre de la casilla del consentimiento. Todo texto que remita a ella la nombra igual, con esta constante. */
+export const ETIQUETA_AUTORIZO_PARECIDO = "Autorizo la comprobación de parecido";
+
 /**
  * Lo que hay que declarar para que la comprobación de identidad de 0.24.0 pueda mirar la cara de esta persona.
  *
@@ -182,9 +185,6 @@ export const AVISO_DATOS_AL_PROVEEDOR =
  * para producir vídeo no dice nada de eso. Sin esta casilla no se envía nada y las vistas generadas no cuentan
  * para la cobertura, que es exactamente lo que pasaba hasta la 0.23.x.
  */
-/** Nombre de la casilla del consentimiento. Todo texto que remita a ella la nombra igual, con esta constante. */
-export const ETIQUETA_AUTORIZO_PARECIDO = "Autorizo la comprobación de parecido";
-
 export const AVISO_COHERENCIA =
   "Autorizo que, para comprobar que lo generado sigue siendo esta misma persona y encaja con el guion, se envíen al servicio de percepción configurado en esta instalación (hoy, un servicio compatible con la API de OpenAI que tú mismo has dado de alta) dos fotos suyas, el fotograma aprobado de sus escenas y hasta 30 segundos de la voz de sus clips. De ahí solo sale una descripción escrita, que es lo que se compara. Sin esta autorización la comprobación no se hace y sus vistas generadas no cuentan como fotos de referencia.";
 

@@ -135,6 +135,30 @@ describe.skipIf(!hayBaseDeDatos)("orden de plantillas y presets de la instalaci�
     expect(orden).toBeGreaterThan(maximoAnterior);
   });
 
+  test("plantillas: editar una sin indicar el orden no reescribe el que tiene", async () => {
+    const [primera] = (await listarPlantillas()).filter((p) => p.deLaInstalacion);
+    if (!primera) throw new Error("La semilla no tiene plantillas.");
+    // Una reordenación concurrente cambia el número después de que la edición leyera la plantilla.
+    await db().update(promptTemplates).set({ sortOrder: 777 }).where(eq(promptTemplates.id, primera.id));
+    const { editarPlantillaDeLaInstalacion } = await import("./plantillas-admin");
+    await editarPlantillaDeLaInstalacion(
+      primera.id,
+      {
+        clave: primera.clave,
+        nombre: primera.nombre,
+        descripcion: primera.descripcion,
+        capacidad: primera.capacidad,
+        plantilla: primera.plantilla,
+        variables: primera.variables,
+        restricciones: primera.restricciones,
+        activa: primera.activa,
+      },
+      admin.id,
+    );
+    const despues = (await listarPlantillas()).find((p) => p.id === primera.id);
+    expect(despues?.orden).toBe(777);
+  });
+
   test("plantillas: el orden final es el pedido dentro de su capacidad y sin empates", async () => {
     const todas = await listarPlantillas();
     const capacidad = [...new Set(todas.map((p) => p.capacidad))].find(
@@ -151,10 +175,12 @@ describe.skipIf(!hayBaseDeDatos)("orden de plantillas y presets de la instalaci�
     expect(despues.map((p) => p.orden)).toEqual(invertido.map((_, i) => (i + 1) * 10));
 
     // Rechaza un grupo incompleto o con una plantilla de otra capacidad, sin tocar nada.
-    const ajena = todas.find((p) => p.capacidad !== capacidad)?.id as string;
+    const ajena = todas.find((p) => p.capacidad !== capacidad && p.deLaInstalacion)?.id;
+    if (!ajena) throw new Error("La semilla no tiene plantillas de otra capacidad con las que probar.");
     for (const pedido of [invertido.slice(1), [...invertido.slice(1), ajena]]) {
       const error = await ordenarGrupoDePlantillas(capacidad, pedido).catch((e: unknown) => e);
       expect(error).toBeInstanceOf(ErrorPreset);
+      expect((error as Error).message).not.toContain("lista de identificadores");
     }
     const intacto = (await listarPlantillas()).filter((p) => p.capacidad === capacidad && p.deLaInstalacion);
     expect(intacto.map((p) => p.id)).toEqual(invertido);

@@ -53,7 +53,7 @@ describe("plantillas de la instalación", () => {
   });
 
   test("una lista por capacidad", () => {
-    expect(html.match(/<ul aria-label="Plantillas de /g)).toHaveLength(2);
+    expect(html.match(/<ol aria-label="Plantillas de /g)).toHaveLength(2);
   });
 
   test("dice cómo se coge y se suelta con el teclado", () => {
