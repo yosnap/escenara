@@ -58,11 +58,19 @@ const CASOS: readonly (readonly [unknown, unknown, CausaFalloProveedor])[] = [
   // reintento salió bien): se dice que se puede volver a pedir.
   ["500", "Internal error", "error_interno"],
   ["", "500 Internal Error, Please try again later.", "error_interno"],
+  ["", "Internal server error", "error_interno"],
+  ["", "Insufficient credits, please try again later", "desconocida"],
+  ["", "Your account balance is insufficient. Please try again later.", "desconocida"],
+  ["", "Invalid prompt, please try again later", "desconocida"],
   ["400", "", "desconocida"],
   [undefined, undefined, "desconocida"],
   [{}, ["safety"], "desconocida"],
   ["", "generation timeout", "desconocida"],
+  // Un 500 sin texto es el fallo interno del proveedor; con un texto que no se reconoce, no se inventa causa.
   ["500", "generation failed for request with key sk-clave-que-el-proveedor-repite", "desconocida"],
+  ["500", "", "error_interno"],
+  ["500", "Insufficient credits, please try again later", "desconocida"],
+  ["500", "Invalid prompt", "desconocida"],
 ];
 
 describe("causaDelFallo", () => {

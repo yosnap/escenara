@@ -48,13 +48,15 @@ const PATRONES: readonly (readonly [CausaFalloProveedor, RegExp])[] = [
     /\boverloaded\b|\bhigh demand\b|\bat capacity\b|\bservice unavailable\b|\b(?:server|service|model) is busy\b/,
   ],
   // Real, visto el 2026-09-30 con Gemini Omni 1.1 Flash: «500 Internal Error, Please try again later.», sin cobro.
-  ["error_interno", /\binternal (?:server )?error\b|\bplease try again later\b/],
+  // Solo el texto del fallo interno: «please try again later» también acompaña a saldos y prompts inválidos.
+  ["error_interno", /\binternal (?:server )?error\b/],
 ];
 
 /** Códigos del sobre que por sí solos ya dicen la causa, aunque el texto venga vacío. */
 const POR_CODIGO: Readonly<Record<string, CausaFalloProveedor>> = {
   "429": "limite",
   "503": "saturado",
+  "500": "error_interno",
 };
 
 export function causaDelFallo(failCode: unknown, failMsg: unknown): CausaFalloProveedor {
@@ -63,5 +65,8 @@ export function causaDelFallo(failCode: unknown, failMsg: unknown): CausaFalloPr
     for (const [causa, patron] of PATRONES) if (patron.test(mensaje)) return causa;
   }
   const codigo = typeof failCode === "number" ? String(failCode) : typeof failCode === "string" ? failCode.trim() : "";
+  // Un 500 solo dice «fallo interno» si no trae texto: con un texto que no se reconoce no se inventa causa, y uno que
+  // habla de saldo o de una petición inválida no se arregla repitiendo.
+  if (codigo === "500" && mensaje !== "") return "desconocida";
   return POR_CODIGO[codigo] ?? "desconocida";
 }
