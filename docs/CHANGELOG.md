@@ -29,7 +29,10 @@ cómo se ve y cómo se explica: sin migraciones, sin cambios de precio y sin toc
   elegir en cualquier parte y las tres familias son partes de la misma lista, con su subtítulo.
 - **Moda y cuidado de la piel ya no salen siempre.** Un producto no dice si es ropa o cosmética y no se adivina por el
   nombre, así que esas dos familias van en un bloque **«Más acciones (moda, cuidado de la piel)»**, cerrado al empezar,
-  que se abre solo si la acción elegida es de ellas.
+  que se abre solo si la acción elegida es de ellas, aunque llegue por otro camino (cambiar de producto o aplicar una
+  dirección guardada), y **no se puede cerrar mientras siga elegida**: así la elección nunca queda escondida. Cerrado,
+  las tarjetas de moda y de piel no existen en la página, de modo que con el teclado (Tab y flechas) solo se recorre
+  lo que se ve.
 
 ### Documentación
 

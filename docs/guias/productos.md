@@ -39,7 +39,7 @@ lleva su dibujo y **una frase** de lo que verás.
   abrirlo, aplicarlo, o el **producto solo**.
 - **Más acciones (moda, cuidado de la piel)**, un bloque **cerrado** que abres con su botón. Escenara no sabe si tu
   producto es ropa o cosmética, así que no lo adivina: las guarda ahí para que no estorben si vendes otra cosa. Se
-  abre solo si la acción elegida es de una de ellas.
+  abre solo si la acción elegida es de una de ellas, y mientras siga elegida no se puede cerrar.
   - **Moda**: cuerpo entero, detalle del tejido, giro de 360°, pasarela, pose de editorial y detalle del
     accesorio.
   - **Cuidado de la piel**: abrir la tapa, extender el producto hasta que se absorbe, y masajear.

@@ -15,7 +15,7 @@ import { Muestra, Seccion } from "../seccion";
  *
  * La acción es **una sola elección** entre todas las familias. Moda y cuidado de la piel van plegadas en «Más
  * acciones» porque el producto no dice si es ropa o cosmética; el bloque se abre solo si la acción elegida es de
- * ellas. Es el mismo componente que se usa en «Crear» y en la escena de un proyecto.
+ * ellas y no se cierra mientras siga elegida. Es el mismo componente que se usa en «Crear» y en la escena de un proyecto.
  */
 
 const ACCIONES: OpcionDireccion[] = [
