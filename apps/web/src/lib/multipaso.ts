@@ -57,9 +57,11 @@ export function pasoDeLaUrl(valor: string | string[] | undefined | null, ids: re
  * predeterminado de la pantalla.
  */
 export function resolverPaso(pedido: string | null, pasos: readonly PasoDelFlujo[], predeterminado: string): string {
-  const elegido = pasos.find((p) => p.id === pedido);
-  if (elegido && elegido.estado !== "bloqueado") return elegido.id;
-  return pasos.some((p) => p.id === predeterminado) ? predeterminado : (pasos[0]?.id ?? predeterminado);
+  const abrible = (id: string | null) => pasos.find((p) => p.id === id && p.estado !== "bloqueado")?.id;
+  // Ni el pedido ni el predeterminado se abren si están bloqueados: se cae al primero que se pueda abrir.
+  return (
+    abrible(pedido) ?? abrible(predeterminado) ?? pasos.find((p) => p.estado !== "bloqueado")?.id ?? predeterminado
+  );
 }
 
 /**
@@ -77,6 +79,58 @@ export function esNavegable(paso: PasoDelFlujo, visitados: readonly string[]): b
   return paso.estado === "hecho" || visitados.includes(paso.id);
 }
 
+/** Lo que se dice de un paso al que todavía no se puede saltar: el motivo del bloqueo o que aún no se ha llegado. */
+export const NO_ALCANZADO = "Todavía no has llegado a este paso: avanza con «Siguiente» desde el anterior.";
+
+export function motivoNoNavegable(paso: PasoDelFlujo, visitados: readonly string[]): string | null {
+  if (paso.estado === "bloqueado") return paso.motivo ?? "Depende de un paso anterior que aún no está hecho.";
+  return esNavegable(paso, visitados) ? null : NO_ALCANZADO;
+}
+
+/**
+ * Estado de la navegación: el paso actual, los visitados y el paso cuyo motivo se está enseñando porque se ha
+ * pulsado sin poder abrirse. Es puro para poder probar las transiciones sin montar nada.
+ */
+export interface EstadoMultipaso {
+  actual: string;
+  visitados: string[];
+  /** Paso pulsado que no se podía abrir; su motivo se enseña hasta cambiar de paso o hasta que se pueda abrir. */
+  avisoDe: string | null;
+  /** `true` desde el primer cambio de paso hecho por la persona: a partir de ahí el foco sigue al paso. */
+  enfocar: boolean;
+}
+
+export type AccionMultipaso = { tipo: "ir"; id: string } | { tipo: "avisar"; id: string };
+
+export const estadoInicialMultipaso = (pasos: readonly PasoDelFlujo[], inicial: string): EstadoMultipaso => ({
+  actual: inicial,
+  visitados: visitadosAlAbrir(pasos, inicial),
+  avisoDe: null,
+  enfocar: false,
+});
+
+export function reducirMultipaso(estado: EstadoMultipaso, accion: AccionMultipaso): EstadoMultipaso {
+  if (accion.tipo === "avisar") return { ...estado, avisoDe: accion.id };
+  // Cambiar de paso (a mano o porque la pantalla avanza sola) siempre retira el aviso que hubiera.
+  return {
+    actual: accion.id,
+    visitados: estado.visitados.includes(accion.id) ? estado.visitados : [...estado.visitados, accion.id],
+    avisoDe: null,
+    enfocar: true,
+  };
+}
+
+/** El aviso que sigue siendo verdad: si el paso ya se puede abrir (o ya no está), no se enseña. */
+export function avisoVigente(
+  estado: EstadoMultipaso,
+  pasos: readonly PasoDelFlujo[],
+): { paso: PasoDelFlujo; motivo: string } | null {
+  const paso = pasos.find((p) => p.id === estado.avisoDe);
+  if (!paso) return null;
+  const motivo = motivoNoNavegable(paso, estado.visitados);
+  return motivo ? { paso, motivo } : null;
+}
+
 /** Vecino anterior o siguiente del paso actual; `null` en los extremos. */
 export function vecino(pasos: readonly PasoDelFlujo[], actual: string, salto: -1 | 1): PasoDelFlujo | null {
   const indice = pasos.findIndex((p) => p.id === actual);
@@ -92,4 +146,15 @@ export function direccionConPaso(href: string, paso: string): string {
   const url = new URL(href, "http://escenara.local");
   url.searchParams.set(PARAMETRO_PASO, paso);
   return `${url.pathname}${url.search}${url.hash}`;
+}
+
+/** Escribe el paso en la dirección de la ventana sin recargar ni añadir entradas al historial. */
+export function escribirPasoEnLaDireccion(
+  paso: string,
+  ventana: {
+    location: { href: string };
+    history: { replaceState: (datos: null, sinUso: string, url: string) => void };
+  },
+): void {
+  ventana.history.replaceState(null, "", direccionConPaso(ventana.location.href, paso));
 }

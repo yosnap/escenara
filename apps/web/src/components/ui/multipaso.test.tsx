@@ -58,16 +58,32 @@ describe("barra de pasos", () => {
     }
   });
 
-  test("el bloqueado se puede enfocar, dice que no está disponible y lleva su motivo", () => {
-    expect(html).toMatch(/<button type="button" aria-disabled="true" aria-describedby="[^"]+"/);
-    expect(html).toContain("Describe antes la escena.");
+  test("el bloqueado se puede enfocar, dice que no está disponible y lleva su motivo una sola vez, fuera del botón", () => {
+    const bloqueado = html.split("<li ").slice(1)[3] ?? "";
+    const id = bloqueado.match(/aria-describedby="([^"]+)"/)?.[1];
+    expect(bloqueado).toContain('aria-disabled="true"');
+    expect(bloqueado).toContain(`</button><span id="${id}" hidden="">Describe antes la escena.</span>`);
+    expect(bloqueado.split("Describe antes la escena.").length).toBe(2);
   });
 
-  test("un paso pendiente sin visitar no se puede abrir con un clic; uno ya visitado sí", () => {
+  test("el nombre accesible del botón se dice una vez: lo visible corto y el estado van ocultos al lector", () => {
+    expect(html).toContain('<span aria-hidden="true" class="hidden w-full truncate');
+    expect(html).toContain('<span aria-hidden="true" class="hidden text-xs text-texto-suave md:block">');
+  });
+
+  test("en móvil los botones no bajan de 44 px: la barra se desliza en horizontal", () => {
+    expect(html).toContain("overflow-x-auto");
+    expect(html.match(/<li class="min-w-11 flex-1">/g)?.length).toBe(4);
+    expect(html).toContain("min-h-11 w-full min-w-11");
+  });
+
+  test("un paso pendiente sin visitar se puede enfocar pero no abrir, y dice por qué; uno ya visitado sí se abre", () => {
     const elementos = html.split("<li ").slice(1);
-    expect(elementos[2]).toContain('disabled=""');
+    expect(elementos[2]).toContain('aria-disabled="true"');
     expect(elementos[2]).toContain("Paso 3: Un paso sin visitar");
-    expect(elementos[0]).not.toContain('disabled=""');
+    expect(elementos[2]).toContain("Todavía no has llegado a este paso");
+    expect(elementos[2]).not.toContain('disabled=""');
+    expect(elementos[0]).not.toContain('aria-disabled="true"');
   });
 
   test("anuncia en qué paso estás", () => {

@@ -1,14 +1,16 @@
 "use client";
 
 import { Check, ChevronLeft, ChevronRight, Lock } from "lucide-react";
-import { createContext, type ReactNode, useContext, useEffect, useId, useRef, useState } from "react";
+import { createContext, type ReactNode, useContext, useEffect, useId, useReducer, useRef } from "react";
 import {
-  direccionConPaso,
+  avisoVigente,
   ETIQUETA_ESTADO_DE_PASO,
-  esNavegable,
+  escribirPasoEnLaDireccion,
+  estadoInicialMultipaso,
+  motivoNoNavegable,
   type PasoDelFlujo,
+  reducirMultipaso,
   vecino,
-  visitadosAlAbrir,
 } from "@/lib/multipaso";
 import { Boton } from "./button";
 import { cn } from "./cn";
@@ -28,37 +30,37 @@ import { Aviso } from "./feedback";
  * Sin animaciones: la barra está pegada a zonas de claridad (coste y consentimiento).
  */
 
-interface ControlMultipaso {
-  actual: string;
-  visitados: string[];
-  ir: (id: string) => void;
-}
-
 /**
- * Estado del flujo: el paso actual y los visitados. Vive en quien pinta la pantalla para que una acción (por ejemplo,
- * confirmar un gasto) pueda llevar al paso siguiente. Cambiar de paso reescribe `?paso=` sin recargar y sin tocar los
- * demás parámetros de la dirección.
+ * Estado del flujo: el paso actual, los visitados y el aviso de un paso que no se podía abrir. Vive en quien pinta la
+ * pantalla para que una acción (por ejemplo, confirmar un gasto) pueda llevar al paso siguiente. Cambiar de paso
+ * reescribe `?paso=` sin recargar, sin añadir entradas al historial y sin tocar los demás parámetros.
  */
 export function useMultipaso(
   pasos: readonly PasoDelFlujo[],
   inicial: string,
   /** `false` para no tocar la dirección (la muestra del catálogo, que no es una pantalla de trabajo). */
   enLaDireccion = true,
-): ControlMultipaso & { enfocar: boolean } {
-  const [actual, setActual] = useState(inicial);
-  const [visitados, setVisitados] = useState(() => visitadosAlAbrir(pasos, inicial));
-  const [enfocar, setEnfocar] = useState(false);
+) {
+  const [estado, despachar] = useReducer(reducirMultipaso, undefined, () => estadoInicialMultipaso(pasos, inicial));
   const ir = (id: string) => {
-    setActual(id);
-    setEnfocar(true);
-    setVisitados((antes) => (antes.includes(id) ? antes : [...antes, id]));
-    if (enLaDireccion && typeof window !== "undefined") {
-      window.history.replaceState(null, "", direccionConPaso(window.location.href, id));
-    }
+    despachar({ tipo: "ir", id });
+    if (enLaDireccion && typeof window !== "undefined") escribirPasoEnLaDireccion(id, window);
   };
-  // Si el paso actual desaparece de la lista (cambia el camino), se vuelve al primero en lugar de dejar la pantalla vacía.
-  const actualValido = pasos.some((p) => p.id === actual) ? actual : (pasos[0]?.id ?? actual);
-  return { actual: actualValido, visitados, ir, enfocar };
+  const existe = pasos.some((p) => p.id === estado.actual);
+  const primero = pasos[0]?.id;
+  // Si el paso actual desaparece de la barra (cambia el camino), se va al primero y se corrige también `?paso=`.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `ir` cambia en cada render; lo que decide es si existe.
+  useEffect(() => {
+    if (!existe && primero) ir(primero);
+  }, [existe, primero]);
+  return {
+    actual: existe ? estado.actual : (primero ?? estado.actual),
+    visitados: estado.visitados,
+    enfocar: estado.enfocar,
+    estado,
+    ir,
+    avisar: (id: string) => despachar({ tipo: "avisar", id }),
+  };
 }
 
 const ContextoMultipaso = createContext<{ actual: string } | null>(null);
@@ -81,44 +83,55 @@ const CIRCULO: Record<PasoDelFlujo["estado"], string> = {
   bloqueado: "border-2 border-dashed border-borde bg-elevada text-texto-suave",
 };
 
-/** Barra de pasos: se compacta en móvil (solo los círculos) y no desborda con seis pasos en 320 px. */
+/**
+ * Barra de pasos. En móvil se queda en círculos; si aun así no caben (siete pasos en 320 px), la lista se desliza en
+ * horizontal en lugar de encoger los botones por debajo de 44 px, y el paso actual se trae a la vista.
+ */
 export function BarraDePasos({
   etiqueta,
   pasos,
   actual,
   visitados,
   onIr,
-  onBloqueado,
+  onNoDisponible,
 }: {
   etiqueta: string;
   pasos: readonly PasoDelFlujo[];
   actual: string;
   visitados: readonly string[];
   onIr: (id: string) => void;
-  onBloqueado: (paso: PasoDelFlujo) => void;
+  /** Se ha pulsado un paso que todavía no se puede abrir (bloqueado o sin alcanzar). */
+  onNoDisponible: (paso: PasoDelFlujo) => void;
 }) {
   const base = useId();
+  const lista = useRef<HTMLOListElement>(null);
+  // Solo el desplazamiento horizontal de la barra: la página no se mueve.
+  useEffect(() => {
+    const ol = lista.current;
+    const boton = ol?.querySelector<HTMLElement>('[aria-current="step"]');
+    if (!ol || !boton || ol.scrollWidth <= ol.clientWidth) return;
+    ol.scrollLeft = boton.offsetLeft - (ol.clientWidth - boton.offsetWidth) / 2;
+  }, [actual]);
   return (
     <nav aria-label={etiqueta}>
-      <ol className="flex items-start gap-1 sm:gap-2">
+      <ol ref={lista} className="relative flex items-start gap-1 overflow-x-auto pb-1 sm:gap-2">
         {pasos.map((paso, i) => {
           const esActual = paso.id === actual;
           const bloqueado = paso.estado === "bloqueado";
-          const navegable = esNavegable(paso, visitados);
+          // Bloqueado o todavía sin alcanzar: se puede enfocar y, al pulsarlo, dice por qué no se abre.
+          const motivo = esActual ? null : motivoNoNavegable(paso, visitados);
           const idMotivo = `${base}-motivo-${paso.id}`;
           return (
-            <li key={paso.id} className="min-w-0 flex-1">
+            <li key={paso.id} className="min-w-11 flex-1">
               <button
                 type="button"
                 aria-current={esActual ? "step" : undefined}
-                aria-disabled={bloqueado || undefined}
-                aria-describedby={bloqueado && paso.motivo ? idMotivo : undefined}
-                disabled={!bloqueado && !navegable && !esActual}
-                onClick={() => (bloqueado ? onBloqueado(paso) : esActual ? undefined : onIr(paso.id))}
+                aria-disabled={motivo ? true : undefined}
+                aria-describedby={motivo ? idMotivo : undefined}
+                onClick={() => (motivo ? onNoDisponible(paso) : esActual ? undefined : onIr(paso.id))}
                 className={cn(
-                  "flex min-h-11 w-full flex-col items-center gap-1 rounded-control px-0.5 py-1 text-center",
-                  "hover:bg-elevada disabled:cursor-default disabled:hover:bg-transparent",
-                  "aria-disabled:cursor-not-allowed",
+                  "flex min-h-11 w-full min-w-11 flex-col items-center gap-1 rounded-control px-0.5 py-1 text-center",
+                  "hover:bg-elevada aria-disabled:cursor-not-allowed aria-disabled:hover:bg-transparent",
                   esActual && "bg-elevada",
                 )}
               >
@@ -139,7 +152,9 @@ export function BarraDePasos({
                     i + 1
                   )}
                 </span>
+                {/* Lo visible se oculta al lector: el nombre accesible es la frase completa de abajo, dicha una vez. */}
                 <span
+                  aria-hidden
                   className={cn(
                     "hidden w-full truncate text-sm sm:block",
                     esActual ? "font-bold text-texto" : "font-medium text-texto-suave",
@@ -147,16 +162,19 @@ export function BarraDePasos({
                 >
                   {paso.corto}
                 </span>
-                <span className="hidden text-xs text-texto-suave md:block">{ETIQUETA_ESTADO_DE_PASO[paso.estado]}</span>
+                <span aria-hidden className="hidden text-xs text-texto-suave md:block">
+                  {ETIQUETA_ESTADO_DE_PASO[paso.estado]}
+                </span>
                 <span className="sr-only">
                   Paso {i + 1}: {paso.titulo} ({ETIQUETA_ESTADO_DE_PASO[paso.estado].toLowerCase()})
                 </span>
-                {bloqueado && paso.motivo && (
-                  <span id={idMotivo} className="sr-only">
-                    {paso.motivo}
-                  </span>
-                )}
               </button>
+              {/* Fuera del botón, para que el motivo se lea una sola vez (como descripción). */}
+              {motivo && (
+                <span id={idMotivo} hidden>
+                  {motivo}
+                </span>
+              )}
             </li>
           );
         })}
@@ -177,9 +195,10 @@ export function Multipaso({
   control: ReturnType<typeof useMultipaso>;
   children: ReactNode;
 }) {
-  const { actual, visitados, ir, enfocar } = control;
+  const { actual, visitados, ir, enfocar, avisar, estado } = control;
   const contenedor = useRef<HTMLDivElement>(null);
-  const [bloqueoVisto, setBloqueoVisto] = useState<PasoDelFlujo | null>(null);
+  // El aviso solo se enseña mientras sea verdad: al cambiar de paso o al desbloquearse el paso, desaparece.
+  const aviso = avisoVigente(estado, pasos);
   const indice = Math.max(
     0,
     pasos.findIndex((p) => p.id === actual),
@@ -198,10 +217,7 @@ export function Multipaso({
     (titulo ?? panel)?.focus();
   }, [actual, enfocar]);
 
-  const cambiar = (id: string) => {
-    setBloqueoVisto(null);
-    ir(id);
-  };
+  const cambiar = ir;
   const siguienteBloqueado = siguiente?.estado === "bloqueado";
 
   return (
@@ -213,15 +229,15 @@ export function Multipaso({
           actual={actual}
           visitados={visitados}
           onIr={cambiar}
-          onBloqueado={setBloqueoVisto}
+          onNoDisponible={(paso) => avisar(paso.id)}
         />
         {/* En móvil la barra solo enseña círculos: esta frase dice dónde estás. También es la que se anuncia. */}
         <p aria-live="polite" className="text-center text-sm font-semibold text-texto sm:sr-only">
           Paso {indice + 1} de {pasos.length}: {pasoActual?.titulo}
         </p>
-        {bloqueoVisto && (
+        {aviso && (
           <Aviso tono="info">
-            «{bloqueoVisto.titulo}» todavía no está disponible. {bloqueoVisto.motivo}
+            «{aviso.paso.titulo}» todavía no está disponible. {aviso.motivo}
           </Aviso>
         )}
       </div>
@@ -244,7 +260,7 @@ export function Multipaso({
               aria-disabled={siguienteBloqueado || undefined}
               aria-describedby={siguienteBloqueado ? idMotivoSiguiente : undefined}
               className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
-              onClick={() => (siguienteBloqueado ? setBloqueoVisto(siguiente) : cambiar(siguiente.id))}
+              onClick={() => (siguienteBloqueado ? avisar(siguiente.id) : cambiar(siguiente.id))}
             >
               Siguiente: {siguiente.corto}
               <ChevronRight className="size-5" aria-hidden />

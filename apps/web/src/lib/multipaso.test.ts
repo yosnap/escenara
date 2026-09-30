@@ -1,7 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import {
+  avisoVigente,
   direccionConPaso,
+  escribirPasoEnLaDireccion,
+  estadoInicialMultipaso,
   esNavegable,
+  motivoNoNavegable,
+  NO_ALCANZADO,
+  reducirMultipaso,
   type PasoDelFlujo,
   pasoDeLaUrl,
   resolverPaso,
@@ -50,6 +56,12 @@ describe("paso con el que se abre", () => {
   test("un predeterminado que no está en la lista abre el primero", () => {
     expect(resolverPaso(null, PASOS, "z")).toBe("a");
   });
+
+  test("nunca abre un paso bloqueado, tampoco el predeterminado", () => {
+    expect(resolverPaso(null, PASOS, "d")).toBe("a");
+    const primeroBloqueado = [paso("x", "bloqueado", "No."), ...PASOS];
+    expect(resolverPaso("x", primeroBloqueado, "x")).toBe("a");
+  });
 });
 
 describe("navegación libre", () => {
@@ -84,5 +96,53 @@ describe("?paso= en la dirección", () => {
 
   test("sustituye el paso anterior y conserva el ancla", () => {
     expect(direccionConPaso("/proyectos/x?paso=idea#arriba", "escenas")).toBe("/proyectos/x?paso=escenas#arriba");
+  });
+});
+
+describe("aviso de un paso que no se abre", () => {
+  const inicio = estadoInicialMultipaso(PASOS, "b");
+
+  test("bloqueado dice su motivo; sin alcanzar dice que se avanza con Siguiente; lo abrible no dice nada", () => {
+    expect(motivoNoNavegable(PASOS[3] as PasoDelFlujo, [])).toBe("Falta c.");
+    expect(motivoNoNavegable(PASOS[2] as PasoDelFlujo, ["a", "b"])).toBe(NO_ALCANZADO);
+    expect(motivoNoNavegable(PASOS[1] as PasoDelFlujo, ["a", "b"])).toBeNull();
+  });
+
+  test("pulsar un bloqueado enseña su motivo y cambiar de paso lo retira", () => {
+    const avisado = reducirMultipaso(inicio, { tipo: "avisar", id: "d" });
+    expect(avisoVigente(avisado, PASOS)?.motivo).toBe("Falta c.");
+    const despues = reducirMultipaso(avisado, { tipo: "ir", id: "c" });
+    expect(despues.avisoDe).toBeNull();
+    expect(despues.actual).toBe("c");
+    expect(despues.visitados).toEqual(["a", "b", "c"]);
+    expect(despues.enfocar).toBe(true);
+  });
+
+  test("saltar solo a otro paso (por ejemplo, tras confirmar un gasto) también lo retira", () => {
+    const avisado = reducirMultipaso(inicio, { tipo: "avisar", id: "d" });
+    expect(reducirMultipaso(avisado, { tipo: "ir", id: "a" }).avisoDe).toBeNull();
+  });
+
+  test("si el paso se desbloquea, el aviso deja de enseñarse aunque siga guardado", () => {
+    const avisado = reducirMultipaso(inicio, { tipo: "avisar", id: "d" });
+    const desbloqueados = PASOS.map((p) => (p.id === "d" ? { ...p, estado: "hecho" as const } : p));
+    expect(avisoVigente(avisado, desbloqueados)).toBeNull();
+  });
+
+  test("al abrir no se mueve el foco", () => {
+    expect(inicio.enfocar).toBe(false);
+    expect(inicio.avisoDe).toBeNull();
+  });
+});
+
+describe("escribir el paso en la dirección", () => {
+  test("cambia ?paso= sin perder ?personaje= y sin añadir entradas al historial", () => {
+    const llamadas: string[] = [];
+    const ventana = {
+      location: { href: "http://localhost/crear?personaje=p1&paso=formato" },
+      history: { replaceState: (_d: null, _t: string, url: string) => void llamadas.push(url) },
+    };
+    escribirPasoEnLaDireccion("escena", ventana);
+    expect(llamadas).toEqual(["/crear?personaje=p1&paso=escena"]);
   });
 });
