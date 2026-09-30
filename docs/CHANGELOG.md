@@ -24,14 +24,18 @@ se ha cobrado y qué probar. Una migración aditiva; **sin cambios de coste** ni
 ### Seguridad
 
 - **El texto del proveedor sigue sin guardarse ni mostrarse.** Solo se lee para elegir una causa de una lista
-  cerrada, con patrones conservadores; lo que no se reconoce se queda con el mensaje genérico de siempre. Así un
-  proveedor que repita datos de la petición (una clave, por ejemplo) no los hace llegar a ningún sitio.
+  cerrada, con patrones estrictos; lo que no dice la causa con palabras explícitas se queda con el mensaje genérico
+  de siempre, en lugar de afirmar una causa que no es. Así un proveedor que repita datos de la petición (una clave,
+  por ejemplo) no los hace llegar a ningún sitio.
 
-### Base de datos
+### Actualizar desde la 0.35.1
 
-- Migración `0056_causa-del-fallo-del-proveedor`: columna `generation_jobs.failure_cause`, aditiva e idempotente.
-  Guarda solo la clave de la causa. Los trabajos anteriores se quedan sin causa y se muestran igual que antes; el
-  motivo del fallo no cambia, así que tampoco cambia qué se reintenta ni qué se cobra.
+- **Haz antes una copia**: `bun run db:backup`. Después, `bun run db:migrate`.
+- La migración `0056_causa-del-fallo-del-proveedor` es **aditiva e idempotente**: añade `generation_jobs.failure_cause`
+  (vacía de fábrica), que guarda solo la clave de la causa. Los trabajos anteriores se quedan sin causa y se muestran
+  igual que antes; el motivo del fallo no cambia, así que tampoco cambia qué se reintenta ni qué se cobra.
+- **Reinicia el worker** después de migrar: es quien consulta las tareas y cierra los fallos, y no recarga el código
+  solo. Sin reiniciarlo, los fallos se siguen cerrando con el mensaje genérico.
 
 ## [0.35.1] · 2026-09-30
 
