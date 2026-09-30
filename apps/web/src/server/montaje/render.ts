@@ -61,7 +61,14 @@ export class Progreso {
   private ultimoApunte = 0;
   private etapa: FilaExportacion["stage"] = "preparando";
 
-  constructor(private readonly exportacionId: string) {}
+  constructor(
+    private readonly exportacionId: string,
+    /**
+     * Worker que tiene la toma. Solo se apunta (y se renueva la toma) mientras siga siendo suya: un worker cuya toma
+     * caducó y que otra pasada ya ha vuelto a tomar no pisa el progreso ni alarga la toma del otro.
+     */
+    private readonly titular: string | null = null,
+  ) {}
 
   async entrarEn(etapa: FilaExportacion["stage"]): Promise<void> {
     this.etapa = etapa;
@@ -86,7 +93,11 @@ export class Progreso {
         progress: Math.round(porciento * 10) / 10,
         lockedUntil: new Date(ahora + MS_TOMA_EXPORTACION),
       })
-      .where(eq(montageExports.id, this.exportacionId))
+      .where(
+        this.titular === null
+          ? eq(montageExports.id, this.exportacionId)
+          : and(eq(montageExports.id, this.exportacionId), eq(montageExports.lockedBy, this.titular)),
+      )
       .catch((error) => console.error(`[montaje] no se ha podido apuntar el progreso: ${detalle(error)}`));
   }
 }
@@ -121,7 +132,7 @@ export async function renderizarExportacion(
   // vídeo con cara humana sin su etiqueta es peor que un vídeo que no se ha exportado.
   if (exportacion.labelApplied) await exigirEtiquetaDibujable();
 
-  const progreso = new Progreso(exportacion.id);
+  const progreso = new Progreso(exportacion.id, exportacion.lockedBy);
   const formato = exportacion.format;
   const { ancho, alto } = resolucionDe(formato);
   const segundosTotales = duracionTotalDeFragmentos(montaje.fragments);

@@ -477,10 +477,28 @@ describe.skipIf(!hayBaseDeDatos)("formatos, reencuadre y límites de un proyecto
       .update(montageExports)
       .set({ lockedUntil: new Date(Date.now() - 1000) })
       .where(eq(montageExports.id, tomada.id));
-    await new Progreso(tomada.id).entrarEn("montando");
+    await new Progreso(tomada.id, "worker-a").entrarEn("montando");
     const [renovada] = await db().select().from(montageExports).where(eq(montageExports.id, tomada.id));
     expect(renovada?.lockedUntil?.getTime() ?? 0).toBeGreaterThan(Date.now() + MS_TOMA_EXPORTACION - 60_000);
     expect(await tomarExportaciones("worker-b")).toHaveLength(0);
+  });
+
+  test("un worker cuya toma ya es de otro no renueva ni pisa el progreso", async () => {
+    expect((await exportar()).estado).toBe(202);
+    const [tomada] = await tomarExportaciones("worker-a");
+    if (!tomada) throw new Error("No se ha tomado la exportación.");
+    // La toma de A caduca y B la vuelve a tomar.
+    await db()
+      .update(montageExports)
+      .set({ lockedUntil: new Date(Date.now() - 1000) })
+      .where(eq(montageExports.id, tomada.id));
+    expect(await tomarExportaciones("worker-b")).toHaveLength(1);
+    const [deB] = await db().select().from(montageExports).where(eq(montageExports.id, tomada.id));
+    await new Progreso(tomada.id, "worker-a").entrarEn("guardando");
+    const [despues] = await db().select().from(montageExports).where(eq(montageExports.id, tomada.id));
+    expect(despues?.lockedBy).toBe("worker-b");
+    expect(despues?.stage).toBe(deB?.stage);
+    expect(despues?.lockedUntil?.getTime()).toBe(deB?.lockedUntil?.getTime());
   });
 
   test("un formato que el proyecto no tiene no se exporta, y se dice cómo añadirlo", async () => {
