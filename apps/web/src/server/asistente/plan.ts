@@ -41,8 +41,10 @@ import { type EleccionDeTrabajo, elegirParaTipo } from "../generacion/precios";
 import { eleccionDeGeneracion } from "../mapa/generacion";
 import { type Actor, aDto } from "../media/servicio";
 import { eleccionOmni } from "../omni/registro";
+import { personajePorId } from "../personajes/contexto";
 import { ultimaVersion } from "../personajes/ficha";
 import { fotoDeProductoDelClip } from "../productos/modelos-sugeridos";
+import { fotosDelPersonajeEnElEnvio, hojaEnElEnvio } from "../productos/reparto-del-envio";
 import { plantillaVigenteDe } from "../prompts/consulta";
 import { ErrorCatalogo } from "../proveedores/contrato";
 import {
@@ -238,7 +240,11 @@ function vistaEscena(
       modoExperto: fila.expertMode,
       descripcionExperta: fila.expertDescription,
     },
-    producto: { productoId: fila.productId ?? "", accion: fila.productAction },
+    producto: {
+      productoId: fila.productId ?? "",
+      accion: fila.productAction,
+      ...(fila.productPhotoIds.length > 0 ? { fotos: fila.productPhotoIds } : {}),
+    },
     segundos: fila.plannedSeconds,
     estado: fila.state,
     aprobadaEn: fila.approvedAt?.toISOString() ?? null,
@@ -500,8 +506,23 @@ async function fotoDeProductoDelProyecto(
   elecciones: EleccionesDelPlan,
 ): Promise<FotoDeProductoDelClip | null> {
   try {
-    const modelo = proyecto.voiceMode === "omni" ? (await eleccionOmni(actor.id)).modelo : elecciones.animacion?.modelo;
-    return modelo ? await fotoDeProductoDelClip(modelo, CAPACIDAD_DE_TIPO.animacion) : null;
+    const conOmni = proyecto.voiceMode === "omni";
+    const modelo = conOmni ? (await eleccionOmni(actor.id)).modelo : elecciones.animacion?.modelo;
+    if (!modelo) return null;
+    const foto = await fotoDeProductoDelClip(modelo, CAPACIDAD_DE_TIPO.animacion);
+    // En Omni con producto la cara sale de las fotos del personaje, que compiten con las del producto; el clip
+    // de siempre parte de una sola imagen, su fotograma. Es la misma cuenta que hace el envío.
+    const protagonista = conOmni && proyecto.mainCharacterId ? await personajePorId(proyecto.mainCharacterId) : null;
+    const fotosDelPersonaje = await fotosDelPersonajeEnElEnvio(
+      conOmni
+        ? {
+            tipo: "escena-omni",
+            personaje: protagonista,
+            conHoja: protagonista !== null && hojaEnElEnvio(protagonista),
+          }
+        : { tipo: "clip" },
+    );
+    return { ...foto, fotosDelPersonaje };
   } catch (error) {
     console.error(
       `[plan] no se ha podido saber si el clip del proyecto ${proyecto.id} admite la foto del producto:`,

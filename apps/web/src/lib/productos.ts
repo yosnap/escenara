@@ -143,7 +143,17 @@ export interface ProductoElegido {
   productoId: string;
   /** Clave del catálogo de acciones de producto (categoría `accion-producto` de los presets). */
   accion: string;
+  /**
+   * Identificadores de las fotos del producto (de la biblioteca) que **el usuario ha elegido** enviar cuando no
+   * caben todas. Ausente o vacío = las que envía el servidor por defecto, con la frontal la primera. Se elige
+   * en el selector de producto de «Crear» (donde viaja con el **clip**, porque cada modelo tiene su tope) y en
+   * el de la escena de un proyecto (donde se guarda con la escena).
+   */
+  fotos?: string[];
 }
+
+/** Tope de fotos elegidas que se admite leer: el producto no puede tener más (`MAXIMO_REFERENCIAS_PRODUCTO`). */
+export const MAXIMO_FOTOS_ELEGIDAS = 8;
 
 export const PRODUCTO_ELEGIDO_VACIO: ProductoElegido = { productoId: "", accion: "" };
 

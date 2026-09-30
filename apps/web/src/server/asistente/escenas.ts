@@ -20,6 +20,8 @@ import { db, type Ejecutor } from "../db/cliente";
 import { claims, type FilaEscena, generationJobs, projects, scenes } from "../db/esquema";
 import type { Actor } from "../media/servicio";
 import { leerProductoElegido, productoPropio } from "../productos/eleccion";
+import { ErrorProducto } from "../productos/errores";
+import { fotosDelProducto } from "../productos/referencias";
 import { plantillaUsable, versionVigente } from "../prompts/consulta";
 import { duracionesDelTrend, exigirTrendVigente } from "../prompts/trends";
 import { sembrarRepartoInicial } from "../reparto/siembra";
@@ -161,8 +163,30 @@ function camposLimpios(datos: DatosEscena) {
 async function camposDeProducto(actor: Actor, datos: DatosEscena): Promise<Partial<typeof scenes.$inferInsert>> {
   if (datos.producto === undefined) return {};
   const elegido = await productoPropio(actor.id, leerProductoElegido(datos.producto));
-  if (elegido.productoId === "") return { productId: null, productAction: "" };
-  return { productId: elegido.productoId, productAction: elegido.accion };
+  if (elegido.productoId === "") return { productId: null, productAction: "", productPhotoIds: [] };
+  return {
+    productId: elegido.productoId,
+    productAction: elegido.accion,
+    // Cambiar de producto llega sin fotos elegidas, así que la elección anterior no sobrevive al cambio.
+    productPhotoIds: await fotosElegidasValidas(elegido.productoId, elegido.fotos ?? []),
+  };
+}
+
+/**
+ * Las fotos elegidas de la escena, ya comprobadas: tienen que ser fotos **vigentes de ese producto**. Se guardan
+ * en el orden de prioridad de siempre. Una que no lo sea se rechaza con su causa, y no se descarta en silencio:
+ * lo que la persona ve marcado es lo que se guarda.
+ */
+async function fotosElegidasValidas(productoId: string, elegidas: readonly string[]): Promise<string[]> {
+  if (elegidas.length === 0) return [];
+  const vigentes = await fotosDelProducto(productoId);
+  if (elegidas.some((id) => !vigentes.includes(id))) {
+    throw new ErrorProducto(
+      400,
+      "Alguna de las fotos que has elegido no es de este producto o está en la papelera. Vuelve a elegir qué fotos se envían.",
+    );
+  }
+  return vigentes.filter((id) => elegidas.includes(id));
 }
 
 /**

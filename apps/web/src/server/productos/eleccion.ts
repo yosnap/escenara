@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { PRODUCTO_ELEGIDO_VACIO, type ProductoElegido } from "@/lib/productos";
+import { MAXIMO_FOTOS_ELEGIDAS, PRODUCTO_ELEGIDO_VACIO, type ProductoElegido } from "@/lib/productos";
 import { db } from "../db/cliente";
 import { products } from "../db/esquema-productos";
 import { ErrorProducto } from "./errores";
@@ -40,7 +40,30 @@ export function leerProductoElegido(valor: unknown): ProductoElegido | null {
   if (accion !== "" && (typeof accion !== "string" || !CLAVE.test(accion))) {
     throw new ErrorProducto(400, "Esa acción con el producto no es válida.");
   }
-  return { productoId, accion: accion as string };
+  const fotos = leerFotosElegidas(c.fotos);
+  return { productoId, accion: accion as string, ...(fotos.length > 0 ? { fotos } : {}) };
+}
+
+/**
+ * Las fotos que el usuario ha elegido enviar: una lista de identificadores de medio, sin repetir. Aquí solo se
+ * comprueba la **forma**; que sean fotos vigentes de ese producto se comprueba al resolverlo, contra la base de
+ * datos.
+ */
+export function leerFotosElegidas(valor: unknown): string[] {
+  if (valor === undefined || valor === null) return [];
+  if (!Array.isArray(valor) || valor.length > MAXIMO_FOTOS_ELEGIDAS) {
+    throw new ErrorProducto(
+      400,
+      `Las fotos elegidas del producto no son válidas: como máximo ${MAXIMO_FOTOS_ELEGIDAS}.`,
+    );
+  }
+  const ids = valor.map((id) => {
+    if (typeof id !== "string" || !UUID.test(id)) {
+      throw new ErrorProducto(400, "Una de las fotos elegidas del producto no es válida.");
+    }
+    return id.toLowerCase();
+  });
+  return [...new Set(ids)];
 }
 
 /**

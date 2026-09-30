@@ -75,6 +75,36 @@ aprobar el fotograma encola la inserción, y cuando esa está lista vuelves a ap
 
 Sin una foto con el papel **Captura de pantalla** no hay nada que insertar, y se te dice antes de pedirlo.
 
+### Cuántas fotos del producto viajan y cuáles
+
+Un modelo admite un número fijo de imágenes de referencia, y con producto compiten dos cosas por ellas: **la
+identidad del personaje** y **las fotos del producto**. La identidad es lo que más pesa en el clip, así que el
+reparto le da la mayor parte: **el producto recibe unas 3 de cada 7 referencias** (con siete huecos, **4 del
+personaje y 3 del producto**) y siempre **al menos una**, que es la frontal con la etiqueta. Si uno de los dos tiene
+menos fotos de las que le tocan, el otro aprovecha lo que sobra. Ejemplos con siete huecos: personaje de 6 fotos y
+caja de 5, viajan 4 y 3; personaje de una foto y caja de 5, viajan 1 y 5.
+
+Sin que elijas nada, viajan las primeras por prioridad: **la frontal con la etiqueta, el envase, el detalle de la
+tapa o el mecanismo y las sueltas**. Cuando el producto tiene **más fotos de las que caben** con el modelo elegido (o ya has elegido cuáles), en el bloque **El producto** aparece **«Fotos del producto que se envían»**, con una casilla en cada miniatura: te
+dice cuántas caben y cuántas se envían, viene marcada la frontal y puedes cambiar cuáles viajan. Sin marcar la
+frontal se te avisa de que la etiqueta puede salir distinta, y «Volver a las de por defecto» deshace la elección. Elegir fotos **no cambia lo que cuesta ni lo que
+confirmas**, solo cuáles de las que ya caben van al modelo.
+
+- **La elección vale para el paso donde la haces.** En **«Crear»** viaja con el **clip**: el fotograma que lo
+  precede se sigue generando con las fotos de por defecto, aunque hayas elegido otras para el clip, porque cada modelo
+  tiene su propio tope de referencias. En **la escena de un proyecto** se guarda con la escena y se vuelve a usar
+  cada vez que se produce.
+- Con el clip, la cuenta de cuántas caben es la del envío: parte de **una** imagen (su fotograma), así que caben
+  hasta seis fotos del producto con siete huecos. Con **Omni** en un proyecto, la cara sale de las fotos del
+  personaje y compiten con las del producto (4 y 3 con siete huecos). Con la **hoja 3×3** del personaje viaja solo la
+  hoja, y las demás referencias son para el producto.
+- Al **convertir un clip de «Crear» en proyecto**, la escena hereda las fotos del producto con las que se pagó el clip
+  (solo las que siguen fuera de la papelera).
+- Si eliges otro producto, la elección se borra. Si borras una foto elegida, la escena sigue funcionando: se envían
+  las demás.
+- Si cambias a un modelo con menos huecos, la elección se recorta a lo que cabe y el aviso de antes de pagar dice
+  cuántas fotos se quedan fuera.
+
 ## Lo que se te avisa antes de pagar
 
 Todos estos avisos salen **antes** de gastar y se confirman con una casilla; ninguno te impide seguir:
@@ -88,7 +118,9 @@ Todos estos avisos salen **antes** de gastar y se confirman con una casilla; nin
   coste delante. El aviso sale **junto al selector de producto**, en cuanto eliges el producto (si tiene fotos), y
   además el selector de modelo del clip indica en cada modelo si «Admite la foto del producto» o si «El producto
   viaja solo descrito». Sigue saliendo también antes del coste, con su casilla de confirmación.
-- **No caben todas las referencias.** Se envían primero la identidad del personaje y la foto frontal.
+- **No caben todas las referencias.** Con las cifras: «Gemini Omni 1.1 Flash admite 7 referencias: se envían 4 del
+  personaje y 3 de «Caja Huerta Valenciana»; 2 fotos del producto se quedan fuera. Lo que sobra puede salir
+  distinto.» Puedes elegir otro modelo con más referencias o elegir qué fotos del producto viajan.
 - **El producto no tiene fotos.** Se le pedirá un envase sin marca, y el resultado no será tu producto.
 - **En el producto se ve una marca.** El filtro del proveedor puede rechazarlo; si lo rechaza, no se cobra.
 - **La acción es poco fiable** (las de piel).

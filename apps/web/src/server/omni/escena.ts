@@ -41,13 +41,14 @@ import {
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { exigirSelloVigente } from "../generacion/precios";
 import type { Actor } from "../media/servicio";
-import { referenciasVigentesDe } from "../personajes/consulta";
 import { contextoDeVersion, promptConContexto } from "../personajes/contexto";
 import { ultimaVersion } from "../personajes/ficha";
 import { personajePropio, referenciasParaGenerar } from "../personajes/puede-generar";
 import { acotarCoste } from "../presupuesto/acotar";
 import { completarModelosSugeridos } from "../productos/modelos-sugeridos";
-import { hechosDelProducto, productoEnPrompt, productoParaGenerar } from "../productos/prompt";
+import { productoEnPrompt, productoParaGenerar } from "../productos/prompt";
+import { referenciasDelPersonajeQueViajan } from "../productos/referencias";
+import { hojaEnElEnvio, repartoDelEnvio } from "../productos/reparto-del-envio";
 import { creditosDelEnvio, traducirAlIngles } from "../prompts/traduccion";
 import { miembrosDelReparto } from "../reparto/consulta";
 import { exigirFormatoActivo } from "../reparto/servicio";
@@ -360,7 +361,10 @@ export async function producirEscenaHablada(
    * antes de cobrar (`producto-sin-identidad-registrada`) con la alternativa de hacer el producto en un plano
    * aparte y montarlo.
    */
-  const producto = await productoParaGenerar(actor.id, escena.productId, escena.productAction);
+  const producto = await productoParaGenerar(actor.id, escena.productId, escena.productAction, undefined, {
+    ids: escena.productPhotoIds,
+    estricta: false,
+  });
   // Lo que de verdad se va a enviar: con producto no se cita la identidad registrada aunque el motor la tenga.
   const citaIdentidad = conIdentidad && producto === null;
   /**
@@ -371,12 +375,13 @@ export async function producirEscenaHablada(
   const muestraEnviada = sinRegistro ? (sinRegistro.muestra ?? null) : muestra;
   const faltaEnviada = sinRegistro?.falta || falta;
   const conProducto = producto
-    ? hechosDelProducto(
+    ? await repartoDelEnvio({
         producto,
-        adaptador.referenciasDeGaleria?.(modelo) ?? modelo.parametros.maximoReferencias,
-        personaje ? (await referenciasVigentesDe(personaje.id)).length : 1,
-        conIdentidad,
-      )
+        adaptador,
+        modelo,
+        identidadRegistradaPerdida: conIdentidad,
+        envio: { tipo: "escena-omni", personaje, conHoja: personaje !== null && hojaEnElEnvio(personaje, escena.id) },
+      })
     : null;
   if (producto) exigirDerechoDeMarca(confirmacion.derechoMarca);
   if (conProducto) await completarModelosSugeridos(conProducto.hechos, CAPACIDAD_DE_TIPO.animacion);
@@ -558,7 +563,7 @@ export async function producirEscenaHablada(
          * Con identidad registrada no hay referencias: la cara la pone el registro del proveedor. Con un motor de
          * referencias, son las fotos del personaje, y la muestra de la voz va aparte porque es audio y no imagen.
          */
-        referencias: referencias.map((r) => r.id),
+        referencias: referenciasDelPersonajeQueViajan(referencias, conProducto?.reparto ?? null).map((r) => r.id),
         ...(muestraEnviada ? { audioDeReferencia: muestraEnviada.id } : {}),
         parametros: { ...parametros, segundos },
         dialogo,

@@ -412,7 +412,7 @@ export function VistaCrear({
        * El producto del clip viaja también con el fotograma: con un producto digital, el fotograma **es** el
        * primer paso (el dispositivo con la pantalla apagada), y con uno físico es donde se ve en la mano.
        */
-      producto: productoClip,
+      producto: { productoId: productoClip.productoId, accion: productoClip.accion },
       // La versión que se estaba mirando: si el servidor usaría otra, responde 409 y no se gasta nada.
       ...(personaje && contexto?.personajeId === personaje.id && contexto.versionId !== ""
         ? { versionPersonaje: contexto.versionId }

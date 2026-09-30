@@ -27,6 +27,8 @@ import { fotosDelProducto, type RepartoDeReferencias, repartirReferencias } from
  * proveedor, y aquí no se paga nada.
  */
 
+const SIN_ELECCION: EleccionDeFotos = { ids: [], estricta: false };
+
 /** El producto de un trabajo, con todo lo que hace falta saber de él para generarlo. */
 export interface ProductoParaGenerar {
   id: string;
@@ -54,6 +56,21 @@ export interface ProductoParaGenerar {
   marcaVisible: boolean;
   /** Fotos que pueden viajar como referencia, por orden de prioridad. Puede estar vacío. */
   fotos: readonly string[];
+  /**
+   * Presente cuando `fotos` es lo que **eligió el usuario** y no las de por defecto. Con `estricta` (la elección
+   * de «Crear», que se envía con la petición) no se recorta en silencio: si no caben, se rechaza con su causa,
+   * porque una elección que se ignora a medias no es una elección. Con `guardada` (la de una escena, que se
+   * eligió antes y sirve en cada etapa con su propio tope) se recorta y el aviso de antes de pagar dice qué se
+   * queda fuera.
+   */
+  fotosElegidas?: "estricta" | "guardada";
+}
+
+/** Fotos del producto que el usuario eligió enviar, y qué hacer si la elección ya no es válida. */
+export interface EleccionDeFotos {
+  ids: readonly string[];
+  /** `true` = la elección viene en la petición: una foto que no sea válida o que no quepa se rechaza. */
+  estricta: boolean;
 }
 
 /**
@@ -73,6 +90,11 @@ export async function productoParaGenerar(
    * no pasa nada aquí, anima el resultado de los dos pasos.
    */
   digital?: { pasoSolicitado?: PasoProductoDigital },
+  /**
+   * Fotos que el usuario eligió enviar. Vacío = las de por defecto. En un paso del producto digital no se
+   * elige: ahí las fotos las decide el paso.
+   */
+  eleccion: EleccionDeFotos = SIN_ELECCION,
 ): Promise<ProductoParaGenerar | null> {
   if (!productoId) return null;
   const [fila] = await db()
@@ -101,10 +123,12 @@ export async function productoParaGenerar(
    *   pedirle dos cosas contrarias, y lo que devuelve es una imitación de la captura;
    * - al **insertar**, solo la captura: cualquier otra foto del producto podría acabar dentro de la pantalla.
    */
-  const fotos =
+  const porDefecto =
     pasoDigital === "pantalla_negra"
       ? []
       : await fotosDelProducto(fila.id, accion, pasoDigital === "insertar_captura" ? "captura_pantalla" : undefined);
+  const elegidas = pasoDigital === null ? filtrarFotosElegidas(fila.name, porDefecto, eleccion) : [];
+  const fotos = elegidas.length > 0 ? elegidas : porDefecto;
   if (pasoDigital === "insertar_captura" && fotos.length === 0) {
     throw new ErrorProducto(409, DIGITAL_SIN_CAPTURA);
   }
@@ -123,7 +147,30 @@ export async function productoParaGenerar(
     pocoFiable: esAccionPocoFiable(accion),
     marcaVisible: fila.brandVisible,
     fotos,
+    ...(elegidas.length > 0
+      ? { fotosElegidas: eleccion.estricta ? ("estricta" as const) : ("guardada" as const) }
+      : {}),
   };
+}
+
+/**
+ * Se queda con las fotos elegidas, **en el orden de prioridad de siempre** (la frontal primero): la elección
+ * dice cuáles viajan, no en qué orden. En una petición, una que no sea de este producto o que esté en la
+ * papelera se rechaza con su causa: el envío no puede llevar una foto que el usuario no ve en la ficha. En la
+ * elección guardada de una escena se descartan sin más, porque pudo borrarse después de elegirla y eso no debe
+ * romper la escena.
+ */
+function filtrarFotosElegidas(nombre: string, vigentes: readonly string[], eleccion: EleccionDeFotos): string[] {
+  if (eleccion.ids.length === 0) return [];
+  const permitidas = new Set(vigentes);
+  if (eleccion.estricta && eleccion.ids.some((id) => !permitidas.has(id))) {
+    throw new ErrorProducto(
+      400,
+      `Alguna de las fotos que has elegido de «${nombre}» ya no está disponible: no es de este producto o está en la papelera. Vuelve a elegir qué fotos se envían.`,
+    );
+  }
+  const quedan = new Set(eleccion.ids);
+  return vigentes.filter((id) => quedan.has(id));
 }
 
 /**
@@ -147,6 +194,14 @@ export function hechosDelProducto(
   const reparto = repartirReferencias(referenciasDeGaleria, referenciasPersonaje, producto.fotos.length);
   // El producto tiene fotos y no cabe ninguna: eso tiene su propio aviso, con los modelos que sí las llevan.
   const sinHuecoDeReferencia = producto.fotos.length > 0 && reparto.producto === 0;
+  if (producto.fotosElegidas === "estricta" && reparto.producto < producto.fotos.length) {
+    throw new ErrorProducto(
+      400,
+      reparto.producto === 0
+        ? `Has elegido fotos de «${producto.nombre}», pero con este modelo no cabe ninguna. Elige un modelo que admita más referencias.`
+        : `Has elegido ${producto.fotos.length} fotos de «${producto.nombre}» y con este modelo solo caben ${reparto.producto}: el resto de las referencias son del personaje. Quita fotos de la elección o elige un modelo que admita más referencias.`,
+    );
+  }
   return {
     hechos: {
       nombre: producto.nombre,
@@ -155,6 +210,13 @@ export function hechosDelProducto(
       // Decir «algunas se quedan fuera» cuando no cabe ninguna sería decir menos de lo que pasa: ese caso
       // tiene su propio aviso y los dos juntos serían el mismo aviso dos veces.
       referenciasNoCaben: !reparto.cabenTodas && !sinHuecoDeReferencia,
+      referencias: {
+        cupo: referenciasDeGaleria,
+        fotosPersonaje: referenciasPersonaje,
+        fotosProducto: producto.fotos.length,
+        personaje: reparto.personaje,
+        producto: reparto.producto,
+      },
       sinHuecoDeReferencia,
       identidadRegistradaPerdida,
       marcaVisible: producto.marcaVisible,

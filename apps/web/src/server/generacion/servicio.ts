@@ -28,7 +28,6 @@ import {
   type OpcionDeGeneracion,
 } from "../mapa/generacion";
 import type { Actor } from "../media/servicio";
-import { referenciasVigentesDe } from "../personajes/consulta";
 import {
   contextoDeVersion,
   contextoParaGenerar,
@@ -38,9 +37,11 @@ import {
 } from "../personajes/contexto";
 import { personajePropio, referenciasParaGenerar } from "../personajes/puede-generar";
 import { acotarCoste } from "../presupuesto/acotar";
-import { productoDelTrabajo } from "../productos/columnas";
+import { eleccionDeFotosDelTrabajo, productoDelTrabajo } from "../productos/columnas";
 import { completarModelosSugeridos } from "../productos/modelos-sugeridos";
-import { hechosDelProducto, productoEnPrompt, productoParaGenerar } from "../productos/prompt";
+import { productoEnPrompt, productoParaGenerar } from "../productos/prompt";
+import { referenciasDelPersonajeQueViajan } from "../productos/referencias";
+import { hojaEnElEnvio, repartoDelEnvio } from "../productos/reparto-del-envio";
 import { plantillaUsable } from "../prompts/consulta";
 import { componerDesdePlantilla, type PromptCompuesto } from "../prompts/render";
 import { creditosDelEnvio, traducirAlIngles } from "../prompts/traduccion";
@@ -536,13 +537,6 @@ async function topeDeEscenasEnVuelo(
 }
 
 /**
- * Referencias que el modelo acepta **como galería**, que son las únicas donde cabe la foto de un producto. Un
- * adaptador que no lo declare las acepta todas, que es lo que era verdad antes de la 0.26.0.
- */
-const cupoDeGaleria = (adaptador: Adaptador, modelo: ModeloVista): number =>
-  adaptador.referenciasDeGaleria?.(modelo) ?? modelo.parametros.maximoReferencias;
-
-/**
  * Lo que se guarda en el trabajo de las fotos del producto: **solo las que caben**, en el orden de prioridad
  * con el que se van a enviar. El worker no vuelve a repartir nada; envía esto, que es lo que se ha avisado y
  * se ha confirmado.
@@ -622,31 +616,31 @@ export async function crearFotograma(
    * que dar antes de cobrar nada.
    */
   const columnasProducto = await productoDelTrabajo(actor.id, conEscena?.escena.id ?? null, peticion.productoElegido);
-  const producto = await productoParaGenerar(actor.id, columnasProducto.productId, columnasProducto.productAction, {
-    ...(peticion.pasoDigital ? { pasoSolicitado: peticion.pasoDigital } : {}),
-  });
+  const producto = await productoParaGenerar(
+    actor.id,
+    columnasProducto.productId,
+    columnasProducto.productAction,
+    { ...(peticion.pasoDigital ? { pasoSolicitado: peticion.pasoDigital } : {}) },
+    await eleccionDeFotosDelTrabajo(conEscena?.escena.id ?? null, peticion.productoElegido),
+  );
   // Con producto hay una marca en juego, y usarla es una declaración aparte de la de la imagen.
   if (producto) exigirDerechoDeMarca(peticion.derechoMarca);
   const conProducto = producto
-    ? hechosDelProducto(
+    ? await repartoDelEnvio({
         producto,
-        // Sin imagen de partida se genera con un modelo de **texto a imagen**: ahí no viaja ninguna foto.
-        sinReferencia ? 0 : cupoDeGaleria(adaptador, modelo),
-        /**
-         * Las que de verdad se le pueden enviar: una imagen suelta es una, y un personaje, las suyas vigentes.
-         * **Ninguna** cuando no hay imagen de partida, que es lo que pasa en el plano del producto solo: sin
-         * nadie en el plano no hay cara que sostener, y reservarle un hueco dejaría fuera una foto del
-         * producto por nada.
-         */
-        // Las del personaje solo viajan cuando se genera **con** él; heredado de una imagen suelta, viaja esa sola.
-        personaje && peticion.personajeId && !peticion.retratoInventado
-          ? (await referenciasVigentesDe(personaje.id)).length
-          : sinReferencia
-            ? 0
-            : 1,
-        // En el fotograma no hay identidad registrada que perder: eso solo pasa en la escena hablada.
-        false,
-      )
+        adaptador,
+        modelo,
+        envio: {
+          tipo: "fotograma",
+          // Las fotos del personaje solo viajan cuando se genera **con** él; heredado de una imagen suelta, viaja esa sola.
+          personaje: personaje && peticion.personajeId && !peticion.retratoInventado ? personaje : null,
+          sinReferencia,
+          conHoja:
+            personaje !== null &&
+            !peticion.hojaDeIdentidad &&
+            hojaEnElEnvio(personaje, peticion.escenaId ?? peticion.claveIdempotencia),
+        },
+      })
     : null;
   if (conProducto) {
     await completarModelosSugeridos(conProducto.hechos, sinReferencia ? "text_to_image" : CAPACIDAD_DE_TIPO.fotograma);
@@ -828,7 +822,7 @@ export async function crearFotograma(
       ...entradaGuardada(
         adaptador,
         promptFinal,
-        referencias.map((r) => r.id),
+        referenciasDelPersonajeQueViajan(referencias, conProducto?.reparto ?? null).map((r) => r.id),
         parametros,
       ),
       // La tarifa exacta que se ha confirmado. El worker envía **esa** variante: sin esto, un cambio de variante
@@ -989,18 +983,17 @@ export async function crearAnimacion(
    */
   const columnasProducto = await productoDelTrabajo(actor.id, partida.escenaId, peticion.productoElegido);
   // El clip **no** es un paso del producto digital: anima el fotograma que ya tiene la captura puesta.
-  const producto = await productoParaGenerar(actor.id, columnasProducto.productId, columnasProducto.productAction);
+  const producto = await productoParaGenerar(
+    actor.id,
+    columnasProducto.productId,
+    columnasProducto.productAction,
+    undefined,
+    await eleccionDeFotosDelTrabajo(partida.escenaId, peticion.productoElegido),
+  );
   if (producto) exigirDerechoDeMarca(peticion.derechoMarca);
-  const conProducto = producto
-    ? hechosDelProducto(
-        producto,
-        cupoDeGaleria(adaptador, modelo),
-        // Un clip parte de **una** imagen: su fotograma aprobado. Esa es la referencia del personaje aquí.
-        1,
-        // Este camino no cita ninguna identidad registrada: la escena hablada en modo Omni va por `omni/escena.ts`.
-        false,
-      )
-    : null;
+  // Un clip parte de **una** imagen: su fotograma aprobado. Este camino no cita ninguna identidad registrada: la
+  // escena hablada en modo Omni va por `omni/escena.ts`.
+  const conProducto = producto ? await repartoDelEnvio({ producto, adaptador, modelo, envio: { tipo: "clip" } }) : null;
   if (conProducto) await completarModelosSugeridos(conProducto.hechos, CAPACIDAD_DE_TIPO.animacion);
 
   const conRepartoDelClip = await hechosDelRepartoDeEscena(partida.escenaId);

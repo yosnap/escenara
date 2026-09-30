@@ -17,6 +17,13 @@ export interface FotoDeProductoDelClip {
   admite: boolean;
   /** Nombres de los modelos activos que sí la admiten. Solo se rellena cuando el actual no la admite. */
   alternativas: string[];
+  /**
+   * Con lo que el servidor sabe de **cómo se producirá el clip**, lo que hace falta para saber cuántas fotos del
+   * producto caben: las referencias de galería del modelo y cuántas fotos del personaje compiten por ellas. Sin
+   * estos datos no se ofrece elegir fotos.
+   */
+  cupoDeGaleria?: number;
+  fotosDelPersonaje?: number;
 }
 
 /** Lo que se lee en la descripción de cada modelo del selector cuando hay un producto elegido. */

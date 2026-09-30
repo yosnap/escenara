@@ -3,6 +3,7 @@ import type { ProductoElegido } from "@/lib/productos";
 import { db } from "../db/cliente";
 import { scenes } from "../db/esquema";
 import { productoPropio } from "./eleccion";
+import type { EleccionDeFotos } from "./prompt";
 
 /**
  * Qué producto se guarda en la fila de un trabajo de generación (0.26.0).
@@ -29,4 +30,22 @@ export async function productoDelTrabajo(
   }
   const propio = await productoPropio(usuarioId, elegido ?? null);
   return { productId: propio.productoId === "" ? null : propio.productoId, productAction: propio.accion };
+}
+
+/**
+ * Fotos del producto que el usuario eligió enviar en este trabajo. **Manda la escena** cuando el trabajo sale de
+ * una, igual que con el producto y la acción: es la elección que guardó allí, y lo que diga el navegador se
+ * ignora. En «Crear» viene con la petición y es estricta: si no es válida o no cabe, se rechaza.
+ */
+export async function eleccionDeFotosDelTrabajo(
+  escenaId: string | null,
+  elegido: ProductoElegido | undefined,
+): Promise<EleccionDeFotos> {
+  if (!escenaId) return { ids: elegido?.fotos ?? [], estricta: true };
+  const [escena] = await db()
+    .select({ ids: scenes.productPhotoIds })
+    .from(scenes)
+    .where(eq(scenes.id, escenaId))
+    .limit(1);
+  return { ids: escena?.ids ?? [], estricta: false };
 }

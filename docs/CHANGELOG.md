@@ -2,6 +2,78 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.35.1] · 2026-09-30
+
+Parche de los productos: **el personaje recibe más referencias que el producto**, el aviso de que las fotos no caben
+**dice las cifras**, y cuando el producto tiene más fotos de las que caben **eliges cuáles viajan**. Una migración
+aditiva; **sin cambios de coste** ni en lo que se confirma al generar.
+
+### Cambiado
+
+- **Nuevo reparto de las referencias entre el personaje y el producto.** Antes el producto se quedaba con todo el
+  cupo menos una imagen: con Gemini Omni 1.1 Flash (siete referencias) y una caja de cinco fotos, viajaban 5 del
+  producto y solo 2 del personaje, y la identidad del personaje es lo que más pesa en el clip. Ahora el producto
+  recibe **unas 3 de cada 7** referencias, con redondeo hacia abajo y **al menos una** (la frontal con la
+  etiqueta), y el personaje el resto: **con siete huecos, 4 del personaje y 3 del producto**. Si uno de los dos tiene
+  menos fotos de las que le tocan, el otro aprovecha lo que sobra: con un personaje de una sola foto y una caja de
+  cinco, viajan 1 y 5. No cambia nada con un solo hueco (solo cabe la imagen del personaje, y el producto viaja
+  descrito con palabras), ni sin producto (todo el cupo es del personaje), ni sin personaje (todo el cupo es del
+  producto). Es una sola cuenta y la usan igual el aviso de antes de pagar, el envío y el worker; el trabajo guarda
+  ya recortadas las fotos del personaje, así que lo que se lee en él es lo que llega al proveedor.
+- **El aviso de «no caben todas las referencias» dice cuántas.** Antes: «algunas se quedan fuera». Ahora: «Gemini
+  Omni 1.1 Flash admite 7 referencias: se envían 4 del personaje y 3 de «Caja Huerta Valenciana»; 2 fotos del
+  producto se quedan fuera. Lo que sobra puede salir distinto.» Las reglas de los controles pasan a la versión
+  `2026-09-30.2`, porque cambia el texto de una regla.
+- **El aviso y el envío cuentan con las mismas fotos del personaje.** Una sola función calcula el reparto para el control
+  previo, el fotograma, el clip, la escena hablada de Omni y la ficha de la escena; el worker no reparte: aplica
+  `huecosDelPersonaje` sobre las fotos que el trabajo ya lleva guardadas. Antes, el control previo
+  del clip contaba **todas** las fotos del personaje aunque el clip parte de una sola imagen (su fotograma), y con
+  el reparto nuevo eso daba un aviso con cifras falsas y rechazaba una elección de fotos que el envío sí habría
+  aceptado. Con la **hoja 3×3** del personaje viaja solo la hoja, y el aviso y el reparto cuentan una foto del personaje
+  (el producto aprovecha los demás huecos); con la hoja de **prueba** (la candidata) la consulta no
+  sabe de antemano de qué lado cae el envío y cuenta las fotos sueltas, así que puede avisar de una pérdida que luego
+  no llega a pasar, pero nunca de menos. El aviso concuerda en número («se envía 1 foto del personaje») y dice
+  las referencias que se reparten.
+- **La elección de fotos vale para el paso donde la haces.** En «Crear» la elección viaja con el **clip**: el
+  fotograma que lo precede se sigue generando con las fotos de por defecto, aunque hayas elegido otras para el clip,
+  porque cada modelo tiene su propio tope de referencias.
+- **Sin cambios de coste.** El reparto y la elección de fotos no cambian el precio del envío ni las casillas que se
+  confirman: solo qué fotos de las que ya caben llegan al modelo.
+
+### Añadido
+
+- **Elegir qué fotos del producto viajan.** En el bloque «El producto», cuando el producto tiene más fotos de las que
+  caben con el modelo del clip, aparece «Fotos del producto que se envían»: una casilla en cada miniatura, con
+  cuántas caben y cuántas se envían, la frontal con la etiqueta marcada de entrada y un orden estable (las que
+  eliges viajan siempre por prioridad de papel, no en el orden en que las marcaste). Si desmarcas la frontal se te
+  avisa de que la etiqueta puede salir distinta. En «Crear» la elección viaja con el clip; en la escena de un
+  proyecto se **guarda con la escena** y sirve en cada producción.
+- **El servidor lo comprueba.** Las fotos elegidas tienen que ser fotos **vigentes de ese producto** (una ajena o una
+  de la papelera se rechaza con su causa) y, en «Crear», no pueden pasar de lo que cabe. En una escena, una foto
+  elegida que se borra después no rompe nada: se descarta y viajan las demás. Sin elección, todo sigue como antes:
+  la frontal primero y luego el orden de siempre. Cambiar de producto en una escena borra la elección del anterior.
+- **Convertir en proyecto conserva la elección de fotos, si la hubo.** El clip guarda las fotos que viajaron, no si las
+  elegiste tú, así que se deduce: si son exactamente las que Escenara envía por defecto para ese clip (las primeras por
+  prioridad), la escena nace **sin elección**, como cualquier otra; si son otras, hereda tu elección. Solo cuentan
+  las que siguen fuera de la papelera; si no queda ninguna, la escena nace sin elección.
+- **Cambiar de modelo en «Crear» ajusta la elección** en el mismo gesto, antes de comprobar el clip con el modelo nuevo,
+  así que no sale un error pasajero: se recorta a lo que quepa y, si el modelo no deja sitio al producto, no se envía
+  ninguna. Se parte siempre de lo que elegiste, así que al volver a un modelo con más huecos la recuperas entera. Si
+  todas las fotos elegidas acaban en la papelera, no se guardan las de por defecto como si las hubieras elegido. En una
+  escena el navegador no toca lo guardado: el servidor recorta y avisa. Con una elección guardada el elector se sigue enseñando aunque quepan todas las fotos, con
+  «Volver a las de por defecto».
+- **Catálogo de componentes**: el elector de fotos del producto, con la caja de ejemplo de cinco fotos y tres huecos.
+- La guía **[Presentar un producto](guias/productos.md)** explica cuántas fotos viajan, el reparto de las referencias y
+  cómo elegirlas.
+
+### Actualizar desde la 0.35.0
+
+- **Haz antes una copia**: `bun run db:backup`. Después, `bun run db:migrate`.
+- La migración `0055_fotos-del-producto-en-la-escena` es **aditiva e idempotente**: añade `scenes.product_photo_ids`
+  (una lista de identificadores, vacía de fábrica). Vacía significa «las de por defecto», así que toda escena anterior
+  envía exactamente lo mismo que antes, salvo el nuevo reparto de referencias.
+- El worker no necesita reiniciarse: envía las fotos que el trabajo ya lleva guardadas.
+
 ## [0.35.0] · 2026-09-30
 
 **Convertir en proyecto.** Un clip hecho en «Crear» ya puede seguir en un proyecto para ponerle voz en off y montarlo,

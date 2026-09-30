@@ -5,6 +5,7 @@ import { type DireccionDeClip, dirigirClip } from "../direccion/clip";
 import { componerSeisC, type SeisC } from "../direccion/fotograma";
 import type { ProductoEnPrompt } from "../direccion/producto";
 import { adaptadorKie } from "../proveedores/kie/adaptador";
+import { hechosDelProducto, type ProductoParaGenerar } from "./prompt";
 import { repartirReferencias } from "./referencias";
 
 /**
@@ -122,18 +123,116 @@ describe("el producto en las seis C del fotograma", () => {
 describe("reparto de referencias entre el personaje y el producto", () => {
   test("sin producto, todo el cupo es del personaje", () => {
     expect(repartirReferencias(7, 5, 0)).toEqual({ personaje: 5, producto: 0, cabenTodas: true });
+    expect(repartirReferencias(7, 9, 0)).toEqual({ personaje: 7, producto: 0, cabenTodas: false });
   });
 
-  test("con producto se le reserva sitio y el personaje se queda con el resto", () => {
-    expect(repartirReferencias(7, 5, 2)).toEqual({ personaje: 5, producto: 2, cabenTodas: true });
+  test("sin personaje, todo el cupo es del producto", () => {
+    expect(repartirReferencias(7, 0, 5)).toEqual({ personaje: 0, producto: 5, cabenTodas: true });
+    expect(repartirReferencias(7, 0, 9)).toEqual({ personaje: 0, producto: 7, cabenTodas: false });
   });
 
-  test("cuando no caben todas, se dice: es lo que se avisa antes de pagar", () => {
-    expect(repartirReferencias(3, 5, 2)).toEqual({ personaje: 1, producto: 2, cabenTodas: false });
+  test("con siete huecos, cuatro son del personaje y tres del producto", () => {
+    expect(repartirReferencias(7, 6, 5)).toEqual({ personaje: 4, producto: 3, cabenTodas: false });
+    expect(repartirReferencias(7, 4, 3)).toEqual({ personaje: 4, producto: 3, cabenTodas: true });
   });
 
-  test("con un solo hueco manda la imagen de partida: sin ella no hay nada que animar", () => {
+  test("lo que uno no usa lo aprovecha el otro", () => {
+    // El personaje solo tiene una foto: el producto se lleva el resto del cupo.
+    expect(repartirReferencias(7, 1, 5)).toEqual({ personaje: 1, producto: 5, cabenTodas: true });
+    // El producto solo tiene una: el personaje se lleva el resto.
+    expect(repartirReferencias(7, 6, 1)).toEqual({ personaje: 6, producto: 1, cabenTodas: true });
+  });
+
+  test("con dos huecos, uno para cada uno; con uno solo, manda la imagen de partida", () => {
+    expect(repartirReferencias(2, 4, 3)).toEqual({ personaje: 1, producto: 1, cabenTodas: false });
     expect(repartirReferencias(1, 1, 3)).toEqual({ personaje: 1, producto: 0, cabenTodas: false });
+  });
+
+  test("un modelo sin referencias no envía nada, y solo avisa si había algo que enviar", () => {
+    expect(repartirReferencias(0, 2, 2)).toEqual({ personaje: 0, producto: 0, cabenTodas: false });
+    expect(repartirReferencias(0, 0, 0)).toEqual({ personaje: 0, producto: 0, cabenTodas: true });
+    expect(repartirReferencias(-1, 1, 1)).toEqual({ personaje: 0, producto: 0, cabenTodas: false });
+  });
+
+  // [cupo, fotos del personaje, fotos del producto, se envían del personaje, se envían del producto]
+  const TABLA: [number, number, number, number, number][] = [
+    [2, 1, 1, 1, 1],
+    [2, 2, 5, 1, 1],
+    [2, 4, 3, 1, 1],
+    [3, 1, 5, 1, 2],
+    [3, 4, 3, 2, 1],
+    [3, 2, 1, 2, 1],
+    [4, 4, 3, 3, 1],
+    [4, 2, 5, 2, 2],
+    [4, 1, 1, 1, 1],
+    [7, 1, 3, 1, 3],
+    [7, 2, 3, 2, 3],
+    [7, 2, 5, 2, 5],
+    [7, 4, 1, 4, 1],
+    [7, 4, 3, 4, 3],
+    [7, 4, 5, 4, 3],
+    [7, 6, 3, 4, 3],
+    [7, 6, 5, 4, 3],
+    [9, 1, 5, 1, 5],
+    [9, 2, 3, 2, 3],
+    [9, 4, 5, 4, 5],
+    [9, 4, 1, 4, 1],
+    [9, 6, 1, 6, 1],
+    [9, 6, 3, 6, 3],
+    [9, 6, 5, 6, 3],
+  ];
+  for (const [cupo, delPersonaje, delProducto, enviaPersonaje, enviaProducto] of TABLA) {
+    test(`cupo ${cupo}, personaje ${delPersonaje}, producto ${delProducto}: ${enviaPersonaje} y ${enviaProducto}`, () => {
+      expect(repartirReferencias(cupo, delPersonaje, delProducto)).toEqual({
+        personaje: enviaPersonaje,
+        producto: enviaProducto,
+        cabenTodas: enviaPersonaje >= delPersonaje && enviaProducto >= delProducto,
+      });
+    });
+  }
+
+  test("nunca supera el cupo, nunca deja un hueco sin usar si hay fotos y siempre cabe una de cada desde dos huecos", () => {
+    for (let cupo = 2; cupo <= 12; cupo++) {
+      for (let personaje = 1; personaje <= 8; personaje++) {
+        for (let producto = 1; producto <= 8; producto++) {
+          const r = repartirReferencias(cupo, personaje, producto);
+          expect(r.personaje + r.producto).toBe(Math.min(cupo, personaje + producto));
+          expect(r.personaje).toBeGreaterThanOrEqual(1);
+          expect(r.producto).toBeGreaterThanOrEqual(1);
+          expect(r.personaje).toBeLessThanOrEqual(personaje);
+          expect(r.producto).toBeLessThanOrEqual(producto);
+        }
+      }
+    }
+  });
+});
+
+describe("los hechos del producto llevan las cifras del reparto", () => {
+  const caja = (fotos: number): ProductoParaGenerar => ({
+    id: "p1",
+    nombre: "Caja Huerta Valenciana",
+    descripcionOriginal: "",
+    accion: "",
+    nombreAccion: "",
+    claveAccion: "",
+    soloProducto: false,
+    tipo: "fisico",
+    pasoDigital: null,
+    sinHabla: false,
+    pocoFiable: false,
+    marcaVisible: false,
+    fotos: Array.from({ length: fotos }, (_, i) => `foto-${i + 1}`),
+  });
+
+  test("con una caja de cinco fotos y siete huecos, viajan cuatro del personaje y tres del producto", () => {
+    const { hechos, reparto } = hechosDelProducto(caja(5), 7, 6, false);
+    expect(reparto).toEqual({ personaje: 4, producto: 3, cabenTodas: false });
+    expect(hechos.referenciasNoCaben).toBe(true);
+    expect(hechos.referencias).toEqual({ cupo: 7, fotosPersonaje: 6, fotosProducto: 5, personaje: 4, producto: 3 });
+  });
+
+  test("si caben todas no hay aviso", () => {
+    expect(hechosDelProducto(caja(3), 7, 4, false).hechos.referenciasNoCaben).toBe(false);
   });
 });
 

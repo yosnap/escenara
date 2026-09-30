@@ -150,8 +150,11 @@ export const consultarControles = (peticion: {
   escenaId?: string;
   productoId?: string;
   accion?: string;
+  /** Fotos del producto elegidas para enviar. Vacío = las de por defecto. */
+  fotos?: string[];
 }) => {
   const parametros = new URLSearchParams({ tipo: peticion.tipo });
+  if (peticion.fotos?.length) parametros.set("fotos", peticion.fotos.join(","));
   for (const clave of ["modelo", "personajeId", "medioId", "escenaId", "productoId", "accion"] as const) {
     const valor = peticion[clave];
     if (valor) parametros.set(clave, valor);

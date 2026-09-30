@@ -2,7 +2,7 @@
 
 **Escenara** · Estudio abierto de personajes y vídeo · «Da vida a cada escena»
 
-Mapa de la documentación pública del proyecto. Versión actual: **0.35.0**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
+Mapa de la documentación pública del proyecto. Versión actual: **0.35.1**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
 
 ## Mapa de documentos
 
@@ -27,7 +27,7 @@ Mapa de la documentación pública del proyecto. Versión actual: **0.35.0**. Pa
 | Guías | [Revisar la continuidad](guias/revisar-la-continuidad.md) | Comparación del clip con la hoja de personaje, comprobaciones técnicas con FFmpeg, qué NO garantizan y qué bloquea exportar | 0.20.0 |
 | Guías | [Voz y subtítulos](guias/voz-y-subtitulos.md) | Modo de voz del proyecto, muestras cacheadas, invalidación al cambiar de voz, editor de subtítulos y exportación a SRT/WebVTT | 0.21.0 |
 | Guías | [Dirigir tu clip](guias/dirigir-tu-clip.md) | Las seis partes de la dirección (formato, plano y ángulo, cámara, micro-acción con su momento, guion, voz y acento), el método 6C del fotograma, partir de una foto de referencia y el modo «cambiar solo…» | 0.25.0 |
-| Guías | [Presentar un producto](guias/productos.md) | Dar de alta un producto con sus fotos por papel, elegirlo y qué se hace con él (incluidas moda y piel), el producto digital en tres pasos, lo que se avisa antes de pagar y qué pasa al borrarlo | 0.26.0 |
+| Guías | [Presentar un producto](guias/productos.md) | Dar de alta un producto con sus fotos por papel, elegirlo y qué se hace con él (incluidas moda y piel), cuántas fotos del producto viajan y cuáles, el producto digital en tres pasos, lo que se avisa antes de pagar y qué pasa al borrarlo | 0.35.1 |
 | Guías | [La estrategia del anuncio](guias/estrategia-del-anuncio.md) | Las tres palancas (ángulo, oferta y creatividad), el brief por proyecto con un solo ángulo de los doce, la oferta reutilizable, los cinco hooks, las variantes por ángulo y el veredicto del ángulo en sombra | 0.27.0 |
 | Guías | [Podcast y dualcast](guias/podcast-y-dualcast.md) | Reparto de dos personajes, diálogo por turnos, coste por clip, consentimiento de cada persona y límites observados | 0.28.0 |
 | Guías | [Cantar con tu audio](guias/cantar-con-audio-propio.md) | Elegir audio propio, declarar derechos, comprobar retrato vertical y confirmar el coste por segundo | 0.29.0 |

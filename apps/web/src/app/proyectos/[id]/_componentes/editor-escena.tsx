@@ -14,6 +14,7 @@ import { Selector } from "@/components/ui/select";
 import { ETIQUETA_ESTADO_CONTROL } from "@/lib/controles";
 import type { Acento, OpcionesDeDireccion } from "@/lib/direccion";
 import { type BorradorEscena, borradorDe, escenaConCambios } from "@/lib/escena-borrador";
+import { cupoDeFotosDe } from "@/lib/fotos-del-producto";
 import type { PersonajeElegible } from "@/lib/personajes";
 import type { TrendPublico } from "@/lib/presets";
 import {
@@ -208,6 +209,9 @@ export function EditorEscena({
         onProducto={setProducto}
         // Una escena cantada no lleva producto en el clip: el aviso no aplica.
         fotoDeProducto={direccion.formatoClip === "cantar" ? null : (escena.estimacion?.fotoDeProducto ?? null)}
+        elegirFotosDelProducto={
+          direccion.formatoClip === "cantar" ? null : cupoDeFotosDe(escena.estimacion?.fotoDeProducto)
+        }
         trend={
           trend && direccion.formatoClip !== "cantar"
             ? { nombre: trend.nombre, decide: trend.direccionDecidida, permiteHabla: trend.permiteHabla }
