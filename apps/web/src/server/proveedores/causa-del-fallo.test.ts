@@ -71,6 +71,13 @@ const CASOS: readonly (readonly [unknown, unknown, CausaFalloProveedor])[] = [
   ["500", "", "error_interno"],
   ["500", "Insufficient credits, please try again later", "desconocida"],
   ["500", "Invalid prompt", "desconocida"],
+  // Con un 4xx la petición tiene algo mal aunque el texto diga «internal error»: repetir no lo arregla.
+  ["422", "Internal error processing your image: file too large", "desconocida"],
+  [422, "Internal server error", "desconocida"],
+  ["400", "Internal error", "desconocida"],
+  // Un texto en blanco es un texto vacío: el 500 solo sigue siendo el fallo interno.
+  ["500", "   ", "error_interno"],
+  [500, "Internal Server Error", "error_interno"],
 ];
 
 describe("causaDelFallo", () => {
