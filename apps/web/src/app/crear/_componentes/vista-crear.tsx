@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DepositoPresupuesto } from "@/components/ui/deposito";
 import { Aviso } from "@/components/ui/feedback";
 import { Multipaso, PanelDePaso, useMultipaso } from "@/components/ui/multipaso";
@@ -134,6 +134,9 @@ export function VistaCrear({
   const [opcionesDireccion, setOpcionesDireccion] = useState<OpcionesDeDireccion | null>(null);
   const [estimacionFoto, setEstimacionFoto] = useState(estimacionFotograma);
   const [estimacionClip, setEstimacionClip] = useState(estimacionAnimacion);
+  // Lo último elegido del clip: un refresco que sigue tras un cambio evalúa lo vigente, no lo de hace un momento.
+  const clipVigente = useRef({ modelo: estimacionAnimacion.modelo, producto: productoClip });
+  clipVigente.current = { modelo: estimacionClip.modelo, producto: productoClip };
   const [enviando, setEnviando] = useState<"fotograma" | "animacion" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [catalogoFoto, setCatalogoFoto] = useState(catalogoFotogramaInicial);
@@ -332,7 +335,7 @@ export function VistaCrear({
    */
   const refrescarControlesDelClip = async (medioId: string | undefined, modelo: string) => {
     if (!medioId) return;
-    const fallo = await controlesClip.refrescar(sujetoDeAnimacion(modelo, medioId, productoClip));
+    const fallo = await controlesClip.refrescar(sujetoDeAnimacion(modelo, medioId, clipVigente.current.producto));
     if (fallo) setError(fallo);
   };
 
@@ -341,16 +344,13 @@ export function VistaCrear({
     setProductoClip(producto);
     const medioId = fotograma?.medio?.id ?? imagenDelClip?.id;
     if (!medioId) return;
-    const fallo = await controlesClip.refrescar(sujetoDeAnimacion(estimacionClip.modelo, medioId, producto));
+    const fallo = await controlesClip.refrescar(sujetoDeAnimacion(clipVigente.current.modelo, medioId, producto));
     if (fallo) setError(fallo);
   };
 
   /** Pide el contexto aplicado de un personaje con el modelo que esté elegido. Sin personaje, se limpia. */
   const refrescarContexto = async (id: string | null, modelo: string) => {
-    if (!id) {
-      setContexto(null);
-      return;
-    }
+    if (!id) return setContexto(null);
     setPidiendoContexto(true);
     const respuesta = await consultarContexto(id, modelo);
     setPidiendoContexto(false);
@@ -541,11 +541,11 @@ export function VistaCrear({
       await refrescarControles(personajeId, referencia?.id, respuesta.datos.modelo);
     } else {
       setEstimacionClip(respuesta.datos);
-      // El clip parte del fotograma generado o de la imagen propia: con imagen propia también hay que volver a
-      // evaluar, o el aviso seguiría hablando del modelo anterior.
+      // Con fotograma o con imagen propia, el aviso del clip se reevalúa con el modelo nuevo.
       const medioDelClip = fotograma?.medio?.id ?? imagenDelClip?.id;
       if (medioDelClip) {
-        await controlesClip.refrescar(sujetoDeAnimacion(respuesta.datos.modelo, medioDelClip, productoClip));
+        const producto = clipVigente.current.producto;
+        await controlesClip.refrescar(sujetoDeAnimacion(respuesta.datos.modelo, medioDelClip, producto));
       }
     }
     // Y los formatos y las duraciones que se pueden ofrecer también son del modelo: se vuelven a pedir en

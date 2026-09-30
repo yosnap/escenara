@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { bloqueosDeControles, type EvaluacionVista, firmaDeAvisos, marcarNoFiable } from "@/lib/controles";
 import type { TipoTrabajo } from "@/lib/generacion";
 import { consultarControles } from "./api-generacion";
@@ -58,10 +58,19 @@ export function useControles(inicial: EvaluacionVista): Controles {
   const [evaluacion, setEvaluacion] = useState(inicial);
   const [confirmados, setConfirmados] = useState<string[]>([]);
   const [cargando, setCargando] = useState(false);
+  /**
+   * Número de la última petición. Si se cambia de modelo o de producto dos veces seguidas, la respuesta de la
+   * primera puede llegar después de la segunda: sin este número pisaría a la vigente y el aviso hablaría de un
+   * modelo que ya no es el elegido.
+   */
+  const ultima = useRef(0);
 
   const refrescar = async (sujeto: SujetoDeControles): Promise<string | null> => {
+    const propia = ++ultima.current;
     setCargando(true);
     const respuesta = await consultarControles(sujeto);
+    // Una respuesta que ya no es la última describe lo que se eligió antes: se descarta entera.
+    if (propia !== ultima.current) return null;
     setCargando(false);
     if (respuesta.ok) {
       setEvaluacion(respuesta.datos);
