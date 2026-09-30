@@ -49,6 +49,8 @@ export function VistaProyecto({
   const [detalle, setDetalle] = useState(inicial);
   const [error, setError] = useState<string | null>(null);
   const [brief, setBrief] = useState(anuncio.brief);
+  /** Motivo de los cambios sin guardar en «Escenas»; `null` si no hay. Bloquea la aprobación. */
+  const [sinGuardar, setSinGuardar] = useState<string | null>(null);
   const { proyecto } = detalle;
 
   // El estado de cada paso sale de lo guardado en el proyecto; no hay columna de progreso.
@@ -58,6 +60,7 @@ export function VistaProyecto({
     idea: proyecto.idea,
     totalEscenas: detalle.escenas.length,
     estado: proyecto.estado,
+    escenasSinGuardar: sinGuardar !== null,
   };
   const pasos = pasosDelProyecto(datosPasos);
   const multipaso = useMultipaso(pasos, resolverPaso(pasoPedido, pasos, pasoPredeterminadoDelProyecto(datosPasos)));
@@ -131,10 +134,11 @@ export function VistaProyecto({
             trends={trends}
             onCambio={aplicar}
             onError={setError}
+            onSinGuardar={setSinGuardar}
           />
         </PanelDePaso>
         <PanelDePaso id="aprobacion">
-          <PanelAprobacion detalle={detalle} onCambio={aplicar} onError={setError} />
+          <PanelAprobacion detalle={detalle} onCambio={aplicar} onError={setError} sinGuardar={sinGuardar} />
         </PanelDePaso>
       </Multipaso>
     </>

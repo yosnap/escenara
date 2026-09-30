@@ -47,6 +47,13 @@ describe("pasos de un proyecto", () => {
   });
 });
 
+describe("escenas con cambios sin guardar", () => {
+  test("no se marcan como hechas: siguen en curso hasta guardar o descartar", () => {
+    expect(estados({ totalEscenas: 2, escenasSinGuardar: true }).escenas).toBe("en-curso");
+    expect(estados({ totalEscenas: 2, escenasSinGuardar: false }).escenas).toBe("hecho");
+  });
+});
+
 describe("paso con el que se abre un proyecto", () => {
   test("donde está el trabajo", () => {
     expect(pasoPredeterminadoDelProyecto(NUEVO)).toBe("brief");

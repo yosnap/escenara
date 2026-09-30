@@ -22,6 +22,8 @@ export interface DatosPasosProyecto {
   idea: string;
   totalEscenas: number;
   estado: EstadoProyecto;
+  /** Cambios sin guardar en «Escenas» (orden pendiente o escenas editadas). */
+  escenasSinGuardar?: boolean;
 }
 
 export function pasosDelProyecto(d: DatosPasosProyecto): PasoDelFlujo[] {
@@ -39,7 +41,8 @@ export function pasosDelProyecto(d: DatosPasosProyecto): PasoDelFlujo[] {
       id: "escenas",
       titulo: "El guion, escena a escena",
       corto: "Escenas",
-      estado: d.totalEscenas > 0 ? "hecho" : "pendiente",
+      // Con cambios sin guardar, el guion de la pantalla no es el guardado: todavía no está hecho.
+      estado: d.escenasSinGuardar ? "en-curso" : d.totalEscenas > 0 ? "hecho" : "pendiente",
     },
     d.totalEscenas === 0
       ? {

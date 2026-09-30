@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Boton, BotonIcono } from "@/components/ui/button";
 import { InsigniaControl } from "@/components/ui/controles";
 import { PanelDireccion } from "@/components/ui/direccion/panel-direccion";
@@ -13,6 +13,7 @@ import { InsigniaEstadoEscena } from "@/components/ui/proyecto";
 import { Selector } from "@/components/ui/select";
 import { ETIQUETA_ESTADO_CONTROL } from "@/lib/controles";
 import type { Acento, OpcionesDeDireccion } from "@/lib/direccion";
+import { type BorradorEscena, borradorDe, escenaConCambios } from "@/lib/escena-borrador";
 import type { PersonajeElegible } from "@/lib/personajes";
 import type { TrendPublico } from "@/lib/presets";
 import {
@@ -48,6 +49,7 @@ export function EditorEscena({
   onBajar,
   onCambio,
   onError,
+  onSinGuardar,
 }: {
   escena: EscenaVista;
   trends: TrendPublico[];
@@ -64,6 +66,8 @@ export function EditorEscena({
   onBajar: () => void;
   onCambio: (detalle: ProyectoDetalle) => void;
   onError: (mensaje: string) => void;
+  /** Avisa de si esta escena tiene cambios sin guardar, para que la aprobación no apruebe otra cosa. */
+  onSinGuardar?: (id: string, sinGuardar: boolean) => void;
 }) {
   const [texto, setTexto] = useState(escena.texto);
   const [accion, setAccion] = useState(escena.accion);
@@ -73,6 +77,23 @@ export function EditorEscena({
   const trend = trends.find((p) => p.id === trendId);
   const [guardando, setGuardando] = useState(false);
   const [borrando, setBorrando] = useState(false);
+  const sinGuardar = escenaConCambios(escena, { texto, accion, direccion, producto, trendId });
+  // Se avisa al cambiar y se retira al desmontar (una escena borrada ya no tiene nada pendiente).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: el aviso depende de si hay cambios, no de la función.
+  useEffect(() => {
+    onSinGuardar?.(escena.id, sinGuardar);
+  }, [escena.id, sinGuardar]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: solo al desmontar.
+  useEffect(() => () => onSinGuardar?.(escena.id, false), [escena.id]);
+
+  /** Vuelve el formulario a lo guardado (al descartar) o a lo que el servidor acaba de guardar. */
+  const cargar = (b: BorradorEscena) => {
+    setTexto(b.texto);
+    setAccion(b.accion);
+    setDireccion(b.direccion);
+    setProducto(b.producto);
+    setTrendId(b.trendId);
+  };
 
   const guardar = async () => {
     setGuardando(true);
@@ -84,8 +105,14 @@ export function EditorEscena({
       trendId: direccion.formatoClip === "cantar" ? null : trendId || null,
     });
     setGuardando(false);
-    if (resultado.ok) onCambio(resultado.datos);
-    else onError(resultado.error);
+    if (!resultado.ok) {
+      onError(resultado.error);
+      return;
+    }
+    // Lo guardado es la nueva referencia: si el servidor normaliza algo, el formulario no se queda «sin guardar».
+    const guardada = resultado.datos.escenas.find((e) => e.id === escena.id);
+    if (guardada) cargar(borradorDe(guardada));
+    onCambio(resultado.datos);
   };
 
   const borrar = async () => {
@@ -276,9 +303,17 @@ export function EditorEscena({
             ? textoEstimacion(escena.estimacion.creditos, escena.estimacion.euros, escena.estimacion.comprobado)
             : "Sin precio registrado: esta escena no se puede estimar."}
         </span>
-        <Boton variante="secundario" onClick={guardar} disabled={guardando || ocupado}>
-          {guardando ? "Guardando…" : "Guardar escena"}
-        </Boton>
+        <div className="flex flex-wrap items-center gap-2">
+          {sinGuardar && <span className="text-sm font-semibold text-texto">Cambios sin guardar</span>}
+          {sinGuardar && (
+            <Boton variante="fantasma" onClick={() => cargar(borradorDe(escena))} disabled={guardando || ocupado}>
+              Descartar cambios
+            </Boton>
+          )}
+          <Boton variante="secundario" onClick={guardar} disabled={guardando || ocupado}>
+            {guardando ? "Guardando…" : "Guardar escena"}
+          </Boton>
+        </div>
       </footer>
 
       <Dialogo
