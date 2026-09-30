@@ -154,6 +154,11 @@ export const promptTemplates = pgTable(
      * queda sin ejemplo (`set null`) en lugar de romperse.
      */
     demoMediaId: uuid("demo_media_id").references(() => media.id, { onDelete: "set null" }),
+    /**
+     * Administrador que puso el ejemplo. El ejemplo solo se sirve mientras el medio siga siendo suyo y siga siendo
+     * administrador: si el medio cambia de dueño o quien lo puso pierde el rol, deja de verse.
+     */
+    demoSetBy: uuid("demo_set_by").references(() => users.id, { onDelete: "set null" }),
     /** Capacidad de destino: es lo que decide con qué modelos puede usarse (catálogo de 0.11.0). */
     capability: capacidadModelo("capability").notNull(),
     /** Texto con variables `{{nombre}}`, en inglés. Valor vigente; su instantánea vive en las versiones. */

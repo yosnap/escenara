@@ -2,7 +2,7 @@ import { leerTramo } from "@/lib/demo-plantilla";
 import { leerObjeto } from "@/server/almacenamiento";
 import { archivoDeDemo } from "@/server/prompts/demos";
 import { ErrorPreset } from "@/server/prompts/errores";
-import { type ContextoId, leerId, manejador } from "@/server/prompts/http";
+import { type ContextoId, exigirRitmoDeEjemplos, leerId, manejador } from "@/server/prompts/http";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +14,7 @@ export const dynamic = "force-dynamic";
  * de la biblioteca. Acepta `Range` porque los navegadores lo piden para reproducir y saltar en un vídeo.
  */
 export const GET = manejador(async (peticion: Request, contexto: ContextoId, actor) => {
+  await exigirRitmoDeEjemplos(actor);
   const demo = await archivoDeDemo(actor, await leerId(contexto));
   const objeto = leerObjeto(demo.clave);
   const info = await objeto.stat().catch(() => {

@@ -67,6 +67,9 @@ describe("tramo de bytes", () => {
     expect(leerTramo("items=0-1", 100)).toBeNull();
     expect(leerTramo("bytes=0-1,5-9", 100)).toBeNull();
     expect(leerTramo("bytes=-", 100)).toBeNull();
+    // Final antes del principio: no es válido, se ignora (no es un 416).
+    expect(leerTramo("bytes=20-10", 100)).toBeNull();
+    expect(leerTramo("bytes=5-3", 100)).toBeNull();
   });
 
   test("lee tramos cerrados, abiertos y de cola, acotados al tamaño", () => {
@@ -79,7 +82,6 @@ describe("tramo de bytes", () => {
 
   test("lo que pide algo que no existe es un rango fuera", () => {
     expect(leerTramo("bytes=100-", 100)).toBe("fuera");
-    expect(leerTramo("bytes=20-10", 100)).toBe("fuera");
     expect(leerTramo("bytes=-0", 100)).toBe("fuera");
     expect(leerTramo("bytes=0-", 0)).toBe("fuera");
   });

@@ -88,7 +88,7 @@ export interface TramoDeBytes {
 
 /**
  * Lee una cabecera `Range: bytes=…` de un solo tramo (lo que envían los reproductores de vídeo). Devuelve `null` si
- * no hay cabecera o no se entiende (se sirve entero), y `"fuera"` si pide algo que no existe (416).
+ * no hay cabecera o no es válida (se sirve entero, como pide el RFC), y `"fuera"` si pide algo que no existe (416).
  */
 export function leerTramo(cabecera: string | null, tamano: number): TramoDeBytes | "fuera" | null {
   if (!cabecera) return null;
@@ -103,8 +103,10 @@ export function leerTramo(cabecera: string | null, tamano: number): TramoDeBytes
     return { inicio: Math.max(0, tamano - ultimos), fin: tamano - 1 };
   }
   const inicio = Number(desde);
-  if (!Number.isSafeInteger(inicio) || inicio >= tamano) return "fuera";
+  if (!Number.isSafeInteger(inicio)) return null;
+  // Un tramo con el final antes del principio no es válido: se ignora y se sirve entero (RFC 9110, §14.2).
+  if (hasta !== "" && (!Number.isSafeInteger(Number(hasta)) || Number(hasta) < inicio)) return null;
+  if (inicio >= tamano) return "fuera";
   const fin = hasta === "" ? tamano - 1 : Math.min(Number(hasta), tamano - 1);
-  if (!Number.isSafeInteger(fin) || fin < inicio) return "fuera";
   return { inicio, fin };
 }

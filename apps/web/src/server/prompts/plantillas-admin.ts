@@ -442,16 +442,17 @@ export async function activarPlantillaDeLaInstalacion(id: string, activa: boolea
 
 /**
  * Pone (con el identificador de un medio de la biblioteca) o quita (con `null`) el ejemplo de una plantilla de la
- * instalación. No crea versión, no toca el texto y no llama a ningún proveedor: solo enlaza un medio que ya existe.
+ * instalación. No crea versión, no toca el texto y no llama a ningún proveedor: solo enlaza un medio que ya existe **y
+ * que es del propio administrador** (`autorId`), sin personajes reales.
  * Vale también para un trend caducado o desactivado, porque es una etiqueta informativa, no algo que se genere.
  */
-export async function fijarDemoDePlantilla(id: string, medioId: unknown): Promise<PlantillaVista> {
+export async function fijarDemoDePlantilla(id: string, medioId: unknown, autorId: string): Promise<PlantillaVista> {
   const anterior = await plantillaDeLaInstalacion(id);
   if (medioId !== null && typeof medioId !== "string") throw new ErrorPreset(400, "Elige un medio de la biblioteca.");
-  const nuevo = medioId === null ? null : await exigirMedioParaDemo(medioId);
+  const nuevo = medioId === null ? null : await exigirMedioParaDemo(medioId, autorId);
   await db()
     .update(promptTemplates)
-    .set({ demoMediaId: nuevo, updatedAt: new Date() })
+    .set({ demoMediaId: nuevo, demoSetBy: nuevo === null ? null : autorId, updatedAt: new Date() })
     .where(and(eq(promptTemplates.id, anterior.id), isNull(promptTemplates.ownerId)));
   return await vistaPorId(anterior.id);
 }
@@ -493,10 +494,16 @@ export async function duplicarTrend(id: string, clave: string, autorId: string):
     },
     autorId,
   );
-  // La copia conserva el mismo ejemplo: quien la revisa lo cambia o lo quita si ya no vale.
+  // La copia hereda el ejemplo solo si sigue valiendo con las reglas de ahora y es de quien duplica; si no, nace sin él.
+  const demoMediaId = anterior.demoMediaId
+    ? await exigirMedioParaDemo(anterior.demoMediaId, autorId).catch((error) => {
+        if (error instanceof ErrorPreset) return null;
+        throw error;
+      })
+    : null;
   await db()
     .update(promptTemplates)
-    .set({ duplicatedFrom: id, demoMediaId: anterior.demoMediaId })
+    .set({ duplicatedFrom: id, demoMediaId, demoSetBy: demoMediaId === null ? null : autorId })
     .where(eq(promptTemplates.id, copia.id));
   return vistaPorId(copia.id);
 }

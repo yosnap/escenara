@@ -1,5 +1,9 @@
+"use client";
+
+import { useState } from "react";
 import type { DemoPlantilla } from "@/lib/demo-plantilla";
 import { cn } from "./cn";
+import { Aviso } from "./feedback";
 
 /**
  * **Ejemplo de una plantilla o de un trend**: la imagen o el clip que puso quien administra para enseñar cómo se ve el
@@ -8,6 +12,8 @@ import { cn } from "./cn";
  * - Un clip lleva controles, va **silenciado** y no se descarga hasta que se pulsa reproducir (`preload="none"`); nunca
  *   arranca solo, y menos con sonido.
  * - Reserva su hueco con las medidas del archivo, sin recortarlo, para que la página no salte al cargar.
+ * - Si el archivo no carga (el medio ya no está, o la plantilla ya no se ofrece), dice «No se ha podido cargar el
+ *   ejemplo» en lugar de dejar una imagen rota o un vídeo negro.
  * - Lleva texto alternativo en castellano y se presenta como figura con su pie, para que un lector de pantalla diga
  *   qué es antes de leer el contenido.
  */
@@ -24,6 +30,14 @@ export function DemoDePlantilla({
   alturaMaxima?: string;
   className?: string;
 }) {
+  const [fallo, setFallo] = useState(false);
+  if (fallo) {
+    return (
+      <div className={className}>
+        <Aviso tono="aviso">No se ha podido cargar el ejemplo.</Aviso>
+      </div>
+    );
+  }
   const conocidas = Boolean(demo.ancho && demo.alto);
   const medidas = {
     aspectRatio: conocidas ? `${demo.ancho} / ${demo.alto}` : "3 / 4",
@@ -39,6 +53,7 @@ export function DemoDePlantilla({
           src={demo.url}
           alt={demo.alt}
           loading="lazy"
+          onError={() => setFallo(true)}
           width={demo.ancho ?? undefined}
           height={demo.alto ?? undefined}
           style={medidas}
@@ -52,6 +67,7 @@ export function DemoDePlantilla({
           muted
           playsInline
           preload="none"
+          onError={() => setFallo(true)}
           width={demo.ancho ?? undefined}
           height={demo.alto ?? undefined}
           style={medidas}

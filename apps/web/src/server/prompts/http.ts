@@ -66,3 +66,15 @@ export async function leerId(contexto: ContextoId): Promise<string> {
   if (!UUID.test(id)) throw new ErrorPreset(404, "Ese preset no existe.");
   return id;
 }
+
+/**
+ * Ritmo de lectura del ejemplo de las plantillas. Cada petición hace un par de consultas y una lectura del
+ * almacenamiento, y un reproductor pide varios tramos por vídeo: el tope es holgado para una persona y corta un bucle.
+ */
+const LIMITE_LECTURAS_DE_EJEMPLO: Limite = { ventanaSegundos: 60, maximo: 600 };
+
+export async function exigirRitmoDeEjemplos(actor: Actor): Promise<void> {
+  if (!(await dentroDelLimite(`plantillas:ejemplo:${actor.id}`, LIMITE_LECTURAS_DE_EJEMPLO))) {
+    throw new ErrorPreset(429, "Estás pidiendo demasiados ejemplos seguidos. Espera un minuto y vuelve a intentarlo.");
+  }
+}

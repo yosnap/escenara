@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, mock, test } from "bun:test";
 import path from "node:path";
 import { loadEnvConfig } from "@next/env";
 import sharp from "sharp";
@@ -19,15 +19,34 @@ if (hayBaseDeDatos) {
   await usarBaseDeDatosDePrueba("escenara_pruebas_demo_plantillas");
 }
 
+/** Cookie de la sesión que «hace» la petición a una acción de servidor. Sin ella, las cabeceras reales de Next. */
+let cookieActual: string | null = null;
+const reales = await import("next/headers");
+mock.module("next/headers", () => ({
+  ...reales,
+  headers: async () => (cookieActual === null ? reales.headers() : new Headers({ cookie: cookieActual })),
+}));
+
 const { eq, inArray } = await import("drizzle-orm");
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
-const { media, promptTemplates, promptTemplateVersions } = await import("../db/esquema");
+const {
+  characters,
+  generationJobs,
+  media,
+  projects,
+  promptTemplates,
+  promptTemplateVersions,
+  sceneCharacters,
+  scenes,
+  users,
+} = await import("../db/esquema");
 const { guardarObjeto } = await import("../almacenamiento");
 const { guardarAjustes } = await import("../ajustes");
 const { crearMedio } = await import("../media/servicio");
 const { ErrorPreset } = await import("./errores");
+const { exigirRitmoDeEjemplos } = await import("./http");
 const { listarPlantillas } = await import("./consulta");
 const {
   activarPlantillaDeLaInstalacion,
@@ -128,7 +147,7 @@ describe.skipIf(!hayBaseDeDatos)("ejemplo de las plantillas y los trends", () =>
     test("no crea versión, no cambia el texto y la vista lleva una ruta sin el identificador del medio", async () => {
       const p = await plantilla("versiona");
       const antes = await versiones(p.id);
-      const con = await fijarDemoDePlantilla(p.id, imagen);
+      const con = await fijarDemoDePlantilla(p.id, imagen, admin.id);
       expect(con.demo).toMatchObject({ tipo: "imagen", ancho: 64, alto: 96 });
       expect(con.demo?.url).toContain(`/api/prompts/plantillas/${p.id}/demo?v=`);
       expect(con.demo?.url).not.toContain(imagen);
@@ -138,14 +157,14 @@ describe.skipIf(!hayBaseDeDatos)("ejemplo de las plantillas y los trends", () =>
       expect(con.plantilla).toBe(p.plantilla);
       expect((await versiones(p.id)).length).toBe(antes.length);
 
-      const sin = await fijarDemoDePlantilla(p.id, null);
+      const sin = await fijarDemoDePlantilla(p.id, null, admin.id);
       expect(sin.demo).toBeNull();
       expect((await versiones(p.id)).length).toBe(antes.length);
     });
 
     test("un clip se ve como vídeo con el texto alternativo del medio", async () => {
       const p = await plantilla("clip");
-      const con = await fijarDemoDePlantilla(p.id, clip);
+      const con = await fijarDemoDePlantilla(p.id, clip, admin.id);
       expect(con.demo).toMatchObject({ tipo: "video", alt: "Una mano abre una caja" });
     });
 
@@ -172,12 +191,12 @@ describe.skipIf(!hayBaseDeDatos)("ejemplo de las plantillas y los trends", () =>
       const svg = await nuevo({ mimeType: "image/svg+xml" });
       const papelera = await nuevo({ deletedAt: new Date() });
       const documento = await nuevo({ isDocument: true });
-      await expect(fijarDemoDePlantilla(p.id, audio)).rejects.toMatchObject({ estado: 400 });
-      await expect(fijarDemoDePlantilla(p.id, svg)).rejects.toMatchObject({ estado: 400 });
-      await expect(fijarDemoDePlantilla(p.id, papelera)).rejects.toMatchObject({ estado: 404 });
-      await expect(fijarDemoDePlantilla(p.id, documento)).rejects.toMatchObject({ estado: 404 });
-      await expect(fijarDemoDePlantilla(p.id, crypto.randomUUID())).rejects.toMatchObject({ estado: 404 });
-      await expect(fijarDemoDePlantilla(p.id, 5)).rejects.toBeInstanceOf(ErrorPreset);
+      await expect(fijarDemoDePlantilla(p.id, audio, admin.id)).rejects.toMatchObject({ estado: 400 });
+      await expect(fijarDemoDePlantilla(p.id, svg, admin.id)).rejects.toMatchObject({ estado: 400 });
+      await expect(fijarDemoDePlantilla(p.id, papelera, admin.id)).rejects.toMatchObject({ estado: 404 });
+      await expect(fijarDemoDePlantilla(p.id, documento, admin.id)).rejects.toMatchObject({ estado: 404 });
+      await expect(fijarDemoDePlantilla(p.id, crypto.randomUUID(), admin.id)).rejects.toMatchObject({ estado: 404 });
+      await expect(fijarDemoDePlantilla(p.id, 5, admin.id)).rejects.toBeInstanceOf(ErrorPreset);
       expect((await listarPlantillas()).find((v) => v.id === p.id)?.demo).toBeNull();
     });
 
@@ -193,7 +212,7 @@ describe.skipIf(!hayBaseDeDatos)("ejemplo de las plantillas y los trends", () =>
         })
         .returning({ id: promptTemplates.id });
       claves.push(`${prefijo}-ajena`);
-      await expect(fijarDemoDePlantilla(ajena?.id ?? "", imagen)).rejects.toMatchObject({ estado: 404 });
+      await expect(fijarDemoDePlantilla(ajena?.id ?? "", imagen, admin.id)).rejects.toMatchObject({ estado: 404 });
     });
 
     test("al borrar del todo el medio, la plantilla se queda sin ejemplo y sigue entera", async () => {
@@ -209,7 +228,7 @@ describe.skipIf(!hayBaseDeDatos)("ejemplo de las plantillas y los trends", () =>
           sizeBytes: 1,
         })
         .returning({ id: media.id });
-      await fijarDemoDePlantilla(p.id, efimero?.id ?? "");
+      await fijarDemoDePlantilla(p.id, efimero?.id ?? "", admin.id);
       await db()
         .delete(media)
         .where(eq(media.id, efimero?.id ?? ""));
@@ -220,31 +239,233 @@ describe.skipIf(!hayBaseDeDatos)("ejemplo de las plantillas y los trends", () =>
 
     test("duplicar un trend conserva su ejemplo", async () => {
       const t = await trend("dup");
-      await fijarDemoDePlantilla(t.id, clip);
+      await fijarDemoDePlantilla(t.id, clip, admin.id);
       claves.push(`${prefijo}-dup-copia`);
       const copia = await duplicarTrend(t.id, `${prefijo}-dup-copia`, admin.id);
       expect(copia.demo?.tipo).toBe("video");
     });
 
-    test("solo el panel de administración puede cambiarlo", async () => {
+    test("la acción del panel rechaza a un usuario normal y funciona con un administrador (con sesión real)", async () => {
       const { fijarDemoAccion } = await import("@/app/admin/plantillas/acciones");
       const p = await plantilla("puerta");
-      await expect(fijarDemoAccion(p.id, imagen)).rejects.toThrow();
+      const vista = async () => (await listarPlantillas()).find((v) => v.id === p.id)?.demo ?? null;
+      try {
+        // Un usuario normal, con su sesión de verdad: `exigirAdmin` responde «no existe» y no se toca nada.
+        cookieActual = ana.cookie;
+        await expect(fijarDemoAccion(p.id, imagen)).rejects.toBeDefined();
+        expect(await vista()).toBeNull();
+        // Sin sesión: lleva a «Entrar» y tampoco toca nada.
+        cookieActual = "";
+        await expect(fijarDemoAccion(p.id, imagen)).rejects.toBeDefined();
+        expect(await vista()).toBeNull();
+        // El administrador sí puede.
+        cookieActual = admin.cookie;
+        const resultado = await fijarDemoAccion(p.id, imagen);
+        expect(resultado.ok).toBe(true);
+        expect((await vista())?.tipo).toBe("imagen");
+        // Y un medio ajeno lo rechaza con su causa, no con un error genérico.
+        const denegado = await fijarDemoAccion(p.id, "no-es-un-uuid");
+        expect(denegado).toMatchObject({ ok: false });
+        expect(denegado.ok === false && denegado.error).toContain("identificador del medio no es válido");
+      } finally {
+        cookieActual = null;
+      }
+    });
+  });
+
+  describe("de quién es el medio y a quién muestra", () => {
+    let otroAdmin: Sesion;
+    let efimero: Sesion;
+    const sembrados: string[] = [];
+
+    const medioDe = async (dueno: string, extra: Partial<typeof media.$inferInsert> = {}) => {
+      const clave = `pruebas/${prefijo}-${crypto.randomUUID()}.png`;
+      await guardarObjeto(clave, new Uint8Array([1, 2, 3, 4]), "image/png");
+      const [fila] = await db()
+        .insert(media)
+        .values({
+          ownerId: dueno,
+          kind: "imagen",
+          storageKey: clave,
+          originalName: "m.png",
+          mimeType: "image/png",
+          sizeBytes: 1,
+          ...extra,
+        })
+        .returning({ id: media.id });
+      if (!fila) throw new Error("No se ha creado el medio de prueba.");
+      medios.push(fila.id);
+      return fila.id;
+    };
+    const personaje = async (valores: { kind: "persona" | "animal"; virtual: boolean }) => {
+      const [fila] = await db()
+        .insert(characters)
+        .values({ ownerId: admin.id, name: `Personaje ${crypto.randomUUID()}`, ...valores })
+        .returning({ id: characters.id });
+      if (!fila) throw new Error("No se ha creado el personaje de prueba.");
+      sembrados.push(fila.id);
+      return fila.id;
+    };
+    const trabajo = async (personajeId: string | null, medioId: string, campo: "resultMediaId" | "sourceMediaId") => {
+      await db()
+        .insert(generationJobs)
+        .values({
+          userId: admin.id,
+          kind: "fotograma",
+          provider: "kie",
+          model: "modelo-de-prueba",
+          prompt: "x",
+          input: {},
+          estimatedCredits: 0,
+          characterId: personajeId,
+          ...(campo === "resultMediaId" ? { resultMediaId: medioId } : { sourceMediaId: medioId }),
+        });
+    };
+
+    beforeAll(async () => {
+      [otroAdmin, efimero] = await Promise.all([crearSesionDePrueba("admin"), crearSesionDePrueba("admin")]);
+    });
+    afterAll(async () => {
+      await db().delete(generationJobs).where(eq(generationJobs.model, "modelo-de-prueba"));
+      if (sembrados.length > 0) await db().delete(characters).where(inArray(characters.id, sembrados));
+      await Promise.all([otroAdmin?.borrar(), efimero?.borrar()]);
+    });
+
+    test("no vale el medio privado de un usuario normal ni el de otro administrador", async () => {
+      const p = await plantilla("ajeno");
+      const deAna = await medioDe(ana.id);
+      const deOtroAdmin = await medioDe(otroAdmin.id);
+      for (const ajeno of [deAna, deOtroAdmin]) {
+        await expect(fijarDemoDePlantilla(p.id, ajeno, admin.id)).rejects.toMatchObject({ estado: 404 });
+      }
       expect((await listarPlantillas()).find((v) => v.id === p.id)?.demo).toBeNull();
-      const codigo = await Bun.file(path.resolve(import.meta.dirname, "../../app/admin/plantillas/acciones.ts")).text();
-      const cuerpo = /export async function fijarDemoAccion\([^)]*\)[^{]*\{([\s\S]*?)\n\}/.exec(codigo)?.[1] ?? "";
-      expect(cuerpo).toContain("aplicar(");
-      // `aplicar` es lo único que toca la base, y empieza exigiendo el rol.
-      const aplicar = /async function aplicar\([^)]*\)[^{]*\{([\s\S]*?)\n\}/.exec(codigo)?.[1] ?? "";
-      expect(aplicar.indexOf("exigirAdmin")).toBeGreaterThanOrEqual(0);
-      expect(aplicar.indexOf("exigirAdmin")).toBeLessThan(aplicar.indexOf("accion("));
+      // El de otro administrador sí lo puede poner ese otro administrador.
+      expect((await fijarDemoDePlantilla(p.id, deOtroAdmin, otroAdmin.id)).demo).not.toBeNull();
+    });
+
+    test("un identificador que no es UUID responde 400 con su causa, sin consultar la base", async () => {
+      const p = await plantilla("uuid");
+      await expect(fijarDemoDePlantilla(p.id, "no-es-uuid", admin.id)).rejects.toMatchObject({
+        estado: 400,
+        message: expect.stringContaining("no es válido"),
+      });
+    });
+
+    test("si el medio deja de ser de quien lo puso, o este pierde el rol, deja de servirse", async () => {
+      const p = await plantilla("dueno");
+      const mio = await medioDe(efimero.id);
+      await fijarDemoDePlantilla(p.id, mio, efimero.id);
+      const url = `/api/prompts/plantillas/${p.id}/demo`;
+      expect((await rutaDemo.GET(pedir(ana, url), ctx(p.id))).status).toBe(200);
+      // El medio pasa a otro dueño (aunque sea administrador): ya no coincide con quien lo puso.
+      await db().update(media).set({ ownerId: otroAdmin.id }).where(eq(media.id, mio));
+      expect((await rutaDemo.GET(pedir(ana, url), ctx(p.id))).status).toBe(404);
+      expect((await rutaDemo.GET(pedir(admin, url), ctx(p.id))).status).toBe(404);
+      expect((await listarPlantillas()).find((v) => v.id === p.id)?.demo).toBeNull();
+      await db().update(media).set({ ownerId: efimero.id }).where(eq(media.id, mio));
+      expect((await rutaDemo.GET(pedir(ana, url), ctx(p.id))).status).toBe(200);
+      // Quien lo puso pierde el rol de administrador: sus ejemplos dejan de salir.
+      await db().update(users).set({ role: "user" }).where(eq(users.id, efimero.id));
+      try {
+        expect((await rutaDemo.GET(pedir(ana, url), ctx(p.id))).status).toBe(404);
+      } finally {
+        await db().update(users).set({ role: "admin" }).where(eq(users.id, efimero.id));
+      }
+    });
+
+    test("no vale un fotograma ni un clip hecho con un personaje real, ni como resultado ni como punto de partida", async () => {
+      const p = await plantilla("real");
+      const real = await personaje({ kind: "persona", virtual: false });
+      const resultado = await medioDe(admin.id);
+      const partida = await medioDe(admin.id);
+      await trabajo(real, resultado, "resultMediaId");
+      await trabajo(real, partida, "sourceMediaId");
+      for (const m of [resultado, partida])
+        await expect(fijarDemoDePlantilla(p.id, m, admin.id)).rejects.toMatchObject({ estado: 404 });
+    });
+
+    test("no vale un medio de una escena con un personaje real en el reparto o de protagonista, ni un fotograma maestro real", async () => {
+      const p = await plantilla("escena-real");
+      const real = await personaje({ kind: "persona", virtual: false });
+      const [proyecto] = await db()
+        .insert(projects)
+        .values({ userId: admin.id, title: "P", clipSeconds: 8 })
+        .returning();
+      const conReparto = await medioDe(admin.id);
+      const [escena] = await db()
+        .insert(scenes)
+        .values({ projectId: proyecto?.id ?? "", sortOrder: 1, clipMediaId: conReparto })
+        .returning();
+      await db()
+        .insert(sceneCharacters)
+        .values({ sceneId: escena?.id ?? "", characterId: real });
+      const deProtagonista = await medioDe(admin.id);
+      const [proyecto2] = await db()
+        .insert(projects)
+        .values({ userId: admin.id, title: "P2", clipSeconds: 8, mainCharacterId: real })
+        .returning();
+      await db()
+        .insert(scenes)
+        .values({ projectId: proyecto2?.id ?? "", sortOrder: 1, approvedFrameMediaId: deProtagonista });
+      const maestro = await medioDe(admin.id);
+      await db().update(characters).set({ masterFrameMediaId: maestro }).where(eq(characters.id, real));
+      for (const m of [conReparto, deProtagonista, maestro])
+        await expect(fijarDemoDePlantilla(p.id, m, admin.id)).rejects.toMatchObject({ estado: 404 });
+      await db()
+        .delete(projects)
+        .where(inArray(projects.id, [proyecto?.id ?? "", proyecto2?.id ?? ""]));
+    });
+
+    test("sí valen los de un personaje inventado, un animal o una subida directa", async () => {
+      const p = await plantilla("virtual");
+      const inventado = await personaje({ kind: "persona", virtual: true });
+      const mascota = await personaje({ kind: "animal", virtual: false });
+      const deInventado = await medioDe(admin.id);
+      const deMascota = await medioDe(admin.id);
+      await trabajo(inventado, deInventado, "resultMediaId");
+      await trabajo(mascota, deMascota, "resultMediaId");
+      for (const m of [deInventado, deMascota, imagen])
+        expect((await fijarDemoDePlantilla(p.id, m, admin.id)).demo).not.toBeNull();
+    });
+
+    test("si un medio ya elegido pasa a estar vinculado a un personaje real, deja de servirse y de verse", async () => {
+      const p = await plantilla("vinculo");
+      const m = await medioDe(admin.id);
+      await fijarDemoDePlantilla(p.id, m, admin.id);
+      const url = `/api/prompts/plantillas/${p.id}/demo`;
+      expect((await listarPlantillas()).find((v) => v.id === p.id)?.demo).not.toBeNull();
+      await trabajo(await personaje({ kind: "persona", virtual: false }), m, "resultMediaId");
+      expect((await rutaDemo.GET(pedir(ana, url), ctx(p.id))).status).toBe(404);
+      expect((await rutaDemo.GET(pedir(admin, url), ctx(p.id))).status).toBe(404);
+      expect((await listarPlantillas()).find((v) => v.id === p.id)?.demo).toBeNull();
+    });
+
+    test("duplicar un trend no hereda un ejemplo que ya no vale", async () => {
+      const t = await trend("dup-real");
+      const m = await medioDe(admin.id);
+      await fijarDemoDePlantilla(t.id, m, admin.id);
+      await trabajo(await personaje({ kind: "persona", virtual: false }), m, "resultMediaId");
+      claves.push(`${prefijo}-dup-real-copia`);
+      expect((await duplicarTrend(t.id, `${prefijo}-dup-real-copia`, admin.id)).demo).toBeNull();
+    });
+
+    test("la ruta corta las lecturas excesivas con 429", async () => {
+      const actor = { id: crypto.randomUUID(), esAdmin: false };
+      let rechazada = false;
+      for (let i = 0; i < 601 && !rechazada; i++) {
+        rechazada = await exigirRitmoDeEjemplos(actor).then(
+          () => false,
+          (e) => e instanceof ErrorPreset && e.estado === 429,
+        );
+      }
+      expect(rechazada).toBe(true);
     });
   });
 
   describe("la ruta que sirve el ejemplo", () => {
     test("un usuario recibe el ejemplo de una plantilla activa con cabeceras seguras", async () => {
       const p = await plantilla("ruta");
-      await fijarDemoDePlantilla(p.id, imagen);
+      await fijarDemoDePlantilla(p.id, imagen, admin.id);
       const r = await rutaDemo.GET(pedir(ana, `/api/prompts/plantillas/${p.id}/demo`), ctx(p.id));
       expect(r.status).toBe(200);
       // La biblioteca reconvierte las imágenes al subirlas: se comprueba el tipo real, no el de origen.
@@ -259,14 +480,14 @@ describe.skipIf(!hayBaseDeDatos)("ejemplo de las plantillas y los trends", () =>
 
     test("sin sesión responde 401", async () => {
       const p = await plantilla("sinsesion");
-      await fijarDemoDePlantilla(p.id, imagen);
+      await fijarDemoDePlantilla(p.id, imagen, admin.id);
       const r = await rutaDemo.GET(pedir(null, `/api/prompts/plantillas/${p.id}/demo`), ctx(p.id));
       expect(r.status).toBe(401);
     });
 
     test("un clip admite Range: tramo, cola, entero y fuera de rango", async () => {
       const p = await trend("rango");
-      await fijarDemoDePlantilla(p.id, clip);
+      await fijarDemoDePlantilla(p.id, clip, admin.id);
       const url = `/api/prompts/plantillas/${p.id}/demo`;
       const entero = await rutaDemo.GET(pedir(ana, url), ctx(p.id));
       expect(entero.status).toBe(200);
@@ -292,7 +513,7 @@ describe.skipIf(!hayBaseDeDatos)("ejemplo de las plantillas y los trends", () =>
       const desactivada = await plantilla("off");
       const caducado = await trend("caducado");
       const enRevision = await trend("revision", "revision");
-      for (const p of [desactivada, caducado, enRevision]) await fijarDemoDePlantilla(p.id, imagen);
+      for (const p of [desactivada, caducado, enRevision]) await fijarDemoDePlantilla(p.id, imagen, admin.id);
       await activarPlantillaDeLaInstalacion(desactivada.id, false);
       await caducarTrend(caducado.id);
       for (const p of [desactivada, caducado, enRevision]) {
@@ -306,7 +527,7 @@ describe.skipIf(!hayBaseDeDatos)("ejemplo de las plantillas y los trends", () =>
 
     test("con los trends ocultos en los ajustes, el ejemplo de un trend no se sirve", async () => {
       const t = await trend("oculto");
-      await fijarDemoDePlantilla(t.id, imagen);
+      await fijarDemoDePlantilla(t.id, imagen, admin.id);
       const url = `/api/prompts/plantillas/${t.id}/demo`;
       expect((await rutaDemo.GET(pedir(ana, url), ctx(t.id))).status).toBe(200);
       await guardarAjustes({ trendsVisibles: false }, null);
@@ -328,7 +549,7 @@ describe.skipIf(!hayBaseDeDatos)("ejemplo de las plantillas y los trends", () =>
 
     test("no abre el resto de la biblioteca de quien administra: el archivo sigue siendo solo suyo", async () => {
       const p = await plantilla("biblioteca");
-      await fijarDemoDePlantilla(p.id, imagen);
+      await fijarDemoDePlantilla(p.id, imagen, admin.id);
       const ajeno = await rutaArchivoMedio.GET(pedir(ana, `/api/media/${imagen}/archivo`), ctx(imagen));
       expect(ajeno.status).toBe(404);
       // Ni tampoco un identificador de medio puesto donde va el de plantilla.
@@ -338,7 +559,7 @@ describe.skipIf(!hayBaseDeDatos)("ejemplo de las plantillas y los trends", () =>
 
     test("un medio que pasa a ser reservado o a la papelera deja de servirse y de verse", async () => {
       const p = await plantilla("reservado");
-      expect((await fijarDemoDePlantilla(p.id, clip)).demo).not.toBeNull();
+      expect((await fijarDemoDePlantilla(p.id, clip, admin.id)).demo).not.toBeNull();
       const url = `/api/prompts/plantillas/${p.id}/demo`;
       expect((await rutaDemo.GET(pedir(ana, url), ctx(p.id))).status).toBe(200);
       try {
@@ -358,8 +579,8 @@ describe.skipIf(!hayBaseDeDatos)("ejemplo de las plantillas y los trends", () =>
     test("el catálogo y los trends llevan el ejemplo pero nunca el texto de la plantilla ni el medio", async () => {
       const base = await plantilla("catalogo");
       const t = await trend("catalogo-trend");
-      await fijarDemoDePlantilla(base.id, imagen);
-      await fijarDemoDePlantilla(t.id, clip);
+      await fijarDemoDePlantilla(base.id, imagen, admin.id);
+      await fijarDemoDePlantilla(t.id, clip, admin.id);
 
       const cat = await rutaCatalogo.GET(pedir(ana, "/api/prompts/catalogo?tipo=fotograma"), undefined);
       const textoCat = await cat.text();
@@ -383,7 +604,7 @@ describe.skipIf(!hayBaseDeDatos)("ejemplo de las plantillas y los trends", () =>
 
     test("una plantilla desactivada no sale en el catálogo, y su ejemplo tampoco", async () => {
       const p = await plantilla("catalogo-off");
-      await fijarDemoDePlantilla(p.id, imagen);
+      await fijarDemoDePlantilla(p.id, imagen, admin.id);
       await activarPlantillaDeLaInstalacion(p.id, false);
       const cat = await rutaCatalogo.GET(pedir(ana, "/api/prompts/catalogo?tipo=fotograma"), undefined);
       expect(await cat.text()).not.toContain(p.id);

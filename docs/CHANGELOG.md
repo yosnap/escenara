@@ -11,11 +11,13 @@ No cambia ninguna regla de coste, de consentimiento ni de confirmación, y el ej
 ### Añadido
 
 - **Ejemplo por plantilla y por trend.** En **Admin › Plantillas**, cada tarjeta tiene el botón **«Poner ejemplo»**
-  (o «Cambiar ejemplo»): eliges una **imagen o un clip que ya está en la biblioteca** (o subes uno nuevo desde ahí) y lo
-  ves en la tarjeta. **«Quitar ejemplo»** lo deja como antes. No se genera nada, no llama a ningún proveedor, y ponerlo o
-  quitarlo **no crea versión ni cambia el texto de la plantilla**. Solo administradores, y solo medios que la biblioteca
-  de administración deja ver: no valen los documentos de consentimiento, las fotos de un personaje ni su hoja, ni un
-  archivo en la papelera, ni audio.
+  (o «Cambiar ejemplo»): eliges una **imagen o un clip de tu propia biblioteca** (o subes uno nuevo desde ahí) y lo ves
+  en la tarjeta. **«Quitar ejemplo»** lo deja como antes. No se genera nada, no llama a ningún proveedor, y ponerlo o
+  quitarlo **no crea versión ni cambia el texto de la plantilla**. Solo administradores, y **solo medios del propio
+  administrador que lo pone**: nunca el de otro usuario ni el de otro administrador. Tampoco valen los documentos de
+  consentimiento, las fotos de un personaje ni su hoja, un archivo en la papelera, el audio, **ni nada generado con un
+  personaje real** (ni lo que esté en una escena, un reparto o una exportación con personas reales). Sí valen los de
+  personajes inventados, animados o mascotas y los archivos subidos sin vínculo a ningún personaje.
 - **En «Crear»**, el ejemplo se ve en el selector «Plantilla o trend vigente» (las opciones que lo tienen lo dicen y el
   de la plantilla elegida aparece debajo) y en la **vista previa del trend**. Un clip lleva controles, va **silenciado**,
   no se descarga hasta que le das a reproducir y **nunca arranca solo**; una imagen y un clip llevan texto alternativo.
@@ -29,7 +31,7 @@ No cambia ninguna regla de coste, de consentimiento ni de confirmación, y el ej
 
 ### Cambiado
 
-- Duplicar un trend conserva su ejemplo; quien revisa la copia lo cambia o lo quita.
+- Duplicar un trend conserva su ejemplo solo si sigue cumpliendo las reglas de ahora y es del administrador que duplica; si no, la copia nace sin él.
 
 ### Seguridad
 
@@ -40,6 +42,14 @@ No cambia ninguna regla de coste, de consentimiento ni de confirmación, y el ej
   sí lo ve, para revisarlo). Lleva `X-Content-Type-Options: nosniff`, una CSP cerrada con `sandbox` y solo sirve tipos de
   imagen y vídeo (nunca SVG); admite `Range`, que los navegadores piden para reproducir vídeo. El navegador nunca recibe
   el identificador del medio ni nada del texto de la plantilla (ADR-0022).
+- **Un ejemplo es un medio propio del administrador.** El servidor lo exige al elegirlo y, al servirlo, comprueba que el
+  medio sigue siendo de quien lo puso y que esa persona sigue siendo administradora: si pierde el rol o el medio cambia
+  de dueño, el ejemplo deja de verse. Así la ruta nunca es una puerta a la biblioteca de otra persona.
+- **Sin personas reales.** Un ejemplo se enseña a todos los usuarios de la instalación, y el consentimiento de un
+  personaje real no cubre eso. Si algún día se quieren ejemplos con personas reales, hará falta una declaración de
+  consentimiento específica.
+- Un identificador de medio mal escrito responde con su causa, y la lectura de ejemplos tiene un límite de ritmo
+  (600 por minuto y usuario).
 - Si un medio elegido como ejemplo pasa después a ser material reservado (una foto de un personaje, por ejemplo) o a la
   papelera, deja de servirse y de verse en el momento.
 
@@ -47,8 +57,8 @@ No cambia ninguna regla de coste, de consentimiento ni de confirmación, y el ej
 
 - **Haz antes una copia**: `bun run db:backup`. Después, `bun run db:migrate`.
 - La migración `0060_plantillas-con-ejemplo` es **aditiva e idempotente**: añade a `prompt_templates` la columna
-  `demo_media_id`, que admite nulos, y su clave foránea hacia `media` (si el medio se borra del todo, la plantilla se
-  queda sin ejemplo). No cambia ni borra ninguna fila y volver a aplicarla no hace nada.
+  `demo_media_id` (el medio; si se borra del todo, la plantilla se queda sin ejemplo) y `demo_set_by` (el administrador
+  que lo puso), las dos con sus claves foráneas y que admiten nulos. No cambia ni borra ninguna fila y volver a aplicarla no hace nada.
 - **Sin ejemplos por defecto**: ninguna plantilla ni trend lleva ejemplo al actualizar. Los eliges tú desde Admin ›
   Plantillas, con clips o imágenes que ya tengas en la biblioteca.
 - No hace falta reiniciar el worker (no cambia nada de la cola ni del render). No hay ajustes nuevos ni variables de

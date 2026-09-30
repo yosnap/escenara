@@ -50,7 +50,7 @@ export async function editarPlantillaAccion(id: string, datos: DatosPlantilla): 
 
 /** Pone (medio de la biblioteca) o quita (`null`) el ejemplo de una plantilla. No crea versión. */
 export async function fijarDemoAccion(id: string, medioId: string | null): Promise<ResultadoPlantillas> {
-  return aplicar(() => fijarDemoDePlantilla(id, medioId));
+  return aplicar((autorId) => fijarDemoDePlantilla(id, medioId, autorId));
 }
 
 export async function activarPlantillaAccion(id: string, activa: boolean): Promise<ResultadoPlantillas> {
