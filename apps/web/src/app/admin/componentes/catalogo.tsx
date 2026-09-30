@@ -4,6 +4,7 @@ import { SeccionAcciones } from "./secciones/acciones";
 import { SeccionAnuncio } from "./secciones/anuncio";
 import { SeccionCanto } from "./secciones/canto";
 import { SeccionControles } from "./secciones/controles";
+import { SeccionConversion } from "./secciones/conversion";
 import { SeccionCreador } from "./secciones/creador";
 import { SeccionCuentas } from "./secciones/cuentas";
 import { SeccionDireccion } from "./secciones/direccion";
@@ -42,6 +43,7 @@ const INDICE = [
   ["anuncio", "Estrategia del anuncio"],
   ["reparto", "Dos personajes"],
   ["montaje", "Montaje y exportación"],
+  ["conversion", "De Crear a un proyecto"],
   ["cuentas", "Cuentas"],
   ["secretos", "Secretos"],
   ["estados", "Estados y presupuesto"],
@@ -92,6 +94,7 @@ export function Catalogo() {
         <SeccionAnuncio />
         <SeccionReparto />
         <SeccionMontaje />
+        <SeccionConversion />
         <SeccionCuentas />
         <SeccionSecretos />
         <SeccionEstados />

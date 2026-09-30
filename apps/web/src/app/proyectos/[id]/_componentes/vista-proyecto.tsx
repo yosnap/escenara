@@ -7,6 +7,7 @@ import { claseBoton } from "@/components/ui/button";
 import { Aviso } from "@/components/ui/feedback";
 import { Multipaso, PanelDePaso, useMultipaso } from "@/components/ui/multipaso";
 import { InsigniaEstadoProyecto } from "@/components/ui/proyecto";
+import type { ClipsDelProyecto } from "@/lib/audio-del-clip";
 import { resolverPaso } from "@/lib/multipaso";
 import { pasoPredeterminadoDelProyecto, pasosDelProyecto } from "@/lib/pasos-proyecto";
 import type { PersonajeElegible } from "@/lib/personajes";
@@ -16,6 +17,7 @@ import type { DatosDelAnuncio } from "@/server/anuncio/pantalla";
 import { PanelBrief } from "./anuncio/panel-brief";
 import { ListaEscenas } from "./lista-escenas";
 import { PanelAprobacion } from "./panel-aprobacion";
+import { PanelClipsProducidos } from "./panel-clips-producidos";
 import { PanelIdea } from "./panel-idea";
 
 /**
@@ -36,12 +38,15 @@ export function VistaProyecto({
   personajes,
   anuncio,
   trends,
+  clips,
   pasoPedido,
 }: {
   inicial: ProyectoDetalle;
   personajes: PersonajeElegible[];
   anuncio: DatosDelAnuncio;
   trends: TrendPublico[];
+  /** Clips ya producidos y su audio; un proyecto convertido desde «Crear» nace con uno. */
+  clips: ClipsDelProyecto;
   /** Paso pedido en la dirección (`?paso=`), ya validado; `null` si no se ha pedido ninguno. */
   pasoPedido: string | null;
 }) {
@@ -100,8 +105,8 @@ export function VistaProyecto({
               Producir las escenas
             </Link>
           )}
-          {/* Montar es el paso siguiente a producir, así que se ofrece desde el mismo sitio (0.32.0). */}
-          {proyecto.estado !== "borrador" && (
+          {/* Montar es el paso siguiente a producir (0.32.0); con un clip ya producido se puede montar ya. */}
+          {(proyecto.estado !== "borrador" || clips.clips.length > 0) && (
             <Link href={`/proyectos/${proyecto.id}/montaje`} className={claseBoton("secundario", "sm")}>
               Montaje y exportación
             </Link>
@@ -128,6 +133,7 @@ export function VistaProyecto({
           <PanelIdea detalle={detalle} personajes={personajes} onCambio={aplicar} onError={setError} />
         </PanelDePaso>
         <PanelDePaso id="escenas">
+          <PanelClipsProducidos proyectoId={proyecto.id} inicial={clips} />
           <ListaEscenas
             detalle={detalle}
             personajes={personajes}

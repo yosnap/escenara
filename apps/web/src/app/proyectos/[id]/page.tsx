@@ -7,6 +7,7 @@ import { datosDelAnuncio } from "@/server/anuncio/pantalla";
 import { ErrorProyecto } from "@/server/asistente/errores";
 import { detalleProyecto } from "@/server/asistente/plan";
 import { esAdmin, exigirSesion } from "@/server/auth/sesion";
+import { clipsProducidosDelProyecto } from "@/server/montaje/audio-del-clip";
 import { personajesElegibles } from "@/server/personajes/consulta";
 import { listarPlantillas } from "@/server/prompts/consulta";
 import { vistaPublicaTrend } from "@/server/prompts/trends";
@@ -38,11 +39,13 @@ export default async function PaginaProyecto({
   });
   // El brief del anuncio se lee aquí, con el proyecto: así el primer pintado ya enseña el ángulo, la oferta y el
   // precio de verdad, y la pantalla no necesita ningún efecto que dispare peticiones al montarse.
-  const [personajes, anuncio, ajustes, plantillas] = await Promise.all([
+  const [personajes, anuncio, ajustes, plantillas, clips] = await Promise.all([
     personajesElegibles(actor),
     datosDelAnuncio(actor, detalle.proyecto.id),
     leerAjustes(),
     listarPlantillas({ usuarioId: actor.id }),
+    // Los clips ya producidos y su audio (0.35.0): es lo que ve primero un proyecto convertido desde «Crear».
+    clipsProducidosDelProyecto(actor, detalle.proyecto.id),
   ]);
   const trends = ajustes.trendsVisibles
     ? plantillas
@@ -59,6 +62,7 @@ export default async function PaginaProyecto({
           personajes={personajes}
           anuncio={anuncio}
           trends={trends}
+          clips={clips}
           pasoPedido={pasoPedido}
         />
       </main>
