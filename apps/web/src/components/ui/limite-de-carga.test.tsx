@@ -50,7 +50,7 @@ describe("límite de error de lo diferido", () => {
     const estado = LimiteDeCarga.getDerivedStateFromError(trozoPerdido);
     const limite = new LimiteDeCarga({ children: "contenido" });
     limite.state = estado;
-    const html = renderToStaticMarkup(<>{limite.render()}</>);
+    const html = renderToStaticMarkup(<div>{limite.render()}</div>);
     expect(html).toContain('data-alerta="error"');
     expect(html).toContain("No se ha podido cargar esta parte. Recarga la página.");
     expect(html).toContain("Escenara se ha actualizado mientras tenías la página abierta.");
