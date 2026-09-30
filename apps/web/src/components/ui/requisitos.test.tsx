@@ -26,7 +26,7 @@ describe("aviso de requisitos", () => {
     expect(html).toContain("Falta describir la escena.");
     expect(html).toContain("Ir al campo");
     expect(html).toContain("border-2 border-error");
-    expect(html).not.toMatch(/border-l-|border-r-|border-s-|border-e-/);
+    expect(html).not.toMatch(/\bborder-[lrse](-|\b)/);
   });
 
   test("sin requisitos no pinta nada", () => {

@@ -2,6 +2,42 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.33.1] · 2026-09-30
+
+Parche de «Crear»: **un campo que faltaba, los requisitos a la vista y el trend que ya no falla por el modelo**. Sin
+migraciones, sin cambios de precio y sin cambios en cómo se confirma o se cobra nada: los mismos requisitos apagan el
+mismo botón que antes; ahora además te dicen dónde se arreglan.
+
+### Corregido
+
+- **Con una imagen tuya y un trend, ya hay dónde escribir lo que pide.** La confirmación decía «Falta «Qué ocurre en
+  la escena»» y en ese camino no existía ningún campo para escribirlo (el texto se escribía en el paso «Describe la
+  escena», que con una imagen tuya no sale). Ahora el paso del clip enseña un campo con el nombre de la variable y su
+  ayuda. Es la **misma descripción** que la del paso de la escena, así que nunca hay dos textos que diverjan, y donde
+  ese paso existe el campo no se repite.
+- **Elegir un trend ya no falla por el modelo.** El trend fija los segundos del clip y el modelo por defecto (por
+  ejemplo Veo 3.1 Fast, que solo tiene clips de 4 y 8 s) no tenía precio para 6 s: salía «no tiene precio para un clip
+  de 6 s» antes de poder elegir modelo, el trend no se aplicaba y el aviso rojo se quedaba aunque luego eligieras otro
+  modelo. Ahora, si el modelo no tiene tarifa para la duración del trend, Escenara cambia **solo** a un modelo
+  compatible (de imagen a vídeo, usable, con tarifa para esos segundos y admitido por el trend; conserva la voz si el
+  tuyo la tenía y, si no, prefiere el predeterminado), recalcula la estimación con él y te lo dice: «Hemos cambiado a X
+  porque Y no tiene clips de N s». Si ningún modelo cobra esa duración, el error dice la causa, el trend no se aplica
+  y no se cobra nada. El aviso de error de un intento anterior se limpia al aplicarse el trend.
+- En el selector de modelo del clip, los modelos sin tarifa para la duración del trend **siguen en la lista**, marcados
+  como no disponibles y con el motivo.
+
+### Añadido
+
+- **Requisitos a la vista y señalados.** Arriba del paso del clip y del de coste sale el bloque **«Antes de generar,
+  falta:»** con cada punto como botón: cambia al paso que toca, desplaza y enfoca el campo o la casilla y lo resalta
+  (con el movimiento reducido en tu sistema, el resaltado es un aro fijo y sin animación).
+- **El campo o la casilla pendiente se marca**: aro de error completo, `aria-invalid` y, debajo, lo que falta. Vale para
+  la descripción de la escena, los botones de la plantilla, el modelo, la revisión de las fotos, el panel «Antes de
+  generar» y las casillas de derechos (imagen, marca) y de aviso de gasto.
+- **La barra de pasos cuenta lo que falta** en cada paso que se puede abrir («Faltan 2», y lo lee el lector de pantalla).
+- El catálogo de componentes (**Admin › Componentes › Requisitos pendientes**) enseña el aviso de requisitos (reutilizable
+  en `components/ui/requisitos.tsx`), el campo y la casilla marcados y la barra con pendientes.
+
 ## [0.33.0] · 2026-09-30
 
 **«Crear» y la página de un proyecto van de paso en paso**, con una barra arriba y los botones Anterior y
