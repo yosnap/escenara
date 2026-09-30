@@ -46,6 +46,7 @@ const GRUPOS = [
       ["/admin/marca", "Marca"],
       ["/admin/coherencia", "Coherencia"],
       ["/admin/decisiones", "Decisiones"],
+      ["/admin/calibracion", "Calibración"],
       ["/admin/componentes", "Componentes"],
       ["/admin/versiones", "Versiones"],
     ],

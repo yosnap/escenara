@@ -8,7 +8,8 @@ import path from "node:path";
  * 1. **Todas las decisiones del motor se registran**: el motor (`evaluar`) solo se llama desde la puerta (y desde la
  *    vista del canto, que solo pinta), y la puerta solo lo usa en funciones que guardan la evaluación o que solo pintan
  *    (`evaluarParaMostrar`). Un camino nuevo que llamara al motor por su cuenta decidiría sin dejar rastro.
- * 2. **La opinión de la sombra no llega al usuario**: sus lecturas solo se importan desde el panel de administración.
+ * 2. **La opinión de la sombra no llega al usuario**: sus lecturas solo se importan desde el panel de administración,
+ *    igual que el conjunto etiquetado que se deriva de ellas.
  */
 const RAIZ = path.resolve(import.meta.dir, "../..");
 
@@ -96,6 +97,20 @@ describe("puntos de decisión", () => {
       const codigo = await readFile(f, "utf8");
       if (/from\s*["'][^"']*decisiones\/consulta["']/.test(codigo)) importan.push(relativa(f));
     }
-    expect(importan).toEqual(["app/admin/decisiones/page.tsx"]);
+    // La calibración deriva de ahí sus etiquetas, y a su vez solo la lee el panel de administración.
+    expect(importan.sort()).toEqual(["app/admin/decisiones/page.tsx", "server/calibracion/conjunto.ts"]);
+  });
+
+  it("la calibración y su conjunto etiquetado solo se usan en el panel de administración", async () => {
+    const importan: string[] = [];
+    for (const f of await ficheros(RAIZ)) {
+      const codigo = await readFile(f, "utf8");
+      if (/from\s*["'][^"']*calibracion\/(?:conjunto|calibrar)["']/.test(codigo)) importan.push(relativa(f));
+    }
+    expect(importan.sort()).toEqual([
+      "app/admin/calibracion/page.tsx",
+      "app/api/admin/calibracion/route.ts",
+      "server/calibracion/calibrar.ts",
+    ]);
   });
 });
