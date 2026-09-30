@@ -265,8 +265,8 @@ describe.skipIf(!hayBaseDeDatos)("convertir un clip de Crear en un proyecto", ()
     const { datos } = await convertir(clip.id);
     await db().update(projects).set({ authorizedCredits: 70 }).where(eq(projects.id, datos.proyectoId));
     // 60 ya gastados + 20 nuevos pasan de 70: regenerar no puede saltarse el techo por venir de «Crear».
-    await expect(exigirTopeDelProyecto(datos.proyectoId, 20)).rejects.toThrow("presupuesto");
-    await exigirTopeDelProyecto(datos.proyectoId, 5);
+    await expect(exigirTopeDelProyecto(ana.id, datos.proyectoId, 20)).rejects.toThrow("presupuesto");
+    await exigirTopeDelProyecto(ana.id, datos.proyectoId, 5);
   });
 
   test("un clip ya convertido lleva a su proyecto y se convierte una sola vez aunque se pida a la vez", async () => {

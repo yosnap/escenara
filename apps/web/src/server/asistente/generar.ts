@@ -130,7 +130,7 @@ export async function escribirGuion(
 
   // El presupuesto autorizado del proyecto es un **tope que se aplica al gastar**: lo que ya lleva comprometido
   // más esta llamada tiene que caber (decisión provisional del propietario, 2026-09-27).
-  await exigirTopeDelProyecto(proyecto.id, creditos);
+  await exigirTopeDelProyecto(actor.id, proyecto.id, creditos);
 
   // Esta confirmación ya se había ejecutado: se devuelve el proyecto como está y **no se llama a nadie**.
   if (await ejecucionDeLaConfirmacion(actor.id, `${claveIdempotencia}:0`)) return detalleProyecto(actor, proyecto.id);

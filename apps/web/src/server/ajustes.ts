@@ -195,6 +195,17 @@ export interface Ajustes {
    */
   coherenciaDecisionesPorDia: number;
   /**
+   * **Sombra de las decisiones** (0.39.0): Jev opina en paralelo sobre cada decisión del motor sin cambiar nada, con
+   * la clave de TypeSafe de la instalación. **Apagada de fábrica**: cuesta dinero del operador y solo vale si se mide.
+   */
+  sombraActiva: boolean;
+  /** Pregunta del guion: «¿tiene una afirmación que exige verificación?». Solo corre con la sombra encendida. */
+  sombraAfirmaciones: boolean;
+  /** Umbral de esa pregunta. Enruta la medición («míralo tú» por debajo); no automatiza nada. */
+  sombraUmbralAfirmaciones: number;
+  /** Tope de evaluaciones pagadas por usuario en 24 horas: la sombra corre sola y la paga el operador. */
+  sombraEvaluacionesPorDia: number;
+  /**
    * **Estrategia del anuncio** (0.27.0): el brief (ángulo y oferta antes del guion) y las variantes por ángulo.
    *
    * Las dos **encendidas de fábrica**: no cuestan nada por sí mismas —el brief es un formulario y las variantes
@@ -383,6 +394,11 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   // Sin tarifa medida en esta instalación: 0 € hasta que quien administra la mida, como con el resto.
   coherenciaEurosPorMillonTokens: 0,
   coherenciaDecisionesPorDia: 60,
+  // La sombra arranca apagada: gasta la cuenta del operador y no cambia nada de lo que se genera.
+  sombraActiva: false,
+  sombraAfirmaciones: true,
+  sombraUmbralAfirmaciones: UMBRAL_POR_DEFECTO,
+  sombraEvaluacionesPorDia: 100,
   // El brief y las variantes arrancan **encendidos**: no gastan nada y son el camino de esta versión.
   anuncioBriefActivo: true,
   anuncioVariantesActivas: true,
@@ -564,6 +580,13 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
   coherenciaDecisionesPorDia: {
     valido: entero(1, 10000),
     mensaje: "Indica de 1 a 10000 comprobaciones de coherencia por usuario y día.",
+  },
+  sombraActiva: { valido: booleano, mensaje: "Debe ser sí o no." },
+  sombraAfirmaciones: { valido: booleano, mensaje: "Debe ser sí o no." },
+  sombraUmbralAfirmaciones: { valido: umbral, mensaje: MENSAJE_UMBRAL },
+  sombraEvaluacionesPorDia: {
+    valido: entero(1, 10000),
+    mensaje: "Indica de 1 a 10000 evaluaciones en sombra por usuario y día.",
   },
   anuncioBriefActivo: { valido: booleano, mensaje: "Debe ser sí o no." },
   anuncioVariantesActivas: { valido: booleano, mensaje: "Debe ser sí o no." },

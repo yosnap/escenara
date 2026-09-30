@@ -4,7 +4,7 @@ import { BLOQUEAN_APROBACION } from "@/lib/proyectos";
 import { afirmacionesDe } from "../asistente/consulta";
 import type { Hechos } from "../controles/contrato";
 import { parametrosDeControles } from "../controles/hechos";
-import { evaluarParaMostrar, exigirFrenosDurosRegistrados } from "../controles/puerta";
+import { evaluarParaMostrar, exigirFrenosDuros } from "../controles/puerta";
 import type { FilaMontaje } from "../db/esquema";
 import { type Actor, espacioUsado } from "../media/servicio";
 import { criticosAbiertosDeProyecto } from "../revision/resultados";
@@ -107,10 +107,7 @@ export async function exigirControlesDelMontaje(
   segundos: number,
 ): Promise<void> {
   const hechos = await hechosDelMontaje(actor, montaje, material, segundos);
-  await exigirFrenosDurosRegistrados(
-    { usuarioId: actor.id, sujeto: "montaje", sujetoId: montaje.id, tipo: "montaje" },
-    hechos,
-  );
+  await exigirFrenosDuros({ usuarioId: actor.id, sujeto: "montaje", sujetoId: montaje.id, tipo: "montaje" }, hechos);
 }
 
 /** La misma evaluación, **sin cerrar nada ni guardar nada**: es lo que pinta el panel de exportación. */

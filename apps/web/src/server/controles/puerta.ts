@@ -1,5 +1,7 @@
 import type { ComprobacionVista, EvaluacionVista } from "@/lib/controles";
+import type { AccionDecision } from "@/lib/decisiones";
 import { ErrorProyecto } from "../asistente/errores";
+import { lanzarSombra } from "../decisiones/sombra";
 import { ErrorGeneracion } from "../generacion/errores";
 import { ErrorPersonaje } from "../personajes/errores";
 import { type Evaluacion, type FamiliaError, type FrenoResuelto, GRUPOS_OBLIGATORIOS, type Hechos } from "./contrato";
@@ -50,6 +52,21 @@ const lanzar = (freno: FrenoResuelto): never => {
 };
 
 /**
+ * Qué hace la puerta completa con una evaluación, **sin lanzar nada**: es lo que se guarda como acción de la
+ * decisión. Sigue exactamente el mismo orden que {@link exigirControles}, que es quien de verdad cierra la puerta.
+ */
+export function accionDelEnvio(
+  evaluacion: Evaluacion,
+  confirmados: readonly string[],
+  maximoAvisos: number,
+): AccionDecision {
+  if (frenosQueGatean(evaluacion).length > 0) return "rechaza";
+  const avisos = avisosSalvables(evaluacion);
+  if (avisos.length > maximoAvisos) return "rechaza";
+  return avisos.every((f) => confirmados.includes(f.regla)) ? "permite" : "pide-confirmacion";
+}
+
+/**
  * Evalúa y **cierra la puerta** si algo lo impide. Devuelve la evaluación cuando deja pasar, para que quien
  * encola pueda guardar con qué reglas se decidió.
  *
@@ -63,7 +80,18 @@ export async function exigirControles(
 ): Promise<Evaluacion> {
   exigirHechosCompletos(hechos);
   const evaluacion = evaluar(hechos);
-  await registrarEvaluacion(sujeto, evaluacion, confirmados);
+  const accion = accionDelEnvio(evaluacion, confirmados, hechos.parametros.maximoAvisos);
+  const evaluacionId = await registrarEvaluacion(sujeto, evaluacion, { hechos, confirmados, puerta: "envio", accion });
+  // La sombra opina en paralelo y **no se espera**: lo que se decide aquí abajo es solo de las reglas.
+  if (evaluacionId) {
+    lanzarSombra({
+      evaluacionId,
+      usuarioId: sujeto.usuarioId,
+      sujeto: sujeto.sujeto,
+      sujetoId: sujeto.sujetoId,
+      accion,
+    });
+  }
 
   // Primero lo que no se puede salvar de ninguna manera, en el orden de precedencia del motor.
   const sinSalida = frenosQueGatean(evaluacion);
@@ -106,32 +134,31 @@ export function vistaDeEvaluacion(evaluacion: Evaluacion): EvaluacionVista {
 }
 
 /**
- * Lanza el primer freno que **no se puede salvar** (`bloqueado` o `revision`), sin guardar ninguna evaluación.
+ * Lanza el primer freno que **no se puede salvar** (`bloqueado` o `revision`) y **guarda la evaluación**, pase o
+ * no pase: también es una decisión del motor y tiene que poder auditarse con su evidencia.
  *
- * Es para las puertas parciales que ya existían y siguen teniendo sentido por sí solas —la de producción de
- * una escena, `asistente/plan.ts › exigirEscenaAprobada`—, para que apliquen **las reglas del motor** y no una
- * copia suya. Los avisos salvables no se miran aquí: quien confirma es el envío completo.
+ * Es la puerta de los caminos que no encolan un trabajo de la cola, o que cortan antes de la puerta completa: el
+ * tope del proyecto ante una llamada al asistente de guion (`asistente/plan.ts`), la puerta de producción de una
+ * escena, las del canto y la del render del montaje (0.32.0). No exige todos los grupos de hechos porque ahí no hay
+ * ni modelo, ni credencial, ni dinero que comparar, y **no admite confirmaciones**: las reglas que la cierran son
+ * `bloqueado` o `revision` y no se salvan con una casilla, aquí ni en ningún otro sitio.
  */
-export function exigirFrenosDuros(hechos: Hechos): Evaluacion {
-  const evaluacion = evaluar(hechos);
+export async function exigirFrenosDuros(sujeto: SujetoDeEvaluacion, hechos: Hechos): Promise<Evaluacion> {
+  const evaluacion = await evaluarRegistrando(sujeto, hechos);
   const primero = frenosQueGatean(evaluacion)[0];
   if (primero) lanzar(primero);
   return evaluacion;
 }
 
 /**
- * Igual que {@link exigirFrenosDuros}, pero **guardando la evaluación**. Es la puerta del render del montaje
- * (0.32.0): no se le exigen todos los grupos de hechos porque no hay ni modelo, ni credencial, ni personaje, ni
- * dinero que comparar —montar un vídeo no gasta créditos—, pero la decisión sí es auditable como cualquier otra.
- *
- * No admite confirmaciones: las reglas que cierran esta puerta (un crítico abierto, una escena sin clip) son
- * `bloqueado` y no se salvan con una casilla, aquí ni en ningún otro sitio.
+ * Evalúa los frenos duros y **guarda la evaluación**, pero sin lanzar nada: para quien tiene que cerrar con su propio
+ * error, como el despacho de la cola, que revalida el consentimiento antes de subir una cara y falla el trabajo con
+ * su motivo de siempre.
  */
-export async function exigirFrenosDurosRegistrados(sujeto: SujetoDeEvaluacion, hechos: Hechos): Promise<Evaluacion> {
+export async function evaluarRegistrando(sujeto: SujetoDeEvaluacion, hechos: Hechos): Promise<Evaluacion> {
   const evaluacion = evaluar(hechos);
-  await registrarEvaluacion(sujeto, evaluacion, []);
-  const primero = frenosQueGatean(evaluacion)[0];
-  if (primero) lanzar(primero);
+  const accion = frenosQueGatean(evaluacion).length > 0 ? "rechaza" : "permite";
+  await registrarEvaluacion(sujeto, evaluacion, { hechos, confirmados: [], puerta: "frenos", accion });
   return evaluacion;
 }
 

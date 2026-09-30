@@ -14,10 +14,11 @@ import type { TipoTrabajoCola } from "@/lib/generacion";
 export { REGLAS_VERSION } from "@/lib/controles";
 
 /**
- * Qué se está evaluando. Una escena del plan de un proyecto, un envío suelto de «Crear» o, desde la 0.32.0, el
- * **montaje** de un proyecto que se va a exportar.
+ * Qué se está evaluando. Una escena del plan de un proyecto, un envío suelto de «Crear», desde la 0.32.0 el
+ * **montaje** de un proyecto que se va a exportar y, desde la 0.39.0, el **proyecto** cuyo tope frena una llamada al
+ * asistente de guion.
  */
-export const SUJETOS_CONTROL = ["escena", "trabajo", "montaje"] as const;
+export const SUJETOS_CONTROL = ["escena", "trabajo", "montaje", "proyecto"] as const;
 export type SujetoControl = (typeof SUJETOS_CONTROL)[number];
 
 /**

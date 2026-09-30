@@ -15,8 +15,8 @@ import { eurosPorCreditoDe, leerAjustes } from "../ajustes";
 import { usarCompatibles } from "../boveda/compatibles";
 import { usarCredencialValida } from "../boveda/credenciales";
 import { hechosDePersonajeCitado, parametrosDeControles } from "../controles/hechos";
-import { evaluar, frenosQueGatean } from "../controles/motor";
-import { mensajeDeFreno } from "../controles/puerta";
+import { frenosQueGatean } from "../controles/motor";
+import { evaluarRegistrando, mensajeDeFreno } from "../controles/puerta";
 import { db } from "../db/cliente";
 import { characters, type FilaMedio, type FilaTrabajo, generationJobs, media, usageLedger } from "../db/esquema";
 import { archivoDe } from "../generacion/comprobaciones";
@@ -258,29 +258,38 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
   // dinero, y esas ya se decidieron al encolar con su reserva apartada.
   if (fila.characterId && fila.kind !== "voz") {
     const freno = frenosQueGatean(
-      evaluar({
-        tipo: fila.kind,
-        parametros: await parametrosDeControles(),
-        /**
-         * Si la ficha del personaje ya no está, esto bloquea en lugar de dejar pasar. Y el **primer retrato de
-         * un personaje inventado** (0.22.0) se revalida sin exigirle las fotos que todavía no tiene. Una vista
-         * sintética de un inventado también puede completar su mínimo desde el maestro ya aprobado.
-         */
-        personaje: await hechosDePersonajeCitado(fila.characterId, {
-          primerRetrato: (fila.input as { retratoInventado?: unknown }).retratoInventado === true,
-          vistaSintetica: (fila.input as { vistaSintetica?: unknown }).vistaSintetica !== undefined,
-        }),
-        modelo: {
-          nombre: modelo.nombre,
-          maximoReferencias: modelo.parametros.maximoReferencias,
-          // El precio y la acotación se decidieron al encolar y su reserva ya está apartada: volver a
-          // juzgarlos aquí rechazaría el trabajo por su propio apartado.
-          precioComprobado: "",
-          precioCaducado: false,
-          costeAcotado: true,
-          motivoSinAcotar: "",
+      // Es una decisión del motor como cualquier otra: se guarda con su evidencia, pase o no pase.
+      await evaluarRegistrando(
+        {
+          usuarioId: fila.userId,
+          sujeto: fila.sceneId ? "escena" : "trabajo",
+          sujetoId: fila.sceneId ?? fila.id,
+          tipo: fila.kind,
         },
-      }),
+        {
+          tipo: fila.kind,
+          parametros: await parametrosDeControles(),
+          /**
+           * Si la ficha del personaje ya no está, esto bloquea en lugar de dejar pasar. Y el **primer retrato de
+           * un personaje inventado** (0.22.0) se revalida sin exigirle las fotos que todavía no tiene. Una vista
+           * sintética de un inventado también puede completar su mínimo desde el maestro ya aprobado.
+           */
+          personaje: await hechosDePersonajeCitado(fila.characterId, {
+            primerRetrato: (fila.input as { retratoInventado?: unknown }).retratoInventado === true,
+            vistaSintetica: (fila.input as { vistaSintetica?: unknown }).vistaSintetica !== undefined,
+          }),
+          modelo: {
+            nombre: modelo.nombre,
+            maximoReferencias: modelo.parametros.maximoReferencias,
+            // El precio y la acotación se decidieron al encolar y su reserva ya está apartada: volver a
+            // juzgarlos aquí rechazaría el trabajo por su propio apartado.
+            precioComprobado: "",
+            precioCaducado: false,
+            costeAcotado: true,
+            motivoSinAcotar: "",
+          },
+        },
+      ),
     )[0];
     if (freno) {
       throw new ErrorPersonajeNoUsable(

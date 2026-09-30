@@ -359,24 +359,27 @@ export async function techoDelProyecto(
  * llamada al asistente de guion, que también cuesta y también sale del mismo bote. La regla es la del motor
  * (`controles/motor.ts › presupuesto-proyecto`), aplicada aquí con los hechos de este proyecto.
  */
-export async function exigirTopeDelProyecto(proyectoId: string, creditos: number): Promise<void> {
+export async function exigirTopeDelProyecto(usuarioId: string, proyectoId: string, creditos: number): Promise<void> {
   const techo = await techoDelProyecto(proyectoId);
   if (techo.autorizado === null) return;
-  exigirFrenosDuros({
-    tipo: "fotograma",
-    presupuesto: {
-      creditos,
-      topeTrabajo: null,
-      disponibleUsuario: null,
-      retenidoUsuario: 0,
-      trabajosEnRevision: 0,
-      llamadasDeTextoColgadas: 0,
-      revisionesColgadas: 0,
-      autorizadoProyecto: techo.autorizado,
-      comprometidoProyecto: techo.comprometido,
+  await exigirFrenosDuros(
+    { usuarioId, sujeto: "proyecto", sujetoId: proyectoId, tipo: "asistente" },
+    {
+      tipo: "fotograma",
+      presupuesto: {
+        creditos,
+        topeTrabajo: null,
+        disponibleUsuario: null,
+        retenidoUsuario: 0,
+        trabajosEnRevision: 0,
+        llamadasDeTextoColgadas: 0,
+        revisionesColgadas: 0,
+        autorizadoProyecto: techo.autorizado,
+        comprometidoProyecto: techo.comprometido,
+      },
+      parametros: await parametrosDeControles(),
     },
-    parametros: await parametrosDeControles(),
-  });
+  );
 }
 
 /** Trabajo de generación asociado a cada escena, si lo hay. El más reciente manda. */
@@ -757,11 +760,14 @@ export async function exigirEscenaAprobada(actor: Actor, escenaId: unknown): Pro
   // El reparto (0.28.0) sí se aporta: no depende del envío concreto, y con dos personas reales y un solo
   // consentimiento **conviene cortar aquí**, diciendo cuál falta, antes de llegar a elegir modelo.
   const reparto = await hechosDelReparto(escena);
-  exigirFrenosDuros({
-    tipo: "fotograma",
-    escena: hechos,
-    ...(reparto ? { reparto } : {}),
-    parametros: await parametrosDeControles(),
-  });
+  await exigirFrenosDuros(
+    { usuarioId: actor.id, sujeto: "escena", sujetoId: escena.id, tipo: "fotograma" },
+    {
+      tipo: "fotograma",
+      escena: hechos,
+      ...(reparto ? { reparto } : {}),
+      parametros: await parametrosDeControles(),
+    },
+  );
   return escena;
 }
