@@ -25,9 +25,19 @@ igualmente», y Escenara sigue sin cambiar de modelo por su cuenta.
 
 ### Corregido
 
+- **El aviso de antes del coste ya dice qué modelos sí admiten la foto del producto.** La tarjeta «Necesita ajustes»
+  de «Crear» decía «Hoy no hay ningún otro modelo disponible que acepte la foto del producto» aunque Gemini Omni,
+  Gemini Omni 1.1 Flash y MiniMax H3 sí la admiten: la lista de modelos no se le pasaba a ese aviso. Ahora lo
+  completa con los mismos nombres que el aviso junto al selector de producto, para un clip o para un fotograma.
+- **En el editor de escena, el aviso habla del modelo con el que de verdad se produce.** En un proyecto de escenas
+  habladas con Omni se calcula con Omni y no con el modelo de vídeo por defecto, así que ya no da una falsa alarma
+  (ni una falsa tranquilidad).
+- **Un producto con todas sus fotos en la papelera ya no avisa de que el modelo no admite su foto:** solo cuentan las
+  fotos que se enviarían de verdad.
 - **Los dos avisos hablan siempre del mismo modelo.** Si cambiabas de modelo o de producto dos veces seguidas, la
-  respuesta lenta de la primera comprobación podía llegar la última y dejar un aviso del modelo anterior. Ahora solo
-  cuenta la última comprobación pedida, y cada refresco usa el modelo y el producto vigentes en ese momento.
+  respuesta lenta de la primera comprobación podía llegar la última y dejar un aviso del modelo anterior; lo mismo si
+  cambiabas de producto mientras terminaba el fotograma. Ahora solo cuenta la última comprobación pedida, y cada
+  refresco usa el modelo y el producto vigentes en ese momento.
 
 ### Catálogo de componentes
 
