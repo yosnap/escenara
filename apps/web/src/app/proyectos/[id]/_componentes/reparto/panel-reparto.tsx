@@ -280,7 +280,7 @@ export function PanelReparto({
           />
 
           {reparto.mismaVoz && (
-            <Aviso tono="info">
+            <Aviso tono="aviso">
               Los dos personajes usan la voz Omni registrada del proyecto y sonarán con el mismo timbre. Este formato
               todavía no admite dos voces Omni distintas; tendrás que confirmarlo antes de pagar.
             </Aviso>

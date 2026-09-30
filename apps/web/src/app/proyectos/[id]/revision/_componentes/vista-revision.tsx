@@ -73,7 +73,8 @@ export function VistaRevision({ inicial }: { inicial: RevisionProyectoVista }) {
       {error && <Aviso tono="error">{error}</Aviso>}
 
       <Alerta
-        tipo={bloqueos.length > 0 ? "bloqueo" : "hecho"}
+        // «Hecho» solo cuando de verdad hay algo listo: sin escenas no hay nada que exportar.
+        tipo={bloqueos.length > 0 ? "bloqueo" : revision.escenas.length > 0 ? "hecho" : "info"}
         etiqueta="Estado de la exportación"
         titulo={textoDeBloqueo(revision.escenas)}
         anuncio="ninguno"

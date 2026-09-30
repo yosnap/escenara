@@ -200,7 +200,7 @@ export function PasoClip({
         <div className="flex flex-col gap-4">
           {/* Lo que falta, arriba y con cada punto como botón que lleva al campo. */}
           {!clipEnMarcha && <AvisoRequisitos requisitos={requisitos} onIr={onIrARequisito} />}
-          {avisoModelo && <Aviso tono="info">{avisoModelo}</Aviso>}
+          {avisoModelo && <Aviso tono="aviso">{avisoModelo}</Aviso>}
           {modelos.length > 1 && (
             <SelectorModelo
               etiqueta="Modelo del clip"

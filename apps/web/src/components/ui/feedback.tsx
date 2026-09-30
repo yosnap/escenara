@@ -51,10 +51,14 @@ export const ESTILO_PREPARACION: Record<EstadoPreparacion, EstiloPreparacion> = 
 };
 
 /** Tipo de alerta de cada estado de preparación: lo que falta bloquea; ajustes y revisión avisan. */
+/**
+ * Tipo de alerta de cada estado de preparación. Tiene el mismo color que `ESTILO_PREPARACION`, así el recuadro, las
+ * filas de comprobación y la insignia dicen lo mismo: ajustes en ámbar, revisión en azul de marca, bloqueo en rojo.
+ */
 const TIPO_DE_ESTADO: Record<EstadoPreparacion, TipoAlerta> = {
   listo: "hecho",
   ajustes: "aviso",
-  revision: "aviso",
+  revision: "info",
   bloqueado: "bloqueo",
 };
 
@@ -187,12 +191,12 @@ export function EstadoVacio({
   );
 }
 
-export type TonoAviso = "correcto" | "error" | "info";
+export type TonoAviso = "correcto" | "error" | "aviso" | "info";
 
-const TIPO_DE_TONO: Record<TonoAviso, TipoAlerta> = { correcto: "hecho", error: "error", info: "aviso" };
+const TIPO_DE_TONO: Record<TonoAviso, TipoAlerta> = { correcto: "hecho", error: "error", aviso: "aviso", info: "info" };
 
 /**
- * Aviso breve de resultado (hecho, error o información). Es la **alerta** en su versión apretada, con la API de
+ * Aviso breve: hecho, error, aviso (pide atención sin bloquear) o información. Es la **alerta** en su versión apretada, con la API de
  * siempre: los errores se anuncian al momento y el resto con cortesía. Para llevar a un campo, listar varios problemas
  * o dejar descartar, usa `Alerta` directamente.
  */

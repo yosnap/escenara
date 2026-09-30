@@ -71,7 +71,7 @@ export function ListaTrabajos({ iniciales, cola }: { iniciales: TrabajoVista[]; 
     <div className="flex flex-col gap-3">
       {error && <Aviso tono="error">{error}</Aviso>}
       {!cola.workerActivo && (cola.enCola > 0 || cola.enMarcha > 0) && (
-        <Aviso tono="info">
+        <Aviso tono="aviso">
           Tienes trabajos esperando y ahora mismo no hay ningún proceso atendiendo la cola. Nada se ha perdido y nada se
           enviará dos veces: avisa a quien administra esta instalación.
         </Aviso>

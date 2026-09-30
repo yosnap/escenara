@@ -39,7 +39,7 @@ export function ListaComprobaciones({ revision }: { revision: RevisionVista }) {
           <Fila key={c.clave} comprobacion={c} />
         ))}
       </ul>
-      <Alerta tipo="aviso" compacta anuncio="ninguno">
+      <Alerta tipo="info" compacta anuncio="ninguno">
         {LIMITE_DE_LO_AUTOMATICO}
       </Alerta>
       <p className="text-sm text-texto-suave">

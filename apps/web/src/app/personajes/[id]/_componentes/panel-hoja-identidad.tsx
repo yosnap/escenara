@@ -181,10 +181,10 @@ export function PanelHojaIdentidad({
 
       {/* Generar exige poder generar: consentimiento vigente y fotos suficientes. Lo dice el motor, no esto. */}
       {!personaje.puedeGenerar && (
-        <Aviso tono="info">
+        <Alerta tipo="bloqueo" compacta anuncio="estado">
           Este personaje todavía no puede generar, así que tampoco su hoja.{" "}
           {personaje.impedimentos.join(" ") || "Revisa su consentimiento y sus fotos."}
-        </Aviso>
+        </Alerta>
       )}
 
       {personaje.puedeGenerar &&

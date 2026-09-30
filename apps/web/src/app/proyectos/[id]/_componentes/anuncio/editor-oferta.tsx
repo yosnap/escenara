@@ -265,7 +265,7 @@ export function EditorDeOferta({
               />
             )}
           </Campo>
-          <Aviso tono="info">{AVISO_OFERTA_INCOMPLETA}</Aviso>
+          <Aviso tono="aviso">{AVISO_OFERTA_INCOMPLETA}</Aviso>
           <div className="flex flex-wrap justify-end gap-2">
             <Boton
               variante="fantasma"

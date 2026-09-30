@@ -118,7 +118,7 @@ export function PanelMezcla({
         </div>
 
         {montaje.etiquetaObligatoria && (
-          <Alerta tipo="bloqueo" compacta anuncio="estado" icono={<Lock />}>
+          <Alerta tipo="info" compacta anuncio="estado" icono={<Lock />}>
             {montaje.motivoEtiqueta}
           </Alerta>
         )}

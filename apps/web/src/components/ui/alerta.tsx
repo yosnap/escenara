@@ -1,32 +1,36 @@
 "use client";
 
-import { AlertOctagon, ArrowDown, ArrowRight, Ban, CheckCircle2, TriangleAlert, X } from "lucide-react";
+import { AlertOctagon, ArrowDown, ArrowRight, Ban, CheckCircle2, Info, TriangleAlert, X } from "lucide-react";
 import { type ReactNode, useId, useState } from "react";
 import { claveDeProblema, type Problema, primeroPendiente, sinRepetidos } from "@/lib/llevar-al-problema";
 import { Boton } from "./button";
 import { cn } from "./cn";
 import { useNavegacionDePasos } from "./contexto-pasos";
-import { CLASES_FLECHA, CLASES_FLECHA_ANIMADA, llevarAlProblema } from "./llevar-al-problema";
+import { buscarProblema, CLASES_FLECHA, CLASES_FLECHA_ANIMADA, llevarAlProblema } from "./llevar-al-problema";
 
 /**
  * **Alerta**: el componente único para todo lo que la plataforma tiene que decir de un problema o de un resultado.
  *
  * - **bloqueo**: algo impide seguir (falta una casilla, un paso está cerrado). Persiste hasta que se resuelve.
  * - **error**: algo ha fallado (una petición, una generación). Persiste hasta que se resuelve o se reintenta.
- * - **aviso**: información que conviene leer. Solo se puede descartar si no protege dinero ni consentimiento.
+ * - **aviso**: pide atención sin bloquear (gasto alto, «Necesita ajustes», un riesgo). Ámbar con triángulo.
+ * - **info**: información sin más (una nota, una guía, algo que decide otro, un trabajo en marcha). Azul de marca.
  * - **hecho**: confirmación de que algo ha salido bien (guardado, enviado). No es un problema: no lleva a ningún sitio.
  *
  * Lleva al problema: cada elemento de la lista (o la acción «Ir al campo») cambia al paso que lo contiene, lo desplaza a
  * la vista, lo resalta y lo señala con una flecha. Es zona de claridad: borde completo (nunca lateral), icono y texto
  * (nunca solo color) y sin movimiento propio; la flecha es lo único que se mueve, y no lo hace con «reducir movimiento».
  *
- * Accesibilidad: el título y el mensaje van en **una** región viva (`alert` para bloqueo y error, `status` para aviso y
- * hecho), así que se anuncian una sola vez; la lista de elementos y los botones quedan fuera de la región para no
+ * Solo `aviso`, `info` y `hecho` se pueden descartar, y nunca si protegen dinero o consentimiento.
+ *
+ * Accesibilidad: el título y el mensaje van en **una** región viva (`alert` para bloqueo y error, `status` para el
+ * resto), así que se anuncian una sola vez; la lista de elementos y los botones quedan fuera de la región para no
  * repetirse al marcar una casilla. Una alerta que ya estaba en la pantalla al abrirla (el bloque de requisitos) no se
- * anuncia: `anuncio="ninguno"`, y entonces es una región con nombre.
+ * anuncia: `anuncio="ninguno"`; si tiene título es una región con ese nombre, y si no, un bloque sin nombre (así una
+ * lista de trabajos fallidos no llena de «regiones» la navegación del lector).
  */
 
-export type TipoAlerta = "bloqueo" | "error" | "aviso" | "hecho";
+export type TipoAlerta = "bloqueo" | "error" | "aviso" | "info" | "hecho";
 export type AnuncioAlerta = "alerta" | "estado" | "ninguno";
 
 interface EstiloAlerta {
@@ -50,7 +54,7 @@ export const ESTILO_ALERTA: Record<TipoAlerta, EstiloAlerta> = {
   error: {
     etiqueta: "Error",
     icono: <AlertOctagon />,
-    borde: "border-error/60",
+    borde: "border-error/80",
     texto: "text-error",
     circulo: "bg-error/12",
     anuncio: "alerta",
@@ -58,15 +62,23 @@ export const ESTILO_ALERTA: Record<TipoAlerta, EstiloAlerta> = {
   aviso: {
     etiqueta: "Aviso",
     icono: <TriangleAlert />,
-    borde: "border-aviso/60",
+    borde: "border-aviso/80",
     texto: "text-aviso",
     circulo: "bg-aviso/12",
+    anuncio: "estado",
+  },
+  info: {
+    etiqueta: "Información",
+    icono: <Info />,
+    borde: "border-acento/80",
+    texto: "text-acento",
+    circulo: "bg-acento/12",
     anuncio: "estado",
   },
   hecho: {
     etiqueta: "Hecho",
     icono: <CheckCircle2 />,
-    borde: "border-correcto/45",
+    borde: "border-correcto/80",
     texto: "text-correcto",
     circulo: "bg-correcto/12",
     anuncio: "estado",
@@ -95,7 +107,7 @@ export interface AlertaProps<T extends Problema = Problema> {
   onIr?: (problema: T) => void;
   /** Botones o enlaces propios, debajo del mensaje. */
   accion?: ReactNode;
-  /** Solo un **aviso** o un **hecho** se pueden descartar, y nunca si protegen dinero o consentimiento. */
+  /** Solo un **aviso**, un **info** o un **hecho** se pueden descartar, y nunca si protegen dinero o consentimiento. */
   descartable?: boolean;
   /** La alerta protege dinero o consentimiento (gasto, derechos, revisión de fotos): nunca se descarta. */
   protege?: boolean;
@@ -108,12 +120,17 @@ export interface AlertaProps<T extends Problema = Problema> {
   etiqueta?: string;
   /** Versión apretada para avisos breves dentro de un formulario o un diálogo. */
   compacta?: boolean;
+  /** Identificador del bloque, para describir con él otro control (`aria-describedby`). */
+  id?: string;
   className?: string;
 }
 
+/** Cuánto se espera, tras pulsar «Ir al campo», antes de decir que ese campo no está en la pantalla. */
+const MS_COMPROBAR_DESTINO = 400;
+
 /** ¿Se puede descartar? Bloqueos y errores persisten; lo que protege dinero o consentimiento, también. */
 export const esDescartable = (tipo: TipoAlerta, descartable?: boolean, protege?: boolean) =>
-  descartable === true && protege !== true && (tipo === "aviso" || tipo === "hecho");
+  descartable === true && protege !== true && (tipo === "aviso" || tipo === "info" || tipo === "hecho");
 
 export function Alerta<T extends Problema = Problema>({
   tipo,
@@ -131,15 +148,30 @@ export function Alerta<T extends Problema = Problema>({
   icono,
   etiqueta,
   compacta = false,
+  id,
   className,
 }: AlertaProps<T>) {
   const estilo = ESTILO_ALERTA[tipo];
   const navegacion = useNavegacionDePasos();
   const idTitulo = useId();
   const [descartada, setDescartada] = useState(false);
+  /** Texto del problema al que se quiso ir y que no está en la pantalla: se dice en lugar de no hacer nada. */
+  const [perdido, setPerdido] = useState<string | null>(null);
   if (descartada) return null;
 
-  const ir = onIr ?? ((problema: T) => llevarAlProblema(problema, navegacion));
+  const llegar = onIr ?? ((problema: T) => llevarAlProblema(problema, navegacion));
+  const ir = (problema: T) => {
+    setPerdido(null);
+    llegar(problema);
+    const destinoId = problema.id;
+    if (!destinoId || typeof window === "undefined") return;
+    window.setTimeout(() => {
+      if (buscarProblema(destinoId)) return;
+      if (process.env.NODE_ENV !== "production")
+        console.warn(`La alerta apunta a «${destinoId}», que no está en la página.`);
+      setPerdido(problema.texto);
+    }, MS_COMPROBAR_DESTINO);
+  };
   const lista = sinRepetidos(elementos);
   const primero = primeroPendiente(lista);
   const conSitio = lista.filter((p) => p.id !== undefined && p.id !== "").length;
@@ -176,11 +208,13 @@ export function Alerta<T extends Problema = Problema>({
     </div>
   );
 
+  // Solo es una región (con nombre) si no se anuncia y tiene título; si no, un bloque sin nombre.
+  const Contenedor = modo === "ninguno" && titulo !== undefined ? "section" : "div";
   return (
-    <section
+    <Contenedor
+      id={id}
       data-alerta={tipo}
-      aria-labelledby={modo === "ninguno" && titulo !== undefined ? idTitulo : undefined}
-      aria-label={modo === "ninguno" && titulo === undefined ? (etiqueta ?? estilo.etiqueta) : undefined}
+      aria-labelledby={Contenedor === "section" ? idTitulo : undefined}
       className={cn(
         "relative flex flex-col rounded-tarjeta border-2 bg-superficie shadow-sm",
         compacta ? "gap-2 p-3" : "gap-3 p-4",
@@ -236,6 +270,12 @@ export function Alerta<T extends Problema = Problema>({
         </ul>
       )}
 
+      {perdido !== null && (
+        <p role="status" className="text-sm text-texto">
+          No se encuentra «{perdido}» en esta pantalla: puede que ya esté resuelto o que esté en otra parte.
+        </p>
+      )}
+
       {(accion || destino?.id || (primero && conSitio > 1)) && (
         <div className="flex flex-wrap items-center gap-2">
           {primero && conSitio > 1 && (
@@ -267,7 +307,7 @@ export function Alerta<T extends Problema = Problema>({
           <X className="size-5" aria-hidden />
         </button>
       )}
-    </section>
+    </Contenedor>
   );
 }
 

@@ -101,7 +101,7 @@ export function PanelCantoEscena({
       {canto && (
         <>
           {!canto.activo && (
-            <Aviso tono="info">
+            <Aviso tono="aviso">
               Quien administra tiene desactivadas las escenas de canto. Puedes preparar el audio y la declaración, pero
               no se generará ningún clip.
             </Aviso>

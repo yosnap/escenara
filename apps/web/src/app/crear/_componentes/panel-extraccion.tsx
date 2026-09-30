@@ -130,7 +130,7 @@ export function PanelExtraccion({
 
       {campos && (
         <div className="flex flex-col gap-4">
-          {sinLeer !== "" && <Aviso tono="info">{sinLeer}</Aviso>}
+          {sinLeer !== "" && <Aviso tono="aviso">{sinLeer}</Aviso>}
           {ORDEN.map((campo) => (
             <Campo key={campo} etiqueta={ETIQUETAS[campo].etiqueta} ayuda={ETIQUETAS[campo].ayuda}>
               {(props) => (

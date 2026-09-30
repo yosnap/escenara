@@ -21,7 +21,7 @@ const listaConY = (partes: readonly string[]) =>
  * **Lo que decide el trend**, en lugar de sus controles. Las categorías que dicta el trend no se preguntan: se dicen
  * aquí, con el motivo escrito, para que nadie busque el control que falta ni crea que su elección se va a enviar.
  *
- * Sale por la `Alerta` de bloqueo, con un candado y la lista de lo bloqueado. Ya está en la pantalla al elegir el
+ * No es un error ni un gasto: sale como `Alerta` informativa, con un candado y la lista de lo que decide el trend. Ya está en la pantalla al elegir el
  * trend, así que no se anuncia de golpe: es una región con el motivo por nombre.
  */
 export function DecididoPorTrend({ trend }: { trend: TrendDeLaDireccion }) {
@@ -30,7 +30,7 @@ export function DecididoPorTrend({ trend }: { trend: TrendDeLaDireccion }) {
   const etiquetas = trend.decide.map(etiquetaDecidible);
   return (
     <div data-decidido-por-trend>
-      <Alerta tipo="bloqueo" titulo={motivo} icono={<Lock />} anuncio="ninguno">
+      <Alerta tipo="info" titulo={motivo} icono={<Lock />} anuncio="ninguno">
         <ul className="flex flex-wrap gap-2 py-1" aria-label="Opciones que decide el trend">
           {etiquetas.map((etiqueta) => (
             <li

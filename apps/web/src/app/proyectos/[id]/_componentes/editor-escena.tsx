@@ -168,7 +168,13 @@ export function EditorEscena({
       */}
       {escena.controles.comprobaciones.length > 0 && (
         <Alerta
-          tipo={escena.controles.comprobaciones.some((c) => c.estado === "bloqueado") ? "bloqueo" : "aviso"}
+          tipo={
+            escena.controles.comprobaciones.some((c) => c.estado === "bloqueado")
+              ? "bloqueo"
+              : escena.controles.comprobaciones.some((c) => c.estado === "ajustes")
+                ? "aviso"
+                : "info"
+          }
           compacta
           anuncio="estado"
         >

@@ -34,7 +34,7 @@ describe("alerta: los tres tipos", () => {
     const html = renderToStaticMarkup(<Alerta tipo="aviso">El precio se comprobó hace dos días.</Alerta>);
     expect(html).toContain('role="status"');
     expect(html).not.toContain('role="alert"');
-    expect(html).toContain("border-aviso/60");
+    expect(html).toContain("border-aviso/80");
   });
 
   test("hecho: estado, sin nada a lo que llevar", () => {

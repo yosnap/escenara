@@ -1,6 +1,7 @@
 "use client";
 
 import { Clapperboard, Frame, ImagePlus, Lock, Move3d, PenLine, Timer, Video } from "lucide-react";
+import { useId } from "react";
 import {
   ACENTOS,
   AVISO_MODO_EXPERTO,
@@ -200,6 +201,7 @@ export function PanelDireccion({
   // honesto. El acento y la voz siguen siendo suyos: describen quién habla, no lo que se ve. Con un trend no hay modo
   // experto: el servidor lo rechaza, así que tampoco se enseña como activo.
   const experto = direccion.modoExperto && !trend;
+  const idSinExperto = useId();
   const botonesApagados = deshabilitado || experto;
 
   /**
@@ -474,10 +476,12 @@ export function PanelDireccion({
           descripcion={AYUDA_MODO_EXPERTO}
           marcada={experto}
           deshabilitado={deshabilitado || trend !== null}
+          // Con un trend, el motivo de que esté desactivada forma parte de su descripción accesible.
+          describidaPor={trend ? idSinExperto : undefined}
           onCambio={(v) => onCambio("modoExperto", v)}
         />
         {trend && (
-          <Alerta tipo="bloqueo" compacta anuncio="ninguno" icono={<Lock />}>
+          <Alerta tipo="info" compacta anuncio="ninguno" icono={<Lock />} id={idSinExperto}>
             {sinExpertoConTrend(trend.nombre)}
           </Alerta>
         )}
@@ -499,7 +503,7 @@ export function PanelDireccion({
                 />
               )}
             </Campo>
-            <Aviso tono="info">{AVISO_MODO_EXPERTO}</Aviso>
+            <Aviso tono="aviso">{AVISO_MODO_EXPERTO}</Aviso>
           </>
         )}
       </div>

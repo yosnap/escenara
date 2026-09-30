@@ -16,5 +16,5 @@ export function AvisoFotoDeProducto({
   referencias: number;
 }) {
   if (!foto || foto.admite || referencias === 0) return null;
-  return <Aviso tono="info">{avisoFotoDeProducto(foto)}</Aviso>;
+  return <Aviso tono="aviso">{avisoFotoDeProducto(foto)}</Aviso>;
 }
