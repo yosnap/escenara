@@ -24,16 +24,24 @@ respuestas grabadas del proveedor. **Una migración aditiva**: lee «Actualizar 
 - **Borrar un proyecto** desde su pantalla, con un diálogo propio que enumera con cifras qué se borra y qué se queda.
 - **Borrar la cuenta** (Tu cuenta › Tus datos): sesión reciente (haber entrado hace menos de 10 minutos), lista de
   todo lo que desaparece, exportar cada proyecto antes, frase escrita y **periodo de gracia** (7 días de fábrica). En la
-  gracia la cuenta está desactivada: **no puede generar, gastar, editar ni subir** (403 con el motivo), pero sí
-  cancelar el borrado, ver su historial y **pedir y descargar el ZIP de sus proyectos** desde `/cuenta/borrado`. El
+  gracia la cuenta está desactivada: **no puede generar ni gastar** (el encolado lo rechaza y el worker no envía nada
+  suyo, tampoco un reintento), **ni editar o subir nada** (403 con el motivo), **ni cambiar su correo, su contraseña,
+  sus passkeys o sus cuentas vinculadas, ni borrarse por otra vía** (las rutas de Better Auth lo rechazan). Sí puede
+  entrar y salir, cerrar sesiones, cancelar el borrado, ver su historial y **pedir y descargar el ZIP de sus
+  proyectos** desde `/cuenta/borrado`. El titular recibe un **correo al pedirlo y al cancelarlo** (sin enlaces que
+  permitan cancelar sin entrar). El
   único administrador (sin contar a los que ya tienen su borrado programado) no puede borrarse. Si un administrador
   publicó ejemplos de plantillas de la instalación, el diálogo avisa de que esas plantillas se quedarán sin ejemplo
   (no se borran, ni se toca ningún medio ajeno).
 - **Nada se queda atascado en silencio**: los archivos que el almacenamiento no deja borrar (de un proyecto o de una
   cuenta) quedan apuntados y el worker los reintenta con retroceso; los que agotan los intentos se ven como «fallidos».
   Un borrado de cuenta que espera más allá de su plazo enseña el motivo al usuario en `/cuenta/borrado` y a quien
-  administra, y se reintenta con retroceso. Un trabajo «sin respuesta del proveedor» solo retiene el borrado unos días
-  más (3 de fábrica): después se cancela **sin cobro** y el borrado sigue.
+  administra, y se reintenta con retroceso; los fallidos se pueden reintentar desde el panel. Un trabajo «sin respuesta
+  del proveedor» ya salió y pudo cobrarse: solo retiene el borrado unos días más (3 de fábrica); después se consulta al
+  proveedor una última vez y, si sigue sin respuesta, se apunta su **coste estimado como no confirmado** (no se da por
+  «sin cobro»: el proveedor pudo cobrarlo a la instalación) y el borrado sigue. El agregado distingue esa parte.
+- **Las rutas de administración de la librería de cuentas** (`/api/auth/admin/*`: suplantar, cambiar rol, prohibir,
+  borrar usuarios…) **quedan desactivadas**: Escenara no las usa, y borrar una cuenta pasa siempre por el worker.
 - **Admin › Ajustes › Tus datos**: días de gracia, días de espera a un trabajo sin respuesta, tamaño máximo del ZIP,
   horas de caducidad y exportaciones por día; y el estado: archivos pendientes o fallidos de borrar y borrados de cuenta
   aplazados con su motivo.
@@ -50,9 +58,10 @@ respuestas grabadas del proveedor. **Una migración aditiva**: lee «Actualizar 
   impiden borrar (409; si ya se habían cancelado trabajos en cola, el mensaje lo dice); lo que estaba en cola se cancela
   liberando su reserva. Un archivo que otro sitio cita, también dentro de una versión de un personaje o de un lugar o en
   otro trabajo, se conserva.
-- **Borrar un proyecto y encolar a la vez no puede cobrar**: los dos caminos bloquean primero la fila del usuario; el
-  encolado comprueba dentro de su transacción que la escena sigue existiendo, y el worker cierra sin cobro un trabajo
-  cuyo proyecto ha desaparecido antes de enviarlo.
+- **Borrar un proyecto o un personaje y encolar a la vez no puede enviar ni cobrar**: los caminos bloquean primero la
+  fila del usuario; el encolado comprueba dentro de su transacción que la escena y el personaje siguen existiendo, y el
+  worker cierra sin cobro (reserva liberada, consumo 0) un trabajo cuyo proyecto, escena o personaje ha desaparecido
+  antes de enviarlo, diciendo cuál. Con un personaje borrado, sus fotos nunca salen sin consentimiento que revisar.
 - **La exportación lee cada archivo por trozos** (nunca entero en memoria) y alarga su toma mientras empaqueta; la clave
   del ZIP ya no lleva el identificador de la cuenta y es distinta en cada intento.
 - Al borrar la cuenta, de ella solo queda el **gasto agregado** por mes, proveedor, modelo y tipo, y una **prueba

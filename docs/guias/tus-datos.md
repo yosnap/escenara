@@ -99,7 +99,8 @@ En **Tu cuenta › Tus datos › «Borrar mi cuenta»**. Es irreversible, así q
 2. El diálogo **enumera todo lo que desaparece**, con cifras, y te ofrece **exportar cada proyecto** antes.
 3. Hay que **escribir «borrar mi cuenta»**.
 4. Hay un **periodo de gracia** (7 días de fábrica). Durante ese tiempo tu cuenta queda **desactivada**: tus demás
-   sesiones se cierran, lo que estaba en cola se cancela y **no puedes generar, gastar, editar ni subir nada**. Si
+   sesiones se cierran, lo que estaba en cola se cancela y **no puedes generar, gastar, editar ni subir nada**, ni
+   cambiar tu correo, tu contraseña o tus passkeys. Si
    entras, llegas a **«Tu cuenta se va a borrar»**, donde ves la fecha, puedes **cancelar el borrado**, ver tu historial
    y **pedir y descargar el ZIP de cada proyecto** (la portabilidad no se corta por haber pedido el borrado).
 5. Si eres **el único administrador** (sin contar a los que ya tienen su borrado programado), no puedes borrarte:
@@ -113,8 +114,13 @@ vuelve a intentar más tarde. Después borra los archivos; los que el almacenami
 reintentan solos, y quien administra los ve si se atascan.
 
 Si hay un trabajo tuyo en el proveedor, el borrado espera y **te dice por qué** en «Tu cuenta se va a borrar» (y quien
-administra lo ve en Admin › Ajustes › Tus datos). Un trabajo del que el proveedor no ha contestado solo lo retiene unos
-días más (3 de fábrica): después se cancela **sin cobro** y el borrado sigue.
+administra lo ve en Admin › Ajustes › Tus datos). Un trabajo del que el proveedor no ha contestado ya salió y pudo
+cobrarse: solo retiene el borrado unos días más (3 de fábrica). Después se pregunta al proveedor una última vez y, si
+sigue sin contestar, su coste estimado se apunta como **no confirmado** y el borrado sigue.
+
+Al pedir el borrado y al cancelarlo te llega un **correo**: si no has sido tú, entra, cancélalo y cambia después tu
+contraseña (durante la gracia no se puede cambiar la contraseña, el correo ni las passkeys, para que nadie se quede con
+la cuenta mientras tanto).
 
 **Desaparece**: tus proyectos, personajes, productos y lugares; todos tus archivos (también del almacenamiento); tus
 claves de proveedor, passkeys y sesiones; tu presupuesto, tu historial y tus apuntes de gasto; tu kit de marca y tus

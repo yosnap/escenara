@@ -151,12 +151,18 @@ Lo que se hace, con su motivo, para que la revisión jurídica lo confirme o lo 
   `storage_deletions` **en la misma transacción** que borra las filas; el worker los reintenta con retroceso (hasta 8
   intentos) y la fila se borra al borrar el objeto. Los que agotan los intentos quedan como «fallidos», con su clave,
   visibles para quien administra en Admin › Ajustes › Tus datos, que tiene que limpiarlos a mano. Lo mismo al borrar
-  un **proyecto**. Mientras un archivo siga ahí, su clave (que puede incluir el identificador interno de la cuenta)
-  también sigue en esa tabla; desaparece con él.
-- **Durante la gracia** la cuenta no puede generar, gastar, editar ni subir; sí cancelar el borrado, ver su historial y
-  pedir o descargar la exportación de sus proyectos (portabilidad). Si el borrado tiene que esperar (un trabajo en el
-  proveedor, el único administrador…), el motivo se enseña al usuario y a quien administra; un trabajo sin respuesta del
-  proveedor solo lo retiene unos días más (3 de fábrica) y luego se cancela sin cobro.
+  un **proyecto**. Las claves no incluyen el identificador de la cuenta (son identificadores aleatorios), y la fila
+  desaparece con el objeto. Quien administra puede volver a poner en cola los fallidos desde el panel.
+- **Durante la gracia** la cuenta no puede generar ni gastar (el encolado lo rechaza y el worker no envía nada suyo),
+  editar ni subir, ni cambiar su correo, contraseña, passkeys o cuentas vinculadas, ni borrarse por otra vía; sí entrar
+  y salir, cerrar sesiones, cancelar el borrado, ver su historial y pedir o descargar la exportación de sus proyectos
+  (portabilidad). El titular recibe un correo al pedir y al cancelar el borrado, sin enlaces que permitan cancelar sin
+  entrar. Las rutas de administración de cuentas de la librería (suplantar, cambiar rol, borrar usuarios) están
+  desactivadas: todo borrado de cuenta pasa por este flujo, con su retención.
+- Si el borrado tiene que esperar (un trabajo en el proveedor, el único administrador…), el motivo se enseña al usuario
+  y a quien administra. Un trabajo **sin respuesta del proveedor** ya salió y pudo cobrarse: solo retiene el borrado unos
+  días más (3 de fábrica); después se consulta una última vez y, si sigue sin respuesta, su coste **estimado** se
+  conserva en el agregado marcado como **no confirmado** (no se afirma que no se cobrara).
 - **Gasto**: se conserva solo **agregado** por mes, proveedor, modelo y tipo de apunte (`usage_aggregates`), sin
   cuenta, trabajo, nota ni fecha exacta. Motivo: trazabilidad del gasto de la instalación (decisión 3 de la fase).
 - **Consentimientos y declaraciones de derechos** (consentimiento de un personaje, declaración de un lugar, de una
