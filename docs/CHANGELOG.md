@@ -2,6 +2,42 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.33.2] · 2026-09-30
+
+Parche de pulido de la **dirección del clip y del producto**, en «Crear» y en la escena de un proyecto. Solo cambia
+cómo se ve y cómo se explica: sin migraciones, sin cambios de precio y sin tocar qué se envía al modelo.
+
+### Cambiado
+
+- **Cada grupo tiene una cabecera que se ve.** «Plano», «Ángulo», «Movimiento de cámara», «Cuándo ocurre el gesto»,
+  «Qué se hace con él», «El producto», «El fotograma» y «Escríbelo tú» llevan ahora icono, un título grande y en negrita
+  con color y una explicación legible debajo, y hay bastante más espacio entre grupos y dentro de las tarjetas.
+  Cada familia de grupos tiene su tono (cámara y gesto, producto, fotograma y texto propio) para que no cansen. Los
+  colores son los de la marca con contraste comprobado en claro y en oscuro.
+- **Cada tarjeta dice una sola cosa.** Antes salían dos frases casi iguales seguidas («Lo gira hacia la cámara con la
+  etiqueta de frente, para que se lea.» y debajo «Lo gira hacia la cámara con la etiqueta de frente.»). Ahora sale una:
+  la descripción del catálogo (la que se corrige en Admin › Presets) y, si la opción no la tiene, la frase del dibujo.
+  Lo mismo en «¿De dónde sale el clip?».
+- **El catálogo de componentes** (Admin › Componentes) enseña las cabeceras, el elector con partes y una sección nueva,
+  **Producto y acción**.
+
+### Corregido
+
+- **La acción del producto es una sola elección y ahora se ve así.** Moda, cuidado de la piel y «Con el producto en la
+  mano» eran la misma lista partida en tres campos que parecían independientes: elegir algo en «Moda» desmarcaba lo
+  elegido arriba sin explicación. Ahora hay una frase que lo dice, un resumen **«Elegida: Abrirlo»** que cambia al
+  elegir en cualquier parte y las tres familias son partes de la misma lista, con su subtítulo.
+- **Moda y cuidado de la piel ya no salen siempre.** Un producto no dice si es ropa o cosmética y no se adivina por el
+  nombre, así que esas dos familias van en un bloque **«Más acciones (moda, cuidado de la piel)»**, cerrado al empezar,
+  que se abre solo si la acción elegida es de ellas.
+
+### Documentación
+
+- Referencias a versiones futuras en la documentación y los comentarios del código puestas al día con la hoja de ruta:
+  formatos 16:9 y 1:1 en la 0.41.0, revisión legal y metadatos C2PA en la 0.46.0, piloto e instancia pública en la
+  0.48.0. No cambia lo que hizo ninguna versión ya publicada.
+- Guías «Dirigir tu clip» y «Productos» al día con las cabeceras, la línea única y la lista de acciones.
+
 ## [0.33.1] · 2026-09-30
 
 Parche de «Crear»: **un campo que faltaba, los requisitos a la vista y el trend que ya no falla por el modelo**. Sin

@@ -30,14 +30,19 @@ puede rechazar un logo, y en ese caso no se genera nada y **no se te cobra**.
 
 ## Elegirlo en un clip
 
-En el panel de dirección, bloque **El producto**: eliges cuál y **qué se hace con él**. Cada acción lleva su
-dibujo y una frase de lo que verás.
+En el panel de dirección, bloque **El producto**: eliges cuál y **qué se hace con él**. Es **una sola elección**
+entre todas las acciones, aunque salgan repartidas en familias: si eliges una de moda, se desmarca la que tenías
+en «Con el producto en la mano». Encima de la lista, **«Elegida: …»** te dice cuál es en cada momento. Cada acción
+lleva su dibujo y **una frase** de lo que verás.
 
-- **Con el producto en la mano**: sostenerlo, mirarlo, señalarlo, enseñarlo a cámara, abrirlo, aplicarlo, o el
-  **producto solo**.
-- **Moda**: cuerpo entero, detalle del tejido, giro de 360°, pasarela, pose de editorial y detalle del
-  accesorio.
-- **Cuidado de la piel**: abrir la tapa, extender el producto hasta que se absorbe, y masajear.
+- **Con el producto en la mano** (siempre a la vista): sostenerlo, mirarlo, señalarlo, enseñarlo a cámara,
+  abrirlo, aplicarlo, o el **producto solo**.
+- **Más acciones (moda, cuidado de la piel)**, un bloque **cerrado** que abres con su botón. Escenara no sabe si tu
+  producto es ropa o cosmética, así que no lo adivina: las guarda ahí para que no estorben si vendes otra cosa. Se
+  abre solo si la acción elegida es de una de ellas.
+  - **Moda**: cuerpo entero, detalle del tejido, giro de 360°, pasarela, pose de editorial y detalle del
+    accesorio.
+  - **Cuidado de la piel**: abrir la tapa, extender el producto hasta que se absorbe, y masajear.
 
 Las de **cuidado de la piel** salen marcadas como **poco fiables**, y no es una fórmula: con los modelos de
 hoy, abrir un envase y seguir una mano sobre la piel falla a menudo. Puedes pedirlas, pero se te dice antes de
