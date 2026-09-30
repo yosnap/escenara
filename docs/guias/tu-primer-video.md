@@ -1,6 +1,6 @@
 # Tu primer vídeo
 
-Guía para generar tu primer fotograma y tu primer clip en Escenara, desde el navegador y sin tocar código. Disponible desde la versión **0.10.0** y puesta al día con la **0.33.1**.
+Guía para generar tu primer fotograma y tu primer clip en Escenara, desde el navegador y sin tocar código. Disponible desde la versión **0.10.0** y puesta al día con la **0.36.0**.
 
 ![Flujo de Escenara: personaje, fotograma, clip, voz, montaje y exportación, con lo que cuesta cada paso](../assets/diagramas/flujo-general.svg)
 
@@ -55,7 +55,7 @@ El fotograma sale vertical (9:16), el formato de Reels, TikTok y Shorts.
 
 ### 5. Revisa el coste y confirma
 
-Si falta algo para poder generar, arriba del paso sale un bloque **«Antes de generar, falta:»** con cada punto como botón: al pulsarlo, «Crear» cambia al paso que toca, te lleva al campo o a la casilla, le da el foco y lo resalta unos segundos (con el movimiento reducido en tu sistema, el resaltado es un aro fijo, sin animación). Al abrir un paso no hay nada en rojo; el campo o la casilla pendiente se marca con un aro rojo completo y, debajo, lo que falta, cuando sales del paso, pulsas un punto del bloque o pulsas el botón de generar con algo pendiente (el botón no envía nada mientras falte algo: te lleva al primero). En la barra de pasos, el paso con requisitos pendientes muestra cuántos faltan. Todo esto solo señala: los requisitos y el botón de generar son los mismos de siempre.
+Si falta algo para poder generar, arriba del paso sale una **alerta de bloqueo** con el título **«Antes de generar, falta:»**: borde rojo completo, el rótulo «Bloqueo» y cada punto numerado y como botón, con el primero destacado. Al pulsar un punto, o **«Ir al primero»**, «Crear» cambia al paso que toca, te lleva al campo o a la casilla, le da el foco, lo rodea con un aro del color de la marca y le pone encima una **flecha que rebota** señalándolo. La flecha y el aro se quitan a los pocos segundos, en cuanto tocas el campo o al pulsar en otro sitio. Con el movimiento reducido en tu sistema, la página salta sin desplazamiento suave, la flecha no se mueve y el aro no late. Al abrir un paso no hay nada en rojo; el campo o la casilla pendiente se marca con un aro rojo completo y, debajo, lo que falta, cuando sales del paso, pulsas un punto del bloque o pulsas el botón de generar con algo pendiente (el botón no envía nada mientras falte algo: te lleva al primero). En la barra de pasos, el paso con requisitos pendientes muestra cuántos faltan. Todo esto solo señala: los requisitos y el botón de generar son los mismos de siempre.
 
 El panel de coste es la zona clara de la pantalla y dice tres cosas:
 

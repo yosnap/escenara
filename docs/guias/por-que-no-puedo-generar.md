@@ -1,6 +1,6 @@
 # Por qué no puedo generar
 
-Guía de uso · puesta al día en la versión 0.32.1
+Guía de uso · puesta al día en la versión 0.36.0
 
 Antes de gastar un solo crédito, Escenara comprueba si se puede generar y te lo dice en una sola zona: el panel
 **«Antes de generar»**, justo encima del botón. Esas comprobaciones **son gratis**: mirar el panel no encola nada,
@@ -21,7 +21,25 @@ de pantalla.
 | ⛔ **Bloqueado** | Hay un requisito sin cumplir. | Cumplirlo. **Esto no se puede saltar**, ni desde la aplicación ni llamando a la API. |
 
 Cada comprobación te dice **por qué** y **qué hacer**, y cuando se arregla en otra pantalla te lleva a ella con
-un enlace («Ir a arreglarlo»).
+un enlace («Ir a arreglarlo»). Desde la 0.36.0 el estado y sus comprobaciones van en una sola **alerta**, con el
+rótulo del estado arriba.
+
+## Cómo son las alertas
+
+Todo lo que impide seguir, lo que ha fallado y lo que conviene saber sale en toda la plataforma con **la misma
+alerta**: un recuadro con borde completo, un icono y un rótulo que dice qué es, además del color.
+
+| Rótulo | Cuándo sale | ¿Se puede cerrar? |
+|---|---|---|
+| **Bloqueo** (rojo) | Falta algo para seguir: una casilla, un campo, un paso anterior. | No. Se va sola cuando lo resuelves. |
+| **Error** (rojo) | Algo ha fallado: una petición, una generación. Dice la causa, si se ha cobrado y qué hacer. | No. Se va al reintentar o al resolverlo. |
+| **Aviso** (ámbar) | Algo que conviene leer antes de seguir. | Solo algunos, con la X. Los de **gasto, derechos, consentimiento y revisión de fotos nunca se cierran**. |
+
+Cuando la alerta enumera lo que falta, cada punto es un botón que **te lleva a él**: cambia de paso si hace falta,
+desplaza la pantalla, pone el foco en el campo o la casilla, lo rodea con un aro y lo señala con una flecha. Con
+varios puntos, el primero va destacado y **«Ir al primero»** te lleva a él. Con el movimiento reducido en tu
+sistema no hay desplazamiento suave ni flecha en movimiento. Las alertas no cambian **qué** bloquea: los motivos y
+las reglas son los de siempre.
 
 ## Bloqueado: los motivos y su solución
 

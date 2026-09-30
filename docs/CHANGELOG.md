@@ -2,6 +2,54 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.36.0] · 2026-09-30
+
+**Alertas visibles.** Los avisos dejan de ser líneas sueltas que pasan desapercibidas: todo bloqueo, error o aviso
+sale en **una misma alerta** que se ve como tal y, cuando falta algo, **te lleva a ello**. No cambia qué bloquea
+nada ni sus textos, ni ningún coste; **sin migración**.
+
+### Añadido
+
+- **Una alerta para todo**, con tres tipos que se distinguen por el rótulo y el icono, no solo por el color:
+  **Bloqueo** (falta algo para seguir), **Error** (algo ha fallado; dice la causa, si se ha cobrado y qué hacer) y
+  **Aviso** (algo que conviene leer). Borde completo alrededor, nunca una raya de color a un lado.
+- **Te lleva al problema.** Cada punto de «Antes de generar, falta:» y de la confirmación del gasto es un botón:
+  cambia al paso que toca si estás en otro, desplaza la pantalla hasta el campo o la casilla, le pone el foco, lo
+  rodea con un aro del color de la marca y le pone encima una **flecha que rebota** señalándolo. La flecha se quita
+  a los pocos segundos, al tocar el campo o al pulsar en otro sitio.
+- **Varios problemas a la vez**: la alerta los numera, destaca el primero y tiene **«Ir al primero»**.
+- La alerta, sus tipos y estados (persistente, descartable, con varios puntos, con «Ir al campo» y la flecha con y
+  sin movimiento) están en **Admin › Componentes › Alertas**.
+
+### Cambiado
+
+- **Crear**: el bloque «Antes de generar, falta:», la lista de lo que falta junto al botón de generar, el panel
+  «Antes de generar» con sus comprobaciones «Necesita ajustes» y el aviso de gasto alto salen como alertas. El fallo
+  de una generación y el cobro por encima del límite también, en el resultado y en el historial.
+- **Lo que decide un trend** y el **modo experto desactivado** con un trend salen como alertas de bloqueo, con su
+  motivo de siempre.
+- **Proyectos**: «Para poder aprobar el plan falta esto:», «Para poder producir falta esto:», la confirmación del
+  gasto de cada escena (con «Falta confirmar la revisión de las fotos del personaje» y el resto de casillas, que
+  ahora llevan a su casilla), los frenos de cada escena, la nueva versión de un trend, el consentimiento que falta
+  en un reparto, el estado de la exportación y la etiqueta de IA obligatoria del montaje.
+- **Personajes**: lo que falta para generar retratos, la hoja de identidad y las vistas (cada casilla pendiente
+  lleva a la suya), lo que falta del consentimiento y lo que impide generar con Omni.
+- **Cuenta, acceso, biblioteca y ajustes**: los errores y los «Guardado» que eran una línea de color pasan a ser
+  alertas.
+- **Cerrar un aviso**: solo los informativos se pueden cerrar con la X. Los bloqueos y errores se quedan hasta que
+  se resuelven, y los avisos de **gasto, derechos, consentimiento y revisión de fotos no se cierran nunca**.
+
+### Accesibilidad
+
+- Los errores y bloqueos que aparecen al momento se anuncian una sola vez al lector de pantalla; los avisos, con
+  cortesía; lo que ya estaba al abrir la pantalla no se anuncia de golpe. La flecha no se lee (es solo visual) y
+  los botones de la alerta miden al menos 44 px.
+- Con **«reducir movimiento»** en el sistema no hay desplazamiento suave, la flecha no se mueve y el aro no late.
+
+### Actualizar desde la 0.35.2
+
+- Sin migración ni cambios de configuración. No hace falta reiniciar el worker: solo cambia la interfaz.
+
 ## [0.35.2] · 2026-09-30
 
 Parche de los errores: cuando el proveedor acepta un trabajo y luego no lo termina, **Escenara te dice por qué**, si

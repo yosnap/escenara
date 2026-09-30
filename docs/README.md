@@ -2,7 +2,7 @@
 
 **Escenara** · Estudio abierto de personajes y vídeo · «Da vida a cada escena»
 
-Mapa de la documentación pública del proyecto. Versión actual: **0.35.2**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
+Mapa de la documentación pública del proyecto. Versión actual: **0.36.0**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
 
 ## Mapa de documentos
 
@@ -16,14 +16,14 @@ Mapa de la documentación pública del proyecto. Versión actual: **0.35.2**. Pa
 | Guías | [Web de documentación](procesos/desplegar-documentacion-easypanel.md) | Las guías de `guias/` publicadas como web con buscador y tema claro y oscuro: `bun run docs:dev` (puerto 3022). El orden, los títulos y qué se publica salen de [guias/indice.json](guias/indice.json) | 0.32.1 |
 | Guías | [Configurar la API de cada proveedor](guias/configurar-la-api-de-cada-proveedor.md) | Dónde se consigue cada clave, dónde se guarda (Tu cuenta o Admin › Ajustes) y cómo se comprueba sin gastar | 0.32.1 |
 | Guías | [Dar de alta un modelo](guias/dar-de-alta-un-modelo.md) | Cómo entra un modelo en el catálogo, sus estados, el precio con fuente y fecha, la variante, el predeterminado y la recomendación de la instalación | 0.32.1 |
-| Guías | [Tu primer vídeo](guias/tu-primer-video.md) | Generar un fotograma y un clip de 4 s con tu clave de KIE | 0.10.0 |
+| Guías | [Tu primer vídeo](guias/tu-primer-video.md) | Generar un fotograma y un clip de 4 s con tu clave de KIE, y qué hacen las alertas cuando falta algo | 0.36.0 |
 | Guías | [Crear un personaje](guias/crear-un-personaje.md) | Personaje con sus fotos de referencia, consentimiento, revocación y borrado con derivados | 0.13.0 |
 | Guías | [Buenas referencias](guias/buenas-referencias.md) | Captura guiada, vistas que cubrir, control de calidad y vistas generadas | 0.14.0 |
 | Guías | [La ficha y las versiones de un personaje](guias/ficha-y-versiones-de-personaje.md) | Ficha como contexto de generación, versiones, aprobaciones invalidadas y hoja de personaje | 0.15.0 |
 | Guías | [Presets y plantillas](guias/presets-y-plantillas.md) | Crear con botones, previsualización y edición del prompt final, y el catálogo de presets del admin | 0.16.0 |
 | Guías | [El asistente de guion](guias/asistente-de-guion.md) | Proyectos, guion por escenas, afirmaciones por verificar y aprobación del plan con su coste | 0.17.0 |
-| Guías | [Por qué no puedo generar](guias/por-que-no-puedo-generar.md) | Los cuatro estados de los controles previos, cada motivo y cómo se arregla, y qué probar cuando el proveedor acepta el trabajo y no lo termina (por ejemplo, su filtro de seguridad lo bloquea) | 0.35.2 |
-| Guías | [Producir tu proyecto](guias/producir-tu-proyecto.md) | Rejilla de producción, etapas reales, zonas seguras, cancelación con «se cobrará» y reintentos autorizados | 0.19.0 |
+| Guías | [Por qué no puedo generar](guias/por-que-no-puedo-generar.md) | Los cuatro estados de los controles previos, cada motivo y cómo se arregla, qué probar cuando el proveedor acepta el trabajo y no lo termina (por ejemplo, su filtro de seguridad lo bloquea) y cómo son las alertas de bloqueo, error y aviso | 0.36.0 |
+| Guías | [Producir tu proyecto](guias/producir-tu-proyecto.md) | Rejilla de producción, etapas reales, zonas seguras, cancelación con «se cobrará», reintentos autorizados y la alerta de lo que falta antes de pagar | 0.36.0 |
 | Guías | [Revisar la continuidad](guias/revisar-la-continuidad.md) | Comparación del clip con la hoja de personaje, comprobaciones técnicas con FFmpeg, qué NO garantizan y qué bloquea exportar | 0.20.0 |
 | Guías | [Voz y subtítulos](guias/voz-y-subtitulos.md) | Modo de voz del proyecto, muestras cacheadas, invalidación al cambiar de voz, editor de subtítulos y exportación a SRT/WebVTT | 0.21.0 |
 | Guías | [Dirigir tu clip](guias/dirigir-tu-clip.md) | Las seis partes de la dirección (formato, plano y ángulo, cámara, micro-acción con su momento, guion, voz y acento), el método 6C del fotograma, partir de una foto de referencia y el modo «cambiar solo…» | 0.25.0 |
