@@ -1,6 +1,7 @@
 import { and, eq, isNotNull, lt, ne, or, sql } from "drizzle-orm";
 import type { Proveedor } from "@/lib/boveda";
 import { leerAjustes } from "../ajustes";
+import { ejecucionesDeLaComparativa } from "../comparativas/marcas";
 import { db, type Ejecutor } from "../db/cliente";
 import { type FilaTrabajo, generationJobs, scenes } from "../db/esquema";
 import { ErrorGeneracion } from "../generacion/errores";
@@ -101,8 +102,21 @@ async function exigirEscenaSinRepetir(tx: Ejecutor, peticion: PeticionEncolado):
   if (!escenaId) return;
   const tipo = peticion.valores.kind;
   const nombre = tipo === "animacion" ? "un clip" : tipo === "voz" ? "una pista de voz" : "un fotograma";
+  /**
+   * Una alternativa de una comparativa A/B: el usuario confirmó expresamente cuántos clips nuevos y cuánto cuestan, así
+   * que caben tantos en marcha como alternativas, y el clip que la escena ya tenga no los frena (no lo sustituyen).
+   */
+  const comparativa =
+    tipo === "animacion"
+      ? await ejecucionesDeLaComparativa(tx, {
+          usuarioId: peticion.usuarioId,
+          escenaId,
+          clave: peticion.claveIdempotencia,
+          modelo: peticion.valores.model,
+        })
+      : null;
   // Un podcast son **dos** clips de la misma escena, y los dos son legítimos: lo que no puede haber es uno más.
-  const esperados = tipo === "animacion" ? Math.max(1, peticion.escena?.clips ?? 1) : 1;
+  const esperados = comparativa ?? (tipo === "animacion" ? Math.max(1, peticion.escena?.clips ?? 1) : 1);
   if (esperados > 1 && peticion.valores.castClipOrder != null) {
     const [mismoPlano] = await tx
       .select({ id: generationJobs.id })
@@ -135,7 +149,7 @@ async function exigirEscenaSinRepetir(tx: Ejecutor, peticion: PeticionEncolado):
         : `Esta escena ya tiene sus ${esperados} clips en marcha. Espera a que terminen o cancélalos antes de pedir otros: si no, se pagarían todos.`,
     );
   }
-  if (tipo !== "animacion") return;
+  if (tipo !== "animacion" || comparativa !== null) return;
   /**
    * En un podcast **no hay fotograma** del que partir (es una escena hablada de Omni), así que los clips ya
    * conseguidos se cuentan tal cual: los `listo` de esta escena. Sin esto, un intercambio ya terminado dejaría

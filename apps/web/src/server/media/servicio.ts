@@ -9,7 +9,7 @@ import type {
   PaginaMedios,
 } from "@/lib/media/tipos";
 import { leerAjustes } from "../ajustes";
-import { borrarObjeto, guardarObjeto, urlTemporal } from "../almacenamiento";
+import { borrarObjeto, guardarObjeto } from "../almacenamiento";
 import { db } from "../db/cliente";
 import { collectionMedia, collections, type FilaMedio, media, users } from "../db/esquema";
 import { recalcularEstado } from "../personajes/consulta";
@@ -21,17 +21,13 @@ import {
 } from "../personajes/uso-de-medio";
 import { type TipoDetectado, validarArchivo } from "./deteccion";
 import { dimensionesVideo } from "./dimensiones-video";
+import { type Actor, aDto } from "./dto";
 import { ErrorMedio } from "./errores";
 import { esMimeDeDocumento, limpiarMetadatosDocumento } from "./metadatos-documento";
 import { medidasDeImagen, procesarImagen } from "./procesado";
 
-export { ErrorMedio };
-
-/** Quién hace la petición. El admin ve lo de todos; nadie más ve lo ajeno. */
-export interface Actor {
-  id: string;
-  esAdmin: boolean;
-}
+export type { Actor };
+export { aDto, ErrorMedio };
 
 const LARGO_MAX_TEXTO = 500;
 const PAGINA_MAXIMA = 100_000;
@@ -52,31 +48,6 @@ async function borrarSinBloquear(clave: string) {
 function filaOError(fila: FilaMedio | undefined): FilaMedio {
   if (!fila) throw new ErrorMedio(404, "El medio no existe.");
   return fila;
-}
-
-export function aDto(fila: FilaMedio, actor: Actor, propietario?: { id: string; nombre: string }): Medio {
-  const esDueno = fila.ownerId === actor.id;
-  return {
-    id: fila.id,
-    tipo: fila.kind,
-    nombre: fila.originalName,
-    mime: fila.mimeType,
-    tamano: fila.sizeBytes,
-    ancho: fila.width,
-    alto: fila.height,
-    duracion: fila.durationSeconds,
-    titulo: fila.title,
-    altEs: fila.altEs,
-    altEn: fila.altEn,
-    url: urlTemporal(fila.storageKey),
-    creadoEn: fila.createdAt.toISOString(),
-    actualizadoEn: fila.updatedAt.toISOString(),
-    enPapelera: fila.deletedAt !== null,
-    origen: fila.sourceUrl,
-    documento: fila.isDocument,
-    ...(propietario ? { propietario } : {}),
-    permisos: { editarImagen: esDueno, borrarDefinitivo: esDueno },
-  };
 }
 
 function nuevaClave(extension: string) {
