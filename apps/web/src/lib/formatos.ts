@@ -279,3 +279,12 @@ export function animaEstasMedidas(
   if (proporcionesDelModelo.length === 0 || medidas.ancho === null || medidas.alto === null) return true;
   return proporcionesDelModelo.some((p) => medidasEnProporcion(medidas.ancho as number, medidas.alto as number, p));
 }
+
+/**
+ * Nombre del MP4 exportado en la biblioteca y en la descarga. El vertical conserva el de siempre («montaje.mp4»,
+ * que se descarga como «escenara-montaje.mp4»); los demás llevan su proporción para distinguirlos.
+ */
+export const nombreDeExportacion = (formato: FormatoMontaje): string =>
+  formato === FORMATO_MONTAJE_POR_DEFECTO
+    ? "montaje.mp4"
+    : `montaje-${PROPORCION_DE_FORMATO[formato].replace(":", "x")}.mp4`;

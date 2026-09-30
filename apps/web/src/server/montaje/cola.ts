@@ -4,7 +4,7 @@ import { type FilaExportacion, montageExports, montages, projects } from "../db/
 import type { Actor } from "../media/servicio";
 import { ErrorMontaje } from "./errores";
 import { materialDelProyecto } from "./material";
-import { renderizarExportacion } from "./render";
+import { MS_TOMA_EXPORTACION, renderizarExportacion } from "./render";
 
 /**
  * Las exportaciones en la cola del worker (RF08, 0.32.0).
@@ -22,8 +22,7 @@ import { renderizarExportacion } from "./render";
  * Lo que se acota es cuántas veces, para que un montaje imposible no ocupe el worker para siempre.
  */
 
-/** Cuánto vale una toma. Amplio: montar cinco minutos de vídeo puede tardar varios minutos. */
-export const MS_TOMA_EXPORTACION = 20 * 60_000;
+export { MS_TOMA_EXPORTACION } from "./render";
 
 /** Exportaciones que un worker se lleva por pasada. Una: el render come CPU y no se paraleliza dentro. */
 export const MAXIMO_POR_PASADA = 1;

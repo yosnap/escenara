@@ -369,6 +369,14 @@ describe.skipIf(!hayBaseDeDatos)("formatos, reencuadre y límites de un proyecto
       expect(medidas.duracionSegundos ?? 0).toBeGreaterThan(3.5);
       expect(medidas.duracionSegundos ?? 0).toBeLessThan(4.5);
       expect(vista.ancho).toBe(RESOLUCION_MONTAJE[formato].ancho);
+      // Cada formato se distingue en la biblioteca y al descargarlo; el vertical conserva el nombre de siempre.
+      const nombre =
+        formato === "vertical_9_16" ? "montaje.mp4" : `montaje-${PROPORCION_DE_FORMATO[formato].replace(":", "x")}.mp4`;
+      expect(vista.medio?.nombre).toBe(nombre);
+      expect(decodeURIComponent(vista.medio?.url ?? "")).toContain(`filename="escenara-${nombre}"`);
+      // Y la toma del worker queda suelta al terminar: no se queda renovada para siempre.
+      const [fila] = await db().select().from(montageExports).where(eq(montageExports.id, vista.id));
+      expect(fila?.lockedUntil).toBeNull();
     }
   }, 240_000);
 

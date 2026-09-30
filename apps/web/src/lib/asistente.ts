@@ -49,8 +49,10 @@ export function peticionDeGuion(datos: {
   escenas?: number;
   /** Duración de clip del proyecto, en segundos: es la que se produce, así que es la que se pide. */
   segundos?: number;
+  /** Máximo de escenas de esta instalación (Admin › Ajustes): no se piden, ni se pagan, más de las que caben. */
+  escenasMaximas?: number;
 }): string {
-  const cuantas = acotarEscenas(datos.escenas ?? ESCENAS_SUGERIDAS[datos.formato]);
+  const cuantas = acotarEscenas(datos.escenas ?? ESCENAS_SUGERIDAS[datos.formato], datos.escenasMaximas);
   const partes = [
     `Formato: ${ETIQUETA_FORMATO[datos.formato]}.`,
     `Escenas: ${cuantas}.`,
@@ -65,8 +67,8 @@ export function peticionDeGuion(datos: {
   return partes.join("\n");
 }
 
-export const acotarEscenas = (cuantas: number): number =>
-  Math.min(ESCENAS_MAXIMAS, Math.max(1, Number.isFinite(cuantas) ? Math.round(cuantas) : 1));
+export const acotarEscenas = (cuantas: number, maximo: number = ESCENAS_MAXIMAS): number =>
+  Math.min(ESCENAS_MAXIMAS, maximo, Math.max(1, Number.isFinite(cuantas) ? Math.round(cuantas) : 1));
 
 /** Clave de una confirmación, con la firma de lo que se confirmó. */
 export interface ClaveConfirmacion {

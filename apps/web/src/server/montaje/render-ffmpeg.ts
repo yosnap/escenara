@@ -73,8 +73,9 @@ export interface FragmentoNormalizable {
  * de ella salen todos los formatos sin volver a generarla.
  *
  * - `bandas`: escala sin deformar hasta caber y rellena con negro (lo de la 0.32.0, argumento por argumento);
- * - `recorte`: escala hasta llenar y recorta. La posición del recorte es la fracción del sobrante que queda a la
- *   izquierda o arriba, así que 0 pega el recorte al borde, 50 lo centra y 100 lo lleva al otro borde.
+ * - `recorte`: recorta la proporción del formato y escala. La posición del recorte es la fracción del sobrante que
+ *   queda a la izquierda o arriba, así que 0 pega el recorte al borde, 50 lo centra y 100 lo lleva al otro borde
+ *   (la misma cuenta que `object-position` en la previsualización).
  */
 export function filtroDeEncuadre(ancho: string, alto: string, encuadre: Encuadre): string[] {
   if (encuadre.modo === "bandas") {
@@ -85,9 +86,11 @@ export function filtroDeEncuadre(ancho: string, alto: string, encuadre: Encuadre
   }
   const x = numero(encuadre.x / 100, "encuadre horizontal");
   const y = numero(encuadre.y / 100, "encuadre vertical");
+  // Se recorta **antes** de escalar: un vertical llevado a 16:9 se reduce a su franja y luego se escala, en lugar de
+  // ampliarlo entero a 1920 × 3413 para tirar dos tercios. Mismo resultado, un tercio de los píxeles.
   return [
-    `[0:v]scale=${ancho}:${alto}:force_original_aspect_ratio=increase`,
-    `crop=${ancho}:${alto}:(iw-${ancho})*${x}:(ih-${alto})*${y}`,
+    `[0:v]crop='min(iw,ih*${ancho}/${alto})':'min(ih,iw*${alto}/${ancho})':'(iw-ow)*${x}':'(ih-oh)*${y}'`,
+    `scale=${ancho}:${alto}`,
   ];
 }
 

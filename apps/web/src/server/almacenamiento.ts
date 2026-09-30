@@ -36,10 +36,12 @@ export function urlTemporal(clave: string): string {
 }
 
 /** El navegador ignora `download` en enlaces a otro origen: S3 debe responder como adjunto. */
-export function urlTemporalDescargaMontaje(clave: string): string {
+export function urlTemporalDescargaMontaje(clave: string, nombre = "montaje.mp4"): string {
+  // Solo letras, números, guiones y punto: el nombre va entre comillas en una cabecera.
+  const limpio = /^[\w.-]+$/.test(nombre) ? nombre : "montaje.mp4";
   return s3().presign(clave, {
     expiresIn: VIGENCIA_URL_SEGUNDOS,
     method: "GET",
-    contentDisposition: 'attachment; filename="escenara-montaje.mp4"',
+    contentDisposition: `attachment; filename="escenara-${limpio}"`,
   });
 }

@@ -19,6 +19,7 @@ import { leerCatalogoDeDireccion } from "../direccion/catalogo";
 import { exigirClaveIdempotencia, exigirConfirmacion } from "../generacion/comprobaciones";
 import { exigirSelloVigente } from "../generacion/precios";
 import { dentroDelLimite, type Limite } from "../limite";
+import { limitesDeProyecto } from "../limites-proyecto";
 import {
   ErrorDeTexto,
   ErrorPeticionRepetida,
@@ -128,11 +129,15 @@ async function opcionesDeArranque(
   return { movimientos: opciones("camara"), gestos: opciones("microaccion") };
 }
 
-function numeroDeEscenas(pedidas: unknown, proyecto: FilaProyecto): number {
-  if (pedidas === undefined || pedidas === null || pedidas === "") return ESCENAS_SUGERIDAS[proyecto.format];
+/** Escenas que se piden: nunca más de 12 ni del máximo de esta instalación (Admin › Ajustes), que no se pagan. */
+function numeroDeEscenas(pedidas: unknown, proyecto: FilaProyecto, maximo: number): number {
+  const tope = Math.min(12, maximo);
+  if (pedidas === undefined || pedidas === null || pedidas === "") {
+    return Math.min(tope, ESCENAS_SUGERIDAS[proyecto.format]);
+  }
   const numero = typeof pedidas === "number" ? pedidas : Number.parseInt(String(pedidas), 10);
   if (!Number.isFinite(numero)) throw new ErrorAnuncio(400, "Indica cuántas escenas quieres.");
-  return Math.min(12, Math.max(1, Math.round(numero)));
+  return Math.min(tope, Math.max(1, Math.round(numero)));
 }
 
 /**
@@ -278,7 +283,12 @@ export async function pedirHooksYGuion(
 
   let propuesta: ReturnType<typeof leerPropuestaDeAnuncio>;
   try {
-    propuesta = leerPropuestaDeAnuncio(resultado.texto, proyecto.clipSeconds, clavesOfrecidas);
+    propuesta = leerPropuestaDeAnuncio(
+      resultado.texto,
+      proyecto.clipSeconds,
+      clavesOfrecidas,
+      (await limitesDeProyecto()).escenasMaximas,
+    );
   } catch (error) {
     if (error instanceof ErrorPropuestaDeAnuncio) {
       // Ha contestado, así que si cobraba por petición ya ha cobrado: se dice **quién** y qué pasó.
@@ -348,7 +358,7 @@ export async function proponerHooksYGuion(
   }
   return pedirHooksYGuion(actor, proyecto, {
     claveIdempotencia: `hooks:${proyecto.id}:${clave}`,
-    escenas: numeroDeEscenas(peticion.escenas, proyecto),
+    escenas: numeroDeEscenas(peticion.escenas, proyecto, (await limitesDeProyecto()).escenasMaximas),
     buscar,
     porCuota: estimacion.porCuota,
   });

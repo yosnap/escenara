@@ -1,6 +1,7 @@
 -- Formatos de salida del proyecto, encuadre por escena y formato, y lectura de las versiones de cada escena.
 --
--- Aditiva e idempotente:
+-- Idempotente y casi toda aditiva (no se borra ninguna fila). Lo único que no es aditivo es el índice único de la
+-- exportación, que se sustituye por uno que incluye el formato; solo se deshace restaurando la copia de seguridad:
 -- - el formato del montaje gana tres valores (4:5, 1:1 y 16:9); los que había no cambian;
 -- - los proyectos ganan su lista de formatos, que nace en vertical 9:16 (lo que eran todos hasta ahora), y los
 --   montajes su mapa de encuadres, que nace vacío (el automático, igual que antes);
@@ -18,13 +19,20 @@ CREATE INDEX IF NOT EXISTS "generation_jobs_escena_fecha_idx" ON "generation_job
 CREATE UNIQUE INDEX IF NOT EXISTS "montage_exports_montaje_version_formato_uq" ON "montage_exports" USING btree ("montage_id","montage_version","format") WHERE "montage_exports"."state" <> 'fallido';--> statement-breakpoint
 DROP INDEX IF EXISTS "montage_exports_montaje_version_uq";
 --> statement-breakpoint
--- Selector por plataforma: las opciones de formato de la instalación se llaman por su plataforma. Solo se renombran
--- las que siguen con el nombre sembrado: si quien administra las cambió, se respeta. La de 4:5 la crea la semilla.
-UPDATE "presets" SET "name" = 'Reels · TikTok · Stories (9:16)', "description" = 'Vertical a sangre, para Reels, TikTok, Shorts y Stories.'
+-- Selector por plataforma: las opciones de formato de la instalación se llaman por su plataforma. El nombre y la
+-- descripción se cambian **cada uno solo si sigue con el texto sembrado**: lo que quien administra haya editado se
+-- respeta. La de 4:5 la crea la semilla.
+UPDATE "presets" SET "name" = 'Reels · TikTok · Stories (9:16)'
   WHERE "owner_id" IS NULL AND "category" = 'formato' AND "slug" = 'reel-9-16' AND "name" = 'Reel 9:16';--> statement-breakpoint
+UPDATE "presets" SET "description" = 'Vertical a sangre, para Reels, TikTok, Shorts y Stories.'
+  WHERE "owner_id" IS NULL AND "category" = 'formato' AND "slug" = 'reel-9-16' AND "description" = 'Vertical a sangre, sin espacio reservado arriba.';--> statement-breakpoint
 UPDATE "presets" SET "name" = 'Stories con rótulos (9:16)'
   WHERE "owner_id" IS NULL AND "category" = 'formato' AND "slug" = 'story-9-16' AND "name" = 'Story 9:16';--> statement-breakpoint
-UPDATE "presets" SET "name" = 'Cuadrado (1:1)', "description" = 'Cuadrado para la cuadrícula del perfil. Solo con modelos que admitan 1:1.'
+UPDATE "presets" SET "name" = 'Cuadrado (1:1)'
   WHERE "owner_id" IS NULL AND "category" = 'formato' AND "slug" = 'cuadrado-1-1' AND "name" = 'Cuadrado 1:1';--> statement-breakpoint
-UPDATE "presets" SET "name" = 'YouTube · horizontal (16:9)', "description" = 'Apaisado, para YouTube y la web. Solo con modelos que admitan 16:9.'
-  WHERE "owner_id" IS NULL AND "category" = 'formato' AND "slug" = 'horizontal-16-9' AND "name" = 'Horizontal 16:9';
+UPDATE "presets" SET "description" = 'Cuadrado para la cuadrícula del perfil. Solo con modelos que admitan 1:1.'
+  WHERE "owner_id" IS NULL AND "category" = 'formato' AND "slug" = 'cuadrado-1-1' AND "description" = 'Cuadrado para cuadrícula. Hoy ningún modelo del catálogo lo admite.';--> statement-breakpoint
+UPDATE "presets" SET "name" = 'YouTube · horizontal (16:9)'
+  WHERE "owner_id" IS NULL AND "category" = 'formato' AND "slug" = 'horizontal-16-9' AND "name" = 'Horizontal 16:9';--> statement-breakpoint
+UPDATE "presets" SET "description" = 'Apaisado, para YouTube y la web. Solo con modelos que admitan 16:9.'
+  WHERE "owner_id" IS NULL AND "category" = 'formato' AND "slug" = 'horizontal-16-9' AND "description" = 'Apaisado. Hoy ningún modelo del catálogo lo admite.';

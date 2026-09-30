@@ -29,18 +29,20 @@ describe("el encuadre en el filtro de igualar", () => {
     expect(filtroDe(ordenDeIgualar({ ...fragmento, encuadre: { modo: "bandas" } }))).toBe(deSiempre);
   });
 
-  test("el recorte llena el formato y se queda con la parte elegida del sobrante", () => {
+  test("el recorte corta la proporción del formato antes de escalar y se queda con la parte elegida", () => {
     const filtro = filtroDe(
       ordenDeIgualar({ ...fragmento, ancho: 1920, alto: 1080, encuadre: { modo: "recorte", x: 50, y: 0 } }),
     );
-    expect(filtro).toContain("scale=1920:1080:force_original_aspect_ratio=increase");
-    expect(filtro).toContain("crop=1920:1080:(iw-1920)*0.500:(ih-1080)*0.000");
+    expect(filtro).toContain("crop='min(iw,ih*1920/1080)':'min(ih,iw*1080/1920)':'(iw-ow)*0.500':'(ih-oh)*0.000'");
+    // Se escala después de recortar: nunca se amplía el vertical entero para tirar lo que sobra.
+    expect(filtro.indexOf("crop=")).toBeLessThan(filtro.indexOf("scale=1920:1080"));
+    expect(filtro).not.toContain("force_original_aspect_ratio=increase");
     expect(filtro).not.toContain("pad=");
   });
 
   test("las posiciones van de 0 a 1 en el filtro, y una fuera de rango no llega a FFmpeg", () => {
     expect(filtroDeEncuadre("1080", "1080", { modo: "recorte", x: 100, y: 25 }).join(",")).toContain(
-      "(iw-1080)*1.000:(ih-1080)*0.250",
+      "'(iw-ow)*1.000':'(ih-oh)*0.250'",
     );
     expect(() => filtroDeEncuadre("1080", "1080", { modo: "recorte", x: -5, y: 0 })).toThrow(ErrorMontaje);
   });

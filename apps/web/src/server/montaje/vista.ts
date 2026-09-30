@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { formatosDe } from "@/lib/formatos";
+import { formatosDe, nombreDeExportacion } from "@/lib/formatos";
 import {
   duracionTotalDeFragmentos,
   type EscenaMontableVista,
@@ -50,7 +50,9 @@ export async function exportacionParaLaVista(
   exportacion: FilaExportacion,
   versionVigente: number,
 ): Promise<ExportacionVista> {
-  const medio = exportacion.resultMediaId ? await medioSiSigue(actor, exportacion.resultMediaId) : null;
+  const medio = exportacion.resultMediaId
+    ? await medioSiSigue(actor, exportacion.resultMediaId, nombreDeExportacion(exportacion.format))
+    : null;
   return {
     id: exportacion.id,
     estado: exportacion.state,
@@ -75,10 +77,10 @@ export async function exportacionParaLaVista(
 }
 
 /** El medio del resultado, o `null` si el usuario lo ha borrado o enviado a la papelera. */
-async function medioSiSigue(actor: Actor, medioId: string) {
+async function medioSiSigue(actor: Actor, medioId: string, nombre: string) {
   const [fila] = await db().select().from(media).where(eq(media.id, medioId)).limit(1);
   return fila && fila.deletedAt === null
-    ? { ...aDto(fila, actor), url: urlTemporalDescargaMontaje(fila.storageKey) }
+    ? { ...aDto(fila, actor), url: urlTemporalDescargaMontaje(fila.storageKey, nombre) }
     : null;
 }
 

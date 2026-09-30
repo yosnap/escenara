@@ -1,6 +1,6 @@
 import path from "node:path";
 import { and, eq, isNull } from "drizzle-orm";
-import { encuadreDe } from "@/lib/formatos";
+import { encuadreDe, nombreDeExportacion } from "@/lib/formatos";
 import { formatearTamano, LIMITE_BYTES } from "@/lib/media/reglas";
 import { duracionDeFragmento, duracionTotalDeFragmentos, type Fragmento } from "@/lib/montaje";
 import { db } from "../db/cliente";
@@ -31,6 +31,13 @@ import { listaDeConcatenacion, ordenDeIgualar, ordenDeMontar, type PistaDeMezcla
  * llegaran a montar la misma exportación, solo uno la cierra y el otro borra su copia en lugar de dejar dos
  * ficheros comiéndose la cuota de alguien.
  */
+
+/**
+ * Cuánto vale la toma de una exportación por un worker. Se **renueva cada vez que se apunta el progreso**, así que
+ * un render largo (cinco minutos en 16:9 en una máquina modesta) no la pierde a mitad y otra pasada no puede tomar
+ * la misma exportación mientras se monta. Un worker caído deja de renovarla y la suelta al caducar.
+ */
+export const MS_TOMA_EXPORTACION = 20 * 60_000;
 
 /** Cada cuánto se escribe el progreso en la base de datos. Más a menudo sería una escritura por fotograma. */
 const MS_ENTRE_APUNTES = 1_500;
@@ -74,7 +81,11 @@ class Progreso {
     this.ultimoApunte = ahora;
     await db()
       .update(montageExports)
-      .set({ stage: this.etapa, progress: Math.round(porciento * 10) / 10 })
+      .set({
+        stage: this.etapa,
+        progress: Math.round(porciento * 10) / 10,
+        lockedUntil: new Date(ahora + MS_TOMA_EXPORTACION),
+      })
       .where(eq(montageExports.id, this.exportacionId))
       .catch((error) => console.error(`[montaje] no se ha podido apuntar el progreso: ${detalle(error)}`));
   }
@@ -330,7 +341,9 @@ async function guardarResultado(
       `El vídeo montado pesa ${formatearTamano(bytes)} y el máximo por archivo de la biblioteca es ${formatearTamano(LIMITE_BYTES.video)}. Recorta el montaje y vuelve a exportarlo.`,
     );
   }
-  const archivo = new File([await fichero.arrayBuffer()], "montaje.mp4", { type: "video/mp4" });
+  const archivo = new File([await fichero.arrayBuffer()], nombreDeExportacion(exportacion.format), {
+    type: "video/mp4",
+  });
   const medio = await crearMedio(actor, archivo, { duracion }, ["video"], null);
   const [cerrada] = await db()
     .update(montageExports)

@@ -14,6 +14,7 @@ import {
 } from "../generacion/comprobaciones";
 import { exigirSelloVigente } from "../generacion/precios";
 import { dentroDelLimite, type Limite } from "../limite";
+import { limitesDeProyecto } from "../limites-proyecto";
 import { ErrorDeTexto, ErrorPeticionRepetida, pedirTextoPorMapa, type TextoDelMapa } from "../mapa/texto";
 import type { Actor } from "../media/servicio";
 import { filaPropia } from "../personajes/consulta";
@@ -120,12 +121,14 @@ export async function escribirGuion(
   // La petición se compone **antes** de reservar: leer la ficha del protagonista puede fallar (consentimiento
   // revocado, personaje borrado), y una reserva apartada por un fallo nuestro le comería presupuesto al usuario
   // hasta que el barrido la cerrara.
+  const { escenasMaximas } = await limitesDeProyecto();
   const entrada = peticionDeGuion({
     idea: proyecto.idea,
     formato: proyecto.format,
     contextoPersonaje: await contextoDelProtagonista(actor, proyecto),
     escenas: numeroDeEscenas(peticion.escenas, proyecto),
     segundos: proyecto.clipSeconds,
+    escenasMaximas,
   });
 
   // El presupuesto autorizado del proyecto es un **tope que se aplica al gastar**: lo que ya lleva comprometido
@@ -166,7 +169,7 @@ export async function escribirGuion(
 
   const ultima = await ejecucionDeLaConfirmacion(actor.id, `${claveIdempotencia}:${resultado.intentos.length}`);
   try {
-    const propuesta = leerPropuesta(resultado.texto, proyecto.clipSeconds);
+    const propuesta = leerPropuesta(resultado.texto, proyecto.clipSeconds, escenasMaximas);
     const escenasEscritas = await db().transaction(async (tx) => {
       const total = await sustituirEscenas(tx, proyecto.id, propuesta.escenas);
       if (propuesta.concepto !== "") {

@@ -186,7 +186,10 @@ export function proporcionElegidaDe(fila: Pick<FilaTrabajo, "input">): string | 
  * Proporción con la que se generó, para enseñarla en el historial: la elegida o, en un trabajo anterior a poder
  * elegirla, la que quedó en los parámetros enviados. `null` si el modelo no la acepta (toma la de la imagen).
  */
-export function proporcionDelTrabajo(fila: Pick<FilaTrabajo, "input">): string | null {
+export function proporcionDelTrabajo(fila: Pick<FilaTrabajo, "input" | "kind">): string | null {
+  // Una vista del personaje sale en la suya (cabeza 3:4), no en la del preset.
+  const vista = (fila.input as { vistaSintetica?: unknown }).vistaSintetica;
+  if (fila.kind === "fotograma" && esVista(vista)) return proporcionDeVista(vista);
   const enviada = (fila.input as { parametros?: { aspect_ratio?: unknown } }).parametros?.aspect_ratio;
   return proporcionElegidaDe(fila) ?? (typeof enviada === "string" && enviada !== "" ? enviada : null);
 }

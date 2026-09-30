@@ -76,5 +76,7 @@ describe("lo que el despacho lee del trabajo", () => {
     expect(proporcionDelTrabajo(fila({ proporcion: "16:9", parametros: { aspect_ratio: "9:16" } }))).toBe("16:9");
     expect(proporcionDelTrabajo(fila({ parametros: { aspect_ratio: "9:16" } }))).toBe("9:16");
     expect(proporcionDelTrabajo(fila({ proporcion: "cualquiera" }))).toBeNull();
+    // Una vista del personaje sale en la suya, no en la del preset que quedó en los parámetros.
+    expect(proporcionDelTrabajo(fila({ vistaSintetica: "frontal", parametros: { aspect_ratio: "9:16" } }))).toBe("3:4");
   });
 });
