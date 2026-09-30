@@ -1,0 +1,32 @@
+{
+  "nota": "Capturas reales de la interfaz (docs/assets/capturas). `usadas`: las que salen en el vídeo, con sus dimensiones y escena. `excluidas`: revisadas y descartadas, con el motivo. scripts/preparar.mjs copia solo las usadas y comprueba sus dimensiones.",
+  "usadas": {
+    "0.9.0-credenciales-claro.webp": { "w": 832, "h": 750, "escena": "02-claves" },
+    "0.13.0-personaje-claro.webp": { "w": 1920, "h": 1027, "escena": "03-personaje" },
+    "0.15.0-ficha-claro.webp": { "w": 1920, "h": 1027, "escena": "03-personaje" },
+    "0.25.2-mis-direcciones-claro.webp": { "w": 1664, "h": 1400, "escena": "05-direccion" },
+    "0.31.0-nora-dos-clips.png": { "w": 2550, "h": 1279, "escena": "01-gancho, 06-coste" },
+    "0.31.0-nora-escena-2.png": { "w": 2550, "h": 1320, "escena": "01-gancho" },
+    "0.17.0-guion-claro.webp": { "w": 1920, "h": 1027, "escena": "06-coste" },
+    "0.32.0-montaje-claro.webp": { "w": 960, "h": 520, "escena": "08-montaje" },
+    "0.32.0-exportacion-lista.webp": { "w": 960, "h": 784, "escena": "08-montaje" },
+    "0.49.0-menu-claro.webp": { "w": 1280, "h": 127, "escena": "04-producto-lugar" },
+    "0.49.0-lugares-claro.webp": { "w": 1280, "h": 860, "escena": "04-producto-lugar" },
+    "0.49.0-lugar-ficha-oscuro.webp": { "w": 1280, "h": 860, "escena": "04-producto-lugar" },
+    "0.49.0-comparar-claro.webp": { "w": 1280, "h": 860, "escena": "07-comparar" },
+    "0.49.0-comparar-tabla-oscuro.webp": { "w": 1088, "h": 626, "escena": "07-comparar" },
+    "0.49.0-comunidad-encendida-oscuro.webp": { "w": 1280, "h": 860, "escena": "09-comunidad" },
+    "0.49.0-comunidad-publicar-claro.webp": { "w": 1280, "h": 860, "escena": "09-comunidad" },
+    "0.49.0-moderacion-oscuro.webp": { "w": 1280, "h": 860, "escena": "09-comunidad" },
+    "0.49.0-cuenta-tus-datos-claro.webp": { "w": 832, "h": 222, "escena": "10-datos" },
+    "0.49.0-historial-cuenta-oscuro.webp": { "w": 1280, "h": 860, "escena": "10-datos" }
+  },
+  "excluidas": {
+    "0.29.0-elisa-*": "Cara fotorrealista (personaje «Elisa»): no se puede garantizar que no derive de una persona real.",
+    "0.30.0-dos-clips-terminados.png, 0.30.0-dos-fotogramas*.png, 0.30.0-giro-exportado.jpg, 0.30.0-montaje-dos-trends-listo.png, 0.30.0-plan-aprobado-dos-trends.png, 0.30.0-proyecto-dos-escenas-preparado.png, 0.30.0-reintento-solo-clip.png, 0.30.0-trends-tras-prueba.png, 0.30.0-unboxing-*": "Muestran la misma cara fotorrealista o manos fotorrealistas de un proyecto de prueba.",
+    "0.6.0-escaparate-oscuro.webp, 0.6.0-portada-claro.webp": "Retratos fotorrealistas de personas.",
+    "0.30.0-catalogo-trends-revision.png, 0.30.0-trends-revision-claro.jpg": "Son plantillas y presets de administración, no la elección de un trend: se sustituyen por una infografía.",
+    "0.7.0-cuenta-oscuro.webp": "Muestra un correo (de prueba); innecesario.",
+    "resto": "Válidas pero no necesarias para el guion (pantallas de administración o de versiones antiguas)."
+  }
+}
