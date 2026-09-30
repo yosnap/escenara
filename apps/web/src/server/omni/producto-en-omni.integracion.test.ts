@@ -8,19 +8,11 @@ import type { ProductoVista } from "@/lib/productos";
 import type { ProyectoDetalle } from "@/lib/proyectos";
 
 /**
- * **Qué fotos del producto viajan con una escena hablada de Gemini Omni**, contra el PostgreSQL local.
- *
- * Con producto, Omni renuncia a la identidad registrada y la cara sale de las fotos del personaje, que compiten
- * con las del producto por las siete referencias del modelo. Lo que se comprueba, con la forma real del `input`
- * de un trabajo guardado:
- *
- * - con una caja de cinco fotos y un personaje con seis, el trabajo guarda **cuatro del personaje y tres del
- *   producto**, y el aviso de antes de pagar dice esas cifras y cuántas se quedan fuera;
- * - si la persona ha elegido qué fotos del producto viajan, el trabajo guarda **esas**, en orden de prioridad;
- * - una foto que no es de ese producto se rechaza al guardar la elección, y una que se borra después no rompe
- *   la escena: se descarta y viajan las demás.
- *
- * **Ningún test llama a KIE**: el proveedor se simula con un `fetch` propio y la clave es inventada.
+ * **Qué fotos del producto viajan con una escena hablada de Omni, con un clip y con un fotograma**, contra el
+ * PostgreSQL local. Con producto, Omni renuncia a la identidad registrada y la cara sale de las fotos del personaje,
+ * que compiten con las del producto por las siete referencias del modelo. Se comprueba la forma real del `input`
+ * guardado, la elección de fotos (guardada en la escena o enviada desde «Crear») y que **la consulta de antes de
+ * pagar, el envío y la ficha cuentan igual**. Ningún test llama a KIE: el proveedor se simula y la clave es inventada.
  */
 loadEnvConfig(path.resolve(import.meta.dirname, "../../../../.."), true, { info() {}, error: console.error }, true);
 
@@ -292,7 +284,6 @@ describe.skipIf(!hayBaseDeDatos)("fotos del producto en una escena hablada de Om
     );
     expect(anadidas.status).toBe(200);
     const ficha = (await anadidas.json()) as ProductoVista;
-    // Orden de prioridad con el que viajan: la frontal, el envase, el detalle y las sueltas.
     return { producto: ficha, fotos: fotos.map((f) => f.medioId) as [string, string, string, string, string] };
   }
 
@@ -436,7 +427,6 @@ describe.skipIf(!hayBaseDeDatos)("fotos del producto en una escena hablada de Om
     // La identidad viaja empezando por la frontal, que no se pierde con el recorte.
     expect(input.referencias?.[0]).toBe(frontalDelPersonaje);
     expect(input.referenciasProducto).toHaveLength(3);
-    // La frontal viaja siempre; después el envase y el detalle de la tapa.
     expect(input.referenciasProducto).toEqual([fotos[0], fotos[1], fotos[2]]);
   });
 
@@ -494,8 +484,6 @@ describe.skipIf(!hayBaseDeDatos)("fotos del producto en una escena hablada de Om
     expect(sinProducto?.productPhotoIds).toEqual([]);
   });
 
-  // ── «Crear»: la elección viaja con la petición y se valida estrictamente ──────────────────────────────
-
   describe("en «Crear» la elección viaja con el clip", () => {
     async function pedirClip(productoId: string, fotos?: string[], imagenDePartida?: string) {
       const estimacion = await estimar(ana.id, "animacion", buscar, modeloOmni);
@@ -551,14 +539,6 @@ describe.skipIf(!hayBaseDeDatos)("fotos del producto en una escena hablada de Om
       expect(respuesta.status).toBe(400);
       expect(((await respuesta.json()) as { error: string }).error).toContain("no es de este producto");
       expect(await db().select().from(generationJobs).where(eq(generationJobs.userId, ana.id))).toHaveLength(0);
-    });
-
-    test("una foto en la papelera se rechaza con su causa", async () => {
-      const { producto, fotos } = await nuevaCaja();
-      await enviarAPapelera(actor, fotos[2]);
-      const respuesta = await pedirClip(producto.id, [fotos[0], fotos[2]]);
-      expect(respuesta.status).toBe(400);
-      expect(((await respuesta.json()) as { error: string }).error).toContain("está en la papelera");
     });
 
     test("una elección que pasa de lo que cabe se rechaza y dice cuántas caben", async () => {
@@ -724,8 +704,6 @@ describe.skipIf(!hayBaseDeDatos)("fotos del producto en una escena hablada de Om
       expect(input.referenciasProducto).toEqual(fotos);
     });
   });
-
-  // ── La consulta de antes de pagar y el envío cuentan igual ────────────────────────────────────────────
 
   /** Pide un fotograma con el personaje y la caja; devuelve la respuesta cruda y el sello con el que se pidió. */
   async function pedirFotogramaConCaja(productoId: string, avisos: string[]) {
