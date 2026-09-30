@@ -497,19 +497,6 @@ describe.skipIf(!hayBaseDeDatos)("fotos del producto en una escena hablada de Om
   // ── «Crear»: la elección viaja con la petición y se valida estrictamente ──────────────────────────────
 
   describe("en «Crear» la elección viaja con el clip", () => {
-    /** Añade más fotos al producto hasta tener ocho, que es lo máximo: con Omni y un solo fotograma caben seis. */
-    async function completarHastaOcho(productoId: string): Promise<string[]> {
-      const nuevas = await Promise.all(
-        ["suelto", "suelto", "suelto"].map(async (papel, i) => ({ medioId: await subir(`extra-${i}.png`), papel })),
-      );
-      const respuesta = await rutaProducto.PATCH(
-        pedir(ana, `/api/productos/${productoId}`, "PATCH", { accion: "anadir-fotos", fotos: nuevas }),
-        ctx(productoId),
-      );
-      expect(respuesta.status).toBe(200);
-      return nuevas.map((f) => f.medioId);
-    }
-
     async function pedirClip(productoId: string, fotos?: string[], imagenDePartida?: string) {
       const estimacion = await estimar(ana.id, "animacion", buscar, modeloOmni);
       const imagen = imagenDePartida ?? (await subir("fotograma.png"));
@@ -576,7 +563,7 @@ describe.skipIf(!hayBaseDeDatos)("fotos del producto en una escena hablada de Om
 
     test("una elección que pasa de lo que cabe se rechaza y dice cuántas caben", async () => {
       const { producto, fotos } = await nuevaCaja();
-      const extra = await completarHastaOcho(producto.id);
+      const extra = await completarHastaOchoDeLaCaja(producto.id);
       // Con siete huecos y una imagen de partida caben seis: elegir siete no cabe.
       const respuesta = await pedirClip(producto.id, [...fotos, ...extra.slice(0, 2)]);
       expect(respuesta.status).toBe(400);
@@ -627,7 +614,7 @@ describe.skipIf(!hayBaseDeDatos)("fotos del producto en una escena hablada de Om
 
     test("el aviso de la consulta y el envío cuentan igual con un fotograma hecho con un personaje de seis fotos", async () => {
       const { producto, fotos } = await nuevaCaja();
-      const extra = await completarHastaOcho(producto.id);
+      const extra = await completarHastaOchoDeLaCaja(producto.id);
       const todas = [...fotos, ...extra];
       const imagen = await fotogramaConElPersonaje();
 
@@ -677,7 +664,7 @@ describe.skipIf(!hayBaseDeDatos)("fotos del producto en una escena hablada de Om
 
     test("una elección que no cabe se rechaza igual en la consulta y en el envío", async () => {
       const { producto, fotos } = await nuevaCaja();
-      const extra = await completarHastaOcho(producto.id);
+      const extra = await completarHastaOchoDeLaCaja(producto.id);
       const siete = [...fotos, ...extra.slice(0, 2)];
       const imagen = await fotogramaConElPersonaje();
       const consulta = await consultarClip(imagen, producto.id, siete);
@@ -690,25 +677,143 @@ describe.skipIf(!hayBaseDeDatos)("fotos del producto en una escena hablada de Om
     });
   });
 
-  test("con la hoja 3×3 solo viaja la hoja y el producto aprovecha los huecos", async () => {
-    const { producto, fotos } = await nuevaCaja();
+  /** Añade más fotos al producto hasta tener ocho, que es lo máximo: con Omni y un solo fotograma caben seis. */
+  async function completarHastaOchoDeLaCaja(productoId: string): Promise<string[]> {
+    const nuevas = await Promise.all(
+      ["suelto", "suelto", "suelto"].map(async (papel, i) => ({ medioId: await subir(`extra-${i}.png`), papel })),
+    );
+    const respuesta = await rutaProducto.PATCH(
+      pedir(ana, `/api/productos/${productoId}`, "PATCH", { accion: "anadir-fotos", fotos: nuevas }),
+      ctx(productoId),
+    );
+    expect(respuesta.status).toBe(200);
+    return nuevas.map((f) => f.medioId);
+  }
+
+  /** Deja al personaje con la hoja 3×3 por defecto durante `prueba` y se la quita al terminar, pase lo que pase. */
+  async function conHojaPorDefecto(prueba: (hoja: string) => Promise<void>): Promise<void> {
     const hoja = await subir("hoja-3x3.png");
     await db()
       .update(characters)
       .set({ identitySheetMediaId: hoja, identitySheetStatus: "por_defecto" })
       .where(eq(characters.id, personajeId));
+    try {
+      await prueba(hoja);
+    } finally {
+      await db()
+        .update(characters)
+        .set({ identitySheetMediaId: null, identitySheetStatus: "descartada" })
+        .where(eq(characters.id, personajeId));
+    }
+  }
+
+  test("con la hoja 3×3 solo viaja la hoja y el producto aprovecha los huecos", async () => {
+    const { producto, fotos } = await nuevaCaja();
+    await conHojaPorDefecto(async (hoja) => {
+      await nuevoProyectoConProducto(producto.id);
+      await prepararVoz();
+      // Viaja la hoja sola y las cinco fotos de la caja: no hay nada que se quede fuera, así que no hay aviso.
+      await producirProyecto(
+        actor,
+        proyectoId,
+        await confirmacion(AVISOS_DEL_PRODUCTO.filter((a) => a !== "producto-referencias-no-caben")),
+        h,
+      );
+      const input = await trabajoDeLaEscena();
+      expect(input.referencias).toEqual([hoja]);
+      expect(input.referenciasProducto).toEqual(fotos);
+    });
+  });
+
+  // ── La consulta de antes de pagar y el envío cuentan igual ────────────────────────────────────────────
+
+  /** Pide un fotograma con el personaje y la caja; devuelve la respuesta cruda y el sello con el que se pidió. */
+  async function pedirFotogramaConCaja(productoId: string, avisos: string[]) {
+    const estimacion = await estimar(ana.id, "fotograma", buscar);
+    return rutaTrabajos.POST(
+      pedir(ana, "/api/generacion/trabajos", "POST", {
+        tipo: "fotograma",
+        personajeId,
+        prompt: "Lucía en una cocina luminosa, enseña la caja.",
+        creditosConfirmados: estimacion.creditos,
+        selloEstimacion: estimacion.sello,
+        derechos: true,
+        derechoMarca: true,
+        sinTerceros: true,
+        claveIdempotencia: crypto.randomUUID(),
+        producto: { productoId, accion: "ensenarlo-a-camara" },
+        avisosConfirmados: avisos,
+      }),
+      undefined,
+    );
+  }
+
+  const consultarFotograma = (productoId: string) =>
+    rutaControles.GET(
+      pedir(
+        ana,
+        `/api/generacion/controles?${new URLSearchParams({ tipo: "fotograma", personajeId, productoId, accion: "ensenarlo-a-camara" })}`,
+      ),
+      undefined,
+    );
+
+  test("el fotograma con personaje: la consulta y el envío dicen las mismas cifras", async () => {
+    const { producto } = await nuevaCaja();
+    await completarHastaOchoDeLaCaja(producto.id);
+    const consulta = await consultarFotograma(producto.id);
+    expect(consulta.status).toBe(200);
+    const aviso = (
+      (await consulta.json()) as { comprobaciones: { regla: string; motivo: string }[] }
+    ).comprobaciones.find((c) => c.regla === "producto-referencias-no-caben");
+    // Seis fotos del personaje y ocho del producto no caben en las diez del modelo de imagen.
+    expect(aviso?.motivo).toContain("se envían 6 del personaje y 4 de «Caja Huerta Valenciana»");
+    const sinConfirmar = await pedirFotogramaConCaja(
+      producto.id,
+      AVISOS_DEL_PRODUCTO.filter((a) => a !== "producto-referencias-no-caben"),
+    );
+    expect(sinConfirmar.status).toBe(409);
+    expect(((await sinConfirmar.json()) as { error: string }).error).toContain(aviso?.motivo ?? "sin aviso");
+    const confirmado = await pedirFotogramaConCaja(producto.id, AVISOS_DEL_PRODUCTO);
+    expect(confirmado.status).toBe(201);
+    const [fila] = await db().select().from(generationJobs).where(eq(generationJobs.userId, ana.id));
+    const input = fila?.input as { referencias?: string[]; referenciasProducto?: string[] };
+    expect(input.referencias).toHaveLength(6);
+    expect(input.referenciasProducto).toHaveLength(4);
+  });
+
+  test("el fotograma con la hoja 3×3: la consulta y el envío cuentan una sola foto del personaje", async () => {
+    const { producto, fotos } = await nuevaCaja();
+    await conHojaPorDefecto(async (hoja) => {
+      const consulta = await consultarFotograma(producto.id);
+      expect(consulta.status).toBe(200);
+      // Con la hoja sola caben las cinco fotos de la caja: no hay nada que avisar.
+      expect(
+        ((await consulta.json()) as { comprobaciones: { regla: string }[] }).comprobaciones.map((c) => c.regla),
+      ).not.toContain("producto-referencias-no-caben");
+      const envio = await pedirFotogramaConCaja(
+        producto.id,
+        AVISOS_DEL_PRODUCTO.filter((a) => a !== "producto-referencias-no-caben"),
+      );
+      expect(envio.status).toBe(201);
+      const [fila] = await db().select().from(generationJobs).where(eq(generationJobs.userId, ana.id));
+      const input = fila?.input as { referencias?: string[]; referenciasProducto?: string[] };
+      expect(input.referencias).toEqual([hoja]);
+      expect(input.referenciasProducto).toEqual(fotos);
+    });
+  });
+
+  test("la ficha de la escena de Omni dice lo mismo que el envío: caben las fotos que luego viajan", async () => {
+    const { producto } = await nuevaCaja();
     await nuevoProyectoConProducto(producto.id);
     await prepararVoz();
+    const { detalleProyecto } = await import("../asistente/plan");
+    const { fotosQueCaben, cupoDeFotosDe } = await import("@/lib/fotos-del-producto");
+    const detalle = await detalleProyecto(actor, proyectoId);
+    const cupo = cupoDeFotosDe(detalle.escenas[0]?.estimacion?.fotoDeProducto);
+    expect(cupo).toEqual({ cupoDeGaleria: 7, fotosDelPersonaje: 6 });
+    const caben = fotosQueCaben(cupo as NonNullable<typeof cupo>, 5);
 
-    // Viaja la hoja sola y las cinco fotos de la caja: no hay nada que se quede fuera, así que no hay aviso.
-    await producirProyecto(
-      actor,
-      proyectoId,
-      await confirmacion(AVISOS_DEL_PRODUCTO.filter((a) => a !== "producto-referencias-no-caben")),
-      h,
-    );
-    const input = await trabajoDeLaEscena();
-    expect(input.referencias).toEqual([hoja]);
-    expect(input.referenciasProducto).toEqual(fotos);
+    await producirProyecto(actor, proyectoId, await confirmacion(AVISOS_DEL_PRODUCTO), h);
+    expect((await trabajoDeLaEscena()).referenciasProducto).toHaveLength(caben);
   });
 });

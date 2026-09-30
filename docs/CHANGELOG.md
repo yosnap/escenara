@@ -25,11 +25,14 @@ aditiva; **sin cambios de coste** ni en lo que se confirma al generar.
   producto se quedan fuera. Lo que sobra puede salir distinto.» Las reglas de los controles pasan a la versión
   `2026-09-30.2`, porque cambia el texto de una regla.
 - **El aviso y el envío cuentan con las mismas fotos del personaje.** Una sola función calcula el reparto para el control
-  previo, el fotograma, el clip, la escena hablada de Omni, la ficha de la escena y el worker. Antes, el control previo
+  previo, el fotograma, el clip, la escena hablada de Omni y la ficha de la escena; el worker no reparte: aplica
+  `huecosDelPersonaje` sobre las fotos que el trabajo ya lleva guardadas. Antes, el control previo
   del clip contaba **todas** las fotos del personaje aunque el clip parte de una sola imagen (su fotograma), y con
   el reparto nuevo eso daba un aviso con cifras falsas y rechazaba una elección de fotos que el envío sí habría
   aceptado. Con la **hoja 3×3** del personaje viaja solo la hoja, y el aviso y el reparto cuentan una foto del personaje
-  (el producto aprovecha los demás huecos). El aviso concuerda en número («se envía 1 foto del personaje») y dice
+  (el producto aprovecha los demás huecos); con la hoja de **prueba** (la candidata) la consulta no
+  sabe de antemano de qué lado cae el envío y cuenta las fotos sueltas, así que puede avisar de una pérdida que luego
+  no llega a pasar, pero nunca de menos. El aviso concuerda en número («se envía 1 foto del personaje») y dice
   las referencias que se reparten.
 - **La elección de fotos vale para el paso donde la haces.** En «Crear» la elección viaja con el **clip**: el
   fotograma que lo precede se sigue generando con las fotos de por defecto, aunque hayas elegido otras para el clip,
@@ -49,10 +52,15 @@ aditiva; **sin cambios de coste** ni en lo que se confirma al generar.
   de la papelera se rechaza con su causa) y, en «Crear», no pueden pasar de lo que cabe. En una escena, una foto
   elegida que se borra después no rompe nada: se descarta y viajan las demás. Sin elección, todo sigue como antes:
   la frontal primero y luego el orden de siempre. Cambiar de producto en una escena borra la elección del anterior.
-- **Convertir en proyecto conserva las fotos.** La escena que nace de un clip de «Crear» hereda las fotos del producto
-  con las que se pagó el clip (solo las que siguen fuera de la papelera; si no queda ninguna, las de por defecto).
-- **Cambiar de modelo recorta la elección** en el mismo gesto, antes de comprobar el clip con el modelo nuevo, así que
-  no sale un error pasajero. Con una elección guardada el elector se sigue enseñando aunque quepan todas las fotos, con
+- **Convertir en proyecto conserva la elección de fotos, si la hubo.** El clip guarda las fotos que viajaron, no si las
+  elegiste tú, así que se deduce: si son exactamente las que Escenara envía por defecto para ese clip (las primeras por
+  prioridad), la escena nace **sin elección**, como cualquier otra; si son otras, hereda tu elección. Solo cuentan
+  las que siguen fuera de la papelera; si no queda ninguna, la escena nace sin elección.
+- **Cambiar de modelo en «Crear» ajusta la elección** en el mismo gesto, antes de comprobar el clip con el modelo nuevo,
+  así que no sale un error pasajero: se recorta a lo que quepa y, si el modelo no deja sitio al producto, no se envía
+  ninguna. Se parte siempre de lo que elegiste, así que al volver a un modelo con más huecos la recuperas entera. Si
+  todas las fotos elegidas acaban en la papelera, no se guardan las de por defecto como si las hubieras elegido. En una
+  escena el navegador no toca lo guardado: el servidor recorta y avisa. Con una elección guardada el elector se sigue enseñando aunque quepan todas las fotos, con
   «Volver a las de por defecto».
 - **Catálogo de componentes**: el elector de fotos del producto, con la caja de ejemplo de cinco fotos y tres huecos.
 - La guía **[Presentar un producto](guias/productos.md)** explica cuántas fotos viajan, el reparto de las referencias y
