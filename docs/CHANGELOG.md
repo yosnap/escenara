@@ -65,8 +65,12 @@ regla de coste ni de consentimiento, y el kit no cuesta créditos. Una migració
 - **Procesado de imágenes acotado**: tiempo máximo por imagen y como mucho dos a la vez en la instalación; con más
   subidas simultáneas se responde «espera unos segundos» en lugar de acumular trabajo. Las subidas se leen con tope de
   tamaño aunque no digan cuánto pesan.
-- Los textos de marca rechazan también los caracteres invisibles (como los que invierten el sentido del texto) y las
-  familias no admiten palabras reservadas de CSS (`inherit`, `unset`…).
+- Los textos de marca rechazan las **marcas invisibles de dirección** (las que hacen que un nombre se lea al revés) y
+  otros invisibles innecesarios, pero admiten los que sí hacen falta: emojis compuestos (👩‍💻), banderas de
+  subdivisión y escrituras como el persa. Las familias no admiten palabras reservadas de CSS (`inherit`, `unset`…).
+- El lector de SVG de la librería de imágenes queda **bloqueado** en el servidor, y solo se procesa lo que se lee como
+  PNG, JPEG o WebP: un archivo con una firma falsa no puede colarse. Publicar también rechaza, con su causa, un
+  logotipo guardado con otro tipo.
 - Los logotipos del kit que se cambian o se quitan se borran en cuanto no los necesita ninguna exportación pendiente.
 - La marca de la instalación solo la cambia quien administra: se comprueba en la página **y en cada operación** de la
   API, con el mismo origen exigido en las escrituras. Cada usuario solo ve y cambia su kit.

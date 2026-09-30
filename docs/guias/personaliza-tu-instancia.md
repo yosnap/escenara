@@ -34,8 +34,9 @@ Todo lo que acaba en el CSS de la página se comprueba con listas cerradas, en e
 - **Colores**: solo `#RRGGBB` (por ejemplo `#2753D7`). Ni nombres, ni `rgb()`, ni `var()`.
 - **Familias**: nombres de letras, números, guiones y espacios, sin comillas ni signos. Ni URL ni nada que se pueda
   cerrar, ni palabras reservadas de CSS como `inherit` o `unset`.
-- **Textos de marca**: sin saltos de línea, sin caracteres de control ni invisibles (como los que invierten el sentido
-  del texto) y sin `<` ni `>`; nombre hasta 40 caracteres, lema hasta 80, descripción hasta 120.
+- **Textos de marca**: sin saltos de línea, sin marcas invisibles de dirección (las que harían que el nombre se leyera
+  al revés) y sin `<` ni `>`; los emojis, las banderas y escrituras como el persa se admiten. Nombre hasta 40
+  caracteres, lema hasta 80, descripción hasta 120.
 - **Medidas y tiempos**: enteros en su rango. El objetivo táctil mínimo no baja de 44 px y respetar «reducir
   movimiento» no se puede apagar.
 
