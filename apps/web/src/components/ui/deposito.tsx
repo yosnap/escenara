@@ -44,7 +44,7 @@ export function DepositoPresupuesto({
           <PiggyBank />
         </span>
         <div>
-          <h3 className="text-lg font-bold text-texto">Depósito de presupuesto</h3>
+          <h2 className="text-lg font-bold text-texto">Depósito de presupuesto</h2>
           <p className="text-sm text-texto-suave">
             Es un tope por cuenta que fija quien administra esta instalación, igual para todas las cuentas por ahora. No
             es dinero de Escenara: cada trabajo se paga con los créditos de tu propia cuenta del proveedor.

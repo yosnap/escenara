@@ -52,7 +52,12 @@ se aceptan y no se guardan.
 La comprobación es la misma que vigila la marca de Escenara en sus tests:
 
 - **Bloquean** los pares de texto sobre fondo (4,5:1): texto y texto suave sobre fondo y superficies, el acento sobre
-  fondo y superficies, el texto sobre el acento, el color creativo y los de estado sobre la superficie.
+  fondo y superficies, el texto sobre el acento, el color creativo sobre las superficies y los de estado (correcto,
+  aviso, error) sobre la superficie, la superficie elevada y el fondo.
+- Desde la 0.45.0 bloquean también **los pares que pinta la interfaz real**, no solo los tokens básicos: el contador
+  de trabajos en revisión del admin (`onPrimary` sobre `warning`), las etiquetas del historial de versiones (cada
+  color de estado sobre su propio color al 12 %) y el **texto oscuro fijo sobre la chispa** (los extremos coral y sol
+  del degradado y `brandSpark`), que es el de los números de paso, el preset elegido y el distintivo de «generada».
 - **Avisan** los bordes y el foco (3:1) y los colores vibrantes en pegatinas y titulares. Se puede publicar, pero se
   verán peor.
 
@@ -81,6 +86,11 @@ instalación.
 iconos de la aplicación de 192 y 512 px (con su manifiesto) e imagen para compartir de 1200 × 630. Sin logotipos no
 se genera nada y siguen los iconos de Escenara.
 
+El **icono de Apple** (`/apple-touch-icon.png`, que iPhone y iPad piden por su cuenta al guardar la página en la
+pantalla de inicio) es el de 192 px de tu marca. Si tu marca tiene logotipo pero no se generó ese icono, no se sirve
+ninguno (el sistema pone el suyo): nunca el de Escenara en una instalación con otra marca. Sin logotipos, el de
+Escenara, igual que el resto de iconos.
+
 La imagen para compartir necesita una dirección que se pueda abrir desde fuera: pon la **URL pública** de tu instalación
 en **Admin › Ajustes** (por ejemplo `https://estudio.ejemplo.es`). Sin ella (o si solo es `localhost`), el enlace se
 comparte con el nombre y la descripción, sin imagen.
@@ -106,7 +116,10 @@ la licencia: muchas fuentes comerciales no permiten el uso web sin una licencia 
 - **Publicar** guarda el borrador y lo publica. En la misma operación se vuelve a validar todo, se comprueba el
   contraste, se retira la versión anterior y se generan los iconos. Si algo falla, no cambia nada.
 - **Historial**: cada versión publicada con su fecha y sus notas. **Revertir a la versión N** la vuelve a publicar tal
-  como era, con sus mismos archivos.
+  como era, con sus mismos archivos. Si esa versión **ya no cumple el contraste de hoy** (porque se publicó antes de que
+  se comprobaran más pares), no se publica: vuelve como **borrador**, con cada par que falla en el aviso y en sus notas,
+  para que corrijas esos colores y la publiques. Lo publicado no cambia mientras tanto. Si ya tenías un borrador sin
+  publicar, no se pisa: publícalo o descártalo antes.
 - **Volver a la marca de Escenara** retira la publicada (pide un segundo clic para confirmar). La versión queda en el
   historial.
 

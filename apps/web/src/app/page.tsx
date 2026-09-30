@@ -17,14 +17,9 @@ export default async function Portada() {
   const conSesion = (await obtenerSesion()) !== null;
   return (
     <>
-      <a
-        href="#contenido"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-control focus:bg-superficie focus:px-4 focus:py-2 focus:font-semibold focus:text-texto focus:shadow-lg"
-      >
-        Saltar al contenido
-      </a>
+      {/* «Saltar al contenido» lo pone el layout raíz, igual que en el resto de páginas. */}
       <BarraPortada conSesion={conSesion} />
-      <main id="contenido">
+      <main id="contenido" tabIndex={-1}>
         <CabeceraPortada />
         <Escaparate />
         <ComoFunciona />

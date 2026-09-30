@@ -8,7 +8,7 @@ export function Pie({ version }: { version: string }) {
         <div className="flex items-center gap-4 text-texto">
           <MascotaChispa expresion="senala" tamano={48} />
           <div>
-            <Logotipo className="h-7" />
+            <Logotipo tamano="sm" />
             <p className="mt-1 text-sm text-texto-suave">Estudio abierto de personajes y vídeo · en construcción</p>
           </div>
         </div>

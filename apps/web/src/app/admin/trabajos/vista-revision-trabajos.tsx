@@ -44,6 +44,7 @@ export function VistaRevisionTrabajos({
       {error && <Aviso tono="error">{error}</Aviso>}
       {trabajos.length === 0 ? (
         <EstadoVacio
+          nivel={2}
           titulo="No hay ningún trabajo en revisión"
           texto="Cuando un trabajo se queda sin respuesta del proveedor aparecerá aquí con su reserva apartada."
         />

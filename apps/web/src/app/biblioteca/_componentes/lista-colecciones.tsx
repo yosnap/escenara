@@ -64,7 +64,7 @@ export function ListaColecciones({
               className={cn(claseItem, "min-w-0 flex-1")}
             >
               <span className="truncate">{c.nombre}</span>
-              <span className="ml-auto font-mono text-xs opacity-75">{c.total}</span>
+              <span className="ml-auto font-mono text-xs">{c.total}</span>
             </button>
             <BotonIcono
               etiqueta={`Renombrar ${c.nombre}`}

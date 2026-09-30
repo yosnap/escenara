@@ -173,9 +173,12 @@ export function VistaProduccion({ inicial }: { inicial: ProduccionVista }) {
 
       {produccion.porProducir > 0 && produccion.impedimentos.length === 0 && deGolpe > 0 && !repartoPendiente && (
         <ConfirmacionGasto
+          nivel={2}
           titulo={
             deGolpe === produccion.porProducir
-              ? `Producir las ${produccion.porProducir} escenas pendientes`
+              ? produccion.porProducir === 1
+                ? "Producir la escena pendiente"
+                : `Producir las ${produccion.porProducir} escenas pendientes`
               : `Producir ${deGolpe} de las ${produccion.porProducir} escenas pendientes`
           }
           explicacion={`Se encola el fotograma de cada una. Esta instalación permite ${produccion.maximoEnVuelo} ${produccion.maximoEnVuelo === 1 ? "escena" : "escenas"} a la vez, así que el resto espera: nada se pierde y vuelves a pulsar cuando quede sitio. Cada escena aparta su importe por separado, y el clip de cada una se paga después, al aprobar su fotograma.`}
@@ -206,6 +209,7 @@ export function VistaProduccion({ inicial }: { inicial: ProduccionVista }) {
 
       {produccion.escenas.length === 0 ? (
         <EstadoVacio
+          nivel={2}
           titulo="Este proyecto no tiene escenas"
           texto="Vuelve al plan, escribe su guion y apruébalo: solo entonces se puede producir."
           accion={

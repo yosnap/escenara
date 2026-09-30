@@ -59,7 +59,7 @@ export function TarjetaRevision({
           <p className="text-sm text-texto-suave">
             Escena {escena.orden} · {escena.segundos} s
           </p>
-          <h3 className="text-lg font-bold text-texto">{escena.resumen}</h3>
+          <h2 className="text-lg font-bold text-texto">{escena.resumen}</h2>
         </div>
         <span
           className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-sm font-semibold ${
@@ -94,7 +94,7 @@ export function TarjetaRevision({
         <>
           <section className="flex flex-col gap-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h4 className="font-bold text-texto">Comprobación automática del archivo</h4>
+              <h3 className="font-bold text-texto">Comprobación automática del archivo</h3>
               <Boton variante="secundario" tamano="sm" cargando={ocupado} onClick={onComprobar}>
                 {escena.automatica ? "Volver a comprobar" : "Comprobar el clip"}
               </Boton>
@@ -174,7 +174,7 @@ function RevisionConModelo({
   if (!proyecto.multimodalDisponible) {
     return (
       <section className="rounded-tarjeta border-2 border-borde bg-superficie p-4">
-        <h4 className="font-bold text-texto">Revisión con modelo</h4>
+        <h3 className="font-bold text-texto">Revisión con modelo</h3>
         <p className="mt-1 text-sm text-texto-suave">{proyecto.motivoSinMultimodal}</p>
       </section>
     );
@@ -183,7 +183,7 @@ function RevisionConModelo({
   return (
     <section className="flex flex-col gap-3 rounded-tarjeta border-2 border-borde bg-superficie p-4">
       <div>
-        <h4 className="font-bold text-texto">Revisión con modelo</h4>
+        <h3 className="font-bold text-texto">Revisión con modelo</h3>
         <p className="mt-1 text-sm text-texto-suave">
           Le pide a un modelo que mire el clip y describa lo que ve. Es una opinión más, no un veredicto: la identidad
           la validas tú. <strong>Cuesta créditos de tu cuenta del proveedor</strong> y se pide escena a escena.

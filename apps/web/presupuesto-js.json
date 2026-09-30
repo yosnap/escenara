@@ -1,0 +1,99 @@
+{
+  "porDefectoKb": 200,
+  "dentroDeLaMeta": [
+    "/",
+    "/admin/coherencia",
+    "/admin/decisiones",
+    "/admin/personajes",
+    "/admin/trabajos",
+    "/admin/versiones",
+    "/crear/historial",
+    "/cuenta/kit",
+    "/entrar",
+    "/personajes",
+    "/personajes/nuevo",
+    "/proyectos/[id]/revision",
+    "/recuperar",
+    "/registro",
+    "/restablecer",
+    "/verificar"
+  ],
+  "rutas": {
+    "/admin/componentes": {
+      "topeKb": 420,
+      "motivo": "Catálogo interno del admin: pinta todos los componentes a la vez. Medido: 417.0 KB."
+    },
+    "/proyectos/[id]": {
+      "topeKb": 332,
+      "motivo": "Guion por escenas con dirección, reparto, lista ordenable y selector de medios. Medido: 328.2 KB."
+    },
+    "/crear": {
+      "topeKb": 317,
+      "motivo": "Flujo por pasos con la dirección del clip, presets y selector de medios. Medido: 313.2 KB."
+    },
+    "/personajes/[id]": {
+      "topeKb": 300,
+      "motivo": "Ficha con referencias, captura guiada, versiones y consentimiento. Medido: 296.9 KB."
+    },
+    "/cuenta": {
+      "topeKb": 291,
+      "motivo": "Passkeys, sesiones y claves: necesita el cliente de autenticación completo y la lista ordenable del mapa de modelos. Medido: 287.6 KB."
+    },
+    "/admin/plantillas": {
+      "topeKb": 271,
+      "motivo": "Editor de plantillas y trends con sus ejemplos. Medido: 267.7 KB."
+    },
+    "/admin/modelos": {
+      "topeKb": 263,
+      "motivo": "Catálogo de modelos con la lista ordenable de recomendadas. Medido: 259.2 KB."
+    },
+    "/admin/ajustes": {
+      "topeKb": 257,
+      "motivo": "Formulario de ajustes de la instalación. Medido: 253.6 KB."
+    },
+    "/admin/presets": {
+      "topeKb": 253,
+      "motivo": "Editor de presets con lista ordenable. Medido: 249.1 KB."
+    },
+    "/proyectos/[id]/montaje": {
+      "topeKb": 252,
+      "motivo": "Línea de tiempo, mezcla, subtítulos y exportación. Medido: 249.0 KB."
+    },
+    "/admin/medios": {
+      "topeKb": 251,
+      "motivo": "Biblioteca de medios completa del admin. Medido: 247.8 KB."
+    },
+    "/proyectos/[id]/produccion": {
+      "topeKb": 249,
+      "motivo": "Rejilla de producción con confirmaciones de gasto y selector de medios. Medido: 245.7 KB."
+    },
+    "/biblioteca": {
+      "topeKb": 248,
+      "motivo": "Biblioteca de medios completa (subida, colecciones y selección). Medido: 244.5 KB."
+    },
+    "/proyectos/[id]/voz": {
+      "topeKb": 247,
+      "motivo": "Editor de voz y subtítulos. Medido: 243.3 KB."
+    },
+    "/proyectos": {
+      "topeKb": 243,
+      "motivo": "Lista con el alta de proyecto (formatos, personaje y presupuesto). Medido: 239.6 KB."
+    },
+    "/productos/[id]": {
+      "topeKb": 237,
+      "motivo": "Ficha de producto con fotos y diálogos. Medido: 233.5 KB."
+    },
+    "/productos": {
+      "topeKb": 233,
+      "motivo": "Lista con el alta de producto. Medido: 230.0 KB."
+    },
+    "/admin/marca": {
+      "topeKb": 227,
+      "motivo": "Editor de la marca con previa en ambos temas. Medido: 223.1 KB."
+    },
+    "/personajes/nuevo/inventado": {
+      "topeKb": 220,
+      "motivo": "Alta de personaje inventado con sus opciones. Medido: 216.9 KB."
+    }
+  }
+}

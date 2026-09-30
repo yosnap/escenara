@@ -66,12 +66,12 @@ export function ControlEncuadre({
         <Crosshair className="size-3.5" aria-hidden />
         {encuadre.modo === "bandas"
           ? "Entero, con bandas negras donde no llega."
-          : `Horizontal ${encuadre.x} % · vertical ${encuadre.y} %. Arrastra el vídeo para moverlo.`}
+          : `Horizontal ${encuadre.x} % · vertical ${encuadre.y} %. Arrastra el vídeo o, con el foco en él, muévelo con las flechas.`}
         {ajustado ? (
           <button
             type="button"
             disabled={deshabilitado}
-            className="font-semibold text-acento hover:underline disabled:opacity-50"
+            className="min-h-6 rounded-control px-1 font-semibold text-acento hover:underline disabled:opacity-50"
             onClick={() => onCambio(encuadreAutomatico(formato))}
           >
             Volver a automático

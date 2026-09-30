@@ -15,6 +15,7 @@ import {
 } from "@/lib/proyectos";
 import { Alerta } from "./alerta";
 import { cn } from "./cn";
+import { TablaDesplazable } from "./tabla-desplazable";
 
 /**
  * Componentes de proyecto: insignias de estado y la tabla de aprobación del plan.
@@ -93,7 +94,7 @@ export function TablaPlan({ plan, escenas }: { plan: PlanVista; escenas: readonl
         </p>
       </div>
 
-      <div className="overflow-x-auto">
+      <TablaDesplazable etiqueta="Plan del proyecto por escenas">
         <table className="w-full min-w-[40rem] border-collapse text-left">
           <caption className="sr-only">
             Escenas del proyecto con su modelo, su duración y su coste estimado por escena.
@@ -177,7 +178,7 @@ export function TablaPlan({ plan, escenas }: { plan: PlanVista; escenas: readonl
             </tr>
           </tfoot>
         </table>
-      </div>
+      </TablaDesplazable>
 
       {plan.margen > 0 && (
         <p className="text-sm text-texto-suave">

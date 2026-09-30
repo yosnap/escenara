@@ -215,6 +215,7 @@ export function VistaVoz({ inicial }: { inicial: VozProyectoVista }) {
 
       {estado.escenas.length === 0 ? (
         <EstadoVacio
+          nivel={2}
           titulo="Este proyecto todavía no tiene escenas"
           texto="Escribe su guion en el plan del proyecto y vuelve aquí para ponerle voz y subtítulos."
         />

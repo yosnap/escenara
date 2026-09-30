@@ -96,7 +96,7 @@ export function CantoProduccion({
           )}
           <button
             type="button"
-            className="self-start text-sm font-semibold text-acento hover:underline"
+            className="min-h-6 self-start rounded-control text-sm font-semibold text-acento hover:underline"
             onClick={() => void cargar()}
           >
             Actualizar comprobación del audio y el precio

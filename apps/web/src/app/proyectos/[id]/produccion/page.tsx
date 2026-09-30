@@ -28,7 +28,7 @@ export default async function PaginaProduccion({ params }: { params: Promise<{ i
   return (
     <div className="min-h-dvh bg-fondo">
       <CabeceraApp sesion={sesion} />
-      <main id="contenido" className="mx-auto flex max-w-5xl flex-col gap-6 px-5 py-8 md:px-8">
+      <main id="contenido" tabIndex={-1} className="mx-auto flex max-w-5xl flex-col gap-6 px-5 py-8 md:px-8">
         <VistaProduccion inicial={produccion} />
       </main>
     </div>

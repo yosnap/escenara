@@ -239,3 +239,28 @@ export function firmaDeGuardado(borrador: BorradorMontaje): string {
     firmaDeEncuadres(borrador.encuadres),
   ].join("·");
 }
+
+/** Cuánto mueve el encuadre cada pulsación de una flecha, en puntos del porcentaje. */
+export const PASO_ENCUADRE_TECLADO = 5;
+
+/** Posición del encuadre (0–100 en cada eje), redondeada y dentro de los bordes. */
+export const acotarEncuadre = (v: number) => Math.round(Math.min(100, Math.max(0, v)));
+
+/**
+ * El encuadre por teclado, la alternativa al arrastre: cada flecha lo mueve un paso en su eje, sin salirse de los
+ * bordes. Devuelve `null` con cualquier otra tecla, para que siga haciendo lo suyo (Tab, Intro…).
+ */
+export function moverEncuadreConTecla(
+  posicion: { x: number; y: number },
+  tecla: string,
+): { x: number; y: number } | null {
+  const cambios: Record<string, [number, number]> = {
+    ArrowLeft: [-PASO_ENCUADRE_TECLADO, 0],
+    ArrowRight: [PASO_ENCUADRE_TECLADO, 0],
+    ArrowUp: [0, -PASO_ENCUADRE_TECLADO],
+    ArrowDown: [0, PASO_ENCUADRE_TECLADO],
+  };
+  const cambio = cambios[tecla];
+  if (!cambio) return null;
+  return { x: acotarEncuadre(posicion.x + cambio[0]), y: acotarEncuadre(posicion.y + cambio[1]) };
+}

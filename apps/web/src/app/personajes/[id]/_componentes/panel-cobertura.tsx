@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Boton, claseBoton } from "@/components/ui/button";
 import { Aviso, AvisoEstado } from "@/components/ui/feedback";
+import { sinMovimiento } from "@/components/ui/llevar-al-problema";
 import { MiniaturaMedio } from "@/components/ui/media/miniatura-medio";
 import { Dialogo } from "@/components/ui/overlay";
 import { type DiapositivaPase, PaseAutomatico } from "@/components/ui/pase-automatico";
@@ -189,7 +190,9 @@ export function PanelCobertura({
               tamano="sm"
               icono={<Tags className="size-4" />}
               onClick={() =>
-                document.getElementById(ANCLA_REFERENCIAS)?.scrollIntoView({ behavior: "smooth", block: "start" })
+                document
+                  .getElementById(ANCLA_REFERENCIAS)
+                  ?.scrollIntoView({ behavior: sinMovimiento(document) ? "auto" : "smooth", block: "start" })
               }
             >
               Clasificar mis fotos

@@ -358,6 +358,7 @@ describe.skipIf(!hayBaseDeDatos)("marca de la instalación y kit del creador", (
 
     const r = await rutaRevertir.POST(pedir(admin, `/api/admin/marca/versiones/${v1.id}/revertir`, "POST"), ctx(v1.id));
     expect(r.status).toBe(200);
+    expect(((await r.json()) as { publicada?: VersionMarcaVista }).publicada?.id).toBe(v1.id);
     const vista = await estado();
     expect(vista.publicada?.id).toBe(v1.id);
     expect(vista.historial.map((v) => v.id)).toEqual([v2.id, v1.id]);
@@ -370,6 +371,38 @@ describe.skipIf(!hayBaseDeDatos)("marca de la instalación y kit del creador", (
     expect(
       (await rutaRevertir.POST(pedir(admin, "/api/admin/marca/versiones/nada/revertir", "POST"), ctx("nada"))).status,
     ).toBe(404);
+  });
+
+  test("una versión antigua que ya no cumple el contraste de hoy vuelve como borrador, con el motivo, sin publicarse", async () => {
+    await guardar(conColor("#1D47C4"));
+    const v1 = (await publicar()).datos.publicada as VersionMarcaVista;
+    await guardar(conColor("#2750CC"));
+    const v2 = (await publicar()).datos.publicada as VersionMarcaVista;
+    // Se publicó con las reglas de entonces: su aviso claro no se leía con el texto sobre el acento (par de hoy).
+    const antigua = structuredClone(v1.documento);
+    antigua.theme.light.warning = "#E0B84A";
+    await db().update(brandVersions).set({ document: antigua }).where(eq(brandVersions.id, v1.id));
+
+    const r = await rutaRevertir.POST(pedir(admin, `/api/admin/marca/versiones/${v1.id}/revertir`, "POST"), ctx(v1.id));
+    expect(r.status).toBe(200);
+    const datos = (await r.json()) as { borrador?: VersionMarcaVista; motivos?: string[]; publicada?: unknown };
+    expect(datos.publicada).toBeUndefined();
+    expect(datos.motivos?.some((m) => m.includes("onPrimary sobre warning"))).toBe(true);
+    expect(datos.borrador?.documento.theme.light.warning).toBe("#E0B84A");
+    expect(datos.borrador?.notas).toStartWith(`Restaurada desde la versión ${v1.version}.`);
+    // Lo publicado no cambia: sigue la v2, y el borrador queda para corregirlo.
+    const vista = await estado();
+    expect(vista.publicada?.id).toBe(v2.id);
+    expect(vista.borrador?.id).toBe(datos.borrador?.id as string);
+    expect((await marcaAplicada())?.css).toContain("--primary: #2750CC;");
+    // Con un borrador ya pendiente no se pisa: 409 con el motivo y nada cambia.
+    const otra = await rutaRevertir.POST(
+      pedir(admin, `/api/admin/marca/versiones/${v1.id}/revertir`, "POST"),
+      ctx(v1.id),
+    );
+    expect(otra.status).toBe(409);
+    expect(((await otra.json()) as { error: string }).error).toContain("ya tienes un borrador sin publicar");
+    expect((await estado()).borrador?.id).toBe(datos.borrador?.id as string);
   });
 
   test("volver a la marca de Escenara retira la publicada y deja de aplicarse", async () => {
@@ -596,8 +629,18 @@ describe.skipIf(!hayBaseDeDatos)("marca de la instalación y kit del creador", (
       );
       expect(sin.metadataBase).toBeUndefined();
       expect(JSON.stringify(sin.openGraph)).not.toContain("images");
-      // Sin marca publicada, los metadatos de siempre, sin base.
-      expect(metadatosDeLaMarca(null, base)).toEqual(METADATOS_DE_ESCENARA);
+      // Sin marca publicada, los de Escenara: con URL pública, su imagen para compartir en URL absoluta; sin ella, los de
+      // siempre.
+      const escenara = metadatosDeLaMarca(null, base);
+      expect({ ...escenara, metadataBase: undefined, openGraph: undefined, twitter: undefined }).toEqual({
+        ...METADATOS_DE_ESCENARA,
+        metadataBase: undefined,
+        openGraph: undefined,
+        twitter: undefined,
+      });
+      expect(String(escenara.metadataBase)).toBe("https://estudio.ejemplo.es/");
+      expect(JSON.stringify(escenara.openGraph)).toContain("/imagen-social.png");
+      expect(metadatosDeLaMarca(null, null)).toEqual(METADATOS_DE_ESCENARA);
     } finally {
       await guardarAjustes({ urlPublica: previa }, null);
     }

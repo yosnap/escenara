@@ -46,6 +46,7 @@ export function ListaProyectos({
 
       {proyectos.length === 0 ? (
         <EstadoVacio
+          nivel={2}
           titulo="Todavía no tienes proyectos"
           texto="Un proyecto guarda una idea, su guion por escenas y el plan con el coste estimado. Empieza por la idea: el guion lo puedes escribir a mano o proponértelo el asistente."
           icono={<Sparkles />}

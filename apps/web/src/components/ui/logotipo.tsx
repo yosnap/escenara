@@ -3,6 +3,9 @@
 import { cn } from "./cn";
 import { useMarca } from "./marca-contexto";
 
+/** Alto del logotipo horizontal; la letra del nombre es proporcional a él. */
+const TAMANO_LOGOTIPO = { md: "h-8 text-[2rem]", sm: "h-7 text-[1.75rem]" } as const;
+
 /**
  * Logotipo «Enfoque»: marco abierto con la chispa central. Usa los tokens del tema, así que sirve
  * en claro y en oscuro sin variantes de archivo. `solo-marca` omite el nombre.
@@ -12,9 +15,11 @@ import { useMarca } from "./marca-contexto";
  */
 export function Logotipo({
   variante = "horizontal",
+  tamano = "md",
   className,
 }: {
   variante?: "horizontal" | "solo-marca";
+  tamano?: keyof typeof TAMANO_LOGOTIPO;
   className?: string;
 }) {
   const marca = useMarca();
@@ -23,7 +28,10 @@ export function Logotipo({
   const claro = marca?.logos[horizontal ? "horizontal-claro" : "simbolo-claro"];
   const oscuro = marca?.logos[horizontal ? "horizontal-oscuro" : "simbolo-oscuro"];
   if (claro || oscuro) {
-    const clases = cn(horizontal ? "h-8 w-auto" : "size-8 object-contain", className);
+    const clases = cn(
+      horizontal ? (tamano === "sm" ? "h-7 w-auto" : "h-8 w-auto") : "size-8 object-contain",
+      className,
+    );
     return (
       <span className="inline-flex items-center">
         {/* biome-ignore lint/performance/noImgElement: logotipo de la instalación servido por nuestra ruta, sin optimizar a propósito (SVG) */}
@@ -35,12 +43,13 @@ export function Logotipo({
       </span>
     );
   }
-  return (
+  const simbolo = (
     <svg
-      viewBox={horizontal ? "0 0 444 100" : "0 0 100 100"}
-      role="img"
-      aria-label={nombre}
-      className={cn(horizontal ? "h-8 w-auto" : "size-8", className)}
+      viewBox="0 0 100 100"
+      aria-hidden={horizontal || undefined}
+      role={horizontal ? undefined : "img"}
+      aria-label={horizontal ? undefined : nombre}
+      className={horizontal ? "h-full w-auto shrink-0" : cn("size-8", className)}
     >
       <g transform="translate(2 2)">
         <path
@@ -56,11 +65,21 @@ export function Logotipo({
           fill="var(--color-chispa)"
         />
       </g>
-      {horizontal && (
-        <text x="115" y="67" fill="currentColor" fontFamily="inherit" fontSize="54" fontWeight="700" letterSpacing="-2">
-          {nombre}
-        </text>
-      )}
     </svg>
+  );
+  if (!horizontal) return simbolo;
+  // El nombre es texto de la página y no del SVG: con la fuente de respaldo (más ancha que Manrope) o con el nombre largo
+  // de una instalación, crece con él en lugar de recortarse contra el borde de un dibujo de ancho fijo. El tamaño de la
+  // letra sale de la altura (`font-size` = alto, y el nombre al 54 %, la proporción del logotipo de la marca).
+  return (
+    <span role="img" aria-label={nombre} className={cn("inline-flex items-center", TAMANO_LOGOTIPO[tamano], className)}>
+      {simbolo}
+      <span
+        aria-hidden
+        className="ml-[0.13em] text-[0.54em] leading-none font-bold tracking-[-0.037em] whitespace-nowrap"
+      >
+        {nombre}
+      </span>
+    </span>
   );
 }

@@ -121,6 +121,7 @@ export function VistaModelos({
 
       {visibles.length === 0 ? (
         <EstadoVacio
+          nivel={2}
           titulo="Ningún modelo con esos filtros"
           texto="Cambia la capacidad, el proveedor o el estado para ver el resto del catálogo."
         />

@@ -10,7 +10,7 @@ import {
   CARACTERES_POR_LINEA,
   dividirEnLineas,
   type EscenaVozVista,
-  erroresDeSubtitulos,
+  erroresPorSubtitulo,
   type Subtitulo,
   ZONA_SEGURA,
 } from "@/lib/voz";
@@ -54,8 +54,26 @@ export function EditorSubtitulos({
   const filasNuevas = useRef(0);
   const [lineas, setLineas] = useState<LineaEditable[]>(() => conClave(escena.subtitulos));
   const [activa, setActiva] = useState(0);
-  const errores = erroresDeSubtitulos(lineas);
+  const erroresPorLinea = erroresPorSubtitulo(lineas);
+  const errores = erroresPorLinea.map((e) => e.motivo);
   const avisos = avisosDeSubtitulos(lineas);
+  /**
+   * Lo que describe cada campo de una línea: sus errores (debajo de la línea, con `aria-invalid`) y, en el texto,
+   * también sus avisos de legibilidad. Así el lector de pantalla lo dice al llegar al campo, no solo en el resumen.
+   */
+  const idMensaje = (clave: string, tipo: "error" | "aviso", k: number) => `${idBase}-${clave}-${tipo}-${k}`;
+  const describe = (indice: number, clave: string, campo: "tiempo" | "texto") => {
+    const ids = erroresPorLinea
+      .filter((e) => e.indice === indice)
+      .flatMap((e, k) => (e.campo === campo ? [idMensaje(clave, "error", k)] : []));
+    if (campo === "texto") {
+      ids.push(...avisos.filter((a) => a.indice === indice).map((_, k) => idMensaje(clave, "aviso", k)));
+    }
+    return {
+      "aria-describedby": ids.join(" ") || undefined,
+      "aria-invalid": ids.some((id) => id.includes("-error-")) || undefined,
+    };
+  };
   const actual = lineas[Math.min(activa, Math.max(0, lineas.length - 1))] ?? null;
 
   const cambiar = (indice: number, cambios: Partial<Subtitulo>) =>
@@ -97,6 +115,7 @@ export function EditorSubtitulos({
                   value={linea.desde}
                   onChange={(e) => cambiar(indice, { desde: Number(e.target.value) })}
                   onFocus={() => setActiva(indice)}
+                  {...describe(indice, linea.clave, "tiempo")}
                 />
               </label>
               <label
@@ -114,6 +133,7 @@ export function EditorSubtitulos({
                   value={linea.hasta}
                   onChange={(e) => cambiar(indice, { hasta: Number(e.target.value) })}
                   onFocus={() => setActiva(indice)}
+                  {...describe(indice, linea.clave, "tiempo")}
                 />
               </label>
               <div className="ml-auto flex gap-1">
@@ -137,11 +157,20 @@ export function EditorSubtitulos({
               onChange={(e) => cambiar(indice, { texto: e.target.value })}
               onFocus={() => setActiva(indice)}
               aria-label={`Texto del subtítulo ${indice + 1}`}
+              {...describe(indice, linea.clave, "texto")}
             />
+            {erroresPorLinea
+              .filter((e) => e.indice === indice)
+              .map((e, k) => (
+                // alerta-permitida: mensaje de un campo, debajo de la línea y ligado con aria-describedby
+                <p key={e.motivo} id={idMensaje(linea.clave, "error", k)} className="text-xs font-medium text-error">
+                  {e.motivo}
+                </p>
+              ))}
             {avisos
               .filter((a) => a.indice === indice)
-              .map((a) => (
-                <p key={a.motivo} className="text-xs text-texto-suave">
+              .map((a, k) => (
+                <p key={a.motivo} id={idMensaje(linea.clave, "aviso", k)} className="text-xs text-texto-suave">
                   {a.motivo}
                 </p>
               ))}

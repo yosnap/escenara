@@ -15,7 +15,7 @@ export default async function PaginaAdminPersonajes({ searchParams }: { searchPa
   const { pagina } = await searchParams;
   const pendientes = await pendientesDeRevision({ id: sesion.user.id, esAdmin: esAdmin(sesion) }, Number(pagina ?? 1));
   return (
-    <main className="mx-auto flex max-w-4xl flex-col gap-6 px-5 py-10 md:px-8">
+    <main id="contenido" tabIndex={-1} className="mx-auto flex max-w-4xl flex-col gap-6 px-5 py-10 md:px-8">
       <div>
         <h1 className="text-4xl font-bold text-texto">Consentimientos de terceros</h1>
         <p className="mt-2 max-w-3xl text-texto-suave">

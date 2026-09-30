@@ -9,15 +9,57 @@ export const METADATOS_DE_ESCENARA: Metadata = {
   // Cada página pone solo su parte («Tus personajes») y la plantilla añade el nombre de la instalación.
   title: { default: "Escenara · Da vida a cada escena", template: "%s · Escenara" },
   description: "Estudio abierto de personajes y vídeo",
-  icons: { icon: [{ url: "/icon.svg", type: "image/svg+xml", sizes: "any" }] },
+  // El SVG es el dibujo simplificado para 16 px (nítido a 16 y 32); los PNG, para quien no lee SVG. Los iconos de la
+  // aplicación instalada van en el manifiesto. Todos salen de `bun run activos` (scripts/activos-marca.ts).
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml", sizes: "any" },
+      { url: "/favicon-32.png", type: "image/png", sizes: "32x32" },
+      { url: "/favicon-16.png", type: "image/png", sizes: "16x16" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  manifest: "/manifest.webmanifest",
 };
 
+/** Icono de Apple de Escenara. `/apple-touch-icon.png` es una ruta que decide cuál servir (`destinoIconoApple`). */
+export const ICONO_APPLE_DE_ESCENARA = "/marca-escenara/apple-touch-icon.png";
+
 /**
- * Metadatos de la página. Sin marca publicada, los de siempre. Con ella, su nombre, su lema y los iconos que se
+ * Qué icono sirve `/apple-touch-icon.png`, que iOS pide por su cuenta aunque la página no lo declare:
+ * - con marca publicada que tiene icono de 192 px, **el de la marca**;
+ * - con marca publicada que tiene logotipo pero no icono, **ninguno** (404): mejor el icono genérico del sistema que el
+ *   de Escenara en una instalación con otra marca;
+ * - sin marca publicada, o con una marca sin logotipos (que en la interfaz usa el símbolo de Escenara), **el de Escenara**.
+ */
+export function destinoIconoApple(marca: MarcaAplicada | null): string | null {
+  if (marca?.iconos.icono192) return marca.iconos.icono192;
+  if (marca && Object.values(marca.logos).some(Boolean)) return null;
+  return ICONO_APPLE_DE_ESCENARA;
+}
+
+/** Imagen para compartir de Escenara (1200 × 630), pintada con Manrope. */
+export const IMAGEN_SOCIAL_DE_ESCENARA = "/imagen-social.png";
+
+/**
+ * Metadatos de la página. Sin marca publicada, los de Escenara (con su imagen para compartir si hay URL pública). Con ella, su nombre, su lema y los iconos que se
  * generaron al publicarla (sin logotipos subidos, el icono de Escenara). Next escapa estos textos al escribir el HTML.
  */
 export function metadatosDeLaMarca(marca: MarcaAplicada | null, base: URL | null = null): Metadata {
-  if (!marca) return METADATOS_DE_ESCENARA;
+  if (!marca) {
+    // La imagen para compartir necesita una URL absoluta de verdad: sin URL pública, los metadatos de siempre.
+    if (!base) return METADATOS_DE_ESCENARA;
+    return {
+      ...METADATOS_DE_ESCENARA,
+      metadataBase: base,
+      openGraph: {
+        title: "Escenara · Da vida a cada escena",
+        description: "Estudio abierto de personajes y vídeo",
+        images: [{ url: IMAGEN_SOCIAL_DE_ESCENARA, width: 1200, height: 630, alt: "Escenara · Da vida a cada escena" }],
+      },
+      twitter: { card: "summary_large_image" },
+    };
+  }
   const { favicon16, favicon32, icono192, icono512, social } = marca.iconos;
   return {
     title: { default: `${marca.nombre} · ${marca.lema}`, template: `%s · ${marca.nombre}` },

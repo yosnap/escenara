@@ -31,7 +31,7 @@ export default async function PaginaProducto({ params }: { params: Promise<{ id:
   return (
     <div className="min-h-dvh bg-fondo">
       <CabeceraApp sesion={sesion} />
-      <main id="contenido" className="mx-auto flex max-w-4xl flex-col gap-6 px-5 py-8 md:px-8">
+      <main id="contenido" tabIndex={-1} className="mx-auto flex max-w-4xl flex-col gap-6 px-5 py-8 md:px-8">
         <Link href="/productos" className="text-sm font-semibold text-acento underline">
           ← Volver a tus productos
         </Link>

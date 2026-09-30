@@ -5,9 +5,9 @@ import { type DragEvent, Suspense, useDeferredValue, useRef, useState, useSyncEx
 import { TIPOS_MEDIO, type TipoMedio } from "@/lib/media/reglas";
 import type { Medio } from "@/lib/media/tipos";
 import { Boton } from "../button";
+import { CargadorChispa } from "../chispa";
 import { cn } from "../cn";
 import { Aviso } from "../feedback";
-import { CargadorChispa } from "../motion";
 import { Dialogo } from "../overlay";
 import {
   eliminarDefinitivamente,
@@ -18,7 +18,8 @@ import {
   urlArchivoPropio,
 } from "./api-medios";
 import { BarraBiblioteca } from "./barra-biblioteca";
-import { EditorImagen, type ModoGuardado } from "./editor-imagen";
+import { EditorImagen } from "./diferidos";
+import type { ModoGuardado } from "./editor-imagen";
 import { EditorMetadatos } from "./editor-metadatos";
 import { EditorSubida } from "./editor-subida";
 import type { AccionesMedio, VistaBiblioteca } from "./elemento-medio";

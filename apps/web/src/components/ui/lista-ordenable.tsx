@@ -14,10 +14,11 @@ import {
 import { rectSortingStrategy, SortableContext, sortableKeyboardCoordinates, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
-import { useReducedMotion } from "motion/react";
+
 import { type ReactNode, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { mismoOrden, moverEnLista } from "@/lib/lista-ordenable";
 import { cn } from "./cn";
+import { useMovimientoReducido } from "./use-movimiento-reducido";
 
 /**
  * Lista que se ordena arrastrando, con **el teclado cubierto igual de bien**: el orden de una lista no puede
@@ -218,7 +219,7 @@ function ElementoDeLista({
   deshabilitado: boolean;
   className?: string;
 }) {
-  const reducido = useReducedMotion();
+  const reducido = useMovimientoReducido();
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: elemento.clave,
     disabled: deshabilitado || total < 2,

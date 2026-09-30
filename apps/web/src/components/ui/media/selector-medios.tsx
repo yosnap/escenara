@@ -13,7 +13,7 @@ import {
 import type { Medio } from "@/lib/media/tipos";
 import { Boton, BotonIcono } from "../button";
 import { cn } from "../cn";
-import { DialogoSelectorMedios } from "./dialogo-selector-medios";
+import { DialogoSelectorMedios } from "./diferidos";
 import { EditorSubida } from "./editor-subida";
 import { ListaSubidas } from "./lista-subidas";
 import { MiniaturaMedio } from "./miniatura-medio";
@@ -101,7 +101,7 @@ export function SelectorMedios({
       )}
 
       {(multiple || valor.length === 0) && (
-        <section
+        <fieldset
           aria-label="Zona para soltar archivos"
           onDragOver={(e) => {
             e.preventDefault();
@@ -110,7 +110,7 @@ export function SelectorMedios({
           onDragLeave={() => setArrastrando(false)}
           onDrop={soltar}
           className={cn(
-            "flex flex-col items-center gap-3 rounded-tarjeta border-2 border-dashed px-6 py-8 text-center transition-colors duration-(--motion-fast)",
+            "flex min-w-0 flex-col items-center gap-3 rounded-tarjeta border-2 border-dashed px-6 py-8 text-center transition-colors duration-(--motion-fast)",
             arrastrando ? "border-acento bg-acento/8" : "border-borde/70",
           )}
         >
@@ -143,7 +143,7 @@ export function SelectorMedios({
               </>
             )}
           </div>
-        </section>
+        </fieldset>
       )}
 
       {!multiple && valor.length > 0 && !soloSubida && (

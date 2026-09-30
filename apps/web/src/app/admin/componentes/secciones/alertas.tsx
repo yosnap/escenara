@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Alerta, FlechaProblema } from "@/components/ui/alerta";
 import { Casilla } from "@/components/ui/choice";
 import { AreaTexto, Campo } from "@/components/ui/field";
+import { AvisoParteNoCargada } from "@/components/ui/limite-de-carga";
 import { Multipaso, PanelDePaso, useMultipaso } from "@/components/ui/multipaso";
 import { Paso } from "@/components/ui/paso";
 import type { PasoDelFlujo } from "@/lib/multipaso";
@@ -136,6 +137,9 @@ export function SeccionAlertas() {
               <span className="text-sm text-texto-suave">Quieta (reducir movimiento)</span>
             </div>
           </div>
+        </Muestra>
+        <Muestra titulo="Una parte que no ha llegado (LimiteDeCarga)">
+          <AvisoParteNoCargada error={Object.assign(new Error("Loading chunk 1 failed"), { name: "ChunkLoadError" })} />
         </Muestra>
       </div>
     </Seccion>

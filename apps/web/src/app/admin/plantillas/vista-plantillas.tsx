@@ -75,6 +75,7 @@ export function VistaPlantillas({ inicial }: { inicial: PlantillaVista[] }) {
 
       {plantillas.length === 0 && (
         <EstadoVacio
+          nivel={2}
           titulo="Sin plantillas"
           texto="La semilla de la instalación no se ha aplicado todavía: ejecuta las migraciones."
         />

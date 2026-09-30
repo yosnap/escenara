@@ -1,0 +1,147 @@
+import { describe, expect, test } from "bun:test";
+import path from "node:path";
+import { Glob } from "bun";
+import { renderToStaticMarkup } from "react-dom/server";
+
+/**
+ * **Con «reducir movimiento» nada se mueve solo**: ni parallax, ni animaciones de entrada, ni desplazamientos suaves.
+ * Se comprueba sobre todo el código de la aplicación, no sobre una lista de componentes, así que una animación nueva
+ * sin su guarda rompe la suite.
+ *
+ * Las guardas válidas:
+ * - clases de Tailwind: `motion-safe:animate-…`, o `animate-…` con `motion-reduce:animate-none` en la misma cadena;
+ * - la librería de animación: el componente mira `useReducedMotion`;
+ * - CSS propio: la animación dentro de `@media (prefers-reduced-motion: no-preference)` o anulada en `… reduce`;
+ * - desplazamientos: `behavior` calculado con la preferencia, nunca `"smooth"` fijo;
+ * - transiciones: la regla global de `globals.css` las deja en 1 ms.
+ */
+
+const src = path.resolve(import.meta.dir, "../..");
+const fuentes: { fichero: string; codigo: string }[] = [];
+for await (const fichero of new Glob("**/*.{ts,tsx}").scan(src)) {
+  if (fichero.includes(".test.")) continue;
+  fuentes.push({ fichero, codigo: await Bun.file(path.join(src, fichero)).text() });
+}
+const css = await Bun.file(path.join(src, "app/globals.css")).text();
+
+/** Cadenas literales del código (comillas dobles, simples e invertidas): es donde viven las clases. */
+const literales = (codigo: string) =>
+  [...codigo.matchAll(/"([^"\n]*)"|'([^'\n]*)'|`([^`]*)`/g)].map((m) => m[1] ?? m[2] ?? m[3] ?? "");
+
+describe("ninguna animación sin su guarda", () => {
+  test("hay código que revisar (la búsqueda no se ha quedado vacía)", () => {
+    expect(fuentes.length).toBeGreaterThan(300);
+  });
+
+  test("toda clase animate-… va con motion-safe: o con motion-reduce:animate-none", () => {
+    const sinGuarda: string[] = [];
+    for (const { fichero, codigo } of fuentes) {
+      for (const cadena of literales(codigo)) {
+        for (const clase of cadena.match(/(?:^|\s)[\w:-]*animate-[^\s]+/g) ?? []) {
+          const limpia = clase.trim();
+          if (limpia.endsWith("animate-none") || limpia.startsWith("motion-safe:")) continue;
+          if (cadena.includes("motion-reduce:animate-none")) continue;
+          sinGuarda.push(`${fichero}: ${limpia}`);
+        }
+      }
+    }
+    expect(sinGuarda).toEqual([]);
+  });
+
+  test("cada animación de la librería mira la preferencia (uso a uso, no por fichero)", () => {
+    const conMotion = fuentes.filter((f) => /from "motion\/react"/.test(f.codigo));
+    expect(conMotion.length).toBeGreaterThan(0);
+    const sinGuarda: string[] = [];
+    for (const { fichero, codigo } of conMotion) {
+      const lineas = codigo.split("\n");
+      lineas.forEach((linea, i) => {
+        if (!/\banimate=\{/.test(linea)) return;
+        // La guarda está en la propia expresión (`animate={reducido ? undefined : …}`) o se explica encima.
+        const guardada =
+          /reducid/.test(linea) || lineas.slice(Math.max(0, i - 3), i).some((l) => l.includes("permitido:"));
+        if (!guardada) sinGuarda.push(`${fichero}:${i + 1}`);
+      });
+      if (!codigo.includes("useReducedMotion")) sinGuarda.push(`${fichero}: no mira useReducedMotion`);
+    }
+    expect(sinGuarda).toEqual([]);
+  });
+
+  test("ningún desplazamiento es suave por defecto", () => {
+    const fijos = fuentes.filter((f) => /behavior:\s*["']smooth["']/.test(f.codigo)).map((f) => f.fichero);
+    expect(fijos).toEqual([]);
+  });
+
+  test("el CSS en línea con animaciones anula cada una con «reducir movimiento» (regla a regla)", () => {
+    const sinAnular: string[] = [];
+    let revisados = 0;
+    for (const { fichero, codigo } of fuentes) {
+      for (const bloque of literales(codigo).filter((l) => /[{;\s]animation:/.test(l))) {
+        const animados = new Set<string>();
+        const anulados = new Set<string>();
+        let pila: string[] = [];
+        // Las interpolaciones (`${id}`) traen llaves que no son del CSS: se cambian por un marcador.
+        const limpio = bloque.replace(/\$\{[^}]*\}/g, "X");
+        for (const token of limpio.match(/[^{};]+\{|\}|[^{};]+;?/g) ?? []) {
+          const t = token.trim();
+          if (t.endsWith("{")) pila.push(t.slice(0, -1).trim());
+          else if (t === "}") pila = pila.slice(0, -1);
+          else if (/^animation\s*:/.test(t)) {
+            const selector = pila.at(-1) ?? "";
+            if (pila.some((p) => p.includes("prefers-reduced-motion: reduce"))) {
+              if (/animation\s*:\s*none/.test(t)) anulados.add(selector);
+            } else if (!pila.some((p) => p.includes("prefers-reduced-motion: no-preference"))) animados.add(selector);
+          }
+        }
+        revisados += animados.size;
+        for (const selector of animados) if (!anulados.has(selector)) sinAnular.push(`${fichero}: ${selector}`);
+      }
+    }
+    expect(sinAnular).toEqual([]);
+    expect(revisados).toBeGreaterThan(0);
+  });
+
+  test("en globals.css cada animación está dentro de «no-preference» y la regla global apaga el resto", () => {
+    // Se recorren los bloques: una declaración `animation:` solo vale dentro de la media «no-preference».
+    const sueltas: string[] = [];
+    let pila: string[] = [];
+    for (const token of css.match(/[^{};]+\{|\}|[^{};]+;/g) ?? []) {
+      const t = token.trim();
+      if (t.endsWith("{")) pila.push(t.slice(0, -1).trim());
+      else if (t === "}") pila = pila.slice(0, -1);
+      else if (/^animation\s*:/.test(t) && !pila.some((p) => p.includes("prefers-reduced-motion: no-preference"))) {
+        if (!pila.some((p) => p.includes("prefers-reduced-motion: reduce"))) sueltas.push(`${pila.join(" > ")}: ${t}`);
+      }
+    }
+    expect(sueltas).toEqual([]);
+    const global = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce)"));
+    for (const regla of [
+      "animation-duration: 1ms !important",
+      "animation-iteration-count: 1 !important",
+      "transition-duration: 1ms !important",
+      "scroll-behavior: auto !important",
+    ]) {
+      expect(global).toContain(regla);
+    }
+  });
+});
+
+describe("parallax con «reducir movimiento»", () => {
+  test("las capas salen quietas del servidor y solo se mueven con la animación de «sin preferencia»", async () => {
+    const { EscenaParallax } = await import("./parallax");
+    const html = renderToStaticMarkup(
+      <EscenaParallax capas={[{ id: "a", contenido: <span>capa</span>, velocidad: -120 }]}>
+        <p>Contenido</p>
+      </EscenaParallax>,
+    );
+    // Sin CSS no hay desplazamiento: la capa lleva su distancia como variable, no como transformación.
+    expect(html).toContain("--parallax-desplazamiento:-120px");
+    expect(html).not.toContain("transform");
+    expect(html).toMatch(/<div aria-hidden="true" data-capa-parallax="a"/);
+
+    // Una sola regla la mueve, y va dentro de «no-preference» y de @supports de las líneas de tiempo (la comprobación
+    // de globals.css de arriba no deja ninguna `animation:` fuera de esa media).
+    expect(css.match(/\.capa-parallax\s*\{/g)?.length).toBe(1);
+    const regla = css.slice(css.indexOf("@supports (animation-timeline: view())"), css.indexOf(".capa-parallax {"));
+    expect(regla).toContain("@media (prefers-reduced-motion: no-preference)");
+  });
+});

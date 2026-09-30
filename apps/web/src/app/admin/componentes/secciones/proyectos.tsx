@@ -93,7 +93,7 @@ export function SeccionProyectos() {
     <Seccion
       id="proyectos"
       titulo="Proyectos y plan"
-      descripcion="Los estados de un proyecto, de una escena y de una afirmación por verificar, y la tabla con la que se aprueba el gasto de un proyecto entero."
+      descripcion="Los estados de un proyecto, de una escena y de una afirmación por verificar, y la tabla con la que se aprueba el gasto de un proyecto entero. Las tablas anchas van en una región desplazable (TablaDesplazable) que se alcanza con Tab y se mueve con las flechas."
     >
       <div className="flex flex-col gap-6">
         <Muestra titulo="Estado del proyecto">

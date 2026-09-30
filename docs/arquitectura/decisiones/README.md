@@ -44,6 +44,7 @@ Cada decisión relevante se documenta en un fichero `adr-NNNN-slug.md` dentro de
 | [0036](adr-0036-trends-versionados.md) | El trend es una plantilla versionada con vigencia explícita; solo una copia vigente puede generar | 0.30.0 | Propuesta; cinco formatos en revisión hasta la prueba real |
 | [0037](adr-0037-animados-con-identidad-maestra.md) | El estilo animado pertenece al personaje inventado, se versiona y se ancla en un retrato maestro heredado por el proyecto | 0.31.0 | Aceptada; calidad visual pendiente de prueba real |
 | [0038](adr-0038-decisiones-tipadas-en-sombra.md) | Cada decisión del motor se registra con su evidencia, umbrales, puerta y acción; Jev opina en sombra sin bloquear ni verse, sin escenas con personas reales ni nombres, y se mide con la etiqueta humana de cada pregunta | 0.39.0 | Aceptada (las reglas mandan y la sombra no bloquea son firmes; las dos preguntas y la clave del operador, pendientes de revisión) |
+| [0039](adr-0039-presupuestos-de-rendimiento.md) | Presupuestos de rendimiento en móvil (LCP < 2,5 s, INP < 200 ms, CLS < 0,1) y de JavaScript por ruta comprobado en el build: meta de 200 KB y topes propios medidos, con su motivo, para las rutas que hoy la superan | 0.45.0 | Aceptado (cifras recomendadas, revisables) |
 
 ## Plantilla
 

@@ -7,7 +7,7 @@ import { Boton, BotonIcono } from "@/components/ui/button";
 import { Casilla } from "@/components/ui/choice";
 import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo, EntradaTexto } from "@/components/ui/field";
-import { DialogoSelectorMedios } from "@/components/ui/media/dialogo-selector-medios";
+import { DialogoSelectorMedios } from "@/components/ui/media/diferidos";
 import { MiniaturaMedio } from "@/components/ui/media/miniatura-medio";
 import { Dialogo } from "@/components/ui/overlay";
 import {
