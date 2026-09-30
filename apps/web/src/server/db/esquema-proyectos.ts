@@ -16,6 +16,7 @@ import type { FormatoMontaje } from "@/lib/formatos";
 import { media } from "./esquema";
 import { users } from "./esquema-auth";
 import { proveedorCredencial } from "./esquema-boveda";
+import { places } from "./esquema-lugares";
 import { characters, characterVersions } from "./esquema-personajes";
 import { promptTemplates, promptTemplateVersions } from "./esquema-presets";
 import { products } from "./esquema-productos";
@@ -202,6 +203,11 @@ export const projects = pgTable(
      * quien manda es el brief: si alguna vez discreparan, el brief es la fuente y esto, el índice.
      */
     anglePresetKey: text("angle_preset_key").notNull().default(""),
+    /**
+     * **Lugar por defecto** del proyecto: el que heredan sus escenas mientras no elijan otro o lo quiten. `set null`
+     * al borrar el lugar: el proyecto sigue siendo el mismo, solo sin sitio fijado.
+     */
+    defaultPlaceId: uuid("default_place_id").references(() => places.id, { onDelete: "set null" }),
     /** Quién aprobó el plan y cuándo; `null` mientras el proyecto sea un borrador. */
     planApprovedBy: uuid("plan_approved_by").references(() => users.id, { onDelete: "set null" }),
     planApprovedAt: timestamp("plan_approved_at", { withTimezone: true }),
@@ -214,8 +220,12 @@ export const projects = pgTable(
     // Las variantes de un grupo se leen juntas, y el ángulo es con lo que se comparan las campañas (0.27.0).
     index("projects_grupo_variantes_idx").on(t.variantGroupId),
     index("projects_angulo_idx").on(t.userId, t.anglePresetKey),
+    index("projects_lugar_idx").on(t.defaultPlaceId),
   ],
 );
+
+/** Si la escena lleva a alguien en el lugar o es el plano del lugar solo, sin nadie. */
+export const planoDelLugar = pgEnum("scene_place_shot", ["con_reparto", "solo_lugar"]);
 
 export const estadoEscena = pgEnum("scene_state", ["borrador", "aprobada", "producida"]);
 
@@ -440,6 +450,18 @@ export const scenes = pgTable(
      * de fábrica, así que una escena anterior a esta versión suena exactamente igual que antes.
      */
     clipAudioMuted: boolean("clip_audio_muted").notNull().default(false),
+    /**
+     * **Lugar de la escena**. `null` = el del proyecto si tiene uno, o ninguno; `placeInherited = false` con
+     * `placeId` nulo es «esta escena va sin lugar aunque el proyecto tenga uno». `set null` al borrar el lugar: la
+     * escena sigue existiendo, con su guion, y pasa a no tener lugar propio.
+     */
+    placeId: uuid("place_id").references(() => places.id, { onDelete: "set null" }),
+    /** `true` = hereda el lugar del proyecto. Es lo que tienen todas las escenas anteriores a los lugares. */
+    placeInherited: boolean("place_inherited").notNull().default(true),
+    /** Dónde, dentro del lugar: «junto a la ventana», «detrás de la barra». En castellano; lo traduce el servidor. */
+    placeSpot: text("place_spot").notNull().default(""),
+    /** `solo_lugar` = plano del lugar sin nadie: sin reparto, sin producto y mudo. */
+    placeShot: planoDelLugar("place_shot").notNull().default("con_reparto"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -453,6 +475,7 @@ export const scenes = pgTable(
     index("scenes_clip_idx").on(t.clipMediaId),
     index("scenes_referencia_idx").on(t.referenceImageMediaId),
     index("scenes_referencia_cambio_idx").on(t.changeOnlyReferenceMediaId),
+    index("scenes_lugar_idx").on(t.placeId),
   ],
 );
 

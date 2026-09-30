@@ -1,6 +1,7 @@
 import { ErrorProyecto } from "../asistente/errores";
 import { esAdmin, sesionDePeticion } from "../auth/sesion";
 import { dentroDelLimite, type Limite } from "../limite";
+import { ErrorLugar } from "../lugares/errores";
 import { ErrorMedio } from "../media/errores";
 import type { Actor } from "../media/servicio";
 import { ErrorPersonaje } from "../personajes/errores";
@@ -41,6 +42,7 @@ export function respuestaError(error: unknown): Response {
   if (error instanceof ErrorPersonaje) return Response.json({ error: error.message }, { status: error.estado });
   // El del producto (0.26.0) llega al elegirlo en un clip o en una escena: uno ajeno responde 404.
   if (error instanceof ErrorProducto) return Response.json({ error: error.message }, { status: error.estado });
+  if (error instanceof ErrorLugar) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorProyecto) return Response.json({ error: error.message }, { status: error.estado });
   console.error("[generacion]", error);
   return Response.json({ error: "Error interno al procesar el trabajo." }, { status: 500 });

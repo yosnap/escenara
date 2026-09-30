@@ -3,6 +3,7 @@ import { ErrorProyecto } from "../asistente/errores";
 import { esAdmin, sesionDePeticion } from "../auth/sesion";
 import { ErrorGeneracion } from "../generacion/errores";
 import { dentroDelLimite, type Limite } from "../limite";
+import { ErrorLugar } from "../lugares/errores";
 import type { Actor } from "../media/servicio";
 import { ErrorProducto } from "../productos/errores";
 import { ErrorPreset } from "../prompts/errores";
@@ -27,6 +28,7 @@ export function respuestaError(error: unknown): Response {
   if (error instanceof ErrorAnuncio) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorProyecto) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorProducto) return Response.json({ error: error.message }, { status: error.estado });
+  if (error instanceof ErrorLugar) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorPreset) return Response.json({ error: error.message }, { status: error.estado });
   /**
    * Los dos que llegan por el camino de **pedir hooks y guion** (0.27.0): el de generación lo lanzan la clave de
