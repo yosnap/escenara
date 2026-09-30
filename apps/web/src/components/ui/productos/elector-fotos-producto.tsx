@@ -138,7 +138,8 @@ export function FotosQueViajan({
     if (!producto || !elegidas || elegidas.length === 0) return;
     if (!hayQueElegir) return onCambio(undefined);
     const validas = fotosQueViajan(vigentes.map(fotoElegible), accion, caben, elegidas);
-    if (validas.length !== elegidas.length || validas.some((id, i) => id !== elegidas[i])) onCambio(validas);
+    // Se compara como conjunto: el orden depende de la acción y no es motivo para tocar lo que se eligió.
+    if (validas.length !== elegidas.length || validas.some((id) => !elegidas.includes(id))) onCambio(validas);
   }, [producto, elegidas, hayQueElegir, caben, accion, vigentes, onCambio]);
 
   if (error !== "") return <Aviso tono="error">{error}</Aviso>;
