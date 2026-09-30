@@ -161,28 +161,31 @@ export function PanelPlantilla({
     presets: catalogo.presets.filter((p) => p.categoria === categoria),
   }));
 
+  const selector = catalogo.plantillas.length > 1 && (
+    <Selector
+      etiqueta="Plantilla o trend vigente"
+      valor={estado.plantillaId}
+      deshabilitado={deshabilitado}
+      // Cambiar de plantilla cambia qué variables hay: la selección deja de valer.
+      onCambio={(v) => onCambio({ plantillaId: v ?? "", seleccion: {} })}
+      opciones={catalogo.plantillas.map((p) => ({
+        value: p.id,
+        label: p.kind === "trend" ? `Trend · ${p.nombre}` : p.nombre,
+        descripcion: p.kind === "trend" ? `${p.descripcion} · ${p.targetSeconds} s` : p.descripcion,
+      }))}
+    />
+  );
+
   /**
-   * La dirección cubre todo lo que esta plantilla ofrecía: el panel **desaparece** en lugar de quedarse con
-   * un título y nada debajo. Lo que se elegía aquí se elige arriba, y solo arriba.
+   * La dirección cubre todo lo que esta plantilla ofrecía: no queda nada suyo que elegir, así que sus campos
+   * **desaparecen** en lugar de quedarse con un título y nada debajo. El selector **sigue a la vista**: sin él,
+   * quien tiene la plantilla normal elegida no podría cambiar a un trend, que es justo lo que ofrece.
    */
-  if (previa.plantilla !== null && !previa.enUso) return null;
+  if (previa.plantilla !== null && !previa.enUso) return selector || null;
 
   return (
     <div className="flex flex-col gap-5">
-      {catalogo.plantillas.length > 1 && (
-        <Selector
-          etiqueta="Plantilla o trend vigente"
-          valor={estado.plantillaId}
-          deshabilitado={deshabilitado}
-          // Cambiar de plantilla cambia qué variables hay: la selección deja de valer.
-          onCambio={(v) => onCambio({ plantillaId: v ?? "", seleccion: {} })}
-          opciones={catalogo.plantillas.map((p) => ({
-            value: p.id,
-            label: p.kind === "trend" ? `Trend · ${p.nombre}` : p.nombre,
-            descripcion: p.kind === "trend" ? `${p.descripcion} · ${p.targetSeconds} s` : p.descripcion,
-          }))}
-        />
-      )}
+      {selector}
 
       {previa.plantilla === null ? (
         <p className="text-texto-suave">

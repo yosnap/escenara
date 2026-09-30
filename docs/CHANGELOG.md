@@ -7,6 +7,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 Parche: **el orden se cambia arrastrando en cinco listas más** y **seis textos de la pantalla dejan de contar
 algo que no era cierto**. Sin migraciones y sin cambios de precio.
 
+### Corregido
+
+- **El selector «Plantilla o trend vigente» ya no desaparece en el paso del clip de Crear.** Si la plantilla normal
+  estaba elegida y la dirección del clip ya cubría todo lo que ofrece, el panel entero se ocultaba y con él la forma
+  de pasar a un trend. Ahora se ocultan solo los campos repetidos y el selector se queda.
+
 ### Cambiado
 
 - **Arrastrar y soltar (con teclado y lector de pantalla, como en el montaje)** en las plantillas y los presets

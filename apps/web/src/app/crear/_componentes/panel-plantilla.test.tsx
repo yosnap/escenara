@@ -104,6 +104,24 @@ describe("el paso del clip no repite las categorías de la dirección", () => {
     expect(confirmacionDePlantilla(previa, ESTADO)).toEqual({});
   });
 
+  test("con la plantilla normal cubierta por la dirección, el selector de trends sigue a la vista", () => {
+    const trend: PlantillaVisible = {
+      ...PLANTILLA,
+      id: "trend",
+      nombre: "Giro de producto",
+      kind: "trend",
+      targetSeconds: 6,
+    };
+    const catalogo = { ...CATALOGO, plantillas: [PLANTILLA, trend] };
+    const previa = previsualizar(catalogo, ESTADO, "", null, CATEGORIAS_DE_LA_DIRECCION);
+    expect(previa.enUso).toBe(false);
+    const html = renderToStaticMarkup(
+      <PanelPlantilla catalogo={catalogo} estado={ESTADO} previa={previa} onCambio={() => {}} />,
+    );
+    expect(html).toContain("Plantilla o trend vigente");
+    // Solo el selector: los campos de la plantilla cubierta no se repiten.
+    expect(html).not.toContain("Vista previa");
+  });
   test("sin dirección que la cubra, la plantilla se ofrece entera y sigue pidiendo lo suyo", () => {
     const previa = previsualizar(CATALOGO, ESTADO, "", null);
     expect(previa.enUso).toBe(true);
