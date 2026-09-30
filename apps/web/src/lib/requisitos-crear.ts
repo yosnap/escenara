@@ -80,6 +80,14 @@ export interface DatosDelClip {
   motivosPlantilla: readonly MotivoDePlantilla[];
   exigeRevision: boolean;
   sinTerceros: boolean;
+  /**
+   * Etiqueta del campo de la variable de texto cuando se escribe en el paso del clip (imagen tuya), o `null` si ese
+   * campo no está. Con él, un texto de 1 a `PROMPT_MINIMO - 1` caracteres es un requisito: es la regla que ya aplica el
+   * servidor al animar (`limpiarPromptOpcional`), reflejada aquí para no enterarse solo al enviar.
+   */
+  etiquetaDeTexto: string | null;
+  /** Caracteres de la descripción ya recortada. */
+  caracteresDescripcion: number;
 }
 
 /** Lo que falta para poder generar el clip, sin contar las casillas de la confirmación ni los controles previos. */
@@ -90,6 +98,15 @@ export function requisitosDelClip(d: DatosDelClip): Requisito[] {
       paso: "clip",
       pasoDelTexto: d.sinPasoDeEscena ? "clip" : "escena",
     }),
+    ...(d.etiquetaDeTexto !== null && d.caracteresDescripcion > 0 && d.caracteresDescripcion < PROMPT_MINIMO
+      ? [
+          {
+            id: ID_DESCRIPCION,
+            paso: "clip",
+            texto: `Escribe al menos ${PROMPT_MINIMO} caracteres en «${d.etiquetaDeTexto}».`,
+          },
+        ]
+      : []),
     ...(d.exigeRevision && !d.sinTerceros
       ? [{ id: ID_REVISION_CLIP, paso: "clip", texto: TEXTO_FALTA_REVISION_DEL_CLIP }]
       : []),

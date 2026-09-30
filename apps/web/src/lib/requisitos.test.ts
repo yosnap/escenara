@@ -39,6 +39,8 @@ const CLIP_LISTO: DatosDelClip = {
   motivosPlantilla: [],
   exigeRevision: false,
   sinTerceros: true,
+  etiquetaDeTexto: null,
+  caracteresDescripcion: 0,
 };
 
 describe("requisitos de la confirmación", () => {
@@ -119,6 +121,26 @@ describe("requisitos del clip", () => {
   test("con una imagen tuya no hay paso de escena: la variable de texto se escribe en el paso del clip", () => {
     const r = requisitosDelClip({ ...CLIP_LISTO, sinPasoDeEscena: true, motivosPlantilla: [ESCENA] });
     expect(r).toEqual([{ id: ID_DESCRIPCION, paso: "clip", texto: "Falta «Qué ocurre en la escena»." }]);
+  });
+
+  test("con imagen tuya, un texto de 1 a 9 caracteres es un requisito del campo; vacío o de 10 en adelante, no", () => {
+    const con = (n: number) =>
+      requisitosDelClip({
+        ...CLIP_LISTO,
+        sinPasoDeEscena: true,
+        etiquetaDeTexto: "Qué ocurre",
+        caracteresDescripcion: n,
+      });
+    expect(con(4)).toEqual([
+      { id: ID_DESCRIPCION, paso: "clip", texto: "Escribe al menos 10 caracteres en «Qué ocurre»." },
+    ]);
+    expect(con(9)).toHaveLength(1);
+    expect(con(0)).toEqual([]);
+    expect(con(10)).toEqual([]);
+  });
+
+  test("sin campo de texto en el paso del clip no se exige nada por la longitud", () => {
+    expect(requisitosDelClip({ ...CLIP_LISTO, caracteresDescripcion: 4 })).toEqual([]);
   });
 
   test("con fotograma la variable de texto apunta al paso de la escena", () => {

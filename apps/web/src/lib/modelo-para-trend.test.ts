@@ -91,9 +91,31 @@ describe("modelo al elegir un trend", () => {
     const d = decidirModeloParaTrend({ ...base, candidatos: [FAST] });
     expect(d.tipo).toBe("ninguno");
     if (d.tipo !== "ninguno") return;
-    expect(d.error).toContain("«Unboxing» pide clips de 6 s");
+    expect(d.error).toContain("«Unboxing» hace falta un modelo que tenga precio para clips de 6 s");
     expect(d.error).toContain("VEO-FAST no tiene clips de 6 s");
     expect(d.error).toContain("No se ha aplicado y no se ha cobrado nada");
+  });
+
+  test("si el trend no admite el modelo actual se cambia aunque tenga tarifa", () => {
+    const d = decidirModeloParaTrend({ ...base, actual: PRO, trend: { ...TREND, modelosPermitidos: ["mudo"] } });
+    expect(d.tipo === "cambiar" && d.modelo.modelo).toBe("mudo");
+    expect(d.tipo === "cambiar" && d.aviso).toContain("el trend no admite VEO-PRO");
+  });
+
+  test("si el actual está admitido y tiene tarifa se mantiene aunque haya restricción", () => {
+    expect(
+      decidirModeloParaTrend({ ...base, actual: PRO, trend: { ...TREND, modelosPermitidos: ["veo-pro"] } }),
+    ).toEqual({
+      tipo: "mantener",
+    });
+  });
+
+  test("un trend sin duración fija solo comprueba la restricción", () => {
+    const d = decidirModeloParaTrend({
+      ...base,
+      trend: { ...TREND, targetSeconds: null, modelosPermitidos: ["veo-pro"] },
+    });
+    expect(d.tipo === "cambiar" && d.modelo.modelo).toBe("veo-pro");
   });
 
   test("si la restricción deja fuera a todos los que cobran la duración, también es un error", () => {

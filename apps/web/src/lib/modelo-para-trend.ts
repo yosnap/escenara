@@ -29,59 +29,69 @@ export function motivoSinDuracion(modelo: ModeloElegible, segundos: number): str
 }
 
 export type DecisionDeModelo =
-  /** El modelo actual ya tiene tarifa para la duración: no se toca. */
+  /** El modelo actual sirve para el trend (tiene tarifa para la duración y el trend lo admite): no se toca. */
   | { tipo: "mantener" }
   /** Se cambia a este modelo y se dice por qué. */
   | { tipo: "cambiar"; modelo: ModeloElegible; aviso: string }
-  /** Ningún modelo usable cobra esa duración: el trend no se aplica. */
+  /** Ningún modelo usable sirve para el trend: no se aplica. */
   | { tipo: "ninguno"; error: string };
 
 /**
- * Decide qué modelo usar al elegir un trend de `segundos`.
+ * Decide qué modelo usar al elegir un trend.
  *
- * - Si el actual tiene tarifa para la duración, se mantiene.
- * - Si no, se cambia **solo** a un modelo de los `candidatos` (ya son de imagen a vídeo y de estado usable) con tarifa
- *   para esa duración y que la plantilla admita (`modelosPermitidos` vacío = cualquiera). Si el actual tenía voz se
- *   prefiere uno que también la tenga; entre ellos, el predeterminado y, si no, el primero del catálogo.
+ * - Si el actual tiene tarifa para la duración del trend y el trend lo admite (`modelosPermitidos` vacío = cualquiera),
+ *   se mantiene.
+ * - Si no, se cambia **solo** a un modelo de los `candidatos` (ya son de imagen a vídeo y de estado usable) que cumpla
+ *   las dos cosas. Si el actual tenía voz se prefiere uno que también la tenga; entre ellos, el predeterminado y, si no,
+ *   el primero del catálogo.
  * - Si no hay ninguno, error con la causa: el trend no se aplica y no se cambia nada.
  */
 export function decidirModeloParaTrend(datos: {
   actual: ModeloElegible | null;
   candidatos: readonly ModeloElegible[];
-  /** El trend elegido; sin trend, o sin duración fija, no hay nada que decidir. */
+  /** El trend elegido; sin trend no hay nada que decidir. */
   trend: Pick<PlantillaVisible, "nombre" | "targetSeconds" | "modelosPermitidos"> | null;
   /** Identificador del modelo predeterminado de la capacidad. */
   predeterminado: string;
 }): DecisionDeModelo {
   const { actual, candidatos, trend, predeterminado } = datos;
-  if (!trend || trend.targetSeconds === null) return { tipo: "mantener" };
+  if (!trend) return { tipo: "mantener" };
   const { targetSeconds: segundos, nombre: nombreTrend } = trend;
-  const modelosPermitidos = trend.modelosPermitidos ?? [];
-  if (actual && tieneTarifaParaDuracion(actual, segundos)) return { tipo: "mantener" };
+  const permitidos = trend.modelosPermitidos ?? [];
+  const admitido = (m: ModeloElegible) => permitidos.length === 0 || permitidos.includes(m.modelo);
+  const conTarifa = (m: ModeloElegible) => segundos === null || tieneTarifaParaDuracion(m, segundos);
+  if (actual && conTarifa(actual) && admitido(actual)) return { tipo: "mantener" };
 
-  const validos = candidatos.filter(
-    (m) =>
-      tieneTarifaParaDuracion(m, segundos) && (modelosPermitidos.length === 0 || modelosPermitidos.includes(m.modelo)),
-  );
+  const validos = candidatos.filter((m) => conTarifa(m) && admitido(m));
   const conVoz = actual?.conVoz ? validos.filter((m) => m.conVoz) : [];
   const grupo = conVoz.length > 0 ? conVoz : validos;
   const elegido = grupo.find((m) => m.modelo === predeterminado) ?? grupo[0];
+  const sinTarifa = actual !== null && !conTarifa(actual) && segundos !== null;
 
   if (!elegido) {
-    const restringido = modelosPermitidos.length > 0 ? " y que este trend admita" : "";
+    const causa = sinTarifa
+      ? ` (${motivoSinDuracion(actual, segundos)})`
+      : actual
+        ? ` (${actual.nombre} no está entre los modelos que admite)`
+        : "";
+    const que = segundos === null ? "sirva" : `tenga precio para clips de ${segundos} s`;
+    const admite = permitidos.length > 0 ? " y que este trend admita" : "";
     return {
       tipo: "ninguno",
-      error: `El trend «${nombreTrend}» pide clips de ${segundos} s y ningún modelo disponible tiene precio para esa duración${restringido}${actual ? ` (${motivoSinDuracion(actual, segundos) ?? actual.nombre})` : ""}. No se ha aplicado y no se ha cobrado nada: pide a quien administra que registre esa tarifa o elige otro formato.`,
+      error: `Para el trend «${nombreTrend}» hace falta un modelo que ${que}${admite}, y no hay ninguno disponible${causa}. No se ha aplicado y no se ha cobrado nada: pide a quien administra que registre esa tarifa o elige otro formato.`,
     };
   }
 
-  const de = actual
-    ? `${actual.nombre} no tiene clips de ${segundos} s`
-    : `el modelo actual no tiene clips de ${segundos} s`;
+  const de = !actual
+    ? "el modelo actual no sirve"
+    : sinTarifa
+      ? `${actual.nombre} no tiene clips de ${segundos} s`
+      : `el trend no admite ${actual.nombre}`;
+  const dura = segundos === null ? "" : `, y el trend «${nombreTrend}» dura ${segundos} s`;
   const sinVoz = actual?.conVoz && !elegido.conVoz ? ` Ojo: ${elegido.nombre} genera vídeo sin voz.` : "";
   return {
     tipo: "cambiar",
     modelo: elegido,
-    aviso: `Hemos cambiado a ${elegido.nombre} porque ${de}, y el trend «${nombreTrend}» dura ${segundos} s.${sinVoz}`,
+    aviso: `Hemos cambiado a ${elegido.nombre} porque ${de}${sinTarifa ? dura : ""}.${sinVoz}`,
   };
 }
