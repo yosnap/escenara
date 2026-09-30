@@ -4,10 +4,10 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { loadEnvConfig } from "@next/env";
-import sharp from "sharp";
 import type { ClipsDelProyecto } from "@/lib/audio-del-clip";
 import type { EstadoConversion, ProyectoConvertido } from "@/lib/conversion";
 import type { MontajeVista } from "@/lib/montaje";
+import { copia, ffmpeg, fotoDeReferencia } from "./medios-de-prueba";
 
 /**
  * **De «Crear» a un proyecto** (0.35.0) contra el PostgreSQL y el SeaweedFS locales y contra FFmpeg de verdad.
@@ -75,7 +75,8 @@ const { estadoDeProduccion } = await import("../produccion/consulta");
 const { listarModelos } = await import("../proveedores/catalogo");
 const { adaptadorKie } = await import("../proveedores/kie/adaptador");
 const { entradaGuardada } = await import("../generacion/servicio");
-const { transcribirEscena } = await import("../voz/subtitulos");
+const { exportarSubtitulos, transcribirEscena } = await import("../voz/subtitulos");
+const { PROYECTOS_MAXIMOS } = await import("../asistente/proyectos");
 
 type Sesion = Awaited<ReturnType<typeof crearSesionDePrueba>>;
 type Actor = import("../media/servicio").Actor;
@@ -93,34 +94,6 @@ const pedir = (s: Sesion, url: string, metodo = "GET", cuerpo?: unknown) =>
   });
 
 const mensajeDe = (datos: unknown) => (datos as { error?: string }).error ?? "";
-
-/** Lanza un FFmpeg de la prueba y devuelve su salida de error, que es donde escribe `volumedetect`. */
-async function ffmpeg(argumentos: readonly string[]): Promise<{ ok: boolean; error: string }> {
-  const proceso = Bun.spawn(["ffmpeg", "-nostdin", "-hide_banner", ...argumentos], { stdout: "pipe", stderr: "pipe" });
-  const [error, codigo] = await Promise.all([new Response(proceso.stderr).text(), proceso.exited]);
-  return { ok: codigo === 0, error };
-}
-
-const copia = (datos: Uint8Array): Uint8Array<ArrayBuffer> => {
-  const nueva = new Uint8Array(new ArrayBuffer(datos.byteLength));
-  nueva.set(datos);
-  return nueva;
-};
-
-const fotoDeReferencia = async (): Promise<Uint8Array<ArrayBuffer>> =>
-  copia(
-    await sharp({
-      create: {
-        width: 640,
-        height: 640,
-        channels: 3,
-        background: "#808080",
-        noise: { type: "gaussian", mean: 128, sigma: 40 },
-      },
-    })
-      .png()
-      .toBuffer(),
-  );
 
 describe.skipIf(!hayBaseDeDatos)("convertir un clip de Crear en un proyecto", () => {
   let ana: Sesion;
@@ -503,6 +476,25 @@ describe.skipIf(!hayBaseDeDatos)("convertir un clip de Crear en un proyecto", ()
     });
   });
 
+  test("dos clips distintos convertidos a la vez no se interbloquean ni pasan del tope de proyectos", async () => {
+    const [a, b] = [await clipDeCrear(), await clipDeCrear()];
+    const libres = await Promise.all([convertir(a.id), convertir(b.id)]);
+    expect(libres.map((r) => r.codigo)).toEqual([201, 201]);
+
+    // Con un solo hueco libre, entra una y la otra se rechaza con su causa.
+    await db().delete(projects).where(eq(projects.userId, ana.id));
+    await db().update(generationJobs).set({ sceneId: null }).where(eq(generationJobs.userId, ana.id));
+    await db()
+      .insert(projects)
+      .values(Array.from({ length: PROYECTOS_MAXIMOS - 1 }, (_, i) => ({ userId: ana.id, title: `Relleno ${i}` })));
+    const [c, d] = [await clipDeCrear(), await clipDeCrear()];
+    const justas = await Promise.all([convertir(c.id), convertir(d.id)]);
+    expect(justas.map((r) => r.codigo).sort()).toEqual([201, 409]);
+    const rechazo = justas.find((r) => r.codigo === 409);
+    expect(mensajeDe(rechazo?.datos)).toContain(`más de ${PROYECTOS_MAXIMOS} proyectos`);
+    expect(await db().select().from(projects).where(eq(projects.userId, ana.id))).toHaveLength(PROYECTOS_MAXIMOS);
+  });
+
   test("el clip de otra persona responde 404 y no crea nada", async () => {
     const clip = await clipDeCrear();
     expect((await estado(clip.id, berta)).codigo).toBe(404);
@@ -689,6 +681,10 @@ describe.skipIf(!hayBaseDeDatos)("convertir un clip de Crear en un proyecto", ()
     expect(await srtDeLaExportacion()).toContain("Esto me ha cambiado");
     await quitarAudio(escena.id, true);
     expect(await srtDeLaExportacion()).toBe("");
+    // La descarga de subtítulos del proyecto dice la causa real: los hay, pero de escenas que no se oyen.
+    await expect(exportarSubtitulos(actor, datos.proyectoId, "srt")).rejects.toThrow(
+      "no se oyen porque se ha quitado el audio del clip",
+    );
     // Tampoco se saca del clip lo que no se oye.
     const [silenciada] = await db().select().from(scenes).where(eq(scenes.id, escena.id));
     await expect(transcribirEscena(actor, escena.id, true)).rejects.toThrow(
