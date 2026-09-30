@@ -78,7 +78,8 @@ respuestas grabadas del proveedor. **Una migración aditiva**: lee «Actualizar 
 - La migración `0063_tus-datos-exportacion-y-borrado-de-cuenta` es **aditiva e idempotente**: crea los tipos
   `project_export_state`, `account_deletion_state`, `storage_deletion_state` y `consent_evidence_kind`, las tablas
   `project_exports`, `account_deletions`, `storage_deletions`, `usage_aggregates` y `consent_evidence`, con sus índices
-  y claves ajenas, y la columna `generation_jobs.project_id` (admite nulos, sin clave ajena). No cambia ni borra ninguna
+  y claves ajenas, y las columnas `generation_jobs.project_id` y `generation_jobs.requested_character_id` (admiten
+  nulos, sin clave ajena). No cambia ni borra ninguna
   fila y volver a aplicarla no hace nada.
 - **Reinicia el worker** tras actualizar: ahora prepara los ZIP, borra los caducados y ejecuta los borrados de cuenta
   pasada la gracia, y reintenta los archivos pendientes de borrar. Necesita espacio en el disco temporal para el ZIP
