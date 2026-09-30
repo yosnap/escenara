@@ -1,5 +1,5 @@
 {
-  "id": "9597edf7-bc66-45c8-a667-3e8f354281df",
+  "id": "66cb228c-8739-4ac6-97b5-ce486b81f19b",
   "prevId": "bb2618b8-2c58-429f-a662-09d8b2ba436f",
   "version": "7",
   "dialect": "postgresql",
@@ -2574,6 +2574,18 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true
+        },
+        "launched_at": {
+          "name": "launched_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelled_at": {
+          "name": "cancelled_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         },
         "chosen_job_id": {
           "name": "chosen_job_id",

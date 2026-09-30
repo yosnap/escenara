@@ -60,6 +60,14 @@ export const comparisons = pgTable(
     plannedRuns: integer("planned_runs").notNull(),
     /** Créditos que el usuario confirmó en total (la suma de las alternativas, traducción incluida). */
     estimatedCredits: integer("estimated_credits").notNull(),
+    /**
+     * **Todo o nada.** Cuándo quedaron encoladas **todas** las alternativas; `null` mientras se lanzan. Mientras sea
+     * `null`, el worker no toma ninguno de sus trabajos (`cola/toma.ts`): si una alternativa no cabe, las demás se
+     * cancelan sin haber salido y sin cobro.
+     */
+    launchedAt: timestamp("launched_at", { withTimezone: true }),
+    /** Cuándo se dio por no lanzada (una alternativa no cabía o el lanzamiento se interrumpió); sus trabajos, cancelados. */
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     /** Trabajo elegido como ganador; sin clave ajena, como `scenes.clip_job_id`. */
     chosenJobId: uuid("chosen_job_id"),
     chosenAt: timestamp("chosen_at", { withTimezone: true }),

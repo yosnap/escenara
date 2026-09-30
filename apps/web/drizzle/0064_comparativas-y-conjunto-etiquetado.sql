@@ -29,12 +29,19 @@ CREATE TABLE IF NOT EXISTS "comparisons" (
 	"alternatives" jsonb NOT NULL,
 	"planned_runs" integer NOT NULL,
 	"estimated_credits" integer NOT NULL,
+	"launched_at" timestamp with time zone,
+	"cancelled_at" timestamp with time zone,
 	"chosen_job_id" uuid,
 	"chosen_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "comparisons_usuario_idempotencia_uq" UNIQUE("user_id","idempotency_key"),
 	CONSTRAINT "comparisons_ejecuciones_ck" CHECK ("comparisons"."planned_runs" between 1 and 2)
 );
+--> statement-breakpoint
+-- Columnas añadidas antes de publicar la versión: quien aplicó una copia anterior de esta migración las recibe aquí.
+ALTER TABLE "comparisons" ADD COLUMN IF NOT EXISTS "launched_at" timestamp with time zone;
+--> statement-breakpoint
+ALTER TABLE "comparisons" ADD COLUMN IF NOT EXISTS "cancelled_at" timestamp with time zone;
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "labeled_examples" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
