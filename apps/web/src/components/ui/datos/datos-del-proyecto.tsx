@@ -1,13 +1,18 @@
 "use client";
 
 import { History, Trash2 } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Boton, claseBoton } from "@/components/ui/button";
 import type { VistaExportacionProyecto } from "./api-datos";
-import { DialogoBorrarProyecto } from "./dialogo-borrar-proyecto";
 import { ExportarProyecto } from "./exportar-proyecto";
+
+/** El diálogo se descarga al pulsar «Borrar proyecto»: casi nadie lo abre y la pantalla del proyecto ya pesa. */
+const DialogoBorrarProyecto = dynamic(() => import("./dialogo-borrar-proyecto").then((m) => m.DialogoBorrarProyecto), {
+  ssr: false,
+});
 
 /** «Tus datos» del proyecto, bajo su cabecera: su historial, exportarlo en ZIP y borrarlo con todo lo suyo. */
 export function DatosDelProyecto({
@@ -35,13 +40,15 @@ export function DatosDelProyecto({
           Borrar proyecto
         </Boton>
       </div>
-      <DialogoBorrarProyecto
-        proyectoId={proyectoId}
-        titulo={titulo}
-        abierto={borrar}
-        onAbiertoCambio={setBorrar}
-        onBorrado={() => router.push("/proyectos")}
-      />
+      {borrar && (
+        <DialogoBorrarProyecto
+          proyectoId={proyectoId}
+          titulo={titulo}
+          abierto={borrar}
+          onAbiertoCambio={setBorrar}
+          onBorrado={() => router.push("/proyectos")}
+        />
+      )}
     </section>
   );
 }

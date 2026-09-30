@@ -1,11 +1,17 @@
 "use client";
 
 import { Database, History, UserX } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState } from "react";
 import { Boton, claseBoton } from "@/components/ui/button";
-import { DialogoBorrarCuenta } from "@/components/ui/datos/dialogo-borrar-cuenta";
 import { Bloque } from "./bloque";
+
+/** El diálogo se descarga al pulsar «Borrar mi cuenta»: la página de la cuenta ya lleva el cliente de autenticación. */
+const DialogoBorrarCuenta = dynamic(
+  () => import("@/components/ui/datos/dialogo-borrar-cuenta").then((m) => m.DialogoBorrarCuenta),
+  { ssr: false },
+);
 
 /**
  * «Tus datos» en la cuenta: el historial de todo lo hecho y gastado, y borrar la cuenta. Tras volver a entrar para
@@ -31,11 +37,13 @@ export function TusDatos({ abrirBorrado = false }: { abrirBorrado?: boolean }) {
           Borrar mi cuenta
         </Boton>
       </div>
-      <DialogoBorrarCuenta
-        abierto={borrar}
-        onAbiertoCambio={setBorrar}
-        onProgramado={() => window.location.assign("/cuenta/borrado")}
-      />
+      {borrar && (
+        <DialogoBorrarCuenta
+          abierto={borrar}
+          onAbiertoCambio={setBorrar}
+          onProgramado={() => window.location.assign("/cuenta/borrado")}
+        />
+      )}
     </Bloque>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Boton } from "@/components/ui/button";
 import { Aviso } from "@/components/ui/feedback";
 import { Dialogo } from "@/components/ui/overlay";
@@ -62,15 +62,16 @@ export function DialogoBorrarProyecto({
   const [error, setError] = useState<string | null>(null);
   const [borrando, setBorrando] = useState(false);
 
-  const abrir = async (siguiente: boolean) => {
-    onAbiertoCambio(siguiente);
-    if (!siguiente) return;
+  // El resumen se pide cada vez que se abre, también si el diálogo se monta ya abierto (se carga al pulsar).
+  useEffect(() => {
+    if (!abierto) return;
     setError(null);
     setResumen(null);
-    const r = await resumenBorradoProyecto(proyectoId);
-    if (r.ok) setResumen(r.datos);
-    else setError(r.error);
-  };
+    resumenBorradoProyecto(proyectoId).then((r) => {
+      if (r.ok) setResumen(r.datos);
+      else setError(r.error);
+    });
+  }, [abierto, proyectoId]);
 
   const confirmar = async () => {
     setBorrando(true);
@@ -91,7 +92,7 @@ export function DialogoBorrarProyecto({
   return (
     <Dialogo
       abierto={abierto}
-      onAbiertoCambio={abrir}
+      onAbiertoCambio={onAbiertoCambio}
       titulo="¿Borrar el proyecto?"
       descripcion={`Esto es lo que desaparece con «${titulo || "Sin título"}» y lo que se queda. No se puede deshacer.`}
       pie={

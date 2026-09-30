@@ -8,10 +8,13 @@
     "/admin/trabajos",
     "/admin/versiones",
     "/crear/historial",
+    "/cuenta/borrado",
+    "/cuenta/historial",
     "/cuenta/kit",
     "/entrar",
     "/personajes",
     "/personajes/nuevo",
+    "/proyectos/[id]/historial",
     "/proyectos/[id]/revision",
     "/recuperar",
     "/registro",
@@ -20,12 +23,12 @@
   ],
   "rutas": {
     "/admin/componentes": {
-      "topeKb": 424,
-      "motivo": "Catálogo interno del admin: pinta todos los componentes a la vez (con la sección Lugares). Medido: 420.4 KB."
+      "topeKb": 430,
+      "motivo": "Catálogo interno del admin: pinta todos los componentes a la vez (con las secciones Lugares y Tus datos). Medido: 426.4 KB."
     },
     "/proyectos/[id]": {
       "topeKb": 332,
-      "motivo": "Guion por escenas con dirección, reparto, lista ordenable y selector de medios. Medido: 329.4 KB."
+      "motivo": "Guion por escenas con dirección, reparto, lista ordenable, selector de medios y exportar el proyecto (el diálogo de borrarlo se carga al pulsar). Medido: 331.3 KB."
     },
     "/crear": {
       "topeKb": 317,
@@ -37,7 +40,7 @@
     },
     "/cuenta": {
       "topeKb": 291,
-      "motivo": "Passkeys, sesiones y claves: necesita el cliente de autenticación completo y la lista ordenable del mapa de modelos. Medido: 287.6 KB."
+      "motivo": "Passkeys, sesiones y claves: necesita el cliente de autenticación completo y la lista ordenable del mapa de modelos (el diálogo de borrar la cuenta se carga al pulsar). Medido: 290.3 KB."
     },
     "/admin/plantillas": {
       "topeKb": 271,
@@ -49,7 +52,7 @@
     },
     "/admin/ajustes": {
       "topeKb": 257,
-      "motivo": "Formulario de ajustes de la instalación. Medido: 253.6 KB."
+      "motivo": "Formulario de ajustes de la instalación. Medido: 254.7 KB."
     },
     "/admin/presets": {
       "topeKb": 253,
