@@ -45,6 +45,8 @@ const rutaMontaje = await import("@/app/api/proyectos/[id]/montaje/route");
 const rutaExportar = await import("@/app/api/proyectos/[id]/montaje/exportacion/route");
 const rutaExportacion = await import("@/app/api/exportaciones/[id]/route");
 const rutaSubtitulos = await import("@/app/api/exportaciones/[id]/subtitulos/route");
+const rutaKit = await import("@/app/api/cuenta/kit/route");
+const rutaLogoKit = await import("@/app/api/cuenta/kit/logotipo/route");
 const { exigirBaseDeDatosDePrueba } = await import("../db/bd-de-prueba");
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
 const { guardarAjustes, leerAjustes } = await import("../ajustes");
@@ -58,6 +60,9 @@ const { leerObjeto } = await import("../almacenamiento");
 const { pasadaDeExportaciones } = await import("./cola");
 const { medirConFfprobe } = await import("../revision/medicion");
 const { revisarAMano } = await import("../revision/humana");
+const { marcaAplicada } = await import("../marca/publicada");
+const { franjaDeEtiqueta } = await import("./etiqueta");
+const sharp = (await import("sharp")).default;
 
 type Sesion = Awaited<ReturnType<typeof crearSesionDePrueba>>;
 type Actor = import("../media/servicio").Actor;
@@ -569,6 +574,82 @@ describe.skipIf(!hayBaseDeDatos)("montaje y exportación de un proyecto", () => 
     expect(await respuesta.text()).toContain(`$(touch /tmp/escenara-inyectado)`);
     // Y la orden no ha ejecutado nada: el fichero que pedía el texto no existe.
     expect(await Bun.file("/tmp/escenara-inyectado").exists()).toBe(false);
+  }, 240_000);
+
+  /** Píxeles con luz de un fotograma dentro de una franja de filas y de columnas (escala de grises, 1 byte por píxel). */
+  async function luzEnZona(ruta: string, filas: [number, number], columnas: [number, number]): Promise<number> {
+    const { ok, datos } = await ffmpeg([
+      "-ss",
+      "1",
+      "-i",
+      ruta,
+      "-frames:v",
+      "1",
+      "-f",
+      "rawvideo",
+      "-pix_fmt",
+      "gray",
+      "-",
+    ]);
+    expect(ok).toBe(true);
+    let conLuz = 0;
+    for (let y = filas[0]; y < filas[1]; y++) {
+      for (let x = columnas[0]; x < columnas[1]; x++) if ((datos[y * 1080 + x] ?? 0) > 40) conLuz++;
+    }
+    return conLuz;
+  }
+
+  test("el kit del creador sale en la exportación, no tapa la etiqueta y no toca la marca de la instalación", async () => {
+    const blanco = await sharp({ create: { width: 400, height: 200, channels: 4, background: "#ffffff" } })
+      .png()
+      .toBuffer();
+    const datos = new FormData();
+    datos.set("archivo", new File([blanco], "kit.png", { type: "image/png" }));
+    const subido = await rutaLogoKit.POST(
+      new Request("http://localhost/api/cuenta/kit/logotipo", {
+        method: "POST",
+        headers: { cookie: ana.cookie, origin: "http://localhost" },
+        body: datos,
+      }),
+      undefined,
+    );
+    expect(subido.status).toBe(201);
+    // Esquina elegida abajo a la derecha, con la etiqueta abajo (lo de serie): el logotipo sube arriba a la derecha.
+    const kit = { nombre: "Estudio Ana", esquina: "abajo-derecha", activo: true };
+    expect((await rutaKit.PUT(pedir(ana, "/api/cuenta/kit", "PUT", kit), undefined)).status).toBe(200);
+
+    const conKit = await exportarYMontar();
+    expect(conKit.estado).toBe("listo");
+    const [fila] = await db().select().from(montageExports).where(eq(montageExports.id, conKit.id));
+    expect(fila?.brandKit?.esquina).toBe("abajo-derecha");
+    const rutaConKit = await ficheroExportado(conKit.medio?.id ?? "");
+
+    // La misma línea de tiempo sin kit (otra versión del montaje, para que no devuelva la misma exportación).
+    expect((await rutaKit.PUT(pedir(ana, "/api/cuenta/kit", "PUT", { ...kit, activo: false }), undefined)).status).toBe(
+      200,
+    );
+    expect((await guardar({ volumenVoz: 0.9 })).estado).toBe(200);
+    const sinKit = await exportarYMontar();
+    expect(sinKit.id).not.toBe(conKit.id);
+    const rutaSinKit = await ficheroExportado(sinKit.medio?.id ?? "");
+
+    // Clips negros: lo único con luz es la etiqueta y, con kit, el logotipo.
+    const etiqueta = franjaDeEtiqueta("abajo", 1920);
+    const franja: [number, number] = [etiqueta.desde, etiqueta.hasta];
+    const ancho: [number, number] = [0, 1080];
+    const enEtiquetaCon = await luzEnZona(rutaConKit, franja, ancho);
+    expect(enEtiquetaCon).toBeGreaterThan(500);
+    // Igual que sin kit, salvo el ruido de codificar: el logotipo no ha tocado ni un trozo de la etiqueta.
+    expect(Math.abs(enEtiquetaCon - (await luzEnZona(rutaSinKit, franja, ancho)))).toBeLessThanOrEqual(
+      enEtiquetaCon * 0.02,
+    );
+    // El logotipo está arriba a la derecha, dentro de la zona segura.
+    const arribaDerecha: [number, number] = [700, 1048];
+    const filasLogo: [number, number] = [150, 450];
+    expect(await luzEnZona(rutaConKit, filasLogo, arribaDerecha)).toBeGreaterThan(5_000);
+    expect(await luzEnZona(rutaSinKit, filasLogo, arribaDerecha)).toBe(0);
+    // Y la instalación sigue con su marca.
+    expect(await marcaAplicada()).toBeNull();
   }, 240_000);
 
   test("un montaje con la línea de tiempo vacía no se exporta", async () => {

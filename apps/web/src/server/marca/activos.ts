@@ -243,8 +243,14 @@ export interface Derivado {
   alto: number;
 }
 
-/** Cómo se generan los derivados. Se puede sustituir en los tests para provocar un fallo a mitad de publicar. */
-export type GeneradorDeDerivados = (documento: DocumentoMarca, activos: ActivosDeVersion) => Promise<Derivado[]>;
+/**
+ * Cómo se generan los derivados. Devuelve una secuencia que se recorre dentro de la transacción de publicar: cada
+ * derivado se sube y se apunta según sale. Se puede sustituir en los tests para provocar un fallo a mitad.
+ */
+export type GeneradorDeDerivados = (
+  documento: DocumentoMarca,
+  activos: ActivosDeVersion,
+) => Promise<Iterable<Derivado>>;
 
 const TAMANOS_CUADRADOS: [RolDerivado, number][] = [
   ["favicon-16", 16],
