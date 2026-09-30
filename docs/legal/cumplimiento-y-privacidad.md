@@ -198,7 +198,8 @@ envía nada a ningún proveedor para construirlo.
 - **Qué se guarda** (`labeled_examples`): de cada opinión, dos números (cuánto encaja y con qué confianza), la etiqueta
   humana (acepta o rechaza), la partición, la versión de la pregunta y el modelo que contestó. **Sin** texto del guion ni
   de la escena, nombres, correos ni identificadores de usuario.
-- **Por qué es seudónimo y no anónimo**: cada fila apunta a la opinión de la que sale, que sí es de una cuenta. Esa
+- **Está seudonimizado, no anonimizado** (sin datos personales; vinculado a la opinión de origen y eliminado al borrar
+  la cuenta). **Por qué es seudónimo y no anónimo**: cada fila apunta a la opinión de la que sale, que sí es de una cuenta. Esa
   referencia existe para borrar: la fila se borra **en cascada** con la opinión, y la opinión se borra al borrar la
   cuenta. Al reconstruir el conjunto desaparece además lo que ya no tiene etiqueta (por ejemplo, un proyecto borrado).
 - **Dónde está**: solo en la base de datos de la instalación. No se exporta, no se comparte ni sale del servidor, y

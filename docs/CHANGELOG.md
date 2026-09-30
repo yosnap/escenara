@@ -15,22 +15,30 @@ se calibra contra lo que decidieron las personas, con una partición retenida. *
 - **Comparar** en la navegación (`/comparar`): por tipo (imagen, vídeo, voz), cada modelo con su **precio del
   catálogo** (fecha, fuente y equivalencia en euros), **tus resultados** con él (terminados, fallidos, lo informado de
   media y tus últimos archivos; solo los tuyos), **ejemplos de la instalación** (los de plantillas y trends que puedes
-  usar, con la misma lista blanca: nunca una persona real) y las notas del catálogo. Hasta tres modelos **lado a lado**.
+  usar, con la misma lista blanca: nunca una persona real) y sus datos públicos (duraciones, proporciones, resoluciones,
+  voz e imágenes de referencia). Las notas internas del catálogo no se enseñan. Hasta tres modelos **lado a lado**.
   Un aviso permanente recuerda que **aquí no se genera nada**. Coste cero por construcción: un test recorre las
   importaciones de la página y falla si alguna llega a un adaptador de proveedor, a la cola o a la estimación que lee
-  saldos, y otro la ejecuta con la red bloqueada.
+  saldos (también `require`, plantillas, los layouts de Next y cualquier importación con nombre calculado, que cuenta
+  como prohibida), y otro la ejecuta con la red bloqueada.
 - **Comparar generando** en la tarjeta de una escena con fotograma aprobado (`/comparar/escena/[id]`): dos modelos de
   vídeo, **ni uno más**, animan el mismo fotograma. Antes de confirmar se ve el desglose («2 ejecuciones… Total: N
   créditos») y hay que confirmarlo con su propia casilla, además de las de siempre (derechos, fotos del personaje, marca,
   avisos y gasto alto). Cada alternativa es un **clip normal** por la cola, con su reserva de presupuesto, el
-  consentimiento y los controles previos de siempre. Si lo confirmado no cuadra o el precio ha cambiado, **no se encola
-  nada**; repetir el envío no encarga nada más; si solo sale una, se dice y solo se cobra esa. Los resultados se ven
+  consentimiento y los controles previos de siempre. **Todo o nada**: si una de las dos no cabe (techo del proyecto,
+  presupuesto, credencial, saldo, ritmo, derechos, consentimiento o controles), no sale ninguna, la otra se cancela sin
+  haber llegado al proveedor, su reserva vuelve y se dice la causa con «No se ha cobrado nada». Si lo confirmado no cuadra
+  o el precio ha cambiado, tampoco se encola nada. **Una sola comparativa a la vez por escena** (la segunda responde 409
+  con su causa). Si el último clip de la escena falló con posible cobro, la comparativa **consume un reintento autorizado
+  por alternativa**, como «producir» o «regenerar». Repetir la misma confirmación no vuelve a encolar nada. Los resultados se ven
   lado a lado con su estado real, su coste confirmado e informado y, si fallan, la causa y **si pudo cobrarse**.
-  **Elegir ganadora** la convierte en el clip de la escena (con las puertas de elegir una versión); hasta entonces la
-  escena no cambia. Una escena o una comparativa de otra cuenta responde 404.
+  **Elegir ganadora** la convierte en el clip de la escena (con las puertas de elegir una versión), aunque la otra siga
+  en marcha: esa se queda como versión al terminar. Hasta entonces la escena no cambia. Una escena o una comparativa de
+  otra cuenta responde 404.
 - **Admin › Calibración**: reconstruye un **conjunto etiquetado** con las revisiones humanas registradas (las
-  afirmaciones resueltas y la corrección o revisión del resultado), **anonimizado** al construirlo (solo cuánto
-  encaja, la confianza y la etiqueta; ni textos, ni nombres, ni cuentas), repartido de forma determinista en
+  afirmaciones resueltas y la corrección o revisión del resultado), **seudonimizado** al construirlo (sin datos
+  personales; vinculado a la opinión de origen y eliminado al borrar la cuenta: solo cuánto encaja, la confianza y la
+  etiqueta, sin textos ni nombres), repartido de forma determinista en
   calibración (70 %) y retenido (30 %). Propone un umbral por pregunta elegido en calibración y medido en la retenida
   (precisión, falsos permisos, bloqueos innecesarios y cobertura), con su fecha y su muestra. Con menos de 20 ejemplos en
   cada parte no propone nada: «Sin datos, el umbral no se usa para automatizar». **Proponer no activa nada.** Laya queda
@@ -46,13 +54,21 @@ se calibra contra lo que decidieron las personas, con una partición retenida. *
 - Un clip que es alternativa de una comparativa **no pasa a ser el clip de la escena** al terminar ni marca la escena
   como fallida si falla, y la producción no lo cuenta como su último clip. Aparece entre las versiones de la escena.
 
+### Corregido
+
+- **«Otro clip con este fotograma»** ya no se ofrece cuando la escena tiene su clip guardado: la cola lo rechazaba
+  siempre («ya tiene su clip guardado»), sin cobrar nada pero sin hacer nada (fallo anterior a esta versión). Para
+  probar otro modelo con el mismo fotograma está «Comparar generando».
+
 ### Actualizar desde la 0.47.0
 
 - **Haz antes una copia**: `bun run db:backup`. Después, **con el worker parado**, `bun run db:migrate`.
 - La migración `0064_comparativas-y-conjunto-etiquetado` es **aditiva e idempotente**: crea las tablas `comparisons`,
   `labeled_examples` y `calibration_runs`, con sus índices, restricciones y claves ajenas. No cambia ni borra ninguna fila
   y volver a aplicarla no hace nada.
-- **Reinicia el worker** tras actualizar: ahora reconoce las alternativas de una comparativa al cerrar un clip. No hay
+- **Reinicia el worker** tras actualizar: ahora no envía las alternativas de una comparativa hasta que están encoladas
+  todas, las reconoce al cerrar un clip y cancela sin cobro, pasados 10 minutos, una comparativa que se quedó sin
+  lanzar. No hay
   ajustes ni variables de entorno nuevos.
 
 ## [0.47.0] · 2026-09-30
