@@ -1,8 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import { PROMPT_MINIMO } from "./generacion";
-import { type DatosPasosCrear, IDS_PASOS_CREAR, numeroDePaso, pasosDeCrear } from "./pasos-crear";
+import {
+  type DatosPasosCrear,
+  IDS_PASOS_CREAR,
+  numeroDePaso,
+  pasoPredeterminadoDeCrear,
+  pasosDeCrear,
+} from "./pasos-crear";
 
 const VACIO: DatosPasosCrear = {
+  hayTrends: true,
+  calculandoFormato: false,
   origen: "fotograma",
   haySujeto: false,
   revisionConfirmada: false,
@@ -21,11 +29,21 @@ const estados = (d: Partial<DatosPasosCrear>) =>
 const paso = (d: Partial<DatosPasosCrear>, id: string) => pasosDeCrear({ ...VACIO, ...d }).find((p) => p.id === id);
 
 describe("pasos de «Crear» generando un fotograma", () => {
-  test("seis pasos en el orden del flujo, todos con id conocido", () => {
+  test("siete pasos en el orden del flujo, empezando por el formato, todos con id conocido", () => {
     const pasos = pasosDeCrear(VACIO);
-    expect(pasos.map((p) => p.id)).toEqual(["origen", "sujeto", "escena", "coste", "fotograma", "clip"]);
+    expect(pasos.map((p) => p.id)).toEqual(["formato", "origen", "sujeto", "escena", "coste", "fotograma", "clip"]);
     for (const p of pasos) expect(IDS_PASOS_CREAR).toContain(p.id as never);
-    expect(numeroDePaso(pasos, "coste")).toBe(4);
+    expect(numeroDePaso(pasos, "coste")).toBe(5);
+  });
+
+  test("el formato: hecho con su elección y en curso mientras se pide el coste del trend", () => {
+    expect(estados({}).formato).toBe("hecho");
+    expect(estados({ calculandoFormato: true }).formato).toBe("en-curso");
+  });
+
+  test("se abre en el formato si hay trends y, sin ninguno, se salta al origen", () => {
+    expect(pasoPredeterminadoDeCrear(true)).toBe("formato");
+    expect(pasoPredeterminadoDeCrear(false)).toBe("origen");
   });
 
   test("al abrir: coste, resultado y clip bloqueados, cada uno con su motivo", () => {
@@ -80,12 +98,12 @@ describe("pasos de «Crear» generando un fotograma", () => {
 });
 
 describe("pasos de «Crear» con una imagen tuya", () => {
-  test("solo origen, imagen y clip: no hay fotograma que describir ni que pagar", () => {
+  test("solo formato, origen, imagen y clip: no hay fotograma que describir ni que pagar", () => {
     const pasos = pasosDeCrear({ ...VACIO, origen: "imagen" });
-    expect(pasos.map((p) => p.id)).toEqual(["origen", "imagen", "clip"]);
-    expect(pasos[2]?.estado).toBe("bloqueado");
-    expect(pasos[2]?.motivo).toContain("imagen de partida");
-    expect(numeroDePaso(pasos, "clip")).toBe(3);
+    expect(pasos.map((p) => p.id)).toEqual(["formato", "origen", "imagen", "clip"]);
+    expect(pasos[3]?.estado).toBe("bloqueado");
+    expect(pasos[3]?.motivo).toContain("imagen de partida");
+    expect(numeroDePaso(pasos, "clip")).toBe(4);
   });
 
   test("elegir la imagen hace el paso y desbloquea el clip", () => {

@@ -18,7 +18,7 @@ import {
 } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
 import { resolverPaso } from "@/lib/multipaso";
-import { numeroDePaso, pasosDeCrear } from "@/lib/pasos-crear";
+import { numeroDePaso, pasoPredeterminadoDeCrear, pasosDeCrear } from "@/lib/pasos-crear";
 import type { ContextoAplicado, PersonajeElegible } from "@/lib/personajes";
 import { CATEGORIAS_DE_LA_DIRECCION, type CatalogoParaCrear, type PresetVisible } from "@/lib/presets";
 import { PRODUCTO_ELEGIDO_VACIO, type ProductoElegido } from "@/lib/productos";
@@ -36,15 +36,20 @@ import {
 } from "./panel-plantilla";
 import { PasoClip } from "./paso-clip";
 import { PasoEscena } from "./paso-escena";
+import { PasoFormato } from "./paso-formato";
 import { PasoCosteFotograma, PasoResultadoFotograma } from "./paso-fotograma";
 import { type OrigenDelClip, PasoImagenDePartida, PasoOrigen } from "./paso-origen";
 import { PasoSujeto } from "./paso-sujeto";
 import { useControles } from "./use-controles";
 
 /**
- * Los pasos de «Crear», uno a la vez con su barra (0.33.0): de dónde sale el clip, a quién generas, describir la
- * escena, revisar el coste y confirmar, ver el resultado y animar el clip, con su propia estimación y su propia
- * confirmación: cada gasto se confirma por separado. Con una imagen tuya solo quedan origen, imagen y clip.
+ * Los pasos de «Crear», uno a la vez con su barra (0.33.0): el formato (plantilla normal o trend), de dónde sale
+ * el clip, a quién generas, describir la escena, revisar el coste y confirmar, ver el resultado y animar el clip,
+ * con su propia estimación y su propia confirmación: cada gasto se confirma por separado. Con una imagen tuya
+ * solo quedan formato, origen, imagen y clip.
+ *
+ * El formato va primero porque el trend decide la duración y si se habla. Su estado (`plantillaClip` y
+ * `trendElegido`) vive aquí, en el padre, para que los pasos siguientes puedan adaptarse a él.
  *
  * Todo el estado vive aquí y los paneles de los pasos no se desmontan al cambiar de paso, así que un trabajo en
  * marcha, su seguimiento y la clave de una confirmación siguen igual aunque vayas y vuelvas.
@@ -242,7 +247,10 @@ export function VistaCrear({
   ];
 
   // Los pasos y su estado salen de lo que hay en pantalla; no se guarda ningún progreso aparte.
+  const hayTrends = catalogoClip.plantillas.some((p) => p.kind === "trend");
   const pasos = pasosDeCrear({
+    hayTrends,
+    calculandoFormato: calculandoTrend,
     origen: origenElegido,
     haySujeto: personaje !== null || referencia !== null,
     revisionConfirmada: sinTerceros,
@@ -255,7 +263,7 @@ export function VistaCrear({
     clip: animacion?.estado ?? null,
     clipsAnteriores: clipsAnteriores.length,
   });
-  const multipaso = useMultipaso(pasos, resolverPaso(pasoPedido, pasos, "origen"));
+  const multipaso = useMultipaso(pasos, resolverPaso(pasoPedido, pasos, pasoPredeterminadoDeCrear(hayTrends)));
   const numero = (id: string) => numeroDePaso(pasos, id);
 
   /**
@@ -579,6 +587,20 @@ export function VistaCrear({
 
       <Multipaso etiqueta="Pasos para crear" pasos={pasos} control={multipaso}>
         {error && <Aviso tono="error">{error}</Aviso>}
+
+        {/* El formato va primero: un trend decide la duración (y su tarifa) y si se habla a cámara. */}
+        <PanelDePaso id="formato">
+          <PasoFormato
+            numero={numero("formato")}
+            catalogo={catalogoClip}
+            plantillaId={plantillaClip.plantillaId}
+            trend={trendElegido ?? null}
+            calculando={calculandoTrend}
+            deshabilitado={enviando === "animacion"}
+            // Cambiar de plantilla cambia qué variables hay: la selección deja de valer.
+            onPlantilla={(plantillaId) => void elegirPlantillaDelClip({ plantillaId, seleccion: {} })}
+          />
+        </PanelDePaso>
 
         {/*
           Dos caminos, y se eligen antes que nada: generar un fotograma nuevo o traer una imagen que ya tienes.

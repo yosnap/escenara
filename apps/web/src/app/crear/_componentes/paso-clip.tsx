@@ -202,6 +202,8 @@ export function PasoClip({
             onCambio={onPlantilla}
             onDuplicar={onDuplicar}
             accionesDePreset={accionesDePreset}
+            // La plantilla o el trend se eligen en el primer paso, «Formato»: aquí no se repite el selector.
+            formatoAparte
           />
           {previa.plantilla?.kind === "trend" && previa.enUso && (
             <Aviso tono="info">

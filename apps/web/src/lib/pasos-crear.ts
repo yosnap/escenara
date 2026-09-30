@@ -2,20 +2,34 @@ import { type EstadoTrabajo, esEstadoActivo, PROMPT_MINIMO } from "./generacion"
 import type { EstadoDePaso, PasoDelFlujo } from "./multipaso";
 
 /**
- * Los pasos de «Crear» y su estado, deducidos de lo que hay en pantalla. Son dos caminos:
+ * Los pasos de «Crear» y su estado, deducidos de lo que hay en pantalla. Siempre se empieza por el **formato**
+ * (plantilla normal o trend vigente), porque el trend decide la duración y si se habla. Después, dos caminos:
  *
- * - generar un fotograma: origen → a quién generas → describe la escena → coste y confirmar → resultado del
- *   fotograma → el clip;
- * - usar una imagen tuya: origen → imagen de partida → el clip (no hay fotograma que describir ni que pagar).
+ * - generar un fotograma: formato → origen → a quién generas → describe la escena → coste y confirmar → resultado
+ *   del fotograma → el clip;
+ * - usar una imagen tuya: formato → origen → imagen de partida → el clip (no hay fotograma que describir ni pagar).
  *
  * Este módulo **no decide ningún gasto**: el botón de confirmar sigue teniendo sus propios bloqueos y el servidor
  * vuelve a comprobarlo todo. Aquí solo se decide qué paso se puede abrir y qué se dice en la barra.
  */
 
-export const IDS_PASOS_CREAR = ["origen", "sujeto", "imagen", "escena", "coste", "fotograma", "clip"] as const;
+export const IDS_PASOS_CREAR = [
+  "formato",
+  "origen",
+  "sujeto",
+  "imagen",
+  "escena",
+  "coste",
+  "fotograma",
+  "clip",
+] as const;
 export type IdPasoCrear = (typeof IDS_PASOS_CREAR)[number];
 
 export interface DatosPasosCrear {
+  /** Hay algún trend vigente entre los que elegir. */
+  hayTrends: boolean;
+  /** Se está pidiendo la estimación del trend recién elegido. */
+  calculandoFormato: boolean;
   origen: "fotograma" | "imagen";
   /** Hay personaje o foto elegidos para el fotograma. */
   haySujeto: boolean;
@@ -42,6 +56,13 @@ const estadoDelTrabajo = (estado: EstadoTrabajo): EstadoDePaso =>
   esEstadoActivo(estado) ? "en-curso" : estado === "listo" ? "hecho" : "pendiente";
 
 export function pasosDeCrear(d: DatosPasosCrear): PasoDelFlujo[] {
+  // El formato siempre tiene una elección (la plantilla normal de fábrica), así que no queda pendiente.
+  const formato: PasoDelFlujo = {
+    id: "formato",
+    titulo: "Elige el formato",
+    corto: "Formato",
+    estado: d.calculandoFormato ? "en-curso" : "hecho",
+  };
   const origen: PasoDelFlujo = { id: "origen", titulo: "¿De dónde sale el clip?", corto: "Origen", estado: "hecho" };
 
   const clip: PasoDelFlujo = {
@@ -65,6 +86,7 @@ export function pasosDeCrear(d: DatosPasosCrear): PasoDelFlujo[] {
 
   if (d.origen === "imagen") {
     return [
+      formato,
       origen,
       {
         id: "imagen",
@@ -78,6 +100,7 @@ export function pasosDeCrear(d: DatosPasosCrear): PasoDelFlujo[] {
 
   const descripcionLista = d.caracteresDescripcion >= PROMPT_MINIMO;
   return [
+    formato,
     origen,
     {
       id: "sujeto",
@@ -124,3 +147,9 @@ export function pasosDeCrear(d: DatosPasosCrear): PasoDelFlujo[] {
 
 /** Número del paso en la lista (empezando en 1), para el encabezado de cada panel. */
 export const numeroDePaso = (pasos: readonly PasoDelFlujo[], id: string) => pasos.findIndex((p) => p.id === id) + 1;
+
+/**
+ * Paso con el que se abre «Crear» sin `?paso=`: el formato si hay algún trend que elegir y, si no, el origen (el
+ * formato se salta porque no hay nada que decidir en él; su panel dice por qué).
+ */
+export const pasoPredeterminadoDeCrear = (hayTrends: boolean) => (hayTrends ? "formato" : "origen");
