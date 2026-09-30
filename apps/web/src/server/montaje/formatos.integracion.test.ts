@@ -522,6 +522,36 @@ describe.skipIf(!hayBaseDeDatos)("formatos, reencuadre y límites de un proyecto
     }
   }, 120_000);
 
+  test("un clip de «Crear» pedido en 16:9 y convertido en escena de un proyecto vertical sale como proporción distinta", async () => {
+    const escenaId = escenaIds[0] ?? "";
+    const medioId = await subirClip("de-crear-16x9", await clipDeMedidas("de-crear-16x9", "1280x720"), 4);
+    const [trabajo] = await db()
+      .insert(generationJobs)
+      .values({
+        userId: ana.id,
+        kind: "animacion",
+        provider: "kie",
+        model: "grok-imagine/image-to-video",
+        prompt: "Clip de Crear",
+        input: { proporcion: "16:9" },
+        sceneId: escenaId,
+        state: "listo",
+        resultMediaId: medioId,
+        estimatedCredits: 0,
+        idempotencyKey: crypto.randomUUID(),
+      })
+      .returning();
+    await db()
+      .update(scenes)
+      .set({ clipMediaId: medioId, clipJobId: trabajo?.id ?? null, plannedSeconds: 4 })
+      .where(eq(scenes.id, escenaId));
+    const comprobaciones = await revisarAutomaticamente(actor, escenaId);
+    expect(comprobaciones.find((c) => c.clave === "proporcion")?.resultado).toBe("falla");
+    await db()
+      .delete(generationJobs)
+      .where(eq(generationJobs.id, trabajo?.id ?? ""));
+  }, 120_000);
+
   test("pasar a escenas habladas (Omni) con un principal que su modelo no genera se rechaza antes de cambiar", async () => {
     const omni = await eleccionOmni(ana.id);
     const proporciones = omni.modelo.parametros.proporciones;
