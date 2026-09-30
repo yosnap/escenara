@@ -37,8 +37,10 @@ Qué pide cada campo del diálogo de un trend:
 | Variables (JSON) | Sí | Al menos una, con nombre, tipo, etiqueta y si es obligatoria. Todas tienen que usarse en el texto y el texto no puede usar ninguna que no declares. |
 | Motivo del cambio | Solo si cambias texto, variables o restricciones | Al menos 4 caracteres. Queda en el historial de versiones. |
 
-![Vigencia y permiso de habla del trend en el catálogo de componentes](../assets/capturas/0.30.0-trends-revision-claro.jpg)
+## Publicar y retirar un trend
 
-Después de una prueba real aprobada por el propietario, puede poner la plantilla **vigente**. Cuando el formato envejezca, usa «Caducar trend». Una caducada no se edita ni genera: se duplica, se revisa la nueva versión y se publica cuando corresponda. El interruptor de **Admin › Ajustes** oculta todos los trends sin desplegar.
+Un trend nuevo empieza **«En revisión»**: nadie más que la administración lo ve. Antes de publicarlo, genera con él un clip de prueba de verdad (gasta créditos) y comprueba que el resultado te convence: que respeta la duración, que el producto se ve bien y que no aparece nada que no debería. Cuando estés conforme, abre la plantilla y pon su **Vigencia** en **«Vigente»**: desde ese momento sale en Crear y en las escenas.
 
-Las cinco plantillas iniciales se crearon en **revisión**. Para la prueba se activaron unboxing y giro a 6 s; al fallar Hailuo sin cobro, se duplicaron en variantes de 5 s con MiniMax H3. Tras generar los ejemplos, ambas versiones volvieron a **revisión** hasta que el propietario valore su calidad y decida publicarlas. La cuenta de administración conserva el [proyecto de prueba de dos trends](/proyectos/4fb19dba-589e-4a90-b3b6-18fe19ee3479), los fallos, los clips terminados y el MP4. La [guía de recorridos](recorridos-de-referencia-0.29-0.32.md) documenta los costes y los límites visuales observados; los otros tres formatos tampoco se han publicado.
+Cuando el formato envejezca, usa **«Caducar trend»**. Una plantilla caducada no se edita ni genera: se duplica, se revisa la copia y se publica cuando corresponda. El interruptor de **Admin › Ajustes** oculta todos los trends a la vez sin borrarlos.
+
+Las plantillas iniciales que trae Escenara están todas «En revisión», incluidas las variantes de 5 s: hay que publicarlas tú tras probarlas. La [guía de recorridos](recorridos-de-referencia-0.29-0.32.md) recoge los costes y los límites visuales que se observaron al probar dos de ellas.
