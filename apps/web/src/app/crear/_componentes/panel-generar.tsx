@@ -1,7 +1,7 @@
 "use client";
 
 import { Sparkles } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { Boton } from "@/components/ui/button";
 import { Casilla } from "@/components/ui/choice";
 import { PanelCoste } from "@/components/ui/coste";
@@ -44,7 +44,10 @@ export function PanelGenerar({
   envio,
   paso,
   confirmacion,
+  marcar = false,
+  avisoEnBloque = false,
   enviando,
+  onIntento,
   onGenerar,
 }: {
   estimacion: Estimacion;
@@ -66,12 +69,22 @@ export function PanelGenerar({
    * guarda el propio panel.
    */
   confirmacion?: EstadoConfirmacion;
+  /**
+   * `true` cuando la persona ya ha salido del paso, ha ido a un requisito o ha intentado generar: solo entonces se
+   * marcan las casillas pendientes (aro, `aria-invalid` y mensaje). Al abrir el paso no hay nada en rojo.
+   */
+  marcar?: boolean;
+  /** `true` si el paso ya enseña arriba el bloque «Antes de generar, falta:»: la lista de aquí no se repite al lector. */
+  avisoEnBloque?: boolean;
   enviando: boolean;
+  /** Se ha pulsado el botón mientras faltaba algo: recibe el primer requisito para llevar a él. */
+  onIntento?: (primero: Requisito) => void;
   onGenerar: (confirmacion: ConfirmacionCoste) => void;
 }) {
-  const propia = useConfirmacionCoste();
+  const propia = useConfirmacionCoste({ vigente: true, imagen: "", sello: estimacion.sello });
   const { derechos, derechoMarca, avisoAceptado, setDerechos, setDerechoMarca, setAvisoAceptado } =
     confirmacion ?? propia;
+  const [intentado, setIntentado] = useState(false);
   const clave = useRef<{ firma: string; valor: string } | null>(null);
 
   const pendientes = requisitosDeConfirmacion({
@@ -84,6 +97,7 @@ export function PanelGenerar({
     avisoAceptado,
   });
   const impedimentos = [...bloqueos, ...pendientes];
+  const marcadas = marcar || intentado ? pendientes : [];
 
   const generar = () => {
     // Misma confirmación, misma clave: un doble clic o un reintento no pagan dos veces. Los avisos confirmados
@@ -105,7 +119,7 @@ export function PanelGenerar({
       estimacion={estimacion}
       aviso={
         impedimentos.length > 0 ? (
-          <ul className="flex list-inside list-disc flex-col gap-1">
+          <ul aria-hidden={avisoEnBloque || undefined} className="flex list-inside list-disc flex-col gap-1">
             {impedimentos.map((requisito) => (
               <li key={`${requisito.id}|${requisito.texto}`}>{requisito.texto}</li>
             ))}
@@ -119,7 +133,7 @@ export function PanelGenerar({
         marcada={derechos}
         onCambio={setDerechos}
         requisito={idRequisito(envio, "derechos")}
-        error={errorDeRequisito(pendientes, idRequisito(envio, "derechos"))}
+        error={errorDeRequisito(marcadas, idRequisito(envio, "derechos"))}
       />
       {conProducto && (
         <Casilla
@@ -128,7 +142,7 @@ export function PanelGenerar({
           marcada={derechoMarca}
           onCambio={setDerechoMarca}
           requisito={idRequisito(envio, "marca")}
-          error={errorDeRequisito(pendientes, idRequisito(envio, "marca"))}
+          error={errorDeRequisito(marcadas, idRequisito(envio, "marca"))}
         />
       )}
       {estimacion.superaUmbral && (
@@ -138,16 +152,22 @@ export function PanelGenerar({
           marcada={avisoAceptado}
           onCambio={setAvisoAceptado}
           requisito={idRequisito(envio, "aviso-gasto")}
-          error={errorDeRequisito(pendientes, idRequisito(envio, "aviso-gasto"))}
+          error={errorDeRequisito(marcadas, idRequisito(envio, "aviso-gasto"))}
         />
       )}
       <Boton
         variante="chispa"
         icono={<Sparkles className="size-5" />}
-        className="self-start"
         cargando={enviando}
-        disabled={impedimentos.length > 0}
-        onClick={generar}
+        // Con requisitos pendientes el botón sigue enfocable y, al pulsarlo, señala qué falta en lugar de enviar.
+        aria-disabled={impedimentos.length > 0 || undefined}
+        className="self-start aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+        onClick={() => {
+          const primero = impedimentos[0];
+          if (!primero) return generar();
+          setIntentado(true);
+          onIntento?.(primero);
+        }}
       >
         {etiqueta}
       </Boton>

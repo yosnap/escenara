@@ -65,6 +65,7 @@ export function PasoClip({
   descripcion,
   conCampoDeTexto,
   confirmacion,
+  marcar,
   controles,
   exigeRevision,
   sinTerceros,
@@ -115,6 +116,8 @@ export function PasoClip({
   /** Con una imagen tuya no hay paso «Describe la escena»: la variable de texto de la plantilla se escribe aquí. */
   conCampoDeTexto: boolean;
   confirmacion: EstadoConfirmacion;
+  /** Ya se puede marcar en rojo lo pendiente de las casillas de la confirmación. */
+  marcar: boolean;
   controles: Controles;
   /** `true` cuando el fotograma de partida lleva la cara de un personaje: hay que confirmar la revisión. */
   exigeRevision: boolean;
@@ -251,7 +254,7 @@ export function PasoClip({
             // La plantilla o el trend se eligen en el primer paso, «Formato»: aquí no se repite el selector.
             formatoAparte
             requisito={idRequisito(ENVIO_CLIP, "plantilla")}
-            conError={previa.detalle.some((d) => !d.deTexto)}
+            conError={errorDeRequisito(requisitosBase, idRequisito(ENVIO_CLIP, "plantilla")) !== undefined}
           />
           {previa.plantilla?.kind === "trend" && previa.enUso && (
             <Aviso tono="info">
@@ -271,6 +274,9 @@ export function PasoClip({
               envio={ENVIO_CLIP}
               paso="clip"
               confirmacion={confirmacion}
+              marcar={marcar}
+              avisoEnBloque
+              onIntento={onIrARequisito}
               conProducto={producto.productoId !== ""}
               enviando={enviando}
               onGenerar={onGenerar}

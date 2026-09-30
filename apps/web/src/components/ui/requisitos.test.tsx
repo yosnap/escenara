@@ -7,7 +7,7 @@ import { Casilla } from "./choice";
 import { Campo } from "./field";
 import { opcionesDeSelectorDeModelo } from "./modelo";
 import { BarraDePasos } from "./multipaso";
-import { AvisoRequisitos, MarcaRequisito } from "./requisitos";
+import { AvisoRequisitos, irARequisito, MarcaRequisito } from "./requisitos";
 
 /**
  * Los requisitos pendientes se ven donde importan: el bloque de arriba con cada punto como botón, el campo marcado
@@ -144,5 +144,40 @@ describe("selector de modelo con la duración de un trend", () => {
 
   test("sin trend no se marca ninguno", () => {
     expect(opcionesDeSelectorDeModelo(modelos).some((o) => o.deshabilitada)).toBe(false);
+  });
+});
+
+describe("ir a un requisito", () => {
+  const requisito: Requisito = { id: "descripcion", paso: "escena", texto: "Falta describir la escena." };
+  const original = (globalThis as { window?: unknown }).window;
+  const conVentana = (prueba: () => void) => {
+    (globalThis as { window?: unknown }).window = { setTimeout: () => 0 };
+    try {
+      prueba();
+    } finally {
+      (globalThis as { window?: unknown }).window = original;
+    }
+  };
+
+  test("cambia al paso del requisito", () => {
+    const visitados: string[] = [];
+    conVentana(() =>
+      irARequisito(requisito, {
+        irAlPaso: (p) => visitados.push(p),
+        estaBloqueado: () => false,
+        avisarBloqueado: () => visitados.push("aviso"),
+      }),
+    );
+    expect(visitados).toEqual(["escena"]);
+  });
+
+  test("un paso bloqueado no se abre: se avisa de por qué", () => {
+    const eventos: string[] = [];
+    irARequisito(requisito, {
+      irAlPaso: (p) => eventos.push(`ir:${p}`),
+      estaBloqueado: (p) => p === "escena",
+      avisarBloqueado: (p) => eventos.push(`aviso:${p}`),
+    });
+    expect(eventos).toEqual(["aviso:escena"]);
   });
 });

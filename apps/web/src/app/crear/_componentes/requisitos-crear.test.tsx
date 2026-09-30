@@ -77,13 +77,15 @@ const CASILLAS = {
 const IMAGEN = { id: "m1", tipo: "imagen", nombre: "foto.png", url: "/m/1" } as unknown as Medio;
 
 /** El paso del clip tal como lo compone `vista-crear.tsx` con una imagen tuya (`imagen`) o con fotograma. */
-function pintarClip(descripcion: string, origen: "imagen" | "fotograma") {
+function pintarClip(descripcion: string, origen: "imagen" | "fotograma", senalado = true) {
   const previa = previsualizar(CATALOGO, ESTADO, descripcion.trim(), null);
   const base = requisitosDelClip({
     sinPasoDeEscena: origen === "imagen",
     motivosPlantilla: previa.detalle,
     exigeRevision: false,
     sinTerceros: true,
+    etiquetaDeTexto: origen === "imagen" ? "Qué ocurre en la escena" : null,
+    caracteresDescripcion: descripcion.trim().length,
   });
   return renderToStaticMarkup(
     <PasoClip
@@ -101,13 +103,14 @@ function pintarClip(descripcion: string, origen: "imagen" | "fotograma") {
       catalogo={CATALOGO}
       plantilla={ESTADO}
       previa={previa}
-      requisitosBase={base}
+      requisitosBase={senalado ? base : []}
       requisitos={base}
       avisoModelo={null}
       segundosDelTrend={6}
       descripcion={descripcion}
       conCampoDeTexto={origen === "imagen"}
       confirmacion={CASILLAS}
+      marcar={senalado}
       controles={CONTROLES}
       exigeRevision={false}
       sinTerceros
@@ -144,6 +147,22 @@ describe("la variable de texto del trend con una imagen tuya", () => {
     expect(cuantas(html, "Falta «Qué ocurre en la escena».")).toBeGreaterThanOrEqual(3);
     expect(html).toContain("Antes de generar, falta:");
     expect(html).toContain('aria-invalid="true"');
+  });
+
+  test("al abrir el paso el aviso está, pero el campo no sale en rojo ni con aria-invalid", () => {
+    const html = pintarClip("", "imagen", false);
+    expect(html).toContain("Antes de generar, falta:");
+    expect(html).not.toContain('aria-invalid="true"');
+    expect(html).not.toMatch(/(^|[ "])ring-error/);
+    // El mensaje solo está en el aviso de arriba, no bajo el campo.
+    expect(cuantas(html, "Falta «Qué ocurre en la escena».")).toBe(1);
+  });
+
+  test("un texto de 1 a 9 caracteres es un requisito del campo, marcado y con su mensaje", () => {
+    const html = pintarClip("hola", "imagen");
+    expect(html).toContain("Escribe al menos 10 caracteres en «Qué ocurre en la escena».");
+    expect(html).toContain('aria-invalid="true"');
+    expect(html).toContain("Antes de generar, falta:");
   });
 
   test("escrito el texto, el campo lo muestra y deja de faltar", () => {

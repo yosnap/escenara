@@ -38,7 +38,8 @@ export function CampoVariableTexto({
       ayuda={
         <>
           {plantilla.kind === "trend" ? "Lo usa el trend" : "Lo usa el formato"} «{plantilla.nombre}» para componer el
-          clip: cuenta qué ocurre y cómo se ve. Mínimo {PROMPT_MINIMO} caracteres.{" "}
+          clip: cuenta qué ocurre y cómo se ve. {variable.obligatoria ? "Mínimo" : "Vacío o, si lo escribes, al menos"}{" "}
+          {PROMPT_MINIMO} caracteres.{" "}
           <span className="font-mono">
             {largo}/{VARIABLE_TEXTO_MAXIMA}
           </span>

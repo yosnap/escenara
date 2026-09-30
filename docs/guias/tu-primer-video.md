@@ -55,7 +55,7 @@ El fotograma sale vertical (9:16), el formato de Reels, TikTok y Shorts.
 
 ### 5. Revisa el coste y confirma
 
-Si falta algo para poder generar, arriba del paso sale un bloque **«Antes de generar, falta:»** con cada punto como botón: al pulsarlo, «Crear» cambia al paso que toca, te lleva al campo o a la casilla, le da el foco y lo resalta unos segundos (con el movimiento reducido en tu sistema, el resaltado es un aro fijo, sin animación). El campo o la casilla pendiente lleva además un aro rojo completo y, debajo, lo que falta. En la barra de pasos, el paso con requisitos pendientes muestra cuántos faltan. Todo esto solo señala: los requisitos y el botón de generar son los mismos de siempre.
+Si falta algo para poder generar, arriba del paso sale un bloque **«Antes de generar, falta:»** con cada punto como botón: al pulsarlo, «Crear» cambia al paso que toca, te lleva al campo o a la casilla, le da el foco y lo resalta unos segundos (con el movimiento reducido en tu sistema, el resaltado es un aro fijo, sin animación). Al abrir un paso no hay nada en rojo; el campo o la casilla pendiente se marca con un aro rojo completo y, debajo, lo que falta, cuando sales del paso, pulsas un punto del bloque o pulsas el botón de generar con algo pendiente (el botón no envía nada mientras falte algo: te lleva al primero). En la barra de pasos, el paso con requisitos pendientes muestra cuántos faltan. Todo esto solo señala: los requisitos y el botón de generar son los mismos de siempre.
 
 El panel de coste es la zona clara de la pantalla y dice tres cosas:
 

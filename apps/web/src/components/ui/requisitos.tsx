@@ -114,8 +114,20 @@ export function enfocarRequisito(id: string, documento: Document = document): bo
  * Cambia al paso del requisito y, cuando ese paso ya se ve, enfoca el campo. El cambio de paso se aplica al terminar
  * el evento, así que el enfoque espera un turno: mientras el panel sigue oculto no hay nada que enfocar.
  */
-export function irARequisito(requisito: Requisito, irAlPaso: (paso: string) => void): void {
-  irAlPaso(requisito.paso);
+export function irARequisito(
+  requisito: Requisito,
+  navegacion: {
+    irAlPaso: (paso: string) => void;
+    /** `true` si el paso está bloqueado: no se salta el candado, se dice por qué. */
+    estaBloqueado: (paso: string) => boolean;
+    avisarBloqueado: (paso: string) => void;
+  },
+): void {
+  if (navegacion.estaBloqueado(requisito.paso)) {
+    navegacion.avisarBloqueado(requisito.paso);
+    return;
+  }
+  navegacion.irAlPaso(requisito.paso);
   // Un segundo intento por si el paso tarda un poco más en pintarse.
   window.setTimeout(() => {
     if (!enfocarRequisito(requisito.id)) window.setTimeout(() => enfocarRequisito(requisito.id), 80);

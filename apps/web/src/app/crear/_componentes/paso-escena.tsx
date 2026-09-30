@@ -100,7 +100,7 @@ export function PasoEscena({
         onDuplicar={onDuplicar}
         accionesDePreset={accionesDePreset}
         requisito={idRequisito(ENVIO_FOTOGRAMA, "plantilla")}
-        conError={previa.detalle.some((d) => !d.deTexto)}
+        conError={errorDeRequisito(requisitos, idRequisito(ENVIO_FOTOGRAMA, "plantilla")) !== undefined}
       />
       {conVoz ? (
         <Campo

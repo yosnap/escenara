@@ -31,6 +31,7 @@ export function PasoCosteFotograma({
   bloqueos,
   requisitos,
   confirmacion,
+  marcar,
   enviando,
   onIrARequisito,
   onGenerar,
@@ -48,6 +49,8 @@ export function PasoCosteFotograma({
   /** Todo lo que falta para generar, con los controles y las casillas de la confirmación: el aviso de arriba. */
   requisitos: readonly Requisito[];
   confirmacion: EstadoConfirmacion;
+  /** Ya se puede marcar en rojo lo pendiente de este paso. */
+  marcar: boolean;
   enviando: boolean;
   /** Lleva al paso y al campo al que apunta un requisito. */
   onIrARequisito: (requisito: Requisito) => void;
@@ -69,6 +72,9 @@ export function PasoCosteFotograma({
         envio={ENVIO_FOTOGRAMA}
         paso="coste"
         confirmacion={confirmacion}
+        marcar={marcar}
+        avisoEnBloque
+        onIntento={onIrARequisito}
         enviando={enviando}
         onGenerar={onGenerar}
       />

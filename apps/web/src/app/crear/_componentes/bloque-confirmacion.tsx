@@ -23,8 +23,11 @@ export function BloqueConfirmacion({
   envio,
   paso,
   confirmacion,
+  marcar,
+  avisoEnBloque,
   conProducto = false,
   enviando,
+  onIntento,
   onGenerar,
 }: {
   controles: Controles;
@@ -39,6 +42,12 @@ export function BloqueConfirmacion({
   paso: string;
   /** Casillas de la confirmación, si las guarda quien pinta el paso. */
   confirmacion?: EstadoConfirmacion;
+  /** Ya se puede marcar en rojo lo pendiente de las casillas (ver `PanelGenerar`). */
+  marcar?: boolean;
+  /** El paso enseña arriba el bloque de requisitos: la lista de aquí no se repite al lector de pantalla. */
+  avisoEnBloque?: boolean;
+  /** Se pulsó el botón mientras faltaba algo. */
+  onIntento?: (primero: Requisito) => void;
   /** `true` cuando el envío lleva producto: entonces se pide además la casilla del derecho de marca. */
   conProducto?: boolean;
   enviando: boolean;
@@ -64,6 +73,9 @@ export function BloqueConfirmacion({
         envio={envio}
         paso={paso}
         confirmacion={confirmacion}
+        marcar={marcar}
+        avisoEnBloque={avisoEnBloque}
+        onIntento={onIntento}
         enviando={enviando}
         onGenerar={onGenerar}
       />
