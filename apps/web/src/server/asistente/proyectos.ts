@@ -22,7 +22,7 @@ import { db } from "../db/cliente";
 import { type FilaProyecto, projects, scenes } from "../db/esquema";
 import { aplicarCambioDeAcento } from "../direccion/acento";
 import type { Actor } from "../media/servicio";
-import { exigirFormatoGenerable } from "../montaje/formatos-del-proyecto";
+import { cambiarFormatosDelProyecto, exigirFormatoGenerable } from "../montaje/formatos-del-proyecto";
 import { filaPropia } from "../personajes/consulta";
 import { exigirPersonajeUsable } from "../personajes/puede-generar";
 import { esUuidProyecto, proyectoPropio } from "./consulta";
@@ -163,6 +163,8 @@ export async function crearProyecto(actor: Actor, datos: DatosProyecto): Promise
  */
 export async function editarProyecto(actor: Actor, id: unknown, datos: DatosProyecto): Promise<ProyectoDetalle> {
   const proyecto = await proyectoPropio(actor, id);
+  // Los formatos tienen sus propias reglas (el principal no cambia con el plan aprobado ni con clips): van primero.
+  if (datos.formatos !== undefined) await cambiarFormatosDelProyecto(actor, proyecto.id, datos.formatos);
   const cambios: Partial<typeof projects.$inferInsert> = { updatedAt: new Date() };
   if (datos.titulo !== undefined) cambios.title = tituloLimpio(datos.titulo);
   if (datos.formato !== undefined) cambios.format = formatoValido(datos.formato);

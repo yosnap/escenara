@@ -67,6 +67,9 @@ const buscar: Buscador = async (url, init) => {
   throw new Error(`URL no simulada: ${url}`);
 };
 
+/** `aspect_ratio` del primer `createTask` recibido: la proporción que de verdad se pidió. */
+const aspectoEnviado = () => (enviados[0]?.input as { aspect_ratio?: string } | undefined)?.aspect_ratio;
+
 const h: Herramientas = {
   buscar,
   descargar: async () => {
@@ -165,16 +168,16 @@ describe.skipIf(!hayBaseDeDatos)("el formato elegido al generar", () => {
     const { trabajo } = await generar(conFormato("horizontal-16-9"));
     expect(trabajo.proporcion).toBe("16:9");
     const [fila] = await db().select().from(generationJobs).where(eq(generationJobs.id, trabajo.id));
-    expect((fila?.input as { proporcion?: string }).proporcion).toBe("16:9");
+    expect((fila?.input as { proporcion?: string } | undefined)?.proporcion).toBe("16:9");
     await pasadaDeCola(h);
     expect(enviados).toHaveLength(1);
-    expect((enviados[0]?.input as { aspect_ratio?: string }).aspect_ratio).toBe("16:9");
+    expect(aspectoEnviado()).toBe("16:9");
   });
 
   test("el 4:5 de feed y carrusel también llega tal cual a un modelo de imagen que lo admite", async () => {
     await generar(conFormato("feed-4-5"));
     await pasadaDeCola(h);
-    expect((enviados[0]?.input as { aspect_ratio?: string }).aspect_ratio).toBe("4:5");
+    expect(aspectoEnviado()).toBe("4:5");
   });
 
   test("un formato que el modelo no admite no se puede forzar por la API: 409 y nada encolado", async () => {
@@ -209,7 +212,7 @@ describe.skipIf(!hayBaseDeDatos)("el formato elegido al generar", () => {
         generar(conFormato("reel-9-16")),
     );
     await pasadaDeCola(h);
-    expect((enviados[0]?.input as { aspect_ratio?: string }).aspect_ratio).toBe("9:16");
+    expect(aspectoEnviado()).toBe("9:16");
     expect(trabajo.proporcion).toBe("9:16");
   });
 });

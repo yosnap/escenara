@@ -120,7 +120,6 @@ export function PrevisualizacionFormato({
         style={{ aspectRatio: `${ancho} / ${alto}` }}
       >
         {src ? (
-          // biome-ignore lint/a11y/useMediaCaption: es la previsualización del clip que ya se está montando
           <video
             // `#t=0.1` hace que el navegador pinte un fotograma aunque no se reproduzca: es lo que se encuadra.
             src={arrastrable ? `${src}#t=0.1` : src}

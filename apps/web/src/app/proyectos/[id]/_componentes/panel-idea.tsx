@@ -5,12 +5,14 @@ import { useRef, useState } from "react";
 import { Boton } from "@/components/ui/button";
 import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo } from "@/components/ui/field";
+import { SelectorPlataforma } from "@/components/ui/formatos";
 import { Dialogo } from "@/components/ui/overlay";
 import { Paso } from "@/components/ui/paso";
 import { SelectorPersonaje } from "@/components/ui/personaje";
 import { Selector } from "@/components/ui/select";
 import { type ClaveConfirmacion, claveEstable } from "@/lib/asistente";
 import { ACENTOS, type Acento, AYUDA_ACENTO, NOMBRE_ACENTO } from "@/lib/direccion";
+import { formatoPrincipal } from "@/lib/formatos";
 import { formatearCreditos, formatearEuros } from "@/lib/generacion";
 import type { PersonajeElegible } from "@/lib/personajes";
 import { DURACIONES_DISPONIBLES } from "@/lib/produccion";
@@ -178,6 +180,23 @@ export function PanelIdea({
             Es lo que dura cada escena del vídeo, y el asistente propone escenas de esa duración. Elige una duración
             admitida por tu modelo de vídeo y revisa el coste en el plan antes de producir. Veo cobra lo mismo por 4 y 8
             s; Hailuo 2.3 Standard tiene precio medido a 6 s (27 de septiembre de 2026).
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <SelectorPlataforma
+            etiqueta="¿Para qué es? Los clips se generan en este formato"
+            valor={formatoPrincipal(proyecto.formatos ?? [])}
+            motivos={detalle.formatosGenerables}
+            deshabilitado={guardando || proyecto.estado !== "borrador"}
+            onCambio={(nuevo) =>
+              void guardar({ formatos: [nuevo, ...(proyecto.formatos ?? []).filter((f) => f !== nuevo)] })
+            }
+          />
+          <p className="text-sm text-texto-suave">
+            {proyecto.estado === "borrador"
+              ? "Los demás formatos se sacan en el montaje, del mismo clip y sin coste."
+              : "Con el plan aprobado ya no se cambia: las escenas se aprobaron para este formato. Los demás se sacan en el montaje, del mismo clip y sin coste."}
           </p>
         </div>
 

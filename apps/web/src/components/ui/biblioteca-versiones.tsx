@@ -54,7 +54,6 @@ export function BibliotecaVersiones({
                   : "flex flex-col gap-2 rounded-tarjeta border-2 border-borde p-2"
               }
             >
-              {/* biome-ignore lint/a11y/useMediaCaption: miniatura del clip para compararlo; su audio es el del clip */}
               <video
                 src={`${version.medio.url}#t=0.1`}
                 muted
