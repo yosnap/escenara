@@ -32,8 +32,13 @@ Opción 3.
 - **Meta de JavaScript por ruta:** 200 KB comprimidos en la primera carga. `bun run build` la calcula con
   `apps/web/scripts/presupuesto-js.ts` a partir de los manifiestos de Next (lo común a todas las páginas más los trozos
   de los componentes de cliente que el servidor de la ruta usa de verdad) y **falla** si una ruta supera su tope.
-- **Topes propios** en `apps/web/presupuesto-js.json` para las rutas que hoy superan la meta: su tamaño medido más un
-  5 %, redondeado a 5 KB, con el motivo. Son **deuda**: la tabla del build lo dice en cada ruta.
+- **Toda ruta está dada de alta** en `apps/web/presupuesto-js.json`: en `dentroDeLaMeta` si cabe, o con tope propio.
+  Una pantalla nueva sin alta hace fallar el build con las instrucciones, para que su peso se mire al crearla.
+- **Topes propios** para las rutas que hoy superan la meta: su tamaño medido **más 3 KB** (margen fijo y pequeño: una
+  regresión mayor rompe el build), con el motivo acabado en «Medido: X KB.». Son **deuda**: la tabla del build lo dice
+  en cada ruta, y avisa si «Medido» ya no es la medida real. La meta no se cambia desde el JSON (el script lo rechaza).
+- **Salida de emergencia:** `PRESUPUESTO_JS_SOLO_AVISO=1` en el entorno del build convierte los fallos en aviso, para no
+  bloquear un despliegue urgente. Se documenta y se quita en cuanto está arreglado.
 - Subir un tope es una decisión con su motivo, no un arreglo. Antes: carga diferida de lo pesado (`next/dynamic`),
   componentes de servidor y animaciones en CSS.
 
@@ -41,8 +46,10 @@ Opción 3.
 
 - Una regresión de peso rompe el build en local, antes de publicar, y dice qué ruta y cuánto.
 - La medida depende del formato de los manifiestos de Next: si cambia, el script falla por no encontrar páginas (no da
-  nada por bueno) y hay que adaptarlo. Está probado sobre un build de mentira en la suite y validado contra el HTML real
-  servido (mismas cifras al decimal).
-- Lighthouse «simulated» (el de por defecto) estima el LCP contando la descarga del JavaScript antes de pintar y da
-  alrededor de 1 s más que el estrangulamiento aplicado. Las cifras se anotan con el método usado.
+  nada por bueno) y hay que adaptarlo. Está probado sobre un build de mentira en la suite y contrastado con el HTML real
+  servido: sobreestima del orden de un 1–2 % (del lado seguro).
+- Lighthouse «simulated» (el de por defecto) estima el LCP contando la descarga del JavaScript antes de pintar y en esta
+  aplicación da entre 0,8 y 2 s más que el estrangulamiento aplicado. Las dos cifras se publican, con el método de cada
+  una; hoy el objetivo LCP se cumple con estrangulamiento aplicado en local y no con el modo por defecto en la portada y
+  la biblioteca. Qué método manda lo decide el propietario.
 - Revisar los topes propios en cada versión que toque esas pantallas: la meta sigue siendo 200 KB.

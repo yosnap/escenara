@@ -5,10 +5,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 ## [0.45.0] · 2026-09-30
 
 **Accesibilidad y rendimiento.** Toda la aplicación se revisa con axe en la suite, se usa entera con el teclado, respeta
-«reducir movimiento» sin excepciones y carga bastante menos JavaScript: la portada pasa de 217 a 153 KB y «Crear» de
-374 a 306 KB. El build falla si una pantalla se pasa de su presupuesto. Llegan el favicon de 16 px, los iconos para
-instalar la aplicación y la imagen para compartir. **Sin migración.** No cambia ninguna regla de coste, de
-consentimiento ni de confirmación.
+«reducir movimiento» sin excepciones y carga bastante menos JavaScript: la portada pasa de 217 a 161 KB y «Crear» de
+374 a 313 KB (con la pantalla de error nueva incluida). El build falla si una pantalla se pasa de su presupuesto o si
+es nueva y no está dada de alta. Llegan el favicon de 16 px, los iconos para instalar la aplicación y la imagen para
+compartir. **Sin migración**: lee «Actualizar desde la 0.42.1». No cambia ninguna regla de coste, de consentimiento ni
+de confirmación.
 
 ### Añadido
 
@@ -20,11 +21,19 @@ consentimiento ni de confirmación.
   contenido principal en `#contenido`.
 - **«Saltar al contenido»** en todas las páginas (antes solo en la portada).
 - **Presupuesto de JavaScript por ruta.** `bun run build` termina con una tabla del JavaScript comprimido de cada
-  pantalla y **falla** si alguna pasa de su tope: 200 KB por defecto, y un tope propio, medido y con su motivo, para las
-  19 que hoy la superan (deuda anotada: la meta sigue siendo 200 KB). Decisión en el ADR-0039.
+  pantalla y **falla** si alguna pasa de su tope: 200 KB por defecto, y un tope propio (lo medido más 3 KB, con su
+  motivo) para las 19 que hoy la superan, que queda como deuda: la meta sigue siendo 200 KB. También falla si hay una
+  **pantalla nueva sin dar de alta** en `apps/web/presupuesto-js.json`, y dice cómo hacerlo. Decisión en el ADR-0039.
+- **Pantallas de error y partes que no llegan.** Si una pantalla falla al pintarse (en la raíz, «Crear», los
+  proyectos, el montaje o la biblioteca), se ve la causa en castellano con «Reintentar» y «Recargar», sin detalles
+  técnicos. Si lo que se carga al abrirlo (el editor de imagen, el diálogo de la biblioteca) no llega porque se ha
+  publicado una versión nueva con la pestaña abierta, solo esa parte avisa y ofrece «Recargar». Y una página que no
+  existe tiene su propia página, con salida a la portada.
 - **Activos de Escenara:** favicon simplificado para 16 px, `favicon.ico`, iconos para instalar la aplicación (192, 512
-  y enmascarable), icono de Apple, manifiesto e imagen para compartir de 1200 × 630 (se enlaza cuando la instalación
-  tiene URL pública). `bun run activos` los genera.
+  y enmascarable), icono de Apple, manifiesto (escrito a mano en `apps/web/public/manifest.webmanifest`) e imagen para
+  compartir de 1200 × 630 (se enlaza cuando la instalación tiene URL pública). `bun run activos` genera los iconos con
+  sharp; la imagen para compartir y los PNG del wordmark solo se pintan con `bun scripts/activos-marca.ts --con-texto`
+  (en `apps/web`), que necesita Chrome instalado. Los ficheros ya van en el repositorio: no hace falta ejecutarlo para compilar.
 - Componente `TablaDesplazable` (catálogo › «Proyectos y plan»): las tablas anchas se alcanzan con Tab y se mueven con
   las flechas.
 - Guías nuevas: [Accesibilidad](guias/accesibilidad.md) (lo que se garantiza, los atajos de teclado y cómo avisar de un
@@ -35,10 +44,19 @@ consentimiento ni de confirmación.
 - **La marca publicada no puede dejar la interfaz sin contraste en los pares reales.** Además de los tokens básicos,
   ahora bloquean la publicación los estados sobre la superficie elevada y el fondo, el contador del admin, las
   etiquetas del historial de versiones y el texto oscuro sobre la chispa (números de paso, preset elegido, «generada»).
+  El texto del preset elegido y del ángulo activo, que iba con transparencia sobre la chispa, pasa a sólido: es el par
+  que se comprueba.
+- **Volver a una versión antigua de la marca que ya no cumple** esos pares no la publica: la restaura como
+  **borrador**, con cada par que falla en sus notas y en el aviso, para corregirla y publicarla. Si ya hay un borrador
+  sin publicar, no lo pisa y lo dice.
+- **El icono de Apple con una marca publicada:** `/apple-touch-icon.png` lleva al icono de la marca; si la marca tiene
+  logotipo pero no icono, no se sirve ninguno (nunca el de Escenara); sin marca o sin logotipos, el de Escenara.
+- **«Cerrar sesión»** dice por qué no ha podido: sin conexión, versión nueva publicada (recarga la página) o el servidor
+  no la ha cerrado. Solo lleva a «Has cerrado la sesión» si se ha cerrado de verdad.
 - **Menos JavaScript en cada pantalla:** el parallax de la portada, la mascota y el cargador pasan a CSS (la librería de
   animación deja de cargarse fuera del catálogo); el editor de imagen y el diálogo de la biblioteca se descargan al
   abrirlos, y el cliente de autenticación, al cambiar el tema o cerrar sesión. Crear, producción y biblioteca bajan
-  entre 60 y 80 KB.
+  entre 55 y 65 KB.
 - En la portada, el cartel de los vídeos se carga en diferido: en móvil eran 125 KB que competían con lo importante.
 - El logotipo pinta el nombre como texto de la página: con la fuente de respaldo o con el nombre largo de una
   instalación, crece en lugar de recortarse. Los PNG del wordmark de la guía de marca se vuelven a pintar con Manrope.
@@ -55,6 +73,22 @@ consentimiento ni de confirmación.
 - Los spinners, el pulso de la etapa en curso y el salto a «Clasificar mis fotos» se movían con «reducir movimiento».
 - Saltos en el orden de encabezados en los estados vacíos, la revisión, la producción y el depósito.
 - «Producir las 1 escenas pendientes» dice ahora «Producir la escena pendiente».
+- El contador de fotos de la colección activa de la biblioteca no llegaba a 4,5:1.
+- «Saltar al contenido» deja ahora el foco en el contenido (antes solo movía la página).
+
+### Actualizar desde la 0.42.1
+
+- **Sin migración** ni copia de seguridad necesaria. No hay ajustes nuevos.
+- **`bun run build` puede fallar ahora por el presupuesto de JavaScript**: si una pantalla pasa de su tope o es nueva y
+  no está dada de alta, el error dice cuál y qué hacer. Si eso bloquea un despliegue urgente, la variable de entorno
+  `PRESUPUESTO_JS_SOLO_AVISO=1` en el build lo convierte en aviso; quítala en cuanto esté arreglado (ver
+  [Medir el rendimiento](procesos/medir-el-rendimiento.md)).
+- Si la instalación tiene una marca publicada, revísala en **Admin › Marca**: los pares nuevos solo se exigen al
+  publicar o al volver a una versión, así que la publicada sigue aplicándose; una versión antigua que no los cumpla
+  vuelve como borrador.
+- El icono de Apple de Escenara se mueve a `public/marca-escenara/`; `/apple-touch-icon.png` es ahora una ruta.
+- Reinicia el worker tras actualizar, como siempre: esta versión no cambia la cola ni el render, pero comparte código
+  con la web.
 
 ## [0.42.1] · 2026-09-30
 

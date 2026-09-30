@@ -86,6 +86,11 @@ instalación.
 iconos de la aplicación de 192 y 512 px (con su manifiesto) e imagen para compartir de 1200 × 630. Sin logotipos no
 se genera nada y siguen los iconos de Escenara.
 
+El **icono de Apple** (`/apple-touch-icon.png`, que iPhone y iPad piden por su cuenta al guardar la página en la
+pantalla de inicio) es el de 192 px de tu marca. Si tu marca tiene logotipo pero no se generó ese icono, no se sirve
+ninguno (el sistema pone el suyo): nunca el de Escenara en una instalación con otra marca. Sin logotipos, el de
+Escenara, igual que el resto de iconos.
+
 La imagen para compartir necesita una dirección que se pueda abrir desde fuera: pon la **URL pública** de tu instalación
 en **Admin › Ajustes** (por ejemplo `https://estudio.ejemplo.es`). Sin ella (o si solo es `localhost`), el enlace se
 comparte con el nombre y la descripción, sin imagen.
@@ -111,7 +116,10 @@ la licencia: muchas fuentes comerciales no permiten el uso web sin una licencia 
 - **Publicar** guarda el borrador y lo publica. En la misma operación se vuelve a validar todo, se comprueba el
   contraste, se retira la versión anterior y se generan los iconos. Si algo falla, no cambia nada.
 - **Historial**: cada versión publicada con su fecha y sus notas. **Revertir a la versión N** la vuelve a publicar tal
-  como era, con sus mismos archivos.
+  como era, con sus mismos archivos. Si esa versión **ya no cumple el contraste de hoy** (porque se publicó antes de que
+  se comprobaran más pares), no se publica: vuelve como **borrador**, con cada par que falla en el aviso y en sus notas,
+  para que corrijas esos colores y la publiques. Lo publicado no cambia mientras tanto. Si ya tenías un borrador sin
+  publicar, no se pisa: publícalo o descártalo antes.
 - **Volver a la marca de Escenara** retira la publicada (pide un segundo clic para confirmar). La versión queda en el
   historial.
 
