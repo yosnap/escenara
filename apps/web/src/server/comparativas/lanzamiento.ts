@@ -42,7 +42,7 @@ import { estimarUna, impedimentosDe, trasFalloConCoste, vistaDeComparativa } fro
  */
 async function sinCobro(): Promise<string> {
   const base =
-    "Una comparativa son las dos ejecuciones o ninguna: no se ha encolado ninguna y ningún clip ha llegado al proveedor, así que no se ha cobrado ningún clip.";
+    "Una comparativa son las dos ejecuciones o ninguna: no ha salido ninguna ni ningún clip ha llegado al proveedor, así que no se ha cobrado ningún clip.";
   const traduccion = await estadoDeTraduccion().catch(() => ({ activa: false }));
   return traduccion.activa
     ? `${base} La traducción de la descripción, si ya se había hecho, pudo cobrarse aparte (céntimos) y queda guardada para la próxima vez.`

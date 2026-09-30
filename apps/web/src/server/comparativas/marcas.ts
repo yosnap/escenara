@@ -81,6 +81,22 @@ export async function ejecucionesDeLaComparativa(
     : null;
 }
 
+/** Escenas de la lista con una comparativa **lanzándose** (guardada, sin lanzar ni cancelar). */
+export async function escenasConComparativaLanzandose(escenaIds: readonly string[]): Promise<Set<string>> {
+  if (escenaIds.length === 0) return new Set();
+  const filas = await db()
+    .select({ escena: comparisons.sceneId })
+    .from(comparisons)
+    .where(
+      and(
+        inArray(comparisons.sceneId, [...escenaIds]),
+        isNull(comparisons.launchedAt),
+        isNull(comparisons.cancelledAt),
+      ),
+    );
+  return new Set(filas.map((f) => f.escena));
+}
+
 /**
  * `true` si la escena tiene una comparativa **lanzándose** (guardada, sin lanzar ni cancelar). Un clip normal no puede
  * encolarse a la vez: saldrían tres clips. Lo usa la transacción que encola, con el usuario ya bloqueado.

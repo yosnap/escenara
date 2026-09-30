@@ -30,3 +30,14 @@ describe("clave de la confirmación de una comparativa", () => {
     expect(claveDeConfirmacion(primera, "2 ejecuciones|88", intentoTrasRed, nueva).valor).toBe(primera.valor);
   });
 });
+
+describe("respuestas que no dicen si la petición llegó", () => {
+  it("un 502, 503 o 504 del proxy y una respuesta sin JSON conservan la clave", async () => {
+    const { respuestaSinCerteza } = await import("./comparativas");
+    for (const estado of [502, 503, 504]) expect(respuestaSinCerteza(estado, true)).toBe(true);
+    expect(respuestaSinCerteza(500, false)).toBe(true);
+    // Un 409 o un 400 con su error son respuestas de Escenara: la siguiente confirmación es otra.
+    expect(respuestaSinCerteza(409, true)).toBe(false);
+    expect(respuestaSinCerteza(400, true)).toBe(false);
+  });
+});

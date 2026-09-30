@@ -286,3 +286,15 @@ export function claveDeConfirmacion(
 
 /** Si, tras un envío fallido, la siguiente confirmación debe llevar clave nueva. */
 export const renovarClaveTrasFallo = (fallo: { red?: boolean }): boolean => fallo.red !== true;
+
+/**
+ * Si una respuesta **no dice si la petición llegó a Escenara**: un 502, 503 o 504 los pone el proxy que hay delante
+ * (nginx, Easypanel) y la aplicación puede seguir lanzando la comparativa detrás; una respuesta sin JSON tampoco es de
+ * Escenara. En esos casos se trata como un fallo de red: se conserva la clave y se pide recargar.
+ */
+export const respuestaSinCerteza = (estado: number, conJson: boolean): boolean =>
+  estado === 502 || estado === 503 || estado === 504 || !conJson;
+
+/** Qué decirle al usuario cuando no se sabe si la petición llegó. */
+export const MENSAJE_SIN_CERTEZA =
+  "No se sabe si la petición llegó: vuelve a cargar la página antes de repetir. Si la repites con la misma confirmación no se cobra dos veces.";

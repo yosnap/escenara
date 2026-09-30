@@ -8,9 +8,11 @@ import { ResultadosAB } from "@/components/ui/comparativas/resultados-ab";
 import {
   type ComparativaVista,
   type EstimacionAlternativa,
+  MENSAJE_SIN_CERTEZA,
   type PeticionAB,
   type PreparacionAB,
   renovarClaveTrasFallo,
+  respuestaSinCerteza,
 } from "@/lib/comparativas";
 
 /** Cada cuánto se vuelve a mirar una comparativa con alternativas en marcha. Solo lee: no cuesta nada. */
@@ -21,15 +23,20 @@ type Resultado<T> = { ok: true; datos: T } | { ok: false; error: string; red?: b
 async function pedir<T>(url: string, init?: RequestInit): Promise<Resultado<T>> {
   try {
     const r = await fetch(url, init);
-    const cuerpo = await r.json().catch(() => null);
-    if (!r.ok) return { ok: false, error: cuerpo?.error ?? `El servidor ha respondido ${r.status}.` };
+    const cuerpo = (await r.json().catch(() => null)) as { error?: string } | null;
+    if (!r.ok) {
+      // Un 502/503/504 del proxy o una respuesta que no es de Escenara: no se sabe si llegó, se conserva la clave.
+      if (respuestaSinCerteza(r.status, cuerpo !== null)) {
+        return { ok: false, red: true, error: `El servidor ha respondido ${r.status}. ${MENSAJE_SIN_CERTEZA}` };
+      }
+      return { ok: false, error: cuerpo?.error ?? `El servidor ha respondido ${r.status}.` };
+    }
     return { ok: true, datos: cuerpo as T };
   } catch {
     return {
       ok: false,
       red: true,
-      error:
-        "Sin conexión con el servidor: no se sabe si la petición llegó. Vuelve a cargar la página antes de repetir; si la repites con la misma confirmación no se cobra dos veces.",
+      error: `Sin conexión con el servidor. ${MENSAJE_SIN_CERTEZA}`,
     };
   }
 }

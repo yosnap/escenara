@@ -24,7 +24,7 @@ import { ErrorProyecto } from "../asistente/errores";
 import { comprometidoDelProyecto, type EleccionesDelPlan, eleccionesDelPlan } from "../asistente/plan";
 import { proporcionDelTrabajo } from "../cola/entrada-del-trabajo";
 import { posicionesEnCola } from "../cola/toma";
-import { alternativasDeEscenas, condicionDeAlternativa } from "../comparativas/marcas";
+import { alternativasDeEscenas, condicionDeAlternativa, escenasConComparativaLanzandose } from "../comparativas/marcas";
 import type { HechosEscena, ParametrosControles } from "../controles/contrato";
 import { hechosDeModelo, hechosDePersonajeCitado, parametrosDeControles } from "../controles/hechos";
 import { evaluarParaMostrar } from "../controles/puerta";
@@ -239,6 +239,8 @@ function vistaDeEscena(
   reparto: RepartoDePantalla | null,
   /** Trabajos que son alternativas de una comparativa A/B: no son el clip de la escena hasta que se eligen. */
   alternativas: ReadonlySet<string>,
+  /** Escenas con una comparativa guardada y todavía sin lanzar ni cancelar. */
+  lanzandose: ReadonlySet<string>,
 ): EscenaProduccionVista {
   // El trabajo vigente de cada tipo es el más reciente: la lista viene ordenada por fecha descendente.
   const fotograma = trabajos.find((t) => t.kind === "fotograma") ?? null;
@@ -289,7 +291,8 @@ function vistaDeEscena(
       .sort((a, b) => a.orden - b.orden),
     versiones: versionesDe(trabajos, vigentes, medios),
     bibliotecaDeClips: fila.castFormat === "podcast" ? [] : bibliotecaDeClips(fila, trabajos, medios),
-    comparativaEnMarcha: trabajos.some((t) => alternativas.has(t.id) && !trabajoTerminado(t.state)),
+    comparativaEnMarcha:
+      lanzandose.has(fila.id) || trabajos.some((t) => alternativas.has(t.id) && !trabajoTerminado(t.state)),
   };
 }
 
@@ -374,13 +377,14 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
     comprometidoDelProyecto(proyecto.id),
   ]);
   const ids = filasEscena.map((e) => e.id);
-  const [porEscena, afirmaciones, puestos, contexto, enVuelo, alternativas] = await Promise.all([
+  const [porEscena, afirmaciones, puestos, contexto, enVuelo, alternativas, lanzandose] = await Promise.all([
     trabajosDeEscenas(ids),
     afirmacionesDe(ids),
     posicionesEnCola(),
     contextoDeControles(actor, proyecto, elecciones),
     escenasEnVueloDelUsuario(actor.id),
     alternativasDeEscenas(ids),
+    escenasConComparativaLanzandose(ids),
   ]);
   const medios = await mediosDeLaRejilla(actor, [
     ...[...porEscena.values()].flat().map((t) => t.resultMediaId),
@@ -429,6 +433,7 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
         medios,
         reparto,
         alternativas,
+        lanzandose,
       );
     }),
   );

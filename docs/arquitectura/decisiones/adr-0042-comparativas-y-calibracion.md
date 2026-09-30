@@ -109,5 +109,14 @@ clip de escena (la marca de comparativa, por índice de escena), el cierre de un
 las alternativas de comparativas sin lanzar. La pasada del worker cancela las que se quedaron sin lanzar. `media/servicio.ts` separa
 la vista de un medio (`media/dto.ts`) para que una lectura no arrastre la biblioteca entera.
 
+Pendientes anotados, sin riesgo de cobro:
+
+- la devolución del reintento de cada alternativa cancelada va en su propia escritura, fuera de la transacción que
+  cierra el trabajo: si el proceso muere justo entre las dos, el reintento se pierde (en contra del usuario, nunca se
+  duplica). Se puede meter en la misma transacción cuando `cerrarTrabajoYGasto` admita un efecto adicional;
+- el barrido repite a mano los estados cancelables (`en_cola`, `esperando_limite`) en lugar de usar
+  `ESTADOS_CANCELABLES`, y recorre todas las comparativas canceladas sin lanzar de la historia sin índice en
+  `launched_at`/`cancelled_at`. Con volumen, acotarlo por fecha o con un índice parcial `WHERE launched_at IS NULL`.
+
 Queda fuera: activar controles calibrados como bloqueantes (se decidirá con estas métricas delante), comparar entre
 instalaciones o publicar comparativas, comparar fotogramas generando y guardar comparativas sin generar.

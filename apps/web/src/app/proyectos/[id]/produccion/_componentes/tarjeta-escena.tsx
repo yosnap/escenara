@@ -111,6 +111,7 @@ export function TarjetaEscena({
    * («ya tiene su clip guardado»), y para probar otro modelo con el mismo fotograma está «Comparar generando».
    */
   const puedePedirOtroClip =
+    !escena.comparativaEnMarcha &&
     escena.reparto === null &&
     escena.clip === null &&
     !puedeAprobar &&
