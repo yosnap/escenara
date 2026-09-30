@@ -1549,7 +1549,7 @@
       "trendStatus": "revision",
       "targetSeconds": 8,
       "duracionesAdmitidas": [],
-      "direccionDecidida": [],
+      "direccionDecidida": ["camara"],
       "plantilla": "Show a subtle before-and-after change within one uninterrupted shot, using movement in the same space rather than a cut or transition. Scene detail: {{escena}}. If a product appears, it remains a physical object in the scene.",
       "variables": [
         { "nombre": "escena", "tipo": "texto", "etiqueta": "Qué cambia en la rutina", "obligatoria": true }
