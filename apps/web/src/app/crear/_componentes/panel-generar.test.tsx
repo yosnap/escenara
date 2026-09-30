@@ -111,7 +111,11 @@ describe("marcado de las casillas pendientes", () => {
 
   test("con el bloque de requisitos arriba, la lista de aquí no se repite al lector de pantalla", () => {
     const html = pintar({ casillas: { derechos: false }, avisoEnBloque: true });
-    expect(html).toContain('<ul aria-hidden="true"');
-    expect(pintar({ casillas: { derechos: false } })).not.toContain('<ul aria-hidden="true"');
+    // La alerta de aquí queda oculta al lector y sin botones (el bloque de arriba ya lleva a cada campo).
+    expect(html).toContain('<div aria-hidden="true"><section data-alerta="bloqueo"');
+    expect(html.split('aria-hidden="true"><section')[1]?.split("</section>")[0]).not.toContain("<button");
+    const sinBloque = pintar({ casillas: { derechos: false } });
+    expect(sinBloque).not.toContain('<div aria-hidden="true"><section');
+    expect(sinBloque).toContain("Ir al campo");
   });
 });

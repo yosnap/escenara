@@ -121,20 +121,23 @@ export function PanelAntesDeGenerar({
             {cargando && <span className="text-texto-suave"> Comprobando otra vez…</span>}
           </>
         }
+        accion={
+          // Las comprobaciones van dentro de la misma alerta, fuera de su región viva: marcar una casilla no la repite.
+          evaluacion.comprobaciones.length > 0 && (
+            <ul className="flex w-full flex-col gap-3 border-borde border-t-2 pt-3">
+              {evaluacion.comprobaciones.map((comprobacion) => (
+                <FilaComprobacion
+                  key={comprobacion.regla}
+                  comprobacion={comprobacion}
+                  confirmada={confirmados.includes(comprobacion.regla)}
+                  deshabilitado={deshabilitado === true}
+                  onConfirmar={onConfirmar}
+                />
+              ))}
+            </ul>
+          )
+        }
       />
-      {evaluacion.comprobaciones.length > 0 && (
-        <ul className="flex flex-col gap-3 rounded-tarjeta border-2 border-borde bg-superficie p-4">
-          {evaluacion.comprobaciones.map((comprobacion) => (
-            <FilaComprobacion
-              key={comprobacion.regla}
-              comprobacion={comprobacion}
-              confirmada={confirmados.includes(comprobacion.regla)}
-              deshabilitado={deshabilitado === true}
-              onConfirmar={onConfirmar}
-            />
-          ))}
-        </ul>
-      )}
       <p className="text-sm text-texto-suave">
         Comprobado con las reglas <span className="font-mono">{evaluacion.reglasVersion}</span>. Estas comprobaciones
         son gratis: no se gasta nada hasta que confirmas el coste.

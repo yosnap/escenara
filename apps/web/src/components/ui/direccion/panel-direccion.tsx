@@ -1,6 +1,6 @@
 "use client";
 
-import { Clapperboard, Frame, ImagePlus, Move3d, PenLine, Timer, Video } from "lucide-react";
+import { Clapperboard, Frame, ImagePlus, Lock, Move3d, PenLine, Timer, Video } from "lucide-react";
 import {
   ACENTOS,
   AVISO_MODO_EXPERTO,
@@ -33,6 +33,7 @@ import type { CupoDeFotos } from "@/lib/fotos-del-producto";
 import type { ProductoElegido } from "@/lib/productos";
 import { DIRECCION_VOCAL_MAXIMA } from "@/lib/proyectos";
 import { type CategoriaDecidible, sinExpertoConTrend } from "@/lib/trends";
+import { Alerta } from "../alerta";
 import { Casilla } from "../choice";
 import { Aviso } from "../feedback";
 import { AreaTexto, Campo, EntradaTexto } from "../field";
@@ -470,11 +471,16 @@ export function PanelDireccion({
 
         <Casilla
           etiqueta="Modo experto: escribo yo la descripción entera"
-          descripcion={trend ? `${AYUDA_MODO_EXPERTO} ${sinExpertoConTrend(trend.nombre)}` : AYUDA_MODO_EXPERTO}
+          descripcion={AYUDA_MODO_EXPERTO}
           marcada={experto}
           deshabilitado={deshabilitado || trend !== null}
           onCambio={(v) => onCambio("modoExperto", v)}
         />
+        {trend && (
+          <Alerta tipo="bloqueo" compacta anuncio="ninguno" icono={<Lock />}>
+            {sinExpertoConTrend(trend.nombre)}
+          </Alerta>
+        )}
 
         {experto && (
           <>

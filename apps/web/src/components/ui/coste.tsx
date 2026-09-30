@@ -1,6 +1,7 @@
-import { Coins, TriangleAlert } from "lucide-react";
+import { Coins } from "lucide-react";
 import type { ReactNode } from "react";
 import { creditosAConfirmar, type Estimacion, formatearCreditos, formatearEuros } from "@/lib/generacion";
+import { Alerta } from "./alerta";
 import { cn } from "./cn";
 
 /**
@@ -14,7 +15,7 @@ export function PanelCoste({
   children,
 }: {
   estimacion: Estimacion;
-  /** Motivo por el que todavía no se puede generar (falta clave, saldo o consentimiento). */
+  /** Motivo por el que todavía no se puede generar (falta clave, saldo o consentimiento), ya como `Alerta`. */
   aviso?: ReactNode;
   /** Controles de confirmación, si los hay. */
   children?: ReactNode;
@@ -50,10 +51,9 @@ export function PanelCoste({
       </dl>
 
       {superaUmbral && (
-        <p className="flex items-start gap-2 rounded-control bg-elevada p-3 text-sm font-medium text-texto">
-          <TriangleAlert className="mt-0.5 size-4 shrink-0 text-aviso" aria-hidden />
+        <Alerta tipo="aviso" compacta protege>
           Este trabajo pasa del aviso de {formatearCreditos(umbral)} por trabajo. Confirma que quieres gastarlos.
-        </p>
+        </Alerta>
       )}
 
       {estimacion.traduccion && (
@@ -66,7 +66,7 @@ export function PanelCoste({
         </p>
       )}
 
-      {aviso && <div className="text-sm font-medium text-texto">{aviso}</div>}
+      {aviso}
       {children}
 
       <p className="text-sm text-texto-suave">

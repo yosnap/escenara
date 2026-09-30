@@ -1,10 +1,12 @@
 "use client";
 
 import { Sparkles } from "lucide-react";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
+import { Alerta } from "@/components/ui/alerta";
 import { Boton } from "@/components/ui/button";
 import { Casilla } from "@/components/ui/choice";
 import { formatearCreditos } from "@/lib/generacion";
+import type { Problema } from "@/lib/llevar-al-problema";
 import { exigeAvisoDeGasto } from "@/lib/produccion";
 import type { ConfirmacionEnvio } from "./api-produccion";
 
@@ -80,12 +82,21 @@ export function ConfirmacionGasto({
   // El aviso se mide sobre lo que se confirma **por trabajo**, con la función que comparte la comparación con el
   // servidor: así el botón no puede quedarse esperando una casilla que no aparece.
   const superaUmbral = exigeAvisoDeGasto(creditos, umbral);
-  const impedimentos = [
-    ...bloqueos,
-    ...(derechos ? [] : ["Falta confirmar que tienes derecho a usar la imagen."]),
-    ...(sinTerceros ? [] : ["Falta confirmar la revisión de las fotos del personaje."]),
-    ...(!conProducto || derechoMarca ? [] : ["Falta confirmar que tienes derecho a usar la marca del producto."]),
-    ...(!superaUmbral || avisoAceptado ? [] : ["Falta aceptar el aviso de gasto alto."]),
+  // Cada casilla pendiente lleva a su casilla; los bloqueos de fuera se leen, pero no tienen sitio aquí al que llevar.
+  const base = useId();
+  const casilla = (nombre: string) => `${base}-${nombre}`;
+  const impedimentos: Problema[] = [
+    ...bloqueos.map((texto) => ({ texto })),
+    ...(derechos ? [] : [{ id: casilla("derechos"), texto: "Falta confirmar que tienes derecho a usar la imagen." }]),
+    ...(sinTerceros
+      ? []
+      : [{ id: casilla("sin-terceros"), texto: "Falta confirmar la revisión de las fotos del personaje." }]),
+    ...(!conProducto || derechoMarca
+      ? []
+      : [{ id: casilla("marca"), texto: "Falta confirmar que tienes derecho a usar la marca del producto." }]),
+    ...(!superaUmbral || avisoAceptado
+      ? []
+      : [{ id: casilla("aviso-gasto"), texto: "Falta aceptar el aviso de gasto alto." }]),
   ];
 
   const enviar = () => {
@@ -121,12 +132,14 @@ export function ConfirmacionGasto({
         descripcion="Es tuya o tienes permiso de quien aparece en ella. Para generar, las fotos se suben temporalmente al almacenamiento del proveedor, donde quedan accesibles por enlace unas horas."
         marcada={derechos}
         onCambio={setDerechos}
+        requisito={casilla("derechos")}
       />
       <Casilla
         etiqueta="En las fotos del personaje no aparece nadie más ni ningún menor"
         descripcion="Lo revisas tú antes de enviarlas: nadie puede comprobarlo por ti. Tu confirmación queda registrada con su fecha."
         marcada={sinTerceros}
         onCambio={setSinTerceros}
+        requisito={casilla("sin-terceros")}
       />
       {conProducto && (
         <Casilla
@@ -134,6 +147,7 @@ export function ConfirmacionGasto({
           descripcion="El producto es tuyo o tienes autorización de la marca para usarlo en este vídeo. Solo aparece cuando el envío lleva producto, y sin ella no se genera. Tu declaración queda registrada con su fecha."
           marcada={derechoMarca}
           onCambio={setDerechoMarca}
+          requisito={casilla("marca")}
         />
       )}
       {onConfirmarAviso &&
@@ -152,14 +166,12 @@ export function ConfirmacionGasto({
           descripcion="Aviso de gasto alto de esta instalación: hay que aceptarlo expresamente antes de enviarlo."
           marcada={avisoAceptado}
           onCambio={setAvisoAceptado}
+          requisito={casilla("aviso-gasto")}
         />
       )}
       {impedimentos.length > 0 && (
-        <ul className="flex list-inside list-disc flex-col gap-1 text-sm text-texto">
-          {impedimentos.map((motivo) => (
-            <li key={motivo}>{motivo}</li>
-          ))}
-        </ul>
+        // Protege dinero y consentimiento: persiste hasta que se marca cada casilla.
+        <Alerta tipo="bloqueo" compacta anuncio="ninguno" protege elementos={impedimentos} />
       )}
       <Boton
         variante="chispa"

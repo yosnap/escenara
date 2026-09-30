@@ -1,6 +1,7 @@
 "use client";
 
 import { Lock } from "lucide-react";
+import { Alerta } from "@/components/ui/alerta";
 import { GrupoOpciones, Interruptor } from "@/components/ui/choice";
 import { ControlVolumen } from "@/components/ui/montaje/control-volumen";
 import { PrevisualizacionVertical } from "@/components/ui/montaje/previsualizacion-vertical";
@@ -117,12 +118,9 @@ export function PanelMezcla({
         </div>
 
         {montaje.etiquetaObligatoria && (
-          <div role="status" className="flex gap-3 rounded-tarjeta border-2 border-borde bg-elevada p-3">
-            <span aria-hidden className="mt-0.5 shrink-0 text-texto-suave">
-              <Lock className="size-5" />
-            </span>
-            <p className="text-texto">{montaje.motivoEtiqueta}</p>
-          </div>
+          <Alerta tipo="bloqueo" compacta anuncio="estado" icono={<Lock />}>
+            {montaje.motivoEtiqueta}
+          </Alerta>
         )}
 
         <Interruptor
