@@ -114,6 +114,7 @@ function TarjetaTipo({ inicial, opciones }: { inicial: MapaVista; opciones: Entr
         >
           <Trash2 className="size-4" />
         </Boton>
+        {/* alerta-permitida: motivo de una opción no utilizable, junto a ella */}
         {!entrada.utilizable && <span className="w-full text-sm font-medium text-error">{entrada.motivo}</span>}
       </div>
     ),

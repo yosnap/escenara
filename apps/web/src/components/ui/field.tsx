@@ -31,6 +31,7 @@ export function Campo({ etiqueta, ayuda, error, requisito, children }: CampoProp
           {ayuda}
         </p>
       )}
+      {/* alerta-permitida: mensaje de error de un campo, ligado con aria-describedby */}
       {error && (
         <p id={idError} className="flex items-center gap-1 text-sm font-medium text-error">
           <span aria-hidden>●</span> {error}

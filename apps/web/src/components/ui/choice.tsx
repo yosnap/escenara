@@ -75,6 +75,7 @@ export function Casilla({
   return (
     <div className="flex flex-col gap-1" data-requisito={requisito}>
       {casilla}
+      {/* alerta-permitida: mensaje de error de una casilla, ligado con aria-describedby */}
       {error && (
         <p id={idError} className="flex items-center gap-1 px-2 text-sm font-medium text-error">
           <span aria-hidden>●</span> {error}

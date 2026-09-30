@@ -134,6 +134,7 @@ export function TablaPlan({ plan, escenas }: { plan: PlanVista; escenas: readonl
                 <td className="py-3 pr-3 font-mono text-texto-suave">{fila.segundos} s</td>
                 <td className="py-3 pr-3 text-texto">
                   <span className="font-mono">{fila.estimacion}</span>
+                  {/* alerta-permitida: motivo de una fila de la tabla del plan */}
                   {fila.motivo !== "" && <span className="mt-1 block text-sm text-error">{fila.motivo}</span>}
                 </td>
                 <td className="py-3">

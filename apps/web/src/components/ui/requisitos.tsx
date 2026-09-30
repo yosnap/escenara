@@ -47,6 +47,7 @@ export function MarcaRequisito({ id, error, children }: { id: string; error?: st
   return (
     <div data-requisito={id} className={cn("flex flex-col gap-1.5", error && "rounded-control p-2 ring-2 ring-error")}>
       {children}
+      {/* alerta-permitida: mensaje bajo un control marcado */}
       {error && (
         <p className="flex items-center gap-1 text-sm font-medium text-error">
           <span aria-hidden>●</span> {error}

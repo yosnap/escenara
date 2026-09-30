@@ -212,6 +212,7 @@ export function PanelDeVariantes({
               </span>
               {variante.propuesta?.motivoGuionNoEscrito !== undefined &&
                 variante.propuesta.motivoGuionNoEscrito !== "" && (
+                  // alerta-permitida: estado de esta variante, junto a ella
                   <span className="text-sm text-error">{variante.propuesta.motivoGuionNoEscrito}</span>
                 )}
             </li>

@@ -56,6 +56,7 @@ export function ResumenDeLoPedido({ frases, nota }: { frases: readonly string[];
     <div className="flex flex-col gap-1 rounded-control bg-superficie p-3">
       <p className="font-semibold text-texto">Lo que se ha pedido</p>
       <ul className="flex flex-col gap-1 text-sm text-texto">
+        {/* alerta-permitida: frases de lo que se ha pedido, no lo que falta */}
         {frases.map((frase) => (
           <li key={frase}>{frase}</li>
         ))}

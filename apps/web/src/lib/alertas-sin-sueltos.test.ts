@@ -7,32 +7,25 @@ import path from "node:path";
  * o con `Aviso`/`AvisoEstado`, que la usan por dentro. Aquí se buscan las formas de siempre de un aviso suelto para
  * que no vuelvan: una región `alert` hecha a mano, un `status` pintado de color de resultado y la línea roja suelta.
  *
- * Quedan fuera, a propósito, los mensajes **de un campo** (debajo del control, ligados con `aria-describedby`): no son
- * avisos de la pantalla sino la marca del propio campo.
+ * Las excepciones van **por línea**, no por fichero: la línea del aviso (o una de las dos de encima) lleva un comentario
+ * `alerta-permitida:` con el motivo. Son, a propósito, los mensajes **de un campo** (debajo del control, ligados con
+ * `aria-describedby`), el motivo dentro de la tarjeta de una opción y las listas que no dicen lo que falta.
  */
 const RAIZ = path.resolve(import.meta.dir, "..");
-const PERMITIDOS = new Set([
-  "components/ui/alerta.tsx", // el propio componente
-  "components/ui/field.tsx", // mensaje de error de un campo
-  "components/ui/choice.tsx", // mensaje de error de una casilla
-  "components/ui/requisitos.tsx", // mensaje bajo un control marcado
-  // Motivo dentro de la tarjeta de una **opción** que no se puede elegir (preset, ángulo, modelo del mapa): es el
-  // estado de esa opción, junto a ella, no un aviso de la pantalla.
-  "components/ui/preset.tsx",
-  "components/ui/anuncio.tsx",
-  "app/cuenta/_componentes/mapa-de-modelos.tsx",
-]);
+/** El propio componente es el único fichero que pinta regiones vivas a mano. */
+const PERMITIDOS = new Set(["components/ui/alerta.tsx"]);
+const EXCEPCION = "alerta-permitida:";
 
 const PATRONES: [string, RegExp][] = [
-  ["región «alert» hecha a mano", /role=(?:"alert"|\{[^}]*"alert")/],
-  ["«status» con color de resultado", /role="status"[^>]*text-(?:error|aviso|correcto|peligro)/],
-  ["línea de error suelta", /<(?:p|span|div)\s+className="[^"]*\btext-(?:error|peligro)\b[^"]*\bfont-medium\b[^"]*">/],
-  ["línea de error suelta", /<(?:p|span|div)\s+className="[^"]*\bfont-medium\b[^"]*\btext-(?:error|peligro)\b[^"]*">/],
-  // La lista de viñetas de «lo que falta» (`bloqueos.map((motivo) => <li key={motivo}>{motivo}</li>)`).
-  // El error de una petición o de un trabajo pintado como párrafo (`{error && <p>…`); `!error &&` no cuenta.
-  ["error en un párrafo suelto", /(?<![!\w.])(?:\w+\.)?\w*[eE]rror\w*\s*&&\s*\(?\s*<(?:p|span)\b/],
-  // Solo con los nombres de «lo que falta»: una lista de frases o de consecuencias no es un aviso.
-  ["lista de motivos suelta", /\.map\(\((motivo|m|impedimento|falta|bloqueo)\) => \(?\s*<li key=\{\1\}>\{\1\}<\/li>/],
+  ["región «alert» hecha a mano", /role=(?:"alert"|'alert'|\{[^}]*["']alert["'])/g],
+  ["región viva urgente hecha a mano", /aria-live=(?:"assertive"|'assertive'|\{[^}]*["']assertive["'])/g],
+  ["«status» con color de resultado", /role="status"[^>]*text-(?:error|aviso|correcto|peligro)/g],
+  ["línea de error suelta", /<(?:p|span|div)\s+className="[^"]*\btext-(?:error|peligro)\b[^"]*"/g],
+  ["línea de error suelta", /className=\{cn\([^)]*["'][^"']*\btext-(?:error|peligro)\b[^"']*["']/g],
+  // El error de una petición o de un trabajo pintado como párrafo (`{error && <p>…`, `{error ? <p>…`).
+  ["error en un párrafo suelto", /(?<![!\w.])(?:\w+\.)?\w*[eE]rror\w*\s*(?:&&|\?)\s*\(?\s*<(?:p|span)\b/g],
+  // Una lista de viñetas de textos sueltos (`motivos.map((m) => <li key={m}>{m}</li>)`), sea cual sea el nombre.
+  ["lista de motivos suelta", /\.map\(\((\w+)\) => \(?\s*<li key=\{\1\}[^>]*>\s*\{\1\}\s*<\/li>/g],
 ];
 
 async function ficheros(dir: string): Promise<string[]> {
@@ -47,7 +40,19 @@ async function ficheros(dir: string): Promise<string[]> {
   return listas.flat();
 }
 
-const detecta = (codigo: string) => PATRONES.filter(([, p]) => p.test(codigo)).map(([nombre]) => nombre);
+/** Qué patrones aparecen en el código, sin contar las líneas con su excepción escrita. */
+function detecta(codigo: string): string[] {
+  const lineas = codigo.split("\n");
+  const hallados = new Set<string>();
+  for (const [nombre, patron] of PATRONES) {
+    for (const m of codigo.matchAll(patron)) {
+      const linea = codigo.slice(0, m.index).split("\n").length - 1;
+      const exenta = [lineas[linea], lineas[linea - 1], lineas[linea - 2]].some((l) => l?.includes(EXCEPCION));
+      if (!exenta) hallados.add(nombre);
+    }
+  }
+  return [...hallados];
+}
 
 describe("sin avisos sueltos", () => {
   it("ningún componente pinta un aviso a mano: todos salen por la alerta", async () => {
@@ -56,7 +61,7 @@ describe("sin avisos sueltos", () => {
       const relativo = path.relative(RAIZ, f).split(path.sep).join("/");
       if (PERMITIDOS.has(relativo)) continue;
       const hallados = detecta(await Bun.file(f).text());
-      if (hallados.length > 0) infractores.push(`${relativo}: ${[...new Set(hallados)].join(", ")}`);
+      if (hallados.length > 0) infractores.push(`${relativo}: ${hallados.join(", ")}`);
     }
     expect(infractores).toEqual([]);
   });
@@ -79,6 +84,20 @@ describe("sin avisos sueltos", () => {
       "error en un párrafo suelto",
     );
     expect(detecta('{!canto && !error && <p role="status">Comprobando…</p>}')).toEqual([]);
+    expect(detecta("<p role='alert'>x</p>")).toContain("región «alert» hecha a mano");
+    expect(detecta('<div aria-live="assertive">x</div>')).toContain("región viva urgente hecha a mano");
+    expect(detecta('<p className={cn("text-sm", "font-medium text-error")}>')).toContain("línea de error suelta");
+    expect(detecta("{error ? <p>{error}</p> : null}")).toContain("error en un párrafo suelto");
+    expect(detecta('{razones.map((razon) => (\n  <li key={razon} className="x">{razon}</li>\n))}')).toContain(
+      "lista de motivos suelta",
+    );
+    // La excepción vale para su línea (o la de encima), no para el fichero entero.
+    expect(detecta('{/* alerta-permitida: marca de campo */}\n<p className="text-sm text-error">x</p>')).toEqual([]);
+    expect(
+      detecta(
+        '{/* alerta-permitida: marca de campo */}\n<p className="text-error">x</p>\n\n<p className="text-error">y</p>',
+      ),
+    ).toContain("línea de error suelta");
     expect(detecta('<Alerta tipo="error" compacta>No se ha podido guardar.</Alerta>')).toEqual([]);
     expect(detecta('<Aviso tono="error">{error}</Aviso>')).toEqual([]);
     expect(detecta('<p role="status" className="text-sm text-texto-suave">Comprobando…</p>')).toEqual([]);

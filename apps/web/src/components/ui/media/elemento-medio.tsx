@@ -31,6 +31,7 @@ function Acciones({ medio, acciones }: { medio: Medio; acciones: AccionesMedio }
         </BotonIcono>
         {medio.permisos.borrarDefinitivo && (
           <BotonIcono
+            // alerta-permitida: color del botón de borrar
             className={cn(clase, "text-error")}
             etiqueta={`Eliminar definitivamente ${medio.nombre}`}
             onClick={() => acciones.onEliminar(medio)}

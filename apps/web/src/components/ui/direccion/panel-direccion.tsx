@@ -188,6 +188,7 @@ export function PanelDireccion({
   deshabilitado?: boolean;
   onCambio: <C extends keyof DireccionElegidaConAcento>(campo: C, valor: DireccionElegidaConAcento[C]) => void;
 }) {
+  const idSinExperto = useId();
   if (!opciones) return null;
   const libre = (categoria: CategoriaDecidible) => !trend?.decide.includes(categoria);
   const habla = formatoHabla(direccion.formatoClip) && (trend?.permiteHabla ?? true);
@@ -201,7 +202,6 @@ export function PanelDireccion({
   // honesto. El acento y la voz siguen siendo suyos: describen quién habla, no lo que se ve. Con un trend no hay modo
   // experto: el servidor lo rechaza, así que tampoco se enseña como activo.
   const experto = direccion.modoExperto && !trend;
-  const idSinExperto = useId();
   const botonesApagados = deshabilitado || experto;
 
   /**

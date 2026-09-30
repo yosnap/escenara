@@ -23,6 +23,7 @@ export function TarjetaPreset({
           <strong className="text-lg font-bold text-texto">{preset.nombre}</strong>
           <span className="font-mono text-sm text-texto-suave">{preset.clave}</span>
           {!preset.activo && (
+            // alerta-permitida: insignia de estado del preset
             <span className="rounded-full bg-elevada px-3 py-1 text-sm font-semibold text-error">Desactivado</span>
           )}
         </p>
