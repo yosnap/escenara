@@ -465,6 +465,8 @@ export async function duplicarTrend(id: string, clave: string, autorId: string):
       trendStatus: "revision",
       trendPlatform: anterior.trendPlatform,
       targetSeconds: anterior.targetSeconds,
+      // La copia hereda las duraciones tal cual. Un caducado de antes de la 0.34.0 aún exige la que tenía: su copia
+      // nace limitada igual y quien administra la libera al revisarla (no se distingue de un límite puesto a propósito).
       duracionesAdmitidas: duracionesDe(anterior.allowedSeconds),
       direccionDecidida: categoriasDecididasDe(anterior.decidedDirection),
       referenceUrl: anterior.referenceUrl,

@@ -40,15 +40,22 @@ consentimiento ni de idempotencia.
   | Trend | La dirección decide |
   | --- | --- |
   | Unboxing en primera persona | Plano, ángulo y movimiento de cámara |
-  | Antes y después de una rutina | Nada |
+  | Antes y después de una rutina | Movimiento de cámara |
   | Producto en la rutina de la mañana | Micro-acción |
   | ASMR con el producto | Plano y micro-acción |
   | Mano que muestra el producto en un giro | Movimiento de cámara y micro-acción |
 
-  Las **variantes de 5 s** (clave terminada en «-5s») se conservan tal cual, con su duración; los trends caducados
-  y los que hubieras editado a mano no reciben categorías decididas (se liberan de duración si no están caducados).
+  Un trend que **restringe los modelos** (como las variantes de 5 s para MiniMax H3) conserva su duración y su
+  restricción, pero recibe lo mismo que decide su original si tiene el mismo texto. Los trends caducados no se tocan;
+  los que hubieras editado a mano se liberan de duración pero no reciben categorías decididas. Si duplicas un trend
+  caducado de antes de esta versión, la copia hereda su duración fija: vacía «Duraciones admitidas» al revisarla.
+- **Una escena que cita una versión antigua de su trend** ya no dice solo «el trend ha cambiado»: al producirla se
+  explica que hay una versión nueva, qué puede cambiar y que basta con revisar la dirección y pulsar «Guardar escena»;
+  no se cobra nada. El editor de la escena lo avisa antes.
+- Con un trend que no deja hablar o que dicta el plano, el ángulo o la cámara, el clip ya no se describe como «una
+  persona hablando a cámara», que contradecía al texto del trend. Sin trend, el prompt es exactamente el de antes.
 
-### Actualizar desde la 0.33.x
+### Actualizar desde la 0.33.3
 
 - **Haz antes una copia**: `bun run db:backup`. Después, `bun run db:migrate`.
 - La migración `0052_trends-libres` es **aditiva**: añade `allowed_seconds` y `decided_direction` a las plantillas y a
@@ -56,8 +63,10 @@ consentimiento ni de idempotencia.
   no cambia nada. `target_seconds` no se borra ni se renombra.
 - La migración `0053_trends-sin-duracion-fija` libera la duración de los trends de la instalación **creando una
   versión nueva con motivo** y rellena «La dirección decide» según la tabla de arriba. Es idempotente. Los trabajos
-  ya generados no cambian (guardan su versión y su prompt final) y las escenas que citaban la versión anterior de su
-  trend pasan a citar la nueva, así que siguen siendo válidas sin volver a elegirlo.
+  ya generados no cambian (guardan su versión y su prompt final). **Solo** las escenas en borrador sin nada elegido
+  en lo que ahora decide su trend pasan a citar la versión nueva (su prompt no pierde nada de lo que elegiste). Las
+  aprobadas, las producidas y las que tienen algo elegido ahí siguen en la versión anterior: al producirlas se te
+  dice que el trend tiene una versión nueva, sin cobrar, y se actualizan guardando la escena.
 - Revisa en **Admin › Plantillas** los valores de «La dirección decide» de cada trend antes de publicarlos.
 
 ## [0.33.3] · 2026-09-30

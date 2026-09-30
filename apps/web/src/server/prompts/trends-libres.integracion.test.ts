@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { loadEnvConfig } from "@next/env";
+import sharp from "sharp";
 
 /**
  * Trends sin duración fija y que deciden la dirección, contra PostgreSQL.
@@ -36,6 +37,21 @@ const { crearPlantillaDeLaInstalacion, editarPlantillaDeLaInstalacion } = await 
 const { ErrorPreset } = await import("./errores");
 const { componerDesdePlantilla } = await import("./render");
 const { elegirModelo } = await import("../proveedores/catalogo");
+const { direccionDeLaEscena } = await import("../direccion/escena");
+const { dirigirClip } = await import("../direccion/clip");
+const { FORMATO_CLIP_TREND_INGLES, REGLA_ANTI_CORTE } = await import("../direccion/ingles");
+const { crearMedio } = await import("../media/servicio");
+const { otroClipDeEscena } = await import("../produccion/producir");
+
+/** Imagen lisa: basta como fotograma aprobado. */
+async function foto(): Promise<Uint8Array<ArrayBuffer>> {
+  const png = await sharp(new Uint8Array(64 * 64 * 3).fill(90), { raw: { width: 64, height: 64, channels: 3 } })
+    .png()
+    .toBuffer();
+  const copia = new Uint8Array(new ArrayBuffer(png.byteLength));
+  copia.set(png);
+  return copia;
+}
 
 type Sesion = Awaited<ReturnType<typeof crearSesionDePrueba>>;
 
@@ -63,21 +79,26 @@ describe.skipIf(!hayBaseDeDatos)("trends sin duración fija", () => {
     texto?: string;
     estado?: "vigente" | "revision" | "caducada";
     dueno?: string | null;
+    /** Modelos a los que se limitó (las variantes de 5 s se hicieron para MiniMax H3). */
+    modelos?: string[];
   }) {
     const slug = `${prefijo}-${datos.sufijo}`;
     claves.push(slug);
     const texto = datos.texto ?? TEXTO_UNBOXING;
     const permitidas = JSON.stringify([datos.segundos]);
+    const restricciones = JSON.stringify({ modelos: datos.modelos ?? [], minimoReferencias: 0 });
     const [fila] = await db()
       .insert(promptTemplates)
       .values({
         ownerId: datos.dueno ?? null,
         slug,
         name: `Trend ${datos.sufijo}`,
+        description: "Trend de prueba de antes de las duraciones admitidas.",
         kind: "trend",
         trendStatus: datos.estado ?? "vigente",
         targetSeconds: datos.segundos,
         allowedSeconds: permitidas,
+        modelRestrictions: restricciones,
         capability: "image_to_video",
         template: texto,
         variables: VARIABLES,
@@ -92,6 +113,7 @@ describe.skipIf(!hayBaseDeDatos)("trends sin duración fija", () => {
         number: 1,
         template: texto,
         variables: VARIABLES,
+        modelRestrictions: restricciones,
         allowedSeconds: permitidas,
         changeReason: "Alta.",
       })
@@ -123,14 +145,78 @@ describe.skipIf(!hayBaseDeDatos)("trends sin duración fija", () => {
     await Promise.all([admin?.borrar(), ana?.borrar()]);
   });
 
+  /** Proyecto de 8 s de Ana con una escena por cada estado pedido, todas citando la versión 1 del trend. */
+  async function escenasDe(
+    plantillaId: string,
+    casos: { estado: "borrador" | "aprobada" | "producida"; plano?: string }[],
+  ) {
+    const [proyecto] = await db()
+      .insert(projects)
+      .values({ userId: ana.id, title: "Proyecto con trend", clipSeconds: 8 })
+      .returning();
+    if (!proyecto) throw new Error("No se ha creado el proyecto de prueba.");
+    const filas = await db()
+      .insert(scenes)
+      .values(
+        casos.map((c, i) => ({
+          projectId: proyecto.id,
+          sortOrder: i + 1,
+          state: c.estado,
+          shotType: c.plano ?? "",
+          templateId: plantillaId,
+          templateVersion: 1,
+        })),
+      )
+      .returning();
+    return { proyecto, filas };
+  }
+
+  /** El prompt de clip que compone el servidor para una escena, sin proveedor: la misma cadena que `servicio.ts`. */
+  async function promptDeEscena(escenaId: string) {
+    const [escena] = await db().select().from(scenes).where(eq(scenes.id, escenaId));
+    const [proyecto] = await db()
+      .select()
+      .from(projects)
+      .where(eq(projects.id, escena?.projectId ?? ""));
+    if (!escena || !proyecto) throw new Error("Falta la escena.");
+    const compuesto = await componerDesdePlantilla({
+      usuarioId: ana.id,
+      plantillaId: escena.templateId ?? "",
+      tipo: "animacion",
+      presets: {},
+      escena: "a kitchen counter",
+      tipoPersonaje: null,
+      modelo: await elegirModelo("image_to_video"),
+      segundos: proyecto.clipSeconds,
+    });
+    const direccion = await direccionDeLaEscena(ana.id, escena, proyecto, {
+      descripcion: "A person",
+      real: false,
+      atractivoElegido: false,
+      ejesVoz: {},
+    });
+    return {
+      version: compuesto.versionNumero,
+      texto: dirigirClip({
+        ...direccion,
+        trend: compuesto.trend,
+        escena: compuesto.texto,
+        dialogo: "",
+        segundos: proyecto.clipSeconds,
+        direccionVocal: "",
+        instruccionesExtra: "",
+        descripcionExperta: "",
+      }).escena,
+    };
+  }
+
   test("la migración libera la duración con versión nueva, conserva lo anterior y es idempotente", async () => {
     const libre = await trendAntiguo({ sufijo: "unboxing", segundos: 8 });
     const editado = await trendAntiguo({ sufijo: "editado", segundos: 6, texto: "A hand-made trend. {{escena}}." });
-    const variante = await trendAntiguo({ sufijo: "unboxing-5s", segundos: 5 });
     const caducado = await trendAntiguo({ sufijo: "caducado", segundos: 8, estado: "caducada" });
     const deUsuario = await trendAntiguo({ sufijo: "de-ana", segundos: 8, dueno: ana.id });
 
-    // Un trabajo ya generado con la versión 1, y una escena de un proyecto de 8 s que la cita.
+    // Un trabajo ya generado con la versión 1.
     const [trabajo] = await db()
       .insert(generationJobs)
       .values({
@@ -143,15 +229,7 @@ describe.skipIf(!hayBaseDeDatos)("trends sin duración fija", () => {
         input: { plantilla: { id: libre.fila.id, versionId: libre.version.id, kind: "trend" } },
       })
       .returning();
-    const [proyecto] = await db()
-      .insert(projects)
-      .values({ userId: ana.id, title: "Proyecto con trend", clipSeconds: 8 })
-      .returning();
-    const [escena] = await db()
-      .insert(scenes)
-      .values({ projectId: proyecto?.id ?? "", sortOrder: 1, templateId: libre.fila.id, templateVersion: 1 })
-      .returning();
-    if (!trabajo || !escena) throw new Error("No se han creado el trabajo ni la escena de prueba.");
+    if (!trabajo) throw new Error("No se ha creado el trabajo de prueba.");
 
     await aplicarMigracionDeDatos();
 
@@ -174,37 +252,143 @@ describe.skipIf(!hayBaseDeDatos)("trends sin duración fija", () => {
     expect(trasEditado.allowedSeconds).toBe("[]");
     expect(trasEditado.decidedDirection).toBe("[]");
 
-    // Variante de 5 s, caducado y de un usuario: tal cual.
-    for (const intacto of [variante, caducado, deUsuario]) {
+    // Caducado y de un usuario: tal cual.
+    for (const intacto of [caducado, deUsuario]) {
       expect(await filaDe(intacto.fila.id)).toEqual(intacto.fila);
       expect(await versionesDe(intacto.fila.id)).toEqual([intacto.version]);
     }
-
-    // El trabajo antiguo no cambia; la escena cita la versión nueva y sigue siendo válida.
     const [trabajoTras] = await db().select().from(generationJobs).where(eq(generationJobs.id, trabajo.id));
     expect(trabajoTras).toEqual(trabajo);
-    const [escenaTras] = await db().select().from(scenes).where(eq(scenes.id, escena.id));
-    expect(escenaTras?.templateVersion).toBe(2);
 
     // Volver a pasarla no hace nada.
     await aplicarMigracionDeDatos();
     expect(await filaDe(libre.fila.id)).toEqual(tras);
     expect(await versionesDe(libre.fila.id)).toEqual(versiones);
+  });
 
-    // La escena, con la misma duración de proyecto que antes, se vuelve a guardar con su trend.
-    const guardada = await editarEscena({ id: ana.id, esAdmin: false }, escena.id, { trendId: libre.fila.id });
-    expect(guardada.templateId).toBe(libre.fila.id);
+  test("solo se reapuntan las escenas en borrador sin nada elegido en lo que decide el trend", async () => {
+    const trend = await trendAntiguo({ sufijo: "escenas", segundos: 8 });
+    const { proyecto, filas } = await escenasDe(trend.fila.id, [
+      { estado: "borrador" },
+      { estado: "borrador", plano: "primer-plano" },
+      { estado: "aprobada" },
+      { estado: "producida" },
+    ]);
+    const [libre, conPlano, aprobada, producida] = filas;
+    if (!libre || !conPlano || !aprobada || !producida) throw new Error("Faltan escenas.");
+    const antes = await promptDeEscena(libre.id);
+    expect(antes.version).toBe(1);
+    // Antes de la migración no decide nada: la cámara quieta por defecto sigue ahí (y, como el trend es mudo, el
+    // formato ya es el neutro).
+    expect(antes.texto).toContain("The camera stays locked off");
+    expect(antes.texto).not.toContain("talking straight to camera");
+
+    await aplicarMigracionDeDatos();
+
+    const version = async (id: string) =>
+      (await db().select().from(scenes).where(eq(scenes.id, id)))[0]?.templateVersion;
+    expect(await version(libre.id)).toBe(2);
+    expect(await version(conPlano.id)).toBe(1);
+    expect(await version(aprobada.id)).toBe(1);
+    expect(await version(producida.id)).toBe(1);
+
+    // La reapuntada compone con la versión nueva: el texto del trend sin «a cámara» ni «cámara quieta»; no pierde nada
+    // de lo que eligió el usuario porque no había elegido nada de eso.
+    const despues = await promptDeEscena(libre.id);
+    expect(despues.version).toBe(2);
+    expect(despues.texto.startsWith(FORMATO_CLIP_TREND_INGLES)).toBe(true);
+    expect(despues.texto).toContain("First-person unboxing in one continuous close shot");
+    expect(despues.texto).not.toContain("talking straight to camera");
+    expect(despues.texto).not.toContain("locked off");
+    expect(despues.texto.endsWith(REGLA_ANTI_CORTE)).toBe(true);
+
+    // La que tenía plano elegido sigue citando la anterior: guardarla la pasa a la nueva (y se ve el aviso antes).
+    const guardada = await editarEscena({ id: ana.id, esAdmin: false }, conPlano.id, { trendId: trend.fila.id });
     expect(guardada.templateVersion).toBe(2);
     // Y el proyecto podría ir a otra duración: el trend ya no la limita.
-    await db()
-      .update(projects)
-      .set({ clipSeconds: 5 })
-      .where(eq(projects.id, proyecto?.id ?? ""));
-    const aCinco = await editarEscena({ id: ana.id, esAdmin: false }, escena.id, { trendId: libre.fila.id });
-    expect(aCinco.templateId).toBe(libre.fila.id);
-    await db()
-      .delete(projects)
-      .where(eq(projects.id, proyecto?.id ?? ""));
+    await db().update(projects).set({ clipSeconds: 5 }).where(eq(projects.id, proyecto.id));
+    const aCinco = await editarEscena({ id: ana.id, esAdmin: false }, libre.id, { trendId: trend.fila.id });
+    expect(aCinco.templateId).toBe(trend.fila.id);
+    await db().delete(projects).where(eq(projects.id, proyecto.id));
+  });
+
+  test("una escena producida con la versión anterior no se vuelve a animar en silencio: se explica y no se cobra", async () => {
+    const trend = await trendAntiguo({ sufijo: "producida", segundos: 8 });
+    const medio = await crearMedio(
+      { id: ana.id, esAdmin: false },
+      new File([await foto()], "fotograma.png", { type: "image/png" }),
+    );
+    const { proyecto, filas } = await escenasDe(trend.fila.id, [{ estado: "producida" }]);
+    const escena = filas[0];
+    if (!escena) throw new Error("Falta la escena.");
+    await db().update(scenes).set({ approvedFrameMediaId: medio.id }).where(eq(scenes.id, escena.id));
+    await aplicarMigracionDeDatos();
+    try {
+      const error = await otroClipDeEscena({ id: ana.id, esAdmin: false }, escena.id, {
+        derechos: true,
+        sinTerceros: true,
+        creditosConfirmados: 40,
+        selloEstimacion: "sello",
+        claveIdempotencia: crypto.randomUUID(),
+      }).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(ErrorProyecto);
+      expect((error as Error).message).toContain(
+        "tiene una versión nueva (v2) desde que lo elegiste en esta escena (v1)",
+      );
+      expect((error as Error).message).toContain("Guardar escena");
+      expect((error as Error).message).toContain("No se ha cobrado nada");
+      const trabajos = await db().select().from(generationJobs).where(eq(generationJobs.sceneId, escena.id));
+      expect(trabajos).toEqual([]);
+    } finally {
+      await db().delete(projects).where(eq(projects.id, proyecto.id));
+    }
+  });
+
+  test("las variantes limitadas a un modelo conservan duración y restricción, y deciden lo mismo que su original", async () => {
+    const variante = await trendAntiguo({
+      sufijo: "variante",
+      segundos: 5,
+      modelos: ["minimax-h3/reference-to-video"],
+    });
+    await aplicarMigracionDeDatos();
+    const tras = await filaDe(variante.fila.id);
+    expect(tras.version).toBe(2);
+    expect(tras.allowedSeconds).toBe("[5]");
+    expect(tras.modelRestrictions).toBe(variante.fila.modelRestrictions);
+    expect(tras.decidedDirection).toBe('["plano","angulo","camara"]');
+    const [, nueva] = await versionesDe(variante.fila.id);
+    expect(nueva?.allowedSeconds).toBe("[5]");
+    expect(nueva?.changeReason).toContain("Conserva sus duraciones admitidas y su restricción de modelo");
+    await aplicarMigracionDeDatos();
+    expect(await versionesDe(variante.fila.id)).toHaveLength(2);
+  });
+
+  test("la migración deja cada trend sembrado igual que lo deja la semilla, salvo el número de versión", async () => {
+    const sembrados = (await db().select().from(promptTemplates)).filter(
+      (p) => p.ownerId === null && p.kind === "trend" && p.slug.startsWith("trend-") && !p.slug.startsWith(prefijo),
+    );
+    expect(sembrados.length).toBe(5);
+    const antiguos = [];
+    for (const sembrado of sembrados) {
+      antiguos.push({
+        sembrado,
+        antiguo: await trendAntiguo({ sufijo: `semilla-${sembrado.slug}`, segundos: 8, texto: sembrado.template }),
+      });
+    }
+    await aplicarMigracionDeDatos();
+    for (const { sembrado, antiguo } of antiguos) {
+      const migrado = await filaDe(antiguo.fila.id);
+      expect({ duraciones: migrado.allowedSeconds, decide: migrado.decidedDirection }).toEqual({
+        duraciones: sembrado.allowedSeconds,
+        decide: sembrado.decidedDirection,
+      });
+      const [vSemilla] = (await versionesDe(sembrado.id)).slice(-1);
+      const [vMigrada] = (await versionesDe(antiguo.fila.id)).slice(-1);
+      expect({ duraciones: vMigrada?.allowedSeconds, decide: vMigrada?.decidedDirection }).toEqual({
+        duraciones: vSemilla?.allowedSeconds,
+        decide: vSemilla?.decidedDirection,
+      });
+    }
   });
 
   test("un trend que limita la duración rechaza la del proyecto con su causa y no guarda nada", async () => {
@@ -324,7 +508,7 @@ describe.skipIf(!hayBaseDeDatos)("trends sin duración fija", () => {
       expect(compuesto.versionNumero).toBe(2);
     }
     // Una variante que sigue limitada a 5 s rechaza otra duración con su causa.
-    const variante = await trendAntiguo({ sufijo: "compone-5s", segundos: 5 });
+    const variante = await trendAntiguo({ sufijo: "compone-5s", segundos: 5, modelos: [modelo.modelo] });
     const error = await componer(variante.fila.id, 8).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(ErrorPreset);
     expect((error as Error).message).toContain("solo admite clips de 5 s y has pedido 8 s");
