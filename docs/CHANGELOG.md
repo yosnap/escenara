@@ -2,6 +2,61 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.47.0] · 2026-09-30
+
+**Tus datos (cierre del hito MVP).** Ves todo lo que has hecho y gastado, te llevas cada proyecto en un ZIP **sin
+claves** y borras lo tuyo, hasta la cuenta entera. Con esta versión se cierra el hito MVP: el camino completo
+personaje → guion → escenas → revisión → montaje → exportación está cubierto por un test de extremo a extremo con
+respuestas grabadas del proveedor. **Una migración aditiva**: lee «Actualizar desde la 0.46.0».
+
+### Añadido
+
+- **Historial del proyecto** (`/proyectos/[id]/historial`, botón «Historial y gasto») y **de la cuenta**
+  (`/cuenta/historial`, en Tu cuenta › Tus datos): cronología de generaciones, revisiones, montajes y exportaciones
+  con su estado, sus créditos y un enlace a cada resultado; gasto **estimado y consumido** por mes (y por proyecto en
+  la cuenta). Filtros por tipo, mes y proyecto, y páginas de 30, todo por enlaces. Un fallo se cuenta con su causa
+  concreta; nunca el texto del proveedor ni el prompt.
+- **Exportar proyecto** en ZIP: `proyecto.json` (esquema `escenara.proyecto`, versión 1, validado), los medios en
+  carpetas con su huella SHA-256, los subtítulos y un `LEEME.md`. Lo prepara el worker con su progreso en pantalla y
+  se descarga por un enlace temporal que **caduca** (24 h de fábrica; después el paquete se borra solo). Lista blanca:
+  sin credenciales, secretos, cabeceras, prompts ni datos de otra cuenta, y un filtro que retira del texto lo que tenga
+  forma de clave (`[retirado]`). Límites de tamaño y de exportaciones por día con su causa. La reimportación queda fuera.
+- **Borrar un proyecto** desde su pantalla, con un diálogo propio que enumera con cifras qué se borra y qué se queda.
+- **Borrar la cuenta** (Tu cuenta › Tus datos): sesión reciente (haber entrado hace menos de 10 minutos), lista de
+  todo lo que desaparece, exportar cada proyecto antes, frase escrita y **periodo de gracia** (7 días de fábrica) con la
+  cuenta desactivada y el borrado cancelable desde `/cuenta/borrado`. El único administrador no puede borrarse.
+- **Admin › Ajustes › Tus datos**: días de gracia, tamaño máximo del ZIP, horas de caducidad y exportaciones por día.
+- Guía nueva: [Tus datos](guias/tus-datos.md). Decisión en el ADR-0041. Sección «Borrado y retención» en
+  [Cumplimiento y privacidad](legal/cumplimiento-y-privacidad.md), **pendiente de revisión jurídica**. Componentes
+  nuevos en el catálogo (› «Tus datos»).
+
+### Cambiado
+
+- **Borrar un proyecto borra sus derivados**, en la base de datos y en el almacenamiento: sus trabajos, los
+  fotogramas, clips y voces generados en él, los vídeos montados y los ZIP. Antes se quedaban los trabajos y sus
+  resultados. Se quedan lo que subiste tú y lo generado que usas **fuera** del proyecto; los apuntes de gasto se quedan
+  diciendo de qué proyecto venían. Un trabajo en el proveedor, un montaje renderizándose o un paquete preparándose
+  impiden borrar (409, sin tocar nada); lo que estaba en cola se cancela liberando su reserva.
+- Al borrar la cuenta, de ella solo queda el **gasto agregado** por mes, proveedor, modelo y tipo, y una **prueba
+  anónima** de cada consentimiento y declaración de derechos (tipo, alcance, versión del texto, casillas y fechas; sin
+  nombres, fotos, IP ni correo). Las declaraciones de lugar de esa cuenta se borran.
+
+### Corregido
+
+- El motivo del tope de JavaScript de «Crear» vuelve a acabar en «Medido: X KB.», que es lo que valida su test.
+
+### Actualizar desde la 0.46.0
+
+- **Haz antes una copia**: `bun run db:backup`. Después, **con el worker parado**, `bun run db:migrate`.
+- La migración `0063_tus-datos-exportacion-y-borrado-de-cuenta` es **aditiva e idempotente**: crea los tipos
+  `project_export_state`, `account_deletion_state` y `consent_evidence_kind` y las tablas `project_exports`,
+  `account_deletions`, `usage_aggregates` y `consent_evidence`, con sus índices y claves ajenas. No cambia ni borra
+  ninguna fila y volver a aplicarla no hace nada.
+- **Reinicia el worker** tras actualizar: ahora prepara los ZIP, borra los caducados y ejecuta los borrados de cuenta
+  pasada la gracia. Necesita espacio en el disco temporal para el ZIP más grande (2048 MB de fábrica).
+- Ajustes nuevos con su valor de fábrica: 7 días de gracia, 2048 MB por ZIP, 24 horas de caducidad y 10 exportaciones
+  al día. No hay variables de entorno nuevas.
+
 ## [0.46.0] · 2026-09-30
 
 **Lugares.** Un tercer tipo de contenido junto a Personajes y Productos: el sitio poco conocido que quieres usar como

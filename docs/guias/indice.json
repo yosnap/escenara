@@ -188,6 +188,11 @@
           "archivo": "tu-kit-de-marca.md",
           "titulo": "Tu kit de marca",
           "descripcion": "Tu logotipo en una esquina de tus exportaciones, sin tapar nunca la etiqueta de contenido generado con IA."
+        },
+        {
+          "archivo": "tus-datos.md",
+          "titulo": "Tus datos: historial, exportación y borrado",
+          "descripcion": "El historial y el gasto de cada proyecto y de tu cuenta, exportar un proyecto en ZIP sin claves, y qué se borra y qué se conserva al borrar un proyecto o tu cuenta."
         }
       ]
     },

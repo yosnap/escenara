@@ -22,7 +22,7 @@
 - [x] Prohibición de menores como avatar: declaración, filtros del proveedor y moderación. Es un control, no una garantía. **0.13.0**: la declaración de mayoría de edad es obligatoria para registrar el consentimiento y, sin registro, el personaje queda bloqueado. Ver el aviso de alcance más abajo.
 - [ ] Bloqueo de desnudez sexual, acoso, suplantación y respaldo falso de personas reales.
 - [x] Terceros solo con documento de consentimiento y revisión; nunca publicables en la comunidad. **0.13.0**: el titular «otra persona» exige un documento firmado subido y el personaje queda en revisión hasta que un administrador lo acepta (ADR-0017). La comunidad llega en 0.28.0 y estos personajes no se publicarán.
-- [x] Borrado de personaje con todos sus derivados. **0.13.0**: borra el personaje, su consentimiento, sus relaciones con las fotos y los medios generados con él, fila y objeto del almacenamiento, con registro de las claves borradas. Las fotos de referencia se conservan en la biblioteca del usuario a propósito (son suyas y pueden estar en otro personaje). Escenas y exportaciones aún no existen: se añadirán al mismo borrado cuando lleguen.
+- [x] Borrado de personaje con todos sus derivados. **0.13.0**: borra el personaje, su consentimiento, sus relaciones con las fotos y los medios generados con él, fila y objeto del almacenamiento, con registro de las claves borradas. Las fotos de referencia se conservan en la biblioteca del usuario a propósito (son suyas y pueden estar en otro personaje). **0.47.0**: el borrado de un **proyecto** se lleva sus escenas, trabajos, fotogramas, clips y voces generados, vídeos montados y paquetes exportados (fila y objeto); el de la **cuenta**, todo lo suyo. Ver «Borrado y retención» más abajo.
 - [ ] Etiqueta visible de contenido sintético en todas las exportaciones, incluidas las totalmente animadas (0.31.0). C2PA sigue pendiente de 0.46.0.
 - [ ] Sugerencias de salud informativas, revisables y sin promesas de diagnóstico ni curación.
 - [x] Aviso de qué proveedor procesará los archivos **y los textos** antes de enviarlos. **0.17.0**: el formulario de consentimiento dice que al generar con ese personaje se envían a KIE sus fotos **y el texto de su ficha** (rasgos, estilo, vestuario, personalidad y descripción), que forma parte del prompt; y que si la instalación traduce los prompts al inglés, ese texto pasa además por el **modelo de texto** de KIE. La zona de coste de «Crear» dice lo mismo antes de gastar.
@@ -96,11 +96,9 @@ revisión jurídica**):
   biblioteca del usuario como generada; la original no se borra. El diálogo del encargo lo dice antes de pagar: «esta
   foto se envía tal cual, con las personas que salen en ella, a KIE y al proveedor del modelo que la edita». No hay
   casilla expresa para ese envío.
-- **Las declaraciones sobreviven a la cuenta si algún día se borran cuentas.** Hoy Escenara no tiene borrado de
-  cuenta. La declaración guarda la cuenta que la firmó (`declared_by`); con el esquema de hoy, si se borrara la fila
-  de una cuenta, sus declaraciones se quedarían **sin cuenta** (`declared_by` vacío), con el nombre del lugar, lo
-  declarado y la fecha. Antes de añadir el borrado de cuentas hay que decidir si eso vale, o si deben anonimizarse o
-  borrarse. Es una decisión previa a ese borrado y hoy no cambia el esquema.
+- **Al borrar la cuenta, sus declaraciones de lugar se borran** y queda solo una prueba anónima (0.47.0): ver «Borrado
+  y retención». Borrar **un lugar** sigue conservando sus declaraciones, revocadas y con el nombre del lugar, mientras
+  exista la cuenta.
 - **La comprobación de coherencia del lugar** (en sombra) envía la foto maestra y el fotograma a la percepción del
   mapa del usuario, con la instrucción de no describir a nadie, y **no se hace** si en la escena sale una persona real.
 
@@ -138,6 +136,39 @@ Cómo se cumple, y hasta dónde:
 Queda pendiente para los documentos públicos: describir esta etiqueta en la **guía de etiquetado de contenido
 sintético** de la lista de abajo, y decir que la obligación de declarar en la plataforma sigue siendo de quien
 publica.
+
+## Borrado y retención (0.47.0) · pendiente de revisión jurídica
+
+El usuario puede borrar un proyecto, un personaje, un producto, un lugar o **la cuenta entera** (derecho de supresión).
+Lo que se hace, con su motivo, para que la revisión jurídica lo confirme o lo cambie:
+
+- **Borrar la cuenta** exige haber entrado hace menos de 10 minutos, escribir una frase y pasar un **periodo de
+  gracia** (7 días de fábrica, configurable en Admin › Ajustes) con la cuenta desactivada y el borrado cancelable. El
+  único administrador no puede borrarse. Pasado el plazo se borran en una transacción las filas de la cuenta (proyectos,
+  personajes, productos, lugares, medios, credenciales cifradas, passkeys, sesiones, presupuesto, historial, apuntes de
+  gasto, kit de marca, preferencias, decisiones de coherencia y evaluaciones de controles, y los contadores de intentos
+  ligados a su correo) y después los **objetos del almacenamiento**, con reintento; los que no se dejan borrar tras
+  varios intentos quedan registrados con su clave para limpiarlos a mano.
+- **Gasto**: se conserva solo **agregado** por mes, proveedor, modelo y tipo de apunte (`usage_aggregates`), sin
+  cuenta, trabajo, nota ni fecha exacta. Motivo: trazabilidad del gasto de la instalación (decisión 3 de la fase).
+- **Consentimientos y declaraciones de derechos** (consentimiento de un personaje, declaración de un lugar, de una
+  canción y de una afirmación sensible del anuncio): se conserva una **prueba mínima y anónima** (`consent_evidence`):
+  tipo, alcance, versión del texto aceptado (o su huella SHA-256 cuando lo guardado era el texto entero), casillas
+  declaradas (mayoría de edad, sin menores, permiso del sitio…) y fechas de declaración y revocación. **Sin** nombre
+  de la cuenta, correo, nombres de personas ni de lugares, fotos, documentos ni IP. Motivo: poder demostrar que se
+  pidió la declaración y con qué texto, sin conservar datos de nadie. **Alternativa**: borrarlas del todo; es la
+  pregunta abierta para la revisión jurídica.
+- **Registro del borrado** (`account_deletions`): fechas, estado, recuentos por tipo y claves de objetos pendientes o
+  huérfanos. Sin cuenta: la referencia queda a nulo al borrarse.
+- **Borrar un personaje** sigue borrando su consentimiento sin dejar prueba anónima (decisión de 0.13.0). Si la
+  revisión jurídica pide conservar la prueba también ahí, se reutiliza la misma tabla.
+- **Exportar un proyecto** (portabilidad) entrega un ZIP sin credenciales, prompts ni datos de otra cuenta; caduca a
+  las 24 horas de fábrica y el worker lo borra.
+
+Preguntas para la revisión jurídica: si la prueba anónima es suficiente y proporcionada o debe borrarse; si 7 días de
+gracia es un plazo adecuado; si el agregado del gasto necesita mención en la política de privacidad; y cómo se informa
+de que las copias de seguridad de la base de datos que haga quien administra siguen conteniendo los datos hasta que
+caducan.
 
 ## Documentos públicos necesarios antes de 1.0.0
 
