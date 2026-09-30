@@ -45,6 +45,7 @@ Cada decisión relevante se documenta en un fichero `adr-NNNN-slug.md` dentro de
 | [0037](adr-0037-animados-con-identidad-maestra.md) | El estilo animado pertenece al personaje inventado, se versiona y se ancla en un retrato maestro heredado por el proyecto | 0.31.0 | Aceptada; calidad visual pendiente de prueba real |
 | [0038](adr-0038-decisiones-tipadas-en-sombra.md) | Cada decisión del motor se registra con su evidencia, umbrales, puerta y acción; Jev opina en sombra sin bloquear ni verse, sin escenas con personas reales ni nombres, y se mide con la etiqueta humana de cada pregunta | 0.39.0 | Aceptada (las reglas mandan y la sombra no bloquea son firmes; las dos preguntas y la clave del operador, pendientes de revisión) |
 | [0039](adr-0039-presupuestos-de-rendimiento.md) | Presupuestos de rendimiento en móvil (LCP < 2,5 s, INP < 200 ms, CLS < 0,1) y de JavaScript por ruta comprobado en el build: meta de 200 KB y topes propios medidos, con su motivo, para las rutas que hoy la superan | 0.45.0 | Aceptado (cifras recomendadas, revisables) |
+| [0040](adr-0040-el-lugar-como-ancla-del-contexto.md) | El lugar es una entidad versionada con declaración de derechos cuya foto maestra entra en el fotograma (C4 = el lugar) y el clip lo hereda; cupo de referencias a tres bandas con una sola función; sin mezclar acabados; Omni combinado, experimental y apagado | 0.46.0 | Aceptado (provisionales de la fase tomadas como firmes, revisables) |
 
 ## Plantilla
 

@@ -75,6 +75,38 @@ de personas ni de productos: se sustituyen por un marcador al escribir, se vuelv
 de la 0.39.0 los quita de las filas anteriores. Así, borrar la ficha de una persona no deja su nombre en un registro
 que sobrevive a ese borrado.
 
+## Fotos de lugares, que pueden llevar personas (0.46.0)
+
+Un lugar es un sitio que el usuario reutiliza como escenario, con fotos suyas. Esas fotos **pueden contener
+personas que no han dado su consentimiento**: gente al fondo de una calle o de un bar. Lo que hace la aplicación, sin
+calificarlo jurídicamente (la calificación, la base jurídica y el encargo del tratamiento están **pendientes de
+revisión jurídica**):
+
+- **La declaración del lugar es del usuario** y se lo dice la pantalla donde la firma: de dónde son las fotos, si hay
+  permiso del sitio en un interior, si se ve gente y cómo, y que no sale ningún menor. Escenara no revisa las fotos y
+  la responsabilidad de lo declarado es de quien declara. Se guarda con su fecha, su cuenta y la versión del texto, y
+  no se borra al borrar el lugar.
+- **No se admite gente reconocible** en una foto declarada ni **ningún menor**. No hay detector de caras: la columna
+  `place_references.people_check` existe y hoy vale siempre «sin comprobar»; comprobarlo con un modelo es una propuesta
+  no entregada.
+- **Generar con un lugar envía su foto maestra** a KIE y al proveedor del modelo de imagen, junto a las fotos del
+  personaje, igual que cualquier otra referencia.
+- **«Retirar personas» envía la foto con la gente** a KIE y al proveedor del modelo de edición para quitarla: es la
+  única forma de hacerlo, y por eso ocurre **antes** de que la foto pueda declararse. La foto editada se guarda en la
+  biblioteca del usuario como generada; la original no se borra. El diálogo del encargo lo dice antes de pagar: «esta
+  foto se envía tal cual, con las personas que salen en ella, a KIE y al proveedor del modelo que la edita». No hay
+  casilla expresa para ese envío.
+- **Las declaraciones sobreviven a la cuenta si algún día se borran cuentas.** Hoy Escenara no tiene borrado de
+  cuenta. La declaración guarda la cuenta que la firmó (`declared_by`); con el esquema de hoy, si se borrara la fila
+  de una cuenta, sus declaraciones se quedarían **sin cuenta** (`declared_by` vacío), con el nombre del lugar, lo
+  declarado y la fecha. Antes de añadir el borrado de cuentas hay que decidir si eso vale, o si deben anonimizarse o
+  borrarse. Es una decisión previa a ese borrado y hoy no cambia el esquema.
+- **La comprobación de coherencia del lugar** (en sombra) envía la foto maestra y el fotograma a la percepción del
+  mapa del usuario, con la instrucción de no describir a nadie, y **no se hace** si en la escena sale una persona real.
+
+Queda pendiente para la revisión jurídica: si «Retirar personas» debe exigir una casilla expresa, cómo figuran estos
+envíos en la política de privacidad y si un espacio público permite usar la foto en un anuncio.
+
 ## La etiqueta de contenido sintético en lo que se exporta (0.32.0)
 
 Desde la 0.32.0 Escenara **entrega el vídeo terminado**. El [artículo 50 del Reglamento de IA de la UE](https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-50),

@@ -70,6 +70,7 @@ export * from "./esquema-coherencia";
 export * from "./esquema-controles";
 export * from "./esquema-direcciones";
 export * from "./esquema-generacion";
+export * from "./esquema-lugares";
 export * from "./esquema-mapa";
 export * from "./esquema-marca";
 export * from "./esquema-montaje";

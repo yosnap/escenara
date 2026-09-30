@@ -22,7 +22,7 @@ import type { PreguntaJev } from "./jev";
  */
 
 /** Versión de este conjunto de preguntas. Se sube **a mano** cuando cambia el texto de alguna. */
-export const VERSION_PREGUNTAS = "coherencia-4";
+export const VERSION_PREGUNTAS = "coherencia-5";
 
 /** Niveles de las preguntas `score`, de peor a mejor. El orden es el que da el valor numérico. */
 const NIVELES_ENCAJE = [
@@ -122,6 +122,26 @@ export const PREGUNTAS: Record<Comprobacion, DefinicionPregunta> = {
    * Lo que decide es el **texto impreso**, y por eso la percepción del producto lo transcribe literalmente:
    * la forma y el color los copia cualquier modelo, y la etiqueta es justo lo que se inventa.
    */
+  /**
+   * **Fidelidad del lugar**: el sitio del fotograma es el de la maestra de la versión que se usó. `noul`, como el
+   * producto: es sí o no. El lugar **se recompone, no se calca** (medido el 2026-09-30), así que se juzga lo que no
+   * cambia al mover la cámara —estructura, materiales, muebles fijos, disposición y dirección de la luz— y no el
+   * encuadre. Si la descripción del resultado no deja reconocer el sitio, no es el mismo.
+   */
+  lugar_fiel: {
+    pregunta: {
+      type: "noul",
+      instructions:
+        "Two descriptions are given: one of the reference photo of a place, and one of a generated image in which the scene is meant to happen in that same place. Both were written by a vision model that only described the place, not any person. Decide whether the generated image shows the same place. Judge the structure first: walls, doors, windows and openings, fixed furniture and fittings. Then judge the materials and colours of floor, walls and surfaces, their layout, and the direction and colour of the light. Ignore framing, camera angle, distance, and whatever is hidden by someone standing in front of it, which change between photographs of the same place. If the generated description does not allow the place to be recognised, it is not the same place.",
+      criteria: {
+        true: "The structure, the materials and the layout match: this is the same place",
+        false:
+          "The structure, the materials or the layout clearly differ, or the place cannot be recognised: this is not the same place",
+      },
+    },
+    encajan: [],
+    etiquetas: { si: "es el mismo lugar", no: "no es el mismo lugar" },
+  },
   producto_fiel: {
     pregunta: {
       type: "noul",
@@ -229,6 +249,7 @@ export function evidenciaDe(
   const CABEZAS: Partial<Record<Comprobacion, string>> = {
     identidad: `Probabilidad de que sea la misma persona: ${porcentaje}.`,
     producto_fiel: `Probabilidad de que sea el mismo producto, con la misma etiqueta: ${porcentaje}.`,
+    lugar_fiel: `Probabilidad de que sea el mismo lugar que su foto maestra: ${porcentaje}.`,
     direccion_fiel: `Fidelidad a lo que dirigiste: ${porcentaje}.`,
     emocion: `Respuesta: ${definicion.etiquetas[respuesta.elegida] ?? respuesta.elegida} (${porcentaje} de encaje).`,
     // En el ángulo, **la respuesta es la evidencia**: decir «45 % de encaje» no diría con qué ángulo se mezcla.

@@ -54,12 +54,30 @@ const CASOS: readonly (readonly [unknown, unknown, CausaFalloProveedor])[] = [
   ["", "Service unavailable", "saturado"],
   ["503", "", "saturado"],
   // Lo demás.
-  ["500", "Internal error", "desconocida"],
+  // Un 500 del proveedor es un fallo suyo y pasajero (visto con Gemini Omni el 2026-09-30, sin cobro, y el
+  // reintento salió bien): se dice que se puede volver a pedir.
+  ["500", "Internal error", "error_interno"],
+  ["", "500 Internal Error, Please try again later.", "error_interno"],
+  ["", "Internal server error", "error_interno"],
+  ["", "Insufficient credits, please try again later", "desconocida"],
+  ["", "Your account balance is insufficient. Please try again later.", "desconocida"],
+  ["", "Invalid prompt, please try again later", "desconocida"],
   ["400", "", "desconocida"],
   [undefined, undefined, "desconocida"],
   [{}, ["safety"], "desconocida"],
   ["", "generation timeout", "desconocida"],
+  // Un 500 sin texto es el fallo interno del proveedor; con un texto que no se reconoce, no se inventa causa.
   ["500", "generation failed for request with key sk-clave-que-el-proveedor-repite", "desconocida"],
+  ["500", "", "error_interno"],
+  ["500", "Insufficient credits, please try again later", "desconocida"],
+  ["500", "Invalid prompt", "desconocida"],
+  // Con un 4xx la petición tiene algo mal aunque el texto diga «internal error»: repetir no lo arregla.
+  ["422", "Internal error processing your image: file too large", "desconocida"],
+  [422, "Internal server error", "desconocida"],
+  ["400", "Internal error", "desconocida"],
+  // Un texto en blanco es un texto vacío: el 500 solo sigue siendo el fallo interno.
+  ["500", "   ", "error_interno"],
+  [500, "Internal Server Error", "error_interno"],
 ];
 
 describe("causaDelFallo", () => {

@@ -1,11 +1,14 @@
 "use client";
 
 import { Sparkles } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useRef, useState } from "react";
 import { Boton } from "@/components/ui/button";
+import { CargadorChispa } from "@/components/ui/chispa";
 import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo } from "@/components/ui/field";
 import { SelectorPlataforma } from "@/components/ui/formatos";
+import { LimiteDeCarga } from "@/components/ui/limite-de-carga";
 import { Dialogo } from "@/components/ui/overlay";
 import { Paso } from "@/components/ui/paso";
 import { SelectorPersonaje } from "@/components/ui/personaje";
@@ -18,6 +21,12 @@ import type { PersonajeElegible } from "@/lib/personajes";
 import { DURACIONES_DISPONIBLES } from "@/lib/produccion";
 import { CONCEPTO_MAXIMO, ESCENAS_SUGERIDAS, formatearFecha, IDEA_MAXIMA, type ProyectoDetalle } from "@/lib/proyectos";
 import { editarProyecto, pedirGuion } from "../../_componentes/api-proyectos";
+
+/** El selector del lugar del proyecto se descarga aparte: la página del proyecto va justa de JavaScript. */
+const LugarDelProyecto = dynamic(
+  () => import("@/components/ui/lugares/lugar-del-proyecto").then((m) => m.LugarDelProyecto),
+  { loading: () => <CargadorChispa etiqueta="Cargando tus lugares" /> },
+);
 
 /**
  * Opciones de duración del clip con precio medido. El coste depende del modelo elegido.
@@ -159,6 +168,15 @@ export function PanelIdea({
             conservar el diseño del retrato maestro aprobado.
           </Aviso>
         )}
+
+        <LimiteDeCarga>
+          <LugarDelProyecto
+            valor={proyecto.lugarId ?? null}
+            acabado={proyecto.estiloVisual}
+            deshabilitado={guardando}
+            onCambio={(lugarId) => void guardar({ lugarId })}
+          />
+        </LimiteDeCarga>
 
         <div className="flex flex-col gap-2">
           <Selector

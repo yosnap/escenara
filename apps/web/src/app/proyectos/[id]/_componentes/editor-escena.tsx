@@ -1,14 +1,17 @@
 "use client";
 
 import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { Alerta } from "@/components/ui/alerta";
 import { Boton, BotonIcono } from "@/components/ui/button";
+import { CargadorChispa } from "@/components/ui/chispa";
 import { InsigniaControl } from "@/components/ui/controles";
 import { DemoDePlantilla } from "@/components/ui/demo-plantilla";
 import { PanelDireccion } from "@/components/ui/direccion/panel-direccion";
 import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo } from "@/components/ui/field";
+import { LimiteDeCarga } from "@/components/ui/limite-de-carga";
 import { MiniaturaMedio } from "@/components/ui/media/miniatura-medio";
 import { Dialogo } from "@/components/ui/overlay";
 import { InsigniaEstadoEscena } from "@/components/ui/proyecto";
@@ -17,18 +20,26 @@ import { ETIQUETA_ESTADO_CONTROL } from "@/lib/controles";
 import type { Acento, OpcionesDeDireccion } from "@/lib/direccion";
 import { type BorradorEscena, borradorDe, escenaConCambios } from "@/lib/escena-borrador";
 import { cupoDeFotosDe } from "@/lib/fotos-del-producto";
+import { cuerpoDelLugarDeEscena, LUGAR_DE_ESCENA_VACIO } from "@/lib/lugares";
 import type { PersonajeElegible } from "@/lib/personajes";
 import type { TrendPublico } from "@/lib/presets";
 import {
   ACCION_MAXIMA,
   type EscenaVista,
   type ProyectoDetalle,
+  type ProyectoVista,
   TEXTO_ESCENA_MAXIMO,
   textoEstimacion,
 } from "@/lib/proyectos";
 import { motivoDuracionNoAdmitida } from "@/lib/trends";
 import { borrarEscena, editarEscena } from "../../_componentes/api-proyectos";
 import { PanelAfirmaciones } from "./panel-afirmaciones";
+
+/** El bloque del lugar se descarga aparte: la página del proyecto va justa de JavaScript. */
+const SelectorLugar = dynamic(() => import("@/components/ui/lugares/selector-lugar").then((m) => m.SelectorLugar), {
+  loading: () => <CargadorChispa etiqueta="Cargando el lugar" />,
+});
+
 import { PanelCantoEscena } from "./panel-canto-escena";
 import { PanelReparto } from "./reparto/panel-reparto";
 
@@ -42,6 +53,7 @@ import { PanelReparto } from "./reparto/panel-reparto";
  */
 export function EditorEscena({
   escena,
+  proyecto,
   trends,
   acento,
   primera,
@@ -56,6 +68,8 @@ export function EditorEscena({
   onSinGuardar,
 }: {
   escena: EscenaVista;
+  /** El proyecto: su acabado decide qué lugares se ofrecen y su lugar es el que heredan las escenas. */
+  proyecto: Pick<ProyectoVista, "estiloVisual" | "lugarId">;
   trends: TrendPublico[];
   /** Acento del proyecto. Se enseña con la dirección para que se vea con qué va a hablar, pero se edita arriba. */
   acento: Acento;
@@ -78,10 +92,11 @@ export function EditorEscena({
   const [direccion, setDireccion] = useState(escena.direccion);
   const [producto, setProducto] = useState(escena.producto);
   const [trendId, setTrendId] = useState(escena.trendId ?? "");
+  const [lugar, setLugar] = useState(escena.lugar ?? LUGAR_DE_ESCENA_VACIO);
   const trend = trends.find((p) => p.id === trendId);
   const [guardando, setGuardando] = useState(false);
   const [borrando, setBorrando] = useState(false);
-  const sinGuardar = escenaConCambios(escena, { texto, accion, direccion, producto, trendId });
+  const sinGuardar = escenaConCambios(escena, { texto, accion, direccion, producto, trendId, lugar });
   // Se avisa al cambiar y se retira al desmontar (una escena borrada ya no tiene nada pendiente).
   // biome-ignore lint/correctness/useExhaustiveDependencies: el aviso depende de si hay cambios, no de la función.
   useEffect(() => {
@@ -97,6 +112,7 @@ export function EditorEscena({
     setDireccion(b.direccion);
     setProducto(b.producto);
     setTrendId(b.trendId);
+    setLugar(b.lugar);
   };
 
   const guardar = async () => {
@@ -106,6 +122,7 @@ export function EditorEscena({
       accion,
       ...direccion,
       producto,
+      lugar: cuerpoDelLugarDeEscena(lugar),
       trendId: direccion.formatoClip === "cantar" ? null : trendId || null,
     });
     setGuardando(false);
@@ -238,6 +255,19 @@ export function EditorEscena({
           setDireccion((antes) => ({ ...antes, [campo]: valor }));
         }}
       />
+
+      {direccion.formatoClip !== "cantar" && (
+        <LimiteDeCarga>
+          <SelectorLugar
+            valor={lugar}
+            onCambio={setLugar}
+            acabado={{ acabado: proyecto.estiloVisual, estilo: "" }}
+            heredadoId={proyecto.lugarId ?? null}
+            conPlanoSolo
+            deshabilitado={ocupado || escena.estado === "producida"}
+          />
+        </LimiteDeCarga>
+      )}
 
       {direccion.formatoClip === "cantar" &&
         (escena.direccion.formatoClip === "cantar" ? (

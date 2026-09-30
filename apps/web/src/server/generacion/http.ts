@@ -1,6 +1,7 @@
 import { ErrorProyecto } from "../asistente/errores";
 import { esAdmin, sesionDePeticion } from "../auth/sesion";
 import { dentroDelLimite, type Limite } from "../limite";
+import { ErrorLugar } from "../lugares/errores";
 import { ErrorMedio } from "../media/errores";
 import type { Actor } from "../media/servicio";
 import { ErrorPersonaje } from "../personajes/errores";
@@ -41,6 +42,7 @@ export function respuestaError(error: unknown): Response {
   if (error instanceof ErrorPersonaje) return Response.json({ error: error.message }, { status: error.estado });
   // El del producto (0.26.0) llega al elegirlo en un clip o en una escena: uno ajeno responde 404.
   if (error instanceof ErrorProducto) return Response.json({ error: error.message }, { status: error.estado });
+  if (error instanceof ErrorLugar) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorProyecto) return Response.json({ error: error.message }, { status: error.estado });
   console.error("[generacion]", error);
   return Response.json({ error: "Error interno al procesar el trabajo." }, { status: 500 });
@@ -90,4 +92,22 @@ export async function exigirRitmoDeConsultas(actor: Actor, accion: string): Prom
   if (!(await dentroDelLimite(`generacion:${accion}:${actor.id}`, RITMO_CONSULTAS))) {
     throw new ErrorGeneracion(429, "Demasiadas consultas seguidas. Espera unos segundos.");
   }
+}
+
+/**
+ * Avisos «Necesita ajustes» que el usuario confirma expresamente (0.18.0): claves de regla, nunca texto libre.
+ * Se acotan aquí a lo que puede ser una clave de regla; las que no correspondan a un aviso salvable no hacen
+ * nada, y un freno `Bloqueado` o `Requiere revisión` no se salta por venir listado (`controles/puerta.ts`).
+ */
+export function leerAvisosConfirmados(valor: unknown): string[] {
+  if (valor === undefined) return [];
+  if (!Array.isArray(valor) || valor.length > 20) {
+    throw new ErrorGeneracion(400, "Los avisos confirmados no son válidos.");
+  }
+  return valor.map((clave) => {
+    if (typeof clave !== "string" || !/^[a-z0-9-]{1,60}$/.test(clave)) {
+      throw new ErrorGeneracion(400, "Los avisos confirmados no son válidos.");
+    }
+    return clave;
+  });
 }

@@ -49,17 +49,30 @@ const PATRONES: readonly (readonly [CausaFalloProveedor, RegExp])[] = [
   ],
 ];
 
+/**
+ * Real, visto el 2026-09-30 con Gemini Omni 1.1 Flash: «500 Internal Error, Please try again later.», sin cobro. Solo
+ * el texto del fallo interno («please try again later» también acompaña a saldos y prompts inválidos), y **solo con
+ * un 500 o sin código**: un 4xx dice que la petición tiene algo mal, aunque su texto hable de «internal error»
+ * («Internal error processing your image: file too large» con un 422 es la imagen, y repetir no lo arregla).
+ */
+const TEXTO_ERROR_INTERNO = /\binternal (?:server )?error\b/;
+
 /** Códigos del sobre que por sí solos ya dicen la causa, aunque el texto venga vacío. */
 const POR_CODIGO: Readonly<Record<string, CausaFalloProveedor>> = {
   "429": "limite",
   "503": "saturado",
+  "500": "error_interno",
 };
 
 export function causaDelFallo(failCode: unknown, failMsg: unknown): CausaFalloProveedor {
-  const mensaje = typeof failMsg === "string" ? failMsg.toLowerCase() : "";
+  const mensaje = typeof failMsg === "string" ? failMsg.trim().toLowerCase() : "";
+  const codigo = typeof failCode === "number" ? String(failCode) : typeof failCode === "string" ? failCode.trim() : "";
   if (mensaje !== "") {
     for (const [causa, patron] of PATRONES) if (patron.test(mensaje)) return causa;
+    if ((codigo === "" || codigo === "500") && TEXTO_ERROR_INTERNO.test(mensaje)) return "error_interno";
   }
-  const codigo = typeof failCode === "number" ? String(failCode) : typeof failCode === "string" ? failCode.trim() : "";
+  // Un 500 solo dice «fallo interno» si no trae texto: con un texto que no se reconoce no se inventa causa, y uno que
+  // habla de saldo o de una petición inválida no se arregla repitiendo.
+  if (codigo === "500" && mensaje !== "") return "desconocida";
   return POR_CODIGO[codigo] ?? "desconocida";
 }

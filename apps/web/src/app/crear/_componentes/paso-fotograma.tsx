@@ -90,6 +90,7 @@ export function PasoResultadoFotograma({
   numero,
   fotograma,
   productoId,
+  consultaInsercion,
   controles,
   estimacion,
   enviando,
@@ -100,6 +101,8 @@ export function PasoResultadoFotograma({
   fotograma: TrabajoVista;
   /** Producto del clip; vacío si no lleva ninguno. */
   productoId: string;
+  /** Lo que hace falta para evaluar la inserción como se enviará: la acción y el lugar elegidos. */
+  consultaInsercion: { accion: string; lugarId: string };
   controles: Controles;
   estimacion: Estimacion;
   enviando: boolean;
@@ -118,6 +121,15 @@ export function PasoResultadoFotograma({
         {fotograma.medio && productoId !== "" && (
           <PasoInsertarCaptura
             productoId={productoId}
+            sujeto={{
+              tipo: "fotograma",
+              modelo: estimacion.modelo,
+              medioId: fotograma.medio.id,
+              productoId,
+              accion: consultaInsercion.accion,
+              ...(consultaInsercion.lugarId ? { lugarId: consultaInsercion.lugarId } : {}),
+              paso: "insertar_captura",
+            }}
             controles={controles}
             estimacion={estimacion}
             firma={`insercion|${fotograma.medio.id}|${productoId}|${estimacion.modelo}|${estimacion.sello}`}

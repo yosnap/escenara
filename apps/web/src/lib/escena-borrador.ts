@@ -1,4 +1,5 @@
 import type { DireccionElegida } from "./direccion";
+import { LUGAR_DE_ESCENA_VACIO, type LugarDeEscena } from "./lugares";
 import type { ProductoElegido } from "./productos";
 import type { EscenaVista } from "./proyectos";
 
@@ -13,6 +14,7 @@ export interface BorradorEscena {
   producto: ProductoElegido;
   /** Vacío = sin trend. */
   trendId: string;
+  lugar: LugarDeEscena;
 }
 
 export const borradorDe = (escena: EscenaVista): BorradorEscena => ({
@@ -21,6 +23,7 @@ export const borradorDe = (escena: EscenaVista): BorradorEscena => ({
   direccion: escena.direccion,
   producto: escena.producto,
   trendId: escena.trendId ?? "",
+  lugar: escena.lugar ?? LUGAR_DE_ESCENA_VACIO,
 });
 
 /** Igualdad de valores sin depender del orden de las claves (lo que añade un panel puede llegar en otro orden). */

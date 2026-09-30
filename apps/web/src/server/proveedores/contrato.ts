@@ -187,6 +187,11 @@ export interface ContextoEntrada {
    */
   personajesOmni?: readonly string[];
   /**
+   * Enviar a la vez `character_ids` y `urls` (el fotograma situado en un lugar). Solo con el ajuste experimental
+   * de Admin › Ajustes: medido una vez el 2026-09-30 (mismo precio, lugar y cara fieles), falta confirmar la voz.
+   */
+  combinarConImagen?: boolean;
+  /**
    * URL temporales de los **audios de referencia** del proveedor (MiniMax H3, 0.22.0): la muestra de la voz del
    * proyecto, que es lo que hace que el clip suene con ese timbre. Llega solo en los motores de escena hablada
    * que trabajan con referencias en lugar de con una identidad registrada.

@@ -2,42 +2,44 @@ import type { Vista } from "@/lib/captura-personaje";
 import { CAPACIDAD_DE_TIPO, duracionesConCoste, type ModeloVista, segundosDeUnidad } from "@/lib/catalogo";
 import { DIRECCION_CON_ACENTO_VACIA, type DireccionElegidaConAcento } from "@/lib/direccion";
 import { CLIP, type TipoTrabajo, type TrabajoVista } from "@/lib/generacion";
+import type { LugarElegido } from "@/lib/lugares";
 import type { TipoPersonaje } from "@/lib/personajes";
 import type { SeleccionPresets } from "@/lib/presets";
 import { duracionParaModelo } from "@/lib/produccion";
 import type { PasoProductoDigital, ProductoElegido } from "@/lib/productos";
 import { motivoDuracionNoAdmitida } from "@/lib/trends";
-import { leerAjustes } from "../ajustes";
 import { contextoAnimadoDeEscena } from "../animados/contexto-escena";
 import { duracionDeClipDeEscena, proyectoDeEscena } from "../asistente/consulta";
 import { hechosDeEscena, techoDelProyecto } from "../asistente/plan";
 import { encolar, filaDeLaConfirmacion, type NuevoTrabajoEncolado } from "../cola/encolar";
-import { proporcionDelTrabajo } from "../cola/entrada-del-trabajo";
 import { conVistaQueCompleta, hechosDelReparto, hechosDelRepartoDeEscena, recopilarHechos } from "../controles/hechos";
 import { exigirControles } from "../controles/puerta";
-import type { FilaMedio, FilaTrabajo } from "../db/esquema";
-import { decidir } from "../decisiones/reglas";
+import type { FilaMedio } from "../db/esquema";
 import { dirigirClipPara, familiaDe } from "../direccion/clip";
 import { type DireccionSinTextoLibre, direccionDesdeEleccion, type PersonajeDirigido } from "../direccion/escena";
 import { type CambiarSolo, componerInsercionDeCaptura, componerSeisC, type SeisC } from "../direccion/fotograma";
 import { conHojaDeIdentidad } from "../direccion/hoja-identidad";
 import { bloqueProductoSuelto, esInsercionDeCaptura } from "../direccion/producto";
+import type { EdicionDeLugar } from "../lugares/edicion";
+import {
+  conLugarSuelto,
+  entradaDelLugar,
+  lugarDelClip,
+  lugarDelEnvio,
+  lugarDelPrompt,
+  textosDelLugar,
+} from "../lugares/en-el-envio";
+import { columnasDelLugar } from "../lugares/para-generar";
 import { type EleccionDelMapa, eleccionDeGeneracion, type ModoDeGeneracion } from "../mapa/generacion";
 import type { Actor } from "../media/servicio";
-import {
-  contextoDeVersion,
-  contextoParaGenerar,
-  personajePorId,
-  promptConContexto,
-  versionDeTrabajo,
-} from "../personajes/contexto";
+import { contextoDeVersion, personajePorId, promptConContexto, versionDeTrabajo } from "../personajes/contexto";
 import { personajePropio, referenciasParaGenerar } from "../personajes/puede-generar";
 import { acotarCoste } from "../presupuesto/acotar";
 import { eleccionDeFotosDelTrabajo, productoDelTrabajo } from "../productos/columnas";
 import { completarModelosSugeridos } from "../productos/modelos-sugeridos";
 import { productoEnPrompt, productoParaGenerar } from "../productos/prompt";
-import { referenciasDelPersonajeQueViajan } from "../productos/referencias";
-import { hojaEnElEnvio, repartoDelEnvio } from "../productos/reparto-del-envio";
+import { referenciasDelPersonajeQueViajan, referenciasDeProductoGuardadas } from "../productos/referencias";
+import { hojaEnElEnvio, repartoCompletoDelEnvio } from "../productos/reparto-del-envio";
 import { plantillaUsable } from "../prompts/consulta";
 import { componerDesdePlantilla, type PromptCompuesto } from "../prompts/render";
 import { creditosDelEnvio, traducirAlIngles } from "../prompts/traduccion";
@@ -58,11 +60,13 @@ import {
   limpiarPromptOpcional,
   proveedorDeCredencial,
 } from "./comprobaciones";
+import { exigirDecisionFavorable, exigirVersionConfirmada, topeDeEscenasEnVuelo } from "./comprobaciones-del-envio";
 import { ErrorGeneracion } from "./errores";
 import { exigirFormatoDelFotograma, proporcionDelEnvio, reservasGuardadas } from "./formato-del-envio";
 import { HERRAMIENTAS, type Herramientas } from "./herramientas";
+import { fichaHeredada, partidaDelClip } from "./partida-del-clip";
 import { exigirSelloVigente } from "./precios";
-import { esUuidGeneracion, filaPropia, personajeDeLaCadena, vistaDeFila } from "./trabajos";
+import { personajeDeLaCadena, vistaDeFila } from "./trabajos";
 
 /**
  * Alta de trabajos de generación con la clave del propio usuario (RF01). Desde la 0.12.0 esta capa **no
@@ -215,20 +219,6 @@ const columnasDePlantilla = (compuesto: PromptCompuesto | null) =>
     : {};
 
 /**
- * La ficha citada tiene que ser la que se confirmó. Si entre la pantalla y el botón se creó una versión nueva
- * —una vista sintética que terminó, otra pestaña que guardó la ficha—, lo confirmado ya no es lo que se
- * enviaría, y se dice en lugar de gastar.
- */
-function exigirVersionConfirmada(confirmada: string | undefined, seUsaria: string | null): void {
-  if (confirmada === undefined || confirmada === "") return;
-  if (confirmada === seUsaria) return;
-  throw new ErrorGeneracion(
-    409,
-    "La ficha ha cambiado desde que la revisaste: vuelve a mirar el contexto que se enviará y confirma otra vez.",
-  );
-}
-
-/**
  * Resultado de un alta. `nueva` es `false` cuando la confirmación ya se había encolado (misma clave de
  * idempotencia): el trabajo que se devuelve es el que ya existía.
  */
@@ -296,6 +286,12 @@ export interface PeticionFotograma extends Confirmacion {
    * que es donde se eligió y lo que manda.
    */
   productoElegido?: ProductoElegido;
+  /** **Lugar elegido en «Crear»**. En un proyecto no llega: lo pone la escena (o lo hereda del proyecto). */
+  lugarElegido?: LugarElegido | null;
+  /** Foto editada o candidato de un lugar: lo pone el servidor (`lugares/edicion.ts`), nunca el navegador. */
+  edicionDeLugar?: EdicionDeLugar;
+  /** Lo que ve el usuario como «escena» cuando el prompt lo compone el servidor (ADR-0022). Solo lo pone el servidor. */
+  escenaVisible?: string;
 }
 
 export interface PeticionAnimacion extends Confirmacion {
@@ -343,74 +339,6 @@ export interface PeticionAnimacion extends Confirmacion {
    * consentimiento, ni el borrado en cascada).
    */
   escenaDelProyecto?: { escenaId: string; personajeId: string | null };
-}
-
-/**
- * **De dónde sale el clip**: el primer fotograma que se va a animar y todo lo que arrastra con él.
- *
- * Hay dos caminos y los dos acaban aquí, con la misma forma:
- *
- * - **un fotograma ya generado**: hereda su escena, su personaje y la versión de ficha con la que se hizo, y el
- *   clip queda colgado de él como trabajo hijo;
- * - **una imagen de la biblioteca** (0.25.1): no hay trabajo padre ni escena. El dueño se comprueba al leerla
- *   (`imagenPropia` responde 404 para una ajena) y, si la imagen salió de un trabajo hecho con un personaje, el
- *   clip **hereda ese personaje**: es la misma cara, así que cumple sus reglas. Es exactamente lo que ya hacía
- *   el fotograma con una imagen suelta.
- */
-interface PartidaDelClip {
-  /** Imagen que será el primer fotograma del clip. */
-  medioId: string;
-  trabajoPadreId: string | null;
-  escenaId: string | null;
-  personajeId: string | null;
-  versionPersonajeId: string | null;
-  referenciaIdentidad: FilaTrabajo["identityReferenceKind"];
-  /** Proporción en la que se generó el fotograma de partida, si se sabe. */
-  proporcionFotograma?: string | null;
-}
-
-async function partidaDelClip(usuarioId: string, peticion: PeticionAnimacion): Promise<PartidaDelClip> {
-  if (peticion.trabajoPadreId) {
-    if (!esUuidGeneracion(peticion.trabajoPadreId)) throw new ErrorGeneracion(404, "El trabajo no existe.");
-    const padre = await filaPropia(usuarioId, peticion.trabajoPadreId);
-    if (padre.kind !== "fotograma") throw new ErrorGeneracion(400, "Solo se animan fotogramas.");
-    if (padre.state !== "listo" || !padre.resultMediaId) {
-      throw new ErrorGeneracion(409, "Espera a que el fotograma esté listo y guardado antes de animarlo.");
-    }
-    return {
-      medioId: padre.resultMediaId,
-      trabajoPadreId: padre.id,
-      escenaId: padre.sceneId,
-      personajeId: padre.characterId,
-      versionPersonajeId: padre.characterVersionId,
-      referenciaIdentidad: padre.identityReferenceKind,
-      proporcionFotograma: proporcionDelTrabajo(padre),
-    };
-  }
-  const medioId = peticion.medioId;
-  if (!medioId) {
-    throw new ErrorGeneracion(400, "Elige el fotograma de partida: un fotograma ya generado o una imagen tuya.");
-  }
-  // Que la imagen exista y sea suya lo decide esta lectura, no quien llama: una ajena responde 404.
-  const medio = await imagenPropia(usuarioId, medioId);
-  // La cara que sale en la imagen manda; si la imagen es una foto suelta, en un proyecto es la del protagonista.
-  const personajeId =
-    (await personajeDeLaCadena(usuarioId, medio.id)) ?? peticion.escenaDelProyecto?.personajeId ?? null;
-  /**
-   * La versión de ficha que se cita es la **vigente** del personaje heredado: la imagen puede ser de hace meses
-   * y el clip se genera ahora. Sin personaje no hay ninguna que citar.
-   */
-  const conFicha = await fichaHeredada(personajeId, 1);
-  return {
-    medioId: medio.id,
-    // No hay trabajo padre: el clip nace de una imagen, no de una generación de esta cadena.
-    trabajoPadreId: null,
-    escenaId: peticion.escenaDelProyecto?.escenaId ?? null,
-    personajeId,
-    versionPersonajeId: conFicha.versionId,
-    // La imagen es la referencia: no se citó ninguna hoja 3×3 al hacerla desde aquí.
-    referenciaIdentidad: "vistas",
-  };
 }
 
 /**
@@ -481,21 +409,6 @@ async function trabajoDeLaConfirmacion(usuarioId: string, claveIdempotencia: str
   return fila ? vistaDeFila(fila) : null;
 }
 
-/**
- * Contexto del personaje **heredado** por una imagen suelta que salió de otro trabajo hecho con él. Sin
- * personaje no hay contexto ni versión que citar.
- */
-async function fichaHeredada(
-  personajeId: string | null,
-  maximoDelModelo: number,
-): Promise<{ versionId: string | null; contexto: string; tipo: TipoPersonaje | null }> {
-  if (!personajeId) return { versionId: null, contexto: "", tipo: null };
-  const personaje = await personajePorId(personajeId);
-  if (!personaje) return { versionId: null, contexto: "", tipo: null };
-  const { version, contexto } = await contextoParaGenerar(personaje, Math.max(1, maximoDelModelo));
-  return { versionId: version.id, contexto, tipo: personaje.kind };
-}
-
 /** Contexto de una versión concreta, tal como se compuso al generar el fotograma del que sale el clip. */
 async function contextoDeLaVersion(
   versionId: string | null,
@@ -505,38 +418,6 @@ async function contextoDeLaVersion(
   const personaje = await personajePorId(version.characterId);
   if (!personaje) return { contexto: "", tipo: null };
   return { contexto: contextoDeVersion(version, personaje.kind), tipo: personaje.kind };
-}
-
-/**
- * Tope de escenas en vuelo del usuario para este envío (0.19.0). `null` fuera de un proyecto: el camino rápido
- * de «Crear» no produce ninguna escena y solo lo acota el tope de trabajos simultáneos.
- */
-async function topeDeEscenasEnVuelo(
-  escenaId: string | null,
-  reintento = false,
-): Promise<{ escenaId: string; maximo: number; reintento: boolean } | null> {
-  if (!escenaId) return null;
-  const { escenasEnVuelo } = await leerAjustes();
-  return { escenaId, maximo: escenasEnVuelo, reintento };
-}
-
-/**
- * Lo que se guarda en el trabajo de las fotos del producto: **solo las que caben**, en el orden de prioridad
- * con el que se van a enviar. El worker no vuelve a repartir nada; envía esto, que es lo que se ha avisado y
- * se ha confirmado.
- */
-function referenciasDeProductoGuardadas(
-  producto: { fotos: readonly string[] } | null,
-  conProducto: { reparto: { producto: number } } | null,
-): { referenciasProducto?: string[] } {
-  if (!producto || !conProducto || conProducto.reparto.producto === 0) return {};
-  return { referenciasProducto: producto.fotos.slice(0, conProducto.reparto.producto) };
-}
-
-/** Comprobación previa determinista (contrato de decisiones): un rechazo no llega ni a encolarse. */
-async function exigirDecisionFavorable(entrada: Parameters<typeof decidir>[0]): Promise<void> {
-  const decision = await decidir(entrada);
-  if (decision.estado === "rechazado") throw new ErrorGeneracion(400, decision.evidencia);
 }
 
 export async function crearFotograma(
@@ -609,23 +490,27 @@ export async function crearFotograma(
   );
   // Con producto hay una marca en juego, y usarla es una declaración aparte de la de la imagen.
   if (producto) exigirDerechoDeMarca(peticion.derechoMarca);
-  const conProducto = producto
-    ? await repartoDelEnvio({
-        producto,
-        adaptador,
-        modelo,
-        envio: {
-          tipo: "fotograma",
-          // Las fotos del personaje solo viajan cuando se genera **con** él; heredado de una imagen suelta, viaja esa sola.
-          personaje: personaje && peticion.personajeId && !peticion.retratoInventado ? personaje : null,
-          sinReferencia,
-          conHoja:
-            personaje !== null &&
-            !peticion.hojaDeIdentidad &&
-            hojaEnElEnvio(personaje, peticion.escenaId ?? peticion.claveIdempotencia),
-        },
-      })
-    : null;
+  // El lugar (la maestra) compite por el mismo cupo, así que se resuelve antes del reparto y con la misma cuenta. La
+  // inserción de la captura edita un fotograma ya situado: el lugar cuenta (su declaración) pero su maestra no viaja.
+  const conLugar = peticion.edicionDeLugar
+    ? null
+    : await lugarDelEnvio(actor.id, conEscena?.escena ?? null, peticion.lugarElegido, personaje);
+  const { conProducto, reparto, hechosLugar } = await repartoCompletoDelEnvio({
+    producto,
+    conLugar,
+    adaptador,
+    modelo,
+    envio: {
+      tipo: "fotograma",
+      // Las fotos del personaje solo viajan cuando se genera **con** él; heredado de una imagen suelta, viaja esa sola.
+      personaje: personaje && peticion.personajeId && !peticion.retratoInventado ? personaje : null,
+      sinReferencia,
+      conHoja:
+        personaje !== null &&
+        !peticion.hojaDeIdentidad &&
+        hojaEnElEnvio(personaje, peticion.escenaId ?? peticion.claveIdempotencia),
+    },
+  });
   if (conProducto) {
     await completarModelosSugeridos(conProducto.hechos, sinReferencia ? "text_to_image" : CAPACIDAD_DE_TIPO.fotograma);
   }
@@ -666,6 +551,7 @@ export async function crearFotograma(
           // Reparto de la escena (0.28.0): el consentimiento se gatea **por cada persona real** que sale en ella.
           ...(conReparto ? { reparto: conReparto } : {}),
           ...(conProducto ? { producto: conProducto.hechos } : {}),
+          ...hechosLugar,
         },
         h.buscar,
       ),
@@ -734,10 +620,12 @@ export async function crearFotograma(
       { texto: contextoTotal, personajeId },
       // La descripción del producto la escribe el usuario en castellano y el prompt va en inglés.
       { texto: producto?.descripcionOriginal ?? "" },
+      ...textosDelLugar(conLugar),
     ],
     h.buscar,
   );
   const escenaEnIngles = enIngles.get(prompt) ?? prompt;
+  const lugarEnLasSeisC = lugarDelPrompt(conLugar, enIngles, reparto);
   const contextoEnIngles = enIngles.get(contextoTotal) ?? contextoTotal;
   /**
    * El producto tal como entra en las 6C. `conReferencias` dice la verdad sobre lo que va a recibir el modelo:
@@ -775,7 +663,7 @@ export async function crearFotograma(
       : peticion.seisC
         ? {
             escena: componerSeisC(
-              { ...peticion.seisC, contextoLibre: escenaEnIngles, producto: productoDelPrompt },
+              { ...peticion.seisC, contextoLibre: escenaEnIngles, producto: productoDelPrompt, lugar: lugarEnLasSeisC },
               peticion.cambiarSolo,
             ),
             // El texto no sale de la plantilla, pero la plantilla se validó y es la que aprobó la escena: se sigue
@@ -785,10 +673,12 @@ export async function crearFotograma(
         : escenaEnIngles === prompt
           ? original
           : await baseDelPrompt(actor, peticion, "fotograma", modelo, conFicha.tipo, escenaEnIngles);
-  const escenaDelFotograma =
+  const escenaDelFotograma = conLugarSuelto(
     productoDelPrompt && !peticion.seisC && !esInsercionDeCaptura(productoDelPrompt)
       ? `${base.escena}\n${bloqueProductoSuelto(productoDelPrompt)}`
-      : base.escena;
+      : base.escena,
+    peticion.seisC ? null : lugarEnLasSeisC,
+  );
   const promptFinal = promptConContexto(escenaDelFotograma, contextoEnIngles);
 
   const proporcion = proporcionDelEnvio(peticion.proporcion, base.compuesto, modelo);
@@ -812,7 +702,7 @@ export async function crearFotograma(
       ...entradaGuardada(
         adaptador,
         promptFinal,
-        referenciasDelPersonajeQueViajan(referencias, conProducto?.reparto ?? null).map((r) => r.id),
+        referenciasDelPersonajeQueViajan(referencias, reparto).map((r) => r.id),
         parametros,
       ),
       // La tarifa exacta que se ha confirmado. El worker envía **esa** variante: sin esto, un cambio de variante
@@ -820,7 +710,7 @@ export async function crearFotograma(
       unidadPrecio: precio.unidad,
       // Lo que escribió la persona y lo que añadió el servidor, separados: el historial tiene que poder
       // mostrar las dos cosas sin adivinar dónde acaba una y empieza la otra.
-      escena: prompt,
+      escena: peticion.escenaVisible ?? prompt,
       // Lo que compuso la plantilla, aparte de lo que escribió la persona: el historial tiene que poder
       // mostrar las dos cosas, y auditar un prompt exige saber de qué plantilla y de qué presets salió.
       ...(base.compuesto
@@ -845,18 +735,23 @@ export async function crearFotograma(
       // Marca de «este fotograma nace de una descripción y no de ninguna foto» (0.22.0). La lee el worker para
       // no buscar referencias que no existen, y el cierre para añadir el retrato elegido como vista generada.
       ...(peticion.retratoInventado ? { retratoInventado: true } : {}),
+      ...(peticion.edicionDeLugar ? { edicionDeLugar: peticion.edicionDeLugar } : {}),
       // Marca de «este trabajo no parte de ninguna imagen»: la lee el worker para no buscar referencias que no
       // existen y para montar la entrada del modelo de texto a imagen tal como se estimó.
       ...(sinReferencia ? { sinReferencia: true } : {}),
       // Fotos del producto que viajan con este envío, ya repartidas contra el tope del modelo. Se guardan sus
       // identificadores y no sus URL: las del proveedor caducan y no se guardan nunca.
       ...referenciasDeProductoGuardadas(producto, conProducto),
+      // La maestra del lugar, si viaja: va la última, detrás de las fotos del personaje y del producto.
+      ...entradaDelLugar(conLugar, reparto),
     },
     sourceMediaId: origen?.id ?? null,
     sceneId: conEscena?.escena.id ?? null,
     // El fotograma de una escena hereda su producto. En «Crear» no llega ninguno: allí el producto se elige
     // junto a la dirección del clip, que es donde se ve lo que se le va a pedir.
     ...columnasProducto,
+    // El lugar y la versión con la que se pidió: es lo que compara Jev y lo que cita el historial.
+    ...columnasDelLugar(conLugar?.lugar ?? null),
     // Qué paso del producto digital es este envío, y la declaración de marca con su fecha.
     digitalStep: producto?.pasoDigital ?? "",
     brandRightsAt: producto ? new Date() : null,
@@ -984,7 +879,15 @@ export async function crearAnimacion(
   if (producto) exigirDerechoDeMarca(peticion.derechoMarca);
   // Un clip parte de **una** imagen: su fotograma aprobado. Este camino no cita ninguna identidad registrada: la
   // escena hablada en modo Omni va por `omni/escena.ts`.
-  const conProducto = producto ? await repartoDelEnvio({ producto, adaptador, modelo, envio: { tipo: "clip" } }) : null;
+  // El clip hereda el lugar de su fotograma: el sitio ya está dentro de la imagen de partida.
+  const delLugar = await lugarDelClip(actor.id, partida);
+  const { conProducto, hechosLugar: hechosLugarDelClip } = await repartoCompletoDelEnvio({
+    producto,
+    conLugar: delLugar.conLugar,
+    adaptador,
+    modelo,
+    envio: { tipo: "clip" },
+  });
   if (conProducto) await completarModelosSugeridos(conProducto.hechos, CAPACIDAD_DE_TIPO.animacion);
 
   const conRepartoDelClip = await hechosDelRepartoDeEscena(partida.escenaId);
@@ -1015,6 +918,7 @@ export async function crearAnimacion(
         // revocado entre el fotograma y el clip, el clip no sale.
         ...(conRepartoDelClip ? { reparto: conRepartoDelClip } : {}),
         ...(conProducto ? { producto: conProducto.hechos } : {}),
+        ...hechosLugarDelClip,
       },
       h.buscar,
     ),
@@ -1202,10 +1106,13 @@ export async function crearAnimacion(
       ...reservasGuardadas(reservas, proporcion),
       ...(proporcion ? { proporcion } : {}),
       ...referenciasDeProductoGuardadas(producto, conProducto),
+      // El «dónde, dentro del lugar» del fotograma: la conversión en proyecto lo conserva.
+      ...(partida.lugarDelFotograma?.sitio ? { sitioLugar: partida.lugarDelFotograma.sitio } : {}),
     },
     sourceMediaId: origen.id,
     // El clip hereda la escena del fotograma: su aprobación es la misma y ya se comprobó al producirlo.
     sceneId: partida.escenaId,
+    ...delLugar.columnas,
     // El producto con el que se pidió: el de la escena cuando el clip sale de un proyecto y el elegido en
     // «Crear» cuando no hay escena.
     ...columnasProducto,

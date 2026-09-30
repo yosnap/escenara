@@ -234,6 +234,8 @@ export interface HechosProducto {
     fotosProducto: number;
     personaje: number;
     producto: number;
+    /** `1` si la maestra de un lugar ocupa su hueco en el mismo cupo. Ausente sin lugar. */
+    lugar?: number;
   };
   /**
    * El producto tiene fotos y en este modelo **no cabe ninguna**: su segunda imagen no es una galería (en Veo
@@ -386,7 +388,25 @@ export interface Hechos {
    * lo anterior a esta versión y la mayoría de los clips.
    */
   canto?: HechosCanto;
+  /** Lugar del envío. Ausente cuando no lleva ninguno, que es todo lo anterior a los lugares. */
+  lugar?: HechosLugar;
   parametros: ParametrosControles;
+}
+
+/** Lo que el motor necesita saber del lugar de un envío. */
+export interface HechosLugar {
+  id: string;
+  nombre: string;
+  /** Hay una declaración de derechos vigente. Sin ella no se genera. */
+  declarado: boolean;
+  /** Por qué el acabado o el estilo del lugar no casan con el del proyecto o el personaje; vacío si casan. */
+  acabadoDistinto: string;
+  /** La versión vigente no tiene maestra (o está en la papelera): el lugar solo iría descrito. */
+  sinMaestra: boolean;
+  /** Plano del lugar solo: la maestra es la imagen de partida y sin ella no hay nada que generar. */
+  soloLugar: boolean;
+  /** Hay maestra pero no cabe en el cupo de referencias del modelo: el lugar iría solo descrito. */
+  maestraNoCabe: boolean;
 }
 
 /** Grupos que la puerta del encolado exige tener resueltos. */

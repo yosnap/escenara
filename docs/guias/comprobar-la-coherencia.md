@@ -99,6 +99,14 @@ acierto de cada comprobación, cuántas veces dejó pasar algo que tú rechazast
 estaba bien. Con esos números se decide si alguna merece pasar de «mirar» a «decidir». Con menos de 20
 correcciones no se enseña ningún porcentaje, porque un porcentaje sobre cuatro casos no significa nada.
 
+## ¿Es el mismo lugar? (viene «En sombra»)
+
+En una escena con [lugar](lugares.md), compara el sitio del fotograma aprobado con la foto maestra de la versión con
+la que se generó: paredes, materiales, muebles fijos, disposición y luz, sin mirar el encuadre. Informa y no bloquea.
+Para compararlos se envían **la maestra y el fotograma** a la percepción de tu mapa, con la instrucción de describir
+solo el sitio; si en la maestra quedó gente pequeña al fondo, esa foto también sale. **No se comprueba si en la escena
+sale una persona real** (se mira en los planos del lugar solo y con personajes inventados).
+
 ## Sobre la «confianza»
 
 Al lado de cada veredicto verás un porcentaje de confianza. Dice **cómo de concentrada** está la respuesta del

@@ -45,37 +45,61 @@ export function ordenarPorPrioridad<T extends FotoOrdenable>(fotos: readonly T[]
 const PARTES_DEL_PRODUCTO = 3;
 const PARTES_DEL_CUPO = 7;
 
-/** Cómo se reparte el cupo de referencias del modelo entre el personaje y el producto. */
+/** Cómo se reparte el cupo de referencias del modelo entre el personaje, el producto y el lugar. */
 export interface RepartoDeReferencias {
   /** Cuántas fotos del personaje (o el fotograma de partida del clip) se envían. Nunca menos de una. */
   personaje: number;
   /** Cuántas fotos del producto se envían. */
   producto: number;
+  /** `1` si viaja la maestra del lugar, `0` si no. Del lugar solo viaja la maestra. */
+  lugar: number;
   /** `false` cuando algo se ha quedado fuera por el tope del modelo. Es lo que se avisa antes de pagar. */
   cabenTodas: boolean;
 }
 
 /**
- * Reparte el cupo. Función **pura**: la usan la puerta que avisa y el worker que envía, y por eso no puede
- * vivir dentro de ninguno de los dos.
+ * Reparte el cupo. Función **pura**: la usan la puerta que avisa, el envío y el worker, y por eso no puede vivir
+ * dentro de ninguno de ellos. Una sola cuenta: si cada lado hiciera la suya, el aviso diría cifras que no son las
+ * del envío.
  *
- * - sin producto, todo el cupo es del personaje, exactamente como antes de esta versión;
+ * - sin producto ni lugar, todo el cupo es del personaje, exactamente como antes de los productos;
  * - con producto y personaje, al producto le tocan 3/7 del cupo (redondeo hacia abajo, y una como mínimo si el
  *   cupo es de dos o más) y al personaje el resto; lo que uno no use, lo aprovecha el otro;
  * - con un modelo que solo admite una imagen, la única que cabe es la del **personaje**: es la imagen de
  *   partida del clip, y sin ella no hay nada que animar. El producto se queda en el texto y se avisa;
  * - **sin ninguna imagen de personaje** —el plano del producto solo, que se pide sin nadie—, todo el cupo es
  *   del producto: reservarle un hueco a una imagen que no existe dejaría fuera una foto del producto por
- *   nada.
+ *   nada;
+ * - del **lugar** viaja solo la maestra, y entra la última: primero una del personaje, después una del producto
+ *   si lo hay, y la maestra si aún queda hueco. Lo que quede después de la maestra se reparte entre el personaje y
+ *   el producto con la cuenta de siempre. En el plano del lugar solo (sin personaje ni producto), la maestra
+ *   ocupa la única imagen.
  */
-export function repartirReferencias(maximo: number, personaje: number, producto: number): RepartoDeReferencias {
+export function repartirReferencias(
+  maximo: number,
+  personaje: number,
+  producto: number,
+  lugar = 0,
+): RepartoDeReferencias {
+  const pideLugar = lugar > 0 ? 1 : 0;
   /**
    * Un envío **sin ninguna referencia posible** (un modelo de texto a imagen, que es con lo que se genera un
-   * plano sin foto de partida): no viaja nada, tampoco del producto. Se dice antes de cobrar y al modelo se
-   * le pide un envase sin marca en vez de prometerle una foto que no va a recibir.
+   * plano sin foto de partida): no viaja nada. Se dice antes de cobrar y al modelo se le describe lo que falta
+   * en vez de prometerle una foto que no va a recibir.
    */
-  if (maximo <= 0) return { personaje: 0, producto: 0, cabenTodas: personaje === 0 && producto === 0 };
+  if (maximo <= 0) {
+    return { personaje: 0, producto: 0, lugar: 0, cabenTodas: personaje === 0 && producto === 0 && pideLugar === 0 };
+  }
   const cupo = Math.max(1, maximo);
+  const minimos = (personaje > 0 ? 1 : 0) + (producto > 0 ? 1 : 0);
+  const paraLugar = pideLugar === 1 && cupo >= minimos + 1 ? 1 : 0;
+  const resto = repartirEntreDos(cupo - paraLugar, personaje, producto);
+  return { ...resto, lugar: paraLugar, cabenTodas: resto.cabenTodas && paraLugar >= pideLugar };
+}
+
+/** El reparto de siempre entre el personaje y el producto, sobre el cupo que queda después de la maestra. */
+function repartirEntreDos(cupo: number, personaje: number, producto: number): Omit<RepartoDeReferencias, "lugar"> {
+  if (cupo <= 0) return { personaje: 0, producto: 0, cabenTodas: personaje === 0 && producto === 0 };
   if (producto <= 0) {
     return { personaje: Math.min(personaje, cupo), producto: 0, cabenTodas: personaje <= cupo };
   }
@@ -97,9 +121,9 @@ export function repartirReferencias(maximo: number, personaje: number, producto:
 }
 
 /**
- * Huecos que le quedan al personaje cuando el trabajo ya lleva guardadas `fotosDelProducto` fotos del producto. Es
- * lo que aplica el worker al enviar: el reparto se hizo al encolar y aquí solo se respeta, con **una imagen como
- * mínimo** (sin ella no hay nada que animar).
+ * Huecos que le quedan al personaje cuando el trabajo ya lleva guardadas `fotosAjenas` fotos del producto y del
+ * lugar. Es lo que aplica el worker al enviar: el reparto se hizo al encolar y aquí solo se respeta, con **una
+ * imagen como mínimo** (sin ella no hay nada que animar).
  */
-export const huecosDelPersonaje = (cupo: number, fotosDelProducto: number): number =>
-  Math.max(1, Math.max(1, cupo) - fotosDelProducto);
+export const huecosDelPersonaje = (cupo: number, fotosAjenas: number): number =>
+  Math.max(1, Math.max(1, cupo) - fotosAjenas);

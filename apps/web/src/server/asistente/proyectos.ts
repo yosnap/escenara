@@ -21,6 +21,8 @@ import { olvidarPercibidoDeProyecto } from "../coherencia/registro";
 import { db } from "../db/cliente";
 import { type FilaProyecto, projects, scenes } from "../db/esquema";
 import { aplicarCambioDeAcento } from "../direccion/acento";
+import { invalidarHerederasDelProyecto, lugarPorDefectoValido } from "../lugares/escena";
+import { acabadoDelProyecto } from "../lugares/para-generar";
 import type { Actor } from "../media/servicio";
 import { cambiarFormatosDelProyecto, exigirFormatoGenerable } from "../montaje/formatos-del-proyecto";
 import { filaPropia } from "../personajes/consulta";
@@ -56,6 +58,8 @@ export interface DatosProyecto {
   confirmarInvalidacion?: unknown;
   /** Formatos de salida al crear el proyecto (0.41.0); el primero es el principal. Después, desde el montaje. */
   formatos?: unknown;
+  /** Lugar por defecto que heredan las escenas; `null` lo quita. Tiene que casar con el acabado del proyecto. */
+  lugarId?: unknown;
 }
 
 function tituloLimpio(valor: unknown): string {
@@ -103,15 +107,21 @@ function acentoValido(valor: unknown): Acento {
 async function personajeValido(
   actor: Actor,
   valor: unknown,
-): Promise<{ id: string; renderStyle: "realista" | "animado" } | null> {
+): Promise<{ id: string; renderStyle: "realista" | "animado"; estilo: string } | null> {
   if (valor === null || valor === "" || valor === undefined) return null;
   if (!esUuidProyecto(valor)) throw new ErrorProyecto(400, "Ese personaje no existe.");
   // Reutiliza las puertas de 0.13.0–0.15.0: dueño (404 si es de otro) y personaje usable (consentimiento
   // vigente y mínimo de referencias), cada una con su motivo escrito. Es una lectura: no crea versiones.
   const personaje = await filaPropia(actor, valor);
   await exigirPersonajeUsable(personaje.id, personaje.name);
-  return { id: personaje.id, renderStyle: personaje.renderStyle };
+  return { id: personaje.id, renderStyle: personaje.renderStyle, estilo: personaje.styleGuide.preset };
 }
+
+/** Con qué acabado tiene que casar el lugar del proyecto: el de su protagonista (realista si no tiene). */
+const acabadoDe = (protagonista: { renderStyle: "realista" | "animado"; estilo: string } | null) => ({
+  acabado: protagonista?.renderStyle ?? "realista",
+  estilo: protagonista?.renderStyle === "animado" ? protagonista.estilo : "",
+});
 
 /**
  * Formatos con los que nace el proyecto: el vertical de siempre si no se dicen. El principal se comprueba contra
@@ -136,6 +146,7 @@ export async function crearProyecto(actor: Actor, datos: DatosProyecto): Promise
   }
   const protagonista = await personajeValido(actor, datos.personajeId);
   const formatos = await formatosDeAlta(actor, datos.formatos);
+  const lugar = await lugarPorDefectoValido(actor.id, datos.lugarId, acabadoDe(protagonista));
   const [fila] = await db()
     .insert(projects)
     .values({
@@ -151,6 +162,7 @@ export async function crearProyecto(actor: Actor, datos: DatosProyecto): Promise
           : creditosValidos(datos.presupuestoCreditos),
       clipSeconds: datos.segundosClip === undefined ? DURACION_PREDETERMINADA : duracionValida(datos.segundosClip),
       formats: formatos,
+      defaultPlaceId: lugar,
     })
     .returning();
   if (!fila) throw new ErrorProyecto(500, "No se ha podido crear el proyecto.");
@@ -168,19 +180,30 @@ export async function editarProyecto(actor: Actor, id: unknown, datos: DatosProy
   if (datos.formato !== undefined) cambios.format = formatoValido(datos.formato);
   if (datos.idea !== undefined) cambios.idea = limpiarTextoDePrompt(datos.idea, IDEA_MAXIMA);
   if (datos.concepto !== undefined) cambios.concept = limpiarTextoDePrompt(datos.concepto, CONCEPTO_MAXIMO);
+  // El acabado con el que tiene que casar el lugar: el del protagonista nuevo si cambia, el de ahora si no.
+  let acabado: { acabado: "realista" | "animado"; estilo: string } | null = null;
   if (datos.personajeId !== undefined) {
     const protagonista = await personajeValido(actor, datos.personajeId);
     cambios.mainCharacterId = protagonista?.id ?? null;
     cambios.renderStyle = protagonista?.renderStyle ?? "realista";
+    acabado = acabadoDe(protagonista);
   }
   if (datos.presupuestoCreditos !== undefined) cambios.authorizedCredits = creditosValidos(datos.presupuestoCreditos);
   if (datos.segundosClip !== undefined) cambios.clipSeconds = duracionValida(datos.segundosClip);
   if (datos.acento !== undefined) cambios.speechAccent = acentoValido(datos.acento);
+  if (datos.lugarId !== undefined) {
+    const esperado = acabado ?? (await acabadoDelProyecto(proyecto.id)) ?? acabadoDe(null);
+    cambios.defaultPlaceId = await lugarPorDefectoValido(actor.id, datos.lugarId, esperado);
+  }
   // Los formatos tienen sus propias reglas (el principal no cambia con el plan aprobado ni con clips). Van **después**
   // de validar el resto de campos: si otro campo no vale, no se ha cambiado nada.
   if (datos.formatos !== undefined) await cambiarFormatosDelProyecto(actor, proyecto.id, datos.formatos);
   await db().transaction(async (tx) => {
     await tx.update(projects).set(cambios).where(eq(projects.id, proyecto.id));
+    // Las escenas que heredan el lugar del proyecto generarían otra cosa: su aprobación deja de valer.
+    if (cambios.defaultPlaceId !== undefined && cambios.defaultPlaceId !== proyecto.defaultPlaceId) {
+      await invalidarHerederasDelProyecto(tx, proyecto.id);
+    }
     /**
      * El acento es del proyecto entero y entra en la voz y en el prompt del clip, así que cambiarlo deja sin
      * valer lo que salió con el anterior. Se trata como la voz: se dice cuántas escenas pierde, se confirma y no

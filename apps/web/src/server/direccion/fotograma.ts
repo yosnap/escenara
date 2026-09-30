@@ -10,6 +10,7 @@ import {
   SIN_NOMBRAR_LA_TECNICA,
   SIN_RETOQUE_FINAL,
 } from "./ingles";
+import { contextoDelLugar, type LugarEnPrompt, SOLO_EL_SITIO_DE_LA_IMAGEN, SUJETO_LUGAR_SOLO } from "./lugar";
 import {
   bloqueProducto,
   EXCEPCION_TEXTO_PRODUCTO,
@@ -30,7 +31,7 @@ import {
  * | C1 | **Personaje**: quién es. Con una persona real, sus referencias y nada más |
  * | C2 | **Cámara**: plano, ángulo y óptica; el realismo de foto hecha con un móvil |
  * | C3 | **Ropa**: outfit, estilismo y accesorios |
- * | C4 | **Contexto**: dónde está y qué hay detrás |
+ * | C4 | **Contexto**: dónde está y qué hay detrás. Con un lugar, el sitio de su maestra |
  * | C5 | **Luz**: tipo de luz, sombras, grano y ambiente |
  * | C6 | **Anclajes de realismo**: piel de verdad, anatomía correcta y la línea final |
  *
@@ -85,6 +86,11 @@ export interface SeisC {
    * la regla de que su etiqueta no se toca. C6 sigue cerrando siempre, que es lo que promete el método.
    */
   producto?: ProductoEnPrompt | null;
+  /**
+   * El lugar de la escena, ya resuelto a inglés. `null` o ausente = ninguno, y entonces C4 es exactamente lo de
+   * siempre. Con lugar, C4 es el sitio de la maestra y el preset de localización no entra.
+   */
+  lugar?: LugarEnPrompt | null;
 }
 
 /**
@@ -143,14 +149,27 @@ export function componerSeisC(seis: SeisC, cambiarSolo?: CambiarSolo): string {
   // Con el plano del producto solo no sale nadie: el sujeto es el producto, y describir además a un personaje
   // metería a una persona en un fotograma que se pidió sin ninguna.
   const soloProducto = sustituyeAlSujeto(producto);
+  const lugar = base.lugar ?? null;
+  // El plano del lugar solo: el sujeto es el sitio, y ni personaje ni ropa tienen quien los lleve.
+  const soloLugar = lugar?.soloLugar === true;
+  const sinNadie = soloProducto || soloLugar;
   const bloques = [
-    soloProducto ? "" : c1Personaje(base),
+    soloLugar ? etiqueta("Subject", SUJETO_LUGAR_SOLO) : soloProducto ? "" : c1Personaje(base),
     etiqueta(
       "Camera",
       unir([base.plano, base.angulo, base.optica, base.animado ? "" : REGISTRO_CAMARA_INGLES[base.registroEstetico]]),
     ),
-    soloProducto ? "" : etiqueta("Wardrobe", base.ropa),
-    etiqueta("Context", unir([base.localizacion, base.contextoLibre])),
+    sinNadie ? "" : etiqueta("Wardrobe", base.ropa),
+    etiqueta(
+      "Context",
+      lugar
+        ? unir([
+            contextoDelLugar(lugar),
+            base.contextoLibre,
+            lugar.conReferencia && !lugar.soloLugar ? SOLO_EL_SITIO_DE_LA_IMAGEN : "",
+          ])
+        : unir([base.localizacion, base.contextoLibre]),
+    ),
     etiqueta("Light", unir([base.luz, base.animado ? "" : REGISTRO_LUZ_INGLES[base.registroEstetico]])),
     etiqueta("Action", base.accion),
     producto ? etiqueta("Product", unir([bloqueProducto(producto), REGLA_ETIQUETA_PRODUCTO])) : "",
@@ -171,7 +190,7 @@ export function componerSeisC(seis: SeisC, cambiarSolo?: CambiarSolo): string {
         base.animado ? "" : SIN_NOMBRAR_LA_TECNICA,
         // Con una persona real, la regla de no retoque se repite **después** del catálogo: ningún fragmento
         // redactado por alguien puede quedar por delante de ella.
-        base.personajeReal && !soloProducto ? SIN_RETOQUE_FINAL : "",
+        base.personajeReal && !sinNadie ? SIN_RETOQUE_FINAL : "",
         // Detrás de «nada escrito», para que no borre la etiqueta del producto.
         producto ? EXCEPCION_TEXTO_PRODUCTO : "",
       ]),

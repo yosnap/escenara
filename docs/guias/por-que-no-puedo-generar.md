@@ -234,6 +234,16 @@ no hay ninguna escena con clip en ella (añade al menos una). Mira [Montar y exp
 
 </details>
 
+<details>
+<summary>«…» no tiene una declaración de derechos vigente · Es un lugar animado/real y el proyecto es… · El plano de «…» solo parte de su foto maestra</summary>
+
+Son del **lugar** del envío. Sin declaración de derechos vigente no se genera con él: se retira sola al cambiar sus
+fotos o su maestra, y también si la revocaste. Declárala en la ficha del lugar (con gente reconocible, retírala antes
+o cambia la foto; con menores, no se puede usar). El acabado del lugar tiene que ser el del proyecto (real con real,
+animado del mismo estilo con animado). Y el plano del lugar solo necesita una foto maestra. Mira [Lugares](lugares.md).
+
+</details>
+
 ## Requiere revisión: lo que tienes que aportar
 
 <details>
@@ -340,6 +350,16 @@ Mira [Productos](productos.md).
 </details>
 
 <details>
+<summary>«…» no tiene foto maestra · Con … no cabe la foto maestra de «…»</summary>
+
+Del **lugar**: sin maestra, o sin hueco para ella en el modelo elegido, el lugar viaja **solo descrito** y puede salir
+distinto. Marca una maestra en la ficha del lugar o elige un modelo que admita más imágenes (la tarifa es otra, vuelve a
+estimar). Si te vale así, confírmalo: en «Crear» y en la tarjeta de cada escena de la producción sale con su casilla
+antes de pagar. Mira [Lugares](lugares.md).
+
+</details>
+
+<details>
 <summary>El modelo … no declara cuánto dura el clip</summary>
 
 Su precio no acota lo que va a costar, así que el trabajo se encola pero **no sale** hasta que le fijas un techo
@@ -360,6 +380,7 @@ resultado de «Crear» y la escena en Producción te dicen la causa, con qué pr
 | **El proveedor no ha podido usar una de las imágenes de referencia** | Elige otras fotos del producto, revisa las fotos del personaje en su ficha, o genera con otro modelo |
 | **El proveedor estaba saturado** | Vuelve a generarlo dentro de un rato, o con otro modelo |
 | **El proveedor cortó la generación por exceso de peticiones** | Espera unos minutos antes de volver a generarlo |
+| **El proveedor tuvo un fallo interno pasajero** («Internal Error»). Visto con Gemini Omni: no cobró y al repetirlo salió bien | Vuelve a generarlo |
 
 Si el proveedor no explica nada que Escenara reconozca, verás el mensaje de siempre: «El proveedor no ha podido
 completar la generación». Escenara no te enseña el texto del proveedor tal cual, porque puede repetir datos de tu

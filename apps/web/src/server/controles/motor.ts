@@ -16,6 +16,7 @@ import {
   REGLAS_VERSION,
 } from "./contrato";
 import { motivoReferenciasNoCaben } from "./motivos-producto";
+import { REGLAS_LUGAR } from "./reglas-lugar";
 import { REGLAS_MONTAJE } from "./reglas-montaje";
 
 /**
@@ -688,6 +689,7 @@ const REGLAS: readonly Regla[] = [
       confirmable: true,
     };
   },
+  ...REGLAS_LUGAR,
   (h) => {
     if (!h.parametros.exigirPrecioFresco || !h.modelo?.precioCaducado) return null;
     const fecha = h.modelo.precioComprobado === "" ? "nunca" : `el ${formatearFecha(h.modelo.precioComprobado)}`;

@@ -4,6 +4,7 @@ import type { CausaFalloProveedor } from "@/lib/causa-fallo";
 import { media } from "./esquema";
 import { users } from "./esquema-auth";
 import { proveedorCredencial } from "./esquema-boveda";
+import { places } from "./esquema-lugares";
 import { characters, characterVersions } from "./esquema-personajes";
 import { promptTemplates, promptTemplateVersions } from "./esquema-presets";
 import { products } from "./esquema-productos";
@@ -184,6 +185,12 @@ export const generationJobs = pgTable(
      * que hay que poder demostrar cuándo la hizo, igual que con la de la imagen.
      */
     brandRightsAt: timestamp("brand_rights_at", { withTimezone: true }),
+    /**
+     * **Lugar con el que se pidió el trabajo** y la versión que se usó. `set null` al borrar el lugar, como el
+     * producto: lo generado se queda. La versión se conserva aunque el lugar desaparezca: es lo que se envió.
+     */
+    placeId: uuid("place_id").references(() => places.id, { onDelete: "set null" }),
+    placeVersion: integer("place_version"),
     resultMediaId: uuid("result_media_id").references(() => media.id, { onDelete: "set null" }),
     estimatedCredits: integer("estimated_credits").notNull(),
     /** Créditos que informa el proveedor; si no llegan, se conserva la estimación marcada como tal. */
@@ -273,6 +280,7 @@ export const generationJobs = pgTable(
     // Las versiones de una escena se leen por escena y de la más reciente a la más antigua (0.41.0).
     index("generation_jobs_escena_fecha_idx").on(t.sceneId, t.createdAt),
     index("generation_jobs_producto_idx").on(t.productId),
+    index("generation_jobs_lugar_idx").on(t.placeId),
     // Los ejemplos de plantilla comprueban de dónde sale cada medio en cada lectura: por resultado y por punto de partida.
     index("generation_jobs_resultado_idx").on(t.resultMediaId),
     index("generation_jobs_origen_idx").on(t.sourceMediaId),

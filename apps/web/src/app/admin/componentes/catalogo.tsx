@@ -13,6 +13,7 @@ import { SeccionEstados } from "./secciones/estados";
 import { SeccionFormatos } from "./secciones/formatos";
 import { SeccionFormularios } from "./secciones/formularios";
 import { SeccionGeneracion } from "./secciones/generacion";
+import { SeccionLugares } from "./secciones/lugares";
 import { SeccionMarca } from "./secciones/marca";
 import { SeccionMediaPicker } from "./secciones/media-picker";
 import { SeccionModelos } from "./secciones/modelos";
@@ -42,6 +43,7 @@ const INDICE = [
   ["presets", "Presets y prompt"],
   ["direccion", "Dirección del clip"],
   ["productos", "Producto y acción"],
+  ["lugares", "Lugares"],
   ["canto", "Cantar con audio propio"],
   ["proyectos", "Proyectos y plan"],
   ["anuncio", "Estrategia del anuncio"],
@@ -96,6 +98,7 @@ export function Catalogo() {
         <SeccionPresets />
         <SeccionDireccion />
         <SeccionProductos />
+        <SeccionLugares />
         <SeccionCanto />
         <SeccionProyectos />
         <SeccionAnuncio />

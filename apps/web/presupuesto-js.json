@@ -20,16 +20,16 @@
   ],
   "rutas": {
     "/admin/componentes": {
-      "topeKb": 420,
-      "motivo": "Catálogo interno del admin: pinta todos los componentes a la vez. Medido: 417.0 KB."
+      "topeKb": 424,
+      "motivo": "Catálogo interno del admin: pinta todos los componentes a la vez (con la sección Lugares). Medido: 420.4 KB."
     },
     "/proyectos/[id]": {
       "topeKb": 332,
-      "motivo": "Guion por escenas con dirección, reparto, lista ordenable y selector de medios. Medido: 328.2 KB."
+      "motivo": "Guion por escenas con dirección, reparto, lista ordenable y selector de medios. Medido: 329.4 KB."
     },
     "/crear": {
       "topeKb": 317,
-      "motivo": "Flujo por pasos con la dirección del clip, presets y selector de medios. Medido: 313.2 KB."
+      "motivo": "Flujo por pasos con la dirección del clip, presets, selector de medios y el lugar de la escena. Medido: 315.9 KB (margen 1.1 KB, sin subir el tope)."
     },
     "/personajes/[id]": {
       "topeKb": 300,
@@ -94,6 +94,14 @@
     "/personajes/nuevo/inventado": {
       "topeKb": 220,
       "motivo": "Alta de personaje inventado con sus opciones. Medido: 216.9 KB."
+    },
+    "/lugares": {
+      "topeKb": 228,
+      "motivo": "Lista de lugares con el alta (nombre, descripción y acabado con el selector del catálogo), como la de productos. Medido: 224.7 KB."
+    },
+    "/lugares/[id]": {
+      "topeKb": 241,
+      "motivo": "Ficha de lugar con fotos por papel, declaración de derechos, versiones y diálogos; el diálogo del coste de una foto generada ya se descarga al abrirlo. Medido: 237.5 KB."
     }
   }
 }

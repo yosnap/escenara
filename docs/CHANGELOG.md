@@ -2,6 +2,93 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.46.0] · 2026-09-30
+
+**Lugares.** Un tercer tipo de contenido junto a Personajes y Productos: el sitio poco conocido que quieres usar como
+escenario una y otra vez (tu calle, el bar de la esquina, un patio), con sus fotos, una **foto maestra** que entra en el
+fotograma y una **declaración de derechos**. La misma persona sale en el mismo sitio escena tras escena, y los dos clips
+de un podcast comparten set. Para un sitio famoso no hace falta nada: basta con su nombre. **Una migración aditiva**:
+lee «Actualizar desde la 0.45.0». Las escenas sin lugar producen exactamente lo mismo que antes.
+
+### Añadido
+
+- **Sección Lugares** en la navegación, con listado, alta (real o animado, en uno de los estilos de la instalación),
+  ficha y borrado. Las fotos son de tu biblioteca y **una es la maestra**: la única que se envía al generar. Cambiar
+  fotos, maestra o descripción crea **una versión nueva**, cada trabajo guarda la que usó y las escenas aprobadas que
+  usan el lugar vuelven a borrador con el motivo escrito. Un lugar ajeno responde «no existe», también al usarlo.
+- **Declaración de derechos del lugar**, obligatoria para generar: de dónde son las fotos, si es un exterior o un
+  interior (un interior exige declarar el permiso de quien lo gestiona), el uso, si se ve alguna marca y **que no sale
+  ningún menor**. La pantalla dice que **lo declarado es responsabilidad del usuario** (Escenara no revisa las fotos).
+  **No admite gente reconocible**: se retira o se cambia la foto. Se retira sola al añadir fotos o cambiar o quitar la
+  maestra, y se puede revocar; desde entonces no se genera con el lugar, tampoco lo que estaba en la cola.
+- **Retirar personas de una foto** del lugar, con una edición de imagen de **coste confirmado** (unos 4 créditos) por el
+  mismo camino que cualquier fotograma. La foto editada entra como generada y, si salía de la maestra, pasa a serlo.
+  **No se pixelan caras**: se midió que el generador copia el pixelado.
+- **Candidatos de un lugar animado**, desde su descripción y su estilo, con coste confirmado; el que apruebes se marca
+  como maestra. También vale una ilustración tuya.
+- **Elegir el lugar y «dónde, dentro del lugar»** en «Crear» (paso de la escena), en cada escena de un proyecto
+  (heredar el del proyecto, otro o ninguno) y como **lugar del proyecto**. Solo se ofrecen los del mismo acabado; el
+  servidor lo comprueba y rechaza un lugar real en un proyecto animado y al revés.
+- **Plano del lugar solo** en la escena: el sitio sin nadie, mudo, sin reparto ni producto y sin el consentimiento de
+  nadie. Sirve de plano de situación, también en un proyecto animado.
+- **Cinco controles previos nuevos**: sin declaración vigente, acabado distinto y plano solo sin maestra **bloquean**;
+  lugar sin maestra y maestra que no cabe en el modelo son **avisos** que se confirman antes de pagar.
+- **Jev en sombra, «Es el mismo lugar que su foto maestra»** (`lugar_fiel`), con su modo y su umbral en Admin › Ajustes ›
+  Coherencia. No se comprueba si en la escena sale una persona real, y la evidencia no lleva nombres de nadie.
+- **Admin › Ajustes › Lugares**: «Escenas habladas con lugar: combinar personaje registrado y fotograma situado
+  (experimental)», **apagado de fábrica**. Omni acepta las dos cosas a la vez al mismo precio (medido); falta escuchar
+  la voz.
+- Guía nueva: [Lugares](guias/lugares.md). Decisión en el ADR-0040. Componentes nuevos en el catálogo (› «Lugares»).
+
+### Cambiado
+
+- **El fotograma con lugar se compone con su maestra**: C4 pasa a ser el sitio de la maestra con la descripción de la
+  versión, el preset de localización no entra y lo que escribes en «dónde» manda. **El clip hereda el lugar de su
+  imagen**, y convertir un clip de «Crear» en proyecto lo conserva, con su «dónde».
+- **El cupo de referencias se reparte a tres bandas** con la misma cuenta en el aviso, en el envío y en el worker: al
+  menos una del personaje, al menos una del producto si lo hay, la maestra si queda sitio, y el resto 3/7 entre
+  personaje y producto como en la 0.35.1. El aviso de antes de pagar dice también la maestra.
+- **Podcast**: un podcast es una sola escena con dos clips, así que los dos llevan el mismo lugar y la misma versión.
+  En las escenas habladas con Omni el lugar viaja descrito.
+- **Borrar un lugar** no borra las fotos, lo generado ni **sus declaraciones** (quedan revocadas y con el nombre del
+  lugar); no se puede con trabajos en marcha que lo usan, y el worker no envía uno cuyo lugar se ha borrado (lo cierra
+  sin cobro y lo dice). Las escenas aprobadas que lo usaban vuelven a borrador con el motivo. Borrar y encolar a la
+  vez tampoco se cuela: el borrado espera al encolado que ya está en curso y lo cuenta, y el que llega tarde responde
+  que el lugar se acaba de borrar, sin encolar ni cobrar nada.
+- **El aviso de antes de pagar y el envío deciden con la misma función** si la maestra cuenta en el cupo (no en el
+  clip, ni en la escena hablada, ni al meter la captura de un producto digital), y la consulta de controles devuelve
+  las cifras del reparto. La consulta del paso de la captura se hace con ese paso.
+- **La producción de un proyecto dice lo mismo que el envío**: cada tarjeta de escena evalúa el lugar y el producto del
+  fotograma con esa misma función y las entradas de su siguiente envío (fotograma, paso de la captura, clip o escena
+  hablada), así que «la maestra no cabe», «sin foto maestra» y «las referencias del producto no caben» salen con su
+  casilla antes de pagar y, confirmados, el envío pasa. Antes la tarjeta no los decía y el envío pedía una
+  confirmación que no había dónde dar.
+- **Un «500 Internal Error» del proveedor** (el texto «internal error» con un 500 o sin código, o un 500 sin texto) se
+  cuenta como fallo interno pasajero («vuelve a generarlo»). Con un 4xx no, aunque el texto diga «internal error»
+  (un 422 «Internal error processing your image: file too large» es la imagen). Un «please try again later» con saldo
+  insuficiente o una petición inválida sigue sin causa conocida. Visto con Gemini Omni: no cobró y al repetirlo salió
+  bien.
+- Documento legal: nueva sección sobre las fotos de lugares, que pueden llevar personas, y a dónde se envían
+  (pendiente de revisión jurídica). El diálogo de «Retirar personas» dice que la foto va, con la gente, a KIE y al
+  proveedor del modelo que la edita.
+- Guías ajustadas: productos (cupo a tres y producto sobre una superficie), dirigir tu clip (el sitio con un lugar),
+  podcast y dualcast (set común) y por qué no puedo generar. Resultados del spike en APIs y proveedores.
+
+### Actualizar desde la 0.45.0
+
+- **Haz antes una copia**: `bun run db:backup`. Después, **con el worker parado**, `bun run db:migrate`.
+- La migración `0062_lugares` es **aditiva e idempotente**: crea los tipos y las tablas `places`, `place_references`,
+  `place_versions` y `place_declarations`; añade `projects.default_place_id`, `scenes.place_id`, `place_inherited`
+  (verdadero por defecto), `place_spot` y `place_shot` (`con_reparto` por defecto) y `generation_jobs.place_id` y
+  `place_version`, con sus índices y claves ajenas (`set null`: borrar un lugar no borra nada más, tampoco sus
+  declaraciones, que guardan `place_name`); y el valor
+  `lugar_fiel` en el tipo de las comprobaciones de coherencia. No cambia ni borra ninguna fila y volver a aplicarla no
+  hace nada.
+- **Reinicia el worker** tras actualizar: ahora envía la maestra del lugar detrás de las demás fotos y revalida la
+  declaración antes de enviar.
+- Ajustes nuevos con su valor de fábrica: `lugar_fiel` en sombra con el umbral de siempre, y el experimento de Omni
+  **apagado**. No hay variables de entorno nuevas.
+
 ## [0.45.0] · 2026-09-30
 
 **Accesibilidad y rendimiento.** Toda la aplicación se revisa con axe en la suite, se usa entera con el teclado, respeta

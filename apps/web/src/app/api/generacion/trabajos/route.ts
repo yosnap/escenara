@@ -2,9 +2,10 @@ import { esIdentificadorDeModelo } from "@/lib/catalogo";
 import { esTipoTrabajo } from "@/lib/generacion";
 import { leerDireccionElegida } from "@/server/direccion/eleccion";
 import { ErrorGeneracion } from "@/server/generacion/errores";
-import { exigirMismoOrigen, leerCuerpo, manejador } from "@/server/generacion/http";
+import { exigirMismoOrigen, leerAvisosConfirmados, leerCuerpo, manejador } from "@/server/generacion/http";
 import { crearAnimacion, crearFotograma } from "@/server/generacion/servicio";
 import { listarTrabajos } from "@/server/generacion/trabajos";
+import { leerLugarElegido } from "@/server/lugares/para-generar";
 import { leerProductoElegido } from "@/server/productos/eleccion";
 import { leerSeleccionDePresets } from "@/server/prompts/entrada";
 
@@ -39,23 +40,6 @@ export const GET = manejador(async (_: Request, __: unknown, actor) =>
  * categoría) y de `prompt`, que pasa a ser el valor de la variable de texto. `promptEditado` es el texto final
  * que el usuario editó a mano, si lo editó. Nada de esto puede cambiar modelo, duración ni resolución.
  */
-/**
- * Avisos «Necesita ajustes» que el usuario confirma expresamente (0.18.0): claves de regla, nunca texto libre.
- * Se acotan aquí a lo que puede ser una clave de regla; las que no correspondan a un aviso salvable no hacen
- * nada, y un freno `Bloqueado` o `Requiere revisión` no se salta por venir listado (`controles/puerta.ts`).
- */
-function leerAvisosConfirmados(valor: unknown): string[] {
-  if (valor === undefined) return [];
-  if (!Array.isArray(valor) || valor.length > 20) {
-    throw new ErrorGeneracion(400, "Los avisos confirmados no son válidos.");
-  }
-  return valor.map((clave) => {
-    if (typeof clave !== "string" || !/^[a-z0-9-]{1,60}$/.test(clave)) {
-      throw new ErrorGeneracion(400, "Los avisos confirmados no son válidos.");
-    }
-    return clave;
-  });
-}
 
 /** Duración del clip que llega del navegador: entera, en segundos y dentro de lo que dura un clip. */
 function leerSegundos(valor: unknown): number {
@@ -115,6 +99,8 @@ export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
            * digital empieza justo ahí, en el fotograma de la pantalla apagada.
            */
           ...(productoElegido ? { productoElegido } : {}),
+          // Lugar elegido en «Crear»: su maestra entra en el fotograma. Que sea suyo lo comprueba el servicio.
+          lugarElegido: leerLugarElegido(cuerpo.lugar),
         })
       : await crearAnimacion(actor, {
           ...comun,

@@ -31,6 +31,7 @@ import {
   usageLedger,
 } from "../db/esquema";
 import { direccionGuardada, esUuidGeneracion, filaPropia } from "../generacion/trabajos";
+import { sitioLugarDe } from "../lugares/en-el-envio";
 import type { Actor } from "../media/servicio";
 import { motivosParaNoGenerar } from "../personajes/puede-generar";
 import { fotosDelProducto as fotosVigentesDelProducto } from "../productos/referencias";
@@ -179,6 +180,10 @@ export async function convertirEnProyecto(actor: Actor, trabajoId: unknown): Pro
         productId: fila.productId,
         productAction: fila.productId ? fila.productAction : "",
         productPhotoIds: fotosDelProducto,
+        // El lugar del clip, con su «dónde»: el proyecto no hereda ninguno, así que la escena lo lleva como propio.
+        placeId: fila.placeId,
+        placeInherited: fila.placeId === null,
+        placeSpot: fila.placeId ? sitioLugarDe(fila.input) : "",
         // La imagen de partida es el fotograma de la escena. **Sin trabajo de fotograma**: animar otra vez desde el
         // proyecto parte de la imagen y engancha el clip nuevo a esta escena, no a un trabajo de «Crear».
         approvedFrameMediaId: fila.sourceMediaId,

@@ -72,7 +72,7 @@ describe("formatos de trend sembrados", () => {
 
   test("el producto viaja como referencia física y conserva su etiqueta", () => {
     const reparto = repartirReferencias(3, 1, 2);
-    expect(reparto).toEqual({ personaje: 1, producto: 2, cabenTodas: true });
+    expect(reparto).toEqual({ personaje: 1, producto: 2, lugar: 0, cabenTodas: true });
     const clip = dirigirClip({
       formato: "ugc_a_camara",
       movimientosCamara: [],

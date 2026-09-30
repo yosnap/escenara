@@ -28,6 +28,7 @@ export const comprobacionCoherencia = pgEnum("coherence_check", [
   "producto_fiel",
   "angulo_fiel",
   "reparto_fiel",
+  "lugar_fiel",
 ]);
 
 /** Cómo se aplicó: en `sombra` el veredicto se guarda y no cambia nada; en `activa` decide. */

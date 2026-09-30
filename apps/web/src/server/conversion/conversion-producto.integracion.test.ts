@@ -33,6 +33,7 @@ const { generationJobs, media, products, projects, rateLimits, users } = await i
 const { productReferences } = await import("../db/esquema-productos");
 const { crearMedio } = await import("../media/servicio");
 const { crearAyudas } = await import("./conversion.arnes");
+const { lugarDeclaradoDePrueba } = await import("../lugares/lugar-de-prueba");
 
 type Sesion = Awaited<ReturnType<typeof crearSesionDePrueba>>;
 type Actor = import("../media/servicio").Actor;
@@ -106,6 +107,26 @@ describe.skipIf(!hayBaseDeDatos)("el producto al convertir un clip de Crear", ()
     const rechazo = await convertir(sinMarca.id);
     expect(rechazo.codigo).toBe(409);
     expect(mensajeDe(rechazo.datos)).toContain("derecho a usar la marca");
+  });
+
+  test("la escena hereda el lugar del clip y su «dónde, dentro del lugar», como lugar propio", async () => {
+    const { lugar } = await lugarDeclaradoDePrueba(actor, "Bar de barrio");
+    const clip = await clipDeCrear(
+      { placeId: lugar.id, placeVersion: lugar.version },
+      { sitioLugar: "junto al ventanal" },
+    );
+    const { codigo, datos } = await convertir(clip.id);
+    expect(codigo).toBe(201);
+    const escena = await escenaDe(datos.proyectoId);
+    expect(escena.placeId).toBe(lugar.id);
+    expect(escena.placeInherited).toBe(false);
+    expect(escena.placeSpot).toBe("junto al ventanal");
+
+    // Un clip sin lugar da una escena que hereda el del proyecto, que no tiene ninguno: lo de siempre.
+    const sinLugar = await convertir((await clipDeCrear()).id);
+    const escenaSinLugar = await escenaDe(sinLugar.datos.proyectoId);
+    expect(escenaSinLugar.placeId).toBeNull();
+    expect(escenaSinLugar.placeInherited).toBe(true);
   });
 
   test("sin elección: si viajaron las de por defecto, la escena nace sin elección explícita", async () => {

@@ -435,6 +435,13 @@
       "when": 1790766973961,
       "tag": "0061_indices-de-medios-de-trabajos-y-escenas",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1790778932899,
+      "tag": "0062_lugares",
+      "breakpoints": true
     }
   ]
 }

@@ -13,6 +13,7 @@ import { motivoDuracionNoAdmitida } from "@/lib/trends";
 import { db, type Ejecutor } from "../db/cliente";
 import { claims, type FilaEscena, generationJobs, projects, scenes } from "../db/esquema";
 import { limitesDeProyecto } from "../limites-proyecto";
+import { camposDeLugar, exigirPlanoSoloCoherente } from "../lugares/escena";
 import type { Actor } from "../media/servicio";
 import { leerProductoElegido, productoPropio } from "../productos/eleccion";
 import { ErrorProducto } from "../productos/errores";
@@ -72,6 +73,11 @@ export interface DatosEscena {
    * del usuario y no una clave de catálogo, y su dueño se comprueba contra la base de datos antes de guardarlo.
    */
   producto?: unknown;
+  /**
+   * **Lugar de la escena**: `{ lugarId, sitio?, plano? }`, `{ heredar: true }` para volver al del proyecto, o
+   * `null` para ir sin lugar. Su dueño y su acabado se comprueban contra la base de datos antes de guardarlo.
+   */
+  lugar?: unknown;
   /** ID de trend vigente o null para volver al formato base. */
   trendId?: unknown;
 }
@@ -251,7 +257,22 @@ export async function crearEscena(actor: Actor, proyectoId: unknown, datos: Dato
   // qué correr dentro, y así un producto ajeno responde 404 sin haber empezado a escribir nada.
   const producto = await camposDeProducto(actor, datos);
   const trend = await camposDeTrend(actor, datos, proyecto.clipSeconds, proyecto.voiceMode);
-  const campos = { ...camposLimpios(datos), ...producto, ...trend };
+  const campos = {
+    ...camposLimpios(datos),
+    ...producto,
+    ...trend,
+    ...(await camposDeLugar(actor.id, proyecto, datos.lugar)),
+  };
+  exigirPlanoSoloCoherente(
+    {
+      placeShot: campos.placeShot ?? "con_reparto",
+      placeId: campos.placeId ?? null,
+      placeInherited: campos.placeInherited ?? true,
+      productId: campos.productId ?? null,
+      castFormat: "solo",
+    },
+    proyecto.defaultPlaceId,
+  );
   // El máximo de esta instalación (Admin › Ajustes, 0.41.0), siempre bajo el techo de 30 de esta versión.
   const { escenasMaximas } = await limitesDeProyecto();
   if (campos.clipFormat === "cantar" && campos.templateId)
@@ -298,7 +319,9 @@ export async function editarEscena(actor: Actor, escenaId: unknown, datos: Datos
     ...camposLimpios(datos),
     ...(await camposDeProducto(actor, datos)),
     ...(await camposDeTrend(actor, datos, proyecto.clipSeconds, proyecto.voiceMode)),
+    ...(await camposDeLugar(actor.id, proyecto, datos.lugar)),
   };
+  exigirPlanoSoloCoherente({ ...escena, ...campos }, proyecto.defaultPlaceId);
   const formatoFinal = campos.clipFormat ?? escena.clipFormat;
   const plantillaFinal = campos.templateId === undefined ? escena.templateId : campos.templateId;
   if (formatoFinal === "cantar" && plantillaFinal)

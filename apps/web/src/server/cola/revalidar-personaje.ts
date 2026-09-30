@@ -3,6 +3,7 @@ import { hechosDePersonajeCitado, parametrosDeControles } from "../controles/hec
 import { frenosQueGatean } from "../controles/motor";
 import { evaluarRegistrando, mensajeDeFreno } from "../controles/puerta";
 import type { FilaTrabajo } from "../db/esquema";
+import { declaracionVigente } from "../lugares/consulta";
 
 /** Motivo con el que se cierra un trabajo que no se puede enviar. */
 type MotivoFalloTrabajo = NonNullable<FilaTrabajo["failureReason"]>;
@@ -76,6 +77,23 @@ export async function revalidarPersonajeDelTrabajo(fila: FilaTrabajo, modelo: Mo
       throw new ErrorPersonajeNoUsable(
         `${mensajeDeFreno(freno)} No se ha enviado nada y no se te ha cobrado.`,
         freno.regla === "consentimiento" ? "consentimiento" : "interno",
+      );
+    }
+  }
+  /**
+   * El **lugar** también se revalida, como el consentimiento: revocar su declaración o borrarlo impide generar con él
+   * desde ese momento, también lo que ya estaba en la cola. Un trabajo que se pidió con lugar (`place_version`) y ya no
+   * lo tiene es que el lugar se ha borrado. Lo generado antes se conserva.
+   */
+  if (fila.kind !== "voz" && fila.placeVersion !== null) {
+    if (!fila.placeId) {
+      throw new ErrorPersonajeNoUsable(
+        "El lugar con el que pediste este trabajo se ha borrado, así que ya no se genera con él. No se ha enviado nada y no se te ha cobrado: vuelve a pedirlo con otro lugar o sin lugar.",
+      );
+    }
+    if (!(await declaracionVigente(fila.placeId))) {
+      throw new ErrorPersonajeNoUsable(
+        "La declaración de derechos del lugar se ha revocado desde que pediste el trabajo, así que ya no se genera con él. No se ha enviado nada y no se te ha cobrado: vuelve a declararla en la ficha del lugar o quítalo de la escena.",
       );
     }
   }

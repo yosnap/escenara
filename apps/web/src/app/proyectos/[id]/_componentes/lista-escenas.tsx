@@ -188,6 +188,7 @@ export function ListaEscenas({
                   <EditorEscena
                     escena={escena}
                     trends={trends}
+                    proyecto={proyecto}
                     acento={proyecto.acento}
                     primera={indice === 0}
                     ultima={indice === escenas.length - 1}

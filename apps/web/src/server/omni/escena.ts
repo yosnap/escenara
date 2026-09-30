@@ -42,6 +42,8 @@ import {
 import { proporcionDelEnvio } from "../generacion/formato-del-envio";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { exigirSelloVigente } from "../generacion/precios";
+import { conLugarSuelto, lugarDelEnvio, lugarDelPrompt, textosDelLugar } from "../lugares/en-el-envio";
+import { columnasDelLugar } from "../lugares/para-generar";
 import type { Actor } from "../media/servicio";
 import { contextoDeVersion, promptConContexto } from "../personajes/contexto";
 import { ultimaVersion } from "../personajes/ficha";
@@ -50,7 +52,7 @@ import { acotarCoste } from "../presupuesto/acotar";
 import { completarModelosSugeridos } from "../productos/modelos-sugeridos";
 import { productoEnPrompt, productoParaGenerar } from "../productos/prompt";
 import { referenciasDelPersonajeQueViajan } from "../productos/referencias";
-import { hojaEnElEnvio, repartoDelEnvio } from "../productos/reparto-del-envio";
+import { hojaEnElEnvio, repartoCompletoDelEnvio } from "../productos/reparto-del-envio";
 import { creditosDelEnvio, traducirAlIngles } from "../prompts/traduccion";
 import { miembrosDelReparto } from "../reparto/consulta";
 import { exigirFormatoActivo } from "../reparto/servicio";
@@ -288,6 +290,12 @@ export async function producirEscenaHablada(
   confirmacion: ConfirmacionEscenaHablada,
   h: Herramientas = HERRAMIENTAS,
 ): Promise<{ trabajos: FilaTrabajo[]; nuevas: number; fallo: string | null }> {
+  if (escena.placeShot === "solo_lugar") {
+    throw new ErrorOmni(
+      409,
+      "El plano del lugar solo se produce como fotograma y clip mudo, y en modo Omni cada escena es un clip hablado. Cambia el modo de voz del proyecto o haz el plano en otro proyecto y móntalo. No se ha cobrado nada.",
+    );
+  }
   const prompt = limpiarPrompt(escena.action.trim() !== "" ? escena.action : escena.scriptText);
   if (escena.castFormat !== "solo") {
     await exigirFormatoActivo(escena.castFormat);
@@ -376,15 +384,20 @@ export async function producirEscenaHablada(
   const sinRegistro = conIdentidad && !citaIdentidad ? await referenciasParaProducir(actor, proyecto) : null;
   const muestraEnviada = sinRegistro ? (sinRegistro.muestra ?? null) : muestra;
   const faltaEnviada = sinRegistro?.falta || falta;
-  const conProducto = producto
-    ? await repartoDelEnvio({
-        producto,
-        adaptador,
-        modelo,
-        identidadRegistradaPerdida: conIdentidad,
-        envio: { tipo: "escena-omni", personaje, conHoja: personaje !== null && hojaEnElEnvio(personaje, escena.id) },
-      })
-    : null;
+  /**
+   * **El lugar de la escena**. En la escena hablada no se genera fotograma, así que el sitio viaja **descrito**: la
+   * cara idéntica la da la identidad registrada, y el set lo fija la descripción de la versión. Se resuelve una vez
+   * para toda la escena, así que los dos clips de un podcast llevan el mismo lugar y la misma versión.
+   */
+  const conLugar = await lugarDelEnvio(actor.id, escena, null, null);
+  const { conProducto, hechosLugar } = await repartoCompletoDelEnvio({
+    producto,
+    conLugar,
+    adaptador,
+    modelo,
+    identidadRegistradaPerdida: conIdentidad,
+    envio: { tipo: "escena-omni", personaje, conHoja: personaje !== null && hojaEnElEnvio(personaje, escena.id) },
+  });
   if (producto) exigirDerechoDeMarca(confirmacion.derechoMarca);
   if (conProducto) await completarModelosSugeridos(conProducto.hechos, CAPACIDAD_DE_TIPO.animacion);
 
@@ -417,6 +430,7 @@ export async function producirEscenaHablada(
         omni: { registrado: falta === "", falta },
         ...(conReparto ? { reparto: conReparto } : {}),
         ...(conProducto ? { producto: conProducto.hechos } : {}),
+        ...hechosLugar,
       },
       h.buscar,
     ),
@@ -459,11 +473,12 @@ export async function producirEscenaHablada(
       { texto: instrucciones },
       { texto: descripcionExperta },
       { texto: producto?.descripcionOriginal ?? "" },
+      ...textosDelLugar(conLugar),
     ],
     h.buscar,
   );
   const enInglesO = (texto: string) => (texto === "" ? "" : (enIngles.get(texto) ?? texto));
-  const escenaEnIngles = enIngles.get(prompt) ?? prompt;
+  const escenaEnIngles = conLugarSuelto(enIngles.get(prompt) ?? prompt, lugarDelPrompt(conLugar, enIngles, null));
   const contextoEnIngles = enIngles.get(contexto) ?? contexto;
   // La dirección del clip (0.25.0) se aplica con el texto libre ya en inglés. En formato mudo el diálogo no
   // viaja, aunque el guion tenga texto: el clip sale con la boca cerrada y sin voz.
@@ -536,6 +551,12 @@ export async function producirEscenaHablada(
     );
   }
 
+  /**
+   * **Experimental, apagado de fábrica** (Admin › Ajustes): con identidad registrada y lugar, el fotograma aprobado de
+   * la escena —situado en su lugar— viaja junto a los `character_ids`. Sin el ajuste, el lugar va solo descrito.
+   */
+  const { omniLugarCombinado } = await (await import("../ajustes")).leerAjustes();
+  const fotogramaSituado = citaIdentidad && conLugar && omniLugarCombinado ? escena.approvedFrameMediaId : null;
   // El formato principal del proyecto (0.41.0): se comprueba contra el modelo antes de reservar nada.
   const proporcion = proporcionDelEnvio(proporcionFijadaDelProyecto(proyecto.formats), null, modelo);
   const trabajos: FilaTrabajo[] = [...yaEncoladas];
@@ -583,6 +604,7 @@ export async function producirEscenaHablada(
         ...(personajesOmni.length > 0 ? { personajesOmni } : {}),
         // El reparto con el que se encoló: los lados y los turnos que confirmó el usuario, no los de después.
         ...(clip ? { reparto: clip.reparto } : {}),
+        ...(fotogramaSituado ? { fotogramaSituado } : {}),
         // Fotos del producto que viajan con esta escena, ya repartidas contra el tope del modelo.
         ...(conProducto && producto && conProducto.reparto.producto > 0
           ? { referenciasProducto: producto.fotos.slice(0, conProducto.reparto.producto) }
@@ -597,8 +619,9 @@ export async function producirEscenaHablada(
         }),
       },
       // El origen es la primera referencia cuando la hay: es lo que el historial enseña como punto de partida.
-      sourceMediaId: referencias[0]?.id ?? null,
+      sourceMediaId: referencias[0]?.id ?? fotogramaSituado ?? null,
       sceneId: escena.id,
+      ...columnasDelLugar(conLugar?.lugar ?? null),
       // Turno del clip en el intercambio: es lo que el montaje (0.32.0) lee para alternar los planos.
       castClipOrder: clip ? clip.orden : null,
       // La declaración de marca se guarda con su fecha, igual que la de la imagen.

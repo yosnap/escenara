@@ -2,13 +2,11 @@ import { eq, inArray } from "drizzle-orm";
 import type { Comprobacion, DecisionVista } from "@/lib/coherencia";
 import { ETIQUETA_LADO_REPARTO, type LadoReparto } from "@/lib/reparto";
 import { coherenciaDe, leerAjustes } from "../ajustes";
-import { leerObjeto } from "../almacenamiento";
 import { escenaPropia } from "../asistente/consulta";
 import { db } from "../db/cliente";
 import { characters, type FilaEscena, type FilaMedio, type FilaProyecto, media } from "../db/esquema";
 import { leerCatalogoDeDireccion, nombreDePreset } from "../direccion/catalogo";
 import { type DireccionPedida, pedidoDeDireccion } from "../direccion/fidelidad";
-import { imagenParaModelo } from "../media/procesado";
 import type { Actor } from "../media/servicio";
 import { productoParaGenerar } from "../productos/prompt";
 import { miembrosDelReparto, turnosDelReparto } from "../reparto/consulta";
@@ -16,6 +14,8 @@ import { audioDelClip, ErrorAudioDelClip } from "./audio";
 import { decidirCoherencia, type ResultadoDecision } from "./decidir";
 import { ErrorFotogramasDelClip, fotogramasDelClip } from "./fotogramas";
 import { declaraCoherencia, identidadDeLaCaraGenerada } from "./identidad";
+import { imagenDe } from "./imagen";
+import { comprobarLugar } from "./lugar";
 import { ErrorPercepcion, percibir, quedaCupoDePercepcion, SIN_CUPO_DE_PERCEPCION } from "./percepcion";
 import { decisionPorId, ultimaDecisionDe, ultimaDecisionDePersonaje } from "./registro";
 
@@ -42,19 +42,6 @@ export interface CoherenciaDeEscena {
   decisiones: DecisionVista[];
   /** Comprobación que no se ha podido hacer, con su motivo. Nunca se calla un hueco. */
   sinComprobar: { comprobacion: Comprobacion; motivo: string }[];
-}
-
-/** Imagen de un medio reducida para el modelo, o `null` si no se puede leer. */
-async function imagenDe(medioId: string | null): Promise<{ mime: string; base64: string } | null> {
-  if (!medioId) return null;
-  const [fila] = await db().select().from(media).where(eq(media.id, medioId)).limit(1);
-  if (!fila || fila.deletedAt !== null) return null;
-  try {
-    return await imagenParaModelo(new Uint8Array(await leerObjeto(fila.storageKey).arrayBuffer()));
-  } catch (error) {
-    console.error(`[coherencia] imagen ilegible de la escena: ${(error as Error).name}`);
-    return null;
-  }
 }
 
 /** Clip de la escena, si lo hay y sigue en la biblioteca. */
@@ -304,6 +291,9 @@ export async function comprobarEscena(actor: Actor, escenaId: unknown): Promise<
     return decision.motivo;
   });
 
+  // Fidelidad del lugar: el sitio del fotograma es el de su maestra. No se mira si sale una persona real.
+  await anotar("lugar_fiel", () => comprobarLugar(actor.id, escena, proyecto, sujeto));
+
   /**
    * **El diálogo se repartió como se pidió** (0.28.0), en una escena de dos personajes.
    *
@@ -481,6 +471,7 @@ export async function coherenciaGuardadaDe(actor: Actor, escenaId: unknown): Pro
     "direccion_fiel",
     "producto_fiel",
     "reparto_fiel",
+    "lugar_fiel",
   ] as const) {
     if (coherenciaDe(ajustes, comprobacion).modo === "apagada") continue;
     const decision = await ultimaDecisionDe(actor.id, escena.id, comprobacion);

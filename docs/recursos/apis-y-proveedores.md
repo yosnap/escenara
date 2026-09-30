@@ -207,7 +207,7 @@ Medido con dinero real (14,5 créditos en total), con un retrato del personaje y
 - **nano-banana-2-lite, persona + producto** (4 créditos): la cara se mantiene y la etiqueta del envase sale **legible y sin inventar texto**. Es el camino recomendado para fotogramas con producto.
 - **seedream/4.5-edit, etiqueta en primer plano** (6,5 créditos): conserva la etiqueta, pero leyó «shot on a modern phone» al pie de la letra y **metió un móvil en la mano** del personaje. Desde la 0.26.0 las frases de registro piden «el aspecto de una foto de móvil» y dicen expresamente que el móvil que graba no sale en el plano.
 - **Logo de marca real** (nano-banana-2-lite, 4 créditos): el proveedor **no lo rechaza**: reproduce el logo tal cual y cobra lo normal. El filtro del proveedor no protege frente al uso de marcas ajenas; lo cubre la declaración de derechos de marca que exige Escenara.
-- **Omni con `character_ids` + `image_urls`**: sin medir (el personaje de prueba no estaba registrado en Omni). Mientras tanto, una escena hablada con producto renuncia a la identidad registrada y lo avisa antes de cobrar.
+- **Omni con `character_ids` + `image_urls`**: medido el 2026-09-30 (ver «Lugares» abajo): el proveedor los acepta a la vez al mismo precio. Una escena hablada con producto sigue renunciando a la identidad registrada y lo avisa antes de cobrar.
 
 ## Omni con dos personajes, medido 2026-09-29
 
@@ -239,3 +239,29 @@ retrato no garantiza 9:16: este modelo no recibe un parámetro de proporción. E
 a 1080 × 1920 con etiqueta sintética y audio, sin coste de proveedor; conserva el encuadre con franjas negras.
 Véase el [recorrido de referencia](../procesos/recorridos-de-referencia-0.29-0.32.md) para el proyecto y capturas.
 Queda pendiente repetirlo con una voz cantada original dentro de los 112 créditos aún autorizados.
+
+## Lugares, medido 2026-09-30
+
+Spike de la fase de lugares con dinero real: **173 créditos** en 22 tareas cobradas y un fallo sin cobro. Los lugares
+«reales» fueron **generados** (no había fotos de móvil): hay que repetirlo con fotos de verdad.
+
+- **El número de referencias no cambia el precio de una imagen**: `nano-banana-2-lite` cobró **4 créditos** con 0, 1, 2,
+  3 o 4 imágenes. Con **persona + maestra del lugar** el sitio se reconoce (se recompone, no se calca) y la persona no
+  parece pegada. Con varias fotos de la persona **mezcla la ropa**: la primera debe ser la del vestuario deseado.
+- **Tres referencias caben** (persona, producto y lugar). La etiqueta se lee en un plano de producto sobre una
+  superficie (con erratas en la letra pequeña) y es ilegible en plano medio con la persona.
+- **Lugares famosos**: basta con el nombre en el prompt (Muralla China, Torre Eiffel, estatua de la Libertad), sin foto.
+- **Podcast con la misma maestra**: los fotogramas de los dos clips salen con **el mismo set**. En uno se coló un
+  fragmento de un segundo cuerpo, como en la 0.28.0.
+- **Lugar animado**: el maestro cuesta 4 créditos por candidato y un personaje animado dentro conserva el estilo. El
+  plano del lugar solo con `hailuo/2-3-image-to-video-standard` cuesta **30 créditos** (6 s, mudo) y conserva el estilo.
+- **Retirar personas** de una foto con `nano-banana-2-lite`: **4 créditos**, quita bien las de primer plano y deja
+  peatones pequeños al fondo. **El pixelado de caras se copia** en el fotograma generado, así que no sirve como
+  referencia, y la detección local de caras disponible (Vision de macOS) encontró 1 de 5.
+- **Omni acepta `character_ids` e `image_urls` a la vez** (`google/gemini-omni-flash-1-1`): con el fotograma situado en
+  `image_urls` el clip arranca en él, con el lugar idéntico y la cara registrada, por **63 créditos** (lo mismo que sin
+  imagen). La voz está pendiente de escucharse: en Escenara va detrás de un ajuste experimental apagado. El primer
+  intento falló con **«500 Internal Error, Please try again later.» y 0 créditos**; el reintento salió bien. Escenara
+  lo trata como fallo interno pasajero del proveedor y lo dice así.
+- Ninguna marca de agua ni bloqueo de seguridad en las 20 imágenes y los 2 vídeos. La CDN temporal de KIE cortó una
+  descarga: se reintenta la descarga, no la tarea.
