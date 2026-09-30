@@ -134,7 +134,7 @@ describe("selector de modelo con la duración de un trend", () => {
   const modelos = [modelo("fast", [4, 8]), modelo("pro", [4, 6, 8])];
 
   test("los modelos sin tarifa para la duración siguen en la lista, no disponibles y con el motivo", () => {
-    const opciones = opcionesDeSelectorDeModelo(modelos, 6);
+    const opciones = opcionesDeSelectorDeModelo(modelos, [6]);
     expect(opciones.map((o) => o.value)).toEqual(["fast", "pro"]);
     expect(opciones[0]?.deshabilitada).toBe(true);
     expect(opciones[0]?.descripcion).toContain("No disponible con este trend");
@@ -144,6 +144,10 @@ describe("selector de modelo con la duración de un trend", () => {
 
   test("sin trend no se marca ninguno", () => {
     expect(opcionesDeSelectorDeModelo(modelos).some((o) => o.deshabilitada)).toBe(false);
+  });
+
+  test("un trend que admite cualquier duración no marca ninguno", () => {
+    expect(opcionesDeSelectorDeModelo(modelos, []).some((o) => o.deshabilitada)).toBe(false);
   });
 });
 

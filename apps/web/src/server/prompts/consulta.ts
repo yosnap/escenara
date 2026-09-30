@@ -19,6 +19,7 @@ import {
   type VariablePlantilla,
   type VersionPlantilla,
 } from "@/lib/presets";
+import { categoriasDecididasDe, duracionesDe } from "@/lib/trends";
 import { db } from "../db/cliente";
 import {
   type FilaPlantilla,
@@ -168,6 +169,9 @@ const vistaDePlantilla = (fila: FilaPlantilla, versionId: string): PlantillaVist
   trendSince: fila.trendSince?.toISOString() ?? null,
   trendPlatform: fila.trendPlatform,
   targetSeconds: fila.targetSeconds,
+  // Una plantilla normal no limita duración ni decide dirección, diga lo que diga la fila.
+  duracionesAdmitidas: fila.kind === "trend" ? duracionesDe(fila.allowedSeconds) : [],
+  direccionDecidida: fila.kind === "trend" ? categoriasDecididasDe(fila.decidedDirection) : [],
   referenceUrl: fila.referenceUrl,
   trendAllowsSpeech: fila.trendAllowsSpeech,
   capacidad: fila.capability,

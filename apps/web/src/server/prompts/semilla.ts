@@ -1,6 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { type Capacidad, esCapacidad } from "@/lib/catalogo";
 import { type CategoriaPreset, esCategoriaPreset } from "@/lib/presets";
+import { categoriasDecididasDe, duracionesDe } from "@/lib/trends";
 import { db } from "../db/cliente";
 import { presets, promptTemplates, promptTemplateVersions } from "../db/esquema";
 import {
@@ -46,7 +47,12 @@ interface PlantillaSemilla {
   restricciones: unknown;
   kind?: "trend";
   trendStatus?: "revision";
+  /** Duración con la que se diseñó: dato histórico, ya no limita nada. */
   targetSeconds?: number;
+  /** Segundos que admite; vacío o ausente = cualquiera. */
+  duracionesAdmitidas?: number[];
+  /** Categorías de la dirección del clip que dicta el texto del trend. */
+  direccionDecidida?: string[];
   trendPlatform?: string;
   referenceUrl?: string;
   trendAllowsSpeech?: boolean;
@@ -140,6 +146,10 @@ async function sembrarPlantilla(plantilla: PlantillaSemilla): Promise<boolean> {
   const variables = variablesDeTexto(JSON.stringify(plantilla.variables ?? []));
   if (variables.length === 0) throw new Error(`La plantilla ${plantilla.clave} de la semilla no declara variables.`);
   const restricciones = restriccionesDeTexto(JSON.stringify(plantilla.restricciones ?? {}));
+  const esTrend = plantilla.kind === "trend";
+  // Pasan por el mismo lector que los lee al generar: lo que no se entienda no llega a la fila.
+  const permitidas = JSON.stringify(esTrend ? duracionesDe(plantilla.duracionesAdmitidas ?? []) : []);
+  const decididas = JSON.stringify(esTrend ? categoriasDecididasDe(plantilla.direccionDecidida ?? []) : []);
 
   // La plantilla y su versión 1 van juntas: una plantilla sin versión no se podría citar en ningún trabajo.
   let creada = false;
@@ -159,6 +169,8 @@ async function sembrarPlantilla(plantilla: PlantillaSemilla): Promise<boolean> {
         trendStatus: plantilla.kind === "trend" ? "revision" : null,
         trendSince: plantilla.kind === "trend" ? new Date() : null,
         targetSeconds: plantilla.kind === "trend" ? plantilla.targetSeconds : null,
+        allowedSeconds: permitidas,
+        decidedDirection: decididas,
         trendPlatform: plantilla.trendPlatform ?? "",
         referenceUrl: plantilla.referenceUrl ?? "",
         trendAllowsSpeech: plantilla.trendAllowsSpeech === true,
@@ -173,6 +185,8 @@ async function sembrarPlantilla(plantilla: PlantillaSemilla): Promise<boolean> {
       variables: textoDeVariables(variables),
       modelRestrictions: textoDeRestricciones(restricciones),
       trendAllowsSpeech: plantilla.trendAllowsSpeech === true,
+      allowedSeconds: permitidas,
+      decidedDirection: decididas,
       changeReason: "Semilla versionada de presets y plantillas (presets.json).",
     });
     creada = true;
@@ -194,7 +208,14 @@ async function actualizarPlantillaSembrada(plantilla: PlantillaSemilla): Promise
   const anteriores = TEXTOS_SEMBRADOS_ANTERIORES[plantilla.clave];
   if (!anteriores || anteriores.length === 0) return false;
   const [fila] = await db()
-    .select({ id: promptTemplates.id, template: promptTemplates.template, version: promptTemplates.version })
+    .select({
+      id: promptTemplates.id,
+      template: promptTemplates.template,
+      version: promptTemplates.version,
+      trendAllowsSpeech: promptTemplates.trendAllowsSpeech,
+      allowedSeconds: promptTemplates.allowedSeconds,
+      decidedDirection: promptTemplates.decidedDirection,
+    })
     .from(promptTemplates)
     .where(and(isNull(promptTemplates.ownerId), eq(promptTemplates.slug, plantilla.clave)))
     .limit(1);
@@ -242,6 +263,10 @@ async function actualizarPlantillaSembrada(plantilla: PlantillaSemilla): Promise
       template: plantilla.plantilla,
       variables: textoDeVariables(variables),
       modelRestrictions: textoDeRestricciones(restricciones),
+      // Lo que no cambia el texto se copia de la fila: la versión nueva solo trae el texto de ahora.
+      trendAllowsSpeech: fila.trendAllowsSpeech,
+      allowedSeconds: fila.allowedSeconds,
+      decidedDirection: fila.decidedDirection,
       changeReason: MOTIVO_ACTUALIZACION,
     });
     publicada = true;

@@ -7,8 +7,8 @@ import { SelectorPlantilla, VistaPreviaTrend } from "./panel-plantilla";
 
 /**
  * **Formato del clip**, el primer paso de «Crear»: la plantilla normal o uno de los trends vigentes. Va antes que
- * nada porque el trend decide la duración del clip (y su tarifa) y si se puede hablar a cámara, y el resto del
- * formulario se adapta a esa elección.
+ * nada porque el trend puede limitar la duración del clip (y su tarifa), decide si se puede hablar a cámara y qué
+ * parte de la dirección dicta, y el resto del formulario se adapta a esa elección.
  *
  * Sin estado propio: la elección sube a `vista-crear.tsx`, que es quien vuelve a pedir la estimación con la duración
  * del trend y solo cambia la elección cuando el servidor ha dado su precio.
@@ -41,8 +41,9 @@ export function PasoFormato({
       {hayTrends ? (
         <>
           <p className="text-texto-suave">
-            Un trend fija la duración del clip y si se puede hablar a cámara, y el coste se recalcula con esa duración.
-            Con la plantilla normal, lo decides tú en los pasos siguientes.
+            Un trend decide si se puede hablar a cámara y la parte de la dirección que ya dicta su texto; la duración la
+            eliges con el modelo, salvo que el trend solo admita algunas. El coste se recalcula al elegirlo. Con la
+            plantilla normal, lo decides todo tú en los pasos siguientes.
           </p>
           <SelectorPlantilla
             catalogo={catalogo}

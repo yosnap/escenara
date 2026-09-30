@@ -365,6 +365,20 @@
       "when": 1790689853619,
       "tag": "0051_activa-kling-canto-existente",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1790737193186,
+      "tag": "0052_trends-libres",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1790737198583,
+      "tag": "0053_trends-sin-duracion-fija",
+      "breakpoints": true
     }
   ]
 }

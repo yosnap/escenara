@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { loadEnvConfig } from "@next/env";
 import sharp from "sharp";
+import { DIRECCION_CON_ACENTO_VACIA } from "@/lib/direccion";
 import type { CatalogoParaCrear, PlantillaVista, PresetVisible, PresetVista, SeleccionPresets } from "@/lib/presets";
 
 /**
@@ -300,6 +301,10 @@ describe.skipIf(!hayBaseDeDatos)("presets y plantillas de prompt", () => {
       trendStatus: "revision",
       trendPlatform: "",
       targetSeconds: 8,
+      // Este trend limita la duración a propósito: la otra duración tiene que rechazarse con su causa.
+      duracionesAdmitidas: [8],
+      // Y dicta el encuadre y la cámara: lo que llegue elegido de eso no puede entrar en el prompt.
+      direccionDecidida: ["plano", "camara"],
       referenceUrl: "https://example.test/referencia-solo-admin",
       trendAllowsSpeech: false,
     };
@@ -353,15 +358,33 @@ describe.skipIf(!hayBaseDeDatos)("presets y plantillas de prompt", () => {
       const { ErrorGeneracion } = await import("../generacion/errores");
       const otraDuracion = await crearAnimacion(actorAna, { ...solicitud, segundos: 4 }, h).catch((e: unknown) => e);
       expect(otraDuracion).toBeInstanceOf(ErrorGeneracion);
-      expect((otraDuracion as Error).message).toContain("requiere 8 s");
+      expect((otraDuracion as Error).message).toContain("solo admite clips de 8 s y has pedido 4 s");
+      expect((otraDuracion as Error).message).toContain("No se ha reservado nada");
       const sinConfirmar = await crearAnimacion(actorAna, { ...solicitud, creditosConfirmados: 0 }, h).catch(
         (e: unknown) => e,
       );
       expect(sinConfirmar).toBeInstanceOf(ErrorGeneracion);
-      const { trabajo } = await crearAnimacion(actorAna, solicitud, h);
+      // Una petición que manda plano y cámara aunque el trend los decida: se ignoran, y el ángulo (libre) se aplica.
+      const { trabajo } = await crearAnimacion(
+        actorAna,
+        {
+          ...solicitud,
+          direccionElegida: {
+            ...DIRECCION_CON_ACENTO_VACIA,
+            plano: "primer-plano",
+            camara: "orbita-lenta",
+            angulo: "picado",
+          },
+        },
+        h,
+      );
       const compuesto = await promptDeTrabajo(trabajo.id);
       expect(compuesto).toContain("A quiet morning action");
       expect(compuesto).toContain("no cuts");
+      expect(compuesto).not.toContain("arcs slowly around the subject");
+      expect(compuesto).not.toContain("locked off");
+      expect(compuesto).not.toContain("Close-up on the face");
+      expect(compuesto).toContain("Camera above eye level, looking down");
       expect(compuesto).not.toContain("Este diálogo no debe salir");
       const [filaTrend] = await db().select().from(generationJobs).where(eq(generationJobs.id, trabajo.id));
       if (!filaTrend) throw new Error("No se ha guardado el trabajo del trend.");

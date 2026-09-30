@@ -30,12 +30,14 @@ import {
 } from "@/lib/direccion";
 import type { ProductoElegido } from "@/lib/productos";
 import { DIRECCION_VOCAL_MAXIMA } from "@/lib/proyectos";
+import { type CategoriaDecidible, sinExpertoConTrend } from "@/lib/trends";
 import { Casilla } from "../choice";
 import { Aviso } from "../feedback";
 import { AreaTexto, Campo, EntradaTexto } from "../field";
 import { SelectorProducto } from "../productos/selector-producto";
 import { Selector } from "../select";
 import { CabeceraGrupo } from "./cabecera-grupo";
+import { DecididoPorTrend, type TrendDeLaDireccion } from "./decidido-por-trend";
 import { DireccionesGuardadas } from "./direcciones-guardadas";
 import { ElectorVisual, type OpcionVisual } from "./elector-visual";
 import {
@@ -60,7 +62,9 @@ import {
  * - **no elegir también es elegir**: sin movimiento, la cámara se queda quieta, y así se le pide al modelo;
  * - **plano, ángulo, movimiento y momento del gesto llevan pictograma y una frase llana**: son palabras de
  *   oficio, y un dibujo dice en un segundo lo que un nombre no dice nunca;
- * - el **modo experto** apaga los botones, no los esconde: se sigue viendo lo que quedaría sin efecto.
+ * - el **modo experto** apaga los botones, no los esconde: se sigue viendo lo que quedaría sin efecto;
+ * - con un **trend** elegido, lo que decide su texto no se pregunta: sus controles se sustituyen por un bloque con el
+ *   motivo escrito («Lo decide el trend «X»»), sin voz si el trend no deja hablar y sin modo experto.
  *
  * Todos los desplegables son el `Selector` del catálogo: aquí no hay ningún `<select>` nativo.
  */
@@ -127,6 +131,7 @@ export function PanelDireccion({
   conFotograma = true,
   producto,
   onProducto,
+  trend = null,
   deshabilitado,
   onCambio,
 }: {
@@ -165,17 +170,27 @@ export function PanelDireccion({
    */
   producto?: ProductoElegido;
   onProducto?: (elegido: ProductoElegido) => void;
+  /**
+   * El trend elegido, si lo hay. Lo que decide se enseña bloqueado con su motivo y no se pregunta; si no deja hablar,
+   * no se pide la voz; y no hay modo experto, porque su texto ya describe el clip. El servidor aplica la misma regla.
+   */
+  trend?: TrendDeLaDireccion | null;
   deshabilitado?: boolean;
   onCambio: <C extends keyof DireccionElegidaConAcento>(campo: C, valor: DireccionElegidaConAcento[C]) => void;
 }) {
   if (!opciones) return null;
-  const habla = formatoHabla(direccion.formatoClip);
+  const libre = (categoria: CategoriaDecidible) => !trend?.decide.includes(categoria);
+  const habla = formatoHabla(direccion.formatoClip) && (trend?.permiteHabla ?? true);
   const canta = formatoCanta(direccion.formatoClip);
-  const camaraElegida = opciones.camara.find((o) => o.clave === direccion.camara);
-  const gestoElegido = opciones.microaccion.find((o) => o.clave === direccion.microaccion);
+  // Lo que decide el trend no cuenta como elegido: ni se avisa de ello ni sale en el resumen.
+  const camaraElegida = libre("camara") ? opciones.camara.find((o) => o.clave === direccion.camara) : undefined;
+  const gestoElegido = libre("microaccion")
+    ? opciones.microaccion.find((o) => o.clave === direccion.microaccion)
+    : undefined;
   // En modo experto los botones de encuadre y gesto **no se aplican**: se dejan a la vista y apagados, que es lo
-  // honesto. El acento y la voz siguen siendo suyos: describen quién habla, no lo que se ve.
-  const experto = direccion.modoExperto;
+  // honesto. El acento y la voz siguen siendo suyos: describen quién habla, no lo que se ve. Con un trend no hay modo
+  // experto: el servidor lo rechaza, así que tampoco se enseña como activo.
+  const experto = direccion.modoExperto && !trend;
   const botonesApagados = deshabilitado || experto;
 
   /**
@@ -199,9 +214,10 @@ export function PanelDireccion({
     ? ["Descripción escrita por ti", NOMBRE_ACENTO[direccion.acento]]
     : [
         NOMBRE_FORMATO_CLIP[direccion.formatoClip],
-        nombreDe(opciones.plano, direccion.plano),
-        nombreDe(opciones.angulo, direccion.angulo),
-        camaraElegida?.nombre ?? "cámara quieta",
+        trend && trend.decide.length > 0 ? `lo que decide el trend «${trend.nombre}»` : "",
+        libre("plano") ? nombreDe(opciones.plano, direccion.plano) : "",
+        libre("angulo") ? nombreDe(opciones.angulo, direccion.angulo) : "",
+        libre("camara") ? (camaraElegida?.nombre ?? "cámara quieta") : "",
         gestoElegido
           ? `${gestoElegido.nombre} (${NOMBRE_MOMENTO_MICROACCION[direccion.momentoMicroaccion].toLowerCase()})`
           : "",
@@ -246,59 +262,69 @@ export function PanelDireccion({
         onCambio={(v) => v && onCambio("formatoClip", v as DireccionElegidaConAcento["formatoClip"])}
       />
 
-      <ElectorVisual
-        etiqueta="Plano"
-        icono={Frame}
-        ayuda="Cuánto se le ve en el encuadre."
-        valor={direccion.plano}
-        deshabilitado={botonesApagados}
-        opciones={tarjetasDe("plano", opciones.plano, {
-          nombre: "Sin elegir",
-          frase: "Lo decide el modelo por lo que hayas escrito.",
-        })}
-        onCambio={(v) => onCambio("plano", v)}
-      />
+      {trend && <DecididoPorTrend trend={trend} />}
 
-      <ElectorVisual
-        etiqueta="Ángulo"
-        icono={Move3d}
-        ayuda="Desde dónde le mira la cámara."
-        valor={direccion.angulo}
-        deshabilitado={botonesApagados}
-        opciones={tarjetasDe("angulo", opciones.angulo, {
-          nombre: "Sin elegir",
-          frase: "Lo decide el modelo por lo que hayas escrito.",
-        })}
-        onCambio={(v) => onCambio("angulo", v)}
-      />
+      {libre("plano") && (
+        <ElectorVisual
+          etiqueta="Plano"
+          icono={Frame}
+          ayuda="Cuánto se le ve en el encuadre."
+          valor={direccion.plano}
+          deshabilitado={botonesApagados}
+          opciones={tarjetasDe("plano", opciones.plano, {
+            nombre: "Sin elegir",
+            frase: "Lo decide el modelo por lo que hayas escrito.",
+          })}
+          onCambio={(v) => onCambio("plano", v)}
+        />
+      )}
 
-      <ElectorVisual
-        etiqueta="Movimiento de cámara"
-        icono={Video}
-        ayuda="Solo uno por clip: el modelo no respeta dos, y dos dejan el plano partido."
-        valor={direccion.camara}
-        deshabilitado={botonesApagados}
-        opciones={tarjetasDe("camara", opciones.camara, {
-          nombre: "Cámara quieta",
-          frase: "No se mueve: se le pide expresamente que se quede fija.",
-        })}
-        onCambio={(v) => onCambio("camara", v)}
-      />
+      {libre("angulo") && (
+        <ElectorVisual
+          etiqueta="Ángulo"
+          icono={Move3d}
+          ayuda="Desde dónde le mira la cámara."
+          valor={direccion.angulo}
+          deshabilitado={botonesApagados}
+          opciones={tarjetasDe("angulo", opciones.angulo, {
+            nombre: "Sin elegir",
+            frase: "Lo decide el modelo por lo que hayas escrito.",
+          })}
+          onCambio={(v) => onCambio("angulo", v)}
+        />
+      )}
 
-      <Selector
-        etiqueta="Micro-acción"
-        valor={direccion.microaccion}
-        deshabilitado={botonesApagados}
-        opciones={opcionesDe(opciones.microaccion, "Ninguna")}
-        onCambio={(v) => {
-          const clave = v ?? SIN_ELEGIR;
-          onCambio("microaccion", clave);
-          // Al elegir un gesto se propone el momento que trae el catálogo; el usuario puede cambiarlo.
-          const propuesto = opciones.microaccion.find((o) => o.clave === clave)?.momento;
-          if (propuesto) onCambio("momentoMicroaccion", propuesto);
-        }}
-      />
-      {direccion.microaccion !== SIN_ELEGIR && (
+      {libre("camara") && (
+        <ElectorVisual
+          etiqueta="Movimiento de cámara"
+          icono={Video}
+          ayuda="Solo uno por clip: el modelo no respeta dos, y dos dejan el plano partido."
+          valor={direccion.camara}
+          deshabilitado={botonesApagados}
+          opciones={tarjetasDe("camara", opciones.camara, {
+            nombre: "Cámara quieta",
+            frase: "No se mueve: se le pide expresamente que se quede fija.",
+          })}
+          onCambio={(v) => onCambio("camara", v)}
+        />
+      )}
+
+      {libre("microaccion") && (
+        <Selector
+          etiqueta="Micro-acción"
+          valor={direccion.microaccion}
+          deshabilitado={botonesApagados}
+          opciones={opcionesDe(opciones.microaccion, "Ninguna")}
+          onCambio={(v) => {
+            const clave = v ?? SIN_ELEGIR;
+            onCambio("microaccion", clave);
+            // Al elegir un gesto se propone el momento que trae el catálogo; el usuario puede cambiarlo.
+            const propuesto = opciones.microaccion.find((o) => o.clave === clave)?.momento;
+            if (propuesto) onCambio("momentoMicroaccion", propuesto);
+          }}
+        />
+      )}
+      {libre("microaccion") && direccion.microaccion !== SIN_ELEGIR && (
         <ElectorVisual
           etiqueta="Cuándo ocurre el gesto"
           icono={Timer}
@@ -346,17 +372,19 @@ export function PanelDireccion({
       {habla && conAcento && <p className="text-sm text-texto-suave">{AYUDA_ACENTO}</p>}
 
       {/* El registro estético es del clip: modula su cámara y su acabado, y por eso se elige con la cámara. */}
-      <Selector
-        etiqueta="Registro estético"
-        valor={direccion.registroEstetico}
-        deshabilitado={botonesApagados}
-        opciones={REGISTROS_ESTETICOS.map((r) => ({
-          value: r,
-          label: NOMBRE_REGISTRO_ESTETICO[r],
-          descripcion: DESCRIPCION_REGISTRO_ESTETICO[r],
-        }))}
-        onCambio={(v) => v && onCambio("registroEstetico", v as DireccionElegidaConAcento["registroEstetico"])}
-      />
+      {libre("registro-estetico") && (
+        <Selector
+          etiqueta="Registro estético"
+          valor={direccion.registroEstetico}
+          deshabilitado={botonesApagados}
+          opciones={REGISTROS_ESTETICOS.map((r) => ({
+            value: r,
+            label: NOMBRE_REGISTRO_ESTETICO[r],
+            descripcion: DESCRIPCION_REGISTRO_ESTETICO[r],
+          }))}
+          onCambio={(v) => v && onCambio("registroEstetico", v as DireccionElegidaConAcento["registroEstetico"])}
+        />
+      )}
 
       {/*
         El producto va con la dirección del clip y no en otra pantalla: qué se hace con él es lo mismo que
@@ -432,9 +460,9 @@ export function PanelDireccion({
 
         <Casilla
           etiqueta="Modo experto: escribo yo la descripción entera"
-          descripcion={AYUDA_MODO_EXPERTO}
-          marcada={direccion.modoExperto}
-          deshabilitado={deshabilitado}
+          descripcion={trend ? `${AYUDA_MODO_EXPERTO} ${sinExpertoConTrend(trend.nombre)}` : AYUDA_MODO_EXPERTO}
+          marcada={experto}
+          deshabilitado={deshabilitado || trend !== null}
           onCambio={(v) => onCambio("modoExperto", v)}
         />
 

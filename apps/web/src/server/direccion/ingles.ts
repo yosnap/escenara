@@ -80,6 +80,16 @@ export const FORMATO_CLIP_INGLES: Record<FormatoClip, string> = {
     "A vertical social video of a person performing to camera, lip-syncing to the supplied audio track with natural mouth movement and expressive presence",
 };
 
+/**
+ * Formato **neutro** de un clip con trend cuya plantilla ya dice qué se ve: el trend no deja hablar o dicta el plano,
+ * el ángulo o la cámara (un unboxing en primera persona, unas manos en ASMR). La frase «a cámara» contradiría a su
+ * texto; esta solo conserva el acabado de móvil y que el teléfono no sale en el plano.
+ */
+export const FORMATO_CLIP_TREND_INGLES =
+  "A vertical social video with the look of footage filmed on a smartphone; the phone that films is never visible in the frame";
+
+export const FORMATO_CLIP_TREND_ANIMADO_INGLES = "A vertical animated social video";
+
 // ── Acento ──────────────────────────────────────────────────────────────────────────────────────────────
 
 /**

@@ -1,4 +1,5 @@
 import type { PlantillaVista } from "@/lib/presets";
+import { type CategoriaDecidible, categoriasDecididasDe, duracionesDe, textoDeDuraciones } from "@/lib/trends";
 import { leerAjustes } from "../ajustes";
 import type { FilaPlantilla } from "../db/esquema";
 import { listarPlantillas } from "./consulta";
@@ -11,16 +12,30 @@ export function vistaPublicaTrend(p: PlantillaVista) {
     nombre: p.nombre,
     descripcion: p.descripcion,
     versionId: p.versionId,
+    version: p.version,
     variables: p.variables,
-    duracionObjetivo: p.targetSeconds,
+    duracionesAdmitidas: p.duracionesAdmitidas,
+    direccionDecidida: p.direccionDecidida,
+    permiteHabla: p.trendAllowsSpeech,
     vistaPrevia: {
       resumen: p.descripcion,
-      duracion: `${p.targetSeconds} segundos`,
+      duracion:
+        p.duracionesAdmitidas.length === 0
+          ? "Cualquier duración: la del modelo o la del proyecto"
+          : `Solo clips de ${textoDeDuraciones(p.duracionesAdmitidas)}`,
       habla: p.trendAllowsSpeech ? "Puede incluir diálogo" : "Sin diálogo a cámara",
       campos: p.variables.map((v) => ({ nombre: v.nombre, etiqueta: v.etiqueta, obligatoria: v.obligatoria })),
     },
   };
 }
+
+/** Segundos que admite un trend según su fila. Vacía = cualquier duración. */
+export const duracionesDelTrend = (plantilla: FilaPlantilla): number[] =>
+  plantilla.kind === "trend" ? duracionesDe(plantilla.allowedSeconds) : [];
+
+/** Categorías de la dirección que decide un trend según su fila. */
+export const decididasDelTrend = (plantilla: FilaPlantilla): CategoriaDecidible[] =>
+  plantilla.kind === "trend" ? categoriasDecididasDe(plantilla.decidedDirection) : [];
 
 /** Busca una copia vigente, incluso si la original fue duplicada más de una vez. */
 export async function alternativaTrendVigente(plantillaId: string): Promise<PlantillaVista | null> {

@@ -1,6 +1,6 @@
 {
-  "id": "71db72f1-7cc1-4920-b6be-21dfb6100935",
-  "prevId": "10f0541b-c6ce-4228-9df0-14ee5ef4a337",
+  "id": "37d9d994-f98b-4494-845e-675fa32598de",
+  "prevId": "71db72f1-7cc1-4920-b6be-21dfb6100935",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -3838,6 +3838,416 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.montage_exports": {
+      "name": "montage_exports",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "montage_id": {
+          "name": "montage_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "montage_version": {
+          "name": "montage_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "format": {
+          "name": "format",
+          "type": "montage_format",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "width": {
+          "name": "width",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "height": {
+          "name": "height",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "result_media_id": {
+          "name": "result_media_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duration_seconds": {
+          "name": "duration_seconds",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "size_bytes": {
+          "name": "size_bytes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "state": {
+          "name": "state",
+          "type": "montage_export_state",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'en_cola'"
+        },
+        "stage": {
+          "name": "stage",
+          "type": "montage_export_stage",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'preparando'"
+        },
+        "progress": {
+          "name": "progress",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "label_applied": {
+          "name": "label_applied",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "label_position": {
+          "name": "label_position",
+          "type": "montage_label_position",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'abajo'"
+        },
+        "burned_subtitles": {
+          "name": "burned_subtitles",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "subtitles_srt": {
+          "name": "subtitles_srt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "subtitles_vtt": {
+          "name": "subtitles_vtt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "error_message": {
+          "name": "error_message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "locked_by": {
+          "name": "locked_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "locked_until": {
+          "name": "locked_until",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "attempts": {
+          "name": "attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "finished_at": {
+          "name": "finished_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "montage_exports_proyecto_idx": {
+          "name": "montage_exports_proyecto_idx",
+          "columns": [
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "montage_exports_cola_idx": {
+          "name": "montage_exports_cola_idx",
+          "columns": [
+            {
+              "expression": "state",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "locked_until",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "montage_exports_montaje_version_uq": {
+          "name": "montage_exports_montaje_version_uq",
+          "columns": [
+            {
+              "expression": "montage_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "montage_version",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"montage_exports\".\"state\" <> 'fallido'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "montage_exports_project_id_projects_id_fk": {
+          "name": "montage_exports_project_id_projects_id_fk",
+          "tableFrom": "montage_exports",
+          "tableTo": "projects",
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "montage_exports_montage_id_montages_id_fk": {
+          "name": "montage_exports_montage_id_montages_id_fk",
+          "tableFrom": "montage_exports",
+          "tableTo": "montages",
+          "columnsFrom": ["montage_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "montage_exports_result_media_id_media_id_fk": {
+          "name": "montage_exports_result_media_id_media_id_fk",
+          "tableFrom": "montage_exports",
+          "tableTo": "media",
+          "columnsFrom": ["result_media_id"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.montages": {
+      "name": "montages",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fragments": {
+          "name": "fragments",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "voice_volume": {
+          "name": "voice_volume",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "music_volume": {
+          "name": "music_volume",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "burn_subtitles": {
+          "name": "burn_subtitles",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "subtitle_format": {
+          "name": "subtitle_format",
+          "type": "montage_subtitle_format",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'srt'"
+        },
+        "label_visible": {
+          "name": "label_visible",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "label_position": {
+          "name": "label_position",
+          "type": "montage_label_position",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'abajo'"
+        },
+        "format": {
+          "name": "format",
+          "type": "montage_format",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'vertical_9_16'"
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "montages_proyecto_idx": {
+          "name": "montages_proyecto_idx",
+          "columns": [
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "montages_project_id_projects_id_fk": {
+          "name": "montages_project_id_projects_id_fk",
+          "tableFrom": "montages",
+          "tableTo": "projects",
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "montages_proyecto_uq": {
+          "name": "montages_proyecto_uq",
+          "nullsNotDistinct": false,
+          "columns": ["project_id"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.music_rights_declarations": {
       "name": "music_rights_declarations",
       "schema": "",
@@ -5214,6 +5624,20 @@
           "notNull": true,
           "default": false
         },
+        "allowed_seconds": {
+          "name": "allowed_seconds",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'"
+        },
+        "decided_direction": {
+          "name": "decided_direction",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'"
+        },
         "change_reason": {
           "name": "change_reason",
           "type": "text",
@@ -5357,6 +5781,20 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": false
+        },
+        "allowed_seconds": {
+          "name": "allowed_seconds",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'"
+        },
+        "decided_direction": {
+          "name": "decided_direction",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'"
         },
         "reference_url": {
           "name": "reference_url",
@@ -7798,416 +8236,6 @@
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
-    },
-    "public.montage_exports": {
-      "name": "montage_exports",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "project_id": {
-          "name": "project_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "montage_id": {
-          "name": "montage_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "montage_version": {
-          "name": "montage_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "format": {
-          "name": "format",
-          "type": "montage_format",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "width": {
-          "name": "width",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "height": {
-          "name": "height",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "result_media_id": {
-          "name": "result_media_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "duration_seconds": {
-          "name": "duration_seconds",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "size_bytes": {
-          "name": "size_bytes",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "state": {
-          "name": "state",
-          "type": "montage_export_state",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'en_cola'"
-        },
-        "stage": {
-          "name": "stage",
-          "type": "montage_export_stage",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'preparando'"
-        },
-        "progress": {
-          "name": "progress",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "label_applied": {
-          "name": "label_applied",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "label_position": {
-          "name": "label_position",
-          "type": "montage_label_position",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'abajo'"
-        },
-        "burned_subtitles": {
-          "name": "burned_subtitles",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "subtitles_srt": {
-          "name": "subtitles_srt",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "subtitles_vtt": {
-          "name": "subtitles_vtt",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "error_message": {
-          "name": "error_message",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "locked_by": {
-          "name": "locked_by",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "locked_until": {
-          "name": "locked_until",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "attempts": {
-          "name": "attempts",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "started_at": {
-          "name": "started_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "finished_at": {
-          "name": "finished_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "montage_exports_proyecto_idx": {
-          "name": "montage_exports_proyecto_idx",
-          "columns": [
-            {
-              "expression": "project_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "montage_exports_cola_idx": {
-          "name": "montage_exports_cola_idx",
-          "columns": [
-            {
-              "expression": "state",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "locked_until",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "montage_exports_montaje_version_uq": {
-          "name": "montage_exports_montaje_version_uq",
-          "columns": [
-            {
-              "expression": "montage_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "montage_version",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"montage_exports\".\"state\" <> 'fallido'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "montage_exports_project_id_projects_id_fk": {
-          "name": "montage_exports_project_id_projects_id_fk",
-          "tableFrom": "montage_exports",
-          "tableTo": "projects",
-          "columnsFrom": ["project_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "montage_exports_montage_id_montages_id_fk": {
-          "name": "montage_exports_montage_id_montages_id_fk",
-          "tableFrom": "montage_exports",
-          "tableTo": "montages",
-          "columnsFrom": ["montage_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "montage_exports_result_media_id_media_id_fk": {
-          "name": "montage_exports_result_media_id_media_id_fk",
-          "tableFrom": "montage_exports",
-          "tableTo": "media",
-          "columnsFrom": ["result_media_id"],
-          "columnsTo": ["id"],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.montages": {
-      "name": "montages",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "project_id": {
-          "name": "project_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "fragments": {
-          "name": "fragments",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
-        },
-        "voice_volume": {
-          "name": "voice_volume",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
-        "music_volume": {
-          "name": "music_volume",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
-        "burn_subtitles": {
-          "name": "burn_subtitles",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "subtitle_format": {
-          "name": "subtitle_format",
-          "type": "montage_subtitle_format",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'srt'"
-        },
-        "label_visible": {
-          "name": "label_visible",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "label_position": {
-          "name": "label_position",
-          "type": "montage_label_position",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'abajo'"
-        },
-        "format": {
-          "name": "format",
-          "type": "montage_format",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'vertical_9_16'"
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "montages_proyecto_idx": {
-          "name": "montages_proyecto_idx",
-          "columns": [
-            {
-              "expression": "project_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "montages_project_id_projects_id_fk": {
-          "name": "montages_project_id_projects_id_fk",
-          "tableFrom": "montages",
-          "tableTo": "projects",
-          "columnsFrom": ["project_id"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "montages_proyecto_uq": {
-          "name": "montages_proyecto_uq",
-          "nullsNotDistinct": false,
-          "columns": ["project_id"]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
     }
   },
   "enums": {
@@ -8310,6 +8338,11 @@
       "schema": "public",
       "values": ["borrador", "aprobada", "producida"]
     },
+    "public.montage_export_state": {
+      "name": "montage_export_state",
+      "schema": "public",
+      "values": ["en_cola", "en_curso", "listo", "fallido"]
+    },
     "public.character_identity_sheet_status": {
       "name": "character_identity_sheet_status",
       "schema": "public",
@@ -8356,6 +8389,11 @@
       "schema": "public",
       "values": ["realista", "animado"]
     },
+    "public.montage_export_stage": {
+      "name": "montage_export_stage",
+      "schema": "public",
+      "values": ["preparando", "normalizando", "montando", "guardando", "listo"]
+    },
     "public.generation_job_stage": {
       "name": "generation_job_stage",
       "schema": "public",
@@ -8366,6 +8404,11 @@
       "schema": "public",
       "values": ["ugc_a_camara", "voz_en_off", "cantar"]
     },
+    "public.montage_format": {
+      "name": "montage_format",
+      "schema": "public",
+      "values": ["vertical_9_16"]
+    },
     "public.project_format": {
       "name": "project_format",
       "schema": "public",
@@ -8375,6 +8418,11 @@
       "name": "scene_cast_format",
       "schema": "public",
       "values": ["solo", "podcast", "dualcast"]
+    },
+    "public.montage_subtitle_format": {
+      "name": "montage_subtitle_format",
+      "schema": "public",
+      "values": ["srt", "vtt"]
     },
     "public.scene_cast_side": {
       "name": "scene_cast_side",
@@ -8436,6 +8484,11 @@
       "name": "scene_cast_role",
       "schema": "public",
       "values": ["hablante", "acompanante"]
+    },
+    "public.montage_label_position": {
+      "name": "montage_label_position",
+      "schema": "public",
+      "values": ["arriba", "abajo"]
     },
     "public.credential_provider": {
       "name": "credential_provider",
@@ -8536,31 +8589,6 @@
       "name": "review_verdict",
       "schema": "public",
       "values": ["acepta", "rechaza", "pendiente"]
-    },
-    "public.montage_export_state": {
-      "name": "montage_export_state",
-      "schema": "public",
-      "values": ["en_cola", "en_curso", "listo", "fallido"]
-    },
-    "public.montage_export_stage": {
-      "name": "montage_export_stage",
-      "schema": "public",
-      "values": ["preparando", "normalizando", "montando", "guardando", "listo"]
-    },
-    "public.montage_format": {
-      "name": "montage_format",
-      "schema": "public",
-      "values": ["vertical_9_16"]
-    },
-    "public.montage_subtitle_format": {
-      "name": "montage_subtitle_format",
-      "schema": "public",
-      "values": ["srt", "vtt"]
-    },
-    "public.montage_label_position": {
-      "name": "montage_label_position",
-      "schema": "public",
-      "values": ["arriba", "abajo"]
     }
   },
   "schemas": {},

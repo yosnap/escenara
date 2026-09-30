@@ -19,3 +19,12 @@ No hay descubrimiento automático ni scraping. Quien administra da de alta y man
 ## Consecuencias
 
 Los trabajos pasados conservan la versión que usaron. Cambiar o caducar un trend puede exigir revisar la escena y confirmar un precio nuevo. La calidad visual, la recognoscibilidad del formato y la tolerancia del proveedor a una marca solo se conocen después del spike; hasta entonces el catálogo inicial no se ofrece para generar.
+
+## Actualización · 0.34.0
+
+La duración objetivo deja de ser un límite. Cada versión del trend guarda sus **duraciones admitidas** (vacía =
+cualquiera: manda el modelo en «Crear» o el proyecto en una escena) y las categorías de la dirección del clip que
+**decide** (plano, ángulo, movimiento de cámara, micro-acción, registro estético). El servidor comprueba la duración
+contra esa lista antes de reservar y no compone lo decidido aunque llegue en la petición; la interfaz lo enseña
+bloqueado con su motivo. `target_seconds` se conserva como dato histórico. Cambiar cualquiera de los dos campos crea
+versión nueva con motivo, igual que el texto o el permiso de habla.

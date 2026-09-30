@@ -1,5 +1,6 @@
 import type { Capacidad } from "./catalogo";
 import type { FormatoClip, MomentoMicroaccion, NivelCamara, RegistroEstetico } from "./direccion";
+import type { CategoriaDecidible } from "./trends";
 
 /**
  * Presets y plantillas de prompt (RF04, 0.16.0). Aquí solo está la forma que comparten el servidor y el
@@ -346,7 +347,15 @@ export interface PlantillaVista {
   trendStatus: "vigente" | "revision" | "caducada" | null;
   trendSince: string | null;
   trendPlatform: string;
+  /**
+   * Duración con la que se diseñó el trend, **solo como dato histórico** desde la 0.34.0: ya no limita nada. Lo que
+   * limita es {@link duracionesAdmitidas}. Se conserva para no perder el dato y se le enseña solo a quien administra.
+   */
   targetSeconds: number | null;
+  /** Segundos que admite el trend. Vacía = cualquier duración (manda el modelo o el proyecto). */
+  duracionesAdmitidas: number[];
+  /** Categorías de la dirección del clip que dicta el trend: la dirección no las pregunta ni las compone. */
+  direccionDecidida: CategoriaDecidible[];
   referenceUrl: string;
   trendAllowsSpeech: boolean;
   capacidad: Capacidad;
@@ -369,7 +378,14 @@ export interface TrendPublico {
   id: string;
   nombre: string;
   descripcion: string;
-  duracionObjetivo: number | null;
+  /** Número de la versión vigente: una escena que cite otra tiene que volver a guardarse para usarla. */
+  version: number;
+  /** Vacía = cualquier duración. */
+  duracionesAdmitidas: number[];
+  /** Lo que el trend decide de la dirección: se enseña bloqueado con su motivo. */
+  direccionDecidida: CategoriaDecidible[];
+  /** Si el trend deja hablar a cámara. Sin habla, la pantalla no pide voz ni guion para el clip. */
+  permiteHabla: boolean;
   vistaPrevia: {
     resumen: string;
     duracion: string;
@@ -384,7 +400,10 @@ export interface PlantillaElegible {
   nombre: string;
   descripcion: string;
   kind: "base" | "trend";
-  targetSeconds: number | null;
+  /** Vacía = cualquier duración. En una plantilla normal, siempre vacía. */
+  duracionesAdmitidas: number[];
+  /** Categorías de la dirección que decide el trend. En una plantilla normal, siempre vacía. */
+  direccionDecidida: CategoriaDecidible[];
   trendAllowsSpeech: boolean;
   capacidad: Capacidad;
   plantilla: string;
@@ -417,7 +436,8 @@ export function recortarPlantilla(plantilla: PlantillaVista): PlantillaElegible 
     nombre: plantilla.nombre,
     descripcion: plantilla.descripcion,
     kind: plantilla.kind,
-    targetSeconds: plantilla.targetSeconds,
+    duracionesAdmitidas: plantilla.duracionesAdmitidas,
+    direccionDecidida: plantilla.direccionDecidida,
     trendAllowsSpeech: plantilla.trendAllowsSpeech,
     capacidad: plantilla.capacidad,
     plantilla: plantilla.plantilla,

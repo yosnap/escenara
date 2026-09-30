@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import type { ModeloElegible } from "@/lib/catalogo";
 import type { Estimacion } from "@/lib/generacion";
 import type { PlantillaVisible } from "@/lib/presets";
+import { segundosParaTrend } from "@/lib/trends";
 import { consultarEstimacion } from "./api-generacion";
 import { aplicarFormato, crearSecuencia, type MemoriaDeModelo } from "./orquestar-formato";
 import type { EstadoPlantilla } from "./panel-plantilla";
@@ -21,6 +22,8 @@ export function useFormatoClip(d: {
   modeloActual: ModeloElegible | null;
   modeloActualId: string;
   predeterminado: string;
+  /** Duración del clip elegida ahora: un trend que la admite (o que admite cualquiera) la conserva. */
+  segundosActuales: number;
   setPlantilla: (estado: EstadoPlantilla) => void;
   setEstimacion: (estimacion: Estimacion) => void;
   setError: (error: string | null) => void;
@@ -64,12 +67,16 @@ export function useFormatoClip(d: {
       predeterminado: d.predeterminado,
       memoria,
       avisoActual: avisoModelo,
-      estimar: (modelo, t) =>
-        consultarEstimacion(
-          "animacion",
-          modelo,
-          t ? { plantillaId: t.id, segundos: t.targetSeconds ?? undefined } : {},
-        ),
+      estimar: (modelo, t) => {
+        if (!t) return consultarEstimacion("animacion", modelo, {});
+        // La duración la manda el modelo; el trend solo la limita si declara duraciones admitidas.
+        const cobrables = d.modelos.find((m) => m.modelo === modelo)?.duracionesConCoste.map((c) => c.segundos) ?? [];
+        const segundos = segundosParaTrend(t.duracionesAdmitidas, cobrables, d.segundosActuales);
+        return consultarEstimacion("animacion", modelo, {
+          plantillaId: t.id,
+          ...(segundos === undefined ? {} : { segundos }),
+        });
+      },
       calculando: setCalculando,
     });
     if (salida === null) return;

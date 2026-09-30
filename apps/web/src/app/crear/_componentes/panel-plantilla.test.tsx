@@ -16,7 +16,8 @@ const PLANTILLA: PlantillaVisible = {
   nombre: "Clip social",
   descripcion: "",
   kind: "base",
-  targetSeconds: null,
+  duracionesAdmitidas: [],
+  direccionDecidida: [],
   trendAllowsSpeech: false,
   capacidad: "image_to_video",
   variables: [
@@ -82,7 +83,7 @@ const pintar = (previa: ReturnType<typeof previsualizar>) =>
 
 describe("el paso del clip no repite las categorías de la dirección", () => {
   test("un trend sigue visible y se envía aunque la dirección cubra sus categorías", () => {
-    const trend: PlantillaVisible = { ...PLANTILLA, id: "trend", kind: "trend", targetSeconds: 8 };
+    const trend: PlantillaVisible = { ...PLANTILLA, id: "trend", kind: "trend", duracionesAdmitidas: [8] };
     const catalogo = { ...CATALOGO, plantillas: [trend] };
     const estado = { plantillaId: trend.id, seleccion: {} };
     const previa = previsualizar(catalogo, estado, "Plano de producto", null, CATEGORIAS_DE_LA_DIRECCION);
@@ -110,7 +111,7 @@ describe("el paso del clip no repite las categorías de la dirección", () => {
       id: "trend",
       nombre: "Giro de producto",
       kind: "trend",
-      targetSeconds: 6,
+      duracionesAdmitidas: [6],
     };
     const catalogo = { ...CATALOGO, plantillas: [PLANTILLA, trend] };
     const previa = previsualizar(catalogo, ESTADO, "", null, CATEGORIAS_DE_LA_DIRECCION);

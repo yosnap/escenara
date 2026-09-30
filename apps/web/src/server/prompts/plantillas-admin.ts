@@ -15,8 +15,19 @@ import {
   TIPOS_VARIABLE,
   type VariablePlantilla,
 } from "@/lib/presets";
+import {
+  CATEGORIAS_DECIDIBLES,
+  type CategoriaDecidible,
+  categoriasDecididasDe,
+  DURACION_MAXIMA,
+  DURACION_MINIMA,
+  duracionesDe,
+  esCategoriaDecidible,
+  etiquetaDecidible,
+  MAXIMO_DURACIONES_ADMITIDAS,
+} from "@/lib/trends";
 import { db } from "../db/cliente";
-import { promptTemplates, promptTemplateVersions } from "../db/esquema";
+import { type FilaPlantilla, promptTemplates, promptTemplateVersions } from "../db/esquema";
 import {
   listarPlantillas,
   plantillaDeLaInstalacion,
@@ -55,14 +66,63 @@ export interface DatosPlantilla {
   kind?: "base" | "trend";
   trendStatus?: "vigente" | "revision" | "caducada" | null;
   trendPlatform?: string;
+  /**
+   * Duración con la que se diseñó el trend: **dato histórico** que ya no limita nada. Se acepta para no romper a quien
+   * lo siga enviando, se valida y, al editar sin enviarlo, se conserva el que había.
+   */
   targetSeconds?: number | null;
+  /** Segundos que admite el trend. Vacía = cualquiera. Al editar sin enviarla, se conserva la que había. */
+  duracionesAdmitidas?: unknown;
+  /** Categorías de la dirección que dicta el trend. Al editar sin enviarla, se conserva la que había. */
+  direccionDecidida?: unknown;
   referenceUrl?: string;
   trendAllowsSpeech?: boolean;
   /** Motivo del cambio; obligatorio cuando el cambio crea versión. */
   motivo?: string;
 }
 
-function metadatosTrend(datos: DatosPlantilla) {
+/**
+ * Duraciones admitidas tal como llegan del formulario: una lista de enteros entre 1 y 600. Se rechaza con la causa en
+ * lugar de descartar en silencio, porque una duración mal escrita que desaparece deja un trend más abierto de lo que
+ * quien administra quería.
+ */
+function exigirDuracionesAdmitidas(valor: unknown): number[] {
+  if (!Array.isArray(valor))
+    throw new ErrorPreset(400, "Las duraciones admitidas tienen que ser una lista de segundos.");
+  if (valor.length > MAXIMO_DURACIONES_ADMITIDAS)
+    throw new ErrorPreset(400, `Un trend no puede admitir más de ${MAXIMO_DURACIONES_ADMITIDAS} duraciones distintas.`);
+  for (const segundos of valor) {
+    if (
+      typeof segundos !== "number" ||
+      !Number.isInteger(segundos) ||
+      segundos < DURACION_MINIMA ||
+      segundos > DURACION_MAXIMA
+    )
+      throw new ErrorPreset(
+        400,
+        `«${String(segundos)}» no es una duración válida: cada una tiene que ser un número entero de segundos entre ${DURACION_MINIMA} y ${DURACION_MAXIMA}.`,
+      );
+  }
+  return duracionesDe(valor);
+}
+
+/** Categorías que decide el trend: solo las de la dirección del clip que un trend puede dictar. */
+function exigirDireccionDecidida(valor: unknown): CategoriaDecidible[] {
+  if (!Array.isArray(valor)) throw new ErrorPreset(400, "«La dirección decide» tiene que ser una lista de categorías.");
+  for (const categoria of valor) {
+    if (!esCategoriaDecidible(categoria))
+      throw new ErrorPreset(
+        400,
+        `«${String(categoria)}» no es algo que un trend pueda decidir: elige entre ${CATEGORIAS_DECIDIBLES.map(etiquetaDecidible).join(", ").toLowerCase()}.`,
+      );
+  }
+  return categoriasDecididasDe(valor);
+}
+
+/** Lo que había antes, para conservarlo cuando el formulario no lo envía. `null` al crear. */
+type AnteriorTrend = Pick<FilaPlantilla, "targetSeconds" | "allowedSeconds" | "decidedDirection"> | null;
+
+function metadatosTrend(datos: DatosPlantilla, anterior: AnteriorTrend = null) {
   if (datos.kind !== "trend")
     return {
       kind: "base" as const,
@@ -70,14 +130,29 @@ function metadatosTrend(datos: DatosPlantilla) {
       trendSince: null,
       trendPlatform: "",
       targetSeconds: null,
+      allowedSeconds: "[]",
+      decidedDirection: "[]",
       referenceUrl: "",
       trendAllowsSpeech: false,
     };
   if (datos.capacidad !== "image_to_video") throw new ErrorPreset(400, "Un trend necesita una plantilla de animación.");
   if (!["vigente", "revision", "caducada"].includes(datos.trendStatus ?? "revision"))
     throw new ErrorPreset(400, "Elige la vigencia del trend.");
-  if (!Number.isInteger(datos.targetSeconds) || (datos.targetSeconds ?? 0) < 1 || (datos.targetSeconds ?? 0) > 600)
-    throw new ErrorPreset(400, "La duración objetivo debe estar entre 1 y 600 segundos.");
+  // La duración de diseño ya no limita: solo se comprueba que, si llega, sea un dato con sentido.
+  const targetSeconds = datos.targetSeconds === undefined ? (anterior?.targetSeconds ?? null) : datos.targetSeconds;
+  if (
+    targetSeconds !== null &&
+    (!Number.isInteger(targetSeconds) || targetSeconds < DURACION_MINIMA || targetSeconds > DURACION_MAXIMA)
+  )
+    throw new ErrorPreset(400, "La duración de diseño debe estar entre 1 y 600 segundos.");
+  const duraciones =
+    datos.duracionesAdmitidas === undefined
+      ? duracionesDe(anterior?.allowedSeconds ?? "[]")
+      : exigirDuracionesAdmitidas(datos.duracionesAdmitidas);
+  const decididas =
+    datos.direccionDecidida === undefined
+      ? categoriasDecididasDe(anterior?.decidedDirection ?? "[]")
+      : exigirDireccionDecidida(datos.direccionDecidida);
   const referenceUrl = (datos.referenceUrl ?? "").trim();
   if (referenceUrl) {
     let url: URL;
@@ -96,7 +171,9 @@ function metadatosTrend(datos: DatosPlantilla) {
     trendStatus: datos.trendStatus ?? "revision",
     trendSince: null,
     trendPlatform: exigirTexto(datos.trendPlatform, "La plataforma", 80, 0),
-    targetSeconds: datos.targetSeconds ?? null,
+    targetSeconds,
+    allowedSeconds: JSON.stringify(duraciones),
+    decidedDirection: JSON.stringify(decididas),
     referenceUrl,
     trendAllowsSpeech: datos.trendAllowsSpeech === true,
   };
@@ -268,6 +345,8 @@ export async function crearPlantillaDeLaInstalacion(datos: DatosPlantilla, autor
       variables: comun.variables,
       modelRestrictions: comun.modelRestrictions,
       trendAllowsSpeech: trend.trendAllowsSpeech,
+      allowedSeconds: trend.allowedSeconds,
+      decidedDirection: trend.decidedDirection,
       changeReason: exigirTexto(datos.motivo ?? "Alta de la plantilla.", "El motivo", 300),
       createdBy: autorId,
     });
@@ -292,7 +371,7 @@ export async function editarPlantillaDeLaInstalacion(
     throw new ErrorPreset(400, "No se puede cambiar el tipo de una plantilla existente.");
   if (anterior.kind === "trend" && anterior.trendStatus === "caducada")
     throw new ErrorPreset(409, "Un trend caducado solo se puede duplicar.");
-  const trend = metadatosTrend(datos);
+  const trend = metadatosTrend(datos, anterior);
   const { texto, variables, restricciones } = normalizarContenido(datos);
   const vigente = await versionVigente(anterior.id);
   const variablesTexto = textoDeVariables(variables);
@@ -301,8 +380,16 @@ export async function editarPlantillaDeLaInstalacion(
     vigente.template !== texto ||
     textoDeVariables(variablesDeTexto(vigente.variables)) !== variablesTexto ||
     textoDeRestricciones(restriccionesDeTexto(vigente.modelRestrictions)) !== restriccionesTexto;
-  const cambiaVoz = vigente.trendAllowsSpeech !== trend.trendAllowsSpeech;
-  const motivo = cambiaContenido || cambiaVoz ? exigirTexto(datos.motivo, "El motivo del cambio", 300, 4) : "";
+  /**
+   * Lo que dicta el trend también versiona: el permiso de habla, las duraciones admitidas y lo que decide de la
+   * dirección cambian lo que se genera, así que cada cambio deja una versión nueva con su motivo.
+   */
+  const cambiaTrend =
+    vigente.trendAllowsSpeech !== trend.trendAllowsSpeech ||
+    JSON.stringify(duracionesDe(vigente.allowedSeconds)) !== trend.allowedSeconds ||
+    JSON.stringify(categoriasDecididasDe(vigente.decidedDirection)) !== trend.decidedDirection;
+  const versiona = cambiaContenido || cambiaTrend;
+  const motivo = versiona ? exigirTexto(datos.motivo, "El motivo del cambio", 300, 4) : "";
 
   await db().transaction(async (tx) => {
     await tx
@@ -318,11 +405,11 @@ export async function editarPlantillaDeLaInstalacion(
         // Solo se escribe el orden si se pide: releerlo aquí pisaría una reordenación concurrente del grupo.
         ...(datos.orden === undefined ? {} : { sortOrder: exigirOrden(datos.orden) }),
         active: datos.activa === true,
-        version: cambiaContenido || cambiaVoz ? vigente.number + 1 : anterior.version,
+        version: versiona ? vigente.number + 1 : anterior.version,
         updatedAt: new Date(),
       })
       .where(and(eq(promptTemplates.id, anterior.id), isNull(promptTemplates.ownerId)));
-    if (!cambiaContenido && !cambiaVoz) return;
+    if (!versiona) return;
     await tx.insert(promptTemplateVersions).values({
       templateId: anterior.id,
       number: vigente.number + 1,
@@ -330,6 +417,8 @@ export async function editarPlantillaDeLaInstalacion(
       variables: variablesTexto,
       modelRestrictions: restriccionesTexto,
       trendAllowsSpeech: trend.trendAllowsSpeech,
+      allowedSeconds: trend.allowedSeconds,
+      decidedDirection: trend.decidedDirection,
       changeReason: motivo,
       createdBy: autorId,
     });
@@ -376,6 +465,10 @@ export async function duplicarTrend(id: string, clave: string, autorId: string):
       trendStatus: "revision",
       trendPlatform: anterior.trendPlatform,
       targetSeconds: anterior.targetSeconds,
+      // La copia hereda las duraciones tal cual. Un caducado de antes de la 0.34.0 aún exige la que tenía: su copia
+      // nace limitada igual y quien administra la libera al revisarla (no se distingue de un límite puesto a propósito).
+      duracionesAdmitidas: duracionesDe(anterior.allowedSeconds),
+      direccionDecidida: categoriasDecididasDe(anterior.decidedDirection),
       referenceUrl: anterior.referenceUrl,
       trendAllowsSpeech: anterior.trendAllowsSpeech,
       motivo: `Duplicado de ${anterior.slug}.`,

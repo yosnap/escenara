@@ -33,7 +33,7 @@ const trend = (id: string, segundos: number, permitidos: string[] = []): Plantil
     id,
     nombre: `Trend ${id}`,
     kind: "trend",
-    targetSeconds: segundos,
+    duracionesAdmitidas: [segundos],
     modelosPermitidos: permitidos,
   }) as unknown as PlantillaVisible;
 

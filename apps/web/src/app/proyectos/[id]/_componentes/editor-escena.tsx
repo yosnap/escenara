@@ -23,6 +23,7 @@ import {
   TEXTO_ESCENA_MAXIMO,
   textoEstimacion,
 } from "@/lib/proyectos";
+import { motivoDuracionNoAdmitida } from "@/lib/trends";
 import { borrarEscena, editarEscena } from "../../_componentes/api-proyectos";
 import { PanelAfirmaciones } from "./panel-afirmaciones";
 import { PanelCantoEscena } from "./panel-canto-escena";
@@ -205,6 +206,11 @@ export function EditorEscena({
         segundos={escena.segundos}
         producto={producto}
         onProducto={setProducto}
+        trend={
+          trend && direccion.formatoClip !== "cantar"
+            ? { nombre: trend.nombre, decide: trend.direccionDecidida, permiteHabla: trend.permiteHabla }
+            : null
+        }
         deshabilitado={ocupado || escena.estado === "producida"}
         onCambio={(campo, valor) => {
           if (campo === "acento") return;
@@ -233,14 +239,26 @@ export function EditorEscena({
             marcador="Sin trend"
             opciones={[
               { value: "", label: "Sin trend" },
-              ...trends.map((p) => ({
-                value: p.id,
-                label: p.nombre,
-                descripcion: `${p.descripcion} · ${p.duracionObjetivo} s`,
-                deshabilitada: p.duracionObjetivo !== escena.segundos,
-              })),
+              ...trends.map((p) => {
+                // Sin duraciones admitidas vale con la del proyecto; con ellas, solo si la del proyecto está entre ellas.
+                const motivo = motivoDuracionNoAdmitida(
+                  { nombre: p.nombre, duracionesAdmitidas: p.duracionesAdmitidas },
+                  escena.segundos,
+                  "proyecto",
+                );
+                return {
+                  value: p.id,
+                  label: p.nombre,
+                  descripcion: motivo ?? p.descripcion,
+                  ...(motivo ? { deshabilitada: true } : {}),
+                };
+              }),
             ]}
-            onCambio={(valor) => setTrendId(valor ?? "")}
+            onCambio={(valor) => {
+              setTrendId(valor ?? "");
+              // Con un trend no hay modo experto: su texto ya describe el clip, y el servidor lo rechazaría.
+              if (valor) setDireccion((antes) => ({ ...antes, modoExperto: false }));
+            }}
             deshabilitado={ocupado || escena.estado === "producida"}
           />
           {trend && (
@@ -251,6 +269,13 @@ export function EditorEscena({
                 ? textoEstimacion(escena.estimacion.creditos, escena.estimacion.euros, escena.estimacion.comprobado)
                 : "sin tarifa registrada"}
               . La cifra se confirma en el plan antes de generar.
+            </Aviso>
+          )}
+          {trend && trendId === escena.trendId && escena.trendVersion !== trend.version && (
+            <Aviso tono="info">
+              Este trend tiene una versión nueva (v{trend.version}) desde que lo elegiste (v{escena.trendVersion ?? "?"}
+              ): puede cambiar la duración que admite o lo que decide de la dirección. Revisa la dirección y pulsa
+              «Guardar escena» para usarla; hasta entonces esta escena no se puede producir.
             </Aviso>
           )}
           {trendId && !trend && (

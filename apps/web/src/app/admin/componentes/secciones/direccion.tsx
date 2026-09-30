@@ -3,6 +3,7 @@
 import { Clapperboard, Frame, PenLine } from "lucide-react";
 import { useState } from "react";
 import { CabeceraGrupo } from "@/components/ui/direccion/cabecera-grupo";
+import { DecididoPorTrend } from "@/components/ui/direccion/decidido-por-trend";
 import { ElectorVisual } from "@/components/ui/direccion/elector-visual";
 import {
   DefinicionesPictograma,
@@ -139,6 +140,17 @@ export function SeccionDireccion() {
             onCambio={setAngulo}
             className="w-full"
           />
+        </Muestra>
+        <Muestra titulo="Con un trend: lo que decide él sale bloqueado con su motivo, en lugar de sus controles">
+          <div className="w-full">
+            <DecididoPorTrend
+              trend={{
+                nombre: "Unboxing en primera persona",
+                decide: ["plano", "angulo", "camara"],
+                permiteHabla: false,
+              }}
+            />
+          </div>
         </Muestra>
       </div>
     </Seccion>

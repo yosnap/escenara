@@ -13,7 +13,8 @@ const NORMAL: PlantillaVisible = {
   nombre: "Clip social",
   descripcion: "La de siempre",
   kind: "base",
-  targetSeconds: null,
+  duracionesAdmitidas: [],
+  direccionDecidida: [],
   trendAllowsSpeech: false,
   capacidad: "image_to_video",
   variables: [{ nombre: "plano", tipo: "enumerado", etiqueta: "Plano", obligatoria: false, categoria: "plano" }],
@@ -27,7 +28,8 @@ const TREND: PlantillaVisible = {
   nombre: "Giro de producto",
   descripcion: "El producto gira en la mano",
   kind: "trend",
-  targetSeconds: 6,
+  duracionesAdmitidas: [6],
+  direccionDecidida: ["camara"],
 };
 
 const catalogo = (plantillas: PlantillaVisible[]): CatalogoParaCrear =>
@@ -57,7 +59,9 @@ describe("paso de formato", () => {
     const html = pintar([NORMAL, TREND], TREND);
     expect(html).toContain("Elige el formato");
     expect(html).toContain("Plantilla o trend vigente");
-    expect(html).toContain("fija la duración del clip");
+    expect(html).toContain("la duración la eliges con el modelo, salvo que el trend solo admita algunas");
+    expect(html).toContain("Solo 6 s");
+    expect(html).toContain("Decide él: movimiento de cámara");
     expect(html).toContain("Vista previa: Giro de producto");
     expect(html).toContain("Sin habla a cámara");
   });

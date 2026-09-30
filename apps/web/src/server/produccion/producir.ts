@@ -244,10 +244,20 @@ async function encolarAnimacion(
   const plantilla = escena.templateId
     ? ((await listarPlantillas({ usuarioId: actor.id })).find((p) => p.id === escena.templateId) ?? null)
     : await plantillaVigenteDe(actor.id, "image_to_video");
-  if (escena.templateId && (plantilla?.kind !== "trend" || plantilla.version !== escena.templateVersion)) {
+  if (escena.templateId && plantilla?.kind !== "trend") {
     throw new ErrorProyecto(
       409,
-      "El trend de la escena ha cambiado o ya no está disponible. Revísalo y confirma otra vez.",
+      "El trend de esta escena ya no está disponible. Abre la escena, elige otro o quítalo y guárdala. No se ha cobrado nada.",
+    );
+  }
+  /**
+   * La escena cita la versión del trend con la que se eligió. Si quien administra (o una actualización) ha publicado
+   * otra, lo que se compondría ya no es lo que se revisó: se dice, con la causa, en vez de cambiar el clip en silencio.
+   */
+  if (escena.templateId && plantilla && plantilla.version !== escena.templateVersion) {
+    throw new ErrorProyecto(
+      409,
+      `El trend «${plantilla.nombre}» tiene una versión nueva (v${plantilla.version}) desde que lo elegiste en esta escena (v${escena.templateVersion ?? "?"}), y puede cambiar la duración que admite o lo que decide de la dirección. Abre la escena, revisa su dirección y pulsa «Guardar escena» para usar la versión nueva. No se ha cobrado nada.`,
     );
   }
   await crearAnimacion(

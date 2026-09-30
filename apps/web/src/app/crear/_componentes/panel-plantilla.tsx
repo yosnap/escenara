@@ -15,6 +15,7 @@ import {
   type PresetVisible,
   type SeleccionPresets,
 } from "@/lib/presets";
+import { etiquetaDecidible, textoDeDuraciones } from "@/lib/trends";
 
 /**
  * Panel de presets de «Crear»: los botones por categoría y un resumen de lo que has elegido.
@@ -247,22 +248,39 @@ export function SelectorPlantilla({
       opciones={catalogo.plantillas.map((p) => ({
         value: p.id,
         label: p.kind === "trend" ? `Trend · ${p.nombre}` : p.nombre,
-        descripcion: p.kind === "trend" ? `${p.descripcion} · ${p.targetSeconds} s` : p.descripcion,
+        // La duración solo se cita si el trend la limita: sin límite, manda la del modelo.
+        descripcion:
+          p.kind === "trend" && p.duracionesAdmitidas.length > 0
+            ? `${p.descripcion} · ${textoDeDuraciones(p.duracionesAdmitidas)}`
+            : p.descripcion,
       }))}
     />
   );
 }
 
-/** Lo que es un trend antes de elegir nada más: su descripción, su duración y si permite hablar. */
+/**
+ * Lo que es un trend antes de elegir nada más: su descripción, qué duraciones admite, si permite hablar y qué parte de
+ * la dirección decide él.
+ */
 export function VistaPreviaTrend({ trend }: { trend: PlantillaVisible }) {
+  const duracion =
+    trend.duracionesAdmitidas.length === 0
+      ? "Cualquier duración (la del modelo)"
+      : `Solo ${textoDeDuraciones(trend.duracionesAdmitidas)}`;
   return (
     <div className="rounded-tarjeta bg-elevada p-4 text-sm text-texto">
       <p className="font-bold">Vista previa: {trend.nombre}</p>
       <p>{trend.descripcion}</p>
       <p>
-        {trend.targetSeconds} s · {trend.trendAllowsSpeech ? "Permite diálogo" : "Sin habla a cámara"}. El producto se
-        integra en la escena; no se superpone un logotipo.
+        {duracion} · {trend.trendAllowsSpeech ? "Permite diálogo" : "Sin habla a cámara"}. El producto se integra en la
+        escena; no se superpone un logotipo.
       </p>
+      {trend.direccionDecidida.length > 0 && (
+        <p>
+          Decide él: {trend.direccionDecidida.map(etiquetaDecidible).join(", ").toLowerCase()}. En la dirección del clip
+          no se te preguntará.
+        </p>
+      )}
     </div>
   );
 }

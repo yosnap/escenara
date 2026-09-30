@@ -12,6 +12,7 @@ import {
   type SeleccionPresets,
   type VariablePlantilla,
 } from "@/lib/presets";
+import { type CategoriaDecidible, categoriasDecididasDe, duracionesDe, motivoDuracionNoAdmitida } from "@/lib/trends";
 import { exigirCombinacionPosible } from "./compatibilidad";
 import {
   listarPresets,
@@ -82,7 +83,15 @@ export interface PromptCompuesto {
   plantillaId: string;
   versionId: string;
   versionNumero: number;
-  trend: { permiteHabla: boolean; segundos: number } | null;
+  /**
+   * Lo que el trend dicta, leído de **la versión** que se usa: si habla, qué duraciones admite (vacía = cualquiera) y
+   * qué categorías de la dirección decide él. `null` si la plantilla no es un trend.
+   */
+  trend: {
+    permiteHabla: boolean;
+    duracionesAdmitidas: number[];
+    decide: CategoriaDecidible[];
+  } | null;
   /** `true` si el texto es el que editó el usuario y no el que compuso la plantilla. */
   editado: boolean;
   /** Nombres de los presets elegidos, en el orden en que entran. Es lo que se le muestra al usuario. */
@@ -180,12 +189,13 @@ export async function componerDesdePlantilla(peticion: PeticionRender): Promise<
   const plantilla = await plantillaUsable(peticion.usuarioId, peticion.plantillaId);
   if (plantilla.kind === "trend") {
     await exigirTrendVigente(plantilla);
-    if (peticion.segundos !== plantilla.targetSeconds) {
-      throw new ErrorPreset(
-        409,
-        `El trend «${plantilla.name}» requiere ${plantilla.targetSeconds} s. Revisa el coste para esa duración y confirma de nuevo.`,
-      );
-    }
+    // Sin duraciones admitidas el trend vale para cualquiera: manda la que ya se ha resuelto con el modelo o el
+    // proyecto. Con ellas, la pedida tiene que estar en la lista.
+    const motivo = motivoDuracionNoAdmitida(
+      { nombre: plantilla.name, duracionesAdmitidas: duracionesDe(plantilla.allowedSeconds) },
+      peticion.segundos,
+    );
+    if (motivo) throw new ErrorPreset(409, `${motivo} Revisa el coste para esa duración y confirma de nuevo.`);
     if (peticion.textoEditado)
       throw new ErrorPreset(
         400,
@@ -268,7 +278,11 @@ export async function componerDesdePlantilla(peticion: PeticionRender): Promise<
     versionNumero: version.number,
     trend:
       plantilla.kind === "trend"
-        ? { permiteHabla: version.trendAllowsSpeech, segundos: plantilla.targetSeconds ?? 0 }
+        ? {
+            permiteHabla: version.trendAllowsSpeech,
+            duracionesAdmitidas: duracionesDe(version.allowedSeconds),
+            decide: categoriasDecididasDe(version.decidedDirection),
+          }
         : null,
     editado: editado !== "",
     presetsElegidos: elegidos.map((p) => ({ categoria: p.categoria, nombre: p.nombre })),
