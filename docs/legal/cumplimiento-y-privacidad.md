@@ -214,7 +214,8 @@ origen (anonimizarlas) al borrar la cuenta en lugar de borrarlas, que es lo que 
 
 La comunidad (apagada de fábrica) deja que una cuenta enseñe a las demás de la instalación **contenido sintético**:
 personajes inventados y lo generado con ellos. El sistema comprueba el origen por lista blanca sobre lo que cada trabajo
-**envió al proveedor** (todas sus referencias y su audio, tal como quedaron al generarlo, y hacia atrás): nunca una
+**envió al proveedor** (todas sus referencias y su audio, tal como quedaron al generarlo, y hacia atrás; en Omni con
+identidad registrada, el retrato y el cuerpo que subió ese registro): nunca una
 foto subida (tampoco marcada «hecha con IA»), una persona o mascota real, un producto, un lugar con fotos ni un audio
 subido; lo borrado o ilegible no se puede comprobar y no se publica. Nada se ve sin la aprobación previa de una persona
 con rol de administrador, que no puede aprobar lo suyo y ve esa procedencia.

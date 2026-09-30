@@ -35,6 +35,7 @@ Ante la duda, no se publica, y siempre te dice por qué.
 | | Un clip con producto: sus fotos son subidas |
 | | Un clip de un reparto de dos personajes, de un podcast, o cantado con tu audio (aunque después quites el audio de la escena) |
 | Un clip hablado con una voz de la instalación | Un clip que envió un audio subido, o un audio: podría ser una voz real |
+| Un clip hablado (Omni) con identidad registrada, si el registro subió imágenes generadas de tu inventado | Un clip Omni cuyo registro subió una imagen no generada aquí (aunque luego la quites de la ficha), o sin registro que lo explique |
 
 Lo que se publica es **una copia**: el título, la descripción y la firma que escribes, y una copia del archivo (en un
 personaje, su retrato y hasta tres vistas generadas; nunca su hoja 3×3). **Nunca** viaja el prompt, el modelo con el que
@@ -76,7 +77,8 @@ caso el **motivo** que escribió quien modera.
 Si **borras el original** (el personaje, el archivo o el proyecto del que salió), su publicación deja de verse al
 momento y se borra con su copia en unos minutos. Si lo mueves a la **papelera**, deja de verse mientras esté allí
 (restaurarlo la vuelve a enseñar). Si **revocas la declaración** de personaje inventado, lo que salió de él deja de
-verse; volver a declararlo no basta: hay que corregir y reenviar cada publicación para que se apruebe otra vez. Si **borras tu cuenta**, tus publicaciones dejan de verse desde que lo
+verse para siempre: una declaración revocada no se recupera. En **Tus publicaciones** esas publicaciones salen como
+**«Oculta»**, con el motivo (en lugar de «Publicada»), y puedes retirarlas. Si **borras tu cuenta**, tus publicaciones dejan de verse desde que lo
 pides y se borran con todo lo demás al terminar el periodo de gracia (ver [Tus datos](tus-datos.md)).
 
 ## Ver, usar e inspirarte
@@ -117,7 +119,7 @@ cada una de sus referencias con su origen real.
   caracteres). Es lo que leerá el autor: di qué norma incumple y qué puede cambiar. La copia se borra en ese momento.
 - Lo aprobado no se vuelve a comprobar entero en cada visita (lo que se generó ya no cambia), pero deja de verse al
   momento si su original se borra o pasa a la papelera, si se revoca la declaración de su personaje o si la cuenta del
-  autor entra en borrado.
+  autor entra en borrado. En la lista de publicadas aparece entonces como «Oculta», con el motivo.
 - **No puedes moderar lo tuyo**: tus publicaciones tiene que revisarlas otra persona con rol de administrador. En una
   instalación con un solo administrador, lo que publique esa persona se queda pendiente.
 - Se decide sobre **la versión que ves**: si el autor la edita mientras la miras, tu decisión no se aplica y te lo dice.

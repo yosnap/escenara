@@ -20,8 +20,8 @@ por hitos reales. Sin comentarios, seguidores, mensajes ni publicación automát
   últimos resultados, cada uno con «Publicar» o el **motivo concreto** por el que no se puede. Solo es publicable lo
   generado de principio a fin con un personaje **inventado**, por **lista blanca de origen** (la de los ejemplos de
   plantilla, en un nivel más estricto) sobre **lo que cada trabajo envió al proveedor**, guardado al generarlo: todas
-  sus imágenes de referencia (no solo la primera) y su audio, y lo que enviaron los trabajos que produjeron esas
-  imágenes. Nunca una subida (tampoco una marcada «hecha con IA»), una persona o una mascota real, un producto, un lugar
+  sus imágenes de referencia (no solo la primera) y su audio, en Omni con identidad registrada el retrato y el cuerpo
+  que subió el registro, y lo que enviaron los trabajos que produjeron esas imágenes. Nunca una subida (tampoco una marcada «hecha con IA»), una persona o una mascota real, un producto, un lugar
   con fotos (o ya borrado), un reparto de dos personajes, un podcast, un clip cantado ni un audio subido; lo que envió
   una imagen ya borrada no se puede comprobar y tampoco. Cambiar después la escena no cambia el veredicto. Ante la
   duda, no se publica. Título, descripción y firma sin nombres de personas reales, y **declaración expresa** («Confirmo que es
@@ -53,8 +53,8 @@ por hitos reales. Sin comentarios, seguidores, mensajes ni publicación automát
 - **Borrar la cuenta** oculta sus publicaciones desde que se pide y las borra con sus copias al terminar la gracia;
   en la gracia se pueden descargar (JSON) y el ZIP de un proyecto lleva `comunidad.json` con las que salen de él.
   **Borrar un personaje, un archivo o un proyecto** deja sus publicaciones huérfanas: dejan de verse al instante y el
-  worker las borra con su copia. La **papelera** y **revocar la declaración** de inventado las ocultan (tras revocarla
-  hay que reenviarlas y aprobarlas otra vez).
+  worker las borra con su copia. La **papelera** y **revocar la declaración** de inventado las ocultan (la revocación, para
+  siempre); el autor y quien modera las ven como «Oculta», con el motivo.
 - La ruta de los ejemplos de plantilla sirve los archivos con el mismo código que la comunidad (mismas cabeceras y
   `Range`), sin cambios de comportamiento.
 

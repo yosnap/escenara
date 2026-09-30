@@ -35,7 +35,9 @@ Para la publicación: (a) enlazar el original y servirlo si está aprobado; (b) 
 - `condicionDeOrigenSeguro` (0.42.1) pasa a tener dos niveles. `ejemplo` es el de siempre. `comunidad` es más
   estricto y se basa en **hechos inmutables del trabajo**: lo que envió al proveedor, tal como quedó en su `input` al
   encolarse (todas las `referencias`, no solo la primera; `referenciasLugar`, `referenciasProducto`,
-  `fotogramaSituado`, la imagen de partida y el `audioDeReferencia`). Esa entrada es la procedencia fijada al generar:
+  `fotogramaSituado`, la imagen de partida y el `audioDeReferencia`) y, en Omni con identidad registrada (`personajesOmni`
+  sin imágenes en el trabajo), el retrato y el cuerpo que subió **ese registro** (`character_omni_registrations` del
+  mismo personaje): sin registro o con el retrato borrado, «desconocido». Esa entrada es la procedencia fijada al generar:
   vaciar después un campo de la escena o borrar una foto no la cambia. Cada medio enviado, y lo que enviaron los
   trabajos que lo produjeron (consulta recursiva, cinco pasos como mucho), tiene que ser **resultado** de un trabajo de
   un personaje inventado con sus hechos en regla (sin reparto, sin producto aunque se haya borrado, con lugar generado o
@@ -55,7 +57,8 @@ Para la publicación: (a) enlazar el original y servirlo si está aprobado; (b) 
   copias en `storage_deletions` en la misma transacción (el worker reintenta lo que falle). El original no se toca.
 - **Estado público en un solo sitio** (`visibilidad.ts`): aprobada, con original vigente y fuera de la papelera, con el
   personaje inventado del que sale (`origin_character_id`, fijado al publicar) con su declaración vigente **desde antes
-  de la aprobación** (revocarla la oculta; volver a declararlo exige aprobarla otra vez), autor sin borrado programado
+  de la aprobación** (revocarla la oculta para siempre: la aplicación no deja volver a declarar un inventado; la fecha es
+  una salvaguarda por si algún día se permitiera). El autor y quien modera la ven como «Oculta», con su motivo, autor sin borrado programado
   y la comunidad encendida. Lo aprobado no se recomprueba entero al mostrarlo: los hechos del trabajo no cambian, y
   estas comprobaciones baratas cubren lo que sí puede cambiar. El autor y quien modera la ven siempre. Borrar el original pone su enlace a nulo: la
   publicación queda huérfana, invisible al instante, y la pasada del worker la borra con su copia.
@@ -87,8 +90,10 @@ Para la publicación: (a) enlazar el original y servirlo si está aprobado; (b) 
   que «publicar un trend» es publicar un **ejemplo** hecho con un trend de la instalación. Abrir plantillas de usuario
   obligaría a decidir si su texto se enseña.
 - Con un solo administrador, lo que él publique se queda pendiente para siempre (nadie modera lo suyo).
-- Un clip Omni con identidad registrada no envía referencias: vale si su personaje es inventado con todas sus imágenes
-  generadas, que es lo que el proveedor registró.
+- Un clip Omni con identidad registrada vale solo si lo que subió su registro (retrato y cuerpo) es generado por ese
+  inventado; quitar después esas fotos de la ficha no lo cambia, porque cuenta lo que se registró.
+- La cola de moderación y la lista de candidatos calculan la elegibilidad de cuatro en cuatro: cada una abre
+  transacciones y el grupo de conexiones del proceso web es pequeño.
 - Las copias duplican almacenamiento (un clip publicado ocupa dos veces).
 - Límites conocidos: lo que se generó antes de guardar en la entrada la lista de referencias no tiene procedencia y no
   se puede publicar; lo anterior a las columnas que conservan producto y lugar (0.26.0 y 0.46.0) se juzga con lo que
