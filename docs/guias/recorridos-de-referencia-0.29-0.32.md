@@ -16,7 +16,7 @@ la interfaz en el momento de la prueba; el proyecto guardado es la fuente para r
 
 La **idea** del proyecto pedía que Elisa, personaje inventado de apariencia realista, interpretase a cámara una
 melodía de 11,52 s sobre «la». El **concepto** recoge que el audio se sintetizó localmente, sin canción,
-voz ni grabación de terceros. En la escucha del propietario, ese archivo suena a **sintetizador básico sin voz
+voz ni grabación de terceros. Al escucharlo, ese archivo suena a **sintetizador básico sin voz
 cantada ni letra reconocible**. El archivo [audio original de la prueba](../assets/audio/0.29.0-melodia-original-la.mp3) es
 MP3 mono de 48 kHz y 277.676 bytes. Sigue también en la biblioteca de la cuenta; el retrato frontal que encabeza
 las referencias de Elisa mide 864 × 1080, por lo que es vertical.
@@ -34,7 +34,7 @@ dirección elegida. Se corrigieron ambos antes de enviar el trabajo. La
 corregido, el audio seleccionado y la estimación.
 
 La declaración de derechos se guarda **por audio**, con fecha y texto aceptado. Sin ella el servidor bloquea el
-envío y no reserva créditos. El propietario la confirmó para el MP3 original. **Dos intentos de InfiniteTalk**
+envío y no reserva créditos. Quien administra la confirmó para el MP3 original. **Dos intentos de InfiniteTalk**
 acabaron en «Internal Error» del proveedor, ambos con **0 créditos cobrados**. Se mantuvieron en el historial.
 El modelo alternativo **Kling AI Avatar Standard** exigió activar su ficha antigua descubierta en el catálogo
 mediante la migración 0051; los ajustes del admin pasaron a Kling a 720p. La pantalla estimó **12 × 8 = 96
@@ -44,7 +44,7 @@ autorizados. La [captura del clip listo](../assets/capturas/0.29.0-elisa-canto-t
 
 `ffprobe` midió el clip del proveedor: **H.264, 848 × 1072, AAC estéreo, 12,267 s**. La pista de audio coincide
 con el MP3 aportado (PSNR de audio de 174 dB tras igualar frecuencia y canales). **Eso solo prueba que el audio
-se incorporó al vídeo.** El propietario revisó el clip y observó que los labios **no guardan relación con lo
+se incorporó al vídeo.** Al revisar el clip se observó que los labios **no guardan relación con lo
 que suena**. Este intento no cumple el criterio de aceptación de canto ni valida el lip-sync; hay que repetir
 la prueba con una grabación que contenga voz cantada clara. El proveedor conservó el rostro de
 Elisa; **cambió el fondo crema pedido por una cafetería** y generó
@@ -62,7 +62,7 @@ un personaje cantando. La repetición se realizó con una grabación vocal dentr
 quedaban del límite de 200.
 
 Se generó una [segunda escena con Elisa](/proyectos/57498e74-3b24-452b-85ab-17e93ece79b7) a partir de una
-canción que el propietario confirmó como **composición y grabación originales de su estudio**. El archivo subido
+canción que quien administra confirmó como **composición y grabación originales de su estudio**. El archivo subido
 dura 25,29 s; el límite de canto obligó a guardar en la biblioteca otro MP3 de **12 s, recortado entre los
 segundos 8 y 20**, conservando el original. La idea explica la procedencia y el recorte; la escena guarda
 plano medio frontal, cámara fija, la petición de fondo liso y ausencia de rótulos. Se declaró **música propia**
@@ -81,7 +81,7 @@ técnicamente con el recorte elegido, pero esa medida **no demuestra sincronía 
 aparece en el archivo final. Kling conservó el rostro de Elisa, pero volvió a generar una cafetería en vez del
 fondo liso solicitado y añadió [texto amarillo ilegible](../assets/capturas/0.29.0-elisa-voz-fotograma-medio.jpg)
 en el centro y [al final](../assets/capturas/0.29.0-elisa-voz-fotograma-final.jpg). La valoración perceptiva
-del propietario sobre la relación entre labios, sílabas y pausas sigue pendiente; hasta entonces este clip
+de quien administra sobre la relación entre labios, sílabas y pausas sigue pendiente; hasta entonces este clip
 documenta el flujo completo, pero **no valida el criterio de lip-sync**.
 
 ## 0.30 · Dos trends y cambio de modelo tras un fallo
@@ -90,7 +90,7 @@ Admin › Plantillas se inició con cinco formatos propios en estado **revisión
 antes y después de una rutina, producto en la rutina de la mañana, ASMR con producto y giro del producto en la
 mano. Cada tarjeta conserva su texto de servidor en inglés, variables tipadas, duración objetivo y número de
 versión. Los formatos de unboxing y giro se activaron durante la prueba y volvieron a **revisión** al terminar,
-igual que sus variantes de 5 s: la publicación queda a la decisión del propietario. Los otros tres no se han
+igual que sus variantes de 5 s: la publicación queda a decisión de quien administra. Los otros tres no se han
 probado y también siguen en revisión. La
 [captura del catálogo](../assets/capturas/0.30.0-catalogo-trends-revision.png) muestra el estado inicial y la
 [captura tras la prueba](../assets/capturas/0.30.0-trends-tras-prueba.png), las variantes guardadas.
@@ -175,4 +175,4 @@ operación consumió **cero créditos**. Las capturas son [montaje](../assets/ca
 [exportación lista](../assets/capturas/0.32.0-exportacion-lista.webp).
 
 La [guía de montaje](montaje-y-exportacion.md) recoge qué impide exportar y cómo resolverlo. La reproducción
-real tras subirlo a TikTok, Reels y Shorts sigue siendo una comprobación del propietario.
+real tras subirlo a TikTok, Reels y Shorts sigue siendo una comprobación de quien administra.

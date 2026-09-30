@@ -14,24 +14,16 @@ Si cambias el audio, la aprobación anterior deja de valer y tendrás que revisa
 La función parte apagada en una instalación nueva. Quien administra puede activarla y configurar modelo,
 duración máxima y resolución en **Admin › Ajustes › Cantar con audio propio**. También debe sincronizar el catálogo de precios
 en **Admin › Modelos**: si falta la tarifa exacta de los segundos y la resolución elegidos, Escenara bloquea
-la generación antes de reservar créditos. El enlace [Elisa canta una melodía original](/proyectos/11bf3d6d-2470-4a58-886c-0f6654c3c37d)
-abre un proyecto de prueba de la cuenta administradora. Su [audio sintetizado](../assets/audio/0.29.0-melodia-original-la.mp3)
-dura 11,52 s, pero no contiene una voz cantada claramente reconocible. Dos intentos con InfiniteTalk fallaron
-sin cobro; Kling AI Avatar Standard a 720p estimó 96 créditos por 12 s y KIE informó **88 créditos consumidos**.
-El clip fuente es vertical de 848 × 1072, no 9:16; el montaje guardado sí mide 1080 × 1920 y conserva el
-encuadre con franjas negras. **El propietario comprobó que los labios no siguen el sonido:** este resultado
-demuestra el flujo técnico, no la calidad de sincronía del canto. La [guía de recorridos](recorridos-de-referencia-0.29-0.32.md)
-conserva entradas, capturas y problemas observados.
+la generación antes de reservar créditos.
 
-La [segunda escena generada con Elisa](/proyectos/57498e74-3b24-452b-85ab-17e93ece79b7) usa una canción
-que el propietario confirmó como composición y grabación originales de su estudio. El audio completo y el
-recorte de 12 s se conservan en la biblioteca; la escena guarda el plano frontal y la declaración de música
-propia. Kling consumió **96 créditos** más, **184 de 200** entre ambos intentos. Su
-[clip](../assets/capturas/0.29.0-elisa-voz-clip-listo.png) y su
-[montaje etiquetado](../assets/capturas/0.29.0-elisa-voz-montaje-listo.png) quedaron guardados y el MP4
-exportado mide 1080 × 1920 con audio. El proveedor añadió fondo de cafetería y texto ilegible aunque se pidió
-un fondo liso sin rótulos. Falta que el propietario confirme si la boca sigue perceptiblemente el canto; no se
-debe presentar todavía como ejemplo de sincronía validada.
+## Qué esperar del resultado
+
+Trátala como una función **experimental**. En las pruebas con dos canciones, el flujo técnico funcionó de principio a fin
+(subida, derechos, coste, generación y montaje), pero **los labios no siguieron el sonido con la claridad que se
+esperaba** y la sincronía del canto no quedó validada. Además, el proveedor puede añadir un fondo o un texto que no
+pediste, aunque escribas un fondo liso sin rótulos. Como referencia de coste, un clip de unos 12 s con Kling AI Avatar
+Standard a 720p se estimó en 96 créditos. La [guía de recorridos](recorridos-de-referencia-0.29-0.32.md) conserva las
+entradas, capturas y problemas observados.
 
 ![Proyecto de Elisa preparado con dirección, audio y coste visible](../assets/capturas/0.29.0-elisa-canto-preparado.png)
 
