@@ -1,9 +1,10 @@
 -- Tus datos: exportación de un proyecto a ZIP (lo prepara el worker y caduca sola), borrado de la cuenta con periodo
 -- de gracia y registro, objetos del almacenamiento pendientes de borrar (con reintento), gasto agregado sin datos
--- personales de las cuentas borradas, prueba mínima y anónima de sus consentimientos y declaraciones, y el proyecto con
--- el que se encoló cada trabajo (`generation_jobs.project_id`, sin clave ajena).
+-- personales de las cuentas borradas (con la parte no confirmada por el proveedor), prueba mínima y anónima de sus
+-- consentimientos y declaraciones, y el proyecto y el personaje con los que se encoló cada trabajo
+-- (`generation_jobs.project_id` y `requested_character_id`, sin clave ajena).
 --
--- Aditiva e idempotente: solo crea tipos, tablas, índices, claves ajenas y una columna que admite nulos; no cambia ni
+-- Aditiva e idempotente: solo crea tipos, tablas, índices, claves ajenas y columnas que admiten nulos; no cambia ni
 -- borra ninguna fila. Volver a aplicarla no hace nada. Haz copia de la base antes (`bun run db:backup`) y migra con el
 -- worker parado, como siempre.
 DO $$ BEGIN
@@ -98,10 +99,13 @@ CREATE TABLE IF NOT EXISTS "usage_aggregates" (
 	"credits" real DEFAULT 0 NOT NULL,
 	"amount_eur" real DEFAULT 0 NOT NULL,
 	"entries" integer DEFAULT 0 NOT NULL,
+	"unconfirmed_credits" real DEFAULT 0 NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 ALTER TABLE "generation_jobs" ADD COLUMN IF NOT EXISTS "project_id" uuid;
+--> statement-breakpoint
+ALTER TABLE "generation_jobs" ADD COLUMN IF NOT EXISTS "requested_character_id" uuid;
 --> statement-breakpoint
 DO $$ BEGIN
   ALTER TABLE "account_deletions" ADD CONSTRAINT "account_deletions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;

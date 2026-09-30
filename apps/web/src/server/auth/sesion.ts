@@ -1,10 +1,10 @@
-import { and, eq, inArray } from "drizzle-orm";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
-import { db } from "../db/cliente";
-import { accountDeletions } from "../db/esquema";
 import { auth } from "./auth";
+import { MENSAJE_CUENTA_EN_BORRADO, tieneBorradoProgramado } from "./gracia";
+
+export { MENSAJE_CUENTA_EN_BORRADO, tieneBorradoProgramado };
 
 export type Sesion = NonNullable<Awaited<ReturnType<Awaited<ReturnType<typeof auth>>["api"]["getSession"]>>>;
 
@@ -23,21 +23,6 @@ const obtenerSesionVerificada = cache(async (): Promise<Sesion | null> => {
 
 /** Página donde una cuenta con el borrado programado ve el plazo y puede cancelarlo. */
 export const RUTA_BORRADO_PROGRAMADO = "/cuenta/borrado";
-
-/**
- * `true` si la cuenta tiene un borrado programado o a medias. Durante el periodo de gracia la cuenta está
- * **desactivada**: se puede entrar, pero solo para ver el plazo y cancelarlo.
- */
-export async function tieneBorradoProgramado(usuarioId: string): Promise<boolean> {
-  const [fila] = await db()
-    .select({ id: accountDeletions.id })
-    .from(accountDeletions)
-    .where(
-      and(eq(accountDeletions.userId, usuarioId), inArray(accountDeletions.state, ["programado", "borrando_objetos"])),
-    )
-    .limit(1);
-  return fila !== undefined;
-}
 
 const borradoProgramadoEnEstaPeticion = cache(tieneBorradoProgramado);
 
@@ -86,10 +71,6 @@ export async function sesionDePeticion(
   if (!sesion || permitirBorradoProgramado) return sesion;
   return (await tieneBorradoProgramado(sesion.user.id)) ? null : sesion;
 }
-
-/** Lo que se le dice a una cuenta en su periodo de gracia cuando intenta algo que no está en la lista de permitidos. */
-export const MENSAJE_CUENTA_EN_BORRADO =
-  "Tu cuenta tiene el borrado programado, así que está desactivada: no puedes generar, gastar, editar ni subir nada. Mientras tanto puedes cancelar el borrado, ver tu historial y pedir o descargar la exportación de tus proyectos desde «Tu cuenta se va a borrar» (/cuenta/borrado).";
 
 /**
  * Respuesta cuando `sesionDePeticion` no devuelve sesión: 403 con el motivo si es una cuenta en su gracia (tiene

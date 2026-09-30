@@ -158,6 +158,12 @@ export const generationJobs = pgTable(
      */
     projectId: uuid("project_id"),
     /**
+     * Personaje con el que se encoló, sin clave ajena a propósito (como `project_id`): si el personaje se borra,
+     * `character_id` pasa a nulo pero esto no, y el worker cierra el trabajo sin cobro en lugar de enviar sus fotos sin
+     * consentimiento que revisar.
+     */
+    requestedCharacterId: uuid("requested_character_id"),
+    /**
      * **Turno del clip dentro del intercambio** (0.28.0), desde 1. `null` en todo lo que no es un reparto de dos
      * personajes, que es todo lo anterior a esta versión.
      *

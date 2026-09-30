@@ -162,6 +162,8 @@ export const usageAggregates = pgTable(
     credits: real("credits").notNull().default(0),
     amountEur: real("amount_eur").notNull().default(0),
     entries: integer("entries").notNull().default(0),
+    /** Parte de `credits` de consumos que el proveedor no confirmó (estimados), p. ej. trabajos sin respuesta. */
+    unconfirmedCredits: real("unconfirmed_credits").notNull().default(0),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("usage_aggregates_clave_uq").on(t.month, t.provider, t.providerName, t.model, t.entryType)],

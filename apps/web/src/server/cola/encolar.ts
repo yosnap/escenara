@@ -246,6 +246,10 @@ export async function encolar(peticion: PeticionEncolado): Promise<Encolado> {
       const proyectoId = peticion.valores.sceneId
         ? await proyectoDeEscenaViva(tx, peticion.usuarioId, peticion.valores.sceneId)
         : null;
+      // Lo mismo con el personaje: si se acaba de borrar, sus fotos no pueden salir sin su consentimiento.
+      if (peticion.valores.characterId) await exigirPersonajeVivo(tx, peticion.usuarioId, peticion.valores.characterId);
+      // Y la cuenta no puede estar en la gracia de su borrado: ahí no se genera ni se gasta.
+      await exigirCuentaSinBorrado(tx, peticion.usuarioId);
 
       const [{ total } = { total: 0 }] = await tx
         .select({ total: sql<number>`count(*)::int` })
@@ -327,6 +331,7 @@ async function insertar(
     .values({
       ...peticion.valores,
       projectId: proyectoId,
+      requestedCharacterId: peticion.valores.characterId ?? null,
       idempotencyKey: peticion.claveIdempotencia,
       // La confirmación de derechos se guarda con su fecha: ya se ha comprobado que llegó marcada.
       rightsConfirmedAt: new Date(),
@@ -355,6 +360,31 @@ async function proyectoDeEscenaViva(tx: Ejecutor, usuarioId: string, escenaId: s
     );
   }
   return id;
+}
+
+async function exigirPersonajeVivo(tx: Ejecutor, usuarioId: string, personajeId: string): Promise<void> {
+  const filas = (await tx.execute(
+    sql`select id from characters where id = ${personajeId} and owner_id = ${usuarioId} for key share`,
+  )) as unknown as unknown[];
+  if (filas.length === 0) {
+    throw new ErrorGeneracion(
+      409,
+      "Este personaje se acaba de borrar, así que no se ha encolado nada ni se te ha cobrado.",
+    );
+  }
+}
+
+async function exigirCuentaSinBorrado(tx: Ejecutor, usuarioId: string): Promise<void> {
+  const filas = (await tx.execute(sql`
+    select 1 from account_deletions
+    where user_id = ${usuarioId} and state in ('programado', 'borrando_objetos') limit 1
+  `)) as unknown as unknown[];
+  if (filas.length > 0) {
+    throw new ErrorGeneracion(
+      409,
+      "Tu cuenta tiene el borrado programado: mientras tanto no se genera ni se gasta nada. No se ha encolado nada ni se te ha cobrado.",
+    );
+  }
 }
 
 export async function filaDeLaConfirmacion(

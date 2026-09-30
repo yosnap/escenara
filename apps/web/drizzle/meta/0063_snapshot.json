@@ -1,5 +1,5 @@
 {
-  "id": "75ac3a33-3bac-4ed0-b5ee-a234aa989ecc",
+  "id": "bb2618b8-2c58-429f-a662-09d8b2ba436f",
   "prevId": "77dd9b1f-3576-4cd9-a8ff-e24c0a26b25d",
   "version": "7",
   "dialect": "postgresql",
@@ -3169,6 +3169,12 @@
         },
         "project_id": {
           "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "requested_character_id": {
+          "name": "requested_character_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
@@ -9943,6 +9949,13 @@
         "entries": {
           "name": "entries",
           "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "unconfirmed_credits": {
+          "name": "unconfirmed_credits",
+          "type": "real",
           "primaryKey": false,
           "notNull": true,
           "default": 0

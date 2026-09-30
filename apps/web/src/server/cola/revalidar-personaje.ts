@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import type { ModeloVista } from "@/lib/catalogo";
+import { tieneBorradoProgramado } from "../auth/gracia";
 import { hechosDePersonajeCitado, parametrosDeControles } from "../controles/hechos";
 import { frenosQueGatean } from "../controles/motor";
 import { evaluarRegistrando, mensajeDeFreno } from "../controles/puerta";
@@ -7,22 +8,33 @@ import { db } from "../db/cliente";
 import type { FilaTrabajo } from "../db/esquema";
 import { declaracionVigente } from "../lugares/consulta";
 
-/** `true` si la escena del trabajo sigue existiendo en el proyecto con el que se encoló. */
-async function escenaDelProyectoViva(fila: FilaTrabajo): Promise<boolean> {
-  if (!fila.sceneId || !fila.projectId) return false;
-  const filas = (await db().execute(
-    sql`select 1 from scenes where id = ${fila.sceneId} and project_id = ${fila.projectId} limit 1`,
-  )) as unknown as unknown[];
-  return filas.length > 0;
+/**
+ * Qué ha desaparecido de lo que el trabajo necesitaba, con la causa **exacta**: el proyecto entero o solo la escena.
+ * `null` si la escena sigue en su proyecto.
+ */
+async function quitadoDelProyecto(fila: FilaTrabajo): Promise<"proyecto" | "escena" | null> {
+  if (!fila.projectId) return null;
+  const filas = (await db().execute(sql`
+    select exists (select 1 from projects where id = ${fila.projectId}) as proyecto,
+           exists (select 1 from scenes where id = ${fila.sceneId} and project_id = ${fila.projectId}) as escena
+  `)) as unknown as { proyecto: boolean; escena: boolean }[];
+  const f = filas[0];
+  if (!f?.proyecto) return "proyecto";
+  return fila.sceneId && f.escena ? null : "escena";
 }
 
-/** Motivo con el que se cierra un trabajo que no se puede enviar. */
+/** `true` si el personaje con el que se encoló ya no existe (se borró: `character_id` quedó a nulo). */
+async function personajeBorrado(fila: FilaTrabajo): Promise<boolean> {
+  if (!fila.requestedCharacterId) return false;
+  if (fila.characterId !== fila.requestedCharacterId) return true;
+  const filas = (await db().execute(
+    sql`select 1 from characters where id = ${fila.requestedCharacterId} limit 1`,
+  )) as unknown as unknown[];
+  return filas.length === 0;
+}
+
 type MotivoFalloTrabajo = NonNullable<FilaTrabajo["failureReason"]>;
 
-/**
- * El personaje del trabajo ya no puede generar (consentimiento revocado o rechazado, referencias por debajo
- * del mínimo, o un modelo que dejó de aceptar referencias). No es reintentable: el trabajo se cierra sin coste.
- */
 export class ErrorPersonajeNoUsable extends Error {
   constructor(
     mensaje: string,
@@ -38,10 +50,27 @@ export class ErrorPersonajeNoUsable extends Error {
  * esa decisión** como cualquier otra. Lanza {@link ErrorPersonajeNoUsable} si ya no puede generar.
  */
 export async function revalidarPersonajeDelTrabajo(fila: FilaTrabajo, modelo: ModeloVista): Promise<void> {
-  // Un trabajo de un proyecto que se ha borrado (su escena ya no está) no sale: se cierra sin cobro.
-  if (fila.projectId && !(await escenaDelProyectoViva(fila))) {
+  // Nada sale de una cuenta en la gracia de su borrado, tampoco un reintento de algo que se estaba preparando.
+  if (await tieneBorradoProgramado(fila.userId)) {
     throw new ErrorPersonajeNoUsable(
-      "El proyecto de este trabajo se ha borrado, así que no se ha enviado nada y no se te ha cobrado.",
+      "Tu cuenta tiene el borrado programado, así que este trabajo no se ha enviado y no se te ha cobrado.",
+      "cancelado",
+    );
+  }
+  // Un trabajo cuyo personaje se ha borrado no sale: sus fotos irían sin consentimiento que revisar.
+  if (await personajeBorrado(fila)) {
+    throw new ErrorPersonajeNoUsable(
+      "El personaje de este trabajo se ha borrado, así que no se ha enviado nada y no se te ha cobrado.",
+      "consentimiento",
+    );
+  }
+  // Un trabajo de un proyecto o de una escena que se han borrado no sale: se cierra sin cobro, con la causa exacta.
+  const quitado = await quitadoDelProyecto(fila);
+  if (quitado) {
+    throw new ErrorPersonajeNoUsable(
+      quitado === "proyecto"
+        ? "El proyecto de este trabajo se ha borrado, así que no se ha enviado nada y no se te ha cobrado."
+        : "La escena de este trabajo se ha borrado, así que no se ha enviado nada y no se te ha cobrado.",
       "cancelado",
     );
   }

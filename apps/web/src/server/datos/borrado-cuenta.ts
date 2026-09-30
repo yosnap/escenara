@@ -18,6 +18,7 @@ import {
   users,
 } from "../db/esquema";
 import { comprometidoDe } from "../presupuesto/deposito";
+import { avisarBorradoCancelado, avisarBorradoPedido } from "./avisos-borrado-cuenta";
 import { ErrorDatos } from "./errores";
 import { cerrarTrabajosAntesDeBorrar } from "./trabajos-al-borrar";
 
@@ -198,6 +199,9 @@ export async function pedirBorradoCuenta(sesion: SesionParaBorrar, frase: unknow
   const { borradoCuentaDiasGracia: dias } = await leerAjustes();
   const cuando = new Date(Date.now() + dias * 24 * 3600_000);
   const fila = await db().transaction(async (tx) => {
+    // El mismo candado que el encolado: uno en vuelo termina antes (y su trabajo se cancela justo después) y uno que
+    // llegue después ve el borrado programado y no encola nada (`cola/encolar.ts`).
+    await tx.execute(sql`select 1 from users where id = ${sesion.usuarioId} for update`);
     const [nueva] = await tx
       .insert(accountDeletions)
       .values({ userId: sesion.usuarioId, scheduledFor: cuando, availableAt: cuando })
@@ -207,7 +211,9 @@ export async function pedirBorradoCuenta(sesion: SesionParaBorrar, frase: unknow
     await tx.delete(sessions).where(and(eq(sessions.userId, sesion.usuarioId), ne(sessions.id, sesion.sesionId)));
     return nueva;
   });
-  // Lo que estaba esperando turno no sale durante la gracia: se cancela liberando su reserva.
+  // Lo que estaba esperando turno no sale durante la gracia: se cancela liberando su reserva. Ya no puede entrar nada
+  // nuevo (el encolado lo rechaza) y, si esta cancelación fallara, el worker tampoco envía nada de una cuenta en gracia:
+  // lo cierra sin cobro al ir a prepararlo.
   const encolados = await db()
     .select()
     .from(generationJobs)
@@ -221,6 +227,7 @@ export async function pedirBorradoCuenta(sesion: SesionParaBorrar, frase: unknow
   const abierta = fila ?? (await borradoAbiertoDe(sesion.usuarioId));
   if (!abierta) throw new Error("El borrado programado no se ha guardado.");
   console.info(`[datos] borrado de cuenta programado · ${abierta.id} para ${abierta.scheduledFor.toISOString()}`);
+  if (fila) await avisarBorradoPedido(sesion.usuarioId, abierta.scheduledFor).catch(() => undefined);
   return vistaBorrado(abierta);
 }
 
@@ -239,6 +246,7 @@ export async function cancelarBorradoCuenta(usuarioId: string): Promise<void> {
     )
     .returning({ id: accountDeletions.id });
   if (hecho.length > 0) {
+    await avisarBorradoCancelado(usuarioId).catch(() => undefined);
     console.info(`[datos] borrado de cuenta cancelado · ${hecho[0]?.id}`);
     return;
   }

@@ -238,6 +238,22 @@ export async function borrarPersonaje(actor: Actor, id: unknown): Promise<Borrad
   ];
   const idsDerivados = [...new Set(derivados.map((d) => d.id))];
   const { referencias, borrados } = await db().transaction(async (tx) => {
+    // Mismo orden de bloqueo que el encolado (`cola/encolar.ts`): primero la fila del usuario, después el personaje. Un
+    // encolado en curso termina antes y aquí se ve su trabajo (409); uno que llegue después encuentra el personaje
+    // borrado (409 sin cobrar nada).
+    await tx.execute(sql`select 1 from users where id = ${actor.id} for update`);
+    await tx.execute(sql`select 1 from characters where id = ${personaje.id} for update`);
+    const nuevos = (await tx.execute(sql`
+      select count(*)::int as total from generation_jobs
+      where character_id = ${personaje.id}
+        and state in ('en_cola', 'esperando_limite', 'preparando', 'enviando', 'enviado', 'en_curso', 'desconocido')
+    `)) as unknown as { total: number }[];
+    if ((nuevos[0]?.total ?? 0) > 0) {
+      throw new ErrorPersonaje(
+        409,
+        `Se acaba de encolar un trabajo con «${personaje.name}». No se ha borrado nada: vuelve a intentarlo.${cancelados > 0 ? ` Eso sí: ${cancelados === 1 ? "se ha cancelado el trabajo que estaba" : `se han cancelado los ${cancelados} trabajos que estaban`} en cola, sin coste.` : ""}`,
+      );
+    }
     const borradasReferencias = await tx
       .delete(characterReferences)
       .where(eq(characterReferences.characterId, personaje.id))
