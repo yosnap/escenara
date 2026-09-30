@@ -44,7 +44,7 @@ const { marcaAplicada, olvidarMarcaAplicada } = await import("./publicada");
 const { metadatosDeLaMarca, METADATOS_DE_ESCENARA } = await import("./metadatos");
 const { publicarBorrador } = await import("./instalacion");
 const { generarDerivados } = await import("./activos");
-const { documentoBase } = await import("./base");
+const { documentoBase } = await import("@/lib/marca-base");
 const { leerObjeto } = await import("../almacenamiento");
 
 type Sesion = Awaited<ReturnType<typeof crearSesionDePrueba>>;

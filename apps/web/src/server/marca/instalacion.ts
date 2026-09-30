@@ -1,4 +1,5 @@
 import { desc, eq, inArray, sql } from "drizzle-orm";
+import { documentoBase } from "@/lib/marca-base";
 import { describirPar, revisarContraste } from "@/lib/marca-contraste";
 import { type DocumentoMarca, validarDocumentoMarca } from "@/lib/marca-esquema";
 import {
@@ -15,7 +16,6 @@ import { db } from "../db/cliente";
 import { brandAssets, brandVersions, type FilaActivoMarca, type FilaVersionMarca } from "../db/esquema";
 import type { Actor } from "../media/servicio";
 import { type GeneradorDeDerivados, generarDerivados, guardarActivo, urlDeActivo } from "./activos";
-import { documentoBase } from "./base";
 import { ErrorMarca, esUuid, exigirAdministracion } from "./http";
 import { olvidarMarcaAplicada } from "./publicada";
 

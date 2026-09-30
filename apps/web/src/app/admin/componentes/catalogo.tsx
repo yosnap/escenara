@@ -13,6 +13,7 @@ import { SeccionEstados } from "./secciones/estados";
 import { SeccionFormatos } from "./secciones/formatos";
 import { SeccionFormularios } from "./secciones/formularios";
 import { SeccionGeneracion } from "./secciones/generacion";
+import { SeccionMarca } from "./secciones/marca";
 import { SeccionMediaPicker } from "./secciones/media-picker";
 import { SeccionModelos } from "./secciones/modelos";
 import { SeccionMontaje } from "./secciones/montaje";
@@ -31,6 +32,7 @@ import { SeccionTokens } from "./secciones/tokens";
 
 const INDICE = [
   ["tokens", "Colores y tipografía"],
+  ["marca", "Marca y kit"],
   ["acciones", "Botones"],
   ["formularios", "Campos y opciones"],
   ["selectores", "Selectores"],
@@ -84,6 +86,7 @@ export function Catalogo() {
           <code className="mx-1 rounded bg-elevada px-1.5 font-mono text-sm">&lt;select&gt;</code>nativo del navegador.
         </p>
         <SeccionTokens />
+        <SeccionMarca />
         <SeccionAcciones />
         <SeccionFormularios />
         <SeccionSelectores />

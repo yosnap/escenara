@@ -1,5 +1,5 @@
 import { type DocumentoMarca, validarDocumentoMarca } from "@/lib/marca-esquema";
-import referencia from "../../../../../docs/branding/escenara.brand.json";
+import referencia from "../../../../docs/branding/escenara.brand.json";
 
 /**
  * La marca de referencia de Escenara (`docs/branding/escenara.brand.json`), validada con el mismo esquema que las

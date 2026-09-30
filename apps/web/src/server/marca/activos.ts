@@ -12,7 +12,13 @@ import {
 } from "@/lib/marca-activos";
 import type { DocumentoMarca } from "@/lib/marca-esquema";
 import { CONTROL_O_ETIQUETA, motivoNombreFuenteNoValido } from "@/lib/marca-esquema";
-import { type ActivosDeVersion, LICENCIAS_FUENTE, type RolDerivado, type TipoLicenciaFuente } from "@/lib/marca-vista";
+import {
+  type ActivosDeVersion,
+  LICENCIAS_FUENTE,
+  type RolDerivado,
+  type TipoLicenciaFuente,
+  urlDeActivoMarca,
+} from "@/lib/marca-vista";
 import { borrarObjeto, guardarObjeto, leerObjeto } from "../almacenamiento";
 import type { Ejecutor } from "../db/cliente";
 import { db } from "../db/cliente";
@@ -212,7 +218,7 @@ export async function guardarActivo(
 /** Límite de subida por tipo de archivo de marca. */
 export const LIMITE_SUBIDA = { logotipo: Math.max(LIMITE_SVG, LIMITE_LOGO_RASTER), fuente: LIMITE_FUENTE } as const;
 
-export const urlDeActivo = (id: string) => `/api/marca/activos/${id}`;
+export const urlDeActivo = urlDeActivoMarca;
 
 /**
  * Activo para servir. Los de la instalación son públicos (el favicon lo pide cualquiera); los de un kit, **solo su

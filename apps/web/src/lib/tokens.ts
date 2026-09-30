@@ -83,6 +83,16 @@ export function exigirMarcaSegura(marca: Marca, fuentes: readonly FuenteCss[] = 
   }
 }
 
+/** Regla `@font-face` de una fuente propia. Solo con una familia y una URL que ya ha comprobado `exigirMarcaSegura`. */
+export const reglaFontFace = (f: FuenteCss): string =>
+  `@font-face { font-family: "${f.familia}"; src: url("${f.url}") format("woff2"); font-weight: 100 900; font-display: swap; }`;
+
+/** Reglas `@font-face` de las fuentes propias de una previsualización, comprobadas antes de escribirlas. */
+export function cssDeFuentes(marca: Marca, fuentes: readonly FuenteCss[]): string {
+  exigirMarcaSegura(marca, fuentes);
+  return fuentes.map(reglaFontFace).join("\n");
+}
+
 export function generarCss(marca: Marca, opciones: OpcionesCss = {}): string {
   const instalacion = opciones.instalacion;
   exigirMarcaSegura(marca, instalacion?.fuentes);
@@ -107,10 +117,7 @@ export function generarCss(marca: Marca, opciones: OpcionesCss = {}): string {
   const cabecera = instalacion
     ? [
         `/* Marca publicada de la instalación (versión ${instalacion.version}, marca ${marca.brandVersion}). */`,
-        ...instalacion.fuentes.map(
-          (f) =>
-            `@font-face { font-family: "${f.familia}"; src: url("${f.url}") format("woff2"); font-weight: 100 900; font-display: swap; }`,
-        ),
+        ...instalacion.fuentes.map(reglaFontFace),
       ]
     : [
         `/* Generado desde docs/branding/escenara.brand.json (marca ${marca.brandVersion}). No editar a mano: bun run tokens */`,

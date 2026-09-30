@@ -1,10 +1,10 @@
-import { and, eq, notInArray, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, notInArray, sql } from "drizzle-orm";
 import { CONTROL_O_ETIQUETA } from "@/lib/marca-esquema";
 import { ESQUINA_POR_DEFECTO, esEsquinaKit, type KitDeExportacion, LARGO_NOMBRE_KIT } from "@/lib/marca-kit";
 import type { KitVista } from "@/lib/marca-vista";
 import { borrarObjeto } from "../almacenamiento";
 import { db } from "../db/cliente";
-import { brandAssets, creatorKits, montageExports } from "../db/esquema";
+import { brandAssets, creatorKits, media, montageExports } from "../db/esquema";
 import type { Actor } from "../media/servicio";
 import { guardarActivo, prepararLogotipo } from "./activos";
 import { ErrorMarca } from "./http";
@@ -128,4 +128,29 @@ export async function claveDelLogoDeExportacion(kit: KitDeExportacion, usuarioId
     .where(and(eq(brandAssets.id, kit.activoId), eq(brandAssets.scope, "kit"), eq(brandAssets.ownerId, usuarioId)))
     .limit(1);
   return fila?.clave ?? null;
+}
+
+/** Fotograma de muestra del escaparate, para quien todavía no tiene ninguna imagen propia. */
+export const FOTOGRAMA_DE_ESCAPARATE = "/escaparate/lucia.webp";
+
+/**
+ * Fotograma real sobre el que se previsualiza el kit: la imagen más reciente de la biblioteca del usuario (sin
+ * documentos de consentimiento ni hojas de personaje) o, si no tiene ninguna, un fotograma del escaparate.
+ */
+export async function fotogramaDeMuestra(usuarioId: string): Promise<string> {
+  const [fila] = await db()
+    .select({ id: media.id })
+    .from(media)
+    .where(
+      and(
+        eq(media.ownerId, usuarioId),
+        eq(media.kind, "imagen"),
+        eq(media.isDocument, false),
+        isNull(media.characterSheetOf),
+        isNull(media.deletedAt),
+      ),
+    )
+    .orderBy(desc(media.createdAt))
+    .limit(1);
+  return fila ? `/api/media/${fila.id}/archivo` : FOTOGRAMA_DE_ESCAPARATE;
 }

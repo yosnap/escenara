@@ -30,6 +30,9 @@ export interface ActivosDeVersion {
   fuentes: FuenteDeVersion[];
 }
 
+/** URL de nuestra ruta que sirve un archivo de marca. Es la única que acaba en el CSS de una fuente propia. */
+export const urlDeActivoMarca = (id: string) => `/api/marca/activos/${id}`;
+
 export const LICENCIAS_FUENTE = {
   ofl: "SIL Open Font License (OFL)",
   apache: "Apache 2.0",
