@@ -298,7 +298,8 @@ function bibliotecaDeClips(
 ): VersionDeClip[] {
   return trabajos.flatMap((t) => {
     const medio = t.resultMediaId === null ? undefined : medios.get(t.resultMediaId);
-    if (t.kind !== "animacion" || t.state !== "listo" || t.castClipOrder !== null || !medio || medio.enPapelera) {
+    // El podcast ya se deja fuera por la escena; el clip de un dualcast (turno 1) sí es una versión.
+    if (t.kind !== "animacion" || t.state !== "listo" || !medio || medio.enPapelera) {
       return [];
     }
     return [

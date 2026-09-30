@@ -1,7 +1,8 @@
-import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import { declaracionesQueFaltan } from "@/lib/conversion";
 import { escenaPropia } from "../asistente/consulta";
 import { ErrorProyecto } from "../asistente/errores";
+import { repartoDeEnvioDe } from "../cola/entrada-del-trabajo";
 import { db } from "../db/cliente";
 import {
   characters,
@@ -65,7 +66,8 @@ export async function usarVersionDeEscena(actor: Actor, escenaId: unknown, traba
         eq(generationJobs.userId, actor.id),
         eq(generationJobs.kind, "animacion"),
         eq(generationJobs.state, "listo"),
-        isNull(generationJobs.castClipOrder),
+        // Un podcast ya se ha rechazado arriba; un dualcast con identidad registrada guarda su clip como turno 1
+        // y es una versión como cualquier otra: el filtro va por el formato de la escena, no por el turno.
       ),
     )
     .limit(1);
@@ -78,7 +80,7 @@ export async function usarVersionDeEscena(actor: Actor, escenaId: unknown, traba
     );
   }
   if (escena.clipJobId === version.trabajo.id && escena.clipMediaId === version.medio.id) return proyecto.id;
-  await exigirPuertasDeLaVersion(actor, escena, version.trabajo);
+  await exigirPuertasDeLaVersion(actor, escena, proyecto.mainCharacterId, version.trabajo);
 
   const [enMarcha] = await db()
     .select({ id: generationJobs.id })
@@ -132,7 +134,13 @@ export async function usarVersionDeEscena(actor: Actor, escenaId: unknown, traba
  * Las mismas puertas que la conversión de un clip en escena, sobre **esta** versión. Todas se miran a la vez para
  * decir todo lo que falta de una sola vez.
  */
-async function exigirPuertasDeLaVersion(actor: Actor, escena: FilaEscena, trabajo: FilaTrabajo): Promise<void> {
+async function exigirPuertasDeLaVersion(
+  actor: Actor,
+  escena: FilaEscena,
+  /** Protagonista del proyecto: es el reparto de una escena que no tiene reparto propio. */
+  protagonista: string | null,
+  trabajo: FilaTrabajo,
+): Promise<void> {
   const motivos: string[] = [];
   const reparto = await db()
     .select({ id: sceneCharacters.characterId, nombre: characters.name, dueno: characters.ownerId })
@@ -148,7 +156,10 @@ async function exigirPuertasDeLaVersion(actor: Actor, escena: FilaEscena, trabaj
     if (!personaje) {
       motivos.push("La persona de esa versión ya no está entre tus personajes.");
     } else {
-      if (reparto.length > 0 && !reparto.some((r) => r.id === trabajo.characterId)) {
+      // El reparto efectivo: el de la escena o, si no tiene uno propio, el protagonista del proyecto. Una versión con
+      // un protagonista anterior no entra en el montaje aunque esa persona siga pudiendo usarse.
+      const efectivo = reparto.length > 0 ? reparto.map((r) => r.id) : protagonista ? [protagonista] : [];
+      if (efectivo.length > 0 && !efectivo.includes(trabajo.characterId)) {
         motivos.push(
           `Esa versión es de «${personaje.nombre}», que ya no está en el reparto de esta escena: usa una versión con el reparto de ahora o vuelve a ponerlo en el reparto.`,
         );
@@ -159,8 +170,9 @@ async function exigirPuertasDeLaVersion(actor: Actor, escena: FilaEscena, trabaj
       }
     }
   }
-  // En un dualcast salen las dos personas en el mismo clip: la otra también tiene que poder usarse.
-  if (escena.castFormat === "dualcast") {
+  // Un dualcast **con los dos en el plano** (se envió con su reparto) saca a las dos personas en el mismo clip: la
+  // otra también tiene que poder usarse. Uno sin identidad registrada solo lleva al protagonista y no se le exige.
+  if (escena.castFormat === "dualcast" && repartoDeEnvioDe(trabajo)?.formato === "dualcast") {
     for (const miembro of reparto.filter((r) => r.id !== trabajo.characterId && r.dueno === actor.id)) {
       const impedimentos = await motivosParaNoGenerar(miembro.id);
       if (impedimentos.length > 0) motivos.push(`«${miembro.nombre}» ya no se puede usar: ${impedimentos.join(" ")}`);
@@ -191,8 +203,9 @@ export async function bytesDeVersionesSinUsar(proyectoId: string): Promise<numbe
       and(
         eq(scenes.projectId, proyectoId),
         eq(generationJobs.kind, "animacion"),
-        // Los clips de un podcast van por turnos y los dos se usan: ninguno es una versión «sin usar».
-        isNull(generationJobs.castClipOrder),
+        // Los clips de un podcast van por turnos y los dos se usan: ninguno es una versión «sin usar». Un dualcast
+        // sí tiene versiones (su clip se guarda como turno 1), y las que no se usan ocupan cuota como cualquiera.
+        ne(scenes.castFormat, "podcast"),
         isNotNull(generationJobs.resultMediaId),
         isNull(media.deletedAt),
         sql`${generationJobs.resultMediaId} is distinct from ${scenes.clipMediaId}`,

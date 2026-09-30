@@ -149,7 +149,12 @@ describe.skipIf(!hayBaseDeDatos)("biblioteca de versiones de una escena", () => 
   }
 
   /** Un trabajo de clip terminado de la escena, con su archivo: es lo que es una versión. */
-  async function version(medioId: string, creado: Date, personajeId: string | null = null): Promise<string> {
+  async function version(
+    medioId: string,
+    creado: Date,
+    personajeId: string | null = null,
+    extra: { input?: Record<string, unknown>; castClipOrder?: number } = {},
+  ): Promise<string> {
     const [trabajo] = await db()
       .insert(generationJobs)
       .values({
@@ -158,7 +163,8 @@ describe.skipIf(!hayBaseDeDatos)("biblioteca de versiones de una escena", () => 
         provider: "kie",
         model: "veo3_lite",
         prompt: "Plano de prueba",
-        input: { proporcion: "9:16" },
+        input: { proporcion: "9:16", ...extra.input },
+        castClipOrder: extra.castClipOrder ?? null,
         sceneId: escenaId,
         state: "listo",
         resultMediaId: medioId,
@@ -342,6 +348,7 @@ describe.skipIf(!hayBaseDeDatos)("biblioteca de versiones de una escena", () => 
   });
 
   test("un segundo clip de podcast no cuenta como versión sin usar en el aviso de cuota", async () => {
+    await db().update(scenes).set({ castFormat: "podcast" }).where(eq(scenes.id, escenaId));
     const antes = await bytesDeVersionesSinUsar(proyectoId);
     const turno = await clip("turno-2", "black");
     await db().insert(generationJobs).values({
@@ -395,6 +402,77 @@ describe.skipIf(!hayBaseDeDatos)("biblioteca de versiones de una escena", () => 
       expect(mensajeDe(datos)).toContain("«Lucía» ya no se puede usar");
       expect(mensajeDe(datos)).toContain("No se ha cambiado nada del montaje");
       await nadaCambia(antes);
+    });
+
+    const marta = async () => {
+      const [fila] = await db()
+        .insert(characters)
+        .values({ ownerId: ana.id, name: "Marta", kind: "persona" })
+        .returning({ id: characters.id });
+      return fila?.id ?? "";
+    };
+
+    test("sin reparto propio, el reparto es el protagonista: con otro protagonista esa versión no entra", async () => {
+      await db().delete(sceneCharacters).where(eq(sceneCharacters.sceneId, escenaId));
+      await db()
+        .update(projects)
+        .set({ mainCharacterId: await marta() })
+        .where(eq(projects.id, proyectoId));
+      const antes = (await leerMontaje()).version;
+      const { estado, datos } = await usar(conLucia);
+      expect(estado).toBe(409);
+      expect(mensajeDe(datos)).toContain("ya no está en el reparto de esta escena");
+      await nadaCambia(antes);
+      // Con Lucía de protagonista, sí.
+      await db().update(projects).set({ mainCharacterId: lucia }).where(eq(projects.id, proyectoId));
+      expect((await usar(conLucia)).estado).toBe(200);
+    });
+
+    describe("en un dualcast", () => {
+      const repartoDual = {
+        formato: "dualcast",
+        orden: 1,
+        presentes: [
+          { nombre: "Lucía", lado: "izquierda", mirada: "camara", habla: true },
+          { nombre: "Marta", lado: "derecha", mirada: "camara", habla: true },
+        ],
+        turnos: [{ nombre: "Lucía", texto: "Hola.", direccion: "" }],
+      };
+      let martaId: string;
+      let conLasDos: string;
+
+      beforeEach(async () => {
+        martaId = await marta();
+        await db().update(scenes).set({ castFormat: "dualcast" }).where(eq(scenes.id, escenaId));
+        await db().insert(sceneCharacters).values({ sceneId: escenaId, characterId: martaId });
+        // Con identidad registrada, el clip de un dualcast se guarda como turno 1 y lleva su reparto.
+        conLasDos = await version(await clip("dual", "white"), new Date(Date.now() - 90_000), lucia, {
+          input: { reparto: repartoDual },
+          castClipOrder: 1,
+        });
+      });
+
+      test("su clip es una versión: sale en la biblioteca y, sin usar, cuenta en la cuota", async () => {
+        const vista = await estadoDeProduccion(actor, proyectoId);
+        expect(vista.escenas[0]?.bibliotecaDeClips.some((v) => v.trabajoId === conLasDos)).toBe(true);
+        const [dual] = await db().select().from(generationJobs).where(eq(generationJobs.id, conLasDos));
+        const [medio] = await db()
+          .select()
+          .from(media)
+          .where(eq(media.id, dual?.resultMediaId ?? ""));
+        expect(await bytesDeVersionesSinUsar(proyectoId)).toBeGreaterThanOrEqual(medio?.sizeBytes ?? 1);
+      });
+
+      test("con las dos en el plano, la segunda persona también tiene que poder usarse", async () => {
+        // Marta no tiene consentimiento registrado.
+        const { estado, datos } = await usar(conLasDos);
+        expect(estado).toBe(409);
+        expect(mensajeDe(datos)).toContain("«Marta» ya no se puede usar");
+      });
+
+      test("un clip de dualcast sin identidad solo lleva a la protagonista: no se le exige a la otra", async () => {
+        expect((await usar(conLucia)).estado).toBe(200);
+      });
     });
 
     test("si ya no está en el reparto de la escena, esa versión no se usa", async () => {
