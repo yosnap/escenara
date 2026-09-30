@@ -83,6 +83,8 @@ export async function retirarPersonas(
     actor,
     {
       prompt: PROMPT_RETIRAR_PERSONAS,
+      // El usuario ve lo que ha pedido, en castellano; el prompt en inglés se queda en el servidor (ADR-0022).
+      escenaVisible: `Retirar a las personas de una foto de «${lugar.name}».`,
       medioId: referencia.mediaId,
       edicionDeLugar: { lugarId: lugar.id, tipo: "retirar_personas", referenciaId: referencia.id },
       // La clave se deriva de la foto: repetir el clic no encarga dos ediciones.

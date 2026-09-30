@@ -293,6 +293,8 @@ export interface PeticionFotograma extends Confirmacion {
   lugarElegido?: LugarElegido | null;
   /** Foto editada o candidato de un lugar: lo pone el servidor (`lugares/edicion.ts`), nunca el navegador. */
   edicionDeLugar?: EdicionDeLugar;
+  /** Lo que ve el usuario como «escena» cuando el prompt lo compone el servidor (ADR-0022). Solo lo pone el servidor. */
+  escenaVisible?: string;
 }
 
 export interface PeticionAnimacion extends Confirmacion {
@@ -491,11 +493,15 @@ export async function crearFotograma(
   );
   // Con producto hay una marca en juego, y usarla es una declaración aparte de la de la imagen.
   if (producto) exigirDerechoDeMarca(peticion.derechoMarca);
-  // El lugar (la maestra) compite por el mismo cupo, así que se resuelve antes del reparto y con la misma cuenta.
-  const conLugar = await lugarDelEnvio(actor.id, conEscena?.escena ?? null, peticion.lugarElegido, personaje);
+  // El lugar (la maestra) compite por el mismo cupo, así que se resuelve antes del reparto y con la misma cuenta. La
+  // inserción de la captura edita un fotograma ya situado: el lugar cuenta (su declaración) pero su maestra no viaja.
+  const conLugar = peticion.edicionDeLugar
+    ? null
+    : await lugarDelEnvio(actor.id, conEscena?.escena ?? null, peticion.lugarElegido, personaje);
+  const insercion = producto?.pasoDigital === "insertar_captura";
   const { conProducto, reparto } = await repartoCompletoDelEnvio({
     producto,
-    lugar: imagenesDelLugar(conLugar),
+    lugar: insercion ? 0 : imagenesDelLugar(conLugar),
     adaptador,
     modelo,
     envio: {
@@ -549,7 +555,7 @@ export async function crearFotograma(
           // Reparto de la escena (0.28.0): el consentimiento se gatea **por cada persona real** que sale en ella.
           ...(conReparto ? { reparto: conReparto } : {}),
           ...(conProducto ? { producto: conProducto.hechos } : {}),
-          ...hechosDelEnvioConLugar(conLugar, reparto),
+          ...(insercion ? hechosDelClipConLugar(conLugar) : hechosDelEnvioConLugar(conLugar, reparto)),
         },
         h.buscar,
       ),
@@ -708,7 +714,7 @@ export async function crearFotograma(
       unidadPrecio: precio.unidad,
       // Lo que escribió la persona y lo que añadió el servidor, separados: el historial tiene que poder
       // mostrar las dos cosas sin adivinar dónde acaba una y empieza la otra.
-      escena: prompt,
+      escena: peticion.escenaVisible ?? prompt,
       // Lo que compuso la plantilla, aparte de lo que escribió la persona: el historial tiene que poder
       // mostrar las dos cosas, y auditar un prompt exige saber de qué plantilla y de qué presets salió.
       ...(base.compuesto

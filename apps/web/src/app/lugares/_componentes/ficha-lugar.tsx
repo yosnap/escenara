@@ -1,11 +1,14 @@
 "use client";
 
 import { ImagePlus, Sparkles, Star, Trash2, UserX } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Boton, BotonIcono } from "@/components/ui/button";
+import { CargadorChispa } from "@/components/ui/chispa";
 import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo, EntradaTexto } from "@/components/ui/field";
+import { LimiteDeCarga } from "@/components/ui/limite-de-carga";
 import {
   anadirFotosALugar,
   borrarLugar,
@@ -30,8 +33,14 @@ import {
 } from "@/lib/lugares";
 import type { ResumenBorradoLugar } from "@/server/lugares/borrado";
 import { DeclaracionLugar } from "./declaracion-lugar";
-import { DialogoFotoGenerada, type EncargoDeFoto } from "./dialogo-foto-generada";
+import type { EncargoDeFoto } from "./dialogo-foto-generada";
 import { acabadoEnPalabras } from "./lista-lugares";
+
+/** El diálogo del coste (con el panel de controles) se descarga al pedir la primera foto generada, no con la ficha. */
+const DialogoFotoGenerada = dynamic(() => import("./dialogo-foto-generada").then((m) => m.DialogoFotoGenerada), {
+  ssr: false,
+  loading: () => <CargadorChispa etiqueta="Cargando el coste" />,
+});
 
 /**
  * Ficha de un lugar: sus datos, sus fotos con el papel de cada una (una sola maestra), su declaración, sus versiones
@@ -49,6 +58,9 @@ export function FichaLugar({ inicial }: { inicial: LugarVista }) {
   const [ocupado, setOcupado] = useState(false);
   const [encargo, setEncargo] = useState<EncargoDeFoto | null>(null);
   const [encargado, setEncargado] = useState("");
+  // Desde el primer encargo el diálogo se queda montado: al cerrarlo devuelve el foco al botón que lo abrió.
+  const [dialogoCargado, setDialogoCargado] = useState(false);
+  if (encargo && !dialogoCargado) setDialogoCargado(true);
   const faltas = queFaltaAlLugar(lugar);
 
   const aplicar = async (promesa: Promise<{ ok: true; datos: LugarVista } | { ok: false; error: string }>) => {
@@ -232,16 +244,20 @@ export function FichaLugar({ inicial }: { inicial: LugarVista }) {
         </section>
       )}
 
-      <DialogoFotoGenerada
-        key={encargo ? `${encargo.tipo}-${"referenciaId" in encargo ? encargo.referenciaId : ""}` : "ninguno"}
-        lugarId={lugar.id}
-        encargo={encargo}
-        onCerrar={() => setEncargo(null)}
-        onEncargado={(mensaje) => {
-          setEncargo(null);
-          setEncargado(mensaje);
-        }}
-      />
+      {dialogoCargado && (
+        <LimiteDeCarga>
+          <DialogoFotoGenerada
+            key={encargo ? `${encargo.tipo}-${"referenciaId" in encargo ? encargo.referenciaId : ""}` : "ninguno"}
+            lugarId={lugar.id}
+            encargo={encargo}
+            onCerrar={() => setEncargo(null)}
+            onEncargado={(mensaje) => {
+              setEncargo(null);
+              setEncargado(mensaje);
+            }}
+          />
+        </LimiteDeCarga>
+      )}
 
       <DialogoSelectorMedios
         abierto={eligiendo}

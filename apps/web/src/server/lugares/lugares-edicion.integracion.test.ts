@@ -126,6 +126,10 @@ describe.skipIf(!hayBaseDeDatos)("fotos generadas de un lugar", () => {
 
     const respuesta = await encargar(ana, lugar.id, { tipo: "retirar-personas", referenciaId });
     expect(respuesta.status).toBe(201);
+    // Lo que ve el usuario es lo que ha pedido, en castellano, nunca el prompt en inglés (ADR-0022).
+    const vista = (await respuesta.json()) as { escena: string; prompt?: string };
+    expect(vista.escena).toContain("Retirar a las personas");
+    expect(vista.prompt).toBeUndefined();
     const [trabajo] = await db().select().from(generationJobs).where(eq(generationJobs.userId, ana.id));
     expect(trabajo?.kind).toBe("fotograma");
     expect(trabajo?.sourceMediaId).toBe(maestra);

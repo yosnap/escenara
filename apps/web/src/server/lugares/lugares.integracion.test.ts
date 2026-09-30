@@ -388,6 +388,14 @@ describe.skipIf(!hayBaseDeDatos)("lugares: propiedad, declaración, versión, re
       ["producto-referencias-no-caben"],
     );
     expect(envio.status).toBe(201);
+    // ADR-0022: lo que ve el usuario es lo que escribió y la descripción de su lugar, nunca el prompt compuesto.
+    const vista = (await envio.json()) as Record<string, unknown>;
+    expect(vista.prompt).toBeUndefined();
+    expect(JSON.stringify(vista)).not.toContain("The setting is");
+    const ficha = await rutaLugar.GET(pedir(ana, `/api/lugares/${lugar.id}`), ctx(lugar.id));
+    const textoFicha = JSON.stringify(await ficha.json());
+    expect(textoFicha).toContain("Bar con azulejos verdes");
+    expect(textoFicha).not.toContain("reference image");
     const [trabajo] = await trabajosDeAna();
     const entrada = trabajo?.input as {
       referencias: string[];
