@@ -29,7 +29,7 @@ Qué pide cada campo del diálogo de un trend:
 | Plataforma de origen | No | Nota informativa de dónde nació el formato, por ejemplo «TikTok». No se envía al proveedor ni la ven los usuarios. Vacía es válido. |
 | Duración objetivo (s) | Sí | Entre 1 y 600. Es la duración que se fija al elegir el trend y la que se compara con la del proyecto. |
 | URL de referencia | No | Un ejemplo del formato para quien administra. Solo HTTPS, sin usuario ni contraseña, hasta 500 caracteres. |
-| Permitir habla | Sí (apagado por defecto) | Apagado: el guion nunca entra en el prompt del clip. |
+| Permitir habla | Sí (apagado por defecto) | Apagado: el guion nunca entra en el prompt del clip y el clip va mudo. Marcado: solo **permite** la voz, no la obliga; el clip habla si además su formato es de habla a cámara, hay guion y el producto no es una acción sin habla. Déjalo apagado en formatos visuales (giro, ASMR, unboxing) y márcalo solo en los pensados para hablar a cámara. Cambiarlo en un trend publicado crea una versión nueva. |
 | Nombre y descripción | Sí | La descripción, en castellano, es lo que lee el usuario al elegir el trend. |
 | Texto de la plantilla | Sí | El prompt en inglés, con las variables como `{{escena}}`. Entre 10 y 1200 caracteres. |
 | Mínimo de fotos de referencia | Un número | Cuántas fotos exige el trend; 0 = ninguna. |
