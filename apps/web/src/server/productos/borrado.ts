@@ -92,7 +92,7 @@ export async function borrarProducto(actor: Actor, id: unknown): Promise<Borrado
       .returning({ id: productReferences.id });
     const escenas = await tx
       .update(scenes)
-      .set({ productId: null, productAction: "", updatedAt: new Date() })
+      .set({ productId: null, productAction: "", productPhotoIds: [], updatedAt: new Date() })
       .where(eq(scenes.productId, producto.id))
       .returning({ id: scenes.id });
     // El trabajo conserva su acción: forma parte de lo que se pidió y de lo que se pagó, y el historial tiene

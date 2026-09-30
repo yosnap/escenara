@@ -390,6 +390,13 @@ export const scenes = pgTable(
     /** Clave del catálogo de acciones de producto. Vacío = no se ha dicho qué se hace con él. */
     productAction: text("product_action").notNull().default(""),
     /**
+     * **Fotos del producto que el usuario eligió enviar** con esta escena, como identificadores de medio. Vacío
+     * = las de por defecto (la frontal primero), que es lo que hacían todas las escenas antes de poder elegir.
+     * Es una preferencia: el servidor la filtra contra las fotos vigentes del producto en cada envío y nunca
+     * envía más de las que caben con el modelo, así que una foto borrada después no rompe la escena.
+     */
+    productPhotoIds: jsonb<string[]>("product_photo_ids").notNull().default([]),
+    /**
      * **Formato del reparto** (0.28.0). `solo` por defecto: lo que hace que una escena anterior a esta versión
      * siga produciendo lo mismo sin tocarla.
      *

@@ -1,42 +1,17 @@
 import { and, asc, eq, isNull } from "drizzle-orm";
 import type { PapelReferencia } from "@/lib/productos";
+import { ordenarPorPrioridad, type RepartoDeReferencias } from "@/lib/reparto-referencias";
 import { db } from "../db/cliente";
 import { media } from "../db/esquema";
 import { productReferences } from "../db/esquema-productos";
 
 /**
- * **Qué fotos del producto viajan al proveedor y cuántas caben** (0.26.0).
- *
- * Un modelo admite un número fijo de imágenes de referencia (`parametros.maximoReferencias`), y con producto
- * hay dos cosas que quieren ese sitio: la **identidad del personaje** y el **producto**. No caben siempre las
- * dos enteras, así que el reparto es una decisión explícita y se toma en un solo sitio para que la puerta que
- * avisa antes de pagar y el worker que envía no puedan repartir distinto.
- *
- * El reparto: el producto recibe unas **3/7 partes** del cupo (con siete huecos, 3 para el producto y 4 para el
- * personaje) y **al menos una** foto —sin ninguna, el producto no llega y el prompt estaría prometiendo algo que
- * el modelo no puede ver—. El resto es del personaje, porque su identidad es lo que más pesa en el clip. Si uno
- * de los dos tiene menos fotos de las que le tocan, el otro aprovecha lo que sobra. Cuando algo se queda fuera,
- * se dice antes de cobrar, con las cifras (regla `producto-referencias-no-caben`).
+ * **Qué fotos del producto viajan al proveedor** (0.26.0). El reparto del cupo de referencias entre el
+ * personaje y el producto es una función pura que vive en `lib/reparto-referencias.ts`, porque el navegador
+ * necesita la misma cuenta para enseñar cuántas fotos caben; aquí se reexporta para que el servidor la pida
+ * siempre por el mismo sitio, y se lee de la base de datos qué fotos tiene el producto.
  */
-
-/**
- * Orden de prioridad de los papeles. La **frontal con la etiqueta** va siempre primero: es la que se compara
- * con el resultado y la que esta versión promete conservar. Después la captura de pantalla (es la etiqueta de
- * un producto digital), el envase, el mecanismo y el producto suelto.
- */
-const PRIORIDAD: Record<PapelReferencia, number> = {
-  etiqueta: 0,
-  captura_pantalla: 1,
-  envase: 2,
-  mecanismo: 3,
-  suelto: 4,
-};
-
-/**
- * Prioridad de la acción: al **abrir** el producto, el detalle del mecanismo pasa por delante del envase. Es
- * la única acción que mira una parte concreta, y la fuente avisa de que sin esa segunda referencia sale mal.
- */
-const ACCIONES_DE_ABRIR: readonly string[] = ["abrirlo", "skincare-abrir-tapa"];
+export { type RepartoDeReferencias, repartirReferencias } from "@/lib/reparto-referencias";
 
 /**
  * Fotos del producto que pueden viajar, ordenadas por prioridad de papel y, dentro de un papel, como las dejó
@@ -64,62 +39,17 @@ export async function fotosDelProducto(
       ),
     )
     .orderBy(asc(productReferences.sortOrder), asc(productReferences.createdAt));
-  const peso = (papel: PapelReferencia) =>
-    ACCIONES_DE_ABRIR.includes(accion) && papel === "mecanismo" ? PRIORIDAD.envase - 0.5 : PRIORIDAD[papel];
-  return [...filas].sort((a, b) => peso(a.papel) - peso(b.papel) || a.orden - b.orden).map((f) => f.mediaId);
-}
-
-/** El producto recibe 3 de cada 7 huecos de referencia: la identidad del personaje pesa más que la foto. */
-const PARTES_DEL_PRODUCTO = 3;
-const PARTES_DEL_CUPO = 7;
-
-/** Cómo se reparte el cupo de referencias del modelo entre el personaje y el producto. */
-export interface RepartoDeReferencias {
-  /** Cuántas fotos del personaje (o el fotograma de partida del clip) se envían. Nunca menos de una. */
-  personaje: number;
-  /** Cuántas fotos del producto se envían. */
-  producto: number;
-  /** `false` cuando algo se ha quedado fuera por el tope del modelo. Es lo que se avisa antes de pagar. */
-  cabenTodas: boolean;
+  return ordenarPorPrioridad(filas, accion).map((f) => f.mediaId);
 }
 
 /**
- * Reparte el cupo. Función **pura**: la usan la puerta que avisa y el worker que envía, y por eso no puede
- * vivir dentro de ninguno de los dos.
- *
- * - sin producto, todo el cupo es del personaje, exactamente como antes de esta versión;
- * - con producto y personaje, al producto le tocan 3/7 del cupo (redondeo hacia abajo, y una como mínimo si el
- *   cupo es de dos o más) y al personaje el resto; lo que uno no use, lo aprovecha el otro;
- * - con un modelo que solo admite una imagen, la única que cabe es la del **personaje**: es la imagen de
- *   partida del clip, y sin ella no hay nada que animar. El producto se queda en el texto y se avisa;
- * - **sin ninguna imagen de personaje** —el plano del producto solo, que se pide sin nadie—, todo el cupo es
- *   del producto: reservarle un hueco a una imagen que no existe dejaría fuera una foto del producto por
- *   nada.
+ * Las referencias del personaje que se guardan en el trabajo: **solo las que caben** tras dejar su sitio al
+ * producto, en su orden de prioridad. El worker aplica el mismo tope al enviar, así que guardarlas ya recortadas
+ * no cambia lo que llega al proveedor: hace que el trabajo diga lo mismo que el aviso.
  */
-export function repartirReferencias(maximo: number, personaje: number, producto: number): RepartoDeReferencias {
-  /**
-   * Un envío **sin ninguna referencia posible** (un modelo de texto a imagen, que es con lo que se genera un
-   * plano sin foto de partida): no viaja nada, tampoco del producto. Se dice antes de cobrar y al modelo se
-   * le pide un envase sin marca en vez de prometerle una foto que no va a recibir.
-   */
-  if (maximo <= 0) return { personaje: 0, producto: 0, cabenTodas: personaje === 0 && producto === 0 };
-  const cupo = Math.max(1, maximo);
-  if (producto <= 0) {
-    return { personaje: Math.min(personaje, cupo), producto: 0, cabenTodas: personaje <= cupo };
-  }
-  if (personaje <= 0) {
-    const paraProducto = Math.min(producto, cupo);
-    return { personaje: 0, producto: paraProducto, cabenTodas: paraProducto >= producto };
-  }
-  // Con un cupo de una imagen solo cabe la del personaje; desde dos, el producto tiene siempre un hueco.
-  const cuotaProducto = cupo < 2 ? 0 : Math.max(1, Math.floor((cupo * PARTES_DEL_PRODUCTO) / PARTES_DEL_CUPO));
-  // Primero cada uno toma lo que le toca; después lo que el otro no ha usado se reparte entre los dos.
-  const delPersonaje = Math.min(personaje, cupo - cuotaProducto);
-  const paraProducto = Math.min(producto, cupo - delPersonaje);
-  const paraPersonaje = Math.min(personaje, cupo - paraProducto);
-  return {
-    personaje: paraPersonaje,
-    producto: paraProducto,
-    cabenTodas: paraPersonaje >= personaje && paraProducto >= producto,
-  };
+export function referenciasDelPersonajeQueViajan<T>(
+  referencias: readonly T[],
+  reparto: Pick<RepartoDeReferencias, "personaje"> | null,
+): T[] {
+  return reparto && reparto.personaje > 0 ? referencias.slice(0, reparto.personaje) : [...referencias];
 }

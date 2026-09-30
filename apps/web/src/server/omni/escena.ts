@@ -48,6 +48,7 @@ import { personajePropio, referenciasParaGenerar } from "../personajes/puede-gen
 import { acotarCoste } from "../presupuesto/acotar";
 import { completarModelosSugeridos } from "../productos/modelos-sugeridos";
 import { hechosDelProducto, productoEnPrompt, productoParaGenerar } from "../productos/prompt";
+import { referenciasDelPersonajeQueViajan } from "../productos/referencias";
 import { creditosDelEnvio, traducirAlIngles } from "../prompts/traduccion";
 import { miembrosDelReparto } from "../reparto/consulta";
 import { exigirFormatoActivo } from "../reparto/servicio";
@@ -360,7 +361,10 @@ export async function producirEscenaHablada(
    * antes de cobrar (`producto-sin-identidad-registrada`) con la alternativa de hacer el producto en un plano
    * aparte y montarlo.
    */
-  const producto = await productoParaGenerar(actor.id, escena.productId, escena.productAction);
+  const producto = await productoParaGenerar(actor.id, escena.productId, escena.productAction, undefined, {
+    ids: escena.productPhotoIds,
+    estricta: false,
+  });
   // Lo que de verdad se va a enviar: con producto no se cita la identidad registrada aunque el motor la tenga.
   const citaIdentidad = conIdentidad && producto === null;
   /**
@@ -558,7 +562,7 @@ export async function producirEscenaHablada(
          * Con identidad registrada no hay referencias: la cara la pone el registro del proveedor. Con un motor de
          * referencias, son las fotos del personaje, y la muestra de la voz va aparte porque es audio y no imagen.
          */
-        referencias: referencias.map((r) => r.id),
+        referencias: referenciasDelPersonajeQueViajan(referencias, conProducto?.reparto ?? null).map((r) => r.id),
         ...(muestraEnviada ? { audioDeReferencia: muestraEnviada.id } : {}),
         parametros: { ...parametros, segundos },
         dialogo,

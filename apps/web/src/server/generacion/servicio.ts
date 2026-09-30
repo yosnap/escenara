@@ -38,9 +38,10 @@ import {
 } from "../personajes/contexto";
 import { personajePropio, referenciasParaGenerar } from "../personajes/puede-generar";
 import { acotarCoste } from "../presupuesto/acotar";
-import { productoDelTrabajo } from "../productos/columnas";
+import { eleccionDeFotosDelTrabajo, productoDelTrabajo } from "../productos/columnas";
 import { completarModelosSugeridos } from "../productos/modelos-sugeridos";
 import { hechosDelProducto, productoEnPrompt, productoParaGenerar } from "../productos/prompt";
+import { referenciasDelPersonajeQueViajan } from "../productos/referencias";
 import { plantillaUsable } from "../prompts/consulta";
 import { componerDesdePlantilla, type PromptCompuesto } from "../prompts/render";
 import { creditosDelEnvio, traducirAlIngles } from "../prompts/traduccion";
@@ -622,9 +623,13 @@ export async function crearFotograma(
    * que dar antes de cobrar nada.
    */
   const columnasProducto = await productoDelTrabajo(actor.id, conEscena?.escena.id ?? null, peticion.productoElegido);
-  const producto = await productoParaGenerar(actor.id, columnasProducto.productId, columnasProducto.productAction, {
-    ...(peticion.pasoDigital ? { pasoSolicitado: peticion.pasoDigital } : {}),
-  });
+  const producto = await productoParaGenerar(
+    actor.id,
+    columnasProducto.productId,
+    columnasProducto.productAction,
+    { ...(peticion.pasoDigital ? { pasoSolicitado: peticion.pasoDigital } : {}) },
+    await eleccionDeFotosDelTrabajo(conEscena?.escena.id ?? null, peticion.productoElegido),
+  );
   // Con producto hay una marca en juego, y usarla es una declaración aparte de la de la imagen.
   if (producto) exigirDerechoDeMarca(peticion.derechoMarca);
   const conProducto = producto
@@ -828,7 +833,7 @@ export async function crearFotograma(
       ...entradaGuardada(
         adaptador,
         promptFinal,
-        referencias.map((r) => r.id),
+        referenciasDelPersonajeQueViajan(referencias, conProducto?.reparto ?? null).map((r) => r.id),
         parametros,
       ),
       // La tarifa exacta que se ha confirmado. El worker envía **esa** variante: sin esto, un cambio de variante
@@ -989,7 +994,13 @@ export async function crearAnimacion(
    */
   const columnasProducto = await productoDelTrabajo(actor.id, partida.escenaId, peticion.productoElegido);
   // El clip **no** es un paso del producto digital: anima el fotograma que ya tiene la captura puesta.
-  const producto = await productoParaGenerar(actor.id, columnasProducto.productId, columnasProducto.productAction);
+  const producto = await productoParaGenerar(
+    actor.id,
+    columnasProducto.productId,
+    columnasProducto.productAction,
+    undefined,
+    await eleccionDeFotosDelTrabajo(partida.escenaId, peticion.productoElegido),
+  );
   if (producto) exigirDerechoDeMarca(peticion.derechoMarca);
   const conProducto = producto
     ? hechosDelProducto(

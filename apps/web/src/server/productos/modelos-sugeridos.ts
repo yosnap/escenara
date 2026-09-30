@@ -37,7 +37,11 @@ export const admiteFotoDeProducto = (modelo: ModeloVista): boolean => cupoDeGale
 /** Los modelos elegibles de una capacidad, recortados y con el dato de si admiten la foto del producto. */
 export async function modelosParaCrearConFoto(capacidad: Capacidad): Promise<ModeloElegible[]> {
   const modelos = await modelosElegibles(capacidad);
-  return modelos.map((m) => ({ ...recortarModelo(m), admiteFotoDeProducto: admiteFotoDeProducto(m) }));
+  return modelos.map((m) => ({
+    ...recortarModelo(m),
+    admiteFotoDeProducto: admiteFotoDeProducto(m),
+    cupoDeGaleria: cupoDeGaleriaDe(m),
+  }));
 }
 
 /**
@@ -50,6 +54,7 @@ export async function fotoDeProductoDelClip(modelo: ModeloVista, capacidad: Capa
     modelo: modelo.nombre,
     admite,
     alternativas: admite ? [] : await modelosConFotoDeProducto(capacidad),
+    cupoDeGaleria: cupoDeGaleriaDe(modelo),
   };
 }
 

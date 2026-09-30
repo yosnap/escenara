@@ -13,6 +13,7 @@ import { AvisoRequisitos } from "@/components/ui/requisitos";
 import type { ModeloElegible } from "@/lib/catalogo";
 import type { DireccionElegidaConAcento, OpcionesDeDireccion } from "@/lib/direccion";
 import { fotoDeProductoDelModelo } from "@/lib/foto-de-producto";
+import { cupoDeFotosDe } from "@/lib/fotos-del-producto";
 import { DIALOGO_MAXIMO, type Estimacion, type TrabajoVista } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
 import { AVISO_SIN_TERCEROS } from "@/lib/personajes";
@@ -235,6 +236,11 @@ export function PasoClip({
             producto={producto}
             onProducto={onProducto}
             fotoDeProducto={fotoDeProductoDelModelo(modelos, estimacion.modelo)}
+            elegirFotosDelProducto={cupoDeFotosDe({
+              cupoDeGaleria: modelos.find((m) => m.modelo === estimacion.modelo)?.cupoDeGaleria,
+              // El clip de «Crear» parte de una sola imagen: su fotograma.
+              fotosDelPersonaje: 1,
+            })}
             trend={
               trend
                 ? { nombre: trend.nombre, decide: trend.direccionDecidida, permiteHabla: trend.trendAllowsSpeech }

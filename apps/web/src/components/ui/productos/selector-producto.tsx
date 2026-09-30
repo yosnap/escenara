@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { OpcionDireccion } from "@/lib/direccion";
 import type { FotoDeProductoDelClip } from "@/lib/foto-de-producto";
+import type { CupoDeFotos } from "@/lib/fotos-del-producto";
 import {
   AVISO_ACCION_POCO_FIABLE,
   AVISO_GUION_EN_ACCION_SIN_HABLA,
@@ -27,6 +28,7 @@ import { Selector } from "../select";
 import { listarProductos } from "./api-productos";
 import { AvisoFotoDeProducto } from "./aviso-foto-de-producto";
 import { ElectorAccionProducto } from "./elector-accion-producto";
+import { FotosQueViajan } from "./elector-fotos-producto";
 import { DefinicionesPictogramaProducto } from "./pictogramas-producto";
 
 /**
@@ -50,6 +52,7 @@ export function SelectorProducto({
   producto,
   acciones,
   fotoDeProducto,
+  elegirFotos,
   deshabilitado,
   onCambio,
 }: {
@@ -61,6 +64,12 @@ export function SelectorProducto({
    * sale aquí, junto a la elección, y no solo con el coste al final. No sustituye al control previo: lo adelanta.
    */
   fotoDeProducto?: FotoDeProductoDelClip | null;
+  /**
+   * Con qué se produce el clip, para saber cuántas fotos del producto caben. **Solo lo pasa quien puede guardar
+   * la elección de fotos** («Crear» y la escena de un proyecto); sin él no se ofrece elegir, porque una
+   * elección que no se guarda engañaría.
+   */
+  elegirFotos?: CupoDeFotos | null;
   deshabilitado?: boolean;
   onCambio: (elegido: ProductoElegido) => void;
 }) {
@@ -135,6 +144,21 @@ export function SelectorProducto({
       )}
 
       {elegido && <AvisoFotoDeProducto foto={fotoDeProducto} referencias={elegido.fotosVigentes} />}
+
+      {elegido && elegirFotos && elegido.fotosVigentes > 0 && (
+        <FotosQueViajan
+          productoId={elegido.id}
+          nombre={elegido.nombre}
+          accion={producto.accion}
+          cupo={elegirFotos}
+          elegidas={producto.fotos}
+          deshabilitado={deshabilitado}
+          onCambio={(fotos) => {
+            const { fotos: _anteriores, ...sinFotos } = producto;
+            onCambio(fotos ? { ...sinFotos, fotos } : sinFotos);
+          }}
+        />
+      )}
 
       {elegido?.tipo === "digital" && <PasosDelProductoDigital />}
 

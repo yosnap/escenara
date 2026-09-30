@@ -31,7 +31,10 @@ export async function controlesProductoClip(
   parametros: ParametrosControles,
 ): Promise<EvaluacionVista | null> {
   if (escena.productId === null || escena.clipFormat === "cantar" || !eleccion) return null;
-  const producto = await productoParaGenerar(usuarioId, escena.productId, escena.productAction);
+  const producto = await productoParaGenerar(usuarioId, escena.productId, escena.productAction, undefined, {
+    ids: escena.productPhotoIds,
+    estricta: false,
+  });
   if (!producto) return null;
   const modelo = eleccion.modelo;
   const adaptador = adaptadorDe(modelo.proveedor);

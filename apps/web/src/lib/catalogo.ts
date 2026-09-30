@@ -326,6 +326,11 @@ export interface ModeloElegible {
    * donde no se ha calculado, y entonces no se dice nada.
    */
   admiteFotoDeProducto?: boolean;
+  /**
+   * Referencias que el modelo acepta **como galería** (las únicas donde cabe la foto de un producto). Lo calcula el
+   * servidor junto a `admiteFotoDeProducto`, y con él el navegador sabe cuántas fotos del producto caben.
+   */
+  cupoDeGaleria?: number;
 }
 
 /** Recorta un modelo del catálogo a lo que puede ver quien va a generar. */

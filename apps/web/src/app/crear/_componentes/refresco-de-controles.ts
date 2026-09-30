@@ -60,18 +60,25 @@ export interface SujetoDeControles {
   escenaId?: string;
   productoId?: string;
   accion?: string;
+  fotos?: string[];
 }
 
 /** Lo que se evalúa del clip: el modelo, la imagen que anima y el producto, que trae sus propios avisos. */
 export const sujetoDeAnimacion = (
   modelo: string,
   medioId: string,
-  producto: { productoId: string; accion: string },
+  producto: { productoId: string; accion: string; fotos?: string[] },
 ): SujetoDeControles => ({
   tipo: "animacion",
   modelo,
   medioId,
-  ...(producto.productoId ? { productoId: producto.productoId, accion: producto.accion } : {}),
+  ...(producto.productoId
+    ? {
+        productoId: producto.productoId,
+        accion: producto.accion,
+        ...(producto.fotos?.length ? { fotos: producto.fotos } : {}),
+      }
+    : {}),
 });
 
 /** Lo último elegido del clip. */

@@ -4,6 +4,7 @@ import { esTipoTrabajo } from "@/lib/generacion";
 import { evaluarControles } from "@/server/controles/consulta";
 import { ErrorGeneracion } from "@/server/generacion/errores";
 import { exigirRitmoDeConsultas, manejador } from "@/server/generacion/http";
+import { leerFotosElegidas } from "@/server/productos/eleccion";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,7 @@ export const GET = manejador(async (peticion: Request, _: unknown, actor) => {
       retratoInventado: parametros.get("retrato") === "1",
       productoId: uuidOpcional(parametros.get("productoId"), "producto"),
       productoAccion: claveOpcional(parametros.get("accion")),
+      productoFotos: leerFotosElegidas(parametros.get("fotos")?.split(",").filter(Boolean)),
     }),
   );
 });

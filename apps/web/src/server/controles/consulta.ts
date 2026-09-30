@@ -53,6 +53,8 @@ export interface PeticionDeControles {
    */
   productoId?: string | null;
   productoAccion?: string | null;
+  /** Fotos del producto que se han elegido enviar (solo «Crear»). Vacío = las de por defecto. */
+  productoFotos?: string[];
 }
 
 export async function evaluarControles(
@@ -82,10 +84,16 @@ export async function evaluarControles(
    */
   const producto = conEscena
     ? conEscena.escena.productId
-      ? await productoParaGenerar(actor.id, conEscena.escena.productId, conEscena.escena.productAction)
+      ? await productoParaGenerar(actor.id, conEscena.escena.productId, conEscena.escena.productAction, undefined, {
+          ids: conEscena.escena.productPhotoIds,
+          estricta: false,
+        })
       : null
     : peticion.productoId
-      ? await productoParaGenerar(actor.id, peticion.productoId, peticion.productoAccion ?? "")
+      ? await productoParaGenerar(actor.id, peticion.productoId, peticion.productoAccion ?? "", undefined, {
+          ids: peticion.productoFotos ?? [],
+          estricta: true,
+        })
       : null;
   const conProducto = producto
     ? hechosDelProducto(
