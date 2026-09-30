@@ -29,17 +29,21 @@ Una migración que **no es puramente aditiva** (sustituye un índice único): le
   se avisa en la escena y al exportar.
 - **Subtítulos quemados y etiqueta dentro de la zona segura de cada formato** (en 9:16, las mismas franjas de
   siempre).
-- **La revisión de continuidad compara cada clip con su formato** (el que se pidió o el principal del proyecto), no
-  con 9:16 fijo: un clip bien hecho en 16:9 o 1:1 no sale como fallo crítico.
-- En «Crear», si la imagen de partida no está en ninguna proporción que el modelo de vídeo sepa animar, el paso del
-  clip lo avisa **antes de confirmar**, con un botón por cada modelo que sí la anima y la vía de recortarla en la
-  biblioteca. El servidor dice lo mismo si llegara a pedirse, sin reservar nada.
+- **La revisión de continuidad compara cada clip con el formato principal del proyecto**, no con 9:16 fijo: un clip
+  bien hecho en 16:9 o 1:1 en su proyecto no sale como fallo crítico, y uno de otra proporción (por ejemplo un clip
+  de «Crear» en 16:9 convertido en escena de un proyecto vertical) sale como proporción distinta.
+- En «Crear», si el **fotograma generado** está en una proporción que el modelo de vídeo no sabe animar, el paso del
+  clip lo avisa **antes de confirmar**, con un botón por cada modelo que sí la anima y la vía de recortarlo en la
+  biblioteca. Es la misma regla que aplica el servidor, que rechaza el envío sin reservar nada. Con una imagen propia
+  no se avisa ni se bloquea: se envía como siempre y el modelo la encaja.
 - **Biblioteca de versiones de cada escena**, en producción: todos sus clips con miniatura, modelo, coste (el del
   proveedor o la estimación, dicho), tamaño y fecha, la que está en uso marcada y **«Usar esta»**, que cambia el
   clip del montaje **sin borrar ninguna** y sin coste. El montaje estrena versión y la revisión de continuidad de esa
   escena deja de valer, como al regenerar. Pasa las mismas puertas que convertir un clip en escena: la persona que
-  sale tiene que poder usarse **ahora** (consentimiento vigente), seguir en el reparto de la escena, y el clip tiene
-  que llevar sus declaraciones; si no, se dice por qué y no cambia nada.
+  sale tiene que poder usarse **ahora** (consentimiento vigente y referencias suficientes), seguir en el reparto de
+  la escena (o ser el protagonista del proyecto, si la escena no tiene reparto propio), y el clip tiene que llevar
+  sus declaraciones; en un dualcast con las dos personas en el plano, las dos. Si no, se dice por qué y no cambia
+  nada. Las escenas de dualcast tienen biblioteca de versiones; las de podcast, no (sus clips van por turnos).
 - **Aviso de cuota**: con la biblioteca por encima del 80 %, la biblioteca de versiones lo dice y cuenta cuánto ocupan
   las versiones sin usar del proyecto.
 - **Admin › Ajustes › Montaje, exportación y tamaño de los proyectos**: escenas por proyecto (1–30, 30 de fábrica) y
@@ -63,7 +67,12 @@ Una migración que **no es puramente aditiva** (sustituye un índice único): le
 - La toma de una exportación se renueva mientras se monta, y el recorte se hace antes de escalar: un montaje largo en
   16:9 no se queda sin toma a mitad ni lo coge otra pasada.
 - El asistente de guion y el guion del anuncio no piden (ni cobran) más escenas que el máximo de la instalación.
-- Pasar un proyecto a escenas habladas (Omni) comprueba que su modelo genera el formato principal del proyecto.
+- Pasar un proyecto a escenas habladas (Omni) comprueba que su modelo genera el formato principal del proyecto (en ese
+  modo solo cuenta el modelo Omni).
+- **Animar una vista del personaje** (cabeza 3:4) con un modelo de vídeo que no admite 3:4 (Veo, por ejemplo) ahora
+  se rechaza con su salida en lugar de enviarse: la vista es de verdad 3:4, y pedirle 9:16 al modelo habría cambiado
+  la imagen sin decirlo. Recórtala a 9:16 en la biblioteca o anímala con un modelo que la admita.
+- Solo el worker que tiene la toma de una exportación renueva esa toma y apunta su progreso.
 - Guardar el montaje descarta los encuadres de escenas que ya no existen, en lugar de rechazar el guardado.
 
 ### Seguridad y coste

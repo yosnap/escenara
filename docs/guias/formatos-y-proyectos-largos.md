@@ -45,10 +45,11 @@ Dos detalles:
 
 - **4:5 es de imagen y carrusel.** Ningún modelo de vídeo del catálogo lo genera, así que un proyecto de vídeo no lo
   puede tener como principal; en el montaje sí se exporta en 4:5 con reencuadre.
-- Si animas una **imagen en una proporción que el modelo de vídeo no admite** (por ejemplo un 4:5 con Veo, que hace
-  9:16 y 16:9), el paso del clip lo avisa antes de confirmar y te ofrece las salidas: **pasar a un modelo que sí la
-  anima** (un botón por modelo) o **recortarla en tu Biblioteca** («Editar imagen») y animar esa copia. Escenara no
-  la recorta por su cuenta, y si se pidiera igual, no reserva nada.
+- Si animas un **fotograma generado en una proporción que el modelo de vídeo no admite** (por ejemplo un 4:5, o una
+  vista del personaje en 3:4, con Veo), el paso del clip lo avisa antes de confirmar y te ofrece las salidas:
+  **pasar a un modelo que sí lo anima** (un botón por modelo) o **recortarlo en tu Biblioteca** («Editar imagen») y
+  animar esa copia. Escenara no lo recorta por su cuenta, y si se pidiera igual, no reserva nada. Una **foto tuya**
+  no pasa por esto: se envía como siempre y el modelo la encaja.
 - En un proyecto de **escenas habladas** (Omni), su modelo también tiene que generar el formato principal: se
   comprueba al pasar a ese modo.
 
@@ -145,12 +146,15 @@ fecha.
 - Si la escena tiene **un clip generándose**, espera a que termine: al acabar pasaría a ser el de la escena y taparía
   el que eliges.
 - Pasa las **mismas puertas que convertir un clip** en escena: la persona que sale tiene que poder usarse ahora
-  (consentimiento vigente), seguir en el reparto de la escena, y el clip tiene que llevar sus declaraciones. Si un
-  consentimiento se revocó después de generar esa versión, no se puede elegir: se dice por qué y no cambia nada.
+  (consentimiento vigente y el mínimo de fotos de referencia de la instalación), seguir en el reparto de la escena
+  (o ser el protagonista del proyecto, si la escena no tiene reparto propio), y el clip tiene que llevar sus
+  declaraciones. En un dualcast con las dos personas en el plano se comprueban las dos. Si un consentimiento se
+  revocó después de generar esa versión, no se puede elegir: se dice por qué y no cambia nada.
 - Si el recorte que tenías en el montaje es más largo que la versión que eliges, el montaje te lo dirá al guardar o
   exportar («acaba en el segundo 8 y el clip dura 6»). Ajusta la manecilla de salida.
 
-Las escenas de **podcast** eligen sus dos clips juntos al producirlas: no tienen biblioteca de versiones.
+Las escenas de **podcast** eligen sus dos clips juntos al producirlas: no tienen biblioteca de versiones. Las de
+**dualcast** sí.
 
 ## 5. Cuota y coste
 
