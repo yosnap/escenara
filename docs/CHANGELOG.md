@@ -27,11 +27,14 @@ regla de coste ni de consentimiento, y el kit no cuesta créditos. Una migració
 - **Publicación atómica**: validar, comprobar el contraste, retirar la anterior, generar los iconos y publicar van en
   una sola transacción. Si algo falla a mitad no cambia nada y los archivos a medio subir se borran.
 - **Activos derivados al publicar**, desde el símbolo (o el logotipo horizontal): favicon de 16 y 32 px, iconos de la
-  aplicación de 192 y 512 px con su manifiesto e imagen para compartir de 1200 × 630, con sharp (ya estaba).
+  aplicación de 192 y 512 px con su manifiesto e imagen para compartir de 1200 × 630, con sharp (ya estaba). La imagen
+  para compartir usa la **URL pública** de Admin › Ajustes; sin ella no se emite (nunca una dirección `localhost`).
 - **Fuentes propias autoalojadas**: WOFF2 de hasta 1 MB, con cabecera comprobada y **declaración de licencia
   obligatoria** apuntada con fecha y cuenta. Se sirven desde la instalación: ninguna descarga de terceros al cargar.
-- **Logotipos** en PNG, JPEG, WebP o SVG. Los raster se vuelven a codificar; los SVG cumplen una lista cerrada o se
-  rechazan con la causa (sin scripts, `foreignObject`, manejadores, referencias externas, `data:` ni DOCTYPE).
+- **Logotipos** en PNG, JPEG o WebP, que se vuelven a codificar (sin metadatos y con la orientación del móvil ya
+  aplicada). **Los SVG no se admiten en esta versión**: un SVG es un documento que se interpreta, y uno preparado a
+  propósito de menos de 1 KB puede tener ocupado el servidor durante minutos al pasarlo a píxeles. Se rechaza al
+  momento, sin procesarlo, con «Convierte tu logotipo a PNG (con fondo transparente) o a WebP».
 - **Tu cuenta › Tu kit de marca** (`/cuenta/kit`): nombre, logotipo, esquina y si se aplica, con la previsualización
   sobre un **fotograma real** (tu imagen más reciente) y la etiqueta en su sitio.
 - **El kit en el render de las exportaciones**, como capa opcional: el logotipo (como mucho el 20 % del ancho y el 8 %
@@ -46,6 +49,7 @@ regla de coste ni de consentimiento, y el kit no cuesta créditos. Una migració
 
 ### Cambiado
 
+- El logotipo de las cabeceras dice a los lectores de pantalla el nombre de la instalación, no «Escenara» fijo.
 - Cada página pone solo su parte del título y la plantilla añade el nombre de la instalación («Tus personajes ·
   Escenara» sin marca publicada, «Tus personajes · Tu nombre» con ella). Sin marca, los títulos son los de siempre.
 - El icono de Escenara pasa de `app/icon.svg` a `public/icon.svg` y se declara en los metadatos (el mismo archivo):
@@ -56,8 +60,14 @@ regla de coste ni de consentimiento, y el kit no cuesta créditos. Una migració
 
 - Todo lo que acaba en CSS se valida con listas cerradas (colores `#RRGGBB`, familias sin comillas ni signos, enteros
   en rango, claves fijas): ningún token, nombre de fuente ni texto puede inyectar CSS, HTML ni JavaScript.
-- Los archivos de marca se sirven con su tipo real, `X-Content-Type-Options: nosniff` y una CSP cerrada con `sandbox`.
-  Los de un kit, solo a su dueño (lo ajeno responde 404).
+- Los archivos de marca se sirven con su tipo real (solo PNG, JPEG, WebP y WOFF2), `X-Content-Type-Options: nosniff` y
+  una CSP cerrada con `sandbox`. Los de un kit, solo a su dueño (lo ajeno responde 404).
+- **Procesado de imágenes acotado**: tiempo máximo por imagen y como mucho dos a la vez en la instalación; con más
+  subidas simultáneas se responde «espera unos segundos» en lugar de acumular trabajo. Las subidas se leen con tope de
+  tamaño aunque no digan cuánto pesan.
+- Los textos de marca rechazan también los caracteres invisibles (como los que invierten el sentido del texto) y las
+  familias no admiten palabras reservadas de CSS (`inherit`, `unset`…).
+- Los logotipos del kit que se cambian o se quitan se borran en cuanto no los necesita ninguna exportación pendiente.
 - La marca de la instalación solo la cambia quien administra: se comprueba en la página **y en cada operación** de la
   API, con el mismo origen exigido en las escrituras. Cada usuario solo ve y cambia su kit.
 

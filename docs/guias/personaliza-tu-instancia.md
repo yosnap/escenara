@@ -33,9 +33,9 @@ Todo lo que acaba en el CSS de la página se comprueba con listas cerradas, en e
 
 - **Colores**: solo `#RRGGBB` (por ejemplo `#2753D7`). Ni nombres, ni `rgb()`, ni `var()`.
 - **Familias**: nombres de letras, números, guiones y espacios, sin comillas ni signos. Ni URL ni nada que se pueda
-  cerrar.
-- **Textos de marca**: sin saltos de línea, sin caracteres de control y sin `<` ni `>`; nombre hasta 40 caracteres,
-  lema hasta 80, descripción hasta 120.
+  cerrar, ni palabras reservadas de CSS como `inherit` o `unset`.
+- **Textos de marca**: sin saltos de línea, sin caracteres de control ni invisibles (como los que invierten el sentido
+  del texto) y sin `<` ni `>`; nombre hasta 40 caracteres, lema hasta 80, descripción hasta 120.
 - **Medidas y tiempos**: enteros en su rango. El objetivo táctil mínimo no baja de 44 px y respetar «reducir
   movimiento» no se puede apagar.
 
@@ -59,20 +59,30 @@ La alerta dice cada par como «Tema oscuro: textMuted sobre background da 3,21:1
 
 ## 4. Logotipos
 
-- **PNG, JPEG, WebP o SVG**, hasta 2 MB (el SVG, hasta 256 KB) y entre 16 y 4096 px por lado.
-- Un PNG, JPEG o WebP se **vuelve a codificar** al subirlo: se guardan sus píxeles, sin metadatos ni nada pegado al
-  archivo.
-- Un SVG **no se limpia: o cumple o se rechaza** con la causa. No se admiten `<script>`, `<foreignObject>`, imágenes
-  incrustadas, estilos con `@import`, manejadores `on…`, enlaces a fuera (solo `#id` dentro del propio SVG), `url()`
-  hacia fuera, `data:` ni `javascript:`, ni DOCTYPE o entidades.
+- **PNG, JPEG o WebP**, hasta 2 MB y entre 16 y 4096 px por lado. Para un logotipo, lo mejor es un **PNG con fondo
+  transparente**.
+- **Esta versión no admite SVG.** Un SVG no es una imagen sin más: es un documento que el ordenador interpreta, y uno
+  preparado a propósito de menos de 1 KB puede tener el servidor ocupado durante minutos al convertirlo en píxeles.
+  Hasta que Escenara pueda revisarlos con garantías, un SVG se rechaza al momento, sin llegar a procesarlo, con el
+  mensaje «Convierte tu logotipo a PNG (con fondo transparente) o a WebP». Casi cualquier editor de imágenes o de
+  diseño exporta un SVG a PNG; hazlo a buen tamaño (por ejemplo 1024 px de ancho) para que se vea nítido.
+- Todo logotipo se **vuelve a codificar** al subirlo: se guardan sus píxeles, sin metadatos ni nada pegado al archivo.
+  Si la foto venía girada por el móvil (orientación EXIF), se guarda ya derecha.
+- El procesado de imágenes tiene **tiempo máximo** y, como mucho, **dos a la vez** en toda la instalación. Si en ese
+  momento se están procesando otras, la subida dice «Espera unos segundos y vuelve a subirla».
 - Todo se sirve desde esta instalación con su tipo real, `nosniff` y una política de contenido cerrada.
 
 Si solo subes el logotipo del tema claro, se usa en los dos. Si no subes ninguno, se ve el símbolo de Escenara con el
-nombre de tu instalación.
+nombre de tu instalación. El nombre accesible del logotipo (el que lee un lector de pantalla) es también el de tu
+instalación.
 
 **Al publicar se generan** a partir del símbolo claro (o del horizontal, si no hay símbolo): favicon de 16 y 32 px,
 iconos de la aplicación de 192 y 512 px (con su manifiesto) e imagen para compartir de 1200 × 630. Sin logotipos no
 se genera nada y siguen los iconos de Escenara.
+
+La imagen para compartir necesita una dirección que se pueda abrir desde fuera: pon la **URL pública** de tu instalación
+en **Admin › Ajustes** (por ejemplo `https://estudio.ejemplo.es`). Sin ella (o si solo es `localhost`), el enlace se
+comparte con el nombre y la descripción, sin imagen.
 
 ## 5. Fuentes propias
 

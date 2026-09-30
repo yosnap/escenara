@@ -13,8 +13,10 @@ Lo más importante, antes de nada:
 ## 1. Montar tu kit
 
 1. **Nombre del kit** (opcional): solo para reconocerlo.
-2. **Logotipo**: PNG, JPEG, WebP o SVG, hasta 2 MB y 4096 px por lado. Mejor con fondo transparente. Se comprueba por
-   su contenido (un SVG con scripts o referencias externas se rechaza con la causa) y se guarda en PNG.
+2. **Logotipo**: PNG, JPEG o WebP, hasta 2 MB y 4096 px por lado. Mejor un **PNG con fondo transparente**. Se
+   comprueba por su contenido y se guarda en PNG. **Esta versión no admite SVG**: un SVG preparado a propósito puede
+   dejar el servidor ocupado minutos, así que se rechaza al momento; conviértelo a PNG o WebP con tu editor de
+   imágenes. Si en ese instante se están procesando otras imágenes, espera unos segundos y vuelve a subirlo.
 3. **Esquina**: arriba o abajo, a la izquierda o a la derecha.
 4. **Aplicar a mis exportaciones**: apagado, el kit se conserva y tus vídeos salen sin logotipo.
 5. **Guardar kit**.
@@ -35,8 +37,8 @@ entre la etiqueta arriba y abajo para ver dónde queda tu logotipo en cada caso.
 El kit se guarda **con cada exportación en el momento de pedirla**. Si después cambias el logotipo o la esquina, las
 exportaciones que ya pediste siguen con el de antes.
 
-- Si **quitas el logotipo** antes de que una exportación pedida se monte, esa exportación falla diciendo por qué;
-  exporta otra vez y saldrá con tu kit de ahora.
+- Si cambias o quitas el logotipo, el anterior **se guarda hasta que se monten** las exportaciones que ya lo pidieron,
+  y después se borra.
 - Pedir otra vez la misma versión del montaje en el mismo formato devuelve **la misma exportación** (como siempre, no
   se duplican ficheros). Para exportar con el kit nuevo, guarda algún cambio en el montaje y exporta esa versión.
 
