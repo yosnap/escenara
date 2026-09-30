@@ -15,6 +15,7 @@ import {
   type HechosCredencial,
   REGLAS_VERSION,
 } from "./contrato";
+import { motivoReferenciasNoCaben } from "./motivos-producto";
 import { REGLAS_MONTAJE } from "./reglas-montaje";
 
 /**
@@ -611,9 +612,9 @@ const REGLAS: readonly Regla[] = [
     return {
       regla: "producto-referencias-no-caben",
       estado: "ajustes",
-      motivo: `${h.modelo?.nombre ?? "Este modelo"} admite ${h.modelo?.maximoReferencias ?? 1} ${(h.modelo?.maximoReferencias ?? 1) === 1 ? "imagen de referencia" : "imágenes de referencia"}, y entre el personaje y «${h.producto.nombre}» hay más: algunas se quedan fuera. Se envían primero la identidad del personaje y la foto frontal del producto, así que lo que sobra puede salir distinto.`,
+      motivo: motivoReferenciasNoCaben(h.modelo, h.producto),
       accion:
-        "Elige un modelo que admita más referencias, o quita fotos del producto dejando la frontal con la etiqueta. Si te vale así, confírmalo.",
+        "Elige un modelo que admita más referencias, o elige qué fotos del producto viajan dejando la frontal con la etiqueta. Si te vale así, confírmalo.",
       http: 409,
       excepcion: "generacion",
       confirmable: true,

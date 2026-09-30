@@ -222,6 +222,12 @@ export interface HechosProducto {
   /** El tope de referencias del modelo deja fuera fotos del personaje o del producto. */
   referenciasNoCaben: boolean;
   /**
+   * Cifras del reparto de referencias entre el personaje y el producto: cuántas fotos tiene cada uno y cuántas
+   * viajan de verdad. Es lo que permite decir **cuántas** se quedan fuera. Ausente cuando el que llama no las
+   * tiene, y entonces el aviso se queda sin cifras.
+   */
+  referencias?: { fotosPersonaje: number; fotosProducto: number; personaje: number; producto: number };
+  /**
    * El producto tiene fotos y en este modelo **no cabe ninguna**: su segunda imagen no es una galería (en Veo
    * es el último fotograma del clip). El producto viajaría solo descrito con palabras.
    */

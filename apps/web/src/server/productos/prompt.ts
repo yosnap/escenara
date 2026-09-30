@@ -155,6 +155,12 @@ export function hechosDelProducto(
       // Decir «algunas se quedan fuera» cuando no cabe ninguna sería decir menos de lo que pasa: ese caso
       // tiene su propio aviso y los dos juntos serían el mismo aviso dos veces.
       referenciasNoCaben: !reparto.cabenTodas && !sinHuecoDeReferencia,
+      referencias: {
+        fotosPersonaje: referenciasPersonaje,
+        fotosProducto: producto.fotos.length,
+        personaje: reparto.personaje,
+        producto: reparto.producto,
+      },
       sinHuecoDeReferencia,
       identidadRegistradaPerdida,
       marcaVisible: producto.marcaVisible,
