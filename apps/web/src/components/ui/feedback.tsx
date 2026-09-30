@@ -175,16 +175,20 @@ export function EstadoVacio({
   texto,
   accion,
   icono,
+  nivel = 3,
 }: {
   titulo: string;
   texto: string;
   accion?: ReactNode;
   icono?: ReactNode;
+  /** Nivel del título: 2 cuando el vacío va justo debajo del `h1` de la página, para no saltarse un nivel. */
+  nivel?: 2 | 3;
 }) {
+  const Titulo = nivel === 2 ? "h2" : "h3";
   return (
     <div className="flex flex-col items-center gap-3 rounded-tarjeta border-2 border-dashed border-borde/60 px-6 py-10 text-center">
       {icono && <div className="text-acento [&>svg]:size-10">{icono}</div>}
-      <h3 className="text-xl font-bold text-texto">{titulo}</h3>
+      <Titulo className="text-xl font-bold text-texto">{titulo}</Titulo>
       <p className="max-w-sm text-texto-suave">{texto}</p>
       {accion}
     </div>

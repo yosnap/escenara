@@ -130,7 +130,7 @@ export function EditorEscena({
     <article className="flex flex-col gap-3 rounded-tarjeta border-2 border-borde/60 bg-superficie p-4">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-degradado-escenario font-bold text-sobre-acento">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-degradado-chispa font-bold text-[#182032]">
             {escena.orden}
           </span>
           {/*

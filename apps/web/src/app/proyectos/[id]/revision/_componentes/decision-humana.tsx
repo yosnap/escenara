@@ -33,7 +33,7 @@ export function DecisionHumana({
   return (
     <div className="flex flex-col gap-3 rounded-tarjeta border-2 border-borde bg-superficie p-4">
       <div>
-        <h4 className="font-bold text-texto">Tu decisión</h4>
+        <h3 className="font-bold text-texto">Tu decisión</h3>
         <p className="mt-0.5 text-sm text-texto-suave">
           Aceptar no cuesta nada y no genera nada: solo deja constancia de que has mirado esta escena y la das por
           buena.

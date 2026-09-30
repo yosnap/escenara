@@ -79,7 +79,7 @@ export function Catalogo() {
           ))}
         </ul>
       </nav>
-      <main>
+      <main id="contenido">
         <h1 className="pt-10 text-4xl font-bold text-texto">Catálogo de componentes</h1>
         <p className="pt-2 text-texto-suave">
           Todo componente reutilizable de Escenara se añade aquí antes de usarse en una pantalla. Nunca se usa el

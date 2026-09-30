@@ -14,14 +14,31 @@ interface BaseProps {
   deshabilitado?: boolean;
 }
 
-function Texto({ etiqueta, descripcion }: { etiqueta: ReactNode; descripcion?: ReactNode }) {
+/**
+ * Texto de la opción. Sus `id` dan nombre y descripción al control: un `role="checkbox"`, `"switch"` o `"radio"` de
+ * Base UI no toma el nombre del `<label>` que lo envuelve (eso solo vale para los controles nativos), y hasta que se
+ * hidrata la página tampoco tiene otro. Con `aria-labelledby` lo tiene desde el HTML del servidor.
+ */
+function Texto({ id, etiqueta, descripcion }: { id: string; etiqueta: ReactNode; descripcion?: ReactNode }) {
   return (
     <span className="flex flex-col">
-      <span className="text-base text-texto">{etiqueta}</span>
-      {descripcion && <span className="text-sm text-texto-suave">{descripcion}</span>}
+      <span id={`${id}-etiqueta`} className="text-base text-texto">
+        {etiqueta}
+      </span>
+      {descripcion && (
+        <span id={`${id}-descripcion`} className="text-sm text-texto-suave">
+          {descripcion}
+        </span>
+      )}
     </span>
   );
 }
+
+/** Ids de nombre y descripción de un control con su `Texto`, más los de fuera que también lo describan. */
+const idsDe = (id: string, descripcion: ReactNode, otros: (string | undefined)[] = []) => ({
+  "aria-labelledby": `${id}-etiqueta`,
+  "aria-describedby": [descripcion ? `${id}-descripcion` : undefined, ...otros].filter(Boolean).join(" ") || undefined,
+});
 
 export function Casilla({
   etiqueta,
@@ -44,7 +61,8 @@ export function Casilla({
   /** Id de un texto de fuera que también describe la casilla (por ejemplo, el motivo de que esté desactivada). */
   describidaPor?: string;
 }) {
-  const idError = useId();
+  const id = useId();
+  const idError = `${id}-error`;
   const casilla = (
     // biome-ignore lint/a11y/noLabelWithoutControl: Base UI renderiza el control dentro de la etiqueta
     <label
@@ -60,14 +78,14 @@ export function Casilla({
         onCheckedChange={(v) => onCambio?.(v)}
         disabled={deshabilitado}
         aria-invalid={error ? true : undefined}
-        aria-describedby={[error ? idError : "", describidaPor ?? ""].filter(Boolean).join(" ") || undefined}
+        {...idsDe(id, descripcion, [error ? idError : undefined, describidaPor])}
         className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border-2 border-borde bg-superficie transition-colors duration-(--motion-fast) data-checked:border-acento data-checked:bg-acento aria-invalid:border-error"
       >
         <CB.Indicator className="text-sobre-acento data-unchecked:hidden">
           <Check className="size-4" strokeWidth={3} />
         </CB.Indicator>
       </CB.Root>
-      <Texto etiqueta={etiqueta} descripcion={descripcion} />
+      <Texto id={id} etiqueta={etiqueta} descripcion={descripcion} />
     </label>
   );
   // Sin marca ni error es la etiqueta de siempre: el envoltorio solo aparece cuando hay algo que señalar.
@@ -93,13 +111,15 @@ export function Interruptor({
   activoInicial,
   onCambio,
 }: BaseProps & { activo?: boolean; activoInicial?: boolean; onCambio?: (v: boolean) => void }) {
+  const id = useId();
   return (
     // biome-ignore lint/a11y/noLabelWithoutControl: Base UI renderiza el control dentro de la etiqueta
     <label
       className={cn("flex min-h-11 cursor-pointer items-center justify-between gap-4", deshabilitado && "opacity-50")}
     >
-      <Texto etiqueta={etiqueta} descripcion={descripcion} />
+      <Texto id={id} etiqueta={etiqueta} descripcion={descripcion} />
       <SW.Root
+        {...idsDe(id, descripcion)}
         checked={activo}
         defaultChecked={activoInicial}
         onCheckedChange={(v) => onCambio?.(v)}
@@ -131,25 +151,29 @@ export function GrupoOpciones({
   valorInicial?: string;
   onCambio?: (v: string) => void;
 }) {
+  const id = useId();
   return (
     <RadioGroup
       value={valor}
       defaultValue={valorInicial}
       onValueChange={(v) => onCambio?.(v as string)}
-      aria-label={etiqueta}
+      aria-labelledby={`${id}-grupo`}
       className="flex flex-col gap-1"
     >
-      <span className="mb-1 text-sm font-semibold text-texto">{etiqueta}</span>
-      {opciones.map((o) => (
+      <span id={`${id}-grupo`} className="mb-1 text-sm font-semibold text-texto">
+        {etiqueta}
+      </span>
+      {opciones.map((o, i) => (
         // biome-ignore lint/a11y/noLabelWithoutControl: Base UI renderiza el control dentro de la etiqueta
         <label key={o.value} className="flex min-h-11 cursor-pointer items-start gap-3 py-1">
           <Radio.Root
             value={o.value}
+            {...idsDe(`${id}-${i}`, o.descripcion)}
             className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border-2 border-borde bg-superficie data-checked:border-acento"
           >
             <Radio.Indicator className="size-3 rounded-full bg-acento data-unchecked:hidden" />
           </Radio.Root>
-          <Texto etiqueta={o.etiqueta} descripcion={o.descripcion} />
+          <Texto id={`${id}-${i}`} etiqueta={o.etiqueta} descripcion={o.descripcion} />
         </label>
       ))}
     </RadioGroup>

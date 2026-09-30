@@ -57,6 +57,7 @@ export function VistaRevisionConsentimientos({
       <div className="flex flex-col gap-4">
         {hecho && <Aviso tono="correcto">{hecho}</Aviso>}
         <EstadoVacio
+          nivel={2}
           titulo="No hay consentimientos pendientes"
           texto="Cuando alguien registre un personaje con la imagen de otra persona, su documento firmado aparecerá aquí para que lo revises."
           icono={<ShieldCheck />}

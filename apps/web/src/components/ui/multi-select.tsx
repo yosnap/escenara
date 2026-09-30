@@ -43,7 +43,7 @@ export function SelectorMultiple({
         <label htmlFor={id} className="text-sm font-semibold text-texto">
           {etiqueta}
         </label>
-        <C.InputGroup className="flex min-h-11 w-full cursor-text flex-wrap items-center gap-1.5 rounded-control border border-borde bg-superficie px-2 py-1.5 transition-colors duration-(--motion-fast) focus-within:border-acento hover:border-acento">
+        <C.InputGroup className="flex min-h-11 w-full cursor-text flex-wrap items-center gap-1.5 rounded-control border border-borde bg-superficie px-2 py-1.5 transition-colors duration-(--motion-fast) focus-within:border-acento focus-within:ring-2 focus-within:ring-foco hover:border-acento">
           <C.Chips className="flex w-full flex-wrap items-center gap-1.5">
             <C.Value>
               {(elegidas: Opcion[]) => (

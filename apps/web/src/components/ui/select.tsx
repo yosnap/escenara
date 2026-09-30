@@ -2,6 +2,7 @@
 
 import { Select as S } from "@base-ui/react/select";
 import { Check, ChevronsUpDown } from "lucide-react";
+import { useId } from "react";
 import { cn } from "./cn";
 import { claseItem, clasePopup, type Opcion } from "./options";
 
@@ -30,8 +31,12 @@ export function Selector({
   className,
 }: SelectorProps) {
   const porValor = new Map(opciones.map((o) => [o.value, o]));
+  // Base UI une etiqueta y disparador al hidratar, y llama a la etiqueta como la raíz más «-label». Con el id de la
+  // raíz fijado, el nombre del control está ya en el HTML del servidor.
+  const idRaiz = useId();
   return (
     <S.Root
+      id={idRaiz}
       value={valor}
       defaultValue={valorInicial}
       onValueChange={(v) => onCambio?.(v as string | null)}
@@ -40,7 +45,10 @@ export function Selector({
     >
       <div className={cn("flex flex-col gap-1.5", className)}>
         <S.Label className="text-sm font-semibold text-texto">{etiqueta}</S.Label>
-        <S.Trigger className="flex min-h-11 w-full items-center justify-between gap-3 rounded-control border border-borde bg-superficie px-3.5 py-2 text-left text-base text-texto transition-colors duration-(--motion-fast) hover:border-acento data-disabled:opacity-50 data-popup-open:border-acento">
+        <S.Trigger
+          aria-labelledby={`${idRaiz}-label`}
+          className="flex min-h-11 w-full items-center justify-between gap-3 rounded-control border border-borde bg-superficie px-3.5 py-2 text-left text-base text-texto transition-colors duration-(--motion-fast) hover:border-acento data-disabled:opacity-50 data-popup-open:border-acento"
+        >
           <S.Value>
             {(v: string | null) => {
               const o = v ? porValor.get(v) : undefined;

@@ -160,6 +160,7 @@ export function VistaMontaje({ inicial, titulo }: { inicial: MontajeVista; titul
 
       {sinClips ? (
         <EstadoVacio
+          nivel={2}
           icono={<Clapperboard aria-hidden />}
           titulo="Todavía no hay clips que montar"
           texto={

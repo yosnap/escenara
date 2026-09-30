@@ -169,6 +169,8 @@ function RejillaDeTarjetas({ seccion, valor }: { seccion: SeccionVisual; valor: 
 
 function Tarjeta({ opcion: o, elegida }: { opcion: OpcionVisual; elegida: boolean }) {
   const texto = textoDeTarjeta(o);
+  // El radio oculto toma el nombre y la explicación de la tarjeta: un `role="radio"` no lo hereda del `<label>`.
+  const id = useId();
   return (
     // biome-ignore lint/a11y/noLabelWithoutControl: Base UI renderiza el control dentro de la etiqueta
     <label
@@ -179,10 +181,18 @@ function Tarjeta({ opcion: o, elegida }: { opcion: OpcionVisual; elegida: boolea
       )}
     >
       {/* El círculo del radio molestaba: sigue siendo un radio para el teclado y el lector de pantalla, pero no se ve. */}
-      <Radio.Root value={o.valor} className="sr-only" />
+      <Radio.Root
+        value={o.valor}
+        className="sr-only"
+        aria-labelledby={`${id}-nombre`}
+        aria-describedby={texto ? `${id}-texto` : undefined}
+      />
       <span className="flex items-center gap-3">
         <span className="shrink-0 text-texto">{o.pictograma}</span>
-        <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2 text-base font-bold text-texto">
+        <span
+          id={`${id}-nombre`}
+          className="flex min-w-0 flex-1 flex-wrap items-center gap-2 text-base font-bold text-texto"
+        >
           {o.nombre}
           {o.etiqueta && (
             <span className="rounded-full bg-elevada px-2 py-0.5 text-xs font-medium text-texto-suave">
@@ -193,7 +203,11 @@ function Tarjeta({ opcion: o, elegida }: { opcion: OpcionVisual; elegida: boolea
         {/* La elegida no puede depender solo del color del borde: lleva también una marca. */}
         {elegida && <Check aria-hidden className="size-5 shrink-0 text-acento" />}
       </span>
-      {texto && <span className="text-sm text-texto-suave">{texto}</span>}
+      {texto && (
+        <span id={`${id}-texto`} className="text-sm text-texto-suave">
+          {texto}
+        </span>
+      )}
     </label>
   );
 }

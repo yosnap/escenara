@@ -32,6 +32,7 @@ export function ListaProductos({ inicial }: { inicial: ProductoResumen[] }) {
     return (
       <>
         <EstadoVacio
+          nivel={2}
           titulo="Todavía no tienes productos"
           texto="Un producto guarda las fotos de lo que quieres enseñar —un bote, una caja, una prenda o una app— con el papel de cada una, para que la etiqueta y el envase salgan como son."
           icono={<Package />}

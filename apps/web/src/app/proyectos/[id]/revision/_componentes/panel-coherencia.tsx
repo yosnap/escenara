@@ -43,7 +43,7 @@ export function PanelCoherencia({
   return (
     <section aria-label="Coherencia con el guion" className="flex flex-col gap-3 rounded-control bg-elevada p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h4 className="font-bold text-texto">Coherencia con el guion</h4>
+        <h3 className="font-bold text-texto">Coherencia con el guion</h3>
         <Boton variante="secundario" tamano="sm" disabled={ocupado} onClick={onComprobar}>
           <ScanFace className="size-4" />
           {decisiones.length === 0 ? "Comprobar la coherencia" : "Volver a comprobar"}

@@ -20,7 +20,7 @@ export default async function PaginaAjustes() {
   const [ajustes, secretos, activos] = await Promise.all([leerAjustes(), listarSecretos(), proveedoresActivos()]);
 
   return (
-    <main className="mx-auto flex max-w-4xl flex-col gap-6 px-5 py-10 md:px-8">
+    <main id="contenido" className="mx-auto flex max-w-4xl flex-col gap-6 px-5 py-10 md:px-8">
       <div>
         <h1 className="text-4xl font-bold text-texto">Ajustes</h1>
         <p className="mt-2 max-w-3xl text-texto-suave">

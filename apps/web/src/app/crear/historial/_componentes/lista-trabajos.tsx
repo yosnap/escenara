@@ -56,6 +56,7 @@ export function ListaTrabajos({ iniciales, cola }: { iniciales: TrabajoVista[]; 
   if (trabajos.length === 0) {
     return (
       <EstadoVacio
+        nivel={2}
         titulo="Todavía no has generado nada"
         texto="Cuando generes un fotograma o un clip, aparecerán aquí con su estado y su coste."
         accion={

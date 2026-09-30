@@ -16,6 +16,7 @@ export function ListaPersonajes({ inicial }: { inicial: PersonajeVista[] }) {
   if (inicial.length === 0) {
     return (
       <EstadoVacio
+        nivel={2}
         titulo="Todavía no tienes personajes"
         texto="Un personaje guarda las fotos de referencia de una persona o un animal y el consentimiento para usar su imagen. Es lo que mantiene la misma cara en todos tus vídeos."
         icono={<UsersRound />}

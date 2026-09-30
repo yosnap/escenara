@@ -50,7 +50,8 @@ export function TarjetaVersion({ version, actual }: { version: VersionPublicada;
           id={`version-${version.version}`}
           className={cn(
             "rounded-full px-4 py-1 font-mono text-lg font-bold",
-            actual ? "bg-degradado-escenario text-white" : "bg-elevada text-texto",
+            // Texto oscuro sobre «Chispa»: el degradado Escenario pasa por el sol, donde el blanco no se lee.
+            actual ? "bg-degradado-chispa text-[#182032]" : "bg-elevada text-texto",
           )}
         >
           {version.fecha ? `v${version.version}` : version.version}

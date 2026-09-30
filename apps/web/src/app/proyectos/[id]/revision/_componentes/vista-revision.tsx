@@ -84,6 +84,7 @@ export function VistaRevision({ inicial }: { inicial: RevisionProyectoVista }) {
 
       {revision.escenas.length === 0 ? (
         <EstadoVacio
+          nivel={2}
           titulo="Este proyecto no tiene escenas"
           texto="Vuelve al plan, escribe su guion y apruébalo: solo se revisa lo que se ha producido."
           accion={

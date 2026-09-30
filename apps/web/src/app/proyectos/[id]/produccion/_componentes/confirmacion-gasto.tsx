@@ -25,6 +25,7 @@ import type { ConfirmacionEnvio } from "./api-produccion";
  */
 export function ConfirmacionGasto({
   titulo,
+  nivel = 3,
   explicacion,
   creditos,
   total,
@@ -41,6 +42,8 @@ export function ConfirmacionGasto({
   onEnviar,
 }: {
   titulo: string;
+  /** Nivel del título: 2 cuando la confirmación va justo debajo del `h1` de la página. */
+  nivel?: 2 | 3;
   explicacion: string;
   /** Créditos que se van a confirmar **por trabajo**. Es la cifra exacta que compara el servidor. */
   creditos: number;
@@ -73,6 +76,7 @@ export function ConfirmacionGasto({
   ocupado: boolean;
   onEnviar: (confirmacion: ConfirmacionEnvio) => void;
 }) {
+  const Titulo = nivel === 2 ? "h2" : "h3";
   const [derechos, setDerechos] = useState(false);
   const [sinTerceros, setSinTerceros] = useState(false);
   const [derechoMarca, setDerechoMarca] = useState(false);
@@ -118,7 +122,7 @@ export function ConfirmacionGasto({
   return (
     <div className="flex flex-col gap-3 rounded-tarjeta border-2 border-borde bg-superficie p-4">
       <div>
-        <h3 className="text-lg font-bold text-texto">{titulo}</h3>
+        <Titulo className="text-lg font-bold text-texto">{titulo}</Titulo>
         <p className="mt-1 text-sm text-texto-suave">{explicacion}</p>
       </div>
       <div>

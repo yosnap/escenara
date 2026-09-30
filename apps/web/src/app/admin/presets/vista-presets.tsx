@@ -84,6 +84,7 @@ export function VistaPresets({ inicial }: { inicial: PresetVista[] }) {
 
       {presets.length === 0 && (
         <EstadoVacio
+          nivel={2}
           titulo="Sin presets"
           texto="La semilla de la instalación no se ha aplicado todavía: ejecuta las migraciones."
         />
