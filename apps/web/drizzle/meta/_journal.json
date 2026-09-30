@@ -414,6 +414,13 @@
       "when": 1790754383616,
       "tag": "0058_formatos-encuadre-y-versiones-de-escena",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1790760368077,
+      "tag": "0059_marca-editable-y-kit-del-creador",
+      "breakpoints": true
     }
   ]
 }

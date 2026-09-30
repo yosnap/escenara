@@ -1,32 +1,14 @@
 import { describe, expect, it } from "bun:test";
 import path from "node:path";
-import { contraste, generarCss, type Marca } from "./tokens";
+import { PARES_COMPONENTE, PARES_TEXTO } from "./marca-contraste";
+import { contraste, exigirMarcaSegura, generarCss, type Marca } from "./tokens";
 
 const raiz = path.resolve(import.meta.dir, "../../../..");
 const marca = (await Bun.file(path.join(raiz, "docs/branding/escenara.brand.json")).json()) as Marca;
 
-// Pares que deben cumplir WCAG AA: texto normal 4,5:1 y componentes 3:1.
-const TEXTO: [string, string][] = [
-  ["text", "background"],
-  ["text", "surface"],
-  ["text", "surfaceRaised"],
-  ["textMuted", "background"],
-  ["textMuted", "surface"],
-  ["textMuted", "surfaceRaised"],
-  ["primary", "background"],
-  ["primary", "surface"],
-  ["onPrimary", "primary"],
-  ["creative", "surface"],
-  ["success", "surface"],
-  ["warning", "surface"],
-  ["danger", "surface"],
-];
-const COMPONENTES: [string, string][] = [
-  ["border", "background"],
-  ["border", "surface"],
-  ["focus", "background"],
-  ["focus", "surface"],
-];
+// Pares que deben cumplir WCAG AA: los mismos que bloquean (texto, 4,5:1) o avisan (componentes, 3:1) al publicar.
+const TEXTO = PARES_TEXTO;
+const COMPONENTES = PARES_COMPONENTE;
 
 describe("tokens de marca", () => {
   it("tokens.css está sincronizado con escenara.brand.json", async () => {
@@ -93,6 +75,43 @@ describe("tokens de marca", () => {
         expect(contraste(color as string, t.surfaceRaised as string)).toBeGreaterThanOrEqual(4.5);
       }
     }
+  });
+
+  it("la marca de la instalación gana por especificidad a tokens.css en los tres selectores del tema", () => {
+    const css = generarCss(marca, { instalacion: { version: 3, fuentes: [] } });
+    expect(css).toContain(":root:root {");
+    expect(css).toContain(':root:root:not([data-theme="light"]) {');
+    expect(css).toContain(':root:root[data-theme="dark"] {');
+    expect(css).toContain(`--font-manrope: ${marca.typography.family};`);
+    expect(css).not.toContain("@font-face");
+  });
+
+  it("las fuentes propias se declaran con su familia y la URL de nuestra ruta, y nada más", () => {
+    const url = `/api/marca/activos/${crypto.randomUUID()}`;
+    const css = generarCss(marca, { instalacion: { version: 1, fuentes: [{ familia: "Mi Fuente", url }] } });
+    expect(css).toContain(`@font-face { font-family: "Mi Fuente"; src: url("${url}") format("woff2");`);
+    for (const fuentes of [
+      [{ familia: 'X"; } body { color: red', url }],
+      [{ familia: "Mi Fuente", url: "https://x.test/f.woff2" }],
+      [{ familia: "Mi Fuente", url: `${url}");}` }],
+    ]) {
+      expect(() => generarCss(marca, { instalacion: { version: 1, fuentes } })).toThrow();
+    }
+  });
+
+  it("generarCss rechaza por su cuenta cualquier valor que no sea un token limpio, aunque no pase por el validador", () => {
+    const mala = (cambio: (m: Marca) => void) => {
+      const copia = structuredClone(marca);
+      cambio(copia);
+      return () => exigirMarcaSegura(copia);
+    };
+    expect(mala((m) => (m.theme.light.text = "#fff;}*{color:red"))).toThrow();
+    expect(mala((m) => (m.theme.dark["x;}a{b"] = "#FFFFFF"))).toThrow();
+    expect(mala((m) => (m.typography.family = "Inter; } html { background: url(x)"))).toThrow();
+    expect(mala((m) => (m.brandVersion = "1.0.0 */ body{}"))).toThrow();
+    expect(mala((m) => (m.gradients.foco = ["cobalt", "x)"]))).toThrow();
+    expect(mala((m) => (m.layout.cardRadiusPx = Number.NaN))).toThrow();
+    expect(mala(() => {})).not.toThrow();
   });
 
   it("calcula el contraste de referencia blanco/negro", () => {

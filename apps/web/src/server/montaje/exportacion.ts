@@ -6,6 +6,7 @@ import type { FormatoSubtitulos } from "@/lib/voz";
 import { db } from "../db/cliente";
 import { type FilaExportacion, type FilaMontaje, montageExports, projects } from "../db/esquema";
 import { limitesDeProyecto } from "../limites-proyecto";
+import { kitParaExportar } from "../marca/kit";
 import type { Actor } from "../media/servicio";
 import { ErrorMontaje } from "./errores";
 import { exigirHerramientasDeRender } from "./ffmpeg";
@@ -99,6 +100,8 @@ export async function pedirExportacion(
 
   const { ancho, alto } = resolucionDe(formato);
   const subtitulos = subtitulosDeLaExportacion(montaje, material);
+  // El kit de marca del creador de ahora, si lo tiene activo con logotipo: el vídeo sale con este aunque lo cambie luego.
+  const kit = await kitParaExportar(actor.id);
 
   return db().transaction(async (tx) => {
     // Se bloquea la fila del montaje: mientras se decide si hay que crear la exportación, nadie más puede
@@ -132,6 +135,7 @@ export async function pedirExportacion(
         burnedSubtitles: montaje.burnSubtitles && subtitulos.hay,
         subtitlesSrt: subtitulos.srt,
         subtitlesVtt: subtitulos.vtt,
+        brandKit: kit,
       })
       .returning();
     if (!creada) throw new ErrorMontaje(500, "No se ha podido encolar la exportación.");

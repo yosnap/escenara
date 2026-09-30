@@ -1,4 +1,12 @@
 import { FORMATO_MONTAJE_POR_DEFECTO, type FormatoMontaje, ZONA_SEGURA_DE_FORMATO } from "@/lib/formatos";
+import {
+  type EsquinaKit,
+  esquinaEfectiva,
+  franjaDe,
+  LOGO_ALTO_MAXIMO,
+  LOGO_ANCHO_MAXIMO,
+  ladoDe,
+} from "@/lib/marca-kit";
 import type { PosicionEtiqueta } from "@/lib/montaje";
 import { TEXTO_ETIQUETA_SINTETICA } from "@/lib/montaje";
 import { ErrorMontaje } from "./errores";
@@ -63,6 +71,78 @@ export function filtroDeEtiqueta(
     "boxcolor=black@0.55",
     "boxborderw=12",
   ].join(":");
+}
+
+/**
+ * Franja vertical que ocupa la etiqueta, en píxeles de la salida, con su caja. El alto del texto se toma con holgura
+ * (1,4 veces el tamaño de letra) porque `text_h` incluye acentos y descendentes.
+ */
+export function franjaDeEtiqueta(
+  posicion: PosicionEtiqueta,
+  alto: number,
+  formato: FormatoMontaje = FORMATO_MONTAJE_POR_DEFECTO,
+): { desde: number; hasta: number } {
+  const zona = ZONA_SEGURA_DE_FORMATO[formato];
+  const caja = 12;
+  const texto = Math.ceil(TAMANO_ETIQUETA * 1.4);
+  if (posicion === "arriba") {
+    const y = Math.round((alto * zona.arribaPorCiento) / 100) + MARGEN_ETIQUETA;
+    return { desde: y - caja, hasta: y + texto + caja };
+  }
+  const abajo = alto - Math.round((alto * zona.abajoPorCiento) / 100) - MARGEN_ETIQUETA;
+  return { desde: abajo - texto - caja, hasta: abajo + caja };
+}
+
+/** Margen lateral del logotipo del kit. */
+const MARGEN_LATERAL_LOGO = 32;
+
+export interface ColocacionDelLogo {
+  /** Esquina donde acaba el logotipo: la elegida, o la de la franja contraria si coincidía con la etiqueta. */
+  esquina: EsquinaKit;
+  anchoMaximo: number;
+  altoMaximo: number;
+  /** Posición en píxeles de la esquina superior izquierda, para el tamaño máximo. */
+  x: number;
+  y: number;
+}
+
+/**
+ * Dónde va el logotipo del kit del creador. Nunca en la franja de la etiqueta: si la esquina elegida coincide, pasa a
+ * la contraria del mismo lado. Dentro de la zona segura del formato, igual que la etiqueta.
+ */
+export function colocacionDelLogo(
+  esquinaElegida: EsquinaKit,
+  etiqueta: PosicionEtiqueta | null,
+  ancho: number,
+  alto: number,
+  formato: FormatoMontaje = FORMATO_MONTAJE_POR_DEFECTO,
+): ColocacionDelLogo {
+  const esquina = etiqueta ? esquinaEfectiva(esquinaElegida, etiqueta) : esquinaElegida;
+  const zona = ZONA_SEGURA_DE_FORMATO[formato];
+  const anchoMaximo = Math.round(ancho * LOGO_ANCHO_MAXIMO);
+  const altoMaximo = Math.round(alto * LOGO_ALTO_MAXIMO);
+  const x = ladoDe(esquina) === "izquierda" ? MARGEN_LATERAL_LOGO : ancho - MARGEN_LATERAL_LOGO - anchoMaximo;
+  const y =
+    franjaDe(esquina) === "arriba"
+      ? Math.round((alto * zona.arribaPorCiento) / 100) + MARGEN_ETIQUETA
+      : alto - Math.round((alto * zona.abajoPorCiento) / 100) - MARGEN_ETIQUETA - altoMaximo;
+  return { esquina, anchoMaximo, altoMaximo, x, y };
+}
+
+/**
+ * Filtro `overlay` del logotipo, ya escalado a `[logo]`. La esquina derecha y la de abajo se pegan con el tamaño real
+ * del logotipo escalado (`w` y `h` de `overlay`), así un logotipo estrecho no queda despegado del borde. Todo son
+ * números nuestros: no hay texto de nadie en el filtro.
+ */
+export function filtroDeLogo(c: ColocacionDelLogo, ancho: number, alto: number): { escala: string; posicion: string } {
+  const derecha = ladoDe(c.esquina) === "derecha";
+  const abajo = franjaDe(c.esquina) === "abajo";
+  const x = derecha ? `W-w-${ancho - c.x - c.anchoMaximo}` : `${c.x}`;
+  const y = abajo ? `H-h-${alto - c.y - c.altoMaximo}` : `${c.y}`;
+  return {
+    escala: `scale=w=${c.anchoMaximo}:h=${c.altoMaximo}:force_original_aspect_ratio=decrease,format=rgba`,
+    posicion: `overlay=x=${x}:y=${y}:format=auto`,
+  };
 }
 
 /**

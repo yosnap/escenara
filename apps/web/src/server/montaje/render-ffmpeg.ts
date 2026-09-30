@@ -1,8 +1,9 @@
 import type { Encuadre, FormatoMontaje } from "@/lib/formatos";
+import type { EsquinaKit } from "@/lib/marca-kit";
 import type { PosicionEtiqueta } from "@/lib/montaje";
 import { FPS_MONTAJE } from "@/lib/montaje";
 import { ErrorMontaje } from "./errores";
-import { filtroDeEtiqueta, filtroDeSubtitulos } from "./etiqueta";
+import { colocacionDelLogo, filtroDeEtiqueta, filtroDeLogo, filtroDeSubtitulos } from "./etiqueta";
 import { AUDIO_SALIDA, METADATOS_BASICOS, VIDEO_SALIDA } from "./ffmpeg";
 
 /**
@@ -166,6 +167,11 @@ export interface OpcionesDeMontaje {
   subtitulos: string | null;
   /** Posición de la etiqueta; `null` cuando el montaje se exporta sin ella. */
   etiqueta: PosicionEtiqueta | null;
+  /**
+   * Logotipo del kit del creador (0.42.0), ya en disco en PNG, y la esquina elegida. `null` o sin indicar: sin kit, la
+   * orden es exactamente la de siempre.
+   */
+  logo?: { ruta: string; esquina: EsquinaKit } | null;
   /** Duración total del montaje, en segundos. Es el corte de la salida. */
   segundos: number;
   ancho: number;
@@ -185,19 +191,33 @@ export interface OpcionesDeMontaje {
  */
 export function ordenDeMontar(o: OpcionesDeMontaje): string[] {
   const filtros: string[] = [];
+  const pistas = [...o.voces, ...o.musica];
 
-  // ── Vídeo: subtítulos quemados y etiqueta, en ese orden (la etiqueta nunca queda debajo de un subtítulo).
+  /**
+   * ── Vídeo: logotipo del kit, subtítulos quemados y etiqueta, **en ese orden**. El logotipo va el primero para que
+   * nada suyo tape un subtítulo, y la etiqueta la última, siempre encima de todo: el kit del creador no la puede tapar
+   * ni quitar (además, `colocacionDelLogo` lo pone en la franja contraria a la de la etiqueta).
+   */
+  let entradaVideo = "[0:v]";
+  if (o.logo) {
+    const indiceLogo = pistas.length + 1;
+    const colocacion = colocacionDelLogo(o.logo.esquina, o.etiqueta, o.ancho, o.alto, o.formato);
+    const { escala, posicion } = filtroDeLogo(colocacion, o.ancho, o.alto);
+    filtros.push(`[${indiceLogo}:v]${escala}[logo]`);
+    filtros.push(`[0:v][logo]${posicion}[vlogo]`);
+    entradaVideo = "[vlogo]";
+  }
   const pasosVideo = [
     ...(o.subtitulos ? [filtroDeSubtitulos(rutaSegura(o.subtitulos), o.formato)] : []),
     ...(o.etiqueta ? [filtroDeEtiqueta(o.etiqueta, o.alto, o.formato)] : []),
   ];
-  filtros.push(`[0:v]${pasosVideo.length > 0 ? pasosVideo.join(",") : "null"}[vout]`);
+  filtros.push(`${entradaVideo}${pasosVideo.length > 0 ? pasosVideo.join(",") : "null"}[vout]`);
 
   // ── Audio: el de los clips, más una entrada por voz y por pista de música.
   const etiquetasAudio: string[] = ["[aclips]"];
   filtros.push(`[0:a]volume=${numero(o.volumenClip, "volumen del clip")}[aclips]`);
   const entradas: string[] = [];
-  for (const [indice, pista] of [...o.voces, ...o.musica].entries()) {
+  for (const [indice, pista] of pistas.entries()) {
     // `+1` porque la entrada 0 es la concatenación.
     const entradaFfmpeg = indice + 1;
     const nombre = `a${entradaFfmpeg}`;
@@ -225,6 +245,8 @@ export function ordenDeMontar(o: OpcionesDeMontaje): string[] {
     "-i",
     rutaSegura(o.lista),
     ...entradas,
+    // El logotipo entra el último, después de todas las pistas de audio: su índice es el que usa el filtro de arriba.
+    ...(o.logo ? ["-i", rutaSegura(o.logo.ruta)] : []),
     "-filter_complex",
     filtros.join(";"),
     "-map",
