@@ -4,6 +4,7 @@ import { Radio } from "@base-ui/react/radio";
 import { RadioGroup } from "@base-ui/react/radio-group";
 import { ChevronDown, type LucideIcon, Sparkles } from "lucide-react";
 import { type ReactNode, useId } from "react";
+import { seccionesMontadas } from "@/lib/acciones-producto-pantalla";
 import { cn } from "../cn";
 import { ExplicacionGrupo, TituloGrupo, type TonoGrupo } from "./cabecera-grupo";
 
@@ -47,6 +48,8 @@ export interface SeccionVisual {
 export interface PlegableVisual {
   titulo: string;
   abierto: boolean;
+  /** `true` si no se puede cerrar (la opción elegida está dentro): el botón se apaga y lo dice. */
+  bloqueado?: boolean;
   onCambioAbierto: (abierto: boolean) => void;
   secciones: SeccionVisual[];
 }
@@ -120,9 +123,10 @@ export function ElectorVisual({
             <button
               type="button"
               aria-expanded={plegable.abierto}
-              aria-controls={idPlegable}
+              aria-controls={plegable.abierto ? idPlegable : undefined}
+              disabled={plegable.bloqueado}
               onClick={() => plegable.onCambioAbierto(!plegable.abierto)}
-              className="flex w-fit items-center gap-2 rounded-control border border-borde bg-superficie px-3 py-2 text-base font-semibold text-texto transition-colors duration-(--motion-fast) hover:border-acento"
+              className="flex w-fit items-center gap-2 rounded-control border border-borde bg-superficie px-3 py-2 text-base font-semibold text-texto transition-colors duration-(--motion-fast) hover:border-acento disabled:cursor-default disabled:opacity-70"
             >
               <ChevronDown
                 className={cn("size-5 transition-transform duration-(--motion-fast)", plegable.abierto && "rotate-180")}
@@ -130,11 +134,17 @@ export function ElectorVisual({
               />
               {plegable.titulo}
             </button>
-            <div id={idPlegable} hidden={!plegable.abierto} className="flex flex-col gap-6">
-              {plegable.secciones.map((seccion) => (
-                <RejillaDeTarjetas key={seccion.clave} seccion={seccion} valor={valor} />
-              ))}
-            </div>
+            {plegable.bloqueado && (
+              <p className="text-sm text-texto-suave">Se queda abierto mientras la acción elegida sea una de estas.</p>
+            )}
+            {/* Cerrado no se monta nada: un radio oculto seguiría siendo parada del teclado. */}
+            {plegable.abierto && (
+              <div id={idPlegable} className="flex flex-col gap-6">
+                {seccionesMontadas(plegable.secciones, plegable.abierto).map((seccion) => (
+                  <RejillaDeTarjetas key={seccion.clave} seccion={seccion} valor={valor} />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </RadioGroup>

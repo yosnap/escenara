@@ -29,14 +29,33 @@ describe("la acción del producto es una sola elección", () => {
     const html = pintar("abrirlo");
     expect(html).toContain("Más acciones (moda, cuidado de la piel)");
     expect(html).toContain('aria-expanded="false"');
-    expect(html).toMatch(/<div id="[^"]*" hidden=""/);
+    expect(html).not.toContain("aria-controls");
+  });
+
+  test("plegado no hay ningún radio de moda ni de piel en el DOM, y los generales sí", () => {
+    const html = pintar("abrirlo");
+    expect(html).not.toContain("Giro de 360 grados");
+    expect(html).not.toContain("Extender el producto");
+    expect(html).not.toContain("Cuidado de la piel");
+    expect(html).toContain("Abrirlo");
+    // Sin acción elegida, «Sin elegir» + 1 general = radios visibles solamente.
+    expect(html.match(/role="radio"/g)?.length).toBe(2);
+  });
+
+  test("abierto están todos, y con una acción de esa familia el botón no deja cerrar", () => {
+    const html = pintar("moda-giro-360");
+    expect(html.match(/role="radio"/g)?.length).toBe(4);
+    expect(html).toMatch(
+      /<button[^>]*disabled=""[^>]*aria-expanded="true"|<button[^>]*aria-expanded="true"[^>]*disabled=""/,
+    );
+    expect(html).toContain("Se queda abierto");
   });
 
   test("se abren solas si la acción elegida es de moda o de piel", () => {
     for (const accion of ["moda-giro-360", "skincare-extender"]) {
       const html = pintar(accion);
       expect(html).toContain('aria-expanded="true"');
-      expect(html).not.toMatch(/<div id="[^"]*" hidden=""/);
+      expect(html).toContain("aria-controls");
     }
   });
 

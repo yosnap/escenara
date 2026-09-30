@@ -93,12 +93,13 @@ describe("una lista con partes", () => {
     expect(html.match(/role="radiogroup"/g)?.length).toBe(1);
     expect(html).toContain("General");
     expect(html).toContain("Otra parte");
-    expect(html).toContain("Plegada");
   });
 
   test("el bloque plegado empieza cerrado y el botón lo dice", () => {
     expect(html).toContain('aria-expanded="false"');
-    expect(html).toMatch(/<div id="[^"]*" hidden=""/);
+    // Cerrado no se monta la parte plegada: ni su subtítulo ni sus radios.
+    expect(html).not.toContain("Plegada");
+    expect(html).not.toContain("aria-controls");
   });
 
   test("el resumen se anuncia a los lectores de pantalla", () => {

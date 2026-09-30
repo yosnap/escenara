@@ -6,6 +6,7 @@ import {
   AYUDA_ACCION_UNICA,
   FAMILIAS_PLEGADAS,
   masAccionesAbierto,
+  masAccionesSePuedeCerrar,
   resumenAccionElegida,
   TITULO_MAS_ACCIONES,
 } from "@/lib/acciones-producto-pantalla";
@@ -44,8 +45,10 @@ export function ElectorAccionProducto({
   deshabilitado?: boolean;
   onCambio: (accion: string) => void;
 }) {
-  // null = la persona no ha tocado «Más acciones»: se abre solo si la acción elegida vive dentro.
-  const [abiertoPorLaPersona, setAbiertoPorLaPersona] = useState<boolean | null>(null);
+  // Lo que ha decidido la persona con el botón. El bloque está abierto si ella lo abrió o si la acción elegida vive
+  // dentro (se deriva: una acción de moda que llega por otra vía lo abre sin depender de este estado).
+  const [abiertoPorLaPersona, setAbiertoPorLaPersona] = useState(false);
+  const abierto = masAccionesAbierto(abiertoPorLaPersona, accion);
   /**
    * Las acciones se enseñan **por familias** (general, moda, cuidado de la piel): son catorce y en una sola
    * rejilla no se encuentra ninguna. La familia sale del prefijo de la clave, así que una acción nueva de
@@ -94,13 +97,19 @@ export function ElectorAccionProducto({
         seccionesPlegadas.length > 0
           ? {
               titulo: TITULO_MAS_ACCIONES,
-              abierto: masAccionesAbierto(abiertoPorLaPersona, accion),
+              abierto,
+              bloqueado: abierto && !masAccionesSePuedeCerrar(accion),
               onCambioAbierto: setAbiertoPorLaPersona,
               secciones: seccionesPlegadas,
             }
           : undefined
       }
-      onCambio={onCambio}
+      onCambio={(nueva) => {
+        // Si el bloque estaba abierto porque la acción vivía dentro, se queda abierto al elegir otra: que no se
+        // pliegue bajo el cursor.
+        if (abierto) setAbiertoPorLaPersona(true);
+        onCambio(nueva);
+      }}
     />
   );
 }

@@ -27,12 +27,23 @@ export const accionEstaPlegada = (accion: string): boolean =>
   accion !== "" && FAMILIAS_PLEGADAS.includes(familiaDeAccion(accion));
 
 /**
- * ¿Está abierto «Más acciones»? Lo que haya decidido la persona con el ratón manda; si no ha tocado nada, se
- * abre solo cuando la acción elegida vive dentro. Así una dirección guardada con «Abrir el bote de crema» no
- * deja la elección escondida.
+ * ¿Está abierto «Más acciones»? Se **deriva**, sin estado que se quede fijado: está abierto si la persona lo abrió
+ * **o** si la acción elegida vive dentro. Así una acción de moda que llega por otra vía (otro producto, una dirección
+ * guardada) lo abre sola, y la elegida nunca queda invisible.
  */
-export const masAccionesAbierto = (abiertoPorLaPersona: boolean | null, accion: string): boolean =>
-  abiertoPorLaPersona ?? accionEstaPlegada(accion);
+export const masAccionesAbierto = (abiertoPorLaPersona: boolean, accion: string): boolean =>
+  abiertoPorLaPersona || accionEstaPlegada(accion);
+
+/** Mientras la acción elegida sea de una familia plegable el bloque no se puede cerrar: la selección seguiría oculta. */
+export const masAccionesSePuedeCerrar = (accion: string): boolean => !accionEstaPlegada(accion);
+
+/**
+ * Las partes que se **montan**: cerrado, ninguna. No basta con esconderlas con CSS: un radio oculto sigue siendo
+ * parada de tabulación y destino de las flechas, y el grupo quedaría inalcanzable con el teclado si el marcado
+ * es uno de ellos. Con el bloque cerrado el grupo solo contiene radios visibles.
+ */
+export const seccionesMontadas = <T>(secciones: readonly T[], abierto: boolean): readonly T[] =>
+  abierto ? secciones : [];
 
 /**
  * El resumen visible de la elección: «Elegida: Abrirlo». Cambia al elegir en cualquier familia, porque es lo
