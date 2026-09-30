@@ -2,6 +2,8 @@
 
 import type { ReactNode } from "react";
 import { cn } from "@/components/ui/cn";
+import { DemoDePlantilla } from "@/components/ui/demo-plantilla";
+import { Aviso } from "@/components/ui/feedback";
 import { BotoneraPresets, PanelLoElegido } from "@/components/ui/preset";
 import { Selector } from "@/components/ui/select";
 import type { TipoPersonaje } from "@/lib/personajes";
@@ -200,6 +202,10 @@ export function PanelPlantilla({
       data-requisito={requisito}
     >
       {selector}
+      {/* Con una sola plantilla no hay selector: se dice cuál se aplica y cómo queda, en lugar de aplicarla en silencio. */}
+      {!formatoAparte && previa.plantilla !== null && catalogo.plantillas.length === 1 && (
+        <PlantillaAplicada plantilla={previa.plantilla} />
+      )}
 
       {previa.plantilla === null ? (
         <p className="text-texto-suave">
@@ -226,7 +232,25 @@ export function PanelPlantilla({
   );
 }
 
-/** Selector «Plantilla o trend vigente». Solo aparece si hay más de una entre las que elegir. */
+/**
+ * Qué plantilla se usa cuando no hay nada que elegir (solo hay una), con su ejemplo si lo tiene. Es información: sin
+ * selector y sin el texto de la plantilla, que es material del servidor.
+ */
+export function PlantillaAplicada({ plantilla }: { plantilla: PlantillaVisible }) {
+  return (
+    <div className="flex flex-col gap-3" data-plantilla-aplicada={plantilla.id}>
+      <Aviso tono="info">
+        Se aplica la plantilla «{plantilla.nombre}».{plantilla.descripcion ? ` ${plantilla.descripcion}` : ""}
+      </Aviso>
+      {plantilla.demo && <DemoDePlantilla demo={plantilla.demo} titulo={`Ejemplo de «${plantilla.nombre}»`} />}
+    </div>
+  );
+}
+
+/**
+ * Selector «Plantilla o trend vigente». Solo aparece si hay más de una entre las que elegir. Debajo enseña el ejemplo de
+ * la plantilla normal elegida; el de un trend se ve en su vista previa.
+ */
 export function SelectorPlantilla({
   catalogo,
   valor,
@@ -239,22 +263,32 @@ export function SelectorPlantilla({
   onCambio: (plantillaId: string) => void;
 }) {
   if (catalogo.plantillas.length < 2) return null;
+  const elegida = catalogo.plantillas.find((p) => p.id === valor);
   return (
-    <Selector
-      etiqueta="Plantilla o trend vigente"
-      valor={valor}
-      deshabilitado={deshabilitado}
-      onCambio={(v) => onCambio(v ?? "")}
-      opciones={catalogo.plantillas.map((p) => ({
-        value: p.id,
-        label: p.kind === "trend" ? `Trend · ${p.nombre}` : p.nombre,
-        // La duración solo se cita si el trend la limita: sin límite, manda la del modelo.
-        descripcion:
-          p.kind === "trend" && p.duracionesAdmitidas.length > 0
-            ? `${p.descripcion} · ${textoDeDuraciones(p.duracionesAdmitidas)}`
-            : p.descripcion,
-      }))}
-    />
+    <div className="flex flex-col gap-3">
+      <Selector
+        etiqueta="Plantilla o trend vigente"
+        valor={valor}
+        deshabilitado={deshabilitado}
+        onCambio={(v) => onCambio(v ?? "")}
+        opciones={catalogo.plantillas.map((p) => ({
+          value: p.id,
+          label: p.kind === "trend" ? `Trend · ${p.nombre}` : p.nombre,
+          // La duración solo se cita si el trend la limita: sin límite, manda la del modelo.
+          descripcion: [
+            p.kind === "trend" && p.duracionesAdmitidas.length > 0
+              ? `${p.descripcion} · ${textoDeDuraciones(p.duracionesAdmitidas)}`
+              : p.descripcion,
+            p.demo ? "Con ejemplo" : "",
+          ]
+            .filter(Boolean)
+            .join(" · "),
+        }))}
+      />
+      {elegida?.kind === "base" && elegida.demo && (
+        <DemoDePlantilla demo={elegida.demo} titulo={`Ejemplo de «${elegida.nombre}»`} />
+      )}
+    </div>
   );
 }
 
@@ -281,6 +315,7 @@ export function VistaPreviaTrend({ trend }: { trend: PlantillaVisible }) {
           no se te preguntará.
         </p>
       )}
+      {trend.demo && <DemoDePlantilla demo={trend.demo} titulo={`Ejemplo de «${trend.nombre}»`} className="mt-3" />}
     </div>
   );
 }

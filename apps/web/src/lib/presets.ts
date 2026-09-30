@@ -1,4 +1,5 @@
 import type { Capacidad } from "./catalogo";
+import type { DemoPlantilla } from "./demo-plantilla";
 import type { FormatoClip, MomentoMicroaccion, NivelCamara, RegistroEstetico } from "./direccion";
 import type { CategoriaDecidible } from "./trends";
 
@@ -358,6 +359,8 @@ export interface PlantillaVista {
   direccionDecidida: CategoriaDecidible[];
   referenceUrl: string;
   trendAllowsSpeech: boolean;
+  /** Ejemplo elegido por quien administra, o `null`. Ponerlo o quitarlo no crea versión ni cambia el prompt. */
+  demo: DemoPlantilla | null;
   capacidad: Capacidad;
   plantilla: string;
   variables: VariablePlantilla[];
@@ -386,6 +389,8 @@ export interface TrendPublico {
   direccionDecidida: CategoriaDecidible[];
   /** Si el trend deja hablar a cámara. Sin habla, la pantalla no pide voz ni guion para el clip. */
   permiteHabla: boolean;
+  /** Ejemplo del trend, si quien administra puso uno. */
+  demo?: DemoPlantilla | null;
   vistaPrevia: {
     resumen: string;
     duracion: string;
@@ -405,6 +410,8 @@ export interface PlantillaElegible {
   /** Categorías de la dirección que decide el trend. En una plantilla normal, siempre vacía. */
   direccionDecidida: CategoriaDecidible[];
   trendAllowsSpeech: boolean;
+  /** Ejemplo de la plantilla o del trend, si quien administra puso uno: solo tipo, texto alternativo y ruta. */
+  demo?: DemoPlantilla | null;
   capacidad: Capacidad;
   plantilla: string;
   variables: VariablePlantilla[];
@@ -439,6 +446,7 @@ export function recortarPlantilla(plantilla: PlantillaVista): PlantillaElegible 
     duracionesAdmitidas: plantilla.duracionesAdmitidas,
     direccionDecidida: plantilla.direccionDecidida,
     trendAllowsSpeech: plantilla.trendAllowsSpeech,
+    demo: plantilla.demo,
     capacidad: plantilla.capacidad,
     plantilla: plantilla.plantilla,
     variables: plantilla.variables,

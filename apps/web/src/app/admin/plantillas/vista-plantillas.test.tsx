@@ -27,6 +27,7 @@ const plantilla = (
   direccionDecidida: [],
   referenceUrl: "",
   trendAllowsSpeech: false,
+  demo: null,
   capacidad,
   plantilla: "Escena: {{escena}}",
   variables: [],

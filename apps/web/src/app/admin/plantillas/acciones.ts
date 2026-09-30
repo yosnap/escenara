@@ -12,6 +12,7 @@ import {
   type DatosPlantilla,
   duplicarTrend,
   editarPlantillaDeLaInstalacion,
+  fijarDemoDePlantilla,
   ordenarGrupoDePlantillas,
 } from "@/server/prompts/plantillas-admin";
 
@@ -45,6 +46,11 @@ export async function crearPlantillaAccion(datos: DatosPlantilla): Promise<Resul
 
 export async function editarPlantillaAccion(id: string, datos: DatosPlantilla): Promise<ResultadoPlantillas> {
   return aplicar((autorId) => editarPlantillaDeLaInstalacion(id, datos, autorId));
+}
+
+/** Pone (medio de la biblioteca) o quita (`null`) el ejemplo de una plantilla. No crea versión. */
+export async function fijarDemoAccion(id: string, medioId: string | null): Promise<ResultadoPlantillas> {
+  return aplicar(() => fijarDemoDePlantilla(id, medioId));
 }
 
 export async function activarPlantillaAccion(id: string, activa: boolean): Promise<ResultadoPlantillas> {

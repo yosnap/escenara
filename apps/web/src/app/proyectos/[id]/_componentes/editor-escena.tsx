@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Alerta } from "@/components/ui/alerta";
 import { Boton, BotonIcono } from "@/components/ui/button";
 import { InsigniaControl } from "@/components/ui/controles";
+import { DemoDePlantilla } from "@/components/ui/demo-plantilla";
 import { PanelDireccion } from "@/components/ui/direccion/panel-direccion";
 import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo } from "@/components/ui/field";
@@ -268,7 +269,7 @@ export function EditorEscena({
                 return {
                   value: p.id,
                   label: p.nombre,
-                  descripcion: motivo ?? p.descripcion,
+                  descripcion: motivo ?? (p.demo ? `${p.descripcion} · Con ejemplo` : p.descripcion),
                   ...(motivo ? { deshabilitada: true } : {}),
                 };
               }),
@@ -290,6 +291,7 @@ export function EditorEscena({
               . La cifra se confirma en el plan antes de generar.
             </Aviso>
           )}
+          {trend?.demo && <DemoDePlantilla demo={trend.demo} titulo={`Ejemplo de «${trend.nombre}»`} />}
           {trend && trendId === escena.trendId && escena.trendVersion !== trend.version && (
             <Alerta tipo="bloqueo" compacta anuncio="estado">
               Este trend tiene una versión nueva (v{trend.version}) desde que lo elegiste (v{escena.trendVersion ?? "?"}

@@ -421,6 +421,13 @@
       "when": 1790760368077,
       "tag": "0059_marca-editable-y-kit-del-creador",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1790764843538,
+      "tag": "0060_plantillas-con-ejemplo",
+      "breakpoints": true
     }
   ]
 }

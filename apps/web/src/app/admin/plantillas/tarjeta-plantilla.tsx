@@ -1,10 +1,12 @@
 "use client";
 
 import { Boton } from "@/components/ui/button";
+import { DemoDePlantilla } from "@/components/ui/demo-plantilla";
 import { ETIQUETA_CAPACIDAD } from "@/lib/catalogo";
 import { ETIQUETA_CATEGORIA, ETIQUETA_TIPO_VARIABLE, type PlantillaVista, type VersionPlantilla } from "@/lib/presets";
 import { activarPlantillaAccion, type ResultadoPlantillas } from "./acciones";
 import { DialogoCaducarTrend } from "./dialogo-caducar-trend";
+import { DialogoDemoPlantilla } from "./dialogo-demo-plantilla";
 import { DialogoDuplicarTrend } from "./dialogo-duplicar-trend";
 import { DialogoPlantilla } from "./dialogo-plantilla";
 
@@ -57,6 +59,11 @@ export function TarjetaPlantilla({
             plantilla={plantilla}
             onResultado={onResultado}
           />
+          <DialogoDemoPlantilla
+            key={`demo:${plantilla.id}:${plantilla.demo?.url ?? ""}`}
+            plantilla={plantilla}
+            onResultado={onResultado}
+          />
           {plantilla.kind === "trend" && <DialogoDuplicarTrend plantilla={plantilla} onResultado={onResultado} />}
           {plantilla.kind === "trend" && plantilla.trendStatus !== "caducada" && (
             <DialogoCaducarTrend plantilla={plantilla} onResultado={onResultado} />
@@ -71,6 +78,12 @@ export function TarjetaPlantilla({
           </Boton>
         </div>
       </div>
+
+      {plantilla.demo ? (
+        <DemoDePlantilla demo={plantilla.demo} titulo="Ejemplo que ven los usuarios" alturaMaxima="10rem" />
+      ) : (
+        <p className="text-sm text-texto-suave">Sin ejemplo: los usuarios no ven cómo queda antes de generar.</p>
+      )}
 
       <pre className="overflow-x-auto whitespace-pre-wrap rounded-control bg-elevada p-3 font-mono text-sm text-texto">
         {plantilla.plantilla}
