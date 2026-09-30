@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
-import type { EvaluacionVista } from "@/lib/controles";
+import { type EvaluacionVista, peorEstado } from "@/lib/controles";
 import { formatearCreditos } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
 import {
@@ -53,6 +53,7 @@ import { creditosDelEnvio } from "../prompts/traduccion";
 import { ErrorCatalogo } from "../proveedores/contrato";
 import { type RepartoDePantalla, repartoDePantallaDeEscena } from "../reparto/pantalla";
 import { controlesProductoClip } from "./controles-producto-clip";
+import { hechosDelSiguienteEnvio } from "./hechos-del-siguiente-envio";
 import { bytesDeVersionesSinUsar } from "./versiones";
 
 /**
@@ -344,6 +345,20 @@ export const escenasPorProducir = (
   );
 };
 
+/**
+ * La evaluación de la tarjeta sin las reglas que ya salen una vez para todo el proyecto en `controlesDelModelo`: la
+ * tarjeta lleva los hechos del modelo solo para que los avisos del reparto lo nombren, no para repetir los suyos.
+ */
+function sinLosDelModelo(vista: EvaluacionVista, delModelo: EvaluacionVista): EvaluacionVista {
+  const repetidas = new Set(delModelo.comprobaciones.map((c) => c.regla));
+  const comprobaciones = vista.comprobaciones.filter((c) => !repetidas.has(c.regla));
+  return { ...vista, estado: peorEstado(comprobaciones.map((c) => c.estado)), comprobaciones };
+}
+
+/** El trabajo más reciente de un tipo, de los de una escena. */
+const ultimoDeTipo = (trabajos: readonly FilaTrabajo[], tipo: FilaTrabajo["kind"]): FilaTrabajo | null =>
+  [...trabajos].filter((t) => t.kind === tipo).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0] ?? null;
+
 /** Estado completo de la producción de un proyecto. Un proyecto ajeno responde 404, igual que en 0.17.0. */
 export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Promise<ProduccionVista> {
   const proyecto = await proyectoPropio(actor, proyectoId);
@@ -365,22 +380,44 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
     ...[...porEscena.values()].flat().map((t) => t.resultMediaId),
     ...filasEscena.flatMap((e) => [e.approvedFrameMediaId, e.clipMediaId]),
   ]);
+  const modeloFotograma = elecciones.fotograma ? hechosDeModelo("fotograma", elecciones.fotograma) : null;
+  const controlesDelModelo = evaluarParaMostrar({
+    tipo: "fotograma",
+    parametros: contexto.parametros,
+    ...(modeloFotograma ? { modelo: modeloFotograma } : {}),
+    ...(proyecto.mainCharacterId ? { personaje: await hechosDePersonajeCitado(proyecto.mainCharacterId) } : {}),
+  });
   const escenas = await Promise.all(
     filasEscena.map(async (fila) => {
-      const [controlesDelProductoClip, reparto] = await Promise.all([
+      const trabajos = porEscena.get(fila.id) ?? [];
+      const [controlesDelProductoClip, reparto, hechosEnvio] = await Promise.all([
         controlesProductoClip(actor.id, fila, elecciones.animacion, contexto.parametros),
         /** El reparto solo se consulta cuando hay dos personajes en la escena. */
         fila.castFormat === "solo" ? null : repartoDePantallaDeEscena(actor, fila, proyecto),
+        // El lugar y el producto, con la misma función y las mismas entradas que el siguiente envío de la escena.
+        hechosDelSiguienteEnvio({
+          usuarioId: actor.id,
+          escena: fila,
+          proyecto,
+          elecciones,
+          fotograma: ultimoDeTipo(trabajos, "fotograma"),
+        }),
       ]);
       return vistaDeEscena(
         fila,
-        porEscena.get(fila.id) ?? [],
+        trabajos,
         // El mismo motor que cierra la puerta al producir el fotograma, con los datos ya cargados.
-        evaluarParaMostrar({
-          tipo: "fotograma",
-          parametros: contexto.parametros,
-          escena: hechosDeFila(fila, proyecto, afirmaciones, contexto),
-        }),
+        sinLosDelModelo(
+          evaluarParaMostrar({
+            tipo: "fotograma",
+            parametros: contexto.parametros,
+            escena: hechosDeFila(fila, proyecto, afirmaciones, contexto),
+            // El modelo va solo para que los avisos del reparto lo nombren, como en el envío.
+            ...(modeloFotograma ? { modelo: modeloFotograma } : {}),
+            ...hechosEnvio,
+          }),
+          controlesDelModelo,
+        ),
         controlesDelProductoClip,
         puestos,
         medios,
@@ -420,12 +457,7 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
     // Modelo **y protagonista**: la puerta del encolado evalúa también al personaje (consentimiento, fotos
     // señaladas, cobertura de vistas), así que sus avisos confirmables tienen que salir aquí con su casilla. Sin
     // él, la pantalla decía «Listo» y el servidor rechazaba pidiendo una confirmación que no había dónde dar.
-    controlesDelModelo: evaluarParaMostrar({
-      tipo: "fotograma",
-      parametros: contexto.parametros,
-      ...(elecciones.fotograma ? { modelo: hechosDeModelo("fotograma", elecciones.fotograma) } : {}),
-      ...(proyecto.mainCharacterId ? { personaje: await hechosDePersonajeCitado(proyecto.mainCharacterId) } : {}),
-    }),
+    controlesDelModelo,
     // El recuento es del usuario, no del proyecto: es el mismo que cierra la puerta al encolar.
     enVuelo,
     maximoEnVuelo: ajustes.escenasEnVuelo,
