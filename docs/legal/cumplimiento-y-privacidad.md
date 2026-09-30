@@ -59,6 +59,22 @@ Consecuencias que hay que sostener:
 Queda pendiente para la política de privacidad: nombrar KIE como **encargado del tratamiento** también para texto,
 no solo para imagen y vídeo, y decir el plazo de conservación de las traducciones.
 
+## Servicios que paga la instalación y reciben texto (0.39.0)
+
+Además de los proveedores con las claves del usuario, hay un servicio que se usa con la **clave del operador** de
+la instalación. Aquí se describe qué recibe, sin calificarlo jurídicamente: la calificación, la base jurídica, el
+contrato de encargo y las transferencias internacionales están **pendientes de revisión jurídica**.
+
+| Servicio | Para qué | Qué recibe | Qué no recibe | Cuándo | Estado |
+|---|---|---|---|---|---|
+| TypeSafe (Jev), como encargado del tratamiento de la instalación | Evaluar en sombra si el guion de una escena tiene una afirmación que exige verificación (0.39.0) | El texto del guion y de la descripción de la escena, con los nombres de los personajes y del producto sustituidos por marcadores | Imágenes, audio, nombres de personas, correos. Las escenas con una persona real no se envían nunca | Solo con la sombra **encendida** en Admin › Ajustes, que viene apagada y exige marcar antes una casilla de que se entiende este envío | Pendiente de revisión jurídica y de figurar en la política de privacidad antes de encenderla en producción |
+| TypeSafe (Jev), como encargado del tratamiento de la instalación | Decidir las comprobaciones de coherencia (0.24.0) que alguien pide desde la ficha o la revisión | Los hechos que describió la percepción (texto) y el guion o la descripción con que se comparan | Imágenes ni audio: esos solo van a la percepción, con el mapa de modelos del usuario | Cuando alguien pulsa «Comprobar» y la comprobación no está apagada | Pendiente de revisión jurídica y de figurar en la política de privacidad |
+
+El registro de decisiones (Admin › Decisiones) guarda qué se miró en cada decisión de los controles **sin nombres**
+de personas ni de productos: se sustituyen por un marcador al escribir, se vuelven a quitar al leer y la migración
+de la 0.39.0 los quita de las filas anteriores. Así, borrar la ficha de una persona no deja su nombre en un registro
+que sobrevive a ese borrado.
+
 ## La etiqueta de contenido sintético en lo que se exporta (0.32.0)
 
 Desde la 0.32.0 Escenara **entrega el vídeo terminado**. El [artículo 50 del Reglamento de IA de la UE](https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-50),

@@ -131,7 +131,8 @@ quita la cobertura a una foto por una avería de red: se te cuenta lo que ha pas
 ## Para quien administra: las decisiones y la sombra
 
 Desde la 0.39.0, **cada decisión** de los controles previos queda apuntada: qué se iba a hacer, qué hechos se
-miraron (modelo, precio, créditos, presupuesto, estado de la escena… nunca nombres ni el texto del guion), con qué
+miraron (modelo, precio, créditos, presupuesto, estado de la escena… nunca el texto del guion, y los nombres de
+personas y productos salen como «el personaje», «persona 1» o «el producto»), con qué
 umbrales, con qué versión de las reglas y qué se hizo con la petición: **dejó pasar**, **pidió confirmar** o
 **frenó**. Las ves en **Admin › Decisiones**, las últimas cincuenta.
 
@@ -139,7 +140,9 @@ En la misma pantalla está la **sombra**: Jev opina sobre cada decisión, en par
 dos preguntas:
 
 1. **«El guion tiene una afirmación que exige verificación»**: se pregunta sola cada vez que una escena pasa por la
-   puerta de generar, con el guion y la descripción de esa escena. El mismo texto no se pregunta dos veces.
+   puerta de generar, con el guion y la descripción de esa escena. El mismo texto no se pregunta dos veces. Las
+   escenas con una **persona real** no se preguntan nunca, y en las demás se cambian antes los nombres de los
+   personajes y del producto por marcadores.
 2. **«La escena generada corresponde a la descripción»**: es la comprobación del resultado de más arriba, que se
    sigue pidiendo desde la revisión.
 
@@ -147,22 +150,34 @@ Lo que tienes que saber antes de encenderla:
 
 - **Viene apagada.** Apagada no se pregunta nada ni se gasta nada. Se enciende en **Admin › Ajustes › Decisiones en
   sombra**, que te dice lo que cuesta cada evaluación con la tarifa de Jev que hayas puesto en Coherencia.
-- **La paga esta instalación**, con la misma clave de TypeSafe de Coherencia, y manda a TypeSafe el guion y la
-  descripción de cada escena. Hay un tope de evaluaciones por usuario y día.
+- **Primero hay que marcar una casilla**: al encenderla, el guion y la descripción de las escenas se envían a
+  TypeSafe, que actúa como **encargado del tratamiento** de la instalación. No se envían imágenes ni audio. Está
+  descrito en la documentación legal, pendiente de revisión jurídica: no la enciendas en producción antes de eso.
+- **La paga esta instalación**, con la misma clave de TypeSafe de Coherencia. Hay un tope de evaluaciones por usuario
+  y día.
 - **No frena nada, nunca.** Quien decide son las reglas. Si Jev tarda más de 10 segundos, falla o contesta algo
   raro, se apunta como fallo y la generación sigue exactamente igual; nadie espera a Jev.
 - **El usuario no la ve.** Si la viera, su revisión dejaría de ser una opinión independiente, y esa revisión es
   justo lo que se usa para medir.
 
-El panel compara la opinión de la sombra con lo que dijo una persona al **revisar la escena** (o al corregir el
-veredicto del resultado):
+El panel cuenta **cada escena una sola vez** por pregunta (el fotograma, el clip y la voz de una escena comparten la
+misma opinión) y la compara con lo que dijo una persona:
 
-- **falso permiso**: la sombra la habría dejado pasar y la persona la rechazó;
-- **bloqueo innecesario**: la sombra la habría frenado y la persona la aceptó;
-- **coincide con las reglas**: cuántas veces opina lo mismo que hicieron los controles.
+- en la pregunta de las **afirmaciones**, con lo que la persona hizo con las afirmaciones que Escenara señaló en el
+  guion: **verificarla o corregirla** quiere decir que había que frenar; **descartarla**, que no aplicaba. Si nadie
+  ha resuelto ninguna, esa escena no tiene etiqueta y el panel dice «sin etiqueta independiente» en lugar de
+  inventarse un porcentaje;
+- en la del **resultado**, con la corrección de su veredicto («tiene razón» / «se equivoca») o, si no la hay, con la
+  revisión del clip. Como la persona ve el veredicto antes de corregirlo, el panel la marca como **etiqueta no
+  independiente**.
 
-Solo cuentan las escenas que se produjeron y alguien revisó después. Y la revisión es de la escena entera: quien
-rechaza un clip puede hacerlo por la luz y no por el guion, así que tómalo como **referencia**, no como verdad.
+Con esa etiqueta:
+
+- **falso permiso**: la sombra la habría dejado pasar y la persona no;
+- **bloqueo innecesario**: la sombra la habría frenado y la persona la dejó pasar;
+- **coincide con su regla**: cuántas veces opina lo mismo que la regla de las afirmaciones sin verificar (no la
+  decisión entera: un freno por falta de saldo no dice nada de las afirmaciones).
+
 Igual que en el panel de acierto, con menos de 20 casos se enseña el recuento y no el porcentaje, y el umbral de
 cada pregunta solo ordena la medición: no hay ninguna cifra mágica a partir de la cual se automatice nada.
 
