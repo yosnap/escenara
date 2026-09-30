@@ -20,7 +20,7 @@ const LOTE = 500;
 export const retrocesoDeObjeto = (intentos: number) =>
   Math.min(2 ** Math.max(0, intentos - 1) * MINUTO, 12 * 60 * MINUTO);
 
-export type OrigenBorradoObjeto = "proyecto" | "cuenta";
+export type OrigenBorradoObjeto = "proyecto" | "cuenta" | "comunidad";
 
 /** Apunta las claves por borrar, dentro de la transacción de quien borra las filas. Idempotente por clave. */
 export async function apuntarObjetosPorBorrar(

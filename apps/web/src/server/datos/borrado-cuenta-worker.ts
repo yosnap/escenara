@@ -1,6 +1,7 @@
 import { and, count, eq, isNotNull, sql } from "drizzle-orm";
 import { leerAjustes } from "../ajustes";
 import { borrarObjeto } from "../almacenamiento";
+import { clavesDePublicacionesDe } from "../comunidad/borrado";
 import { db } from "../db/cliente";
 import {
   accountDeletions,
@@ -202,7 +203,11 @@ async function borrarFilas(fila: FilaBorradoCuenta, usuarioId: string): Promise<
         .from(projectExports)
         .where(and(eq(projectExports.userId, usuarioId), isNotNull(projectExports.storageKey))),
     ]);
-    const claves = [...new Set([...medios, ...activos, ...paquetes].flatMap((f) => (f.clave ? [f.clave] : [])))];
+    // Las copias de sus publicaciones de la comunidad también: las filas caen en cascada con la cuenta.
+    const copias = (await clavesDePublicacionesDe(tx, usuarioId)).map((clave) => ({ clave }));
+    const claves = [
+      ...new Set([...medios, ...activos, ...paquetes, ...copias].flatMap((f) => (f.clave ? [f.clave] : []))),
+    ];
     const total = (filas: { total: number }[]) => filas[0]?.total ?? 0;
     const [nProyectos, nPersonajes, nProductos, nLugares] = await Promise.all([
       tx.select({ total: count() }).from(projects).where(eq(projects.userId, usuarioId)),

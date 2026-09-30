@@ -1,3 +1,4 @@
+import { barrerPublicacionesHuerfanas } from "../comunidad/borrado";
 import { pasadaDeBorradosDeCuenta } from "./borrado-cuenta-worker";
 import { borrarObjetosApuntados } from "./borrado-de-objetos";
 import { barrerExportacionesCaducadas, empaquetar, tomarExportacionProyecto } from "./exportacion-proyecto";
@@ -21,6 +22,10 @@ export async function pasadaDeDatos(workerId: string): Promise<{ paquetes: numbe
     console.error(`[datos] barrido de paquetes caducados: ${detalle(error)}`);
     return 0;
   });
+  // Publicaciones de la comunidad cuyo original se ha borrado: ya no se ven; aquí se borran con su copia.
+  await barrerPublicacionesHuerfanas().catch((error) =>
+    console.error(`[datos] barrido de publicaciones huérfanas: ${detalle(error)}`),
+  );
   // Objetos de proyectos y cuentas borrados que el almacenamiento no dejó borrar a la primera: con su retroceso.
   await borrarObjetosApuntados().catch((error) =>
     console.error(`[datos] barrido de objetos por borrar: ${detalle(error)}`),
