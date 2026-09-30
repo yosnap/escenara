@@ -95,7 +95,8 @@ Cada uno tiene su propio **«Borrar»** en su ficha, con su diálogo:
 Lo que publicas en la [comunidad](comunidad.md) es una **copia**: retirarla la borra y tu original no cambia. Si borras
 el original (el personaje, el archivo o su proyecto), su publicación deja de verse al momento y se borra con su copia
 en unos minutos. Tus publicaciones (con su estado y el motivo de un rechazo) y tus logros se descargan en JSON desde
-**Comunidad › Tus publicaciones › Descargar**. La exportación de un proyecto no las incluye.
+**Comunidad › Tus publicaciones › Descargar** (también durante el periodo de gracia, desde «Tu cuenta se va a
+borrar»), y el ZIP de un proyecto incluye `comunidad.json` con las que salen de ese proyecto.
 
 ## Borrar tu cuenta
 

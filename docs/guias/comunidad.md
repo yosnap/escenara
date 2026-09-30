@@ -20,21 +20,26 @@ No hay comentarios, seguidores, mensajes ni publicación automática en redes.
 ## Qué se puede publicar y qué no
 
 Escenara comprueba **de dónde sale** cada cosa por una lista blanca: solo vale lo que es generado de principio a fin.
+Para un clip o una imagen mira **todo lo que se envió al proveedor al generarlo** (cada imagen de referencia, no solo la
+primera, el fotograma de partida, el audio), tal como quedó guardado en ese momento, y hace lo mismo con cada una de
+esas imágenes hacia atrás. Cambiar después la escena (quitar una referencia, el audio de canto) no cambia el veredicto.
 Ante la duda, no se publica, y siempre te dice por qué.
 
 | Se puede publicar | No se puede publicar |
 |---|---|
-| Un personaje **inventado**, con su declaración vigente, cuando ya tiene retrato o vistas generadas | Un personaje hecho con fotos (una persona o una mascota real), o un inventado al que se le haya añadido una foto |
+| Un personaje **inventado**, con su declaración vigente, cuando ya tiene retrato o vistas generadas | Un personaje hecho con fotos (una persona o una mascota real), o un inventado con alguna imagen que no generó la plataforma (también una subida marcada «hecha con IA») |
 | Un clip o una imagen **generados** con un personaje inventado | Una subida tuya (aunque sea una ilustración): no hay forma de saber qué hay en ella |
-| Un clip animado desde un fotograma que también generó un inventado | Un clip animado desde una foto subida, o desde un fotograma de una persona real |
+| Un clip animado desde un fotograma que también generó un inventado | Un clip o un fotograma que envió una foto subida en **cualquiera** de sus referencias, o un fotograma de una persona real |
+| | Algo que envió una imagen que ya se borró: no se puede comprobar de dónde salía |
 | Un clip en un lugar **generado** (sin fotos) | Un clip en un lugar con fotos (o en uno que ya se borró) |
 | | Un clip con producto: sus fotos son subidas |
-| | Un clip de un reparto de dos personajes, de un podcast, o de una escena que canta con tu audio |
-| | Un audio: podría ser una voz real |
+| | Un clip de un reparto de dos personajes, de un podcast, o cantado con tu audio (aunque después quites el audio de la escena) |
+| Un clip hablado con una voz de la instalación | Un clip que envió un audio subido, o un audio: podría ser una voz real |
 
 Lo que se publica es **una copia**: el título, la descripción y la firma que escribes, y una copia del archivo (en un
 personaje, su retrato y hasta tres vistas generadas; nunca su hoja 3×3). **Nunca** viaja el prompt, el modelo con el que
-se hizo, tu correo, el nombre de tu cuenta ni el original.
+se hizo, tu correo, el nombre de tu cuenta, el original ni el texto alternativo que hayas escrito en la biblioteca (la
+galería pone uno propio con el título).
 
 ## Publicar
 
@@ -62,10 +67,16 @@ caso el **motivo** que escribió quien modera.
 - **Editar** (título, descripción, firma): la publicación **vuelve a moderación** y deja de verse hasta que se apruebe
   otra vez.
 - **Retirar**: se borra la publicación y su copia, de verdad. Tu original (el personaje o el archivo) no cambia.
-- **Descargar (JSON)**: todas tus publicaciones, con su estado y su motivo, y tus logros.
+- Si se **rechaza**, su copia se borra enseguida y solo queda el motivo. **Editar** una rechazada es corregirla y volver
+  a enviarla: se comprueba otra vez y se vuelve a copiar del original.
+- **Descargar (JSON)**: todas tus publicaciones, con su estado y su motivo, y tus logros. También puedes descargarlo
+  durante el periodo de gracia del borrado de tu cuenta, y el ZIP de un proyecto lleva `comunidad.json` con las
+  publicaciones que salen de él.
 
 Si **borras el original** (el personaje, el archivo o el proyecto del que salió), su publicación deja de verse al
-momento y se borra con su copia en unos minutos. Si **borras tu cuenta**, tus publicaciones dejan de verse desde que lo
+momento y se borra con su copia en unos minutos. Si lo mueves a la **papelera**, deja de verse mientras esté allí
+(restaurarlo la vuelve a enseñar). Si **revocas la declaración** de personaje inventado, lo que salió de él deja de
+verse; volver a declararlo no basta: hay que corregir y reenviar cada publicación para que se apruebe otra vez. Si **borras tu cuenta**, tus publicaciones dejan de verse desde que lo
 pides y se borran con todo lo demás al terminar el periodo de gracia (ver [Tus datos](tus-datos.md)).
 
 ## Ver, usar e inspirarte
@@ -95,13 +106,18 @@ de coste o de consentimiento.
 
 ## Para quien administra: moderar
 
-**Admin › Moderación** tiene la cola de pendientes, de la más antigua a la más nueva, con la vista previa completa y la
-elegibilidad **comprobada otra vez** en ese momento (con la misma regla que al publicar).
+**Admin › Moderación** tiene la cola de pendientes, de la más antigua a la más nueva, con la vista previa completa, la
+elegibilidad **comprobada otra vez** en ese momento (con la misma regla que al publicar) y la **procedencia**: cada cosa
+que se envió al generarlo, paso a paso, con su origen (generada con qué personaje, subida, ya borrada). En un personaje,
+cada una de sus referencias con su origen real.
 
 - **Aprobar**: la publica. Si el original ya no es sintético (por ejemplo, se añadió una persona real a su escena) no
   se puede aprobar y se dice por qué.
 - **Rechazar** o, si ya estaba publicada, **Retirar de la galería**: pide un **motivo escrito** (de 10 a 500
-  caracteres). Es lo que leerá el autor: di qué norma incumple y qué puede cambiar.
+  caracteres). Es lo que leerá el autor: di qué norma incumple y qué puede cambiar. La copia se borra en ese momento.
+- Lo aprobado no se vuelve a comprobar entero en cada visita (lo que se generó ya no cambia), pero deja de verse al
+  momento si su original se borra o pasa a la papelera, si se revoca la declaración de su personaje o si la cuenta del
+  autor entra en borrado.
 - **No puedes moderar lo tuyo**: tus publicaciones tiene que revisarlas otra persona con rol de administrador. En una
   instalación con un solo administrador, lo que publique esa persona se queda pendiente.
 - Se decide sobre **la versión que ves**: si el autor la edita mientras la miras, tu decisión no se aplica y te lo dice.

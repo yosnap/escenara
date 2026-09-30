@@ -1,7 +1,8 @@
 # ADR-0043 · Comunidad solo sintética: elegibilidad por lista blanca de origen, copias moderadas y logros por hitos
 
-- **Estado:** Aceptada para 0.49.0. El alcance lo fijó el propietario (2026-09-30); las decisiones técnicas marcadas
-  como provisionales quedan pendientes de su revisión.
+- **Estado:** Aceptada para 0.49.0, corregida tras la revisión de código (la regla pasa a basarse en lo que cada
+  trabajo envió). El alcance lo fijó el propietario (2026-09-30); lo marcado como provisional sigue pendiente de su
+  revisión.
 - **Versión:** 0.49.0
 - **Fecha:** 2026-09-30
 
@@ -32,11 +33,19 @@ Para la publicación: (a) enlazar el original y servirlo si está aprobado; (b) 
 **Lista blanca (3), reutilizando la de los ejemplos de plantilla**, y **copia (b)**.
 
 - `condicionDeOrigenSeguro` (0.42.1) pasa a tener dos niveles. `ejemplo` es el de siempre. `comunidad` es más
-  estricto: sin subidas directas, personaje **inventado** y sin ninguna foto original (una mascota real no vale), trabajo
-  sin producto (se mira lo que conserva el trabajo aunque el producto se borre) y con lugar generado o ninguno, **toda la
-  cadena de imágenes de partida** resultado de trabajos así (consulta recursiva, cinco pasos como mucho), y escenas sin
-  audio propio, imagen de referencia, producto ni lugar con fotos. Un personaje es publicable si es inventado, con su
-  declaración vigente y sin ninguna imagen de ninguna versión que no sea una vista generada suya.
+  estricto y se basa en **hechos inmutables del trabajo**: lo que envió al proveedor, tal como quedó en su `input` al
+  encolarse (todas las `referencias`, no solo la primera; `referenciasLugar`, `referenciasProducto`,
+  `fotogramaSituado`, la imagen de partida y el `audioDeReferencia`). Esa entrada es la procedencia fijada al generar:
+  vaciar después un campo de la escena o borrar una foto no la cambia. Cada medio enviado, y lo que enviaron los
+  trabajos que lo produjeron (consulta recursiva, cinco pasos como mucho), tiene que ser **resultado** de un trabajo de
+  un personaje inventado con sus hechos en regla (sin reparto, sin producto aunque se haya borrado, con lugar generado o
+  ninguno, sin canto, sin audio salvo una muestra de voz de la instalación) o la maestra de un lugar generado. **Cierra
+  en falso**: un identificador ilegible, un medio borrado, una subida, un trabajo sin procedencia guardada o cualquier
+  predicado que dé NULL cuentan como «no». El personaje inventado vale solo si **cada** referencia y su retrato maestro
+  son resultado de un trabajo suyo (no se fía de la etiqueta `vista_generada`, que también lleva una subida declarada
+  «hecha con IA»); lo mismo en todas sus versiones. El estado actual de la escena (reparto, canto, referencias) sigue
+  como exclusión adicional, nunca como única prueba. Es una consulta grande: se ejecuta con `jit = off` local, porque la
+  compilación JIT de PostgreSQL tardaba un segundo en una consulta que se resuelve en milisegundos.
 - **Un único punto de verdad**: `server/comunidad/elegibilidad.ts` lo usan la interfaz (para explicar), el servidor al
   publicar (dentro de la transacción, con los bloqueos) y la moderación (otra vez, al aprobar). Las columnas que explican
   el «no» solo explican: nunca convierten un «no» en «sí».
@@ -44,14 +53,21 @@ Para la publicación: (a) enlazar el original y servirlo si está aprobado; (b) 
   y copias de los archivos en claves propias (`community_post_media`, `comunidad/<id>/…`), fuera de cualquier
   biblioteca. **Lista blanca de campos** hacia el navegador (`PublicacionVista`). Retirar borra la fila y apunta las
   copias en `storage_deletions` en la misma transacción (el worker reintenta lo que falle). El original no se toca.
-- **Estado público en un solo sitio** (`visibilidad.ts`): aprobada, con original vigente y autor sin borrado programado,
-  y la comunidad encendida. El autor y quien modera la ven siempre. Borrar el original pone su enlace a nulo: la
+- **Estado público en un solo sitio** (`visibilidad.ts`): aprobada, con original vigente y fuera de la papelera, con el
+  personaje inventado del que sale (`origin_character_id`, fijado al publicar) con su declaración vigente **desde antes
+  de la aprobación** (revocarla la oculta; volver a declararlo exige aprobarla otra vez), autor sin borrado programado
+  y la comunidad encendida. Lo aprobado no se recomprueba entero al mostrarlo: los hechos del trabajo no cambian, y
+  estas comprobaciones baratas cubren lo que sí puede cambiar. El autor y quien modera la ven siempre. Borrar el original pone su enlace a nulo: la
   publicación queda huérfana, invisible al instante, y la pasada del worker la borra con su copia.
 - **Moderación**: nadie modera lo suyo (403); se decide sobre una `revision` concreta (409 si el autor la cambió);
-  editar devuelve a pendiente. Bloqueos en el orden de siempre, usuario y después el original o la publicación, igual que
+  editar devuelve a pendiente y vuelve a comprobar la elegibilidad. La cola enseña la **procedencia** de cada
+  publicación (cada medio enviado, paso a paso, con su origen). Rechazar o retirar de la galería **borra la copia** en la
+  misma transacción (apuntada en `storage_deletions`); corregir y reenviar la vuelve a copiar del original. El texto
+  alternativo de la biblioteca no se publica. Bloqueos en el orden de siempre, usuario y después el original o la publicación, igual que
   los borrados de personaje, proyecto y cuenta: publicar↔borrar y aprobar↔retirar se serializan.
 - **Borrar la cuenta**: en la gracia, sus publicaciones dejan de verse; al borrarla, las claves de sus copias se apuntan
-  con las de sus medios y las filas caen en cascada. La exportación (`/api/comunidad/exportacion`) incluye las propias.
+  con las de sus medios y las filas caen en cascada. La exportación (`/api/comunidad/exportacion`) incluye las propias y
+  se permite en la gracia; el ZIP de un proyecto lleva `comunidad.json` con las que salen de él.
 - **Usar**: solo trends y plantillas. Abre «Crear» con la plantilla de la instalación elegida y la atribución; registra
   un uso por persona. **No copia archivos ni texto de prompt** (los prompts siguen ocultos). Personajes y clips solo se
   ven; de un personaje uno puede **inspirarse** (su descripción publicada, nunca sus imágenes). *Provisional.*
@@ -63,16 +79,17 @@ Para la publicación: (a) enlazar el original y servirlo si está aprobado; (b) 
 
 ## Consecuencias
 
-- Hoy **ningún anuncio con producto** es publicable: las fotos del producto son subidas. Admitirlos (un producto sin
-  personas, con derechos declarados) sería relajar la regla y es decisión del propietario.
+- **Ningún anuncio con producto** es publicable: las fotos del producto son subidas (decisión del propietario: se
+  mantiene así).
 - Tampoco lo es un clip hecho en «Crear» a partir de una imagen subida, aunque sea una ilustración propia: la lista
   blanca no puede ver qué hay en una imagen.
 - Los usuarios no pueden crear sus propios trends ni plantillas (sus prompts son de la instalación y están ocultos), así
   que «publicar un trend» es publicar un **ejemplo** hecho con un trend de la instalación. Abrir plantillas de usuario
   obligaría a decidir si su texto se enseña.
 - Con un solo administrador, lo que él publique se queda pendiente para siempre (nadie modera lo suyo).
-- Llevar a la papelera el original no retira la publicación (solo el borrado definitivo). Es una copia independiente.
+- Un clip Omni con identidad registrada no envía referencias: vale si su personaje es inventado con todas sus imágenes
+  generadas, que es lo que el proveedor registró.
 - Las copias duplican almacenamiento (un clip publicado ocupa dos veces).
-- Límites conocidos, heredados de la lista blanca de ejemplos: no se inspeccionan imágenes que un trabajo mandó en su
-  `input` distintas de su imagen de partida; y lo que se generó antes de las columnas que conservan producto y lugar
-  (anteriores a 0.26.0 y 0.46.0) se juzga con lo que quedó guardado.
+- Límites conocidos: lo que se generó antes de guardar en la entrada la lista de referencias no tiene procedencia y no
+  se puede publicar; lo anterior a las columnas que conservan producto y lugar (0.26.0 y 0.46.0) se juzga con lo que
+  quedó guardado; y la lista blanca no puede ver qué hay dentro de una imagen generada (para eso está la moderación).

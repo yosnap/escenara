@@ -19,20 +19,23 @@ por hitos reales. Sin comentarios, seguidores, mensajes ni publicación automát
 - **Publicar** (`/comunidad/publicar`, y desde la ficha del personaje y el historial de Crear): tus personajes y tus
   últimos resultados, cada uno con «Publicar» o el **motivo concreto** por el que no se puede. Solo es publicable lo
   generado de principio a fin con un personaje **inventado**, por **lista blanca de origen** (la de los ejemplos de
-  plantilla, en un nivel más estricto): nunca una subida, una persona o una mascota real, un inventado con alguna foto,
-  un clip animado desde una foto subida o desde el fotograma de una persona real, un producto, un lugar con fotos (o ya
-  borrado), un reparto de dos personajes, un podcast, una escena que canta con audio propio ni un audio. Ante la duda,
-  no se publica. Título, descripción y firma sin nombres de personas reales, y **declaración expresa** («Confirmo que es
+  plantilla, en un nivel más estricto) sobre **lo que cada trabajo envió al proveedor**, guardado al generarlo: todas
+  sus imágenes de referencia (no solo la primera) y su audio, y lo que enviaron los trabajos que produjeron esas
+  imágenes. Nunca una subida (tampoco una marcada «hecha con IA»), una persona o una mascota real, un producto, un lugar
+  con fotos (o ya borrado), un reparto de dos personajes, un podcast, un clip cantado ni un audio subido; lo que envió
+  una imagen ya borrada no se puede comprobar y tampoco. Cambiar después la escena no cambia el veredicto. Ante la
+  duda, no se publica. Título, descripción y firma sin nombres de personas reales, y **declaración expresa** («Confirmo que es
   contenido sintético… y quiero publicarlo»), guardada con su texto y su fecha. Lo publicado es una **copia** (en un
   personaje, su retrato y hasta tres vistas generadas; nunca la hoja 3×3) con **lista blanca de campos**: nunca el
-  prompt, el modelo, el correo, el nombre de la cuenta ni el original. Publicar dos veces lo mismo devuelve la que ya
+  prompt, el modelo, el correo, el nombre de la cuenta, el original ni el texto alternativo de la biblioteca. Publicar dos veces lo mismo devuelve la que ya
   existe; cinco pendientes por cuenta de fábrica.
 - **Usar** un trend o una plantilla compartidos: abre Crear con esa plantilla de la instalación elegida y la atribución
   («Usas «…» de la comunidad, tal como lo compartió…»), sin copiar archivos ni texto de prompt y sin gastar nada; cuenta
   un uso por persona. **Inspirarte** en un personaje: abre el alta de un inventado con la descripción publicada, nunca
   sus imágenes. Un clip solo se ve.
-- **Admin › Moderación** (`/admin/moderacion`): la cola de pendientes con vista previa y la elegibilidad **comprobada
-  otra vez**; aprobar, rechazar o retirar de la galería con **motivo escrito** (10 a 500 caracteres). **Nadie modera lo
+- **Admin › Moderación** (`/admin/moderacion`): la cola de pendientes con vista previa, la elegibilidad **comprobada
+  otra vez** y la **procedencia** (cada cosa que se envió al generarlo, con su origen); aprobar, rechazar o retirar de la
+  galería con **motivo escrito** (10 a 500 caracteres), que **borra la copia**; el autor puede corregir y reenviar. **Nadie modera lo
   suyo** (403), se decide sobre la revisión que se ve (409 si el autor la cambió) y no se aprueba lo que ya no es
   sintético. Gestión de **retos** (título, periodo, plantilla sugerida); participar es publicar con el reto, con la misma
   moderación.
@@ -47,9 +50,11 @@ por hitos reales. Sin comentarios, seguidores, mensajes ni publicación automát
 
 ### Cambiado
 
-- **Borrar la cuenta** oculta sus publicaciones desde que se pide y las borra con sus copias al terminar la gracia.
+- **Borrar la cuenta** oculta sus publicaciones desde que se pide y las borra con sus copias al terminar la gracia;
+  en la gracia se pueden descargar (JSON) y el ZIP de un proyecto lleva `comunidad.json` con las que salen de él.
   **Borrar un personaje, un archivo o un proyecto** deja sus publicaciones huérfanas: dejan de verse al instante y el
-  worker las borra con su copia.
+  worker las borra con su copia. La **papelera** y **revocar la declaración** de inventado las ocultan (tras revocarla
+  hay que reenviarlas y aprobarlas otra vez).
 - La ruta de los ejemplos de plantilla sirve los archivos con el mismo código que la comunidad (mismas cabeceras y
   `Range`), sin cambios de comportamiento.
 
@@ -57,8 +62,8 @@ por hitos reales. Sin comentarios, seguidores, mensajes ni publicación automát
 
 - **Haz antes una copia**: `bun run db:backup`. Después, **con el worker parado**, `bun run db:migrate`.
 - La migración `0065_comunidad` es **aditiva e idempotente**: crea los tipos `community_post_kind` y
-  `community_post_state` y las tablas `community_challenges`, `community_posts`, `community_post_media`,
-  `community_uses` y `user_achievements`, con sus índices y claves ajenas. No cambia ni borra ninguna fila y volver a
+  `community_post_state` y las tablas `community_challenges`, `community_posts` (con el personaje de origen de cada
+  publicación), `community_post_media`, `community_uses` y `user_achievements`, con sus índices y claves ajenas. No cambia ni borra ninguna fila y volver a
   aplicarla no hace nada.
 - **Reinicia el worker**: ahora barre las publicaciones cuyo original se borró y, al borrar una cuenta, borra también
   las copias de sus publicaciones.
