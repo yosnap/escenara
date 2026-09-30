@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { Boton } from "@/components/ui/button";
 import { Aviso, EstadoVacio } from "@/components/ui/feedback";
+import { ListaOrdenable } from "@/components/ui/lista-ordenable";
 import { Selector } from "@/components/ui/select";
+import { moverEnLista } from "@/lib/lista-ordenable";
 import { CATEGORIAS_PRESET, type CategoriaPreset, ETIQUETA_CATEGORIA, type PresetVista } from "@/lib/presets";
-import { activarPresetAccion, ordenarPresetAccion, type ResultadoPresets } from "./acciones";
+import { ordenarGrupoPresetsAccion, type ResultadoPresets } from "./acciones";
 import { DialogoPreset } from "./dialogo-preset";
+import { TarjetaPreset } from "./tarjeta-preset";
 
 /**
  * Catálogo de presets de la instalación, agrupado por categoría y ordenado como sale en la botonera de
@@ -17,9 +19,6 @@ import { DialogoPreset } from "./dialogo-preset";
  */
 
 const TODAS = "todas";
-
-/** Paso con el que los botones «subir» y «bajar» mueven un preset dentro de su categoría. */
-const PASO_ORDEN = 10;
 
 export function VistaPresets({ inicial }: { inicial: PresetVista[] }) {
   const [presets, setPresets] = useState(inicial);
@@ -37,8 +36,26 @@ export function VistaPresets({ inicial }: { inicial: PresetVista[] }) {
     setAviso("Guardado.");
   };
 
+  /** Orden completo de una categoría. Devuelve el error, o `null` si se ha guardado (es lo que espera la lista). */
+  const ordenar = async (cat: CategoriaPreset, ids: string[]): Promise<string | null> => {
+    const resultado = await ordenarGrupoPresetsAccion(cat, ids);
+    if (!resultado.ok) {
+      setError(resultado.error);
+      return resultado.error;
+    }
+    setPresets(resultado.presets);
+    setError(null);
+    setAviso("Orden guardado.");
+    return null;
+  };
+
+  /** Subir y bajar intercambian con la vecina y pasan por la misma acción que arrastrar. */
   const mover = async (preset: PresetVista, direccion: -1 | 1) => {
-    alCambiar(await ordenarPresetAccion(preset.id, Math.max(0, preset.orden + direccion * PASO_ORDEN)));
+    const grupo = presets.filter((p) => p.categoria === preset.categoria).map((p) => p.id);
+    const desde = grupo.indexOf(preset.id);
+    const hasta = desde + direccion;
+    if (hasta < 0 || hasta >= grupo.length) return;
+    await ordenar(preset.categoria, moverEnLista(grupo, desde, hasta));
   };
 
   const visibles = CATEGORIAS_PRESET.filter((c) => categoria === TODAS || c === categoria);
@@ -78,51 +95,18 @@ export function VistaPresets({ inicial }: { inicial: PresetVista[] }) {
         return (
           <section key={cat} aria-label={ETIQUETA_CATEGORIA[cat]} className="flex flex-col gap-3">
             <h2 className="text-2xl font-bold text-texto">{ETIQUETA_CATEGORIA[cat]}</h2>
-            <ul className="flex flex-col gap-3">
-              {deLaCategoria.map((preset) => (
-                <li
-                  key={preset.id}
-                  className="flex flex-wrap items-start justify-between gap-4 rounded-tarjeta border-2 border-borde bg-superficie p-4"
-                >
-                  <div className="flex min-w-0 flex-col gap-1">
-                    <p className="flex flex-wrap items-center gap-2">
-                      <strong className="text-lg font-bold text-texto">{preset.nombre}</strong>
-                      <span className="font-mono text-sm text-texto-suave">{preset.clave}</span>
-                      {!preset.activo && (
-                        <span className="rounded-full bg-elevada px-3 py-1 text-sm font-semibold text-error">
-                          Desactivado
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-texto-suave">{preset.descripcion}</p>
-                    <p className="font-mono text-sm text-texto">{preset.valores.prompt}</p>
-                    {preset.valores.proporcion && (
-                      <p className="text-sm text-texto-suave">Exige proporción {preset.valores.proporcion}.</p>
-                    )}
-                    {preset.valores.segundos !== undefined && (
-                      <p className="text-sm text-texto-suave">Exige {preset.valores.segundos} s de clip.</p>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-sm text-texto-suave">#{preset.orden}</span>
-                    <Boton variante="fantasma" tamano="sm" onClick={() => void mover(preset, -1)}>
-                      Subir
-                    </Boton>
-                    <Boton variante="fantasma" tamano="sm" onClick={() => void mover(preset, 1)}>
-                      Bajar
-                    </Boton>
-                    <DialogoPreset preset={preset} onResultado={alCambiar} />
-                    <Boton
-                      variante={preset.activo ? "secundario" : "primario"}
-                      tamano="sm"
-                      onClick={async () => alCambiar(await activarPresetAccion(preset.id, !preset.activo))}
-                    >
-                      {preset.activo ? "Desactivar" : "Activar"}
-                    </Boton>
-                  </div>
-                </li>
-              ))}
-            </ul>
+            <ListaOrdenable
+              etiquetaLista={`Presets de ${ETIQUETA_CATEGORIA[cat]}`}
+              className="flex flex-col gap-3"
+              onOrden={(ids) => ordenar(cat, ids)}
+              elementos={deLaCategoria.map((preset) => ({
+                clave: preset.id,
+                etiqueta: preset.nombre,
+                contenido: (
+                  <TarjetaPreset preset={preset} onMover={(d) => void mover(preset, d)} onResultado={alCambiar} />
+                ),
+              }))}
+            />
           </section>
         );
       })}

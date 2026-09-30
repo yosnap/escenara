@@ -1,5 +1,6 @@
 import { and, asc, count, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { type Cobertura, calcularCobertura, esVista, type ReferenciaParaCobertura } from "@/lib/captura-personaje";
+import { efectoDeComprobacion } from "@/lib/coherencia";
 import { FICHA_VACIA } from "@/lib/ficha-personaje";
 import type { Medio } from "@/lib/media/tipos";
 import type {
@@ -10,7 +11,7 @@ import type {
   ReferenciaVista,
   TipoPersonaje,
 } from "@/lib/personajes";
-import { leerAjustes } from "../ajustes";
+import { coherenciaDe, leerAjustes } from "../ajustes";
 import { db, type Ejecutor } from "../db/cliente";
 import {
   characterReferences,
@@ -216,6 +217,11 @@ const paraCobertura = (filas: FilaReferencia[]): ReferenciaParaCobertura[] =>
     identidad: f.identityVerdict,
   }));
 
+/** El parecido solo cuenta para la cobertura en modo Activa; en sombra informa y no decide. */
+async function parecidoDecideLaCobertura(): Promise<boolean> {
+  return efectoDeComprobacion("identidad", coherenciaDe(await leerAjustes(), "identidad").modo) === "decide";
+}
+
 /**
  * Cobertura de vistas de un personaje leída de la base de datos. Es el **único** sitio que la calcula, así que
  * la que ve el usuario en su ficha y la que decide si se puede pedir una vista sintética son la misma cosa.
@@ -235,7 +241,12 @@ export async function coberturaDe(
     .innerJoin(media, eq(media.id, characterReferences.mediaId))
     .where(and(eq(characterReferences.characterId, personajeId), isNull(media.deletedAt)))
     .orderBy(asc(characterReferences.sortOrder), asc(characterReferences.createdAt));
-  return calcularCobertura(tipo, paraCobertura(filas.map((f) => f.referencia)), inventado);
+  return calcularCobertura(
+    tipo,
+    paraCobertura(filas.map((f) => f.referencia)),
+    inventado,
+    await parecidoDecideLaCobertura(),
+  );
 }
 
 /** Referencias de un personaje, en el orden que fijó el usuario. */
@@ -358,7 +369,12 @@ export async function vistaDePersonaje(
             return medio ? [vistaReferencia(r, medio)] : [];
           }),
           // Mismo cálculo que usa la vista sintética (`coberturaDe`), sobre las mismas referencias utilizables.
-          cobertura: calcularCobertura(fila.kind, paraCobertura(vigentes), fila.virtual),
+          cobertura: calcularCobertura(
+            fila.kind,
+            paraCobertura(vigentes),
+            fila.virtual,
+            await parecidoDecideLaCobertura(),
+          ),
         }
       : {}),
     ...(opciones.completa

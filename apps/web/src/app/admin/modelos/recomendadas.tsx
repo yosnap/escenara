@@ -4,6 +4,7 @@ import { ArrowDown, ArrowUp, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Boton } from "@/components/ui/button";
 import { Aviso } from "@/components/ui/feedback";
+import { type ElementoOrdenable, ListaOrdenable } from "@/components/ui/lista-ordenable";
 import { Selector } from "@/components/ui/select";
 import {
   DESCRIPCION_DE_TIPO,
@@ -65,17 +66,25 @@ function Tarjeta({ inicial }: { inicial: TipoRecomendable }) {
   const [error, setError] = useState<string | null>(null);
   const [añadir, setAñadir] = useState<string | null>(null);
 
-  const guardar = async (siguientes: EntradaMapa[], vaciar = false) => {
+  /** Guarda la lista entera. Devuelve el error, o `null` si se ha guardado (es lo que espera la lista ordenable). */
+  const guardar = async (siguientes: EntradaMapa[], vaciar = false): Promise<string | null> => {
     setOcupado(true);
     const respuesta = await guardarRecomendadasAccion(inicial.tipo, vaciar ? [] : siguientes);
     setOcupado(false);
     if (!respuesta.ok) {
       setError(respuesta.error);
-      return;
+      return respuesta.error;
     }
     setError(null);
     setEntradas(respuesta.entradas);
     setDeducidas(vaciar);
+    return null;
+  };
+
+  /** Nuevo orden al soltar: se guarda entero y, si el servidor lo rechaza, la lista vuelve a como estaba. */
+  const reordenar = async (claves: string[]): Promise<string | null> => {
+    const porClave = new Map(entradas.map((e) => [clave(e), e]));
+    return guardar(claves.flatMap((c) => porClave.get(c) ?? []));
   };
 
   const mover = (indice: number, salto: number) => {
@@ -90,6 +99,43 @@ function Tarjeta({ inicial }: { inicial: TipoRecomendable }) {
   const etiqueta = (entrada: EntradaMapa) =>
     inicial.opciones.find((o) => clave(o) === clave(entrada))?.etiqueta ??
     (entrada.modelo === "" ? entrada.proveedor : `${entrada.proveedor} · ${entrada.modelo}`);
+  /** Las flechas quedan como alternativa a arrastrar, con su nombre accesible. */
+  const elementos: ElementoOrdenable[] = entradas.map((entrada, indice) => ({
+    clave: clave(entrada),
+    etiqueta: etiqueta(entrada),
+    contenido: (
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <span className="flex-1 text-sm text-texto">{etiqueta(entrada)}</span>
+        <Boton
+          tamano="sm"
+          variante="fantasma"
+          disabled={ocupado || indice === 0}
+          onClick={() => mover(indice, -1)}
+          aria-label={`Subir ${etiqueta(entrada)}`}
+        >
+          <ArrowUp className="size-4" />
+        </Boton>
+        <Boton
+          tamano="sm"
+          variante="fantasma"
+          disabled={ocupado || indice === entradas.length - 1}
+          onClick={() => mover(indice, 1)}
+          aria-label={`Bajar ${etiqueta(entrada)}`}
+        >
+          <ArrowDown className="size-4" />
+        </Boton>
+        <Boton
+          tamano="sm"
+          variante="fantasma"
+          disabled={ocupado}
+          onClick={() => void guardar(entradas.filter((_, i) => i !== indice))}
+          aria-label={`Quitar ${etiqueta(entrada)}`}
+        >
+          <Trash2 className="size-4" />
+        </Boton>
+      </div>
+    ),
+  }));
   const disponibles = inicial.opciones.filter((o) => !entradas.some((e) => clave(e) === clave(o)));
 
   return (
@@ -100,41 +146,14 @@ function Tarjeta({ inicial }: { inicial: TipoRecomendable }) {
       </div>
       {deducidas && <Aviso tono="info">Deducido del catálogo. En cuanto guardes algo, mandará esta lista.</Aviso>}
       {error && <Aviso tono="error">{error}</Aviso>}
-      <ol className="flex flex-col gap-2">
-        {entradas.map((entrada, indice) => (
-          <li key={clave(entrada)} className="flex items-center gap-2 rounded-control border border-borde px-3 py-2">
-            <span className="min-w-6 text-sm font-bold text-texto">{indice + 1}.</span>
-            <span className="flex-1 text-sm text-texto">{etiqueta(entrada)}</span>
-            <Boton
-              tamano="sm"
-              variante="fantasma"
-              disabled={ocupado || indice === 0}
-              onClick={() => mover(indice, -1)}
-              aria-label={`Subir ${etiqueta(entrada)}`}
-            >
-              <ArrowUp className="size-4" />
-            </Boton>
-            <Boton
-              tamano="sm"
-              variante="fantasma"
-              disabled={ocupado || indice === entradas.length - 1}
-              onClick={() => mover(indice, 1)}
-              aria-label={`Bajar ${etiqueta(entrada)}`}
-            >
-              <ArrowDown className="size-4" />
-            </Boton>
-            <Boton
-              tamano="sm"
-              variante="fantasma"
-              disabled={ocupado}
-              onClick={() => void guardar(entradas.filter((_, i) => i !== indice))}
-              aria-label={`Quitar ${etiqueta(entrada)}`}
-            >
-              <Trash2 className="size-4" />
-            </Boton>
-          </li>
-        ))}
-      </ol>
+      <ListaOrdenable
+        elementos={elementos}
+        etiquetaLista={`Orden de ${NOMBRE_DE_TIPO[inicial.tipo].toLowerCase()}`}
+        deshabilitado={ocupado}
+        className="flex flex-col gap-2"
+        claseElemento="flex items-center gap-2 rounded-control border border-borde px-2 py-1.5"
+        onOrden={reordenar}
+      />
       <div className="flex flex-col gap-2">
         {disponibles.length > 0 && entradas.length < ENTRADAS_MAXIMAS && (
           <div className="flex items-end gap-2">

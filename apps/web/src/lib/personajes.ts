@@ -174,6 +174,9 @@ export const AVISO_SIN_TERCEROS =
 export const AVISO_DATOS_AL_PROVEEDOR =
   "Al generar con este personaje se envían a KIE sus fotos de referencia y el texto de su ficha (rasgos, estilo, vestuario, personalidad y descripción), que forma parte del prompt. Si esta instalación traduce los prompts al inglés, ese texto pasa además por el modelo de texto de KIE, y su traducción se guarda con tu cuenta hasta que borres el personaje.";
 
+/** Nombre de la casilla del consentimiento. Todo texto que remita a ella la nombra igual, con esta constante. */
+export const ETIQUETA_AUTORIZO_PARECIDO = "Autorizo la comprobación de parecido";
+
 /**
  * Lo que hay que declarar para que la comprobación de identidad de 0.24.0 pueda mirar la cara de esta persona.
  *

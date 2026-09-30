@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Boton } from "@/components/ui/button";
 import { AvisoEstado } from "@/components/ui/feedback";
 import { DESCRIPCION_ESTADO_CONTROL, ETIQUETA_ESTADO_CONTROL, frenosSinSalida } from "@/lib/controles";
+import { formatearSegundos } from "@/lib/media/reglas";
 import { ETIQUETA_FORMATO_MONTAJE, type ExportacionVista, type MontajeVista } from "@/lib/montaje";
 import { exportacionTerminada } from "./almacen-exportacion";
 import { SeguimientoExportacion } from "./seguimiento-exportacion";
@@ -56,7 +57,7 @@ export function PanelExportacion({
       {/* Resumen de lo que va a salir. Zona de claridad: datos, sin adornos. */}
       <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-tarjeta border-2 border-borde bg-elevada p-3 text-sm sm:grid-cols-4">
         <Dato termino="Duración">
-          <span className="font-mono">{montaje.duracionTotal} s</span>
+          <span className="font-mono">{formatearSegundos(montaje.duracionTotal)}</span>
         </Dato>
         <Dato termino="Formato">{ETIQUETA_FORMATO_MONTAJE[montaje.formato]}</Dato>
         <Dato termino="Etiqueta de IA">

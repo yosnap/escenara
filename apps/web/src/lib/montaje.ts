@@ -1,3 +1,4 @@
+import { formatearSegundos } from "@/lib/media/reglas";
 import type { Medio } from "@/lib/media/tipos";
 import { componerSubtitulos, type EscenaConSubtitulos, type FormatoSubtitulos, type Subtitulo } from "@/lib/voz";
 import type { EvaluacionVista } from "./controles";
@@ -152,7 +153,7 @@ export function erroresDeMontaje(fragmentos: readonly Fragmento[], escenas: read
     }
     if (duracionDeFragmento(fragmento) < RECORTE_MINIMO_SEGUNDOS) {
       errores.push(
-        `El fragmento ${posicion} (escena ${escena.orden}) dura menos de ${RECORTE_MINIMO_SEGUNDOS} s: recórtalo menos.`,
+        `El fragmento ${posicion} (escena ${escena.orden}) dura menos de ${formatearSegundos(RECORTE_MINIMO_SEGUNDOS)}: recórtalo menos.`,
       );
       continue;
     }
@@ -160,7 +161,7 @@ export function erroresDeMontaje(fragmentos: readonly Fragmento[], escenas: read
     // exacta rechazaría un recorte hasta el final del clip.
     if (fragmento.salida > escena.duracionClip + 0.5) {
       errores.push(
-        `El fragmento ${posicion} acaba en el segundo ${dosDecimales(fragmento.salida)} y el clip de la escena ${escena.orden} dura ${dosDecimales(escena.duracionClip)} s.`,
+        `El fragmento ${posicion} acaba en el segundo ${formatearSegundos(fragmento.salida)} y el clip de la escena ${escena.orden} dura ${formatearSegundos(escena.duracionClip)}.`,
       );
     }
   }

@@ -37,7 +37,6 @@ const VACIO: DatosPlantilla = {
   plantilla: "",
   variables: [],
   restricciones: { modelos: [], minimoReferencias: 0 },
-  orden: 100,
   activa: true,
   motivo: "",
   kind: "base",
@@ -56,7 +55,6 @@ const deVista = (plantilla: PlantillaVista): DatosPlantilla => ({
   plantilla: plantilla.plantilla,
   variables: plantilla.variables,
   restricciones: plantilla.restricciones,
-  orden: plantilla.orden,
   activa: plantilla.activa,
   motivo: "",
   kind: plantilla.kind,
@@ -320,19 +318,6 @@ export function DialogoPlantilla({
                   })
                 }
                 placeholder="nano-banana-2-lite"
-              />
-            )}
-          </Campo>
-
-          <Campo etiqueta="Orden" ayuda="Más bajo, antes en la lista de plantillas.">
-            {(props) => (
-              <EntradaTexto
-                {...props}
-                type="number"
-                min={0}
-                max={10000}
-                value={String(datos.orden)}
-                onChange={(e) => setDatos({ ...datos, orden: Number(e.target.value) })}
               />
             )}
           </Campo>

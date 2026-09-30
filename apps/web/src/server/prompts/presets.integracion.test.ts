@@ -740,7 +740,9 @@ describe.skipIf(!hayBaseDeDatos)("presets y plantillas de prompt", () => {
     ).catch((e: unknown) => e);
     expect(fallo).toBeInstanceOf(ErrorPreset);
     expect((fallo as InstanceType<typeof ErrorPreset>).estado).toBe(409);
-    expect((fallo as Error).message).toBe("La plantilla ha cambiado: revisa el texto y confirma otra vez.");
+    expect((fallo as Error).message).toBe(
+      "La plantilla ha cambiado desde que viste el coste: revisa el coste otra vez y confirma.",
+    );
     expect(await trabajosDe(ana.id)).toBe(antes);
   });
 

@@ -57,6 +57,15 @@ describe("validación de la línea de tiempo", () => {
     expect(erroresDeMontaje([fragmento("e1", 1, 1.1)], escenas)[0]).toContain("dura menos de");
   });
 
+  test("los segundos con decimales salen con coma, no con punto", () => {
+    const corto = erroresDeMontaje([fragmento("e1", 1, 1.1)], escenas)[0] ?? "";
+    expect(corto).toContain("0,2 s");
+    expect(corto).not.toContain("0.2");
+    const largo = erroresDeMontaje([fragmento("e1", 0, 9.5)], escenas).join(" ");
+    expect(largo).toContain("segundo 9,5 s");
+    expect(largo).not.toMatch(/\d\.\d/);
+  });
+
   test("se acota el número de fragmentos y la duración total", () => {
     const muchos = Array.from({ length: FRAGMENTOS_MAXIMOS + 1 }, () => fragmento("e1", 0, 8));
     const errores = erroresDeMontaje(muchos, escenas);

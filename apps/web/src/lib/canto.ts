@@ -212,3 +212,25 @@ export interface CosteCantoVista {
   /** Créditos por segundo de la resolución elegida: es lo que explica la cifra. */
   creditosPorSegundo: number;
 }
+
+/**
+ * Formatos de audio que admite el proveedor para cantar, con cómo se nombran ante quien sube el archivo. Es la
+ * **única** lista: los avisos de formato se escriben a partir de ella y no a mano, para que lo que se recomienda
+ * sea siempre lo que se admite de verdad.
+ */
+export const FORMATOS_AUDIO_DE_CANTO = [
+  { mime: "audio/mpeg", nombre: "MP3" },
+  { mime: "audio/wav", nombre: "WAV" },
+  { mime: "audio/ogg", nombre: "OGG" },
+  { mime: "audio/mp4", nombre: "M4A" },
+  { mime: "audio/aac", nombre: "AAC" },
+] as const;
+
+/** Tipos MIME admitidos para cantar. */
+export const MIME_AUDIO_DE_CANTO: readonly string[] = FORMATOS_AUDIO_DE_CANTO.map((f) => f.mime);
+
+/** «MP3, WAV, OGG, M4A o AAC»: los formatos admitidos, listos para una frase. */
+export function textoDeFormatosDeCanto(): string {
+  const nombres: string[] = FORMATOS_AUDIO_DE_CANTO.map((f) => f.nombre);
+  return `${nombres.slice(0, -1).join(", ")} o ${nombres.at(-1)}`;
+}

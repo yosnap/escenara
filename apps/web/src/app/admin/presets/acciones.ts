@@ -1,6 +1,6 @@
 "use server";
 
-import type { PresetVista } from "@/lib/presets";
+import type { CategoriaPreset, PresetVista } from "@/lib/presets";
 import { exigirAdmin } from "@/server/auth/sesion";
 import { listarPresetsDeLaInstalacion } from "@/server/prompts/consulta";
 import { ErrorPreset } from "@/server/prompts/errores";
@@ -9,7 +9,7 @@ import {
   crearPresetDeLaInstalacion,
   type DatosPreset,
   editarPresetDeLaInstalacion,
-  ordenarPresetDeLaInstalacion,
+  ordenarGrupoDePresets,
 } from "@/server/prompts/presets-admin";
 
 /**
@@ -51,6 +51,7 @@ export async function activarPresetAccion(id: string, activo: boolean): Promise<
   return aplicar(() => activarPresetDeLaInstalacion(id, activo));
 }
 
-export async function ordenarPresetAccion(id: string, orden: number): Promise<ResultadoPresets> {
-  return aplicar(() => ordenarPresetDeLaInstalacion(id, orden));
+/** Orden completo de los presets de una categoría, tal como lo dejó quien administra al soltar. */
+export async function ordenarGrupoPresetsAccion(categoria: CategoriaPreset, ids: string[]): Promise<ResultadoPresets> {
+  return aplicar(() => ordenarGrupoDePresets(categoria, ids));
 }

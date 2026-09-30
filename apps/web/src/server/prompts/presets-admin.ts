@@ -1,4 +1,4 @@
-import { and, count, eq, isNull, sql } from "drizzle-orm";
+import { and, count, eq, isNull, max, sql } from "drizzle-orm";
 import { CATEGORIA_ANGULO } from "@/lib/anuncio";
 import {
   esFormatoClip,
@@ -11,6 +11,7 @@ import {
   type RegistroEstetico,
 } from "@/lib/direccion";
 import { limpiarTextoDePrompt } from "@/lib/ficha-personaje";
+import { PASO_ORDEN_DE_GRUPO, renumerarGrupo } from "@/lib/orden-de-grupo";
 import {
   type CategoriaPreset,
   esCategoriaPreset,
@@ -68,7 +69,8 @@ export interface DatosPreset {
   ejemplo?: string;
   /** `true` si elegir este ángulo obliga a declarar que lo que se afirma es cierto antes de pedir guion. */
   exigeDeclaracion?: boolean;
-  orden: number;
+  /** Opcional: al crear va al final de su categoría, y al editar se conserva. Se cambia arrastrando en la lista. */
+  orden?: number;
   activo: boolean;
 }
 
@@ -161,7 +163,8 @@ function normalizar(datos: DatosPreset) {
     name: exigirTexto(datos.nombre, "El nombre", PRESET_NOMBRE_MAXIMO),
     description: exigirTexto(datos.descripcion, "La descripción", PRESET_DESCRIPCION_MAXIMA),
     values: textoDeValores(exigirValores({ ...datos, categoria })),
-    sortOrder: exigirOrden(datos.orden),
+    // Sin orden pedido: al crear va al final de su categoría y al editar se conserva el que tenía.
+    sortOrder: datos.orden === undefined ? undefined : exigirOrden(datos.orden),
     active: datos.activo === true,
   };
 }
@@ -169,7 +172,16 @@ function normalizar(datos: DatosPreset) {
 /** Crea un preset **de la instalación**. Solo quien administra llega aquí. */
 export async function crearPresetDeLaInstalacion(datos: DatosPreset): Promise<PresetVista> {
   const valores = normalizar(datos);
-  const filas = await db().insert(presets).values(valores).onConflictDoNothing().returning();
+  const [{ ultimo } = { ultimo: null }] = await db()
+    .select({ ultimo: max(presets.sortOrder) })
+    .from(presets)
+    .where(and(eq(presets.category, valores.category), isNull(presets.ownerId)));
+  const sortOrder = valores.sortOrder ?? (ultimo ?? 0) + PASO_ORDEN_DE_GRUPO;
+  const filas = await db()
+    .insert(presets)
+    .values({ ...valores, sortOrder })
+    .onConflictDoNothing()
+    .returning();
   const [fila] = filas;
   if (!fila) {
     throw new ErrorPreset(409, `Ya hay un preset de ${valores.category} con la clave «${valores.slug}».`);
@@ -202,16 +214,33 @@ export async function activarPresetDeLaInstalacion(id: string, activo: boolean):
   return vistaDePreset(fila);
 }
 
-/** Cambia el orden de un preset de la instalación: es lo que decide en qué posición sale su botón. */
-export async function ordenarPresetDeLaInstalacion(id: string, orden: number): Promise<PresetVista> {
-  const anterior = await presetDeLaInstalacion(id);
-  const [fila] = await db()
-    .update(presets)
-    .set({ sortOrder: exigirOrden(orden), updatedAt: new Date() })
-    .where(and(eq(presets.id, anterior.id), isNull(presets.ownerId)))
-    .returning();
-  if (!fila) throw new ErrorPreset(404, "Ese preset no es de la instalación.");
-  return vistaDePreset(fila);
+/**
+ * Deja los presets de una categoría en el orden recibido. `ids` tiene que ser **exactamente** el grupo (los
+ * presets de la instalación de esa categoría): se renumeran de 10 en 10 en una sola transacción, sin empates, y
+ * con el grupo bloqueado para que dos reordenaciones a la vez no se pisen.
+ */
+export async function ordenarGrupoDePresets(categoria: CategoriaPreset, ids: unknown): Promise<void> {
+  const cat = exigirCategoria(categoria);
+  await db().transaction(async (tx) => {
+    const grupo = await tx
+      .select({ id: presets.id })
+      .from(presets)
+      .where(and(eq(presets.category, cat), isNull(presets.ownerId)))
+      .for("update");
+    let nuevo: ReturnType<typeof renumerarGrupo>;
+    try {
+      nuevo = renumerarGrupo(
+        grupo.map((f) => f.id),
+        ids,
+      );
+    } catch (error) {
+      throw new ErrorPreset(400, (error as Error).message);
+    }
+    const ahora = new Date();
+    for (const { id, orden } of nuevo) {
+      await tx.update(presets).set({ sortOrder: orden, updatedAt: ahora }).where(eq(presets.id, id));
+    }
+  });
 }
 
 /**

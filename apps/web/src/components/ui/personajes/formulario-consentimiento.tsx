@@ -15,6 +15,7 @@ import {
   DESCRIPCION_ALCANCE,
   DESCRIPCION_TITULAR,
   ETIQUETA_ALCANCE,
+  ETIQUETA_AUTORIZO_PARECIDO,
   ETIQUETA_TITULAR,
   exigeDocumento,
   TITULARES_REGISTRABLES,
@@ -112,7 +113,7 @@ export function FormularioConsentimiento({
       />
 
       <Casilla
-        etiqueta="Autorizo la comprobación de parecido (opcional)"
+        etiqueta={`${ETIQUETA_AUTORIZO_PARECIDO} (opcional)`}
         descripcion={AVISO_COHERENCIA}
         marcada={valor.coherencia}
         deshabilitado={deshabilitado}

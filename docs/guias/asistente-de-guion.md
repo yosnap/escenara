@@ -70,8 +70,15 @@ qué; el cómo se escribe lo pone Escenara. Si tu instalación tiene la traducci
 español se traduce antes de generar (y eso cuesta unos créditos, que verás en el coste estimado); lo que **dice**
 el personaje no se traduce nunca.
 
-También puedes **reordenar** las escenas con las flechas (es el storyboard: mover una escena mueve el vídeo) y
-**borrar** las que no quieras. Una escena ya producida no se borra: tiene un trabajo pagado detrás.
+También puedes **reordenar** las escenas arrastrándolas por su asa, con el teclado (Espacio para cogerla, flechas para
+moverla, Espacio para soltarla) o con las flechas de cada escena (es el storyboard: mover una escena mueve el vídeo).
+**El orden no se guarda al soltar**: aparece «Orden sin guardar» con **Guardar orden** y **Descartar**, como en el
+montaje, y antes de guardar el aviso te dice qué cambia. Reordenar no quita la aprobación de ninguna escena ni repite
+ni cobra nada, y los clips ya producidos se quedan como están; cambian los números de escena, cuál abre el vídeo y el
+orden que se propone al montar (un montaje ya guardado mantiene el suyo). El gancho del anuncio está escrito en el
+texto de la escena que era la primera y **no se traslada**: si la mueves, el vídeo deja de abrir con él. Si borras una
+escena mientras el orden está pendiente, el orden de las que quedan se conserva. Y puedes **borrar** las que no
+quieras. Una escena ya producida no se borra: tiene un trabajo pagado detrás.
 
 Si pulsas el asistente dos veces por error, la segunda no cobra: cada confirmación lleva su clave y la repetición
 devuelve lo que ya había.

@@ -160,6 +160,19 @@ describe("cobertura con la identidad comprobada", () => {
     expect(cobertura.vistas.find((v) => v.vista === "frontal")?.generadasVerificadas).toBe(1);
   });
 
+  test("en sombra el parecido no decide: la vista generada que pasa no cubre; en Activa sí", () => {
+    const refs = [frontal("vista_generada", "pasa")];
+    const sombra = calcularCobertura("persona", refs, false, false);
+    expect(sombra.faltan).toContain("frontal");
+    expect(sombra.identidadDecide).toBe(false);
+    expect(sombra.vistas.find((v) => v.vista === "frontal")?.generadasVerificadas).toBe(0);
+    const activa = calcularCobertura("persona", refs, false, true);
+    expect(activa.faltan).not.toContain("frontal");
+    expect(activa.identidadDecide).toBe(true);
+    // Una foto original cubre igual en sombra: es ella la que define la cara.
+    expect(calcularCobertura("persona", [frontal("foto_original")], false, false).faltan).not.toContain("frontal");
+  });
+
   test("una vista generada sin comprobar, a revisar o rechazada no cubre", () => {
     for (const identidad of ["sin_comprobar", "revisar", "no_pasa"] as const) {
       const cobertura = calcularCobertura("persona", [frontal("vista_generada", identidad)]);

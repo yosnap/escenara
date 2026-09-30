@@ -3,6 +3,7 @@
 import { useId } from "react";
 import { cn } from "@/components/ui/cn";
 import { claseControl } from "@/components/ui/field";
+import { formatearSegundos } from "@/lib/media/reglas";
 import { RECORTE_MINIMO_SEGUNDOS } from "@/lib/montaje";
 
 /**
@@ -94,10 +95,10 @@ export function ControlRecorte({
       </div>
 
       <p className="text-sm text-texto-suave">
-        En el vídeo dura <strong className="font-mono text-texto">{dura} s</strong>
+        En el vídeo dura <strong className="font-mono text-texto">{formatearSegundos(dura)}</strong>
         {duracion === null
           ? ". Todavía no se ha medido el clip de esta escena, así que no se puede alargar el recorte."
-          : ` de los ${Math.round(duracion * 100) / 100} s del clip. El trozo más corto que se puede montar es de ${RECORTE_MINIMO_SEGUNDOS} s.`}
+          : ` de los ${formatearSegundos(duracion)} del clip. El trozo más corto que se puede montar es de ${formatearSegundos(RECORTE_MINIMO_SEGUNDOS)}.`}
       </p>
     </div>
   );

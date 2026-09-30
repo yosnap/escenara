@@ -205,9 +205,13 @@ export async function componerDesdePlantilla(peticion: PeticionRender): Promise<
   }
   const version = await versionVigente(plantilla.id);
   // La versión citada tiene que ser la vigente. Si quien administra editó la plantilla entre la pantalla y el
-  // botón, lo confirmado ya no es lo que se enviaría: se dice en lugar de gastar, igual que con la ficha.
+  // botón, lo confirmado ya no es lo que se enviaría: se dice en lugar de gastar, igual que con la ficha. El texto
+  // de la plantilla no se le enseña a quien crea (solo el coste y lo que elige), así que se le pide el coste.
   if (peticion.versionId !== undefined && peticion.versionId !== "" && peticion.versionId !== version.id) {
-    throw new ErrorPreset(409, "La plantilla ha cambiado: revisa el texto y confirma otra vez.");
+    throw new ErrorPreset(
+      409,
+      "La plantilla ha cambiado desde que viste el coste: revisa el coste otra vez y confirma.",
+    );
   }
   const variables = variablesDeTexto(version.variables);
   // El tope se comprueba **antes** de iterar: una plantilla con cien variables no puede convertir una

@@ -290,6 +290,11 @@ export interface Cobertura {
   faltan: Vista[];
   /** Fotos sin vista asignada: cuentan para el mínimo, pero no cubren ninguna vista. */
   sinClasificar: number;
+  /**
+   * `true` si el parecido decide la cobertura: solo en modo Activa. En sombra el veredicto se guarda y se enseña,
+   * pero una vista generada no cubre por él.
+   */
+  identidadDecide: boolean;
 }
 
 /** Veredicto de identidad de una referencia (0.24.0). `sin_comprobar` **no** significa «sospechosa». */
@@ -342,6 +347,7 @@ export function calcularCobertura(
   tipo: TipoPersonaje,
   referencias: readonly ReferenciaParaCobertura[],
   generadasCubren = false,
+  identidadDecide = true,
 ): Cobertura {
   const vistas = vistasMinimas(tipo).map<CoberturaVista>((vista) => {
     const suyas = referencias.filter((r) => r.vistaClave === vista);
@@ -352,7 +358,7 @@ export function calcularCobertura(
       indicacion: INDICACION_VISTA[vista],
       originales: suyas.filter((r) => r.origen === "foto_original").length,
       generadas: generadas.length,
-      generadasVerificadas: generadas.filter((r) => r.identidad === "pasa").length,
+      generadasVerificadas: identidadDecide ? generadas.filter((r) => r.identidad === "pasa").length : 0,
     };
   });
   const cubre = (v: CoberturaVista) =>
@@ -361,6 +367,7 @@ export function calcularCobertura(
     vistas,
     faltan: vistas.filter((v) => !cubre(v)).map((v) => v.vista),
     sinClasificar: referencias.filter((r) => r.vistaClave === null).length,
+    identidadDecide,
   };
 }
 

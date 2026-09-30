@@ -8,10 +8,11 @@ import {
   COMPROBACIONES,
   type Comprobacion,
   DESCRIPCION_COMPROBACION,
+  descripcionDeModoPara,
   MODOS_COHERENCIA,
   type ModoCoherencia,
   NOMBRE_COMPROBACION,
-  NOMBRE_MODO,
+  nombreDeModoPara,
 } from "@/lib/coherencia";
 import type { Ajustes } from "@/server/ajustes";
 import { Seccion } from "./seccion-ajustes";
@@ -78,8 +79,8 @@ export function SeccionCoherencia({
             etiqueta="Cómo se aplica"
             opciones={MODOS_COHERENCIA.map((modo) => ({
               value: modo,
-              etiqueta: NOMBRE_MODO[modo],
-              descripcion: DESCRIPCION_MODO[modo],
+              etiqueta: nombreDeModoPara(comprobacion, modo),
+              descripcion: descripcionDeModoPara(comprobacion, modo),
             }))}
             valor={valores[CAMPOS[comprobacion].modo] as ModoCoherencia}
             onCambio={(v) => onCambio(CAMPOS[comprobacion].modo, v as Ajustes[keyof Ajustes])}
@@ -188,14 +189,9 @@ export function SeccionCoherencia({
       <p className="text-sm text-texto-suave">
         La cara y la voz de una <strong>persona real</strong> solo se envían a la percepción si su consentimiento lo
         autoriza expresamente. Sin esa autorización, la comprobación no se hace y sus vistas generadas no cuentan para
-        la cobertura, igual que antes de la 0.24.0. Un personaje inventado no la necesita.
+        la cobertura, igual que antes de la 0.24.0. Además, el parecido solo decide la cobertura en modo Activa; en
+        sombra se registra y se enseña. Un personaje inventado no la necesita.
       </p>
     </Seccion>
   );
 }
-
-const DESCRIPCION_MODO: Record<ModoCoherencia, string> = {
-  apagada: "No se percibe, no se pregunta y no se gasta nada.",
-  sombra: "Se decide y se registra con su evidencia, y su veredicto no bloquea ni cambia nada. Sirve para medirlo.",
-  activa: "Su veredicto decide de verdad. Enciéndelo cuando el panel de acierto diga que acierta.",
-};

@@ -1,5 +1,6 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, max } from "drizzle-orm";
 import { type Capacidad, esCapacidad, esIdentificadorDeModelo } from "@/lib/catalogo";
+import { PASO_ORDEN_DE_GRUPO, renumerarGrupo } from "@/lib/orden-de-grupo";
 import { variablesUsadas } from "@/lib/plantillas-prompt";
 import {
   esCategoriaPreset,
@@ -48,7 +49,8 @@ export interface DatosPlantilla {
   plantilla: string;
   variables: VariablePlantilla[];
   restricciones: RestriccionesPlantilla;
-  orden: number;
+  /** Opcional: al crear va al final de su capacidad, y al editar se conserva. Se cambia arrastrando en la lista. */
+  orden?: number;
   activa: boolean;
   kind?: "base" | "trend";
   trendStatus?: "vigente" | "revision" | "caducada" | null;
@@ -235,17 +237,23 @@ export async function crearPlantillaDeLaInstalacion(datos: DatosPlantilla, autor
     template: texto,
     variables: textoDeVariables(variables),
     modelRestrictions: textoDeRestricciones(restricciones),
-    sortOrder: exigirOrden(datos.orden),
     active: datos.activa === true,
   };
 
   let creadaId = "";
   await db().transaction(async (tx) => {
+    // Sin orden pedido, la nueva va detrás de la última de su capacidad.
+    const [{ ultimo } = { ultimo: null }] = await tx
+      .select({ ultimo: max(promptTemplates.sortOrder) })
+      .from(promptTemplates)
+      .where(and(eq(promptTemplates.capability, capacidad), isNull(promptTemplates.ownerId)));
+    const sortOrder = datos.orden === undefined ? (ultimo ?? 0) + PASO_ORDEN_DE_GRUPO : exigirOrden(datos.orden);
     const [fila] = await tx
       .insert(promptTemplates)
       .values({
         slug: clave,
         capability: capacidad,
+        sortOrder,
         ...comun,
         ...trend,
         trendSince: trend.kind === "trend" ? new Date() : null,
@@ -307,7 +315,8 @@ export async function editarPlantillaDeLaInstalacion(
         modelRestrictions: restriccionesTexto,
         ...trend,
         trendSince: anterior.trendSince,
-        sortOrder: exigirOrden(datos.orden),
+        // Solo se escribe el orden si se pide: releerlo aquí pisaría una reordenación concurrente del grupo.
+        ...(datos.orden === undefined ? {} : { sortOrder: exigirOrden(datos.orden) }),
         active: datos.activa === true,
         version: cambiaContenido || cambiaVoz ? vigente.number + 1 : anterior.version,
         updatedAt: new Date(),
@@ -362,7 +371,6 @@ export async function duplicarTrend(id: string, clave: string, autorId: string):
       plantilla: anterior.template,
       variables: variablesDeTexto(anterior.variables),
       restricciones: restriccionesDeTexto(anterior.modelRestrictions),
-      orden: anterior.sortOrder,
       activa: anterior.active,
       kind: "trend",
       trendStatus: "revision",
@@ -378,14 +386,33 @@ export async function duplicarTrend(id: string, clave: string, autorId: string):
   return vistaPorId(copia.id);
 }
 
-/** Cambia el orden de una plantilla de la instalación. */
-export async function ordenarPlantillaDeLaInstalacion(id: string, orden: number): Promise<PlantillaVista> {
-  const anterior = await plantillaDeLaInstalacion(id);
-  await db()
-    .update(promptTemplates)
-    .set({ sortOrder: exigirOrden(orden), updatedAt: new Date() })
-    .where(and(eq(promptTemplates.id, anterior.id), isNull(promptTemplates.ownerId)));
-  return await vistaPorId(anterior.id);
+/**
+ * Deja las plantillas de una capacidad en el orden recibido. `ids` tiene que ser **exactamente** el grupo (las
+ * plantillas de la instalación de esa capacidad): se renumeran de 10 en 10 en una sola transacción, sin empates,
+ * y con el grupo bloqueado para que dos reordenaciones a la vez no se pisen.
+ */
+export async function ordenarGrupoDePlantillas(capacidad: Capacidad, ids: unknown): Promise<void> {
+  const cap = exigirCapacidad(capacidad);
+  await db().transaction(async (tx) => {
+    const grupo = await tx
+      .select({ id: promptTemplates.id })
+      .from(promptTemplates)
+      .where(and(eq(promptTemplates.capability, cap), isNull(promptTemplates.ownerId)))
+      .for("update");
+    let nuevo: ReturnType<typeof renumerarGrupo>;
+    try {
+      nuevo = renumerarGrupo(
+        grupo.map((f) => f.id),
+        ids,
+      );
+    } catch (error) {
+      throw new ErrorPreset(400, (error as Error).message);
+    }
+    const ahora = new Date();
+    for (const { id, orden } of nuevo) {
+      await tx.update(promptTemplates).set({ sortOrder: orden, updatedAt: ahora }).where(eq(promptTemplates.id, id));
+    }
+  });
 }
 
 /** Vista de una plantilla por identificador, con su versión vigente ya resuelta. */

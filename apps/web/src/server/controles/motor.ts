@@ -1,3 +1,4 @@
+import { textoDeFormatosDeCanto } from "@/lib/canto";
 import { ETIQUETA_VISTA, esVista } from "@/lib/captura-personaje";
 import { DIAS_PRECIO_FRESCO } from "@/lib/catalogo";
 import { type EstadoControl, peorEstado } from "@/lib/controles";
@@ -251,8 +252,7 @@ const REGLAS: readonly Regla[] = [
         estado: "bloqueado",
         motivo:
           "No se ha podido medir cuánto dura este audio, y el clip se paga por segundo: sin la duración no se puede calcular lo que costaría ni confirmarlo.",
-        accion:
-          "Vuelve a subir el audio en un formato corriente (MP3, WAV o M4A). No se ha enviado nada al proveedor y no se te ha cobrado.",
+        accion: `Vuelve a subir el audio en uno de estos formatos: ${textoDeFormatosDeCanto()}. No se ha enviado nada al proveedor y no se te ha cobrado.`,
         enlace: "/biblioteca",
         http: 409,
         excepcion: "proyecto",

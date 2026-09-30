@@ -1,5 +1,6 @@
 "use server";
 
+import type { Capacidad } from "@/lib/catalogo";
 import type { PlantillaVista, VersionPlantilla } from "@/lib/presets";
 import { exigirAdmin } from "@/server/auth/sesion";
 import { historialDePlantilla, listarPlantillas } from "@/server/prompts/consulta";
@@ -11,7 +12,7 @@ import {
   type DatosPlantilla,
   duplicarTrend,
   editarPlantillaDeLaInstalacion,
-  ordenarPlantillaDeLaInstalacion,
+  ordenarGrupoDePlantillas,
 } from "@/server/prompts/plantillas-admin";
 
 /**
@@ -50,8 +51,9 @@ export async function activarPlantillaAccion(id: string, activa: boolean): Promi
   return aplicar(() => activarPlantillaDeLaInstalacion(id, activa));
 }
 
-export async function ordenarPlantillaAccion(id: string, orden: number): Promise<ResultadoPlantillas> {
-  return aplicar(() => ordenarPlantillaDeLaInstalacion(id, orden));
+/** Orden completo de las plantillas de una capacidad, tal como lo dejó quien administra al soltar. */
+export async function ordenarGrupoPlantillasAccion(capacidad: Capacidad, ids: string[]): Promise<ResultadoPlantillas> {
+  return aplicar(() => ordenarGrupoDePlantillas(capacidad, ids));
 }
 
 export async function caducarTrendAccion(id: string): Promise<ResultadoPlantillas> {

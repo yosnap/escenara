@@ -1,3 +1,4 @@
+import { textoDeFormatosDeCanto } from "@/lib/canto";
 import { formatoCanta } from "@/lib/direccion";
 import { leerAjustes } from "../ajustes";
 import { escenaPropia } from "../asistente/consulta";
@@ -118,7 +119,7 @@ export async function producirEscenaCantada(
       409,
       estado.audio === null
         ? "Esta escena canta, pero todavía no tiene ningún audio elegido: elige el audio antes de pedir el clip. No se te ha cobrado nada."
-        : "No se ha podido medir cuánto dura este audio, y el clip se paga por segundo: sin la duración no se puede calcular el coste ni confirmarlo. Vuelve a subir el audio en un formato corriente (MP3, WAV o M4A). No se te ha cobrado nada.",
+        : `No se ha podido medir cuánto dura este audio, y el clip se paga por segundo: sin la duración no se puede calcular el coste ni confirmarlo. Vuelve a subir el audio en uno de estos formatos: ${textoDeFormatosDeCanto()}. No se te ha cobrado nada.`,
     );
   }
 

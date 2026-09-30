@@ -319,7 +319,10 @@ export function PanelAnguloFiel({
             ni pedir otro guion—. Está para ver si acierta, y para eso hace falta que digas si tiene razón.
           </>
         ) : (
-          <>Su veredicto decide de verdad en esta instalación.</>
+          <>
+            Está en <strong>Activa</strong>, pero el ángulo <strong>todavía no bloquea nada</strong>: el veredicto se
+            registra y se muestra aquí, y no frena el plan, la producción ni pedir otro guion.
+          </>
         )}
       </p>
 

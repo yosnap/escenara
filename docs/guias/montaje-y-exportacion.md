@@ -111,7 +111,7 @@ La comprobación previa se hace **antes** de bajar el primer byte, y siempre dic
 | Un **fallo crítico abierto** en la revisión de continuidad | La escena tiene un problema que marcaste como crítico | Ve a «Revisión», arréglalo o ciérralo como aceptado ([Revisar la continuidad](revisar-la-continuidad.md)) |
 | «La escena N está en el montaje y todavía no tiene clip guardado» (o «N escenas del montaje todavía no tienen clip guardado», con sus números) | El clip de esa escena se borró o nunca se generó | Prodúcelas o quítalas de la línea de tiempo |
 | «La línea de tiempo de este montaje está vacía» | Lo has vaciado | Añade al menos una escena con clip desde el apartado de abajo |
-| «El fragmento N (escena M) dura menos de 0.2 s: recórtalo menos» | Un recorte se ha quedado demasiado corto | Recórtalo menos |
+| «El fragmento N (escena M) dura menos de 0,2 s: recórtalo menos» | Un recorte se ha quedado demasiado corto | Recórtalo menos |
 | «Acaba en el segundo X y el clip dura Y» | El recorte se sale del clip | Baja la manecilla de salida |
 | «El montaje dura N s y el máximo de esta versión son 300 s» | Pieza demasiado larga para esta versión | Quita fragmentos o recorta más |
 | No hay espacio en la biblioteca | La cuota está llena y el MP4 no cabría | Borra material que no uses o pide más cuota a quien administra |

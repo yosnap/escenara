@@ -15,7 +15,7 @@ import { rectSortingStrategy, SortableContext, sortableKeyboardCoordinates, useS
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 import { useReducedMotion } from "motion/react";
-import { type ReactNode, useId, useState } from "react";
+import { type ReactNode, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { mismoOrden, moverEnLista } from "@/lib/lista-ordenable";
 import { cn } from "./cn";
 
@@ -79,6 +79,59 @@ export function ListaOrdenable({
   const porClave = new Map(elementos.map((e) => [e.clave, e]));
   const visibles = orden.flatMap((clave) => porClave.get(clave) ?? []);
 
+  /**
+   * El control que tenía el foco dentro de la lista. Subir o bajar cambia el orden, y un elemento que se mueve en
+   * el DOM (o que se queda sin «Subir» por ser ya el primero) pierde el foco: se devuelve al mismo control, o al
+   * asa si ese ya no se puede usar, y se anuncia la posición nueva, que con los botones no la dice nadie.
+   */
+  const raiz = useRef<HTMLOListElement>(null);
+  const foco = useRef<{ clave: string; etiqueta: string | null; enAsa: boolean } | null>(null);
+  const [anuncio, setAnuncio] = useState("");
+  const firmaDeOrden = orden.join("\u0000");
+  const firmaAnterior = useRef(firmaDeOrden);
+
+  useEffect(() => {
+    const lista = raiz.current;
+    if (!lista) return;
+    const alEnfocar = (evento: FocusEvent) => {
+      const control = evento.target instanceof HTMLElement ? evento.target : null;
+      const li = control?.closest<HTMLElement>("li[data-clave]");
+      if (!control || !li || li.parentElement !== lista) return;
+      foco.current = {
+        clave: li.dataset.clave ?? "",
+        etiqueta: control.getAttribute("aria-label"),
+        enAsa: control.hasAttribute("data-asa"),
+      };
+    };
+    lista.addEventListener("focusin", alEnfocar);
+    return () => lista.removeEventListener("focusin", alEnfocar);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (firmaAnterior.current === firmaDeOrden) return;
+    firmaAnterior.current = firmaDeOrden;
+    const ultimo = foco.current;
+    const lista = raiz.current;
+    if (!ultimo || !lista) return;
+    const li = Array.from(lista.children).find(
+      (hijo): hijo is HTMLElement => hijo instanceof HTMLElement && hijo.dataset.clave === ultimo.clave,
+    );
+    if (!li) return;
+    const activo = document.activeElement;
+    const perdido = !activo || activo === document.body || (activo instanceof HTMLButtonElement && activo.disabled);
+    if (perdido) {
+      const usables = Array.from(li.querySelectorAll<HTMLButtonElement>("button:not([disabled])"));
+      const mismo =
+        ultimo.etiqueta === null ? undefined : usables.find((b) => b.getAttribute("aria-label") === ultimo.etiqueta);
+      (mismo ?? usables.find((b) => b.hasAttribute("data-asa")) ?? usables[0])?.focus();
+    }
+    // Arrastrar ya se anuncia solo (dnd-kit); con los botones de subir y bajar, no.
+    if (!ultimo.enAsa) {
+      const etiqueta = porClave.get(ultimo.clave)?.etiqueta ?? "El elemento";
+      setAnuncio(`${etiqueta} queda en la posición ${orden.indexOf(ultimo.clave) + 1} de ${orden.length}.`);
+    }
+  });
+
   const sensores = useSensors(
     // Unos píxeles de margen: así un clic en el asa no cuenta como arrastre, y en el móvil se puede hacer
     // scroll desde encima del asa sin llevarse la foto por delante.
@@ -129,7 +182,7 @@ export function ListaOrdenable({
         onDragEnd={(evento) => void alTerminar(evento)}
       >
         <SortableContext items={orden} strategy={rectSortingStrategy}>
-          <ul aria-label={etiquetaLista} className={className}>
+          <ol ref={raiz} aria-label={etiquetaLista} className={className}>
             {visibles.map((elemento, indice) => (
               <ElementoDeLista
                 key={elemento.clave}
@@ -140,12 +193,13 @@ export function ListaOrdenable({
                 className={claseElemento}
               />
             ))}
-          </ul>
+          </ol>
         </SortableContext>
       </DndContext>
       {/* Que el orden no se haya guardado se dice, no solo se deshace por sorpresa. */}
       <p aria-live="polite" className="sr-only">
         {fallo}
+        {anuncio}
       </p>
     </div>
   );
@@ -174,6 +228,7 @@ function ElementoDeLista({
     <li
       ref={setNodeRef}
       id={elemento.id}
+      data-clave={elemento.clave}
       style={{ transform: CSS.Transform.toString(transform), transition: reducido ? undefined : transition }}
       className={cn(
         "relative scroll-mt-24",
@@ -186,6 +241,7 @@ function ElementoDeLista({
           type="button"
           ref={setActivatorNodeRef}
           aria-label={`Cambiar el orden de ${elemento.etiqueta}`}
+          data-asa=""
           disabled={deshabilitado || total < 2}
           {...attributes}
           {...listeners}

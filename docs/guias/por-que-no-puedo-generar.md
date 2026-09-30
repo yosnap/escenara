@@ -106,7 +106,7 @@ Son los requisitos del **audio** de una escena de canto, y todos se arreglan **a
 - **sin declaración de derechos**: declara con qué derecho usas ese audio (música tuya, con licencia o una grabación
   hablada tuya). Vale para ese archivo, así que se hace una sola vez aunque lo uses en varias escenas;
 - **duración que no se puede medir**: el clip se paga por segundo, así que sin la duración no hay coste. Vuelve a
-  subir el audio en un formato corriente y se comprobará de nuevo;
+  subir el audio en uno de los formatos admitidos (MP3, WAV, OGG, M4A o AAC) y se comprobará de nuevo;
 - **demasiado largo**: el mensaje dice cuánto dura y cuál es el tope. Recórtalo hasta ese tope, o reparte la canción
   en varias escenas;
 - **audio incompatible**: el propio mensaje explica qué le pasa al archivo. Prepara otro y elígelo en la escena.

@@ -39,7 +39,6 @@ const VACIO = (categoria: CategoriaPreset): DatosPreset => ({
   porDondeEntra: "",
   ejemplo: "",
   exigeDeclaracion: false,
-  orden: 100,
   activo: true,
 });
 
@@ -54,7 +53,6 @@ const deVista = (preset: PresetVista): DatosPreset => ({
   porDondeEntra: preset.valores.porDondeEntra ?? "",
   ejemplo: preset.valores.ejemplo ?? "",
   exigeDeclaracion: preset.valores.exigeDeclaracion === true,
-  orden: preset.orden,
   activo: preset.activo,
 });
 
@@ -248,19 +246,6 @@ export function DialogoPreset({
             )}
           </Campo>
         )}
-
-        <Campo etiqueta="Orden" ayuda="Más bajo, antes en la botonera.">
-          {(props) => (
-            <EntradaTexto
-              {...props}
-              type="number"
-              min={0}
-              max={10000}
-              value={String(datos.orden)}
-              onChange={(e) => setDatos({ ...datos, orden: Number(e.target.value) })}
-            />
-          )}
-        </Campo>
 
         <Interruptor
           etiqueta="Activo"
