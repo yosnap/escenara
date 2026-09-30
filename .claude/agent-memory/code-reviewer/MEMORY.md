@@ -1,2 +1,14 @@
 - [El admin ve toda la biblioteca](proyecto-admin-ve-toda-la-biblioteca.md) — cualquier medio de cualquier usuario, con URL firmada y sin auditoría; choca con lo que prometen ADR-0017 y docs/legal
-- [Tests de integración y .env](proyecto-tests-integracion.md) — `bun test` los salta en silencio sin `DATABASE_URL`; cómo lanzarlos de verdad
+- [Modos de coherencia](proyecto-modos-coherencia.md) — el parecido decide la cobertura también en sombra; `decide` sin consumidores
+- [Tests de integración y .env](proyecto-tests-integracion.md) — sin `DATABASE_URL` se saltan; usan bases escenara_pruebas_*; cómo probar migraciones en una copia
+- [Fixtures vs datos reales](proyecto-fixtures-vs-datos-reales.md) — el fixture escribía `input.segundos` y el motor guarda `input.parametros.segundos`; contrastar jsonb con una copia
+- [Consulta vs envío](proyecto-consulta-vs-envio.md) — el panel de controles y el envío calculan por separado las entradas del reparto; dos pantallas previas (Crear y producción)
+- [Nombres dentro de motivos](proyecto-nombres-en-motivos.md) — rules.motivo e invalidation_reason llevan «nombre» de personas reales; buscar «
+- [Casillas y desmontaje](proyecto-casillas-por-desmontaje.md) — el consentimiento de /crear se reiniciaba al desmontar; al subir estado, reproducir cada desmontaje
+- [SVG, sharp y metadatos](proyecto-svg-sharp.md) — validador SVG por regex evadible con entidades; `<use>` anidado = DoS en sharp; og:image sin metadataBase → localhost
+- [Medios que el admin publica](proyecto-medios-publicados-por-admin.md) — demo 0.42.1: propietario del medio; «personaje real» no es solo character_id (versiones, reparto quitado, fotos quitadas)
+- [Dualcast y castClipOrder](proyecto-dualcast-turno.md) — el dualcast con identidad lleva castClipOrder=1; IS NULL no equivale a «no podcast»
+- [Grupo de podcast = una escena](proyecto-podcast-grupo-una-escena.md) — podcast_group_id es randomUUID por escena; los dos clips salen de una llamada
+- [Candados de encolar](proyecto-candados-encolar.md) — encolar bloquea users, no projects; borrados que recuentan con otro candado no excluyen encolados
+- [Envíos múltiples y A/B](proyecto-envios-multiples-no-atomicos.md) — A/B 0.48.0: toma filtrada, barrido reanudable; ojo a `!puedeA` y a claves tras 504
+- [Presupuesto de JS del build](proyecto-presupuesto-js.md) — desde 0.45.0 el build falla por KB; medir contra HTML servido (noModule), .next bloqueado por hook

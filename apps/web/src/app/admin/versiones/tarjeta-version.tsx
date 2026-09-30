@@ -61,10 +61,10 @@ export function TarjetaVersion({ version, actual }: { version: VersionPublicada;
         )}
         <span className="text-texto-suave">{version.fecha ? formatearFecha(version.fecha) : "Sin publicar"}</span>
       </header>
-      {version.secciones.map((s, i) => {
+      {version.secciones.map((s) => {
         const estilo = ESTILO_SECCION[s.titulo] ?? ESTILO_OTRO;
         return (
-          <section key={`${s.titulo}-${i}`} className="flex flex-col gap-2">
+          <section key={`${s.titulo}|${s.entradas[0] ?? ""}`} className="flex flex-col gap-2">
             <h3 className="flex items-center gap-2 font-bold text-texto">
               <span
                 aria-hidden
