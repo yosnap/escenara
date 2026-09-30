@@ -10,7 +10,7 @@ export default function LayoutCuenta({ children }: { children: ReactNode }) {
         <EnlaceLogotipo href="/" accion="volver a la portada" className="text-texto" />
         <SelectorTema />
       </header>
-      <main id="contenido" className="flex flex-1 items-start justify-center px-5 py-8 sm:items-center">
+      <main id="contenido" tabIndex={-1} className="flex flex-1 items-start justify-center px-5 py-8 sm:items-center">
         {children}
       </main>
     </div>

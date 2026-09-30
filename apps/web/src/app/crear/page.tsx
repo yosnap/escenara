@@ -113,7 +113,7 @@ export default async function PaginaCrear({
   return (
     <div className="min-h-dvh bg-fondo">
       <CabeceraApp sesion={sesion} />
-      <main id="contenido" className="mx-auto flex max-w-4xl flex-col gap-6 px-5 py-8 md:px-8">
+      <main id="contenido" tabIndex={-1} className="mx-auto flex max-w-4xl flex-col gap-6 px-5 py-8 md:px-8">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-4xl font-bold text-texto">Crear</h1>

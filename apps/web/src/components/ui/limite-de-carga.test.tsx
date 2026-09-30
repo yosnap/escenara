@@ -87,10 +87,15 @@ describe("pantalla de error de un segmento", () => {
     "app/proyectos/error.tsx",
     "app/proyectos/[id]/montaje/error.tsx",
     "app/biblioteca/error.tsx",
-  ])("%s existe, usa la pantalla común y deja el foco en #contenido", async (fichero) => {
+  ])("%s existe y usa la pantalla común, que deja el foco en #contenido", async (fichero) => {
     const codigo = await Bun.file(path.resolve(import.meta.dir, "../..", fichero)).text();
     expect(codigo).toStartWith('"use client";');
-    expect(codigo).toContain("<PantallaDeError {...props} />");
-    expect(codigo).toContain('<main id="contenido" tabIndex={-1}');
+    if (fichero === "app/error.tsx") {
+      expect(codigo).toContain("<PantallaDeError {...props} />");
+      expect(codigo).toContain('<main id="contenido" tabIndex={-1}');
+    } else {
+      // Los de cada segmento son el de la raíz: se descarga una vez aunque la ruta tenga varios límites.
+      expect(codigo).toContain('export { default } from "@/app/error";');
+    }
   });
 });

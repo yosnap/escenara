@@ -20,7 +20,7 @@ export default async function PaginaAdminTrabajos() {
     db().select().from(queueWorkers).orderBy(desc(queueWorkers.seenAt)).limit(20),
   ]);
   return (
-    <main id="contenido" className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-10 md:px-8">
+    <main id="contenido" tabIndex={-1} className="mx-auto flex max-w-7xl flex-col gap-6 px-5 py-10 md:px-8">
       <div>
         <h1 className="text-4xl font-bold text-texto">Trabajos en revisión</h1>
         <p className="mt-2 max-w-3xl text-texto-suave">

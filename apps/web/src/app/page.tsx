@@ -19,7 +19,7 @@ export default async function Portada() {
     <>
       {/* «Saltar al contenido» lo pone el layout raíz, igual que en el resto de páginas. */}
       <BarraPortada conSesion={conSesion} />
-      <main id="contenido">
+      <main id="contenido" tabIndex={-1}>
         <CabeceraPortada />
         <Escaparate />
         <ComoFunciona />

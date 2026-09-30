@@ -35,6 +35,7 @@ export function useConfeti() {
               // biome-ignore lint/suspicious/noArrayIndexKey: partículas fijas de una ráfaga, nunca se reordenan
               key={`${id}-${i}`}
               className={cn("absolute top-1/2 left-1/2", COLORES_CONFETI[i % COLORES_CONFETI.length])}
+              // permitido: con «reducir movimiento», `lanzar` no crea ninguna ráfaga, así que esto nunca se pinta
               initial={{ x: 0, y: 0, scale: 0.4, opacity: 1, rotate: 0 }}
               animate={{
                 x: Math.cos(angulo) * distancia,

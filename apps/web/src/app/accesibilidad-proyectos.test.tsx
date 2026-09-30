@@ -40,7 +40,7 @@ const pagina = (contenido: ReactNode, titulo?: string) =>
           <a href="/proyectos">Proyectos</a>
         </nav>
       </header>
-      <main id="contenido">
+      <main id="contenido" tabIndex={-1}>
         {titulo && <h1>{titulo}</h1>}
         {contenido}
       </main>

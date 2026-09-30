@@ -16,7 +16,7 @@ export default async function PaginaBiblioteca() {
   return (
     <div className="min-h-dvh bg-fondo">
       <CabeceraApp sesion={sesion} />
-      <main id="contenido" className="mx-auto flex max-w-6xl flex-col gap-6 px-5 py-8 md:px-8">
+      <main id="contenido" tabIndex={-1} className="mx-auto flex max-w-6xl flex-col gap-6 px-5 py-8 md:px-8">
         <div>
           <h1 className="text-4xl font-bold text-texto">Tu biblioteca</h1>
           <p className="mt-2 text-texto-suave">

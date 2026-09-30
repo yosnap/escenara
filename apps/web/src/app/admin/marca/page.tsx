@@ -15,7 +15,7 @@ export default async function PaginaMarca() {
   const sesion = await exigirAdmin("/admin/marca");
   const estado = await estadoDeLaMarca({ id: sesion.user.id, esAdmin: esAdmin(sesion) });
   return (
-    <main id="contenido" className="mx-auto flex max-w-6xl flex-col gap-6 px-5 py-10 md:px-8">
+    <main id="contenido" tabIndex={-1} className="mx-auto flex max-w-6xl flex-col gap-6 px-5 py-10 md:px-8">
       <div>
         <h1 className="text-4xl font-bold text-texto">Marca de la instalación</h1>
         <p className="mt-2 max-w-3xl text-texto-suave">

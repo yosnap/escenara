@@ -5,7 +5,7 @@
  * - `public/favicon.ico` (16 y 32 px), `public/favicon-16.png` y `public/favicon-32.png`, del favicon simplificado
  *   para 16 px (`docs/branding/escenara-icon-16.svg`, que es también `public/icon.svg`), y los PNG de 16 y 32 px de
  *   `docs/branding`;
- * - `public/apple-touch-icon.png` (180), `public/icono-192.png`, `public/icono-512.png` y
+ * - `public/marca-escenara/apple-touch-icon.png` (180, servido por la ruta `/apple-touch-icon.png`), `public/icono-192.png`, `public/icono-512.png` y
  *   `public/icono-enmascarable-512.png` (el símbolo dentro de la zona segura del 80 %), del icono detallado
  *   (`docs/branding/escenara-icon.svg`).
  *
@@ -48,7 +48,7 @@ await Bun.write(path.join(marca, "escenara-icon-32.png"), f32);
 
 // Iconos grandes: el símbolo detallado a sangre sobre el azul de la marca (iOS y Android ponen su propia máscara).
 const aSangre = svg64.replace(/rx="14"/, 'rx="0"');
-await Bun.write(path.join(publico, "apple-touch-icon.png"), await png(aSangre, 180));
+await Bun.write(path.join(publico, "marca-escenara/apple-touch-icon.png"), await png(aSangre, 180));
 await Bun.write(path.join(publico, "icono-192.png"), await png(svg64, 192));
 await Bun.write(path.join(publico, "icono-512.png"), await png(svg64, 512));
 // Enmascarable: el símbolo cabe en el círculo central del 80 % aunque el sistema recorte en círculo o en gota.

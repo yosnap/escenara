@@ -23,7 +23,7 @@ export default async function PaginaNuevoPersonajeInventado() {
   return (
     <div className="min-h-dvh bg-fondo">
       <CabeceraApp sesion={sesion} />
-      <main id="contenido" className="mx-auto flex max-w-3xl flex-col gap-6 px-5 py-8 md:px-8">
+      <main id="contenido" tabIndex={-1} className="mx-auto flex max-w-3xl flex-col gap-6 px-5 py-8 md:px-8">
         <div className="flex flex-col gap-3">
           <Link href="/personajes/nuevo" className={claseBoton("fantasma", "sm", "self-start")}>
             <ArrowLeft className="size-4" aria-hidden /> Otras formas de crear un personaje

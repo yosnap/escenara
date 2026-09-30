@@ -52,7 +52,7 @@ const paginaApp = (titulo: string, contenido: ReactNode) =>
   renderToStaticMarkup(
     <div className="min-h-dvh bg-fondo">
       <CabeceraApp sesion={SESION} />
-      <main id="contenido">
+      <main id="contenido" tabIndex={-1}>
         <h1>{titulo}</h1>
         {contenido}
       </main>
@@ -66,7 +66,7 @@ describe("axe: portada y acceso", () => {
     const html = renderToStaticMarkup(
       <>
         <BarraPortada conSesion={false} />
-        <main id="contenido">
+        <main id="contenido" tabIndex={-1}>
           <CabeceraPortada />
           <Escaparate />
           <ComoFunciona />
@@ -84,7 +84,9 @@ describe("axe: portada y acceso", () => {
         <header>
           <a href="/">Escenara, volver a la portada</a>
         </header>
-        <main id="contenido">{contenido}</main>
+        <main id="contenido" tabIndex={-1}>
+          {contenido}
+        </main>
       </div>,
     );
 

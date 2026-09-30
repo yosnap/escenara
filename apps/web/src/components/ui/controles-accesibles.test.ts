@@ -91,10 +91,20 @@ describe("controles accesibles en toda la aplicación", () => {
     expect(sinAltura).toEqual([]);
   });
 
-  test("toda tabla va en una región desplazable que se alcanza con el teclado", () => {
-    const sueltas = fuentes
-      .filter((f) => f.codigo.includes("<table") && !f.codigo.includes("<TablaDesplazable"))
-      .map((f) => f.fichero);
+  test("toda tabla va dentro de su región desplazable (tabla a tabla, no por fichero)", () => {
+    const sueltas: string[] = [];
+    for (const { fichero, codigo } of fuentes) {
+      const lineas = codigo.split("\n");
+      for (const m of codigo.matchAll(/<table\b/g)) {
+        const antes = codigo.slice(0, m.index);
+        // Abierta y sin cerrar antes de esta tabla: la envuelve de verdad.
+        const dentro =
+          (antes.match(/<TablaDesplazable\b/g)?.length ?? 0) > (antes.match(/<\/TablaDesplazable>/g)?.length ?? 0);
+        const linea = antes.split("\n").length - 1;
+        const permitido = [lineas[linea - 1], lineas[linea - 2]].some((l) => l?.includes("permitido:"));
+        if (!dentro && !permitido) sueltas.push(`${fichero}:${linea + 1}`);
+      }
+    }
     expect(sueltas).toEqual([]);
   });
 
@@ -103,6 +113,17 @@ describe("controles accesibles en toda la aplicación", () => {
     expect(layout).toMatch(/<html\s+lang=\{/);
     expect(layout).toContain('href="#contenido"');
     expect(layout).toContain("Saltar al contenido");
+    // El destino recibe el foco (y lo enseña): cada #contenido es un <main> con tabIndex={-1}.
+    const sinFoco = fuentes.flatMap(({ fichero, codigo }) =>
+      [...codigo.matchAll(/<\w+[^>]*\bid="contenido"[^>]*>/g)]
+        .filter((m) => !/^<main\b/.test(m[0]) || !m[0].includes("tabIndex={-1}"))
+        .map(() => fichero),
+    );
+    expect(sinFoco).toEqual([]);
+    // La 404 propia también tiene su #contenido.
+    expect(fuentes.find((f) => f.fichero === "app/not-found.tsx")?.codigo).toMatch(
+      /<main\s+id="contenido"\s+tabIndex=\{-1\}/,
+    );
     // Todas las páginas tienen su contenido principal en #contenido (o lo pone su layout).
     const sinContenido: string[] = [];
     for (const { fichero, codigo } of fuentes) {

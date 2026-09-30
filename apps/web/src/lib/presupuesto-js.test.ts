@@ -6,8 +6,12 @@ import {
   comprobarPresupuestos,
   entradasDeCliente,
   ficherosDeRuta,
+  instruccionesDeAlta,
   leerManifiestoCliente,
+  MARGEN_KB,
   META_KB,
+  medidasDesfasadas,
+  medidoDelMotivo,
   rutaDeClave,
   sumarKb,
   topesSinRuta,
@@ -67,42 +71,70 @@ describe("medida de una ruta", () => {
     expect(sumarKb(["a", "b"], () => 1536)).toBe(3);
   });
 
-  test("tope por defecto, tope propio con su deuda y topes que ya no corresponden a nada", () => {
-    const resultados = comprobarPresupuestos(
-      [
-        { ruta: "/", ficheros: [], kb: 150 },
-        { ruta: "/crear", ficheros: [], kb: 305 },
-        { ruta: "/cuenta", ficheros: [], kb: 201 },
-      ],
-      {
-        porDefectoKb: META_KB,
-        rutas: { "/crear": { topeKb: 320, motivo: "Flujo por pasos." }, "/vieja": { topeKb: 250, motivo: "x" } },
-      },
-    );
-    expect(resultados.map((r) => [r.ruta, r.pasa, r.deuda])).toEqual([
-      ["/crear", true, true],
-      ["/cuenta", false, false],
-      ["/", true, false],
+  test("tope por defecto, tope propio con su deuda, ruta sin alta y topes que ya no corresponden a nada", () => {
+    const presupuestos = {
+      porDefectoKb: META_KB,
+      dentroDeLaMeta: ["/", "/cuenta", "/vieja-dentro"],
+      rutas: { "/crear": { topeKb: 308, motivo: "Flujo por pasos. Medido: 305 KB." } },
+    };
+    const medidas = [
+      { ruta: "/", ficheros: [], kb: 150 },
+      { ruta: "/crear", ficheros: [], kb: 305 },
+      { ruta: "/cuenta", ficheros: [], kb: 201 },
+      { ruta: "/nueva", ficheros: [], kb: 120 },
+    ];
+    expect(comprobarPresupuestos(medidas, presupuestos).map((r) => [r.ruta, r.pasa, r.deuda, r.sinAlta])).toEqual([
+      ["/crear", true, true, false],
+      ["/cuenta", false, false, false],
+      ["/", true, false, false],
+      // Una pantalla nueva sin alta falla aunque quepa: su peso se mira al crearla.
+      ["/nueva", false, false, true],
     ]);
-    expect(
-      topesSinRuta([{ ruta: "/", ficheros: [], kb: 1 }], {
-        porDefectoKb: 200,
-        rutas: { "/vieja": { topeKb: 1, motivo: "x" } },
-      }),
-    ).toEqual(["/vieja"]);
+    expect(topesSinRuta(medidas, presupuestos)).toEqual(["/vieja-dentro"]);
+    expect(instruccionesDeAlta("/nueva", 120)).toContain("«dentroDeLaMeta»");
+    expect(instruccionesDeAlta("/pesada", 240)).toContain('"topeKb": 243');
+    expect(instruccionesDeAlta("/pesada", 240)).toContain("exige su justificación");
   });
 
-  test("el fichero de topes se valida al leerlo", () => {
+  test("«Medido» se contrasta con la medida real: si se desfasa más de 1 KB, se avisa", () => {
+    const presupuestos = {
+      porDefectoKb: META_KB,
+      dentroDeLaMeta: [],
+      rutas: { "/crear": { topeKb: 308, motivo: "Pasos. Medido: 305 KB." } },
+    };
+    expect(medidasDesfasadas([{ ruta: "/crear", ficheros: [], kb: 305.8 }], presupuestos)).toEqual([]);
+    expect(medidasDesfasadas([{ ruta: "/crear", ficheros: [], kb: 290 }], presupuestos)[0]).toContain(
+      "el motivo dice 305 KB y hoy pesa 290 KB",
+    );
+    expect(medidoDelMotivo("Lo que sea. Medido: 237.8 KB.")).toBe(237.8);
+    expect(medidoDelMotivo("Sin medida.")).toBeNull();
+  });
+
+  test("el fichero de topes se valida al leerlo y cierra las trampas fáciles", () => {
+    const valido = (cambios: object = {}) => ({ porDefectoKb: 200, dentroDeLaMeta: ["/"], rutas: {}, ...cambios });
     expect(() => validarPresupuestos(null)).toThrow();
-    expect(() => validarPresupuestos({ porDefectoKb: "200", rutas: {} })).toThrow();
-    expect(() => validarPresupuestos({ porDefectoKb: 0, rutas: {} })).toThrow();
-    expect(() => validarPresupuestos({ porDefectoKb: 200, rutas: { crear: { topeKb: 300, motivo: "x" } } })).toThrow();
+    expect(() => validarPresupuestos(valido({ porDefectoKb: "200" }))).toThrow();
+    // La meta no se sube desde el JSON.
+    expect(() => validarPresupuestos(valido({ porDefectoKb: 250 }))).toThrow("la meta del ADR-0039");
+    expect(() => validarPresupuestos(valido({ dentroDeLaMeta: undefined }))).toThrow();
+    expect(() => validarPresupuestos(valido({ dentroDeLaMeta: ["crear"] }))).toThrow();
     expect(() =>
-      validarPresupuestos({ porDefectoKb: 200, rutas: { "/crear": { topeKb: 300, motivo: " " } } }),
+      validarPresupuestos(valido({ rutas: { crear: { topeKb: 300, motivo: "x. Medido: 299 KB." } } })),
     ).toThrow();
-    expect(validarPresupuestos({ porDefectoKb: 200, rutas: { "/crear": { topeKb: 300, motivo: "Pasos." } } })).toEqual({
+    // Sin «Medido», o con más margen del permitido, no vale.
+    expect(() => validarPresupuestos(valido({ rutas: { "/crear": { topeKb: 300, motivo: "Pasos." } } }))).toThrow();
+    expect(() =>
+      validarPresupuestos(valido({ rutas: { "/crear": { topeKb: 320, motivo: "Pasos. Medido: 305 KB." } } })),
+    ).toThrow(`más ${MARGEN_KB} KB de margen`);
+    expect(() =>
+      validarPresupuestos(valido({ rutas: { "/": { topeKb: 203, motivo: "Portada. Medido: 200 KB." } } })),
+    ).toThrow("a la vez");
+    expect(
+      validarPresupuestos(valido({ rutas: { "/crear": { topeKb: 308, motivo: "Pasos. Medido: 305 KB." } } })),
+    ).toEqual({
       porDefectoKb: 200,
-      rutas: { "/crear": { topeKb: 300, motivo: "Pasos." } },
+      dentroDeLaMeta: ["/"],
+      rutas: { "/crear": { topeKb: 308, motivo: "Pasos. Medido: 305 KB." } },
     });
   });
 
@@ -155,16 +187,43 @@ describe("el build falla si una ruta se pasa de su tope", () => {
 
   test("una ruta por encima de 200 KB hace fallar el build y dice cuál y cuánto", async () => {
     const dir = await buildDeMentira(230);
-    const r = await ejecutar(dir, { porDefectoKb: 200, rutas: {} });
+    const r = await ejecutar(dir, { porDefectoKb: 200, dentroDeLaMeta: ["/"], rutas: {} });
     expect(r.codigo).toBe(1);
     expect(r.errores).toMatch(/1 ruta\(s\) superan su presupuesto de JavaScript: \/ \(2\d\d(\.\d)? KB > 200 KB\)/);
   }, 30_000);
 
   test("con un tope propio por encima, pasa y la tabla lo marca como deuda", async () => {
     const dir = await buildDeMentira(230);
-    const r = await ejecutar(dir, { porDefectoKb: 200, rutas: { "/": { topeKb: 260, motivo: "Prueba." } } });
+    const r = await ejecutar(dir, {
+      porDefectoKb: 200,
+      dentroDeLaMeta: [],
+      rutas: { "/": { topeKb: 233, motivo: "Prueba. Medido: 230 KB." } },
+    });
     expect(r.codigo).toBe(0);
     expect(r.salida).toContain("(deuda: meta 200 KB)");
+  }, 30_000);
+
+  test("una pantalla nueva sin dar de alta hace fallar el build con las instrucciones", async () => {
+    const dir = await buildDeMentira(20);
+    const r = await ejecutar(dir, { porDefectoKb: 200, dentroDeLaMeta: [], rutas: {} });
+    expect(r.codigo).toBe(1);
+    expect(r.errores).toContain("1 ruta(s) nuevas sin dar de alta");
+    expect(r.errores).toContain("Añade «/» a «dentroDeLaMeta»");
+  }, 30_000);
+
+  test("PRESUPUESTO_JS_SOLO_AVISO=1 deja seguir el build, pero lo dice", async () => {
+    const dir = await buildDeMentira(230);
+    const fichero = path.join(dir, "topes.json");
+    await Bun.write(fichero, JSON.stringify({ porDefectoKb: 200, dentroDeLaMeta: ["/"], rutas: {} }));
+    const proceso = Bun.spawn(["bun", path.join(WEB, "scripts/presupuesto-js.ts"), dir, fichero], {
+      stdout: "pipe",
+      stderr: "pipe",
+      env: { ...process.env, PRESUPUESTO_JS_SOLO_AVISO: "1" },
+    });
+    const errores = await new Response(proceso.stderr).text();
+    expect(await proceso.exited).toBe(0);
+    expect(errores).toContain("superan su presupuesto");
+    expect(errores).toContain("el presupuesto NO se cumple");
   }, 30_000);
 
   test("un build sin páginas no se da por bueno", async () => {
@@ -172,7 +231,7 @@ describe("el build falla si una ruta se pasa de su tope", () => {
     carpetas.push(dir);
     await mkdir(path.join(dir, "server/app"), { recursive: true });
     await Bun.write(path.join(dir, "build-manifest.json"), JSON.stringify({ rootMainFiles: [] }));
-    const r = await ejecutar(dir, { porDefectoKb: 200, rutas: {} });
+    const r = await ejecutar(dir, { porDefectoKb: 200, dentroDeLaMeta: [], rutas: {} });
     expect(r.codigo).toBe(1);
     expect(r.errores).toContain("No se ha encontrado ninguna página");
   }, 30_000);

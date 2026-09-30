@@ -4,7 +4,13 @@ import { renderToStaticMarkup } from "react-dom/server";
 import sharp from "sharp";
 import { Logotipo } from "@/components/ui/logotipo";
 import { ProveedorMarca } from "@/components/ui/marca-contexto";
-import { IMAGEN_SOCIAL_DE_ESCENARA, METADATOS_DE_ESCENARA } from "@/server/marca/metadatos";
+import {
+  destinoIconoApple,
+  ICONO_APPLE_DE_ESCENARA,
+  IMAGEN_SOCIAL_DE_ESCENARA,
+  METADATOS_DE_ESCENARA,
+} from "@/server/marca/metadatos";
+import type { MarcaAplicada } from "@/server/marca/publicada";
 import { entradasDeIco, icoDePngs, medidasDePng } from "./ico";
 import { contraste } from "./tokens";
 
@@ -23,7 +29,7 @@ describe("activos de Escenara en public/", () => {
   test.each([
     ["favicon-16.png", 16, 16],
     ["favicon-32.png", 32, 32],
-    ["apple-touch-icon.png", 180, 180],
+    ["marca-escenara/apple-touch-icon.png", 180, 180],
     ["icono-192.png", 192, 192],
     ["icono-512.png", 512, 512],
     ["icono-enmascarable-512.png", 512, 512],
@@ -75,14 +81,40 @@ describe("activos de Escenara en public/", () => {
     for (const icono of manifiesto.icons) expect(await Bun.file(path.join(publico, icono.src)).exists()).toBe(true);
   });
 
-  test("los metadatos de Escenara apuntan a ficheros que existen", async () => {
+  test("los metadatos de Escenara apuntan a ficheros que existen (o a la ruta del icono de Apple)", async () => {
     const urls = [
       ...JSON.stringify(METADATOS_DE_ESCENARA.icons).matchAll(/"url":"([^"]+)"/g),
       [null, METADATOS_DE_ESCENARA.manifest as string],
       [null, IMAGEN_SOCIAL_DE_ESCENARA],
+      [null, ICONO_APPLE_DE_ESCENARA],
     ].map((m) => m[1] as string);
-    expect(urls.length).toBeGreaterThanOrEqual(6);
-    for (const url of urls) expect(await Bun.file(path.join(publico, url)).exists()).toBe(true);
+    expect(urls.length).toBeGreaterThanOrEqual(7);
+    for (const url of urls) {
+      // `/apple-touch-icon.png` es una ruta (elige el icono según la marca), no un fichero de public/.
+      if (url === "/apple-touch-icon.png") {
+        expect(await Bun.file(path.join(web, "src/app/apple-touch-icon.png/route.ts")).exists()).toBe(true);
+        expect(await Bun.file(path.join(publico, url)).exists()).toBe(false);
+      } else expect(await Bun.file(path.join(publico, url)).exists()).toBe(true);
+    }
+  });
+
+  test("el icono de Apple: el de la marca, ninguno si la marca tiene logotipo sin icono, o el de Escenara", () => {
+    const marca = (logos: Record<string, string>, icono192?: string): MarcaAplicada => ({
+      clave: "k",
+      version: 1,
+      css: "",
+      nombre: "Estudio Ana",
+      lema: "",
+      descripcion: "",
+      logos,
+      iconos: icono192 ? { icono192 } : {},
+    });
+    expect(destinoIconoApple(null)).toBe(ICONO_APPLE_DE_ESCENARA);
+    expect(destinoIconoApple(marca({}))).toBe(ICONO_APPLE_DE_ESCENARA);
+    expect(destinoIconoApple(marca({ "simbolo-claro": "/api/marca/activos/1" }))).toBeNull();
+    expect(destinoIconoApple(marca({ "simbolo-claro": "/api/marca/activos/1" }, "/api/marca/activos/2"))).toBe(
+      "/api/marca/activos/2",
+    );
   });
 
   test("icoDePngs rechaza lo que no es PNG y un .ico vacío", () => {

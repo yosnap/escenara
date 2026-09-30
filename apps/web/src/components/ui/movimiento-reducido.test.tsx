@@ -48,10 +48,22 @@ describe("ninguna animación sin su guarda", () => {
     expect(sinGuarda).toEqual([]);
   });
 
-  test("todo componente con la librería de animación mira la preferencia", () => {
+  test("cada animación de la librería mira la preferencia (uso a uso, no por fichero)", () => {
     const conMotion = fuentes.filter((f) => /from "motion\/react"/.test(f.codigo));
     expect(conMotion.length).toBeGreaterThan(0);
-    expect(conMotion.filter((f) => !f.codigo.includes("useReducedMotion")).map((f) => f.fichero)).toEqual([]);
+    const sinGuarda: string[] = [];
+    for (const { fichero, codigo } of conMotion) {
+      const lineas = codigo.split("\n");
+      lineas.forEach((linea, i) => {
+        if (!/\banimate=\{/.test(linea)) return;
+        // La guarda está en la propia expresión (`animate={reducido ? undefined : …}`) o se explica encima.
+        const guardada =
+          /reducid/.test(linea) || lineas.slice(Math.max(0, i - 3), i).some((l) => l.includes("permitido:"));
+        if (!guardada) sinGuarda.push(`${fichero}:${i + 1}`);
+      });
+      if (!codigo.includes("useReducedMotion")) sinGuarda.push(`${fichero}: no mira useReducedMotion`);
+    }
+    expect(sinGuarda).toEqual([]);
   });
 
   test("ningún desplazamiento es suave por defecto", () => {
@@ -59,11 +71,33 @@ describe("ninguna animación sin su guarda", () => {
     expect(fijos).toEqual([]);
   });
 
-  test("el CSS en línea con animaciones trae su regla de movimiento reducido", () => {
-    const sinRegla = fuentes
-      .filter((f) => /[{;\s]animation:/.test(f.codigo) && !f.codigo.includes("prefers-reduced-motion"))
-      .map((f) => f.fichero);
-    expect(sinRegla).toEqual([]);
+  test("el CSS en línea con animaciones anula cada una con «reducir movimiento» (regla a regla)", () => {
+    const sinAnular: string[] = [];
+    let revisados = 0;
+    for (const { fichero, codigo } of fuentes) {
+      for (const bloque of literales(codigo).filter((l) => /[{;\s]animation:/.test(l))) {
+        const animados = new Set<string>();
+        const anulados = new Set<string>();
+        let pila: string[] = [];
+        // Las interpolaciones (`${id}`) traen llaves que no son del CSS: se cambian por un marcador.
+        const limpio = bloque.replace(/\$\{[^}]*\}/g, "X");
+        for (const token of limpio.match(/[^{};]+\{|\}|[^{};]+;?/g) ?? []) {
+          const t = token.trim();
+          if (t.endsWith("{")) pila.push(t.slice(0, -1).trim());
+          else if (t === "}") pila = pila.slice(0, -1);
+          else if (/^animation\s*:/.test(t)) {
+            const selector = pila.at(-1) ?? "";
+            if (pila.some((p) => p.includes("prefers-reduced-motion: reduce"))) {
+              if (/animation\s*:\s*none/.test(t)) anulados.add(selector);
+            } else if (!pila.some((p) => p.includes("prefers-reduced-motion: no-preference"))) animados.add(selector);
+          }
+        }
+        revisados += animados.size;
+        for (const selector of animados) if (!anulados.has(selector)) sinAnular.push(`${fichero}: ${selector}`);
+      }
+    }
+    expect(sinAnular).toEqual([]);
+    expect(revisados).toBeGreaterThan(0);
   });
 
   test("en globals.css cada animación está dentro de «no-preference» y la regla global apaga el resto", () => {

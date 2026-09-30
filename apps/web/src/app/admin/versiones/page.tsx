@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Versiones · Admin" };
 export default async function PaginaVersiones() {
   const versiones = await leerVersiones();
   return (
-    <main id="contenido" className="mx-auto flex max-w-4xl flex-col gap-6 px-5 py-10 md:px-8">
+    <main id="contenido" tabIndex={-1} className="mx-auto flex max-w-4xl flex-col gap-6 px-5 py-10 md:px-8">
       <div>
         <h1 className="text-4xl font-bold text-texto">Historial de versiones</h1>
         <p className="mt-2 max-w-2xl text-texto-suave">

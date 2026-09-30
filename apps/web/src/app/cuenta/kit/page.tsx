@@ -17,7 +17,7 @@ export default async function PaginaKit() {
   return (
     <div className="min-h-dvh bg-fondo">
       <CabeceraApp sesion={sesion} />
-      <main id="contenido" className="mx-auto flex max-w-5xl flex-col gap-6 px-5 py-10 md:px-8">
+      <main id="contenido" tabIndex={-1} className="mx-auto flex max-w-5xl flex-col gap-6 px-5 py-10 md:px-8">
         <div>
           <Link href="/cuenta" className="text-sm font-semibold text-acento hover:underline">
             ← Tu cuenta

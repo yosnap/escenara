@@ -12,8 +12,10 @@ import {
   comprobarPresupuestos,
   entradasDeCliente,
   ficherosDeRuta,
+  instruccionesDeAlta,
   leerManifiestoCliente,
   type MedidaRuta,
+  medidasDesfasadas,
   rutaDeClave,
   sumarKb,
   tablaPresupuestos,
@@ -79,14 +81,32 @@ console.log("\nPresupuesto de JavaScript por ruta (primera carga, gzip):");
 console.log(tablaPresupuestos(resultados));
 
 for (const ruta of topesSinRuta(medidas, presupuestos)) {
-  console.warn(`Aviso: el tope propio de «${ruta}» ya no corresponde a ninguna ruta; quítalo de presupuesto-js.json.`);
+  console.warn(`Aviso: «${ruta}» está en presupuesto-js.json pero ya no es ninguna ruta del build; quítala.`);
 }
-const fuera = resultados.filter((r) => !r.pasa);
-if (fuera.length > 0) {
+for (const aviso of medidasDesfasadas(medidas, presupuestos)) console.warn(`Aviso: ${aviso}`);
+
+const sinAlta = resultados.filter((r) => r.sinAlta);
+const pasadas = resultados.filter((r) => !r.pasa && !r.sinAlta);
+if (sinAlta.length > 0) {
+  console.error(`\n${sinAlta.length} ruta(s) nuevas sin dar de alta en el presupuesto:`);
+  for (const r of sinAlta) console.error(`  - ${instruccionesDeAlta(r.ruta, r.kb)}`);
+}
+if (pasadas.length > 0) {
   console.error(
-    `\n${fuera.length} ruta(s) superan su presupuesto de JavaScript: ${fuera.map((r) => `${r.ruta} (${r.kb} KB > ${r.topeKb} KB)`).join(", ")}.`,
+    `\n${pasadas.length} ruta(s) superan su presupuesto de JavaScript: ${pasadas.map((r) => `${r.ruta} (${r.kb} KB > ${r.topeKb} KB)`).join(", ")}.`,
   );
   console.error("Reduce el JavaScript de la ruta (carga diferida, componentes de servidor) antes de subir el tope.");
-  process.exit(1);
 }
-console.log(`\nTodas las rutas (${resultados.length}) caben en su presupuesto.`);
+if (sinAlta.length + pasadas.length > 0) {
+  // Salida de emergencia documentada (docs/procesos/medir-el-rendimiento.md): solo para no bloquear un despliegue
+  // urgente; el fallo se sigue viendo en el registro del build y hay que arreglarlo después.
+  if (process.env.PRESUPUESTO_JS_SOLO_AVISO === "1") {
+    console.warn(
+      "\nPRESUPUESTO_JS_SOLO_AVISO=1: el build sigue, pero el presupuesto NO se cumple. Arréglalo cuanto antes.",
+    );
+  } else {
+    process.exit(1);
+  }
+} else {
+  console.log(`\nTodas las rutas (${resultados.length}) caben en su presupuesto.`);
+}

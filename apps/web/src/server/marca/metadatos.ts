@@ -22,6 +22,22 @@ export const METADATOS_DE_ESCENARA: Metadata = {
   manifest: "/manifest.webmanifest",
 };
 
+/** Icono de Apple de Escenara. `/apple-touch-icon.png` es una ruta que decide cuál servir (`destinoIconoApple`). */
+export const ICONO_APPLE_DE_ESCENARA = "/marca-escenara/apple-touch-icon.png";
+
+/**
+ * Qué icono sirve `/apple-touch-icon.png`, que iOS pide por su cuenta aunque la página no lo declare:
+ * - con marca publicada que tiene icono de 192 px, **el de la marca**;
+ * - con marca publicada que tiene logotipo pero no icono, **ninguno** (404): mejor el icono genérico del sistema que el
+ *   de Escenara en una instalación con otra marca;
+ * - sin marca publicada, o con una marca sin logotipos (que en la interfaz usa el símbolo de Escenara), **el de Escenara**.
+ */
+export function destinoIconoApple(marca: MarcaAplicada | null): string | null {
+  if (marca?.iconos.icono192) return marca.iconos.icono192;
+  if (marca && Object.values(marca.logos).some(Boolean)) return null;
+  return ICONO_APPLE_DE_ESCENARA;
+}
+
 /** Imagen para compartir de Escenara (1200 × 630), pintada con Manrope. */
 export const IMAGEN_SOCIAL_DE_ESCENARA = "/imagen-social.png";
 
