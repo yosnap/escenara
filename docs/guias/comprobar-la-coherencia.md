@@ -16,9 +16,12 @@ Quien administra elige el modo de cada comprobación en **Admin › Ajustes › 
 - **Apagada**: no se mira nada y no se gasta nada.
 - **En sombra**: la comprobación se hace, se guarda con su evidencia y **te enseña su veredicto, pero no bloquea
   nada**. Decides tú, siempre.
-- **Activa**: su veredicto **decide de verdad**. Hoy eso solo tiene un efecto en el parecido de una persona (la
-  vista que pasa cuenta como foto de referencia y la que no, no). En las otras siete, aunque se pusieran en
-  Activa, la aplicación no bloquea ninguna exportación ni cambia el estado de la escena.
+- **Activa**: su veredicto **decide de verdad**, pero hoy solo el del parecido tiene efecto: la vista generada que
+  pasa cuenta como foto de referencia y la que no, no. **En sombra el parecido no cuenta**: se comprueba, se guarda
+  y se enseña, pero la vista no cubre por él. En las otras siete, aunque se pusieran en Activa, la aplicación no
+  bloquea ninguna exportación ni cambia el estado de la escena. En Admin › Ajustes › Coherencia, la opción Activa
+  lo dice en cada comprobación: «Activa (decide la cobertura)» para el parecido y «Activa (todavía solo informa)»
+  para el resto.
 
 ## Lo primero: no cambia nada sin que tú lo pidas
 
@@ -46,6 +49,10 @@ El veredicto puede ser:
 | **Es la misma persona** | Los rasgos coinciden y hay poca duda | Esa vista **cuenta** como foto de referencia y deja de faltar |
 | **Mírala tú** | Hay parecido, pero no la confianza suficiente para decidir solo | No cuenta todavía; vuelve a comprobarla o sube una foto real |
 | **No parece la misma persona** | Algún rasgo estable es claramente distinto | No cuenta, y no conviene usarla para guiar la generación |
+
+Todo esto vale cuando el parecido está en **Activa**, que es como viene de fábrica. Si quien administra lo pone
+**en sombra**, la ficha lo dice y ningún veredicto cuenta: el parecido se guarda y se enseña, pero una vista generada
+no pasa a cubrir por él.
 
 Debajo siempre sale **por qué**: la probabilidad y lo que se miró. Un veredicto que no puedes discutir no sirve de
 nada. Con «Mírala tú» **no hay ningún botón para decidir a mano**: solo **«Volver a comprobar»**, y la vista no
@@ -78,9 +85,9 @@ En la pantalla de revisión de un proyecto, cada escena tiene ahora **«Comproba
 
 De fábrica las tres van **en sombra**, y eso quiere decir exactamente lo que parece: **no bloquean la exportación,
 no cambian el estado de la escena y no aceptan ni rechazan nada**. Aparecen con su veredicto («Encaja», «Míralo tú»
-o «No encaja»), su evidencia y su confianza, y ahí se quedan: decides tú. El panel de la escena dice la verdad de cada
-modo, fila por fila: «En sombra: informa y no decide nada»; en Activa, «decide de verdad» solo en el parecido, y en las
-demás, «está en Activa, pero esta comprobación todavía solo informa».
+o «No encaja»), su evidencia y su confianza, y ahí se quedan: decides tú. En la revisión de una escena, **ninguna**
+fila decide nada, esté en sombra o en Activa, y el panel lo dice: «Aquí solo informa». El parecido solo decide en la
+ficha del personaje. (En una escena de dos personajes se comprueba una vez por cara, y también solo informa.)
 
 ### Los dos botones que de verdad importan
 

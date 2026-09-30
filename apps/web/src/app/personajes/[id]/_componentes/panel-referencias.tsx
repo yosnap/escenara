@@ -156,6 +156,7 @@ export function PanelReferencias({
             identidad={referencia.identidad}
             motivo={referencia.identidadMotivo}
             inventado={personaje.inventado}
+            decide={personaje.cobertura?.identidadDecide ?? true}
             ocupado={ocupado}
             onComprobar={() => onIdentidad(referencia.id)}
           />

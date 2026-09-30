@@ -59,8 +59,9 @@ export const esModoCoherencia = (v: unknown): v is ModoCoherencia => MODOS_COHER
 
 /**
  * Las comprobaciones que, en modo `activa`, deciden algo de verdad. **Solo el parecido (identidad)**: una vista
- * generada que no encaja con la cara de referencia deja de contar en la cobertura del personaje. Las demás, aunque
- * estén en Activa, todavía solo informan: no bloquean nada hasta que haya datos de su acierto.
+ * generada que encaja con la cara de referencia cuenta en la cobertura del personaje **únicamente en Activa**; en
+ * sombra el veredicto se guarda y se enseña, y la vista no cubre por él. Las demás, aunque estén en Activa,
+ * todavía solo informan: no bloquean nada hasta que haya datos de su acierto.
  */
 export const COMPROBACIONES_QUE_DECIDEN: readonly Comprobacion[] = ["identidad"];
 
@@ -72,15 +73,46 @@ export function efectoDeComprobacion(comprobacion: Comprobacion, modo: ModoCoher
   return modo === "activa" && COMPROBACIONES_QUE_DECIDEN.includes(comprobacion) ? "decide" : "informa";
 }
 
+/**
+ * De **qué** habla el veredicto. El parecido de una vista de la ficha del personaje decide la cobertura; el de una
+ * escena (dos personajes) solo se enseña en su revisión y no toca ninguna cobertura.
+ */
+export type ContextoDelVeredicto = "ficha" | "escena";
+
 /** Frase corta, en castellano, de lo que hace esta comprobación en su modo. Es lo que se lee junto a su veredicto. */
-export function textoDeEfecto(comprobacion: Comprobacion, modo: ModoCoherencia): string {
+export function textoDeEfecto(
+  comprobacion: Comprobacion,
+  modo: ModoCoherencia,
+  contexto: ContextoDelVeredicto = "ficha",
+): string {
   const efecto = efectoDeComprobacion(comprobacion, modo);
   if (efecto === "apagada") return "Apagada: no se comprueba.";
-  if (efecto === "decide")
-    return "Activa: decide de verdad. Una vista que no encaja no cuenta en la cobertura del personaje.";
+  if (contexto === "escena") return "Aquí solo informa: en la revisión de una escena no bloquea ni cambia nada.";
+  if (efecto === "decide") {
+    return "Activa: decide la cobertura. Una vista generada que no encaja no cuenta como foto de referencia.";
+  }
   return modo === "activa"
     ? "Está en Activa, pero esta comprobación todavía solo informa: no decide nada."
     : "En sombra: informa y no decide nada.";
+}
+
+/** Descripción veraz del modo **para una comprobación concreta**. */
+export function descripcionDeModoPara(comprobacion: Comprobacion, modo: ModoCoherencia): string {
+  if (modo === "apagada") return "No se percibe, no se pregunta y no se gasta nada.";
+  if (modo === "sombra") {
+    return "Se decide y se registra con su evidencia, y su veredicto no bloquea ni cambia nada, tampoco la cobertura. Sirve para medirlo.";
+  }
+  return efectoDeComprobacion(comprobacion, modo) === "decide"
+    ? "Su veredicto decide la cobertura: una vista generada solo cuenta como foto de referencia si encaja. Enciéndelo cuando el panel de acierto diga que acierta."
+    : "Hoy esta comprobación registra y enseña igual que en sombra: la aplicación todavía no bloquea nada con su veredicto.";
+}
+
+/** Etiqueta del modo **para una comprobación concreta**: no todas hacen lo mismo en Activa. */
+export function nombreDeModoPara(comprobacion: Comprobacion, modo: ModoCoherencia): string {
+  if (modo !== "activa") return NOMBRE_MODO[modo];
+  return efectoDeComprobacion(comprobacion, modo) === "decide"
+    ? "Activa (decide la cobertura)"
+    : "Activa (todavía solo informa)";
 }
 
 /**
@@ -137,7 +169,7 @@ export const NOMBRE_VEREDICTO: Record<VeredictoCoherencia, string> = {
 export const NOMBRE_MODO: Record<ModoCoherencia, string> = {
   apagada: "Apagada",
   sombra: "En sombra (registra, no decide)",
-  activa: "Activa (su veredicto decide)",
+  activa: "Activa",
 };
 
 /**

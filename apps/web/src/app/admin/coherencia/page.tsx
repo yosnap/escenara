@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Aviso } from "@/components/ui/feedback";
-import { MUESTRA_MINIMA, NOMBRE_MODO } from "@/lib/coherencia";
+import { MUESTRA_MINIMA, nombreDeModoPara } from "@/lib/coherencia";
 import { NOMBRE_REFERENCIA_IDENTIDAD } from "@/lib/direccion";
 import { aciertoPorComprobacion } from "@/server/coherencia/registro";
 import { compararReferenciasDeIdentidad } from "@/server/direccion/metrica-identidad";
@@ -65,7 +65,7 @@ export default async function PaginaCoherencia() {
               {filas.map((fila) => (
                 <tr key={fila.comprobacion} className="border-t border-borde/60">
                   <td className="p-3 font-semibold text-texto">{fila.nombre}</td>
-                  <td className="p-3 text-texto-suave">{NOMBRE_MODO[fila.modo]}</td>
+                  <td className="p-3 text-texto-suave">{nombreDeModoPara(fila.comprobacion, fila.modo)}</td>
                   <td className="p-3 text-texto-suave">{fila.total}</td>
                   <td className="p-3 text-texto-suave">{fila.corregidas}</td>
                   <td className="p-3 text-texto-suave">

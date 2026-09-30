@@ -30,24 +30,26 @@ const pintar = (decisiones: DecisionVista[]) =>
   );
 
 describe("panel de coherencia de la escena", () => {
-  test("ya no afirma que ninguna comprobación decide nada", () => {
+  test("no afirma que ninguna decida nada de forma genérica y dice dónde decide el parecido", () => {
     const html = pintar([]);
     expect(html).not.toContain("no deciden nada");
-    expect(html).toContain("únicamente la de <strong>parecido</strong> decide de verdad");
+    expect(html).toContain("<strong>ninguna</strong>");
+    expect(html).toContain("solo decide en la ficha del personaje");
   });
 
-  test("una comprobación en sombra dice que informa y no decide", () => {
-    expect(pintar([decision({ modo: "sombra" })])).toContain("En sombra: informa y no decide nada.");
+  test("una comprobación en sombra, en la escena, solo informa", () => {
+    expect(pintar([decision({ modo: "sombra" })])).toContain("Aquí solo informa");
   });
 
-  test("el parecido en Activa dice que decide de verdad", () => {
+  test("el parecido en Activa, en la escena, no dice que decida la cobertura: solo informa", () => {
     const html = pintar([decision({ comprobacion: "identidad", modo: "activa", nombre: "Es la misma persona" })]);
-    expect(html).toContain("Activa: decide de verdad");
+    expect(html).toContain("Aquí solo informa");
+    expect(html).not.toContain("Activa: decide la cobertura");
   });
 
-  test("otra comprobación en Activa todavía solo informa", () => {
+  test("otra comprobación en Activa también solo informa en la escena", () => {
     const html = pintar([decision({ comprobacion: "guion", modo: "activa" })]);
-    expect(html).toContain("todavía solo informa");
-    expect(html).not.toContain("Activa: decide de verdad");
+    expect(html).toContain("Aquí solo informa");
+    expect(html).not.toContain("decide la cobertura");
   });
 });

@@ -39,10 +39,13 @@ export function EstadoIdentidad({
   identidad,
   motivo,
   inventado,
+  decide = true,
   ocupado,
   onComprobar,
 }: {
   identidad: IdentidadReferencia;
+  /** `false` cuando el parecido está en sombra: se guarda y se enseña, pero no cuenta para la cobertura. */
+  decide?: boolean;
   motivo: string;
   /** En un personaje inventado su cara **es** la generada: el veredicto informa, pero no le quita la cobertura. */
   inventado: boolean;
@@ -53,7 +56,11 @@ export function EstadoIdentidad({
     <div className="flex flex-col gap-1">
       <p className={`text-xs font-bold ${TONO[identidad]}`}>{TITULO[identidad]}</p>
       <p className="text-xs text-texto-suave">
-        {inventado ? "Es un personaje inventado: sus imágenes cuentan igualmente." : EFECTO[identidad]}
+        {inventado
+          ? "Es un personaje inventado: sus imágenes cuentan igualmente."
+          : decide
+            ? EFECTO[identidad]
+            : "El parecido está en sombra en esta instalación: se registra y se enseña, pero no decide si esta vista cuenta como foto de referencia."}
       </p>
       {motivo !== "" && <p className="text-xs text-texto-suave">{motivo}</p>}
       <Boton variante="secundario" tamano="sm" disabled={ocupado} onClick={onComprobar} className="self-start">

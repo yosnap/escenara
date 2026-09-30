@@ -50,10 +50,10 @@ export function PanelCoherencia({
         </Boton>
       </div>
       <p className="text-sm text-texto-suave">
-        Ninguna de estas comprobaciones bloquea la exportación ni cambia el estado de la escena. En sombra solo
-        informan; en Activa, únicamente la de <strong>parecido</strong> decide de verdad (una vista del personaje que no
-        encaja no cuenta en su cobertura) y las demás siguen solo informando. Se registran para ver si aciertan, y para
-        eso hace falta que digas si tienen razón.
+        Aquí <strong>ninguna</strong> de estas comprobaciones bloquea la exportación ni cambia el estado de la escena,
+        esté en sombra o en Activa. El parecido solo decide en la ficha del personaje (si una vista generada cuenta como
+        foto de referencia, y solo en Activa). Se registran para ver si aciertan, y para eso hace falta que digas si
+        tienen razón.
       </p>
 
       {decisiones.length === 0 ? (
@@ -82,7 +82,7 @@ export function PanelCoherencia({
               </div>
               <p className="text-sm text-texto-suave">{decision.evidencia}</p>
               <p className="text-xs font-semibold text-texto-suave">
-                {textoDeEfecto(decision.comprobacion, decision.modo)}
+                {textoDeEfecto(decision.comprobacion, decision.modo, "escena")}
               </p>
               <p className="text-xs text-texto-suave">
                 Confianza {Math.round(decision.confianza * 100)} % (umbral {Math.round(decision.umbral * 100)} %). La
