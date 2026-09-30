@@ -114,7 +114,7 @@ function efectos(lt) {
   lista.push({ tipo: "pop", t: momento(e["02"], "claves"), g: 0.45 });
   for (const w of ["plano", "angulo", "camara", "accion", "guion"])
     lista.push({ tipo: "clic", t: momento(e["05"], w), g: 0.6 });
-  lista.push({ tipo: "pop", t: momento(e["05"], "trend"), g: 0.45 });
+  lista.push({ tipo: "pop", t: momento(e["05"], "tren") /* «trend»: whisper a veces no oye la d final */, g: 0.45 });
   lista.push({ tipo: "campanita", t: momento(e["06"], "confirmacion"), g: 0.4 });
   lista.push({ tipo: "pop", t: momento(e["07"], "mejor"), g: 0.45 });
   for (const w of ["vertical", "cuadrado", "apaisado"]) lista.push({ tipo: "clic", t: momento(e["08"], w), g: 0.6 });

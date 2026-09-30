@@ -32,13 +32,13 @@ Código abierto en GitHub: https://github.com/yosnap/escenara
 
 Capítulos
 0:00 Qué es Escenara
-0:11 Tus claves, tu gasto y tu personaje
-0:28 Producto, lugar y dirección del clip
-0:45 Coste antes de generar y comparar modelos
-0:56 Montaje, formatos y comunidad
-1:11 Tus datos y código abierto
+0:12 Tus claves, tu gasto y tu personaje
+0:29 Producto, lugar y dirección del clip
+0:47 Coste antes de generar y comparar modelos
+0:59 Montaje, formatos y comunidad
+1:14 Tus datos y código abierto
 
-Locución con la voz del autor. Música y efectos de sonido originales, sintetizados para este vídeo.
+Locución: voz sintética «Martin Osborne» de ElevenLabs. Música y efectos de sonido originales, sintetizados para este vídeo.
 
 ## Etiquetas
 
@@ -48,4 +48,4 @@ Escenara, código abierto, open source, vídeo con IA, personajes con IA, person
 
 - Idioma del vídeo y de los subtítulos: español (España).
 - Subtítulos: subir `escenara-presentacion.srt` con la versión sin subtítulos incrustados.
-- Declaración de contenido alterado o sintético: las capturas son de la interfaz real; los fotogramas ilustrados de ejemplo (personaje «Nora») se generaron con IA dentro de la propia aplicación.
+- Declaración de contenido alterado o sintético: la locución es una voz sintética (ElevenLabs); las capturas son de la interfaz real; los fotogramas ilustrados de ejemplo (personaje «Nora») se generaron con IA dentro de la propia aplicación.

@@ -4,7 +4,8 @@ Nada del vídeo usa pistas comerciales ni bancos de sonido o imagen de terceros.
 
 | Material | Procedencia | Licencia |
 |---|---|---|
-| Locución | Voz del autor del proyecto, generada en local con su perfil de Voicebox («Mi voz»). No se usa ninguna otra voz ni TTS. | Del autor; uso para la presentación de Escenara. |
+| Locución | Voz sintética de ElevenLabs de la biblioteca compartida (Voice Library): «Martin Osborne - Polished and Energetic», voice_id `D7dkYvH17OKLgp4SLulf`, publicada por su autor en la biblioteca; modelo `eleven_multilingual_v2`. Una sola voz en todo el vídeo. | Según los términos de ElevenLabs y el plan del propietario: el uso comercial y la atribución dependen de ese plan, que no se puede consultar con la clave del proyecto (sin permisos de lectura de usuario). Revisarlo antes de publicar. |
+| Locución anterior (retirada) | Voz del autor con Voicebox; conservada solo en `salida/anterior-voicebox/`, no se usa en el vídeo. | Del autor. |
 | Música | Original, sintetizada por `scripts/musica.mjs` + `scripts/sintesis.mjs` (osciladores, ruido y filtros; sin muestras). | Parte del repositorio (misma licencia que el código). |
 | Efectos (whoosh, pop, clic, campanita, subidón, impacto) | Originales, sintetizados por `scripts/sintesis.mjs`. | Parte del repositorio. |
 | Capturas de la interfaz | `docs/assets/capturas` (aplicación real). Selección y motivos de exclusión en `capturas.json`. | Parte del repositorio. |

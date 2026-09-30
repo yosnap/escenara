@@ -116,7 +116,8 @@ function main() {
       ]);
     comprobarVideo(salida, tiempos.total);
   }
-  if (!soloComprobar) remotion(["still", ENTRADA, "Miniatura", MINIATURA]);
+  // La miniatura no depende de la voz: --sin-miniatura conserva la ya renderizada
+  if (!soloComprobar && !process.argv.includes("--sin-miniatura")) remotion(["still", ENTRADA, "Miniatura", MINIATURA]);
   const m = sonda(MINIATURA).streams[0];
   const kb = statSync(MINIATURA).size / 1024;
   console.log(`miniatura-youtube.png: ${m.width}×${m.height}, ${kb.toFixed(0)} KB`);
