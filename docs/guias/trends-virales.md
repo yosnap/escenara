@@ -21,6 +21,22 @@ Si un trend caduca entre la elección y la confirmación, el servidor bloquea la
 
 Quien administra abre **Admin › Plantillas**, crea una plantilla de tipo «Trend» y define nombre y descripción en castellano, texto de composición y variables, plataforma de referencia, duración objetivo, si permite habla y motivo de la versión. La referencia informativa del admin debe ser una URL HTTPS sin credenciales. Guarda primero en **revisión** y comprueba la vista del catálogo de componentes. La edición del texto, las variables o el permiso de habla crea otra versión y conserva las anteriores para los trabajos ya hechos.
 
+Qué pide cada campo del diálogo de un trend:
+
+| Campo | ¿Obligatorio? | Para qué sirve |
+| --- | --- | --- |
+| Vigencia | Sí | «En revisión» (no sale a los usuarios), «Vigente» (sale en Crear y en las escenas) o «Caducada». |
+| Plataforma de origen | No | Nota informativa de dónde nació el formato, por ejemplo «TikTok». No se envía al proveedor ni la ven los usuarios. Vacía es válido. |
+| Duración objetivo (s) | Sí | Entre 1 y 600. Es la duración que se fija al elegir el trend y la que se compara con la del proyecto. |
+| URL de referencia | No | Un ejemplo del formato para quien administra. Solo HTTPS, sin usuario ni contraseña, hasta 500 caracteres. |
+| Permitir habla | Sí (apagado por defecto) | Apagado: el guion nunca entra en el prompt del clip. |
+| Nombre y descripción | Sí | La descripción, en castellano, es lo que lee el usuario al elegir el trend. |
+| Texto de la plantilla | Sí | El prompt en inglés, con las variables como `{{escena}}`. Entre 10 y 1200 caracteres. |
+| Mínimo de fotos de referencia | Un número | Cuántas fotos exige el trend; 0 = ninguna. |
+| Modelos permitidos | No | Identificadores separados por comas. Vacío = cualquier modelo de animación. El valor gris que se ve al principio es solo un ejemplo, no un valor guardado. |
+| Variables (JSON) | Sí | Al menos una, con nombre, tipo, etiqueta y si es obligatoria. Todas tienen que usarse en el texto y el texto no puede usar ninguna que no declares. |
+| Motivo del cambio | Solo si cambias texto, variables o restricciones | Al menos 4 caracteres. Queda en el historial de versiones. |
+
 ![Vigencia y permiso de habla del trend en el catálogo de componentes](../assets/capturas/0.30.0-trends-revision-claro.jpg)
 
 Después de una prueba real aprobada por el propietario, puede poner la plantilla **vigente**. Cuando el formato envejezca, usa «Caducar trend». Una caducada no se edita ni genera: se duplica, se revisa la nueva versión y se publica cuando corresponda. El interruptor de **Admin › Ajustes** oculta todos los trends sin desplegar.
