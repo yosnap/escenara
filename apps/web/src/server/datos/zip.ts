@@ -70,17 +70,17 @@ export class EscritorZip {
     this.desplazamiento += datos.byteLength;
   }
 
-  async agregar(nombre: string, datos: Uint8Array): Promise<void> {
+  /** Cabecera local de una entrada, con su CRC y su tamaño ya conocidos. */
+  private async cabecera(nombre: string, crc: number, tamano: number): Promise<void> {
     if (this.cerrado) throw new ErrorZip("El paquete ya está cerrado.");
     if (!esNombreSeguro(nombre)) throw new ErrorZip(`Nombre de archivo no válido dentro del paquete: ${nombre}`);
     if (this.nombres.has(nombre)) throw new ErrorZip(`Archivo repetido dentro del paquete: ${nombre}`);
     if (this.centrales.length >= MAXIMO_ENTRADAS) throw new ErrorZip("El paquete tiene demasiados archivos.");
     const bytesNombre = new TextEncoder().encode(nombre);
-    if (datos.byteLength > LIMITE_32 || this.desplazamiento + datos.byteLength + 30 + bytesNombre.length > LIMITE_32) {
+    if (tamano > LIMITE_32 || this.desplazamiento + tamano + 30 + bytesNombre.length > LIMITE_32) {
       throw new ErrorZip("El paquete pasaría de 4 GiB.");
     }
     this.nombres.add(nombre);
-    const crc = Bun.hash.crc32(datos) >>> 0;
     const { hora, dia } = fechaDos(this.fecha);
     const cabecera = new DataView(new ArrayBuffer(30));
     cabecera.setUint32(0, 0x04034b50, true);
@@ -90,21 +90,30 @@ export class EscritorZip {
     cabecera.setUint16(10, hora, true);
     cabecera.setUint16(12, dia, true);
     cabecera.setUint32(14, crc, true);
-    cabecera.setUint32(18, datos.byteLength, true);
-    cabecera.setUint32(22, datos.byteLength, true);
+    cabecera.setUint32(18, tamano, true);
+    cabecera.setUint32(22, tamano, true);
     cabecera.setUint16(26, bytesNombre.length, true);
     cabecera.setUint16(28, 0, true);
-    this.centrales.push({
-      nombre: bytesNombre,
-      crc,
-      tamano: datos.byteLength,
-      desplazamiento: this.desplazamiento,
-      hora,
-      dia,
-    });
+    this.centrales.push({ nombre: bytesNombre, crc, tamano, desplazamiento: this.desplazamiento, hora, dia });
     await this.escribir(new Uint8Array(cabecera.buffer));
     await this.escribir(bytesNombre);
+  }
+
+  /** Añade un archivo pequeño que ya está en memoria (`proyecto.json`, `LEEME.md`, subtítulos). */
+  async agregar(nombre: string, datos: Uint8Array): Promise<void> {
+    await this.cabecera(nombre, Bun.hash.crc32(datos) >>> 0, datos.byteLength);
     await this.escribir(datos);
+  }
+
+  /**
+   * Añade un archivo del disco **por trozos**, sin cargarlo entero en memoria. El CRC y el tamaño se calcularon al
+   * descargarlo (ver `exportacion-proyecto.ts`); aquí se comprueba que el archivo sigue midiendo lo mismo.
+   */
+  async agregarDesdeArchivo(nombre: string, ruta: string, crc: number, tamano: number): Promise<void> {
+    const archivo = Bun.file(ruta);
+    if (archivo.size !== tamano) throw new ErrorZip(`El archivo temporal de ${nombre} no mide lo esperado.`);
+    await this.cabecera(nombre, crc >>> 0, tamano);
+    for await (const trozo of archivo.stream()) await this.escribir(trozo);
   }
 
   /** Escribe el directorio central y devuelve el tamaño total del paquete. */

@@ -1,9 +1,12 @@
 "use client";
 
 import { Database } from "lucide-react";
+import { Aviso } from "@/components/ui/feedback";
 import { Campo, EntradaTexto } from "@/components/ui/field";
+import { fechaYHora } from "@/lib/fechas";
 import type { Ajustes } from "@/server/ajustes";
 import type { AjustesDatos } from "@/server/ajustes-datos";
+import type { EstadoTusDatos } from "@/server/datos/estado-admin";
 import { Seccion } from "./seccion-ajustes";
 
 /**
@@ -19,6 +22,14 @@ const CAMPOS: { clave: keyof AjustesDatos; etiqueta: string; ayuda: string; min:
       "Mientras dura, la cuenta está desactivada y su dueño puede cancelar el borrado. Pasado el plazo, el worker lo borra todo.",
     min: 1,
     max: 60,
+  },
+  {
+    clave: "borradoCuentaDiasEsperaDesconocidos",
+    etiqueta: "Días de espera a un trabajo sin respuesta al borrar una cuenta",
+    ayuda:
+      "Pasada la gracia, un trabajo «sin respuesta del proveedor» retiene el borrado estos días. Después se cancela sin cobro y el borrado sigue.",
+    min: 0,
+    max: 30,
   },
   {
     clave: "exportacionTamanoMaximoMb",
@@ -47,10 +58,12 @@ export function SeccionDatos({
   valores,
   errorDe,
   onCambio,
+  estado,
 }: {
   valores: Ajustes;
   errorDe: (campo: keyof Ajustes) => string | undefined;
   onCambio: <K extends keyof Ajustes>(clave: K, valor: Ajustes[K]) => void;
+  estado: EstadoTusDatos;
 }) {
   return (
     <Seccion
@@ -76,6 +89,41 @@ export function SeccionDatos({
           </Campo>
         ))}
       </div>
+      <EstadoDeTusDatos estado={estado} />
     </Seccion>
+  );
+}
+
+/** Lo que no puede quedarse atascado en silencio: objetos por borrar y borrados de cuenta aplazados. */
+function EstadoDeTusDatos({ estado }: { estado: EstadoTusDatos }) {
+  const limpio = estado.objetosPendientes === 0 && estado.objetosFallidos === 0 && estado.aplazados.length === 0;
+  if (limpio) return <Aviso tono="correcto">No hay archivos pendientes de borrar ni borrados de cuenta aplazados.</Aviso>;
+  return (
+    <div className="flex flex-col gap-3">
+      {(estado.objetosPendientes > 0 || estado.objetosFallidos > 0) && (
+        <Aviso tono={estado.objetosFallidos > 0 ? "error" : "aviso"}>
+          Archivos de proyectos o cuentas borrados que el almacenamiento aún no ha dejado borrar:{" "}
+          {estado.objetosPendientes} pendientes (el worker los reintenta con retroceso) y {estado.objetosFallidos}{" "}
+          fallidos tras todos los intentos (están en la tabla <code className="font-mono">storage_deletions</code>:
+          revisa el almacenamiento y vuelve a ponerlos en «pendiente»).
+        </Aviso>
+      )}
+      {estado.aplazados.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <p className="font-semibold text-texto">Borrados de cuenta que esperan más allá de su plazo</p>
+          <ul className="flex flex-col gap-2">
+            {estado.aplazados.map((a) => (
+              <li key={a.id} className="rounded-tarjeta border border-borde p-3 text-sm">
+                <p className="font-semibold text-texto">
+                  Borrado <code className="font-mono">{a.id.slice(0, 8)}</code> · plazo {fechaYHora(a.plazo)} ·{" "}
+                  {a.intentos} {a.intentos === 1 ? "intento" : "intentos"}
+                </p>
+                <p className="text-texto-suave">{a.motivo}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
   );
 }

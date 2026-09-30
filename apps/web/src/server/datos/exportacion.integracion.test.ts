@@ -192,6 +192,12 @@ describe.skipIf(!hayBaseDeDatos)("exportación del proyecto a ZIP", () => {
     );
     expect(descarga.status).toBe(404);
     expect(await errorDe(descarga)).not.toContain(id);
+    // Un identificador con forma rara (36 caracteres que no son un UUID) también es 404, no un 500.
+    const raro = "-".repeat(36);
+    const rara = await rutaDescarga.GET(pedir(ana, `/api/proyectos/${p.proyectoId}/exportaciones/${raro}/descarga`), {
+      params: Promise.resolve({ id: p.proyectoId, exportacion: raro }),
+    });
+    expect(rara.status).toBe(404);
   });
 
   test("descarga por URL temporal: dura como mucho lo que le queda al paquete y, caducado, responde 410", async () => {
@@ -307,7 +313,8 @@ describe.skipIf(!hayBaseDeDatos)("exportación del proyecto a ZIP", () => {
     const p = await proyectoProducido({ id: ana.id, esAdmin: false });
     await rutaExportaciones.POST(pedir(ana, `/api/proyectos/${p.proyectoId}/exportaciones`, "POST"), ctx(p.proyectoId));
     const roto = {
-      leer: async () => {
+      // biome-ignore lint/correctness/useYield: un almacenamiento caído falla antes de dar el primer trozo.
+      leer: async function* () {
         throw new Error("almacenamiento caído");
       },
       subir: async () => undefined,

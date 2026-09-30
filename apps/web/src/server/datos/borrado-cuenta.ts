@@ -50,6 +50,11 @@ export interface ResumenBorradoCuenta {
   creditosConsumidos: number;
   diasGracia: number;
   unicoAdministrador: boolean;
+  /**
+   * Plantillas de **otras cuentas o de la instalación** cuyo ejemplo es un medio tuyo (lo publicaste como
+   * administrador): se quedan sin ejemplo al borrar la cuenta. Las plantillas no se borran.
+   */
+  plantillasConTuEjemplo: number;
 }
 
 export interface EstadoBorradoCuenta {
@@ -57,6 +62,8 @@ export interface EstadoBorradoCuenta {
   pedidoEn: string;
   borraEn: string;
   cancelable: boolean;
+  /** Por qué espera, si el plazo ya ha pasado y el borrado no ha podido empezar. Sin datos de nadie. */
+  motivo: string | null;
 }
 
 /** Borrado abierto (programado o a medias) de una cuenta, si lo hay. */
@@ -74,15 +81,27 @@ export const vistaBorrado = (fila: FilaBorradoCuenta): EstadoBorradoCuenta => ({
   pedidoEn: fila.requestedAt.toISOString(),
   borraEn: fila.scheduledFor.toISOString(),
   cancelable: fila.state === "programado",
+  motivo: fila.lastError !== "" && fila.scheduledFor < new Date() ? fila.lastError : null,
 });
 
-async function esUnicoAdministrador(usuarioId: string): Promise<boolean> {
+/**
+ * `true` si es administrador y no queda **otro administrador sin borrado programado**. Un administrador que ya está en
+ * su gracia no cuenta: si dos lo piden a la vez, el segundo recibe el motivo en lugar de quedarse la instalación sin
+ * nadie que la gestione.
+ */
+export async function esUnicoAdministrador(usuarioId: string): Promise<boolean> {
   const [yo] = await db().select({ rol: users.role }).from(users).where(eq(users.id, usuarioId)).limit(1);
   if (yo?.rol !== "admin") return false;
   const [{ otros } = { otros: 0 }] = await db()
     .select({ otros: count() })
     .from(users)
-    .where(and(eq(users.role, "admin"), ne(users.id, usuarioId)));
+    .where(
+      and(
+        eq(users.role, "admin"),
+        ne(users.id, usuarioId),
+        sql`not exists (select 1 from account_deletions d where d.user_id = ${users.id} and d.state in ('programado', 'borrando_objetos'))`,
+      ),
+    );
   return otros === 0;
 }
 
@@ -102,6 +121,7 @@ export async function resumenBorradoCuenta(usuarioId: string): Promise<ResumenBo
     gasto,
     ajustes,
     unico,
+    ejemplos,
   ] = await Promise.all([
     db()
       .select({ id: projects.id, titulo: projects.title })
@@ -122,6 +142,11 @@ export async function resumenBorradoCuenta(usuarioId: string): Promise<ResumenBo
     comprometidoDe(usuarioId),
     leerAjustes(),
     esUnicoAdministrador(usuarioId),
+    db().execute(sql`
+      select count(*)::int as total from prompt_templates t
+      where (t.owner_id is null or t.owner_id <> ${usuarioId})
+        and t.demo_media_id in (select id from media where owner_id = ${usuarioId})
+    `),
   ]);
   return {
     proyectos: proyectos.map((p) => ({ id: p.id, titulo: p.titulo })),
@@ -136,6 +161,7 @@ export async function resumenBorradoCuenta(usuarioId: string): Promise<ResumenBo
     creditosConsumidos: gasto.consumido,
     diasGracia: ajustes.borradoCuentaDiasGracia,
     unicoAdministrador: unico,
+    plantillasConTuEjemplo: Number((ejemplos as unknown as { total: number }[])[0]?.total ?? 0),
   };
 }
 

@@ -24,6 +24,9 @@ const { and, count, eq, inArray, sql } = await import("drizzle-orm");
 const rutaProyecto = await import("@/app/api/proyectos/[id]/route");
 const rutaResumen = await import("@/app/api/proyectos/[id]/borrado/route");
 const rutaBorradoCuenta = await import("@/app/api/cuenta/borrado/route");
+const rutaExportaciones = await import("@/app/api/proyectos/[id]/exportaciones/route");
+const rutaDescarga = await import("@/app/api/proyectos/[id]/exportaciones/[exportacion]/descarga/route");
+const rutaTrabajos = await import("@/app/api/generacion/trabajos/route");
 const { exigirBaseDeDatosDePrueba } = await import("../db/bd-de-prueba");
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
 const { auth } = await import("../auth/auth");
@@ -321,11 +324,49 @@ describe.skipIf(!hayBaseDeDatos)("borrado de proyecto y de cuenta", () => {
     await (await auth()).api.signInEmail({ body: { email: ana.email, password: ana.password } });
     expect(await total(db().select({ total: count() }).from(e.sessions).where(eq(e.sessions.userId, ana.id)))).toBe(2);
 
+    // Un paquete ya preparado antes de pedir el borrado.
+    await pedirExportacionProyecto({ id: ana.id, esAdmin: false }, p.proyectoId);
+    const tomada = await tomarExportacionProyecto(WORKER);
+    if (!tomada) throw new Error("sin exportación");
+    expect(await empaquetar(tomada, WORKER)).toBe(true);
+    const beto = await nueva();
+    const deBeto = await proyectoProducido({ id: beto.id, esAdmin: false });
+
     const pedido = await pedirBorrado(ana);
     expect(pedido.status).toBe(201);
     expect(await total(db().select({ total: count() }).from(e.sessions).where(eq(e.sessions.userId, ana.id)))).toBe(1);
-    // Desactivada: la API responde como sin sesión, salvo la del propio borrado.
-    expect((await rutaProyecto.GET(pedir(ana, `/api/proyectos/${p.proyectoId}`), ctx(p.proyectoId))).status).toBe(401);
+    // Desactivada: nada de editar, generar ni gastar (403 con el motivo)…
+    const bloqueada = await rutaProyecto.GET(pedir(ana, `/api/proyectos/${p.proyectoId}`), ctx(p.proyectoId));
+    expect(bloqueada.status).toBe(403);
+    expect(await errorDe(bloqueada)).toContain("borrado programado");
+    expect(
+      (await rutaTrabajos.POST(pedir(ana, "/api/generacion/trabajos", "POST", {}), undefined as never)).status,
+    ).toBe(403);
+    // …pero sí llevarse sus proyectos: listar, pedir y descargar lo exportado.
+    expect(
+      (await rutaExportaciones.GET(pedir(ana, `/api/proyectos/${p.proyectoId}/exportaciones`), ctx(p.proyectoId)))
+        .status,
+    ).toBe(200);
+    const descarga = await rutaDescarga.GET(
+      pedir(ana, `/api/proyectos/${p.proyectoId}/exportaciones/${tomada.id}/descarga`),
+      { params: Promise.resolve({ id: p.proyectoId, exportacion: tomada.id }) },
+    );
+    expect(descarga.status).toBe(302);
+    const otra = await rutaExportaciones.POST(
+      pedir(ana, `/api/proyectos/${p.proyectoId}/exportaciones`, "POST"),
+      ctx(p.proyectoId),
+    );
+    expect([200, 201]).toContain(otra.status);
+    await db().delete(e.projectExports).where(eq(e.projectExports.projectId, p.proyectoId));
+    // Lo ajeno sigue siendo ajeno (404), también en la gracia.
+    expect(
+      (
+        await rutaExportaciones.GET(
+          pedir(ana, `/api/proyectos/${deBeto.proyectoId}/exportaciones`),
+          ctx(deBeto.proyectoId),
+        )
+      ).status,
+    ).toBe(404);
     const estado = await rutaBorradoCuenta.GET(pedir(ana, "/api/cuenta/borrado"));
     expect(((await estado.json()) as { borrado: { cancelable: boolean } }).borrado.cancelable).toBe(true);
     // Antes del plazo, el worker no toca nada.
@@ -484,9 +525,21 @@ describe.skipIf(!hayBaseDeDatos)("borrado de proyecto y de cuenta", () => {
       .select()
       .from(e.accountDeletions)
       .where(eq(e.accountDeletions.state, "borrando_objetos"));
-    expect(aMedias?.pendingKeys).toEqual([primera]);
+    // La clave pendiente está apuntada en `storage_deletions` (no en un registro de texto), con su retroceso.
+    const pendientes = await db()
+      .select()
+      .from(e.storageDeletions)
+      .where(eq(e.storageDeletions.accountDeletionId, aMedias?.id ?? ""));
+    expect(pendientes.map((p) => p.storageKey)).toEqual([primera]);
+    expect(pendientes[0]?.nextAttemptAt.getTime()).toBeGreaterThan(Date.now());
     expect(await existe(primera)).toBe(true);
+    // El registro que sobrevive a la cuenta no lleva su identificador en ningún sitio (ni en claves de objetos).
+    expect(JSON.stringify(aMedias)).not.toContain(ana.id);
 
+    await db()
+      .update(e.storageDeletions)
+      .set({ nextAttemptAt: new Date(Date.now() - 1000) })
+      .where(eq(e.storageDeletions.accountDeletionId, aMedias?.id ?? ""));
     await db()
       .update(e.accountDeletions)
       .set({ availableAt: new Date(Date.now() - 1000) })
@@ -496,5 +549,19 @@ describe.skipIf(!hayBaseDeDatos)("borrado de proyecto y de cuenta", () => {
     const despues = await agregado("modelo-de-prueba", "consumo");
     expect(despues.creditos - antes.creditos).toBe(32);
     expect((await total(db().select({ total: count() }).from(e.consentEvidence))) - pruebasAntes).toBe(4);
+    const [final] = await db()
+      .select()
+      .from(e.accountDeletions)
+      .where(eq(e.accountDeletions.id, aMedias?.id ?? ""));
+    expect(final?.orphanObjects).toBe(0);
+    expect(JSON.stringify(final)).not.toContain(ana.id);
+    expect(
+      await total(
+        db()
+          .select({ total: count() })
+          .from(e.storageDeletions)
+          .where(eq(e.storageDeletions.accountDeletionId, final?.id ?? "")),
+      ),
+    ).toBe(0);
   });
 });

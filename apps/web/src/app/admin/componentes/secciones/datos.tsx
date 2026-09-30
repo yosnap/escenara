@@ -121,6 +121,7 @@ export function SeccionDatos() {
     creditosConsumidos: 412,
     diasGracia: 7,
     unicoAdministrador: false,
+    plantillasConTuEjemplo: 2,
   });
   return (
     <Seccion

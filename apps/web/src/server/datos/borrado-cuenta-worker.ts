@@ -1,4 +1,5 @@
-import { and, count, eq, isNotNull, ne, sql } from "drizzle-orm";
+import { and, count, eq, isNotNull, sql } from "drizzle-orm";
+import { leerAjustes } from "../ajustes";
 import { borrarObjeto } from "../almacenamiento";
 import { db } from "../db/cliente";
 import {
@@ -18,8 +19,11 @@ import {
   scenes,
   users,
 } from "../db/esquema";
+import { cerrarTrabajoYGasto } from "../presupuesto/reserva";
+import { esUnicoAdministrador } from "./borrado-cuenta";
+import { apuntarObjetosPorBorrar, borrarObjetosApuntados, objetosDeLaCuenta } from "./borrado-de-objetos";
 import { agregarGastoDeCuenta, archivarPruebasDeCuenta } from "./retencion";
-import { cerrarTrabajosAntesDeBorrar, enMarchaEnElProveedor } from "./trabajos-al-borrar";
+import { cerrarTrabajosDeCuentaAntesDeBorrar } from "./trabajos-al-borrar";
 
 /**
  * Borrado de la cuenta en el worker, pasado el periodo de gracia. Dos fases, las dos **idempotentes**:
@@ -37,7 +41,6 @@ import { cerrarTrabajosAntesDeBorrar, enMarchaEnElProveedor } from "./trabajos-a
 const MS_TOMA = 15 * 60_000;
 const MS_APLAZAMIENTO = 30 * 60_000;
 const MS_REINTENTO_OBJETOS = 10 * 60_000;
-export const MAXIMO_INTENTOS_OBJETOS = 5;
 
 const detalle = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
@@ -72,17 +75,53 @@ async function soltar(id: string, workerId: string, cambios: Partial<typeof acco
     .where(and(eq(accountDeletions.id, id), eq(accountDeletions.lockedBy, workerId)));
 }
 
-async function aplazar(id: string, workerId: string, motivo: string): Promise<"aplazado"> {
-  await soltar(id, workerId, { availableAt: new Date(Date.now() + MS_APLAZAMIENTO), lastError: motivo });
-  console.info(`[datos] borrado de cuenta ${id} aplazado: ${motivo}`);
+/**
+ * Aplaza el borrado con retroceso (30 min, 1 h, 2 h… hasta 12 h) y deja el motivo, que se ve en `/cuenta/borrado` y en
+ * Admin › Ajustes › Tus datos. El motivo nunca lleva datos de la cuenta.
+ */
+async function aplazar(fila: FilaBorradoCuenta, workerId: string, motivo: string): Promise<"aplazado"> {
+  const espera = Math.min(MS_APLAZAMIENTO * 2 ** Math.max(0, fila.attempts - 1), 12 * 3600_000);
+  await soltar(fila.id, workerId, { availableAt: new Date(Date.now() + espera), lastError: motivo });
+  console.info(`[datos] borrado de cuenta ${fila.id} aplazado: ${motivo}`);
   return "aplazado";
 }
 
-/** Lo que impide empezar: se dice sin datos de la cuenta, porque queda en el registro. */
-async function motivoParaEsperar(usuarioId: string): Promise<string | null> {
-  const trabajos = await db().select().from(generationJobs).where(eq(generationJobs.userId, usuarioId));
-  const enMarcha = enMarchaEnElProveedor(trabajos).length;
-  if (enMarcha > 0) return `${enMarcha} trabajo(s) en el proveedor`;
+/**
+ * Trabajos «sin respuesta del proveedor» de la cuenta. Pasados los días de espera extra tras la gracia, se cierran como
+ * cancelados **sin cobro** (reserva liberada, consumo 0) y el borrado sigue.
+ */
+async function cerrarDesconocidosVencidos(fila: FilaBorradoCuenta, usuarioId: string): Promise<number> {
+  const { borradoCuentaDiasEsperaDesconocidos: dias } = await leerAjustes();
+  if (Date.now() < fila.scheduledFor.getTime() + dias * 24 * 3600_000) return 0;
+  const desconocidos = await db()
+    .select({ id: generationJobs.id })
+    .from(generationJobs)
+    .where(and(eq(generationJobs.userId, usuarioId), eq(generationJobs.state, "desconocido")))
+    .limit(500);
+  let cerrados = 0;
+  for (const t of desconocidos) {
+    const hecho = await cerrarTrabajoYGasto(
+      t.id,
+      eq(generationJobs.state, "desconocido"),
+      {
+        state: "cancelado",
+        failureReason: "cancelado",
+        errorMessage: "Cancelado sin cobro al borrar la cuenta: el proveedor no llegó a responder en el plazo.",
+        lockedBy: null,
+        lockedUntil: null,
+        finishedAt: new Date(),
+      },
+      0,
+      "Cancelado sin cobro al borrar la cuenta: sin respuesta del proveedor pasado el plazo.",
+    );
+    if (hecho) cerrados++;
+  }
+  return cerrados;
+}
+
+/** Lo que impide empezar: se dice sin datos de la cuenta, porque queda en el registro y se enseña. */
+async function motivoParaEsperar(fila: FilaBorradoCuenta, usuarioId: string): Promise<string | null> {
+  await cerrarDesconocidosVencidos(fila, usuarioId);
   const [montajes, paquetes, ejecuciones, revisiones] = await Promise.all([
     db()
       .select({ total: count() })
@@ -105,10 +144,16 @@ async function motivoParaEsperar(usuarioId: string): Promise<string | null> {
       .where(and(eq(projects.userId, usuarioId), eq(reviewResults.state, "reservado"))),
   ]);
   const ocupados = (montajes[0]?.total ?? 0) + (paquetes[0]?.total ?? 0);
-  if (ocupados > 0) return `${ocupados} montaje(s) o exportación(es) preparándose`;
-  if ((ejecuciones[0]?.total ?? 0) + (revisiones[0]?.total ?? 0) > 0) return "gasto de texto o de revisión sin cerrar";
-  const { siguenAbiertos } = await cerrarTrabajosAntesDeBorrar(trabajos, "al borrar la cuenta");
-  if (siguenAbiertos > 0) return `${siguenAbiertos} reserva(s) de trabajos sin poder liberar`;
+  if (ocupados > 0) return `Hay ${ocupados} montaje(s) o exportación(es) preparándose: se espera a que terminen.`;
+  if ((ejecuciones[0]?.total ?? 0) + (revisiones[0]?.total ?? 0) > 0) {
+    return "Hay un gasto de texto o de revisión sin cerrar: el worker lo cierra en unos minutos.";
+  }
+  const { enMarcha, siguenAbiertos } = await cerrarTrabajosDeCuentaAntesDeBorrar(usuarioId, "al borrar la cuenta");
+  if (enMarcha > 0) {
+    return `Hay ${enMarcha} trabajo(s) en el proveedor o sin respuesta: se espera a que terminen (los que sigan sin respuesta se cancelan sin cobro pasados los días de espera).`;
+  }
+  if (siguenAbiertos > 0)
+    return `Hay ${siguenAbiertos} reserva(s) de trabajos que no se han podido liberar: tiene que resolverlo quien administra.`;
   return null;
 }
 
@@ -158,14 +203,20 @@ async function borrarFilas(fila: FilaBorradoCuenta, usuarioId: string): Promise<
       );
       await tx.execute(sql`delete from verifications where identifier = ${usuario.email} or value = ${usuarioId}`);
     }
+    // Las plantillas de la instalación que usaban un ejemplo suyo se quedan sin ejemplo (nunca se tocan medios ajenos).
+    await tx.execute(sql`
+      update prompt_templates set demo_media_id = null, demo_set_by = null
+      where demo_media_id in (select id from media where owner_id = ${usuarioId})
+    `);
+    // Los objetos se apuntan aquí: si algo falla después, el worker sabe qué falta aunque la cuenta ya no exista.
+    await apuntarObjetosPorBorrar(tx, claves, "cuenta", fila.id);
     // La cascada se lleva el resto; `account_deletions.user_id` queda a nulo y el registro sobrevive sin cuenta.
     await tx.delete(users).where(eq(users.id, usuarioId));
     await tx
       .update(accountDeletions)
       .set({
         state: "borrando_objetos",
-        pendingKeys: claves,
-        summary: resumen,
+        summary: { ...resumen, objetos: claves.length },
         rowsDeletedAt: new Date(),
         availableAt: new Date(),
         // Los intentos de la fase de objetos se cuentan desde aquí.
@@ -177,46 +228,37 @@ async function borrarFilas(fila: FilaBorradoCuenta, usuarioId: string): Promise<
   });
 }
 
-/** Fase 2: los objetos. Lo que falla se queda en `pending_keys` para el siguiente intento. */
+/**
+ * Fase 2: los objetos apuntados en `storage_deletions`. Se borran los que tocan; los que fallan esperan su retroceso
+ * (también los reintenta el barrido general). Termina cuando no queda ninguno pendiente; los que agotaron los intentos
+ * se cuentan como huérfanos y se ven en Admin › Ajustes › Tus datos.
+ */
 async function borrarObjetos(
   fila: FilaBorradoCuenta,
   workerId: string,
   borrar: (clave: string) => Promise<void>,
 ): Promise<"completado" | "reintentar"> {
-  const [actual] = await db().select().from(accountDeletions).where(eq(accountDeletions.id, fila.id)).limit(1);
-  const pendientes = actual?.pendingKeys ?? [];
-  const fallidas: string[] = [];
-  let borradas = 0;
-  for (const clave of pendientes) {
-    try {
-      await borrar(clave);
-      borradas++;
-    } catch (error) {
-      fallidas.push(clave);
-      console.error(`[datos] no se ha podido borrar ${clave} de una cuenta borrada: ${detalle(error)}`);
-    }
+  for (;;) {
+    const r = await borrarObjetosApuntados({ cuentaId: fila.id }, borrar);
+    if (r.borrados + r.fallidos === 0) break;
   }
-  const agotado = (actual?.attempts ?? 0) >= MAXIMO_INTENTOS_OBJETOS;
-  if (fallidas.length === 0 || agotado) {
+  const { pendientes, fallidos } = await objetosDeLaCuenta(fila.id);
+  const [actual] = await db().select().from(accountDeletions).where(eq(accountDeletions.id, fila.id)).limit(1);
+  const total = Number(actual?.summary.objetos ?? 0);
+  if (pendientes === 0) {
     await soltar(fila.id, workerId, {
       state: "completado",
       completedAt: new Date(),
-      pendingKeys: [],
-      orphanKeys: fallidas,
-      deletedObjects: (actual?.deletedObjects ?? 0) + borradas,
-      lastError:
-        fallidas.length > 0 ? `${fallidas.length} objeto(s) huérfanos tras ${MAXIMO_INTENTOS_OBJETOS} intentos` : "",
+      orphanObjects: fallidos,
+      deletedObjects: Math.max(0, total - fallidos),
+      lastError: fallidos > 0 ? `${fallidos} objeto(s) no se han podido borrar tras todos los intentos` : "",
     });
-    console.info(
-      `[datos] cuenta borrada · ${fila.id} objetos=${(actual?.deletedObjects ?? 0) + borradas} huérfanos=${fallidas.length}`,
-    );
+    console.info(`[datos] cuenta borrada · ${fila.id} objetos=${total - fallidos} huérfanos=${fallidos}`);
     return "completado";
   }
   await soltar(fila.id, workerId, {
-    pendingKeys: fallidas,
-    deletedObjects: (actual?.deletedObjects ?? 0) + borradas,
     availableAt: new Date(Date.now() + MS_REINTENTO_OBJETOS),
-    lastError: `${fallidas.length} objeto(s) pendientes de borrar`,
+    lastError: `Quedan ${pendientes} archivo(s) por borrar del almacenamiento: se reintenta.`,
   });
   return "reintentar";
 }
@@ -236,15 +278,15 @@ export async function ejecutarBorradoCuenta(
         await soltar(fila.id, workerId, { state: "completado", completedAt: new Date(), rowsDeletedAt: new Date() });
         return "completado";
       }
-      const [otroAdmin] = await db()
-        .select({ id: users.id })
-        .from(users)
-        .where(and(eq(users.role, "admin"), ne(users.id, fila.userId)))
-        .limit(1);
-      const [yo] = await db().select({ rol: users.role }).from(users).where(eq(users.id, fila.userId)).limit(1);
-      if (yo?.rol === "admin" && !otroAdmin) return await aplazar(fila.id, workerId, "es el único administrador");
-      const espera = await motivoParaEsperar(fila.userId);
-      if (espera) return await aplazar(fila.id, workerId, espera);
+      if (await esUnicoAdministrador(fila.userId)) {
+        return await aplazar(
+          fila,
+          workerId,
+          "Es el único administrador que queda sin borrado programado: antes tiene que haber otro administrador.",
+        );
+      }
+      const espera = await motivoParaEsperar(fila, fila.userId);
+      if (espera) return await aplazar(fila, workerId, espera);
       if (!(await borrarFilas(fila, fila.userId))) {
         await soltar(fila.id, workerId, {});
         return "cancelado";
@@ -256,7 +298,7 @@ export async function ejecutarBorradoCuenta(
     console.error(`[datos] borrado de cuenta ${fila.id}: ${detalle(error)}`);
     await soltar(fila.id, workerId, {
       availableAt: new Date(Date.now() + MS_REINTENTO_OBJETOS),
-      lastError: "fallo interno; se reintenta",
+      lastError: "Un intento ha fallado por un problema de esta instalación: se reintenta.",
     }).catch((e) => console.error(`[datos] no se ha podido soltar el borrado ${fila.id}: ${detalle(e)}`));
     return "reintentar";
   }

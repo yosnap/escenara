@@ -27,6 +27,7 @@ export const MAXIMO_INTENTOS_EXPORTACION = 3;
 /** Toma del worker sobre una exportación: si muere a mitad, otro la retoma cuando vence. */
 export const MS_TOMA_EXPORTACION_PROYECTO = 15 * 60_000;
 const MB = 1024 * 1024;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export interface VistaExportacionProyecto {
   id: string;
@@ -159,7 +160,7 @@ const nombreDelZip = (titulo: string) => {
 export async function urlDeDescarga(actor: Actor, proyectoId: unknown, exportacionId: unknown): Promise<string> {
   const proyecto = await proyectoPropio(actor, proyectoId);
   const id = typeof exportacionId === "string" ? exportacionId : "";
-  if (!/^[0-9a-f-]{36}$/i.test(id)) throw new ErrorDatos(404, "Esa exportación no existe.");
+  if (!UUID.test(id)) throw new ErrorDatos(404, "Esa exportación no existe.");
   const [fila] = await db()
     .select()
     .from(projectExports)
@@ -214,13 +215,14 @@ async function marcarFallida(id: string, workerId: string, mensaje: string): Pro
 }
 
 export interface HerramientasEmpaquetado {
-  leer: (clave: string) => Promise<Uint8Array>;
+  /** Contenido del objeto por trozos: nunca se carga entero en memoria. */
+  leer: (clave: string) => AsyncIterable<Uint8Array>;
   subir: (clave: string, ruta: string) => Promise<void>;
   borrar: (clave: string) => Promise<void>;
 }
 
 export const EMPAQUETADO_REAL: HerramientasEmpaquetado = {
-  leer: async (clave) => new Uint8Array(await leerObjeto(clave).arrayBuffer()),
+  leer: (clave) => leerObjeto(clave).stream(),
   subir: (clave, ruta) => guardarArchivo(clave, ruta, "application/zip"),
   borrar: borrarObjeto,
 };
@@ -238,7 +240,10 @@ export async function empaquetar(
   const maximo = ajustes.exportacionTamanoMaximoMb * MB;
   const carpeta = path.join(tmpdir(), "escenara-exportaciones");
   const ruta = path.join(carpeta, `${fila.id}.zip`);
-  const clave = `exportaciones/${fila.userId}/${fila.id}.zip`;
+  // Sin el identificador de la cuenta (la clave puede acabar en un registro que sobrevive a ella) y distinta en cada
+  // intento: si otro worker retoma la exportación, el que pierde solo borra su propio objeto, nunca el del ganador.
+  const clave = `exportaciones/${fila.id}-${fila.attempts}.zip`;
+  const temporal = path.join(carpeta, `${fila.id}-${fila.attempts}.medio`);
   let subido = false;
   try {
     const { paquete, retirados } = await armarPaquete(fila.projectId, fila.userId, secretosDeLaInstalacion());
@@ -248,17 +253,19 @@ export async function empaquetar(
     const zip = new EscritorZip(destino);
     try {
       for (const [i, archivo] of paquete.archivos.entries()) {
-        const datos = await h.leer(archivo.clave).catch((error: unknown) => {
+        const descargado = await descargarATemporal(h.leer(archivo.clave), temporal).catch((error: unknown) => {
           throw new ErrorAlmacen(`No se ha podido leer ${archivo.ruta} del almacenamiento: ${detalle(error)}`);
         });
-        archivo.medio.sha256 = createHash("sha256").update(datos).digest("hex");
-        archivo.medio.bytes = datos.byteLength;
-        if (zip.tamano + datos.byteLength > maximo) {
+        archivo.medio.sha256 = descargado.sha256;
+        archivo.medio.bytes = descargado.bytes;
+        if (zip.tamano + descargado.bytes > maximo) {
           throw new ErrorPaquete(
             `El paquete pasaba de ${enMb(maximo)}, el máximo de esta instalación, al añadir el archivo ${i + 1} de ${paquete.archivos.length}. Pide a quien administra que suba el límite en Admin › Ajustes o descarga el montaje desde su pantalla.`,
           );
         }
-        await zip.agregar(archivo.ruta, datos);
+        await zip.agregarDesdeArchivo(archivo.ruta, temporal, descargado.crc, descargado.bytes);
+        await rm(temporal, { force: true });
+        await renovarToma(fila.id, workerId);
       }
       paquete.proyecto.medios = paquete.archivos.map((a) => a.medio);
       for (const texto of paquete.textos) await zip.agregar(texto.ruta, new TextEncoder().encode(texto.contenido));
@@ -326,6 +333,7 @@ export async function empaquetar(
     return false;
   } finally {
     await rm(ruta, { force: true }).catch(() => undefined);
+    await rm(temporal, { force: true }).catch(() => undefined);
   }
 }
 
@@ -373,4 +381,37 @@ export async function clavesDeExportaciones(proyectoIds: string[]): Promise<stri
 }
 
 class ErrorAlmacen extends Error {}
+
+/** Copia un objeto al disco por trozos, calculando a la vez su CRC-32 (para el ZIP) y su SHA-256 (para `proyecto.json`). */
+async function descargarATemporal(
+  trozos: AsyncIterable<Uint8Array>,
+  ruta: string,
+): Promise<{ crc: number; sha256: string; bytes: number }> {
+  const escritor = Bun.file(ruta).writer();
+  const huella = createHash("sha256");
+  let crc = 0;
+  let bytes = 0;
+  try {
+    for await (const trozo of trozos) {
+      crc = Bun.hash.crc32(trozo, crc);
+      huella.update(trozo);
+      escritor.write(trozo);
+      bytes += trozo.byteLength;
+    }
+  } finally {
+    await escritor.end();
+  }
+  return { crc, sha256: huella.digest("hex"), bytes };
+}
+
+/** Alarga la toma mientras se empaqueta: un paquete grande tarda más que la toma inicial. */
+let ultimaRenovacion = 0;
+async function renovarToma(id: string, workerId: string): Promise<void> {
+  if (Date.now() - ultimaRenovacion < 60_000) return;
+  ultimaRenovacion = Date.now();
+  await db()
+    .update(projectExports)
+    .set({ lockedUntil: new Date(Date.now() + MS_TOMA_EXPORTACION_PROYECTO) })
+    .where(and(eq(projectExports.id, id), eq(projectExports.lockedBy, workerId)));
+}
 const detalle = (error: unknown) => (error instanceof Error ? error.message : String(error));

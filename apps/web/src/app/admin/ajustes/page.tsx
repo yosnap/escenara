@@ -6,6 +6,7 @@ import { proveedoresActivos, urlRedireccion } from "@/server/auth/auth";
 import { AVISO_BOVEDA_ADMIN, bovedaDisponible } from "@/server/boveda/cifrado";
 import { importarClavesDelEntorno } from "@/server/boveda/importar-entorno";
 import { listarSecretos } from "@/server/boveda/secretos";
+import { estadoTusDatos } from "@/server/datos/estado-admin";
 import { FormularioAjustes } from "./formulario-ajustes";
 
 export const metadata: Metadata = { title: "Ajustes · Admin" };
@@ -17,7 +18,12 @@ export default async function PaginaAjustes() {
   const bovedaLista = bovedaDisponible();
   // Primero la importación desde `.env`: puede rellenar los ajustes y los secretos que se leen después.
   const entorno = await importarClavesDelEntorno();
-  const [ajustes, secretos, activos] = await Promise.all([leerAjustes(), listarSecretos(), proveedoresActivos()]);
+  const [ajustes, secretos, activos, tusDatos] = await Promise.all([
+    leerAjustes(),
+    listarSecretos(),
+    proveedoresActivos(),
+    estadoTusDatos(),
+  ]);
 
   return (
     <main id="contenido" tabIndex={-1} className="mx-auto flex max-w-4xl flex-col gap-6 px-5 py-10 md:px-8">
@@ -44,6 +50,7 @@ export default async function PaginaAjustes() {
           redirecciones={{ google: urlRedireccion("google"), github: urlRedireccion("github") }}
           bovedaLista={bovedaLista}
           variablesSobrantes={entorno.variables}
+          tusDatos={tusDatos}
         />
       </SoloEnCliente>
     </main>
