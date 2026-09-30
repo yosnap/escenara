@@ -12,6 +12,7 @@ export function vistaPublicaTrend(p: PlantillaVista) {
     nombre: p.nombre,
     descripcion: p.descripcion,
     versionId: p.versionId,
+    version: p.version,
     variables: p.variables,
     duracionesAdmitidas: p.duracionesAdmitidas,
     direccionDecidida: p.direccionDecidida,

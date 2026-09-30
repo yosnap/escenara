@@ -378,6 +378,8 @@ export interface TrendPublico {
   id: string;
   nombre: string;
   descripcion: string;
+  /** Número de la versión vigente: una escena que cite otra tiene que volver a guardarse para usarla. */
+  version: number;
   /** Vacía = cualquier duración. */
   duracionesAdmitidas: number[];
   /** Lo que el trend decide de la dirección: se enseña bloqueado con su motivo. */

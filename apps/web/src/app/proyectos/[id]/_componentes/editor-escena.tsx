@@ -271,6 +271,13 @@ export function EditorEscena({
               . La cifra se confirma en el plan antes de generar.
             </Aviso>
           )}
+          {trend && trendId === escena.trendId && escena.trendVersion !== trend.version && (
+            <Aviso tono="info">
+              Este trend tiene una versión nueva (v{trend.version}) desde que lo elegiste (v{escena.trendVersion ?? "?"}
+              ): puede cambiar la duración que admite o lo que decide de la dirección. Revisa la dirección y pulsa
+              «Guardar escena» para usarla; hasta entonces esta escena no se puede producir.
+            </Aviso>
+          )}
           {trendId && !trend && (
             <Aviso tono="error">
               Este trend ya no está vigente. Elige uno de los disponibles o quítalo y guarda la escena.
