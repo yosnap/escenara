@@ -1,5 +1,6 @@
-import { AlertOctagon, CheckCircle2, Eye, Info, Wrench } from "lucide-react";
+import { AlertOctagon, CheckCircle2, Eye, Wrench } from "lucide-react";
 import type { ReactNode } from "react";
+import { Alerta, type TipoAlerta } from "./alerta";
 import { cn } from "./cn";
 
 /** Los cuatro estados de preparación del PRD. Siempre con icono, título y acción concreta. */
@@ -49,7 +50,18 @@ export const ESTILO_PREPARACION: Record<EstadoPreparacion, EstiloPreparacion> = 
   },
 };
 
-/** Zona de claridad: aviso de estado sin degradados ni animación. */
+/** Tipo de alerta de cada estado de preparación: lo que falta bloquea; ajustes y revisión avisan. */
+const TIPO_DE_ESTADO: Record<EstadoPreparacion, TipoAlerta> = {
+  listo: "hecho",
+  ajustes: "aviso",
+  revision: "aviso",
+  bloqueado: "bloqueo",
+};
+
+/**
+ * Estado de preparación como **alerta** (zona de claridad, sin degradados ni animación): el icono y el rótulo del
+ * estado y el motivo. Es un estado que ya está en la pantalla al abrirla, así que se anuncia con cortesía (`status`).
+ */
 export function AvisoEstado({
   estado,
   motivo,
@@ -61,23 +73,9 @@ export function AvisoEstado({
 }) {
   const e = ESTILO_PREPARACION[estado];
   return (
-    <div role="status" className={cn("flex gap-3 rounded-tarjeta border-2 bg-superficie p-4", e.borde)}>
-      <span
-        className={cn(
-          "flex size-9 shrink-0 items-center justify-center rounded-full [&>svg]:size-5",
-          e.circulo,
-          e.texto,
-        )}
-        aria-hidden
-      >
-        {e.icono}
-      </span>
-      <div className="flex flex-1 flex-col gap-2">
-        <p className={cn("font-bold", e.texto)}>{e.titulo}</p>
-        <p className="text-texto">{motivo}</p>
-        {accion && <div>{accion}</div>}
-      </div>
-    </div>
+    <Alerta tipo={TIPO_DE_ESTADO[estado]} icono={e.icono} etiqueta={e.titulo} anuncio="estado" accion={accion}>
+      {motivo}
+    </Alerta>
   );
 }
 
@@ -191,27 +189,17 @@ export function EstadoVacio({
 
 export type TonoAviso = "correcto" | "error" | "info";
 
-const TONO_AVISO: Record<TonoAviso, { icono: ReactNode; clase: string; circulo: string }> = {
-  correcto: { icono: <CheckCircle2 />, clase: "border-correcto/45 text-correcto", circulo: "bg-correcto/12" },
-  error: { icono: <AlertOctagon />, clase: "border-error/45 text-error", circulo: "bg-error/12" },
-  info: { icono: <Info />, clase: "border-acento/45 text-acento", circulo: "bg-acento/12" },
-};
+const TIPO_DE_TONO: Record<TonoAviso, TipoAlerta> = { correcto: "hecho", error: "error", info: "aviso" };
 
-/** Aviso breve de resultado (hecho, error o información), con icono y texto; los errores se anuncian al momento. */
+/**
+ * Aviso breve de resultado (hecho, error o información). Es la **alerta** en su versión apretada, con la API de
+ * siempre: los errores se anuncian al momento y el resto con cortesía. Para llevar a un campo, listar varios problemas
+ * o dejar descartar, usa `Alerta` directamente.
+ */
 export function Aviso({ tono = "info", children }: { tono?: TonoAviso; children: ReactNode }) {
-  const t = TONO_AVISO[tono];
   return (
-    <div
-      role={tono === "error" ? "alert" : "status"}
-      className={cn("flex items-start gap-3 rounded-tarjeta border-2 bg-superficie p-3", t.clase)}
-    >
-      <span
-        aria-hidden
-        className={cn("flex size-8 shrink-0 items-center justify-center rounded-full [&>svg]:size-4", t.circulo)}
-      >
-        {t.icono}
-      </span>
-      <p className="self-center text-texto">{children}</p>
-    </div>
+    <Alerta tipo={TIPO_DE_TONO[tono]} compacta>
+      {children}
+    </Alerta>
   );
 }

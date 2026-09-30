@@ -1,15 +1,15 @@
 "use client";
 
-import { ArrowRight, TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
-import { useId } from "react";
 import type { Requisito } from "@/lib/requisitos";
+import { Alerta } from "./alerta";
 import { cn } from "./cn";
+import { enfocarProblema, llevarAlProblema } from "./llevar-al-problema";
 
 /**
- * **Aviso de requisitos** (0.33.1): lo que falta antes de poder generar, arriba del paso y con cada punto como botón
- * que lleva al campo. Es zona de claridad: borde completo (nunca lateral), icono y texto (nunca solo color) y sin
- * animación propia.
+ * **Aviso de requisitos** (0.33.1): lo que falta antes de poder generar, arriba del paso. Es la `Alerta` de bloqueo con
+ * cada punto como botón que lleva al campo, el primero destacado e «Ir al primero». Ya está en la pantalla al abrir el
+ * paso, así que no se anuncia de golpe: es una región con nombre, y la barra de pasos dice cuántos faltan.
  *
  * No sabe nada de pasos ni de formularios: recibe los requisitos y avisa de cuál se ha pulsado. Quien lo usa decide
  * cómo llegar al campo (normalmente `irARequisito`).
@@ -25,35 +25,17 @@ export function AvisoRequisitos({
   onIr: (requisito: Requisito) => void;
   className?: string;
 }) {
-  const idTitulo = useId();
   if (requisitos.length === 0) return null;
   return (
-    <section
-      aria-labelledby={idTitulo}
-      className={cn("flex flex-col gap-2 rounded-tarjeta border-2 border-error bg-superficie p-4", className)}
-    >
-      <h4 id={idTitulo} className="flex items-center gap-2 font-bold text-texto">
-        <TriangleAlert className="size-5 shrink-0 text-error" aria-hidden />
-        {titulo}
-      </h4>
-      <ul className="flex flex-col">
-        {requisitos.map((requisito) => (
-          <li key={`${requisito.id}|${requisito.texto}`}>
-            <button
-              type="button"
-              onClick={() => onIr(requisito)}
-              className="flex min-h-11 w-full items-center justify-between gap-3 rounded-control px-2 text-left text-texto hover:bg-elevada"
-            >
-              <span>{requisito.texto}</span>
-              <span className="flex shrink-0 items-center gap-1 text-sm font-semibold text-acento">
-                Ir al campo
-                <ArrowRight className="size-4" aria-hidden />
-              </span>
-            </button>
-          </li>
-        ))}
-      </ul>
-    </section>
+    <Alerta
+      tipo="bloqueo"
+      titulo={titulo}
+      elementos={requisitos}
+      onIr={onIr}
+      anuncio="ninguno"
+      protege
+      className={className}
+    />
   );
 }
 
@@ -74,45 +56,17 @@ export function MarcaRequisito({ id, error, children }: { id: string; error?: st
   );
 }
 
-/** Lo que se puede enfocar dentro de un campo marcado: el propio control, no su envoltorio. */
-const CONTROL_ENFOCABLE =
-  'textarea, input:not([type="hidden"]), button:not([disabled]), [role="checkbox"], [role="combobox"], [tabindex]:not([tabindex="-1"])';
-
-/** Cuánto dura la marca de resaltado tras llegar a un campo. */
-const MS_RESALTADO = 2400;
-
-const escaparSelector = (valor: string) =>
-  typeof CSS !== "undefined" && "escape" in CSS ? CSS.escape(valor) : valor.replace(/["\\]/g, "\\$&");
-
 /**
- * Lleva a un campo marcado con `data-requisito`: lo desplaza a la vista, le da el foco y lo resalta unos segundos.
- * Devuelve `false` si no está en la página o si su paso sigue oculto (no hay dónde enfocar).
- *
- * Respeta `prefers-reduced-motion`: sin animación ni desplazamiento suave; el resaltado es un aro fijo (ver
- * `[data-resaltado]` en `globals.css`).
+ * Lleva a un campo marcado con `data-requisito`: lo desplaza a la vista, le da el foco, lo resalta y lo señala con la
+ * flecha. Devuelve `false` si no está en la página o si su paso sigue oculto. Es `enfocarProblema` con el nombre de
+ * siempre.
  */
-export function enfocarRequisito(id: string, documento: Document = document): boolean {
-  const marca = documento.querySelector<HTMLElement>(`[data-requisito="${escaparSelector(id)}"]`);
-  if (!marca || marca.closest("[hidden]")) return false;
-  const control = marca.matches(CONTROL_ENFOCABLE) ? marca : marca.querySelector<HTMLElement>(CONTROL_ENFOCABLE);
-  const sinMovimiento = documento.defaultView?.matchMedia("(prefers-reduced-motion: reduce)").matches ?? false;
-  marca.scrollIntoView({ block: "center", behavior: sinMovimiento ? "auto" : "smooth" });
-  if (control) control.focus({ preventScroll: true });
-  else {
-    marca.tabIndex = -1;
-    marca.focus({ preventScroll: true });
-  }
-  // Quitar y volver a poner la marca reinicia la animación si se pulsa dos veces seguidas.
-  marca.removeAttribute("data-resaltado");
-  void marca.offsetWidth;
-  marca.setAttribute("data-resaltado", "true");
-  documento.defaultView?.setTimeout(() => marca.removeAttribute("data-resaltado"), MS_RESALTADO);
-  return true;
-}
+export const enfocarRequisito = (id: string, documento?: Document): boolean =>
+  enfocarProblema(id, documento ?? document);
 
 /**
- * Cambia al paso del requisito y, cuando ese paso ya se ve, enfoca el campo. El cambio de paso se aplica al terminar
- * el evento, así que el enfoque espera un turno: mientras el panel sigue oculto no hay nada que enfocar.
+ * Cambia al paso del requisito y, cuando ese paso ya se ve, enfoca el campo. Un paso bloqueado no se abre: se dice por
+ * qué. Es `llevarAlProblema` con la navegación de siempre.
  */
 export function irARequisito(
   requisito: Requisito,
@@ -121,15 +75,14 @@ export function irARequisito(
     /** `true` si el paso está bloqueado: no se salta el candado, se dice por qué. */
     estaBloqueado: (paso: string) => boolean;
     avisarBloqueado: (paso: string) => void;
+    /** Paso en el que se está: si es el del requisito, no se cambia de paso. */
+    actual?: string;
   },
 ): void {
-  if (navegacion.estaBloqueado(requisito.paso)) {
-    navegacion.avisarBloqueado(requisito.paso);
-    return;
-  }
-  navegacion.irAlPaso(requisito.paso);
-  // Un segundo intento por si el paso tarda un poco más en pintarse.
-  window.setTimeout(() => {
-    if (!enfocarRequisito(requisito.id)) window.setTimeout(() => enfocarRequisito(requisito.id), 80);
-  }, 0);
+  llevarAlProblema(requisito, {
+    ir: navegacion.irAlPaso,
+    estaBloqueado: navegacion.estaBloqueado,
+    avisar: navegacion.avisarBloqueado,
+    actual: navegacion.actual,
+  });
 }
