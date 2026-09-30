@@ -69,6 +69,12 @@ consentimiento ni de idempotencia.
   dice que el trend tiene una versión nueva, sin cobrar, y se actualizan guardando la escena.
 - Revisa en **Admin › Plantillas** los valores de «La dirección decide» de cada trend antes de publicarlos.
 
+### Corregido
+
+- **El aviso «Necesita ajustes» ya se actualiza al cambiar de modelo con una imagen propia.** Hasta ahora solo se
+  volvía a evaluar cuando el clip salía de un fotograma generado, y con una imagen tuya seguía hablando del modelo
+  anterior (por ejemplo, «Veo 3.1 Fast no admite la foto del producto» cuando ya habías elegido otro).
+
 ## [0.33.3] · 2026-09-30
 
 Parche de diseño: **las tarjetas de opciones son más limpias**. Sin migraciones, sin cambios de precio y sin tocar

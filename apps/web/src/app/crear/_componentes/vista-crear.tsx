@@ -541,8 +541,11 @@ export function VistaCrear({
       await refrescarControles(personajeId, referencia?.id, respuesta.datos.modelo);
     } else {
       setEstimacionClip(respuesta.datos);
-      if (fotograma?.medio) {
-        await controlesClip.refrescar(sujetoDeAnimacion(respuesta.datos.modelo, fotograma.medio.id, productoClip));
+      // El clip parte del fotograma generado o de la imagen propia: con imagen propia también hay que volver a
+      // evaluar, o el aviso seguiría hablando del modelo anterior.
+      const medioDelClip = fotograma?.medio?.id ?? imagenDelClip?.id;
+      if (medioDelClip) {
+        await controlesClip.refrescar(sujetoDeAnimacion(respuesta.datos.modelo, medioDelClip, productoClip));
       }
     }
     // Y los formatos y las duraciones que se pueden ofrecer también son del modelo: se vuelven a pedir en
