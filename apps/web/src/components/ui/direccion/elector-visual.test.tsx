@@ -107,3 +107,24 @@ describe("una lista con partes", () => {
     expect(html).toContain("Elegida: ninguna");
   });
 });
+
+describe("el diseño de la tarjeta", () => {
+  test("el icono y el título van en la primera fila y la descripción debajo, sin círculo de radio", () => {
+    const html = pintar([opcion("a", { descripcion: "Descripción A." })]);
+    // Un solo radio por tarjeta, oculto a la vista pero presente para el teclado y el lector de pantalla.
+    expect(html.match(/role="radio"/g)).toHaveLength(1);
+    expect(html).toContain("sr-only");
+    expect(html).not.toContain("size-2.5");
+    const iconoTitulo = html.indexOf("Nombre a");
+    const descripcion = html.indexOf("Descripción A.");
+    expect(iconoTitulo).toBeGreaterThan(-1);
+    expect(descripcion).toBeGreaterThan(iconoTitulo);
+  });
+
+  test("la opción elegida lleva una marca, no solo un borde de color", () => {
+    const elegida = pintar([opcion("a"), opcion("b")], { valor: "a" });
+    const ninguna = pintar([opcion("a"), opcion("b")], { valor: "" });
+    expect(elegida.match(/lucide-check/g)?.length ?? 0).toBe(1);
+    expect(ninguna.match(/lucide-check/g)?.length ?? 0).toBe(0);
+  });
+});

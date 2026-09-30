@@ -1,6 +1,6 @@
 {
   "name": "@escenara/docs",
-  "version": "0.33.2",
+  "version": "0.33.3",
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "module",

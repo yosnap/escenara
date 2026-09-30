@@ -2,6 +2,19 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.33.3] · 2026-09-30
+
+Parche de diseño: **las tarjetas de opciones son más limpias**. Sin migraciones, sin cambios de precio y sin tocar
+qué se envía al modelo.
+
+### Cambiado
+
+- **Cada tarjeta tiene dos filas: el icono con el título, y debajo la descripción.** Ya no hay un círculo de radio
+  que estorbe. Sigue siendo una elección única que se maneja con el teclado y con el lector de pantalla, y la
+  opción elegida se distingue por el borde, el fondo y una marca de verificación, no solo por el color. Afecta a
+  todas las tarjetas de la dirección del clip (plano, ángulo, cámara, gesto…), a la acción de producto y al origen
+  de «Crear».
+
 ## [0.33.2] · 2026-09-30
 
 Parche de pulido de la **dirección del clip y del producto**, en «Crear» y en la escena de un proyecto. Solo cambia

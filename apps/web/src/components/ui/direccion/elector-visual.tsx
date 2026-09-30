@@ -2,7 +2,7 @@
 
 import { Radio } from "@base-ui/react/radio";
 import { RadioGroup } from "@base-ui/react/radio-group";
-import { ChevronDown, type LucideIcon, Sparkles } from "lucide-react";
+import { Check, ChevronDown, type LucideIcon, Sparkles } from "lucide-react";
 import { type ReactNode, useId } from "react";
 import { seccionesMontadas } from "@/lib/acciones-producto-pantalla";
 import { cn } from "../cn";
@@ -173,20 +173,16 @@ function Tarjeta({ opcion: o, elegida }: { opcion: OpcionVisual; elegida: boolea
     // biome-ignore lint/a11y/noLabelWithoutControl: Base UI renderiza el control dentro de la etiqueta
     <label
       className={cn(
-        "flex cursor-pointer items-start gap-3 rounded-tarjeta border p-4 transition-colors duration-(--motion-fast)",
-        "hover:border-acento has-disabled:cursor-default has-disabled:opacity-50",
+        "flex cursor-pointer flex-col gap-3 rounded-tarjeta border p-4 transition-colors duration-(--motion-fast)",
+        "hover:border-acento has-focus-visible:ring-2 has-focus-visible:ring-foco has-disabled:cursor-default has-disabled:opacity-50",
         elegida ? "border-acento bg-elevada ring-2 ring-acento/35" : "border-borde bg-superficie",
       )}
     >
-      <Radio.Root
-        value={o.valor}
-        className="mt-1 flex size-5 shrink-0 items-center justify-center rounded-full border-2 border-borde bg-superficie data-checked:border-acento"
-      >
-        <Radio.Indicator className="size-2.5 rounded-full bg-acento data-unchecked:hidden" />
-      </Radio.Root>
-      <span className="text-texto">{o.pictograma}</span>
-      <span className="flex min-w-0 flex-col gap-1">
-        <span className="flex flex-wrap items-center gap-2 font-semibold text-texto">
+      {/* El círculo del radio molestaba: sigue siendo un radio para el teclado y el lector de pantalla, pero no se ve. */}
+      <Radio.Root value={o.valor} className="sr-only" />
+      <span className="flex items-center gap-3">
+        <span className="shrink-0 text-texto">{o.pictograma}</span>
+        <span className="flex min-w-0 flex-1 flex-wrap items-center gap-2 text-base font-bold text-texto">
           {o.nombre}
           {o.etiqueta && (
             <span className="rounded-full bg-elevada px-2 py-0.5 text-xs font-medium text-texto-suave">
@@ -194,8 +190,10 @@ function Tarjeta({ opcion: o, elegida }: { opcion: OpcionVisual; elegida: boolea
             </span>
           )}
         </span>
-        {texto && <span className="text-sm text-texto-suave">{texto}</span>}
+        {/* La elegida no puede depender solo del color del borde: lleva también una marca. */}
+        {elegida && <Check aria-hidden className="size-5 shrink-0 text-acento" />}
       </span>
+      {texto && <span className="text-sm text-texto-suave">{texto}</span>}
     </label>
   );
 }
