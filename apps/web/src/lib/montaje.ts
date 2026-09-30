@@ -331,6 +331,8 @@ export interface EscenaMontableVista {
   medioClip: Medio | null;
   /** `true` cuando la escena tiene pista de voz aparte (modo `pista`). */
   tieneVoz: boolean;
+  /** `true` cuando el audio propio del clip está quitado: la escena entra en silencio (más su voz aparte, si la hay). */
+  audioDelClipQuitado: boolean;
   subtitulos: Subtitulo[];
 }
 

@@ -417,6 +417,15 @@ export const scenes = pgTable(
      * Ajustes, y lo que se cobró queda en la entrada del trabajo con su tarifa confirmada.
      */
     singingAudioMediaId: uuid("singing_audio_media_id").references(() => media.id, { onDelete: "set null" }),
+    /**
+     * **Quitar el audio propio del clip** en el montaje y en la exportación. Es una opción **por escena** e
+     * independiente del modo de voz del proyecto: en modo `clip` deja la escena sin voz (o solo con la música), y en
+     * modo `pista` deja solo la pista de voz aparte, sin la voz que el clip traía dentro.
+     *
+     * No toca el archivo: el clip sigue entero en la biblioteca y volver a activarlo lo devuelve tal cual. `false`
+     * de fábrica, así que una escena anterior a esta versión suena exactamente igual que antes.
+     */
+    clipAudioMuted: boolean("clip_audio_muted").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

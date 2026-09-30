@@ -51,7 +51,10 @@ export interface FragmentoNormalizable {
   entrada: number;
   /** Segundos que dura el trozo. */
   duracion: number;
-  /** `false` cuando el clip **no tiene pista de audio**: entonces se le pone silencio para que todos concatenen. */
+  /**
+   * `false` cuando el clip **no tiene pista de audio** o su escena la tiene **quitada**: entonces se le pone
+   * silencio para que todos concatenen, y el audio propio del clip no llega a la mezcla.
+   */
   tieneAudio: boolean;
   /** Fichero de salida del fragmento igualado. */
   salida: string;

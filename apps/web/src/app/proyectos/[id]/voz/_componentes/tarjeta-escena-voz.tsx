@@ -58,8 +58,9 @@ export function TarjetaEscenaVoz({
       {/* El clip ya producido dice el diálogo en la imagen: no es una invalidación, pero hay que reproducirlo. */}
       {escena.clipHablado && (
         <Aviso tono="info">
-          El clip de esta escena se produjo con el diálogo hablado dentro. Vuelve a producirla en Producción para que
-          salga sin diálogo: si no, se oirán dos voces diciendo lo mismo.
+          El clip de esta escena se produjo con el diálogo hablado dentro. Quítale el audio del clip en el paso de
+          escenas del proyecto (no cuesta nada) o vuelve a producirla en Producción para que salga sin diálogo: si no,
+          se oirán dos voces diciendo lo mismo.
         </Aviso>
       )}
       {/* Salió bien, pero con el otro proveedor: se dice en qué cuenta se ha gastado y por qué. */}

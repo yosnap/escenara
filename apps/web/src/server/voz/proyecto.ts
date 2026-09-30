@@ -76,7 +76,10 @@ export function escenaInvalidada(proyecto: FilaProyecto, escena: FilaEscena, omn
  */
 export async function clipsConDialogoHablado(tx: Ejecutor, proyectoId: string): Promise<string[]> {
   const escenas: FilaEscena[] = await tx.select().from(scenes).where(eq(scenes.projectId, proyectoId));
-  const conClip = escenas.filter((escena) => escena.clipMediaId !== null && escena.clipJobId !== null);
+  // Una escena con el audio del clip **quitado** ya no suena con esa voz: no habrá dos voces aunque el clip hable.
+  const conClip = escenas.filter(
+    (escena) => escena.clipMediaId !== null && escena.clipJobId !== null && !escena.clipAudioMuted,
+  );
   if (conClip.length === 0) return [];
   /**
    * Se mira **el trabajo con el que se produjo cada clip**, no el modo de ahora ni el diálogo de ahora: lo que
@@ -259,7 +262,7 @@ export async function exigirConfirmacionDelCambio(
   }
   if (clipsHablados > 0) {
     partes.push(
-      `Además, ${clipsHablados} ${clipsHablados === 1 ? "escena ya tiene su clip producido con el diálogo" : "escenas ya tienen su clip producido con el diálogo"} hablado dentro. Si les añades la pista de voz sin volver a producir el clip, se oirán dos voces distintas diciendo lo mismo: vuelve a producir esas escenas después del cambio.`,
+      `Además, ${clipsHablados} ${clipsHablados === 1 ? "escena ya tiene su clip producido con el diálogo" : "escenas ya tienen su clip producido con el diálogo"} hablado dentro. Si les añades la pista de voz sin volver a producir el clip, se oirán dos voces distintas diciendo lo mismo: vuelve a producir esas escenas después del cambio o quítales el audio del clip en el paso de escenas del proyecto (no cuesta nada).`,
     );
   }
   throw new ErrorProyecto(409, partes.join(" "));

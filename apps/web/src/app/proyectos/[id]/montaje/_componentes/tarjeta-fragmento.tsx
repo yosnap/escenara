@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronUp, Mic, Subtitles, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Mic, Subtitles, Trash2, VolumeX } from "lucide-react";
 import { Boton, BotonIcono } from "@/components/ui/button";
 import { ControlRecorte } from "@/components/ui/montaje/control-recorte";
 import { PrevisualizacionVertical } from "@/components/ui/montaje/previsualizacion-vertical";
@@ -65,6 +65,12 @@ export function TarjetaFragmento({
               {escena?.tieneVoz && (
                 <span className="inline-flex items-center gap-1">
                   <Mic className="size-3.5" aria-hidden /> Con pista de voz
+                </span>
+              )}
+              {/* Se decide en el paso de escenas del proyecto; aquí solo se dice, para que el MP4 no sorprenda. */}
+              {escena?.audioDelClipQuitado && (
+                <span className="inline-flex items-center gap-1">
+                  <VolumeX className="size-3.5" aria-hidden /> Sin el audio del clip
                 </span>
               )}
               {subtitulos > 0 && (
