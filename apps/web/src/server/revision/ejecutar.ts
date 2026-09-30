@@ -1,5 +1,7 @@
 import { eq } from "drizzle-orm";
 import { REGLAS_VERSION } from "@/lib/controles";
+import { proporcionFijadaDelProyecto } from "@/lib/formatos";
+import { PROPORCION_DISPONIBLE } from "@/lib/produccion";
 import {
   type ComprobacionRevision,
   peorSeveridad,
@@ -9,8 +11,9 @@ import {
 import { leerAjustes } from "../ajustes";
 import { escenaPropia } from "../asistente/consulta";
 import { ErrorProyecto } from "../asistente/errores";
+import { proporcionElegidaDe } from "../cola/entrada-del-trabajo";
 import { db } from "../db/cliente";
-import { type FilaEscena, type FilaMedio, media } from "../db/esquema";
+import { type FilaEscena, type FilaMedio, generationJobs, media } from "../db/esquema";
 import type { Actor } from "../media/servicio";
 import { conClipEnDisco } from "./archivo";
 import { comprobacionesDeArchivo, pedidoDeEscena, type UmbralesRevision } from "./automatica";
@@ -47,6 +50,24 @@ export async function umbralesDeRevision(): Promise<UmbralesRevision> {
     segundosPlanosMaximos: ajustes.revisionSegundosPlanosMaximos,
     exigirAudio: ajustes.revisionExigirAudio,
   };
+}
+
+/**
+ * Proporción con la que hay que comparar el clip de la escena: la que se eligió al generarlo, si quedó guardada, y
+ * si no la del formato principal del proyecto (9:16 en los de siempre).
+ */
+async function proporcionDelClipDeEscena(escena: FilaEscena, formatosDelProyecto: unknown): Promise<string> {
+  const [trabajo] = escena.clipJobId
+    ? await db()
+        .select({ input: generationJobs.input })
+        .from(generationJobs)
+        .where(eq(generationJobs.id, escena.clipJobId))
+    : [];
+  return (
+    (trabajo ? proporcionElegidaDe(trabajo) : null) ??
+    proporcionFijadaDelProyecto(formatosDelProyecto) ??
+    PROPORCION_DISPONIBLE
+  );
 }
 
 /** El clip de la escena, o el motivo por el que todavía no hay nada que comprobar. */
@@ -101,8 +122,9 @@ export function notasAutomaticas(comprobaciones: readonly ComprobacionRevision[]
  * guardaron, para que quien llama pueda responder sin volver a leer.
  */
 export async function revisarAutomaticamente(actor: Actor, escenaId: unknown): Promise<ComprobacionRevision[]> {
-  const { escena } = await escenaPropia(actor, escenaId);
+  const { escena, proyecto } = await escenaPropia(actor, escenaId);
   const clip = await clipDeEscena(escena);
+  const proporcion = await proporcionDelClipDeEscena(escena, proyecto.formats);
   // Si faltan los binarios se dice **antes** de guardar nada: un panel con vistos verdes por no tener ffprobe
   // sería la peor de las mentiras posibles.
   await exigirHerramientasDeMedida().catch(comoErrorDeRevision);
@@ -113,7 +135,7 @@ export async function revisarAutomaticamente(actor: Actor, escenaId: unknown): P
    * y esconderlas detrás de un 500 dejaría al usuario sin saber qué hacer.
    */
   const comprobaciones = await conClipEnDisco(clip.storageKey, clip.mimeType, (ruta) =>
-    comprobacionesDeArchivo(ruta, pedidoDeEscena(escena.plannedSeconds), umbrales),
+    comprobacionesDeArchivo(ruta, pedidoDeEscena(escena.plannedSeconds, proporcion), umbrales),
   ).catch(comoErrorDeRevision);
   const { severidad, veredicto } = resultadoAutomatico(comprobaciones);
   /**

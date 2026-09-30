@@ -36,10 +36,14 @@ export interface UmbralesRevision {
   exigirAudio: boolean;
 }
 
-/** Pedido por defecto de esta versión: lo único que se ofrece son clips de 4 s en 9:16 y 720p. */
-export const pedidoDeEscena = (segundos: number): PedidoDeClip => ({
+/**
+ * Lo que se le pidió al modelo para el clip de una escena: su duración, a 720p, y **la proporción de ese clip** (la
+ * elegida al generarlo o, si no se guardó, la del formato principal del proyecto, 0.41.0). Sin indicar, 9:16: un clip
+ * bien generado en 16:9 no puede salir como fallo crítico por compararlo con el vertical.
+ */
+export const pedidoDeEscena = (segundos: number, proporcion: string = PROPORCION_DISPONIBLE): PedidoDeClip => ({
   segundos,
-  proporcion: PROPORCION_DISPONIBLE,
+  proporcion,
   resolucion: RESOLUCION_DISPONIBLE,
 });
 

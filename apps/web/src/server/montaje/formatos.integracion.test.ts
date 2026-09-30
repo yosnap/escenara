@@ -53,6 +53,7 @@ const { crearMedio } = await import("../media/servicio");
 const { leerObjeto } = await import("../almacenamiento");
 const { pasadaDeExportaciones } = await import("./cola");
 const { medirConFfprobe } = await import("../revision/medicion");
+const { revisarAutomaticamente } = await import("../revision/ejecutar");
 
 type Sesion = Awaited<ReturnType<typeof crearSesionDePrueba>>;
 type Actor = import("../media/servicio").Actor;
@@ -155,6 +156,34 @@ describe.skipIf(!hayBaseDeDatos)("formatos, reencuadre y límites de un proyecto
       "-shortest",
       "-t",
       String(segundos),
+      ruta,
+    ]);
+    if (!ok) throw new Error("No se ha podido fabricar el clip de prueba con FFmpeg.");
+    return new Uint8Array(await Bun.file(ruta).arrayBuffer());
+  }
+
+  /** Clip de prueba de otras medidas (horizontal o cuadrado), negro y con un tono. */
+  async function clipDeMedidas(nombre: string, medidas: string): Promise<Uint8Array> {
+    const ruta = path.join(carpeta, `${nombre}.mp4`);
+    const { ok } = await ffmpeg([
+      "-y",
+      "-f",
+      "lavfi",
+      "-i",
+      `color=c=black:s=${medidas}:d=4:r=25`,
+      "-f",
+      "lavfi",
+      "-i",
+      "sine=frequency=440:duration=4",
+      "-c:v",
+      "libx264",
+      "-pix_fmt",
+      "yuv420p",
+      "-c:a",
+      "aac",
+      "-shortest",
+      "-t",
+      "4",
       ruta,
     ]);
     if (!ok) throw new Error("No se ha podido fabricar el clip de prueba con FFmpeg.");
@@ -447,6 +476,25 @@ describe.skipIf(!hayBaseDeDatos)("formatos, reencuadre y límites de un proyecto
     expect(automatico.estado).toBe(200);
     expect((automatico.datos as MontajeVista).encuadres).toEqual({});
   });
+
+  test("la revisión de continuidad espera el formato del proyecto: un clip 16:9 o 1:1 correcto no es crítico", async () => {
+    for (const [formato, medidas] of [
+      ["horizontal_16_9", "1280x720"],
+      ["cuadrado_1_1", "720x720"],
+    ] as const) {
+      await db()
+        .update(projects)
+        .set({ formats: [formato] })
+        .where(eq(projects.id, proyectoId));
+      const escenaId = escenaIds[0] ?? "";
+      const medioId = await subirClip(`clip-${formato}`, await clipDeMedidas(`clip-${formato}`, medidas), 4);
+      await db().update(scenes).set({ clipMediaId: medioId, plannedSeconds: 4 }).where(eq(scenes.id, escenaId));
+      const comprobaciones = await revisarAutomaticamente(actor, escenaId);
+      const proporcion = comprobaciones.find((c) => c.clave === "proporcion");
+      expect({ formato, resultado: proporcion?.resultado }).toEqual({ formato, resultado: "pasa" });
+      expect(comprobaciones.some((c) => c.severidad === "critica")).toBe(false);
+    }
+  }, 120_000);
 
   test("ajustar el encuadre, regenerar, editar y borrar la escena no deja el montaje sin poder guardarse", async () => {
     await ponerFormatos(["vertical_9_16", "cuadrado_1_1"]);
