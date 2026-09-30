@@ -58,6 +58,8 @@ const { estadoDeProduccion } = await import("../produccion/consulta");
 const { producirProyecto } = await import("../produccion/producir");
 const { editarEscena } = await import("../asistente/escenas");
 const { estadoDeVoz } = await import("../voz/consulta");
+const rutaTrabajos = await import("@/app/api/generacion/trabajos/route");
+const { estimar } = await import("../generacion/estimacion");
 const { listarModelos, olvidarCatalogo } = await import("../proveedores/catalogo");
 const { cambiarEstadoDeModelo, cambiarPrecioDeModelo } = await import("../proveedores/catalogo-admin");
 const { registrarPersonajeOmni } = await import("../personajes/omni");
@@ -159,6 +161,7 @@ describe.skipIf(!hayBaseDeDatos)("fotos del producto en una escena hablada de Om
   let personajeId: string;
   let proyectoId: string;
   let ajustesPrevios: Awaited<ReturnType<typeof leerAjustes>>;
+  let modeloOmni: string;
 
   beforeAll(async () => {
     exigirBaseDeDatosDePrueba("escenara_pruebas_producto_omni");
@@ -172,7 +175,7 @@ describe.skipIf(!hayBaseDeDatos)("fotos del producto en una escena hablada de Om
       { presupuestoCreditos: 0, presupuestoTrabajo: 0, trabajosSimultaneos: 20, escenasEnVuelo: 10 },
       null,
     );
-    await registrarPrecioDeOmni();
+    modeloOmni = await registrarPrecioDeOmni();
   });
 
   afterAll(async () => {
@@ -202,7 +205,7 @@ describe.skipIf(!hayBaseDeDatos)("fotos del producto en una escena hablada de Om
     personajeId = (await nuevoPersonajeConSeisFotos()).id;
   });
 
-  async function registrarPrecioDeOmni(): Promise<void> {
+  async function registrarPrecioDeOmni(): Promise<string> {
     olvidarCatalogo();
     const candidatos = await listarModelos({ capacidad: "image_to_video" });
     const [modelo] = MODELOS_OMNI.flatMap((nombre) => candidatos.filter((m) => m.modelo === nombre));
@@ -222,6 +225,7 @@ describe.skipIf(!hayBaseDeDatos)("fotos del producto en una escena hablada de Om
       admin.id,
     );
     olvidarCatalogo();
+    return modelo.modelo;
   }
 
   const subir = async (nombre: string) =>
@@ -482,5 +486,96 @@ describe.skipIf(!hayBaseDeDatos)("fotos del producto en una escena hablada de Om
       .where(eq(scenes.id, escena?.id ?? ""));
     expect(sinProducto?.productId).toBeNull();
     expect(sinProducto?.productPhotoIds).toEqual([]);
+  });
+
+  // ── «Crear»: la elección viaja con la petición y se valida estrictamente ──────────────────────────────
+
+  describe("en «Crear» la elección viaja con el clip", () => {
+    /** Añade más fotos al producto hasta tener ocho, que es lo máximo: con Omni y un solo fotograma caben seis. */
+    async function completarHastaOcho(productoId: string): Promise<string[]> {
+      const nuevas = await Promise.all(
+        ["suelto", "suelto", "suelto"].map(async (papel, i) => ({ medioId: await subir(`extra-${i}.png`), papel })),
+      );
+      const respuesta = await rutaProducto.PATCH(
+        pedir(ana, `/api/productos/${productoId}`, "PATCH", { accion: "anadir-fotos", fotos: nuevas }),
+        ctx(productoId),
+      );
+      expect(respuesta.status).toBe(200);
+      return nuevas.map((f) => f.medioId);
+    }
+
+    async function pedirClip(productoId: string, fotos?: string[]) {
+      const estimacion = await estimar(ana.id, "animacion", buscar, modeloOmni);
+      const imagen = await subir("fotograma.png");
+      return rutaTrabajos.POST(
+        pedir(ana, "/api/generacion/trabajos", "POST", {
+          tipo: "animacion",
+          modelo: modeloOmni,
+          medioId: imagen,
+          prompt: "En una cocina luminosa, enseña la caja a cámara.",
+          dialogo: "Mirad qué caja tan buena.",
+          segundos: estimacion.segundos,
+          creditosConfirmados: estimacion.creditos,
+          selloEstimacion: estimacion.sello,
+          derechos: true,
+          derechoMarca: true,
+          sinTerceros: true,
+          claveIdempotencia: crypto.randomUUID(),
+          producto: { productoId, accion: "ensenarlo-a-camara", ...(fotos ? { fotos } : {}) },
+          avisosConfirmados: AVISOS_DEL_PRODUCTO,
+        }),
+        undefined,
+      );
+    }
+
+    const referenciasDelUltimoTrabajo = async () => {
+      const [fila] = await db()
+        .select()
+        .from(generationJobs)
+        .where(eq(generationJobs.userId, ana.id))
+        .orderBy(generationJobs.createdAt)
+        .limit(1);
+      return (fila?.input as { referenciasProducto?: string[] } | undefined)?.referenciasProducto;
+    };
+
+    test("sin elección viajan las de por defecto, la frontal la primera", async () => {
+      const { producto, fotos } = await nuevaCaja();
+      const respuesta = await pedirClip(producto.id);
+      expect(respuesta.status).toBe(201);
+      expect(await referenciasDelUltimoTrabajo()).toEqual(fotos);
+    });
+
+    test("con elección viajan solo las elegidas, en orden de prioridad", async () => {
+      const { producto, fotos } = await nuevaCaja();
+      const respuesta = await pedirClip(producto.id, [fotos[4], fotos[1]]);
+      expect(respuesta.status).toBe(201);
+      expect(await referenciasDelUltimoTrabajo()).toEqual([fotos[1], fotos[4]]);
+    });
+
+    test("una foto que no es del producto se rechaza y no se cobra nada", async () => {
+      const { producto } = await nuevaCaja();
+      const respuesta = await pedirClip(producto.id, [await subir("ajena.png")]);
+      expect(respuesta.status).toBe(400);
+      expect(((await respuesta.json()) as { error: string }).error).toContain("no es de este producto");
+      expect(await db().select().from(generationJobs).where(eq(generationJobs.userId, ana.id))).toHaveLength(0);
+    });
+
+    test("una foto en la papelera se rechaza con su causa", async () => {
+      const { producto, fotos } = await nuevaCaja();
+      await enviarAPapelera(actor, fotos[2]);
+      const respuesta = await pedirClip(producto.id, [fotos[0], fotos[2]]);
+      expect(respuesta.status).toBe(400);
+      expect(((await respuesta.json()) as { error: string }).error).toContain("está en la papelera");
+    });
+
+    test("una elección que pasa de lo que cabe se rechaza y dice cuántas caben", async () => {
+      const { producto, fotos } = await nuevaCaja();
+      const extra = await completarHastaOcho(producto.id);
+      // Con siete huecos y una imagen de partida caben seis: elegir siete no cabe.
+      const respuesta = await pedirClip(producto.id, [...fotos, ...extra.slice(0, 2)]);
+      expect(respuesta.status).toBe(400);
+      expect(((await respuesta.json()) as { error: string }).error).toContain("solo caben 6");
+      expect(await db().select().from(generationJobs).where(eq(generationJobs.userId, ana.id))).toHaveLength(0);
+    });
   });
 });

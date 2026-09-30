@@ -6,9 +6,13 @@ import { CabeceraGrupo } from "@/components/ui/direccion/cabecera-grupo";
 import { SelectorModelo } from "@/components/ui/modelo";
 import { AvisoFotoDeProducto } from "@/components/ui/productos/aviso-foto-de-producto";
 import { ElectorAccionProducto } from "@/components/ui/productos/elector-accion-producto";
+import { ElectorFotosProducto } from "@/components/ui/productos/elector-fotos-producto";
 import { DefinicionesPictogramaProducto } from "@/components/ui/productos/pictogramas-producto";
 import type { ModeloElegible } from "@/lib/catalogo";
 import type { OpcionDireccion } from "@/lib/direccion";
+import { alternarFoto, fotosQueViajan } from "@/lib/fotos-del-producto";
+import type { Medio } from "@/lib/media/tipos";
+import type { PapelReferencia, ReferenciaProducto } from "@/lib/productos";
 import { Muestra, Seccion } from "../seccion";
 
 /**
@@ -65,7 +69,53 @@ const CLIP_CON_FOTO: ModeloElegible = {
   admiteFotoDeProducto: true,
 };
 
+/** Miniatura de ejemplo: un cuadrado de color, para no depender de ninguna foto real en el catálogo. */
+const miniatura = (id: string, color: string): Medio => ({
+  id,
+  tipo: "imagen",
+  nombre: `${id}.svg`,
+  mime: "image/svg+xml",
+  tamano: 1,
+  ancho: 96,
+  alto: 96,
+  duracion: null,
+  titulo: "",
+  altEs: "",
+  altEn: "",
+  url: `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" fill="${color}"/></svg>`)}`,
+  creadoEn: "2026-09-30T00:00:00.000Z",
+  actualizadoEn: "2026-09-30T00:00:00.000Z",
+  enPapelera: false,
+  origen: null,
+  documento: false,
+  permisos: { editarImagen: false, borrarDefinitivo: false },
+});
+
+const referencia = (id: string, papel: PapelReferencia, orden: number, color: string): ReferenciaProducto => ({
+  id: `ref-${id}`,
+  papel,
+  orden,
+  medio: miniatura(id, color),
+});
+
+/** La caja de ejemplo tiene cinco fotos y en el clip solo caben tres. */
+const FOTOS_DE_LA_CAJA = [
+  referencia("frontal", "etiqueta", 1, "#2f9e6e"),
+  referencia("envase", "envase", 2, "#e0a030"),
+  referencia("tapa", "mecanismo", 3, "#3d6bff"),
+  referencia("suelta-1", "suelto", 4, "#c2417a"),
+  referencia("suelta-2", "suelto", 5, "#7a5cff"),
+];
+const CABEN_DE_LA_CAJA = 3;
+
 export function SeccionProductos() {
+  const [marcadas, setMarcadas] = useState(() =>
+    fotosQueViajan(
+      FOTOS_DE_LA_CAJA.map((f) => ({ medioId: f.medio.id, papel: f.papel, orden: f.orden })),
+      "",
+      CABEN_DE_LA_CAJA,
+    ),
+  );
   const [accion, setAccion] = useState("");
   const [modelo, setModelo] = useState(CLIP_SIN_FOTO.modelo);
   const [otra, setOtra] = useState("moda-giro-360");
@@ -108,6 +158,25 @@ export function SeccionProductos() {
             valor={modelo}
             onCambio={setModelo}
             conProducto
+          />
+        </Muestra>
+        <Muestra titulo="Elegir qué fotos del producto viajan: sobran fotos y solo caben tres (la frontal va marcada)">
+          <ElectorFotosProducto
+            nombre="Caja Huerta Valenciana"
+            fotos={FOTOS_DE_LA_CAJA}
+            caben={CABEN_DE_LA_CAJA}
+            marcadas={marcadas}
+            onAlternar={(id) =>
+              setMarcadas((actuales) =>
+                alternarFoto(
+                  FOTOS_DE_LA_CAJA.map((f) => ({ medioId: f.medio.id, papel: f.papel, orden: f.orden })),
+                  "",
+                  CABEN_DE_LA_CAJA,
+                  actuales,
+                  id,
+                ),
+              )
+            }
           />
         </Muestra>
         <Muestra titulo="Con una acción de moda ya elegida: «Más acciones» se abre solo">
