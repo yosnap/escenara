@@ -2,6 +2,42 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.33.0] · 2026-09-30
+
+**«Crear» y la página de un proyecto van de paso en paso**, con una barra arriba y los botones Anterior y
+Siguiente abajo: se acabó bajar por una página larguísima. Sin migraciones, sin cambios de precio y sin cambios en
+cómo se confirma o se cobra nada.
+
+### Añadido
+
+- **Barra de pasos** en «Crear» y en cada proyecto: cada paso con su número, su título y su estado escrito
+  (hecho, en curso, pendiente o bloqueado), y el actual resaltado. Solo se ve el contenido del paso en el que
+  estás. Puedes volver con un clic a cualquier paso ya hecho o visitado; los que dependen de otro salen con un
+  candado y, al pulsarlos (o al pulsar «Siguiente»), dicen qué falta. En móvil la barra se queda en círculos y
+  una frase dice «Paso 3 de 6» con su título.
+- **El paso queda en la dirección** (`?paso=`): al recargar o compartir el enlace se abre el mismo paso, sin tocar
+  los demás parámetros (como el personaje con el que llegas a «Crear» desde su ficha).
+- El catálogo de componentes (**Admin › Componentes › Flujo por pasos**) enseña la barra con sus cuatro estados.
+
+### Cambiado
+
+- **«Crear»**: origen → a quién generas → describe la escena → revisa el coste y confirma → resultado del
+  fotograma → el clip. Con una imagen tuya solo quedan origen, imagen de partida y clip. El coste se desbloquea al
+  describir la escena, el resultado al confirmar el fotograma y el clip cuando hay imagen de la que sacarlo. Al
+  pulsar «Generar fotograma», la pantalla pasa sola a su resultado. El resumen de coste, las casillas y el botón de
+  confirmar son los mismos que antes: solo cambian de sitio.
+- **Proyectos**: brief → idea → escenas → aprobación. Un proyecto se abre donde está el trabajo (la aprobación si
+  el plan ya está aprobado, las escenas si ya hay guion…). La aprobación está bloqueada mientras no haya escenas.
+- Cambiar de paso **no pierde nada**: un fotograma o un clip generándose, una escena abierta a medio editar o un
+  orden de escenas sin guardar siguen igual al volver.
+- Las guías de tu primer vídeo, trends, dirección del clip, estrategia del anuncio, asistente de guion y productos
+  explican la barra en lugar de «bajar hasta» un paso.
+
+### Corregido
+
+- En «Crear», con una imagen tuya, los errores (al elegirla, al pedir el coste o al animar el clip) ya se ven en
+  pantalla con su causa: antes solo se mostraban en el camino de generar un fotograma.
+
 ## [0.32.2] · 2026-09-30
 
 Parche: **el orden se cambia arrastrando en cinco listas más** y **seis textos de la pantalla dejan de contar
