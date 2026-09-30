@@ -18,9 +18,9 @@ import { fijarDemoAccion, type ResultadoPlantillas } from "./acciones";
 export function AvisoDemoParaTodos() {
   return (
     <Alerta tipo="aviso" compacta>
-      El ejemplo lo verán todos los usuarios de la instalación. Usa solo imágenes o clips sin personas reales: personajes
-      sintéticos, mascotas, caricaturas o ilustraciones. Una foto de una persona real subida directamente no se puede
-      detectar: responsabilidad de quien la elige.
+      El ejemplo lo verán todos los usuarios de la instalación. Usa solo imágenes o clips sin personas reales:
+      personajes sintéticos, mascotas, caricaturas o ilustraciones. Una foto de una persona real subida directamente no
+      se puede detectar: responsabilidad de quien la elige.
     </Alerta>
   );
 }
