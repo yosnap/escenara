@@ -15,6 +15,12 @@ qué se envía al modelo.
   todas las tarjetas de la dirección del clip (plano, ángulo, cámara, gesto…), a la acción de producto y al origen
   de «Crear».
 
+### Corregido
+
+- **El desplegable del producto ya no se sale del formulario.** Su lista se estiraba hasta la descripción más larga y
+  tapaba media pantalla. Ahora nunca es más ancha que el hueco disponible ni que el mayor entre su campo y 28 rem, y
+  las descripciones largas se parten en varias líneas. Afecta a todos los selectores con descripción.
+
 ## [0.33.2] · 2026-09-30
 
 Parche de pulido de la **dirección del clip y del producto**, en «Crear» y en la escena de un proyecto. Solo cambia
