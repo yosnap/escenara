@@ -28,12 +28,12 @@ export function MetricasSombra({ metricas }: { metricas: readonly MetricasPregun
         <thead className="bg-elevada text-sm text-texto-suave">
           <tr>
             <th className="p-3 font-semibold">Pregunta</th>
-            <th className="p-3 font-semibold">Evaluaciones</th>
+            <th className="p-3 font-semibold">Escenas y evaluaciones</th>
             <th className="p-3 font-semibold">Con etiqueta humana</th>
             <th className="p-3 font-semibold">Aciertos</th>
             <th className="p-3 font-semibold">Falsos permisos</th>
             <th className="p-3 font-semibold">Bloqueos innecesarios</th>
-            <th className="p-3 font-semibold">Coincide con las reglas</th>
+            <th className="p-3 font-semibold">Coincide con su regla</th>
             <th className="p-3 font-semibold">Coste y latencia</th>
           </tr>
         </thead>
@@ -43,16 +43,29 @@ export function MetricasSombra({ metricas }: { metricas: readonly MetricasPregun
               <td className="p-3">
                 <span className="font-semibold text-texto">{m.nombre}</span>
                 <span className="block text-xs text-texto-suave">{m.encendida ? "Encendida" : "Apagada"}</span>
+                {!m.etiquetaIndependiente && (
+                  <span className="block text-xs text-texto-suave">
+                    Etiqueta no independiente: la persona ve el veredicto antes de corregirlo.
+                  </span>
+                )}
               </td>
               <td className="p-3 text-texto-suave">
-                {m.total}
+                {m.escenas} escenas
                 <span className="block text-xs">
-                  {m.fallidas} fallidas · {m.sinOpinion} sin opinión
+                  {m.total} evaluaciones · {m.fallidas} fallidas · {m.sinOpinion} sin opinión
                 </span>
               </td>
               <td className="p-3 text-texto-suave">{m.etiquetadas}</td>
               <td className="p-3 text-texto-suave">
-                <Proporcion parte={m.aciertos} total={m.etiquetadas} />
+                {m.etiquetadas === 0 ? (
+                  m.etiquetaIndependiente ? (
+                    "Sin etiqueta independiente"
+                  ) : (
+                    "Sin etiquetas"
+                  )
+                ) : (
+                  <Proporcion parte={m.aciertos} total={m.etiquetadas} />
+                )}
               </td>
               <td className="p-3 text-texto-suave">{m.falsosPermisos}</td>
               <td className="p-3 text-texto-suave">{m.bloqueosInnecesarios}</td>

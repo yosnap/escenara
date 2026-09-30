@@ -15,6 +15,8 @@ const metrica = (parcial: Partial<MetricasPreguntaVista>): MetricasPreguntaVista
   pregunta: "afirmacion_verificable",
   nombre: "El guion tiene una afirmación que exige verificación",
   encendida: true,
+  etiquetaIndependiente: true,
+  escenas: 8,
   total: 12,
   fallidas: 1,
   sinOpinion: 2,
@@ -51,13 +53,24 @@ describe("métricas de la sombra", () => {
     const html = renderToStaticMarkup(<MetricasSombra metricas={[metrica({})]} />);
     expect(html).toContain("3 de 5");
     expect(html).toContain("Muestra corta");
-    expect(html).toContain("1 fallidas");
+    expect(html).toContain("8 escenas");
+    expect(html).toContain("12 evaluaciones · 1 fallidas");
     expect(html).toContain("740 ms de media");
   });
 
   test("con muestra suficiente enseña el porcentaje", () => {
     const html = renderToStaticMarkup(<MetricasSombra metricas={[metrica({ etiquetadas: 40, aciertos: 30 })]} />);
     expect(html).toContain("75 %");
+  });
+
+  test("sin etiquetas no se calcula ningún porcentaje, y el resultado avisa de que su etiqueta no es independiente", () => {
+    const sinEtiqueta = renderToStaticMarkup(<MetricasSombra metricas={[metrica({ etiquetadas: 0, aciertos: 0 })]} />);
+    expect(sinEtiqueta).toContain("Sin etiqueta independiente");
+    expect(sinEtiqueta).not.toContain("0 de 0");
+    const resultado = renderToStaticMarkup(
+      <MetricasSombra metricas={[metrica({ pregunta: "resultado", etiquetaIndependiente: false })]} />,
+    );
+    expect(resultado).toContain("Etiqueta no independiente");
   });
 
   test("una pregunta sin decisiones que comparar no inventa coincidencia", () => {
@@ -99,8 +112,8 @@ describe("tabla de decisiones", () => {
     expect(html).toContain("Qué se miró");
     expect(html).toContain("Avisos confirmables a la vez: 3");
     expect(html).toContain("No encaja");
-    expect(html).toContain("No coincide con las reglas");
-    expect(html).toContain("Aceptada");
+    expect(html).toContain("No coincide con la regla de afirmaciones");
+    expect(html).toContain("No aplicaba (descartada)");
   });
 
   test("un fallo de la sombra se pinta como fallo, no como opinión", () => {
@@ -142,6 +155,17 @@ describe("ajuste de la sombra", () => {
     expect(html).toContain("Encender la sombra");
     expect(html).toContain("Apagada de fábrica");
     expect(html).toContain("se apuntan a 0 €");
+  });
+
+  test("avisa de que TypeSafe recibe el texto y no deja encender sin la casilla", () => {
+    const html = pintar({});
+    expect(html).toContain("encargado del tratamiento");
+    expect(html).toContain("No envía imágenes ni audio");
+    expect(html).toContain("Entiendo que, al encenderla");
+    // El interruptor está desactivado mientras la casilla no esté marcada.
+    expect(html).toMatch(/Encender la sombra[\s\S]*?disabled|disabled[\s\S]*?Encender la sombra/);
+    const aceptada = pintar({ sombraEncargadoAceptado: true });
+    expect(aceptada.match(/disabled=""/g)?.length ?? 0).toBeLessThan(html.match(/disabled=""/g)?.length ?? 0);
   });
 
   test("con tarifa enseña el coste estimado por evaluación", () => {

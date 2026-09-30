@@ -2,8 +2,8 @@ import { NOMBRE_VEREDICTO } from "@/lib/coherencia";
 import { ETIQUETA_ESTADO_CONTROL } from "@/lib/controles";
 import {
   type DecisionRegistradaVista,
+  type EtiquetaHumana,
   NOMBRE_ACCION,
-  NOMBRE_ETIQUETA,
   NOMBRE_PUERTA,
   type OpinionSombraVista,
 } from "@/lib/decisiones";
@@ -29,6 +29,12 @@ const NOMBRE_TIPO: Record<string, string> = {
   asistente: "asistente de guion",
 };
 
+/** Lo que la persona resolvió sobre las afirmaciones de la escena, que es la etiqueta de la sombra. */
+const ETIQUETA_AFIRMACIONES: Record<EtiquetaHumana, string> = {
+  rechaza: "Había que verificar (verificada o corregida)",
+  acepta: "No aplicaba (descartada)",
+};
+
 const pct = (n: number | null) => (n === null ? "—" : `${Math.round(n * 100)} %`);
 
 function Opinion({ opinion }: { opinion: OpinionSombraVista }) {
@@ -36,7 +42,11 @@ function Opinion({ opinion }: { opinion: OpinionSombraVista }) {
     return <span className="block text-sm text-texto-suave">Falló ({opinion.error}): no opina.</span>;
   }
   const coincide =
-    opinion.coincide === null ? "" : opinion.coincide ? " Coincide con las reglas." : " No coincide con las reglas.";
+    opinion.coincide === null
+      ? ""
+      : opinion.coincide
+        ? " Coincide con la regla de afirmaciones."
+        : " No coincide con la regla de afirmaciones.";
   return (
     <span className="block text-sm text-texto-suave">
       <strong className="text-texto">{opinion.veredicto ? NOMBRE_VEREDICTO[opinion.veredicto] : "—"}</strong> ·
@@ -56,7 +66,7 @@ export function TablaDecisiones({ decisiones }: { decisiones: readonly DecisionR
             <th className="p-3 font-semibold">Decisión</th>
             <th className="p-3 font-semibold">Reglas y evidencia</th>
             <th className="p-3 font-semibold">Sombra</th>
-            <th className="p-3 font-semibold">Etiqueta humana</th>
+            <th className="p-3 font-semibold">Afirmaciones de la escena</th>
           </tr>
         </thead>
         <tbody>
@@ -103,7 +113,9 @@ export function TablaDecisiones({ decisiones }: { decisiones: readonly DecisionR
                   d.sombra.map((o) => <Opinion key={`${o.pregunta}-${o.evidencia}-${o.error}`} opinion={o} />)
                 )}
               </td>
-              <td className="p-3 text-sm text-texto-suave">{d.etiqueta ? NOMBRE_ETIQUETA[d.etiqueta] : "—"}</td>
+              <td className="p-3 text-sm text-texto-suave">
+                {d.etiqueta ? ETIQUETA_AFIRMACIONES[d.etiqueta] : "Nadie las ha resuelto"}
+              </td>
             </tr>
           ))}
         </tbody>

@@ -30,7 +30,7 @@ const { eq } = await import("drizzle-orm");
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
-const { coherenceDecisions, controlEvaluations, projects, reviewResults, scenes, shadowEvaluations, users } =
+const { claims, coherenceDecisions, controlEvaluations, projects, rateLimits, scenes, shadowEvaluations, users } =
   await import("../db/esquema");
 const { guardarAjustes } = await import("../ajustes");
 const { guardarSecreto, quitarSecreto } = await import("../boveda/secretos");
@@ -156,7 +156,16 @@ describe.skipIf(!hayBaseDeDatos)("decisiones registradas y sombra", () => {
     escenaId = escena?.id ?? "";
     llamadas = 0;
     responder = async () => fixtures.respuestaGrabada(JEV_AFIRMACION_NO);
-    await guardarAjustes({ sombraActiva: false, sombraAfirmaciones: true, coherenciaEurosPorMillonTokens: 0 }, null);
+    await db().delete(rateLimits);
+    await guardarAjustes(
+      {
+        sombraActiva: false,
+        sombraEncargadoAceptado: false,
+        sombraAfirmaciones: true,
+        coherenciaEurosPorMillonTokens: 0,
+      },
+      null,
+    );
     await quitarSecreto("typesafeApiKey");
   });
 
@@ -224,7 +233,7 @@ describe.skipIf(!hayBaseDeDatos)("decisiones registradas y sombra", () => {
   });
 
   test("encendida y sin clave, tampoco llama", async () => {
-    await guardarAjustes({ sombraActiva: true }, null);
+    await guardarAjustes({ sombraEncargadoAceptado: true, sombraActiva: true }, null);
     await exigirControles(sujetoEscena(), hechosEnOrden());
     await esperarSombras();
     expect(llamadas).toBe(0);
@@ -233,7 +242,10 @@ describe.skipIf(!hayBaseDeDatos)("decisiones registradas y sombra", () => {
 
   test("encendida, la puerta contesta sin esperar a Jev y la opinión se guarda después", async () => {
     await guardarSecreto("typesafeApiKey", CLAVE_JEV, null);
-    await guardarAjustes({ sombraActiva: true, coherenciaEurosPorMillonTokens: 38.5 }, null);
+    await guardarAjustes(
+      { sombraEncargadoAceptado: true, sombraActiva: true, coherenciaEurosPorMillonTokens: 38.5 },
+      null,
+    );
     let soltar: () => void = () => {};
     const suelta = new Promise<void>((resolve) => {
       soltar = resolve;
@@ -260,7 +272,7 @@ describe.skipIf(!hayBaseDeDatos)("decisiones registradas y sombra", () => {
 
   test("el mismo guion no se paga dos veces: la opinión se reutiliza", async () => {
     await guardarSecreto("typesafeApiKey", CLAVE_JEV, null);
-    await guardarAjustes({ sombraActiva: true }, null);
+    await guardarAjustes({ sombraEncargadoAceptado: true, sombraActiva: true }, null);
     await exigirControles(sujetoEscena(), hechosEnOrden());
     await esperarSombras();
     await exigirControles({ ...sujetoEscena(), tipo: "animacion" }, hechosEnOrden());
@@ -285,7 +297,7 @@ describe.skipIf(!hayBaseDeDatos)("decisiones registradas y sombra", () => {
     ],
   ] as const)("%s no cambia la decisión ni bloquea el flujo", async (_caso, fallo, codigo) => {
     await guardarSecreto("typesafeApiKey", CLAVE_JEV, null);
-    await guardarAjustes({ sombraActiva: true }, null);
+    await guardarAjustes({ sombraEncargadoAceptado: true, sombraActiva: true }, null);
     responder = fallo;
     const evaluacion = await exigirControles(sujetoEscena(), hechosEnOrden());
     expect(evaluacion.estado).toBe("listo");
@@ -300,7 +312,7 @@ describe.skipIf(!hayBaseDeDatos)("decisiones registradas y sombra", () => {
 
   test("un fallo inesperado dentro de la sombra tampoco llega a la puerta", async () => {
     await guardarSecreto("typesafeApiKey", CLAVE_JEV, null);
-    await guardarAjustes({ sombraActiva: true }, null);
+    await guardarAjustes({ sombraEncargadoAceptado: true, sombraActiva: true }, null);
     responder = async () => {
       throw new TypeError("fallo que no es de Jev");
     };
@@ -311,7 +323,7 @@ describe.skipIf(!hayBaseDeDatos)("decisiones registradas y sombra", () => {
 
   test("la clave no se guarda, no sale en el registro del servidor ni en el panel", async () => {
     await guardarSecreto("typesafeApiKey", CLAVE_JEV, null);
-    await guardarAjustes({ sombraActiva: true }, null);
+    await guardarAjustes({ sombraEncargadoAceptado: true, sombraActiva: true }, null);
     // El proveedor devuelve la clave en su texto de error: no puede llegar a ningún sitio.
     responder = async () =>
       fixtures.respuestaGrabada({ error: { message: `invalid api key: ${CLAVE_JEV}`, type: "auth_error" } }, 401);
@@ -336,8 +348,8 @@ describe.skipIf(!hayBaseDeDatos)("decisiones registradas y sombra", () => {
 
   test("una escena sin texto, o un envío de «Crear», no se evalúan", async () => {
     await guardarSecreto("typesafeApiKey", CLAVE_JEV, null);
-    await guardarAjustes({ sombraActiva: true }, null);
-    const base = { evaluacionId: "", usuarioId, accion: "permite" as const };
+    await guardarAjustes({ sombraEncargadoAceptado: true, sombraActiva: true }, null);
+    const base = { evaluacionId: "", usuarioId, reglaAfirmaciones: false };
     expect(await evaluarEnSombra({ ...base, sujeto: "trabajo", sujetoId: null })).toBe("sin-escena");
     await db().update(scenes).set({ scriptText: "", action: "" }).where(eq(scenes.id, escenaId));
     expect(await evaluarEnSombra({ ...base, sujeto: "escena", sujetoId: escenaId })).toBe("sin-texto");
@@ -346,7 +358,7 @@ describe.skipIf(!hayBaseDeDatos)("decisiones registradas y sombra", () => {
 
   test("pasado el tope diario no se paga ninguna evaluación más", async () => {
     await guardarSecreto("typesafeApiKey", CLAVE_JEV, null);
-    await guardarAjustes({ sombraActiva: true, sombraEvaluacionesPorDia: 1 }, null);
+    await guardarAjustes({ sombraEncargadoAceptado: true, sombraActiva: true, sombraEvaluacionesPorDia: 1 }, null);
     await exigirControles(sujetoEscena(), hechosEnOrden());
     await esperarSombras();
     await db().update(scenes).set({ scriptText: "Otro guion distinto." }).where(eq(scenes.id, escenaId));
@@ -356,26 +368,22 @@ describe.skipIf(!hayBaseDeDatos)("decisiones registradas y sombra", () => {
     await guardarAjustes({ sombraEvaluacionesPorDia: 100 }, null);
   });
 
-  test("las métricas salen de las revisiones humanas: falsos permisos y bloqueos innecesarios", async () => {
+  test("las métricas salen de las afirmaciones resueltas, con cada escena una sola vez", async () => {
     await guardarSecreto("typesafeApiKey", CLAVE_JEV, null);
-    await guardarAjustes({ sombraActiva: true }, null);
+    await guardarAjustes({ sombraEncargadoAceptado: true, sombraActiva: true }, null);
 
-    // Escena 1: la sombra dejaría pasar y la persona rechaza el clip → falso permiso.
+    // Escena 1: la sombra dejaría pasar y la persona **verificó** una afirmación del guion → falso permiso.
     await exigirControles(sujetoEscena(), hechosEnOrden());
     await esperarSombras();
+    // Y el clip y la voz de la misma escena reutilizan la opinión: la escena cuenta una sola vez.
+    await exigirControles({ ...sujetoEscena(), tipo: "animacion" }, hechosEnOrden());
+    await exigirControles({ ...sujetoEscena(), tipo: "voz" }, hechosEnOrden());
+    await esperarSombras();
     await db()
-      .insert(reviewResults)
-      .values({
-        sceneId: escenaId,
-        kind: "humana",
-        severity: "aviso",
-        verdict: "rechaza",
-        checks: [],
-        rulesVersion: REGLAS_VERSION,
-        createdAt: new Date(Date.now() + 1000),
-      });
+      .insert(claims)
+      .values({ sceneId: escenaId, text: "elimina el 90 %", kind: "cifra", state: "verificada" });
 
-    // Escena 2: la sombra frenaría y la persona acepta → bloqueo innecesario.
+    // Escena 2: la sombra frenaría y la persona **descartó** la afirmación («no aplica») → bloqueo innecesario.
     const [otra] = await db()
       .insert(scenes)
       .values({ projectId: proyectoId, sortOrder: 2, scriptText: "Llévatela hoy con un 50 % de descuento." })
@@ -384,16 +392,19 @@ describe.skipIf(!hayBaseDeDatos)("decisiones registradas y sombra", () => {
     await exigirControles({ ...sujetoEscena(), sujetoId: otra?.id ?? "" }, hechosEnOrden());
     await esperarSombras();
     await db()
-      .insert(reviewResults)
-      .values({
-        sceneId: otra?.id ?? "",
-        kind: "humana",
-        severity: "informativa",
-        verdict: "acepta",
-        checks: [],
-        rulesVersion: REGLAS_VERSION,
-        createdAt: new Date(Date.now() + 1000),
-      });
+      .insert(claims)
+      .values({ sceneId: otra?.id ?? "", text: "50 % de descuento", kind: "cifra", state: "descartada" });
+
+    // Escena 3: con una afirmación sin resolver no hay etiqueta independiente.
+    const [tercera] = await db()
+      .insert(scenes)
+      .values({ projectId: proyectoId, sortOrder: 3, scriptText: "Recomendada por el 9 de cada 10 dermatólogos." })
+      .returning();
+    await exigirControles({ ...sujetoEscena(), sujetoId: tercera?.id ?? "" }, hechosEnOrden());
+    await esperarSombras();
+    await db()
+      .insert(claims)
+      .values({ sceneId: tercera?.id ?? "", text: "9 de cada 10", kind: "cifra" });
 
     // El resultado (coherencia de la 0.24.0): «encaja» y la persona dice que se equivoca → falso permiso.
     await db().insert(coherenceDecisions).values({
@@ -416,18 +427,22 @@ describe.skipIf(!hayBaseDeDatos)("decisiones registradas y sombra", () => {
     const [guion, resultado] = await metricasDeLaSombra();
     expect(guion?.pregunta).toBe("afirmacion_verificable");
     expect(guion?.encendida).toBe(true);
-    expect(guion?.total).toBe(2);
+    expect(guion?.etiquetaIndependiente).toBe(true);
+    expect(guion?.total).toBe(5);
+    expect(guion?.escenas).toBe(3);
     expect(guion?.etiquetadas).toBe(2);
     expect(guion?.falsosPermisos).toBe(1);
     expect(guion?.bloqueosInnecesarios).toBe(1);
     expect(guion?.aciertos).toBe(0);
-    expect(guion?.comparables).toBe(2);
+    // Se compara con la regla de afirmaciones (que no saltó), no con la decisión global. El clip no la evalúa.
+    expect(guion?.comparables).toBe(3);
     expect(guion?.coincidencias).toBe(1);
     expect(resultado?.pregunta).toBe("resultado");
     expect(resultado?.falsosPermisos).toBe(1);
+    expect(resultado?.etiquetaIndependiente).toBe(false);
 
     const decisiones = await decisionesRecientes();
-    expect(decisiones.map((d) => d.etiqueta).sort()).toEqual(["acepta", "rechaza"]);
+    expect(new Set(decisiones.map((d) => d.etiqueta))).toEqual(new Set(["acepta", "rechaza", null]));
     expect(decisiones.every((d) => d.sombra.length === 1)).toBe(true);
   });
 });

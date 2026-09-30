@@ -29,7 +29,7 @@ export default async function PaginaDecisiones() {
     decisionesRecientes(LIMITE),
   ]);
   const conClave = secretos.some((s) => s.clave === "typesafeApiKey");
-  const encendida = ajustes.sombraActiva && ajustes.sombraAfirmaciones;
+  const encendida = ajustes.sombraActiva && ajustes.sombraAfirmaciones && ajustes.sombraEncargadoAceptado;
 
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-6 px-5 py-10 md:px-8">
@@ -46,7 +46,7 @@ export default async function PaginaDecisiones() {
         {!encendida
           ? "La sombra está apagada: no se pregunta nada a Jev y no se gasta nada. Las decisiones se siguen registrando igual."
           : conClave
-            ? "La sombra está encendida: cada decisión del motor sobre una escena se evalúa también con Jev, en paralelo y sin esperar a su respuesta."
+            ? "La sombra está encendida: cada decisión del motor sobre una escena sin personas reales se evalúa también con Jev, sin nombres, en paralelo y sin esperar a su respuesta."
             : "La sombra está encendida, pero esta instalación no tiene guardada la clave de TypeSafe, así que no se evalúa nada. Guárdala en Ajustes › Coherencia."}{" "}
         <Link href="/admin/ajustes" className="font-semibold underline">
           Cambiarlo en Ajustes
@@ -56,10 +56,12 @@ export default async function PaginaDecisiones() {
       <section className="flex flex-col gap-3">
         <h2 className="text-2xl font-bold text-texto">Qué tal acierta la sombra</h2>
         <p className="max-w-3xl text-texto-suave">
-          Últimos {DIAS} días. Un <strong>falso permiso</strong> es una escena que la sombra habría dejado pasar y una
-          persona rechazó; un <strong>bloqueo innecesario</strong>, una que habría frenado y una persona aceptó. La
-          etiqueta es la revisión humana de la escena, o la corrección directa del veredicto de coherencia: es una
-          referencia, no la verdad, porque quien rechaza un clip puede hacerlo por otra cosa.
+          Últimos {DIAS} días, con cada escena contada una sola vez por pregunta. Un <strong>falso permiso</strong> es
+          una escena que la sombra habría dejado pasar y una persona no; un <strong>bloqueo innecesario</strong>, una
+          que habría frenado y una persona dejó pasar. La pregunta de las afirmaciones se mide con lo que la persona
+          resolvió sobre las afirmaciones señaladas en el guion (verificar o corregir: había que frenar; descartar: no
+          aplicaba). La del resultado se mide con la corrección de su veredicto o la revisión del clip, que la persona
+          hace viéndolo: no es una etiqueta independiente.
         </p>
         <Alerta tipo="info" anuncio="ninguno" compacta>
           La confianza de Jev dice cómo de concentrada está su respuesta, <strong>no</strong> cuántas veces acierta. Por

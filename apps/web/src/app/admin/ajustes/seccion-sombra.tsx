@@ -1,7 +1,8 @@
 "use client";
 
 import { Scale } from "lucide-react";
-import { Interruptor } from "@/components/ui/choice";
+import { Alerta } from "@/components/ui/alerta";
+import { Casilla, Interruptor } from "@/components/ui/choice";
 import { Campo, EntradaTexto } from "@/components/ui/field";
 import { NOMBRE_MODO } from "@/lib/coherencia";
 import { costeEstimadoPorEvaluacion, NOMBRE_PREGUNTA_SOMBRA, TOKENS_ESTIMADOS_POR_EVALUACION } from "@/lib/decisiones";
@@ -37,9 +38,23 @@ export function SeccionSombra({
       descripcion="Jev opina en paralelo sobre cada decisión del motor de controles y su opinión se compara después con la revisión humana. No decide nada, el usuario no la ve y lo paga esta instalación con la clave de TypeSafe de Coherencia. Las cifras están en Admin › Decisiones."
       icono={<Scale />}
     >
+      <Alerta tipo="aviso" titulo="TypeSafe recibe el texto de las escenas" anuncio="ninguno" protege>
+        Encendida, la sombra envía a TypeSafe, como <strong>encargado del tratamiento</strong>, el guion y la
+        descripción de cada escena que pasa por la puerta de generar, para evaluarlos. No envía imágenes ni audio. Las
+        escenas con una persona real no se envían nunca, y en las demás se quitan antes los nombres de los personajes y
+        del producto. Está en la documentación legal, pendiente de revisión jurídica.
+      </Alerta>
+      <Casilla
+        etiqueta="Entiendo que, al encenderla, el guion y la descripción de las escenas se envían a TypeSafe"
+        descripcion="Sin esta casilla no se puede encender. Quitarla con la sombra encendida no se admite: apágala antes."
+        marcada={valores.sombraEncargadoAceptado}
+        onCambio={(v) => onCambio("sombraEncargadoAceptado", v)}
+        error={errorDe("sombraEncargadoAceptado")}
+      />
       <Interruptor
         etiqueta="Encender la sombra"
-        descripcion={`Apagada de fábrica: apagada no se pregunta nada ni se gasta nada. Encendida, manda a TypeSafe el guion y la descripción de cada escena que pasa por la puerta, sin esperar su respuesta. ${textoCoste}`}
+        deshabilitado={!valores.sombraEncargadoAceptado && !valores.sombraActiva}
+        descripcion={`Apagada de fábrica: apagada no se pregunta nada ni se gasta nada. Encendida, pregunta sin esperar la respuesta: nadie espera a Jev. ${textoCoste}`}
         activo={valores.sombraActiva}
         onCambio={(v) => onCambio("sombraActiva", v)}
       />

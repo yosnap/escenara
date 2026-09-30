@@ -8,9 +8,11 @@ import {
   SEGUNDOS_CANTO_MAXIMOS,
   SEGUNDOS_CANTO_POR_DEFECTO,
 } from "@/lib/canto";
-import { type Comprobacion, esModoCoherencia, type ModoCoherencia, UMBRAL_POR_DEFECTO } from "@/lib/coherencia";
+import { esModoCoherencia, type ModoCoherencia, UMBRAL_POR_DEFECTO } from "@/lib/coherencia";
 import { db } from "./db/cliente";
 import { settings } from "./db/esquema";
+
+export { coherenciaDe } from "./ajustes-coherencia";
 
 /**
  * Ajustes de la instalación, editables en Admin › Ajustes (norma: la configuración vive en el panel,
@@ -205,6 +207,8 @@ export interface Ajustes {
   sombraUmbralAfirmaciones: number;
   /** Tope de evaluaciones pagadas por usuario en 24 horas: la sombra corre sola y la paga el operador. */
   sombraEvaluacionesPorDia: number;
+  /** Quien administra ha leído y aceptado que, encendida, el texto de las escenas va a TypeSafe (encargado). */
+  sombraEncargadoAceptado: boolean;
   /**
    * **Estrategia del anuncio** (0.27.0): el brief (ángulo y oferta antes del guion) y las variantes por ángulo.
    *
@@ -399,6 +403,7 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   sombraAfirmaciones: true,
   sombraUmbralAfirmaciones: UMBRAL_POR_DEFECTO,
   sombraEvaluacionesPorDia: 100,
+  sombraEncargadoAceptado: false,
   // El brief y las variantes arrancan **encendidos**: no gastan nada y son el camino de esta versión.
   anuncioBriefActivo: true,
   anuncioVariantesActivas: true,
@@ -583,6 +588,7 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
   },
   sombraActiva: { valido: booleano, mensaje: "Debe ser sí o no." },
   sombraAfirmaciones: { valido: booleano, mensaje: "Debe ser sí o no." },
+  sombraEncargadoAceptado: { valido: booleano, mensaje: "Debe ser sí o no." },
   sombraUmbralAfirmaciones: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   sombraEvaluacionesPorDia: {
     valido: entero(1, 10000),
@@ -719,6 +725,12 @@ export async function guardarAjustes(cambios: Partial<Record<keyof Ajustes, unkn
       "La luminosidad mínima tiene que ser menor que la máxima: si no, ninguna foto pasaría el control.",
     );
   }
+  if (resultantes.sombraActiva && !resultantes.sombraEncargadoAceptado) {
+    throw new ErrorAjustes(
+      "sombraActiva",
+      "Para encender la sombra, marca antes que aceptas que el guion y la descripción de las escenas se envíen a TypeSafe.",
+    );
+  }
   await db().transaction(async (tx) => {
     for (const [clave, valor] of validos) {
       await tx
@@ -742,31 +754,6 @@ export async function guardarAjustes(cambios: Partial<Record<keyof Ajustes, unkn
  * `compatible` y `local` valen 0 € a propósito: se pagan por cuota del plan o no se pagan, y su llamada no tiene
  * precio por petición.
  */
-/** Modo y umbral configurados para una comprobación de coherencia. Es el único sitio que los empareja. */
-export function coherenciaDe(ajustes: Ajustes, comprobacion: Comprobacion): { modo: ModoCoherencia; umbral: number } {
-  const modos: Record<Comprobacion, ModoCoherencia> = {
-    identidad: ajustes.coherenciaIdentidad,
-    guion: ajustes.coherenciaGuion,
-    resultado: ajustes.coherenciaResultado,
-    emocion: ajustes.coherenciaEmocion,
-    direccion_fiel: ajustes.coherenciaDireccionFiel,
-    producto_fiel: ajustes.coherenciaProductoFiel,
-    angulo_fiel: ajustes.coherenciaAnguloFiel,
-    reparto_fiel: ajustes.coherenciaRepartoFiel,
-  };
-  const umbrales: Record<Comprobacion, number> = {
-    identidad: ajustes.coherenciaUmbralIdentidad,
-    guion: ajustes.coherenciaUmbralGuion,
-    resultado: ajustes.coherenciaUmbralResultado,
-    emocion: ajustes.coherenciaUmbralEmocion,
-    direccion_fiel: ajustes.coherenciaUmbralDireccionFiel,
-    producto_fiel: ajustes.coherenciaUmbralProductoFiel,
-    angulo_fiel: ajustes.coherenciaUmbralAnguloFiel,
-    reparto_fiel: ajustes.coherenciaUmbralRepartoFiel,
-  };
-  return { modo: modos[comprobacion], umbral: umbrales[comprobacion] };
-}
-
 /**
  * Ajustes del canto ya **tipados**: `cantoModelo` y `cantoResolucion` se guardan como texto (la tabla de ajustes
  * es genérica) pero solo pueden valer lo que valida {@link VALIDACION}, así que aquí se acotan en un solo sitio

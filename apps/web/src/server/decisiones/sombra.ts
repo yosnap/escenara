@@ -1,16 +1,19 @@
 import { createHash } from "node:crypto";
-import { and, count, desc, eq, gte, isNotNull, isNull } from "drizzle-orm";
+import { and, desc, eq, isNotNull } from "drizzle-orm";
+import { after } from "next/server";
 import { veredictoDe } from "@/lib/coherencia";
-import { type AccionDecision, coincideConLasReglas } from "@/lib/decisiones";
+import { coincideConLasReglas } from "@/lib/decisiones";
 import { leerAjustes } from "../ajustes";
 import { leerSecreto } from "../boveda/secretos";
 import { HERRAMIENTAS_JEV } from "../coherencia/decidir";
 import { decidirConJev, ErrorJev, type RespuestaJev } from "../coherencia/jev";
 import type { SujetoControl } from "../controles/contrato";
 import { db } from "../db/cliente";
-import { scenes, shadowEvaluations } from "../db/esquema";
+import { shadowEvaluations } from "../db/esquema";
+import { dentroDelLimite } from "../limite";
 import type { Buscador } from "../proveedores/codigos";
 import { evidenciaDeAfirmacion, PREGUNTA_AFIRMACION, VERSION_PREGUNTAS_SOMBRA } from "./preguntas-sombra";
+import { textoParaLaSombra } from "./texto-sombra";
 
 /**
  * **Sombra de las decisiones**: Jev opina sobre la misma petición que acaba de decidir el motor de reglas, y su
@@ -21,8 +24,10 @@ import { evidenciaDeAfirmacion, PREGUNTA_AFIRMACION, VERSION_PREGUNTAS_SOMBRA } 
  * 1. **fuera del camino crítico**: {@link lanzarSombra} no se espera. La puerta decide con las reglas, contesta y
  *    sigue; la sombra termina cuando termine. Si falla, tarda o revienta, se anota y ya: la decisión efectiva es la
  *    de las reglas y nadie espera a Jev;
- * 2. **apagada no llama a nadie**: sin la sombra encendida en Admin › Ajustes no se lee la clave, no se pregunta y
- *    no se gasta nada;
+ * 2. **apagada no llama a nadie**: sin la sombra encendida en Admin › Ajustes (y aceptado antes que TypeSafe es
+ *    encargado del tratamiento) no se lee la clave, no se pregunta y no se gasta nada;
+ * 2b. **sin personas reales**: una escena con un personaje real no se evalúa, y en las demás se quitan los nombres
+ *    antes de enviar (`texto-sombra.ts`);
  * 3. **un fallo nunca es una opinión**: se guarda el código del fallo y el veredicto queda vacío;
  * 4. **nunca se enseña al usuario**: esta opinión solo la lee `/admin/decisiones`. Verla sesgaría la revisión
  *    humana, que es justo la etiqueta con la que se mide.
@@ -42,8 +47,11 @@ export interface PeticionSombra {
   usuarioId: string;
   sujeto: SujetoControl;
   sujetoId: string | null;
-  /** Lo que hicieron las reglas con la petición: es con lo que se compara la opinión. */
-  accion: AccionDecision;
+  /**
+   * Si saltó la regla equivalente del motor (afirmaciones sin verificar): es con lo que se compara la opinión.
+   * `null` cuando la puerta no la evaluó (el clip no mira la escena).
+   */
+  reglaAfirmaciones: boolean | null;
   buscar?: Buscador;
   msMaximo?: number;
 }
@@ -52,6 +60,7 @@ export interface PeticionSombra {
 export type DesenlaceSombra =
   | "apagada"
   | "sin-escena"
+  | "persona-real"
   | "sin-texto"
   | "reutilizada"
   | "tope"
@@ -72,6 +81,13 @@ export function lanzarSombra(peticion: PeticionSombra): void {
     })
     .finally(() => pendientes.delete(tarea));
   pendientes.add(tarea);
+  // Dentro de una petición de Next, `after` mantiene vivo el trabajo hasta que termina aunque la respuesta ya se
+  // haya enviado. Fuera de una petición (el worker, los tests) no existe, y basta con la promesa registrada.
+  try {
+    after(() => tarea);
+  } catch {
+    // Sin petición en curso: nada que alargar.
+  }
 }
 
 /** Espera a las sombras en marcha. Para los tests y para un cierre ordenado; la puerta no la llama nunca. */
@@ -85,17 +101,12 @@ const huellaDe = (guion: string, visual: string) =>
 /** Evalúa en sombra y guarda la opinión. Se puede esperar (tests); la puerta usa {@link lanzarSombra}. */
 export async function evaluarEnSombra(peticion: PeticionSombra): Promise<DesenlaceSombra> {
   const ajustes = await leerAjustes();
-  if (!ajustes.sombraActiva || !ajustes.sombraAfirmaciones) return "apagada";
+  if (!ajustes.sombraActiva || !ajustes.sombraAfirmaciones || !ajustes.sombraEncargadoAceptado) return "apagada";
   if (peticion.sujeto !== "escena" || !peticion.sujetoId) return "sin-escena";
 
-  const [escena] = await db()
-    .select({ guion: scenes.scriptText, visual: scenes.action })
-    .from(scenes)
-    .where(eq(scenes.id, peticion.sujetoId))
-    .limit(1);
-  const guion = escena?.guion.trim() ?? "";
-  const visual = escena?.visual.trim() ?? "";
-  if (guion === "" && visual === "") return "sin-texto";
+  const texto = await textoParaLaSombra(peticion.sujetoId);
+  if (typeof texto === "string") return texto;
+  const { guion, visual } = texto;
 
   const umbral = ajustes.sombraUmbralAfirmaciones;
   const huella = huellaDe(guion, visual);
@@ -137,28 +148,22 @@ export async function evaluarEnSombra(peticion: PeticionSombra): Promise<Desenla
         confidence: previa.confidence,
         probabilities: previa.probabilities,
         evidence: evidenciaDeAfirmacion(1 - previa.fit, previa.confidence, veredicto),
-        matchesEffective: coincideConLasReglas(veredicto, peticion.accion),
+        matchesEffective: coincideConLasReglas(veredicto, peticion.reglaAfirmaciones),
         reusedFrom: previa.reusedFrom ?? previa.id,
       });
     return "reutilizada";
   }
 
-  // La sombra corre sola en cada envío y la paga el operador: sin tope, un usuario la gastaría sin saberlo.
-  const desde = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const [recientes] = await db()
-    .select({ n: count() })
-    .from(shadowEvaluations)
-    .where(
-      and(
-        eq(shadowEvaluations.userId, peticion.usuarioId),
-        isNull(shadowEvaluations.reusedFrom),
-        gte(shadowEvaluations.createdAt, desde),
-      ),
-    );
-  if ((recientes?.n ?? 0) >= ajustes.sombraEvaluacionesPorDia) return "tope";
-
   const clave = await leerSecreto("typesafeApiKey");
   if (!clave) return "sin-clave";
+
+  // La sombra corre sola en cada envío y la paga el operador: sin tope, un usuario la gastaría sin saberlo. El
+  // contador sube y se compara **en la misma sentencia**, así que dos envíos a la vez no pasan los dos del tope.
+  const cupo = await dentroDelLimite(`sombra:${peticion.usuarioId}`, {
+    ventanaSegundos: 24 * 60 * 60,
+    maximo: ajustes.sombraEvaluacionesPorDia,
+  });
+  if (!cupo) return "tope";
 
   const buscar = peticion.buscar ?? HERRAMIENTAS_JEV.buscar;
   const empezado = Date.now();
@@ -192,7 +197,7 @@ export async function evaluarEnSombra(peticion: PeticionSombra): Promise<Desenla
       confidence: respuesta.confianza,
       probabilities: respuesta.probabilidades,
       evidence: evidenciaDeAfirmacion(respuesta.encaja, respuesta.confianza, veredicto),
-      matchesEffective: coincideConLasReglas(veredicto, peticion.accion),
+      matchesEffective: coincideConLasReglas(veredicto, peticion.reglaAfirmaciones),
       inputTokens: respuesta.tokensEntrada,
       outputTokens: respuesta.tokensSalida,
       costEur: (respuesta.tokensEntrada / 1_000_000) * ajustes.coherenciaEurosPorMillonTokens,
