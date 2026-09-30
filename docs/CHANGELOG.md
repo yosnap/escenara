@@ -18,12 +18,23 @@ algo que no era cierto**. Sin migraciones y sin cambios de precio.
 - **Las escenas del plan no guardan el orden al soltar**: aparece «Orden sin guardar» con «Guardar orden» y
   «Descartar». El aviso dice qué cambia antes de guardar: reordenar no quita la aprobación de ninguna escena ni
   repite ni cobra nada, y los clips ya producidos se quedan como están; cambian los números de escena, cuál abre
-  el vídeo (la primera lleva el gancho) y el orden que se propone al montar.
+  el vídeo y el orden que se propone al montar. El gancho está escrito en la escena que era la primera y no se
+  traslada. Borrar una escena con el orden pendiente conserva el orden de las demás.
+- **Subir y Bajar** devuelven el foco al control que se estaba usando (aunque el elemento cambie de sitio o se quede
+  sin ese botón) y dicen la posición nueva; las listas ordenables son ahora listas ordenadas, para que un lector de
+  pantalla oiga «3 de 5». El aviso «Orden sin guardar» se anuncia aparte de sus botones.
+- **Duplicar un trend** ya no hereda el orden del original: la copia va al final de su capacidad.
+- Al editar una plantilla sin cambiar su orden ya no se reescribe el número, así que una reordenación a la vez no
+  se pisa.
 
 ### Corregido
 
-- El panel de coherencia de la escena ya no dice siempre «no deciden nada»: en sombra informa, en Activa solo
-  decide el parecido y las demás siguen solo informando, y cada fila lo dice según su modo.
+- **El parecido solo cuenta para la cobertura en modo Activa.** Hasta ahora, en sombra también decidía si una vista
+  generada cubría; ahora en sombra se comprueba, se guarda y se enseña, pero no decide nada (la ficha del personaje
+  lo dice). La revisión de una escena lo cuenta con exactitud: allí ninguna comprobación decide, ni siquiera el
+  parecido.
+- En Admin › Ajustes › Coherencia y en Admin › Coherencia, «Activa» ya no promete lo mismo en las ocho: «Activa
+  (decide la cobertura)» para el parecido y «Activa (todavía solo informa)» para las demás, con su descripción.
 - El panel del ángulo del anuncio ya no dice que su veredicto «decide de verdad» en Activa: el ángulo todavía no
   bloquea nada.
 - «La plantilla ha cambiado» pide revisar el **coste**, que es lo que la persona ve, y no un texto que no ve.
