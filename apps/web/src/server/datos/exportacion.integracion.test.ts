@@ -26,7 +26,7 @@ const { validarProyectoExportado } = await import("@/lib/proyecto-exportado");
 const { readServerConfig } = await import("@/lib/config");
 const { exigirBaseDeDatosDePrueba } = await import("../db/bd-de-prueba");
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
-const { guardarAjustes, leerAjustes } = await import("../ajustes");
+const { guardarAjustes, leerAjustes, olvidarAjustes } = await import("../ajustes");
 const { guardarCredencial } = await import("../boveda/credenciales");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
@@ -81,6 +81,7 @@ describe.skipIf(!hayBaseDeDatos)("exportación del proyecto a ZIP", () => {
       },
       null,
     );
+    olvidarAjustes();
   });
 
   beforeEach(async () => {

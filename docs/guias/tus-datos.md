@@ -67,6 +67,8 @@ exportados.
 **Se queda**:
 
 - lo que **subiste tú** (fotos de referencia, audios, música): sigue en tu biblioteca;
+- un clip que hiciste en **«Crear»** y convertiste en este proyecto: vuelve a «Crear», con su archivo, y se puede
+  volver a convertir;
 - un archivo generado que **usas fuera** del proyecto (como foto de un personaje, un producto o un lugar, en una
   colección o en otro proyecto);
 - los **apuntes de gasto**: el gasto ocurrió y sigue en el historial de tu cuenta, diciendo de qué proyecto venía.

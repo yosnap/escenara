@@ -27,7 +27,7 @@ const rutaBorradoCuenta = await import("@/app/api/cuenta/borrado/route");
 const { exigirBaseDeDatosDePrueba } = await import("../db/bd-de-prueba");
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
 const { auth } = await import("../auth/auth");
-const { guardarAjustes } = await import("../ajustes");
+const { guardarAjustes, olvidarAjustes } = await import("../ajustes");
 const { guardarCredencial } = await import("../boveda/credenciales");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
@@ -91,6 +91,7 @@ describe.skipIf(!hayBaseDeDatos)("borrado de proyecto y de cuenta", () => {
 
   afterAll(async () => {
     for (const s of sesiones) await s.borrar();
+    olvidarAjustes();
   });
 
   beforeEach(async () => {
@@ -282,10 +283,12 @@ describe.skipIf(!hayBaseDeDatos)("borrado de proyecto y de cuenta", () => {
     expect(await errorDe(antigua)).toContain("vuelve a entrar");
 
     const admin = await nueva("admin");
-    await db()
+    // Se deja solo a este administrador (y se devuelve el rol a los demás al terminar).
+    const degradados = await db()
       .update(e.users)
       .set({ role: "user" })
-      .where(and(eq(e.users.role, "admin"), sql`${e.users.id} <> ${admin.id}`));
+      .where(and(eq(e.users.role, "admin"), sql`${e.users.id} <> ${admin.id}`))
+      .returning({ id: e.users.id });
     const unico = await pedirBorrado(admin);
     expect(unico.status).toBe(409);
     expect(await errorDe(unico)).toContain("único administrador");
@@ -293,6 +296,17 @@ describe.skipIf(!hayBaseDeDatos)("borrado de proyecto y de cuenta", () => {
     expect((await pedirBorrado(admin)).status).toBe(201);
     await rutaBorradoCuenta.DELETE(pedir(admin, "/api/cuenta/borrado", "DELETE"));
     expect(otro.id).not.toBe(admin.id);
+    if (degradados.length > 0) {
+      await db()
+        .update(e.users)
+        .set({ role: "admin" })
+        .where(
+          inArray(
+            e.users.id,
+            degradados.map((d) => d.id),
+          ),
+        );
+    }
     expect(
       await total(
         db().select({ total: count() }).from(e.accountDeletions).where(eq(e.accountDeletions.userId, ana.id)),

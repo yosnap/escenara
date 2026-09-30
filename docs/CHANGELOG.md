@@ -34,7 +34,7 @@ respuestas grabadas del proveedor. **Una migración aditiva**: lee «Actualizar 
 
 - **Borrar un proyecto borra sus derivados**, en la base de datos y en el almacenamiento: sus trabajos, los
   fotogramas, clips y voces generados en él, los vídeos montados y los ZIP. Antes se quedaban los trabajos y sus
-  resultados. Se quedan lo que subiste tú y lo generado que usas **fuera** del proyecto; los apuntes de gasto se quedan
+  resultados. Se quedan lo que subiste tú, lo generado que usas **fuera** del proyecto y el clip de «Crear» del que salió (vuelve a «Crear»); los apuntes de gasto se quedan
   diciendo de qué proyecto venían. Un trabajo en el proveedor, un montaje renderizándose o un paquete preparándose
   impiden borrar (409, sin tocar nada); lo que estaba en cola se cancela liberando su reserva.
 - Al borrar la cuenta, de ella solo queda el **gasto agregado** por mes, proveedor, modelo y tipo, y una **prueba

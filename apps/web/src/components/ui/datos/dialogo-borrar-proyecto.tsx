@@ -35,6 +35,7 @@ export function lineasBorradoProyecto(r: ResumenBorradoProyecto): { borra: strin
     ],
     queda: [
       "Lo que subiste tú (fotos de referencia, audios, música) sigue en tu biblioteca.",
+      "Si el proyecto salió de un clip de «Crear», ese clip vuelve a «Crear» con su archivo.",
       ...(r.generadosEnUsoFuera > 0
         ? [
             `${n(r.generadosEnUsoFuera, "archivo generado que usas", "archivos generados que usas")} fuera de este proyecto (en un personaje, un producto, un lugar, una colección u otro proyecto).`,

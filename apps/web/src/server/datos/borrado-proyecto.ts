@@ -1,4 +1,4 @@
-import { and, count, eq, inArray, sql } from "drizzle-orm";
+import { and, count, eq, gte, inArray, sql } from "drizzle-orm";
 import { borrarObjeto } from "../almacenamiento";
 import { proyectoPropio } from "../asistente/consulta";
 import { olvidarPercibidoDeProyecto } from "../coherencia/registro";
@@ -56,12 +56,18 @@ export interface ResumenBorradoProyecto {
   procesosEnCurso: number;
 }
 
+/**
+ * Trabajos **del proyecto**: los de sus escenas pedidos después de crearlo. Un clip hecho en «Crear» y convertido en
+ * proyecto (0.35.0) cuelga de su escena pero es anterior al proyecto: no es un derivado, sigue siendo de «Crear» y
+ * vuelve allí al borrar el proyecto (la escena desaparece y su `scene_id` queda a nulo), con su archivo.
+ */
 const trabajosDe = (proyectoId: string): Promise<FilaTrabajo[]> =>
   db()
     .select({ trabajo: generationJobs })
     .from(generationJobs)
     .innerJoin(scenes, eq(scenes.id, generationJobs.sceneId))
-    .where(eq(scenes.projectId, proyectoId))
+    .innerJoin(projects, eq(projects.id, scenes.projectId))
+    .where(and(eq(scenes.projectId, proyectoId), gte(generationJobs.createdAt, projects.createdAt)))
     .then((filas) => filas.map((f) => f.trabajo));
 
 /**
@@ -80,7 +86,8 @@ async function derivadosDe(
     with propios as (
       select j.result_media_id as id, false as video from generation_jobs j
       join scenes s on s.id = j.scene_id
-      where s.project_id = ${proyectoId} and j.result_media_id is not null
+      join projects pr on pr.id = s.project_id
+      where s.project_id = ${proyectoId} and j.result_media_id is not null and j.created_at >= pr.created_at
       union
       select x.result_media_id, true from montage_exports x
       where x.project_id = ${proyectoId} and x.result_media_id is not null
@@ -269,15 +276,14 @@ export async function borrarProyectoConDerivados(
         })
         .where(inArray(usageLedger.jobId, idsTrabajos));
     }
-    const filas = await tx
-      .delete(generationJobs)
-      .where(
-        inArray(
-          generationJobs.sceneId,
-          tx.select({ id: scenes.id }).from(scenes).where(eq(scenes.projectId, proyecto.id)),
-        ),
-      )
-      .returning({ id: generationJobs.id });
+    // Solo los del proyecto: el clip convertido desde «Crear» se queda y su escena se lo suelta en la cascada.
+    const filas =
+      idsTrabajos.length === 0
+        ? []
+        : await tx
+            .delete(generationJobs)
+            .where(inArray(generationJobs.id, idsTrabajos))
+            .returning({ id: generationJobs.id });
     if (derivados.borrar.length > 0) {
       await tx.delete(media).where(
         and(

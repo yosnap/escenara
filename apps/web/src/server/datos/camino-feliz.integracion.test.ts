@@ -106,7 +106,7 @@ const rutaConsentimiento = await import("@/app/api/personajes/[id]/consentimient
 const { validarProyectoExportado } = await import("@/lib/proyecto-exportado");
 const { exigirBaseDeDatosDePrueba } = await import("../db/bd-de-prueba");
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
-const { guardarAjustes } = await import("../ajustes");
+const { guardarAjustes, leerAjustes, olvidarAjustes } = await import("../ajustes");
 const { guardarCredencial } = await import("../boveda/credenciales");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
@@ -179,6 +179,8 @@ describe.skipIf(!hayBaseDeDatos || !hayFfmpeg)("camino feliz del MVP, de persona
   let carpeta: string;
   /** MP4 vertical de la duración que planifican las escenas: es lo que «descarga» la cola como clip. */
   let clipGrabado: Uint8Array<ArrayBuffer>;
+  let ajustesPrevios: Awaited<ReturnType<typeof leerAjustes>> | undefined;
+  let modeloPrevio: { state: (typeof models.$inferSelect)["state"]; evidence: string } | undefined;
 
   beforeAll(async () => {
     // Esta suite cambia ajustes de la instalación y borra el ritmo de escrituras: nunca en la base de desarrollo.
@@ -189,6 +191,12 @@ describe.skipIf(!hayBaseDeDatos || !hayFfmpeg)("camino feliz del MVP, de persona
     await guardarCredencial(ana.id, "kie", CLAVE_KIE, globalThis.fetch);
     carpeta = await mkdtemp(path.join(tmpdir(), "escenara-camino-feliz-"));
     clipGrabado = await clipDePrueba(SEGUNDOS_POR_ESCENA);
+    // Lo que se cambia aquí se deja como estaba al terminar: la suite comparte conexión y caché de ajustes.
+    ajustesPrevios = await leerAjustes();
+    [modeloPrevio] = await db()
+      .select({ state: models.state, evidence: models.evidence })
+      .from(models)
+      .where(eq(models.modelId, MODELO_TEXTO));
     // El asistente se enciende y el modelo de texto se marca compatible, como hace quien administra.
     await db()
       .update(models)
@@ -520,6 +528,31 @@ describe.skipIf(!hayBaseDeDatos || !hayFfmpeg)("camino feliz del MVP, de persona
   }, 600_000);
 
   afterAll(async () => {
+    if (ajustesPrevios) {
+      const claves = [
+        "asistenteActivo",
+        "montajeActivo",
+        "cuotaMb",
+        "presupuestoCreditos",
+        "presupuestoTrabajo",
+        "avisoCreditos",
+        "trabajosSimultaneos",
+        "escenasEnVuelo",
+        "revisionToleranciaDuracion",
+        "revisionSegundosPlanosMaximos",
+        "revisionExigirAudio",
+        "revisionMultimodalActiva",
+        "exportacionMaximoDiario",
+        "exportacionTamanoMaximoMb",
+      ] as const;
+      const previos = ajustesPrevios;
+      await guardarAjustes(Object.fromEntries(claves.map((c) => [c, previos[c]])), null);
+    }
+    if (modeloPrevio) {
+      await db().update(models).set(modeloPrevio).where(eq(models.modelId, MODELO_TEXTO));
+      olvidarCatalogo();
+    }
+    olvidarAjustes();
     if (ana) await ana.borrar();
     if (carpeta !== "") await rm(carpeta, { recursive: true, force: true });
     globalThis.fetch = fetchOriginal;
