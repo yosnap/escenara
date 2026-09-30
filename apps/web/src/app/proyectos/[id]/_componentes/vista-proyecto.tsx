@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { claseBoton } from "@/components/ui/button";
 import { Aviso } from "@/components/ui/feedback";
+import { Multipaso, PanelDePaso, useMultipaso } from "@/components/ui/multipaso";
 import { InsigniaEstadoProyecto } from "@/components/ui/proyecto";
+import { resolverPaso } from "@/lib/multipaso";
+import { pasoPredeterminadoDelProyecto, pasosDelProyecto } from "@/lib/pasos-proyecto";
 import type { PersonajeElegible } from "@/lib/personajes";
 import type { TrendPublico } from "@/lib/presets";
 import { ETIQUETA_FORMATO, type ProyectoDetalle } from "@/lib/proyectos";
@@ -16,8 +19,11 @@ import { PanelAprobacion } from "./panel-aprobacion";
 import { PanelIdea } from "./panel-idea";
 
 /**
- * Página de un proyecto, de arriba abajo en el orden en que se trabaja: brief del anuncio (ángulo y oferta) →
- * idea y concepto → guion por escenas → plan con su coste y aprobación.
+ * Página de un proyecto, un paso a la vez con su barra (0.33.0) y en el orden en que se trabaja: brief del anuncio
+ * (ángulo y oferta) → idea y concepto → guion por escenas → plan con su coste y aprobación.
+ *
+ * Los paneles no se desmontan al cambiar de paso (solo se ocultan): un editor de escena abierto, un orden de
+ * escenas sin guardar o un texto a medio escribir siguen ahí al volver, así que no hace falta avisar al salir.
  *
  * El brief va **primero** porque es lo que decide el anuncio (0.27.0), y es **opcional**: sin él, los tres pasos
  * siguientes funcionan exactamente como antes de esa versión.
@@ -30,16 +36,31 @@ export function VistaProyecto({
   personajes,
   anuncio,
   trends,
+  pasoPedido,
 }: {
   inicial: ProyectoDetalle;
   personajes: PersonajeElegible[];
   anuncio: DatosDelAnuncio;
   trends: TrendPublico[];
+  /** Paso pedido en la dirección (`?paso=`), ya validado; `null` si no se ha pedido ninguno. */
+  pasoPedido: string | null;
 }) {
   const router = useRouter();
   const [detalle, setDetalle] = useState(inicial);
   const [error, setError] = useState<string | null>(null);
+  const [brief, setBrief] = useState(anuncio.brief);
   const { proyecto } = detalle;
+
+  // El estado de cada paso sale de lo guardado en el proyecto; no hay columna de progreso.
+  const datosPasos = {
+    briefActivo: anuncio.activo,
+    brief,
+    idea: proyecto.idea,
+    totalEscenas: detalle.escenas.length,
+    estado: proyecto.estado,
+  };
+  const pasos = pasosDelProyecto(datosPasos);
+  const multipaso = useMultipaso(pasos, resolverPaso(pasoPedido, pasos, pasoPredeterminadoDelProyecto(datosPasos)));
 
   const aplicar = (nuevo: ProyectoDetalle) => {
     setError(null);
@@ -88,12 +109,34 @@ export function VistaProyecto({
         </div>
       </div>
 
-      {error && <Aviso tono="error">{error}</Aviso>}
+      <Multipaso etiqueta="Pasos del proyecto" pasos={pasos} control={multipaso}>
+        {error && <Aviso tono="error">{error}</Aviso>}
 
-      <PanelBrief proyecto={proyecto} datos={anuncio} onError={setError} onRecargar={() => router.refresh()} />
-      <PanelIdea detalle={detalle} personajes={personajes} onCambio={aplicar} onError={setError} />
-      <ListaEscenas detalle={detalle} personajes={personajes} trends={trends} onCambio={aplicar} onError={setError} />
-      <PanelAprobacion detalle={detalle} onCambio={aplicar} onError={setError} />
+        <PanelDePaso id="brief">
+          <PanelBrief
+            proyecto={proyecto}
+            datos={anuncio}
+            onError={setError}
+            onRecargar={() => router.refresh()}
+            onBrief={setBrief}
+          />
+        </PanelDePaso>
+        <PanelDePaso id="idea">
+          <PanelIdea detalle={detalle} personajes={personajes} onCambio={aplicar} onError={setError} />
+        </PanelDePaso>
+        <PanelDePaso id="escenas">
+          <ListaEscenas
+            detalle={detalle}
+            personajes={personajes}
+            trends={trends}
+            onCambio={aplicar}
+            onError={setError}
+          />
+        </PanelDePaso>
+        <PanelDePaso id="aprobacion">
+          <PanelAprobacion detalle={detalle} onCambio={aplicar} onError={setError} />
+        </PanelDePaso>
+      </Multipaso>
     </>
   );
 }
