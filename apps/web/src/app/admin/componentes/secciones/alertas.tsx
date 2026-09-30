@@ -36,10 +36,10 @@ export function SeccionAlertas() {
     <Seccion
       id="alertas"
       titulo="Alertas"
-      descripcion="Un solo componente para todo lo que hay que decir de un problema: bloqueo, error o aviso (y «hecho» para confirmar). Borde completo, icono y rótulo en texto; bloqueos y errores persisten hasta resolverse y solo el aviso que no protege dinero ni consentimiento se puede descartar. Al pulsar un problema, la pantalla cambia de paso si hace falta, se desplaza, lo enfoca, lo resalta con un aro de marca y lo señala con una flecha."
+      descripcion="Un solo componente para todo lo que hay que decir: bloqueo (rojo, impide seguir), error (rojo, algo ha fallado), aviso (ámbar, pide atención sin bloquear) e información (azul de marca), y «hecho» para confirmar. Borde completo, icono y rótulo en texto; bloqueos y errores persisten hasta resolverse y lo que protege dinero o consentimiento nunca se descarta. Al pulsar un problema, la pantalla cambia de paso si hace falta, se desplaza, lo enfoca, lo resalta con un aro de marca y lo señala con una flecha."
     >
       <div className="grid gap-4 lg:grid-cols-2">
-        <Muestra titulo="Los tres tipos (persistentes)">
+        <Muestra titulo="Los cuatro tipos">
           <div className="flex w-full flex-col gap-3">
             <Alerta tipo="bloqueo" titulo="No se puede generar todavía">
               Falta tu clave de KIE. Añádela en Cuenta › Proveedores; no se ha cobrado nada.
@@ -51,12 +51,15 @@ export function SeccionAlertas() {
             <Alerta tipo="aviso" titulo="Precio comprobado hace tres días">
               La estimación puede haber cambiado un poco; se vuelve a comprobar al confirmar.
             </Alerta>
+            <Alerta tipo="info" titulo="Se está generando la vista">
+              Cuando termine aparecerá en la ficha como vista generada. Puedes seguir trabajando.
+            </Alerta>
           </div>
         </Muestra>
         <Muestra titulo="Descartable, protegido, compacta y hecho">
           <div className="flex w-full flex-col gap-3">
-            <Alerta tipo="aviso" descartable>
-              Aviso informativo: se puede cerrar con la X.
+            <Alerta tipo="info" descartable>
+              Nota que se puede cerrar con la X (hoy solo en este catálogo).
             </Alerta>
             <Alerta tipo="aviso" descartable protege titulo="Este trabajo pasa del aviso de gasto">
               Protege tu dinero: aunque se pida descartable, no se cierra hasta aceptarlo.

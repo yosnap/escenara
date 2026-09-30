@@ -10,24 +10,29 @@ nada ni sus textos, ni ningún coste; **sin migración**.
 
 ### Añadido
 
-- **Una alerta para todo**, con tres tipos que se distinguen por el rótulo y el icono, no solo por el color:
-  **Bloqueo** (falta algo para seguir), **Error** (algo ha fallado; dice la causa, si se ha cobrado y qué hacer) y
-  **Aviso** (algo que conviene leer). Borde completo alrededor, nunca una raya de color a un lado.
+- **Una alerta para todo**, con cuatro tipos que se distinguen por el rótulo y el icono, no solo por el color:
+  **Bloqueo** en rojo (falta algo para seguir), **Error** en rojo (algo ha fallado; dice la causa, si se ha cobrado y
+  qué hacer), **Aviso** en ámbar con un triángulo (pide atención sin bloquear: el gasto alto, «Necesita ajustes», un
+  riesgo) e **Información** en azul de marca con una «i» (notas, guías, algo que se está generando, lo que decide un
+  trend). Borde completo alrededor, nunca una raya de color a un lado.
 - **Te lleva al problema.** Cada punto de «Antes de generar, falta:» y de la confirmación del gasto es un botón:
   cambia al paso que toca si estás en otro, desplaza la pantalla hasta el campo o la casilla, le pone el foco, lo
   rodea con un aro del color de la marca y le pone encima una **flecha que rebota** señalándolo. La flecha se quita
   a los pocos segundos, al tocar el campo o al pulsar en otro sitio.
 - **Varios problemas a la vez**: la alerta los numera, destaca el primero y tiene **«Ir al primero»**.
-- La alerta, sus tipos y estados (persistente, descartable, con varios puntos, con «Ir al campo» y la flecha con y
-  sin movimiento) están en **Admin › Componentes › Alertas**.
+- Si el campo al que lleva un punto ya no está en la pantalla, la alerta lo dice en una línea en lugar de no hacer
+  nada.
+- La alerta, sus tipos y estados (persistente, con varios puntos, con «Ir al campo» y la flecha con y sin movimiento)
+  están en **Admin › Componentes › Alertas**.
 
 ### Cambiado
 
 - **Crear**: el bloque «Antes de generar, falta:», la lista de lo que falta junto al botón de generar, el panel
   «Antes de generar» con sus comprobaciones «Necesita ajustes» y el aviso de gasto alto salen como alertas. El fallo
   de una generación y el cobro por encima del límite también, en el resultado y en el historial.
-- **Lo que decide un trend** y el **modo experto desactivado** con un trend salen como alertas de bloqueo, con su
-  motivo de siempre.
+- **Lo que decide un trend** y el **modo experto desactivado** con un trend salen como alertas de información con
+  un candado y su motivo de siempre (no son un error: es el trend el que manda). El motivo sigue formando parte de la
+  descripción de la casilla para el lector de pantalla.
 - **Proyectos**: «Para poder aprobar el plan falta esto:», «Para poder producir falta esto:», la confirmación del
   gasto de cada escena (con «Falta confirmar la revisión de las fotos del personaje» y el resto de casillas, que
   ahora llevan a su casilla), los frenos de cada escena, la nueva versión de un trend, el consentimiento que falta
@@ -36,14 +41,26 @@ nada ni sus textos, ni ningún coste; **sin migración**.
   lleva a la suya), lo que falta del consentimiento y lo que impide generar con Omni.
 - **Cuenta, acceso, biblioteca y ajustes**: los errores y los «Guardado» que eran una línea de color pasan a ser
   alertas.
-- **Cerrar un aviso**: solo los informativos se pueden cerrar con la X. Los bloqueos y errores se quedan hasta que
-  se resuelven, y los avisos de **gasto, derechos, consentimiento y revisión de fotos no se cierran nunca**.
+- **Qué cambia de color.** Los avisos informativos siguen en azul, ahora con el rótulo «Información». Pasan a
+  **ámbar** («Aviso») los que piden atención sin bloquear: el gasto alto, el clip que se cortará por largo, la misma
+  voz para los dos personajes, la escena editada después de generarla, la revisión que te falta, las acciones de
+  producto poco fiables o la cola sin nadie que la atienda. Pasan a **rojo** («Bloqueo») los que de verdad impiden
+  seguir y antes salían en azul: el personaje que todavía no puede generar su hoja, la versión nueva de un trend
+  que hay que guardar y la conversión a proyecto que no se puede hacer. «Requiere revisión» sigue en azul también en
+  el recuadro, igual que en la insignia y en la fila de la comprobación.
+- **Ninguna alerta se cierra con la X** en las pantallas: los bloqueos y errores se quedan hasta que se resuelven, y
+  los avisos de gasto, derechos, consentimiento y revisión de fotos no se cierran nunca.
 
 ### Accesibilidad
 
 - Los errores y bloqueos que aparecen al momento se anuncian una sola vez al lector de pantalla; los avisos, con
-  cortesía; lo que ya estaba al abrir la pantalla no se anuncia de golpe. La flecha no se lee (es solo visual) y
-  los botones de la alerta miden al menos 44 px.
+  cortesía; lo que ya estaba al abrir la pantalla no se anuncia de golpe, y una alerta sin título no se cuenta como
+  «región» (el historial con varios fallos no llena la lista de regiones). La flecha no se lee (es solo visual) y los
+  botones de la alerta miden al menos 44 px.
+- Contraste comprobado en claro y oscuro: el rótulo de cada tipo sobre la tarjeta y sobre su círculo, por encima de
+  4,5:1, y el borde, por encima de 3:1.
+- La flecha sigue al campo aunque se desplace un diálogo, y desaparece al pulsar Escape, al cerrar el diálogo, al
+  cambiar de pantalla o de paso y al tocar el campo.
 - Con **«reducir movimiento»** en el sistema no hay desplazamiento suave, la flecha no se mueve y el aro no late.
 
 ### Actualizar desde la 0.35.2

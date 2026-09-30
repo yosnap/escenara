@@ -5,8 +5,8 @@ import { SeccionAlertas } from "./alertas";
 describe("catálogo: alertas", () => {
   const html = renderToStaticMarkup(<SeccionAlertas />);
 
-  test("enseña los tres tipos y la confirmación de hecho", () => {
-    for (const tipo of ["bloqueo", "error", "aviso", "hecho"]) expect(html).toContain(`data-alerta="${tipo}"`);
+  test("enseña los cuatro tipos y la confirmación de hecho", () => {
+    for (const tipo of ["bloqueo", "error", "aviso", "info", "hecho"]) expect(html).toContain(`data-alerta="${tipo}"`);
   });
 
   test("enseña los estados: descartable, protegido, varios problemas con «Ir al primero» e «Ir al campo»", () => {
