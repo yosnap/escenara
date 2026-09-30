@@ -28,6 +28,11 @@ export function lineasBorradoCuenta(r: ResumenBorradoCuenta): string[] {
     `${n(r.medios, "archivo", "archivos")} de tu biblioteca (${megas(r.bytes)}), también del almacenamiento.`,
     `${n(r.credenciales, "clave de proveedor", "claves de proveedor")} de tu bóveda, ${n(r.passkeys, "passkey", "passkeys")} y ${n(r.sesiones, "sesión abierta", "sesiones abiertas")}.`,
     "Tu presupuesto, tu historial de trabajos y tus apuntes de gasto, tu kit de marca y tus ajustes.",
+    ...(r.plantillasConTuEjemplo > 0
+      ? [
+          `Las plantillas que usan tus ejemplos los perderán: ${n(r.plantillasConTuEjemplo, "plantilla de la instalación se queda", "plantillas de la instalación se quedan")} sin ejemplo (la plantilla no se borra).`,
+        ]
+      : []),
   ];
 }
 
@@ -147,8 +152,9 @@ export function DialogoBorrarCuenta({
             )}
             <Aviso tono="aviso">
               Tienes {n(resumen.diasGracia, "día", "días")} para arrepentirte: hasta el {cuando} tu cuenta queda
-              desactivada (solo podrás entrar para cancelar el borrado) y tus demás sesiones se cierran. Después se
-              borra todo y ya no hay vuelta atrás.
+              desactivada (no podrás generar, gastar ni editar; solo cancelar el borrado, ver tu historial y pedir o
+              descargar el ZIP de tus proyectos) y tus demás sesiones se cierran. Después se borra todo y ya no hay
+              vuelta atrás.
             </Aviso>
             <Campo etiqueta={`Escribe «${FRASE_BORRADO_CUENTA}» para confirmar`}>
               {(props) => (

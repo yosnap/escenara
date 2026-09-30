@@ -19,7 +19,7 @@ export default async function PaginaHistorialCuenta({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const sesion = await exigirSesion("/cuenta/historial");
+  const sesion = await exigirSesion("/cuenta/historial", { permitirBorradoProgramado: true });
   const filtro = filtroDeLaUrl(await searchParams);
   const [pagina, gasto] = await Promise.all([historialDe(sesion.user.id, filtro), gastoPorMes(sesion.user.id)]);
   const proyectos = [

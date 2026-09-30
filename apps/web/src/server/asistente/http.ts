@@ -1,4 +1,4 @@
-import { esAdmin, sesionDePeticion } from "../auth/sesion";
+import { esAdmin, respuestaSinSesion, sesionDePeticion } from "../auth/sesion";
 import { ErrorPercepcion } from "../coherencia/percepcion";
 import { ErrorDatos } from "../datos/errores";
 import { ErrorGeneracion } from "../generacion/errores";
@@ -68,11 +68,18 @@ export async function leerId(contexto: ContextoId): Promise<string> {
   return id;
 }
 
-export function manejador<C>(fn: (peticion: Request, contexto: C, actor: Actor) => Promise<Response>) {
+/**
+ * `permitirBorradoProgramado`: la ruta está en la lista blanca de lo que una cuenta en su periodo de gracia puede
+ * hacer (solo exportar y descargar sus proyectos). Todo lo demás le responde 403 con el motivo.
+ */
+export function manejador<C>(
+  fn: (peticion: Request, contexto: C, actor: Actor) => Promise<Response>,
+  { permitirBorradoProgramado = false }: { permitirBorradoProgramado?: boolean } = {},
+) {
   return async (peticion: Request, contexto: C): Promise<Response> => {
     try {
-      const sesion = await sesionDePeticion(peticion);
-      if (!sesion) return Response.json({ error: "Inicia sesión para continuar." }, { status: 401 });
+      const sesion = await sesionDePeticion(peticion, { permitirBorradoProgramado });
+      if (!sesion) return await respuestaSinSesion(peticion);
       return await fn(peticion, contexto, { id: sesion.user.id, esAdmin: esAdmin(sesion) });
     } catch (error) {
       return respuestaError(error);

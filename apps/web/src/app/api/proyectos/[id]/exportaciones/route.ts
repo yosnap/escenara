@@ -4,14 +4,20 @@ import { exportacionesDelProyecto, pedirExportacionProyecto } from "@/server/dat
 export const dynamic = "force-dynamic";
 
 /** Últimas exportaciones del proyecto, con su estado y, si está lista y vigente, su enlace de descarga. */
-export const GET = manejador(async (_: Request, contexto: ContextoId, actor) =>
-  Response.json({ exportaciones: await exportacionesDelProyecto(actor, await leerId(contexto)) }),
+export const GET = manejador(
+  async (_: Request, contexto: ContextoId, actor) =>
+    Response.json({ exportaciones: await exportacionesDelProyecto(actor, await leerId(contexto)) }),
+  // Permitido en la gracia del borrado de la cuenta: portabilidad, solo lectura de lo suyo.
+  { permitirBorradoProgramado: true },
 );
 
 /** Pide un paquete ZIP del proyecto. Si ya hay uno preparándose, devuelve ese. Lo prepara el worker. */
-export const POST = manejador(async (peticion: Request, contexto: ContextoId, actor) => {
-  exigirMismoOrigen(peticion);
-  await exigirRitmoDeEscritura(actor, "exportar");
-  const { exportacion, nueva } = await pedirExportacionProyecto(actor, await leerId(contexto));
-  return Response.json({ exportacion }, { status: nueva ? 201 : 200 });
-});
+export const POST = manejador(
+  async (peticion: Request, contexto: ContextoId, actor) => {
+    exigirMismoOrigen(peticion);
+    await exigirRitmoDeEscritura(actor, "exportar");
+    const { exportacion, nueva } = await pedirExportacionProyecto(actor, await leerId(contexto));
+    return Response.json({ exportacion }, { status: nueva ? 201 : 200 });
+  },
+  { permitirBorradoProgramado: true },
+);

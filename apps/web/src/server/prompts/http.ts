@@ -1,4 +1,4 @@
-import { esAdmin, sesionDePeticion } from "../auth/sesion";
+import { esAdmin, respuestaSinSesion, sesionDePeticion } from "../auth/sesion";
 import { dentroDelLimite, type Limite } from "../limite";
 import type { Actor } from "../media/servicio";
 import { ErrorPreset } from "./errores";
@@ -36,7 +36,7 @@ export function manejador<C>(fn: (peticion: Request, contexto: C, actor: Actor) 
   return async (peticion: Request, contexto: C): Promise<Response> => {
     try {
       const sesion = await sesionDePeticion(peticion);
-      if (!sesion) return Response.json({ error: "Inicia sesión para continuar." }, { status: 401 });
+      if (!sesion) return await respuestaSinSesion(peticion);
       exigirMismoOrigen(peticion);
       return await fn(peticion, contexto, { id: sesion.user.id, esAdmin: esAdmin(sesion) });
     } catch (error) {

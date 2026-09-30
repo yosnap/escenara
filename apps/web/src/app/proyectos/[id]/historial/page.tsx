@@ -25,7 +25,7 @@ export default async function PaginaHistorialProyecto({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { id } = await params;
-  const sesion = await exigirSesion(`/proyectos/${id}/historial`);
+  const sesion = await exigirSesion(`/proyectos/${id}/historial`, { permitirBorradoProgramado: true });
   const actor = { id: sesion.user.id, esAdmin: esAdmin(sesion) };
   const proyecto = await proyectoPropio(actor, id).catch((error: unknown) => {
     if (error instanceof ErrorProyecto && error.estado === 404) notFound();

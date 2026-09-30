@@ -43,12 +43,20 @@ const borradoProgramadoEnEstaPeticion = cache(tieneBorradoProgramado);
 
 /**
  * Exige sesión (verificada); si no la hay, lleva a «Entrar» y vuelve después a `volver`. Una cuenta con el borrado
- * programado va siempre a {@link RUTA_BORRADO_PROGRAMADO}, salvo que ya esté pidiendo esa página.
+ * programado va a {@link RUTA_BORRADO_PROGRAMADO}, salvo en las pocas páginas de solo lectura que se le permiten
+ * (`permitirBorradoProgramado`): esa misma, su historial y el de sus proyectos.
  */
-export async function exigirSesion(volver: string): Promise<Sesion> {
+export async function exigirSesion(
+  volver: string,
+  { permitirBorradoProgramado = false }: { permitirBorradoProgramado?: boolean } = {},
+): Promise<Sesion> {
   const sesion = await obtenerSesionVerificada();
   if (!sesion) redirect(`/entrar?volver=${encodeURIComponent(volver)}`);
-  if (volver !== RUTA_BORRADO_PROGRAMADO && (await borradoProgramadoEnEstaPeticion(sesion.user.id))) {
+  if (
+    !permitirBorradoProgramado &&
+    volver !== RUTA_BORRADO_PROGRAMADO &&
+    (await borradoProgramadoEnEstaPeticion(sesion.user.id))
+  ) {
     redirect(RUTA_BORRADO_PROGRAMADO);
   }
   return sesion;
@@ -77,4 +85,18 @@ export async function sesionDePeticion(
   });
   if (!sesion || permitirBorradoProgramado) return sesion;
   return (await tieneBorradoProgramado(sesion.user.id)) ? null : sesion;
+}
+
+/** Lo que se le dice a una cuenta en su periodo de gracia cuando intenta algo que no está en la lista de permitidos. */
+export const MENSAJE_CUENTA_EN_BORRADO =
+  "Tu cuenta tiene el borrado programado, así que está desactivada: no puedes generar, gastar, editar ni subir nada. Mientras tanto puedes cancelar el borrado, ver tu historial y pedir o descargar la exportación de tus proyectos desde «Tu cuenta se va a borrar» (/cuenta/borrado).";
+
+/**
+ * Respuesta cuando `sesionDePeticion` no devuelve sesión: 403 con el motivo si es una cuenta en su gracia (tiene
+ * sesión, pero no puede hacer esto) y 401 si de verdad no hay sesión.
+ */
+export async function respuestaSinSesion(peticion: Request): Promise<Response> {
+  const sesion = await sesionDePeticion(peticion, { permitirBorradoProgramado: true });
+  if (sesion) return Response.json({ error: MENSAJE_CUENTA_EN_BORRADO, codigo: "CUENTA_EN_BORRADO" }, { status: 403 });
+  return Response.json({ error: "Inicia sesión para continuar." }, { status: 401 });
 }
