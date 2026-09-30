@@ -2,7 +2,7 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
-## [0.37.0] · 2026-09-30
+## [0.46.0] · 2026-09-30
 
 **Lugares.** Un tercer tipo de contenido junto a Personajes y Productos: el sitio poco conocido que quieres usar como
 escenario una y otra vez (tu calle, el bar de la esquina, un patio), con sus fotos, una **foto maestra** que entra en el

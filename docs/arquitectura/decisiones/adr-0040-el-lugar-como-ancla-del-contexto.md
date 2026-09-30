@@ -1,8 +1,8 @@
 # ADR-0040 · El lugar como ancla del contexto
 
-- **Estado:** Aceptado para 0.37.0 (decisiones provisionales de la fase tomadas como firmes; revisables por el propietario)
+- **Estado:** Aceptado para 0.46.0 (decisiones provisionales de la fase tomadas como firmes; revisables por el propietario)
 - **Fecha:** 2026-09-30
-- **Versión del proyecto:** 0.37.0
+- **Versión del proyecto:** 0.46.0
 
 ## Contexto
 
@@ -48,5 +48,5 @@ La opción 3:
   `lugar_fiel`, en sombra) y una declaración con fecha para el uso de sitios ajenos.
 - Se pierde un hueco de referencia cuando hay lugar: con modelos de pocas imágenes la maestra se queda fuera y se avisa.
 - Queda por revisar: repetir el spike con fotos reales de móvil, escuchar la voz del clip de Omni combinado, la revisión
-  legal (0.46.0) de la declaración y de la retirada de personas, y el paso de generar el fotograma situado dentro del
+  jurídica pendiente de la declaración y de la retirada de personas, y el paso de generar el fotograma situado dentro del
   modo Omni.

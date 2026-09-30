@@ -2,7 +2,7 @@
 
 **Escenara** · Estudio abierto de personajes y vídeo · «Da vida a cada escena»
 
-Mapa de la documentación pública del proyecto. Versión actual: **0.37.0**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
+Mapa de la documentación pública del proyecto. Versión actual: **0.46.0**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
 
 ## Mapa de documentos
 
@@ -26,11 +26,11 @@ Mapa de la documentación pública del proyecto. Versión actual: **0.37.0**. Pa
 | Guías | [Producir tu proyecto](guias/producir-tu-proyecto.md) | Rejilla de producción, etapas reales, zonas seguras, cancelación con «se cobrará», reintentos autorizados, la alerta de lo que falta antes de pagar y las versiones de cada escena | 0.41.0 |
 | Guías | [Revisar la continuidad](guias/revisar-la-continuidad.md) | Comparación del clip con la hoja de personaje, comprobaciones técnicas con FFmpeg, qué NO garantizan y qué bloquea exportar | 0.20.0 |
 | Guías | [Voz y subtítulos](guias/voz-y-subtitulos.md) | Modo de voz del proyecto, muestras cacheadas, invalidación al cambiar de voz, editor de subtítulos y exportación a SRT/WebVTT | 0.21.0 |
-| Guías | [Dirigir tu clip](guias/dirigir-tu-clip.md) | Las seis partes de la dirección (formato, plano y ángulo, cámara, micro-acción con su momento, guion, voz y acento), el método 6C del fotograma (el sitio con un lugar), partir de una foto de referencia y el modo «cambiar solo…» | 0.37.0 |
-| Guías | [Presentar un producto](guias/productos.md) | Dar de alta un producto con sus fotos por papel, elegirlo y qué se hace con él (incluidas moda y piel), cuántas fotos del producto viajan y cuáles, el producto digital en tres pasos, el cupo a tres bandas con un lugar, lo que se avisa antes de pagar y qué pasa al borrarlo | 0.37.0 |
-| Guías | [Lugares](guias/lugares.md) | Un sitio poco conocido como escenario: fotos y maestra, versiones, declaración de derechos, qué hacer si sale gente (retirar personas, nunca pixelar, menores nunca), lugares famosos por su nombre, mascotas y caricaturas, lugar del proyecto y de la escena, plano del lugar solo y podcast con el mismo set | 0.37.0 |
+| Guías | [Dirigir tu clip](guias/dirigir-tu-clip.md) | Las seis partes de la dirección (formato, plano y ángulo, cámara, micro-acción con su momento, guion, voz y acento), el método 6C del fotograma (el sitio con un lugar), partir de una foto de referencia y el modo «cambiar solo…» | 0.46.0 |
+| Guías | [Presentar un producto](guias/productos.md) | Dar de alta un producto con sus fotos por papel, elegirlo y qué se hace con él (incluidas moda y piel), cuántas fotos del producto viajan y cuáles, el producto digital en tres pasos, el cupo a tres bandas con un lugar, lo que se avisa antes de pagar y qué pasa al borrarlo | 0.46.0 |
+| Guías | [Lugares](guias/lugares.md) | Un sitio poco conocido como escenario: fotos y maestra, versiones, declaración de derechos, qué hacer si sale gente (retirar personas, nunca pixelar, menores nunca), lugares famosos por su nombre, mascotas y caricaturas, lugar del proyecto y de la escena, plano del lugar solo y podcast con el mismo set | 0.46.0 |
 | Guías | [La estrategia del anuncio](guias/estrategia-del-anuncio.md) | Las tres palancas (ángulo, oferta y creatividad), el brief por proyecto con un solo ángulo de los doce, la oferta reutilizable, los cinco hooks, las variantes por ángulo y el veredicto del ángulo en sombra | 0.27.0 |
-| Guías | [Podcast y dualcast](guias/podcast-y-dualcast.md) | Reparto de dos personajes, diálogo por turnos, el mismo lugar en los dos clips, coste por clip, consentimiento de cada persona y límites observados | 0.37.0 |
+| Guías | [Podcast y dualcast](guias/podcast-y-dualcast.md) | Reparto de dos personajes, diálogo por turnos, el mismo lugar en los dos clips, coste por clip, consentimiento de cada persona y límites observados | 0.46.0 |
 | Guías | [Cantar con tu audio](guias/cantar-con-audio-propio.md) | Elegir audio propio, declarar derechos, comprobar retrato vertical y confirmar el coste por segundo | 0.29.0 |
 | Guías | [Usar y administrar trends](guias/trends-virales.md) | Selector de formatos vigentes, vista previa y coste; alta, versión, caducidad y duplicado desde el admin, con el ejemplo de cada trend | 0.42.1 |
 | Guías | [Crear un personaje animado](guias/personajes-animados.md) | Tres acabados editables, guía de estilo, retrato maestro, herencia en escenas y coste | 0.31.0 |
