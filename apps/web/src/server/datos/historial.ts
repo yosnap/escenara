@@ -103,21 +103,27 @@ export async function historialDe(
           left join projects p on p.id = s.project_id and p.user_id = ${usuarioId}
           where j.user_id = ${usuarioId} ${soloTrabajosDeProyecto}`,
     tipo("revision") &&
-      sql`select 'revision', r.id, r.created_at, p.id, p.title, r.verdict::text, r.kind::text, null, null,
-            null, r.credits::float8, null, null, null, null
+      sql`select 'revision' as tipo, r.id as id, r.created_at as fecha, p.id as proyecto_id,
+            p.title as proyecto_titulo, r.verdict::text as estado, r.kind::text as clase, null::text as proveedor,
+            null::text as modelo, null::float8 as estimados, r.credits::float8 as consumidos, null::text as motivo,
+            null::text as causa, null::text as mensaje, null::uuid as resultado_id
           from review_results r
           join scenes s on s.id = r.scene_id
           join projects p on p.id = s.project_id
           where p.user_id = ${usuarioId} ${soloProyecto}`,
     tipo("montaje") &&
-      sql`select 'montaje', x.id, x.created_at, p.id, p.title, x.state::text, x.format::text, null, null,
-            null, null, null, null, nullif(x.error_message, ''), x.result_media_id
+      sql`select 'montaje' as tipo, x.id as id, x.created_at as fecha, p.id as proyecto_id,
+            p.title as proyecto_titulo, x.state::text as estado, x.format::text as clase, null::text as proveedor,
+            null::text as modelo, null::float8 as estimados, null::float8 as consumidos, null::text as motivo,
+            null::text as causa, nullif(x.error_message, '') as mensaje, x.result_media_id as resultado_id
           from montage_exports x
           join projects p on p.id = x.project_id
           where p.user_id = ${usuarioId} ${soloProyecto}`,
     tipo("exportacion") &&
-      sql`select 'exportacion', e.id, e.created_at, p.id, p.title, e.state::text, 'zip', null, null,
-            null, null, null, null, nullif(e.error_message, ''), null
+      sql`select 'exportacion' as tipo, e.id as id, e.created_at as fecha, p.id as proyecto_id,
+            p.title as proyecto_titulo, e.state::text as estado, 'zip' as clase, null::text as proveedor,
+            null::text as modelo, null::float8 as estimados, null::float8 as consumidos, null::text as motivo,
+            null::text as causa, nullif(e.error_message, '') as mensaje, null::uuid as resultado_id
           from project_exports e
           join projects p on p.id = e.project_id
           where e.user_id = ${usuarioId} and p.user_id = ${usuarioId} ${soloProyecto}`,

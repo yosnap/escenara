@@ -31,11 +31,11 @@ const { guardarCredencial } = await import("../boveda/credenciales");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
 const { leerObjeto } = await import("../almacenamiento");
-const { accounts, media, projectExports, providerCredentials, rateLimits, scenes, sessions } = await import(
-  "../db/esquema"
-);
+const { accounts, generationJobs, media, projectExports, providerCredentials, rateLimits, scenes, sessions } =
+  await import("../db/esquema");
 const { barrerExportacionesCaducadas, empaquetar, tomarExportacionProyecto } = await import("./exportacion-proyecto");
 const { leerZip } = await import("./zip");
+const { gastoPorMes, historialDe } = await import("./historial");
 const { medioDePrueba, proyectoProducido } = await import("./datos-de-prueba");
 
 type Sesion = Awaited<ReturnType<typeof crearSesionDePrueba>>;
@@ -269,6 +269,37 @@ describe.skipIf(!hayBaseDeDatos)("exportación del proyecto a ZIP", () => {
         .from(projectExports)
         .where(and(eq(projectExports.projectId, p.proyectoId), eq(projectExports.state, "en_cola"))),
     ).toHaveLength(0);
+  });
+
+  test("historial: cronología y gasto del proyecto solo para su dueño, sin texto del proveedor", async () => {
+    const p = await proyectoProducido({ id: ana.id, esAdmin: false });
+    await db()
+      .update(generationJobs)
+      .set({ state: "fallido", failureReason: "contenido", errorMessage: "TEXTO-LIBRE-DEL-PROVEEDOR" })
+      .where(
+        eq(
+          generationJobs.sceneId,
+          (await db().select({ id: scenes.id }).from(scenes).where(eq(scenes.projectId, p.proyectoId)))[0]?.id ?? "",
+        ),
+      );
+    const filtro = { tipo: null, mes: null, proyectoId: p.proyectoId, pagina: 1 };
+    const deAna = await historialDe(ana.id, filtro);
+    expect(deAna.eventos.filter((x) => x.tipo === "trabajo")).toHaveLength(4);
+    expect(deAna.eventos.filter((x) => x.tipo === "montaje")).toHaveLength(1);
+    expect(JSON.stringify(deAna)).not.toContain("TEXTO-LIBRE-DEL-PROVEEDOR");
+    expect(JSON.stringify(deAna)).not.toContain("PROMPT-INTERNO");
+    expect(deAna.eventos.find((x) => x.estado === "fallido")?.fallo).toBeTruthy();
+    // Beto pide el historial del proyecto de Ana: nada, ni un evento.
+    expect((await historialDe(beto.id, filtro)).eventos).toEqual([]);
+    expect(await gastoPorMes(beto.id, p.proyectoId)).toEqual([]);
+    const gasto = await gastoPorMes(ana.id, p.proyectoId);
+    expect(gasto.reduce((n, g) => n + g.consumido, 0)).toBe(32);
+    expect(gasto.reduce((n, g) => n + g.estimado, 0)).toBe(40);
+    // Filtros: solo montajes; un mes sin nada.
+    expect((await historialDe(ana.id, { ...filtro, tipo: "montaje" })).eventos.every((x) => x.tipo === "montaje")).toBe(
+      true,
+    );
+    expect((await historialDe(ana.id, { ...filtro, mes: "2001-01" })).eventos).toEqual([]);
   });
 
   test("si el almacenamiento falla al leer, vuelve a la cola y, agotados los intentos, falla diciendo por qué", async () => {
