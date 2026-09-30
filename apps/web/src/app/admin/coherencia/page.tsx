@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Aviso } from "@/components/ui/feedback";
+import { TablaDesplazable } from "@/components/ui/tabla-desplazable";
 import { MUESTRA_MINIMA, nombreDeModoPara } from "@/lib/coherencia";
 import { NOMBRE_REFERENCIA_IDENTIDAD } from "@/lib/direccion";
 import { aciertoPorComprobacion } from "@/server/coherencia/registro";
@@ -48,7 +49,10 @@ export default async function PaginaCoherencia() {
           Todavía no se ha comprobado nada. En cuanto alguien compruebe una vista generada o una escena, aparecerá aquí.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-tarjeta border-2 border-borde">
+        <TablaDesplazable
+          etiqueta="Acierto de cada comprobación de coherencia"
+          className="rounded-tarjeta border-2 border-borde"
+        >
           <table className="w-full min-w-[46rem] border-collapse text-left">
             <thead className="bg-elevada text-sm text-texto-suave">
               <tr>
@@ -87,7 +91,7 @@ export default async function PaginaCoherencia() {
               ))}
             </tbody>
           </table>
-        </div>
+        </TablaDesplazable>
       )}
 
       {/*
@@ -101,7 +105,10 @@ export default async function PaginaCoherencia() {
           hicieron. Hace falta una muestra de {identidad.muestraMinima} en <strong>cada</strong> grupo para que la
           comparación signifique algo.
         </p>
-        <div className="overflow-x-auto rounded-tarjeta border border-borde">
+        <TablaDesplazable
+          etiqueta="Hoja de identidad frente a vistas sueltas"
+          className="rounded-tarjeta border border-borde"
+        >
           <table className="w-full text-left">
             <thead className="bg-elevada text-texto-suave text-sm">
               <tr>
@@ -130,7 +137,7 @@ export default async function PaginaCoherencia() {
               ))}
             </tbody>
           </table>
-        </div>
+        </TablaDesplazable>
         <Aviso tono="info">
           {!identidad.concluyente
             ? "Todavía no hay muestra suficiente en los dos grupos, así que esta comparación no dice nada. La hoja sigue siendo candidata y no se usa por defecto."

@@ -1,3 +1,4 @@
+import { TablaDesplazable } from "@/components/ui/tabla-desplazable";
 import { NOMBRE_VEREDICTO } from "@/lib/coherencia";
 import { ETIQUETA_ESTADO_CONTROL } from "@/lib/controles";
 import {
@@ -58,7 +59,7 @@ function Opinion({ opinion }: { opinion: OpinionSombraVista }) {
 
 export function TablaDecisiones({ decisiones }: { decisiones: readonly DecisionRegistradaVista[] }) {
   return (
-    <div className="overflow-x-auto rounded-tarjeta border-2 border-borde">
+    <TablaDesplazable etiqueta="Decisiones registradas" className="rounded-tarjeta border-2 border-borde">
       <table className="w-full min-w-[64rem] border-collapse text-left">
         <thead className="bg-elevada text-sm text-texto-suave">
           <tr>
@@ -120,6 +121,6 @@ export function TablaDecisiones({ decisiones }: { decisiones: readonly DecisionR
           ))}
         </tbody>
       </table>
-    </div>
+    </TablaDesplazable>
   );
 }

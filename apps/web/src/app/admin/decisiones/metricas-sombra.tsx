@@ -1,3 +1,4 @@
+import { TablaDesplazable } from "@/components/ui/tabla-desplazable";
 import { MUESTRA_MINIMA } from "@/lib/coherencia";
 import type { MetricasPreguntaVista } from "@/lib/decisiones";
 
@@ -23,7 +24,7 @@ function Proporcion({ parte, total }: { parte: number; total: number }) {
 
 export function MetricasSombra({ metricas }: { metricas: readonly MetricasPreguntaVista[] }) {
   return (
-    <div className="overflow-x-auto rounded-tarjeta border-2 border-borde">
+    <TablaDesplazable etiqueta="Métricas de las decisiones en sombra" className="rounded-tarjeta border-2 border-borde">
       <table className="w-full min-w-[60rem] border-collapse text-left">
         <thead className="bg-elevada text-sm text-texto-suave">
           <tr>
@@ -82,6 +83,6 @@ export function MetricasSombra({ metricas }: { metricas: readonly MetricasPregun
           ))}
         </tbody>
       </table>
-    </div>
+    </TablaDesplazable>
   );
 }
