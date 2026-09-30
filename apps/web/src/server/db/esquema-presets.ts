@@ -128,7 +128,22 @@ export const promptTemplates = pgTable(
     trendStatus: text("trend_status", { enum: ["vigente", "revision", "caducada"] }),
     trendSince: timestamp("trend_since", { withTimezone: true }),
     trendPlatform: text("trend_platform").notNull().default(""),
+    /**
+     * Duración con la que se diseñó el trend. Desde la 0.34.0 es **solo un dato histórico**: no limita nada y no se
+     * enseña a los usuarios. Lo que limita es `allowed_seconds`. No se borra para no perder el dato.
+     */
     targetSeconds: integer("target_seconds"),
+    /**
+     * Duraciones que admite el trend, en JSON de texto (lista de segundos). `[]` = cualquiera: manda el modelo en
+     * «Crear» y el proyecto en una escena. La migración que la creó la rellenó con `target_seconds` para que ningún
+     * trend cambiara de comportamiento sin una versión nueva.
+     */
+    allowedSeconds: text("allowed_seconds").notNull().default("[]"),
+    /**
+     * Categorías de la dirección del clip que dicta el trend, en JSON de texto (ver `CATEGORIAS_DECIDIBLES`). Con el
+     * trend elegido, la dirección no las pregunta y el servidor no las compone. `[]` = no decide ninguna.
+     */
+    decidedDirection: text("decided_direction").notNull().default("[]"),
     referenceUrl: text("reference_url").notNull().default(""),
     trendAllowsSpeech: boolean("trend_allows_speech").notNull().default(false),
     /** Capacidad de destino: es lo que decide con qué modelos puede usarse (catálogo de 0.11.0). */
@@ -173,6 +188,10 @@ export const promptTemplateVersions = pgTable(
     variables: text("variables").notNull().default("[]"),
     modelRestrictions: text("model_restrictions").notNull().default("{}"),
     trendAllowsSpeech: boolean("trend_allows_speech").notNull().default(false),
+    /** Instantánea de las duraciones admitidas de esta versión (JSON de texto, `[]` = cualquiera). */
+    allowedSeconds: text("allowed_seconds").notNull().default("[]"),
+    /** Instantánea de las categorías de la dirección que decide esta versión (JSON de texto). */
+    decidedDirection: text("decided_direction").notNull().default("[]"),
     /** Motivo del cambio, escrito por quien administra. */
     changeReason: text("change_reason").notNull().default(""),
     createdBy: uuid("created_by").references(() => users.id, { onDelete: "set null" }),
