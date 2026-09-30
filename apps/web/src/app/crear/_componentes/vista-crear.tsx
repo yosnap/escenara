@@ -8,7 +8,7 @@ import { consultarContexto } from "@/components/ui/personajes/api-personajes";
 import type { ModeloElegible } from "@/lib/catalogo";
 import { type EvaluacionVista, evaluacionPendiente } from "@/lib/controles";
 import { DIRECCION_CON_ACENTO_VACIA, type DireccionElegidaConAcento, type OpcionesDeDireccion } from "@/lib/direccion";
-import { CLIP, type Deposito, type EstadoCola, type Estimacion, type TrabajoVista } from "@/lib/generacion";
+import type { Deposito, EstadoCola, Estimacion, TrabajoVista } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
 import { resolverPaso } from "@/lib/multipaso";
 import { numeroDePaso, pasoPredeterminadoDeCrear, pasosDeCrear } from "@/lib/pasos-crear";
@@ -20,6 +20,7 @@ import { eleccionSinLoDecidido, segundosParaTrend } from "@/lib/trends";
 import { consultarCatalogoDeDireccion, consultarEstimacion, crearTrabajo, mensajeDeFallo } from "./api-generacion";
 import { consultarCatalogoDePresets, duplicarPreset } from "./api-presets";
 import { DialogoPresetPropio } from "./dialogo-preset-propio";
+import { cobrablesDe, segundosDelClip } from "./duracion-del-clip";
 import type { ConfirmacionCoste } from "./panel-generar";
 import {
   confirmacionDePlantilla,
@@ -39,16 +40,8 @@ import { type ClipVigente, comprobarClipVigente } from "./refresco-de-controles"
 import { contextosDeConfirmacion, useConfirmacionCoste } from "./use-confirmacion-coste";
 import { useControles } from "./use-controles";
 import { useFormatoClip } from "./use-formato-clip";
+import { useLugarDeCrear } from "./use-lugar-crear";
 import { useRequisitosSenalados } from "./use-requisitos-senalados";
-
-/**
- * Duración del clip que se va a pedir: la que se ha estimado (que es la que se paga) y, si el modelo no tarifa
- * ninguna en concreto, la primera que sabe cobrar. `CLIP` es el último recurso.
- */
-const segundosDelClip = (estimacion: Estimacion, modelo: ModeloElegible | null) =>
-  estimacion.segundos ?? modelo?.duraciones[0] ?? CLIP.segundos;
-/** Duraciones que el modelo sabe cobrar; vacía = cobra igual dure lo que dure. */
-const cobrablesDe = (modelo: ModeloElegible | null) => modelo?.duracionesConCoste.map((d) => d.segundos) ?? [];
 
 /**
  * Los pasos de «Crear», uno a la vez con su barra (0.33.0): el formato (plantilla normal o trend), de dónde sale
@@ -318,6 +311,7 @@ export function VistaCrear({
   // Lo pendiente se enseña siempre arriba y en la barra; el rojo en los campos solo tras salir del paso o intentar avanzar.
   const senales = useRequisitosSenalados(pasos, multipaso);
   const { irAlRequisito } = senales;
+  const lugar = useLugarDeCrear(() => void refrescarControles(personajeId, referencia?.id, estimacionFoto.modelo));
   const pasoSenalado = (paso: string) => senales.senalados.includes(paso);
 
   /**
@@ -329,6 +323,7 @@ export function VistaCrear({
       tipo: "fotograma",
       modelo,
       ...(id ? { personajeId: id } : medio ? { medioId: medio } : {}),
+      ...lugar.enLaConsulta(),
     });
     if (fallo) setError(fallo);
   };
@@ -413,6 +408,7 @@ export function VistaCrear({
        * primer paso (el dispositivo con la pantalla apagada), y con uno físico es donde se ve en la mano.
        */
       producto: { productoId: productoClip.productoId, accion: productoClip.accion },
+      ...lugar.enElEnvio,
       // La versión que se estaba mirando: si el servidor usaría otra, responde 409 y no se gasta nada.
       ...(personaje && contexto?.personajeId === personaje.id && contexto.versionId !== ""
         ? { versionPersonaje: contexto.versionId }
@@ -699,6 +695,8 @@ export function VistaCrear({
                 requisitos={senales.marcados(requisitos.fotogramaBase)}
                 deshabilitado={enviando !== null}
                 accionesDePreset={accionesDePreset("fotograma")}
+                lugar={lugar.lugar}
+                onLugar={lugar.elegir}
                 onPrompt={setPrompt}
                 onDialogo={setDialogo}
                 onPlantilla={setPlantillaFoto}

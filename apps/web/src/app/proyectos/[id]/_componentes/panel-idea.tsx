@@ -6,6 +6,7 @@ import { Boton } from "@/components/ui/button";
 import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo } from "@/components/ui/field";
 import { SelectorPlataforma } from "@/components/ui/formatos";
+import { LugarDelProyecto } from "@/components/ui/lugares/lugar-del-proyecto";
 import { Dialogo } from "@/components/ui/overlay";
 import { Paso } from "@/components/ui/paso";
 import { SelectorPersonaje } from "@/components/ui/personaje";
@@ -159,6 +160,13 @@ export function PanelIdea({
             conservar el diseño del retrato maestro aprobado.
           </Aviso>
         )}
+
+        <LugarDelProyecto
+          valor={proyecto.lugarId ?? null}
+          acabado={proyecto.estiloVisual}
+          deshabilitado={guardando}
+          onCambio={(lugarId) => void guardar({ lugarId })}
+        />
 
         <div className="flex flex-col gap-2">
           <Selector

@@ -166,6 +166,27 @@ export function queFaltaAlLugar(lugar: Pick<LugarResumen, "tieneMaestra" | "decl
   return faltas;
 }
 
+/**
+ * El lugar de una escena tal como se edita: heredar el del proyecto, uno propio o ninguno (`lugarId` vacío sin
+ * heredar), dónde dentro de él y si es el plano del lugar solo.
+ */
+export interface LugarDeEscena {
+  heredar: boolean;
+  lugarId: string;
+  sitio: string;
+  plano: PlanoDelLugar;
+}
+
+export const LUGAR_DE_ESCENA_VACIO: LugarDeEscena = { heredar: true, lugarId: "", sitio: "", plano: "con_reparto" };
+
+/** Lo que se envía al guardar la escena: `null` = sin lugar aunque el proyecto tenga uno. */
+export const cuerpoDelLugarDeEscena = (lugar: LugarDeEscena): Record<string, unknown> | null =>
+  lugar.heredar
+    ? { heredar: true, sitio: lugar.sitio, plano: lugar.plano }
+    : lugar.lugarId === ""
+      ? null
+      : { lugarId: lugar.lugarId, sitio: lugar.sitio, plano: lugar.plano };
+
 /** Lugar elegido en «Crear» o en una escena: el identificador de un lugar suyo y dónde, dentro de él. */
 export interface LugarElegido {
   lugarId: string;

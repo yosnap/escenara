@@ -3,6 +3,7 @@ import { type Acento, DIRECCION_ELEGIDA_VACIA, type DireccionElegida, type Refer
 import type { FormatoMontaje } from "./formatos";
 import type { FotoDeProductoDelClip } from "./foto-de-producto";
 import { formatearCreditos, formatearEuros } from "./generacion";
+import type { LugarDeEscena } from "./lugares";
 import type { Medio } from "./media/tipos";
 import type { ProductoElegido } from "./productos";
 
@@ -225,6 +226,8 @@ export interface EscenaVista {
    * usuario. Vacío = esta escena no lleva producto, que es lo normal.
    */
   producto: ProductoElegido;
+  /** El lugar de la escena: el del proyecto, uno propio o ninguno. Ausente en vistas anteriores a los lugares. */
+  lugar?: LugarDeEscena;
   segundos: number;
   estado: EstadoEscena;
   /** Quién aprobó la escena y cuándo; `null` mientras sea borrador. */
@@ -279,6 +282,8 @@ export interface ProyectoVista {
    * pudiera elegirlo, el acento cambiaría de plano a plano.
    */
   acento: Acento;
+  /** Lugar por defecto que heredan las escenas; `null` = ninguno. */
+  lugarId?: string | null;
   totalEscenas: number;
   /** Total estimado de todas las escenas, en créditos. */
   totalEstimado: number;

@@ -2,9 +2,11 @@
 
 import type { ReactNode } from "react";
 import { AreaTexto, Campo } from "@/components/ui/field";
+import { SelectorLugar } from "@/components/ui/lugares/selector-lugar";
 import { AvisoSinVoz } from "@/components/ui/modelo";
 import { Paso } from "@/components/ui/paso";
 import { DIALOGO_MAXIMO, PROMPT_MINIMO } from "@/lib/generacion";
+import type { LugarDeEscena } from "@/lib/lugares";
 import { type CatalogoParaCrear, type PresetVisible, VARIABLE_TEXTO_MAXIMA } from "@/lib/presets";
 import { errorDeRequisito, ID_DESCRIPCION, idRequisito, type Requisito } from "@/lib/requisitos";
 import { ENVIO_FOTOGRAMA } from "@/lib/requisitos-crear";
@@ -26,6 +28,8 @@ export function PasoEscena({
   requisitos,
   deshabilitado,
   accionesDePreset,
+  lugar,
+  onLugar,
   onPrompt,
   onDialogo,
   onPlantilla,
@@ -43,6 +47,9 @@ export function PasoEscena({
   requisitos: readonly Requisito[];
   deshabilitado: boolean;
   accionesDePreset: (preset: PresetVisible) => ReactNode;
+  /** El lugar del fotograma: su maestra entra como referencia y el «dónde» en el texto. */
+  lugar?: LugarDeEscena;
+  onLugar?: (lugar: LugarDeEscena) => void;
   onPrompt: (texto: string) => void;
   onDialogo: (texto: string) => void;
   onPlantilla: (estado: EstadoPlantilla) => void;
@@ -89,6 +96,11 @@ export function PasoEscena({
         deshabilitado={deshabilitado}
         onUsar={(texto) => onPrompt(descripcion === "" ? texto : `${descripcion} ${texto}`)}
       />
+
+      {/* El lugar entra por el fotograma: su maestra viaja como referencia, y el clip lo hereda de esta imagen. */}
+      {lugar && onLugar && (
+        <SelectorLugar valor={lugar} onCambio={onLugar} acabado={null} deshabilitado={deshabilitado} />
+      )}
 
       {/* Los botones son el corazón de «Crear»: la escena que se escribe arriba es una de las variables. */}
       <PanelPlantilla

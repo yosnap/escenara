@@ -40,6 +40,8 @@ const { Passkeys } = await import("./cuenta/_componentes/passkeys");
 const { Sesiones } = await import("./cuenta/_componentes/sesiones");
 const { ListaProyectos } = await import("./proyectos/_componentes/lista-proyectos");
 const { Catalogo } = await import("./admin/componentes/catalogo");
+const { ListaLugares } = await import("./lugares/_componentes/lista-lugares");
+const { FichaLugar } = await import("./lugares/_componentes/ficha-lugar");
 const { CabeceraAdmin } = await import("./admin/cabecera-admin");
 
 const SESION = {
@@ -197,6 +199,40 @@ describe("axe: pantallas con sesión", () => {
         ),
       );
     }
+  });
+
+  test("lugares: lista vacía, lista con uno y su ficha con la declaración", async () => {
+    const lugar = {
+      id: "l1",
+      nombre: "Bar de la esquina",
+      descripcion: "Azulejos verdes y barra de zinc.",
+      acabado: "realista" as const,
+      estilo: "",
+      fotos: 0,
+      portada: null,
+      tieneMaestra: false,
+      declarado: false,
+      version: 1,
+      actualizado: "2026-09-30T00:00:00.000Z",
+    };
+    for (const inicial of [[], [lugar]]) await sinGraves(paginaApp("Tus lugares", <ListaLugares inicial={inicial} />));
+    await sinGraves(
+      renderToStaticMarkup(
+        <div className="min-h-dvh bg-fondo">
+          <CabeceraApp sesion={SESION} />
+          <main id="contenido" tabIndex={-1}>
+            <FichaLugar
+              inicial={{
+                ...lugar,
+                referencias: [],
+                declaracion: null,
+                versiones: [{ numero: 1, cambios: ["alta"], creadaEn: lugar.actualizado }],
+              }}
+            />
+          </main>
+        </div>,
+      ),
+    );
   });
 
   test("admin: catálogo de componentes con la cabecera del panel", async () => {
