@@ -87,7 +87,8 @@ export function filtroDeEncuadre(ancho: string, alto: string, encuadre: Encuadre
   const x = numero(encuadre.x / 100, "encuadre horizontal");
   const y = numero(encuadre.y / 100, "encuadre vertical");
   // Se recorta **antes** de escalar: un vertical llevado a 16:9 se reduce a su franja y luego se escala, en lugar de
-  // ampliarlo entero a 1920 × 3413 para tirar dos tercios. Mismo resultado, un tercio de los píxeles.
+  // ampliarlo entero a 1920 × 3413 para tirar dos tercios. Un tercio de los píxeles; con fuentes de medidas no
+  // exactas el recorte puede moverse uno o dos píxeles por redondear en la fuente, algo que no se ve.
   return [
     `[0:v]crop='min(iw,ih*${ancho}/${alto})':'min(ih,iw*${alto}/${ancho})':'(iw-ow)*${x}':'(ih-oh)*${y}'`,
     `scale=${ancho}:${alto}`,

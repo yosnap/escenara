@@ -103,15 +103,14 @@ export const modelosDelPlan = (elecciones: EleccionesDelPlan) =>
   );
 
 /**
- * Los modelos con los que se genera **este** proyecto: los del plan y, en modo `omni`, el de escenas habladas, que
- * es el que de verdad recibe la proporción. Sin él, un formato aceptado al fijarlo se rechazaría después al producir.
+ * Los modelos con los que se genera **este** proyecto: los del plan o, en modo `omni`, **solo** el de escenas
+ * habladas, que es el único que se usa (sin fotograma ni animación aparte). Sin él, un formato aceptado al fijarlo
+ * se rechazaría después al producir.
  */
 export async function modelosDelProyecto(usuarioId: string, elecciones: EleccionesDelPlan, modoVoz: string) {
-  const omni = modoVoz === "omni" ? await eleccionOmni(usuarioId).catch(() => null) : null;
-  return [
-    ...modelosDelPlan(elecciones),
-    ...(omni ? [{ nombre: omni.modelo.nombre, proporciones: omni.modelo.parametros.proporciones }] : []),
-  ];
+  if (modoVoz !== "omni") return modelosDelPlan(elecciones);
+  const omni = await eleccionOmni(usuarioId).catch(() => null);
+  return omni ? [{ nombre: omni.modelo.nombre, proporciones: omni.modelo.parametros.proporciones }] : [];
 }
 
 async function elegir(tipo: "fotograma" | "animacion", usuarioId?: string): Promise<EleccionDeTrabajo | null> {
