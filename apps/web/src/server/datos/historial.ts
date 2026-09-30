@@ -57,7 +57,7 @@ export function filtroDeLaUrl(parametros: Record<string, string | string[] | und
     tipo: (TIPOS_EVENTO as readonly string[]).includes(tipo) ? (tipo as TipoEvento) : null,
     mes: /^\d{4}-(0[1-9]|1[0-2])$/.test(mes) ? mes : null,
     proyectoId: UUID.test(proyecto) ? proyecto : null,
-    pagina: Number.isInteger(pagina) && pagina >= 1 && pagina <= 10_000 ? pagina : 1,
+    pagina: Number.isInteger(pagina) && pagina >= 1 && pagina <= 1_000 ? pagina : 1,
   };
 }
 

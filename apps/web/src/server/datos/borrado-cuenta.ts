@@ -1,4 +1,4 @@
-import { and, count, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, count, eq, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { FRASE_BORRADO_CUENTA as FRASE_CONFIRMACION, MINUTOS_SESION_RECIENTE } from "@/lib/tus-datos";
 import { leerAjustes } from "../ajustes";
 import { db } from "../db/cliente";
@@ -202,13 +202,27 @@ export async function cancelarBorradoCuenta(usuarioId: string): Promise<void> {
   const hecho = await db()
     .update(accountDeletions)
     .set({ state: "cancelado", cancelledAt: new Date(), lockedBy: null, lockedUntil: null })
-    .where(and(eq(accountDeletions.userId, usuarioId), eq(accountDeletions.state, "programado")))
+    .where(
+      and(
+        eq(accountDeletions.userId, usuarioId),
+        eq(accountDeletions.state, "programado"),
+        // Mientras el worker lo está ejecutando no se cancela: podría estar ya cancelando trabajos o borrando filas. Al
+        // soltarlo (aplazado o fallido) vuelve a poder cancelarse.
+        or(isNull(accountDeletions.lockedUntil), lt(accountDeletions.lockedUntil, new Date())),
+      ),
+    )
     .returning({ id: accountDeletions.id });
   if (hecho.length > 0) {
     console.info(`[datos] borrado de cuenta cancelado · ${hecho[0]?.id}`);
     return;
   }
   const abierto = await borradoAbiertoDe(usuarioId);
+  if (abierto?.state === "programado") {
+    throw new ErrorDatos(
+      409,
+      "El borrado está empezando justo ahora y no se puede cancelar en este momento. Vuelve a intentarlo en un par de minutos: si el borrado ha tenido que esperar, todavía podrás cancelarlo.",
+    );
+  }
   if (abierto) {
     throw new ErrorDatos(
       409,

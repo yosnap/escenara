@@ -318,6 +318,18 @@ describe.skipIf(!hayBaseDeDatos)("borrado de proyecto y de cuenta", () => {
     expect(await pasadaDeBorradosDeCuenta(WORKER)).toBeNull();
     expect(await total(db().select({ total: count() }).from(e.users).where(eq(e.users.id, ana.id)))).toBe(1);
 
+    // Mientras el worker lo tiene tomado no se puede cancelar (podría estar ya cancelando trabajos o borrando filas).
+    await db()
+      .update(e.accountDeletions)
+      .set({ lockedBy: "otro-worker", lockedUntil: new Date(Date.now() + 60_000) })
+      .where(eq(e.accountDeletions.userId, ana.id));
+    const tomado = await rutaBorradoCuenta.DELETE(pedir(ana, "/api/cuenta/borrado", "DELETE"));
+    expect(tomado.status).toBe(409);
+    expect(await errorDe(tomado)).toContain("empezando justo ahora");
+    await db()
+      .update(e.accountDeletions)
+      .set({ lockedBy: null, lockedUntil: null })
+      .where(eq(e.accountDeletions.userId, ana.id));
     expect((await rutaBorradoCuenta.DELETE(pedir(ana, "/api/cuenta/borrado", "DELETE"))).status).toBe(200);
     expect((await rutaProyecto.GET(pedir(ana, `/api/proyectos/${p.proyectoId}`), ctx(p.proyectoId))).status).toBe(200);
     // Cancelado, vencer el plazo no hace nada.
@@ -329,12 +341,27 @@ describe.skipIf(!hayBaseDeDatos)("borrado de proyecto y de cuenta", () => {
   test("pasada la gracia se borra todo: credenciales, medios y objetos; solo queda lo anónimo y lo agregado", async () => {
     const ana = await nueva();
     const { p, personaje, lugar, claves } = await cuentaCompleta(ana);
+    // El nombre de un servicio compatible lo escribe el usuario: no puede sobrevivir en el agregado.
+    await db().insert(e.usageLedger).values({
+      userId: ana.id,
+      provider: "compatible",
+      providerName: "Servidor de Ana en casa",
+      model: "modelo-compatible-de-prueba",
+      entryType: "consumo",
+      credits: 1,
+    });
     const antes = await agregado("modelo-de-prueba", "consumo");
     const pruebasAntes = await total(db().select({ total: count() }).from(e.consentEvidence));
     expect((await pedirBorrado(ana)).status).toBe(201);
     await vencerGracia(ana.id);
 
     expect(await pasadaDeBorradosDeCuenta(WORKER)).toBe("completado");
+    const compatibles = await db()
+      .select()
+      .from(e.usageAggregates)
+      .where(eq(e.usageAggregates.model, "modelo-compatible-de-prueba"));
+    expect(compatibles.length).toBeGreaterThan(0);
+    expect(compatibles.every((c) => c.providerName === "")).toBe(true);
 
     for (const [tabla, columna] of [
       [e.users, e.users.id],

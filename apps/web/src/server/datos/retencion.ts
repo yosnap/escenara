@@ -23,7 +23,9 @@ export async function agregarGastoDeCuenta(tx: Ejecutor, usuarioId: string): Pro
   )) as unknown as { total: number }[];
   await tx.execute(sql`
     insert into usage_aggregates (month, provider, provider_name, model, entry_type, credits, amount_eur, entries)
-    select date_trunc('month', l.created_at at time zone ${ZONA})::date, l.provider, l.provider_name, l.model,
+    select date_trunc('month', l.created_at at time zone ${ZONA})::date, l.provider,
+           -- El nombre de un servicio compatible lo escribe el usuario («la clave de Ana»): no sobrevive a la cuenta.
+           case when l.provider = 'compatible' then '' else l.provider_name end, l.model,
            l.entry_type, sum(l.credits), sum(coalesce(l.amount_eur, 0)), count(*)
     from usage_ledger l where l.user_id = ${usuarioId}
     group by 1, 2, 3, 4, 5

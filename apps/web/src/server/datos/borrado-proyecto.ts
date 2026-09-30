@@ -68,7 +68,10 @@ const trabajosDe = (proyectoId: string): Promise<FilaTrabajo[]> =>
  * Medios que produce el proyecto: resultados de sus trabajos y vídeos montados. Separados en los que se borran y los
  * que se quedan porque algo **fuera del proyecto** los usa.
  */
-async function derivadosDe(proyectoId: string): Promise<{
+async function derivadosDe(
+  proyectoId: string,
+  usuarioId: string,
+): Promise<{
   borrar: { id: string; clave: string }[];
   enUsoFuera: number;
   videos: number;
@@ -95,6 +98,8 @@ async function derivadosDe(proyectoId: string): Promise<{
         or exists (select 1 from collection_media c where c.media_id = m.id)
         or exists (select 1 from music_tracks t where t.media_id = m.id and t.project_id <> ${proyectoId})
         or exists (select 1 from voice_samples v where v.media_id = m.id)
+        or exists (select 1 from character_omni_registrations o where m.id in (o.portrait_media_id, o.body_media_id))
+        or exists (select 1 from consent_records c where c.document_media_id = m.id)
         or exists (select 1 from prompt_templates t where t.demo_media_id = m.id)
         or exists (
           select 1 from scenes s where s.project_id <> ${proyectoId} and m.id in (
@@ -106,6 +111,8 @@ async function derivadosDe(proyectoId: string): Promise<{
         or exists (select 1 from montage_exports x where x.result_media_id = m.id and x.project_id <> ${proyectoId})
       ) as fuera
     from propios p join media m on m.id = p.id
+    -- Solo los del dueño: fila y objeto se borran juntos o no se borra ninguno de los dos.
+    where m.owner_id = ${usuarioId}
     group by m.id
   `)) as unknown as { id: string; clave: string; video: boolean; fuera: boolean }[];
   return {
@@ -150,7 +157,7 @@ export async function resumenBorradoProyecto(actor: Actor, id: unknown): Promise
   const [escenas, trabajos, derivados, paquetes, enCurso] = await Promise.all([
     db().select({ total: count() }).from(scenes).where(eq(scenes.projectId, proyecto.id)),
     trabajosDe(proyecto.id),
-    derivadosDe(proyecto.id),
+    derivadosDe(proyecto.id, actor.id),
     clavesDeExportaciones([proyecto.id]),
     procesosEnCurso(proyecto.id),
   ]);
@@ -220,7 +227,7 @@ export async function borrarProyectoConDerivados(
   }
 
   // ── 3. Qué objetos hay que borrar, antes de perder las filas que los apuntan.
-  const derivados = await derivadosDe(proyecto.id);
+  const derivados = await derivadosDe(proyecto.id, actor.id);
   const claves = [
     ...new Set([...derivados.borrar.map((d) => d.clave), ...(await clavesDeExportaciones([proyecto.id]))]),
   ];

@@ -53,6 +53,11 @@ descuadre el gasto de la instalación o se lleve la prueba de un consentimiento.
 - Borrar un proyecto ya no conserva sus trabajos ni sus resultados (antes quedaban en la biblioteca); el gasto sí se
   conserva en los apuntes, con nota.
 - Cada petición autenticada consulta si la cuenta tiene un borrado programado (una consulta por índice único).
+- Durante la gracia, la API de Escenara responde a esa cuenta como sin sesión (401) y las páginas llevan a
+  `/cuenta/borrado`. Las rutas de Better Auth (`/api/auth/*`: contraseña, passkeys, sesiones propias) siguen
+  disponibles a propósito: solo tocan la propia cuenta y permiten, por ejemplo, cerrar una sesión robada.
+- Mientras el worker tiene tomado un borrado, cancelarlo responde 409 y se puede volver a intentar al soltarlo: evita
+  cancelar trabajos o borrar filas de una cuenta que acaba de arrepentirse.
 - No hay pantalla para dar el rol de administrador a otra cuenta: el único administrador que quiera irse necesita
   hacerlo en la base de datos. Queda como propuesta.
 - Los registros de decisiones de coherencia de un proyecto borrado se conservan sin su evidencia (como hasta ahora) y
