@@ -72,3 +72,30 @@ describe("plantillas de la instalación", () => {
     expect(html).not.toContain("orden #");
   });
 });
+
+describe("ejemplo de cada plantilla en el panel", () => {
+  const conEjemplo: PlantillaVista = {
+    ...plantilla("t9", "image_edit", "Con ejemplo", 30),
+    demo: {
+      tipo: "imagen",
+      url: "/api/prompts/plantillas/t9/demo?v=0a0a0a0a",
+      alt: "Una foto",
+      ancho: 1080,
+      alto: 1920,
+    },
+  };
+  const html = renderToStaticMarkup(
+    <VistaPlantillas inicial={[conEjemplo, plantilla("t1", "image_edit", "Sin", 10)]} />,
+  );
+
+  test("la tarjeta enseña el ejemplo que ven los usuarios y ofrece cambiarlo", () => {
+    expect(html).toContain("/api/prompts/plantillas/t9/demo?v=0a0a0a0a");
+    expect(html).toContain("Ejemplo que ven los usuarios");
+    expect(html).toContain("Cambiar ejemplo");
+  });
+
+  test("una plantilla sin ejemplo lo dice y ofrece ponerlo", () => {
+    expect(html).toContain("Sin ejemplo: los usuarios no ven cómo queda antes de generar.");
+    expect(html).toContain("Poner ejemplo");
+  });
+});
