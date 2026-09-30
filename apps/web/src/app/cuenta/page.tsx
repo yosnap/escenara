@@ -23,11 +23,16 @@ import { Passkeys } from "./_componentes/passkeys";
 import { Perfil } from "./_componentes/perfil";
 import { Preferencias } from "./_componentes/preferencias";
 import { Sesiones } from "./_componentes/sesiones";
+import { TusDatos } from "./_componentes/tus-datos";
 
 export const metadata: Metadata = { title: "Tu cuenta" };
 export const dynamic = "force-dynamic";
 
-export default async function PaginaCuenta() {
+export default async function PaginaCuenta({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const sesion = await exigirSesion("/cuenta");
   const cabeceras = await headers();
   const [passkeys, sesiones, cuentas, credenciales, compatibles] = await Promise.all([
@@ -103,6 +108,7 @@ export default async function PaginaCuenta() {
             }))}
           />
         )}
+        <TusDatos abrirBorrado={(await searchParams).borrar === "1"} />
       </main>
     </div>
   );

@@ -2,6 +2,7 @@ import { and, eq, inArray, not, sql } from "drizzle-orm";
 import { esProveedor, type Proveedor } from "@/lib/boveda";
 import { barrerEjecucionesReservadas } from "../asistente/gasto";
 import { usarCredencialValida } from "../boveda/credenciales";
+import { pasadaDeDatos } from "../datos/pasada";
 import { db } from "../db/cliente";
 import { generationJobs, usageLedger } from "../db/esquema";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
@@ -239,6 +240,8 @@ export async function pasadaDeCola(
     console.error(`[cola] pasada de exportaciones: ${detalle(error)}`);
     return 0;
   });
+  // Tus datos: paquetes de exportación de proyectos, su caducidad y los borrados de cuenta pasada la gracia.
+  await pasadaDeDatos(workerId);
   const reservasSueltas = await barrerReservasHuerfanas();
   // Traducciones que nadie usa desde hace tiempo: la caché existe para no pagar dos veces, no para guardar texto
   // de alguien para siempre.

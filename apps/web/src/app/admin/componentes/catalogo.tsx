@@ -8,6 +8,7 @@ import { SeccionControles } from "./secciones/controles";
 import { SeccionConversion } from "./secciones/conversion";
 import { SeccionCreador } from "./secciones/creador";
 import { SeccionCuentas } from "./secciones/cuentas";
+import { SeccionDatos } from "./secciones/datos";
 import { SeccionDireccion } from "./secciones/direccion";
 import { SeccionEstados } from "./secciones/estados";
 import { SeccionFormatos } from "./secciones/formatos";
@@ -52,6 +53,7 @@ const INDICE = [
   ["formatos", "Formatos, encuadre y versiones"],
   ["conversion", "De Crear a un proyecto"],
   ["cuentas", "Cuentas"],
+  ["datos", "Tus datos"],
   ["secretos", "Secretos"],
   ["alertas", "Alertas"],
   ["estados", "Estados y presupuesto"],
@@ -107,6 +109,7 @@ export function Catalogo() {
         <SeccionFormatos />
         <SeccionConversion />
         <SeccionCuentas />
+        <SeccionDatos />
         <SeccionSecretos />
         <SeccionAlertas />
         <SeccionEstados />

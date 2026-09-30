@@ -2,7 +2,7 @@
 
 **Escenara** · Estudio abierto de personajes y vídeo · «Da vida a cada escena»
 
-Mapa de la documentación pública del proyecto. Versión actual: **0.46.0**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
+Mapa de la documentación pública del proyecto. Versión actual: **0.47.0**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
 
 ## Mapa de documentos
 
@@ -35,6 +35,7 @@ Mapa de la documentación pública del proyecto. Versión actual: **0.46.0**. Pa
 | Guías | [Usar y administrar trends](guias/trends-virales.md) | Selector de formatos vigentes, vista previa y coste; alta, versión, caducidad y duplicado desde el admin, con el ejemplo de cada trend | 0.42.1 |
 | Guías | [Crear un personaje animado](guias/personajes-animados.md) | Tres acabados editables, guía de estilo, retrato maestro, herencia en escenas y coste | 0.31.0 |
 | Guías | [Montar y exportar tu vídeo](guias/montaje-y-exportacion.md) | La línea de tiempo simple (orden, recorte y zonas seguras), la mezcla de voz y música, los subtítulos quemados o adjuntos, la etiqueta de contenido sintético obligatoria, el guardado con versión y la exportación del MP4 en cada formato sin créditos | 0.41.0 |
+| Guías | [Tus datos: historial, exportación y borrado](guias/tus-datos.md) | El historial y el gasto (estimado y consumido) por proyecto y por mes con filtros, exportar un proyecto en ZIP sin claves (qué lleva y qué no, límites y caducidad), borrar un proyecto y la cuenta con periodo de gracia, y qué se borra y qué se conserva anónimo | 0.47.0 |
 | Guías | [Formatos y proyectos largos](guias/formatos-y-proyectos-largos.md) | Para qué plataforma es la pieza, el mismo montaje en 9:16, 4:5, 1:1 y 16:9 con encuadre por escena y sin regenerar, 30 escenas y 5 minutos, las versiones de cada escena, la cuota y lo que cuesta cada cosa | 0.41.0 |
 | Guías | [Tu kit de marca](guias/tu-kit-de-marca.md) | Tu logotipo en una esquina de tus exportaciones, la regla que impide tapar la etiqueta y qué kit lleva cada vídeo | 0.42.0 |
 | Guías | [De Crear a un proyecto](guias/de-crear-a-un-proyecto.md) | Convertir un clip de Crear en un proyecto de una escena que lo reutiliza sin volver a pagarlo, lo que el proyecto vuelve a pedir, quitar la voz del clip o ponerle voz en off, y montarlo | 0.35.0 |

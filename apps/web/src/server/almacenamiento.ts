@@ -45,3 +45,21 @@ export function urlTemporalDescargaMontaje(clave: string, nombre = "montaje.mp4"
     contentDisposition: `attachment; filename="escenara-${limpio}"`,
   });
 }
+
+/** Sube un fichero del disco sin cargarlo entero en memoria (el ZIP de una exportación puede ocupar gigas). */
+export async function guardarArchivo(clave: string, ruta: string, tipo: string) {
+  await s3().write(clave, Bun.file(ruta), { type: tipo });
+}
+
+/**
+ * URL temporal de descarga como adjunto, con vigencia propia (nunca más de una hora). La usa la exportación del
+ * proyecto, cuyo paquete caduca: la URL no puede durar más que el paquete.
+ */
+export function urlTemporalAdjunto(clave: string, nombre: string, segundos: number): string {
+  const limpio = /^[\w.-]+$/.test(nombre) ? nombre : "descarga.zip";
+  return s3().presign(clave, {
+    expiresIn: Math.max(1, Math.min(VIGENCIA_URL_SEGUNDOS, Math.floor(segundos))),
+    method: "GET",
+    contentDisposition: `attachment; filename="${limpio}"`,
+  });
+}

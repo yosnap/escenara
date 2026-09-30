@@ -1,5 +1,6 @@
-import { esAdmin, sesionDePeticion } from "../auth/sesion";
+import { esAdmin, respuestaSinSesion, sesionDePeticion } from "../auth/sesion";
 import { ErrorPercepcion } from "../coherencia/percepcion";
+import { ErrorDatos } from "../datos/errores";
 import { ErrorGeneracion } from "../generacion/errores";
 import { dentroDelLimite, type Limite } from "../limite";
 import { ErrorLugar } from "../lugares/errores";
@@ -30,6 +31,7 @@ export function respuestaError(error: unknown): Response {
   // El del producto (0.26.0) llega al elegirlo en un clip o en una escena: uno ajeno responde 404.
   if (error instanceof ErrorProducto) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorLugar) return Response.json({ error: error.message }, { status: error.estado });
+  if (error instanceof ErrorDatos) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorGeneracion) return Response.json({ error: error.message }, { status: error.estado });
   if (error instanceof ErrorOmni) return Response.json({ error: error.message }, { status: error.estado });
   // El del montaje (0.32.0) trae también los 503 del entorno: FFmpeg sin instalar o sin fuente para la etiqueta.
@@ -66,11 +68,18 @@ export async function leerId(contexto: ContextoId): Promise<string> {
   return id;
 }
 
-export function manejador<C>(fn: (peticion: Request, contexto: C, actor: Actor) => Promise<Response>) {
+/**
+ * `permitirBorradoProgramado`: la ruta está en la lista blanca de lo que una cuenta en su periodo de gracia puede
+ * hacer (solo exportar y descargar sus proyectos). Todo lo demás le responde 403 con el motivo.
+ */
+export function manejador<C>(
+  fn: (peticion: Request, contexto: C, actor: Actor) => Promise<Response>,
+  { permitirBorradoProgramado = false }: { permitirBorradoProgramado?: boolean } = {},
+) {
   return async (peticion: Request, contexto: C): Promise<Response> => {
     try {
-      const sesion = await sesionDePeticion(peticion);
-      if (!sesion) return Response.json({ error: "Inicia sesión para continuar." }, { status: 401 });
+      const sesion = await sesionDePeticion(peticion, { permitirBorradoProgramado });
+      if (!sesion) return await respuestaSinSesion(peticion);
       return await fn(peticion, contexto, { id: sesion.user.id, esAdmin: esAdmin(sesion) });
     } catch (error) {
       return respuestaError(error);

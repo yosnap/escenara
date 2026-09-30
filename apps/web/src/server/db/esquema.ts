@@ -68,6 +68,7 @@ export * from "./esquema-canto";
 export * from "./esquema-catalogo";
 export * from "./esquema-coherencia";
 export * from "./esquema-controles";
+export * from "./esquema-datos";
 export * from "./esquema-direcciones";
 export * from "./esquema-generacion";
 export * from "./esquema-lugares";

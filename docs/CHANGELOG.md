@@ -2,6 +2,99 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.47.0] · 2026-09-30
+
+**Tus datos (cierre del hito MVP).** Ves todo lo que has hecho y gastado, te llevas cada proyecto en un ZIP **sin
+claves** y borras lo tuyo, hasta la cuenta entera. Con esta versión se cierra el hito MVP: el camino completo
+personaje → guion → escenas → revisión → montaje → exportación está cubierto por un test de extremo a extremo con
+respuestas grabadas del proveedor. **Una migración aditiva**: lee «Actualizar desde la 0.46.0».
+
+### Añadido
+
+- **Historial del proyecto** (`/proyectos/[id]/historial`, botón «Historial y gasto») y **de la cuenta**
+  (`/cuenta/historial`, en Tu cuenta › Tus datos): cronología de generaciones, revisiones, montajes y exportaciones
+  con su estado, sus créditos y un enlace a cada resultado; gasto **estimado y consumido** por mes (y por proyecto en
+  la cuenta). Filtros por tipo, mes y proyecto, y páginas de 30, todo por enlaces. Un fallo se cuenta con su causa
+  concreta; nunca el texto del proveedor ni el prompt.
+- **Exportar proyecto** en ZIP: `proyecto.json` (esquema `escenara.proyecto`, versión 1, validado), los medios en
+  carpetas con su huella SHA-256, los subtítulos y un `LEEME.md`. Lo prepara el worker con su progreso en pantalla y
+  se descarga por un enlace temporal que **caduca** (24 h de fábrica; después el paquete se borra solo). Lista blanca:
+  sin credenciales, secretos, cabeceras, prompts ni datos de otra cuenta, y un filtro que retira del texto lo que tenga
+  forma de clave (`[retirado]`). Límites de tamaño y de exportaciones por día con su causa. La reimportación queda fuera.
+- **Borrar un proyecto** desde su pantalla, con un diálogo propio que enumera con cifras qué se borra y qué se queda.
+- **Borrar la cuenta** (Tu cuenta › Tus datos): sesión reciente (haber entrado hace menos de 10 minutos), lista de
+  todo lo que desaparece, exportar cada proyecto antes, frase escrita y **periodo de gracia** (7 días de fábrica). En la
+  gracia la cuenta está desactivada: **no puede generar ni gastar** (el encolado lo rechaza y el worker no envía nada
+  suyo, tampoco un reintento), **ni editar o subir nada** (403 con el motivo), **ni cambiar su correo con sesión,
+  añadir passkeys o vincular cuentas, ni borrarse por otra vía** (las rutas de Better Auth lo rechazan). Sí puede
+  entrar y salir, cerrar sesiones, cancelar el borrado, ver su historial y **pedir y descargar el ZIP de sus
+  proyectos** desde `/cuenta/borrado`. **Restablecer la contraseña** («He olvidado mi contraseña») sigue funcionando
+  igual que siempre, sin revelar si la cuenta está en gracia, **y cancela el borrado**: es la salida del titular si
+  alguien le cambió la contraseña. El titular recibe un **correo al pedirlo y al cancelarlo** (también cuando lo
+  cancela un restablecimiento), sin enlaces que permitan cancelar sin entrar. El
+  único administrador (sin contar a los que ya tienen su borrado programado) no puede borrarse. Si un administrador
+  publicó ejemplos de plantillas de la instalación, el diálogo avisa de que esas plantillas se quedarán sin ejemplo
+  (no se borran, ni se toca ningún medio ajeno).
+- **Nada se queda atascado en silencio**: los archivos que el almacenamiento no deja borrar (de un proyecto o de una
+  cuenta) quedan apuntados y el worker los reintenta con retroceso; los que agotan los intentos se ven como «fallidos».
+  Un borrado de cuenta que espera más allá de su plazo enseña el motivo al usuario en `/cuenta/borrado` y a quien
+  administra, y se reintenta con retroceso; los fallidos se pueden reintentar desde el panel. Un trabajo «sin respuesta
+  del proveedor» ya salió y pudo cobrarse: solo retiene el borrado unos días más (3 de fábrica); después se consulta al
+  proveedor una última vez y, si sigue sin respuesta, se apunta su **coste estimado como no confirmado** (no se da por
+  «sin cobro»: el proveedor pudo cobrarlo a la instalación) y el borrado sigue. El agregado distingue esa parte.
+- **Las rutas de administración de la librería de cuentas** (`/api/auth/admin/*`: suplantar, cambiar rol, prohibir,
+  borrar usuarios…) **quedan desactivadas**: Escenara no las usa, y borrar una cuenta pasa siempre por el worker.
+- **Admin › Ajustes › Tus datos**: días de gracia, días de espera a un trabajo sin respuesta, tamaño máximo del ZIP,
+  horas de caducidad y exportaciones por día; y el estado: archivos pendientes o fallidos de borrar y borrados de cuenta
+  aplazados con su motivo.
+- Guía nueva: [Tus datos](guias/tus-datos.md). Decisión en el ADR-0041. Sección «Borrado y retención» en
+  [Cumplimiento y privacidad](legal/cumplimiento-y-privacidad.md), **pendiente de revisión jurídica**. Componentes
+  nuevos en el catálogo (› «Tus datos»).
+
+### Cambiado
+
+- **Borrar un proyecto borra sus derivados**, en la base de datos y en el almacenamiento: sus trabajos, los
+  fotogramas, clips y voces generados en él, los vídeos montados y los ZIP. Antes se quedaban los trabajos y sus
+  resultados. Se quedan lo que subiste tú, lo generado que usas **fuera** del proyecto y el clip de «Crear» del que salió (vuelve a «Crear»); los apuntes de gasto se quedan
+  diciendo de qué proyecto venían. Un trabajo en el proveedor, un montaje renderizándose o un paquete preparándose
+  impiden borrar (409; si ya se habían cancelado trabajos en cola, el mensaje lo dice); lo que estaba en cola se cancela
+  liberando su reserva. Un archivo que otro sitio cita, también dentro de una versión de un personaje o de un lugar o en
+  otro trabajo, se conserva.
+- **Borrar un proyecto o un personaje y encolar a la vez no puede enviar ni cobrar**: los caminos bloquean primero la
+  fila del usuario; el encolado comprueba dentro de su transacción que la escena y el personaje siguen existiendo, y el
+  worker cierra sin cobro (reserva liberada, consumo 0) un trabajo cuyo proyecto, escena o personaje ha desaparecido
+  antes de enviarlo, diciendo cuál. Con un personaje borrado, sus fotos nunca salen sin consentimiento que revisar.
+- **El filtro de secretos de la exportación** solo revisa el texto libre (título, idea, guion, dirección, subtítulos) y
+  solo busca valores que parecen una clave (patrones como `sk-…`, JWT, `Bearer …`, cadenas largas de alta entropía,
+  «clave = valor» con nombres de secreto, y los secretos de la instalación que no son una palabra corriente). Antes,
+  una contraseña de base de datos como «escenara» estropeaba todas las exportaciones.
+- **El coste no confirmado se ve**: en el historial (un trabajo sin respuesta lo dice), en `/cuenta/borrado` (créditos
+  estimados) y en Admin › Ajustes › Tus datos (créditos no confirmados en cuentas borradas).
+- **La exportación lee cada archivo por trozos** (nunca entero en memoria) y alarga su toma mientras empaqueta; la clave
+  del ZIP ya no lleva el identificador de la cuenta y es distinta en cada intento.
+- Al borrar la cuenta, de ella solo queda el **gasto agregado** por mes, proveedor, modelo y tipo, y una **prueba
+  anónima** de cada consentimiento y declaración de derechos (tipo, alcance, versión del texto, casillas y fechas; sin
+  nombres, fotos, IP ni correo). Las declaraciones de lugar de esa cuenta se borran.
+
+### Corregido
+
+- El motivo del tope de JavaScript de «Crear» vuelve a acabar en «Medido: X KB.», que es lo que valida su test.
+
+### Actualizar desde la 0.46.0
+
+- **Haz antes una copia**: `bun run db:backup`. Después, **con el worker parado**, `bun run db:migrate`.
+- La migración `0063_tus-datos-exportacion-y-borrado-de-cuenta` es **aditiva e idempotente**: crea los tipos
+  `project_export_state`, `account_deletion_state`, `storage_deletion_state` y `consent_evidence_kind`, las tablas
+  `project_exports`, `account_deletions`, `storage_deletions`, `usage_aggregates` y `consent_evidence`, con sus índices
+  y claves ajenas, y las columnas `generation_jobs.project_id` y `generation_jobs.requested_character_id` (admiten
+  nulos, sin clave ajena). No cambia ni borra ninguna
+  fila y volver a aplicarla no hace nada.
+- **Reinicia el worker** tras actualizar: ahora prepara los ZIP, borra los caducados y ejecuta los borrados de cuenta
+  pasada la gracia, y reintenta los archivos pendientes de borrar. Necesita espacio en el disco temporal para el ZIP
+  más grande (2048 MB de fábrica) y para el archivo más grande del proyecto; la memoria ya no crece con el tamaño.
+- Ajustes nuevos con su valor de fábrica: 7 días de gracia, 3 días de espera a un trabajo sin respuesta, 2048 MB por
+  ZIP, 24 horas de caducidad y 10 exportaciones al día. No hay variables de entorno nuevas.
+
 ## [0.46.0] · 2026-09-30
 
 **Lugares.** Un tercer tipo de contenido junto a Personajes y Productos: el sitio poco conocido que quieres usar como

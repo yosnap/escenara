@@ -9,6 +9,7 @@ import { Aviso } from "@/components/ui/feedback";
 import { Campo, EntradaTexto } from "@/components/ui/field";
 import type { Ajustes } from "@/server/ajustes";
 import type { ClaveSecreta, SecretoVista } from "@/server/boveda/secretos";
+import type { EstadoTusDatos } from "@/server/datos/estado-admin";
 import { enviarCorreoPruebaAccion, guardarAjustesAccion } from "./acciones";
 import { guardarSecretoAccion, quitarSecretoAccion } from "./acciones-secretos";
 import { SeccionAccesoSocial } from "./seccion-acceso-social";
@@ -19,6 +20,7 @@ import { SeccionCalidad } from "./seccion-calidad";
 import { SeccionCanto } from "./seccion-canto";
 import { SeccionCoherencia } from "./seccion-coherencia";
 import { SeccionControles } from "./seccion-controles";
+import { SeccionDatos } from "./seccion-datos";
 import { SeccionDosPersonajes } from "./seccion-dos-personajes";
 import { SeccionLugares } from "./seccion-lugares";
 import { SeccionMontaje } from "./seccion-montaje";
@@ -35,6 +37,8 @@ export interface DatosAjustes {
   bovedaLista: boolean;
   /** Variables de `.env` que ya no hacen nada porque su proveedor está configurado en el panel. */
   variablesSobrantes: string[];
+  /** Objetos por borrar y borrados de cuenta aplazados: se enseñan en la sección Tus datos. */
+  tusDatos: EstadoTusDatos;
 }
 
 export function FormularioAjustes({
@@ -44,6 +48,7 @@ export function FormularioAjustes({
   redirecciones,
   bovedaLista,
   variablesSobrantes,
+  tusDatos,
 }: DatosAjustes) {
   const [valores, setValores] = useState(inicial);
   const [secretos, setSecretos] = useState(secretosIniciales);
@@ -263,6 +268,7 @@ export function FormularioAjustes({
 
       <SeccionDosPersonajes valores={valores} onCambio={cambiar} />
       <SeccionLugares valores={valores} onCambio={cambiar} />
+      <SeccionDatos valores={valores} errorDe={errorDe} onCambio={cambiar} estado={tusDatos} />
 
       <SeccionControles valores={valores} errorDe={errorDe} onCambio={cambiar} />
 

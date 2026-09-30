@@ -1,7 +1,7 @@
 import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { APIError, createAuthMiddleware } from "better-auth/api";
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import { admin } from "better-auth/plugins";
 import { count, sql } from "drizzle-orm";
@@ -10,9 +10,38 @@ import { type Ajustes, leerAjustes } from "../ajustes";
 import { importarClavesDelEntorno } from "../boveda/importar-entorno";
 import { type ClaveSecreta, huellaSecretos, leerSecreto } from "../boveda/secretos";
 import { enviarEnSegundoPlano, plantillaEnlace } from "../correo";
+import { cancelarBorradoPorRestablecimiento } from "../datos/cancelar-por-restablecimiento";
 import { db } from "../db/cliente";
 import * as esquema from "../db/esquema";
+import {
+  esRutaDeAdministracionDeLaLibreria,
+  MENSAJE_CUENTA_EN_BORRADO,
+  permitidaEnGracia,
+  tieneBorradoProgramado,
+} from "./gracia";
 import { dentroDelLimite } from "./limite-cuenta";
+
+type ContextoAuth = Parameters<Parameters<typeof createAuthMiddleware>[0]>[0];
+
+const enGracia = () => new APIError("FORBIDDEN", { code: "CUENTA_EN_BORRADO", message: MENSAJE_CUENTA_EN_BORRADO });
+
+/**
+ * Periodo de gracia del borrado de la cuenta, también en las rutas de la librería: con sesión, solo entrar, salir,
+ * cerrar sesiones, consultar y restablecer la contraseña (que cancela el borrado; responde igual que siempre, sin
+ * revelar si la cuenta está en gracia). Y las rutas de administración del plugin `admin` (suplantar, cambiar rol, borrar usuarios…), que Escenara no
+ * usa, se rechazan siempre: un borrado de cuenta pasa por el worker, con su retención.
+ */
+async function exigirPermitidaEnGracia(ctx: ContextoAuth): Promise<void> {
+  if (esRutaDeAdministracionDeLaLibreria(ctx.path)) {
+    throw new APIError("FORBIDDEN", {
+      code: "ADMINISTRACION_DESACTIVADA",
+      message: "Estas rutas de administración de cuentas no se usan en Escenara y están desactivadas.",
+    });
+  }
+  if (permitidaEnGracia(ctx.path)) return;
+  const sesion = await getSessionFromCtx(ctx).catch(() => null);
+  if (sesion && (await tieneBorradoProgramado(sesion.user.id))) throw enGracia();
+}
 
 const URL_BASE = process.env.BETTER_AUTH_URL ?? "http://localhost:3021";
 
@@ -135,6 +164,12 @@ function crearAuth(ajustes: Ajustes, sociales: Record<string, { clientId: string
       maxPasswordLength: 128,
       resetPasswordTokenExpiresIn: 60 * 60,
       revokeSessionsOnPasswordReset: true,
+      // Restablecer la contraseña cancela un borrado de cuenta programado: el titular recupera su cuenta.
+      onPasswordReset: async ({ user }) => {
+        await cancelarBorradoPorRestablecimiento(user.id).catch((error: unknown) =>
+          console.error(`[datos] no se ha podido cancelar el borrado al restablecer la contraseña: ${String(error)}`),
+        );
+      },
       sendResetPassword: async ({ user, url }) => {
         enviarEnSegundoPlano({
           para: user.email,
@@ -184,6 +219,7 @@ function crearAuth(ajustes: Ajustes, sociales: Record<string, { clientId: string
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
+        await exigirPermitidaEnGracia(ctx);
         // Registro cerrado: se rechaza antes del alta para poder decirlo (el alta en sí no revela errores).
         if (ctx.path === "/sign-up/email" && !(await registroDisponible())) {
           throw new APIError("FORBIDDEN", { code: "REGISTRO_CERRADO", message: "El registro está cerrado." });
