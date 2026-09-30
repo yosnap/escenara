@@ -80,16 +80,14 @@ export function SelectorDeAngulo({
                 <span className="font-bold">{angulo.nombre}</span>
                 {activo && <Check className="size-4 shrink-0" strokeWidth={3} aria-hidden />}
               </span>
-              <span className={cn("text-sm", activo ? "text-[#182032]/85" : "text-texto-suave")}>
-                {angulo.definicion}
-              </span>
+              <span className={cn("text-sm", activo ? "text-[#182032]" : "text-texto-suave")}>{angulo.definicion}</span>
               {angulo.porDondeEntra !== "" && (
-                <span className={cn("text-sm font-semibold", activo ? "text-[#182032]/80" : "text-texto")}>
+                <span className={cn("text-sm font-semibold", activo ? "text-[#182032]" : "text-texto")}>
                   Por dónde entra: {angulo.porDondeEntra}
                 </span>
               )}
               {angulo.ejemplo !== "" && (
-                <span className={cn("text-sm italic", activo ? "text-[#182032]/75" : "text-texto-suave")}>
+                <span className={cn("text-sm italic", activo ? "text-[#182032]" : "text-texto-suave")}>
                   «{angulo.ejemplo}»
                 </span>
               )}
@@ -97,7 +95,7 @@ export function SelectorDeAngulo({
                 <span
                   className={cn(
                     "mt-auto inline-flex items-center gap-1 pt-1 text-xs font-semibold",
-                    activo ? "text-[#182032]/80" : "text-aviso",
+                    activo ? "text-[#182032]" : "text-aviso",
                   )}
                 >
                   <ShieldAlert className="size-3.5" aria-hidden />

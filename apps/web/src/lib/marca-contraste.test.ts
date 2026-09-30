@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import path from "node:path";
-import { describirPar, mezclar, revisarContraste } from "./marca-contraste";
+import { Glob } from "bun";
+import { describirPar, mezclar, revisarContraste, TEXTO_FIJO_OSCURO } from "./marca-contraste";
 import { type DocumentoMarca, validarDocumentoMarca } from "./marca-esquema";
+import { contraste } from "./tokens";
 
 const raiz = path.resolve(import.meta.dir, "../../../..");
 const resultado = validarDocumentoMarca(await Bun.file(path.join(raiz, "docs/branding/escenara.brand.json")).json());
@@ -86,6 +88,32 @@ describe("contraste AA de una marca", () => {
     test("con la marca de referencia, cada par nuevo pasa en los dos temas", () => {
       expect(bloqueosDe(() => {})).toEqual([]);
     });
+  });
+
+  test("el texto oscuro fijo de la interfaz es el validado, y siempre sólido", async () => {
+    // Lo que se comprueba al publicar es TEXTO_FIJO_OSCURO al 100 %; con opacidad sería otro par (al 70 % sobre el
+    // coral de Escenara da 3,36:1). Así que en la interfaz no puede haber otro color oscuro fijo ni ese con opacidad,
+    // salvo un icono decorativo marcado con «permitido:» y su motivo en la línea de encima.
+    const src = path.resolve(import.meta.dir, "..");
+    const fuera: string[] = [];
+    for await (const fichero of new Glob("**/*.tsx").scan(src)) {
+      if (fichero.includes(".test.")) continue;
+      const lineas = (await Bun.file(path.join(src, fichero)).text()).split("\n");
+      lineas.forEach((linea, i) => {
+        for (const m of linea.matchAll(/text-\[(#[0-9A-Fa-f]{6})\](\/\d+)?/g)) {
+          const permitido = [lineas[i - 1], lineas[i - 2]].some((l) => l?.includes("permitido:"));
+          if (m[1]?.toUpperCase() !== TEXTO_FIJO_OSCURO || (m[2] && !permitido))
+            fuera.push(`${fichero}:${i + 1} ${m[0]}`);
+        }
+      });
+    }
+    expect(fuera).toEqual([]);
+    // Y ese par, con la marca de Escenara, llega a 4,5:1 sobre los dos extremos de la chispa en los dos temas.
+    for (const modo of ["light", "dark"] as const) {
+      for (const color of [base.vibrant[modo].coral, base.vibrant[modo].sun, base.theme[modo].brandSpark]) {
+        expect(contraste(TEXTO_FIJO_OSCURO, color)).toBeGreaterThanOrEqual(4.5);
+      }
+    }
   });
 
   test("mezclar reproduce una opacidad de Tailwind sobre un sólido", () => {

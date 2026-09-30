@@ -210,6 +210,7 @@ export function TarjetaReel({
         />
       ) : (
         <div className={cn("absolute inset-0 flex items-center justify-center opacity-90", TONOS[tono].punto)}>
+          {/* permitido: icono decorativo (aria-hidden) sin texto; la tarjeta ya dice que no hay imagen */}
           <ImageOff className="size-8 text-[#182032]/60" aria-hidden />
         </div>
       )}

@@ -168,7 +168,7 @@ export function EditorMarca({ estadoInicial }: { estadoInicial: EstadoMarcaVista
 
   const alRevertir = (version: VersionMarcaVista) =>
     ejecutar(async () => {
-      const r = await pedirMarca<{ publicada: VersionMarcaVista }>(
+      const r = await pedirMarca<{ publicada: VersionMarcaVista } | { borrador: VersionMarcaVista; motivos: string[] }>(
         `/api/admin/marca/versiones/${version.id}/revertir`,
         enJson("POST"),
       );
@@ -177,6 +177,19 @@ export function EditorMarca({ estadoInicial }: { estadoInicial: EstadoMarcaVista
         return;
       }
       await recargar();
+      // Ya no cumple el contraste de hoy: vuelve como borrador para corregirla, sin publicar.
+      if (r.datos && "borrador" in r.datos) {
+        const { borrador, motivos } = r.datos;
+        setDocumento(borrador.documento);
+        setActivos(borrador.activos);
+        setNotas(borrador.notas);
+        setMensaje({
+          tipo: "aviso",
+          titulo: `Versión ${version.version} restaurada como borrador, sin publicar`,
+          texto: `No cumple el contraste de hoy, así que no se ha publicado: ${motivos.join(" ")} Corrige esos colores en el editor y publícala; mientras, sigue la marca que había.`,
+        });
+        return;
+      }
       setMensaje({
         tipo: "hecho",
         titulo: "Versión recuperada",

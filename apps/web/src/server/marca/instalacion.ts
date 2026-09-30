@@ -309,11 +309,21 @@ export async function publicarBorrador(
   }
 }
 
-/** Vuelve a publicar una versión del historial, tal como era. Un clic, y atómico como publicar. */
-export async function revertirA(actor: Actor, id: unknown): Promise<VersionMarcaVista> {
+/** Resultado de volver a una versión: publicada tal cual, o restaurada como borrador con lo que ya no cumple. */
+export type ResultadoReversion = { publicada: VersionMarcaVista } | { borrador: VersionMarcaVista; motivos: string[] };
+
+/**
+ * Vuelve a publicar una versión del historial, tal como era. Un clic, y atómico como publicar.
+ *
+ * Las reglas de contraste de hoy mandan también sobre una versión antigua: si alguno de sus textos ya no se leería (por
+ * ejemplo, con los pares que se añadieron después de publicarla), **no se publica**, pero tampoco se queda en nada: se
+ * restaura como **borrador**, con cada par que falla en sus notas y en la respuesta, para que quien administra lo
+ * corrija y lo publique. Si ya hay un borrador sin publicar, no se pisa: se dice y se pide publicarlo o descartarlo.
+ */
+export async function revertirA(actor: Actor, id: unknown): Promise<ResultadoReversion> {
   exigirAdministracion(actor);
   if (!esUuid(id)) throw new ErrorMarca(404, "Esa versión de la marca no existe.");
-  const fila = await db().transaction(async (tx) => {
+  const resultado = await db().transaction(async (tx): Promise<ResultadoReversion> => {
     await cerrojo(tx);
     const [destino] = await tx.select().from(brandVersions).where(eq(brandVersions.id, id)).limit(1);
     if (!destino) throw new ErrorMarca(404, "Esa versión de la marca no existe.");
@@ -321,9 +331,38 @@ export async function revertirA(actor: Actor, id: unknown): Promise<VersionMarca
     if (destino.state !== "retirada" || destino.publishedAt === null) {
       throw new ErrorMarca(409, "Solo se puede volver a una versión que ya estuvo publicada. Publica el borrador.");
     }
-    // Las reglas de hoy mandan también sobre una versión antigua: si ya no se leería, no vuelve.
-    exigirContraste(exigirDocumento(destino.document));
-    await exigirActivos(tx, destino.assets);
+    const documento = exigirDocumento(destino.document);
+    const activos = await exigirActivos(tx, destino.assets);
+    const { bloqueos } = revisarContraste(documento);
+    if (bloqueos.length > 0) {
+      const motivos = bloqueos.map(describirPar);
+      const [borrador] = await tx.select().from(brandVersions).where(eq(brandVersions.state, "borrador")).limit(1);
+      if (borrador) {
+        throw new ErrorMarca(
+          409,
+          `La versión ${destino.version} ya no cumple el contraste de hoy (${motivos[0]}), así que se restauraría como borrador, pero ya tienes un borrador sin publicar. Publícalo o descártalo y vuelve a intentarlo. No ha cambiado nada.`,
+          [],
+          bloqueos,
+        );
+      }
+      const [{ siguiente } = { siguiente: 1 }] = await tx
+        .select({ siguiente: sql<number>`coalesce(max(${brandVersions.version}), 0) + 1` })
+        .from(brandVersions);
+      const notas = `Restaurada desde la versión ${destino.version}. No se ha publicado porque no cumple el contraste de hoy: ${motivos.join(" ")}`;
+      const [fila] = await tx
+        .insert(brandVersions)
+        .values({
+          version: Number(siguiente),
+          state: "borrador",
+          document: documento,
+          assets: activos,
+          notes: notas.length > LARGO_NOTAS ? `${notas.slice(0, LARGO_NOTAS - 1)}…` : notas,
+          authorId: actor.id,
+        })
+        .returning();
+      if (!fila) throw new Error("La inserción del borrador restaurado no ha devuelto ninguna fila.");
+      return { borrador: aVista(fila), motivos };
+    }
     await tx.update(brandVersions).set({ state: "retirada" }).where(eq(brandVersions.state, "publicada"));
     const ahora = new Date();
     const [publicada] = await tx
@@ -332,10 +371,11 @@ export async function revertirA(actor: Actor, id: unknown): Promise<VersionMarca
       .where(eq(brandVersions.id, destino.id))
       .returning();
     if (!publicada) throw new ErrorMarca(409, "La versión ha cambiado mientras se revertía. No ha cambiado nada.");
-    return publicada;
+    return { publicada: aVista(publicada) };
   });
-  olvidarMarcaAplicada();
-  return aVista(fila);
+  // Solo cambia lo que se ve si se ha publicado; un borrador no se aplica.
+  if ("publicada" in resultado) olvidarMarcaAplicada();
+  return resultado;
 }
 
 /** Retira la marca publicada: la instalación vuelve a la de Escenara. La versión queda en el historial. */
