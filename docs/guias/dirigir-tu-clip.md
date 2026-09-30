@@ -20,8 +20,18 @@ a la botonera de la plantilla no le queda nada propio que ofrecer, no aparece. L
 le pide al modelo, y se le pide una sola vez.
 
 En **«Crear»**, la plantilla o el trend del clip se eligen **antes**, en el primer paso («Elige el formato»),
-porque un trend fija la duración y si se habla a cámara. El paso del clip ya no repite ese selector: solo ofrece los
-botones que la plantilla elegida pida y que la dirección no cubra.
+porque un trend decide si se habla a cámara, puede limitar la duración y puede dictar parte de la dirección. El paso
+del clip ya no repite ese selector: solo ofrece los botones que la plantilla elegida pida y que la dirección no cubra.
+
+### Con un trend elegido
+
+Un trend puede **decidir** parte de la dirección: el plano, el ángulo, el movimiento de cámara, la micro-acción o el
+registro estético, cuando su texto ya lo dicta (un unboxing en primera persona ya dice cómo es el plano y la cámara).
+Esas categorías **no se te preguntan**: en su lugar sale un bloque **«Lo decide el trend «X»»** con la lista, y lo
+que eligieras antes para ellas no se envía al modelo. El resto de la dirección sigue siendo tuyo. Si el trend no
+permite habla, no se pide cómo se dice ni el acento, y con un trend no hay modo experto. Pasa igual en «Crear» y en la
+escena de un proyecto. Qué decide cada trend lo marca quien administra; está en [Usar y administrar
+trends](trends-virales.md).
 
 ## Guardar una dirección y volver a usarla
 

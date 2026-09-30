@@ -2,6 +2,64 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.34.0] · 2026-09-30
+
+**Los trends ya no fijan la duración y deciden la parte de la dirección que su texto ya dicta.** Hasta ahora cada
+trend exigía una duración concreta (por eso hubo que duplicar trends en variantes de 5 s) y la dirección del clip
+volvía a preguntar el plano o la cámara que la plantilla ya decía. Sin cambios de precio, de confirmación, de
+consentimiento ni de idempotencia.
+
+### Añadido
+
+- **Duraciones admitidas.** Cada trend declara las duraciones con las que se puede usar. **Vacío = cualquiera**: la
+  duración la elige el modelo en «Crear» y la marca el proyecto en una escena. Con valores, solo se ofrecen esas; si
+  el modelo no tiene ninguna, Escenara cambia solo a uno que sí (como en la 0.33.1) o dice por qué no puede. Si se
+  pide otra, el error dice qué admite el trend y qué se pidió, y **no se reserva nada**.
+- **«La dirección decide».** Cada trend declara qué partes de la dirección del clip dicta su texto: plano, ángulo,
+  movimiento de cámara, micro-acción o registro estético. Con ese trend elegido, esos controles no se preguntan: en
+  su lugar sale un bloque **«Lo decide el trend «X»»** con la lista y el motivo, en «Crear» y en el editor de escena.
+  El resto (acento, matiz de voz, instrucciones escritas, producto…) sigue siendo tuyo.
+- **El servidor aplica la misma regla**: lo que decide el trend no llega al modelo aunque venga en la petición (un
+  navegador antiguo o una petición manipulada), así que nunca hay dos cabeceras de cámara ni dos reglas que se
+  contradigan.
+- **Admin › Plantillas**: el diálogo del trend gana «Duraciones admitidas» (segundos separados por comas; vacío =
+  cualquiera) y el grupo de casillas «La dirección decide», con ayuda. Cambiar cualquiera de los dos crea una
+  **versión nueva con su motivo**, igual que cambiar el texto o el permiso de habla.
+- **Catálogo de componentes**: el bloque «Lo decide el trend» y los dos campos nuevos del admin.
+
+### Cambiado
+
+- **La duración objetivo pasa a ser un dato histórico.** Se conserva en la base de datos y en el admin se lee como
+  «Se diseñó para N s», pero ya no limita nada ni se enseña a quien crea. La tarjeta del selector de trends solo
+  dice la duración («· 6 s») cuando el trend la limita.
+- **Con un trend elegido**, la dirección no pide la voz si el trend no permite habla y el modo experto sale
+  desactivado con el motivo (el servidor ya lo rechazaba).
+- **Los trends de la instalación pasan a admitir cualquier duración** con una versión nueva y su motivo; la anterior
+  queda en el historial. Qué decide cada uno de fábrica (solo lo que su texto dicta de forma explícita):
+
+  | Trend | La dirección decide |
+  | --- | --- |
+  | Unboxing en primera persona | Plano, ángulo y movimiento de cámara |
+  | Antes y después de una rutina | Nada |
+  | Producto en la rutina de la mañana | Micro-acción |
+  | ASMR con el producto | Plano y micro-acción |
+  | Mano que muestra el producto en un giro | Movimiento de cámara y micro-acción |
+
+  Las **variantes de 5 s** (clave terminada en «-5s») se conservan tal cual, con su duración; los trends caducados
+  y los que hubieras editado a mano no reciben categorías decididas (se liberan de duración si no están caducados).
+
+### Actualizar desde la 0.33.x
+
+- **Haz antes una copia**: `bun run db:backup`. Después, `bun run db:migrate`.
+- La migración `0052_trends-libres` es **aditiva**: añade `allowed_seconds` y `decided_direction` a las plantillas y a
+  sus versiones, y rellena las duraciones admitidas de cada trend con la duración que ya exigía, así que por sí sola
+  no cambia nada. `target_seconds` no se borra ni se renombra.
+- La migración `0053_trends-sin-duracion-fija` libera la duración de los trends de la instalación **creando una
+  versión nueva con motivo** y rellena «La dirección decide» según la tabla de arriba. Es idempotente. Los trabajos
+  ya generados no cambian (guardan su versión y su prompt final) y las escenas que citaban la versión anterior de su
+  trend pasan a citar la nueva, así que siguen siendo válidas sin volver a elegirlo.
+- Revisa en **Admin › Plantillas** los valores de «La dirección decide» de cada trend antes de publicarlos.
+
 ## [0.33.3] · 2026-09-30
 
 Parche de diseño: **las tarjetas de opciones son más limpias**. Sin migraciones, sin cambios de precio y sin tocar
