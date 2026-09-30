@@ -82,12 +82,17 @@
       ]
     },
     {
-      "titulo": "Productos",
+      "titulo": "Productos y lugares",
       "guias": [
         {
           "archivo": "productos.md",
           "titulo": "Presentar un producto",
           "descripcion": "Alta de un producto con sus fotos por papel, cómo se usa en escena y qué se avisa antes de pagar."
+        },
+        {
+          "archivo": "lugares.md",
+          "titulo": "Lugares",
+          "descripcion": "Un sitio poco conocido como escenario: sus fotos y su maestra, la declaración, qué hacer si sale gente y cómo se usa en escenas, podcast y planos del lugar solo."
         },
         {
           "archivo": "estrategia-del-anuncio.md",

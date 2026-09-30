@@ -22,7 +22,11 @@ En el spike del 29/09/2026, un clip de 4 s a 720p con Gemini Omni Flash 1.1 cost
 2. Elige **Podcast** o **Dualcast** y añade otro personaje de los tuyos. El límite es **dos**. Podcast y dualcast **no admiten una escena con producto**: quita el producto de la escena antes de elegirlos. Si un formato está apagado, la pantalla indica que se activa en **Admin › Ajustes › Dos personajes**.
 3. Ajusta **papel** (habla o acompaña), **lado** y **mirada**. En podcast se propone el lado opuesto y la mirada cruzada. En dualcast ambos comparten plano: quien no habla escucha y reacciona.
 4. En **El diálogo, turno a turno**, asigna a cada frase su personaje, escribe lo que dirá **literalmente** y, si quieres, una dirección vocal. Puedes ordenar los turnos arrastrándolos por su asa (o con el teclado, o con Subir y Bajar) y quitarlos. El texto hablado **no se traduce**; la dirección vocal sí puede traducirse para componer la petición.
-5. Revisa **Lo que se ha pedido**: resume en castellano quién sale, dónde mira y qué dice. Nunca muestra el prompt interno. Si el diálogo no cabe en los segundos del clip, aparece un aviso con las palabras y los segundos necesarios. Puedes acortarlo o confirmar expresamente que quieres seguir.
+5. Si quieres un **set común**, elige un [lugar](lugares.md) en la escena (o hereda el del proyecto): los dos clips
+   de un podcast comparten obligatoriamente el mismo lugar y la misma versión. En las escenas habladas el lugar viaja
+   **descrito**; con la misma foto maestra el set sale igual en los dos clips (medido a nivel de fotograma el
+   30/09/2026).
+6. Revisa **Lo que se ha pedido**: resume en castellano quién sale, dónde mira y qué dice. Nunca muestra el prompt interno. Si el diálogo no cabe en los segundos del clip, aparece un aviso con las palabras y los segundos necesarios. Puedes acortarlo o confirmar expresamente que quieres seguir.
 
 Sin turnos, el modelo decide quién dice cada frase. **Los dos registros de personaje usan ahora la voz Omni del proyecto**, así que ambos saldrán con el mismo timbre aunque sus fichas tengan voces predefinidas distintas. La pantalla lo avisa y pide una casilla antes de pagar; dos voces Omni distintas en la misma escena todavía no están disponibles.
 
@@ -36,6 +40,6 @@ En **Revisión › Coherencia**, Jev muestra la identidad **por cara** y señala
 
 ## Límites comprobados
 
-En las tres pruebas reales del 29/09/2026, las caras salieron separadas y la mirada cruzada del podcast se respetó. La **persona real salió algo rejuvenecida**, aunque reconocible. El **set de los dos clips del podcast no fue idéntico** y el **lado del cuadro no siempre se respetó**; incluso asomó parte de otro cuerpo en un plano que debía ser individual. Revisa cada clip y sus veredictos antes de utilizarlo.
+En las tres pruebas reales del 29/09/2026, las caras salieron separadas y la mirada cruzada del podcast se respetó. La **persona real salió algo rejuvenecida**, aunque reconocible. Con el set **solo descrito**, el **de los dos clips del podcast no fue idéntico** (con un lugar y su maestra, el 30/09/2026 sí salió igual a nivel de fotograma) y el **lado del cuadro no siempre se respetó**; incluso asomó parte de otro cuerpo en un plano que debía ser individual. Revisa cada clip y sus veredictos antes de utilizarlo.
 
 Si no puedes generar, consulta [Por qué no puedo generar](por-que-no-puedo-generar.md).

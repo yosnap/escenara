@@ -208,6 +208,10 @@ generar ningún fotograma, y por eso el panel de dirección no te lo ofrece.
 El último bloque **no se puede quitar**: es lo que separa una foto creíble de un dibujo por ordenador. Lo
 compone quien administra la instalación.
 
+**Con un [lugar](lugares.md)**, el **sitio** es el de su foto maestra: la localización del catálogo deja de usarse y lo
+que escribes en «dónde, dentro del lugar» («junto a la ventana») es lo que manda. Los demás bloques no cambian, ni la
+regla de no embellecer a una persona real. Para un sitio famoso no hace falta: escribe su nombre.
+
 ### Con una persona real no se la embellece
 
 Si el personaje es una persona real, su identidad sale de sus referencias y se le pide expresamente al modelo
@@ -243,7 +247,8 @@ no se ha podido leer, se te dice cuál y lo escribes tú.
 ## Cambiar solo una cosa
 
 Partiendo de un fotograma que ya has aprobado, puedes cambiar **una sola cosa** y dejar todo lo demás
-idéntico: la ropa, el sitio o la postura. Puedes añadir una segunda foto de referencia (la prenda, el fondo).
+idéntico: la ropa, el sitio o la postura. Puedes añadir una segunda foto de referencia (la prenda, el fondo). Si el
+sitio al que quieres llevarlo es uno que usas a menudo, dalo de alta como [lugar](lugares.md).
 
 Es también la forma de hacer un **antes/después**: dos salidas de la misma imagen con un rasgo cambiado.
 

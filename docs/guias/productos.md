@@ -58,6 +58,10 @@ La acción **«El producto solo»** es un plano de b-roll para intercalar en el 
 Por eso **no hace falta elegir personaje ni confirmar el consentimiento de nadie**, y puedes pedirlo sin haber
 dado de alta ningún personaje. El clip sale mudo, porque no hay quien hable.
 
+**Sobre una superficie de un lugar**: con un [lugar](lugares.md) en el clip, el producto se apoya en su sitio (la
+barra, la mesa). La etiqueta **se lee en un plano de producto** cercano y **se degrada en un plano medio con persona**
+(medido el 30/09/2026): si el texto importa, haz un plano de detalle del producto sobre la superficie.
+
 ## Un producto digital se hace en tres pasos
 
 Pedirle al modelo «un móvil con mi app» devuelve una imitación inventada de tu app: iconos que no son, textos
@@ -104,6 +108,10 @@ confirmas**, solo cuáles de las que ya caben van al modelo.
   las demás.
 - Si cambias a un modelo con menos huecos, la elección se recorta a lo que cabe y el aviso de antes de pagar dice
   cuántas fotos se quedan fuera.
+- **Con un lugar en el fotograma el cupo se reparte entre tres**: al menos una del personaje, al menos una del
+  producto y la foto maestra del lugar si queda sitio; lo que queda, entre el personaje y el producto como arriba. Con
+  diez huecos, un personaje de 6 fotos, un producto de 8 y un lugar, viajan 6, 3 y la maestra. El aviso de antes de
+  pagar dice las tres cifras. Ver [Lugares](lugares.md).
 
 ## Lo que se te avisa antes de pagar
 
