@@ -12,7 +12,7 @@ Cada decisión relevante se documenta en un fichero `adr-NNNN-slug.md` dentro de
 | [0004](adr-0004-autenticacion-better-auth.md) | Autenticación con Better Auth | 0.7.0 | Aceptado |
 | [0005](adr-0005-boveda-credenciales.md) | Bóveda de credenciales BYOK y gestión de la clave maestra | 0.9.0 | Aceptado |
 | [0006](adr-0006-almacenamiento-seaweedfs.md) | Almacenamiento de objetos: SeaweedFS por defecto y API S3 estándar | 0.2.0 | Aceptado |
-| 0007 | Despliegue en Easypanel e instancia pública del proyecto | 0.33.0 | Plataforma decidida (Easypanel); instancia pública pendiente del propietario |
+| 0007 | Despliegue en Easypanel e instancia pública del proyecto | 0.48.0 | Plataforma decidida (Easypanel); instancia pública pendiente del propietario |
 | 0008 | Motor de montaje y render | 0.22.0 | Pendiente |
 | [0009](adr-0009-modelos-iniciales-kie.md) | Modelos iniciales: solo KIE.ai (Google aplazado) | 0.10.0 | Aceptado |
 | [0010](adr-0010-bun-runtime.md) | Bun como runtime, gestor de paquetes y ejecutor de tests | 0.2.0 | Aceptado |

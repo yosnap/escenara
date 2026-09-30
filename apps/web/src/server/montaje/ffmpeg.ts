@@ -48,7 +48,7 @@ export const VIDEO_SALIDA = [
 export const AUDIO_SALIDA = ["-c:a", "aac", "-b:a", "128k", "-ar", "48000", "-ac", "2"] as const;
 
 /**
- * Metadatos básicos del MP4. C2PA (procedencia firmada) queda para la 0.41.0; esto es lo que se puede afirmar
+ * Metadatos básicos del MP4. C2PA (procedencia firmada) queda para la 0.46.0; esto es lo que se puede afirmar
  * hoy: que el contenido es generado con IA y con qué se montó.
  *
  * **No llevan el título del proyecto ni ningún otro texto del usuario.** Con `Bun.spawn` y argumentos en array no

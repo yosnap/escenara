@@ -22,7 +22,7 @@ import { ErrorAnuncio } from "./errores";
  *
  * Esto es un **control, no una garantía**, igual que la mayoría de edad del consentimiento: nadie comprueba que
  * lo declarado sea cierto. Lo que hace es dejar por escrito quién lo afirmó, cuándo y sobre qué ángulo. La
- * revisión legal de 0.41.0 es la que decidirá si hace falta algo más.
+ * revisión legal de 0.46.0 es la que decidirá si hace falta algo más.
  */
 
 /** IP de la petición tal como la ve esta instalación; vacía si no se puede determinar. */

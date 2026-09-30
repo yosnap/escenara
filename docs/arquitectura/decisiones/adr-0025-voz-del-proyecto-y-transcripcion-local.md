@@ -147,5 +147,5 @@ de gasto, los trabajos, los precios y las muestras, así que un solo valor cubre
 - **Se gana** que una avería de un proveedor no deje el proyecto parado, y **se pierde** la certeza de en qué
   cuenta se va a pagar antes de pulsar: por eso la pantalla dice con cuál se intentará, con cuál se cambiaría, y
   después con cuál se generó de verdad.
-- **Habrá que revisar** el transcriptor cuando se mida su tiempo en el servidor del piloto (0.33.0): el modelo
+- **Habrá que revisar** el transcriptor cuando se mida su tiempo en el servidor del piloto (0.48.0): el modelo
   pequeño es el de fábrica precisamente porque cabe en un servidor modesto.

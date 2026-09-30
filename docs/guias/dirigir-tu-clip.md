@@ -5,8 +5,10 @@ fijo con un temblor ligero. Desde la 0.25.0 diriges tú, parte por parte, como u
 sepas inglés ni que veas ningún texto técnico: eliges con botones y el programa se encarga del resto.
 
 Diriges igual en los dos sitios donde se hacen clips: en **«Crear»** y en la **escena de un proyecto**. Cada
-opción de plano, ángulo y movimiento lleva su dibujo y una frase de lo que verás, para que no haga falta saberse
-las palabras del oficio.
+opción de plano, ángulo y movimiento lleva su dibujo y **una sola frase** de lo que verás, para que no haga falta
+saberse las palabras del oficio. Cada grupo (Plano, Ángulo, Movimiento de cámara, El producto…) empieza con una
+cabecera grande, con su icono, su título y una línea que explica para qué sirve, y hay más aire entre grupos para que
+se distingan de un vistazo.
 
 ![Pictogramas de plano, ángulo y movimiento](../assets/capturas/0.25.1-pictogramas-direccion-claro.webp)
 

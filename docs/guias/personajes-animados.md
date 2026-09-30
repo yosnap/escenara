@@ -40,7 +40,7 @@ fotograma, clip o voz de proveedor muestra su estimación y pide confirmación a
 dependen del modelo y de la duración; consulta el precio vigente en la pantalla antes de confirmar.
 
 La etiqueta visible de **contenido sintético** sigue siendo obligatoria al exportar, incluso si el proyecto
-es completamente animado. Esta regla de producto se mantiene hasta la revisión legal prevista para 0.41.0;
+es completamente animado. Esta regla de producto se mantiene hasta la revisión legal prevista para 0.46.0;
 no atribuyas al dibujo una excepción legal automática. Consulta también [Montaje y exportación](montaje-y-exportacion.md).
 
 ## Ejemplos guardados

@@ -56,7 +56,7 @@ export const ANGULOS_DE_FABRICA = [
  * el beneficio («rizos definidos todo el día»), el miedo o la pérdida («ese daño no vuelve atrás») y la
  * comparación («por la cuarta parte»). Los cuatro afirman algo sobre el mundo que se puede desmentir, y por eso
  * piden la declaración de veracidad (decisión del propietario, 2026-09-28, pendiente de la revisión legal de
- * 0.41.0).
+ * 0.46.0).
  *
  * Igual que la lista de arriba: es lo que **siembra** la instalación, no la regla. Quién exige declaración lo
  * dice cada preset en `valores.exigeDeclaracion`, para que un ángulo nuevo del admin también pueda exigirla.

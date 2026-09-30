@@ -66,7 +66,7 @@ Lo que la sostiene, punto por punto:
 
 - **El editor guarda cuatro cosas y solo cuatro**: el orden de los fragmentos, el recorte de entrada y de salida,
   los volúmenes de voz y música, y las opciones de subtítulos y etiqueta. Transiciones, efectos, 16:9 y 1:1 quedan
-  para la 0.36.0; `montages.format` admite hoy un único valor (`vertical_9_16`) precisamente para no fingir que
+  para la 0.41.0; `montages.format` admite hoy un único valor (`vertical_9_16`) precisamente para no fingir que
   hay más.
 - **El guardado es explícito y con versionado optimista.** `montages.version` sube en cada guardado y el `PUT`
   exige la versión que se leyó: si otra pestaña se adelantó, se responde 409, se dice qué ha pasado y **lo editado
@@ -108,7 +108,7 @@ Lo que la sostiene, punto por punto:
 - **La comprobación previa es la de 0.18.0.** Un fallo crítico abierto de la revisión, una escena sin clip, un
   montaje vacío o la cuota llena frenan la exportación **antes** de bajar el primer byte, y el mensaje dice cuál de
   las cuatro cosas pasa y en qué escena.
-- **C2PA se aplaza a la 0.41.0.** Aquí hay etiqueta visible y metadatos básicos; firmar la procedencia exige
+- **C2PA se aplaza a la 0.46.0.** Aquí hay etiqueta visible y metadatos básicos; firmar la procedencia exige
   certificados, custodia de claves y una cadena que decidir, y es trabajo de la versión legal.
 
 ## Decisiones provisionales del propietario
@@ -145,8 +145,8 @@ worker monta **una por pasada** a propósito.
   siguiente es elegir una pista por montaje, no inventar una automatización de volúmenes.
 - **Los topes**, que hoy son constantes del código. Si alguien monta piezas más largas habrá que decidir si pasan
   a Admin › Ajustes o si se quedan como límite de la versión.
-- **Los formatos 16:9 y 1:1** (0.36.0): `montages.format` ya es un enum, pero cada formato nuevo trae su
+- **Los formatos 16:9 y 1:1** (0.41.0): `montages.format` ya es un enum, pero cada formato nuevo trae su
   resolución, sus zonas seguras y su posición de etiqueta.
-- **C2PA y los metadatos de procedencia** en la 0.41.0, junto con la revisión legal de la etiqueta.
+- **C2PA y los metadatos de procedencia** en la 0.46.0, junto con la revisión legal de la etiqueta.
 - **Si el render debe salir de la máquina de la aplicación** cuando haya varias personas montando a la vez: la
   cola propia ya permite un worker aparte, pero no está probado con concurrencia real.
