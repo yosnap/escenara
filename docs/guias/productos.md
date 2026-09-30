@@ -65,7 +65,7 @@ que no son y a veces un logo que no es el tuyo. Por eso va en pasos:
 3. **Animar el resultado**, que es el clip de siempre.
 
 **Los dos primeros son dos generaciones distintas**: cada una te dice lo que cuesta y la confirmas tú. En
-«Crear» aparece el paso «2. Insertar tu captura en la pantalla» debajo del fotograma; en la escena de un proyecto, el botón de
+«Crear», dentro del paso «Resultado del fotograma», aparece «2. Insertar tu captura en la pantalla» debajo del fotograma; en la escena de un proyecto, el botón de
 aprobar el fotograma encola la inserción, y cuando esa está lista vuelves a aprobar y sale el clip.
 
 Sin una foto con el papel **Captura de pantalla** no hay nada que insertar, y se te dice antes de pedirlo.

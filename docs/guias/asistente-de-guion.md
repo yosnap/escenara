@@ -1,11 +1,19 @@
 # El asistente de guion
 
-Guía de uso · puesta al día en la versión 0.32.1
+Guía de uso · puesta al día en la versión 0.33.0
 
 En Escenara un vídeo empieza por un **proyecto**: una idea, un concepto, un guion por escenas y un **plan con su
 coste estimado**. Puedes escribirlo todo a mano, o pedirle al asistente que te proponga un primer borrador. Lo
 importante es lo mismo en los dos casos: **nada se genera hasta que apruebas el plan**, y el coste lo ves antes,
 por escena y en total.
+
+Desde la 0.33.0 la página del proyecto va **de paso en paso**, con una barra arriba: **Brief** → **Idea** →
+**Escenas** → **Aprobación**, cada uno con su estado (hecho, en curso, pendiente o bloqueado) y los botones
+**Anterior** y **Siguiente** abajo. Solo ves el paso en el que estás. El proyecto se abre donde está el trabajo
+(en la aprobación si el plan ya está aprobado, en las escenas si ya hay guion, etcétera), y el paso queda en la
+dirección (`?paso=`) para volver a él al recargar o compartir el enlace. La aprobación está bloqueada, con su
+motivo, mientras el guion no tenga ninguna escena. Cambiar de paso no pierde nada: una escena abierta a medio
+editar o un orden de escenas sin guardar siguen igual al volver.
 
 ## Lo primero: el asistente es opcional
 
@@ -58,7 +66,7 @@ Lo que el asistente devuelve es **una propuesta**:
   para Escenara.
 
 De cada escena puedes cambiar **lo que se cuenta o se dice** y **lo que se ve** (encuadre y acción, que es la base
-del fotograma). La **duración** no se cambia escena a escena: se elige una vez para todo el proyecto, arriba en «La
+del fotograma). La **duración** no se cambia escena a escena: se elige una vez para todo el proyecto, en el paso «La
 idea», con el selector «Duración de cada clip», y el asistente propone escenas de esa duración exacta. Las
 duraciones que se ofrecen son **8, 6, 5 y 4 segundos** (8 s de fábrica), y la que elijas tiene que admitirla tu
 modelo de vídeo. No siempre cuestan lo mismo: con Veo, 4 s y 8 s cobran igual, pero otros modelos cobran distinto
@@ -102,7 +110,7 @@ persona lo haya mirado.
 
 ## 4 · El plan y su coste
 
-Abajo tienes la **tabla de aprobación**, en zona de claridad: sin colores de marca ni animaciones, porque es donde
+En este paso tienes la **tabla de aprobación**, en zona de claridad: sin colores de marca ni animaciones, porque es donde
 decides gastarte un dinero. Muestra, por escena:
 
 - los **modelos** con los que se generaría (el fotograma y el clip);
