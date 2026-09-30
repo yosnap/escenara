@@ -11,11 +11,7 @@ import {
 } from "@/lib/formatos";
 import type { PosicionEtiqueta } from "@/lib/montaje";
 import { TEXTO_ETIQUETA_SINTETICA } from "@/lib/montaje";
-
-/** Paso de las flechas del teclado al mover el encuadre, en puntos de 0 a 100. */
-const PASO_TECLADO = 5;
-
-const acotar = (v: number) => Math.round(Math.min(100, Math.max(0, v)));
+import { acotarEncuadre, moverEncuadreConTecla } from "@/lib/montaje-pantalla";
 
 /**
  * Marco de un formato de salida (9:16, 4:5, 1:1 o 16:9) con sus **zonas seguras** dibujadas y el clip colocado
@@ -89,8 +85,8 @@ export function PrevisualizacionFormato({
     const resto = sobrante();
     if (!inicio || !resto || !onEncuadre) return;
     // Arrastrar el vídeo hacia la derecha descubre su parte izquierda: la posición baja.
-    const nuevoX = resto.x > 0.5 ? acotar(inicio.x - ((e.clientX - inicio.desdeX) / resto.x) * 100) : inicio.x;
-    const nuevoY = resto.y > 0.5 ? acotar(inicio.y - ((e.clientY - inicio.desdeY) / resto.y) * 100) : inicio.y;
+    const nuevoX = resto.x > 0.5 ? acotarEncuadre(inicio.x - ((e.clientX - inicio.desdeX) / resto.x) * 100) : inicio.x;
+    const nuevoY = resto.y > 0.5 ? acotarEncuadre(inicio.y - ((e.clientY - inicio.desdeY) / resto.y) * 100) : inicio.y;
     if (nuevoX !== x || nuevoY !== y) onEncuadre({ modo: "recorte", x: nuevoX, y: nuevoY });
   };
 
@@ -100,16 +96,10 @@ export function PrevisualizacionFormato({
 
   const alTeclear = (e: KeyboardEvent<HTMLButtonElement>) => {
     if (!onEncuadre || modo !== "recorte") return;
-    const cambios: Record<string, [number, number]> = {
-      ArrowLeft: [-PASO_TECLADO, 0],
-      ArrowRight: [PASO_TECLADO, 0],
-      ArrowUp: [0, -PASO_TECLADO],
-      ArrowDown: [0, PASO_TECLADO],
-    };
-    const cambio = cambios[e.key];
-    if (!cambio) return;
+    const nuevo = moverEncuadreConTecla({ x, y }, e.key);
+    if (!nuevo) return;
     e.preventDefault();
-    onEncuadre({ modo: "recorte", x: acotar(x + cambio[0]), y: acotar(y + cambio[1]) });
+    onEncuadre({ modo: "recorte", ...nuevo });
   };
 
   return (

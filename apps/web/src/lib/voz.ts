@@ -344,17 +344,28 @@ export interface AvisoSubtitulo {
 
 /** Los tiempos sí se exigen: un subtítulo que acaba antes de empezar no se puede exportar. */
 export function erroresDeSubtitulos(subtitulos: readonly Subtitulo[]): string[] {
-  const errores: string[] = [];
+  return erroresPorSubtitulo(subtitulos).map((e) => e.motivo);
+}
+
+/** Un error de un subtítulo, con el campo al que se refiere: el editor lo pone debajo y lo liga a ese campo. */
+export interface ErrorSubtitulo extends AvisoSubtitulo {
+  campo: "tiempo" | "texto";
+}
+
+/** Los mismos errores que `erroresDeSubtitulos`, en el mismo orden, con su subtítulo y su campo. */
+export function erroresPorSubtitulo(subtitulos: readonly Subtitulo[]): ErrorSubtitulo[] {
+  const errores: ErrorSubtitulo[] = [];
   let anterior = -1;
-  for (const [i, s] of subtitulos.entries()) {
-    const n = i + 1;
+  for (const [indice, s] of subtitulos.entries()) {
+    const n = indice + 1;
+    const error = (campo: ErrorSubtitulo["campo"], motivo: string) => errores.push({ indice, campo, motivo });
     if (!Number.isFinite(s.desde) || !Number.isFinite(s.hasta) || s.desde < 0) {
-      errores.push(`El subtítulo ${n} no tiene tiempos válidos.`);
+      error("tiempo", `El subtítulo ${n} no tiene tiempos válidos.`);
       continue;
     }
-    if (s.hasta <= s.desde) errores.push(`El subtítulo ${n} acaba antes de empezar.`);
-    if (s.desde < anterior) errores.push(`El subtítulo ${n} empieza antes de que acabe el anterior.`);
-    if (s.texto.trim() === "") errores.push(`El subtítulo ${n} está vacío.`);
+    if (s.hasta <= s.desde) error("tiempo", `El subtítulo ${n} acaba antes de empezar.`);
+    if (s.desde < anterior) error("tiempo", `El subtítulo ${n} empieza antes de que acabe el anterior.`);
+    if (s.texto.trim() === "") error("texto", `El subtítulo ${n} está vacío.`);
     anterior = Math.max(anterior, s.hasta);
   }
   return errores;
