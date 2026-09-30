@@ -19,6 +19,7 @@ import { SeccionPersonajes } from "./secciones/personajes";
 import { SeccionPresets } from "./secciones/presets";
 import { SeccionProyectos } from "./secciones/proyectos";
 import { SeccionReparto } from "./secciones/reparto";
+import { SeccionRequisitos } from "./secciones/requisitos";
 import { SeccionSecretos } from "./secciones/secretos";
 import { SeccionSelectores } from "./secciones/selectores";
 import { SeccionSuperposiciones } from "./secciones/superposiciones";
@@ -47,6 +48,7 @@ const INDICE = [
   ["modelos", "Catálogo de modelos"],
   ["superposiciones", "Diálogos y pestañas"],
   ["pasos", "Flujo por pasos"],
+  ["requisitos", "Requisitos pendientes"],
   ["movimiento", "Movimiento"],
 ] as const;
 
@@ -95,6 +97,7 @@ export function Catalogo() {
         <SeccionModelos />
         <SeccionSuperposiciones />
         <SeccionPasos />
+        <SeccionRequisitos />
         <SeccionMovimiento />
       </main>
     </div>

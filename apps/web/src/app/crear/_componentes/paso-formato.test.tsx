@@ -33,7 +33,12 @@ const TREND: PlantillaVisible = {
 const catalogo = (plantillas: PlantillaVisible[]): CatalogoParaCrear =>
   ({ presets: [], incompatibles: {}, plantillas }) as unknown as CatalogoParaCrear;
 
-const pintar = (plantillas: PlantillaVisible[], trend: PlantillaVisible | null, calculando = false) =>
+const pintar = (
+  plantillas: PlantillaVisible[],
+  trend: PlantillaVisible | null,
+  calculando = false,
+  avisoModelo: string | null = null,
+) =>
   renderToStaticMarkup(
     <PasoFormato
       numero={1}
@@ -42,6 +47,7 @@ const pintar = (plantillas: PlantillaVisible[], trend: PlantillaVisible | null, 
       trend={trend}
       calculando={calculando}
       deshabilitado={false}
+      avisoModelo={avisoModelo}
       onPlantilla={() => {}}
     />,
   );
@@ -58,6 +64,17 @@ describe("paso de formato", () => {
 
   test("mientras se pide el coste del trend, lo dice", () => {
     expect(pintar([NORMAL, TREND], TREND, true)).toContain("Pidiendo el coste con la duración de este trend");
+  });
+
+  test("si al elegir el trend se cambió de modelo, se dice bajo el selector", () => {
+    const html = pintar(
+      [NORMAL, TREND],
+      TREND,
+      false,
+      "Hemos cambiado a Veo Pro porque Veo Fast no tiene clips de 6 s.",
+    );
+    expect(html).toContain("Hemos cambiado a Veo Pro porque Veo Fast no tiene clips de 6 s.");
+    expect(pintar([NORMAL, TREND], TREND)).not.toContain("Hemos cambiado");
   });
 
   test("sin trends no estorba: dice por qué no hay nada que elegir y que se sigue con Siguiente", () => {

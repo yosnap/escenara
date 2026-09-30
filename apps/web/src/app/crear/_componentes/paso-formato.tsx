@@ -20,6 +20,7 @@ export function PasoFormato({
   trend,
   calculando,
   deshabilitado,
+  avisoModelo = null,
   onPlantilla,
 }: {
   numero: number;
@@ -30,6 +31,8 @@ export function PasoFormato({
   /** `true` mientras se pide la estimación del trend recién elegido. */
   calculando: boolean;
   deshabilitado: boolean;
+  /** Si al elegir el trend se cambió de modelo, por qué. */
+  avisoModelo?: string | null;
   onPlantilla: (plantillaId: string) => void;
 }) {
   const hayTrends = catalogo.plantillas.some((p) => p.kind === "trend");
@@ -52,6 +55,7 @@ export function PasoFormato({
               Pidiendo el coste con la duración de este trend…
             </p>
           )}
+          {avisoModelo && <Aviso tono="info">{avisoModelo}</Aviso>}
           {trend && <VistaPreviaTrend trend={trend} />}
         </>
       ) : (

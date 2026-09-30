@@ -6,6 +6,8 @@ import { Boton } from "@/components/ui/button";
 import { Casilla } from "@/components/ui/choice";
 import { PanelCoste } from "@/components/ui/coste";
 import { creditosAConfirmar, type Estimacion, formatearCreditos } from "@/lib/generacion";
+import { errorDeRequisito, idRequisito, type Requisito, requisitosDeConfirmacion } from "@/lib/requisitos";
+import { type EstadoConfirmacion, useConfirmacionCoste } from "./use-confirmacion-coste";
 
 export interface ConfirmacionCoste {
   creditosConfirmados: number;
@@ -39,33 +41,63 @@ export function PanelGenerar({
   bloqueos,
   avisosConfirmados,
   conProducto = false,
+  envio,
+  paso,
+  confirmacion,
+  marcar = false,
+  avisoEnBloque = false,
   enviando,
+  onIntento,
   onGenerar,
 }: {
   estimacion: Estimacion;
   etiqueta: string;
   /** Qué se está confirmando (imagen, descripción y coste): al cambiar, la clave se renueva. */
   firma: string;
-  /** Motivos por los que aún no se puede generar, en lenguaje llano. */
-  bloqueos: string[];
+  /** Motivos por los que aún no se puede generar, en lenguaje llano y con el campo al que apuntan. */
+  bloqueos: Requisito[];
   /** Avisos de los controles previos que el usuario ha confirmado (0.18.0). */
   avisosConfirmados: readonly string[];
   /** `true` cuando el envío lleva producto: entonces, y solo entonces, se pide la casilla de la marca. */
   conProducto?: boolean;
+  /** Envío que se confirma: entra en el identificador de sus casillas, que no pueden repetirse entre envíos. */
+  envio: string;
+  /** Paso donde está este panel. */
+  paso: string;
+  /**
+   * Las casillas, si las guarda quien pinta el paso para contarlas y señalarlas fuera de este panel. Sin ellas, las
+   * guarda el propio panel.
+   */
+  confirmacion?: EstadoConfirmacion;
+  /**
+   * `true` cuando la persona ya ha salido del paso, ha ido a un requisito o ha intentado generar: solo entonces se
+   * marcan las casillas pendientes (aro, `aria-invalid` y mensaje). Al abrir el paso no hay nada en rojo.
+   */
+  marcar?: boolean;
+  /** `true` si el paso ya enseña arriba el bloque «Antes de generar, falta:»: la lista de aquí no se repite al lector. */
+  avisoEnBloque?: boolean;
   enviando: boolean;
+  /** Se ha pulsado el botón mientras faltaba algo: recibe el primer requisito para llevar a él. */
+  onIntento?: (primero: Requisito) => void;
   onGenerar: (confirmacion: ConfirmacionCoste) => void;
 }) {
-  const [derechos, setDerechos] = useState(false);
-  const [derechoMarca, setDerechoMarca] = useState(false);
-  const [avisoAceptado, setAvisoAceptado] = useState(false);
+  const propia = useConfirmacionCoste({ vigente: true, imagen: "", sello: estimacion.sello });
+  const { derechos, derechoMarca, avisoAceptado, setDerechos, setDerechoMarca, setAvisoAceptado } =
+    confirmacion ?? propia;
+  const [intentado, setIntentado] = useState(false);
   const clave = useRef<{ firma: string; valor: string } | null>(null);
 
-  const impedimentos = [
-    ...bloqueos,
-    ...(derechos ? [] : ["Falta confirmar que tienes derecho a usar la imagen."]),
-    ...(!conProducto || derechoMarca ? [] : ["Falta confirmar que tienes derecho a usar la marca del producto."]),
-    ...(!estimacion.superaUmbral || avisoAceptado ? [] : ["Falta aceptar el aviso de gasto."]),
-  ];
+  const pendientes = requisitosDeConfirmacion({
+    envio,
+    paso,
+    conProducto,
+    superaUmbral: estimacion.superaUmbral,
+    derechos,
+    derechoMarca,
+    avisoAceptado,
+  });
+  const impedimentos = [...bloqueos, ...pendientes];
+  const marcadas = marcar || intentado ? pendientes : [];
 
   const generar = () => {
     // Misma confirmación, misma clave: un doble clic o un reintento no pagan dos veces. Los avisos confirmados
@@ -87,9 +119,9 @@ export function PanelGenerar({
       estimacion={estimacion}
       aviso={
         impedimentos.length > 0 ? (
-          <ul className="flex list-inside list-disc flex-col gap-1">
-            {impedimentos.map((motivo) => (
-              <li key={motivo}>{motivo}</li>
+          <ul aria-hidden={avisoEnBloque || undefined} className="flex list-inside list-disc flex-col gap-1">
+            {impedimentos.map((requisito) => (
+              <li key={`${requisito.id}|${requisito.texto}`}>{requisito.texto}</li>
             ))}
           </ul>
         ) : undefined
@@ -100,6 +132,8 @@ export function PanelGenerar({
         descripcion="Es tuya o tienes permiso de quien aparece en ella. Para generar, la imagen se sube temporalmente al almacenamiento de KIE, donde queda accesible por enlace unas horas. Tu confirmación queda registrada en el trabajo."
         marcada={derechos}
         onCambio={setDerechos}
+        requisito={idRequisito(envio, "derechos")}
+        error={errorDeRequisito(marcadas, idRequisito(envio, "derechos"))}
       />
       {conProducto && (
         <Casilla
@@ -107,6 +141,8 @@ export function PanelGenerar({
           descripcion="El producto es tuyo o tienes autorización de la marca para usarlo en este vídeo. Solo aparece cuando el envío lleva producto, y sin ella no se genera. Tu declaración queda registrada con su fecha."
           marcada={derechoMarca}
           onCambio={setDerechoMarca}
+          requisito={idRequisito(envio, "marca")}
+          error={errorDeRequisito(marcadas, idRequisito(envio, "marca"))}
         />
       )}
       {estimacion.superaUmbral && (
@@ -115,15 +151,23 @@ export function PanelGenerar({
           descripcion="Aviso de gasto alto: hay que aceptarlo expresamente antes de enviarlo."
           marcada={avisoAceptado}
           onCambio={setAvisoAceptado}
+          requisito={idRequisito(envio, "aviso-gasto")}
+          error={errorDeRequisito(marcadas, idRequisito(envio, "aviso-gasto"))}
         />
       )}
       <Boton
         variante="chispa"
         icono={<Sparkles className="size-5" />}
-        className="self-start"
         cargando={enviando}
-        disabled={impedimentos.length > 0}
-        onClick={generar}
+        // Con requisitos pendientes el botón sigue enfocable y, al pulsarlo, señala qué falta en lugar de enviar.
+        aria-disabled={impedimentos.length > 0 || undefined}
+        className="self-start aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+        onClick={() => {
+          const primero = impedimentos[0];
+          if (!primero) return generar();
+          setIntentado(true);
+          onIntento?.(primero);
+        }}
       >
         {etiqueta}
       </Boton>

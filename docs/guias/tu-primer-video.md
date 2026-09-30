@@ -1,6 +1,6 @@
 # Tu primer vídeo
 
-Guía para generar tu primer fotograma y tu primer clip en Escenara, desde el navegador y sin tocar código. Disponible desde la versión **0.10.0** y puesta al día con la **0.33.0**.
+Guía para generar tu primer fotograma y tu primer clip en Escenara, desde el navegador y sin tocar código. Disponible desde la versión **0.10.0** y puesta al día con la **0.33.1**.
 
 ![Flujo de Escenara: personaje, fotograma, clip, voz, montaje y exportación, con lo que cuesta cada paso](../assets/diagramas/flujo-general.svg)
 
@@ -55,6 +55,8 @@ El fotograma sale vertical (9:16), el formato de Reels, TikTok y Shorts.
 
 ### 5. Revisa el coste y confirma
 
+Si falta algo para poder generar, arriba del paso sale un bloque **«Antes de generar, falta:»** con cada punto como botón: al pulsarlo, «Crear» cambia al paso que toca, te lleva al campo o a la casilla, le da el foco y lo resalta unos segundos (con el movimiento reducido en tu sistema, el resaltado es un aro fijo, sin animación). Al abrir un paso no hay nada en rojo; el campo o la casilla pendiente se marca con un aro rojo completo y, debajo, lo que falta, cuando sales del paso, pulsas un punto del bloque o pulsas el botón de generar con algo pendiente (el botón no envía nada mientras falte algo: te lleva al primero). En la barra de pasos, el paso con requisitos pendientes muestra cuántos faltan. Todo esto solo señala: los requisitos y el botón de generar son los mismos de siempre.
+
 El panel de coste es la zona clara de la pantalla y dice tres cosas:
 
 - **los créditos estimados** del trabajo;
@@ -79,7 +81,7 @@ Cuando esté listo, el archivo se descarga al momento (la URL del proveedor cadu
 
 ## Animar el fotograma
 
-Cuando el fotograma está listo (o desde la imagen que has traído), pulsa **«Siguiente: Clip»**: el paso **«El clip»** genera un clip vertical usando esa imagen como primer fotograma. Ahí eliges el modelo del clip, su **duración** entre las que ese modelo sabe cobrar, lo que dice el personaje y la dirección con botones (plano, ángulo, movimiento de cámara, gesto…) y los botones que pida la plantilla o el [trend](trends-virales.md) que elegiste en el paso 1, «Elige el formato» (aquí ya no se vuelve a elegir). La proporción es 9:16 y el clip sale a 720p. Pulsas **Animar**, con su propia estimación y su propia confirmación: cada gasto se aprueba por separado.
+Cuando el fotograma está listo (o desde la imagen que has traído), pulsa **«Siguiente: Clip»**: el paso **«El clip»** genera un clip vertical usando esa imagen como primer fotograma. Ahí eliges el modelo del clip, su **duración** entre las que ese modelo sabe cobrar, lo que dice el personaje y la dirección con botones (plano, ángulo, movimiento de cámara, gesto…) y los botones que pida la plantilla o el [trend](trends-virales.md) que elegiste en el paso 1, «Elige el formato» (aquí ya no se vuelve a elegir). Si vienes con una imagen tuya no hay paso «Describe la escena», así que el texto que pida el trend (por ejemplo «Qué ocurre en la escena») se escribe aquí mismo, en un campo con el nombre que le da el trend; es la misma descripción que se escribe en el paso de la escena cuando lo hay, nunca dos textos distintos. La proporción es 9:16 y el clip sale a 720p. Pulsas **Animar**, con su propia estimación y su propia confirmación: cada gasto se aprueba por separado.
 
 ## Si algo va mal
 

@@ -5,9 +5,12 @@ import { SelectorMedios } from "@/components/ui/media/selector-medios";
 import { SelectorModelo } from "@/components/ui/modelo";
 import { Paso } from "@/components/ui/paso";
 import { SelectorPersonaje } from "@/components/ui/personaje";
+import { MarcaRequisito } from "@/components/ui/requisitos";
 import type { ModeloElegible } from "@/lib/catalogo";
 import type { Medio } from "@/lib/media/tipos";
 import { AVISO_SIN_TERCEROS, type PersonajeElegible } from "@/lib/personajes";
+import { errorDeRequisito, type Requisito } from "@/lib/requisitos";
+import { ID_MODELO_FOTOGRAMA, ID_REVISION_FOTOGRAMA, ID_SUJETO } from "@/lib/requisitos-crear";
 
 /**
  * Paso 1 de «Crear»: a quién se genera (personaje o imagen suelta), la revisión obligatoria de las fotos y el
@@ -28,6 +31,7 @@ export function PasoSujeto({
   modeloElegido,
   modeloFoto,
   sinTerceros,
+  requisitos,
   deshabilitado,
   onPersonaje,
   onImagen,
@@ -52,6 +56,8 @@ export function PasoSujeto({
   /** Ficha del modelo elegido, si está en la lista: de ahí sale el tope de fotos que se anuncia. */
   modeloFoto: ModeloElegible | null;
   sinTerceros: boolean;
+  /** Lo que falta para generar el fotograma: aquí se marcan los que apuntan a este paso. */
+  requisitos: readonly Requisito[];
   deshabilitado: boolean;
   onPersonaje: (id: string | null) => void;
   onImagen: (medios: Medio[]) => void;
@@ -60,12 +66,14 @@ export function PasoSujeto({
 }) {
   return (
     <Paso numero={numero} titulo="Elige a quién generas">
-      <SelectorPersonaje
-        personajes={personajes}
-        valor={personajeId}
-        onCambio={onPersonaje}
-        deshabilitado={deshabilitado}
-      />
+      <MarcaRequisito id={ID_SUJETO} error={errorDeRequisito(requisitos, ID_SUJETO)}>
+        <SelectorPersonaje
+          personajes={personajes}
+          valor={personajeId}
+          onCambio={onPersonaje}
+          deshabilitado={deshabilitado}
+        />
+      </MarcaRequisito>
       {personaje ? (
         <p className="text-texto-suave">
           Se enviarán varias fotos de «{personaje.nombre}»
@@ -92,6 +100,8 @@ export function PasoSujeto({
             marcada={sinTerceros}
             deshabilitado={deshabilitado}
             onCambio={onSinTerceros}
+            requisito={ID_REVISION_FOTOGRAMA}
+            error={errorDeRequisito(requisitos, ID_REVISION_FOTOGRAMA)}
           />
         </div>
       )}
@@ -103,13 +113,15 @@ export function PasoSujeto({
         </p>
       )}
       {modelos.length > 1 && (
-        <SelectorModelo
-          etiqueta={sinImagen ? "Modelo de la imagen (texto a imagen)" : "Modelo del fotograma"}
-          modelos={modelos}
-          valor={modeloElegido}
-          onCambio={onModelo}
-          deshabilitado={deshabilitado}
-        />
+        <MarcaRequisito id={ID_MODELO_FOTOGRAMA} error={errorDeRequisito(requisitos, ID_MODELO_FOTOGRAMA)}>
+          <SelectorModelo
+            etiqueta={sinImagen ? "Modelo de la imagen (texto a imagen)" : "Modelo del fotograma"}
+            modelos={modelos}
+            valor={modeloElegido}
+            onCambio={onModelo}
+            deshabilitado={deshabilitado}
+          />
+        </MarcaRequisito>
       )}
     </Paso>
   );

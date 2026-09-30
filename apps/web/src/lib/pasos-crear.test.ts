@@ -136,3 +136,25 @@ describe("pasos de «Crear» con una imagen tuya", () => {
     });
   });
 });
+
+describe("requisitos pendientes en la barra", () => {
+  test("cada paso abrible lleva cuántos requisitos le faltan", () => {
+    const pasos = pasosDeCrear({
+      ...VACIO,
+      caracteresDescripcion: PROMPT_MINIMO,
+      pendientes: { sujeto: 2, escena: 1 },
+    });
+    expect(pasos.find((p) => p.id === "sujeto")?.pendientes).toBe(2);
+    expect(pasos.find((p) => p.id === "escena")?.pendientes).toBe(1);
+    expect(pasos.find((p) => p.id === "origen")?.pendientes).toBeUndefined();
+  });
+
+  test("un paso bloqueado no los cuenta: ya dice qué hay que hacer antes", () => {
+    expect(paso({ pendientes: { clip: 3 } }, "clip")?.estado).toBe("bloqueado");
+    expect(paso({ pendientes: { clip: 3 } }, "clip")?.pendientes).toBeUndefined();
+  });
+
+  test("sin pendientes o con cero, los pasos quedan como estaban", () => {
+    expect(pasosDeCrear({ ...VACIO, pendientes: { escena: 0 } })).toEqual(pasosDeCrear(VACIO));
+  });
+});

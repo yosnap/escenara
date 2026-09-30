@@ -8,21 +8,15 @@ import { consultarContexto } from "@/components/ui/personajes/api-personajes";
 import type { ModeloElegible } from "@/lib/catalogo";
 import { type EvaluacionVista, evaluacionPendiente } from "@/lib/controles";
 import { DIRECCION_CON_ACENTO_VACIA, type DireccionElegidaConAcento, type OpcionesDeDireccion } from "@/lib/direccion";
-import {
-  CLIP,
-  type Deposito,
-  type EstadoCola,
-  type Estimacion,
-  PROMPT_MINIMO,
-  type TrabajoVista,
-} from "@/lib/generacion";
+import { CLIP, type Deposito, type EstadoCola, type Estimacion, type TrabajoVista } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
 import { resolverPaso } from "@/lib/multipaso";
 import { numeroDePaso, pasoPredeterminadoDeCrear, pasosDeCrear } from "@/lib/pasos-crear";
 import type { ContextoAplicado, PersonajeElegible } from "@/lib/personajes";
 import { CATEGORIAS_DE_LA_DIRECCION, type CatalogoParaCrear, type PresetVisible } from "@/lib/presets";
 import { PRODUCTO_ELEGIDO_VACIO, type ProductoElegido } from "@/lib/productos";
-import { consultarCatalogoDeDireccion, consultarEstimacion, crearTrabajo, type Resultado } from "./api-generacion";
+import { requisitosDeCrear, variableDeTexto } from "@/lib/requisitos-crear";
+import { consultarCatalogoDeDireccion, consultarEstimacion, crearTrabajo, mensajeDeFallo } from "./api-generacion";
 import { consultarCatalogoDePresets, duplicarPreset } from "./api-presets";
 import { DialogoPresetPropio } from "./dialogo-preset-propio";
 import type { ConfirmacionCoste } from "./panel-generar";
@@ -40,23 +34,11 @@ import { PasoFormato } from "./paso-formato";
 import { PasoCosteFotograma, PasoResultadoFotograma } from "./paso-fotograma";
 import { type OrigenDelClip, PasoImagenDePartida, PasoOrigen } from "./paso-origen";
 import { PasoSujeto } from "./paso-sujeto";
-import { useControles } from "./use-controles";
+import { contextosDeConfirmacion, useConfirmacionCoste } from "./use-confirmacion-coste";
+import { sujetoDeAnimacion, useControles } from "./use-controles";
+import { useFormatoClip } from "./use-formato-clip";
+import { useRequisitosSenalados } from "./use-requisitos-senalados";
 
-/**
- * Los pasos de «Crear», uno a la vez con su barra (0.33.0): el formato (plantilla normal o trend), de dónde sale
- * el clip, a quién generas, describir la escena, revisar el coste y confirmar, ver el resultado y animar el clip,
- * con su propia estimación y su propia confirmación: cada gasto se confirma por separado. Con una imagen tuya
- * solo quedan formato, origen, imagen y clip.
- *
- * El formato va primero porque el trend decide la duración y si se habla. Su estado (`plantillaClip` y
- * `trendElegido`) vive aquí, en el padre, para que los pasos siguientes puedan adaptarse a él.
- *
- * Todo el estado vive aquí y los paneles de los pasos no se desmontan al cambiar de paso, así que un trabajo en
- * marcha, su seguimiento y la clave de una confirmación siguen igual aunque vayas y vuelvas.
- *
- * El modelo se elige por capacidad entre los del catálogo que se pueden usar (`compatible` o `validado`),
- * y al cambiarlo se vuelve a pedir la estimación: el coste es el de ese modelo, no una media.
- */
 /**
  * Duración del clip que se va a pedir: la que se ha estimado (que es la que se paga) y, si el modelo no tarifa
  * ninguna en concreto, la primera que sabe cobrar. `CLIP` es el último recurso.
@@ -64,6 +46,17 @@ import { useControles } from "./use-controles";
 const segundosDelClip = (estimacion: Estimacion, modelo: ModeloElegible | null) =>
   estimacion.segundos ?? modelo?.duraciones[0] ?? CLIP.segundos;
 
+/**
+ * Los pasos de «Crear», uno a la vez con su barra (0.33.0): el formato (plantilla normal o trend), de dónde sale
+ * el clip, a quién generas, describir la escena, revisar el coste y confirmar, ver el resultado y animar el clip,
+ * cada gasto con su propia estimación y su propia confirmación. Con una imagen tuya solo quedan formato, origen,
+ * imagen y clip.
+ *
+ * El formato va primero porque el trend decide la duración y si se habla. Todo el estado vive aquí y los paneles
+ * de los pasos no se desmontan al cambiar de paso: un trabajo en marcha, su seguimiento y la clave de una
+ * confirmación siguen igual aunque vayas y vuelvas. El modelo se elige por capacidad y al cambiarlo se vuelve a
+ * pedir la estimación: el coste es el de ese modelo, no una media.
+ */
 export function VistaCrear({
   estimacionFotograma,
   estimacionAnimacion,
@@ -112,10 +105,7 @@ export function VistaCrear({
   controlesIniciales: EvaluacionVista;
 }) {
   const [personajeId, setPersonajeId] = useState<string | null>(personajeInicial);
-  /**
-   * Contexto que el servidor va a añadir al prompt y fotos que va a enviar. Se pide al elegir personaje y al
-   * cambiar de modelo (el tope de fotos es del modelo), nunca en un efecto: lo pide la acción que lo cambia.
-   */
+  /** Contexto y fotos que el servidor va a enviar: lo pide la acción que lo cambia (personaje o modelo), no un efecto. */
   const [contexto, setContexto] = useState<ContextoAplicado | null>(contextoInicial);
   const [pidiendoContexto, setPidiendoContexto] = useState(false);
   const [sinTerceros, setSinTerceros] = useState(false);
@@ -126,34 +116,21 @@ export function VistaCrear({
   const [dialogo, setDialogo] = useState("");
   const [fotograma, setFotograma] = useState<TrabajoVista | null>(null);
   const [animacion, setAnimacion] = useState<TrabajoVista | null>(null);
-  /**
-   * Clips ya terminados de este mismo fotograma (0.25.1). No se sustituyen: pedir otro clip aparta el que estabas
-   * viendo a esta lista y deja el formulario libre. Todos siguen en la biblioteca.
-   */
+  /** Clips ya terminados de este fotograma: pedir otro aparta el que veías a esta lista y no se sustituye ninguno. */
   const [clipsAnteriores, setClipsAnteriores] = useState<TrabajoVista[]>([]);
-  /**
-   * Cuántas veces has pedido «otro clip» con este fotograma. Entra en la firma de la confirmación: pedirlo es un
-   * acto tuyo y estrena confirmación, mientras que un doble clic sobre el mismo botón sigue siendo la misma.
-   */
+  /** Veces que has pedido «otro clip»: entra en la firma, así que pedirlo estrena confirmación y un doble clic no. */
   const [intentoClip, setIntentoClip] = useState(0);
   /** Imagen de la biblioteca que se anima sin generar ningún fotograma (0.25.1). */
   const [imagenDeBiblioteca, setImagenDeBiblioteca] = useState<Medio[]>([]);
-  /**
-   * Por dónde se empieza: generando un fotograma o trayendo una imagen tuya. De fábrica, generar, que es lo
-   * que hacía «Crear» hasta ahora.
-   */
+  /** Por dónde se empieza: generando un fotograma (de fábrica) o trayendo una imagen tuya. */
   const [origenElegido, setOrigenElegido] = useState<OrigenDelClip>("fotograma");
   /** Cómo se dirige el clip. En «Crear» no hay escena que lo guarde, así que viaja con la confirmación. */
   const [direccionClip, setDireccionClip] = useState<DireccionElegidaConAcento>(DIRECCION_CON_ACENTO_VACIA);
-  /**
-   * El producto del clip (0.26.0). Va aparte de la dirección: la dirección son claves de catálogo y el producto
-   * es una fila tuya. De momento **solo se guarda** con el trabajo; el prompt no cambia todavía.
-   */
+  /** El producto del clip: va aparte de la dirección (claves de catálogo) porque es una fila tuya. Solo se guarda. */
   const [productoClip, setProductoClip] = useState<ProductoElegido>(PRODUCTO_ELEGIDO_VACIO);
   const [opcionesDireccion, setOpcionesDireccion] = useState<OpcionesDeDireccion | null>(null);
   const [estimacionFoto, setEstimacionFoto] = useState(estimacionFotograma);
   const [estimacionClip, setEstimacionClip] = useState(estimacionAnimacion);
-  const [calculandoTrend, setCalculandoTrend] = useState(false);
   const [enviando, setEnviando] = useState<"fotograma" | "animacion" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [catalogoFoto, setCatalogoFoto] = useState(catalogoFotogramaInicial);
@@ -194,6 +171,24 @@ export function VistaCrear({
   const modelosDelFotograma = sinImagen ? modelosSinImagen : modelosFotograma;
   const modeloClip = modelosClip.find((m) => m.modelo === estimacionClip.modelo) ?? null;
   const trendElegido = catalogoClip.plantillas.find((p) => p.id === plantillaClip.plantillaId && p.kind === "trend");
+  // Formato del clip: elegir un trend puede cambiar el modelo (y volver atrás al quitarlo); ver `use-formato-clip.ts`.
+  const formato = useFormatoClip({
+    plantillas: catalogoClip.plantillas,
+    plantilla: plantillaClip,
+    trendElegido,
+    modelos: modelosClip,
+    modeloActual: modeloClip,
+    modeloActualId: estimacionClip.modelo,
+    predeterminado: estimacionAnimacion.modelo,
+    setPlantilla: setPlantillaClip,
+    setEstimacion: setEstimacionClip,
+    setError,
+    setDialogo,
+    alCambiarDeModelo: async (nueva, sigueVigente) => {
+      if (sigueVigente()) await refrescarControlesDelClip(fotograma?.medio?.id ?? imagenDelClip?.id, nueva.modelo);
+      if (sigueVigente()) await refrescarCatalogo("animacion", nueva.modelo, nueva.segundos ?? undefined);
+    },
+  });
   const clipConVoz = (modeloClip?.conVoz ?? estimacionClip.conVoz) && trendElegido?.trendAllowsSpeech !== false;
   const referencia = imagen[0] ?? null;
   const personaje = personajes.find((p) => p.id === personajeId) ?? null;
@@ -235,27 +230,57 @@ export function VistaCrear({
     cubiertasPorLaDireccion,
   );
 
-  const bloqueosFotograma = [
-    // Sin personaje ni imagen no falta nada: se genera a partir de la descripción con un modelo de texto a
-    // imagen. Lo que sí falta es que haya alguno con el que hacerlo.
-    ...(sinImagen && modelosSinImagen.length === 0
-      ? ["Esta instalación no tiene ningún modelo que genere sin imagen de partida: elige un personaje o una foto."]
-      : []),
-    ...((personaje || referencia) && !sinTerceros ? ["Falta confirmar la revisión de las fotos."] : []),
-    ...(personaje && modeloFoto && modeloFoto.maximoReferencias < 1
-      ? ["El modelo elegido no acepta fotos de referencia: elige otro para generar con un personaje."]
-      : []),
-    ...(descripcion.length >= PROMPT_MINIMO ? [] : ["Falta describir la escena."]),
-    // Todo lo que impide componer el prompt, con la explicación que da el renderizador: qué falta y qué número
-    // está fuera de rango. No se resume en «revisa los datos».
-    ...previaFoto.motivos,
-  ];
+  // Los mismos bloqueos de siempre, con el campo y el paso al que apunta cada uno; las casillas de cada
+  // confirmación viven aquí para poder contarlas.
+  const clipPorConfirmar = origenDelClip !== null && animacion === null;
+  // Cada gasto tiene sus casillas, y se desmarcan al cambiar de camino, de imagen o (el aviso de gasto) de precio.
+  const contextos = contextosDeConfirmacion({
+    origen: origenElegido,
+    sujetoDelFotograma: personaje?.id ?? referencia?.id,
+    selloFotograma: estimacionFoto.sello,
+    clipPorConfirmar,
+    imagenDelClip: origenDelClip?.id,
+    selloClip: estimacionClip.sello,
+  });
+  const confirmacionFoto = useConfirmacionCoste(contextos.fotograma);
+  const confirmacionClip = useConfirmacionCoste(contextos.clip);
+  const requisitos = requisitosDeCrear({
+    origen: origenElegido,
+    fotograma: {
+      sinImagen,
+      hayModeloSinImagen: modelosSinImagen.length > 0,
+      haySujeto: personaje !== null || referencia !== null,
+      sinTerceros,
+      modeloSinReferencias: personaje !== null && modeloFoto !== null && modeloFoto.maximoReferencias < 1,
+      caracteresDescripcion: descripcion.length,
+      motivosPlantilla: previaFoto.detalle,
+    },
+    clip: {
+      sinPasoDeEscena: origenElegido === "imagen",
+      motivosPlantilla: previaClip.detalle,
+      exigeRevision: clipExigeRevision,
+      sinTerceros: sinTercerosClip,
+      etiquetaDeTexto:
+        origenElegido === "imagen" && previaClip.enUso && previaClip.plantilla
+          ? (variableDeTexto(previaClip.plantilla.variables)?.etiqueta ?? null)
+          : null,
+      caracteresDescripcion: descripcion.length,
+    },
+    frenosFotograma: controlesFoto.bloqueos,
+    frenosClip: controlesClip.bloqueos,
+    casillasFotograma: confirmacionFoto,
+    casillasClip: confirmacionClip,
+    conProducto: productoClip.productoId !== "",
+    fotogramaSuperaUmbral: estimacionFoto.superaUmbral,
+    clipSuperaUmbral: estimacionClip.superaUmbral,
+    clipPorConfirmar,
+  });
 
   // Los pasos y su estado salen de lo que hay en pantalla; no se guarda ningún progreso aparte.
   const hayTrends = catalogoClip.plantillas.some((p) => p.kind === "trend");
   const pasos = pasosDeCrear({
     conFormato,
-    calculandoFormato: calculandoTrend,
+    calculandoFormato: formato.calculando,
     origen: origenElegido,
     haySujeto: personaje !== null || referencia !== null,
     revisionConfirmada: sinTerceros,
@@ -267,21 +292,17 @@ export function VistaCrear({
     hayOrigenDelClip: origenDelClip !== null,
     clip: animacion?.estado ?? null,
     clipsAnteriores: clipsAnteriores.length,
+    pendientes: requisitos.pendientes,
   });
   const multipaso = useMultipaso(
     pasos,
     resolverPaso(pasoPedido, pasos, pasoPredeterminadoDeCrear(conFormato, hayTrends)),
   );
   const numero = (id: string) => numeroDePaso(pasos, id);
-
-  /**
-   * Un fallo de red al enviar no dice si el trabajo se encargó o no: se avisa de eso en lugar de invitar a
-   * repetir. Volver a pulsar reenvía la misma confirmación (misma clave), así que tampoco se paga dos veces.
-   */
-  const mensajeDeFallo = (respuesta: Resultado<TrabajoVista> & { ok: false }) =>
-    respuesta.red
-      ? `${respuesta.error} Puede que el trabajo se haya enviado: revisa el historial antes de repetirlo.`
-      : respuesta.error;
+  // Lo pendiente se enseña siempre arriba y en la barra; el rojo en los campos solo tras salir del paso o intentar avanzar.
+  const senales = useRequisitosSenalados(pasos, multipaso);
+  const { irAlRequisito } = senales;
+  const pasoSenalado = (paso: string) => senales.senalados.includes(paso);
 
   /**
    * Vuelve a evaluar los controles previos del fotograma con lo que hay elegido ahora. Lo llama la acción que
@@ -303,24 +324,16 @@ export function VistaCrear({
    */
   const refrescarControlesDelClip = async (medioId: string | undefined, modelo: string) => {
     if (!medioId) return;
-    const fallo = await controlesClip.refrescar(sujetoDelClip(modelo, medioId, productoClip));
+    const fallo = await controlesClip.refrescar(sujetoDeAnimacion(modelo, medioId, productoClip));
     if (fallo) setError(fallo);
   };
-
-  /** Lo que se evalúa del clip: el modelo, la imagen que anima y el producto, que trae sus propios avisos. */
-  const sujetoDelClip = (modelo: string, medioId: string, producto: ProductoElegido) => ({
-    tipo: "animacion" as const,
-    modelo,
-    medioId,
-    ...(producto.productoId ? { productoId: producto.productoId, accion: producto.accion } : {}),
-  });
 
   /** Elegir o quitar el producto cambia lo evaluado: se vuelve a preguntar al servidor para que el aviso salga ya. */
   const elegirProductoDelClip = async (producto: ProductoElegido) => {
     setProductoClip(producto);
     const medioId = fotograma?.medio?.id ?? imagenDelClip?.id;
     if (!medioId) return;
-    const fallo = await controlesClip.refrescar(sujetoDelClip(estimacionClip.modelo, medioId, producto));
+    const fallo = await controlesClip.refrescar(sujetoDeAnimacion(estimacionClip.modelo, medioId, producto));
     if (fallo) setError(fallo);
   };
 
@@ -410,7 +423,7 @@ export function VistaCrear({
 
   const generarAnimacion = async (confirmacion: ConfirmacionCoste) => {
     // El clip sale de un fotograma generado o de una imagen tuya; sin ninguno de los dos no hay nada que animar.
-    if ((!fotograma && !imagenDelClip) || calculandoTrend) return;
+    if ((!fotograma && !imagenDelClip) || formato.calculando) return;
     setEnviando("animacion");
     setError(null);
     const respuesta = await crearTrabajo({
@@ -476,7 +489,9 @@ export function VistaCrear({
     });
     if (respuesta.ok) setEstimacionClip(respuesta.datos);
     // El clip es otro envío: sus controles se evalúan con el fotograma ya generado, que es su referencia.
-    const fallo = await controlesClip.refrescar(sujetoDelClip(estimacionClip.modelo, trabajo.medio.id, productoClip));
+    const fallo = await controlesClip.refrescar(
+      sujetoDeAnimacion(estimacionClip.modelo, trabajo.medio.id, productoClip),
+    );
     if (fallo) setError(fallo);
   };
 
@@ -487,6 +502,7 @@ export function VistaCrear({
    */
   const elegirModelo = async (tipo: "fotograma" | "animacion", modelo: string, segundos?: number) => {
     setError(null);
+    if (tipo === "animacion") formato.olvidarCambio();
     const respuesta = await consultarEstimacion(tipo, modelo, {
       ...(tipo === "fotograma" ? { sinImagen } : {}),
       ...(segundos === undefined ? {} : { segundos }),
@@ -504,38 +520,12 @@ export function VistaCrear({
     } else {
       setEstimacionClip(respuesta.datos);
       if (fotograma?.medio) {
-        await controlesClip.refrescar(sujetoDelClip(respuesta.datos.modelo, fotograma.medio.id, productoClip));
+        await controlesClip.refrescar(sujetoDeAnimacion(respuesta.datos.modelo, fotograma.medio.id, productoClip));
       }
     }
     // Y los formatos y las duraciones que se pueden ofrecer también son del modelo: se vuelven a pedir en
     // lugar de deducirlos aquí, que es lo que dejaría ofrecer algo que el servidor va a rechazar.
     await refrescarCatalogo(tipo, respuesta.datos.modelo, respuesta.datos.segundos ?? undefined);
-  };
-
-  /** Cambiar a un trend cambia la duración y su tarifa; el estado visible solo cambia tras recibir el precio. */
-  const elegirPlantillaDelClip = async (siguiente: EstadoPlantilla) => {
-    if (siguiente.plantillaId === plantillaClip.plantillaId) {
-      setPlantillaClip(siguiente);
-      return;
-    }
-    const elegida = catalogoClip.plantillas.find((p) => p.id === siguiente.plantillaId);
-    if (elegida?.kind !== "trend" && !trendElegido) {
-      setPlantillaClip(siguiente);
-      return;
-    }
-    setCalculandoTrend(true);
-    setError(null);
-    const respuesta = await consultarEstimacion("animacion", estimacionClip.modelo, {
-      ...(elegida?.kind === "trend" ? { plantillaId: elegida.id, segundos: elegida.targetSeconds ?? undefined } : {}),
-    });
-    setCalculandoTrend(false);
-    if (!respuesta.ok) {
-      setError(respuesta.error);
-      return;
-    }
-    setEstimacionClip(respuesta.datos);
-    setPlantillaClip(siguiente);
-    if (elegida?.kind === "trend" && !elegida.trendAllowsSpeech) setDialogo("");
   };
 
   /** Presets y plantillas para el modelo indicado. Lectura: no encola nada ni mueve dinero. */
@@ -593,7 +583,7 @@ export function VistaCrear({
     <div className="flex flex-col gap-6">
       <DepositoPresupuesto deposito={deposito} cola={cola} />
 
-      <Multipaso etiqueta="Pasos para crear" pasos={pasos} control={multipaso}>
+      <Multipaso etiqueta="Pasos para crear" pasos={pasos} control={senales.controlConSenales}>
         {error && <Aviso tono="error">{error}</Aviso>}
 
         {/* El formato va primero: un trend decide la duración (y su tarifa) y si se habla a cámara. */}
@@ -604,10 +594,11 @@ export function VistaCrear({
               catalogo={catalogoClip}
               plantillaId={plantillaClip.plantillaId}
               trend={trendElegido ?? null}
-              calculando={calculandoTrend}
+              calculando={formato.calculando}
               deshabilitado={enviando === "animacion"}
+              avisoModelo={formato.avisoModelo}
               // Cambiar de plantilla cambia qué variables hay: la selección deja de valer.
-              onPlantilla={(plantillaId) => void elegirPlantillaDelClip({ plantillaId, seleccion: {} })}
+              onPlantilla={(plantillaId) => void formato.elegir({ plantillaId, seleccion: {} })}
             />
           </PanelDePaso>
         )}
@@ -655,6 +646,7 @@ export function VistaCrear({
                 modeloElegido={estimacionFoto.modelo}
                 modeloFoto={modeloFoto}
                 sinTerceros={sinTerceros}
+                requisitos={senales.marcados(requisitos.fotogramaBase)}
                 deshabilitado={enviando !== null}
                 onPersonaje={(id) => {
                   setPersonajeId(id);
@@ -679,6 +671,7 @@ export function VistaCrear({
                 catalogo={catalogoFoto}
                 plantilla={plantillaFoto}
                 previa={previaFoto}
+                requisitos={senales.marcados(requisitos.fotogramaBase)}
                 deshabilitado={enviando !== null}
                 accionesDePreset={accionesDePreset("fotograma")}
                 onPrompt={setPrompt}
@@ -698,8 +691,12 @@ export function VistaCrear({
                 estimacion={estimacionFoto}
                 conProducto={productoClip.productoId !== ""}
                 firma={`fotograma|${personaje?.id ?? ""}|${contexto?.personajeId === personaje?.id ? contexto?.versionId : ""}|${referencia?.id ?? ""}|${descripcion}|${estimacionFoto.modelo}|${estimacionFoto.sello}|${firmaDePlantilla(previaFoto, plantillaFoto)}`}
-                bloqueos={bloqueosFotograma}
+                bloqueos={requisitos.fotogramaBase}
+                requisitos={requisitos.fotograma}
+                confirmacion={confirmacionFoto}
+                marcar={pasoSenalado("coste")}
                 enviando={enviando === "fotograma"}
+                onIrARequisito={irAlRequisito}
                 onGenerar={generarFotograma}
               />
             </PanelDePaso>
@@ -741,11 +738,18 @@ export function VistaCrear({
             catalogo={catalogoClip}
             plantilla={plantillaClip}
             previa={previaClip}
-            previaMotivos={previaClip.motivos}
+            requisitosBase={senales.marcados(requisitos.clipBase)}
+            requisitos={requisitos.clip}
+            avisoModelo={formato.avisoModelo}
+            segundosDelTrend={trendElegido?.targetSeconds ?? null}
+            descripcion={prompt}
+            conCampoDeTexto={origenElegido === "imagen"}
+            confirmacion={confirmacionClip}
+            marcar={pasoSenalado("clip")}
             controles={controlesClip}
             exigeRevision={clipExigeRevision}
             sinTerceros={sinTercerosClip}
-            enviando={enviando === "animacion" || calculandoTrend}
+            enviando={enviando === "animacion" || formato.calculando}
             firma={`animacion|${fotograma?.id ?? ""}|${imagenDelClip?.id ?? ""}|${intentoClip}|${descripcion}|${frase}|${JSON.stringify(direccionClip)}|${JSON.stringify(productoClip)}|${estimacionClip.modelo}|${segundosClip}|${estimacionClip.sello}|${firmaDePlantilla(previaClip, plantillaClip)}`}
             clipEnMarcha={animacion}
             clipsAnteriores={clipsAnteriores}
@@ -753,8 +757,10 @@ export function VistaCrear({
             onModelo={(modelo) => elegirModelo("animacion", modelo)}
             onDuracion={(segundos) => void elegirModelo("animacion", estimacionClip.modelo, segundos)}
             onDialogo={setDialogo}
+            onDescripcion={setPrompt}
+            onIrARequisito={irAlRequisito}
             onDireccion={(campo, valor) => setDireccionClip((antes) => ({ ...antes, [campo]: valor }))}
-            onPlantilla={(estado) => void elegirPlantillaDelClip(estado)}
+            onPlantilla={(estado) => void formato.elegir(estado)}
             onDuplicar={(preset) => void duplicar("animacion", preset)}
             onSinTerceros={setSinTercerosClip}
             onGenerar={generarAnimacion}

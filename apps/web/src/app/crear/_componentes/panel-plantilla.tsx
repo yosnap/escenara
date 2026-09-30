@@ -1,10 +1,11 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { cn } from "@/components/ui/cn";
 import { BotoneraPresets, PanelLoElegido } from "@/components/ui/preset";
 import { Selector } from "@/components/ui/select";
 import type { TipoPersonaje } from "@/lib/personajes";
-import { faltanPorElegir } from "@/lib/plantillas-prompt";
+import { faltanPorElegir, type MotivoDePlantilla } from "@/lib/plantillas-prompt";
 import {
   CATEGORIAS_PRESET,
   type CatalogoParaCrear,
@@ -54,6 +55,8 @@ export interface Previsualizacion {
   faltan: string[];
   /** Todo lo que impide componer el prompt, en lenguaje llano (incluye lo que falta y los números fuera de rango). */
   motivos: string[];
+  /** Los mismos motivos, con lo que la pantalla necesita para señalar dónde se arreglan cada uno. */
+  detalle: MotivoDePlantilla[];
   /** Nombres de los presets elegidos, en el orden del catálogo: es lo que se le muestra en lugar del prompt. */
   elegidos: { categoria: CategoriaPreset; nombre: string }[];
 }
@@ -70,7 +73,7 @@ export function previsualizar(
   /** Categorías que ya se eligen en la dirección del clip. Vacía donde no hay dirección a la vista. */
   cubiertas: readonly CategoriaPreset[] = [],
 ): Previsualizacion {
-  const vacia = { plantilla: null, enUso: false, categorias: [], faltan: [], motivos: [], elegidos: [] };
+  const vacia = { plantilla: null, enUso: false, categorias: [], faltan: [], motivos: [], detalle: [], elegidos: [] };
   const plantilla = catalogo.plantillas.find((p) => p.id === estado.plantillaId) ?? null;
   if (!plantilla) return vacia;
   const categorias = categoriasDeLaPlantilla(plantilla, cubiertas);
@@ -84,7 +87,7 @@ export function previsualizar(
    * puede faltar en un sitio donde ya no se ofrece, y decir que falta dejaría el botón de generar apagado sin
    * que hubiera nada que tocar.
    */
-  const { faltan, motivos } = faltanPorElegir(
+  const { faltan, motivos, detalle } = faltanPorElegir(
     plantilla.variables.filter((v) => !v.categoria || !cubiertas.includes(v.categoria)),
     { ordenados: catalogo.presets, seleccion: estado.seleccion, escena, tipoPersonaje },
   );
@@ -95,6 +98,7 @@ export function previsualizar(
     categorias,
     faltan,
     motivos,
+    detalle,
     elegidos: catalogo.presets
       .filter((p) => marcados.has(p.id))
       .map((p) => ({ categoria: p.categoria, nombre: p.nombre })),
@@ -147,6 +151,8 @@ export function PanelPlantilla({
   onDuplicar,
   accionesDePreset,
   formatoAparte = false,
+  requisito,
+  conError = false,
 }: {
   catalogo: CatalogoParaCrear;
   estado: EstadoPlantilla;
@@ -161,6 +167,9 @@ export function PanelPlantilla({
    * repiten ni el selector ni la vista previa del trend, solo los botones de lo que queda por elegir.
    */
   formatoAparte?: boolean;
+  /** Marca del panel para llegar a él desde un aviso de requisitos, y si ahora mismo le falta algo (aro de error). */
+  requisito?: string;
+  conError?: boolean;
 }) {
   const grupos = previa.categorias.map((categoria) => ({
     categoria,
@@ -185,7 +194,10 @@ export function PanelPlantilla({
   if (previa.plantilla !== null && !previa.enUso) return selector || null;
 
   return (
-    <div className="flex flex-col gap-5">
+    <div
+      className={cn("flex flex-col gap-5", conError && "rounded-tarjeta p-3 ring-2 ring-error")}
+      data-requisito={requisito}
+    >
       {selector}
 
       {previa.plantilla === null ? (

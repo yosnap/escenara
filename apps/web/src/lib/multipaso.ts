@@ -34,6 +34,8 @@ export interface PasoDelFlujo {
   estado: EstadoDePaso;
   /** Por qué está bloqueado, en una frase con lo que hay que hacer. Obligatorio si el estado es `bloqueado`. */
   motivo?: string;
+  /** Requisitos que aún faltan en este paso (casillas, campos): la barra los cuenta. Ausente o 0 = ninguno. */
+  pendientes?: number;
 }
 
 /** Nombre del parámetro de la dirección que guarda el paso actual. */

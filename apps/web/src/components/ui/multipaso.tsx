@@ -122,6 +122,7 @@ export function BarraDePasos({
           // Bloqueado o todavía sin alcanzar: se puede enfocar y, al pulsarlo, dice por qué no se abre.
           const motivo = esActual ? null : motivoNoNavegable(paso, visitados);
           const idMotivo = `${base}-motivo-${paso.id}`;
+          const faltan = paso.pendientes ?? 0;
           return (
             <li key={paso.id} className="min-w-11 flex-1">
               <button
@@ -136,21 +137,32 @@ export function BarraDePasos({
                   esActual && "bg-elevada",
                 )}
               >
-                <span
-                  aria-hidden
-                  className={cn(
-                    "flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-bold sm:size-11 sm:text-base",
-                    esActual
-                      ? "bg-degradado-chispa text-[#182032] ring-2 ring-foco ring-offset-2 ring-offset-fondo"
-                      : CIRCULO[paso.estado],
-                  )}
-                >
-                  {paso.estado === "hecho" && !esActual ? (
-                    <Check className="size-5" />
-                  ) : bloqueado ? (
-                    <Lock className="size-4" />
-                  ) : (
-                    i + 1
+                <span className="relative">
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-bold sm:size-11 sm:text-base",
+                      esActual
+                        ? "bg-degradado-chispa text-[#182032] ring-2 ring-foco ring-offset-2 ring-offset-fondo"
+                        : CIRCULO[paso.estado],
+                    )}
+                  >
+                    {paso.estado === "hecho" && !esActual ? (
+                      <Check className="size-5" />
+                    ) : bloqueado ? (
+                      <Lock className="size-4" />
+                    ) : (
+                      i + 1
+                    )}
+                  </span>
+                  {/* Cuántos requisitos faltan en este paso: número y texto, no solo color. */}
+                  {faltan > 0 && (
+                    <span
+                      aria-hidden
+                      className="absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full border-2 border-superficie bg-error text-xs font-bold text-white"
+                    >
+                      {faltan}
+                    </span>
                   )}
                 </span>
                 {/* Lo visible se oculta al lector: el nombre accesible es la frase completa de abajo, dicha una vez. */}
@@ -164,10 +176,11 @@ export function BarraDePasos({
                   {paso.corto}
                 </span>
                 <span aria-hidden className="hidden text-xs text-texto-suave md:block">
-                  {ETIQUETA_ESTADO_DE_PASO[paso.estado]}
+                  {faltan > 0 ? `Faltan ${faltan}` : ETIQUETA_ESTADO_DE_PASO[paso.estado]}
                 </span>
                 <span className="sr-only">
-                  Paso {i + 1}: {paso.titulo} ({ETIQUETA_ESTADO_DE_PASO[paso.estado].toLowerCase()})
+                  Paso {i + 1}: {paso.titulo} ({ETIQUETA_ESTADO_DE_PASO[paso.estado].toLowerCase()}
+                  {faltan > 0 ? `; ${faltan === 1 ? "falta 1 requisito" : `faltan ${faltan} requisitos`}` : ""})
                 </span>
               </button>
               {/* Fuera del botón, para que el motivo se lea una sola vez (como descripción). */}

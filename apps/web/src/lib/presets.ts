@@ -389,6 +389,11 @@ export interface PlantillaElegible {
   capacidad: Capacidad;
   plantilla: string;
   variables: VariablePlantilla[];
+  /**
+   * Modelos a los que la plantilla limita su uso (`restricciones.modelos`). Son identificadores de catálogo, no
+   * material del servidor. Vacío o ausente = sin restricción.
+   */
+  modelosPermitidos?: string[];
   version: number;
   versionId: string;
   deLaInstalacion: boolean;
@@ -417,6 +422,7 @@ export function recortarPlantilla(plantilla: PlantillaVista): PlantillaElegible 
     capacidad: plantilla.capacidad,
     plantilla: plantilla.plantilla,
     variables: plantilla.variables,
+    modelosPermitidos: plantilla.restricciones.modelos,
     version: plantilla.version,
     versionId: plantilla.versionId,
     deLaInstalacion: plantilla.deLaInstalacion,
