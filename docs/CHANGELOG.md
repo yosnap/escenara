@@ -12,19 +12,25 @@ en el montaje y en el MP4. Una migración aditiva; sin cambios de precio ni en l
 
 - **«Convertir en proyecto»** en el resultado de un clip terminado de «Crear». Crea un proyecto de **una escena** cuyo
   clip producido es **ese mismo clip** (el mismo archivo y el mismo trabajo, con su modelo y su coste), con la imagen de
-  partida, el trend, la dirección, el producto y su acción, el personaje, el diálogo, el acento y la duración. Lleva al
-  paso **Escenas** del proyecto. No llama a ningún proveedor ni apunta ningún gasto.
+  partida, el trend, la dirección, el producto y su acción, el personaje, el diálogo, el acento y la duración con la
+  que se generó (si no es una de las de un proyecto, 8 s). Lleva al paso **Escenas** del proyecto. No llama a ningún
+  proveedor ni apunta ningún gasto.
 - **El gasto cuenta una vez.** Lo que costó el clip sigue en tu historial de créditos como estaba y entra en lo gastado
-  del proyecto, así que su techo de gasto se compara con ello al regenerar.
+  del proyecto, así que su techo de gasto se compara con ello al regenerar. El techo nace en el de fábrica y, si
+  este fuera menor, en lo que ya costó el clip, para que el proyecto no nazca pasado de su techo.
 - **Un clip se convierte una vez.** Si ya se convirtió, el botón pasa a «Abrir su proyecto»; pedirlo dos veces a la
   vez lleva al mismo proyecto.
 - **El botón nunca se oculta**: si no se puede convertir dice por qué (en curso, fallido, sin archivo, personaje con
-  el consentimiento revocado o sin fotos suficientes, declaración que falta). Un trend que ya no está vigente no
+  el consentimiento revocado o sin fotos suficientes, imagen de partida en la papelera, declaración que falta). El
+  motivo va asociado al botón desactivado para los lectores de pantalla. Un trend que ya no está vigente no
   impide convertir: se avisa y la escena lo sigue citando.
 - **«Quitar el audio del clip»**, por escena, en el bloque nuevo «Clips ya producidos» del paso Escenas de cualquier
   proyecto. La escena entra en el montaje y en el MP4 sin el sonido de su clip; no toca el archivo y no cuesta nada.
   La tarjeta dice qué se va a oír y cómo ponerle **voz en off** (la pista de voz aparte de «Voz y subtítulos»).
 - En el montaje, el fragmento de una escena con el audio quitado lo dice («Sin el audio del clip»).
+- **Una afirmación sobre salud sin verificar impide exportar** el MP4, con la escena y qué hacer. Es la misma regla
+  que impide aprobar el plan, y cubre lo que llega al montaje sin haber pasado por esa aprobación (un clip traído de
+  Crear). Las reglas de los controles pasan a la versión `2026-09-30.1`.
 - **Catálogo de componentes**: sección «De Crear a un proyecto» con el botón en sus cuatro estados y la tarjeta del
   clip producido.
 - Guía nueva **[De Crear a un proyecto](guias/de-crear-a-un-proyecto.md)**; «Tu primer vídeo», «Voz y subtítulos» y
@@ -35,6 +41,9 @@ en el montaje y en el MP4. Una migración aditiva; sin cambios de precio ni en l
 - **Quitar el audio del clip es por escena e independiente del modo de voz**, que sigue siendo uno por proyecto: en
   «voz del clip» la escena queda sin voz; en «pista de voz aparte» se oye solo su pista. Cambiarlo sube la versión del
   montaje, así que la exportación anterior deja de ser «la del montaje de ahora» y la siguiente es un MP4 nuevo.
+- **Lo que se subtitula es lo que se oye.** Una escena con el audio del clip quitado y sin pista de voz aparte no se
+  transcribe del clip ni lleva subtítulos en el fichero adjunto ni quemados; su tarjeta dice «Sin subtítulos: el audio
+  está quitado». Con pista de voz aparte, sus subtítulos siguen saliendo del diálogo.
 - El aviso de **dos voces** al pasar a «pista de voz aparte» ya no cuenta las escenas con el audio del clip quitado, y
   ofrece quitarlo (gratis) además de volver a producir.
 - El enlace **Montaje y exportación** de la cabecera del proyecto sale en cuanto hay un clip producido, también con el
@@ -44,7 +53,8 @@ en el montaje y en el MP4. Una migración aditiva; sin cambios de precio ni en l
 
 - Al convertir se comprueba que el personaje se puede usar **ahora** y que el clip lleva sus declaraciones (derechos
   de la imagen, revisión de fotos si hay personaje, marca si hay producto). No se hereda nada a ciegas.
-- El proyecto nace **en borrador**, en modo «voz del clip» y sin pista de voz aparte. Montar y poner voz no necesitan
+- El proyecto nace **en borrador** aunque su escena ya esté producida (el plan no está aprobado y es lo que impide
+  gastar sin aprobarlo), en modo «voz del clip» y sin pista de voz aparte. Montar y poner voz no necesitan
   aprobar el plan; **regenerar** la escena sí, y al producir se vuelven a pedir las casillas y el coste como en
   cualquier escena.
 

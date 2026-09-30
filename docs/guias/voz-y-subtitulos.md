@@ -27,6 +27,10 @@ Es **por escena** y no cambia el modo del proyecto:
 - en **pista de voz aparte**, se oye solo su pista de voz, sin la voz que el clip traía dentro. Es la forma de ponerle
   **voz en off** a un clip que ya habla sin volver a producirlo: quítale el audio y genera su pista.
 
+Lo que se subtitula es lo que se oye: una escena con el audio del clip quitado y sin pista de voz aparte **no se
+transcribe ni lleva subtítulos** en el fichero ni en el MP4, y su tarjeta lo dice («Sin subtítulos: el audio está
+quitado»). Con pista de voz aparte, sus subtítulos salen del diálogo como siempre.
+
 La tarjeta de cada clip dice en una frase qué se va a oír, y avisa si se oirían dos voces diciendo lo mismo. Es lo que
 usa un clip traído de Crear ([De Crear a un proyecto](de-crear-a-un-proyecto.md)).
 

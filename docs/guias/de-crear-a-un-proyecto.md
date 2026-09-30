@@ -13,13 +13,16 @@ proyecto»** con el botón **Convertir en proyecto**. Al pulsarlo:
   biblioteca y el mismo trabajo, con su modelo y lo que costó;
 - la escena hereda la **imagen de partida**, el **trend**, la **dirección** (plano, ángulo, cámara, gesto, luz, sitio,
   registro, instrucciones), el **producto** con su acción, el **personaje** y lo que dice (el diálogo);
-- el proyecto toma el **acento** y la **duración** del clip (si es una de las que ofrece un proyecto; si no, la de
-  fábrica, que es la que se pediría al regenerarlo);
+- el proyecto toma el **acento** y la **duración** con la que se generó el clip, si es una de las que ofrece un
+  proyecto. Si no lo es (por ejemplo, un clip de 10 o 15 s), el proyecto nace con la de fábrica, 8 s: el clip se
+  monta entero con lo que dura de verdad, y esa cifra solo es la que se pediría al regenerarlo;
 - te lleva al proyecto, al paso **Escenas**, donde ves el clip y sus acciones de audio.
 
 **No se cobra nada**: no se llama a ningún proveedor. Lo que costó el clip se cuenta **una sola vez**: sigue en tu
-historial de créditos como estaba y entra en lo gastado del proyecto, así que si le pones un techo de gasto se compara
-con eso.
+historial de créditos como estaba y entra en lo gastado del proyecto, así que el techo de gasto se compara con eso. El
+proyecto nace con el techo de fábrica de la instalación y, si ese techo fuera menor que lo que ya costó el clip, con
+el coste del clip: así no nace pasado de su techo y no se autoriza ningún gasto nuevo. Lo que costó el **fotograma**
+en Crear no entra en el proyecto: el fotograma sigue siendo de Crear y puedes seguir animándolo allí.
 
 Un mismo clip se convierte **una vez**. Si ya lo convertiste, el botón pasa a ser **«Abrir su proyecto»** y te lleva
 al que ya existe, aunque lo pulses desde dos pestañas a la vez.
@@ -33,6 +36,7 @@ El botón **nunca desaparece**: si no se puede convertir, sale desactivado con e
 | «El clip todavía se está generando» | Aún no ha terminado | Espera a que esté listo |
 | «Este clip no salió…» | Falló o se canceló | Mira en el historial qué pasó y si se cobró, y genera otro |
 | «El archivo de este clip ya no está en tu biblioteca» | Lo borraste o está en la papelera | Recupéralo de la papelera |
+| «La imagen de partida de este clip ya no está en tu biblioteca» | La escena la necesita como fotograma | Recupérala de la papelera |
 | «El personaje «X» ya no se puede usar en un proyecto…» | Su consentimiento se revocó, o le faltan fotos | Arregla el personaje; el clip sigue en tu biblioteca y no se crea nada |
 | «Este clip se generó sin la declaración…» | Falta una declaración que un proyecto exige (derechos de imagen, revisión de fotos o marca) | Genera el clip otra vez confirmándola |
 
@@ -49,9 +53,13 @@ El consentimiento y las declaraciones **no se heredan a ciegas**:
 
 - al convertir se comprueba que el personaje se puede usar **ahora** (un consentimiento revocado después de generar
   el clip no se salta), y que el clip lleva guardadas sus declaraciones;
-- el proyecto nace **en borrador**. Montar y ponerle voz no necesitan aprobar el plan, pero **regenerar** la escena sí:
+- el proyecto nace **en borrador**, aunque su escena ya esté producida: el plan no se ha aprobado y el borrador es lo
+  que impide gastar sin aprobarlo. Montar y ponerle voz no necesitan aprobar el plan, pero **regenerar** la escena sí:
   como cualquier otra, pide aprobar el plan con su presupuesto y, al producir, vuelve a pedir las casillas de
-  derechos de la imagen, revisión de fotos y marca, con su coste confirmado.
+  derechos de la imagen, revisión de fotos y marca, con su coste confirmado;
+- lo que dice el clip se revisa como el guion de cualquier escena: si contiene una **afirmación sobre salud** (por
+  ejemplo, «cura la caspa»), queda por verificar y **no se puede exportar** el vídeo hasta verificarla, corregirla o
+  descartarla en el paso Escenas. Es la misma regla que impide aprobar el plan de un proyecto normal.
 
 ## 3. Quitar la voz del clip o ponerle voz en off
 
@@ -63,6 +71,11 @@ oír** en el montaje, y dos acciones:
 - **Ponerle voz en off.** Es la **pista de voz aparte** de siempre, en **Voz y subtítulos**: elige «Pista de voz
   aparte» y una voz, y genera la voz de la escena confirmando su coste. Si la escena no tiene diálogo, escribe antes
   lo que se dice. Si el clip ya habla, quítale también su audio para que no se oigan dos voces.
+
+**Subtítulos.** Lo que se subtitula es lo que se oye. Una escena con el audio del clip quitado y **sin** pista de voz
+aparte entra en silencio, así que no se transcribe del clip ni lleva subtítulos en el fichero ni quemados en el MP4;
+la tarjeta lo dice: «Sin subtítulos: el audio está quitado». Con su pista de voz aparte, sus subtítulos salen del
+diálogo como siempre.
 
 Por eso el proyecto nace **sin pista de voz aparte** y con la voz propia del clip tal cual: decides tú.
 
@@ -85,6 +98,8 @@ cambia el vídeo, así que la próxima exportación es nueva y la anterior deja 
 
 - **Si borras el proyecto**, el clip vuelve a estar solo en **Crear**, con su archivo, y se puede volver a convertir.
 - **Si borras el clip** de la biblioteca, la escena se queda sin clip, igual que cualquier escena producida.
+- **Si regeneras la escena** dentro del proyecto, el clip de Crear sigue perteneciendo a ella (en su historial y en
+  lo gastado del proyecto), así que no se puede volver a convertir salvo que borres el proyecto.
 
 ## Ver también
 

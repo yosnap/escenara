@@ -52,7 +52,7 @@ En **Mezcla y subtítulos** se decide cómo suena el montaje y qué pasa con el 
   subtítulo se queda a medias en el corte, se acorta o se descarta.
 
 Una escena con el **audio del clip quitado** entra en silencio: el MP4 no lleva el sonido de ese clip, pero sí su
-pista de voz aparte si la tiene y la música. Se decide en el paso **Escenas** del proyecto, no aquí, y su fragmento lo
+pista de voz aparte si la tiene y la música. Sin pista de voz aparte tampoco lleva subtítulos, porque no se oye nada. Se decide en el paso **Escenas** del proyecto, no aquí, y su fragmento lo
 dice con **«Sin el audio del clip»** ([Voz y subtítulos](voz-y-subtitulos.md)). Cambiarlo
 cambia el vídeo, así que la exportación anterior deja de ser «la del montaje de ahora».
 
@@ -116,6 +116,7 @@ La comprobación previa se hace **antes** de bajar el primer byte, y siempre dic
 
 | Lo que dice | Qué pasa | Cómo se arregla |
 |---|---|---|
+| «La escena N tiene una afirmación sobre salud sin verificar» | Lo que se dice en esa escena afirma algo de salud y nadie lo ha revisado (le pasa sobre todo a un clip traído de Crear, que no ha pasado por la aprobación del plan) | Verifícala, corrígela o descártala en el paso Escenas del proyecto |
 | Un **fallo crítico abierto** en la revisión de continuidad | La escena tiene un problema que marcaste como crítico | Ve a «Revisión», arréglalo o ciérralo como aceptado ([Revisar la continuidad](revisar-la-continuidad.md)) |
 | «La escena N está en el montaje y todavía no tiene clip guardado» (o «N escenas del montaje todavía no tienen clip guardado», con sus números) | El clip de esa escena se borró o nunca se generó | Prodúcelas o quítalas de la línea de tiempo |
 | «La línea de tiempo de este montaje está vacía» | Lo has vaciado | Añade al menos una escena con clip desde el apartado de abajo |
