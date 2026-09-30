@@ -59,7 +59,8 @@ El consentimiento y las declaraciones **no se heredan a ciegas**:
   derechos de la imagen, revisión de fotos y marca, con su coste confirmado;
 - lo que dice el clip se revisa como el guion de cualquier escena: si contiene una **afirmación sobre salud** (por
   ejemplo, «cura la caspa»), queda por verificar y **no se puede exportar** el vídeo hasta verificarla, corregirla o
-  descartarla en el paso Escenas. Es la misma regla que impide aprobar el plan de un proyecto normal.
+  descartarla en el paso Escenas. Es la misma regla que impide aprobar el plan, y en la exportación vale para todo
+  montaje, no solo para los proyectos que vienen de Crear.
 
 ## 3. Quitar la voz del clip o ponerle voz en off
 

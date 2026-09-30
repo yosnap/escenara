@@ -116,7 +116,7 @@ La comprobación previa se hace **antes** de bajar el primer byte, y siempre dic
 
 | Lo que dice | Qué pasa | Cómo se arregla |
 |---|---|---|
-| «La escena N tiene una afirmación sobre salud sin verificar» | Lo que se dice en esa escena afirma algo de salud y nadie lo ha revisado (le pasa sobre todo a un clip traído de Crear, que no ha pasado por la aprobación del plan) | Verifícala, corrígela o descártala en el paso Escenas del proyecto |
+| «La escena N tiene una afirmación sobre salud sin verificar» | Lo que se dice en esa escena afirma algo de salud y nadie lo ha revisado (en cualquier proyecto: por ejemplo, si editaste el texto de la escena después de aprobar el plan, o en un clip traído de Crear, que no ha pasado por esa aprobación) | Verifícala, corrígela o descártala en el paso Escenas del proyecto |
 | Un **fallo crítico abierto** en la revisión de continuidad | La escena tiene un problema que marcaste como crítico | Ve a «Revisión», arréglalo o ciérralo como aceptado ([Revisar la continuidad](revisar-la-continuidad.md)) |
 | «La escena N está en el montaje y todavía no tiene clip guardado» (o «N escenas del montaje todavía no tienen clip guardado», con sus números) | El clip de esa escena se borró o nunca se generó | Prodúcelas o quítalas de la línea de tiempo |
 | «La línea de tiempo de este montaje está vacía» | Lo has vaciado | Añade al menos una escena con clip desde el apartado de abajo |

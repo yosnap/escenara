@@ -29,8 +29,10 @@ en el montaje y en el MP4. Una migración aditiva; sin cambios de precio ni en l
   La tarjeta dice qué se va a oír y cómo ponerle **voz en off** (la pista de voz aparte de «Voz y subtítulos»).
 - En el montaje, el fragmento de una escena con el audio quitado lo dice («Sin el audio del clip»).
 - **Una afirmación sobre salud sin verificar impide exportar** el MP4, con la escena y qué hacer. Es la misma regla
-  que impide aprobar el plan, y cubre lo que llega al montaje sin haber pasado por esa aprobación (un clip traído de
-  Crear). Las reglas de los controles pasan a la versión `2026-09-30.1`.
+  que impide aprobar el plan y se aplica a **todo montaje**, no solo a los clips traídos de Crear: en cualquier
+  proyecto, editar el texto de una escena después de aprobar el plan puede crear una afirmación de salud nueva, y
+  también bloquea exportar hasta verificarla, corregirla o descartarla. Las reglas de los controles pasan a la versión
+  `2026-09-30.1`.
 - **Catálogo de componentes**: sección «De Crear a un proyecto» con el botón en sus cuatro estados y la tarjeta del
   clip producido.
 - Guía nueva **[De Crear a un proyecto](guias/de-crear-a-un-proyecto.md)**; «Tu primer vídeo», «Voz y subtítulos» y
