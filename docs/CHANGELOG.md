@@ -2,6 +2,37 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.35.2] · 2026-09-30
+
+Parche de los errores: cuando el proveedor acepta un trabajo y luego no lo termina, **Escenara te dice por qué**, si
+se ha cobrado y qué probar. Una migración aditiva; **sin cambios de coste** ni en lo que se confirma al generar.
+
+### Corregido
+
+- **El bloqueo del filtro de seguridad del proveedor se explica.** Un clip de Gemini Omni 1.1 Flash frenado por la
+  revisión de seguridad de Google solo decía «El proveedor ha rechazado lo que se le pedía» y «El proveedor no ha
+  podido completar la generación», así que no había forma de saber qué cambiar. Ahora dice, por ejemplo: «El filtro
+  de seguridad de Gemini Omni 1.1 Flash (vídeo), en KIE.ai, bloqueó la generación (no se ha cobrado nada). No dice
+  qué le ha disgustado. Prueba a: quitar el producto o usar menos fotos suyas, cambiar la descripción o generar con
+  otro modelo.» Lo del producto solo aparece si el envío lo llevaba.
+- **Otras causas reconocibles**, cada una con su mensaje y lo que se puede probar: las normas de contenido del
+  proveedor, una imagen de referencia que no ha podido usar, el proveedor saturado y el corte por exceso de
+  peticiones. Se ven en el historial de «Crear», en el resultado de «Crear» y en la escena de Producción.
+- **Lo que se ha cobrado, siempre a la vista**: «no se ha cobrado nada», los créditos que el proveedor haya cobrado
+  por el intento o que no ha informado de ningún cobro.
+
+### Seguridad
+
+- **El texto del proveedor sigue sin guardarse ni mostrarse.** Solo se lee para elegir una causa de una lista
+  cerrada, con patrones conservadores; lo que no se reconoce se queda con el mensaje genérico de siempre. Así un
+  proveedor que repita datos de la petición (una clave, por ejemplo) no los hace llegar a ningún sitio.
+
+### Base de datos
+
+- Migración `0056_causa-del-fallo-del-proveedor`: columna `generation_jobs.failure_cause`, aditiva e idempotente.
+  Guarda solo la clave de la causa. Los trabajos anteriores se quedan sin causa y se muestran igual que antes; el
+  motivo del fallo no cambia, así que tampoco cambia qué se reintenta ni qué se cobra.
+
 ## [0.35.1] · 2026-09-30
 
 Parche de los productos: **el personaje recibe más referencias que el producto**, el aviso de que las fotos no caben

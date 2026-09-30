@@ -2,7 +2,7 @@
 
 **Escenara** · Estudio abierto de personajes y vídeo · «Da vida a cada escena»
 
-Mapa de la documentación pública del proyecto. Versión actual: **0.35.1**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
+Mapa de la documentación pública del proyecto. Versión actual: **0.35.2**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
 
 ## Mapa de documentos
 
@@ -22,7 +22,7 @@ Mapa de la documentación pública del proyecto. Versión actual: **0.35.1**. Pa
 | Guías | [La ficha y las versiones de un personaje](guias/ficha-y-versiones-de-personaje.md) | Ficha como contexto de generación, versiones, aprobaciones invalidadas y hoja de personaje | 0.15.0 |
 | Guías | [Presets y plantillas](guias/presets-y-plantillas.md) | Crear con botones, previsualización y edición del prompt final, y el catálogo de presets del admin | 0.16.0 |
 | Guías | [El asistente de guion](guias/asistente-de-guion.md) | Proyectos, guion por escenas, afirmaciones por verificar y aprobación del plan con su coste | 0.17.0 |
-| Guías | [Por qué no puedo generar](guias/por-que-no-puedo-generar.md) | Los cuatro estados de los controles previos, cada motivo y cómo se arregla | 0.18.0 |
+| Guías | [Por qué no puedo generar](guias/por-que-no-puedo-generar.md) | Los cuatro estados de los controles previos, cada motivo y cómo se arregla, y qué probar cuando el proveedor acepta el trabajo y no lo termina (por ejemplo, su filtro de seguridad lo bloquea) | 0.35.2 |
 | Guías | [Producir tu proyecto](guias/producir-tu-proyecto.md) | Rejilla de producción, etapas reales, zonas seguras, cancelación con «se cobrará» y reintentos autorizados | 0.19.0 |
 | Guías | [Revisar la continuidad](guias/revisar-la-continuidad.md) | Comparación del clip con la hoja de personaje, comprobaciones técnicas con FFmpeg, qué NO garantizan y qué bloquea exportar | 0.20.0 |
 | Guías | [Voz y subtítulos](guias/voz-y-subtitulos.md) | Modo de voz del proyecto, muestras cacheadas, invalidación al cambiar de voz, editor de subtítulos y exportación a SRT/WebVTT | 0.21.0 |
