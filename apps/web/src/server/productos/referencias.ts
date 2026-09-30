@@ -12,9 +12,11 @@ import { productReferences } from "../db/esquema-productos";
  * dos enteras, así que el reparto es una decisión explícita y se toma en un solo sitio para que la puerta que
  * avisa antes de pagar y el worker que envía no puedan repartir distinto.
  *
- * El reparto: se le reserva al producto **al menos una** foto —sin ninguna, el producto no llega y el prompt
- * estaría prometiendo algo que el modelo no puede ver—, y el resto del cupo es del personaje, que es lo que
- * sostiene la cara. Cuando algo se queda fuera, se dice antes de cobrar (regla `producto-referencias-no-caben`).
+ * El reparto: el producto recibe unas **3/7 partes** del cupo (con siete huecos, 3 para el producto y 4 para el
+ * personaje) y **al menos una** foto —sin ninguna, el producto no llega y el prompt estaría prometiendo algo que
+ * el modelo no puede ver—. El resto es del personaje, porque su identidad es lo que más pesa en el clip. Si uno
+ * de los dos tiene menos fotos de las que le tocan, el otro aprovecha lo que sobra. Cuando algo se queda fuera,
+ * se dice antes de cobrar, con las cifras (regla `producto-referencias-no-caben`).
  */
 
 /**
@@ -67,6 +69,10 @@ export async function fotosDelProducto(
   return [...filas].sort((a, b) => peso(a.papel) - peso(b.papel) || a.orden - b.orden).map((f) => f.mediaId);
 }
 
+/** El producto recibe 3 de cada 7 huecos de referencia: la identidad del personaje pesa más que la foto. */
+const PARTES_DEL_PRODUCTO = 3;
+const PARTES_DEL_CUPO = 7;
+
 /** Cómo se reparte el cupo de referencias del modelo entre el personaje y el producto. */
 export interface RepartoDeReferencias {
   /** Cuántas fotos del personaje (o el fotograma de partida del clip) se envían. Nunca menos de una. */
@@ -82,7 +88,8 @@ export interface RepartoDeReferencias {
  * vivir dentro de ninguno de los dos.
  *
  * - sin producto, todo el cupo es del personaje, exactamente como antes de esta versión;
- * - con producto, se le reserva al menos una foto y el personaje se queda con el resto;
+ * - con producto y personaje, al producto le tocan 3/7 del cupo (redondeo hacia abajo, y una como mínimo si el
+ *   cupo es de dos o más) y al personaje el resto; lo que uno no use, lo aprovecha el otro;
  * - con un modelo que solo admite una imagen, la única que cabe es la del **personaje**: es la imagen de
  *   partida del clip, y sin ella no hay nada que animar. El producto se queda en el texto y se avisa;
  * - **sin ninguna imagen de personaje** —el plano del producto solo, que se pide sin nadie—, todo el cupo es
@@ -104,7 +111,11 @@ export function repartirReferencias(maximo: number, personaje: number, producto:
     const paraProducto = Math.min(producto, cupo);
     return { personaje: 0, producto: paraProducto, cabenTodas: paraProducto >= producto };
   }
-  const paraProducto = Math.min(producto, Math.max(0, cupo - 1));
+  // Con un cupo de una imagen solo cabe la del personaje; desde dos, el producto tiene siempre un hueco.
+  const cuotaProducto = cupo < 2 ? 0 : Math.max(1, Math.floor((cupo * PARTES_DEL_PRODUCTO) / PARTES_DEL_CUPO));
+  // Primero cada uno toma lo que le toca; después lo que el otro no ha usado se reparte entre los dos.
+  const delPersonaje = Math.min(personaje, cupo - cuotaProducto);
+  const paraProducto = Math.min(producto, cupo - delPersonaje);
   const paraPersonaje = Math.min(personaje, cupo - paraProducto);
   return {
     personaje: paraPersonaje,
