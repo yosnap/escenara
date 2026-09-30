@@ -16,7 +16,7 @@ export const METADATOS_DE_ESCENARA: Metadata = {
  * Metadatos de la página. Sin marca publicada, los de siempre. Con ella, su nombre, su lema y los iconos que se
  * generaron al publicarla (sin logotipos subidos, el icono de Escenara). Next escapa estos textos al escribir el HTML.
  */
-export function metadatosDeLaMarca(marca: MarcaAplicada | null): Metadata {
+export function metadatosDeLaMarca(marca: MarcaAplicada | null, base: URL | null = null): Metadata {
   if (!marca) return METADATOS_DE_ESCENARA;
   const { favicon16, favicon32, icono192, icono512, social } = marca.iconos;
   return {
@@ -32,6 +32,34 @@ export function metadatosDeLaMarca(marca: MarcaAplicada | null): Metadata {
         }
       : METADATOS_DE_ESCENARA.icons,
     ...(icono192 && icono512 ? { manifest: "/api/marca/manifest" } : {}),
-    ...(social ? { openGraph: { title: marca.nombre, description: marca.descripcion, images: [social] } } : {}),
+    // La imagen para compartir tiene que ser una URL absoluta de verdad: sin URL pública no se emite (Next pondría
+    // `http://localhost`, que ningún lector de enlaces puede abrir).
+    ...(base ? { metadataBase: base } : {}),
+    openGraph: {
+      title: marca.nombre,
+      description: marca.descripcion,
+      ...(social && base ? { images: [social] } : {}),
+    },
   };
+}
+
+const LOCALES = new Set(["localhost", "127.0.0.1", "[::1]", "0.0.0.0"]);
+
+/**
+ * URL pública de la instalación para las URL absolutas de los metadatos: la de Admin › Ajustes › URL pública y, si está
+ * vacía, la de `BETTER_AUTH_URL`. Una dirección local no vale (no se puede abrir desde fuera): entonces `null`.
+ */
+export function baseDeLaInstalacion(urlPublica: string, urlDeAcceso: string | undefined): URL | null {
+  for (const candidata of [urlPublica.trim(), urlDeAcceso?.trim() ?? ""]) {
+    if (candidata === "") continue;
+    try {
+      const url = new URL(candidata);
+      if ((url.protocol === "https:" || url.protocol === "http:") && !LOCALES.has(url.hostname)) {
+        return new URL(url.origin);
+      }
+    } catch {
+      // Una URL mal escrita no sirve de base; se prueba la siguiente.
+    }
+  }
+  return null;
 }

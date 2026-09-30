@@ -10,7 +10,7 @@ import type { ActivoVista, EstadoMarcaVista, KitVista, VersionMarcaVista } from 
  * **Marca de la instalación y kit del creador** contra PostgreSQL y el almacenamiento S3 locales. Ningún test llama a
  * ningún proveedor.
  *
- * Comprueba los criterios de la fase uno por uno: un JSON inválido no se publica y la anterior sigue intacta; la
+ * Comprueba, uno por uno: un JSON inválido no se publica y la anterior sigue intacta; la
  * publicación es atómica (un fallo a mitad no deja nada a medias); el contraste que no llega bloquea; revertir es un
  * clic; solo la administración cambia la marca y cada usuario solo su kit; los archivos válidos entran y los inválidos o
  * maliciosos se rechazan con su causa; y lo que se sirve lleva su tipo real y `nosniff`.
@@ -41,7 +41,10 @@ const { db } = await import("../db/cliente");
 const { brandAssets, brandVersions, rateLimits } = await import("../db/esquema");
 const { eq } = await import("drizzle-orm");
 const { marcaAplicada, olvidarMarcaAplicada } = await import("./publicada");
-const { metadatosDeLaMarca, METADATOS_DE_ESCENARA } = await import("./metadatos");
+const { baseDeLaInstalacion, metadatosDeLaMarca, METADATOS_DE_ESCENARA } = await import("./metadatos");
+const { guardarAjustes, leerAjustes } = await import("../ajustes");
+const { conCupoDeImagen, PROCESADOS_SIMULTANEOS } = await import("./procesado");
+const { barrerLogosHuerfanosDelKit } = await import("./kit");
 const { publicarBorrador } = await import("./instalacion");
 const { generarDerivados } = await import("./activos");
 const { documentoBase } = await import("@/lib/marca-base");
@@ -84,6 +87,14 @@ const png = async (ancho: number, alto: number, color = "#3d6bff") =>
       type: "image/png",
     },
   );
+/** SVG de la revisión: cada nivel repite 10 veces el anterior. Con 5 niveles, 10⁵ instancias en apenas 1 KB. */
+const usosAnidados = (niveles: number) => {
+  const grupos = ['<g id="g0"><path d="M0 0h1v1z"/></g>'];
+  for (let i = 1; i <= niveles; i++) {
+    grupos.push(`<g id="g${i}">${Array.from({ length: 10 }, () => `<use href="#g${i - 1}"/>`).join("")}</g>`);
+  }
+  return `<defs>${grupos.join("")}</defs><use href="#g${niveles}"/>`;
+};
 const svg = (cuerpo: string) =>
   new File(
     [`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60" width="120" height="60">${cuerpo}</svg>`],
@@ -298,11 +309,9 @@ describe.skipIf(!hayBaseDeDatos)("marca de la instalación y kit del creador", (
   });
 
   test("al publicar con logotipo se generan favicon 16/32, iconos 192/512 e imagen social, y el manifiesto los usa", async () => {
-    const logo = await subirLogo(
-      svg('<rect width="120" height="60" fill="#2753D7"/><circle cx="60" cy="30" r="20" fill="#F0663D"/>'),
-    );
+    const logo = await subirLogo(await png(240, 120, "#2753D7"));
     expect(logo.estado).toBe(201);
-    expect(logo.datos.activo?.mime).toBe("image/svg+xml");
+    expect(logo.datos.activo?.mime).toBe("image/png");
     expect(
       (await guardar(documentoBase(), { logos: { "horizontal-claro": logo.datos.activo?.id }, fuentes: [] })).estado,
     ).toBe(200);
@@ -383,52 +392,42 @@ describe.skipIf(!hayBaseDeDatos)("marca de la instalación y kit del creador", (
     expect(servido.headers.get("content-type")).toBe("image/png");
     expect(servido.headers.get("x-content-type-options")).toBe("nosniff");
     expect(servido.headers.get("content-security-policy")).toContain("sandbox");
-    const s = await subirLogo(svg('<path d="M0 0H10V10Z"/>'));
-    const svgServido = await rutaActivo.GET(
-      pedir(null, s.datos.activo?.url as string),
-      ctx(s.datos.activo?.id as string),
-    );
-    expect(svgServido.headers.get("content-type")).toBe("image/svg+xml");
-    expect(svgServido.headers.get("content-security-policy")).toBe(
+    expect(servido.headers.get("content-security-policy")).toBe(
       "default-src 'none'; style-src 'unsafe-inline'; sandbox",
     );
   });
 
   test.each([
-    ["SVG con script", () => svg("<script>alert(document.cookie)</script>"), 422, /script/],
+    ["SVG de <use> anidados (10⁵ instancias)", () => svg(usosAnidados(5)), 415, /no admite logotipos en SVG/],
+    ["SVG con script", () => svg("<script>alert(document.cookie)</script>"), 415, /no admite logotipos en SVG/],
     [
-      "SVG con foreignObject",
-      () => svg('<foreignObject width="10" height="10"><iframe/></foreignObject>'),
-      422,
-      /foreignObject/,
+      "SVG con entidades XML",
+      () => new File(['<!DOCTYPE svg [<!ENTITY a "x">]><svg xmlns="http://www.w3.org/2000/svg">&a;</svg>'], "x.svg"),
+      415,
+      /no admite logotipos en SVG/,
     ],
-    [
-      "SVG con onload",
-      () => new File(['<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>'], "x.svg"),
-      422,
-      /manejador/,
-    ],
-    ["SVG con imagen externa", () => svg('<use href="https://malo.test/x.svg#a"/>'), 422, /fuera/],
     [
       "HTML disfrazado de PNG",
       () => new File(["<html><script>alert(1)</script></html>"], "logo.png", { type: "image/png" }),
-      422,
-      /<svg>/,
+      415,
+      /Convierte tu logotipo a PNG \(con fondo transparente\) o a WebP/,
     ],
     [
       "ejecutable disfrazado de PNG",
       () => new File([new Uint8Array([0x7f, 0x45, 0x4c, 0x46, 1, 2, 3, 4])], "logo.png", { type: "image/png" }),
       415,
-      /PNG, JPEG, WebP o SVG/,
+      /PNG, JPEG o WebP/,
     ],
     [
       "GIF",
       () => new File([new TextEncoder().encode("GIF89a\u0001\u0000\u0001\u0000")], "logo.gif", { type: "image/gif" }),
       415,
-      /PNG, JPEG, WebP o SVG/,
+      /PNG, JPEG o WebP/,
     ],
-  ])("se rechaza con su causa: %s", async (_, archivo, esperado, causa) => {
+  ])("se rechaza con su causa y al momento: %s", async (_, archivo, esperado, causa) => {
+    const inicio = performance.now();
     const r = await subirLogo(archivo());
+    expect(performance.now() - inicio).toBeLessThan(2000);
     expect(r.estado).toBe(esperado);
     expect(r.datos.error).toMatch(causa);
   });
@@ -539,6 +538,110 @@ describe.skipIf(!hayBaseDeDatos)("marca de la instalación y kit del creador", (
       subida(ana, "/api/cuenta/kit/logotipo", svg("<script>x()</script>")),
       undefined,
     );
-    expect(svgMalo.status).toBe(422);
+    expect(svgMalo.status).toBe(415);
+  });
+
+  // ── Límites y limpieza ─────────────────────────────────────────────────────────────────────────────────────
+
+  test("con URL pública, la imagen social es absoluta a esa URL; sin ella (o con localhost), no se emite", async () => {
+    const previa = (await leerAjustes()).urlPublica;
+    try {
+      const logo = await subirLogo(await png(240, 120));
+      await guardar(documentoBase(), { logos: { "simbolo-claro": logo.datos.activo?.id }, fuentes: [] });
+      expect((await publicar()).estado).toBe(200);
+      const marca = await marcaAplicada();
+      expect(marca?.iconos.social).toBeDefined();
+
+      await guardarAjustes({ urlPublica: "https://estudio.ejemplo.es" }, null);
+      const base = baseDeLaInstalacion((await leerAjustes()).urlPublica, "http://localhost:3021");
+      const con = metadatosDeLaMarca(marca, base);
+      expect(String(con.metadataBase)).toBe("https://estudio.ejemplo.es/");
+      expect(JSON.stringify(con.openGraph)).toContain(marca?.iconos.social as string);
+      expect(JSON.stringify(con)).not.toContain("localhost");
+
+      await guardarAjustes({ urlPublica: "" }, null);
+      const sin = metadatosDeLaMarca(
+        marca,
+        baseDeLaInstalacion((await leerAjustes()).urlPublica, "http://localhost:3021"),
+      );
+      expect(sin.metadataBase).toBeUndefined();
+      expect(JSON.stringify(sin.openGraph)).not.toContain("images");
+      // Sin marca publicada, los metadatos de siempre, sin base.
+      expect(metadatosDeLaMarca(null, base)).toEqual(METADATOS_DE_ESCENARA);
+    } finally {
+      await guardarAjustes({ urlPublica: previa }, null);
+    }
+  });
+
+  test("con el procesado de imágenes lleno, una subida más recibe un 503 con la causa y no se guarda nada", async () => {
+    const antes = (await db().select().from(brandAssets).where(eq(brandAssets.ownerId, ana.id))).length;
+    const soltar: (() => void)[] = [];
+    const ocupados = Array.from({ length: PROCESADOS_SIMULTANEOS }, () =>
+      conCupoDeImagen(() => new Promise<void>((r) => soltar.push(r))),
+    );
+    try {
+      const r = await rutaLogoKit.POST(subida(ana, "/api/cuenta/kit/logotipo", await png(64, 64)), undefined);
+      expect(r.status).toBe(503);
+      expect(((await r.json()) as { error: string }).error).toContain("se están procesando otras imágenes");
+      expect((await db().select().from(brandAssets).where(eq(brandAssets.ownerId, ana.id))).length).toBe(antes);
+    } finally {
+      for (const s of soltar) s();
+      await Promise.all(ocupados);
+    }
+  });
+
+  test("una subida por trozos sin Content-Length más grande que el máximo se corta con 413", async () => {
+    let enviados = 0;
+    const cuerpo = new ReadableStream<Uint8Array>({
+      pull(c) {
+        if (enviados >= 200) return c.close();
+        enviados++;
+        c.enqueue(new Uint8Array(64 * 1024));
+      },
+    });
+    const peticion = new Request("http://localhost/api/cuenta/kit/logotipo", {
+      method: "POST",
+      headers: { cookie: ana.cookie, origin: "http://localhost", "content-type": "multipart/form-data; boundary=x" },
+      body: cuerpo,
+      duplex: "half",
+    } as RequestInit);
+    const r = await rutaLogoKit.POST(peticion, undefined);
+    expect(r.status).toBe(413);
+    expect(enviados).toBeLessThan(200);
+  });
+
+  test("al cambiar el logotipo del kit se borra el anterior, y el barrido quita los que quedaron sueltos", async () => {
+    const primero = (
+      (await (
+        await rutaLogoKit.POST(subida(ana, "/api/cuenta/kit/logotipo", await png(64, 64)), undefined)
+      ).json()) as { kit: KitVista }
+    ).kit;
+    const segundo = (
+      (await (
+        await rutaLogoKit.POST(subida(ana, "/api/cuenta/kit/logotipo", await png(80, 40)), undefined)
+      ).json()) as { kit: KitVista }
+    ).kit;
+    const deAna = async () =>
+      (await db().select().from(brandAssets).where(eq(brandAssets.ownerId, ana.id))).map((a) => a.id);
+    expect(await deAna()).toEqual([segundo.logo?.id as string]);
+    expect(primero.logo?.id).not.toBe(segundo.logo?.id);
+
+    // Uno suelto (por ejemplo, de dos subidas a la vez) y antiguo: el barrido lo quita y deja el actual.
+    const suelto = crypto.randomUUID();
+    await db()
+      .insert(brandAssets)
+      .values({
+        id: suelto,
+        scope: "kit",
+        kind: "logotipo",
+        ownerId: ana.id,
+        storageKey: `marca/kit/${suelto}.png`,
+        mimeType: "image/png",
+        sizeBytes: 1,
+        sha256: "x",
+        createdAt: new Date(Date.now() - 60 * 60_000),
+      });
+    await barrerLogosHuerfanosDelKit(ana.id);
+    expect(await deAna()).toEqual([segundo.logo?.id as string]);
   });
 });

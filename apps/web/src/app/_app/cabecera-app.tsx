@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Logotipo } from "@/components/ui/logotipo";
+import { EnlaceLogotipo } from "@/components/ui/enlace-logotipo";
 import { SelectorTema } from "@/components/ui/theme-toggle";
 import { esAdmin, type Sesion } from "@/server/auth/sesion";
 import { CerrarSesion } from "./cerrar-sesion";
@@ -22,9 +22,7 @@ export function CabeceraApp({ sesion }: { sesion: Sesion }) {
     <header className="sticky top-0 z-30 border-b border-borde/40 bg-fondo/85 backdrop-blur">
       <div className="mx-auto flex max-w-6xl flex-col gap-2 px-5 py-3 md:px-8">
         <div className="flex items-center justify-between gap-4">
-          <Link href="/" className="text-texto" aria-label="Escenara, volver a la portada">
-            <Logotipo />
-          </Link>
+          <EnlaceLogotipo href="/" accion="volver a la portada" className="text-texto" />
           <div className="flex items-center gap-2">
             <SelectorTema />
             <CerrarSesion />

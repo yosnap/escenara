@@ -2,15 +2,21 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import type { ReactNode } from "react";
 import { ProveedorMarca } from "@/components/ui/marca-contexto";
+import { leerAjustes } from "@/server/ajustes";
 import { obtenerSesion } from "@/server/auth/sesion";
-import { metadatosDeLaMarca } from "@/server/marca/metadatos";
+import { baseDeLaInstalacion, metadatosDeLaMarca } from "@/server/marca/metadatos";
 import { marcaAplicada } from "@/server/marca/publicada";
 import "./globals.css";
 import { ScriptTema } from "./script-tema";
 
 /** Metadatos de la página: los de Escenara o, con una marca publicada, los suyos (`server/marca/metadatos.ts`). */
 export async function generateMetadata(): Promise<Metadata> {
-  return metadatosDeLaMarca(await marcaAplicada());
+  const marca = await marcaAplicada();
+  if (!marca) return metadatosDeLaMarca(null);
+  const urlPublica = await leerAjustes()
+    .then((a) => a.urlPublica)
+    .catch(() => "");
+  return metadatosDeLaMarca(marca, baseDeLaInstalacion(urlPublica, process.env.BETTER_AUTH_URL));
 }
 
 // Manrope variable autoalojada (OFL, ver src/fonts/OFL-Manrope.txt), solo el alfabeto latino: cubre el

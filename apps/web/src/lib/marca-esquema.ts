@@ -122,12 +122,19 @@ const GENERICAS = new Set([
   "ui-rounded",
 ]);
 
+/** Palabras clave globales de CSS: en una lista de familias no son válidas y la dejarían sin efecto. */
+const PALABRAS_GLOBALES = new Set(["inherit", "initial", "unset", "revert", "revert-layer", "default"]);
+
 const MAX_FAMILIAS = 8;
 const MAX_LARGO_FAMILIA = 40;
 const VERSION_MARCA = /^\d{1,3}\.\d{1,3}\.\d{1,3}$/;
 const SLUG = /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/;
-/** Caracteres de control (saltos de línea incluidos) y los signos `<` y `>`: ningún texto de marca los necesita. */
-export const CONTROL_O_ETIQUETA = /[\p{Cc}<>]/u;
+/**
+ * Caracteres de control (saltos de línea incluidos), de formato invisibles (marcas de dirección como U+202E, espacios
+ * de anchura cero), separadores de línea y párrafo, y los signos `<` y `>`: ningún texto de marca los necesita, y los
+ * invisibles permiten que un nombre se lea distinto de lo que es.
+ */
+export const CONTROL_O_ETIQUETA = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}<>]/u;
 
 /** ¿Es una lista de familias segura? Devuelve el motivo del rechazo o `null`. */
 export function motivoFamiliaNoValida(valor: unknown): string | null {
@@ -137,6 +144,9 @@ export function motivoFamiliaNoValida(valor: unknown): string | null {
   for (const parte of partes) {
     if (parte === "") return "Hay una coma de más en la lista de familias.";
     if (GENERICAS.has(parte)) continue;
+    if (PALABRAS_GLOBALES.has(parte.toLowerCase())) {
+      return `«${parte}» es una palabra reservada de CSS, no una familia: quítala de la lista.`;
+    }
     if (parte.length > MAX_LARGO_FAMILIA || !NOMBRE_FUENTE.test(parte)) {
       return `«${parte.slice(0, MAX_LARGO_FAMILIA)}» no es un nombre de familia admitido: solo letras, números, guiones y espacios, empezando por letra y sin comillas.`;
     }
@@ -148,7 +158,9 @@ export function motivoFamiliaNoValida(valor: unknown): string | null {
 export function motivoNombreFuenteNoValido(valor: unknown): string | null {
   if (typeof valor !== "string" || valor.trim() === "") return "Escribe el nombre de la familia.";
   const limpio = valor.trim();
-  if (GENERICAS.has(limpio)) return "Ese nombre es de una familia genérica del navegador: elige otro.";
+  if (GENERICAS.has(limpio) || PALABRAS_GLOBALES.has(limpio.toLowerCase())) {
+    return "Ese nombre es de una familia genérica o una palabra reservada de CSS: elige otro.";
+  }
   if (limpio.length > MAX_LARGO_FAMILIA || !NOMBRE_FUENTE.test(limpio)) {
     return "El nombre solo admite letras, números, guiones y espacios, empezando por letra y sin comillas.";
   }

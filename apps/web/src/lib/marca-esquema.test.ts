@@ -49,7 +49,18 @@ describe("esquema del documento de marca", () => {
   });
 
   test("una familia con comillas, punto y coma, llaves o URL se rechaza; las listas limpias pasan", () => {
-    for (const mala of ['Inter"', "Inter; } body{}", "url(x)", "Inter, /*", "Mi <b>fuente</b>", "3D Font", ""]) {
+    for (const mala of [
+      'Inter"',
+      "Inter; } body{}",
+      "url(x)",
+      "Inter, /*",
+      "Mi <b>fuente</b>",
+      "3D Font",
+      "",
+      "inherit, Arial",
+      "Arial, unset",
+      "Initial",
+    ]) {
       expect(motivoFamiliaNoValida(mala)).not.toBeNull();
     }
     expect(motivoFamiliaNoValida("Open Sans, Inter, ui-sans-serif, system-ui, sans-serif")).toBeNull();
@@ -63,11 +74,22 @@ describe("esquema del documento de marca", () => {
     doc.identity.name = "<script>alert(1)</script>";
     doc.identity.tagline.es = "Línea\nrota";
     doc.identity.descriptor.en = "x".repeat(121);
+    doc.identity.productLine.es = "Acme \u202E lave";
+    doc.identity.productLine.en = "Acme\u200Bco";
+    doc.identity.tagline.en = "Una\u2028línea";
     expect(
       errores(doc)
         .map((e) => e.campo)
         .sort(),
-    ).toEqual(["identity.descriptor.en", "identity.name", "identity.tagline.es"]);
+    ).toEqual([
+      // También los invisibles (U+202E invierte el texto, U+200B no se ve) y los separadores de línea.
+      "identity.descriptor.en",
+      "identity.name",
+      "identity.productLine.en",
+      "identity.productLine.es",
+      "identity.tagline.en",
+      "identity.tagline.es",
+    ]);
   });
 
   test("las medidas son enteros en su rango; el objetivo táctil no baja de 44 px", () => {

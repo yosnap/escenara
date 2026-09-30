@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull, notInArray, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, lt, notInArray, sql } from "drizzle-orm";
 import { CONTROL_O_ETIQUETA } from "@/lib/marca-esquema";
 import { ESQUINA_POR_DEFECTO, esEsquinaKit, type KitDeExportacion, LARGO_NOMBRE_KIT } from "@/lib/marca-kit";
 import type { KitVista } from "@/lib/marca-vista";
@@ -16,7 +16,8 @@ import { activoAVista } from "./instalacion";
  * toca la marca de la instalación.
  *
  * El logotipo se guarda en PNG (es lo que se superpone al vídeo). Al cambiarlo, el anterior se borra salvo que lo
- * necesite una exportación que todavía no se ha montado: esa sale con el kit con el que se pidió.
+ * necesite una exportación que todavía no se ha montado: esa sale con el kit con el que se pidió, y al terminar (bien o
+ * mal) suelta el logotipo, que entonces se borra si ya no es el del kit.
  */
 
 async function filaDelKit(usuarioId: string) {
@@ -73,10 +74,52 @@ async function enUsoPorExportacionPendiente(activoId: string): Promise<boolean> 
   return filas.length > 0;
 }
 
-async function borrarLogoAnterior(activoId: string | null): Promise<void> {
-  if (!activoId || (await enUsoPorExportacionPendiente(activoId))) return;
+/**
+ * Borra un logotipo de kit **si ya nadie lo necesita**: no es el logotipo actual de su dueño ni lo espera una
+ * exportación sin montar. Devuelve si lo ha borrado.
+ */
+export async function borrarLogoSiHuerfano(activoId: string): Promise<boolean> {
+  const [activo] = await db()
+    .select({ id: brandAssets.id, ownerId: brandAssets.ownerId })
+    .from(brandAssets)
+    .where(and(eq(brandAssets.id, activoId), eq(brandAssets.scope, "kit")))
+    .limit(1);
+  if (!activo?.ownerId) return false;
+  const kit = await filaDelKit(activo.ownerId);
+  if (kit?.logoAssetId === activoId || (await enUsoPorExportacionPendiente(activoId))) return false;
   const [fila] = await db().delete(brandAssets).where(eq(brandAssets.id, activoId)).returning();
   if (fila) await borrarObjeto(fila.storageKey).catch(() => {});
+  return Boolean(fila);
+}
+
+/** Margen antes de barrer un logotipo sin usar: otra subida del mismo usuario puede estar a punto de estrenarlo. */
+const MS_GRACIA_HUERFANOS = 10 * 60_000;
+
+/**
+ * Barre los logotipos del kit de un usuario que se quedaron sin usar (por ejemplo, dos subidas a la vez: gana una y la
+ * otra queda suelta). Solo los de más de diez minutos, para no borrar el de una subida que aún no se ha estrenado.
+ */
+export async function barrerLogosHuerfanosDelKit(usuarioId: string): Promise<void> {
+  const candidatos = await db()
+    .select({ id: brandAssets.id })
+    .from(brandAssets)
+    .where(
+      and(
+        eq(brandAssets.scope, "kit"),
+        eq(brandAssets.ownerId, usuarioId),
+        lt(brandAssets.createdAt, new Date(Date.now() - MS_GRACIA_HUERFANOS)),
+      ),
+    );
+  for (const { id } of candidatos) await borrarLogoSiHuerfano(id);
+}
+
+async function soltarLogo(actor: Actor, anterior: string | null): Promise<void> {
+  if (anterior) await borrarLogoSiHuerfano(anterior);
+  await barrerLogosHuerfanosDelKit(actor.id).catch((error) =>
+    console.error(
+      `[marca] no se han podido barrer los logotipos sin usar: ${error instanceof Error ? error.message : error}`,
+    ),
+  );
 }
 
 /** Sube (o sustituye) el logotipo del kit. */
@@ -97,7 +140,7 @@ export async function subirLogoDelKit(actor: Actor, archivo: File): Promise<KitV
     .insert(creatorKits)
     .values({ userId: actor.id, logoAssetId: fila.id })
     .onConflictDoUpdate({ target: creatorKits.userId, set: { logoAssetId: fila.id, updatedAt: new Date() } });
-  await borrarLogoAnterior(anterior?.logoAssetId ?? null);
+  await soltarLogo(actor, anterior?.logoAssetId ?? null);
   return leerKit(actor);
 }
 
@@ -108,7 +151,7 @@ export async function quitarLogoDelKit(actor: Actor): Promise<KitVista> {
       .update(creatorKits)
       .set({ logoAssetId: null, updatedAt: new Date() })
       .where(eq(creatorKits.userId, actor.id));
-    await borrarLogoAnterior(anterior.logoAssetId);
+    await soltarLogo(actor, anterior.logoAssetId);
   }
   return leerKit(actor);
 }

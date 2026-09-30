@@ -1,6 +1,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "../db/cliente";
 import { type FilaExportacion, montageExports, montages, projects } from "../db/esquema";
+import { borrarLogoSiHuerfano } from "../marca/kit";
 import type { Actor } from "../media/servicio";
 import { ErrorMontaje } from "./errores";
 import { materialDelProyecto } from "./material";
@@ -101,14 +102,24 @@ async function devolverALaCola(id: string): Promise<void> {
  * o del entorno, y esos sí se reintentan hasta el tope.
  */
 export async function atenderExportacion(exportacion: FilaExportacion): Promise<boolean> {
+  // Una exportación terminada (bien o mal) ya no retiene el logotipo del kit con el que se pidió: si el usuario lo
+  // cambió o lo quitó mientras tanto, se borra ahora.
+  const soltarKit = async () => {
+    if (!exportacion.brandKit) return;
+    await borrarLogoSiHuerfano(exportacion.brandKit.activoId).catch((e) =>
+      console.error(`[montaje] no se ha podido soltar el logotipo del kit de ${exportacion.id}: ${detalle(e)}`),
+    );
+  };
   try {
     const contexto = await contextoDeExportacion(exportacion);
     await renderizarExportacion(contexto.actor, exportacion, contexto.montaje, contexto.material);
+    await soltarKit();
     return true;
   } catch (error) {
     if (error instanceof ErrorMontaje) {
       await marcarFallida(exportacion.id, error.message);
       console.warn(`[montaje] exportación ${exportacion.id} fallida: ${error.message}`);
+      await soltarKit();
       return false;
     }
     console.error(`[montaje] exportación ${exportacion.id}: ${detalle(error)}`);
@@ -117,6 +128,7 @@ export async function atenderExportacion(exportacion: FilaExportacion): Promise<
         exportacion.id,
         "El montaje ha fallado varias veces seguidas por un problema de esta instalación. Vuelve a pedirlo y, si sigue fallando, díselo a quien la administra.",
       );
+      await soltarKit();
       return false;
     }
     await devolverALaCola(exportacion.id).catch((suelta) =>
