@@ -21,8 +21,14 @@ cómo se confirma o se cobra nada.
 
 ### Cambiado
 
-- **«Crear»**: origen → a quién generas → describe la escena → revisa el coste y confirma → resultado del
-  fotograma → el clip. Con una imagen tuya solo quedan origen, imagen de partida y clip. El coste se desbloquea al
+- **«Crear»**: formato → origen → a quién generas → describe la escena → revisa el coste y confirma → resultado
+  del fotograma → el clip. Con una imagen tuya solo quedan formato, origen, imagen de partida y clip.
+- **El formato del clip va primero.** El selector «Plantilla o trend vigente» sale del paso del clip y pasa a ser
+  el paso 1, «Elige el formato», con la vista previa del trend: un trend fija la duración (y su coste) y si se
+  habla a cámara, así que se decide antes que lo demás. Elegirlo sigue pidiendo al servidor la estimación con la
+  duración del trend, avisa si el modelo no tiene tarifa para ella y quita la frase si el trend no permite
+  hablar, igual que antes. El paso del clip ya no repite el selector. Si la instalación no tiene ningún trend
+  publicado, «Crear» se abre en el paso 2 y el de formato explica por qué no hay nada que elegir. El coste se desbloquea al
   describir la escena, el resultado al confirmar el fotograma y el clip cuando hay imagen de la que sacarlo. Al
   pulsar «Generar fotograma», la pantalla pasa sola a su resultado. El resumen de coste, las casillas y el botón de
   confirmar son los mismos que antes: solo cambian de sitio.
@@ -30,7 +36,7 @@ cómo se confirma o se cobra nada.
   el plan ya está aprobado, las escenas si ya hay guion…). La aprobación está bloqueada mientras no haya escenas.
 - Cambiar de paso **no pierde nada**: un fotograma o un clip generándose, una escena abierta a medio editar o un
   orden de escenas sin guardar siguen igual al volver.
-- Las guías de tu primer vídeo, trends, dirección del clip, estrategia del anuncio, asistente de guion y productos
+- Las guías de tu primer vídeo, trends (el trend se elige en el primer paso), dirección del clip, estrategia del anuncio, asistente de guion y productos
   explican la barra en lugar de «bajar hasta» un paso.
 
 ### Corregido

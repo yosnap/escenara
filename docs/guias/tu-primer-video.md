@@ -20,14 +20,18 @@ El paso en el que estás queda en la dirección de la página (`?paso=`): al rec
 
 Los pasos son casi los mismos siempre, pero el camino que elijas al principio cambia cuáles salen en la barra. Cada opción de dirección (plano, cámara, gesto…) se explica en [Dirigir tu clip](dirigir-tu-clip.md).
 
-### 1. ¿De dónde sale el clip?
+### 1. Elige el formato
 
-Lo primero que eliges son dos caminos:
+Lo primero es el formato del clip: la **plantilla normal** o uno de los **trends** vigentes de la instalación. Va antes que nada porque un trend fija la duración del clip (y con ella su coste) y si se puede hablar a cámara. Con la plantilla normal, esas cosas las decides tú más adelante. Si la instalación no tiene ningún trend publicado, «Crear» se abre directamente en el paso 2 y este paso te dice por qué no hay nada que elegir. Cómo funcionan los trends está en [Usar y administrar trends](trends-virales.md).
+
+### 2. ¿De dónde sale el clip?
+
+Después eliges entre dos caminos:
 
 - **Crear un fotograma nuevo**: eliges a quién sale y qué está haciendo, y se genera su imagen. Se paga el fotograma y, después, el clip. Es el camino que sigue el resto de esta guía.
-- **Usar una imagen que ya tengo**: un fotograma de otro día, una vista de tu personaje o una foto tuya. No se genera ni se paga ningún fotograma: tras elegir la imagen («Elige la imagen de partida») pasas directamente al paso **«El clip»**, y la barra solo tiene esos tres pasos.
+- **Usar una imagen que ya tengo**: un fotograma de otro día, una vista de tu personaje o una foto tuya. No se genera ni se paga ningún fotograma: tras elegir la imagen («Elige la imagen de partida») pasas directamente al paso **«El clip»**, y la barra solo tiene esos cuatro pasos (formato, origen, imagen y clip).
 
-### 2. Elige a quién generas
+### 3. Elige a quién generas
 
 Es el paso «Elige a quién generas»: un personaje tuyo, o una imagen suelta que subes, arrastras o eliges de tu biblioteca. El modelo intentará mantener la cara, el pelo y los rasgos. Si no eliges ninguna de las dos, la escena se genera solo con tu descripción, con un modelo de texto a imagen (otro modelo y otro precio, y la pantalla lo dice).
 
@@ -39,7 +43,7 @@ Marca la casilla **«Tengo derecho a usar esta imagen»** cuando llegues a «Rev
 
 **Dónde va la imagen.** Para generar, Escenara sube la foto al almacenamiento temporal de KIE y le pasa ese enlace al modelo: durante unas horas el archivo es accesible para quien tenga la dirección, y después KIE lo borra. Tenlo en cuenta con fotos de otras personas. El archivo original sigue en tu biblioteca, en el almacenamiento de tu instalación.
 
-### 3. Describe la escena
+### 4. Describe la escena
 
 Di dónde está, qué hace y cómo se ve. Cuanto más concreto, mejor:
 
@@ -49,7 +53,7 @@ El fotograma sale vertical (9:16), el formato de Reels, TikTok y Shorts.
 
 **Lo que dice, aparte.** Si quieres que el personaje hable, escribe la frase en el campo **«Lo que dice (opcional)»**, no en la descripción de la escena. Si el modelo de clip que has elegido no genera voz, Escenara te lo dice y ese campo no se usa: para que hable, elige un modelo con voz. Los modelos de imagen, si ven una frase en el prompt, la **dibujan** en el fotograma como subtítulo, bocadillo o rótulo (lo comprobamos generando de verdad con tres modelos distintos), y el clip lo hereda. Por eso el fotograma se genera solo con la descripción visual, y la frase se usa únicamente en el clip, que sí tiene voz.
 
-### 4. Revisa el coste y confirma
+### 5. Revisa el coste y confirma
 
 El panel de coste es la zona clara de la pantalla y dice tres cosas:
 
@@ -63,7 +67,7 @@ Si un trabajo pasa del aviso configurado (200 créditos por defecto, ajustable e
 
 **Si se corta la conexión al enviar**, Escenara no te dirá que lo repitas sin más: te avisa de que puede haberse enviado y te manda al historial. Y si vuelves a pulsar el botón con la misma confirmación, el servidor reconoce que es la misma y te devuelve el trabajo que ya había creado, sin encargar otro.
 
-### 5. Espera y mira el resultado
+### 6. Espera y mira el resultado
 
 Al pulsar **Generar fotograma**, la pantalla pasa sola a este paso, «Resultado del fotograma».
 

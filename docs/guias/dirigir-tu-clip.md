@@ -17,6 +17,10 @@ mismos botones —el plano, el ángulo, el movimiento, la micro-acción, el regi
 a la botonera de la plantilla no le queda nada propio que ofrecer, no aparece. Lo que elijas aquí es lo que se
 le pide al modelo, y se le pide una sola vez.
 
+En **«Crear»**, la plantilla o el trend del clip se eligen **antes**, en el primer paso («Elige el formato»),
+porque un trend fija la duración y si se habla a cámara. El paso del clip ya no repite ese selector: solo ofrece los
+botones que la plantilla elegida pida y que la dirección no cubra.
+
 ## Guardar una dirección y volver a usarla
 
 Encima de los botones tienes **Mis direcciones**. Cuando tengas una forma de dirigir que te funciona, pulsa
