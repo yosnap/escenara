@@ -3,7 +3,7 @@
 import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Boton } from "@/components/ui/button";
-import { Aviso, EstadoVacio } from "@/components/ui/feedback";
+import { EstadoVacio } from "@/components/ui/feedback";
 import { ListaOrdenable } from "@/components/ui/lista-ordenable";
 import { Paso } from "@/components/ui/paso";
 import type { OpcionesDeDireccion } from "@/lib/direccion";
@@ -29,8 +29,11 @@ export function ListaEscenas({
   trends,
   onCambio,
   onError,
+  ordenPendienteInicial = null,
 }: {
   detalle: ProyectoDetalle;
+  /** Orden ya soltado y sin guardar con el que arranca la lista (para las pruebas de pantalla). */
+  ordenPendienteInicial?: string[] | null;
   /** Personajes propios: son los únicos entre los que se puede elegir el segundo del reparto (0.28.0). */
   personajes: readonly PersonajeElegible[];
   trends: TrendPublico[];
@@ -54,7 +57,7 @@ export function ListaEscenas({
   }, []);
   const { proyecto } = detalle;
   /** Orden soltado y todavía sin guardar. Solo cuenta mientras siga siendo una permutación de las escenas. */
-  const [pendiente, setPendiente] = useState<string[] | null>(null);
+  const [pendiente, setPendiente] = useState<string[] | null>(ordenPendienteInicial);
   const actuales = detalle.escenas;
   const ordenPendiente = ordenAplicable(
     pendiente,
@@ -123,22 +126,31 @@ export function ListaEscenas({
           />
         ) : (
           <>
+            {/*
+              El anuncio y el control van separados: una región viva con botones dentro se releería entera en cada
+              cambio, y una recién insertada muchas veces no se anuncia. Esta está siempre en la página y solo cambia
+              su frase.
+            */}
+            <p role="status" className="sr-only">
+              {ordenPendiente ? "Orden sin guardar. Guárdalo o descártalo debajo." : ""}
+            </p>
             {ordenPendiente && (
-              <Aviso tono="info">
-                <div className="flex flex-col gap-3">
-                  <p>
-                    <strong>Orden sin guardar.</strong> {efectosDelOrden(escenas.map((e) => e.estado))}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <Boton variante="primario" tamano="sm" disabled={ocupado} onClick={() => void guardarOrden()}>
-                      Guardar orden
-                    </Boton>
-                    <Boton variante="secundario" tamano="sm" disabled={ocupado} onClick={() => setPendiente(null)}>
-                      Descartar
-                    </Boton>
-                  </div>
+              <section
+                aria-label="Orden de las escenas sin guardar"
+                className="flex flex-col gap-3 rounded-tarjeta border-2 border-borde bg-superficie p-3"
+              >
+                <p className="text-texto">
+                  <strong>Orden sin guardar.</strong> {efectosDelOrden(escenas.map((e) => e.estado))}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Boton variante="primario" tamano="sm" disabled={ocupado} onClick={() => void guardarOrden()}>
+                    Guardar orden
+                  </Boton>
+                  <Boton variante="secundario" tamano="sm" disabled={ocupado} onClick={() => setPendiente(null)}>
+                    Descartar
+                  </Boton>
                 </div>
-              </Aviso>
+              </section>
             )}
             <ListaOrdenable
               etiquetaLista="Escenas del guion, en el orden en el que se verán"

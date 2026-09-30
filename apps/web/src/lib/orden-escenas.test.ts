@@ -11,9 +11,14 @@ describe("ordenAplicable", () => {
     expect(ordenAplicable(["b", "a", "c"], ["a", "b", "c"])).toEqual(["b", "a", "c"]);
   });
 
-  it("se descarta si ya no son las mismas escenas (se añadió o borró alguna)", () => {
-    expect(ordenAplicable(["b", "a"], ["a", "b", "c"])).toBeNull();
-    expect(ordenAplicable(["b", "x"], ["a", "b"])).toBeNull();
+  it("al borrar una escena se conserva el orden pendiente de las que quedan", () => {
+    expect(ordenAplicable(["c", "a", "b"], ["a", "b"])).toBeNull();
+    expect(ordenAplicable(["c", "b", "a"], ["a", "b"])).toEqual(["b", "a"]);
+    expect(ordenAplicable(["b", "x", "a"], ["a", "b"])).toEqual(["b", "a"]);
+  });
+
+  it("una escena que no estaba en el orden pendiente entra al final, y los repetidos se ignoran", () => {
+    expect(ordenAplicable(["b", "a"], ["a", "b", "c"])).toEqual(["b", "a", "c"]);
     expect(ordenAplicable(["a", "a"], ["a", "b"])).toBeNull();
   });
 });
@@ -36,7 +41,7 @@ describe("efectosDelOrden", () => {
     for (const estados of [["borrador"], ["aprobada"]] as const) {
       const texto = efectosDelOrden(estados);
       expect(texto).toContain("números de escena");
-      expect(texto).toContain("la primera lleva el gancho");
+      expect(texto).toContain("no se traslada");
       expect(texto).toContain("montaje que ya hayas guardado mantiene el suyo");
     }
   });
