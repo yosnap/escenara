@@ -523,7 +523,7 @@ describe.skipIf(!hayBaseDeDatos)("lugares: propiedad, declaración, versión, re
       .where(eq(generationJobs.userId, ana.id));
     await db().update(scenes).set({ state: "aprobada", approvedAt: new Date() }).where(eq(scenes.id, escenaId));
     const [pedido] = await trabajosDeAna();
-    const declaracionUsada = (pedido?.input as { declaracionLugar?: string }).declaracionLugar;
+    const declaracionUsada = (pedido?.input as { declaracionLugar?: string } | undefined)?.declaracionLugar;
     expect(declaracionUsada).toBeDefined();
 
     const resumen = await rutaLugar.GET(pedir(ana, `/api/lugares/${lugar.id}?borrado=1`), ctx(lugar.id));
