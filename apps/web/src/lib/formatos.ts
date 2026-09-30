@@ -251,35 +251,6 @@ export function proporcionFijadaDelProyecto(formatosGuardados: unknown): string 
   return principal === FORMATO_MONTAJE_POR_DEFECTO ? undefined : PROPORCION_DE_FORMATO[principal];
 }
 
-// ── Un fotograma y el modelo de vídeo que lo va a animar ────────────────────────────────────────────────────
-
-/** Tolerancia al comparar las medidas de una imagen con una proporción: el redondeo de los codificadores. */
-const TOLERANCIA_PROPORCION = 0.02;
-
-const valorDeProporcion = (proporcion: string): number | null => {
-  const [a, b] = proporcion.split(":").map(Number);
-  return a && b ? a / b : null;
-};
-
-/** `true` si una imagen de `ancho × alto` está en esa proporción, con la tolerancia del redondeo. */
-export function medidasEnProporcion(ancho: number, alto: number, proporcion: string): boolean {
-  const valor = valorDeProporcion(proporcion);
-  if (valor === null || !(ancho > 0) || !(alto > 0)) return false;
-  return Math.abs(ancho / alto - valor) / valor <= TOLERANCIA_PROPORCION;
-}
-
-/**
- * ¿Puede este modelo de vídeo animar una imagen de estas medidas sin que Escenara la recorte? Sí si no acepta
- * proporción (toma la de la imagen), si no se conocen las medidas, o si alguna de las suyas coincide.
- */
-export function animaEstasMedidas(
-  proporcionesDelModelo: readonly string[],
-  medidas: { ancho: number | null; alto: number | null },
-): boolean {
-  if (proporcionesDelModelo.length === 0 || medidas.ancho === null || medidas.alto === null) return true;
-  return proporcionesDelModelo.some((p) => medidasEnProporcion(medidas.ancho as number, medidas.alto as number, p));
-}
-
 /**
  * Nombre del MP4 exportado en la biblioteca y en la descarga. El vertical conserva el de siempre («montaje.mp4»,
  * que se descarga como «escenara-montaje.mp4»); los demás llevan su proporción para distinguirlos.
@@ -288,3 +259,31 @@ export const nombreDeExportacion = (formato: FormatoMontaje): string =>
   formato === FORMATO_MONTAJE_POR_DEFECTO
     ? "montaje.mp4"
     : `montaje-${PROPORCION_DE_FORMATO[formato].replace(":", "x")}.mp4`;
+
+/** `true` si un modelo de vídeo anima una imagen en esa proporción sin recortarla: la declara o toma la de la imagen. */
+export const modeloAnimaLaProporcion = (proporcionesDelModelo: readonly string[], proporcion: string): boolean =>
+  proporcionesDelModelo.length === 0 || proporcionesDelModelo.includes(proporcion);
+
+/**
+ * Por qué no se puede animar un **fotograma generado** con este modelo de vídeo, o `null` si se puede (0.41.0). Es la
+ * **única** regla: la usa el servidor antes de reservar nada y la usa el aviso del paso del clip en «Crear».
+ *
+ * - `proporcionDelFotograma`: la del trabajo que generó el fotograma (`proporcionDelTrabajo`); `null` con una imagen
+ *   propia, que se envía como siempre y el modelo encaja;
+ * - `proporcionDelClip`: la fijada para el clip (un proyecto, un preset). Si hay una, lo ha decidido el usuario.
+ *
+ * El motivo dice cómo salir con lo que hay en «Crear»: otro modelo que la anima (nombrado) o recortar el fotograma en
+ * la biblioteca y animar la copia. Escenara no recorta por su cuenta.
+ */
+export function motivoFormatoDelFotograma(
+  proporcionDelFotograma: string | null,
+  proporcionDelClip: string | null,
+  modelo: ModeloConProporciones,
+  alternativas: readonly string[] = [],
+): string | null {
+  if (proporcionDelFotograma === null || proporcionDelClip !== null) return null;
+  if (modeloAnimaLaProporcion(modelo.proporciones, proporcionDelFotograma)) return null;
+  const otros =
+    alternativas.length > 0 ? `elige otro modelo del clip que la admite (${alternativas.join(", ")}), o ` : "";
+  return `El fotograma está en ${proporcionDelFotograma} y ${modelo.nombre} solo hace clips en ${modelo.proporciones.join(" o ")}, y Escenara no recorta el fotograma por su cuenta. Para animarlo, ${otros}recórtalo a ${modelo.proporciones[0]} en tu Biblioteca («Editar imagen») y anima esa copia.`;
+}

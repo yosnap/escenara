@@ -751,6 +751,7 @@ export function VistaCrear({
           <PasoClip
             numero={numero("clip")}
             origen={origenDelClip}
+            proporcionDelFotograma={fotograma?.medio ? fotograma.proporcion : null}
             modelos={modelosClip}
             estimacion={estimacionClip}
             conVoz={clipConVoz}
