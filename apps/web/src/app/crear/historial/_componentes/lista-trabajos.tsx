@@ -7,7 +7,7 @@ import { Boton, claseBoton } from "@/components/ui/button";
 import { Aviso, EstadoVacio } from "@/components/ui/feedback";
 import { MiniaturaMedio } from "@/components/ui/media/miniatura-medio";
 import { InsigniaEstado } from "@/components/ui/trabajo";
-import { etiquetaDelFallo } from "@/lib/causa-fallo";
+import { causaConocida, etiquetaDelFallo } from "@/lib/causa-fallo";
 import { type EstadoCola, esCancelable, esEstadoActivo, formatearCreditos, type TrabajoVista } from "@/lib/generacion";
 import { cancelarTrabajo, consultarTrabajo, reconsultarTrabajo } from "../../_componentes/api-generacion";
 import { LimiteDeGasto } from "../../_componentes/limite-de-gasto";
@@ -109,7 +109,8 @@ export function ListaTrabajos({ iniciales, cola }: { iniciales: TrabajoVista[]; 
                   : `${formatearCreditos(trabajo.creditosConsumidos)} según el proveedor`}
                 {trabajo.intentos > 1 && ` · ${trabajo.intentos} de ${trabajo.intentosMaximos} intentos`}
               </p>
-              {trabajo.motivoFallo && (
+              {/* Con causa concreta, el mensaje ya la dice entera: la etiqueta solo la repetiría. */}
+              {trabajo.motivoFallo && !(causaConocida(trabajo.causaFallo) && trabajo.error) && (
                 <p className="text-sm text-texto-suave">{etiquetaDelFallo(trabajo.motivoFallo, trabajo.causaFallo)}.</p>
               )}
               {trabajo.error && <p className="text-sm font-medium text-texto">{trabajo.error}</p>}

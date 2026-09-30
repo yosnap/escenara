@@ -60,10 +60,19 @@ describe("causa del fallo en pantalla", () => {
     const html = renderToStaticMarkup(
       <ListaTrabajos iniciales={[fallido({ causaFallo: "bloqueo_seguridad", error: BLOQUEO })]} cola={COLA} />,
     );
-    expect(html).toContain("El filtro de seguridad del proveedor bloqueó la generación.");
+    // Una sola vez: el mensaje completo, sin la etiqueta corta que diría lo mismo.
+    expect(html.match(/filtro de seguridad/g)?.length).toBe(1);
+    expect(html).not.toContain("El filtro de seguridad del proveedor bloqueó la generación.");
     expect(html).toContain("no se ha cobrado nada");
     expect(html).toContain("quitar el producto o usar menos fotos suyas");
     expect(html).not.toContain(ETIQUETA_MOTIVO_FALLO.contenido);
+  });
+
+  test("con causa y sin mensaje, la etiqueta de la causa no se pierde", () => {
+    const html = renderToStaticMarkup(
+      <ListaTrabajos iniciales={[fallido({ causaFallo: "bloqueo_seguridad", error: null })]} cola={COLA} />,
+    );
+    expect(html).toContain("El filtro de seguridad del proveedor bloqueó la generación.");
   });
 
   test("el resultado de «Crear» muestra el mismo mensaje", () => {

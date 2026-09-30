@@ -32,9 +32,14 @@ export const ETIQUETA_CAUSA_FALLO: Record<CausaFalloProveedor, string> = {
   desconocida: ETIQUETA_MOTIVO_FALLO.contenido,
 };
 
+/** `true` si el fallo tiene una causa concreta reconocida (no vacía ni `desconocida`). */
+export function causaConocida(causa: CausaFalloProveedor | null): causa is Exclude<CausaFalloProveedor, "desconocida"> {
+  return causa !== null && causa !== "desconocida";
+}
+
 /** Etiqueta del fallo de un trabajo: la causa concreta si se conoce; si no, la del motivo, como siempre. */
 export function etiquetaDelFallo(motivo: MotivoFallo, causa: CausaFalloProveedor | null): string {
-  return causa !== null && causa !== "desconocida" ? ETIQUETA_CAUSA_FALLO[causa] : ETIQUETA_MOTIVO_FALLO[motivo];
+  return causaConocida(causa) ? ETIQUETA_CAUSA_FALLO[causa] : ETIQUETA_MOTIVO_FALLO[motivo];
 }
 
 /** Mensaje genérico de siempre, para lo que el proveedor no explica de forma reconocible. */
