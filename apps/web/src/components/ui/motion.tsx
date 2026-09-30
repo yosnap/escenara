@@ -2,33 +2,8 @@
 
 import { motion, useReducedMotion, useScroll, useTransform } from "motion/react";
 import { type ReactNode, useRef, useState } from "react";
+import { IconoChispa } from "./chispa";
 import { cn } from "./cn";
-
-/** Estrella de cuatro puntas del logotipo (la «chispa»). */
-export function IconoChispa({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 90 96" aria-hidden className={className}>
-      <path d="M45 32C47 41 51 45 59 48C51 51 47 55 45 64C43 55 39 51 31 48C39 45 43 41 45 32Z" fill="currentColor" />
-    </svg>
-  );
-}
-
-/** Cargador con la chispa del logo. Con movimiento reducido, queda estática. */
-export function CargadorChispa({ etiqueta = "Cargando" }: { etiqueta?: string }) {
-  const reducido = useReducedMotion();
-  return (
-    <span role="status" className="inline-flex items-center gap-2 text-texto-suave">
-      <motion.span
-        className="text-chispa"
-        animate={reducido ? undefined : { rotate: [0, 90, 180], scale: [1, 1.25, 1] }}
-        transition={{ duration: 1.2, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
-      >
-        <IconoChispa className="size-8" />
-      </motion.span>
-      <span>{etiqueta}</span>
-    </span>
-  );
-}
 
 export interface CapaParallax {
   id: string;

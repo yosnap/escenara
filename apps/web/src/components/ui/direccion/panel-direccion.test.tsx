@@ -121,8 +121,7 @@ describe("con un trend, lo que decide él no se pregunta", () => {
     expect(html).toContain("No se puede con el trend «Unboxing»");
     // La casilla desactivada lleva el motivo en su descripción accesible: apunta a la alerta que lo dice.
     // `aria-describedby` puede llevar varios ids (la descripción de la casilla y el motivo): se miran uno a uno.
-    const describida =
-      html.match(/aria-describedby="([^"]+)"/g)?.flatMap((m) => m.slice(18, -1).split(" ")) ?? [];
+    const describida = html.match(/aria-describedby="([^"]+)"/g)?.flatMap((m) => m.slice(18, -1).split(" ")) ?? [];
     const motivo = describida.find((id) => html.includes(`id="${id}" data-alerta="info"`));
     expect(motivo).toBeTruthy();
     expect(html).not.toContain("Tu descripción del clip");

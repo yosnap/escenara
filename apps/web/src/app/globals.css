@@ -85,6 +85,18 @@
     outline-offset: 9px;
   }
 }
+/* Giro de la chispa del cargador. Solo se usa con `motion-safe:`: con «reducir movimiento» se queda quieta. */
+@keyframes giro-chispa {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(90deg) scale(1.25);
+  }
+  100% {
+    transform: rotate(180deg) scale(1);
+  }
+}
 /* Flecha que señala el bloque: rebota hacia él. Con «reducir movimiento» no se aplica (clase motion-safe). */
 @keyframes rebote-flecha {
   0%,

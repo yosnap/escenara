@@ -103,7 +103,7 @@ export function ProgresoEtapas({ etapas, etiqueta }: { etapas: Etapa[]; etiqueta
             className={cn(
               "flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold",
               e.estado === "hecha" && "bg-correcto text-superficie",
-              e.estado === "en-curso" && "animate-pulse bg-degradado-escenario",
+              e.estado === "en-curso" && "animate-pulse bg-degradado-escenario motion-reduce:animate-none",
               e.estado === "pendiente" && "border-2 border-borde",
               e.estado === "error" && "bg-error text-superficie",
             )}

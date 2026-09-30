@@ -3,10 +3,11 @@
 import { ArrowDown, Sparkles, UserRound } from "lucide-react";
 import Link from "next/link";
 import { claseBoton } from "@/components/ui/button";
+import { IconoChispa } from "@/components/ui/chispa";
 import { Pegatina, TarjetaReel } from "@/components/ui/creator";
 import { EnlaceLogotipo } from "@/components/ui/enlace-logotipo";
 import { MascotaChispa } from "@/components/ui/mascota";
-import { type CapaParallax, EscenaParallax, IconoChispa } from "@/components/ui/motion";
+import { type CapaParallax, EscenaParallax } from "@/components/ui/motion";
 import { SelectorTema } from "@/components/ui/theme-toggle";
 import { imagenEjemplo } from "@/lib/escaparate";
 

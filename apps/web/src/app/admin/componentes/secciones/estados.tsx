@@ -1,6 +1,6 @@
 import { Boton } from "@/components/ui/button";
+import { CargadorChispa } from "@/components/ui/chispa";
 import { Aviso, AvisoEstado, DepositoPresupuesto, ProgresoEtapas } from "@/components/ui/feedback";
-import { CargadorChispa } from "@/components/ui/motion";
 import { Muestra, Seccion } from "../seccion";
 
 export function SeccionEstados() {
