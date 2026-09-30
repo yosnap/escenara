@@ -23,6 +23,8 @@ import {
   ejesVozEnIngles,
   FORMATO_CLIP_ANIMADO_INGLES,
   FORMATO_CLIP_INGLES,
+  FORMATO_CLIP_TREND_ANIMADO_INGLES,
+  FORMATO_CLIP_TREND_INGLES,
   MODO_CANTO,
   MODO_MUDO,
   REGISTRO_CAMARA_INGLES,
@@ -192,11 +194,29 @@ function parrafo(partes: readonly string[]): string {
     .join(" ");
 }
 
+/**
+ * La frase de formato que abre el bloque de cámara. Sin trend, la de siempre. Con un trend que no deja hablar o que
+ * dicta el plano, el ángulo o la cámara, la de «a cámara» contradiría a su texto («without addressing the camera»,
+ * «first-person»), así que se usa la neutra. Los formatos voz en off y canto no dicen «a cámara» y no cambian.
+ */
+function formatoDelClip(direccion: DireccionDeClip): string {
+  const trend = direccion.trend;
+  const neutra =
+    trend &&
+    direccion.formato === "ugc_a_camara" &&
+    (!trend.permiteHabla ||
+      decideElTrend(direccion, "plano") ||
+      decideElTrend(direccion, "angulo") ||
+      decideElTrend(direccion, "camara"));
+  if (neutra) return direccion.animado ? FORMATO_CLIP_TREND_ANIMADO_INGLES : FORMATO_CLIP_TREND_INGLES;
+  return (direccion.animado ? FORMATO_CLIP_ANIMADO_INGLES : FORMATO_CLIP_INGLES)[direccion.formato];
+}
+
 /** Bloque 1: encuadre, ángulo, movimiento y look de la toma. Va primero porque es lo que más se respeta. */
 function bloqueCamara(direccion: DireccionDeClip): string {
   const movimiento = direccion.movimientosCamara[0]?.trim() ?? "";
   return parrafo([
-    (direccion.animado ? FORMATO_CLIP_ANIMADO_INGLES : FORMATO_CLIP_INGLES)[direccion.formato],
+    formatoDelClip(direccion),
     direccion.plano,
     direccion.angulo,
     // Sin movimiento elegido la cámara se queda quieta, y se dice: callarlo deja al modelo inventando un travelling.

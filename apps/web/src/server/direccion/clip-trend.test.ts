@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { AVISO_DOS_MOVIMIENTOS, AVISO_MOVIMIENTO_AVANZADO, EJES_VOZ_POR_DEFECTO } from "@/lib/direccion";
 import { type DireccionDeClip, dirigirClip } from "./clip";
-import { REGISTRO_CAMARA_INGLES, REGLA_ANTI_CORTE } from "./ingles";
+import { FORMATO_CLIP_INGLES, FORMATO_CLIP_TREND_INGLES, REGISTRO_CAMARA_INGLES, REGLA_ANTI_CORTE } from "./ingles";
 
 /**
  * Lo que decide un trend **no llega al modelo** aunque venga elegido: ni la clave del catálogo ni la frase por defecto
@@ -77,5 +77,31 @@ describe("categorías que decide el trend", () => {
     expect(clip.escena).toContain(PLANO);
     expect(clip.escena).toContain(MOVIMIENTO);
     expect(clip.escena).toContain(GESTO);
+  });
+
+  test("con un trend mudo o que dicta el encuadre, el formato no dice «a cámara»", () => {
+    for (const trend of [
+      { permiteHabla: false },
+      { permiteHabla: true, decide: ["plano" as const] },
+      { permiteHabla: true, decide: ["angulo" as const] },
+      { permiteHabla: true, decide: ["camara" as const] },
+    ]) {
+      const clip = dirigirClip({ ...base, trend });
+      expect(clip.escena).not.toContain("talking straight to camera");
+      expect(clip.escena.startsWith(FORMATO_CLIP_TREND_INGLES)).toBe(true);
+    }
+  });
+
+  test("un trend con habla que no dicta el encuadre conserva el formato «a cámara»", () => {
+    const clip = dirigirClip({ ...base, trend: { permiteHabla: true, decide: ["microaccion"] } });
+    expect(clip.escena.startsWith(FORMATO_CLIP_INGLES.ugc_a_camara)).toBe(true);
+  });
+
+  test("sin trend la dirección es exactamente la de antes", () => {
+    const sinTrend = dirigirClip({ ...base, movimientosCamara: [], nivelCamara: "basico" });
+    expect(sinTrend.escena.split("\n")[0]).toBe(
+      `${FORMATO_CLIP_INGLES.ugc_a_camara}. ${PLANO}. ${ANGULO}. The camera stays locked off and does not move. ${REGISTRO_CAMARA_INGLES.influencer}${REGISTRO_CAMARA_INGLES.influencer.endsWith(".") ? "" : "."}`,
+    );
+    expect(dirigirClip({ ...base, trend: null })).toEqual(dirigirClip(base));
   });
 });
