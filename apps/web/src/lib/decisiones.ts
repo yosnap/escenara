@@ -110,22 +110,39 @@ export function etiquetaDeCorreccion(
   return (correccion === "acierta") === pasa ? "acepta" : "rechaza";
 }
 
-/** Una opinión de la sombra con lo que haga falta para medirla. */
+/**
+ * Etiqueta humana de la pregunta de las afirmaciones: lo que la persona decidió sobre las afirmaciones señaladas en
+ * el guion de la escena, **no** la revisión del clip, que se rechaza por la cara, la luz o el audio.
+ *
+ * - verificada o corregida: había algo que verificar, así que lo correcto era frenar → `rechaza`;
+ * - descartada («no aplica»): no había nada que verificar → `acepta`;
+ * - sin ninguna resuelta por una persona: no hay etiqueta independiente → `null`.
+ */
+export function etiquetaDeAfirmaciones(estados: readonly string[]): EtiquetaHumana | null {
+  if (estados.some((e) => e === "verificada" || e === "corregida")) return "rechaza";
+  return estados.includes("descartada") ? "acepta" : null;
+}
+
+/** Una opinión de la sombra, **una por escena y pregunta**, con su etiqueta. */
 export interface OpinionMedida {
   veredicto: VeredictoCoherencia | null;
   etiqueta: EtiquetaHumana | null;
-  /** Coincidencia con la decisión efectiva de las reglas; `null` si no aplica. */
+  /** Coincidencia con la regla equivalente del motor; `null` si no aplica. */
   coincide: boolean | null;
-  euros: number;
-  latenciaMs: number;
-  fallida: boolean;
-  /** Copiada de otra con el mismo texto: no costó nada ni tardó nada, y no cuenta en coste ni en latencia. */
-  reutilizada: boolean;
 }
 
-export interface MetricasDeSombra {
+/** Lo que costó una pregunta: se cuenta con **todas** las filas pagadas, no con la muestra. */
+export interface GastoDeSombra {
+  /** Evaluaciones registradas, incluidas las reutilizadas y las fallidas. */
   total: number;
   fallidas: number;
+  euros: number;
+  latenciaMediaMs: number | null;
+}
+
+export interface MetricasDeSombra extends GastoDeSombra {
+  /** Escenas distintas con opinión: la muestra. El fotograma, el clip y la voz de una escena cuentan una vez. */
+  escenas: number;
   /** Opiniones que no se atrevieron (confianza por debajo del umbral): ni dejan pasar ni frenan. */
   sinOpinion: number;
   /** Con veredicto firme y etiqueta humana: la única muestra sobre la que se mide nada. */
@@ -135,24 +152,21 @@ export interface MetricasDeSombra {
   falsosPermisos: number;
   /** La sombra frenaba y la persona aceptó. Es el error molesto. */
   bloqueosInnecesarios: number;
-  /** Opiniones comparables con lo que hicieron las reglas, y cuántas coinciden. */
+  /** Opiniones comparables con la regla equivalente del motor, y cuántas coinciden. */
   comparables: number;
   coincidencias: number;
-  euros: number;
-  latenciaMediaMs: number | null;
 }
 
-/** Métricas agregadas de una pregunta. Pura: se prueba con datos de ejemplo. */
-export function metricasDe(opiniones: readonly OpinionMedida[]): MetricasDeSombra {
-  const pagadas = opiniones.filter((o) => !o.reutilizada);
-  const contestadas = pagadas.filter((o) => !o.fallida);
-  const firmes = opiniones.filter((o) => o.veredicto === "pasa" || o.veredicto === "no_pasa");
+/** Métricas de una pregunta a partir de su muestra (una opinión por escena) y de su gasto. Pura. */
+export function metricasDe(muestra: readonly OpinionMedida[], gasto: GastoDeSombra): MetricasDeSombra {
+  const firmes = muestra.filter((o) => o.veredicto === "pasa" || o.veredicto === "no_pasa");
   const etiquetadas = firmes.filter((o) => o.etiqueta !== null);
-  const comparables = opiniones.filter((o) => o.coincide !== null);
+  const comparables = muestra.filter((o) => o.coincide !== null);
   return {
-    total: opiniones.length,
-    fallidas: opiniones.filter((o) => o.fallida).length,
-    sinOpinion: opiniones.filter((o) => !o.fallida && (o.veredicto === "revisar" || o.veredicto === null)).length,
+    ...gasto,
+    euros: Math.round(gasto.euros * 10_000) / 10_000,
+    escenas: muestra.length,
+    sinOpinion: muestra.filter((o) => o.veredicto === "revisar").length,
     etiquetadas: etiquetadas.length,
     aciertos: etiquetadas.filter(
       (o) =>
@@ -162,21 +176,21 @@ export function metricasDe(opiniones: readonly OpinionMedida[]): MetricasDeSombr
     bloqueosInnecesarios: etiquetadas.filter((o) => o.veredicto === "no_pasa" && o.etiqueta === "acepta").length,
     comparables: comparables.length,
     coincidencias: comparables.filter((o) => o.coincide === true).length,
-    euros: Math.round(pagadas.reduce((suma, o) => suma + o.euros, 0) * 10_000) / 10_000,
-    latenciaMediaMs:
-      contestadas.length === 0
-        ? null
-        : Math.round(contestadas.reduce((suma, o) => suma + o.latenciaMs, 0) / contestadas.length),
   };
 }
 
 /**
- * Si la opinión de la sombra coincide con lo que hicieron las reglas. «Pasa» coincide con dejar pasar; «no pasa»,
- * con frenar o pedir confirmación. «Míralo tú» y un fallo no son comparables.
+ * Si la opinión de la sombra coincide con la **regla equivalente** del motor (la de las afirmaciones sin verificar),
+ * no con la decisión global de la puerta: un freno por presupuesto no dice nada de las afirmaciones. «Pasa» coincide
+ * con que la regla no salte y «no pasa» con que salte. Sin la regla evaluada (el clip no la mira), «míralo tú» o un
+ * fallo, no se compara.
  */
-export function coincideConLasReglas(veredicto: VeredictoCoherencia | null, accion: AccionDecision): boolean | null {
-  if (veredicto === null || veredicto === "revisar") return null;
-  return (veredicto === "pasa") === (accion === "permite");
+export function coincideConLasReglas(
+  veredicto: VeredictoCoherencia | null,
+  reglaSalta: boolean | null,
+): boolean | null {
+  if (veredicto === null || veredicto === "revisar" || reglaSalta === null) return null;
+  return (veredicto === "pasa") === !reglaSalta;
 }
 
 /** Métricas de una pregunta tal como las pinta el panel. */
@@ -185,6 +199,11 @@ export interface MetricasPreguntaVista extends MetricasDeSombra {
   nombre: string;
   /** Si la pregunta está encendida ahora mismo en esta instalación. */
   encendida: boolean;
+  /**
+   * `false` cuando la etiqueta la pone alguien que **ha visto** el veredicto (la corrección del resultado de la
+   * 0.24.0, que el usuario ve): sirve de referencia, pero no es una medida ciega.
+   */
+  etiquetaIndependiente: boolean;
 }
 
 /** Opinión de la sombra sobre una decisión, tal como la ve quien administra. */
@@ -215,7 +234,49 @@ export interface DecisionRegistradaVista {
   umbrales: string[];
   evidencia: string[];
   sombra: OpinionSombraVista[];
+  /** Etiqueta de las afirmaciones de la escena; `null` si nadie las ha resuelto. */
   etiqueta: EtiquetaHumana | null;
+}
+
+/** Marcador de un nombre que no se guarda ni se enseña. */
+export const MARCADOR_NOMBRE = "nombre oculto";
+
+/**
+ * Citas entre comillas que escribe el propio motor y no son nombres de nadie, más los marcadores. Todo lo demás entre
+ * «» se oculta: los motivos citan así a los personajes, a las personas del reparto y a los productos.
+ */
+export const CITAS_FIJAS = [
+  "Tu cuenta",
+  "UGC a cámara",
+  "cantar con tu audio",
+  "Crear",
+  "Antes de generar",
+  MARCADOR_NOMBRE,
+  "el personaje",
+  "el producto",
+] as const;
+
+const escapar = (texto: string) => texto.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/** Un nombre conocido y el marcador que lo sustituye. */
+export interface NombreConocido {
+  nombre: string;
+  marcador: string;
+}
+
+/**
+ * Quita los nombres de un texto: primero los que se conocen (por sus datos, estén o no entre comillas), y después
+ * cualquier cita «…» que no sea una de las fijas del motor. Idempotente: pasar dos veces deja lo mismo.
+ */
+export function sinNombres(texto: string, conocidos: readonly NombreConocido[] = []): string {
+  let limpio = texto;
+  for (const { nombre, marcador } of conocidos) {
+    if (nombre.trim().length < 2) continue;
+    limpio = limpio.replace(new RegExp(escapar(nombre.trim()), "gi"), marcador);
+  }
+  return limpio.replace(/«([^»]*)»/g, (cita, dentro: string) =>
+    (CITAS_FIJAS as readonly string[]).includes(dentro) || /^persona \d+$/.test(dentro) ? cita : `«${MARCADOR_NOMBRE}»`,
+  );
 }
 
 const esObjeto = (v: unknown): v is Record<string, unknown> => v !== null && typeof v === "object" && !Array.isArray(v);

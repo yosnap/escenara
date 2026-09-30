@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   coincideConLasReglas,
   costeEstimadoPorEvaluacion,
+  etiquetaDeAfirmaciones,
   etiquetaDeCorreccion,
   etiquetaDeRevisiones,
   metricasDe,
@@ -9,6 +10,7 @@ import {
   type RevisionHumana,
   resumenDeEvidencia,
   resumenDeUmbrales,
+  sinNombres,
 } from "./decisiones";
 
 /**
@@ -61,64 +63,96 @@ const opinion = (parcial: Partial<OpinionMedida>): OpinionMedida => ({
   veredicto: "pasa",
   etiqueta: null,
   coincide: null,
-  euros: 0.01,
-  latenciaMs: 800,
-  fallida: false,
-  reutilizada: false,
   ...parcial,
+});
+
+const GASTO = { total: 9, fallidas: 1, euros: 0.061_23, latenciaMediaMs: 800 };
+
+describe("etiqueta de las afirmaciones", () => {
+  test("verificar o corregir dice que había que frenar; descartar, que no aplicaba; sin resolver no hay etiqueta", () => {
+    expect(etiquetaDeAfirmaciones(["verificada"])).toBe("rechaza");
+    expect(etiquetaDeAfirmaciones(["descartada", "corregida"])).toBe("rechaza");
+    expect(etiquetaDeAfirmaciones(["descartada"])).toBe("acepta");
+    expect(etiquetaDeAfirmaciones([])).toBeNull();
+    expect(etiquetaDeAfirmaciones(["por_verificar"])).toBeNull();
+  });
 });
 
 describe("métricas de la sombra", () => {
   test("falsos permisos, bloqueos innecesarios y aciertos salen solo de lo etiquetado", () => {
-    const m = metricasDe([
-      opinion({ veredicto: "pasa", etiqueta: "acepta", coincide: true }),
-      opinion({ veredicto: "pasa", etiqueta: "rechaza", coincide: true }),
-      opinion({ veredicto: "no_pasa", etiqueta: "acepta", coincide: false }),
-      opinion({ veredicto: "no_pasa", etiqueta: "rechaza", coincide: false }),
-      opinion({ veredicto: "no_pasa", etiqueta: null, coincide: false }),
-      opinion({ veredicto: "revisar", etiqueta: "rechaza" }),
-      opinion({ veredicto: null, fallida: true, euros: 0, latenciaMs: 10_000 }),
-    ]);
-    expect(m.total).toBe(7);
+    const m = metricasDe(
+      [
+        opinion({ veredicto: "pasa", etiqueta: "acepta", coincide: true }),
+        opinion({ veredicto: "pasa", etiqueta: "rechaza", coincide: true }),
+        opinion({ veredicto: "no_pasa", etiqueta: "acepta", coincide: false }),
+        opinion({ veredicto: "no_pasa", etiqueta: "rechaza", coincide: true }),
+        opinion({ veredicto: "no_pasa", etiqueta: null, coincide: false }),
+        opinion({ veredicto: "revisar", etiqueta: "rechaza" }),
+      ],
+      GASTO,
+    );
+    expect(m.escenas).toBe(6);
     expect(m.etiquetadas).toBe(4);
     expect(m.aciertos).toBe(2);
     expect(m.falsosPermisos).toBe(1);
     expect(m.bloqueosInnecesarios).toBe(1);
     expect(m.sinOpinion).toBe(1);
-    expect(m.fallidas).toBe(1);
     expect(m.comparables).toBe(5);
-    expect(m.coincidencias).toBe(2);
-    expect(m.euros).toBe(0.06);
-    // La latencia media es de las que contestaron: el fallo por tiempo no la infla.
+    expect(m.coincidencias).toBe(3);
+    // El gasto se cuenta con todas las filas, no con la muestra.
+    expect(m.total).toBe(9);
+    expect(m.fallidas).toBe(1);
+    expect(m.euros).toBe(0.0612);
     expect(m.latenciaMediaMs).toBe(800);
   });
 
-  test("una opinión reutilizada no cuenta en coste ni en latencia, pero sí en aciertos", () => {
-    const m = metricasDe([
-      opinion({ etiqueta: "acepta", euros: 0.02, latenciaMs: 600 }),
-      opinion({ etiqueta: "acepta", reutilizada: true, euros: 0, latenciaMs: 0 }),
-    ]);
-    expect(m.aciertos).toBe(2);
-    expect(m.euros).toBe(0.02);
-    expect(m.latenciaMediaMs).toBe(600);
+  test("sin opiniones todo es cero", () => {
+    expect(metricasDe([], { total: 0, fallidas: 0, euros: 0, latenciaMediaMs: null })).toMatchObject({
+      total: 0,
+      escenas: 0,
+      etiquetadas: 0,
+      euros: 0,
+      latenciaMediaMs: null,
+    });
   });
 
-  test("sin opiniones todo es cero y la latencia no existe", () => {
-    expect(metricasDe([])).toMatchObject({ total: 0, etiquetadas: 0, euros: 0, latenciaMediaMs: null });
-  });
-
-  test("coincidir con las reglas: «pasa» es dejar pasar; «míralo tú» y un fallo no se comparan", () => {
-    expect(coincideConLasReglas("pasa", "permite")).toBe(true);
-    expect(coincideConLasReglas("pasa", "rechaza")).toBe(false);
-    expect(coincideConLasReglas("no_pasa", "pide-confirmacion")).toBe(true);
-    expect(coincideConLasReglas("no_pasa", "permite")).toBe(false);
-    expect(coincideConLasReglas("revisar", "permite")).toBeNull();
-    expect(coincideConLasReglas(null, "permite")).toBeNull();
+  test("coincidir con la regla de afirmaciones: «pasa» es que no salte; sin regla evaluada no se compara", () => {
+    expect(coincideConLasReglas("pasa", false)).toBe(true);
+    expect(coincideConLasReglas("pasa", true)).toBe(false);
+    expect(coincideConLasReglas("no_pasa", true)).toBe(true);
+    expect(coincideConLasReglas("no_pasa", false)).toBe(false);
+    expect(coincideConLasReglas("no_pasa", null)).toBeNull();
+    expect(coincideConLasReglas("revisar", true)).toBeNull();
+    expect(coincideConLasReglas(null, false)).toBeNull();
   });
 
   test("el coste estimado por evaluación sale de la tarifa de Jev", () => {
     expect(costeEstimadoPorEvaluacion(0)).toBe(0);
     expect(costeEstimadoPorEvaluacion(40)).toBeCloseTo(0.0168, 6);
+  });
+});
+
+describe("sin nombres", () => {
+  test("sustituye los nombres conocidos y oculta cualquier otra cita, salvo las fijas del motor", () => {
+    const conocidos = [
+      { nombre: "Elisabeth Ruiz", marcador: "el personaje" },
+      { nombre: "Crema Lumi", marcador: "el producto" },
+    ];
+    expect(sinNombres("«Elisabeth Ruiz» no se puede usar para generar todavía.", conocidos)).toBe(
+      "«el personaje» no se puede usar para generar todavía.",
+    );
+    expect(sinNombres("La foto de crema lumi no cabe; añádela en «Tu cuenta».", conocidos)).toBe(
+      "La foto de el producto no cabe; añádela en «Tu cuenta».",
+    );
+    // Sin datos (una fila vieja), cualquier cita que no sea del motor se oculta.
+    expect(sinNombres("Las referencias de «Elisa» y de «persona 2» no cubren «Antes de generar».")).toBe(
+      "Las referencias de «nombre oculto» y de «persona 2» no cubren «Antes de generar».",
+    );
+  });
+
+  test("es idempotente", () => {
+    const una = sinNombres("«Ana» y «Beto»");
+    expect(sinNombres(una)).toBe(una);
   });
 });
 

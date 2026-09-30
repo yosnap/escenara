@@ -2,7 +2,12 @@
 --
 -- Aditiva e idempotente: las evaluaciones del motor ganan cuatro columnas con valor por defecto (las anteriores se
 -- quedan con la evidencia vacía y se leen igual que antes), el sujeto gana el valor «proyecto» y nace una tabla
--- nueva vacía. No se borra ni se reescribe ninguna fila. Volver a aplicarla no hace nada.
+-- nueva vacía. No se borra ninguna fila. Volver a aplicarla no hace nada.
+--
+-- Dos pasos de datos, también idempotentes y sin borrar ninguna decisión:
+-- 1. los motivos y acciones ya guardados citaban entre «» a personas y productos: se sustituye cada cita que no sea
+--    una de las fijas del motor por «nombre oculto» (la misma lista que `lib/decisiones.ts › CITAS_FIJAS`);
+-- 2. las evaluaciones del montaje anteriores pasaron por la puerta de frenos duros, no por la de envío.
 ALTER TYPE "public"."control_subject" ADD VALUE IF NOT EXISTS 'proyecto';--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "shadow_evaluations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -46,4 +51,16 @@ CREATE INDEX IF NOT EXISTS "shadow_evaluations_decision_idx" ON "shadow_evaluati
 CREATE INDEX IF NOT EXISTS "shadow_evaluations_pregunta_idx" ON "shadow_evaluations" USING btree ("question","created_at");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "shadow_evaluations_huella_idx" ON "shadow_evaluations" USING btree ("user_id","question","input_hash");--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "shadow_evaluations_usuario_idx" ON "shadow_evaluations" USING btree ("user_id","created_at");--> statement-breakpoint
-CREATE INDEX IF NOT EXISTS "control_evaluations_fecha_idx" ON "control_evaluations" USING btree ("created_at");
+CREATE INDEX IF NOT EXISTS "control_evaluations_fecha_idx" ON "control_evaluations" USING btree ("created_at");--> statement-breakpoint
+UPDATE "control_evaluations" SET "rules" = (
+  SELECT jsonb_agg(
+    jsonb_set(
+      jsonb_set(r, '{motivo}', to_jsonb(regexp_replace(COALESCE(r->>'motivo', ''), '«(?!(?:Tu cuenta|UGC a cámara|cantar con tu audio|Crear|Antes de generar|nombre oculto|el personaje|el producto|persona [0-9]+)»)[^»]*»', '«nombre oculto»', 'g'))),
+      '{accion}', to_jsonb(regexp_replace(COALESCE(r->>'accion', ''), '«(?!(?:Tu cuenta|UGC a cámara|cantar con tu audio|Crear|Antes de generar|nombre oculto|el personaje|el producto|persona [0-9]+)»)[^»]*»', '«nombre oculto»', 'g'))
+    ) ORDER BY n
+  )
+  FROM jsonb_array_elements("rules") WITH ORDINALITY AS e(r, n)
+)
+WHERE jsonb_typeof("rules") = 'array' AND jsonb_array_length("rules") > 0
+  AND "rules"::text ~ '«(?!(?:Tu cuenta|UGC a cámara|cantar con tu audio|Crear|Antes de generar|nombre oculto|el personaje|el producto|persona [0-9]+)»)[^»]*»';--> statement-breakpoint
+UPDATE "control_evaluations" SET "gate" = 'frenos' WHERE "subject" = 'montaje' AND "action" = '' AND "gate" <> 'frenos';

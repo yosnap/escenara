@@ -8,6 +8,9 @@ import { type Evaluacion, type FamiliaError, type FrenoResuelto, GRUPOS_OBLIGATO
 import { avisosSalvables, evaluar, frenosQueGatean } from "./motor";
 import { registrarEvaluacion, type SujetoDeEvaluacion } from "./registro";
 
+/** Regla del motor que equivale a la pregunta de la sombra sobre el guion. */
+const REGLA_AFIRMACIONES = "afirmaciones-sin-verificar";
+
 /**
  * La puerta: **el único sitio por el que se pasa de «se puede generar» a «se encola»**.
  *
@@ -89,7 +92,9 @@ export async function exigirControles(
       usuarioId: sujeto.usuarioId,
       sujeto: sujeto.sujeto,
       sujetoId: sujeto.sujetoId,
-      accion,
+      // La opinión se compara con la regla equivalente, no con la decisión global: un freno por dinero no dice nada
+      // de las afirmaciones. Sin los hechos de la escena, esa regla no se ha evaluado.
+      reglaAfirmaciones: hechos.escena ? evaluacion.frenos.some((f) => f.regla === REGLA_AFIRMACIONES) : null,
     });
   }
 

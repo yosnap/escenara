@@ -24,7 +24,10 @@ export const sujetoControl = pgEnum("control_subject", ["escena", "trabajo", "mo
 
 export const estadoControl = pgEnum("control_state", ["listo", "ajustes", "revision", "bloqueado"]);
 
-/** Una regla que saltó, tal como se guarda. Es exactamente lo que se le mostró al usuario. */
+/**
+ * Una regla que saltó, tal como se guarda: lo que se le mostró al usuario **sin los nombres** de personas y productos
+ * (desde la 0.39.0), que se sustituyen por un marcador. El registro sobrevive al borrado de la ficha.
+ */
 export interface ReglaDisparada {
   regla: string;
   estado: "listo" | "ajustes" | "revision" | "bloqueado";

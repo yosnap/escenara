@@ -1,4 +1,4 @@
-import type { AccionDecision, PuertaDecision } from "@/lib/decisiones";
+import { type AccionDecision, type NombreConocido, type PuertaDecision, sinNombres } from "@/lib/decisiones";
 import { db } from "../db/cliente";
 import { controlEvaluations, type ReglaDisparada } from "../db/esquema";
 import type { Evaluacion, Hechos, SujetoControl, TipoEvaluado } from "./contrato";
@@ -25,9 +25,37 @@ export interface SujetoDeEvaluacion {
 }
 
 /**
+ * Nombres que aparecen en los hechos, con el marcador que los sustituye. Los motivos del motor citan así al
+ * personaje, a las personas del reparto y al producto, y un registro que sobrevive al borrado de la ficha no puede
+ * conservar el nombre de nadie.
+ */
+export function nombresDeHechos(hechos: Hechos): NombreConocido[] {
+  const nombres: NombreConocido[] = [];
+  if (hechos.personaje) nombres.push({ nombre: hechos.personaje.nombre, marcador: "el personaje" });
+  hechos.reparto?.personajes.forEach((p, i) => {
+    nombres.push({ nombre: p.nombre, marcador: `persona ${i + 1}` });
+  });
+  for (const s of hechos.reparto?.sinRegistrar ?? []) nombres.push({ nombre: s.nombre, marcador: "persona" });
+  if (hechos.producto) nombres.push({ nombre: hechos.producto.nombre, marcador: "el producto" });
+  // Los más largos primero: «Ana María» antes que «Ana».
+  return nombres.sort((a, b) => b.nombre.length - a.nombre.length);
+}
+
+/** Todos los textos de un valor, sin nombres. */
+function sinNombresEn(valor: unknown, nombres: readonly NombreConocido[]): unknown {
+  if (typeof valor === "string") return sinNombres(valor, nombres);
+  if (Array.isArray(valor)) return valor.map((v) => sinNombresEn(v, nombres));
+  if (valor !== null && typeof valor === "object") {
+    return Object.fromEntries(Object.entries(valor).map(([k, v]) => [k, sinNombresEn(v, nombres)]));
+  }
+  return valor;
+}
+
+/**
  * La evidencia es **qué se miró**, no a quién: se guardan los hechos del motor sin los nombres de las personas
- * (personaje, reparto) y sin el texto de los críticos, que lo escribió alguien. Los parámetros van aparte, como
- * umbrales. Sin esto, borrar un personaje dejaría su nombre en un registro que no se borra con él.
+ * (personaje, reparto), sin el del producto y sin el texto de los críticos, que lo escribió alguien. El resto de
+ * textos (el motivo de una aprobación invalidada, los impedimentos) pasan por {@link sinNombres}, porque también
+ * citan al personaje. Los parámetros van aparte, como umbrales.
  */
 export function evidenciaDeHechos(hechos: Hechos): Record<string, unknown> {
   const { parametros: _parametros, ...resto } = hechos;
@@ -53,7 +81,7 @@ export function evidenciaDeHechos(hechos: Hechos): Record<string, unknown> {
     const { nombre: _nombre, ...producto } = hechos.producto;
     evidencia.producto = producto;
   }
-  return evidencia;
+  return sinNombresEn(evidencia, nombresDeHechos(hechos)) as Record<string, unknown>;
 }
 
 /** Lo que se guarda de una decisión además de la evaluación. */
@@ -70,11 +98,12 @@ export async function registrarEvaluacion(
   evaluacion: Evaluacion,
   contexto: ContextoDeDecision,
 ): Promise<string | null> {
+  const nombres = nombresDeHechos(contexto.hechos);
   const reglas: ReglaDisparada[] = evaluacion.frenos.map((f) => ({
     regla: f.regla,
     estado: f.estado,
-    motivo: f.motivo,
-    accion: f.accion,
+    motivo: sinNombres(f.motivo, nombres),
+    accion: sinNombres(f.accion, nombres),
   }));
   try {
     const [fila] = await db()

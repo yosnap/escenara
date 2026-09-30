@@ -1,25 +1,28 @@
-import { and, desc, eq, gte, inArray } from "drizzle-orm";
+import { and, avg, count, desc, eq, gte, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { esEstadoControl } from "@/lib/controles";
 import {
   ACCIONES_DECISION,
   type AccionDecision,
   type DecisionRegistradaVista,
   type EtiquetaHumana,
+  etiquetaDeAfirmaciones,
   etiquetaDeCorreccion,
   etiquetaDeRevisiones,
+  type GastoDeSombra,
   type MetricasPreguntaVista,
   metricasDe,
   NOMBRE_PREGUNTA_SOMBRA,
-  type OpinionMedida,
   type OpinionSombraVista,
   type PuertaDecision,
   type RevisionHumana,
   resumenDeEvidencia,
   resumenDeUmbrales,
+  sinNombres,
 } from "@/lib/decisiones";
 import { coherenciaDe, leerAjustes } from "../ajustes";
 import { db } from "../db/cliente";
 import {
+  claims,
   coherenceDecisions,
   controlEvaluations,
   type FilaEvaluacionControl,
@@ -34,89 +37,97 @@ import { PREGUNTA } from "./sombra";
  * métricas de la sombra contra la etiqueta humana.
  *
  * **Solo para quien administra.** Nada de esto se lee desde una pantalla del usuario: la opinión de la sombra no se
- * le enseña mientras sea sombra, porque sesgaría la revisión humana con la que se mide. Tampoco sale de aquí nada
- * que identifique a nadie: ni correos, ni nombres, ni el texto del guion.
+ * le enseña mientras sea sombra, porque sesgaría la etiqueta humana con la que se mide. Tampoco sale de aquí nada
+ * que identifique a nadie: ni correos, ni nombres (se vuelven a quitar al leer, por si queda alguna fila vieja), ni
+ * el texto del guion.
  *
- * **La etiqueta humana se deriva al leer**, no se copia: es la revisión humana de la escena (0.20.0) o la corrección
- * directa de un veredicto de coherencia (0.24.0). Copiarla a otra columna se desincronizaría en cuanto alguien
- * revisara otra vez.
+ * **Las etiquetas se derivan al leer**, no se copian:
+ *
+ * - la pregunta de las afirmaciones se etiqueta con lo que la persona resolvió sobre **las afirmaciones de la
+ *   escena** (verificar, corregir, descartar), que es independiente de la sombra;
+ * - la del resultado, con la corrección directa del veredicto de la 0.24.0 o, si no la hay, con la revisión humana
+ *   del clip. Esa etiqueta **no es independiente**: el usuario ve el veredicto antes de corregirlo.
  */
+
+/** Escenas distintas que entran como muestra, como mucho. El panel mide; no recorre toda la historia. */
+const LIMITE_MUESTRA = 5000;
+/** Identificadores por consulta: PostgreSQL admite 65 535 parámetros y así se queda muy lejos. */
+const TROZO = 1000;
 
 const esAccion = (v: string): v is AccionDecision => ACCIONES_DECISION.includes(v as AccionDecision);
-const puertaDe = (v: string): PuertaDecision => (v === "frenos" ? "frenos" : "envio");
 
-/** Revisiones humanas y momentos en que se volvió a producir, de cada escena. */
-interface Etiquetador {
-  revisiones: Map<string, RevisionHumana[]>;
-  permisos: Map<string, { fecha: Date; visual: boolean }[]>;
+/**
+ * Puerta de una fila. Las del montaje anteriores a la 0.39.0 nacieron con la puerta por defecto (`envio`) y sin
+ * acción, pero pasaron por los frenos duros: se leen como tales aunque la migración no las haya corregido.
+ */
+const puertaDe = (fila: FilaEvaluacionControl): PuertaDecision =>
+  fila.gate === "frenos" || (fila.subject === "montaje" && fila.action === "") ? "frenos" : "envio";
+
+async function porTrozos<T>(ids: readonly string[], consulta: (trozo: string[]) => Promise<T[]>): Promise<T[]> {
+  const unicos = [...new Set(ids)];
+  const salida: T[] = [];
+  for (let i = 0; i < unicos.length; i += TROZO) salida.push(...(await consulta(unicos.slice(i, i + TROZO))));
+  return salida;
 }
 
-async function etiquetadorDe(escenaIds: readonly string[]): Promise<Etiquetador> {
+/** Etiqueta de las afirmaciones de cada escena: solo las que resolvió una persona cuentan. */
+async function etiquetasDeAfirmaciones(escenaIds: readonly string[]): Promise<Map<string, EtiquetaHumana | null>> {
+  const filas = await porTrozos(escenaIds, (trozo) =>
+    db()
+      .select({ escena: claims.sceneId, estado: claims.state })
+      .from(claims)
+      .where(and(inArray(claims.sceneId, trozo), ne(claims.state, "por_verificar"))),
+  );
+  const estados = new Map<string, string[]>();
+  for (const f of filas) estados.set(f.escena, [...(estados.get(f.escena) ?? []), f.estado]);
+  return new Map([...estados].map(([escena, lista]) => [escena, etiquetaDeAfirmaciones(lista)]));
+}
+
+/** Revisiones humanas de cada escena y momentos en que se volvió a producir su imagen o su clip. */
+async function revisionesDe(escenaIds: readonly string[]) {
   const revisiones = new Map<string, RevisionHumana[]>();
-  const permisos = new Map<string, { fecha: Date; visual: boolean }[]>();
-  if (escenaIds.length === 0) return { revisiones, permisos };
-  const ids = [...new Set(escenaIds)];
-  const humanas = await db()
-    .select({
-      escena: reviewResults.sceneId,
-      fecha: reviewResults.createdAt,
-      veredicto: reviewResults.verdict,
-      invalidada: reviewResults.invalidatedAt,
-    })
-    .from(reviewResults)
-    .where(and(inArray(reviewResults.sceneId, ids), eq(reviewResults.kind, "humana")));
+  const producciones = new Map<string, Date[]>();
+  const humanas = await porTrozos(escenaIds, (trozo) =>
+    db()
+      .select({
+        escena: reviewResults.sceneId,
+        fecha: reviewResults.createdAt,
+        veredicto: reviewResults.verdict,
+        invalidada: reviewResults.invalidatedAt,
+      })
+      .from(reviewResults)
+      .where(and(inArray(reviewResults.sceneId, trozo), eq(reviewResults.kind, "humana"))),
+  );
   for (const r of humanas) {
     if (r.veredicto === "pendiente") continue;
-    const lista = revisiones.get(r.escena) ?? [];
-    lista.push({ fecha: r.fecha, veredicto: r.veredicto, invalidada: r.invalidada });
-    revisiones.set(r.escena, lista);
+    revisiones.set(r.escena, [
+      ...(revisiones.get(r.escena) ?? []),
+      { fecha: r.fecha, veredicto: r.veredicto, invalidada: r.invalidada },
+    ]);
   }
-  const envios = await db()
-    .select({
-      escena: controlEvaluations.subjectId,
-      fecha: controlEvaluations.createdAt,
-      tipo: controlEvaluations.jobKind,
-    })
-    .from(controlEvaluations)
-    .where(
-      and(
-        inArray(controlEvaluations.subjectId, ids),
-        eq(controlEvaluations.gate, "envio"),
-        eq(controlEvaluations.action, "permite"),
+  const envios = await porTrozos(escenaIds, (trozo) =>
+    db()
+      .select({ escena: controlEvaluations.subjectId, fecha: controlEvaluations.createdAt })
+      .from(controlEvaluations)
+      .where(
+        and(
+          inArray(controlEvaluations.subjectId, trozo),
+          eq(controlEvaluations.gate, "envio"),
+          eq(controlEvaluations.action, "permite"),
+          // La pista de voz no cambia la imagen del clip: no corta la ventana del resultado.
+          ne(controlEvaluations.jobKind, "voz"),
+        ),
       ),
-    );
-  for (const e of envios) {
-    if (!e.escena) continue;
-    const lista = permisos.get(e.escena) ?? [];
-    lista.push({ fecha: e.fecha, visual: e.tipo !== "voz" });
-    permisos.set(e.escena, lista);
-  }
-  return { revisiones, permisos };
-}
-
-/**
- * El siguiente envío permitido de la escena después de `momento`: a partir de ahí se revisa otra cosa. Con
- * `soloVisual` no cuenta la pista de voz, que no cambia el clip: es lo que hace falta para el resultado, que juzga la
- * imagen de un clip ya hecho.
- */
-function siguientePermiso(etiquetador: Etiquetador, escenaId: string, momento: Date, soloVisual = false): Date | null {
-  const posteriores = (etiquetador.permisos.get(escenaId) ?? [])
-    .filter((p) => p.fecha > momento && (!soloVisual || p.visual))
-    .map((p) => p.fecha.getTime());
-  return posteriores.length === 0 ? null : new Date(Math.min(...posteriores));
-}
-
-/**
- * Etiqueta humana de una decisión del motor. Solo tiene sentido si las reglas **dejaron pasar**: si frenaron, no se
- * produjo nada que una persona pudiera revisar.
- */
-function etiquetaDeDecision(etiquetador: Etiquetador, fila: FilaEvaluacionControl): EtiquetaHumana | null {
-  if (fila.subject !== "escena" || !fila.subjectId || fila.gate !== "envio" || fila.action !== "permite") return null;
-  return etiquetaDeRevisiones(
-    fila.createdAt,
-    etiquetador.revisiones.get(fila.subjectId) ?? [],
-    siguientePermiso(etiquetador, fila.subjectId, fila.createdAt),
   );
+  for (const e of envios) {
+    if (e.escena) producciones.set(e.escena, [...(producciones.get(e.escena) ?? []), e.fecha]);
+  }
+  /** Etiqueta del resultado comprobado en `momento`: la revisión vigente o la primera antes de volver a producir. */
+  return (escenaId: string, momento: Date): EtiquetaHumana | null => {
+    const posteriores = (producciones.get(escenaId) ?? []).filter((f) => f > momento).map((f) => f.getTime());
+    const hasta = posteriores.length === 0 ? null : new Date(Math.min(...posteriores));
+    return etiquetaDeRevisiones(momento, revisiones.get(escenaId) ?? [], hasta, true);
+  };
 }
 
 const vistaDeOpinion = (s: FilaEvaluacionSombra): OpinionSombraVista => ({
@@ -144,98 +155,130 @@ export async function decisionesRecientes(limite = 50): Promise<DecisionRegistra
         filas.map((f) => f.id),
       ),
     );
-  const etiquetador = await etiquetadorDe(
+  const etiquetas = await etiquetasDeAfirmaciones(
     filas.filter((f) => f.subject === "escena" && f.subjectId).map((f) => f.subjectId as string),
   );
   return filas.map((fila) => ({
     id: fila.id,
     fecha: fila.createdAt.toISOString(),
-    puerta: puertaDe(fila.gate),
+    puerta: puertaDe(fila),
     sujeto: fila.subject,
     tipo: fila.jobKind,
     estado: esEstadoControl(fila.state) ? fila.state : "bloqueado",
     accion: esAccion(fila.action) ? fila.action : null,
     reglasVersion: fila.rulesVersion,
-    reglas: fila.rules.map((r) => ({ regla: r.regla, estado: r.estado, motivo: r.motivo })),
+    reglas: fila.rules.map((r) => ({ regla: r.regla, estado: r.estado, motivo: sinNombres(r.motivo) })),
     umbrales: resumenDeUmbrales(fila.thresholds),
-    evidencia: resumenDeEvidencia(fila.evidence),
+    evidencia: resumenDeEvidencia(fila.evidence).map((linea) => sinNombres(linea)),
     sombra: sombras.filter((s) => s.controlEvaluationId === fila.id).map(vistaDeOpinion),
-    etiqueta: etiquetaDeDecision(etiquetador, fila),
+    etiqueta: fila.subject === "escena" && fila.subjectId ? (etiquetas.get(fila.subjectId) ?? null) : null,
   }));
 }
 
+const numero = (v: unknown): number => (v === null || v === undefined ? 0 : Number(v));
+const media = (v: unknown): number | null => (v === null || v === undefined ? null : Math.round(Number(v)));
+
 /**
- * Métricas de las dos preguntas de la sombra en los últimos `dias`, contra la etiqueta humana.
+ * Métricas de las dos preguntas de la sombra en los últimos `dias`.
  *
- * - **el guion** (`afirmacion_verificable`): sus opiniones guardadas, etiquetadas con la revisión humana de la escena
- *   que se produjo con esa decisión, y comparadas con lo que hicieron las reglas;
- * - **el resultado**: las decisiones de coherencia de la 0.24.0, etiquetadas con su corrección directa o, si nadie
- *   la corrigió, con la revisión humana de la escena. No tiene decisión efectiva con la que compararse: las reglas
- *   no juzgan el contenido generado.
+ * La **muestra** es una opinión por escena y pregunta (la más reciente con veredicto), agrupada en SQL: el
+ * fotograma, el clip y la voz de una escena pasan los tres por la puerta y reutilizan la misma opinión, y contarlas
+ * tres veces llenaría la muestra mínima con un tercio de las escenas. El **gasto** (evaluaciones, fallos, euros y
+ * latencia) sí cuenta todas las filas, agregado también en SQL.
  */
 export async function metricasDeLaSombra(dias = 90): Promise<MetricasPreguntaVista[]> {
   const desde = new Date(Date.now() - dias * 24 * 60 * 60 * 1000);
   const ajustes = await leerAjustes();
 
-  const guion = await db()
-    .select({ sombra: shadowEvaluations, decision: controlEvaluations })
+  // ── Afirmaciones que exigen verificación ─────────────────────────────────────────────────────────────────
+  const delGuion = and(eq(shadowEvaluations.question, PREGUNTA), gte(shadowEvaluations.createdAt, desde));
+  const [gastoGuion] = await db()
+    .select({
+      total: count(),
+      fallidas: sql<number>`count(*) filter (where ${shadowEvaluations.error} <> '')`,
+      euros: sql<number>`coalesce(sum(${shadowEvaluations.costEur}), 0)`,
+      latencia: sql<
+        number | null
+      >`avg(${shadowEvaluations.latencyMs}) filter (where ${shadowEvaluations.error} = '' and ${shadowEvaluations.reusedFrom} is null)`,
+    })
     .from(shadowEvaluations)
-    .innerJoin(controlEvaluations, eq(shadowEvaluations.controlEvaluationId, controlEvaluations.id))
-    .where(and(eq(shadowEvaluations.question, PREGUNTA), gte(shadowEvaluations.createdAt, desde)));
-  const resultado = await db()
-    .select()
+    .where(delGuion);
+  const muestraGuion = await db()
+    .selectDistinctOn([shadowEvaluations.subjectId], {
+      escena: shadowEvaluations.subjectId,
+      veredicto: shadowEvaluations.verdict,
+      coincide: shadowEvaluations.matchesEffective,
+    })
+    .from(shadowEvaluations)
+    .where(and(delGuion, isNotNull(shadowEvaluations.verdict), isNotNull(shadowEvaluations.subjectId)))
+    .orderBy(shadowEvaluations.subjectId, desc(shadowEvaluations.createdAt))
+    .limit(LIMITE_MUESTRA);
+  const etiquetas = await etiquetasDeAfirmaciones(muestraGuion.map((m) => m.escena as string));
+
+  // ── Resultado (comprobación de coherencia de la 0.24.0) ─────────────────────────────────────────────────
+  const delResultado = and(
+    eq(coherenceDecisions.check, "resultado"),
+    eq(coherenceDecisions.subject, "escena"),
+    gte(coherenceDecisions.createdAt, desde),
+  );
+  const [gastoResultado] = await db()
+    .select({
+      total: count(),
+      euros: sql<number>`coalesce(sum(${coherenceDecisions.decisionEur}), 0)`,
+      latencia: avg(coherenceDecisions.latencyMs),
+    })
     .from(coherenceDecisions)
-    .where(
-      and(
-        eq(coherenceDecisions.check, "resultado"),
-        eq(coherenceDecisions.subject, "escena"),
-        gte(coherenceDecisions.createdAt, desde),
-      ),
-    );
+    .where(delResultado);
+  const muestraResultado = await db()
+    .selectDistinctOn([coherenceDecisions.subjectId], {
+      escena: coherenceDecisions.subjectId,
+      veredicto: coherenceDecisions.verdict,
+      correccion: coherenceDecisions.correction,
+      fecha: coherenceDecisions.createdAt,
+    })
+    .from(coherenceDecisions)
+    .where(delResultado)
+    .orderBy(coherenceDecisions.subjectId, desc(coherenceDecisions.createdAt))
+    .limit(LIMITE_MUESTRA);
+  const etiquetaDeRevision = await revisionesDe(muestraResultado.map((m) => m.escena));
 
-  const etiquetador = await etiquetadorDe([
-    ...guion.map((g) => g.decision.subjectId).filter((id): id is string => id !== null),
-    ...resultado.map((r) => r.subjectId),
-  ]);
-
-  const opinionesGuion: OpinionMedida[] = guion.map(({ sombra, decision }) => ({
-    veredicto: sombra.verdict,
-    etiqueta: etiquetaDeDecision(etiquetador, decision),
-    coincide: sombra.matchesEffective,
-    euros: sombra.costEur,
-    latenciaMs: sombra.latencyMs,
-    fallida: sombra.error !== "",
-    reutilizada: sombra.reusedFrom !== null,
-  }));
-  const opinionesResultado: OpinionMedida[] = resultado.map((r) => ({
-    veredicto: r.verdict,
-    etiqueta:
-      etiquetaDeCorreccion(r.verdict, r.correction) ??
-      etiquetaDeRevisiones(
-        r.createdAt,
-        etiquetador.revisiones.get(r.subjectId) ?? [],
-        siguientePermiso(etiquetador, r.subjectId, r.createdAt, true),
-        true,
-      ),
-    coincide: null,
-    euros: r.decisionEur,
-    latenciaMs: r.latencyMs,
-    fallida: false,
-    reutilizada: false,
-  }));
+  const gasto = (g: { total: unknown; euros: unknown; latencia: unknown; fallidas?: unknown } | undefined) =>
+    ({
+      total: numero(g?.total),
+      fallidas: numero(g?.fallidas),
+      euros: numero(g?.euros),
+      latenciaMediaMs: media(g?.latencia),
+    }) satisfies GastoDeSombra;
 
   return [
     {
       pregunta: "afirmacion_verificable",
       nombre: NOMBRE_PREGUNTA_SOMBRA.afirmacion_verificable,
       encendida: ajustes.sombraActiva && ajustes.sombraAfirmaciones,
-      ...metricasDe(opinionesGuion),
+      etiquetaIndependiente: true,
+      ...metricasDe(
+        muestraGuion.map((m) => ({
+          veredicto: m.veredicto,
+          etiqueta: etiquetas.get(m.escena as string) ?? null,
+          coincide: m.coincide,
+        })),
+        gasto(gastoGuion),
+      ),
     },
     {
       pregunta: "resultado",
       nombre: NOMBRE_PREGUNTA_SOMBRA.resultado,
       encendida: coherenciaDe(ajustes, "resultado").modo !== "apagada",
-      ...metricasDe(opinionesResultado),
+      etiquetaIndependiente: false,
+      ...metricasDe(
+        muestraResultado.map((m) => ({
+          veredicto: m.veredicto,
+          etiqueta: etiquetaDeCorreccion(m.veredicto, m.correccion) ?? etiquetaDeRevision(m.escena, m.fecha),
+          // Las reglas no juzgan el contenido generado: no hay regla equivalente con la que compararse.
+          coincide: null,
+        })),
+        gasto(gastoResultado),
+      ),
     },
   ];
 }
