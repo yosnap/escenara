@@ -38,7 +38,7 @@ if (hayBaseDeDatos) {
   await usarBaseDeDatosDePrueba("escenara_pruebas_conversion");
 }
 
-const { eq } = await import("drizzle-orm");
+const { desc, eq, sql } = await import("drizzle-orm");
 const rutaConvertir = await import("@/app/api/generacion/trabajos/[id]/proyecto/route");
 const rutaAudio = await import("@/app/api/escenas/[id]/audio-del-clip/route");
 const rutaProyecto = await import("@/app/api/proyectos/[id]/route");
@@ -53,8 +53,10 @@ const { guardarAjustes, leerAjustes } = await import("../ajustes");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
 const {
+  claims,
   generationJobs,
   media,
+  montageExports,
   montages,
   products,
   projects,
@@ -73,6 +75,7 @@ const { estadoDeProduccion } = await import("../produccion/consulta");
 const { listarModelos } = await import("../proveedores/catalogo");
 const { adaptadorKie } = await import("../proveedores/kie/adaptador");
 const { entradaGuardada } = await import("../generacion/servicio");
+const { transcribirEscena } = await import("../voz/subtitulos");
 
 type Sesion = Awaited<ReturnType<typeof crearSesionDePrueba>>;
 type Actor = import("../media/servicio").Actor;
@@ -357,16 +360,20 @@ describe.skipIf(!hayBaseDeDatos)("convertir un clip de Crear en un proyecto", ()
     return escena;
   };
 
-  /** Monta el proyecto con el worker y devuelve el volumen medio del MP4, en dB (`-inf` = silencio). */
-  async function volumenDelMp4(proyectoId: string): Promise<number> {
+  /**
+   * Monta el proyecto con el worker y devuelve el volumen medio del MP4, en dB (`-inf` = silencio). Con `banda`, mide
+   * solo esa frecuencia (un paso banda estrecho): es lo que distingue el tono del clip (440 Hz) del de la voz (880 Hz).
+   */
+  async function volumenDelMp4(proyectoId: string, banda?: number): Promise<number> {
     const abierto = await rutaMontaje.GET(pedir(ana, `/api/proyectos/${proyectoId}/montaje`), ctx(proyectoId));
     expect(abierto.status).toBe(200);
     const pedida = await rutaExportar.POST(
       pedir(ana, `/api/proyectos/${proyectoId}/montaje/exportacion`, "POST", {}),
       ctx(proyectoId),
     );
-    expect(pedida.status).toBe(202);
-    expect(await pasadaDeExportaciones(`worker-prueba-${crypto.randomUUID()}`)).toBe(1);
+    // La misma versión devuelve la exportación que ya hay (200): entonces no hay nada nuevo que montar.
+    expect([200, 202]).toContain(pedida.status);
+    if (pedida.status === 202) expect(await pasadaDeExportaciones(`worker-prueba-${crypto.randomUUID()}`)).toBe(1);
     const vista = (await (
       await rutaMontaje.GET(pedir(ana, `/api/proyectos/${proyectoId}/montaje`), ctx(proyectoId))
     ).json()) as MontajeVista;
@@ -380,7 +387,8 @@ describe.skipIf(!hayBaseDeDatos)("convertir un clip de Crear en un proyecto", ()
     if (!fila) throw new Error("La exportación no ha dejado su MP4.");
     const ruta = path.join(carpeta, `salida-${fila.id}.mp4`);
     await Bun.write(ruta, await leerObjeto(fila.storageKey).arrayBuffer());
-    const { error } = await ffmpeg(["-i", ruta, "-af", "volumedetect", "-vn", "-f", "null", "-"]);
+    const filtro = banda ? `bandpass=f=${banda}:width_type=h:w=40,volumedetect` : "volumedetect";
+    const { error } = await ffmpeg(["-i", ruta, "-af", filtro, "-vn", "-f", "null", "-"]);
     const medio = /mean_volume:\s*(-?[\d.]+|-inf) dB/.exec(error)?.[1];
     if (!medio) throw new Error("FFmpeg no ha medido el volumen del MP4.");
     return medio === "-inf" ? Number.NEGATIVE_INFINITY : Number(medio);
@@ -644,9 +652,113 @@ describe.skipIf(!hayBaseDeDatos)("convertir un clip de Crear en un proyecto", ()
       .update(scenes)
       .set({ voiceMediaId: await medioDeVoz(2) })
       .where(eq(scenes.id, escena.id));
+    // Antes de quitarlo suenan los dos: el tono del clip (440 Hz) y la voz (880 Hz).
+    const clipAntes = await volumenDelMp4(datos.proyectoId, 440);
+    expect(clipAntes).toBeGreaterThan(-35);
     expect((await quitarAudio(escena.id, true)).codigo).toBe(200);
-    expect(await volumenDelMp4(datos.proyectoId)).toBeGreaterThan(-40);
-  }, 180_000);
+    // Después la voz sigue sonando, y en la banda del clip queda solo lo poco que la voz deja pasar por el filtro.
+    expect(await volumenDelMp4(datos.proyectoId, 880)).toBeGreaterThan(-35);
+    const clipDespues = await volumenDelMp4(datos.proyectoId, 440);
+    expect(clipDespues).toBeLessThan(clipAntes - 15);
+  }, 240_000);
+
+  test("una escena que entra en silencio no se transcribe ni lleva subtítulos al exportar; con pista de voz, sí", async () => {
+    const clip = await clipDeCrear();
+    const { datos } = await convertir(clip.id);
+    const escena = await escenaDe(datos.proyectoId);
+    await db()
+      .update(scenes)
+      .set({ subtitles: [{ desde: 0, hasta: 1, texto: "Esto me ha cambiado" }], subtitlesEditedAt: new Date() })
+      .where(eq(scenes.id, escena.id));
+    const srtDeLaExportacion = async () => {
+      await rutaMontaje.GET(pedir(ana, `/api/proyectos/${datos.proyectoId}/montaje`), ctx(datos.proyectoId));
+      const pedida = await rutaExportar.POST(
+        pedir(ana, `/api/proyectos/${datos.proyectoId}/montaje/exportacion`, "POST", {}),
+        ctx(datos.proyectoId),
+      );
+      expect(pedida.status).toBe(202);
+      const [ultima] = await db()
+        .select()
+        .from(montageExports)
+        .where(eq(montageExports.projectId, datos.proyectoId))
+        .orderBy(desc(montageExports.createdAt))
+        .limit(1);
+      return ultima?.subtitlesSrt ?? "";
+    };
+
+    expect(await srtDeLaExportacion()).toContain("Esto me ha cambiado");
+    await quitarAudio(escena.id, true);
+    expect(await srtDeLaExportacion()).toBe("");
+    // Tampoco se saca del clip lo que no se oye.
+    const [silenciada] = await db().select().from(scenes).where(eq(scenes.id, escena.id));
+    await expect(transcribirEscena(actor, escena.id, true)).rejects.toThrow("audio del clip de esta escena está quitado");
+    expect(silenciada?.clipAudioMuted).toBe(true);
+
+    // Con pista de voz aparte la escena sí suena, así que sus subtítulos vuelven al fichero.
+    await db().update(projects).set({ voiceMode: "pista" }).where(eq(projects.id, datos.proyectoId));
+    await db()
+      .update(scenes)
+      .set({ voiceMediaId: await medioDeVoz(2) })
+      .where(eq(scenes.id, escena.id));
+    await db()
+      .update(montages)
+      .set({ version: sql`${montages.version} + 1` })
+      .where(eq(montages.projectId, datos.proyectoId));
+    expect(await srtDeLaExportacion()).toContain("Esto me ha cambiado");
+  });
+
+  test("una afirmación de salud sin verificar impide exportar el proyecto convertido y dice qué hacer", async () => {
+    const clip = await clipDeCrear();
+    const { datos } = await convertir(clip.id);
+    const escena = await escenaDe(datos.proyectoId);
+    const [afirmacion] = await db()
+      .insert(claims)
+      .values({ sceneId: escena.id, text: "Cura la caspa en una semana.", kind: "salud" })
+      .returning();
+    await rutaMontaje.GET(pedir(ana, `/api/proyectos/${datos.proyectoId}/montaje`), ctx(datos.proyectoId));
+    const rechazo = await rutaExportar.POST(
+      pedir(ana, `/api/proyectos/${datos.proyectoId}/montaje/exportacion`, "POST", {}),
+      ctx(datos.proyectoId),
+    );
+    expect(rechazo.status).toBe(409);
+    const mensaje = mensajeDe(await rechazo.json());
+    expect(mensaje).toContain("afirmación sobre salud sin verificar");
+    expect(mensaje).toContain("Verifícala");
+    await db()
+      .update(claims)
+      .set({ state: "verificada", source: "Estudio propio" })
+      .where(eq(claims.id, afirmacion?.id ?? ""));
+    const aceptada = await rutaExportar.POST(
+      pedir(ana, `/api/proyectos/${datos.proyectoId}/montaje/exportacion`, "POST", {}),
+      ctx(datos.proyectoId),
+    );
+    expect(aceptada.status).toBe(202);
+  });
+
+  test("sin la imagen de partida no se convierte, y lo dice", async () => {
+    const clip = await clipDeCrear();
+    await db()
+      .update(media)
+      .set({ deletedAt: new Date() })
+      .where(eq(media.id, clip.sourceMediaId ?? ""));
+    const rechazo = await convertir(clip.id);
+    expect(rechazo.codigo).toBe(409);
+    expect(mensajeDe(rechazo.datos)).toContain("imagen de partida");
+  });
+
+  test("el techo del proyecto nace, como mínimo, en lo que ya costó el clip", async () => {
+    const previo = (await leerAjustes()).presupuestoProyecto;
+    await guardarAjustes({ presupuestoProyecto: 30 }, null);
+    try {
+      const clip = await clipDeCrear();
+      const { datos } = await convertir(clip.id);
+      const [proyecto] = await db().select().from(projects).where(eq(projects.id, datos.proyectoId));
+      expect(proyecto?.authorizedCredits).toBe(60);
+      expect(await comprometidoDelProyecto(datos.proyectoId)).toBe(60);
+    } finally {
+      await guardarAjustes({ presupuestoProyecto: previo }, null);
+    }
+  });
 
   test("quitar el audio valida la entrada, exige clip y solo lo hace el dueño", async () => {
     const clip = await clipDeCrear();

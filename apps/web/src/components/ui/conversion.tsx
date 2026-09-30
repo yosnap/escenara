@@ -1,6 +1,13 @@
 import { FolderKanban, Mic, Scissors, VolumeX } from "lucide-react";
 import Link from "next/link";
-import { type ClipProducidoVista, comoPonerVozEnOff, comoSuenaLaEscena } from "@/lib/audio-del-clip";
+import { useId } from "react";
+import {
+  type ClipProducidoVista,
+  comoPonerVozEnOff,
+  comoSuenaLaEscena,
+  SIN_SUBTITULOS_AUDIO_QUITADO,
+  subtitulosSinAudio,
+} from "@/lib/audio-del-clip";
 import { type EstadoConversion, EXPLICACION_CONVERTIR } from "@/lib/conversion";
 import type { ModoVoz } from "@/lib/voz";
 import { Boton, claseBoton } from "./button";
@@ -34,6 +41,7 @@ export function TarjetaConvertirEnProyecto({
   error?: string | null;
   onConvertir?: () => void;
 }) {
+  const idMotivo = useId();
   return (
     <div className="flex flex-col gap-3 rounded-tarjeta border-2 border-borde bg-elevada p-4">
       <div className="flex items-start gap-3">
@@ -66,13 +74,19 @@ export function TarjetaConvertirEnProyecto({
               icono={<FolderKanban className="size-5" aria-hidden />}
               cargando={convirtiendo}
               disabled={cargando || estado === null || estado.estado !== "convertible"}
+              // Desactivado, el botón no recibe el foco: el motivo se asocia para que el lector de pantalla lo lea.
+              aria-describedby={estado?.estado === "convertible" ? undefined : idMotivo}
               onClick={onConvertir}
             >
               Convertir en proyecto
             </Boton>
           </div>
-          {estado === null && <p className="text-sm text-texto-suave">Comprobando si este clip se puede convertir…</p>}
-          {estado?.estado === "no_convertible" && <Aviso tono="info">{estado.motivo}</Aviso>}
+          <div id={idMotivo}>
+            {estado === null && (
+              <p className="text-sm text-texto-suave">Comprobando si este clip se puede convertir…</p>
+            )}
+            {estado?.estado === "no_convertible" && <Aviso tono="info">{estado.motivo}</Aviso>}
+          </div>
           {estado?.estado === "convertible" &&
             estado.avisos.map((aviso) => (
               <Aviso key={aviso} tono="info">
@@ -123,6 +137,9 @@ export function TarjetaClipProducido({
           deshabilitado={ocupado}
           onCambio={(quitado) => onQuitarAudio?.(quitado)}
         />
+        {subtitulosSinAudio(clip, modoVoz) && (
+          <p className="text-sm text-texto-suave">{SIN_SUBTITULOS_AUDIO_QUITADO}</p>
+        )}
         {vozEnOff && <p className="text-sm text-texto">{vozEnOff}</p>}
         <div className="flex flex-wrap gap-2">
           <Link href={`/proyectos/${proyectoId}/voz`} className={claseBoton("secundario", "sm")}>

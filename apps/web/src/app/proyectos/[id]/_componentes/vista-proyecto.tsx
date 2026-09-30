@@ -133,7 +133,12 @@ export function VistaProyecto({
           <PanelIdea detalle={detalle} personajes={personajes} onCambio={aplicar} onError={setError} />
         </PanelDePaso>
         <PanelDePaso id="escenas">
-          <PanelClipsProducidos proyectoId={proyecto.id} inicial={clips} />
+          {/* La clave cambia con los clips del servidor: tras un `router.refresh()` el panel enseña los de ahora. */}
+          <PanelClipsProducidos
+            key={clips.clips.map((c) => `${c.escenaId}:${c.medio.id}:${c.audioQuitado}`).join("|")}
+            proyectoId={proyecto.id}
+            inicial={clips}
+          />
           <ListaEscenas
             detalle={detalle}
             personajes={personajes}

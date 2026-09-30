@@ -18,6 +18,8 @@ export interface HechosDelClip {
   estado: EstadoTrabajo;
   /** El archivo del clip sigue en la biblioteca (ni borrado ni en la papelera). */
   tieneMedio: boolean;
+  /** La imagen de partida sigue en la biblioteca: es el fotograma de la escena y de ella se vuelve a animar. */
+  tieneImagenDePartida: boolean;
   /** Proyecto al que ya pertenece el clip, si pertenece a alguno. */
   proyecto: { id: string; titulo: string } | null;
   /** Clip de un intercambio de dos personajes (tiene turno en la conversación). */
@@ -80,6 +82,9 @@ export function motivoParaNoConvertir(h: HechosDelClip): string | null {
   }
   if (!h.tieneMedio) {
     return "El archivo de este clip ya no está en tu biblioteca (se borró o está en la papelera). Recupéralo de la papelera para convertirlo.";
+  }
+  if (!h.tieneImagenDePartida) {
+    return "La imagen de partida de este clip ya no está en tu biblioteca (se borró o está en la papelera), y la escena la necesita como fotograma. Recupérala de la papelera para convertir el clip.";
   }
   if (h.turnoDeConversacion) {
     return "Este clip es un turno de una conversación de dos personajes y solo tiene sentido junto al otro: se monta desde su proyecto.";
@@ -164,6 +169,15 @@ export const duracionDelProyecto = (segundos: unknown): number =>
   typeof segundos === "number" && Number.isInteger(segundos) && esDuracionDisponible(segundos)
     ? segundos
     : DURACION_PREDETERMINADA;
+
+/**
+ * Techo del proyecto nuevo: el de fábrica de Admin › Ajustes, **nunca por debajo de lo que ya costó el clip**. Si el
+ * de fábrica fuera menor, el proyecto nacería por encima de su techo y la primera voz en off se bloquearía sin
+ * haber gastado nada; subirlo justo hasta lo gastado no autoriza ningún gasto nuevo. Con 0 (sin fijar) se queda en 0,
+ * como cualquier proyecto nuevo.
+ */
+export const techoInicial = (deFabrica: number, gastado: number): number =>
+  deFabrica > 0 ? Math.max(deFabrica, Math.ceil(gastado)) : 0;
 
 /** Título del proyecto nuevo: el trend si lo hay y, si no, el día en que se generó el clip. */
 export function tituloDelProyecto(trend: string | null, creadoEn: Date): string {

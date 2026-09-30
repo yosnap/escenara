@@ -1,11 +1,6 @@
+import { exigirRitmoDeEscritura } from "@/server/asistente/http";
 import { convertirEnProyecto, estadoDelClip } from "@/server/conversion/servicio";
-import {
-  type ContextoId,
-  exigirMismoOrigen,
-  exigirRitmoDeConsultas,
-  leerIdTrabajo,
-  manejador,
-} from "@/server/generacion/http";
+import { type ContextoId, exigirMismoOrigen, leerIdTrabajo, manejador } from "@/server/generacion/http";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +20,8 @@ export const GET = manejador<ContextoId>(async (_: Request, contexto, actor) => 
 export const POST = manejador<ContextoId>(async (peticion: Request, contexto, actor) => {
   exigirMismoOrigen(peticion);
   const id = await leerIdTrabajo(contexto);
-  await exigirRitmoDeConsultas(actor, "convertir");
+  // Convertir escribe un proyecto: va con el ritmo de las escrituras de proyectos, no con el de las consultas.
+  await exigirRitmoDeEscritura(actor, "convertir");
   const convertido = await convertirEnProyecto(actor, id);
   return Response.json(convertido, { status: convertido.nuevo ? 201 : 200 });
 });

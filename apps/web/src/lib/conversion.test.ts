@@ -7,6 +7,7 @@ import {
   type HechosDelClip,
   motivoParaNoConvertir,
   segundosDelClip,
+  techoInicial,
   tituloDelProyecto,
   urlDelProyectoConvertido,
 } from "./conversion";
@@ -17,6 +18,7 @@ const clip = (parcial: Partial<HechosDelClip> = {}): HechosDelClip => ({
   tipo: "animacion",
   estado: "listo",
   tieneMedio: true,
+  tieneImagenDePartida: true,
   proyecto: null,
   turnoDeConversacion: false,
   canto: false,
@@ -51,6 +53,10 @@ describe("qué clip se puede convertir", () => {
 
   test("sin archivo en la biblioteca no hay clip que reutilizar", () => {
     expect(motivoParaNoConvertir(clip({ tieneMedio: false }))).toContain("papelera");
+  });
+
+  test("sin la imagen de partida no hay fotograma para la escena", () => {
+    expect(motivoParaNoConvertir(clip({ tieneImagenDePartida: false }))).toContain("imagen de partida");
   });
 
   test("dos personajes y canto no se ocultan: dicen por qué", () => {
@@ -137,6 +143,12 @@ describe("qué se copia del clip", () => {
     expect(segundosDelClip({ parametros: { aspect_ratio: "9:16" } })).toBeUndefined();
     expect(segundosDelClip(null)).toBeUndefined();
     expect(duracionDelProyecto(segundosDelClip({ parametros: { segundos: 10 } }))).toBe(8);
+  });
+
+  test("el techo del proyecto nunca nace por debajo de lo que ya costó el clip", () => {
+    expect(techoInicial(500, 60)).toBe(500);
+    expect(techoInicial(30, 60.4)).toBe(61);
+    expect(techoInicial(0, 60)).toBe(0);
   });
 
   test("el título lleva el trend o el día, y nunca pasa del máximo", () => {

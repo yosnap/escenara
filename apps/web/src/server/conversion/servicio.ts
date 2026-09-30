@@ -7,6 +7,7 @@ import {
   type HechosDelClip,
   type ProyectoConvertido,
   segundosDelClip,
+  techoInicial,
   tituloDelProyecto,
   urlDelProyectoConvertido,
 } from "@/lib/conversion";
@@ -17,8 +18,17 @@ import { leerAjustes } from "../ajustes";
 import { ErrorProyecto } from "../asistente/errores";
 import { sincronizarAfirmaciones } from "../asistente/escenas";
 import { PROYECTOS_MAXIMOS } from "../asistente/proyectos";
-import { db } from "../db/cliente";
-import { characters, type FilaTrabajo, generationJobs, media, projects, promptTemplates, scenes } from "../db/esquema";
+import { db, type Ejecutor } from "../db/cliente";
+import {
+  characters,
+  type FilaTrabajo,
+  generationJobs,
+  media,
+  projects,
+  promptTemplates,
+  scenes,
+  usageLedger,
+} from "../db/esquema";
 import { direccionGuardada, esUuidGeneracion, filaPropia } from "../generacion/trabajos";
 import type { Actor } from "../media/servicio";
 import { motivosParaNoGenerar } from "../personajes/puede-generar";
@@ -92,6 +102,9 @@ export async function convertirEnProyecto(actor: Actor, trabajoId: unknown): Pro
       if (!ya) throw new ErrorProyecto(409, "Este clip ya pertenece a otra escena y no se puede convertir.");
       return { proyectoId: ya.id, titulo: ya.titulo, url: urlDelProyectoConvertido(ya.id), nuevo: false };
     }
+    // La fila del usuario se bloquea antes de contar: dos conversiones de clips distintos a la vez no pueden pasar
+    // las dos del tope de proyectos por contar antes de que la otra escriba.
+    await tx.execute(sql`select 1 from users where id = ${actor.id}::uuid for update`);
     const [{ total } = { total: 0 }] = await tx
       .select({ total: sql<number>`count(*)::int` })
       .from(projects)
@@ -118,7 +131,7 @@ export async function convertirEnProyecto(actor: Actor, trabajoId: unknown): Pro
         idea: descripcion || "Clip hecho en Crear y traído a un proyecto para ponerle voz y montarlo.",
         mainCharacterId: fila.characterId,
         renderStyle: clip.personaje?.renderStyle ?? "realista",
-        authorizedCredits: presupuestoProyecto,
+        authorizedCredits: techoInicial(presupuestoProyecto, await gastoDelClip(tx, fila.id)),
         clipSeconds: segundos,
         speechAccent: direccion?.acento ?? ACENTO_POR_DEFECTO,
       })
@@ -164,6 +177,20 @@ export async function convertirEnProyecto(actor: Actor, trabajoId: unknown): Pro
   });
 }
 
+/**
+ * Lo que ya costó el clip según sus apuntes (reservas vivas, consumos y ajustes), con la misma cuenta que
+ * `comprometidoDelProyecto`. Es lo que el proyecto hereda como gastado.
+ */
+async function gastoDelClip(tx: Ejecutor, trabajoId: string): Promise<number> {
+  const [fila] = await tx
+    .select({
+      total: sql<number>`coalesce(sum(case when ${usageLedger.entryType} in ('reserva', 'liberacion', 'consumo', 'ajuste') then ${usageLedger.credits} else 0 end), 0)::float8`,
+    })
+    .from(usageLedger)
+    .where(eq(usageLedger.jobId, trabajoId));
+  return Math.max(0, fila?.total ?? 0);
+}
+
 /** Reúne los hechos del clip. Todo es lectura, y un trabajo ajeno responde 404 sin decir si existe. */
 async function leerClip(actor: Actor, trabajoId: unknown): Promise<ClipLeido> {
   if (!esUuidGeneracion(trabajoId)) throw new ErrorProyecto(404, "Ese clip no existe.");
@@ -171,12 +198,20 @@ async function leerClip(actor: Actor, trabajoId: unknown): Promise<ClipLeido> {
   const fila = await filaPropia(actor.id, trabajoId);
   const entrada = fila.input as { canto?: unknown; plantilla?: { kind?: unknown; version?: unknown } };
 
-  const [medio, proyecto, personaje, plantilla] = await Promise.all([
+  const [medio, partida, proyecto, personaje, plantilla] = await Promise.all([
     fila.resultMediaId
       ? db()
           .select({ id: media.id })
           .from(media)
           .where(and(eq(media.id, fila.resultMediaId), isNull(media.deletedAt)))
+          .limit(1)
+          .then((f) => f[0] ?? null)
+      : null,
+    fila.sourceMediaId
+      ? db()
+          .select({ id: media.id })
+          .from(media)
+          .where(and(eq(media.id, fila.sourceMediaId), isNull(media.deletedAt)))
           .limit(1)
           .then((f) => f[0] ?? null)
       : null,
@@ -234,6 +269,7 @@ async function leerClip(actor: Actor, trabajoId: unknown): Promise<ClipLeido> {
       tipo: fila.kind,
       estado: fila.state,
       tieneMedio: medio !== null,
+      tieneImagenDePartida: partida !== null,
       proyecto,
       turnoDeConversacion: fila.castClipOrder !== null,
       canto: entrada.canto === true,

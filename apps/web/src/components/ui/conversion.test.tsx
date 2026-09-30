@@ -27,6 +27,10 @@ describe("el botón Convertir en proyecto", () => {
     expect(html).toContain("Convertir en proyecto");
     expect(html).toContain('disabled=""');
     expect(html).toContain("El clip todavía se está generando.");
+    // El motivo va asociado al botón: desactivado no recibe el foco y el lector de pantalla tiene que leerlo.
+    const id = /aria-describedby="([^"]+)"/.exec(html)?.[1] ?? "";
+    expect(id).not.toBe("");
+    expect(html).toContain(`id="${id}"`);
   });
 
   test("mientras se comprueba no se puede pulsar", () => {
@@ -90,5 +94,13 @@ describe("la tarjeta del clip producido", () => {
       <TarjetaClipProducido clip={clip({ audioQuitado: true })} modoVoz="clip" proyectoId="p1" />,
     );
     expect(quitado).toContain("Sin el audio del clip");
+    expect(quitado).toContain("Sin subtítulos: el audio está quitado");
+  });
+
+  test("con pista de voz aparte y el audio quitado sí hay subtítulos", () => {
+    const html = renderToStaticMarkup(
+      <TarjetaClipProducido clip={clip({ audioQuitado: true, conPistaDeVoz: true })} modoVoz="pista" proyectoId="p1" />,
+    );
+    expect(html).not.toContain("Sin subtítulos");
   });
 });
