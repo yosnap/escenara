@@ -106,6 +106,7 @@ export function BarraDePasos({
   const base = useId();
   const lista = useRef<HTMLOListElement>(null);
   // Solo el desplazamiento horizontal de la barra: la página no se mueve.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: se lee el DOM del paso actual; hay que repetirlo al cambiar.
   useEffect(() => {
     const ol = lista.current;
     const boton = ol?.querySelector<HTMLElement>('[aria-current="step"]');
