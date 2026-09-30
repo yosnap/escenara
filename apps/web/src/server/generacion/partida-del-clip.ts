@@ -1,7 +1,7 @@
 import type { TipoPersonaje } from "@/lib/personajes";
 import { proporcionDelTrabajo } from "../cola/entrada-del-trabajo";
 import type { FilaTrabajo } from "../db/esquema";
-import { sitioLugarDe } from "../lugares/en-el-envio";
+import { lugarDeLaImagen, sitioLugarDe } from "../lugares/en-el-envio";
 import { contextoParaGenerar, personajePorId } from "../personajes/contexto";
 import { imagenPropia } from "./comprobaciones";
 import { ErrorGeneracion } from "./errores";
@@ -79,7 +79,8 @@ export async function partidaDelClip(usuarioId: string, peticion: PeticionAnimac
     versionPersonajeId: conFicha.versionId,
     // La imagen es la referencia: no se citó ninguna hoja 3×3 al hacerla desde aquí.
     referenciaIdentidad: "vistas",
-    lugarDelFotograma: null,
+    // Si la imagen salió de un trabajo con lugar, el sitio ya está en ella: el clip lo hereda.
+    lugarDelFotograma: await lugarDeLaImagen(usuarioId, medio.id),
   };
 }
 

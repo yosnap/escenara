@@ -13,6 +13,7 @@ import {
 } from "@/lib/productos";
 import { BloqueConfirmacion } from "./bloque-confirmacion";
 import type { ConfirmacionCoste } from "./panel-generar";
+import type { SujetoDeControles } from "./refresco-de-controles";
 import type { Controles } from "./use-controles";
 
 /**
@@ -28,6 +29,7 @@ import type { Controles } from "./use-controles";
  */
 export function PasoInsertarCaptura({
   productoId,
+  sujeto,
   controles,
   estimacion,
   firma,
@@ -35,6 +37,8 @@ export function PasoInsertarCaptura({
   onGenerar,
 }: {
   productoId: string;
+  /** Lo que se evalúa: el paso de la captura, con la imagen, el producto y el lugar con los que se enviará. */
+  sujeto: SujetoDeControles;
   controles: Controles;
   estimacion: Estimacion;
   firma: string;
@@ -57,6 +61,14 @@ export function PasoInsertarCaptura({
       vigente = false;
     };
   }, [productoId]);
+
+  // Los avisos de antes de pagar son los de **este** paso, con sus fotos y sus cifras: los mismos que el envío.
+  const firmaSujeto = JSON.stringify(sujeto);
+  const esDigital = producto?.tipo === "digital";
+  // biome-ignore lint/correctness/useExhaustiveDependencies: se vuelve a evaluar cuando cambia lo que se enviaría.
+  useEffect(() => {
+    if (esDigital) void controles.refrescar(sujeto);
+  }, [firmaSujeto, esDigital]);
 
   if (error !== "") return <Aviso tono="error">{error}</Aviso>;
   // Con un producto físico no hay segundo paso: no hay ninguna pantalla en la que insertar nada.

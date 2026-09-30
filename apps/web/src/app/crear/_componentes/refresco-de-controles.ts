@@ -61,6 +61,9 @@ export interface SujetoDeControles {
   productoId?: string;
   accion?: string;
   fotos?: string[];
+  lugarId?: string;
+  /** El segundo paso del producto digital se evalúa como lo enviará ese paso. */
+  paso?: "insertar_captura";
 }
 
 /** Lo que se evalúa del clip: el modelo, la imagen que anima y el producto, que trae sus propios avisos. */

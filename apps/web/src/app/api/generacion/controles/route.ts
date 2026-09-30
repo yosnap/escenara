@@ -63,6 +63,7 @@ export const GET = manejador(async (peticion: Request, _: unknown, actor) => {
       productoAccion: claveOpcional(parametros.get("accion")),
       productoFotos: leerFotosElegidas(parametros.get("fotos")?.split(",").filter(Boolean)),
       lugarId: uuidOpcional(parametros.get("lugarId"), "lugar"),
+      pasoDigital: parametros.get("paso") === "insertar_captura" ? "insertar_captura" : null,
     }),
   );
 });

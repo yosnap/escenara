@@ -154,10 +154,21 @@ export const consultarControles = (peticion: {
   fotos?: string[];
   /** Lugar elegido en «Crear»: su declaración, su acabado y si su maestra cabe. */
   lugarId?: string;
+  /** Segundo paso del producto digital: meter la captura en la pantalla. */
+  paso?: "insertar_captura";
 }) => {
   const parametros = new URLSearchParams({ tipo: peticion.tipo });
   if (peticion.fotos?.length) parametros.set("fotos", peticion.fotos.join(","));
-  for (const clave of ["modelo", "personajeId", "medioId", "escenaId", "productoId", "accion", "lugarId"] as const) {
+  for (const clave of [
+    "modelo",
+    "personajeId",
+    "medioId",
+    "escenaId",
+    "productoId",
+    "accion",
+    "lugarId",
+    "paso",
+  ] as const) {
     const valor = peticion[clave];
     if (valor) parametros.set(clave, valor);
   }

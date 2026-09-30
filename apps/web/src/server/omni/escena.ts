@@ -42,13 +42,7 @@ import {
 import { proporcionDelEnvio } from "../generacion/formato-del-envio";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { exigirSelloVigente } from "../generacion/precios";
-import {
-  conLugarSuelto,
-  hechosDelClipConLugar,
-  lugarDelEnvio,
-  lugarDelPrompt,
-  textosDelLugar,
-} from "../lugares/en-el-envio";
+import { conLugarSuelto, lugarDelEnvio, lugarDelPrompt, textosDelLugar } from "../lugares/en-el-envio";
 import { columnasDelLugar } from "../lugares/para-generar";
 import type { Actor } from "../media/servicio";
 import { contextoDeVersion, promptConContexto } from "../personajes/contexto";
@@ -58,7 +52,7 @@ import { acotarCoste } from "../presupuesto/acotar";
 import { completarModelosSugeridos } from "../productos/modelos-sugeridos";
 import { productoEnPrompt, productoParaGenerar } from "../productos/prompt";
 import { referenciasDelPersonajeQueViajan } from "../productos/referencias";
-import { hojaEnElEnvio, repartoDelEnvio } from "../productos/reparto-del-envio";
+import { hojaEnElEnvio, repartoCompletoDelEnvio } from "../productos/reparto-del-envio";
 import { creditosDelEnvio, traducirAlIngles } from "../prompts/traduccion";
 import { miembrosDelReparto } from "../reparto/consulta";
 import { exigirFormatoActivo } from "../reparto/servicio";
@@ -390,23 +384,22 @@ export async function producirEscenaHablada(
   const sinRegistro = conIdentidad && !citaIdentidad ? await referenciasParaProducir(actor, proyecto) : null;
   const muestraEnviada = sinRegistro ? (sinRegistro.muestra ?? null) : muestra;
   const faltaEnviada = sinRegistro?.falta || falta;
-  const conProducto = producto
-    ? await repartoDelEnvio({
-        producto,
-        adaptador,
-        modelo,
-        identidadRegistradaPerdida: conIdentidad,
-        envio: { tipo: "escena-omni", personaje, conHoja: personaje !== null && hojaEnElEnvio(personaje, escena.id) },
-      })
-    : null;
-  if (producto) exigirDerechoDeMarca(confirmacion.derechoMarca);
-  if (conProducto) await completarModelosSugeridos(conProducto.hechos, CAPACIDAD_DE_TIPO.animacion);
   /**
    * **El lugar de la escena**. En la escena hablada no se genera fotograma, así que el sitio viaja **descrito**: la
    * cara idéntica la da la identidad registrada, y el set lo fija la descripción de la versión. Se resuelve una vez
    * para toda la escena, así que los dos clips de un podcast llevan el mismo lugar y la misma versión.
    */
   const conLugar = await lugarDelEnvio(actor.id, escena, null, null);
+  const { conProducto, hechosLugar } = await repartoCompletoDelEnvio({
+    producto,
+    conLugar,
+    adaptador,
+    modelo,
+    identidadRegistradaPerdida: conIdentidad,
+    envio: { tipo: "escena-omni", personaje, conHoja: personaje !== null && hojaEnElEnvio(personaje, escena.id) },
+  });
+  if (producto) exigirDerechoDeMarca(confirmacion.derechoMarca);
+  if (conProducto) await completarModelosSugeridos(conProducto.hechos, CAPACIDAD_DE_TIPO.animacion);
 
   /**
    * El reparto de la escena (0.28.0): en una escena hablada con dos personajes, **cada persona real** necesita su
@@ -437,7 +430,7 @@ export async function producirEscenaHablada(
         omni: { registrado: falta === "", falta },
         ...(conReparto ? { reparto: conReparto } : {}),
         ...(conProducto ? { producto: conProducto.hechos } : {}),
-        ...hechosDelClipConLugar(conLugar),
+        ...hechosLugar,
       },
       h.buscar,
     ),

@@ -1,7 +1,13 @@
 import type { ModeloVista } from "@/lib/catalogo";
-import type { HechosProducto } from "../controles/contrato";
+import type { HechosLugar, HechosProducto } from "../controles/contrato";
 import type { FilaPersonaje } from "../db/esquema";
 import { conHojaDeIdentidad } from "../direccion/hoja-identidad";
+import {
+  hechosDelClipConLugar,
+  hechosDelEnvioConLugar,
+  imagenesDelLugar,
+  type LugarDelEnvio,
+} from "../lugares/en-el-envio";
 import { referenciasVigentesDe } from "../personajes/consulta";
 import { hojaQueViaja } from "../personajes/puede-generar";
 import type { Adaptador } from "../proveedores/contrato";
@@ -78,34 +84,56 @@ export async function repartoDelEnvio(entrada: {
 }
 
 /**
- * **El reparto de un envío con producto, con lugar o con los dos**, en un solo sitio. Lo piden con las mismas
- * entradas el aviso de antes de pagar (`controles/consulta.ts`) y el envío (`generacion/servicio.ts`), así que las
- * cifras que se enseñan y las fotos que viajan salen de la misma cuenta. `reparto` es `null` cuando el envío no
- * lleva ni producto ni lugar, que es todo lo anterior a ellos.
+ * **Cuántas imágenes del lugar compiten por el cupo en este envío.** Solo la maestra, y solo en un fotograma que la
+ * lleve como referencia: no en el clip (el sitio ya está dentro de su imagen de partida), no en la escena hablada de
+ * Omni (el lugar va descrito), no en la inserción de la captura del producto digital (edita un fotograma ya situado)
+ * y no en el plano del lugar solo (allí la maestra es la imagen de partida, no una referencia más).
+ */
+export function imagenesDelLugarEnElEnvio(
+  envio: EnvioConProducto,
+  producto: Pick<ProductoParaGenerar, "pasoDigital"> | null,
+  conLugar: LugarDelEnvio | null,
+): number {
+  if (envio.tipo !== "fotograma" || producto?.pasoDigital === "insertar_captura") return 0;
+  return imagenesDelLugar(conLugar);
+}
+
+/**
+ * **El reparto de un envío con producto, con lugar o con los dos, y los hechos del lugar**, en un solo sitio. Lo
+ * piden con **las mismas entradas** el aviso de antes de pagar (`controles/consulta.ts`) y los envíos (fotograma,
+ * clip y escena hablada), así que las cifras que se enseñan, los avisos del lugar y las fotos que viajan salen de la
+ * misma cuenta: nadie decide por su lado si la maestra cuenta. `reparto` es `null` cuando el envío no lleva ni
+ * producto ni lugar que compita, que es todo lo anterior a ellos.
  */
 export async function repartoCompletoDelEnvio(entrada: {
   envio: EnvioConProducto;
   adaptador: Adaptador;
   modelo: ModeloVista;
   producto: ProductoParaGenerar | null;
-  /** `1` si el lugar tiene maestra que enviar, `0` si no hay lugar o va solo descrito. */
-  lugar: number;
+  /** El lugar del envío ya resuelto, o `null`. Cuánto compite lo decide {@link imagenesDelLugarEnElEnvio}. */
+  conLugar: LugarDelEnvio | null;
   identidadRegistradaPerdida?: boolean;
 }): Promise<{
   conProducto: { hechos: HechosProducto; reparto: RepartoDeReferencias } | null;
   reparto: RepartoDeReferencias | null;
+  /** Los hechos del lugar para el motor: con «la maestra no cabe» solo donde la maestra compite. */
+  hechosLugar: { lugar?: HechosLugar };
 }> {
-  const { envio, adaptador, modelo, producto, lugar } = entrada;
+  const { envio, adaptador, modelo, producto, conLugar } = entrada;
+  const lugar = imagenesDelLugarEnElEnvio(envio, producto, conLugar);
+  const compite = envio.tipo === "fotograma" && producto?.pasoDigital !== "insertar_captura";
+  const hechosLugarCon = (reparto: RepartoDeReferencias | null) =>
+    compite ? hechosDelEnvioConLugar(conLugar, reparto) : hechosDelClipConLugar(conLugar);
   if (producto) {
-    const conProducto = await repartoDelEnvio({ ...entrada, producto });
-    return { conProducto, reparto: conProducto.reparto };
+    const conProducto = await repartoDelEnvio({ ...entrada, producto, lugar });
+    return { conProducto, reparto: conProducto.reparto, hechosLugar: hechosLugarCon(conProducto.reparto) };
   }
-  if (lugar <= 0) return { conProducto: null, reparto: null };
+  if (lugar <= 0) return { conProducto: null, reparto: null, hechosLugar: hechosLugarCon(null) };
   const reparto = repartirReferencias(
     cupoDelEnvio(envio, adaptador, modelo),
     await fotosDelPersonajeEnElEnvio(envio),
     0,
     lugar,
   );
-  return { conProducto: null, reparto };
+  return { conProducto: null, reparto, hechosLugar: hechosLugarCon(reparto) };
 }

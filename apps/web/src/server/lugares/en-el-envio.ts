@@ -1,8 +1,11 @@
+import { and, desc, eq } from "drizzle-orm";
 import type { LugarElegido } from "@/lib/lugares";
 import type { RepartoDeReferencias } from "@/lib/reparto-referencias";
 import { proyectoDeEscena as proyectoDe } from "../asistente/consulta";
 import type { HechosLugar } from "../controles/contrato";
+import { db } from "../db/cliente";
 import type { FilaPersonaje } from "../db/esquema";
+import { generationJobs } from "../db/esquema";
 import { bloqueLugarSuelto, type LugarEnPrompt } from "../direccion/lugar";
 import {
   type AcabadoEsperado,
@@ -148,3 +151,22 @@ export const hechosDelClipConLugar = (conLugar: LugarDelEnvio | null): { lugar?:
   conLugar
     ? { lugar: { ...hechosDelLugar(conLugar.lugar, conLugar.esperado, null), sinMaestra: false, maestraNoCabe: false } }
     : {};
+
+/**
+ * El lugar con el que se hizo una imagen de la biblioteca, si salió de un trabajo propio con lugar: el sitio ya está
+ * dentro de ella, así que el clip que la anima lo hereda. Lo usan igual el envío del clip y su consulta de antes de
+ * pagar. `null` si la imagen no salió de ningún trabajo con lugar.
+ */
+export async function lugarDeLaImagen(
+  usuarioId: string,
+  medioId: string,
+): Promise<{ placeId: string | null; placeVersion: number | null; sitio: string } | null> {
+  const [trabajo] = await db()
+    .select({ placeId: generationJobs.placeId, placeVersion: generationJobs.placeVersion, input: generationJobs.input })
+    .from(generationJobs)
+    .where(and(eq(generationJobs.resultMediaId, medioId), eq(generationJobs.userId, usuarioId)))
+    .orderBy(desc(generationJobs.createdAt))
+    .limit(1);
+  if (!trabajo?.placeId) return null;
+  return { placeId: trabajo.placeId, placeVersion: trabajo.placeVersion, sitio: sitioLugarDe(trabajo.input) };
+}

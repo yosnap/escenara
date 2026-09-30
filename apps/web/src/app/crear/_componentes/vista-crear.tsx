@@ -730,6 +730,7 @@ export function VistaCrear({
                   numero={numero("fotograma")}
                   fotograma={fotograma}
                   productoId={productoClip.productoId}
+                  consultaInsercion={{ accion: productoClip.accion, lugarId: lugar.lugar.lugarId }}
                   controles={controlesFoto}
                   estimacion={estimacionFoto}
                   enviando={enviando === "fotograma"}

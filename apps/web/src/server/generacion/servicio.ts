@@ -24,9 +24,6 @@ import type { EdicionDeLugar } from "../lugares/edicion";
 import {
   conLugarSuelto,
   entradaDelLugar,
-  hechosDelClipConLugar,
-  hechosDelEnvioConLugar,
-  imagenesDelLugar,
   lugarDelClip,
   lugarDelEnvio,
   lugarDelPrompt,
@@ -42,7 +39,7 @@ import { eleccionDeFotosDelTrabajo, productoDelTrabajo } from "../productos/colu
 import { completarModelosSugeridos } from "../productos/modelos-sugeridos";
 import { productoEnPrompt, productoParaGenerar } from "../productos/prompt";
 import { referenciasDelPersonajeQueViajan, referenciasDeProductoGuardadas } from "../productos/referencias";
-import { hojaEnElEnvio, repartoCompletoDelEnvio, repartoDelEnvio } from "../productos/reparto-del-envio";
+import { hojaEnElEnvio, repartoCompletoDelEnvio } from "../productos/reparto-del-envio";
 import { plantillaUsable } from "../prompts/consulta";
 import { componerDesdePlantilla, type PromptCompuesto } from "../prompts/render";
 import { creditosDelEnvio, traducirAlIngles } from "../prompts/traduccion";
@@ -498,10 +495,9 @@ export async function crearFotograma(
   const conLugar = peticion.edicionDeLugar
     ? null
     : await lugarDelEnvio(actor.id, conEscena?.escena ?? null, peticion.lugarElegido, personaje);
-  const insercion = producto?.pasoDigital === "insertar_captura";
-  const { conProducto, reparto } = await repartoCompletoDelEnvio({
+  const { conProducto, reparto, hechosLugar } = await repartoCompletoDelEnvio({
     producto,
-    lugar: insercion ? 0 : imagenesDelLugar(conLugar),
+    conLugar,
     adaptador,
     modelo,
     envio: {
@@ -555,7 +551,7 @@ export async function crearFotograma(
           // Reparto de la escena (0.28.0): el consentimiento se gatea **por cada persona real** que sale en ella.
           ...(conReparto ? { reparto: conReparto } : {}),
           ...(conProducto ? { producto: conProducto.hechos } : {}),
-          ...(insercion ? hechosDelClipConLugar(conLugar) : hechosDelEnvioConLugar(conLugar, reparto)),
+          ...hechosLugar,
         },
         h.buscar,
       ),
@@ -883,10 +879,16 @@ export async function crearAnimacion(
   if (producto) exigirDerechoDeMarca(peticion.derechoMarca);
   // Un clip parte de **una** imagen: su fotograma aprobado. Este camino no cita ninguna identidad registrada: la
   // escena hablada en modo Omni va por `omni/escena.ts`.
-  const conProducto = producto ? await repartoDelEnvio({ producto, adaptador, modelo, envio: { tipo: "clip" } }) : null;
-  if (conProducto) await completarModelosSugeridos(conProducto.hechos, CAPACIDAD_DE_TIPO.animacion);
   // El clip hereda el lugar de su fotograma: el sitio ya está dentro de la imagen de partida.
   const delLugar = await lugarDelClip(actor.id, partida);
+  const { conProducto, hechosLugar: hechosLugarDelClip } = await repartoCompletoDelEnvio({
+    producto,
+    conLugar: delLugar.conLugar,
+    adaptador,
+    modelo,
+    envio: { tipo: "clip" },
+  });
+  if (conProducto) await completarModelosSugeridos(conProducto.hechos, CAPACIDAD_DE_TIPO.animacion);
 
   const conRepartoDelClip = await hechosDelRepartoDeEscena(partida.escenaId);
 
@@ -916,7 +918,7 @@ export async function crearAnimacion(
         // revocado entre el fotograma y el clip, el clip no sale.
         ...(conRepartoDelClip ? { reparto: conRepartoDelClip } : {}),
         ...(conProducto ? { producto: conProducto.hechos } : {}),
-        ...hechosDelClipConLugar(delLugar.conLugar),
+        ...hechosLugarDelClip,
       },
       h.buscar,
     ),

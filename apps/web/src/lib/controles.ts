@@ -70,6 +70,11 @@ export interface EvaluacionVista {
   /** Versión del conjunto de reglas con el que se evaluó. Queda guardada con la evaluación (RF13). */
   reglasVersion: string;
   comprobaciones: ComprobacionVista[];
+  /**
+   * Cuántas referencias viajarán de cada uno (personaje, producto y maestra del lugar), con la misma cuenta que el
+   * envío. Solo en la consulta de antes de pagar y solo cuando el envío lleva producto o lugar.
+   */
+  referencias?: { personaje: number; producto: number; lugar: number; cabenTodas: boolean };
 }
 
 /** Evaluación vacía y favorable: lo que se muestra mientras no hay nada que evaluar. */

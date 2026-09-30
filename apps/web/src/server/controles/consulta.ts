@@ -7,7 +7,7 @@ import type { FilaPersonaje } from "../db/esquema";
 import { exigirMedioElegido } from "../generacion/comprobaciones";
 import { elegirParaTipo } from "../generacion/precios";
 import { personajeDeLaCadena } from "../generacion/trabajos";
-import { hechosDelClipConLugar, hechosDelEnvioConLugar, imagenesDelLugar, lugarDelEnvio } from "../lugares/en-el-envio";
+import { lugarDeLaImagen, lugarDelClip, lugarDelEnvio } from "../lugares/en-el-envio";
 import type { Actor } from "../media/servicio";
 import { personajePorId } from "../personajes/contexto";
 import { personajePropio } from "../personajes/puede-generar";
@@ -58,6 +58,8 @@ export interface PeticionDeControles {
   productoFotos?: string[];
   /** Lugar elegido **sin escena** («Crear»): uno ajeno responde 404, igual que al confirmar. */
   lugarId?: string | null;
+  /** Segundo paso del producto digital (meter la captura): se evalúa como lo enviará ese paso. */
+  pasoDigital?: "insertar_captura" | null;
 }
 
 export async function evaluarControles(
@@ -85,32 +87,45 @@ export async function evaluarControles(
    * En «Crear» no hay escena: el producto llega en la propia petición (`productoId`), para que el aviso se vea
    * **antes** de confirmar y se pueda confirmar con su casilla, en lugar de toparse con él al pulsar.
    */
+  // El producto se resuelve **como en el envío**: en un fotograma, con su paso digital (la pantalla apagada o la
+  // captura); en el clip, sin paso. Resolverlo de otra forma daría otras fotos y otras cifras en el aviso.
+  const digital =
+    peticion.tipo === "fotograma"
+      ? { ...(peticion.pasoDigital ? { pasoSolicitado: peticion.pasoDigital } : {}) }
+      : undefined;
   const producto = conEscena
     ? conEscena.escena.productId
-      ? await productoParaGenerar(actor.id, conEscena.escena.productId, conEscena.escena.productAction, undefined, {
+      ? await productoParaGenerar(actor.id, conEscena.escena.productId, conEscena.escena.productAction, digital, {
           ids: conEscena.escena.productPhotoIds,
           estricta: false,
         })
       : null
     : peticion.productoId
-      ? await productoParaGenerar(actor.id, peticion.productoId, peticion.productoAccion ?? "", undefined, {
+      ? await productoParaGenerar(actor.id, peticion.productoId, peticion.productoAccion ?? "", digital, {
           ids: peticion.productoFotos ?? [],
           estricta: true,
         })
       : null;
   const sinReferencia = peticion.retratoInventado === true || (!peticion.personajeId && !peticion.medioId);
   // El lugar compite por el mismo cupo: se resuelve igual que en el envío, con la misma función.
-  const conLugar = await lugarDelEnvio(
-    actor.id,
-    conEscena?.escena ?? null,
-    peticion.lugarId ? { lugarId: peticion.lugarId, sitio: "" } : null,
-    personaje,
-  );
-  // En el clip no viaja la maestra (ya está dentro del fotograma): solo cuentan la declaración y el acabado.
-  const esClip = peticion.tipo === "animacion";
-  const { conProducto, reparto } = await repartoCompletoDelEnvio({
+  // El clip, como su envío, hereda el lugar de la imagen que anima (o el de la escena si la imagen no tiene).
+  const conLugar =
+    peticion.tipo === "animacion"
+      ? (
+          await lugarDelClip(actor.id, {
+            escenaId: conEscena?.escena.id ?? null,
+            lugarDelFotograma: peticion.medioId ? await lugarDeLaImagen(actor.id, peticion.medioId) : null,
+          })
+        ).conLugar
+      : await lugarDelEnvio(
+          actor.id,
+          conEscena?.escena ?? null,
+          peticion.lugarId ? { lugarId: peticion.lugarId, sitio: "" } : null,
+          personaje,
+        );
+  const { conProducto, reparto, hechosLugar } = await repartoCompletoDelEnvio({
     producto,
-    lugar: imagenesDelLugar(conLugar),
+    conLugar,
     adaptador: eleccion.adaptador,
     modelo: eleccion.modelo,
     // Las mismas entradas que el envío: el clip parte de una imagen, y el fotograma lleva las fotos del
@@ -155,13 +170,15 @@ export async function evaluarControles(
         primerRetrato: peticion.retratoInventado === true && personaje?.virtual === true,
         vistaSintetica: Boolean(peticion.vistaSintetica),
         ...(conProducto ? { producto: conProducto.hechos } : {}),
-        ...(esClip ? hechosDelClipConLugar(conLugar) : hechosDelEnvioConLugar(conLugar, reparto)),
+        ...hechosLugar,
       },
       buscar,
     ),
     personajeId ? peticion.vistaSintetica : null,
   );
-  return evaluarParaMostrar(hechos);
+  const evaluacion = evaluarParaMostrar(hechos);
+  // Las cifras del reparto, las mismas que usará el envío: el panel puede decir qué viaja sin volver a contarlo.
+  return reparto ? { ...evaluacion, referencias: reparto } : evaluacion;
 }
 
 /**
