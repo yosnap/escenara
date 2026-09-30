@@ -691,7 +691,9 @@ describe.skipIf(!hayBaseDeDatos)("convertir un clip de Crear en un proyecto", ()
     expect(await srtDeLaExportacion()).toBe("");
     // Tampoco se saca del clip lo que no se oye.
     const [silenciada] = await db().select().from(scenes).where(eq(scenes.id, escena.id));
-    await expect(transcribirEscena(actor, escena.id, true)).rejects.toThrow("audio del clip de esta escena está quitado");
+    await expect(transcribirEscena(actor, escena.id, true)).rejects.toThrow(
+      "audio del clip de esta escena está quitado",
+    );
     expect(silenciada?.clipAudioMuted).toBe(true);
 
     // Con pista de voz aparte la escena sí suena, así que sus subtítulos vuelven al fichero.
