@@ -90,6 +90,13 @@ Cada uno tiene su propio **«Borrar»** en su ficha, con su diálogo:
   declaraciones de un lugar se conservan revocadas (son la prueba de lo que declaraste). Ver [Presentar un
   producto](productos.md) y [Lugares](lugares.md).
 
+## Tus publicaciones en la comunidad
+
+Lo que publicas en la [comunidad](comunidad.md) es una **copia**: retirarla la borra y tu original no cambia. Si borras
+el original (el personaje, el archivo o su proyecto), su publicación deja de verse al momento y se borra con su copia
+en unos minutos. Tus publicaciones (con su estado y el motivo de un rechazo) y tus logros se descargan en JSON desde
+**Comunidad › Tus publicaciones › Descargar**. La exportación de un proyecto no las incluye.
+
 ## Borrar tu cuenta
 
 En **Tu cuenta › Tus datos › «Borrar mi cuenta»**. Es irreversible, así que tiene varias salvaguardas:
@@ -108,6 +115,8 @@ En **Tu cuenta › Tus datos › «Borrar mi cuenta»**. Es irreversible, así q
    (`update users set role = 'admin' where email = '…'`), con la copia hecha.
 6. Si eres administrador y publicaste **ejemplos de plantillas** de la instalación, el diálogo te avisa: esas
    plantillas se quedan sin ejemplo (no se borran).
+7. Tus **publicaciones de la comunidad** dejan de verse desde que pides el borrado, y se borran con sus copias al
+   terminar el plazo. Si cancelas, vuelven a verse tal como estaban.
 
 Pasado el plazo, el worker borra las filas **en una sola operación**: si algo falla a mitad, no se borra nada y lo
 vuelve a intentar más tarde. Después borra los archivos; los que el almacenamiento no deja borrar quedan apuntados y se
