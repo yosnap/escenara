@@ -8,8 +8,8 @@ import type { Actor } from "../media/servicio";
  *
  * Una publicación la ven los demás solo si: la comunidad está encendida, está **aprobada**, su original sigue existiendo
  * y no está en la papelera (si se borró, queda huérfana y el worker la barre), el personaje inventado del que sale
- * mantiene su declaración vigente **desde antes de la aprobación** (revocarla la oculta; volver a declararlo exige
- * aprobarla otra vez) y su autor no tiene la cuenta en periodo de borrado. Su autor la ve
+ * mantiene su declaración vigente **desde antes de la aprobación** (revocarla la oculta para siempre: la aplicación no
+ * deja volver a declarar un inventado, y la fecha es solo una salvaguarda) y su autor no tiene la cuenta en periodo de borrado. Su autor la ve
  * siempre (para saber su estado y el motivo de un rechazo) y quien administra también (para moderarla).
  */
 export function condicionVisible(): SQL {

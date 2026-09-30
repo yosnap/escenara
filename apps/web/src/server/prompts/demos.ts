@@ -45,7 +45,9 @@ const MEDIO = sql.raw(`"media"."id"`);
 
 /**
  * Personaje sintético. En `ejemplo`: inventado (y con él animado) o mascota. En `comunidad`: solo inventado, y **cada**
- * referencia suya (y su retrato maestro) tiene que ser el **resultado de un trabajo de ese personaje**: no se fía de la
+ * referencia suya (y su retrato maestro), también las de **todas sus versiones** (una lista que no desaparece al borrar
+ * un medio, a diferencia de la referencia de la ficha, que cae en cascada), tiene que ser el **resultado de un trabajo
+ * de ese personaje**: no se fía de la
  * etiqueta `vista_generada`, que también lleva una subida que el usuario declaró «hecha con IA». Una mascota real sale de
  * fotos reales y una persona real no lo es nunca.
  */
@@ -57,7 +59,13 @@ const sintetico = (c: string, nivel: NivelDeOrigen = "ejemplo") =>
                                         and jcr.character_id = ${c}.id))
         and (${c}.master_frame_media_id is null
              or exists (select 1 from generation_jobs jmf where jmf.result_media_id = ${c}.master_frame_media_id
-                        and jmf.character_id = ${c}.id)))`
+                        and jmf.character_id = ${c}.id))
+        and not exists (select 1 from character_versions cvs,
+                               jsonb_array_elements_text(case when jsonb_typeof(cvs.reference_media_ids) = 'array'
+                                                              then cvs.reference_media_ids else '[]'::jsonb end) rs(mid)
+                        where cvs.character_id = ${c}.id
+                          and not exists (select 1 from generation_jobs jvs where jvs.result_media_id::text = rs.mid
+                                          and jvs.character_id = ${c}.id)))`
     : `(${c}.virtual = true or ${c}.kind = 'animal')`;
 
 /** Lugar sin ninguna foto real: generado y con todas sus referencias generadas. */
@@ -87,8 +95,10 @@ const ids = (j: string, clave: string) =>
  *
  * En Omni con **identidad registrada** el trabajo no envía imágenes: la cara la pone el registro, que subió un retrato
  * (y quizá un cuerpo) al registrarse. Esas imágenes cuentan como enviadas: el retrato y el cuerpo del registro con ese
- * identificador **del mismo personaje**. Sin registro, o con el retrato borrado, sale nulo: «desconocido». Quitar después
- * fotos de la ficha no cambia lo que el registro subió.
+ * identificador **del mismo personaje**, y además todas las referencias de la **versión registrada** (una lista sin clave
+ * ajena, que sobrevive a que se borre un medio). Sin registro, con el retrato borrado, o con un cuerpo que se subió
+ * (`remote_body_image_url`) y cuyo medio ya no existe, sale nulo: «desconocido». Quitar o borrar después fotos no cambia
+ * lo que el registro usó.
  */
 export const mediosEnviados = (j: string) => `(
   ${ids(j, "referencias")}
@@ -101,7 +111,13 @@ export const mediosEnviados = (j: string) => `(
             left join character_omni_registrations r on r.remote_character_id = xo and r.character_id = ${j}.character_id
   union all select r.body_media_id from jsonb_array_elements_text(${lista(j, "personajesOmni")}) xo
             join character_omni_registrations r on r.remote_character_id = xo and r.character_id = ${j}.character_id
-            where r.body_media_id is not null)`;
+            where r.body_media_id is not null or coalesce(r.remote_body_image_url, '') <> ''
+  union all select case when y ~* ${UUID_SQL} then y::uuid end
+            from jsonb_array_elements_text(${lista(j, "personajesOmni")}) xo
+            join character_omni_registrations r on r.remote_character_id = xo and r.character_id = ${j}.character_id
+            join character_versions v on v.id = r.character_version_id
+            cross join lateral jsonb_array_elements_text(case when jsonb_typeof(v.reference_media_ids) = 'array'
+                                                              then v.reference_media_ids else '[]'::jsonb end) y)`;
 
 /**
  * Hechos del propio trabajo que la comunidad exige (sin mirar su cadena), leídos de lo que el trabajo **conserva**:

@@ -416,6 +416,91 @@ describe.skipIf(!hayBaseDeDatos)("elegibilidad de la comunidad (lista blanca de 
       expect(await origenSeguro((await clipOmni("rc-que-no-existe")).id)).toBe(false);
     });
 
+    test("Omni: borrar después el cuerpo subido que usó el registro no lo vuelve publicable", async () => {
+      const { inventado, vista } = await inventadoConVista();
+      const cuerpo = await f.medioDePrueba(ana.id, "imagen");
+      const [version] = await db()
+        .insert(characterVersions)
+        .values({
+          characterId: inventado,
+          number: 1,
+          sheet: {} as never,
+          referenceMediaIds: [vista.id],
+          changedFields: [],
+        })
+        .returning({ id: characterVersions.id });
+      await db()
+        .insert(characterOmniRegistrations)
+        .values({
+          characterId: inventado,
+          characterVersionId: version?.id ?? "",
+          audioId: "voz",
+          remoteCharacterId: "rc-cuerpo",
+          portraitMediaId: vista.id,
+          bodyMediaId: cuerpo.id,
+          remoteBodyImageUrl: "https://proveedor.example/cuerpo.png",
+        });
+      const clip = await f.clipDePrueba(ana.id, inventado, {
+        input: { prompt: "p", referencias: [], personajesOmni: ["rc-cuerpo"], parametros: {} },
+      });
+      expect(await origenSeguro(clip.id)).toBe(false);
+      // Borrado definitivo del cuerpo: el registro se queda con el cuerpo a nulo, pero sí subió uno.
+      await db().delete(tablaMedios).where(eq(tablaMedios.id, cuerpo.id));
+      expect(await origenSeguro(clip.id)).toBe(false);
+      expect((await medio(clip.id)).publicable).toBe(false);
+    });
+
+    test("Omni: una subida en la versión registrada cuenta aunque ya no esté en la ficha ni exista el medio", async () => {
+      const { inventado, vista } = await inventadoConVista();
+      const subida = await f.medioDePrueba(ana.id, "imagen");
+      const [version] = await db()
+        .insert(characterVersions)
+        .values({
+          characterId: inventado,
+          number: 1,
+          sheet: {} as never,
+          referenceMediaIds: [vista.id, subida.id],
+          changedFields: [],
+        })
+        .returning({ id: characterVersions.id });
+      await db()
+        .insert(characterOmniRegistrations)
+        .values({
+          characterId: inventado,
+          characterVersionId: version?.id ?? "",
+          audioId: "voz",
+          remoteCharacterId: "rc-version",
+          portraitMediaId: vista.id,
+        });
+      const clip = await f.clipDePrueba(ana.id, inventado, {
+        input: { prompt: "p", referencias: [], personajesOmni: ["rc-version"], parametros: {} },
+      });
+      await db().delete(tablaMedios).where(eq(tablaMedios.id, subida.id));
+      expect(await origenSeguro(clip.id)).toBe(false);
+    });
+
+    test("una foto subida al inventado y borrada después sigue contando por su versión, también para sus clips", async () => {
+      const { inventado, vista } = await inventadoConVista();
+      const subida = await f.medioDePrueba(ana.id, "imagen");
+      await db()
+        .insert(characterReferences)
+        .values({ characterId: inventado, mediaId: subida.id, origin: "vista_generada" });
+      await db()
+        .insert(characterVersions)
+        .values({
+          characterId: inventado,
+          number: 1,
+          sheet: {} as never,
+          referenceMediaIds: [vista.id, subida.id],
+          changedFields: [],
+        });
+      // Borrado definitivo: la referencia de la ficha cae en cascada; la versión conserva el identificador.
+      await db().delete(tablaMedios).where(eq(tablaMedios.id, subida.id));
+      const clip = await fotogramaCon(inventado, [vista.id]);
+      expect(await origenSeguro(clip.id)).toBe(false);
+      expect((await personaje(inventado)).publicable).toBe(false);
+    });
+
     test("booleanos de la entrada: solo `true` de verdad cuenta; «true» como texto no", async () => {
       const inventado = await f.inventadoDePrueba(ana.id);
       const texto = await f.clipDePrueba(ana.id, inventado, { input: { sinReferencia: "true", parametros: {} } });

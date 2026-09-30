@@ -93,6 +93,10 @@ describe.skipIf(!hayBaseDeDatos)("ocultar, rechazar y exportar en la comunidad",
     await db().update(media).set({ deletedAt: new Date() }).where(eq(media.id, clip.id));
     expect(await visible(id)).toBe(false);
     expect((await misPublicaciones(actorDe(ana))).find((p) => p.id === id)?.oculta).toContain("papelera");
+    // Quien modera lo lee en tercera persona: nada de «Restáuralo» en una publicación ajena.
+    const enCola = (await colaDeModeracion(actorDe(admin, true))).aprobadas.find((p) => p.id === id);
+    expect(enCola?.oculta).toContain("papelera del autor");
+    expect(enCola?.oculta).not.toContain("Restáuralo");
     await db().update(media).set({ deletedAt: null }).where(eq(media.id, clip.id));
     expect(await visible(id)).toBe(true);
     expect((await misPublicaciones(actorDe(ana))).find((p) => p.id === id)?.oculta).toBeNull();

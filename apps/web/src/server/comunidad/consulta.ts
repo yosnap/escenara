@@ -118,7 +118,8 @@ function miVista(f: FilaPublicacion, publica: PublicacionVista, oculta: string |
  * Por qué una publicación **aprobada** no la ven los demás (las mismas condiciones de `condicionVisible`, explicadas).
  * Solo para su autor y quien modera: la regla que decide sigue siendo `condicionVisible`.
  */
-async function motivosDeOcultacion(ids: string[]): Promise<Map<string, string>> {
+async function motivosDeOcultacion(ids: string[], quien: "autor" | "moderacion"): Promise<Map<string, string>> {
+  const autor = quien === "autor";
   if (ids.length === 0) return new Map();
   const filas = (await db().execute(sql`
     select community_posts.id,
@@ -146,11 +147,17 @@ async function motivosDeOcultacion(ids: string[]): Promise<Map<string, string>> 
       f.huerfana
         ? "Su original ya no existe: se borrará en unos minutos."
         : f.papelera
-          ? "Su original está en la papelera. Restáuralo y volverá a verse."
+          ? autor
+            ? "Su original está en la papelera. Restáuralo y volverá a verse."
+            : "Su original está en la papelera del autor: volverá a verse si lo restaura."
           : f.sin_declaracion
-            ? "Su personaje ya no tiene vigente la declaración de personaje inventado, así que no se vuelve a enseñar. Una declaración revocada no se puede recuperar: puedes retirarla."
+            ? autor
+              ? "Su personaje ya no tiene vigente la declaración de personaje inventado, así que no se vuelve a enseñar. Una declaración revocada no se puede recuperar: puedes retirarla."
+              : "Su personaje ya no tiene vigente la declaración de personaje inventado: no se vuelve a enseñar."
             : f.borrado
-              ? "Tu cuenta está en periodo de borrado."
+              ? autor
+                ? "Tu cuenta está en periodo de borrado."
+                : "La cuenta del autor está en periodo de borrado."
               : "No se puede enseñar ahora.",
     ]),
   );
@@ -184,7 +191,13 @@ export async function misPublicaciones(actor: Actor): Promise<MiPublicacionVista
     .from(communityPosts)
     .where(eq(communityPosts.authorId, actor.id))
     .orderBy(desc(communityPosts.createdAt));
-  const [vistas, ocultas] = await Promise.all([vistasDe(db(), filas), motivosDeOcultacion(filas.map((f) => f.id))]);
+  const [vistas, ocultas] = await Promise.all([
+    vistasDe(db(), filas),
+    motivosDeOcultacion(
+      filas.map((f) => f.id),
+      "autor",
+    ),
+  ]);
   return filas.flatMap((f) => {
     const v = vistas.get(f.id);
     return v ? [miVista(f, v, ocultas.get(f.id) ?? null)] : [];
@@ -218,7 +231,10 @@ export async function colaDeModeracion(actor: Actor): Promise<{
       .limit(100),
   ]);
   const vistas = await vistasDe(db(), [...pendientes, ...aprobadas]);
-  const ocultas = await motivosDeOcultacion(aprobadas.map((f) => f.id));
+  const ocultas = await motivosDeOcultacion(
+    aprobadas.map((f) => f.id),
+    "moderacion",
+  );
   const enModeracion = async (f: FilaPublicacion): Promise<PublicacionEnModeracion[]> => {
     const v = vistas.get(f.id);
     if (!v) return [];

@@ -37,7 +37,10 @@ Para la publicación: (a) enlazar el original y servirlo si está aprobado; (b) 
   encolarse (todas las `referencias`, no solo la primera; `referenciasLugar`, `referenciasProducto`,
   `fotogramaSituado`, la imagen de partida y el `audioDeReferencia`) y, en Omni con identidad registrada (`personajesOmni`
   sin imágenes en el trabajo), el retrato y el cuerpo que subió **ese registro** (`character_omni_registrations` del
-  mismo personaje): sin registro o con el retrato borrado, «desconocido». Esa entrada es la procedencia fijada al generar:
+  mismo personaje) y las referencias de su versión registrada: sin registro, con el retrato borrado o con un cuerpo que
+  se subió y cuyo medio ya no existe, «desconocido». Principio general: ninguna prueba desaparece al borrar un medio; lo
+  que se usó y ya no existe cuenta como «no» (las referencias de la ficha caen en cascada, así que el inventado se juzga
+  también por las de todas sus versiones, que son una lista sin clave ajena). Esa entrada es la procedencia fijada al generar:
   vaciar después un campo de la escena o borrar una foto no la cambia. Cada medio enviado, y lo que enviaron los
   trabajos que lo produjeron (consulta recursiva, cinco pasos como mucho), tiene que ser **resultado** de un trabajo de
   un personaje inventado con sus hechos en regla (sin reparto, sin producto aunque se haya borrado, con lugar generado o
