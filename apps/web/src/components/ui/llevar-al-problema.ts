@@ -36,13 +36,17 @@ export const buscarProblema = (id: string, documento: Document = document) =>
 export const sinMovimiento = (documento: Document) =>
   documento.defaultView?.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
 
+/** Cada cuánto se comprueba, mientras dura la señal, que el bloque sigue ahí y dónde está. */
+const MS_VIGILANCIA = 200;
+
 /** El señalamiento en curso: solo hay uno a la vez; señalar otro bloque quita el anterior. */
 let quitarSenalActual: (() => void) | null = null;
 
 /** Quita la flecha y el aro del bloque señalado, si hay alguno. */
 export function quitarSenal(): void {
-  quitarSenalActual?.();
+  const quitar = quitarSenalActual;
   quitarSenalActual = null;
+  quitar?.();
 }
 
 function senalar(marca: HTMLElement, documento: Document): void {
@@ -60,7 +64,17 @@ function senalar(marca: HTMLElement, documento: Document): void {
   flecha.style.position = "absolute";
   flecha.style.zIndex = "60";
   flecha.innerHTML = SVG_FLECHA;
+  /**
+   * Coloca la flecha encima del bloque. Se llama al empezar, al desplazarse **cualquier** contenedor (la página o un
+   * diálogo con desplazamiento propio: el `scroll` se escucha en captura porque no burbujea), al terminar el
+   * desplazamiento, al cambiar el tamaño de la ventana y cada poco mientras dura. Si el bloque ya no está en la página
+   * (se ha cerrado el diálogo, se ha cambiado de pantalla) o su paso se ha ocultado, la señal se quita.
+   */
   const colocar = () => {
+    if (!marca.isConnected || marca.closest("[hidden]")) {
+      quitarSenal();
+      return;
+    }
     const rect = marca.getBoundingClientRect();
     const { top, left } = posicionDeFlecha(
       rect,
@@ -74,21 +88,34 @@ function senalar(marca: HTMLElement, documento: Document): void {
   documento.body.appendChild(flecha);
 
   const alPulsarFuera = (evento: Event) => {
-    if (!(evento.target instanceof Node) || !marca.contains(evento.target)) quitarSenal();
+    const dentro = typeof Node !== "undefined" && evento.target instanceof Node && marca.contains(evento.target);
+    if (!dentro) quitarSenal();
+  };
+  // Escape cierra diálogos y menús: la flecha no se queda encima de lo que haya debajo.
+  const alPulsarTecla = (evento: Event) => {
+    if ((evento as KeyboardEvent).key === "Escape") quitarSenal();
   };
   const alResolver = () => quitarSenal();
-  documento.addEventListener("pointerdown", alPulsarFuera, true);
-  marca.addEventListener("input", alResolver);
-  marca.addEventListener("change", alResolver);
-  ventana?.addEventListener("resize", colocar);
+  const escuchas: [EventTarget | null | undefined, string, EventListener, boolean][] = [
+    [documento, "pointerdown", alPulsarFuera, true],
+    [documento, "keydown", alPulsarTecla, true],
+    [documento, "scroll", colocar, true],
+    [documento, "scrollend", colocar, true],
+    [marca, "input", alResolver, false],
+    [marca, "change", alResolver, false],
+    [ventana, "resize", colocar, false],
+  ];
+  for (const [objetivo, evento, escucha, captura] of escuchas) objetivo?.addEventListener(evento, escucha, captura);
   const temporizador = ventana?.setTimeout(quitarSenal, MS_FLECHA);
+  const vigilancia = ventana?.setInterval(colocar, MS_VIGILANCIA);
 
   quitarSenalActual = () => {
+    // Primero se suelta: `colocar` puede volver a llamar a `quitarSenal` mientras se limpia.
+    quitarSenalActual = null;
     if (temporizador !== undefined) ventana?.clearTimeout(temporizador);
-    documento.removeEventListener("pointerdown", alPulsarFuera, true);
-    marca.removeEventListener("input", alResolver);
-    marca.removeEventListener("change", alResolver);
-    ventana?.removeEventListener("resize", colocar);
+    if (vigilancia !== undefined) ventana?.clearInterval(vigilancia);
+    for (const [objetivo, evento, escucha, captura] of escuchas)
+      objetivo?.removeEventListener(evento, escucha, captura);
     marca.removeAttribute("data-resaltado");
     flecha.remove();
   };

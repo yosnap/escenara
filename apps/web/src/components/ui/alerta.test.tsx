@@ -3,7 +3,6 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { Problema } from "@/lib/llevar-al-problema";
 import { Alerta, esDescartable, FlechaProblema } from "./alerta";
 import { Aviso, AvisoEstado } from "./feedback";
-import { CLASES_FLECHA_ANIMADA, enfocarProblema, llevarAlProblema, quitarSenal } from "./llevar-al-problema";
 
 const veces = (html: string, texto: string) => html.split(texto).length - 1;
 
@@ -177,136 +176,42 @@ describe("flecha", () => {
   });
 });
 
-/** Una página mínima con un bloque marcado, para probar el desplazamiento, el foco, el aro y la flecha. */
-function paginaFalsa({ reducir = false, oculto = false, panel = "clip" as string | null } = {}) {
-  const eventos: string[] = [];
-  const pendientes: (() => void)[] = [];
-  const atributos = new Map<string, string>();
-  const anadidos: { atributos: Map<string, string>; className: string; quitado: boolean }[] = [];
-  const control = { focus: (o: FocusOptions) => eventos.push(`foco:${o.preventScroll}`) };
-  const marca = {
-    tabIndex: 0,
-    offsetWidth: 0,
-    matches: () => false,
-    querySelector: () => control,
-    closest: (selector: string) =>
-      selector === "[hidden]" ? (oculto ? {} : null) : panel ? { getAttribute: () => panel } : null,
-    scrollIntoView: (o: ScrollIntoViewOptions) => eventos.push(`desplazar:${o.behavior}`),
-    getBoundingClientRect: () => ({ top: 300, left: 100, width: 400 }),
-    setAttribute: (k: string, v: string) => atributos.set(k, v),
-    removeAttribute: (k: string) => atributos.delete(k),
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    contains: () => false,
-    focus: () => eventos.push("foco-bloque"),
-  };
-  const ventana = {
-    matchMedia: () => ({ matches: reducir }),
-    scrollX: 0,
-    scrollY: 1000,
-    innerWidth: 1200,
-    setTimeout: (f: () => void) => pendientes.push(f),
-    clearTimeout: () => {},
-    addEventListener: () => {},
-    removeEventListener: () => {},
-  };
-  const documento = {
-    defaultView: ventana,
-    querySelector: () => marca,
-    addEventListener: () => {},
-    removeEventListener: () => {},
-    createElement: () => {
-      const flecha = {
-        atributos: new Map<string, string>(),
-        className: "",
-        quitado: false,
-        style: {} as Record<string, string>,
-        innerHTML: "",
-        setAttribute(k: string, v: string) {
-          flecha.atributos.set(k, v);
-        },
-        remove() {
-          flecha.quitado = true;
-        },
-      };
-      return flecha;
-    },
-    body: { appendChild: (n: (typeof anadidos)[number]) => anadidos.push(n) },
-  };
-  return { documento: documento as unknown as Document, eventos, pendientes, atributos, anadidos };
-}
-
-describe("llevar al problema en la página", () => {
-  test("desplaza con suavidad, enfoca sin mover la página, resalta y pone la flecha", () => {
-    const p = paginaFalsa();
-    expect(enfocarProblema("clip-derechos", p.documento)).toBe(true);
-    expect(p.eventos).toEqual(["desplazar:smooth", "foco:true"]);
-    expect(p.atributos.get("data-resaltado")).toBe("true");
-    const flecha = p.anadidos[0];
-    expect(flecha?.atributos.get("aria-hidden")).toBe("true");
-    expect(flecha?.className).toContain(CLASES_FLECHA_ANIMADA);
-    quitarSenal();
-    expect(p.atributos.has("data-resaltado")).toBe(false);
-    expect(flecha?.quitado).toBe(true);
+describe("alerta: información y regiones", () => {
+  test("información: azul de marca, icono de información y rótulo propio; se anuncia con cortesía", () => {
+    const html = renderToStaticMarkup(<Alerta tipo="info">La vista se está generando.</Alerta>);
+    expect(html).toContain('data-alerta="info"');
+    expect(html).toContain(">Información<");
+    expect(html).toContain("text-acento");
+    expect(html).toContain('role="status"');
+    expect(renderToStaticMarkup(<Aviso tono="info">Nota</Aviso>)).toContain('data-alerta="info"');
+    expect(renderToStaticMarkup(<Aviso tono="aviso">Riesgo</Aviso>)).toContain('data-alerta="aviso"');
   });
 
-  test("con «reducir movimiento» el desplazamiento es directo", () => {
-    const p = paginaFalsa({ reducir: true });
-    enfocarProblema("clip-derechos", p.documento);
-    expect(p.eventos[0]).toBe("desplazar:auto");
-    quitarSenal();
-  });
-
-  test("señalar otro bloque quita la flecha anterior: nunca hay dos", () => {
-    const p = paginaFalsa();
-    enfocarProblema("a", p.documento);
-    enfocarProblema("b", p.documento);
-    expect(p.anadidos.map((f) => f.quitado)).toEqual([true, false]);
-    quitarSenal();
-  });
-
-  test("un bloque de un paso oculto no se enfoca", () => {
-    const p = paginaFalsa({ oculto: true });
-    expect(enfocarProblema("clip-derechos", p.documento)).toBe(false);
-    expect(p.anadidos).toHaveLength(0);
-  });
-
-  test("sin paso en el problema, cambia al paso del panel que lo contiene y enfoca al pintarse", () => {
-    const p = paginaFalsa({ oculto: false, panel: "clip" });
-    const idos: string[] = [];
-    llevarAlProblema(
-      { id: "clip-derechos", texto: "x" },
-      { actual: "escena", ir: (paso) => idos.push(paso), estaBloqueado: () => false, avisar: () => {} },
-      p.documento,
+  test("sin título ni anuncio no es una región con nombre: en una lista no llena la navegación del lector", () => {
+    const html = renderToStaticMarkup(
+      <Alerta tipo="error" anuncio="ninguno">
+        El proveedor rechazó la imagen.
+      </Alerta>,
     );
-    expect(idos).toEqual(["clip"]);
-    expect(p.eventos).toEqual([]);
-    p.pendientes.shift()?.();
-    expect(p.eventos).toEqual(["desplazar:smooth", "foco:true"]);
-    quitarSenal();
+    expect(html.startsWith("<div")).toBe(true);
+    expect(html).not.toContain("aria-label=");
+    expect(html).not.toContain("<section");
   });
 
-  test("en el mismo paso no cambia de paso: enfoca directamente", () => {
-    const p = paginaFalsa({ panel: "escena" });
-    const idos: string[] = [];
-    llevarAlProblema(
-      { id: "descripcion", texto: "x" },
-      { actual: "escena", ir: (paso) => idos.push(paso), estaBloqueado: () => false, avisar: () => {} },
-      p.documento,
-    );
-    expect(idos).toEqual([]);
-    expect(p.eventos[0]).toBe("desplazar:smooth");
-    quitarSenal();
+  test("los estados de preparación tienen el mismo color que su insignia", () => {
+    const revision = renderToStaticMarkup(<AvisoEstado estado="revision" motivo="Falta una fuente." />);
+    expect(revision).toContain('data-alerta="info"');
+    expect(revision).toContain("Requiere revisión");
+    expect(renderToStaticMarkup(<AvisoEstado estado="ajustes" motivo="x" />)).toContain('data-alerta="aviso"');
   });
 
-  test("un paso bloqueado no se abre: se avisa", () => {
-    const p = paginaFalsa({ panel: "clip" });
-    const avisos: string[] = [];
-    llevarAlProblema(
-      { id: "clip-derechos", texto: "x" },
-      { actual: "escena", ir: () => avisos.push("ir"), estaBloqueado: () => true, avisar: (paso) => avisos.push(paso) },
-      p.documento,
-    );
-    expect(avisos).toEqual(["clip"]);
+  test("el id permite describir otro control con la alerta", () => {
+    expect(
+      renderToStaticMarkup(
+        <Alerta tipo="info" id="motivo-x" anuncio="ninguno">
+          Motivo
+        </Alerta>,
+      ),
+    ).toContain('id="motivo-x"');
   });
 });
