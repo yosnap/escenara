@@ -6,7 +6,9 @@ import { fileURLToPath } from "node:url";
 
 export const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const REPO = join(RAIZ, "..");
-export const SALIDA = join(RAIZ, "salida");
+// VIDEO_SALIDA permite usar la carpeta de salida de otra copia del repositorio
+// (p. ej. desde un worktree); por defecto, video/salida
+export const SALIDA = process.env.VIDEO_SALIDA ?? join(RAIZ, "salida");
 export const PUBLICO = join(SALIDA, "publico");
 export const FPS = 30;
 

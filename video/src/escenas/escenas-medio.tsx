@@ -21,7 +21,8 @@ const DIRECCION = [
 export const Escena05: React.FC<PropsEscena> = ({ escena, fps }) => {
   const f = useCurrentFrame();
   const d = dur(escena, fps);
-  const tTrend = cuandoDice(escena, "trend", fps);
+  // «tren» casa con «trend» y con «tren» (whisper a veces no oye la d final)
+  const tTrend = cuandoDice(escena, "tren", fps);
   const tDecida = cuandoDice(escena, "decida", fps);
   const vent = entrada(f, 8, 22);
   const trend = entrada(f, tTrend, 20);

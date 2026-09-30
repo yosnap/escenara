@@ -1,67 +1,44 @@
-// Genera la locución con la voz del propietario (perfil «Mi voz» de Voicebox).
-// Una toma por frase, varias semillas por frase; cada candidata se transcribe con
-// whisper-cli (local) y se elige la que mejor coincide con el texto, sin cortes.
-// Solo usa la API local de Voicebox para GENERAR audio nuevo: no lee, copia ni
-// exporta muestras del perfil ni su base de datos.
+// Genera la locución: una toma por frase con el motor elegido, transcrita con
+// whisper-cli (local) y validada contra el guion (arranque, final, silencios).
 //
-// Uso: node scripts/locucion.mjs [--semillas 3] [--semilla-base 11] [--solo 01-gancho,05-direccion] [--rehacer]
-// Sin --rehacer reutiliza las tomas brutas ya descargadas y solo vuelve a limpiarlas;
-// --reelegir vuelve a limpiar y elegir todas las frases sin generar nada nuevo.
+// Motores (scripts/motores-voz.mjs):
+//  - elevenlabs (por defecto): UNA toma por frase; solo se repite si whisper
+//    detecta un error, como mucho 2 veces por frase, y nunca por encima del tope
+//    de caracteres (--tope, 3000 por defecto; registro en salida/voz/elevenlabs/gasto.json).
+//    Requiere la variable de entorno ELEVENLABS_API_KEY.
+//  - voicebox: varias semillas por frase y se queda la de duración mediana.
+//
+// Uso: node scripts/locucion.mjs [--motor elevenlabs|voicebox] [--solo 01-gancho,05-direccion]
+//        [--semillas 3] [--semilla-base 11] [--reintentos 2] [--tope 3000] [--rehacer] [--reelegir]
+// Las tomas brutas ya descargadas se reutilizan (no se vuelve a pagar); --rehacer
+// las regenera; --reelegir vuelve a limpiar y elegir sin generar nada.
 import { execFileSync, spawnSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { corteEstructural, duracion, ejecutar, leerGuion, PUBLICO, SALIDA, similitud } from "./comun.mjs";
+import { motorElevenLabs, motorVoicebox, registroGasto } from "./motores-voz.mjs";
 
-const API = process.env.VOICEBOX_URL ?? "http://127.0.0.1:17493";
-const PERFIL = process.env.VOICEBOX_PERFIL ?? "89953d28-58ce-4b62-9309-87fb4d9c1d79";
 // Modelo gratuito de whisper.cpp; se descarga con `npm run modelo-whisper` a salida/modelos
 const WHISPER_MODELO = process.env.WHISPER_MODELO ?? join(SALIDA, "modelos", "ggml-large-v3-turbo-q5_0.bin");
 
 const args = process.argv.slice(2);
 const valor = (n, d) => (args.includes(n) ? args[args.indexOf(n) + 1] : d);
-const SEMILLAS = Number(valor("--semillas", "3"));
+const MOTOR = valor("--motor", "elevenlabs");
 const SOLO = valor("--solo", "")?.split(",").filter(Boolean) ?? [];
 const REHACER = args.includes("--rehacer");
 const REELEGIR = args.includes("--reelegir");
 const SEMILLA_BASE = Number(valor("--semilla-base", "11"));
+const SEMILLAS = Number(valor("--semillas", MOTOR === "voicebox" ? "3" : "1"));
+const REINTENTOS = Number(valor("--reintentos", MOTOR === "voicebox" ? "0" : "2"));
+const TOPE = Number(valor("--tope", "3000"));
+if (!["elevenlabs", "voicebox"].includes(MOTOR)) throw new Error(`Motor desconocido: ${MOTOR}`);
 
-const DIR_CAND = join(SALIDA, "voz", "candidatas");
+// Las tomas de Voicebox conservan su carpeta histórica (salida/voz/candidatas)
+const DIR_MOTOR = join(SALIDA, "voz", MOTOR === "voicebox" ? "." : MOTOR);
+const DIR_CAND = join(SALIDA, "voz", MOTOR === "voicebox" ? "candidatas" : join(MOTOR, "candidatas"));
 const DIR_VOZ = join(PUBLICO, "voz");
 mkdirSync(DIR_CAND, { recursive: true });
 mkdirSync(DIR_VOZ, { recursive: true });
-
-async function pedir(ruta, opciones = {}) {
-  const r = await fetch(`${API}${ruta}`, opciones);
-  if (!r.ok) throw new Error(`Voicebox ${ruta} respondió ${r.status}: ${await r.text()}`);
-  return r;
-}
-
-async function comprobarPerfil() {
-  const perfiles = await (await pedir("/profiles")).json();
-  const p = perfiles.find((x) => x.id === PERFIL);
-  if (!p) throw new Error(`No existe el perfil ${PERFIL} en Voicebox`);
-  if (p.language !== "es") throw new Error(`El perfil ${p.name} no es de idioma es`);
-  return p;
-}
-
-async function generar(texto, semilla) {
-  const cuerpo = { profile_id: PERFIL, text: texto, language: "es", engine: "qwen", model_size: "1.7B", seed: semilla };
-  const g = await (
-    await pedir("/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(cuerpo),
-    })
-  ).json();
-  const limite = Date.now() + 10 * 60_000;
-  while (Date.now() < limite) {
-    await new Promise((r) => setTimeout(r, 1500));
-    const h = await (await pedir(`/history/${g.id}`)).json();
-    if (h.status === "completed" && h.duration > 0 && h.audio_path) return g.id;
-    if (h.status === "failed" || h.error) throw new Error(`Generación ${g.id} fallida: ${h.error}`);
-  }
-  throw new Error(`Generación ${g.id} sin terminar tras 10 min`);
-}
 
 function transcribir(wav) {
   // whisper-cli espera 16 kHz mono
@@ -171,10 +148,13 @@ function limpiarToma(bruta, limpia, esperado) {
   const total = duracion(bruta);
   const cola = silencios(bruta, -45, 0.1).find((s) => s.fin >= total - 0.01);
   const finVoz = cola ? Math.min(total, cola.inicio + 0.12) : total;
-  recortar(bruta, limpia, 0, finVoz);
+  // Silencio inicial recortado a 0,05 s (la entrada de cada escena la marca audio.mjs)
+  const cabeza = silencios(bruta, -45, 0.05).find((s) => s.inicio < 0.01);
+  const inicioVoz = cabeza && Number.isFinite(cabeza.fin) ? Math.max(0, cabeza.fin - 0.05) : 0;
+  recortar(bruta, limpia, inicioVoz, finVoz);
   let texto = transcribir(limpia);
   let sim = similitud(texto, esperado);
-  let recorteInicial = 0;
+  let recorteInicial = inicioVoz;
   if (primeraPalabra(texto) !== primeraPalabra(esperado)) {
     const desde = corteEstructural(envolvente(bruta));
     if (desde !== null) {
@@ -202,71 +182,74 @@ function limpiarToma(bruta, limpia, esperado) {
   };
 }
 
+const valida = (c) => c.arranqueLimpio && c.finalCompleto && c.silencios === 0 && c.similitud >= 0.95;
+
+async function tomar(motor, escena, semilla) {
+  const base = join(DIR_CAND, `${escena.id}-s${semilla}`);
+  const wav = `${base}.wav`;
+  const existente = ["mp3", "wav"].map((x) => `${base}.bruta.${x}`).find((f) => existsSync(f));
+  let bruta = existente;
+  if (!bruta || REHACER) {
+    if (REELEGIR) throw new Error(`--reelegir sin toma bruta para ${escena.id} s${semilla}`);
+    const { audio, extension } = await motor.generar(escena.locucion, semilla, escena.id);
+    bruta = `${base}.bruta.${extension}`;
+    writeFileSync(bruta, audio);
+  }
+  const l = limpiarToma(bruta, wav, escena.subtitulo);
+  const c = {
+    semilla,
+    wav,
+    duracion: duracion(wav),
+    transcripcion: l.texto,
+    similitud: l.sim,
+    recorteInicial: l.recorteInicial,
+    arranqueLimpio: l.arranqueLimpio,
+    finalCompleto: l.finalCompleto,
+    silencios: contarSilencios(wav),
+  };
+  console.log(
+    `${escena.id} s${semilla}: ${c.duracion.toFixed(2)} s, sim ${c.similitud.toFixed(3)}, recorte ${c.recorteInicial.toFixed(2)} s, silencios ${c.silencios} → «${l.texto}»`,
+  );
+  return c;
+}
+
 async function main() {
-  const perfil = await comprobarPerfil();
-  console.log(`Perfil: ${perfil.name} (${perfil.language})`);
+  const gasto = registroGasto(join(SALIDA, "voz", "elevenlabs", "gasto.json"), TOPE);
+  const motor = MOTOR === "voicebox" ? motorVoicebox() : motorElevenLabs({ gasto });
+  if (!REELEGIR) await motor.preparar();
+  console.log(`Motor: ${motor.nombre}`);
   const guion = leerGuion();
-  const informePath = join(SALIDA, "voz", "informe.json");
+  const informePath = join(DIR_MOTOR, "informe.json");
   const informe = existsSync(informePath) ? JSON.parse(readFileSync(informePath, "utf8")) : {};
 
   for (const escena of guion.escenas) {
     if (SOLO.length && !SOLO.includes(escena.id)) continue;
     const destino = join(DIR_VOZ, `${escena.id}.wav`);
-    if (existsSync(destino) && !REHACER && !REELEGIR && !SOLO.length) {
+    if (existsSync(destino) && informe[escena.id] && !REHACER && !REELEGIR && !SOLO.length) {
       console.log(`${escena.id}: ya existe, se conserva`);
       continue;
     }
     const candidatas = [];
-    for (let i = 0; i < SEMILLAS; i++) {
-      const semilla = SEMILLA_BASE + i * 17;
-      const bruta = join(DIR_CAND, `${escena.id}-s${semilla}.bruta.wav`);
-      const wav = join(DIR_CAND, `${escena.id}-s${semilla}.wav`);
-      let generacion = null;
-      if (!existsSync(bruta) || REHACER) {
-        generacion = await generar(escena.locucion, semilla);
-        writeFileSync(bruta, Buffer.from(await (await pedir(`/audio/${generacion}`)).arrayBuffer()));
-      }
-      const l = limpiarToma(bruta, wav, escena.subtitulo);
-      const c = {
-        semilla,
-        generacion,
-        wav,
-        duracion: duracion(wav),
-        transcripcion: l.texto,
-        similitud: l.sim,
-        recorteInicial: l.recorteInicial,
-        arranqueLimpio: l.arranqueLimpio,
-        finalCompleto: l.finalCompleto,
-        silencios: contarSilencios(wav),
-      };
-      console.log(
-        `${escena.id} s${semilla}: ${c.duracion.toFixed(2)} s, sim ${c.similitud.toFixed(3)}, recorte ${c.recorteInicial.toFixed(2)} s, silencios ${c.silencios} → «${l.texto}»`,
-      );
-      candidatas.push(c);
+    for (let i = 0; i < SEMILLAS; i++) candidatas.push(await tomar(motor, escena, SEMILLA_BASE + i * 17));
+    // Repeticiones solo si ninguna toma es válida (whisper detectó un error)
+    for (let r = 1; r <= REINTENTOS && !candidatas.some(valida); r++) {
+      console.log(`${escena.id}: toma con error, repetición ${r} de ${REINTENTOS}`);
+      candidatas.push(await tomar(motor, escena, SEMILLA_BASE + (SEMILLAS + r - 1) * 17));
     }
     // Válidas: arranque limpio, final completo, sin silencios largos y con la mejor
-    // similitud. Entre ellas, la de duración mediana (ni atropellada ni arrastrada);
-    // con dos, la más pausada.
+    // similitud. Entre ellas, la de duración mediana (ni atropellada ni arrastrada).
     const puntua = (c) => (c.arranqueLimpio && c.finalCompleto && c.silencios === 0 ? c.similitud : c.similitud - 1);
     const tope = Math.max(...candidatas.map(puntua));
     const validas = candidatas.filter((c) => puntua(c) >= tope - 0.001).sort((a, b) => a.duracion - b.duracion);
-    if (tope < 0.95)
-      console.warn(
-        `AVISO ${escena.id}: ninguna toma supera 0,95 de similitud; conviene más semillas (--semillas 5 --semilla-base 90)`,
-      );
-    candidatas.splice(
-      0,
-      candidatas.length,
-      validas[Math.floor(validas.length / 2)],
-      ...candidatas.filter((c) => !validas.includes(c)),
-      ...validas.filter((_, i) => i !== Math.floor(validas.length / 2)),
-    );
-    const mejor = candidatas[0];
+    if (tope < 0.95) console.warn(`AVISO ${escena.id}: ninguna toma supera 0,95 de similitud; revísala a oído`);
+    const mejor = validas[Math.floor(validas.length / 2)];
     copyFileSync(mejor.wav, destino);
     informe[escena.id] = { elegida: mejor, candidatas };
     writeFileSync(informePath, JSON.stringify(informe, null, 2));
     console.log(`→ ${escena.id}: elegida s${mejor.semilla} (${mejor.duracion.toFixed(2)} s)`);
   }
+  if (motor.nombre === "elevenlabs")
+    console.log(`Caracteres de ElevenLabs gastados en total: ${gasto.total()} de ${TOPE}`);
   console.log(`Informe: ${informePath}`);
 }
 
