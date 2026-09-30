@@ -29,6 +29,8 @@ const PATRONES: [string, RegExp][] = [
   ["línea de error suelta", /<(?:p|span|div)\s+className="[^"]*\btext-(?:error|peligro)\b[^"]*\bfont-medium\b[^"]*">/],
   ["línea de error suelta", /<(?:p|span|div)\s+className="[^"]*\bfont-medium\b[^"]*\btext-(?:error|peligro)\b[^"]*">/],
   // La lista de viñetas de «lo que falta» (`bloqueos.map((motivo) => <li key={motivo}>{motivo}</li>)`).
+  // El error de una petición o de un trabajo pintado como párrafo (`{error && <p>…`); `!error &&` no cuenta.
+  ["error en un párrafo suelto", /(?<![!\w.])(?:\w+\.)?\w*[eE]rror\w*\s*&&\s*\(?\s*<(?:p|span)\b/],
   // Solo con los nombres de «lo que falta»: una lista de frases o de consecuencias no es un aviso.
   ["lista de motivos suelta", /\.map\(\((motivo|m|impedimento|falta|bloqueo)\) => \(?\s*<li key=\{\1\}>\{\1\}<\/li>/],
 ];
@@ -73,6 +75,10 @@ describe("sin avisos sueltos", () => {
     expect(detecta("{bloqueos.map((motivo) => (\n  <li key={motivo}>{motivo}</li>\n))}")).toContain(
       "lista de motivos suelta",
     );
+    expect(detecta('{trabajo.error && <p className="text-sm">{trabajo.error}</p>}')).toContain(
+      "error en un párrafo suelto",
+    );
+    expect(detecta('{!canto && !error && <p role="status">Comprobando…</p>}')).toEqual([]);
     expect(detecta('<Alerta tipo="error" compacta>No se ha podido guardar.</Alerta>')).toEqual([]);
     expect(detecta('<Aviso tono="error">{error}</Aviso>')).toEqual([]);
     expect(detecta('<p role="status" className="text-sm text-texto-suave">Comprobando…</p>')).toEqual([]);

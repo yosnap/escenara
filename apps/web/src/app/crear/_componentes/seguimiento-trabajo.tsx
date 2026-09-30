@@ -2,6 +2,7 @@
 
 import { RefreshCw, X } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
+import { Alerta } from "@/components/ui/alerta";
 import { Boton } from "@/components/ui/button";
 import { Aviso } from "@/components/ui/feedback";
 import { EsperaTrabajo } from "@/components/ui/trabajo";
@@ -42,13 +43,18 @@ export function SeguimientoTrabajo({
         posicionEnCola={trabajo.posicionEnCola}
         cola={estado.cola}
       >
-        {trabajo.error && <p className="text-sm font-medium text-texto">{trabajo.error}</p>}
+        {/* La tarjeta ya es una región viva: la alerta no se anuncia por su cuenta. */}
+        {trabajo.error && (
+          <Alerta tipo="error" compacta anuncio="ninguno">
+            {trabajo.error}
+          </Alerta>
+        )}
         {trabajo.excesoCreditos !== null && trabajo.excesoCreditos > 0 && (
-          <p className="text-sm font-medium text-texto">
+          <Alerta tipo="aviso" compacta anuncio="ninguno" protege>
             El proveedor ha cobrado {formatearCreditos(trabajo.excesoCreditos)} por encima del límite que autorizaste.
             No se puede deshacer: el precio final lo decide él. Se ha registrado el gasto real y quien administra esta
             instalación también lo ve.
-          </p>
+          </Alerta>
         )}
         {trabajo.estado === "esperando_limite" && (
           // `almacen.aplicar` y no `onCambio`: así la tarjeta adopta el trabajo nuevo y vuelve a sondearlo.
