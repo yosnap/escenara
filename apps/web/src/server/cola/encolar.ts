@@ -1,6 +1,7 @@
-import { and, eq, isNotNull, lt, ne, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, lt, ne, or, sql } from "drizzle-orm";
 import type { Proveedor } from "@/lib/boveda";
 import { leerAjustes } from "../ajustes";
+import { ejecucionesDeLaComparativa, exigirSinChoqueConComparativa } from "../comparativas/marcas";
 import { db, type Ejecutor } from "../db/cliente";
 import { type FilaTrabajo, generationJobs, scenes } from "../db/esquema";
 import { ErrorGeneracion } from "../generacion/errores";
@@ -101,8 +102,22 @@ async function exigirEscenaSinRepetir(tx: Ejecutor, peticion: PeticionEncolado):
   if (!escenaId) return;
   const tipo = peticion.valores.kind;
   const nombre = tipo === "animacion" ? "un clip" : tipo === "voz" ? "una pista de voz" : "un fotograma";
+  /**
+   * Una alternativa de una comparativa A/B: el usuario confirmó expresamente cuántos clips nuevos y cuánto cuestan, así
+   * que caben tantos en marcha como alternativas, y el clip que la escena ya tenga no los frena (no lo sustituyen).
+   */
+  const comparativa =
+    tipo === "animacion"
+      ? await ejecucionesDeLaComparativa(tx, {
+          usuarioId: peticion.usuarioId,
+          escenaId,
+          clave: peticion.claveIdempotencia,
+          modelo: peticion.valores.model,
+        })
+      : null;
+  if (tipo === "animacion") await exigirSinChoqueConComparativa(tx, escenaId, comparativa, condicionEnCurso());
   // Un podcast son **dos** clips de la misma escena, y los dos son legítimos: lo que no puede haber es uno más.
-  const esperados = tipo === "animacion" ? Math.max(1, peticion.escena?.clips ?? 1) : 1;
+  const esperados = comparativa?.ejecuciones ?? (tipo === "animacion" ? Math.max(1, peticion.escena?.clips ?? 1) : 1);
   if (esperados > 1 && peticion.valores.castClipOrder != null) {
     const [mismoPlano] = await tx
       .select({ id: generationJobs.id })
@@ -126,7 +141,15 @@ async function exigirEscenaSinRepetir(tx: Ejecutor, peticion: PeticionEncolado):
   const [{ total } = { total: 0 }] = await tx
     .select({ total: sql<number>`count(*)::int` })
     .from(generationJobs)
-    .where(and(eq(generationJobs.sceneId, escenaId), eq(generationJobs.kind, tipo), condicionEnCurso()));
+    .where(
+      and(
+        eq(generationJobs.sceneId, escenaId),
+        eq(generationJobs.kind, tipo),
+        condicionEnCurso(),
+        // En una comparativa solo cuentan sus propias alternativas: otra comparativa no le hace hueco a esta.
+        comparativa ? inArray(generationJobs.idempotencyKey, comparativa.claves) : undefined,
+      ),
+    );
   if (total >= esperados) {
     throw new ErrorGeneracion(
       409,
@@ -135,7 +158,7 @@ async function exigirEscenaSinRepetir(tx: Ejecutor, peticion: PeticionEncolado):
         : `Esta escena ya tiene sus ${esperados} clips en marcha. Espera a que terminen o cancélalos antes de pedir otros: si no, se pagarían todos.`,
     );
   }
-  if (tipo !== "animacion") return;
+  if (tipo !== "animacion" || comparativa !== null) return;
   /**
    * En un podcast **no hay fotograma** del que partir (es una escena hablada de Omni), así que los clips ya
    * conseguidos se cuentan tal cual: los `listo` de esta escena. Sin esto, un intercambio ya terminado dejaría

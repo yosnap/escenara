@@ -1,5 +1,6 @@
 import { and, eq, ne, sql } from "drizzle-orm";
 import { segmentosDesdeMarcas, subtitulosDesdeTranscripcion } from "@/lib/voz";
+import { esAlternativaDeComparativa } from "../comparativas/marcas";
 import { db, type Ejecutor } from "../db/cliente";
 import { type FilaTrabajo, projects, scenes } from "../db/esquema";
 import type { MarcasDeVoz } from "../proveedores/contrato";
@@ -56,6 +57,9 @@ export async function marcarEnProduccion(proyectoId: string): Promise<void> {
  */
 export async function registrarResultadoDeEscena(fila: FilaTrabajo, medioId: string): Promise<void> {
   if (!fila.sceneId) return;
+  // Una alternativa de una comparativa A/B queda en la biblioteca de versiones y **no** pasa a ser el clip de la
+  // escena: eso lo decide el usuario al elegir ganadora.
+  if (fila.kind === "animacion" && (await esAlternativaDeComparativa(fila))) return;
   const escenaId = fila.sceneId;
   await db().transaction(async (tx) => {
     const [escena] = await tx.select().from(scenes).where(eq(scenes.id, escenaId)).limit(1).for("update");
@@ -147,6 +151,8 @@ export async function guardarMarcasDeVoz(fila: FilaTrabajo, marcas: MarcasDeVoz)
 export async function registrarFalloDeEscena(fila: FilaTrabajo, motivo: string): Promise<void> {
   if (fila.kind === "voz") return;
   if (!fila.sceneId || motivo.trim() === "") return;
+  // El fallo de una alternativa de una comparativa se ve en la comparativa, no como fallo del clip de la escena.
+  if (fila.kind === "animacion" && (await esAlternativaDeComparativa(fila))) return;
   await db()
     .update(scenes)
     .set({ lastFailureReason: motivo, updatedAt: new Date() })

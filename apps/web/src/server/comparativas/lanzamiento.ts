@@ -1,0 +1,337 @@
+import { and, eq, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
+import {
+  type AlternativaGuardada,
+  type ComparativaVista,
+  motivoDeConfirmacion,
+  type PeticionAB,
+} from "@/lib/comparativas";
+import { ESTADOS_ACTIVOS, ESTADOS_CANCELABLES } from "@/lib/generacion";
+import { escenaPropia } from "../asistente/consulta";
+import { ErrorProyecto } from "../asistente/errores";
+import { db } from "../db/cliente";
+import { comparisons, type FilaComparativa, type FilaEscena, generationJobs, scenes, users } from "../db/esquema";
+import { claveDerivada } from "../generacion/comprobaciones";
+import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
+import type { Actor } from "../media/dto";
+import { cerrarTrabajoYGasto } from "../presupuesto/reserva";
+import { encolarAnimacion } from "../produccion/producir";
+import { estadoDeTraduccion } from "../prompts/traduccion";
+import { estimarUna, impedimentosDe, trasFalloConCoste, vistaDeComparativa } from "./ab";
+
+/**
+ * **Lanzar una comparativa A/B: todo o nada.**
+ *
+ * 1. Se comprueba lo confirmado (número de ejecuciones y total), el precio y el sello de cada alternativa y, si el
+ *    último clip de la escena falló con posible cobro, que haya **un reintento autorizado por alternativa** (ADR-0024:
+ *    la A/B no es un atajo).
+ * 2. Con la fila del usuario y la de la escena bloqueadas, se comprueba que no hay otra comparativa ni otro clip en marcha
+ *    en la escena y se guarda la comparativa **sin lanzar** (`launched_at` nulo).
+ * 3. Se encola cada alternativa por el camino normal (`encolarAnimacion` → `crearAnimacion`: controles, techo del
+ *    proyecto, presupuesto, credencial, reserva). **Mientras la comparativa no esté lanzada, el worker no toma ninguno de
+ *    sus trabajos** (`cola/toma.ts`), así que ninguno puede llegar al proveedor.
+ * 4. Si todas caben, se marca lanzada y el worker ya puede enviarlas. Si una no cabe, las que ya estaban encoladas se
+ *    cancelan sin cobro, se libera su reserva y se devuelven los reintentos: no se encola ninguna y se dice por qué.
+ *
+ * Si el proceso muriera entre 2 y 4, el worker cancela la comparativa colgada pasados unos minutos (mismo camino).
+ */
+
+/**
+ * Qué se ha cobrado al no lanzarse, **con la causa real**: ningún clip ha llegado al proveedor de vídeo. Si esta
+ * instalación traduce, la traducción de la descripción se hace (y se paga aparte) antes de encolar, así que pudo
+ * cobrarse aunque ningún clip saliera; queda guardada y no se vuelve a pagar la próxima vez.
+ */
+async function sinCobro(): Promise<string> {
+  const base =
+    "Una comparativa son las dos ejecuciones o ninguna: no ha salido ninguna ni ningún clip ha llegado al proveedor, así que no se ha cobrado ningún clip.";
+  const traduccion = await estadoDeTraduccion().catch(() => ({ activa: false }));
+  return traduccion.activa
+    ? `${base} La traducción de la descripción, si ya se había hecho, pudo cobrarse aparte (céntimos) y queda guardada para la próxima vez.`
+    : `${base} No se ha cobrado nada.`;
+}
+
+/** Pasado este tiempo sin lanzarse, una comparativa se da por interrumpida y se cancela. */
+const MS_LANZAMIENTO_COLGADO = 10 * 60_000;
+
+const mismasAlternativas = (guardadas: readonly AlternativaGuardada[], pedidas: PeticionAB["alternativas"]) =>
+  guardadas.length === pedidas.length && guardadas.every((g, i) => g.modelo === pedidas[i]?.modelo);
+
+/** Trabajos de las alternativas de una comparativa. */
+const trabajosDe = (fila: FilaComparativa) =>
+  db()
+    .select()
+    .from(generationJobs)
+    .where(
+      and(
+        eq(generationJobs.userId, fila.userId),
+        inArray(
+          generationJobs.idempotencyKey,
+          fila.alternatives.map((a) => a.clave),
+        ),
+      ),
+    );
+
+/**
+ * Cancela una comparativa no lanzada: la marca como no lanzada y después cancela sus trabajos (que el worker no ha
+ * podido tomar), uno a uno, con su reserva liberada y sin coste, devolviendo el reintento que consumió cada uno.
+ *
+ * **Reanudable:** si algo se interrumpe entre la marca y el último trabajo, el barrido del worker vuelve a llamar aquí
+ * con la comparativa ya marcada y termina lo que falte (solo toca trabajos todavía cancelables, así que no devuelve un
+ * reintento dos veces). Y la cola ya no admite ninguna alternativa de una comparativa cancelada (`marcas.ts`).
+ */
+export async function cancelarLanzamiento(fila: FilaComparativa, motivo: string): Promise<number> {
+  await db()
+    .update(comparisons)
+    .set({ cancelledAt: new Date() })
+    .where(and(eq(comparisons.id, fila.id), isNull(comparisons.launchedAt), isNull(comparisons.cancelledAt)));
+  const [actual] = await db().select().from(comparisons).where(eq(comparisons.id, fila.id)).limit(1);
+  // Lanzada (ganó la marca de lanzamiento) o ya no existe: no hay nada que cancelar.
+  if (!actual || actual.launchedAt !== null || actual.cancelledAt === null) return 0;
+  const devolverReintento = actual.alternatives.some((a) => a.reintento);
+  let canceladas = 0;
+  for (const trabajo of await trabajosDe(actual)) {
+    const cerrada = await cerrarTrabajoYGasto(
+      trabajo.id,
+      inArray(generationJobs.state, [...ESTADOS_CANCELABLES]),
+      {
+        state: "cancelado",
+        failureReason: "cancelado",
+        errorMessage: `La comparativa no se lanzó: ${motivo} Este clip no se ha enviado al proveedor ni se ha cobrado.`,
+        lockedBy: null,
+        lockedUntil: null,
+        finishedAt: new Date(),
+      },
+      0,
+      "Comparativa no lanzada: se cancela sin salir hacia el proveedor.",
+    );
+    if (!cerrada) continue;
+    canceladas++;
+    // El reintento que consumió este trabajo vuelve con él: no ha salido.
+    if (devolverReintento) {
+      await db()
+        .update(scenes)
+        .set({ retriesUsed: sql`greatest(${scenes.retriesUsed} - 1, 0)`, updatedAt: new Date() })
+        .where(eq(scenes.id, actual.sceneId));
+    }
+  }
+  return canceladas;
+}
+
+/**
+ * Barrido del worker: comparativas que se quedaron sin lanzar (el proceso se interrumpió) y comparativas ya canceladas
+ * a las que les queda algún trabajo cancelable (una cancelación que no terminó). Las termina de cancelar sin cobro.
+ */
+export async function barrerLanzamientosColgados(): Promise<number> {
+  const conTrabajosVivos = sql`exists (
+    select 1 from generation_jobs j
+    where j.user_id = ${comparisons.userId} and j.state in ('en_cola', 'esperando_limite')
+      and ${comparisons.alternatives} @> jsonb_build_array(jsonb_build_object('clave', j.idempotency_key)))`;
+  const pendientes = await db()
+    .select()
+    .from(comparisons)
+    .where(
+      and(
+        isNull(comparisons.launchedAt),
+        or(
+          and(
+            isNull(comparisons.cancelledAt),
+            lt(comparisons.createdAt, new Date(Date.now() - MS_LANZAMIENTO_COLGADO)),
+          ),
+          and(isNotNull(comparisons.cancelledAt), conTrabajosVivos),
+        ),
+      ),
+    )
+    .limit(50);
+  let atendidas = 0;
+  for (const fila of pendientes) {
+    await cancelarLanzamiento(fila, "el lanzamiento se interrumpió antes de encolar todas las ejecuciones.");
+    atendidas++;
+  }
+  return atendidas;
+}
+
+function exigirReintentos(escena: FilaEscena, necesarios: number): void {
+  if (escena.retryBudget - escena.retriesUsed >= necesarios) return;
+  throw new ErrorProyecto(
+    409,
+    `El último intento de esta escena falló después de hablar con el proveedor, así que puede haberse cobrado. Una comparativa son ${necesarios} intentos más y cada uno consume un reintento autorizado (llevas ${escena.retriesUsed} de ${escena.retryBudget}): autoriza al menos ${necesarios - (escena.retryBudget - escena.retriesUsed)} más y vuelve a pedirla. No se ha encolado nada ni se ha cobrado nada.`,
+  );
+}
+
+/** Guarda la comparativa sin lanzar, con el usuario y la escena bloqueados: dos A/B a la vez no caben. */
+async function guardarSinLanzar(
+  actor: Actor,
+  escena: FilaEscena,
+  proyectoId: string,
+  peticion: PeticionAB,
+  alternativas: AlternativaGuardada[],
+): Promise<FilaComparativa> {
+  return db().transaction(async (tx) => {
+    // Mismo orden de bloqueo que la cola (usuario → escena): así no hay interbloqueos con un encolado a la vez.
+    await tx.select({ id: users.id }).from(users).where(eq(users.id, actor.id)).for("update");
+    await tx.select({ id: scenes.id }).from(scenes).where(eq(scenes.id, escena.id)).for("update");
+    const [enCurso] = await tx
+      .select({ id: comparisons.id })
+      .from(comparisons)
+      .where(and(eq(comparisons.sceneId, escena.id), isNull(comparisons.launchedAt), isNull(comparisons.cancelledAt)))
+      .limit(1);
+    const [clipEnMarcha] = await tx
+      .select({ id: generationJobs.id })
+      .from(generationJobs)
+      .where(
+        and(
+          eq(generationJobs.sceneId, escena.id),
+          eq(generationJobs.kind, "animacion"),
+          inArray(generationJobs.state, [...ESTADOS_ACTIVOS]),
+        ),
+      )
+      .limit(1);
+    if (enCurso || clipEnMarcha) {
+      throw new ErrorProyecto(
+        409,
+        "Ya hay una comparación o un clip en marcha en esta escena. Espera a que termine antes de pedir otra: si no, se pagarían los dos. No se ha encolado nada.",
+      );
+    }
+    const [nueva] = await tx
+      .insert(comparisons)
+      .values({
+        userId: actor.id,
+        projectId: proyectoId,
+        sceneId: escena.id,
+        idempotencyKey: peticion.claveIdempotencia,
+        alternatives: alternativas,
+        plannedRuns: alternativas.length,
+        estimatedCredits: alternativas.reduce((s, a) => s + a.creditos, 0),
+      })
+      .onConflictDoNothing()
+      .returning();
+    if (!nueva) {
+      throw new ErrorProyecto(409, "Esta comparativa se está lanzando ahora mismo. Espera unos segundos y recarga.");
+    }
+    return nueva;
+  });
+}
+
+/**
+ * Lanza una A/B, todo o nada. Repetir la misma confirmación (misma clave) no encola nada: devuelve la comparativa si se
+ * lanzó y, si no salió, pide confirmar otra vez.
+ */
+export async function lanzarAB(
+  actor: Actor,
+  escenaId: unknown,
+  peticion: PeticionAB,
+  h: Herramientas = HERRAMIENTAS,
+): Promise<ComparativaVista> {
+  const { escena, proyecto } = await escenaPropia(actor, escenaId);
+  const descuadre = motivoDeConfirmacion(peticion);
+  if (descuadre) throw new ErrorProyecto(409, descuadre);
+
+  // Idempotencia por comparativa: la misma confirmación nunca vuelve a encolar nada.
+  const [previa] = await db()
+    .select()
+    .from(comparisons)
+    .where(and(eq(comparisons.userId, actor.id), eq(comparisons.idempotencyKey, peticion.claveIdempotencia)))
+    .limit(1);
+  if (previa) {
+    if (previa.sceneId !== escena.id || !mismasAlternativas(previa.alternatives, peticion.alternativas)) {
+      throw new ErrorProyecto(
+        409,
+        "Esa confirmación ya se usó para otra comparativa. Vuelve a confirmar esta. No se ha encolado nada.",
+      );
+    }
+    if (previa.launchedAt) return vistaDeComparativa(actor, previa);
+    throw new ErrorProyecto(
+      409,
+      previa.cancelledAt
+        ? "Esa confirmación ya se intentó y la comparativa no salió. Vuelve a confirmarla con el precio de ahora. No se ha cobrado nada."
+        : "Esta comparativa se está lanzando ahora mismo. Espera unos segundos y recarga.",
+    );
+  }
+
+  const impedimentos = await impedimentosDe(escena, proyecto);
+  if (impedimentos.length > 0) throw new ErrorProyecto(409, `${impedimentos.join(" ")} No se ha encolado nada.`);
+  // El precio de ahora, con la resolución del envío: si no es lo que se confirmó, no sale ninguna.
+  const estimadas = await Promise.all(peticion.alternativas.map((a) => estimarUna(proyecto, a.modelo)));
+  if (new Set(estimadas.map((e) => e.modelo)).size !== estimadas.length) {
+    throw new ErrorProyecto(
+      409,
+      "Las dos alternativas son en realidad el mismo modelo: elige dos distintos. No se ha encolado nada.",
+    );
+  }
+  const reintento = await trasFalloConCoste(escena.id);
+  if (reintento) exigirReintentos(escena, estimadas.length);
+  const alternativas: AlternativaGuardada[] = [];
+  for (const [i, pedida] of peticion.alternativas.entries()) {
+    const estimada = estimadas[i];
+    if (!estimada || estimada.impedimento) {
+      throw new ErrorProyecto(
+        409,
+        `${estimada?.impedimento ?? "Ese modelo no se puede usar."} No se ha encolado nada.`,
+      );
+    }
+    if (estimada.sello !== pedida.sello || estimada.creditos !== pedida.creditos) {
+      throw new ErrorProyecto(
+        409,
+        `El precio de ${estimada.nombre} ha cambiado desde que lo viste: ahora cuesta ${estimada.creditos} créditos. Vuelve a confirmar la comparativa. No se ha encolado nada.`,
+      );
+    }
+    alternativas.push({
+      modelo: estimada.modelo,
+      nombre: estimada.nombre,
+      proveedor: estimada.nombreProveedor,
+      segundos: estimada.segundos,
+      creditos: estimada.creditos,
+      sello: estimada.sello,
+      clave: claveDerivada(peticion.claveIdempotencia, "comparativa", escena.id, estimada.modelo),
+      reintento,
+    });
+  }
+
+  const comparativa = await guardarSinLanzar(actor, escena, proyecto.id, peticion, alternativas);
+  const partida = escena.approvedFrameJobId
+    ? { trabajoPadreId: escena.approvedFrameJobId }
+    : { medioId: escena.approvedFrameMediaId as string };
+  for (const alternativa of alternativas) {
+    try {
+      await encolarAnimacion(
+        actor,
+        escena,
+        proyecto,
+        partida,
+        {
+          derechos: peticion.derechos,
+          derechoMarca: peticion.derechoMarca,
+          sinTerceros: peticion.sinTerceros,
+          creditosConfirmados: alternativa.creditos,
+          selloEstimacion: alternativa.sello,
+          claveIdempotencia: peticion.claveIdempotencia,
+          avisoUmbralAceptado: peticion.avisoUmbralAceptado,
+          avisosConfirmados: peticion.avisosConfirmados,
+          modelo: alternativa.modelo,
+        },
+        alternativa.clave,
+        h,
+        reintento,
+      );
+    } catch (error) {
+      const causa = error instanceof Error ? error.message : "no se ha podido encolar.";
+      await cancelarLanzamiento(comparativa, `${alternativa.nombre} no cabe.`);
+      throw new ErrorProyecto(
+        409,
+        `No se ha lanzado la comparativa: ${alternativa.nombre} no cabe. ${causa} ${await sinCobro()}`,
+      );
+    }
+  }
+  // Todas encoladas: desde ahora el worker puede enviarlas. Si el barrido la canceló entretanto, no sale ninguna.
+  const lanzada = await db()
+    .update(comparisons)
+    .set({ launchedAt: new Date() })
+    .where(and(eq(comparisons.id, comparativa.id), isNull(comparisons.cancelledAt)))
+    .returning();
+  if (!lanzada[0]) {
+    throw new ErrorProyecto(
+      409,
+      `La comparativa tardó demasiado en lanzarse y se ha cancelado. ${await sinCobro()} Vuelve a pedirla.`,
+    );
+  }
+  return vistaDeComparativa(actor, lanzada[0]);
+}

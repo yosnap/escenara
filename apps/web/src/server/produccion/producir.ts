@@ -56,6 +56,8 @@ export interface ConfirmacionProduccion {
   avisoUmbralAceptado?: boolean;
   /** Avisos «Necesita ajustes» confirmados expresamente, por su clave de regla. */
   avisosConfirmados?: string[];
+  /** Modelo elegido a mano (solo lo pone el servidor, en una comparativa A/B): manda sobre el mapa y no hay reservas. */
+  modelo?: string;
 }
 
 /**
@@ -225,7 +227,7 @@ async function encolarFotograma(
  * Encola la animación del fotograma aprobado de una escena. Hereda su escena, su personaje y la versión de la
  * ficha con la que se generó el fotograma: animar tiene que seguir siendo el mismo personaje.
  */
-async function encolarAnimacion(
+export async function encolarAnimacion(
   actor: Actor,
   escena: FilaEscena,
   proyecto: FilaProyecto,
@@ -289,6 +291,7 @@ async function encolarAnimacion(
       avisoUmbralAceptado: confirmacion.avisoUmbralAceptado,
       avisosConfirmados: confirmacion.avisosConfirmados,
       claveIdempotencia: clave,
+      ...(confirmacion.modelo ? { modelo: confirmacion.modelo } : {}),
       ...(await plantillaYFormatoDelEnvio(actor.id, plantilla, proyecto)),
     },
     h,

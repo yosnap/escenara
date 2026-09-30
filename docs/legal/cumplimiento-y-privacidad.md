@@ -188,6 +188,28 @@ gracia es un plazo adecuado; si el agregado del gasto necesita mención en la po
 de que las copias de seguridad de la base de datos que haga quien administra siguen conteniendo los datos hasta que
 caducan.
 
+## Conjunto etiquetado para calibrar umbrales (0.48.0) · pendiente de revisión jurídica
+
+Para medir si un evaluador automático acertaría antes de darle ningún poder, la instalación construye un **conjunto
+etiquetado** con revisiones que las personas ya hicieron al usar Escenara: lo que resolvieron sobre las afirmaciones
+señaladas en su guion y la corrección del veredicto o la revisión de su clip. No se pide a nadie que etiquete nada ni se
+envía nada a ningún proveedor para construirlo.
+
+- **Qué se guarda** (`labeled_examples`): de cada opinión, dos números (cuánto encaja y con qué confianza), la etiqueta
+  humana (acepta o rechaza), la partición, la versión de la pregunta y el modelo que contestó. **Sin** texto del guion ni
+  de la escena, nombres, correos ni identificadores de usuario.
+- **Está seudonimizado, no anonimizado** (sin datos personales; vinculado a la opinión de origen y eliminado al borrar
+  la cuenta). **Por qué es seudónimo y no anónimo**: cada fila apunta a la opinión de la que sale, que sí es de una cuenta. Esa
+  referencia existe para borrar: la fila se borra **en cascada** con la opinión, y la opinión se borra al borrar la
+  cuenta. Al reconstruir el conjunto desaparece además lo que ya no tiene etiqueta (por ejemplo, un proyecto borrado).
+- **Dónde está**: solo en la base de datos de la instalación. No se exporta, no se comparte ni sale del servidor, y
+  solo lo ve quien administra en Admin › Calibración (cifras agregadas, nunca filas).
+- **Para qué**: proponer un umbral por pregunta y medirlo. Proponer no activa nada.
+
+Preguntas para la revisión jurídica: si la base legal del tratamiento (interés legítimo en medir la calidad del
+servicio) basta o hace falta informarlo en la política de privacidad; y si conviene desvincular del todo las filas del
+origen (anonimizarlas) al borrar la cuenta en lugar de borrarlas, que es lo que se hace hoy.
+
 ## Documentos públicos necesarios antes de 1.0.0
 
 Para cantar con audio propio, la persona que sube el archivo declara si es música propia, música con licencia

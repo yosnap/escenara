@@ -71,7 +71,9 @@ async function porTrozos<T>(ids: readonly string[], consulta: (trozo: string[]) 
 }
 
 /** Etiqueta de las afirmaciones de cada escena: solo las que resolvió una persona cuentan. */
-async function etiquetasDeAfirmaciones(escenaIds: readonly string[]): Promise<Map<string, EtiquetaHumana | null>> {
+export async function etiquetasDeAfirmaciones(
+  escenaIds: readonly string[],
+): Promise<Map<string, EtiquetaHumana | null>> {
   const filas = await porTrozos(escenaIds, (trozo) =>
     db()
       .select({ escena: claims.sceneId, estado: claims.state })
@@ -84,7 +86,7 @@ async function etiquetasDeAfirmaciones(escenaIds: readonly string[]): Promise<Ma
 }
 
 /** Revisiones humanas de cada escena y momentos en que se volvió a producir su imagen o su clip. */
-async function revisionesDe(escenaIds: readonly string[]) {
+export async function revisionesDe(escenaIds: readonly string[]) {
   const revisiones = new Map<string, RevisionHumana[]>();
   const producciones = new Map<string, Date[]>();
   const humanas = await porTrozos(escenaIds, (trozo) =>

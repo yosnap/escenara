@@ -1,7 +1,9 @@
 "use client";
 
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, GitCompareArrows } from "lucide-react";
+import Link from "next/link";
 import { BibliotecaVersiones } from "@/components/ui/biblioteca-versiones";
+import { claseBoton } from "@/components/ui/button";
 import { InsigniaControl } from "@/components/ui/controles";
 import { Aviso } from "@/components/ui/feedback";
 import { SelectorMedios } from "@/components/ui/media/selector-medios";
@@ -100,14 +102,29 @@ export function TarjetaEscena({
   const sinProducir = escena.fotograma === null;
   const fotogramaListo = escena.fotograma?.estado === "listo" && escena.fotograma.medio !== null;
   const puedeAprobar =
+    !escena.comparativaEnMarcha &&
     escena.reparto === null &&
     (fotogramaPorAprobar(escena) || clipPorEncolar(escena)) &&
     !trabajoEnMarcha(escena.animacion);
+  /**
+   * «Otro clip con este fotograma» solo cuando la escena **no** tiene clip guardado: con uno, la cola lo rechaza siempre
+   * («ya tiene su clip guardado»), y para probar otro modelo con el mismo fotograma está «Comparar generando».
+   */
   const puedePedirOtroClip =
+    !escena.comparativaEnMarcha &&
     escena.reparto === null &&
-    escena.clip !== null &&
+    escena.clip === null &&
+    !puedeAprobar &&
     !trabajoEnMarcha(escena.animacion) &&
     escena.fotogramaAprobado !== null;
+  // Comparar dos modelos animando el mismo fotograma: solo con un clip normal (sin reparto, sin Omni) y nada en marcha.
+  const puedeComparar =
+    !escena.comparativaEnMarcha &&
+    escena.reparto === null &&
+    escena.formatoClip !== "cantar" &&
+    produccion.modoVoz !== "omni" &&
+    escena.fotogramaAprobado !== null &&
+    !trabajoEnMarcha(escena.animacion);
 
   return (
     <article className="flex flex-col gap-4 rounded-tarjeta border-2 border-borde bg-superficie p-5">
@@ -135,6 +152,14 @@ export function TarjetaEscena({
         </Aviso>
       )}
       {escena.motivoUltimoFallo !== "" && <Aviso tono="error">{escena.motivoUltimoFallo}</Aviso>}
+      {escena.comparativaEnMarcha && (
+        <Aviso tono="info">
+          Hay una comparativa generándose en esta escena: hasta que termine no se puede pedir otro clip.{" "}
+          <Link href={`/comparar/escena/${escena.id}`} className="font-semibold underline">
+            Ver la comparativa
+          </Link>
+        </Aviso>
+      )}
 
       {escena.formatoClip === "cantar" && (
         <CantoProduccion
@@ -309,6 +334,16 @@ export function TarjetaEscena({
               ocupado={ocupado}
               onEnviar={onOtroClip}
             />
+          )}
+
+          {puedeComparar && (
+            <p className="flex flex-wrap items-center gap-3 text-sm text-texto-suave">
+              <Link href={`/comparar/escena/${escena.id}`} className={claseBoton("secundario", "sm")}>
+                <GitCompareArrows className="size-4" aria-hidden /> Comparar generando
+              </Link>
+              Anima este fotograma con dos modelos y elige el mejor. Antes de confirmar verás cuántas ejecuciones son y
+              cuánto cuestan.
+            </p>
           )}
 
           {/* En una escena de dos personajes no hay fotograma que regenerar: lo que se pide otra vez son sus clips. */}

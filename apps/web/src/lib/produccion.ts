@@ -292,6 +292,8 @@ export interface EscenaProduccionVista {
    * más reciente a lo más antiguo, y cuál está en uso. Vacía en un podcast, que elige sus clips por turnos.
    */
   bibliotecaDeClips: VersionDeClip[];
+  /** Hay una comparativa A/B de esta escena lanzándose o con alguna alternativa en marcha. */
+  comparativaEnMarcha?: boolean;
 }
 
 /** Una versión del clip de una escena, tal como se ofrece para compararla y elegirla. */

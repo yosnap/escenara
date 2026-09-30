@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, not, sql } from "drizzle-orm";
 import { type EvaluacionVista, peorEstado } from "@/lib/controles";
 import { formatearCreditos } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
@@ -12,6 +12,7 @@ import {
   type ProduccionVista,
   type TrabajoDeEscena,
   trabajoEnMarcha,
+  trabajoTerminado,
   type VersionDeClip,
   type VersionDeEscena,
 } from "@/lib/produccion";
@@ -23,6 +24,7 @@ import { ErrorProyecto } from "../asistente/errores";
 import { comprometidoDelProyecto, type EleccionesDelPlan, eleccionesDelPlan } from "../asistente/plan";
 import { proporcionDelTrabajo } from "../cola/entrada-del-trabajo";
 import { posicionesEnCola } from "../cola/toma";
+import { alternativasDeEscenas, condicionDeAlternativa, escenasConComparativaLanzandose } from "../comparativas/marcas";
 import type { HechosEscena, ParametrosControles } from "../controles/contrato";
 import { hechosDeModelo, hechosDePersonajeCitado, parametrosDeControles } from "../controles/hechos";
 import { evaluarParaMostrar } from "../controles/puerta";
@@ -235,10 +237,14 @@ function vistaDeEscena(
   medios: Map<string, Medio>,
   /** Reparto de dos personajes de esta escena (0.28.0); `null` en una escena de un personaje. */
   reparto: RepartoDePantalla | null,
+  /** Trabajos que son alternativas de una comparativa A/B: no son el clip de la escena hasta que se eligen. */
+  alternativas: ReadonlySet<string>,
+  /** Escenas con una comparativa guardada y todavía sin lanzar ni cancelar. */
+  lanzandose: ReadonlySet<string>,
 ): EscenaProduccionVista {
   // El trabajo vigente de cada tipo es el más reciente: la lista viene ordenada por fecha descendente.
   const fotograma = trabajos.find((t) => t.kind === "fotograma") ?? null;
-  const animacion = trabajos.find((t) => t.kind === "animacion") ?? null;
+  const animacion = trabajos.find((t) => t.kind === "animacion" && !alternativas.has(t.id)) ?? null;
   // Un podcast tiene dos trabajos vigentes: el más reciente de cada plano. Los anteriores quedan en el historial.
   const pedidosPodcast =
     fila.castFormat === "podcast" ? trabajos.filter((t) => t.kind === "animacion" && t.castClipOrder !== null) : [];
@@ -285,6 +291,8 @@ function vistaDeEscena(
       .sort((a, b) => a.orden - b.orden),
     versiones: versionesDe(trabajos, vigentes, medios),
     bibliotecaDeClips: fila.castFormat === "podcast" ? [] : bibliotecaDeClips(fila, trabajos, medios),
+    comparativaEnMarcha:
+      lanzandose.has(fila.id) || trabajos.some((t) => alternativas.has(t.id) && !trabajoTerminado(t.state)),
   };
 }
 
@@ -369,12 +377,14 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
     comprometidoDelProyecto(proyecto.id),
   ]);
   const ids = filasEscena.map((e) => e.id);
-  const [porEscena, afirmaciones, puestos, contexto, enVuelo] = await Promise.all([
+  const [porEscena, afirmaciones, puestos, contexto, enVuelo, alternativas, lanzandose] = await Promise.all([
     trabajosDeEscenas(ids),
     afirmacionesDe(ids),
     posicionesEnCola(),
     contextoDeControles(actor, proyecto, elecciones),
     escenasEnVueloDelUsuario(actor.id),
+    alternativasDeEscenas(ids),
+    escenasConComparativaLanzandose(ids),
   ]);
   const medios = await mediosDeLaRejilla(actor, [
     ...[...porEscena.values()].flat().map((t) => t.resultMediaId),
@@ -422,6 +432,8 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
         puestos,
         medios,
         reparto,
+        alternativas,
+        lanzandose,
       );
     }),
   );
@@ -642,7 +654,14 @@ export async function ultimoTrabajoDeEscena(
   const [fila] = await db()
     .select()
     .from(generationJobs)
-    .where(and(eq(generationJobs.sceneId, escenaId), eq(generationJobs.kind, tipo)))
+    // Una alternativa de una comparativa A/B no es el clip de la escena mientras no se elija.
+    .where(
+      and(
+        eq(generationJobs.sceneId, escenaId),
+        eq(generationJobs.kind, tipo),
+        not(condicionDeAlternativa('"generation_jobs"')),
+      ),
+    )
     .orderBy(desc(generationJobs.createdAt))
     .limit(1);
   return fila ?? null;

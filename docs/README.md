@@ -2,7 +2,7 @@
 
 **Escenara** · Estudio abierto de personajes y vídeo · «Da vida a cada escena»
 
-Mapa de la documentación pública del proyecto. Versión actual: **0.47.0**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
+Mapa de la documentación pública del proyecto. Versión actual: **0.48.0**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
 
 ## Mapa de documentos
 
@@ -43,8 +43,9 @@ Mapa de la documentación pública del proyecto. Versión actual: **0.47.0**. Pa
 | Guías | [Escenas habladas](guias/escenas-habladas.md) | El modo Omni, sus dos motores (Gemini Omni Flash recomendado y MiniMax H3), qué registrar, qué cuesta cada escena y qué invalida cambiar la voz | 0.22.0 |
 | Guías | [Personajes inventados](guias/personajes-inventados.md) | Un personaje que no existe: descripción, cuatro retratos candidatos, declaración de que no representa a nadie y por qué no admite fotos reales | 0.22.0 |
 | Guías | [Con qué se genera cada cosa](guias/mapa-de-modelos.md) | El mapa de modelos por tipo, cuándo se pasa a la reserva, qué cuesta cada opción y cómo añadir servicios compatibles con la API de OpenAI | 0.21.1 |
+| Guías | [Comparar modelos](guias/comparar-modelos.md) | Comparar precios, tus resultados y ejemplos de la instalación sin gastar nada, y «Comparar generando»: dos clips de una escena con el número de ejecuciones y el coste confirmados antes, resultados lado a lado y ganador | 0.48.0 |
 | Guías | [Personaliza tu instancia](guias/personaliza-tu-instancia.md) | Nombre, logotipos, tipografía (con fuentes propias y su licencia) y colores de la instalación; contraste que bloquea, publicación atómica, historial y revertir | 0.45.0 |
-| Guías | [Comprobar la coherencia](guias/comprobar-la-coherencia.md) | Si una vista generada es la misma persona (y entonces cuenta como referencia), si la escena cubre el guion y si la emoción encaja; qué decide y qué solo mira, qué autorización hace falta y, para quien administra, el registro de decisiones y la sombra de Jev | 0.39.0 |
+| Guías | [Comprobar la coherencia](guias/comprobar-la-coherencia.md) | Si una vista generada es la misma persona (y entonces cuenta como referencia), si la escena cubre el guion y si la emoción encaja; qué decide y qué solo mira, qué autorización hace falta y, para quien administra, el registro de decisiones, la sombra de Jev y la calibración de umbrales | 0.48.0 |
 | Guías | [Accesibilidad](guias/accesibilidad.md) | Lo que la aplicación garantiza (contraste AA, foco visible, teclado, lector de pantalla, «reducir movimiento»), cómo se comprueba, los atajos de teclado de cada pieza y cómo avisar de un problema | 0.45.0 |
 | Arquitectura | [Decisiones (ADR)](arquitectura/decisiones/README.md) | Índice de decisiones y plantilla | Licencia, lenguaje, runtime, despliegue, almacenamiento, modelos iniciales, interfaz, base de datos, bóveda de credenciales, seguimiento de trabajos, ficha como contexto de generación, prompts en el servidor y en inglés, modelo de texto del asistente, el proyecto como unidad de trabajo, el prompt como material del servidor, el motor de reglas de controles previos y la cancelación y los reintentos de la producción decididos; 2 pendientes |
 | Recursos | [APIs, proveedores y servicios](recursos/apis-y-proveedores.md) | Qué servicio, para qué, dónde se obtiene la clave, documentación y precios | Vivo |
