@@ -48,12 +48,12 @@ const puertaDe = (v: string): PuertaDecision => (v === "frenos" ? "frenos" : "en
 /** Revisiones humanas y momentos en que se volvió a producir, de cada escena. */
 interface Etiquetador {
   revisiones: Map<string, RevisionHumana[]>;
-  permisos: Map<string, Date[]>;
+  permisos: Map<string, { fecha: Date; visual: boolean }[]>;
 }
 
 async function etiquetadorDe(escenaIds: readonly string[]): Promise<Etiquetador> {
   const revisiones = new Map<string, RevisionHumana[]>();
-  const permisos = new Map<string, Date[]>();
+  const permisos = new Map<string, { fecha: Date; visual: boolean }[]>();
   if (escenaIds.length === 0) return { revisiones, permisos };
   const ids = [...new Set(escenaIds)];
   const humanas = await db()
@@ -72,7 +72,11 @@ async function etiquetadorDe(escenaIds: readonly string[]): Promise<Etiquetador>
     revisiones.set(r.escena, lista);
   }
   const envios = await db()
-    .select({ escena: controlEvaluations.subjectId, fecha: controlEvaluations.createdAt })
+    .select({
+      escena: controlEvaluations.subjectId,
+      fecha: controlEvaluations.createdAt,
+      tipo: controlEvaluations.jobKind,
+    })
     .from(controlEvaluations)
     .where(
       and(
@@ -84,16 +88,22 @@ async function etiquetadorDe(escenaIds: readonly string[]): Promise<Etiquetador>
   for (const e of envios) {
     if (!e.escena) continue;
     const lista = permisos.get(e.escena) ?? [];
-    lista.push(e.fecha);
+    lista.push({ fecha: e.fecha, visual: e.tipo !== "voz" });
     permisos.set(e.escena, lista);
   }
   return { revisiones, permisos };
 }
 
-/** El siguiente envío permitido de la escena después de `momento`: a partir de ahí se revisa otra cosa. */
-function siguientePermiso(etiquetador: Etiquetador, escenaId: string, momento: Date): Date | null {
-  const posteriores = (etiquetador.permisos.get(escenaId) ?? []).filter((f) => f > momento);
-  return posteriores.length === 0 ? null : new Date(Math.min(...posteriores.map((f) => f.getTime())));
+/**
+ * El siguiente envío permitido de la escena después de `momento`: a partir de ahí se revisa otra cosa. Con
+ * `soloVisual` no cuenta la pista de voz, que no cambia el clip: es lo que hace falta para el resultado, que juzga la
+ * imagen de un clip ya hecho.
+ */
+function siguientePermiso(etiquetador: Etiquetador, escenaId: string, momento: Date, soloVisual = false): Date | null {
+  const posteriores = (etiquetador.permisos.get(escenaId) ?? [])
+    .filter((p) => p.fecha > momento && (!soloVisual || p.visual))
+    .map((p) => p.fecha.getTime());
+  return posteriores.length === 0 ? null : new Date(Math.min(...posteriores));
 }
 
 /**
@@ -204,7 +214,7 @@ export async function metricasDeLaSombra(dias = 90): Promise<MetricasPreguntaVis
       etiquetaDeRevisiones(
         r.createdAt,
         etiquetador.revisiones.get(r.subjectId) ?? [],
-        siguientePermiso(etiquetador, r.subjectId, r.createdAt),
+        siguientePermiso(etiquetador, r.subjectId, r.createdAt, true),
         true,
       ),
     coincide: null,
