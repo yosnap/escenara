@@ -35,8 +35,9 @@ import { PasoFormato } from "./paso-formato";
 import { PasoCosteFotograma, PasoResultadoFotograma } from "./paso-fotograma";
 import { type OrigenDelClip, PasoImagenDePartida, PasoOrigen } from "./paso-origen";
 import { PasoSujeto } from "./paso-sujeto";
+import { type ClipVigente, comprobarClipVigente } from "./refresco-de-controles";
 import { contextosDeConfirmacion, useConfirmacionCoste } from "./use-confirmacion-coste";
-import { sujetoDeAnimacion, useControles } from "./use-controles";
+import { useControles } from "./use-controles";
 import { useFormatoClip } from "./use-formato-clip";
 import { useRequisitosSenalados } from "./use-requisitos-senalados";
 
@@ -134,9 +135,13 @@ export function VistaCrear({
   const [opcionesDireccion, setOpcionesDireccion] = useState<OpcionesDeDireccion | null>(null);
   const [estimacionFoto, setEstimacionFoto] = useState(estimacionFotograma);
   const [estimacionClip, setEstimacionClip] = useState(estimacionAnimacion);
-  // Lo último elegido del clip: un refresco que sigue tras un cambio evalúa lo vigente, no lo de hace un momento.
-  const clipVigente = useRef({ modelo: estimacionAnimacion.modelo, producto: productoClip });
-  clipVigente.current = { modelo: estimacionClip.modelo, producto: productoClip };
+  // Lo último elegido del clip: un refresco que sigue tras una espera evalúa lo vigente, no lo de hace un momento.
+  const clipVigente = useRef<ClipVigente>({ modelo: estimacionAnimacion.modelo, producto: productoClip });
+  useEffect(() => {
+    clipVigente.current = { modelo: estimacionClip.modelo, producto: productoClip };
+  }, [estimacionClip.modelo, productoClip]);
+  const comprobarClip = (medioId: string, cambio?: Partial<ClipVigente>) =>
+    comprobarClipVigente(clipVigente, medioId, controlesClip.refrescar, cambio);
   const [enviando, setEnviando] = useState<"fotograma" | "animacion" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [catalogoFoto, setCatalogoFoto] = useState(catalogoFotogramaInicial);
@@ -335,7 +340,7 @@ export function VistaCrear({
    */
   const refrescarControlesDelClip = async (medioId: string | undefined, modelo: string) => {
     if (!medioId) return;
-    const fallo = await controlesClip.refrescar(sujetoDeAnimacion(modelo, medioId, clipVigente.current.producto));
+    const fallo = await comprobarClip(medioId, { modelo });
     if (fallo) setError(fallo);
   };
 
@@ -344,7 +349,7 @@ export function VistaCrear({
     setProductoClip(producto);
     const medioId = fotograma?.medio?.id ?? imagenDelClip?.id;
     if (!medioId) return;
-    const fallo = await controlesClip.refrescar(sujetoDeAnimacion(clipVigente.current.modelo, medioId, producto));
+    const fallo = await comprobarClip(medioId, { producto });
     if (fallo) setError(fallo);
   };
 
@@ -501,9 +506,7 @@ export function VistaCrear({
     });
     if (respuesta.ok) setEstimacionClip(respuesta.datos);
     // El clip es otro envío: sus controles se evalúan con el fotograma ya generado, que es su referencia.
-    const fallo = await controlesClip.refrescar(
-      sujetoDeAnimacion(estimacionClip.modelo, trabajo.medio.id, productoClip),
-    );
+    const fallo = await comprobarClip(trabajo.medio.id);
     if (fallo) setError(fallo);
   };
 
@@ -543,10 +546,7 @@ export function VistaCrear({
       setEstimacionClip(respuesta.datos);
       // Con fotograma o con imagen propia, el aviso del clip se reevalúa con el modelo nuevo.
       const medioDelClip = fotograma?.medio?.id ?? imagenDelClip?.id;
-      if (medioDelClip) {
-        const producto = clipVigente.current.producto;
-        await controlesClip.refrescar(sujetoDeAnimacion(respuesta.datos.modelo, medioDelClip, producto));
-      }
+      if (medioDelClip) await comprobarClip(medioDelClip, { modelo: respuesta.datos.modelo });
     }
     // Y los formatos y las duraciones que se pueden ofrecer también son del modelo: se vuelven a pedir en
     // lugar de deducirlos aquí, que es lo que dejaría ofrecer algo que el servidor va a rechazar.
