@@ -1,7 +1,8 @@
 import { asc, eq, inArray, sql } from "drizzle-orm";
-import { precioCaducado } from "@/lib/catalogo";
+import { CAPACIDAD_DE_TIPO, precioCaducado } from "@/lib/catalogo";
 import { EVALUACION_LISTA, type EvaluacionVista, peorEstado } from "@/lib/controles";
 import type { ReferenciaIdentidad } from "@/lib/direccion";
+import type { FotoDeProductoDelClip } from "@/lib/foto-de-producto";
 import { formatearCreditos } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
 import { duracionParaModelo } from "@/lib/produccion";
@@ -40,6 +41,7 @@ import { type EleccionDeTrabajo, elegirParaTipo } from "../generacion/precios";
 import { eleccionDeGeneracion } from "../mapa/generacion";
 import { type Actor, aDto } from "../media/servicio";
 import { ultimaVersion } from "../personajes/ficha";
+import { fotoDeProductoDelClip } from "../productos/modelos-sugeridos";
 import { plantillaVigenteDe } from "../prompts/consulta";
 import { ErrorCatalogo } from "../proveedores/contrato";
 import {
@@ -73,6 +75,8 @@ import { estadoDelAsistente } from "./texto";
 export interface EleccionesDelPlan {
   fotograma: EleccionDeTrabajo | null;
   animacion: EleccionDeTrabajo | null;
+  /** Si el modelo del clip admite la foto del producto, para avisarlo junto al selector de producto. */
+  fotoDeProducto?: FotoDeProductoDelClip | null;
 }
 
 /**
@@ -86,7 +90,11 @@ export interface EleccionesDelPlan {
  */
 export async function eleccionesDelPlan(usuarioId?: string): Promise<EleccionesDelPlan> {
   const [fotograma, animacion] = await Promise.all([elegir("fotograma", usuarioId), elegir("animacion", usuarioId)]);
-  return { fotograma, animacion };
+  // Es solo un aviso adelantado: si el catálogo no responde, la puerta del envío sigue avisando igual.
+  const fotoDeProducto = animacion
+    ? await fotoDeProductoDelClip(animacion.modelo, CAPACIDAD_DE_TIPO.animacion).catch(() => null)
+    : null;
+  return { fotograma, animacion, fotoDeProducto };
 }
 
 async function elegir(tipo: "fotograma" | "animacion", usuarioId?: string): Promise<EleccionDeTrabajo | null> {
@@ -136,6 +144,7 @@ export function estimarEscena(escena: FilaEscena, elecciones: EleccionesDelPlan,
     margen,
     selloFotograma: fotograma.precio.sello,
     selloAnimacion: animacion.precio.sello,
+    ...(elecciones.fotoDeProducto ? { fotoDeProducto: elecciones.fotoDeProducto } : {}),
   };
 }
 

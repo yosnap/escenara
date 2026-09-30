@@ -46,6 +46,8 @@ const { avanzarEnviados, enviarEncolados } = await import("../cola/pasada");
 const { estimar, olvidarSaldos } = await import("../generacion/estimacion");
 const { crearProyecto } = await import("../asistente/proyectos");
 const { crearEscena, editarEscena } = await import("../asistente/escenas");
+const { detalleProyecto } = await import("../asistente/plan");
+const { modelosConFotoDeProducto, modelosParaCrearConFoto } = await import("./modelos-sugeridos");
 const { obtenerProducto } = await import("./consulta");
 const { leerObjeto } = await import("../almacenamiento");
 
@@ -369,6 +371,23 @@ describe.skipIf(!hayBaseDeDatos)("productos con sus fotos, su elección y su bor
       const sinProducto = await editarEscena(actorAna, escena.id, { producto: { productoId: "", accion: "" } });
       expect(sinProducto.productId).toBeNull();
       expect(sinProducto.productAction).toBe("");
+    });
+
+    test("la escena y «Crear» dicen lo mismo: qué modelos del clip admiten la foto y cuáles son la alternativa", async () => {
+      const { proyecto } = await crearProyecto(actorAna, { titulo: "Aviso adelantado", formato: "reel_vertical" });
+      await crearEscena(actorAna, proyecto.id, { texto: "Presenta el producto." });
+      const escena = (await detalleProyecto(actorAna, proyecto.id)).escenas[0];
+      const foto = escena?.estimacion?.fotoDeProducto;
+      expect(foto).toBeDefined();
+
+      // Lo que ve «Crear» sale del mismo cálculo: los que admiten la foto son exactamente las alternativas.
+      const modelos = await modelosParaCrearConFoto("image_to_video");
+      const conFoto = modelos.filter((m) => m.admiteFotoDeProducto).map((m) => m.nombre);
+      expect(conFoto).toEqual(await modelosConFotoDeProducto("image_to_video"));
+      const actual = modelos.find((m) => m.nombre === foto?.modelo);
+      expect(actual).toBeDefined();
+      expect(foto?.admite).toBe(actual?.admiteFotoDeProducto ?? false);
+      expect(foto?.alternativas).toEqual(foto?.admite ? [] : conFoto);
     });
 
     test("una acción sola, sin producto, no se guarda como si hubiera producto", async () => {

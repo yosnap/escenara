@@ -1,4 +1,5 @@
-import type { Capacidad, ModeloVista } from "@/lib/catalogo";
+import { type Capacidad, type ModeloElegible, type ModeloVista, recortarModelo } from "@/lib/catalogo";
+import type { FotoDeProductoDelClip } from "@/lib/foto-de-producto";
 import type { HechosProducto } from "../controles/contrato";
 import { modelosElegibles } from "../proveedores/catalogo";
 import { adaptadorDe } from "../proveedores/registro";
@@ -27,12 +28,38 @@ function cupoDeGaleriaDe(modelo: ModeloVista): number {
 }
 
 /**
+ * Si en el modelo cabe la foto del producto junto a la imagen de partida (hacen falta al menos dos huecos de
+ * galería). Es **la** fuente de verdad: el aviso junto al selector, las indicaciones del selector de modelo y la
+ * lista de alternativas salen de aquí, y coincide con el reparto que aplica la puerta de controles.
+ */
+export const admiteFotoDeProducto = (modelo: ModeloVista): boolean => cupoDeGaleriaDe(modelo) >= 2;
+
+/** Los modelos elegibles de una capacidad, recortados y con el dato de si admiten la foto del producto. */
+export async function modelosParaCrearConFoto(capacidad: Capacidad): Promise<ModeloElegible[]> {
+  const modelos = await modelosElegibles(capacidad);
+  return modelos.map((m) => ({ ...recortarModelo(m), admiteFotoDeProducto: admiteFotoDeProducto(m) }));
+}
+
+/**
+ * Cómo está un modelo de clip respecto a la foto del producto, para las pantallas que no reciben la lista de
+ * modelos (la escena de un proyecto). Solo consulta el catálogo cuando el modelo no la admite.
+ */
+export async function fotoDeProductoDelClip(modelo: ModeloVista, capacidad: Capacidad): Promise<FotoDeProductoDelClip> {
+  const admite = admiteFotoDeProducto(modelo);
+  return {
+    modelo: modelo.nombre,
+    admite,
+    alternativas: admite ? [] : await modelosConFotoDeProducto(capacidad),
+  };
+}
+
+/**
  * Modelos elegibles de esa capacidad en los que **sí cabe** la foto del producto junto a la imagen de partida
  * (hacen falta al menos dos huecos de galería). Ordenados como el catálogo: el predeterminado primero.
  */
 export async function modelosConFotoDeProducto(capacidad: Capacidad): Promise<string[]> {
   const modelos = await modelosElegibles(capacidad);
-  return modelos.filter((m) => cupoDeGaleriaDe(m) >= 2).map((m) => m.nombre);
+  return modelos.filter(admiteFotoDeProducto).map((m) => m.nombre);
 }
 
 /**

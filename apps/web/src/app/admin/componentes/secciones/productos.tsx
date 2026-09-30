@@ -3,8 +3,11 @@
 import { Package } from "lucide-react";
 import { useState } from "react";
 import { CabeceraGrupo } from "@/components/ui/direccion/cabecera-grupo";
+import { SelectorModelo } from "@/components/ui/modelo";
+import { AvisoFotoDeProducto } from "@/components/ui/productos/aviso-foto-de-producto";
 import { ElectorAccionProducto } from "@/components/ui/productos/elector-accion-producto";
 import { DefinicionesPictogramaProducto } from "@/components/ui/productos/pictogramas-producto";
+import type { ModeloElegible } from "@/lib/catalogo";
 import type { OpcionDireccion } from "@/lib/direccion";
 import { Muestra, Seccion } from "../seccion";
 
@@ -40,8 +43,31 @@ const ACCIONES: OpcionDireccion[] = [
   { clave: "skincare-masajear", nombre: "Masajear", descripcion: "Masajea la zona con suavidad." },
 ];
 
+/** Modelos de clip de ejemplo: uno lleva la foto del producto como referencia y el otro no. */
+const CLIP_SIN_FOTO: ModeloElegible = {
+  modelo: "ejemplo-veo",
+  nombre: "Veo 3.1 Lite",
+  conVoz: true,
+  unidad: "vídeo de 4 s",
+  estado: "validado",
+  creditos: 60,
+  precioPublicado: false,
+  duracionesConCoste: [{ segundos: 4, creditos: 60, unidad: "vídeo de 4 s", publicado: false }],
+  duraciones: [4],
+  maximoReferencias: 2,
+  admiteFotoDeProducto: false,
+};
+const CLIP_CON_FOTO: ModeloElegible = {
+  ...CLIP_SIN_FOTO,
+  modelo: "ejemplo-minimax",
+  nombre: "MiniMax H3",
+  conVoz: false,
+  admiteFotoDeProducto: true,
+};
+
 export function SeccionProductos() {
   const [accion, setAccion] = useState("");
+  const [modelo, setModelo] = useState(CLIP_SIN_FOTO.modelo);
   const [otra, setOtra] = useState("moda-giro-360");
   return (
     <Seccion
@@ -62,6 +88,27 @@ export function SeccionProductos() {
         </Muestra>
         <Muestra titulo="Acción con el producto: «Más acciones» cerrado por defecto">
           <ElectorAccionProducto acciones={ACCIONES} accion={accion} onCambio={setAccion} />
+        </Muestra>
+        <Muestra titulo="Aviso junto al selector: el modelo del clip no admite la foto del producto">
+          <AvisoFotoDeProducto
+            foto={{ modelo: CLIP_SIN_FOTO.nombre, admite: false, alternativas: [CLIP_CON_FOTO.nombre] }}
+            referencias={2}
+          />
+        </Muestra>
+        <Muestra titulo="El mismo aviso cuando ningún modelo activo la admite">
+          <AvisoFotoDeProducto
+            foto={{ modelo: CLIP_SIN_FOTO.nombre, admite: false, alternativas: [] }}
+            referencias={2}
+          />
+        </Muestra>
+        <Muestra titulo="Selector de modelo con un producto elegido: cada modelo dice si lleva la foto">
+          <SelectorModelo
+            etiqueta="Modelo del clip"
+            modelos={[CLIP_SIN_FOTO, CLIP_CON_FOTO]}
+            valor={modelo}
+            onCambio={setModelo}
+            conProducto
+          />
         </Muestra>
         <Muestra titulo="Con una acción de moda ya elegida: «Más acciones» se abre solo">
           <ElectorAccionProducto acciones={ACCIONES} accion={otra} onCambio={setOtra} />

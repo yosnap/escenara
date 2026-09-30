@@ -28,6 +28,7 @@ import {
   type OpcionesDeDireccion,
   REGISTROS_ESTETICOS,
 } from "@/lib/direccion";
+import type { FotoDeProductoDelClip } from "@/lib/foto-de-producto";
 import type { ProductoElegido } from "@/lib/productos";
 import { DIRECCION_VOCAL_MAXIMA } from "@/lib/proyectos";
 import { type CategoriaDecidible, sinExpertoConTrend } from "@/lib/trends";
@@ -131,6 +132,7 @@ export function PanelDireccion({
   conFotograma = true,
   producto,
   onProducto,
+  fotoDeProducto,
   trend = null,
   deshabilitado,
   onCambio,
@@ -170,6 +172,8 @@ export function PanelDireccion({
    */
   producto?: ProductoElegido;
   onProducto?: (elegido: ProductoElegido) => void;
+  /** Si el modelo del clip admite la foto del producto: el aviso sale junto al selector de producto. */
+  fotoDeProducto?: FotoDeProductoDelClip | null;
   /**
    * El trend elegido, si lo hay. Lo que decide se enseña bloqueado con su motivo y no se pregunta; si no deja hablar,
    * no se pide la voz; y no hay modo experto, porque su texto ya describe el clip. El servidor aplica la misma regla.
@@ -394,6 +398,7 @@ export function PanelDireccion({
         <SelectorProducto
           producto={producto}
           acciones={opciones.accionProducto}
+          fotoDeProducto={fotoDeProducto}
           deshabilitado={botonesApagados}
           onCambio={onProducto}
         />

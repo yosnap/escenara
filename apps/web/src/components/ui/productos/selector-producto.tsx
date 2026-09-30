@@ -4,6 +4,7 @@ import { Package } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { OpcionDireccion } from "@/lib/direccion";
+import type { FotoDeProductoDelClip } from "@/lib/foto-de-producto";
 import {
   AVISO_ACCION_POCO_FIABLE,
   AVISO_GUION_EN_ACCION_SIN_HABLA,
@@ -24,6 +25,7 @@ import { Aviso } from "../feedback";
 import { MiniaturaMedio } from "../media/miniatura-medio";
 import { Selector } from "../select";
 import { listarProductos } from "./api-productos";
+import { AvisoFotoDeProducto } from "./aviso-foto-de-producto";
 import { ElectorAccionProducto } from "./elector-accion-producto";
 import { DefinicionesPictogramaProducto } from "./pictogramas-producto";
 
@@ -47,12 +49,18 @@ import { DefinicionesPictogramaProducto } from "./pictogramas-producto";
 export function SelectorProducto({
   producto,
   acciones,
+  fotoDeProducto,
   deshabilitado,
   onCambio,
 }: {
   producto: ProductoElegido;
   /** Catálogo de acciones, tal como llega con el resto de la dirección. */
   acciones: OpcionDireccion[];
+  /**
+   * Cómo está el modelo del clip respecto a la foto del producto (lo calcula el servidor). Si no la admite, el aviso
+   * sale aquí, junto a la elección, y no solo con el coste al final. No sustituye al control previo: lo adelanta.
+   */
+  fotoDeProducto?: FotoDeProductoDelClip | null;
   deshabilitado?: boolean;
   onCambio: (elegido: ProductoElegido) => void;
 }) {
@@ -125,6 +133,8 @@ export function SelectorProducto({
           </p>
         </div>
       )}
+
+      {elegido && <AvisoFotoDeProducto foto={fotoDeProducto} referencias={elegido.referencias} />}
 
       {elegido?.tipo === "digital" && <PasosDelProductoDigital />}
 

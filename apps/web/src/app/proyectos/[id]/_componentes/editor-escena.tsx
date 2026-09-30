@@ -206,6 +206,8 @@ export function EditorEscena({
         segundos={escena.segundos}
         producto={producto}
         onProducto={setProducto}
+        // Una escena cantada no lleva producto en el clip: el aviso no aplica.
+        fotoDeProducto={direccion.formatoClip === "cantar" ? null : (escena.estimacion?.fotoDeProducto ?? null)}
         trend={
           trend && direccion.formatoClip !== "cantar"
             ? { nombre: trend.nombre, decide: trend.direccionDecidida, permiteHabla: trend.permiteHabla }
