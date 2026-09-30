@@ -2,7 +2,7 @@
 
 **Escenara** · Estudio abierto de personajes y vídeo · «Da vida a cada escena»
 
-Mapa de la documentación pública del proyecto. Versión actual: **0.34.1**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
+Mapa de la documentación pública del proyecto. Versión actual: **0.35.0**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
 
 ## Mapa de documentos
 
@@ -34,6 +34,7 @@ Mapa de la documentación pública del proyecto. Versión actual: **0.34.1**. Pa
 | Guías | [Usar y administrar trends](guias/trends-virales.md) | Selector de formatos vigentes, vista previa y coste; alta, versión, caducidad y duplicado desde el admin | 0.30.0 |
 | Guías | [Crear un personaje animado](guias/personajes-animados.md) | Tres acabados editables, guía de estilo, retrato maestro, herencia en escenas y coste | 0.31.0 |
 | Guías | [Montar y exportar tu vídeo](guias/montaje-y-exportacion.md) | La línea de tiempo simple (orden, recorte y zonas seguras), la mezcla de voz y música, los subtítulos quemados o adjuntos, la etiqueta de contenido sintético obligatoria, el guardado con versión y la exportación del MP4 vertical sin créditos | 0.32.0 |
+| Guías | [De Crear a un proyecto](guias/de-crear-a-un-proyecto.md) | Convertir un clip de Crear en un proyecto de una escena que lo reutiliza sin volver a pagarlo, lo que el proyecto vuelve a pedir, quitar la voz del clip o ponerle voz en off, y montarlo | 0.35.0 |
 | Procesos | [Recorridos de referencia 0.29–0.32](procesos/recorridos-de-referencia-0.29-0.32.md) | Registro de las pruebas de aceptación: proyectos conservados en la cuenta de administración, decisiones, costes y resultados medidos | En revisión |
 | Guías | [Escenas habladas](guias/escenas-habladas.md) | El modo Omni, sus dos motores (Gemini Omni Flash recomendado y MiniMax H3), qué registrar, qué cuesta cada escena y qué invalida cambiar la voz | 0.22.0 |
 | Guías | [Personajes inventados](guias/personajes-inventados.md) | Un personaje que no existe: descripción, cuatro retratos candidatos, declaración de que no representa a nadie y por qué no admite fotos reales | 0.22.0 |

@@ -113,7 +113,7 @@ export function vistaDe(
  * Se vuelve a validar al leerla en lugar de confiar en lo guardado: la fila es JSON y un trabajo viejo no la
  * tiene. Si no encaja, se devuelve `null` y la pantalla ofrece dirigir desde cero.
  */
-function direccionGuardada(fila: FilaTrabajo): DireccionElegidaConAcento | null {
+export function direccionGuardada(fila: FilaTrabajo): DireccionElegidaConAcento | null {
   const guardada = (fila.input as { direccionElegida?: unknown }).direccionElegida;
   if (!guardada || typeof guardada !== "object") return null;
   const c = guardada as Record<string, unknown>;

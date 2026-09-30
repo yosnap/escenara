@@ -15,6 +15,9 @@ Dos cosas antes de empezar, para que no haya sorpresas:
 
 ## 1. La línea de tiempo
 
+Un clip traído de **Crear** con «Convertir en proyecto» se monta igual que cualquier escena, aunque el proyecto
+siga en borrador ([De Crear a un proyecto](de-crear-a-un-proyecto.md)).
+
 Al abrir la pantalla, Escenara pone en la línea de tiempo **una escena por fragmento**, en el orden del guion y sin
 recortar. Cada tarjeta tiene su previsualización en un marco vertical con las **zonas seguras** dibujadas: lo que
 queda fuera de ellas es lo que las plataformas tapan con su interfaz.
@@ -47,6 +50,11 @@ En **Mezcla y subtítulos** se decide cómo suena el montaje y qué pasa con el 
   y **no se pueden quitar después**.
 - **Formato del fichero de subtítulos**: **SRT** o **WebVTT**. Los tiempos se corren solos con tus recortes, y si un
   subtítulo se queda a medias en el corte, se acorta o se descarta.
+
+Una escena con el **audio del clip quitado** entra en silencio: el MP4 no lleva el sonido de ese clip, pero sí su
+pista de voz aparte si la tiene y la música. Sin pista de voz aparte tampoco lleva subtítulos, porque no se oye nada. Se decide en el paso **Escenas** del proyecto, no aquí, y su fragmento lo
+dice con **«Sin el audio del clip»** ([Voz y subtítulos](voz-y-subtitulos.md)). Cambiarlo
+cambia el vídeo, así que la exportación anterior deja de ser «la del montaje de ahora».
 
 La música autorizada del proyecto entra **desde el principio** y se corta cuando acaba el montaje: no se repite si
 es más corta ni se le hace un fundido.
@@ -108,6 +116,7 @@ La comprobación previa se hace **antes** de bajar el primer byte, y siempre dic
 
 | Lo que dice | Qué pasa | Cómo se arregla |
 |---|---|---|
+| «La escena N tiene una afirmación sobre salud sin verificar» | Lo que se dice en esa escena afirma algo de salud y nadie lo ha revisado (en cualquier proyecto: por ejemplo, si editaste el texto de la escena después de aprobar el plan, o en un clip traído de Crear, que no ha pasado por esa aprobación) | Verifícala, corrígela o descártala en el paso Escenas del proyecto |
 | Un **fallo crítico abierto** en la revisión de continuidad | La escena tiene un problema que marcaste como crítico | Ve a «Revisión», arréglalo o ciérralo como aceptado ([Revisar la continuidad](revisar-la-continuidad.md)) |
 | «La escena N está en el montaje y todavía no tiene clip guardado» (o «N escenas del montaje todavía no tienen clip guardado», con sus números) | El clip de esa escena se borró o nunca se generó | Prodúcelas o quítalas de la línea de tiempo |
 | «La línea de tiempo de este montaje está vacía» | Lo has vaciado | Añade al menos una escena con clip desde el apartado de abajo |

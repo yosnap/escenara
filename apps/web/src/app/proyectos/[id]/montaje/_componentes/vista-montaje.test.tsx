@@ -22,6 +22,7 @@ const escena = (parcial: Partial<EscenaMontableVista> = {}): EscenaMontableVista
   duracionClip: 8,
   medioClip: null,
   tieneVoz: false,
+  audioDelClipQuitado: false,
   subtitulos: [],
   ...parcial,
 });
@@ -197,5 +198,15 @@ describe("el panel de exportación", () => {
     expect(html).toContain("2 fallos críticos abiertos");
     expect(html).toContain("Resuélvelos en la revisión");
     expect(html).toContain("/proyectos/proyecto-1/revision");
+  });
+});
+
+describe("una escena con el audio del clip quitado", () => {
+  test("su fragmento lo dice, para que el MP4 mudo no sorprenda", () => {
+    expect(pintar({ escenas: [escena({ audioDelClipQuitado: true })] })).toContain("Sin el audio del clip");
+  });
+
+  test("con el audio puesto no se dice nada", () => {
+    expect(pintar()).not.toContain("Sin el audio del clip");
   });
 });

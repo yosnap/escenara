@@ -108,6 +108,11 @@
           "archivo": "revisar-la-continuidad.md",
           "titulo": "Revisar la continuidad",
           "descripcion": "Comparar cada clip con la hoja de personaje y qué bloquea la exportación."
+        },
+        {
+          "archivo": "de-crear-a-un-proyecto.md",
+          "titulo": "De Crear a un proyecto",
+          "descripcion": "Convertir un clip de Crear en un proyecto sin volver a pagarlo, quitarle la voz propia o ponerle voz en off, y montarlo."
         }
       ]
     },

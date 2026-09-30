@@ -583,6 +583,8 @@ export interface EscenaVozVista {
    * volver a producir esa escena o se oirán dos voces diciendo lo mismo.
    */
   clipHablado: boolean;
+  /** `true` cuando la escena entra en silencio (audio del clip quitado, sin pista aparte): no lleva subtítulos. */
+  sinAudio: boolean;
   invalidacion: string;
   subtitulos: Subtitulo[];
   /** `true` si los subtítulos los ha tocado una persona. Lo exportado siempre son estos. */

@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { escenaSinAudio } from "@/lib/audio-del-clip";
 import {
   componerSubtitulos,
   type EscenaConSubtitulos,
@@ -44,6 +45,12 @@ function origenDeLaTranscripcion(proyecto: FilaProyecto, escena: FilaEscena): { 
       );
     }
     return { id: escena.voiceMediaId, que: "la pista de voz" };
+  }
+  if (escena.clipAudioMuted) {
+    throw new ErrorProyecto(
+      409,
+      "El audio del clip de esta escena está quitado, así que no se oye nada que subtitular. Vuelve a activarlo en el paso Escenas del proyecto o ponle una pista de voz aparte. No se ha cobrado nada.",
+    );
   }
   if (!escena.clipMediaId) {
     throw new ErrorProyecto(
@@ -236,9 +243,17 @@ export async function exportarSubtitulos(
   const conSubtitulos: EscenaConSubtitulos[] = escenas.map((escena) => ({
     orden: escena.sortOrder,
     segundos: escena.plannedSeconds,
-    subtitulos: escena.subtitles,
+    // La escena que entra en silencio no se subtitula: sería texto de algo que no se oye.
+    subtitulos: escenaSinAudio(escena, proyecto.voiceMode) ? [] : escena.subtitles,
   }));
   if (conSubtitulos.every((e) => e.subtitulos.length === 0)) {
+    // Si hay subtítulos guardados pero todos son de escenas en silencio, la causa es esa, no que no haya ninguno.
+    if (escenas.some((escena) => escena.subtitles.length > 0)) {
+      throw new ErrorProyecto(
+        409,
+        "Las escenas con subtítulos no se oyen porque se ha quitado el audio del clip y no tienen pista de voz aparte, así que sus subtítulos no se exportan. Vuelve a activar el audio del clip en el paso Escenas del proyecto o genera su pista de voz.",
+      );
+    }
     throw new ErrorProyecto(
       409,
       "Este proyecto todavía no tiene ningún subtítulo guardado. Genera o escribe los subtítulos de sus escenas antes de exportarlos.",

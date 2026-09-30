@@ -83,6 +83,14 @@ Cuando esté listo, el archivo se descarga al momento (la URL del proveedor cadu
 
 Cuando el fotograma está listo (o desde la imagen que has traído), pulsa **«Siguiente: Clip»**: el paso **«El clip»** genera un clip vertical usando esa imagen como primer fotograma. Ahí eliges el modelo del clip, su **duración** entre las que ese modelo sabe cobrar (y, si el trend las limita, entre las que admite), lo que dice el personaje y la dirección con botones (plano, ángulo, movimiento de cámara, gesto…) y los botones que pida la plantilla o el [trend](trends-virales.md) que elegiste en el paso 1, «Elige el formato» (aquí ya no se vuelve a elegir). Lo que decida el trend de la dirección sale bloqueado con el motivo «Lo decide el trend». Si vienes con una imagen tuya no hay paso «Describe la escena», así que el texto que pida el trend (por ejemplo «Qué ocurre en la escena») se escribe aquí mismo, en un campo con el nombre que le da el trend; es la misma descripción que se escribe en el paso de la escena cuando lo hay, nunca dos textos distintos. La proporción es 9:16 y el clip sale a 720p. Pulsas **Animar**, con su propia estimación y su propia confirmación: cada gasto se aprueba por separado.
 
+## Y después: seguir en un proyecto
+
+Un clip de Crear se queda en tu biblioteca, pero no se puede montar ni ponerle voz en off por sí solo. Debajo del clip
+terminado está **Convertir en proyecto**: crea un proyecto de una escena que **reutiliza ese mismo clip**, sin
+generarlo otra vez y **sin cobrar nada**, con su imagen de partida, su trend, su dirección, su producto y su personaje.
+Desde ahí puedes quitarle la voz que trae, ponerle voz en off y montarlo. Todo el recorrido está en
+[De Crear a un proyecto](de-crear-a-un-proyecto.md).
+
 ## Si algo va mal
 
 - **«Sin respuesta del proveedor».** No hemos podido saber cómo va el trabajo. Escenara **no lo reenvía nunca**, porque podría cobrarse dos veces. Verás el identificador de la tarea en KIE y un botón **Volver a consultar**: púlsalo cuando quieras y, si la tarea terminó, se recuperan el archivo y los créditos consumidos.

@@ -246,7 +246,12 @@ async function prepararFragmentos(
         material.proyecto.voiceMode === "pista" && escena.voz
           ? await descargador.bajar(escena.voz, `voz-${indice}`)
           : null,
-      tieneAudio: medidas.tieneAudio,
+      /**
+       * Una escena con el **audio del clip quitado** entra como un clip sin audio: se iguala con silencio en lugar
+       * de su pista. Es por escena y no depende del modo de voz, así que en modo `pista` su voz aparte se sigue
+       * mezclando encima y en modo `clip` la escena queda muda (con la música, si la hay).
+       */
+      tieneAudio: medidas.tieneAudio && !escena.escena.clipAudioMuted,
       desdeSegundos,
     });
     desdeSegundos += duracionDeFragmento(fragmento);

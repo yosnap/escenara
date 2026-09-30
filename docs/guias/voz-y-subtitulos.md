@@ -15,6 +15,25 @@ Se elige **uno para todo el proyecto**, y son excluyentes:
 En modo «pista», los clips se piden **sin diálogo**, solo con sonido ambiente: si el clip también lo dijera, se
 oirían dos voces distintas diciendo lo mismo.
 
+## Quitar la voz que trae el clip
+
+Aparte del modo, cada escena con clip producido tiene su interruptor **«Quitar el audio del clip»**, en el paso
+**Escenas** del proyecto (bloque «Clips ya producidos»). Con él encendido, esa escena entra en el montaje y en el MP4
+**sin el sonido del clip**: ni su voz ni su ambiente. No toca el archivo, no cuesta nada y se puede deshacer.
+
+Es **por escena** y no cambia el modo del proyecto:
+
+- en **voz del clip**, la escena queda sin voz (con la música, si la hay);
+- en **pista de voz aparte**, se oye solo su pista de voz, sin la voz que el clip traía dentro. Es la forma de ponerle
+  **voz en off** a un clip que ya habla sin volver a producirlo: quítale el audio y genera su pista.
+
+Lo que se subtitula es lo que se oye: una escena con el audio del clip quitado y sin pista de voz aparte **no se
+transcribe ni lleva subtítulos** en el fichero ni en el MP4, y su tarjeta lo dice («Sin subtítulos: el audio está
+quitado»). Con pista de voz aparte, sus subtítulos salen del diálogo como siempre.
+
+La tarjeta de cada clip dice en una frase qué se va a oír, y avisa si se oirían dos voces diciendo lo mismo. Es lo que
+usa un clip traído de Crear ([De Crear a un proyecto](de-crear-a-un-proyecto.md)).
+
 ## Por qué la voz no se elige escena a escena
 
 Porque es lo único que hace que **el timbre no cambie de plano a plano**. Dos clips generados por separado pueden
@@ -64,7 +83,8 @@ que dependían de ello. Cuando eso ocurre:
 - si el cambio deja sin valer escenas ya generadas, la pantalla **te dice cuántas son** y te pide confirmarlo antes
   de aplicarlo;
 - si pasas a «pista de voz aparte» y ya tienes clips producidos **con el diálogo hablado dentro**, también te lo
-  dice: si les añades la pista sin volver a producir el clip, se oirían dos voces diciendo lo mismo;
+  dice: si les añades la pista sin volver a producir el clip ni quitarle su audio, se oirían dos voces diciendo lo
+  mismo. Las escenas con el audio del clip quitado no cuentan para este aviso;
 - corregir los subtítulos de una escena **no la da por buena**: mientras lo que se oye siga sin corresponder a lo
   que dice ahora (su pista de voz o el audio de su clip), la pantalla te la sigue señalando;
 - después, regeneras las que quieras **una a una**, confirmando el coste de cada una.

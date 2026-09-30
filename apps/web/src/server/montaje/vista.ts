@@ -37,6 +37,7 @@ export function escenasParaLaVista(actor: Actor, material: MaterialDelProyecto):
     duracionClip: e.duracionClip,
     medioClip: e.clip ? aDto(e.clip, actor) : null,
     tieneVoz: e.voz !== null,
+    audioDelClipQuitado: e.escena.clipAudioMuted,
     subtitulos: e.subtitulos,
   }));
 }

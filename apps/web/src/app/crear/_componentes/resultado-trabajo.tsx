@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { claseBoton } from "@/components/ui/button";
 import { VisorMedio } from "@/components/ui/media/visor-medio";
 import { formatearCreditos, type TrabajoVista } from "@/lib/generacion";
+import { ConvertirEnProyecto } from "./convertir-en-proyecto";
 
 /**
  * Resultado de un trabajo ya guardado en la biblioteca del usuario. Los créditos se muestran tal como los
@@ -45,6 +46,8 @@ export function ResultadoTrabajo({ trabajo, children }: { trabajo: TrabajoVista;
         </div>
       </div>
       {children}
+      {/* Un clip terminado puede seguir en un proyecto para ponerle voz y montarlo, sin volver a pagarlo. */}
+      {trabajo.tipo === "animacion" && <ConvertirEnProyecto trabajoId={trabajo.id} />}
     </section>
   );
 }

@@ -1,5 +1,7 @@
 import type { EvaluacionVista } from "@/lib/controles";
 import { RESOLUCION_MONTAJE } from "@/lib/montaje";
+import { BLOQUEAN_APROBACION } from "@/lib/proyectos";
+import { afirmacionesDe } from "../asistente/consulta";
 import type { Hechos } from "../controles/contrato";
 import { parametrosDeControles } from "../controles/hechos";
 import { evaluarParaMostrar, exigirFrenosDurosRegistrados } from "../controles/puerta";
@@ -50,6 +52,21 @@ export function escenasSinClip(montaje: FilaMontaje, material: MaterialDelProyec
   return [...new Set(ordenes)];
 }
 
+/** Órdenes de las escenas del montaje con alguna afirmación de salud sin verificar. */
+export async function escenasConSaludSinVerificar(
+  montaje: FilaMontaje,
+  material: MaterialDelProyecto,
+): Promise<number[]> {
+  const enElMontaje = new Set(montaje.fragments.map((f) => f.escenaId));
+  const escenas = material.escenas.filter((e) => enElMontaje.has(e.escena.id));
+  if (escenas.length === 0) return [];
+  const pendientes = (await afirmacionesDe(escenas.map((e) => e.escena.id))).filter(
+    (a) => a.state === "por_verificar" && BLOQUEAN_APROBACION.includes(a.kind),
+  );
+  const conPendientes = new Set(pendientes.map((a) => a.sceneId));
+  return escenas.filter((e) => conPendientes.has(e.escena.id)).map((e) => e.escena.sortOrder);
+}
+
 /** Hechos del render, tal como los evalúa el motor. Es **lectura**: no aparta nada y no cuesta nada. */
 export async function hechosDelMontaje(
   actor: Actor,
@@ -57,10 +74,11 @@ export async function hechosDelMontaje(
   material: MaterialDelProyecto,
   segundos: number,
 ): Promise<Hechos> {
-  const [parametros, criticos, espacio] = await Promise.all([
+  const [parametros, criticos, espacio, salud] = await Promise.all([
     parametrosDeControles(),
     criticosAbiertosDeProyecto(material.proyecto.id),
     espacioUsado(actor),
+    escenasConSaludSinVerificar(montaje, material),
   ]);
   return {
     tipo: "montaje",
@@ -69,6 +87,7 @@ export async function hechosDelMontaje(
       criticos,
       fragmentos: montaje.fragments.length,
       escenasSinClip: escenasSinClip(montaje, material),
+      afirmacionesSalud: salud,
     },
     cuota: {
       previstoBytes: bytesPrevistos(segundos),

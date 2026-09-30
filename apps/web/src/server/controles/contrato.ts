@@ -183,6 +183,12 @@ export interface HechosExportacion {
    * nada que montar, y el mensaje tiene que decir **cuál** falta.
    */
   escenasSinClip?: number[];
+  /**
+   * Escenas del montaje con alguna afirmación **de salud** sin verificar, por su número de orden (0.35.0). Es la
+   * misma que impide aprobar el plan; aquí cubre lo que llega al montaje sin haber pasado por esa aprobación, como
+   * un clip traído de «Crear».
+   */
+  afirmacionesSalud?: number[];
 }
 
 /**
