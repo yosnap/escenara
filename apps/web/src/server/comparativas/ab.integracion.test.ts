@@ -53,6 +53,7 @@ const { depositoDe } = await import("../presupuesto/deposito");
 const { estadoDeProduccion, ultimoTrabajoDeEscena } = await import("../produccion/consulta");
 const { aprobarFotograma, producirEscena } = await import("../produccion/producir");
 const { estimarAB, lanzarAB, elegirGanadora, verComparativa } = await import("./ab");
+const { enviarEncolados } = await import("../cola/pasada");
 
 type Sesion = Awaited<ReturnType<typeof crearSesionDePrueba>>;
 type Actor = import("../media/servicio").Actor;
@@ -438,6 +439,11 @@ describe.skipIf(!hayBaseDeDatos)("comparativa A/B de una escena", () => {
     const despues = await filaDeEscena(escenaId);
     expect(despues.clipJobId).toBe(antes.clipJobId);
     expect((await ultimoTrabajoDeEscena(escenaId, "animacion"))?.id).toBe(antes.clipJobId as string);
+
+    // El worker las envía como cualquier clip: su revalidación antes de subir nada tampoco las confunde con el clip
+    // de la escena.
+    expect(await enviarEncolados(h)).toBe(2);
+    expect(tareasCreadas).toBe(2);
 
     // El doble envío devuelve la misma comparativa y no encola nada más.
     const otra = await lanzarAB(actor, escenaId, p, h);
