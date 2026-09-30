@@ -52,15 +52,25 @@ lee «Actualizar desde la 0.45.0». Las escenas sin lugar producen exactamente l
   En las escenas habladas con Omni el lugar viaja descrito.
 - **Borrar un lugar** no borra las fotos, lo generado ni **sus declaraciones** (quedan revocadas y con el nombre del
   lugar); no se puede con trabajos en marcha que lo usan, y el worker no envía uno cuyo lugar se ha borrado (lo cierra
-  sin cobro y lo dice). Las escenas aprobadas que lo usaban vuelven a borrador con el motivo.
+  sin cobro y lo dice). Las escenas aprobadas que lo usaban vuelven a borrador con el motivo. Borrar y encolar a la
+  vez tampoco se cuela: el borrado espera al encolado que ya está en curso y lo cuenta, y el que llega tarde responde
+  que el lugar se acaba de borrar, sin encolar ni cobrar nada.
 - **El aviso de antes de pagar y el envío deciden con la misma función** si la maestra cuenta en el cupo (no en el
   clip, ni en la escena hablada, ni al meter la captura de un producto digital), y la consulta de controles devuelve
   las cifras del reparto. La consulta del paso de la captura se hace con ese paso.
-- **Un «500 Internal Error» del proveedor** (el texto «internal error», o un 500 sin texto) se cuenta como fallo
-  interno pasajero («vuelve a generarlo»). Un «please try again later» con saldo insuficiente o una petición inválida
-  sigue sin causa conocida. Visto con Gemini Omni: no cobró y al repetirlo salió bien.
+- **La producción de un proyecto dice lo mismo que el envío**: cada tarjeta de escena evalúa el lugar y el producto del
+  fotograma con esa misma función y las entradas de su siguiente envío (fotograma, paso de la captura, clip o escena
+  hablada), así que «la maestra no cabe», «sin foto maestra» y «las referencias del producto no caben» salen con su
+  casilla antes de pagar y, confirmados, el envío pasa. Antes la tarjeta no los decía y el envío pedía una
+  confirmación que no había dónde dar.
+- **Un «500 Internal Error» del proveedor** (el texto «internal error» con un 500 o sin código, o un 500 sin texto) se
+  cuenta como fallo interno pasajero («vuelve a generarlo»). Con un 4xx no, aunque el texto diga «internal error»
+  (un 422 «Internal error processing your image: file too large» es la imagen). Un «please try again later» con saldo
+  insuficiente o una petición inválida sigue sin causa conocida. Visto con Gemini Omni: no cobró y al repetirlo salió
+  bien.
 - Documento legal: nueva sección sobre las fotos de lugares, que pueden llevar personas, y a dónde se envían
-  (pendiente de revisión jurídica).
+  (pendiente de revisión jurídica). El diálogo de «Retirar personas» dice que la foto va, con la gente, a KIE y al
+  proveedor del modelo que la edita.
 - Guías ajustadas: productos (cupo a tres y producto sobre una superficie), dirigir tu clip (el sitio con un lugar),
   podcast y dualcast (set común) y por qué no puedo generar. Resultados del spike en APIs y proveedores.
 

@@ -354,7 +354,8 @@ Mira [Productos](productos.md).
 
 Del **lugar**: sin maestra, o sin hueco para ella en el modelo elegido, el lugar viaja **solo descrito** y puede salir
 distinto. Marca una maestra en la ficha del lugar o elige un modelo que admita más imágenes (la tarifa es otra, vuelve a
-estimar). Si te vale así, confírmalo. Mira [Lugares](lugares.md).
+estimar). Si te vale así, confírmalo: en «Crear» y en la tarjeta de cada escena de la producción sale con su casilla
+antes de pagar. Mira [Lugares](lugares.md).
 
 </details>
 
