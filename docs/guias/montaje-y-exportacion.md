@@ -15,6 +15,9 @@ Dos cosas antes de empezar, para que no haya sorpresas:
 
 ## 1. La línea de tiempo
 
+Un clip traído de **Crear** con «Convertir en proyecto» se monta igual que cualquier escena, aunque el proyecto
+siga en borrador ([De Crear a un proyecto](de-crear-a-un-proyecto.md)).
+
 Al abrir la pantalla, Escenara pone en la línea de tiempo **una escena por fragmento**, en el orden del guion y sin
 recortar. Cada tarjeta tiene su previsualización en un marco vertical con las **zonas seguras** dibujadas: lo que
 queda fuera de ellas es lo que las plataformas tapan con su interfaz.
@@ -47,6 +50,11 @@ En **Mezcla y subtítulos** se decide cómo suena el montaje y qué pasa con el 
   y **no se pueden quitar después**.
 - **Formato del fichero de subtítulos**: **SRT** o **WebVTT**. Los tiempos se corren solos con tus recortes, y si un
   subtítulo se queda a medias en el corte, se acorta o se descarta.
+
+Una escena con el **audio del clip quitado** entra en silencio: el MP4 no lleva el sonido de ese clip, pero sí su
+pista de voz aparte si la tiene y la música. Se decide en el paso **Escenas** del proyecto, no aquí, y su fragmento lo
+dice con **«Sin el audio del clip»** ([Voz y subtítulos](voz-y-subtitulos.md)). Cambiarlo
+cambia el vídeo, así que la exportación anterior deja de ser «la del montaje de ahora».
 
 La música autorizada del proyecto entra **desde el principio** y se corta cuando acaba el montaje: no se repite si
 es más corta ni se le hace un fundido.
