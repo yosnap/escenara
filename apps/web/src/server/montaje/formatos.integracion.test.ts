@@ -51,7 +51,8 @@ const { characters, generationJobs, media, montageExports, projects, rateLimits,
   await import("../db/esquema");
 const { crearMedio } = await import("../media/servicio");
 const { leerObjeto } = await import("../almacenamiento");
-const { pasadaDeExportaciones } = await import("./cola");
+const { pasadaDeExportaciones, tomarExportaciones } = await import("./cola");
+const { MS_TOMA_EXPORTACION, Progreso } = await import("./render");
 const { medirConFfprobe } = await import("../revision/medicion");
 const { revisarAutomaticamente } = await import("../revision/ejecutar");
 const { fijarModoVoz } = await import("../voz/proyecto");
@@ -465,6 +466,21 @@ describe.skipIf(!hayBaseDeDatos)("formatos, reencuadre y límites de un proyecto
     expect((await exportar()).estado).toBe(200);
     const filas = await db().select().from(montageExports).where(eq(montageExports.projectId, proyectoId));
     expect(filas.map((f) => f.format).sort()).toEqual(["cuadrado_1_1", "vertical_9_16"]);
+  });
+
+  test("mientras se monta, cada apunte de progreso renueva la toma: otra pasada no coge la misma exportación", async () => {
+    expect((await exportar()).estado).toBe(202);
+    const [tomada] = await tomarExportaciones("worker-a");
+    if (!tomada) throw new Error("No se ha tomado la exportación.");
+    // La toma está a punto de caducar (un render largo): sin renovarla, otra pasada la volvería a coger.
+    await db()
+      .update(montageExports)
+      .set({ lockedUntil: new Date(Date.now() - 1000) })
+      .where(eq(montageExports.id, tomada.id));
+    await new Progreso(tomada.id).entrarEn("montando");
+    const [renovada] = await db().select().from(montageExports).where(eq(montageExports.id, tomada.id));
+    expect(renovada?.lockedUntil?.getTime() ?? 0).toBeGreaterThan(Date.now() + MS_TOMA_EXPORTACION - 60_000);
+    expect(await tomarExportaciones("worker-b")).toHaveLength(0);
   });
 
   test("un formato que el proyecto no tiene no se exporta, y se dice cómo añadirlo", async () => {

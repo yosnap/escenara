@@ -57,7 +57,7 @@ const ultimasLineas = (texto: string, cuantas = 6) =>
  * Apunta la etapa y el porcentaje de la exportación. Acota las escrituras en el tiempo: el progreso es
  * información, no un registro que haya que guardar fotograma a fotograma.
  */
-class Progreso {
+export class Progreso {
   private ultimoApunte = 0;
   private etapa: FilaExportacion["stage"] = "preparando";
 
