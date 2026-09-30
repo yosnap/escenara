@@ -7,14 +7,8 @@ import { Boton, claseBoton } from "@/components/ui/button";
 import { Aviso, EstadoVacio } from "@/components/ui/feedback";
 import { MiniaturaMedio } from "@/components/ui/media/miniatura-medio";
 import { InsigniaEstado } from "@/components/ui/trabajo";
-import {
-  type EstadoCola,
-  ETIQUETA_MOTIVO_FALLO,
-  esCancelable,
-  esEstadoActivo,
-  formatearCreditos,
-  type TrabajoVista,
-} from "@/lib/generacion";
+import { etiquetaDelFallo } from "@/lib/causa-fallo";
+import { type EstadoCola, esCancelable, esEstadoActivo, formatearCreditos, type TrabajoVista } from "@/lib/generacion";
 import { cancelarTrabajo, consultarTrabajo, reconsultarTrabajo } from "../../_componentes/api-generacion";
 import { LimiteDeGasto } from "../../_componentes/limite-de-gasto";
 
@@ -116,7 +110,7 @@ export function ListaTrabajos({ iniciales, cola }: { iniciales: TrabajoVista[]; 
                 {trabajo.intentos > 1 && ` · ${trabajo.intentos} de ${trabajo.intentosMaximos} intentos`}
               </p>
               {trabajo.motivoFallo && (
-                <p className="text-sm text-texto-suave">{ETIQUETA_MOTIVO_FALLO[trabajo.motivoFallo]}.</p>
+                <p className="text-sm text-texto-suave">{etiquetaDelFallo(trabajo.motivoFallo, trabajo.causaFallo)}.</p>
               )}
               {trabajo.error && <p className="text-sm font-medium text-texto">{trabajo.error}</p>}
               {trabajo.excesoCreditos !== null && trabajo.excesoCreditos > 0 && (
