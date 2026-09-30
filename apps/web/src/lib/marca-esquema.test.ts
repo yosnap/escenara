@@ -92,6 +92,30 @@ describe("esquema del documento de marca", () => {
     ]);
   });
 
+  test("los invisibles legítimos pasan: emojis compuestos, banderas de subdivisión, variación y persa", () => {
+    for (const nombre of [
+      "👩\u200D💻 Dev Studio",
+      "🏳️\u200D🌈 Orgullo",
+      "🏴\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F} Alba",
+      "❤️ Estudio",
+      "می\u200Cخواهم",
+    ]) {
+      const doc = valido();
+      doc.identity.name = nombre;
+      expect(errores(doc)).toEqual([]);
+    }
+  });
+
+  test("las marcas de dirección se rechazan diciendo qué son", () => {
+    for (const marca of ["\u202E", "\u2066", "\u200F", "\u061C"]) {
+      const doc = valido();
+      doc.identity.name = `Acme ${marca}lave`;
+      expect(errores(doc)).toEqual([
+        { campo: "identity.name", mensaje: expect.stringContaining("marcas invisibles de dirección") },
+      ]);
+    }
+  });
+
   test("las medidas son enteros en su rango; el objetivo táctil no baja de 44 px", () => {
     const doc = valido();
     doc.layout.minimumTouchTargetPx = 32;

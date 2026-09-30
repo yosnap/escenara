@@ -9,7 +9,7 @@
  * inventada sería una vía de inyección y aquí se rechaza.
  *
  * Los textos de marca no van nunca a CSS; se escapan al pintarse (React y los metadatos de Next) y además aquí se
- * rechazan los caracteres de control y `<`/`>`, que ningún nombre ni lema necesita.
+ * rechazan los saltos de línea, las marcas invisibles de dirección y `<`/`>`, que ningún nombre ni lema necesita.
  *
  * Se comparte con el navegador: el editor enseña los mismos errores por campo que devolvería el servidor.
  */
@@ -130,11 +130,20 @@ const MAX_LARGO_FAMILIA = 40;
 const VERSION_MARCA = /^\d{1,3}\.\d{1,3}\.\d{1,3}$/;
 const SLUG = /^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$/;
 /**
- * Caracteres de control (saltos de línea incluidos), de formato invisibles (marcas de dirección como U+202E, espacios
- * de anchura cero), separadores de línea y párrafo, y los signos `<` y `>`: ningún texto de marca los necesita, y los
- * invisibles permiten que un nombre se lea distinto de lo que es.
+ * Lo que no admite ningún texto de marca:
+ *
+ * - controles (saltos de línea incluidos) y separadores de línea y párrafo;
+ * - **marcas de dirección** (U+061C, U+200E-U+200F, U+202A-U+202E, U+2066-U+2069): hacen que un nombre se lea distinto
+ *   de lo que es (por ejemplo, invirtiendo el final);
+ * - invisibles que no hacen falta para escribir nada: espacio de anchura cero (U+200B), unión de palabras (U+2060),
+ *   marca de orden de bytes (U+FEFF) y guion blando (U+00AD);
+ * - los signos `<` y `>`.
+ *
+ * Sí se admiten los invisibles **legítimos**: U+200C y U+200D, que necesitan el persa, las escrituras índicas y los
+ * emojis compuestos (👩‍💻, 🏳️‍🌈), las etiquetas de las banderas de subdivisión (🏴󠁧󠁢󠁳󠁣󠁴󠁿) y los selectores de variación.
  */
-export const CONTROL_O_ETIQUETA = /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}<>]/u;
+export const CONTROL_O_ETIQUETA =
+  /[\p{Cc}\p{Zl}\p{Zp}\u061C\u200B\u200E\u200F\u202A-\u202E\u2060\u2066-\u2069\uFEFF\u00AD<>]/u;
 
 /** ¿Es una lista de familias segura? Devuelve el motivo del rechazo o `null`. */
 export function motivoFamiliaNoValida(valor: unknown): string | null {
@@ -243,7 +252,11 @@ function texto(valor: unknown, ruta: string, max: number, errores: ErrorCampo[])
   const limpio = valor.trim();
   if (limpio.length > max) errores.push({ campo: ruta, mensaje: `Como mucho ${max} caracteres.` });
   else if (CONTROL_O_ETIQUETA.test(limpio)) {
-    errores.push({ campo: ruta, mensaje: "No admite saltos de línea, caracteres de control ni los signos < y >." });
+    errores.push({
+      campo: ruta,
+      mensaje:
+        "No admite saltos de línea, marcas invisibles de dirección del texto (que cambian cómo se lee) ni los signos < y >.",
+    });
   }
   return limpio;
 }
