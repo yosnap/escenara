@@ -2,6 +2,79 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.39.0] · 2026-09-30
+
+**Decisiones registradas y sombra.** Cada vez que los controles previos deciden si algo se genera, queda apuntado
+**qué se miró, con qué umbrales y qué se hizo**. Y, si quien administra lo enciende, Jev opina en paralelo **sin
+decidir nada** para poder medir si acertaría. No cambia qué bloquea ningún control ni ninguna regla de coste o de
+consentimiento. Una migración aditiva.
+
+### Añadido
+
+- **Admin › Decisiones**: las últimas decisiones de los controles, cada una con cuándo y qué se iba a hacer, si
+  **dejó pasar**, **pidió confirmar** o **frenó**, las reglas que saltaron, **qué se miró** (modelo, precio,
+  créditos, presupuesto, estado de la escena; ni el texto del guion ni ningún nombre de persona o de producto, que
+  se sustituyen por un marcador como «el personaje»), los umbrales aplicados y la versión de las reglas.
+- **La sombra de Jev**, apagada de fábrica. Encendida, pregunta sola, por cada escena que pasa por la puerta de
+  generar, **«¿el guion tiene una afirmación que exige verificación?»**. Las escenas con una **persona real** (de
+  protagonista o en el reparto, tenga o no consentimiento) **no se evalúan nunca**, y en las demás se sustituyen
+  antes los nombres de los personajes y del producto. La segunda pregunta que se mide, **«¿la
+  escena generada corresponde a la descripción?»**, es la comprobación del resultado de Coherencia, que se sigue
+  pidiendo desde la revisión.
+- **Métricas de la sombra**, con **cada escena contada una sola vez** por pregunta (el fotograma, el clip y la voz de
+  una escena comparten opinión): aciertos, **falsos permisos** (la sombra dejaba pasar y la persona no),
+  **bloqueos innecesarios** (la sombra frenaba y la persona dejó pasar), cuántas veces coincide con **su regla
+  equivalente** (la de las afirmaciones sin verificar, no la decisión entera de la puerta), coste y latencia. La
+  pregunta de las afirmaciones se mide con lo que la persona resolvió sobre las **afirmaciones señaladas** en el
+  guion (verificar o corregir: había que frenar; descartar: no aplicaba); sin ninguna resuelta dice «sin etiqueta
+  independiente» en vez de un porcentaje. La del resultado se marca como **etiqueta no independiente**: quien la
+  corrige ve el veredicto, que sigue visible en la revisión como hasta ahora. Con menos de 20 casos se enseña el
+  recuento, no el porcentaje.
+- **Admin › Ajustes › Decisiones en sombra**: encenderla, encender su pregunta, su confianza mínima y un tope de
+  evaluaciones por usuario y día, con **lo que cuesta cada evaluación** calculado con la tarifa de Jev de Coherencia.
+  Un aviso dice que, encendida, el guion y la descripción de las escenas se envían a TypeSafe como encargado del
+  tratamiento (sin imágenes ni audio), y **no se puede encender sin marcar antes la casilla** que lo confirma.
+
+### Cambiado
+
+- **Todas las decisiones de los controles quedan registradas**, también las que antes no dejaban rastro: el tope
+  del proyecto cuando frena el asistente de guion, la comprobación previa del canto y la que repite el
+  consentimiento justo antes de mandar una cara al proveedor. Lo que deciden y lo que dicen es exactamente lo mismo
+  que antes.
+
+### Seguridad y privacidad
+
+- La sombra **no frena nada nunca** y **nadie la espera**: si Jev tarda más de 10 segundos, falla o contesta algo que
+  no se entiende, se apunta como fallo y la generación sigue igual. Apagada, no lee la clave ni llama a nadie.
+- **El usuario no ve la opinión de la sombra**: solo la ve quien administra, para que la revisión humana con la que
+  se mide siga siendo independiente.
+- La clave de TypeSafe es la de la instalación, **cifrada** en la bóveda como hasta ahora; no vuelve al navegador ni
+  sale en el registro del servidor, tampoco cuando TypeSafe la repite en un error. Con la sombra encendida, el
+  guion y la descripción de cada escena salen hacia TypeSafe con esa clave; el mismo texto no se vuelve a mandar
+  una vez guardada su opinión (dos envíos exactamente simultáneos de la misma escena aún pueden pagarlo dos veces).
+  El tope diario de evaluaciones se cuenta de forma atómica, así que los envíos a la vez no lo sobrepasan.
+- **Sin nombres en el registro**: los motivos de las reglas citaban entre «» al personaje, a las personas del
+  reparto y al producto. Ahora se guardan con un marcador, el panel los vuelve a quitar al leer y la migración los
+  quita de las decisiones ya guardadas. Borrar la ficha de una persona no deja su nombre en el registro.
+- TypeSafe figura en `docs/legal/cumplimiento-y-privacidad.md` con lo que recibe y lo que no, **pendiente de
+  revisión jurídica** antes de encender la sombra en producción.
+
+### Actualizar desde la 0.36.0
+
+- **Haz antes una copia**: `bun run db:backup`. Después, `bun run db:migrate`.
+- La migración `0057_decisiones-registradas-y-sombra` es **aditiva e idempotente**: añade a `control_evaluations`
+  la evidencia, los umbrales, la puerta y la acción (vacíos de fábrica en las filas anteriores, que se leen igual),
+  añade el sujeto «proyecto» y crea la tabla vacía `shadow_evaluations`. No borra ninguna fila. Tiene dos pasos de
+  datos, también idempotentes: sustituye por «nombre oculto» los nombres citados en los motivos ya guardados (sin
+  borrar la decisión) y marca con la puerta «frenos duros» las evaluaciones del montaje anteriores.
+- Crea el índice `control_evaluations_fecha_idx` sin `CONCURRENTLY`: bloquea las escrituras en esa tabla mientras se
+  construye. Con pocas miles de filas es un instante; si la tabla fuera grande, crea antes el índice a mano con
+  `CREATE INDEX CONCURRENTLY IF NOT EXISTS` y la migración lo dará por hecho.
+- **Ajuste nuevo**: la sombra viene **apagada**. Si quieres medirla, marca la casilla del encargado, enciéndela en
+  Admin › Ajustes › Decisiones en sombra y pon antes la tarifa de Jev en Coherencia para ver su coste en euros.
+- **Reinicia el worker** después de migrar: es quien repite los controles antes de mandar un trabajo al proveedor,
+  y no recarga el código solo.
+
 ## [0.36.0] · 2026-09-30
 
 **Alertas visibles.** Los avisos dejan de ser líneas sueltas que pasan desapercibidas: todo bloqueo, error o aviso

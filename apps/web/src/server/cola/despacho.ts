@@ -14,9 +14,6 @@ import { familiaDeVoz, type ParametrosVoz, parametrosVozDe } from "@/lib/voz";
 import { eurosPorCreditoDe, leerAjustes } from "../ajustes";
 import { usarCompatibles } from "../boveda/compatibles";
 import { usarCredencialValida } from "../boveda/credenciales";
-import { hechosDePersonajeCitado, parametrosDeControles } from "../controles/hechos";
-import { evaluar, frenosQueGatean } from "../controles/motor";
-import { mensajeDeFreno } from "../controles/puerta";
 import { db } from "../db/cliente";
 import { characters, type FilaMedio, type FilaTrabajo, generationJobs, media, usageLedger } from "../db/esquema";
 import { archivoDe } from "../generacion/comprobaciones";
@@ -50,6 +47,7 @@ import {
   unidadConfirmadaDe,
   urlBaseDe,
 } from "./entrada-del-trabajo";
+import { ErrorPersonajeNoUsable, revalidarPersonajeDelTrabajo } from "./revalidar-personaje";
 import { marcarEnviando, reintentar, renovarToma } from "./toma";
 
 /**
@@ -220,20 +218,6 @@ class ErrorDeMontaje extends Error {}
 /** La credencial del usuario no sirve: no es un fallo reintentable, es algo que tiene que arreglar él. */
 class ErrorSinCredencial extends Error {}
 
-/**
- * El personaje del trabajo ya no puede generar (consentimiento revocado o rechazado, referencias por debajo
- * del mínimo, o un modelo que dejó de aceptar referencias). No es reintentable: el trabajo se cierra sin coste.
- */
-class ErrorPersonajeNoUsable extends Error {
-  constructor(
-    mensaje: string,
-    readonly motivo: MotivoFalloTrabajo = "consentimiento",
-  ) {
-    super(mensaje);
-    this.name = "ErrorPersonajeNoUsable";
-  }
-}
-
 async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): Promise<Preparado> {
   const { modelo: delCatalogo, adaptador } = await resolver(capacidadDelTrabajo(fila), fila.model);
   /**
@@ -245,50 +229,7 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
   const confirmada = unidadConfirmadaDe(fila);
   const modelo = confirmada === null ? delCatalogo : { ...delCatalogo, unidad: confirmada };
   exigirDuracionCobrada(fila, modelo, confirmada);
-  // ── Reevaluación de los controles previos, **antes** de subir nada. El encolado los evaluó, pero entre
-  // encolar y enviar el usuario puede haber revocado el consentimiento o borrado fotos, y en un reintento puede
-  // haber pasado más rato todavía. Sin esto, revocar no impediría que la cara saliera hacia el proveedor: solo
-  // impediría pedir trabajos nuevos, que es la mitad de la regla.
-  //
-  // Se reevalúan las reglas que **pueden haber cambiado sin que el usuario pida nada** y que se pueden decidir
-  // con lo que hay en la fila: el consentimiento del personaje y si el modelo sigue aceptando referencias. Las
-  // de dinero no: su reserva ya está apartada desde el encolado, y volver a compararlas aquí rechazaría un
-  // trabajo por su propia reserva.
-  // Una pista de voz no lleva personaje ni referencias, así que no hay nada que revalidar: sus reglas son las del
-  // dinero, y esas ya se decidieron al encolar con su reserva apartada.
-  if (fila.characterId && fila.kind !== "voz") {
-    const freno = frenosQueGatean(
-      evaluar({
-        tipo: fila.kind,
-        parametros: await parametrosDeControles(),
-        /**
-         * Si la ficha del personaje ya no está, esto bloquea en lugar de dejar pasar. Y el **primer retrato de
-         * un personaje inventado** (0.22.0) se revalida sin exigirle las fotos que todavía no tiene. Una vista
-         * sintética de un inventado también puede completar su mínimo desde el maestro ya aprobado.
-         */
-        personaje: await hechosDePersonajeCitado(fila.characterId, {
-          primerRetrato: (fila.input as { retratoInventado?: unknown }).retratoInventado === true,
-          vistaSintetica: (fila.input as { vistaSintetica?: unknown }).vistaSintetica !== undefined,
-        }),
-        modelo: {
-          nombre: modelo.nombre,
-          maximoReferencias: modelo.parametros.maximoReferencias,
-          // El precio y la acotación se decidieron al encolar y su reserva ya está apartada: volver a
-          // juzgarlos aquí rechazaría el trabajo por su propio apartado.
-          precioComprobado: "",
-          precioCaducado: false,
-          costeAcotado: true,
-          motivoSinAcotar: "",
-        },
-      }),
-    )[0];
-    if (freno) {
-      throw new ErrorPersonajeNoUsable(
-        `${mensajeDeFreno(freno)} No se ha enviado nada y no se te ha cobrado.`,
-        freno.regla === "consentimiento" ? "consentimiento" : "interno",
-      );
-    }
-  }
+  await revalidarPersonajeDelTrabajo(fila, modelo);
   const credencial = await claveDelTrabajo(fila);
   /**
    * Una pista de voz (0.21.0) no lleva ninguna imagen: no hay nada que subir ni que revalidar contra las fotos de

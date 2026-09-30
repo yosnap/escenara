@@ -107,7 +107,10 @@ export async function producirEscenaCantada(
   const estado = await estadoDelCanto(actor, escena, proyecto);
   // Las puertas propias del canto se comprueban antes de buscar tarifa o confirmar un gasto. Así, si falta la
   // declaración o el audio supera el tope, la causa no queda tapada por un catálogo todavía sin sincronizar.
-  exigirFrenosDuros({ tipo: "animacion", parametros: await parametrosDeControles(), canto: estado.hechos });
+  await exigirFrenosDuros(
+    { usuarioId: actor.id, sujeto: "escena", sujetoId: escena.id, tipo: "animacion" },
+    { tipo: "animacion", parametros: await parametrosDeControles(), canto: estado.hechos },
+  );
   const segundos = estado.audio?.facturados ?? null;
   /**
    * Sin segundos no hay tarifa que leer, así que no se puede ni estimar. El motor lo diría igual —son sus reglas
