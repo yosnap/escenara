@@ -15,10 +15,11 @@ import type { DireccionElegidaConAcento, OpcionesDeDireccion } from "@/lib/direc
 import { DIALOGO_MAXIMO, type Estimacion, type TrabajoVista } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
 import { AVISO_SIN_TERCEROS } from "@/lib/personajes";
-import type { CatalogoParaCrear, PresetVisible } from "@/lib/presets";
+import type { CatalogoParaCrear, PlantillaVisible, PresetVisible } from "@/lib/presets";
 import type { ProductoElegido } from "@/lib/productos";
 import { errorDeRequisito, ID_DESCRIPCION, idRequisito, type Requisito } from "@/lib/requisitos";
 import { ENVIO_CLIP, ID_REVISION_CLIP, variableDeTexto } from "@/lib/requisitos-crear";
+import { textoDeDuraciones } from "@/lib/trends";
 import { BloqueConfirmacion } from "./bloque-confirmacion";
 import { CampoVariableTexto } from "./campo-variable-texto";
 import type { ConfirmacionCoste } from "./panel-generar";
@@ -61,7 +62,7 @@ export function PasoClip({
   requisitosBase,
   requisitos,
   avisoModelo,
-  segundosDelTrend,
+  trend,
   descripcion,
   conCampoDeTexto,
   confirmacion,
@@ -109,8 +110,11 @@ export function PasoClip({
   requisitos: readonly Requisito[];
   /** Si se cambió de modelo al elegir el trend, por qué. */
   avisoModelo: string | null;
-  /** Duración que fija el trend elegido; los modelos sin tarifa para ella salen no disponibles. */
-  segundosDelTrend: number | null;
+  /**
+   * El trend elegido en el paso de formato, o `null`. Si limita la duración, solo se ofrecen sus duraciones y los
+   * modelos sin tarifa para ninguna salen no disponibles; lo que decide de la dirección sale bloqueado con su motivo.
+   */
+  trend: PlantillaVisible | null;
   /** Lo escrito como descripción de la escena, sin recortar. */
   descripcion: string;
   /** Con una imagen tuya no hay paso «Describe la escena»: la variable de texto de la plantilla se escribe aquí. */
@@ -150,6 +154,12 @@ export function PasoClip({
   const hayOrigen = origen !== null;
   const plantillaEnUso = previa.enUso ? previa.plantilla : null;
   const variableDeLaEscena = plantillaEnUso ? variableDeTexto(plantillaEnUso.variables) : null;
+  const admitidas = trend?.duracionesAdmitidas ?? [];
+  // Con un trend que limita la duración, el selector solo ofrece las que admite; sin límite, las del modelo.
+  const duraciones =
+    admitidas.length === 0
+      ? estimacion.duraciones
+      : estimacion.duraciones.filter((d) => admitidas.includes(d.segundos));
   return (
     <Paso numero={numero} titulo="El clip">
       {!hayOrigen ? (
@@ -169,7 +179,7 @@ export function PasoClip({
               valor={estimacion.modelo}
               onCambio={onModelo}
               deshabilitado={enviando}
-              segundosRequeridos={segundosDelTrend ?? undefined}
+              duracionesRequeridas={admitidas}
             />
           )}
           {conCampoDeTexto && plantillaEnUso && variableDeLaEscena && (
@@ -183,12 +193,7 @@ export function PasoClip({
             />
           )}
           {/* La duración sale del modelo y de lo que sabe cobrar, no de un texto escrito a mano. */}
-          <SelectorDuracion
-            duraciones={estimacion.duraciones}
-            valor={segundos}
-            deshabilitado={enviando}
-            onCambio={onDuracion}
-          />
+          <SelectorDuracion duraciones={duraciones} valor={segundos} deshabilitado={enviando} onCambio={onDuracion} />
           {conVoz ? (
             <Campo
               etiqueta="Lo que dice"
@@ -227,6 +232,11 @@ export function PasoClip({
             conFotograma={false}
             producto={producto}
             onProducto={onProducto}
+            trend={
+              trend
+                ? { nombre: trend.nombre, decide: trend.direccionDecidida, permiteHabla: trend.trendAllowsSpeech }
+                : null
+            }
             deshabilitado={enviando}
             onCambio={onDireccion}
           />
@@ -258,9 +268,12 @@ export function PasoClip({
           />
           {previa.plantilla?.kind === "trend" && previa.enUso && (
             <Aviso tono="info">
-              Este trend dura {previa.plantilla.targetSeconds} s. Coste estimado del clip: {estimacion.creditos}{" "}
-              créditos con {estimacion.nombreModelo}; precio comprobado el {estimacion.comprobado}. Revisa también la
-              traducción y el total exacto en la confirmación de abajo antes de gastar.
+              {previa.plantilla.duracionesAdmitidas.length === 0
+                ? `Este trend sirve con cualquier duración: se usa la que elijas con el modelo (${segundos} s).`
+                : `Este trend solo admite clips de ${textoDeDuraciones(previa.plantilla.duracionesAdmitidas)}.`}{" "}
+              Coste estimado del clip: {estimacion.creditos} créditos con {estimacion.nombreModelo}; precio comprobado
+              el {estimacion.comprobado}. Revisa también la traducción y el total exacto en la confirmación de abajo
+              antes de gastar.
             </Aviso>
           )}
 

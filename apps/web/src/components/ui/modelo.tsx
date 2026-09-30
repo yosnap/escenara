@@ -194,13 +194,16 @@ export function opcionDeModelo(modelo: ModeloElegible): Opcion {
 }
 
 /**
- * Las opciones del selector de modelo. Con la duración que fija un trend, los modelos que no tienen tarifa para ella
- * **siguen en la lista**, marcados como no disponibles y con el motivo: quitarlos haría creer que el catálogo es más
- * pequeño de lo que es.
+ * Las opciones del selector de modelo. Con las duraciones que admite un trend, los modelos que no tienen tarifa para
+ * ninguna **siguen en la lista**, marcados como no disponibles y con el motivo: quitarlos haría creer que el catálogo es
+ * más pequeño de lo que es. Sin duraciones (o con la lista vacía: el trend admite cualquiera) no se marca ninguno.
  */
-export function opcionesDeSelectorDeModelo(modelos: readonly ModeloElegible[], segundosRequeridos?: number): Opcion[] {
+export function opcionesDeSelectorDeModelo(
+  modelos: readonly ModeloElegible[],
+  duracionesRequeridas: readonly number[] = [],
+): Opcion[] {
   return modelos.map((modelo) => {
-    const motivo = segundosRequeridos === undefined ? null : motivoSinDuracion(modelo, segundosRequeridos);
+    const motivo = duracionesRequeridas.length === 0 ? null : motivoSinDuracion(modelo, duracionesRequeridas);
     return motivo
       ? { ...opcionDeModelo(modelo), deshabilitada: true, descripcion: `No disponible con este trend: ${motivo}` }
       : opcionDeModelo(modelo);
@@ -217,20 +220,20 @@ export function SelectorModelo({
   valor,
   onCambio,
   deshabilitado,
-  segundosRequeridos,
+  duracionesRequeridas,
 }: {
   etiqueta: string;
   modelos: ModeloElegible[];
   valor: string;
   onCambio: (modelo: string) => void;
   deshabilitado?: boolean;
-  /** Duración que fija un trend: los modelos sin tarifa para ella salen no disponibles, con su motivo. */
-  segundosRequeridos?: number;
+  /** Duraciones que admite un trend: los modelos sin tarifa para ninguna salen no disponibles, con su motivo. */
+  duracionesRequeridas?: readonly number[];
 }) {
   return (
     <Selector
       etiqueta={etiqueta}
-      opciones={opcionesDeSelectorDeModelo(modelos, segundosRequeridos)}
+      opciones={opcionesDeSelectorDeModelo(modelos, duracionesRequeridas)}
       valor={valor}
       onCambio={(v) => v && onCambio(v)}
       deshabilitado={deshabilitado}

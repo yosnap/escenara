@@ -24,7 +24,8 @@ const TREND: PlantillaVisible = {
   nombre: "Unboxing en primera persona",
   descripcion: "Abres la caja",
   kind: "trend",
-  targetSeconds: 6,
+  duracionesAdmitidas: [6],
+  direccionDecidida: [],
   trendAllowsSpeech: false,
   capacidad: "image_to_video",
   variables: [{ nombre: "escena", tipo: "texto", etiqueta: "Qué ocurre en la escena", obligatoria: true }],
@@ -106,7 +107,7 @@ function pintarClip(descripcion: string, origen: "imagen" | "fotograma", senalad
       requisitosBase={senalado ? base : []}
       requisitos={base}
       avisoModelo={null}
-      segundosDelTrend={6}
+      trend={TREND}
       descripcion={descripcion}
       conCampoDeTexto={origen === "imagen"}
       confirmacion={CASILLAS}
