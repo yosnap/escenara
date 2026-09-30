@@ -58,8 +58,10 @@ descuadre el gasto de la instalación o se lleve la prueba de un consentimiento.
 - El borrado de un proyecto y el encolado bloquean primero la fila del usuario; el trabajo guarda el proyecto con el que
   se encoló (`generation_jobs.project_id` y `requested_character_id`, sin clave ajena) para que el worker cierre sin
   cobro uno huérfano. El borrado de un personaje y la petición del borrado de cuenta siguen el mismo orden de bloqueo.
-- Better Auth: un *hook* `before` aplica la gracia a sus rutas (solo entrar, salir, cerrar sesiones y consultar) y
-  rechaza siempre las rutas del plugin `admin`, que Escenara no usa.
+- Better Auth: un *hook* `before` aplica la gracia a sus rutas (entrar, salir, cerrar sesiones, consultar y restablecer
+  la contraseña) y rechaza siempre las rutas del plugin `admin`, que Escenara no usa. Restablecer la contraseña
+  **cancela** el borrado (`onPasswordReset`), sin depender de cómo guarda la librería el token, y responde igual para
+  cualquier correo.
 - Un trabajo sin respuesta del proveedor no se da por «sin cobro»: al vencer la espera se apunta su coste estimado como
   no confirmado (`usage_aggregates.unconfirmed_credits`).
 - Durante la gracia, la API de Escenara responde a esa cuenta con 403 y el motivo, salvo una **lista blanca** de solo
