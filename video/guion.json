@@ -1,0 +1,72 @@
+{
+  "titulo": "Escenara — presentación",
+  "nota": "Texto hablado aprobado por el propietario. Solo se permiten cambios de puntuación para la cadencia. `locucion` es lo que se envía a la voz; `subtitulo` es lo que se muestra y se escribe en el .srt.",
+  "escenas": [
+    {
+      "id": "01-gancho",
+      "capitulo": "Qué es Escenara",
+      "locucion": "Crear vídeos con personajes que siempre son el mismo, escena tras escena, sin perder el control… ni el presupuesto. Esto es Escenara.",
+      "subtitulo": "Crear vídeos con personajes que siempre son el mismo, escena tras escena, sin perder el control ni el presupuesto. Esto es Escenara."
+    },
+    {
+      "id": "02-claves",
+      "capitulo": "Tus claves, tu gasto",
+      "locucion": "Es un estudio abierto: pones tus propias claves de los proveedores de IA, y decides tú qué se gasta.",
+      "subtitulo": "Es un estudio abierto: pones tus propias claves de los proveedores de IA y decides tú qué se gasta."
+    },
+    {
+      "id": "03-personaje",
+      "capitulo": "Tu personaje",
+      "locucion": "Empieza por tu personaje: sube tus fotos con su consentimiento, y obtén una ficha que recuerda cómo es. O invéntalo desde cero.",
+      "subtitulo": "Empieza por tu personaje: sube tus fotos con su consentimiento y obtén una ficha que recuerda cómo es. O invéntalo desde cero."
+    },
+    {
+      "id": "04-producto-lugar",
+      "capitulo": "Producto y lugar",
+      "locucion": "Presenta tu producto, y sitúa la escena en un lugar concreto.",
+      "subtitulo": "Presenta tu producto y sitúa la escena en un lugar concreto."
+    },
+    {
+      "id": "05-direccion",
+      "capitulo": "Dirección del clip",
+      "locucion": "Dirige cada clip como un director: plano, ángulo, cámara, acción y guion. O elige un trend vigente, y deja que decida la dirección.",
+      "subtitulo": "Dirige cada clip como un director: plano, ángulo, cámara, acción y guion. O elige un trend vigente y deja que decida la dirección."
+    },
+    {
+      "id": "06-coste",
+      "capitulo": "Coste antes de generar",
+      "locucion": "Antes de generar, ves lo que costará. Nada se cobra sin tu confirmación.",
+      "subtitulo": "Antes de generar ves lo que costará. Nada se cobra sin tu confirmación."
+    },
+    {
+      "id": "07-comparar",
+      "capitulo": "Comparar modelos",
+      "locucion": "Compara modelos con tu propio material, y quédate con el mejor.",
+      "subtitulo": "Compara modelos con tu propio material y quédate con el mejor."
+    },
+    {
+      "id": "08-montaje",
+      "capitulo": "Montaje y formatos",
+      "locucion": "Monta el reel con voz, música y subtítulos, y expórtalo en vertical, cuadrado o apaisado.",
+      "subtitulo": "Monta el reel con voz, música y subtítulos, y expórtalo en vertical, cuadrado o apaisado."
+    },
+    {
+      "id": "09-comunidad",
+      "capitulo": "Comunidad",
+      "locucion": "Y si quieres, comparte contenido sintético con la comunidad, con moderación previa. Nunca fotos reales.",
+      "subtitulo": "Y si quieres, comparte contenido sintético con la comunidad, con moderación previa. Nunca fotos reales."
+    },
+    {
+      "id": "10-datos",
+      "capitulo": "Tus datos",
+      "locucion": "Tus datos son tuyos: expórtalos o bórralos cuando quieras.",
+      "subtitulo": "Tus datos son tuyos: expórtalos o bórralos cuando quieras."
+    },
+    {
+      "id": "11-cierre",
+      "capitulo": "Código abierto",
+      "locucion": "Escenara. Da vida a cada escena. Código abierto en GitHub.",
+      "subtitulo": "Escenara. Da vida a cada escena. Código abierto en GitHub."
+    }
+  ]
+}

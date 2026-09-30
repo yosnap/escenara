@@ -46,3 +46,6 @@ next-env.d.ts
 
 # Copias de seguridad locales de la base de datos
 backups/
+
+# Vídeo de presentación: renders, audios generados y recursos copiados (se regeneran)
+video/salida/
