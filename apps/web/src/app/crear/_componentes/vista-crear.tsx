@@ -3,59 +3,56 @@
 import { useEffect, useState } from "react";
 import { DepositoPresupuesto } from "@/components/ui/deposito";
 import { Aviso } from "@/components/ui/feedback";
-import { AreaTexto, Campo } from "@/components/ui/field";
-import { AvisoSinVoz } from "@/components/ui/modelo";
-import { Paso } from "@/components/ui/paso";
+import { Multipaso, PanelDePaso, useMultipaso } from "@/components/ui/multipaso";
 import { consultarContexto } from "@/components/ui/personajes/api-personajes";
-import { PanelContextoPersonaje } from "@/components/ui/personajes/panel-contexto";
 import type { ModeloElegible } from "@/lib/catalogo";
 import { type EvaluacionVista, evaluacionPendiente } from "@/lib/controles";
 import { DIRECCION_CON_ACENTO_VACIA, type DireccionElegidaConAcento, type OpcionesDeDireccion } from "@/lib/direccion";
 import {
   CLIP,
   type Deposito,
-  DIALOGO_MAXIMO,
   type EstadoCola,
   type Estimacion,
   PROMPT_MINIMO,
   type TrabajoVista,
 } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
+import { resolverPaso } from "@/lib/multipaso";
+import { numeroDePaso, pasoPredeterminadoDeCrear, pasosDeCrear } from "@/lib/pasos-crear";
 import type { ContextoAplicado, PersonajeElegible } from "@/lib/personajes";
-import {
-  CATEGORIAS_DE_LA_DIRECCION,
-  type CatalogoParaCrear,
-  type PresetVisible,
-  VARIABLE_TEXTO_MAXIMA,
-} from "@/lib/presets";
+import { CATEGORIAS_DE_LA_DIRECCION, type CatalogoParaCrear, type PresetVisible } from "@/lib/presets";
 import { PRODUCTO_ELEGIDO_VACIO, type ProductoElegido } from "@/lib/productos";
 import { consultarCatalogoDeDireccion, consultarEstimacion, crearTrabajo, type Resultado } from "./api-generacion";
 import { consultarCatalogoDePresets, duplicarPreset } from "./api-presets";
-import { BloqueConfirmacion } from "./bloque-confirmacion";
 import { DialogoPresetPropio } from "./dialogo-preset-propio";
-import { PanelExtraccion } from "./panel-extraccion";
 import type { ConfirmacionCoste } from "./panel-generar";
 import {
   confirmacionDePlantilla,
   ESTADO_PLANTILLA_VACIO,
   type EstadoPlantilla,
   firmaDePlantilla,
-  PanelPlantilla,
   previsualizar,
   sinIncompatibles,
 } from "./panel-plantilla";
 import { PasoClip } from "./paso-clip";
-import { PasoInsertarCaptura } from "./paso-insertar-captura";
+import { PasoEscena } from "./paso-escena";
+import { PasoFormato } from "./paso-formato";
+import { PasoCosteFotograma, PasoResultadoFotograma } from "./paso-fotograma";
 import { type OrigenDelClip, PasoImagenDePartida, PasoOrigen } from "./paso-origen";
 import { PasoSujeto } from "./paso-sujeto";
-import { ResultadoTrabajo } from "./resultado-trabajo";
-import { SeguimientoTrabajo } from "./seguimiento-trabajo";
 import { useControles } from "./use-controles";
 
 /**
- * Los cuatro pasos de «Crear»: elegir la imagen y el modelo, describir la escena, revisar el coste y
- * confirmar, y ver el resultado. Desde el fotograma listo se puede animar un clip, con su propia
- * estimación y su propia confirmación: cada gasto se confirma por separado.
+ * Los pasos de «Crear», uno a la vez con su barra (0.33.0): el formato (plantilla normal o trend), de dónde sale
+ * el clip, a quién generas, describir la escena, revisar el coste y confirmar, ver el resultado y animar el clip,
+ * con su propia estimación y su propia confirmación: cada gasto se confirma por separado. Con una imagen tuya
+ * solo quedan formato, origen, imagen y clip.
+ *
+ * El formato va primero porque el trend decide la duración y si se habla. Su estado (`plantillaClip` y
+ * `trendElegido`) vive aquí, en el padre, para que los pasos siguientes puedan adaptarse a él.
+ *
+ * Todo el estado vive aquí y los paneles de los pasos no se desmontan al cambiar de paso, así que un trabajo en
+ * marcha, su seguimiento y la clave de una confirmación siguen igual aunque vayas y vuelvas.
  *
  * El modelo se elige por capacidad entre los del catálogo que se pueden usar (`compatible` o `validado`),
  * y al cambiarlo se vuelve a pedir la estimación: el coste es el de ese modelo, no una media.
@@ -81,7 +78,10 @@ export function VistaCrear({
   catalogoFotogramaInicial,
   catalogoClipInicial,
   controlesIniciales,
+  pasoPedido,
 }: {
+  /** Paso pedido en la dirección (`?paso=`), ya validado; `null` si no se ha pedido ninguno. */
+  pasoPedido: string | null;
   estimacionFotograma: Estimacion;
   estimacionAnimacion: Estimacion;
   modelosFotograma: ModeloElegible[];
@@ -181,6 +181,11 @@ export function VistaCrear({
       vivo = false;
     };
   }, []);
+  /**
+   * El paso de formato solo está en la barra si al abrir había algo que elegir (dos plantillas o más). Se decide una
+   * vez: el catálogo se vuelve a pedir al cambiar de modelo y la barra no debe renumerarse a mitad.
+   */
+  const [conFormato] = useState(() => catalogoClipInicial.plantillas.length >= 2);
   const controlesFoto = useControles(controlesIniciales);
   const controlesClip = useControles(evaluacionPendiente(controlesIniciales.reglasVersion));
 
@@ -245,6 +250,29 @@ export function VistaCrear({
     // está fuera de rango. No se resume en «revisa los datos».
     ...previaFoto.motivos,
   ];
+
+  // Los pasos y su estado salen de lo que hay en pantalla; no se guarda ningún progreso aparte.
+  const hayTrends = catalogoClip.plantillas.some((p) => p.kind === "trend");
+  const pasos = pasosDeCrear({
+    conFormato,
+    calculandoFormato: calculandoTrend,
+    origen: origenElegido,
+    haySujeto: personaje !== null || referencia !== null,
+    revisionConfirmada: sinTerceros,
+    caracteresDescripcion: descripcion.length,
+    motivosPlantilla: previaFoto.motivos.length,
+    enviandoFotograma: enviando === "fotograma",
+    fotograma: fotograma?.estado ?? null,
+    imagenDePartida: imagenDelClip !== null,
+    hayOrigenDelClip: origenDelClip !== null,
+    clip: animacion?.estado ?? null,
+    clipsAnteriores: clipsAnteriores.length,
+  });
+  const multipaso = useMultipaso(
+    pasos,
+    resolverPaso(pasoPedido, pasos, pasoPredeterminadoDeCrear(conFormato, hayTrends)),
+  );
+  const numero = (id: string) => numeroDePaso(pasos, id);
 
   /**
    * Un fallo de red al enviar no dice si el trabajo se encargó o no: se avisa de eso en lugar de invitar a
@@ -376,6 +404,8 @@ export function VistaCrear({
     }
     setAnimacion(null);
     setFotograma(respuesta.datos);
+    // Confirmado el gasto, lo siguiente es ver cómo va: se pasa al resultado sin tener que buscarlo.
+    multipaso.ir("fotograma");
   };
 
   const generarAnimacion = async (confirmacion: ConfirmacionCoste) => {
@@ -548,236 +578,191 @@ export function VistaCrear({
     await refrescarCatalogo(tipo, tipo === "fotograma" ? estimacionFoto.modelo : estimacionClip.modelo);
   };
 
+  const accionesDePreset = (tipo: "fotograma" | "animacion") => (preset: PresetVisible) => (
+    <DialogoPresetPropio
+      key={preset.id}
+      preset={preset}
+      deshabilitado={enviando !== null}
+      onGuardado={() =>
+        void refrescarCatalogo(tipo, tipo === "fotograma" ? estimacionFoto.modelo : estimacionClip.modelo)
+      }
+    />
+  );
+
   return (
     <div className="flex flex-col gap-6">
       <DepositoPresupuesto deposito={deposito} cola={cola} />
 
-      {/*
-        Dos caminos, y se eligen antes que nada: generar un fotograma nuevo o traer una imagen que ya tienes.
-        Con una imagen tuya **no hay fotograma que generar**, así que todo ese paso desaparece de la pantalla:
-        ni formulario, ni plantilla, ni estimación de algo que no se va a pedir.
-      */}
-      <PasoOrigen
-        numero={1}
-        origen={origenElegido}
-        deshabilitado={enviando !== null || fotograma !== null || animacion !== null}
-        onOrigen={elegirOrigen}
-      />
+      <Multipaso etiqueta="Pasos para crear" pasos={pasos} control={multipaso}>
+        {error && <Aviso tono="error">{error}</Aviso>}
 
-      {origenElegido === "imagen" && (
-        <PasoImagenDePartida
-          numero={2}
-          imagen={imagenDeBiblioteca}
-          onImagen={(medios) => {
-            setImagenDeBiblioteca(medios);
-            setSinTercerosClip(false);
-            void refrescarControlesDelClip(medios[0]?.id, estimacionClip.modelo);
-          }}
-        />
-      )}
-
-      {origenElegido === "fotograma" && (
-        <>
-          <PasoSujeto
-            numero={2}
-            personajes={personajes}
-            personajeId={personajeId}
-            personaje={personaje}
-            imagen={imagen}
-            referencia={referencia}
-            modelos={modelosDelFotograma}
-            sinImagen={sinImagen}
-            modeloElegido={estimacionFoto.modelo}
-            modeloFoto={modeloFoto}
-            sinTerceros={sinTerceros}
-            deshabilitado={enviando !== null}
-            onPersonaje={(id) => {
-              setPersonajeId(id);
-              setSinTerceros(false);
-              void refrescarPorSujeto(id, imagen);
-            }}
-            onImagen={(medios) => {
-              setImagen(medios);
-              void refrescarPorSujeto(null, medios);
-            }}
-            onSinTerceros={setSinTerceros}
-            onModelo={(modelo) => elegirModelo("fotograma", modelo)}
-          />
-
-          <Paso numero={3} titulo="Describe la escena">
-            <Campo
-              etiqueta="Qué quieres ver"
-              ayuda={
-                <>
-                  Dónde está, qué hace y cómo se ve. Mínimo {PROMPT_MINIMO} caracteres. El clip saldrá con el formato
-                  del modelo que elijas para animarlo.{" "}
-                  <span className="font-mono">
-                    {descripcion.length}/{VARIABLE_TEXTO_MAXIMA}
-                  </span>
-                  {descripcion.length > VARIABLE_TEXTO_MAXIMA && (
-                    <strong className="font-semibold text-texto">
-                      {" "}
-                      Al componer el prompt se enviarán solo los primeros {VARIABLE_TEXTO_MAXIMA} caracteres: acórtalo
-                      tú para decidir qué se queda.
-                    </strong>
-                  )}
-                </>
-              }
-            >
-              {(props) => (
-                <AreaTexto
-                  {...props}
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  placeholder="En una cafetería luminosa, saluda a cámara con una sonrisa, luz natural, aspecto de móvil."
-                />
-              )}
-            </Campo>
-            {/*
-          Rellenar los campos desde una foto: no cuesta créditos y no genera nada hasta que el usuario lo
-          confirma. Lo que devuelve va al campo de arriba, que es el que se envía.
-        */}
-            <PanelExtraccion
-              deshabilitado={enviando !== null}
-              onUsar={(texto) => setPrompt(prompt.trim() === "" ? texto : `${prompt.trim()} ${texto}`)}
+        {/* El formato va primero: un trend decide la duración (y su tarifa) y si se habla a cámara. */}
+        {conFormato && (
+          <PanelDePaso id="formato">
+            <PasoFormato
+              numero={numero("formato")}
+              catalogo={catalogoClip}
+              plantillaId={plantillaClip.plantillaId}
+              trend={trendElegido ?? null}
+              calculando={calculandoTrend}
+              deshabilitado={enviando === "animacion"}
+              // Cambiar de plantilla cambia qué variables hay: la selección deja de valer.
+              onPlantilla={(plantillaId) => void elegirPlantillaDelClip({ plantillaId, seleccion: {} })}
             />
-
-            {/* Los botones son el corazón de «Crear»: la escena que se escribe arriba es una de las variables. */}
-            <PanelPlantilla
-              catalogo={catalogoFoto}
-              estado={plantillaFoto}
-              previa={previaFoto}
-              deshabilitado={enviando !== null}
-              onCambio={setPlantillaFoto}
-              onDuplicar={(preset) => void duplicar("fotograma", preset)}
-              accionesDePreset={(preset) => (
-                <DialogoPresetPropio
-                  key={preset.id}
-                  preset={preset}
-                  deshabilitado={enviando !== null}
-                  onGuardado={() => void refrescarCatalogo("fotograma", estimacionFoto.modelo)}
-                />
-              )}
-            />
-            {clipConVoz ? (
-              <Campo
-                etiqueta="Lo que dice (opcional)"
-                ayuda={
-                  <>
-                    Solo se usa en el clip, que tiene voz: el fotograma se genera sin ninguna frase para que los modelos
-                    no la dibujen como texto.{" "}
-                    <span className="font-mono">
-                      {dialogo.length}/{DIALOGO_MAXIMO}
-                    </span>
-                  </>
-                }
-              >
-                {(props) => (
-                  <AreaTexto
-                    {...props}
-                    value={dialogo}
-                    maxLength={DIALOGO_MAXIMO}
-                    onChange={(e) => setDialogo(e.target.value)}
-                    className="min-h-20"
-                    placeholder="¡Estamos muy contentos de lanzar esto!"
-                  />
-                )}
-              </Campo>
-            ) : (
-              <AvisoSinVoz />
-            )}
-          </Paso>
-
-          <Paso numero={4} titulo="Revisa el coste y confirma">
-            {/* Zona de claridad: el contexto de la ficha y las fotos que se enviarán, antes de confirmar. */}
-            {personaje && contexto && contexto.personajeId === personaje.id && (
-              <PanelContextoPersonaje contexto={contexto} cargando={pidiendoContexto} />
-            )}
-            <BloqueConfirmacion
-              controles={controlesFoto}
-              estimacion={estimacionFoto}
-              conProducto={productoClip.productoId !== ""}
-              etiqueta="Generar fotograma"
-              firma={`fotograma|${personaje?.id ?? ""}|${contexto?.personajeId === personaje?.id ? contexto?.versionId : ""}|${referencia?.id ?? ""}|${descripcion}|${estimacionFoto.modelo}|${estimacionFoto.sello}|${firmaDePlantilla(previaFoto, plantillaFoto)}`}
-              bloqueos={bloqueosFotograma}
-              enviando={enviando === "fotograma"}
-              onGenerar={generarFotograma}
-            />
-          </Paso>
-
-          {error && <Aviso tono="error">{error}</Aviso>}
-
-          {fotograma && (
-            <Paso numero={5} titulo="Resultado del fotograma">
-              <div className="flex flex-col gap-4">
-                <SeguimientoTrabajo key={fotograma.id} inicial={fotograma} onCambio={alCambiarFotograma} />
-                {fotograma.medio && <ResultadoTrabajo trabajo={fotograma} />}
-                {/*
-                  Producto digital: el fotograma que hay es el de la pantalla apagada, y el paso siguiente es
-                  meter la captura dentro. Se cobra aparte y se confirma aparte, y aquí se ve por qué.
-                */}
-                {fotograma.medio && productoClip.productoId !== "" && (
-                  <PasoInsertarCaptura
-                    productoId={productoClip.productoId}
-                    controles={controlesFoto}
-                    estimacion={estimacionFoto}
-                    firma={`insercion|${fotograma.medio.id}|${productoClip.productoId}|${estimacionFoto.modelo}|${estimacionFoto.sello}`}
-                    enviando={enviando === "fotograma"}
-                    onGenerar={(confirmacion) => void generarFotograma(confirmacion, "insertar_captura")}
-                  />
-                )}
-              </div>
-            </Paso>
-          )}
-        </>
-      )}
-
-      {/*
-        El clip es su propio paso desde la 0.25.1: se puede llegar a él sin generar ningún fotograma, trayendo una
-        imagen tuya. Su coste se confirma aparte, como siempre.
-      */}
-      <PasoClip
-        numero={origenElegido === "imagen" ? 3 : fotograma ? 6 : 5}
-        origen={origenDelClip}
-        modelos={modelosClip}
-        estimacion={estimacionClip}
-        conVoz={clipConVoz}
-        segundos={segundosClip}
-        dialogo={dialogo}
-        opcionesDireccion={opcionesDireccion}
-        direccion={direccionClip}
-        producto={productoClip}
-        onProducto={elegirProductoDelClip}
-        catalogo={catalogoClip}
-        plantilla={plantillaClip}
-        previa={previaClip}
-        previaMotivos={previaClip.motivos}
-        controles={controlesClip}
-        exigeRevision={clipExigeRevision}
-        sinTerceros={sinTercerosClip}
-        enviando={enviando === "animacion" || calculandoTrend}
-        firma={`animacion|${fotograma?.id ?? ""}|${imagenDelClip?.id ?? ""}|${intentoClip}|${descripcion}|${frase}|${JSON.stringify(direccionClip)}|${JSON.stringify(productoClip)}|${estimacionClip.modelo}|${segundosClip}|${estimacionClip.sello}|${firmaDePlantilla(previaClip, plantillaClip)}`}
-        clipEnMarcha={animacion}
-        clipsAnteriores={clipsAnteriores}
-        accionesDePreset={(preset) => (
-          <DialogoPresetPropio
-            key={preset.id}
-            preset={preset}
-            deshabilitado={enviando !== null}
-            onGuardado={() => void refrescarCatalogo("animacion", estimacionClip.modelo)}
-          />
+          </PanelDePaso>
         )}
-        onModelo={(modelo) => elegirModelo("animacion", modelo)}
-        onDuracion={(segundos) => void elegirModelo("animacion", estimacionClip.modelo, segundos)}
-        onDialogo={setDialogo}
-        onDireccion={(campo, valor) => setDireccionClip((antes) => ({ ...antes, [campo]: valor }))}
-        onPlantilla={(estado) => void elegirPlantillaDelClip(estado)}
-        onDuplicar={(preset) => void duplicar("animacion", preset)}
-        onSinTerceros={setSinTercerosClip}
-        onGenerar={generarAnimacion}
-        onCambioClip={setAnimacion}
-        onOtroClip={otroClip}
-      />
+
+        {/*
+          Dos caminos, y se eligen antes que nada: generar un fotograma nuevo o traer una imagen que ya tienes.
+          Con una imagen tuya **no hay fotograma que generar**, así que esos pasos desaparecen de la barra:
+          ni formulario, ni plantilla, ni estimación de algo que no se va a pedir.
+        */}
+        <PanelDePaso id="origen">
+          <PasoOrigen
+            numero={numero("origen")}
+            origen={origenElegido}
+            deshabilitado={enviando !== null || fotograma !== null || animacion !== null}
+            onOrigen={elegirOrigen}
+          />
+        </PanelDePaso>
+
+        {origenElegido === "imagen" && (
+          <PanelDePaso id="imagen">
+            <PasoImagenDePartida
+              numero={numero("imagen")}
+              imagen={imagenDeBiblioteca}
+              onImagen={(medios) => {
+                setImagenDeBiblioteca(medios);
+                setSinTercerosClip(false);
+                void refrescarControlesDelClip(medios[0]?.id, estimacionClip.modelo);
+              }}
+            />
+          </PanelDePaso>
+        )}
+
+        {origenElegido === "fotograma" && (
+          <>
+            <PanelDePaso id="sujeto">
+              <PasoSujeto
+                numero={numero("sujeto")}
+                personajes={personajes}
+                personajeId={personajeId}
+                personaje={personaje}
+                imagen={imagen}
+                referencia={referencia}
+                modelos={modelosDelFotograma}
+                sinImagen={sinImagen}
+                modeloElegido={estimacionFoto.modelo}
+                modeloFoto={modeloFoto}
+                sinTerceros={sinTerceros}
+                deshabilitado={enviando !== null}
+                onPersonaje={(id) => {
+                  setPersonajeId(id);
+                  setSinTerceros(false);
+                  void refrescarPorSujeto(id, imagen);
+                }}
+                onImagen={(medios) => {
+                  setImagen(medios);
+                  void refrescarPorSujeto(null, medios);
+                }}
+                onSinTerceros={setSinTerceros}
+                onModelo={(modelo) => elegirModelo("fotograma", modelo)}
+              />
+            </PanelDePaso>
+
+            <PanelDePaso id="escena">
+              <PasoEscena
+                numero={numero("escena")}
+                prompt={prompt}
+                dialogo={dialogo}
+                conVoz={clipConVoz}
+                catalogo={catalogoFoto}
+                plantilla={plantillaFoto}
+                previa={previaFoto}
+                deshabilitado={enviando !== null}
+                accionesDePreset={accionesDePreset("fotograma")}
+                onPrompt={setPrompt}
+                onDialogo={setDialogo}
+                onPlantilla={setPlantillaFoto}
+                onDuplicar={(preset) => void duplicar("fotograma", preset)}
+              />
+            </PanelDePaso>
+
+            <PanelDePaso id="coste">
+              <PasoCosteFotograma
+                numero={numero("coste")}
+                personaje={personaje}
+                contexto={contexto}
+                pidiendoContexto={pidiendoContexto}
+                controles={controlesFoto}
+                estimacion={estimacionFoto}
+                conProducto={productoClip.productoId !== ""}
+                firma={`fotograma|${personaje?.id ?? ""}|${contexto?.personajeId === personaje?.id ? contexto?.versionId : ""}|${referencia?.id ?? ""}|${descripcion}|${estimacionFoto.modelo}|${estimacionFoto.sello}|${firmaDePlantilla(previaFoto, plantillaFoto)}`}
+                bloqueos={bloqueosFotograma}
+                enviando={enviando === "fotograma"}
+                onGenerar={generarFotograma}
+              />
+            </PanelDePaso>
+
+            <PanelDePaso id="fotograma">
+              {fotograma && (
+                <PasoResultadoFotograma
+                  numero={numero("fotograma")}
+                  fotograma={fotograma}
+                  productoId={productoClip.productoId}
+                  controles={controlesFoto}
+                  estimacion={estimacionFoto}
+                  enviando={enviando === "fotograma"}
+                  onCambio={alCambiarFotograma}
+                  onInsertarCaptura={(confirmacion) => void generarFotograma(confirmacion, "insertar_captura")}
+                />
+              )}
+            </PanelDePaso>
+          </>
+        )}
+
+        {/*
+          El clip es su propio paso desde la 0.25.1: se puede llegar a él sin generar ningún fotograma, trayendo una
+          imagen tuya. Su coste se confirma aparte, como siempre.
+        */}
+        <PanelDePaso id="clip">
+          <PasoClip
+            numero={numero("clip")}
+            origen={origenDelClip}
+            modelos={modelosClip}
+            estimacion={estimacionClip}
+            conVoz={clipConVoz}
+            segundos={segundosClip}
+            dialogo={dialogo}
+            opcionesDireccion={opcionesDireccion}
+            direccion={direccionClip}
+            producto={productoClip}
+            onProducto={elegirProductoDelClip}
+            catalogo={catalogoClip}
+            plantilla={plantillaClip}
+            previa={previaClip}
+            previaMotivos={previaClip.motivos}
+            controles={controlesClip}
+            exigeRevision={clipExigeRevision}
+            sinTerceros={sinTercerosClip}
+            enviando={enviando === "animacion" || calculandoTrend}
+            firma={`animacion|${fotograma?.id ?? ""}|${imagenDelClip?.id ?? ""}|${intentoClip}|${descripcion}|${frase}|${JSON.stringify(direccionClip)}|${JSON.stringify(productoClip)}|${estimacionClip.modelo}|${segundosClip}|${estimacionClip.sello}|${firmaDePlantilla(previaClip, plantillaClip)}`}
+            clipEnMarcha={animacion}
+            clipsAnteriores={clipsAnteriores}
+            accionesDePreset={accionesDePreset("animacion")}
+            onModelo={(modelo) => elegirModelo("animacion", modelo)}
+            onDuracion={(segundos) => void elegirModelo("animacion", estimacionClip.modelo, segundos)}
+            onDialogo={setDialogo}
+            onDireccion={(campo, valor) => setDireccionClip((antes) => ({ ...antes, [campo]: valor }))}
+            onPlantilla={(estado) => void elegirPlantillaDelClip(estado)}
+            onDuplicar={(preset) => void duplicar("animacion", preset)}
+            onSinTerceros={setSinTercerosClip}
+            onGenerar={generarAnimacion}
+            onCambioClip={setAnimacion}
+            onOtroClip={otroClip}
+          />
+        </PanelDePaso>
+      </Multipaso>
     </div>
   );
 }

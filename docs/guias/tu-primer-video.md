@@ -1,6 +1,6 @@
 # Tu primer vídeo
 
-Guía para generar tu primer fotograma y tu primer clip en Escenara, desde el navegador y sin tocar código. Disponible desde la versión **0.10.0** y puesta al día con la **0.32.1**.
+Guía para generar tu primer fotograma y tu primer clip en Escenara, desde el navegador y sin tocar código. Disponible desde la versión **0.10.0** y puesta al día con la **0.33.0**.
 
 ![Flujo de Escenara: personaje, fotograma, clip, voz, montaje y exportación, con lo que cuesta cada paso](../assets/diagramas/flujo-general.svg)
 
@@ -14,16 +14,24 @@ Si te falta la clave, `/crear` te lo dice y te lleva a la página de cuenta.
 
 ## Los pasos de «Crear»
 
-«Crear» es una lista de pasos numerados. Son casi los mismos siempre, pero el camino que elijas al principio cambia cuáles ves. Cada opción de dirección (plano, cámara, gesto…) se explica en [Dirigir tu clip](dirigir-tu-clip.md).
+«Crear» va **de paso en paso**: arriba tienes una barra con los pasos numerados y el estado de cada uno (hecho, en curso, pendiente o bloqueado), y abajo los botones **Anterior** y **Siguiente**. Solo ves el paso en el que estás, así que no hay que bajar por una página larga. Puedes volver con un clic a cualquier paso que ya hayas hecho o visitado. Los que dependen de otro (el coste, el resultado y el clip) salen con un candado hasta que se pueden usar, y al pulsarlos te dicen qué falta. A un paso al que todavía no has llegado se avanza con **Siguiente**; si lo pulsas en la barra, te lo recuerda. Si el fotograma falla, el paso del clip te lo dice y el de coste vuelve a quedar pendiente: para pedir otro, cambia la descripción, la imagen o el modelo y confirma de nuevo (con la misma confirmación se te devuelve el mismo trabajo, para no cobrarte dos veces). Cambiar de paso no borra nada: lo escrito, lo elegido y un trabajo en marcha siguen ahí al volver.
 
-### 1. ¿De dónde sale el clip?
+El paso en el que estás queda en la dirección de la página (`?paso=`): al recargar o al compartir el enlace se abre ese mismo paso. Lo que no se ha generado ni guardado (por ejemplo, una descripción a medio escribir) no sobrevive a una recarga, como antes; si el paso pedido depende de algo que ya no está, se abre el paso con el que empieza «Crear» (el formato si hay trends que elegir; si no, el origen).
 
-Lo primero que eliges son dos caminos:
+Los pasos son casi los mismos siempre, pero el camino que elijas al principio cambia cuáles salen en la barra. Cada opción de dirección (plano, cámara, gesto…) se explica en [Dirigir tu clip](dirigir-tu-clip.md).
+
+### 1. Elige el formato
+
+Lo primero es el formato del clip: la **plantilla normal** o uno de los **trends** vigentes de la instalación. Va antes que nada porque un trend fija la duración del clip (y con ella su coste) y si se puede hablar a cámara. Con la plantilla normal, esas cosas las decides tú más adelante. Si la instalación solo tiene una plantilla para el clip, no hay nada que decidir y este paso no sale en la barra (los demás se numeran desde el 1). Si tiene varias pero ningún trend publicado, «Crear» se abre directamente en «¿De dónde sale el clip?» y este paso te dice por qué no hay trends. Cómo funcionan los trends está en [Usar y administrar trends](trends-virales.md).
+
+### 2. ¿De dónde sale el clip?
+
+Después eliges entre dos caminos:
 
 - **Crear un fotograma nuevo**: eliges a quién sale y qué está haciendo, y se genera su imagen. Se paga el fotograma y, después, el clip. Es el camino que sigue el resto de esta guía.
-- **Usar una imagen que ya tengo**: un fotograma de otro día, una vista de tu personaje o una foto tuya. No se genera ni se paga ningún fotograma: tras elegir la imagen («Elige la imagen de partida») pasas directamente al paso **«El clip»**.
+- **Usar una imagen que ya tengo**: un fotograma de otro día, una vista de tu personaje o una foto tuya. No se genera ni se paga ningún fotograma: tras elegir la imagen («Elige la imagen de partida») pasas directamente al paso **«El clip»**, y la barra solo tiene esos cuatro pasos (formato, origen, imagen y clip).
 
-### 2. Elige a quién generas
+### 3. Elige a quién generas
 
 Es el paso «Elige a quién generas»: un personaje tuyo, o una imagen suelta que subes, arrastras o eliges de tu biblioteca. El modelo intentará mantener la cara, el pelo y los rasgos. Si no eliges ninguna de las dos, la escena se genera solo con tu descripción, con un modelo de texto a imagen (otro modelo y otro precio, y la pantalla lo dice).
 
@@ -35,7 +43,7 @@ Marca la casilla **«Tengo derecho a usar esta imagen»** cuando llegues a «Rev
 
 **Dónde va la imagen.** Para generar, Escenara sube la foto al almacenamiento temporal de KIE y le pasa ese enlace al modelo: durante unas horas el archivo es accesible para quien tenga la dirección, y después KIE lo borra. Tenlo en cuenta con fotos de otras personas. El archivo original sigue en tu biblioteca, en el almacenamiento de tu instalación.
 
-### 3. Describe la escena
+### 4. Describe la escena
 
 Di dónde está, qué hace y cómo se ve. Cuanto más concreto, mejor:
 
@@ -45,7 +53,7 @@ El fotograma sale vertical (9:16), el formato de Reels, TikTok y Shorts.
 
 **Lo que dice, aparte.** Si quieres que el personaje hable, escribe la frase en el campo **«Lo que dice (opcional)»**, no en la descripción de la escena. Si el modelo de clip que has elegido no genera voz, Escenara te lo dice y ese campo no se usa: para que hable, elige un modelo con voz. Los modelos de imagen, si ven una frase en el prompt, la **dibujan** en el fotograma como subtítulo, bocadillo o rótulo (lo comprobamos generando de verdad con tres modelos distintos), y el clip lo hereda. Por eso el fotograma se genera solo con la descripción visual, y la frase se usa únicamente en el clip, que sí tiene voz.
 
-### 4. Revisa el coste y confirma
+### 5. Revisa el coste y confirma
 
 El panel de coste es la zona clara de la pantalla y dice tres cosas:
 
@@ -59,7 +67,9 @@ Si un trabajo pasa del aviso configurado (200 créditos por defecto, ajustable e
 
 **Si se corta la conexión al enviar**, Escenara no te dirá que lo repitas sin más: te avisa de que puede haberse enviado y te manda al historial. Y si vuelves a pulsar el botón con la misma confirmación, el servidor reconoce que es la misma y te devuelve el trabajo que ya había creado, sin encargar otro.
 
-### 5. Espera y mira el resultado
+### 6. Espera y mira el resultado
+
+Al pulsar **Generar fotograma**, la pantalla pasa sola a este paso, «Resultado del fotograma».
 
 Verás el estado **real** que informa KIE, traducido: «en cola en el proveedor», «generando», «listo» o «ha fallado», con el tiempo transcurrido y Chispa haciéndote compañía. No hay barras de porcentaje porque el proveedor no informa de ningún porcentaje: preferimos decirte la verdad.
 
@@ -69,7 +79,7 @@ Cuando esté listo, el archivo se descarga al momento (la URL del proveedor cadu
 
 ## Animar el fotograma
 
-Cuando el fotograma está listo (o desde la imagen que has traído), el paso **«El clip»** genera un clip vertical usando esa imagen como primer fotograma. Ahí eliges el modelo del clip, su **duración** entre las que ese modelo sabe cobrar, lo que dice el personaje y la dirección con botones (plano, ángulo, movimiento de cámara, gesto…) y, si quieres, una plantilla o un [trend](trends-virales.md) vigente. La proporción es 9:16 y el clip sale a 720p. Pulsas **Animar**, con su propia estimación y su propia confirmación: cada gasto se aprueba por separado.
+Cuando el fotograma está listo (o desde la imagen que has traído), pulsa **«Siguiente: Clip»**: el paso **«El clip»** genera un clip vertical usando esa imagen como primer fotograma. Ahí eliges el modelo del clip, su **duración** entre las que ese modelo sabe cobrar, lo que dice el personaje y la dirección con botones (plano, ángulo, movimiento de cámara, gesto…) y los botones que pida la plantilla o el [trend](trends-virales.md) que elegiste en el paso 1, «Elige el formato» (aquí ya no se vuelve a elegir). La proporción es 9:16 y el clip sale a 720p. Pulsas **Animar**, con su propia estimación y su propia confirmación: cada gasto se aprueba por separado.
 
 ## Si algo va mal
 

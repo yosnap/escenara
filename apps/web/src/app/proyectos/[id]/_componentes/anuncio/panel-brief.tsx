@@ -12,6 +12,7 @@ import {
   AVISO_DECLARACION_NECESARIA,
   AYUDA_PUBLICO,
   AYUDA_VERSION_MEJOR,
+  type BriefVista,
   NOTAS_BRIEF_MAXIMAS,
   PROYECTO_SIN_BRIEF,
   PUBLICO_MAXIMO,
@@ -48,6 +49,7 @@ export function PanelBrief({
   datos,
   onError,
   onRecargar,
+  onBrief,
 }: {
   proyecto: ProyectoDetalle["proyecto"];
   datos: DatosDelAnuncio;
@@ -58,8 +60,14 @@ export function PanelBrief({
    * que este panel se pueda renderizar y probar sin montar la navegación entera.
    */
   onRecargar: () => void;
+  /** Avisa de cada brief guardado, para que la barra de pasos del proyecto sepa si este paso ya está hecho. */
+  onBrief?: (brief: BriefVista | null) => void;
 }) {
-  const [brief, setBrief] = useState(datos.brief);
+  const [brief, setBriefLocal] = useState(datos.brief);
+  const setBrief = (nuevo: BriefVista | null) => {
+    setBriefLocal(nuevo);
+    onBrief?.(nuevo);
+  };
   const [puerta, setPuerta] = useState(datos.puerta);
   const [ofertas, setOfertas] = useState(datos.ofertas);
   const [publico, setPublico] = useState(datos.brief?.publico ?? "");

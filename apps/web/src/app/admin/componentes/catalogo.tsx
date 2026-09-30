@@ -14,6 +14,7 @@ import { SeccionMediaPicker } from "./secciones/media-picker";
 import { SeccionModelos } from "./secciones/modelos";
 import { SeccionMontaje } from "./secciones/montaje";
 import { SeccionMovimiento } from "./secciones/movimiento";
+import { SeccionPasos } from "./secciones/pasos";
 import { SeccionPersonajes } from "./secciones/personajes";
 import { SeccionPresets } from "./secciones/presets";
 import { SeccionProyectos } from "./secciones/proyectos";
@@ -45,6 +46,7 @@ const INDICE = [
   ["generacion", "Coste y trabajos"],
   ["modelos", "Catálogo de modelos"],
   ["superposiciones", "Diálogos y pestañas"],
+  ["pasos", "Flujo por pasos"],
   ["movimiento", "Movimiento"],
 ] as const;
 
@@ -92,6 +94,7 @@ export function Catalogo() {
         <SeccionGeneracion />
         <SeccionModelos />
         <SeccionSuperposiciones />
+        <SeccionPasos />
         <SeccionMovimiento />
       </main>
     </div>

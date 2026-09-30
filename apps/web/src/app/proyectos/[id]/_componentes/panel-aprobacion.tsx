@@ -1,10 +1,10 @@
 "use client";
 
 import { ShieldCheck } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Boton } from "@/components/ui/button";
 import { InsigniaControl } from "@/components/ui/controles";
-import { Aviso } from "@/components/ui/feedback";
+import { Aviso, AvisoEstado } from "@/components/ui/feedback";
 import { Campo, EntradaTexto } from "@/components/ui/field";
 import { Paso } from "@/components/ui/paso";
 import { TablaPlan } from "@/components/ui/proyecto";
@@ -24,8 +24,11 @@ export function PanelAprobacion({
   detalle,
   onCambio,
   onError,
+  sinGuardar = null,
 }: {
   detalle: ProyectoDetalle;
+  /** Cambios sin guardar en «Escenas», con su motivo: mientras los haya, no se aprueba. */
+  sinGuardar?: string | null;
   onCambio: (detalle: ProyectoDetalle) => void;
   onError: (mensaje: string) => void;
 }) {
@@ -33,6 +36,7 @@ export function PanelAprobacion({
   const [presupuesto, setPresupuesto] = useState(plan.presupuestoCreditos);
   const [ocupado, setOcupado] = useState(false);
   const [hecho, setHecho] = useState<string | null>(null);
+  const idMotivo = useId();
 
   const creditos = Number.isNaN(presupuesto) ? 0 : presupuesto;
   // Los impedimentos se recalculan con el presupuesto **que hay escrito**, con la misma función pura que usa el
@@ -45,6 +49,8 @@ export function PanelAprobacion({
     presupuestoCreditos: creditos,
     afirmacionesBloqueantes: plan.afirmacionesBloqueantes,
   });
+  // Aprobar con cambios sin guardar aprobaría el guion guardado, no el que se tiene delante: va primero.
+  if (sinGuardar) impedimentos.unshift(sinGuardar);
   const bloqueado = impedimentos.length > 0;
 
   const guardarPresupuesto = async () => {
@@ -72,6 +78,7 @@ export function PanelAprobacion({
     <Paso numero={4} titulo="El plan y su coste">
       <div className="flex flex-col gap-4">
         {hecho && <Aviso tono="correcto">{hecho}</Aviso>}
+        {sinGuardar && <AvisoEstado estado="bloqueado" motivo={sinGuardar} />}
 
         {/*
           Estado global de los controles previos del plan: el peor de sus escenas. Es lo que decidirá si el botón
@@ -109,10 +116,20 @@ export function PanelAprobacion({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <Boton variante="chispa" onClick={aprobar} disabled={ocupado || bloqueado}>
+          <Boton
+            variante="chispa"
+            onClick={aprobar}
+            disabled={ocupado || bloqueado}
+            aria-describedby={sinGuardar ? idMotivo : undefined}
+          >
             <ShieldCheck className="size-5" aria-hidden />
             {ocupado ? "Aprobando…" : "Aprobar el plan"}
           </Boton>
+          {sinGuardar && (
+            <span id={idMotivo} className="text-sm font-semibold text-texto">
+              No se puede aprobar: hay cambios sin guardar en «Escenas».
+            </span>
+          )}
           <span className="text-sm text-texto-suave">
             Aprobar congela el modelo, el precio, la versión de la ficha y la plantilla de cada escena. Si editas una
             escena después, su aprobación deja de valer y se te dice.

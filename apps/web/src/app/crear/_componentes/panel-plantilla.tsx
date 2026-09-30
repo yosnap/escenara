@@ -146,6 +146,7 @@ export function PanelPlantilla({
   onCambio,
   onDuplicar,
   accionesDePreset,
+  formatoAparte = false,
 }: {
   catalogo: CatalogoParaCrear;
   estado: EstadoPlantilla;
@@ -155,24 +156,24 @@ export function PanelPlantilla({
   onDuplicar?: (preset: PresetVisible) => void;
   /** Acciones de un preset que ya es del usuario (editar su copia, borrarla). */
   accionesDePreset?: (preset: PresetVisible) => ReactNode;
+  /**
+   * `true` cuando la plantilla o el trend se eligen en otro paso (el de formato del clip, en «Crear»): aquí no se
+   * repiten ni el selector ni la vista previa del trend, solo los botones de lo que queda por elegir.
+   */
+  formatoAparte?: boolean;
 }) {
   const grupos = previa.categorias.map((categoria) => ({
     categoria,
     presets: catalogo.presets.filter((p) => p.categoria === categoria),
   }));
 
-  const selector = catalogo.plantillas.length > 1 && (
-    <Selector
-      etiqueta="Plantilla o trend vigente"
+  const selector = !formatoAparte && (
+    <SelectorPlantilla
+      catalogo={catalogo}
       valor={estado.plantillaId}
       deshabilitado={deshabilitado}
       // Cambiar de plantilla cambia qué variables hay: la selección deja de valer.
-      onCambio={(v) => onCambio({ plantillaId: v ?? "", seleccion: {} })}
-      opciones={catalogo.plantillas.map((p) => ({
-        value: p.id,
-        label: p.kind === "trend" ? `Trend · ${p.nombre}` : p.nombre,
-        descripcion: p.kind === "trend" ? `${p.descripcion} · ${p.targetSeconds} s` : p.descripcion,
-      }))}
+      onCambio={(plantillaId) => onCambio({ plantillaId, seleccion: {} })}
     />
   );
 
@@ -194,17 +195,7 @@ export function PanelPlantilla({
         </p>
       ) : (
         <>
-          {previa.plantilla.kind === "trend" && (
-            <div className="rounded-tarjeta bg-elevada p-4 text-sm text-texto">
-              <p className="font-bold">Vista previa: {previa.plantilla.nombre}</p>
-              <p>{previa.plantilla.descripcion}</p>
-              <p>
-                {previa.plantilla.targetSeconds} s ·{" "}
-                {previa.plantilla.trendAllowsSpeech ? "Permite diálogo" : "Sin habla a cámara"}. El producto se integra
-                en la escena; no se superpone un logotipo.
-              </p>
-            </div>
-          )}
+          {!formatoAparte && previa.plantilla.kind === "trend" && <VistaPreviaTrend trend={previa.plantilla} />}
           <BotoneraPresets
             grupos={grupos.filter((g) => g.presets.length > 0)}
             seleccion={estado.seleccion}
@@ -218,6 +209,48 @@ export function PanelPlantilla({
           <PanelLoElegido elegidos={previa.elegidos} faltan={previa.faltan} />
         </>
       )}
+    </div>
+  );
+}
+
+/** Selector «Plantilla o trend vigente». Solo aparece si hay más de una entre las que elegir. */
+export function SelectorPlantilla({
+  catalogo,
+  valor,
+  deshabilitado,
+  onCambio,
+}: {
+  catalogo: CatalogoParaCrear;
+  valor: string;
+  deshabilitado?: boolean;
+  onCambio: (plantillaId: string) => void;
+}) {
+  if (catalogo.plantillas.length < 2) return null;
+  return (
+    <Selector
+      etiqueta="Plantilla o trend vigente"
+      valor={valor}
+      deshabilitado={deshabilitado}
+      onCambio={(v) => onCambio(v ?? "")}
+      opciones={catalogo.plantillas.map((p) => ({
+        value: p.id,
+        label: p.kind === "trend" ? `Trend · ${p.nombre}` : p.nombre,
+        descripcion: p.kind === "trend" ? `${p.descripcion} · ${p.targetSeconds} s` : p.descripcion,
+      }))}
+    />
+  );
+}
+
+/** Lo que es un trend antes de elegir nada más: su descripción, su duración y si permite hablar. */
+export function VistaPreviaTrend({ trend }: { trend: PlantillaVisible }) {
+  return (
+    <div className="rounded-tarjeta bg-elevada p-4 text-sm text-texto">
+      <p className="font-bold">Vista previa: {trend.nombre}</p>
+      <p>{trend.descripcion}</p>
+      <p>
+        {trend.targetSeconds} s · {trend.trendAllowsSpeech ? "Permite diálogo" : "Sin habla a cámara"}. El producto se
+        integra en la escena; no se superpone un logotipo.
+      </p>
     </div>
   );
 }

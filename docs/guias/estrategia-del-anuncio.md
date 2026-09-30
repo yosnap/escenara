@@ -16,7 +16,7 @@ idea suelta que escribías tú. Desde la 0.27.0 las dos palancas que deciden van
 
 ## El brief, primer paso del proyecto
 
-Al abrir un proyecto, el paso 1 es el brief. Tiene cinco cosas:
+En la barra de pasos del proyecto, el paso 1 es el brief, y un proyecto nuevo se abre en él. Tiene cinco cosas:
 
 | Qué | Para qué sirve |
 |---|---|
@@ -26,7 +26,7 @@ Al abrir un proyecto, el paso 1 es el brief. Tiene cinco cosas:
 | **El ángulo** | **Uno** de los del catálogo. |
 | **La oferta** | Qué se le da, y opcionalmente precio, garantía, urgencia y regalo. |
 
-![El brief del anuncio en un proyecto](../assets/capturas/0.27.0-brief-del-anuncio-claro.webp)
+![El brief del anuncio en un proyecto (captura anterior a la barra de pasos de la 0.33.0)](../assets/capturas/0.27.0-brief-del-anuncio-claro.webp)
 
 **El brief es opcional.** Si no lo rellenas, tu proyecto funciona exactamente como antes: escribes la idea, el
 asistente propone un guion y produces. El brief no es un peaje, es lo que hace que el guion deje de salir de la

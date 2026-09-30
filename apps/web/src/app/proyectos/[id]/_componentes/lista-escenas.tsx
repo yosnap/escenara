@@ -7,6 +7,7 @@ import { EstadoVacio } from "@/components/ui/feedback";
 import { ListaOrdenable } from "@/components/ui/lista-ordenable";
 import { Paso } from "@/components/ui/paso";
 import type { OpcionesDeDireccion } from "@/lib/direccion";
+import { motivoCambiosSinGuardar } from "@/lib/escena-borrador";
 import { moverEnLista } from "@/lib/lista-ordenable";
 import { efectosDelOrden, ordenAplicable } from "@/lib/orden-escenas";
 import type { PersonajeElegible } from "@/lib/personajes";
@@ -29,6 +30,7 @@ export function ListaEscenas({
   trends,
   onCambio,
   onError,
+  onSinGuardar,
   ordenPendienteInicial = null,
 }: {
   detalle: ProyectoDetalle;
@@ -39,6 +41,11 @@ export function ListaEscenas({
   trends: TrendPublico[];
   onCambio: (detalle: ProyectoDetalle) => void;
   onError: (mensaje: string) => void;
+  /**
+   * Avisa hacia arriba de los cambios sin guardar de este paso (orden pendiente o escenas editadas), con el motivo
+   * ya redactado, o `null` si no hay ninguno. Con ellos la aprobación queda bloqueada.
+   */
+  onSinGuardar?: (motivo: string | null) => void;
 }) {
   const [ocupado, setOcupado] = useState(false);
   /**
@@ -63,6 +70,17 @@ export function ListaEscenas({
     pendiente,
     actuales.map((e) => e.id),
   );
+  /** Escenas con el formulario cambiado y sin guardar. */
+  const [editadas, setEditadas] = useState<string[]>([]);
+  const marcarEditada = (id: string, sinGuardar: boolean) =>
+    setEditadas((antes) =>
+      sinGuardar ? (antes.includes(id) ? antes : [...antes, id]) : antes.filter((otra) => otra !== id),
+    );
+  const motivoSinGuardar = motivoCambiosSinGuardar(ordenPendiente !== null, editadas.length);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: se avisa cuando cambia el motivo, no la función.
+  useEffect(() => {
+    onSinGuardar?.(motivoSinGuardar);
+  }, [motivoSinGuardar]);
   const escenas = ordenPendiente
     ? ordenPendiente.flatMap((id, i) => {
         const escena = actuales.find((e) => e.id === id);
@@ -178,6 +196,7 @@ export function ListaEscenas({
                     onBajar={() => mover(indice, 1)}
                     onCambio={onCambio}
                     onError={onError}
+                    onSinGuardar={marcarEditada}
                   />
                 ),
               }))}

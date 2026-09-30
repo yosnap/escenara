@@ -121,7 +121,8 @@ export function PasoClip({
     <Paso numero={numero} titulo="El clip">
       {!hayOrigen ? (
         <p className="rounded-control bg-elevada p-3 text-sm font-medium text-texto">
-          Elige arriba la imagen de la que sale el clip: la que generes o la que traigas de tu biblioteca.
+          Elige antes la imagen de la que sale el clip: la que generes en los pasos anteriores o la que traigas de tu
+          biblioteca.
         </p>
       ) : (
         <div className="flex flex-col gap-4">
@@ -201,6 +202,8 @@ export function PasoClip({
             onCambio={onPlantilla}
             onDuplicar={onDuplicar}
             accionesDePreset={accionesDePreset}
+            // La plantilla o el trend se eligen en el primer paso, «Formato»: aquí no se repite el selector.
+            formatoAparte
           />
           {previa.plantilla?.kind === "trend" && previa.enUso && (
             <Aviso tono="info">

@@ -5,6 +5,8 @@ import { claseBoton } from "@/components/ui/button";
 import { AvisoEstado } from "@/components/ui/feedback";
 import { AVISO_BOVEDA_USUARIO, PROVEEDORES_PUBLICOS } from "@/lib/boveda";
 import { evaluacionFallida } from "@/lib/controles";
+import { pasoDeLaUrl } from "@/lib/multipaso";
+import { IDS_PASOS_CREAR } from "@/lib/pasos-crear";
 import { esAdmin, exigirSesion } from "@/server/auth/sesion";
 import { bovedaDisponible } from "@/server/boveda/cifrado";
 import { listarCredenciales } from "@/server/boveda/credenciales";
@@ -27,11 +29,17 @@ export const dynamic = "force-dynamic";
  * «Crear»: el primer flujo usable. Cada usuario genera con su propia clave de KIE (RF01) y paga en su
  * cuenta del proveedor. Sin clave utilizable no se muestra el formulario: se explica qué falta.
  */
-export default async function PaginaCrear({ searchParams }: { searchParams: Promise<{ personaje?: string }> }) {
+export default async function PaginaCrear({
+  searchParams,
+}: {
+  searchParams: Promise<{ personaje?: string; paso?: string | string[] }>;
+}) {
   const sesion = await exigirSesion("/crear");
   // Preselección al llegar desde la ficha de un personaje. Solo es una sugerencia de la interfaz: quien
-  // autoriza el uso de ese personaje es el servidor, al encolar.
-  const { personaje: personajePedido } = await searchParams;
+  // autoriza el uso de ese personaje es el servidor, al encolar. `paso` es el paso que estaba abierto (0.33.0):
+  // solo se acepta si es uno de los de «Crear».
+  const { personaje: personajePedido, paso } = await searchParams;
+  const pasoPedido = pasoDeLaUrl(paso, IDS_PASOS_CREAR);
   const boveda = bovedaDisponible();
   const credenciales = boveda ? await listarCredenciales(sesion.user.id) : [];
   const kie = credenciales.find((c) => c.proveedor === "kie") ?? null;
@@ -152,6 +160,7 @@ export default async function PaginaCrear({ searchParams }: { searchParams: Prom
             catalogoFotogramaInicial={catalogoFoto}
             catalogoClipInicial={catalogoClip}
             controlesIniciales={controlesIniciales}
+            pasoPedido={pasoPedido}
           />
         )}
       </main>

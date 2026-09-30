@@ -17,6 +17,10 @@ mismos botones —el plano, el ángulo, el movimiento, la micro-acción, el regi
 a la botonera de la plantilla no le queda nada propio que ofrecer, no aparece. Lo que elijas aquí es lo que se
 le pide al modelo, y se le pide una sola vez.
 
+En **«Crear»**, la plantilla o el trend del clip se eligen **antes**, en el primer paso («Elige el formato»),
+porque un trend fija la duración y si se habla a cámara. El paso del clip ya no repite ese selector: solo ofrece los
+botones que la plantilla elegida pida y que la dirección no cubra.
+
 ## Guardar una dirección y volver a usarla
 
 Encima de los botones tienes **Mis direcciones**. Cuando tengas una forma de dirigir que te funciona, pulsa
@@ -138,14 +142,14 @@ No hace falta generar un fotograma nuevo para cada vídeo. Lo primero que eliges
 - **crear un fotograma nuevo**: eliges a quién sale y qué está haciendo, y se genera su imagen;
 - **usar una imagen que ya tengo**: un fotograma de otro día, una vista de tu personaje o una foto que subas.
 
-Con el segundo camino **el paso del fotograma desaparece entero**: no hay formulario que rellenar ni imagen que
+Con el segundo camino **los pasos del fotograma desaparecen de la barra**: no hay formulario que rellenar ni imagen que
 estimar, porque no se va a generar ninguna. Pasas directamente a dirigir y generar el clip. **Elegir la imagen
 no cuesta nada**; lo único que se paga es el clip.
 
 Tampoco tienes que describir la escena: la imagen ya dice lo que se ve y la dirección pone el encuadre. Si
 quieres añadir algo, escríbelo en **instrucciones adicionales**.
 
-![Los dos caminos de «Crear»](../assets/capturas/0.25.1-crear-dos-caminos-claro.webp)
+![Los dos caminos de «Crear» (captura anterior a la barra de pasos de la 0.33.0)](../assets/capturas/0.25.1-crear-dos-caminos-claro.webp)
 
 En la escena de un proyecto es lo mismo: al lado del fotograma puedes traer una imagen tuya y la escena la toma
 como su fotograma aprobado.
