@@ -33,7 +33,7 @@ describe("comparar sin generar no puede llegar a ningún adaptador de pago", () 
 
   test("una importación con nombre calculado no se puede seguir y cuenta como prohibida", () => {
     expect(tieneImportacionesOpacas("const m = await import(nombre);")).toBe(true);
-    expect(tieneImportacionesOpacas("const m = require(`./${x}`);")).toBe(true);
+    expect(tieneImportacionesOpacas(["const m = require(`./", "$", "{x}`);"].join(""))).toBe(true);
     expect(tieneImportacionesOpacas('const m = await import("./fijo"); const r = require("./otro");')).toBe(false);
   });
 
