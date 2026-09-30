@@ -5,6 +5,8 @@ import { type ContextoId, ErrorMarca, esUuid, respuestaError } from "@/server/ma
 
 export const dynamic = "force-dynamic";
 
+const TIPOS_SERVIBLES = new Set(["image/png", "image/jpeg", "image/webp", "font/woff2"]);
+
 /**
  * Sirve un archivo de marca con su **tipo real** (el que se comprobó al subirlo), `nosniff` y una política de contenido
  * cerrada: aunque alguien abriera un SVG directamente, no puede cargar nada ni ejecutar nada. Los de la instalación son
@@ -17,6 +19,8 @@ export async function GET(peticion: Request, contexto: ContextoId): Promise<Resp
     const sesion = await sesionDePeticion(peticion);
     const actor = sesion ? { id: sesion.user.id, esAdmin: esAdmin(sesion) } : null;
     const fila = await activoParaServir(id, actor);
+    // Solo se sirven los tipos que se admiten al subir: nada que el navegador pueda interpretar como documento.
+    if (!TIPOS_SERVIBLES.has(fila.mimeType)) throw new ErrorMarca(404, "Ese archivo de marca no existe.");
     const datos = await leerObjeto(fila.storageKey).arrayBuffer();
     return new Response(datos, {
       headers: {

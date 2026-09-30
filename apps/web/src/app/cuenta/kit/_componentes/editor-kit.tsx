@@ -85,13 +85,13 @@ export function EditorKit({ kitInicial, fotograma }: { kitInicial: KitVista; fot
         <div className="flex flex-col gap-2">
           <Campo
             etiqueta="Logotipo"
-            ayuda={`PNG, JPEG, WebP o SVG, hasta ${LIMITE_LOGO_RASTER / (1024 * 1024)} MB y ${LADO_MAXIMO_LOGO} px por lado. Mejor con fondo transparente. Se guarda en PNG.`}
+            ayuda={`PNG, JPEG o WebP, hasta ${LIMITE_LOGO_RASTER / (1024 * 1024)} MB y ${LADO_MAXIMO_LOGO} px por lado. Mejor PNG con fondo transparente. Esta versión no admite SVG. Se guarda en PNG.`}
           >
             {(props) => (
               <EntradaTexto
                 {...props}
                 type="file"
-                accept="image/png,image/jpeg,image/webp,image/svg+xml,.svg"
+                accept="image/png,image/jpeg,image/webp"
                 disabled={ocupado}
                 onChange={(e) => void subir(e.target.files?.[0])}
               />

@@ -1,14 +1,13 @@
 import { createHash } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
-import sharp from "sharp";
+import sharp, { type Sharp } from "sharp";
 import {
   LADO_MAXIMO_LOGO,
   LADO_MINIMO_LOGO,
   LIMITE_FUENTE,
   LIMITE_LOGO_RASTER,
-  LIMITE_SVG,
   motivoFuenteNoValida,
-  motivoSvgNoValido,
+  motivoTipoDeLogoNoValido,
 } from "@/lib/marca-activos";
 import type { DocumentoMarca } from "@/lib/marca-esquema";
 import { CONTROL_O_ETIQUETA, motivoNombreFuenteNoValido } from "@/lib/marca-esquema";
@@ -26,14 +25,15 @@ import { brandAssets, type FilaActivoMarca, type LicenciaFuente } from "../db/es
 import { detectarTipo } from "../media/deteccion";
 import type { Actor } from "../media/servicio";
 import { ErrorMarca, exigirAdministracion } from "./http";
+import { conCupoDeImagen, SEGUNDOS_MAXIMOS_PROCESADO } from "./procesado";
 
 /**
  * **Archivos de marca**: comprobar, normalizar, guardar, servir y derivar.
  *
  * - Un logotipo **raster** (PNG, JPEG, WebP) se identifica por su firma, se mide y **se vuelve a codificar** con sharp:
  *   lo que se guarda son píxeles recién escritos, sin metadatos ni nada añadido al final del archivo original.
- * - Un logotipo **SVG** pasa la lista cerrada de `motivoSvgNoValido` o se rechaza con su causa; después sharp lo tiene
- *   que poder leer, que es la comprobación de que es un SVG de verdad y no texto con forma de SVG.
+ * - Un **SVG no se admite** en esta versión: se rechaza al momento por su contenido, antes de que sharp lo lea.
+ * - Todo procesado con sharp va con cupo (dos a la vez) y tiempo máximo (`procesado.ts`).
  * - El logotipo del **kit del creador** se guarda siempre en PNG: es lo que se superpone al vídeo con FFmpeg.
  * - Una **fuente** solo en WOFF2, con cabecera comprobada y licencia declarada.
  *
@@ -46,7 +46,6 @@ const EXTENSION: Record<string, string> = {
   "image/png": "png",
   "image/jpeg": "jpg",
   "image/webp": "webp",
-  "image/svg+xml": "svg",
   "font/woff2": "woff2",
 };
 
@@ -57,11 +56,6 @@ interface LogoPreparado {
   ancho: number;
   alto: number;
 }
-
-const pareceSvg = (bytes: Uint8Array) => {
-  const inicio = new TextDecoder().decode(bytes.subarray(0, 512)).replace(/^﻿/, "").trimStart();
-  return inicio.startsWith("<");
-};
 
 function exigirMedidas(ancho: number | undefined, alto: number | undefined): { ancho: number; alto: number } {
   if (!ancho || !alto) throw new ErrorMarca(422, "No se han podido leer las medidas del logotipo.");
@@ -77,48 +71,40 @@ function exigirMedidas(ancho: number | undefined, alto: number | undefined): { a
 /** Lado máximo del PNG del kit: sobra para una esquina de un vídeo 1080 × 1920. */
 const LADO_PNG_KIT = 1024;
 
+/** Opciones comunes de sharp: tope de píxeles contra las «bombas» de descompresión y sin fallar por avisos menores. */
+const ENTRADA = { limitInputPixels: LADO_MAXIMO_LOGO * LADO_MAXIMO_LOGO } as const;
+
 /**
- * Comprueba y normaliza un logotipo. `enPng` lo convierte siempre a PNG (el kit del creador); si no, un SVG se
- * guarda como SVG (vectorial para la interfaz) y un raster en su formato, recodificado.
+ * Comprueba y normaliza un logotipo: solo PNG, JPEG o WebP (por su firma), con peso y medidas acotados, y siempre
+ * **recodificado** (se guardan píxeles recién escritos, sin metadatos). La orientación EXIF se aplica antes de quitarla,
+ * así un JPEG de móvil no queda girado. `enPng` lo guarda en PNG (el kit del creador, que se superpone con FFmpeg).
+ *
+ * Lo que no es raster se rechaza **antes** de que sharp lo lea, y el procesado va con cupo y tiempo máximo
+ * (`conCupoDeImagen`).
  */
 export async function prepararLogotipo(bytes: Uint8Array, enPng: boolean): Promise<LogoPreparado> {
-  if (bytes.byteLength === 0) throw new ErrorMarca(422, "El archivo está vacío.");
-  const esSvg = pareceSvg(bytes);
-  if (esSvg) {
-    const motivo = motivoSvgNoValido(bytes);
-    if (motivo) throw new ErrorMarca(422, motivo);
-  } else {
-    if (bytes.byteLength > LIMITE_LOGO_RASTER) {
-      throw new ErrorMarca(413, `El logotipo pesa más de ${LIMITE_LOGO_RASTER / (1024 * 1024)} MB.`);
-    }
-    const detectado = detectarTipo(bytes);
-    if (!detectado || !(TIPOS_LOGO as readonly string[]).includes(detectado.mime)) {
-      throw new ErrorMarca(
-        415,
-        "El logotipo tiene que ser PNG, JPEG, WebP o SVG. Este archivo no es ninguno de ellos.",
-      );
-    }
+  const detectado = bytes.byteLength > 0 ? detectarTipo(bytes) : null;
+  const motivo = motivoTipoDeLogoNoValido(bytes, detectado?.mime ?? null);
+  if (motivo) throw new ErrorMarca(bytes.byteLength === 0 ? 422 : 415, motivo);
+  if (bytes.byteLength > LIMITE_LOGO_RASTER) {
+    throw new ErrorMarca(413, `El logotipo pesa más de ${LIMITE_LOGO_RASTER / (1024 * 1024)} MB.`);
   }
-  try {
-    // `limitInputPixels` corta las «bombas» de descompresión antes de reservar memoria para ellas.
-    const imagen = sharp(bytes, { limitInputPixels: LADO_MAXIMO_LOGO * LADO_MAXIMO_LOGO, density: esSvg ? 144 : 72 });
-    const meta = await imagen.metadata();
-    const { ancho, alto } = exigirMedidas(meta.width, meta.height);
-    if (esSvg && !enPng) return { datos: bytes, mime: "image/svg+xml", ancho, alto };
-    if (enPng) {
-      const { data, info } = await imagen
-        .resize(LADO_PNG_KIT, LADO_PNG_KIT, { fit: "inside", withoutEnlargement: true })
-        .png()
-        .toBuffer({ resolveWithObject: true });
-      return { datos: new Uint8Array(data), mime: "image/png", ancho: info.width, alto: info.height };
+  return conCupoDeImagen(async () => {
+    try {
+      const meta = await sharp(bytes, ENTRADA).timeout({ seconds: SEGUNDOS_MAXIMOS_PROCESADO }).metadata();
+      exigirMedidas(meta.width, meta.height);
+      const imagen = sharp(bytes, ENTRADA).timeout({ seconds: SEGUNDOS_MAXIMOS_PROCESADO }).rotate();
+      const formato = enPng ? "png" : meta.format === "jpeg" ? "jpeg" : meta.format === "webp" ? "webp" : "png";
+      const salida = enPng
+        ? imagen.resize(LADO_PNG_KIT, LADO_PNG_KIT, { fit: "inside", withoutEnlargement: true })
+        : imagen;
+      const { data, info } = await salida.toFormat(formato).toBuffer({ resolveWithObject: true });
+      return { datos: new Uint8Array(data), mime: `image/${formato}`, ancho: info.width, alto: info.height };
+    } catch (error) {
+      if (error instanceof ErrorMarca) throw error;
+      throw new ErrorMarca(422, "El logotipo está dañado o no se puede leer como imagen.");
     }
-    const formato = meta.format === "jpeg" ? "jpeg" : meta.format === "webp" ? "webp" : "png";
-    const data = await imagen.toFormat(formato).toBuffer();
-    return { datos: new Uint8Array(data), mime: `image/${formato}`, ancho, alto };
-  } catch (error) {
-    if (error instanceof ErrorMarca) throw error;
-    throw new ErrorMarca(422, "El logotipo está dañado o no se puede leer como imagen.");
-  }
+  });
 }
 
 /** Datos de la declaración de licencia de una fuente, tal como llegan del formulario. */
@@ -216,7 +202,7 @@ export async function guardarActivo(
 }
 
 /** Límite de subida por tipo de archivo de marca. */
-export const LIMITE_SUBIDA = { logotipo: Math.max(LIMITE_SVG, LIMITE_LOGO_RASTER), fuente: LIMITE_FUENTE } as const;
+export const LIMITE_SUBIDA = { logotipo: LIMITE_LOGO_RASTER, fuente: LIMITE_FUENTE } as const;
 
 export const urlDeActivo = urlDeActivoMarca;
 
@@ -274,9 +260,14 @@ async function bytesDeActivo(id: string): Promise<Uint8Array> {
 /**
  * Genera favicon 16/32, iconos de la aplicación (192 y 512) e imagen social (1200 × 630) desde el símbolo claro (o el
  * logotipo horizontal si no hay símbolo). Sin ningún logotipo subido no genera nada: la instalación sigue con los
- * iconos de Escenara.
+ * iconos de Escenara. Va con el mismo cupo y el mismo tiempo máximo que cualquier procesado de imágenes.
  */
-export const generarDerivados: GeneradorDeDerivados = async (documento, activos) => {
+export const generarDerivados: GeneradorDeDerivados = (documento, activos) =>
+  conCupoDeImagen(() => derivar(documento, activos), (SEGUNDOS_MAXIMOS_PROCESADO + 2) * 3 * 1000);
+
+const conTiempo = (imagen: Sharp) => imagen.timeout({ seconds: SEGUNDOS_MAXIMOS_PROCESADO });
+
+async function derivar(documento: DocumentoMarca, activos: ActivosDeVersion): Promise<Derivado[]> {
   const simbolo = activos.logos["simbolo-claro"] ?? activos.logos["horizontal-claro"];
   const horizontal = activos.logos["horizontal-claro"] ?? simbolo;
   if (!simbolo || !horizontal) return [];
@@ -287,30 +278,32 @@ export const generarDerivados: GeneradorDeDerivados = async (documento, activos)
     const esFavicon = rol.startsWith("favicon");
     const margen = esFavicon ? 0 : Math.round(lado * 0.12);
     const interior = lado - margen * 2;
-    const logo = await sharp(origen, { density: 300 })
+    const logo = await conTiempo(sharp(origen, ENTRADA))
       .resize(interior, interior, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
       .png()
       .toBuffer();
-    const datos = await sharp({
-      create: {
-        width: lado,
-        height: lado,
-        channels: 4,
-        background: esFavicon ? { r: 0, g: 0, b: 0, alpha: 0 } : fondo,
-      },
-    })
+    const datos = await conTiempo(
+      sharp({
+        create: {
+          width: lado,
+          height: lado,
+          channels: 4,
+          background: esFavicon ? { r: 0, g: 0, b: 0, alpha: 0 } : fondo,
+        },
+      }),
+    )
       .composite([{ input: logo, top: margen, left: margen }])
       .png()
       .toBuffer();
     lista.push({ rol, bytes: new Uint8Array(datos), ancho: lado, alto: lado });
   }
-  const logoSocial = await sharp(horizontal === simbolo ? origen : await bytesDeActivo(horizontal), { density: 300 })
+  const logoSocial = await conTiempo(sharp(horizontal === simbolo ? origen : await bytesDeActivo(horizontal), ENTRADA))
     .resize(720, 300, { fit: "inside" })
     .png()
     .toBuffer({ resolveWithObject: true });
-  const social = await sharp({
-    create: { width: 1200, height: 630, channels: 4, background: documento.theme.light.background },
-  })
+  const social = await conTiempo(
+    sharp({ create: { width: 1200, height: 630, channels: 4, background: documento.theme.light.background } }),
+  )
     .composite([
       {
         input: logoSocial.data,
@@ -322,7 +315,7 @@ export const generarDerivados: GeneradorDeDerivados = async (documento, activos)
     .toBuffer();
   lista.push({ rol: "imagen-social", bytes: new Uint8Array(social), ancho: 1200, alto: 630 });
   return lista;
-};
+}
 
 // ── Subida de la instalación ────────────────────────────────────────────────────────────────────────────────
 

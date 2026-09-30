@@ -94,11 +94,41 @@ export type ContextoId = { params: Promise<{ id: string }> };
 /** Margen para las cabeceras del formulario multiparte y los campos de texto. */
 const MARGEN_MULTIPARTE = 64 * 1024;
 
-/** Lee el archivo de un formulario multiparte, cortando por la cabecera antes de leer el cuerpo en memoria. */
-export async function leerArchivo(peticion: Request, maximo: number): Promise<{ archivo: File; campos: FormData }> {
+/**
+ * Lee el cuerpo de la petición **con tope de bytes**: corta por la cabecera si la trae y, si no la trae (envío por
+ * trozos), va leyendo el flujo y aborta en cuanto pasa del máximo, sin guardar el resto en memoria.
+ */
+export async function leerCuerpoConTope(peticion: Request, maximo: number): Promise<Uint8Array<ArrayBuffer>> {
   const declarado = Number(peticion.headers.get("content-length") ?? 0);
-  if (declarado > maximo + MARGEN_MULTIPARTE) throw new ErrorMarca(413, "El archivo supera el tamaño máximo.");
-  const campos = await peticion.formData().catch(() => {
+  if (declarado > maximo) throw new ErrorMarca(413, "El archivo supera el tamaño máximo.");
+  if (!peticion.body) return new Uint8Array();
+  const lector = peticion.body.getReader();
+  const trozos: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await lector.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maximo) {
+      await lector.cancel().catch(() => {});
+      throw new ErrorMarca(413, "El archivo supera el tamaño máximo.");
+    }
+    trozos.push(value);
+  }
+  const cuerpo = new Uint8Array(total);
+  let desde = 0;
+  for (const t of trozos) {
+    cuerpo.set(t, desde);
+    desde += t.byteLength;
+  }
+  return cuerpo;
+}
+
+/** Lee el archivo de un formulario multiparte con tope de bytes (`leerCuerpoConTope`), y después el formulario. */
+export async function leerArchivo(peticion: Request, maximo: number): Promise<{ archivo: File; campos: FormData }> {
+  const cuerpo = await leerCuerpoConTope(peticion, maximo + MARGEN_MULTIPARTE);
+  const tipo = peticion.headers.get("content-type") ?? "";
+  const campos = await new Response(cuerpo, { headers: { "content-type": tipo } }).formData().catch(() => {
     throw new ErrorMarca(400, "Envía el archivo como formulario multiparte.");
   });
   const archivo = campos.get("archivo");

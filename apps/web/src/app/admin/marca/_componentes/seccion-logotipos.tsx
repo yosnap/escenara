@@ -4,13 +4,13 @@ import { useState } from "react";
 import { Alerta } from "@/components/ui/alerta";
 import { Boton } from "@/components/ui/button";
 import { Campo, EntradaTexto } from "@/components/ui/field";
-import { LADO_MAXIMO_LOGO, LIMITE_LOGO_RASTER, LIMITE_SVG } from "@/lib/marca-activos";
+import { CONVERTIR_LOGOTIPO, LADO_MAXIMO_LOGO, LIMITE_LOGO_RASTER } from "@/lib/marca-activos";
 import type { DocumentoMarca } from "@/lib/marca-esquema";
 import { pedirMarca } from "@/lib/marca-peticion";
 import { estiloDeTema } from "@/lib/marca-previa";
 import { type ActivoVista, NOMBRE_ROL_LOGO, ROLES_LOGO, type RolLogo } from "@/lib/marca-vista";
 
-const AYUDA = `PNG, JPEG, WebP o SVG. Hasta ${LIMITE_LOGO_RASTER / (1024 * 1024)} MB (SVG hasta ${LIMITE_SVG / 1024} KB) y ${LADO_MAXIMO_LOGO} px por lado. Un SVG con scripts, foreignObject o referencias externas se rechaza.`;
+const AYUDA = `PNG, JPEG o WebP, hasta ${LIMITE_LOGO_RASTER / (1024 * 1024)} MB y ${LADO_MAXIMO_LOGO} px por lado. Esta versión no admite SVG: ${CONVERTIR_LOGOTIPO.charAt(0).toLowerCase()}${CONVERTIR_LOGOTIPO.slice(1)}`;
 
 /**
  * Logotipos de la instalación: horizontal y símbolo, para cada tema. Si solo subes el del tema claro, se usa en los
@@ -95,7 +95,7 @@ function TarjetaLogo({
           <EntradaTexto
             {...props}
             type="file"
-            accept="image/png,image/jpeg,image/webp,image/svg+xml,.svg"
+            accept="image/png,image/jpeg,image/webp"
             disabled={subiendo}
             onChange={(e) => void subir(e.target.files?.[0])}
           />

@@ -1,63 +1,54 @@
 import { describe, expect, test } from "bun:test";
 import path from "node:path";
-import { LIMITE_FUENTE, LIMITE_SVG, motivoFuenteNoValida, motivoSvgNoValido } from "./marca-activos";
+import { LIMITE_FUENTE, motivoFuenteNoValida, motivoTipoDeLogoNoValido } from "./marca-activos";
 
-const svg = (cuerpo: string, atributos = "") =>
-  new TextEncoder().encode(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"${atributos}>${cuerpo}</svg>`);
+/** SVG de la revisión: 10 `<use>` por nivel y 5 niveles (10⁵ instancias) en apenas 1 KB. Rasterizado, tardaba 43 s. */
+function svgDeUsosAnidados(niveles = 5): Uint8Array {
+  const grupos = ['<g id="g0"><path d="M0 0h1v1z"/></g>'];
+  for (let i = 1; i <= niveles; i++) {
+    grupos.push(`<g id="g${i}">${Array.from({ length: 10 }, () => `<use href="#g${i - 1}"/>`).join("")}</g>`);
+  }
+  return new TextEncoder().encode(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><defs>${grupos.join("")}</defs><use href="#g${niveles}"/></svg>`,
+  );
+}
 
 const manrope = new Uint8Array(
   await Bun.file(path.resolve(import.meta.dir, "../fonts/manrope-latin-wght-normal.woff2")).arrayBuffer(),
 );
 
-describe("logotipo en SVG", () => {
-  test("un logotipo normal, con degradados, referencias internas y comentarios, pasa", () => {
-    const bueno = `<?xml version="1.0" encoding="UTF-8"?>
-<!-- logotipo -->
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 100 100">
-  <defs><linearGradient id="g"><stop offset="0" stop-color="#2753D7"/></linearGradient><symbol id="s"><circle r="4"/></symbol></defs>
-  <title>Mi marca</title>
-  <path d="M10 10H90V90Z" fill="url(#g)" style="stroke: #000"/>
-  <use xlink:href="#s" x="5"/><use href="#s"/>
-  <text x="10" y="50" font-family="Inter">Mi marca &amp; co</text>
-</svg>`;
-    expect(motivoSvgNoValido(new TextEncoder().encode(bueno))).toBeNull();
+const texto = (t: string) => new TextEncoder().encode(t);
+
+describe("tipo de logotipo", () => {
+  test("PNG, JPEG y WebP pasan por su firma", () => {
+    for (const mime of ["image/png", "image/jpeg", "image/webp"])
+      expect(motivoTipoDeLogoNoValido(new Uint8Array(8), mime)).toBeNull();
   });
 
   test.each([
-    ["<script>", svg("<script>alert(1)</script>"), /script/],
+    ["SVG con <use> anidados", svgDeUsosAnidados()],
     [
-      "foreignObject",
-      svg('<foreignObject><div xmlns="http://www.w3.org/1999/xhtml">x</div></foreignObject>'),
-      /foreignObject/,
+      "SVG con entidades de carácter",
+      texto('<svg xmlns="http://www.w3.org/2000/svg"><rect fill="&#117;rl(https://x.test/a)"/></svg>'),
     ],
-    ["manejador onload", svg("", ' onload="alert(1)"'), /manejador/],
-    ["manejador en un hijo", svg('<rect width="1" height="1" onclick="x()"/>'), /manejador/],
-    ["enlace externo", svg('<use href="https://x.test/a.svg#s"/>'), /fuera/],
-    ["javascript: en un enlace", svg('<a href="javascript:alert(1)"><rect/></a>'), /<a>|fuera/],
-    ["url() externa", svg('<rect fill="url(https://x.test/p)"/>'), /url\(\)/],
-    ["url() externa en style", svg('<rect style="fill:url(//x.test/p)"/>'), /url\(\)/],
-    ["data: en un valor", svg('<rect fill="data:image/png;base64,AAAA"/>'), /valor/],
-    ["<image>", svg('<image href="#x"/>'), /image/],
-    ["<style>", svg("<style>@import url(x)</style>"), /style/],
     [
-      "DOCTYPE con entidades",
-      new TextEncoder().encode('<!DOCTYPE svg [<!ENTITY x "y">]><svg xmlns="http://www.w3.org/2000/svg"/>'),
-      /DOCTYPE/,
+      "SVG con DOCTYPE y entidades",
+      texto('<?xml version="1.0"?><!DOCTYPE svg [<!ENTITY a "aaaa"><!ENTITY b "&a;&a;">]><svg>&b;</svg>'),
     ],
-    ["CDATA", svg("<text><![CDATA[<script>]]></text>"), /CDATA/],
-    ["atributo sin comillas", svg("<rect width=10/>"), /comillas/],
-    ["espacio de nombres ajeno", svg("", ' xmlns:h="http://www.w3.org/1999/xhtml"'), /espacio de nombres/],
-    ["HTML en lugar de SVG", new TextEncoder().encode("<html><body>hola</body></html>"), /<svg>/],
-    ["< suelto", svg("<rect/> < script"), /bien formado/],
-    ["instrucción de procesamiento", svg('<?xml-stylesheet href="x.css"?>'), /procesamiento/],
-  ])("se rechaza con su causa: %s", (_, bytes, causa) => {
-    expect(motivoSvgNoValido(bytes)).toMatch(causa);
+    ["SVG con BOM y espacios delante", texto("\uFEFF  \n<svg/>")],
+    ["HTML", texto("<html><script>alert(1)</script></html>")],
+  ])("se rechaza al momento, sin interpretarlo: %s", (_, bytes) => {
+    const inicio = performance.now();
+    const motivo = motivoTipoDeLogoNoValido(bytes, null);
+    expect(performance.now() - inicio).toBeLessThan(5);
+    expect(motivo).toContain("no admite logotipos en SVG");
+    expect(motivo).toContain("Convierte tu logotipo a PNG (con fondo transparente) o a WebP");
   });
 
-  test("vacío, demasiado grande o no UTF-8", () => {
-    expect(motivoSvgNoValido(new Uint8Array())).toMatch(/vacío/);
-    expect(motivoSvgNoValido(svg(`<desc>${"x".repeat(LIMITE_SVG)}</desc>`))).toMatch(/KB/);
-    expect(motivoSvgNoValido(new Uint8Array([0x3c, 0x73, 0xff, 0xfe]))).toMatch(/UTF-8/);
+  test("un GIF o un binario cualquiera se rechaza diciendo qué formatos sí", () => {
+    expect(motivoTipoDeLogoNoValido(texto("GIF89a...."), "image/gif")).toContain("PNG, JPEG o WebP");
+    expect(motivoTipoDeLogoNoValido(new Uint8Array([0x7f, 0x45, 0x4c, 0x46]), null)).toContain("PNG, JPEG o WebP");
+    expect(motivoTipoDeLogoNoValido(new Uint8Array(), null)).toBe("El archivo está vacío.");
   });
 });
 
