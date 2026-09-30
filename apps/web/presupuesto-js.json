@@ -29,7 +29,7 @@
     },
     "/crear": {
       "topeKb": 317,
-      "motivo": "Flujo por pasos con la dirección del clip, presets, selector de medios y el lugar de la escena. Medido: 315.9 KB (margen 1.1 KB, sin subir el tope)."
+      "motivo": "Flujo por pasos con la dirección del clip, presets, selector de medios y el lugar de la escena; 1.1 KB de margen, sin subir el tope. Medido: 315.9 KB."
     },
     "/personajes/[id]": {
       "topeKb": 300,
