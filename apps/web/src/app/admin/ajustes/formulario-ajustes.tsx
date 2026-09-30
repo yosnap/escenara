@@ -23,6 +23,7 @@ import { SeccionDosPersonajes } from "./seccion-dos-personajes";
 import { SeccionMontaje } from "./seccion-montaje";
 import { SeccionPresupuesto } from "./seccion-presupuesto";
 import { SeccionRevision } from "./seccion-revision";
+import { SeccionSombra } from "./seccion-sombra";
 import { SeccionVoz } from "./seccion-voz";
 
 export interface DatosAjustes {
@@ -274,6 +275,7 @@ export function FormularioAjustes({
         onGuardarSecreto={(valor) => guardarSecreto("typesafeApiKey", valor)}
         onQuitarSecreto={() => quitarSecreto("typesafeApiKey")}
       />
+      <SeccionSombra valores={valores} errorDe={errorDe} onCambio={cambiar} />
       <SeccionVoz valores={valores} errorDe={errorDe} onCambio={cambiar} />
       <SeccionCanto valores={valores} errorDe={errorDe} onCambio={cambiar} />
 
