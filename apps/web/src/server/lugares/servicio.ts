@@ -262,6 +262,8 @@ export async function quitarFotoDelLugar(actor: Actor, id: unknown, referenciaId
       .where(and(eq(placeReferences.id, referenciaId), eq(placeReferences.placeId, lugar.id)))
       .returning();
     if (!fila) throw new ErrorLugar(404, `Esa foto no es una referencia de «${lugar.name}».`);
+    // Quitar la maestra cambia la foto que se envía, como cambiarla: la declaración hablaba de ella.
+    if (fila.kind === "maestra") await revocarPorCambioDeFotos(tx, lugar.id);
     await nuevaVersionDeLugar(tx, lugar.id, actor.id, fila.kind === "maestra" ? ["fotos", "maestra"] : ["fotos"]);
   });
   return obtenerLugar(actor, lugar.id);

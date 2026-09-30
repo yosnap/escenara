@@ -78,7 +78,7 @@ export type AlcanceLugar = (typeof ALCANCES_LUGAR)[number];
 export const esAlcanceLugar = (v: unknown): v is AlcanceLugar => ALCANCES_LUGAR.includes(v as AlcanceLugar);
 
 /** Versión del texto de la declaración que se guarda con ella. Cambiar el texto obliga a subir la versión. */
-export const VERSION_TEXTO_DECLARACION_LUGAR = "2026-09-30";
+export const VERSION_TEXTO_DECLARACION_LUGAR = "2026-09-30.2";
 
 /** Mensajes con causa y acción, compartidos por el servidor (que rechaza) y la interfaz (que avisa antes). */
 export const RECHAZO_MENORES =
@@ -87,6 +87,9 @@ export const RECHAZO_RECONOCIBLES =
   "Con gente reconocible en la foto no se puede generar: retírala con «Retirar personas» (edición de imagen, con su coste confirmado antes) o sube otra foto. No se pixelan caras: el generador copiaría el pixelado.";
 export const AVISO_INTERIOR =
   "Un interior privado o con restricciones (una tienda, un bar, un museo) exige que declares que tienes permiso de quien lo gestiona.";
+/** Lo que se lee en la pantalla donde se declara, antes de declarar. */
+export const RESPONSABILIDAD_DECLARACION =
+  "Lo que declaras aquí es responsabilidad tuya: que las fotos son tuyas o tienes permiso, quién sale en ellas y que no aparece ningún menor. Escenara no revisa las fotos ni comprueba si sale gente; guarda tu declaración con su fecha.";
 export const SUGERENCIA_FAMOSO =
   "¿Es un sitio famoso? Escribe su nombre en el texto de la escena o en la localización y no hace falta crear un lugar: el modelo ya lo conoce.";
 

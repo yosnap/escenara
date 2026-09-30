@@ -343,6 +343,16 @@ describe.skipIf(!hayBaseDeDatos)("lugares: propiedad, declaración, versión, re
     expect(((await conOtra.json()) as LugarVista).declarado).toBe(false);
   });
 
+  test("quitar la maestra retira la declaración, como cambiarla", async () => {
+    const { lugar } = await lugarConMaestra();
+    expect(lugar.declarado).toBe(true);
+    const maestra = lugar.referencias.find((r) => r.papel === "maestra");
+    const sinMaestra = await patchLugar(ana, lugar.id, { accion: "quitar-foto", referenciaId: maestra?.id });
+    const vista = (await sinMaestra.json()) as LugarVista;
+    expect(vista.declarado).toBe(false);
+    expect(vista.tieneMaestra).toBe(false);
+  });
+
   test("sin declaración vigente no se genera con el lugar, y no se reserva nada", async () => {
     const { lugar } = await lugarConMaestra(false);
     const medio = await subirFotoDePrueba(actorAna, "partida.png");

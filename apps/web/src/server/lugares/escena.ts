@@ -78,27 +78,6 @@ export function exigirPlanoSoloCoherente(
   }
 }
 
-/**
- * **Podcast**: los clips de una misma conversación comparten lugar y versión, sí o sí. Al cambiar el lugar de una
- * escena del grupo se aplica a las demás en la misma transacción; el «dónde» también, porque es el mismo set.
- */
-export async function aplicarLugarAlGrupo(
-  tx: Ejecutor,
-  escena: Pick<FilaEscena, "id" | "podcastGroupId" | "projectId">,
-  campos: CamposEscena,
-): Promise<void> {
-  if (!escena.podcastGroupId || campos.placeId === undefined) return;
-  await tx
-    .update(scenes)
-    .set({
-      placeId: campos.placeId,
-      placeInherited: campos.placeInherited ?? false,
-      placeSpot: campos.placeSpot ?? "",
-      updatedAt: new Date(),
-    })
-    .where(and(eq(scenes.podcastGroupId, escena.podcastGroupId), eq(scenes.projectId, escena.projectId)));
-}
-
 /** El lugar por defecto de un proyecto, ya comprobado. `null` lo quita. */
 export async function lugarPorDefectoValido(
   usuarioId: string,

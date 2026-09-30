@@ -13,7 +13,7 @@ import { motivoDuracionNoAdmitida } from "@/lib/trends";
 import { db, type Ejecutor } from "../db/cliente";
 import { claims, type FilaEscena, generationJobs, projects, scenes } from "../db/esquema";
 import { limitesDeProyecto } from "../limites-proyecto";
-import { aplicarLugarAlGrupo, camposDeLugar, exigirPlanoSoloCoherente } from "../lugares/escena";
+import { camposDeLugar, exigirPlanoSoloCoherente } from "../lugares/escena";
 import type { Actor } from "../media/servicio";
 import { leerProductoElegido, productoPropio } from "../productos/eleccion";
 import { ErrorProducto } from "../productos/errores";
@@ -348,8 +348,6 @@ export async function editarEscena(actor: Actor, escenaId: unknown, datos: Datos
       .where(eq(scenes.id, escena.id))
       .returning();
     if (!actualizada) throw new ErrorProyecto(404, "Esa escena no existe.");
-    // En un podcast, los clips de la misma conversación comparten lugar: el set tiene que ser el mismo.
-    await aplicarLugarAlGrupo(tx, escena, campos);
     if (campos.scriptText !== undefined) {
       await sincronizarAfirmaciones(tx, escena.id, actualizada.scriptText);
       // El diálogo es lo que se oye y lo que se lee: cambiarlo deja sin valer la pista de voz y los subtítulos

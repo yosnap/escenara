@@ -5,7 +5,7 @@ import { falloConCoste, type ProduccionVista, trabajoTerminado } from "@/lib/pro
 import { escenaPropia, escenasDe, proyectoPropio } from "../asistente/consulta";
 import { ErrorProyecto } from "../asistente/errores";
 import { db } from "../db/cliente";
-import { characters, type FilaEscena, type FilaProyecto, type FilaTrabajo, products, scenes } from "../db/esquema";
+import { characters, type FilaEscena, type FilaProyecto, type FilaTrabajo, scenes } from "../db/esquema";
 import { direccionDeLaEscena, type PersonajeDirigido, seisCDeLaEscena } from "../direccion/escena";
 import { claveDerivada, imagenPropia } from "../generacion/comprobaciones";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
@@ -19,6 +19,7 @@ import { dialogoDelClip } from "../voz/modo";
 import { animacionDelFotograma } from "./animacion-del-fotograma";
 import { marcarEnProduccion } from "./cierre";
 import { escenasPorProducir, estadoDeProduccion, exigirDuracionProducible, ultimoTrabajoDeEscena } from "./consulta";
+import { faltaInsertarLaCaptura } from "./paso-digital";
 import { plantillaYFormatoDelEnvio } from "./presets";
 
 /** La derivación de claves vive en `generacion/comprobaciones.ts`: la usan también los dos clips de un podcast. */
@@ -266,7 +267,12 @@ async function encolarAnimacion(
       // Un clip que parte de una imagen de la biblioteca no hereda escena ni personaje de ningún trabajo: se los
       // da la escena, que es de quien es el clip.
       ...("medioId" in partida
-        ? { escenaDelProyecto: { escenaId: escena.id, personajeId: proyecto.mainCharacterId } }
+        ? {
+            escenaDelProyecto: {
+              escenaId: escena.id,
+              personajeId: escena.placeShot === "solo_lugar" ? null : proyecto.mainCharacterId,
+            },
+          }
         : {}),
       reintentoDeEscena: reintento,
       // La dirección la resuelve el servidor desde la escena: el encuadre, la cámara, el gesto en su momento y
@@ -328,22 +334,6 @@ async function encolarInsercionDeCaptura(
     },
     h,
   );
-}
-
-/**
- * `true` cuando lo que toca después de este fotograma **no** es el clip, sino insertar la captura: la escena
- * lleva un producto digital y lo que hay hecho es el fotograma de la pantalla apagada.
- */
-async function faltaInsertarLaCaptura(escena: FilaEscena, fotograma: FilaTrabajo): Promise<boolean> {
-  if (escena.productId === null || fotograma.digitalStep !== "pantalla_negra") return false;
-  // El producto vigente tiene que seguir siendo digital: si se cambió por uno físico después de la pantalla
-  // apagada, no hay captura que meter y se sigue por el camino normal del clip en vez de bloquear la escena.
-  const [producto] = await db()
-    .select({ kind: products.kind })
-    .from(products)
-    .where(eq(products.id, escena.productId))
-    .limit(1);
-  return producto?.kind === "digital";
 }
 
 // ── Reintentos de lo que pudo cobrarse ────────────────────────────────────────────────────────────────────

@@ -17,6 +17,7 @@ import {
   ORIGENES_FOTOS_LUGAR,
   RECHAZO_MENORES,
   RECHAZO_RECONOCIBLES,
+  RESPONSABILIDAD_DECLARACION,
   RESPUESTAS_PERSONAS,
 } from "@/lib/lugares";
 
@@ -56,6 +57,7 @@ export function DeclaracionLugar({ lugar, onCambio }: { lugar: LugarVista; onCam
       <h2 className="flex items-center gap-2 text-xl font-bold text-texto">
         <ShieldCheck className="size-6 text-acento" aria-hidden /> Declaración de derechos
       </h2>
+      <Aviso tono="info">{RESPONSABILIDAD_DECLARACION}</Aviso>
       {vigente ? (
         <Aviso tono="correcto">
           Declarada el {new Date(vigente.declaradaEn).toLocaleDateString("es-ES")}. Si cambias las fotos o la maestra se

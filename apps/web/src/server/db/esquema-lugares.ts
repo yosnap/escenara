@@ -49,7 +49,10 @@ export const papelReferenciaLugar = pgEnum("place_reference_kind", [
   "zona",
 ]);
 
-/** Lo que dijo la percepción en sombra sobre personas visibles en la foto. Informa, no bloquea. */
+/**
+ * Si se ven personas en la foto, para una comprobación automática futura. **Hoy vale siempre `sin_comprobar`**: esa
+ * comprobación no está entregada, y la puerta es la declaración del usuario.
+ */
 export const personasEnFoto = pgEnum("place_people_check", ["sin_comprobar", "ninguna", "hay_personas"]);
 
 /** Origen de las fotos declarado por el usuario. */
