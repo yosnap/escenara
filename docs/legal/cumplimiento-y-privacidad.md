@@ -147,8 +147,16 @@ Lo que se hace, con su motivo, para que la revisión jurídica lo confirme o lo 
   único administrador no puede borrarse. Pasado el plazo se borran en una transacción las filas de la cuenta (proyectos,
   personajes, productos, lugares, medios, credenciales cifradas, passkeys, sesiones, presupuesto, historial, apuntes de
   gasto, kit de marca, preferencias, decisiones de coherencia y evaluaciones de controles, y los contadores de intentos
-  ligados a su correo) y después los **objetos del almacenamiento**, con reintento; los que no se dejan borrar tras
-  varios intentos quedan registrados con su clave para limpiarlos a mano.
+  ligados a su correo) y después los **objetos del almacenamiento**. Las claves de esos objetos se apuntan en
+  `storage_deletions` **en la misma transacción** que borra las filas; el worker los reintenta con retroceso (hasta 8
+  intentos) y la fila se borra al borrar el objeto. Los que agotan los intentos quedan como «fallidos», con su clave,
+  visibles para quien administra en Admin › Ajustes › Tus datos, que tiene que limpiarlos a mano. Lo mismo al borrar
+  un **proyecto**. Mientras un archivo siga ahí, su clave (que puede incluir el identificador interno de la cuenta)
+  también sigue en esa tabla; desaparece con él.
+- **Durante la gracia** la cuenta no puede generar, gastar, editar ni subir; sí cancelar el borrado, ver su historial y
+  pedir o descargar la exportación de sus proyectos (portabilidad). Si el borrado tiene que esperar (un trabajo en el
+  proveedor, el único administrador…), el motivo se enseña al usuario y a quien administra; un trabajo sin respuesta del
+  proveedor solo lo retiene unos días más (3 de fábrica) y luego se cancela sin cobro.
 - **Gasto**: se conserva solo **agregado** por mes, proveedor, modelo y tipo de apunte (`usage_aggregates`), sin
   cuenta, trabajo, nota ni fecha exacta. Motivo: trazabilidad del gasto de la instalación (decisión 3 de la fase).
 - **Consentimientos y declaraciones de derechos** (consentimiento de un personaje, declaración de un lugar, de una
@@ -158,8 +166,10 @@ Lo que se hace, con su motivo, para que la revisión jurídica lo confirme o lo 
   de la cuenta, correo, nombres de personas ni de lugares, fotos, documentos ni IP. Motivo: poder demostrar que se
   pidió la declaración y con qué texto, sin conservar datos de nadie. **Alternativa**: borrarlas del todo; es la
   pregunta abierta para la revisión jurídica.
-- **Registro del borrado** (`account_deletions`): fechas, estado, recuentos por tipo y claves de objetos pendientes o
-  huérfanos. Sin cuenta: la referencia queda a nulo al borrarse.
+- **Registro del borrado** (`account_deletions`): fechas, estado, motivo de espera (sin datos de nadie) y recuentos por
+  tipo, incluidos los objetos huérfanos. Sin claves de objetos ni cuenta: la referencia queda a nulo al borrarse.
+- **Ejemplos de plantillas** publicados por un administrador que borra su cuenta: la plantilla de la instalación se
+  queda sin ejemplo; nunca se borra un medio de otra cuenta.
 - **Borrar un personaje** sigue borrando su consentimiento sin dejar prueba anónima (decisión de 0.13.0). Si la
   revisión jurídica pide conservar la prueba también ahí, se reutiliza la misma tabla.
 - **Exportar un proyecto** (portabilidad) entrega un ZIP sin credenciales, prompts ni datos de otra cuenta; caduca a

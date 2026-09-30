@@ -23,9 +23,20 @@ respuestas grabadas del proveedor. **Una migración aditiva**: lee «Actualizar 
   forma de clave (`[retirado]`). Límites de tamaño y de exportaciones por día con su causa. La reimportación queda fuera.
 - **Borrar un proyecto** desde su pantalla, con un diálogo propio que enumera con cifras qué se borra y qué se queda.
 - **Borrar la cuenta** (Tu cuenta › Tus datos): sesión reciente (haber entrado hace menos de 10 minutos), lista de
-  todo lo que desaparece, exportar cada proyecto antes, frase escrita y **periodo de gracia** (7 días de fábrica) con la
-  cuenta desactivada y el borrado cancelable desde `/cuenta/borrado`. El único administrador no puede borrarse.
-- **Admin › Ajustes › Tus datos**: días de gracia, tamaño máximo del ZIP, horas de caducidad y exportaciones por día.
+  todo lo que desaparece, exportar cada proyecto antes, frase escrita y **periodo de gracia** (7 días de fábrica). En la
+  gracia la cuenta está desactivada: **no puede generar, gastar, editar ni subir** (403 con el motivo), pero sí
+  cancelar el borrado, ver su historial y **pedir y descargar el ZIP de sus proyectos** desde `/cuenta/borrado`. El
+  único administrador (sin contar a los que ya tienen su borrado programado) no puede borrarse. Si un administrador
+  publicó ejemplos de plantillas de la instalación, el diálogo avisa de que esas plantillas se quedarán sin ejemplo
+  (no se borran, ni se toca ningún medio ajeno).
+- **Nada se queda atascado en silencio**: los archivos que el almacenamiento no deja borrar (de un proyecto o de una
+  cuenta) quedan apuntados y el worker los reintenta con retroceso; los que agotan los intentos se ven como «fallidos».
+  Un borrado de cuenta que espera más allá de su plazo enseña el motivo al usuario en `/cuenta/borrado` y a quien
+  administra, y se reintenta con retroceso. Un trabajo «sin respuesta del proveedor» solo retiene el borrado unos días
+  más (3 de fábrica): después se cancela **sin cobro** y el borrado sigue.
+- **Admin › Ajustes › Tus datos**: días de gracia, días de espera a un trabajo sin respuesta, tamaño máximo del ZIP,
+  horas de caducidad y exportaciones por día; y el estado: archivos pendientes o fallidos de borrar y borrados de cuenta
+  aplazados con su motivo.
 - Guía nueva: [Tus datos](guias/tus-datos.md). Decisión en el ADR-0041. Sección «Borrado y retención» en
   [Cumplimiento y privacidad](legal/cumplimiento-y-privacidad.md), **pendiente de revisión jurídica**. Componentes
   nuevos en el catálogo (› «Tus datos»).
@@ -36,7 +47,14 @@ respuestas grabadas del proveedor. **Una migración aditiva**: lee «Actualizar 
   fotogramas, clips y voces generados en él, los vídeos montados y los ZIP. Antes se quedaban los trabajos y sus
   resultados. Se quedan lo que subiste tú, lo generado que usas **fuera** del proyecto y el clip de «Crear» del que salió (vuelve a «Crear»); los apuntes de gasto se quedan
   diciendo de qué proyecto venían. Un trabajo en el proveedor, un montaje renderizándose o un paquete preparándose
-  impiden borrar (409, sin tocar nada); lo que estaba en cola se cancela liberando su reserva.
+  impiden borrar (409; si ya se habían cancelado trabajos en cola, el mensaje lo dice); lo que estaba en cola se cancela
+  liberando su reserva. Un archivo que otro sitio cita, también dentro de una versión de un personaje o de un lugar o en
+  otro trabajo, se conserva.
+- **Borrar un proyecto y encolar a la vez no puede cobrar**: los dos caminos bloquean primero la fila del usuario; el
+  encolado comprueba dentro de su transacción que la escena sigue existiendo, y el worker cierra sin cobro un trabajo
+  cuyo proyecto ha desaparecido antes de enviarlo.
+- **La exportación lee cada archivo por trozos** (nunca entero en memoria) y alarga su toma mientras empaqueta; la clave
+  del ZIP ya no lleva el identificador de la cuenta y es distinta en cada intento.
 - Al borrar la cuenta, de ella solo queda el **gasto agregado** por mes, proveedor, modelo y tipo, y una **prueba
   anónima** de cada consentimiento y declaración de derechos (tipo, alcance, versión del texto, casillas y fechas; sin
   nombres, fotos, IP ni correo). Las declaraciones de lugar de esa cuenta se borran.
@@ -49,13 +67,15 @@ respuestas grabadas del proveedor. **Una migración aditiva**: lee «Actualizar 
 
 - **Haz antes una copia**: `bun run db:backup`. Después, **con el worker parado**, `bun run db:migrate`.
 - La migración `0063_tus-datos-exportacion-y-borrado-de-cuenta` es **aditiva e idempotente**: crea los tipos
-  `project_export_state`, `account_deletion_state` y `consent_evidence_kind` y las tablas `project_exports`,
-  `account_deletions`, `usage_aggregates` y `consent_evidence`, con sus índices y claves ajenas. No cambia ni borra
-  ninguna fila y volver a aplicarla no hace nada.
+  `project_export_state`, `account_deletion_state`, `storage_deletion_state` y `consent_evidence_kind`, las tablas
+  `project_exports`, `account_deletions`, `storage_deletions`, `usage_aggregates` y `consent_evidence`, con sus índices
+  y claves ajenas, y la columna `generation_jobs.project_id` (admite nulos, sin clave ajena). No cambia ni borra ninguna
+  fila y volver a aplicarla no hace nada.
 - **Reinicia el worker** tras actualizar: ahora prepara los ZIP, borra los caducados y ejecuta los borrados de cuenta
-  pasada la gracia. Necesita espacio en el disco temporal para el ZIP más grande (2048 MB de fábrica).
-- Ajustes nuevos con su valor de fábrica: 7 días de gracia, 2048 MB por ZIP, 24 horas de caducidad y 10 exportaciones
-  al día. No hay variables de entorno nuevas.
+  pasada la gracia, y reintenta los archivos pendientes de borrar. Necesita espacio en el disco temporal para el ZIP
+  más grande (2048 MB de fábrica) y para el archivo más grande del proyecto; la memoria ya no crece con el tamaño.
+- Ajustes nuevos con su valor de fábrica: 7 días de gracia, 3 días de espera a un trabajo sin respuesta, 2048 MB por
+  ZIP, 24 horas de caducidad y 10 exportaciones al día. No hay variables de entorno nuevas.
 
 ## [0.46.0] · 2026-09-30
 

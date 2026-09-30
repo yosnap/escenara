@@ -73,6 +73,9 @@ exportados.
   colección o en otro proyecto);
 - los **apuntes de gasto**: el gasto ocurrió y sigue en el historial de tu cuenta, diciendo de qué proyecto venía.
 
+Si el almacenamiento no deja borrar algún archivo en ese momento, queda apuntado y el worker lo reintenta solo hasta
+borrarlo; no se queda en el almacenamiento sin que nadie lo sepa.
+
 No se puede borrar mientras un trabajo del proyecto esté ya en el proveedor (se va a cobrar y su resultado va a llegar)
 o mientras se monta un vídeo o se prepara un paquete: espera a que termine. Lo que estaba en cola sin salir se cancela
 y su reserva vuelve a tu presupuesto.
@@ -96,13 +99,22 @@ En **Tu cuenta › Tus datos › «Borrar mi cuenta»**. Es irreversible, así q
 2. El diálogo **enumera todo lo que desaparece**, con cifras, y te ofrece **exportar cada proyecto** antes.
 3. Hay que **escribir «borrar mi cuenta»**.
 4. Hay un **periodo de gracia** (7 días de fábrica). Durante ese tiempo tu cuenta queda **desactivada**: tus demás
-   sesiones se cierran, lo que estaba en cola se cancela y, si entras, solo ves la fecha del borrado y el botón
-   **«Cancelar el borrado y seguir usando mi cuenta»**.
-5. Si eres **el único administrador**, no puedes borrarte: antes tiene que haber otra cuenta con ese rol. Hoy se
-   asigna en la base de datos (`update users set role = 'admin' where email = '…'`), con la copia hecha.
+   sesiones se cierran, lo que estaba en cola se cancela y **no puedes generar, gastar, editar ni subir nada**. Si
+   entras, llegas a **«Tu cuenta se va a borrar»**, donde ves la fecha, puedes **cancelar el borrado**, ver tu historial
+   y **pedir y descargar el ZIP de cada proyecto** (la portabilidad no se corta por haber pedido el borrado).
+5. Si eres **el único administrador** (sin contar a los que ya tienen su borrado programado), no puedes borrarte:
+   antes tiene que haber otra cuenta con ese rol. Hoy se asigna en la base de datos
+   (`update users set role = 'admin' where email = '…'`), con la copia hecha.
+6. Si eres administrador y publicaste **ejemplos de plantillas** de la instalación, el diálogo te avisa: esas
+   plantillas se quedan sin ejemplo (no se borran).
 
-Pasado el plazo, el worker lo borra todo **en una sola operación**: si algo falla a mitad, no se borra nada y lo
-vuelve a intentar más tarde. Si hay un trabajo tuyo en el proveedor, espera a que termine.
+Pasado el plazo, el worker borra las filas **en una sola operación**: si algo falla a mitad, no se borra nada y lo
+vuelve a intentar más tarde. Después borra los archivos; los que el almacenamiento no deja borrar quedan apuntados y se
+reintentan solos, y quien administra los ve si se atascan.
+
+Si hay un trabajo tuyo en el proveedor, el borrado espera y **te dice por qué** en «Tu cuenta se va a borrar» (y quien
+administra lo ve en Admin › Ajustes › Tus datos). Un trabajo del que el proveedor no ha contestado solo lo retiene unos
+días más (3 de fábrica): después se cancela **sin cobro** y el borrado sigue.
 
 **Desaparece**: tus proyectos, personajes, productos y lugares; todos tus archivos (también del almacenamiento); tus
 claves de proveedor, passkeys y sesiones; tu presupuesto, tu historial y tus apuntes de gasto; tu kit de marca y tus
@@ -115,7 +127,8 @@ ajustes; y los contadores de intentos ligados a tu correo.
 - una **prueba mínima de cada consentimiento y declaración de derechos** que hiciste (de un personaje, de un lugar,
   de una canción o de una afirmación sensible del anuncio): tipo, alcance, versión del texto, casillas declaradas y
   fechas. Sin tu nombre, sin nombres de personas ni de lugares, sin fotos, sin IP y sin tu correo;
-- un registro del borrado (cuándo se pidió y se hizo y cuántas cosas se borraron), también sin tu cuenta.
+- un registro del borrado (cuándo se pidió y se hizo, el motivo si tuvo que esperar y cuántas cosas se borraron),
+  sin tu cuenta ni nada que te identifique.
 
 Esta forma de conservar lo mínimo es una decisión **provisional, pendiente de revisión jurídica**: ver
 [Cumplimiento y privacidad](../legal/cumplimiento-y-privacidad.md).
