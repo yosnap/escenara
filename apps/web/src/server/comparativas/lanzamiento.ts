@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, lt, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
 import {
   type AlternativaGuardada,
   type ComparativaVista,
@@ -15,6 +15,7 @@ import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import type { Actor } from "../media/dto";
 import { cerrarTrabajoYGasto } from "../presupuesto/reserva";
 import { encolarAnimacion } from "../produccion/producir";
+import { estadoDeTraduccion } from "../prompts/traduccion";
 import { estimarUna, impedimentosDe, trasFalloConCoste, vistaDeComparativa } from "./ab";
 
 /**
@@ -33,6 +34,20 @@ import { estimarUna, impedimentosDe, trasFalloConCoste, vistaDeComparativa } fro
  *
  * Si el proceso muriera entre 2 y 4, el worker cancela la comparativa colgada pasados unos minutos (mismo camino).
  */
+
+/**
+ * Qué se ha cobrado al no lanzarse, **con la causa real**: ningún clip ha llegado al proveedor de vídeo. Si esta
+ * instalación traduce, la traducción de la descripción se hace (y se paga aparte) antes de encolar, así que pudo
+ * cobrarse aunque ningún clip saliera; queda guardada y no se vuelve a pagar la próxima vez.
+ */
+async function sinCobro(): Promise<string> {
+  const base =
+    "Una comparativa son las dos ejecuciones o ninguna: no se ha encolado ninguna y ningún clip ha llegado al proveedor, así que no se ha cobrado ningún clip.";
+  const traduccion = await estadoDeTraduccion().catch(() => ({ activa: false }));
+  return traduccion.activa
+    ? `${base} La traducción de la descripción, si ya se había hecho, pudo cobrarse aparte (céntimos) y queda guardada para la próxima vez.`
+    : `${base} No se ha cobrado nada.`;
+}
 
 /** Pasado este tiempo sin lanzarse, una comparativa se da por interrumpida y se cancela. */
 const MS_LANZAMIENTO_COLGADO = 10 * 60_000;
@@ -56,25 +71,31 @@ const trabajosDe = (fila: FilaComparativa) =>
     );
 
 /**
- * Cancela una comparativa no lanzada: sus trabajos (que el worker no ha podido tomar) pasan a cancelados con su reserva
- * liberada y sin coste, se devuelven los reintentos que consumieron y se marca como no lanzada. Idempotente.
+ * Cancela una comparativa no lanzada: la marca como no lanzada y después cancela sus trabajos (que el worker no ha
+ * podido tomar), uno a uno, con su reserva liberada y sin coste, devolviendo el reintento que consumió cada uno.
+ *
+ * **Reanudable:** si algo se interrumpe entre la marca y el último trabajo, el barrido del worker vuelve a llamar aquí
+ * con la comparativa ya marcada y termina lo que falte (solo toca trabajos todavía cancelables, así que no devuelve un
+ * reintento dos veces). Y la cola ya no admite ninguna alternativa de una comparativa cancelada (`marcas.ts`).
  */
 export async function cancelarLanzamiento(fila: FilaComparativa, motivo: string): Promise<number> {
-  const marcada = await db()
+  await db()
     .update(comparisons)
     .set({ cancelledAt: new Date() })
-    .where(and(eq(comparisons.id, fila.id), isNull(comparisons.launchedAt), isNull(comparisons.cancelledAt)))
-    .returning({ id: comparisons.id });
-  if (marcada.length === 0) return 0;
+    .where(and(eq(comparisons.id, fila.id), isNull(comparisons.launchedAt), isNull(comparisons.cancelledAt)));
+  const [actual] = await db().select().from(comparisons).where(eq(comparisons.id, fila.id)).limit(1);
+  // Lanzada (ganó la marca de lanzamiento) o ya no existe: no hay nada que cancelar.
+  if (!actual || actual.launchedAt !== null || actual.cancelledAt === null) return 0;
+  const devolverReintento = actual.alternatives.some((a) => a.reintento);
   let canceladas = 0;
-  for (const trabajo of await trabajosDe(fila)) {
+  for (const trabajo of await trabajosDe(actual)) {
     const cerrada = await cerrarTrabajoYGasto(
       trabajo.id,
       inArray(generationJobs.state, [...ESTADOS_CANCELABLES]),
       {
         state: "cancelado",
         failureReason: "cancelado",
-        errorMessage: `La comparativa no se lanzó: ${motivo} No se ha enviado nada al proveedor ni se ha cobrado nada.`,
+        errorMessage: `La comparativa no se lanzó: ${motivo} Este clip no se ha enviado al proveedor ni se ha cobrado.`,
         lockedBy: null,
         lockedUntil: null,
         finishedAt: new Date(),
@@ -82,36 +103,50 @@ export async function cancelarLanzamiento(fila: FilaComparativa, motivo: string)
       0,
       "Comparativa no lanzada: se cancela sin salir hacia el proveedor.",
     );
-    if (cerrada) canceladas++;
-  }
-  // Los reintentos que consumieron estas ejecuciones se devuelven: no ha salido ninguna.
-  const reintentos = fila.alternatives.some((a) => a.reintento) ? canceladas : 0;
-  if (reintentos > 0) {
-    await db()
-      .update(scenes)
-      .set({ retriesUsed: sql`greatest(${scenes.retriesUsed} - ${reintentos}, 0)`, updatedAt: new Date() })
-      .where(eq(scenes.id, fila.sceneId));
+    if (!cerrada) continue;
+    canceladas++;
+    // El reintento que consumió este trabajo vuelve con él: no ha salido.
+    if (devolverReintento) {
+      await db()
+        .update(scenes)
+        .set({ retriesUsed: sql`greatest(${scenes.retriesUsed} - 1, 0)`, updatedAt: new Date() })
+        .where(eq(scenes.id, actual.sceneId));
+    }
   }
   return canceladas;
 }
 
-/** Comparativas que se quedaron sin lanzar (el proceso se interrumpió): las cancela el worker. */
+/**
+ * Barrido del worker: comparativas que se quedaron sin lanzar (el proceso se interrumpió) y comparativas ya canceladas
+ * a las que les queda algún trabajo cancelable (una cancelación que no terminó). Las termina de cancelar sin cobro.
+ */
 export async function barrerLanzamientosColgados(): Promise<number> {
-  const colgadas = await db()
+  const conTrabajosVivos = sql`exists (
+    select 1 from generation_jobs j
+    where j.user_id = ${comparisons.userId} and j.state in ('en_cola', 'esperando_limite')
+      and ${comparisons.alternatives} @> jsonb_build_array(jsonb_build_object('clave', j.idempotency_key)))`;
+  const pendientes = await db()
     .select()
     .from(comparisons)
     .where(
       and(
         isNull(comparisons.launchedAt),
-        isNull(comparisons.cancelledAt),
-        lt(comparisons.createdAt, new Date(Date.now() - MS_LANZAMIENTO_COLGADO)),
+        or(
+          and(
+            isNull(comparisons.cancelledAt),
+            lt(comparisons.createdAt, new Date(Date.now() - MS_LANZAMIENTO_COLGADO)),
+          ),
+          and(isNotNull(comparisons.cancelledAt), conTrabajosVivos),
+        ),
       ),
     )
     .limit(50);
-  for (const fila of colgadas) {
+  let atendidas = 0;
+  for (const fila of pendientes) {
     await cancelarLanzamiento(fila, "el lanzamiento se interrumpió antes de encolar todas las ejecuciones.");
+    atendidas++;
   }
-  return colgadas.length;
+  return atendidas;
 }
 
 function exigirReintentos(escena: FilaEscena, necesarios: number): void {
@@ -185,7 +220,7 @@ export async function lanzarAB(
   escenaId: unknown,
   peticion: PeticionAB,
   h: Herramientas = HERRAMIENTAS,
-): Promise<ComparativaVista & { aviso: string | null }> {
+): Promise<ComparativaVista> {
   const { escena, proyecto } = await escenaPropia(actor, escenaId);
   const descuadre = motivoDeConfirmacion(peticion);
   if (descuadre) throw new ErrorProyecto(409, descuadre);
@@ -203,7 +238,7 @@ export async function lanzarAB(
         "Esa confirmación ya se usó para otra comparativa. Vuelve a confirmar esta. No se ha encolado nada.",
       );
     }
-    if (previa.launchedAt) return { ...(await vistaDeComparativa(actor, previa)), aviso: null };
+    if (previa.launchedAt) return vistaDeComparativa(actor, previa);
     throw new ErrorProyecto(
       409,
       previa.cancelledAt
@@ -282,7 +317,7 @@ export async function lanzarAB(
       await cancelarLanzamiento(comparativa, `${alternativa.nombre} no cabe.`);
       throw new ErrorProyecto(
         409,
-        `No se ha lanzado la comparativa: ${alternativa.nombre} no cabe. ${causa} Una comparativa son las dos ejecuciones o ninguna, así que no se ha encolado ninguna. No se ha cobrado nada.`,
+        `No se ha lanzado la comparativa: ${alternativa.nombre} no cabe. ${causa} ${await sinCobro()}`,
       );
     }
   }
@@ -295,8 +330,8 @@ export async function lanzarAB(
   if (!lanzada[0]) {
     throw new ErrorProyecto(
       409,
-      "La comparativa tardó demasiado en lanzarse y se ha cancelado sin cobrar nada. Vuelve a pedirla.",
+      `La comparativa tardó demasiado en lanzarse y se ha cancelado. ${await sinCobro()} Vuelve a pedirla.`,
     );
   }
-  return { ...(await vistaDeComparativa(actor, lanzada[0])), aviso: null };
+  return vistaDeComparativa(actor, lanzada[0]);
 }

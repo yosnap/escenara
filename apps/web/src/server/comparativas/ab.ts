@@ -170,9 +170,13 @@ export async function estimarUna(proyecto: FilaProyecto, modelo: string): Promis
       comprobado: precio.comprobado,
       precioAntiguo: m.precio?.caducado ?? false,
       impedimento:
-        deLaTarifa !== null && deLaTarifa !== pedidos
-          ? `${m.nombre} no tiene precio registrado para un clip de ${pedidos} s, que es la duración de este proyecto.`
-          : null,
+        // Sin duraciones declaradas el coste no se puede acotar y el clip esperaría un límite aparte: rompería el
+        // «todo o nada» de la comparativa, así que no se admite.
+        m.parametros.duraciones.length === 0
+          ? `${m.nombre} no declara duraciones, así que su coste no se puede acotar antes de enviarlo: no se puede comparar generando con él.`
+          : deLaTarifa !== null && deLaTarifa !== pedidos
+            ? `${m.nombre} no tiene precio registrado para un clip de ${pedidos} s, que es la duración de este proyecto.`
+            : null,
     };
   } catch (error) {
     return {

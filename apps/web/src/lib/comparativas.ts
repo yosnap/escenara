@@ -267,3 +267,22 @@ export function desgloseAB(alternativas: readonly { nombre: string; creditos: nu
   const partes = alternativas.map((a) => `${a.nombre}: ${a.creditos} créditos`).join(" · ");
   return `${alternativas.length} ejecuciones (una por modelo). ${partes}. Total: ${total} créditos.`;
 }
+
+/**
+ * Clave de idempotencia de una confirmación en el navegador. Se conserva mientras no cambie lo que se confirma (`firma`)
+ * y se estrena si cambia. `intento` entra en la firma: tras un **error del servidor** se sube y la siguiente pulsación
+ * lleva clave nueva (si no, el servidor respondería siempre «esa confirmación ya se intentó»); tras un **fallo de red**
+ * no se sube, porque la misma clave es lo que evita cobrar dos veces si la petición sí llegó.
+ */
+export function claveDeConfirmacion(
+  actual: { firma: string; valor: string } | null,
+  firma: string,
+  intento: number,
+  nueva: () => string,
+): { firma: string; valor: string } {
+  const completa = `${intento}|${firma}`;
+  return actual?.firma === completa ? actual : { firma: completa, valor: nueva() };
+}
+
+/** Si, tras un envío fallido, la siguiente confirmación debe llevar clave nueva. */
+export const renovarClaveTrasFallo = (fallo: { red?: boolean }): boolean => fallo.red !== true;

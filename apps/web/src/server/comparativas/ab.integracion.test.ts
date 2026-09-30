@@ -12,10 +12,9 @@ import type { ProyectoDetalle } from "@/lib/proyectos";
  * inventada.
  *
  * - la confirmación exige el número de ejecuciones y el coste exactos: sin ellos no se encola nada;
- * - como mucho dos alternativas, en la escena elegida;
- * - cada alternativa es un trabajo normal de la cola, con su reserva de presupuesto;
- * - repetir el envío no encola nada más;
- * - los errores dicen la causa y si se cobró;
+ * - como mucho dos alternativas, en la escena elegida, cada una un trabajo normal con su reserva: las dos o ninguna;
+ * - una sola comparativa (y ningún otro clip) en marcha por escena; repetir el envío no encola nada más;
+ * - los errores dicen la causa y si se cobró; lo que se cancela a medias lo termina el barrido;
  * - los resultados no tocan la escena hasta elegir ganadora, y la ganadora queda en la escena;
  * - nadie ve la comparativa de otro (404).
  */
@@ -57,6 +56,11 @@ const { barrerLanzamientosColgados, lanzarAB } = await import("./lanzamiento");
 const { comprometidoDelProyecto } = await import("../asistente/plan");
 const { autorizarReintentos } = await import("../produccion/producir");
 const { enviarEncolados } = await import("../cola/pasada");
+const { cancelarTrabajo } = await import("../cola/cancelar");
+const { encolarAnimacion } = await import("../produccion/producir");
+const { escenaPropia } = await import("../asistente/consulta");
+const { models } = await import("../db/esquema");
+const { olvidarCatalogo } = await import("../proveedores/catalogo");
 
 type Sesion = Awaited<ReturnType<typeof crearSesionDePrueba>>;
 type Actor = import("../media/servicio").Actor;
@@ -319,6 +323,44 @@ describe.skipIf(!hayBaseDeDatos)("comparativa A/B de una escena", () => {
     return fila;
   }
 
+  /** Escena con su fotograma aprobado y sin clip: el clip que encargó la aprobación se cancela antes de salir. */
+  async function escenaSinClip() {
+    await producirEscena(actor, escenaId, await confirmacionDeProduccion("fotograma"), h);
+    const [fotograma] = await trabajosDe(escenaId);
+    if (!fotograma) throw new Error("Falta el fotograma.");
+    await terminar(fotograma.id, "success", "https://res.kie.ai/fotograma.png");
+    await aprobarFotograma(actor, escenaId, await confirmacionDeProduccion("clip"), h);
+    const clip = (await trabajosDe(escenaId)).find((t) => t.kind === "animacion");
+    if (!clip) throw new Error("Falta el clip.");
+    await cancelarTrabajo(ana.id, clip.id);
+  }
+
+  /** Encola a mano una alternativa por el camino normal, como lo haría el lanzamiento. */
+  async function encolarAlternativa(
+    p: PeticionAB,
+    a: { creditos: number; sello: string; modelo: string; clave: string },
+  ) {
+    const { escena, proyecto } = await escenaPropia(actor, escenaId);
+    return encolarAnimacion(
+      actor,
+      escena,
+      proyecto,
+      { trabajoPadreId: escena.approvedFrameJobId as string },
+      {
+        derechos: true,
+        sinTerceros: true,
+        creditosConfirmados: a.creditos,
+        selloEstimacion: a.sello,
+        claveIdempotencia: p.claveIdempotencia,
+        avisoUmbralAceptado: true,
+        avisosConfirmados: p.avisosConfirmados,
+        modelo: a.modelo,
+      },
+      a.clave,
+      h,
+    );
+  }
+
   /** La confirmación que manda el navegador con la estimación vigente. */
   async function peticion(cambios: Partial<PeticionAB> = {}): Promise<PeticionAB> {
     const estimacion = await estimarAB(actor, escenaId, [...MODELOS]);
@@ -429,7 +471,6 @@ describe.skipIf(!hayBaseDeDatos)("comparativa A/B de una escena", () => {
     const reservadoAntes = (await depositoDe(ana.id)).reservado;
     const p = await peticion();
     const vista = await lanzarAB(actor, escenaId, p, h);
-    expect(vista.aviso).toBeNull();
     expect(vista.ejecucionesPrevistas).toBe(2);
     expect(vista.ejecucionesReales).toBe(2);
     expect(vista.creditosEstimados).toBe(p.creditosTotalesConfirmados);
@@ -596,6 +637,134 @@ describe.skipIf(!hayBaseDeDatos)("comparativa A/B de una escena", () => {
     const elegida = await elegirGanadora(actor, vista.id, a.trabajoId);
     expect(elegida.ganadorId).toBe(a.trabajoId);
     expect((await filaDeEscena(escenaId)).clipJobId).toBe(a.trabajoId);
+  });
+
+  test("una cancelación a medias la termina el barrido: reserva devuelta y la escena, libre", async () => {
+    await escenaProducida();
+    const reservadoAntes = (await depositoDe(ana.id)).reservado;
+    const vista = await lanzarAB(actor, escenaId, await peticion(), h);
+    // Como si la cancelación hubiera puesto su marca y se hubiera interrumpido antes de cancelar los trabajos.
+    await db()
+      .update(comparisons)
+      .set({ launchedAt: null, cancelledAt: new Date() })
+      .where(eq(comparisons.id, vista.id));
+    expect(await enviarEncolados(h)).toBe(0);
+    expect(await barrerLanzamientosColgados()).toBe(1);
+    const estados = (await trabajosDe(escenaId))
+      .filter((t) => vista.alternativas.some((a) => a.trabajoId === t.id))
+      .map((t) => t.state);
+    expect(estados).toEqual(["cancelado", "cancelado"]);
+    expect((await depositoDe(ana.id)).reservado).toBe(reservadoAntes);
+    // Nada más que barrer, y la escena admite otra comparativa.
+    expect(await barrerLanzamientosColgados()).toBe(0);
+    expect((await lanzarAB(actor, escenaId, await peticion(), h)).ejecucionesReales).toBe(2);
+    expect(tareasCreadas).toBe(0);
+  });
+
+  test("una alternativa de una comparativa ya cancelada no se encola nunca (barrido entre la primera y la segunda)", async () => {
+    await escenaProducida();
+    const p = await peticion();
+    const vista = await lanzarAB(actor, escenaId, p, h);
+    const [fila] = await db().select().from(comparisons).where(eq(comparisons.id, vista.id));
+    const segunda = fila?.alternatives[1];
+    const trabajoSegunda = vista.alternativas[1]?.trabajoId;
+    if (!fila || !segunda || !trabajoSegunda) throw new Error("Falta la segunda alternativa.");
+    // Estado del reloj: la primera encolada, el barrido la canceló y la segunda todavía no existe.
+    await cancelarTrabajo(ana.id, trabajoSegunda);
+    await db().delete(generationJobs).where(eq(generationJobs.id, trabajoSegunda));
+    await db()
+      .update(comparisons)
+      .set({ launchedAt: null, cancelledAt: new Date() })
+      .where(eq(comparisons.id, vista.id));
+    const intento = await intentar(() => encolarAlternativa(p, segunda));
+    expect(!intento.ok && intento.estado).toBe(409);
+    expect(!intento.ok && intento.error).toContain("ya se canceló");
+    expect((await trabajosDe(escenaId)).some((t) => t.idempotencyKey === segunda.clave)).toBe(false);
+  });
+
+  test("un clip normal y una comparativa a la vez en una escena sin clip: nunca salen tres", async () => {
+    await escenaSinClip();
+    const [ab, normal] = await Promise.all([
+      intentar(async () => lanzarAB(actor, escenaId, await peticion(), h)),
+      intentar(async () => aprobarFotograma(actor, escenaId, await confirmacionDeProduccion("clip"), h)),
+    ]);
+    const activos = (await trabajosDe(escenaId)).filter(
+      (t) => t.kind === "animacion" && ["en_cola", "esperando_limite"].includes(t.state),
+    );
+    // O la comparativa (2) o el clip normal (1), nunca las dos cosas.
+    expect(ab.ok && normal.ok).toBe(false);
+    expect(activos.length).toBe(ab.ok ? 2 : 1);
+    const rechazo = ab.ok ? normal : ab;
+    expect(!rechazo.ok && rechazo.error).toMatch(/comparativa|comparación|en marcha/);
+  });
+
+  test("la cola decide aunque el orden sea el peor: comparativa guardada y clip normal, o clip normal y alternativa", async () => {
+    await escenaSinClip();
+    const p = await peticion();
+    const estimacion = await estimarAB(actor, escenaId, [...MODELOS]);
+    const alternativas = estimacion.alternativas.map((a) => ({
+      modelo: a.modelo,
+      nombre: a.nombre,
+      proveedor: a.nombreProveedor,
+      segundos: a.segundos,
+      creditos: a.creditos,
+      sello: a.sello,
+      clave: crypto.randomUUID(),
+    }));
+    // 1) Una comparativa guardada sin lanzar: el clip normal no entra.
+    const [guardada] = await db()
+      .insert(comparisons)
+      .values({
+        userId: ana.id,
+        projectId: proyectoId,
+        sceneId: escenaId,
+        idempotencyKey: p.claveIdempotencia,
+        alternatives: alternativas,
+        plannedRuns: 2,
+        estimatedCredits: p.creditosTotalesConfirmados,
+      })
+      .returning();
+    const normal = await intentar(async () =>
+      aprobarFotograma(actor, escenaId, await confirmacionDeProduccion("clip"), h),
+    );
+    expect(!normal.ok && normal.error).toContain("comparativa lanzándose");
+    // 2) Con un clip normal en marcha, una alternativa no entra.
+    await db()
+      .delete(comparisons)
+      .where(eq(comparisons.id, guardada?.id as string));
+    await aprobarFotograma(actor, escenaId, await confirmacionDeProduccion("clip"), h);
+    await db().insert(comparisons).values({
+      userId: ana.id,
+      projectId: proyectoId,
+      sceneId: escenaId,
+      idempotencyKey: crypto.randomUUID(),
+      alternatives: alternativas,
+      plannedRuns: 2,
+      estimatedCredits: p.creditosTotalesConfirmados,
+    });
+    const primera = alternativas[0];
+    if (!primera) throw new Error("Falta la alternativa.");
+    const alternativa = await intentar(() => encolarAlternativa(p, primera));
+    expect(!alternativa.ok && alternativa.error).toContain("Ya hay una comparación o un clip en marcha");
+  });
+
+  test("un modelo sin duraciones declaradas no se puede comparar generando", async () => {
+    await escenaProducida();
+    const [fila] = await db().select().from(models).where(eq(models.modelId, MODELOS[1]));
+    if (!fila) throw new Error("Falta el modelo.");
+    const parametros = JSON.parse(fila.parameters) as Record<string, unknown>;
+    await db()
+      .update(models)
+      .set({ parameters: JSON.stringify({ ...parametros, duraciones: [] }) })
+      .where(eq(models.id, fila.id));
+    olvidarCatalogo();
+    try {
+      const e = await estimarAB(actor, escenaId, [...MODELOS]);
+      expect(e.alternativas[1]?.impedimento).toContain("no declara duraciones");
+    } finally {
+      await db().update(models).set({ parameters: fila.parameters }).where(eq(models.id, fila.id));
+      olvidarCatalogo();
+    }
   });
 
   test("nadie ve ni elige en la comparativa de otro: 404 sin revelar nada", async () => {

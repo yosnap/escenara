@@ -3,6 +3,7 @@
 import { GitCompareArrows } from "lucide-react";
 import { useId, useRef, useState } from "react";
 import {
+  claveDeConfirmacion,
   desgloseAB,
   type EstimacionAlternativa,
   MAXIMO_ALTERNATIVAS,
@@ -31,6 +32,7 @@ export function ConfirmacionAB({
   estimacion,
   cargandoEstimacion,
   ocupado,
+  intento = 0,
   onEnviar,
 }: {
   preparacion: PreparacionAB;
@@ -40,6 +42,8 @@ export function ConfirmacionAB({
   estimacion: readonly EstimacionAlternativa[] | null;
   cargandoEstimacion: boolean;
   ocupado: boolean;
+  /** Sube tras un error del servidor: la siguiente confirmación lleva clave nueva (ver `claveDeConfirmacion`). */
+  intento?: number;
   onEnviar: (peticion: PeticionAB) => void;
 }) {
   const [derechos, setDerechos] = useState(false);
@@ -86,7 +90,7 @@ export function ConfirmacionAB({
   const enviar = () => {
     if (!estimacion) return;
     const firma = `${texto}|${avisos.join(",")}|${lista.map((a) => a.sello).join(",")}`;
-    if (clave.current?.firma !== firma) clave.current = { firma, valor: crypto.randomUUID() };
+    clave.current = claveDeConfirmacion(clave.current, firma, intento, () => crypto.randomUUID());
     onEnviar({
       alternativas: lista.map((a) => ({ modelo: a.modelo, creditos: a.creditos, sello: a.sello })),
       ejecucionesConfirmadas: lista.length,

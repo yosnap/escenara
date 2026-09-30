@@ -1,6 +1,7 @@
-import { and, eq, inArray, type SQL, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, notInArray, or, type SQL, sql } from "drizzle-orm";
 import { db, type Ejecutor } from "../db/cliente";
 import { comparisons, type FilaTrabajo, generationJobs } from "../db/esquema";
+import { ErrorGeneracion } from "../generacion/errores";
 
 /**
  * Cómo se reconoce un trabajo que es **una alternativa de una comparativa A/B**: su clave de idempotencia está entre
@@ -55,9 +56,13 @@ export async function alternativasDeEscenas(escenaIds: readonly string[]): Promi
 export async function ejecucionesDeLaComparativa(
   tx: Ejecutor,
   datos: { usuarioId: string; escenaId: string; clave: string; modelo: string },
-): Promise<{ ejecuciones: number; claves: string[] } | null> {
+): Promise<{ ejecuciones: number; claves: string[]; cancelada: boolean } | null> {
   const [fila] = await tx
-    .select({ ejecuciones: comparisons.plannedRuns, alternativas: comparisons.alternatives })
+    .select({
+      ejecuciones: comparisons.plannedRuns,
+      alternativas: comparisons.alternatives,
+      cancelada: comparisons.cancelledAt,
+    })
     .from(comparisons)
     .where(
       and(
@@ -67,5 +72,74 @@ export async function ejecucionesDeLaComparativa(
       ),
     )
     .limit(1);
-  return fila ? { ejecuciones: fila.ejecuciones, claves: fila.alternativas.map((a) => a.clave) } : null;
+  return fila
+    ? {
+        ejecuciones: fila.ejecuciones,
+        claves: fila.alternativas.map((a) => a.clave),
+        cancelada: fila.cancelada !== null,
+      }
+    : null;
+}
+
+/**
+ * `true` si la escena tiene una comparativa **lanzándose** (guardada, sin lanzar ni cancelar). Un clip normal no puede
+ * encolarse a la vez: saldrían tres clips. Lo usa la transacción que encola, con el usuario ya bloqueado.
+ */
+export async function hayComparativaLanzandose(tx: Ejecutor, escenaId: string): Promise<boolean> {
+  const [fila] = await tx
+    .select({ id: comparisons.id })
+    .from(comparisons)
+    .where(and(eq(comparisons.sceneId, escenaId), isNull(comparisons.launchedAt), isNull(comparisons.cancelledAt)))
+    .limit(1);
+  return fila !== undefined;
+}
+
+/**
+ * **Un clip normal y una comparativa no conviven en la misma escena** (saldrían tres clips). Va dentro de la transacción
+ * que encola, con el usuario bloqueado, que es el mismo candado que toma la comparativa al guardarse:
+ *
+ * - una alternativa de una comparativa cancelada no se encola nunca;
+ * - una alternativa no sale si la escena tiene otro clip en marcha que no es de su comparativa;
+ * - un clip normal no sale si la escena tiene una comparativa lanzándose.
+ */
+export async function exigirSinChoqueConComparativa(
+  tx: Ejecutor,
+  escenaId: string,
+  comparativa: { claves: string[]; cancelada: boolean } | null,
+  enCurso: SQL,
+): Promise<void> {
+  if (comparativa?.cancelada) {
+    throw new ErrorGeneracion(
+      409,
+      "Esta comparativa ya se canceló sin lanzarse: no se encola ninguna de sus ejecuciones. No se ha cobrado nada.",
+    );
+  }
+  if (comparativa) {
+    const [otro] = await tx
+      .select({ id: generationJobs.id })
+      .from(generationJobs)
+      .where(
+        and(
+          eq(generationJobs.sceneId, escenaId),
+          eq(generationJobs.kind, "animacion"),
+          enCurso,
+          // Un clip sin clave tampoco es de esta comparativa (`NULL NOT IN (…)` no es cierto en SQL).
+          or(isNull(generationJobs.idempotencyKey), notInArray(generationJobs.idempotencyKey, comparativa.claves)),
+        ),
+      )
+      .limit(1);
+    if (otro) {
+      throw new ErrorGeneracion(
+        409,
+        "Ya hay una comparación o un clip en marcha en esta escena. Espera a que termine antes de pedir otra: si no, se pagarían los dos. No se ha cobrado nada.",
+      );
+    }
+    return;
+  }
+  if (await hayComparativaLanzandose(tx, escenaId)) {
+    throw new ErrorGeneracion(
+      409,
+      "Esta escena tiene una comparativa lanzándose. Espera a que termine antes de pedir otro clip: si no, se pagarían los tres. No se ha cobrado nada.",
+    );
+  }
 }

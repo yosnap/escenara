@@ -5,12 +5,18 @@ import { Alerta } from "@/components/ui/alerta";
 import { Boton } from "@/components/ui/button";
 import { ConfirmacionAB } from "@/components/ui/comparativas/confirmacion-ab";
 import { ResultadosAB } from "@/components/ui/comparativas/resultados-ab";
-import type { ComparativaVista, EstimacionAlternativa, PeticionAB, PreparacionAB } from "@/lib/comparativas";
+import {
+  type ComparativaVista,
+  type EstimacionAlternativa,
+  type PeticionAB,
+  type PreparacionAB,
+  renovarClaveTrasFallo,
+} from "@/lib/comparativas";
 
 /** Cada cuánto se vuelve a mirar una comparativa con alternativas en marcha. Solo lee: no cuesta nada. */
 const MS_REFRESCO = 5000;
 
-type Resultado<T> = { ok: true; datos: T } | { ok: false; error: string };
+type Resultado<T> = { ok: true; datos: T } | { ok: false; error: string; red?: boolean };
 
 async function pedir<T>(url: string, init?: RequestInit): Promise<Resultado<T>> {
   try {
@@ -21,6 +27,7 @@ async function pedir<T>(url: string, init?: RequestInit): Promise<Resultado<T>> 
   } catch {
     return {
       ok: false,
+      red: true,
       error:
         "Sin conexión con el servidor: no se sabe si la petición llegó. Vuelve a cargar la página antes de repetir; si la repites con la misma confirmación no se cobra dos veces.",
     };
@@ -49,7 +56,7 @@ export function ComparativaAB({
   const [cargando, setCargando] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [aviso, setAviso] = useState<string | null>(null);
+  const [intento, setIntento] = useState(0);
   const [comparativa, setComparativa] = useState<ComparativaVista | null>(inicial);
   const [nueva, setNueva] = useState(inicial === null);
 
@@ -87,16 +94,14 @@ export function ComparativaAB({
   const lanzar = async (peticion: PeticionAB) => {
     setOcupado(true);
     setError(null);
-    const r = await pedir<ComparativaVista & { aviso: string | null }>(
-      `/api/escenas/${preparacion.escenaId}/comparativa`,
-      json(peticion),
-    );
+    const r = await pedir<ComparativaVista>(`/api/escenas/${preparacion.escenaId}/comparativa`, json(peticion));
     setOcupado(false);
     if (!r.ok) {
       setError(r.error);
+      // Tras una respuesta del servidor, la próxima confirmación es otra; tras un fallo de red, la misma.
+      if (renovarClaveTrasFallo(r)) setIntento((i) => i + 1);
       return;
     }
-    setAviso(r.datos.aviso);
     setComparativa(r.datos);
     setNueva(false);
   };
@@ -118,11 +123,6 @@ export function ComparativaAB({
           {error}
         </Alerta>
       )}
-      {aviso && (
-        <Alerta tipo="aviso" anuncio="estado" titulo="Solo ha salido una">
-          {aviso}
-        </Alerta>
-      )}
       {comparativa && !nueva ? (
         <section aria-labelledby="resultados" className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -136,7 +136,6 @@ export function ComparativaAB({
                 onClick={() => {
                   setNueva(true);
                   setElegidos([]);
-                  setAviso(null);
                 }}
               >
                 Hacer otra comparativa
@@ -157,6 +156,7 @@ export function ComparativaAB({
             estimacion={estimacion}
             cargandoEstimacion={cargando}
             ocupado={ocupado}
+            intento={intento}
             onEnviar={lanzar}
           />
         </section>

@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNotNull, lt, ne, or, sql } from "drizzle-orm";
 import type { Proveedor } from "@/lib/boveda";
 import { leerAjustes } from "../ajustes";
-import { ejecucionesDeLaComparativa } from "../comparativas/marcas";
+import { ejecucionesDeLaComparativa, exigirSinChoqueConComparativa } from "../comparativas/marcas";
 import { db, type Ejecutor } from "../db/cliente";
 import { type FilaTrabajo, generationJobs, scenes } from "../db/esquema";
 import { ErrorGeneracion } from "../generacion/errores";
@@ -115,6 +115,7 @@ async function exigirEscenaSinRepetir(tx: Ejecutor, peticion: PeticionEncolado):
           modelo: peticion.valores.model,
         })
       : null;
+  if (tipo === "animacion") await exigirSinChoqueConComparativa(tx, escenaId, comparativa, condicionEnCurso());
   // Un podcast son **dos** clips de la misma escena, y los dos son legítimos: lo que no puede haber es uno más.
   const esperados = comparativa?.ejecuciones ?? (tipo === "animacion" ? Math.max(1, peticion.escena?.clips ?? 1) : 1);
   if (esperados > 1 && peticion.valores.castClipOrder != null) {
