@@ -2,6 +2,60 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.45.0] · 2026-09-30
+
+**Accesibilidad y rendimiento.** Toda la aplicación se revisa con axe en la suite, se usa entera con el teclado, respeta
+«reducir movimiento» sin excepciones y carga bastante menos JavaScript: la portada pasa de 217 a 153 KB y «Crear» de
+374 a 306 KB. El build falla si una pantalla se pasa de su presupuesto. Llegan el favicon de 16 px, los iconos para
+instalar la aplicación y la imagen para compartir. **Sin migración.** No cambia ninguna regla de coste, de
+consentimiento ni de confirmación.
+
+### Añadido
+
+- **Comprobación automática de accesibilidad.** axe revisa en `bun test` la portada, el acceso, la biblioteca, «Crear»
+  y su historial, los proyectos, la producción, la revisión, el montaje, la cuenta y el catálogo de componentes. Una
+  violación seria o crítica rompe la suite.
+- **Tests que miran todo el código**, no una lista: ninguna animación sin su guarda de «reducir movimiento», ningún
+  control sin foco visible o con menos de 24 px, toda tabla ancha desplazable con el teclado y todas las páginas con su
+  contenido principal en `#contenido`.
+- **«Saltar al contenido»** en todas las páginas (antes solo en la portada).
+- **Presupuesto de JavaScript por ruta.** `bun run build` termina con una tabla del JavaScript comprimido de cada
+  pantalla y **falla** si alguna pasa de su tope: 200 KB por defecto, y un tope propio, medido y con su motivo, para las
+  19 que hoy la superan (deuda anotada: la meta sigue siendo 200 KB). Decisión en el ADR-0039.
+- **Activos de Escenara:** favicon simplificado para 16 px, `favicon.ico`, iconos para instalar la aplicación (192, 512
+  y enmascarable), icono de Apple, manifiesto e imagen para compartir de 1200 × 630 (se enlaza cuando la instalación
+  tiene URL pública). `bun run activos` los genera.
+- Componente `TablaDesplazable` (catálogo › «Proyectos y plan»): las tablas anchas se alcanzan con Tab y se mueven con
+  las flechas.
+- Guías nuevas: [Accesibilidad](guias/accesibilidad.md) (lo que se garantiza, los atajos de teclado y cómo avisar de un
+  problema) y [Medir el rendimiento](procesos/medir-el-rendimiento.md) (cómo medir en Comet).
+
+### Cambiado
+
+- **La marca publicada no puede dejar la interfaz sin contraste en los pares reales.** Además de los tokens básicos,
+  ahora bloquean la publicación los estados sobre la superficie elevada y el fondo, el contador del admin, las
+  etiquetas del historial de versiones y el texto oscuro sobre la chispa (números de paso, preset elegido, «generada»).
+- **Menos JavaScript en cada pantalla:** el parallax de la portada, la mascota y el cargador pasan a CSS (la librería de
+  animación deja de cargarse fuera del catálogo); el editor de imagen y el diálogo de la biblioteca se descargan al
+  abrirlos, y el cliente de autenticación, al cambiar el tema o cerrar sesión. Crear, producción y biblioteca bajan
+  entre 60 y 80 KB.
+- En la portada, el cartel de los vídeos se carga en diferido: en móvil eran 125 KB que competían con lo importante.
+- El logotipo pinta el nombre como texto de la página: con la fuente de respaldo o con el nombre largo de una
+  instalación, crece en lugar de recortarse. Los PNG del wordmark de la guía de marca se vuelven a pintar con Manrope.
+- En el editor de subtítulos, cada error sale debajo de su línea y el lector de pantalla lo dice al llegar al campo.
+- El encuadre del montaje explica que se mueve con las flechas; «Volver a automático» tiene un objetivo de 24 px.
+
+### Corregido
+
+- Casillas, interruptores, radios y selectores no tenían nombre accesible hasta que se hidrataba la página: ahora lo
+  llevan desde el HTML del servidor.
+- El número de la versión actual (Admin › Versiones) y el de cada escena eran texto claro sobre el degradado
+  «Escenario», ilegible en el tramo amarillo (1,55:1). Ahora usan la chispa con texto oscuro.
+- El contador de requisitos pendientes de «Crear» no llegaba al contraste mínimo en tema oscuro.
+- Los spinners, el pulso de la etapa en curso y el salto a «Clasificar mis fotos» se movían con «reducir movimiento».
+- Saltos en el orden de encabezados en los estados vacíos, la revisión, la producción y el depósito.
+- «Producir las 1 escenas pendientes» dice ahora «Producir la escena pendiente».
+
 ## [0.42.1] · 2026-09-30
 
 Parche: **cada plantilla y cada trend puede enseñar cómo se ve el resultado antes de gastar**, y la plantilla base que se

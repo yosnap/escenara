@@ -18,6 +18,11 @@
           "archivo": "presets-y-plantillas.md",
           "titulo": "Presets y plantillas",
           "descripcion": "Crear con botones, previsualizar el prompt final y el catálogo de presets."
+        },
+        {
+          "archivo": "accesibilidad.md",
+          "titulo": "Accesibilidad",
+          "descripcion": "Lo que la aplicación garantiza (contraste, teclado, lector de pantalla, «reducir movimiento»), los atajos de teclado y cómo avisar de un problema."
         }
       ]
     },

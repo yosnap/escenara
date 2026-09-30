@@ -52,7 +52,12 @@ se aceptan y no se guardan.
 La comprobación es la misma que vigila la marca de Escenara en sus tests:
 
 - **Bloquean** los pares de texto sobre fondo (4,5:1): texto y texto suave sobre fondo y superficies, el acento sobre
-  fondo y superficies, el texto sobre el acento, el color creativo y los de estado sobre la superficie.
+  fondo y superficies, el texto sobre el acento, el color creativo sobre las superficies y los de estado (correcto,
+  aviso, error) sobre la superficie, la superficie elevada y el fondo.
+- Desde la 0.45.0 bloquean también **los pares que pinta la interfaz real**, no solo los tokens básicos: el contador
+  de trabajos en revisión del admin (`onPrimary` sobre `warning`), las etiquetas del historial de versiones (cada
+  color de estado sobre su propio color al 12 %) y el **texto oscuro fijo sobre la chispa** (los extremos coral y sol
+  del degradado y `brandSpark`), que es el de los números de paso, el preset elegido y el distintivo de «generada».
 - **Avisan** los bordes y el foco (3:1) y los colores vibrantes en pegatinas y titulares. Se puede publicar, pero se
   verán peor.
 
