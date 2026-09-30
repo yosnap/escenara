@@ -55,9 +55,9 @@ export async function alternativasDeEscenas(escenaIds: readonly string[]): Promi
 export async function ejecucionesDeLaComparativa(
   tx: Ejecutor,
   datos: { usuarioId: string; escenaId: string; clave: string; modelo: string },
-): Promise<number | null> {
+): Promise<{ ejecuciones: number; claves: string[] } | null> {
   const [fila] = await tx
-    .select({ ejecuciones: comparisons.plannedRuns })
+    .select({ ejecuciones: comparisons.plannedRuns, alternativas: comparisons.alternatives })
     .from(comparisons)
     .where(
       and(
@@ -67,5 +67,5 @@ export async function ejecucionesDeLaComparativa(
       ),
     )
     .limit(1);
-  return fila?.ejecuciones ?? null;
+  return fila ? { ejecuciones: fila.ejecuciones, claves: fila.alternativas.map((a) => a.clave) } : null;
 }

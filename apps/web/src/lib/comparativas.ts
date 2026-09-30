@@ -95,6 +95,8 @@ export interface AlternativaGuardada {
   creditos: number;
   sello: string;
   clave: string;
+  /** Consumió un reintento autorizado de la escena (el último clip falló con posible cobro): se devuelve si no sale. */
+  reintento?: boolean;
 }
 
 /** Estimación de una alternativa antes de confirmar. */

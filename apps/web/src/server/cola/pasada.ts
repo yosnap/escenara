@@ -2,6 +2,7 @@ import { and, eq, inArray, not, sql } from "drizzle-orm";
 import { esProveedor, type Proveedor } from "@/lib/boveda";
 import { barrerEjecucionesReservadas } from "../asistente/gasto";
 import { usarCredencialValida } from "../boveda/credenciales";
+import { barrerLanzamientosColgados } from "../comparativas/lanzamiento";
 import { pasadaDeDatos } from "../datos/pasada";
 import { db } from "../db/cliente";
 import { generationJobs, usageLedger } from "../db/esquema";
@@ -229,6 +230,10 @@ export async function pasadaDeCola(
   for (const id of await preparacionesAbandonadas()) {
     if (await cerrarPreparacionAbandonada(id)) abandonadas++;
   }
+  // Comparativas A/B que se quedaron sin lanzar: se cancelan sin cobro para no retener su reserva.
+  await barrerLanzamientosColgados().catch((error) =>
+    console.error(`[cola] comparativas sin lanzar: ${detalle(error)}`),
+  );
   const enviados = await enviarEncolados(h, workerId);
   const avanzados = await avanzarEnviados(h);
   /**

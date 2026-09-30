@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, lt, ne, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, lt, ne, or, sql } from "drizzle-orm";
 import type { Proveedor } from "@/lib/boveda";
 import { leerAjustes } from "../ajustes";
 import { ejecucionesDeLaComparativa } from "../comparativas/marcas";
@@ -116,7 +116,7 @@ async function exigirEscenaSinRepetir(tx: Ejecutor, peticion: PeticionEncolado):
         })
       : null;
   // Un podcast son **dos** clips de la misma escena, y los dos son legítimos: lo que no puede haber es uno más.
-  const esperados = comparativa ?? (tipo === "animacion" ? Math.max(1, peticion.escena?.clips ?? 1) : 1);
+  const esperados = comparativa?.ejecuciones ?? (tipo === "animacion" ? Math.max(1, peticion.escena?.clips ?? 1) : 1);
   if (esperados > 1 && peticion.valores.castClipOrder != null) {
     const [mismoPlano] = await tx
       .select({ id: generationJobs.id })
@@ -140,7 +140,15 @@ async function exigirEscenaSinRepetir(tx: Ejecutor, peticion: PeticionEncolado):
   const [{ total } = { total: 0 }] = await tx
     .select({ total: sql<number>`count(*)::int` })
     .from(generationJobs)
-    .where(and(eq(generationJobs.sceneId, escenaId), eq(generationJobs.kind, tipo), condicionEnCurso()));
+    .where(
+      and(
+        eq(generationJobs.sceneId, escenaId),
+        eq(generationJobs.kind, tipo),
+        condicionEnCurso(),
+        // En una comparativa solo cuentan sus propias alternativas: otra comparativa no le hace hueco a esta.
+        comparativa ? inArray(generationJobs.idempotencyKey, comparativa.claves) : undefined,
+      ),
+    );
   if (total >= esperados) {
     throw new ErrorGeneracion(
       409,

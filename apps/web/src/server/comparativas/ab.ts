@@ -1,14 +1,11 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { segundosDeUnidad } from "@/lib/catalogo";
 import {
-  type AlternativaGuardada,
   type AlternativaVista,
   alternativaPudoCobrarse,
   type ComparativaVista,
   type EstimacionAlternativa,
   MAXIMO_ALTERNATIVAS,
-  motivoDeConfirmacion,
-  type PeticionAB,
   type PreparacionAB,
 } from "@/lib/comparativas";
 import { formatoCanta } from "@/lib/direccion";
@@ -24,13 +21,11 @@ import {
   type FilaProyecto,
   generationJobs,
   media,
+  scenes,
 } from "../db/esquema";
-import { claveDerivada } from "../generacion/comprobaciones";
-import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { elegirParaTipo } from "../generacion/precios";
 import { type Actor, aDto } from "../media/dto";
 import { estadoDeProduccion } from "../produccion/consulta";
-import { encolarAnimacion } from "../produccion/producir";
 import { usarVersionDeEscena } from "../produccion/versiones";
 import { creditosDelEnvio } from "../prompts/traduccion";
 import { modelosElegibles } from "../proveedores/catalogo";
@@ -51,7 +46,7 @@ import { modelosElegibles } from "../proveedores/catalogo";
  */
 
 /** Por qué no se puede comparar en esta escena ahora mismo. Vacío si se puede. */
-async function impedimentosDe(escena: FilaEscena, proyecto: FilaProyecto): Promise<string[]> {
+export async function impedimentosDe(escena: FilaEscena, proyecto: FilaProyecto): Promise<string[]> {
   const motivos: string[] = [];
   if (formatoCanta(escena.clipFormat)) {
     motivos.push("Esta escena canta con tu audio: su clip se produce desde el camino de canto y no se compara aquí.");
@@ -131,7 +126,7 @@ export async function prepararAB(actor: Actor, escenaId: unknown): Promise<Prepa
  * Estimación de cada alternativa con **la misma resolución que usará el envío**: el modelo elegido a mano (sin
  * reservas del mapa) y la tarifa de la duración del proyecto, más la traducción si esta instalación traduce.
  */
-async function estimarUna(proyecto: FilaProyecto, modelo: string): Promise<EstimacionAlternativa> {
+export async function estimarUna(proyecto: FilaProyecto, modelo: string): Promise<EstimacionAlternativa> {
   const ajustes = await leerAjustes();
   const pedidos = proyecto.clipSeconds;
   try {
@@ -185,145 +180,9 @@ export async function estimarAB(actor: Actor, escenaId: unknown, modelos: readon
   };
 }
 
-// ── Lanzar ─────────────────────────────────────────────────────────────────────────────────────────────────
-
-const mismasAlternativas = (guardadas: readonly AlternativaGuardada[], pedidas: PeticionAB["alternativas"]) =>
-  guardadas.length === pedidas.length && guardadas.every((g, i) => g.modelo === pedidas[i]?.modelo);
-
-/**
- * Lanza una A/B: comprueba lo confirmado contra lo que se va a lanzar, guarda la comparativa y encola cada alternativa
- * por el camino normal. Repetir el mismo envío (misma clave) no encola nada más: devuelve la misma comparativa.
- */
-export async function lanzarAB(
-  actor: Actor,
-  escenaId: unknown,
-  peticion: PeticionAB,
-  h: Herramientas = HERRAMIENTAS,
-): Promise<ComparativaVista & { aviso: string | null }> {
-  const { escena, proyecto } = await escenaPropia(actor, escenaId);
-  const descuadre = motivoDeConfirmacion(peticion);
-  if (descuadre) throw new ErrorProyecto(409, descuadre);
-
-  const [previa] = await db()
-    .select()
-    .from(comparisons)
-    .where(and(eq(comparisons.userId, actor.id), eq(comparisons.idempotencyKey, peticion.claveIdempotencia)))
-    .limit(1);
-  if (previa && (previa.sceneId !== escena.id || !mismasAlternativas(previa.alternatives, peticion.alternativas))) {
-    throw new ErrorProyecto(
-      409,
-      "Esa confirmación ya se usó para otra comparativa. Vuelve a confirmar esta. No se ha encolado nada nuevo.",
-    );
-  }
-
-  let comparativa = previa;
-  if (!comparativa) {
-    const impedimentos = await impedimentosDe(escena, proyecto);
-    if (impedimentos.length > 0) throw new ErrorProyecto(409, `${impedimentos.join(" ")} No se ha encolado nada.`);
-    // El precio de ahora, con la resolución del envío: si no es lo que se confirmó, no sale ninguna.
-    const estimadas = await Promise.all(peticion.alternativas.map((a) => estimarUna(proyecto, a.modelo)));
-    const alternativas: AlternativaGuardada[] = [];
-    for (const [i, pedida] of peticion.alternativas.entries()) {
-      const estimada = estimadas[i];
-      if (!estimada || estimada.impedimento) {
-        throw new ErrorProyecto(
-          409,
-          `${estimada?.impedimento ?? "Ese modelo no se puede usar."} No se ha encolado nada.`,
-        );
-      }
-      if (estimada.sello !== pedida.sello || estimada.creditos !== pedida.creditos) {
-        throw new ErrorProyecto(
-          409,
-          `El precio de ${estimada.nombre} ha cambiado desde que lo viste: ahora cuesta ${estimada.creditos} créditos. Vuelve a confirmar la comparativa. No se ha encolado nada.`,
-        );
-      }
-      alternativas.push({
-        modelo: estimada.modelo,
-        nombre: estimada.nombre,
-        proveedor: estimada.nombreProveedor,
-        segundos: estimada.segundos,
-        creditos: estimada.creditos,
-        sello: estimada.sello,
-        clave: claveDerivada(peticion.claveIdempotencia, "comparativa", escena.id, estimada.modelo),
-      });
-    }
-    // Se guarda **antes** de encolar: es lo que marca los trabajos como alternativas cuando el worker los cierre.
-    const [nueva] = await db()
-      .insert(comparisons)
-      .values({
-        userId: actor.id,
-        projectId: proyecto.id,
-        sceneId: escena.id,
-        idempotencyKey: peticion.claveIdempotencia,
-        alternatives: alternativas,
-        plannedRuns: alternativas.length,
-        estimatedCredits: alternativas.reduce((s, a) => s + a.creditos, 0),
-      })
-      .onConflictDoNothing()
-      .returning();
-    // Dos envíos exactamente a la vez con la misma clave: el segundo usa la que guardó el primero.
-    comparativa =
-      nueva ??
-      (
-        await db()
-          .select()
-          .from(comparisons)
-          .where(and(eq(comparisons.userId, actor.id), eq(comparisons.idempotencyKey, peticion.claveIdempotencia)))
-          .limit(1)
-      )[0];
-    if (!comparativa) throw new ErrorProyecto(409, "No se ha podido guardar la comparativa. No se ha encolado nada.");
-  }
-
-  const partida = escena.approvedFrameJobId
-    ? { trabajoPadreId: escena.approvedFrameJobId }
-    : { medioId: escena.approvedFrameMediaId as string };
-  const fallos: string[] = [];
-  for (const alternativa of comparativa.alternatives) {
-    try {
-      await encolarAnimacion(
-        actor,
-        escena,
-        proyecto,
-        partida,
-        {
-          derechos: peticion.derechos,
-          derechoMarca: peticion.derechoMarca,
-          sinTerceros: peticion.sinTerceros,
-          creditosConfirmados: alternativa.creditos,
-          selloEstimacion: alternativa.sello,
-          claveIdempotencia: peticion.claveIdempotencia,
-          avisoUmbralAceptado: peticion.avisoUmbralAceptado,
-          avisosConfirmados: peticion.avisosConfirmados,
-          modelo: alternativa.modelo,
-        },
-        alternativa.clave,
-        h,
-      );
-    } catch (error) {
-      fallos.push(`${alternativa.nombre}: ${error instanceof Error ? error.message : "no se ha podido encolar."}`);
-    }
-  }
-  const vista = await vistaDeComparativa(actor, comparativa);
-  if (vista.ejecucionesReales === 0) {
-    // Ninguna salió: la comparativa no existe para nadie y el mismo clic puede repetirse tal cual.
-    await db().delete(comparisons).where(eq(comparisons.id, comparativa.id));
-    throw new ErrorProyecto(
-      409,
-      `No se ha encolado ninguna de las dos ejecuciones ni se ha reservado nada. ${fallos.join(" ")}`,
-    );
-  }
-  return {
-    ...vista,
-    aviso:
-      fallos.length === 0
-        ? null
-        : `Solo se ha encolado ${vista.ejecucionesReales} de ${vista.ejecucionesPrevistas} ejecuciones, con su reserva: solo se cobrará esa. La otra no ha salido y no se ha cobrado. ${fallos.join(" ")}`,
-  };
-}
-
 // ── Leer y elegir ──────────────────────────────────────────────────────────────────────────────────────────
 
-async function vistaDeComparativa(actor: Actor, fila: FilaComparativa): Promise<ComparativaVista> {
+export async function vistaDeComparativa(actor: Actor, fila: FilaComparativa): Promise<ComparativaVista> {
   const claves = fila.alternatives.map((a) => a.clave);
   const trabajos = await db()
     .select()
@@ -336,6 +195,13 @@ async function vistaDeComparativa(actor: Actor, fila: FilaComparativa): Promise<
         .from(media)
         .where(and(inArray(media.id, medioIds), eq(media.ownerId, actor.id)))
     : [];
+  // La ganadora es la que la escena usa **ahora**, se eligiera aquí o desde sus versiones.
+  const [escena] = await db()
+    .select({ clip: scenes.clipJobId })
+    .from(scenes)
+    .where(eq(scenes.id, fila.sceneId))
+    .limit(1);
+  const enUso = trabajos.find((t) => t.id === escena?.clip)?.id ?? null;
   const alternativas: AlternativaVista[] = fila.alternatives.map((a) => {
     const t = trabajos.find((x) => x.idempotencyKey === a.clave);
     const medio = t?.resultMediaId ? medios.find((m) => m.id === t.resultMediaId) : undefined;
@@ -350,7 +216,7 @@ async function vistaDeComparativa(actor: Actor, fila: FilaComparativa): Promise<
       error: t?.state === "fallido" || t?.state === "cancelado" ? (t.errorMessage ?? "") : "",
       pudoCobrarse: t ? alternativaPudoCobrarse(t.state, t.failureReason, t.consumedCredits) : false,
       medio: medio && medio.deletedAt === null ? aDto(medio, actor) : null,
-      elegida: t !== undefined && fila.chosenJobId === t.id,
+      elegida: t !== undefined && enUso === t.id,
     };
   });
   return {
@@ -362,7 +228,7 @@ async function vistaDeComparativa(actor: Actor, fila: FilaComparativa): Promise<
     creditosEstimados: fila.estimatedCredits,
     creditosConsumidos: trabajos.reduce((s, t) => s + (t.consumedCredits ?? 0), 0),
     alternativas,
-    ganadorId: fila.chosenJobId,
+    ganadorId: enUso,
     creadaEn: fila.createdAt.toISOString(),
     terminada: trabajos.every((t) => !ESTADOS_ACTIVOS.includes(t.state)),
   };
@@ -392,7 +258,8 @@ export async function ultimaComparativaDeEscena(actor: Actor, escenaId: unknown)
   const [fila] = await db()
     .select()
     .from(comparisons)
-    .where(and(eq(comparisons.sceneId, escena.id), eq(comparisons.userId, actor.id)))
+    // Una que no llegó a lanzarse no tiene nada que enseñar: se ofrece otra.
+    .where(and(eq(comparisons.sceneId, escena.id), eq(comparisons.userId, actor.id), isNull(comparisons.cancelledAt)))
     .orderBy(desc(comparisons.createdAt))
     .limit(1);
   return fila ? vistaDeComparativa(actor, fila) : null;
@@ -426,7 +293,7 @@ export async function elegirGanadora(actor: Actor, id: unknown, trabajoId: unkno
       "Esa alternativa todavía no tiene un clip terminado: espera a que acabe para elegirla.",
     );
   }
-  // La otra alternativa, si sigue en marcha, taparía la elección al terminar: lo dice `usarVersionDeEscena`.
+  // La otra alternativa puede seguir en marcha: al terminar se queda como versión y no tapa la elección.
   await usarVersionDeEscena(actor, fila.sceneId, trabajo.id);
   await db()
     .update(comparisons)

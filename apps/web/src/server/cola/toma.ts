@@ -51,6 +51,13 @@ export async function tomarTrabajos(workerId: string, limite = MAXIMO_POR_TOMA):
         and available_at <= now()
         and (locked_until is null or locked_until < now())
         and attempts < max_attempts
+        -- Una alternativa de una comparativa A/B no sale hasta que están encoladas todas (todo o nada).
+        and not exists (
+          select 1 from comparisons c
+          where c.scene_id = generation_jobs.scene_id and c.user_id = generation_jobs.user_id
+            and c.launched_at is null
+            and c.alternatives @> jsonb_build_array(jsonb_build_object('clave', generation_jobs.idempotency_key))
+        )
       order by priority desc, created_at asc
       for update skip locked
       limit ${limite}

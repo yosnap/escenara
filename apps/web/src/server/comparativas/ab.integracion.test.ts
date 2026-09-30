@@ -52,7 +52,10 @@ const { consultarTrabajo } = await import("../generacion/seguimiento");
 const { depositoDe } = await import("../presupuesto/deposito");
 const { estadoDeProduccion, ultimoTrabajoDeEscena } = await import("../produccion/consulta");
 const { aprobarFotograma, producirEscena } = await import("../produccion/producir");
-const { estimarAB, lanzarAB, elegirGanadora, verComparativa } = await import("./ab");
+const { estimarAB, elegirGanadora, verComparativa } = await import("./ab");
+const { barrerLanzamientosColgados, lanzarAB } = await import("./lanzamiento");
+const { comprometidoDelProyecto } = await import("../asistente/plan");
+const { autorizarReintentos } = await import("../produccion/producir");
 const { enviarEncolados } = await import("../cola/pasada");
 
 type Sesion = Awaited<ReturnType<typeof crearSesionDePrueba>>;
@@ -389,10 +392,12 @@ describe.skipIf(!hayBaseDeDatos)("comparativa A/B de una escena", () => {
     // Sin la casilla de derechos, la puerta de siempre lo frena y no queda ninguna comparativa a medias.
     const sinDerechos = await intentar(async () => lanzarAB(actor, escenaId, await peticion({ derechos: false }), h));
     expect(sinDerechos.ok).toBe(false);
-    expect(!sinDerechos.ok && sinDerechos.error).toContain("No se ha encolado ninguna");
+    expect(!sinDerechos.ok && sinDerechos.error).toContain("no se ha encolado ninguna");
     expect((await trabajosDe(escenaId)).length).toBe(antes.trabajos);
     expect((await depositoDe(ana.id)).reservado).toBe(antes.reservado);
-    expect(await db().select().from(comparisons).where(eq(comparisons.userId, ana.id))).toHaveLength(0);
+    // Ninguna comparativa lanzada: como mucho, una marcada como no lanzada.
+    const lanzadas = await db().select().from(comparisons).where(eq(comparisons.userId, ana.id));
+    expect(lanzadas.filter((c) => c.launchedAt !== null)).toHaveLength(0);
     expect(tareasCreadas).toBe(0);
   });
 
@@ -484,6 +489,109 @@ describe.skipIf(!hayBaseDeDatos)("comparativa A/B de una escena", () => {
     const final = await filaDeEscena(escenaId);
     expect(final.clipJobId).toBe(a.trabajoId);
     expect(final.state).toBe("producida");
+  });
+
+  test("todo o nada: si la segunda no cabe en el techo del proyecto, no se encola ninguna ni se cobra nada", async () => {
+    await escenaProducida();
+    const p = await peticion();
+    const primera = p.alternativas[0]?.creditos ?? 0;
+    // Solo cabe una: el techo del proyecto deja sitio para la primera y no para la segunda.
+    await db()
+      .update(projects)
+      .set({ authorizedCredits: Math.ceil((await comprometidoDelProyecto(proyectoId)) + primera) })
+      .where(eq(projects.id, proyectoId));
+    const reservadoAntes = (await depositoDe(ana.id)).reservado;
+    const antes = new Set((await trabajosDe(escenaId)).map((t) => t.id));
+    const trabajosAntes = antes.size;
+    const r = await intentar(() => lanzarAB(actor, escenaId, p, h));
+    expect(!r.ok && r.estado).toBe(409);
+    expect(!r.ok && r.error).toContain("no caben");
+    expect(!r.ok && r.error).toMatch(/no se ha cobrado nada/i);
+    // La que sí cabía se encoló y se canceló sin salir: su reserva vuelve y el worker no envía nada.
+    const nuevos = (await trabajosDe(escenaId)).filter((t) => !antes.has(t.id));
+    expect(nuevos).toHaveLength(1);
+    expect(nuevos.every((t) => t.state === "cancelado")).toBe(true);
+    expect((await depositoDe(ana.id)).reservado).toBe(reservadoAntes);
+    expect(await enviarEncolados(h)).toBe(0);
+    expect(tareasCreadas).toBe(0);
+    // Repetir la misma confirmación no encola la que faltaba: hay que confirmar otra vez.
+    const repetida = await intentar(() => lanzarAB(actor, escenaId, p, h));
+    expect(!repetida.ok && repetida.error).toContain("ya se intentó");
+    expect((await trabajosDe(escenaId)).filter((t) => t.state !== "cancelado")).toHaveLength(trabajosAntes);
+  });
+
+  test("mientras no están encoladas todas, el worker no toma ninguna; una colgada se cancela sin cobro", async () => {
+    await escenaProducida();
+    const reservadoAntes = (await depositoDe(ana.id)).reservado;
+    const vista = await lanzarAB(actor, escenaId, await peticion(), h);
+    // Como si el lanzamiento se hubiera quedado a medias hace rato.
+    await db()
+      .update(comparisons)
+      .set({ launchedAt: null, createdAt: new Date(Date.now() - 3600_000) })
+      .where(eq(comparisons.id, vista.id));
+    expect(await enviarEncolados(h)).toBe(0);
+    expect(await barrerLanzamientosColgados()).toBe(1);
+    const alternativas = await db().select().from(generationJobs).where(eq(generationJobs.userId, ana.id));
+    expect(
+      alternativas.filter((t) => vista.alternativas.some((a) => a.trabajoId === t.id)).map((t) => t.state),
+    ).toEqual(["cancelado", "cancelado"]);
+    expect((await depositoDe(ana.id)).reservado).toBe(reservadoAntes);
+    expect(tareasCreadas).toBe(0);
+  });
+
+  test("dos comparativas a la vez en la misma escena: sale una y la otra se rechaza con su causa", async () => {
+    await escenaProducida();
+    const [a, b] = await Promise.all([peticion(), peticion()]);
+    const resultados = await Promise.all([
+      intentar(() => lanzarAB(actor, escenaId, a, h)),
+      intentar(() => lanzarAB(actor, escenaId, b, h)),
+    ]);
+    expect(resultados.filter((r) => r.ok)).toHaveLength(1);
+    const rechazo = resultados.find((r) => !r.ok);
+    expect(rechazo && !rechazo.ok && rechazo.estado).toBe(409);
+    expect(rechazo && !rechazo.ok && rechazo.error).toMatch(/Ya hay una comparación|no se ha encolado ninguna/);
+    const activas = (await trabajosDe(escenaId)).filter((t) => ["en_cola", "esperando_limite"].includes(t.state));
+    expect(activas).toHaveLength(2);
+    expect(await enviarEncolados(h)).toBe(2);
+  });
+
+  test("tras un fallo con posible cobro, la comparativa consume un reintento autorizado por alternativa", async () => {
+    await escenaProducida();
+    // Último clip de la escena fallido después de hablar con el proveedor.
+    await db().insert(generationJobs).values({
+      userId: ana.id,
+      kind: "animacion",
+      provider: "kie",
+      model: "veo3_fast",
+      prompt: "x",
+      input: {},
+      sceneId: escenaId,
+      state: "fallido",
+      failureReason: "contenido",
+      errorMessage: "El proveedor lo rechazó.",
+      estimatedCredits: 60,
+      finishedAt: new Date(),
+    });
+    const sin = await intentar(async () => lanzarAB(actor, escenaId, await peticion(), h));
+    expect(!sin.ok && sin.error).toContain("reintento");
+    await autorizarReintentos(actor, escenaId, 1);
+    const uno = await intentar(async () => lanzarAB(actor, escenaId, await peticion(), h));
+    expect(!uno.ok && uno.error).toContain("autoriza al menos 1 más");
+    await autorizarReintentos(actor, escenaId, 2);
+    const vista = await lanzarAB(actor, escenaId, await peticion(), h);
+    expect(vista.ejecucionesReales).toBe(2);
+    expect((await filaDeEscena(escenaId)).retriesUsed).toBe(2);
+  });
+
+  test("se puede elegir una alternativa terminada aunque la otra siga en marcha", async () => {
+    await escenaProducida();
+    const vista = await lanzarAB(actor, escenaId, await peticion(), h);
+    const [a] = vista.alternativas;
+    if (!a?.trabajoId) throw new Error("Falta la alternativa.");
+    await terminar(a.trabajoId, "success");
+    const elegida = await elegirGanadora(actor, vista.id, a.trabajoId);
+    expect(elegida.ganadorId).toBe(a.trabajoId);
+    expect((await filaDeEscena(escenaId)).clipJobId).toBe(a.trabajoId);
   });
 
   test("nadie ve ni elige en la comparativa de otro: 404 sin revelar nada", async () => {

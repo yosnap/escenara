@@ -8,7 +8,8 @@ import {
   leerId,
   manejador,
 } from "@/server/asistente/http";
-import { estimarAB, lanzarAB, prepararAB, ultimaComparativaDeEscena } from "@/server/comparativas/ab";
+import { estimarAB, prepararAB, ultimaComparativaDeEscena } from "@/server/comparativas/ab";
+import { lanzarAB } from "@/server/comparativas/lanzamiento";
 
 export const dynamic = "force-dynamic";
 

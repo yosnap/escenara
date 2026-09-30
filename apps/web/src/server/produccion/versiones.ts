@@ -1,8 +1,9 @@
-import { and, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, ne, not, sql } from "drizzle-orm";
 import { declaracionesQueFaltan } from "@/lib/conversion";
 import { escenaPropia } from "../asistente/consulta";
 import { ErrorProyecto } from "../asistente/errores";
 import { repartoDeEnvioDe } from "../cola/entrada-del-trabajo";
+import { condicionDeAlternativa } from "../comparativas/marcas";
 import { db } from "../db/cliente";
 import {
   characters,
@@ -90,6 +91,8 @@ export async function usarVersionDeEscena(actor: Actor, escenaId: unknown, traba
         eq(generationJobs.sceneId, escena.id),
         eq(generationJobs.kind, "animacion"),
         inArray(generationJobs.state, [...EN_MARCHA]),
+        // Una alternativa de una comparativa en marcha no pasa a ser el clip al terminar: se queda como versión.
+        not(condicionDeAlternativa('"generation_jobs"')),
       ),
     )
     .limit(1);
