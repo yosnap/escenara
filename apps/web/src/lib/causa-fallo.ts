@@ -14,6 +14,7 @@ export const CAUSAS_FALLO_PROVEEDOR = [
   "imagen_rechazada",
   "saturado",
   "limite",
+  "error_interno",
   "desconocida",
 ] as const;
 export type CausaFalloProveedor = (typeof CAUSAS_FALLO_PROVEEDOR)[number];
@@ -29,6 +30,7 @@ export const ETIQUETA_CAUSA_FALLO: Record<CausaFalloProveedor, string> = {
   imagen_rechazada: "El proveedor no ha podido usar una de las imágenes de referencia",
   saturado: "El proveedor estaba saturado y no terminó la generación",
   limite: "El proveedor cortó la generación por exceso de peticiones",
+  error_interno: "El proveedor tuvo un fallo interno pasajero y no terminó la generación",
   desconocida: ETIQUETA_MOTIVO_FALLO.contenido,
 };
 
@@ -107,6 +109,10 @@ export function mensajeDeFalloDelProveedor(causa: CausaFalloProveedor, c: Contex
     }
     case "saturado":
       return `${quien} estaba saturado y no ha terminado la generación (${cobro(c.creditos)}). Prueba a: volver a generarlo dentro de un rato o generar con otro modelo.`;
+    // Visto el 2026-09-30 con Gemini Omni: «500 Internal Error, Please try again later.», sin cobro. Al repetirlo
+    // salió bien: es un fallo suyo y pasajero, así que se dice que se puede volver a pedir.
+    case "error_interno":
+      return `${quien} ha tenido un fallo interno y no ha terminado la generación (${cobro(c.creditos)}). Es un fallo suyo y suele ser pasajero: vuelve a generarlo.`;
     case "limite":
       return `${quien} ha cortado la generación por exceso de peticiones (${cobro(c.creditos)}). Espera unos minutos antes de volver a generarlo.`;
     case "desconocida":

@@ -1,10 +1,11 @@
 -- Lugares: el sitio poco conocido que el usuario reutiliza como escenario, con sus fotos (relación con la biblioteca),
--- sus versiones y su declaración de derechos; y el lugar del proyecto, de la escena y del trabajo.
+-- sus versiones y su declaración de derechos; el lugar del proyecto, de la escena y del trabajo; y la comprobación de
+-- coherencia «es el mismo lugar» (en sombra).
 --
--- Aditiva e idempotente: solo crea tipos, tablas, índices y columnas que admiten nulos o tienen valor por defecto; no
--- cambia ni borra ninguna fila. Volver a aplicarla no hace nada. Una escena anterior queda sin lugar y heredando el
--- del proyecto, que tampoco tiene ninguno: produce exactamente lo mismo que antes. Haz copia de la base antes
--- (`bun run db:backup`) y migra con el worker parado, como siempre.
+-- Aditiva e idempotente: solo crea tipos, tablas, índices, columnas que admiten nulos o tienen valor por defecto y un
+-- valor nuevo de un enumerado; no cambia ni borra ninguna fila. Volver a aplicarla no hace nada. Una escena anterior
+-- queda sin lugar y heredando el del proyecto, que tampoco tiene ninguno: produce exactamente lo mismo que antes. Haz
+-- copia de la base antes (`bun run db:backup`) y migra con el worker parado, como siempre.
 DO $$ BEGIN
   CREATE TYPE "public"."place_space" AS ENUM('exterior', 'interior');
 EXCEPTION WHEN duplicate_object THEN NULL;
@@ -39,6 +40,8 @@ DO $$ BEGIN
   CREATE TYPE "public"."scene_place_shot" AS ENUM('con_reparto', 'solo_lugar');
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
+--> statement-breakpoint
+ALTER TYPE "public"."coherence_check" ADD VALUE IF NOT EXISTS 'lugar_fiel';
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "place_declarations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,

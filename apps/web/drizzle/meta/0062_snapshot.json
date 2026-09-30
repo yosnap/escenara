@@ -1,5 +1,5 @@
 {
-  "id": "107179b8-2aa8-4b7f-971b-92fd0da98021",
+  "id": "ef6f03fe-b592-4220-8555-6c319741890c",
   "prevId": "29506fd3-5526-4f88-bc8f-be0c17dd3934",
   "version": "7",
   "dialect": "postgresql",
@@ -9890,7 +9890,8 @@
         "direccion_fiel",
         "producto_fiel",
         "angulo_fiel",
-        "reparto_fiel"
+        "reparto_fiel",
+        "lugar_fiel"
       ]
     },
     "public.coherence_correction": {

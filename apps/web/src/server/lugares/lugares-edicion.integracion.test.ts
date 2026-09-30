@@ -130,7 +130,7 @@ describe.skipIf(!hayBaseDeDatos)("fotos generadas de un lugar", () => {
     expect(trabajo?.kind).toBe("fotograma");
     expect(trabajo?.sourceMediaId).toBe(maestra);
     expect(trabajo?.prompt).toContain(PROMPT_RETIRAR_PERSONAS.slice(0, 40));
-    expect((trabajo?.input as { edicionDeLugar?: unknown }).edicionDeLugar).toMatchObject({
+    expect((trabajo?.input as { edicionDeLugar?: unknown } | undefined)?.edicionDeLugar).toMatchObject({
       lugarId: lugar.id,
       tipo: "retirar_personas",
     });
@@ -187,7 +187,7 @@ describe.skipIf(!hayBaseDeDatos)("fotos generadas de un lugar", () => {
     expect(respuesta.status).toBe(201);
     const [trabajo] = await db().select().from(generationJobs).where(eq(generationJobs.userId, ana.id));
     expect(trabajo?.sourceMediaId).toBeNull();
-    expect((trabajo?.input as { sinReferencia?: unknown }).sinReferencia).toBe(true);
+    expect((trabajo?.input as { sinReferencia?: unknown } | undefined)?.sinReferencia).toBe(true);
     expect(trabajo?.prompt).toContain("Plaza pequeña con un quiosco");
     if (!trabajo) throw new Error("Falta el trabajo.");
     const candidato = await subirFotoDePrueba(actor, "candidato.png");

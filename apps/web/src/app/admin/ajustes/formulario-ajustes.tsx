@@ -20,6 +20,7 @@ import { SeccionCanto } from "./seccion-canto";
 import { SeccionCoherencia } from "./seccion-coherencia";
 import { SeccionControles } from "./seccion-controles";
 import { SeccionDosPersonajes } from "./seccion-dos-personajes";
+import { SeccionLugares } from "./seccion-lugares";
 import { SeccionMontaje } from "./seccion-montaje";
 import { SeccionPresupuesto } from "./seccion-presupuesto";
 import { SeccionRevision } from "./seccion-revision";
@@ -261,6 +262,7 @@ export function FormularioAjustes({
       <SeccionAnuncio valores={valores} onCambio={cambiar} />
 
       <SeccionDosPersonajes valores={valores} onCambio={cambiar} />
+      <SeccionLugares valores={valores} onCambio={cambiar} />
 
       <SeccionControles valores={valores} errorDe={errorDe} onCambio={cambiar} />
 

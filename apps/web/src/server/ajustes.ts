@@ -4,7 +4,6 @@ import {
   MODELO_CANTO_POR_DEFECTO,
   MODELOS_CANTO,
   RESOLUCIONES_CANTO,
-  type ResolucionCanto,
   SEGUNDOS_CANTO_MAXIMOS,
   SEGUNDOS_CANTO_POR_DEFECTO,
 } from "@/lib/canto";
@@ -12,6 +11,7 @@ import { esModoCoherencia, type ModoCoherencia, UMBRAL_POR_DEFECTO } from "@/lib
 import { db } from "./db/cliente";
 import { settings } from "./db/esquema";
 
+export { cantoDe } from "./ajustes-canto";
 export { coherenciaDe } from "./ajustes-coherencia";
 
 /**
@@ -121,6 +121,12 @@ export interface Ajustes {
   /** Permitir el formato dualcast: los dos personajes en el mismo plano, uno hablando y el otro escuchando. */
   repartoDualcastActivo: boolean;
   /**
+   * **Experimental, apagado de fábrica**: en una escena hablada con Omni y con lugar, enviar a la vez la identidad
+   * registrada y el fotograma aprobado de la escena (situado en el lugar). Medido una vez el 2026-09-30: mismo precio,
+   * lugar y cara fieles, pero la voz no está confirmada. Hasta que el propietario la escuche, no se activa sola.
+   */
+  omniLugarCombinado: boolean;
+  /**
    * Revisión de continuidad de las escenas producidas (RF07). Las comprobaciones técnicas **no cuestan nada** y
    * aquí solo se ajustan sus umbrales; qué fallo es crítico vive en el código (`lib/revision.ts`), porque es una
    * decisión de producto y no un umbral.
@@ -169,6 +175,8 @@ export interface Ajustes {
    * acierto y después se le da poder, igual que las demás.
    */
   coherenciaRepartoFiel: ModoCoherencia;
+  /** Fidelidad del lugar: el sitio del fotograma es el de la maestra de la versión usada. Nace en sombra. */
+  coherenciaLugarFiel: ModoCoherencia;
   /** Confianza mínima (0–1) para actuar. Por debajo, el veredicto es «míralo tú» y no decide nada. */
   coherenciaUmbralIdentidad: number;
   coherenciaUmbralGuion: number;
@@ -178,6 +186,7 @@ export interface Ajustes {
   coherenciaUmbralProductoFiel: number;
   coherenciaUmbralAnguloFiel: number;
   coherenciaUmbralRepartoFiel: number;
+  coherenciaUmbralLugarFiel: number;
   /**
    * Modelos de **percepción** que se prueban primero dentro del mapa del usuario: el de imagen describe la cara y
    * el encuadre, el omnimodal describe la voz y el ambiente. Si el usuario no los tiene dados de alta, se recorre
@@ -367,6 +376,7 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   // Los dos formatos de dos personajes vienen activados: el precio y la fidelidad de las dos caras están
   // medidos, así que no hay nada que probar antes de ofrecerlos.
   repartoPodcastActivo: true,
+  omniLugarCombinado: false,
   repartoDualcastActivo: true,
   // Medio segundo: los clips de 4 s de KIE miden 4,0–4,1 s según el contenedor, así que una diferencia menor que
   // esto no es un formato incorrecto, es cómo se cierra un MP4.
@@ -387,6 +397,7 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   coherenciaAnguloFiel: "sombra",
   // El reparto del diálogo nace en sombra: se mide su acierto antes de dejarle bloquear un clip ya pagado.
   coherenciaRepartoFiel: "sombra",
+  coherenciaLugarFiel: "sombra",
   coherenciaUmbralIdentidad: UMBRAL_POR_DEFECTO,
   coherenciaUmbralGuion: UMBRAL_POR_DEFECTO,
   coherenciaUmbralResultado: UMBRAL_POR_DEFECTO,
@@ -395,6 +406,7 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   coherenciaUmbralProductoFiel: UMBRAL_POR_DEFECTO,
   coherenciaUmbralAnguloFiel: UMBRAL_POR_DEFECTO,
   coherenciaUmbralRepartoFiel: UMBRAL_POR_DEFECTO,
+  coherenciaUmbralLugarFiel: UMBRAL_POR_DEFECTO,
   // Los dos de NaN builders: `gemma4` es el más barato que ve, y `mimo-v2.5` es de los dos únicos que oyen.
   coherenciaModeloImagen: "gemma4",
   coherenciaModeloAudio: "mimo-v2.5",
@@ -555,6 +567,7 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
     mensaje: "Indica de 1 a 10 avisos confirmables a la vez.",
   },
   repartoPodcastActivo: { valido: booleano, mensaje: "Debe ser sí o no." },
+  omniLugarCombinado: { valido: booleano, mensaje: "Debe ser sí o no." },
   repartoDualcastActivo: { valido: booleano, mensaje: "Debe ser sí o no." },
   revisionToleranciaDuracion: {
     valido: decimal(0, 5),
@@ -574,6 +587,7 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
   coherenciaProductoFiel: { valido: esModoCoherencia, mensaje: MENSAJE_MODO },
   coherenciaAnguloFiel: { valido: esModoCoherencia, mensaje: MENSAJE_MODO },
   coherenciaRepartoFiel: { valido: esModoCoherencia, mensaje: MENSAJE_MODO },
+  coherenciaLugarFiel: { valido: esModoCoherencia, mensaje: MENSAJE_MODO },
   coherenciaUmbralIdentidad: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   coherenciaUmbralGuion: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   coherenciaUmbralResultado: { valido: umbral, mensaje: MENSAJE_UMBRAL },
@@ -582,6 +596,7 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
   coherenciaUmbralProductoFiel: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   coherenciaUmbralAnguloFiel: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   coherenciaUmbralRepartoFiel: { valido: umbral, mensaje: MENSAJE_UMBRAL },
+  coherenciaUmbralLugarFiel: { valido: umbral, mensaje: MENSAJE_UMBRAL },
   coherenciaModeloImagen: { valido: identificadorModelo, mensaje: MENSAJE_MODELO },
   coherenciaModeloAudio: { valido: identificadorModelo, mensaje: MENSAJE_MODELO },
   coherenciaEurosPorMillonTokens: {
@@ -762,29 +777,6 @@ export async function guardarAjustes(cambios: Partial<Record<keyof Ajustes, unkn
  * `compatible` y `local` valen 0 € a propósito: se pagan por cuota del plan o no se pagan, y su llamada no tiene
  * precio por petición.
  */
-/**
- * Ajustes del canto ya **tipados**: `cantoModelo` y `cantoResolucion` se guardan como texto (la tabla de ajustes
- * es genérica) pero solo pueden valer lo que valida {@link VALIDACION}, así que aquí se acotan en un solo sitio
- * en lugar de comprobarlos en cada sitio que los lee.
- *
- * El valor por defecto se aplica también si alguien dejó una fila antigua con otro valor: con un modelo que esta
- * instalación no sabe pedir, lo honesto es usar el que sí sabe, no intentar enviarlo.
- */
-export function cantoDe(ajustes: Ajustes): {
-  activo: boolean;
-  modelo: (typeof MODELOS_CANTO)[number];
-  segundosMaximos: number;
-  resolucion: ResolucionCanto;
-} {
-  const modelo = MODELOS_CANTO.find((m) => m === ajustes.cantoModelo) ?? MODELO_CANTO_POR_DEFECTO;
-  return {
-    activo: ajustes.cantoActivo,
-    modelo,
-    segundosMaximos: Math.min(Math.max(1, ajustes.cantoSegundosMaximos), SEGUNDOS_CANTO_MAXIMOS),
-    resolucion: esResolucionCanto(ajustes.cantoResolucion) ? ajustes.cantoResolucion : "480p",
-  };
-}
-
 export function eurosPorCreditoDe(ajustes: Ajustes, proveedor: string): number {
   if (proveedor === "kie") return ajustes.eurosPorCreditoKie;
   if (proveedor === "google") return ajustes.eurosPorCreditoGoogle;

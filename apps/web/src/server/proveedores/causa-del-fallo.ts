@@ -47,6 +47,8 @@ const PATRONES: readonly (readonly [CausaFalloProveedor, RegExp])[] = [
     "saturado",
     /\boverloaded\b|\bhigh demand\b|\bat capacity\b|\bservice unavailable\b|\b(?:server|service|model) is busy\b/,
   ],
+  // Real, visto el 2026-09-30 con Gemini Omni 1.1 Flash: «500 Internal Error, Please try again later.», sin cobro.
+  ["error_interno", /\binternal (?:server )?error\b|\bplease try again later\b/],
 ];
 
 /** Códigos del sobre que por sí solos ya dicen la causa, aunque el texto venga vacío. */

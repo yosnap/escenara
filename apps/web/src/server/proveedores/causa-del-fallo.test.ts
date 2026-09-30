@@ -54,7 +54,10 @@ const CASOS: readonly (readonly [unknown, unknown, CausaFalloProveedor])[] = [
   ["", "Service unavailable", "saturado"],
   ["503", "", "saturado"],
   // Lo demás.
-  ["500", "Internal error", "desconocida"],
+  // Un 500 del proveedor es un fallo suyo y pasajero (visto con Gemini Omni el 2026-09-30, sin cobro, y el
+  // reintento salió bien): se dice que se puede volver a pedir.
+  ["500", "Internal error", "error_interno"],
+  ["", "500 Internal Error, Please try again later.", "error_interno"],
   ["400", "", "desconocida"],
   [undefined, undefined, "desconocida"],
   [{}, ["safety"], "desconocida"],

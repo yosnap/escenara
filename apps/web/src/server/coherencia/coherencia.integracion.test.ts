@@ -44,6 +44,7 @@ const {
 } = await import("../db/esquema");
 const { productReferences, products } = await import("../db/esquema-productos");
 const { comprobarEscena } = await import("./escena");
+const { lugarDeclaradoDePrueba } = await import("../lugares/lugar-de-prueba");
 const { borrarProyecto } = await import("../asistente/proyectos");
 const { crearMedio } = await import("../media/servicio");
 const { guardarAjustes, olvidarAjustes } = await import("../ajustes");
@@ -436,6 +437,53 @@ describe.skipIf(!hayBaseDeDatos)("identidad en modo activo", () => {
     const motivo = resultado.sinComprobar.find((s) => s.comprobacion === "producto_fiel")?.motivo ?? "";
     expect(motivo).toContain("foto de referencia");
     expect(resultado.decisiones.some((d) => d.comprobacion === "producto_fiel")).toBe(false);
+  });
+
+  /**
+   * **`lugar_fiel` en sombra**: el plano del lugar solo no lleva a nadie, así que se mira; la evidencia no lleva el
+   * nombre de nadie. Con una persona real en el fotograma no se envía nada a terceros.
+   */
+  test("lugar_fiel se registra en sombra en el plano del lugar solo, sin nombres de nadie en la evidencia", async () => {
+    const { lugar } = await lugarDeclaradoDePrueba(actor, "Bar de barrio");
+    const fotograma = await crearMedio(actor, new File([await foto()], "plano-del-bar.png", { type: "image/png" }));
+    const [proyecto] = await db().insert(projects).values({ userId: actor.id, title: "Plano del bar" }).returning();
+    const [escena] = await db()
+      .insert(scenes)
+      .values({
+        projectId: proyecto?.id ?? "",
+        sortOrder: 0,
+        approvedFrameMediaId: fotograma.id,
+        placeId: lugar.id,
+        placeInherited: false,
+        placeShot: "solo_lugar",
+      })
+      .returning();
+    const antes = llamadasDePercepcion;
+    const resultado = await comprobarEscena(actor, escena?.id);
+    const veredicto = resultado.decisiones.find((d) => d.comprobacion === "lugar_fiel");
+    expect(veredicto?.modo).toBe("sombra");
+    expect(veredicto?.evidencia).toContain("mismo lugar");
+    expect(veredicto?.evidencia).not.toContain(lugar.nombre);
+    // Dos percepciones: la maestra y el fotograma, descritas por separado.
+    expect(llamadasDePercepcion - antes).toBeGreaterThanOrEqual(2);
+  });
+
+  test("con una persona real en la escena, lugar_fiel dice por qué no se comprueba y no envía nada", async () => {
+    const { personajeId } = await personajeConVistaGenerada("Rocío", true);
+    const { lugar } = await lugarDeclaradoDePrueba(actor, "Patio");
+    const fotograma = await crearMedio(actor, new File([await foto()], "patio.png", { type: "image/png" }));
+    const [proyecto] = await db()
+      .insert(projects)
+      .values({ userId: actor.id, title: "En el patio", mainCharacterId: personajeId, defaultPlaceId: lugar.id })
+      .returning();
+    const [escena] = await db()
+      .insert(scenes)
+      .values({ projectId: proyecto?.id ?? "", sortOrder: 0, approvedFrameMediaId: fotograma.id })
+      .returning();
+    const resultado = await comprobarEscena(actor, escena?.id);
+    const motivo = resultado.sinComprobar.find((s) => s.comprobacion === "lugar_fiel")?.motivo ?? "";
+    expect(motivo).toContain("persona real");
+    expect(resultado.decisiones.some((d) => d.comprobacion === "lugar_fiel")).toBe(false);
   });
 
   test("revocar el consentimiento retira el veredicto y la vista deja de cubrir", async () => {

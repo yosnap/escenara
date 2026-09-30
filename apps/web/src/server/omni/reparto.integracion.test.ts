@@ -673,6 +673,27 @@ describeSiHayBase("escenas habladas con dos personajes", () => {
     expect(prompt).not.toContain("frame is");
   });
 
+  test("con el ajuste experimental, el fotograma situado viaja junto a la identidad; sin él, el lugar va descrito", async () => {
+    await registrarTodo([lucia.id]);
+    const { lugar } = await lugarDeclaradoDePrueba(actor, "Calle");
+    await editarEscena(actor, escenaId, { lugar: { lugarId: lugar.id } });
+    const situado = await crearMedio(actor, new File([await fotoDeReferencia()], "situado.png", { type: "image/png" }));
+    await db().update(scenes).set({ approvedFrameMediaId: situado.id }).where(eq(scenes.id, escenaId));
+    await aprobarPlan();
+    await guardarAjustes({ omniLugarCombinado: true }, null);
+    try {
+      await producir();
+      await enviarEncolados(h);
+    } finally {
+      await guardarAjustes({ omniLugarCombinado: false }, null);
+    }
+    const enviado = enviados[0] ?? {};
+    expect(enviado.character_ids).toHaveLength(1);
+    expect(enviado.image_urls).toHaveLength(1);
+    const [trabajo] = await trabajosDeLaEscena();
+    expect((trabajo?.input as { fotogramaSituado?: string } | undefined)?.fotogramaSituado).toBe(situado.id);
+  });
+
   test("sin el registro del segundo personaje no se genera, y el motivo dice quién falta", async () => {
     // Solo se registra a Lucía: Elisa sale en la escena y no tiene cara ni voz en el proveedor.
     await registrarTodo([lucia.id]);

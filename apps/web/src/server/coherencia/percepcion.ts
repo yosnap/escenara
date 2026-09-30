@@ -121,8 +121,19 @@ const INSTRUCCIONES_DIALOGO = [
   "Answer in English, one short line per turn.",
 ].join(" ");
 
+/**
+ * Percepción de **un lugar**: solo el sitio, nunca las personas. Es lo que se compara entre la maestra y el fotograma
+ * (`lugar_fiel`), y por eso se le prohíbe describir a nadie: la evidencia se guarda y no puede llevar rasgos de nadie.
+ */
+const INSTRUCCIONES_LUGAR = [
+  "You are a perception step, not a judge.",
+  "Describe only the place: its walls, doors, windows and openings, the fixed furniture and fittings, the materials and colours of floor, walls and surfaces, how they are laid out, and where the light comes from and its colour.",
+  "Do not describe any person, animal or character, not even their position, clothing or number; do not read any sign or poster aloud, do not guess where the place is and do not give a score.",
+  "Answer in English, in at most eight short sentences.",
+].join(" ");
+
 /** Qué se está percibiendo. Cada una tiene sus instrucciones y su modelo preferido. */
-export type ClasePercepcion = "cara" | "escena" | "audio" | "referencia" | "clip" | "producto" | "dialogo";
+export type ClasePercepcion = "cara" | "escena" | "audio" | "referencia" | "clip" | "producto" | "dialogo" | "lugar";
 
 const INSTRUCCIONES: Record<ClasePercepcion, string> = {
   cara: INSTRUCCIONES_CARA,
@@ -132,6 +143,7 @@ const INSTRUCCIONES: Record<ClasePercepcion, string> = {
   clip: INSTRUCCIONES_CLIP,
   producto: INSTRUCCIONES_PRODUCTO,
   dialogo: INSTRUCCIONES_DIALOGO,
+  lugar: INSTRUCCIONES_LUGAR,
 };
 
 /**

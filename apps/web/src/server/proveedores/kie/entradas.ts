@@ -75,19 +75,22 @@ function conProporcion(modelo: ModeloVista, entrada: Record<string, unknown>): R
 
 /**
  * Entrada de los modelos de **Gemini Omni**, que la comparten: con un personaje registrado la identidad y la voz
- * **son** `character_ids`, así que no se envía ninguna referencia. Enviar además `image_urls` sería darle dos
- * caras a la vez y pagar por que elija una; medido el 2026-09-28, con `character_ids` sola la cara es idéntica
- * entre escenas.
+ * **son** `character_ids`; medido el 2026-09-28, con `character_ids` sola la cara es idéntica entre escenas.
+ *
+ * `character_ids` e `image_urls` **no son excluyentes** (medido el 2026-09-30): con el fotograma de la escena ya
+ * situado en un lugar, el proveedor acepta los dos a la vez al mismo precio (63 créditos por 4 s), el clip arranca en
+ * ese fotograma con el lugar idéntico y la cara registrada. La voz está sin confirmar, así que solo se combinan con el
+ * ajuste experimental (`combinarConImagen`); sin él se hace lo de siempre. El primer intento de esa medida falló con
+ * un 500 sin cobro y el segundo salió bien: se trata como fallo pasajero.
  */
 const entradaOmni: Constructor = (contexto, modelo) => {
   /**
-   * **Con referencias mandan las referencias** (0.26.0). `character_ids` e `image_urls` son excluyentes en
-   * este modelo, así que cuando el trabajo trae imágenes que enviar —las fotos del personaje y las del
-   * producto— la identidad registrada no se cita: enviar las dos cosas sería darle dos caras a la vez y pagar
-   * por que elija una. Que se pierde la identidad registrada se avisa **antes** de cobrar, en la puerta de
-   * controles (regla `producto-sin-identidad-registrada`).
+   * **Con referencias sueltas mandan las referencias** (0.26.0): cuando el trabajo trae las fotos del personaje y del
+   * producto, la identidad registrada no se cita, porque serían dos caras a la vez. Se avisa antes de cobrar (regla
+   * `producto-sin-identidad-registrada`). La excepción es el fotograma situado del ajuste experimental.
    */
-  if (contexto.personajesOmni && contexto.personajesOmni.length > 0 && contexto.urls.length === 0) {
+  const combinar = contexto.combinarConImagen === true && contexto.urls.length > 0;
+  if (contexto.personajesOmni && contexto.personajesOmni.length > 0 && (contexto.urls.length === 0 || combinar)) {
     return conProporcion(modelo, {
       /**
        * **Con reparto, el prompt lleva los lados y los turnos** (0.28.0), y `character_ids` lleva exactamente los
@@ -98,6 +101,7 @@ const entradaOmni: Constructor = (contexto, modelo) => {
       duration: String(duracion(modelo, contexto)),
       resolution: primeraResolucion(modelo),
       character_ids: [...contexto.personajesOmni],
+      ...(combinar ? { image_urls: contexto.urls } : {}),
     });
   }
   return conProporcion(modelo, {

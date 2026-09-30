@@ -12,6 +12,7 @@ export function coherenciaDe(ajustes: Ajustes, comprobacion: Comprobacion): { mo
     producto_fiel: ajustes.coherenciaProductoFiel,
     angulo_fiel: ajustes.coherenciaAnguloFiel,
     reparto_fiel: ajustes.coherenciaRepartoFiel,
+    lugar_fiel: ajustes.coherenciaLugarFiel,
   };
   const umbrales: Record<Comprobacion, number> = {
     identidad: ajustes.coherenciaUmbralIdentidad,
@@ -22,6 +23,7 @@ export function coherenciaDe(ajustes: Ajustes, comprobacion: Comprobacion): { mo
     producto_fiel: ajustes.coherenciaUmbralProductoFiel,
     angulo_fiel: ajustes.coherenciaUmbralAnguloFiel,
     reparto_fiel: ajustes.coherenciaUmbralRepartoFiel,
+    lugar_fiel: ajustes.coherenciaUmbralLugarFiel,
   };
   return { modo: modos[comprobacion], umbral: umbrales[comprobacion] };
 }

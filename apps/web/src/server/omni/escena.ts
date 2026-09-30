@@ -558,6 +558,12 @@ export async function producirEscenaHablada(
     );
   }
 
+  /**
+   * **Experimental, apagado de fábrica** (Admin › Ajustes): con identidad registrada y lugar, el fotograma aprobado de
+   * la escena —situado en su lugar— viaja junto a los `character_ids`. Sin el ajuste, el lugar va solo descrito.
+   */
+  const { omniLugarCombinado } = await (await import("../ajustes")).leerAjustes();
+  const fotogramaSituado = citaIdentidad && conLugar && omniLugarCombinado ? escena.approvedFrameMediaId : null;
   // El formato principal del proyecto (0.41.0): se comprueba contra el modelo antes de reservar nada.
   const proporcion = proporcionDelEnvio(proporcionFijadaDelProyecto(proyecto.formats), null, modelo);
   const trabajos: FilaTrabajo[] = [...yaEncoladas];
@@ -605,6 +611,7 @@ export async function producirEscenaHablada(
         ...(personajesOmni.length > 0 ? { personajesOmni } : {}),
         // El reparto con el que se encoló: los lados y los turnos que confirmó el usuario, no los de después.
         ...(clip ? { reparto: clip.reparto } : {}),
+        ...(fotogramaSituado ? { fotogramaSituado } : {}),
         // Fotos del producto que viajan con esta escena, ya repartidas contra el tope del modelo.
         ...(conProducto && producto && conProducto.reparto.producto > 0
           ? { referenciasProducto: producto.fotos.slice(0, conProducto.reparto.producto) }
@@ -619,7 +626,7 @@ export async function producirEscenaHablada(
         }),
       },
       // El origen es la primera referencia cuando la hay: es lo que el historial enseña como punto de partida.
-      sourceMediaId: referencias[0]?.id ?? null,
+      sourceMediaId: referencias[0]?.id ?? fotogramaSituado ?? null,
       sceneId: escena.id,
       ...columnasDelLugar(conLugar?.lugar ?? null),
       // Turno del clip en el intercambio: es lo que el montaje (0.32.0) lee para alternar los planos.

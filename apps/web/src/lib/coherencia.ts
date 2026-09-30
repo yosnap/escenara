@@ -29,6 +29,9 @@
  * `reparto_fiel` (0.28.0) mide lo que promete esta versión: que en una escena de **dos personajes** el diálogo se
  * reparta como se pidió —quién habla, en qué orden y que el otro no habla— en lugar de al azar. Nace en sombra por
  * lo mismo que las demás.
+ *
+ * `lugar_fiel` mide lo que prometen los lugares: que el sitio del fotograma sea el de la maestra de la versión que
+ * se usó (estructura, materiales, disposición y luz; no el encuadre). Nace en sombra.
  */
 export const COMPROBACIONES = [
   "identidad",
@@ -39,6 +42,7 @@ export const COMPROBACIONES = [
   "producto_fiel",
   "angulo_fiel",
   "reparto_fiel",
+  "lugar_fiel",
 ] as const;
 export type Comprobacion = (typeof COMPROBACIONES)[number];
 
@@ -140,6 +144,7 @@ export const NOMBRE_COMPROBACION: Record<Comprobacion, string> = {
   producto_fiel: "Es el mismo producto, con la misma etiqueta",
   angulo_fiel: "El guion responde al ángulo elegido",
   reparto_fiel: "El diálogo se repartió como se pidió",
+  lugar_fiel: "Es el mismo lugar que su foto maestra",
 };
 
 export const DESCRIPCION_COMPROBACION: Record<Comprobacion, string> = {
@@ -158,6 +163,8 @@ export const DESCRIPCION_COMPROBACION: Record<Comprobacion, string> = {
     "Antes de generar: si el guion del anuncio responde al ángulo del brief, no mezcla otros ángulos y dice la oferta como se definió. Es texto contra texto: no cuesta ninguna llamada de percepción.",
   reparto_fiel:
     "Después de generar, en una escena de dos personajes: si cada frase la dice quien tenía que decirla, en el orden que se pidió, y si el otro se queda escuchando en lugar de hablar también.",
+  lugar_fiel:
+    "Después de generar, en una escena con lugar: si el sitio del fotograma es el de su foto maestra (paredes, materiales, muebles fijos, disposición y luz), sin mirar el encuadre. No se comprueba si sale una persona real.",
 };
 
 export const NOMBRE_VEREDICTO: Record<VeredictoCoherencia, string> = {

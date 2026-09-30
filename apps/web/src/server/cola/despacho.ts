@@ -37,6 +37,7 @@ import {
   compatibleIdDe,
   dialogoDe,
   esCantoDe,
+  fotogramaSituadoDe,
   personajesOmniDe,
   proporcionPedidaDe,
   referenciasDeLugarDe,
@@ -252,24 +253,23 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
     const callbackVoz = await prepararCallback(fila);
     return { adaptador, clave: credencial.clave, entrada: entradaVoz, ...callbackVoz };
   }
-  /**
-   * Escena hablada de un proyecto en modo `omni` (0.22.0). La identidad y la voz **son** el personaje registrado
-   * en el proveedor, así que no hay ninguna imagen que subir: lo que se envía son los `character_ids` que
-   * quedaron guardados al encolar, nunca los que el personaje tenga registrados ahora. Lo que se paga tiene que
-   * ser lo que el usuario confirmó, y volver a leer el registro podría mandar otra cara.
-   */
-  // La proporción elegida al encolar (0.41.0); si el modelo que la va a recibir no la admite, no se envía.
+  // Escena hablada en modo `omni` (0.22.0): los `character_ids` y el reparto guardados al encolar, nunca los de ahora;
+  // con el ajuste experimental, además el fotograma situado. La proporción es la elegida al encolar (0.41.0).
   const formato = proporcionPedidaDe(fila, modelo);
   if ("error" in formato) throw new ErrorDeMontaje(formato.error);
   const personajesOmni = personajesOmniDe(fila);
   if (personajesOmni.length > 0) {
     const segundosOmni = segundosDe(fila);
-    // El reparto de dos personajes (0.28.0) va como se guardó: los lados y los turnos que confirmó el usuario.
     const reparto = repartoDeEnvioDe(fila);
+    const urlsOmni: string[] = [];
+    for (const m of await mediosVigentes(fotogramaSituadoDe(fila))) {
+      urlsOmni.push(await subirReferencia(adaptador, credencial.clave, m, modelo, h));
+    }
     const entradaOmni = adaptador.montarEntrada(modelo, {
       escena: fila.prompt,
       dialogo: dialogoDe(fila),
-      urls: [],
+      urls: urlsOmni,
+      ...(urlsOmni.length > 0 ? { combinarConImagen: true } : {}),
       personajesOmni,
       ...(reparto ? { reparto } : {}),
       ...(segundosOmni === null ? {} : { segundos: segundosOmni }),
