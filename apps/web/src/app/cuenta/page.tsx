@@ -1,16 +1,19 @@
-import { Stamp } from "lucide-react";
+import { MonitorSmartphone, Stamp } from "lucide-react";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { claseBoton } from "@/components/ui/button";
+import { Aviso } from "@/components/ui/feedback";
 import { TIPOS_EN_USO } from "@/lib/mapa-modelos";
 import { auth } from "@/server/auth/auth";
 import { exigirSesion } from "@/server/auth/sesion";
+import { conSesionReciente } from "@/server/auth/sesion-reciente";
 import { bovedaDisponible } from "@/server/boveda/cifrado";
 import { listarCompatibles } from "@/server/boveda/compatibles";
 import { listarCredenciales } from "@/server/boveda/credenciales";
 import { mapaVista, opcionesDe } from "@/server/mapa/mapa";
 import { CabeceraApp } from "../_app/cabecera-app";
+import { CerrarSesion } from "../_app/cerrar-sesion";
 import { Bloque } from "./_componentes/bloque";
 import { CambiarContrasena } from "./_componentes/cambiar-contrasena";
 import { Compatibles } from "./_componentes/compatibles";
@@ -29,7 +32,8 @@ export default async function PaginaCuenta() {
   const cabeceras = await headers();
   const [passkeys, sesiones, cuentas, credenciales, compatibles] = await Promise.all([
     (await auth()).api.listPasskeys({ headers: cabeceras }),
-    (await auth()).api.listSessions({ headers: cabeceras }),
+    // Listar sesiones exige una sesión reciente: con una antigua se explica en su bloque en lugar de romper la página.
+    conSesionReciente(async () => (await auth()).api.listSessions({ headers: cabeceras })),
     (await auth()).api.listUserAccounts({ headers: cabeceras }),
     listarCredenciales(sesion.user.id),
     listarCompatibles(sesion.user.id),
@@ -74,15 +78,31 @@ export default async function PaginaCuenta() {
             creada: p.createdAt ? new Date(p.createdAt).toISOString() : null,
           }))}
         />
-        <Sesiones
-          actual={sesion.session.id}
-          sesiones={sesiones.map((s) => ({
-            id: s.id,
-            agente: s.userAgent ?? "",
-            ip: s.ipAddress ?? "",
-            creada: new Date(s.createdAt).toISOString(),
-          }))}
-        />
+        {sesiones.antigua ? (
+          <Bloque
+            titulo="Sesiones abiertas"
+            descripcion="Dispositivos con la sesión iniciada. Cierra los que no reconozcas."
+            icono={<MonitorSmartphone />}
+          >
+            <Aviso tono="info">
+              Por seguridad, para ver y cerrar tus sesiones tienes que haber iniciado sesión hace poco (menos de 24
+              horas). Cierra sesión, vuelve a entrar y estarán aquí.
+            </Aviso>
+            <div>
+              <CerrarSesion />
+            </div>
+          </Bloque>
+        ) : (
+          <Sesiones
+            actual={sesion.session.id}
+            sesiones={sesiones.valor.map((s) => ({
+              id: s.id,
+              agente: s.userAgent ?? "",
+              ip: s.ipAddress ?? "",
+              creada: new Date(s.createdAt).toISOString(),
+            }))}
+          />
+        )}
       </main>
     </div>
   );

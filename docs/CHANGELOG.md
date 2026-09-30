@@ -2,6 +2,19 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.42.2] · 2026-09-30
+
+Parche: **«Tu cuenta» ya no se rompe con «Session is not fresh»** cuando tu sesión tiene más de 24 horas. Sin migraciones y
+sin cambios de precio.
+
+### Corregido
+
+- **La página cargaba la lista de sesiones abiertas, y Better Auth solo la entrega a una sesión reciente (menos de
+  24 horas).** Con una más antigua, la página entera fallaba. Ahora «Tu cuenta» carga siempre, y el bloque «Sesiones
+  abiertas» explica que hace falta haber iniciado sesión hace poco, con el botón «Cerrar sesión» para volver a entrar.
+  Cerrar la sesión de otro dispositivo desde ese bloque también da el aviso en vez de romperse (la 0.41.1 solo cubría el
+  cierre, no el listado previo).
+
 ## [0.42.1] · 2026-09-30
 
 Parche: **cada plantilla y cada trend puede enseñar cómo se ve el resultado antes de gastar**, y la plantilla base que se
