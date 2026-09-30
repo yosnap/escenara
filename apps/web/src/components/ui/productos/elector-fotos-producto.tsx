@@ -84,7 +84,7 @@ export function ElectorFotosProducto({
       <p className="text-sm font-medium text-texto" aria-live="polite">
         Se envían {marcadas.length} de {caben} posibles.
       </p>
-      {sinFrontal && <Aviso tono="info">{AVISO_SIN_LA_FRONTAL}</Aviso>}
+      {sinFrontal && <Aviso tono="aviso">{AVISO_SIN_LA_FRONTAL}</Aviso>}
       {onRestablecer && (
         <Boton variante="secundario" tamano="sm" type="button" disabled={deshabilitado} onClick={onRestablecer}>
           Volver a las de por defecto

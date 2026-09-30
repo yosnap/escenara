@@ -2,6 +2,7 @@
 
 import { FileSignature, ShieldOff } from "lucide-react";
 import { useState } from "react";
+import { Alerta } from "@/components/ui/alerta";
 import { Boton } from "@/components/ui/button";
 import { AvisoEstado } from "@/components/ui/feedback";
 import { Campo, EntradaTexto } from "@/components/ui/field";
@@ -143,11 +144,13 @@ export function PanelConsentimiento({
         <div className="flex flex-col gap-3">
           <FormularioConsentimiento valor={nuevo} onCambio={setNuevo} deshabilitado={ocupado} />
           {bloqueosDeConsentimiento(nuevo).length > 0 && (
-            <ul className="flex list-inside list-disc flex-col gap-1 text-texto-suave">
-              {bloqueosDeConsentimiento(nuevo).map((m) => (
-                <li key={m}>{m}</li>
-              ))}
-            </ul>
+            <Alerta
+              tipo="bloqueo"
+              compacta
+              anuncio="ninguno"
+              protege
+              elementos={bloqueosDeConsentimiento(nuevo).map((texto) => ({ texto }))}
+            />
           )}
           <div className="flex flex-wrap gap-3">
             <Boton

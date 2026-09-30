@@ -22,10 +22,13 @@ describe("aviso de requisitos", () => {
   test("título, un botón por requisito y borde de error completo (no lateral)", () => {
     const html = renderToStaticMarkup(<AvisoRequisitos requisitos={REQUISITOS} onIr={() => {}} />);
     expect(html).toContain("Antes de generar, falta:");
-    expect(html.match(/<button/g)?.length).toBe(2);
+    // Un botón por requisito y, con más de uno, «Ir al primero».
+    expect(html.match(/<button/g)?.length).toBe(3);
+    expect(html.match(/Ir al campo/g)?.length).toBe(2);
+    expect(html).toContain("Ir al primero");
     expect(html).toContain("Falta describir la escena.");
-    expect(html).toContain("Ir al campo");
-    expect(html).toContain("border-2 border-error");
+    expect(html).toContain("border-2");
+    expect(html).toMatch(/\bborder-error\b/);
     expect(html).not.toMatch(/\bborder-[lrse](-|\b)/);
   });
 

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { Alerta } from "@/components/ui/alerta";
 import { Boton, claseBoton } from "@/components/ui/button";
 import { Casilla } from "@/components/ui/choice";
 import { Aviso, EstadoVacio } from "@/components/ui/feedback";
@@ -307,11 +308,13 @@ export function VistaVoz({ inicial }: { inicial: VozProyectoVista }) {
             />
           ))}
           {bloqueos.length > 0 && (
-            <ul className="flex list-inside list-disc flex-col gap-1 text-sm text-texto">
-              {bloqueos.map((motivo) => (
-                <li key={motivo}>{motivo}</li>
-              ))}
-            </ul>
+            <Alerta
+              tipo="bloqueo"
+              compacta
+              anuncio="ninguno"
+              protege
+              elementos={bloqueos.map((texto) => ({ texto }))}
+            />
           )}
         </div>
       </Dialogo>

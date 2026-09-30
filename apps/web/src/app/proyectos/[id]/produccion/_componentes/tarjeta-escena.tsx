@@ -125,7 +125,7 @@ export function TarjetaEscena({
       </header>
 
       {escena.cambiadaDesdeLaGeneracion && (
-        <Aviso tono="info">
+        <Aviso tono="aviso">
           Has editado esta escena después de generarla, así que lo que se ve ya no corresponde a lo que dice. Lo
           generado sigue en tu biblioteca: regenera la escena cuando quieras ponerla al día.
         </Aviso>

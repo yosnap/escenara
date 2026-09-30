@@ -152,6 +152,7 @@ export function ElectorDeAngulos({
                 {exigeDeclaracion && (
                   <span className="block font-semibold text-aviso">Afirma algo comprobable: pide declaración.</span>
                 )}
+                {/* alerta-permitida: motivo de un ángulo no elegible, dentro de su tarjeta */}
                 {!elegible && motivo !== "" && <span className="block font-medium text-error">{motivo}</span>}
               </>
             }

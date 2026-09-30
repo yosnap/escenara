@@ -9,6 +9,7 @@ import {
   LARGO_ESTADO_PROVEEDOR,
   type TipoTrabajoCola,
 } from "@/lib/generacion";
+import { Alerta } from "./alerta";
 import { cn } from "./cn";
 import { MascotaChispa } from "./mascota";
 
@@ -105,10 +106,11 @@ export function EsperaTrabajo({
         </p>
       )}
       {activo && cola && !cola.workerActivo && (
-        <p className="text-sm font-medium text-texto">
+        // Ya va dentro de la región viva de la tarjeta: la alerta no se anuncia por su cuenta.
+        <Alerta tipo="aviso" compacta anuncio="ninguno">
           Ahora mismo no hay ningún proceso atendiendo la cola, así que el trabajo espera. Avisa a quien administra esta
           instalación: nada se ha perdido y no se enviará dos veces.
-        </p>
+        </Alerta>
       )}
       {activo && (
         <p className="text-sm text-texto-suave">

@@ -110,7 +110,7 @@ export function TarjetaRevision({
           </section>
 
           {faltaRevisionHumana(escena) && (
-            <Aviso tono="info">
+            <Aviso tono="aviso">
               Falta tu revisión. Las comprobaciones técnicas no sustituyen a mirar el clip: miden el archivo, no si el
               personaje sigue siendo el mismo.
             </Aviso>

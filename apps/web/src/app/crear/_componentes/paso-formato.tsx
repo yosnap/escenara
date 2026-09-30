@@ -56,7 +56,7 @@ export function PasoFormato({
               Pidiendo el coste con la duración de este trend…
             </p>
           )}
-          {avisoModelo && <Aviso tono="info">{avisoModelo}</Aviso>}
+          {avisoModelo && <Aviso tono="aviso">{avisoModelo}</Aviso>}
           {trend && <VistaPreviaTrend trend={trend} />}
         </>
       ) : (

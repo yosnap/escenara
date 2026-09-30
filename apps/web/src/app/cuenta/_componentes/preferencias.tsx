@@ -3,6 +3,7 @@
 import { SlidersHorizontal } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Aviso } from "@/components/ui/feedback";
 import { Selector } from "@/components/ui/select";
 import { SelectorTema } from "@/components/ui/theme-toggle";
 import { authCliente } from "@/lib/auth-cliente";
@@ -45,11 +46,7 @@ export function Preferencias({ idioma }: { idioma: Idioma }) {
           <p className="text-sm text-texto-suave">
             De momento la interfaz está en español; la traducción llegará pronto.
           </p>
-          {error && (
-            <p role="alert" className="text-sm font-medium text-error">
-              {error}
-            </p>
-          )}
+          {error && <Aviso tono="error">{error}</Aviso>}
         </div>
       </div>
     </Bloque>

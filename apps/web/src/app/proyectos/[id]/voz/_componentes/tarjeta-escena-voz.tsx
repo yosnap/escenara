@@ -59,17 +59,17 @@ export function TarjetaEscenaVoz({
         <Aviso tono="error">{escena.invalidacion || "Lo generado ya no corresponde a la voz de este proyecto."}</Aviso>
       )}
       {/* Una escena en silencio no se subtitula: sería texto de algo que no se oye. */}
-      {escena.sinAudio && <Aviso tono="info">{SIN_SUBTITULOS_AUDIO_QUITADO}</Aviso>}
+      {escena.sinAudio && <Aviso tono="aviso">{SIN_SUBTITULOS_AUDIO_QUITADO}</Aviso>}
       {/* El clip ya producido dice el diálogo en la imagen: no es una invalidación, pero hay que reproducirlo. */}
       {escena.clipHablado && (
-        <Aviso tono="info">
+        <Aviso tono="aviso">
           El clip de esta escena se produjo con el diálogo hablado dentro. Quítale el audio del clip en el paso de
           escenas del proyecto (no cuesta nada) o vuelve a producirla en Producción para que salga sin diálogo: si no,
           se oirán dos voces diciendo lo mismo.
         </Aviso>
       )}
       {/* Salió bien, pero con el otro proveedor: se dice en qué cuenta se ha gastado y por qué. */}
-      {escena.avisoProveedor && !escena.trabajoEnMarcha && <Aviso tono="info">{escena.avisoProveedor}</Aviso>}
+      {escena.avisoProveedor && !escena.trabajoEnMarcha && <Aviso tono="aviso">{escena.avisoProveedor}</Aviso>}
       {/* El fallo es **de la voz**, no de la escena: su clip puede estar perfectamente producido. */}
       {escena.fallo && !escena.trabajoEnMarcha && (
         <Aviso tono="error">La última vez que se generó la voz de esta escena falló. {escena.fallo}</Aviso>

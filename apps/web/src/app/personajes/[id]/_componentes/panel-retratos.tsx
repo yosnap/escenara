@@ -1,7 +1,8 @@
 "use client";
 
 import { Check, Sparkles } from "lucide-react";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
+import { Alerta } from "@/components/ui/alerta";
 import { Boton } from "@/components/ui/button";
 import { Casilla } from "@/components/ui/choice";
 import { PanelAntesDeGenerar } from "@/components/ui/controles";
@@ -19,6 +20,7 @@ import {
 import { Selector } from "@/components/ui/select";
 import { bloqueosDeControles, type EvaluacionVista, firmaDeAvisos } from "@/lib/controles";
 import { creditosAConfirmar, type Estimacion, formatearCreditos } from "@/lib/generacion";
+import { problemasDeMotivos } from "@/lib/llevar-al-problema";
 import type { Medio } from "@/lib/media/tipos";
 import { RETRATOS_CANDIDATOS } from "@/lib/omni";
 import type { PersonajeVista } from "@/lib/personajes";
@@ -27,6 +29,10 @@ const OPCIONES_CANTIDAD = Array.from({ length: RETRATOS_CANDIDATOS }, (_, i) => 
   value: String(i + 1),
   label: String(i + 1),
 }));
+
+/** Motivos que corresponden a una casilla: con ellos la alerta lleva a la casilla pendiente. */
+const FALTA_DERECHOS = "Falta confirmar que puedes usar lo que se genere.";
+const FALTA_AVISO_GASTO = "Falta aceptar el aviso de gasto.";
 
 /**
  * Retratos de un personaje **inventado** (0.22.0): se generan de uno a cuatro y se elige uno.
@@ -38,6 +44,7 @@ const OPCIONES_CANTIDAD = Array.from({ length: RETRATOS_CANDIDATOS }, (_, i) => 
  * El retrato elegido se guarda **marcado como vista generada**, nunca como foto: no lo es, y la ficha lo dice
  * siempre.
  */
+
 export function PanelRetratos({
   personaje,
   medios,
@@ -65,11 +72,17 @@ export function PanelRetratos({
   const total = porRetrato === null ? null : porRetrato * cantidad;
   const firma = `${estimacion?.sello ?? ""}|${porRetrato}|${cantidad}|${firmaDeAvisos(confirmados)}`;
   const bloqueos = [
-    ...(derechos ? [] : ["Falta confirmar que puedes usar lo que se genere."]),
-    ...(estimacion?.superaUmbral && !avisoAceptado ? ["Falta aceptar el aviso de gasto."] : []),
+    ...(derechos ? [] : [FALTA_DERECHOS]),
+    ...(estimacion?.superaUmbral && !avisoAceptado ? [FALTA_AVISO_GASTO] : []),
     ...(estimacion === null || estimacion.alcanza ? [] : ["Tu saldo del proveedor no llega para estos retratos."]),
     ...(controles ? bloqueosDeControles(controles, confirmados) : []),
   ];
+  // Cada casilla pendiente lleva a su casilla; el resto de motivos se lee, sin sitio al que llevar.
+  const idCasilla = useId();
+  const problemas = problemasDeMotivos(bloqueos, {
+    [FALTA_DERECHOS]: `${idCasilla}-derechos`,
+    [FALTA_AVISO_GASTO]: `${idCasilla}-aviso-gasto`,
+  });
 
   /** Pide el coste al abrir el panel de gasto: ver la ficha no tiene que consultar el saldo del proveedor. */
   const preparar = async () => {
@@ -259,6 +272,7 @@ export function PanelRetratos({
             <Casilla
               etiqueta="Puedo usar lo que se genere con esta descripción"
               marcada={derechos}
+              requisito={`${idCasilla}-derechos`}
               onCambio={setDerechos}
               deshabilitado={ocupado}
             />
@@ -266,6 +280,7 @@ export function PanelRetratos({
               <Casilla
                 etiqueta={`Sí, quiero gastar ${total === null ? "" : formatearCreditos(total)}`}
                 marcada={avisoAceptado}
+                requisito={`${idCasilla}-aviso-gasto`}
                 onCambio={setAvisoAceptado}
                 deshabilitado={ocupado}
               />
@@ -287,13 +302,7 @@ export function PanelRetratos({
 
       {estimacion !== null && (
         <>
-          {bloqueos.length > 0 && (
-            <ul className="flex flex-col gap-1 text-sm text-texto-suave">
-              {bloqueos.map((motivo) => (
-                <li key={motivo}>{motivo}</li>
-              ))}
-            </ul>
-          )}
+          {bloqueos.length > 0 && <Alerta tipo="bloqueo" compacta anuncio="ninguno" protege elementos={problemas} />}
           <Boton
             variante="chispa"
             className="self-start"

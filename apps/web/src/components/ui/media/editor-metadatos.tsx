@@ -5,6 +5,7 @@ import { type FormEvent, useState } from "react";
 import { ETIQUETA_TIPO, formatearDuracion, formatearTamano } from "@/lib/media/reglas";
 import type { Medio } from "@/lib/media/tipos";
 import { Boton } from "../button";
+import { Aviso } from "../feedback";
 import { Campo, EntradaTexto } from "../field";
 import { Dialogo } from "../overlay";
 import { guardarMetadatos } from "./api-medios";
@@ -101,11 +102,7 @@ function Formulario({
         <Campo etiqueta="Texto alternativo (inglés)">
           {(p) => <EntradaTexto {...p} value={altEn} maxLength={500} onChange={(e) => setAltEn(e.target.value)} />}
         </Campo>
-        {error && (
-          <p role="alert" className="font-medium text-error">
-            {error}
-          </p>
-        )}
+        {error && <Aviso tono="error">{error}</Aviso>}
         <div className="mt-auto flex justify-end gap-3">
           <Boton variante="fantasma" onClick={onCerrar}>
             Cancelar

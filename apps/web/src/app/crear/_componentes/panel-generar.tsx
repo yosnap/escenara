@@ -2,6 +2,7 @@
 
 import { Sparkles } from "lucide-react";
 import { useRef, useState } from "react";
+import { Alerta } from "@/components/ui/alerta";
 import { Boton } from "@/components/ui/button";
 import { Casilla } from "@/components/ui/choice";
 import { PanelCoste } from "@/components/ui/coste";
@@ -118,13 +119,19 @@ export function PanelGenerar({
     <PanelCoste
       estimacion={estimacion}
       aviso={
-        impedimentos.length > 0 ? (
-          <ul aria-hidden={avisoEnBloque || undefined} className="flex list-inside list-disc flex-col gap-1">
-            {impedimentos.map((requisito) => (
-              <li key={`${requisito.id}|${requisito.texto}`}>{requisito.texto}</li>
-            ))}
-          </ul>
-        ) : undefined
+        impedimentos.length === 0 ? undefined : avisoEnBloque ? (
+          // El bloque de arriba ya lo dice y lleva a cada campo: aquí solo se ve, sin botones ni segundo anuncio.
+          <div aria-hidden>
+            <Alerta
+              tipo="bloqueo"
+              compacta
+              anuncio="ninguno"
+              elementos={impedimentos.map((r) => ({ texto: r.texto }))}
+            />
+          </div>
+        ) : (
+          <Alerta tipo="bloqueo" compacta anuncio="ninguno" protege elementos={impedimentos} onIr={onIntento} />
+        )
       }
     >
       <Casilla

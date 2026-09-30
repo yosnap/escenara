@@ -5,6 +5,7 @@ import Link from "next/link";
 import { type FormEvent, useState } from "react";
 import { Boton } from "@/components/ui/button";
 import { TarjetaCuenta } from "@/components/ui/cuenta";
+import { Aviso } from "@/components/ui/feedback";
 import { Campo, EntradaTexto } from "@/components/ui/field";
 import { authCliente } from "@/lib/auth-cliente";
 import { mensajeError } from "@/lib/errores-auth";
@@ -49,15 +50,9 @@ export function ReenviarVerificacion({ emailInicial }: { emailInicial: string })
             <EntradaTexto {...p} type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
           )}
         </Campo>
-        {error && (
-          <p role="alert" className="text-sm font-medium text-error">
-            {error}
-          </p>
-        )}
+        {error && <Aviso tono="error">{error}</Aviso>}
         {estado === "enviado" && (
-          <p role="status" className="text-sm font-medium text-correcto">
-            Si la cuenta existe y está pendiente, te hemos enviado un enlace nuevo.
-          </p>
+          <Aviso tono="correcto">Si la cuenta existe y está pendiente, te hemos enviado un enlace nuevo.</Aviso>
         )}
         <Boton type="submit" variante="secundario" cargando={estado === "enviando"}>
           Reenviar el enlace

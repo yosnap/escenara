@@ -68,10 +68,10 @@
   background-image: var(--gradient-atardecer);
 }
 
-/* Campo al que se acaba de llegar desde un aviso de requisitos: aro fijo que se ve sin animación; el latido solo
-   corre si la persona no ha pedido reducir el movimiento. */
+/* Bloque al que se acaba de llegar desde una alerta: aro de marca completo (nunca un borde lateral) que se ve sin
+   animación; el latido solo corre si la persona no ha pedido reducir el movimiento. */
 [data-resaltado] {
-  outline: 3px solid var(--color-error);
+  outline: 3px solid var(--color-acento);
   outline-offset: 4px;
   border-radius: var(--radius-control);
 }
@@ -83,6 +83,16 @@
 @keyframes latido-requisito {
   50% {
     outline-offset: 9px;
+  }
+}
+/* Flecha que señala el bloque: rebota hacia él. Con «reducir movimiento» no se aplica (clase motion-safe). */
+@keyframes rebote-flecha {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(8px);
   }
 }
 

@@ -198,6 +198,7 @@ function Tarjeta({
           <p className="font-mono text-sm text-texto-suave">{proveedor.urlBase}</p>
         </div>
         <span
+          // alerta-permitida: insignia de validez de un modelo
           className={cn(
             "inline-flex items-center gap-2 rounded-full border-2 px-3 py-1 text-sm font-bold [&>svg]:size-4",
             valido ? "border-correcto/45 text-correcto" : "border-error/45 text-error",

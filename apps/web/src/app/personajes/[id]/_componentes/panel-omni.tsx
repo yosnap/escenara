@@ -2,6 +2,7 @@
 
 import { BadgeCheck, RefreshCw } from "lucide-react";
 import { useState } from "react";
+import { Alerta } from "@/components/ui/alerta";
 import { Boton } from "@/components/ui/button";
 import { Aviso } from "@/components/ui/feedback";
 import { registrarEnOmni } from "@/components/ui/personajes/api-personajes";
@@ -123,9 +124,9 @@ export function PanelOmni({
             )}
           </div>
           {personaje.impedimentos.length > 0 && (
-            <p className="text-sm text-texto-suave">
+            <Alerta tipo="bloqueo" compacta anuncio="ninguno">
               Antes hay que arreglar lo que impide generar con él: {personaje.impedimentos.join(" ")}
-            </p>
+            </Alerta>
           )}
         </>
       )}

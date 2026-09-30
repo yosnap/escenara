@@ -4,6 +4,7 @@ import { Laptop, LogOut, MonitorSmartphone, Smartphone } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Boton } from "@/components/ui/button";
+import { Aviso } from "@/components/ui/feedback";
 import { authCliente } from "@/lib/auth-cliente";
 import { mensajeError } from "@/lib/errores-auth";
 import { cerrarSesionDispositivo } from "../acciones";
@@ -119,11 +120,7 @@ export function Sesiones({ actual, sesiones }: { actual: string; sesiones: Sesio
           Cerrar las demás sesiones
         </Boton>
       )}
-      {error && (
-        <p role="alert" className="text-sm font-medium text-error">
-          {error}
-        </p>
-      )}
+      {error && <Aviso tono="error">{error}</Aviso>}
     </Bloque>
   );
 }

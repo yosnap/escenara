@@ -3,6 +3,7 @@
 import { RefreshCw, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { Alerta } from "@/components/ui/alerta";
 import { Boton, claseBoton } from "@/components/ui/button";
 import { Aviso, EstadoVacio } from "@/components/ui/feedback";
 import { MiniaturaMedio } from "@/components/ui/media/miniatura-medio";
@@ -70,7 +71,7 @@ export function ListaTrabajos({ iniciales, cola }: { iniciales: TrabajoVista[]; 
     <div className="flex flex-col gap-3">
       {error && <Aviso tono="error">{error}</Aviso>}
       {!cola.workerActivo && (cola.enCola > 0 || cola.enMarcha > 0) && (
-        <Aviso tono="info">
+        <Aviso tono="aviso">
           Tienes trabajos esperando y ahora mismo no hay ningún proceso atendiendo la cola. Nada se ha perdido y nada se
           enviará dos veces: avisa a quien administra esta instalación.
         </Aviso>
@@ -113,18 +114,23 @@ export function ListaTrabajos({ iniciales, cola }: { iniciales: TrabajoVista[]; 
               {trabajo.motivoFallo && !(causaConocida(trabajo.causaFallo) && trabajo.error) && (
                 <p className="text-sm text-texto-suave">{etiquetaDelFallo(trabajo.motivoFallo, trabajo.causaFallo)}.</p>
               )}
-              {trabajo.error && <p className="text-sm font-medium text-texto">{trabajo.error}</p>}
+              {/* Es el historial: lo que ya estaba no se anuncia al abrirlo. */}
+              {trabajo.error && (
+                <Alerta tipo="error" compacta anuncio="ninguno">
+                  {trabajo.error}
+                </Alerta>
+              )}
               {trabajo.excesoCreditos !== null && trabajo.excesoCreditos > 0 && (
-                <p className="text-sm font-medium text-texto">
+                <Alerta tipo="aviso" compacta anuncio="ninguno" protege>
                   El proveedor cobró {formatearCreditos(trabajo.excesoCreditos)} por encima del límite que autorizaste.
                   Se ha registrado el gasto real y quien administra esta instalación también lo ve.
-                </p>
+                </Alerta>
               )}
               {trabajo.enRevision && (
-                <p className="text-sm font-medium text-texto">
+                <Alerta tipo="aviso" compacta anuncio="ninguno" protege>
                   Este trabajo está en revisión: su reserva de presupuesto sigue apartada hasta que se sepa si el
                   proveedor lo cobró. No se reenviará.
-                </p>
+                </Alerta>
               )}
               {trabajo.estado === "esperando_limite" && <LimiteDeGasto trabajo={trabajo} onAutorizado={reemplazar} />}
               {trabajo.taskId && trabajo.estado === "desconocido" && (

@@ -72,6 +72,7 @@ function BotonPreset({
         {bloqueado && <Ban className="size-4 shrink-0 text-error" aria-hidden />}
       </span>
       <span className={cn("text-sm", elegido ? "text-[#182032]/80" : "text-texto-suave")}>{preset.descripcion}</span>
+      {/* alerta-permitida: motivo de un preset no elegible, dentro de su tarjeta */}
       {bloqueado && <span className="text-sm font-medium text-error">{motivo}</span>}
       {!preset.deLaInstalacion && (
         <span className={cn("text-xs font-semibold", elegido ? "text-[#182032]/70" : "text-acento")}>Tuyo</span>

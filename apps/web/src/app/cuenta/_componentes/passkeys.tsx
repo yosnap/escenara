@@ -4,6 +4,7 @@ import { Fingerprint, KeyRound, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { Boton, BotonIcono } from "@/components/ui/button";
+import { Aviso } from "@/components/ui/feedback";
 import { Campo, EntradaTexto } from "@/components/ui/field";
 import { authCliente } from "@/lib/auth-cliente";
 import { mensajeError } from "@/lib/errores-auth";
@@ -78,11 +79,7 @@ export function Passkeys({ passkeys }: { passkeys: PasskeyVista[] }) {
           Añadir passkey
         </Boton>
       </form>
-      {error && (
-        <p role="alert" className="text-sm font-medium text-error">
-          {error}
-        </p>
-      )}
+      {error && <Aviso tono="error">{error}</Aviso>}
     </Bloque>
   );
 }

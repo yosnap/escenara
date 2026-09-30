@@ -409,14 +409,7 @@ export function FormularioAjustes({
         <Boton type="submit" cargando={guardando}>
           Guardar ajustes
         </Boton>
-        {resultado && (
-          <span
-            role={resultado.ok ? "status" : "alert"}
-            className={resultado.ok ? "font-medium text-correcto" : "font-medium text-error"}
-          >
-            {resultado.texto}
-          </span>
-        )}
+        {resultado && <Aviso tono={resultado.ok ? "correcto" : "error"}>{resultado.texto}</Aviso>}
       </div>
     </form>
   );

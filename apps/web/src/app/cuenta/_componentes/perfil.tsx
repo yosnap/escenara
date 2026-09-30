@@ -4,6 +4,7 @@ import { BadgeCheck, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { Boton } from "@/components/ui/button";
+import { Aviso } from "@/components/ui/feedback";
 import { Campo, EntradaTexto } from "@/components/ui/field";
 import { authCliente } from "@/lib/auth-cliente";
 import { mensajeError } from "@/lib/errores-auth";
@@ -64,16 +65,8 @@ export function Perfil({ nombre, email, verificado }: { nombre: string; email: s
           <Boton type="submit" cargando={estado === "guardando"} disabled={valor.trim() === nombre}>
             Guardar
           </Boton>
-          {estado === "guardado" && (
-            <span role="status" className="text-sm font-medium text-correcto">
-              Guardado
-            </span>
-          )}
-          {error && (
-            <span role="alert" className="text-sm font-medium text-error">
-              {error}
-            </span>
-          )}
+          {estado === "guardado" && <Aviso tono="correcto">Guardado</Aviso>}
+          {error && <Aviso tono="error">{error}</Aviso>}
         </div>
       </form>
     </Bloque>

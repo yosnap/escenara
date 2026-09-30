@@ -1,5 +1,6 @@
 "use client";
 
+import { Alerta } from "@/components/ui/alerta";
 import { ProgresoEtapas } from "@/components/ui/feedback";
 import { MascotaChispa } from "@/components/ui/mascota";
 import { InsigniaEstado } from "@/components/ui/trabajo";
@@ -39,7 +40,12 @@ export function EsperaEscena({ trabajo, etiqueta }: { trabajo: TrabajoDeEscena; 
           El proveedor informa «<span className="font-mono">{crudo}</span>».
         </p>
       )}
-      {trabajo.error && <p className="text-sm font-medium text-texto">{trabajo.error}</p>}
+      {/* La tarjeta ya es una región viva: la alerta no se anuncia por su cuenta. */}
+      {trabajo.error && (
+        <Alerta tipo="error" compacta anuncio="ninguno">
+          {trabajo.error}
+        </Alerta>
+      )}
     </div>
   );
 }

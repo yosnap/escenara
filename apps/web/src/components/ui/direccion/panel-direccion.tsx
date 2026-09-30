@@ -1,6 +1,7 @@
 "use client";
 
-import { Clapperboard, Frame, ImagePlus, Move3d, PenLine, Timer, Video } from "lucide-react";
+import { Clapperboard, Frame, ImagePlus, Lock, Move3d, PenLine, Timer, Video } from "lucide-react";
+import { useId } from "react";
 import {
   ACENTOS,
   AVISO_MODO_EXPERTO,
@@ -33,6 +34,7 @@ import type { CupoDeFotos } from "@/lib/fotos-del-producto";
 import type { ProductoElegido } from "@/lib/productos";
 import { DIRECCION_VOCAL_MAXIMA } from "@/lib/proyectos";
 import { type CategoriaDecidible, sinExpertoConTrend } from "@/lib/trends";
+import { Alerta } from "../alerta";
 import { Casilla } from "../choice";
 import { Aviso } from "../feedback";
 import { AreaTexto, Campo, EntradaTexto } from "../field";
@@ -186,6 +188,7 @@ export function PanelDireccion({
   deshabilitado?: boolean;
   onCambio: <C extends keyof DireccionElegidaConAcento>(campo: C, valor: DireccionElegidaConAcento[C]) => void;
 }) {
+  const idSinExperto = useId();
   if (!opciones) return null;
   const libre = (categoria: CategoriaDecidible) => !trend?.decide.includes(categoria);
   const habla = formatoHabla(direccion.formatoClip) && (trend?.permiteHabla ?? true);
@@ -470,11 +473,18 @@ export function PanelDireccion({
 
         <Casilla
           etiqueta="Modo experto: escribo yo la descripción entera"
-          descripcion={trend ? `${AYUDA_MODO_EXPERTO} ${sinExpertoConTrend(trend.nombre)}` : AYUDA_MODO_EXPERTO}
+          descripcion={AYUDA_MODO_EXPERTO}
           marcada={experto}
           deshabilitado={deshabilitado || trend !== null}
+          // Con un trend, el motivo de que esté desactivada forma parte de su descripción accesible.
+          describidaPor={trend ? idSinExperto : undefined}
           onCambio={(v) => onCambio("modoExperto", v)}
         />
+        {trend && (
+          <Alerta tipo="info" compacta anuncio="ninguno" icono={<Lock />} id={idSinExperto}>
+            {sinExpertoConTrend(trend.nombre)}
+          </Alerta>
+        )}
 
         {experto && (
           <>
@@ -493,7 +503,7 @@ export function PanelDireccion({
                 />
               )}
             </Campo>
-            <Aviso tono="info">{AVISO_MODO_EXPERTO}</Aviso>
+            <Aviso tono="aviso">{AVISO_MODO_EXPERTO}</Aviso>
           </>
         )}
       </div>

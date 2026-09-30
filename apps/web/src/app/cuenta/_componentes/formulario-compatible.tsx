@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Boton, BotonIcono } from "@/components/ui/button";
 import { Casilla } from "@/components/ui/choice";
 import { EntradaContrasena } from "@/components/ui/entrada-contrasena";
+import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo, EntradaTexto } from "@/components/ui/field";
 import { type ElementoOrdenable, ListaOrdenable } from "@/components/ui/lista-ordenable";
 import { SelectorMultiple } from "@/components/ui/multi-select";
@@ -181,7 +182,7 @@ export function FormularioCompatible({
             ? "Escribe la dirección y pega la clave para pedirle al servicio su lista de modelos (no consume cuota)."
             : `Los de texto se usan para traducir y escribir el guion, los de voz para leer diálogos y los de transcripción para los subtítulos; cada uno aparece en su apartado del mapa. Dentro de cada clase se prueban en el orden de abajo: arrástralos para cambiarlo. Como mucho ${MODELOS_MAXIMOS}.`}
         </p>
-        {errorCarga && <p className="text-sm font-medium text-error">{errorCarga}</p>}
+        {errorCarga && <Aviso tono="error">{errorCarga}</Aviso>}
 
         {aMano ? (
           <Campo etiqueta="Modelos, uno por línea" ayuda="Para un modelo que el servicio atiende pero no lista.">

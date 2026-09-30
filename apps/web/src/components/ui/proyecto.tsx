@@ -13,6 +13,7 @@ import {
   type PlanVista,
   type TipoAfirmacion,
 } from "@/lib/proyectos";
+import { Alerta } from "./alerta";
 import { cn } from "./cn";
 
 /**
@@ -133,6 +134,7 @@ export function TablaPlan({ plan, escenas }: { plan: PlanVista; escenas: readonl
                 <td className="py-3 pr-3 font-mono text-texto-suave">{fila.segundos} s</td>
                 <td className="py-3 pr-3 text-texto">
                   <span className="font-mono">{fila.estimacion}</span>
+                  {/* alerta-permitida: motivo de una fila de la tabla del plan */}
                   {fila.motivo !== "" && <span className="mt-1 block text-sm text-error">{fila.motivo}</span>}
                 </td>
                 <td className="py-3">
@@ -184,14 +186,13 @@ export function TablaPlan({ plan, escenas }: { plan: PlanVista; escenas: readonl
         </p>
       )}
       {plan.impedimentos.length > 0 && (
-        <div>
-          <p className="font-semibold text-texto">Para poder aprobar el plan falta esto:</p>
-          <ul className="mt-1 flex list-disc flex-col gap-1 pl-5 text-texto-suave">
-            {plan.impedimentos.map((impedimento) => (
-              <li key={impedimento}>{impedimento}</li>
-            ))}
-          </ul>
-        </div>
+        <Alerta
+          tipo="bloqueo"
+          titulo="Para poder aprobar el plan falta esto:"
+          anuncio="ninguno"
+          protege
+          elementos={plan.impedimentos.map((texto) => ({ texto }))}
+        />
       )}
       {plan.creditosAsistente > 0 && (
         <p className="text-sm text-texto-suave">

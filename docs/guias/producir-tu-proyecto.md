@@ -14,8 +14,11 @@ Entras desde la página del proyecto, con el botón **«Producir las escenas»**
    personaje con consentimiento vigente y suficientes referencias.
 3. **Tu clave del proveedor** en «Tu cuenta». Se paga con tu clave, siempre.
 
-Si falta algo, la pantalla lo enumera arriba con la acción concreta. No hay botón que se pueda pulsar «a ver si
-suena»: lo que no se puede hacer aparece deshabilitado y con su motivo.
+Si falta algo, la pantalla lo enumera arriba en una **alerta de bloqueo** («Para poder producir falta esto:») con
+la acción concreta. No hay botón que se pueda pulsar «a ver si suena»: lo que no se puede hacer aparece
+deshabilitado y con su motivo. En la confirmación del gasto, la alerta de debajo de las casillas dice cuáles faltan
+(el derecho de uso, la revisión de las fotos del personaje, la marca o el aviso de gasto alto) y, al pulsar una, te
+lleva a esa casilla y la señala con una flecha.
 
 ## Cómo se produce una escena
 

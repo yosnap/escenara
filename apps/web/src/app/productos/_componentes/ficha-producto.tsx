@@ -170,7 +170,7 @@ export function FichaProducto({ inicial }: { inicial: ProductoVista }) {
         </p>
 
         {producto.fotos.length === 0 ? (
-          <Aviso tono="info">{PRODUCTO_SIN_FOTOS}</Aviso>
+          <Aviso tono="aviso">{PRODUCTO_SIN_FOTOS}</Aviso>
         ) : (
           <ul className="grid gap-4 sm:grid-cols-2">
             {producto.fotos.map((foto) => (

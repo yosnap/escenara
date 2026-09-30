@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
+import { Alerta } from "@/components/ui/alerta";
 import { claseBoton } from "@/components/ui/button";
 import { PanelAntesDeGenerar } from "@/components/ui/controles";
 import { Aviso, EstadoVacio } from "@/components/ui/feedback";
@@ -135,14 +136,13 @@ export function VistaProduccion({ inicial }: { inicial: ProduccionVista }) {
       {estado.error && <Aviso tono="error">{estado.error}</Aviso>}
 
       {produccion.impedimentos.length > 0 && (
-        <section className="rounded-tarjeta border-2 border-borde bg-superficie p-4">
-          <p className="font-semibold text-texto">Para poder producir falta esto:</p>
-          <ul className="mt-1 flex list-disc flex-col gap-1 pl-5 text-texto-suave">
-            {produccion.impedimentos.map((impedimento) => (
-              <li key={impedimento}>{impedimento}</li>
-            ))}
-          </ul>
-        </section>
+        <Alerta
+          tipo="bloqueo"
+          titulo="Para poder producir falta esto:"
+          anuncio="ninguno"
+          protege
+          elementos={produccion.impedimentos.map((texto) => ({ texto }))}
+        />
       )}
 
       {hayAvisos && (

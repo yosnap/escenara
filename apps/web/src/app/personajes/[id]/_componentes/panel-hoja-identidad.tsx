@@ -1,7 +1,8 @@
 "use client";
 
 import { Grid3x3, RefreshCw, Trash2 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
+import { Alerta } from "@/components/ui/alerta";
 import { Boton } from "@/components/ui/button";
 import { Casilla } from "@/components/ui/choice";
 import { PanelAntesDeGenerar } from "@/components/ui/controles";
@@ -17,8 +18,14 @@ import {
 import { bloqueosDeControles, type EvaluacionVista, firmaDeAvisos } from "@/lib/controles";
 import { NOMBRE_ESTADO_HOJA_IDENTIDAD, RETRATOS_HOJA_IDENTIDAD } from "@/lib/direccion";
 import { creditosAConfirmar, type Estimacion, formatearCreditos } from "@/lib/generacion";
+import { problemasDeMotivos } from "@/lib/llevar-al-problema";
 import type { Medio } from "@/lib/media/tipos";
 import { AVISO_SIN_TERCEROS, type PersonajeVista } from "@/lib/personajes";
+
+/** Motivos que corresponden a una casilla: con ellos la alerta lleva a la casilla pendiente. */
+const FALTA_DERECHOS = "Falta confirmar que puedes usar lo que se genere.";
+const FALTA_SIN_TERCEROS = "Falta confirmar que en sus fotos no aparece nadie más.";
+const FALTA_AVISO_GASTO = "Falta aceptar el aviso de gasto.";
 
 /**
  * **Hoja de identidad 3×3** de un personaje (0.25.0): una imagen con nueve retratos suyos desde ángulos y
@@ -31,6 +38,7 @@ import { AVISO_SIN_TERCEROS, type PersonajeVista } from "@/lib/personajes";
  * su dueño lo diga. Puede probarla en la mitad de sus escenas (interruptor de la pestaña «Ficha»), hacerla la
  * referencia por defecto o descartarla.
  */
+
 export function PanelHojaIdentidad({
   personaje,
   hoja,
@@ -55,12 +63,19 @@ export function PanelHojaIdentidad({
   const creditos = estimacion ? creditosAConfirmar(estimacion) : null;
   const firma = `${estimacion?.sello ?? ""}|${creditos}|${firmaDeAvisos(confirmados)}`;
   const bloqueos = [
-    ...(derechos ? [] : ["Falta confirmar que puedes usar lo que se genere."]),
-    ...(sinTerceros ? [] : ["Falta confirmar que en sus fotos no aparece nadie más."]),
-    ...(estimacion?.superaUmbral && !avisoAceptado ? ["Falta aceptar el aviso de gasto."] : []),
+    ...(derechos ? [] : [FALTA_DERECHOS]),
+    ...(sinTerceros ? [] : [FALTA_SIN_TERCEROS]),
+    ...(estimacion?.superaUmbral && !avisoAceptado ? [FALTA_AVISO_GASTO] : []),
     ...(estimacion === null || estimacion.alcanza ? [] : ["Tu saldo del proveedor no llega para esta hoja."]),
     ...(controles ? bloqueosDeControles(controles, confirmados) : []),
   ];
+  // Cada casilla pendiente lleva a su casilla; el resto de motivos se lee, sin sitio al que llevar.
+  const idCasilla = useId();
+  const problemas = problemasDeMotivos(bloqueos, {
+    [FALTA_DERECHOS]: `${idCasilla}-derechos`,
+    [FALTA_SIN_TERCEROS]: `${idCasilla}-sin-terceros`,
+    [FALTA_AVISO_GASTO]: `${idCasilla}-aviso-gasto`,
+  });
 
   /** El coste se pide **al abrir** el panel, no al cargar la ficha: ver un personaje no consulta saldos. */
   const preparar = async () => {
@@ -166,10 +181,10 @@ export function PanelHojaIdentidad({
 
       {/* Generar exige poder generar: consentimiento vigente y fotos suficientes. Lo dice el motor, no esto. */}
       {!personaje.puedeGenerar && (
-        <Aviso tono="info">
+        <Alerta tipo="bloqueo" compacta anuncio="estado">
           Este personaje todavía no puede generar, así que tampoco su hoja.{" "}
           {personaje.impedimentos.join(" ") || "Revisa su consentimiento y sus fotos."}
-        </Aviso>
+        </Alerta>
       )}
 
       {personaje.puedeGenerar &&
@@ -193,6 +208,7 @@ export function PanelHojaIdentidad({
               <Casilla
                 etiqueta="Puedo usar lo que se genere con las fotos de este personaje"
                 marcada={derechos}
+                requisito={`${idCasilla}-derechos`}
                 onCambio={setDerechos}
                 deshabilitado={ocupado}
               />
@@ -202,6 +218,7 @@ export function PanelHojaIdentidad({
                 etiqueta="En estas fotos no aparece ninguna otra persona ni ningún menor"
                 descripcion={AVISO_SIN_TERCEROS}
                 marcada={sinTerceros}
+                requisito={`${idCasilla}-sin-terceros`}
                 onCambio={setSinTerceros}
                 deshabilitado={ocupado}
               />
@@ -209,6 +226,7 @@ export function PanelHojaIdentidad({
                 <Casilla
                   etiqueta={`Sí, quiero gastar ${creditos === null ? "" : formatearCreditos(creditos)}`}
                   marcada={avisoAceptado}
+                  requisito={`${idCasilla}-aviso-gasto`}
                   onCambio={setAvisoAceptado}
                   deshabilitado={ocupado}
                 />
@@ -230,11 +248,7 @@ export function PanelHojaIdentidad({
 
       {estimacion !== null && (
         <div className="flex flex-col gap-2">
-          {bloqueos.map((motivo) => (
-            <p key={motivo} className="text-sm text-texto-suave">
-              {motivo}
-            </p>
-          ))}
+          {bloqueos.length > 0 && <Alerta tipo="bloqueo" compacta anuncio="ninguno" protege elementos={problemas} />}
           <Boton
             className="self-start"
             cargando={ocupado}

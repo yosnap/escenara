@@ -2,6 +2,7 @@
 
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { Boton } from "../button";
+import { Aviso } from "../feedback";
 import type { Subida } from "./use-subida-medios";
 
 /** Estado de cada archivo en subida. El porcentaje es el de bytes enviados que informa el navegador. */
@@ -30,11 +31,7 @@ export function ListaSubidas({ subidas, onLimpiar }: { subidas: Subida[]; onLimp
                 className="h-1.5 w-full overflow-hidden rounded-full accent-(--color-acento)"
               />
             )}
-            {s.estado === "error" && (
-              <p role="alert" className="text-sm text-error">
-                {s.error}
-              </p>
-            )}
+            {s.estado === "error" && <Aviso tono="error">{s.error}</Aviso>}
           </li>
         ))}
       </ul>

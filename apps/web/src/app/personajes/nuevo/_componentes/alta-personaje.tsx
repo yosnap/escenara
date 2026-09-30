@@ -3,6 +3,7 @@
 import { Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Alerta } from "@/components/ui/alerta";
 import { Boton } from "@/components/ui/button";
 import { GrupoOpciones } from "@/components/ui/choice";
 import { Aviso } from "@/components/ui/feedback";
@@ -228,11 +229,13 @@ export function AltaPersonaje({ minimoReferencias }: { minimoReferencias: number
             ))}
           </dl>
           {bloqueos.length > 0 && (
-            <ul className="flex list-inside list-disc flex-col gap-1 text-texto-suave">
-              {bloqueos.map((motivo) => (
-                <li key={motivo}>{motivo}</li>
-              ))}
-            </ul>
+            <Alerta
+              tipo="bloqueo"
+              compacta
+              anuncio="ninguno"
+              protege
+              elementos={bloqueos.map((texto) => ({ texto }))}
+            />
           )}
           {error && <Aviso tono="error">{error}</Aviso>}
           {creadoId && rechazadas.length > 0 && (

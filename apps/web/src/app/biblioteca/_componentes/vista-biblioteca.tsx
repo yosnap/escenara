@@ -4,6 +4,7 @@ import { CheckSquare, FolderMinus, FolderPlus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Boton } from "@/components/ui/button";
+import { Aviso } from "@/components/ui/feedback";
 import { anadirAColeccion, quitarDeColeccion } from "@/components/ui/media/api-medios";
 import { BarraEspacio } from "@/components/ui/media/barra-espacio";
 import { BibliotecaMedios } from "@/components/ui/media/biblioteca-medios";
@@ -114,14 +115,7 @@ export function VistaBiblioteca({ colecciones, espacio }: { colecciones: Colecci
             </div>
           )}
         </div>
-        {aviso && (
-          <p
-            role={aviso.tono === "error" ? "alert" : "status"}
-            className={aviso.tono === "error" ? "font-medium text-error" : "font-medium text-correcto"}
-          >
-            {aviso.texto}
-          </p>
-        )}
+        {aviso && <Aviso tono={aviso.tono === "error" ? "error" : "correcto"}>{aviso.texto}</Aviso>}
         <BibliotecaMedios
           key={`${activa ?? "todas"}-${version}`}
           coleccion={activa}

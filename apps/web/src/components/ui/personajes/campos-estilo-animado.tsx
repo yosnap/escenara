@@ -45,7 +45,7 @@ export function CamposEstiloAnimado({
       />
       {estilo !== "realista" && (
         <>
-          <Aviso tono="info">
+          <Aviso tono="aviso">
             La guía acompaña todos sus retratos y clips. Al cambiarla después se crea una versión nueva y las vistas
             anteriores dejan de guiarlo. Aprueba un retrato maestro nuevo antes de volver a generar.
           </Aviso>

@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, ChevronLeft, ChevronRight, Lock } from "lucide-react";
-import { createContext, type ReactNode, useContext, useEffect, useId, useReducer, useRef } from "react";
+import { type ReactNode, useContext, useEffect, useId, useReducer, useRef } from "react";
 import {
   avisoVigente,
   ETIQUETA_ESTADO_DE_PASO,
@@ -12,9 +12,10 @@ import {
   reducirMultipaso,
   vecino,
 } from "@/lib/multipaso";
+import { Alerta } from "./alerta";
 import { Boton } from "./button";
 import { cn } from "./cn";
-import { Aviso } from "./feedback";
+import { ContextoPasos } from "./contexto-pasos";
 
 /**
  * **Flujo por pasos** con barra de navegación libre (0.33.0): una barra arriba con cada paso (número, título corto y
@@ -63,11 +64,9 @@ export function useMultipaso(
   };
 }
 
-const ContextoMultipaso = createContext<{ actual: string } | null>(null);
-
 /** Contenido de un paso. Siempre montado; oculto (`hidden`) cuando no es el actual. */
 export function PanelDePaso({ id, children }: { id: string; children: ReactNode }) {
-  const contexto = useContext(ContextoMultipaso);
+  const contexto = useContext(ContextoPasos);
   const activo = contexto?.actual === id;
   return (
     <div data-panel-paso={id} hidden={!activo} tabIndex={-1} className="outline-none">
@@ -250,13 +249,23 @@ export function Multipaso({
           Paso {indice + 1} de {pasos.length}: {pasoActual?.titulo}
         </p>
         {aviso && (
-          <Aviso tono="info">
+          <Alerta tipo="bloqueo" compacta>
             «{aviso.paso.titulo}» todavía no está disponible. {aviso.motivo}
-          </Aviso>
+          </Alerta>
         )}
       </div>
 
-      <ContextoMultipaso.Provider value={{ actual }}>{children}</ContextoMultipaso.Provider>
+      {/* Lo de dentro (una alerta) puede llevar a otro paso sin saltarse un candado. */}
+      <ContextoPasos.Provider
+        value={{
+          actual,
+          ir: cambiar,
+          avisar,
+          estaBloqueado: (id) => pasos.find((p) => p.id === id)?.estado === "bloqueado",
+        }}
+      >
+        {children}
+      </ContextoPasos.Provider>
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-borde/50 pt-4">
         {anterior ? (

@@ -2,6 +2,7 @@
 
 import { MicVocal } from "lucide-react";
 import { Interruptor } from "@/components/ui/choice";
+import { Aviso } from "@/components/ui/feedback";
 import { Campo, EntradaTexto } from "@/components/ui/field";
 import { Selector } from "@/components/ui/select";
 import { MODELOS_CANTO, NOMBRE_MODELO_CANTO, RESOLUCIONES_CANTO, SEGUNDOS_CANTO_MAXIMOS } from "@/lib/canto";
@@ -39,11 +40,7 @@ export function SeccionCanto({
           if (modelo === "kling/v1-avatar-standard") onCambio("cantoResolucion", "720p");
         }}
       />
-      {errorDe("cantoModelo") && (
-        <p role="alert" className="text-sm text-peligro">
-          {errorDe("cantoModelo")}
-        </p>
-      )}
+      {errorDe("cantoModelo") && <Aviso tono="error">{errorDe("cantoModelo")}</Aviso>}
       <Campo
         etiqueta="Duración máxima del audio (segundos)"
         ayuda={`De 1 a ${SEGUNDOS_CANTO_MAXIMOS} s. Los audios más largos se rechazan antes de reservar créditos.`}
@@ -71,11 +68,7 @@ export function SeccionCanto({
         }))}
         onCambio={(resolucion) => resolucion && onCambio("cantoResolucion", resolucion)}
       />
-      {errorDe("cantoResolucion") && (
-        <p role="alert" className="text-sm text-peligro">
-          {errorDe("cantoResolucion")}
-        </p>
-      )}
+      {errorDe("cantoResolucion") && <Aviso tono="error">{errorDe("cantoResolucion")}</Aviso>}
       <p className="text-sm text-texto-suave">
         El precio publicado es una estimación; el cobro final lo informa el proveedor. La declaración de derechos
         siempre es obligatoria y no tiene interruptor.

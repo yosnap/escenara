@@ -1,5 +1,6 @@
 import { Lock } from "lucide-react";
 import { type CategoriaDecidible, etiquetaDecidible, motivoDecididaPorTrend } from "@/lib/trends";
+import { Alerta } from "../alerta";
 
 /**
  * Lo que la dirección del clip necesita saber del trend elegido. Lo lee la pantalla de la plantilla del trend (su
@@ -20,37 +21,32 @@ const listaConY = (partes: readonly string[]) =>
  * **Lo que decide el trend**, en lugar de sus controles. Las categorías que dicta el trend no se preguntan: se dicen
  * aquí, con el motivo escrito, para que nadie busque el control que falta ni crea que su elección se va a enviar.
  *
- * No es un aviso de error ni de gasto: es información de la dirección, con un candado y la lista de lo bloqueado.
+ * No es un error ni un gasto: sale como `Alerta` informativa, con un candado y la lista de lo que decide el trend. Ya está en la pantalla al elegir el
+ * trend, así que no se anuncia de golpe: es una región con el motivo por nombre.
  */
 export function DecididoPorTrend({ trend }: { trend: TrendDeLaDireccion }) {
   if (trend.decide.length === 0) return null;
   const motivo = motivoDecididaPorTrend(trend.nombre);
   const etiquetas = trend.decide.map(etiquetaDecidible);
   return (
-    <section
-      aria-label={motivo}
-      className="flex flex-col gap-3 rounded-tarjeta border-2 border-borde bg-superficie p-4"
-      data-decidido-por-trend
-    >
-      <p className="flex items-center gap-2 font-semibold text-texto">
-        <Lock className="size-4 shrink-0" aria-hidden />
-        {motivo}
-      </p>
-      <ul className="flex flex-wrap gap-2" aria-label="Opciones que decide el trend">
-        {etiquetas.map((etiqueta) => (
-          <li
-            key={etiqueta}
-            className="rounded-full bg-elevada px-3 py-1 text-sm font-medium text-texto"
-            title={`${etiqueta}: ${motivo}`}
-          >
-            {etiqueta}
-          </li>
-        ))}
-      </ul>
-      <p className="text-sm text-texto-suave">
-        Su texto ya dicta {listaConY(etiquetas.map((e) => e.toLowerCase()))}, así que no se te pregunta y no se envía
-        nada tuyo sobre eso. El resto de la dirección sigue siendo tuyo.
-      </p>
-    </section>
+    <div data-decidido-por-trend>
+      <Alerta tipo="info" titulo={motivo} icono={<Lock />} anuncio="ninguno">
+        <ul className="flex flex-wrap gap-2 py-1" aria-label="Opciones que decide el trend">
+          {etiquetas.map((etiqueta) => (
+            <li
+              key={etiqueta}
+              className="rounded-full bg-elevada px-3 py-1 text-sm font-medium text-texto"
+              title={`${etiqueta}: ${motivo}`}
+            >
+              {etiqueta}
+            </li>
+          ))}
+        </ul>
+        <p className="text-texto-suave">
+          Su texto ya dicta {listaConY(etiquetas.map((e) => e.toLowerCase()))}, así que no se te pregunta y no se envía
+          nada tuyo sobre eso. El resto de la dirección sigue siendo tuyo.
+        </p>
+      </Alerta>
+    </div>
   );
 }

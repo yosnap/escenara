@@ -10,6 +10,7 @@ import {
 } from "@/lib/audio-del-clip";
 import { type EstadoConversion, EXPLICACION_CONVERTIR } from "@/lib/conversion";
 import type { ModoVoz } from "@/lib/voz";
+import { Alerta } from "./alerta";
 import { Boton, claseBoton } from "./button";
 import { Interruptor } from "./choice";
 import { Aviso } from "./feedback";
@@ -85,7 +86,11 @@ export function TarjetaConvertirEnProyecto({
             {estado === null && (
               <p className="text-sm text-texto-suave">Comprobando si este clip se puede convertir…</p>
             )}
-            {estado?.estado === "no_convertible" && <Aviso tono="info">{estado.motivo}</Aviso>}
+            {estado?.estado === "no_convertible" && (
+              <Alerta tipo="bloqueo" compacta anuncio="estado">
+                {estado.motivo}
+              </Alerta>
+            )}
           </div>
           {estado?.estado === "convertible" &&
             estado.avisos.map((aviso) => (

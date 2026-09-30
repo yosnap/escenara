@@ -2,6 +2,7 @@
 
 import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Alerta } from "@/components/ui/alerta";
 import { Boton, BotonIcono } from "@/components/ui/button";
 import { InsigniaControl } from "@/components/ui/controles";
 import { PanelDireccion } from "@/components/ui/direccion/panel-direccion";
@@ -166,15 +167,27 @@ export function EditorEscena({
         que cierra la puerta al producirla, así que aquí no hay promesas: es lo que va a decir el servidor.
       */}
       {escena.controles.comprobaciones.length > 0 && (
-        <ul role="status" className="flex flex-col gap-2 rounded-control bg-elevada p-3">
-          {escena.controles.comprobaciones.map((c) => (
-            <li key={c.regla} className="text-texto">
-              <span className="font-semibold">{ETIQUETA_ESTADO_CONTROL[c.estado]}: </span>
-              <span>{c.motivo} </span>
-              <span className="text-texto-suave">{c.accion}</span>
-            </li>
-          ))}
-        </ul>
+        <Alerta
+          tipo={
+            escena.controles.comprobaciones.some((c) => c.estado === "bloqueado")
+              ? "bloqueo"
+              : escena.controles.comprobaciones.some((c) => c.estado === "ajustes")
+                ? "aviso"
+                : "info"
+          }
+          compacta
+          anuncio="estado"
+        >
+          <ul className="flex flex-col gap-2">
+            {escena.controles.comprobaciones.map((c) => (
+              <li key={c.regla} className="text-texto">
+                <span className="font-semibold">{ETIQUETA_ESTADO_CONTROL[c.estado]}: </span>
+                <span>{c.motivo} </span>
+                <span className="text-texto-suave">{c.accion}</span>
+              </li>
+            ))}
+          </ul>
+        </Alerta>
       )}
 
       <Campo
@@ -278,11 +291,11 @@ export function EditorEscena({
             </Aviso>
           )}
           {trend && trendId === escena.trendId && escena.trendVersion !== trend.version && (
-            <Aviso tono="info">
+            <Alerta tipo="bloqueo" compacta anuncio="estado">
               Este trend tiene una versión nueva (v{trend.version}) desde que lo elegiste (v{escena.trendVersion ?? "?"}
               ): puede cambiar la duración que admite o lo que decide de la dirección. Revisa la dirección y pulsa
               «Guardar escena» para usarla; hasta entonces esta escena no se puede producir.
-            </Aviso>
+            </Alerta>
           )}
           {trendId && !trend && (
             <Aviso tono="error">

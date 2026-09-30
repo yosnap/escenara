@@ -38,6 +38,7 @@ export function TarjetaPlantilla({
               </span>
             )}
             {!plantilla.activa && (
+              // alerta-permitida: insignia de estado de la plantilla
               <span className="rounded-full bg-elevada px-3 py-1 text-sm font-semibold text-error">Desactivada</span>
             )}
           </p>

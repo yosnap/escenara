@@ -175,7 +175,7 @@ export function EditorTurnos({
       />
 
       {noCabe && (
-        <Aviso tono="info">
+        <Aviso tono="aviso">
           El clip más largo dice {palabrasDelClipMasLargo} palabras y harían falta unos{" "}
           {segundosNecesarios(palabrasDelClipMasLargo)} s, pero el clip es de {segundos} s: se va a cortar a media
           frase. Acorta los turnos o alarga el clip del proyecto. Si quieres generarlo así, lo confirmarás antes de

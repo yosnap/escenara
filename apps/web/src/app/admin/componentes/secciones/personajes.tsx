@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Alerta } from "@/components/ui/alerta";
 import { InsigniaEstadoPersonaje, SelectorPersonaje } from "@/components/ui/personaje";
 import { CamposEstiloAnimado, type MaticesAnimados } from "@/components/ui/personajes/campos-estilo-animado";
 import { DistintivoOrigen } from "@/components/ui/personajes/distintivo-origen";
@@ -178,11 +179,13 @@ export function SeccionPersonajes() {
         <Muestra titulo="Consentimiento (zona de claridad)">
           <div className="flex w-full flex-col gap-3">
             <FormularioConsentimiento valor={consentimiento} onCambio={setConsentimiento} />
-            <ul className="flex list-inside list-disc flex-col gap-1 text-sm text-texto-suave">
-              {bloqueosDeConsentimiento(consentimiento).map((motivo) => (
-                <li key={motivo}>{motivo}</li>
-              ))}
-            </ul>
+            <Alerta
+              tipo="bloqueo"
+              compacta
+              anuncio="ninguno"
+              protege
+              elementos={bloqueosDeConsentimiento(consentimiento).map((texto) => ({ texto }))}
+            />
           </div>
         </Muestra>
       </div>

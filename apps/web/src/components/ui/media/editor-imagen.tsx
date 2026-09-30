@@ -4,7 +4,7 @@ import "react-image-crop/dist/ReactCrop.css";
 import { Suspense, use, useCallback, useRef, useState } from "react";
 import ReactCrop, { centerCrop, convertToPixelCrop, makeAspectCrop, type PercentCrop } from "react-image-crop";
 import { Boton } from "../button";
-import { AvisoEstado } from "../feedback";
+import { Aviso, AvisoEstado } from "../feedback";
 import { CargadorChispa } from "../motion";
 import { Dialogo } from "../overlay";
 import { ControlesEditor } from "./controles-editor";
@@ -168,11 +168,7 @@ function EspacioEdicion({ fuente, onGuardar, onSinEditar, img }: PropsEdicion & 
         />
       </div>
 
-      {error && (
-        <p role="alert" className="font-medium text-error">
-          {error}
-        </p>
-      )}
+      {error && <Aviso tono="error">{error}</Aviso>}
 
       <div className="flex flex-wrap justify-end gap-3">
         {onSinEditar && (

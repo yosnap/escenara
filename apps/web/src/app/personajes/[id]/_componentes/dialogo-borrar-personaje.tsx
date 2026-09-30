@@ -110,6 +110,7 @@ export function DialogoBorrarPersonaje({
         )}
         {lineas.length > 0 && (
           <ul className="flex list-inside list-disc flex-col gap-2 text-texto">
+            {/* alerta-permitida: lo que se borrará, no lo que falta */}
             {lineas.map((linea) => (
               <li key={linea}>{linea}</li>
             ))}

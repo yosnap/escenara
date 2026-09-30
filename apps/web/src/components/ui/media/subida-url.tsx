@@ -5,6 +5,7 @@ import { type FormEvent, useState } from "react";
 import type { TipoMedio } from "@/lib/media/reglas";
 import type { Medio } from "@/lib/media/tipos";
 import { Boton } from "../button";
+import { Aviso } from "../feedback";
 import { EntradaTexto } from "../field";
 import { subirDesdeUrl } from "./api-medios";
 
@@ -48,11 +49,7 @@ export function SubidaUrl({ tipos, onSubido }: { tipos: readonly TipoMedio[]; on
           Añadir desde URL
         </Boton>
       </div>
-      {error && (
-        <p role="alert" className="text-sm font-medium text-error">
-          {error}
-        </p>
-      )}
+      {error && <Aviso tono="error">{error}</Aviso>}
     </form>
   );
 }

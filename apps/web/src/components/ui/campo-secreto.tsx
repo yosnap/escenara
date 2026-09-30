@@ -4,6 +4,7 @@ import { KeyRound } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Boton } from "./button";
 import { EntradaContrasena } from "./entrada-contrasena";
+import { Aviso } from "./feedback";
 import { Campo } from "./field";
 import { Dialogo } from "./overlay";
 
@@ -101,11 +102,7 @@ export function CampoSecreto({
           )}
         </div>
         {ayuda && <p className="text-sm text-texto-suave">{ayuda}</p>}
-        {error && (
-          <p role="alert" className="text-sm font-medium text-error">
-            {error}
-          </p>
-        )}
+        {error && <Aviso tono="error">{error}</Aviso>}
         <Dialogo
           abierto={confirmando}
           onAbiertoCambio={setConfirmando}

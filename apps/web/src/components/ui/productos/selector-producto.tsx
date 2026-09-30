@@ -170,9 +170,9 @@ export function SelectorProducto({
             deshabilitado={deshabilitado}
             onCambio={(accion) => onCambio({ ...producto, accion })}
           />
-          {producto.accion === "" && <Aviso tono="info">{AVISO_PRODUCTO_SIN_ACCION}</Aviso>}
-          {esAccionPocoFiable(producto.accion) && <Aviso tono="info">{AVISO_ACCION_POCO_FIABLE}</Aviso>}
-          {esAccionSinHabla(producto.accion) && <Aviso tono="info">{AVISO_GUION_EN_ACCION_SIN_HABLA}</Aviso>}
+          {producto.accion === "" && <Aviso tono="aviso">{AVISO_PRODUCTO_SIN_ACCION}</Aviso>}
+          {esAccionPocoFiable(producto.accion) && <Aviso tono="aviso">{AVISO_ACCION_POCO_FIABLE}</Aviso>}
+          {esAccionSinHabla(producto.accion) && <Aviso tono="aviso">{AVISO_GUION_EN_ACCION_SIN_HABLA}</Aviso>}
         </>
       )}
     </section>

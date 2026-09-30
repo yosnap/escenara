@@ -32,6 +32,7 @@ export function Casilla({
   onCambio,
   error,
   requisito,
+  describidaPor,
 }: BaseProps & {
   marcada?: boolean;
   marcadaInicial?: boolean;
@@ -40,6 +41,8 @@ export function Casilla({
   error?: string;
   /** Marca de la casilla para llegar a ella desde un aviso de requisitos (`data-requisito`). */
   requisito?: string;
+  /** Id de un texto de fuera que también describe la casilla (por ejemplo, el motivo de que esté desactivada). */
+  describidaPor?: string;
 }) {
   const idError = useId();
   const casilla = (
@@ -57,7 +60,7 @@ export function Casilla({
         onCheckedChange={(v) => onCambio?.(v)}
         disabled={deshabilitado}
         aria-invalid={error ? true : undefined}
-        aria-describedby={error ? idError : undefined}
+        aria-describedby={[error ? idError : "", describidaPor ?? ""].filter(Boolean).join(" ") || undefined}
         className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md border-2 border-borde bg-superficie transition-colors duration-(--motion-fast) data-checked:border-acento data-checked:bg-acento aria-invalid:border-error"
       >
         <CB.Indicator className="text-sobre-acento data-unchecked:hidden">
@@ -72,6 +75,7 @@ export function Casilla({
   return (
     <div className="flex flex-col gap-1" data-requisito={requisito}>
       {casilla}
+      {/* alerta-permitida: mensaje de error de una casilla, ligado con aria-describedby */}
       {error && (
         <p id={idError} className="flex items-center gap-1 px-2 text-sm font-medium text-error">
           <span aria-hidden>●</span> {error}
