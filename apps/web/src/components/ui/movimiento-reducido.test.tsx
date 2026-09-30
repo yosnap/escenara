@@ -1,4 +1,4 @@
-import { describe, expect, mock, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import path from "node:path";
 import { Glob } from "bun";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -92,24 +92,22 @@ describe("ninguna animación sin su guarda", () => {
 });
 
 describe("parallax con «reducir movimiento»", () => {
-  test("las capas no se desplazan: con la preferencia se quedan en su sitio y sin ella se mueven", async () => {
-    // Se simula el final del recorrido (progreso 1), donde el desplazamiento es máximo, y la preferencia del sistema.
-    const real = await import("motion/react");
-    let reducido = false;
-    mock.module("motion/react", () => ({
-      ...real,
-      useReducedMotion: () => reducido,
-      useScroll: () => ({ scrollYProgress: real.motionValue(1) }),
-    }));
-    const { EscenaParallax } = await import("./motion");
-    const pintar = () =>
-      renderToStaticMarkup(<EscenaParallax capas={[{ id: "a", contenido: <span>capa</span>, velocidad: -120 }]} />);
+  test("las capas salen quietas del servidor y solo se mueven con la animación de «sin preferencia»", async () => {
+    const { EscenaParallax } = await import("./parallax");
+    const html = renderToStaticMarkup(
+      <EscenaParallax capas={[{ id: "a", contenido: <span>capa</span>, velocidad: -120 }]}>
+        <p>Contenido</p>
+      </EscenaParallax>,
+    );
+    // Sin CSS no hay desplazamiento: la capa lleva su distancia como variable, no como transformación.
+    expect(html).toContain("--parallax-desplazamiento:-120px");
+    expect(html).not.toContain("transform");
+    expect(html).toMatch(/<div aria-hidden="true" data-capa-parallax="a"/);
 
-    expect(pintar()).toContain("translateY(-120px)");
-    reducido = true;
-    const quieto = pintar();
-    expect(quieto).not.toContain("translateY(-120px)");
-    expect(quieto).not.toMatch(/translateY\(-?[1-9]/);
-    mock.module("motion/react", () => real);
+    // Una sola regla la mueve, y va dentro de «no-preference» y de @supports de las líneas de tiempo (la comprobación
+    // de globals.css de arriba no deja ninguna `animation:` fuera de esa media).
+    expect(css.match(/\.capa-parallax\s*\{/g)?.length).toBe(1);
+    const regla = css.slice(css.indexOf("@supports (animation-timeline: view())"), css.indexOf(".capa-parallax {"));
+    expect(regla).toContain("@media (prefers-reduced-motion: no-preference)");
   });
 });

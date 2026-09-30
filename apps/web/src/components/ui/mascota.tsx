@@ -1,21 +1,21 @@
-"use client";
-
-import { motion, useReducedMotion } from "motion/react";
 import { useId } from "react";
 import { cn } from "./cn";
 
 export type ExpresionChispa = "saluda" | "senala" | "celebra";
 
-const MOVIMIENTO: Record<ExpresionChispa, { animate: Record<string, number[]>; duration: number }> = {
+/**
+ * Cada expresión es una animación CSS de `globals.css` (`chispa-saluda`, `chispa-senala`, `chispa-celebra`): se mueve
+ * tres veces con una pausa entre una y otra y se detiene, porque nada se anima sin fin (WCAG 2.2.2). Va con
+ * `motion-safe:`, así que con «reducir movimiento» la mascota se queda quieta. Antes lo hacía la librería de
+ * animación, que por una mascota cargaba 41 KB en «Crear» y en la producción.
+ */
+const MOVIMIENTO: Record<ExpresionChispa, string> = {
   // Balanceo suave, como quien saluda con todo el cuerpo.
-  saluda: { animate: { rotate: [0, -10, 8, -6, 0] }, duration: 2.4 },
+  saluda: "motion-safe:animate-[chispa-saluda_3.6s_ease-in-out_3]",
   // Se inclina y avanza un poco hacia la derecha, señalando.
-  senala: { animate: { rotate: [0, 12, 12, 0], x: [0, 6, 6, 0] }, duration: 2.2 },
+  senala: "motion-safe:animate-[chispa-senala_3.4s_ease-in-out_3]",
   // Salta y se balancea (la cara siempre derecha): solo para hitos reales.
-  celebra: {
-    animate: { y: [0, -18, 0, -8, 0], rotate: [0, -12, 12, -6, 0], scale: [1, 1.1, 1, 1.05, 1] },
-    duration: 1.6,
-  },
+  celebra: "motion-safe:animate-[chispa-celebra_2.8s_ease-in-out_3]",
 };
 
 /**
@@ -33,22 +33,17 @@ export function MascotaChispa({
   etiqueta?: string;
   className?: string;
 }) {
-  const reducido = useReducedMotion();
   const id = useId();
   const degradado = `${id}-degradado`;
-  const mov = MOVIMIENTO[expresion];
   return (
-    <motion.svg
+    <svg
       viewBox="0 0 100 100"
       width={tamano}
       height={tamano}
       role={etiqueta ? "img" : undefined}
       aria-label={etiqueta}
       aria-hidden={etiqueta ? undefined : true}
-      className={cn("overflow-visible", className)}
-      animate={reducido ? undefined : mov.animate}
-      // Se mueve unas pocas veces y se detiene: nada se anima sin fin (WCAG 2.2.2).
-      transition={{ duration: mov.duration, repeat: 2, repeatDelay: 1.2, ease: "easeInOut" }}
+      className={cn("origin-center overflow-visible [transform-box:fill-box]", MOVIMIENTO[expresion], className)}
     >
       <defs>
         <linearGradient id={degradado} x1="0" y1="0" x2="1" y2="1">
@@ -64,20 +59,16 @@ export function MascotaChispa({
       <circle cx="38" cy="56" r="3.5" fill="var(--color-v-fucsia)" opacity="0.55" />
       <circle cx="62" cy="56" r="3.5" fill="var(--color-v-fucsia)" opacity="0.55" />
       {/* Ojos con parpadeo */}
-      <motion.g
-        style={{ transformOrigin: "50px 47px" }}
-        animate={reducido ? undefined : { scaleY: [1, 1, 0.1, 1] }}
-        transition={{ duration: 3.6, times: [0, 0.92, 0.96, 1], repeat: 3 }}
-      >
+      <g style={{ transformOrigin: "50px 47px" }} className="motion-safe:animate-[chispa-parpadeo_3.6s_linear_4]">
         <ellipse cx="42" cy="47" rx="3" ry="4" fill="#182032" />
         <ellipse cx="58" cy="47" rx="3" ry="4" fill="#182032" />
-      </motion.g>
+      </g>
       {/* Boca: sonrisa, o abierta al celebrar */}
       {expresion === "celebra" ? (
         <path d="M43 56Q50 66 57 56Z" fill="#182032" />
       ) : (
         <path d="M43 56Q50 62 57 56" fill="none" stroke="#182032" strokeWidth="2.5" strokeLinecap="round" />
       )}
-    </motion.svg>
+    </svg>
   );
 }

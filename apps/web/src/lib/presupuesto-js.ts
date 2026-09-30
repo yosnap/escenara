@@ -21,6 +21,32 @@ export interface Presupuestos {
   rutas: Record<string, { topeKb: number; motivo: string }>;
 }
 
+/** Lee el fichero de topes (entrada de fuera del código): forma, números positivos y un motivo por ruta. */
+export function validarPresupuestos(valor: unknown): Presupuestos {
+  const esObjeto = (v: unknown): v is Record<string, unknown> =>
+    typeof v === "object" && v !== null && !Array.isArray(v);
+  if (!esObjeto(valor) || typeof valor.porDefectoKb !== "number" || !esObjeto(valor.rutas)) {
+    throw new Error("presupuesto-js.json tiene que tener «porDefectoKb» (número) y «rutas» (objeto).");
+  }
+  const rutas: Presupuestos["rutas"] = {};
+  for (const [ruta, tope] of Object.entries(valor.rutas)) {
+    if (
+      !ruta.startsWith("/") ||
+      !esObjeto(tope) ||
+      typeof tope.topeKb !== "number" ||
+      typeof tope.motivo !== "string"
+    ) {
+      throw new Error(
+        `El tope de «${ruta}» tiene que ser { topeKb: número, motivo: texto } y la ruta empezar por «/».`,
+      );
+    }
+    rutas[ruta] = { topeKb: tope.topeKb, motivo: tope.motivo };
+  }
+  const presupuestos = { porDefectoKb: valor.porDefectoKb, rutas };
+  comprobarPresupuestos([], presupuestos);
+  return presupuestos;
+}
+
 export interface MedidaRuta {
   ruta: string;
   /** Ficheros `static/chunks/...` que carga la ruta (comunes incluidos). */

@@ -4,7 +4,6 @@ import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
 import { Monitor, Moon, Sun } from "lucide-react";
 import { useSyncExternalStore } from "react";
-import { authCliente } from "@/lib/auth-cliente";
 import { aplicarTema, leerPreferencia, type PreferenciaTema } from "@/lib/tema";
 
 const OPCIONES: { valor: PreferenciaTema; etiqueta: string; icono: typeof Sun }[] = [
@@ -29,10 +28,11 @@ export function SelectorTema() {
         const nuevo = (v[0] as PreferenciaTema | undefined) ?? actual;
         aplicarTema(nuevo);
         for (const fn of oyentes) fn();
-        // Con sesión, se guarda en la cuenta para que el tema siga al usuario en todos sus dispositivos.
+        // Con sesión, se guarda en la cuenta para que el tema siga al usuario en todos sus dispositivos. El cliente
+        // de autenticación se descarga aquí, al usarlo: el selector está en todas las páginas y casi nunca se toca.
         if (document.documentElement.dataset.temaUsuario !== undefined) {
-          void authCliente
-            .updateUser({ tema: nuevo })
+          void import("@/lib/auth-cliente")
+            .then(({ authCliente }) => authCliente.updateUser({ tema: nuevo }))
             .then(
               (r) => r.error && console.warn("[tema] no se ha guardado en la cuenta:", r.error.code ?? r.error.status),
             )

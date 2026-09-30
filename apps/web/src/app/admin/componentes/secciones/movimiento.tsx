@@ -3,7 +3,8 @@
 import { PartyPopper } from "lucide-react";
 import { Boton } from "@/components/ui/button";
 import { IconoChispa } from "@/components/ui/chispa";
-import { EscenaParallax, useConfeti } from "@/components/ui/motion";
+import { useConfeti } from "@/components/ui/motion";
+import { EscenaParallax } from "@/components/ui/parallax";
 import { type DiapositivaPase, PaseAutomatico } from "@/components/ui/pase-automatico";
 import { Muestra, Seccion } from "../seccion";
 

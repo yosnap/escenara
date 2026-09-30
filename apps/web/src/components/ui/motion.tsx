@@ -1,61 +1,9 @@
 "use client";
 
-import { motion, useReducedMotion, useScroll, useTransform } from "motion/react";
-import { type ReactNode, useRef, useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
+import { useState } from "react";
 import { IconoChispa } from "./chispa";
 import { cn } from "./cn";
-
-export interface CapaParallax {
-  id: string;
-  contenido: ReactNode;
-  /** Desplazamiento vertical en px a lo largo del recorrido; negativo sube más rápido que el scroll. */
-  velocidad: number;
-  className?: string;
-}
-
-/** Escena con capas que se mueven a distinta velocidad al hacer scroll. Sin movimiento si se prefiere reducido. */
-export function EscenaParallax({
-  capas,
-  className,
-  children,
-}: {
-  capas: CapaParallax[];
-  className?: string;
-  children?: ReactNode;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const reducido = useReducedMotion();
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
-  return (
-    <div ref={ref} className={cn("relative overflow-hidden", className)}>
-      {capas.map((c) => (
-        <CapaMovil key={c.id} progreso={scrollYProgress} velocidad={reducido ? 0 : c.velocidad} className={c.className}>
-          {c.contenido}
-        </CapaMovil>
-      ))}
-      <div className="relative">{children}</div>
-    </div>
-  );
-}
-
-function CapaMovil({
-  progreso,
-  velocidad,
-  className,
-  children,
-}: {
-  progreso: ReturnType<typeof useScroll>["scrollYProgress"];
-  velocidad: number;
-  className?: string;
-  children: ReactNode;
-}) {
-  const y = useTransform(progreso, [0, 1], [0, velocidad]);
-  return (
-    <motion.div aria-hidden style={{ y }} className={cn("pointer-events-none absolute", className)}>
-      {children}
-    </motion.div>
-  );
-}
 
 const COLORES_CONFETI = [
   "text-v-cobalto",

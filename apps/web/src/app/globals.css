@@ -85,6 +85,29 @@
     outline-offset: 9px;
   }
 }
+/* Parallax por capas (parallax.tsx): cada capa baja o sube lo que diga su `--parallax-desplazamiento` mientras la
+   escena cruza la pantalla. Solo con «sin preferencia» de movimiento y donde hay líneas de tiempo de desplazamiento;
+   en el resto, las capas se quedan quietas. */
+@keyframes parallax-capa {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(var(--parallax-desplazamiento, 0));
+  }
+}
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .escena-parallax {
+      view-timeline-name: --escena-parallax;
+    }
+    .capa-parallax {
+      animation: parallax-capa linear both;
+      animation-timeline: --escena-parallax;
+    }
+  }
+}
+
 /* Giro de la chispa del cargador. Solo se usa con `motion-safe:`: con «reducir movimiento» se queda quieta. */
 @keyframes giro-chispa {
   0% {
@@ -95,6 +118,61 @@
   }
   100% {
     transform: rotate(180deg) scale(1);
+  }
+}
+/* Expresiones de la mascota (mascota.tsx). Cada una ocupa dos tercios del ciclo y el resto es la pausa entre
+   repeticiones; se repiten tres veces (el parpadeo, cuatro) y se detienen. Solo con `motion-safe:`. */
+@keyframes chispa-saluda {
+  0%,
+  67%,
+  100% {
+    transform: rotate(0deg);
+  }
+  17% {
+    transform: rotate(-10deg);
+  }
+  33% {
+    transform: rotate(8deg);
+  }
+  50% {
+    transform: rotate(-6deg);
+  }
+}
+@keyframes chispa-senala {
+  0%,
+  65%,
+  100% {
+    transform: rotate(0deg) translateX(0);
+  }
+  22%,
+  43% {
+    transform: rotate(12deg) translateX(6px);
+  }
+}
+@keyframes chispa-celebra {
+  0%,
+  57%,
+  100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+  14% {
+    transform: translateY(-18px) rotate(-12deg) scale(1.1);
+  }
+  29% {
+    transform: translateY(0) rotate(12deg) scale(1);
+  }
+  43% {
+    transform: translateY(-8px) rotate(-6deg) scale(1.05);
+  }
+}
+@keyframes chispa-parpadeo {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  96% {
+    transform: scaleY(0.1);
   }
 }
 /* Flecha que señala el bloque: rebota hacia él. Con «reducir movimiento» no se aplica (clase motion-safe). */

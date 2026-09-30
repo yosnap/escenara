@@ -18,7 +18,8 @@ import {
   urlArchivoPropio,
 } from "./api-medios";
 import { BarraBiblioteca } from "./barra-biblioteca";
-import { EditorImagen, type ModoGuardado } from "./editor-imagen";
+import { EditorImagen } from "./diferidos";
+import type { ModoGuardado } from "./editor-imagen";
 import { EditorMetadatos } from "./editor-metadatos";
 import { EditorSubida } from "./editor-subida";
 import type { AccionesMedio, VistaBiblioteca } from "./elemento-medio";

@@ -1,6 +1,6 @@
 "use client";
 
-import { EditorImagen } from "./editor-imagen";
+import { EditorImagen } from "./diferidos";
 import type { useSubidaMedios } from "./use-subida-medios";
 
 /** Editor opcional antes de subir: una imagen tras otra de la cola; cerrar descarta la imagen actual. */

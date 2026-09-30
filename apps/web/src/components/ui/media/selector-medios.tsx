@@ -13,7 +13,7 @@ import {
 import type { Medio } from "@/lib/media/tipos";
 import { Boton, BotonIcono } from "../button";
 import { cn } from "../cn";
-import { DialogoSelectorMedios } from "./dialogo-selector-medios";
+import { DialogoSelectorMedios } from "./diferidos";
 import { EditorSubida } from "./editor-subida";
 import { ListaSubidas } from "./lista-subidas";
 import { MiniaturaMedio } from "./miniatura-medio";
