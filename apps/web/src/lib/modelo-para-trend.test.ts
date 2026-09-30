@@ -19,7 +19,7 @@ const modelo = (id: string, segundos: number[], extra: Partial<ModeloElegible> =
 const FAST = modelo("veo-fast", [4, 8]);
 const PRO = modelo("veo-pro", [4, 6, 8]);
 const MUDO = modelo("mudo", [6], { conVoz: false });
-const TREND = { nombre: "Unboxing", targetSeconds: 6, modelosPermitidos: [] as string[] };
+const TREND = { nombre: "Unboxing", duracionesAdmitidas: [6], modelosPermitidos: [] as string[] };
 
 describe("tarifa por duración", () => {
   test("con duraciones registradas hace falta la de la pedida", () => {
@@ -45,9 +45,11 @@ describe("modelo al elegir un trend", () => {
     expect(decidirModeloParaTrend({ ...base, actual: PRO })).toEqual({ tipo: "mantener" });
   });
 
-  test("sin trend o sin duración fija no hay nada que decidir", () => {
+  test("sin trend o sin duraciones admitidas no hay nada que decidir", () => {
     expect(decidirModeloParaTrend({ ...base, trend: null })).toEqual({ tipo: "mantener" });
-    expect(decidirModeloParaTrend({ ...base, trend: { ...TREND, targetSeconds: null } })).toEqual({ tipo: "mantener" });
+    expect(decidirModeloParaTrend({ ...base, trend: { ...TREND, duracionesAdmitidas: [] } })).toEqual({
+      tipo: "mantener",
+    });
   });
 
   test("cambia a un modelo compatible y lo dice; conserva la voz si el actual la tenía", () => {
@@ -110,10 +112,10 @@ describe("modelo al elegir un trend", () => {
     });
   });
 
-  test("un trend sin duración fija solo comprueba la restricción", () => {
+  test("un trend sin duraciones admitidas solo comprueba la restricción", () => {
     const d = decidirModeloParaTrend({
       ...base,
-      trend: { ...TREND, targetSeconds: null, modelosPermitidos: ["veo-pro"] },
+      trend: { ...TREND, duracionesAdmitidas: [], modelosPermitidos: ["veo-pro"] },
     });
     expect(d.tipo === "cambiar" && d.modelo.modelo).toBe("veo-pro");
   });
@@ -122,5 +124,20 @@ describe("modelo al elegir un trend", () => {
     const d = decidirModeloParaTrend({ ...base, trend: { ...TREND, modelosPermitidos: ["veo-fast"] } });
     expect(d.tipo).toBe("ninguno");
     expect(d.tipo === "ninguno" && d.error).toContain("que este trend admita");
+  });
+
+  test("con varias duraciones admitidas basta con que el modelo cobre una", () => {
+    const trend = { ...TREND, duracionesAdmitidas: [5, 8] };
+    expect(decidirModeloParaTrend({ ...base, trend })).toEqual({ tipo: "mantener" });
+    const soloSeis = modelo("seis", [6]);
+    const d = decidirModeloParaTrend({ ...base, actual: soloSeis, trend });
+    expect(d.tipo === "cambiar" && d.modelo.modelo).toBe("veo-fast");
+    expect(d.tipo === "cambiar" && d.aviso).toContain("SEIS no tiene clips de 5 o 8 s");
+    expect(d.tipo === "cambiar" && d.aviso).toContain("solo admite 5 o 8 s");
+  });
+
+  test("el motivo de un modelo sin ninguna de las duraciones admitidas las nombra todas", () => {
+    expect(motivoSinDuracion(MUDO, [4, 8])).toBe("MUDO no tiene clips de 4 o 8 s (solo 6 s).");
+    expect(motivoSinDuracion(MUDO, [])).toBeNull();
   });
 });

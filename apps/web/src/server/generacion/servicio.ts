@@ -6,6 +6,7 @@ import type { TipoPersonaje } from "@/lib/personajes";
 import type { SeleccionPresets } from "@/lib/presets";
 import { duracionParaModelo } from "@/lib/produccion";
 import type { PasoProductoDigital, ProductoElegido } from "@/lib/productos";
+import { motivoDuracionNoAdmitida } from "@/lib/trends";
 import { leerAjustes } from "../ajustes";
 import { contextoAnimadoDeEscena } from "../animados/contexto-escena";
 import { duracionDeClipDeEscena, proyectoDeEscena } from "../asistente/consulta";
@@ -43,7 +44,7 @@ import { hechosDelProducto, productoEnPrompt, productoParaGenerar } from "../pro
 import { plantillaUsable } from "../prompts/consulta";
 import { componerDesdePlantilla, type PromptCompuesto } from "../prompts/render";
 import { creditosDelEnvio, traducirAlIngles } from "../prompts/traduccion";
-import { exigirTrendVigente } from "../prompts/trends";
+import { duracionesDelTrend, exigirTrendVigente } from "../prompts/trends";
 import type { Adaptador } from "../proveedores/contrato";
 import {
   exigirAvisoUmbral,
@@ -932,12 +933,13 @@ export async function crearAnimacion(
    * descripción es lo **único** que describe el clip.
    */
   const dirigiendo = peticion.direccion !== undefined || peticion.direccionElegida !== undefined;
-  let duracionObjetivoTrend: number | null = null;
+  /** El trend elegido y las duraciones que admite. Sin lista, cualquier duración le vale. */
+  let trendElegido: { nombre: string; duracionesAdmitidas: number[] } | null = null;
   if (peticion.plantillaId) {
     const plantilla = await plantillaUsable(actor.id, peticion.plantillaId);
     if (plantilla.kind === "trend") {
       await exigirTrendVigente(plantilla);
-      duracionObjetivoTrend = plantilla.targetSeconds;
+      trendElegido = { nombre: plantilla.name, duracionesAdmitidas: duracionesDelTrend(plantilla) };
     }
   }
   const prompt = dirigiendo ? limpiarPromptOpcional(peticion.prompt) : limpiarPrompt(peticion.prompt);
@@ -951,10 +953,13 @@ export async function crearAnimacion(
    * proyecto, la que se haya confirmado en «Crear».
    */
   const pedidos = partida.escenaId ? await duracionDeClipDeEscena(partida.escenaId) : (peticion.segundos ?? null);
-  if (duracionObjetivoTrend !== null && pedidos !== duracionObjetivoTrend) {
+  const sinDuracionAdmitida = trendElegido
+    ? motivoDuracionNoAdmitida(trendElegido, pedidos, partida.escenaId ? "proyecto" : "clip")
+    : null;
+  if (sinDuracionAdmitida) {
     throw new ErrorGeneracion(
       409,
-      `Este trend requiere ${duracionObjetivoTrend} s. Revisa la duración y el coste antes de confirmar. No se ha reservado nada.`,
+      `${sinDuracionAdmitida} Revisa la duración y el coste antes de confirmar. No se ha reservado nada.`,
     );
   }
   const { elegida, reservas } = await eleccionConfirmada(actor.id, "animacion", peticion, {

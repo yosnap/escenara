@@ -15,6 +15,7 @@ import {
   type RegistroEstetico,
 } from "@/lib/direccion";
 import { AVISO_GUION_EN_ACCION_SIN_HABLA } from "@/lib/productos";
+import type { CategoriaDecidible } from "@/lib/trends";
 import {
   ACENTO_INGLES,
   ANCLAJES_ANIMADOS,
@@ -135,9 +136,39 @@ export interface DireccionDeClip {
    * formato diga otra cosa, porque no hay quien hable.
    */
   producto?: ProductoEnPrompt | null;
-  /** Formato de trend ya compuesto en el servidor; el contenido y el permiso de habla no vienen del navegador. */
-  trend?: { permiteHabla: boolean } | null;
+  /**
+   * Formato de trend ya compuesto en el servidor; el contenido, el permiso de habla y lo que decide no vienen del
+   * navegador, sino de la versión de la plantilla.
+   *
+   * `decide` son las categorías de la dirección que dicta el texto del trend: **no se componen** aunque lleguen
+   * elegidas (un cliente antiguo o una petición manipulada), para que nunca haya dos cabeceras de cámara ni dos
+   * reglas que se contradigan.
+   */
+  trend?: { permiteHabla: boolean; decide?: readonly CategoriaDecidible[] } | null;
 }
+
+/**
+ * La dirección **sin lo que decide el trend**. Lo decidido no se envía de ninguna forma: ni la clave elegida ni lo que
+ * se diría sin elegir nada («la cámara se queda quieta»), porque eso también contradiría lo que dicta el trend.
+ *
+ * Función pura, y la única por la que pasa la dirección de un clip con trend: la usan los dos caminos (la escena de
+ * un proyecto y «Crear») porque los dos componen con {@link dirigirClip}.
+ */
+export function sinLoQueDecideElTrend(direccion: DireccionDeClip): DireccionDeClip {
+  const decide = direccion.trend?.decide ?? [];
+  if (decide.length === 0) return direccion;
+  return {
+    ...direccion,
+    ...(decide.includes("plano") ? { plano: "" } : {}),
+    ...(decide.includes("angulo") ? { angulo: "" } : {}),
+    ...(decide.includes("camara") ? { movimientosCamara: [], nivelCamara: "basico" as const } : {}),
+    ...(decide.includes("microaccion") ? { microaccion: "", momentoMicroaccion: "durante" as const } : {}),
+  };
+}
+
+/** `true` cuando el trend decide esa categoría: entonces el bloque de cámara no dice nada de ella. */
+const decideElTrend = (direccion: DireccionDeClip, categoria: CategoriaDecidible) =>
+  direccion.trend?.decide?.includes(categoria) === true;
 
 /** Lo compuesto, con lo que hay que contarle al usuario antes de que pague. */
 export interface ClipDirigido {
@@ -169,8 +200,15 @@ function bloqueCamara(direccion: DireccionDeClip): string {
     direccion.plano,
     direccion.angulo,
     // Sin movimiento elegido la cámara se queda quieta, y se dice: callarlo deja al modelo inventando un travelling.
-    movimiento === "" ? "The camera stays locked off and does not move" : movimiento,
-    direccion.animado ? "" : REGISTRO_CAMARA_INGLES[direccion.registroEstetico],
+    // Si el movimiento lo decide el trend, no se dice nada: lo dice su texto.
+    decideElTrend(direccion, "camara")
+      ? ""
+      : movimiento === ""
+        ? "The camera stays locked off and does not move"
+        : movimiento,
+    direccion.animado || decideElTrend(direccion, "registro-estetico")
+      ? ""
+      : REGISTRO_CAMARA_INGLES[direccion.registroEstetico],
   ]);
 }
 
@@ -208,7 +246,9 @@ export interface OpcionesDeDireccion {
  * Compone la dirección de un clip. Es una función **pura**: no lee la base de datos, no llama a nadie y no
  * cuesta nada, así que se puede probar entera sin simular un proveedor.
  */
-export function dirigirClip(direccion: DireccionDeClip, opciones: OpcionesDeDireccion = {}): ClipDirigido {
+export function dirigirClip(pedida: DireccionDeClip, opciones: OpcionesDeDireccion = {}): ClipDirigido {
+  // Lo que decide el trend se quita antes de nada: así tampoco genera avisos de algo que no se va a enviar.
+  const direccion = sinLoQueDecideElTrend(pedida);
   const avisos: string[] = [];
   const experto = direccion.modoExperto && direccion.descripcionExperta.trim() !== "";
   // En modo experto los botones no se envían, así que avisar de su nivel o de dos movimientos sería mentir.

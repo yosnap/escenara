@@ -15,12 +15,13 @@ import {
   motivoDeInvalidacion,
   TEXTO_ESCENA_MAXIMO,
 } from "@/lib/proyectos";
+import { motivoDuracionNoAdmitida } from "@/lib/trends";
 import { db, type Ejecutor } from "../db/cliente";
 import { claims, type FilaEscena, generationJobs, projects, scenes } from "../db/esquema";
 import type { Actor } from "../media/servicio";
 import { leerProductoElegido, productoPropio } from "../productos/eleccion";
 import { plantillaUsable, versionVigente } from "../prompts/consulta";
-import { exigirTrendVigente } from "../prompts/trends";
+import { duracionesDelTrend, exigirTrendVigente } from "../prompts/trends";
 import { sembrarRepartoInicial } from "../reparto/siembra";
 import { invalidarVozDeEscena } from "../voz/proyecto";
 import { escenaPropia, escenasDe, proyectoPropio, proyectoPropioBloqueado } from "./consulta";
@@ -94,11 +95,13 @@ async function camposDeTrend(
   if (typeof datos.trendId !== "string") throw new ErrorProyecto(400, "El identificador del trend no es válido.");
   const plantilla = await plantillaUsable(actor.id, datos.trendId);
   await exigirTrendVigente(plantilla);
-  if (plantilla.targetSeconds !== segundos)
-    throw new ErrorProyecto(
-      409,
-      `El trend «${plantilla.name}» dura ${plantilla.targetSeconds} s y el proyecto está configurado a ${segundos} s. Revisa el coste y la duración del proyecto.`,
-    );
+  // Sin duraciones admitidas el trend vale con la duración que tenga el proyecto; con ellas, tiene que estar en la lista.
+  const motivo = motivoDuracionNoAdmitida(
+    { nombre: plantilla.name, duracionesAdmitidas: duracionesDelTrend(plantilla) },
+    segundos,
+    "proyecto",
+  );
+  if (motivo) throw new ErrorProyecto(409, `${motivo} Revisa el coste antes de producir.`);
   const version = await versionVigente(plantilla.id);
   return { templateId: plantilla.id, templateVersion: version.number };
 }
