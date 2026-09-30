@@ -13,7 +13,10 @@ Desde la 0.33.0 la página del proyecto va **de paso en paso**, con una barra ar
 (en la aprobación si el plan ya está aprobado, en las escenas si ya hay guion, etcétera), y el paso queda en la
 dirección (`?paso=`) para volver a él al recargar o compartir el enlace. La aprobación está bloqueada, con su
 motivo, mientras el guion no tenga ninguna escena. Cambiar de paso no pierde nada: una escena abierta a medio
-editar o un orden de escenas sin guardar siguen igual al volver.
+editar o un orden de escenas sin guardar siguen igual al volver. Eso sí, **mientras haya cambios sin guardar en
+«Escenas»** (el orden o una escena editada), ese paso sale «en curso» y el de aprobación te lo dice y no deja aprobar:
+aprobarías el guion guardado, no el que estás viendo. Guárdalos o descártalos (cada escena editada tiene su botón
+«Descartar cambios»).
 
 ## Lo primero: el asistente es opcional
 

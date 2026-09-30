@@ -14,15 +14,15 @@ Si te falta la clave, `/crear` te lo dice y te lleva a la página de cuenta.
 
 ## Los pasos de «Crear»
 
-«Crear» va **de paso en paso**: arriba tienes una barra con los pasos numerados y el estado de cada uno (hecho, en curso, pendiente o bloqueado), y abajo los botones **Anterior** y **Siguiente**. Solo ves el paso en el que estás, así que no hay que bajar por una página larga. Puedes volver con un clic a cualquier paso que ya hayas hecho o visitado. Los que dependen de otro (el coste, el resultado y el clip) salen con un candado hasta que se pueden usar, y al pulsarlos te dicen qué falta. Cambiar de paso no borra nada: lo escrito, lo elegido y un trabajo en marcha siguen ahí al volver.
+«Crear» va **de paso en paso**: arriba tienes una barra con los pasos numerados y el estado de cada uno (hecho, en curso, pendiente o bloqueado), y abajo los botones **Anterior** y **Siguiente**. Solo ves el paso en el que estás, así que no hay que bajar por una página larga. Puedes volver con un clic a cualquier paso que ya hayas hecho o visitado. Los que dependen de otro (el coste, el resultado y el clip) salen con un candado hasta que se pueden usar, y al pulsarlos te dicen qué falta. A un paso al que todavía no has llegado se avanza con **Siguiente**; si lo pulsas en la barra, te lo recuerda. Si el fotograma falla, el paso del clip te lo dice y el de coste vuelve a quedar pendiente: para pedir otro, cambia la descripción, la imagen o el modelo y confirma de nuevo (con la misma confirmación se te devuelve el mismo trabajo, para no cobrarte dos veces). Cambiar de paso no borra nada: lo escrito, lo elegido y un trabajo en marcha siguen ahí al volver.
 
-El paso en el que estás queda en la dirección de la página (`?paso=`): al recargar o al compartir el enlace se abre ese mismo paso. Lo que no se ha generado ni guardado (por ejemplo, una descripción a medio escribir) no sobrevive a una recarga, como antes; si el paso pedido depende de algo que ya no está, se abre el primero.
+El paso en el que estás queda en la dirección de la página (`?paso=`): al recargar o al compartir el enlace se abre ese mismo paso. Lo que no se ha generado ni guardado (por ejemplo, una descripción a medio escribir) no sobrevive a una recarga, como antes; si el paso pedido depende de algo que ya no está, se abre el paso con el que empieza «Crear» (el formato si hay trends que elegir; si no, el origen).
 
 Los pasos son casi los mismos siempre, pero el camino que elijas al principio cambia cuáles salen en la barra. Cada opción de dirección (plano, cámara, gesto…) se explica en [Dirigir tu clip](dirigir-tu-clip.md).
 
 ### 1. Elige el formato
 
-Lo primero es el formato del clip: la **plantilla normal** o uno de los **trends** vigentes de la instalación. Va antes que nada porque un trend fija la duración del clip (y con ella su coste) y si se puede hablar a cámara. Con la plantilla normal, esas cosas las decides tú más adelante. Si la instalación no tiene ningún trend publicado, «Crear» se abre directamente en el paso 2 y este paso te dice por qué no hay nada que elegir. Cómo funcionan los trends está en [Usar y administrar trends](trends-virales.md).
+Lo primero es el formato del clip: la **plantilla normal** o uno de los **trends** vigentes de la instalación. Va antes que nada porque un trend fija la duración del clip (y con ella su coste) y si se puede hablar a cámara. Con la plantilla normal, esas cosas las decides tú más adelante. Si la instalación solo tiene una plantilla para el clip, no hay nada que decidir y este paso no sale en la barra (los demás se numeran desde el 1). Si tiene varias pero ningún trend publicado, «Crear» se abre directamente en «¿De dónde sale el clip?» y este paso te dice por qué no hay trends. Cómo funcionan los trends está en [Usar y administrar trends](trends-virales.md).
 
 ### 2. ¿De dónde sale el clip?
 
@@ -79,7 +79,7 @@ Cuando esté listo, el archivo se descarga al momento (la URL del proveedor cadu
 
 ## Animar el fotograma
 
-Cuando el fotograma está listo (o desde la imagen que has traído), pulsa **«Siguiente: Clip»**: el paso **«El clip»** genera un clip vertical usando esa imagen como primer fotograma. Ahí eliges el modelo del clip, su **duración** entre las que ese modelo sabe cobrar, lo que dice el personaje y la dirección con botones (plano, ángulo, movimiento de cámara, gesto…) y, si quieres, una plantilla o un [trend](trends-virales.md) vigente. La proporción es 9:16 y el clip sale a 720p. Pulsas **Animar**, con su propia estimación y su propia confirmación: cada gasto se aprueba por separado.
+Cuando el fotograma está listo (o desde la imagen que has traído), pulsa **«Siguiente: Clip»**: el paso **«El clip»** genera un clip vertical usando esa imagen como primer fotograma. Ahí eliges el modelo del clip, su **duración** entre las que ese modelo sabe cobrar, lo que dice el personaje y la dirección con botones (plano, ángulo, movimiento de cámara, gesto…) y los botones que pida la plantilla o el [trend](trends-virales.md) que elegiste en el paso 1, «Elige el formato» (aquí ya no se vuelve a elegir). La proporción es 9:16 y el clip sale a 720p. Pulsas **Animar**, con su propia estimación y su propia confirmación: cada gasto se aprueba por separado.
 
 ## Si algo va mal
 

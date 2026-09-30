@@ -28,7 +28,8 @@ cómo se confirma o se cobra nada.
   habla a cámara, así que se decide antes que lo demás. Elegirlo sigue pidiendo al servidor la estimación con la
   duración del trend, avisa si el modelo no tiene tarifa para ella y quita la frase si el trend no permite
   hablar, igual que antes. El paso del clip ya no repite el selector. Si la instalación no tiene ningún trend
-  publicado, «Crear» se abre en el paso 2 y el de formato explica por qué no hay nada que elegir. El coste se desbloquea al
+  publicado, «Crear» se abre en «¿De dónde sale el clip?» y el de formato explica por qué no hay trends; si solo hay
+  una plantilla para el clip, el paso de formato no sale en la barra. El coste se desbloquea al
   describir la escena, el resultado al confirmar el fotograma y el clip cuando hay imagen de la que sacarlo. Al
   pulsar «Generar fotograma», la pantalla pasa sola a su resultado. El resumen de coste, las casillas y el botón de
   confirmar son los mismos que antes: solo cambian de sitio.
@@ -36,6 +37,14 @@ cómo se confirma o se cobra nada.
   el plan ya está aprobado, las escenas si ya hay guion…). La aprobación está bloqueada mientras no haya escenas.
 - Cambiar de paso **no pierde nada**: un fotograma o un clip generándose, una escena abierta a medio editar o un
   orden de escenas sin guardar siguen igual al volver.
+- **No se aprueba un plan con cambios sin guardar en «Escenas»** (orden pendiente o una escena editada): ahora que
+  están en otro paso, «Aprobación» lo dice con su motivo y bloquea el botón hasta guardarlos o descartarlos, y
+  «Escenas» sale «en curso». Cada escena editada enseña «Cambios sin guardar» y un botón «Descartar cambios».
+- Si el fotograma falla, se cancela o el proveedor no responde, el paso del clip lo dice (con qué hacer para pedir
+  otro) y el de coste vuelve a «pendiente».
+- Un paso al que aún no has llegado se puede enfocar y, al pulsarlo, recuerda que se avanza con «Siguiente». El aviso
+  de un paso no disponible desaparece al cambiar de paso o en cuanto se puede abrir.
+- En móviles estrechos la barra se desliza en horizontal en lugar de encoger los botones por debajo de 44 px.
 - Las guías de tu primer vídeo, trends (el trend se elige en el primer paso), dirección del clip, estrategia del anuncio, asistente de guion y productos
   explican la barra en lugar de «bajar hasta» un paso.
 
