@@ -20,7 +20,9 @@ describe("el botón Convertir en proyecto", () => {
 
   test("si no se puede, sale deshabilitado y con el motivo", () => {
     const html = renderToStaticMarkup(
-      <TarjetaConvertirEnProyecto estado={{ estado: "no_convertible", motivo: "El clip todavía se está generando." }} />,
+      <TarjetaConvertirEnProyecto
+        estado={{ estado: "no_convertible", motivo: "El clip todavía se está generando." }}
+      />,
     );
     expect(html).toContain("Convertir en proyecto");
     expect(html).toContain('disabled=""');

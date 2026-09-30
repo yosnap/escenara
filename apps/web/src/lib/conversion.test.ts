@@ -77,7 +77,12 @@ describe("qué clip se puede convertir", () => {
 
   test("un clip ya convertido lleva a su proyecto aunque ahora no se pudiera convertir", () => {
     const estado = estadoDeConversion(clip({ proyecto: { id: "p1", titulo: "Mi proyecto" }, tieneMedio: false }));
-    expect(estado).toEqual({ estado: "convertido", proyectoId: "p1", titulo: "Mi proyecto", url: "/proyectos/p1?paso=escenas" });
+    expect(estado).toEqual({
+      estado: "convertido",
+      proyectoId: "p1",
+      titulo: "Mi proyecto",
+      url: "/proyectos/p1?paso=escenas",
+    });
   });
 });
 
