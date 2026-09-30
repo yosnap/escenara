@@ -227,6 +227,16 @@ export function valoresDeVariables(
 }
 
 /**
+ * Un motivo por el que no se puede componer el prompt, con lo único que la pantalla necesita para señalar dónde se
+ * arregla: si sale de una variable de **texto** (se escribe en el campo de la escena) o de una que se elige con la
+ * botonera.
+ */
+export interface MotivoDePlantilla {
+  texto: string;
+  deTexto: boolean;
+}
+
+/**
  * Qué falta por elegir y qué no encaja, **sin componer el prompt**.
  *
  * Es lo único que el navegador necesita saber para habilitar el botón de generar y para decir qué falta: desde la
@@ -242,11 +252,13 @@ export function faltanPorElegir(
     escena: string;
     tipoPersonaje: TipoPersonaje | null;
   },
-): { faltan: string[]; motivos: string[] } {
+): { faltan: string[]; motivos: string[]; detalle: MotivoDePlantilla[] } {
   const faltan: string[] = [];
-  const motivos: string[] = [];
+  const detalle: MotivoDePlantilla[] = [];
+  const motivar = (texto: string, deTexto: boolean) => detalle.push({ texto, deTexto });
   if (variables.length > MAXIMO_VARIABLES) {
-    return { faltan, motivos: [`La plantilla declara más de ${MAXIMO_VARIABLES} variables.`] };
+    motivar(`La plantilla declara más de ${MAXIMO_VARIABLES} variables.`, false);
+    return { faltan, motivos: detalle.map((d) => d.texto), detalle };
   }
   for (const variable of variables) {
     const elegidos =
@@ -267,18 +279,18 @@ export function faltanPorElegir(
     if (!tieneValor) {
       if (variable.obligatoria) {
         faltan.push(variable.etiqueta);
-        motivos.push(`Falta «${variable.etiqueta}».`);
+        motivar(`Falta «${variable.etiqueta}».`, variable.tipo === "texto");
       }
       continue;
     }
     if (numero !== null) {
       if (variable.minimo !== undefined && numero < variable.minimo) {
-        motivos.push(`«${variable.etiqueta}» no puede bajar de ${variable.minimo}.`);
+        motivar(`«${variable.etiqueta}» no puede bajar de ${variable.minimo}.`, false);
       }
       if (variable.maximo !== undefined && numero > variable.maximo) {
-        motivos.push(`«${variable.etiqueta}» no puede pasar de ${variable.maximo}.`);
+        motivar(`«${variable.etiqueta}» no puede pasar de ${variable.maximo}.`, false);
       }
     }
   }
-  return { faltan, motivos };
+  return { faltan, motivos: detalle.map((d) => d.texto), detalle };
 }

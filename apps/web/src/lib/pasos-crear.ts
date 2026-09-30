@@ -52,6 +52,11 @@ export interface DatosPasosCrear {
   /** Estado del clip que se está mirando; `null` si no hay ninguno. */
   clip: EstadoTrabajo | null;
   clipsAnteriores: number;
+  /**
+   * Requisitos que faltan en cada paso (id del paso → cuántos). Solo se cuentan en los pasos que se pueden abrir: un
+   * paso bloqueado ya dice qué hay que hacer antes. No cambia ningún estado ni ningún gasto: es solo información.
+   */
+  pendientes?: Readonly<Record<string, number>>;
 }
 
 /** Estado de un trabajo visto como paso: en marcha, listo o parado (fallido, cancelado o sin respuesta). */
@@ -69,6 +74,14 @@ export const MOTIVO_FOTOGRAMA_PARADO =
   "El fotograma no ha salido (ha fallado, se ha cancelado o el proveedor no responde): mira el motivo en «Resultado del fotograma». Para pedir otro, cambia la descripción, la imagen o el modelo y vuelve a confirmar el coste.";
 
 export function pasosDeCrear(d: DatosPasosCrear): PasoDelFlujo[] {
+  const pendientes = d.pendientes ?? {};
+  return pasosSinPendientes(d).map((p) => {
+    const faltan = pendientes[p.id] ?? 0;
+    return faltan > 0 && p.estado !== "bloqueado" ? { ...p, pendientes: faltan } : p;
+  });
+}
+
+function pasosSinPendientes(d: DatosPasosCrear): PasoDelFlujo[] {
   // El formato siempre tiene una elección (la plantilla normal de fábrica), así que no queda pendiente.
   const formato: PasoDelFlujo = {
     id: "formato",

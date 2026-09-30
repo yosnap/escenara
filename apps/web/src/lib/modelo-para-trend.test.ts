@@ -1,0 +1,104 @@
+import { describe, expect, test } from "bun:test";
+import type { ModeloElegible } from "./catalogo";
+import { decidirModeloParaTrend, motivoSinDuracion, tieneTarifaParaDuracion } from "./modelo-para-trend";
+
+const modelo = (id: string, segundos: number[], extra: Partial<ModeloElegible> = {}): ModeloElegible => ({
+  modelo: id,
+  nombre: id.toUpperCase(),
+  conVoz: true,
+  unidad: "vídeo",
+  estado: "validado",
+  creditos: 10,
+  precioPublicado: false,
+  duracionesConCoste: segundos.map((s) => ({ segundos: s, creditos: 10, unidad: `clip de ${s} s`, publicado: false })),
+  duraciones: segundos,
+  maximoReferencias: 1,
+  ...extra,
+});
+
+const FAST = modelo("veo-fast", [4, 8]);
+const PRO = modelo("veo-pro", [4, 6, 8]);
+const MUDO = modelo("mudo", [6], { conVoz: false });
+const TREND = { nombre: "Unboxing", targetSeconds: 6, modelosPermitidos: [] as string[] };
+
+describe("tarifa por duración", () => {
+  test("con duraciones registradas hace falta la de la pedida", () => {
+    expect(tieneTarifaParaDuracion(FAST, 8)).toBe(true);
+    expect(tieneTarifaParaDuracion(FAST, 6)).toBe(false);
+  });
+
+  test("sin ninguna duración registrada no hay tarifa por duración que exigir", () => {
+    expect(tieneTarifaParaDuracion(modelo("libre", []), 6)).toBe(true);
+  });
+
+  test("el motivo dice qué duraciones sí tiene", () => {
+    expect(motivoSinDuracion(FAST, 6)).toBe("VEO-FAST no tiene clips de 6 s (solo 4 y 8 s).");
+    expect(motivoSinDuracion(PRO, 6)).toBeNull();
+    expect(motivoSinDuracion(PRO, 5)).toBe("VEO-PRO no tiene clips de 5 s (solo 4, 6 y 8 s).");
+  });
+});
+
+describe("modelo al elegir un trend", () => {
+  const base = { actual: FAST, candidatos: [FAST, PRO, MUDO], trend: TREND, predeterminado: "veo-fast" };
+
+  test("si el actual ya cobra la duración, no se toca", () => {
+    expect(decidirModeloParaTrend({ ...base, actual: PRO })).toEqual({ tipo: "mantener" });
+  });
+
+  test("sin trend o sin duración fija no hay nada que decidir", () => {
+    expect(decidirModeloParaTrend({ ...base, trend: null })).toEqual({ tipo: "mantener" });
+    expect(decidirModeloParaTrend({ ...base, trend: { ...TREND, targetSeconds: null } })).toEqual({ tipo: "mantener" });
+  });
+
+  test("cambia a un modelo compatible y lo dice; conserva la voz si el actual la tenía", () => {
+    const d = decidirModeloParaTrend(base);
+    expect(d.tipo).toBe("cambiar");
+    if (d.tipo !== "cambiar") return;
+    expect(d.modelo.modelo).toBe("veo-pro");
+    expect(d.aviso).toContain("Hemos cambiado a VEO-PRO porque VEO-FAST no tiene clips de 6 s");
+    expect(d.aviso).not.toContain("sin voz");
+  });
+
+  test("si el actual no tenía voz, vale el predeterminado compatible aunque tampoco la tenga", () => {
+    const sinVoz = modelo("sin-voz", [4], { conVoz: false });
+    const d = decidirModeloParaTrend({
+      ...base,
+      actual: sinVoz,
+      candidatos: [PRO, MUDO],
+      predeterminado: "mudo",
+    });
+    expect(d.tipo === "cambiar" && d.modelo.modelo).toBe("mudo");
+  });
+
+  test("si solo hay uno sin voz se cambia igualmente y se avisa de que perderá la voz", () => {
+    const d = decidirModeloParaTrend({ ...base, candidatos: [FAST, MUDO] });
+    expect(d.tipo === "cambiar" && d.modelo.modelo).toBe("mudo");
+    expect(d.tipo === "cambiar" && d.aviso).toContain("sin voz");
+  });
+
+  test("prefiere el predeterminado entre los que conservan voz", () => {
+    const otro = modelo("otro", [6]);
+    const d = decidirModeloParaTrend({ ...base, candidatos: [FAST, PRO, otro], predeterminado: "otro" });
+    expect(d.tipo === "cambiar" && d.modelo.modelo).toBe("otro");
+  });
+
+  test("respeta las restricciones de la plantilla", () => {
+    const d = decidirModeloParaTrend({ ...base, trend: { ...TREND, modelosPermitidos: ["mudo"] } });
+    expect(d.tipo === "cambiar" && d.modelo.modelo).toBe("mudo");
+  });
+
+  test("sin ningún compatible, error con la causa y sin cambiar nada", () => {
+    const d = decidirModeloParaTrend({ ...base, candidatos: [FAST] });
+    expect(d.tipo).toBe("ninguno");
+    if (d.tipo !== "ninguno") return;
+    expect(d.error).toContain("«Unboxing» pide clips de 6 s");
+    expect(d.error).toContain("VEO-FAST no tiene clips de 6 s");
+    expect(d.error).toContain("No se ha aplicado y no se ha cobrado nada");
+  });
+
+  test("si la restricción deja fuera a todos los que cobran la duración, también es un error", () => {
+    const d = decidirModeloParaTrend({ ...base, trend: { ...TREND, modelosPermitidos: ["veo-fast"] } });
+    expect(d.tipo).toBe("ninguno");
+    expect(d.tipo === "ninguno" && d.error).toContain("que este trend admita");
+  });
+});
