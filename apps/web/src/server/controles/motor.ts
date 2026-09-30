@@ -362,6 +362,24 @@ const REGLAS: readonly Regla[] = [
       excepcion: "proyecto",
     };
   },
+  // ── Afirmaciones de salud: lo que impide aprobar el plan impide también exportar (0.35.0) ────────────
+  (h) => {
+    const escenas = [...(h.exportacion?.afirmacionesSalud ?? [])].sort((a, b) => a - b);
+    if (escenas.length === 0) return null;
+    return {
+      regla: "montaje-afirmaciones-salud",
+      estado: "bloqueado",
+      motivo:
+        escenas.length === 1
+          ? `La escena ${escenas[0]} tiene una afirmación sobre salud sin verificar.`
+          : `${escenas.length} escenas del montaje tienen afirmaciones sobre salud sin verificar (${escenas.join(", ")}).`,
+      accion:
+        "Verifícala, corrígela o descártala en el paso Escenas del proyecto antes de exportar: un vídeo no sale con una afirmación de salud sin revisar.",
+      enlace: "/proyectos",
+      http: 409,
+      excepcion: "proyecto",
+    };
+  },
   (h) =>
     h.exportacion?.fragmentos === 0
       ? {

@@ -469,3 +469,23 @@ describe("puertas del canto con audio propio", () => {
     expect(evaluar({ tipo: "animacion", parametros: PARAMETROS }).frenos).toEqual([]);
   });
 });
+
+describe("afirmaciones de salud en el montaje", () => {
+  const montaje = (afirmacionesSalud: number[]): Hechos => ({
+    tipo: "montaje",
+    parametros: todoBien().parametros,
+    exportacion: { criticos: [], fragmentos: 2, escenasSinClip: [], afirmacionesSalud },
+  });
+
+  test("una escena con una afirmación de salud sin verificar bloquea la exportación y dice cuál", () => {
+    const freno = evaluar(montaje([2])).frenos.find((f) => f.regla === "montaje-afirmaciones-salud");
+    expect(freno?.estado).toBe("bloqueado");
+    expect(freno?.motivo).toContain("escena 2");
+    expect(freno?.accion).toContain("Verifícala");
+  });
+
+  test("con varias las cuenta y las ordena; sin ninguna no frena", () => {
+    expect(evaluar(montaje([3, 1])).frenos[0]?.motivo).toContain("(1, 3)");
+    expect(evaluar(montaje([])).estado).toBe("listo");
+  });
+});
