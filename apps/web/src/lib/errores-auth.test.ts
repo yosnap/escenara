@@ -21,3 +21,11 @@ describe("errores de cuenta", () => {
     expect(rutaSegura(null, "/")).toBe("/");
   });
 });
+
+describe("sesión antigua", () => {
+  test("se explica con qué hacer, venga como código o solo como texto", () => {
+    const esperado = mensajeError({ code: "SESSION_NOT_FRESH" });
+    expect(esperado).toContain("vuelve a entrar");
+    expect(mensajeError({ message: "Session is not fresh" })).toBe(esperado);
+  });
+});

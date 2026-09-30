@@ -2,6 +2,18 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.41.1] · 2026-09-30
+
+Parche: **cerrar otra sesión desde «Tu cuenta» ya no rompe la pantalla con «Session is not fresh»**. Sin migraciones, sin
+cambios de precio.
+
+### Corregido
+
+- **Cerrar una sesión abierta en otro dispositivo, o cerrar las demás, pide una sesión reciente** (norma de
+  seguridad: 24 horas desde que entraste). Cuando la tuya era más antigua, el error salía como pantalla de fallo del
+  servidor. Ahora se queda en «Tu cuenta» con un aviso claro: «Por seguridad, esta acción pide que hayas iniciado
+  sesión hace poco. Cierra sesión, vuelve a entrar y repítela.» Vale también para cambiar la contraseña.
+
 ## [0.41.0] · 2026-09-30
 
 **Formatos y proyectos multiescena.** Un proyecto deja de ser solo un reel vertical corto: eliges **para qué

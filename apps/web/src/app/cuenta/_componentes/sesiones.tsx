@@ -97,7 +97,7 @@ export function Sesiones({ actual, sesiones }: { actual: string; sesiones: Sesio
                   onClick={() =>
                     ejecutar(s.id, async () => {
                       const r = await cerrarSesionDispositivo(s.id);
-                      return { error: r.ok ? null : { code: "SESSION_NOT_FOUND" } };
+                      return { error: r.ok ? null : { code: r.codigo ?? "SESSION_NOT_FOUND" } };
                     })
                   }
                 >
