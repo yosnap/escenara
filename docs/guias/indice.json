@@ -45,6 +45,11 @@
           "descripcion": "El mapa de modelos por tipo, las reservas, qué cuesta cada opción y los servicios compatibles con OpenAI."
         },
         {
+          "archivo": "comparar-modelos.md",
+          "titulo": "Comparar modelos",
+          "descripcion": "Comparar precios, tus resultados y ejemplos sin gastar nada, y comparar generando dos clips de una escena con su coste confirmado antes."
+        },
+        {
           "archivo": "personaliza-tu-instancia.md",
           "titulo": "Personaliza tu instancia",
           "descripcion": "Nombre, logotipos, tipografía y colores de la instalación, con contraste comprobado, publicación atómica e historial."

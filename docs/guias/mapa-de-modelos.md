@@ -49,6 +49,9 @@ hace que un proveedor que se queda colgado no te deje el trabajo sin hacer.
 
 ## Lo que cuesta cada opción
 
+Para ver precios, tus resultados de antes y ejemplos de varios modelos a la vez **sin gastar nada**, usa **Comparar**
+(lee [Comparar modelos](comparar-modelos.md)).
+
 Los créditos de dos proveedores **no valen lo mismo ni miden lo mismo**, así que Escenara nunca los suma ni los
 compara. Cada opción enseña su coste **en su propia moneda**.
 

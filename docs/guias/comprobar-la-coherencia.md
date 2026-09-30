@@ -189,6 +189,19 @@ Con esa etiqueta:
 Igual que en el panel de acierto, con menos de 20 casos se enseña el recuento y no el porcentaje, y el umbral de
 cada pregunta solo ordena la medición: no hay ninguna cifra mágica a partir de la cual se automatice nada.
 
+### Calibrar el umbral de cada pregunta
+
+En **Admin › Calibración**, «Reconstruir el conjunto y calibrar» junta las opiniones que tienen etiqueta humana en un
+**conjunto etiquetado** (solo dos números y la etiqueta de cada una: ni textos, ni nombres, ni cuentas) y lo reparte
+siempre igual en dos partes: **calibración** (70 %) y **retenido** (30 %). Con la primera se elige el umbral que más
+opina dejando los falsos permisos en el 5 % o menos; con la segunda, que no se usó para elegirlo, se mide su precisión,
+sus falsos permisos y sus bloqueos innecesarios. Cada cálculo se guarda con su fecha y su muestra.
+
+Con menos de 20 ejemplos en cada parte no se propone nada: **sin datos, el umbral no se usa para automatizar**. Y un
+umbral propuesto tampoco activa nada: es un número para que lo mire una persona. El conjunto se borra con la cuenta de
+la que sale y no sale del servidor. Laya se evaluará como segundo evaluador cuando haya al menos 200 decisiones con
+corrección humana (la decisión, en el ADR-0042).
+
 ## Ver también
 
 - [Crear un personaje](crear-un-personaje.md) y [Buenas referencias](buenas-referencias.md)
