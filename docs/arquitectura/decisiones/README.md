@@ -43,6 +43,7 @@ Cada decisión relevante se documenta en un fichero `adr-NNNN-slug.md` dentro de
 | [0035](adr-0035-montaje-y-render-con-ffmpeg.md) | El montaje es una línea de tiempo simple con guardado explícito y versión, y el render un trabajo de FFmpeg en el worker con cola propia: sin coste, idempotente por montaje y versión, y sin exportar si no se puede dibujar la etiqueta de contenido sintético | 0.32.0 | Aceptada (el alcance del editor, el render local y la etiqueta obligatoria son firmes; la mezcla de la música, el consejo de 60 s, la falta de cancelación y no repetir una escena son provisionales) |
 | [0036](adr-0036-trends-versionados.md) | El trend es una plantilla versionada con vigencia explícita; solo una copia vigente puede generar | 0.30.0 | Propuesta; cinco formatos en revisión hasta la prueba real |
 | [0037](adr-0037-animados-con-identidad-maestra.md) | El estilo animado pertenece al personaje inventado, se versiona y se ancla en un retrato maestro heredado por el proyecto | 0.31.0 | Aceptada; calidad visual pendiente de prueba real |
+| [0038](adr-0038-decisiones-tipadas-en-sombra.md) | Cada decisión del motor se registra con su evidencia, umbrales, puerta y acción; Jev opina en sombra, sin bloquear ni verse, y se mide contra la revisión humana | 0.39.0 | Aceptada (las reglas mandan y la sombra no bloquea son firmes; las dos preguntas y la clave del operador, pendientes de revisión) |
 
 ## Plantilla
 

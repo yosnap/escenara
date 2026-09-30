@@ -2,6 +2,58 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.39.0] · 2026-09-30
+
+**Decisiones registradas y sombra.** Cada vez que los controles previos deciden si algo se genera, queda apuntado
+**qué se miró, con qué umbrales y qué se hizo**. Y, si quien administra lo enciende, Jev opina en paralelo **sin
+decidir nada** para poder medir si acertaría. No cambia qué bloquea ningún control ni ninguna regla de coste o de
+consentimiento. Una migración aditiva.
+
+### Añadido
+
+- **Admin › Decisiones**: las últimas decisiones de los controles, cada una con cuándo y qué se iba a hacer, si
+  **dejó pasar**, **pidió confirmar** o **frenó**, las reglas que saltaron, **qué se miró** (modelo, precio,
+  créditos, presupuesto, estado de la escena; nunca nombres ni el texto del guion), los umbrales aplicados y la
+  versión de las reglas.
+- **La sombra de Jev**, apagada de fábrica. Encendida, pregunta sola, por cada escena que pasa por la puerta de
+  generar, **«¿el guion tiene una afirmación que exige verificación?»**. La segunda pregunta que se mide, **«¿la
+  escena generada corresponde a la descripción?»**, es la comprobación del resultado de Coherencia, que se sigue
+  pidiendo desde la revisión.
+- **Métricas de la sombra** contra lo que dicen las personas al revisar la escena: aciertos, **falsos permisos** (la
+  sombra dejaba pasar y la persona rechazó), **bloqueos innecesarios** (la sombra frenaba y la persona aceptó),
+  cuántas veces coincide con las reglas, coste y latencia. Con menos de 20 casos se enseña el recuento, no el
+  porcentaje.
+- **Admin › Ajustes › Decisiones en sombra**: encenderla, encender su pregunta, su confianza mínima y un tope de
+  evaluaciones por usuario y día, con **lo que cuesta cada evaluación** calculado con la tarifa de Jev de Coherencia.
+
+### Cambiado
+
+- **Todas las decisiones de los controles quedan registradas**, también las que antes no dejaban rastro: el tope
+  del proyecto cuando frena el asistente de guion, la comprobación previa del canto, la puerta de producción de una
+  escena y la que repite el consentimiento justo antes de mandar una cara al proveedor. Lo que deciden y lo que
+  dicen es exactamente lo mismo que antes.
+
+### Seguridad y privacidad
+
+- La sombra **no frena nada nunca** y **nadie la espera**: si Jev tarda más de 10 segundos, falla o contesta algo que
+  no se entiende, se apunta como fallo y la generación sigue igual. Apagada, no lee la clave ni llama a nadie.
+- **El usuario no ve la opinión de la sombra**: solo la ve quien administra, para que la revisión humana con la que
+  se mide siga siendo independiente.
+- La clave de TypeSafe es la de la instalación, **cifrada** en la bóveda como hasta ahora; no vuelve al navegador ni
+  sale en el registro del servidor, tampoco cuando TypeSafe la repite en un error. Con la sombra encendida, el
+  guion y la descripción de cada escena salen hacia TypeSafe con esa clave; el mismo texto no se manda dos veces.
+
+### Actualizar desde la 0.36.0
+
+- **Haz antes una copia**: `bun run db:backup`. Después, `bun run db:migrate`.
+- La migración `0057_decisiones-registradas-y-sombra` es **aditiva e idempotente**: añade a `control_evaluations`
+  la evidencia, los umbrales, la puerta y la acción (vacíos de fábrica en las filas anteriores, que se leen igual),
+  añade el sujeto «proyecto» y crea la tabla vacía `shadow_evaluations`. No borra ni reescribe ninguna fila.
+- **Ajuste nuevo**: la sombra viene **apagada**. Si quieres medirla, enciéndela en Admin › Ajustes › Decisiones en
+  sombra y pon antes la tarifa de Jev en Coherencia para ver su coste en euros.
+- **Reinicia el worker** después de migrar: es quien repite los controles antes de mandar un trabajo al proveedor,
+  y no recarga el código solo.
+
 ## [0.36.0] · 2026-09-30
 
 **Alertas visibles.** Los avisos dejan de ser líneas sueltas que pasan desapercibidas: todo bloqueo, error o aviso

@@ -2,7 +2,7 @@
 
 **Escenara** · Estudio abierto de personajes y vídeo · «Da vida a cada escena»
 
-Mapa de la documentación pública del proyecto. Versión actual: **0.36.0**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
+Mapa de la documentación pública del proyecto. Versión actual: **0.39.0**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
 
 ## Mapa de documentos
 
@@ -39,7 +39,7 @@ Mapa de la documentación pública del proyecto. Versión actual: **0.36.0**. Pa
 | Guías | [Escenas habladas](guias/escenas-habladas.md) | El modo Omni, sus dos motores (Gemini Omni Flash recomendado y MiniMax H3), qué registrar, qué cuesta cada escena y qué invalida cambiar la voz | 0.22.0 |
 | Guías | [Personajes inventados](guias/personajes-inventados.md) | Un personaje que no existe: descripción, cuatro retratos candidatos, declaración de que no representa a nadie y por qué no admite fotos reales | 0.22.0 |
 | Guías | [Con qué se genera cada cosa](guias/mapa-de-modelos.md) | El mapa de modelos por tipo, cuándo se pasa a la reserva, qué cuesta cada opción y cómo añadir servicios compatibles con la API de OpenAI | 0.21.1 |
-| Guías | [Comprobar la coherencia](guias/comprobar-la-coherencia.md) | Si una vista generada es la misma persona (y entonces cuenta como referencia), si la escena cubre el guion y si la emoción encaja; qué decide y qué solo mira, y qué autorización hace falta | 0.24.0 |
+| Guías | [Comprobar la coherencia](guias/comprobar-la-coherencia.md) | Si una vista generada es la misma persona (y entonces cuenta como referencia), si la escena cubre el guion y si la emoción encaja; qué decide y qué solo mira, qué autorización hace falta y, para quien administra, el registro de decisiones y la sombra de Jev | 0.39.0 |
 | Arquitectura | [Decisiones (ADR)](arquitectura/decisiones/README.md) | Índice de decisiones y plantilla | Licencia, lenguaje, runtime, despliegue, almacenamiento, modelos iniciales, interfaz, base de datos, bóveda de credenciales, seguimiento de trabajos, ficha como contexto de generación, prompts en el servidor y en inglés, modelo de texto del asistente, el proyecto como unidad de trabajo, el prompt como material del servidor, el motor de reglas de controles previos y la cancelación y los reintentos de la producción decididos; 2 pendientes |
 | Recursos | [APIs, proveedores y servicios](recursos/apis-y-proveedores.md) | Qué servicio, para qué, dónde se obtiene la clave, documentación y precios | Vivo |
 | Recursos | [Plantilla de claves API](recursos/claves-api.plantilla.md) | Estructura del documento privado de claves | Vivo |
