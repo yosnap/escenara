@@ -147,8 +147,8 @@ export async function guardarMontaje(
   const { segundosMaximos } = await limitesDeProyecto();
   const errores = erroresDeMontaje(cambios.fragmentos, escenasParaValidar(material), segundosMaximos);
   if (errores.length > 0) throw new ErrorMontaje(400, errores.join(" "));
-  const encuadres =
-    cambios.encuadres === undefined ? actual.framings : encuadresDelProyecto(cambios.encuadres, material);
+  // Sin encuadres en la petición se conservan los guardados; en los dos casos se limpian los de escenas borradas.
+  const encuadres = encuadresDelProyecto(cambios.encuadres ?? actual.framings, material);
 
   // La etiqueta obligatoria se impone **aquí**, no en la pantalla: una petición que pida quitarla se rechaza en
   // lugar de guardarse a medias, para que el usuario sepa que no se ha hecho lo que pedía y por qué.
@@ -182,8 +182,12 @@ export async function guardarMontaje(
 }
 
 /**
- * Encuadres que se guardan: solo de escenas del proyecto, y sin los que coinciden con el automático (así «volver
- * a automático» no deja una marca que diga lo mismo con otras palabras). Una escena ajena se rechaza diciendo cuál.
+ * Encuadres que se guardan: solo de escenas que siguen en el proyecto, y sin los que coinciden con el automático (así
+ * «volver a automático» no deja una marca que diga lo mismo con otras palabras).
+ *
+ * El de una escena que ya no está **se descarta, no se rechaza**: la pantalla devuelve los encuadres que recibió, y
+ * una escena borrada después de ajustarla dejaría el montaje sin poder guardarse nunca. Así los huérfanos se limpian
+ * en el siguiente guardado, y nada ajeno al proyecto llega a escribirse.
  */
 function encuadresDelProyecto(encuadres: EncuadresDelMontaje, material: MaterialDelProyecto): EncuadresDelMontaje {
   const propias = new Set(material.escenas.map((e) => e.escena.id));
@@ -192,12 +196,7 @@ function encuadresDelProyecto(encuadres: EncuadresDelMontaje, material: Material
     if (!esFormatoMontaje(formato)) continue;
     const suyos: Record<string, NonNullable<EncuadresDelMontaje[typeof formato]>[string]> = {};
     for (const [escenaId, encuadre] of Object.entries(porEscena ?? {})) {
-      if (!propias.has(escenaId)) {
-        throw new ErrorMontaje(
-          400,
-          "Hay un encuadre de una escena que no es de este proyecto. Vuelve a cargar el montaje.",
-        );
-      }
+      if (!propias.has(escenaId)) continue;
       if (!mismoEncuadre(encuadre, encuadreAutomatico(formato))) suyos[escenaId] = encuadre;
     }
     if (Object.keys(suyos).length > 0) limpios[formato] = suyos;

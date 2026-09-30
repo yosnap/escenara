@@ -39,6 +39,7 @@ const { eq } = await import("drizzle-orm");
 const rutaProyectos = await import("@/app/api/proyectos/route");
 const rutaEscenas = await import("@/app/api/proyectos/[id]/escenas/route");
 const rutaMontaje = await import("@/app/api/proyectos/[id]/montaje/route");
+const rutaEscena = await import("@/app/api/escenas/[id]/route");
 const rutaFormatos = await import("@/app/api/proyectos/[id]/montaje/formatos/route");
 const rutaExportar = await import("@/app/api/proyectos/[id]/montaje/exportacion/route");
 const { exigirBaseDeDatosDePrueba } = await import("../db/bd-de-prueba");
@@ -434,10 +435,10 @@ describe.skipIf(!hayBaseDeDatos)("formatos, reencuadre y límites de un proyecto
     expect(await db().select().from(montageExports).where(eq(montageExports.projectId, proyectoId))).toHaveLength(0);
   });
 
-  test("un encuadre de una escena ajena o mal formado se rechaza, y el automático no se guarda", async () => {
+  test("un encuadre de una escena ajena no se guarda, uno mal formado se rechaza y el automático no se guarda", async () => {
     const ajena = await guardar({ encuadres: { cuadrado_1_1: { [crypto.randomUUID()]: { modo: "bandas" } } } });
-    expect(ajena.estado).toBe(400);
-    expect(mensajeDe(ajena.datos)).toContain("no es de este proyecto");
+    expect(ajena.estado).toBe(200);
+    expect((ajena.datos as MontajeVista).encuadres).toEqual({});
     const mala = await guardar({ encuadres: { cuadrado_1_1: { [escenaIds[0] ?? ""]: { modo: "recorte", x: 150 } } } });
     expect(mala.estado).toBe(400);
     const automatico = await guardar({
@@ -445,6 +446,27 @@ describe.skipIf(!hayBaseDeDatos)("formatos, reencuadre y límites de un proyecto
     });
     expect(automatico.estado).toBe(200);
     expect((automatico.datos as MontajeVista).encuadres).toEqual({});
+  });
+
+  test("ajustar el encuadre, regenerar, editar y borrar la escena no deja el montaje sin poder guardarse", async () => {
+    await ponerFormatos(["vertical_9_16", "cuadrado_1_1"]);
+    const [primera, segunda] = [escenaIds[0] ?? "", escenaIds[1] ?? ""];
+    const ajustado = await guardar({ encuadres: { cuadrado_1_1: { [segunda]: { modo: "recorte", x: 0, y: 50 } } } });
+    expect((ajustado.datos as MontajeVista).encuadres).toEqual({
+      cuadrado_1_1: { [segunda]: { modo: "recorte", x: 0, y: 50 } },
+    });
+    // Regenerar la deja sin clip y aprobada; editarla, en borrador. Entonces se puede borrar.
+    await db().update(scenes).set({ clipMediaId: null, state: "borrador" }).where(eq(scenes.id, segunda));
+    const borrada = await rutaEscena.DELETE(pedir(ana, `/api/escenas/${segunda}`, "DELETE"), ctx(segunda));
+    expect(borrada.status).toBe(200);
+    // La pantalla devuelve los encuadres que recibió, con el de la escena borrada dentro.
+    const vista = await leerMontaje();
+    const { estado, datos } = await guardar({
+      fragmentos: [{ escenaId: primera, entrada: 0, salida: 2 }],
+      encuadres: vista.encuadres,
+    });
+    expect(estado).toBe(200);
+    expect((datos as MontajeVista).encuadres).toEqual({});
   });
 
   test("con clips generados, el principal no cambia: se ofrece añadirlo como formato más", async () => {
