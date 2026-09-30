@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
 import { EnlaceLogotipo } from "@/components/ui/enlace-logotipo";
 import { SelectorTema } from "@/components/ui/theme-toggle";
