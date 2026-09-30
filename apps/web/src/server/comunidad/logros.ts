@@ -50,6 +50,7 @@ export async function logrosDe(usuarioId: string): Promise<LogroVista[]> {
       clave: l.clave,
       titulo: l.titulo,
       descripcion: l.descripcion,
+      pista: l.pista,
       conseguidoEl: f ? f.achievedAt.toISOString() : null,
       porCelebrar: Boolean(f && f.celebratedAt === null),
     };

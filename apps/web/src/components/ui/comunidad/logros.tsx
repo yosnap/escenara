@@ -27,7 +27,7 @@ export function ListaLogros({ logros }: { logros: LogroVista[] }) {
             <span className="text-sm text-texto-suave">
               {l.conseguidoEl
                 ? `${l.descripcion} Conseguido el ${fechaCorta(l.conseguidoEl)}.`
-                : `Pendiente: ${l.descripcion.toLowerCase()}`}
+                : `Todavía no. ${l.pista}`}
             </span>
           </span>
         </li>

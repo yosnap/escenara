@@ -21,6 +21,7 @@ import {
   promptTemplates,
 } from "../db/esquema";
 import type { Actor } from "../media/servicio";
+import { condicionMedioNoReservado } from "../personajes/uso-de-medio";
 import { elegibilidadDe } from "./elegibilidad";
 import { ErrorComunidad } from "./errores";
 import { comunidadActiva, condicionVisible, esHuerfana, puedeVer } from "./visibilidad";
@@ -255,7 +256,15 @@ export async function candidatos(actor: Actor, limite = 24): Promise<CandidatoAP
       .selectDistinct({ id: media.id, creado: media.createdAt })
       .from(media)
       .innerJoin(generationJobs, eq(generationJobs.resultMediaId, media.id))
-      .where(and(eq(media.ownerId, actor.id), isNull(media.deletedAt), inArray(media.kind, ["imagen", "video"])))
+      // Sin material reservado (vistas y hojas de personaje, documentos): no se publica por sí solo y solo metería ruido.
+      .where(
+        and(
+          eq(media.ownerId, actor.id),
+          isNull(media.deletedAt),
+          inArray(media.kind, ["imagen", "video"]),
+          condicionMedioNoReservado(),
+        ),
+      )
       .orderBy(desc(media.createdAt))
       .limit(limite),
     db()

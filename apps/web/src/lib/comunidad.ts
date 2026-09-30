@@ -119,17 +119,29 @@ export interface RetoVista {
 }
 
 export const LOGROS = [
-  { clave: "primer_personaje", titulo: "Primer personaje", descripcion: "Has creado tu primer personaje." },
+  {
+    clave: "primer_personaje",
+    titulo: "Primer personaje",
+    descripcion: "Has creado tu primer personaje.",
+    pista: "Crea tu primer personaje.",
+  },
   {
     clave: "primera_escena_aprobada",
     titulo: "Primera escena aprobada",
     descripcion: "Has aprobado la primera escena de un proyecto.",
+    pista: "Aprueba la primera escena de un proyecto.",
   },
-  { clave: "primera_exportacion", titulo: "Primera exportación", descripcion: "Has exportado tu primer vídeo." },
+  {
+    clave: "primera_exportacion",
+    titulo: "Primera exportación",
+    descripcion: "Has exportado tu primer vídeo.",
+    pista: "Exporta tu primer vídeo o proyecto.",
+  },
   {
     clave: "primera_publicacion_aprobada",
     titulo: "Primera publicación aprobada",
     descripcion: "La comunidad ya ve algo tuyo.",
+    pista: "Publica algo sintético y espera a que se apruebe.",
   },
 ] as const;
 export type ClaveLogro = (typeof LOGROS)[number]["clave"];
@@ -139,6 +151,8 @@ export interface LogroVista {
   clave: ClaveLogro;
   titulo: string;
   descripcion: string;
+  /** Qué hacer para conseguirlo, mientras no se tiene. */
+  pista: string;
   conseguidoEl: string | null;
   /** Conseguido y todavía sin celebrar: el confeti sale una vez. */
   porCelebrar: boolean;
