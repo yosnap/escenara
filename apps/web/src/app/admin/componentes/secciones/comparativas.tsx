@@ -20,7 +20,7 @@ import { Muestra, Seccion } from "../seccion";
  * llamarían al servidor no hacen nada.
  */
 
-const modelo = (id: string, nombre: string, creditos: number, notas: string): ModeloComparable => ({
+const modelo = (id: string, nombre: string, creditos: number, maximoReferencias: number): ModeloComparable => ({
   id,
   nombre,
   nombreProveedor: "KIE.ai",
@@ -37,7 +37,9 @@ const modelo = (id: string, nombre: string, creditos: number, notas: string): Mo
     { segundos: 4, creditos },
     { segundos: 8, creditos: creditos * 2 },
   ],
-  notas,
+  proporciones: ["9:16", "16:9"],
+  resoluciones: ["720p"],
+  maximoReferencias,
   historial: {
     terminados: id === "a" ? 6 : 0,
     fallidos: id === "a" ? 1 : 0,
@@ -47,10 +49,7 @@ const modelo = (id: string, nombre: string, creditos: number, notas: string): Mo
   ejemplos: [],
 });
 
-const MODELOS = [
-  modelo("a", "Veo 3.1 Fast", 60, "Con voz. Bueno en planos cercanos."),
-  modelo("b", "Kling 3 Turbo", 28, ""),
-];
+const MODELOS = [modelo("a", "Veo 3.1 Fast", 60, 1), modelo("b", "Kling 3 Turbo", 28, 0)];
 
 const PREPARACION: PreparacionAB = {
   escenaId: "ejemplo",

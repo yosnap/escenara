@@ -3,7 +3,7 @@ import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { loadEnvConfig } from "@next/env";
 import sharp from "sharp";
-import { alcanceDe, PROHIBIDOS_SIN_COSTE } from "./grafo-de-importaciones";
+import { alcanceDe, alcanceDePagina, PROHIBIDOS_SIN_COSTE, tieneImportacionesOpacas } from "./grafo-de-importaciones";
 
 /**
  * **Comparar sin generar** tiene coste cero por diseño, y aquí se comprueba de dos maneras que se complementan:
@@ -22,9 +22,19 @@ process.env.ESCENARA_CLAVE_MAESTRA ??= randomBytes(32).toString("base64");
 
 describe("comparar sin generar no puede llegar a ningún adaptador de pago", () => {
   test.each(["server/comparativas/sin-generar.ts", "app/comparar/page.tsx"])("%s", (inicio) => {
-    const alcance = alcanceDe(inicio);
+    const alcance = inicio.startsWith("app/") ? alcanceDePagina(inicio) : alcanceDe(inicio);
     expect(alcance.size).toBeGreaterThan(5);
     expect([...alcance].filter((f) => PROHIBIDOS_SIN_COSTE.some((r) => r.test(f)))).toEqual([]);
+  });
+
+  test("la página cuenta con los layouts que Next ejecuta sin importarlos", () => {
+    expect(alcanceDePagina("app/comparar/page.tsx").has("app/layout.tsx")).toBe(true);
+  });
+
+  test("una importación con nombre calculado no se puede seguir y cuenta como prohibida", () => {
+    expect(tieneImportacionesOpacas("const m = await import(nombre);")).toBe(true);
+    expect(tieneImportacionesOpacas("const m = require(`./${x}`);")).toBe(true);
+    expect(tieneImportacionesOpacas('const m = await import("./fijo"); const r = require("./otro");')).toBe(false);
   });
 
   test("la página usa de verdad el módulo sin coste", () => {
@@ -47,7 +57,8 @@ const { eq, like } = await import("drizzle-orm");
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
-const { characters, generationJobs, promptTemplates, users } = await import("../db/esquema");
+const { characters, generationJobs, models, promptTemplates, users } = await import("../db/esquema");
+const { olvidarCatalogo } = await import("../proveedores/catalogo");
 const { crearMedio } = await import("../media/servicio");
 const { crearPlantillaDeLaInstalacion } = await import("../prompts/plantillas-admin");
 const { fijarDemoDePlantilla } = await import("../prompts/plantillas-admin");
@@ -120,6 +131,9 @@ describe.skipIf(!hayBaseDeDatos)("comparar sin generar", () => {
     await trabajo(ana.id, "veo3_fast", { consumedCredits: 30 });
     await trabajo(ana.id, "veo3_fast", { state: "fallido", resultMediaId: null, consumedCredits: null });
     await trabajo(beto.id, "veo3_fast");
+    // Las notas del catálogo son internas de quien administra: no salen en la comparativa.
+    await db().update(models).set({ notes: "NOTA-INTERNA-DEL-ADMIN" }).where(eq(models.modelId, "veo3_fast"));
+    olvidarCatalogo();
 
     globalThis.fetch = (async () => {
       llamadas++;
@@ -134,6 +148,7 @@ describe.skipIf(!hayBaseDeDatos)("comparar sin generar", () => {
     expect(veo?.creditos).toBeGreaterThan(0);
     // Ningún prompt ni nada interno viaja en la vista.
     expect(JSON.stringify(modelos)).not.toContain("PROMPT-INTERNO-QUE-NO-SALE");
+    expect(JSON.stringify(modelos)).not.toContain("NOTA-INTERNA-DEL-ADMIN");
     // Beto no ve lo de Ana.
     const deBeto = await compararSinGenerar({ id: beto.id, esAdmin: false }, "image_to_video");
     expect(deBeto.modelos.find((m) => m.id === veo?.id)?.historial.terminados).toBe(1);

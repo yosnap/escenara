@@ -163,7 +163,9 @@ export async function compararSinGenerar(actor: Actor, capacidad: Capacidad): Pr
         publicado: m.precio?.publicado ?? false,
         caducado: m.precio?.caducado ?? false,
         duraciones: duracionesConCoste(m).map((d) => ({ segundos: d.segundos, creditos: d.creditos })),
-        notas: m.notas,
+        proporciones: m.parametros.proporciones,
+        resoluciones: m.parametros.resoluciones,
+        maximoReferencias: m.parametros.maximoReferencias,
         historial: historial.get(clave) ?? { terminados: 0, fallidos: 0, creditosMedios: null, recientes: [] },
         ejemplos: ejemplos.get(clave) ?? [],
       };

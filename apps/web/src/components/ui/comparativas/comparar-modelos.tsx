@@ -136,7 +136,6 @@ export function TarjetaModeloComparable({
           {modelo.ejemplos.length === 1 ? "1 ejemplo" : `${modelo.ejemplos.length} ejemplos`} de la instalación
         </p>
       )}
-      {modelo.notas && <p className="text-sm text-texto-suave">{modelo.notas}</p>}
       <EnlaceSeleccion modelo={modelo} seleccion={seleccion} hrefCon={hrefCon} />
     </article>
   );
@@ -188,7 +187,12 @@ export function TablaComparativa({ modelos }: { modelos: readonly ModeloComparab
           </div>
         ),
     },
-    { titulo: "Notas", celda: (m) => m.notas || "—" },
+    { titulo: "Proporciones", celda: (m) => (m.proporciones.length === 0 ? "—" : m.proporciones.join(" · ")) },
+    { titulo: "Resoluciones", celda: (m) => (m.resoluciones.length === 0 ? "—" : m.resoluciones.join(" · ")) },
+    {
+      titulo: "Imágenes de referencia",
+      celda: (m) => (m.maximoReferencias === 0 ? "No acepta" : `Hasta ${m.maximoReferencias}`),
+    },
   ];
   return (
     <TablaDesplazable etiqueta="Modelos elegidos, lado a lado" className="rounded-tarjeta border-2 border-borde">

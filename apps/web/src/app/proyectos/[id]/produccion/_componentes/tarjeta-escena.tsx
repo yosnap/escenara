@@ -105,9 +105,14 @@ export function TarjetaEscena({
     escena.reparto === null &&
     (fotogramaPorAprobar(escena) || clipPorEncolar(escena)) &&
     !trabajoEnMarcha(escena.animacion);
+  /**
+   * «Otro clip con este fotograma» solo cuando la escena **no** tiene clip guardado: con uno, la cola lo rechaza siempre
+   * («ya tiene su clip guardado»), y para probar otro modelo con el mismo fotograma está «Comparar generando».
+   */
   const puedePedirOtroClip =
     escena.reparto === null &&
-    escena.clip !== null &&
+    escena.clip === null &&
+    !puedeAprobar &&
     !trabajoEnMarcha(escena.animacion) &&
     escena.fotogramaAprobado !== null;
   // Comparar dos modelos animando el mismo fotograma: solo con un clip normal (sin reparto, sin Omni) y nada en marcha.

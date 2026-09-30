@@ -7,7 +7,8 @@ import { falloConCoste } from "./produccion";
 /**
  * Comparativas de modelos (RF13). Dos cosas distintas que **no se mezclan nunca**:
  *
- * - **sin generar** (`/comparar`): precios del catálogo, tus resultados de antes y ejemplos de la instalación. Coste
+ * - **sin generar** (`/comparar`): precios del catálogo y sus datos públicos (duraciones, proporciones, voz y referencias),
+ *   tus resultados de antes y ejemplos de la instalación. Coste
  *   cero por diseño: no se genera nada, no se consulta ningún saldo y no se llama a ningún proveedor;
  * - **A/B generando** (una escena): dos modelos animan el mismo fotograma por el camino normal de la cola. Cuesta lo que
  *   cuestan dos clips, y solo sale si confirmas **el número de ejecuciones y el coste** exactos.
@@ -72,8 +73,14 @@ export interface ModeloComparable {
   caducado: boolean;
   /** Duraciones que sabe cobrar, en segundos, con su precio. */
   duraciones: { segundos: number; creditos: number }[];
-  /** Notas de quien administra el catálogo. */
-  notas: string;
+  /** Proporciones y resoluciones que admite, tal como las publica el catálogo. */
+  proporciones: string[];
+  resoluciones: string[];
+  /** Imágenes de referencia que acepta como máximo; 0 si no acepta ninguna. */
+  maximoReferencias: number;
+  /*
+   * Las notas del catálogo **no** se enseñan: son internas de quien administra (`lib/catalogo.ts`). No hay nota pública.
+   */
   historial: HistorialDeModelo;
   ejemplos: EjemploDeModelo[];
 }
