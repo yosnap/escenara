@@ -22,6 +22,7 @@ import type { ProductoElegido } from "@/lib/productos";
 import { errorDeRequisito, ID_DESCRIPCION, idRequisito, type Requisito } from "@/lib/requisitos";
 import { ENVIO_CLIP, ID_REVISION_CLIP, variableDeTexto } from "@/lib/requisitos-crear";
 import { textoDeDuraciones } from "@/lib/trends";
+import { AvisoProporcionDelFotograma } from "./aviso-proporcion-del-fotograma";
 import { BloqueConfirmacion } from "./bloque-confirmacion";
 import { CampoVariableTexto } from "./campo-variable-texto";
 import type { ConfirmacionCoste } from "./panel-generar";
@@ -201,6 +202,15 @@ export function PasoClip({
           {/* Lo que falta, arriba y con cada punto como botón que lleva al campo. */}
           {!clipEnMarcha && <AvisoRequisitos requisitos={requisitos} onIr={onIrARequisito} />}
           {avisoModelo && <Aviso tono="aviso">{avisoModelo}</Aviso>}
+          {origen && (
+            <AvisoProporcionDelFotograma
+              origen={origen}
+              modelos={modelos}
+              modeloElegido={estimacion.modelo}
+              deshabilitado={enviando}
+              onModelo={cambiarModelo}
+            />
+          )}
           {modelos.length > 1 && (
             <SelectorModelo
               etiqueta="Modelo del clip"

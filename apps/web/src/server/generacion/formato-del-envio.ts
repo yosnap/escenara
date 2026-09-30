@@ -1,7 +1,8 @@
-import type { ModeloVista } from "@/lib/catalogo";
+import { esSeleccionable, type ModeloVista } from "@/lib/catalogo";
 import { motivoIncompatible } from "@/lib/presets";
 import type { OpcionDeGeneracion } from "../mapa/generacion";
 import type { PromptCompuesto } from "../prompts/render";
+import { cargarCatalogo } from "../proveedores/catalogo";
 import { ErrorGeneracion } from "./errores";
 
 /**
@@ -42,21 +43,50 @@ export function proporcionDelEnvio(
 
 /**
  * Un clip que parte de un fotograma en una proporción que el modelo de vídeo **no admite** (p. ej. 4:5 con Veo, que
- * solo hace 9:16 y 16:9) no se envía con la del modelo sin más: se avisa y se ofrecen las posibles. Si el usuario
- * ya ha elegido una de ellas para el clip, sigue: lo ha decidido él, no se recorta en silencio.
+ * solo hace 9:16 y 16:9) no se envía con la del modelo sin más: Escenara no recorta la imagen por su cuenta. Si el
+ * usuario ya ha fijado una proporción para el clip (un proyecto, un preset), sigue: lo ha decidido él.
+ *
+ * El motivo dice **cómo salir** con lo que hay en «Crear»: otro modelo que la admite (nombrado) o recortar el
+ * fotograma en la biblioteca y animar la copia. Se comprueba antes de reservar nada.
  */
-export function exigirFormatoDelFotograma(
+export function motivoFormatoDelFotograma(
+  proporcionDelFotograma: string | null,
+  proporcionDelClip: string | null,
+  modelo: Pick<ModeloVista, "nombre" | "parametros">,
+  alternativas: readonly string[] = [],
+): string | null {
+  const admitidas = modelo.parametros.proporciones;
+  if (proporcionDelFotograma === null || proporcionDelClip !== null || admitidas.length === 0) return null;
+  if (admitidas.includes(proporcionDelFotograma)) return null;
+  const otros =
+    alternativas.length > 0 ? `elige otro modelo del clip que la admite (${alternativas.join(", ")}), o ` : "";
+  return `El fotograma está en ${proporcionDelFotograma} y ${modelo.nombre} solo hace clips en ${admitidas.join(" o ")}, y Escenara no recorta el fotograma por su cuenta. Para animarlo, ${otros}recórtalo a ${admitidas[0]} en tu Biblioteca («Editar imagen») y anima esa copia. No se ha enviado ni reservado nada, y no se te ha cobrado.`;
+}
+
+/** Nombres de los modelos de vídeo que se pueden elegir y animan esa proporción sin recortar. */
+export async function modelosQueAnimanLaProporcion(proporcion: string): Promise<string[]> {
+  const { modelos } = await cargarCatalogo();
+  return modelos
+    .filter(
+      (m) =>
+        m.capacidades.includes("image_to_video") &&
+        esSeleccionable(m.estado) &&
+        m.precio !== null &&
+        (m.parametros.proporciones.length === 0 || m.parametros.proporciones.includes(proporcion)),
+    )
+    .map((m) => m.nombre);
+}
+
+/** Exige que el modelo de vídeo pueda animar el fotograma; si no, dice las salidas posibles. */
+export async function exigirFormatoDelFotograma(
   proporcionDelFotograma: string | null,
   proporcionDelClip: string | null,
   modelo: ModeloVista,
-): void {
-  const admitidas = modelo.parametros.proporciones;
-  if (proporcionDelFotograma === null || proporcionDelClip !== null || admitidas.length === 0) return;
-  if (admitidas.includes(proporcionDelFotograma)) return;
-  throw new ErrorGeneracion(
-    409,
-    `El fotograma está en ${proporcionDelFotograma} y ${modelo.nombre} solo hace clips en ${admitidas.join(" o ")}. Elige en el formato del clip uno de esos: el modelo encajará el fotograma en él, y Escenara no lo recorta por su cuenta. No se ha enviado nada ni se te ha cobrado.`,
-  );
+): Promise<void> {
+  if (motivoFormatoDelFotograma(proporcionDelFotograma, proporcionDelClip, modelo) === null) return;
+  const alternativas = await modelosQueAnimanLaProporcion(proporcionDelFotograma ?? "");
+  const motivo = motivoFormatoDelFotograma(proporcionDelFotograma, proporcionDelClip, modelo, alternativas);
+  if (motivo) throw new ErrorGeneracion(409, motivo);
 }
 
 /**

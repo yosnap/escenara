@@ -4,7 +4,7 @@ import { proporcionDelTrabajo, proporcionPedidaDe } from "../cola/entrada-del-tr
 import type { FilaTrabajo } from "../db/esquema";
 import type { OpcionDeGeneracion } from "../mapa/generacion";
 import { ErrorGeneracion } from "./errores";
-import { exigirFormatoDelFotograma, proporcionDelEnvio, reservasGuardadas } from "./formato-del-envio";
+import { motivoFormatoDelFotograma, proporcionDelEnvio, reservasGuardadas } from "./formato-del-envio";
 
 /**
  * El formato de un envío (0.41.0), sin base de datos: qué proporción se pide, qué reservas se guardan y qué hace el
@@ -32,12 +32,19 @@ describe("la proporción de un envío", () => {
     expect(() => proporcionDelEnvio("9:16", null, hailuo)).toThrow("no admite elegir proporción");
   });
 
-  test("un fotograma en 4:5 no se anima en silencio con un modelo que no lo admite; eligiendo formato, sí", () => {
-    expect(() => exigirFormatoDelFotograma("4:5", null, veo)).toThrow("El fotograma está en 4:5");
-    expect(() => exigirFormatoDelFotograma("4:5", "9:16", veo)).not.toThrow();
-    expect(() => exigirFormatoDelFotograma("9:16", null, veo)).not.toThrow();
+  test("un fotograma en 4:5 no se anima en silencio: se dicen las salidas posibles; eligiendo formato, sí", () => {
+    const motivo = motivoFormatoDelFotograma("4:5", null, veo, ["Kling 3", "Seedance"]);
+    expect(motivo).toContain("El fotograma está en 4:5");
+    // Las dos salidas que hay en «Crear»: otro modelo, nombrado, o recortar en la biblioteca.
+    expect(motivo).toContain("elige otro modelo del clip que la admite (Kling 3, Seedance)");
+    expect(motivo).toContain("recórtalo a 9:16 en tu Biblioteca");
+    expect(motivo).toContain("No se ha enviado ni reservado nada");
+    // Sin alternativas en el catálogo, solo queda recortar: no se ofrece un modelo que no hay.
+    expect(motivoFormatoDelFotograma("4:5", null, veo)).not.toContain("elige otro modelo");
+    expect(motivoFormatoDelFotograma("4:5", "9:16", veo)).toBeNull();
+    expect(motivoFormatoDelFotograma("9:16", null, veo)).toBeNull();
     // Un modelo que no acepta proporción toma la de la imagen: no hay nada que avisar.
-    expect(() => exigirFormatoDelFotograma("4:5", null, hailuo)).not.toThrow();
+    expect(motivoFormatoDelFotograma("4:5", null, hailuo)).toBeNull();
   });
 
   test("las reservas que no admiten la proporción elegida no se guardan: el relevo no cambia de formato", () => {

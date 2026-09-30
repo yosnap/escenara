@@ -331,6 +331,11 @@ export interface ModeloElegible {
    * servidor junto a `admiteFotoDeProducto`, y con él el navegador sabe cuántas fotos del producto caben.
    */
   cupoDeGaleria?: number;
+  /**
+   * Proporciones que declara el catálogo (0.41.0). Vacía: no acepta proporción y toma la de la imagen. Opcional
+   * para que las vistas anteriores sigan leyéndose; sin ella no se avisa de nada.
+   */
+  proporciones?: string[];
 }
 
 /** Recorta un modelo del catálogo a lo que puede ver quien va a generar. */
@@ -345,6 +350,7 @@ export function recortarModelo(modelo: ModeloVista): ModeloElegible {
     creditos: Math.ceil(modelo.precio?.creditos ?? 0),
     precioPublicado: modelo.precio?.publicado ?? false,
     duracionesConCoste: duraciones,
+    proporciones: [...modelo.parametros.proporciones],
     duraciones: duraciones.map((d) => d.segundos),
     maximoReferencias: modelo.parametros.maximoReferencias,
   };

@@ -33,7 +33,9 @@ const { db } = await import("../db/cliente");
 const { generationJobs, models, usageLedger, users } = await import("../db/esquema");
 const { guardarCredencial } = await import("../boveda/credenciales");
 const { crearMedio } = await import("../media/servicio");
-const { crearFotograma } = await import("./servicio");
+const { crearAnimacion, crearFotograma } = await import("./servicio");
+const { estimar } = await import("./estimacion");
+const { ErrorGeneracion } = await import("./errores");
 const { pasadaDeCola } = await import("../cola/pasada");
 const { listarPlantillas, listarPresetsDeLaInstalacion } = await import("../prompts/consulta");
 const { olvidarCatalogo, parametrosDeTexto, textoDeParametros } = await import("../proveedores/catalogo");
@@ -199,20 +201,84 @@ describe.skipIf(!hayBaseDeDatos)("el formato elegido al generar", () => {
     expect(fila?.state).toBe("fallido");
     expect(fila?.errorMessage).toContain("no admite esa proporción");
     expect(fila?.errorMessage).toContain("no se te ha cobrado");
-    // Lo que se consume por este trabajo es cero: el cierre sin coste lo apunta así.
+    // La reserva que se apartó al encolar se libera entera y el consumo apuntado es cero: el saldo queda igual.
     const apuntes = await db().select().from(usageLedger).where(eq(usageLedger.jobId, trabajo.id));
-    const consumido = apuntes.filter((a) => a.entryType === "consumo").reduce((suma, a) => suma + a.credits, 0);
-    expect(consumido).toBe(0);
+    const de = (tipo: string) => apuntes.filter((a) => a.entryType === tipo).reduce((suma, a) => suma + a.credits, 0);
+    expect(de("reserva")).toBeGreaterThan(0);
+    expect(de("liberacion")).toBe(-de("reserva"));
+    expect(de("consumo")).toBe(0);
+    expect(apuntes.reduce((suma, a) => suma + a.credits, 0)).toBe(0);
   });
 
-  test("sin formato elegido se envía la proporción del modelo, como siempre", async () => {
-    const { trabajo } = await generar({ especialidad: [porClave("moda").id], estilo: [porClave("natural").id] }).catch(
-      async () =>
-        // La plantilla de la semilla exige formato: entonces se comprueba con el vertical de siempre.
-        generar(conFormato("reel-9-16")),
+  test("sin formato elegido no se fija nada: sale la de siempre (9:16) aunque el modelo admita otras", async () => {
+    // El modelo declara 16:9 en primer lugar: un envío sin formato no debe elegirla ni guardar ninguna.
+    await proporcionesDelModelo(["16:9", "9:16"]);
+    const { trabajo } = await crearFotograma(
+      actor,
+      {
+        prompt: "in a bright cafe by the window",
+        creditosConfirmados: CREDITOS_FOTOGRAMA,
+        derechos: true,
+        claveIdempotencia: crypto.randomUUID(),
+        medioId,
+      },
+      h,
     );
+    const [fila] = await db().select().from(generationJobs).where(eq(generationJobs.id, trabajo.id));
+    expect((fila?.input as { proporcion?: string } | undefined)?.proporcion).toBeUndefined();
+    expect(trabajo.proporcion).toBe("9:16");
     await pasadaDeCola(h);
     expect(aspectoEnviado()).toBe("9:16");
-    expect(trabajo.proporcion).toBe("9:16");
+  });
+
+  test("animar un fotograma en una proporción que el modelo de vídeo no admite dice cómo salir, sin reservar", async () => {
+    const [fotograma] = await db()
+      .insert(generationJobs)
+      .values({
+        userId: ana.id,
+        kind: "fotograma",
+        provider: "kie",
+        model: MODELO_IMAGEN,
+        prompt: "Fotograma en 4:5",
+        input: { proporcion: "4:5", parametros: { aspect_ratio: "4:5" } },
+        state: "listo",
+        resultMediaId: medioId,
+        estimatedCredits: CREDITOS_FOTOGRAMA,
+        rightsConfirmedAt: new Date(),
+        idempotencyKey: crypto.randomUUID(),
+      })
+      .returning();
+    const estimacion = await estimar(ana.id, "animacion", buscar, undefined, { segundos: 8 });
+    const apuntesAntes = await db().select().from(usageLedger).where(eq(usageLedger.userId, ana.id));
+    const fallo = await crearAnimacion(
+      actor,
+      {
+        prompt: "a calm portrait comes to life",
+        derechos: true,
+        trabajoPadreId: fotograma?.id ?? "",
+        segundos: 8,
+        creditosConfirmados: estimacion.creditos,
+        selloEstimacion: estimacion.sello,
+        claveIdempotencia: crypto.randomUUID(),
+      },
+      h,
+    ).catch((e: unknown) => e);
+    expect(fallo).toBeInstanceOf(ErrorGeneracion);
+    expect((fallo as InstanceType<typeof ErrorGeneracion>).estado).toBe(409);
+    const mensaje = (fallo as Error).message;
+    expect(mensaje).toContain("El fotograma está en 4:5");
+    // Las salidas que hay en «Crear»: otro modelo que la anima (Hailuo toma la de la imagen) o recortar la imagen.
+    expect(mensaje).toContain("elige otro modelo del clip que la admite");
+    expect(mensaje).toContain("Hailuo");
+    expect(mensaje).toContain("recórtalo a 9:16 en tu Biblioteca");
+    // Nada encolado ni reservado.
+    const clips = await db()
+      .select()
+      .from(generationJobs)
+      .where(eq(generationJobs.parentJobId, fotograma?.id ?? ""));
+    expect(clips).toHaveLength(0);
+    expect(await db().select().from(usageLedger).where(eq(usageLedger.userId, ana.id))).toHaveLength(
+      apuntesAntes.length,
+    );
   });
 });

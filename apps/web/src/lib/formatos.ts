@@ -250,3 +250,32 @@ export function proporcionFijadaDelProyecto(formatosGuardados: unknown): string 
   const principal = formatoPrincipal(formatosDe(formatosGuardados));
   return principal === FORMATO_MONTAJE_POR_DEFECTO ? undefined : PROPORCION_DE_FORMATO[principal];
 }
+
+// ── Un fotograma y el modelo de vídeo que lo va a animar ────────────────────────────────────────────────────
+
+/** Tolerancia al comparar las medidas de una imagen con una proporción: el redondeo de los codificadores. */
+const TOLERANCIA_PROPORCION = 0.02;
+
+const valorDeProporcion = (proporcion: string): number | null => {
+  const [a, b] = proporcion.split(":").map(Number);
+  return a && b ? a / b : null;
+};
+
+/** `true` si una imagen de `ancho × alto` está en esa proporción, con la tolerancia del redondeo. */
+export function medidasEnProporcion(ancho: number, alto: number, proporcion: string): boolean {
+  const valor = valorDeProporcion(proporcion);
+  if (valor === null || !(ancho > 0) || !(alto > 0)) return false;
+  return Math.abs(ancho / alto - valor) / valor <= TOLERANCIA_PROPORCION;
+}
+
+/**
+ * ¿Puede este modelo de vídeo animar una imagen de estas medidas sin que Escenara la recorte? Sí si no acepta
+ * proporción (toma la de la imagen), si no se conocen las medidas, o si alguna de las suyas coincide.
+ */
+export function animaEstasMedidas(
+  proporcionesDelModelo: readonly string[],
+  medidas: { ancho: number | null; alto: number | null },
+): boolean {
+  if (proporcionesDelModelo.length === 0 || medidas.ancho === null || medidas.alto === null) return true;
+  return proporcionesDelModelo.some((p) => medidasEnProporcion(medidas.ancho as number, medidas.alto as number, p));
+}

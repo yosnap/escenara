@@ -4,7 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { loadEnvConfig } from "@next/env";
-import { type FormatoMontaje, RESOLUCION_MONTAJE, ZONA_SEGURA_DE_FORMATO } from "@/lib/formatos";
+import { type FormatoMontaje, PROPORCION_DE_FORMATO, RESOLUCION_MONTAJE, ZONA_SEGURA_DE_FORMATO } from "@/lib/formatos";
 import type { ExportacionVista, MontajeVista } from "@/lib/montaje";
 import type { ProyectoDetalle } from "@/lib/proyectos";
 
@@ -54,6 +54,8 @@ const { leerObjeto } = await import("../almacenamiento");
 const { pasadaDeExportaciones } = await import("./cola");
 const { medirConFfprobe } = await import("../revision/medicion");
 const { revisarAutomaticamente } = await import("../revision/ejecutar");
+const { fijarModoVoz } = await import("../voz/proyecto");
+const { eleccionOmni } = await import("../omni/registro");
 
 type Sesion = Awaited<ReturnType<typeof crearSesionDePrueba>>;
 type Actor = import("../media/servicio").Actor;
@@ -495,6 +497,30 @@ describe.skipIf(!hayBaseDeDatos)("formatos, reencuadre y límites de un proyecto
       expect(comprobaciones.some((c) => c.severidad === "critica")).toBe(false);
     }
   }, 120_000);
+
+  test("pasar a escenas habladas (Omni) con un principal que su modelo no genera se rechaza antes de cambiar", async () => {
+    const omni = await eleccionOmni(ana.id);
+    const proporciones = omni.modelo.parametros.proporciones;
+    // Un formato que el modelo de escenas habladas no declara (el catálogo sembrado solo declara 9:16).
+    const ajeno = (["horizontal_16_9", "cuadrado_1_1"] as const).find(
+      (f) => !proporciones.includes(PROPORCION_DE_FORMATO[f]),
+    );
+    if (!ajeno) throw new Error("El modelo Omni sembrado admite todos los formatos: este test ya no prueba nada.");
+    await db()
+      .update(projects)
+      .set({ formats: [ajeno] })
+      .where(eq(projects.id, proyectoId));
+    const fallo = await fijarModoVoz(actor, proyectoId, "omni", true).catch((e: unknown) => e);
+    expect((fallo as Error).message).toContain(`${omni.modelo.nombre} solo admite`);
+    const [proyecto] = await db().select().from(projects).where(eq(projects.id, proyectoId));
+    expect(proyecto?.voiceMode).toBe("clip");
+    // En vertical, lo de siempre: se puede pasar.
+    await db()
+      .update(projects)
+      .set({ formats: ["vertical_9_16"] })
+      .where(eq(projects.id, proyectoId));
+    expect((await fijarModoVoz(actor, proyectoId, "omni", true)).proyecto.voiceMode).toBe("omni");
+  });
 
   test("ajustar el encuadre, regenerar, editar y borrar la escena no deja el montaje sin poder guardarse", async () => {
     await ponerFormatos(["vertical_9_16", "cuadrado_1_1"]);

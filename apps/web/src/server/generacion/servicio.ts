@@ -1155,7 +1155,7 @@ export async function crearAnimacion(
       : await baseDelPrompt(actor, peticion, "animacion", modelo, tipo, escenaDirigida, segundos);
   const promptFinal = promptConContexto(base.escena, contextoEnIngles);
   const proporcion = proporcionDelEnvio(peticion.proporcion, base.compuesto, modelo);
-  exigirFormatoDelFotograma(partida.proporcionFotograma ?? null, proporcion, modelo);
+  await exigirFormatoDelFotograma(partida.proporcionFotograma ?? null, proporcion, modelo);
   const parametros = adaptador.montarEntrada(modelo, {
     escena: promptFinal,
     dialogo: dialogoFinal,
