@@ -16,6 +16,7 @@ import {
   usageLedger,
 } from "../db/esquema";
 import type { Actor } from "../media/servicio";
+import { apuntarObjetosPorBorrar, borrarObjetosApuntados } from "./borrado-de-objetos";
 import { ErrorDatos } from "./errores";
 import { clavesDeExportaciones } from "./exportacion-proyecto";
 import { cerrarTrabajosAntesDeBorrar, enMarchaEnElProveedor } from "./trabajos-al-borrar";
@@ -105,6 +106,14 @@ async function derivadosDe(
         or exists (select 1 from collection_media c where c.media_id = m.id)
         or exists (select 1 from music_tracks t where t.media_id = m.id and t.project_id <> ${proyectoId})
         or exists (select 1 from voice_samples v where v.media_id = m.id)
+        -- Referencias guardadas dentro de JSON (versiones de lugares y personajes, entradas de otros trabajos): se buscan
+        -- como texto. Un falso positivo solo conserva un archivo de más, que es el lado seguro.
+        or exists (select 1 from place_versions v where v.reference_media_ids::text like '%' || m.id::text || '%')
+        or exists (select 1 from character_versions v where v.reference_media_ids::text like '%' || m.id::text || '%')
+        or exists (
+          select 1 from generation_jobs j
+          where (j.scene_id is null or j.scene_id not in (select id from escenas_del_proyecto))
+            and j.input::text like '%' || m.id::text || '%')
         or exists (select 1 from character_omni_registrations o where m.id in (o.portrait_media_id, o.body_media_id))
         or exists (select 1 from consent_records c where c.document_media_id = m.id)
         or exists (select 1 from prompt_templates t where t.demo_media_id = m.id)
@@ -186,11 +195,18 @@ export interface BorradoProyectoRealizado {
   titulo: string;
   trabajosBorrados: number;
   trabajosCancelados: number;
-  clavesBorradas: string[];
-  clavesHuerfanas: string[];
+  objetosBorrados: number;
+  /** Objetos que el almacenamiento no dejó borrar ahora: quedan apuntados y el worker los reintenta. */
+  objetosPendientes: number;
 }
 
 const plural = (n: number, uno: string, varios: string) => (n === 1 ? uno : `${n} ${varios}`);
+
+/** Lo que sí ha pasado aunque el borrado se detenga: los trabajos en cola ya cancelados (sin coste). */
+const yaCancelados = (n: number) =>
+  n === 0
+    ? ""
+    : ` Eso sí: ${n === 1 ? "se ha cancelado el trabajo que estaba" : `se han cancelado los ${n} trabajos que estaban`} en cola, sin coste; vuelve a pedirlo si lo necesitas.`;
 
 export async function borrarProyectoConDerivados(
   actor: Actor,
@@ -229,7 +245,7 @@ export async function borrarProyectoConDerivados(
   if (siguenAbiertos > 0) {
     throw new ErrorDatos(
       409,
-      `«${titulo}» tiene ${plural(siguenAbiertos, "un trabajo", "trabajos")} con presupuesto retenido que no se ha podido liberar. No se ha borrado nada: pídele a quien administra que lo resuelva en «Trabajos».`,
+      `«${titulo}» tiene ${plural(siguenAbiertos, "un trabajo", "trabajos")} con presupuesto retenido que no se ha podido liberar. No se ha borrado nada del proyecto: pídele a quien administra que lo resuelva en «Trabajos».${yaCancelados(cancelados)}`,
     );
   }
 
@@ -240,9 +256,11 @@ export async function borrarProyectoConDerivados(
   ];
   const idsTrabajos = trabajos.map((t) => t.id);
 
-  // ── 4. Filas, en una transacción. El proyecto se bloquea y se vuelve a comprobar: un encolado que llegue ahora
-  // choca con el bloqueo y, al soltarse, con la escena borrada.
+  // ── 4. Filas, en una transacción. Mismo orden de bloqueo que el encolado (`cola/encolar.ts`): **primero la fila del
+  // usuario**, después el proyecto. Así un encolado en curso termina antes y aquí se ve su trabajo (409), y uno que
+  // llegue después espera a este borrado y encuentra la escena borrada (409 sin cobrar nada).
   const borrados = await db().transaction(async (tx) => {
+    await tx.execute(sql`select 1 from users where id = ${actor.id} for update`);
     await tx.select({ id: projects.id }).from(projects).where(eq(projects.id, proyecto.id)).for("update");
     const [{ nuevos } = { nuevos: 0 }] = await tx
       .select({ nuevos: count() })
@@ -265,7 +283,7 @@ export async function borrarProyectoConDerivados(
     if (nuevos > 0) {
       throw new ErrorDatos(
         409,
-        `Se acaba de encolar un trabajo en «${titulo}». No se ha borrado nada: vuelve a intentarlo.`,
+        `Se acaba de encolar un trabajo en «${titulo}». No se ha borrado nada del proyecto: vuelve a intentarlo.${yaCancelados(cancelados)}`,
       );
     }
     if (idsTrabajos.length > 0) {
@@ -295,27 +313,23 @@ export async function borrarProyectoConDerivados(
         ),
       );
     }
+    await apuntarObjetosPorBorrar(tx, claves, "proyecto");
     await olvidarPercibidoDeProyecto(tx, proyecto.id);
     await tx.delete(projects).where(and(eq(projects.id, proyecto.id), eq(projects.userId, actor.id)));
     return filas.length;
   });
 
-  // ── 5. Objetos del almacenamiento, uno a uno; lo que falle queda registrado con su clave.
-  const clavesBorradas: string[] = [];
-  const clavesHuerfanas: string[] = [];
-  for (const clave of claves) {
-    try {
-      await borrar(clave);
-      clavesBorradas.push(clave);
-    } catch (error) {
-      clavesHuerfanas.push(clave);
-      console.error(
-        `[datos] objeto huérfano tras borrar un proyecto: ${clave}: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
+  // ── 5. Objetos del almacenamiento. Ya están apuntados en `storage_deletions` (misma transacción): se intentan ahora y
+  // lo que falle lo reintenta el worker con retroceso. Nada se queda solo en el registro de texto.
+  let objetosBorrados = 0;
+  let objetosPendientes = 0;
+  for (let i = 0; i < claves.length; i += 500) {
+    const r = await borrarObjetosApuntados({ claves: claves.slice(i, i + 500) }, borrar);
+    objetosBorrados += r.borrados;
+    objetosPendientes += r.fallidos;
   }
   console.info(
-    `[datos] proyecto borrado · trabajos=${borrados} cancelados=${cancelados} objetos=${clavesBorradas.length} huérfanos=${clavesHuerfanas.length}`,
+    `[datos] proyecto borrado · trabajos=${borrados} cancelados=${cancelados} objetos=${objetosBorrados} pendientes=${objetosPendientes}`,
   );
-  return { titulo, trabajosBorrados: borrados, trabajosCancelados: cancelados, clavesBorradas, clavesHuerfanas };
+  return { titulo, trabajosBorrados: borrados, trabajosCancelados: cancelados, objetosBorrados, objetosPendientes };
 }

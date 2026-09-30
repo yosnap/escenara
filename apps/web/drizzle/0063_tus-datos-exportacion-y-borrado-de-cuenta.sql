@@ -1,11 +1,18 @@
 -- Tus datos: exportación de un proyecto a ZIP (lo prepara el worker y caduca sola), borrado de la cuenta con periodo
--- de gracia y registro, gasto agregado sin datos personales de las cuentas borradas y prueba mínima y anónima de los
--- consentimientos y declaraciones de derechos que tenían.
+-- de gracia y registro, objetos del almacenamiento pendientes de borrar (con reintento), gasto agregado sin datos
+-- personales de las cuentas borradas, prueba mínima y anónima de sus consentimientos y declaraciones, y el proyecto con
+-- el que se encoló cada trabajo (`generation_jobs.project_id`, sin clave ajena).
 --
--- Aditiva e idempotente: solo crea tipos, tablas, índices y claves ajenas; no cambia ni borra ninguna fila. Volver a
--- aplicarla no hace nada. Haz copia de la base antes (`bun run db:backup`) y migra con el worker parado, como siempre.
+-- Aditiva e idempotente: solo crea tipos, tablas, índices, claves ajenas y una columna que admite nulos; no cambia ni
+-- borra ninguna fila. Volver a aplicarla no hace nada. Haz copia de la base antes (`bun run db:backup`) y migra con el
+-- worker parado, como siempre.
 DO $$ BEGIN
   CREATE TYPE "public"."account_deletion_state" AS ENUM('programado', 'cancelado', 'borrando_objetos', 'completado');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+  CREATE TYPE "public"."storage_deletion_state" AS ENUM('pendiente', 'fallido');
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 --> statement-breakpoint
@@ -34,8 +41,7 @@ CREATE TABLE IF NOT EXISTS "account_deletions" (
 	"locked_by" text,
 	"locked_until" timestamp with time zone,
 	"last_error" text DEFAULT '' NOT NULL,
-	"pending_keys" jsonb DEFAULT '[]'::jsonb NOT NULL,
-	"orphan_keys" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"orphan_objects" integer DEFAULT 0 NOT NULL,
 	"deleted_objects" integer DEFAULT 0 NOT NULL,
 	"summary" jsonb DEFAULT '{}'::jsonb NOT NULL
 );
@@ -69,6 +75,19 @@ CREATE TABLE IF NOT EXISTS "project_exports" (
 	"expires_at" timestamp with time zone
 );
 --> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "storage_deletions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"storage_key" text NOT NULL,
+	"origin" text NOT NULL,
+	"account_deletion_id" uuid,
+	"state" "storage_deletion_state" DEFAULT 'pendiente' NOT NULL,
+	"attempts" integer DEFAULT 0 NOT NULL,
+	"next_attempt_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"last_error" text DEFAULT '' NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "storage_deletions_storage_key_unique" UNIQUE("storage_key")
+);
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "usage_aggregates" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"month" date NOT NULL,
@@ -81,6 +100,8 @@ CREATE TABLE IF NOT EXISTS "usage_aggregates" (
 	"entries" integer DEFAULT 0 NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
+--> statement-breakpoint
+ALTER TABLE "generation_jobs" ADD COLUMN IF NOT EXISTS "project_id" uuid;
 --> statement-breakpoint
 DO $$ BEGIN
   ALTER TABLE "account_deletions" ADD CONSTRAINT "account_deletions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE set null ON UPDATE no action;
@@ -97,6 +118,11 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 --> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "storage_deletions" ADD CONSTRAINT "storage_deletions_account_deletion_id_account_deletions_id_fk" FOREIGN KEY ("account_deletion_id") REFERENCES "public"."account_deletions"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "account_deletions_cola_idx" ON "account_deletions" USING btree ("state","available_at");
 --> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "account_deletions_usuario_abierto_uq" ON "account_deletions" USING btree ("user_id") WHERE "account_deletions"."state" in ('programado', 'borrando_objetos');
@@ -110,5 +136,9 @@ CREATE INDEX IF NOT EXISTS "project_exports_proyecto_idx" ON "project_exports" U
 CREATE INDEX IF NOT EXISTS "project_exports_cola_idx" ON "project_exports" USING btree ("state","locked_until");
 --> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "project_exports_proyecto_viva_uq" ON "project_exports" USING btree ("project_id") WHERE "project_exports"."state" in ('en_cola', 'preparando');
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "storage_deletions_cola_idx" ON "storage_deletions" USING btree ("state","next_attempt_at");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "storage_deletions_cuenta_idx" ON "storage_deletions" USING btree ("account_deletion_id");
 --> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "usage_aggregates_clave_uq" ON "usage_aggregates" USING btree ("month","provider","provider_name","model","entry_type");

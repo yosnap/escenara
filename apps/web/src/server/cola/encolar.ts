@@ -241,6 +241,11 @@ export async function encolar(peticion: PeticionEncolado): Promise<Encolado> {
       await tx.execute(sql`select 1 from users where id = ${peticion.usuarioId} for update`);
       const repetida = await filaDeLaConfirmacion(peticion.usuarioId, peticion.claveIdempotencia, tx);
       if (repetida) return { fila: repetida, nueva: false };
+      // Con la fila del usuario ya bloqueada (el borrado de un proyecto toma el mismo candado primero): la escena tiene
+      // que seguir existiendo y ser suya, o el trabajo saldría hacia el proveedor de un proyecto que ya no existe.
+      const proyectoId = peticion.valores.sceneId
+        ? await proyectoDeEscenaViva(tx, peticion.usuarioId, peticion.valores.sceneId)
+        : null;
 
       const [{ total } = { total: 0 }] = await tx
         .select({ total: sql<number>`count(*)::int` })
@@ -269,10 +274,10 @@ export async function encolar(peticion: PeticionEncolado): Promise<Encolado> {
       // Sin coste acotado no se reserva nada y el trabajo espera un límite del usuario: así no puede
       // salir hacia el proveedor con el gasto abierto.
       if (!peticion.acotacion.acotado) {
-        return { fila: await insertar(tx, peticion, "esperando_limite", null), nueva: true };
+        return { fila: await insertar(tx, peticion, "esperando_limite", null, proyectoId), nueva: true };
       }
 
-      const fila = await insertar(tx, peticion, "en_cola", null);
+      const fila = await insertar(tx, peticion, "en_cola", null, proyectoId);
       const apunte = await reservar(
         tx,
         {
@@ -315,11 +320,13 @@ async function insertar(
   peticion: PeticionEncolado,
   estado: "en_cola" | "esperando_limite",
   reservaId: string | null,
+  proyectoId: string | null,
 ): Promise<FilaTrabajo> {
   const [fila] = await tx
     .insert(generationJobs)
     .values({
       ...peticion.valores,
+      projectId: proyectoId,
       idempotencyKey: peticion.claveIdempotencia,
       // La confirmación de derechos se guarda con su fecha: ya se ha comprobado que llegó marcada.
       rightsConfirmedAt: new Date(),
@@ -331,6 +338,23 @@ async function insertar(
     .returning();
   if (!fila) throw new ErrorGeneracion(500, "No se ha podido registrar el trabajo.");
   return fila;
+}
+
+/** Proyecto de la escena si sigue existiendo y es del usuario; si no, 409 sin encolar ni cobrar nada. */
+async function proyectoDeEscenaViva(tx: Ejecutor, usuarioId: string, escenaId: string): Promise<string> {
+  const filas = (await tx.execute(sql`
+    select p.id from scenes s join projects p on p.id = s.project_id
+    where s.id = ${escenaId} and p.user_id = ${usuarioId}
+    for key share
+  `)) as unknown as { id: string }[];
+  const id = filas[0]?.id;
+  if (!id) {
+    throw new ErrorGeneracion(
+      409,
+      "El proyecto de esta escena se acaba de borrar, así que no se ha encolado nada ni se te ha cobrado.",
+    );
+  }
+  return id;
 }
 
 export async function filaDeLaConfirmacion(

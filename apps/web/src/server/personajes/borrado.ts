@@ -61,6 +61,8 @@ export const ESTADOS_QUE_IMPIDEN: readonly EstadoTrabajo[] = [
   "desconocido",
 ];
 
+const LOTE_IDS = 1000;
+
 const detalle = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 /**
@@ -98,8 +100,17 @@ async function derivadosDe(personajeId: string): Promise<{ id: string; clave: st
 const trabajosDe = (personajeId: string): Promise<FilaTrabajo[]> =>
   db().select().from(generationJobs).where(eq(generationJobs.characterId, personajeId));
 
-/** Identificadores de los trabajos que todavía tienen una reserva sin liberar. */
+/**
+ * Identificadores de los trabajos que todavía tienen una reserva sin liberar. Por lotes: una lista enorme pasaría del
+ * límite de parámetros de una consulta.
+ */
 export async function conReservaAbierta(ids: string[]): Promise<string[]> {
+  if (ids.length > LOTE_IDS) {
+    const abiertos: string[] = [];
+    for (let i = 0; i < ids.length; i += LOTE_IDS)
+      abiertos.push(...(await conReservaAbierta(ids.slice(i, i + LOTE_IDS))));
+    return abiertos;
+  }
   if (ids.length === 0) return [];
   const filas = await db()
     .select({ id: usageLedger.jobId })

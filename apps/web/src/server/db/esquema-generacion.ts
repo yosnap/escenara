@@ -152,6 +152,12 @@ export const generationJobs = pgTable(
      */
     sceneId: uuid("scene_id").references(() => scenes.id, { onDelete: "set null" }),
     /**
+     * Proyecto de la escena **al encolar**, sin clave ajena a propósito: sobrevive a que la escena desaparezca. Es lo
+     * que deja al worker reconocer un trabajo de un proyecto borrado (escena a nulo) y cerrarlo sin cobro, en lugar de
+     * confundirlo con uno de «Crear». Nulo en «Crear» y en los clips convertidos, que siguen siendo de «Crear».
+     */
+    projectId: uuid("project_id"),
+    /**
      * **Turno del clip dentro del intercambio** (0.28.0), desde 1. `null` en todo lo que no es un reparto de dos
      * personajes, que es todo lo anterior a esta versión.
      *

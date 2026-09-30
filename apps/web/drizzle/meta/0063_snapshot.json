@@ -1,5 +1,5 @@
 {
-  "id": "b7d23523-0c4c-4b56-85ff-dee54843b1d5",
+  "id": "75ac3a33-3bac-4ed0-b5ee-a234aa989ecc",
   "prevId": "77dd9b1f-3576-4cd9-a8ff-e24c0a26b25d",
   "version": "7",
   "dialect": "postgresql",
@@ -98,19 +98,12 @@
           "notNull": true,
           "default": "''"
         },
-        "pending_keys": {
-          "name": "pending_keys",
-          "type": "jsonb",
+        "orphan_objects": {
+          "name": "orphan_objects",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true,
-          "default": "'[]'::jsonb"
-        },
-        "orphan_keys": {
-          "name": "orphan_keys",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
+          "default": 0
         },
         "deleted_objects": {
           "name": "deleted_objects",
@@ -3170,6 +3163,12 @@
         },
         "scene_id": {
           "name": "scene_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "project_id": {
+          "name": "project_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
@@ -9636,6 +9635,133 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.storage_deletions": {
+      "name": "storage_deletions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "storage_key": {
+          "name": "storage_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "origin": {
+          "name": "origin",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_deletion_id": {
+          "name": "account_deletion_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "state": {
+          "name": "state",
+          "type": "storage_deletion_state",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pendiente'"
+        },
+        "attempts": {
+          "name": "attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "next_attempt_at": {
+          "name": "next_attempt_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "last_error": {
+          "name": "last_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "storage_deletions_cola_idx": {
+          "name": "storage_deletions_cola_idx",
+          "columns": [
+            {
+              "expression": "state",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "next_attempt_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "storage_deletions_cuenta_idx": {
+          "name": "storage_deletions_cuenta_idx",
+          "columns": [
+            {
+              "expression": "account_deletion_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "storage_deletions_account_deletion_id_account_deletions_id_fk": {
+          "name": "storage_deletions_account_deletion_id_account_deletions_id_fk",
+          "tableFrom": "storage_deletions",
+          "tableTo": "account_deletions",
+          "columnsFrom": ["account_deletion_id"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "storage_deletions_storage_key_unique": {
+          "name": "storage_deletions_storage_key_unique",
+          "nullsNotDistinct": false,
+          "columns": ["storage_key"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.translation_cache": {
       "name": "translation_cache",
       "schema": "",
@@ -10523,6 +10649,11 @@
       "name": "account_deletion_state",
       "schema": "public",
       "values": ["programado", "cancelado", "borrando_objetos", "completado"]
+    },
+    "public.storage_deletion_state": {
+      "name": "storage_deletion_state",
+      "schema": "public",
+      "values": ["pendiente", "fallido"]
     },
     "public.control_state": {
       "name": "control_state",

@@ -25,7 +25,10 @@ import { jsonb } from "./jsonb";
  *   biblioteca**: vive en el almacenamiento con su clave aquí y caduca solo, así que no cuenta en la cuota ni se
  *   puede reutilizar como referencia.
  * - `account_deletions`: la petición de borrar la cuenta, con su periodo de gracia y el registro de lo borrado.
- *   Sobrevive a la cuenta (`user_id` a nulo) sin nada que la identifique: fechas, recuentos y claves de objetos.
+ *   Sobrevive a la cuenta (`user_id` a nulo) sin nada que la identifique: fechas, estado, motivo y recuentos.
+ * - `storage_deletions`: objetos del almacenamiento pendientes de borrar (de un proyecto o de una cuenta borrados),
+ *   escritos en la misma transacción que borra sus filas y reintentados por el worker con retroceso. La fila se borra
+ *   al borrar el objeto; las que agotan los intentos quedan como «fallido» para quien administra.
  * - `usage_aggregates`: el gasto de las cuentas borradas, **sumado** por mes, proveedor, modelo y tipo de apunte.
  *   Sin usuario, sin trabajo y sin nota: es la trazabilidad del gasto de la instalación, no de una persona.
  * - `consent_evidence`: prueba mínima de cada consentimiento o declaración de derechos de una cuenta borrada
@@ -108,13 +111,8 @@ export const accountDeletions = pgTable(
     lockedUntil: timestamp("locked_until", { withTimezone: true }),
     /** Último motivo de aplazamiento o de fallo, para quien administra. Sin datos de la cuenta. */
     lastError: text("last_error").notNull().default(""),
-    /**
-     * Claves de almacenamiento que quedan por borrar. Se escriben **en la misma transacción** que borra las filas:
-     * si el worker muere después, el siguiente intento sabe qué objetos faltan aunque la cuenta ya no exista.
-     */
-    pendingKeys: jsonb<string[]>("pending_keys").notNull().default([]),
-    /** Claves que el almacenamiento no pudo borrar tras varios intentos: quedan registradas para limpiarlas. */
-    orphanKeys: jsonb<string[]>("orphan_keys").notNull().default([]),
+    /** Objetos que el almacenamiento no dejó borrar tras todos los intentos (sus claves están en `storage_deletions`). */
+    orphanObjects: integer("orphan_objects").notNull().default(0),
     deletedObjects: integer("deleted_objects").notNull().default(0),
     /** Recuento por tipo de lo borrado (proyectos, personajes, medios…), sin nombres. */
     summary: jsonb<Record<string, number>>("summary").notNull().default({}),
@@ -125,6 +123,29 @@ export const accountDeletions = pgTable(
     uniqueIndex("account_deletions_usuario_abierto_uq")
       .on(t.userId)
       .where(sql`${t.state} in ('programado', 'borrando_objetos')`),
+  ],
+);
+
+export const estadoBorradoObjeto = pgEnum("storage_deletion_state", ["pendiente", "fallido"]);
+
+export const storageDeletions = pgTable(
+  "storage_deletions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storageKey: text("storage_key").notNull().unique(),
+    /** De dónde viene: `proyecto` o `cuenta`. */
+    origin: text("origin").notNull(),
+    /** Borrado de cuenta al que pertenece, para saber cuándo ha terminado; nulo en los de un proyecto. */
+    accountDeletionId: uuid("account_deletion_id").references(() => accountDeletions.id, { onDelete: "set null" }),
+    state: estadoBorradoObjeto("state").notNull().default("pendiente"),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+    lastError: text("last_error").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("storage_deletions_cola_idx").on(t.state, t.nextAttemptAt),
+    index("storage_deletions_cuenta_idx").on(t.accountDeletionId),
   ],
 );
 

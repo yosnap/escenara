@@ -1,9 +1,20 @@
+import { sql } from "drizzle-orm";
 import type { ModeloVista } from "@/lib/catalogo";
 import { hechosDePersonajeCitado, parametrosDeControles } from "../controles/hechos";
 import { frenosQueGatean } from "../controles/motor";
 import { evaluarRegistrando, mensajeDeFreno } from "../controles/puerta";
+import { db } from "../db/cliente";
 import type { FilaTrabajo } from "../db/esquema";
 import { declaracionVigente } from "../lugares/consulta";
+
+/** `true` si la escena del trabajo sigue existiendo en el proyecto con el que se encoló. */
+async function escenaDelProyectoViva(fila: FilaTrabajo): Promise<boolean> {
+  if (!fila.sceneId || !fila.projectId) return false;
+  const filas = (await db().execute(
+    sql`select 1 from scenes where id = ${fila.sceneId} and project_id = ${fila.projectId} limit 1`,
+  )) as unknown as unknown[];
+  return filas.length > 0;
+}
 
 /** Motivo con el que se cierra un trabajo que no se puede enviar. */
 type MotivoFalloTrabajo = NonNullable<FilaTrabajo["failureReason"]>;
@@ -27,6 +38,13 @@ export class ErrorPersonajeNoUsable extends Error {
  * esa decisión** como cualquier otra. Lanza {@link ErrorPersonajeNoUsable} si ya no puede generar.
  */
 export async function revalidarPersonajeDelTrabajo(fila: FilaTrabajo, modelo: ModeloVista): Promise<void> {
+  // Un trabajo de un proyecto que se ha borrado (su escena ya no está) no sale: se cierra sin cobro.
+  if (fila.projectId && !(await escenaDelProyectoViva(fila))) {
+    throw new ErrorPersonajeNoUsable(
+      "El proyecto de este trabajo se ha borrado, así que no se ha enviado nada y no se te ha cobrado.",
+      "cancelado",
+    );
+  }
   // ── Reevaluación de los controles previos, **antes** de subir nada. El encolado los evaluó, pero entre
   // encolar y enviar el usuario puede haber revocado el consentimiento o borrado fotos, y en un reintento puede
   // haber pasado más rato todavía. Sin esto, revocar no impediría que la cara saliera hacia el proveedor: solo
