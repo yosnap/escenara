@@ -1,4 +1,5 @@
 import { ShieldCheck } from "lucide-react";
+import { Alerta } from "./alerta";
 
 /**
  * Componentes del **reparto de dos personajes** (0.28.0), compartidos por la pantalla de la escena y la de
@@ -35,14 +36,9 @@ export function ZonaDeConsentimiento({
       {faltas.length === 0 ? (
         <p className="text-sm text-texto-suave">{sinFaltas}</p>
       ) : (
-        <>
-          <ul className="flex list-inside list-disc flex-col gap-1 text-sm text-texto">
-            {faltas.map((falta) => (
-              <li key={falta}>{falta}</li>
-            ))}
-          </ul>
-          <p className="text-sm text-texto-suave">{comoArreglarlo}</p>
-        </>
+        <Alerta tipo="bloqueo" compacta anuncio="ninguno" protege elementos={faltas.map((texto) => ({ texto }))}>
+          {comoArreglarlo}
+        </Alerta>
       )}
     </div>
   );

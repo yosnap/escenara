@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { Alerta } from "@/components/ui/alerta";
 import { claseBoton } from "@/components/ui/button";
 import { Aviso, EstadoVacio } from "@/components/ui/feedback";
 import {
@@ -71,19 +72,14 @@ export function VistaRevision({ inicial }: { inicial: RevisionProyectoVista }) {
 
       {error && <Aviso tono="error">{error}</Aviso>}
 
-      <section
-        aria-label="Estado de la exportación"
-        className="rounded-tarjeta border-2 border-borde bg-superficie p-4"
-      >
-        <p className="font-semibold text-texto">{textoDeBloqueo(revision.escenas)}</p>
-        {bloqueos.length > 0 && (
-          <ul className="mt-2 flex list-disc flex-col gap-1 pl-5 text-texto-suave">
-            {bloqueos.map((motivo) => (
-              <li key={motivo}>{motivo}</li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <Alerta
+        tipo={bloqueos.length > 0 ? "bloqueo" : "hecho"}
+        etiqueta="Estado de la exportación"
+        titulo={textoDeBloqueo(revision.escenas)}
+        anuncio="ninguno"
+        protege
+        elementos={bloqueos.map((texto) => ({ texto }))}
+      />
 
       {revision.escenas.length === 0 ? (
         <EstadoVacio

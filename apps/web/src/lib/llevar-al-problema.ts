@@ -87,3 +87,12 @@ export function posicionDeFlecha(
     left: Math.max(4, Math.min(izquierda, anchoVentana - ancho - 4)) + desplazamiento.x,
   };
 }
+
+/**
+ * Motivos de texto (los de siempre, que deciden si se puede generar) como problemas: los que corresponden a una
+ * casilla apuntan a ella; el resto se leen, sin sitio al que llevar. No cambia qué bloquea: solo a dónde lleva.
+ */
+export const problemasDeMotivos = (
+  motivos: readonly string[],
+  sitios: Readonly<Record<string, string>> = {},
+): Problema[] => motivos.map((texto) => (sitios[texto] ? { texto, id: sitios[texto] } : { texto }));

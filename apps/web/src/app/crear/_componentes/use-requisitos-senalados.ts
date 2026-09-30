@@ -27,6 +27,8 @@ export function useRequisitosSenalados<
       irAlPaso: control.ir,
       estaBloqueado: (paso) => pasos.find((p) => p.id === paso)?.estado === "bloqueado",
       avisarBloqueado: control.avisar,
+      // En el mismo paso no se cambia de paso: se lleva al campo al momento.
+      actual: control.actual,
     });
   };
 

@@ -1,7 +1,8 @@
 "use client";
 
 import { Sparkles } from "lucide-react";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
+import { Alerta } from "@/components/ui/alerta";
 import { Boton } from "@/components/ui/button";
 import { Casilla } from "@/components/ui/choice";
 import { PanelAntesDeGenerar } from "@/components/ui/controles";
@@ -13,7 +14,13 @@ import { type ClaveConfirmacion, claveEstable } from "@/lib/asistente";
 import { ETIQUETA_VISTA, type Vista } from "@/lib/captura-personaje";
 import { bloqueosDeControles, type EvaluacionVista, firmaDeAvisos } from "@/lib/controles";
 import { creditosAConfirmar, type Estimacion, formatearCreditos } from "@/lib/generacion";
+import { problemasDeMotivos } from "@/lib/llevar-al-problema";
 import { AVISO_SIN_TERCEROS } from "@/lib/personajes";
+
+/** Motivos que corresponden a una casilla: con ellos la alerta lleva a la casilla pendiente. */
+const FALTA_DERECHOS = "Falta confirmar que tienes derecho a usar estas fotos.";
+const FALTA_SIN_TERCEROS = "Falta confirmar la revisión de las fotos.";
+const FALTA_AVISO_GASTO = "Falta aceptar el aviso de gasto.";
 
 /**
  * «Generar todas las vistas que faltan» (0.22.1). No es un camino de dinero nuevo: por dentro es una vista
@@ -22,6 +29,7 @@ import { AVISO_SIN_TERCEROS } from "@/lib/personajes";
  * Lo que aporta esta pantalla es decir el **total** antes de nada —el precio de una imagen por cada vista que
  * falta— y, después, cuáles se han encargado y cuáles no, con su motivo. Las que no salen no se cobran.
  */
+
 export function DialogoTodasLasVistas({
   personajeId,
   inventado,
@@ -62,12 +70,19 @@ export function DialogoTodasLasVistas({
   const firma = `${vistas.join(",")}|${estimacion.sello}|${porVista}|${firmaDeAvisos(confirmados)}`;
 
   const bloqueos = [
-    ...(derechos ? [] : ["Falta confirmar que tienes derecho a usar estas fotos."]),
-    ...(sinTerceros ? [] : ["Falta confirmar la revisión de las fotos."]),
-    ...(superaUmbral && !avisoAceptado ? ["Falta aceptar el aviso de gasto."] : []),
+    ...(derechos ? [] : [FALTA_DERECHOS]),
+    ...(sinTerceros ? [] : [FALTA_SIN_TERCEROS]),
+    ...(superaUmbral && !avisoAceptado ? [FALTA_AVISO_GASTO] : []),
     ...(alcanza ? [] : ["Tu saldo de KIE no llega para todas estas vistas."]),
     ...bloqueosDeControles(controles, confirmados),
   ];
+  // Cada casilla pendiente lleva a su casilla; el resto de motivos se lee, sin sitio al que llevar.
+  const idCasilla = useId();
+  const problemas = problemasDeMotivos(bloqueos, {
+    [FALTA_DERECHOS]: `${idCasilla}-derechos`,
+    [FALTA_SIN_TERCEROS]: `${idCasilla}-sin-terceros`,
+    [FALTA_AVISO_GASTO]: `${idCasilla}-aviso-gasto`,
+  });
 
   const generar = async () => {
     clave.current = claveEstable(clave.current, firma);
@@ -124,6 +139,7 @@ export function DialogoTodasLasVistas({
             <Casilla
               etiqueta="Tengo derecho a usar estas fotos"
               marcada={derechos}
+              requisito={`${idCasilla}-derechos`}
               onCambio={setDerechos}
               deshabilitado={enviando}
             />
@@ -131,6 +147,7 @@ export function DialogoTodasLasVistas({
               etiqueta="He revisado las fotos: no aparece ninguna otra persona ni ningún menor"
               descripcion={AVISO_SIN_TERCEROS}
               marcada={sinTerceros}
+              requisito={`${idCasilla}-sin-terceros`}
               onCambio={setSinTerceros}
               deshabilitado={enviando}
             />
@@ -138,6 +155,7 @@ export function DialogoTodasLasVistas({
               <Casilla
                 etiqueta={`Sí, quiero gastar ${formatearCreditos(total)}`}
                 marcada={avisoAceptado}
+                requisito={`${idCasilla}-aviso-gasto`}
                 onCambio={setAvisoAceptado}
                 deshabilitado={enviando}
               />
@@ -155,13 +173,7 @@ export function DialogoTodasLasVistas({
         />
 
         {error && <Aviso tono="error">{error}</Aviso>}
-        {bloqueos.length > 0 && (
-          <ul className="flex flex-col gap-1 text-sm text-texto-suave">
-            {bloqueos.map((motivo) => (
-              <li key={motivo}>{motivo}</li>
-            ))}
-          </ul>
-        )}
+        {bloqueos.length > 0 && <Alerta tipo="bloqueo" compacta anuncio="ninguno" protege elementos={problemas} />}
 
         <Boton
           className="self-start"

@@ -3,6 +3,7 @@
 import { Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Alerta } from "@/components/ui/alerta";
 import { Boton } from "@/components/ui/button";
 import { Casilla } from "@/components/ui/choice";
 import { Aviso } from "@/components/ui/feedback";
@@ -146,11 +147,13 @@ export function AltaPersonajeInventado({ estilos }: { estilos: OpcionEstiloAnima
             queda en tu biblioteca. De ese retrato salen después sus vistas.
           </p>
           {bloqueos.length > 0 && (
-            <ul className="flex list-inside list-disc flex-col gap-1 text-texto-suave">
-              {bloqueos.map((motivo) => (
-                <li key={motivo}>{motivo}</li>
-              ))}
-            </ul>
+            <Alerta
+              tipo="bloqueo"
+              compacta
+              anuncio="ninguno"
+              protege
+              elementos={bloqueos.map((texto) => ({ texto }))}
+            />
           )}
           {error && <Aviso tono="error">{error}</Aviso>}
           <Boton

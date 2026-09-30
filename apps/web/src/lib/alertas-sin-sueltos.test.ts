@@ -28,6 +28,9 @@ const PATRONES: [string, RegExp][] = [
   ["«status» con color de resultado", /role="status"[^>]*text-(?:error|aviso|correcto|peligro)/],
   ["línea de error suelta", /<(?:p|span|div)\s+className="[^"]*\btext-(?:error|peligro)\b[^"]*\bfont-medium\b[^"]*">/],
   ["línea de error suelta", /<(?:p|span|div)\s+className="[^"]*\bfont-medium\b[^"]*\btext-(?:error|peligro)\b[^"]*">/],
+  // La lista de viñetas de «lo que falta» (`bloqueos.map((motivo) => <li key={motivo}>{motivo}</li>)`).
+  // Solo con los nombres de «lo que falta»: una lista de frases o de consecuencias no es un aviso.
+  ["lista de motivos suelta", /\.map\(\((motivo|m|impedimento|falta|bloqueo)\) => \(?\s*<li key=\{\1\}>\{\1\}<\/li>/],
 ];
 
 async function ficheros(dir: string): Promise<string[]> {
@@ -66,6 +69,9 @@ describe("sin avisos sueltos", () => {
     );
     expect(detecta('<p className="text-sm font-medium text-error">Casi no te queda espacio</p>')).toContain(
       "línea de error suelta",
+    );
+    expect(detecta("{bloqueos.map((motivo) => (\n  <li key={motivo}>{motivo}</li>\n))}")).toContain(
+      "lista de motivos suelta",
     );
     expect(detecta('<Alerta tipo="error" compacta>No se ha podido guardar.</Alerta>')).toEqual([]);
     expect(detecta('<Aviso tono="error">{error}</Aviso>')).toEqual([]);
