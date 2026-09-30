@@ -2,10 +2,13 @@
 
 import { useState } from "react";
 import { Interruptor } from "@/components/ui/choice";
+import { DemoDePlantilla } from "@/components/ui/demo-plantilla";
 import { BotoneraPresets, PanelLoElegido } from "@/components/ui/preset";
 import { Selector } from "@/components/ui/select";
-import type { CategoriaPreset, PresetVisible, SeleccionPresets } from "@/lib/presets";
+import type { DemoPlantilla } from "@/lib/demo-plantilla";
+import type { CategoriaPreset, PlantillaVisible, PresetVisible, SeleccionPresets } from "@/lib/presets";
 import type { CategoriaDecidible } from "@/lib/trends";
+import { PlantillaAplicada, VistaPreviaTrend } from "../../../crear/_componentes/panel-plantilla";
 import { CampoDireccionDecidida, CampoDuracionesAdmitidas } from "../../plantillas/campos-trend";
 import { Muestra, Seccion } from "../seccion";
 
@@ -53,6 +56,33 @@ const GRUPOS: { categoria: CategoriaPreset; presets: PresetVisible[] }[] = [
 /** El 1:1 no lo admite ningún modelo de imagen del catálogo actual: sale deshabilitado con su motivo. */
 const INCOMPATIBLES = { f2: "Nano Banana 2 Lite solo admite 9:16." };
 
+/** Ejemplo de muestra: una imagen dibujada aquí, sin depender de ningún archivo de la biblioteca. */
+const DEMO_DE_MUESTRA: DemoPlantilla = {
+  tipo: "imagen",
+  url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 960"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ff5a5f"/><stop offset="100%" stop-color="#ffc94d"/></linearGradient></defs><rect width="540" height="960" fill="url(#g)"/><text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif" font-size="56" fill="#182032">Ejemplo</text></svg>',
+  )}`,
+  alt: "Muestra: rectángulo vertical con un degradado cálido",
+  ancho: 540,
+  alto: 960,
+};
+
+const PLANTILLA_DE_MUESTRA: PlantillaVisible = {
+  id: "muestra",
+  nombre: "Fotograma para redes",
+  descripcion: "Foto vertical lista para publicar.",
+  kind: "base",
+  duracionesAdmitidas: [],
+  direccionDecidida: [],
+  trendAllowsSpeech: false,
+  demo: DEMO_DE_MUESTRA,
+  capacidad: "image_edit",
+  variables: [],
+  version: 1,
+  versionId: "muestra-v1",
+  deLaInstalacion: true,
+};
+
 export function SeccionPresets() {
   const [seleccion, setSeleccion] = useState<SeleccionPresets>({ especialidad: ["e1"], formato: ["f1"] });
   const [vigencia, setVigencia] = useState<string | null>("revision");
@@ -87,6 +117,26 @@ export function SeccionPresets() {
             />
             <CampoDuracionesAdmitidas valor={duraciones} disenada={8} onCambio={setDuraciones} />
             <CampoDireccionDecidida valor={decide} onCambio={setDecide} />
+          </div>
+        </Muestra>
+        <Muestra titulo="Ejemplo de una plantilla o de un trend (imagen o clip)">
+          <div className="flex w-full flex-col gap-2">
+            <p className="text-sm text-texto-suave">
+              Un clip lleva controles, va silenciado y no se descarga hasta que se reproduce; nunca arranca solo.
+            </p>
+            <DemoDePlantilla demo={DEMO_DE_MUESTRA} titulo="Ejemplo de «Fotograma para redes»" alturaMaxima="14rem" />
+          </div>
+        </Muestra>
+        <Muestra titulo="La plantilla que se aplica sola (solo hay una), con su ejemplo">
+          <div className="w-full">
+            <PlantillaAplicada plantilla={PLANTILLA_DE_MUESTRA} />
+          </div>
+        </Muestra>
+        <Muestra titulo="Vista previa de un trend con ejemplo">
+          <div className="w-full">
+            <VistaPreviaTrend
+              trend={{ ...PLANTILLA_DE_MUESTRA, nombre: "Unboxing en primera persona", kind: "trend" }}
+            />
           </div>
         </Muestra>
         <Muestra titulo="Botonera por categoría">
