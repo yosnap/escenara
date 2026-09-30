@@ -273,6 +273,9 @@ export const generationJobs = pgTable(
     // Las versiones de una escena se leen por escena y de la más reciente a la más antigua (0.41.0).
     index("generation_jobs_escena_fecha_idx").on(t.sceneId, t.createdAt),
     index("generation_jobs_producto_idx").on(t.productId),
+    // Los ejemplos de plantilla comprueban de dónde sale cada medio en cada lectura: por resultado y por punto de partida.
+    index("generation_jobs_resultado_idx").on(t.resultMediaId),
+    index("generation_jobs_origen_idx").on(t.sourceMediaId),
   ],
 );
 

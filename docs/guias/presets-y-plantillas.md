@@ -55,6 +55,12 @@ Y si quien administra cambia la plantilla entre que la miras y pulsas el botón,
 plantilla ha cambiado desde que viste el coste: revisa el coste otra vez y confirma» **antes de gastar nada**. Si lo que pasó fue un fallo
 de red y vuelves a pulsar, se te devuelve el trabajo que ya se encargó: no se paga dos veces.
 
+## Qué plantilla se usa y cómo queda
+
+Detrás de los botones hay una **plantilla**: el texto que el servidor compone con lo que eliges. Si para lo que vas a crear solo hay **una**, no hay nada que elegir y se aplica sola, pero Escenara ya no lo hace en silencio: en «Describe la escena» (y en el paso del formato del clip, cuando no hay trends) verás **«Se aplica la plantilla «Fotograma para redes»»**. Si quien administra puso un **ejemplo**, lo verás debajo: una imagen o un clip corto de cómo suele salir. Es solo una muestra que ya existía; **no cuesta créditos** y no es el texto de la plantilla, que sigue sin salir del servidor. Un clip de ejemplo lleva controles, va silenciado y no arranca solo.
+
+Si hay varias plantillas, el selector **«Plantilla o trend vigente»** marca con «Con ejemplo» las que lo tienen y enseña debajo el de la que hayas elegido.
+
 ## Duplicar un preset para hacerlo tuyo
 
 Debajo de cada botón de la instalación hay **«Duplicar para editarlo»**. La copia es **tuya**: aparece marcada como «Tuyo», nadie más la ve y puedes cambiarle el **nombre** y la **descripción** sin tocar la de la instalación. El fragmento en inglés que entra en el prompt se hereda del original y se edita en Admin › Presets: desde la 0.17.0 no sale hacia el navegador.
@@ -69,6 +75,7 @@ Compartir presets y plantillas entre cuentas llega en una versión posterior.
 - **Admin › Plantillas**: el texto con las variables `{{así}}`, sus variables declaradas y sus restricciones por modelo, con **previsualización** y **historial de versiones**. Se agrupan por capacidad y se ordenan **arrastrando** por el asa dentro de cada una, igual que los presets (con teclado: Espacio para cogerla, flechas para moverla y Espacio para soltarla); una plantilla nueva va al final de su capacidad.
   - Cambiar el texto, las variables o las restricciones **crea una versión nueva** y exige un motivo. Cambiar el nombre, la descripción, el orden o el estado no crea versión.
   - **Editar una plantilla no cambia lo que ya se generó**: cada trabajo guarda la versión que usó y su prompt final.
+  - **Ejemplo de la plantilla**: cada tarjeta tiene **«Poner ejemplo»** (o «Cambiar ejemplo»). Se abre un diálogo donde eliges una **imagen o un clip de tu propia biblioteca** (también puedes subir uno nuevo desde ahí) y **«Guardar ejemplo»**; **«Quitar ejemplo»** lo deja sin él. No genera nada ni cuesta créditos, y **no crea versión ni cambia el texto** de la plantilla. Tiene que ser **tuyo** (nunca el de otro usuario ni el de otro administrador) y no valen audio, documentos de consentimiento, fotos de personajes ni archivos de la papelera. **Solo se admite lo que se sabe de dónde viene**: una subida directa tuya que no esté en ningún trabajo, escena ni personaje, o el resultado de un trabajo hecho con un personaje inventado, animado o una mascota que nunca ha sido de un reparto de varias personas (dualcast, podcast). Cualquier otra cosa, y lo que no se sepa de dónde viene, se rechaza (se enseñaría a todos los usuarios, y el consentimiento de una persona real no lo cubre). Una foto de una persona real subida directamente no se puede detectar: es responsabilidad de quien la elige. Si un medio deja de cumplirlo después, deja de verse. Si dejas de ser administrador, tus ejemplos dejan de verse. Los usuarios lo ven solo mientras la plantilla esté activa; si la desactivas, dejan de verlo (tú lo sigues viendo en el panel). Ninguna plantilla trae ejemplo de fábrica.
 
 ## Lo que no cambia
 

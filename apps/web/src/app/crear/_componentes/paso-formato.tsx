@@ -3,7 +3,7 @@
 import { Aviso } from "@/components/ui/feedback";
 import { Paso } from "@/components/ui/paso";
 import type { CatalogoParaCrear, PlantillaVisible } from "@/lib/presets";
-import { SelectorPlantilla, VistaPreviaTrend } from "./panel-plantilla";
+import { PlantillaAplicada, SelectorPlantilla, VistaPreviaTrend } from "./panel-plantilla";
 
 /**
  * **Formato del clip**, el primer paso de «Crear»: la plantilla normal o uno de los trends vigentes. Va antes que
@@ -65,6 +65,10 @@ export function PasoFormato({
             Esta instalación no tiene ningún trend publicado, así que no hay formato que elegir: el clip usa la
             plantilla normal y la duración la eliges tú. Sigue con «Siguiente».
           </Aviso>
+          {/* Con una sola plantilla no hay nada que elegir: se dice cuál es y cómo queda. */}
+          {catalogo.plantillas.length === 1 && catalogo.plantillas[0] && (
+            <PlantillaAplicada plantilla={catalogo.plantillas[0]} />
+          )}
           {/* Si hay varias plantillas normales, se siguen pudiendo elegir aquí. */}
           <SelectorPlantilla
             catalogo={catalogo}

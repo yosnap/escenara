@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, inArray, isNull, or } from "drizzle-orm";
 import type { Capacidad } from "@/lib/catalogo";
+import type { DemoPlantilla } from "@/lib/demo-plantilla";
 import { esFormatoClip, esMomentoMicroaccion, esNivelCamara, esRegistroEstetico } from "@/lib/direccion";
 import {
   type CategoriaPreset,
@@ -29,6 +30,7 @@ import {
   promptTemplates,
   promptTemplateVersions,
 } from "../db/esquema";
+import { demosDe } from "./demos";
 import { ErrorPreset } from "./errores";
 
 /**
@@ -159,7 +161,7 @@ export const vistaDePreset = (fila: FilaPreset): PresetVista => ({
   actualizado: fila.updatedAt.toISOString(),
 });
 
-const vistaDePlantilla = (fila: FilaPlantilla, versionId: string): PlantillaVista => ({
+const vistaDePlantilla = (fila: FilaPlantilla, versionId: string, demo: DemoPlantilla | null): PlantillaVista => ({
   id: fila.id,
   clave: fila.slug,
   nombre: fila.name,
@@ -174,6 +176,7 @@ const vistaDePlantilla = (fila: FilaPlantilla, versionId: string): PlantillaVist
   direccionDecidida: fila.kind === "trend" ? categoriasDecididasDe(fila.decidedDirection) : [],
   referenceUrl: fila.referenceUrl,
   trendAllowsSpeech: fila.trendAllowsSpeech,
+  demo,
   capacidad: fila.capability,
   plantilla: fila.template.slice(0, PLANTILLA_MAXIMA),
   variables: variablesDeTexto(fila.variables),
@@ -291,8 +294,8 @@ export async function listarPlantillas(opciones: { usuarioId?: string } = {}): P
     .from(promptTemplates)
     .where(deQuien)
     .orderBy(asc(promptTemplates.capability), asc(promptTemplates.sortOrder), asc(promptTemplates.name));
-  const vigentes = await versionesVigentes(filas.map((f) => f.id));
-  return filas.map((f) => vistaDePlantilla(f, vigentes.get(f.id) ?? ""));
+  const [vigentes, demos] = await Promise.all([versionesVigentes(filas.map((f) => f.id)), demosDe(filas)]);
+  return filas.map((f) => vistaDePlantilla(f, vigentes.get(f.id) ?? "", demos.get(f.id) ?? null));
 }
 
 /**

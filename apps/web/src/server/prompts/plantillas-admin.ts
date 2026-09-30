@@ -37,6 +37,7 @@ import {
   variablesDeTexto,
   versionVigente,
 } from "./consulta";
+import { exigirMedioParaDemo } from "./demos";
 import { ErrorPreset } from "./errores";
 
 /**
@@ -47,7 +48,8 @@ import { ErrorPreset } from "./errores";
  * Toda edición del texto, de las variables o de las restricciones **crea una versión nueva** con su motivo.
  * Las anteriores se conservan intactas y los trabajos que las citaron siguen citándolas: editar una plantilla
  * **no cambia lo que ya se generó**. Lo que no versiona es el nombre, la descripción, el orden ni el estado:
- * no cambian nada de lo que se le envía al proveedor.
+ * no cambian nada de lo que se le envía al proveedor. **Tampoco el ejemplo** (imagen o clip que enseña el resultado):
+ * se pone y se quita aparte, sin crear versión.
  */
 
 const CLAVE = /^[a-z0-9][a-z0-9-]{1,48}$/;
@@ -438,6 +440,23 @@ export async function activarPlantillaDeLaInstalacion(id: string, activa: boolea
   return await vistaPorId(anterior.id);
 }
 
+/**
+ * Pone (con el identificador de un medio de la biblioteca) o quita (con `null`) el ejemplo de una plantilla de la
+ * instalación. No crea versión, no toca el texto y no llama a ningún proveedor: solo enlaza un medio que ya existe **y
+ * que es del propio administrador** (`autorId`), sin personajes reales.
+ * Vale también para un trend caducado o desactivado, porque es una etiqueta informativa, no algo que se genere.
+ */
+export async function fijarDemoDePlantilla(id: string, medioId: unknown, autorId: string): Promise<PlantillaVista> {
+  const anterior = await plantillaDeLaInstalacion(id);
+  if (medioId !== null && typeof medioId !== "string") throw new ErrorPreset(400, "Elige un medio de la biblioteca.");
+  const nuevo = medioId === null ? null : await exigirMedioParaDemo(medioId, autorId);
+  await db()
+    .update(promptTemplates)
+    .set({ demoMediaId: nuevo, demoSetBy: nuevo === null ? null : autorId, updatedAt: new Date() })
+    .where(and(eq(promptTemplates.id, anterior.id), isNull(promptTemplates.ownerId)));
+  return await vistaPorId(anterior.id);
+}
+
 export async function caducarTrend(id: string): Promise<PlantillaVista> {
   const anterior = await plantillaDeLaInstalacion(id);
   if (anterior.kind !== "trend") throw new ErrorPreset(400, "Esta plantilla no es un trend.");
@@ -475,7 +494,17 @@ export async function duplicarTrend(id: string, clave: string, autorId: string):
     },
     autorId,
   );
-  await db().update(promptTemplates).set({ duplicatedFrom: id }).where(eq(promptTemplates.id, copia.id));
+  // La copia hereda el ejemplo solo si sigue valiendo con las reglas de ahora y es de quien duplica; si no, nace sin él.
+  const demoMediaId = anterior.demoMediaId
+    ? await exigirMedioParaDemo(anterior.demoMediaId, autorId).catch((error) => {
+        if (error instanceof ErrorPreset) return null;
+        throw error;
+      })
+    : null;
+  await db()
+    .update(promptTemplates)
+    .set({ duplicatedFrom: id, demoMediaId, demoSetBy: demoMediaId === null ? null : autorId })
+    .where(eq(promptTemplates.id, copia.id));
   return vistaPorId(copia.id);
 }
 

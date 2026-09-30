@@ -2,6 +2,78 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.42.1] · 2026-09-30
+
+Parche: **cada plantilla y cada trend puede enseñar cómo se ve el resultado antes de gastar**, y la plantilla base que se
+aplicaba sola en «Describe la escena» deja de ser invisible. Una migración aditiva: lee «Actualizar desde la 0.42.0».
+No cambia ninguna regla de coste, de consentimiento ni de confirmación, y el ejemplo no cuesta créditos.
+
+### Añadido
+
+- **Ejemplo por plantilla y por trend.** En **Admin › Plantillas**, cada tarjeta tiene el botón **«Poner ejemplo»**
+  (o «Cambiar ejemplo»): eliges una **imagen o un clip de tu propia biblioteca** (o subes uno nuevo desde ahí) y lo ves
+  en la tarjeta. **«Quitar ejemplo»** lo deja como antes. No se genera nada, no llama a ningún proveedor, y ponerlo o
+  quitarlo **no crea versión ni cambia el texto de la plantilla**. Solo administradores, y **solo medios del propio
+  administrador que lo pone**: nunca el de otro usuario ni el de otro administrador. Tampoco valen los documentos de
+  consentimiento, las fotos de un personaje ni su hoja, un archivo en la papelera ni el audio. **Y la regla de origen es
+  una lista blanca, no una lista de prohibiciones**: un medio solo vale como ejemplo si es (A) una **subida directa** tuya
+  que no está en ningún trabajo, escena ni personaje (tampoco en ninguna versión anterior de un personaje, aunque la foto
+  se haya quitado después), o (B) el **resultado o el punto de partida de un trabajo hecho con un personaje sintético**
+  (inventado, animado o una mascota) y que nunca ha sido de un reparto de varias personas (dualcast, podcast…), mirando
+  todos los trabajos de la escena y no solo el vigente. Todo lo demás se rechaza, incluido lo que no se sabe de dónde
+  viene. La comprobación se repite en cada lectura: si un medio deja de cumplirlo (se añade una persona real al reparto,
+  por ejemplo), deja de verse. El diálogo avisa de que el ejemplo lo ven todos los usuarios y de que una foto real subida
+  directamente no se puede detectar: es responsabilidad de quien la elige.
+- **En «Crear»**, el ejemplo se ve en el selector «Plantilla o trend vigente» (las opciones que lo tienen lo dicen y el
+  de la plantilla elegida aparece debajo) y en la **vista previa del trend**. Un clip lleva controles, va **silenciado**,
+  no se descarga hasta que le das a reproducir y **nunca arranca solo**; una imagen y un clip llevan texto alternativo.
+- **La plantilla que se aplica sola ahora se ve.** Cuando solo hay una plantilla para lo que vas a crear, en «Describe la
+  escena» (y en el formato del clip, si no hay trends) aparece un aviso: «Se aplica la plantilla «Fotograma para
+  redes»», con su ejemplo si lo tiene. Sigue sin selector, porque no hay nada que elegir, y sin mostrar el prompt.
+- **En los proyectos**, el selector «Formato vigente» de «Trend del clip» marca los trends con ejemplo y, al elegir uno,
+  se ve debajo de la vista previa.
+- Componente nuevo en el catálogo `/admin/componentes` › «Presets y prompt»: el ejemplo de una plantilla o de un trend,
+  la plantilla que se aplica sola y la vista previa de un trend con ejemplo.
+
+### Cambiado
+
+- Duplicar un trend conserva su ejemplo solo si sigue cumpliendo las reglas de ahora y es del administrador que duplica; si no, la copia nace sin él.
+
+### Seguridad
+
+- **El ejemplo no abre la biblioteca de quien administra.** Se sirve por una ruta propia
+  (`/api/prompts/plantillas/{id}/demo`) que solo entrega el medio marcado como ejemplo de una plantilla que a ese usuario
+  se le ofrece: activa y, si es un trend, vigente y con los trends visibles. Una plantilla desactivada, un trend
+  caducado o en revisión, o con los trends ocultos en Admin › Ajustes, responde 404 a los usuarios (quien administra
+  sí lo ve, para revisarlo). Lleva `X-Content-Type-Options: nosniff`, una CSP cerrada con `sandbox` y solo sirve tipos de
+  imagen y vídeo (nunca SVG); admite `Range`, que los navegadores piden para reproducir vídeo. El navegador nunca recibe
+  el identificador del medio ni nada del texto de la plantilla (ADR-0022).
+- **Un ejemplo es un medio propio del administrador.** El servidor lo exige al elegirlo y, al servirlo, comprueba que el
+  medio sigue siendo de quien lo puso y que esa persona sigue siendo administradora: si pierde el rol o el medio cambia
+  de dueño, el ejemplo deja de verse. Así la ruta nunca es una puerta a la biblioteca de otra persona.
+- **Sin personas reales.** Un ejemplo se enseña a todos los usuarios de la instalación, y el consentimiento de un
+  personaje real no cubre eso. Si algún día se quieren ejemplos con personas reales, hará falta una declaración de
+  consentimiento específica.
+- Un identificador de medio mal escrito responde con su causa, y la lectura de ejemplos tiene un límite de ritmo
+  (600 por minuto y usuario).
+- Si un medio elegido como ejemplo pasa después a ser material reservado (una foto de un personaje, por ejemplo) o a la
+  papelera, deja de servirse y de verse en el momento.
+
+### Actualizar desde la 0.42.0
+
+- **Haz antes una copia**: `bun run db:backup`. Después, `bun run db:migrate`.
+- La migración `0060_plantillas-con-ejemplo` es **aditiva e idempotente**: añade a `prompt_templates` la columna
+  `demo_media_id` (el medio; si se borra del todo, la plantilla se queda sin ejemplo) y `demo_set_by` (el administrador
+  que lo puso), las dos con sus claves foráneas y que admiten nulos. No cambia ni borra ninguna fila y volver a aplicarla no hace nada.
+- **Sin ejemplos por defecto**: ninguna plantilla ni trend lleva ejemplo al actualizar. Los eliges tú desde Admin ›
+  Plantillas, con clips o imágenes que ya tengas en la biblioteca.
+- La migración `0061_indices-de-medios-de-trabajos-y-escenas` es **aditiva e idempotente** (`CREATE INDEX IF NOT EXISTS`):
+  añade índices sobre las columnas de medios de `generation_jobs`, `scenes` y `montage_exports`, que la comprobación de
+  origen usa en cada lectura de un ejemplo. Son índices normales (el migrador va en una transacción y no admite
+  `CONCURRENTLY`); las tablas son pequeñas, pero migra con el worker parado.
+- No hace falta reiniciar el worker (no cambia nada de la cola ni del render). No hay ajustes nuevos ni variables de
+  entorno nuevas.
+
 ## [0.42.0] · 2026-09-30
 
 **Branding editable.** Quien administra una instalación puede cambiar su **marca** (nombre, lema, logotipos,

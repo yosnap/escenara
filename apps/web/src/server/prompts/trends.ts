@@ -17,6 +17,7 @@ export function vistaPublicaTrend(p: PlantillaVista) {
     duracionesAdmitidas: p.duracionesAdmitidas,
     direccionDecidida: p.direccionDecidida,
     permiteHabla: p.trendAllowsSpeech,
+    demo: p.demo,
     vistaPrevia: {
       resumen: p.descripcion,
       duracion:

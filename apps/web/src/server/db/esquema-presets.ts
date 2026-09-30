@@ -12,6 +12,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { media } from "./esquema";
 import { users } from "./esquema-auth";
 import { capacidadModelo } from "./esquema-catalogo";
 
@@ -146,6 +147,18 @@ export const promptTemplates = pgTable(
     decidedDirection: text("decided_direction").notNull().default("[]"),
     referenceUrl: text("reference_url").notNull().default(""),
     trendAllowsSpeech: boolean("trend_allows_speech").notNull().default(false),
+    /**
+     * Ejemplo de lo que da la plantilla o el trend: una imagen o un clip **ya existente** de la biblioteca, elegido por
+     * quien administra. No es parte de la versión: ponerlo o quitarlo no cambia el prompt ni crea versión nueva. Se
+     * sirve por una ruta propia que solo entrega medios marcados así; si el medio se borra del todo, la plantilla se
+     * queda sin ejemplo (`set null`) en lugar de romperse.
+     */
+    demoMediaId: uuid("demo_media_id").references(() => media.id, { onDelete: "set null" }),
+    /**
+     * Administrador que puso el ejemplo. El ejemplo solo se sirve mientras el medio siga siendo suyo y siga siendo
+     * administrador: si el medio cambia de dueño o quien lo puso pierde el rol, deja de verse.
+     */
+    demoSetBy: uuid("demo_set_by").references(() => users.id, { onDelete: "set null" }),
     /** Capacidad de destino: es lo que decide con qué modelos puede usarse (catálogo de 0.11.0). */
     capability: capacidadModelo("capability").notNull(),
     /** Texto con variables `{{nombre}}`, en inglés. Valor vigente; su instantánea vive en las versiones. */

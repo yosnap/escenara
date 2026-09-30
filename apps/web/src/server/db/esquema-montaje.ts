@@ -185,6 +185,7 @@ export const montageExports = pgTable(
   },
   (t) => [
     index("montage_exports_proyecto_idx").on(t.projectId, t.createdAt),
+    index("montage_exports_resultado_idx").on(t.resultMediaId),
     // Índice de la toma del worker: busca las que están en cola y las tomas caducadas.
     index("montage_exports_cola_idx").on(t.state, t.lockedUntil),
     /**

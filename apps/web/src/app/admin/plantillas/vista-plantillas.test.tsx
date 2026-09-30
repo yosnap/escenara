@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { PlantillaVista } from "@/lib/presets";
+import { AvisoDemoParaTodos } from "./dialogo-demo-plantilla";
 import { VistaPlantillas } from "./vista-plantillas";
 
 /**
@@ -27,6 +28,7 @@ const plantilla = (
   direccionDecidida: [],
   referenceUrl: "",
   trendAllowsSpeech: false,
+  demo: null,
   capacidad,
   plantilla: "Escena: {{escena}}",
   variables: [],
@@ -69,5 +71,42 @@ describe("plantillas de la instalación", () => {
 
   test("el número de orden ya no se enseña", () => {
     expect(html).not.toContain("orden #");
+  });
+});
+
+describe("ejemplo de cada plantilla en el panel", () => {
+  const conEjemplo: PlantillaVista = {
+    ...plantilla("t9", "image_edit", "Con ejemplo", 30),
+    demo: {
+      tipo: "imagen",
+      url: "/api/prompts/plantillas/t9/demo?v=0a0a0a0a",
+      alt: "Una foto",
+      ancho: 1080,
+      alto: 1920,
+    },
+  };
+  const html = renderToStaticMarkup(
+    <VistaPlantillas inicial={[conEjemplo, plantilla("t1", "image_edit", "Sin", 10)]} />,
+  );
+
+  test("la tarjeta enseña el ejemplo que ven los usuarios y ofrece cambiarlo", () => {
+    expect(html).toContain("/api/prompts/plantillas/t9/demo?v=0a0a0a0a");
+    expect(html).toContain("Ejemplo que ven los usuarios");
+    expect(html).toContain("Cambiar ejemplo");
+  });
+
+  test("una plantilla sin ejemplo lo dice y ofrece ponerlo", () => {
+    expect(html).toContain("Sin ejemplo: los usuarios no ven cómo queda antes de generar.");
+    expect(html).toContain("Poner ejemplo");
+  });
+});
+
+describe("aviso del diálogo del ejemplo", () => {
+  test("dice que lo ven todos y que no lleve personas reales, con la alerta única", () => {
+    const html = renderToStaticMarkup(<AvisoDemoParaTodos />);
+    expect(html).toContain("El ejemplo lo verán todos los usuarios de la instalación.");
+    expect(html).toContain("sin personas reales");
+    expect(html).toContain("responsabilidad de quien la elige");
+    expect(html).toContain('role="status"');
   });
 });

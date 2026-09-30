@@ -2,7 +2,7 @@
 
 **Escenara** · Estudio abierto de personajes y vídeo · «Da vida a cada escena»
 
-Mapa de la documentación pública del proyecto. Versión actual: **0.42.0**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
+Mapa de la documentación pública del proyecto. Versión actual: **0.42.1**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
 
 ## Mapa de documentos
 
@@ -20,7 +20,7 @@ Mapa de la documentación pública del proyecto. Versión actual: **0.42.0**. Pa
 | Guías | [Crear un personaje](guias/crear-un-personaje.md) | Personaje con sus fotos de referencia, consentimiento, revocación y borrado con derivados | 0.13.0 |
 | Guías | [Buenas referencias](guias/buenas-referencias.md) | Captura guiada, vistas que cubrir, control de calidad y vistas generadas | 0.14.0 |
 | Guías | [La ficha y las versiones de un personaje](guias/ficha-y-versiones-de-personaje.md) | Ficha como contexto de generación, versiones, aprobaciones invalidadas y hoja de personaje | 0.15.0 |
-| Guías | [Presets y plantillas](guias/presets-y-plantillas.md) | Crear con botones, previsualización y edición del prompt final, y el catálogo de presets del admin | 0.16.0 |
+| Guías | [Presets y plantillas](guias/presets-y-plantillas.md) | Crear con botones, previsualización y edición del prompt final, y el catálogo de presets del admin, con el ejemplo de cada plantilla | 0.42.1 |
 | Guías | [El asistente de guion](guias/asistente-de-guion.md) | Proyectos, guion por escenas, afirmaciones por verificar y aprobación del plan con su coste | 0.17.0 |
 | Guías | [Por qué no puedo generar](guias/por-que-no-puedo-generar.md) | Los cuatro estados de los controles previos, cada motivo y cómo se arregla, qué probar cuando el proveedor acepta el trabajo y no lo termina (por ejemplo, su filtro de seguridad lo bloquea) y cómo son las alertas de bloqueo, error y aviso | 0.36.0 |
 | Guías | [Producir tu proyecto](guias/producir-tu-proyecto.md) | Rejilla de producción, etapas reales, zonas seguras, cancelación con «se cobrará», reintentos autorizados, la alerta de lo que falta antes de pagar y las versiones de cada escena | 0.41.0 |
@@ -31,7 +31,7 @@ Mapa de la documentación pública del proyecto. Versión actual: **0.42.0**. Pa
 | Guías | [La estrategia del anuncio](guias/estrategia-del-anuncio.md) | Las tres palancas (ángulo, oferta y creatividad), el brief por proyecto con un solo ángulo de los doce, la oferta reutilizable, los cinco hooks, las variantes por ángulo y el veredicto del ángulo en sombra | 0.27.0 |
 | Guías | [Podcast y dualcast](guias/podcast-y-dualcast.md) | Reparto de dos personajes, diálogo por turnos, coste por clip, consentimiento de cada persona y límites observados | 0.28.0 |
 | Guías | [Cantar con tu audio](guias/cantar-con-audio-propio.md) | Elegir audio propio, declarar derechos, comprobar retrato vertical y confirmar el coste por segundo | 0.29.0 |
-| Guías | [Usar y administrar trends](guias/trends-virales.md) | Selector de formatos vigentes, vista previa y coste; alta, versión, caducidad y duplicado desde el admin | 0.30.0 |
+| Guías | [Usar y administrar trends](guias/trends-virales.md) | Selector de formatos vigentes, vista previa y coste; alta, versión, caducidad y duplicado desde el admin, con el ejemplo de cada trend | 0.42.1 |
 | Guías | [Crear un personaje animado](guias/personajes-animados.md) | Tres acabados editables, guía de estilo, retrato maestro, herencia en escenas y coste | 0.31.0 |
 | Guías | [Montar y exportar tu vídeo](guias/montaje-y-exportacion.md) | La línea de tiempo simple (orden, recorte y zonas seguras), la mezcla de voz y música, los subtítulos quemados o adjuntos, la etiqueta de contenido sintético obligatoria, el guardado con versión y la exportación del MP4 en cada formato sin créditos | 0.41.0 |
 | Guías | [Formatos y proyectos largos](guias/formatos-y-proyectos-largos.md) | Para qué plataforma es la pieza, el mismo montaje en 9:16, 4:5, 1:1 y 16:9 con encuadre por escena y sin regenerar, 30 escenas y 5 minutos, las versiones de cada escena, la cuota y lo que cuesta cada cosa | 0.41.0 |
