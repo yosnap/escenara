@@ -26,8 +26,11 @@ export const IDS_PASOS_CREAR = [
 export type IdPasoCrear = (typeof IDS_PASOS_CREAR)[number];
 
 export interface DatosPasosCrear {
-  /** Hay algún trend vigente entre los que elegir. */
-  hayTrends: boolean;
+  /**
+   * El paso de formato está en la barra: solo si al abrir había dos plantillas o más entre las que elegir. Se decide
+   * una vez al montar, para que la barra no se renumere al cambiar de modelo.
+   */
+  conFormato: boolean;
   /** Se está pidiendo la estimación del trend recién elegido. */
   calculandoFormato: boolean;
   origen: "fotograma" | "imagen";
@@ -55,6 +58,16 @@ export interface DatosPasosCrear {
 const estadoDelTrabajo = (estado: EstadoTrabajo): EstadoDePaso =>
   esEstadoActivo(estado) ? "en-curso" : estado === "listo" ? "hecho" : "pendiente";
 
+/** Terminado sin imagen (fallido, cancelado o sin respuesta del proveedor): ya no va a estar listo. */
+const trabajoParado = (estado: EstadoTrabajo) => !esEstadoActivo(estado) && estado !== "listo";
+
+/**
+ * Qué decir del fotograma parado. Con la misma confirmación, el servidor devuelve el mismo trabajo (así no se paga
+ * dos veces), así que para pedir otro hay que cambiar algo de lo que se confirma.
+ */
+export const MOTIVO_FOTOGRAMA_PARADO =
+  "El fotograma no ha salido (ha fallado, se ha cancelado o el proveedor no responde): mira el motivo en «Resultado del fotograma». Para pedir otro, cambia la descripción, la imagen o el modelo y vuelve a confirmar el coste.";
+
 export function pasosDeCrear(d: DatosPasosCrear): PasoDelFlujo[] {
   // El formato siempre tiene una elección (la plantilla normal de fábrica), así que no queda pendiente.
   const formato: PasoDelFlujo = {
@@ -80,13 +93,15 @@ export function pasosDeCrear(d: DatosPasosCrear): PasoDelFlujo[] {
               ? "Elige antes la imagen de partida: el clip sale de ella."
               : d.fotograma === null
                 ? "Genera antes el fotograma: el clip sale de él."
-                : "Espera a que el fotograma esté listo: el clip sale de él.",
+                : trabajoParado(d.fotograma)
+                  ? MOTIVO_FOTOGRAMA_PARADO
+                  : "Espera a que el fotograma esté listo: el clip sale de él.",
         }),
   };
 
   if (d.origen === "imagen") {
     return [
-      formato,
+      ...(d.conFormato ? [formato] : []),
       origen,
       {
         id: "imagen",
@@ -100,7 +115,7 @@ export function pasosDeCrear(d: DatosPasosCrear): PasoDelFlujo[] {
 
   const descripcionLista = d.caracteresDescripcion >= PROMPT_MINIMO;
   return [
-    formato,
+    ...(d.conFormato ? [formato] : []),
     origen,
     {
       id: "sujeto",
@@ -123,7 +138,12 @@ export function pasosDeCrear(d: DatosPasosCrear): PasoDelFlujo[] {
       corto: "Coste",
       ...(descripcionLista
         ? {
-            estado: d.enviandoFotograma ? "en-curso" : d.fotograma !== null ? "hecho" : ("pendiente" as EstadoDePaso),
+            // Con el fotograma parado hay que volver a confirmar: el coste no está hecho.
+            estado: d.enviandoFotograma
+              ? "en-curso"
+              : d.fotograma !== null && !trabajoParado(d.fotograma)
+                ? "hecho"
+                : ("pendiente" as EstadoDePaso),
           }
         : {
             estado: "bloqueado" as EstadoDePaso,
@@ -149,7 +169,8 @@ export function pasosDeCrear(d: DatosPasosCrear): PasoDelFlujo[] {
 export const numeroDePaso = (pasos: readonly PasoDelFlujo[], id: string) => pasos.findIndex((p) => p.id === id) + 1;
 
 /**
- * Paso con el que se abre «Crear» sin `?paso=`: el formato si hay algún trend que elegir y, si no, el origen (el
- * formato se salta porque no hay nada que decidir en él; su panel dice por qué).
+ * Paso con el que se abre «Crear» sin `?paso=`: el formato si está en la barra y hay algún trend que elegir y, si
+ * no, el origen (su panel dice por qué no hay trends).
  */
-export const pasoPredeterminadoDeCrear = (hayTrends: boolean) => (hayTrends ? "formato" : "origen");
+export const pasoPredeterminadoDeCrear = (conFormato: boolean, hayTrends: boolean) =>
+  conFormato && hayTrends ? "formato" : "origen";

@@ -181,6 +181,11 @@ export function VistaCrear({
       vivo = false;
     };
   }, []);
+  /**
+   * El paso de formato solo está en la barra si al abrir había algo que elegir (dos plantillas o más). Se decide una
+   * vez: el catálogo se vuelve a pedir al cambiar de modelo y la barra no debe renumerarse a mitad.
+   */
+  const [conFormato] = useState(() => catalogoClipInicial.plantillas.length >= 2);
   const controlesFoto = useControles(controlesIniciales);
   const controlesClip = useControles(evaluacionPendiente(controlesIniciales.reglasVersion));
 
@@ -249,7 +254,7 @@ export function VistaCrear({
   // Los pasos y su estado salen de lo que hay en pantalla; no se guarda ningún progreso aparte.
   const hayTrends = catalogoClip.plantillas.some((p) => p.kind === "trend");
   const pasos = pasosDeCrear({
-    hayTrends,
+    conFormato,
     calculandoFormato: calculandoTrend,
     origen: origenElegido,
     haySujeto: personaje !== null || referencia !== null,
@@ -263,7 +268,10 @@ export function VistaCrear({
     clip: animacion?.estado ?? null,
     clipsAnteriores: clipsAnteriores.length,
   });
-  const multipaso = useMultipaso(pasos, resolverPaso(pasoPedido, pasos, pasoPredeterminadoDeCrear(hayTrends)));
+  const multipaso = useMultipaso(
+    pasos,
+    resolverPaso(pasoPedido, pasos, pasoPredeterminadoDeCrear(conFormato, hayTrends)),
+  );
   const numero = (id: string) => numeroDePaso(pasos, id);
 
   /**
@@ -589,18 +597,20 @@ export function VistaCrear({
         {error && <Aviso tono="error">{error}</Aviso>}
 
         {/* El formato va primero: un trend decide la duración (y su tarifa) y si se habla a cámara. */}
-        <PanelDePaso id="formato">
-          <PasoFormato
-            numero={numero("formato")}
-            catalogo={catalogoClip}
-            plantillaId={plantillaClip.plantillaId}
-            trend={trendElegido ?? null}
-            calculando={calculandoTrend}
-            deshabilitado={enviando === "animacion"}
-            // Cambiar de plantilla cambia qué variables hay: la selección deja de valer.
-            onPlantilla={(plantillaId) => void elegirPlantillaDelClip({ plantillaId, seleccion: {} })}
-          />
-        </PanelDePaso>
+        {conFormato && (
+          <PanelDePaso id="formato">
+            <PasoFormato
+              numero={numero("formato")}
+              catalogo={catalogoClip}
+              plantillaId={plantillaClip.plantillaId}
+              trend={trendElegido ?? null}
+              calculando={calculandoTrend}
+              deshabilitado={enviando === "animacion"}
+              // Cambiar de plantilla cambia qué variables hay: la selección deja de valer.
+              onPlantilla={(plantillaId) => void elegirPlantillaDelClip({ plantillaId, seleccion: {} })}
+            />
+          </PanelDePaso>
+        )}
 
         {/*
           Dos caminos, y se eligen antes que nada: generar un fotograma nuevo o traer una imagen que ya tienes.

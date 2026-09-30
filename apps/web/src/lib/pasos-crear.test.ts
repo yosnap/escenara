@@ -3,13 +3,14 @@ import { PROMPT_MINIMO } from "./generacion";
 import {
   type DatosPasosCrear,
   IDS_PASOS_CREAR,
+  MOTIVO_FOTOGRAMA_PARADO,
   numeroDePaso,
   pasoPredeterminadoDeCrear,
   pasosDeCrear,
 } from "./pasos-crear";
 
 const VACIO: DatosPasosCrear = {
-  hayTrends: true,
+  conFormato: true,
   calculandoFormato: false,
   origen: "fotograma",
   haySujeto: false,
@@ -42,8 +43,30 @@ describe("pasos de «Crear» generando un fotograma", () => {
   });
 
   test("se abre en el formato si hay trends y, sin ninguno, se salta al origen", () => {
-    expect(pasoPredeterminadoDeCrear(true)).toBe("formato");
-    expect(pasoPredeterminadoDeCrear(false)).toBe("origen");
+    expect(pasoPredeterminadoDeCrear(true, true)).toBe("formato");
+    expect(pasoPredeterminadoDeCrear(true, false)).toBe("origen");
+    expect(pasoPredeterminadoDeCrear(false, true)).toBe("origen");
+  });
+
+  test("con menos de dos plantillas no hay formato que decidir: sale de la barra y los números corren", () => {
+    const pasos = pasosDeCrear({ ...VACIO, conFormato: false });
+    expect(pasos.map((p) => p.id)).toEqual(["origen", "sujeto", "escena", "coste", "fotograma", "clip"]);
+    expect(numeroDePaso(pasos, "origen")).toBe(1);
+    expect(pasosDeCrear({ ...VACIO, conFormato: false, origen: "imagen" }).map((p) => p.id)).toEqual([
+      "origen",
+      "imagen",
+      "clip",
+    ]);
+  });
+
+  test("con el fotograma fallido: el motivo dice la verdad y el coste vuelve a estar pendiente", () => {
+    for (const parado of ["fallido", "cancelado", "desconocido"] as const) {
+      const d = { caracteresDescripcion: 20, fotograma: parado };
+      expect(paso(d, "clip")?.motivo).toBe(MOTIVO_FOTOGRAMA_PARADO);
+      expect(paso(d, "clip")?.motivo).not.toContain("Espera");
+      expect(estados(d).coste).toBe("pendiente");
+    }
+    expect(MOTIVO_FOTOGRAMA_PARADO).toContain("no ha salido");
   });
 
   test("al abrir: coste, resultado y clip bloqueados, cada uno con su motivo", () => {
