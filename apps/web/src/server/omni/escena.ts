@@ -47,8 +47,9 @@ import { ultimaVersion } from "../personajes/ficha";
 import { personajePropio, referenciasParaGenerar } from "../personajes/puede-generar";
 import { acotarCoste } from "../presupuesto/acotar";
 import { completarModelosSugeridos } from "../productos/modelos-sugeridos";
-import { hechosDelProducto, productoEnPrompt, productoParaGenerar } from "../productos/prompt";
+import { productoEnPrompt, productoParaGenerar } from "../productos/prompt";
 import { referenciasDelPersonajeQueViajan } from "../productos/referencias";
+import { hojaEnElEnvio, repartoDelEnvio } from "../productos/reparto-del-envio";
 import { creditosDelEnvio, traducirAlIngles } from "../prompts/traduccion";
 import { miembrosDelReparto } from "../reparto/consulta";
 import { exigirFormatoActivo } from "../reparto/servicio";
@@ -375,12 +376,13 @@ export async function producirEscenaHablada(
   const muestraEnviada = sinRegistro ? (sinRegistro.muestra ?? null) : muestra;
   const faltaEnviada = sinRegistro?.falta || falta;
   const conProducto = producto
-    ? hechosDelProducto(
+    ? await repartoDelEnvio({
         producto,
-        adaptador.referenciasDeGaleria?.(modelo) ?? modelo.parametros.maximoReferencias,
-        personaje ? (await referenciasVigentesDe(personaje.id)).length : 1,
-        conIdentidad,
-      )
+        adaptador,
+        modelo,
+        identidadRegistradaPerdida: conIdentidad,
+        envio: { tipo: "escena-omni", personaje, conHoja: personaje !== null && hojaEnElEnvio(personaje, escena.id) },
+      })
     : null;
   if (producto) exigirDerechoDeMarca(confirmacion.derechoMarca);
   if (conProducto) await completarModelosSugeridos(conProducto.hechos, CAPACIDAD_DE_TIPO.animacion);

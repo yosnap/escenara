@@ -13,7 +13,7 @@ import { AvisoRequisitos } from "@/components/ui/requisitos";
 import type { ModeloElegible } from "@/lib/catalogo";
 import type { DireccionElegidaConAcento, OpcionesDeDireccion } from "@/lib/direccion";
 import { fotoDeProductoDelModelo } from "@/lib/foto-de-producto";
-import { cupoDeFotosDe } from "@/lib/fotos-del-producto";
+import { cupoDeFotosDe, eleccionParaElModelo } from "@/lib/fotos-del-producto";
 import { DIALOGO_MAXIMO, type Estimacion, type TrabajoVista } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
 import { AVISO_SIN_TERCEROS } from "@/lib/personajes";
@@ -154,6 +154,19 @@ export function PasoClip({
   onOtroClip: (precargar: TrabajoVista | null) => void;
 }) {
   const hayOrigen = origen !== null;
+  // Con otro modelo pueden caber menos fotos del producto: la elección se recorta en el mismo gesto, antes de que el
+  // servidor compruebe el clip con el modelo nuevo, y no se le pregunta con una elección que ya no cabe.
+  const cambiarModelo = (modeloNuevo: string) => {
+    const recortada = eleccionParaElModelo(
+      producto,
+      cupoDeFotosDe({
+        cupoDeGaleria: modelos.find((m) => m.modelo === modeloNuevo)?.cupoDeGaleria,
+        fotosDelPersonaje: 1,
+      }),
+    );
+    if (recortada) onProducto(recortada);
+    onModelo(modeloNuevo);
+  };
   const plantillaEnUso = previa.enUso ? previa.plantilla : null;
   const variableDeLaEscena = plantillaEnUso ? variableDeTexto(plantillaEnUso.variables) : null;
   const admitidas = trend?.duracionesAdmitidas ?? [];
@@ -179,7 +192,7 @@ export function PasoClip({
               etiqueta="Modelo del clip"
               modelos={modelos}
               valor={estimacion.modelo}
-              onCambio={onModelo}
+              onCambio={cambiarModelo}
               deshabilitado={enviando}
               duracionesRequeridas={admitidas}
               conProducto={producto.productoId !== ""}

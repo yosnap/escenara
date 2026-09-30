@@ -6,7 +6,8 @@ import { evaluarParaMostrar } from "../controles/puerta";
 import type { FilaEscena } from "../db/esquema";
 import type { EleccionDeTrabajo } from "../generacion/precios";
 import { completarModelosSugeridos } from "../productos/modelos-sugeridos";
-import { hechosDelProducto, productoParaGenerar } from "../productos/prompt";
+import { productoParaGenerar } from "../productos/prompt";
+import { repartoDelEnvio } from "../productos/reparto-del-envio";
 import { adaptadorDe } from "../proveedores/registro";
 
 /**
@@ -38,8 +39,7 @@ export async function controlesProductoClip(
   if (!producto) return null;
   const modelo = eleccion.modelo;
   const adaptador = adaptadorDe(modelo.proveedor);
-  const galeria = adaptador.referenciasDeGaleria?.(modelo) ?? modelo.parametros.maximoReferencias;
-  const { hechos } = hechosDelProducto(producto, galeria, 1, false);
+  const { hechos } = await repartoDelEnvio({ producto, adaptador, modelo, envio: { tipo: "clip" } });
   await completarModelosSugeridos(hechos, CAPACIDAD_DE_TIPO.animacion);
   return vistaDeControlesProductoClip(hechosDeModelo("animacion", eleccion), hechos, parametros);
 }

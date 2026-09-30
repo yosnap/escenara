@@ -41,9 +41,10 @@ import { type EleccionDeTrabajo, elegirParaTipo } from "../generacion/precios";
 import { eleccionDeGeneracion } from "../mapa/generacion";
 import { type Actor, aDto } from "../media/servicio";
 import { eleccionOmni } from "../omni/registro";
-import { referenciasVigentesDe } from "../personajes/consulta";
+import { personajePorId } from "../personajes/contexto";
 import { ultimaVersion } from "../personajes/ficha";
 import { fotoDeProductoDelClip } from "../productos/modelos-sugeridos";
+import { fotosDelPersonajeEnElEnvio, hojaEnElEnvio } from "../productos/reparto-del-envio";
 import { plantillaVigenteDe } from "../prompts/consulta";
 import { ErrorCatalogo } from "../proveedores/contrato";
 import {
@@ -511,8 +512,16 @@ async function fotoDeProductoDelProyecto(
     const foto = await fotoDeProductoDelClip(modelo, CAPACIDAD_DE_TIPO.animacion);
     // En Omni con producto la cara sale de las fotos del personaje, que compiten con las del producto; el clip
     // de siempre parte de una sola imagen, su fotograma. Es la misma cuenta que hace el envío.
-    const fotosDelPersonaje =
-      conOmni && proyecto.mainCharacterId ? (await referenciasVigentesDe(proyecto.mainCharacterId)).length : 1;
+    const protagonista = conOmni && proyecto.mainCharacterId ? await personajePorId(proyecto.mainCharacterId) : null;
+    const fotosDelPersonaje = await fotosDelPersonajeEnElEnvio(
+      conOmni
+        ? {
+            tipo: "escena-omni",
+            personaje: protagonista,
+            conHoja: protagonista !== null && hojaEnElEnvio(protagonista),
+          }
+        : { tipo: "clip" },
+    );
     return { ...foto, fotosDelPersonaje };
   } catch (error) {
     console.error(

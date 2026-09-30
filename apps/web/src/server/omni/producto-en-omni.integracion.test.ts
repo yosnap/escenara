@@ -59,6 +59,7 @@ const { producirProyecto } = await import("../produccion/producir");
 const { editarEscena } = await import("../asistente/escenas");
 const { estadoDeVoz } = await import("../voz/consulta");
 const rutaTrabajos = await import("@/app/api/generacion/trabajos/route");
+const rutaControles = await import("@/app/api/generacion/controles/route");
 const { estimar } = await import("../generacion/estimacion");
 const { listarModelos, olvidarCatalogo } = await import("../proveedores/catalogo");
 const { cambiarEstadoDeModelo, cambiarPrecioDeModelo } = await import("../proveedores/catalogo-admin");
@@ -159,6 +160,8 @@ describe.skipIf(!hayBaseDeDatos)("fotos del producto en una escena hablada de Om
   let admin: Sesion;
   let actor: Actor;
   let personajeId: string;
+  /** La foto del personaje que se marca como frontal: es la que tiene que viajar la primera. */
+  let frontalDelPersonaje: string;
   let proyectoId: string;
   let ajustesPrevios: Awaited<ReturnType<typeof leerAjustes>>;
   let modeloOmni: string;
@@ -239,9 +242,10 @@ describe.skipIf(!hayBaseDeDatos)("fotos del producto en una escena hablada de Om
     );
     expect(creado.status).toBe(201);
     const personaje = (await creado.json()) as PersonajeVista;
-    const referencias = await Promise.all(
-      Array.from({ length: 6 }, async (_, i) => ({ medioId: await subir(`lucia-${i}.png`) })),
-    );
+    const ids = await Promise.all(Array.from({ length: 6 }, (_, i) => subir(`lucia-${i}.png`)));
+    // La última se sube marcada como frontal, para comprobar que el recorte no la deja fuera ni la pone detrás.
+    frontalDelPersonaje = ids[5] as string;
+    const referencias = ids.map((medioId, i) => ({ medioId, ...(i === 5 ? { vistaClave: "frontal" } : {}) }));
     expect(
       (
         await rutaReferencias.POST(
@@ -429,6 +433,8 @@ describe.skipIf(!hayBaseDeDatos)("fotos del producto en una escena hablada de Om
     await producirProyecto(actor, proyectoId, await confirmacion(AVISOS_DEL_PRODUCTO), h);
     const input = await trabajoDeLaEscena();
     expect(input.referencias).toHaveLength(4);
+    // La identidad viaja empezando por la frontal, que no se pierde con el recorte.
+    expect(input.referencias?.[0]).toBe(frontalDelPersonaje);
     expect(input.referenciasProducto).toHaveLength(3);
     // La frontal viaja siempre; después el envase y el detalle de la tapa.
     expect(input.referenciasProducto).toEqual([fotos[0], fotos[1], fotos[2]]);
@@ -504,9 +510,9 @@ describe.skipIf(!hayBaseDeDatos)("fotos del producto en una escena hablada de Om
       return nuevas.map((f) => f.medioId);
     }
 
-    async function pedirClip(productoId: string, fotos?: string[]) {
+    async function pedirClip(productoId: string, fotos?: string[], imagenDePartida?: string) {
       const estimacion = await estimar(ana.id, "animacion", buscar, modeloOmni);
-      const imagen = await subir("fotograma.png");
+      const imagen = imagenDePartida ?? (await subir("fotograma.png"));
       return rutaTrabajos.POST(
         pedir(ana, "/api/generacion/trabajos", "POST", {
           tipo: "animacion",
@@ -532,7 +538,7 @@ describe.skipIf(!hayBaseDeDatos)("fotos del producto en una escena hablada de Om
       const [fila] = await db()
         .select()
         .from(generationJobs)
-        .where(eq(generationJobs.userId, ana.id))
+        .where(and(eq(generationJobs.userId, ana.id), eq(generationJobs.kind, "animacion")))
         .orderBy(generationJobs.createdAt)
         .limit(1);
       return (fila?.input as { referenciasProducto?: string[] } | undefined)?.referenciasProducto;
@@ -577,5 +583,132 @@ describe.skipIf(!hayBaseDeDatos)("fotos del producto en una escena hablada de Om
       expect(((await respuesta.json()) as { error: string }).error).toContain("solo caben 6");
       expect(await db().select().from(generationJobs).where(eq(generationJobs.userId, ana.id))).toHaveLength(0);
     });
+
+    /** Un fotograma ya hecho con el personaje de seis fotos: la imagen de partida del clip hereda ese personaje. */
+    async function fotogramaConElPersonaje(): Promise<string> {
+      const estimacion = await estimar(ana.id, "fotograma", buscar);
+      const respuesta = await rutaTrabajos.POST(
+        pedir(ana, "/api/generacion/trabajos", "POST", {
+          tipo: "fotograma",
+          personajeId,
+          prompt: "Lucía en una cocina luminosa.",
+          creditosConfirmados: estimacion.creditos,
+          selloEstimacion: estimacion.sello,
+          derechos: true,
+          sinTerceros: true,
+          claveIdempotencia: crypto.randomUUID(),
+        }),
+        undefined,
+      );
+      expect(respuesta.status).toBe(201);
+      const { id } = (await respuesta.json()) as { id: string };
+      const resultado = await subir("fotograma-de-lucia.png");
+      await db().update(generationJobs).set({ resultMediaId: resultado }).where(eq(generationJobs.id, id));
+      return resultado;
+    }
+
+    const consultarClip = (medioId: string, productoId: string, fotos?: string[]) =>
+      rutaControles.GET(
+        pedir(
+          ana,
+          `/api/generacion/controles?${new URLSearchParams({
+            tipo: "animacion",
+            modelo: modeloOmni,
+            medioId,
+            productoId,
+            accion: "ensenarlo-a-camara",
+            ...(fotos ? { fotos: fotos.join(",") } : {}),
+          })}`,
+        ),
+        undefined,
+      );
+
+    type Vista = { comprobaciones: { regla: string; motivo: string }[] };
+
+    test("el aviso de la consulta y el envío cuentan igual con un fotograma hecho con un personaje de seis fotos", async () => {
+      const { producto, fotos } = await nuevaCaja();
+      const extra = await completarHastaOcho(producto.id);
+      const todas = [...fotos, ...extra];
+      const imagen = await fotogramaConElPersonaje();
+
+      // Sin elección: el clip parte de una sola imagen, así que caben seis fotos del producto y quedan dos fuera.
+      const consulta = await consultarClip(imagen, producto.id);
+      expect(consulta.status).toBe(200);
+      const aviso = ((await consulta.json()) as Vista).comprobaciones.find(
+        (c) => c.regla === "producto-referencias-no-caben",
+      );
+      expect(aviso?.motivo).toContain(
+        "admite 7 referencias: se envía 1 foto del personaje y 6 de «Caja Huerta Valenciana»; 2 fotos del producto se quedan fuera.",
+      );
+      const estimacion = await estimar(ana.id, "animacion", buscar, modeloOmni);
+      const sinConfirmar = await rutaTrabajos.POST(
+        pedir(ana, "/api/generacion/trabajos", "POST", {
+          tipo: "animacion",
+          modelo: modeloOmni,
+          medioId: imagen,
+          prompt: "En una cocina luminosa, enseña la caja a cámara.",
+          dialogo: "Mirad qué caja tan buena.",
+          segundos: estimacion.segundos,
+          creditosConfirmados: estimacion.creditos,
+          selloEstimacion: estimacion.sello,
+          derechos: true,
+          derechoMarca: true,
+          sinTerceros: true,
+          claveIdempotencia: crypto.randomUUID(),
+          producto: { productoId: producto.id, accion: "ensenarlo-a-camara" },
+          avisosConfirmados: AVISOS_DEL_PRODUCTO.filter((a) => a !== "producto-referencias-no-caben"),
+        }),
+        undefined,
+      );
+      expect(sinConfirmar.status).toBe(409);
+      expect(((await sinConfirmar.json()) as { error: string }).error).toContain(aviso?.motivo ?? "sin aviso");
+
+      // Con cinco elegidas caben todas: la consulta y el envío las aceptan, y no hay aviso.
+      const cinco = [todas[0], todas[2], todas[4], todas[5], todas[7]] as string[];
+      const consultaCinco = await consultarClip(imagen, producto.id, cinco);
+      expect(consultaCinco.status).toBe(200);
+      expect(((await consultaCinco.json()) as Vista).comprobaciones.map((c) => c.regla)).not.toContain(
+        "producto-referencias-no-caben",
+      );
+      const envioCinco = await pedirClip(producto.id, cinco, imagen);
+      expect(envioCinco.status).toBe(201);
+      expect(await referenciasDelUltimoTrabajo()).toHaveLength(5);
+    });
+
+    test("una elección que no cabe se rechaza igual en la consulta y en el envío", async () => {
+      const { producto, fotos } = await nuevaCaja();
+      const extra = await completarHastaOcho(producto.id);
+      const siete = [...fotos, ...extra.slice(0, 2)];
+      const imagen = await fotogramaConElPersonaje();
+      const consulta = await consultarClip(imagen, producto.id, siete);
+      const envio = await pedirClip(producto.id, siete, imagen);
+      expect(consulta.status).toBe(400);
+      expect(envio.status).toBe(400);
+      const [c, e] = await Promise.all([consulta.json(), envio.json()]);
+      expect((c as { error: string }).error).toContain("solo caben 6");
+      expect((e as { error: string }).error).toBe((c as { error: string }).error);
+    });
+  });
+
+  test("con la hoja 3×3 solo viaja la hoja y el producto aprovecha los huecos", async () => {
+    const { producto, fotos } = await nuevaCaja();
+    const hoja = await subir("hoja-3x3.png");
+    await db()
+      .update(characters)
+      .set({ identitySheetMediaId: hoja, identitySheetStatus: "por_defecto" })
+      .where(eq(characters.id, personajeId));
+    await nuevoProyectoConProducto(producto.id);
+    await prepararVoz();
+
+    // Viaja la hoja sola y las cinco fotos de la caja: no hay nada que se quede fuera, así que no hay aviso.
+    await producirProyecto(
+      actor,
+      proyectoId,
+      await confirmacion(AVISOS_DEL_PRODUCTO.filter((a) => a !== "producto-referencias-no-caben")),
+      h,
+    );
+    const input = await trabajoDeLaEscena();
+    expect(input.referencias).toEqual([hoja]);
+    expect(input.referenciasProducto).toEqual(fotos);
   });
 });

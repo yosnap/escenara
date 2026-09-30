@@ -228,7 +228,7 @@ describe("los hechos del producto llevan las cifras del reparto", () => {
     const { hechos, reparto } = hechosDelProducto(caja(5), 7, 6, false);
     expect(reparto).toEqual({ personaje: 4, producto: 3, cabenTodas: false });
     expect(hechos.referenciasNoCaben).toBe(true);
-    expect(hechos.referencias).toEqual({ fotosPersonaje: 6, fotosProducto: 5, personaje: 4, producto: 3 });
+    expect(hechos.referencias).toEqual({ cupo: 7, fotosPersonaje: 6, fotosProducto: 5, personaje: 4, producto: 3 });
   });
 
   test("si caben todas no hay aviso", () => {

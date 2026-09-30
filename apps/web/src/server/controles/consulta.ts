@@ -8,11 +8,11 @@ import { exigirMedioElegido } from "../generacion/comprobaciones";
 import { elegirParaTipo } from "../generacion/precios";
 import { personajeDeLaCadena } from "../generacion/trabajos";
 import type { Actor } from "../media/servicio";
-import { referenciasVigentesDe } from "../personajes/consulta";
 import { personajePorId } from "../personajes/contexto";
 import { personajePropio } from "../personajes/puede-generar";
 import { completarModelosSugeridos } from "../productos/modelos-sugeridos";
-import { hechosDelProducto, productoParaGenerar } from "../productos/prompt";
+import { productoParaGenerar } from "../productos/prompt";
+import { hojaEnElEnvio, repartoDelEnvio } from "../productos/reparto-del-envio";
 import { creditosDelEnvio } from "../prompts/traduccion";
 import type { Buscador } from "../proveedores/codigos";
 import { conVistaQueCompleta, hechosDelReparto, recopilarHechos } from "./hechos";
@@ -95,13 +95,24 @@ export async function evaluarControles(
           estricta: true,
         })
       : null;
+  const sinReferencia = peticion.retratoInventado === true || (!peticion.personajeId && !peticion.medioId);
   const conProducto = producto
-    ? hechosDelProducto(
+    ? await repartoDelEnvio({
         producto,
-        eleccion.adaptador.referenciasDeGaleria?.(eleccion.modelo) ?? eleccion.modelo.parametros.maximoReferencias,
-        personaje ? (await referenciasVigentesDe(personaje.id)).length : 1,
-        false,
-      )
+        adaptador: eleccion.adaptador,
+        modelo: eleccion.modelo,
+        // Las mismas entradas que el envío: el clip parte de una imagen, y el fotograma lleva las fotos del
+        // personaje **elegido**, no las del que hereda una imagen suelta.
+        envio:
+          peticion.tipo === "animacion"
+            ? { tipo: "clip" }
+            : {
+                tipo: "fotograma",
+                personaje: personaje && peticion.personajeId && !peticion.retratoInventado ? personaje : null,
+                sinReferencia,
+                conHoja: personaje !== null && hojaEnElEnvio(personaje),
+              },
+      })
     : null;
   // Sin esto el aviso «no admite la foto del producto» diría que no hay ningún modelo que la admita: la lista de
   // los que sí la llevan la completa quien avisa, con la misma capacidad con la que luego se envía.

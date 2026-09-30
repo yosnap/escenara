@@ -1,4 +1,4 @@
-import type { PapelReferencia } from "./productos";
+import type { PapelReferencia, ProductoElegido } from "./productos";
 import { ordenarPorPrioridad, repartirReferencias } from "./reparto-referencias";
 
 /**
@@ -70,9 +70,25 @@ export function alternarFoto(
   return fotosQueViajan(fotos, accion, fotos.length, [...actuales, medioId]);
 }
 
-/** Frase del selector: qué pasa con las fotos que no caben. */
+/** Frase del selector: qué pasa con las fotos que no caben, o que ya se ha elegido cuáles van. */
 export const textoFotosQueCaben = (nombre: string, total: number, caben: number): string =>
-  `«${nombre}» tiene ${total} fotos y en este clip solo caben ${caben}: el resto del cupo del modelo es de la identidad del personaje. Elige cuáles se envían.`;
+  total <= caben
+    ? `«${nombre}» tiene ${total} fotos y caben todas en este clip, pero has elegido cuáles se envían.`
+    : `«${nombre}» tiene ${total} fotos y en este clip solo caben ${caben}: el resto del cupo del modelo es de la identidad del personaje. Elige cuáles se envían.`;
 
 export const AVISO_SIN_LA_FRONTAL =
   "Sin la frontal con la etiqueta, el texto de la etiqueta puede salir distinto en el clip.";
+
+/**
+ * La elección de fotos tal como queda al **cambiar de modelo**: recortada a lo que cabe con el nuevo. `null` si no
+ * hay nada que cambiar. Se hace en el mismo gesto que el cambio de modelo, antes de preguntar al servidor, que
+ * rechaza una elección que no cabe: así la comprobación de controles nunca sale con una elección que ya no vale.
+ * Solo hace falta contar las elegidas: con una imagen de partida, caben `min(elegidas, cupo - 1)`.
+ */
+export function eleccionParaElModelo(producto: ProductoElegido, cupo: CupoDeFotos | null): ProductoElegido | null {
+  const { fotos, ...sinFotos } = producto;
+  if (!fotos || fotos.length === 0 || !cupo) return null;
+  const caben = fotosQueCaben(cupo, fotos.length);
+  if (fotos.length <= caben) return null;
+  return caben > 0 ? { ...sinFotos, fotos: fotos.slice(0, caben) } : sinFotos;
+}

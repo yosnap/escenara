@@ -11,6 +11,7 @@ import {
   textoFotosQueCaben,
 } from "@/lib/fotos-del-producto";
 import { NOMBRE_PAPEL_REFERENCIA, type ProductoVista, type ReferenciaProducto } from "@/lib/productos";
+import { Boton } from "../button";
 import { Casilla } from "../choice";
 import { Aviso } from "../feedback";
 import { MiniaturaMedio } from "../media/miniatura-medio";
@@ -39,6 +40,7 @@ export function ElectorFotosProducto({
   marcadas,
   deshabilitado,
   onAlternar,
+  onRestablecer,
 }: {
   nombre: string;
   fotos: readonly ReferenciaProducto[];
@@ -48,6 +50,8 @@ export function ElectorFotosProducto({
   marcadas: readonly string[];
   deshabilitado?: boolean;
   onAlternar: (medioId: string) => void;
+  /** Presente cuando hay una elección guardada: vuelve a las fotos de por defecto. */
+  onRestablecer?: () => void;
 }) {
   const frontal = fotos.find((f) => f.papel === "etiqueta");
   const sinFrontal = frontal !== undefined && !marcadas.includes(frontal.medio.id);
@@ -81,6 +85,11 @@ export function ElectorFotosProducto({
         Se envían {marcadas.length} de {caben} posibles.
       </p>
       {sinFrontal && <Aviso tono="info">{AVISO_SIN_LA_FRONTAL}</Aviso>}
+      {onRestablecer && (
+        <Boton variante="secundario" tamano="sm" type="button" disabled={deshabilitado} onClick={onRestablecer}>
+          Volver a las de por defecto
+        </Boton>
+      )}
     </div>
   );
 }
@@ -131,12 +140,14 @@ export function FotosQueViajan({
 
   const vigentes = producto ? vigentesDe(producto) : [];
   const caben = fotosQueCaben(cupo, vigentes.length);
-  const hayQueElegir = producto !== null && caben > 0 && vigentes.length > caben;
+  // Sobran fotos, o ya hay una elección guardada: con ella hecha se sigue enseñando, para ver qué se envía y poder
+  // cambiarlo o volver a las de por defecto, aunque ahora quepan todas.
+  const hayQueElegir = producto !== null && caben > 0 && (vigentes.length > caben || (elegidas?.length ?? 0) > 0);
   const marcadas = fotosQueViajan(vigentes.map(fotoElegible), accion, caben, elegidas);
 
   useEffect(() => {
     if (!producto || !elegidas || elegidas.length === 0) return;
-    if (!hayQueElegir) return onCambio(undefined);
+    if (!hayQueElegir) return;
     const validas = fotosQueViajan(vigentes.map(fotoElegible), accion, caben, elegidas);
     // Se compara como conjunto: el orden depende de la acción y no es motivo para tocar lo que se eligió.
     if (validas.length !== elegidas.length || validas.some((id) => !elegidas.includes(id))) onCambio(validas);
@@ -152,6 +163,7 @@ export function FotosQueViajan({
       marcadas={marcadas}
       deshabilitado={deshabilitado}
       onAlternar={(medioId) => onCambio(alternarFoto(vigentes.map(fotoElegible), accion, caben, marcadas, medioId))}
+      onRestablecer={elegidas && elegidas.length > 0 ? () => onCambio(undefined) : undefined}
     />
   );
 }

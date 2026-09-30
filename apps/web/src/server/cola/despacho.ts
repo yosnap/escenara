@@ -9,6 +9,7 @@ import {
   mensajeDeFalloDeVoz,
   sugerenciaDeReserva,
 } from "@/lib/diagnostico-voz";
+import { huecosDelPersonaje } from "@/lib/reparto-referencias";
 import { familiaDeVoz, type ParametrosVoz, parametrosVozDe } from "@/lib/voz";
 import { eurosPorCreditoDe, leerAjustes } from "../ajustes";
 import { usarCompatibles } from "../boveda/compatibles";
@@ -356,8 +357,10 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
    * huecos que ocupan las fotos del producto que quedaron guardadas.
    */
   const fotosDeProducto = referenciasDeProductoDe(fila);
-  const cupo = Math.max(1, modelo.parametros.maximoReferencias);
-  const origenes = await mediosDeReferencia(fila, Math.max(1, cupo - fotosDeProducto.length));
+  const origenes = await mediosDeReferencia(
+    fila,
+    huecosDelPersonaje(modelo.parametros.maximoReferencias, fotosDeProducto.length),
+  );
   const origenesProducto = await mediosVigentes(fotosDeProducto);
   const urls: string[] = [];
   for (const origen of [...origenes, ...origenesProducto]) {

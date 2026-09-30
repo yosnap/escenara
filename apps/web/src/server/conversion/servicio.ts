@@ -18,6 +18,7 @@ import { leerAjustes } from "../ajustes";
 import { ErrorProyecto } from "../asistente/errores";
 import { sincronizarAfirmaciones } from "../asistente/escenas";
 import { PROYECTOS_MAXIMOS } from "../asistente/proyectos";
+import { referenciasDeProductoDe } from "../cola/entrada-del-trabajo";
 import { db, type Ejecutor } from "../db/cliente";
 import {
   characters,
@@ -32,6 +33,7 @@ import {
 import { direccionGuardada, esUuidGeneracion, filaPropia } from "../generacion/trabajos";
 import type { Actor } from "../media/servicio";
 import { motivosParaNoGenerar } from "../personajes/puede-generar";
+import { fotosDelProducto as fotosVigentesDelProducto } from "../productos/referencias";
 import { motivoTrendNoDisponible } from "../prompts/trends";
 import { sembrarRepartoInicial } from "../reparto/siembra";
 
@@ -64,6 +66,19 @@ interface ClipLeido {
   personaje: { renderStyle: "realista" | "animado" } | null;
 }
 
+/**
+ * Las fotos del producto con las que se pagó el clip, para que regenerarlo en el proyecto envíe **esas** y no las de
+ * por defecto. Solo las que siguen vigentes: una que ya está en la papelera no se puede enviar. Sin ninguna
+ * vigente, vacío, que es «las de por defecto».
+ */
+async function fotosVigentesDelClip(fila: FilaTrabajo): Promise<string[]> {
+  if (!fila.productId) return [];
+  const enviadas = referenciasDeProductoDe(fila);
+  if (enviadas.length === 0) return [];
+  const vigentes = await fotosVigentesDelProducto(fila.productId);
+  return vigentes.filter((id) => enviadas.includes(id));
+}
+
 /** Lo que el botón necesita saber de un clip antes de pulsarlo. Un clip ajeno responde 404. */
 export async function estadoDelClip(actor: Actor, trabajoId: unknown): Promise<EstadoConversion> {
   const { hechos, avisos } = await leerClip(actor, trabajoId);
@@ -82,6 +97,8 @@ export async function convertirEnProyecto(actor: Actor, trabajoId: unknown): Pro
   }
   if (estado.estado === "no_convertible") throw new ErrorProyecto(409, estado.motivo);
   const { presupuestoProyecto } = await leerAjustes();
+  // Se lee antes de abrir la transacción: es una consulta de otra tabla y no tiene por qué correr dentro de ella.
+  const fotosDelProducto = await fotosVigentesDelClip(clip.fila);
 
   return db().transaction(async (tx) => {
     /**
@@ -157,6 +174,7 @@ export async function convertirEnProyecto(actor: Actor, trabajoId: unknown): Pro
           : {}),
         productId: fila.productId,
         productAction: fila.productId ? fila.productAction : "",
+        productPhotoIds: fotosDelProducto,
         // La imagen de partida es el fotograma de la escena. **Sin trabajo de fotograma**: animar otra vez desde el
         // proyecto parte de la imagen y engancha el clip nuevo a esta escena, no a un trabajo de «Crear».
         approvedFrameMediaId: fila.sourceMediaId,

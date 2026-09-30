@@ -226,7 +226,14 @@ export interface HechosProducto {
    * viajan de verdad. Es lo que permite decir **cuántas** se quedan fuera. Ausente cuando el que llama no las
    * tiene, y entonces el aviso se queda sin cifras.
    */
-  referencias?: { fotosPersonaje: number; fotosProducto: number; personaje: number; producto: number };
+  referencias?: {
+    /** Referencias que el modelo acepta como galería: el cupo que se reparte, que no siempre es su total. */
+    cupo: number;
+    fotosPersonaje: number;
+    fotosProducto: number;
+    personaje: number;
+    producto: number;
+  };
   /**
    * El producto tiene fotos y en este modelo **no cabe ninguna**: su segunda imagen no es una galería (en Veo
    * es el último fotograma del clip). El producto viajaría solo descrito con palabras.

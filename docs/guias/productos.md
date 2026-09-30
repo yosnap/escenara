@@ -85,14 +85,21 @@ menos fotos de las que le tocan, el otro aprovecha lo que sobra. Ejemplos con si
 caja de 5, viajan 4 y 3; personaje de una foto y caja de 5, viajan 1 y 5.
 
 Sin que elijas nada, viajan las primeras por prioridad: **la frontal con la etiqueta, el envase, el detalle de la
-tapa o el mecanismo y las sueltas**. Cuando el producto tiene **más fotos de las que caben** con el modelo elegido,
-en el bloque **El producto** aparece **«Fotos del producto que se envían»**, con una casilla en cada miniatura: te
+tapa o el mecanismo y las sueltas**. Cuando el producto tiene **más fotos de las que caben** con el modelo elegido (o ya has elegido cuáles), en el bloque **El producto** aparece **«Fotos del producto que se envían»**, con una casilla en cada miniatura: te
 dice cuántas caben y cuántas se envían, viene marcada la frontal y puedes cambiar cuáles viajan. Sin marcar la
-frontal se te avisa de que la etiqueta puede salir distinta. Elegir fotos **no cambia lo que cuesta ni lo que
+frontal se te avisa de que la etiqueta puede salir distinta, y «Volver a las de por defecto» deshace la elección. Elegir fotos **no cambia lo que cuesta ni lo que
 confirmas**, solo cuáles de las que ya caben van al modelo.
 
-- En **«Crear»** la elección viaja con el clip. En **la escena de un proyecto** se guarda con la escena y se vuelve
-  a usar cada vez que se produce.
+- **La elección vale para el paso donde la haces.** En **«Crear»** viaja con el **clip**: el fotograma que lo
+  precede se sigue generando con las fotos de por defecto, aunque hayas elegido otras para el clip, porque cada modelo
+  tiene su propio tope de referencias. En **la escena de un proyecto** se guarda con la escena y se vuelve a usar
+  cada vez que se produce.
+- Con el clip, la cuenta de cuántas caben es la del envío: parte de **una** imagen (su fotograma), así que caben
+  hasta seis fotos del producto con siete huecos. Con **Omni** en un proyecto, la cara sale de las fotos del
+  personaje y compiten con las del producto (4 y 3 con siete huecos). Con la **hoja 3×3** del personaje viaja solo la
+  hoja, y las demás referencias son para el producto.
+- Al **convertir un clip de «Crear» en proyecto**, la escena hereda las fotos del producto con las que se pagó el clip
+  (solo las que siguen fuera de la papelera).
 - Si eliges otro producto, la elección se borra. Si borras una foto elegida, la escena sigue funcionando: se envían
   las demás.
 - Si cambias a un modelo con menos huecos, la elección se recorta a lo que cabe y el aviso de antes de pagar dice

@@ -95,3 +95,11 @@ export function repartirReferencias(maximo: number, personaje: number, producto:
     cabenTodas: paraPersonaje >= personaje && paraProducto >= producto,
   };
 }
+
+/**
+ * Huecos que le quedan al personaje cuando el trabajo ya lleva guardadas `fotosDelProducto` fotos del producto. Es
+ * lo que aplica el worker al enviar: el reparto se hizo al encolar y aquí solo se respeta, con **una imagen como
+ * mínimo** (sin ella no hay nada que animar).
+ */
+export const huecosDelPersonaje = (cupo: number, fotosDelProducto: number): number =>
+  Math.max(1, Math.max(1, cupo) - fotosDelProducto);

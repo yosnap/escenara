@@ -612,6 +612,44 @@ describe.skipIf(!hayBaseDeDatos)("convertir un clip de Crear en un proyecto", ()
     await db().delete(products).where(eq(products.id, producto.id));
   });
 
+  test("con producto: la escena hereda las fotos con las que se pagó el clip, solo las vigentes", async () => {
+    const { productReferences } = await import("../db/esquema-productos");
+    const [producto] = await db().insert(products).values({ ownerId: ana.id, name: "Bote con fotos" }).returning();
+    if (!producto) throw new Error("No se ha podido crear el producto de prueba.");
+    const fotos = await Promise.all(
+      ["etiqueta", "envase", "suelto"].map(async (papel, i) => {
+        const medio = await crearMedio(
+          actor,
+          new File([await fotoDeReferencia()], `${papel}.png`, { type: "image/png" }),
+        );
+        await db()
+          .insert(productReferences)
+          .values({ productId: producto.id, mediaId: medio.id, kind: papel as "etiqueta", sortOrder: i });
+        return medio.id;
+      }),
+    );
+    const enviadas = { referenciasProducto: [fotos[0], fotos[1]] };
+    const datosDelClip = { productId: producto.id, productAction: "sostener", brandRightsAt: new Date() };
+    // Una de las dos fotos enviadas se borra antes de convertir: la escena solo se queda con la que sigue.
+    await db()
+      .update(media)
+      .set({ deletedAt: new Date() })
+      .where(eq(media.id, fotos[1] as string));
+    const clip = await clipDeCrear(datosDelClip, enviadas);
+    const { datos } = await convertir(clip.id);
+    expect((await escenaDe(datos.proyectoId)).productPhotoIds).toEqual([fotos[0] as string]);
+
+    // Si ya no queda ninguna vigente, vacío: las de por defecto.
+    await db()
+      .update(media)
+      .set({ deletedAt: new Date() })
+      .where(eq(media.id, fotos[0] as string));
+    const otro = await clipDeCrear(datosDelClip, enviadas);
+    const { datos: otros } = await convertir(otro.id);
+    expect((await escenaDe(otros.proyectoId)).productPhotoIds).toEqual([]);
+    await db().delete(products).where(eq(products.id, producto.id));
+  });
+
   test("quitar el audio del clip sube la versión del montaje y el MP4 sale sin él", async () => {
     const clip = await clipDeCrear();
     const { datos } = await convertir(clip.id);

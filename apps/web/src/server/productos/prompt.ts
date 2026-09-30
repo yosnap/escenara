@@ -211,6 +211,7 @@ export function hechosDelProducto(
       // tiene su propio aviso y los dos juntos serían el mismo aviso dos veces.
       referenciasNoCaben: !reparto.cabenTodas && !sinHuecoDeReferencia,
       referencias: {
+        cupo: referenciasDeGaleria,
         fotosPersonaje: referenciasPersonaje,
         fotosProducto: producto.fotos.length,
         personaje: reparto.personaje,
