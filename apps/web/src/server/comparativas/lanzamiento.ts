@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, lt, sql } from "drizzle-orm";
 import {
   type AlternativaGuardada,
   type ComparativaVista,
@@ -6,25 +6,16 @@ import {
   type PeticionAB,
 } from "@/lib/comparativas";
 import { ESTADOS_ACTIVOS, ESTADOS_CANCELABLES } from "@/lib/generacion";
-import { falloConCoste } from "@/lib/produccion";
 import { escenaPropia } from "../asistente/consulta";
 import { ErrorProyecto } from "../asistente/errores";
 import { db } from "../db/cliente";
-import {
-  comparisons,
-  type FilaComparativa,
-  type FilaEscena,
-  type FilaTrabajo,
-  generationJobs,
-  scenes,
-  users,
-} from "../db/esquema";
+import { comparisons, type FilaComparativa, type FilaEscena, generationJobs, scenes, users } from "../db/esquema";
 import { claveDerivada } from "../generacion/comprobaciones";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import type { Actor } from "../media/dto";
 import { cerrarTrabajoYGasto } from "../presupuesto/reserva";
 import { encolarAnimacion } from "../produccion/producir";
-import { estimarUna, impedimentosDe, vistaDeComparativa } from "./ab";
+import { estimarUna, impedimentosDe, trasFalloConCoste, vistaDeComparativa } from "./ab";
 
 /**
  * **Lanzar una comparativa A/B: todo o nada.**
@@ -121,22 +112,6 @@ export async function barrerLanzamientosColgados(): Promise<number> {
     await cancelarLanzamiento(fila, "el lanzamiento se interrumpió antes de encolar todas las ejecuciones.");
   }
   return colgadas.length;
-}
-
-/** `true` si el último fotograma o el último clip de la escena (alternativas incluidas) falló con posible cobro. */
-async function trasFalloConCoste(escenaId: string): Promise<boolean> {
-  const ultimos: (FilaTrabajo | undefined)[] = await Promise.all(
-    (["fotograma", "animacion"] as const).map(async (tipo) => {
-      const [fila] = await db()
-        .select()
-        .from(generationJobs)
-        .where(and(eq(generationJobs.sceneId, escenaId), eq(generationJobs.kind, tipo)))
-        .orderBy(desc(generationJobs.createdAt))
-        .limit(1);
-      return fila;
-    }),
-  );
-  return ultimos.some((t) => t !== undefined && t.state === "fallido" && falloConCoste(t.failureReason));
 }
 
 function exigirReintentos(escena: FilaEscena, necesarios: number): void {

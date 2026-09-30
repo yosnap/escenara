@@ -572,6 +572,10 @@ describe.skipIf(!hayBaseDeDatos)("comparativa A/B de una escena", () => {
       estimatedCredits: 60,
       finishedAt: new Date(),
     });
+    // La pantalla lo dice antes de confirmar.
+    const r = await rutaComparativaEscena.GET(pedir(ana, `/api/escenas/${escenaId}/comparativa`), ctx(escenaId));
+    const { preparacion } = (await r.json()) as { preparacion: PreparacionAB };
+    expect(preparacion.impedimentos.join(" ")).toContain("reintento autorizado");
     const sin = await intentar(async () => lanzarAB(actor, escenaId, await peticion(), h));
     expect(!sin.ok && sin.error).toContain("reintento");
     await autorizarReintentos(actor, escenaId, 1);

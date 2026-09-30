@@ -10,6 +10,7 @@ import {
 } from "@/lib/comparativas";
 import { formatoCanta } from "@/lib/direccion";
 import { ESTADOS_ACTIVOS } from "@/lib/generacion";
+import { falloConCoste } from "@/lib/produccion";
 import { eurosPorCreditoDe, leerAjustes } from "../ajustes";
 import { escenaPropia } from "../asistente/consulta";
 import { ErrorProyecto } from "../asistente/errores";
@@ -19,6 +20,7 @@ import {
   type FilaComparativa,
   type FilaEscena,
   type FilaProyecto,
+  type FilaTrabajo,
   generationJobs,
   media,
   scenes,
@@ -77,6 +79,22 @@ export async function impedimentosDe(escena: FilaEscena, proyecto: FilaProyecto)
   return motivos;
 }
 
+/** `true` si el último fotograma o el último clip de la escena (alternativas incluidas) falló con posible cobro. */
+export async function trasFalloConCoste(escenaId: string): Promise<boolean> {
+  const ultimos: (FilaTrabajo | undefined)[] = await Promise.all(
+    (["fotograma", "animacion"] as const).map(async (tipo) => {
+      const [fila] = await db()
+        .select()
+        .from(generationJobs)
+        .where(and(eq(generationJobs.sceneId, escenaId), eq(generationJobs.kind, tipo)))
+        .orderBy(desc(generationJobs.createdAt))
+        .limit(1);
+      return fila;
+    }),
+  );
+  return ultimos.some((t) => t !== undefined && t.state === "fallido" && falloConCoste(t.failureReason));
+}
+
 /** Lo que el navegador necesita para elegir los dos modelos. No gasta nada ni habla con ningún proveedor. */
 export async function prepararAB(actor: Actor, escenaId: unknown): Promise<PreparacionAB> {
   const { escena, proyecto } = await escenaPropia(actor, escenaId);
@@ -102,6 +120,13 @@ export async function prepararAB(actor: Actor, escenaId: unknown): Promise<Prepa
     ...produccion.controlesDelModelo.comprobaciones,
   ]) {
     if (c.confirmable && !avisos.has(c.regla)) avisos.set(c.regla, c.motivo);
+  }
+  // Tras un fallo con posible cobro, cada ejecución consume un reintento autorizado (sin atajo, ADR-0024).
+  const libres = escena.retryBudget - escena.retriesUsed;
+  if (libres < MAXIMO_ALTERNATIVAS && (await trasFalloConCoste(escena.id))) {
+    impedimentos.push(
+      `El último intento de esta escena falló después de hablar con el proveedor: cada ejecución de la comparativa consume un reintento autorizado y te quedan ${Math.max(0, libres)}. Autoriza al menos ${MAXIMO_ALTERNATIVAS - Math.max(0, libres)} más en la producción.`,
+    );
   }
   return {
     escenaId: escena.id,

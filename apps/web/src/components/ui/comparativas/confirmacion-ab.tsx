@@ -201,8 +201,9 @@ export function ConfirmacionAB({
         Comparar generando
       </Boton>
       <p className="text-sm text-texto-suave">
-        Cada ejecución es un clip normal: pasa por la cola con tu presupuesto y se paga con tu propia clave. El importe
-        final lo decide el proveedor; Escenara estima con el precio que tiene registrado.
+        Son las dos ejecuciones o ninguna: si una no cabe, no sale ninguna y no se cobra nada. Cada ejecución es un clip
+        normal: pasa por la cola con tu presupuesto y se paga con tu propia clave. El importe final lo decide el
+        proveedor; Escenara estima con el precio que tiene registrado.
       </p>
     </div>
   );
