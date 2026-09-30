@@ -7,10 +7,10 @@ la interfaz en el momento de la prueba; el proyecto guardado es la fuente para r
 
 | Fase | Referencia en la cuenta | Qué enseña | Estado |
 |---|---|---|---|
-| 0.29 | [Prueba de Elisa con audio sintetizado](/proyectos/11bf3d6d-2470-4a58-886c-0f6654c3c37d) y [segunda prueba con voz grabada](/proyectos/57498e74-3b24-452b-85ab-17e93ece79b7) | Audio, retrato vertical, derechos, coste y revisión de sincronía | Dos clips y MP4 guardados; 184 de 200 créditos medidos; revisión perceptiva de la segunda prueba pendiente |
-| 0.30 | [Crema Aurora en dos escenas](/proyectos/4fb19dba-589e-4a90-b3b6-18fe19ee3479) y [plantillas en Admin › Plantillas](/admin/plantillas) | Producto físico, guion visual, vigencia, versiones y cambio de modelo | Dos clips y MP4 terminados; 96 créditos medidos |
-| 0.31 | [Nora, ilustración plana](/proyectos/8ee8d990-e52e-4e08-ba58-52d71ac5b461), [Bruno, 3D](/proyectos/0a2604ce-96e7-4809-835e-b99de5d99fbf), [Mika, anime](/proyectos/8a6e31e0-20e5-417e-b8a3-73e190045571) | Retrato maestro, vistas, fotogramas y cuatro clips animados | Producidos; 196 créditos medidos |
-| 0.32 | [Montaje de tres clips](/proyectos/78029792-b60f-4191-b2ca-9e7f6cc0455e/montaje) | Orden, recorte, música, subtítulos, etiqueta y MP4 | Exportado y descargado; cero créditos |
+| 0.29 | Prueba de Elisa con audio sintetizado y segunda prueba con voz grabada | Audio, retrato vertical, derechos, coste y revisión de sincronía | Dos clips y MP4 guardados; 184 de 200 créditos medidos; revisión perceptiva de la segunda prueba pendiente |
+| 0.30 | Crema Aurora en dos escenas y [plantillas en Admin › Plantillas](/admin/plantillas) | Producto físico, guion visual, vigencia, versiones y cambio de modelo | Dos clips y MP4 terminados; 96 créditos medidos |
+| 0.31 | Nora, ilustración plana, Bruno, 3D, Mika, anime | Retrato maestro, vistas, fotogramas y cuatro clips animados | Producidos; 196 créditos medidos |
+| 0.32 | Montaje de tres clips | Orden, recorte, música, subtítulos, etiqueta y MP4 | Exportado y descargado; cero créditos |
 
 ## 0.29 · Elisa y el audio de prueba
 
@@ -52,7 +52,7 @@ Elisa; **cambió el fondo crema pedido por una cafetería** y generó
 [fotograma inicial](../assets/capturas/0.29.0-elisa-canto-fotograma.jpg) permite compararlo. El clip fuente es
 vertical, pero **no 9:16**; la vista previa ahora muestra sus dimensiones reales.
 
-Se guardó además un [montaje del proyecto](/proyectos/11bf3d6d-2470-4a58-886c-0f6654c3c37d/montaje)
+Se guardó además un montaje del proyecto
 con etiqueta sintética arriba y exportación sin créditos. `ffprobe` confirma **H.264, 1080 × 1920, AAC estéreo,
 12 s**, 5.353.327 bytes. FFmpeg conserva el encuadre completo con franjas negras arriba y abajo; no inventa
 imagen lateral ni recorta la cara. Están la [captura de la exportación](../assets/capturas/0.29.0-elisa-montaje-exportado.png)
@@ -61,7 +61,7 @@ como referencia del **flujo técnico y de un fallo de calidad**, pero no debe pr
 un personaje cantando. La repetición se realizó con una grabación vocal dentro de los **112 créditos** que
 quedaban del límite de 200.
 
-Se generó una [segunda escena con Elisa](/proyectos/57498e74-3b24-452b-85ab-17e93ece79b7) a partir de una
+Se generó una segunda escena con Elisa a partir de una
 canción que quien administra confirmó como **composición y grabación originales de su estudio**. El archivo subido
 dura 25,29 s; el límite de canto obligó a guardar en la biblioteca otro MP3 de **12 s, recortado entre los
 segundos 8 y 20**, conservando el original. La idea explica la procedencia y el recorte; la escena guarda
@@ -121,7 +121,7 @@ con el [primer encuadre](../assets/capturas/0.30.0-unboxing-fotograma-perspectiv
 
 Los dos clips de MiniMax H3 terminaron en **5 s** cada uno, a **40 créditos** por clip. Con los cuatro
 fotogramas de 4 créditos, el consumo real del proyecto fue **96 de los 100 créditos autorizados**. El
-[montaje guardado](/proyectos/4fb19dba-589e-4a90-b3b6-18fe19ee3479/montaje) une ambos clips y conserva la
+montaje guardado une ambos clips y conserva la
 etiqueta obligatoria. `ffprobe` comprobó su MP4: **H.264, 1080 × 1920, AAC estéreo, 10,013 s**, 4.560.808
 bytes; el montaje no gastó créditos. Hay [captura de la exportación](../assets/capturas/0.30.0-montaje-dos-trends-listo.png)
 y fotogramas del [unboxing](../assets/capturas/0.30.0-unboxing-exportado.jpg) y del
