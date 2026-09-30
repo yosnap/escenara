@@ -84,13 +84,20 @@ export async function convertirEnProyecto(actor: Actor, trabajoId: unknown): Pro
   const { presupuestoProyecto } = await leerAjustes();
 
   return db().transaction(async (tx) => {
-    // La fila del trabajo se bloquea: dos conversiones a la vez se ponen en fila y la segunda ve el enganche.
+    /**
+     * Primero el usuario y después el trabajo, en el mismo orden que el resto de caminos que bloquean al usuario
+     * (encolar, cancelar, gasto del asistente): con el orden al revés, dos transacciones podían esperarse la una a la
+     * otra. El usuario serializa además el tope de proyectos entre conversiones de clips distintos. El trabajo se
+     * bloquea con `no key update`, que basta para que la segunda conversión del mismo clip vea el enganche y no
+     * choca con los `key share` de las filas que lo referencian (apuntes, trabajos hijos).
+     */
+    await tx.execute(sql`select 1 from users where id = ${actor.id}::uuid for update`);
     const [trabajo] = await tx
       .select({ sceneId: generationJobs.sceneId })
       .from(generationJobs)
       .where(and(eq(generationJobs.id, clip.fila.id), eq(generationJobs.userId, actor.id)))
       .limit(1)
-      .for("update");
+      .for("no key update");
     if (!trabajo) throw new ErrorProyecto(404, "Ese clip no existe.");
     if (trabajo.sceneId) {
       const [ya] = await tx
@@ -102,9 +109,6 @@ export async function convertirEnProyecto(actor: Actor, trabajoId: unknown): Pro
       if (!ya) throw new ErrorProyecto(409, "Este clip ya pertenece a otra escena y no se puede convertir.");
       return { proyectoId: ya.id, titulo: ya.titulo, url: urlDelProyectoConvertido(ya.id), nuevo: false };
     }
-    // La fila del usuario se bloquea antes de contar: dos conversiones de clips distintos a la vez no pueden pasar
-    // las dos del tope de proyectos por contar antes de que la otra escriba.
-    await tx.execute(sql`select 1 from users where id = ${actor.id}::uuid for update`);
     const [{ total } = { total: 0 }] = await tx
       .select({ total: sql<number>`count(*)::int` })
       .from(projects)
