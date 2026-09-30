@@ -11,7 +11,8 @@ import { PREGUNTA } from "../decisiones/sombra";
  * persona resolvió sobre las afirmaciones de su guion (0.39.0) y la corrección del veredicto o la revisión de su clip
  * (0.20.0 y 0.24.0). No se pide a nadie que etiquete nada nuevo.
  *
- * **Anonimizado al construirlo**: de cada opinión se guardan solo dos números (cuánto encaja y con qué confianza), la
+ * **Seudonimizado al construirlo** (sin datos personales; vinculado a la opinión de origen y eliminado al borrar la
+ * cuenta): de cada opinión se guardan solo dos números (cuánto encaja y con qué confianza), la
  * etiqueta humana, la partición, la versión de la pregunta y el modelo que contestó. Ni el guion, ni la descripción,
  * ni nombres, ni correos, ni el identificador de nadie. La única referencia es a la opinión de origen, y existe para
  * que la fila **desaparezca con ella**: la opinión se borra al borrar su cuenta, y el ejemplo en cascada.

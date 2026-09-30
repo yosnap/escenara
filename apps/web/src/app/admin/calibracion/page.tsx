@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
  * Calibración de umbrales (RF13): el conjunto etiquetado que sale de las revisiones humanas, el umbral que se propone
  * para cada pregunta y cómo se comporta en la partición retenida.
  *
- * Solo para quien administra. El conjunto no guarda el contenido de nadie y no sale del servidor.
+ * Solo para quien administra. El conjunto está seudonimizado (sin datos personales) y no sale del servidor.
  */
 export default async function PaginaCalibracion() {
   const { preguntas, laya } = await vistaDeCalibracion();
@@ -40,7 +40,8 @@ export default async function PaginaCalibracion() {
         <p className="max-w-3xl text-texto-suave">
           Sale de las revisiones que ya existen: las afirmaciones del guion que alguien verificó, corrigió o descartó, y
           la corrección del veredicto o la revisión del clip. De cada opinión se guardan solo dos números (cuánto encaja
-          y con qué confianza) y la etiqueta: ni textos, ni nombres, ni cuentas. Se borra con la cuenta de la que sale y
+          y con qué confianza) y la etiqueta, sin textos ni nombres: está seudonimizado (sin datos personales; vinculado a la
+          opinión de origen y eliminado al borrar la cuenta). Se borra con la cuenta de la que sale y
           no se exporta ni se comparte.
         </p>
         <Recalibrar />
