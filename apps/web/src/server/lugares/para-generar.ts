@@ -32,6 +32,8 @@ export interface LugarParaGenerar {
   acabado: "realista" | "animado";
   guia: GuiaEstiloAnimado;
   declarado: boolean;
+  /** La declaración vigente con la que se genera; queda en el trabajo como prueba aunque el lugar se borre. */
+  declaracionId: string | null;
   /** Plano del lugar solo: sin nadie, mudo, y con la maestra como imagen de partida. */
   soloLugar: boolean;
 }
@@ -143,6 +145,7 @@ export async function lugarParaGenerar(usuarioId: string, pedido: LugarPedido): 
     acabado: version?.snapshot.renderStyle ?? fila.renderStyle,
     guia: version?.snapshot.styleGuide ?? fila.styleGuide,
     declarado: declaracion !== undefined,
+    declaracionId: declaracion?.id ?? null,
     soloLugar: pedido.soloLugar,
   };
 }

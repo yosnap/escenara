@@ -158,15 +158,20 @@ export const placeVersions = pgTable(
 
 /**
  * Declaración de derechos del lugar. Como mucho **una vigente** por lugar; las revocadas se conservan porque son
- * la prueba de lo que se declaró y cuándo.
+ * la prueba de lo que se declaró y cuándo, también después de borrar el lugar.
  */
 export const placeDeclarations = pgTable(
   "place_declarations",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    placeId: uuid("place_id")
-      .notNull()
-      .references(() => places.id, { onDelete: "cascade" }),
+    /**
+     * `set null` y no cascada: borrar el lugar **no borra sus declaraciones**, ni las revocadas. Son la prueba de lo
+     * que se declaró y cuándo, y lo generado con el lugar se queda en la biblioteca. Al borrar, la vigente se revoca
+     * y el nombre queda en `place_name`.
+     */
+    placeId: uuid("place_id").references(() => places.id, { onDelete: "set null" }),
+    /** Nombre del lugar al declarar: identifica la declaración aunque el lugar se borre. */
+    placeName: text("place_name").notNull().default(""),
     photoOrigin: origenFotosLugar("photo_origin").notNull(),
     scope: alcanceUso("scope").notNull().default("personal"),
     space: espacioLugar("space").notNull().default("exterior"),

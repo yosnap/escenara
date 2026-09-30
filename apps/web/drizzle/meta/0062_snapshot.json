@@ -1,5 +1,5 @@
 {
-  "id": "ef6f03fe-b592-4220-8555-6c319741890c",
+  "id": "77dd9b1f-3576-4cd9-a8ff-e24c0a26b25d",
   "prevId": "29506fd3-5526-4f88-bc8f-be0c17dd3934",
   "version": "7",
   "dialect": "postgresql",
@@ -5436,7 +5436,14 @@
           "name": "place_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
+        },
+        "place_name": {
+          "name": "place_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
         },
         "photo_origin": {
           "name": "photo_origin",
@@ -5567,7 +5574,7 @@
           "tableTo": "places",
           "columnsFrom": ["place_id"],
           "columnsTo": ["id"],
-          "onDelete": "cascade",
+          "onDelete": "set null",
           "onUpdate": "no action"
         },
         "place_declarations_declared_by_users_id_fk": {

@@ -171,6 +171,7 @@ const lugarDePrueba = (cambios: Partial<LugarParaGenerar> = {}): LugarParaGenera
   acabado: "realista",
   guia: { preset: "", prompt: "", paleta: "", trazo: "", detalle: "", referencias: [] },
   declarado: true,
+  declaracionId: null,
   soloLugar: false,
   ...cambios,
 });

@@ -45,7 +45,9 @@ export async function nuevaVersionDeLugar(
     .returning();
   if (!version) throw new ErrorLugar(500, "No se ha podido guardar la versión del lugar.");
   await tx.update(places).set({ currentVersion: numero, updatedAt: new Date() }).where(eq(places.id, lugarId));
-  if (numero > 1) await invalidarEscenasDelLugar(tx, lugarId, lugar.name, numero);
+  if (numero > 1) {
+    await invalidarEscenasDelLugar(tx, lugarId, `Se creó la versión ${numero} del lugar «${lugar.name}»`);
+  }
   return version;
 }
 
@@ -53,7 +55,7 @@ export async function nuevaVersionDeLugar(
  * Devuelve a borrador las escenas aprobadas que usan el lugar y marca como cambiadas las ya generadas. No se borra
  * nada: el fotograma y el clip siguen en la biblioteca y en el historial de la escena.
  */
-async function invalidarEscenasDelLugar(tx: Ejecutor, lugarId: string, nombre: string, numero: number) {
+export async function invalidarEscenasDelLugar(tx: Ejecutor, lugarId: string, que: string): Promise<void> {
   const heredan = tx.select({ id: projects.id }).from(projects).where(eq(projects.defaultPlaceId, lugarId));
   const usan = or(
     eq(scenes.placeId, lugarId),
@@ -64,7 +66,7 @@ async function invalidarEscenasDelLugar(tx: Ejecutor, lugarId: string, nombre: s
     .set({
       state: "borrador",
       approvedAt: null,
-      invalidationReason: motivoDeInvalidacion(`Se creó la versión ${numero} del lugar «${nombre}»`),
+      invalidationReason: motivoDeInvalidacion(que),
       updatedAt: new Date(),
     })
     .where(and(usan, eq(scenes.state, "aprobada")))

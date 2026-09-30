@@ -100,13 +100,15 @@ export const conLugarSuelto = (escena: string, lugar: LugarEnPrompt | null): str
 export function entradaDelLugar(
   conLugar: LugarDelEnvio | null,
   reparto: RepartoDeReferencias | null,
-): { referenciasLugar?: string[]; sitioLugar?: string } {
+): { referenciasLugar?: string[]; sitioLugar?: string; declaracionLugar?: string } {
   if (!conLugar) return {};
   const { lugar } = conLugar;
   const viaja = lugar.maestraId !== null && !lugar.soloLugar && (reparto?.lugar ?? 0) > 0;
   return {
     ...(viaja && lugar.maestraId ? { referenciasLugar: [lugar.maestraId] } : {}),
     ...(lugar.sitioOriginal === "" ? {} : { sitioLugar: lugar.sitioOriginal }),
+    // La declaración vigente con la que se pidió: sigue guardada aunque el lugar se borre después.
+    ...(lugar.declaracionId ? { declaracionLugar: lugar.declaracionId } : {}),
   };
 }
 

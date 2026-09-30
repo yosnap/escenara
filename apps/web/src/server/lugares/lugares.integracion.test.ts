@@ -42,7 +42,7 @@ const { guardarCredencial } = await import("../boveda/credenciales");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
 const { generationJobs, media, projects, rateLimits, scenes, usageLedger, users } = await import("../db/esquema");
-const { placeVersions } = await import("../db/esquema-lugares");
+const { placeDeclarations, placeVersions } = await import("../db/esquema-lugares");
 const { estimar, olvidarSaldos } = await import("../generacion/estimacion");
 const { enviarEncolados } = await import("../cola/pasada");
 const { subirFotoDePrueba } = await import("./lugar-de-prueba");
@@ -489,7 +489,24 @@ describe.skipIf(!hayBaseDeDatos)("lugares: propiedad, declaración, versión, re
 
   // ── Borrado ─────────────────────────────────────────────────────────────────────────────────────────────
 
-  test("borrar un lugar no borra sus fotos ni lo generado: las escenas y los trabajos solo pierden el vínculo", async () => {
+  test("con trabajos en marcha no se borra; el worker no envía uno cuyo lugar ya no está", async () => {
+    const { lugar } = await lugarConMaestra();
+    const medio = await subirFotoDePrueba(actorAna, "partida.png");
+    expect((await pedirFotograma(ana, { medioId: medio, lugar: { lugarId: lugar.id } })).status).toBe(201);
+    const bloqueado = await rutaLugar.DELETE(pedir(ana, `/api/lugares/${lugar.id}`, "DELETE"), ctx(lugar.id));
+    expect(bloqueado.status).toBe(409);
+    expect(await errorDe(bloqueado)).toContain("trabajo en marcha");
+    // Si el lugar desaparece igualmente (el trabajo lo pierde), el worker lo cierra sin enviar nada ni cobrar.
+    await db().update(generationJobs).set({ placeId: null }).where(eq(generationJobs.userId, ana.id));
+    await enviarEncolados(h);
+    expect(enviados).toHaveLength(0);
+    const [trabajo] = await trabajosDeAna();
+    expect(trabajo?.state).toBe("fallido");
+    expect(trabajo?.errorMessage).toContain("se ha borrado");
+    expect(trabajo?.errorMessage).toContain("no se te ha cobrado");
+  });
+
+  test("borrar un lugar no borra fotos, generados ni declaraciones, y devuelve a borrador la escena aprobada", async () => {
     const { lugar, maestra } = await lugarConMaestra();
     const { escenaId } = await proyectoDeAna();
     await rutaEscena.PATCH(
@@ -499,7 +516,15 @@ describe.skipIf(!hayBaseDeDatos)("lugares: propiedad, declaración, versión, re
     const medio = await subirFotoDePrueba(actorAna, "partida.png");
     expect((await pedirFotograma(ana, { medioId: medio, lugar: { lugarId: lugar.id } })).status).toBe(201);
     const resultado = await subirFotoDePrueba(actorAna, "resultado.png");
-    await db().update(generationJobs).set({ resultMediaId: resultado }).where(eq(generationJobs.userId, ana.id));
+    // El trabajo ha terminado: ya no está en marcha y se puede borrar el lugar.
+    await db()
+      .update(generationJobs)
+      .set({ resultMediaId: resultado, state: "listo" })
+      .where(eq(generationJobs.userId, ana.id));
+    await db().update(scenes).set({ state: "aprobada", approvedAt: new Date() }).where(eq(scenes.id, escenaId));
+    const [pedido] = await trabajosDeAna();
+    const declaracionUsada = (pedido?.input as { declaracionLugar?: string }).declaracionLugar;
+    expect(declaracionUsada).toBeDefined();
 
     const resumen = await rutaLugar.GET(pedir(ana, `/api/lugares/${lugar.id}?borrado=1`), ctx(lugar.id));
     expect(await resumen.json()).toMatchObject({ referencias: 1, escenas: 1, trabajos: 1, generados: 1 });
@@ -511,8 +536,18 @@ describe.skipIf(!hayBaseDeDatos)("lugares: propiedad, declaración, versión, re
     const [trabajo] = await trabajosDeAna();
     expect(trabajo?.placeId).toBeNull();
     expect(trabajo?.placeVersion).toBe(lugar.version);
+    // La declaración con la que se generó sigue ahí, revocada y con el nombre del lugar.
+    const [declaracion] = await db()
+      .select()
+      .from(placeDeclarations)
+      .where(eq(placeDeclarations.id, declaracionUsada ?? ""));
+    expect(declaracion?.placeId).toBeNull();
+    expect(declaracion?.placeName).toBe(lugar.nombre);
+    expect(declaracion?.revokedAt).not.toBeNull();
     const [escena] = await db().select().from(scenes).where(eq(scenes.id, escenaId));
     expect(escena?.placeId).toBeNull();
+    expect(escena?.state).toBe("borrador");
+    expect(escena?.invalidationReason).toContain(`Se ha borrado el lugar «${lugar.nombre}»`);
     expect(escena?.scriptText).toBe("Qué buen café.");
   });
 });

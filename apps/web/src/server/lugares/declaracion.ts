@@ -82,6 +82,7 @@ export async function declararLugar(actor: Actor, id: unknown, datos: DatosDecla
       .where(and(eq(placeDeclarations.placeId, lugar.id), isNull(placeDeclarations.revokedAt)));
     await tx.insert(placeDeclarations).values({
       placeId: lugar.id,
+      placeName: lugar.name,
       photoOrigin: datos.origenFotos as "propias" | "con_permiso" | "generadas",
       scope: alcance,
       space: espacio,

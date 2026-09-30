@@ -81,12 +81,20 @@ export async function revalidarPersonajeDelTrabajo(fila: FilaTrabajo, modelo: Mo
     }
   }
   /**
-   * El **lugar** también se revalida: revocar su declaración bloquea generar con él desde ese momento, y eso incluye
-   * lo que ya estaba en la cola. Lo generado antes se conserva.
+   * El **lugar** también se revalida, como el consentimiento: revocar su declaración o borrarlo impide generar con él
+   * desde ese momento, también lo que ya estaba en la cola. Un trabajo que se pidió con lugar (`place_version`) y ya no
+   * lo tiene es que el lugar se ha borrado. Lo generado antes se conserva.
    */
-  if (fila.placeId && fila.kind !== "voz" && !(await declaracionVigente(fila.placeId))) {
-    throw new ErrorPersonajeNoUsable(
-      "La declaración de derechos del lugar se ha revocado desde que pediste el trabajo, así que ya no se genera con él. No se ha enviado nada y no se te ha cobrado: vuelve a declararla en la ficha del lugar o quítalo de la escena.",
-    );
+  if (fila.kind !== "voz" && fila.placeVersion !== null) {
+    if (!fila.placeId) {
+      throw new ErrorPersonajeNoUsable(
+        "El lugar con el que pediste este trabajo se ha borrado, así que ya no se genera con él. No se ha enviado nada y no se te ha cobrado: vuelve a pedirlo con otro lugar o sin lugar.",
+      );
+    }
+    if (!(await declaracionVigente(fila.placeId))) {
+      throw new ErrorPersonajeNoUsable(
+        "La declaración de derechos del lugar se ha revocado desde que pediste el trabajo, así que ya no se genera con él. No se ha enviado nada y no se te ha cobrado: vuelve a declararla en la ficha del lugar o quítalo de la escena.",
+      );
+    }
   }
 }

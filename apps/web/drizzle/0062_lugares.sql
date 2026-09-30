@@ -1,6 +1,6 @@
 -- Lugares: el sitio poco conocido que el usuario reutiliza como escenario, con sus fotos (relación con la biblioteca),
 -- sus versiones y su declaración de derechos; el lugar del proyecto, de la escena y del trabajo; y la comprobación de
--- coherencia «es el mismo lugar» (en sombra).
+-- coherencia «es el mismo lugar» (en sombra). Las declaraciones no se borran con el lugar (`set null` y su nombre).
 --
 -- Aditiva e idempotente: solo crea tipos, tablas, índices, columnas que admiten nulos o tienen valor por defecto y un
 -- valor nuevo de un enumerado; no cambia ni borra ninguna fila. Volver a aplicarla no hace nada. Una escena anterior
@@ -45,7 +45,8 @@ ALTER TYPE "public"."coherence_check" ADD VALUE IF NOT EXISTS 'lugar_fiel';
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "place_declarations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"place_id" uuid NOT NULL,
+	"place_id" uuid,
+	"place_name" text DEFAULT '' NOT NULL,
 	"photo_origin" "place_photo_origin" NOT NULL,
 	"scope" "consent_scope" DEFAULT 'personal' NOT NULL,
 	"space" "place_space" DEFAULT 'exterior' NOT NULL,
@@ -118,7 +119,7 @@ ALTER TABLE "scenes" ADD COLUMN IF NOT EXISTS "place_spot" text DEFAULT '' NOT N
 ALTER TABLE "scenes" ADD COLUMN IF NOT EXISTS "place_shot" "scene_place_shot" DEFAULT 'con_reparto' NOT NULL;
 --> statement-breakpoint
 DO $$ BEGIN
-  ALTER TABLE "place_declarations" ADD CONSTRAINT "place_declarations_place_id_places_id_fk" FOREIGN KEY ("place_id") REFERENCES "public"."places"("id") ON DELETE cascade ON UPDATE no action;
+  ALTER TABLE "place_declarations" ADD CONSTRAINT "place_declarations_place_id_places_id_fk" FOREIGN KEY ("place_id") REFERENCES "public"."places"("id") ON DELETE set null ON UPDATE no action;
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 --> statement-breakpoint
