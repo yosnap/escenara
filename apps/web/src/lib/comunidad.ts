@@ -80,6 +80,8 @@ export interface MiPublicacionVista extends PublicacionVista {
   revision: number;
   /** El original ya no existe: la publicación no se ve y el worker la borra. */
   huerfana: boolean;
+  /** Aprobada pero **oculta** para los demás, con el motivo en lenguaje llano; `null` si no lo está. */
+  oculta: string | null;
 }
 
 export interface Elegibilidad {

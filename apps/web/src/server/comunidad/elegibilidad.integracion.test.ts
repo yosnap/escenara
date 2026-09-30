@@ -20,6 +20,7 @@ const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
 const {
+  characterOmniRegistrations,
   characterReferences,
   characterVersions,
   characters,
@@ -345,6 +346,86 @@ describe.skipIf(!hayBaseDeDatos)("elegibilidad de la comunidad (lista blanca de 
       expect((await medio(conSubida.id)).publicable).toBe(false);
       expect(await origenSeguro(conSubida.id)).toBe(false);
       expect((await medio(conMuestra.id)).publicable).toBe(true);
+    });
+
+    test("Omni con identidad registrada: cuenta lo que subió el registro, aunque luego se quite de la ficha", async () => {
+      const { inventado, vista } = await inventadoConVista();
+      const subida = await f.medioDePrueba(ana.id, "imagen");
+      await db()
+        .insert(characterReferences)
+        .values({ characterId: inventado, mediaId: subida.id, origin: "vista_generada", sortOrder: 5 });
+      const [version] = await db()
+        .insert(characterVersions)
+        .values({
+          characterId: inventado,
+          number: 1,
+          sheet: {} as never,
+          referenceMediaIds: [vista.id, subida.id],
+          changedFields: [],
+        })
+        .returning({ id: characterVersions.id });
+      const registro = async (remoto: string, retrato: string | null) =>
+        await db()
+          .insert(characterOmniRegistrations)
+          .values({
+            characterId: inventado,
+            characterVersionId: version?.id ?? "",
+            audioId: "voz",
+            remoteCharacterId: remoto,
+            portraitMediaId: retrato,
+          });
+      const clipOmni = async (remoto: string) =>
+        await f.clipDePrueba(ana.id, inventado, {
+          input: { prompt: "p", referencias: [], personajesOmni: [remoto], parametros: {} },
+        });
+      // El registro subió la foto no generada (el caso de Elisa).
+      await registro("rc-subida", subida.id);
+      const conSubida = await clipOmni("rc-subida");
+      expect((await medio(conSubida.id)).publicable).toBe(false);
+      // El usuario quita esa foto de la ficha (la versión y el registro se quedan): sigue sin valer.
+      await db().delete(characterReferences).where(eq(characterReferences.mediaId, subida.id));
+      expect(await origenSeguro(conSubida.id)).toBe(false);
+      expect((await medio(conSubida.id)).publicable).toBe(false);
+    });
+
+    test("Omni: un registro con retrato generado vale; sin registro o con el retrato borrado, no", async () => {
+      const { inventado, vista } = await inventadoConVista();
+      const [version] = await db()
+        .insert(characterVersions)
+        .values({
+          characterId: inventado,
+          number: 1,
+          sheet: {} as never,
+          referenceMediaIds: [vista.id],
+          changedFields: [],
+        })
+        .returning({ id: characterVersions.id });
+      const base = { characterId: inventado, characterVersionId: version?.id ?? "", audioId: "voz" };
+      await db()
+        .insert(characterOmniRegistrations)
+        .values({ ...base, remoteCharacterId: "rc-bueno", portraitMediaId: vista.id });
+      await db()
+        .insert(characterOmniRegistrations)
+        .values({ ...base, remoteCharacterId: "rc-sin-retrato", portraitMediaId: null });
+      const clipOmni = async (remoto: string) =>
+        await f.clipDePrueba(ana.id, inventado, {
+          input: { prompt: "p", referencias: [], personajesOmni: [remoto], parametros: {} },
+        });
+      expect((await medio((await clipOmni("rc-bueno")).id)).publicable).toBe(true);
+      expect(await origenSeguro((await clipOmni("rc-sin-retrato")).id)).toBe(false);
+      expect(await origenSeguro((await clipOmni("rc-que-no-existe")).id)).toBe(false);
+    });
+
+    test("booleanos de la entrada: solo `true` de verdad cuenta; «true» como texto no", async () => {
+      const inventado = await f.inventadoDePrueba(ana.id);
+      const texto = await f.clipDePrueba(ana.id, inventado, { input: { sinReferencia: "true", parametros: {} } });
+      const cantoNumero = await f.clipDePrueba(ana.id, inventado, { input: { referencias: [], canto: 1 } });
+      const omniObjeto = await f.clipDePrueba(ana.id, inventado, {
+        input: { referencias: [], personajesOmni: { a: 1 } },
+      });
+      for (const m of [texto, cantoNumero, omniObjeto]) expect(await origenSeguro(m.id)).toBe(false);
+      const bueno = await f.clipDePrueba(ana.id, inventado, { input: { sinReferencia: true, parametros: {} } });
+      expect(await origenSeguro(bueno.id)).toBe(true);
     });
 
     test("sin procedencia guardada (ni lista de referencias ni «sin imagen de partida») no se sabe: no se publica", async () => {

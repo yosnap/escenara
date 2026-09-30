@@ -60,6 +60,7 @@ export default async function PaginaModeracion() {
                 key={p.id}
                 publicacion={p}
                 estado={p.estado}
+                oculta={p.oculta}
                 todasLasImagenes
                 pie={<Moderar publicacion={p} />}
               />
@@ -77,7 +78,13 @@ export default async function PaginaModeracion() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             {aprobadas.map((p) => (
-              <TarjetaPublicacion key={p.id} publicacion={p} estado={p.estado} pie={<Moderar publicacion={p} />} />
+              <TarjetaPublicacion
+                key={p.id}
+                publicacion={p}
+                estado={p.estado}
+                oculta={p.oculta}
+                pie={<Moderar publicacion={p} />}
+              />
             ))}
           </div>
         )}

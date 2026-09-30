@@ -43,6 +43,7 @@ const MIA: MiPublicacionVista = {
   motivoRechazo: "Sale un logotipo real en la camiseta.",
   revision: 2,
   huerfana: false,
+  oculta: null,
 };
 const EN_COLA: PublicacionEnModeracion = {
   ...MIA,

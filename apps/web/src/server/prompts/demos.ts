@@ -68,6 +68,12 @@ const lugarGenerado = (p: string) => `exists (select 1 from places pl where pl.i
 const siONo = (predicado: string) => `coalesce((${predicado}), false)`;
 
 const UUID_SQL = `'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'`;
+/** Un booleano de la entrada que es `true` de verdad (no la cadena «true», ni un número). */
+const verdadero = (j: string, clave: string) =>
+  `(jsonb_typeof(${j}.input->'${clave}') = 'boolean' and (${j}.input->'${clave}')::boolean)`;
+/** Omni: como mucho un personaje registrado, y si la clave está, tiene que ser una lista. */
+const unSoloOmni = (j: string) => `(not jsonb_exists(${j}.input, 'personajesOmni')
+  or (jsonb_typeof(${j}.input->'personajesOmni') = 'array' and jsonb_array_length(${j}.input->'personajesOmni') <= 1))`;
 const lista = (j: string, clave: string) =>
   `(case when jsonb_typeof(${j}.input->'${clave}') = 'array' then ${j}.input->'${clave}' else '[]'::jsonb end)`;
 const ids = (j: string, clave: string) =>
@@ -78,6 +84,11 @@ const ids = (j: string, clave: string) =>
  * todas sus referencias (no solo la primera), las del lugar y del producto, el fotograma situado y la imagen de partida.
  * Es la procedencia fijada al generar: vaciar después un campo de la escena o borrar una foto no la cambia. Un
  * identificador ilegible sale nulo, que es «desconocido».
+ *
+ * En Omni con **identidad registrada** el trabajo no envía imágenes: la cara la pone el registro, que subió un retrato
+ * (y quizá un cuerpo) al registrarse. Esas imágenes cuentan como enviadas: el retrato y el cuerpo del registro con ese
+ * identificador **del mismo personaje**. Sin registro, o con el retrato borrado, sale nulo: «desconocido». Quitar después
+ * fotos de la ficha no cambia lo que el registro subió.
  */
 export const mediosEnviados = (j: string) => `(
   ${ids(j, "referencias")}
@@ -85,7 +96,12 @@ export const mediosEnviados = (j: string) => `(
   union all ${ids(j, "referenciasProducto")}
   union all select case when (${j}.input->>'fotogramaSituado') ~* ${UUID_SQL} then (${j}.input->>'fotogramaSituado')::uuid end
             where coalesce(${j}.input->>'fotogramaSituado', '') <> ''
-  union all select ${j}.source_media_id where ${j}.source_media_id is not null)`;
+  union all select ${j}.source_media_id where ${j}.source_media_id is not null
+  union all select r.portrait_media_id from jsonb_array_elements_text(${lista(j, "personajesOmni")}) xo
+            left join character_omni_registrations r on r.remote_character_id = xo and r.character_id = ${j}.character_id
+  union all select r.body_media_id from jsonb_array_elements_text(${lista(j, "personajesOmni")}) xo
+            join character_omni_registrations r on r.remote_character_id = xo and r.character_id = ${j}.character_id
+            where r.body_media_id is not null)`;
 
 /**
  * Hechos del propio trabajo que la comunidad exige (sin mirar su cadena), leídos de lo que el trabajo **conserva**:
@@ -99,17 +115,16 @@ const hechosDelTrabajo = (j: string) =>
   jsonb_typeof(${j}.input) = 'object'
   and ${j}.cast_clip_order is null
   and not jsonb_exists(${j}.input, 'reparto')
-  and (jsonb_typeof(${j}.input->'personajesOmni') is distinct from 'array'
-       or jsonb_array_length(${j}.input->'personajesOmni') <= 1)
+  and ${unSoloOmni(j)}
   and ${j}.product_id is null and ${j}.product_action = '' and ${j}.brand_rights_at is null and ${j}.digital_step = ''
   and jsonb_array_length(${lista(j, "referenciasProducto")}) = 0
   and ((${j}.place_id is null and ${j}.place_version is null)
        or (${j}.place_id is not null and ${lugarGenerado(`${j}.place_id`)}))
-  and coalesce(${j}.input->>'canto', '') <> 'true'
+  and (not jsonb_exists(${j}.input, 'canto') or ${j}.input->'canto' = 'false'::jsonb)
   and (coalesce(${j}.input->>'audioDeReferencia', '') = ''
        or exists (select 1 from voice_samples vs where vs.media_id::text = ${j}.input->>'audioDeReferencia'
                   and vs.user_id = ${j}.user_id))
-  and (${j}.input->>'sinReferencia' = 'true' or ${j}.input->>'retratoInventado' = 'true'
+  and (${verdadero(j, "sinReferencia")} or ${verdadero(j, "retratoInventado")}
        or jsonb_typeof(${j}.input->'referencias') = 'array')`);
 
 /** Base de un trabajo sintético: un solo personaje sintético, sin reparto, en lo que viajó al proveedor. */
@@ -130,7 +145,7 @@ export const productorSintetico = (j: string) =>
   siONo(`${hechosDelTrabajo(j)} and (
   ${trabajoDeUnSintetico(j, "comunidad")}
   or (${j}.character_id is null and ${j}.place_id is not null
-      and (${j}.input->>'sinReferencia' = 'true' or jsonb_array_length(${lista(j, "referencias")}) = 0)))`);
+      and (${verdadero(j, "sinReferencia")} or jsonb_array_length(${lista(j, "referencias")}) = 0)))`);
 
 /**
  * **Cadena enviada generada** (solo `comunidad`): cada medio que el trabajo envió, y cada medio que enviaron los trabajos

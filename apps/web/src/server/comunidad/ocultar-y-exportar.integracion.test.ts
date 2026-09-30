@@ -23,7 +23,7 @@ const { accountDeletions, communityPostMedia, communityPosts, consentRecords, me
 const { guardarAjustes } = await import("../ajustes");
 const { leerObjeto } = await import("../almacenamiento");
 const { armarPaquete } = await import("../datos/paquete");
-const { colaDeModeracion, galeria } = await import("./consulta");
+const { colaDeModeracion, galeria, misPublicaciones } = await import("./consulta");
 const { moderar } = await import("./moderacion");
 const { editar, publicar } = await import("./publicar");
 const f = await import("./comunidad-de-prueba");
@@ -63,12 +63,20 @@ describe.skipIf(!hayBaseDeDatos)("ocultar, rechazar y exportar en la comunidad",
     await Promise.all([admin?.borrar(), ana?.borrar()]);
   });
 
-  test("revocar la declaración de inventado la oculta; volver a declararlo exige aprobarla otra vez", async () => {
+  test("revocar la declaración la oculta, se dice al autor y a quien modera, y no vuelve sola", async () => {
     const { inventado, id } = await publicarClip(ana);
     await aprobar(id);
     expect(await visible(id)).toBe(true);
     await db().update(consentRecords).set({ revokedAt: new Date() }).where(eq(consentRecords.characterId, inventado));
     expect(await visible(id)).toBe(false);
+    // El autor y quien modera la ven «oculta», con el motivo, y no «publicada».
+    const mia = (await misPublicaciones(actorDe(ana))).find((p) => p.id === id);
+    expect(mia?.estado).toBe("aprobada");
+    expect(mia?.oculta).toContain("declaración");
+    const enCola = (await colaDeModeracion(actorDe(admin, true))).aprobadas.find((p) => p.id === id);
+    expect(enCola?.oculta).toContain("declaración");
+    // Salvaguarda: aunque apareciera otra declaración (hoy la aplicación no deja volver a declararlo), sería posterior a
+    // la aprobación y no la vuelve a enseñar sola.
     await db()
       .insert(consentRecords)
       .values({ characterId: inventado, holderType: "inventado", syntheticDeclared: true, registeredBy: ana.id });
@@ -84,8 +92,10 @@ describe.skipIf(!hayBaseDeDatos)("ocultar, rechazar y exportar en la comunidad",
     await aprobar(id);
     await db().update(media).set({ deletedAt: new Date() }).where(eq(media.id, clip.id));
     expect(await visible(id)).toBe(false);
+    expect((await misPublicaciones(actorDe(ana))).find((p) => p.id === id)?.oculta).toContain("papelera");
     await db().update(media).set({ deletedAt: null }).where(eq(media.id, clip.id));
     expect(await visible(id)).toBe(true);
+    expect((await misPublicaciones(actorDe(ana))).find((p) => p.id === id)?.oculta).toBeNull();
   });
 
   test("rechazar borra la copia del almacenamiento; corregir y reenviar la vuelve a copiar", async () => {

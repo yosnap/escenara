@@ -89,6 +89,7 @@ const MIA: MiPublicacionVista = {
   motivoRechazo: "Sale un logotipo real.",
   revision: 2,
   huerfana: false,
+  oculta: null,
 };
 const EN_COLA: PublicacionEnModeracion = {
   ...MIA,

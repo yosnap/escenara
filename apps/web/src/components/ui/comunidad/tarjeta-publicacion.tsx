@@ -8,6 +8,7 @@ import {
   type MedioPublicado,
   type PublicacionVista,
 } from "@/lib/comunidad";
+import { Alerta } from "../alerta";
 import { cn } from "../cn";
 
 /**
@@ -21,7 +22,15 @@ const TONO_ESTADO: Record<EstadoPublicacion, string> = {
   rechazada: "border-error/60 bg-error/10 text-texto",
 };
 
-export function EtiquetaEstado({ estado }: { estado: EstadoPublicacion }) {
+export function EtiquetaEstado({ estado, oculta = false }: { estado: EstadoPublicacion; oculta?: boolean }) {
+  // Aprobada pero oculta (papelera, declaración revocada…): no se dice «Publicada», que sería mentira.
+  if (estado === "aprobada" && oculta) {
+    return (
+      <span className={cn("rounded-full border px-2.5 py-0.5 text-xs font-semibold", TONO_ESTADO.pendiente)}>
+        Oculta
+      </span>
+    );
+  }
   return (
     <span className={cn("rounded-full border px-2.5 py-0.5 text-xs font-semibold", TONO_ESTADO[estado])}>
       {ETIQUETA_ESTADO[estado]}
@@ -57,12 +66,15 @@ export function VistaMedioPublicado({ medio, titulo }: { medio: MedioPublicado; 
 export function TarjetaPublicacion({
   publicacion,
   estado,
+  oculta = null,
   pie,
   todasLasImagenes = false,
 }: {
   publicacion: PublicacionVista;
   /** Solo para el autor y quien modera: el estado de moderación. */
   estado?: EstadoPublicacion;
+  /** Motivo por el que una aprobada no se enseña (solo autor y moderación). */
+  oculta?: string | null;
   pie?: ReactNode;
   todasLasImagenes?: boolean;
 }) {
@@ -76,7 +88,7 @@ export function TarjetaPublicacion({
         <span className="inline-flex items-center gap-1 rounded-full bg-elevada px-2.5 py-0.5 text-xs font-semibold text-texto">
           <Sparkles className="size-3.5 text-chispa" aria-hidden /> Contenido sintético
         </span>
-        {estado && <EtiquetaEstado estado={estado} />}
+        {estado && <EtiquetaEstado estado={estado} oculta={oculta !== null} />}
       </div>
       <div className={cn("grid gap-2", medios.length > 1 && "grid-cols-2")}>
         {medios.map((m) => (
@@ -111,6 +123,11 @@ export function TarjetaPublicacion({
             </li>
           )}
         </ul>
+      )}
+      {oculta && (
+        <Alerta tipo="aviso" anuncio="ninguno" compacta titulo="Oculta">
+          {oculta}
+        </Alerta>
       )}
       {pie}
     </article>

@@ -26,6 +26,7 @@ import { condicionMedioNoReservado } from "../personajes/uso-de-medio";
 import { elegibilidadDe } from "./elegibilidad";
 import { ErrorComunidad } from "./errores";
 import { procedenciaDeMedio, procedenciaDePersonaje } from "./procedencia";
+import { CONCURRENCIA_COMUNIDAD, conConcurrencia } from "./tandas";
 import { comunidadActiva, condicionVisible, esHuerfana, puedeVer } from "./visibilidad";
 
 /**
@@ -102,14 +103,57 @@ async function vistasDe(ej: Ejecutor, filas: FilaPublicacion[]): Promise<Map<str
   return salida;
 }
 
-function miVista(f: FilaPublicacion, publica: PublicacionVista): MiPublicacionVista {
+function miVista(f: FilaPublicacion, publica: PublicacionVista, oculta: string | null = null): MiPublicacionVista {
   return {
     ...publica,
     estado: f.state,
     motivoRechazo: f.rejectionReason,
     revision: f.revision,
     huerfana: esHuerfana(f),
+    oculta,
   };
+}
+
+/**
+ * Por qué una publicación **aprobada** no la ven los demás (las mismas condiciones de `condicionVisible`, explicadas).
+ * Solo para su autor y quien modera: la regla que decide sigue siendo `condicionVisible`.
+ */
+async function motivosDeOcultacion(ids: string[]): Promise<Map<string, string>> {
+  if (ids.length === 0) return new Map();
+  const filas = (await db().execute(sql`
+    select community_posts.id,
+      (community_posts.source_character_id is null and community_posts.source_media_id is null) or community_posts.origin_character_id is null as huerfana,
+      exists (select 1 from media m where m.id = community_posts.source_media_id and m.deleted_at is not null) as papelera,
+      not exists (select 1 from consent_records crv where crv.character_id = community_posts.origin_character_id
+                  and crv.revoked_at is null and crv.holder_type = 'inventado' and crv.synthetic_declared = true
+                  and crv.registered_at <= community_posts.approved_at) as sin_declaracion,
+      exists (select 1 from account_deletions ad where ad.user_id = community_posts.author_id
+              and ad.state in ('programado', 'borrando_objetos')) as borrado
+    from community_posts
+    where community_posts.id in (${sql.join(
+      ids.map((id) => sql`${id}::uuid`),
+      sql`, `,
+    )}) and community_posts.state = 'aprobada' and not ${condicionVisible()}`)) as unknown as {
+    id: string;
+    huerfana: boolean;
+    papelera: boolean;
+    sin_declaracion: boolean;
+    borrado: boolean;
+  }[];
+  return new Map(
+    filas.map((f) => [
+      f.id,
+      f.huerfana
+        ? "Su original ya no existe: se borrará en unos minutos."
+        : f.papelera
+          ? "Su original está en la papelera. Restáuralo y volverá a verse."
+          : f.sin_declaracion
+            ? "Su personaje ya no tiene vigente la declaración de personaje inventado, así que no se vuelve a enseñar. Una declaración revocada no se puede recuperar: puedes retirarla."
+            : f.borrado
+              ? "Tu cuenta está en periodo de borrado."
+              : "No se puede enseñar ahora.",
+    ]),
+  );
 }
 
 export interface FiltroGaleria {
@@ -140,10 +184,10 @@ export async function misPublicaciones(actor: Actor): Promise<MiPublicacionVista
     .from(communityPosts)
     .where(eq(communityPosts.authorId, actor.id))
     .orderBy(desc(communityPosts.createdAt));
-  const vistas = await vistasDe(db(), filas);
+  const [vistas, ocultas] = await Promise.all([vistasDe(db(), filas), motivosDeOcultacion(filas.map((f) => f.id))]);
   return filas.flatMap((f) => {
     const v = vistas.get(f.id);
-    return v ? [miVista(f, v)] : [];
+    return v ? [miVista(f, v, ocultas.get(f.id) ?? null)] : [];
   });
 }
 
@@ -174,12 +218,13 @@ export async function colaDeModeracion(actor: Actor): Promise<{
       .limit(100),
   ]);
   const vistas = await vistasDe(db(), [...pendientes, ...aprobadas]);
+  const ocultas = await motivosDeOcultacion(aprobadas.map((f) => f.id));
   const enModeracion = async (f: FilaPublicacion): Promise<PublicacionEnModeracion[]> => {
     const v = vistas.get(f.id);
     if (!v) return [];
     return [
       {
-        ...miVista(f, v),
+        ...miVista(f, v, ocultas.get(f.id) ?? null),
         esDeQuienModera: f.authorId === actor.id,
         elegibilidad: await elegibilidadActual(db(), f),
         procedencia: await procedenciaActual(f),
@@ -187,8 +232,9 @@ export async function colaDeModeracion(actor: Actor): Promise<{
     ];
   };
   return {
-    pendientes: (await Promise.all(pendientes.map(enModeracion))).flat(),
-    aprobadas: (await Promise.all(aprobadas.map(enModeracion))).flat(),
+    // De cuatro en cuatro: cada una abre dos transacciones y el grupo de conexiones es de diez para toda la web.
+    pendientes: (await conConcurrencia(pendientes, CONCURRENCIA_COMUNIDAD, enModeracion)).flat(),
+    aprobadas: (await conConcurrencia(aprobadas, CONCURRENCIA_COMUNIDAD, enModeracion)).flat(),
   };
 }
 
@@ -297,14 +343,13 @@ export async function candidatos(actor: Actor, limite = 24): Promise<CandidatoAP
       .where(eq(communityPosts.authorId, actor.id)),
   ]);
   const deOrigen = new Map(publicadas.flatMap((p) => [[p.personaje ?? p.medio ?? "", p] as const]));
-  const salida: CandidatoAPublicar[] = [];
-  for (const origen of [
+  const origenes = [
     ...personajes.map((p) => ({ tipo: "personaje" as const, id: p.id })),
     ...resultados.map((r) => ({ tipo: "medio" as const, id: r.id })),
-  ]) {
-    salida.push(await candidato(actor, origen, deOrigen.get(origen.id) ?? null));
-  }
-  return salida;
+  ];
+  return await conConcurrencia(origenes, CONCURRENCIA_COMUNIDAD, (origen) =>
+    candidato(actor, origen, deOrigen.get(origen.id) ?? null),
+  );
 }
 
 /** Un candidato concreto (la página de publicar con `?personaje=` o `?medio=`). */

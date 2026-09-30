@@ -186,6 +186,7 @@ export default async function PaginaComunidad({
                   key={p.id}
                   publicacion={p}
                   estado={p.estado}
+                  oculta={p.oculta}
                   pie={
                     <div className="flex flex-col gap-2">
                       {p.estado === "rechazada" && p.motivoRechazo && (
@@ -193,7 +194,7 @@ export default async function PaginaComunidad({
                           {p.motivoRechazo}
                         </Alerta>
                       )}
-                      {p.huerfana && (
+                      {p.huerfana && !p.oculta && (
                         <Alerta tipo="info" anuncio="ninguno" compacta>
                           Has borrado el original: esta publicación ya no se ve y se borrará en unos minutos.
                         </Alerta>
