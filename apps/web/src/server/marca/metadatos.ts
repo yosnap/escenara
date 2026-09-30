@@ -9,15 +9,41 @@ export const METADATOS_DE_ESCENARA: Metadata = {
   // Cada página pone solo su parte («Tus personajes») y la plantilla añade el nombre de la instalación.
   title: { default: "Escenara · Da vida a cada escena", template: "%s · Escenara" },
   description: "Estudio abierto de personajes y vídeo",
-  icons: { icon: [{ url: "/icon.svg", type: "image/svg+xml", sizes: "any" }] },
+  // El SVG es el dibujo simplificado para 16 px (nítido a 16 y 32); los PNG, para quien no lee SVG. Los iconos de la
+  // aplicación instalada van en el manifiesto. Todos salen de `bun run activos` (scripts/activos-marca.ts).
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml", sizes: "any" },
+      { url: "/favicon-32.png", type: "image/png", sizes: "32x32" },
+      { url: "/favicon-16.png", type: "image/png", sizes: "16x16" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  manifest: "/manifest.webmanifest",
 };
 
+/** Imagen para compartir de Escenara (1200 × 630), pintada con Manrope. */
+export const IMAGEN_SOCIAL_DE_ESCENARA = "/imagen-social.png";
+
 /**
- * Metadatos de la página. Sin marca publicada, los de siempre. Con ella, su nombre, su lema y los iconos que se
+ * Metadatos de la página. Sin marca publicada, los de Escenara (con su imagen para compartir si hay URL pública). Con ella, su nombre, su lema y los iconos que se
  * generaron al publicarla (sin logotipos subidos, el icono de Escenara). Next escapa estos textos al escribir el HTML.
  */
 export function metadatosDeLaMarca(marca: MarcaAplicada | null, base: URL | null = null): Metadata {
-  if (!marca) return METADATOS_DE_ESCENARA;
+  if (!marca) {
+    // La imagen para compartir necesita una URL absoluta de verdad: sin URL pública, los metadatos de siempre.
+    if (!base) return METADATOS_DE_ESCENARA;
+    return {
+      ...METADATOS_DE_ESCENARA,
+      metadataBase: base,
+      openGraph: {
+        title: "Escenara · Da vida a cada escena",
+        description: "Estudio abierto de personajes y vídeo",
+        images: [{ url: IMAGEN_SOCIAL_DE_ESCENARA, width: 1200, height: 630, alt: "Escenara · Da vida a cada escena" }],
+      },
+      twitter: { card: "summary_large_image" },
+    };
+  }
   const { favicon16, favicon32, icono192, icono512, social } = marca.iconos;
   return {
     title: { default: `${marca.nombre} · ${marca.lema}`, template: `%s · ${marca.nombre}` },

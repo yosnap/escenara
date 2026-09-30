@@ -9,10 +9,10 @@ import { marcaAplicada } from "@/server/marca/publicada";
 import "./globals.css";
 import { ScriptTema } from "./script-tema";
 
-/** Metadatos de la página: los de Escenara o, con una marca publicada, los suyos (`server/marca/metadatos.ts`). */
+/** Metadatos de la página: los de Escenara o, con una marca publicada, los suyos (`server/marca/metadatos.ts`). Las URL
+ * absolutas (imagen para compartir) salen de la URL pública de la instalación. */
 export async function generateMetadata(): Promise<Metadata> {
   const marca = await marcaAplicada();
-  if (!marca) return metadatosDeLaMarca(null);
   const urlPublica = await leerAjustes()
     .then((a) => a.urlPublica)
     .catch(() => "");

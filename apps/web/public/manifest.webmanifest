@@ -1,0 +1,16 @@
+{
+  "name": "Escenara",
+  "short_name": "Escenara",
+  "description": "Estudio abierto de personajes y vídeo",
+  "lang": "es",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F7F8FC",
+  "theme_color": "#2753D7",
+  "icons": [
+    { "src": "/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icono-enmascarable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

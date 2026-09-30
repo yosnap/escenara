@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "tokens": "bun scripts/tokens.ts",
+    "activos": "bun scripts/activos-marca.ts",
     "db:generate": "bun --bun drizzle-kit generate",
     "db:migrate": "bun scripts/migrar.ts",
     "medios:medir-videos": "bun scripts/medir-videos.ts",

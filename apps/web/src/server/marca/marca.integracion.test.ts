@@ -596,8 +596,18 @@ describe.skipIf(!hayBaseDeDatos)("marca de la instalación y kit del creador", (
       );
       expect(sin.metadataBase).toBeUndefined();
       expect(JSON.stringify(sin.openGraph)).not.toContain("images");
-      // Sin marca publicada, los metadatos de siempre, sin base.
-      expect(metadatosDeLaMarca(null, base)).toEqual(METADATOS_DE_ESCENARA);
+      // Sin marca publicada, los de Escenara: con URL pública, su imagen para compartir en URL absoluta; sin ella, los de
+      // siempre.
+      const escenara = metadatosDeLaMarca(null, base);
+      expect({ ...escenara, metadataBase: undefined, openGraph: undefined, twitter: undefined }).toEqual({
+        ...METADATOS_DE_ESCENARA,
+        metadataBase: undefined,
+        openGraph: undefined,
+        twitter: undefined,
+      });
+      expect(String(escenara.metadataBase)).toBe("https://estudio.ejemplo.es/");
+      expect(JSON.stringify(escenara.openGraph)).toContain("/imagen-social.png");
+      expect(metadatosDeLaMarca(null, null)).toEqual(METADATOS_DE_ESCENARA);
     } finally {
       await guardarAjustes({ urlPublica: previa }, null);
     }
