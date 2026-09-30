@@ -66,7 +66,8 @@ describe("la cabecera del grupo", () => {
     expect(html).toContain("font-extrabold");
     expect(html).toContain("Qué hace mientras habla.");
     expect(html).toContain("text-acento");
-    expect(html).not.toMatch(/border-l-|border-r-/);
+    // La opción elegida y las cabeceras se marcan con color de texto y borde entero, nunca con una franja lateral.
+    expect(html).not.toMatch(/border-[lr]-/);
   });
 
   test("cada familia de grupos tiene su tono", () => {
