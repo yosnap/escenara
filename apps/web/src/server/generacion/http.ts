@@ -93,3 +93,21 @@ export async function exigirRitmoDeConsultas(actor: Actor, accion: string): Prom
     throw new ErrorGeneracion(429, "Demasiadas consultas seguidas. Espera unos segundos.");
   }
 }
+
+/**
+ * Avisos «Necesita ajustes» que el usuario confirma expresamente (0.18.0): claves de regla, nunca texto libre.
+ * Se acotan aquí a lo que puede ser una clave de regla; las que no correspondan a un aviso salvable no hacen
+ * nada, y un freno `Bloqueado` o `Requiere revisión` no se salta por venir listado (`controles/puerta.ts`).
+ */
+export function leerAvisosConfirmados(valor: unknown): string[] {
+  if (valor === undefined) return [];
+  if (!Array.isArray(valor) || valor.length > 20) {
+    throw new ErrorGeneracion(400, "Los avisos confirmados no son válidos.");
+  }
+  return valor.map((clave) => {
+    if (typeof clave !== "string" || !/^[a-z0-9-]{1,60}$/.test(clave)) {
+      throw new ErrorGeneracion(400, "Los avisos confirmados no son válidos.");
+    }
+    return clave;
+  });
+}

@@ -1,3 +1,5 @@
+import type { EvaluacionVista } from "@/lib/controles";
+import type { Estimacion, TrabajoVista } from "@/lib/generacion";
 import type { LugarResumen, LugarVista, PapelLugar } from "@/lib/lugares";
 import type { ResumenBorradoLugar } from "@/server/lugares/borrado";
 
@@ -65,3 +67,29 @@ export const revocarDeclaracionDeLugar = (id: string, motivo: string) => cambiar
 export const resumenDeBorradoDeLugar = (id: string) => pedir<ResumenBorradoLugar>(`/api/lugares/${id}?borrado=1`);
 
 export const borrarLugar = (id: string) => pedir<unknown>(`/api/lugares/${id}`, { method: "DELETE" });
+
+/** Estimación del fotograma que se encarga: una edición de una foto, o un candidato sin foto de partida. */
+export const estimacionDeFotoDeLugar = (sinImagen: boolean) =>
+  pedir<Estimacion>(`/api/generacion/estimacion?tipo=fotograma${sinImagen ? "&sinImagen=1" : ""}`);
+
+/** Lo que diría la puerta: la edición parte de la foto; el candidato, de nada, con el modelo de texto a imagen. */
+export const controlesDeFotoDeLugar = (medioId: string | null, modelo: string) =>
+  pedir<EvaluacionVista>(
+    `/api/generacion/controles?${new URLSearchParams({ tipo: "fotograma", modelo, ...(medioId ? { medioId } : {}) })}`,
+  );
+
+export interface PedidoDeFotoDeLugar {
+  tipo: "retirar-personas" | "candidato";
+  referenciaId?: string;
+  creditosConfirmados: number;
+  derechos: boolean;
+  claveIdempotencia: string;
+  selloEstimacion: string;
+  modelo: string;
+  avisoUmbralAceptado: boolean;
+  avisosConfirmados: string[];
+}
+
+/** Encarga la foto generada: se cobra y se confirma como cualquier fotograma. */
+export const encargarFotoDeLugar = (id: string, pedido: PedidoDeFotoDeLugar) =>
+  pedir<TrabajoVista>(`/api/lugares/${id}/edicion`, json("POST", pedido));

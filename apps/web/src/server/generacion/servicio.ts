@@ -8,7 +8,6 @@ import type { SeleccionPresets } from "@/lib/presets";
 import { duracionParaModelo } from "@/lib/produccion";
 import type { PasoProductoDigital, ProductoElegido } from "@/lib/productos";
 import { motivoDuracionNoAdmitida } from "@/lib/trends";
-import { leerAjustes } from "../ajustes";
 import { contextoAnimadoDeEscena } from "../animados/contexto-escena";
 import { duracionDeClipDeEscena, proyectoDeEscena } from "../asistente/consulta";
 import { hechosDeEscena, techoDelProyecto } from "../asistente/plan";
@@ -16,12 +15,12 @@ import { encolar, filaDeLaConfirmacion, type NuevoTrabajoEncolado } from "../col
 import { conVistaQueCompleta, hechosDelReparto, hechosDelRepartoDeEscena, recopilarHechos } from "../controles/hechos";
 import { exigirControles } from "../controles/puerta";
 import type { FilaMedio } from "../db/esquema";
-import { decidir } from "../decisiones/reglas";
 import { dirigirClipPara, familiaDe } from "../direccion/clip";
 import { type DireccionSinTextoLibre, direccionDesdeEleccion, type PersonajeDirigido } from "../direccion/escena";
 import { type CambiarSolo, componerInsercionDeCaptura, componerSeisC, type SeisC } from "../direccion/fotograma";
 import { conHojaDeIdentidad } from "../direccion/hoja-identidad";
 import { bloqueProductoSuelto, esInsercionDeCaptura } from "../direccion/producto";
+import type { EdicionDeLugar } from "../lugares/edicion";
 import {
   conLugarSuelto,
   entradaDelLugar,
@@ -64,6 +63,7 @@ import {
   limpiarPromptOpcional,
   proveedorDeCredencial,
 } from "./comprobaciones";
+import { exigirDecisionFavorable, exigirVersionConfirmada, topeDeEscenasEnVuelo } from "./comprobaciones-del-envio";
 import { ErrorGeneracion } from "./errores";
 import { exigirFormatoDelFotograma, proporcionDelEnvio, reservasGuardadas } from "./formato-del-envio";
 import { HERRAMIENTAS, type Herramientas } from "./herramientas";
@@ -222,20 +222,6 @@ const columnasDePlantilla = (compuesto: PromptCompuesto | null) =>
     : {};
 
 /**
- * La ficha citada tiene que ser la que se confirmó. Si entre la pantalla y el botón se creó una versión nueva
- * —una vista sintética que terminó, otra pestaña que guardó la ficha—, lo confirmado ya no es lo que se
- * enviaría, y se dice en lugar de gastar.
- */
-function exigirVersionConfirmada(confirmada: string | undefined, seUsaria: string | null): void {
-  if (confirmada === undefined || confirmada === "") return;
-  if (confirmada === seUsaria) return;
-  throw new ErrorGeneracion(
-    409,
-    "La ficha ha cambiado desde que la revisaste: vuelve a mirar el contexto que se enviará y confirma otra vez.",
-  );
-}
-
-/**
  * Resultado de un alta. `nueva` es `false` cuando la confirmación ya se había encolado (misma clave de
  * idempotencia): el trabajo que se devuelve es el que ya existía.
  */
@@ -305,6 +291,8 @@ export interface PeticionFotograma extends Confirmacion {
   productoElegido?: ProductoElegido;
   /** **Lugar elegido en «Crear»**. En un proyecto no llega: lo pone la escena (o lo hereda del proyecto). */
   lugarElegido?: LugarElegido | null;
+  /** Foto editada o candidato de un lugar: lo pone el servidor (`lugares/edicion.ts`), nunca el navegador. */
+  edicionDeLugar?: EdicionDeLugar;
 }
 
 export interface PeticionAnimacion extends Confirmacion {
@@ -431,25 +419,6 @@ async function contextoDeLaVersion(
   const personaje = await personajePorId(version.characterId);
   if (!personaje) return { contexto: "", tipo: null };
   return { contexto: contextoDeVersion(version, personaje.kind), tipo: personaje.kind };
-}
-
-/**
- * Tope de escenas en vuelo del usuario para este envío (0.19.0). `null` fuera de un proyecto: el camino rápido
- * de «Crear» no produce ninguna escena y solo lo acota el tope de trabajos simultáneos.
- */
-async function topeDeEscenasEnVuelo(
-  escenaId: string | null,
-  reintento = false,
-): Promise<{ escenaId: string; maximo: number; reintento: boolean } | null> {
-  if (!escenaId) return null;
-  const { escenasEnVuelo } = await leerAjustes();
-  return { escenaId, maximo: escenasEnVuelo, reintento };
-}
-
-/** Comprobación previa determinista (contrato de decisiones): un rechazo no llega ni a encolarse. */
-async function exigirDecisionFavorable(entrada: Parameters<typeof decidir>[0]): Promise<void> {
-  const decision = await decidir(entrada);
-  if (decision.estado === "rechazado") throw new ErrorGeneracion(400, decision.evidencia);
 }
 
 export async function crearFotograma(
@@ -764,6 +733,7 @@ export async function crearFotograma(
       // Marca de «este fotograma nace de una descripción y no de ninguna foto» (0.22.0). La lee el worker para
       // no buscar referencias que no existen, y el cierre para añadir el retrato elegido como vista generada.
       ...(peticion.retratoInventado ? { retratoInventado: true } : {}),
+      ...(peticion.edicionDeLugar ? { edicionDeLugar: peticion.edicionDeLugar } : {}),
       // Marca de «este trabajo no parte de ninguna imagen»: la lee el worker para no buscar referencias que no
       // existen y para montar la entrada del modelo de texto a imagen tal como se estimó.
       ...(sinReferencia ? { sinReferencia: true } : {}),

@@ -6,6 +6,7 @@ import { CLIP, LARGO_ESTADO_PROVEEDOR, TIPO_RESULTADO, type TrabajoVista } from 
 import { usarCredencial } from "../boveda/credenciales";
 import { db } from "../db/cliente";
 import { type FilaTrabajo, generationJobs } from "../db/esquema";
+import { adjuntarAlLugar } from "../lugares/edicion";
 import { type Actor, crearMedio, eliminarDefinitivamente, enviarAPapelera, limiteSubida } from "../media/servicio";
 import { adjuntarHojaDeIdentidad } from "../personajes/hoja-identidad";
 import { adjuntarVistaGenerada } from "../personajes/vista-sintetica";
@@ -275,6 +276,8 @@ async function guardarArchivoDelTrabajo(
       await adjuntarMuestraDeVoz(cerrada, medio.id);
       // Y si era la hoja de identidad 3×3 (0.25.0), queda guardada como hoja del personaje, siempre candidata.
       await adjuntarHojaDeIdentidad(cerrada, medio.id);
+      // Y si era una foto editada o un candidato de un lugar, entra en el lugar como foto generada.
+      await adjuntarAlLugar(cerrada, medio.id);
       // Y si el trabajo producía una escena, la escena apunta lo que acaba de pasar (0.19.0). Un fotograma no
       // se aprueba solo: animar cuesta otro dinero y lo autoriza una persona.
       await registrarResultadoDeEscena(cerrada, medio.id);

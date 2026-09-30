@@ -1,6 +1,6 @@
 "use client";
 
-import { ImagePlus, Star, Trash2 } from "lucide-react";
+import { ImagePlus, Sparkles, Star, Trash2, UserX } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Boton, BotonIcono } from "@/components/ui/button";
@@ -30,6 +30,7 @@ import {
 } from "@/lib/lugares";
 import type { ResumenBorradoLugar } from "@/server/lugares/borrado";
 import { DeclaracionLugar } from "./declaracion-lugar";
+import { DialogoFotoGenerada, type EncargoDeFoto } from "./dialogo-foto-generada";
 import { acabadoEnPalabras } from "./lista-lugares";
 
 /**
@@ -46,6 +47,8 @@ export function FichaLugar({ inicial }: { inicial: LugarVista }) {
   const [eligiendo, setEligiendo] = useState(false);
   const [borrando, setBorrando] = useState<ResumenBorradoLugar | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  const [encargo, setEncargo] = useState<EncargoDeFoto | null>(null);
+  const [encargado, setEncargado] = useState("");
   const faltas = queFaltaAlLugar(lugar);
 
   const aplicar = async (promesa: Promise<{ ok: true; datos: LugarVista } | { ok: false; error: string }>) => {
@@ -87,6 +90,7 @@ export function FichaLugar({ inicial }: { inicial: LugarVista }) {
       </div>
 
       {error !== "" && <Aviso tono="error">{error}</Aviso>}
+      {encargado !== "" && <Aviso tono="correcto">{encargado}</Aviso>}
       {faltas.length > 0 && <Aviso tono="aviso">Para poder usarlo: {faltas.join(" ")}</Aviso>}
 
       <section className="flex flex-col gap-4 rounded-tarjeta border-2 border-borde/60 bg-superficie p-4">
@@ -164,7 +168,20 @@ export function FichaLugar({ inicial }: { inicial: LugarVista }) {
                     }))}
                     onCambio={(v) => v && aplicar(cambiarPapelDeFotoDeLugar(lugar.id, foto.id, v as PapelLugar))}
                   />
-                  {foto.generada && <span className="text-sm text-texto-suave">Editada aquí (sin personas).</span>}
+                  {foto.generada && <span className="text-sm text-texto-suave">Generada o editada aquí.</span>}
+                  {lugar.acabado === "realista" && !foto.generada && (
+                    <Boton
+                      variante="secundario"
+                      tamano="sm"
+                      className="self-start"
+                      disabled={ocupado}
+                      onClick={() =>
+                        setEncargo({ tipo: "retirar-personas", referenciaId: foto.id, medioId: foto.medio.id })
+                      }
+                    >
+                      <UserX className="size-4" aria-hidden /> Retirar personas
+                    </Boton>
+                  )}
                   {foto.medio.enPapelera && (
                     <span className="text-sm text-texto-suave">
                       Está en tu papelera: no se envía hasta que la restaures.
@@ -181,6 +198,17 @@ export function FichaLugar({ inicial }: { inicial: LugarVista }) {
               </li>
             ))}
           </ul>
+        )}
+        {lugar.acabado === "animado" && (
+          <div className="flex flex-wrap items-center gap-3">
+            <Boton variante="secundario" disabled={ocupado} onClick={() => setEncargo({ tipo: "candidato" })}>
+              <Sparkles className="size-5" aria-hidden /> Generar un candidato
+            </Boton>
+            <span className="text-sm text-texto-suave">
+              Desde la descripción y el estilo, con coste confirmado. Marca como maestra el que apruebes, o sube una
+              ilustración tuya.
+            </span>
+          </div>
         )}
         <p className="text-sm text-texto-suave">
           Quitar una foto de aquí no la borra de tu biblioteca. Cambiar las fotos o la maestra crea una versión nueva y
@@ -203,6 +231,17 @@ export function FichaLugar({ inicial }: { inicial: LugarVista }) {
           </ul>
         </section>
       )}
+
+      <DialogoFotoGenerada
+        key={encargo ? `${encargo.tipo}-${"referenciaId" in encargo ? encargo.referenciaId : ""}` : "ninguno"}
+        lugarId={lugar.id}
+        encargo={encargo}
+        onCerrar={() => setEncargo(null)}
+        onEncargado={(mensaje) => {
+          setEncargo(null);
+          setEncargado(mensaje);
+        }}
+      />
 
       <DialogoSelectorMedios
         abierto={eligiendo}
