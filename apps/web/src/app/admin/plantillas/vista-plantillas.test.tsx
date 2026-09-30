@@ -5,7 +5,7 @@ import { VistaPlantillas } from "./vista-plantillas";
 
 /**
  * Render de la lista de plantillas: una lista ordenable por capacidad (el orden solo importa dentro de ella),
- * con asa enfocable y con nombre, ayuda de teclado y Subir/Bajar como alternativa.
+ * con asa enfocable y con nombre y ayuda de teclado. Ordenar es solo arrastrando (o con el teclado).
  */
 
 const plantilla = (
@@ -60,9 +60,9 @@ describe("plantillas de la instalación", () => {
     expect(html).toContain("Espacio para coger");
   });
 
-  test("Subir y Bajar siguen ahí, con el nombre de la plantilla", () => {
-    expect(html).toContain('aria-label="Subir Fotograma de perfil"');
-    expect(html).toContain('aria-label="Bajar Fotograma base"');
+  test("no hay botones Subir ni Bajar: se ordena arrastrando", () => {
+    expect(html).not.toContain("Subir ");
+    expect(html).not.toContain("Bajar ");
   });
 
   test("el número de orden ya no se enseña", () => {

@@ -128,7 +128,7 @@ export function DialogoPlantilla({
       tamano="xl"
       disparador={
         <Boton
-          variante={editando ? "secundario" : "primario"}
+          variante={editando ? "cobalto" : "primario"}
           tamano="sm"
           disabled={plantilla?.trendStatus === "caducada"}
         >

@@ -7,7 +7,7 @@ export function SeccionAcciones() {
     <Seccion
       id="acciones"
       titulo="Botones"
-      descripcion="«Chispa» es la llamada principal a crear. Mínimo 44 × 44 px y foco visible."
+      descripcion="«Chispa» es la llamada principal a crear. Los colores vivos reparten las acciones de una fila para que no pese: cobalto edita, cian duplica, fucsia consulta y mandarina retira. Mínimo 44 × 44 px y foco visible."
     >
       <div className="grid gap-4">
         <Muestra titulo="Variantes">
@@ -19,6 +19,20 @@ export function SeccionAcciones() {
           <Boton variante="fantasma">Cancelar</Boton>
           <Boton variante="peligro" icono={<Trash2 className="size-5" />}>
             Borrar personaje
+          </Boton>
+        </Muestra>
+        <Muestra titulo="Colores para acciones frecuentes">
+          <Boton variante="cobalto" tamano="sm">
+            Editar
+          </Boton>
+          <Boton variante="cian" tamano="sm">
+            Duplicar
+          </Boton>
+          <Boton variante="fucsia" tamano="sm">
+            Ver versiones
+          </Boton>
+          <Boton variante="mandarina" tamano="sm">
+            Caducar
           </Boton>
         </Muestra>
         <Muestra titulo="Tamaños y estados">

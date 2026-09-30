@@ -13,8 +13,10 @@ algo que no era cierto**. Sin migraciones y sin cambios de precio.
   del admin, en las recomendaciones de modelos, en las escenas del plan y en los turnos del diálogo. Plantillas y
   presets se ordenan **dentro de su capacidad o categoría**: al soltar, una sola acción recibe el orden completo del
   grupo, comprueba que son exactamente sus elementos y lo renumera de 10 en 10 en una transacción, sin empates.
-  Subir y Bajar siguen ahí y **intercambian con la vecina**. El campo «Orden» de los formularios desaparece: lo
-  nuevo va al final de su grupo.
+  Subir y Bajar siguen en presets, modelos recomendadas y escenas, y **intercambian con la vecina**; en **Admin ›
+  Plantillas** se ordena solo arrastrando (o con el teclado). El campo «Orden» de los formularios desaparece: lo
+  nuevo va al final de su grupo. Los botones de las plantillas ganan color (cobalto edita, cian duplica, fucsia
+  consulta versiones y mandarina caduca) para que la fila pese menos.
 - **Las escenas del plan no guardan el orden al soltar**: aparece «Orden sin guardar» con «Guardar orden» y
   «Descartar». El aviso dice qué cambia antes de guardar: reordenar no quita la aprobación de ninguna escena ni
   repite ni cobra nada, y los clips ya producidos se quedan como están; cambian los números de escena, cuál abre

@@ -13,15 +13,12 @@ export function TarjetaPlantilla({
   plantilla,
   abierto,
   historial,
-  onMover,
   onHistorial,
   onResultado,
 }: {
   plantilla: PlantillaVista;
   abierto: boolean;
   historial: VersionPlantilla[];
-  /** Intercambia con la vecina: -1 sube, 1 baja. Alternativa sin arrastrar. */
-  onMover: (direccion: -1 | 1) => void;
   onHistorial: () => void;
   onResultado: (resultado: ResultadoPlantillas) => void;
 }) {
@@ -54,12 +51,6 @@ export function TarjetaPlantilla({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Boton variante="fantasma" tamano="sm" aria-label={`Subir ${plantilla.nombre}`} onClick={() => onMover(-1)}>
-            Subir
-          </Boton>
-          <Boton variante="fantasma" tamano="sm" aria-label={`Bajar ${plantilla.nombre}`} onClick={() => onMover(1)}>
-            Bajar
-          </Boton>
           <DialogoPlantilla
             key={`${plantilla.id}:${plantilla.actualizado}`}
             plantilla={plantilla}
@@ -101,7 +92,7 @@ export function TarjetaPlantilla({
         ))}
       </ul>
 
-      <Boton variante="fantasma" tamano="sm" className="self-start" onClick={() => onHistorial()}>
+      <Boton variante="fucsia" tamano="sm" className="self-start" onClick={() => onHistorial()}>
         {abierto ? "Ocultar versiones" : "Ver versiones"}
       </Boton>
 

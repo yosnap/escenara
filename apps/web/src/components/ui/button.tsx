@@ -1,7 +1,20 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cn } from "./cn";
 
-export type VarianteBoton = "primario" | "chispa" | "secundario" | "fantasma" | "peligro";
+export type VarianteBoton =
+  | "primario"
+  | "chispa"
+  | "secundario"
+  | "fantasma"
+  | "peligro"
+  | "cobalto"
+  | "cian"
+  | "fucsia"
+  | "mandarina";
+
+/** Color vivo mezclado al 75 % con blanco y texto oscuro: la misma receta de las pegatinas, que cumple AA en ambos temas. */
+const TONO = (color: string) =>
+  `bg-[color-mix(in_srgb,var(--color-${color})_75%,white)] text-[#182032] hover:brightness-105`;
 export type TamanoBoton = "sm" | "md" | "lg";
 
 const VARIANTES: Record<VarianteBoton, string> = {
@@ -10,6 +23,10 @@ const VARIANTES: Record<VarianteBoton, string> = {
   secundario: "border border-borde bg-superficie text-texto hover:bg-elevada",
   fantasma: "text-texto hover:bg-elevada",
   peligro: "bg-error text-superficie hover:brightness-110",
+  cobalto: TONO("v-cobalto"),
+  cian: TONO("v-cian"),
+  fucsia: TONO("v-fucsia"),
+  mandarina: TONO("v-mandarina"),
 };
 
 const TAMANOS: Record<TamanoBoton, string> = {

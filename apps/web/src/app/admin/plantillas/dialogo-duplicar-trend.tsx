@@ -36,7 +36,7 @@ export function DialogoDuplicarTrend({
       onAbiertoCambio={setAbierto}
       tamano="md"
       disparador={
-        <Boton variante="secundario" tamano="sm">
+        <Boton variante="cian" tamano="sm">
           Duplicar
         </Boton>
       }

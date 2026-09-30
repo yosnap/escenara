@@ -34,7 +34,7 @@ export function DialogoCaducarTrend({
       onAbiertoCambio={setAbierto}
       tamano="md"
       disparador={
-        <Boton variante="secundario" tamano="sm">
+        <Boton variante="mandarina" tamano="sm">
           Caducar
         </Boton>
       }

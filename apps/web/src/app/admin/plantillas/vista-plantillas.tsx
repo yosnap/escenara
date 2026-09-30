@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Aviso, EstadoVacio } from "@/components/ui/feedback";
 import { ListaOrdenable } from "@/components/ui/lista-ordenable";
 import { type Capacidad, ETIQUETA_CAPACIDAD } from "@/lib/catalogo";
-import { moverEnLista } from "@/lib/lista-ordenable";
 import type { PlantillaVista, VersionPlantilla } from "@/lib/presets";
 import { historialPlantillaAccion, ordenarGrupoPlantillasAccion, type ResultadoPlantillas } from "./acciones";
 import { DialogoPlantilla } from "./dialogo-plantilla";
@@ -63,15 +62,6 @@ export function VistaPlantillas({ inicial }: { inicial: PlantillaVista[] }) {
     return null;
   };
 
-  /** Subir y bajar intercambian con la vecina y pasan por la misma acción que arrastrar. */
-  const mover = async (plantilla: PlantillaVista, direccion: -1 | 1) => {
-    const grupo = plantillas.filter((p) => p.capacidad === plantilla.capacidad).map((p) => p.id);
-    const desde = grupo.indexOf(plantilla.id);
-    const hasta = desde + direccion;
-    if (hasta < 0 || hasta >= grupo.length) return;
-    await ordenar(plantilla.capacidad, moverEnLista(grupo, desde, hasta));
-  };
-
   const capacidades = [...new Set(plantillas.map((p) => p.capacidad))];
 
   return (
@@ -107,7 +97,6 @@ export function VistaPlantillas({ inicial }: { inicial: PlantillaVista[] }) {
                     plantilla={plantilla}
                     abierto={abierto === plantilla.id}
                     historial={historiales[plantilla.id] ?? []}
-                    onMover={(direccion) => void mover(plantilla, direccion)}
                     onHistorial={() => void verHistorial(plantilla.id)}
                     onResultado={alCambiar}
                   />
