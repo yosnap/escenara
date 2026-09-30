@@ -62,10 +62,17 @@ export async function cerrarTrabajosDeCuentaAntesDeBorrar(
   usuarioId: string,
   motivo: string,
 ): Promise<{ enMarcha: number; cancelados: number; siguenAbiertos: number }> {
+  // Un trabajo sin respuesta cuyo coste ya está apuntado (como no confirmado) no retiene el borrado.
   const [{ total: enMarcha } = { total: 0 }] = await db()
     .select({ total: count() })
     .from(generationJobs)
-    .where(and(eq(generationJobs.userId, usuarioId), inArray(generationJobs.state, [...ESTADOS_QUE_IMPIDEN])));
+    .where(
+      and(
+        eq(generationJobs.userId, usuarioId),
+        inArray(generationJobs.state, [...ESTADOS_QUE_IMPIDEN]),
+        sql`not (${generationJobs.state} = 'desconocido' and exists (select 1 from usage_ledger l where l.job_id = ${generationJobs.id} and l.entry_type = 'consumo'))`,
+      ),
+    );
   if (enMarcha > 0) return { enMarcha, cancelados: 0, siguenAbiertos: 0 };
   let cancelados = 0;
   for (;;) {

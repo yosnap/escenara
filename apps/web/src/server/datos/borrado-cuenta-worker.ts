@@ -19,7 +19,9 @@ import {
   scenes,
   users,
 } from "../db/esquema";
-import { cerrarTrabajoYGasto } from "../presupuesto/reserva";
+import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
+import { reconciliar } from "../generacion/seguimiento";
+import { cerrarGasto } from "../presupuesto/reserva";
 import { esUnicoAdministrador } from "./borrado-cuenta";
 import { apuntarObjetosPorBorrar, borrarObjetosApuntados, objetosDeLaCuenta } from "./borrado-de-objetos";
 import { agregarGastoDeCuenta, archivarPruebasDeCuenta } from "./retencion";
@@ -87,41 +89,50 @@ async function aplazar(fila: FilaBorradoCuenta, workerId: string, motivo: string
 }
 
 /**
- * Trabajos «sin respuesta del proveedor» de la cuenta. Pasados los días de espera extra tras la gracia, se cierran como
- * cancelados **sin cobro** (reserva liberada, consumo 0) y el borrado sigue.
+ * Trabajos «sin respuesta del proveedor» de la cuenta. Ya salieron hacia el proveedor y **pudieron cobrarse**: no se
+ * cierran como «sin cobro». Pasados los días de espera extra tras la gracia, se consulta al proveedor **una última vez**
+ * y, si sigue sin respuesta, el trabajo se queda en su estado honesto (sin respuesta) con su gasto **estimado** apuntado
+ * como no confirmado (consumo = lo reservado, no informado por el proveedor). Así el agregado que sobrevive no
+ * infravalora el gasto, y el borrado sigue.
  */
-async function cerrarDesconocidosVencidos(fila: FilaBorradoCuenta, usuarioId: string): Promise<number> {
+async function cerrarDesconocidosVencidos(
+  fila: FilaBorradoCuenta,
+  usuarioId: string,
+  h: Herramientas,
+): Promise<number> {
   const { borradoCuentaDiasEsperaDesconocidos: dias } = await leerAjustes();
   if (Date.now() < fila.scheduledFor.getTime() + dias * 24 * 3600_000) return 0;
-  const desconocidos = await db()
-    .select({ id: generationJobs.id })
-    .from(generationJobs)
-    .where(and(eq(generationJobs.userId, usuarioId), eq(generationJobs.state, "desconocido")))
-    .limit(500);
-  let cerrados = 0;
+  const desconocidos = (await db().execute(sql`
+    select j.id from generation_jobs j
+    where j.user_id = ${usuarioId} and j.state = 'desconocido'
+      and not exists (select 1 from usage_ledger l where l.job_id = j.id and l.entry_type = 'consumo')
+    limit 500
+  `)) as unknown as { id: string }[];
+  let apuntados = 0;
   for (const t of desconocidos) {
-    const hecho = await cerrarTrabajoYGasto(
-      t.id,
-      eq(generationJobs.state, "desconocido"),
-      {
-        state: "cancelado",
-        failureReason: "cancelado",
-        errorMessage: "Cancelado sin cobro al borrar la cuenta: el proveedor no llegó a responder en el plazo.",
-        lockedBy: null,
-        lockedUntil: null,
-        finishedAt: new Date(),
-      },
-      0,
-      "Cancelado sin cobro al borrar la cuenta: sin respuesta del proveedor pasado el plazo.",
-    );
-    if (hecho) cerrados++;
+    // Última oportunidad de saber qué pasó de verdad; si el proveedor contesta, el trabajo se cierra por su camino.
+    await reconciliar({ id: usuarioId, esAdmin: false }, t.id, h).catch(() => undefined);
+    const [actual] = await db()
+      .select({ state: generationJobs.state })
+      .from(generationJobs)
+      .where(eq(generationJobs.id, t.id));
+    if (actual?.state !== "desconocido") continue;
+    await cerrarGasto(t.id, null, NOTA_NO_CONCLUYENTE);
+    await db()
+      .update(generationJobs)
+      .set({ errorMessage: `${NOTA_NO_CONCLUYENTE} No se te cobra a ti; el proveedor pudo cobrarlo a la instalación.` })
+      .where(and(eq(generationJobs.id, t.id), eq(generationJobs.state, "desconocido")));
+    apuntados++;
   }
-  return cerrados;
+  return apuntados;
 }
 
+const NOTA_NO_CONCLUYENTE =
+  "Resultado no concluyente: el proveedor no ha respondido. Su coste estimado se apunta como no confirmado.";
+
 /** Lo que impide empezar: se dice sin datos de la cuenta, porque queda en el registro y se enseña. */
-async function motivoParaEsperar(fila: FilaBorradoCuenta, usuarioId: string): Promise<string | null> {
-  await cerrarDesconocidosVencidos(fila, usuarioId);
+async function motivoParaEsperar(fila: FilaBorradoCuenta, usuarioId: string, h: Herramientas): Promise<string | null> {
+  await cerrarDesconocidosVencidos(fila, usuarioId, h);
   const [montajes, paquetes, ejecuciones, revisiones] = await Promise.all([
     db()
       .select({ total: count() })
@@ -150,7 +161,7 @@ async function motivoParaEsperar(fila: FilaBorradoCuenta, usuarioId: string): Pr
   }
   const { enMarcha, siguenAbiertos } = await cerrarTrabajosDeCuentaAntesDeBorrar(usuarioId, "al borrar la cuenta");
   if (enMarcha > 0) {
-    return `Hay ${enMarcha} trabajo(s) en el proveedor o sin respuesta: se espera a que terminen (los que sigan sin respuesta se cancelan sin cobro pasados los días de espera).`;
+    return `Hay ${enMarcha} trabajo(s) en el proveedor o sin respuesta: se espera a que terminen. Los que sigan sin respuesta pasados los días de espera se apuntan con su coste estimado como no confirmado y el borrado sigue.`;
   }
   if (siguenAbiertos > 0)
     return `Hay ${siguenAbiertos} reserva(s) de trabajos que no se han podido liberar: tiene que resolverlo quien administra.`;
@@ -193,6 +204,10 @@ async function borrarFilas(fila: FilaBorradoCuenta, usuarioId: string): Promise<
       activosDeMarca: activos.length,
       paquetes: paquetes.length,
     };
+    const [noConcluyentes] = (await tx.execute(
+      sql`select count(*)::int as total from generation_jobs where user_id = ${usuarioId} and state = 'desconocido'`,
+    )) as unknown as { total: number }[];
+    resumen.trabajosNoConcluyentes = noConcluyentes?.total ?? 0;
     resumen.pruebasConservadas = await archivarPruebasDeCuenta(tx, usuarioId);
     resumen.apuntesAgregados = await agregarGastoDeCuenta(tx, usuarioId);
     if (usuario) {
@@ -270,6 +285,7 @@ export async function ejecutarBorradoCuenta(
   fila: FilaBorradoCuenta,
   workerId: string,
   borrar: (clave: string) => Promise<void> = borrarObjeto,
+  h: Herramientas = HERRAMIENTAS,
 ): Promise<ResultadoBorradoCuenta> {
   try {
     if (fila.state === "programado") {
@@ -285,7 +301,7 @@ export async function ejecutarBorradoCuenta(
           "Es el único administrador que queda sin borrado programado: antes tiene que haber otro administrador.",
         );
       }
-      const espera = await motivoParaEsperar(fila, fila.userId);
+      const espera = await motivoParaEsperar(fila, fila.userId, h);
       if (espera) return await aplazar(fila, workerId, espera);
       if (!(await borrarFilas(fila, fila.userId))) {
         await soltar(fila.id, workerId, {});
@@ -308,7 +324,8 @@ export async function ejecutarBorradoCuenta(
 export async function pasadaDeBorradosDeCuenta(
   workerId: string,
   borrar: (clave: string) => Promise<void> = borrarObjeto,
+  h: Herramientas = HERRAMIENTAS,
 ): Promise<ResultadoBorradoCuenta | null> {
   const fila = await tomarBorradoCuenta(workerId);
-  return fila ? ejecutarBorradoCuenta(fila, workerId, borrar) : null;
+  return fila ? ejecutarBorradoCuenta(fila, workerId, borrar, h) : null;
 }

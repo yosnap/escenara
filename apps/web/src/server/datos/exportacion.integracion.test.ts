@@ -317,6 +317,7 @@ describe.skipIf(!hayBaseDeDatos)("exportación del proyecto a ZIP", () => {
       leer: async function* () {
         throw new Error("almacenamiento caído");
       },
+      tamano: async () => 10,
       subir: async () => undefined,
       borrar: async () => undefined,
     };

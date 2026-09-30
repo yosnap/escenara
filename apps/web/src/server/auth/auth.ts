@@ -1,7 +1,7 @@
 import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { APIError, createAuthMiddleware } from "better-auth/api";
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import { admin } from "better-auth/plugins";
 import { count, sql } from "drizzle-orm";
@@ -12,7 +12,48 @@ import { type ClaveSecreta, huellaSecretos, leerSecreto } from "../boveda/secret
 import { enviarEnSegundoPlano, plantillaEnlace } from "../correo";
 import { db } from "../db/cliente";
 import * as esquema from "../db/esquema";
+import {
+  esRutaDeAdministracionDeLaLibreria,
+  MENSAJE_CUENTA_EN_BORRADO,
+  permitidaEnGracia,
+  tieneBorradoProgramado,
+  usuarioDelCorreo,
+  usuarioDelRestablecimiento,
+} from "./gracia";
 import { dentroDelLimite } from "./limite-cuenta";
+
+type ContextoAuth = Parameters<Parameters<typeof createAuthMiddleware>[0]>[0];
+
+const enGracia = () => new APIError("FORBIDDEN", { code: "CUENTA_EN_BORRADO", message: MENSAJE_CUENTA_EN_BORRADO });
+
+/**
+ * Periodo de gracia del borrado de la cuenta, también en las rutas de la librería: con sesión, solo entrar, salir,
+ * cerrar sesiones y consultar; sin sesión, no se puede pedir ni usar un restablecimiento de contraseña de una cuenta en
+ * gracia. Y las rutas de administración del plugin `admin` (suplantar, cambiar rol, borrar usuarios…), que Escenara no
+ * usa, se rechazan siempre: un borrado de cuenta pasa por el worker, con su retención.
+ */
+async function exigirPermitidaEnGracia(ctx: ContextoAuth): Promise<void> {
+  if (esRutaDeAdministracionDeLaLibreria(ctx.path)) {
+    throw new APIError("FORBIDDEN", {
+      code: "ADMINISTRACION_DESACTIVADA",
+      message: "Estas rutas de administración de cuentas no se usan en Escenara y están desactivadas.",
+    });
+  }
+  const cuerpo = (ctx.body ?? {}) as { email?: unknown; token?: unknown };
+  if (ctx.path === "/request-password-reset" && typeof cuerpo.email === "string") {
+    const id = await usuarioDelCorreo(cuerpo.email);
+    if (id && (await tieneBorradoProgramado(id))) throw enGracia();
+    return;
+  }
+  if (ctx.path === "/reset-password" && typeof cuerpo.token === "string") {
+    const id = await usuarioDelRestablecimiento(cuerpo.token);
+    if (id && (await tieneBorradoProgramado(id))) throw enGracia();
+    return;
+  }
+  if (permitidaEnGracia(ctx.path)) return;
+  const sesion = await getSessionFromCtx(ctx).catch(() => null);
+  if (sesion && (await tieneBorradoProgramado(sesion.user.id))) throw enGracia();
+}
 
 const URL_BASE = process.env.BETTER_AUTH_URL ?? "http://localhost:3021";
 
@@ -184,6 +225,7 @@ function crearAuth(ajustes: Ajustes, sociales: Record<string, { clientId: string
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
+        await exigirPermitidaEnGracia(ctx);
         // Registro cerrado: se rechaza antes del alta para poder decirlo (el alta en sí no revela errores).
         if (ctx.path === "/sign-up/email" && !(await registroDisponible())) {
           throw new APIError("FORBIDDEN", { code: "REGISTRO_CERRADO", message: "El registro está cerrado." });

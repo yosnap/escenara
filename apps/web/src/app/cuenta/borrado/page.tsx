@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -31,6 +31,9 @@ export default async function PaginaBorradoProgramado() {
     .where(eq(projects.userId, sesion.user.id))
     .orderBy(projects.createdAt);
   // Pasado el plazo y aún sin empezar: se dice por qué espera (sin datos de nadie; lo escribe el worker).
+  const [{ sinRespuesta } = { sinRespuesta: 0 }] = (await db().execute(
+    sql`select count(*)::int as "sinRespuesta" from generation_jobs where user_id = ${sesion.user.id} and state = 'desconocido'`,
+  )) as unknown as { sinRespuesta: number }[];
   const aplazado = borrado.state === "programado" && borrado.scheduledFor < new Date() && borrado.lastError !== "";
 
   return (
@@ -49,6 +52,13 @@ export default async function PaginaBorradoProgramado() {
               <Aviso tono="aviso">
                 El plazo ya ha pasado, pero el borrado está esperando: {borrado.lastError} Lo vuelve a intentar solo; si
                 no avanza, díselo a quien administra.
+              </Aviso>
+            )}
+            {sinRespuesta > 0 && (
+              <Aviso tono="info">
+                Tienes {sinRespuesta} {sinRespuesta === 1 ? "trabajo" : "trabajos"} sin respuesta del proveedor. El
+                borrado los espera unos días más; si siguen sin respuesta, se apunta su coste estimado como no
+                confirmado y el borrado sigue. No se te cobra nada más: el proveedor pudo cobrarlos a la instalación.
               </Aviso>
             )}
             <CancelarBorrado />

@@ -22,17 +22,21 @@ export async function agregarGastoDeCuenta(tx: Ejecutor, usuarioId: string): Pro
     sql`select count(*)::int as total from usage_ledger where user_id = ${usuarioId}`,
   )) as unknown as { total: number }[];
   await tx.execute(sql`
-    insert into usage_aggregates (month, provider, provider_name, model, entry_type, credits, amount_eur, entries)
+    insert into usage_aggregates (month, provider, provider_name, model, entry_type, credits, amount_eur, entries,
+                                  unconfirmed_credits)
     select date_trunc('month', l.created_at at time zone ${ZONA})::date, l.provider,
            -- El nombre de un servicio compatible lo escribe el usuario («la clave de Ana»): no sobrevive a la cuenta.
            case when l.provider = 'compatible' then '' else l.provider_name end, l.model,
-           l.entry_type, sum(l.credits), sum(coalesce(l.amount_eur, 0)), count(*)
+           l.entry_type, sum(l.credits), sum(coalesce(l.amount_eur, 0)), count(*),
+           -- Consumos que el proveedor no confirmó (estimados): se distinguen del gasto confirmado.
+           sum(case when l.entry_type = 'consumo' and not l.informed then l.credits else 0 end)
     from usage_ledger l where l.user_id = ${usuarioId}
     group by 1, 2, 3, 4, 5
     on conflict (month, provider, provider_name, model, entry_type) do update set
       credits = usage_aggregates.credits + excluded.credits,
       amount_eur = usage_aggregates.amount_eur + excluded.amount_eur,
       entries = usage_aggregates.entries + excluded.entries,
+      unconfirmed_credits = usage_aggregates.unconfirmed_credits + excluded.unconfirmed_credits,
       updated_at = now()
   `);
   return Number(cuenta?.total ?? 0);

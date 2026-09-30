@@ -1,12 +1,15 @@
 "use client";
 
 import { Database } from "lucide-react";
+import { useState } from "react";
+import { Boton } from "@/components/ui/button";
 import { Aviso } from "@/components/ui/feedback";
 import { Campo, EntradaTexto } from "@/components/ui/field";
 import { fechaYHora } from "@/lib/fechas";
 import type { Ajustes } from "@/server/ajustes";
 import type { AjustesDatos } from "@/server/ajustes-datos";
 import type { EstadoTusDatos } from "@/server/datos/estado-admin";
+import { reintentarArchivosFallidos } from "./acciones-datos";
 import { Seccion } from "./seccion-ajustes";
 
 /**
@@ -27,7 +30,7 @@ const CAMPOS: { clave: keyof AjustesDatos; etiqueta: string; ayuda: string; min:
     clave: "borradoCuentaDiasEsperaDesconocidos",
     etiqueta: "Días de espera a un trabajo sin respuesta al borrar una cuenta",
     ayuda:
-      "Pasada la gracia, un trabajo «sin respuesta del proveedor» retiene el borrado estos días. Después se cancela sin cobro y el borrado sigue.",
+      "Pasada la gracia, un trabajo «sin respuesta del proveedor» retiene el borrado estos días. Después se consulta una última vez y, si sigue sin respuesta, se apunta su coste estimado como no confirmado (el proveedor pudo cobrarlo) y el borrado sigue.",
     min: 0,
     max: 30,
   },
@@ -94,9 +97,41 @@ export function SeccionDatos({
   );
 }
 
+function ReintentarFallidos() {
+  const [enviando, setEnviando] = useState(false);
+  const [hecho, setHecho] = useState<number | null>(null);
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <Boton
+        variante="secundario"
+        tamano="sm"
+        cargando={enviando}
+        onClick={async () => {
+          setEnviando(true);
+          const r = await reintentarArchivosFallidos();
+          setEnviando(false);
+          setHecho(r.reintentados);
+        }}
+      >
+        Reintentar los archivos fallidos
+      </Boton>
+      {hecho !== null && (
+        <Aviso tono="correcto">
+          {hecho} {hecho === 1 ? "archivo vuelve" : "archivos vuelven"} a la cola: el worker los intenta en la próxima
+          pasada.
+        </Aviso>
+      )}
+    </div>
+  );
+}
+
 /** Lo que no puede quedarse atascado en silencio: objetos por borrar y borrados de cuenta aplazados. */
 function EstadoDeTusDatos({ estado }: { estado: EstadoTusDatos }) {
-  const limpio = estado.objetosPendientes === 0 && estado.objetosFallidos === 0 && estado.aplazados.length === 0;
+  const limpio =
+    estado.objetosPendientes === 0 &&
+    estado.objetosFallidos === 0 &&
+    estado.aplazados.length === 0 &&
+    estado.noConcluyentes.length === 0;
   if (limpio)
     return <Aviso tono="correcto">No hay archivos pendientes de borrar ni borrados de cuenta aplazados.</Aviso>;
   return (
@@ -105,8 +140,18 @@ function EstadoDeTusDatos({ estado }: { estado: EstadoTusDatos }) {
         <Aviso tono={estado.objetosFallidos > 0 ? "error" : "aviso"}>
           Archivos de proyectos o cuentas borrados que el almacenamiento aún no ha dejado borrar:{" "}
           {estado.objetosPendientes} pendientes (el worker los reintenta con retroceso) y {estado.objetosFallidos}{" "}
-          fallidos tras todos los intentos (están en la tabla <code className="font-mono">storage_deletions</code>:
-          revisa el almacenamiento y vuelve a ponerlos en «pendiente»).
+          fallidos tras todos los intentos. Cuando el almacenamiento vuelva a responder, reintenta los fallidos.
+        </Aviso>
+      )}
+      {estado.objetosFallidos > 0 && <ReintentarFallidos />}
+      {estado.noConcluyentes.length > 0 && (
+        <Aviso tono="aviso">
+          Cuentas borradas con trabajos sin respuesta del proveedor (últimos 90 días):{" "}
+          {estado.noConcluyentes
+            .map((n) => `${n.id.slice(0, 8)} (${n.trabajos} el ${fechaYHora(n.terminado)})`)
+            .join(", ")}
+          . Su coste se apuntó estimado y no confirmado: el proveedor pudo cobrarlo a la instalación; compruébalo en su
+          panel.
         </Aviso>
       )}
       {estado.aplazados.length > 0 && (

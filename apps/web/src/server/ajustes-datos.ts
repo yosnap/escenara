@@ -7,7 +7,8 @@ export interface AjustesDatos {
   borradoCuentaDiasGracia: number;
   /**
    * Días de más, pasada la gracia, que un borrado de cuenta espera a un trabajo «sin respuesta del proveedor». Después
-   * ese trabajo se cierra como cancelado sin cobro y el borrado sigue: no puede bloquearse para siempre.
+   * se consulta una última vez y, si sigue sin respuesta, su coste estimado se apunta como no confirmado (el proveedor
+   * pudo cobrarlo) y el borrado sigue: no puede bloquearse para siempre.
    */
   borradoCuentaDiasEsperaDesconocidos: number;
   /** Tamaño máximo del ZIP de un proyecto, en MB. Por encima, la exportación falla diciendo cuánto ocupaba. */

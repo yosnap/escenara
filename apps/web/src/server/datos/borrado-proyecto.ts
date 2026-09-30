@@ -2,7 +2,7 @@ import { and, count, eq, gte, inArray, sql } from "drizzle-orm";
 import { borrarObjeto } from "../almacenamiento";
 import { proyectoPropio } from "../asistente/consulta";
 import { olvidarPercibidoDeProyecto } from "../coherencia/registro";
-import { db } from "../db/cliente";
+import { db, type Ejecutor } from "../db/cliente";
 import {
   assistantRuns,
   type FilaTrabajo,
@@ -78,12 +78,13 @@ const trabajosDe = (proyectoId: string): Promise<FilaTrabajo[]> =>
 async function derivadosDe(
   proyectoId: string,
   usuarioId: string,
+  ejecutor: Ejecutor = db(),
 ): Promise<{
   borrar: { id: string; clave: string }[];
   enUsoFuera: number;
   videos: number;
 }> {
-  const filas = (await db().execute<{ id: string; clave: string; video: boolean; fuera: boolean }>(sql`
+  const filas = (await ejecutor.execute<{ id: string; clave: string; video: boolean; fuera: boolean }>(sql`
     with propios as (
       select j.result_media_id as id, false as video from generation_jobs j
       join scenes s on s.id = j.scene_id
@@ -250,11 +251,8 @@ export async function borrarProyectoConDerivados(
   }
 
   // ── 3. Qué objetos hay que borrar, antes de perder las filas que los apuntan.
-  const derivados = await derivadosDe(proyecto.id, actor.id);
-  const claves = [
-    ...new Set([...derivados.borrar.map((d) => d.clave), ...(await clavesDeExportaciones([proyecto.id]))]),
-  ];
   const idsTrabajos = trabajos.map((t) => t.id);
+  let claves: string[] = [];
 
   // ── 4. Filas, en una transacción. Mismo orden de bloqueo que el encolado (`cola/encolar.ts`): **primero la fila del
   // usuario**, después el proyecto. Así un encolado en curso termina antes y aquí se ve su trabajo (409), y uno que
@@ -286,6 +284,12 @@ export async function borrarProyectoConDerivados(
         `Se acaba de encolar un trabajo en «${titulo}». No se ha borrado nada del proyecto: vuelve a intentarlo.${yaCancelados(cancelados)}`,
       );
     }
+    // ── 3. Qué objetos hay que borrar, **ya con los candados puestos**: un medio que se acabe de empezar a usar fuera se
+    // conserva, y el ZIP de una exportación terminada hace un instante también se apunta.
+    const derivados = await derivadosDe(proyecto.id, actor.id, tx);
+    claves = [
+      ...new Set([...derivados.borrar.map((d) => d.clave), ...(await clavesDeExportaciones([proyecto.id], tx))]),
+    ];
     if (idsTrabajos.length > 0) {
       await tx
         .update(usageLedger)

@@ -275,16 +275,14 @@ describe.skipIf(!hayBaseDeDatos)("borrar un proyecto a la vez que se encola", ()
       })
       .returning();
     if (!trabajo) throw new Error("sin trabajo");
-    await db()
-      .insert(usageLedger)
-      .values({
-        userId: ana.id,
-        jobId: trabajo.id,
-        provider: "kie",
-        model: "nano-banana-2-lite",
-        entryType: "reserva",
-        credits: 4,
-      });
+    await db().insert(usageLedger).values({
+      userId: ana.id,
+      jobId: trabajo.id,
+      provider: "kie",
+      model: "nano-banana-2-lite",
+      entryType: "reserva",
+      credits: 4,
+    });
     await db().delete(characters).where(eq(characters.id, personaje.id));
     llamadasAlProveedor = 0;
     await enviarEncolados(h);

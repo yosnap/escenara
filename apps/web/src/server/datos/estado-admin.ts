@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, lt, or } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, lt, or, sql } from "drizzle-orm";
 import { db } from "../db/cliente";
 import { accountDeletions } from "../db/esquema";
 import { estadoDeObjetosPorBorrar } from "./borrado-de-objetos";
@@ -22,10 +22,15 @@ export interface EstadoTusDatos {
   objetosPendientes: number;
   objetosFallidos: number;
   aplazados: BorradoAplazadoVista[];
+  /**
+   * Borrados de cuenta de los últimos 90 días con trabajos sin respuesta del proveedor: su coste se apuntó estimado y
+   * no confirmado. Quien administra puede comprobarlo en el panel del proveedor.
+   */
+  noConcluyentes: { id: string; terminado: string; trabajos: number }[];
 }
 
 export async function estadoTusDatos(): Promise<EstadoTusDatos> {
-  const [objetos, filas] = await Promise.all([
+  const [objetos, filas, concluidos] = await Promise.all([
     estadoDeObjetosPorBorrar(),
     db()
       .select()
@@ -37,6 +42,17 @@ export async function estadoTusDatos(): Promise<EstadoTusDatos> {
         ),
       )
       .orderBy(asc(accountDeletions.scheduledFor))
+      .limit(50),
+    db()
+      .select()
+      .from(accountDeletions)
+      .where(
+        and(
+          eq(accountDeletions.state, "completado"),
+          gt(accountDeletions.completedAt, new Date(Date.now() - 90 * 24 * 3600_000)),
+          sql`coalesce((${accountDeletions.summary}->>'trabajosNoConcluyentes')::int, 0) > 0`,
+        ),
+      )
       .limit(50),
   ]);
   return {
@@ -52,5 +68,10 @@ export async function estadoTusDatos(): Promise<EstadoTusDatos> {
         intentos: f.attempts,
         motivo: f.lastError,
       })),
+    noConcluyentes: concluidos.map((f) => ({
+      id: f.id,
+      terminado: (f.completedAt ?? f.requestedAt).toISOString(),
+      trabajos: Number(f.summary.trabajosNoConcluyentes ?? 0),
+    })),
   };
 }

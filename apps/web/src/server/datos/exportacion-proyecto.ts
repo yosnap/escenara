@@ -7,7 +7,7 @@ import { validarProyectoExportado } from "@/lib/proyecto-exportado";
 import { leerAjustes } from "../ajustes";
 import { borrarObjeto, guardarArchivo, leerObjeto, urlTemporalAdjunto } from "../almacenamiento";
 import { proyectoPropio } from "../asistente/consulta";
-import { db } from "../db/cliente";
+import { db, type Ejecutor } from "../db/cliente";
 import { type FilaExportacionProyecto, projectExports } from "../db/esquema";
 import type { Actor } from "../media/servicio";
 import { ErrorDatos } from "./errores";
@@ -217,12 +217,15 @@ async function marcarFallida(id: string, workerId: string, mensaje: string): Pro
 export interface HerramientasEmpaquetado {
   /** Contenido del objeto por trozos: nunca se carga entero en memoria. */
   leer: (clave: string) => AsyncIterable<Uint8Array>;
+  /** Tamaño del objeto sin descargarlo (`HEAD`), para rechazar antes lo que no va a caber. */
+  tamano: (clave: string) => Promise<number>;
   subir: (clave: string, ruta: string) => Promise<void>;
   borrar: (clave: string) => Promise<void>;
 }
 
 export const EMPAQUETADO_REAL: HerramientasEmpaquetado = {
   leer: (clave) => leerObjeto(clave).stream(),
+  tamano: async (clave) => (await leerObjeto(clave).stat()).size,
   subir: (clave, ruta) => guardarArchivo(clave, ruta, "application/zip"),
   borrar: borrarObjeto,
 };
@@ -252,20 +255,31 @@ export async function empaquetar(
     const destino = Bun.file(ruta).writer();
     const zip = new EscritorZip(destino);
     try {
+      const renovar = renovadorDeToma(fila.id, workerId);
       for (const [i, archivo] of paquete.archivos.entries()) {
-        const descargado = await descargarATemporal(h.leer(archivo.clave), temporal).catch((error: unknown) => {
+        const demasiado = () =>
+          new ErrorPaquete(
+            `El paquete pasaba de ${enMb(maximo)}, el máximo de esta instalación, al añadir el archivo ${i + 1} de ${paquete.archivos.length}. Pide a quien administra que suba el límite en Admin › Ajustes o descarga el montaje desde su pantalla.`,
+          );
+        // Primero su tamaño (sin descargarlo): lo que no va a caber se rechaza antes de bajarlo.
+        const previsto = await h.tamano(archivo.clave).catch((error: unknown) => {
+          throw new ErrorAlmacen(`No se ha podido consultar ${archivo.ruta} en el almacenamiento: ${detalle(error)}`);
+        });
+        if (zip.tamano + previsto > maximo) throw demasiado();
+        const descargado = await descargarATemporal(
+          h.leer(archivo.clave),
+          temporal,
+          maximo - zip.tamano,
+          renovar,
+        ).catch((error: unknown) => {
+          if (error instanceof ErrorPaquete) throw demasiado();
           throw new ErrorAlmacen(`No se ha podido leer ${archivo.ruta} del almacenamiento: ${detalle(error)}`);
         });
         archivo.medio.sha256 = descargado.sha256;
         archivo.medio.bytes = descargado.bytes;
-        if (zip.tamano + descargado.bytes > maximo) {
-          throw new ErrorPaquete(
-            `El paquete pasaba de ${enMb(maximo)}, el máximo de esta instalación, al añadir el archivo ${i + 1} de ${paquete.archivos.length}. Pide a quien administra que suba el límite en Admin › Ajustes o descarga el montaje desde su pantalla.`,
-          );
-        }
         await zip.agregarDesdeArchivo(archivo.ruta, temporal, descargado.crc, descargado.bytes);
         await rm(temporal, { force: true });
-        await renovarToma(fila.id, workerId);
+        await renovar();
       }
       paquete.proyecto.medios = paquete.archivos.map((a) => a.medio);
       for (const texto of paquete.textos) await zip.agregar(texto.ruta, new TextEncoder().encode(texto.contenido));
@@ -371,9 +385,9 @@ export async function barrerExportacionesCaducadas(
 }
 
 /** Claves de los ZIP de un conjunto de proyectos, para borrarlas junto con ellos. */
-export async function clavesDeExportaciones(proyectoIds: string[]): Promise<string[]> {
+export async function clavesDeExportaciones(proyectoIds: string[], ejecutor: Ejecutor = db()): Promise<string[]> {
   if (proyectoIds.length === 0) return [];
-  const filas = await db()
+  const filas = await ejecutor
     .select({ clave: projectExports.storageKey })
     .from(projectExports)
     .where(and(inArray(projectExports.projectId, proyectoIds), isNotNull(projectExports.storageKey)));
@@ -382,10 +396,16 @@ export async function clavesDeExportaciones(proyectoIds: string[]): Promise<stri
 
 class ErrorAlmacen extends Error {}
 
-/** Copia un objeto al disco por trozos, calculando a la vez su CRC-32 (para el ZIP) y su SHA-256 (para `proyecto.json`). */
+/**
+ * Copia un objeto al disco por trozos, calculando a la vez su CRC-32 (para el ZIP) y su SHA-256 (para `proyecto.json`).
+ * Corta en cuanto pasa de `hueco` bytes (el tamaño que informó el almacenamiento podía no ser el real) y renueva la
+ * toma mientras baja, porque un solo archivo grande puede tardar más que ella.
+ */
 async function descargarATemporal(
   trozos: AsyncIterable<Uint8Array>,
   ruta: string,
+  hueco: number,
+  renovar: () => Promise<void>,
 ): Promise<{ crc: number; sha256: string; bytes: number }> {
   const escritor = Bun.file(ruta).writer();
   const huella = createHash("sha256");
@@ -393,10 +413,12 @@ async function descargarATemporal(
   let bytes = 0;
   try {
     for await (const trozo of trozos) {
+      bytes += trozo.byteLength;
+      if (bytes > hueco) throw new ErrorPaquete("El archivo no cabe en el paquete.");
       crc = Bun.hash.crc32(trozo, crc);
       huella.update(trozo);
       escritor.write(trozo);
-      bytes += trozo.byteLength;
+      await renovar();
     }
   } finally {
     await escritor.end();
@@ -404,14 +426,16 @@ async function descargarATemporal(
   return { crc, sha256: huella.digest("hex"), bytes };
 }
 
-/** Alarga la toma mientras se empaqueta: un paquete grande tarda más que la toma inicial. */
-let ultimaRenovacion = 0;
-async function renovarToma(id: string, workerId: string): Promise<void> {
-  if (Date.now() - ultimaRenovacion < 60_000) return;
-  ultimaRenovacion = Date.now();
-  await db()
-    .update(projectExports)
-    .set({ lockedUntil: new Date(Date.now() + MS_TOMA_EXPORTACION_PROYECTO) })
-    .where(and(eq(projectExports.id, id), eq(projectExports.lockedBy, workerId)));
+/** Alarga la toma (como mucho una vez por minuto) mientras se empaqueta: un paquete grande tarda más que ella. */
+function renovadorDeToma(id: string, workerId: string): () => Promise<void> {
+  let ultima = Date.now();
+  return async () => {
+    if (Date.now() - ultima < 60_000) return;
+    ultima = Date.now();
+    await db()
+      .update(projectExports)
+      .set({ lockedUntil: new Date(Date.now() + MS_TOMA_EXPORTACION_PROYECTO) })
+      .where(and(eq(projectExports.id, id), eq(projectExports.lockedBy, workerId)));
+  };
 }
 const detalle = (error: unknown) => (error instanceof Error ? error.message : String(error));

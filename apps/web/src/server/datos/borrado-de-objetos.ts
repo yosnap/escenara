@@ -130,3 +130,13 @@ export async function objetosDeLaCuenta(cuentaId: string): Promise<{ pendientes:
     fallidos: filas.find((f) => f.estado === "fallido")?.total ?? 0,
   };
 }
+
+/** Vuelve a poner en cola los objetos «fallidos» (tras arreglar el almacenamiento). Devuelve cuántos. */
+export async function reintentarObjetosFallidos(): Promise<number> {
+  const filas = await db()
+    .update(storageDeletions)
+    .set({ state: "pendiente", attempts: 0, nextAttemptAt: new Date(), lastError: "" })
+    .where(eq(storageDeletions.state, "fallido"))
+    .returning({ id: storageDeletions.id });
+  return filas.length;
+}
