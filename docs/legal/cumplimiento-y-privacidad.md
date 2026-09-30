@@ -154,10 +154,12 @@ Lo que se hace, con su motivo, para que la revisión jurídica lo confirme o lo 
   un **proyecto**. Las claves no incluyen el identificador de la cuenta (son identificadores aleatorios), y la fila
   desaparece con el objeto. Quien administra puede volver a poner en cola los fallidos desde el panel.
 - **Durante la gracia** la cuenta no puede generar ni gastar (el encolado lo rechaza y el worker no envía nada suyo),
-  editar ni subir, ni cambiar su correo, contraseña, passkeys o cuentas vinculadas, ni borrarse por otra vía; sí entrar
-  y salir, cerrar sesiones, cancelar el borrado, ver su historial y pedir o descargar la exportación de sus proyectos
-  (portabilidad). El titular recibe un correo al pedir y al cancelar el borrado, sin enlaces que permitan cancelar sin
-  entrar. Las rutas de administración de cuentas de la librería (suplantar, cambiar rol, borrar usuarios) están
+  editar ni subir, ni cambiar su correo con sesión, añadir passkeys o vincular cuentas, ni borrarse por otra vía; sí
+  entrar y salir, cerrar sesiones, cancelar el borrado, ver su historial y pedir o descargar la exportación de sus
+  proyectos (portabilidad). **Restablecer la contraseña** por correo sigue disponible, responde igual que para
+  cualquier otra cuenta (no revela si está en gracia) y **cancela el borrado**: quien controla el buzón puede recuperar
+  la cuenta si otra persona le cambió la contraseña y pidió borrarla. El titular recibe un correo al pedir y al
+  cancelar el borrado (también si lo cancela un restablecimiento), sin enlaces que permitan cancelar sin entrar. Las rutas de administración de cuentas de la librería (suplantar, cambiar rol, borrar usuarios) están
   desactivadas: todo borrado de cuenta pasa por este flujo, con su retención.
 - Si el borrado tiene que esperar (un trabajo en el proveedor, el único administrador…), el motivo se enseña al usuario
   y a quien administra. Un trabajo **sin respuesta del proveedor** ya salió y pudo cobrarse: solo retiene el borrado unos

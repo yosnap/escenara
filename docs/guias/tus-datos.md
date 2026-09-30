@@ -100,7 +100,7 @@ En **Tu cuenta › Tus datos › «Borrar mi cuenta»**. Es irreversible, así q
 3. Hay que **escribir «borrar mi cuenta»**.
 4. Hay un **periodo de gracia** (7 días de fábrica). Durante ese tiempo tu cuenta queda **desactivada**: tus demás
    sesiones se cierran, lo que estaba en cola se cancela y **no puedes generar, gastar, editar ni subir nada**, ni
-   cambiar tu correo, tu contraseña o tus passkeys. Si
+   cambiar tu correo o añadir passkeys. Si
    entras, llegas a **«Tu cuenta se va a borrar»**, donde ves la fecha, puedes **cancelar el borrado**, ver tu historial
    y **pedir y descargar el ZIP de cada proyecto** (la portabilidad no se corta por haber pedido el borrado).
 5. Si eres **el único administrador** (sin contar a los que ya tienen su borrado programado), no puedes borrarte:
@@ -118,9 +118,13 @@ administra lo ve en Admin › Ajustes › Tus datos). Un trabajo del que el prov
 cobrarse: solo retiene el borrado unos días más (3 de fábrica). Después se pregunta al proveedor una última vez y, si
 sigue sin contestar, su coste estimado se apunta como **no confirmado** y el borrado sigue.
 
-Al pedir el borrado y al cancelarlo te llega un **correo**: si no has sido tú, entra, cancélalo y cambia después tu
-contraseña (durante la gracia no se puede cambiar la contraseña, el correo ni las passkeys, para que nadie se quede con
-la cuenta mientras tanto).
+Al pedir el borrado y al cancelarlo te llega un **correo**. Si no has sido tú, tienes dos salidas: **entra y
+cancélalo**, o **restablece tu contraseña** desde «He olvidado mi contraseña» (sirve aunque alguien te la haya
+cambiado): restablecerla **cancela el borrado** y cierra todas las sesiones. Durante la gracia no se puede cambiar el
+correo ni añadir passkeys, para que nadie se quede con la cuenta mientras tanto.
+
+Si tenías trabajos sin respuesta del proveedor, «Tu cuenta se va a borrar» dice cuántos créditos estimados suman: el
+proveedor no respondió y el coste es una estimación no confirmada.
 
 **Desaparece**: tus proyectos, personajes, productos y lugares; todos tus archivos (también del almacenamiento); tus
 claves de proveedor, passkeys y sesiones; tu presupuesto, tu historial y tus apuntes de gasto; tu kit de marca y tus

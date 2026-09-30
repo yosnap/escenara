@@ -25,11 +25,13 @@ respuestas grabadas del proveedor. **Una migración aditiva**: lee «Actualizar 
 - **Borrar la cuenta** (Tu cuenta › Tus datos): sesión reciente (haber entrado hace menos de 10 minutos), lista de
   todo lo que desaparece, exportar cada proyecto antes, frase escrita y **periodo de gracia** (7 días de fábrica). En la
   gracia la cuenta está desactivada: **no puede generar ni gastar** (el encolado lo rechaza y el worker no envía nada
-  suyo, tampoco un reintento), **ni editar o subir nada** (403 con el motivo), **ni cambiar su correo, su contraseña,
-  sus passkeys o sus cuentas vinculadas, ni borrarse por otra vía** (las rutas de Better Auth lo rechazan). Sí puede
+  suyo, tampoco un reintento), **ni editar o subir nada** (403 con el motivo), **ni cambiar su correo con sesión,
+  añadir passkeys o vincular cuentas, ni borrarse por otra vía** (las rutas de Better Auth lo rechazan). Sí puede
   entrar y salir, cerrar sesiones, cancelar el borrado, ver su historial y **pedir y descargar el ZIP de sus
-  proyectos** desde `/cuenta/borrado`. El titular recibe un **correo al pedirlo y al cancelarlo** (sin enlaces que
-  permitan cancelar sin entrar). El
+  proyectos** desde `/cuenta/borrado`. **Restablecer la contraseña** («He olvidado mi contraseña») sigue funcionando
+  igual que siempre, sin revelar si la cuenta está en gracia, **y cancela el borrado**: es la salida del titular si
+  alguien le cambió la contraseña. El titular recibe un **correo al pedirlo y al cancelarlo** (también cuando lo
+  cancela un restablecimiento), sin enlaces que permitan cancelar sin entrar. El
   único administrador (sin contar a los que ya tienen su borrado programado) no puede borrarse. Si un administrador
   publicó ejemplos de plantillas de la instalación, el diálogo avisa de que esas plantillas se quedarán sin ejemplo
   (no se borran, ni se toca ningún medio ajeno).
@@ -62,6 +64,12 @@ respuestas grabadas del proveedor. **Una migración aditiva**: lee «Actualizar 
   fila del usuario; el encolado comprueba dentro de su transacción que la escena y el personaje siguen existiendo, y el
   worker cierra sin cobro (reserva liberada, consumo 0) un trabajo cuyo proyecto, escena o personaje ha desaparecido
   antes de enviarlo, diciendo cuál. Con un personaje borrado, sus fotos nunca salen sin consentimiento que revisar.
+- **El filtro de secretos de la exportación** solo revisa el texto libre (título, idea, guion, dirección, subtítulos) y
+  solo busca valores que parecen una clave (patrones como `sk-…`, JWT, `Bearer …`, cadenas largas de alta entropía,
+  «clave = valor» con nombres de secreto, y los secretos de la instalación que no son una palabra corriente). Antes,
+  una contraseña de base de datos como «escenara» estropeaba todas las exportaciones.
+- **El coste no confirmado se ve**: en el historial (un trabajo sin respuesta lo dice), en `/cuenta/borrado` (créditos
+  estimados) y en Admin › Ajustes › Tus datos (créditos no confirmados en cuentas borradas).
 - **La exportación lee cada archivo por trozos** (nunca entero en memoria) y alarga su toma mientras empaqueta; la clave
   del ZIP ya no lleva el identificador de la cuenta y es distinta en cada intento.
 - Al borrar la cuenta, de ella solo queda el **gasto agregado** por mes, proveedor, modelo y tipo, y una **prueba
