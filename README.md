@@ -5,6 +5,8 @@
 
 <p align="center"><strong>Da vida a cada escena</strong><br>Estudio abierto de personajes y vídeo</p>
 
+<p align="center">Un proyecto de <a href="https://codeia.dev">codeia.dev</a>, la comunidad de desarrolladores que construyen con inteligencia artificial.</p>
+
 <p align="center">
   <a href="LICENSE"><img alt="Licencia AGPL 3.0" src="https://img.shields.io/badge/licencia-AGPL--3.0-2753D7"></a>
   <img alt="Versión 0.49.0" src="https://img.shields.io/badge/versión-0.49.0-F0663D">

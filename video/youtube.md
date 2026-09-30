@@ -30,6 +30,8 @@ Escenara es un estudio abierto: pones tus propias claves de los proveedores de I
 Escenara. Da vida a cada escena.
 Código abierto en GitHub: https://github.com/yosnap/escenara
 
+Escenara es un proyecto de codeia.dev (https://codeia.dev), la comunidad de desarrolladores que construimos proyectos como este usando inteligencia artificial.
+
 Capítulos
 0:00 Qué es Escenara
 0:12 Tus claves, tu gasto y tu personaje
