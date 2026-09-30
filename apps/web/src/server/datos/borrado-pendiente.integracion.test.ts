@@ -146,7 +146,7 @@ describe.skipIf(!hayBaseDeDatos)("borrados que no pueden quedarse atascados en s
     await db().delete(e.storageDeletions).where(eq(e.storageDeletions.storageKey, medio.clave));
   });
 
-  test("un trabajo sin respuesta aplaza el borrado con su motivo a la vista y, pasado el plazo extra, se cancela sin cobro", async () => {
+  test("un trabajo sin respuesta aplaza el borrado con su motivo a la vista y, pasado el plazo extra, su coste estimado queda como no confirmado", async () => {
     const ana = await nueva();
     const p = await proyectoProducido({ id: ana.id, esAdmin: false });
     const [trabajo] = await db()
@@ -157,7 +157,12 @@ describe.skipIf(!hayBaseDeDatos)("borrados que no pueden quedarse atascados en s
     // Su reserva vuelve a quedar abierta, como la de un trabajo del que el proveedor no ha contestado.
     await db()
       .delete(e.usageLedger)
-      .where(and(eq(e.usageLedger.jobId, trabajo?.id ?? ""), eq(e.usageLedger.entryType, "liberacion")));
+      .where(
+        and(eq(e.usageLedger.jobId, trabajo?.id ?? ""), sql`${e.usageLedger.entryType} in ('liberacion', 'consumo')`),
+      );
+    const antes = await db()
+      .select({ total: sql<number>`coalesce(sum(${e.usageAggregates.unconfirmedCredits}), 0)::float8` })
+      .from(e.usageAggregates);
     expect((await pedirBorrado(ana)).status).toBe(201);
 
     // Recién vencida la gracia: espera, con el motivo en su fila (lo enseñan /cuenta/borrado y el admin).
@@ -177,11 +182,11 @@ describe.skipIf(!hayBaseDeDatos)("borrados que no pueden quedarse atascados en s
     await vencer(ana.id, 4);
     expect(await pasadaDeBorradosDeCuenta(WORKER)).toBe("completado");
     expect(await db().select().from(e.users).where(eq(e.users.id, ana.id))).toHaveLength(0);
-    const apuntes = await db()
-      .select()
-      .from(e.usageAggregates)
-      .where(and(eq(e.usageAggregates.model, "modelo-de-prueba"), eq(e.usageAggregates.entryType, "consumo")));
-    expect(apuntes.length).toBeGreaterThan(0);
+    // No se da por «sin cobro»: su coste estimado (lo reservado, 10) sobrevive en el agregado como no confirmado.
+    const despues = await db()
+      .select({ total: sql<number>`coalesce(sum(${e.usageAggregates.unconfirmedCredits}), 0)::float8` })
+      .from(e.usageAggregates);
+    expect(Number(despues[0]?.total) - Number(antes[0]?.total)).toBeGreaterThanOrEqual(10);
   });
 
   test("un administrador (no único) avisa de los ejemplos de plantillas y al irse las deja sin ejemplo, sin tocar lo ajeno", async () => {
