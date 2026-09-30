@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { cache } from "react";
 import type { RolLogo } from "@/lib/marca-vista";
 import { generarCss } from "@/lib/tokens";
 import { db } from "../db/cliente";
@@ -28,15 +29,18 @@ export interface MarcaAplicada {
   iconos: { favicon16?: string; favicon32?: string; icono192?: string; icono512?: string; social?: string };
 }
 
-const cache = globalThis as { __escenaraMarcaAplicada?: MarcaAplicada };
+const enProceso = globalThis as { __escenaraMarcaAplicada?: MarcaAplicada };
 
 export function olvidarMarcaAplicada(): void {
-  cache.__escenaraMarcaAplicada = undefined;
+  enProceso.__escenaraMarcaAplicada = undefined;
 }
 
 const url = (id: string | undefined) => (id ? urlDeActivo(id) : undefined);
 
-export async function marcaAplicada(): Promise<MarcaAplicada | null> {
+/** Una sola lectura por petición: la usan los metadatos y el layout de la misma página. */
+export const marcaAplicada = cache(leerMarcaAplicada);
+
+async function leerMarcaAplicada(): Promise<MarcaAplicada | null> {
   try {
     const [vigente] = await db()
       .select({ id: brandVersions.id, publicadaEn: brandVersions.publishedAt })
@@ -45,7 +49,7 @@ export async function marcaAplicada(): Promise<MarcaAplicada | null> {
       .limit(1);
     if (!vigente) return null;
     const clave = `${vigente.id}:${vigente.publicadaEn?.getTime() ?? 0}`;
-    if (cache.__escenaraMarcaAplicada?.clave === clave) return cache.__escenaraMarcaAplicada;
+    if (enProceso.__escenaraMarcaAplicada?.clave === clave) return enProceso.__escenaraMarcaAplicada;
 
     const [fila] = await db().select().from(brandVersions).where(eq(brandVersions.id, vigente.id)).limit(1);
     if (fila?.state !== "publicada") return null;
@@ -71,7 +75,7 @@ export async function marcaAplicada(): Promise<MarcaAplicada | null> {
         social: url(fila.derived["imagen-social"]),
       },
     };
-    cache.__escenaraMarcaAplicada = aplicada;
+    enProceso.__escenaraMarcaAplicada = aplicada;
     return aplicada;
   } catch (error) {
     console.error(`[marca] no se ha podido leer la marca publicada: ${error instanceof Error ? error.message : error}`);

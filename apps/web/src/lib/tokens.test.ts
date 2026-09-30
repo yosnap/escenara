@@ -82,8 +82,14 @@ describe("tokens de marca", () => {
     expect(css).toContain(":root:root {");
     expect(css).toContain(':root:root:not([data-theme="light"]) {');
     expect(css).toContain(':root:root[data-theme="dark"] {');
-    expect(css).toContain(`--font-manrope: ${marca.typography.family};`);
+    // Con Manrope delante no se toca la de `next/font`: su nombre registrado no es «Manrope».
+    expect(css).not.toContain("--font-manrope");
     expect(css).not.toContain("@font-face");
+    const otra = generarCss(
+      { ...marca, typography: { ...marca.typography, family: "Georgia, ui-serif, serif" } },
+      { instalacion: { version: 3, fuentes: [] } },
+    );
+    expect(otra).toContain("--font-manrope: Georgia, ui-serif, serif;");
   });
 
   it("las fuentes propias se declaran con su familia y la URL de nuestra ruta, y nada más", () => {

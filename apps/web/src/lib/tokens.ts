@@ -83,6 +83,9 @@ export function exigirMarcaSegura(marca: Marca, fuentes: readonly FuenteCss[] = 
   }
 }
 
+/** ¿La familia principal es Manrope, la que carga `next/font` con su propio nombre? */
+export const usaManrope = (familia: string): boolean => familia.split(",")[0]?.trim() === "Manrope";
+
 /** Regla `@font-face` de una fuente propia. Solo con una familia y una URL que ya ha comprobado `exigirMarcaSegura`. */
 export const reglaFontFace = (f: FuenteCss): string =>
   `@font-face { font-family: "${f.familia}"; src: url("${f.url}") format("woff2"); font-weight: 100 900; font-display: swap; }`;
@@ -111,8 +114,10 @@ export function generarCss(marca: Marca, opciones: OpcionesCss = {}): string {
     `  --motion-base: ${marca.motion.interactionMs[1]}ms;`,
     `  --motion-slow: ${marca.motion.transitionMs[1]}ms;`,
     `  --motion-theme: ${marca.motion.themeMs}ms;`,
-    // La familia de `next/font` va delante en `--font-sans`: la marca de la instalación la sustituye por la suya.
-    ...(instalacion ? [`  --font-manrope: ${marca.typography.family};`] : []),
+    // La familia de `next/font` va delante en `--font-sans`: una marca con otra familia principal la sustituye por la
+    // suya. Si sigue siendo Manrope no se toca, porque `next/font` la registra con un nombre propio y «Manrope» a
+    // secas no encontraría la fuente autoalojada.
+    ...(instalacion && !usaManrope(marca.typography.family) ? [`  --font-manrope: ${marca.typography.family};`] : []),
   ];
   const cabecera = instalacion
     ? [

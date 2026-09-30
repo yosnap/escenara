@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import type { DocumentoMarca, ModoMarca } from "./marca-esquema";
-import { exigirMarcaSegura } from "./tokens";
+import { exigirMarcaSegura, usaManrope } from "./tokens";
 
 /**
  * Variables de un tema de la marca como **estilo en línea** de un contenedor: dentro de él, los componentes reales
@@ -22,12 +22,16 @@ export function estiloDeTema(marca: DocumentoMarca, modo: ModoMarca): CSSPropert
   }
   variables["--radius-control"] = `${marca.layout.controlRadiusPx}px`;
   variables["--radius-card"] = `${marca.layout.cardRadiusPx}px`;
-  variables["--font-manrope"] = marca.typography.family;
-  variables["--font-family"] = marca.typography.family;
+  // Con Manrope delante se hereda la de la página (la de `next/font`); con otra familia, se pone la de la marca.
+  const propia = !usaManrope(marca.typography.family);
+  if (propia) {
+    variables["--font-manrope"] = marca.typography.family;
+    variables["--font-family"] = marca.typography.family;
+  }
   return {
     ...(variables as CSSProperties),
     colorScheme: modo,
-    fontFamily: marca.typography.family,
+    ...(propia ? { fontFamily: marca.typography.family } : {}),
     background: marca.theme[modo].background,
     color: marca.theme[modo].text,
   };

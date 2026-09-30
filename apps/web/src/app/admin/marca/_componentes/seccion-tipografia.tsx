@@ -10,6 +10,7 @@ import { Selector } from "@/components/ui/select";
 import { LIMITE_FUENTE } from "@/lib/marca-activos";
 import { pedirMarca } from "@/lib/marca-peticion";
 import { type ActivoVista, LICENCIAS_FUENTE, type TipoLicenciaFuente } from "@/lib/marca-vista";
+import { usaManrope } from "@/lib/tokens";
 
 /** Familias de serie: la de Escenara, la del sistema y una con serifa. Todas sin descargar nada de terceros. */
 export const RESTO_SANS = "ui-sans-serif, system-ui, sans-serif";
@@ -65,7 +66,7 @@ export function SeccionTipografia({
           {error}
         </Alerta>
       )}
-      <p className="text-lg text-texto" style={{ fontFamily: familiaActual }}>
+      <p className="text-lg text-texto" style={usaManrope(familiaActual) ? undefined : { fontFamily: familiaActual }}>
         Da vida a cada escena · ÁÉÍÓÚ ñ ¿? ¡! 0123456789
       </p>
       <SubirFuente onSubida={onSubida} />
