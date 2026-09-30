@@ -93,7 +93,14 @@ revisión jurídica**):
   personaje, igual que cualquier otra referencia.
 - **«Retirar personas» envía la foto con la gente** a KIE y al proveedor del modelo de edición para quitarla: es la
   única forma de hacerlo, y por eso ocurre **antes** de que la foto pueda declararse. La foto editada se guarda en la
-  biblioteca del usuario como generada; la original no se borra.
+  biblioteca del usuario como generada; la original no se borra. El diálogo del encargo lo dice antes de pagar: «esta
+  foto se envía tal cual, con las personas que salen en ella, a KIE y al proveedor del modelo que la edita». No hay
+  casilla expresa para ese envío.
+- **Las declaraciones sobreviven a la cuenta si algún día se borran cuentas.** Hoy Escenara no tiene borrado de
+  cuenta. La declaración guarda la cuenta que la firmó (`declared_by`); con el esquema de hoy, si se borrara la fila
+  de una cuenta, sus declaraciones se quedarían **sin cuenta** (`declared_by` vacío), con el nombre del lugar, lo
+  declarado y la fecha. Antes de añadir el borrado de cuentas hay que decidir si eso vale, o si deben anonimizarse o
+  borrarse. Es una decisión previa a ese borrado y hoy no cambia el esquema.
 - **La comprobación de coherencia del lugar** (en sombra) envía la foto maestra y el fotograma a la percepción del
   mapa del usuario, con la instrucción de no describir a nadie, y **no se hace** si en la escena sale una persona real.
 

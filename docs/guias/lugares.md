@@ -64,7 +64,8 @@ momento no se genera con el lugar (tampoco lo que ya estaba en la cola), y lo qu
 - **Gente pequeña al fondo, sin rasgos reconocibles**: se admite, declarándolo así.
 - **Gente reconocible** (una cara o un cuerpo en primer plano): no se puede declarar. Tienes dos salidas:
   - **«Retirar personas»**, en la foto: una edición de imagen que quita a la gente y rehace lo que había detrás.
-    **Se confirma su coste antes** (unos 4 créditos). Si era la maestra, la foto editada pasa a ser la maestra. Mírala
+    **Se confirma su coste antes** (unos 4 créditos). Para hacerla, la foto se envía tal cual, con la gente que sale,
+    a KIE y al proveedor del modelo que la edita. Si era la maestra, la foto editada pasa a ser la maestra. Mírala
     antes de declarar: suele dejar a los peatones pequeños del fondo.
   - O **sube otra foto** sin gente.
 - **Menores: nunca**, ni al fondo.

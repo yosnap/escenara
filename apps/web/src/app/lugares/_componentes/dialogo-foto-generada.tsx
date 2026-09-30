@@ -124,7 +124,7 @@ export function DialogoFotoGenerada({
       descripcion={
         encargo?.tipo === "candidato"
           ? "Una imagen del lugar, vacía, desde su descripción y su estilo. Es una generación de imagen y se cobra."
-          : "Una edición de imagen que quita a las personas y rehace lo que había detrás. No se pixelan caras: el generador copiaría el pixelado."
+          : "Una edición de imagen que quita a las personas y rehace lo que había detrás. Para hacerla, esta foto se envía tal cual, con las personas que salen en ella, a KIE y al proveedor del modelo que la edita. No se pixelan caras: el generador copiaría el pixelado."
       }
       pie={
         <>
