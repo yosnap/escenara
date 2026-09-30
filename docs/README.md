@@ -2,7 +2,7 @@
 
 **Escenara** · Estudio abierto de personajes y vídeo · «Da vida a cada escena»
 
-Mapa de la documentación pública del proyecto. Versión actual: **0.41.0**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
+Mapa de la documentación pública del proyecto. Versión actual: **0.42.0**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
 
 ## Mapa de documentos
 
@@ -10,7 +10,7 @@ Mapa de la documentación pública del proyecto. Versión actual: **0.41.0**. Pa
 |---|---|---|---|
 | Producto | [PRD](PRD_Plataforma_Open_Source_Avatares_Video_BYOK.md) | Requisitos, alcance, orquestación, arquitectura y entregas | Borrador 0.5 |
 | Marca | [Guía de identidad](branding/ESCENARA_BRAND_GUIDE.md) | Nombre, voz, logotipos, paleta, tipografía y movimiento | 0.4 |
-| Marca | [Tokens de marca](branding/escenara.brand.json) | Tokens editables de ambos temas | 0.4.0 |
+| Marca | [Tokens de marca](branding/escenara.brand.json) | Tokens de referencia de ambos temas: la marca de Escenara y el esquema de la marca de cada instalación, que puede diferir (Admin › Marca) | 0.42.0 |
 | Diseño | [Dirección visual «Escenario»](diseno/direccion-visual-escenario.md) | Capa vibrante, parallax, animación, componentes de creador y zonas de claridad | Propuesta marca 0.5.0 |
 | Arquitectura | [Visión de arquitectura](arquitectura/vision-arquitectura.md) | Componentes, flujo de generación, entidades y pila propuesta | Propuesta |
 | Guías | [Web de documentación](procesos/desplegar-documentacion-easypanel.md) | Las guías de `guias/` publicadas como web con buscador y tema claro y oscuro: `bun run docs:dev` (puerto 3022). El orden, los títulos y qué se publica salen de [guias/indice.json](guias/indice.json) | 0.32.1 |
@@ -35,11 +35,13 @@ Mapa de la documentación pública del proyecto. Versión actual: **0.41.0**. Pa
 | Guías | [Crear un personaje animado](guias/personajes-animados.md) | Tres acabados editables, guía de estilo, retrato maestro, herencia en escenas y coste | 0.31.0 |
 | Guías | [Montar y exportar tu vídeo](guias/montaje-y-exportacion.md) | La línea de tiempo simple (orden, recorte y zonas seguras), la mezcla de voz y música, los subtítulos quemados o adjuntos, la etiqueta de contenido sintético obligatoria, el guardado con versión y la exportación del MP4 en cada formato sin créditos | 0.41.0 |
 | Guías | [Formatos y proyectos largos](guias/formatos-y-proyectos-largos.md) | Para qué plataforma es la pieza, el mismo montaje en 9:16, 4:5, 1:1 y 16:9 con encuadre por escena y sin regenerar, 30 escenas y 5 minutos, las versiones de cada escena, la cuota y lo que cuesta cada cosa | 0.41.0 |
+| Guías | [Tu kit de marca](guias/tu-kit-de-marca.md) | Tu logotipo en una esquina de tus exportaciones, la regla que impide tapar la etiqueta y qué kit lleva cada vídeo | 0.42.0 |
 | Guías | [De Crear a un proyecto](guias/de-crear-a-un-proyecto.md) | Convertir un clip de Crear en un proyecto de una escena que lo reutiliza sin volver a pagarlo, lo que el proyecto vuelve a pedir, quitar la voz del clip o ponerle voz en off, y montarlo | 0.35.0 |
 | Procesos | [Recorridos de referencia 0.29–0.32](procesos/recorridos-de-referencia-0.29-0.32.md) | Registro de las pruebas de aceptación: proyectos conservados en la cuenta de administración, decisiones, costes y resultados medidos | En revisión |
 | Guías | [Escenas habladas](guias/escenas-habladas.md) | El modo Omni, sus dos motores (Gemini Omni Flash recomendado y MiniMax H3), qué registrar, qué cuesta cada escena y qué invalida cambiar la voz | 0.22.0 |
 | Guías | [Personajes inventados](guias/personajes-inventados.md) | Un personaje que no existe: descripción, cuatro retratos candidatos, declaración de que no representa a nadie y por qué no admite fotos reales | 0.22.0 |
 | Guías | [Con qué se genera cada cosa](guias/mapa-de-modelos.md) | El mapa de modelos por tipo, cuándo se pasa a la reserva, qué cuesta cada opción y cómo añadir servicios compatibles con la API de OpenAI | 0.21.1 |
+| Guías | [Personaliza tu instancia](guias/personaliza-tu-instancia.md) | Nombre, logotipos, tipografía (con fuentes propias y su licencia) y colores de la instalación; contraste que bloquea, publicación atómica, historial y revertir | 0.42.0 |
 | Guías | [Comprobar la coherencia](guias/comprobar-la-coherencia.md) | Si una vista generada es la misma persona (y entonces cuenta como referencia), si la escena cubre el guion y si la emoción encaja; qué decide y qué solo mira, qué autorización hace falta y, para quien administra, el registro de decisiones y la sombra de Jev | 0.39.0 |
 | Arquitectura | [Decisiones (ADR)](arquitectura/decisiones/README.md) | Índice de decisiones y plantilla | Licencia, lenguaje, runtime, despliegue, almacenamiento, modelos iniciales, interfaz, base de datos, bóveda de credenciales, seguimiento de trabajos, ficha como contexto de generación, prompts en el servidor y en inglés, modelo de texto del asistente, el proyecto como unidad de trabajo, el prompt como material del servidor, el motor de reglas de controles previos y la cancelación y los reintentos de la producción decididos; 2 pendientes |
 | Recursos | [APIs, proveedores y servicios](recursos/apis-y-proveedores.md) | Qué servicio, para qué, dónde se obtiene la clave, documentación y precios | Vivo |
