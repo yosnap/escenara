@@ -171,7 +171,10 @@ describe.skipIf(!hayBaseDeDatos)("marca de la instalación y kit del creador", (
   test("sin marca publicada no se aplica nada: ni CSS, ni metadatos, ni iconos distintos, ni manifiesto", async () => {
     expect(await marcaAplicada()).toBeNull();
     expect(metadatosDeLaMarca(null)).toEqual(METADATOS_DE_ESCENARA);
-    expect(METADATOS_DE_ESCENARA.title).toBe("Escenara · Da vida a cada escena");
+    expect(METADATOS_DE_ESCENARA.title).toEqual({
+      default: "Escenara · Da vida a cada escena",
+      template: "%s · Escenara",
+    });
     expect((await rutaManifiesto.GET()).status).toBe(404);
   });
 
@@ -235,7 +238,10 @@ describe.skipIf(!hayBaseDeDatos)("marca de la instalación y kit del creador", (
     const marca = await marcaAplicada();
     expect(marca?.css).toContain(":root:root {");
     expect(marca?.css).toContain("--primary: #1D47C4;");
-    expect(metadatosDeLaMarca(marca).title).toBe("Escenara · Da vida a cada escena");
+    expect(metadatosDeLaMarca(marca).title).toEqual({
+      default: "Escenara · Da vida a cada escena",
+      template: "%s · Escenara",
+    });
     const vista = await estado();
     expect(vista.borrador).toBeNull();
     expect(vista.publicada?.version).toBe(datos.publicada?.version as number);

@@ -4,7 +4,7 @@ import { EstadoVacio } from "@/components/ui/feedback";
 import { leerVersiones } from "@/server/changelog";
 import { TarjetaVersion } from "./tarjeta-version";
 
-export const metadata: Metadata = { title: "Versiones · Admin · Escenara" };
+export const metadata: Metadata = { title: "Versiones · Admin" };
 
 /** Historial de versiones publicado en `docs/CHANGELOG.md`. */
 export default async function PaginaVersiones() {

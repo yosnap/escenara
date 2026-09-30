@@ -7,7 +7,7 @@ import { decisionesRecientes, metricasDeLaSombra } from "@/server/decisiones/con
 import { MetricasSombra } from "./metricas-sombra";
 import { TablaDecisiones } from "./tabla-decisiones";
 
-export const metadata: Metadata = { title: "Decisiones · Admin · Escenara" };
+export const metadata: Metadata = { title: "Decisiones · Admin" };
 export const dynamic = "force-dynamic";
 
 /** Días que se miden. Los mismos que el panel de coherencia, para que las cifras se puedan poner al lado. */

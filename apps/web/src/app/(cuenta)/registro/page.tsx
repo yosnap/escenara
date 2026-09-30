@@ -4,7 +4,7 @@ import { proveedoresActivos, registroDisponible } from "@/server/auth/auth";
 import { obtenerSesion } from "@/server/auth/sesion";
 import { FormularioRegistro } from "../_componentes/formulario-registro";
 
-export const metadata: Metadata = { title: "Crear cuenta · Escenara" };
+export const metadata: Metadata = { title: "Crear cuenta" };
 export const dynamic = "force-dynamic";
 
 export default async function PaginaRegistro() {

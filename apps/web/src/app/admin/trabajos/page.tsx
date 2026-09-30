@@ -5,7 +5,7 @@ import { db } from "@/server/db/cliente";
 import { queueWorkers } from "@/server/db/esquema";
 import { VistaRevisionTrabajos } from "./vista-revision-trabajos";
 
-export const metadata: Metadata = { title: "Trabajos en revisión · Admin · Escenara" };
+export const metadata: Metadata = { title: "Trabajos en revisión · Admin" };
 export const dynamic = "force-dynamic";
 
 /**

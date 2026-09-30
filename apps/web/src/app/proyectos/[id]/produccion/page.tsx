@@ -6,7 +6,7 @@ import { estadoDeProduccion } from "@/server/produccion/consulta";
 import { CabeceraApp } from "../../../_app/cabecera-app";
 import { VistaProduccion } from "./_componentes/vista-produccion";
 
-export const metadata: Metadata = { title: "Producción · Escenara" };
+export const metadata: Metadata = { title: "Producción" };
 export const dynamic = "force-dynamic";
 
 /**

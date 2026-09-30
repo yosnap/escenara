@@ -7,7 +7,7 @@ import { ErrorProducto } from "@/server/productos/errores";
 import { CabeceraApp } from "../../_app/cabecera-app";
 import { FichaProducto } from "../_componentes/ficha-producto";
 
-export const metadata: Metadata = { title: "Producto · Escenara" };
+export const metadata: Metadata = { title: "Producto" };
 export const dynamic = "force-dynamic";
 
 /**

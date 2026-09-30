@@ -6,7 +6,7 @@ import { fotogramaDeMuestra, leerKit } from "@/server/marca/kit";
 import { CabeceraApp } from "../../_app/cabecera-app";
 import { EditorKit } from "./_componentes/editor-kit";
 
-export const metadata: Metadata = { title: "Tu kit de marca · Escenara" };
+export const metadata: Metadata = { title: "Tu kit de marca" };
 export const dynamic = "force-dynamic";
 
 /** Kit de marca del creador: solo el suyo, para sus exportaciones. */

@@ -6,7 +6,7 @@ import { estadoDeRevision } from "@/server/revision/consulta";
 import { CabeceraApp } from "../../../_app/cabecera-app";
 import { VistaRevision } from "./_componentes/vista-revision";
 
-export const metadata: Metadata = { title: "Revisión · Escenara" };
+export const metadata: Metadata = { title: "Revisión" };
 export const dynamic = "force-dynamic";
 
 /**

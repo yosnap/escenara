@@ -10,7 +10,7 @@ import { depositoDe } from "@/server/presupuesto/deposito";
 import { CabeceraApp } from "../../_app/cabecera-app";
 import { ListaTrabajos } from "./_componentes/lista-trabajos";
 
-export const metadata: Metadata = { title: "Historial de generaciones · Escenara" };
+export const metadata: Metadata = { title: "Historial de generaciones" };
 export const dynamic = "force-dynamic";
 
 /**

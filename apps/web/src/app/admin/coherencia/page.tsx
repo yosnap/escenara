@@ -5,7 +5,7 @@ import { NOMBRE_REFERENCIA_IDENTIDAD } from "@/lib/direccion";
 import { aciertoPorComprobacion } from "@/server/coherencia/registro";
 import { compararReferenciasDeIdentidad } from "@/server/direccion/metrica-identidad";
 
-export const metadata: Metadata = { title: "Coherencia · Admin · Escenara" };
+export const metadata: Metadata = { title: "Coherencia · Admin" };
 export const dynamic = "force-dynamic";
 
 /** Días que se miran. Noventa: suficiente para juntar muestra sin arrastrar una redacción de preguntas vieja. */

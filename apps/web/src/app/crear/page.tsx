@@ -23,7 +23,7 @@ import { modelosParaCrear } from "@/server/proveedores/catalogo";
 import { CabeceraApp } from "../_app/cabecera-app";
 import { VistaCrear } from "./_componentes/vista-crear";
 
-export const metadata: Metadata = { title: "Crear · Escenara" };
+export const metadata: Metadata = { title: "Crear" };
 export const dynamic = "force-dynamic";
 
 /**

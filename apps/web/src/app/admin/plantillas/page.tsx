@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { listarPlantillas } from "@/server/prompts/consulta";
 import { VistaPlantillas } from "./vista-plantillas";
 
-export const metadata: Metadata = { title: "Plantillas · Admin · Escenara" };
+export const metadata: Metadata = { title: "Plantillas · Admin" };
 export const dynamic = "force-dynamic";
 
 /** Plantillas de prompt de la instalación (el layout del admin ya exige el rol). */

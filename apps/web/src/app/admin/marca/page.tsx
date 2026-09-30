@@ -4,7 +4,7 @@ import { esAdmin, exigirAdmin } from "@/server/auth/sesion";
 import { estadoDeLaMarca } from "@/server/marca/instalacion";
 import { EditorMarca } from "./_componentes/editor-marca";
 
-export const metadata: Metadata = { title: "Marca · Admin · Escenara" };
+export const metadata: Metadata = { title: "Marca · Admin" };
 export const dynamic = "force-dynamic";
 
 /**

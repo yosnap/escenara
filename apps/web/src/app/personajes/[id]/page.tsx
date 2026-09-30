@@ -18,7 +18,7 @@ import { proyectosEnModoOmni } from "@/server/voz/omni";
 import { CabeceraApp } from "../../_app/cabecera-app";
 import { FichaPersonaje } from "./_componentes/ficha-personaje";
 
-export const metadata: Metadata = { title: "Personaje · Escenara" };
+export const metadata: Metadata = { title: "Personaje" };
 export const dynamic = "force-dynamic";
 
 /**

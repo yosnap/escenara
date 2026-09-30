@@ -14,7 +14,7 @@ import { vistaPublicaTrend } from "@/server/prompts/trends";
 import { CabeceraApp } from "../../_app/cabecera-app";
 import { VistaProyecto } from "./_componentes/vista-proyecto";
 
-export const metadata: Metadata = { title: "Proyecto · Escenara" };
+export const metadata: Metadata = { title: "Proyecto" };
 export const dynamic = "force-dynamic";
 
 /**

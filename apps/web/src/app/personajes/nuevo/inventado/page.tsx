@@ -7,7 +7,7 @@ import { listarPresets } from "@/server/prompts/consulta";
 import { CabeceraApp } from "../../../_app/cabecera-app";
 import { AltaPersonajeInventado } from "./_componentes/alta-personaje-inventado";
 
-export const metadata: Metadata = { title: "Nuevo personaje inventado · Escenara" };
+export const metadata: Metadata = { title: "Nuevo personaje inventado" };
 export const dynamic = "force-dynamic";
 
 /**

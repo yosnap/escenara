@@ -21,7 +21,7 @@ import { Perfil } from "./_componentes/perfil";
 import { Preferencias } from "./_componentes/preferencias";
 import { Sesiones } from "./_componentes/sesiones";
 
-export const metadata: Metadata = { title: "Tu cuenta · Escenara" };
+export const metadata: Metadata = { title: "Tu cuenta" };
 export const dynamic = "force-dynamic";
 
 export default async function PaginaCuenta() {

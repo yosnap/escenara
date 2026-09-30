@@ -3,7 +3,7 @@ import { esAdmin, exigirAdmin } from "@/server/auth/sesion";
 import { pendientesDeRevision } from "@/server/personajes/consulta";
 import { VistaRevisionConsentimientos } from "./vista-revision-consentimientos";
 
-export const metadata: Metadata = { title: "Consentimientos · Admin · Escenara" };
+export const metadata: Metadata = { title: "Consentimientos · Admin" };
 export const dynamic = "force-dynamic";
 
 /**

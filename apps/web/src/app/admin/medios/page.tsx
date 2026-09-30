@@ -4,7 +4,7 @@ import { db } from "@/server/db/cliente";
 import { users } from "@/server/db/esquema";
 import { VistaAdminMedios } from "./vista-admin-medios";
 
-export const metadata: Metadata = { title: "Medios · Admin · Escenara" };
+export const metadata: Metadata = { title: "Medios · Admin" };
 
 /** Medios de todos los usuarios (el layout del admin ya exige el rol). */
 export default async function PaginaAdminMedios() {

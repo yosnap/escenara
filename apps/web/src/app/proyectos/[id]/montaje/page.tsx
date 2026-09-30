@@ -8,7 +8,7 @@ import { montajeParaLaVista } from "@/server/montaje/vista";
 import { CabeceraApp } from "../../../_app/cabecera-app";
 import { VistaMontaje } from "./_componentes/vista-montaje";
 
-export const metadata: Metadata = { title: "Montaje y exportación · Escenara" };
+export const metadata: Metadata = { title: "Montaje y exportación" };
 export const dynamic = "force-dynamic";
 
 /**

@@ -6,7 +6,8 @@ import type { MarcaAplicada } from "./publicada";
  * manda sobre los metadatos y no dejaría que una marca publicada pusiera el suyo.
  */
 export const METADATOS_DE_ESCENARA: Metadata = {
-  title: "Escenara · Da vida a cada escena",
+  // Cada página pone solo su parte («Tus personajes») y la plantilla añade el nombre de la instalación.
+  title: { default: "Escenara · Da vida a cada escena", template: "%s · Escenara" },
   description: "Estudio abierto de personajes y vídeo",
   icons: { icon: [{ url: "/icon.svg", type: "image/svg+xml", sizes: "any" }] },
 };
@@ -19,7 +20,7 @@ export function metadatosDeLaMarca(marca: MarcaAplicada | null): Metadata {
   if (!marca) return METADATOS_DE_ESCENARA;
   const { favicon16, favicon32, icono192, icono512, social } = marca.iconos;
   return {
-    title: `${marca.nombre} · ${marca.lema}`,
+    title: { default: `${marca.nombre} · ${marca.lema}`, template: `%s · ${marca.nombre}` },
     description: marca.descripcion,
     icons: favicon32
       ? {

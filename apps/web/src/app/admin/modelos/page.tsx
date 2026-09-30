@@ -9,7 +9,7 @@ import { proveedoresConPreciosPublicos, ultimasSincronizaciones } from "@/server
 import { Recomendadas, type TipoRecomendable } from "./recomendadas";
 import { VistaModelos } from "./vista-modelos";
 
-export const metadata: Metadata = { title: "Modelos · Admin · Escenara" };
+export const metadata: Metadata = { title: "Modelos · Admin" };
 export const dynamic = "force-dynamic";
 
 /** Catálogo de proveedores y modelos (el layout del admin ya exige el rol). */

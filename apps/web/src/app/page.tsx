@@ -7,8 +7,8 @@ import { Confianza } from "./_portada/confianza";
 import { Escaparate } from "./_portada/escaparate";
 import { Pie } from "./_portada/pie";
 
+// Sin `title`: la portada usa el título por defecto del layout, que es el de la marca publicada (o el de Escenara).
 export const metadata: Metadata = {
-  title: "Escenara · Da vida a cada escena",
   description:
     "Estudio abierto de personajes y vídeo: crea personajes persistentes desde fotos autorizadas y produce reels escena a escena, con tu propia clave y el gasto bajo control.",
 };
