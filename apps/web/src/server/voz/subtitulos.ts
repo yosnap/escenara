@@ -247,6 +247,13 @@ export async function exportarSubtitulos(
     subtitulos: escenaSinAudio(escena, proyecto.voiceMode) ? [] : escena.subtitles,
   }));
   if (conSubtitulos.every((e) => e.subtitulos.length === 0)) {
+    // Si hay subtítulos guardados pero todos son de escenas en silencio, la causa es esa, no que no haya ninguno.
+    if (escenas.some((escena) => escena.subtitles.length > 0)) {
+      throw new ErrorProyecto(
+        409,
+        "Las escenas con subtítulos no se oyen porque se ha quitado el audio del clip y no tienen pista de voz aparte, así que sus subtítulos no se exportan. Vuelve a activar el audio del clip en el paso Escenas del proyecto o genera su pista de voz.",
+      );
+    }
     throw new ErrorProyecto(
       409,
       "Este proyecto todavía no tiene ningún subtítulo guardado. Genera o escribe los subtítulos de sus escenas antes de exportarlos.",
