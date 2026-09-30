@@ -43,10 +43,17 @@ function exigirMismoOrigen(peticion: Request): void {
   if (host !== new URL(peticion.url).host) throw new ErrorComunidad(403, "Esta petición no viene de Escenara.");
 }
 
-export function manejador<C>(fn: (peticion: Request, contexto: C, actor: Actor) => Promise<Response>) {
+/**
+ * `permitirBorradoProgramado`: la ruta también la puede usar una cuenta en su periodo de gracia (solo lecturas de lo
+ * propio, como descargar lo que tiene antes de irse).
+ */
+export function manejador<C>(
+  fn: (peticion: Request, contexto: C, actor: Actor) => Promise<Response>,
+  opciones: { permitirBorradoProgramado?: boolean } = {},
+) {
   return async (peticion: Request, contexto: C): Promise<Response> => {
     try {
-      const sesion = await sesionDePeticion(peticion);
+      const sesion = await sesionDePeticion(peticion, opciones);
       if (!sesion) return await respuestaSinSesion(peticion);
       exigirMismoOrigen(peticion);
       return await fn(peticion, contexto, { id: sesion.user.id, esAdmin: esAdmin(sesion) });

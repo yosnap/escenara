@@ -1,6 +1,6 @@
--- Comunidad: publicaciones de contenido sintético (copias con su declaración expresa y su moderación), sus medios
--- copiados a claves propias del almacenamiento, retos, usos de trends y plantillas compartidos (atribución) y logros
--- por hitos reales (uno por persona y logro).
+-- Comunidad: publicaciones de contenido sintético (copias con su declaración expresa, su moderación y el personaje
+-- inventado del que salen), sus medios copiados a claves propias del almacenamiento, retos, usos de trends y plantillas
+-- compartidos (atribución) y logros por hitos reales (uno por persona y logro).
 --
 -- Aditiva e idempotente: solo crea tipos, tablas, índices y claves ajenas; no cambia ni borra ninguna fila. Volver a
 -- aplicarla no hace nada. Haz copia de la base antes (`bun run db:backup`) y migra con el worker parado.
@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS "community_posts" (
 	"signature" text NOT NULL,
 	"source_character_id" uuid,
 	"source_media_id" uuid,
+	"origin_character_id" uuid,
 	"template_id" uuid,
 	"challenge_id" uuid,
 	"consent_text" text NOT NULL,
@@ -109,6 +110,14 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 --> statement-breakpoint
+-- Por si se aplicó una versión anterior de esta migración, sin la columna del personaje de origen.
+ALTER TABLE "community_posts" ADD COLUMN IF NOT EXISTS "origin_character_id" uuid;
+--> statement-breakpoint
+DO $$ BEGIN
+  ALTER TABLE "community_posts" ADD CONSTRAINT "community_posts_origin_character_id_characters_id_fk" FOREIGN KEY ("origin_character_id") REFERENCES "public"."characters"("id") ON DELETE set null ON UPDATE no action;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+--> statement-breakpoint
 DO $$ BEGIN
   ALTER TABLE "community_posts" ADD CONSTRAINT "community_posts_template_id_prompt_templates_id_fk" FOREIGN KEY ("template_id") REFERENCES "public"."prompt_templates"("id") ON DELETE set null ON UPDATE no action;
 EXCEPTION WHEN duplicate_object THEN NULL;
@@ -152,3 +161,5 @@ CREATE INDEX IF NOT EXISTS "community_posts_galeria_idx" ON "community_posts" US
 CREATE INDEX IF NOT EXISTS "community_posts_autor_idx" ON "community_posts" USING btree ("author_id","created_at");
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "community_posts_reto_idx" ON "community_posts" USING btree ("challenge_id");
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "community_posts_personaje_origen_idx" ON "community_posts" USING btree ("origin_character_id");

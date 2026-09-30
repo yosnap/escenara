@@ -75,6 +75,12 @@ export const communityPosts = pgTable(
     sourceCharacterId: uuid("source_character_id").references(() => characters.id, { onDelete: "set null" }),
     /** Medio del que es copia (`clip`, `trend`, `plantilla`). `set null`, por lo mismo. */
     sourceMediaId: uuid("source_media_id").references(() => media.id, { onDelete: "set null" }),
+    /**
+     * Personaje **inventado** del que sale lo publicado (el propio personaje, o el del trabajo que produjo el archivo),
+     * fijado al publicar. La publicación solo se ve mientras su declaración de inventado siga vigente y sea anterior a la
+     * aprobación: revocarla la oculta, y volver a declararlo exige aprobarla otra vez. `set null`: borrado = huérfana.
+     */
+    originCharacterId: uuid("origin_character_id").references(() => characters.id, { onDelete: "set null" }),
     /** Plantilla o trend de la instalación con el que se hizo (`trend`, `plantilla`): lo que «Usar» abre en «Crear». */
     templateId: uuid("template_id").references(() => promptTemplates.id, { onDelete: "set null" }),
     challengeId: uuid("challenge_id").references(() => communityChallenges.id, { onDelete: "set null" }),
@@ -97,6 +103,7 @@ export const communityPosts = pgTable(
     index("community_posts_galeria_idx").on(t.state, t.approvedAt),
     index("community_posts_autor_idx").on(t.authorId, t.createdAt),
     index("community_posts_reto_idx").on(t.challengeId),
+    index("community_posts_personaje_origen_idx").on(t.originCharacterId),
   ],
 );
 

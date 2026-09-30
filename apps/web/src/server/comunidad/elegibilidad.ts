@@ -5,6 +5,7 @@ import { characterReferences, characters, generationJobs, media, promptTemplates
 import { condicionMedioNoReservado } from "../personajes/uso-de-medio";
 import { condicionDeOrigenSeguro, condicionImagenDelPersonaje, condicionPersonajeSintetico } from "../prompts/demos";
 import { ErrorComunidad } from "./errores";
+import { procedenciaDeMedio } from "./procedencia";
 
 /**
  * **Elegibilidad de la comunidad: el único punto de verdad** de qué se puede publicar. La usan la interfaz (para
@@ -39,6 +40,8 @@ export interface ResultadoElegibilidad extends Elegibilidad {
   plantilla: { id: string; nombre: string; tipo: "trend" | "plantilla" } | null;
   /** Lo que se copiaría a la publicación. Vacío si no es publicable. */
   medios: MedioACopiar[];
+  /** Personaje inventado del que sale (el propio, o el del trabajo que produjo el archivo). Se fija al publicar. */
+  personajeOrigen: string | null;
 }
 
 const MOTIVO_DUDA_MEDIO =
@@ -55,9 +58,15 @@ export async function elegibilidadDe(
   usuarioId: string,
   origen: OrigenPublicable,
 ): Promise<ResultadoElegibilidad> {
-  return origen.tipo === "personaje"
-    ? await elegibilidadDePersonaje(ej, usuarioId, origen.id)
-    : await elegibilidadDeMedio(ej, usuarioId, origen.id);
+  // La regla es una consulta grande (cadena recursiva de lo enviado) y barata de ejecutar, pero su coste estimado hace
+  // que PostgreSQL la compile con JIT, que tarda un segundo. Se apaga solo aquí (`set local`, en una transacción o en
+  // una subtransacción de la de quien llama).
+  return await ej.transaction(async (tx) => {
+    await tx.execute(sql`set local jit = off`);
+    return origen.tipo === "personaje"
+      ? await elegibilidadDePersonaje(tx, usuarioId, origen.id)
+      : await elegibilidadDeMedio(tx, usuarioId, origen.id);
+  });
 }
 
 async function elegibilidadDePersonaje(ej: Ejecutor, usuarioId: string, id: string): Promise<ResultadoElegibilidad> {
@@ -69,8 +78,10 @@ async function elegibilidadDePersonaje(ej: Ejecutor, usuarioId: string, id: stri
       // Columnas calificadas a mano (`PERSONAJE`): en los campos de un `select` de una sola tabla, Drizzle escribiría
       // `"id"` a secas y dentro de cada subconsulta sería el `id` de otra tabla.
       sintetico: sql<boolean>`${condicionPersonajeSintetico(PERSONAJE)}`,
+      // Cualquier referencia que no sea resultado de un trabajo suyo: foto original o subida marcada «hecha con IA».
       conFotos: sql<boolean>`exists (select 1 from character_references cf where cf.character_id = ${PERSONAJE}
-        and cf.origin = 'foto_original')`,
+        and not exists (select 1 from generation_jobs jf where jf.result_media_id = cf.media_id
+                        and jf.character_id = ${PERSONAJE}))`,
       declarado: sql<boolean>`exists (select 1 from consent_records cd where cd.character_id = ${PERSONAJE}
         and cd.revoked_at is null and cd.holder_type = 'inventado' and cd.synthetic_declared = true)`,
     })
@@ -87,7 +98,9 @@ async function elegibilidadDePersonaje(ej: Ejecutor, usuarioId: string, id: stri
     );
   } else {
     if (fila.conFotos)
-      motivos.push("Tiene fotos originales subidas: solo se publica un personaje sin ninguna foto real.");
+      motivos.push(
+        "Tiene imágenes que no generó la plataforma (una foto subida, aunque se marcara como hecha con IA): solo se publica un personaje sin ninguna.",
+      );
     if (!fila.declarado) motivos.push("Le falta la declaración vigente de personaje inventado.");
     if (!fila.sintetico && !fila.conFotos && fila.declarado) {
       motivos.push(
@@ -103,6 +116,7 @@ async function elegibilidadDePersonaje(ej: Ejecutor, usuarioId: string, id: stri
     publicable,
     motivos: publicable ? [] : motivos.length > 0 ? motivos : ["No se puede comprobar que sea sintético."],
     nombre: fila.nombre,
+    personajeOrigen: id,
     descripcion: fila.descripcion,
     tipos: ["personaje"],
     plantilla: null,
@@ -151,7 +165,8 @@ async function imagenesDelPersonaje(ej: Ejecutor, usuarioId: string, id: string)
               ancho: f.width,
               alto: f.height,
               duracion: null,
-              alt: f.altEs,
+              // Nunca el texto alternativo que escribió el usuario: la vista pública pone uno propio con el título.
+              alt: "",
             },
           ]
         : [];
@@ -187,7 +202,6 @@ async function elegibilidadDeMedio(ej: Ejecutor, usuarioId: string, id: string):
       ancho: media.width,
       alto: media.height,
       duracion: media.durationSeconds,
-      alt: media.altEs,
       titulo: media.title,
       nombreOriginal: media.originalName,
       generado: sql<boolean>`exists (select 1 from generation_jobs jg where jg.result_media_id = ${MEDIO})`,
@@ -195,13 +209,22 @@ async function elegibilidadDeMedio(ej: Ejecutor, usuarioId: string, id: string):
         "exists (select 1 from characters cr where cr.id = jd.character_id and (cr.virtual = false or exists (select 1 from character_references cf where cf.character_id = cr.id and cf.origin = 'foto_original')))",
       ),
       sinPersonaje: tocan("jd.character_id is null"),
+      personajeOrigen: sql<
+        string | null
+      >`(select jo.character_id from generation_jobs jo where jo.result_media_id = ${MEDIO}
+        order by jo.created_at desc limit 1)`,
+      origenDeclarado: sql<boolean>`exists (select 1 from generation_jobs jo join consent_records co on co.character_id = jo.character_id
+        where jo.result_media_id = ${MEDIO} and co.revoked_at is null and co.holder_type = 'inventado' and co.synthetic_declared = true)`,
       conProducto: tocan("(jd.product_id is not null or jd.product_action <> '' or jd.brand_rights_at is not null)"),
       conLugar: tocan("(jd.place_id is not null or jd.place_version is not null)"),
       reparto: tocan(
         "(jd.cast_clip_order is not null or jsonb_exists(jd.input, 'reparto') or (jsonb_typeof(jd.input->'personajesOmni') = 'array' and jsonb_array_length(jd.input->'personajesOmni') > 1))",
       ),
-      audioPropio: sql<boolean>`exists (select 1 from scenes sa where (sa.clip_media_id = ${MEDIO}
-        or sa.approved_frame_media_id = ${MEDIO}) and sa.singing_audio_media_id is not null)`,
+      // El audio se mira en lo que el trabajo guardó al encolarse (canto, audio de referencia) y en la escena de hoy.
+      audioPropio: sql<boolean>`(${tocan(
+        "(jd.input->>'canto' = 'true' or (coalesce(jd.input->>'audioDeReferencia', '') <> '' and not exists (select 1 from voice_samples vs where vs.media_id::text = jd.input->>'audioDeReferencia')))",
+      )} or exists (select 1 from scenes sa where (sa.clip_media_id = ${MEDIO}
+        or sa.approved_frame_media_id = ${MEDIO}) and sa.singing_audio_media_id is not null))`,
     })
     .from(media)
     .where(and(eq(media.id, id), eq(media.ownerId, usuarioId), isNull(media.deletedAt)))
@@ -223,12 +246,19 @@ async function elegibilidadDeMedio(ej: Ejecutor, usuarioId: string, id: string):
   if (!fila.generado)
     motivos.push("Es una subida tuya, no algo generado aquí: solo se publica lo generado de principio a fin.");
   if (fila.personaReal) motivos.push("Sale de un personaje que no es inventado (una persona o una mascota real).");
+  if (fila.generado && !fila.sinPersonaje && !fila.personaReal && !fila.origenDeclarado)
+    motivos.push("El personaje con el que se hizo ya no tiene vigente su declaración de personaje inventado.");
   if (fila.sinPersonaje) motivos.push("Se generó sin personaje: no se puede comprobar que no salga una persona real.");
   if (fila.conProducto) motivos.push("Lleva un producto: sus fotos son subidas, y en la comunidad no entra ninguna.");
   if (fila.conLugar && !decide.origenSeguro)
     motivos.push("Lleva un lugar con fotos (o ya borrado): solo vale un lugar generado sin fotos.");
   if (fila.reparto) motivos.push("Es de un reparto de dos personajes o de un podcast.");
   if (fila.audioPropio) motivos.push("Su escena canta con un audio subido, que podría ser una voz real.");
+  if (!decide.origenSeguro && fila.generado) {
+    // Qué se envió al generarlo y no es sintético (o no se puede comprobar): el primer paso que falla, con su origen.
+    const falla = (await procedenciaDeMedio(ej, id)).find((e) => e.paso > 0 && !e.seguro);
+    if (falla) motivos.push(`Algo que se envió al generarlo no vale. ${falla.descripcion}.`);
+  }
   if (!decide.origenSeguro && motivos.length === 0) motivos.push(MOTIVO_DUDA_MEDIO);
 
   const publicable = tipo !== null && decide.noReservado && decide.origenSeguro && motivos.length === 0;
@@ -238,6 +268,7 @@ async function elegibilidadDeMedio(ej: Ejecutor, usuarioId: string, id: string):
     publicable,
     motivos: publicable ? [] : motivos,
     nombre: fila.titulo || fila.nombreOriginal,
+    personajeOrigen: fila.personajeOrigen,
     descripcion: "",
     tipos,
     plantilla,
@@ -252,7 +283,7 @@ async function elegibilidadDeMedio(ej: Ejecutor, usuarioId: string, id: string):
               ancho: fila.ancho,
               alto: fila.alto,
               duracion: fila.duracion,
-              alt: fila.alt,
+              alt: "",
             },
           ]
         : [],

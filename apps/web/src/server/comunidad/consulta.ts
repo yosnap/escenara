@@ -2,6 +2,7 @@ import { and, asc, count, desc, eq, inArray, isNull, type SQL, sql } from "drizz
 import {
   type CandidatoAPublicar,
   DESCRIPCION_MAXIMA,
+  type EslabonProcedencia,
   type MiPublicacionVista,
   type PublicacionEnModeracion,
   type PublicacionVista,
@@ -24,6 +25,7 @@ import type { Actor } from "../media/servicio";
 import { condicionMedioNoReservado } from "../personajes/uso-de-medio";
 import { elegibilidadDe } from "./elegibilidad";
 import { ErrorComunidad } from "./errores";
+import { procedenciaDeMedio, procedenciaDePersonaje } from "./procedencia";
 import { comunidadActiva, condicionVisible, esHuerfana, puedeVer } from "./visibilidad";
 
 /**
@@ -176,13 +178,30 @@ export async function colaDeModeracion(actor: Actor): Promise<{
     const v = vistas.get(f.id);
     if (!v) return [];
     return [
-      { ...miVista(f, v), esDeQuienModera: f.authorId === actor.id, elegibilidad: await elegibilidadActual(db(), f) },
+      {
+        ...miVista(f, v),
+        esDeQuienModera: f.authorId === actor.id,
+        elegibilidad: await elegibilidadActual(db(), f),
+        procedencia: await procedenciaActual(f),
+      },
     ];
   };
   return {
     pendientes: (await Promise.all(pendientes.map(enModeracion))).flat(),
     aprobadas: (await Promise.all(aprobadas.map(enModeracion))).flat(),
   };
+}
+
+/** Procedencia del original para quien modera (sin JIT: es la misma consulta grande que decide). */
+async function procedenciaActual(f: FilaPublicacion): Promise<EslabonProcedencia[]> {
+  if (!f.sourceCharacterId && !f.sourceMediaId)
+    return [{ paso: 0, descripcion: "El original ya no existe", seguro: false }];
+  return await db().transaction(async (tx) => {
+    await tx.execute(sql`set local jit = off`);
+    return f.sourceCharacterId
+      ? await procedenciaDePersonaje(tx, f.sourceCharacterId)
+      : await procedenciaDeMedio(tx, f.sourceMediaId as string);
+  });
 }
 
 /** Elegibilidad del original de una publicación, hoy. Sin original, no es publicable. */

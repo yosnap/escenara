@@ -1,8 +1,10 @@
 import { eq, sql } from "drizzle-orm";
 import { MOTIVO_MAXIMO, MOTIVO_MINIMO } from "@/lib/comunidad";
+import { apuntarObjetosPorBorrar } from "../datos/borrado-de-objetos";
 import { db } from "../db/cliente";
-import { communityPosts, userAchievements } from "../db/esquema";
+import { communityPostMedia, communityPosts, userAchievements } from "../db/esquema";
 import type { Actor } from "../media/servicio";
+import { borrarCopiasYa, clavesDeCopias } from "./borrado";
 import { elegibilidadActual } from "./consulta";
 import { ErrorComunidad } from "./errores";
 import { exigirUuid } from "./http";
@@ -39,7 +41,7 @@ export async function moderar(
     );
   }
 
-  return await db().transaction(async (tx) => {
+  const resultado = await db().transaction(async (tx) => {
     const [previa] = await tx
       .select({ autor: communityPosts.authorId })
       .from(communityPosts)
@@ -62,13 +64,19 @@ export async function moderar(
       );
     }
     if (decision.accion === "aprobar") {
-      if (fila.state === "aprobada") return { estado: "aprobada" as const };
+      if (fila.state === "aprobada") return { estado: "aprobada" as const, claves: [] as string[] };
       if (esHuerfana(fila)) throw new ErrorComunidad(409, "El original ya no existe: no se puede aprobar.");
       const [enBorrado] = (await tx.execute(sql`select 1 from account_deletions where user_id = ${fila.authorId}
         and state in ('programado', 'borrando_objetos') limit 1`)) as unknown as unknown[];
       if (enBorrado) throw new ErrorComunidad(409, "La cuenta del autor está en periodo de borrado: no se aprueba.");
       const eleg = await elegibilidadActual(tx, fila);
       if (!eleg.publicable) throw new ErrorComunidad(409, `Ya no se puede publicar: ${eleg.motivos.join(" ")}`);
+      const [copia] = await tx
+        .select({ id: communityPostMedia.id })
+        .from(communityPostMedia)
+        .where(eq(communityPostMedia.postId, id))
+        .limit(1);
+      if (!copia) throw new ErrorComunidad(409, "No tiene copia que enseñar: el autor tiene que volver a enviarla.");
       const ahora = new Date();
       await tx
         .update(communityPosts)
@@ -79,8 +87,13 @@ export async function moderar(
         .insert(userAchievements)
         .values({ userId: fila.authorId, achievement: "primera_publicacion_aprobada", achievedAt: ahora })
         .onConflictDoNothing();
-      return { estado: "aprobada" as const };
+      return { estado: "aprobada" as const, claves: [] as string[] };
     }
+    // Rechazar (o retirar de la galería) borra ya la copia: si se rechaza porque sale alguien real, no se guarda. Las
+    // claves se apuntan en esta misma transacción (el worker reintenta lo que falle); la fila se queda con el motivo.
+    const claves = await clavesDeCopias(tx, eq(communityPosts.id, id));
+    await apuntarObjetosPorBorrar(tx, claves, "comunidad");
+    await tx.delete(communityPostMedia).where(eq(communityPostMedia.postId, id));
     await tx
       .update(communityPosts)
       .set({
@@ -91,6 +104,8 @@ export async function moderar(
         rejectionReason: motivo,
       })
       .where(eq(communityPosts.id, id));
-    return { estado: "rechazada" as const };
+    return { estado: "rechazada" as const, claves };
   });
+  await borrarCopiasYa(resultado.claves);
+  return { estado: resultado.estado };
 }

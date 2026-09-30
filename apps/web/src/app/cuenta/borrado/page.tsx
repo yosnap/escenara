@@ -93,6 +93,10 @@ export default async function PaginaBorradoProgramado() {
           <Link href="/cuenta/historial" className={claseBoton("secundario", "sm")}>
             Ver tu historial
           </Link>
+          {/* Tus publicaciones de la comunidad y tus logros, también durante la gracia. */}
+          <a href="/api/comunidad/exportacion" className={claseBoton("secundario", "sm")}>
+            Descargar tus publicaciones (JSON)
+          </a>
           <CerrarSesion />
         </div>
       </main>

@@ -108,7 +108,8 @@ export async function trabajoDePrueba(duenoId: string, o: OpcionesTrabajo): Prom
       provider: "kie",
       model: o.model ?? "modelo-de-prueba",
       prompt: o.prompt ?? "prompt de prueba",
-      input: o.input ?? {},
+      // Forma real de la entrada guardada al encolar: la lista de referencias enviadas (la imagen de partida la primera).
+      input: o.input ?? { prompt: "prompt de prueba", referencias: o.origen ? [o.origen] : [], parametros: {} },
       estimatedCredits: 0,
       state: "listo",
       characterId: o.personajeId,
@@ -135,7 +136,12 @@ export async function clipDePrueba(duenoId: string, personajeId: string, extra: 
 /** Vista generada del personaje: resultado de un trabajo suyo y referencia `vista_generada`. */
 export async function vistaGeneradaDePrueba(duenoId: string, personajeId: string) {
   const medio = await medioDePrueba(duenoId, "imagen");
-  await trabajoDePrueba(duenoId, { personajeId, resultado: medio.id });
+  // Como un retrato de un inventado: sin imagen de partida.
+  await trabajoDePrueba(duenoId, {
+    personajeId,
+    resultado: medio.id,
+    input: { retratoInventado: true, referencias: [] },
+  });
   await db()
     .insert(characterReferences)
     .values({ characterId: personajeId, mediaId: medio.id, origin: "vista_generada" });

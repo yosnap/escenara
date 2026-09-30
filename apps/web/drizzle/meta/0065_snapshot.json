@@ -1,5 +1,5 @@
 {
-  "id": "113f6286-4bcb-479f-8511-5857d661cb53",
+  "id": "ab0669b0-365e-42f7-bdf4-6fe06903f474",
   "prevId": "66cb228c-8739-4ac6-97b5-ce486b81f19b",
   "version": "7",
   "dialect": "postgresql",
@@ -2822,6 +2822,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "origin_character_id": {
+          "name": "origin_character_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
         "template_id": {
           "name": "template_id",
           "type": "uuid",
@@ -2975,6 +2981,21 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "community_posts_personaje_origen_idx": {
+          "name": "community_posts_personaje_origen_idx",
+          "columns": [
+            {
+              "expression": "origin_character_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -3001,6 +3022,15 @@
           "tableFrom": "community_posts",
           "tableTo": "media",
           "columnsFrom": ["source_media_id"],
+          "columnsTo": ["id"],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "community_posts_origin_character_id_characters_id_fk": {
+          "name": "community_posts_origin_character_id_characters_id_fk",
+          "tableFrom": "community_posts",
+          "tableTo": "characters",
+          "columnsFrom": ["origin_character_id"],
           "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"

@@ -44,27 +44,73 @@ export type NivelDeOrigen = "ejemplo" | "comunidad";
 const MEDIO = sql.raw(`"media"."id"`);
 
 /**
- * Personaje sintético. En `ejemplo`: inventado (y con él animado) o mascota. En `comunidad`: solo inventado y sin ninguna
- * foto original (una mascota real sale de fotos reales). Una persona real no lo es nunca.
+ * Personaje sintético. En `ejemplo`: inventado (y con él animado) o mascota. En `comunidad`: solo inventado, y **cada**
+ * referencia suya (y su retrato maestro) tiene que ser el **resultado de un trabajo de ese personaje**: no se fía de la
+ * etiqueta `vista_generada`, que también lleva una subida que el usuario declaró «hecha con IA». Una mascota real sale de
+ * fotos reales y una persona real no lo es nunca.
  */
 const sintetico = (c: string, nivel: NivelDeOrigen = "ejemplo") =>
   nivel === "comunidad"
-    ? `(${c}.virtual = true and not exists (select 1 from character_references crs
-        where crs.character_id = ${c}.id and crs.origin = 'foto_original'))`
+    ? `(${c}.virtual = true
+        and not exists (select 1 from character_references crs where crs.character_id = ${c}.id
+                        and not exists (select 1 from generation_jobs jcr where jcr.result_media_id = crs.media_id
+                                        and jcr.character_id = ${c}.id))
+        and (${c}.master_frame_media_id is null
+             or exists (select 1 from generation_jobs jmf where jmf.result_media_id = ${c}.master_frame_media_id
+                        and jmf.character_id = ${c}.id)))`
     : `(${c}.virtual = true or ${c}.kind = 'animal')`;
 
 /** Lugar sin ninguna foto real: generado y con todas sus referencias generadas. */
 const lugarGenerado = (p: string) => `exists (select 1 from places pl where pl.id = ${p} and pl.origin = 'generado'
   and not exists (select 1 from place_references plr where plr.place_id = pl.id and plr.origin <> 'vista_generada'))`;
 
+/** Un predicado que, si da NULL (una clave que falta en la entrada), cuenta como «no»: se cierra en falso. */
+const siONo = (predicado: string) => `coalesce((${predicado}), false)`;
+
+const UUID_SQL = `'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'`;
+const lista = (j: string, clave: string) =>
+  `(case when jsonb_typeof(${j}.input->'${clave}') = 'array' then ${j}.input->'${clave}' else '[]'::jsonb end)`;
+const ids = (j: string, clave: string) =>
+  `select case when x ~* ${UUID_SQL} then x::uuid end from jsonb_array_elements_text(${lista(j, clave)}) x`;
+
 /**
- * Lo que la comunidad exige además al propio trabajo: sin producto y con lugar generado o sin lugar. Se mira lo que el
- * trabajo **conserva** aunque el producto o el lugar se borren (`product_action`, `brand_rights_at`, `place_version`):
- * borrar el producto no convierte en sintético lo que se hizo con sus fotos.
+ * **Medios que el trabajo envió al proveedor**, según la entrada que se guardó al encolarlo y que no cambia después:
+ * todas sus referencias (no solo la primera), las del lugar y del producto, el fotograma situado y la imagen de partida.
+ * Es la procedencia fijada al generar: vaciar después un campo de la escena o borrar una foto no la cambia. Un
+ * identificador ilegible sale nulo, que es «desconocido».
  */
-const trabajoSinFotosSubidas = (j: string) => `(
-  ${j}.product_id is null and ${j}.product_action = '' and ${j}.brand_rights_at is null and ${j}.digital_step = ''
-  and ((${j}.place_id is null and ${j}.place_version is null) or (${j}.place_id is not null and ${lugarGenerado(`${j}.place_id`)})))`;
+export const mediosEnviados = (j: string) => `(
+  ${ids(j, "referencias")}
+  union all ${ids(j, "referenciasLugar")}
+  union all ${ids(j, "referenciasProducto")}
+  union all select case when (${j}.input->>'fotogramaSituado') ~* ${UUID_SQL} then (${j}.input->>'fotogramaSituado')::uuid end
+            where coalesce(${j}.input->>'fotogramaSituado', '') <> ''
+  union all select ${j}.source_media_id where ${j}.source_media_id is not null)`;
+
+/**
+ * Hechos del propio trabajo que la comunidad exige (sin mirar su cadena), leídos de lo que el trabajo **conserva**:
+ * sin reparto ni dos personajes, sin producto (aunque se haya borrado: `product_action`, `brand_rights_at`, sus fotos en
+ * la entrada), con lugar generado o ninguno (`place_version` sin `place_id` = lugar borrado), **sin canto** (su audio es
+ * siempre una subida), sin audio de referencia salvo una muestra de voz de la instalación, y con la procedencia
+ * guardada (sin imagen de partida, o con su lista de referencias). Si falta la procedencia, no se sabe: no vale.
+ */
+const hechosDelTrabajo = (j: string) =>
+  siONo(`
+  jsonb_typeof(${j}.input) = 'object'
+  and ${j}.cast_clip_order is null
+  and not jsonb_exists(${j}.input, 'reparto')
+  and (jsonb_typeof(${j}.input->'personajesOmni') is distinct from 'array'
+       or jsonb_array_length(${j}.input->'personajesOmni') <= 1)
+  and ${j}.product_id is null and ${j}.product_action = '' and ${j}.brand_rights_at is null and ${j}.digital_step = ''
+  and jsonb_array_length(${lista(j, "referenciasProducto")}) = 0
+  and ((${j}.place_id is null and ${j}.place_version is null)
+       or (${j}.place_id is not null and ${lugarGenerado(`${j}.place_id`)}))
+  and coalesce(${j}.input->>'canto', '') <> 'true'
+  and (coalesce(${j}.input->>'audioDeReferencia', '') = ''
+       or exists (select 1 from voice_samples vs where vs.media_id::text = ${j}.input->>'audioDeReferencia'
+                  and vs.user_id = ${j}.user_id))
+  and (${j}.input->>'sinReferencia' = 'true' or ${j}.input->>'retratoInventado' = 'true'
+       or jsonb_typeof(${j}.input->'referencias') = 'array')`);
 
 /** Base de un trabajo sintético: un solo personaje sintético, sin reparto, en lo que viajó al proveedor. */
 const trabajoDeUnSintetico = (j: string, nivel: NivelDeOrigen) => `(
@@ -77,31 +123,41 @@ const trabajoDeUnSintetico = (j: string, nivel: NivelDeOrigen) => `(
        or jsonb_array_length(${j}.input->'personajesOmni') <= 1))`;
 
 /**
- * Cadena de partida generada (solo `comunidad`): la imagen de partida del trabajo, y la de partida de esa, y así hasta
- * el principio, tiene que ser **resultado** de trabajos sintéticos. Una subida en cualquier punto de la cadena la
- * rompe. Una cadena de más de cinco pasos no se da por buena: ante la duda, no se publica.
+ * Quién puede haber producido un eslabón de la cadena: un trabajo de un personaje inventado con sus hechos en regla, o la
+ * maestra de un lugar generado (trabajo sin personaje, con lugar generado y sin ninguna imagen de partida).
  */
-const cadenaGenerada = (j: string) => `not exists (
+export const productorSintetico = (j: string) =>
+  siONo(`${hechosDelTrabajo(j)} and (
+  ${trabajoDeUnSintetico(j, "comunidad")}
+  or (${j}.character_id is null and ${j}.place_id is not null
+      and (${j}.input->>'sinReferencia' = 'true' or jsonb_array_length(${lista(j, "referencias")}) = 0)))`);
+
+/**
+ * **Cadena enviada generada** (solo `comunidad`): cada medio que el trabajo envió, y cada medio que enviaron los trabajos
+ * que produjeron esos, hasta el principio, tiene que ser **resultado** de un productor sintético. Cierra en falso: un
+ * identificador ilegible, un medio borrado (ya no hay trabajo que lo explique), una subida o una cadena de más de cinco
+ * pasos la rompen.
+ */
+const cadenaEnviada = (j: string) => `not exists (
   with recursive cadena(mid, n) as (
-    select ${j}.source_media_id, 1 where ${j}.source_media_id is not null
+    select e.mid, 1 from ${mediosEnviados(j)} e(mid)
     union
-    select jp.source_media_id, c.n + 1 from cadena c join generation_jobs jp on jp.result_media_id = c.mid
-    where jp.source_media_id is not null and c.n < 6)
+    select e2.mid, c.n + 1 from cadena c join generation_jobs jp on jp.result_media_id = c.mid
+      cross join lateral ${mediosEnviados("jp")} e2(mid)
+    where c.mid is not null and c.n < 6)
   select 1 from cadena c
-  where c.n >= 6
+  where c.mid is null or c.n >= 6
      or not exists (select 1 from generation_jobs jr where jr.result_media_id = c.mid)
-     or exists (select 1 from generation_jobs jx where jx.result_media_id = c.mid
-                and not (${trabajoDeUnSintetico("jx", "comunidad")} and ${trabajoSinFotosSubidas("jx")})))`;
+     or exists (select 1 from generation_jobs jx where jx.result_media_id = c.mid and not ${productorSintetico("jx")}))`;
 
 /**
  * Trabajo hecho con **un solo** personaje sintético: con personaje, sin orden de reparto, y sin `reparto` ni más de un
- * personaje en lo que viajó al proveedor. La comprobación mira el propio trabajo, no el reparto de hoy: el reparto cambia,
- * y un clip de dos personas sigue siendo de dos personas aunque después se quite a una del reparto. En `comunidad`,
- * además sin fotos subidas en el trabajo ni en su cadena de partida.
+ * personaje en lo que viajó al proveedor. La comprobación mira el propio trabajo, no el reparto de hoy. En `comunidad`,
+ * además con sus hechos en regla y **toda** su cadena enviada generada.
  */
 const trabajoSintetico = (j: string, nivel: NivelDeOrigen = "ejemplo") =>
   nivel === "comunidad"
-    ? `(${trabajoDeUnSintetico(j, nivel)} and ${trabajoSinFotosSubidas(j)} and ${cadenaGenerada(j)})`
+    ? siONo(`${trabajoDeUnSintetico(j, nivel)} and ${hechosDelTrabajo(j)} and ${cadenaEnviada(j)}`)
     : trabajoDeUnSintetico(j, nivel);
 
 /**
@@ -174,9 +230,9 @@ export function condicionDeOrigenSeguro(nivel: NivelDeOrigen = "ejemplo"): SQL {
 }
 
 /**
- * Personaje que se puede enseñar a otros usuarios (solo `comunidad`): inventado, sin ninguna foto original (ni ahora ni
- * en ninguna versión: cada foto de cada versión tiene que ser una vista generada suya o un resultado de sus trabajos), y
- * con su declaración de personaje inventado vigente. La columna es la del personaje de la consulta que la usa.
+ * Personaje que se puede enseñar a otros usuarios (solo `comunidad`): inventado, sin ninguna imagen que no sea resultado
+ * de un trabajo suyo (ni ahora ni en ninguna versión, sin fiarse de la etiqueta `vista_generada`), y con su declaración de
+ * personaje inventado vigente. La columna es la del personaje de la consulta que la usa.
  */
 export function condicionPersonajeSintetico(personajeId: SQL | string): SQL {
   const c = typeof personajeId === "string" ? sql`${personajeId}::uuid` : personajeId;
@@ -185,8 +241,6 @@ export function condicionPersonajeSintetico(personajeId: SQL | string): SQL {
                 and crc.holder_type = 'inventado' and crc.synthetic_declared = true)
     and not exists (select 1 from character_versions cvv, jsonb_array_elements_text(cvv.reference_media_ids) r(mid)
                     where cvv.character_id = ch.id
-                      and not exists (select 1 from character_references crg where crg.character_id = ch.id
-                                      and crg.media_id::text = r.mid and crg.origin = 'vista_generada')
                       and not exists (select 1 from generation_jobs jg where jg.result_media_id::text = r.mid
                                       and jg.character_id = ch.id)))`;
 }

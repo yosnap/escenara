@@ -50,11 +50,11 @@
     },
     "/admin/plantillas": {
       "topeKb": 271,
-      "motivo": "Editor de plantillas y trends con sus ejemplos. Medido: 267.7 KB."
+      "motivo": "Editor de plantillas y trends con sus ejemplos. Incluye el enlace a Moderación de la cabecera del admin. Medido: 270.6 KB."
     },
     "/admin/modelos": {
       "topeKb": 263,
-      "motivo": "Catálogo de modelos con la lista ordenable de recomendadas. Medido: 259.2 KB."
+      "motivo": "Catálogo de modelos con la lista ordenable de recomendadas. Incluye el enlace a Moderación de la cabecera del admin. Medido: 261.3 KB."
     },
     "/admin/ajustes": {
       "topeKb": 262,
@@ -62,7 +62,7 @@
     },
     "/admin/presets": {
       "topeKb": 253,
-      "motivo": "Editor de presets con lista ordenable. Medido: 249.1 KB."
+      "motivo": "Editor de presets con lista ordenable. Incluye el enlace a Moderación de la cabecera del admin. Medido: 251.9 KB."
     },
     "/proyectos/[id]/montaje": {
       "topeKb": 252,
@@ -70,7 +70,7 @@
     },
     "/admin/medios": {
       "topeKb": 251,
-      "motivo": "Biblioteca de medios completa del admin. Medido: 247.8 KB."
+      "motivo": "Biblioteca de medios completa del admin. Incluye el enlace a Moderación de la cabecera del admin. Medido: 250.3 KB."
     },
     "/proyectos/[id]/produccion": {
       "topeKb": 248,
@@ -98,7 +98,7 @@
     },
     "/admin/marca": {
       "topeKb": 227,
-      "motivo": "Editor de la marca con previa en ambos temas. Medido: 223.1 KB."
+      "motivo": "Editor de la marca con previa en ambos temas. Incluye el enlace a Moderación de la cabecera del admin. Medido: 225.7 KB."
     },
     "/personajes/nuevo/inventado": {
       "topeKb": 220,

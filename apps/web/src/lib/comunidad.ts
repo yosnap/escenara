@@ -88,10 +88,20 @@ export interface Elegibilidad {
   motivos: string[];
 }
 
-/** Lo que ve quien modera: la publicación con su vista previa y la elegibilidad comprobada otra vez. */
+/** Un paso de la procedencia: qué se envió para generar lo publicado y de dónde salía. */
+export interface EslabonProcedencia {
+  paso: number;
+  descripcion: string;
+  /** `true` si ese paso es generado y sintético; `false` si es una subida, no existe o no es sintético. */
+  seguro: boolean;
+}
+
+/** Lo que ve quien modera: la publicación con su vista previa, la elegibilidad comprobada otra vez y su procedencia. */
 export interface PublicacionEnModeracion extends MiPublicacionVista {
   esDeQuienModera: boolean;
   elegibilidad: Elegibilidad;
+  /** Lo que se envió al proveedor para generarlo (o las referencias del personaje), con su origen real. */
+  procedencia: EslabonProcedencia[];
 }
 
 export interface CandidatoAPublicar {

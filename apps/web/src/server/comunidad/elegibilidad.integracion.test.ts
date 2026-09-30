@@ -19,21 +19,31 @@ const { eq } = await import("drizzle-orm");
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
-const { characterReferences, characterVersions, characters, placeReferences, sceneCharacters, scenes } = await import(
-  "../db/esquema"
-);
+const {
+  characterReferences,
+  characterVersions,
+  characters,
+  media: tablaMedios,
+  placeReferences,
+  sceneCharacters,
+  scenes,
+  voiceSamples,
+} = await import("../db/esquema");
 const { elegibilidadDe } = await import("./elegibilidad");
-const { and } = await import("drizzle-orm");
+const { and, sql } = await import("drizzle-orm");
 const { media } = await import("../db/esquema");
 const { condicionDeOrigenSeguro } = await import("../prompts/demos");
 /** La condición que decide, sola (sin las columnas que explican el «no»). */
 const origenSeguro = async (id: string) =>
-  (
-    await db()
+  await db().transaction(async (tx) => {
+    // Como en `elegibilidadDe`: sin JIT, que compilaría la consulta grande durante un segundo.
+    await tx.execute(sql`set local jit = off`);
+    const filas = await tx
       .select({ id: media.id })
       .from(media)
-      .where(and(eq(media.id, id), condicionDeOrigenSeguro("comunidad")))
-  ).length > 0;
+      .where(and(eq(media.id, id), condicionDeOrigenSeguro("comunidad")));
+    return filas.length > 0;
+  });
 const f = await import("./comunidad-de-prueba");
 
 type Sesion = Awaited<ReturnType<typeof crearSesionDePrueba>>;
@@ -220,6 +230,128 @@ describe.skipIf(!hayBaseDeDatos)("elegibilidad de la comunidad (lista blanca de 
       await db()
         .delete(promptTemplates)
         .where(eq(promptTemplates.id, plantilla?.id ?? ""));
+    });
+  });
+
+  describe("con la forma real de la entrada guardada (lo que se envió al proveedor)", () => {
+    /** Un inventado con una vista generada de verdad (resultado de su retrato). */
+    const inventadoConVista = async () => {
+      const inventado = await f.inventadoDePrueba(ana.id);
+      const vista = await f.vistaGeneradaDePrueba(ana.id, inventado);
+      return { inventado, vista };
+    };
+    const fotogramaCon = async (personaje: string, referencias: string[], extra: Record<string, unknown> = {}) => {
+      const resultado = await f.medioDePrueba(ana.id, "imagen");
+      await f.trabajoDePrueba(ana.id, {
+        personajeId: personaje,
+        resultado: resultado.id,
+        origen: referencias[0],
+        input: { prompt: "p", referencias, parametros: {}, ...extra },
+      });
+      return resultado;
+    };
+
+    test("una subida declarada «hecha con IA» como vista del inventado no cuela, ni en la segunda referencia", async () => {
+      const { inventado, vista } = await inventadoConVista();
+      const subida = await f.medioDePrueba(ana.id, "imagen");
+      // Lo que hace la ficha con `generadasConIA`: la subida entra etiquetada como vista generada.
+      await db()
+        .insert(characterReferences)
+        .values({ characterId: inventado, mediaId: subida.id, origin: "vista_generada", sortOrder: 5 });
+      const fotograma = await fotogramaCon(inventado, [vista.id, subida.id]);
+      expect((await medio(fotograma.id)).publicable).toBe(false);
+      expect(await origenSeguro(fotograma.id)).toBe(false);
+      expect((await personaje(inventado)).publicable).toBe(false);
+      // Y un inventado contaminado así contamina todo lo que haga, aunque ese trabajo solo enviara su vista buena.
+      const limpio = await fotogramaCon(inventado, [vista.id]);
+      expect(await origenSeguro(limpio.id)).toBe(false);
+    });
+
+    test("todas las referencias cuentan: una subida en la segunda posición basta para cerrar", async () => {
+      const { inventado, vista } = await inventadoConVista();
+      const subida = await f.medioDePrueba(ana.id, "imagen");
+      const bueno = await fotogramaCon(inventado, [vista.id]);
+      const malo = await fotogramaCon(inventado, [vista.id, subida.id]);
+      expect((await medio(bueno.id)).publicable).toBe(true);
+      expect((await medio(malo.id)).publicable).toBe(false);
+      // Y el clip animado desde el fotograma malo hereda el «no».
+      const clip = await f.clipDePrueba(ana.id, inventado, { origen: malo.id });
+      expect((await medio(clip.id)).publicable).toBe(false);
+    });
+
+    test("borrar la foto de partida no vuelve publicable el resultado (origen borrado = desconocido)", async () => {
+      const { inventado } = await inventadoConVista();
+      const subida = await f.medioDePrueba(ana.id, "imagen");
+      const fotograma = await fotogramaCon(inventado, [subida.id]);
+      expect((await medio(fotograma.id)).publicable).toBe(false);
+      await db().delete(tablaMedios).where(eq(tablaMedios.id, subida.id));
+      expect((await medio(fotograma.id)).publicable).toBe(false);
+      expect(await origenSeguro(fotograma.id)).toBe(false);
+    });
+
+    test("vaciar después la referencia «cambiar solo…» de la escena no cambia el veredicto", async () => {
+      const { inventado, vista } = await inventadoConVista();
+      const subida = await f.medioDePrueba(ana.id, "imagen");
+      const { escenaId } = await f.escenaDePrueba(ana.id, { changeOnlyReferenceMediaId: subida.id });
+      const fotograma = await f.medioDePrueba(ana.id, "imagen");
+      await f.trabajoDePrueba(ana.id, {
+        personajeId: inventado,
+        resultado: fotograma.id,
+        origen: vista.id,
+        escenaId,
+        input: { prompt: "p", referencias: [vista.id, subida.id], parametros: {} },
+      });
+      expect((await medio(fotograma.id)).publicable).toBe(false);
+      await db().update(scenes).set({ changeOnlyReferenceMediaId: null }).where(eq(scenes.id, escenaId));
+      expect((await medio(fotograma.id)).publicable).toBe(false);
+    });
+
+    test("un clip cantado con audio subido no se publica, aunque después se quite el audio de la escena", async () => {
+      const { inventado, vista } = await inventadoConVista();
+      const audio = await f.medioDePrueba(ana.id, "audio");
+      const { escenaId } = await f.escenaDePrueba(ana.id, { singingAudioMediaId: audio.id });
+      const clip = await f.clipDePrueba(ana.id, inventado, {
+        escenaId,
+        origen: vista.id,
+        input: { canto: true, referencias: [vista.id], audioDeReferencia: audio.id, parametros: {} },
+      });
+      expect((await medio(clip.id)).publicable).toBe(false);
+      await db().update(scenes).set({ singingAudioMediaId: null }).where(eq(scenes.id, escenaId));
+      const r = await medio(clip.id);
+      expect(r.publicable).toBe(false);
+      expect(r.motivos.join(" ")).toContain("audio");
+    });
+
+    test("audio de referencia: una subida no; una muestra de voz de la instalación sí", async () => {
+      const { inventado, vista } = await inventadoConVista();
+      const subido = await f.medioDePrueba(ana.id, "audio");
+      const muestra = await f.medioDePrueba(ana.id, "audio");
+      await db().insert(voiceSamples).values({
+        userId: ana.id,
+        provider: "kie",
+        model: "m",
+        voice: "v",
+        paramsSignature: crypto.randomUUID(),
+        mediaId: muestra.id,
+      });
+      const conSubida = await f.clipDePrueba(ana.id, inventado, {
+        origen: vista.id,
+        input: { referencias: [vista.id], audioDeReferencia: subido.id, parametros: {} },
+      });
+      const conMuestra = await f.clipDePrueba(ana.id, inventado, {
+        origen: vista.id,
+        input: { referencias: [vista.id], audioDeReferencia: muestra.id, parametros: {} },
+      });
+      expect((await medio(conSubida.id)).publicable).toBe(false);
+      expect(await origenSeguro(conSubida.id)).toBe(false);
+      expect((await medio(conMuestra.id)).publicable).toBe(true);
+    });
+
+    test("sin procedencia guardada (ni lista de referencias ni «sin imagen de partida») no se sabe: no se publica", async () => {
+      const { inventado } = await inventadoConVista();
+      const clip = await f.clipDePrueba(ana.id, inventado, { input: { prompt: "p", parametros: {} } });
+      expect((await medio(clip.id)).publicable).toBe(false);
+      expect(await origenSeguro(clip.id)).toBe(false);
     });
   });
 

@@ -36,7 +36,7 @@ export function DialogoRechazo({
   return (
     <Dialogo
       titulo={aprobada ? "Retirar de la galería" : "Rechazar la publicación"}
-      descripcion="El autor verá este motivo. Di qué norma incumple y qué puede cambiar."
+      descripcion="El autor verá este motivo: di qué norma incumple y qué puede cambiar. La copia publicada se borra al momento; el autor podrá corregir y reenviar."
       abierto={abierto}
       onAbiertoCambio={onAbiertoCambio}
       pie={

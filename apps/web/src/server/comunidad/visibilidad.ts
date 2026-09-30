@@ -7,20 +7,26 @@ import type { Actor } from "../media/servicio";
  * **Quién ve qué: el único punto de verdad del estado público de una publicación.**
  *
  * Una publicación la ven los demás solo si: la comunidad está encendida, está **aprobada**, su original sigue existiendo
- * (si se borró, queda huérfana y el worker la barre) y su autor no tiene la cuenta en periodo de borrado. Su autor la ve
+ * y no está en la papelera (si se borró, queda huérfana y el worker la barre), el personaje inventado del que sale
+ * mantiene su declaración vigente **desde antes de la aprobación** (revocarla la oculta; volver a declararlo exige
+ * aprobarla otra vez) y su autor no tiene la cuenta en periodo de borrado. Su autor la ve
  * siempre (para saber su estado y el motivo de un rechazo) y quien administra también (para moderarla).
  */
 export function condicionVisible(): SQL {
   // Columnas calificadas a mano: también se usa en los campos de un `select`, donde Drizzle las escribiría a secas.
   return sql.raw(`("community_posts"."state" = 'aprobada'
     and ("community_posts"."source_character_id" is not null or "community_posts"."source_media_id" is not null)
+    and not exists (select 1 from media mpv where mpv.id = "community_posts"."source_media_id" and mpv.deleted_at is not null)
+    and exists (select 1 from consent_records crv where crv.character_id = "community_posts"."origin_character_id"
+                and crv.revoked_at is null and crv.holder_type = 'inventado' and crv.synthetic_declared = true
+                and crv.registered_at <= "community_posts"."approved_at")
     and not exists (select 1 from account_deletions adv where adv.user_id = "community_posts"."author_id"
                     and adv.state in ('programado', 'borrando_objetos')))`);
 }
 
 /** El original ya no existe: la publicación no se enseña y la pasada del worker la borra con su copia. */
-export const esHuerfana = (p: Pick<FilaPublicacion, "sourceCharacterId" | "sourceMediaId">) =>
-  p.sourceCharacterId === null && p.sourceMediaId === null;
+export const esHuerfana = (p: Pick<FilaPublicacion, "sourceCharacterId" | "sourceMediaId" | "originCharacterId">) =>
+  (p.sourceCharacterId === null && p.sourceMediaId === null) || p.originCharacterId === null;
 
 /** `true` si la comunidad está encendida en la instalación. */
 export async function comunidadActiva(): Promise<boolean> {

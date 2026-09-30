@@ -17,7 +17,7 @@ import { communityChallenges, communityPostMedia, communityPosts } from "../db/e
 import type { Actor } from "../media/servicio";
 import { borrarCopiasYa, borrarPublicacionesEnTx } from "./borrado";
 import { misPublicaciones } from "./consulta";
-import { elegibilidadDe, type OrigenPublicable } from "./elegibilidad";
+import { elegibilidadDe, type MedioACopiar, type OrigenPublicable } from "./elegibilidad";
 import { ErrorComunidad } from "./errores";
 import { exigirUuid } from "./http";
 
@@ -158,7 +158,8 @@ export async function publicar(
       }
 
       const eleg = await elegibilidadDe(tx, actor.id, origen);
-      if (!eleg.publicable) throw new ErrorComunidad(422, `No se puede publicar: ${eleg.motivos.join(" ")}`);
+      if (!eleg.publicable || !eleg.personajeOrigen)
+        throw new ErrorComunidad(422, `No se puede publicar: ${eleg.motivos.join(" ")}`);
       if (!eleg.tipos.includes(tipo)) {
         throw new ErrorComunidad(
           400,
@@ -178,6 +179,7 @@ export async function publicar(
           signature: textos.firma,
           sourceCharacterId: origen.tipo === "personaje" ? origen.id : null,
           sourceMediaId: origen.tipo === "medio" ? origen.id : null,
+          originCharacterId: eleg.personajeOrigen,
           templateId: tipo === "trend" || tipo === "plantilla" ? (eleg.plantilla?.id ?? null) : null,
           challengeId,
           consentText: DECLARACION_PUBLICAR,
@@ -185,27 +187,7 @@ export async function publicar(
         })
         .returning({ id: communityPosts.id });
       if (!fila) throw new ErrorComunidad(500, "No se ha podido guardar la publicación: no se ha publicado nada.");
-      for (const [posicion, medio] of eleg.medios.entries()) {
-        const clave = `comunidad/${fila.id}/${posicion}-${crypto.randomUUID()}.${EXTENSION[medio.mime] ?? "bin"}`;
-        await copiarObjeto(medio.clave, clave, medio.mime).catch((error: unknown) => {
-          throw new ErrorComunidad(
-            502,
-            `El almacenamiento no ha dejado copiar el archivo (${String(error).slice(0, 120)}): no se ha publicado nada. Vuelve a intentarlo.`,
-          );
-        });
-        copiadas.push(clave);
-        await tx.insert(communityPostMedia).values({
-          postId: fila.id,
-          position: posicion,
-          kind: medio.tipo,
-          storageKey: clave,
-          mimeType: medio.mime,
-          width: medio.ancho,
-          height: medio.alto,
-          durationSeconds: medio.duracion,
-          altEs: medio.alt,
-        });
-      }
+      await copiarMedios(tx, fila.id, eleg.medios, copiadas);
       return { id: fila.id, creada: true };
     });
     return { publicacion: await miVistaDe(actor, resultado.id), creada: resultado.creada };
@@ -213,6 +195,32 @@ export async function publicar(
     // La transacción no se ha confirmado: las copias ya hechas sobran. Se borran ya y, si no se puede, se apuntan.
     if (copiadas.length > 0) await descartarCopias(copiadas);
     throw error;
+  }
+}
+
+/** Copia los medios elegibles a claves propias y los registra. Las claves copiadas se anotan en `copiadas` para
+ * poder descartarlas si la transacción no llega a confirmarse. */
+async function copiarMedios(tx: Ejecutor, postId: string, medios: MedioACopiar[], copiadas: string[]): Promise<void> {
+  for (const [posicion, medio] of medios.entries()) {
+    const clave = `comunidad/${postId}/${posicion}-${crypto.randomUUID()}.${EXTENSION[medio.mime] ?? "bin"}`;
+    await copiarObjeto(medio.clave, clave, medio.mime).catch((error: unknown) => {
+      throw new ErrorComunidad(
+        502,
+        `El almacenamiento no ha dejado copiar el archivo (${String(error).slice(0, 120)}): no se ha publicado nada. Vuelve a intentarlo.`,
+      );
+    });
+    copiadas.push(clave);
+    await tx.insert(communityPostMedia).values({
+      postId,
+      position: posicion,
+      kind: medio.tipo,
+      storageKey: clave,
+      mimeType: medio.mime,
+      width: medio.ancho,
+      height: medio.alto,
+      durationSeconds: medio.duracion,
+      altEs: medio.alt,
+    });
   }
 }
 
@@ -246,30 +254,56 @@ export async function editar(
   await exigirComunidadActiva();
   const id = exigirUuid(idPedido);
   const textos = textosPublicos(datos);
-  await db().transaction(async (tx) => {
-    const fila = await propiaBloqueada(tx, actor, id);
-    if (!fila) throw new ErrorComunidad(404, "Esa publicación no existe.");
-    if (fila.sourceCharacterId === null && fila.sourceMediaId === null) {
-      throw new ErrorComunidad(409, "El original ya no existe: esta publicación se va a borrar y no se puede editar.");
-    }
-    const challengeId = await retoVigente(tx, datos.reto);
-    await tx
-      .update(communityPosts)
-      .set({
-        title: textos.titulo,
-        description: textos.descripcion,
-        signature: textos.firma,
-        challengeId,
-        state: "pendiente",
-        revision: sql`${communityPosts.revision} + 1`,
-        moderatedBy: null,
-        moderatedAt: null,
-        rejectionReason: "",
-        approvedAt: null,
-        updatedAt: new Date(),
-      })
-      .where(eq(communityPosts.id, id));
-  });
+  const copiadas: string[] = [];
+  try {
+    await db().transaction(async (tx) => {
+      const fila = await propiaBloqueada(tx, actor, id);
+      if (!fila) throw new ErrorComunidad(404, "Esa publicación no existe.");
+      const origen: OrigenPublicable | null = fila.sourceCharacterId
+        ? { tipo: "personaje", id: fila.sourceCharacterId }
+        : fila.sourceMediaId
+          ? { tipo: "medio", id: fila.sourceMediaId }
+          : null;
+      if (!origen) {
+        throw new ErrorComunidad(
+          409,
+          "El original ya no existe: esta publicación se va a borrar y no se puede editar.",
+        );
+      }
+      // Vuelve a moderación con la regla de hoy: si el original ya no es publicable, no se reenvía.
+      const eleg = await elegibilidadDe(tx, actor.id, origen);
+      if (!eleg.publicable || !eleg.personajeOrigen)
+        throw new ErrorComunidad(422, `Ya no se puede publicar: ${eleg.motivos.join(" ")}`);
+      const challengeId = await retoVigente(tx, datos.reto);
+      // Tras un rechazo la copia se borró: al reenviarla se vuelve a copiar del original.
+      const [copia] = await tx
+        .select({ id: communityPostMedia.id })
+        .from(communityPostMedia)
+        .where(eq(communityPostMedia.postId, id))
+        .limit(1);
+      if (!copia) await copiarMedios(tx, id, eleg.medios, copiadas);
+      await tx
+        .update(communityPosts)
+        .set({
+          title: textos.titulo,
+          description: textos.descripcion,
+          signature: textos.firma,
+          challengeId,
+          originCharacterId: eleg.personajeOrigen,
+          state: "pendiente",
+          revision: sql`${communityPosts.revision} + 1`,
+          moderatedBy: null,
+          moderatedAt: null,
+          rejectionReason: "",
+          approvedAt: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(communityPosts.id, id));
+    });
+  } catch (error) {
+    if (copiadas.length > 0) await descartarCopias(copiadas);
+    throw error;
+  }
   return await miVistaDe(actor, id);
 }
 

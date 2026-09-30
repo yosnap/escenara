@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, X } from "lucide-react";
+import { Check, CircleCheck, CircleX, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -38,6 +38,24 @@ export function Moderar({ publicacion }: { publicacion: PublicacionEnModeracion 
 
   return (
     <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1 text-sm">
+        <span className="font-semibold text-texto">Procedencia (lo que se envió al generarlo)</span>
+        <ul className="flex flex-col gap-1">
+          {publicacion.procedencia.map((e) => (
+            <li key={`${e.paso}-${e.descripcion}`} className="flex items-start gap-2 text-texto">
+              {e.seguro ? (
+                <CircleCheck className="mt-0.5 size-4 shrink-0 text-correcto" aria-hidden />
+              ) : (
+                <CircleX className="mt-0.5 size-4 shrink-0 text-error" aria-hidden />
+              )}
+              <span>
+                <span className="sr-only">{e.seguro ? "Sintético: " : "No vale: "}</span>
+                {e.descripcion}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
       {bloqueoAprobar && (
         <Alerta tipo={publicacion.esDeQuienModera ? "info" : "bloqueo"} anuncio="ninguno" compacta>
           {bloqueoAprobar}

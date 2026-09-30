@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, type SQL, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, type SQL, sql } from "drizzle-orm";
 import { apuntarObjetosPorBorrar, borrarObjetosApuntados } from "../datos/borrado-de-objetos";
 import { db, type Ejecutor } from "../db/cliente";
 import { communityPostMedia, communityPosts } from "../db/esquema";
@@ -47,7 +47,10 @@ export async function borrarCopiasYa(claves: string[]): Promise<void> {
  * copias. Ya no se ven desde el instante del borrado (la visibilidad exige original); aquí desaparecen del todo.
  */
 export async function barrerPublicacionesHuerfanas(limite = 100): Promise<number> {
-  const huerfana = and(isNull(communityPosts.sourceCharacterId), isNull(communityPosts.sourceMediaId));
+  const huerfana = or(
+    and(isNull(communityPosts.sourceCharacterId), isNull(communityPosts.sourceMediaId)),
+    isNull(communityPosts.originCharacterId),
+  );
   const ids = await db().select({ id: communityPosts.id }).from(communityPosts).where(huerfana).limit(limite);
   if (ids.length === 0) return 0;
   const claves = await db().transaction(async (tx) => {
@@ -56,7 +59,7 @@ export async function barrerPublicacionesHuerfanas(limite = 100): Promise<number
       where id in (${sql.join(
         ids.map((i) => sql`${i.id}::uuid`),
         sql`, `,
-      )}) and source_character_id is null and source_media_id is null
+      )}) and ((source_character_id is null and source_media_id is null) or origin_character_id is null)
       for update skip locked`)) as unknown as { id: string }[];
     if (tomadas.length === 0) return [];
     return await borrarPublicacionesEnTx(

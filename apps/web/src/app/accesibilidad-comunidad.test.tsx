@@ -95,6 +95,10 @@ const EN_COLA: PublicacionEnModeracion = {
   estado: "pendiente",
   esDeQuienModera: false,
   elegibilidad: { publicable: true, motivos: [] },
+  procedencia: [
+    { paso: 0, descripcion: "Lo publicado: generado con «Lía» (inventado)", seguro: true },
+    { paso: 1, descripcion: "Imagen enviada (paso 1): generado con «Lía» (inventado)", seguro: true },
+  ],
 };
 const PROPIA: PublicacionEnModeracion = { ...EN_COLA, id: "p4", esDeQuienModera: true };
 const LOGROS: LogroVista[] = [
