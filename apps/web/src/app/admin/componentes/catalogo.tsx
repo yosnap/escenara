@@ -17,6 +17,7 @@ import { SeccionMovimiento } from "./secciones/movimiento";
 import { SeccionPasos } from "./secciones/pasos";
 import { SeccionPersonajes } from "./secciones/personajes";
 import { SeccionPresets } from "./secciones/presets";
+import { SeccionProductos } from "./secciones/productos";
 import { SeccionProyectos } from "./secciones/proyectos";
 import { SeccionReparto } from "./secciones/reparto";
 import { SeccionRequisitos } from "./secciones/requisitos";
@@ -35,6 +36,7 @@ const INDICE = [
   ["personajes", "Personajes"],
   ["presets", "Presets y prompt"],
   ["direccion", "Dirección del clip"],
+  ["productos", "Producto y acción"],
   ["canto", "Cantar con audio propio"],
   ["proyectos", "Proyectos y plan"],
   ["anuncio", "Estrategia del anuncio"],
@@ -84,6 +86,7 @@ export function Catalogo() {
         <SeccionPersonajes />
         <SeccionPresets />
         <SeccionDireccion />
+        <SeccionProductos />
         <SeccionCanto />
         <SeccionProyectos />
         <SeccionAnuncio />
