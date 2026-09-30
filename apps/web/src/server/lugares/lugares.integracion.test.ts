@@ -42,7 +42,7 @@ const { guardarCredencial } = await import("../boveda/credenciales");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
 const { generationJobs, media, projects, rateLimits, scenes, usageLedger, users } = await import("../db/esquema");
-const { placeDeclarations, placeVersions } = await import("../db/esquema-lugares");
+const { placeDeclarations, places, placeVersions } = await import("../db/esquema-lugares");
 const { estimar, olvidarSaldos } = await import("../generacion/estimacion");
 const { enviarEncolados } = await import("../cola/pasada");
 const { subirFotoDePrueba } = await import("./lugar-de-prueba");
@@ -514,6 +514,76 @@ describe.skipIf(!hayBaseDeDatos)("lugares: propiedad, declaración, versión, re
     expect(trabajo?.state).toBe("fallido");
     expect(trabajo?.errorMessage).toContain("se ha borrado");
     expect(trabajo?.errorMessage).toContain("no se te ha cobrado");
+  });
+
+  test("borrar mientras se encola: el borrado espera al encolado a medias y lo cuenta como trabajo en marcha", async () => {
+    const { lugar } = await lugarConMaestra();
+    const medio = await subirFotoDePrueba(actorAna, "partida.png");
+    expect((await pedirFotograma(ana, { medioId: medio, lugar: { lugarId: lugar.id } })).status).toBe(201);
+    const [modelo] = await trabajosDeAna();
+    if (!modelo) throw new Error("Falta el trabajo de partida.");
+    await db().update(generationJobs).set({ state: "listo" }).where(eq(generationJobs.id, modelo.id));
+    // Un encolado a medias: su transacción ya ha insertado el trabajo con el lugar y todavía no ha terminado.
+    let soltar = () => {};
+    const suelto = new Promise<void>((r) => {
+      soltar = r;
+    });
+    let insertado = () => {};
+    const haInsertado = new Promise<void>((r) => {
+      insertado = r;
+    });
+    const { id: _id, ...valores } = modelo;
+    const encolado = db().transaction(async (tx) => {
+      await tx
+        .insert(generationJobs)
+        .values({ ...valores, idempotencyKey: crypto.randomUUID(), reservationId: null, state: "en_cola" });
+      insertado();
+      await suelto;
+    });
+    await haInsertado;
+    const borrado = rutaLugar.DELETE(pedir(ana, `/api/lugares/${lugar.id}`, "DELETE"), ctx(lugar.id));
+    // Tiempo de sobra para que el borrado llegue al bloqueo de la fila del lugar y se quede esperando.
+    await new Promise((r) => setTimeout(r, 300));
+    soltar();
+    await encolado;
+    const respuesta = await borrado;
+    expect(respuesta.status).toBe(409);
+    expect(await errorDe(respuesta)).toContain("un trabajo en marcha");
+    const trabajos = await trabajosDeAna();
+    expect(trabajos.filter((t) => t.state === "en_cola").map((t) => t.placeId)).toEqual([lugar.id]);
+  });
+
+  test("encolar mientras se borra: el encolado que llega tarde dice que el lugar se ha borrado, sin cobrar", async () => {
+    const { lugar } = await lugarConMaestra();
+    const medio = await subirFotoDePrueba(actorAna, "partida.png");
+    // Un borrado a medias: tiene la fila del lugar bloqueada y ya borrada, y todavía no ha terminado.
+    let soltar = () => {};
+    const suelto = new Promise<void>((r) => {
+      soltar = r;
+    });
+    let bloqueado = () => {};
+    const haBloqueado = new Promise<void>((r) => {
+      bloqueado = r;
+    });
+    const borrado = db().transaction(async (tx) => {
+      await tx.select({ id: places.id }).from(places).where(eq(places.id, lugar.id)).for("update");
+      await tx.delete(places).where(eq(places.id, lugar.id));
+      bloqueado();
+      await suelto;
+    });
+    await haBloqueado;
+    // El encolado aún ve el lugar (la transacción del borrado no ha terminado) y se queda esperando al insertar.
+    const pedido = pedirFotograma(ana, { medioId: medio, lugar: { lugarId: lugar.id } });
+    await new Promise((r) => setTimeout(r, 1000));
+    soltar();
+    await borrado;
+    const respuesta = await pedido;
+    expect(respuesta.status).toBe(409);
+    const error = await errorDe(respuesta);
+    expect(error).toContain("se acaba de borrar");
+    expect(error).toContain("no se te ha cobrado nada");
+    expect(await trabajosDeAna()).toHaveLength(0);
+    expect(await db().select().from(usageLedger).where(eq(usageLedger.userId, ana.id))).toHaveLength(0);
   });
 
   test("borrar un lugar no borra fotos, generados ni declaraciones, y devuelve a borrador la escena aprobada", async () => {

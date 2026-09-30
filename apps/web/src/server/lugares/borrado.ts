@@ -70,19 +70,26 @@ export interface BorradoLugarRealizado {
 
 export async function borrarLugar(actor: Actor, id: unknown): Promise<BorradoLugarRealizado> {
   const lugar = await filaPropia(actor, id);
-  const [{ enMarcha } = { enMarcha: 0 }] = await db()
-    .select({ enMarcha: count() })
-    .from(generationJobs)
-    .where(and(eq(generationJobs.placeId, lugar.id), inArray(generationJobs.state, [...EN_MARCHA])));
-  if (enMarcha > 0) {
-    throw new ErrorLugar(
-      409,
-      `«${lugar.name}» tiene ${enMarcha === 1 ? "un trabajo en marcha que lo usa" : `${enMarcha} trabajos en marcha que lo usan`}. Espera a que ${enMarcha === 1 ? "termine" : "terminen"} o ${enMarcha === 1 ? "cancélalo" : "cancélalos"} en «Crear» o en la producción del proyecto, y vuelve a borrarlo. No se ha borrado nada.`,
-    );
-  }
   // Una sola transacción: o el lugar desaparece y todo lo demás queda suelto, o no pasa nada. No se toca el
   // almacenamiento, porque no se borra ningún archivo.
   const hecho = await db().transaction(async (tx) => {
+    /**
+     * Primero se bloquea la fila del lugar. Un encolado que ya lo ha insertado en su trabajo tiene la fila compartida
+     * hasta terminar, así que esto espera a que acabe y el recuento lo ve; uno que llegue después choca con la clave
+     * ajena al borrarse y se le dice que el lugar se ha borrado (`esLugarBorrado`). Sin el bloqueo, un trabajo
+     * encolado entre el recuento y el borrado saldría hacia el proveedor sin lugar.
+     */
+    await tx.select({ id: places.id }).from(places).where(eq(places.id, lugar.id)).for("update");
+    const [{ enMarcha } = { enMarcha: 0 }] = await tx
+      .select({ enMarcha: count() })
+      .from(generationJobs)
+      .where(and(eq(generationJobs.placeId, lugar.id), inArray(generationJobs.state, [...EN_MARCHA])));
+    if (enMarcha > 0) {
+      throw new ErrorLugar(
+        409,
+        `«${lugar.name}» tiene ${enMarcha === 1 ? "un trabajo en marcha que lo usa" : `${enMarcha} trabajos en marcha que lo usan`}. Espera a que ${enMarcha === 1 ? "termine" : "terminen"} o ${enMarcha === 1 ? "cancélalo" : "cancélalos"} en «Crear» o en la producción del proyecto, y vuelve a borrarlo. No se ha borrado nada.`,
+      );
+    }
     // Las escenas aprobadas que lo usan (propio o heredado) dejan de estarlo: sin el lugar generarían otra cosa.
     await invalidarEscenasDelLugar(tx, lugar.id, `Se ha borrado el lugar «${lugar.name}» que usaba`);
     // La declaración vigente se revoca y **se conserva**, como las revocadas: es la prueba de lo declarado.

@@ -299,6 +299,13 @@ export async function encolar(peticion: PeticionEncolado): Promise<Encolado> {
       const fila = await filaDeLaConfirmacion(peticion.usuarioId, peticion.claveIdempotencia);
       if (fila) return { fila, nueva: false };
     }
+    // El lugar se borró entre la comprobación y la inserción: la transacción entera se deshace, reserva incluida.
+    if (esLugarBorrado(error)) {
+      throw new ErrorGeneracion(
+        409,
+        "El lugar de este trabajo se acaba de borrar mientras se pedía, así que no se ha encolado nada y no se te ha cobrado nada. Elige otro lugar o quítalo, y vuelve a pedirlo.",
+      );
+    }
     throw error;
   }
 }
@@ -343,4 +350,28 @@ export async function filaDeLaConfirmacion(
 function esClaveRepetida(error: unknown): boolean {
   const codigo = (error as { code?: unknown } | null)?.code;
   return codigo === "23505" || String((error as Error)?.message ?? "").includes("generation_jobs_usuario_idempotencia");
+}
+
+/**
+ * Violación de la clave ajena del lugar del trabajo: el lugar se ha borrado entre la comprobación y la inserción. El
+ * borrado bloquea la fila del lugar antes de contar los trabajos en marcha, así que esta es la otra mitad de la
+ * carrera: el encolado que llega tarde. Se recorre la cadena de causas porque Drizzle envuelve el error de PostgreSQL.
+ */
+export function esLugarBorrado(error: unknown): boolean {
+  for (let actual: unknown = error, salto = 0; actual && salto < 5; salto++) {
+    const fallo = actual as {
+      code?: unknown;
+      errno?: unknown;
+      constraint?: unknown;
+      message?: unknown;
+      cause?: unknown;
+    };
+    const ajena = fallo.code === "23503" || fallo.errno === "23503";
+    const delLugar = `${String(fallo.constraint ?? "")} ${String(fallo.message ?? "")}`.includes(
+      "generation_jobs_place_id_places_id_fk",
+    );
+    if (ajena && delLugar) return true;
+    actual = fallo.cause;
+  }
+  return false;
 }
