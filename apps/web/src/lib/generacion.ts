@@ -1,5 +1,6 @@
 import type { Proveedor } from "./boveda";
 import type { DuracionConCoste } from "./catalogo";
+import type { CausaFalloProveedor } from "./causa-fallo";
 import type { DireccionElegidaConAcento } from "./direccion";
 import type { TipoMedio } from "./media/reglas";
 import type { Medio } from "./media/tipos";
@@ -193,6 +194,11 @@ export interface TrabajoVista {
   derechosConfirmados: boolean;
   /** Motivo normalizado del fallo, si lo hay. */
   motivoFallo: MotivoFallo | null;
+  /**
+   * Causa concreta cuando el proveedor no completó una tarea que aceptó (filtro de seguridad, imagen rechazada…).
+   * Clave propia, nunca texto del proveedor; `null` en los trabajos anteriores y en los demás fallos.
+   */
+  causaFallo: CausaFalloProveedor | null;
   /** Veces que la cola ha intentado enviarlo y tope de intentos. */
   intentos: number;
   intentosMaximos: number;

@@ -183,6 +183,28 @@ describe("consulta de la tarea", () => {
     expect(tarea.haFallado).toBe(true);
     expect(tarea.estadoPropio).toBe("fallido");
     expect(JSON.stringify(tarea)).not.toContain(CLAVE);
+    expect(tarea.causaFallo).toBe("desconocida");
+  });
+
+  test("una tarea fallida trae su causa propia, sin el texto ni el código del proveedor", async () => {
+    const { buscar } = simular([
+      sobre({
+        state: "fail",
+        failCode: "400",
+        failMsg: `Request blocked: The generation was blocked by Google safety review. key=${CLAVE}`,
+        creditsConsumed: 0,
+      }),
+    ]);
+    const tarea = await consultarTarea(CLAVE, "task_123", buscar);
+    expect(tarea).toEqual({
+      estado: "fail",
+      estadoPropio: "fallido",
+      urls: [],
+      creditos: 0,
+      haFallado: true,
+      causaFallo: "bloqueo_seguridad",
+    });
+    expect(JSON.stringify(tarea)).not.toContain(CLAVE);
   });
 
   test("«listo» sin resultado legible no se da por bueno", async () => {

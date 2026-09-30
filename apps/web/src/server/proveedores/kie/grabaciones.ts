@@ -85,6 +85,21 @@ export const TAREA_FALLIDA: Grabacion = sobre({
   creditsConsumed: 0,
 });
 
+/**
+ * Tarea de Gemini Omni 1.1 Flash bloqueada por la revisión de seguridad de Google, tal como la devolvió KIE el
+ * 2026-09-30 (`recordInfo`). Sin cobro. Su texto solo sirve para elegir la causa; nunca se propaga.
+ */
+export const TAREA_BLOQUEADA_POR_SEGURIDAD: Grabacion = sobre({
+  taskId: "5c1e9a7b3d2f4e6a8b0c1d2e3f4a5b6c",
+  model: "google/gemini-omni-flash-1-1",
+  state: "fail",
+  resultJson: "",
+  failCode: "400",
+  failMsg: "Request blocked: The generation was blocked by Google safety review.",
+  costTime: 9,
+  creditsConsumed: 0,
+});
+
 /** Errores del sobre, tal como los devuelve KIE (HTTP 200 y el error en `code`). */
 export const ERROR_CLAVE: Grabacion = { estado: 200, cuerpo: { code: 401, msg: "Unauthorized", data: null } };
 export const ERROR_SIN_CREDITO: Grabacion = {

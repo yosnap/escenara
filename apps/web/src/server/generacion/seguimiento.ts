@@ -1,5 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { PROVEEDORES_PUBLICOS } from "@/lib/boveda";
+import { type CausaFalloProveedor, MENSAJE_FALLO_GENERICO, mensajeDeFalloDelProveedor } from "@/lib/causa-fallo";
 import { mensajeDeFalloDeVoz } from "@/lib/diagnostico-voz";
 import { CLIP, LARGO_ESTADO_PROVEEDOR, TIPO_RESULTADO, type TrabajoVista } from "@/lib/generacion";
 import { usarCredencial } from "../boveda/credenciales";
@@ -10,7 +11,7 @@ import { adjuntarHojaDeIdentidad } from "../personajes/hoja-identidad";
 import { adjuntarVistaGenerada } from "../personajes/vista-sintetica";
 import { cerrarGasto } from "../presupuesto/reserva";
 import { guardarMarcasDeVoz, registrarFalloDeEscena, registrarResultadoDeEscena } from "../produccion/cierre";
-import { duracionDeModelo } from "../proveedores/catalogo";
+import { duracionDeModelo, filaDeModelo } from "../proveedores/catalogo";
 import { ErrorProveedor, type TareaProveedor, type VozPedida } from "../proveedores/contrato";
 import { adaptadorDe } from "../proveedores/registro";
 import { adjuntarMuestraDeVoz } from "../voz/muestra";
@@ -129,6 +130,10 @@ async function consultar(actor: Actor, fila: FilaTrabajo, clave: string, h: Herr
     // Un fallo del proveedor puede haber cobrado (algunos modelos cobran el intento): se apunta lo que
     // informe, y cero si no informa nada.
     await cerrarGasto(fila.id, tarea.creditos ?? 0, "El proveedor no ha podido completar la generación.");
+    // La causa es una clave propia de lista cerrada; el texto del proveedor ya se descartó al consultarlo, porque
+    // puede contener datos de la petición. Sin causa reconocible, el mensaje genérico de siempre.
+    const causa = tarea.causaFallo ?? "desconocida";
+    const mensaje = await mensajeDelFallo(fila, causa, tarea.creditos);
     /**
      * Si el trabajo producía una escena, se apunta el motivo en ella y **nada más**: no se reenvía, no se
      * reintenta y no se consume ningún reintento de pago (decisión provisional del propietario, 2026-09-27).
@@ -136,15 +141,18 @@ async function consultar(actor: Actor, fila: FilaTrabajo, clave: string, h: Herr
      */
     await registrarFalloDeEscena(
       fila,
-      "El proveedor no ha podido completar la generación. No se ha vuelto a enviar nada: si quieres reintentarlo, autoriza un presupuesto de reintentos.",
+      causa === "desconocida"
+        ? "El proveedor no ha podido completar la generación. No se ha vuelto a enviar nada: si quieres reintentarlo, autoriza un presupuesto de reintentos."
+        : `${mensaje} No se ha vuelto a enviar nada.`,
     );
     return guardarEstado(fila.id, {
       state: "fallido",
+      // El motivo no cambia: es el que decide que no se reintente solo. La causa solo lo explica.
       failureReason: "contenido",
+      failureCause: causa,
       providerState: tarea.estado,
       consumedCredits: tarea.creditos,
-      // El texto del proveedor no se propaga: puede contener datos de la petición.
-      errorMessage: "El proveedor no ha podido completar la generación. No se ha vuelto a enviar nada.",
+      errorMessage: mensaje,
       finishedAt: new Date(),
     });
   }
@@ -332,6 +340,27 @@ export async function cerrarVozSincrona(
     });
   }
   return (await filaPropia(fila.userId, fila.id)) ?? fila;
+}
+
+/** Mensaje del fallo con el nombre real del proveedor y del modelo, y con lo que llevaba el envío. */
+async function mensajeDelFallo(
+  fila: FilaTrabajo,
+  causa: CausaFalloProveedor,
+  creditos: number | null,
+): Promise<string> {
+  if (causa === "desconocida") return MENSAJE_FALLO_GENERICO;
+  // Sin el nombre del catálogo se usa el identificador del modelo: el fallo se cierra igual.
+  const modelo = await filaDeModelo(fila.provider, fila.model).catch((error) => {
+    console.error(`[generacion] sin nombre de modelo para el fallo del trabajo ${fila.id}:`, error);
+    return null;
+  });
+  return mensajeDeFalloDelProveedor(causa, {
+    proveedor: PROVEEDORES_PUBLICOS[fila.provider].nombre,
+    modelo: modelo?.name ?? fila.model,
+    creditos,
+    conProducto: fila.productId !== null,
+    conPersonaje: fila.characterId !== null,
+  });
 }
 
 async function guardarEstado(id: string, cambios: Partial<typeof generationJobs.$inferInsert>): Promise<TrabajoVista> {
