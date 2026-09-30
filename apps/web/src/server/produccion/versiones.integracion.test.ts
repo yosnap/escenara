@@ -39,12 +39,16 @@ const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
 const { guardarAjustes, leerAjustes } = await import("../ajustes");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
-const { characters, generationJobs, media, projects, rateLimits, scenes, users } = await import("../db/esquema");
+const { characters, generationJobs, media, montages, projects, rateLimits, sceneCharacters, scenes, users } =
+  await import("../db/esquema");
 const { crearMedio } = await import("../media/servicio");
 const { leerObjeto } = await import("../almacenamiento");
 const { pasadaDeExportaciones } = await import("../montaje/cola");
 const { revisarAMano } = await import("../revision/humana");
 const { estadoDeProduccion } = await import("./consulta");
+const { bytesDeVersionesSinUsar } = await import("./versiones");
+const { crearAyudas } = await import("../conversion/conversion.arnes");
+const rutaConsentimiento = await import("@/app/api/personajes/[id]/consentimiento/route");
 
 type Sesion = Awaited<ReturnType<typeof crearSesionDePrueba>>;
 type Actor = import("../media/servicio").Actor;
@@ -145,7 +149,7 @@ describe.skipIf(!hayBaseDeDatos)("biblioteca de versiones de una escena", () => 
   }
 
   /** Un trabajo de clip terminado de la escena, con su archivo: es lo que es una versión. */
-  async function version(medioId: string, creado: Date): Promise<string> {
+  async function version(medioId: string, creado: Date, personajeId: string | null = null): Promise<string> {
     const [trabajo] = await db()
       .insert(generationJobs)
       .values({
@@ -162,6 +166,10 @@ describe.skipIf(!hayBaseDeDatos)("biblioteca de versiones de una escena", () => 
         consumedCredits: 60,
         idempotencyKey: crypto.randomUUID(),
         createdAt: creado,
+        // Las declaraciones que confirma quien genera: sin ellas la versión no se puede usar (como al convertir).
+        rightsConfirmedAt: creado,
+        characterId: personajeId,
+        referencesReviewedAt: personajeId ? creado : null,
       })
       .returning();
     if (!trabajo) throw new Error("No se ha podido crear la versión de prueba.");
@@ -324,5 +332,85 @@ describe.skipIf(!hayBaseDeDatos)("biblioteca de versiones de una escena", () => 
     const { estado, datos } = await usar(blanca.trabajo);
     expect(estado).toBe(409);
     expect(mensajeDe(datos)).toContain("generándose");
+  });
+
+  test("sin la declaración de derechos de la imagen, esa versión no se usa y se dice por qué", async () => {
+    await db().update(generationJobs).set({ rightsConfirmedAt: null }).where(eq(generationJobs.id, blanca.trabajo));
+    const { estado, datos } = await usar(blanca.trabajo);
+    expect(estado).toBe(409);
+    expect(mensajeDe(datos)).toContain("la declaración de derechos sobre la imagen");
+  });
+
+  test("un segundo clip de podcast no cuenta como versión sin usar en el aviso de cuota", async () => {
+    const antes = await bytesDeVersionesSinUsar(proyectoId);
+    const turno = await clip("turno-2", "black");
+    await db().insert(generationJobs).values({
+      userId: ana.id,
+      kind: "animacion",
+      provider: "kie",
+      model: "veo3_lite",
+      prompt: "Turno dos",
+      input: {},
+      sceneId: escenaId,
+      state: "listo",
+      resultMediaId: turno,
+      castClipOrder: 2,
+      estimatedCredits: 60,
+      idempotencyKey: crypto.randomUUID(),
+    });
+    expect(await bytesDeVersionesSinUsar(proyectoId)).toBe(antes);
+  });
+
+  describe("con una persona en el clip", () => {
+    const { personajeConConsentimiento } = crearAyudas(() => ({ ana, actor, carpeta, personajeId: "" }));
+    let lucia: string;
+    let conLucia: string;
+
+    beforeEach(async () => {
+      lucia = await personajeConConsentimiento();
+      await db().insert(sceneCharacters).values({ sceneId: escenaId, characterId: lucia });
+      conLucia = await version(await clip("lucia", "white"), new Date(Date.now() - 120_000), lucia);
+    });
+
+    const nadaCambia = async (montajeAntes: number) => {
+      const [escena] = await db().select().from(scenes).where(eq(scenes.id, escenaId));
+      expect(escena?.clipJobId).toBe(negra.trabajo);
+      const [montaje] = await db().select().from(montages).where(eq(montages.projectId, proyectoId));
+      expect(montaje?.version).toBe(montajeAntes);
+    };
+
+    test("con el consentimiento vigente y en el reparto, se usa sin más", async () => {
+      expect((await usar(conLucia)).estado).toBe(200);
+    });
+
+    test("con el consentimiento revocado, no se usa, se dice qué pasa y el montaje no cambia", async () => {
+      const antes = (await leerMontaje()).version;
+      const revocado = await rutaConsentimiento.DELETE(
+        pedir(ana, `/api/personajes/${lucia}/consentimiento`, "DELETE", { motivo: "Ya no quiere salir." }),
+        ctx(lucia),
+      );
+      expect(revocado.status).toBe(200);
+      const { estado, datos } = await usar(conLucia);
+      expect(estado).toBe(409);
+      expect(mensajeDe(datos)).toContain("«Lucía» ya no se puede usar");
+      expect(mensajeDe(datos)).toContain("No se ha cambiado nada del montaje");
+      await nadaCambia(antes);
+    });
+
+    test("si ya no está en el reparto de la escena, esa versión no se usa", async () => {
+      const antes = (await leerMontaje()).version;
+      await db().delete(sceneCharacters).where(eq(sceneCharacters.sceneId, escenaId));
+      const [otra] = await db()
+        .insert(characters)
+        .values({ ownerId: ana.id, name: "Marta", kind: "persona" })
+        .returning({ id: characters.id });
+      await db()
+        .insert(sceneCharacters)
+        .values({ sceneId: escenaId, characterId: otra?.id ?? "" });
+      const { estado, datos } = await usar(conLucia);
+      expect(estado).toBe(409);
+      expect(mensajeDe(datos)).toContain("ya no está en el reparto de esta escena");
+      await nadaCambia(antes);
+    });
   });
 });

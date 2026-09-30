@@ -1,9 +1,21 @@
 import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { declaracionesQueFaltan } from "@/lib/conversion";
 import { escenaPropia } from "../asistente/consulta";
 import { ErrorProyecto } from "../asistente/errores";
 import { db } from "../db/cliente";
-import { generationJobs, media, montages, projects, scenes } from "../db/esquema";
+import {
+  characters,
+  type FilaEscena,
+  type FilaTrabajo,
+  generationJobs,
+  media,
+  montages,
+  projects,
+  sceneCharacters,
+  scenes,
+} from "../db/esquema";
 import type { Actor } from "../media/servicio";
+import { motivosParaNoGenerar } from "../personajes/puede-generar";
 import { invalidarRevisionesDeEscena } from "../revision/resultados";
 import { ajustarEstadoDelProyecto } from "./cierre";
 
@@ -19,7 +31,11 @@ import { ajustarEstadoDelProyecto } from "./cierre";
  *
  * - **sube la versión del montaje**: la exportación es idempotente por versión, y sin subirla se devolvería el MP4
  *   montado con el clip anterior;
- * - **invalida la revisión de continuidad**, como al regenerar: lo revisado ya no es el clip que hay.
+ * - **invalida la revisión de continuidad**, como al regenerar: lo revisado ya no es el clip que hay;
+ * - **vuelve a pasar las puertas de la conversión de un clip** (`conversion/servicio.ts`): la persona que sale tiene
+ *   que poder usarse **ahora** (consentimiento vigente, referencias), seguir en el reparto de la escena, y el clip
+ *   tiene que llevar sus declaraciones. Un consentimiento revocado después de generar no se salta eligiendo una
+ *   versión antigua. Si algo falla, no se cambia nada y se dice qué hacer.
  *
  * No cuesta nada ni llama a ningún proveedor: el archivo ya está pagado y guardado.
  */
@@ -62,6 +78,7 @@ export async function usarVersionDeEscena(actor: Actor, escenaId: unknown, traba
     );
   }
   if (escena.clipJobId === version.trabajo.id && escena.clipMediaId === version.medio.id) return proyecto.id;
+  await exigirPuertasDeLaVersion(actor, escena, version.trabajo);
 
   const [enMarcha] = await db()
     .select({ id: generationJobs.id })
@@ -111,6 +128,58 @@ export async function usarVersionDeEscena(actor: Actor, escenaId: unknown, traba
   return proyecto.id;
 }
 
+/**
+ * Las mismas puertas que la conversión de un clip en escena, sobre **esta** versión. Todas se miran a la vez para
+ * decir todo lo que falta de una sola vez.
+ */
+async function exigirPuertasDeLaVersion(actor: Actor, escena: FilaEscena, trabajo: FilaTrabajo): Promise<void> {
+  const motivos: string[] = [];
+  const reparto = await db()
+    .select({ id: sceneCharacters.characterId, nombre: characters.name, dueno: characters.ownerId })
+    .from(sceneCharacters)
+    .innerJoin(characters, eq(characters.id, sceneCharacters.characterId))
+    .where(eq(sceneCharacters.sceneId, escena.id));
+  if (trabajo.characterId) {
+    const [personaje] = await db()
+      .select({ nombre: characters.name })
+      .from(characters)
+      .where(and(eq(characters.id, trabajo.characterId), eq(characters.ownerId, actor.id)))
+      .limit(1);
+    if (!personaje) {
+      motivos.push("La persona de esa versión ya no está entre tus personajes.");
+    } else {
+      if (reparto.length > 0 && !reparto.some((r) => r.id === trabajo.characterId)) {
+        motivos.push(
+          `Esa versión es de «${personaje.nombre}», que ya no está en el reparto de esta escena: usa una versión con el reparto de ahora o vuelve a ponerlo en el reparto.`,
+        );
+      }
+      const impedimentos = await motivosParaNoGenerar(trabajo.characterId);
+      if (impedimentos.length > 0) {
+        motivos.push(`«${personaje.nombre}» ya no se puede usar: ${impedimentos.join(" ")}`);
+      }
+    }
+  }
+  // En un dualcast salen las dos personas en el mismo clip: la otra también tiene que poder usarse.
+  if (escena.castFormat === "dualcast") {
+    for (const miembro of reparto.filter((r) => r.id !== trabajo.characterId && r.dueno === actor.id)) {
+      const impedimentos = await motivosParaNoGenerar(miembro.id);
+      if (impedimentos.length > 0) motivos.push(`«${miembro.nombre}» ya no se puede usar: ${impedimentos.join(" ")}`);
+    }
+  }
+  const faltan = declaracionesQueFaltan({
+    derechosImagen: trabajo.rightsConfirmedAt !== null,
+    revisionDeFotos: trabajo.characterId ? trabajo.referencesReviewedAt !== null : null,
+    derechoMarca: trabajo.productId ? trabajo.brandRightsAt !== null : null,
+  });
+  if (faltan.length > 0) motivos.push(`Esa versión se generó sin ${faltan.join(" ni ")}.`);
+  if (motivos.length > 0) {
+    throw new ErrorProyecto(
+      409,
+      `No se puede usar esa versión en la escena ${escena.sortOrder}: ${motivos.join(" ")} No se ha cambiado nada del montaje; la versión sigue en tu biblioteca.`,
+    );
+  }
+}
+
 /** Bytes que ocupan las versiones de clip **no elegidas** de un proyecto: es lo que se podría liberar. */
 export async function bytesDeVersionesSinUsar(proyectoId: string): Promise<number> {
   const [fila] = await db()
@@ -122,6 +191,8 @@ export async function bytesDeVersionesSinUsar(proyectoId: string): Promise<numbe
       and(
         eq(scenes.projectId, proyectoId),
         eq(generationJobs.kind, "animacion"),
+        // Los clips de un podcast van por turnos y los dos se usan: ninguno es una versión «sin usar».
+        isNull(generationJobs.castClipOrder),
         isNotNull(generationJobs.resultMediaId),
         isNull(media.deletedAt),
         sql`${generationJobs.resultMediaId} is distinct from ${scenes.clipMediaId}`,
