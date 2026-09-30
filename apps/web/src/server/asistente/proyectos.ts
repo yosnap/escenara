@@ -17,7 +17,7 @@ import {
   TITULO_MAXIMO,
 } from "@/lib/proyectos";
 import { leerAjustes } from "../ajustes";
-import { olvidarPercibidoDeProyecto } from "../coherencia/registro";
+import { borrarProyectoConDerivados } from "../datos/borrado-proyecto";
 import { db } from "../db/cliente";
 import { type FilaProyecto, projects, scenes } from "../db/esquema";
 import { aplicarCambioDeAcento } from "../direccion/acento";
@@ -252,13 +252,9 @@ export async function editarProyecto(actor: Actor, id: unknown, datos: DatosProy
 }
 
 /**
- * Borra el proyecto con sus escenas y sus afirmaciones (cascada). Los trabajos de generación **no** se borran:
- * son gasto que ya ocurrió y sus resultados están en la biblioteca; su `scene_id` queda a nulo.
+ * Borra el proyecto con todos sus derivados, en la base de datos y en el almacenamiento (ver
+ * `server/datos/borrado-proyecto.ts`, que dice qué se borra y qué se queda).
  */
 export async function borrarProyecto(actor: Actor, id: unknown): Promise<void> {
-  const proyecto = await proyectoPropio(actor, id);
-  await db().transaction(async (tx) => {
-    await olvidarPercibidoDeProyecto(tx, proyecto.id);
-    await tx.delete(projects).where(eq(projects.id, proyecto.id));
-  });
+  await borrarProyectoConDerivados(actor, id);
 }

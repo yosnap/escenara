@@ -67,6 +67,7 @@ export * from "./esquema-boveda";
 export * from "./esquema-canto";
 export * from "./esquema-catalogo";
 export * from "./esquema-coherencia";
+export * from "./esquema-datos";
 export * from "./esquema-controles";
 export * from "./esquema-direcciones";
 export * from "./esquema-generacion";

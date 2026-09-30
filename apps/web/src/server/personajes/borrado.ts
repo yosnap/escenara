@@ -53,7 +53,7 @@ import { ErrorPersonaje } from "./errores";
  */
 
 /** Estados en los que el trabajo **ya ha tocado al proveedor** o retiene su reserva: impiden el borrado. */
-const ESTADOS_QUE_IMPIDEN: readonly EstadoTrabajo[] = ["preparando", "enviando", "enviado", "en_curso", "desconocido"];
+export const ESTADOS_QUE_IMPIDEN: readonly EstadoTrabajo[] = ["preparando", "enviando", "enviado", "en_curso", "desconocido"];
 
 const detalle = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
@@ -93,7 +93,7 @@ const trabajosDe = (personajeId: string): Promise<FilaTrabajo[]> =>
   db().select().from(generationJobs).where(eq(generationJobs.characterId, personajeId));
 
 /** Identificadores de los trabajos que todavía tienen una reserva sin liberar. */
-async function conReservaAbierta(ids: string[]): Promise<string[]> {
+export async function conReservaAbierta(ids: string[]): Promise<string[]> {
   if (ids.length === 0) return [];
   const filas = await db()
     .select({ id: usageLedger.jobId })
