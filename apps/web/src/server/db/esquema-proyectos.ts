@@ -448,6 +448,11 @@ export const scenes = pgTable(
     index("scenes_proyecto_idx").on(t.projectId, t.sortOrder),
     // Los clips de un mismo intercambio se leen juntos para poder alternarlos en el montaje (0.32.0).
     index("scenes_grupo_podcast_idx").on(t.podcastGroupId),
+    // Los ejemplos de plantilla buscan en qué escena está un medio.
+    index("scenes_fotograma_aprobado_idx").on(t.approvedFrameMediaId),
+    index("scenes_clip_idx").on(t.clipMediaId),
+    index("scenes_referencia_idx").on(t.referenceImageMediaId),
+    index("scenes_referencia_cambio_idx").on(t.changeOnlyReferenceMediaId),
   ],
 );
 

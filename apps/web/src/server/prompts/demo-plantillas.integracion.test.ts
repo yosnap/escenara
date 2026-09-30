@@ -38,6 +38,8 @@ const {
   projects,
   promptTemplates,
   promptTemplateVersions,
+  characterReferences,
+  characterVersions,
   sceneCharacters,
   scenes,
   users,
@@ -297,7 +299,11 @@ describe.skipIf(!hayBaseDeDatos)("ejemplo de las plantillas y los trends", () =>
       medios.push(fila.id);
       return fila.id;
     };
-    const personaje = async (valores: { kind: "persona" | "animal"; virtual: boolean }) => {
+    const personaje = async (valores: {
+      kind: "persona" | "animal";
+      virtual: boolean;
+      renderStyle?: "realista" | "animado";
+    }) => {
       const [fila] = await db()
         .insert(characters)
         .values({ ownerId: admin.id, name: `Personaje ${crypto.randomUUID()}`, ...valores })
@@ -306,16 +312,22 @@ describe.skipIf(!hayBaseDeDatos)("ejemplo de las plantillas y los trends", () =>
       sembrados.push(fila.id);
       return fila.id;
     };
-    const trabajo = async (personajeId: string | null, medioId: string, campo: "resultMediaId" | "sourceMediaId") => {
+    const trabajo = async (
+      personajeId: string | null,
+      medioId: string,
+      campo: "resultMediaId" | "sourceMediaId",
+      extra: { sceneId?: string; input?: Record<string, unknown> } = {},
+    ) => {
       await db()
         .insert(generationJobs)
         .values({
+          sceneId: extra.sceneId ?? null,
           userId: admin.id,
           kind: "fotograma",
           provider: "kie",
           model: "modelo-de-prueba",
           prompt: "x",
-          input: {},
+          input: extra.input ?? {},
           estimatedCredits: 0,
           characterId: personajeId,
           ...(campo === "resultMediaId" ? { resultMediaId: medioId } : { sourceMediaId: medioId }),
@@ -447,6 +459,132 @@ describe.skipIf(!hayBaseDeDatos)("ejemplo de las plantillas y los trends", () =>
       await trabajo(await personaje({ kind: "persona", virtual: false }), m, "resultMediaId");
       claves.push(`${prefijo}-dup-real-copia`);
       expect((await duplicarTrend(t.id, `${prefijo}-dup-real-copia`, admin.id)).demo).toBeNull();
+    });
+
+    /** Escena de un proyecto de prueba con el reparto indicado (el primero es el protagonista del proyecto). */
+    const escenaConReparto = async (reparto: string[], valores: Partial<typeof scenes.$inferInsert> = {}) => {
+      const [proyecto] = await db()
+        .insert(projects)
+        .values({ userId: admin.id, title: "P", clipSeconds: 8, mainCharacterId: reparto[0] ?? null })
+        .returning();
+      const [escena] = await db()
+        .insert(scenes)
+        .values({ projectId: proyecto?.id ?? "", sortOrder: 1, ...valores })
+        .returning();
+      for (const [i, characterId] of reparto.entries())
+        await db()
+          .insert(sceneCharacters)
+          .values({ sceneId: escena?.id ?? "", characterId, sortOrder: i + 1 });
+      return { proyecto: proyecto?.id ?? "", escena: escena?.id ?? "" };
+    };
+    const rechazado = async (m: string) => {
+      const p = await plantilla(`wl-${crypto.randomUUID().slice(0, 6)}`);
+      await expect(fijarDemoDePlantilla(p.id, m, admin.id)).rejects.toMatchObject({ estado: 404 });
+    };
+    const aceptado = async (m: string) => {
+      const p = await plantilla(`ok-${crypto.randomUUID().slice(0, 6)}`);
+      expect((await fijarDemoDePlantilla(p.id, m, admin.id)).demo).not.toBeNull();
+    };
+
+    test("versión anterior de un dualcast con protagonista inventado y una persona real: rechazada", async () => {
+      const inventado = await personaje({ kind: "persona", virtual: true });
+      const real = await personaje({ kind: "persona", virtual: false });
+      const { escena, proyecto } = await escenaConReparto([inventado, real]);
+      const anterior = await medioDe(admin.id);
+      const vigente = await medioDe(admin.id);
+      // Los dos trabajos guardan solo al inventado en `character_id`, aunque en el clip salgan los dos.
+      const viaje = { personajesOmni: ["a", "b"], reparto: { modo: "dualcast" } };
+      await trabajo(inventado, anterior, "resultMediaId", { sceneId: escena, input: viaje });
+      await trabajo(inventado, vigente, "resultMediaId", { sceneId: escena, input: viaje });
+      await db().update(scenes).set({ clipMediaId: vigente }).where(eq(scenes.id, escena));
+      await rechazado(anterior);
+      await rechazado(vigente);
+      await db().delete(projects).where(eq(projects.id, proyecto));
+    });
+
+    test("quitar a la persona real del reparto después de generar no libera el clip", async () => {
+      const inventado = await personaje({ kind: "persona", virtual: true });
+      const real = await personaje({ kind: "persona", virtual: false });
+      const { escena, proyecto } = await escenaConReparto([inventado, real]);
+      const clipDelReparto = await medioDe(admin.id);
+      const otroClip = await medioDe(admin.id);
+      await trabajo(inventado, clipDelReparto, "resultMediaId", {
+        sceneId: escena,
+        input: { reparto: { modo: "dualcast" } },
+      });
+      // Un trabajo sin marcas de reparto, pero de una escena en la que otro trabajo se hizo con la persona real.
+      await trabajo(inventado, otroClip, "resultMediaId", { sceneId: escena });
+      await trabajo(real, await medioDe(admin.id), "resultMediaId", { sceneId: escena });
+      await db().delete(sceneCharacters).where(eq(sceneCharacters.characterId, real));
+      await rechazado(clipDelReparto);
+      await rechazado(otroClip);
+      await db().delete(projects).where(eq(projects.id, proyecto));
+    });
+
+    test("la foto de una persona real quitada de su personaje, pero anotada en su versión 1, sigue rechazada", async () => {
+      const real = await personaje({ kind: "persona", virtual: false });
+      const foto = await medioDe(admin.id);
+      await db()
+        .insert(characterVersions)
+        .values({
+          characterId: real,
+          number: 1,
+          sheet: {} as never,
+          referenceMediaIds: [foto],
+          changedFields: [],
+        });
+      // Nunca hubo `character_references` (o se borró): solo queda la versión.
+      await db().delete(characterReferences).where(eq(characterReferences.mediaId, foto));
+      await rechazado(foto);
+    });
+
+    test("un medio de una escena sin ningún trabajo que lo explique (origen desconocido) se rechaza", async () => {
+      const inventado = await personaje({ kind: "persona", virtual: true });
+      const { escena, proyecto } = await escenaConReparto([inventado]);
+      const sinOrigen = await medioDe(admin.id);
+      await db().update(scenes).set({ referenceImageMediaId: sinOrigen }).where(eq(scenes.id, escena));
+      await rechazado(sinOrigen);
+      await db().delete(projects).where(eq(projects.id, proyecto));
+    });
+
+    test("un clip de una escena de un solo personaje sintético sí vale, y deja de valer si luego entra una persona real", async () => {
+      const animado = await personaje({ kind: "persona", virtual: true, renderStyle: "animado" });
+      const { escena, proyecto } = await escenaConReparto([animado]);
+      const clipPropio = await medioDe(admin.id);
+      await trabajo(animado, clipPropio, "resultMediaId", { sceneId: escena });
+      await db().update(scenes).set({ clipMediaId: clipPropio }).where(eq(scenes.id, escena));
+      await aceptado(clipPropio);
+      // Se añade una segunda persona al reparto: el clip deja de servirse y de verse.
+      const p = await plantilla("wl-luego");
+      await fijarDemoDePlantilla(p.id, clipPropio, admin.id);
+      await db()
+        .insert(sceneCharacters)
+        .values({
+          sceneId: escena,
+          characterId: await personaje({ kind: "persona", virtual: false }),
+          sortOrder: 2,
+        });
+      expect((await rutaDemo.GET(pedir(ana, `/api/prompts/plantillas/${p.id}/demo`), ctx(p.id))).status).toBe(404);
+      expect((await listarPlantillas()).find((v) => v.id === p.id)?.demo).toBeNull();
+      await db().delete(projects).where(eq(projects.id, proyecto));
+    });
+
+    test("un personaje inventado, un animado y una mascota valen; una subida directa no vinculada, también", async () => {
+      const inventado = await personaje({ kind: "persona", virtual: true });
+      const animado = await personaje({ kind: "persona", virtual: true, renderStyle: "animado" });
+      const mascota = await personaje({ kind: "animal", virtual: false });
+      for (const c of [inventado, animado, mascota]) {
+        const m = await medioDe(admin.id);
+        await trabajo(c, m, "resultMediaId");
+        await aceptado(m);
+      }
+      await aceptado(await medioDe(admin.id));
+    });
+
+    test("un medio sin personaje en el trabajo (origen no determinable) se rechaza", async () => {
+      const m = await medioDe(admin.id);
+      await trabajo(null, m, "resultMediaId");
+      await rechazado(m);
     });
 
     test("la ruta corta las lecturas excesivas con 429", async () => {

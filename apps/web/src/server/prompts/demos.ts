@@ -24,39 +24,81 @@ import { ErrorPreset } from "./errores";
  *   su dueño sigue siendo administrador, así que si pierde el rol sus ejemplos dejan de verse;
  * - está en la biblioteca (no en la papelera) y es imagen o vídeo;
  * - **no es material reservado** (documento de consentimiento, foto de un personaje o su hoja);
- * - **no lleva a un personaje real**: ni un fotograma o clip generado con uno, ni un medio de una escena, un reparto o una
- *   exportación con personas reales. Sí valen los de personajes inventados, animados o mascotas y los subidos sin
- *   vínculo a ningún personaje. Enseñar a una persona real a todos los usuarios necesitaría un consentimiento propio.
+ * - **su origen es seguro, por lista blanca** (ver {@link condicionDeOrigenSeguro}): solo vale una subida directa que no
+ *   está en ningún trabajo, escena ni personaje, o el resultado o punto de partida de un trabajo hecho con un personaje
+ *   sintético (inventado, animado o mascota) que no es de un reparto de varias personas. Todo lo demás, incluido lo que no
+ *   se sabe de dónde viene, se rechaza. Enseñar a una persona real a todos los usuarios necesitaría un consentimiento propio.
  *
  * Todo se vuelve a comprobar al leerlo, no solo al elegirlo, porque un medio puede pasar a estar vinculado después.
  */
 
-/** Persona real: un personaje de tipo persona que no es inventado. Las mascotas y los inventados no cuentan. */
-const REAL = sql`c.kind = 'persona' and c.virtual = false`;
+/** Personaje sintético: inventado (y con él animado) o mascota. Una persona real no lo es nunca. */
+const sintetico = (c: string) => `(${c}.virtual = true or ${c}.kind = 'animal')`;
 
 /**
- * Medios sin ningún vínculo a un personaje real: como resultado o punto de partida de un trabajo, en una escena o una
- * exportación de un proyecto cuyo reparto o protagonista es real, o como fotograma maestro de un personaje real.
+ * Trabajo hecho con **un solo** personaje sintético: con personaje, sin orden de reparto, y sin `reparto` ni más de un
+ * personaje en lo que viajó al proveedor. La comprobación mira el propio trabajo, no el reparto de hoy: el reparto cambia,
+ * y un clip de dos personas sigue siendo de dos personas aunque después se quite a una del reparto.
  */
-export function condicionSinPersonajeReal(): SQL {
+const trabajoSintetico = (j: string) => `(
+  ${j}.character_id is not null
+  and exists (select 1 from characters cj where cj.id = ${j}.character_id and ${sintetico("cj")})
+  and ${j}.cast_clip_order is null
+  and jsonb_typeof(${j}.input) = 'object'
+  and not jsonb_exists(${j}.input, 'reparto')
+  and (jsonb_typeof(${j}.input->'personajesOmni') is distinct from 'array'
+       or jsonb_array_length(${j}.input->'personajesOmni') <= 1))`;
+
+/**
+ * Escena que nunca ha llevado a nadie más que a un personaje sintético: como mucho una persona en el reparto (y
+ * sintética), el protagonista del proyecto sintético o ausente, sin grupo de podcast ni turnos de diálogo de personas
+ * reales, y **todos** sus trabajos (los vigentes y las versiones anteriores) hechos con un personaje sintético.
+ */
+const escenaSintetica = (id: string) => `(
+  (select count(*) from scene_characters scx where scx.scene_id = ${id}) <= 1
+  and not exists (select 1 from scene_characters scy join characters cy on cy.id = scy.character_id
+                  where scy.scene_id = ${id} and not ${sintetico("cy")})
+  and not exists (select 1 from scenes sz join projects pz on pz.id = sz.project_id
+                  join characters cz on cz.id = pz.main_character_id
+                  where sz.id = ${id} and not ${sintetico("cz")})
+  and not exists (select 1 from scenes sw where sw.id = ${id} and sw.podcast_group_id is not null)
+  and not exists (select 1 from scene_dialogue_turns tt join characters ct on ct.id = tt.character_id
+                  where tt.scene_id = ${id} and not ${sintetico("ct")})
+  and not exists (select 1 from generation_jobs j2 where j2.scene_id = ${id} and not ${trabajoSintetico("j2")}))`;
+
+/**
+ * **Lista blanca de origen**: un medio solo puede ser ejemplo si cumple una de estas dos cosas, y ninguna exclusión.
+ *
+ * - **(A)** Es una subida directa: no está en ningún trabajo, escena ni exportación.
+ * - **(B)** Es el resultado o el punto de partida de trabajos hechos con un personaje sintético, y toda escena en la que
+ *   aparece es sintética ({@link escenaSintetica}).
+ *
+ * Exclusión sin excepción: ningún medio que sea referencia, hoja o fotograma maestro de un personaje, ni que esté en
+ * **cualquier versión** de un personaje (aunque la foto se haya quitado después del personaje), ni resultado de una
+ * exportación. Un medio cuyo origen no se puede determinar (una escena sin trabajo que lo explique) queda fuera.
+ */
+export function condicionDeOrigenSeguro(): SQL {
+  const m = media.id;
   return sql`
-    not exists (select 1 from generation_jobs j join characters c on c.id = j.character_id
-      where (j.result_media_id = ${media.id} or j.source_media_id = ${media.id}) and ${REAL})
-    and not exists (select 1 from scenes s
-      where (s.approved_frame_media_id = ${media.id} or s.clip_media_id = ${media.id}
-             or s.reference_image_media_id = ${media.id} or s.change_only_reference_media_id = ${media.id})
-        and (exists (select 1 from scene_characters sc join characters c on c.id = sc.character_id
-                     where sc.scene_id = s.id and ${REAL})
-             or exists (select 1 from projects p join characters c on c.id = p.main_character_id
-                        where p.id = s.project_id and ${REAL})))
-    and not exists (select 1 from montage_exports e
-      where e.result_media_id = ${media.id}
-        and (exists (select 1 from projects p join characters c on c.id = p.main_character_id
-                     where p.id = e.project_id and ${REAL})
-             or exists (select 1 from scenes s join scene_characters sc on sc.scene_id = s.id
-                        join characters c on c.id = sc.character_id
-                        where s.project_id = e.project_id and ${REAL})))
-    and not exists (select 1 from characters c where c.master_frame_media_id = ${media.id} and ${REAL})`;
+    not exists (select 1 from character_versions cv where cv.sheet_media_id = ${m} or jsonb_exists(cv.reference_media_ids, ${m}::text))
+    and not exists (select 1 from character_references cr where cr.media_id = ${m})
+    and not exists (select 1 from characters cc where cc.master_frame_media_id = ${m} or cc.identity_sheet_media_id = ${m})
+    and not exists (select 1 from montage_exports e where e.result_media_id = ${m})
+    and (
+      (not exists (select 1 from generation_jobs ja where ja.result_media_id = ${m} or ja.source_media_id = ${m})
+       and not exists (select 1 from scenes sa where sa.approved_frame_media_id = ${m} or sa.clip_media_id = ${m}
+                       or sa.reference_image_media_id = ${m} or sa.change_only_reference_media_id = ${m}))
+      or
+      (exists (select 1 from generation_jobs jb where jb.result_media_id = ${m} or jb.source_media_id = ${m})
+       and not exists (select 1 from generation_jobs jm
+                       where (jm.result_media_id = ${m} or jm.source_media_id = ${m})
+                         and not (${sql.raw(trabajoSintetico("jm"))}
+                                  and (jm.scene_id is null or ${sql.raw(escenaSintetica("jm.scene_id"))})))
+       and not exists (select 1 from scenes sm
+                       where (sm.approved_frame_media_id = ${m} or sm.clip_media_id = ${m}
+                              or sm.reference_image_media_id = ${m} or sm.change_only_reference_media_id = ${m})
+                         and not ${sql.raw(escenaSintetica("sm.id"))}))
+    )`;
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -82,7 +124,7 @@ async function mediosValidos(ids: readonly string[]) {
         inArray(media.id, [...ids]),
         isNull(media.deletedAt),
         condicionMedioNoReservado(),
-        condicionSinPersonajeReal(),
+        condicionDeOrigenSeguro(),
         // Solo cuentan los medios de quien sigue siendo administrador.
         inArray(media.ownerId, db().select({ id: users.id }).from(users).where(eq(users.role, "admin"))),
       ),
@@ -168,7 +210,7 @@ export async function exigirMedioParaDemo(medioId: string, autorId: string): Pro
   if (!medio || medio.ownerId !== autorId)
     throw new ErrorPreset(
       404,
-      "Ese medio no existe, no es tuyo o no se puede usar como ejemplo (no valen los de otras personas ni los que llevan a un personaje real).",
+      "Ese medio no existe, no es tuyo o no se puede usar como ejemplo (no valen los de otras personas ni los que puedan llevar a una persona real).",
     );
   if (!tipoDeDemo(medio.kind, medio.mimeType))
     throw new ErrorPreset(400, "Un ejemplo tiene que ser una imagen o un clip de vídeo.");

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { PlantillaVista } from "@/lib/presets";
+import { AvisoDemoParaTodos } from "./dialogo-demo-plantilla";
 import { VistaPlantillas } from "./vista-plantillas";
 
 /**
@@ -97,5 +98,15 @@ describe("ejemplo de cada plantilla en el panel", () => {
   test("una plantilla sin ejemplo lo dice y ofrece ponerlo", () => {
     expect(html).toContain("Sin ejemplo: los usuarios no ven cómo queda antes de generar.");
     expect(html).toContain("Poner ejemplo");
+  });
+});
+
+describe("aviso del diálogo del ejemplo", () => {
+  test("dice que lo ven todos y que no lleve personas reales, con la alerta única", () => {
+    const html = renderToStaticMarkup(<AvisoDemoParaTodos />);
+    expect(html).toContain("El ejemplo lo verán todos los usuarios de la instalación.");
+    expect(html).toContain("sin personas reales");
+    expect(html).toContain("responsabilidad de quien la elige");
+    expect(html).toContain('role="status"');
   });
 });

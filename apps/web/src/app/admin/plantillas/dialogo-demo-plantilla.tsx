@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Alerta } from "@/components/ui/alerta";
 import { Boton } from "@/components/ui/button";
 import { DemoDePlantilla } from "@/components/ui/demo-plantilla";
 import { Aviso } from "@/components/ui/feedback";
@@ -9,6 +10,20 @@ import { Dialogo } from "@/components/ui/overlay";
 import type { Medio } from "@/lib/media/tipos";
 import type { PlantillaVista } from "@/lib/presets";
 import { fijarDemoAccion, type ResultadoPlantillas } from "./acciones";
+
+/**
+ * Aviso de consentimiento del diálogo: el ejemplo lo ven **todos** los usuarios, y una foto de una persona real subida
+ * directamente no se puede detectar, así que la responsabilidad es de quien la elige.
+ */
+export function AvisoDemoParaTodos() {
+  return (
+    <Alerta tipo="aviso" compacta>
+      El ejemplo lo verán todos los usuarios de la instalación. Usa solo imágenes o clips sin personas reales: personajes
+      sintéticos, mascotas, caricaturas o ilustraciones. Una foto de una persona real subida directamente no se puede
+      detectar: responsabilidad de quien la elige.
+    </Alerta>
+  );
+}
 
 /**
  * Ejemplo de una plantilla o de un trend: la imagen o el clip que verán los usuarios en «Crear» y en los proyectos antes
@@ -76,6 +91,7 @@ export function DialogoDemoPlantilla({
       }
     >
       <div className="flex flex-col gap-4">
+        <AvisoDemoParaTodos />
         {error && <Aviso tono="error">{error}</Aviso>}
         {plantilla.demo ? (
           <DemoDePlantilla demo={plantilla.demo} titulo="Ejemplo actual" alturaMaxima="14rem" />
