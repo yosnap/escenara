@@ -13,6 +13,7 @@ import {
   respuestaDe,
   SALDO,
   SUBIDA,
+  TAREA_BLOQUEADA_POR_SEGURIDAD,
   TAREA_CREADA,
   TAREA_EN_COLA,
   TAREA_FALLIDA,
@@ -303,6 +304,18 @@ describe("peticiones con respuestas grabadas", () => {
     const tarea = await adaptadorKie.consultar({ clave: CLAVE, taskId: "t", buscar });
     expect(tarea.haFallado).toBe(true);
     expect(JSON.stringify(tarea)).not.toContain("sk-clave-que-el-proveedor-repite");
+    // Un texto que no se reconoce no inventa causa.
+    expect(tarea.causaFallo).toBe("desconocida");
+  });
+
+  test("el bloqueo real de la revisión de seguridad de Google llega como causa propia, sin su texto", async () => {
+    const { buscar } = simular(TAREA_BLOQUEADA_POR_SEGURIDAD);
+    const tarea = await adaptadorKie.consultar({ clave: CLAVE, taskId: "t", buscar });
+    expect(tarea.haFallado).toBe(true);
+    expect(tarea.causaFallo).toBe("bloqueo_seguridad");
+    expect(tarea.creditos).toBe(0);
+    const serializada = JSON.stringify(tarea).toLowerCase();
+    for (const trozo of ["google", "safety", "request blocked", "400"]) expect(serializada).not.toContain(trozo);
   });
 
   test("el saldo se lee de la respuesta grabada", async () => {

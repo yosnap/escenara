@@ -1,5 +1,7 @@
 import { type CodigoPrueba, MENSAJE_PRUEBA } from "@/lib/boveda";
+import type { CausaFalloProveedor } from "@/lib/causa-fallo";
 import type { EstadoTrabajo } from "@/lib/generacion";
+import { causaDelFallo } from "../causa-del-fallo";
 import { type Buscador, codigoDeEstado, codigoDeFallo, MS_MAXIMO } from "../codigos";
 
 /**
@@ -229,6 +231,11 @@ export interface TareaKie {
   creditos: number | null;
   /** `true` si el proveedor informa de un fallo. Su texto no se propaga. */
   haFallado: boolean;
+  /**
+   * Causa propia del fallo, solo si ha fallado. Se elige con una lista cerrada a partir de `failCode` y `failMsg`
+   * (`causaDelFallo`); el texto del proveedor se descarta ahí mismo.
+   */
+  causaFallo?: CausaFalloProveedor;
 }
 
 /** Consulta el estado de una tarea. No crea nada: es lo que se usa tras un timeout. */
@@ -236,6 +243,7 @@ export async function consultarTarea(clave: string, taskId: string, buscar: Busc
   const data = await pedir<{
     state?: unknown;
     resultJson?: unknown;
+    failCode?: unknown;
     failMsg?: unknown;
     creditsConsumed?: unknown;
   }>(buscar, `${API}/api/v1/jobs/recordInfo?taskId=${encodeURIComponent(taskId)}`, {
@@ -251,6 +259,7 @@ export async function consultarTarea(clave: string, taskId: string, buscar: Busc
     creditos:
       typeof data.creditsConsumed === "number" && Number.isFinite(data.creditsConsumed) ? data.creditsConsumed : null,
     haFallado: estadoPropio === "fallido",
+    ...(estadoPropio === "fallido" ? { causaFallo: causaDelFallo(data.failCode, data.failMsg) } : {}),
   };
 }
 

@@ -393,6 +393,13 @@
       "when": 1790744644794,
       "tag": "0055_fotos-del-producto-en-la-escena",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1790747428024,
+      "tag": "0056_causa-del-fallo-del-proveedor",
+      "breakpoints": true
     }
   ]
 }

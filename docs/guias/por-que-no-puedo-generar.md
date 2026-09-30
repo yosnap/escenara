@@ -308,6 +308,24 @@ de créditos. No hace falta confirmar nada aquí: fijar ese techo **es** la acci
 
 </details>
 
+## Cuando el proveedor acepta el trabajo y luego no lo termina
+
+Los controles previos pasan y el trabajo sale, pero el proveedor lo marca como fallido. El historial de «Crear», el
+resultado de «Crear» y la escena en Producción te dicen la causa, con qué proveedor y modelo, **si se ha cobrado**
+(lo que informe el proveedor; casi siempre, nada) y qué probar. Nunca se vuelve a enviar solo.
+
+| Causa | Qué probar |
+|---|---|
+| **El filtro de seguridad del proveedor bloqueó la generación.** Pasa, por ejemplo, con Gemini Omni cuando la revisión de seguridad de Google lo frena. No dice qué le ha disgustado | Si llevaba producto, quítalo o usa menos fotos suyas; cambia la descripción; o genera con otro modelo |
+| **El proveedor ha rechazado la petición por sus normas de contenido** | Cambia la descripción, quita el producto si lo llevaba, o genera con otro modelo |
+| **El proveedor no ha podido usar una de las imágenes de referencia** | Elige otras fotos del producto, revisa las fotos del personaje en su ficha, o genera con otro modelo |
+| **El proveedor estaba saturado** | Vuelve a generarlo dentro de un rato, o con otro modelo |
+| **El proveedor cortó la generación por exceso de peticiones** | Espera unos minutos antes de volver a generarlo |
+
+Si el proveedor no explica nada que Escenara reconozca, verás el mensaje de siempre: «El proveedor no ha podido
+completar la generación». Escenara no te enseña el texto del proveedor tal cual, porque puede repetir datos de tu
+petición; solo lo usa para elegir una de estas causas.
+
 ## Lo que no se puede saltar, no se salta
 
 Un **Bloqueado** no se puede confirmar de ninguna manera. Eso incluye los requisitos del canto, del reparto de dos

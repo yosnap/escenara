@@ -1,4 +1,5 @@
 import { and, desc, eq, gt, inArray, isNotNull, ne, or, type SQL } from "drizzle-orm";
+import { esCausaFalloProveedor } from "@/lib/causa-fallo";
 import {
   type DireccionElegidaConAcento,
   esAcento,
@@ -93,6 +94,8 @@ export function vistaDe(
     direccion: direccionGuardada(fila),
     derechosConfirmados: fila.rightsConfirmedAt !== null,
     motivoFallo: fila.failureReason,
+    // Se valida al leerla: la columna es texto y un valor que ya no está en la lista se trata como sin causa.
+    causaFallo: esCausaFalloProveedor(fila.failureCause) ? fila.failureCause : null,
     intentos: fila.attempts,
     intentosMaximos: fila.maxAttempts,
     posicionEnCola: posicion,

@@ -1,5 +1,6 @@
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { boolean, index, integer, pgEnum, pgTable, real, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
+import type { CausaFalloProveedor } from "@/lib/causa-fallo";
 import { media } from "./esquema";
 import { users } from "./esquema-auth";
 import { proveedorCredencial } from "./esquema-boveda";
@@ -202,6 +203,13 @@ export const generationJobs = pgTable(
     parentJobId: uuid("parent_job_id").references((): AnyPgColumn => generationJobs.id, { onDelete: "set null" }),
     /** Motivo normalizado del fallo; decide si el trabajo se puede reintentar sin riesgo de doble cobro. */
     failureReason: motivoFalloTrabajo("failure_reason"),
+    /**
+     * Causa concreta cuando el proveedor no completa una tarea que aceptó (`CAUSAS_FALLO_PROVEEDOR`): una clave
+     * propia de lista cerrada, **nunca** su texto. `null` en los trabajos anteriores y en los que no fallan así;
+     * esos se muestran como siempre. Texto y no enum para poder ampliar la lista sin otra migración: se valida al
+     * leerla.
+     */
+    failureCause: text("failure_cause").$type<CausaFalloProveedor>(),
     /** Más alta = antes en la cola. Igualdad de prioridad se resuelve por antigüedad. */
     priority: integer("priority").notNull().default(0),
     /** Veces que un worker ha tomado este trabajo para enviarlo. */

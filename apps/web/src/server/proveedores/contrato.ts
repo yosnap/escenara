@@ -1,5 +1,6 @@
 import { type CodigoPrueba, MENSAJE_PRUEBA } from "@/lib/boveda";
 import type { Capacidad, ModeloVista, ParametrosModelo } from "@/lib/catalogo";
+import type { CausaFalloProveedor } from "@/lib/causa-fallo";
 import type { EstadoTrabajo } from "@/lib/generacion";
 import type { RepartoDeEnvio } from "@/lib/reparto-envio";
 import type { ParametrosVoz } from "@/lib/voz";
@@ -143,6 +144,8 @@ export interface TareaProveedor {
   /** Créditos que informa el proveedor; `null` si todavía no los informa. */
   creditos: number | null;
   haFallado: boolean;
+  /** Causa propia del fallo (lista cerrada), si el proveedor la ha dejado reconocer. Nunca su texto. */
+  causaFallo?: CausaFalloProveedor;
 }
 
 /** Lo que hay que decirle a un modelo para que genere algo. Cada adaptador lo traduce a sus campos. */
