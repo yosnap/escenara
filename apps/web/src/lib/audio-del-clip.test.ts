@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { type ClipProducidoVista, comoPonerVozEnOff, comoSuenaLaEscena } from "./audio-del-clip";
+import {
+  type ClipProducidoVista,
+  comoPonerVozEnOff,
+  comoSuenaLaEscena,
+  escenaSinAudio,
+  subtitulosSinAudio,
+} from "./audio-del-clip";
 import type { Medio } from "./media/tipos";
 
 const clip = (parcial: Partial<ClipProducidoVista> = {}): ClipProducidoVista => ({
@@ -55,5 +61,20 @@ describe("cómo ponerle voz en off", () => {
 
   test("en modo Omni dice que la voz va dentro del clip", () => {
     expect(comoPonerVozEnOff(clip(), "omni")).toContain("Omni");
+  });
+});
+
+describe("subtítulos de una escena que no suena", () => {
+  test("audio del clip quitado sin pista aparte: no hay nada que subtitular", () => {
+    expect(subtitulosSinAudio({ audioQuitado: true, conPistaDeVoz: false }, "clip")).toBe(true);
+    expect(subtitulosSinAudio({ audioQuitado: true, conPistaDeVoz: false }, "pista")).toBe(true);
+    expect(escenaSinAudio({ clipAudioMuted: true, voiceMediaId: null }, "clip")).toBe(true);
+  });
+
+  test("con pista de voz aparte los subtítulos siguen, y con el audio puesto también", () => {
+    expect(subtitulosSinAudio({ audioQuitado: true, conPistaDeVoz: true }, "pista")).toBe(false);
+    expect(subtitulosSinAudio({ audioQuitado: false, conPistaDeVoz: false }, "clip")).toBe(false);
+    // Una pista guardada de cuando el proyecto era «pista» no suena en modo «clip».
+    expect(escenaSinAudio({ clipAudioMuted: true, voiceMediaId: "v1" }, "clip")).toBe(true);
   });
 });

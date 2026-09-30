@@ -1,4 +1,5 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
+import { escenaSinAudio } from "@/lib/audio-del-clip";
 import { ESTADOS_ACTIVOS, ETIQUETA_ESTADO } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
 import { VOCES_OMNI } from "@/lib/omni";
@@ -204,6 +205,7 @@ function vistaDeEscena(
     audio: escena.voiceMediaId === null ? null : (medios.get(escena.voiceMediaId) ?? null),
     invalidada: escenaInvalidada(proyecto, escena, firmaOmni),
     clipHablado: clipsHablados.has(escena.id),
+    sinAudio: escenaSinAudio(escena, proyecto.voiceMode),
     invalidacion: escena.voiceInvalidationReason,
     subtitulos: escena.subtitles,
     editados: escena.subtitlesEditedAt !== null,

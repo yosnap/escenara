@@ -1,4 +1,5 @@
 import { and, desc, eq, ne, sql } from "drizzle-orm";
+import { escenaSinAudio } from "@/lib/audio-del-clip";
 import { duracionTotalDeFragmentos, erroresDeMontaje, subtitulosDelMontaje, tieneSubtitulos } from "@/lib/montaje";
 import type { FormatoSubtitulos } from "@/lib/voz";
 import { db } from "../db/cliente";
@@ -133,7 +134,11 @@ export function subtitulosDeLaExportacion(
   montaje: FilaMontaje,
   material: MaterialDelProyecto,
 ): { srt: string; vtt: string; hay: boolean } {
-  const porEscena = material.escenas.map((e) => ({ escenaId: e.escena.id, subtitulos: e.subtitulos }));
+  // Una escena que entra en silencio (audio del clip quitado y sin pista aparte) no lleva subtítulos: no se oye nada.
+  const porEscena = material.escenas.map((e) => ({
+    escenaId: e.escena.id,
+    subtitulos: escenaSinAudio(e.escena, material.proyecto.voiceMode) ? [] : e.subtitulos,
+  }));
   if (!tieneSubtitulos(montaje.fragments, porEscena)) return { srt: "", vtt: "", hay: false };
   const componer = (formato: FormatoSubtitulos) => subtitulosDelMontaje(montaje.fragments, porEscena, formato);
   return { srt: componer("srt"), vtt: componer("vtt"), hay: true };

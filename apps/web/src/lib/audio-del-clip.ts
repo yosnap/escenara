@@ -36,6 +36,26 @@ export interface ClipsDelProyecto {
 }
 
 /**
+ * `true` cuando de esta escena **no se oye ninguna voz**: el audio del clip está quitado y no hay pista de voz aparte
+ * que suene en su lugar. Entonces no hay nada que subtitular: sus subtítulos no se transcriben del clip, no se
+ * exportan y no se queman, porque describirían algo que no se oye. Con la pista de voz aparte los subtítulos salen
+ * del diálogo como siempre.
+ */
+export const subtitulosSinAudio = (escena: { audioQuitado: boolean; conPistaDeVoz: boolean }, modo: ModoVoz): boolean =>
+  escena.audioQuitado && !(modo === "pista" && escena.conPistaDeVoz);
+
+/** Lo que se dice de sus subtítulos cuando la escena no suena. Es el mismo texto en todas las pantallas. */
+export const SIN_SUBTITULOS_AUDIO_QUITADO =
+  "Sin subtítulos: el audio está quitado. Lo que se oye es lo que se subtitula, y esta escena entra en silencio.";
+
+/** Lo mismo leído de la fila de la escena, para el servidor. */
+export const escenaSinAudio = (
+  escena: { clipAudioMuted: boolean; voiceMediaId: string | null },
+  modo: ModoVoz,
+): boolean =>
+  subtitulosSinAudio({ audioQuitado: escena.clipAudioMuted, conPistaDeVoz: escena.voiceMediaId !== null }, modo);
+
+/**
  * Qué se va a oír de esta escena en el montaje, en una frase. Es lo que evita que alguien exporte con dos voces
  * diciendo lo mismo sin saberlo, o con una escena muda creyendo que tenía voz.
  */

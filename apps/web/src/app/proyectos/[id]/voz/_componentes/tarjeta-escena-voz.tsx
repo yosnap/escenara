@@ -3,6 +3,7 @@
 import { AudioLines, Captions, FileText } from "lucide-react";
 import { Boton } from "@/components/ui/button";
 import { Aviso } from "@/components/ui/feedback";
+import { SIN_SUBTITULOS_AUDIO_QUITADO } from "@/lib/audio-del-clip";
 import { formatearCreditos } from "@/lib/generacion";
 import type { DisponibilidadVoz, EscenaVozVista, ModoVoz, Subtitulo } from "@/lib/voz";
 import { EditorSubtitulos } from "./editor-subtitulos";
@@ -36,7 +37,9 @@ export function TarjetaEscenaVoz({
   const conPista = modo === "pista";
   const origen = conPista ? "la pista de voz" : "el audio del clip";
   const puedeTranscribir =
-    disponibilidad.transcripcionDisponible && (conPista ? escena.audio !== null : escena.clip !== null);
+    disponibilidad.transcripcionDisponible &&
+    !escena.sinAudio &&
+    (conPista ? escena.audio !== null : escena.clip !== null);
 
   return (
     <article className="flex flex-col gap-4 rounded-tarjeta border-2 border-borde bg-superficie p-5">
@@ -55,6 +58,8 @@ export function TarjetaEscenaVoz({
       {escena.invalidada && (
         <Aviso tono="error">{escena.invalidacion || "Lo generado ya no corresponde a la voz de este proyecto."}</Aviso>
       )}
+      {/* Una escena en silencio no se subtitula: sería texto de algo que no se oye. */}
+      {escena.sinAudio && <Aviso tono="info">{SIN_SUBTITULOS_AUDIO_QUITADO}</Aviso>}
       {/* El clip ya producido dice el diálogo en la imagen: no es una invalidación, pero hay que reproducirlo. */}
       {escena.clipHablado && (
         <Aviso tono="info">
