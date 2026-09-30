@@ -1,7 +1,7 @@
 "use client";
 
 import { Clapperboard, Wand2 } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useRef } from "react";
 import { Boton } from "@/components/ui/button";
 import { Casilla } from "@/components/ui/choice";
 import { PanelDireccion } from "@/components/ui/direccion/panel-direccion";
@@ -154,17 +154,31 @@ export function PasoClip({
   onOtroClip: (precargar: TrabajoVista | null) => void;
 }) {
   const hayOrigen = origen !== null;
-  // Con otro modelo pueden caber menos fotos del producto: la elección se recorta en el mismo gesto, antes de que el
-  // servidor compruebe el clip con el modelo nuevo, y no se le pregunta con una elección que ya no cabe.
+  // La elección de fotos tal como la hizo la persona, sin recortar: con otro modelo pueden caber menos y se ajusta
+  // en el mismo gesto (antes de que el servidor compruebe el clip con el modelo nuevo), pero al volver a un modelo
+  // con más huecos se recupera entera.
+  const eleccionHecha = useRef<string[] | undefined>(producto.fotos);
+  const cupoDe = (modelo: string) =>
+    cupoDeFotosDe({
+      cupoDeGaleria: modelos.find((m) => m.modelo === modelo)?.cupoDeGaleria,
+      // El clip de «Crear» parte de una sola imagen: su fotograma.
+      fotosDelPersonaje: 1,
+    });
+  const elegirProducto = (elegido: ProductoElegido) => {
+    eleccionHecha.current = elegido.fotos;
+    onProducto(elegido);
+  };
   const cambiarModelo = (modeloNuevo: string) => {
-    const recortada = eleccionParaElModelo(
-      producto,
-      cupoDeFotosDe({
-        cupoDeGaleria: modelos.find((m) => m.modelo === modeloNuevo)?.cupoDeGaleria,
-        fotosDelPersonaje: 1,
-      }),
+    const { fotos: _actuales, ...sinFotos } = producto;
+    const cupo = cupoDe(modeloNuevo);
+    const ajustada = eleccionParaElModelo(
+      eleccionHecha.current ? { ...sinFotos, fotos: eleccionHecha.current } : sinFotos,
+      cupo ? { ...cupo, estricta: true } : null,
     );
-    if (recortada) onProducto(recortada);
+    const igual =
+      (ajustada.fotos?.length ?? 0) === (producto.fotos?.length ?? 0) &&
+      (ajustada.fotos ?? []).every((id, i) => id === producto.fotos?.[i]);
+    if (!igual) onProducto(ajustada);
     onModelo(modeloNuevo);
   };
   const plantillaEnUso = previa.enUso ? previa.plantilla : null;
@@ -247,13 +261,12 @@ export function PasoClip({
             // En «Crear» el fotograma no se dirige aquí: o es una imagen tuya (no se genera) o tiene su propio paso.
             conFotograma={false}
             producto={producto}
-            onProducto={onProducto}
+            onProducto={elegirProducto}
             fotoDeProducto={fotoDeProductoDelModelo(modelos, estimacion.modelo)}
-            elegirFotosDelProducto={cupoDeFotosDe({
-              cupoDeGaleria: modelos.find((m) => m.modelo === estimacion.modelo)?.cupoDeGaleria,
-              // El clip de «Crear» parte de una sola imagen: su fotograma.
-              fotosDelPersonaje: 1,
-            })}
+            elegirFotosDelProducto={(() => {
+              const cupo = cupoDe(estimacion.modelo);
+              return cupo ? { ...cupo, estricta: true } : null;
+            })()}
             trend={
               trend
                 ? { nombre: trend.nombre, decide: trend.direccionDecidida, permiteHabla: trend.trendAllowsSpeech }

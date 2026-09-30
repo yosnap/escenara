@@ -64,7 +64,6 @@ const {
   usageLedger,
   users,
 } = await import("../db/esquema");
-const { crearMedio } = await import("../media/servicio");
 const { leerObjeto } = await import("../almacenamiento");
 const { pasadaDeExportaciones } = await import("../montaje/cola");
 const { comprometidoDelProyecto, exigirTopeDelProyecto } = await import("../asistente/plan");

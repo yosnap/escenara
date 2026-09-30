@@ -19,6 +19,12 @@ export interface CupoDeFotos {
   cupoDeGaleria: number;
   /** Un clip de siempre parte de **una** imagen (su fotograma); con Omni, de todas las del personaje. */
   fotosDelPersonaje: number;
+  /**
+   * `true` cuando la elección viaja con la petición y el servidor la rechaza si no cabe («Crear»). Entonces el
+   * navegador la mantiene ajustada a lo que cabe. En una escena, el servidor recorta y avisa, y el navegador no
+   * toca lo que se guardó.
+   */
+  estricta?: boolean;
 }
 
 /** Lo que hace falta para ofrecer elegir fotos, si el servidor lo ha calculado. `null` = no se ofrece. */
@@ -80,15 +86,16 @@ export const AVISO_SIN_LA_FRONTAL =
   "Sin la frontal con la etiqueta, el texto de la etiqueta puede salir distinto en el clip.";
 
 /**
- * La elección de fotos tal como queda al **cambiar de modelo**: recortada a lo que cabe con el nuevo. `null` si no
- * hay nada que cambiar. Se hace en el mismo gesto que el cambio de modelo, antes de preguntar al servidor, que
- * rechaza una elección que no cabe: así la comprobación de controles nunca sale con una elección que ya no vale.
+ * La elección de fotos que corresponde a un modelo, partiendo de **la que hizo la persona** (`fotos`, sin recortar):
+ * entera si cabe, recortada a lo que quepa si no, y ninguna si el modelo no deja sitio al producto. Se calcula
+ * siempre desde la elección original, así que volver a un modelo con más huecos la recupera. El servidor rechaza una
+ * elección que no cabe, y por eso se ajusta en el mismo gesto que el cambio de modelo, antes de preguntarle.
  * Solo hace falta contar las elegidas: con una imagen de partida, caben `min(elegidas, cupo - 1)`.
  */
-export function eleccionParaElModelo(producto: ProductoElegido, cupo: CupoDeFotos | null): ProductoElegido | null {
+export function eleccionParaElModelo(producto: ProductoElegido, cupo: CupoDeFotos | null): ProductoElegido {
   const { fotos, ...sinFotos } = producto;
-  if (!fotos || fotos.length === 0 || !cupo) return null;
+  if (!fotos || fotos.length === 0 || !cupo) return producto;
   const caben = fotosQueCaben(cupo, fotos.length);
-  if (fotos.length <= caben) return null;
+  if (fotos.length <= caben) return producto;
   return caben > 0 ? { ...sinFotos, fotos: fotos.slice(0, caben) } : sinFotos;
 }

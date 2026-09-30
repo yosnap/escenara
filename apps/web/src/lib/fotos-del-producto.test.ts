@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   alternarFoto,
   cupoDeFotosDe,
+  eleccionParaElModelo,
   type FotoElegible,
   fotosQueCaben,
   fotosQueViajan,
@@ -82,5 +83,38 @@ describe("marcar y desmarcar", () => {
   test("se puede cambiar la frontal por otra: se desmarca una y se marca la otra", () => {
     const sinFrontal = alternarFoto(FOTOS, "", 2, ["frontal", "envase"], "frontal");
     expect(alternarFoto(FOTOS, "", 2, sinFrontal, "suelto-1")).toEqual(["envase", "suelto-1"]);
+  });
+});
+
+describe("la elección al cambiar de modelo", () => {
+  const eleccion = { productoId: "p", accion: "sostener", fotos: ["a", "b", "c", "d"] };
+  const modelo = (cupoDeGaleria: number) => ({ cupoDeGaleria, fotosDelPersonaje: 1, estricta: true });
+
+  test("si cabe entera, se queda como está", () => {
+    expect(eleccionParaElModelo(eleccion, modelo(7))).toBe(eleccion);
+  });
+
+  test("si caben menos, se recorta a lo que quepa", () => {
+    expect(eleccionParaElModelo(eleccion, modelo(3))).toEqual({
+      productoId: "p",
+      accion: "sostener",
+      fotos: ["a", "b"],
+    });
+  });
+
+  test("si el modelo no deja sitio al producto, no hay elección que enviar", () => {
+    expect(eleccionParaElModelo(eleccion, modelo(1))).toEqual({ productoId: "p", accion: "sostener" });
+  });
+
+  test("partiendo siempre de la original, al volver a un modelo con más huecos se recupera entera", () => {
+    const recortada = eleccionParaElModelo(eleccion, modelo(3));
+    expect(recortada.fotos).toHaveLength(2);
+    expect(eleccionParaElModelo(eleccion, modelo(7)).fotos).toEqual(["a", "b", "c", "d"]);
+  });
+
+  test("sin elección o sin saber el cupo no se toca nada", () => {
+    const sinElegir = { productoId: "p", accion: "" };
+    expect(eleccionParaElModelo(sinElegir, modelo(1))).toBe(sinElegir);
+    expect(eleccionParaElModelo(eleccion, null)).toBe(eleccion);
   });
 });

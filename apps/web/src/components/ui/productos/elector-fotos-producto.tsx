@@ -146,12 +146,22 @@ export function FotosQueViajan({
   const marcadas = fotosQueViajan(vigentes.map(fotoElegible), accion, caben, elegidas);
 
   useEffect(() => {
-    if (!producto || !elegidas || elegidas.length === 0) return;
-    if (!hayQueElegir) return;
-    const validas = fotosQueViajan(vigentes.map(fotoElegible), accion, caben, elegidas);
+    // En una escena el servidor recorta y avisa, y lo guardado no se toca desde aquí.
+    if (!cupo.estricta || !producto || !elegidas || elegidas.length === 0 || !hayQueElegir) return;
+    // Solo las elegidas que siguen siendo del producto y no están en la papelera, y sin pasar de lo que cabe. Si no
+    // queda ninguna, no hay elección: no se guardan las de por defecto como si las hubiera elegido la persona.
+    const ids = new Set(vigentes.map((f) => f.medio.id));
+    const validas = fotosQueViajan(
+      vigentes.map(fotoElegible),
+      accion,
+      caben,
+      elegidas.filter((id) => ids.has(id)),
+    );
+    const conservadas = elegidas.some((id) => ids.has(id)) ? validas : [];
     // Se compara como conjunto: el orden depende de la acción y no es motivo para tocar lo que se eligió.
-    if (validas.length !== elegidas.length || validas.some((id) => !elegidas.includes(id))) onCambio(validas);
-  }, [producto, elegidas, hayQueElegir, caben, accion, vigentes, onCambio]);
+    if (conservadas.length === elegidas.length && conservadas.every((id) => elegidas.includes(id))) return;
+    onCambio(conservadas.length > 0 ? conservadas : undefined);
+  }, [cupo.estricta, producto, elegidas, hayQueElegir, caben, accion, vigentes, onCambio]);
 
   if (error !== "") return <Aviso tono="error">{error}</Aviso>;
   if (!hayQueElegir) return null;
