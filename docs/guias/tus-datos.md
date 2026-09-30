@@ -10,8 +10,12 @@ Hay dos historiales, los dos de solo lectura:
 
 - **El del proyecto**: en la pantalla del proyecto, **«Historial y gasto»**. Cada fotograma, clip y voz generados,
   cada revisión, cada montaje y cada paquete exportado de ese proyecto, con su fecha, su estado y sus créditos.
-- **El de tu cuenta**: en **Tu cuenta › Tus datos › «Ver tu historial y tu gasto»**. Lo mismo para todos tus
-  proyectos y para lo que hiciste en «Crear» sin proyecto.
+- **El de tu cuenta**: en **Cuenta** (menú superior), el bloque **Tus datos**, al final de la página, y
+  **«Ver tu historial y tu gasto»**. Lo mismo para todos tus proyectos y para lo que hiciste en «Crear» sin proyecto.
+
+![El bloque «Tus datos» de Tu cuenta, con «Ver tu historial y tu gasto» y «Borrar mi cuenta»](../assets/capturas/0.49.0-cuenta-tus-datos-claro.webp)
+
+![Tu historial en una cuenta nueva: el gasto por mes y por proyecto todavía vacío y los filtros por tipo](../assets/capturas/0.49.0-historial-cuenta-claro.webp)
 
 Arriba está el **gasto por mes** (y por proyecto, en el de la cuenta) con dos cifras:
 

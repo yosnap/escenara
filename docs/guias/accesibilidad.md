@@ -27,8 +27,9 @@ y cómo avisarnos si algo no funciona.
 ### Qué revisa axe en la suite, y qué no
 
 `bun test` pasa axe por el HTML de la portada, el acceso (entrar y registro), la biblioteca, «Crear» y su historial,
-la lista de proyectos, la producción, la revisión, el montaje, la cuenta y el catálogo de componentes del admin. Una
-violación **seria o crítica** rompe la suite; las moderadas y menores no.
+la lista de proyectos, la producción, la revisión, el montaje, la cuenta, los lugares (lista y ficha), «Comparar» y
+la comparativa generando de una escena, la comunidad (galería y publicar) y, en el admin, el catálogo de componentes,
+la calibración y la moderación. Una violación **seria o crítica** rompe la suite; las moderadas y menores no.
 
 Lo que **no** ve, porque trabaja sobre el HTML del servidor en un documento sin navegador (happy-dom):
 
@@ -42,7 +43,8 @@ Lo que **no** ve, porque trabaja sobre el HTML del servidor en un documento sin 
 
 Lighthouse en móvil ha dado **100 en accesibilidad** en las siete pantallas en las que se ha pasado: la portada,
 entrar, la biblioteca, «Crear» (sin clave de proveedor, con su aviso), la lista de proyectos, el historial de «Crear» y
-la cuenta. No se ha pasado en la producción, la revisión, el montaje ni el admin.
+la cuenta. No se ha pasado en la producción, la revisión, el montaje, los lugares, «Comparar», la comunidad ni el
+admin.
 
 ## 2. Atajos de teclado
 
@@ -52,6 +54,7 @@ la cuenta. No se ha pasado en la producción, la revisión, el montaje ni el adm
 | | **Intro** o **Espacio** | Pulsa el botón o marca la casilla enfocada |
 | | **Escape** | Cierra el diálogo o el desplegable abierto |
 | Selectores y buscadores | **Flechas arriba y abajo**, **Intro** | Recorren las opciones y eligen una. En los buscadores, escribe para filtrar |
+| Menú superior (y el del admin) | **Tab** / **Mayús + Tab** | Recorren las entradas en orden; la de la página en la que estás se anuncia como actual. En pantallas estrechas el menú se desplaza solo hasta la entrada enfocada |
 | Selector de tema | **Flechas** | Cambian entre sistema, claro y oscuro |
 | Listas que se ordenan (escenas, fotos, recomendadas) | **Espacio** o **Intro** en el asa | Coge el elemento; las **flechas** lo mueven, **Espacio** o **Intro** lo sueltan y **Escape** lo deja donde estaba. Cada paso se anuncia |
 | Encuadre del montaje | **Flechas** con el foco en el vídeo | Mueven el recorte cinco puntos en cada pulsación. También hay botones con los encuadres preparados y «Volver a automático» |

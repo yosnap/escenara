@@ -40,12 +40,5 @@ fotograma, clip o voz de proveedor muestra su estimación y pide confirmación a
 dependen del modelo y de la duración; consulta el precio vigente en la pantalla antes de confirmar.
 
 La etiqueta visible de **contenido sintético** sigue siendo obligatoria al exportar, incluso si el proyecto
-es completamente animado. Esta regla de producto se mantiene hasta la revisión legal prevista para 0.46.0;
+es completamente animado. Es una regla de producto que se mantiene mientras no haya una revisión jurídica que diga otra cosa;
 no atribuyas al dibujo una excepción legal automática. Consulta también [Montaje y exportación](montaje-y-exportacion.md).
-
-## Ejemplos guardados
-
-En la cuenta de administración están los proyectos [Nora en dos escenas](/proyectos/8ee8d990-e52e-4e08-ba58-52d71ac5b461),
-[Bruno en 3D estilizado](/proyectos/0a2604ce-96e7-4809-835e-b99de5d99fbf) y
-[Mika en anime](/proyectos/8a6e31e0-20e5-417e-b8a3-73e190045571). Cada uno conserva idea, escena,
-fotograma, clip e historial.

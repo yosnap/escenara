@@ -1,6 +1,6 @@
 # Personajes inventados
 
-**Versión:** 0.22.1 · **Para:** quien usa Escenara
+**Desde:** 0.22.1, al día con la 0.49.0 · **Para:** quien usa Escenara
 
 Un **personaje inventado** no existe: lo describes con palabras, Escenara genera cuatro retratos y eliges el que
 te convenza. Desde la 0.22.1 solo tienes que poner **el nombre y una descripción**: el resto de su ficha lo
@@ -85,6 +85,10 @@ consentimiento de nadie. Crea un personaje normal con sus fotos.
 **¿Y si el retrato se parece a alguien real?** Puede pasar: una cara generada se parece a mucha gente. Por eso
 existen la declaración, el bloqueo de fotos y el de nombres, y por eso lo que genere va marcado como contenido
 sintético.
+
+**¿Puedo enseñarlo en la comunidad?** Sí, y es lo único que se puede publicar allí: el personaje inventado (su
+retrato y hasta tres vistas generadas) y lo que generes con él de principio a fin. Si revocas su declaración, lo
+publicado deja de verse para siempre. Está en [Comunidad](comunidad.md).
 
 **¿Cuánto cuesta?** Lo que cueste un fotograma con el modelo de imagen de tu mapa, multiplicado por cuatro. La
 cifra exacta la tienes delante antes de confirmar; sin precio registrado, Escenara no ofrece gastar.

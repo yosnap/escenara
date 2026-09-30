@@ -1,6 +1,6 @@
 # Crear un personaje y registrar su consentimiento
 
-**Versión:** 0.13.0 · **Para:** quien usa Escenara
+**Desde:** 0.13.0, al día con la 0.49.0 · **Para:** quien usa Escenara
 
 Un **personaje** es una persona o un animal con sus fotos de referencia y su consentimiento de uso de imagen.
 Es lo que mantiene la misma cara entre vídeos: al generar, Escenara le manda al modelo **varias** fotos del
@@ -11,10 +11,16 @@ No es una casilla decorativa; lo comprueba el servidor antes de encargar nada al
 
 ## 1. Crea el personaje
 
-1. Entra en **Personajes → Nuevo personaje**.
+1. Entra en **Personajes** (en el menú superior) y pulsa **Nuevo personaje**.
 2. Elige si es una **persona** o un **animal** y ponle un nombre. Dos personajes tuyos no pueden llamarse igual.
-3. La especie o las notas y la descripción son opcionales y son para ti: la ficha que se le pasa al modelo como
-   contexto llega en una versión posterior.
+3. La especie o las notas y la descripción son opcionales. Lo que escribas en su **ficha** (rasgos, estilo,
+   vestuario, personalidad) viaja después en cada generación: está en
+   [La ficha y las versiones de un personaje](ficha-y-versiones-de-personaje.md).
+
+¿Quieres un personaje que **no existe**? Desde la misma pantalla, **«Crear un personaje inventado»**: nace de una
+descripción, sin fotos reales ni consentimiento de nadie, y es el único que se puede publicar en la
+[comunidad](comunidad.md). Lo explica [Personajes inventados](personajes-inventados.md); para uno de dibujos,
+[Crear un personaje animado](personajes-animados.md).
 
 ## 2. Sube sus fotos de referencia
 
@@ -139,7 +145,7 @@ personaje. Revoca primero su consentimiento y después ya podrás borrarlo.
 no se puede enviar a ningún proveedor, así que no cuenta para el mínimo. Restáurala y el personaje vuelve a estar
 listo sin tener que añadirla otra vez.
 
-## Qué sale de Escenara cuando generas con él (0.17.0)
+## Qué sale de Escenara cuando generas con él
 
 No son solo sus fotos. **El texto de su ficha** —rasgos, estilo, vestuario, personalidad y descripción— forma parte
 del prompt, así que **se procesa en KIE** igual que las fotos. Y si tu instalación traduce los prompts al inglés,
