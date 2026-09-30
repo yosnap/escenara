@@ -5,6 +5,8 @@ import { Interruptor } from "@/components/ui/choice";
 import { BotoneraPresets, PanelLoElegido } from "@/components/ui/preset";
 import { Selector } from "@/components/ui/select";
 import type { CategoriaPreset, PresetVisible, SeleccionPresets } from "@/lib/presets";
+import type { CategoriaDecidible } from "@/lib/trends";
+import { CampoDireccionDecidida, CampoDuracionesAdmitidas } from "../../plantillas/campos-trend";
 import { Muestra, Seccion } from "../seccion";
 
 /**
@@ -55,6 +57,8 @@ export function SeccionPresets() {
   const [seleccion, setSeleccion] = useState<SeleccionPresets>({ especialidad: ["e1"], formato: ["f1"] });
   const [vigencia, setVigencia] = useState<string | null>("revision");
   const [habla, setHabla] = useState(false);
+  const [duraciones, setDuraciones] = useState("");
+  const [decide, setDecide] = useState<CategoriaDecidible[]>(["plano", "camara"]);
 
   return (
     <Seccion
@@ -81,6 +85,8 @@ export function SeccionPresets() {
               activo={habla}
               onCambio={setHabla}
             />
+            <CampoDuracionesAdmitidas valor={duraciones} disenada={8} onCambio={setDuraciones} />
+            <CampoDireccionDecidida valor={decide} onCambio={setDecide} />
           </div>
         </Muestra>
         <Muestra titulo="Botonera por categoría">
