@@ -10,6 +10,7 @@ import {
   VERSION_PROYECTO_EXPORTADO,
 } from "@/lib/proyecto-exportado";
 import paquete from "../../../package.json";
+import { publicacionesDelProyecto } from "../comunidad/exportacion";
 import { db } from "../db/cliente";
 import {
   type FilaMedio,
@@ -208,6 +209,14 @@ export async function armarPaquete(
   });
 
   const textos: { ruta: string; contenido: string }[] = [];
+  // Tus publicaciones de la comunidad que salen de este proyecto: estado, motivo y enlaces, sin archivos ni claves.
+  const publicaciones = await publicacionesDelProyecto(usuarioId, proyecto.id);
+  if (publicaciones.length > 0) {
+    textos.push({
+      ruta: "comunidad.json",
+      contenido: `${JSON.stringify({ esquema: "escenara.comunidad", version: 1, publicaciones }, null, 2)}\n`,
+    });
+  }
   const exportacionesDelMontaje: ExportacionDeMontajeExportada[] = exportaciones.map((x, i) => {
     const base = `montaje-${dos(i + 1)}-${x.format}`;
     const srt = x.subtitlesSrt.trim() ? `subtitulos/${base}.srt` : null;
@@ -317,6 +326,7 @@ export function leeme(p: Paquete): string {
     "- `medios/escena-NN/`: el fotograma aprobado, el clip, la voz, la canción y la imagen de referencia de cada escena.",
     "- `medios/musica/`: la música del montaje.",
     "- `medios/montaje/` y `subtitulos/`: los vídeos montados y sus subtítulos.",
+    "- `comunidad.json` (si has publicado algo de este proyecto): tus publicaciones, con su estado y el motivo de un rechazo.",
     "",
     `Archivos de medios: ${x.medios.length}. Escenas: ${x.escenas.length}.`,
     "",

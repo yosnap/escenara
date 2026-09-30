@@ -1,16 +1,19 @@
 import { History } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Alerta } from "@/components/ui/alerta";
 import { claseBoton } from "@/components/ui/button";
 import { AvisoEstado } from "@/components/ui/feedback";
 import { AVISO_BOVEDA_USUARIO, PROVEEDORES_PUBLICOS } from "@/lib/boveda";
 import { evaluacionFallida } from "@/lib/controles";
 import { pasoDeLaUrl } from "@/lib/multipaso";
 import { IDS_PASOS_CREAR } from "@/lib/pasos-crear";
+import type { CatalogoParaCrear } from "@/lib/presets";
 import { esAdmin, exigirSesion } from "@/server/auth/sesion";
 import { bovedaDisponible } from "@/server/boveda/cifrado";
 import { listarCredenciales } from "@/server/boveda/credenciales";
 import { estadoDeCola } from "@/server/cola/latido";
+import { publicacionVisible } from "@/server/comunidad/consulta";
 import { evaluarControles } from "@/server/controles/consulta";
 import { REGLAS_VERSION } from "@/server/controles/contrato";
 import { estimarTodo } from "@/server/generacion/estimacion";
@@ -33,13 +36,13 @@ export const dynamic = "force-dynamic";
 export default async function PaginaCrear({
   searchParams,
 }: {
-  searchParams: Promise<{ personaje?: string; paso?: string | string[] }>;
+  searchParams: Promise<{ personaje?: string; paso?: string | string[]; plantilla?: string; desde?: string }>;
 }) {
   const sesion = await exigirSesion("/crear");
   // Preselección al llegar desde la ficha de un personaje. Solo es una sugerencia de la interfaz: quien
   // autoriza el uso de ese personaje es el servidor, al encolar. `paso` es el paso que estaba abierto (0.33.0):
   // solo se acepta si es uno de los de «Crear».
-  const { personaje: personajePedido, paso } = await searchParams;
+  const { personaje: personajePedido, paso, plantilla: plantillaPedida, desde } = await searchParams;
   const pasoPedido = pasoDeLaUrl(paso, IDS_PASOS_CREAR);
   const boveda = bovedaDisponible();
   const credenciales = boveda ? await listarCredenciales(sesion.user.id) : [];
@@ -77,6 +80,12 @@ export default async function PaginaCrear({
         catalogoParaCrear(sesion.user.id, "animacion"),
       ])
     : [null, [], [], [], null, null, [], null, null];
+
+  // Llegando desde la comunidad («Usar») o un reto, la plantilla pedida se pone la primera: es la que «Crear» elige al
+  // abrir. Solo si este usuario puede usarla (está en su catálogo); si no, se ignora sin más.
+  const catalogoFotoInicial = conPlantillaPrimero(catalogoFoto, plantillaPedida);
+  const catalogoClipInicial = conPlantillaPrimero(catalogoClip, plantillaPedida);
+  const atribucion = desde && /^[0-9a-f-]{36}$/i.test(desde) ? await publicacionVisible(desde).catch(() => null) : null;
 
   // Llegando desde la ficha con un personaje preseleccionado, el contexto se resuelve **aquí**: así la zona de
   // claridad ya está rellena al cargar la página, sin efectos en el navegador.
@@ -146,7 +155,14 @@ export default async function PaginaCrear({
           />
         )}
 
-        {estimaciones && deposito && cola && catalogoFoto && catalogoClip && controlesIniciales && (
+        {atribucion?.plantilla && atribucion.plantillaId === plantillaPedida && (
+          <Alerta tipo="info" anuncio="ninguno" titulo={`Usas «${atribucion.plantilla.nombre}» de la comunidad`}>
+            Tal como lo compartió {atribucion.firma} en «{atribucion.titulo}». Tu resultado es tuyo y privado: solo se
+            publica si tú lo decides.
+          </Alerta>
+        )}
+
+        {estimaciones && deposito && cola && catalogoFotoInicial && catalogoClipInicial && controlesIniciales && (
           <VistaCrear
             estimacionFotograma={estimaciones.fotograma}
             estimacionAnimacion={estimaciones.animacion}
@@ -158,8 +174,8 @@ export default async function PaginaCrear({
             personajes={personajes}
             personajeInicial={personajeInicial}
             contextoInicial={contextoInicial}
-            catalogoFotogramaInicial={catalogoFoto}
-            catalogoClipInicial={catalogoClip}
+            catalogoFotogramaInicial={catalogoFotoInicial}
+            catalogoClipInicial={catalogoClipInicial}
             controlesIniciales={controlesIniciales}
             pasoPedido={pasoPedido}
           />
@@ -167,4 +183,11 @@ export default async function PaginaCrear({
       </main>
     </div>
   );
+}
+
+/** El catálogo con la plantilla pedida delante (si está en él). Sin plantilla pedida, el mismo catálogo. */
+function conPlantillaPrimero(catalogo: CatalogoParaCrear | null, id: string | undefined): CatalogoParaCrear | null {
+  if (!catalogo || !id) return catalogo;
+  const pedida = catalogo.plantillas.find((p) => p.id === id);
+  return pedida ? { ...catalogo, plantillas: [pedida, ...catalogo.plantillas.filter((p) => p.id !== id)] } : catalogo;
 }

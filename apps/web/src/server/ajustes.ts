@@ -8,6 +8,7 @@ import {
   SEGUNDOS_CANTO_POR_DEFECTO,
 } from "@/lib/canto";
 import { esModoCoherencia, type ModoCoherencia, UMBRAL_POR_DEFECTO } from "@/lib/coherencia";
+import { AJUSTES_COMUNIDAD_POR_DEFECTO, type AjustesComunidad, VALIDACION_COMUNIDAD } from "./ajustes-comunidad";
 import { AJUSTES_DATOS_POR_DEFECTO, type AjustesDatos, VALIDACION_DATOS } from "./ajustes-datos";
 import { db } from "./db/cliente";
 import { settings } from "./db/esquema";
@@ -20,7 +21,7 @@ export { coherenciaDe } from "./ajustes-coherencia";
  * no en variables de entorno). Cada ajuste tiene valor por defecto y validación; en la base de datos solo
  * se guardan los que el administrador cambia.
  */
-export interface Ajustes extends AjustesDatos {
+export interface Ajustes extends AjustesDatos, AjustesComunidad {
   /** Si es falso, solo se puede crear la primera cuenta (la del administrador). */
   registroAbierto: boolean;
   /** Espacio máximo por usuario en MB; 0 = sin límite. El administrador no tiene límite. */
@@ -345,6 +346,7 @@ export interface Ajustes extends AjustesDatos {
 
 export const AJUSTES_POR_DEFECTO: Ajustes = {
   ...AJUSTES_DATOS_POR_DEFECTO,
+  ...AJUSTES_COMUNIDAD_POR_DEFECTO,
   registroAbierto: true,
   cuotaMb: 2048,
   avisoCreditos: 200,
@@ -513,6 +515,7 @@ const identificadorModelo = (v: unknown) => texto(120)(v) && /^[\w.:@/-]*$/.test
 
 const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensaje: string }> = {
   ...VALIDACION_DATOS,
+  ...VALIDACION_COMUNIDAD,
   registroAbierto: { valido: booleano, mensaje: "Debe ser sí o no." },
   cuotaMb: { valido: entero(0, 10_000_000), mensaje: "Indica un número entero de MB (0 = sin límite)." },
   avisoCreditos: {

@@ -5,6 +5,7 @@ import { SeccionAlertas } from "./secciones/alertas";
 import { SeccionAnuncio } from "./secciones/anuncio";
 import { SeccionCanto } from "./secciones/canto";
 import { SeccionComparativas } from "./secciones/comparativas";
+import { SeccionComunidad } from "./secciones/comunidad";
 import { SeccionControles } from "./secciones/controles";
 import { SeccionConversion } from "./secciones/conversion";
 import { SeccionCreador } from "./secciones/creador";
@@ -62,6 +63,7 @@ const INDICE = [
   ["generacion", "Coste y trabajos"],
   ["modelos", "Catálogo de modelos"],
   ["comparativas", "Comparativas y calibración"],
+  ["comunidad", "Comunidad"],
   ["superposiciones", "Diálogos y pestañas"],
   ["pasos", "Flujo por pasos"],
   ["requisitos", "Requisitos pendientes"],
@@ -119,6 +121,7 @@ export function Catalogo() {
         <SeccionGeneracion />
         <SeccionModelos />
         <SeccionComparativas />
+        <SeccionComunidad />
         <SeccionSuperposiciones />
         <SeccionPasos />
         <SeccionRequisitos />

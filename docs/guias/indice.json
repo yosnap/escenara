@@ -198,6 +198,11 @@
           "archivo": "tus-datos.md",
           "titulo": "Tus datos: historial, exportación y borrado",
           "descripcion": "El historial y el gasto de cada proyecto y de tu cuenta, exportar un proyecto en ZIP sin claves, y qué se borra y qué se conserva al borrar un proyecto o tu cuenta."
+        },
+        {
+          "archivo": "comunidad.md",
+          "titulo": "Comunidad",
+          "descripcion": "Publicar solo contenido sintético (qué se puede y qué no, y por qué), la moderación previa, retirar de verdad, usar un trend compartido, retos y logros."
         }
       ]
     },

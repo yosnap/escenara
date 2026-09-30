@@ -23,6 +23,11 @@ export async function guardarObjeto(clave: string, datos: Uint8Array, tipo: stri
   await s3().write(clave, datos, { type: tipo });
 }
 
+/** Copia un objeto a otra clave del mismo almacenamiento (las publicaciones de la comunidad son copias propias). */
+export async function copiarObjeto(origen: string, destino: string, tipo: string) {
+  await s3().write(destino, s3().file(origen), { type: tipo });
+}
+
 export async function borrarObjeto(clave: string) {
   await s3().delete(clave);
 }

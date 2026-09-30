@@ -28,6 +28,7 @@ const GRUPOS = [
     paginas: [
       ["/admin/medios", "Medios"],
       ["/admin/personajes", "Personajes"],
+      ["/admin/moderacion", "Moderación"],
     ],
   },
   {

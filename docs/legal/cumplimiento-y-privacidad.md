@@ -210,6 +210,31 @@ Preguntas para la revisión jurídica: si la base legal del tratamiento (interé
 servicio) basta o hace falta informarlo en la política de privacidad; y si conviene desvincular del todo las filas del
 origen (anonimizarlas) al borrar la cuenta en lugar de borrarlas, que es lo que se hace hoy.
 
+## Comunidad: lo que una cuenta enseña a las demás (0.49.0) · pendiente de revisión jurídica
+
+La comunidad (apagada de fábrica) deja que una cuenta enseñe a las demás de la instalación **contenido sintético**:
+personajes inventados y lo generado con ellos. El sistema comprueba el origen por lista blanca sobre lo que cada trabajo
+**envió al proveedor** (todas sus referencias y su audio, tal como quedaron al generarlo, y hacia atrás; en Omni con
+identidad registrada, el retrato y el cuerpo que subió ese registro): nunca una
+foto subida (tampoco marcada «hecha con IA»), una persona o mascota real, un producto, un lugar con fotos ni un audio
+subido; lo borrado o ilegible no se puede comprobar y no se publica. Nada se ve sin la aprobación previa de una persona
+con rol de administrador, que no puede aprobar lo suyo y ve esa procedencia.
+
+- **Qué se guarda y se enseña**: una **copia** del archivo o de las imágenes del personaje, y el título, la descripción
+  y la firma que escribe el autor, con su **declaración expresa** («confirmo que es sintético y quiero publicarlo»)
+  guardada con su texto y su fecha. Nunca el prompt, el modelo, el correo ni el nombre de la cuenta.
+- **Quién lo ve**: las cuentas de la instalación con sesión, solo lo aprobado. No es público en internet.
+- **Retirar y borrar**: retirar o rechazar borra la copia; borrar el original o la cuenta la retira también (en la
+  gracia deja de verse al momento); la papelera y revocar la declaración de inventado la ocultan. Lo propio se exporta
+  desde la comunidad (JSON, también en la gracia) y en el ZIP de cada proyecto.
+- **Texto libre**: se publica el título, la descripción y la firma que escribe el autor al publicar (comprobados contra la
+  lista de personas conocidas: es un control, no una verificación); nunca el texto alternativo de la biblioteca.
+- **Moderación**: el motivo de un rechazo lo lee el autor; quién y cuándo decidió queda en la publicación.
+
+Preguntas para la revisión jurídica: si la instalación actúa como prestador de un servicio de alojamiento de contenido
+de terceros (y qué obligaciones de retirada y de aviso tiene), si la firma elegida por el autor basta como autoría, y
+cuánto tiempo conservar el registro de decisiones de moderación de lo ya retirado (hoy se borra con la publicación).
+
 ## Documentos públicos necesarios antes de 1.0.0
 
 Para cantar con audio propio, la persona que sube el archivo declara si es música propia, música con licencia

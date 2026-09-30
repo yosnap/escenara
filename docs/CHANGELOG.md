@@ -2,6 +2,74 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.49.0] · 2026-09-30
+
+**Comunidad.** Una galería de la propia instalación para enseñar lo que se hace **con personajes inventados**: solo
+contenido sintético, publicado elemento a elemento por su autor y visible **solo tras moderación previa**. Retos y logros
+por hitos reales. Sin comentarios, seguidores, mensajes ni publicación automática en redes. **Apagada de fábrica**
+(Admin › Ajustes › Comunidad). **Una migración aditiva**: lee «Actualizar desde la 0.48.0».
+
+### Añadido
+
+- **Comunidad** en la navegación (`/comunidad`): galería filtrable por tipo (personajes, clips, trends, plantillas) y por
+  reto, con «Contenido sintético» en cada tarjeta y los clips sin arrancar solos; retos abiertos; tus logros; y tus
+  publicaciones con su estado (pendiente, publicada, rechazada con el **motivo** escrito), **Editar** (vuelve a
+  moderación y deja de verse) y **Retirar** (borra la publicación y su copia; el original no cambia). «Descargar (JSON)»
+  exporta tus publicaciones y tus logros.
+- **Publicar** (`/comunidad/publicar`, y desde la ficha del personaje y el historial de Crear): tus personajes y tus
+  últimos resultados, cada uno con «Publicar» o el **motivo concreto** por el que no se puede. Solo es publicable lo
+  generado de principio a fin con un personaje **inventado**, por **lista blanca de origen** (la de los ejemplos de
+  plantilla, en un nivel más estricto) sobre **lo que cada trabajo envió al proveedor**, guardado al generarlo: todas
+  sus imágenes de referencia (no solo la primera) y su audio, en Omni con identidad registrada el retrato y el cuerpo
+  que subió el registro, y lo que enviaron los trabajos que produjeron esas imágenes. Nunca una subida (tampoco una marcada «hecha con IA»), una persona o una mascota real, un producto, un lugar
+  con fotos (o ya borrado), un reparto de dos personajes, un podcast, un clip cantado ni un audio subido; lo que envió
+  una imagen ya borrada no se puede comprobar y tampoco. Cambiar después la escena no cambia el veredicto. Ante la
+  duda, no se publica. Título, descripción y firma sin nombres de personas reales, y **declaración expresa** («Confirmo que es
+  contenido sintético… y quiero publicarlo»), guardada con su texto y su fecha. Lo publicado es una **copia** (en un
+  personaje, su retrato y hasta tres vistas generadas; nunca la hoja 3×3) con **lista blanca de campos**: nunca el
+  prompt, el modelo, el correo, el nombre de la cuenta, el original ni el texto alternativo de la biblioteca. Publicar dos veces lo mismo devuelve la que ya
+  existe; cinco pendientes por cuenta de fábrica.
+- **Usar** un trend o una plantilla compartidos: abre Crear con esa plantilla de la instalación elegida y la atribución
+  («Usas «…» de la comunidad, tal como lo compartió…»), sin copiar archivos ni texto de prompt y sin gastar nada; cuenta
+  un uso por persona. **Inspirarte** en un personaje: abre el alta de un inventado con la descripción publicada, nunca
+  sus imágenes. Un clip solo se ve.
+- **Admin › Moderación** (`/admin/moderacion`): la cola de pendientes con vista previa, la elegibilidad **comprobada
+  otra vez** y la **procedencia** (cada cosa que se envió al generarlo, con su origen); aprobar, rechazar o retirar de la
+  galería con **motivo escrito** (10 a 500 caracteres), que **borra la copia**; el autor puede corregir y reenviar. **Nadie modera lo
+  suyo** (403), se decide sobre la revisión que se ve (409 si el autor la cambió) y no se aprueba lo que ya no es
+  sintético. Gestión de **retos** (título, periodo, plantilla sugerida); participar es publicar con el reto, con la misma
+  moderación.
+- **Logros** por hitos reales, una sola vez y con la fecha del hito: primer personaje, primera escena aprobada, primera
+  exportación y primera publicación aprobada. Sin rachas. Confeti de chispas una vez, que no sale con «reducir
+  movimiento» y nunca en pantallas de coste o consentimiento.
+- **Admin › Ajustes › Comunidad**: interruptor (apagado de fábrica), normas de publicación editables (se enseñan al
+  publicar) y tope de pendientes por cuenta.
+- Guía nueva: [Comunidad](guias/comunidad.md), con las normas de publicación. Decisión en el ADR-0043. Sección
+  «Comunidad» en [Cumplimiento y privacidad](legal/cumplimiento-y-privacidad.md), **pendiente de revisión jurídica**.
+  Componentes nuevos en el catálogo (› «Comunidad»).
+
+### Cambiado
+
+- **Borrar la cuenta** oculta sus publicaciones desde que se pide y las borra con sus copias al terminar la gracia;
+  en la gracia se pueden descargar (JSON) y el ZIP de un proyecto lleva `comunidad.json` con las que salen de él.
+  **Borrar un personaje, un archivo o un proyecto** deja sus publicaciones huérfanas: dejan de verse al instante y el
+  worker las borra con su copia. La **papelera** y **revocar la declaración** de inventado las ocultan (la revocación, para
+  siempre); el autor y quien modera las ven como «Oculta», con el motivo.
+- La ruta de los ejemplos de plantilla sirve los archivos con el mismo código que la comunidad (mismas cabeceras y
+  `Range`), sin cambios de comportamiento.
+
+### Actualizar desde la 0.48.0
+
+- **Haz antes una copia**: `bun run db:backup`. Después, **con el worker parado**, `bun run db:migrate`.
+- La migración `0065_comunidad` es **aditiva e idempotente**: crea los tipos `community_post_kind` y
+  `community_post_state` y las tablas `community_challenges`, `community_posts` (con el personaje de origen de cada
+  publicación), `community_post_media`, `community_uses` y `user_achievements`, con sus índices y claves ajenas. No cambia ni borra ninguna fila y volver a
+  aplicarla no hace nada.
+- **Reinicia el worker**: ahora barre las publicaciones cuyo original se borró y, al borrar una cuenta, borra también
+  las copias de sus publicaciones.
+- La comunidad nace **apagada**: no se ve ni se publica nada hasta encenderla en Admin › Ajustes › Comunidad. No hay
+  variables de entorno nuevas.
+
 ## [0.48.0] · 2026-09-30
 
 **Comparativas y calibración.** Compara modelos **sin gastar**: precios del catálogo, lo que ya has hecho con cada uno y
