@@ -10,6 +10,7 @@ import { direccionDeLaEscena, type PersonajeDirigido, seisCDeLaEscena } from "..
 import { claveDerivada, imagenPropia } from "../generacion/comprobaciones";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { crearAnimacion, crearFotograma } from "../generacion/servicio";
+import { planoDelLugarSolo } from "../lugares/escena";
 import type { Actor } from "../media/servicio";
 import { producirEscenaHablada } from "../omni/escena";
 import { listarPlantillas, plantillaVigenteDe } from "../prompts/consulta";
@@ -177,11 +178,13 @@ async function encolarFotograma(
 ): Promise<void> {
   const plantilla = await plantillaVigenteDe(actor.id, "image_edit");
   const personaje = await personajeDirigidoDe(proyecto);
+  // El plano del lugar solo parte de la maestra y no lleva a nadie: ni protagonista ni sus fotos.
+  const solo = await planoDelLugarSolo(actor.id, escena, proyecto);
   await crearFotograma(
     actor,
     {
-      prompt: textoVisualDe(escena),
-      personajeId: exigirProtagonista(proyecto),
+      prompt: solo?.prompt ?? textoVisualDe(escena),
+      ...(solo ? { medioId: solo.medioId } : { personajeId: exigirProtagonista(proyecto) }),
       escenaId: escena.id,
       reintentoDeEscena: reintento,
       /**

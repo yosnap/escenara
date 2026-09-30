@@ -127,6 +127,8 @@ export const direccionDeLaEscena = (
   direccionDesdeEleccion(usuarioId, eleccionDeLaEscena(escena, proyecto), personaje).then((direccion) => ({
     ...direccion,
     animado: proyecto.renderStyle === "animado",
+    // El plano del lugar solo: sin nadie y mudo. Si la escena ya no tiene lugar, la producción lo dice antes.
+    ...(escena.placeShot === "solo_lugar" ? { soloLugar: true } : {}),
   }));
 
 /** Las 6C del fotograma de una escena, sin el texto libre del contexto. */

@@ -65,6 +65,8 @@ const { cambiarEstadoDeModelo, cambiarPrecioDeModelo } = await import("../provee
 const { registrarPersonajeOmni } = await import("../personajes/omni");
 const { registrarVozOmni, validarEleccionVozOmni } = await import("../voz/omni");
 const { producirEscenaHablada } = await import("./escena");
+const { editarEscena } = await import("../asistente/escenas");
+const { lugarDeclaradoDePrueba } = await import("../lugares/lugar-de-prueba");
 const { estimarReparto } = await import("./estimacion-reparto");
 const { comprometidoDe } = await import("../presupuesto/deposito");
 const { MODELOS_OMNI, VOCES_OMNI } = await import("@/lib/omni");
@@ -531,6 +533,27 @@ describeSiHayBase("escenas habladas con dos personajes", () => {
     expect(trabajos.map((t) => t.characterId)).toEqual([lucia.id, elisa.id]);
     const [escena] = await db().select().from(scenes).where(eq(scenes.id, escenaId)).limit(1);
     expect(escena?.podcastGroupId).not.toBeNull();
+  });
+
+  test("los dos clips de un podcast llevan el mismo lugar y la misma versión, y el set viaja descrito en los dos", async () => {
+    await registrarTodo([lucia.id, elisa.id]);
+    await conversacionDeDos("podcast");
+    const { lugar } = await lugarDeclaradoDePrueba(actor, "Bar de barrio");
+    await editarEscena(actor, escenaId, { lugar: { lugarId: lugar.id, sitio: "en la mesa junto al ventanal" } });
+    await aprobarPlan();
+    await producir();
+
+    const trabajos = await trabajosDeLaEscena();
+    expect(trabajos).toHaveLength(2);
+    expect(trabajos.map((t) => t.placeId)).toEqual([lugar.id, lugar.id]);
+    expect(trabajos.map((t) => t.placeVersion)).toEqual([lugar.version, lugar.version]);
+    await enviarEncolados(h);
+    expect(enviados).toHaveLength(2);
+    for (const enviado of enviados) {
+      expect(String(enviado.prompt)).toContain("Position within the place: en la mesa junto al ventanal");
+      // Con la identidad registrada no viaja ninguna imagen: el lugar va descrito, no como referencia.
+      expect(enviado.image_urls).toBeUndefined();
+    }
   });
 
   test("el coste se confirma una vez y por el total: confirmar el de un solo clip se rechaza", async () => {

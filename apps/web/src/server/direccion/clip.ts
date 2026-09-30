@@ -138,6 +138,8 @@ export interface DireccionDeClip {
    * formato diga otra cosa, porque no hay quien hable.
    */
   producto?: ProductoEnPrompt | null;
+  /** Plano del lugar solo: no sale nadie y va mudo, igual que el b-roll del producto. */
+  soloLugar?: boolean;
   /**
    * Formato de trend ya compuesto en el servidor; el contenido, el permiso de habla y lo que decide no vienen del
    * navegador, sino de la versión de la plantilla.
@@ -282,7 +284,7 @@ export function dirigirClip(pedida: DireccionDeClip, opciones: OpcionesDeDirecci
    * El b-roll del producto no tiene quien hable: no sale nadie en el plano. Sale mudo aunque el formato del
    * clip diga «a cámara», y el guion escrito **no viaja**, igual que en la voz en off.
    */
-  const soloProducto = sustituyeAlSujeto(producto);
+  const soloProducto = sustituyeAlSujeto(producto) || direccion.soloLugar === true;
   /**
    * **Acciones de producto sin habla** (0.26.0): una pasarela, un giro de 360 o una crema que se extiende son
    * planos visuales y quien sale no está diciendo nada. El clip va mudo aunque el formato sea «a cámara», y el
@@ -297,7 +299,7 @@ export function dirigirClip(pedida: DireccionDeClip, opciones: OpcionesDeDirecci
   const dialogo = habla ? direccion.dialogo.trim() : "";
   if (!habla && direccion.formato !== "cantar" && direccion.dialogo.trim() !== "") {
     avisos.push(
-      soloProducto
+      soloProducto && !direccion.soloLugar
         ? AVISO_GUION_EN_BROLL_DE_PRODUCTO
         : visualSinHabla
           ? AVISO_GUION_EN_ACCION_SIN_HABLA
