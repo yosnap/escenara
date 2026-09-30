@@ -109,6 +109,8 @@ export interface ProductoResumen {
   /** `true` si el usuario ha declarado que se ve una marca. Es informativo: no bloquea nada. */
   marcaVisible: boolean;
   referencias: number;
+  /** Las que no están en la papelera: son las únicas que el servidor envía al modelo. */
+  fotosVigentes: number;
   /** Primera foto, para la miniatura de la lista. `null` mientras no tenga ninguna. */
   portada: Medio | null;
   actualizado: string;

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { bloqueosDeControles, type EvaluacionVista, firmaDeAvisos, marcarNoFiable } from "@/lib/controles";
-import type { TipoTrabajo } from "@/lib/generacion";
 import { consultarControles } from "./api-generacion";
+import { crearRefresco, type SujetoDeControles } from "./refresco-de-controles";
 
 /**
  * Estado de los controles previos de un envío en el navegador (0.18.0).
@@ -19,27 +19,7 @@ import { consultarControles } from "./api-generacion";
  * momento sobre unos hechos que ya no se sabe si siguen siendo verdad es peor que no tener evaluación.
  */
 
-export interface SujetoDeControles {
-  tipo: TipoTrabajo;
-  modelo?: string;
-  personajeId?: string;
-  medioId?: string;
-  escenaId?: string;
-  productoId?: string;
-  accion?: string;
-}
-
-/** Lo que se evalúa del clip: el modelo, la imagen que anima y el producto, que trae sus propios avisos. */
-export const sujetoDeAnimacion = (
-  modelo: string,
-  medioId: string,
-  producto: { productoId: string; accion: string },
-): SujetoDeControles => ({
-  tipo: "animacion",
-  modelo,
-  medioId,
-  ...(producto.productoId ? { productoId: producto.productoId, accion: producto.accion } : {}),
-});
+export { type SujetoDeControles, sujetoDeAnimacion } from "./refresco-de-controles";
 
 export interface Controles {
   evaluacion: EvaluacionVista;
@@ -58,31 +38,34 @@ export function useControles(inicial: EvaluacionVista): Controles {
   const [evaluacion, setEvaluacion] = useState(inicial);
   const [confirmados, setConfirmados] = useState<string[]>([]);
   const [cargando, setCargando] = useState(false);
-
-  const refrescar = async (sujeto: SujetoDeControles): Promise<string | null> => {
-    setCargando(true);
-    const respuesta = await consultarControles(sujeto);
-    setCargando(false);
-    if (respuesta.ok) {
-      setEvaluacion(respuesta.datos);
-      // Al cambiar lo evaluado se olvidan las confirmaciones: una confirmación vale para el aviso que se leyó.
-      setConfirmados([]);
-      return null;
-    }
-    /**
-     * Un fallo **nunca habilita nada**. Lo que había se conserva (sigue siendo información útil: el usuario ya
-     * había leído esos frenos) pero se marca como **no fiable**: se le añade el freno del fallo, así que el estado
-     * global pasa a ser al menos «Requiere revisión» y el botón se deshabilita.
-     *
-     * Dejar la evaluación anterior tal cual sería peor que no tener ninguna: diría «Listo» sobre unos hechos que
-     * ya no se sabe si siguen siendo verdad, justo después de que el usuario cambiara de personaje o de modelo.
-     */
-    setEvaluacion((previa) =>
-      marcarNoFiable(previa, `No se ha podido comprobar si puedes generar. ${respuesta.error}`),
-    );
-    setConfirmados([]);
-    return respuesta.error;
-  };
+  // Solo cuenta la última comprobación pedida (ver `refresco-de-controles.ts`); las atrasadas se descartan.
+  const [refresco] = useState(() =>
+    crearRefresco<SujetoDeControles>(consultarControles, {
+      alCargar: setCargando,
+      alEvaluar: (nueva) => {
+        setEvaluacion(nueva);
+        // Al cambiar lo evaluado se olvidan las confirmaciones: una confirmación vale para el aviso que se leyó.
+        setConfirmados([]);
+      },
+      /**
+       * Un fallo **nunca habilita nada**. Lo que había se conserva (sigue siendo información útil: el usuario ya
+       * había leído esos frenos) pero se marca como **no fiable**: se le añade el freno del fallo, así que el estado
+       * global pasa a ser al menos «Requiere revisión» y el botón se deshabilita.
+       *
+       * Dejar la evaluación anterior tal cual sería peor que no tener ninguna: diría «Listo» sobre unos hechos que
+       * ya no se sabe si siguen siendo verdad, justo después de que el usuario cambiara de personaje o de modelo.
+       */
+      alFallar: (error) => {
+        setEvaluacion((previa) => marcarNoFiable(previa, `No se ha podido comprobar si puedes generar. ${error}`));
+        setConfirmados([]);
+      },
+    }),
+  );
+  useEffect(() => {
+    refresco.abrir();
+    return () => refresco.cerrar();
+  }, [refresco]);
+  const refrescar = (sujeto: SujetoDeControles) => refresco.refrescar(sujeto);
 
   const confirmar = (regla: string, valor: boolean) => {
     setConfirmados((previos) => (valor ? [...new Set([...previos, regla])] : previos.filter((r) => r !== regla)));

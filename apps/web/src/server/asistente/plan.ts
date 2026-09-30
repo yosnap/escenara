@@ -1,7 +1,8 @@
 import { asc, eq, inArray, sql } from "drizzle-orm";
-import { precioCaducado } from "@/lib/catalogo";
+import { CAPACIDAD_DE_TIPO, precioCaducado } from "@/lib/catalogo";
 import { EVALUACION_LISTA, type EvaluacionVista, peorEstado } from "@/lib/controles";
 import type { ReferenciaIdentidad } from "@/lib/direccion";
+import type { FotoDeProductoDelClip } from "@/lib/foto-de-producto";
 import { formatearCreditos } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
 import { duracionParaModelo } from "@/lib/produccion";
@@ -39,7 +40,9 @@ import {
 import { type EleccionDeTrabajo, elegirParaTipo } from "../generacion/precios";
 import { eleccionDeGeneracion } from "../mapa/generacion";
 import { type Actor, aDto } from "../media/servicio";
+import { eleccionOmni } from "../omni/registro";
 import { ultimaVersion } from "../personajes/ficha";
+import { fotoDeProductoDelClip } from "../productos/modelos-sugeridos";
 import { plantillaVigenteDe } from "../prompts/consulta";
 import { ErrorCatalogo } from "../proveedores/contrato";
 import {
@@ -486,6 +489,31 @@ async function contextoDeControles(
   };
 }
 
+/**
+ * Si el modelo con el que **de verdad** se produce el clip admite la foto del producto: en un proyecto de escenas
+ * habladas con Omni es el modelo y el cupo de Omni, y en el resto el del mapa de vídeo del usuario. Es solo un aviso
+ * adelantado: si no se puede calcular no se avisa (la puerta del envío avisa igual) y se deja constancia en el log.
+ */
+async function fotoDeProductoDelProyecto(
+  actor: Actor,
+  proyecto: FilaProyecto,
+  elecciones: EleccionesDelPlan,
+): Promise<FotoDeProductoDelClip | null> {
+  try {
+    const modelo = proyecto.voiceMode === "omni" ? (await eleccionOmni(actor.id)).modelo : elecciones.animacion?.modelo;
+    return modelo ? await fotoDeProductoDelClip(modelo, CAPACIDAD_DE_TIPO.animacion) : null;
+  } catch (error) {
+    console.error(
+      `[plan] no se ha podido saber si el clip del proyecto ${proyecto.id} admite la foto del producto:`,
+      error,
+    );
+    return null;
+  }
+}
+
+const conFotoDeProducto = (estimacion: EstimacionEscena | null, foto: FotoDeProductoDelClip | null) =>
+  estimacion && foto ? { ...estimacion, fotoDeProducto: foto } : estimacion;
+
 /** Proyecto completo: escenas, afirmaciones y plan. Es lo que pinta `/proyectos/[id]`. */
 export async function detalleProyecto(actor: Actor, id: unknown): Promise<ProyectoDetalle> {
   const fila = await proyectoPropio(actor, id);
@@ -510,12 +538,13 @@ export async function detalleProyecto(actor: Actor, id: unknown): Promise<Proyec
       ),
     ),
   );
+  const fotoDeProducto = await fotoDeProductoDelProyecto(actor, fila, elecciones);
   const escenasVista = filasEscena.map((escena) =>
     vistaEscena(
       escena,
       afirmaciones,
       trabajos.get(escena.id) ?? null,
-      estimaciones.get(escena.id) ?? null,
+      conFotoDeProducto(estimaciones.get(escena.id) ?? null, fotoDeProducto),
       // Los controles de la escena se evalúan con el **mismo motor** que cierra la puerta al producirla, con
       // datos que ya están cargados: ni una consulta más por escena.
       evaluarParaMostrar({

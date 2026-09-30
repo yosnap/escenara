@@ -2,6 +2,48 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.34.1] · 2026-09-30
+
+Parche de los productos: **el aviso de que el modelo no admite la foto del producto sale ya junto al selector de
+producto**, y el selector de modelo dice cuáles sí la llevan. Sin migraciones, sin cambios de precio y sin cambios en
+lo que se confirma: el control previo de antes del coste sigue igual, con su casilla «Lo he leído y quiero generar
+igualmente», y Escenara sigue sin cambiar de modelo por su cuenta.
+
+### Cambiado
+
+- **El aviso sale donde eliges el producto.** Con un producto que tiene fotos y un modelo de clip que no admite su foto
+  (Veo, cuya segunda imagen es el último fotograma), el bloque «El producto» dice ahí mismo la causa y qué hacer: «X no
+  admite la foto del producto: viajará descrito con palabras y su etiqueta puede salir distinta», con los modelos que
+  sí la admiten, o «Hoy no hay ningún modelo activo que la admita». Antes solo aparecía al final, junto al coste. Es
+  el mismo bloque en «Crear» y en el editor de escena de un proyecto.
+- **El selector de modelo del clip lo indica.** Con un producto elegido, cada modelo dice «Admite la foto del
+  producto» o «El producto viaja solo descrito» en su descripción, junto al coste, el estado y la voz. No se
+  deshabilita ninguno; sin producto, el selector queda como estaba.
+- **Una sola fuente de verdad.** Si un modelo admite la foto lo calcula el servidor con el mismo reparto de
+  referencias que aplica el control previo, y el navegador solo lo lee: el aviso del selector y el de antes del coste
+  no pueden discrepar.
+
+### Corregido
+
+- **El aviso de antes del coste ya dice qué modelos sí admiten la foto del producto.** La tarjeta «Necesita ajustes»
+  de «Crear» decía «Hoy no hay ningún otro modelo disponible que acepte la foto del producto» aunque Gemini Omni,
+  Gemini Omni 1.1 Flash y MiniMax H3 sí la admiten: la lista de modelos no se le pasaba a ese aviso. Ahora lo
+  completa con los mismos nombres que el aviso junto al selector de producto, para un clip o para un fotograma.
+- **En el editor de escena, el aviso habla del modelo con el que de verdad se produce.** En un proyecto de escenas
+  habladas con Omni se calcula con Omni y no con el modelo de vídeo por defecto, así que ya no da una falsa alarma
+  (ni una falsa tranquilidad).
+- **Un producto con todas sus fotos en la papelera ya no avisa de que el modelo no admite su foto:** solo cuentan las
+  fotos que se enviarían de verdad.
+- **Los dos avisos hablan siempre del mismo modelo.** Si cambiabas de modelo o de producto dos veces seguidas, la
+  respuesta lenta de la primera comprobación podía llegar la última y dejar un aviso del modelo anterior; lo mismo si
+  cambiabas de producto mientras terminaba el fotograma. Ahora solo cuenta la última comprobación pedida, y cada
+  refresco usa el modelo y el producto vigentes en ese momento.
+
+### Catálogo de componentes
+
+- «Producto y acción» gana el aviso con alternativas, el aviso sin ninguna y el selector de modelo con un producto
+  elegido.
+
 ## [0.34.0] · 2026-09-30
 
 **Los trends ya no fijan la duración y deciden la parte de la dirección que su texto ya dicta.** Hasta ahora cada

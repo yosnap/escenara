@@ -17,6 +17,7 @@ import { estimarTodo } from "@/server/generacion/estimacion";
 import { personajesElegibles } from "@/server/personajes/consulta";
 import { contextoAplicado } from "@/server/personajes/contexto";
 import { depositoDe } from "@/server/presupuesto/deposito";
+import { modelosParaCrearConFoto } from "@/server/productos/modelos-sugeridos";
 import { catalogoParaCrear } from "@/server/prompts/catalogo-para-crear";
 import { modelosParaCrear } from "@/server/proveedores/catalogo";
 import { CabeceraApp } from "../_app/cabecera-app";
@@ -66,7 +67,7 @@ export default async function PaginaCrear({
         estimarTodo(sesion.user.id, undefined, {}, { fotograma: { sinReferencia: sinImagenAlCargar } }),
         modelosParaCrear("image_edit"),
         modelosParaCrear("text_to_image"),
-        modelosParaCrear("image_to_video"),
+        modelosParaCrearConFoto("image_to_video"),
         depositoDe(sesion.user.id),
         estadoDeCola(sesion.user.id),
         personajesElegibles({ id: sesion.user.id, esAdmin: esAdmin(sesion) }),

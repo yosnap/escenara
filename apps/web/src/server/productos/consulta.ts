@@ -67,6 +67,7 @@ const resumen = (fila: FilaProducto, referencias: FilaReferenciaProducto[], medi
     tipo: fila.kind,
     marcaVisible: fila.brandVisible,
     referencias: referencias.length,
+    fotosVigentes: vigentes.length,
     portada: vigentes[0] ? (medios.get(vigentes[0].mediaId) ?? null) : null,
     actualizado: fila.updatedAt.toISOString(),
   } satisfies ProductoResumen;

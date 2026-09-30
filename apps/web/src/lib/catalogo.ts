@@ -320,6 +320,12 @@ export interface ModeloElegible {
    * referencias suyas hasta este tope, porque dan mejor guía de identidad que una sola foto.
    */
   maximoReferencias: number;
+  /**
+   * Si en este modelo cabe la foto del producto junto a la imagen de la que sale el clip. Lo calcula el servidor
+   * con el mismo reparto de referencias que la puerta de controles, y solo para los modelos de clip: `undefined`
+   * donde no se ha calculado, y entonces no se dice nada.
+   */
+  admiteFotoDeProducto?: boolean;
 }
 
 /** Recorta un modelo del catálogo a lo que puede ver quien va a generar. */

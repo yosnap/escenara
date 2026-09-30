@@ -1,5 +1,6 @@
 import type { EstadoControl, EvaluacionVista } from "./controles";
 import { type Acento, DIRECCION_ELEGIDA_VACIA, type DireccionElegida, type ReferenciaIdentidad } from "./direccion";
+import type { FotoDeProductoDelClip } from "./foto-de-producto";
 import { formatearCreditos, formatearEuros } from "./generacion";
 import type { Medio } from "./media/tipos";
 import type { ProductoElegido } from "./productos";
@@ -178,6 +179,11 @@ export interface EstimacionEscena {
   /** Sellos de los precios usados: es lo que se congela al aprobar. */
   selloFotograma: string;
   selloAnimacion: string;
+  /**
+   * Si el modelo del clip admite la foto del producto, con las alternativas que sí la admiten: es lo que permite
+   * avisar junto al selector de producto. Ausente en las estimaciones donde no aplica (canto).
+   */
+  fotoDeProducto?: FotoDeProductoDelClip;
 }
 
 /** Dirección vocal libre: «en tono cercano», «con energía». Corta a propósito: es un matiz, no un guion. */

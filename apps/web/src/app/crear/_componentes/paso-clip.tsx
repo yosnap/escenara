@@ -12,6 +12,7 @@ import { Paso } from "@/components/ui/paso";
 import { AvisoRequisitos } from "@/components/ui/requisitos";
 import type { ModeloElegible } from "@/lib/catalogo";
 import type { DireccionElegidaConAcento, OpcionesDeDireccion } from "@/lib/direccion";
+import { fotoDeProductoDelModelo } from "@/lib/foto-de-producto";
 import { DIALOGO_MAXIMO, type Estimacion, type TrabajoVista } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
 import { AVISO_SIN_TERCEROS } from "@/lib/personajes";
@@ -180,6 +181,7 @@ export function PasoClip({
               onCambio={onModelo}
               deshabilitado={enviando}
               duracionesRequeridas={admitidas}
+              conProducto={producto.productoId !== ""}
             />
           )}
           {conCampoDeTexto && plantillaEnUso && variableDeLaEscena && (
@@ -232,6 +234,7 @@ export function PasoClip({
             conFotograma={false}
             producto={producto}
             onProducto={onProducto}
+            fotoDeProducto={fotoDeProductoDelModelo(modelos, estimacion.modelo)}
             trend={
               trend
                 ? { nombre: trend.nombre, decide: trend.direccionDecidida, permiteHabla: trend.trendAllowsSpeech }

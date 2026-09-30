@@ -11,6 +11,7 @@ import {
   type ModeloVista,
   resumenParametros,
 } from "@/lib/catalogo";
+import { etiquetaFotoDeProducto } from "@/lib/foto-de-producto";
 import { formatearCreditos } from "@/lib/generacion";
 import { motivoSinDuracion } from "@/lib/modelo-para-trend";
 import { cn } from "./cn";
@@ -181,15 +182,17 @@ export function FichaModelo({ modelo, acciones }: { modelo: ModeloVista; accione
 }
 
 /** Opción de un modelo en el selector: nombre, y debajo su coste y su estado. */
-export function opcionDeModelo(modelo: ModeloElegible): Opcion {
+export function opcionDeModelo(modelo: ModeloElegible, conProducto = false): Opcion {
   const coste = formatearCreditos(modelo.creditos);
   const voz = modelo.conVoz ? "" : " · sin voz";
   // De dónde sale el precio se dice en el propio selector: no es lo mismo «lo hemos pagado» que «dicen que cuesta».
   const origen = modelo.precioPublicado ? " · precio publicado por el proveedor" : "";
+  // Con un producto elegido se dice si el modelo lleva su foto; sin producto no hay nada que decir.
+  const foto = conProducto ? etiquetaFotoDeProducto(modelo) : null;
   return {
     value: modelo.modelo,
     label: modelo.nombre,
-    descripcion: `${coste} por ${modelo.unidad} · ${ETIQUETA_ESTADO_MODELO[modelo.estado].toLowerCase()}${voz}${origen}`,
+    descripcion: `${coste} por ${modelo.unidad} · ${ETIQUETA_ESTADO_MODELO[modelo.estado].toLowerCase()}${voz}${origen}${foto ? ` · ${foto}` : ""}`,
   };
 }
 
@@ -201,12 +204,13 @@ export function opcionDeModelo(modelo: ModeloElegible): Opcion {
 export function opcionesDeSelectorDeModelo(
   modelos: readonly ModeloElegible[],
   duracionesRequeridas: readonly number[] = [],
+  conProducto = false,
 ): Opcion[] {
   return modelos.map((modelo) => {
     const motivo = duracionesRequeridas.length === 0 ? null : motivoSinDuracion(modelo, duracionesRequeridas);
     return motivo
       ? { ...opcionDeModelo(modelo), deshabilitada: true, descripcion: `No disponible con este trend: ${motivo}` }
-      : opcionDeModelo(modelo);
+      : opcionDeModelo(modelo, conProducto);
   });
 }
 
@@ -221,6 +225,7 @@ export function SelectorModelo({
   onCambio,
   deshabilitado,
   duracionesRequeridas,
+  conProducto,
 }: {
   etiqueta: string;
   modelos: ModeloElegible[];
@@ -229,11 +234,13 @@ export function SelectorModelo({
   deshabilitado?: boolean;
   /** Duraciones que admite un trend: los modelos sin tarifa para ninguna salen no disponibles, con su motivo. */
   duracionesRequeridas?: readonly number[];
+  /** Hay un producto elegido: cada modelo dice si admite su foto o si el producto viaja solo descrito. */
+  conProducto?: boolean;
 }) {
   return (
     <Selector
       etiqueta={etiqueta}
-      opciones={opcionesDeSelectorDeModelo(modelos, duracionesRequeridas)}
+      opciones={opcionesDeSelectorDeModelo(modelos, duracionesRequeridas, conProducto)}
       valor={valor}
       onCambio={(v) => v && onCambio(v)}
       deshabilitado={deshabilitado}

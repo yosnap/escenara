@@ -1,4 +1,5 @@
 import type { Vista } from "@/lib/captura-personaje";
+import { CAPACIDAD_DE_TIPO } from "@/lib/catalogo";
 import type { EvaluacionVista } from "@/lib/controles";
 import type { TipoTrabajo } from "@/lib/generacion";
 import { hechosDeEscena, techoDelProyecto } from "../asistente/plan";
@@ -10,6 +11,7 @@ import type { Actor } from "../media/servicio";
 import { referenciasVigentesDe } from "../personajes/consulta";
 import { personajePorId } from "../personajes/contexto";
 import { personajePropio } from "../personajes/puede-generar";
+import { completarModelosSugeridos } from "../productos/modelos-sugeridos";
 import { hechosDelProducto, productoParaGenerar } from "../productos/prompt";
 import { creditosDelEnvio } from "../prompts/traduccion";
 import type { Buscador } from "../proveedores/codigos";
@@ -93,6 +95,18 @@ export async function evaluarControles(
         false,
       )
     : null;
+  // Sin esto el aviso «no admite la foto del producto» diría que no hay ningún modelo que la admita: la lista de
+  // los que sí la llevan la completa quien avisa, con la misma capacidad con la que luego se envía.
+  if (conProducto) {
+    await completarModelosSugeridos(
+      conProducto.hechos,
+      peticion.tipo === "animacion"
+        ? CAPACIDAD_DE_TIPO.animacion
+        : peticion.retratoInventado === true
+          ? "text_to_image"
+          : CAPACIDAD_DE_TIPO.fotograma,
+    );
+  }
   const conReparto = conEscena ? await hechosDelReparto(conEscena.escena) : null;
   const hechos = conVistaQueCompleta(
     await recopilarHechos(
