@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { type FormEvent, useState } from "react";
+import { Alerta } from "@/components/ui/alerta";
 import { Boton } from "@/components/ui/button";
 import type { Proveedor } from "@/components/ui/cuenta";
 import { TarjetaCuenta } from "@/components/ui/cuenta";
@@ -93,14 +94,22 @@ export function FormularioEntrar({
           ¿Has olvidado la contraseña?
         </Link>
         {error && (
-          <div role="alert" className="flex flex-col gap-2 text-sm font-medium text-error">
-            <p>{error}</p>
-            {sinVerificar && (
-              <Link href={`/verificar?email=${encodeURIComponent(email)}`} className="font-semibold underline">
-                Reenviar el enlace de confirmación
-              </Link>
-            )}
-          </div>
+          <Alerta
+            tipo="error"
+            compacta
+            accion={
+              sinVerificar && (
+                <Link
+                  href={`/verificar?email=${encodeURIComponent(email)}`}
+                  className="inline-flex min-h-11 items-center font-semibold text-acento underline"
+                >
+                  Reenviar el enlace de confirmación
+                </Link>
+              )
+            }
+          >
+            {error}
+          </Alerta>
         )}
         <Boton type="submit" cargando={enviando}>
           Entrar

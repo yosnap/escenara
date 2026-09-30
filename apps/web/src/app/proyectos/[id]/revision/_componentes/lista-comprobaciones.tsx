@@ -1,7 +1,8 @@
 "use client";
 
-import { Check, CircleHelp, TriangleAlert, X } from "lucide-react";
+import { Check, CircleHelp, X } from "lucide-react";
 import type { ReactNode } from "react";
+import { Alerta } from "@/components/ui/alerta";
 import {
   type ComprobacionRevision,
   ETIQUETA_COMPROBACION,
@@ -38,10 +39,9 @@ export function ListaComprobaciones({ revision }: { revision: RevisionVista }) {
           <Fila key={c.clave} comprobacion={c} />
         ))}
       </ul>
-      <p className="flex items-start gap-2 rounded-control bg-elevada p-3 text-sm text-texto">
-        <TriangleAlert className="mt-0.5 size-4 shrink-0 text-aviso" aria-hidden />
-        <span>{LIMITE_DE_LO_AUTOMATICO}</span>
-      </p>
+      <Alerta tipo="aviso" compacta anuncio="ninguno">
+        {LIMITE_DE_LO_AUTOMATICO}
+      </Alerta>
       <p className="text-sm text-texto-suave">
         Comprobado con las reglas {revision.reglasVersion} el{" "}
         {new Date(revision.creadoEn).toLocaleString("es-ES", { dateStyle: "short", timeStyle: "short" })}.

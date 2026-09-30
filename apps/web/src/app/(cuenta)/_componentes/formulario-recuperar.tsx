@@ -52,11 +52,7 @@ export function FormularioRecuperar() {
               />
             )}
           </Campo>
-          {error && (
-            <p role="alert" className="text-sm font-medium text-error">
-              {error}
-            </p>
-          )}
+          {error && <Aviso tono="error">{error}</Aviso>}
           <Boton type="submit" cargando={enviando}>
             Enviar enlace
           </Boton>

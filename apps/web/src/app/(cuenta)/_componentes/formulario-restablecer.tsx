@@ -59,11 +59,7 @@ export function FormularioRestablecer({ token }: { token: string | null }) {
             />
           )}
         </Campo>
-        {error && (
-          <p role="alert" className="text-sm font-medium text-error">
-            {error}
-          </p>
-        )}
+        {error && <Aviso tono="error">{error}</Aviso>}
         <Boton type="submit" cargando={enviando}>
           Guardar contraseña
         </Boton>

@@ -4,6 +4,7 @@ import { FolderPlus, Library, Pencil, Trash2 } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Boton, BotonIcono } from "@/components/ui/button";
 import { cn } from "@/components/ui/cn";
+import { Aviso } from "@/components/ui/feedback";
 import { EntradaTexto } from "@/components/ui/field";
 import { borrarColeccion, crearColeccion, renombrarColeccion } from "@/components/ui/media/api-medios";
 import { Dialogo } from "@/components/ui/overlay";
@@ -98,11 +99,7 @@ export function ListaColecciones({
           <FolderPlus className="size-4" />
         </BotonIcono>
       </form>
-      {error && (
-        <p role="alert" className="text-sm font-medium text-error">
-          {error}
-        </p>
-      )}
+      {error && <Aviso tono="error">{error}</Aviso>}
 
       <Dialogo
         abierto={editando !== null}

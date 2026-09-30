@@ -99,11 +99,7 @@ export function FormularioRegistro({
             />
           )}
         </Campo>
-        {error && (
-          <p role="alert" className="text-sm font-medium text-error">
-            {error}
-          </p>
-        )}
+        {error && <Aviso tono="error">{error}</Aviso>}
         <Boton type="submit" variante="chispa" cargando={enviando}>
           Crear cuenta
         </Boton>

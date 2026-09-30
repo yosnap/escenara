@@ -6,6 +6,7 @@ import { TIPOS_MEDIO, type TipoMedio } from "@/lib/media/reglas";
 import type { Medio } from "@/lib/media/tipos";
 import { Boton } from "../button";
 import { cn } from "../cn";
+import { Aviso } from "../feedback";
 import { CargadorChispa } from "../motion";
 import { Dialogo } from "../overlay";
 import {
@@ -220,11 +221,7 @@ function Biblioteca({
 
       <ListaSubidas subidas={subida.subidas} onLimpiar={subida.limpiarTerminadas} />
 
-      {aviso && (
-        <p role="alert" className="font-medium text-error">
-          {aviso}
-        </p>
-      )}
+      {aviso && <Aviso tono="error">{aviso}</Aviso>}
 
       <div
         className={cn("transition-opacity duration-(--motion-fast)", consulta !== diferidaBase && "opacity-60")}

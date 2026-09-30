@@ -1,4 +1,4 @@
-import { BadgeCheck, CircleDot, CircleSlash, FlaskConical, MicOff, Tag, TriangleAlert } from "lucide-react";
+import { BadgeCheck, CircleDot, CircleSlash, FlaskConical, MicOff, Tag } from "lucide-react";
 import type { ReactNode } from "react";
 import {
   DESCRIPCION_CAPACIDAD,
@@ -14,6 +14,7 @@ import {
 import { etiquetaFotoDeProducto } from "@/lib/foto-de-producto";
 import { formatearCreditos } from "@/lib/generacion";
 import { motivoSinDuracion } from "@/lib/modelo-para-trend";
+import { Alerta } from "./alerta";
 import { cn } from "./cn";
 import type { Opcion } from "./options";
 import { Selector } from "./select";
@@ -50,14 +51,10 @@ export function InsigniaEstadoModelo({ estado }: { estado: EstadoModelo }) {
 /** Aviso de que el modelo no genera voz: su clip no puede decir nada. */
 export function AvisoSinVoz() {
   return (
-    <p className="flex items-start gap-2 rounded-control bg-elevada p-3 text-sm font-medium text-texto">
-      <MicOff className="mt-0.5 size-4 shrink-0 text-aviso" aria-hidden />
-      {/* Un solo hijo de texto: suelto dentro del flex, cada trozo sería una columna. */}
-      <span>
-        Este modelo genera vídeo <strong className="font-semibold">sin voz</strong>: el personaje no dirá nada, así que
-        «Lo que dice» no se usa. Para que hable, elige un modelo con voz.
-      </span>
-    </p>
+    <Alerta tipo="aviso" compacta icono={<MicOff />}>
+      Este modelo genera vídeo <strong className="font-semibold">sin voz</strong>: el personaje no dirá nada, así que
+      «Lo que dice» no se usa. Para que hable, elige un modelo con voz.
+    </Alerta>
   );
 }
 
@@ -82,10 +79,9 @@ export function PrecioDeModelo({ modelo }: { modelo: ModeloVista }) {
         {fuente}, comprobado el {comprobado}.
       </p>
       {caducado && (
-        <p className="flex items-center gap-2 text-sm font-medium text-texto">
-          <TriangleAlert className="size-4 shrink-0 text-aviso" aria-hidden />
+        <Alerta tipo="aviso" compacta>
           Hace más de 90 días que no se comprueba: puede haber cambiado.
-        </p>
+        </Alerta>
       )}
     </div>
   );

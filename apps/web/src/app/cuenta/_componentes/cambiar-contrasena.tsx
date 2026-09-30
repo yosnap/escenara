@@ -4,6 +4,7 @@ import { LockKeyhole } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Boton } from "@/components/ui/button";
 import { EntradaContrasena } from "@/components/ui/entrada-contrasena";
+import { Aviso } from "@/components/ui/feedback";
 import { Campo } from "@/components/ui/field";
 import { authCliente } from "@/lib/auth-cliente";
 import { mensajeError } from "@/lib/errores-auth";
@@ -68,16 +69,8 @@ export function CambiarContrasena() {
           <Boton type="submit" cargando={estado === "guardando"}>
             Cambiar contraseña
           </Boton>
-          {estado === "guardado" && (
-            <span role="status" className="text-sm font-medium text-correcto">
-              Contraseña cambiada
-            </span>
-          )}
-          {error && (
-            <span role="alert" className="text-sm font-medium text-error">
-              {error}
-            </span>
-          )}
+          {estado === "guardado" && <Aviso tono="correcto">Contraseña cambiada</Aviso>}
+          {error && <Aviso tono="error">{error}</Aviso>}
         </div>
       </form>
     </Bloque>

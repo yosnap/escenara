@@ -1,6 +1,7 @@
 import { HardDrive } from "lucide-react";
 import { formatearTamano } from "@/lib/media/reglas";
 import type { EspacioUsado } from "@/lib/media/tipos";
+import { Alerta } from "../alerta";
 import { cn } from "../cn";
 
 /** Espacio usado frente a la cuota (zona de claridad: cifras exactas, sin animación). */
@@ -39,9 +40,9 @@ export function BarraEspacio({ espacio }: { espacio: EspacioUsado }) {
             />
           </div>
           {casiLleno && (
-            <p className="text-sm font-medium text-error">
+            <Alerta tipo="aviso" compacta>
               Casi no te queda espacio: vacía la papelera o borra archivos que no uses.
-            </p>
+            </Alerta>
           )}
         </>
       )}
