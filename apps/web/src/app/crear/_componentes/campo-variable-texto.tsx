@@ -1,6 +1,7 @@
 "use client";
 
 import { AreaTexto, Campo } from "@/components/ui/field";
+import { PROMPT_MINIMO } from "@/lib/generacion";
 import { type PlantillaVisible, VARIABLE_TEXTO_MAXIMA, type VariablePlantilla } from "@/lib/presets";
 import { ID_DESCRIPCION } from "@/lib/requisitos";
 
@@ -37,7 +38,7 @@ export function CampoVariableTexto({
       ayuda={
         <>
           {plantilla.kind === "trend" ? "Lo usa el trend" : "Lo usa el formato"} «{plantilla.nombre}» para componer el
-          clip: cuenta qué ocurre y cómo se ve.{" "}
+          clip: cuenta qué ocurre y cómo se ve. Mínimo {PROMPT_MINIMO} caracteres.{" "}
           <span className="font-mono">
             {largo}/{VARIABLE_TEXTO_MAXIMA}
           </span>
