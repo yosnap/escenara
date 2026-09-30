@@ -5,6 +5,11 @@
       "titulo": "Primeros pasos",
       "guias": [
         {
+          "archivo": "recorrido-por-el-menu.md",
+          "titulo": "Recorrido por el menú",
+          "descripcion": "Qué hay detrás de cada entrada del menú, qué viene encendido y qué se enciende en Admin › Ajustes, y a qué guía ir para cada cosa."
+        },
+        {
           "archivo": "tu-primer-video.md",
           "titulo": "Tu primer vídeo",
           "descripcion": "Genera tu primer fotograma y tu primer clip desde el navegador, con tu propia clave."
@@ -202,7 +207,7 @@
         {
           "archivo": "comunidad.md",
           "titulo": "Comunidad",
-          "descripcion": "Publicar solo contenido sintético (qué se puede y qué no, y por qué), la moderación previa, retirar de verdad, usar un trend compartido, retos y logros."
+          "descripcion": "Cómo se enciende (viene apagada) y qué hace falta para moderar; publicar solo contenido sintético (qué se puede y qué no, y por qué), la moderación previa, retirar de verdad, usar un trend compartido, retos y logros."
         }
       ]
     },

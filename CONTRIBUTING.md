@@ -12,7 +12,7 @@ Al participar aceptas el [código de conducta](CODE_OF_CONDUCT.md). Los fallos d
 
 ## Entorno local
 
-Requisitos: [Bun](https://bun.sh) 1.4.2 o superior (runtime, gestor de paquetes y tests) y Docker con Docker Compose. La base de datos tiene que ser **PostgreSQL 16 o superior** (una migración usa el predicado `IS JSON`); el Compose del proyecto trae PostgreSQL 18.
+Requisitos: [Bun](https://bun.sh) 1.4.2 o superior (runtime, gestor de paquetes y tests) y Docker con Docker Compose. La base de datos tiene que ser **PostgreSQL 16 o superior** (una migración usa el predicado `IS JSON`); el Compose del proyecto trae PostgreSQL 18. Para montar y exportar vídeos, y para las comprobaciones técnicas de la revisión, hace falta además **FFmpeg** (con `ffprobe` y soporte de texto) en el `PATH` de la máquina; sin él, la aplicación arranca y esas pantallas dicen qué falta.
 
 ```bash
 cp .env.example .env        # cambia las contraseñas de ejemplo; .env nunca se sube
@@ -40,6 +40,7 @@ La **primera cuenta** que crees en `http://localhost:3021/registro` será la adm
 | Servicio | Puerto |
 |---|---|
 | Web | 3021 |
+| Web de documentación (`bun run docs:dev`) | 3022 |
 | PostgreSQL | 5421 |
 | SeaweedFS (API S3) | 8321 |
 | Mailpit (SMTP / bandeja web) | 1021 / 8421 |
@@ -67,7 +68,7 @@ Las ramas `main` y `develop` no admiten commits directos. El equipo mantenedor p
 - **Estilo:** Biome define formato y lint; TypeScript en modo estricto.
 - **Tamaño de archivos:** evita archivos de más de 1.000 líneas; divide en módulos con responsabilidades claras.
 - **Sin secretos:** nunca subas `.env`, claves API, contraseñas ni fotos o voces de personas reales. Usa datos de prueba inventados.
-- **Documentación:** si cambias algo visible o de configuración, actualiza `docs/` y, si cambia la interfaz, añade o actualiza capturas en `docs/assets/capturas/`.
+- **Documentación:** si cambias algo visible o de configuración, actualiza `docs/` y, si cambia la interfaz, añade o actualiza capturas en `docs/assets/capturas/`. Lo detallamos abajo.
 - **Decisiones de arquitectura:** un cambio de tecnología o de contrato público necesita un [ADR](docs/arquitectura/decisiones/README.md).
 
 ### Añadir presets o plantillas de prompt a la semilla
@@ -87,6 +88,19 @@ El catálogo inicial de presets y plantillas de una instalación nueva sale de u
 
 Los presets y las plantillas de la semilla son **de la instalación** (`owner_id` nulo). Las copias de cada
 usuario nacen de duplicar desde «Crear», nunca de la semilla.
+
+### Guías y capturas
+
+- Las guías de uso viven en `docs/guias/`. Una guía nueva se añade también a `docs/guias/indice.json`, en su
+  sección: solo lo que lista el índice sale en la web de documentación. Un test comprueba que cada guía está en el
+  índice una sola vez.
+- `bun run docs:build` construye la web y **falla con un enlace interno roto** (también un ancla que no existe) o con
+  algo que parezca privado. Pásalo antes de proponer el cambio.
+- Máximo 800 líneas por documento, español de España y sin secretos.
+- Las **capturas** se hacen con una instancia propia y **datos inventados**: una base de datos y un almacenamiento
+  solo para eso, puertos distintos de los de tu instalación de trabajo y cuentas de demostración. Nunca fotos, voces
+  ni datos de personas reales, ni generaciones de pago hechas solo para la captura. Se guardan en WebP con el
+  nombre `{versión}-{pantalla}-{claro|oscuro}.webp`, y el texto alternativo describe lo que se ve.
 
 ## Idioma
 

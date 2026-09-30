@@ -36,9 +36,10 @@ Cada modelo del catálogo tiene apuntadas las proporciones que acepta. Un format
 sale **deshabilitado con el motivo** («Nano Banana 2 Lite solo admite 9:16»), y si alguien lo pidiera por la API, el
 servidor lo rechaza **antes de reservar nada**: no se encola, no se cobra.
 
-Hoy el catálogo sembrado declara **9:16** en sus modelos, así que en una instalación recién puesta el resto sale
-deshabilitado. Es honesto: el catálogo solo apunta lo que se ha comprobado generando. Cuando un modelo declare 16:9
-o 1:1, esas opciones se encienden solas. Mientras tanto, **generas en 9:16 y sacas los demás formatos con el
+En una instalación recién puesta, casi todos los modelos del catálogo declaran solo **9:16** (entre ellos el de
+imagen de fábrica, Nano Banana 2 Lite); algunos de vídeo, como Gemini Omni y Grok Imagine, declaran también 16:9.
+Ninguno declara 4:5 ni 1:1. Es honesto: el catálogo solo apunta lo que se ha comprobado generando. Cuando un modelo
+declare otra proporción, esa opción se enciende sola con él. Mientras tanto, **generas en 9:16 y sacas los demás formatos con el
 reencuadre**, que no depende del modelo.
 
 Dos detalles:

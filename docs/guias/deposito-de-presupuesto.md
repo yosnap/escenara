@@ -48,7 +48,7 @@ Puedes cerrar la página en cualquier momento. Al volver al historial verás el 
 
 Mientras el trabajo siga **en cola** (o esperando tu límite de gasto), tienes un botón **Cancelar**: el trabajo no se envía y su reserva se suelta al momento, así que no te cuesta nada.
 
-Un trabajo **ya enviado al proveedor no se puede cancelar**. Cancelarlo en el proveedor llegará en una versión posterior, y solo si el proveedor lo admite. Lo que Escenara no hará nunca es reenviarlo: si algo queda a medias, solo se vuelve a **consultar** la tarea que ya existe, porque reenviar podría cobrártela dos veces.
+Un trabajo **ya enviado al proveedor no se puede cancelar**: KIE no admite parar una tarea en marcha, así que sigue hasta el final y se cobra (en un proyecto se marca «se cobrará», ver [Producir tu proyecto](producir-tu-proyecto.md)). Lo que Escenara no hará nunca es reenviarlo: si algo queda a medias, solo se vuelve a **consultar** la tarea que ya existe, porque reenviar podría cobrártela dos veces.
 
 ## «Esperando tu límite de gasto»
 

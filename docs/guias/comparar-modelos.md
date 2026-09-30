@@ -27,6 +27,13 @@ Pulsa **«Añadir a la tabla»** en hasta tres modelos para verlos **lado a lado
 llevan voz, proporciones, resoluciones, imágenes de referencia, tus resultados, tus últimos archivos y ejemplos. Añadir o quitar un modelo solo cambia la
 dirección de la página: el aviso de arriba lo recuerda siempre, **aquí no se genera nada**.
 
+![Comparar modelos: el aviso «Aquí no se genera nada», los tipos de comparación y las tarjetas de los modelos de vídeo con su precio](../assets/capturas/0.49.0-comparar-claro.webp)
+
+![Tres modelos de vídeo lado a lado: precio, duraciones, voz, qué hacen, tus resultados, ejemplos, proporciones, resoluciones e imágenes de referencia](../assets/capturas/0.49.0-comparar-tabla-claro.webp)
+
+Las capturas son de una instalación de demostración sin nada generado, por eso «Tus resultados» y los ejemplos
+salen vacíos. Los precios son los del catálogo en la fecha que se indica y pueden haber cambiado.
+
 ## Comparar generando
 
 Cuando lo que quieres saber es cómo queda **tu** escena, en la producción del proyecto, una escena con su fotograma

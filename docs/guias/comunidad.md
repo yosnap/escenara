@@ -14,8 +14,29 @@ inventados**. Tiene tres reglas que no dependen de ningún ajuste:
 
 No hay comentarios, seguidores, mensajes ni publicación automática en redes.
 
-> La comunidad viene **apagada**. Quien administra la enciende en **Admin › Ajustes › Comunidad**. Apagada, no se
-> publica ni se ve nada; tus logros siguen funcionando y puedes retirar lo que ya hubieras publicado.
+## Cómo se llega y cómo se enciende
+
+Se entra por **Comunidad**, en el menú superior de la aplicación (entre «Comparar» y «Cuenta»). La entrada está
+siempre, pero la comunidad viene **apagada de fábrica**: mientras lo esté, la página solo enseña el aviso «La
+comunidad está apagada en esta instalación», **tus logros** y **tus publicaciones** (para que puedas retirar lo que
+ya hubieras publicado). No se ve la galería ni se puede publicar nada.
+
+![Comunidad apagada: el aviso, tus logros todavía sin conseguir y tus publicaciones vacías](../assets/capturas/0.49.0-comunidad-apagada-claro.webp)
+
+Para encenderla, alguien con rol de administrador:
+
+1. Abre **Admin › Ajustes** y baja hasta la sección **Comunidad**.
+2. Activa **«Encender la comunidad»**. Si quieres, ajusta las **normas de publicación** (una por línea) y cuántas
+   publicaciones **pendientes** puede tener cada cuenta (5 de fábrica, de 1 a 50).
+3. Pulsa **Guardar ajustes**. Desde ese momento aparecen la galería, los retos y el botón **«Publicar algo»**.
+
+![Admin › Ajustes › Comunidad: el interruptor encendido, las normas de publicación de fábrica y el tope de pendientes por cuenta](../assets/capturas/0.49.0-ajustes-comunidad-claro.webp)
+
+Antes de encenderla, asegúrate de que alguien puede **moderar** (ver [Qué hace falta para
+moderar](#qué-hace-falta-para-moderar)): nada se ve sin aprobación, así que sin moderación la galería se queda vacía.
+Apagarla otra vez no borra nada: lo publicado se conserva oculto y sus autores pueden retirarlo.
+
+![Comunidad encendida: la galería con sus filtros, todavía vacía, y un reto abierto](../assets/capturas/0.49.0-comunidad-encendida-claro.webp)
 
 ## Qué se puede publicar y qué no
 
@@ -47,7 +68,8 @@ galería pone uno propio con el título).
 1. Abre **Comunidad › Publicar algo**. Verás tus personajes y tus últimos resultados, cada uno con «Publicar» o con el
    motivo por el que no se puede. También llegas desde la ficha de un personaje y desde el historial de **Crear**
    («Publicar en la comunidad»).
-2. Lee las **normas de publicación** de tu instalación (arriba de la página).
+2. Lee las **normas de publicación** de tu instalación (arriba de la página). Si todavía no tienes nada
+   publicable, la lista lo dice: crea un personaje inventado y genera algo con él.
 3. Rellena el título, la descripción (opcional, sin nombres de personas reales) y la **firma**: el nombre con el que
    apareces; no tiene que ser el de tu cuenta.
 4. Si el clip se hizo con un trend o una plantilla de la instalación, elige si lo publicas como **clip** o como
@@ -56,6 +78,8 @@ galería pone uno propio con el título).
 6. Marca la declaración: «Confirmo que es contenido sintético (sin fotos, voces ni lugares reales de ninguna persona) y
    quiero publicarlo en la comunidad». Sin ella no se envía nada. Se guarda con su texto y la fecha.
 7. **Enviar a moderación.** Queda «Pendiente de moderación» y solo la ves tú (y quien modera).
+
+![Publicar en la comunidad: las normas de publicación de la instalación y la lista de lo que puedes publicar, todavía vacía](../assets/capturas/0.49.0-comunidad-publicar-claro.webp)
 
 Publicar dos veces lo mismo no crea otra publicación: te lleva a la que ya tienes. Cada cuenta puede tener a la vez un
 número limitado de publicaciones pendientes (cinco de fábrica).
@@ -95,7 +119,11 @@ sintético». Los clips no arrancan solos.
 
 ## Retos
 
-Quien administra crea retos con un título, un periodo y, si quiere, un trend o una plantilla sugeridos («Crear con…»).
+Quien administra crea retos en **Admin › Moderación › Retos › «Nuevo reto»**, con un título, un periodo, una
+descripción opcional y, si quiere, un trend o una plantilla sugeridos («Crear con…»). Los retos abiertos se ven en la
+comunidad debajo de la galería.
+
+![Admin › Moderación: pendientes y publicadas vacías, un reto abierto con su periodo y el botón «Nuevo reto»](../assets/capturas/0.49.0-moderacion-retos-claro.webp)
 Participar es publicar eligiendo el reto: la participación pasa por la **misma moderación** y solo cuenta cuando se
 aprueba. Un reto cerrado ya no admite participaciones.
 
@@ -107,6 +135,27 @@ lo celebra con un confeti de chispas (que no aparece si tienes activado «reduci
 de coste o de consentimiento.
 
 ## Para quien administra: moderar
+
+### Qué hace falta para moderar
+
+- **La comunidad encendida** (Admin › Ajustes › Comunidad). Apagada, Admin › Moderación lo avisa y no hay nada que
+  revisar.
+- **Una cuenta con rol de administrador.** Moderar está en **Admin › Moderación** (grupo «Contenido» del menú de
+  administración), y solo lo ve quien administra.
+- **Un segundo administrador**, si quien administra también publica: nadie puede aprobar lo suyo. La primera cuenta
+  que se crea en la instalación es la administradora; hoy **no hay pantalla** para dar ese rol a otra cuenta. Se hace
+  en la base de datos, con una copia hecha antes (`bun run db:backup`) y sobre una cuenta ya registrada:
+
+  ```sql
+  update users set role = 'admin' where email = 'correo-de-la-otra-persona@ejemplo.com';
+  ```
+
+  Si esa persona tenía la sesión abierta, que salga y vuelva a entrar: entonces ve la entrada **Admin** en el menú. Con un solo administrador, lo que publica
+  esa persona se queda pendiente para siempre; lo que publican los demás sí se puede moderar.
+
+![Admin › Moderación con la comunidad apagada: el aviso de dónde se enciende y la cola de pendientes vacía](../assets/capturas/0.49.0-moderacion-claro.webp)
+
+### La cola de moderación
 
 **Admin › Moderación** tiene la cola de pendientes, de la más antigua a la más nueva, con la vista previa completa, la
 elegibilidad **comprobada otra vez** en ese momento (con la misma regla que al publicar) y la **procedencia**: cada cosa

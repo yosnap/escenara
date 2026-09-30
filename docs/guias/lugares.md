@@ -16,12 +16,21 @@ dirección, y listo. Se probó con dinero real el 30 de septiembre de 2026 y el 
 
 ## Darlo de alta
 
-En **Lugares**, con **«Nuevo lugar»**, pones el nombre, una frase de cómo es (qué lo hace reconocible: materiales,
+Se entra por **Lugares**, en el menú superior de la aplicación (entre «Productos» y «Biblioteca»). No hay nada que
+encender: está disponible para todas las cuentas. La primera vez la página dice «Todavía no tienes lugares» y ofrece
+**«Crear el primero»**; después, **«Nuevo lugar»**, pones el nombre, una frase de cómo es (qué lo hace reconocible: materiales,
 colores, muebles, la luz) y su **acabado**:
 
 - **Real (fotos)**: para proyectos realistas.
 - **Animado**: para proyectos animados, en uno de los estilos de la instalación (ilustración plana, 3D estilizado o
   anime). El acabado no se cambia después.
+
+![Tus lugares con un lugar de demostración todavía sin fotos](../assets/capturas/0.49.0-lugares-claro.webp)
+
+Recién creado, el lugar no se puede usar todavía: su ficha dice arriba lo que le falta («Marca una foto como maestra.
+Declara los derechos de las fotos»).
+
+![Ficha de un lugar recién creado: el aviso de lo que falta para usarlo, su nombre y su descripción](../assets/capturas/0.49.0-lugar-ficha-claro.webp)
 
 Después, en su ficha, le añades fotos de tu biblioteca y dices qué muestra cada una:
 
