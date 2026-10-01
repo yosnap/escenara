@@ -4,6 +4,7 @@ import { claseBoton } from "@/components/ui/button";
 import { IconoChispa } from "@/components/ui/chispa";
 import { Pegatina, TarjetaReel } from "@/components/ui/creator";
 import { EnlaceDocumentacion } from "@/components/ui/enlace-documentacion";
+import { EnlaceGitHub } from "@/components/ui/enlace-github";
 import { EnlaceLogotipo } from "@/components/ui/enlace-logotipo";
 import { MascotaChispa } from "@/components/ui/mascota";
 import { type CapaParallax, EscenaParallax } from "@/components/ui/parallax";
@@ -67,29 +68,30 @@ const CAPAS: CapaParallax[] = [
 ];
 
 /** Barra superior de la portada: logotipo, secciones y tema. */
-export function BarraPortada({ conSesion }: { conSesion: boolean }) {
+export function BarraPortada({ conSesion, estrellas = null }: { conSesion: boolean; estrellas?: number | null }) {
   return (
     <header className="sticky top-0 z-30 border-b border-borde/30 bg-fondo/80 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3 md:px-8">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-3 md:px-8">
         <EnlaceLogotipo href="#inicio" accion="inicio" className="text-texto" />
         <nav aria-label="Secciones de la portada" className="hidden lg:block">
-          <ul className="flex items-center gap-1">
+          <ul className="flex items-center">
             {ENLACES.map(([href, texto]) => (
               <li key={href}>
                 <a
                   href={href}
-                  className="inline-flex min-h-11 items-center rounded-full px-4 py-2 text-sm font-semibold text-texto-suave transition-colors duration-(--motion-fast) hover:bg-elevada hover:text-texto"
+                  className="inline-flex min-h-11 items-center rounded-full px-3 py-2 text-sm font-semibold text-texto-suave transition-colors duration-(--motion-fast) hover:bg-elevada hover:text-texto"
                 >
                   {texto}
                 </a>
               </li>
             ))}
             <li>
-              <EnlaceDocumentacion />
+              <EnlaceDocumentacion className="px-3" />
             </li>
           </ul>
         </nav>
-        <div className="flex items-center gap-2">
+        <div className="flex max-w-full flex-wrap items-center gap-2">
+          <EnlaceGitHub estrellas={estrellas} />
           <SelectorTema />
           <Link href={conSesion ? "/cuenta" : "/entrar"} className={claseBoton("primario", "sm")}>
             <UserRound className="size-4" aria-hidden /> {conSesion ? "Mi cuenta" : "Entrar"}
