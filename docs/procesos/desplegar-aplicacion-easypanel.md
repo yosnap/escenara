@@ -23,7 +23,7 @@ con revisiones diferentes. Despliega secuencialmente para controlar la memoria d
 
 ## Entorno y migración
 
-Configura `DATABASE_URL`, las seis variables S3 y `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`,
+Configura `DATABASE_URL`, las variables S3 y `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`,
 `ESCENARA_CLAVE_MAESTRA`. Conserva la clave maestra al migrar: regenerarla impediría abrir los secretos.
 `S3_ENDPOINT` debe ser accesible por HTTPS desde el navegador, porque firma las URL de reproducción.
 Las claves se guardan únicamente en el entorno privado del panel.
