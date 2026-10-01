@@ -23,6 +23,7 @@ import { SeccionComunidad } from "./seccion-comunidad";
 import { SeccionControles } from "./seccion-controles";
 import { SeccionDatos } from "./seccion-datos";
 import { SeccionDosPersonajes } from "./seccion-dos-personajes";
+import { SeccionLegal } from "./seccion-legal";
 import { SeccionLugares } from "./seccion-lugares";
 import { SeccionMontaje } from "./seccion-montaje";
 import { SeccionPresupuesto } from "./seccion-presupuesto";
@@ -115,6 +116,7 @@ export function FormularioAjustes({
           onCambio={(v) => cambiar("registroAbierto", v)}
         />
       </Seccion>
+      <SeccionLegal valores={valores} errorDe={errorDe} onCambio={cambiar} />
 
       <Seccion titulo="Trends" descripcion="Disponibilidad de las plantillas de formato corto." icono={<ShieldCheck />}>
         <Interruptor

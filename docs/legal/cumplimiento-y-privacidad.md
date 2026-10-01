@@ -4,6 +4,17 @@
 
 ## Marco a revisar
 
+Desde la **0.49.4**, la aplicación incluye `/legal/aviso`, `/legal/privacidad`, `/legal/cookies`,
+`/legal/terminos` y `/legal/contenido`, enlazadas desde todas las páginas. Admin → Ajustes → Información legal
+configura titular, NIF/CIF, domicilio, contacto y datos registrales. Si falta la identificación, las páginas
+lo indican expresamente: no deben darse por documentos completos. Los textos describen las funciones actuales;
+los acuerdos con proveedores, transferencias, conservación de backups y bases del operador siguen requiriendo
+concreción para cada instalación y la revisión indicada en este documento.
+
+El panel de cookies informa de almacenamiento técnico y preferencias solicitadas; no habilita analítica ni
+publicidad. Incluye acceso persistente de siete días, caché de cinco minutos, desafío de passkey, flujos sociales
+y las claves locales de tema y aviso. El reconocimiento del aviso no se trata como consentimiento de seguimiento.
+
 | Ámbito | Qué comprobar | Versión |
 |---|---|---|
 | RGPD y LOPDGDD | Base jurídica, consentimiento explícito para fotos de rostro y voz, evaluación de impacto (EIPD), encargados del tratamiento (proveedores de IA con claves del usuario), transferencias internacionales, derechos de acceso y supresión | 0.12.0 y 0.30.0 |

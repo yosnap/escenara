@@ -10,6 +10,7 @@ import {
 import { esModoCoherencia, type ModoCoherencia, UMBRAL_POR_DEFECTO } from "@/lib/coherencia";
 import { AJUSTES_COMUNIDAD_POR_DEFECTO, type AjustesComunidad, VALIDACION_COMUNIDAD } from "./ajustes-comunidad";
 import { AJUSTES_DATOS_POR_DEFECTO, type AjustesDatos, VALIDACION_DATOS } from "./ajustes-datos";
+import { AJUSTES_LEGALES_POR_DEFECTO, type AjustesLegales, VALIDACION_LEGALES } from "./ajustes-legales";
 import { db } from "./db/cliente";
 import { settings } from "./db/esquema";
 
@@ -21,7 +22,7 @@ export { coherenciaDe } from "./ajustes-coherencia";
  * no en variables de entorno). Cada ajuste tiene valor por defecto y validación; en la base de datos solo
  * se guardan los que el administrador cambia.
  */
-export interface Ajustes extends AjustesDatos, AjustesComunidad {
+export interface Ajustes extends AjustesDatos, AjustesComunidad, AjustesLegales {
   /** Si es falso, solo se puede crear la primera cuenta (la del administrador). */
   registroAbierto: boolean;
   /** Espacio máximo por usuario en MB; 0 = sin límite. El administrador no tiene límite. */
@@ -345,6 +346,7 @@ export interface Ajustes extends AjustesDatos, AjustesComunidad {
 }
 
 export const AJUSTES_POR_DEFECTO: Ajustes = {
+  ...AJUSTES_LEGALES_POR_DEFECTO,
   ...AJUSTES_DATOS_POR_DEFECTO,
   ...AJUSTES_COMUNIDAD_POR_DEFECTO,
   registroAbierto: true,
@@ -514,6 +516,7 @@ const MENSAJE_MODELO = "Escribe el identificador del modelo, sin espacios (por e
 const identificadorModelo = (v: unknown) => texto(120)(v) && /^[\w.:@/-]*$/.test(v as string);
 
 const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensaje: string }> = {
+  ...VALIDACION_LEGALES,
   ...VALIDACION_DATOS,
   ...VALIDACION_COMUNIDAD,
   registroAbierto: { valido: booleano, mensaje: "Debe ser sí o no." },
