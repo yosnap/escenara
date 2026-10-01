@@ -122,6 +122,7 @@ export function BarraDePasos({
           const motivo = esActual ? null : motivoNoNavegable(paso, visitados);
           const idMotivo = `${base}-motivo-${paso.id}`;
           const faltan = paso.pendientes ?? 0;
+          const etiquetaEstado = paso.etiquetaEstado ?? ETIQUETA_ESTADO_DE_PASO[paso.estado];
           return (
             <li key={paso.id} className="min-w-11 flex-1">
               <button
@@ -175,10 +176,10 @@ export function BarraDePasos({
                   {paso.corto}
                 </span>
                 <span aria-hidden className="hidden text-xs text-texto-suave md:block">
-                  {faltan > 0 ? `Faltan ${faltan}` : ETIQUETA_ESTADO_DE_PASO[paso.estado]}
+                  {faltan > 0 ? `Faltan ${faltan}` : etiquetaEstado}
                 </span>
                 <span className="sr-only">
-                  Paso {i + 1}: {paso.titulo} ({ETIQUETA_ESTADO_DE_PASO[paso.estado].toLowerCase()}
+                  Paso {i + 1}: {paso.titulo} ({etiquetaEstado.toLowerCase()}
                   {faltan > 0 ? `; ${faltan === 1 ? "falta 1 requisito" : `faltan ${faltan} requisitos`}` : ""})
                 </span>
               </button>

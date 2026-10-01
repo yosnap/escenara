@@ -3,6 +3,7 @@ import Link from "next/link";
 import { claseBoton } from "@/components/ui/button";
 import { IconoChispa } from "@/components/ui/chispa";
 import { Pegatina, TarjetaReel } from "@/components/ui/creator";
+import { EnlaceDocumentacion } from "@/components/ui/enlace-documentacion";
 import { EnlaceLogotipo } from "@/components/ui/enlace-logotipo";
 import { MascotaChispa } from "@/components/ui/mascota";
 import { type CapaParallax, EscenaParallax } from "@/components/ui/parallax";
@@ -71,18 +72,21 @@ export function BarraPortada({ conSesion }: { conSesion: boolean }) {
     <header className="sticky top-0 z-30 border-b border-borde/30 bg-fondo/80 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3 md:px-8">
         <EnlaceLogotipo href="#inicio" accion="inicio" className="text-texto" />
-        <nav aria-label="Secciones de la portada" className="hidden md:block">
-          <ul className="flex gap-1">
+        <nav aria-label="Secciones de la portada" className="hidden lg:block">
+          <ul className="flex items-center gap-1">
             {ENLACES.map(([href, texto]) => (
               <li key={href}>
                 <a
                   href={href}
-                  className="rounded-full px-4 py-2 text-sm font-semibold text-texto-suave transition-colors duration-(--motion-fast) hover:bg-elevada hover:text-texto"
+                  className="inline-flex min-h-11 items-center rounded-full px-4 py-2 text-sm font-semibold text-texto-suave transition-colors duration-(--motion-fast) hover:bg-elevada hover:text-texto"
                 >
                   {texto}
                 </a>
               </li>
             ))}
+            <li>
+              <EnlaceDocumentacion />
+            </li>
           </ul>
         </nav>
         <div className="flex items-center gap-2">
@@ -99,7 +103,7 @@ export function BarraPortada({ conSesion }: { conSesion: boolean }) {
 /** Cabecera con parallax por capas: la «capa Escenario» de la marca. */
 export function CabeceraPortada() {
   return (
-    <EscenaParallax capas={CAPAS}>
+    <EscenaParallax capas={CAPAS} className="bg-[color-mix(in_srgb,var(--background)_98%,var(--text))]">
       <section
         id="inicio"
         aria-labelledby="titulo-portada"

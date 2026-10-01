@@ -1,3 +1,4 @@
+import { EnlaceDocumentacion } from "@/components/ui/enlace-documentacion";
 import { EnlaceLogotipo } from "@/components/ui/enlace-logotipo";
 import { SelectorTema } from "@/components/ui/theme-toggle";
 import { esAdmin, type Sesion } from "@/server/auth/sesion";
@@ -35,6 +36,9 @@ export function CabeceraApp({ sesion }: { sesion: Sesion }) {
             </li>
             <li className="shrink-0">
               <EnlaceApp href="/crear">Crear</EnlaceApp>
+            </li>
+            <li className="shrink-0">
+              <EnlaceDocumentacion />
             </li>
             <li className="shrink-0">
               <EnlaceApp href="/personajes">Personajes</EnlaceApp>

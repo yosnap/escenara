@@ -134,9 +134,9 @@ function pasosSinPendientes(d: DatosPasosCrear): PasoDelFlujo[] {
       id: "sujeto",
       titulo: "Elige a quién generas",
       corto: "Quién",
-      // Sin personaje ni foto también se puede generar (solo con la descripción): en cuanto la escena está
-      // descrita, ese camino cuenta como elegido.
-      estado: d.haySujeto ? (d.revisionConfirmada ? "hecho" : "en-curso") : descripcionLista ? "hecho" : "pendiente",
+      // «Sin personaje» ya es una elección válida: no depende del texto del paso siguiente.
+      estado: d.haySujeto ? (d.revisionConfirmada ? "hecho" : "en-curso") : "hecho",
+      ...(!d.haySujeto ? { etiquetaEstado: "Sin personaje" } : {}),
     },
     {
       id: "escena",

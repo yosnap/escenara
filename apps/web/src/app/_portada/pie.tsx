@@ -1,3 +1,4 @@
+import { EnlaceDocumentacion } from "@/components/ui/enlace-documentacion";
 import { Logotipo } from "@/components/ui/logotipo";
 import { MascotaChispa } from "@/components/ui/mascota";
 
@@ -13,6 +14,7 @@ export function Pie({ version }: { version: string }) {
           </div>
         </div>
         <div className="flex flex-col gap-1 text-sm text-texto-suave md:items-end">
+          <EnlaceDocumentacion className="px-0" />
           <a href="mailto:info@escenara.com" className="font-semibold text-acento underline-offset-4 hover:underline">
             info@escenara.com
           </a>

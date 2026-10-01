@@ -53,9 +53,8 @@ con `dig +short docs.escenara.com` antes del paso 5.
      `registro/escenara-docs:<versión>`. En ese caso sáltate el paso 4.
 3. Guarda la fuente.
 
-El repositorio todavía no tiene remoto: hasta que lo tenga, la opción viable es **Docker Image** o subir un
-archivo con **Upload** (un `.tar` del repositorio sin `docs/privado`, `datos-privados`, `plans`, `.env*` ni
-`node_modules`).
+El remoto público es `https://github.com/yosnap/escenara.git`. Para un despliegue reproducible, usa el SHA
+de una revisión validada. También puedes subir una imagen ya comprobada a un registro.
 
 ## 4. Build
 

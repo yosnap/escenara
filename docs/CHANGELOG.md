@@ -2,6 +2,18 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.49.1] · 2026-10-01
+
+### Corregido
+
+- Selector de tema solo con iconos, con nombres accesibles y etiquetas al pasar el cursor.
+- Alineación vertical uniforme de los enlaces del menú de la portada, incluido «Documentación».
+- Fondo del hero con una variación mínima del 2 % respecto al siguiente bloque, tanto en claro como en oscuro.
+
+### Actualización
+
+- Sin migraciones de base de datos ni cambios en las credenciales o los archivos de las cuentas.
+
 ## [0.49.0] · 2026-09-30
 
 **Comunidad.** Una galería de la propia instalación para enseñar lo que se hace **con personajes inventados**: solo

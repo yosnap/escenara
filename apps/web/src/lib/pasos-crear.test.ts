@@ -88,6 +88,13 @@ describe("pasos de «Crear» generando un fotograma", () => {
     });
   });
 
+  test("sin personaje es una elección válida antes de describir la escena", () => {
+    expect(paso({}, "sujeto")).toMatchObject({ estado: "hecho", corto: "Quién", etiquetaEstado: "Sin personaje" });
+    expect(estados({}).escena).toBe("pendiente");
+    expect(estados({}).coste).toBe("bloqueado");
+    expect(paso({ haySujeto: true }, "sujeto")?.etiquetaEstado).toBeUndefined();
+  });
+
   test("una descripción a medias o con la plantilla incompleta está en curso", () => {
     expect(estados({ caracteresDescripcion: 3 }).escena).toBe("en-curso");
     expect(estados({ caracteresDescripcion: PROMPT_MINIMO, motivosPlantilla: 1 }).escena).toBe("en-curso");

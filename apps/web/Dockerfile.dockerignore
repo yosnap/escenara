@@ -1,0 +1,24 @@
+# Lista permitida: nunca enviar datos personales, secretos ni borradores al build remoto.
+*
+!package.json
+!bun.lock
+!apps/
+!apps/web/
+!apps/web/**
+!apps/docs/
+!apps/docs/package.json
+!spikes/
+!spikes/prototipo/
+!spikes/prototipo/package.json
+!docs/
+!docs/CHANGELOG.md
+!docs/branding/
+!docs/branding/escenara.brand.json
+**/node_modules
+**/.next
+**/*.tsbuildinfo
+**/.env*
+**/*.test.*
+**/AGENTS.md
+**/.claude
+**/CLAUDE.md

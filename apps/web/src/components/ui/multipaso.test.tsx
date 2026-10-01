@@ -58,6 +58,23 @@ describe("barra de pasos", () => {
     }
   });
 
+  test("la elección sin personaje aparece bajo Quién y en el nombre accesible", () => {
+    const html = pintar("escena", [
+      {
+        id: "sujeto",
+        titulo: "Elige a quién generas",
+        corto: "Quién",
+        estado: "hecho",
+        etiquetaEstado: "Sin personaje",
+      },
+      ...PASOS.filter((p) => p.id === "escena"),
+    ]);
+    expect(html).toContain(">Quién<");
+    expect(html).toContain(">Sin personaje<");
+    expect(html).toContain("Paso 1: Elige a quién generas (sin personaje)");
+    expect(html).not.toContain(">Pendiente<");
+  });
+
   test("el bloqueado se puede enfocar, dice que no está disponible y lleva su motivo una sola vez, fuera del botón", () => {
     const bloqueado = html.split("<li ").slice(1)[3] ?? "";
     const id = bloqueado.match(/aria-describedby="([^"]+)"/)?.[1];
