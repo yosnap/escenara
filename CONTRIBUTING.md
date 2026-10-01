@@ -69,6 +69,7 @@ Las ramas `main` y `develop` no admiten commits directos. El equipo mantenedor p
 - **Tamaño de archivos:** evita archivos de más de 1.000 líneas; divide en módulos con responsabilidades claras.
 - **Sin secretos:** nunca subas `.env`, claves API, contraseñas ni fotos o voces de personas reales. Usa datos de prueba inventados.
 - **Documentación:** si cambias algo visible o de configuración, actualiza `docs/` y, si cambia la interfaz, añade o actualiza capturas en `docs/assets/capturas/`. Lo detallamos abajo.
+- **Material interno:** guiones, resúmenes, campañas, textos para redes, recetas de demos y proyectos de creación de vídeos se guardan fuera de este repositorio, en una carpeta privada externa. Solo se versionan las guías y los recursos finales destinados a documentación pública.
 - **Decisiones de arquitectura:** un cambio de tecnología o de contrato público necesita un [ADR](docs/arquitectura/decisiones/README.md).
 
 ### Añadir presets o plantillas de prompt a la semilla
