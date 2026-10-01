@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { claseBoton } from "@/components/ui/button";
 import { cn } from "@/components/ui/cn";
+import { EnlaceDocumentacion } from "@/components/ui/enlace-documentacion";
 import { SelectorTema } from "@/components/ui/theme-toggle";
 
 /**
@@ -64,7 +65,8 @@ export function CabeceraAdmin({ version, enRevision = 0 }: { version: string; en
             <span className="text-xs font-bold tracking-widest text-creativo uppercase">Admin</span>
             <span className="text-sm font-semibold text-texto-suave">Escenara {version}</span>
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex max-w-full flex-wrap items-center justify-end gap-2">
+            <EnlaceDocumentacion />
             <SelectorTema />
             <Link href="/cuenta" className={claseBoton("secundario", "sm")}>
               <UserRound className="size-4" aria-hidden /> Mi cuenta

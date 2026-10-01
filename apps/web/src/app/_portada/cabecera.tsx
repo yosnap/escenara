@@ -3,6 +3,7 @@ import Link from "next/link";
 import { claseBoton } from "@/components/ui/button";
 import { IconoChispa } from "@/components/ui/chispa";
 import { Pegatina, TarjetaReel } from "@/components/ui/creator";
+import { EnlaceDocumentacion } from "@/components/ui/enlace-documentacion";
 import { EnlaceLogotipo } from "@/components/ui/enlace-logotipo";
 import { MascotaChispa } from "@/components/ui/mascota";
 import { type CapaParallax, EscenaParallax } from "@/components/ui/parallax";
@@ -71,7 +72,7 @@ export function BarraPortada({ conSesion }: { conSesion: boolean }) {
     <header className="sticky top-0 z-30 border-b border-borde/30 bg-fondo/80 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3 md:px-8">
         <EnlaceLogotipo href="#inicio" accion="inicio" className="text-texto" />
-        <nav aria-label="Secciones de la portada" className="hidden md:block">
+        <nav aria-label="Secciones de la portada" className="hidden lg:block">
           <ul className="flex gap-1">
             {ENLACES.map(([href, texto]) => (
               <li key={href}>
@@ -83,6 +84,9 @@ export function BarraPortada({ conSesion }: { conSesion: boolean }) {
                 </a>
               </li>
             ))}
+            <li>
+              <EnlaceDocumentacion />
+            </li>
           </ul>
         </nav>
         <div className="flex items-center gap-2">
