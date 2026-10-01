@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { obtenerSesion } from "@/server/auth/sesion";
-import { obtenerEstrellasRepositorio } from "@/server/repositorio";
 import paquete from "../../package.json";
-import { BarraPortada, CabeceraPortada } from "./_portada/cabecera";
+import { CabeceraApp } from "./_app/cabecera-app";
+import { BarraPortada } from "./_portada/barra-portada";
+import { CabeceraPortada } from "./_portada/cabecera";
 import { ComoFunciona } from "./_portada/como-funciona";
 import { Confianza } from "./_portada/confianza";
 import { Escaparate } from "./_portada/escaparate";
@@ -15,12 +16,11 @@ export const metadata: Metadata = {
 };
 
 export default async function Portada() {
-  const [sesion, estrellas] = await Promise.all([obtenerSesion(), obtenerEstrellasRepositorio()]);
-  const conSesion = sesion !== null;
+  const sesion = await obtenerSesion();
   return (
     <>
       {/* «Saltar al contenido» lo pone el layout raíz, igual que en el resto de páginas. */}
-      <BarraPortada conSesion={conSesion} estrellas={estrellas} />
+      {sesion ? <CabeceraApp sesion={sesion} /> : <BarraPortada conSesion={false} />}
       <main id="contenido" tabIndex={-1}>
         <CabeceraPortada />
         <Escaparate />

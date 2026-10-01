@@ -3,10 +3,12 @@ import localFont from "next/font/local";
 import { connection } from "next/server";
 import type { ReactNode } from "react";
 import { ProveedorMarca } from "@/components/ui/marca-contexto";
+import { ProveedorRepositorio } from "@/components/ui/repositorio-contexto";
 import { leerAjustes } from "@/server/ajustes";
 import { obtenerSesion } from "@/server/auth/sesion";
 import { baseDeLaInstalacion, metadatosDeLaMarca } from "@/server/marca/metadatos";
 import { marcaAplicada } from "@/server/marca/publicada";
+import { obtenerEstrellasRepositorio } from "@/server/repositorio";
 import "./globals.css";
 import { ScriptTema } from "./script-tema";
 
@@ -34,10 +36,14 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   // La sesión y la marca dependen de la instalación en ejecución, también al compilar sin credenciales.
   await connection();
   // Con sesión, el tema y el idioma del usuario salen ya en el HTML: sin destello en ningún dispositivo.
-  const usuario = (await obtenerSesion())?.user;
+  const [sesion, marca, estrellas] = await Promise.all([
+    obtenerSesion(),
+    marcaAplicada(),
+    obtenerEstrellasRepositorio(),
+  ]);
+  const usuario = sesion?.user;
   const tema = usuario?.tema === "light" || usuario?.tema === "dark" ? usuario.tema : undefined;
   // La marca publicada va en el propio HTML, como el tema: el navegador la tiene antes de pintar nada.
-  const marca = await marcaAplicada();
   return (
     <html
       lang={usuario?.idioma === "en" ? "en" : "es"}
@@ -64,7 +70,9 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         >
           Saltar al contenido
         </a>
-        <ProveedorMarca valor={marca ? { nombre: marca.nombre, logos: marca.logos } : null}>{children}</ProveedorMarca>
+        <ProveedorMarca valor={marca ? { nombre: marca.nombre, logos: marca.logos } : null}>
+          <ProveedorRepositorio estrellas={estrellas}>{children}</ProveedorRepositorio>
+        </ProveedorMarca>
       </body>
     </html>
   );

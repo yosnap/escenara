@@ -16,7 +16,7 @@ export function CerrarSesion() {
   const [saliendo, setSaliendo] = useState(false);
   const [error, setError] = useState<CausaFallo | "rechazo" | null>(null);
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex max-w-full flex-wrap items-center gap-2">
       {error && (
         <Alerta tipo="error" compacta>
           {mensajeAlCerrarSesion(error)}
@@ -25,7 +25,10 @@ export function CerrarSesion() {
       <Boton
         variante="fantasma"
         tamano="sm"
-        icono={<LogOut className="size-4" />}
+        icono={<LogOut className="size-4" aria-hidden />}
+        aria-label={saliendo ? "Cerrando sesión" : "Cerrar sesión"}
+        title="Cerrar sesión"
+        className="size-11 shrink-0 p-0"
         cargando={saliendo}
         onClick={async () => {
           setSaliendo(true);
@@ -45,9 +48,7 @@ export function CerrarSesion() {
             setError(causaDelFallo(fallo, navigator.onLine));
           }
         }}
-      >
-        Cerrar sesión
-      </Boton>
+      />
     </div>
   );
 }
