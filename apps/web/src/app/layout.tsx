@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import { connection } from "next/server";
 import type { ReactNode } from "react";
 import { ProveedorMarca } from "@/components/ui/marca-contexto";
+import { PieLegal } from "@/components/ui/pie-legal";
 import { ProveedorRepositorio } from "@/components/ui/repositorio-contexto";
 import { leerAjustes } from "@/server/ajustes";
 import { obtenerSesion } from "@/server/auth/sesion";
@@ -71,7 +72,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           Saltar al contenido
         </a>
         <ProveedorMarca valor={marca ? { nombre: marca.nombre, logos: marca.logos } : null}>
-          <ProveedorRepositorio estrellas={estrellas}>{children}</ProveedorRepositorio>
+          <ProveedorRepositorio estrellas={estrellas}>
+            {children}
+            <PieLegal />
+          </ProveedorRepositorio>
         </ProveedorMarca>
       </body>
     </html>

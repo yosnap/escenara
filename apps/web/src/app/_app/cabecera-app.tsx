@@ -1,5 +1,6 @@
 import { esAdmin, type Sesion } from "@/server/auth/sesion";
 import { BarraPortada } from "../_portada/barra-portada";
+import { AvisoSesion } from "./aviso-sesion";
 import { CerrarSesion } from "./cerrar-sesion";
 import { EnlaceApp } from "./enlace-app";
 
@@ -55,6 +56,7 @@ export function CabeceraApp({ sesion }: { sesion: Sesion }) {
           </li>
         </ul>
       </nav>
+      <AvisoSesion />
     </BarraPortada>
   );
 }

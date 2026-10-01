@@ -2,6 +2,26 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.49.4] · 2026-10-01
+
+### Corregido
+
+- Aviso cuando la sesión deja de estar disponible, sin recargar ni descartar los campos abiertos.
+- Renovación de la sesión por HTTP mientras se usa la aplicación; lecturas de servidor sin modificar su caducidad.
+- Entrada comprobada en la base de datos, sin volver a páginas privadas por una copia de sesión antigua.
+
+### Añadido
+
+- Información de cookies técnicas y almacenamiento local, con panel accesible desde todas las páginas.
+- Aviso legal, privacidad, cookies, términos y uso de imagen, voz y contenido IA.
+- Identificación pública del titular configurable en Admin → Ajustes; aviso explícito si está pendiente.
+
+### Actualización
+
+- Sin migraciones. La duración de sesión sigue siendo siete días renovables; la caché dura cinco minutos.
+- Los textos reflejan los flujos actuales; completar el titular y los acuerdos y plazos propios de cada instalación
+  sigue siendo necesario. El manual privado de pruebas se mantiene fuera del repositorio.
+
 ## [0.49.3] · 2026-10-01
 
 ### Corregido

@@ -13,12 +13,16 @@ export type Sesion = NonNullable<Awaited<ReturnType<Awaited<ReturnType<typeof au
  * protege nada: tema, idioma y enlaces de la cabecera.
  */
 export const obtenerSesion = cache(async (): Promise<Sesion | null> => {
-  return (await auth()).api.getSession({ headers: await headers() });
+  return (await auth()).api.getSession({ headers: await headers(), query: { disableRefresh: true } });
 });
 
 /** Sesión comprobada en la base de datos: una sesión cerrada o un rol retirado dejan de valer al momento. */
-const obtenerSesionVerificada = cache(async (): Promise<Sesion | null> => {
-  return (await auth()).api.getSession({ headers: await headers(), query: { disableCookieCache: true } });
+export const obtenerSesionVerificada = cache(async (): Promise<Sesion | null> => {
+  // Leer desde un componente servidor no puede renovar la cookie; AvisoSesion renueva por HTTP en el navegador.
+  return (await auth()).api.getSession({
+    headers: await headers(),
+    query: { disableCookieCache: true, disableRefresh: true },
+  });
 });
 
 /** Página donde una cuenta con el borrado programado ve el plazo y puede cancelarlo. */
@@ -36,7 +40,7 @@ export async function exigirSesion(
   { permitirBorradoProgramado = false }: { permitirBorradoProgramado?: boolean } = {},
 ): Promise<Sesion> {
   const sesion = await obtenerSesionVerificada();
-  if (!sesion) redirect(`/entrar?volver=${encodeURIComponent(volver)}`);
+  if (!sesion) redirect(`/entrar?aviso=necesaria&volver=${encodeURIComponent(volver)}`);
   if (
     !permitirBorradoProgramado &&
     volver !== RUTA_BORRADO_PROGRAMADO &&
@@ -66,7 +70,7 @@ export async function sesionDePeticion(
 ): Promise<Sesion | null> {
   const sesion = await (await auth()).api.getSession({
     headers: peticion.headers,
-    query: { disableCookieCache: true },
+    query: { disableCookieCache: true, disableRefresh: true },
   });
   if (!sesion || permitirBorradoProgramado) return sesion;
   return (await tieneBorradoProgramado(sesion.user.id)) ? null : sesion;

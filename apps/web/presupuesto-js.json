@@ -18,6 +18,7 @@
     "/cuenta/historial",
     "/cuenta/kit",
     "/entrar",
+    "/legal/[documento]",
     "/personajes",
     "/personajes/nuevo",
     "/proyectos/[id]/historial",
