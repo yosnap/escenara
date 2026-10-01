@@ -18,11 +18,13 @@ export function FormularioEntrar({
   proveedores,
   registroAbierto,
   aviso,
+  tonoAviso = "correcto",
 }: {
   volver: string;
   proveedores: Proveedor[];
   registroAbierto: boolean;
   aviso?: string;
+  tonoAviso?: "correcto" | "aviso";
 }) {
   const [email, setEmail] = useState("");
   const [clave, setClave] = useState("");
@@ -61,7 +63,7 @@ export function FormularioEntrar({
         ) : undefined
       }
     >
-      {aviso && <Aviso tono="correcto">{aviso}</Aviso>}
+      {aviso && <Aviso tono={tonoAviso}>{aviso}</Aviso>}
       <AccesoExterno proveedores={proveedores} volver={volver} conPasskey onError={setError} />
       <form onSubmit={entrar} className="flex flex-col gap-4">
         <Campo etiqueta="Correo">

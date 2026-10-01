@@ -152,6 +152,8 @@ function crearAuth(ajustes: Ajustes, sociales: Record<string, { clientId: string
       },
     },
     session: {
+      expiresIn: 7 * 24 * 60 * 60,
+      updateAge: 24 * 60 * 60,
       // Copia firmada de la sesión en una cookie (5 min) para el tema y el idioma de cada página sin consultar
       // la base de datos. El admin, la API y la página de cuenta la ignoran y comprueban la base de datos
       // (ver sesion.ts): así una sesión cerrada o un rol retirado dejan de valer al momento.
