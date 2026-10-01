@@ -6,7 +6,7 @@ import { EJEMPLOS, imagenEjemplo, videoEjemplo } from "@/lib/escaparate";
 /** Escaparate de personajes ficticios. Todo el contenido está etiquetado como generado con IA. */
 export function Escaparate() {
   return (
-    <section id="escaparate" aria-labelledby="titulo-escaparate" className="scroll-mt-20 py-20">
+    <section id="escaparate" aria-labelledby="titulo-escaparate" className="scroll-mt-20 bg-fondo py-20">
       <div className="mx-auto max-w-6xl px-5 md:px-8">
         <p className="text-sm font-bold tracking-widest text-creativo uppercase">Escaparate</p>
         <h2 id="titulo-escaparate" className="mt-2 text-4xl font-bold text-texto md:text-5xl">
