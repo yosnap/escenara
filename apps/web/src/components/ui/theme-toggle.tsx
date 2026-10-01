@@ -47,10 +47,10 @@ export function SelectorTema() {
           key={valor}
           value={valor}
           aria-label={etiqueta}
-          className="flex min-h-9 items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-texto-suave transition-colors duration-(--motion-fast) data-pressed:bg-acento data-pressed:text-sobre-acento"
+          title={etiqueta}
+          className="flex min-h-11 min-w-11 items-center justify-center rounded-full p-2 text-texto-suave transition-colors duration-(--motion-fast) data-pressed:bg-acento data-pressed:text-sobre-acento"
         >
           <Icono className="size-4" aria-hidden />
-          <span className="hidden sm:inline">{etiqueta}</span>
         </Toggle>
       ))}
     </ToggleGroup>

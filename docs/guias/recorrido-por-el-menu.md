@@ -6,7 +6,9 @@ hay que encender, y a qué guía ir para cada cosa. Si es tu primera vez, sigue 
 
 ![El menú superior de Escenara: Proyectos, Crear, Personajes, Productos, Lugares, Biblioteca, Comparar, Comunidad, Cuenta y Admin](../assets/capturas/0.49.0-menu-claro.webp)
 
-Arriba a la derecha están el **selector de tema** (sistema, claro u oscuro) y **Cerrar sesión**. La entrada de la
+Arriba a la derecha están el **selector de tema** (monitor: sistema, sol: claro, luna: oscuro) y **Cerrar sesión**.
+Los botones muestran solo iconos; su nombre aparece al pasar el cursor y está disponible para lectores de pantalla.
+El enlace **Documentación** abre las guías en otra pestaña. La entrada de la
 página en la que estás se ve resaltada. **Admin** solo aparece si tu cuenta tiene rol de administrador.
 
 ## Por dónde empezar
