@@ -29,7 +29,9 @@ Configura `DATABASE_URL`, las seis variables S3 y `BETTER_AUTH_SECRET`, `BETTER_
 Las claves se guardan únicamente en el entorno privado del panel.
 
 1. Comprueba que no hay trabajos activos y realiza `pg_dump -Fc --no-owner --no-acl`.
-2. Restaura en una base nueva y copia el bucket entero preservando sus claves y tipos MIME.
+2. Restaura en una base nueva e inventaría el bucket. Copia los objetos referenciados por las tablas
+   y los archivos adicionales que necesite la aplicación, preservando sus claves y tipos MIME.
+   Conserva íntegro el origen; no traslades objetos de pruebas sin referencias a producción.
 3. Verifica todos los objetos mediante SHA-256, los recuentos de filas y el UUID de la cuenta de demos.
 4. Ajusta `settings.urlPublica` y `BETTER_AUTH_URL` al dominio HTTPS.
 5. Comprueba que la bóveda descifra los secretos sin imprimirlos ni llamar a proveedores de pago.
