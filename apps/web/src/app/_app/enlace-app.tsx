@@ -12,7 +12,7 @@ export function EnlaceApp({ href, children }: { href: string; children: ReactNod
     <Link
       href={href}
       aria-current={actual ? "page" : undefined}
-      className="flex min-h-10 items-center rounded-full px-4 text-sm font-semibold text-texto-suave transition-colors duration-(--motion-fast) hover:text-texto aria-[current=page]:bg-acento aria-[current=page]:text-sobre-acento"
+      className="flex min-h-11 items-center rounded-full px-3 text-sm font-semibold text-texto-suave transition-colors duration-(--motion-fast) hover:text-texto aria-[current=page]:bg-acento aria-[current=page]:text-sobre-acento"
     >
       {children}
     </Link>

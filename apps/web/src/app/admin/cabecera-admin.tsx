@@ -1,22 +1,16 @@
 "use client";
 
-import { UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { claseBoton } from "@/components/ui/button";
 import { cn } from "@/components/ui/cn";
-import { EnlaceDocumentacion } from "@/components/ui/enlace-documentacion";
-import { SelectorTema } from "@/components/ui/theme-toggle";
 
 /**
- * Cabecera común del admin: navegación entre sus páginas, contador de trabajos pendientes de revisión y
- * selector de tema. El contador va aquí porque cada trabajo en revisión retiene presupuesto de alguien: es lo
+ * Navegación del panel, situada después del menú general y del usuario, y contador de trabajos pendientes.
+ * El contador va aquí porque cada trabajo en revisión retiene presupuesto de alguien: es lo
  * único del panel que cuesta dinero mientras nadie lo mira.
  *
- * **La navegación va en su propia fila** y agrupada en tres bloques por lo que hace cada sección. Con nueve
- * secciones (0.16.0 añadió Presets y Plantillas), una sola tira de píldoras dejaba de caber incluso a 1920 px y
- * empujaba el tema y «Mi cuenta» a otra línea: la fila propia hace que el orden sea el mismo a cualquier ancho.
- * En pantallas estrechas los grupos se apilan y cada uno desplaza en horizontal si hace falta, así que ninguna
+ * La navegación se agrupa en tres bloques por lo que hace cada sección.
+ * En pantallas estrechas los grupos y los enlaces se ajustan en varias líneas, así que ninguna
  * sección queda inalcanzable en un móvil.
  *
  * No se usa un menú desplegable a propósito: esconder secciones detrás de «Más» obliga a abrir para saber dónde
@@ -58,20 +52,13 @@ const GRUPOS = [
 export function CabeceraAdmin({ version, enRevision = 0 }: { version: string; enRevision?: number }) {
   const ruta = usePathname();
   return (
-    <header className="sticky top-0 z-30 border-b border-borde/40 bg-fondo/85 backdrop-blur">
+    <section aria-label="Panel de administración" className="border-b border-borde/40 bg-fondo/85">
       <div className="mx-auto flex max-w-7xl flex-col gap-2 px-5 py-3 md:px-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <p className="flex flex-col">
             <span className="text-xs font-bold tracking-widest text-creativo uppercase">Admin</span>
             <span className="text-sm font-semibold text-texto-suave">Escenara {version}</span>
           </p>
-          <div className="flex max-w-full flex-wrap items-center justify-end gap-2">
-            <EnlaceDocumentacion />
-            <SelectorTema />
-            <Link href="/cuenta" className={claseBoton("secundario", "sm")}>
-              <UserRound className="size-4" aria-hidden /> Mi cuenta
-            </Link>
-          </div>
         </div>
 
         <nav aria-label="Secciones del admin" className="flex flex-wrap gap-2">
@@ -79,7 +66,7 @@ export function CabeceraAdmin({ version, enRevision = 0 }: { version: string; en
             <ul
               key={grupo.nombre}
               aria-label={grupo.nombre}
-              className="flex max-w-full gap-1 overflow-x-auto rounded-full bg-elevada p-1"
+              className="flex max-w-full flex-wrap gap-1 rounded-3xl bg-elevada p-1"
             >
               {grupo.paginas.map(([href, nombre]) => (
                 <li key={href} className="shrink-0">
@@ -111,6 +98,6 @@ export function CabeceraAdmin({ version, enRevision = 0 }: { version: string; en
           ))}
         </nav>
       </div>
-    </header>
+    </section>
   );
 }

@@ -2,6 +2,20 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.49.3] · 2026-10-01
+
+### Corregido
+
+- Menú general conservado en la portada, las páginas del usuario y el panel de administración.
+  Documentación, GitHub y tema permanecen arriba; las herramientas del usuario aparecen debajo.
+- Acceso a Admin solo para administradores y botón de salida solo con icono, nombre accesible y etiqueta al pasar el cursor.
+- Menús del usuario y del panel ajustados en varias líneas cuando no caben, sin desplazamiento horizontal.
+- Contador de estrellas compartido desde el servidor en todas las páginas, sin consultar GitHub desde el navegador.
+
+### Actualización
+
+- Sin migraciones ni cambios en las credenciales. Despliegue desde `main`, con comprobaciones y fusiones locales.
+
 ## [0.49.2] · 2026-10-01
 
 ### Corregido

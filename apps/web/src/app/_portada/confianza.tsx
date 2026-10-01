@@ -29,7 +29,7 @@ const PUNTOS: { icono: ReactNode; titulo: string; texto: string }[] = [
 /** Zona de claridad: sin parallax ni degradados, contraste AA y textos precisos. */
 export function Confianza() {
   return (
-    <section id="confianza" aria-labelledby="titulo-confianza" className="scroll-mt-20 py-20">
+    <section id="confianza" aria-labelledby="titulo-confianza" className="scroll-mt-20 py-20 lg:scroll-mt-40">
       <div className="mx-auto max-w-6xl px-5 md:px-8">
         <p className="text-sm font-bold tracking-widest text-creativo uppercase">Confianza</p>
         <h2 id="titulo-confianza" className="mt-2 text-4xl font-bold text-texto md:text-5xl">

@@ -1,4 +1,5 @@
 import { describe, expect, mock, test } from "bun:test";
+import { Window } from "happy-dom";
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { auditar } from "@/lib/axe-de-prueba";
@@ -23,7 +24,8 @@ mock.module("next/navigation", () => ({
 }));
 
 const { CabeceraApp } = await import("./_app/cabecera-app");
-const { BarraPortada, CabeceraPortada } = await import("./_portada/cabecera");
+const { BarraPortada } = await import("./_portada/barra-portada");
+const { CabeceraPortada } = await import("./_portada/cabecera");
 const { ComoFunciona } = await import("./_portada/como-funciona");
 const { Confianza } = await import("./_portada/confianza");
 const { Escaparate } = await import("./_portada/escaparate");
@@ -62,6 +64,33 @@ const paginaApp = (titulo: string, contenido: ReactNode) =>
   );
 
 const sinGraves = async (html: string) => expect((await auditar(html)).graves).toEqual([]);
+
+describe("navegación general y herramientas del usuario", () => {
+  for (const rol of ["user", "admin"] as const) {
+    test(`menús separados y salida accesible para ${rol}`, () => {
+      const ventana = new Window();
+      ventana.document.body.innerHTML = renderToStaticMarkup(
+        <CabeceraApp sesion={{ ...SESION, user: { ...SESION.user, role: rol } }} />,
+      );
+      const documento = ventana.document;
+      const menus = documento.querySelectorAll("nav");
+      expect([...menus].map((menu) => menu.getAttribute("aria-label"))).toEqual([
+        "Secciones de la portada",
+        "Aplicación",
+      ]);
+      expect(menus[0]?.querySelector('a[href="https://docs.escenara.com"]')).not.toBeNull();
+      expect(menus[0]?.querySelector('a[href="/#escaparate"]')).not.toBeNull();
+      expect(menus[1]?.querySelector('a[href="https://docs.escenara.com"]')).toBeNull();
+      expect(menus[1]?.querySelector('a[href="/crear"]')).not.toBeNull();
+      expect(menus[1]?.querySelector('a[href="/admin/medios"]') !== null).toBe(rol === "admin");
+      const salida = menus[1]?.querySelector('button[aria-label="Cerrar sesión"]');
+      expect(salida).not.toBeNull();
+      expect(salida?.textContent).toBe("");
+      expect(salida?.getAttribute("title")).toBe("Cerrar sesión");
+      ventana.happyDOM.abort();
+    });
+  }
+});
 
 describe("axe: portada y acceso", () => {
   test("portada", async () => {
