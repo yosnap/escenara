@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { connection } from "next/server";
 import type { ReactNode } from "react";
 import { ProveedorMarca } from "@/components/ui/marca-contexto";
 import { leerAjustes } from "@/server/ajustes";
@@ -12,6 +13,7 @@ import { ScriptTema } from "./script-tema";
 /** Metadatos de la página: los de Escenara o, con una marca publicada, los suyos (`server/marca/metadatos.ts`). Las URL
  * absolutas (imagen para compartir) salen de la URL pública de la instalación. */
 export async function generateMetadata(): Promise<Metadata> {
+  await connection();
   const marca = await marcaAplicada();
   const urlPublica = await leerAjustes()
     .then((a) => a.urlPublica)
@@ -29,6 +31,8 @@ const manrope = localFont({
 });
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
+  // La sesión y la marca dependen de la instalación en ejecución, también al compilar sin credenciales.
+  await connection();
   // Con sesión, el tema y el idioma del usuario salen ya en el HTML: sin destello en ningún dispositivo.
   const usuario = (await obtenerSesion())?.user;
   const tema = usuario?.tema === "light" || usuario?.tema === "dark" ? usuario.tema : undefined;

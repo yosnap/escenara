@@ -32,6 +32,8 @@ export interface PasoDelFlujo {
   /** Título corto para la barra, que tiene poco sitio. */
   corto: string;
   estado: EstadoDePaso;
+  /** Elección que se muestra en lugar del estado genérico, también en el nombre accesible. */
+  etiquetaEstado?: string;
   /** Por qué está bloqueado, en una frase con lo que hay que hacer. Obligatorio si el estado es `bloqueado`. */
   motivo?: string;
   /** Requisitos que aún faltan en este paso (casillas, campos): la barra los cuenta. Ausente o 0 = ninguno. */
