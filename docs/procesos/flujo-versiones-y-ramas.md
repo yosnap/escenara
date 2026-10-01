@@ -39,6 +39,9 @@ Nunca se hace commit directo en `develop` ni en `main`.
 
 No se abren pull requests para el trabajo rutinario: revisión y verificación son locales y el merge se hace en local. Las PR se reservan para contribuciones externas o cuando el propietario las pida.
 
+Producción se despliega exclusivamente desde `main`, después de integrar, verificar y etiquetar la versión.
+Los servicios de aplicación y documentación en Easypanel usan esa rama y despliegue manual.
+
 ## Definición de terminado
 
 Una versión está terminada cuando:
