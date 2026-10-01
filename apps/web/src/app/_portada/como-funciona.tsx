@@ -31,7 +31,7 @@ export function ComoFunciona() {
     <section
       id="como-funciona"
       aria-labelledby="titulo-como"
-      className="relative scroll-mt-20 overflow-hidden bg-superficie py-20"
+      className="relative scroll-mt-20 overflow-hidden bg-superficie py-20 lg:scroll-mt-40"
     >
       <div aria-hidden className="absolute -top-40 right-0 size-96 rounded-full bg-v-cian/15 blur-3xl" />
       <div aria-hidden className="absolute -bottom-40 left-0 size-96 rounded-full bg-v-coral/15 blur-3xl" />

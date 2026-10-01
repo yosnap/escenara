@@ -9,7 +9,7 @@
 
 <p align="center">
   <a href="LICENSE"><img alt="Licencia AGPL 3.0" src="https://img.shields.io/badge/licencia-AGPL--3.0-2753D7"></a>
-  <img alt="Versión 0.49.2" src="https://img.shields.io/badge/versión-0.49.2-F0663D">
+  <img alt="Versión 0.49.3" src="https://img.shields.io/badge/versión-0.49.3-F0663D">
   <img alt="Estado: versión base" src="https://img.shields.io/badge/estado-versión%20base-485269">
 </p>
 
@@ -22,7 +22,7 @@
 - **Nada se genera sin tu aprobación.** Ves el guion, el plan y el coste estimado antes de gastar, y un fallo del proveedor nunca se reintenta solo.
 - **Consentimiento y privacidad primero.** Registro de derechos, sin menores, etiquetado de contenido sintético y borrado completo.
 
-> **Estado: versión base (0.49.2); pruebas reales del propietario pendientes en varias áreas.** El recorrido completo —personaje, guion, escenas, revisión, montaje y exportación— está hecho y cubierto por tests, incluido uno de extremo a extremo con respuestas grabadas del proveedor. Lo que todavía **no se ha probado con dinero real ni a mano en un navegador** incluye la comunidad, «Comparar generando», los lugares con fotos reales y el canto con audio propio (este viene apagado hasta esa prueba). Casi todos los modelos que trae el catálogo solo declaran vídeo vertical 9:16 (el de imagen de fábrica, también): los otros formatos (4:5, 1:1 y 16:9) se sacan sobre todo reencuadrando en el montaje. Las decisiones legales marcadas como provisionales están **pendientes de revisión jurídica** ([Cumplimiento y privacidad](docs/legal/cumplimiento-y-privacidad.md)). El detalle de cada versión está en el [registro de cambios](docs/CHANGELOG.md).
+> **Estado: versión base (0.49.3); pruebas reales del propietario pendientes en varias áreas.** El recorrido completo —personaje, guion, escenas, revisión, montaje y exportación— está hecho y cubierto por tests, incluido uno de extremo a extremo con respuestas grabadas del proveedor. Lo que todavía **no se ha probado con dinero real ni a mano en un navegador** incluye la comunidad, «Comparar generando», los lugares con fotos reales y el canto con audio propio (este viene apagado hasta esa prueba). Casi todos los modelos que trae el catálogo solo declaran vídeo vertical 9:16 (el de imagen de fábrica, también): los otros formatos (4:5, 1:1 y 16:9) se sacan sobre todo reencuadrando en el montaje. Las decisiones legales marcadas como provisionales están **pendientes de revisión jurídica** ([Cumplimiento y privacidad](docs/legal/cumplimiento-y-privacidad.md)). El detalle de cada versión está en el [registro de cambios](docs/CHANGELOG.md).
 
 <p align="center">
   <img alt="Portada de Escenara con parallax, la mascota Chispa y tarjetas de personajes ficticios" src="docs/assets/capturas/0.6.0-portada-claro.webp" width="720">
