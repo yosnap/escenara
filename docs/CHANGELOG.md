@@ -2,6 +2,19 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.49.2] · 2026-10-01
+
+### Corregido
+
+- Acceso al repositorio desde la cabecera de la portada, con logo de GitHub y contador real de estrellas.
+  El recuento se consulta en el servidor y se actualiza cada hora; si GitHub falla, el enlace sigue disponible sin cifra.
+- Espaciado del menú y ajuste de la cabecera en pantallas estrechas para acomodar el enlace.
+- Material editorial de campañas y creación de vídeos retirado del árbol público; documentación pública conservada.
+
+### Actualización
+
+- Sin migraciones. Validación, revisión y fusiones locales; producción se despliega exclusivamente desde `main`.
+
 ## [0.49.1] · 2026-10-01
 
 ### Corregido
