@@ -19,6 +19,7 @@ const { guardarAjustes } = await import("../src/server/ajustes");
 await guardarAjustes(
   {
     registroAbierto: true,
+    correoProveedor: "smtp",
     smtpHost: "localhost",
     smtpPuerto: 1021,
     smtpSeguro: false,

@@ -1,11 +1,11 @@
 import nodemailer, { type Transporter } from "nodemailer";
 import { type Ajustes, leerAjustes } from "./ajustes";
 import { huellaSecretos, leerSecreto } from "./boveda/secretos";
+import { enviarPorResend } from "./correo-resend";
 
 /**
- * Envío de correo por SMTP con el servidor y el remitente de Admin › Ajustes. La contraseña del servidor
- * se guarda cifrada en la bóveda (ADR-0005) y solo se lee aquí, en el servidor. En local, Mailpit
- * (bandeja en http://localhost:8421): nada sale a internet.
+ * Correo por Resend o SMTP, según Admin › Ajustes. Las credenciales se leen de la bóveda cifrada.
+ * Para QA local se selecciona SMTP con Mailpit; los tests inyectan un transporte sin salida a internet.
  */
 const global = globalThis as {
   __escenaraCorreo?: { clave: string; transporte: Transporter };
@@ -13,7 +13,7 @@ const global = globalThis as {
 };
 
 /**
- * Fija el transporte que se usará en lugar del SMTP configurado. Es el punto de inyección para las
+ * Fija el transporte que se usará en lugar del proveedor configurado. Es el punto de inyección para las
  * pruebas (la preload de `bun test` pone uno que no envía nada, ver `correo-de-prueba.ts`): así la suite no
  * llena la bandeja de Mailpit y el camino de producción queda intacto.
  */
@@ -60,6 +60,14 @@ export interface Correo {
 
 export async function enviarCorreo({ para, asunto, texto, html }: Correo): Promise<{ aceptado: boolean }> {
   const ajustes = await leerAjustes();
+  if (!global.__escenaraTransporteFijo && ajustes.correoProveedor === "resend")
+    return enviarPorResend(await leerSecreto("resendApiKey"), {
+      from: ajustes.correoRemitente,
+      to: [para],
+      subject: asunto,
+      text: texto,
+      html,
+    });
   const resultado = await (await transporte(ajustes)).sendMail({
     from: ajustes.correoRemitente,
     to: para,
@@ -79,41 +87,10 @@ export async function enviarCorreo({ para, asunto, texto, html }: Correo): Promi
 
 /** Envía sin bloquear la respuesta (evita revelar por el tiempo si una cuenta existe) y registra los fallos. */
 export function enviarEnSegundoPlano(correo: Correo): void {
-  // Solo el mensaje del error: algunos fallos de SMTP incluyen las credenciales enviadas.
-  enviarCorreo(correo).catch((error) =>
-    console.error(`[correo] no se ha podido enviar «${correo.asunto}»: ${(error as Error).message}`),
+  // No registrar el error del proveedor: puede contener credenciales o contenido del mensaje.
+  enviarCorreo(correo).catch(() =>
+    console.error("[correo] no se ha podido confirmar el envío; detalle privado omitido."),
   );
 }
 
-const escapar = (texto: string) =>
-  texto.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c);
-
-/** Plantilla sencilla con la marca: un saludo, un texto y un botón con enlace. */
-export function plantillaEnlace({
-  nombre,
-  titulo,
-  texto,
-  boton,
-  url,
-  nota,
-}: {
-  nombre: string;
-  titulo: string;
-  texto: string;
-  boton: string;
-  url: string;
-  nota: string;
-}): Pick<Correo, "texto" | "html"> {
-  return {
-    texto: `Hola, ${nombre}:\n\n${texto}\n\n${boton}: ${url}\n\n${nota}\n\n— Escenara`,
-    html: `<!doctype html><html lang="es"><body style="margin:0;background:#F7F8FC;font-family:Manrope,Arial,sans-serif;color:#182032">
-<div style="max-width:520px;margin:32px auto;padding:32px;background:#FFFFFF;border:1px solid #858EA1;border-radius:16px">
-<p style="margin:0 0 8px;font-size:12px;font-weight:700;letter-spacing:2px;color:#B53D1C">ESCENARA</p>
-<h1 style="margin:0 0 16px;font-size:24px">${escapar(titulo)}</h1>
-<p style="margin:0 0 8px">Hola, ${escapar(nombre)}:</p>
-<p style="margin:0 0 24px;line-height:1.5">${escapar(texto)}</p>
-<a href="${escapar(url)}" style="display:inline-block;padding:12px 24px;background:#2753D7;color:#FFFFFF;border-radius:12px;font-weight:700;text-decoration:none">${escapar(boton)}</a>
-<p style="margin:24px 0 0;font-size:14px;color:#485269;line-height:1.5">${escapar(nota)}</p>
-</div></body></html>`,
-  };
-}
+export { plantillaEnlace } from "@/lib/plantillas-correo";

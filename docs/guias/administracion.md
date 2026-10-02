@@ -50,7 +50,7 @@ Entonces el worker existente concilia trabajos y costes, limpia los archivos y e
 en curso o un fallo de almacenamiento, mantiene el proceso pendiente y lo reintenta. No puedes eliminarte desde el panel
 ni dejar la instalación sin administradores habilitados.
 
-La ficha muestra los últimos 25 reenvíos y 50 eventos administrativos. **Aceptado** solo prueba aceptación SMTP,
+La ficha muestra los últimos 25 reenvíos y 50 eventos administrativos. **Aceptado** solo prueba aceptación del proveedor de correo,
 sin confirmación de entrega; **fallido** corresponde a un rechazo observado; **incierto** o una solicitud sin cierre
 exigen comprobar el transporte antes de repetir. Tokens, enlaces, cuerpos de correo y credenciales quedan fuera del historial.
 
@@ -87,6 +87,28 @@ con **Elegir sección**, para mantener la página manejable.
 Guardar aplica solo los cambios del grupo visible y mantiene pendientes los de otros grupos. Un conflicto con
 otro administrador pide recargar. Las credenciales se guardan o retiran de forma explícita, con revisión de su versión,
 y la auditoría registra claves cambiadas, sin valores secretos. El correo de prueba solo sale al pulsar su botón.
+
+### Correo y plantillas
+
+![Plantilla de confirmación con datos ficticios](../assets/capturas/0.51.0-correo-verificacion.webp)
+
+En **Acceso y correo**, elige **Resend (recomendado)** o **SMTP / otros proveedores**. Resend es el valor inicial
+de las nuevas instalaciones; una instalación con SMTP guardado conserva su elección hasta cambiarla explícitamente.
+
+Para usar Resend, verifica tu dominio en su panel, configura el remitente con una dirección de ese dominio y guarda
+una clave API con permiso de envío. La clave queda cifrada en la bóveda y solo se muestra su pista. Pulsa **Guardar
+cambios** para aplicar proveedor y remitente. SMTP permite usar otro proveedor o tu servidor con host, puerto,
+usuario y contraseña, sin perder la configuración de Resend cuando cambias de transporte.
+
+**Enviar correo de prueba** usa la configuración guardada y envía solo a tu cuenta administradora. Que el proveedor
+acepte el mensaje no confirma que haya llegado a la bandeja: compruébala. Si falta la clave, el panel lo indica sin
+enviar; si el resultado es incierto, revisa el proveedor antes de repetirlo. No hay cambio automático a otro transporte.
+
+**Previsualizar plantillas de correo** muestra confirmación/reenvío, recuperación de contraseña, solicitud de borrado,
+cancelación del borrado, cancelación al recuperar acceso y correo de prueba. Son muestras ficticias que no se envían.
+Todos los flujos usan el mismo diseño adaptable, botón de acción, enlace alternativo y aviso de seguridad; incluyen
+también texto plano para clientes sin HTML. Las plantillas se mantienen en la aplicación y funcionan con ambos
+transportes. No hace falta crearlas manualmente en el panel de Resend.
 
 ## Privacidad y retención
 
