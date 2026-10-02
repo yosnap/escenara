@@ -8,9 +8,11 @@ import {
   SEGUNDOS_CANTO_POR_DEFECTO,
 } from "@/lib/canto";
 import { esModoCoherencia, type ModoCoherencia, UMBRAL_POR_DEFECTO } from "@/lib/coherencia";
+import { auditar, bloquearAdministracion } from "./admin/auditoria";
 import { AJUSTES_COMUNIDAD_POR_DEFECTO, type AjustesComunidad, VALIDACION_COMUNIDAD } from "./ajustes-comunidad";
 import { AJUSTES_DATOS_POR_DEFECTO, type AjustesDatos, VALIDACION_DATOS } from "./ajustes-datos";
 import { AJUSTES_LEGALES_POR_DEFECTO, type AjustesLegales, VALIDACION_LEGALES } from "./ajustes-legales";
+import { AJUSTES_PRIVACIDAD_POR_DEFECTO, type AjustesPrivacidad, VALIDACION_PRIVACIDAD } from "./ajustes-privacidad";
 import { db } from "./db/cliente";
 import { settings } from "./db/esquema";
 
@@ -22,7 +24,7 @@ export { coherenciaDe } from "./ajustes-coherencia";
  * no en variables de entorno). Cada ajuste tiene valor por defecto y validación; en la base de datos solo
  * se guardan los que el administrador cambia.
  */
-export interface Ajustes extends AjustesDatos, AjustesComunidad, AjustesLegales {
+export interface Ajustes extends AjustesDatos, AjustesComunidad, AjustesLegales, AjustesPrivacidad {
   /** Si es falso, solo se puede crear la primera cuenta (la del administrador). */
   registroAbierto: boolean;
   /** Espacio máximo por usuario en MB; 0 = sin límite. El administrador no tiene límite. */
@@ -348,6 +350,7 @@ export interface Ajustes extends AjustesDatos, AjustesComunidad, AjustesLegales 
 export const AJUSTES_POR_DEFECTO: Ajustes = {
   ...AJUSTES_LEGALES_POR_DEFECTO,
   ...AJUSTES_DATOS_POR_DEFECTO,
+  ...AJUSTES_PRIVACIDAD_POR_DEFECTO,
   ...AJUSTES_COMUNIDAD_POR_DEFECTO,
   registroAbierto: true,
   cuotaMb: 2048,
@@ -518,6 +521,7 @@ const identificadorModelo = (v: unknown) => texto(120)(v) && /^[\w.:@/-]*$/.test
 const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensaje: string }> = {
   ...VALIDACION_LEGALES,
   ...VALIDACION_DATOS,
+  ...VALIDACION_PRIVACIDAD,
   ...VALIDACION_COMUNIDAD,
   registroAbierto: { valido: booleano, mensaje: "Debe ser sí o no." },
   cuotaMb: { valido: entero(0, 10_000_000), mensaje: "Indica un número entero de MB (0 = sin límite)." },
@@ -740,7 +744,11 @@ export async function leerAjustes(): Promise<Ajustes> {
 }
 
 /** Valida y guarda los cambios; devuelve los ajustes resultantes. */
-export async function guardarAjustes(cambios: Partial<Record<keyof Ajustes, unknown>>, usuarioId: string | null) {
+export async function guardarAjustes(
+  cambios: Partial<Record<keyof Ajustes, unknown>>,
+  usuarioId: string | null,
+  anteriores?: Partial<Ajustes>,
+) {
   const validos: [keyof Ajustes, unknown][] = [];
   for (const [clave, valor] of Object.entries(cambios) as [keyof Ajustes, unknown][]) {
     if (!CLAVES.includes(clave)) continue;
@@ -750,20 +758,37 @@ export async function guardarAjustes(cambios: Partial<Record<keyof Ajustes, unkn
   }
   // La horquilla de luminosidad no se valida campo a campo: con mínimo por encima del máximo, **ninguna**
   // foto pasaría el control y el motivo que vería el usuario sería falso.
-  const resultantes = { ...(await leerAjustes()), ...Object.fromEntries(validos) } as Ajustes;
-  if (resultantes.calidadLuminosidadMinima >= resultantes.calidadLuminosidadMaxima) {
-    throw new ErrorAjustes(
-      "calidadLuminosidadMinima",
-      "La luminosidad mínima tiene que ser menor que la máxima: si no, ninguna foto pasaría el control.",
-    );
-  }
-  if (resultantes.sombraActiva && !resultantes.sombraEncargadoAceptado) {
-    throw new ErrorAjustes(
-      "sombraActiva",
-      "Para encender la sombra, marca antes que aceptas que el guion y la descripción de las escenas se envíen a TypeSafe.",
-    );
-  }
   await db().transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(505001)`);
+    if (usuarioId) await bloquearAdministracion(tx, usuarioId);
+    const vigentes: Ajustes = { ...AJUSTES_POR_DEFECTO };
+    for (const fila of await tx.select().from(settings)) {
+      const clave = fila.key as keyof Ajustes;
+      if (CLAVES.includes(clave) && VALIDACION[clave].valido(fila.value))
+        (vigentes as unknown as Record<string, unknown>)[clave] = fila.value;
+    }
+    if (anteriores)
+      for (const [clave] of validos) {
+        if (
+          !Object.hasOwn(anteriores, clave) ||
+          JSON.stringify(vigentes[clave]) !== JSON.stringify(anteriores[clave])
+        ) {
+          throw new ErrorAjustes(clave, "Otro administrador ha cambiado este ajuste. Recarga antes de guardar.");
+        }
+      }
+    const resultantes = { ...vigentes, ...Object.fromEntries(validos) } as Ajustes;
+    if (resultantes.calidadLuminosidadMinima >= resultantes.calidadLuminosidadMaxima) {
+      throw new ErrorAjustes(
+        "calidadLuminosidadMinima",
+        "La luminosidad mínima tiene que ser menor que la máxima: si no, ninguna foto pasaría el control.",
+      );
+    }
+    if (resultantes.sombraActiva && !resultantes.sombraEncargadoAceptado) {
+      throw new ErrorAjustes(
+        "sombraActiva",
+        "Para encender la sombra, marca antes que aceptas que el guion y la descripción de las escenas se envíen a TypeSafe.",
+      );
+    }
     for (const [clave, valor] of validos) {
       await tx
         .insert(settings)
@@ -773,6 +798,14 @@ export async function guardarAjustes(cambios: Partial<Record<keyof Ajustes, unkn
           set: { value: sql`excluded.value`, updatedBy: usuarioId, updatedAt: new Date() },
         });
     }
+    if (usuarioId && validos.length > 0)
+      await auditar(tx, {
+        actorId: usuarioId,
+        action: "ajustes",
+        reason: "Cambio de configuración",
+        operationId: crypto.randomUUID(),
+        changes: { claves: validos.map(([clave]) => clave).join(",") },
+      });
   });
   // Fuerza la relectura: este proceso ve el cambio al momento.
   olvidarAjustes();

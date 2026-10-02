@@ -2,11 +2,13 @@ import { and, eq, isNull, type SQL, sql } from "drizzle-orm";
 import type { Proveedor } from "@/lib/boveda";
 import { formatearCreditos } from "@/lib/generacion";
 import { type Ajustes, eurosPorCreditoDe, leerAjustes } from "../ajustes";
+import { exigirCuentaOperativa } from "../auth/estado-cuenta";
 import { db, type Ejecutor } from "../db/cliente";
 import { type FilaApunte, type FilaTrabajo, generationJobs, usageLedger } from "../db/esquema";
 import { ErrorGeneracion } from "../generacion/errores";
 import { esUuidGeneracion } from "../generacion/trabajos";
 import { comprometidoDe, topesDe } from "./deposito";
+import { ajustesEfectivos } from "./limites-efectivos";
 import { accionSinPresupuesto, motivoSinPresupuesto } from "./mensajes";
 
 /**
@@ -75,6 +77,8 @@ export async function exigirPresupuestoDisponible(
    */
   creditosDelEnvio = creditos,
 ): Promise<void> {
+  await exigirCuentaOperativa(usuarioId, tx);
+  ajustes = await ajustesEfectivos(usuarioId, ajustes, tx);
   const { autorizado } = topesDe(ajustes);
   exigirTopeDeTrabajo(creditosDelEnvio, ajustes);
   if (autorizado !== null) {
@@ -299,7 +303,7 @@ async function registrarExceso(
     .where(eq(generationJobs.id, trabajoId))
     .limit(1);
   if (!trabajo || trabajo.exceso !== null) return;
-  const { topeTrabajo } = topesDe(ajustes);
+  const { topeTrabajo } = topesDe(await ajustesEfectivos(trabajo.userId, ajustes, tx));
   const techos = [trabajo.limite, reservado, topeTrabajo].filter((t): t is number => t !== null && t > 0);
   const techo = techos.length > 0 ? Math.min(...techos) : null;
   if (techo === null || creditosInformados <= techo) return;

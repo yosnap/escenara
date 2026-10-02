@@ -239,6 +239,7 @@ export async function cancelarBorradoCuenta(usuarioId: string): Promise<void> {
       and(
         eq(accountDeletions.userId, usuarioId),
         eq(accountDeletions.state, "programado"),
+        sql`not exists(select 1 from admin_user_trash t where t.user_id = ${usuarioId}::uuid)`,
         // Mientras el worker lo está ejecutando no se cancela: podría estar ya cancelando trabajos o borrando filas. Al
         // soltarlo (aplazado o fallido) vuelve a poder cancelarse.
         or(isNull(accountDeletions.lockedUntil), lt(accountDeletions.lockedUntil, new Date())),

@@ -44,6 +44,10 @@ export const DOCUMENTOS_LEGALES = {
         "Tus derechos",
         "Puedes solicitar acceso, rectificación, supresión, oposición, limitación y portabilidad al correo del titular, y retirar las autorizaciones que hayas otorgado. Cuenta y proyectos ofrecen exportación y borrado; no todo registro es visible desde esas pantallas. Si consideras que el tratamiento vulnera tus derechos, puedes reclamar ante la Agencia Española de Protección de Datos (aepd.es). No se usan evaluaciones automáticas para decidir tu acceso a empleo, crédito u otros derechos equivalentes.",
       ],
+      [
+        "Administración y correo",
+        "Los administradores autorizados pueden consultar el estado de las cuentas, activar o bloquear el acceso, revocar sesiones y configurar topes internos. Los cambios sensibles registran actor, destinatario, motivo, fecha y resultado, sin contraseñas, claves, tokens ni contenido de correos. Los eventos de reenvío distinguen solicitud, aceptación SMTP, fallo e incertidumbre; aceptación no confirma entrega. La conservación se revisa según los plazos configurados por el operador, sin limpieza automática activa. Al eliminar la cuenta se borran sus eventos de correo y política y se minimizan motivos y cambios de la auditoría vinculada.",
+      ],
     ],
   },
   cookies: {

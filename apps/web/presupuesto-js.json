@@ -2,6 +2,12 @@
   "porDefectoKb": 200,
   "dentroDeLaMeta": [
     "/",
+    "/admin",
+    "/admin/usuarios",
+    "/admin/usuarios/[id]",
+    "/admin/consumo",
+    "/admin/comunidad",
+    "/admin/privacidad",
     "/admin/calibracion",
     "/admin/coherencia",
     "/admin/decisiones",
@@ -26,20 +32,40 @@
     "/recuperar",
     "/registro",
     "/restablecer",
-    "/verificar"
+    "/verificar",
+    "/admin/componentes",
+    "/admin/componentes/tokens",
+    "/admin/componentes/marca",
+    "/admin/componentes/acciones",
+    "/admin/componentes/formularios",
+    "/admin/componentes/creador",
+    "/admin/componentes/direccion",
+    "/admin/componentes/canto",
+    "/admin/componentes/proyectos",
+    "/admin/componentes/anuncio",
+    "/admin/componentes/reparto",
+    "/admin/componentes/montaje",
+    "/admin/componentes/formatos",
+    "/admin/componentes/conversion",
+    "/admin/componentes/cuentas",
+    "/admin/componentes/alertas",
+    "/admin/componentes/estados",
+    "/admin/componentes/controles",
+    "/admin/componentes/generacion",
+    "/admin/componentes/comparativas",
+    "/admin/componentes/comunidad",
+    "/admin/componentes/pasos",
+    "/admin/componentes/requisitos",
+    "/admin/componentes/movimiento"
   ],
   "rutas": {
-    "/admin/componentes": {
-      "topeKb": 444,
-      "motivo": "Catálogo interno del admin: pinta todos los componentes a la vez (con las secciones Lugares, Tus datos, Comparativas y calibración y Comunidad). Medido: 440.6 KB."
-    },
     "/proyectos/[id]": {
       "topeKb": 332,
-      "motivo": "Guion por escenas con dirección, reparto, lista ordenable, selector de medios y exportar el proyecto (el diálogo de borrarlo se carga al pulsar). Medido: 331.3 KB."
+      "motivo": "Guion por escenas con dirección, reparto, lista ordenable, selector de medios y exportar el proyecto (el diálogo de borrarlo se carga al pulsar). Medido: 331.1 KB."
     },
     "/crear": {
       "topeKb": 317,
-      "motivo": "Flujo por pasos con la dirección del clip, presets, selector de medios y el lugar de la escena; 1.1 KB de margen, sin subir el tope. Medido: 315.9 KB."
+      "motivo": "Flujo por pasos con la dirección del clip, presets, selector de medios y el lugar de la escena; 1.1 KB de margen, sin subir el tope. Medido: 316.7 KB."
     },
     "/personajes/[id]": {
       "topeKb": 300,
@@ -47,39 +73,39 @@
     },
     "/cuenta": {
       "topeKb": 291,
-      "motivo": "Passkeys, sesiones y claves: necesita el cliente de autenticación completo y la lista ordenable del mapa de modelos (el diálogo de borrar la cuenta se carga al pulsar). Medido: 290.3 KB."
+      "motivo": "Passkeys, sesiones y claves: necesita el cliente de autenticación completo y la lista ordenable del mapa de modelos (el diálogo de borrar la cuenta se carga al pulsar). Medido: 290.2 KB."
     },
     "/admin/plantillas": {
       "topeKb": 271,
-      "motivo": "Editor de plantillas y trends con sus ejemplos. Incluye el enlace a Moderación de la cabecera del admin. Medido: 270.6 KB."
+      "motivo": "Editor de plantillas y trends con sus ejemplos. Incluye el enlace a Moderación de la cabecera del admin. Medido: 270.4 KB."
     },
     "/admin/modelos": {
       "topeKb": 263,
-      "motivo": "Catálogo de modelos con la lista ordenable de recomendadas. Incluye el enlace a Moderación de la cabecera del admin. Medido: 261.3 KB."
+      "motivo": "Catálogo de modelos con la lista ordenable de recomendadas. Incluye el enlace a Moderación de la cabecera del admin. Medido: 262.2 KB."
     },
     "/admin/ajustes": {
       "topeKb": 262,
-      "motivo": "Formulario de ajustes de la instalación, con el estado de Tus datos y la sección Comunidad (interruptor, normas y tope de pendientes). Medido: 258.8 KB."
+      "motivo": "Formulario de ajustes de la instalación, con el estado de Tus datos y la sección Comunidad (interruptor, normas y tope de pendientes). Medido: 260.5 KB."
     },
     "/admin/presets": {
       "topeKb": 253,
-      "motivo": "Editor de presets con lista ordenable. Incluye el enlace a Moderación de la cabecera del admin. Medido: 251.9 KB."
+      "motivo": "Editor de presets con lista ordenable. Incluye el enlace a Moderación de la cabecera del admin. Medido: 252.2 KB."
     },
     "/proyectos/[id]/montaje": {
       "topeKb": 252,
-      "motivo": "Línea de tiempo, mezcla, subtítulos y exportación. Medido: 249.0 KB."
+      "motivo": "Línea de tiempo, mezcla, subtítulos y exportación. Medido: 250.8 KB."
     },
     "/admin/medios": {
       "topeKb": 251,
-      "motivo": "Biblioteca de medios completa del admin. Incluye el enlace a Moderación de la cabecera del admin. Medido: 250.3 KB."
+      "motivo": "Biblioteca de medios completa del admin. Incluye el enlace a Moderación de la cabecera del admin. Medido: 250.7 KB."
     },
     "/proyectos/[id]/produccion": {
       "topeKb": 248,
-      "motivo": "Rejilla de producción con confirmaciones de gasto, selector de medios y el enlace a comparar generando. Medido: 244.3 KB."
+      "motivo": "Rejilla de producción con confirmaciones de gasto, selector de medios y el enlace a comparar generando. Medido: 246.4 KB."
     },
     "/biblioteca": {
       "topeKb": 248,
-      "motivo": "Biblioteca de medios completa (subida, colecciones y selección). Medido: 244.5 KB."
+      "motivo": "Biblioteca de medios completa (subida, colecciones y selección). Medido: 245.8 KB."
     },
     "/proyectos/[id]/voz": {
       "topeKb": 247,
@@ -87,31 +113,71 @@
     },
     "/proyectos": {
       "topeKb": 243,
-      "motivo": "Lista con el alta de proyecto (formatos, personaje y presupuesto). Medido: 239.6 KB."
+      "motivo": "Lista con el alta de proyecto (formatos, personaje y presupuesto). Medido: 239.8 KB."
     },
     "/productos/[id]": {
       "topeKb": 237,
-      "motivo": "Ficha de producto con fotos y diálogos. Medido: 233.5 KB."
+      "motivo": "Ficha de producto con fotos y diálogos. Medido: 234.4 KB."
     },
     "/productos": {
       "topeKb": 233,
-      "motivo": "Lista con el alta de producto. Medido: 230.0 KB."
+      "motivo": "Lista con el alta de producto. Medido: 231.2 KB."
     },
     "/admin/marca": {
       "topeKb": 227,
-      "motivo": "Editor de la marca con previa en ambos temas. Incluye el enlace a Moderación de la cabecera del admin. Medido: 225.7 KB."
+      "motivo": "Editor de la marca con previa en ambos temas. Incluye el enlace a Moderación de la cabecera del admin. Medido: 226.8 KB."
     },
     "/personajes/nuevo/inventado": {
       "topeKb": 220,
-      "motivo": "Alta de personaje inventado con sus opciones. Medido: 216.9 KB."
+      "motivo": "Alta de personaje inventado con sus opciones. Medido: 217.3 KB."
     },
     "/lugares": {
       "topeKb": 228,
-      "motivo": "Lista de lugares con el alta (nombre, descripción y acabado con el selector del catálogo), como la de productos. Medido: 224.7 KB."
+      "motivo": "Lista de lugares con el alta (nombre, descripción y acabado con el selector del catálogo), como la de productos. Medido: 225.3 KB."
     },
     "/lugares/[id]": {
       "topeKb": 241,
-      "motivo": "Ficha de lugar con fotos por papel, declaración de derechos, versiones y diálogos; el diálogo del coste de una foto generada ya se descarga al abrirlo. Medido: 237.5 KB."
+      "motivo": "Ficha de lugar con fotos por papel, declaración de derechos, versiones y diálogos; el diálogo del coste de una foto generada ya se descarga al abrirlo. Medido: 238.6 KB."
+    },
+    "/admin/componentes/personajes": {
+      "topeKb": 238,
+      "motivo": "Sección separada del catálogo existente (440.6 KB, tope 444 KB). Carga únicamente sus componentes; deuda existente trasladada y reducida. Medido: 235.0 KB."
+    },
+    "/admin/componentes/media-picker": {
+      "topeKb": 235,
+      "motivo": "Sección separada del catálogo existente (440.6 KB, tope 444 KB). Carga únicamente sus componentes; deuda existente trasladada y reducida. Medido: 231.5 KB."
+    },
+    "/admin/componentes/productos": {
+      "topeKb": 234,
+      "motivo": "Sección separada del catálogo existente (440.6 KB, tope 444 KB). Carga únicamente sus componentes; deuda existente trasladada y reducida. Medido: 230.5 KB."
+    },
+    "/admin/componentes/presets": {
+      "topeKb": 228,
+      "motivo": "Sección separada del catálogo existente (440.6 KB, tope 444 KB). Carga únicamente sus componentes; deuda existente trasladada y reducida. Medido: 224.2 KB."
+    },
+    "/admin/componentes/selectores": {
+      "topeKb": 224,
+      "motivo": "Sección separada del catálogo existente (440.6 KB, tope 444 KB). Carga únicamente sus componentes; deuda existente trasladada y reducida. Medido: 220.8 KB."
+    },
+    "/admin/componentes/datos": {
+      "topeKb": 221,
+      "motivo": "Sección separada del catálogo existente (440.6 KB, tope 444 KB). Carga únicamente sus componentes; deuda existente trasladada y reducida. Medido: 217.1 KB."
+    },
+    "/admin/componentes/lugares": {
+      "topeKb": 220,
+      "motivo": "Sección separada del catálogo existente (440.6 KB, tope 444 KB). Carga únicamente sus componentes; deuda existente trasladada y reducida. Medido: 216.3 KB."
+    },
+    "/admin/componentes/modelos": {
+      "topeKb": 215,
+      "motivo": "Sección separada del catálogo existente (440.6 KB, tope 444 KB). Carga únicamente sus componentes; deuda existente trasladada y reducida. Medido: 211.8 KB."
+    },
+    "/admin/componentes/secretos": {
+      "topeKb": 212,
+      "motivo": "Sección separada del catálogo existente (440.6 KB, tope 444 KB). Carga únicamente sus componentes; deuda existente trasladada y reducida. Medido: 208.4 KB."
+    },
+    "/admin/componentes/superposiciones": {
+      "topeKb": 209,
+      "motivo": "Sección separada del catálogo existente (440.6 KB, tope 444 KB). Carga únicamente sus componentes; deuda existente trasladada y reducida. Medido: 205.3 KB."
     }
   }
 }

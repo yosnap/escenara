@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Alerta } from "@/components/ui/alerta";
 import { comprobarSesion } from "@/lib/estado-sesion";
 
 /** Renueva por HTTP con actividad; nunca recarga ni tira los campos al perder la sesión. */
@@ -52,7 +53,7 @@ export function AvisoSesion() {
   }, []);
   if (!terminada) return null;
   return (
-    <div role="alert" className="mt-3 rounded-control border-2 border-aviso bg-superficie p-3 text-sm text-texto">
+    <Alerta tipo="aviso" anuncio="alerta" className="mt-3">
       <p>
         Tu sesión ha caducado o se ha cerrado. Los campos de esta pantalla se mantienen; no recargues antes de
         copiarlos.
@@ -65,6 +66,6 @@ export function AvisoSesion() {
       >
         Volver a entrar (se abre en otra pestaña)
       </a>
-    </div>
+    </Alerta>
   );
 }

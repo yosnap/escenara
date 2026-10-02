@@ -82,7 +82,7 @@ describe("navegación general y herramientas del usuario", () => {
       expect(menus[0]?.querySelector('a[href="/#escaparate"]')).not.toBeNull();
       expect(menus[1]?.querySelector('a[href="https://docs.escenara.com"]')).toBeNull();
       expect(menus[1]?.querySelector('a[href="/crear"]')).not.toBeNull();
-      expect(menus[1]?.querySelector('a[href="/admin/medios"]') !== null).toBe(rol === "admin");
+      expect(menus[1]?.querySelector('a[href="/admin"]') !== null).toBe(rol === "admin");
       const salida = menus[1]?.querySelector('button[aria-label="Cerrar sesión"]');
       expect(salida).not.toBeNull();
       expect(salida?.textContent).toBe("");
