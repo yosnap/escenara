@@ -61,7 +61,10 @@ límites de presupuesto, los plazos de **Tus datos** (gracia del borrado, caduci
 
 ## El panel de administración
 
-**Admin** abre el panel, con su propio menú en tres grupos:
+**Admin** abre el resumen operativo, con cabecera propia y navegación lateral (menú desplegable en móvil).
+**Usuarios**, **Generaciones y consumo**, **Comunidad** y **Privacidad** permiten gestionar la instalación.
+**Abrir aplicación ↗** conserva el panel y abre otra pestaña. Consulta [Administrar la instalación](administracion.md).
+Las herramientas anteriores siguen disponibles:
 
 - **Contenido**: **Medios** (los archivos de la instalación), **Personajes** (revisar el documento de consentimiento
   de un tercero) y **Moderación** (la cola de la comunidad y los retos).
