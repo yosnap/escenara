@@ -85,7 +85,7 @@
     },
     "/admin/ajustes": {
       "topeKb": 262,
-      "motivo": "Formulario de ajustes de la instalación, con el estado de Tus datos y la sección Comunidad (interruptor, normas y tope de pendientes). Medido: 260.5 KB."
+      "motivo": "Formulario de ajustes de la instalación, con Tus datos, Comunidad y correo Resend/SMTP. Campos SMTP y previsualizaciones con carga diferida. Medido: 261.9 KB."
     },
     "/admin/presets": {
       "topeKb": 253,

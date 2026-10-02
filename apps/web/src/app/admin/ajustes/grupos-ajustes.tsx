@@ -4,6 +4,7 @@ import { Children, isValidElement, type ReactNode } from "react";
 import { Selector } from "@/components/ui/select";
 import { SeccionAccesoSocial } from "./seccion-acceso-social";
 import { SeccionComunidad } from "./seccion-comunidad";
+import { SeccionCorreo } from "./seccion-correo";
 import { SeccionDatos } from "./seccion-datos";
 import { SeccionLegal } from "./seccion-legal";
 import { SeccionPrivacidad } from "./seccion-privacidad";
@@ -17,7 +18,11 @@ const grupos = [
 ];
 function grupoDe(nodo: ReactNode) {
   if (!isValidElement<{ titulo?: string }>(nodo)) return 1;
-  if (nodo.type === SeccionAccesoSocial || ["Registro", "Correo", "Seguridad"].includes(nodo.props.titulo ?? ""))
+  if (
+    nodo.type === SeccionCorreo ||
+    nodo.type === SeccionAccesoSocial ||
+    ["Registro", "Correo", "Seguridad"].includes(nodo.props.titulo ?? "")
+  )
     return 0;
   if (nodo.type === SeccionDatos || nodo.props.titulo === "Almacenamiento") return 2;
   if (nodo.type === SeccionComunidad) return 3;
@@ -25,7 +30,7 @@ function grupoDe(nodo: ReactNode) {
   return 1;
 }
 
-/** Mantiene montados los controles y sus cambios; solo el grupo visible puede editarse. */
+/** Conserva los cambios montados; los grupos ocultos no bloquean la validación del grupo que se guarda. */
 export function GruposAjustes({
   children,
   activo,
@@ -54,9 +59,9 @@ export function GruposAjustes({
         </a>
       </p>
       {grupos.map((g, i) => (
-        <div key={g} hidden={activo !== i} className="space-y-5">
+        <fieldset key={g} hidden={activo !== i} disabled={activo !== i} className="m-0 min-w-0 space-y-5 border-0 p-0">
           {nodos.filter((n) => grupoDe(n) === i)}
-        </div>
+        </fieldset>
       ))}
     </>
   );

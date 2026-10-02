@@ -3,6 +3,7 @@ import { and, eq, gte, or } from "drizzle-orm";
 import { auth } from "../auth/auth";
 import { exigirCuentaOperativa } from "../auth/estado-cuenta";
 import { enviarCorreo, plantillaEnlace } from "../correo";
+import { ErrorCorreo } from "../correo-resend";
 import { db } from "../db/cliente";
 import { adminEvents, adminMailEvents, users } from "../db/esquema";
 import { auditar, bloquearAdministracion, operacionRepetida, validarOperacion } from "./auditoria";
@@ -64,9 +65,9 @@ export async function reenviarActivacion(
     });
     estado = resultado.aceptado ? "aceptado" : "fallido";
   } catch (error) {
-    // Un rechazo SMTP explícito prueba fallo; una conexión cortada puede haber aceptado el mensaje.
+    // Un rechazo explícito prueba fallo; una conexión cortada puede haber aceptado el mensaje.
     const codigo = (error as { responseCode?: number }).responseCode;
-    estado = codigo && codigo >= 400 ? "fallido" : "incierto";
+    estado = (error instanceof ErrorCorreo && error.rechazado) || (codigo && codigo >= 400) ? "fallido" : "incierto";
   }
   try {
     await db().transaction(async (tx) => {
@@ -77,7 +78,7 @@ export async function reenviarActivacion(
       await tx.update(adminEvents).set({ result: estado }).where(eq(adminEvents.operationId, operationId));
     });
   } catch {
-    // Solicitud persistida sin cierre = resultado desconocido. Nunca se repite SMTP automáticamente.
+    // Solicitud persistida sin cierre = resultado desconocido. Nunca se repite el envío automáticamente.
     return "incierto";
   }
   return estado;

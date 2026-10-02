@@ -10,6 +10,7 @@ import {
 import { esModoCoherencia, type ModoCoherencia, UMBRAL_POR_DEFECTO } from "@/lib/coherencia";
 import { auditar, bloquearAdministracion } from "./admin/auditoria";
 import { AJUSTES_COMUNIDAD_POR_DEFECTO, type AjustesComunidad, VALIDACION_COMUNIDAD } from "./ajustes-comunidad";
+import { proveedorCorreoInicial } from "./ajustes-correo";
 import { AJUSTES_DATOS_POR_DEFECTO, type AjustesDatos, VALIDACION_DATOS } from "./ajustes-datos";
 import { AJUSTES_LEGALES_POR_DEFECTO, type AjustesLegales, VALIDACION_LEGALES } from "./ajustes-legales";
 import { AJUSTES_PRIVACIDAD_POR_DEFECTO, type AjustesPrivacidad, VALIDACION_PRIVACIDAD } from "./ajustes-privacidad";
@@ -332,6 +333,7 @@ export interface Ajustes extends AjustesDatos, AjustesComunidad, AjustesLegales,
    */
   urlPublica: string;
   correoRemitente: string;
+  correoProveedor: "resend" | "smtp";
   smtpHost: string;
   smtpPuerto: number;
   /** TLS directo (puerto 465). Con `false` se usa STARTTLS si el servidor lo ofrece. */
@@ -456,6 +458,7 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   calidadCaraMinima: 12,
   urlPublica: "",
   correoRemitente: "Escenara <no-responder@escenara.local>",
+  correoProveedor: "resend",
   smtpHost: "localhost",
   smtpPuerto: 1021,
   smtpSeguro: false,
@@ -693,6 +696,7 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
       /^(?:[^<>\r\n]{0,100}<[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+>|[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+)$/.test(v as string),
     mensaje: "Usa «correo@dominio» o «Nombre <correo@dominio>».",
   },
+  correoProveedor: { valido: (v) => v === "resend" || v === "smtp", mensaje: "Elige Resend o SMTP." },
   smtpHost: {
     valido: (v) => texto(253)(v) && /^[a-z0-9.-]+$/i.test(v as string),
     mensaje: "Indica un nombre de servidor válido.",
@@ -732,7 +736,7 @@ export async function leerAjustes(): Promise<Ajustes> {
   const cache = global.__escenaraAjustes;
   if (cache && cache.version === version && Date.now() - cache.cargado < VIGENCIA_MS) return cache.valores;
   const filas = await db().select().from(settings);
-  const valores: Ajustes = { ...AJUSTES_POR_DEFECTO };
+  const valores: Ajustes = { ...AJUSTES_POR_DEFECTO, correoProveedor: proveedorCorreoInicial(filas) };
   for (const fila of filas) {
     const clave = fila.key as keyof Ajustes;
     if (CLAVES.includes(clave) && VALIDACION[clave].valido(fila.value)) {
@@ -761,8 +765,9 @@ export async function guardarAjustes(
   await db().transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(505001)`);
     if (usuarioId) await bloquearAdministracion(tx, usuarioId);
-    const vigentes: Ajustes = { ...AJUSTES_POR_DEFECTO };
-    for (const fila of await tx.select().from(settings)) {
+    const filas = await tx.select().from(settings);
+    const vigentes: Ajustes = { ...AJUSTES_POR_DEFECTO, correoProveedor: proveedorCorreoInicial(filas) };
+    for (const fila of filas) {
       const clave = fila.key as keyof Ajustes;
       if (CLAVES.includes(clave) && VALIDACION[clave].valido(fila.value))
         (vigentes as unknown as Record<string, unknown>)[clave] = fila.value;

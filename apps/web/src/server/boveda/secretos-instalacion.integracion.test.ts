@@ -62,6 +62,23 @@ describe.skipIf(!hayBaseDeDatos)("secretos de la instalación", () => {
     await limpiar();
   });
 
+  test("la clave de Resend se guarda cifrada y el panel solo recibe su pista", async () => {
+    const secreto = "re_clave_ficticia_para_pruebas_3333";
+    try {
+      await guardarSecreto("resendApiKey", secreto, null);
+      expect(await leerSecreto("resendApiKey")).toBe(secreto);
+      const vistas = await listarSecretos();
+      expect(vistas.find((v) => v.clave === "resendApiKey")?.pista).toBe("3333");
+      expect(JSON.stringify(vistas)).not.toContain(secreto);
+      const filas = await db().select().from(installationSecrets);
+      expect(filas.find((f) => f.key === "resendApiKey")?.value).not.toContain(secreto);
+      await expect(guardarSecreto("resendApiKey", "no-es-una-clave", null)).rejects.toThrow("clave API válida");
+      expect(await leerSecreto("resendApiKey")).toBe(secreto);
+    } finally {
+      await quitarSecreto("resendApiKey");
+    }
+  });
+
   describe("guardar, leer y quitar", () => {
     beforeAll(() => guardarSecreto("smtpContrasena", SECRETO_SMTP, null));
 
