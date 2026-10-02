@@ -12,6 +12,7 @@ import { bovedaDisponible, cifrar, descifrar, ErrorBoveda, pistaDe } from "./cif
  */
 
 export const CLAVES_SECRETAS = [
+  "resendApiKey",
   "smtpContrasena",
   "googleClientSecret",
   "githubClientSecret",
@@ -24,6 +25,7 @@ export const esClaveSecreta = (v: unknown): v is ClaveSecreta => CLAVES_SECRETAS
 
 /** Nombre visible de cada secreto, para los mensajes del panel. */
 export const NOMBRE_SECRETO: Record<ClaveSecreta, string> = {
+  resendApiKey: "Clave API de Resend",
   smtpContrasena: "Contraseña del servidor de correo",
   googleClientSecret: "Secreto de cliente de Google",
   githubClientSecret: "Secreto de cliente de GitHub",
@@ -121,6 +123,8 @@ export async function guardarSecreto(
 ): Promise<void> {
   if (!bovedaDisponible()) throw new ErrorSecreto("La bóveda está desactivada: falta la clave maestra.");
   const limpio = valor.trim();
+  if (clave === "resendApiKey" && !/^re_[A-Za-z0-9_-]{8,}$/.test(limpio))
+    throw new ErrorSecreto("Escribe una clave API válida de Resend (empieza por re_).");
   if (limpio.length === 0) throw new ErrorSecreto("Escribe el valor o usa «Quitar» para borrarlo.");
   if (limpio.length > LARGO_MAXIMO) throw new ErrorSecreto(`El valor no puede pasar de ${LARGO_MAXIMO} caracteres.`);
   const fila = {

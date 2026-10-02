@@ -42,6 +42,6 @@ La cuenta de demos tiene su biblioteca propia. Reutiliza las credenciales autori
 el catálogo de modelos es compartido por la instalación. Las demos y sus recorridos se archivan en privado.
 Asignar un vídeo a una plantilla o publicarlo en una guía sigue siendo una acción explícita del administrador.
 
-Configura SMTP real antes de usar verificación, invitaciones o recuperación de acceso. Mailpit y
+Configura Resend con dominio verificado y clave API cifrada, o SMTP real, antes de usar verificación o recuperación de acceso. Mailpit y
 `localhost:1021` pertenecen al entorno local. No abras registros públicos mientras el correo no funcione.
 Configura copias periódicas de PostgreSQL y de los volúmenes: el archivo de demos no sustituye un backup.

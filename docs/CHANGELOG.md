@@ -2,6 +2,30 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.51.0] · 2026-10-02
+
+### Añadido
+
+- Resend como proveedor de correo predeterminado en instalaciones nuevas; selección de SMTP para otros
+  proveedores. Las instalaciones con SMTP guardado conservan su configuración hasta elegir otro proveedor.
+- Clave API de Resend en la bóveda cifrada, con pista limitada en administración y errores de envío seguros.
+- Plantillas de correo profesionales en HTML y texto plano para confirmación/reenvío, recuperación de contraseña,
+  solicitud y cancelación de borrado y correo de prueba; previsualización con datos ficticios en Ajustes.
+- Vistas previas y campos SMTP con carga diferida, manteniendo el presupuesto de JavaScript de la ruta.
+
+### Corregido
+
+- Guardar un grupo de ajustes ya no queda bloqueado por campos inválidos de otros grupos ocultos. Se conservan
+  sus cambios pendientes y la validación del grupo visible.
+- Fallos de conexión al guardar o probar correo muestran un resultado visible y restablecen los botones.
+- Aceptación, rechazo e incertidumbre de Resend se distinguen sin reintentos ni cambio de proveedor automáticos.
+- En instalaciones nuevas, editar campos SMTP y volver a Resend antes de guardar conserva Resend como elección.
+
+### Actualización
+
+- Sin migraciones nuevas. Para activar Resend, verificar el dominio, guardar su clave de envío y seleccionar
+  Resend y un remitente válido en Admin › Ajustes. La aceptación del proveedor no confirma entrega.
+
 ## [0.50.0] · 2026-10-02
 
 ### Añadido

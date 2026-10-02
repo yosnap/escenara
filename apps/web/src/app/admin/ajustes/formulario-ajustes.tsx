@@ -1,16 +1,15 @@
 "use client";
 
-import { Coins, HardDrive, Mail, ShieldCheck, UserPlus, UsersRound } from "lucide-react";
+import { Coins, HardDrive, ShieldCheck, UserPlus, UsersRound } from "lucide-react";
 import { type FormEvent, useRef, useState } from "react";
 import { Boton } from "@/components/ui/button";
-import { CampoSecreto } from "@/components/ui/campo-secreto";
 import { Interruptor } from "@/components/ui/choice";
 import { Aviso } from "@/components/ui/feedback";
 import { Campo, EntradaTexto } from "@/components/ui/field";
 import type { Ajustes } from "@/server/ajustes";
 import type { ClaveSecreta, SecretoVista } from "@/server/boveda/secretos";
 import type { EstadoTusDatos } from "@/server/datos/estado-admin";
-import { enviarCorreoPruebaAccion, guardarAjustesAccion } from "./acciones";
+import { guardarAjustesAccion } from "./acciones";
 import { guardarSecretoAccion, quitarSecretoAccion } from "./acciones-secretos";
 import { GruposAjustes } from "./grupos-ajustes";
 import { SeccionAccesoSocial } from "./seccion-acceso-social";
@@ -22,6 +21,7 @@ import { SeccionCanto } from "./seccion-canto";
 import { SeccionCoherencia } from "./seccion-coherencia";
 import { SeccionComunidad } from "./seccion-comunidad";
 import { SeccionControles } from "./seccion-controles";
+import { SeccionCorreo } from "./seccion-correo";
 import { SeccionDatos } from "./seccion-datos";
 import { SeccionDosPersonajes } from "./seccion-dos-personajes";
 import { SeccionLegal } from "./seccion-legal";
@@ -62,8 +62,6 @@ export function FormularioAjustes({
   const [guardando, setGuardando] = useState(false);
   const [resultado, setResultado] = useState<{ ok: boolean; texto: string; campo?: keyof Ajustes } | null>(null);
   const [errorSecreto, setErrorSecreto] = useState<string | null>(null);
-  const [prueba, setPrueba] = useState<{ ok: boolean; mensaje: string } | null>(null);
-  const [probando, setProbando] = useState(false);
 
   const cambiar = <K extends keyof Ajustes>(clave: K, valor: Ajustes[K]) => {
     gruposCambiados.current[clave] = grupo;
@@ -107,19 +105,27 @@ export function FormularioAjustes({
     const otros = Object.fromEntries(
       Object.entries(pendientes).filter(([clave]) => gruposCambiados.current[clave as keyof Ajustes] !== grupo),
     ) as Partial<Ajustes>;
-    const r = await guardarAjustesAccion(cambios, base);
-    setGuardando(false);
-    if (r.ok) {
-      setValores({ ...r.ajustes, ...otros });
-      setBase({
-        ...r.ajustes,
-        ...Object.fromEntries(Object.keys(otros).map((clave) => [clave, base[clave as keyof Ajustes]])),
-      });
+    try {
+      const r = await guardarAjustesAccion(cambios, base);
+      if (r.ok) {
+        setValores({ ...r.ajustes, ...otros });
+        setBase({
+          ...r.ajustes,
+          ...Object.fromEntries(Object.keys(otros).map((clave) => [clave, base[clave as keyof Ajustes]])),
+        });
+        setResultado({
+          ok: true,
+          texto: "Cambios del grupo guardados. Los cambios pendientes de otros grupos se conservan.",
+        });
+      } else setResultado({ ok: false, texto: r.error, campo: r.campo });
+    } catch {
       setResultado({
-        ok: true,
-        texto: "Cambios del grupo guardados. Los cambios pendientes de otros grupos se conservan.",
+        ok: false,
+        texto: "No se ha podido confirmar el guardado. Recarga para comprobar los valores antes de repetirlo.",
       });
-    } else setResultado({ ok: false, texto: r.error, campo: r.campo });
+    } finally {
+      setGuardando(false);
+    }
   };
 
   return (
@@ -336,95 +342,15 @@ export function FormularioAjustes({
           onQuitarSecreto={quitarSecreto}
         />
 
-        <Seccion
-          titulo="Correo"
-          descripcion="Servidor con el que se envían la confirmación de cuenta y la recuperación de contraseña."
-          icono={<Mail />}
-        >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Campo
-              etiqueta="Remitente"
-              ayuda="Por ejemplo: Escenara <hola@tudominio.com>"
-              error={errorDe("correoRemitente")}
-            >
-              {(p) => (
-                <EntradaTexto
-                  {...p}
-                  value={valores.correoRemitente}
-                  onChange={(e) => cambiar("correoRemitente", e.target.value)}
-                />
-              )}
-            </Campo>
-            <Campo etiqueta="Servidor SMTP" error={errorDe("smtpHost")}>
-              {(p) => (
-                <EntradaTexto {...p} value={valores.smtpHost} onChange={(e) => cambiar("smtpHost", e.target.value)} />
-              )}
-            </Campo>
-            <Campo etiqueta="Puerto" error={errorDe("smtpPuerto")}>
-              {(p) => (
-                <EntradaTexto
-                  {...p}
-                  type="number"
-                  min={1}
-                  max={65535}
-                  inputMode="numeric"
-                  value={Number.isNaN(valores.smtpPuerto) ? "" : valores.smtpPuerto}
-                  onChange={(e) => cambiar("smtpPuerto", e.target.value === "" ? Number.NaN : Number(e.target.value))}
-                />
-              )}
-            </Campo>
-            <Campo
-              etiqueta="Usuario"
-              ayuda="Vacío si el servidor no pide autenticación."
-              error={errorDe("smtpUsuario")}
-            >
-              {(p) => (
-                <EntradaTexto
-                  {...p}
-                  value={valores.smtpUsuario}
-                  onChange={(e) => cambiar("smtpUsuario", e.target.value)}
-                />
-              )}
-            </Campo>
-            <CampoSecreto
-              etiqueta="Contraseña del servidor"
-              pista={pista("smtpContrasena")}
-              vacio="Se guarda cifrada y no se vuelve a mostrar. Vacía si el servidor no la pide."
-              deshabilitado={!bovedaLista}
-              tituloQuitar="¿Quitar la contraseña del correo?"
-              descripcionQuitar="Si el servidor la pide, dejarán de salir los correos de confirmación y recuperación."
-              onGuardar={(valor) => guardarSecreto("smtpContrasena", valor)}
-              onQuitar={() => quitarSecreto("smtpContrasena")}
-            />
-          </div>
-          {pista("smtpContrasena") !== null && valores.smtpUsuario.trim() === "" && (
-            <Aviso tono="error">
-              Hay una contraseña guardada, pero el usuario está vacío: no se enviará con la conexión. Escribe el usuario
-              del servidor o quita la contraseña.
-            </Aviso>
-          )}
-          <Interruptor
-            etiqueta="Conexión segura directa (TLS, puerto 465)"
-            descripcion="Desactivado: se usa STARTTLS si el servidor lo ofrece."
-            activo={valores.smtpSeguro}
-            onCambio={(v) => cambiar("smtpSeguro", v)}
-          />
-          <div className="flex flex-wrap items-center gap-3">
-            <Boton
-              variante="secundario"
-              cargando={probando}
-              onClick={async () => {
-                setProbando(true);
-                setPrueba(await enviarCorreoPruebaAccion());
-                setProbando(false);
-              }}
-            >
-              Enviar correo de prueba
-            </Boton>
-            <span className="text-sm text-texto-suave">Usa los datos ya guardados.</span>
-          </div>
-          {prueba && <Aviso tono={prueba.ok ? "correcto" : "error"}>{prueba.mensaje}</Aviso>}
-        </Seccion>
+        <SeccionCorreo
+          valores={valores}
+          onCambio={cambiar}
+          errorDe={errorDe}
+          pista={pista}
+          bovedaLista={bovedaLista}
+          onGuardarSecreto={guardarSecreto}
+          onQuitarSecreto={quitarSecreto}
+        />
 
         <Seccion titulo="Seguridad" descripcion="Límite de intentos por dirección IP." icono={<ShieldCheck />}>
           <Campo

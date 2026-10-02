@@ -1,8 +1,9 @@
 "use server";
 
-import { type Ajustes, ErrorAjustes, guardarAjustes } from "@/server/ajustes";
+import { type Ajustes, ErrorAjustes, guardarAjustes, leerAjustes } from "@/server/ajustes";
 import { exigirAdmin } from "@/server/auth/sesion";
-import { enviarCorreo } from "@/server/correo";
+import { enviarCorreo, plantillaEnlace } from "@/server/correo";
+import { ErrorCorreo } from "@/server/correo-resend";
 
 export type ResultadoAjustes = { ok: true; ajustes: Ajustes } | { ok: false; campo?: keyof Ajustes; error: string };
 
@@ -27,18 +28,30 @@ export async function guardarAjustesAccion(
 export async function enviarCorreoPruebaAccion(): Promise<{ ok: boolean; mensaje: string }> {
   const sesion = await exigirAdmin("/admin/ajustes");
   try {
+    const ajustes = await leerAjustes();
+    const base = ajustes.urlPublica || process.env.BETTER_AUTH_URL || "http://localhost:3021";
     const resultado = await enviarCorreo({
       para: sesion.user.email,
       asunto: "Correo de prueba de Escenara",
-      texto: "Si lees esto, el servidor de correo de Escenara está bien configurado.",
-      html: "<p>Si lees esto, el servidor de correo de Escenara está bien configurado.</p>",
+      ...plantillaEnlace({
+        nombre: sesion.user.name,
+        titulo: "Tu correo está listo",
+        texto:
+          "El proveedor ha aceptado este correo de prueba de Escenara. Comprueba su llegada y presentación en tu bandeja.",
+        boton: "Abrir administración",
+        url: `${base.replace(/\/+$/, "")}/admin/ajustes`,
+        nota: "Este envío se ha solicitado desde la administración de tu instalación.",
+      }),
     });
     return resultado.aceptado
-      ? { ok: true, mensaje: `SMTP ha aceptado el correo para ${sesion.user.email}. No hay confirmación de entrega.` }
-      : { ok: false, mensaje: "SMTP no ha aceptado el correo. Revisa la configuración." };
+      ? {
+          ok: true,
+          mensaje: `El proveedor ha aceptado el correo para ${sesion.user.email}. No hay confirmación de entrega.`,
+        }
+      : { ok: false, mensaje: "El proveedor no ha aceptado el correo. Revisa la configuración." };
   } catch (error) {
-    // El detalle (conexión rechazada, tiempo agotado…) solo va al registro del servidor, y solo el
-    // mensaje: algunos errores de SMTP incluyen las credenciales enviadas.
+    if (error instanceof ErrorCorreo) return { ok: false, mensaje: error.message };
+    // Omitir el error del transporte: puede contener credenciales o contenido del correo.
     console.error("[ajustes] correo de prueba: fallo de transporte; detalle privado omitido.");
     const codigo = (error as { responseCode?: number }).responseCode;
     return {
