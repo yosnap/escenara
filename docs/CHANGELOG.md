@@ -19,6 +19,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
   sus cambios pendientes y la validación del grupo visible.
 - Fallos de conexión al guardar o probar correo muestran un resultado visible y restablecen los botones.
 - Aceptación, rechazo e incertidumbre de Resend se distinguen sin reintentos ni cambio de proveedor automáticos.
+- En instalaciones nuevas, editar campos SMTP y volver a Resend antes de guardar conserva Resend como elección.
 
 ### Actualización
 

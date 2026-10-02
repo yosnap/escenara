@@ -794,6 +794,14 @@ export async function guardarAjustes(
         "Para encender la sombra, marca antes que aceptas que el guion y la descripción de las escenas se envíen a TypeSafe.",
       );
     }
+    // Fija la elección previa antes de añadir filas SMTP: su presencia solo identifica instalaciones
+    // antiguas mientras falta proveedor explícito, no una decisión de cambiar de transporte.
+    if (
+      !filas.some((fila) => fila.key === "correoProveedor" && VALIDACION.correoProveedor.valido(fila.value)) &&
+      !validos.some(([clave]) => clave === "correoProveedor") &&
+      validos.some(([clave]) => ["smtpHost", "smtpPuerto", "smtpUsuario", "smtpSeguro"].includes(clave))
+    )
+      validos.push(["correoProveedor", resultantes.correoProveedor]);
     for (const [clave, valor] of validos) {
       await tx
         .insert(settings)
