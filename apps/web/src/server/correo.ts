@@ -58,15 +58,23 @@ export interface Correo {
   html: string;
 }
 
-export async function enviarCorreo({ para, asunto, texto, html }: Correo): Promise<void> {
+export async function enviarCorreo({ para, asunto, texto, html }: Correo): Promise<{ aceptado: boolean }> {
   const ajustes = await leerAjustes();
-  await (await transporte(ajustes)).sendMail({
+  const resultado = await (await transporte(ajustes)).sendMail({
     from: ajustes.correoRemitente,
     to: para,
     subject: asunto,
     text: texto,
     html,
   });
+  return {
+    aceptado:
+      Array.isArray(resultado.accepted) &&
+      resultado.accepted.some(
+        (destino: string | { address: string }) =>
+          (typeof destino === "string" ? destino : destino.address).toLowerCase() === para.toLowerCase(),
+      ),
+  };
 }
 
 /** Envía sin bloquear la respuesta (evita revelar por el tiempo si una cuenta existe) y registra los fallos. */

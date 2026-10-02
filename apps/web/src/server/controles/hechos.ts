@@ -13,7 +13,8 @@ import { referenciasVigentesDe } from "../personajes/consulta";
 import { personajePorId } from "../personajes/contexto";
 import { motivosParaNoGenerar } from "../personajes/puede-generar";
 import { acotarCoste } from "../presupuesto/acotar";
-import { comprometidoDe, topesDe } from "../presupuesto/deposito";
+import { comprometidoDe } from "../presupuesto/deposito";
+import { limitesEfectivos } from "../presupuesto/limites-efectivos";
 import type { Buscador } from "../proveedores/codigos";
 import { compartenVoz, escenaParaReparto, miembrosDelReparto, turnosDelReparto } from "../reparto/consulta";
 import { criticosAbiertosDeProyecto } from "../revision/resultados";
@@ -211,7 +212,7 @@ export async function hechosDePresupuesto(
   proyecto: { autorizado: number | null; comprometido: number } | null,
 ): Promise<Hechos["presupuesto"]> {
   const ajustes = await leerAjustes();
-  const { autorizado, topeTrabajo } = topesDe(ajustes);
+  const { autorizado, topeTrabajo } = await limitesEfectivos(usuarioId, ajustes);
   const comprometido = autorizado === null ? null : await comprometidoDe(usuarioId);
   return {
     creditos,

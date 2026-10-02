@@ -19,6 +19,7 @@ Thumbs.db
 node_modules/
 .pnpm-store/
 .next/
+.next-admin-qa/
 .turbo/
 dist/
 build/

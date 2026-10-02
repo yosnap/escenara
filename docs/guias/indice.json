@@ -35,6 +35,11 @@
       "titulo": "Configurar la instalación",
       "guias": [
         {
+          "archivo": "administracion.md",
+          "titulo": "Administrar la instalación",
+          "descripcion": "Usuarios, correo, bloqueos, consumo, límites, comunidad y configuración desde el panel independiente."
+        },
+        {
           "archivo": "configurar-la-api-de-cada-proveedor.md",
           "titulo": "Configurar la API de cada proveedor",
           "descripcion": "Dónde se consigue cada clave, dónde se guarda en Escenara y cómo se comprueba sin gastar."

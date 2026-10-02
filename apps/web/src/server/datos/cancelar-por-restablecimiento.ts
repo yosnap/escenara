@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "../db/cliente";
 import { accountDeletions } from "../db/esquema";
 import { avisarBorradoCanceladoPorRestablecimiento } from "./avisos-borrado-cuenta";
@@ -15,7 +15,13 @@ export async function cancelarBorradoPorRestablecimiento(usuarioId: string): Pro
   const hecho = await db()
     .update(accountDeletions)
     .set({ state: "cancelado", cancelledAt: new Date(), lastError: "Cancelado al restablecer la contraseña." })
-    .where(and(eq(accountDeletions.userId, usuarioId), eq(accountDeletions.state, "programado")))
+    .where(
+      and(
+        eq(accountDeletions.userId, usuarioId),
+        eq(accountDeletions.state, "programado"),
+        sql`not exists(select 1 from admin_user_trash t where t.user_id = ${usuarioId}::uuid)`,
+      ),
+    )
     .returning({ id: accountDeletions.id });
   if (hecho.length === 0) return false;
   console.info(`[datos] borrado de cuenta cancelado al restablecer la contraseña · ${hecho[0]?.id}`);

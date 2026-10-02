@@ -1,6 +1,5 @@
 "use client";
 
-import { LogOut } from "lucide-react";
 import { useState } from "react";
 import { Alerta } from "@/components/ui/alerta";
 import { Boton } from "@/components/ui/button";
@@ -25,7 +24,20 @@ export function CerrarSesion() {
       <Boton
         variante="fantasma"
         tamano="sm"
-        icono={<LogOut className="size-4" aria-hidden />}
+        icono={
+          <svg
+            className="size-4"
+            aria-hidden
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="m16 17 5-5-5-5M21 12H9M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+          </svg>
+        }
         aria-label={saliendo ? "Cerrando sesión" : "Cerrar sesión"}
         title="Cerrar sesión"
         className="size-11 shrink-0 p-0"

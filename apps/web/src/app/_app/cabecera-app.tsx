@@ -48,7 +48,7 @@ export function CabeceraApp({ sesion }: { sesion: Sesion }) {
           </li>
           {esAdmin(sesion) && (
             <li className="shrink-0">
-              <EnlaceApp href="/admin/medios">Admin</EnlaceApp>
+              <EnlaceApp href="/admin">Admin</EnlaceApp>
             </li>
           )}
           <li className="ml-auto max-w-full shrink-0">

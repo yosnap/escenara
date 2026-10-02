@@ -228,8 +228,8 @@ describe.skipIf(!hayBaseDeDatos)("secretos de la instalación", () => {
      */
     test("sin sesión de administración no se guarda ni se quita nada", async () => {
       const { guardarSecretoAccion, quitarSecretoAccion } = await import("@/app/admin/ajustes/acciones-secretos");
-      await expect(guardarSecretoAccion("smtpContrasena", SECRETO_SMTP)).rejects.toThrow();
-      await expect(quitarSecretoAccion("smtpContrasena")).rejects.toThrow();
+      await expect(guardarSecretoAccion("smtpContrasena", SECRETO_SMTP, null)).rejects.toThrow();
+      await expect(quitarSecretoAccion("smtpContrasena", null)).rejects.toThrow();
       expect(await db().select().from(installationSecrets)).toEqual([]);
     });
 

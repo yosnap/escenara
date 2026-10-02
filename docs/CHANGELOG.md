@@ -2,6 +2,42 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.50.0] · 2026-10-02
+
+### Añadido
+
+- Administración independiente con resumen operativo, lateral propio y navegación móvil accesible.
+- Usuarios: búsqueda y filtros, ficha, activación manual, reenvío de verificación, bloqueo y revocación de sesiones,
+  con confirmación, motivo y auditoría transaccional.
+- Generaciones y consumo por cuenta, proveedor, tipo, estado e intervalo; créditos y euros históricos separados,
+  con reservas retenidas e importes no informados visibles.
+- Políticas individuales de presupuesto y tope por trabajo: heredar, sin tope o límite positivo.
+- Comunidad administrativa con publicaciones y autores del intervalo, enlazada a la moderación existente.
+- Configuración por grupos con cambios parciales y detección de conflictos; inventario de privacidad y revisión
+  manual de retención de auditoría/correo. Analítica externa permanece no configurada.
+- Guía de administración y capturas con datos ficticios.
+- Papelera administrativa: borrado lógico, restauración y autorización de borrado definitivo mediante el worker,
+  tras el plazo de recuperación configurado. Acciones de cuenta disponibles también desde las filas.
+- Catálogo de componentes dividido en 33 páginas, con índice plegable en móvil.
+- Vistas de usuarios con contadores filtrados y acciones compactas mediante iconos con tooltip y etiquetas accesibles.
+
+### Corregido
+
+- Bloqueo comprobado antes de nuevas reservas, sesiones y frontera de envío, conservando conciliación de trabajos iniciados.
+- Resultados de correo observados: aceptación SMTP, rechazo e incertidumbre, sin afirmar recepción ni duplicar reenvíos.
+- Protección del flujo de borrado de cuenta y minimización de la auditoría vinculada al eliminarla.
+- Selectores de usuarios más amplios, con etiquetas y opciones legibles y flecha de apertura visible.
+- Cursor de mano global en botones, enlaces y controles interactivos de web/documentación; opciones de desplegables
+  también, conservando los cursores de desactivación y arrastre.
+- Presupuesto JS respetado con módulos separados y selectores descargados al abrir, sin aumentar los topes existentes.
+
+### Actualización
+
+- Migraciones aditivas 0066, 0067 y 0068; aplicar `bun run db:migrate` antes de arrancar web y worker actualizados.
+  Las cuentas existentes heredan sus límites; no se alteran claves, roles ni contabilidad histórica.
+- Rollback conserva tablas y auditoría; mantener los controles de bloqueo y políticas mientras estén activos.
+- Candidata preparada y verificada en local. Integración y publicación pendientes de petición posterior; producción desde main.
+
 ## [0.49.4] · 2026-10-01
 
 ### Corregido

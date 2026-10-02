@@ -48,6 +48,42 @@
     outline: 2px solid var(--focus);
     outline-offset: 2px;
   }
+
+  /* Incluye controles nativos y los controles accesibles de la biblioteca compartida. */
+  :where(
+    a[href],
+    button,
+    summary,
+    select,
+    input[type="button"],
+    input[type="submit"],
+    input[type="reset"],
+    input[type="checkbox"],
+    input[type="radio"],
+    input[type="file"],
+    input[type="color"],
+    [role="button"],
+    [role="link"],
+    [role="combobox"],
+    [role="tab"],
+    [role="option"],
+    [role="menuitem"],
+    [role="checkbox"],
+    [role="radio"],
+    [role="switch"],
+    label:has(input[type="checkbox"], input[type="radio"], input[type="file"])
+  ) {
+    cursor: pointer;
+  }
+
+  :where(button, select, input):disabled,
+  :where([aria-disabled="true"], label:has(input:disabled)) {
+    cursor: not-allowed;
+  }
+
+  input::file-selector-button {
+    cursor: inherit;
+  }
 }
 
 @utility bg-degradado-foco {
