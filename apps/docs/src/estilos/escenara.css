@@ -4,6 +4,33 @@
  * Fuera de la web (GitHub, visor de imágenes) usan sus colores de reserva según prefers-color-scheme.
  */
 
+/* Cursores consistentes en enlaces, navegación y controles de la documentación. */
+:where(
+  a[href],
+  button,
+  summary,
+  select,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  input[type="checkbox"],
+  input[type="radio"],
+  [role="button"],
+  [role="link"],
+  [role="combobox"],
+  [role="tab"],
+  [role="option"],
+  [role="menuitem"],
+  label:has(input[type="checkbox"], input[type="radio"])
+) {
+  cursor: pointer;
+}
+
+:where(button, select, input):disabled,
+:where([aria-disabled="true"], label:has(input:disabled)) {
+  cursor: not-allowed;
+}
+
 :root {
   --sl-font: Manrope, Inter, ui-sans-serif, system-ui, sans-serif;
   --sl-font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;

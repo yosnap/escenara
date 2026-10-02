@@ -17,6 +17,7 @@ import { usarCredencialValida } from "../boveda/credenciales";
 import { db } from "../db/cliente";
 import { characters, type FilaMedio, type FilaTrabajo, generationJobs, media, usageLedger } from "../db/esquema";
 import { archivoDe } from "../generacion/comprobaciones";
+import { ErrorGeneracion } from "../generacion/errores";
 import { olvidarSaldo } from "../generacion/estimacion";
 import type { Herramientas } from "../generacion/herramientas";
 import type { EleccionDeTrabajo } from "../generacion/precios";
@@ -139,7 +140,16 @@ export async function despachar(fila: FilaTrabajo, workerId: string, h: Herramie
 
   // ── Frontera: se marca la fila como «llamada en curso» y se renueva la toma antes de llamar. Si la fila ya
   // no es de este worker, otro la tiene: no se llama al proveedor.
-  if (!(await marcarEnviando(fila.id, workerId))) {
+  let puedeEnviar: boolean;
+  try {
+    puedeEnviar = await marcarEnviando(fila.id, workerId);
+  } catch (error) {
+    if (error instanceof ErrorGeneracion && error.estado === 403) {
+      return { fila: await cerrarSinCoste(fila, "interno", error.message), enviado: false };
+    }
+    throw error;
+  }
+  if (!puedeEnviar) {
     console.warn(`[cola] el trabajo ${fila.id} ya no es de este worker: no se envía`);
     return { fila: (await filaDe(fila.id)) ?? fila, enviado: false };
   }

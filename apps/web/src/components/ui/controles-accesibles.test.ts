@@ -138,7 +138,16 @@ describe("controles accesibles en toda la aplicación", () => {
           f.codigo.includes('id="contenido"'),
       );
       // El catálogo del admin pinta el suyo dentro de su componente.
-      const delegado = codigo.includes("<Catalogo />");
+      const marcoAdmin = fuentes.find((f) => f.fichero === "app/admin/ui-admin.tsx");
+      const delegado =
+        (codigo.includes("<Catalogo") &&
+          /import[^;]*Catalogo[^;]*catalogo/.test(codigo) &&
+          fuentes
+            .find((f) => f.fichero === "app/admin/componentes/catalogo.tsx")
+            ?.codigo.includes('<main id="contenido" tabIndex={-1}') === true) ||
+        (codigo.includes("<PaginaAdmin") &&
+          /import[^;]*PaginaAdmin[^;]*ui-admin/.test(codigo) &&
+          marcoAdmin?.codigo.includes('<main id="contenido" tabIndex={-1}') === true);
       if (!conLayout && !delegado) sinContenido.push(fichero);
     }
     expect(sinContenido).toEqual([]);

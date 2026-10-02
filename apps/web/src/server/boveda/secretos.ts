@@ -1,4 +1,6 @@
 import { eq, inArray } from "drizzle-orm";
+import { auditar, bloquearAdministracion } from "../admin/auditoria";
+import type { Ejecutor } from "../db/cliente";
 import { db } from "../db/cliente";
 import { installationSecrets } from "../db/esquema";
 import { bovedaDisponible, cifrar, descifrar, ErrorBoveda, pistaDe } from "./cifrado";
@@ -111,7 +113,12 @@ export async function leerSecreto(clave: ClaveSecreta): Promise<string | null> {
 export class ErrorSecreto extends Error {}
 
 /** Guarda o sustituye un secreto. El valor se cifra antes de tocar la base de datos. */
-export async function guardarSecreto(clave: ClaveSecreta, valor: string, usuarioId: string | null): Promise<void> {
+export async function guardarSecreto(
+  clave: ClaveSecreta,
+  valor: string,
+  usuarioId: string | null,
+  anterior?: string | null,
+): Promise<void> {
   if (!bovedaDisponible()) throw new ErrorSecreto("La bóveda está desactivada: falta la clave maestra.");
   const limpio = valor.trim();
   if (limpio.length === 0) throw new ErrorSecreto("Escribe el valor o usa «Quitar» para borrarlo.");
@@ -122,21 +129,64 @@ export async function guardarSecreto(clave: ClaveSecreta, valor: string, usuario
     updatedBy: usuarioId,
     updatedAt: new Date(),
   };
-  await db()
-    .insert(installationSecrets)
-    .values({ key: clave, ...fila })
-    .onConflictDoUpdate({ target: installationSecrets.key, set: fila });
+  await db().transaction(async (tx) => {
+    if (usuarioId) {
+      await bloquearAdministracion(tx, usuarioId);
+      await comprobarRevisionSecreto(tx, clave, anterior);
+    }
+    await tx
+      .insert(installationSecrets)
+      .values({ key: clave, ...fila })
+      .onConflictDoUpdate({ target: installationSecrets.key, set: fila });
+    if (usuarioId)
+      await auditar(tx, {
+        actorId: usuarioId,
+        action: "ajustes",
+        reason: "Credencial configurada",
+        operationId: crypto.randomUUID(),
+        changes: { claves: clave },
+      });
+  });
   olvidarSecretos();
 }
 
 /** Quita un secreto. Devuelve `false` si no había ninguno guardado. */
-export async function quitarSecreto(clave: ClaveSecreta): Promise<boolean> {
-  const borrados = await db()
-    .delete(installationSecrets)
-    .where(eq(installationSecrets.key, clave))
-    .returning({ key: installationSecrets.key });
+export async function quitarSecreto(
+  clave: ClaveSecreta,
+  usuarioId?: string,
+  anterior?: string | null,
+): Promise<boolean> {
+  const borrados = await db().transaction(async (tx) => {
+    if (usuarioId) {
+      await bloquearAdministracion(tx, usuarioId);
+      await comprobarRevisionSecreto(tx, clave, anterior);
+    }
+    const filas = await tx
+      .delete(installationSecrets)
+      .where(eq(installationSecrets.key, clave))
+      .returning({ key: installationSecrets.key });
+    if (usuarioId && filas.length)
+      await auditar(tx, {
+        actorId: usuarioId,
+        action: "ajustes",
+        reason: "Credencial retirada",
+        operationId: crypto.randomUUID(),
+        changes: { claves: clave },
+      });
+    return filas;
+  });
   olvidarSecretos();
   return borrados.length > 0;
+}
+
+async function comprobarRevisionSecreto(tx: Ejecutor, clave: ClaveSecreta, anterior: string | null | undefined) {
+  if (anterior === undefined) return;
+  const [actual] = await tx
+    .select({ fecha: installationSecrets.updatedAt })
+    .from(installationSecrets)
+    .where(eq(installationSecrets.key, clave));
+  if ((actual?.fecha.toISOString() ?? null) !== anterior)
+    throw new ErrorSecreto("Otro administrador ha cambiado esta credencial. Recarga antes de guardar.");
 }
 
 /**

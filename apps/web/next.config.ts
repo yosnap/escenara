@@ -6,6 +6,8 @@ import type { NextConfig } from "next";
 loadEnvConfig(path.resolve(import.meta.dirname, "../.."), process.env.NODE_ENV !== "production", console, true);
 
 const nextConfig: NextConfig = {
+  // QA aislada puede convivir con el servidor de desarrollo del propietario.
+  distDir: process.env.ESCENARA_QA_LOCAL === "1" ? ".next-admin-qa" : ".next",
   poweredByHeader: false,
   // En desarrollo, Next registra cada acción de servidor con sus argumentos: contraseñas y claves de API
   // acabarían en la consola. Ningún secreto debe aparecer en los registros (bóveda, ADR-0005).

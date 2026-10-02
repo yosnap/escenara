@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
+import { exigirCuentaOperativa } from "../auth/estado-cuenta";
 import { db } from "../db/cliente";
 import { type FilaTrabajo, generationJobs } from "../db/esquema";
 import { cerrarTrabajoYGasto } from "../presupuesto/reserva";
@@ -87,19 +88,28 @@ export async function tomarTrabajos(workerId: string, limite = MAXIMO_POR_TOMA):
  * pasos, entre uno y otro cabría exactamente la carrera que esto evita.
  */
 export async function marcarEnviando(id: string, workerId: string): Promise<boolean> {
-  const marcadas = await db()
-    .update(generationJobs)
-    .set({ state: "enviando", lockedUntil: new Date(Date.now() + MS_TOMA) })
-    .where(
-      and(
-        eq(generationJobs.id, id),
-        eq(generationJobs.lockedBy, workerId),
-        eq(generationJobs.state, "preparando"),
-        isNull(generationJobs.taskId),
-      ),
-    )
-    .returning({ id: generationJobs.id });
-  return marcadas.length > 0;
+  return db().transaction(async (tx) => {
+    const [trabajo] = await tx
+      .select({ userId: generationJobs.userId })
+      .from(generationJobs)
+      .where(eq(generationJobs.id, id));
+    if (!trabajo) return false;
+    await tx.execute(sql`select 1 from users where id = ${trabajo.userId} for update`);
+    await exigirCuentaOperativa(trabajo.userId, tx);
+    const marcadas = await tx
+      .update(generationJobs)
+      .set({ state: "enviando", lockedUntil: new Date(Date.now() + MS_TOMA) })
+      .where(
+        and(
+          eq(generationJobs.id, id),
+          eq(generationJobs.lockedBy, workerId),
+          eq(generationJobs.state, "preparando"),
+          isNull(generationJobs.taskId),
+        ),
+      )
+      .returning({ id: generationJobs.id });
+    return marcadas.length > 0;
+  });
 }
 
 /**

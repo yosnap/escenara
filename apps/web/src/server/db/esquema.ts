@@ -60,6 +60,7 @@ export const media = pgTable(
 export type FilaMedio = typeof media.$inferSelect;
 export type NuevoMedio = typeof media.$inferInsert;
 
+export * from "./esquema-administracion";
 export * from "./esquema-anuncio";
 export * from "./esquema-auth";
 export * from "./esquema-biblioteca";

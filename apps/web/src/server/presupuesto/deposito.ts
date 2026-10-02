@@ -3,6 +3,7 @@ import type { Deposito } from "@/lib/generacion";
 import { type Ajustes, leerAjustes } from "../ajustes";
 import { db, type Ejecutor } from "../db/cliente";
 import { assistantRuns, generationJobs, reviewResults, usageLedger } from "../db/esquema";
+import { ajustesEfectivos } from "./limites-efectivos";
 
 /**
  * Lectura del depósito de presupuesto de un usuario. No hay ninguna columna con «saldo restante»: lo
@@ -101,5 +102,5 @@ export function deposito(comprometido: Comprometido, ajustes: Ajustes): Deposito
 /** Depósito de presupuesto del usuario, listo para mostrar en la zona de claridad de «Crear». */
 export async function depositoDe(usuarioId: string, ejecutor: Ejecutor = db()): Promise<Deposito> {
   const [comprometido, ajustes] = await Promise.all([comprometidoDe(usuarioId, ejecutor), leerAjustes()]);
-  return deposito(comprometido, ajustes);
+  return deposito(comprometido, await ajustesEfectivos(usuarioId, ajustes, ejecutor));
 }

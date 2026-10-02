@@ -16,6 +16,7 @@ export interface SelectorProps {
   nombre?: string;
   deshabilitado?: boolean;
   className?: string;
+  abiertoInicial?: boolean;
 }
 
 /** Selector de una opción. Sustituye siempre al `<select>` nativo del navegador. */
@@ -29,6 +30,7 @@ export function Selector({
   nombre,
   deshabilitado,
   className,
+  abiertoInicial,
 }: SelectorProps) {
   const porValor = new Map(opciones.map((o) => [o.value, o]));
   // Base UI une etiqueta y disparador al hidratar, y llama a la etiqueta como la raíz más «-label». Con el id de la
@@ -42,6 +44,7 @@ export function Selector({
       onValueChange={(v) => onCambio?.(v as string | null)}
       name={nombre}
       disabled={deshabilitado}
+      defaultOpen={abiertoInicial}
     >
       <div className={cn("flex flex-col gap-1.5", className)}>
         <S.Label className="text-sm font-semibold text-texto">{etiqueta}</S.Label>

@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { auth } from "./auth";
+import { cuentaBloqueada } from "./estado-cuenta";
 import { MENSAJE_CUENTA_EN_BORRADO, tieneBorradoProgramado } from "./gracia";
 
 export { MENSAJE_CUENTA_EN_BORRADO, tieneBorradoProgramado };
@@ -19,10 +20,11 @@ export const obtenerSesion = cache(async (): Promise<Sesion | null> => {
 /** Sesión comprobada en la base de datos: una sesión cerrada o un rol retirado dejan de valer al momento. */
 export const obtenerSesionVerificada = cache(async (): Promise<Sesion | null> => {
   // Leer desde un componente servidor no puede renovar la cookie; AvisoSesion renueva por HTTP en el navegador.
-  return (await auth()).api.getSession({
+  const sesion = await (await auth()).api.getSession({
     headers: await headers(),
     query: { disableCookieCache: true, disableRefresh: true },
   });
+  return sesion && !(await cuentaBloqueada(sesion.user.id)) ? sesion : null;
 });
 
 /** Página donde una cuenta con el borrado programado ve el plazo y puede cancelarlo. */
@@ -72,7 +74,8 @@ export async function sesionDePeticion(
     headers: peticion.headers,
     query: { disableCookieCache: true, disableRefresh: true },
   });
-  if (!sesion || permitirBorradoProgramado) return sesion;
+  if (!sesion || (await cuentaBloqueada(sesion.user.id))) return null;
+  if (permitirBorradoProgramado) return sesion;
   return (await tieneBorradoProgramado(sesion.user.id)) ? null : sesion;
 }
 

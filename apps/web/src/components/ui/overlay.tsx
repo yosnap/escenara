@@ -4,7 +4,7 @@ import { Dialog as D } from "@base-ui/react/dialog";
 import { Tabs as T } from "@base-ui/react/tabs";
 import { Tooltip as TT } from "@base-ui/react/tooltip";
 import { X } from "lucide-react";
-import type { ReactElement, ReactNode } from "react";
+import { type ReactElement, type ReactNode, useId } from "react";
 
 const ANCHO_DIALOGO = {
   md: "w-[min(32rem,calc(100vw-2rem))]",
@@ -64,13 +64,18 @@ export function Dialogo({
 
 /** Ayuda breve al pasar el ratón o enfocar. No sustituye a una etiqueta visible. */
 export function Ayuda({ texto, children }: { texto: string; children: ReactElement }) {
+  const id = useId();
   return (
     <TT.Provider>
       <TT.Root>
-        <TT.Trigger render={children} />
+        <TT.Trigger render={children} aria-describedby={id} />
         <TT.Portal>
           <TT.Positioner sideOffset={8}>
-            <TT.Popup className="max-w-xs rounded-control bg-texto px-3 py-1.5 text-sm text-fondo shadow-lg transition-opacity duration-(--motion-fast) data-ending-style:opacity-0 data-starting-style:opacity-0">
+            <TT.Popup
+              id={id}
+              role="tooltip"
+              className="max-w-xs rounded-control bg-texto px-3 py-1.5 text-sm text-fondo shadow-lg transition-opacity duration-(--motion-fast) data-ending-style:opacity-0 data-starting-style:opacity-0"
+            >
               {texto}
             </TT.Popup>
           </TT.Positioner>
