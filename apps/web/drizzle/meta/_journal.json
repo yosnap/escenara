@@ -484,6 +484,13 @@
       "when": 1790893526886,
       "tag": "0068_large_human_cannonball",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1791149817855,
+      "tag": "0069_proveedor_apimart",
+      "breakpoints": true
     }
   ]
 }

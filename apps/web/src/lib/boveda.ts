@@ -10,7 +10,7 @@ export const AVISO_BOVEDA_USUARIO = "Esta instalación aún no admite credencial
  * Proveedores **de la bóveda**: los que tienen una clave por usuario, su tarjeta en «Tu cuenta» y su prueba sin
  * coste. Son los únicos con los que se puede pagar una generación.
  */
-export const PROVEEDORES = ["kie", "google", "elevenlabs"] as const;
+export const PROVEEDORES = ["kie", "google", "elevenlabs", "apimart"] as const;
 export type ProveedorBoveda = (typeof PROVEEDORES)[number];
 
 /**
@@ -60,6 +60,14 @@ export const PROVEEDORES_PUBLICOS: Record<Proveedor, ProveedorPublico> = {
     urlClave: "https://elevenlabs.io/app/settings/api-keys",
     etiquetaUrlClave: "elevenlabs.io · Settings › API keys",
     ayuda: "Empieza por «sk_» y es una cadena larga. Con una clave restringida basta el permiso de «Text to Speech».",
+  },
+  apimart: {
+    id: "apimart",
+    nombre: "APIMart",
+    para: "Imágenes y vídeo de tus personajes. Se paga por segundo usado: si la generación falla, no pagas nada.",
+    urlClave: "https://apimart.ai",
+    etiquetaUrlClave: "apimart.ai · tu panel",
+    ayuda: "La API key de tu panel de APIMart, entera y sin espacios.",
   },
   local: {
     id: "local",

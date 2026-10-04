@@ -2,6 +2,31 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.52.0] · 2026-10-04
+
+### Añadido
+
+- **APIMart como proveedor BYOK de vídeo e imagen** (ADR-0044), tras el spike del 2026-10-04: gana en precio
+  frente a KIE en las cuatro capacidades medidas (clip con voz 8,6×, imagen 2,4×, escena hablada 1,6×, b-roll a
+  paridad). Cada usuario decide: entra su clave en «Tu cuenta» y elige los modelos en el mapa de modelos; el
+  predeterminado de KIE de cada capacidad no cambia.
+- Cuatro modelos APIMart sembrados como `validado` con su precio medido con dinero real: `gemini-omni-1.1-flash-ext`
+  (6 s, 720p, 3 cr), `veo3.1-lite-ext` (8 s, 720p, 0,7 cr), `MiniMax-Hailuo-2.3-Fast` (6 s, 768p, 1,488 cr) y
+  `gpt-image-2.5-flare` (1K 9:16, 0,1253 cr).
+- Prueba de credencial de APIMart sin coste (`GET /v1/user/balance`) con su tarjeta en «Tu cuenta».
+- Facturación por segundo con conciliación directa: el status de cada tarea trae `credits_cost` y `cost` en USD,
+  y las generaciones fallidas no cobran (verificado). El apunte de gasto se revisa contra la caída de saldo.
+- Variable opcional `S3_ENDPOINT_PUBLIC`: permite a APIMart bajar las referencias firmando una URL GET pública
+  de 50 min del almacenamiento de la instalación (no sube nada a hosts de terceros). Sin ella, la instalación no
+  puede usar APIMart y lo dice al generar, sin gasto.
+
+### Actualización
+
+- Migración `0069`: añade `apimart` al enum `credential_provider` (lo comparten apuntes de gasto, trabajos y
+  catálogo). La semilla crea el proveedor y sus modelos; no pisa lo administrado.
+- En el contrato de proveedores (ADR-0015), `PeticionReferencia` gana el campo opcional `claveAlmacenamiento`,
+  que solo usa APIMart; los demás adaptadores lo ignoran y suben el archivo como antes.
+
 ## [0.51.0] · 2026-10-02
 
 ### Añadido

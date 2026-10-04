@@ -23,12 +23,18 @@ import { users } from "./esquema-auth";
  * pueda tener una entrada que **no cuesta nada ni necesita clave** (hoy, la transcripción con el binario de la
  * instalación). Nunca aparece en un apunte de gasto con créditos distintos de 0.
  */
+/**
+ * `apimart` se añade en la 0.52.0 (ADR-0044): proveedor BYOK de vídeo e imagen por segundo, con credencial
+ * propia del usuario como KIE. El mismo enum lo usan los apuntes de gasto, los trabajos y el catálogo, así
+ * que un valor nuevo cubre todos los sitios a la vez.
+ */
 export const proveedorCredencial = pgEnum("credential_provider", [
   "kie",
   "google",
   "elevenlabs",
   "compatible",
   "local",
+  "apimart",
 ]);
 export const estadoCredencial = pgEnum("credential_status", ["valida", "invalida"]);
 

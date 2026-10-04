@@ -13,6 +13,8 @@
   <img alt="Estado: versión base" src="https://img.shields.io/badge/estado-versión%20base-485269">
 </p>
 
+<p align="center"><a href="https://escenara.com">Plataforma en línea: <strong>escenara.com</strong></a></p>
+
 ---
 
 **Escenara** es una aplicación web de código abierto para crear un **personaje persistente** a partir de fotos autorizadas de una persona o de un animal (o inventarlo desde cero), y producir con él publicaciones y **vídeos cortos** (Reels, TikTok, Shorts) escena a escena.

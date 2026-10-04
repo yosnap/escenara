@@ -1,4 +1,5 @@
 import type { Capacidad, ModeloVista } from "@/lib/catalogo";
+import { adaptadorApimart } from "./apimart/adaptador";
 import { elegirModelo } from "./catalogo";
 import { adaptadorCompatible } from "./compatible/adaptador";
 import { type Adaptador, ErrorCatalogo } from "./contrato";
@@ -13,7 +14,7 @@ import { adaptadorKie } from "./kie/adaptador";
  * le puede enviar nada.
  */
 
-const ADAPTADORES: readonly Adaptador[] = [adaptadorKie, adaptadorElevenLabs, adaptadorCompatible];
+const ADAPTADORES: readonly Adaptador[] = [adaptadorKie, adaptadorElevenLabs, adaptadorCompatible, adaptadorApimart];
 
 export const proveedoresConAdaptador = ADAPTADORES.map((a) => a.proveedor);
 

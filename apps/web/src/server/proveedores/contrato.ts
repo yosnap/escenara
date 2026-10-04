@@ -281,6 +281,12 @@ export interface PeticionReferencia {
   clave: string;
   archivo: File;
   buscar: Buscador;
+  /**
+   * Clave de almacenamiento S3 del medio (ADR-0044, 0.52.0). La usa **solo** el adaptador de APIMart, que no
+   * sube nada y firma una URL pública con ella. Los demás adaptadores la ignoran y suben `archivo` como
+   * siempre. Opcional a propósito: un adaptador que no la necesite no puede romperse por no tenerla.
+   */
+  claveAlmacenamiento?: string;
 }
 
 /**

@@ -115,6 +115,36 @@ describe("prueba de Google Gemini", () => {
   });
 });
 
+describe("prueba de APIMart", () => {
+  test("pide el saldo de la cuenta con Bearer y devuelve los USD disponibles", async () => {
+    const { buscar, registro } = simular(json({ success: true, remain_balance: 9.19881, remain_credits: 91.9881 }));
+    expect(await probarClave("apimart", CLAVE, buscar)).toEqual({
+      ok: true,
+      codigo: "ok",
+      detalle: "9.20 $ disponibles",
+    });
+    expect(registro[0]?.url).toBe("https://api.apimart.ai/v1/user/balance");
+    expect(registro[0]?.cabeceras.Authorization).toBe(`Bearer ${CLAVE}`);
+  });
+
+  test("un 401 del balance se traduce a «rechazada», sin conservar el texto", async () => {
+    expect(
+      await probarClave(
+        "apimart",
+        CLAVE,
+        simular(json({ success: false, code: 401, message: "invalid api key" })).buscar,
+      ),
+    ).toEqual({ ok: false, codigo: "rechazada" });
+  });
+
+  test("un cuerpo sin saldo legible no se da por bueno", async () => {
+    expect(await probarClave("apimart", CLAVE, simular(json({ success: true })).buscar)).toEqual({
+      ok: false,
+      codigo: "respuesta-inesperada",
+    });
+  });
+});
+
 describe("fallos comunes a cualquier proveedor", () => {
   test("el exceso de peticiones y los errores del servicio tienen su propio código", async () => {
     expect(await probarClave("kie", CLAVE, simular(json({}, 429)).buscar)).toEqual({ ok: false, codigo: "limite" });

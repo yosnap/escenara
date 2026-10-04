@@ -1,407 +1,712 @@
 {
-  "comentario": "Semilla del catálogo de proveedores y modelos (0.11.0). Cada modelo se siembra con lo que se ejecutó de verdad: los parámetros salen de spikes/comparativa-modelos/comparativa.ts y los precios, de plans/reports/comparativa-260927-modelos-kie.md. Solo es 'validado' lo que además tiene evidencia revisada. La semilla no pisa lo que haya cambiado quien administra: solo crea lo que falta. La 0.17.0 añade el modelo de texto del asistente de guion, que desde la 0.19.1 está validado con su coste medido llamada a llamada.",
-  "proveedores": [
-    {
-      "slug": "kie",
-      "nombre": "KIE.ai",
-      "docs": "https://docs.kie.ai/",
-      "notas": "Proveedor inicial (ADR-0009). Agregador de modelos con tareas asíncronas: jobs/createTask y jobs/recordInfo. No tiene endpoint universal de catálogo, así que el catálogo se mantiene aquí."
-    },
-    {
-      "slug": "google",
-      "nombre": "Google Gemini",
-      "docs": "https://ai.google.dev/gemini-api/docs",
-      "notas": "Aplazado (ADR-0009): sin facturación activa la cuota es 0. El hueco queda listo; su adaptador no existe todavía."
-    },
-    {
-      "slug": "elevenlabs",
-      "nombre": "ElevenLabs",
-      "docs": "https://elevenlabs.io/docs",
-      "notas": "Proveedor de voz de reserva (0.21.0, ADR-0025), con credencial propia del usuario. SÍNCRONO: POST /v1/text-to-speech/{voice_id}/with-timestamps devuelve el audio y las marcas por carácter en la misma respuesta, así que no pasa por ninguna consulta de estado. La prueba de credencial usa GET /v1/voices, porque /v1/user/subscription devuelve missing_permissions con claves restringidas."
-    },
-    {
-      "slug": "compatible",
-      "nombre": "Servicio compatible con OpenAI",
-      "docs": "https://platform.openai.com/docs/api-reference",
-      "notas": "No es un proveedor concreto, es un género (0.21.1): cada usuario da de alta en «Tu cuenta» los servicios que hablan la API de OpenAI, con su nombre, su dirección base y su clave. SÍNCRONO en voz (POST {base}/audio/speech devuelve el audio) y en texto (POST {base}/chat/completions). Se paga por CUOTA DEL PLAN, no por petición: su precio registrado es 0 créditos y sus apuntes de gasto son de 0. La dirección la escribe el usuario, así que es el único proveedor con protección frente a SSRF en cada llamada."
-    }
-  ],
-  "modelos": [
-    {
-      "proveedor": "kie",
-      "modelo": "nano-banana-2-lite",
-      "nombre": "Nano Banana 2 Lite",
-      "capacidades": ["image_edit", "text_to_image"],
-      "estado": "validado",
-      "predeterminado": true,
-      "conVoz": false,
-      "unidad": "imagen",
-      "parametros": {
-        "duraciones": [],
-        "proporciones": ["9:16"],
-        "resoluciones": [],
-        "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
-        "maximoReferencias": 10
-      },
-      "precio": {
-        "creditos": 4,
-        "fuente": "Medido en el prototipo 0.3.0 con la cuenta de KIE del propietario",
-        "comprobado": "2026-09-27"
-      },
-      "evidencia": "4 créditos por imagen medidos en el prototipo 0.3.0 y confirmados en la comparativa del 2026-09-27 (plans/reports/comparativa-260927-modelos-kie.md). Fotograma real generado de extremo a extremo en la 0.10.1.",
-      "notas": "El más barato y el de encuadre más natural. Admite hasta 10 referencias JPEG, PNG o WebP y proporción 9:16."
-    },
-    {
-      "proveedor": "kie",
-      "modelo": "seedream/4.5-edit",
-      "nombre": "Seedream 4.5 Edit",
-      "capacidades": ["image_edit"],
-      "estado": "compatible",
-      "predeterminado": false,
-      "conVoz": false,
-      "unidad": "imagen",
-      "parametros": {
-        "duraciones": [],
-        "proporciones": ["9:16"],
-        "resoluciones": [],
-        "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
-        "maximoReferencias": 10
-      },
-      "precio": {
-        "creditos": 6.5,
-        "fuente": "Comparativa real del 2026-09-27 (plans/reports/comparativa-260927-modelos-kie.md)",
-        "comprobado": "2026-09-27"
-      },
-      "evidencia": "",
-      "notas": "El más rápido (31-45 s) y el de más resolución (hasta 1520 × 2736). Se envía con quality \"basic\"."
-    },
-    {
-      "proveedor": "kie",
-      "modelo": "gpt-image-2-5-flare-image-to-image",
-      "nombre": "GPT Image 2.5 Flare (imagen a imagen)",
-      "capacidades": ["image_edit"],
-      "estado": "compatible",
-      "predeterminado": false,
-      "conVoz": false,
-      "unidad": "imagen",
-      "parametros": {
-        "duraciones": [],
-        "proporciones": ["9:16"],
-        "resoluciones": ["1K", "2K", "4K"],
-        "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
-        "maximoReferencias": 1
-      },
-      "precio": {
-        "creditos": 6,
-        "fuente": "Comparativa real del 2026-09-27 a resolución 1K (plans/reports/comparativa-260927-modelos-kie.md)",
-        "comprobado": "2026-09-27"
-      },
-      "evidencia": "",
-      "notas": "Usa input_urls, no image_urls. Encuadre muy cercano (selfie) y buena identidad, pero más lento y menos resolución que Seedream. El precio medido es el de 1K."
-    },
-    {
-      "proveedor": "kie",
-      "modelo": "veo3_fast",
-      "nombre": "Veo 3.1 Fast",
-      "capacidades": ["image_to_video", "text_to_video"],
-      "estado": "validado",
-      "predeterminado": true,
-      "conVoz": true,
-      "unidad": "vídeo de 4 u 8 s",
-      "parametros": {
-        "duraciones": [8, 4],
-        "proporciones": ["9:16"],
-        "resoluciones": ["720p", "1080p"],
-        "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
-        "maximoReferencias": 2
-      },
-      "precio": {
-        "creditos": 60,
-        "fuente": "Medido el 2026-09-27 con la cuenta de KIE del propietario: clip de 8 s a 720p con FIRST_AND_LAST_FRAMES_2_VIDEO",
-        "comprobado": "2026-09-27"
-      },
-      "evidencia": "60 créditos por un clip de 8 s en 720 × 1280 con voz, generado en 96 s el 2026-09-27, que arranca exactamente en el fotograma que se le entrega. A 4 s cuesta lo mismo: los 60 créditos de Veo 3.1 Lite están medidos tanto a 4 s como a 8 s.",
-      "notas": "Modelo de animación predeterminado: mismo precio que Veo 3.1 Lite por el doble de clip y mejor calidad. Con una sola imagen se envía como FIRST_AND_LAST_FRAMES_2_VIDEO. Falla sin cobrar («unable to generate audio») si el prompt no dice qué se oye: con diálogo se le pide la frase y sin diálogo, solo sonido ambiente."
-    },
-    {
-      "proveedor": "kie",
-      "modelo": "veo3_lite",
-      "nombre": "Veo 3.1 Lite",
-      "capacidades": ["image_to_video", "text_to_video"],
-      "estado": "validado",
-      "predeterminado": false,
-      "conVoz": true,
-      "unidad": "vídeo de 4 u 8 s",
-      "parametros": {
-        "duraciones": [8, 4],
-        "proporciones": ["9:16"],
-        "resoluciones": ["720p", "1080p"],
-        "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
-        "maximoReferencias": 2
-      },
-      "precio": {
-        "creditos": 60,
-        "fuente": "Medido con la cuenta de KIE del propietario: 60 créditos a 4 s en el prototipo 0.3.0 y los mismos 60 a 8 s el 2026-09-27",
-        "comprobado": "2026-09-27"
-      },
-      "evidencia": "60 créditos por clip medidos a 4 s (prototipo 0.3.0) y a 8 s (2026-09-27): la duración no cambia el precio, así que la tabla pública de KIE (30 créditos a 720p) no coincide con lo cobrado y manda lo medido. Clip real con voz y 720 × 1280 comprobado de extremo a extremo en la 0.10.1.",
-      "notas": "Alternativa a Veo 3.1 Fast al mismo precio: se deja validada pero no predeterminada. Con una sola imagen se envía como FIRST_AND_LAST_FRAMES_2_VIDEO. Los 6 s los documenta el proveedor y no están medidos: esta versión solo ofrece 4 y 8 s."
-    },
-    {
-      "proveedor": "kie",
-      "modelo": "hailuo/2-3-image-to-video-standard",
-      "nombre": "Hailuo 2.3 Standard",
-      "capacidades": ["image_to_video"],
-      "estado": "compatible",
-      "predeterminado": false,
-      "conVoz": false,
-      "unidad": "vídeo de 6 s",
-      "parametros": {
-        "duraciones": [6, 10],
-        "proporciones": [],
-        "resoluciones": ["768P", "1080P"],
-        "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
-        "maximoReferencias": 1
-      },
-      "precio": {
-        "creditos": 30,
-        "fuente": "Comparativa real del 2026-09-27, clip de 6 s a 768P (plans/reports/comparativa-260927-modelos-kie.md)",
-        "comprobado": "2026-09-27"
-      },
-      "evidencia": "",
-      "notas": "El más barato por segundo (5,1 créditos/s), pero SIN VOZ: no sirve para que el personaje hable. Mínimo 6 s, toma la proporción de la imagen (no acepta aspect_ratio) y usa image_url, no image_urls."
-    },
-    {
-      "proveedor": "kie",
-      "modelo": "kling/v3-turbo-image-to-video",
-      "nombre": "Kling 3.0 Turbo",
-      "capacidades": ["image_to_video"],
-      "estado": "compatible",
-      "predeterminado": false,
-      "conVoz": true,
-      "unidad": "vídeo de 4 s",
-      "parametros": {
-        "duraciones": [4],
-        "proporciones": [],
-        "resoluciones": ["720p"],
-        "formatosReferencia": ["image/jpeg", "image/png"],
-        "maximoReferencias": 1
-      },
-      "precio": {
-        "creditos": 72,
-        "fuente": "Comparativa real del 2026-09-27, clip de 4 s a 720p (plans/reports/comparativa-260927-modelos-kie.md)",
-        "comprobado": "2026-09-27"
-      },
-      "evidencia": "",
-      "notas": "Tiene voz, pero cuesta más que Veo 3.1 Lite (72 frente a 60 créditos por 4 s). Solo acepta JPEG o PNG: los fotogramas de la biblioteca son WebP y se convierten a PNG antes de subirlos. El proveedor documenta de 3 a 15 s; aquí solo están los 4 s comprobados."
-    },
-    {
-      "proveedor": "kie",
-      "modelo": "gpt-5-6-sol",
-      "nombre": "GPT 5.6 Sol (texto)",
-      "capacidades": ["text_generation"],
-      "estado": "validado",
-      "predeterminado": true,
-      "conVoz": false,
-      "unidad": "respuesta de texto",
-      "parametros": {
-        "duraciones": [],
-        "proporciones": [],
-        "resoluciones": [],
-        "formatosReferencia": [],
-        "maximoReferencias": 0
-      },
-      "precio": {
-        "creditos": 1.5,
-        "fuente": "Medido el 2026-09-27 con la clave de KIE del propietario: de 0,05 a 0,93 créditos por llamada según el largo. Se registran 1,5 con margen prudente porque el coste depende de los tokens; el consumo real lo informa el proveedor en cada llamada.",
-        "comprobado": "2026-09-27"
-      },
-      "evidencia": "Ejecutado de verdad el 2026-09-27 con el adaptador de la app: traducir una frase costó 0,05 créditos en 3 s, un lote de dos o tres textos de la ficha entre 0,28 y 0,34, y el guion de cuatro escenas del asistente entre 0,5 y 0,93 créditos en 8 a 37 s. El JSON del guion y el de la traducción se leen bien, y un texto con intento de inyección devuelve cadena vacía, que la app descarta.",
-      "notas": "Modelo de texto del asistente de guion (0.17.0). Endpoint síncrono POST codex/v1/responses, distinto del jobs/createTask del resto, e informa credits_consumed en la propia respuesta. El asistente y la traducción siguen apagados de fábrica: quien administra los enciende en Admin › Ajustes. La latencia medida llega a 37 s, así que el adaptador espera hasta 90 s."
-    },
-    {
-      "proveedor": "kie",
-      "modelo": "elevenlabs/text-to-speech-multilingual-v2",
-      "nombre": "ElevenLabs Multilingual v2 (voz)",
-      "capacidades": ["tts"],
-      "estado": "descubierto",
-      "predeterminado": true,
-      "conVoz": true,
-      "unidad": "pista de voz de una escena",
-      "parametros": {
-        "duraciones": [],
-        "proporciones": [],
-        "resoluciones": [],
-        "formatosReferencia": [],
-        "maximoReferencias": 0
-      },
-      "precio": null,
-      "evidencia": "",
-      "notas": "Modelo de voz del «market» de KIE (0.21.0), con la misma credencial de KIE del usuario. Parámetros comprobados en https://docs.kie.ai/market/elevenlabs/text-to-speech-multilingual-v2 el 2026-09-28, SIN llamar a la API: text (hasta 5.000 caracteres), voice, stability, similarity_boost, style, speed, language_code y timestamps, por el mismo jobs/createTask asíncrono que el vídeo. Queda «descubierto» y SIN PRECIO a propósito: KIE no publica la tarifa de este modelo en su documentación ni en su página del modelo, así que no hay ninguna cifra que registrar. Sin precio no se estima y no se gasta: la pantalla de voz lo dice y no ofrece generar. Para poder usarlo hay que medirlo una vez con dinero real y registrar el precio medido en Admin › Modelos."
-    },
-    {
-      "proveedor": "elevenlabs",
-      "modelo": "eleven_multilingual_v2",
-      "nombre": "ElevenLabs Multilingual v2",
-      "capacidades": ["tts"],
-      "estado": "validado",
-      "predeterminado": false,
-      "conVoz": true,
-      "unidad": "pista de voz de una escena",
-      "parametros": {
-        "duraciones": [],
-        "proporciones": [],
-        "resoluciones": [],
-        "formatosReferencia": [],
-        "maximoReferencias": 0
-      },
-      "precio": {
-        "creditos": 22,
-        "fuente": "Medido contra la API real el 2026-09-28 con la clave del propietario: POST /v1/text-to-speech/{voice_id}/with-timestamps, 79 caracteres de diálogo, cabecera de respuesta character-cost = 22. Son créditos del plan de ElevenLabs por llamada, no dólares: su tarifa en USD depende del plan contratado, así que no se convierte.",
-        "comprobado": "2026-09-28"
-      },
-      "evidencia": "Ejecutado de verdad el 2026-09-28 con el adaptador de la app y la clave del propietario: 200 en 2,5 s, audio MP3 en audio_base64, marcas por carácter en alignment y normalized_alignment, quality_check correcto y character-cost = 22 para 79 caracteres. GET /v1/voices lista las voces prediseñadas; GET /v1/user/subscription devuelve missing_permissions con claves restringidas, así que la prueba de credencial usa /v1/voices.",
-      "notas": "Proveedor de voz de reserva (0.21.0, ADR-0025), con credencial propia del usuario. Es SÍNCRONO: devuelve el audio en la misma respuesta, así que no pasa por jobs/createTask ni por ninguna consulta de estado. El precio son créditos del plan de ElevenLabs por llamada y crece con la longitud del texto: 22 por 79 caracteres es lo medido con un diálogo de escena corriente, y por eso se registra por llamada, que es la unidad que se pide y se confirma. Un diálogo mucho más largo costará más de lo estimado; el cierre apunta SIEMPRE lo que informa character-cost, no la estimación."
-    },
-    {
-      "proveedor": "compatible",
-      "modelo": "kokoro",
-      "nombre": "Kokoro v1.0 (voz)",
-      "capacidades": ["tts"],
-      "estado": "validado",
-      "predeterminado": false,
-      "conVoz": true,
-      "unidad": "pista de voz de una escena",
-      "parametros": {
-        "duraciones": [],
-        "proporciones": [],
-        "resoluciones": [],
-        "formatosReferencia": [],
-        "maximoReferencias": 0
-      },
-      "precio": {
-        "creditos": 0,
-        "fuente": "No cobra por petición: los servicios compatibles con la API de OpenAI se pagan con la cuota del plan que tenga contratado el usuario. 0 créditos no es una estimación, es el precio: lo que consume es cuota, no créditos de Escenara.",
-        "comprobado": "2026-09-28"
-      },
-      "evidencia": "Llamada real del 2026-09-28 a https://api.nan.builders/v1/audio/speech con la clave del propietario: voces ef_dora y em_alex, 200 en 0,9 s, MP3 de 5 s por 79 caracteres en español; transcrito con whisper, la frase sale exacta. Sin coste por petición (cuota del plan).",
-      "notas": "TTS de 82M parámetros con 67 paquetes de voz, comprobado en https://nan.builders/docs/models el 2026-09-28: latencia por debajo de un segundo y límite de 15 peticiones por minuto. SUS VOCES TIENEN OTROS IDENTIFICADORES (ef_dora, em_alex, af_heart...), así que pertenece a otra «familia de voces» que ElevenLabs: una voz fijada con ElevenLabs no se puede leer aquí y el mapa de modelos lo dice en lugar de cambiar el timbre. No da marcas por carácter, así que los subtítulos salen del diálogo o de transcribir. Validado con una llamada real el 2026-09-28."
-    },
-    {
-      "proveedor": "kie",
-      "modelo": "gemini-omni-video",
-      "nombre": "Gemini Omni (vídeo)",
-      "capacidades": ["image_to_video", "text_to_video"],
-      "estado": "validado",
-      "predeterminado": false,
-      "conVoz": true,
-      "unidad": "clip de 4 s a 720p",
-      "parametros": {
-        "duraciones": [4, 6, 8, 10],
-        "proporciones": ["9:16", "16:9"],
-        "resoluciones": ["720p"],
-        "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
-        "maximoReferencias": 7
-      },
-      "precio": {
-        "creditos": 63,
-        "fuente": "Medido con dinero real el 2026-09-28 con la clave del propietario: clip de 4 s en 9:16 a 720p, 63 créditos y 59 s de espera, salida de 720x1280 con audio. El catálogo se limita a 4 s y 720p a propósito: es lo único medido, y escalar el precio a otras duraciones o resoluciones sería inventarse una tarifa.",
-        "comprobado": "2026-09-28"
-      },
-      "evidencia": "Ejecutado de verdad el 2026-09-28 contra la API de KIE: 4 s, 9:16, 720p, 63 créditos, 59 s, 720x1280 con audio. Dijo el diálogo en español con exactitud.",
-      "notas": "DICE EL DIÁLOGO EN ESPAÑOL CON EXACTITUD (medido el 2026-09-28), así que sirve para escenas con personaje hablando: el diálogo va en el prompt y NO se traduce. Acepta hasta 7 referencias por image_urls, y la primera hace de fotograma inicial. Su API tiene además character_ids y audio_ids (identidades y voces guardadas en el proveedor) que esta versión NO expone: son una decisión de producto con consentimiento de por medio."
-    },
-    {
-      "proveedor": "kie",
-      "modelo": "minimax-h3/reference-to-video",
-      "nombre": "MiniMax H3 (referencia a vídeo)",
-      "capacidades": ["image_to_video"],
-      "estado": "validado",
-      "predeterminado": false,
-      "conVoz": true,
-      "unidad": "clip de 5 s a 768P",
-      "parametros": {
-        "duraciones": [5],
-        "proporciones": ["9:16"],
-        "resoluciones": ["768P", "2K"],
-        "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
-        "maximoReferencias": 9
-      },
-      "precio": {
-        "creditos": 40,
-        "fuente": "Medido con dinero real el 2026-09-28 con la clave del propietario: clip de 5 s en 9:16 a 768P, 40 créditos y 143 s de espera, salida de 768x1344 con audio. Las demás duraciones se estiman en proporción y se marcan como estimadas hasta medirlas.",
-        "comprobado": "2026-09-28"
-      },
-      "evidencia": "Ejecutado de verdad el 2026-09-28 contra la API de KIE: 5 s, 9:16, 768P, 40 créditos, 143 s, 768x1344 con audio. La cara salió fiel al retrato de referencia y el diálogo en español con exactitud.",
-      "notas": "SEGUNDO MOTOR DE ESCENAS HABLADAS (0.22.0), más barato que Gemini Omni Flash y bastante más lento. No registra identidades en el proveedor: la cara sale de reference_image_urls (hasta 9: el retrato y las vistas del personaje) y la voz de reference_audio_urls (hasta 3: la muestra de la voz del proyecto), así que el timbre es el del mapa de voz del usuario. duration es un entero de 4 a 15 y resolution es 768P o 2K; el catálogo se limita a lo medido."
-    },
-    {
-      "proveedor": "kie",
-      "modelo": "google/gemini-omni-flash-1-1",
-      "nombre": "Gemini Omni 1.1 Flash (vídeo)",
-      "capacidades": ["image_to_video", "text_to_video"],
-      "estado": "validado",
-      "predeterminado": false,
-      "conVoz": true,
-      "unidad": "clip de 4 s a 720p",
-      "parametros": {
-        "duraciones": [4, 6, 8, 10],
-        "proporciones": ["9:16", "16:9"],
-        "resoluciones": ["720p"],
-        "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
-        "maximoReferencias": 7
-      },
-      "precio": {
-        "creditos": 63,
-        "fuente": "Medido con dinero real el 2026-09-28 con la clave del propietario: clip de 4 s en 9:16 a 720p, 63 créditos y 38 s de espera, salida de 720x1280 con audio. A 360p costó lo mismo (63), así que no se ofrece. El catálogo se limita a 4 s y 720p: es lo único medido.",
-        "comprobado": "2026-09-28"
-      },
-      "evidencia": "Ejecutado de verdad el 2026-09-28 contra la API de KIE: 4 s, 9:16, 720p, 63 créditos, 38 s, 720x1280 con audio; y a 360p, 63 créditos, 34 s. Dijo el diálogo en español con exactitud en los dos.",
-      "notas": "Mismo precio que Gemini Omni y un 35 % más rápido (38 s frente a 59 s, medido el 2026-09-28). DICE EL DIÁLOGO EN ESPAÑOL CON EXACTITUD: el diálogo va en el prompt y NO se traduce. Acepta hasta 7 referencias por image_urls. Su API tiene además first_frame_url y last_frame_url (excluyentes con image_urls, audio_ids y character_ids), character_ids, audio_ids y video_list para editar o alargar un vídeo: esta versión no los expone."
-    },
-    {
-      "proveedor": "kie",
-      "modelo": "grok-imagine/text-to-video",
-      "nombre": "Grok Imagine (texto a vídeo)",
-      "capacidades": ["text_to_video"],
-      "estado": "validado",
-      "predeterminado": false,
-      "conVoz": false,
-      "unidad": "clip de 6 s a 480p",
-      "parametros": {
-        "duraciones": [6],
-        "proporciones": ["9:16", "16:9"],
-        "resoluciones": ["480p"],
-        "formatosReferencia": [],
-        "maximoReferencias": 0
-      },
-      "precio": {
-        "creditos": 14.4,
-        "fuente": "Medido con dinero real el 2026-09-28 con la clave del propietario: clip de 6 s en 9:16 a 480p, 14,4 créditos y 38 s de espera, salida de 416x752 con audio. Solo se registra lo medido: otras duraciones y resoluciones existen en el proveedor pero no tienen precio comprobado.",
-        "comprobado": "2026-09-28"
-      },
-      "evidencia": "Ejecutado de verdad el 2026-09-28 contra la API de KIE: 6 s, 9:16, 480p, 14,4 créditos, 38 s, 416x752 con audio.",
-      "notas": "SU PROMPT VA SOLO EN INGLÉS, así que depende de la traducción del servidor. NO ESTÁ PENSADO PARA ESCENAS CON UN PERSONAJE REAL HABLANDO: es para animación, dibujo y anuncios sin diálogo, y no se recomienda para la producción de un proyecto con protagonista. El proveedor admite un modo «spicy» que esta instalación NO ofrece: mode va fijo en «normal»."
-    },
-    {
-      "proveedor": "kie",
-      "modelo": "grok-imagine/image-to-video",
-      "nombre": "Grok Imagine (imagen a vídeo)",
-      "capacidades": ["image_to_video"],
-      "estado": "descubierto",
-      "predeterminado": false,
-      "conVoz": false,
-      "unidad": "clip de 6 s a 480p",
-      "parametros": {
-        "duraciones": [6],
-        "proporciones": ["9:16", "16:9"],
-        "resoluciones": ["480p"],
-        "formatosReferencia": ["image/jpeg", "image/png", "image/webp"],
-        "maximoReferencias": 7
-      },
-      "precio": null,
-      "evidencia": "",
-      "notas": "La misma familia que grok-imagine/text-to-video, con hasta 7 referencias por image_urls. Queda «descubierto» y SIN PRECIO: lo medido el 2026-09-28 fue la variante de texto a vídeo, y el precio de esta no se ha comprobado. Sin precio no se estima y no se gasta. Mismas advertencias: prompt solo en inglés, sin diálogo y no recomendado para un personaje real hablando."
-    }
-  ]
+ "comentario": "Semilla del catálogo de proveedores y modelos (0.11.0). Cada modelo se siembra con lo que se ejecutó de verdad: los parámetros salen de spikes/comparativa-modelos/comparativa.ts y los precios, de plans/reports/comparativa-260927-modelos-kie.md. Solo es 'validado' lo que además tiene evidencia revisada. La semilla no pisa lo que haya cambiado quien administra: solo crea lo que falta. La 0.17.0 añade el modelo de texto del asistente de guion, que desde la 0.19.1 está validado con su coste medido llamada a llamada.",
+ "proveedores": [
+  {
+   "slug": "kie",
+   "nombre": "KIE.ai",
+   "docs": "https://docs.kie.ai/",
+   "notas": "Proveedor inicial (ADR-0009). Agregador de modelos con tareas asíncronas: jobs/createTask y jobs/recordInfo. No tiene endpoint universal de catálogo, así que el catálogo se mantiene aquí."
+  },
+  {
+   "slug": "google",
+   "nombre": "Google Gemini",
+   "docs": "https://ai.google.dev/gemini-api/docs",
+   "notas": "Aplazado (ADR-0009): sin facturación activa la cuota es 0. El hueco queda listo; su adaptador no existe todavía."
+  },
+  {
+   "slug": "elevenlabs",
+   "nombre": "ElevenLabs",
+   "docs": "https://elevenlabs.io/docs",
+   "notas": "Proveedor de voz de reserva (0.21.0, ADR-0025), con credencial propia del usuario. SÍNCRONO: POST /v1/text-to-speech/{voice_id}/with-timestamps devuelve el audio y las marcas por carácter en la misma respuesta, así que no pasa por ninguna consulta de estado. La prueba de credencial usa GET /v1/voices, porque /v1/user/subscription devuelve missing_permissions con claves restringidas."
+  },
+  {
+   "slug": "compatible",
+   "nombre": "Servicio compatible con OpenAI",
+   "docs": "https://platform.openai.com/docs/api-reference",
+   "notas": "No es un proveedor concreto, es un género (0.21.1): cada usuario da de alta en «Tu cuenta» los servicios que hablan la API de OpenAI, con su nombre, su dirección base y su clave. SÍNCRONO en voz (POST {base}/audio/speech devuelve el audio) y en texto (POST {base}/chat/completions). Se paga por CUOTA DEL PLAN, no por petición: su precio registrado es 0 créditos y sus apuntes de gasto son de 0. La dirección la escribe el usuario, así que es el único proveedor con protección frente a SSRF en cada llamada."
+  },
+  {
+   "slug": "apimart",
+   "nombre": "APIMart",
+   "docs": "https://docs.apimart.ai",
+   "notas": "Proveedor BYOK añadido en la 0.52.0 (ADR-0044) tras el spike del 2026-10-04: factura por segundo usado con preautorización, liquida por uso real y las generaciones fallidas no cobran (verificado). No sube referencias: solo acepta una URL pública http/https, así que el adaptador firma una URL GET de 50 min del almacenamiento de la instalación (S3_ENDPOINT_PUBLIC, variable opcional). 1 crédito = 0,10 $ (verificado en factura real). El status de cada tarea trae credits_cost y cost en USD: la conciliación del apunte de gasto es directa."
+  }
+ ],
+ "modelos": [
+  {
+   "proveedor": "kie",
+   "modelo": "nano-banana-2-lite",
+   "nombre": "Nano Banana 2 Lite",
+   "capacidades": [
+    "image_edit",
+    "text_to_image"
+   ],
+   "estado": "validado",
+   "predeterminado": true,
+   "conVoz": false,
+   "unidad": "imagen",
+   "parametros": {
+    "duraciones": [],
+    "proporciones": [
+     "9:16"
+    ],
+    "resoluciones": [],
+    "formatosReferencia": [
+     "image/jpeg",
+     "image/png",
+     "image/webp"
+    ],
+    "maximoReferencias": 10
+   },
+   "precio": {
+    "creditos": 4,
+    "fuente": "Medido en el prototipo 0.3.0 con la cuenta de KIE del propietario",
+    "comprobado": "2026-09-27"
+   },
+   "evidencia": "4 créditos por imagen medidos en el prototipo 0.3.0 y confirmados en la comparativa del 2026-09-27 (plans/reports/comparativa-260927-modelos-kie.md). Fotograma real generado de extremo a extremo en la 0.10.1.",
+   "notas": "El más barato y el de encuadre más natural. Admite hasta 10 referencias JPEG, PNG o WebP y proporción 9:16."
+  },
+  {
+   "proveedor": "kie",
+   "modelo": "seedream/4.5-edit",
+   "nombre": "Seedream 4.5 Edit",
+   "capacidades": [
+    "image_edit"
+   ],
+   "estado": "compatible",
+   "predeterminado": false,
+   "conVoz": false,
+   "unidad": "imagen",
+   "parametros": {
+    "duraciones": [],
+    "proporciones": [
+     "9:16"
+    ],
+    "resoluciones": [],
+    "formatosReferencia": [
+     "image/jpeg",
+     "image/png",
+     "image/webp"
+    ],
+    "maximoReferencias": 10
+   },
+   "precio": {
+    "creditos": 6.5,
+    "fuente": "Comparativa real del 2026-09-27 (plans/reports/comparativa-260927-modelos-kie.md)",
+    "comprobado": "2026-09-27"
+   },
+   "evidencia": "",
+   "notas": "El más rápido (31-45 s) y el de más resolución (hasta 1520 × 2736). Se envía con quality \"basic\"."
+  },
+  {
+   "proveedor": "kie",
+   "modelo": "gpt-image-2-5-flare-image-to-image",
+   "nombre": "GPT Image 2.5 Flare (imagen a imagen)",
+   "capacidades": [
+    "image_edit"
+   ],
+   "estado": "compatible",
+   "predeterminado": false,
+   "conVoz": false,
+   "unidad": "imagen",
+   "parametros": {
+    "duraciones": [],
+    "proporciones": [
+     "9:16"
+    ],
+    "resoluciones": [
+     "1K",
+     "2K",
+     "4K"
+    ],
+    "formatosReferencia": [
+     "image/jpeg",
+     "image/png",
+     "image/webp"
+    ],
+    "maximoReferencias": 1
+   },
+   "precio": {
+    "creditos": 6,
+    "fuente": "Comparativa real del 2026-09-27 a resolución 1K (plans/reports/comparativa-260927-modelos-kie.md)",
+    "comprobado": "2026-09-27"
+   },
+   "evidencia": "",
+   "notas": "Usa input_urls, no image_urls. Encuadre muy cercano (selfie) y buena identidad, pero más lento y menos resolución que Seedream. El precio medido es el de 1K."
+  },
+  {
+   "proveedor": "kie",
+   "modelo": "veo3_fast",
+   "nombre": "Veo 3.1 Fast",
+   "capacidades": [
+    "image_to_video",
+    "text_to_video"
+   ],
+   "estado": "validado",
+   "predeterminado": true,
+   "conVoz": true,
+   "unidad": "vídeo de 4 u 8 s",
+   "parametros": {
+    "duraciones": [
+     8,
+     4
+    ],
+    "proporciones": [
+     "9:16"
+    ],
+    "resoluciones": [
+     "720p",
+     "1080p"
+    ],
+    "formatosReferencia": [
+     "image/jpeg",
+     "image/png",
+     "image/webp"
+    ],
+    "maximoReferencias": 2
+   },
+   "precio": {
+    "creditos": 60,
+    "fuente": "Medido el 2026-09-27 con la cuenta de KIE del propietario: clip de 8 s a 720p con FIRST_AND_LAST_FRAMES_2_VIDEO",
+    "comprobado": "2026-09-27"
+   },
+   "evidencia": "60 créditos por un clip de 8 s en 720 × 1280 con voz, generado en 96 s el 2026-09-27, que arranca exactamente en el fotograma que se le entrega. A 4 s cuesta lo mismo: los 60 créditos de Veo 3.1 Lite están medidos tanto a 4 s como a 8 s.",
+   "notas": "Modelo de animación predeterminado: mismo precio que Veo 3.1 Lite por el doble de clip y mejor calidad. Con una sola imagen se envía como FIRST_AND_LAST_FRAMES_2_VIDEO. Falla sin cobrar («unable to generate audio») si el prompt no dice qué se oye: con diálogo se le pide la frase y sin diálogo, solo sonido ambiente."
+  },
+  {
+   "proveedor": "kie",
+   "modelo": "veo3_lite",
+   "nombre": "Veo 3.1 Lite",
+   "capacidades": [
+    "image_to_video",
+    "text_to_video"
+   ],
+   "estado": "validado",
+   "predeterminado": false,
+   "conVoz": true,
+   "unidad": "vídeo de 4 u 8 s",
+   "parametros": {
+    "duraciones": [
+     8,
+     4
+    ],
+    "proporciones": [
+     "9:16"
+    ],
+    "resoluciones": [
+     "720p",
+     "1080p"
+    ],
+    "formatosReferencia": [
+     "image/jpeg",
+     "image/png",
+     "image/webp"
+    ],
+    "maximoReferencias": 2
+   },
+   "precio": {
+    "creditos": 60,
+    "fuente": "Medido con la cuenta de KIE del propietario: 60 créditos a 4 s en el prototipo 0.3.0 y los mismos 60 a 8 s el 2026-09-27",
+    "comprobado": "2026-09-27"
+   },
+   "evidencia": "60 créditos por clip medidos a 4 s (prototipo 0.3.0) y a 8 s (2026-09-27): la duración no cambia el precio, así que la tabla pública de KIE (30 créditos a 720p) no coincide con lo cobrado y manda lo medido. Clip real con voz y 720 × 1280 comprobado de extremo a extremo en la 0.10.1.",
+   "notas": "Alternativa a Veo 3.1 Fast al mismo precio: se deja validada pero no predeterminada. Con una sola imagen se envía como FIRST_AND_LAST_FRAMES_2_VIDEO. Los 6 s los documenta el proveedor y no están medidos: esta versión solo ofrece 4 y 8 s."
+  },
+  {
+   "proveedor": "kie",
+   "modelo": "hailuo/2-3-image-to-video-standard",
+   "nombre": "Hailuo 2.3 Standard",
+   "capacidades": [
+    "image_to_video"
+   ],
+   "estado": "compatible",
+   "predeterminado": false,
+   "conVoz": false,
+   "unidad": "vídeo de 6 s",
+   "parametros": {
+    "duraciones": [
+     6,
+     10
+    ],
+    "proporciones": [],
+    "resoluciones": [
+     "768P",
+     "1080P"
+    ],
+    "formatosReferencia": [
+     "image/jpeg",
+     "image/png",
+     "image/webp"
+    ],
+    "maximoReferencias": 1
+   },
+   "precio": {
+    "creditos": 30,
+    "fuente": "Comparativa real del 2026-09-27, clip de 6 s a 768P (plans/reports/comparativa-260927-modelos-kie.md)",
+    "comprobado": "2026-09-27"
+   },
+   "evidencia": "",
+   "notas": "El más barato por segundo (5,1 créditos/s), pero SIN VOZ: no sirve para que el personaje hable. Mínimo 6 s, toma la proporción de la imagen (no acepta aspect_ratio) y usa image_url, no image_urls."
+  },
+  {
+   "proveedor": "kie",
+   "modelo": "kling/v3-turbo-image-to-video",
+   "nombre": "Kling 3.0 Turbo",
+   "capacidades": [
+    "image_to_video"
+   ],
+   "estado": "compatible",
+   "predeterminado": false,
+   "conVoz": true,
+   "unidad": "vídeo de 4 s",
+   "parametros": {
+    "duraciones": [
+     4
+    ],
+    "proporciones": [],
+    "resoluciones": [
+     "720p"
+    ],
+    "formatosReferencia": [
+     "image/jpeg",
+     "image/png"
+    ],
+    "maximoReferencias": 1
+   },
+   "precio": {
+    "creditos": 72,
+    "fuente": "Comparativa real del 2026-09-27, clip de 4 s a 720p (plans/reports/comparativa-260927-modelos-kie.md)",
+    "comprobado": "2026-09-27"
+   },
+   "evidencia": "",
+   "notas": "Tiene voz, pero cuesta más que Veo 3.1 Lite (72 frente a 60 créditos por 4 s). Solo acepta JPEG o PNG: los fotogramas de la biblioteca son WebP y se convierten a PNG antes de subirlos. El proveedor documenta de 3 a 15 s; aquí solo están los 4 s comprobados."
+  },
+  {
+   "proveedor": "kie",
+   "modelo": "gpt-5-6-sol",
+   "nombre": "GPT 5.6 Sol (texto)",
+   "capacidades": [
+    "text_generation"
+   ],
+   "estado": "validado",
+   "predeterminado": true,
+   "conVoz": false,
+   "unidad": "respuesta de texto",
+   "parametros": {
+    "duraciones": [],
+    "proporciones": [],
+    "resoluciones": [],
+    "formatosReferencia": [],
+    "maximoReferencias": 0
+   },
+   "precio": {
+    "creditos": 1.5,
+    "fuente": "Medido el 2026-09-27 con la clave de KIE del propietario: de 0,05 a 0,93 créditos por llamada según el largo. Se registran 1,5 con margen prudente porque el coste depende de los tokens; el consumo real lo informa el proveedor en cada llamada.",
+    "comprobado": "2026-09-27"
+   },
+   "evidencia": "Ejecutado de verdad el 2026-09-27 con el adaptador de la app: traducir una frase costó 0,05 créditos en 3 s, un lote de dos o tres textos de la ficha entre 0,28 y 0,34, y el guion de cuatro escenas del asistente entre 0,5 y 0,93 créditos en 8 a 37 s. El JSON del guion y el de la traducción se leen bien, y un texto con intento de inyección devuelve cadena vacía, que la app descarta.",
+   "notas": "Modelo de texto del asistente de guion (0.17.0). Endpoint síncrono POST codex/v1/responses, distinto del jobs/createTask del resto, e informa credits_consumed en la propia respuesta. El asistente y la traducción siguen apagados de fábrica: quien administra los enciende en Admin › Ajustes. La latencia medida llega a 37 s, así que el adaptador espera hasta 90 s."
+  },
+  {
+   "proveedor": "kie",
+   "modelo": "elevenlabs/text-to-speech-multilingual-v2",
+   "nombre": "ElevenLabs Multilingual v2 (voz)",
+   "capacidades": [
+    "tts"
+   ],
+   "estado": "descubierto",
+   "predeterminado": true,
+   "conVoz": true,
+   "unidad": "pista de voz de una escena",
+   "parametros": {
+    "duraciones": [],
+    "proporciones": [],
+    "resoluciones": [],
+    "formatosReferencia": [],
+    "maximoReferencias": 0
+   },
+   "precio": null,
+   "evidencia": "",
+   "notas": "Modelo de voz del «market» de KIE (0.21.0), con la misma credencial de KIE del usuario. Parámetros comprobados en https://docs.kie.ai/market/elevenlabs/text-to-speech-multilingual-v2 el 2026-09-28, SIN llamar a la API: text (hasta 5.000 caracteres), voice, stability, similarity_boost, style, speed, language_code y timestamps, por el mismo jobs/createTask asíncrono que el vídeo. Queda «descubierto» y SIN PRECIO a propósito: KIE no publica la tarifa de este modelo en su documentación ni en su página del modelo, así que no hay ninguna cifra que registrar. Sin precio no se estima y no se gasta: la pantalla de voz lo dice y no ofrece generar. Para poder usarlo hay que medirlo una vez con dinero real y registrar el precio medido en Admin › Modelos."
+  },
+  {
+   "proveedor": "elevenlabs",
+   "modelo": "eleven_multilingual_v2",
+   "nombre": "ElevenLabs Multilingual v2",
+   "capacidades": [
+    "tts"
+   ],
+   "estado": "validado",
+   "predeterminado": false,
+   "conVoz": true,
+   "unidad": "pista de voz de una escena",
+   "parametros": {
+    "duraciones": [],
+    "proporciones": [],
+    "resoluciones": [],
+    "formatosReferencia": [],
+    "maximoReferencias": 0
+   },
+   "precio": {
+    "creditos": 22,
+    "fuente": "Medido contra la API real el 2026-09-28 con la clave del propietario: POST /v1/text-to-speech/{voice_id}/with-timestamps, 79 caracteres de diálogo, cabecera de respuesta character-cost = 22. Son créditos del plan de ElevenLabs por llamada, no dólares: su tarifa en USD depende del plan contratado, así que no se convierte.",
+    "comprobado": "2026-09-28"
+   },
+   "evidencia": "Ejecutado de verdad el 2026-09-28 con el adaptador de la app y la clave del propietario: 200 en 2,5 s, audio MP3 en audio_base64, marcas por carácter en alignment y normalized_alignment, quality_check correcto y character-cost = 22 para 79 caracteres. GET /v1/voices lista las voces prediseñadas; GET /v1/user/subscription devuelve missing_permissions con claves restringidas, así que la prueba de credencial usa /v1/voices.",
+   "notas": "Proveedor de voz de reserva (0.21.0, ADR-0025), con credencial propia del usuario. Es SÍNCRONO: devuelve el audio en la misma respuesta, así que no pasa por jobs/createTask ni por ninguna consulta de estado. El precio son créditos del plan de ElevenLabs por llamada y crece con la longitud del texto: 22 por 79 caracteres es lo medido con un diálogo de escena corriente, y por eso se registra por llamada, que es la unidad que se pide y se confirma. Un diálogo mucho más largo costará más de lo estimado; el cierre apunta SIEMPRE lo que informa character-cost, no la estimación."
+  },
+  {
+   "proveedor": "compatible",
+   "modelo": "kokoro",
+   "nombre": "Kokoro v1.0 (voz)",
+   "capacidades": [
+    "tts"
+   ],
+   "estado": "validado",
+   "predeterminado": false,
+   "conVoz": true,
+   "unidad": "pista de voz de una escena",
+   "parametros": {
+    "duraciones": [],
+    "proporciones": [],
+    "resoluciones": [],
+    "formatosReferencia": [],
+    "maximoReferencias": 0
+   },
+   "precio": {
+    "creditos": 0,
+    "fuente": "No cobra por petición: los servicios compatibles con la API de OpenAI se pagan con la cuota del plan que tenga contratado el usuario. 0 créditos no es una estimación, es el precio: lo que consume es cuota, no créditos de Escenara.",
+    "comprobado": "2026-09-28"
+   },
+   "evidencia": "Llamada real del 2026-09-28 a https://api.nan.builders/v1/audio/speech con la clave del propietario: voces ef_dora y em_alex, 200 en 0,9 s, MP3 de 5 s por 79 caracteres en español; transcrito con whisper, la frase sale exacta. Sin coste por petición (cuota del plan).",
+   "notas": "TTS de 82M parámetros con 67 paquetes de voz, comprobado en https://nan.builders/docs/models el 2026-09-28: latencia por debajo de un segundo y límite de 15 peticiones por minuto. SUS VOCES TIENEN OTROS IDENTIFICADORES (ef_dora, em_alex, af_heart...), así que pertenece a otra «familia de voces» que ElevenLabs: una voz fijada con ElevenLabs no se puede leer aquí y el mapa de modelos lo dice en lugar de cambiar el timbre. No da marcas por carácter, así que los subtítulos salen del diálogo o de transcribir. Validado con una llamada real el 2026-09-28."
+  },
+  {
+   "proveedor": "kie",
+   "modelo": "gemini-omni-video",
+   "nombre": "Gemini Omni (vídeo)",
+   "capacidades": [
+    "image_to_video",
+    "text_to_video"
+   ],
+   "estado": "validado",
+   "predeterminado": false,
+   "conVoz": true,
+   "unidad": "clip de 4 s a 720p",
+   "parametros": {
+    "duraciones": [
+     4,
+     6,
+     8,
+     10
+    ],
+    "proporciones": [
+     "9:16",
+     "16:9"
+    ],
+    "resoluciones": [
+     "720p"
+    ],
+    "formatosReferencia": [
+     "image/jpeg",
+     "image/png",
+     "image/webp"
+    ],
+    "maximoReferencias": 7
+   },
+   "precio": {
+    "creditos": 63,
+    "fuente": "Medido con dinero real el 2026-09-28 con la clave del propietario: clip de 4 s en 9:16 a 720p, 63 créditos y 59 s de espera, salida de 720x1280 con audio. El catálogo se limita a 4 s y 720p a propósito: es lo único medido, y escalar el precio a otras duraciones o resoluciones sería inventarse una tarifa.",
+    "comprobado": "2026-09-28"
+   },
+   "evidencia": "Ejecutado de verdad el 2026-09-28 contra la API de KIE: 4 s, 9:16, 720p, 63 créditos, 59 s, 720x1280 con audio. Dijo el diálogo en español con exactitud.",
+   "notas": "DICE EL DIÁLOGO EN ESPAÑOL CON EXACTITUD (medido el 2026-09-28), así que sirve para escenas con personaje hablando: el diálogo va en el prompt y NO se traduce. Acepta hasta 7 referencias por image_urls, y la primera hace de fotograma inicial. Su API tiene además character_ids y audio_ids (identidades y voces guardadas en el proveedor) que esta versión NO expone: son una decisión de producto con consentimiento de por medio."
+  },
+  {
+   "proveedor": "kie",
+   "modelo": "minimax-h3/reference-to-video",
+   "nombre": "MiniMax H3 (referencia a vídeo)",
+   "capacidades": [
+    "image_to_video"
+   ],
+   "estado": "validado",
+   "predeterminado": false,
+   "conVoz": true,
+   "unidad": "clip de 5 s a 768P",
+   "parametros": {
+    "duraciones": [
+     5
+    ],
+    "proporciones": [
+     "9:16"
+    ],
+    "resoluciones": [
+     "768P",
+     "2K"
+    ],
+    "formatosReferencia": [
+     "image/jpeg",
+     "image/png",
+     "image/webp"
+    ],
+    "maximoReferencias": 9
+   },
+   "precio": {
+    "creditos": 40,
+    "fuente": "Medido con dinero real el 2026-09-28 con la clave del propietario: clip de 5 s en 9:16 a 768P, 40 créditos y 143 s de espera, salida de 768x1344 con audio. Las demás duraciones se estiman en proporción y se marcan como estimadas hasta medirlas.",
+    "comprobado": "2026-09-28"
+   },
+   "evidencia": "Ejecutado de verdad el 2026-09-28 contra la API de KIE: 5 s, 9:16, 768P, 40 créditos, 143 s, 768x1344 con audio. La cara salió fiel al retrato de referencia y el diálogo en español con exactitud.",
+   "notas": "SEGUNDO MOTOR DE ESCENAS HABLADAS (0.22.0), más barato que Gemini Omni Flash y bastante más lento. No registra identidades en el proveedor: la cara sale de reference_image_urls (hasta 9: el retrato y las vistas del personaje) y la voz de reference_audio_urls (hasta 3: la muestra de la voz del proyecto), así que el timbre es el del mapa de voz del usuario. duration es un entero de 4 a 15 y resolution es 768P o 2K; el catálogo se limita a lo medido."
+  },
+  {
+   "proveedor": "kie",
+   "modelo": "google/gemini-omni-flash-1-1",
+   "nombre": "Gemini Omni 1.1 Flash (vídeo)",
+   "capacidades": [
+    "image_to_video",
+    "text_to_video"
+   ],
+   "estado": "validado",
+   "predeterminado": false,
+   "conVoz": true,
+   "unidad": "clip de 4 s a 720p",
+   "parametros": {
+    "duraciones": [
+     4,
+     6,
+     8,
+     10
+    ],
+    "proporciones": [
+     "9:16",
+     "16:9"
+    ],
+    "resoluciones": [
+     "720p"
+    ],
+    "formatosReferencia": [
+     "image/jpeg",
+     "image/png",
+     "image/webp"
+    ],
+    "maximoReferencias": 7
+   },
+   "precio": {
+    "creditos": 63,
+    "fuente": "Medido con dinero real el 2026-09-28 con la clave del propietario: clip de 4 s en 9:16 a 720p, 63 créditos y 38 s de espera, salida de 720x1280 con audio. A 360p costó lo mismo (63), así que no se ofrece. El catálogo se limita a 4 s y 720p: es lo único medido.",
+    "comprobado": "2026-09-28"
+   },
+   "evidencia": "Ejecutado de verdad el 2026-09-28 contra la API de KIE: 4 s, 9:16, 720p, 63 créditos, 38 s, 720x1280 con audio; y a 360p, 63 créditos, 34 s. Dijo el diálogo en español con exactitud en los dos.",
+   "notas": "Mismo precio que Gemini Omni y un 35 % más rápido (38 s frente a 59 s, medido el 2026-09-28). DICE EL DIÁLOGO EN ESPAÑOL CON EXACTITUD: el diálogo va en el prompt y NO se traduce. Acepta hasta 7 referencias por image_urls. Su API tiene además first_frame_url y last_frame_url (excluyentes con image_urls, audio_ids y character_ids), character_ids, audio_ids y video_list para editar o alargar un vídeo: esta versión no los expone."
+  },
+  {
+   "proveedor": "kie",
+   "modelo": "grok-imagine/text-to-video",
+   "nombre": "Grok Imagine (texto a vídeo)",
+   "capacidades": [
+    "text_to_video"
+   ],
+   "estado": "validado",
+   "predeterminado": false,
+   "conVoz": false,
+   "unidad": "clip de 6 s a 480p",
+   "parametros": {
+    "duraciones": [
+     6
+    ],
+    "proporciones": [
+     "9:16",
+     "16:9"
+    ],
+    "resoluciones": [
+     "480p"
+    ],
+    "formatosReferencia": [],
+    "maximoReferencias": 0
+   },
+   "precio": {
+    "creditos": 14.4,
+    "fuente": "Medido con dinero real el 2026-09-28 con la clave del propietario: clip de 6 s en 9:16 a 480p, 14,4 créditos y 38 s de espera, salida de 416x752 con audio. Solo se registra lo medido: otras duraciones y resoluciones existen en el proveedor pero no tienen precio comprobado.",
+    "comprobado": "2026-09-28"
+   },
+   "evidencia": "Ejecutado de verdad el 2026-09-28 contra la API de KIE: 6 s, 9:16, 480p, 14,4 créditos, 38 s, 416x752 con audio.",
+   "notas": "SU PROMPT VA SOLO EN INGLÉS, así que depende de la traducción del servidor. NO ESTÁ PENSADO PARA ESCENAS CON UN PERSONAJE REAL HABLANDO: es para animación, dibujo y anuncios sin diálogo, y no se recomienda para la producción de un proyecto con protagonista. El proveedor admite un modo «spicy» que esta instalación NO ofrece: mode va fijo en «normal»."
+  },
+  {
+   "proveedor": "kie",
+   "modelo": "grok-imagine/image-to-video",
+   "nombre": "Grok Imagine (imagen a vídeo)",
+   "capacidades": [
+    "image_to_video"
+   ],
+   "estado": "descubierto",
+   "predeterminado": false,
+   "conVoz": false,
+   "unidad": "clip de 6 s a 480p",
+   "parametros": {
+    "duraciones": [
+     6
+    ],
+    "proporciones": [
+     "9:16",
+     "16:9"
+    ],
+    "resoluciones": [
+     "480p"
+    ],
+    "formatosReferencia": [
+     "image/jpeg",
+     "image/png",
+     "image/webp"
+    ],
+    "maximoReferencias": 7
+   },
+   "precio": null,
+   "evidencia": "",
+   "notas": "La misma familia que grok-imagine/text-to-video, con hasta 7 referencias por image_urls. Queda «descubierto» y SIN PRECIO: lo medido el 2026-09-28 fue la variante de texto a vídeo, y el precio de esta no se ha comprobado. Sin precio no se estima y no se gasta. Mismas advertencias: prompt solo en inglés, sin diálogo y no recomendado para un personaje real hablando."
+  },
+  {
+   "proveedor": "apimart",
+   "modelo": "gemini-omni-1.1-flash-ext",
+   "nombre": "Gemini Omni 1.1 Flash (APIMart)",
+   "capacidades": [
+    "image_to_video",
+    "text_to_video"
+   ],
+   "estado": "validado",
+   "predeterminado": false,
+   "conVoz": true,
+   "unidad": "clip hablado de 6 s a 720p",
+   "parametros": {
+    "duraciones": [
+     6
+    ],
+    "proporciones": [
+     "9:16"
+    ],
+    "resoluciones": [
+     "720p"
+    ],
+    "formatosReferencia": [
+     "image/jpeg",
+     "image/png",
+     "image/webp"
+    ],
+    "maximoReferencias": 7
+   },
+   "precio": {
+    "creditos": 3,
+    "fuente": "Medido con dinero real el 2026-10-04 (spike apimart): escena hablada de 6 s en 9:16 a 720p, 3 créditos (0,30 $). Solo se ofrece 6 s: es lo único medido.",
+    "comprobado": "2026-10-04"
+   },
+   "evidencia": "Ejecutado de verdad el 2026-10-04 contra la API de APIMart: 6 s, 720x1280 con audio (−17,7 dB), dijo el diálogo exacto en español (revisado por el propietario). 3 créditos = 0,30 $; el status devolvió credits_cost y cost y la conciliación cuadró con la caída exacta de saldo. Más barato por segundo que el omni-flash-1-1 de KIE (0,05 $/s frente a 0,079 $/s).",
+   "notas": "El diálogo va en el prompt, sin traducir (misma técnica medida del omni de KIE). Su duration solo admite 4/6/8/10 (5 no existe: 400 verificado). Acepta hasta 7 referencias por image_urls."
+  },
+  {
+   "proveedor": "apimart",
+   "modelo": "veo3.1-lite-ext",
+   "nombre": "Veo 3.1 Lite (APIMart)",
+   "capacidades": [
+    "image_to_video",
+    "text_to_video"
+   ],
+   "estado": "validado",
+   "predeterminado": false,
+   "conVoz": true,
+   "unidad": "clip de 8 s a 720p",
+   "parametros": {
+    "duraciones": [
+     8
+    ],
+    "proporciones": [
+     "9:16"
+    ],
+    "resoluciones": [
+     "720p"
+    ],
+    "formatosReferencia": [
+     "image/jpeg",
+     "image/png",
+     "image/webp"
+    ],
+    "maximoReferencias": 1
+   },
+   "precio": {
+    "creditos": 0.7,
+    "fuente": "Medido con dinero real el 2026-10-04 (spike apimart): clip de 8 s en 9:16 a 720p con audio, 0,7 créditos (0,07 $). Solo existe a 8 s en este proveedor.",
+    "comprobado": "2026-10-04"
+   },
+   "evidencia": "Ejecutado de verdad el 2026-10-04 contra la API de APIMart: 8 s, 720x1280 con audio (−26,9 dB), 66 s de generación, 0,7 créditos = 0,07 $. Ocho veces y media más barato por segundo que el veo3_lite de KIE (0,009 $/s frente a 0,075 $/s) con el doble de duración. Revisado por el propietario.",
+   "notas": "En APIMart solo existe a 8 s (en KIE se ofrecían 4 y 8). Las URLs de resultado caducan a las 24 h: la app las descarga en cuanto aparecen."
+  },
+  {
+   "proveedor": "apimart",
+   "modelo": "MiniMax-Hailuo-2.3-Fast",
+   "nombre": "Hailuo 2.3 Fast (APIMart)",
+   "capacidades": [
+    "image_to_video"
+   ],
+   "estado": "validado",
+   "predeterminado": false,
+   "conVoz": false,
+   "unidad": "vídeo de 6 s a 768p",
+   "parametros": {
+    "duraciones": [
+     6
+    ],
+    "proporciones": [],
+    "resoluciones": [
+     "768p"
+    ],
+    "formatosReferencia": [
+     "image/jpeg",
+     "image/png",
+     "image/webp"
+    ],
+    "maximoReferencias": 1
+   },
+   "precio": {
+    "creditos": 1.488,
+    "fuente": "Medido con dinero real el 2026-10-04 (spike apimart): b-roll de 6 s a 768p, 1,488 créditos (0,15 $).",
+    "comprobado": "2026-10-04"
+   },
+   "evidencia": "Ejecutado de verdad el 2026-10-04 contra la API de APIMart: 5,875 s, 768x1376, sin audio (igual que el hailuo de KIE), 1,488 créditos = 0,15 $. Paridad por segundo con el hailuo 2.3 standard de KIE (0,0248 $/s frente a 0,025 $/s), en su variante fast.",
+   "notas": "SIN VOZ: no sirve para que el personaje hable. Toma la proporción de la imagen de entrada (no acepta aspect_ratio): se manda una imagen en 9:16. Es la variante «fast» de Hailuo 2.3."
+  },
+  {
+   "proveedor": "apimart",
+   "modelo": "gpt-image-2.5-flare",
+   "nombre": "GPT Image 2.5 Flare (APIMart)",
+   "capacidades": [
+    "image_edit"
+   ],
+   "estado": "validado",
+   "predeterminado": false,
+   "conVoz": false,
+   "unidad": "imagen",
+   "parametros": {
+    "duraciones": [],
+    "proporciones": [
+     "9:16"
+    ],
+    "resoluciones": [
+     "1K"
+    ],
+    "formatosReferencia": [
+     "image/jpeg",
+     "image/png",
+     "image/webp"
+    ],
+    "maximoReferencias": 1
+   },
+   "precio": {
+    "creditos": 0.1253,
+    "fuente": "Medido con dinero real el 2026-10-04 (spike apimart): fotograma 9:16 a 1K con una referencia, 0,1253 créditos (0,0125 $).",
+    "comprobado": "2026-10-04"
+   },
+   "evidencia": "Ejecutado de verdad el 2026-10-04 contra la API de APIMart: imagen de 864x1536 a partir de una referencia, 0,1253 créditos = 0,0125 $. Dos veces y media más barato que el gpt-image-2-5-flare de KIE (0,03 $).",
+   "notas": "El fotograma más barato medido en el spike. Se ofrece lo único medido: 9:16 a 1K con una referencia (n=1 por petición). Sin text_to_image: solo se midió la edición desde referencia."
+  }
+ ]
 }

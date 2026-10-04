@@ -930,5 +930,7 @@ async function subirReferencia(
       `El retrato convertido para ${modelo.nombre} ocupa ${(archivo.size / 1024 / 1024).toFixed(1)} MB y el proveedor solo admite 10 MB. No se ha enviado nada ni se te ha cobrado: usa un retrato más pequeño.`,
     );
   }
-  return adaptador.subirReferencia({ clave, archivo, buscar: h.buscar });
+  // La clave de almacenamiento va siempre (ADR-0044): la usa APIMart para firmar su URL pública y la ignoran
+  // los demás adaptadores, que suben el archivo como siempre.
+  return adaptador.subirReferencia({ clave, archivo, buscar: h.buscar, claveAlmacenamiento: origen.storageKey });
 }

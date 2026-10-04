@@ -104,10 +104,47 @@ async function probarGoogle(secreto: string, buscar: Buscador): Promise<Resultad
   return Array.isArray(cuerpo.models) ? { ok: true, codigo: "ok" } : { ok: false, codigo: "respuesta-inesperada" };
 }
 
+/**
+ * APIMart: saldo disponible de la cuenta (`GET /v1/user/balance`, `Authorization: Bearer`). No cuesta nada
+ * y devuelve `{ success, data: { remain_balance, … } }`. Se usa `/user/balance` (saldo de la cuenta) y no
+ * `/v1/balance` (consumo de la clave): es el dato que interesa a quien va a pagar.
+ */
+async function probarApimart(secreto: string, buscar: Buscador): Promise<ResultadoPrueba> {
+  let respuesta: Response;
+  try {
+    respuesta = await buscar("https://api.apimart.ai/v1/user/balance", {
+      headers: { Authorization: `Bearer ${secreto}`, Accept: "application/json" },
+      signal: AbortSignal.timeout(MS_MAXIMO),
+    });
+  } catch (error) {
+    return { ok: false, codigo: codigoDeFallo(error) };
+  }
+  const porEstado = codigoDeEstado(respuesta.status);
+  if (porEstado) return { ok: false, codigo: porEstado };
+  let cuerpo: { success?: unknown; code?: unknown; remain_balance?: unknown };
+  try {
+    cuerpo = (await respuesta.json()) as { success?: unknown; code?: unknown; remain_balance?: unknown };
+  } catch {
+    return { ok: false, codigo: "respuesta-inesperada" };
+  }
+  // El balance viene en el propio cuerpo, sin sobre `data` (API real, 2026-10-04): `{ success, remain_balance, … }`.
+  if (cuerpo.success === false) {
+    return {
+      ok: false,
+      codigo: codigoDeEstado(typeof cuerpo.code === "number" ? cuerpo.code : 502) ?? "error-proveedor",
+    };
+  }
+  if (typeof cuerpo.remain_balance !== "number") {
+    return { ok: false, codigo: "respuesta-inesperada" };
+  }
+  return { ok: true, codigo: "ok", detalle: `${cuerpo.remain_balance.toFixed(2)} $ disponibles` };
+}
+
 const PRUEBAS: Record<ProveedorBoveda, (secreto: string, buscar: Buscador) => Promise<ResultadoPrueba>> = {
   kie: probarKie,
   google: probarGoogle,
   elevenlabs: probarElevenLabs,
+  apimart: probarApimart,
 };
 
 /**

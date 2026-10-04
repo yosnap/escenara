@@ -185,6 +185,11 @@ describe.skipIf(!hayBaseDeDatos)("catálogo de modelos", () => {
           "gemini-omni-video",
           "google/gemini-omni-flash-1-1",
           "gpt-image-2-5-flare-image-to-image",
+          // Cuatro modelos APIMart medidos con dinero real (0.52.0, ADR-0044): ninguno es predeterminado.
+          "gemini-omni-1.1-flash-ext",
+          "MiniMax-Hailuo-2.3-Fast",
+          "gpt-image-2.5-flare",
+          "veo3.1-lite-ext",
           "grok-imagine/image-to-video",
           "grok-imagine/text-to-video",
           HAILUO,
@@ -223,16 +228,22 @@ describe.skipIf(!hayBaseDeDatos)("catálogo de modelos", () => {
 
     test("el catálogo se puede filtrar por capacidad", async () => {
       const deVideo = await listarModelos({ capacidad: "image_to_video" });
-      expect(deVideo.map((m) => m.modelo).sort()).toEqual([
-        "gemini-omni-video",
-        "google/gemini-omni-flash-1-1",
-        "grok-imagine/image-to-video",
-        HAILUO,
-        "kling/v3-turbo-image-to-video",
-        "minimax-h3/reference-to-video",
-        "veo3_fast",
-        "veo3_lite",
-      ]);
+      expect(deVideo.map((m) => m.modelo).sort()).toEqual(
+        [
+          "gemini-omni-video",
+          "google/gemini-omni-flash-1-1",
+          // APIMart (0.52.0): sus tres motores de vídeo, validados pero no predeterminados.
+          "gemini-omni-1.1-flash-ext",
+          "MiniMax-Hailuo-2.3-Fast",
+          "veo3.1-lite-ext",
+          "grok-imagine/image-to-video",
+          HAILUO,
+          "kling/v3-turbo-image-to-video",
+          "minimax-h3/reference-to-video",
+          "veo3_fast",
+          "veo3_lite",
+        ].sort(),
+      );
       // Los tres modelos de voz están sembrados y **dos son elegibles**: el de ElevenLabs y kokoro (validado con una
       // llamada real y con su precio de 0 por cuota). El de KIE sigue «descubierto» y sin precio.
       expect((await listarModelos({ capacidad: "tts" })).map((m) => m.modelo).sort()).toEqual(
@@ -256,6 +267,9 @@ describe.skipIf(!hayBaseDeDatos)("catálogo de modelos", () => {
         // El de voz tampoco: no recibe referencias y su entrada necesita la voz fijada del proyecto, que se
         // comprueba en la suite de voz con su propio contexto.
         if (modelo.capacidades.includes("tts")) continue;
+        // APIMart (0.52.0) tiene su propio montador de entradas, con sus campos y rarezas distintas, probado en su
+        // propia suite (`apimart/entradas.test.ts`): aquí solo se comprueba el montador de KIE.
+        if (sembrado.proveedor !== "kie") continue;
         const entrada = adaptadorKie.montarEntrada(modelo, contexto);
         // Toda entrada lleva prompt y recibe la referencia por el campo que espera ese modelo. Un modelo que no
         // acepta ninguna (texto a vídeo puro) no la recibe: pedírsela sería enviarle un campo que rechaza.
