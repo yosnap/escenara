@@ -13,7 +13,7 @@
   <img alt="Estado: versión base" src="https://img.shields.io/badge/estado-versión%20base-485269">
 </p>
 
-<p align="center"><a href="https://escenara.com">Plataforma en línea: <strong>escenara.com</strong></a></p>
+<p align="center"><a href="https://escenara.com">Plataforma en línea: <strong>escenara.com</strong></a> · <a href="https://github.com/yosnap/escenara/releases">Versiones (releases)</a></p>
 
 ---
 
