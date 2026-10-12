@@ -4,7 +4,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ## [0.52.4] · 2026-10-12
 
-Las pruebas se ejecutan con aislamiento por fichero para evitar que las cachés, ajustes y módulos de una suite alteren las siguientes. Se normaliza también el formato del catálogo y de una instantánea de Drizzle, sin cambiar sus datos.
+Las pruebas se ejecutan con origen local y aislamiento por fichero para evitar que la URL de producción, las cachés, ajustes y módulos de una suite alteren las siguientes. Se normaliza también el formato del catálogo y de una instantánea de Drizzle, sin cambiar sus datos.
 
 La migración histórica de evaluaciones compara el sujeto como texto para poder instalar todas las migraciones en una sola transacción, sin usar un valor de enum recién añadido antes de confirmarlo.
 
