@@ -2,6 +2,19 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.52.2] · 2026-10-12
+
+### Corregido
+
+- La construcción de producción reduce su pico de memoria: Next usa un trabajador y las optimizaciones
+  de memoria de Webpack; Docker termina de instalar FFmpeg antes de compilar la aplicación.
+- Incluye la corrección del origen público de 0.52.1, cuyos primeros despliegues quedaron interrumpidos.
+
+### Actualización
+
+- Sin migraciones nuevas. Desplegar los servicios secuencialmente y evitar compilaciones simultáneas
+  de otras aplicaciones en el mismo servidor.
+
 ## [0.52.1] · 2026-10-12
 
 ### Corregido
