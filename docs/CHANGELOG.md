@@ -2,6 +2,18 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.52.3] · 2026-10-12
+
+### Corregido
+
+- «Generar todas las vistas que faltan» ya no devuelve «Falta la clave de la confirmación»:
+  cada vista recibe un UUID derivado y estable de la confirmación, válido para la generación.
+  Los reintentos conservan la protección contra trabajos duplicados.
+
+### Actualización
+
+- Sin migraciones nuevas ni cambios de configuración.
+
 ## [0.52.2] · 2026-10-12
 
 ### Corregido

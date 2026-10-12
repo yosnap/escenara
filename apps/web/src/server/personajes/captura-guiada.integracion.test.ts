@@ -48,7 +48,8 @@ const { characterReferences, characterVersions, generationJobs, users } = await 
 const { guardarCredencial } = await import("../boveda/credenciales");
 const { crearMedio, enviarAPapelera } = await import("../media/servicio");
 const { pasadaDeCola } = await import("../cola/pasada");
-const { pedirVistaSintetica } = await import("./vista-sintetica");
+const { pedirVistaSintetica, pedirVistasQueFaltan } = await import("./vista-sintetica");
+const { claveDerivada, exigirClaveIdempotencia } = await import("../generacion/comprobaciones");
 const { quitarReferencias } = await import("./servicio");
 const { coberturaDe } = await import("./consulta");
 const { analizarImagen } = await import("./calidad");
@@ -549,6 +550,49 @@ describe.skipIf(!hayBaseDeDatos)("captura guiada de referencias", () => {
     expect(reinsertada?.origin).toBe("vista_generada");
     // Y conserva la vista que pidió el trabajo, no la que declaró el navegador.
     expect(reinsertada?.viewKey).toBe("perfil_derecho");
+  });
+
+  test("el encargo conjunto deriva un UUID estable por vista y no duplica trabajos al reintentar", async () => {
+    const personaje = await nuevoPersonaje("Vistas en conjunto");
+    const fotos = await Promise.all([
+      subir(await foto(70), "a.png"),
+      subir(await foto(71), "b.png"),
+      subir(await foto(72), "c.png"),
+    ]);
+    await anadir(
+      personaje.id,
+      fotos.map((f, i) => ({ medioId: f.id, vistaClave: ["frontal", "perfil_izquierdo", "cuerpo_completo"][i] })),
+    );
+    const confirmacion = {
+      creditosConfirmados: 4,
+      derechos: true,
+      sinTerceros: true,
+      claveIdempotencia: crypto.randomUUID(),
+    };
+    const resultado = await pedirVistasQueFaltan(actorAna, personaje.id, confirmacion, h);
+    expect(resultado.encoladas).toEqual(["perfil_derecho", "tres_cuartos"]);
+    expect(resultado.sinEncolar).toEqual([]);
+    const trabajos = await db().select().from(generationJobs).where(eq(generationJobs.characterId, personaje.id));
+    expect(trabajos).toHaveLength(2);
+    for (const vista of resultado.encoladas) {
+      const clave = claveDerivada(confirmacion.claveIdempotencia, vista);
+      expect(exigirClaveIdempotencia(clave)).toBe(clave);
+      expect(trabajos.some((t) => t.idempotencyKey === clave)).toBe(true);
+      const repetida = await pedirVistaSintetica(
+        actorAna,
+        personaje.id,
+        { ...confirmacion, vista, claveIdempotencia: clave },
+        h,
+      );
+      expect(repetida.nueva).toBe(false);
+    }
+    await expect(pedirVistasQueFaltan(actorAna, personaje.id, confirmacion, h)).rejects.toThrow(
+      "ya se están generando",
+    );
+    expect(await db().select().from(generationJobs).where(eq(generationJobs.characterId, personaje.id))).toHaveLength(
+      2,
+    );
+    await pasadaDeCola(h);
   });
 
   test("repetir la misma confirmación no encola un segundo trabajo ni cobra dos veces", async () => {
