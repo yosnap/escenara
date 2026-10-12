@@ -34,6 +34,9 @@ Las claves se guardan únicamente en el entorno privado del panel.
    Conserva íntegro el origen; no traslades objetos de pruebas sin referencias a producción.
 3. Verifica todos los objetos mediante SHA-256, los recuentos de filas y el UUID de la cuenta de demos.
 4. Ajusta `settings.urlPublica` y `BETTER_AUTH_URL` al dominio HTTPS.
+   `BETTER_AUTH_URL` también fija el origen permitido de las escrituras de la API: en esta instalación,
+   `https://escenara.com`. Se lee en ejecución para que la dirección interna de Next (`0.0.0.0:3021`)
+   no provoque un 403 detrás del proxy; las cabeceras `Host` y `X-Forwarded-Host` no autorizan otros dominios.
 5. Comprueba que la bóveda descifra los secretos sin imprimirlos ni llamar a proveedores de pago.
 6. Valida `/api/health`, portada, inicio de sesión, biblioteca, worker y archivo persistente.
 7. Cierra el puerto externo de PostgreSQL. Conserva el origen y las copias hasta verificar la migración.

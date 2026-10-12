@@ -1,4 +1,5 @@
 import { ErrorProyecto } from "../asistente/errores";
+import { errorDeOrigen } from "../auth/origen";
 import { esAdmin, respuestaSinSesion, sesionDePeticion } from "../auth/sesion";
 import { dentroDelLimite, type Limite } from "../limite";
 import { ErrorLugar } from "../lugares/errores";
@@ -73,16 +74,8 @@ export async function leerCuerpo(peticion: Request): Promise<Record<string, unkn
  * Un `Origin` de otro sitio (o ausente en un POST) se rechaza.
  */
 export function exigirMismoOrigen(peticion: Request): void {
-  const origen = peticion.headers.get("origin");
-  if (!origen) throw new ErrorGeneracion(403, "Petición sin origen: vuelve a cargar la página.");
-  let host: string;
-  try {
-    host = new URL(origen).host;
-  } catch {
-    throw new ErrorGeneracion(403, "Origen no válido.");
-  }
-  // `host` de la petición: lo fija el servidor a partir de la URL que se pidió.
-  if (host !== new URL(peticion.url).host) throw new ErrorGeneracion(403, "Esta petición no viene de Escenara.");
+  const error = errorDeOrigen(peticion);
+  if (error) throw new ErrorGeneracion(403, error);
 }
 
 /** Ritmo de las consultas que hace el navegador: el sondeo normal cabe de sobra. */

@@ -1,4 +1,5 @@
 import { ErrorProyecto } from "../asistente/errores";
+import { errorDeOrigen } from "../auth/origen";
 import { esAdmin, respuestaSinSesion, sesionDePeticion } from "../auth/sesion";
 import { ErrorGeneracion } from "../generacion/errores";
 import { dentroDelLimite, type Limite } from "../limite";
@@ -39,15 +40,8 @@ const SOLO_LECTURA = new Set(["GET", "HEAD"]);
 
 function exigirMismoOrigen(peticion: Request): void {
   if (SOLO_LECTURA.has(peticion.method)) return;
-  const origen = peticion.headers.get("origin");
-  if (!origen) throw new ErrorCanto(403, "Petición sin origen: vuelve a cargar la página.");
-  let host: string;
-  try {
-    host = new URL(origen).host;
-  } catch {
-    throw new ErrorCanto(403, "Origen no válido.");
-  }
-  if (host !== new URL(peticion.url).host) throw new ErrorCanto(403, "Esta petición no viene de Escenara.");
+  const error = errorDeOrigen(peticion);
+  if (error) throw new ErrorCanto(403, error);
 }
 
 export function manejador<C>(fn: (peticion: Request, contexto: C, actor: Actor) => Promise<Response>) {
