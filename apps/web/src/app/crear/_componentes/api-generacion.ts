@@ -1,6 +1,7 @@
 import type { EvaluacionVista } from "@/lib/controles";
 import type { DireccionElegidaConAcento, OpcionesDeDireccion } from "@/lib/direccion";
 import type { Deposito, EstadoCola, Estimacion, TipoTrabajo, TrabajoVista } from "@/lib/generacion";
+import type { ContextoAplicado } from "@/lib/personajes";
 import type { ProductoElegido } from "@/lib/productos";
 
 /** Cliente de la API de generación para el navegador. */
@@ -62,6 +63,7 @@ interface Confirmacion {
 }
 
 export interface ConfirmacionFotograma extends Confirmacion {
+  referenciasTemporales?: import("@/lib/referencias-temporales").ReferenciaTemporal[];
   tipo: "fotograma";
   /**
    * Producto elegido (0.26.0). En el fotograma cuenta porque un producto **digital** empieza aquí: este
@@ -218,3 +220,9 @@ export interface ExtraccionVista {
  */
 export const extraerCamposDeFoto = (medioId: string, confirmoEnvio: boolean) =>
   pedir<ExtraccionVista>("/api/direccion/extraer", json({ medioId, confirmoEnvio }));
+
+export const comprobarReferenciasTemporales = (datos: Record<string, unknown>) =>
+  pedir<{ total: number; maximo: number; contexto?: ContextoAplicado }>(
+    "/api/generacion/referencias-temporales",
+    json(datos),
+  );

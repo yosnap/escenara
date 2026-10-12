@@ -4,6 +4,7 @@ import { esVista } from "@/lib/captura-personaje";
 import { CAPACIDAD_DE_TIPO } from "@/lib/catalogo";
 import { componerContexto, componerPrompt, mejoresReferencias, type ReferenciaElegible } from "@/lib/ficha-personaje";
 import type { ContextoAplicado } from "@/lib/personajes";
+import { identidadOriginalParaLugar } from "@/lib/referencias-temporales";
 import { db } from "../db/cliente";
 import {
   characterReferences,
@@ -96,8 +97,18 @@ function referenciasConMaestro(
   version: FilaVersionPersonaje | null,
   elegibles: ReferenciaElegible[],
   maximo: number,
+  soloOriginales = false,
 ): string[] {
-  const deVersion = version ? deLaVersion(version, elegibles) : elegibles;
+  const originales = new Set(
+    identidadOriginalParaLugar(
+      elegibles.map((r) => r.mediaId),
+      elegibles,
+      soloOriginales,
+      personaje,
+    ),
+  );
+  const disponibles = elegibles.filter((r) => originales.has(r.mediaId));
+  const deVersion = version ? deLaVersion(version, disponibles) : disponibles;
   const maestro = personaje.renderStyle === "animado" ? personaje.masterFrameMediaId : null;
   if (!maestro || !deVersion.some((r) => r.mediaId === maestro)) {
     return mejoresReferencias(personaje.kind, deVersion, maximo);
@@ -122,13 +133,14 @@ function referenciasConMaestro(
 export async function contextoParaGenerar(
   personaje: FilaPersonaje,
   maximoDelModelo: number,
+  soloOriginales = false,
 ): Promise<{ version: FilaVersionPersonaje; contexto: string; referencias: string[] }> {
   const version = await asegurarVersionVigente(personaje);
   const elegibles = await referenciasElegibles(personaje.id);
   return {
     version,
     contexto: contextoDeVersion(version, personaje.kind),
-    referencias: referenciasConMaestro(personaje, version, elegibles, maximoDelModelo),
+    referencias: referenciasConMaestro(personaje, version, elegibles, maximoDelModelo, soloOriginales),
   };
 }
 
@@ -158,14 +170,19 @@ export const promptConContexto = (escena: string, contexto: string): string => c
  * Un personaje sin ninguna versión (algo que ya no debería pasar) se responde con la ficha vigente y
  * `versionId` vacío: se ve el contexto y la confirmación no compara versiones.
  */
-export async function contextoAplicado(actor: Actor, id: unknown, modeloPedido?: unknown): Promise<ContextoAplicado> {
+export async function contextoAplicado(
+  actor: Actor,
+  id: unknown,
+  modeloPedido?: unknown,
+  soloOriginales = false,
+): Promise<ContextoAplicado> {
   const personaje = await filaPropia(actor, id);
   const modelo = typeof modeloPedido === "string" && modeloPedido !== "" ? modeloPedido : null;
   const { modelo: elegido } = await resolver(CAPACIDAD_DE_TIPO.fotograma, modelo);
   const maximo = elegido.parametros.maximoReferencias;
   const elegibles = await referenciasElegibles(personaje.id);
   const version = await ultimaVersion(personaje.id);
-  const ids = referenciasConMaestro(personaje, version, elegibles, maximo);
+  const ids = referenciasConMaestro(personaje, version, elegibles, maximo, soloOriginales);
   const porId = new Map(elegibles.map((r) => [r.mediaId, r]));
   const filas = ids.length === 0 ? [] : await db().select().from(media).where(inArray(media.id, ids));
   const medios = new Map(filas.map((f) => [f.id, aDto(f, actor)]));

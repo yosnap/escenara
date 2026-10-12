@@ -123,8 +123,9 @@ export async function referenciasParaGenerar(
    * La hoja `por_defecto` no pasa por aquí: esa ya es la referencia del personaje y la elige su dueño.
    */
   conHoja = false,
+  soloOriginales = false,
 ): Promise<PersonajeParaGenerar> {
-  const hoja = await hojaQueViaja(personaje, conHoja);
+  const hoja = await hojaQueViaja(personaje, conHoja && !soloOriginales);
   if (hoja) {
     const { version, contexto } = await contextoParaGenerar(personaje, maximoDelModelo);
     // La hoja va **sola**: si fuera con las vistas sueltas, la comparación mediría las dos cosas a la vez.
@@ -132,7 +133,11 @@ export async function referenciasParaGenerar(
   }
   // Versión vigente, contexto y las mejores referencias por cobertura, recortadas al tope del modelo. Solo
   // entran las utilizables: una referencia en la papelera no se envía a ningún proveedor.
-  const { version, contexto, referencias: elegidas } = await contextoParaGenerar(personaje, maximoDelModelo);
+  const {
+    version,
+    contexto,
+    referencias: elegidas,
+  } = await contextoParaGenerar(personaje, maximoDelModelo, soloOriginales);
   const filas = await Promise.all(
     elegidas.map(async (mediaId) => {
       const [fila] = await db().select().from(media).where(eq(media.id, mediaId)).limit(1);

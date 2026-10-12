@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
 import { AreaTexto, Campo } from "@/components/ui/field";
 import { SelectorLugar } from "@/components/ui/lugares/selector-lugar";
@@ -10,8 +11,17 @@ import type { LugarDeEscena } from "@/lib/lugares";
 import { type CatalogoParaCrear, type PresetVisible, VARIABLE_TEXTO_MAXIMA } from "@/lib/presets";
 import { errorDeRequisito, ID_DESCRIPCION, idRequisito, type Requisito } from "@/lib/requisitos";
 import { ENVIO_FOTOGRAMA } from "@/lib/requisitos-crear";
-import { PanelExtraccion } from "./panel-extraccion";
+import { DescripcionConReferencias } from "./descripcion-con-referencias";
 import { type EstadoPlantilla, PanelPlantilla, type Previsualizacion } from "./panel-plantilla";
+
+const PanelExtraccion = dynamic(() => import("./panel-extraccion").then((m) => m.PanelExtraccion), { ssr: false });
+
+import type { ReferenciaEnPantalla } from "./referencias-en-pantalla";
+
+const PanelReferenciasTemporales = dynamic(
+  () => import("./panel-referencias-temporales").then((m) => m.PanelReferenciasTemporales),
+  { ssr: false },
+);
 
 /**
  * **Describe la escena**: lo que se quiere ver, la extracción desde una foto, la plantilla con sus presets y, si el
@@ -34,6 +44,8 @@ export function PasoEscena({
   onDialogo,
   onPlantilla,
   onDuplicar,
+  referenciasTemporales = [],
+  onReferenciasTemporales,
 }: {
   numero: number;
   prompt: string;
@@ -54,6 +66,8 @@ export function PasoEscena({
   onDialogo: (texto: string) => void;
   onPlantilla: (estado: EstadoPlantilla) => void;
   onDuplicar: (preset: PresetVisible) => void;
+  referenciasTemporales?: ReferenciaEnPantalla[];
+  onReferenciasTemporales?: (referencias: ReferenciaEnPantalla[]) => void;
 }) {
   const descripcion = prompt.trim();
   return (
@@ -80,10 +94,12 @@ export function PasoEscena({
         }
       >
         {(props) => (
-          <AreaTexto
+          <DescripcionConReferencias
             {...props}
-            value={prompt}
-            onChange={(e) => onPrompt(e.target.value)}
+            valor={prompt}
+            onCambio={onPrompt}
+            referencias={referenciasTemporales}
+            disabled={deshabilitado}
             placeholder="En una cafetería luminosa, saluda a cámara con una sonrisa, luz natural, aspecto de móvil."
           />
         )}
@@ -92,6 +108,13 @@ export function PasoEscena({
         Rellenar los campos desde una foto: no cuesta créditos y no genera nada hasta que el usuario lo confirma. Lo
         que devuelve va al campo de arriba, que es el que se envía.
       */}
+      {onReferenciasTemporales && (
+        <PanelReferenciasTemporales
+          referencias={referenciasTemporales}
+          onCambio={onReferenciasTemporales}
+          deshabilitado={deshabilitado}
+        />
+      )}
       <PanelExtraccion
         deshabilitado={deshabilitado}
         onUsar={(texto) => onPrompt(descripcion === "" ? texto : `${descripcion} ${texto}`)}

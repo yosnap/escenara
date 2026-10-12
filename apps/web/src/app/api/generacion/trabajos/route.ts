@@ -88,6 +88,7 @@ export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
           ...comun,
           medioId: cuerpo.medioId as string | undefined,
           personajeId: cuerpo.personajeId as string | undefined,
+          referenciasTemporales: cuerpo.referenciasTemporales,
           sinTerceros: cuerpo.sinTerceros === true,
           /**
            * Paso del producto digital (0.26.0). Solo se admite el segundo por su nombre: el primero es lo que
