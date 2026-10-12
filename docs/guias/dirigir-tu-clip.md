@@ -227,11 +227,32 @@ Dos acabados, elegibles por escena:
 
 Cambia la cámara, la luz y la textura. **No cambia quién es la persona.**
 
-## Partir de una foto que te gusta
+## Referencias para una sola escena
+
+![Referencia temporal etiquetada como iglesia y selector de lugar, ropa, pose, composición y estilo](../assets/capturas/0.52.4-referencias-temporales-claro.webp)
+
+En «Crear», añade imágenes en **Referencias para esta escena**, pon una etiqueta sin arroba
+(`terraza`, `chaqueta`) y elige qué conservar: lugar, ropa, pose, composición o estilo. Puedes escribir
+«Jorge sentado en @terraza, con la ropa de @chaqueta». La cara sigue saliendo de las referencias del personaje.
+
+No necesitas crear un lugar para una escena de una sola vez. Estas imágenes no se añaden a la ficha
+del personaje; se adjuntan al fotograma y permanecen en tu biblioteca.
+
+Si eliges **Lugar**, esa foto viaja primero como imagen base que editar. Para una persona real se envían
+sus fotos originales de identidad, sin mezclar vistas generadas ni una hoja sintética. Se pide conservar
+su rostro y proporciones, y la arquitectura, perspectiva y rótulos existentes del lugar. Solo puede haber
+un lugar base por fotograma. Elegir un formato distinto al de la foto puede recortar o ampliar el encuadre.
+
+Antes de aceptar el coste, revisa las imágenes y pulsa **Comprobar referencias**. Se verifica que
+estén disponibles y que quepan junto con las del personaje, producto y lugar. Si falta una etiqueta
+o no caben todas, debes corregirlo antes de generar. La referencia guía el resultado, no garantiza una copia exacta.
+
+## Extraer una descripción de una foto
 
 Sube una foto de referencia y el programa lee de ella la **cámara**, la **ropa**, el **sitio** y la **luz**, y
 te los deja escritos en campos que puedes corregir. No lee quién es la persona: eso sale de las referencias de
-tu personaje.
+tu personaje. Esta opción solo añade texto: para que la foto viaje al modelo al generar, añádela también
+como referencia de la escena.
 
 ![Rellenar el fotograma desde una foto](../assets/capturas/0.25.0-extraccion-claro.webp)
 
