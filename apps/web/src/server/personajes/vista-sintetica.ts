@@ -13,7 +13,7 @@ import {
   generationJobs,
   media,
 } from "../db/esquema";
-import { exigirAvisoUmbral } from "../generacion/comprobaciones";
+import { claveDerivada, exigirAvisoUmbral, exigirClaveIdempotencia } from "../generacion/comprobaciones";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { crearFotograma } from "../generacion/servicio";
 import { vistaDeFila } from "../generacion/trabajos";
@@ -198,6 +198,7 @@ export async function pedirVistasQueFaltan(
   }
   const clave = typeof peticion.claveIdempotencia === "string" ? peticion.claveIdempotencia : "";
   if (clave === "") throw new ErrorPersonaje(400, "Falta la confirmación de este encargo. Vuelve a intentarlo.");
+  exigirClaveIdempotencia(clave);
   // El aviso de gasto alto se mide sobre **el total del encargo**, no por imagen: seis vistas de 30 créditos
   // son 180, y cada una por separado nunca habría pasado del aviso.
   const porVista = typeof peticion.creditosConfirmados === "number" ? peticion.creditosConfirmados : 0;
@@ -211,7 +212,7 @@ export async function pedirVistasQueFaltan(
       const envio = await pedirVistaSintetica(
         actor,
         personaje.id,
-        { ...peticion, vista, claveIdempotencia: `${clave}:${vista}` },
+        { ...peticion, vista, claveIdempotencia: claveDerivada(clave, vista) },
         h,
       );
       encargadas.trabajos.push(envio.trabajo);
