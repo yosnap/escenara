@@ -9,6 +9,8 @@ const nextConfig: NextConfig = {
   // QA aislada puede convivir con el servidor de desarrollo del propietario.
   distDir: process.env.ESCENARA_QA_LOCAL === "1" ? ".next-admin-qa" : ".next",
   poweredByHeader: false,
+  // El servidor de producción comparte 8 GB con otras aplicaciones: limita los procesos de compilación.
+  experimental: { cpus: 1, webpackMemoryOptimizations: true },
   // En desarrollo, Next registra cada acción de servidor con sus argumentos: contraseñas y claves de API
   // acabarían en la consola. Ningún secreto debe aparecer en los registros (bóveda, ADR-0005).
   logging: { serverFunctions: false },

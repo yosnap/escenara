@@ -19,7 +19,9 @@ Dentro del proyecto elegido, crea servicios con el prefijo `escenara-` y almacen
 - `escenara-docs`: sitio estático independiente, según la guía de documentación.
 
 Los procesos auxiliares deben reutilizar exactamente la imagen de la web validada, sin compilar copias
-con revisiones diferentes. Despliega secuencialmente para controlar la memoria del servidor.
+con revisiones diferentes. Despliega secuencialmente para controlar la memoria del servidor, también
+respecto a otras aplicaciones del mismo host. Desde 0.52.2, la base con FFmpeg termina antes de compilar
+Next, que usa un trabajador y las optimizaciones de memoria de Webpack.
 
 ## Entorno y migración
 
