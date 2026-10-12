@@ -1,5 +1,6 @@
 import type { ParContraste } from "@/lib/marca-contraste";
 import type { ErrorCampo } from "@/lib/marca-esquema";
+import { errorDeOrigen } from "../auth/origen";
 import { esAdmin, respuestaSinSesion, sesionDePeticion } from "../auth/sesion";
 import { dentroDelLimite, type Limite } from "../limite";
 import type { Actor } from "../media/servicio";
@@ -25,15 +26,8 @@ const SOLO_LECTURA = new Set(["GET", "HEAD"]);
 /** Lo que cambia datos tiene que venir de esta misma instalación (defensa además de la cookie `SameSite`). */
 function exigirMismoOrigen(peticion: Request): void {
   if (SOLO_LECTURA.has(peticion.method)) return;
-  const origen = peticion.headers.get("origin");
-  if (!origen) throw new ErrorMarca(403, "Petición sin origen: vuelve a cargar la página.");
-  let host: string;
-  try {
-    host = new URL(origen).host;
-  } catch {
-    throw new ErrorMarca(403, "Origen no válido.");
-  }
-  if (host !== new URL(peticion.url).host) throw new ErrorMarca(403, "Esta petición no viene de Escenara.");
+  const error = errorDeOrigen(peticion);
+  if (error) throw new ErrorMarca(403, error);
 }
 
 export function respuestaError(error: unknown): Response {

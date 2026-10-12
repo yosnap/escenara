@@ -1,3 +1,4 @@
+import { errorDeOrigen } from "../auth/origen";
 import { esAdmin, respuestaSinSesion, sesionDePeticion } from "../auth/sesion";
 import { ErrorPercepcion } from "../coherencia/percepcion";
 import { ErrorDatos } from "../datos/errores";
@@ -96,15 +97,8 @@ export async function leerCuerpo(peticion: Request): Promise<Record<string, unkn
 
 /** Una petición que cambia datos solo se acepta desde la propia aplicación. */
 export function exigirMismoOrigen(peticion: Request): void {
-  const origen = peticion.headers.get("origin");
-  if (!origen) throw new ErrorProyecto(403, "Petición sin origen: vuelve a cargar la página.");
-  let host: string;
-  try {
-    host = new URL(origen).host;
-  } catch {
-    throw new ErrorProyecto(403, "Origen no válido.");
-  }
-  if (host !== new URL(peticion.url).host) throw new ErrorProyecto(403, "Esta petición no viene de Escenara.");
+  const error = errorDeOrigen(peticion);
+  if (error) throw new ErrorProyecto(403, error);
 }
 
 /** Ritmo de las escrituras de proyectos y escenas: editar un guion cabe de sobra. */
