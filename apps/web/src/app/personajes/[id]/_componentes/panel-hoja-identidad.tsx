@@ -1,6 +1,7 @@
 "use client";
 
 import { Grid3x3, RefreshCw, Trash2 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useId, useRef, useState } from "react";
 import { Alerta } from "@/components/ui/alerta";
 import { Boton } from "@/components/ui/button";
@@ -17,10 +18,14 @@ import {
 } from "@/components/ui/personajes/api-personajes";
 import { bloqueosDeControles, type EvaluacionVista, firmaDeAvisos } from "@/lib/controles";
 import { NOMBRE_ESTADO_HOJA_IDENTIDAD, RETRATOS_HOJA_IDENTIDAD } from "@/lib/direccion";
-import { creditosAConfirmar, type Estimacion, formatearCreditos } from "@/lib/generacion";
+import { creditosAConfirmar, type Estimacion, formatearCreditos, type TrabajoVista } from "@/lib/generacion";
 import { problemasDeMotivos } from "@/lib/llevar-al-problema";
 import type { Medio } from "@/lib/media/tipos";
 import { AVISO_SIN_TERCEROS, type PersonajeVista } from "@/lib/personajes";
+
+const SeguimientoPersonaje = dynamic(() => import("./seguimiento-personaje").then((m) => m.SeguimientoPersonaje), {
+  ssr: false,
+});
 
 /** Motivos que corresponden a una casilla: con ellos la alerta lleva a la casilla pendiente. */
 const FALTA_DERECHOS = "Falta confirmar que puedes usar lo que se genere.";
@@ -58,6 +63,9 @@ export function PanelHojaIdentidad({
   const [ocupado, setOcupado] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [trabajo, setTrabajo] = useState<TrabajoVista | null>(null);
+  const [hojaGenerada, setHojaGenerada] = useState<Medio | null>(null);
+  const hojaVisible = hojaGenerada ?? hoja;
   const clave = useRef<{ firma: string; valor: string } | null>(null);
 
   const creditos = estimacion ? creditosAConfirmar(estimacion) : null;
@@ -111,7 +119,10 @@ export function PanelHojaIdentidad({
       setError(respuesta.error);
       return;
     }
-    setAviso(`${respuesta.datos.aviso} Cuando termine aparecerá aquí al recargar la página.`);
+    setTrabajo(respuesta.datos.trabajo);
+    setEstimacion(null);
+    setControles(null);
+    setAviso(`${respuesta.datos.aviso} Aparecerá aquí en cuanto termine.`);
   };
 
   const cambiar = async (estado: "por_defecto" | "descartada") => {
@@ -150,10 +161,25 @@ export function PanelHojaIdentidad({
 
       {error && <Aviso tono="error">{error}</Aviso>}
       {aviso && <Aviso tono="info">{aviso}</Aviso>}
+      {trabajo && (
+        <SeguimientoPersonaje
+          key={trabajo.id}
+          personajeId={personaje.id}
+          trabajo={trabajo}
+          onCambio={setTrabajo}
+          onPersonaje={onPersonaje}
+          onResultado={(terminado) => {
+            setHojaGenerada(terminado.medio);
+            setTrabajo(null);
+            clave.current = null;
+            setAviso("Hoja generada. Puedes revisarla y decidir si quieres usarla.");
+          }}
+        />
+      )}
 
-      {hoja && (
+      {hojaVisible && (
         <div className="flex flex-col gap-3">
-          <VisorMedio medio={hoja} />
+          <VisorMedio medio={hojaVisible} />
           <p className="text-sm text-texto-suave">
             Estado: <strong className="text-texto">{estado ? NOMBRE_ESTADO_HOJA_IDENTIDAD[estado] : "—"}</strong>
             {personaje.probarHojaIdentidad && " · En prueba en la mitad de tus escenas."}
@@ -188,15 +214,16 @@ export function PanelHojaIdentidad({
       )}
 
       {personaje.puedeGenerar &&
+        (!trabajo || trabajo.estado === "fallido" || trabajo.estado === "cancelado") &&
         (estimacion === null ? (
           <Boton
             variante="secundario"
             className="self-start"
-            icono={hoja ? <RefreshCw className="size-4" /> : <Grid3x3 className="size-4" />}
+            icono={hojaVisible ? <RefreshCw className="size-4" /> : <Grid3x3 className="size-4" />}
             cargando={ocupado}
             onClick={() => void preparar()}
           >
-            {hoja ? "Ver lo que cuesta rehacerla" : "Ver lo que cuesta generarla"}
+            {hojaVisible ? "Ver lo que cuesta rehacerla" : "Ver lo que cuesta generarla"}
           </Boton>
         ) : (
           <PanelCoste estimacion={estimacion}>
