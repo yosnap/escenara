@@ -1,6 +1,14 @@
 # Misma imagen para web, worker, migraciones y archivado privado de demos.
-FROM oven/bun:1.4.2 AS build
+FROM oven/bun:1.4.2 AS base
 WORKDIR /app
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ffmpeg ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /app/docs/privado/demos \
+    && chown -R bun:bun /app/docs
+
+# La base debe terminar antes de compilar: evita sumar FFmpeg y Next al pico de memoria del servidor.
+FROM base AS build
 COPY package.json bun.lock ./
 COPY apps/web/package.json apps/web/package.json
 COPY apps/docs/package.json apps/docs/package.json
@@ -13,13 +21,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app/apps/web
 RUN bun run build && test -s .next/BUILD_ID
 
-FROM oven/bun:1.4.2 AS runtime
-WORKDIR /app
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg ca-certificates \
-    && rm -rf /var/lib/apt/lists/* \
-    && mkdir -p /app/docs/privado/demos \
-    && chown -R bun:bun /app/docs
+FROM base AS runtime
 COPY --from=build --chown=bun:bun /app/package.json ./package.json
 COPY --from=build --chown=bun:bun /app/node_modules ./node_modules
 COPY --from=build --chown=bun:bun /app/apps/web ./apps/web
