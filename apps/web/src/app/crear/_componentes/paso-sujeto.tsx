@@ -28,6 +28,8 @@ export function PasoSujeto({
   referencia,
   modelos,
   sinImagen,
+  sinSujetoConfirmado,
+  onSinSujetoConfirmado,
   modeloElegido,
   modeloFoto,
   sinTerceros,
@@ -51,6 +53,8 @@ export function PasoSujeto({
    * modelo de texto a imagen. Se dice en pantalla, porque es otro modelo y otro precio.
    */
   sinImagen: boolean;
+  sinSujetoConfirmado: boolean;
+  onSinSujetoConfirmado: (valor: boolean) => void;
   /** Identificador del modelo elegido para el fotograma. */
   modeloElegido: string;
   /** Ficha del modelo elegido, si está en la lista: de ahí sale el tope de fotos que se anuncia. */
@@ -104,6 +108,14 @@ export function PasoSujeto({
             error={errorDeRequisito(requisitos, ID_REVISION_FOTOGRAMA)}
           />
         </div>
+      )}
+      {sinImagen && (
+        <Casilla
+          etiqueta="Crear solo desde texto, sin personaje ni imagen de partida"
+          marcada={sinSujetoConfirmado}
+          deshabilitado={deshabilitado}
+          onCambio={onSinSujetoConfirmado}
+        />
       )}
       {sinImagen && (
         <p className="rounded-control bg-elevada p-3 text-sm font-medium text-texto">

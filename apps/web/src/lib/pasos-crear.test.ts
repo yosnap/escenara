@@ -14,6 +14,7 @@ const VACIO: DatosPasosCrear = {
   calculandoFormato: false,
   origen: "fotograma",
   haySujeto: false,
+  sinSujetoConfirmado: true,
   revisionConfirmada: false,
   caracteresDescripcion: 0,
   motivosPlantilla: 0,
@@ -30,6 +31,16 @@ const estados = (d: Partial<DatosPasosCrear>) =>
 const paso = (d: Partial<DatosPasosCrear>, id: string) => pasosDeCrear({ ...VACIO, ...d }).find((p) => p.id === id);
 
 describe("pasos de «Crear» generando un fotograma", () => {
+  test("un selector vacío bloquea escena y coste hasta elegir identidad o confirmar texto", () => {
+    expect(estados({ sinSujetoConfirmado: false, caracteresDescripcion: PROMPT_MINIMO })).toMatchObject({
+      sujeto: "pendiente",
+      escena: "bloqueado",
+      coste: "bloqueado",
+    });
+    expect(paso({ sinSujetoConfirmado: false }, "escena")?.motivo).toContain("Elige antes un personaje");
+    expect(estados({ sinSujetoConfirmado: false, haySujeto: true }).escena).toBe("pendiente");
+    expect(estados({ sinSujetoConfirmado: true }).escena).toBe("pendiente");
+  });
   test("siete pasos en el orden del flujo, empezando por el formato, todos con id conocido", () => {
     const pasos = pasosDeCrear(VACIO);
     expect(pasos.map((p) => p.id)).toEqual(["formato", "origen", "sujeto", "escena", "coste", "fotograma", "clip"]);

@@ -1,7 +1,9 @@
 "use client";
 
+import dynamic from "next/dynamic";
+import { Boton } from "@/components/ui/button";
+import { Aviso } from "@/components/ui/feedback";
 import { Paso } from "@/components/ui/paso";
-import { PanelContextoPersonaje } from "@/components/ui/personajes/panel-contexto";
 import { AvisoRequisitos } from "@/components/ui/requisitos";
 import type { Estimacion, TrabajoVista } from "@/lib/generacion";
 import type { ContextoAplicado, PersonajeElegible } from "@/lib/personajes";
@@ -9,11 +11,23 @@ import type { Requisito } from "@/lib/requisitos";
 import { ENVIO_FOTOGRAMA } from "@/lib/requisitos-crear";
 import { BloqueConfirmacion } from "./bloque-confirmacion";
 import type { ConfirmacionCoste } from "./panel-generar";
+import type { ReferenciaEnPantalla } from "./referencias-en-pantalla";
+
+const PanelReferenciasTemporales = dynamic(
+  () => import("./panel-referencias-temporales").then((m) => m.PanelReferenciasTemporales),
+  { ssr: false },
+);
+
 import { PasoInsertarCaptura } from "./paso-insertar-captura";
 import { ResultadoTrabajo } from "./resultado-trabajo";
 import { SeguimientoTrabajo } from "./seguimiento-trabajo";
 import type { EstadoConfirmacion } from "./use-confirmacion-coste";
 import type { Controles } from "./use-controles";
+
+const PanelContextoPersonaje = dynamic(
+  () => import("@/components/ui/personajes/panel-contexto").then((m) => m.PanelContextoPersonaje),
+  { ssr: false },
+);
 
 /**
  * **Revisa el coste y confirma** el fotograma. Es zona de claridad: el contexto de la ficha y las fotos que se
@@ -35,8 +49,16 @@ export function PasoCosteFotograma({
   enviando,
   onIrARequisito,
   onGenerar,
+  referenciasTemporales = [],
+  onComprobarReferencias,
+  comprobandoReferencias,
+  resumenReferencias,
 }: {
   numero: number;
+  referenciasTemporales?: ReferenciaEnPantalla[];
+  onComprobarReferencias?: () => void;
+  comprobandoReferencias?: boolean;
+  resumenReferencias?: string | null;
   personaje: PersonajeElegible | null;
   contexto: ContextoAplicado | null;
   pidiendoContexto: boolean;
@@ -62,6 +84,13 @@ export function PasoCosteFotograma({
       {personaje && contexto && contexto.personajeId === personaje.id && (
         <PanelContextoPersonaje contexto={contexto} cargando={pidiendoContexto} />
       )}
+      {referenciasTemporales.length > 0 && <PanelReferenciasTemporales referencias={referenciasTemporales} revision />}
+      {referenciasTemporales.length > 0 && (
+        <Boton variante="secundario" cargando={comprobandoReferencias} onClick={onComprobarReferencias}>
+          Comprobar referencias
+        </Boton>
+      )}
+      {resumenReferencias && <Aviso tono="info">{resumenReferencias}</Aviso>}
       <BloqueConfirmacion
         controles={controles}
         estimacion={estimacion}

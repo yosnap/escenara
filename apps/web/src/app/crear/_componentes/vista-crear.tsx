@@ -17,7 +17,13 @@ import { CATEGORIAS_DE_LA_DIRECCION, type CatalogoParaCrear, type PresetVisible 
 import { PRODUCTO_ELEGIDO_VACIO, type ProductoElegido } from "@/lib/productos";
 import { requisitosDeCrear, variableDeTexto } from "@/lib/requisitos-crear";
 import { eleccionSinLoDecidido, segundosParaTrend } from "@/lib/trends";
-import { consultarCatalogoDeDireccion, consultarEstimacion, crearTrabajo, mensajeDeFallo } from "./api-generacion";
+import {
+  comprobarReferenciasTemporales,
+  consultarCatalogoDeDireccion,
+  consultarEstimacion,
+  crearTrabajo,
+  mensajeDeFallo,
+} from "./api-generacion";
 import { consultarCatalogoDePresets, duplicarPreset } from "./api-presets";
 import { DialogoPresetPropio } from "./dialogo-preset-propio";
 import { cobrablesDe, segundosDelClip } from "./duracion-del-clip";
@@ -36,6 +42,7 @@ import { PasoFormato } from "./paso-formato";
 import { PasoCosteFotograma, PasoResultadoFotograma } from "./paso-fotograma";
 import { type OrigenDelClip, PasoImagenDePartida, PasoOrigen } from "./paso-origen";
 import { PasoSujeto } from "./paso-sujeto";
+import { problemaDeReferencias, type ReferenciaEnPantalla, referenciasParaEnviar } from "./referencias-en-pantalla";
 import { type ClipVigente, comprobarClipVigente } from "./refresco-de-controles";
 import { contextosDeConfirmacion, useConfirmacionCoste } from "./use-confirmacion-coste";
 import { useControles } from "./use-controles";
@@ -102,6 +109,15 @@ export function VistaCrear({
   controlesIniciales: EvaluacionVista;
 }) {
   const [personajeId, setPersonajeId] = useState<string | null>(personajeInicial);
+  const [sinSujetoConfirmado, setSinSujetoConfirmado] = useState(false);
+  const [referenciasTemporales, setReferenciasTemporales] = useState<ReferenciaEnPantalla[]>([]);
+  const [comprobacionRefs, setComprobacionRefs] = useState<{
+    firma: string;
+    error: string | null;
+    resumen: string | null;
+    contexto?: ContextoAplicado;
+  } | null>(null);
+  const [comprobandoRefs, setComprobandoRefs] = useState(false);
   /** Contexto y fotos que el servidor va a enviar: lo pide la acción que lo cambia (personaje o modelo), no un efecto. */
   const [contexto, setContexto] = useState<ContextoAplicado | null>(contextoInicial);
   const [pidiendoContexto, setPidiendoContexto] = useState(false);
@@ -245,7 +261,7 @@ export function VistaCrear({
   // Cada gasto tiene sus casillas, y se desmarcan al cambiar de camino, de imagen o (el aviso de gasto) de precio.
   const contextos = contextosDeConfirmacion({
     origen: origenElegido,
-    sujetoDelFotograma: personaje?.id ?? referencia?.id,
+    sujetoDelFotograma: `${personaje?.id ?? referencia?.id ?? ""}|${JSON.stringify(referenciasParaEnviar(referenciasTemporales))}`,
     selloFotograma: estimacionFoto.sello,
     clipPorConfirmar,
     imagenDelClip: origenDelClip?.id,
@@ -253,6 +269,44 @@ export function VistaCrear({
   });
   const confirmacionFoto = useConfirmacionCoste(contextos.fotograma);
   const confirmacionClip = useConfirmacionCoste(contextos.clip);
+  const lugar = useLugarDeCrear(() => void refrescarControles(personajeId, referencia?.id, estimacionFoto.modelo));
+  const datosRefs = {
+    referenciasTemporales: referenciasParaEnviar(referenciasTemporales),
+    personajeId: personaje?.id,
+    medioId: referencia?.id,
+    modelo: estimacionFoto.modelo,
+    producto: productoClip,
+    ...lugar.enElEnvio,
+  };
+  const firmaRefs = JSON.stringify(datosRefs);
+  const comprobarRefs = async () => {
+    setComprobandoRefs(true);
+    const respuesta = await comprobarReferenciasTemporales(datosRefs);
+    setComprobandoRefs(false);
+    setComprobacionRefs({
+      contexto: respuesta.ok ? respuesta.datos.contexto : undefined,
+      firma: firmaRefs,
+      error: respuesta.ok ? null : respuesta.error,
+      resumen: respuesta.ok
+        ? `Se enviarán ${respuesta.datos.total} imágenes de ${respuesta.datos.maximo} admitidas, incluidas estas referencias.`
+        : null,
+    });
+  };
+  const contextoDelEnvio = comprobacionRefs?.firma === firmaRefs ? (comprobacionRefs.contexto ?? contexto) : contexto;
+  const originalesEnPantalla = contexto?.referencias.filter((r) => r.origen === "foto_original").length ?? 0;
+  const cantidadIdentidad =
+    comprobacionRefs?.firma === firmaRefs && comprobacionRefs.contexto
+      ? comprobacionRefs.contexto.referencias.length
+      : referenciasTemporales.some((r) => r.uso === "lugar") && originalesEnPantalla > 0
+        ? originalesEnPantalla
+        : (contextoDelEnvio?.referencias.length ?? (referencia ? 1 : 0));
+  const problemaReferencias = problemaDeReferencias(
+    referenciasTemporales,
+    descripcion,
+    modeloFoto?.maximoReferencias ?? 0,
+    cantidadIdentidad,
+    personaje !== null || referencia !== null,
+  );
   const requisitos = requisitosDeCrear({
     origen: origenElegido,
     fotograma: {
@@ -262,7 +316,10 @@ export function VistaCrear({
       sinTerceros,
       modeloSinReferencias: personaje !== null && modeloFoto !== null && modeloFoto.maximoReferencias < 1,
       caracteresDescripcion: descripcion.length,
-      motivosPlantilla: previaFoto.detalle,
+      motivosPlantilla: [
+        ...previaFoto.detalle,
+        ...(problemaReferencias ? [{ texto: problemaReferencias, deTexto: true }] : []),
+      ],
     },
     clip: {
       sinPasoDeEscena: origenElegido === "imagen",
@@ -275,7 +332,16 @@ export function VistaCrear({
           : null,
       caracteresDescripcion: descripcion.length,
     },
-    frenosFotograma: controlesFoto.bloqueos,
+    frenosFotograma: [
+      ...controlesFoto.bloqueos,
+      ...(referenciasTemporales.length
+        ? [
+            comprobacionRefs?.firma === firmaRefs
+              ? comprobacionRefs.error
+              : "Comprueba las referencias de la escena antes de confirmar.",
+          ].filter((m): m is string => m !== null)
+        : []),
+    ],
     frenosClip: controlesClip.bloqueos,
     casillasFotograma: confirmacionFoto,
     casillasClip: confirmacionClip,
@@ -292,6 +358,7 @@ export function VistaCrear({
     calculandoFormato: formato.calculando,
     origen: origenElegido,
     haySujeto: personaje !== null || referencia !== null,
+    sinSujetoConfirmado,
     revisionConfirmada: sinTerceros,
     caracteresDescripcion: descripcion.length,
     motivosPlantilla: previaFoto.motivos.length,
@@ -311,7 +378,6 @@ export function VistaCrear({
   // Lo pendiente se enseña siempre arriba y en la barra; el rojo en los campos solo tras salir del paso o intentar avanzar.
   const senales = useRequisitosSenalados(pasos, multipaso);
   const { irAlRequisito } = senales;
-  const lugar = useLugarDeCrear(() => void refrescarControles(personajeId, referencia?.id, estimacionFoto.modelo));
   const pasoSenalado = (paso: string) => senales.senalados.includes(paso);
 
   /**
@@ -369,6 +435,7 @@ export function VistaCrear({
    * nuevo. Lo llama la acción que cambia el sujeto, nunca un efecto.
    */
   const refrescarPorSujeto = async (id: string | null, medios: Medio[]) => {
+    setSinSujetoConfirmado(false);
     const ahoraSinImagen = id === null && medios.length === 0;
     const respuesta = await consultarEstimacion("fotograma", undefined, { sinImagen: ahoraSinImagen });
     if (!respuesta.ok) {
@@ -392,6 +459,7 @@ export function VistaCrear({
     setError(null);
     const respuesta = await crearTrabajo({
       tipo: "fotograma",
+      ...(!pasoDigital ? { referenciasTemporales: referenciasParaEnviar(referenciasTemporales) } : {}),
       // La revisión se envía siempre: una imagen suelta puede ser el resultado de otro trabajo hecho con un
       // personaje, y entonces el servidor la exige igual (hereda ese personaje).
       sinTerceros,
@@ -656,6 +724,8 @@ export function VistaCrear({
           <>
             <PanelDePaso id="sujeto">
               <PasoSujeto
+                sinSujetoConfirmado={sinSujetoConfirmado}
+                onSinSujetoConfirmado={setSinSujetoConfirmado}
                 numero={numero("sujeto")}
                 personajes={personajes}
                 personajeId={personajeId}
@@ -701,19 +771,25 @@ export function VistaCrear({
                 onDialogo={setDialogo}
                 onPlantilla={setPlantillaFoto}
                 onDuplicar={(preset) => void duplicar("fotograma", preset)}
+                referenciasTemporales={referenciasTemporales}
+                onReferenciasTemporales={setReferenciasTemporales}
               />
             </PanelDePaso>
 
             <PanelDePaso id="coste">
               <PasoCosteFotograma
+                referenciasTemporales={referenciasTemporales}
+                onComprobarReferencias={() => void comprobarRefs()}
+                comprobandoReferencias={comprobandoRefs}
+                resumenReferencias={comprobacionRefs?.firma === firmaRefs ? comprobacionRefs.resumen : null}
                 numero={numero("coste")}
                 personaje={personaje}
-                contexto={contexto}
+                contexto={contextoDelEnvio}
                 pidiendoContexto={pidiendoContexto}
                 controles={controlesFoto}
                 estimacion={estimacionFoto}
                 conProducto={productoClip.productoId !== ""}
-                firma={`fotograma|${personaje?.id ?? ""}|${contexto?.personajeId === personaje?.id ? contexto?.versionId : ""}|${referencia?.id ?? ""}|${descripcion}|${estimacionFoto.modelo}|${estimacionFoto.sello}|${firmaDePlantilla(previaFoto, plantillaFoto)}`}
+                firma={`fotograma|${personaje?.id ?? ""}|${contexto?.personajeId === personaje?.id ? contexto?.versionId : ""}|${referencia?.id ?? ""}|${descripcion}|${estimacionFoto.modelo}|${estimacionFoto.sello}|${firmaDePlantilla(previaFoto, plantillaFoto)}|${JSON.stringify(referenciasParaEnviar(referenciasTemporales))}`}
                 bloqueos={requisitos.fotogramaBase}
                 requisitos={requisitos.fotograma}
                 confirmacion={confirmacionFoto}

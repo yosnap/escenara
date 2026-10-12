@@ -2,6 +2,33 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.52.4] · 2026-10-12
+
+Las pruebas se ejecutan con origen local y aislamiento por fichero para evitar que la URL de producción, las cachés, ajustes y módulos de una suite alteren las siguientes. Se normaliza también el formato del catálogo y de una instantánea de Drizzle, sin cambiar sus datos.
+
+La migración histórica de evaluaciones compara el sujeto como texto para poder instalar todas las migraciones en una sola transacción, sin usar un valor de enum recién añadido antes de confirmarlo.
+
+### Corregido
+
+- La hoja de identidad y las vistas adicionales se muestran al terminar sin salir y volver a entrar
+  en la ficha. Si falla actualizarla, se puede recargar el resultado sin repetir la generación.
+- Las imágenes temporales de una escena se adjuntan al fotograma con etiqueta y uso explícitos.
+  Escribir `@` ofrece las referencias disponibles y resalta las menciones dentro de la descripción.
+- Una referencia de lugar se envía primero como fotografía base; para personas reales, las referencias
+  de identidad son fotos originales. Se conservan las instrucciones de rótulos existentes del lugar.
+  El envío se bloquea si una imagen falta, cambia o excede el cupo del modelo.
+- El flujo exige elegir personaje o imagen, o confirmar expresamente la creación solo desde texto,
+  antes de avanzar a la escena. Los selectores de referencias usan el componente moderno.
+
+### Limitaciones
+
+- Las pruebas reales mejoran el resultado, pero no validan una conservación exacta de identidad y lugar:
+  el modelo todavía puede alterar proporciones, encuadre y letras. Los resultados requieren revisión.
+
+### Actualización
+
+- Sin migraciones nuevas ni cambios de configuración. Reiniciar web y worker para cargar el nuevo envío de referencias.
+
 ## [0.52.3] · 2026-10-12
 
 ### Corregido
