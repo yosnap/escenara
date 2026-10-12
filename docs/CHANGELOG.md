@@ -2,6 +2,18 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.52.1] · 2026-10-12
+
+### Corregido
+
+- Las escrituras de personajes y de los demás módulos protegidos ya no devuelven un 403 al llegar por el
+  proxy de producción. El origen se valida contra `BETTER_AUTH_URL`, en lugar de la dirección interna de Next,
+  conservando el rechazo de peticiones sin origen o procedentes de otras webs.
+
+### Actualización
+
+- Sin migraciones nuevas. `BETTER_AUTH_URL` debe coincidir con el origen HTTPS público de la instalación.
+
 ## [0.52.0] · 2026-10-04
 
 ### Añadido
