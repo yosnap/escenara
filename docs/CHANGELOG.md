@@ -2,6 +2,27 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.52.5] · 2026-10-16
+
+### Corregido
+
+- En «Crear», el modelo del fotograma que eliges se conserva al cambiar de personaje o de imagen si
+  también vale en el modo nuevo; solo cae al predeterminado si no existe allí. Volver a pulsar
+  «Sin personaje» ya no pide nada, una respuesta lenta no pisa lo elegido después y el selector
+  muestra siempre el nombre del modelo real.
+- Las referencias de la escena sin personaje ni imagen de partida se rechazan con la causa en vez de
+  perderse al enviar. Una imagen suelta que salió de un trabajo con personaje ya no falla en el
+  worker por «no llegan al mínimo» de fotos del personaje.
+- La ficha del personaje ya no se corta a mitad de palabra: si no cabe entera, sale primero la voz,
+  se acortan la descripción y la actitud, y los rasgos, el vestuario y el estilo siempre llegan.
+- El botón «Sin personaje» del paso de sujeto explica que se genera con una foto suelta o solo con la
+  descripción, para no confundirlo con «Usar una imagen que ya tengo» del origen.
+
+### Actualización
+
+- Sin migraciones nuevas ni cambios de configuración. Reiniciar web y worker para cargar el nuevo
+  envío de referencias.
+
 ## [0.52.4] · 2026-10-12
 
 Las pruebas se ejecutan con origen local y aislamiento por fichero para evitar que la URL de producción, las cachés, ajustes y módulos de una suite alteren las siguientes. Se normaliza también el formato del catálogo y de una instantánea de Drizzle, sin cambiar sus datos.
