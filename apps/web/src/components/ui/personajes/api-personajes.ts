@@ -248,8 +248,13 @@ export const pedirVistaSintetica = (id: string, confirmacion: ConfirmacionVistaS
  * regla que usa la pantalla para enseñar el coste total, así que el número que se confirma es el que se
  * encarga. Lo que no se pueda encolar vuelve en `sinEncolar` con su motivo, **sin cobrar**.
  */
-export const pedirVistasQueFaltan = (id: string, confirmacion: Omit<ConfirmacionVistaSintetica, "vista">) =>
-  pedir<VistasEncargadas>(`/api/personajes/${id}/vistas`, json("POST", confirmacion));
+export const pedirVistasQueFaltan = (
+  id: string,
+  confirmacion: Omit<ConfirmacionVistaSintetica, "vista"> & {
+    /** Las vistas que el usuario ha visto y confirmado: el servidor no encarga ninguna más. */
+    vistas: readonly Vista[];
+  },
+) => pedir<VistasEncargadas>(`/api/personajes/${id}/vistas`, json("POST", confirmacion));
 
 export interface VistasEncargadas {
   trabajos: TrabajoVista[];

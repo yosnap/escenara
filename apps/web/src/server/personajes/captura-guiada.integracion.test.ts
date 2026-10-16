@@ -567,6 +567,7 @@ describe.skipIf(!hayBaseDeDatos)("captura guiada de referencias", () => {
       fotos.map((f, i) => ({ medioId: f.id, vistaClave: ["frontal", "perfil_izquierdo", "cuerpo_completo"][i] })),
     );
     const confirmacion = {
+      vistas: ["perfil_derecho", "tres_cuartos"],
       creditosConfirmados: 4,
       derechos: true,
       sinTerceros: true,
@@ -589,9 +590,10 @@ describe.skipIf(!hayBaseDeDatos)("captura guiada de referencias", () => {
       );
       expect(repetida.nueva).toBe(false);
     }
-    await expect(pedirVistasQueFaltan(actorAna, personaje.id, confirmacion, h)).rejects.toThrow(
-      "ya se están generando",
-    );
+    // Repetir el encargo entero con la misma confirmación devuelve lo mismo, sin encargar nada nuevo.
+    const reintento = await pedirVistasQueFaltan(actorAna, personaje.id, confirmacion, h);
+    expect(reintento.encoladas).toEqual(resultado.encoladas);
+    expect(reintento.trabajos.map((t) => t.id)).toEqual(resultado.trabajos.map((t) => t.id));
     expect(await db().select().from(generationJobs).where(eq(generationJobs.characterId, personaje.id))).toHaveLength(
       2,
     );
@@ -712,21 +714,153 @@ describe.skipIf(!hayBaseDeDatos)("captura guiada de referencias", () => {
     const { enMarcha } = await huecosDeCola(ana.id);
     await guardarAjustes({ trabajosSimultaneos: enMarcha + 1 }, null);
     try {
-      const resultado = await pedirVistasQueFaltan(
-        actorAna,
-        personaje.id,
-        { creditosConfirmados: 4, derechos: true, sinTerceros: true, claveIdempotencia: crypto.randomUUID() },
-        h,
-      );
+      const confirmacion = {
+        vistas: ["perfil_derecho", "tres_cuartos"],
+        creditosConfirmados: 4,
+        derechos: true,
+        sinTerceros: true,
+        claveIdempotencia: crypto.randomUUID(),
+      };
+      const resultado = await pedirVistasQueFaltan(actorAna, personaje.id, confirmacion, h);
       expect(resultado.encoladas).toEqual(["perfil_derecho"]);
       expect(resultado.sinEncolar.map((s) => s.vista)).toEqual(["tres_cuartos"]);
       expect(resultado.sinEncolar[0]?.motivo).toContain("no cabe ahora");
       expect(await db().select().from(generationJobs).where(eq(generationJobs.characterId, personaje.id))).toHaveLength(
         1,
       );
+      // Se libera hueco y se reintenta la misma confirmación (un corte de red): no se amplía el lote.
+      await guardarAjustes({ trabajosSimultaneos: enMarcha + 5 }, null);
+      const reintento = await pedirVistasQueFaltan(actorAna, personaje.id, confirmacion, h);
+      expect(reintento.encoladas).toEqual(["perfil_derecho"]);
+      expect(await db().select().from(generationJobs).where(eq(generationJobs.characterId, personaje.id))).toHaveLength(
+        1,
+      );
     } finally {
       await guardarAjustes({ trabajosSimultaneos: previos.trabajosSimultaneos }, null);
     }
+    await pasadaDeCola(h);
+  });
+
+  test("el encargo de vistas nunca encarga más de las confirmadas, aunque quepan más", async () => {
+    const personaje = await nuevoPersonaje("Solo lo confirmado");
+    const fotos = await Promise.all([
+      subir(await foto(52), "h1.png"),
+      subir(await foto(53), "h2.png"),
+      subir(await foto(54), "h3.png"),
+    ]);
+    await anadir(
+      personaje.id,
+      fotos.map((f, i) => ({ medioId: f.id, vistaClave: ["frontal", "perfil_izquierdo", "cuerpo_completo"][i] })),
+    );
+    const previos = await leerAjustes();
+    const { enMarcha } = await huecosDeCola(ana.id);
+    // Caben dos, faltan dos, pero el diálogo solo confirmó una (había un solo hueco al abrirlo).
+    await guardarAjustes({ trabajosSimultaneos: enMarcha + 2 }, null);
+    try {
+      const resultado = await pedirVistasQueFaltan(
+        actorAna,
+        personaje.id,
+        {
+          vistas: ["perfil_derecho"],
+          creditosConfirmados: 4,
+          derechos: true,
+          sinTerceros: true,
+          claveIdempotencia: crypto.randomUUID(),
+        },
+        h,
+      );
+      expect(resultado.encoladas).toEqual(["perfil_derecho"]);
+      expect(resultado.sinEncolar).toEqual([]);
+      expect(await db().select().from(generationJobs).where(eq(generationJobs.characterId, personaje.id))).toHaveLength(
+        1,
+      );
+      // Sin lista de vistas confirmadas no se encarga nada.
+      await expect(
+        pedirVistasQueFaltan(
+          actorAna,
+          personaje.id,
+          {
+            vistas: undefined,
+            creditosConfirmados: 4,
+            derechos: true,
+            sinTerceros: true,
+            claveIdempotencia: crypto.randomUUID(),
+          },
+          h,
+        ),
+      ).rejects.toThrow("Indica qué vistas confirmas");
+    } finally {
+      await guardarAjustes({ trabajosSimultaneos: previos.trabajosSimultaneos }, null);
+    }
+    await pasadaDeCola(h);
+  });
+
+  test("dos envíos simultáneos de la misma vista con confirmaciones distintas encargan un solo trabajo", async () => {
+    const personaje = await nuevoPersonaje("Doble envío");
+    const fotos = await Promise.all([
+      subir(await foto(55), "i1.png"),
+      subir(await foto(56), "i2.png"),
+      subir(await foto(57), "i3.png"),
+    ]);
+    await anadir(
+      personaje.id,
+      fotos.map((f, i) => ({ medioId: f.id, vistaClave: ["frontal", "perfil_izquierdo", "cuerpo_completo"][i] })),
+    );
+    const pedir = () =>
+      pedirVistaSintetica(
+        actorAna,
+        personaje.id,
+        {
+          vista: "tres_cuartos",
+          creditosConfirmados: 4,
+          derechos: true,
+          sinTerceros: true,
+          claveIdempotencia: crypto.randomUUID(),
+        },
+        h,
+      ).catch((e: Error) => e);
+    const [a, b] = await Promise.all([pedir(), pedir()]);
+    // Uno se encarga; el otro devuelve ese mismo trabajo o se rechaza sin cobrar porque ya se está generando.
+    const trabajos = await db().select().from(generationJobs).where(eq(generationJobs.characterId, personaje.id));
+    expect(trabajos).toHaveLength(1);
+    for (const r of [a, b]) {
+      if (r instanceof Error) expect(r.message).toContain("ya se está generando");
+      else expect(r.trabajo.id).toBe(trabajos[0]?.id ?? "");
+    }
+    await pasadaDeCola(h);
+  });
+
+  test("una vista cuyo trabajo falló se puede volver a pedir", async () => {
+    const personaje = await nuevoPersonaje("Vista fallida");
+    const fotos = await Promise.all([
+      subir(await foto(58), "j1.png"),
+      subir(await foto(59), "j2.png"),
+      subir(await foto(60), "j3.png"),
+    ]);
+    await anadir(
+      personaje.id,
+      fotos.map((f, i) => ({ medioId: f.id, vistaClave: ["frontal", "perfil_izquierdo", "cuerpo_completo"][i] })),
+    );
+    const confirmacion = { vista: "tres_cuartos" as const, creditosConfirmados: 4, derechos: true, sinTerceros: true };
+    const primera = await pedirVistaSintetica(
+      actorAna,
+      personaje.id,
+      { ...confirmacion, claveIdempotencia: crypto.randomUUID() },
+      h,
+    );
+    await db()
+      .update(generationJobs)
+      .set({ state: "fallido", finishedAt: new Date() })
+      .where(eq(generationJobs.id, primera.trabajo.id));
+    expect((await ficha(personaje.id)).vistasEnCurso).toEqual([]);
+    const otra = await pedirVistaSintetica(
+      actorAna,
+      personaje.id,
+      { ...confirmacion, claveIdempotencia: crypto.randomUUID() },
+      h,
+    );
+    expect(otra.nueva).toBe(true);
+    expect(otra.trabajo.id).not.toBe(primera.trabajo.id);
     await pasadaDeCola(h);
   });
 

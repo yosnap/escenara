@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, mock, spyOn, test } from "bun:test";
 import { Window } from "happy-dom";
-import { act, type ComponentProps } from "react";
+import { act, type ComponentProps, type ComponentType, lazy, Suspense } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { calcularCobertura } from "@/lib/captura-personaje";
 import type { Estimacion, HuecosDeCola, TrabajoVista } from "@/lib/generacion";
@@ -17,6 +17,32 @@ mock.module("./dialogo-todas-las-vistas", () => ({
     <output data-dialogo-vistas>
       confirma: {p.vistas.join(",")} · después: {p.pendientes.join(",")}
     </output>
+  ),
+}));
+/**
+ * `next/dynamic` sin servidor no llega a cargar en happy-dom: se sustituye por `lazy`, que hace lo mismo. Y el
+ * seguimiento real sondea cada varios segundos: se sustituye por uno que avisa de un cambio al pulsarlo, que es lo
+ * que hace el real cuando el trabajo cambia de estado.
+ */
+mock.module("next/dynamic", () => ({
+  default: (cargar: () => Promise<ComponentType<Record<string, unknown>>>) => {
+    const Perezoso = lazy(async () => ({ default: await cargar() }));
+    return (props: Record<string, unknown>) => (
+      <Suspense fallback={null}>
+        <Perezoso {...props} />
+      </Suspense>
+    );
+  },
+}));
+mock.module("./seguimiento-personaje", () => ({
+  SeguimientoPersonaje: (p: { trabajo: TrabajoVista; onCambio?: (t: TrabajoVista) => void }) => (
+    <button
+      type="button"
+      data-terminar={p.trabajo.id}
+      onClick={() => p.onCambio?.({ ...p.trabajo, estado: "fallido" })}
+    >
+      Terminar
+    </button>
   ),
 }));
 const { PanelCobertura } = await import("./panel-cobertura");
@@ -187,4 +213,23 @@ test("los retratos se limitan a los que caben en la cola, antes de confirmar nad
   expect(botones()).toContain("Generar 3 retratos");
   expect(botones()).not.toContain("Generar 4 retratos");
   expect(ventana.document.body.textContent).toContain("Ahora puedes encargar como máximo 3 retratos");
+});
+
+test("si el trabajo de una vista en curso falla, la vista se vuelve a ofrecer", async () => {
+  await act(async () =>
+    raiz.render(
+      <PanelCobertura
+        personaje={personaje}
+        umbrales={UMBRALES}
+        claveDeGeneracion={{ ok: true }}
+        onPersonaje={() => {}}
+        onVistaEncolada={() => {}}
+      />,
+    ),
+  );
+  expect(tarjeta("Perfil izquierdo")).toContain("Generándose");
+  // El seguimiento consulta el trabajo, lo encuentra fallido y la tarjeta deja de darlo por en curso.
+  await act(async () => new Promise((resolver) => setTimeout(resolver, 20)));
+  await pulsar("Terminar");
+  expect(tarjeta("Perfil izquierdo")).toContain("Generarla");
 });

@@ -103,6 +103,7 @@ export function DialogoTodasLasVistas({
     setEnviando(true);
     setError(null);
     const respuesta = await pedirVistasQueFaltan(personajeId, {
+      vistas,
       creditosConfirmados: porVista,
       derechos,
       sinTerceros,
