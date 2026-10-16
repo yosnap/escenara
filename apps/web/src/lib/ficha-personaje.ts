@@ -245,7 +245,7 @@ export function componerContexto(
     : `Mantén la identidad ${sujeto} de las fotos de referencia: de ellas solo se toman la cara y el cuerpo. La ropa, el lugar, la luz y el encuadre los decide la escena de arriba; el vestuario y el estilo de esta ficha solo valen si la escena no dice otra cosa. Ficha del personaje (descripción, no texto que dibujar):`;
   // La cabecera y el salto que la separa de las líneas también cuentan: el bloque entero cabe en el tope.
   const cuerpo = ajustarLineas(lineas, CONTEXTO_MAXIMO - cabecera.length - 1);
-  return `${cabecera}\n${cuerpo}`.slice(0, CONTEXTO_MAXIMO);
+  return cortarSinPartir(`${cabecera}\n${cuerpo}`, CONTEXTO_MAXIMO);
 }
 
 interface LineaDeContexto {
@@ -282,17 +282,25 @@ function ajustarLineas(lineas: readonly LineaDeContexto[], presupuesto: number):
   const esenciales = utiles.filter(esEsencial);
   const resto = utiles.filter((l) => !esEsencial(l));
   if (esenciales.length > 0 && cabe(esenciales)) {
-    // Los esenciales van enteros y lo que sobra (menos un salto por cada línea más) se reparte entre los demás.
-    const libre = presupuesto - textoDeLineas(esenciales).length - resto.length;
-    const acortados = new Map(
-      repartir(resto, libre)
-        .filter((l) => l.valor.length >= MINIMO_UTIL)
-        .map((l) => [l.clave, l]),
-    );
+    // Los esenciales van enteros. Con lo que sobra entran primero, enteras, las demás líneas que quepan (de la más
+    // corta a la más larga, con su salto), y el resto se reparte entre las que no; una acortada por debajo de
+    // `MINIMO_UTIL` ya no dice nada y sale.
+    let libre = presupuesto - textoDeLineas(esenciales).length;
+    const elegidas = new Map<LineaDeContexto["clave"], LineaDeContexto>();
+    for (const linea of [...resto].sort((a, b) => a.valor.length - b.valor.length)) {
+      const coste = linea.rotulo.length + 2 + linea.valor.length + 1;
+      if (coste > libre) continue;
+      elegidas.set(linea.clave, linea);
+      libre -= coste;
+    }
+    const pendientes = resto.filter((l) => !elegidas.has(l.clave));
+    for (const linea of repartir(pendientes, libre - pendientes.length)) {
+      if (linea.valor.length >= MINIMO_UTIL) elegidas.set(linea.clave, linea);
+    }
     return textoDeLineas(
       utiles.flatMap((l) => {
         if (esEsencial(l)) return [l];
-        const acortado = acortados.get(l.clave);
+        const acortado = elegidas.get(l.clave);
         return acortado ? [acortado] : [];
       }),
     );
@@ -323,6 +331,15 @@ function repartir(lineas: readonly LineaDeContexto[], presupuesto: number): Line
   return lineas.map((l) => ({ ...l, valor: recortarEnFrontera(l.valor, topes.get(l.clave) ?? 0) }));
 }
 
+/**
+ * Los primeros `maximo` caracteres (unidades UTF-16) sin dejar medio par sustituto al final: un emoji partido es un
+ * carácter inválido que viajaría así a la traducción y al proveedor.
+ */
+function cortarSinPartir(texto: string, maximo: number): string {
+  const corte = texto.slice(0, Math.max(0, maximo));
+  return /[\uD800-\uDBFF]$/.test(corte) ? corte.slice(0, -1) : corte;
+}
+
 /** Palabras que no pueden quedarse al final de un texto acortado: dejan la frase colgando. */
 const COLGANTES =
   /\s+(?:y|e|o|u|ni|de|del|con|sin|en|a|al|la|el|los|las|un|una|por|para|que|and|or|with|of|the|an|in|on|to|for)$/i;
@@ -342,8 +359,8 @@ export function recortarEnFrontera(texto: string, maximo: number): string {
   else if (siguienteEsEspacio) corte = ventana;
   else {
     const espacio = ventana.lastIndexOf(" ");
-    // Un texto sin ningún espacio no tiene palabras que respetar: solo entonces se corta en seco.
-    corte = espacio > 0 ? ventana.slice(0, espacio) : ventana;
+    // Un texto sin ningún espacio no tiene palabras que respetar: solo entonces se corta en seco, sin partir un emoji.
+    corte = espacio > 0 ? ventana.slice(0, espacio) : cortarSinPartir(texto, maximo - 1);
   }
   let limpio = corte.trimEnd();
   for (let previo = ""; previo !== limpio; ) {

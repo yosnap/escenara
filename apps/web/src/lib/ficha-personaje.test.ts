@@ -180,6 +180,36 @@ describe("composición del contexto", () => {
     expect(bloque).not.toContain("Voz:");
   });
 
+  test("un campo corto que cabe entero no se descarta aunque se acorten otros", () => {
+    const palabras = (n: number) =>
+      "palabra "
+        .repeat(Math.ceil(n / 8))
+        .slice(0, n)
+        .trim();
+    const bloque = componerContexto(
+      ficha({
+        rasgos: palabras(250),
+        vestuario: palabras(150),
+        estilo: palabras(100),
+        personalidad: "Serena y segura",
+      }),
+      "persona",
+      palabras(300),
+    );
+    expect(bloque.length).toBeLessThanOrEqual(CONTEXTO_MAXIMO);
+    expect(bloque).toContain("Actitud: Serena y segura");
+  });
+
+  test("un texto sin espacios no parte un emoji al recortarse", () => {
+    const bloque = componerContexto(
+      ficha({ rasgos: "😀".repeat(150), vestuario: "👗".repeat(150), estilo: "🎨".repeat(150) }),
+      "persona",
+    );
+    expect(bloque.length).toBeLessThanOrEqual(CONTEXTO_MAXIMO);
+    // Ningún sustituto suelto: cada emoji va entero.
+    expect(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(bloque)).toBe(false);
+  });
+
   test("si cabe todo, la ficha va entera y en su orden", () => {
     const corta = ficha({ rasgos: "pelo castaño", estilo: "luz natural", vestuario: "camisa azul", voz: "cálida" });
     expect(componerContexto(corta, "persona", "Periodista").split("\n").slice(1)).toEqual([
@@ -285,6 +315,13 @@ describe("recorte en frontera", () => {
   });
   test("prefiere cortar en una frontera de frase cercana", () => {
     expect(recortarEnFrontera("Ojos verdes, pelo corto, piel morena y pecas", 32)).toBe("Ojos verdes, pelo corto…");
+  });
+  test("sin espacios corta por caracteres completos, nunca a mitad de un emoji", () => {
+    for (let maximo = 2; maximo < 30; maximo++) {
+      const recorte = recortarEnFrontera("😀".repeat(50), maximo);
+      expect(recorte.length).toBeLessThanOrEqual(maximo);
+      expect(recorte.replace("…", "")).toMatch(/^(?:😀)*$/u);
+    }
   });
   test("nunca devuelve más que el máximo", () => {
     for (let maximo = 0; maximo < 40; maximo++) {
