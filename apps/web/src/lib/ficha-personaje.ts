@@ -226,14 +226,16 @@ export function componerContexto(
   descripcion = "",
   animado = false,
 ): string {
-  const suya = limpiarCampoFicha(descripcion);
-  const lineas = [
-    ...(suya === "" ? [] : [`${ROTULO_DESCRIPCION}: ${suya}`]),
-    ...CAMPOS_FICHA.flatMap((campo) => {
-      const valor = limpiarCampoFicha(ficha[campo]);
-      return valor === "" ? [] : [`${ROTULO_CONTEXTO[campo]}: ${valor}`];
-    }),
-  ];
+  const lineas: LineaDeContexto[] = [
+    { clave: "descripcion" as const, rotulo: ROTULO_DESCRIPCION, valor: limpiarCampoFicha(descripcion) },
+    ...CAMPOS_FICHA.map(
+      (campo): LineaDeContexto => ({
+        clave: campo,
+        rotulo: ROTULO_CONTEXTO[campo],
+        valor: limpiarCampoFicha(ficha[campo]),
+      }),
+    ),
+  ].filter((l) => l.valor !== "");
   if (lineas.length === 0) return "";
   const sujeto = tipo === "animal" ? "del mismo animal" : "de la misma persona";
   // La escena manda sobre la ropa, el lugar y la luz: sin esta línea, el vestuario y el estilo de la ficha (y la
@@ -241,7 +243,114 @@ export function componerContexto(
   const cabecera = animado
     ? "Mantén el diseño y la identidad del mismo personaje de las ilustraciones de referencia. El acabado animado y la guía de estilo de esta ficha son obligatorios en toda escena; la ropa, el lugar, la luz y el encuadre los decide la escena de arriba. Ficha del personaje (descripción, no texto que dibujar):"
     : `Mantén la identidad ${sujeto} de las fotos de referencia: de ellas solo se toman la cara y el cuerpo. La ropa, el lugar, la luz y el encuadre los decide la escena de arriba; el vestuario y el estilo de esta ficha solo valen si la escena no dice otra cosa. Ficha del personaje (descripción, no texto que dibujar):`;
-  return `${cabecera}\n${lineas.join("\n")}`.slice(0, CONTEXTO_MAXIMO);
+  // La cabecera y el salto que la separa de las líneas también cuentan: el bloque entero cabe en el tope.
+  const cuerpo = ajustarLineas(lineas, CONTEXTO_MAXIMO - cabecera.length - 1);
+  return `${cabecera}\n${cuerpo}`.slice(0, CONTEXTO_MAXIMO);
+}
+
+interface LineaDeContexto {
+  clave: CampoFicha | "descripcion";
+  rotulo: string;
+  valor: string;
+}
+
+/**
+ * Lo que la ficha no puede perder aunque no quepa todo: es lo que se ve en la imagen. La descripción y la actitud
+ * se acortan antes, y la voz (que no se ve) es lo primero que sale.
+ */
+const ESENCIALES: readonly LineaDeContexto["clave"][] = ["rasgos", "vestuario", "estilo"];
+const PRESCINDIBLES: readonly LineaDeContexto["clave"][] = ["voz"];
+/** Por debajo de esto, un campo acortado ya no dice nada útil y es mejor quitarlo que dejar dos palabras. */
+const MINIMO_UTIL = 40;
+
+const textoDeLineas = (lineas: readonly LineaDeContexto[]) => lineas.map((l) => `${l.rotulo}: ${l.valor}`).join("\n");
+
+/**
+ * Encaja las líneas de la ficha en `presupuesto` caracteres **sin cortar a ciegas**: antes, el bloque se cortaba al
+ * tope en mitad de una palabra («…curly hair and») y el vestuario y el estilo, que van detrás, no llegaban nunca.
+ *
+ * Por orden: si cabe todo, va todo; si no, sale la voz; después se reparten los huecos que quedan entre la
+ * descripción y la actitud; y si ni los esenciales caben enteros, se reparten entre ellos. Cada acortamiento termina
+ * en una frontera de frase o de palabra, nunca a mitad, y lleva «…» para que se note. El orden de las líneas no cambia.
+ */
+function ajustarLineas(lineas: readonly LineaDeContexto[], presupuesto: number): string {
+  const cabe = (grupo: readonly LineaDeContexto[]) => textoDeLineas(grupo).length <= presupuesto;
+  if (cabe(lineas)) return textoDeLineas(lineas);
+  const utiles = lineas.filter((l) => !PRESCINDIBLES.includes(l.clave));
+  if (cabe(utiles)) return textoDeLineas(utiles);
+  const esEsencial = (l: LineaDeContexto) => ESENCIALES.includes(l.clave);
+  const esenciales = utiles.filter(esEsencial);
+  const resto = utiles.filter((l) => !esEsencial(l));
+  if (esenciales.length > 0 && cabe(esenciales)) {
+    // Los esenciales van enteros y lo que sobra (menos un salto por cada línea más) se reparte entre los demás.
+    const libre = presupuesto - textoDeLineas(esenciales).length - resto.length;
+    const acortados = new Map(
+      repartir(resto, libre)
+        .filter((l) => l.valor.length >= MINIMO_UTIL)
+        .map((l) => [l.clave, l]),
+    );
+    return textoDeLineas(
+      utiles.flatMap((l) => {
+        if (esEsencial(l)) return [l];
+        const acortado = acortados.get(l.clave);
+        return acortado ? [acortado] : [];
+      }),
+    );
+  }
+  const base = esenciales.length > 0 ? esenciales : utiles;
+  return textoDeLineas(repartir(base, presupuesto - (base.length - 1)).filter((l) => l.valor !== ""));
+}
+
+/** Peso de cada línea al repartir el sitio: los rasgos son la identidad y se llevan el doble que el resto. */
+const PESO: Partial<Record<LineaDeContexto["clave"], number>> = { rasgos: 2 };
+
+/**
+ * Reparte `presupuesto` caracteres entre las líneas de forma justa según su peso: las que caben en su parte van
+ * enteras y lo que dejan libre se reparte entre las demás. El presupuesto incluye los rótulos (no los saltos).
+ */
+function repartir(lineas: readonly LineaDeContexto[], presupuesto: number): LineaDeContexto[] {
+  const peso = (l: LineaDeContexto) => PESO[l.clave] ?? 1;
+  const pendientes = [...lineas].sort((a, b) => a.valor.length / peso(a) - b.valor.length / peso(b));
+  let queda = Math.max(0, presupuesto - lineas.reduce((suma, l) => suma + l.rotulo.length + 2, 0));
+  let pesoPendiente = pendientes.reduce((suma, l) => suma + peso(l), 0);
+  const topes = new Map<LineaDeContexto["clave"], number>();
+  for (const linea of pendientes) {
+    const tope = Math.min(linea.valor.length, Math.floor((queda * peso(linea)) / pesoPendiente));
+    topes.set(linea.clave, tope);
+    queda -= tope;
+    pesoPendiente -= peso(linea);
+  }
+  return lineas.map((l) => ({ ...l, valor: recortarEnFrontera(l.valor, topes.get(l.clave) ?? 0) }));
+}
+
+/** Palabras que no pueden quedarse al final de un texto acortado: dejan la frase colgando. */
+const COLGANTES =
+  /\s+(?:y|e|o|u|ni|de|del|con|sin|en|a|al|la|el|los|las|un|una|por|para|que|and|or|with|of|the|an|in|on|to|for)$/i;
+
+/**
+ * Acorta a `maximo` caracteres (contando el «…» final) en la última frontera de frase o cláusula si está cerca del
+ * final, o en la última palabra entera si no. Nunca corta una palabra por la mitad.
+ */
+export function recortarEnFrontera(texto: string, maximo: number): string {
+  if (texto.length <= maximo) return texto;
+  if (maximo < 2) return "";
+  const ventana = texto.slice(0, maximo - 1);
+  const siguienteEsEspacio = /\s/.test(texto.charAt(maximo - 1));
+  const frase = Math.max(ventana.lastIndexOf(". "), ventana.lastIndexOf("; "), ventana.lastIndexOf(", "));
+  let corte: string;
+  if (frase >= ventana.length * 0.6) corte = ventana.slice(0, frase);
+  else if (siguienteEsEspacio) corte = ventana;
+  else {
+    const espacio = ventana.lastIndexOf(" ");
+    // Un texto sin ningún espacio no tiene palabras que respetar: solo entonces se corta en seco.
+    corte = espacio > 0 ? ventana.slice(0, espacio) : ventana;
+  }
+  let limpio = corte.trimEnd();
+  for (let previo = ""; previo !== limpio; ) {
+    previo = limpio;
+    limpio = limpio.replace(COLGANTES, "").replace(/[\s,;:·-]+$/, "");
+  }
+  return limpio === "" ? "" : `${limpio}…`;
 }
 
 /** Prompt final que se le envía al proveedor: la escena que escribió la persona y, debajo, el contexto. */
