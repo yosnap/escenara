@@ -2,6 +2,33 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.52.6] · 2026-10-16
+
+### Corregido
+
+- Guardar la ficha de un personaje inventado ya no borra su cara: la guía de estilo se comparaba de
+  una forma que siempre daba «estilo cambiado» y descartaba su retrato elegido, sus vistas y sus
+  retratos por elegir. Ahora solo cuenta como cambio de estilo el que lo es, y un cambio de estilo de
+  verdad avisa de lo que descarta y no se guarda hasta que lo confirmas.
+- Los retratos y el encargo de todas las vistas ya no ofrecen más de lo que cabe en tu cola de
+  trabajos a la vez (3 de fábrica). Antes de confirmar ves cuántos puedes pedir ahora; las vistas
+  que no caben se nombran para pedirlas cuando termine alguna, y no se cobran. El resultado del
+  encargo de retratos sale junto al botón.
+- Una vista que ya se está generando sale como «Generándose» también al recargar la página y no se
+  puede encargar ni pagar otra vez: el servidor devuelve el trabajo en marcha y la cola rechaza un
+  duplicado sin cobrarlo.
+- Un servicio compatible (como NaN builders) que tarda ya no se marca como «rechazado». Si rechaza
+  una petición, antes de darlo por no válido se comprueba su clave con su lista de modelos, que no
+  gasta cuota.
+- Las llamadas de texto (traducción, guion, ficha con IA) ya no pasan a un modelo de pago cuyo coste
+  no confirmaste: si tu servicio de cuota falla, se para y se te dice qué falló, que no se ha cobrado
+  nada y cómo seguir.
+
+### Actualización
+
+- Sin migraciones nuevas ni cambios de configuración. Reiniciar web y worker para cargar la nueva
+  comprobación de vistas en marcha.
+
 ## [0.52.5] · 2026-10-16
 
 ### Corregido
