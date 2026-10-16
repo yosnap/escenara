@@ -76,6 +76,9 @@ export function PasoSujeto({
           valor={personajeId}
           onCambio={onPersonaje}
           deshabilitado={deshabilitado}
+          // No es el «Usar una imagen que ya tengo» del origen (que anima tu imagen sin generar fotograma): aquí se
+          // genera el fotograma igual, a partir de una foto de la persona o solo de la descripción.
+          detalleSinPersonaje="Genera con una foto suelta o solo con tu descripción"
         />
       </MarcaRequisito>
       {personaje ? (

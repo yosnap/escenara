@@ -68,12 +68,15 @@ export function SelectorPersonaje({
   valor,
   onCambio,
   deshabilitado,
+  detalleSinPersonaje = "Usar una imagen suelta",
 }: {
   personajes: PersonajeElegible[];
   /** Identificador del personaje elegido, o `null` para usar una imagen suelta. */
   valor: string | null;
   onCambio: (id: string | null) => void;
   deshabilitado?: boolean;
+  /** Lo que se dice debajo de «Sin personaje»: cada pantalla explica qué pasa en ella si no se elige ninguno. */
+  detalleSinPersonaje?: string;
 }) {
   return (
     <fieldset className="flex flex-col gap-3">
@@ -85,7 +88,7 @@ export function SelectorPersonaje({
             deshabilitado={deshabilitado}
             onClick={() => onCambio(null)}
             titulo="Sin personaje"
-            detalle="Usar una imagen suelta"
+            detalle={detalleSinPersonaje}
           />
         </li>
         {personajes.map((p) => (
