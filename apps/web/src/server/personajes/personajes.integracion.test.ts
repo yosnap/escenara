@@ -631,6 +631,44 @@ describe.skipIf(!hayBaseDeDatos)("personajes y consentimiento", () => {
     expect(borrado.status).toBe(204);
   });
 
+  test("una imagen suelta generada con un personaje lo hereda y el worker la envía sin exigir sus fotos", async () => {
+    const personaje = await nuevoPersonaje("Heredado", 3);
+    const { trabajo } = await crearFotograma(actorAna, confirmacion(personaje.id), h);
+    await enviarEncolados(h);
+    await pasadaDeCola(h);
+    const generado = await obtenerTrabajo(ana.id, trabajo.id);
+    expect(generado.estado).toBe("listo");
+    const fotogramaId = generado.medio?.id as string;
+    const temporal = await crearMedio(actorAna, new File([await png("#22aa66")], "abrigo.png", { type: "image/png" }));
+
+    // «Sin personaje» con ese fotograma como imagen suelta y una referencia de escena: como lo manda «Crear».
+    const { trabajo: heredado } = await crearFotograma(
+      actorAna,
+      {
+        medioId: fotogramaId,
+        sinTerceros: true,
+        prompt: "Con el @abrigo puesto, saluda a cámara con una sonrisa.",
+        creditosConfirmados: 4,
+        derechos: true,
+        claveIdempotencia: crypto.randomUUID(),
+        referenciasTemporales: [{ medioId: temporal.id, etiqueta: "abrigo", uso: "ropa" }],
+      },
+      h,
+    );
+    expect(heredado.personajeId).toBe(personaje.id);
+
+    subidas = 0;
+    await enviarEncolados(h);
+    const enviado = await obtenerTrabajo(ana.id, heredado.id);
+    // El fotograma no es una foto del personaje: antes se filtraba contra ellas, quedaban 0 y fallaba por el mínimo.
+    expect(enviado.error ?? "").not.toContain("mínimo");
+    expect(enviado.estado).not.toBe("fallido");
+    // Viajan la imagen suelta y la referencia de escena, nada más.
+    expect(subidas).toBe(2);
+    const [fila] = await db().select().from(generationJobs).where(eq(generationJobs.id, heredado.id));
+    expect((fila?.input as { personajeHeredado?: unknown } | undefined)?.personajeHeredado).toBe(true);
+  });
+
   test("dos personajes del mismo usuario no pueden llamarse igual", async () => {
     await nuevoPersonaje("Nombre repetido", 0, false);
     const segundo = await rutaPersonajes.POST(

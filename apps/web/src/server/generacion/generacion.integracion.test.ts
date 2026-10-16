@@ -382,6 +382,24 @@ describe.skipIf(!hayBaseDeDatos)("generación con la clave del usuario", () => {
       expect(await enCursoDe(actorAna.id)).toBe(0);
     });
 
+    test("sin imagen de partida, las referencias de la escena se rechazan con 400 en lugar de perderse", async () => {
+      const temporal = await crearMedio(actorAna, new File([await png()], "abrigo.png", { type: "image/png" }));
+      const error = await crearFotograma(
+        actorAna,
+        peticion(4, {
+          medioId: undefined,
+          prompt: "Con el @abrigo puesto, saluda a cámara.",
+          referenciasTemporales: [{ medioId: temporal.id, etiqueta: "abrigo", uso: "ropa" }],
+        }),
+        h,
+      ).catch((e) => e);
+      expect(error.estado).toBe(400);
+      expect(error.message).toContain("necesitan una imagen de partida");
+      expect(error.message).toContain("No se ha cobrado nada");
+      expect(kie.llamadas).toMatchObject({ crearTarea: 0, subida: 0 });
+      expect(await enCursoDe(actorAna.id)).toBe(0);
+    });
+
     test("la estimación viene del registro de precios y del saldo del usuario", async () => {
       const estimacion = await estimar(ana.id, "fotograma", buscar);
       expect(estimacion.creditos).toBe(4);
