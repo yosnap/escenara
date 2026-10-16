@@ -156,7 +156,7 @@
               "titulo": "Retratos que quieres generar",
               "abrir": "section:has(h2:text-is('Retratos')) [role=combobox]",
               "opciones": "[role=option]",
-              "selector": "[role=option]:text-is('3')",
+              "selector": "[role=option]:has-text('3')",
               "etiquetas": [
                 "1 retrato",
                 "2 retratos",
@@ -196,6 +196,11 @@
               "selector": "label:has-text('Puedo usar lo que se genere')"
             },
             {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Antes de generar'] label:has-text('Lo he leído y quiero generar igualmente')",
+              "siExiste": true
+            },
+            {
               "accion": "clic",
               "selector": "section[aria-label='Antes de generar'] label:has-text('Lo he leído y quiero generar igualmente')",
               "siExiste": true
@@ -210,12 +215,12 @@
             },
             {
               "accion": "esperar",
-              "selector": ":text('en marcha')",
+              "selector": ":text('Se han encargado')",
               "espera": 300000
             },
             {
               "accion": "desplazar",
-              "selector": ":text('en marcha')"
+              "selector": ":text('Se han encargado')"
             }
           ]
         },
@@ -375,7 +380,7 @@
             },
             {
               "accion": "esperar",
-              "selector": "[role=dialog] button:has-text('Generar las')",
+              "selector": "[role=dialog] button:has-text('Generar 3 vistas')",
               "espera": 60000,
               "indicador": false
             },
@@ -392,13 +397,28 @@
               "selector": "[role=dialog] label:has-text('He revisado las fotos')"
             },
             {
-              "accion": "clic",
+              "accion": "desplazar",
               "selector": "[role=dialog] label:has-text('Sí, quiero gastar')",
               "siExiste": true
             },
             {
               "accion": "clic",
+              "selector": "[role=dialog] label:has-text('Sí, quiero gastar')",
+              "siExiste": true
+            },
+            {
+              "accion": "desplazar",
               "selector": "[role=dialog] label:has-text('Lo he leído y quiero generar igualmente') >> nth=0",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] label:has-text('Lo he leído y quiero generar igualmente') >> nth=0",
+              "siExiste": true
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] label:has-text('Lo he leído y quiero generar igualmente') >> nth=1",
               "siExiste": true
             },
             {
@@ -408,11 +428,11 @@
             },
             {
               "accion": "desplazar",
-              "selector": "[role=dialog] button:has-text('Generar las')"
+              "selector": "[role=dialog] button:has-text('Generar 3 vistas')"
             },
             {
               "accion": "clic",
-              "selector": "[role=dialog] button:has-text('Generar las')"
+              "selector": "[role=dialog] button:has-text('Generar 3 vistas')"
             },
             {
               "accion": "esperar",
@@ -422,12 +442,12 @@
           ]
         },
         {
-          "id": "vistas-listas",
+          "id": "vistas-resto",
           "acciones": [
             {
               "accion": "esperar",
-              "selector": "section[aria-label='Cobertura de vistas'] :text('4 vistas generadas'), section[aria-label='Cobertura de vistas'] :text('5 vistas generadas')",
-              "espera": 600000,
+              "selector": "section[aria-label='Cobertura de vistas'] :text('Faltan 1 de 5')",
+              "espera": 900000,
               "recargar": true,
               "cada": 20000,
               "trasRecargar": [
@@ -439,7 +459,89 @@
             },
             {
               "accion": "desplazar",
-              "selector": "section[aria-label='Cobertura de vistas'] ul li >> nth=0"
+              "selector": "section[aria-label='Cobertura de vistas'] button:has-text('Generarla')"
+            },
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Cobertura de vistas'] button:has-text('Generarla')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "[role=dialog] button:has-text('Generar la vista')",
+              "espera": 60000,
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] label:has-text('Tengo derecho a usar estas fotos')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] label:has-text('Tengo derecho a usar estas fotos')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] label:has-text('He revisado las fotos')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] label:has-text('Sí, quiero gastar')",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] label:has-text('Sí, quiero gastar')",
+              "siExiste": true
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] label:has-text('Lo he leído y quiero generar igualmente') >> nth=0",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] label:has-text('Lo he leído y quiero generar igualmente') >> nth=0",
+              "siExiste": true
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] label:has-text('Lo he leído y quiero generar igualmente') >> nth=1",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] label:has-text('Lo he leído y quiero generar igualmente') >> nth=1",
+              "siExiste": true
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] button:has-text('Generar la vista')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button:has-text('Generar la vista')"
+            }
+          ]
+        },
+        {
+          "id": "vistas-listas",
+          "acciones": [
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Cobertura de vistas'] :text('Todas las vistas cubiertas')",
+              "espera": 900000,
+              "recargar": true,
+              "cada": 20000,
+              "trasRecargar": [
+                {
+                  "accion": "clic",
+                  "selector": "[role=tab]:has-text('Retratos y vistas')"
+                }
+              ]
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Cobertura de vistas'] h2"
             }
           ]
         }
@@ -514,6 +616,38 @@
               ]
             },
             {
+              "accion": "desplazar",
+              "selector": "[role=dialog] button:has-text('Subir sin editar')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button:has-text('Subir sin editar')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] button:has-text('Subir sin editar')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button:has-text('Subir sin editar')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] button:has-text('Subir sin editar')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button:has-text('Subir sin editar')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] button:has-text('Subir sin editar')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button:has-text('Subir sin editar')"
+            },
+            {
               "accion": "esperar",
               "selector": "section[aria-label='Paso 2: Fotos de referencia'] img >> nth=3",
               "espera": 60000,
@@ -539,6 +673,11 @@
               "selector": "section[aria-label='Paso 3: Consentimiento'] label:has-text('Declaro que es mayor de edad')"
             },
             {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 3: Consentimiento'] label:has-text('Declaro que es mayor de edad')",
+              "siExiste": true
+            },
+            {
               "accion": "clic",
               "selector": "section[aria-label='Paso 3: Consentimiento'] label:has-text('Declaro que es mayor de edad')",
               "siExiste": true
@@ -560,6 +699,11 @@
               "accion": "esperar",
               "selector": "[role=tab]:has-text('Referencias'), button:has-text('de todas formas')",
               "espera": 120000
+            },
+            {
+              "accion": "desplazar",
+              "selector": "button:has-text('de todas formas')",
+              "siExiste": true
             },
             {
               "accion": "clic",

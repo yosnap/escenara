@@ -20,6 +20,11 @@
   anterior). Si algo de la app falla, no se arregla en el código: se apunta con evidencia.
 - **Contenido**: solo sintético. La cara de Brisa se genera y Lupo es un perro inventado.
 - **Grabación final**: después de integrar los arreglos de la app de la 0.52.6. No antes.
+- **Decisiones del 2026-10-16, 23:35**:
+  - Se acepta a Lupo como mascota de demostración, marcando «Un animal mío» en la cuenta Tutoriales.
+  - Las fotos de Lupo se generan con IA una sola vez.
+  - Tope de 80 créditos de KIE para la grabación final, con fotos y reintentos.
+  - «Declaro que es mayor de edad» para una mascota es un fallo de la app: se apunta y no se arregla.
 
 ## Decisiones mías
 
@@ -33,14 +38,13 @@
   Cada grabación que sigue con Brisa la abre antes desde la lista, con `pasos` que no se ven. Empieza en la misma
   pantalla en la que acabó la anterior, así que el corte no se nota. Si una falla, se repite solo esa sin borrar a
   Brisa (ver «Cómo grabar»).
-- **Orden de la guía de la ficha**: retratos → cara → ficha → vistas. El vídeo anterior completaba la ficha antes
-  de los retratos porque guardarla borraba la cara (fallo 1 del informe de las 19:30). Ese orden depende de que la
-  0.52.6 lo arregle. Si no lo arregla, cambia el orden de las escenas `ficha-ia` y `ficha-guardar` para que vayan
-  antes de `retratos`. Hay que cambiar también el orden de las grabaciones en `capturas.json`: `inventado-ficha`
-  antes de `inventado-retratos`.
-- **3 retratos**: el selector enseña que se pueden pedir de uno a cuatro. Elijo 3 por el tope de 3 trabajos
-  simultáneos (fallo 2) y por el gasto. Si la 0.52.6 quita el tope, se puede pasar a 4 cambiando `:text-is('3')`,
-  «Generar 3 retratos» y «Son 3 imágenes».
+- **Orden de la guía de la ficha**: retratos → cara → ficha → vistas. La 0.52.6 arregla que guardar la ficha
+  borrara la cara.
+- **3 retratos**: el selector enseña que se pueden pedir de uno a cuatro. Elijo 3 porque es lo que cabe en el tope
+  de 3 trabajos simultáneos; la app avisa de ello.
+- **Vistas en dos tandas**: faltan 5 y caben 3 a la vez, así que se encargan 3 y, cuando terminan, las 2 que
+  faltan. Así el vídeo acaba en «Todas las vistas cubiertas» y no en «Faltan N». La escena `vistas-resto` lo
+  explica.
 - **Avisos que dependen del importe**, como «Sí, quiero gastar…» o «Lo he leído y quiero generar igualmente»: van
   con `siExiste`. Si no salen, ese momento queda quieto, aunque suena el toque.
 - **Esperas de generación**: se espera con recarga cada 20 s, hasta 10 minutos, y tras cada recarga se vuelve a
@@ -56,12 +60,11 @@
   «vista generada» y no como foto (`server/personajes/servicio.ts:361-462`), y no contarían para el mínimo de 3.
   Cómo generarlas y lo que cuesta: `mascota/prompts.md`.
 - **Cuenta**: Tutoriales (`ESCENARA_TUTORIALES_EMAIL` y `ESCENARA_TUTORIALES_PASSWORD`), sin administración.
-- **Estado inicial**: `app.preparacion` borra las Brisas inventadas de la cuenta, igual que en el vídeo anterior.
-  **No borra a Lupo**, porque el script solo borra inventados (`apps/web/scripts/tutorial-personaje.ts:74`).
-  Antes de repetir la grabación `mascota` hay que borrarlo a mano o ampliar el script. Ver preguntas en el informe.
+- **Estado inicial**: `app.preparacion` ejecuta `reiniciar-tutorial-personaje.ts --nombre Brisa --mascota Lupo`.
+  Borra, con el borrado de la app, las Brisas inventadas y el animal «Lupo» de la cuenta Tutoriales, y nada más.
 - **Red**:
-  - Siguen bloqueados con 403 los borrados y lo que no forma parte del flujo: `POST /api/generacion/**`, `omni`,
-    hoja de identidad y `vista-sintetica`.
+  - Siguen bloqueados con 403 los borrados y lo que no forma parte del flujo: `POST /api/generacion/**`, `omni` y
+    hoja de identidad.
   - Ahora pasan consentimiento y referencias, porque la mascota los necesita.
 - **Web**:
   - Graba contra el `next dev` del 3021 y difumina `nextjs-portal`.
@@ -70,7 +73,7 @@
   - `sustituirTextos` cambia la URL local por `https://escenara.com`.
 - **Marca**: la del vídeo anterior (Manrope, `#2753d7`, fondo `#f7f8fc`). Música suave a 100 BPM en Re mayor,
   por debajo de la voz.
-- **Duración**: de 150 a 270 s. La estimada sin voz es de ~173 s, y la real depende de la locución.
+- **Duración**: de 150 a 270 s. La estimada sin voz es de ~202 s, y la real depende de la locución.
 
 ## Prueba de humo (sin gastar)
 
@@ -81,8 +84,8 @@ personajes, generación o medios. Se graba con `--sin-voz`.
 
 ## Cómo grabar la versión final
 
-1. Integrar la 0.52.6. Generar las 4 fotos de Lupo (`mascota/prompts.md`) y dejarlas en
-   `mascota/fotos/lupo-1.jpg` … `lupo-4.jpg`. Borrar a Lupo si quedó de una pasada anterior.
+1. Las fotos de Lupo ya están en `mascota/fotos/` (generadas el 2026-10-16 con la cuenta Tutoriales, 16 créditos).
+   Se reutilizan.
 2. Desde el motor (`feat/modo-tutorial`): `pnpm preparar --video <esta carpeta>`. Revisa la hoja de contactos.
 3. Si falla una grabación, repítela sola sin borrar lo creado:
    `pnpm preparar --video <esta carpeta> --solo <id> --sin-preparacion`. Ojo: repetir `inventado-retratos` o
@@ -111,7 +114,8 @@ Rutas relativas a `apps/web/src/` salvo que se indique otra cosa.
 | ficha-ia | Propone rasgos, estilo, vestuario, personalidad y voz | `dialogo-ficha-ia.tsx` y `CAMPOS_FICHA` / `ETIQUETA_CAMPO_FICHA` en `lib/ficha-personaje.ts` |
 | ficha-guardar | Se acepta lo que convence y se guarda con «Guardar la ficha» | `dialogo-ficha-ia.tsx` («Aceptar»; la versión nueva la crea «Guardar la ficha») y `panel-ficha.tsx` |
 | vistas | Perfiles, tres cuartos y cuerpo completo; total antes de encargarlas | `VISTAS_MINIMAS.persona` en `lib/captura-personaje.ts`; `dialogo-todas-las-vistas.tsx:116-186` (título, total y «Generar las N vistas») |
-| vistas-listas | Con las vistas se mantiene el parecido | `panel-cobertura.tsx` |
+| vistas-resto | Como mucho tres a la vez; luego se encargan las que faltan | `trabajosSimultaneos: 3` en `server/ajustes.ts`; aviso «esta instalación permite 3 a la vez» de `panel-retratos.tsx` y título «Generar N de las M vistas que faltan» de `dialogo-todas-las-vistas.tsx:133` |
+| vistas-listas | Con las vistas se mantiene el parecido | `panel-cobertura.tsx` («Todas las vistas cubiertas») |
 | mascota-tipo | Volver a «Nuevo personaje» y elegir «Animal» | `alta-personaje.tsx:137-150` (`GrupoOpciones` con «Persona» y «Animal», `ETIQUETA_TIPO_PERSONAJE` en `lib/personajes.ts:21-24`) |
 | mascota-datos | Nombre, especie o raza opcional y descripción de lo que no cambia | `alta-personaje.tsx:151-191` («Especie o raza (opcional)», «Descripción (opcional)»: «describe lo que no debería cambiar entre escenas») |
 | mascota-fotos | Mínimo de tres fotos, con luces y ángulos distintos, para mantener la cara | `alta-personaje.tsx:195-205` («Fotos del personaje (mínimo N)» y su ayuda); `minimoReferenciasPersonaje: 3` en `server/ajustes.ts:450` |

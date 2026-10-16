@@ -1,6 +1,6 @@
 /**
- * Deja la cuenta de tutoriales lista para grabar «Crear un personaje»: borra los personajes inventados que creó
- * una pasada anterior del tutorial, con el mismo borrado que usa la app (cancela lo que no salió, cierra
+ * Deja la cuenta de tutoriales lista para grabar «Crear un personaje»: borra los personajes inventados (y, con
+ * `--mascota`, el animal de demostración) que creó una pasada anterior del tutorial, con el mismo borrado que usa la app (cancela lo que no salió, cierra
  * reservas y borra sus retratos y vistas generados). Antes de borrar cada uno imprime el gasto de sus trabajos,
  * porque con el personaje desaparecen también sus filas de trabajo.
  *
@@ -9,7 +9,7 @@
  *
  * Uso, desde la raíz del repositorio:
  *
- *   bun run --cwd apps/web scripts/reiniciar-tutorial-personaje.ts --cuenta CORREO --nombre NOMBRE
+ *   bun run --cwd apps/web scripts/reiniciar-tutorial-personaje.ts --cuenta CORREO --nombre NOMBRE [--mascota NOMBRE]
  */
 import path from "node:path";
 import { loadEnvConfig } from "@next/env";
@@ -26,7 +26,7 @@ loadEnvConfig(raiz, false, { info: () => {}, error: console.error }, true);
 const ESPERA_MAXIMA_MS = 8 * 60_000;
 const INTERVALO_MS = 10_000;
 
-const { cuenta: correo, nombre } = leerArgumentosReinicio(process.argv.slice(2));
+const { cuenta: correo, nombre, mascota } = leerArgumentosReinicio(process.argv.slice(2));
 
 const { eq } = await import("drizzle-orm");
 const { db, olvidarConexion } = await import("../src/server/db/cliente");
@@ -65,11 +65,18 @@ try {
   if (motivo || !cuenta) throw new Error(motivo ?? "Cuenta no encontrada.");
 
   const propios = await db()
-    .select({ id: characters.id, ownerId: characters.ownerId, name: characters.name, virtual: characters.virtual })
+    .select({
+      id: characters.id,
+      ownerId: characters.ownerId,
+      name: characters.name,
+      virtual: characters.virtual,
+      kind: characters.kind,
+    })
     .from(characters)
     .where(eq(characters.ownerId, cuenta.id));
-  const aBorrar = personajesDelTutorial(propios, cuenta.id, nombre);
-  console.log(`Reinicio del tutorial: ${aBorrar.length} personajes «${nombre}» de pasadas anteriores.`);
+  const aBorrar = personajesDelTutorial(propios, cuenta.id, nombre, mascota);
+  const nombres = mascota ? `«${nombre}» o la mascota «${mascota}»` : `«${nombre}»`;
+  console.log(`Reinicio del tutorial: ${aBorrar.length} personajes ${nombres} de pasadas anteriores.`);
 
   for (const personaje of aBorrar) {
     const trabajos = await db()

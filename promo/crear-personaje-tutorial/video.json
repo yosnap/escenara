@@ -47,7 +47,9 @@
       "--cuenta",
       "tutoriales@escenara.test",
       "--nombre",
-      "Brisa"
+      "Brisa",
+      "--mascota",
+      "Lupo"
     ],
     "inicioSesion": {
       "ruta": "/entrar",
@@ -109,14 +111,6 @@
       {
         "metodo": "POST",
         "url": "**/api/personajes/*/hoja**",
-        "estado": 403,
-        "cuerpo": {
-          "error": "Bloqueado durante la grabación del tutorial: no es parte del flujo."
-        }
-      },
-      {
-        "metodo": "POST",
-        "url": "**/api/personajes/*/vista-sintetica**",
         "estado": 403,
         "cuerpo": {
           "error": "Bloqueado durante la grabación del tutorial: no es parte del flujo."

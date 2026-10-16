@@ -13,7 +13,15 @@ describe("argumentos del reinicio", () => {
     expect(leerArgumentosReinicio(["--cuenta", "Tutoriales@Escenara.test", "--nombre", "Brisa"])).toEqual({
       cuenta: "tutoriales@escenara.test",
       nombre: "Brisa",
+      mascota: null,
     });
+    expect(
+      leerArgumentosReinicio(["--cuenta", "tutoriales@escenara.test", "--nombre", "Brisa", "--mascota", "Lupo"])
+        .mascota,
+    ).toBe("Lupo");
+    expect(() => leerArgumentosReinicio(["--cuenta", "a@b.test", "--nombre", "B", "--mascota"])).toThrow(
+      "necesita un valor",
+    );
     expect(() => leerArgumentosReinicio(["--nombre", "Brisa"])).toThrow("--cuenta");
     expect(() => leerArgumentosReinicio(["--cuenta", "ana@gmail.com", "--nombre", "Brisa"])).toThrow(
       "dominio reservado",
@@ -42,6 +50,7 @@ describe("personajes que se borran", () => {
     ownerId: cuenta,
     name: "Brisa",
     virtual: true,
+    kind: "persona",
     ...datos,
   });
 
@@ -55,6 +64,20 @@ describe("personajes que se borran", () => {
       p({ id: "parecido", name: "brisa" }),
     ];
     expect(personajesDelTutorial(lista, cuenta, "Brisa").map((x) => x.id)).toEqual(["a", "b"]);
+  });
+
+  test("con --mascota, también el animal de la cuenta con ese nombre exacto, y nada más", () => {
+    const lista = [
+      p({ id: "brisa" }),
+      p({ id: "lupo", name: "Lupo", virtual: false, kind: "animal" }),
+      p({ id: "lupo-persona", name: "Lupo", virtual: false, kind: "persona" }),
+      p({ id: "lupo-inventado", name: "Lupo", virtual: true, kind: "animal" }),
+      p({ id: "lupo-otra-cuenta", name: "Lupo", virtual: false, kind: "animal", ownerId: "otra" }),
+      p({ id: "toby", name: "Toby", virtual: false, kind: "animal" }),
+      p({ id: "brisa-animal", name: "Brisa", virtual: false, kind: "animal" }),
+    ];
+    expect(personajesDelTutorial(lista, cuenta, "Brisa", "Lupo").map((x) => x.id)).toEqual(["brisa", "lupo"]);
+    expect(personajesDelTutorial(lista, cuenta, "Brisa").map((x) => x.id)).toEqual(["brisa"]);
   });
 });
 

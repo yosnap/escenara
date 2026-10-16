@@ -82,6 +82,12 @@ escenas:
     frases:
       - texto: "Faltan sus vistas: perfiles, tres cuartos y cuerpo completo. Ves el total antes de encargarlas."
 
+  - id: vistas-resto
+    pieza: tutorial
+    parametros: { grabacion: inventado-vistas, tramo: vistas-resto }
+    frases:
+      - texto: "Se hacen como mucho tres a la vez. Cuando terminan, encarga la que falta con «Generarla»."
+
   - id: vistas-listas
     pieza: tutorial
     parametros: { grabacion: inventado-vistas, tramo: vistas-listas }
@@ -106,6 +112,7 @@ escenas:
     parametros: { grabacion: mascota, tramo: mascota-fotos }
     frases:
       - texto: "Sube al menos tres fotos suyas, con luces y ángulos distintos: es lo que mantiene su cara igual entre vídeos."
+      - texto: "Antes de subirlas puedes recortarlas o girarlas; aquí van tal cual."
 
   - id: mascota-consentimiento
     pieza: tutorial
