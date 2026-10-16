@@ -878,6 +878,51 @@ describe.skipIf(!hayBaseDeDatos)("escenas habladas con Omni", () => {
       /entre 1 y 4 retratos/,
     );
   });
+
+  test("no se encargan más retratos de los que caben en la cola: se rechaza antes de encargar ninguno", async () => {
+    const personaje = await crearPersonajeInventado(actor, {
+      nombre: `Lía ${crypto.randomUUID().slice(0, 6)}`,
+      descripcion: "Mujer adulta ficticia de pelo negro y abrigo mostaza.",
+      declaracion: true,
+    });
+    const { precioDe } = await import("../generacion/precios");
+    const { creditosDelEnvio } = await import("../prompts/traduccion");
+    const { huecosDeCola } = await import("../cola/encolar");
+    const precio = await precioDe("fotograma");
+    const previos = await leerAjustes();
+    // Caben exactamente tres más de los que ya tiene en marcha, que es el tope de fábrica.
+    const { enMarcha } = await huecosDeCola(ana.id);
+    await guardarAjustes({ trabajosSimultaneos: enMarcha + 3 }, null);
+    try {
+      const confirmacion = {
+        cantidad: 4,
+        creditosConfirmados: await creditosDelEnvio(Math.ceil(precio.creditos)),
+        derechos: true,
+        claveIdempotencia: crypto.randomUUID(),
+        selloEstimacion: precio.sello,
+        avisoUmbralAceptado: true,
+      };
+      await expect(generarRetratosCandidatos(actor, personaje.id, confirmacion, h)).rejects.toThrow(
+        /Ahora solo caben 3 retratos.*No se ha encargado nada/,
+      );
+      const encargados = await db().select().from(generationJobs).where(eq(generationJobs.characterId, personaje.id));
+      expect(encargados).toHaveLength(0);
+      // Con lo que cabe, se encargan todos los pedidos.
+      const { trabajos, aviso } = await generarRetratosCandidatos(
+        actor,
+        personaje.id,
+        { ...confirmacion, cantidad: 3 },
+        h,
+      );
+      expect(trabajos).toHaveLength(3);
+      expect(aviso).toBe("");
+      // Repetir la misma confirmación devuelve lo encargado aunque la cola ya esté llena: no es un encargo nuevo.
+      const repetido = await generarRetratosCandidatos(actor, personaje.id, { ...confirmacion, cantidad: 3 }, h);
+      expect(repetido.trabajos.map((t) => t.id).sort()).toEqual(trabajos.map((t) => t.id).sort());
+    } finally {
+      await guardarAjustes({ trabajosSimultaneos: previos.trabajosSimultaneos }, null);
+    }
+  });
   // ── Lo que señaló la revisión de código ──────────────────────────────────────────────────────────────────
 
   test("registrar no cuesta créditos, pero tiene ritmo: pasado el tope se rechaza sin llamar al proveedor", async () => {

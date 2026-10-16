@@ -38,6 +38,7 @@ import {
 import { fichaDeFila, ultimaVersion } from "./ficha";
 import { vistaDeRegistro } from "./omni";
 import { registrarAccesoAConsentimiento, registrarAccesoAListado } from "./registro-acceso";
+import { vistasEnCursoDe } from "./vistas-en-marcha";
 
 /**
  * Lecturas de personajes y conversión a lo que ve el navegador. Todo lo que sale de aquí ya está filtrado
@@ -375,6 +376,7 @@ export async function vistaDePersonaje(
             fila.virtual,
             await parecidoDecideLaCobertura(),
           ),
+          vistasEnCurso: await vistasEnCursoDe(fila.id),
         }
       : {}),
     ...(opciones.completa

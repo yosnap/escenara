@@ -3,7 +3,7 @@ import type { RechazoDeReferencia, Vista } from "@/lib/captura-personaje";
 import type { EvaluacionVista } from "@/lib/controles";
 import type { EstadoHojaIdentidad } from "@/lib/direccion";
 import type { CampoFicha } from "@/lib/ficha-personaje";
-import type { Estimacion, TrabajoVista } from "@/lib/generacion";
+import type { Estimacion, HuecosDeCola, TrabajoVista } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
 import type {
   AprobacionVista,
@@ -180,6 +180,9 @@ export const consultarEstimacionDeVista = () => pedir<Estimacion>("/api/generaci
  */
 export const consultarEstimacionSinImagen = () =>
   pedir<Estimacion>("/api/generacion/estimacion?tipo=fotograma&sinImagen=1");
+
+/** Cuántos trabajos caben ahora en la cola: con esto no se ofrecen más retratos ni vistas de los que se encargan. */
+export const consultarHuecos = () => pedir<HuecosDeCola>("/api/generacion/huecos");
 
 /**
  * «Antes de generar» de una vista que falta: lo mismo que dirá la puerta al encolarla, con sus avisos

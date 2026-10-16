@@ -1,6 +1,7 @@
 import type { Cobertura, IdentidadReferencia, MotivoRechazo, RechazoDeReferencia, Vista } from "./captura-personaje";
 import type { EstadoHojaIdentidad } from "./direccion";
 import type { DiferenciaFicha, FichaPersonaje } from "./ficha-personaje";
+import type { TrabajoVista } from "./generacion";
 import type { Medio } from "./media/tipos";
 import type { RegistroOmniVista } from "./omni";
 
@@ -313,6 +314,12 @@ export interface ContextoAplicado {
   modelo: string;
 }
 
+/** Una vista del personaje que ya se está generando y el trabajo que la genera. */
+export interface VistaEnCurso {
+  vista: Vista;
+  trabajo: TrabajoVista;
+}
+
 /** Personaje tal como lo devuelve la API. `referencias` y `consentimiento` solo van en la ficha. */
 export interface PersonajeVista {
   id: string;
@@ -386,6 +393,11 @@ export interface PersonajeVista {
    * referencias: dice cuántas fotos tiene y de qué ángulo.
    */
   cobertura?: Cobertura;
+  /**
+   * Vistas que ya se están generando, con su trabajo (solo para el dueño). Con esto la ficha, al recargar, no vuelve
+   * a ofrecer «Generarla» para una vista en marcha y sigue su trabajo hasta que termine.
+   */
+  vistasEnCurso?: VistaEnCurso[];
   consentimiento?: ConsentimientoVista | null;
   /** Solo en la vista de administración: quién es el dueño del personaje. */
   propietario?: { id: string; nombre: string };

@@ -13,7 +13,13 @@ import { pedirVistasQueFaltan, type VistasEncargadas } from "@/components/ui/per
 import { type ClaveConfirmacion, claveEstable } from "@/lib/asistente";
 import { ETIQUETA_VISTA, type Vista } from "@/lib/captura-personaje";
 import { bloqueosDeControles, type EvaluacionVista, firmaDeAvisos } from "@/lib/controles";
-import { creditosAConfirmar, type Estimacion, formatearCreditos } from "@/lib/generacion";
+import {
+  creditosAConfirmar,
+  type Estimacion,
+  formatearCreditos,
+  type HuecosDeCola,
+  motivoSinHuecos,
+} from "@/lib/generacion";
 import { problemasDeMotivos } from "@/lib/llevar-al-problema";
 import { AVISO_SIN_TERCEROS } from "@/lib/personajes";
 
@@ -34,6 +40,8 @@ export function DialogoTodasLasVistas({
   personajeId,
   inventado,
   vistas,
+  pendientes,
+  huecos,
   estimacion,
   controles,
   abierto,
@@ -42,8 +50,14 @@ export function DialogoTodasLasVistas({
 }: {
   personajeId: string;
   inventado: boolean;
-  /** Vistas que faltan, tal como las calcula `vistasPorGenerar`. Es lo que el servidor va a encargar. */
+  /**
+   * Vistas que faltan y **caben ahora** en la cola, en el orden de `vistasPorGenerar`. Es lo que el servidor va a
+   * encargar: nunca se confirma una vista que el tope de trabajos simultáneos rechazaría.
+   */
   vistas: readonly Vista[];
+  /** Las que faltan pero no caben ahora: se dicen para pedirlas cuando termine alguna. */
+  pendientes: readonly Vista[];
+  huecos: HuecosDeCola;
   /** Coste de **una** imagen, ya pedido al servidor: aquí no se calcula ningún precio. */
   estimacion: Estimacion;
   controles: EvaluacionVista;
@@ -113,7 +127,11 @@ export function DialogoTodasLasVistas({
 
   return (
     <Dialogo
-      titulo={`Generar las ${vistas.length} vistas que faltan`}
+      titulo={
+        pendientes.length > 0
+          ? `Generar ${vistas.length} de las ${vistas.length + pendientes.length} vistas que faltan`
+          : `Generar las ${vistas.length} vistas que faltan`
+      }
       descripcion="Se creará una imagen por cada vista, a partir de lo que ya tienes de este personaje."
       abierto={abierto}
       onAbiertoCambio={onAbiertoCambio}
@@ -128,6 +146,14 @@ export function DialogoTodasLasVistas({
             : "No cuentan para el mínimo de fotos originales."}{" "}
           Se encargan {vistas.map((v) => ETIQUETA_VISTA[v].toLowerCase()).join(", ")}.
         </Aviso>
+
+        {pendientes.length > 0 && (
+          <Aviso tono="aviso">
+            Ahora caben {vistas.length}: {motivoSinHuecos(huecos).toLowerCase()} No se encargan ni se cobran{" "}
+            {pendientes.map((v) => ETIQUETA_VISTA[v].toLowerCase()).join(", ")}: podrás generarlas cuando termine
+            alguna.
+          </Aviso>
+        )}
 
         <PanelCoste estimacion={estimacion}>
           <div className="flex flex-col gap-3">
@@ -183,7 +209,7 @@ export function DialogoTodasLasVistas({
           disabled={bloqueos.length > 0}
           onClick={() => void generar()}
         >
-          Generar las {vistas.length} vistas
+          {vistas.length === 1 ? "Generar 1 vista" : `Generar ${vistas.length} vistas`}
         </Boton>
       </div>
     </Dialogo>

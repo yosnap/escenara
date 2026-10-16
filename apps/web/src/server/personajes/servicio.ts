@@ -44,7 +44,7 @@ import {
   versionarEnTransaccion,
   versionarSiCambia,
 } from "./versiones";
-import { vistaSinteticaDe } from "./vista-sintetica";
+import { vistaSinteticaDe } from "./vistas-en-marcha";
 
 /**
  * Alta y edición de personajes y de sus fotos de referencia (RF02). Todo pasa por el dueño: un personaje

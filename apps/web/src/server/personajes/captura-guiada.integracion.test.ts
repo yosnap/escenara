@@ -49,6 +49,9 @@ const { guardarCredencial } = await import("../boveda/credenciales");
 const { crearMedio, enviarAPapelera } = await import("../media/servicio");
 const { pasadaDeCola } = await import("../cola/pasada");
 const { pedirVistaSintetica, pedirVistasQueFaltan } = await import("./vista-sintetica");
+const { crearFotograma } = await import("../generacion/servicio");
+const { huecosDeCola } = await import("../cola/encolar");
+const { promptDeVista } = await import("@/lib/captura-personaje");
 const { claveDerivada, exigirClaveIdempotencia } = await import("../generacion/comprobaciones");
 const { quitarReferencias } = await import("./servicio");
 const { coberturaDe } = await import("./consulta");
@@ -635,6 +638,96 @@ describe.skipIf(!hayBaseDeDatos)("captura guiada de referencias", () => {
     expect(await db().select().from(generationJobs).where(eq(generationJobs.characterId, personaje.id))).toHaveLength(
       1,
     );
+  });
+
+  test("una vista que ya se está generando no se vuelve a encargar ni a cobrar, aunque llegue con otra confirmación", async () => {
+    const personaje = await nuevoPersonaje("Sin vista repetida");
+    const fotos = await Promise.all([
+      subir(await foto(43), "e1.png"),
+      subir(await foto(44), "e2.png"),
+      subir(await foto(45), "e3.png"),
+    ]);
+    await anadir(
+      personaje.id,
+      fotos.map((f, i) => ({ medioId: f.id, vistaClave: ["frontal", "perfil_izquierdo", "cuerpo_completo"][i] })),
+    );
+    const confirmacion = { vista: "tres_cuartos" as const, creditosConfirmados: 4, derechos: true, sinTerceros: true };
+    const primera = await pedirVistaSintetica(
+      actorAna,
+      personaje.id,
+      { ...confirmacion, claveIdempotencia: crypto.randomUUID() },
+      h,
+    );
+    // Tras recargar la página la confirmación es otra: antes se encargaba (y se cobraba) una segunda vez.
+    const trasRecargar = await pedirVistaSintetica(
+      actorAna,
+      personaje.id,
+      { ...confirmacion, claveIdempotencia: crypto.randomUUID() },
+      h,
+    );
+    expect(primera.nueva).toBe(true);
+    expect(trasRecargar.nueva).toBe(false);
+    expect(trasRecargar.trabajo.id).toBe(primera.trabajo.id);
+    expect(await db().select().from(generationJobs).where(eq(generationJobs.characterId, personaje.id))).toHaveLength(
+      1,
+    );
+    // La ficha, al recargar, sabe que esa vista ya está en marcha y con qué trabajo.
+    expect((await ficha(personaje.id)).vistasEnCurso).toEqual([
+      { vista: "tres_cuartos", trabajo: expect.objectContaining({ id: primera.trabajo.id }) },
+    ]);
+    // Y aunque dos envíos se salten esa comprobación a la vez, la cola no admite el segundo ni lo cobra.
+    await expect(
+      crearFotograma(
+        actorAna,
+        {
+          prompt: promptDeVista("tres_cuartos", "persona"),
+          creditosConfirmados: 4,
+          derechos: true,
+          claveIdempotencia: crypto.randomUUID(),
+          personajeId: personaje.id,
+          sinTerceros: true,
+          vistaSintetica: "tres_cuartos",
+        },
+        h,
+      ),
+    ).rejects.toThrow("ya se está generando");
+    expect(await db().select().from(generationJobs).where(eq(generationJobs.characterId, personaje.id))).toHaveLength(
+      1,
+    );
+    await pasadaDeCola(h);
+  });
+
+  test("el encargo de todas las vistas solo encarga las que caben en la cola y dice cuáles quedan", async () => {
+    const personaje = await nuevoPersonaje("Vistas con poco hueco");
+    const fotos = await Promise.all([
+      subir(await foto(46), "f1.png"),
+      subir(await foto(47), "f2.png"),
+      subir(await foto(48), "f3.png"),
+    ]);
+    await anadir(
+      personaje.id,
+      fotos.map((f, i) => ({ medioId: f.id, vistaClave: ["frontal", "perfil_izquierdo", "cuerpo_completo"][i] })),
+    );
+    const previos = await leerAjustes();
+    const { enMarcha } = await huecosDeCola(ana.id);
+    await guardarAjustes({ trabajosSimultaneos: enMarcha + 1 }, null);
+    try {
+      const resultado = await pedirVistasQueFaltan(
+        actorAna,
+        personaje.id,
+        { creditosConfirmados: 4, derechos: true, sinTerceros: true, claveIdempotencia: crypto.randomUUID() },
+        h,
+      );
+      expect(resultado.encoladas).toEqual(["perfil_derecho"]);
+      expect(resultado.sinEncolar.map((s) => s.vista)).toEqual(["tres_cuartos"]);
+      expect(resultado.sinEncolar[0]?.motivo).toContain("no cabe ahora");
+      expect(await db().select().from(generationJobs).where(eq(generationJobs.characterId, personaje.id))).toHaveLength(
+        1,
+      );
+    } finally {
+      await guardarAjustes({ trabajosSimultaneos: previos.trabajosSimultaneos }, null);
+    }
+    await pasadaDeCola(h);
   });
 
   test("una foto con un lienzo inmenso no entra en la biblioteca ni se decodifica al medirla", async () => {

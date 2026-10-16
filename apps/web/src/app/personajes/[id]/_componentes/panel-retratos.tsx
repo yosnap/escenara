@@ -12,6 +12,7 @@ import { VisorMedio } from "@/components/ui/media/visor-medio";
 import {
   consultarControlesDeRetrato,
   consultarEstimacionSinImagen,
+  consultarHuecos,
   consultarRetratos,
   descartarRetratos,
   elegirRetrato,
@@ -19,16 +20,21 @@ import {
 } from "@/components/ui/personajes/api-personajes";
 import { Selector } from "@/components/ui/select";
 import { bloqueosDeControles, type EvaluacionVista, firmaDeAvisos } from "@/lib/controles";
-import { creditosAConfirmar, type Estimacion, formatearCreditos } from "@/lib/generacion";
+import {
+  creditosAConfirmar,
+  type Estimacion,
+  formatearCreditos,
+  type HuecosDeCola,
+  motivoSinHuecos,
+} from "@/lib/generacion";
 import { problemasDeMotivos } from "@/lib/llevar-al-problema";
 import type { Medio } from "@/lib/media/tipos";
 import { RETRATOS_CANDIDATOS } from "@/lib/omni";
 import type { PersonajeVista } from "@/lib/personajes";
 
-const OPCIONES_CANTIDAD = Array.from({ length: RETRATOS_CANDIDATOS }, (_, i) => ({
-  value: String(i + 1),
-  label: String(i + 1),
-}));
+/** De uno al máximo que se puede encargar ahora: nunca se ofrece un número que la cola rechazaría. */
+const opcionesCantidad = (maximo: number) =>
+  Array.from({ length: Math.max(1, maximo) }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }));
 
 /** Motivos que corresponden a una casilla: con ellos la alerta lleva a la casilla pendiente. */
 const FALTA_DERECHOS = "Falta confirmar que puedes usar lo que se genere.";
@@ -65,6 +71,12 @@ export function PanelRetratos({
   const [error, setError] = useState<string | null>(null);
   const [candidatos, setCandidatos] = useState<Medio[]>(medios);
   const [cantidad, setCantidad] = useState(RETRATOS_CANDIDATOS);
+  /** Huecos de la cola al preparar el gasto; hasta entonces se ofrece el máximo de candidatos. */
+  const [huecos, setHuecos] = useState<HuecosDeCola | null>(null);
+  /** Lo que se acaba de encargar, junto al botón: es donde está mirando quien lo ha pulsado. */
+  const [encargo, setEncargo] = useState<{ texto: string; faltan: string } | null>(null);
+  const maximoAhora = huecos === null ? RETRATOS_CANDIDATOS : Math.min(RETRATOS_CANDIDATOS, huecos.libres);
+  const opciones = opcionesCantidad(maximoAhora);
   /** Clave de esta confirmación: se conserva mientras no cambie lo que se confirma, para no pagar dos veces. */
   const clave = useRef<{ firma: string; valor: string } | null>(null);
 
@@ -75,6 +87,9 @@ export function PanelRetratos({
     ...(derechos ? [] : [FALTA_DERECHOS]),
     ...(estimacion?.superaUmbral && !avisoAceptado ? [FALTA_AVISO_GASTO] : []),
     ...(estimacion === null || estimacion.alcanza ? [] : ["Tu saldo del proveedor no llega para estos retratos."]),
+    ...(huecos !== null && huecos.libres === 0
+      ? [`${motivoSinHuecos(huecos)} Espera a que termine alguno para pedir retratos.`]
+      : []),
     ...(controles ? bloqueosDeControles(controles, confirmados) : []),
   ];
   // Cada casilla pendiente lleva a su casilla; el resto de motivos se lee, sin sitio al que llevar.
@@ -88,16 +103,24 @@ export function PanelRetratos({
   const preparar = async () => {
     setOcupado(true);
     setError(null);
-    const [precio, previo] = await Promise.all([
+    const [precio, previo, cola] = await Promise.all([
       // Un retrato de un personaje inventado nace de su descripción: su modelo es de texto a imagen.
       consultarEstimacionSinImagen(),
       consultarControlesDeRetrato(personaje.id),
+      consultarHuecos(),
     ]);
     setOcupado(false);
     if (!precio.ok) {
       setError(precio.error);
       return;
     }
+    if (!cola.ok) {
+      setError(cola.error);
+      return;
+    }
+    setHuecos(cola.datos);
+    // Lo elegido baja a lo que cabe: el número que se confirma es el que se encarga.
+    setCantidad((elegida) => Math.max(1, Math.min(elegida, RETRATOS_CANDIDATOS, cola.datos.libres)));
     setEstimacion(precio.datos);
     if (previo.ok) setControles(previo.datos);
   };
@@ -107,6 +130,7 @@ export function PanelRetratos({
     if (clave.current?.firma !== firma) clave.current = { firma, valor: crypto.randomUUID() };
     setOcupado(true);
     setError(null);
+    setEncargo(null);
     const respuesta = await generarRetratos(personaje.id, {
       creditosConfirmados: porRetrato,
       cantidad,
@@ -122,11 +146,17 @@ export function PanelRetratos({
       setError(respuesta.error);
       return;
     }
-    setAviso(
-      `${respuesta.datos.trabajos.length} ${respuesta.datos.trabajos.length === 1 ? "retrato" : "retratos"} en marcha. Cuando terminen aparecerán aquí al recargar la página.`,
-    );
+    const hechos = respuesta.datos.trabajos.length;
     // Si no se pudieron encargar todos, el motivo se enseña: no basta con un número menor.
-    if (respuesta.datos.aviso) setError(respuesta.datos.aviso);
+    setEncargo({
+      texto: `Se ${hechos === 1 ? "ha" : "han"} encargado ${hechos} de ${cantidad} ${cantidad === 1 ? "retrato" : "retratos"}. Cuando terminen aparecerán aquí al pulsar «Buscar retratos terminados» o al recargar la página.`,
+      faltan: respuesta.datos.aviso,
+    });
+    setHuecos((antes) =>
+      antes === null
+        ? null
+        : { ...antes, enMarcha: antes.enMarcha + hechos, libres: Math.max(0, antes.libres - hechos) },
+    );
   };
 
   /** Vuelve a leer los candidatos del servidor: los que ya terminaron aparecen sin recargar la página. */
@@ -233,7 +263,7 @@ export function PanelRetratos({
         <div className="flex flex-col gap-3">
           <Selector
             etiqueta="Retratos que quieres generar"
-            opciones={OPCIONES_CANTIDAD}
+            opciones={opciones}
             valor={String(cantidad)}
             deshabilitado={ocupado}
             onCambio={(valor) => {
@@ -257,13 +287,19 @@ export function PanelRetratos({
           <div className="flex flex-col gap-3">
             <Selector
               etiqueta="Retratos que quieres generar"
-              opciones={OPCIONES_CANTIDAD}
+              opciones={opciones}
               valor={String(cantidad)}
               deshabilitado={ocupado}
               onCambio={(valor) => {
                 if (valor) setCantidad(Number(valor));
               }}
             />
+            {huecos !== null && huecos.libres > 0 && huecos.libres < RETRATOS_CANDIDATOS && (
+              <Aviso tono="aviso">
+                Ahora puedes encargar como máximo {huecos.libres} {huecos.libres === 1 ? "retrato" : "retratos"}:{" "}
+                {motivoSinHuecos(huecos).toLowerCase()} Cuando termine alguno podrás pedir más.
+              </Aviso>
+            )}
             <p className="text-sm text-texto-suave">
               Son {cantidad} imágenes, así que el total estimado es{" "}
               <strong className="text-texto">{total === null ? "—" : formatearCreditos(total)}</strong>. Cada una se
@@ -315,6 +351,9 @@ export function PanelRetratos({
           </Boton>
         </>
       )}
+
+      {encargo && <Aviso tono="correcto">{encargo.texto}</Aviso>}
+      {encargo?.faltan && <Aviso tono="aviso">{encargo.faltan}</Aviso>}
     </section>
   );
 }

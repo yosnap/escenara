@@ -279,6 +279,22 @@ export interface Estimacion {
   sinReferencia: boolean;
 }
 
+/**
+ * Huecos de la cola de este usuario: cuántos trabajos permite la instalación a la vez (en cola o en el proveedor),
+ * cuántos tiene ya en marcha y cuántos puede encargar ahora. Es lo que deja a la pantalla no ofrecer más de lo que
+ * se puede encargar.
+ */
+export interface HuecosDeCola {
+  maximo: number;
+  enMarcha: number;
+  libres: number;
+}
+
+/** Frase con el motivo de no poder encargar más, para enseñarla tal cual. */
+export function motivoSinHuecos(huecos: HuecosDeCola): string {
+  return `Tienes ${huecos.enMarcha} ${huecos.enMarcha === 1 ? "trabajo" : "trabajos"} en marcha y esta instalación permite ${huecos.maximo} a la vez.`;
+}
+
 /** Lo que costaría la traducción al inglés de un texto nuevo, con su precio y su fecha. */
 export interface CosteTraduccion {
   creditos: number;

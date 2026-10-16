@@ -44,7 +44,9 @@ En su ficha, pestaña **Retratos y vistas**:
 
 1. Pulsa **«Ver lo que cuesta generar 4 retratos»**. Verás el coste estimado de **cada uno** y el total de los
    cuatro, con tu saldo del proveedor delante. Nada se encarga hasta que lo confirmas.
-2. Se encolan los cuatro y aparecen según terminan (pulsa «Buscar retratos terminados» si no quieres recargar).
+2. Se encolan y aparecen según terminan (pulsa «Buscar retratos terminados» si no quieres recargar). Solo se
+   ofrecen los que caben en tu cola: esta instalación permite un número de trabajos a la vez (3 de fábrica), y si
+   ya tienes alguno en marcha verás cuántos puedes pedir ahora en lugar de encargar cuatro para que salgan tres.
 3. **Elige uno.** Ese pasa a ser la cara del personaje. Elegir **no cuesta nada**: los cuatro ya están pagados y
    los que no elijas se quedan en tu biblioteca por si los quieres para otra cosa.
 
@@ -65,14 +67,20 @@ Lo que propone **no se guarda solo**: lo ves campo a campo, con lo que hay ahora
 los campos que te convenzan. Al aceptar se rellena el formulario; la versión nueva de la ficha la crea, como
 siempre, **«Guardar la ficha»**.
 
+Guardar la ficha **no toca su cara** mientras no cambies su estilo visual. Si cambias el estilo o su guía, se te
+avisa de que se descartan su cara, sus retratos y sus vistas, y no se guarda hasta que lo confirmas.
+
 ## 4. Genera todas sus vistas
 
 Con el retrato ya elegido, en **Retratos y vistas** tienes **«Generar las N vistas que faltan»**: te dice cuántas
-son y el total (el precio de una imagen por cada una) antes de confirmar. Después se encargan de una en una, con
-las mismas puertas de siempre. Si alguna no se puede encargar, se te dice **cuál y por qué**, y esa no se cobra.
+son y el total (el precio de una imagen por cada una) antes de confirmar. Si no caben todas en tu cola, se
+confirman solo las que caben y se te dice cuáles quedan para cuando termine alguna. Después se encargan de una en
+una, con las mismas puertas de siempre. Si alguna no se puede encargar, se te dice **cuál y por qué**, y esa no se
+cobra.
 
 También puedes seguir generándolas de una en una desde la tarjeta de cada vista. Son las que mantienen la cara
-estable cuando cambia el encuadre.
+estable cuando cambia el encuadre. Una vista que ya se está generando sale como «Generándose», también al
+recargar la página, y no se puede encargar (ni pagar) otra vez hasta que termine.
 
 ## Preguntas que suelen salir
 
