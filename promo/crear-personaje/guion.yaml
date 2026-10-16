@@ -1,0 +1,99 @@
+# Tutorial «Crear un personaje»: un personaje inventado de principio a fin, creado y generado de verdad.
+# Evidencia de cada frase: briefing.md.
+escenas:
+  - id: gancho
+    pieza: rotulo
+    parametros: { titulo: "La misma cara en todos tus vídeos", subtitulo: "Crea un personaje inventado", fondo: acento, animacion: palabras }
+    frases:
+      - texto: "¿Quieres la misma cara en todos tus vídeos? Vamos a crear un personaje inventado, de principio a fin."
+
+  - id: nuevo
+    pieza: captura
+    parametros: { captura: alta-inicio, pulsar: true, titulo: "Nuevo personaje", camara: acercamiento, posicion: arriba }
+    frases:
+      - texto: "En Personajes, pulsa «Nuevo personaje». Una persona o un animal reales necesitan fotos y consentimiento; hoy elegimos uno inventado."
+
+  - id: nombre
+    pieza: captura
+    parametros: { captura: inventado-datos, titulo: "Paso 1 · ¿Cómo es?", posicion: arriba }
+    frases:
+      - texto: "Ponle un nombre y descríbelo: edad, pelo, ropa y gesto. De esa descripción salen sus retratos."
+
+  - id: descripcion
+    pieza: detalle
+    parametros: { captura: inventado-datos, caja: descripcion, etiqueta: "Sin parecidos con nadie real", titulo: "Descripción" }
+    frases:
+      - texto: "No nombres a nadie real: si lo haces, la app te avisa mientras escribes."
+
+  - id: estilo
+    pieza: captura
+    parametros: { captura: inventado-estilo, pulsar: true, titulo: "Paso 2 · Estilo visual", camara: acercamiento, posicion: arriba }
+    frases:
+      - texto: "Elige su estilo: realista, ilustración plana, 3D estilizado o anime."
+
+  - id: crear
+    pieza: captura
+    parametros: { captura: inventado-crear, pulsar: true, titulo: "Declaración y crear", camara: acercamiento, posicion: arriba }
+    frases:
+      - texto: "Declara que es inventado y pulsa «Crear el personaje inventado»."
+
+  - id: ficha-nueva
+    pieza: captura
+    parametros: { captura: ficha-nueva, titulo: "Su ficha te guía", posicion: arriba }
+    frases:
+      - texto: "Ya existe, y su ficha te guía con lo que falta: retratos, cara, ficha y vistas."
+
+  - id: ficha-ia
+    pieza: captura
+    parametros: { captura: ficha-ia-propuesta, pulsar: true, titulo: "Completar la ficha con IA", posicion: arriba }
+    frases:
+      - texto: "Empieza por «Completar la ficha con IA»: te propone sus rasgos, estilo, vestuario, personalidad y voz."
+
+  - id: guardar
+    pieza: captura
+    parametros: { captura: ficha-ia-guardar, pulsar: true, titulo: "Revisa y guarda", camara: acercamiento, posicion: arriba }
+    frases:
+      - texto: "Aceptas lo que te convence y lo guardas con «Guardar la ficha»."
+
+  - id: precio
+    pieza: captura
+    parametros: { captura: retratos-precio, titulo: "Cuántos y cuánto cuestan", camara: acercamiento, posicion: arriba }
+    frases:
+      - texto: "En «Retratos y vistas» eliges cuántos retratos quieres, de uno a cuatro, y ves lo que cuestan en créditos de tu cuenta de KIE."
+
+  - id: generar-retratos
+    pieza: captura
+    parametros: { captura: retratos-generar, pulsar: true, titulo: "Generar los retratos", camara: acercamiento, posicion: arriba }
+    frases:
+      - texto: "Confirma que puedes usar lo que se genere y pulsa «Generar». Cada retrato se encola y se cobra por separado."
+
+  - id: elegir
+    pieza: captura
+    parametros: { captura: retratos-resultado, pulsar: true, titulo: "Elige su cara", posicion: arriba }
+    frases:
+      - texto: "Cuando terminan, aparecen aquí. Elige el que será su cara; los demás se quedan en tu biblioteca."
+
+  - id: vistas
+    pieza: captura
+    parametros: { captura: vistas-generar, pulsar: true, titulo: "Sus vistas", posicion: arriba }
+    frases:
+      - texto: "Después, sus vistas: perfiles, tres cuartos y cuerpo completo, con el total delante antes de encargarlas."
+
+  - id: vistas-listas
+    pieza: captura
+    parametros: { captura: vistas-resultado, titulo: "Vistas generadas", posicion: arriba }
+    frases:
+      - texto: "Con estas vistas, el parecido se mantiene de un fotograma a otro."
+
+  - id: resultado
+    pieza: captura
+    parametros: { captura: ficha-final, titulo: "Lista para tus escenas", fondo: oscuro }
+    frases:
+      - texto: "Y Brisa ya está lista para salir en tus escenas."
+
+  - id: cierre
+    pieza: logo
+    parametros: { lema: "Crea tu primer personaje", url: "docs.escenara.com", fondo: acento }
+    frases:
+      - texto: "Guía completa en docs.escenara.com. ¡Crea tu primer personaje!"
+        hablado: "Guía completa en la documentación de Escenara. ¡Crea tu primer personaje!"

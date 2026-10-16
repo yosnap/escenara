@@ -1,0 +1,458 @@
+{
+  "capturas": [
+    {
+      "id": "alta-inicio",
+      "ruta": "/personajes/nuevo",
+      "pasos": [
+        {
+          "accion": "desplazar",
+          "selector": "a[href='/personajes/nuevo/inventado']"
+        }
+      ],
+      "cajas": {
+        "inventado": "a[href='/personajes/nuevo/inventado']"
+      },
+      "pulsar": "inventado",
+      "ocultar": ["nextjs-portal"],
+      "pasosDespues": [
+        {
+          "accion": "esperar",
+          "selector": "input[placeholder='Nora']",
+          "espera": 30000
+        }
+      ]
+    },
+    {
+      "id": "inventado-datos",
+      "ruta": "/personajes/nuevo/inventado",
+      "pasos": [
+        {
+          "accion": "escribir",
+          "selector": "input[placeholder='Nora']",
+          "texto": "Brisa"
+        },
+        {
+          "accion": "escribir",
+          "selector": "section[aria-label='Paso 1: ¿Cómo es?'] textarea",
+          "texto": "Mujer de unos veintiocho años, pelo rizado cobrizo recogido en un moño alto, pecas, gafas redondas de pasta verde, jersey de punto mostaza y sonrisa tranquila."
+        }
+      ],
+      "cajas": {
+        "nombre": "input[placeholder='Nora']",
+        "descripcion": "section[aria-label='Paso 1: ¿Cómo es?'] textarea"
+      },
+      "ocultar": ["nextjs-portal"]
+    },
+    {
+      "id": "inventado-estilo",
+      "ruta": "/personajes/nuevo/inventado",
+      "pasos": [
+        {
+          "accion": "desplazar",
+          "selector": "section[aria-label='Paso 2: Estilo visual']"
+        }
+      ],
+      "cajas": {
+        "estilo": "section[aria-label='Paso 2: Estilo visual'] [role=combobox]"
+      },
+      "pulsar": "estilo",
+      "ocultar": ["nextjs-portal"],
+      "pasosDespues": [
+        {
+          "accion": "esperar",
+          "selector": "[role=option]"
+        }
+      ]
+    },
+    {
+      "id": "inventado-crear",
+      "ruta": "/personajes/nuevo/inventado",
+      "pasos": [
+        {
+          "accion": "escribir",
+          "selector": "input[placeholder='Nora']",
+          "texto": "Brisa"
+        },
+        {
+          "accion": "escribir",
+          "selector": "section[aria-label='Paso 1: ¿Cómo es?'] textarea",
+          "texto": "Mujer de unos veintiocho años, pelo rizado cobrizo recogido en un moño alto, pecas, gafas redondas de pasta verde, jersey de punto mostaza y sonrisa tranquila."
+        },
+        {
+          "accion": "clic",
+          "selector": "section[aria-label='Paso 3: Declaración'] [role=checkbox]"
+        },
+        {
+          "accion": "desplazar",
+          "selector": "button:has-text('Crear el personaje inventado')"
+        }
+      ],
+      "cajas": {
+        "declaracion": "section[aria-label='Paso 3: Declaración'] label",
+        "crear": "button:has-text('Crear el personaje inventado')"
+      },
+      "pulsar": "crear",
+      "ocultar": ["nextjs-portal"],
+      "pasosDespues": [
+        {
+          "accion": "esperar",
+          "selector": "section[aria-label='Pasos para terminar este personaje']",
+          "espera": 120000
+        }
+      ]
+    },
+    {
+      "id": "ficha-nueva",
+      "ruta": "/personajes",
+      "pasos": [
+        {
+          "accion": "clic",
+          "selector": "main a:has-text('Brisa')"
+        },
+        {
+          "accion": "esperar",
+          "selector": "section[aria-label='Pasos para terminar este personaje']",
+          "espera": 60000
+        }
+      ],
+      "cajas": {
+        "cabecera": "main header",
+        "pasos": "section[aria-label='Pasos para terminar este personaje']"
+      },
+      "ocultar": ["nextjs-portal"]
+    },
+    {
+      "id": "ficha-ia-propuesta",
+      "ruta": "/personajes",
+      "pasos": [
+        {
+          "accion": "clic",
+          "selector": "main a:has-text('Brisa')"
+        },
+        {
+          "accion": "clic",
+          "selector": "button:has-text('Completar la ficha con IA')"
+        },
+        {
+          "accion": "clic",
+          "selector": "[role=dialog] button:has-text('Ver con qué modelo se haría')"
+        },
+        {
+          "accion": "clic",
+          "selector": "[role=dialog] button:has-text('Proponer la ficha')"
+        },
+        {
+          "accion": "esperar",
+          "selector": "[role=dialog] button:has-text('Aceptar')",
+          "espera": 240000
+        },
+        {
+          "accion": "desplazar",
+          "selector": "[role=dialog] button:has-text('Aceptar')"
+        }
+      ],
+      "cajas": {
+        "aceptar": "[role=dialog] button:has-text('Aceptar')"
+      },
+      "pulsar": "aceptar",
+      "ocultar": ["nextjs-portal"]
+    },
+    {
+      "id": "ficha-ia-guardar",
+      "ruta": "/personajes",
+      "pasos": [
+        {
+          "accion": "clic",
+          "selector": "main a:has-text('Brisa')"
+        },
+        {
+          "accion": "clic",
+          "selector": "button:has-text('Completar la ficha con IA')"
+        },
+        {
+          "accion": "clic",
+          "selector": "[role=dialog] button:has-text('Ver con qué modelo se haría')"
+        },
+        {
+          "accion": "clic",
+          "selector": "[role=dialog] button:has-text('Proponer la ficha')"
+        },
+        {
+          "accion": "esperar",
+          "selector": "[role=dialog] button:has-text('Aceptar')",
+          "espera": 240000
+        },
+        {
+          "accion": "clic",
+          "selector": "[role=dialog] button:has-text('Aceptar')"
+        },
+        {
+          "accion": "desplazar",
+          "selector": "button:has-text('Guardar la ficha')"
+        }
+      ],
+      "cajas": {
+        "guardar": "button:has-text('Guardar la ficha')"
+      },
+      "pulsar": "guardar",
+      "ocultar": ["nextjs-portal"],
+      "pasosDespues": [
+        {
+          "accion": "esperar",
+          "selector": ":text('Guardado como versión')",
+          "espera": 60000
+        }
+      ]
+    },
+    {
+      "id": "retratos-precio",
+      "ruta": "/personajes",
+      "pasos": [
+        {
+          "accion": "clic",
+          "selector": "main a:has-text('Brisa')"
+        },
+        {
+          "accion": "clic",
+          "selector": "[role=tab]:has-text('Retratos y vistas')"
+        },
+        {
+          "accion": "clic",
+          "selector": "section:has(h2:text-is('Retratos')) [role=combobox]"
+        },
+        {
+          "accion": "clic",
+          "selector": "[role=option]:has-text('3')"
+        },
+        {
+          "accion": "clic",
+          "selector": "button:has-text('Ver lo que cuesta generar')"
+        },
+        {
+          "accion": "esperar",
+          "selector": "button:has-text('Generar 3 retratos')",
+          "espera": 60000
+        },
+        {
+          "accion": "desplazar",
+          "selector": "p:has-text('Son 3 imágenes')"
+        }
+      ],
+      "cajas": {
+        "total": "p:has-text('Son 3 imágenes')"
+      },
+      "ocultar": ["nextjs-portal"]
+    },
+    {
+      "id": "retratos-generar",
+      "ruta": "/personajes",
+      "pasos": [
+        {
+          "accion": "clic",
+          "selector": "main a:has-text('Brisa')"
+        },
+        {
+          "accion": "clic",
+          "selector": "[role=tab]:has-text('Retratos y vistas')"
+        },
+        {
+          "accion": "clic",
+          "selector": "section:has(h2:text-is('Retratos')) [role=combobox]"
+        },
+        {
+          "accion": "clic",
+          "selector": "[role=option]:has-text('3')"
+        },
+        {
+          "accion": "clic",
+          "selector": "button:has-text('Ver lo que cuesta generar')"
+        },
+        {
+          "accion": "esperar",
+          "selector": "button:has-text('Generar 3 retratos')",
+          "espera": 60000
+        },
+        {
+          "accion": "clic",
+          "selector": "label:has-text('Puedo usar lo que se genere')"
+        },
+        {
+          "accion": "clic",
+          "selector": "section[aria-label='Antes de generar'] label:has-text('Lo he leído y quiero generar igualmente')",
+          "siExiste": true
+        },
+        {
+          "accion": "desplazar",
+          "selector": "button:has-text('Generar 3 retratos')"
+        }
+      ],
+      "cajas": {
+        "generar": "button:has-text('Generar 3 retratos')"
+      },
+      "pulsar": "generar",
+      "ocultar": ["nextjs-portal"],
+      "pasosDespues": [
+        {
+          "accion": "esperar",
+          "selector": ":text('en marcha')",
+          "espera": 300000
+        },
+        {
+          "accion": "desplazar",
+          "selector": ":text('en marcha')"
+        }
+      ]
+    },
+    {
+      "id": "retratos-resultado",
+      "ruta": "/personajes",
+      "pasos": [
+        {
+          "accion": "clic",
+          "selector": "main a:has-text('Brisa')"
+        },
+        {
+          "accion": "clic",
+          "selector": "[role=tab]:has-text('Retratos y vistas')"
+        },
+        {
+          "accion": "esperar",
+          "selector": "button:has-text('Elegir este') >> nth=2",
+          "espera": 600000,
+          "recargar": true,
+          "cada": 20000
+        },
+        {
+          "accion": "desplazar",
+          "selector": "button:has-text('Elegir este') >> nth=2"
+        }
+      ],
+      "cajas": {
+        "elegir": "button:has-text('Elegir este') >> nth=0"
+      },
+      "pulsar": "elegir",
+      "ocultar": ["nextjs-portal"],
+      "pasosDespues": [
+        {
+          "accion": "esperar",
+          "selector": ":text('Ese retrato es ya la cara')",
+          "espera": 60000
+        },
+        {
+          "accion": "desplazar",
+          "selector": ":text('Ese retrato es ya la cara')"
+        }
+      ]
+    },
+    {
+      "id": "vistas-generar",
+      "ruta": "/personajes",
+      "pasos": [
+        {
+          "accion": "clic",
+          "selector": "main a:has-text('Brisa')"
+        },
+        {
+          "accion": "clic",
+          "selector": "[role=tab]:has-text('Retratos y vistas')"
+        },
+        {
+          "accion": "clic",
+          "selector": "button:has-text('vistas que faltan')"
+        },
+        {
+          "accion": "esperar",
+          "selector": "[role=dialog] button:has-text('Generar las')",
+          "espera": 60000
+        },
+        {
+          "accion": "clic",
+          "selector": "[role=dialog] label:has-text('Tengo derecho a usar estas fotos')"
+        },
+        {
+          "accion": "clic",
+          "selector": "[role=dialog] label:has-text('He revisado las fotos')"
+        },
+        {
+          "accion": "clic",
+          "selector": "[role=dialog] label:has-text('Sí, quiero gastar')",
+          "siExiste": true
+        },
+        {
+          "accion": "clic",
+          "selector": "[role=dialog] label:has-text('Lo he leído y quiero generar igualmente') >> nth=0",
+          "siExiste": true
+        },
+        {
+          "accion": "clic",
+          "selector": "[role=dialog] label:has-text('Lo he leído y quiero generar igualmente') >> nth=1",
+          "siExiste": true
+        },
+        {
+          "accion": "desplazar",
+          "selector": "[role=dialog] button:has-text('Generar las')"
+        }
+      ],
+      "cajas": {
+        "generar": "[role=dialog] button:has-text('Generar las')"
+      },
+      "pulsar": "generar",
+      "ocultar": ["nextjs-portal"],
+      "pasosDespues": [
+        {
+          "accion": "esperar",
+          "selector": ":text('Aparecerán en la ficha al terminar')",
+          "espera": 300000
+        }
+      ]
+    },
+    {
+      "id": "vistas-resultado",
+      "ruta": "/personajes",
+      "pasos": [
+        {
+          "accion": "clic",
+          "selector": "main a:has-text('Brisa')"
+        },
+        {
+          "accion": "clic",
+          "selector": "[role=tab]:has-text('Retratos y vistas')"
+        },
+        {
+          "accion": "esperar",
+          "selector": "section[aria-label='Cobertura de vistas'] :text('4 vistas generadas'), section[aria-label='Cobertura de vistas'] :text('5 vistas generadas')",
+          "espera": 600000,
+          "recargar": true,
+          "cada": 20000
+        },
+        {
+          "accion": "desplazar",
+          "selector": "section[aria-label='Cobertura de vistas'] ul li >> nth=0"
+        }
+      ],
+      "cajas": {
+        "vista": "section[aria-label='Cobertura de vistas'] ul li >> nth=0"
+      },
+      "ocultar": ["nextjs-portal"]
+    },
+    {
+      "id": "ficha-final",
+      "ruta": "/personajes",
+      "pasos": [
+        {
+          "accion": "clic",
+          "selector": "main a:has-text('Brisa')"
+        },
+        {
+          "accion": "esperar",
+          "selector": "main header",
+          "espera": 60000
+        }
+      ],
+      "cajas": {
+        "cabecera": "main header"
+      },
+      "ocultar": ["nextjs-portal"]
+    }
+  ]
+}
