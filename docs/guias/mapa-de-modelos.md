@@ -47,6 +47,14 @@ Hay una excepción, y es por el mismo motivo: si la siguiente opción **no cobra
 se pagan con la cuota de tu plan), seguir no puede crearte un segundo cargo, así que sí se prueba. Es lo que
 hace que un proveedor que se queda colgado no te deje el trabajo sin hacer.
 
+En texto, desde la 0.52.6, **nunca se pasa a una opción de pago que no hayas confirmado**. Si tu opción principal
+es un servicio de cuota y falla, se prueban tus otros servicios de cuota, pero no un modelo de pago que esté más
+abajo: su coste no lo viste. Se para y se te dice qué servicio falló y por qué, que no se ha cobrado nada y qué
+puedes hacer: volver a intentarlo, o subir ese modelo de pago al primer puesto si prefieres pagarlo.
+
+Un servicio que tarda demasiado **no se marca como rechazado**. Si un servicio rechaza una petición, antes de
+darlo por no válido se le pide su lista de modelos, que no gasta cuota: solo se marca si también rechaza la clave.
+
 ## Lo que cuesta cada opción
 
 Para ver precios, tus resultados de antes y ejemplos de varios modelos a la vez **sin gastar nada**, usa **Comparar**

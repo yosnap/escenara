@@ -1,7 +1,7 @@
 import { detalleDeTiempo, type IntentoProveedor, mensajeDeFalloDeProveedor } from "@/lib/diagnostico-proveedor";
 import type { TipoDeMapa } from "@/lib/mapa-modelos";
 import { cerrarGastoDeEjecucion, reservarEjecucion } from "../asistente/gasto";
-import { marcarCompatibleInvalido } from "../boveda/compatibles";
+import { invalidarSiLaClaveNoSirve } from "../boveda/compatibles";
 import { db } from "../db/cliente";
 import { assistantRuns, type FilaEjecucionAsistente, usageLedger } from "../db/esquema";
 import { elegirModelo } from "../proveedores/catalogo";
@@ -61,12 +61,6 @@ export interface PeticionDeTexto {
    * usuario no los tiene, se recorre su mapa tal cual y no se inventa ninguna entrada que él no haya dado de alta.
    */
   modelosPreferidos?: readonly string[];
-  /**
-   * Solo se puede gastar lo que el usuario vio y confirmó: la entrada principal (si es de pago y la confirmó) y
-   * las que se pagan por cuota del plan. Ninguna **otra** entrada de pago del mapa se prueba, porque su coste no
-   * se enseñó. Si la principal es de cuota, no se confirmó nada, así que solo se prueban entradas de cuota.
-   */
-  limitarAConfirmado?: boolean;
 }
 
 export interface TextoDelMapa {
@@ -161,6 +155,8 @@ export class ErrorDeTexto extends Error {
   constructor(
     readonly intentos: IntentoProveedor[],
     readonly hayEntradas: boolean,
+    /** Entradas de pago del mapa que no se han probado porque su coste no se había confirmado. */
+    readonly sinConfirmar: readonly string[] = [],
   ) {
     super("No ha habido ninguna entrada del mapa que pudiera escribir el texto.");
     this.name = "ErrorDeTexto";
@@ -169,12 +165,16 @@ export class ErrorDeTexto extends Error {
   /** Mensaje completo, con todas las entradas probadas y su causa concreta. */
   mensaje(encabezado: string): string {
     if (!this.hayEntradas) return `${encabezado}: ${SIN_ENTRADAS.charAt(0).toLowerCase()}${SIN_ENTRADAS.slice(1)}`;
-    return mensajeDeFalloDeProveedor(encabezado, this.intentos, sugerenciaDeMapa(this.intentos));
+    return mensajeDeFalloDeProveedor(encabezado, this.intentos, sugerenciaDeMapa(this.intentos, this.sinConfirmar));
   }
 }
 
 /** Qué puede hacer quien lo lee cuando se han agotado todas las entradas de su mapa. */
-function sugerenciaDeMapa(intentos: readonly IntentoProveedor[]): string {
+function sugerenciaDeMapa(intentos: readonly IntentoProveedor[], sinConfirmar: readonly string[]): string {
+  // Pasar a una entrada de pago sin que se haya confirmado su coste sería cobrar sin avisar: no se hace, y se dice.
+  if (sinConfirmar.length > 0) {
+    return `No se ha probado ${sinConfirmar.join(" ni ")} porque es de pago y su coste no lo habías confirmado, así que tampoco se ha cobrado nada ahí. Puedes volver a intentarlo cuando responda tu servicio, o poner esa entrada de pago la primera de tu mapa de modelos de texto en «Tu cuenta» si prefieres pagarla.`;
+  }
   return intentos.length <= 1
     ? "Puedes añadir otra entrada de reserva a tu mapa de modelos de texto en «Tu cuenta» y el siguiente intento la probará sola."
     : "";
@@ -187,11 +187,14 @@ export async function pedirTextoPorMapa(peticion: PeticionDeTexto): Promise<Text
   const sinLocal = entradas.filter((e) => e.proveedor !== "local");
   // Ver y oír solo lo saben los servicios compatibles, que además se pagan por cuota y no por petición.
   const delTipo = peticion.soloMultimodal ? sinLocal.filter((e) => e.proveedor === "compatible") : sinLocal;
-  // Primero se acota a lo confirmado y después se reordena: la entrada confirmada es la principal **del mapa**
-  // (`i === 0` antes de cualquier reordenación), no la que quede delante tras subir los modelos preferidos.
-  const confirmadas = peticion.limitarAConfirmado
-    ? delTipo.filter((e) => e === sinLocal[0] || e.proveedor === "compatible")
-    : delTipo;
+  /**
+   * Solo se puede gastar lo que el usuario vio y confirmó: la entrada principal (si es de pago, su coste es el que
+   * se enseñó) y las que se pagan por cuota del plan. **Ninguna otra entrada de pago se prueba**, porque pasar a
+   * ella sería cobrar sin avisar: si la principal es de cuota y falla, no se salta a una de pago. Primero se acota
+   * y después se reordena: la confirmada es la principal **del mapa**, no la que quede delante tras los preferidos.
+   */
+  const confirmadas = delTipo.filter((e) => e === sinLocal[0] || e.proveedor === "compatible");
+  const sinConfirmar = delTipo.filter((e) => !confirmadas.includes(e)).map((e) => `${e.nombreProveedor} (${e.modelo})`);
   const utiles = ordenarPorPreferencia(confirmadas, peticion.modelosPreferidos ?? []);
   const resultado = await recorrerMapa(
     utiles,
@@ -201,10 +204,11 @@ export async function pedirTextoPorMapa(peticion: PeticionDeTexto): Promise<Text
         ? null
         : clasificarFallo(entrada, error, entrada.proveedor === "compatible" ? "" : detalleDeTiempo(MS_TEXTO)),
   );
-  // Un servicio compatible que ha rechazado la credencial queda marcado como no válido: así la próxima vez ni se
-  // intenta, y la pantalla de «Tu cuenta» lo dice en lugar de dejarlo con aspecto de estar bien.
-  for (const id of resultado.saltados) await marcarCompatibleInvalido(id, "rechazada");
-  if (!resultado.ok) throw new ErrorDeTexto(resultado.intentos, utiles.length > 0);
+  // Un servicio compatible que ha rechazado la credencial queda marcado como no válido, pero solo si su prueba
+  // gratuita lo confirma: así la próxima vez ni se intenta y «Tu cuenta» lo dice, sin que un rechazo suelto, un
+  // tiempo agotado o una sobrecarga suya lo saquen del mapa.
+  for (const id of resultado.saltados) await invalidarSiLaClaveNoSirve(peticion.usuarioId, id, peticion.buscar);
+  if (!resultado.ok) throw new ErrorDeTexto(resultado.intentos, utiles.length > 0, sinConfirmar);
   return {
     texto: resultado.valor,
     nombreProveedor: resultado.entrada.nombreProveedor,

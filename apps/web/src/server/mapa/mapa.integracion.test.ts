@@ -94,6 +94,10 @@ const sobre = (data: unknown) => respuestaGrabada({ code: 200, msg: "success", d
 
 /** Cada petición de la lista de modelos: a qué servicio fue y con qué clave. */
 const peticionesDeModelos: { host: string; autorizacion: string | null }[] = [];
+/** Servicios cuya lista de modelos también rechaza la clave (401): su clave está revocada de verdad. */
+let clavesRevocadas = new Set<string>();
+/** Modelos del servicio compatible que no contestan a tiempo: la llamada se corta por tiempo agotado. */
+let modelosQueTardan = new Set<string>();
 
 const buscar: Buscador = async (url, init) => {
   if (url.includes("/chat/credit")) return sobre(5000);
@@ -106,11 +110,13 @@ const buscar: Buscador = async (url, init) => {
   }
   if (url.endsWith("/models")) {
     peticionesDeModelos.push({ host: new URL(url).host, autorizacion: new Headers(init.headers).get("authorization") });
+    if (clavesRevocadas.has(new URL(url).host)) return respuestaGrabada(CHAT_401, 401);
     return respuestaGrabada(MODELOS_200);
   }
   if (url.endsWith("/chat/completions")) {
     const cuerpo = JSON.parse(String(init.body)) as { model: string };
     llamadas.push(`${new URL(url).host}/${cuerpo.model}`);
+    if (modelosQueTardan.has(cuerpo.model)) throw new DOMException("Se ha agotado el tiempo.", "TimeoutError");
     const programada = respuestasPorModelo[cuerpo.model];
     if (programada) return respuestaGrabada(programada.cuerpo, programada.estado);
     return respuestaGrabada({ ...CHAT_200, choices: [{ message: { content: textoCompatible } }] });
@@ -237,6 +243,8 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
     await db().execute(sql`delete from rate_limits where key = ${`boveda:prueba:${ana.id}`}`);
     falloDeKie = 500;
     respuestasPorModelo = {};
+    clavesRevocadas = new Set();
+    modelosQueTardan = new Set();
     textoCompatible = JSON.stringify([TRADUCIDA]);
     // Todos los servicios vuelven a estar válidos: un test que marque uno inválido no puede contaminar al siguiente.
     await guardarCompatible(
@@ -364,12 +372,50 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
 
   test("401 para ese servicio entero, lo marca inválido y sigue con el siguiente", async () => {
     respuestasPorModelo = { gemma4: { cuerpo: CHAT_401, estado: 401 } };
+    // Su prueba gratuita también rechaza la clave: está revocada de verdad.
+    clavesRevocadas = new Set(["api.nan.builders"]);
     await generar("una escena que traduce el segundo servicio");
     // No se han probado los demás modelos de NaN builders: la clave no sirve para ninguno.
     expect(llamadas).toEqual(["api.nan.builders/gemma4", "api.ejemplo-compatible.dev/modelo-de-ultimo-recurso"]);
     const guardados = await listarCompatibles(ana.id);
     expect(guardados.find((p) => p.nombre === "NaN builders")?.estado).toBe("invalida");
     expect(guardados.find((p) => p.nombre === "Otro servicio")?.estado).toBe("valida");
+  });
+
+  test("un 401 suelto con la clave funcionando no marca el servicio como no válido", async () => {
+    respuestasPorModelo = { gemma4: { cuerpo: CHAT_401, estado: 401 } };
+    await generar("una escena con un rechazo suelto");
+    expect(llamadas).toEqual(["api.nan.builders/gemma4", "api.ejemplo-compatible.dev/modelo-de-ultimo-recurso"]);
+    const guardados = await listarCompatibles(ana.id);
+    expect(guardados.find((p) => p.nombre === "NaN builders")?.estado).toBe("valida");
+  });
+
+  test("si el servicio principal tarda, ni se marca como rechazado ni se pasa en silencio a uno de pago", async () => {
+    const guardados = await listarCompatibles(ana.id);
+    const nan = guardados.find((p) => p.nombre === "NaN builders");
+    await guardarMapa(ana.id, "texto", [
+      { proveedor: "compatible", compatibleId: nan?.id ?? "", modelo: "gemma4" },
+      { proveedor: "kie", compatibleId: null, modelo: "gpt-5-6-sol" },
+    ]);
+    modelosQueTardan = new Set(["gemma4"]);
+    falloDeKie = null;
+    const antes = await ejecuciones("traduccion");
+    const fallo = (await generar("una escena que nadie traduce a tiempo").catch((e: unknown) => e)) as Error;
+
+    // No se ha llamado al modelo de pago: su coste no se había confirmado.
+    expect(fallo).toBeInstanceOf(ErrorGeneracion);
+    expect(llamadas).toEqual(["api.nan.builders/gemma4"]);
+    const nuevas = (await ejecuciones("traduccion")).filter((d) => !antes.some((a) => a.id === d.id));
+    expect(nuevas.filter((e) => e.provider === "kie")).toHaveLength(0);
+    // El mensaje dice la causa concreta, quién, que no se ha cobrado y qué hacer.
+    expect(fallo.message).toContain("NaN builders (gemma4)");
+    expect(fallo.message).toContain("ha tardado demasiado");
+    expect(fallo.message).toContain("No se ha probado KIE.ai (gpt-5-6-sol) porque es de pago");
+    expect(fallo.message).toContain("tampoco se ha cobrado nada");
+    // Y un tiempo agotado no es un rechazo: el servicio sigue siendo válido.
+    const despues = await listarCompatibles(ana.id);
+    expect(despues.find((p) => p.nombre === "NaN builders")?.estado).toBe("valida");
+    await ponerMapaCompleto();
   });
 
   test("un 5xx del servicio de reserva también pasa al siguiente modelo", async () => {
