@@ -469,7 +469,7 @@ export async function crearFotograma(
   // personaje. Heredarlo significa cumplir sus reglas como cualquier otro.
   // Sin imagen de partida no se exige ninguna: es el propio modo de generación, no un dato que falte.
   const medioId = peticion.personajeId || sinReferencia ? null : exigirMedioElegido(peticion.medioId);
-  const personajeId = peticion.personajeId ?? (medioId === null ? null : await personajeDeLaCadena(actor.id, medioId));
+  const personajeId = peticion.personajeId || (medioId === null ? null : await personajeDeLaCadena(actor.id, medioId));
   // Un personaje inventado no tiene fotos, así que no hay terceros que revisar en ellas: lo que se envía es su
   // descripción. Exigir esa casilla aquí sería pedir una declaración sobre unas fotos que no existen.
   if (personajeId && !peticion.retratoInventado) exigirRevisionDeReferencias(peticion.sinTerceros);
