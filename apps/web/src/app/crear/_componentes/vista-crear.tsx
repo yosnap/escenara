@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { DepositoPresupuesto } from "@/components/ui/deposito";
 import { Aviso } from "@/components/ui/feedback";
 import { Multipaso, PanelDePaso, useMultipaso } from "@/components/ui/multipaso";
-import { consultarContexto } from "@/components/ui/personajes/api-personajes";
 import type { ModeloElegible } from "@/lib/catalogo";
 import { type EvaluacionVista, evaluacionPendiente } from "@/lib/controles";
 import { DIRECCION_CON_ACENTO_VACIA, type DireccionElegidaConAcento, type OpcionesDeDireccion } from "@/lib/direccion";
@@ -46,6 +45,7 @@ import { PasoSujeto } from "./paso-sujeto";
 import { problemaDeReferencias, type ReferenciaEnPantalla, referenciasParaEnviar } from "./referencias-en-pantalla";
 import { type ClipVigente, comprobarClipVigente } from "./refresco-de-controles";
 import { contextosDeConfirmacion, useConfirmacionCoste } from "./use-confirmacion-coste";
+import { useContextoPersonaje } from "./use-contexto-personaje";
 import { useControles } from "./use-controles";
 import { useFormatoClip } from "./use-formato-clip";
 import { useLugarDeCrear } from "./use-lugar-crear";
@@ -120,8 +120,11 @@ export function VistaCrear({
   } | null>(null);
   const [comprobandoRefs, setComprobandoRefs] = useState(false);
   /** Contexto y fotos que el servidor va a enviar: lo pide la acción que lo cambia (personaje o modelo), no un efecto. */
-  const [contexto, setContexto] = useState<ContextoAplicado | null>(contextoInicial);
-  const [pidiendoContexto, setPidiendoContexto] = useState(false);
+  const {
+    contexto,
+    pidiendo: pidiendoContexto,
+    refrescar: refrescarContexto,
+  } = useContextoPersonaje(contextoInicial, (fallo) => setError(fallo));
   const [sinTerceros, setSinTerceros] = useState(false);
   // La revisión del clip es una confirmación distinta sobre un envío distinto, así que tiene su propia casilla.
   const [sinTercerosClip, setSinTercerosClip] = useState(false);
@@ -147,6 +150,9 @@ export function VistaCrear({
   const [estimacionClip, setEstimacionClip] = useState(estimacionAnimacion);
   // Solo cuenta la última acción que fija el modelo del fotograma: una respuesta lenta no pisa lo elegido después.
   const turnoFoto = useTurnoVigente();
+  // Último modelo del fotograma **pedido** (aunque su estimación aún no haya vuelto): si se cambia de sujeto justo
+  // después de elegirlo, se pide con él y no con el que sigue pintado. Es lo mismo que `clipVigente` para el clip.
+  const modeloFotoPedido = useRef(estimacionFotograma.modelo);
   // Lo último elegido del clip: un refresco que sigue tras una espera evalúa lo vigente, no lo de hace un momento.
   const clipVigente = useRef<ClipVigente>({ modelo: estimacionAnimacion.modelo, producto: productoClip });
   useEffect(() => {
@@ -417,22 +423,6 @@ export function VistaCrear({
     if (fallo) setError(fallo);
   };
 
-  /** Pide el contexto aplicado de un personaje con el modelo que esté elegido. Sin personaje, se limpia. */
-  const refrescarContexto = async (id: string | null, modelo: string, vigente: () => boolean = () => true) => {
-    if (!id) return setContexto(null);
-    setPidiendoContexto(true);
-    const respuesta = await consultarContexto(id, modelo);
-    setPidiendoContexto(false);
-    if (!vigente()) return;
-    // Un fallo aquí no impide generar: lo que decide es el servidor al encolar. Se dice y no se muestra nada.
-    if (!respuesta.ok) {
-      setContexto(null);
-      setError(respuesta.error);
-      return;
-    }
-    setContexto(respuesta.datos);
-  };
-
   /**
    * Al cambiar el sujeto (personaje o imagen) cambia **cómo** se va a generar: con una imagen de partida o sin
    * ella, y eso puede cambiar el modelo y su precio, así que la estimación se vuelve a pedir al servidor con el
@@ -443,7 +433,7 @@ export function VistaCrear({
     const vigente = turnoFoto();
     setSinSujetoConfirmado(false);
     const ahoraSinImagen = id === null && medios.length === 0;
-    const modelo = modeloQueSigue(estimacionFoto.modelo, ahoraSinImagen ? modelosSinImagen : modelosFotograma);
+    const modelo = modeloQueSigue(modeloFotoPedido.current, ahoraSinImagen ? modelosSinImagen : modelosFotograma);
     const respuesta = await consultarEstimacion("fotograma", modelo, { sinImagen: ahoraSinImagen });
     if (!vigente()) return;
     if (!respuesta.ok) {
@@ -451,6 +441,7 @@ export function VistaCrear({
       return;
     }
     setEstimacionFoto(respuesta.datos);
+    modeloFotoPedido.current = respuesta.datos.modelo;
     await refrescarContexto(id, respuesta.datos.modelo, vigente);
     if (!vigente()) return;
     await refrescarControles(id, medios[0]?.id, respuesta.datos.modelo);
@@ -602,6 +593,7 @@ export function VistaCrear({
           )
         : segundos;
     const vigente = tipo === "fotograma" ? turnoFoto() : () => true;
+    if (tipo === "fotograma") modeloFotoPedido.current = modelo;
     const respuesta = await consultarEstimacion(tipo, modelo, {
       ...(tipo === "fotograma" ? { sinImagen } : {}),
       ...(pedidos === undefined ? {} : { segundos: pedidos }),
@@ -609,6 +601,8 @@ export function VistaCrear({
     });
     if (!vigente()) return;
     if (!respuesta.ok) {
+      // Sin estimación, el modelo que vale sigue siendo el que se ve: es el que se usará al cambiar de sujeto.
+      if (tipo === "fotograma") modeloFotoPedido.current = estimacionFoto.modelo;
       setError(respuesta.error);
       return;
     }

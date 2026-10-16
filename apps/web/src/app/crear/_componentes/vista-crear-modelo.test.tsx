@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, test } from "bun:test";
+import { afterEach, beforeEach, expect, mock, test } from "bun:test";
 import { Window } from "happy-dom";
 import { act, type ComponentProps } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -6,7 +6,32 @@ import type { ModeloElegible } from "@/lib/catalogo";
 import { evaluacionPendiente } from "@/lib/controles";
 import type { Estimacion } from "@/lib/generacion";
 import type { PersonajeElegible } from "@/lib/personajes";
-import { VistaCrear } from "./vista-crear";
+
+/**
+ * El desplegable de Base UI no se abre con eventos sintéticos de happy-dom. Para poder **elegir** un modelo se
+ * envuelve el selector real (que sigue pintando su etiqueta, lo que comprueban los tests) con un botón oculto por
+ * modelo que llama a su `onCambio`, que es lo mismo que hace la opción del desplegable al pulsarla.
+ */
+const modulo = await import("@/components/ui/modelo");
+const SelectorReal = modulo.SelectorModelo;
+mock.module("@/components/ui/modelo", () => ({
+  ...modulo,
+  SelectorModelo: (p: ComponentProps<typeof SelectorReal>) => (
+    <>
+      <SelectorReal {...p} />
+      {p.modelos.map((m) => (
+        <button
+          key={m.modelo}
+          type="button"
+          hidden
+          data-elegir-modelo={m.modelo}
+          onClick={() => p.onCambio(m.modelo)}
+        />
+      ))}
+    </>
+  ),
+}));
+const { VistaCrear } = await import("./vista-crear");
 
 /**
  * El modelo del fotograma elegido en «Crear» sobrevive a los cambios de sujeto: se pide la estimación con él si
@@ -100,7 +125,7 @@ beforeEach(() => {
     } else if (u.pathname.includes("contexto")) {
       const modelo = u.searchParams.get("modelo") ?? "x";
       cuerpo = {
-        personajeId: "p",
+        personajeId: u.pathname.split("/")[3],
         nombre: "P",
         versionId: "v",
         versionNumero: 1,
@@ -240,4 +265,28 @@ test("una respuesta lenta de un cambio de sujeto no pisa el sujeto elegido despu
   // Lo que se pide después de la respuesta vieja (catálogo) no es con el modelo de la respuesta descartada.
   const ultimoCatalogo = pedidas.filter((u) => u.includes("presets") || u.includes("catalogo")).at(-1);
   expect(ultimoCatalogo).toContain("modelo=t2i-por-defecto");
+});
+
+/** Elige un modelo como lo haría la opción del desplegable. */
+const elegirModeloEnPantalla = async (modelo: string) => {
+  const boton = panel()?.querySelector(`[data-elegir-modelo='${modelo}']`) as unknown as HTMLButtonElement | null;
+  if (!boton) throw new Error(`No está el modelo «${modelo}» en el selector`);
+  await act(async () => {
+    boton.click();
+    await espera(0);
+  });
+};
+
+test("elegir modelo y cambiar de personaje enseguida conserva el modelo recién elegido", async () => {
+  await montar("edicion-por-defecto", "p1");
+  // La estimación del modelo elegido tarda; la del cambio de personaje llega antes y es la que manda.
+  retrasos = [80, 0];
+  await elegirModeloEnPantalla("edicion-b");
+  await pulsar("Persona p2", 150);
+  const estimaciones = estimacionesPedidas();
+  expect(estimaciones).toHaveLength(2);
+  expect(estimaciones[0]).toContain("modelo=edicion-b");
+  expect(estimaciones[1]).toContain("modelo=edicion-b");
+  expect(valorDelModelo()).toBe("edicion-b");
+  expect(etiquetaDelModelo()).toContain("Nombre edicion-b");
 });
