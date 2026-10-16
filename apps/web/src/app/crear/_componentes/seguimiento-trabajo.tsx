@@ -49,6 +49,11 @@ export function SeguimientoTrabajo({
             {trabajo.error}
           </Alerta>
         )}
+        {trabajo.avisoReserva && (
+          <Alerta tipo="aviso" compacta anuncio="ninguno">
+            {trabajo.avisoReserva}
+          </Alerta>
+        )}
         {trabajo.excesoCreditos !== null && trabajo.excesoCreditos > 0 && (
           <Alerta tipo="aviso" compacta anuncio="ninguno" protege>
             El proveedor ha cobrado {formatearCreditos(trabajo.excesoCreditos)} por encima del límite que autorizaste.

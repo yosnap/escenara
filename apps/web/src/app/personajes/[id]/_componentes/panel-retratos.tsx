@@ -74,7 +74,7 @@ export function PanelRetratos({
   /** Huecos de la cola al preparar el gasto; hasta entonces se ofrece el máximo de candidatos. */
   const [huecos, setHuecos] = useState<HuecosDeCola | null>(null);
   /** Lo que se acaba de encargar, junto al botón: es donde está mirando quien lo ha pulsado. */
-  const [encargo, setEncargo] = useState<{ texto: string; faltan: string } | null>(null);
+  const [encargo, setEncargo] = useState<{ texto: string; faltan: string; reserva: string } | null>(null);
   const maximoAhora = huecos === null ? RETRATOS_CANDIDATOS : Math.min(RETRATOS_CANDIDATOS, huecos.libres);
   const opciones = opcionesCantidad(maximoAhora);
   /** Clave de esta confirmación: se conserva mientras no cambie lo que se confirma, para no pagar dos veces. */
@@ -151,7 +151,13 @@ export function PanelRetratos({
     setEncargo({
       texto: `Se ${hechos === 1 ? "ha" : "han"} encargado ${hechos} de ${cantidad} ${cantidad === 1 ? "retrato" : "retratos"}. Cuando terminen aparecerán aquí al pulsar «Buscar retratos terminados» o al recargar la página.`,
       faltan: respuesta.datos.aviso,
+      // Si la traducción la escribió una reserva de pago, se dice quién y cuánto costó (es el mismo en todos).
+      reserva: respuesta.datos.trabajos.find((t) => t.avisoReserva)?.avisoReserva ?? "",
     });
+    // Lo elegido no puede quedarse en un número que ya no se ofrece.
+    setCantidad((elegida) =>
+      huecos === null ? elegida : Math.max(1, Math.min(elegida, RETRATOS_CANDIDATOS, huecos.libres - hechos)),
+    );
     setHuecos((antes) =>
       antes === null
         ? null
@@ -354,6 +360,7 @@ export function PanelRetratos({
 
       {encargo && <Aviso tono="correcto">{encargo.texto}</Aviso>}
       {encargo?.faltan && <Aviso tono="aviso">{encargo.faltan}</Aviso>}
+      {encargo?.reserva && <Aviso tono="aviso">{encargo.reserva}</Aviso>}
     </section>
   );
 }

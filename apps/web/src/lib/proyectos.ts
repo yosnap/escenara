@@ -307,6 +307,11 @@ export interface EstimacionTexto {
 
 /** Proyecto con todo lo que necesita su página: escenas, afirmaciones y el plan con su coste. */
 export interface ProyectoDetalle {
+  /**
+   * Solo en la respuesta del asistente de guion: el guion lo escribió una **reserva de pago** porque falló la
+   * entrada principal. Dice qué falló, quién lo escribió y cuánto costó.
+   */
+  avisoReserva?: string;
   proyecto: ProyectoVista;
   escenas: EscenaVista[];
   plan: PlanVista;

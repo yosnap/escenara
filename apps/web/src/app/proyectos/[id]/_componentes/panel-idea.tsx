@@ -68,6 +68,8 @@ export function PanelIdea({
   const [guardando, setGuardando] = useState(false);
   const [escribiendo, setEscribiendo] = useState(false);
   const [hecho, setHecho] = useState<string | null>(null);
+  /** El guion lo escribió una reserva de pago: se dice quién y cuánto costó, aparte del «hecho». */
+  const [avisoReserva, setAvisoReserva] = useState<string | null>(null);
   /**
    * Clave de la confirmación, **estable mientras no cambie lo que se confirma** (mismo patrón que
    * `panel-generar.tsx`). Si se generara una nueva en cada clic, un doble clic o un reintento tras un error de
@@ -94,6 +96,7 @@ export function PanelIdea({
     if (!estimacionAsistente) return;
     setEscribiendo(true);
     setHecho(null);
+    setAvisoReserva(null);
     // Qué se está confirmando: la idea, el precio y cuántas escenas. Al cambiar cualquiera de los tres, la
     // confirmación es otra y la clave se renueva.
     const firma = `${idea.trim()}|${estimacionAsistente.sello}|${estimacionAsistente.creditos}|${ESCENAS_SUGERIDAS[proyecto.formato]}`;
@@ -115,6 +118,7 @@ export function PanelIdea({
     }
     setConcepto(resultado.datos.proyecto.concepto);
     setHecho("El asistente ha propuesto un guion. Revísalo escena a escena antes de aprobar el plan.");
+    setAvisoReserva(resultado.datos.avisoReserva ?? null);
     onCambio(resultado.datos);
   };
 
@@ -151,6 +155,7 @@ export function PanelIdea({
     <Paso numero={2} titulo="La idea">
       <div className="flex flex-col gap-4">
         {hecho && <Aviso tono="correcto">{hecho}</Aviso>}
+        {avisoReserva && <Aviso tono="aviso">{avisoReserva}</Aviso>}
 
         <Campo etiqueta="Idea" ayuda="En tus palabras. Es lo único que el asistente recibe, junto con el formato.">
           {(p) => <AreaTexto {...p} value={idea} maxLength={IDEA_MAXIMA} onChange={(e) => setIdea(e.target.value)} />}

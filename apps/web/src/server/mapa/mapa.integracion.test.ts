@@ -59,6 +59,7 @@ const { ErrorGeneracion } = await import("../generacion/errores");
 const { ErrorProyecto } = await import("../asistente/errores");
 const { guardarMapa, mapaVista, opcionesDe, recomendadasDe, volverALoRecomendado } = await import("./mapa");
 const { transcribirPorMapa } = await import("./transcripcion");
+const { ErrorDeTexto, pedirTextoPorMapa } = await import("./texto");
 const { eleccionDeVozDelMapa } = await import("./voz");
 const { ErrorCatalogo } = await import("../proveedores/contrato");
 type Buscador = import("../proveedores/codigos").Buscador;
@@ -70,7 +71,6 @@ const CLAVE_NAN = "sk-nan-clave-de-ana-inventada-1234";
 const CLAVE_OTRO = "sk-otro-clave-de-ana-inventada-99";
 const BASE_NAN = "https://api.nan.builders/v1";
 const BASE_OTRO = "https://api.ejemplo-compatible.dev/v1";
-const ESCENA = "en una azotea al amanecer, mirando a cámara";
 const TRADUCIDA = "on a rooftop at dawn, looking at the camera";
 const CREDITOS_TEXTO = 2;
 
@@ -390,7 +390,7 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
     expect(guardados.find((p) => p.nombre === "NaN builders")?.estado).toBe("valida");
   });
 
-  test("si el servicio principal tarda, ni se marca como rechazado ni se pasa en silencio a uno de pago", async () => {
+  test("si NaN tarda, la traducción la escribe la reserva de KIE confirmada y se avisa con proveedor y coste", async () => {
     const guardados = await listarCompatibles(ana.id);
     const nan = guardados.find((p) => p.nombre === "NaN builders");
     await guardarMapa(ana.id, "texto", [
@@ -399,22 +399,43 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
     ]);
     modelosQueTardan = new Set(["gemma4"]);
     falloDeKie = null;
-    const antes = await ejecuciones("traduccion");
-    const fallo = (await generar("una escena que nadie traduce a tiempo").catch((e: unknown) => e)) as Error;
-
-    // No se ha llamado al modelo de pago: su coste no se había confirmado.
-    expect(fallo).toBeInstanceOf(ErrorGeneracion);
+    // El coste que se confirma al generar ya incluye la traducción al precio de KIE: puede hacer de reserva.
+    const { trabajo } = await generar("una escena que NaN no traduce a tiempo");
     expect(llamadas).toEqual(["api.nan.builders/gemma4"]);
-    const nuevas = (await ejecuciones("traduccion")).filter((d) => !antes.some((a) => a.id === d.id));
-    expect(nuevas.filter((e) => e.provider === "kie")).toHaveLength(0);
-    // El mensaje dice la causa concreta, quién, que no se ha cobrado y qué hacer.
-    expect(fallo.message).toContain("NaN builders (gemma4)");
-    expect(fallo.message).toContain("ha tardado demasiado");
-    expect(fallo.message).toContain("No se ha probado KIE.ai (gpt-5-6-sol) porque es de pago");
-    expect(fallo.message).toContain("tampoco se ha cobrado nada");
-    // Y un tiempo agotado no es un rechazo: el servicio sigue siendo válido.
+    expect(trabajo.avisoReserva).toContain("NaN builders (gemma4) ha tardado demasiado");
+    expect(trabajo.avisoReserva).toContain("reserva de pago KIE.ai (gpt-5-6-sol)");
+    expect(trabajo.avisoReserva).toContain("0,5 créditos");
+    // Un tiempo agotado no es un rechazo: el servicio sigue siendo válido.
     const despues = await listarCompatibles(ana.id);
     expect(despues.find((p) => p.nombre === "NaN builders")?.estado).toBe("valida");
+    await ponerMapaCompleto();
+  });
+
+  test("en una llamada cuyo coste confirmado es el de la principal, no se pasa a una entrada de pago", async () => {
+    const guardados = await listarCompatibles(ana.id);
+    const nan = guardados.find((p) => p.nombre === "NaN builders");
+    await guardarMapa(ana.id, "texto", [
+      { proveedor: "compatible", compatibleId: nan?.id ?? "", modelo: "gemma4" },
+      { proveedor: "kie", compatibleId: null, modelo: "gpt-5-6-sol" },
+    ]);
+    modelosQueTardan = new Set(["gemma4"]);
+    falloDeKie = null;
+    const fallo = (await pedirTextoPorMapa({
+      usuarioId: ana.id,
+      kind: "traduccion",
+      instrucciones: "Traduce.",
+      entrada: "hola",
+      claveIdempotencia: crypto.randomUUID(),
+      buscar,
+    }).catch((e: unknown) => e)) as InstanceType<typeof ErrorDeTexto>;
+    expect(fallo).toBeInstanceOf(ErrorDeTexto);
+    const mensaje = fallo.mensaje("No se ha podido completar la ficha");
+    expect(mensaje).toContain("NaN builders (gemma4) ha tardado demasiado");
+    expect(mensaje).toContain(
+      "No se ha probado KIE.ai (gpt-5-6-sol) porque es de pago y su coste no lo habías confirmado",
+    );
+    expect(mensaje).toContain("tampoco se ha cobrado nada");
+    expect(llamadas).toEqual(["api.nan.builders/gemma4"]);
     await ponerMapaCompleto();
   });
 

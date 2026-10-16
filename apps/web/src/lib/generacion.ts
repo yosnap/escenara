@@ -179,6 +179,11 @@ export interface TrabajoVista {
   /** Créditos que informa el proveedor; `null` si aún no los ha informado. */
   creditosConsumidos: number | null;
   error: string | null;
+  /**
+   * Aviso de que una parte del envío (la traducción del prompt) la escribió una **reserva de pago** porque falló la
+   * principal: quién y cuánto costó. Ausente en el caso normal.
+   */
+  avisoReserva?: string;
   medioOrigenId: string | null;
   /** Personaje con el que se pidió el trabajo, si se pidió con uno; `null` si fue una imagen suelta. */
   personajeId: string | null;
