@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { PROVEEDORES_PUBLICOS } from "@/lib/boveda";
 import { esVista, proporcionDeVista } from "@/lib/captura-personaje";
-import { CAPACIDAD_DE_TIPO, type ModeloVista, segundosDeUnidad } from "@/lib/catalogo";
+import { type ModeloVista, segundosDeUnidad } from "@/lib/catalogo";
 import { mensajeDeFalloDeProveedor } from "@/lib/diagnostico-proveedor";
 import {
   type IntentoDeVoz,
@@ -9,6 +9,7 @@ import {
   mensajeDeFalloDeVoz,
   sugerenciaDeReserva,
 } from "@/lib/diagnostico-voz";
+import { ordenarImagenesDeEscena } from "@/lib/referencias-temporales";
 import { huecosDelPersonaje } from "@/lib/reparto-referencias";
 import { familiaDeVoz } from "@/lib/voz";
 import { eurosPorCreditoDe, leerAjustes } from "../ajustes";
@@ -21,6 +22,7 @@ import { ErrorGeneracion } from "../generacion/errores";
 import { olvidarSaldo } from "../generacion/estimacion";
 import type { Herramientas } from "../generacion/herramientas";
 import type { EleccionDeTrabajo } from "../generacion/precios";
+import { imagenesTemporalesDelTrabajo } from "../generacion/referencias-temporales";
 import { cerrarVozSincrona } from "../generacion/seguimiento";
 import { opcionesDeGeneracion } from "../mapa/generacion";
 import { opcionesDeVoz, type ReservaAutorizada } from "../mapa/voz";
@@ -44,7 +46,6 @@ import {
   referenciasDeLugarDe,
   referenciasDeProductoDe,
   repartoDeEnvioDe,
-  reservasAutorizadas,
   reservasPendientes,
   segundosDe,
   sinReferenciaDe,
@@ -317,10 +318,26 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
   const fotosAjenas = [...referenciasDeProductoDe(fila), ...referenciasDeLugarDe(fila)];
   const origenes = await mediosDeReferencia(
     fila,
-    huecosDelPersonaje(modelo.parametros.maximoReferencias, fotosAjenas.length),
+    (fila.input as { referenciasTemporales?: unknown }).referenciasTemporales
+      ? Number.MAX_SAFE_INTEGER
+      : huecosDelPersonaje(modelo.parametros.maximoReferencias, fotosAjenas.length),
+  );
+  const otrasFotos = await mediosVigentes(fotosAjenas);
+  const temporales = await imagenesTemporalesDelTrabajo(
+    fila,
+    Math.min(
+      modelo.parametros.maximoReferencias,
+      adaptador.referenciasDeGaleria?.(modelo) ?? modelo.parametros.maximoReferencias,
+    ),
+    origenes.length + otrasFotos.length,
   );
   const urls: string[] = [];
-  for (const origen of [...origenes, ...(await mediosVigentes(fotosAjenas))]) {
+  for (const origen of ordenarImagenesDeEscena(
+    origenes,
+    otrasFotos,
+    temporales,
+    fila.input.modoReferencias === "lugar_base",
+  )) {
     // Cada subida renueva la toma: con diez referencias, la preparación puede pasar de los tres minutos que
     // dura, y una toma caducada dejaría que otro worker preparase el mismo trabajo en paralelo.
     if (!(await renovarToma(fila.id, workerId))) {
@@ -832,7 +849,8 @@ async function claveDelTrabajo(fila: FilaTrabajo): Promise<{ clave: string }> {
 /**
  * Referencias del trabajo, en el orden en que se guardaron al encolar, **cruzadas con lo que sigue siendo
  * verdad**: se recortan al tope del modelo (el catálogo puede haber cambiado) y, si el trabajo lleva personaje,
- * se descarta lo que ya no sea referencia suya o esté en la papelera.
+ * se descarta lo que ya no sea referencia suya o esté en la papelera. Con el personaje **heredado** de una imagen
+ * suelta no: lo que viaja es esa imagen, que no es una foto suya, y su consentimiento ya lo revisa la puerta.
  *
  * Es la otra mitad de la revalidación: comprobar el consentimiento no basta si entre encolar y enviar el usuario
  * ha quitado fotos o las ha mandado a la papelera. Si quedan por debajo del mínimo, el trabajo se cierra sin
@@ -844,7 +862,8 @@ async function mediosDeReferencia(fila: FilaTrabajo, maximo = Number.POSITIVE_IN
   // Solo un **fotograma** envía las fotos del personaje. Un clip envía su fotograma aprobado, que no es una
   // referencia del personaje: filtrarlo contra ellas lo descartaba y ningún clip con personaje llegaba a salir.
   // El consentimiento del personaje del clip ya lo ha revisado la puerta de `preparar`.
-  if (fila.characterId && fila.kind === "fotograma") {
+  const heredado = (fila.input as { personajeHeredado?: unknown }).personajeHeredado === true;
+  if (fila.characterId && fila.kind === "fotograma" && !heredado) {
     // Solo lo que sigue siendo referencia del personaje y fuera de la papelera, respetando el orden guardado.
     const referencias = await mediosDeReferenciaVigentes(fila.characterId);
     const vigentes = new Map(referencias.map((r) => [r.mediaId, r.origen]));

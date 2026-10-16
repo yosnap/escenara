@@ -26,6 +26,7 @@ if (hayBaseDeDatos) {
 
 const { and, eq, inArray } = await import("drizzle-orm");
 const rutaTrabajos = await import("@/app/api/generacion/trabajos/route");
+const rutaReferenciasTemporales = await import("@/app/api/generacion/referencias-temporales/route");
 const rutaTrabajo = await import("@/app/api/generacion/trabajos/[id]/route");
 const rutaConsultar = await import("@/app/api/generacion/trabajos/[id]/consultar/route");
 const rutaEstimacion = await import("@/app/api/generacion/estimacion/route");
@@ -332,6 +333,73 @@ describe.skipIf(!hayBaseDeDatos)("generación con la clave del usuario", () => {
     ).length;
 
   describe("nada se envía sin confirmación, credencial y saldo", () => {
+    test("envía la imagen temporal al proveedor y conserva su papel y etiqueta", async () => {
+      const temporal = await crearMedio(actorAna, new File([await png()], "terraza.png", { type: "image/png" }));
+      const comprobacion = await rutaReferenciasTemporales.POST(
+        pedirDesdeLaApp(ana, "/api/generacion/referencias-temporales", {
+          method: "POST",
+          body: JSON.stringify({
+            modelo: "nano-banana-2-lite",
+            medioId: referencia,
+            referenciasTemporales: [{ medioId: temporal.id, etiqueta: "terraza", uso: "lugar" }],
+          }),
+        }),
+        undefined,
+      );
+      expect(comprobacion.status).toBe(200);
+      expect(await comprobacion.json()).toEqual({ total: 2, maximo: 10 });
+      expect(kie.llamadas.subida + kie.llamadas.crearTarea).toBe(0);
+      const foto = await crearFoto(
+        actorAna,
+        peticion(4, {
+          prompt: "Sentado en @terraza, mirando a cámara.",
+          referenciasTemporales: [{ medioId: temporal.id, etiqueta: "terraza", uso: "lugar" }],
+        }),
+      );
+      expect(kie.llamadas.subida).toBe(2);
+      const [fila] = await db().select().from(generationJobs).where(eq(generationJobs.id, foto.id));
+      expect(fila?.prompt).toContain("reference image 1");
+      expect(fila?.prompt).toContain("Image 1: Preserve the location");
+      expect(fila?.input.modoReferencias).toBe("lugar_base");
+      expect((fila?.input as { referenciasTemporales?: unknown } | undefined)?.referenciasTemporales).toEqual([
+        { medioId: temporal.id, etiqueta: "terraza", uso: "lugar" },
+      ]);
+      await cerrarEnCurso(actorAna.id);
+    });
+
+    test("una referencia temporal ajena se rechaza sin reservar ni enviar", async () => {
+      await expect(
+        crearFotograma(
+          actorAna,
+          peticion(4, {
+            referenciasTemporales: [{ medioId: referenciaBeto, etiqueta: "ropa", uso: "ropa" }],
+          }),
+          h,
+        ),
+      ).rejects.toThrow("La imagen no existe");
+      expect(kie.llamadas.crearTarea).toBe(0);
+      expect(kie.llamadas.subida).toBe(0);
+      expect(await enCursoDe(actorAna.id)).toBe(0);
+    });
+
+    test("sin imagen de partida, las referencias de la escena se rechazan con 400 en lugar de perderse", async () => {
+      const temporal = await crearMedio(actorAna, new File([await png()], "abrigo.png", { type: "image/png" }));
+      const error = await crearFotograma(
+        actorAna,
+        peticion(4, {
+          medioId: undefined,
+          prompt: "Con el @abrigo puesto, saluda a cámara.",
+          referenciasTemporales: [{ medioId: temporal.id, etiqueta: "abrigo", uso: "ropa" }],
+        }),
+        h,
+      ).catch((e) => e);
+      expect(error.estado).toBe(400);
+      expect(error.message).toContain("necesitan una imagen de partida");
+      expect(error.message).toContain("No se ha cobrado nada");
+      expect(kie.llamadas).toMatchObject({ crearTarea: 0, subida: 0 });
+      expect(await enCursoDe(actorAna.id)).toBe(0);
+    });
+
     test("la estimación viene del registro de precios y del saldo del usuario", async () => {
       const estimacion = await estimar(ana.id, "fotograma", buscar);
       expect(estimacion.creditos).toBe(4);

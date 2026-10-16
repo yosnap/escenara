@@ -1,6 +1,7 @@
 "use client";
 
 import { Camera, CheckCircle2, CircleDashed, Sparkles, Tags, WandSparkles } from "lucide-react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState } from "react";
 import { Boton, claseBoton } from "@/components/ui/button";
@@ -24,11 +25,15 @@ import {
   vistasPorGenerar,
 } from "@/lib/captura-personaje";
 import type { EvaluacionVista } from "@/lib/controles";
-import type { Estimacion } from "@/lib/generacion";
+import type { Estimacion, TrabajoVista } from "@/lib/generacion";
 import type { PersonajeVista, ReferenciaVista } from "@/lib/personajes";
 import { DialogoTodasLasVistas } from "./dialogo-todas-las-vistas";
 import { DialogoVistaSintetica } from "./dialogo-vista-sintetica";
 import { ANCLA_REFERENCIAS, idDeReferencia } from "./panel-referencias";
+
+const SeguimientoPersonaje = dynamic(() => import("./seguimiento-personaje").then((m) => m.SeguimientoPersonaje), {
+  ssr: false,
+});
 
 /**
  * Panel de cobertura (RF03): qué vistas tiene el personaje, cuál falta y qué hacer con la que falta. Es el
@@ -70,6 +75,7 @@ export function PanelCobertura({
   const [preparandoTodas, setPreparandoTodas] = useState(false);
   const [resumen, setResumen] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [trabajos, setTrabajos] = useState<TrabajoVista[]>([]);
 
   if (!cobertura) return null;
 
@@ -261,6 +267,10 @@ export function PanelCobertura({
             if (!abierto) setTodas(null);
           }}
           onEncargadas={(encargadas) => {
+            setTrabajos((anteriores) => [
+              ...anteriores,
+              ...encargadas.trabajos.filter((t) => !anteriores.some((a) => a.id === t.id)),
+            ]);
             const hechas = encargadas.encoladas.map((v) => ETIQUETA_VISTA[v].toLowerCase()).join(", ");
             const faltan = encargadas.sinEncolar.map((s) => `«${s.etiqueta.toLowerCase()}» (${s.motivo})`).join("; ");
             setResumen(
@@ -284,12 +294,16 @@ export function PanelCobertura({
           onAbiertoCambio={(abierto) => {
             if (!abierto) setGenerando(null);
           }}
-          onEncolada={() => {
+          onEncolada={(trabajo) => {
+            setTrabajos((anteriores) => [...anteriores.filter((t) => t.id !== trabajo.id), trabajo]);
             onVistaEncolada(generando.vista);
             setGenerando(null);
           }}
         />
       )}
+      {trabajos.map((trabajo) => (
+        <SeguimientoPersonaje key={trabajo.id} personajeId={personaje.id} trabajo={trabajo} onPersonaje={onPersonaje} />
+      ))}
     </section>
   );
 }

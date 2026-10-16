@@ -63,4 +63,4 @@ UPDATE "control_evaluations" SET "rules" = (
 )
 WHERE jsonb_typeof("rules") = 'array' AND jsonb_array_length("rules") > 0
   AND "rules"::text ~ '«(?!(?:Tu cuenta|UGC a cámara|cantar con tu audio|Crear|Antes de generar|nombre oculto|el personaje|el producto|persona [0-9]+)»)[^»]*»';--> statement-breakpoint
-UPDATE "control_evaluations" SET "gate" = 'frenos' WHERE "subject" = 'montaje' AND "action" = '' AND "gate" <> 'frenos';
+UPDATE "control_evaluations" SET "gate" = 'frenos' WHERE "subject"::text = 'montaje' AND "action" = '' AND "gate" <> 'frenos';

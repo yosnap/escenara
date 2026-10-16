@@ -36,6 +36,8 @@ export interface DatosPasosCrear {
   origen: "fotograma" | "imagen";
   /** Hay personaje o foto elegidos para el fotograma. */
   haySujeto: boolean;
+  /** Crear sin identidad exige elegirlo expresamente, no dejar el selector vacío. */
+  sinSujetoConfirmado?: boolean;
   /** La casilla de revisión de las fotos está marcada. */
   revisionConfirmada: boolean;
   /** Caracteres de la descripción, ya sin espacios sobrantes. */
@@ -127,6 +129,8 @@ function pasosSinPendientes(d: DatosPasosCrear): PasoDelFlujo[] {
   }
 
   const descripcionLista = d.caracteresDescripcion >= PROMPT_MINIMO;
+  const sujetoElegido = d.haySujeto || d.sinSujetoConfirmado === true;
+  const motivoSujeto = "Elige antes un personaje o una imagen, o confirma que quieres crear solo desde texto.";
   return [
     ...(d.conFormato ? [formato] : []),
     origen,
@@ -134,22 +138,27 @@ function pasosSinPendientes(d: DatosPasosCrear): PasoDelFlujo[] {
       id: "sujeto",
       titulo: "Elige a quién generas",
       corto: "Quién",
-      // «Sin personaje» ya es una elección válida: no depende del texto del paso siguiente.
-      estado: d.haySujeto ? (d.revisionConfirmada ? "hecho" : "en-curso") : "hecho",
-      ...(!d.haySujeto ? { etiquetaEstado: "Sin personaje" } : {}),
+      estado: d.haySujeto ? (d.revisionConfirmada ? "hecho" : "en-curso") : sujetoElegido ? "hecho" : "pendiente",
+      ...(!d.haySujeto && sujetoElegido ? { etiquetaEstado: "Sin personaje" } : {}),
     },
     {
       id: "escena",
       titulo: "Describe la escena",
       corto: "Escena",
-      estado:
-        descripcionLista && d.motivosPlantilla === 0 ? "hecho" : d.caracteresDescripcion > 0 ? "en-curso" : "pendiente",
+      estado: !sujetoElegido
+        ? "bloqueado"
+        : descripcionLista && d.motivosPlantilla === 0
+          ? "hecho"
+          : d.caracteresDescripcion > 0
+            ? "en-curso"
+            : "pendiente",
+      ...(!sujetoElegido ? { motivo: motivoSujeto } : {}),
     },
     {
       id: "coste",
       titulo: "Revisa el coste y confirma",
       corto: "Coste",
-      ...(descripcionLista
+      ...(descripcionLista && sujetoElegido
         ? {
             // Con el fotograma parado hay que volver a confirmar: el coste no está hecho.
             estado: d.enviandoFotograma
@@ -160,7 +169,9 @@ function pasosSinPendientes(d: DatosPasosCrear): PasoDelFlujo[] {
           }
         : {
             estado: "bloqueado" as EstadoDePaso,
-            motivo: `Describe antes la escena (mínimo ${PROMPT_MINIMO} caracteres): el coste depende de lo que se pide.`,
+            motivo: !sujetoElegido
+              ? motivoSujeto
+              : `Describe antes la escena (mínimo ${PROMPT_MINIMO} caracteres): el coste depende de lo que se pide.`,
           }),
     },
     {

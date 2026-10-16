@@ -7,6 +7,7 @@ import type { TipoPersonaje } from "@/lib/personajes";
 import type { SeleccionPresets } from "@/lib/presets";
 import { duracionParaModelo } from "@/lib/produccion";
 import type { PasoProductoDigital, ProductoElegido } from "@/lib/productos";
+import { promptParaLugarBase } from "@/lib/referencias-temporales";
 import { motivoDuracionNoAdmitida } from "@/lib/trends";
 import { contextoAnimadoDeEscena } from "../animados/contexto-escena";
 import { duracionDeClipDeEscena, proyectoDeEscena } from "../asistente/consulta";
@@ -66,6 +67,7 @@ import { exigirFormatoDelFotograma, proporcionDelEnvio, reservasGuardadas } from
 import { HERRAMIENTAS, type Herramientas } from "./herramientas";
 import { fichaHeredada, partidaDelClip } from "./partida-del-clip";
 import { exigirSelloVigente } from "./precios";
+import { esEdicionConLugar, exigirImagenParaTemporales, prepararReferenciasTemporales } from "./referencias-temporales";
 import { personajeDeLaCadena, vistaDeFila } from "./trabajos";
 
 /**
@@ -228,6 +230,7 @@ export interface Envio {
 }
 
 export interface PeticionFotograma extends Confirmacion {
+  referenciasTemporales?: unknown;
   /** Imagen de la biblioteca del usuario que sirve de referencia. Alternativa a `personajeId`. */
   medioId?: string;
   /**
@@ -426,6 +429,7 @@ export async function crearFotograma(
   h: Herramientas = HERRAMIENTAS,
 ): Promise<Envio> {
   const prompt = limpiarPrompt(peticion.prompt);
+  const lugarTemporalBase = esEdicionConLugar(peticion.referenciasTemporales);
   exigirDerechos(peticion.derechos);
   const claveIdempotencia = exigirClaveIdempotencia(peticion.claveIdempotencia);
   /**
@@ -434,6 +438,7 @@ export async function crearFotograma(
    * de texto a imagen; pedírselo a uno de edición se rechaza **después** de que el proveedor cobre la petición.
    */
   const sinReferencia = peticion.retratoInventado === true || (!peticion.personajeId && !peticion.medioId);
+  exigirImagenParaTemporales(sinReferencia, peticion.referenciasTemporales);
   const { elegida, reservas } = await eleccionConfirmada(actor.id, "fotograma", peticion, { sinReferencia });
   const eleccion = elegida.eleccion;
   const { modelo, adaptador, precio } = eleccion;
@@ -464,7 +469,7 @@ export async function crearFotograma(
   // personaje. Heredarlo significa cumplir sus reglas como cualquier otro.
   // Sin imagen de partida no se exige ninguna: es el propio modo de generación, no un dato que falte.
   const medioId = peticion.personajeId || sinReferencia ? null : exigirMedioElegido(peticion.medioId);
-  const personajeId = peticion.personajeId ?? (medioId === null ? null : await personajeDeLaCadena(actor.id, medioId));
+  const personajeId = peticion.personajeId || (medioId === null ? null : await personajeDeLaCadena(actor.id, medioId));
   // Un personaje inventado no tiene fotos, así que no hay terceros que revisar en ellas: lo que se envía es su
   // descripción. Exigir esa casilla aquí sería pedir una declaración sobre unas fotos que no existen.
   if (personajeId && !peticion.retratoInventado) exigirRevisionDeReferencias(peticion.sinTerceros);
@@ -507,6 +512,7 @@ export async function crearFotograma(
       sinReferencia,
       conHoja:
         personaje !== null &&
+        !lugarTemporalBase &&
         !peticion.hojaDeIdentidad &&
         hojaEnElEnvio(personaje, peticion.escenaId ?? peticion.claveIdempotencia),
     },
@@ -569,7 +575,10 @@ export async function crearFotograma(
           personaje,
           modelo.parametros.maximoReferencias,
           // La hoja nunca se genera desde sí misma: se compone siempre desde las fotos sueltas.
-          !peticion.hojaDeIdentidad && conHojaDeIdentidad(personaje, peticion.escenaId ?? peticion.claveIdempotencia),
+          !lugarTemporalBase &&
+            !peticion.hojaDeIdentidad &&
+            conHojaDeIdentidad(personaje, peticion.escenaId ?? peticion.claveIdempotencia),
+          lugarTemporalBase,
         )
       : null;
   /**
@@ -597,7 +606,17 @@ export async function crearFotograma(
   exigirVersionConfirmada(peticion.versionPersonaje, conFicha.versionId);
   // Se compone una vez con **el texto original**: valida la combinación de plantilla, presets y modelo, y es lo
   // que miden las reglas de la decisión. Todo esto es gratis, y tiene que fallar **antes** de que se pague nada.
-  const original = await baseDelPrompt(actor, peticion, "fotograma", modelo, conFicha.tipo, prompt);
+  const temporales = await prepararReferenciasTemporales(
+    actor.id,
+    peticion.referenciasTemporales,
+    prompt,
+    modelo,
+    adaptador,
+    referenciasDelPersonajeQueViajan(referencias, reparto).length +
+      (referenciasDeProductoGuardadas(producto, conProducto).referenciasProducto?.length ?? 0) +
+      (entradaDelLugar(conLugar, reparto).referenciasLugar?.length ?? 0),
+  );
+  const original = await baseDelPrompt(actor, peticion, "fotograma", modelo, conFicha.tipo, temporales.prompt);
   await exigirDecisionFavorable({
     tipo: "fotograma",
     // Las reglas miden lo que escribió la persona, en su idioma: es lo único sobre lo que puede decidir.
@@ -616,7 +635,7 @@ export async function crearFotograma(
   const enIngles = await traducirAlIngles(
     actor.id,
     [
-      { texto: prompt },
+      { texto: temporales.prompt },
       { texto: contextoTotal, personajeId },
       // La descripción del producto la escribe el usuario en castellano y el prompt va en inglés.
       { texto: producto?.descripcionOriginal ?? "" },
@@ -624,7 +643,7 @@ export async function crearFotograma(
     ],
     h.buscar,
   );
-  const escenaEnIngles = enIngles.get(prompt) ?? prompt;
+  const escenaEnIngles = enIngles.get(temporales.prompt) ?? temporales.prompt;
   const lugarEnLasSeisC = lugarDelPrompt(conLugar, enIngles, reparto);
   const contextoEnIngles = enIngles.get(contextoTotal) ?? contextoTotal;
   /**
@@ -670,7 +689,7 @@ export async function crearFotograma(
             // registrando para que la aprobación y la auditoría de «con qué versión se hizo» no queden en nulo.
             compuesto: original.compuesto,
           }
-        : escenaEnIngles === prompt
+        : escenaEnIngles === temporales.prompt
           ? original
           : await baseDelPrompt(actor, peticion, "fotograma", modelo, conFicha.tipo, escenaEnIngles);
   const escenaDelFotograma = conLugarSuelto(
@@ -679,7 +698,16 @@ export async function crearFotograma(
       : base.escena,
     peticion.seisC ? null : lugarEnLasSeisC,
   );
-  const promptFinal = promptConContexto(escenaDelFotograma, contextoEnIngles);
+  const promptCompuesto = [promptConContexto(escenaDelFotograma, contextoEnIngles), temporales.instrucciones]
+    .filter(Boolean)
+    .join("\n\n");
+  const promptFinal = temporales.lugarBase
+    ? promptParaLugarBase(
+        promptCompuesto,
+        referenciasDelPersonajeQueViajan(referencias, reparto).length,
+        temporales.referencias.length,
+      )
+    : promptCompuesto;
 
   const proporcion = proporcionDelEnvio(peticion.proporcion, base.compuesto, modelo);
   const parametros = adaptador.montarEntrada(modelo, {
@@ -732,6 +760,9 @@ export async function crearFotograma(
       // añadirla como referencia etiquetada. Solo la pone el servidor.
       ...(peticion.vistaSintetica && personajeId ? { vistaSintetica: peticion.vistaSintetica } : {}),
       ...(peticion.hojaDeIdentidad && personajeId ? { hojaDeIdentidad: true } : {}),
+      // Personaje **heredado** de una imagen suelta: lo que viaja es esa imagen, no sus fotos. El worker no la
+      // filtra contra ellas ni exige su mínimo (un fotograma generado no es una foto del personaje).
+      ...(personajeId && !peticion.personajeId ? { personajeHeredado: true } : {}),
       // Marca de «este fotograma nace de una descripción y no de ninguna foto» (0.22.0). La lee el worker para
       // no buscar referencias que no existen, y el cierre para añadir el retrato elegido como vista generada.
       ...(peticion.retratoInventado ? { retratoInventado: true } : {}),
@@ -744,6 +775,15 @@ export async function crearFotograma(
       ...referenciasDeProductoGuardadas(producto, conProducto),
       // La maestra del lugar, si viaja: va la última, detrás de las fotos del personaje y del producto.
       ...entradaDelLugar(conLugar, reparto),
+      ...(temporales.referencias.length
+        ? {
+            referenciasTemporales: temporales.referencias,
+            primeraReferenciaTemporal: temporales.primeraImagen,
+            ...(temporales.lugarBase
+              ? { modoReferencias: "lugar_base", cantidadReferenciasPrevias: temporales.otras }
+              : {}),
+          }
+        : {}),
     },
     sourceMediaId: origen?.id ?? null,
     sceneId: conEscena?.escena.id ?? null,

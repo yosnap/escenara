@@ -46,7 +46,7 @@ const PATRONES: readonly [RegExp, string][] = [
   [/(progreso|progress)\w*(porcentaje|porCiento|Percent)/i, "identificador de porcentaje de progreso"],
   // Un ancho o un valor calculado a partir del tiempo transcurrido o estimado: la interpolación que la fase prohíbe.
   [
-    /(width|value|--progreso)[^\n;]{0,40}(transcurrido|estimad[oa]|restante|elapsed|eta)\w*/i,
+    /(width|value|--progreso)[^\n;]{0,40}\b(transcurrido|estimad[oa]|restante|elapsed|eta)\w*/i,
     "progreso calculado con el tiempo",
   ],
 ];
@@ -91,6 +91,7 @@ describe("sin progreso inventado", () => {
     expect(detecta("style={{ width: anchoDe(transcurrido, estimado) }}")).toBe(true);
     // Una barra de cuota sí es una fracción medida: bytes usados de bytes disponibles.
     expect(detecta("style={{ width: anchoDe(usadoBytes, cuotaBytes) }}")).toBe(false);
+    expect(detecta("<input value={r.etiqueta} />")).toBe(false);
     // Y el tiempo transcurrido se puede mostrar tal cual: es un dato medido, no una previsión.
     expect(detecta("<p>{formatearTranscurrido(transcurridoSegundos)}</p>")).toBe(false);
     // Los comentarios que hablan del tema no cuentan.

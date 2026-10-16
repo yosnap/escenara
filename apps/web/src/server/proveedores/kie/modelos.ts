@@ -52,6 +52,9 @@ const AUDIO_SOLO_AMBIENTE =
 
 /** Prompt del fotograma: solo la descripción visual. */
 export function promptFotograma(escena: string): string {
+  if (escena.startsWith("PHOTO EDITING TASK. Image 1 is the base photograph")) {
+    return `${escena}\n\nDo not add captions, subtitles, speech bubbles or watermarks. Preserve existing signs, lettering and logos in the base photograph faithfully.`;
+  }
   return `${escena}\n\n${sinTexto(SIN_TEXTO_IMAGEN, escena)}`;
 }
 

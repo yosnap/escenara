@@ -1,5 +1,13 @@
 import { describe, expect, test } from "bun:test";
+import { promptParaLugarBase } from "@/lib/referencias-temporales";
 import { entradaAnimacion, entradaFotograma, promptAnimacion, promptFotograma } from "./modelos";
+
+test("el adaptador conserva rótulos existentes cuando se edita una foto de lugar", () => {
+  const entrada = entradaFotograma(promptParaLugarBase("Jorge camina", 6, 1), ["iglesia", "jorge"]);
+  expect(entrada.image_urls).toEqual(["iglesia", "jorge"]);
+  expect(entrada.prompt).toContain("Preserve existing signs");
+  expect(entrada.prompt).not.toContain("no written words");
+});
 
 /**
  * Construcción de los prompts. La regla que justifica estos tests salió de la comparativa real del

@@ -227,6 +227,8 @@ describe("las casillas de derechos y de revisión salen marcadas", () => {
     });
     const html = renderToStaticMarkup(
       <PasoSujeto
+        sinSujetoConfirmado={false}
+        onSinSujetoConfirmado={() => {}}
         numero={3}
         personajes={[]}
         personajeId={null}

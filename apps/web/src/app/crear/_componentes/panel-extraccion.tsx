@@ -80,10 +80,11 @@ export function PanelExtraccion({
       <div>
         <h3 className="flex items-center gap-2 font-semibold text-texto">
           <ScanSearch className="size-5 text-acento" />
-          Partir de una foto que te guste
+          Extraer una descripción de una foto
         </h3>
         <p className="mt-1 text-sm text-texto-suave">
-          Se leen de ella la cámara, la ropa, el sitio y la luz, y los puedes corregir antes de generar.{" "}
+          Se leen de ella la cámara, la ropa, el sitio y la luz, y los puedes corregir antes de generar. Esta opción
+          añade texto; para enviar la imagen al modelo, añádela en «Referencias para esta escena».{" "}
           <strong className="text-texto">No cuesta créditos</strong> y{" "}
           <strong className="text-texto">no se genera nada</strong> hasta que tú lo digas. De quién sale en la foto no
           se lee nada: eso viene de tu personaje.
