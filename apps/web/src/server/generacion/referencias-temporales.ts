@@ -21,6 +21,18 @@ export function esEdicionConLugar(valor: unknown): boolean {
   }
 }
 
+/**
+ * Sin imagen de partida el modelo es de texto a imagen y no recibe ninguna imagen: unas referencias de la escena
+ * se perderían en silencio al preparar el envío. La pantalla ya lo impide; aquí se rechaza si llegan igual.
+ */
+export function exigirImagenParaTemporales(sinReferencia: boolean, valor: unknown): void {
+  if (!sinReferencia || !Array.isArray(valor) || valor.length === 0) return;
+  throw new ErrorGeneracion(
+    400,
+    "Las referencias de la escena necesitan una imagen de partida: sin personaje ni imagen, la escena se genera solo con texto y esas imágenes no llegarían al modelo. No se ha cobrado nada: elige un personaje o una imagen, o quita las referencias, y vuelve a confirmar.",
+  );
+}
+
 /** Toda validación termina antes de pagar traducción o reservar una generación. */
 export async function prepararReferenciasTemporales(
   usuarioId: string,

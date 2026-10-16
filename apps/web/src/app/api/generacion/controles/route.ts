@@ -4,18 +4,10 @@ import { esTipoTrabajo } from "@/lib/generacion";
 import { evaluarControles } from "@/server/controles/consulta";
 import { ErrorGeneracion } from "@/server/generacion/errores";
 import { exigirRitmoDeConsultas, manejador } from "@/server/generacion/http";
+import { uuidOpcional } from "@/server/generacion/identificadores";
 import { leerFotosElegidas } from "@/server/productos/eleccion";
 
 export const dynamic = "force-dynamic";
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/** Identificador opcional que llega del navegador: o es un UUID, o no viene. */
-function uuidOpcional(valor: string | null, queEs: string): string | null {
-  if (valor === null || valor === "") return null;
-  if (!UUID.test(valor)) throw new ErrorGeneracion(400, `Ese ${queEs} no es válido.`);
-  return valor;
-}
 
 /** Clave de acción con el producto: minúsculas, números y guiones, o no viene. */
 function claveOpcional(valor: string | null): string | null {

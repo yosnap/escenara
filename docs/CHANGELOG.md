@@ -2,6 +2,33 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.52.5] · 2026-10-16
+
+### Corregido
+
+- En «Crear», el modelo del fotograma que eliges se conserva al cambiar de personaje o de imagen si
+  también vale en el modo nuevo; solo cae al predeterminado si no existe allí. Volver a pulsar
+  «Sin personaje» ya no pide nada, una respuesta lenta no pisa lo elegido después y el selector
+  muestra siempre el nombre del modelo real.
+- Las referencias de la escena sin personaje ni imagen de partida se rechazan con la causa en vez de
+  perderse al enviar. Una imagen suelta que salió de un trabajo con personaje ya no falla en el
+  worker por «no llegan al mínimo» de fotos del personaje.
+- La ficha del personaje ya no se corta a mitad de palabra: si no cabe entera, sale primero la voz,
+  se acortan la descripción y la actitud, y los rasgos, el vestuario y el estilo siempre llegan.
+  Un campo corto que cabe entero ya no se descarta y el recorte no parte emojis.
+- Si eliges un modelo y cambias de sujeto antes de que llegue su estimación, se usa el modelo que
+  acabas de elegir. El indicador de carga del contexto del personaje ya no se apaga antes de tiempo.
+- Un `personajeId` vacío ya no evita que una imagen suelta herede su personaje: se siguen exigiendo
+  su consentimiento y la revisión de las fotos, y un identificador mal formado se rechaza con 400.
+- El botón «Sin personaje» del paso de sujeto explica que se genera con una foto suelta o solo con la
+  descripción, para no confundirlo con «Usar una imagen que ya tengo» del origen.
+
+### Actualización
+
+- Sin migraciones nuevas ni cambios de configuración. Reiniciar web y worker para cargar el nuevo
+  envío de referencias. Un fotograma con personaje heredado que ya estuviera en cola antes de
+  actualizar puede fallar por «no llegan al mínimo» (sin cobro): basta con volver a pedirlo.
+
 ## [0.52.4] · 2026-10-12
 
 Las pruebas se ejecutan con origen local y aislamiento por fichero para evitar que la URL de producción, las cachés, ajustes y módulos de una suite alteren las siguientes. Se normaliza también el formato del catálogo y de una instantánea de Drizzle, sin cambiar sus datos.

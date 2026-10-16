@@ -67,7 +67,7 @@ import { exigirFormatoDelFotograma, proporcionDelEnvio, reservasGuardadas } from
 import { HERRAMIENTAS, type Herramientas } from "./herramientas";
 import { fichaHeredada, partidaDelClip } from "./partida-del-clip";
 import { exigirSelloVigente } from "./precios";
-import { esEdicionConLugar, prepararReferenciasTemporales } from "./referencias-temporales";
+import { esEdicionConLugar, exigirImagenParaTemporales, prepararReferenciasTemporales } from "./referencias-temporales";
 import { personajeDeLaCadena, vistaDeFila } from "./trabajos";
 
 /**
@@ -438,6 +438,7 @@ export async function crearFotograma(
    * de texto a imagen; pedírselo a uno de edición se rechaza **después** de que el proveedor cobre la petición.
    */
   const sinReferencia = peticion.retratoInventado === true || (!peticion.personajeId && !peticion.medioId);
+  exigirImagenParaTemporales(sinReferencia, peticion.referenciasTemporales);
   const { elegida, reservas } = await eleccionConfirmada(actor.id, "fotograma", peticion, { sinReferencia });
   const eleccion = elegida.eleccion;
   const { modelo, adaptador, precio } = eleccion;
@@ -468,7 +469,7 @@ export async function crearFotograma(
   // personaje. Heredarlo significa cumplir sus reglas como cualquier otro.
   // Sin imagen de partida no se exige ninguna: es el propio modo de generación, no un dato que falte.
   const medioId = peticion.personajeId || sinReferencia ? null : exigirMedioElegido(peticion.medioId);
-  const personajeId = peticion.personajeId ?? (medioId === null ? null : await personajeDeLaCadena(actor.id, medioId));
+  const personajeId = peticion.personajeId || (medioId === null ? null : await personajeDeLaCadena(actor.id, medioId));
   // Un personaje inventado no tiene fotos, así que no hay terceros que revisar en ellas: lo que se envía es su
   // descripción. Exigir esa casilla aquí sería pedir una declaración sobre unas fotos que no existen.
   if (personajeId && !peticion.retratoInventado) exigirRevisionDeReferencias(peticion.sinTerceros);
@@ -759,6 +760,9 @@ export async function crearFotograma(
       // añadirla como referencia etiquetada. Solo la pone el servidor.
       ...(peticion.vistaSintetica && personajeId ? { vistaSintetica: peticion.vistaSintetica } : {}),
       ...(peticion.hojaDeIdentidad && personajeId ? { hojaDeIdentidad: true } : {}),
+      // Personaje **heredado** de una imagen suelta: lo que viaja es esa imagen, no sus fotos. El worker no la
+      // filtra contra ellas ni exige su mínimo (un fotograma generado no es una foto del personaje).
+      ...(personajeId && !peticion.personajeId ? { personajeHeredado: true } : {}),
       // Marca de «este fotograma nace de una descripción y no de ninguna foto» (0.22.0). La lee el worker para
       // no buscar referencias que no existen, y el cierre para añadir el retrato elegido como vista generada.
       ...(peticion.retratoInventado ? { retratoInventado: true } : {}),
