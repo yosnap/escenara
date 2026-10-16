@@ -20,9 +20,17 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - Un servicio compatible (como NaN builders) que tarda ya no se marca como «rechazado». Si rechaza
   una petición, antes de darlo por no válido se comprueba su clave con su lista de modelos, que no
   gasta cuota.
-- Las llamadas de texto (traducción, guion, ficha con IA) ya no pasan a un modelo de pago cuyo coste
-  no confirmaste: si tu servicio de cuota falla, se para y se te dice qué falló, que no se ha cobrado
-  nada y cómo seguir.
+- Si tu servicio de cuota falla, la traducción del prompt y el guion del asistente usan de reserva el
+  modelo de texto de la instalación, cuyo coste ya confirmaste, y se avisa con el trabajo o el guion de
+  quién lo ha escrito y cuánto ha costado. El resto de llamadas de texto (ficha con IA, guion del
+  anuncio) ya no pasan a un modelo de pago que no confirmaste: se para y se dice qué falló, que no se
+  ha cobrado nada y cómo seguir.
+- El encargo de todas las vistas solo encarga las vistas que confirmaste en el diálogo, aunque al
+  pulsar quepan más, y repetirlo con la misma confirmación tras un corte de red no amplía el lote.
+- Cambiar el estilo de un personaje también pide confirmación cuando tiene retratos o vistas pagados
+  que todavía se están generando, aunque el cambio llegue sin pasar por la ficha.
+- El número de retratos se ajusta tras un encargo si ya no caben tantos, y un espacio de más en la
+  guía de estilo ya no pide confirmar un descarte.
 
 ### Actualización
 
