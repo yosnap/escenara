@@ -47,6 +47,19 @@ Hay una excepción, y es por el mismo motivo: si la siguiente opción **no cobra
 se pagan con la cuota de tu plan), seguir no puede crearte un segundo cargo, así que sí se prueba. Es lo que
 hace que un proveedor que se queda colgado no te deje el trabajo sin hacer.
 
+En texto, desde la 0.52.6, **nunca se pasa a una opción de pago cuyo coste no hayas confirmado**:
+
+- La **traducción de tus prompts** y el **guion del asistente** enseñan y confirman el coste del modelo de texto de
+  la instalación (KIE). Si tu servicio de cuota falla, ese modelo sí hace de reserva, y se te avisa con el trabajo
+  o con el guion: qué falló, quién lo ha escrito y cuántos créditos ha costado.
+- En el resto (completar la ficha con IA, el guion del anuncio) solo confirmas el coste de tu opción principal. Si
+  es de cuota y falla, se prueban tus otros servicios de cuota, pero no un modelo de pago que esté más abajo. Se
+  para y se te dice qué falló, que no se ha cobrado nada y qué puedes hacer: volver a intentarlo, o subir ese modelo
+  de pago al primer puesto si prefieres pagarlo.
+
+Un servicio que tarda demasiado **no se marca como rechazado**. Si un servicio rechaza una petición, antes de
+darlo por no válido se le pide su lista de modelos, que no gasta cuota: solo se marca si también rechaza la clave.
+
 ## Lo que cuesta cada opción
 
 Para ver precios, tus resultados de antes y ejemplos de varios modelos a la vez **sin gastar nada**, usa **Comparar**

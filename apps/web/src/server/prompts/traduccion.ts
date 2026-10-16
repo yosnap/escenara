@@ -52,6 +52,8 @@ export interface EstadoTraduccion {
   comprobado: string;
   sello: string;
   nombreModelo: string;
+  /** Identificador del modelo cuyo coste se enseña: es la reserva de pago que se puede usar sin volver a preguntar. */
+  modelo: string;
   /** Proveedor que cobraría esa traducción: es con cuyo cambio se convierte a euros. */
   proveedor: string;
 }
@@ -62,6 +64,7 @@ export const TRADUCCION_APAGADA: EstadoTraduccion = {
   comprobado: "",
   sello: "",
   nombreModelo: "",
+  modelo: "",
   proveedor: "",
 };
 
@@ -93,6 +96,7 @@ export async function estadoDeTraduccion(): Promise<EstadoTraduccion> {
       comprobado: precio.comprobado,
       sello: precio.sello,
       nombreModelo: modelo.nombre,
+      modelo: modelo.modelo,
       proveedor: modelo.proveedor,
     };
   } catch (error) {
@@ -131,12 +135,20 @@ export interface TextoATraducir {
   personajeId?: string | null;
 }
 
+/**
+ * Cada original con su versión en inglés y, si la escribió una reserva de pago porque falló la principal, el aviso
+ * que hay que enseñar con el trabajo (proveedor y coste). Vacío en el caso normal.
+ */
+export class Traducciones extends Map<string, string> {
+  aviso = "";
+}
+
 export async function traducirAlIngles(
   usuarioId: string,
   entradas: readonly TextoATraducir[],
   buscar: Buscador = fetch,
-): Promise<Map<string, string>> {
-  const resultado = new Map<string, string>();
+): Promise<Traducciones> {
+  const resultado = new Traducciones();
   for (const { texto } of entradas) resultado.set(texto, texto);
   // Se deduplica por texto y se queda con el personaje que lo acompañe, si alguno lo trae.
   const utiles = new Map<string, string | null>();
@@ -163,8 +175,9 @@ export async function traducirAlIngles(
   if (porHuella.size > 0) await marcarUsadas(usuarioId, [...porHuella.keys()]);
   if (pendientes.length === 0) return resultado;
 
-  const traducidas = await pedirTraduccion(usuarioId, pendientes, buscar);
+  const { traducidas, aviso } = await pedirTraduccion(usuarioId, pendientes, estado.modelo, buscar);
   for (const [texto, ingles] of traducidas) resultado.set(texto, ingles);
+  resultado.aviso = aviso;
   return resultado;
 }
 
@@ -211,8 +224,10 @@ export async function borrarTraduccionesDePersonaje(ejecutor: Ejecutor, personaj
 async function pedirTraduccion(
   usuarioId: string,
   pendientes: TextoATraducir[],
+  /** Modelo cuyo coste se enseñó y se confirmó al generar: puede hacer de reserva de pago, avisando. */
+  modeloConfirmado: string,
   buscar: Buscador,
-): Promise<Map<string, string>> {
+): Promise<{ traducidas: Map<string, string>; aviso: string }> {
   const originales = pendientes.map((p) => p.texto);
   const claveIdempotencia = await claveDeTraduccion(usuarioId, pendientes);
   let resultado: TextoDelMapa;
@@ -224,6 +239,9 @@ async function pedirTraduccion(
       entrada: peticionDeTraduccion(originales),
       claveIdempotencia,
       buscar,
+      // El total que se confirmó al generar incluye la traducción **al precio de este modelo**: si la principal de
+      // cuota falla, puede escribirla él, y se avisa con el trabajo (decisión del propietario, 2026-10-16).
+      ...(modeloConfirmado === "" ? {} : { reservaConfirmada: modeloConfirmado }),
     });
   } catch (error) {
     if (error instanceof ErrorDeTexto) throw new ErrorGeneracion(502, error.mensaje(ENCABEZADO_FALLO));
@@ -231,7 +249,7 @@ async function pedirTraduccion(
       // Otra petición del mismo texto llegó primero. No se llama otra vez —sería pagar dos veces lo mismo—, pero
       // sí se vuelve a mirar la caché: si la otra ya terminó, están todas y esto sigue sin gastar nada.
       const yaTraducidas = await deLaCache(usuarioId, pendientes);
-      if (yaTraducidas.size === pendientes.length) return yaTraducidas;
+      if (yaTraducidas.size === pendientes.length) return { traducidas: yaTraducidas, aviso: "" };
       // Y si no están, no se afirma nada sobre el cobro: no se sabe si la otra llamada ha terminado, ha fallado o
       // sigue en curso, y lo único seguro es que aquí no se ha enviado nada a generar.
       throw new ErrorGeneracion(
@@ -261,7 +279,7 @@ async function pedirTraduccion(
     );
   }
   await guardarEnCache(usuarioId, `${resultado.nombreProveedor}/${resultado.modelo}`, pendientes, traducidas);
-  return traducidas;
+  return { traducidas, aviso: resultado.aviso === "" ? "" : `Traducción al inglés: ${resultado.aviso}` };
 }
 
 /** Traducciones de esos textos que ya estén en la caché de este usuario. */

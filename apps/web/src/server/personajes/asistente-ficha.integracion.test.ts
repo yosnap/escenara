@@ -349,7 +349,13 @@ describe.skipIf(!hayBaseDeDatos)("asistente de la ficha del personaje", () => {
     const fallo = await pedirVistasQueFaltan(
       actorAna,
       inventado.id,
-      { creditosConfirmados: 0, derechos: true, sinTerceros: true, claveIdempotencia: crypto.randomUUID() },
+      {
+        vistas: vistasPorGenerar(await coberturaDe(inventado.id, "persona")),
+        creditosConfirmados: 0,
+        derechos: true,
+        sinTerceros: true,
+        claveIdempotencia: crypto.randomUUID(),
+      },
       { buscar, descargar: async () => ({ archivo: new File([], "x"), origen: "" }) },
     ).catch((e) => e);
     // Sin clave de KIE ni retrato, ninguna vista sale: se responde con el motivo y no se ha cobrado nada.
@@ -383,7 +389,13 @@ describe.skipIf(!hayBaseDeDatos)("asistente de la ficha del personaje", () => {
     const fallo = await pedirVistasQueFaltan(
       actorAna,
       inventado.id,
-      { creditosConfirmados: 4, derechos: true, sinTerceros: true, claveIdempotencia: crypto.randomUUID() },
+      {
+        vistas: vistasPorGenerar(await coberturaDe(inventado.id, "persona")),
+        creditosConfirmados: 4,
+        derechos: true,
+        sinTerceros: true,
+        claveIdempotencia: crypto.randomUUID(),
+      },
       { buscar, descargar: async () => ({ archivo: new File([], "x"), origen: "" }) },
     ).catch((e) => e);
     expect(fallo).toBeInstanceOf(ErrorPersonaje);

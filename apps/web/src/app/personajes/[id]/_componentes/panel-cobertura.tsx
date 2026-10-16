@@ -10,7 +10,11 @@ import { sinMovimiento } from "@/components/ui/llevar-al-problema";
 import { MiniaturaMedio } from "@/components/ui/media/miniatura-medio";
 import { Dialogo } from "@/components/ui/overlay";
 import { type DiapositivaPase, PaseAutomatico } from "@/components/ui/pase-automatico";
-import { consultarControlesDeVista, consultarEstimacionDeVista } from "@/components/ui/personajes/api-personajes";
+import {
+  consultarControlesDeVista,
+  consultarEstimacionDeVista,
+  consultarHuecos,
+} from "@/components/ui/personajes/api-personajes";
 import { DistintivoOrigen } from "@/components/ui/personajes/distintivo-origen";
 import { MarcoEnfoque } from "@/components/ui/personajes/marco-enfoque";
 import { VisorCaptura } from "@/components/ui/personajes/visor-captura";
@@ -25,7 +29,13 @@ import {
   vistasPorGenerar,
 } from "@/lib/captura-personaje";
 import type { EvaluacionVista } from "@/lib/controles";
-import type { Estimacion, TrabajoVista } from "@/lib/generacion";
+import {
+  type Estimacion,
+  esEstadoActivo,
+  type HuecosDeCola,
+  motivoSinHuecos,
+  type TrabajoVista,
+} from "@/lib/generacion";
 import type { PersonajeVista, ReferenciaVista } from "@/lib/personajes";
 import { DialogoTodasLasVistas } from "./dialogo-todas-las-vistas";
 import { DialogoVistaSintetica } from "./dialogo-vista-sintetica";
@@ -71,13 +81,38 @@ export function PanelCobertura({
     controles: EvaluacionVista;
   } | null>(null);
   const [pidiendo, setPidiendo] = useState<Vista | null>(null);
-  const [todas, setTodas] = useState<{ estimacion: Estimacion; controles: EvaluacionVista } | null>(null);
+  const [todas, setTodas] = useState<{
+    estimacion: Estimacion;
+    controles: EvaluacionVista;
+    huecos: HuecosDeCola;
+  } | null>(null);
   const [preparandoTodas, setPreparandoTodas] = useState(false);
   const [resumen, setResumen] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [trabajos, setTrabajos] = useState<TrabajoVista[]>([]);
+  /**
+   * Trabajos que se siguen aquí. Empiezan con los que el servidor dice que ya están en marcha: tras recargar, una
+   * vista encargada se sigue viendo en curso y su resultado llega a la ficha sin volver a pedirla.
+   */
+  const [trabajos, setTrabajos] = useState<TrabajoVista[]>(() => (personaje.vistasEnCurso ?? []).map((v) => v.trabajo));
+  /** Vistas encargadas en esta visita, con el identificador de su trabajo. */
+  const [encargadasAqui, setEncargadasAqui] = useState<ReadonlyMap<Vista, string>>(new Map());
+  /** Trabajos que ya han terminado, bien o mal, mientras se seguían aquí. */
+  const [terminados, setTerminados] = useState<ReadonlySet<string>>(new Set());
 
   if (!cobertura) return null;
+
+  /** Vistas que ya se están generando: las que dice el servidor y las encargadas aquí, mientras sigan activas. */
+  const enCurso = new Set<Vista>(
+    [...(personaje.vistasEnCurso ?? []).map((v) => [v.vista, v.trabajo.id] as const), ...encargadasAqui]
+      .filter(([, id]) => !terminados.has(id))
+      .map(([vista]) => vista),
+  );
+  const anotarEncargada = (vista: Vista, trabajo: TrabajoVista) =>
+    setEncargadasAqui((antes) => new Map(antes).set(vista, trabajo.id));
+  /** Un trabajo que termina (bien o mal) deja de contar como vista en curso: si falló, se puede volver a pedir. */
+  const alCambiarTrabajo = (trabajo: TrabajoVista) => {
+    if (!esEstadoActivo(trabajo.estado)) setTerminados((antes) => new Set(antes).add(trabajo.id));
+  };
 
   // Qué fotos son las de cada vista, para enseñarlas y no solo contarlas. Se deriva de las referencias que ya
   // trae el personaje: la cobertura del servidor sigue siendo la que cuenta, y aquí no se recalcula nada.
@@ -88,9 +123,10 @@ export function PanelCobertura({
     setPidiendo(vista);
     setError(null);
     // Coste y «Antes de generar» a la vez: el diálogo no se abre sin saber qué va a decir la puerta.
-    const [estimacion, controles] = await Promise.all([
+    const [estimacion, controles, huecos] = await Promise.all([
       consultarEstimacionDeVista(),
       consultarControlesDeVista(personaje.id, vista),
+      consultarHuecos(),
     ]);
     setPidiendo(null);
     if (!estimacion.ok) {
@@ -101,6 +137,15 @@ export function PanelCobertura({
       setError(controles.error);
       return;
     }
+    if (!huecos.ok) {
+      setError(huecos.error);
+      return;
+    }
+    // Sin hueco en la cola no se abre un diálogo de pago que acabaría rechazado: se dice por qué, antes.
+    if (huecos.datos.libres === 0) {
+      setError(`${motivoSinHuecos(huecos.datos)} Espera a que termine alguno para generar esta vista.`);
+      return;
+    }
     setGenerando({ vista, estimacion: estimacion.datos, controles: controles.datos });
   };
 
@@ -108,7 +153,7 @@ export function PanelCobertura({
    * Las vistas que se van a encargar de una vez. Se calculan con la **misma** función que usa el servidor, así
    * que el número que se confirma es el número que se encarga.
    */
-  const porGenerar = vistasPorGenerar(cobertura);
+  const porGenerar = vistasPorGenerar(cobertura).filter((v) => !enCurso.has(v));
 
   /** Coste de una imagen y «Antes de generar», antes de abrir: el total se enseña multiplicado por las vistas. */
   const abrirTodas = async () => {
@@ -116,9 +161,10 @@ export function PanelCobertura({
     if (!primera) return;
     setPreparandoTodas(true);
     setError(null);
-    const [estimacion, controles] = await Promise.all([
+    const [estimacion, controles, huecos] = await Promise.all([
       consultarEstimacionDeVista(),
       consultarControlesDeVista(personaje.id, primera),
+      consultarHuecos(),
     ]);
     setPreparandoTodas(false);
     if (!estimacion.ok) {
@@ -129,7 +175,15 @@ export function PanelCobertura({
       setError(controles.error);
       return;
     }
-    setTodas({ estimacion: estimacion.datos, controles: controles.datos });
+    if (!huecos.ok) {
+      setError(huecos.error);
+      return;
+    }
+    if (huecos.datos.libres === 0) {
+      setError(`${motivoSinHuecos(huecos.datos)} Espera a que termine alguno para encargar las vistas que faltan.`);
+      return;
+    }
+    setTodas({ estimacion: estimacion.datos, controles: controles.datos, huecos: huecos.datos });
   };
 
   return (
@@ -217,6 +271,7 @@ export function PanelCobertura({
               inventado={personaje.inventado}
               conClave={claveDeGeneracion.ok}
               ocupado={pidiendo !== null}
+              enCurso={enCurso.has(v.vista)}
               onCapturar={() => setCapturando(v.vista)}
               onGenerar={() => void abrirGeneracion(v.vista)}
               generando={pidiendo === v.vista}
@@ -259,7 +314,9 @@ export function PanelCobertura({
         <DialogoTodasLasVistas
           personajeId={personaje.id}
           inventado={personaje.inventado}
-          vistas={porGenerar}
+          vistas={porGenerar.slice(0, todas.huecos.libres)}
+          pendientes={porGenerar.slice(todas.huecos.libres)}
+          huecos={todas.huecos}
           estimacion={todas.estimacion}
           controles={todas.controles}
           abierto
@@ -271,6 +328,10 @@ export function PanelCobertura({
               ...anteriores,
               ...encargadas.trabajos.filter((t) => !anteriores.some((a) => a.id === t.id)),
             ]);
+            encargadas.encoladas.forEach((vista, i) => {
+              const trabajo = encargadas.trabajos[i];
+              if (trabajo) anotarEncargada(vista, trabajo);
+            });
             const hechas = encargadas.encoladas.map((v) => ETIQUETA_VISTA[v].toLowerCase()).join(", ");
             const faltan = encargadas.sinEncolar.map((s) => `«${s.etiqueta.toLowerCase()}» (${s.motivo})`).join("; ");
             setResumen(
@@ -296,13 +357,20 @@ export function PanelCobertura({
           }}
           onEncolada={(trabajo) => {
             setTrabajos((anteriores) => [...anteriores.filter((t) => t.id !== trabajo.id), trabajo]);
+            anotarEncargada(generando.vista, trabajo);
             onVistaEncolada(generando.vista);
             setGenerando(null);
           }}
         />
       )}
       {trabajos.map((trabajo) => (
-        <SeguimientoPersonaje key={trabajo.id} personajeId={personaje.id} trabajo={trabajo} onPersonaje={onPersonaje} />
+        <SeguimientoPersonaje
+          key={trabajo.id}
+          personajeId={personaje.id}
+          trabajo={trabajo}
+          onPersonaje={onPersonaje}
+          onCambio={alCambiarTrabajo}
+        />
       ))}
     </section>
   );
@@ -355,6 +423,7 @@ function TarjetaVista({
   onGenerar,
   ocupado,
   generando,
+  enCurso,
 }: {
   vista: CoberturaVista;
   /** Las referencias clasificadas en esta vista, en el orden en que se envían. */
@@ -369,6 +438,8 @@ function TarjetaVista({
   onGenerar: () => void;
   ocupado: boolean;
   generando: boolean;
+  /** Ya hay un trabajo generando esta vista: no se ofrece pagarla otra vez. */
+  enCurso: boolean;
 }) {
   const cubierta = vista.originales > 0 || (inventado && vista.generadas > 0);
   return (
@@ -407,7 +478,12 @@ function TarjetaVista({
         <Boton tamano="sm" icono={<Camera className="size-4" />} onClick={onCapturar} disabled={ocupado}>
           {cubierta ? "Otra foto" : "Hacer la foto"}
         </Boton>
-        {vista.generadas === 0 && conClave && (
+        {vista.generadas === 0 && enCurso && (
+          <p className="flex items-center gap-1 self-center text-sm font-semibold text-texto-suave">
+            <Sparkles aria-hidden className="size-4" /> Generándose
+          </p>
+        )}
+        {vista.generadas === 0 && conClave && !enCurso && (
           <Boton
             tamano="sm"
             variante="secundario"

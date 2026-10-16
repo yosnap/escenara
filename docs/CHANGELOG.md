@@ -2,6 +2,41 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.52.6] · 2026-10-16
+
+### Corregido
+
+- Guardar la ficha de un personaje inventado ya no borra su cara: la guía de estilo se comparaba de
+  una forma que siempre daba «estilo cambiado» y descartaba su retrato elegido, sus vistas y sus
+  retratos por elegir. Ahora solo cuenta como cambio de estilo el que lo es, y un cambio de estilo de
+  verdad avisa de lo que descarta y no se guarda hasta que lo confirmas.
+- Los retratos y el encargo de todas las vistas ya no ofrecen más de lo que cabe en tu cola de
+  trabajos a la vez (3 de fábrica). Antes de confirmar ves cuántos puedes pedir ahora; las vistas
+  que no caben se nombran para pedirlas cuando termine alguna, y no se cobran. El resultado del
+  encargo de retratos sale junto al botón.
+- Una vista que ya se está generando sale como «Generándose» también al recargar la página y no se
+  puede encargar ni pagar otra vez: el servidor devuelve el trabajo en marcha y la cola rechaza un
+  duplicado sin cobrarlo.
+- Un servicio compatible (como NaN builders) que tarda ya no se marca como «rechazado». Si rechaza
+  una petición, antes de darlo por no válido se comprueba su clave con su lista de modelos, que no
+  gasta cuota.
+- Si tu servicio de cuota falla, la traducción del prompt y el guion del asistente usan de reserva el
+  modelo de texto de la instalación, cuyo coste ya confirmaste, y se avisa con el trabajo o el guion de
+  quién lo ha escrito y cuánto ha costado. El resto de llamadas de texto (ficha con IA, guion del
+  anuncio) ya no pasan a un modelo de pago que no confirmaste: se para y se dice qué falló, que no se
+  ha cobrado nada y cómo seguir.
+- El encargo de todas las vistas solo encarga las vistas que confirmaste en el diálogo, aunque al
+  pulsar quepan más, y repetirlo con la misma confirmación tras un corte de red no amplía el lote.
+- Cambiar el estilo de un personaje también pide confirmación cuando tiene retratos o vistas pagados
+  que todavía se están generando, aunque el cambio llegue sin pasar por la ficha.
+- El número de retratos se ajusta tras un encargo si ya no caben tantos, y un espacio de más en la
+  guía de estilo ya no pide confirmar un descarte.
+
+### Actualización
+
+- Sin migraciones nuevas ni cambios de configuración. Reiniciar web y worker para cargar la nueva
+  comprobación de vistas en marcha.
+
 ## [0.52.5] · 2026-10-16
 
 ### Corregido

@@ -585,6 +585,7 @@ export async function producirEscenaHablada(
       identityReferenceKind: elegido?.referenciaIdentidad ?? "vistas",
       input: {
         prompt: promptFinal,
+        ...(enIngles.aviso === "" ? {} : { avisoReserva: enIngles.aviso }),
         /**
          * Con identidad registrada no hay referencias: la cara la pone el registro del proveedor. Con un motor de
          * referencias, son las fotos del personaje, y la muestra de la voz va aparte porque es audio y no imagen.

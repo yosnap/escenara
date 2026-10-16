@@ -1,4 +1,4 @@
-import { type EstiloRender, GUIA_ESTILO_VACIA, type GuiaEstiloAnimado } from "./animados";
+import { type EstiloRender, GUIA_ESTILO_VACIA, type GuiaEstiloAnimado, mismaGuiaDeEstilo } from "./animados";
 import { type ReferenciaParaCobertura, type Vista, vistasMinimas } from "./captura-personaje";
 import type { TipoPersonaje } from "./personajes";
 
@@ -429,7 +429,7 @@ export function diferenciasDeFicha(antes: FichaVersionada, despues: FichaVersion
   }
   const guiaAntes = antes.styleGuide ?? GUIA_ESTILO_VACIA;
   const guiaDespues = despues.styleGuide ?? GUIA_ESTILO_VACIA;
-  if (JSON.stringify(guiaAntes) !== JSON.stringify(guiaDespues)) {
+  if (!mismaGuiaDeEstilo(guiaAntes, guiaDespues)) {
     cambios.push({
       campo: "guiaEstilo",
       etiqueta: ETIQUETA_DIFERENCIA.guiaEstilo,

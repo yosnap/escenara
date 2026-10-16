@@ -178,8 +178,6 @@ export async function proponerFichaConIA(
       }),
       claveIdempotencia: `ficha:${personaje.id}:${clave}`,
       buscar,
-      // Solo lo confirmado: la principal si es de pago, y las entradas de cuota.
-      limitarAConfirmado: true,
       ...(imagen ? { imagen } : {}),
     });
   } catch (error) {

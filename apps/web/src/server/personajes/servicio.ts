@@ -1,5 +1,5 @@
 import { and, count, eq, inArray, isNull, sql } from "drizzle-orm";
-import type { GuiaEstiloAnimado } from "@/lib/animados";
+import { type GuiaEstiloAnimado, mismaGuiaDeEstilo } from "@/lib/animados";
 import { esVista, type Vista } from "@/lib/captura-personaje";
 import { CAMPOS_FICHA, type CampoFicha, limpiarCampoFicha } from "@/lib/ficha-personaje";
 import {
@@ -17,9 +17,9 @@ import {
   VISTA_MAXIMA,
 } from "@/lib/personajes";
 import { guiaDeEstiloPedida } from "../animados/estilos";
-import { db } from "../db/cliente";
+import { db, type Ejecutor } from "../db/cliente";
 import { characterReferences, characters, generationJobs, media, projects, scenes } from "../db/esquema";
-import { trabajosQueGeneraron } from "../generacion/trabajos";
+import { condicionEnCurso, trabajosQueGeneraron } from "../generacion/trabajos";
 import type { Actor } from "../media/servicio";
 import {
   analizarReferencias,
@@ -36,7 +36,7 @@ import {
   versionarEnTransaccion,
   versionarSiCambia,
 } from "./versiones";
-import { vistaSinteticaDe } from "./vista-sintetica";
+import { vistaSinteticaDe } from "./vistas-en-marcha";
 
 /**
  * Alta y edición de personajes y de sus fotos de referencia (RF02). Todo pasa por el dueño: un personaje
@@ -73,6 +73,11 @@ export interface DatosPersonaje {
   guiaReferencias?: unknown;
   /** Por qué se cambia. Se guarda en la versión que produce el cambio; no versiona por sí mismo. */
   motivo?: unknown;
+  /**
+   * El usuario ha visto que cambiar el estilo **descarta** su cara, sus retratos y sus vistas, y lo acepta. Sin
+   * esto, un cambio de estilo que descartaría algo se rechaza antes de tocar nada.
+   */
+  confirmarCambioEstilo?: unknown;
 }
 
 /** Columna de la fila del personaje que guarda cada campo de la ficha. */
@@ -268,8 +273,15 @@ export async function actualizarPersonaje(
   }
   const estiloCambia =
     (valores.renderStyle !== undefined && valores.renderStyle !== fila.renderStyle) ||
-    (valores.styleGuide !== undefined && JSON.stringify(valores.styleGuide) !== JSON.stringify(fila.styleGuide));
-  if (estiloCambia) valores.masterFrameMediaId = null;
+    (valores.styleGuide !== undefined && !mismaGuiaDeEstilo(valores.styleGuide, fila.styleGuide));
+  // Guardar la ficha con el mismo estilo no lo reescribe: así ni se versiona por él ni toca su cara.
+  if (!estiloCambia) {
+    delete valores.renderStyle;
+    delete valores.styleGuide;
+  }
+  if (estiloCambia) {
+    valores.masterFrameMediaId = null;
+  }
   const motivo = texto(cambios.motivo, MOTIVO_CAMBIO_MAXIMO, "el motivo del cambio");
   if (Object.keys(valores).length === 0) return vistaDePersonaje(fila, actor, { completa: true, conReferencias: true });
   // Las referencias se leen antes de abrir la transacción: no las cambia esta operación, y así la transacción
@@ -281,6 +293,8 @@ export async function actualizarPersonaje(
     // una apariencia que ya cambió.
     const actualizada = await db().transaction(async (tx) => {
       await tx.execute(sql`select 1 from characters where id = ${fila.id} for update`);
+      // Con la fila ya bloqueada: lo que se cuenta es exactamente lo que se va a descartar.
+      if (estiloCambia) await exigirCambioDeEstiloConfirmado(tx, fila.id, cambios.confirmarCambioEstilo);
       if (estiloCambia) {
         // Las vistas y retratos del acabado anterior siguen en la biblioteca, pero ya no guían la identidad.
         await tx.delete(characterReferences).where(eq(characterReferences.characterId, fila.id));
@@ -320,6 +334,59 @@ export async function actualizarPersonaje(
     if (esNombreRepetido(error)) throw new ErrorPersonaje(409, "Ya tienes un personaje con ese nombre.");
     throw error;
   }
+}
+
+/**
+ * Un cambio de estilo **real** descarta la cara, las referencias y los retratos pendientes del personaje: ya no
+ * guían la identidad del acabado nuevo. Eso no se hace sin avisar. Si hay algo que descartar y el usuario no lo ha
+ * confirmado, se rechaza con lo que se perdería, antes de tocar nada; si no hay nada, no hace falta preguntar.
+ */
+async function exigirCambioDeEstiloConfirmado(tx: Ejecutor, personajeId: string, confirmado: unknown): Promise<void> {
+  if (confirmado === true) return;
+  const [[actual], [referencias], [retratos], [enCurso]] = await Promise.all([
+    tx.select({ cara: characters.masterFrameMediaId }).from(characters).where(eq(characters.id, personajeId)),
+    tx.select({ total: count() }).from(characterReferences).where(eq(characterReferences.characterId, personajeId)),
+    tx
+      .select({ total: count() })
+      .from(generationJobs)
+      .where(
+        and(
+          eq(generationJobs.characterId, personajeId),
+          eq(generationJobs.state, "listo"),
+          sql`${generationJobs.input}->>'retratoInventado' = 'true'`,
+          sql`${generationJobs.input}->>'retratoDescartado' is null`,
+        ),
+      ),
+    // Retratos y vistas ya pagados que todavía se están generando: con otro estilo, ninguno llegaría a servir.
+    tx
+      .select({ total: count() })
+      .from(generationJobs)
+      .where(
+        and(
+          eq(generationJobs.characterId, personajeId),
+          condicionEnCurso(),
+          sql`(${generationJobs.input}->>'retratoInventado' = 'true' or ${generationJobs.input}->>'vistaSintetica' is not null)`,
+        ),
+      ),
+  ]);
+  const generandose = enCurso?.total ?? 0;
+  const perdidas = [
+    ...(actual?.cara ? ["su cara elegida"] : []),
+    ...((referencias?.total ?? 0) > 0 ? [`sus ${referencias?.total} imágenes de referencia`] : []),
+    ...((retratos?.total ?? 0) > 0 ? [`${retratos?.total} retratos por elegir`] : []),
+    ...(generandose > 0
+      ? [
+          generandose === 1
+            ? "1 retrato o vista que se está generando y ya está pagado"
+            : `${generandose} retratos o vistas que se están generando y ya están pagados`,
+        ]
+      : []),
+  ];
+  if (perdidas.length === 0) return;
+  throw new ErrorPersonaje(
+    409,
+    `Cambiar el estilo descarta ${perdidas.join(", ")}: ya no guiarían su identidad con el acabado nuevo. Siguen en tu biblioteca, pero habría que volver a generar sus retratos y sus vistas. No se ha guardado nada; confirma el cambio de estilo si quieres seguir.`,
+  );
 }
 
 export interface ReferenciaPedida {

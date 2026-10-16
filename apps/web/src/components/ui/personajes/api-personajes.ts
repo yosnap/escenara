@@ -3,7 +3,7 @@ import type { RechazoDeReferencia, Vista } from "@/lib/captura-personaje";
 import type { EvaluacionVista } from "@/lib/controles";
 import type { EstadoHojaIdentidad } from "@/lib/direccion";
 import type { CampoFicha } from "@/lib/ficha-personaje";
-import type { Estimacion, TrabajoVista } from "@/lib/generacion";
+import type { Estimacion, HuecosDeCola, TrabajoVista } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
 import type {
   AprobacionVista,
@@ -79,6 +79,8 @@ export type CambiosFicha = Partial<Record<CampoFicha | "descripcion" | "motivo",
   guiaTrazo?: string;
   guiaDetalle?: string;
   guiaReferencias?: string[];
+  /** Acepta que un cambio de estilo descarte su cara, sus retratos y sus vistas. */
+  confirmarCambioEstilo?: boolean;
 };
 
 /**
@@ -179,6 +181,9 @@ export const consultarEstimacionDeVista = () => pedir<Estimacion>("/api/generaci
 export const consultarEstimacionSinImagen = () =>
   pedir<Estimacion>("/api/generacion/estimacion?tipo=fotograma&sinImagen=1");
 
+/** Cuántos trabajos caben ahora en la cola: con esto no se ofrecen más retratos ni vistas de los que se encargan. */
+export const consultarHuecos = () => pedir<HuecosDeCola>("/api/generacion/huecos");
+
 /**
  * «Antes de generar» de una vista que falta: lo mismo que dirá la puerta al encolarla, con sus avisos
  * confirmables. Es una lectura: no gasta nada.
@@ -243,8 +248,13 @@ export const pedirVistaSintetica = (id: string, confirmacion: ConfirmacionVistaS
  * regla que usa la pantalla para enseñar el coste total, así que el número que se confirma es el que se
  * encarga. Lo que no se pueda encolar vuelve en `sinEncolar` con su motivo, **sin cobrar**.
  */
-export const pedirVistasQueFaltan = (id: string, confirmacion: Omit<ConfirmacionVistaSintetica, "vista">) =>
-  pedir<VistasEncargadas>(`/api/personajes/${id}/vistas`, json("POST", confirmacion));
+export const pedirVistasQueFaltan = (
+  id: string,
+  confirmacion: Omit<ConfirmacionVistaSintetica, "vista"> & {
+    /** Las vistas que el usuario ha visto y confirmado: el servidor no encarga ninguna más. */
+    vistas: readonly Vista[];
+  },
+) => pedir<VistasEncargadas>(`/api/personajes/${id}/vistas`, json("POST", confirmacion));
 
 export interface VistasEncargadas {
   trabajos: TrabajoVista[];
