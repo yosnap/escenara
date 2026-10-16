@@ -36,6 +36,13 @@ import { DialogoFichaConIA } from "./dialogo-ficha-ia";
  * - «Ver lo que se enviará» dice de qué versión sale y qué fotos se mandan. **El prompt no se muestra**
  *   (ADR-0022): lo compone el servidor y solo se ve en el panel de administración.
  */
+/** Una referencia descriptiva por línea, sin espacios en los bordes ni líneas vacías. */
+const lineasDeReferencias = (texto: string): string[] =>
+  texto
+    .split("\n")
+    .map((linea) => linea.trim())
+    .filter(Boolean);
+
 export function PanelFicha({
   personaje,
   estilosAnimados,
@@ -67,13 +74,15 @@ export function PanelFicha({
   const [confirmaEstilo, setConfirmaEstilo] = useState(false);
 
   // El estilo solo viaja cuando cambia: guardar el resto de la ficha nunca puede tocar su cara.
+  // Se compara lo que guardaría el servidor, ya limpio: un espacio de más no es un cambio de estilo.
+  const referenciasPedidas = lineasDeReferencias(matices.referencias);
   const estiloCambiado =
     personaje.inventado &&
     (estilo !== personaje.estiloAnimado ||
-      matices.paleta !== guia.paleta ||
-      matices.trazo !== guia.trazo ||
-      matices.detalle !== guia.detalle ||
-      matices.referencias !== guia.referencias.join("\n"));
+      limpiarCampoFicha(matices.paleta) !== guia.paleta ||
+      limpiarCampoFicha(matices.trazo) !== guia.trazo ||
+      limpiarCampoFicha(matices.detalle) !== guia.detalle ||
+      referenciasPedidas.map(limpiarCampoFicha).join("\n") !== guia.referencias.join("\n"));
   // Se pide siempre, aunque aún no tenga cara: los retratos por elegir también se descartan y desde aquí no se ven.
   const faltaConfirmarEstilo = estiloCambiado && !confirmaEstilo;
 
@@ -100,10 +109,7 @@ export function PanelFicha({
             guiaPaleta: matices.paleta,
             guiaTrazo: matices.trazo,
             guiaDetalle: matices.detalle,
-            guiaReferencias: matices.referencias
-              .split("\n")
-              .map((linea) => linea.trim())
-              .filter(Boolean),
+            guiaReferencias: referenciasPedidas,
             confirmarCambioEstilo: confirmaEstilo,
           }
         : {}),

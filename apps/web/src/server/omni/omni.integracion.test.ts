@@ -80,8 +80,9 @@ const { cambiarEstadoDeModelo, cambiarPrecioDeModelo } = await import("../provee
 const { registrarPersonajeOmni, volverARegistrar } = await import("../personajes/omni");
 const { contarReferencias } = await import("../personajes/consulta");
 const { registrarVozOmni, validarEleccionVozOmni } = await import("../voz/omni");
-const { crearPersonajeInventado, descartarRetratos, elegirRetrato, generarRetratosCandidatos, retratosCandidatos } =
-  await import("../personajes/inventado");
+const { crearPersonajeInventado, descartarRetratos, elegirRetrato, generarRetratosCandidatos } = await import(
+  "../personajes/inventado"
+);
 const { VOCES_OMNI } = await import("@/lib/omni");
 
 type Sesion = Awaited<ReturnType<typeof crearSesionDePrueba>>;

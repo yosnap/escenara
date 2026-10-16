@@ -212,6 +212,39 @@ describe.skipIf(!hayBaseDeDatos)("animados: identidad, estilo heredado y version
     }
   });
 
+  test("cambiar el estilo con retratos pagados en marcha exige confirmarlo, también contra la API", async () => {
+    const inventado = await crearPersonajeInventado(actor, {
+      nombre: `En marcha ${crypto.randomUUID()}`,
+      descripcion: "Un relojero joven de pelo rizado, delantal de cuero y lupa en la frente.",
+      declaracion: true,
+      estiloAnimado: "anime",
+    });
+    // Sin cara ni referencias todavía: solo un retrato pagado que se está generando.
+    await db()
+      .insert(generationJobs)
+      .values({
+        userId: actor.id,
+        kind: "fotograma",
+        provider: "kie",
+        model: "nano-banana-2-lite",
+        state: "en_cola",
+        prompt: "Retrato",
+        input: { retratoInventado: true },
+        characterId: inventado.id,
+        estimatedCredits: 4,
+        idempotencyKey: crypto.randomUUID(),
+      });
+    await expect(actualizarPersonaje(actor, inventado.id, { estiloAnimado: "tres-d-estilizado" })).rejects.toThrow(
+      "1 retrato o vista que se está generando y ya está pagado",
+    );
+    const cambiada = await actualizarPersonaje(actor, inventado.id, {
+      estiloAnimado: "tres-d-estilizado",
+      confirmarCambioEstilo: true,
+    });
+    expect(cambiada.estiloAnimado).toBe("tres-d-estilizado");
+    await db().delete(generationJobs).where(eq(generationJobs.characterId, inventado.id));
+  });
+
   test("un maestro aprobado permite generar las vistas que completan el mínimo, pero aún no una escena", async () => {
     const inventado = await crearPersonajeInventado(actor, {
       nombre: `Maestro ${crypto.randomUUID()}`,

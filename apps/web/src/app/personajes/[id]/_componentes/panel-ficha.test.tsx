@@ -136,3 +136,11 @@ test("un cambio de estilo de verdad avisa de lo que descarta y no se guarda sin 
   expect(cuerpo.guiaPaleta).toBe("neón");
   expect(cuerpo.confirmarCambioEstilo).toBe(true);
 });
+
+test("un espacio de más en la guía no cuenta como cambio de estilo ni pide confirmar el descarte", async () => {
+  await act(async () =>
+    raiz.render(<PanelFicha personaje={personaje} estilosAnimados={ESTILOS} onPersonaje={() => {}} />),
+  );
+  await escribir("Paleta", "pasteles ");
+  expect(ventana.document.body.textContent).not.toContain("descarta su cara, sus retratos y sus vistas");
+});
