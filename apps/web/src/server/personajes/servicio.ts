@@ -1,5 +1,5 @@
 import { and, count, eq, inArray, isNull, sql } from "drizzle-orm";
-import type { GuiaEstiloAnimado } from "@/lib/animados";
+import { type GuiaEstiloAnimado, mismaGuiaDeEstilo } from "@/lib/animados";
 import { esVista, type Vista } from "@/lib/captura-personaje";
 import { CAMPOS_FICHA, type CampoFicha, limpiarCampoFicha } from "@/lib/ficha-personaje";
 import {
@@ -18,7 +18,15 @@ import {
 } from "@/lib/personajes";
 import { guiaDeEstiloPedida } from "../animados/estilos";
 import { db } from "../db/cliente";
-import { characterReferences, characters, generationJobs, media, projects, scenes } from "../db/esquema";
+import {
+  characterReferences,
+  characters,
+  type FilaPersonaje,
+  generationJobs,
+  media,
+  projects,
+  scenes,
+} from "../db/esquema";
 import { trabajosQueGeneraron } from "../generacion/trabajos";
 import type { Actor } from "../media/servicio";
 import {
@@ -73,6 +81,11 @@ export interface DatosPersonaje {
   guiaReferencias?: unknown;
   /** Por qué se cambia. Se guarda en la versión que produce el cambio; no versiona por sí mismo. */
   motivo?: unknown;
+  /**
+   * El usuario ha visto que cambiar el estilo **descarta** su cara, sus retratos y sus vistas, y lo acepta. Sin
+   * esto, un cambio de estilo que descartaría algo se rechaza antes de tocar nada.
+   */
+  confirmarCambioEstilo?: unknown;
 }
 
 /** Columna de la fila del personaje que guarda cada campo de la ficha. */
@@ -268,8 +281,16 @@ export async function actualizarPersonaje(
   }
   const estiloCambia =
     (valores.renderStyle !== undefined && valores.renderStyle !== fila.renderStyle) ||
-    (valores.styleGuide !== undefined && JSON.stringify(valores.styleGuide) !== JSON.stringify(fila.styleGuide));
-  if (estiloCambia) valores.masterFrameMediaId = null;
+    (valores.styleGuide !== undefined && !mismaGuiaDeEstilo(valores.styleGuide, fila.styleGuide));
+  // Guardar la ficha con el mismo estilo no lo reescribe: así ni se versiona por él ni toca su cara.
+  if (!estiloCambia) {
+    delete valores.renderStyle;
+    delete valores.styleGuide;
+  }
+  if (estiloCambia) {
+    await exigirCambioDeEstiloConfirmado(fila, cambios.confirmarCambioEstilo);
+    valores.masterFrameMediaId = null;
+  }
   const motivo = texto(cambios.motivo, MOTIVO_CAMBIO_MAXIMO, "el motivo del cambio");
   if (Object.keys(valores).length === 0) return vistaDePersonaje(fila, actor, { completa: true, conReferencias: true });
   // Las referencias se leen antes de abrir la transacción: no las cambia esta operación, y así la transacción
@@ -320,6 +341,39 @@ export async function actualizarPersonaje(
     if (esNombreRepetido(error)) throw new ErrorPersonaje(409, "Ya tienes un personaje con ese nombre.");
     throw error;
   }
+}
+
+/**
+ * Un cambio de estilo **real** descarta la cara, las referencias y los retratos pendientes del personaje: ya no
+ * guían la identidad del acabado nuevo. Eso no se hace sin avisar. Si hay algo que descartar y el usuario no lo ha
+ * confirmado, se rechaza con lo que se perdería, antes de tocar nada; si no hay nada, no hace falta preguntar.
+ */
+async function exigirCambioDeEstiloConfirmado(fila: FilaPersonaje, confirmado: unknown): Promise<void> {
+  if (confirmado === true) return;
+  const [[referencias], [retratos]] = await Promise.all([
+    db().select({ total: count() }).from(characterReferences).where(eq(characterReferences.characterId, fila.id)),
+    db()
+      .select({ total: count() })
+      .from(generationJobs)
+      .where(
+        and(
+          eq(generationJobs.characterId, fila.id),
+          eq(generationJobs.state, "listo"),
+          sql`${generationJobs.input}->>'retratoInventado' = 'true'`,
+          sql`${generationJobs.input}->>'retratoDescartado' is null`,
+        ),
+      ),
+  ]);
+  const perdidas = [
+    ...(fila.masterFrameMediaId ? ["su cara elegida"] : []),
+    ...((referencias?.total ?? 0) > 0 ? [`sus ${referencias?.total} imágenes de referencia`] : []),
+    ...((retratos?.total ?? 0) > 0 ? [`${retratos?.total} retratos por elegir`] : []),
+  ];
+  if (perdidas.length === 0) return;
+  throw new ErrorPersonaje(
+    409,
+    `Cambiar el estilo descarta ${perdidas.join(", ")}: ya no guiarían su identidad con el acabado nuevo. Siguen en tu biblioteca, pero habría que volver a generar sus retratos y sus vistas. No se ha guardado nada; confirma el cambio de estilo si quieres seguir.`,
+  );
 }
 
 export interface ReferenciaPedida {

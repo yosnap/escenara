@@ -79,6 +79,8 @@ export type CambiosFicha = Partial<Record<CampoFicha | "descripcion" | "motivo",
   guiaTrazo?: string;
   guiaDetalle?: string;
   guiaReferencias?: string[];
+  /** Acepta que un cambio de estilo descarte su cara, sus retratos y sus vistas. */
+  confirmarCambioEstilo?: boolean;
 };
 
 /**

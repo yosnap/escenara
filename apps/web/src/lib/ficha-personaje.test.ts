@@ -235,6 +235,16 @@ describe("diferencias entre versiones", () => {
     expect(diferenciasDeFicha(uno, { ...uno })).toEqual([]);
   });
 
+  test("la misma guía de estilo leída de un jsonb, con las claves reordenadas, no es una diferencia", () => {
+    const guia = { preset: "anime", prompt: "Anime.", paleta: "", trazo: "", detalle: "", referencias: [] };
+    const reordenada = JSON.parse(
+      '{"trazo":"","paleta":"","preset":"anime","prompt":"Anime.","detalle":"","referencias":[]}',
+    ) as typeof guia;
+    const antes = version({ renderStyle: "animado", styleGuide: reordenada });
+    const despues = version({ renderStyle: "animado", styleGuide: guia });
+    expect(diferenciasDeFicha(antes, despues)).toEqual([]);
+  });
+
   test("un cambio de apariencia se nombra con su etiqueta y con los dos valores", () => {
     const antes = version({ ficha: ficha({ vestuario: "camisa" }) });
     const despues = version({ ficha: ficha({ vestuario: "chaqueta" }) });

@@ -33,6 +33,23 @@ export const GUIA_ESTILO_VACIA: GuiaEstiloAnimado = {
   referencias: [],
 };
 
+/**
+ * `true` si dos guías de estilo dicen lo mismo, campo a campo. No se comparan con `JSON.stringify`: PostgreSQL
+ * devuelve las columnas `jsonb` con las claves reordenadas, así que la misma guía leída de la base de datos y
+ * recién compuesta daría dos cadenas distintas y parecería un cambio de estilo que no existe. Un campo ausente
+ * (versiones antiguas) cuenta como vacío, que es lo que significa en el prompt.
+ */
+export function mismaGuiaDeEstilo(
+  a: Partial<GuiaEstiloAnimado> | null | undefined,
+  b: Partial<GuiaEstiloAnimado> | null | undefined,
+): boolean {
+  const campos = ["preset", "prompt", "paleta", "trazo", "detalle"] as const;
+  if (campos.some((campo) => (a?.[campo] ?? "") !== (b?.[campo] ?? ""))) return false;
+  const referenciasA = a?.referencias ?? [];
+  const referenciasB = b?.referencias ?? [];
+  return referenciasA.length === referenciasB.length && referenciasA.every((r, i) => r === referenciasB[i]);
+}
+
 export function bloqueDeEstiloAnimado(guia: GuiaEstiloAnimado): string {
   const partes = [
     "Estilo visual obligatorio: animación o ilustración, nunca imagen de acción real ni piel fotorrealista.",

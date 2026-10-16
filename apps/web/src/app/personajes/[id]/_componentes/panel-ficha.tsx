@@ -64,15 +64,24 @@ export function PanelFicha({
     referencias: guia.referencias.join("\n"),
   });
 
+  const [confirmaEstilo, setConfirmaEstilo] = useState(false);
+
+  // El estilo solo viaja cuando cambia: guardar el resto de la ficha nunca puede tocar su cara.
+  const estiloCambiado =
+    personaje.inventado &&
+    (estilo !== personaje.estiloAnimado ||
+      matices.paleta !== guia.paleta ||
+      matices.trazo !== guia.trazo ||
+      matices.detalle !== guia.detalle ||
+      matices.referencias !== guia.referencias.join("\n"));
+  // Se pide siempre, aunque aún no tenga cara: los retratos por elegir también se descartan y desde aquí no se ven.
+  const faltaConfirmarEstilo = estiloCambiado && !confirmaEstilo;
+
   const cambiado =
     descripcion !== personaje.descripcion ||
     esteticaDeModelo !== personaje.esteticaDeModelo ||
     probarHoja !== personaje.probarHojaIdentidad ||
-    estilo !== personaje.estiloAnimado ||
-    matices.paleta !== guia.paleta ||
-    matices.trazo !== guia.trazo ||
-    matices.detalle !== guia.detalle ||
-    matices.referencias !== guia.referencias.join("\n") ||
+    estiloCambiado ||
     CAMPOS_FICHA.some((campo) => campos[campo] !== personaje.ficha[campo]);
 
   const guardar = async () => {
@@ -84,9 +93,9 @@ export function PanelFicha({
       descripcion,
       motivo,
       // Solo viaja en un personaje inventado: en uno real el servidor la rechaza, y con razón.
-      ...(personaje.inventado
+      ...(personaje.inventado ? { esteticaDeModelo } : {}),
+      ...(estiloCambiado
         ? {
-            esteticaDeModelo,
             estiloAnimado: estilo,
             guiaPaleta: matices.paleta,
             guiaTrazo: matices.trazo,
@@ -95,6 +104,7 @@ export function PanelFicha({
               .split("\n")
               .map((linea) => linea.trim())
               .filter(Boolean),
+            confirmarCambioEstilo: confirmaEstilo,
           }
         : {}),
       ...(personaje.hojaIdentidad ? { probarHojaIdentidad: probarHoja } : {}),
@@ -112,6 +122,7 @@ export function PanelFicha({
         : "Guardado. No había ningún cambio de apariencia, así que no se ha creado una versión nueva.",
     );
     setMotivo("");
+    setConfirmaEstilo(false);
     setCampos({ ...respuesta.datos.ficha });
     setDescripcion(respuesta.datos.descripcion);
     setEsteticaDeModelo(respuesta.datos.esteticaDeModelo);
@@ -188,6 +199,22 @@ export function PanelFicha({
         />
       )}
 
+      {estiloCambiado && (
+        <div className="flex flex-col gap-3 rounded-2xl border border-borde bg-superficie p-4">
+          <Aviso tono="aviso">
+            Cambiar el estilo <strong className="font-semibold">descarta su cara, sus retratos y sus vistas</strong>, si
+            ya los tiene: con el acabado nuevo ya no guían su identidad. Siguen en tu biblioteca, pero tendrás que
+            generar otra vez sus retratos y sus vistas, y eso cuesta créditos.
+          </Aviso>
+          <Casilla
+            etiqueta="Entiendo que se descartan su cara, sus retratos y sus vistas"
+            marcada={confirmaEstilo}
+            onCambio={setConfirmaEstilo}
+            deshabilitado={guardando}
+          />
+        </div>
+      )}
+
       {personaje.inventado && (
         <div className="rounded-2xl border border-borde bg-superficie p-4">
           <Casilla
@@ -257,7 +284,12 @@ export function PanelFicha({
         >
           Completar la ficha con IA
         </Boton>
-        <Boton icono={<Save className="size-4" />} cargando={guardando} disabled={!cambiado} onClick={guardar}>
+        <Boton
+          icono={<Save className="size-4" />}
+          cargando={guardando}
+          disabled={!cambiado || faltaConfirmarEstilo}
+          onClick={guardar}
+        >
           Guardar la ficha
         </Boton>
         {/* Se resuelve a partir de la **versión guardada**: mientras haya cambios sin guardar, lo que se
