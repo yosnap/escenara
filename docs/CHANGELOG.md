@@ -15,13 +15,19 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
   worker por «no llegan al mínimo» de fotos del personaje.
 - La ficha del personaje ya no se corta a mitad de palabra: si no cabe entera, sale primero la voz,
   se acortan la descripción y la actitud, y los rasgos, el vestuario y el estilo siempre llegan.
+  Un campo corto que cabe entero ya no se descarta y el recorte no parte emojis.
+- Si eliges un modelo y cambias de sujeto antes de que llegue su estimación, se usa el modelo que
+  acabas de elegir. El indicador de carga del contexto del personaje ya no se apaga antes de tiempo.
+- Un `personajeId` vacío ya no evita que una imagen suelta herede su personaje: se siguen exigiendo
+  su consentimiento y la revisión de las fotos, y un identificador mal formado se rechaza con 400.
 - El botón «Sin personaje» del paso de sujeto explica que se genera con una foto suelta o solo con la
   descripción, para no confundirlo con «Usar una imagen que ya tengo» del origen.
 
 ### Actualización
 
 - Sin migraciones nuevas ni cambios de configuración. Reiniciar web y worker para cargar el nuevo
-  envío de referencias.
+  envío de referencias. Un fotograma con personaje heredado que ya estuviera en cola antes de
+  actualizar puede fallar por «no llegan al mínimo» (sin cobro): basta con volver a pedirlo.
 
 ## [0.52.4] · 2026-10-12
 
