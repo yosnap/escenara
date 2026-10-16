@@ -25,6 +25,7 @@ import {
   mensajeDeFallo,
 } from "./api-generacion";
 import { consultarCatalogoDePresets, duplicarPreset } from "./api-presets";
+import { mismosMedios, modeloQueSigue, useTurnoVigente } from "./cambio-de-sujeto";
 import { DialogoPresetPropio } from "./dialogo-preset-propio";
 import { cobrablesDe, segundosDelClip } from "./duracion-del-clip";
 import type { ConfirmacionCoste } from "./panel-generar";
@@ -144,6 +145,8 @@ export function VistaCrear({
   const [opcionesDireccion, setOpcionesDireccion] = useState<OpcionesDeDireccion | null>(null);
   const [estimacionFoto, setEstimacionFoto] = useState(estimacionFotograma);
   const [estimacionClip, setEstimacionClip] = useState(estimacionAnimacion);
+  // Solo cuenta la última acción que fija el modelo del fotograma: una respuesta lenta no pisa lo elegido después.
+  const turnoFoto = useTurnoVigente();
   // Lo último elegido del clip: un refresco que sigue tras una espera evalúa lo vigente, no lo de hace un momento.
   const clipVigente = useRef<ClipVigente>({ modelo: estimacionAnimacion.modelo, producto: productoClip });
   useEffect(() => {
@@ -415,11 +418,12 @@ export function VistaCrear({
   };
 
   /** Pide el contexto aplicado de un personaje con el modelo que esté elegido. Sin personaje, se limpia. */
-  const refrescarContexto = async (id: string | null, modelo: string) => {
+  const refrescarContexto = async (id: string | null, modelo: string, vigente: () => boolean = () => true) => {
     if (!id) return setContexto(null);
     setPidiendoContexto(true);
     const respuesta = await consultarContexto(id, modelo);
     setPidiendoContexto(false);
+    if (!vigente()) return;
     // Un fallo aquí no impide generar: lo que decide es el servidor al encolar. Se dice y no se muestra nada.
     if (!respuesta.ok) {
       setContexto(null);
@@ -431,21 +435,26 @@ export function VistaCrear({
 
   /**
    * Al cambiar el sujeto (personaje o imagen) cambia **cómo** se va a generar: con una imagen de partida o sin
-   * ella. Y eso cambia el modelo y su precio, así que la estimación se vuelve a pedir al servidor con el modo
-   * nuevo. Lo llama la acción que cambia el sujeto, nunca un efecto.
+   * ella, y eso puede cambiar el modelo y su precio, así que la estimación se vuelve a pedir al servidor con el
+   * modo nuevo. El modelo elegido se conserva si también vale en ese modo; si no, el servidor pone su
+   * predeterminado. Lo llama la acción que cambia el sujeto, nunca un efecto.
    */
   const refrescarPorSujeto = async (id: string | null, medios: Medio[]) => {
+    const vigente = turnoFoto();
     setSinSujetoConfirmado(false);
     const ahoraSinImagen = id === null && medios.length === 0;
-    const respuesta = await consultarEstimacion("fotograma", undefined, { sinImagen: ahoraSinImagen });
+    const modelo = modeloQueSigue(estimacionFoto.modelo, ahoraSinImagen ? modelosSinImagen : modelosFotograma);
+    const respuesta = await consultarEstimacion("fotograma", modelo, { sinImagen: ahoraSinImagen });
+    if (!vigente()) return;
     if (!respuesta.ok) {
       setError(respuesta.error);
       return;
     }
     setEstimacionFoto(respuesta.datos);
-    await refrescarContexto(id, respuesta.datos.modelo);
+    await refrescarContexto(id, respuesta.datos.modelo, vigente);
+    if (!vigente()) return;
     await refrescarControles(id, medios[0]?.id, respuesta.datos.modelo);
-    await refrescarCatalogo("fotograma", respuesta.datos.modelo, undefined, ahoraSinImagen);
+    if (vigente()) await refrescarCatalogo("fotograma", respuesta.datos.modelo, undefined, ahoraSinImagen, vigente);
   };
 
   /**
@@ -592,11 +601,13 @@ export function VistaCrear({
             segundosClip,
           )
         : segundos;
+    const vigente = tipo === "fotograma" ? turnoFoto() : () => true;
     const respuesta = await consultarEstimacion(tipo, modelo, {
       ...(tipo === "fotograma" ? { sinImagen } : {}),
       ...(pedidos === undefined ? {} : { segundos: pedidos }),
       ...(tipo === "animacion" && trendElegido ? { plantillaId: trendElegido.id } : {}),
     });
+    if (!vigente()) return;
     if (!respuesta.ok) {
       setError(respuesta.error);
       return;
@@ -604,8 +615,10 @@ export function VistaCrear({
     if (tipo === "fotograma") {
       setEstimacionFoto(respuesta.datos);
       // El tope de fotos de referencia es del modelo: al cambiarlo, cambia lo que se va a enviar.
-      await refrescarContexto(personajeId, respuesta.datos.modelo);
+      await refrescarContexto(personajeId, respuesta.datos.modelo, vigente);
+      if (!vigente()) return;
       await refrescarControles(personajeId, referencia?.id, respuesta.datos.modelo);
+      if (!vigente()) return;
     } else {
       setEstimacionClip(respuesta.datos);
       // Con fotograma o con imagen propia, el aviso del clip se reevalúa con el modelo nuevo.
@@ -614,7 +627,7 @@ export function VistaCrear({
     }
     // Y los formatos y las duraciones que se pueden ofrecer también son del modelo: se vuelven a pedir en
     // lugar de deducirlos aquí, que es lo que dejaría ofrecer algo que el servidor va a rechazar.
-    await refrescarCatalogo(tipo, respuesta.datos.modelo, respuesta.datos.segundos ?? undefined);
+    await refrescarCatalogo(tipo, respuesta.datos.modelo, respuesta.datos.segundos ?? undefined, sinImagen, vigente);
   };
 
   /** Presets y plantillas para el modelo indicado. Lectura: no encola nada ni mueve dinero. */
@@ -624,12 +637,15 @@ export function VistaCrear({
     segundos?: number,
     /** Si hay o no imagen de partida **ahora mismo**: quien lo llama tras cambiarla trae el valor nuevo. */
     sinImagenAhora = sinImagen,
+    /** Si la acción que lo pidió sigue siendo la última: una respuesta atrasada no cambia el catálogo. */
+    vigente: () => boolean = () => true,
   ) => {
     const respuesta = await consultarCatalogoDePresets(tipo, modelo, {
       // Con el mismo modo que la estimación: la botonera no puede ofrecer algo que el servidor vaya a rechazar.
       ...(tipo === "fotograma" ? { sinImagen: sinImagenAhora } : {}),
       ...(segundos === undefined ? {} : { segundos }),
     });
+    if (!vigente()) return;
     if (!respuesta.ok) {
       setError(respuesta.error);
       return;
@@ -740,11 +756,14 @@ export function VistaCrear({
                 requisitos={senales.marcados(requisitos.fotogramaBase)}
                 deshabilitado={enviando !== null}
                 onPersonaje={(id) => {
+                  // Pulsar otra vez lo que ya está elegido no cambia el sujeto: ni se pide nada ni se toca el modelo.
+                  if (id === personajeId) return;
                   setPersonajeId(id);
                   setSinTerceros(false);
                   void refrescarPorSujeto(id, imagen);
                 }}
                 onImagen={(medios) => {
+                  if (mismosMedios(medios, imagen)) return;
                   setImagen(medios);
                   void refrescarPorSujeto(null, medios);
                 }}
