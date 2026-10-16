@@ -1,0 +1,171 @@
+{
+  "capturas": [
+    {
+      "id": "alta-inventado",
+      "ruta": "/personajes",
+      "viewport": "movil",
+      "ocultar": [
+        "nextjs-portal"
+      ],
+      "tramos": [
+        {
+          "id": "nuevo",
+          "acciones": [
+            {
+              "accion": "clic",
+              "selector": "main a[href='/personajes/nuevo']"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Paso 1: ¿Quién es?']"
+            }
+          ]
+        },
+        {
+          "id": "tipo",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "main a[href='/personajes/nuevo/inventado']"
+            },
+            {
+              "accion": "elegir",
+              "titulo": "Tipo de personaje",
+              "opciones": "main a[href='/personajes/nuevo/inventado'], section[aria-label='Paso 1: ¿Quién es?'] [role=radiogroup] label",
+              "selector": "main a[href='/personajes/nuevo/inventado']",
+              "etiquetas": [
+                "Personaje inventado",
+                "Persona real",
+                "Animal real"
+              ]
+            },
+            {
+              "accion": "esperar",
+              "selector": "input[placeholder='Nora']"
+            }
+          ]
+        },
+        {
+          "id": "datos",
+          "acciones": [
+            {
+              "accion": "escribir",
+              "selector": "input[placeholder='Nora']",
+              "texto": "Brisa"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 1: ¿Cómo es?'] textarea"
+            },
+            {
+              "accion": "escribir",
+              "selector": "section[aria-label='Paso 1: ¿Cómo es?'] textarea",
+              "texto": "Mujer de unos veintiocho años, pelo rizado cobrizo recogido en un moño alto, pecas, gafas redondas de pasta verde, jersey de punto mostaza y sonrisa tranquila."
+            }
+          ]
+        },
+        {
+          "id": "estilo",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 2: Estilo visual']"
+            },
+            {
+              "accion": "elegir",
+              "titulo": "Estilo visual",
+              "abrir": "section[aria-label='Paso 2: Estilo visual'] [role=combobox]",
+              "opciones": "[role=option]",
+              "selector": "[role=option]:has-text('Realista')"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "alta-mascota",
+      "ruta": "/personajes/nuevo",
+      "viewport": "movil",
+      "ocultar": [
+        "nextjs-portal"
+      ],
+      "tramos": [
+        {
+          "id": "mascota-tipo",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 1: ¿Quién es?'] [role=radiogroup]"
+            },
+            {
+              "accion": "elegir",
+              "titulo": "Tipo de personaje",
+              "opciones": "section[aria-label='Paso 1: ¿Quién es?'] [role=radiogroup] label",
+              "selector": "section[aria-label='Paso 1: ¿Quién es?'] [role=radiogroup] label:has-text('Animal')"
+            }
+          ]
+        },
+        {
+          "id": "mascota-datos",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "input[placeholder='Toby']"
+            },
+            {
+              "accion": "escribir",
+              "selector": "input[placeholder='Toby']",
+              "texto": "Lupo"
+            },
+            {
+              "accion": "escribir",
+              "selector": "section[aria-label='Paso 1: ¿Quién es?'] div:has(> label:text-is('Especie o raza (opcional)')) > input",
+              "texto": "Perro mestizo"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 1: ¿Quién es?'] textarea"
+            },
+            {
+              "accion": "escribir",
+              "selector": "section[aria-label='Paso 1: ¿Quién es?'] textarea",
+              "texto": "Pelo color canela con una mancha blanca en el pecho, orejas caídas y collar rojo."
+            }
+          ]
+        },
+        {
+          "id": "mascota-fotos",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 2: Fotos de referencia'] button:has-text('Subir desde el equipo')"
+            }
+          ]
+        },
+        {
+          "id": "mascota-consentimiento",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 3: Consentimiento'] label:has-text('Un animal mío')"
+            },
+            {
+              "accion": "elegir",
+              "titulo": "¿De quién es la imagen?",
+              "opciones": "section[aria-label='Paso 3: Consentimiento'] [role=radiogroup]:has(label:has-text('Un animal mío')) label",
+              "selector": "section[aria-label='Paso 3: Consentimiento'] label:has-text('Un animal mío')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 3: Consentimiento'] label:has-text('Declaro que es mayor de edad')"
+            },
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Paso 3: Consentimiento'] label:has-text('Declaro que es mayor de edad')"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

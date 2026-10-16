@@ -1,0 +1,26 @@
+# Prueba de humo del modo tutorial: abre «Nuevo personaje», elige «inventado», escribe nombre y descripción y
+# elige el estilo. No pulsa «Crear»: crear y generar están bloqueados en video.json (interceptar → 403).
+escenas:
+  - id: nuevo
+    pieza: tutorial
+    parametros: { grabacion: alta-inventado, tramo: nuevo }
+    frases:
+      - texto: "En Personajes, toca «Nuevo personaje»."
+
+  - id: tipo
+    pieza: tutorial
+    parametros: { grabacion: alta-inventado, tramo: tipo }
+    frases:
+      - texto: "Puede ser una persona o un animal reales, con fotos; hoy creamos uno inventado."
+
+  - id: datos
+    pieza: tutorial
+    parametros: { grabacion: alta-inventado, tramo: datos }
+    frases:
+      - texto: "Ponle un nombre y descríbelo: edad, pelo, ropa y gesto. De esa descripción salen sus retratos."
+
+  - id: estilo
+    pieza: tutorial
+    parametros: { grabacion: alta-inventado, tramo: estilo }
+    frases:
+      - texto: "Y elige su estilo visual. Para Brisa, realista."
