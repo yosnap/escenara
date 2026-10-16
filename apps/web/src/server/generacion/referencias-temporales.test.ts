@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
 import type { FilaTrabajo } from "../db/esquema";
-import { esEdicionConLugar, imagenesTemporalesDelTrabajo } from "./referencias-temporales";
+import { esEdicionConLugar, exigirImagenParaTemporales, imagenesTemporalesDelTrabajo } from "./referencias-temporales";
 
 const fila = {
   userId: "usuario",
@@ -35,4 +35,21 @@ test("la edición del lugar se bloquea si desaparece una foto de identidad", asy
     },
   } as FilaTrabajo;
   await expect(imagenesTemporalesDelTrabajo(edicion, 10, 2)).rejects.toThrow("identidad han cambiado");
+});
+
+test("sin imagen de partida, unas referencias de la escena se rechazan con 400 y la causa concreta", () => {
+  const referencias = [{ medioId: crypto.randomUUID(), etiqueta: "abrigo", uso: "ropa" }];
+  let error: unknown = null;
+  try {
+    exigirImagenParaTemporales(true, referencias);
+  } catch (e) {
+    error = e;
+  }
+  expect((error as { estado?: number } | null)?.estado).toBe(400);
+  expect((error as Error).message).toContain("necesitan una imagen de partida");
+  expect((error as Error).message).toContain("No se ha cobrado nada");
+  // Con imagen de partida, o sin referencias (la pantalla manda la lista vacía), no hay nada que rechazar.
+  expect(() => exigirImagenParaTemporales(false, referencias)).not.toThrow();
+  expect(() => exigirImagenParaTemporales(true, [])).not.toThrow();
+  expect(() => exigirImagenParaTemporales(true, undefined)).not.toThrow();
 });
