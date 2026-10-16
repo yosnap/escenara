@@ -1,0 +1,739 @@
+{
+  "capturas": [
+    {
+      "id": "inventado-alta",
+      "ruta": "/personajes",
+      "viewport": {
+        "ancho": 1600,
+        "alto": 856
+      },
+      "ocultar": [
+        "nextjs-portal"
+      ],
+      "tramos": [
+        {
+          "id": "nuevo",
+          "acciones": [
+            {
+              "accion": "clic",
+              "selector": "main a[href='/personajes/nuevo']"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Paso 1: ¿Quién es?']"
+            }
+          ]
+        },
+        {
+          "id": "tipo",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "main a[href='/personajes/nuevo/inventado']"
+            },
+            {
+              "accion": "elegir",
+              "titulo": "Tipo de personaje",
+              "opciones": "main a[href='/personajes/nuevo/inventado'], section[aria-label='Paso 1: ¿Quién es?'] [role=radiogroup] label",
+              "selector": "main a[href='/personajes/nuevo/inventado']",
+              "etiquetas": [
+                "Personaje inventado",
+                "Persona real",
+                "Animal real"
+              ]
+            },
+            {
+              "accion": "esperar",
+              "selector": "input[placeholder='Nora']"
+            }
+          ]
+        },
+        {
+          "id": "datos",
+          "acciones": [
+            {
+              "accion": "escribir",
+              "selector": "input[placeholder='Nora']",
+              "texto": "Brisa"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 1: ¿Cómo es?'] textarea"
+            },
+            {
+              "accion": "escribir",
+              "selector": "section[aria-label='Paso 1: ¿Cómo es?'] textarea",
+              "texto": "Mujer de unos veintiocho años, pelo rizado cobrizo recogido en un moño alto, pecas, gafas redondas de pasta verde, jersey de punto mostaza y sonrisa tranquila."
+            }
+          ]
+        },
+        {
+          "id": "estilo",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 2: Estilo visual']"
+            },
+            {
+              "accion": "elegir",
+              "titulo": "Estilo visual",
+              "abrir": "section[aria-label='Paso 2: Estilo visual'] [role=combobox]",
+              "opciones": "[role=option]",
+              "selector": "[role=option]:has-text('Realista')"
+            }
+          ]
+        },
+        {
+          "id": "crear",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 3: Declaración'] [role=checkbox]"
+            },
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Paso 3: Declaración'] [role=checkbox]"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "button:has-text('Crear el personaje inventado')"
+            },
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Crear el personaje inventado')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Pasos para terminar este personaje']",
+              "espera": 120000
+            }
+          ]
+        },
+        {
+          "id": "guia",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Pasos para terminar este personaje']"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "inventado-retratos",
+      "ruta": "/personajes",
+      "viewport": {
+        "ancho": 1600,
+        "alto": 856
+      },
+      "ocultar": [
+        "nextjs-portal"
+      ],
+      "pasos": [
+        {
+          "accion": "clic",
+          "selector": "main a:has-text('Brisa')"
+        },
+        {
+          "accion": "esperar",
+          "selector": "[role=tab]:has-text('Retratos y vistas')",
+          "espera": 60000
+        }
+      ],
+      "tramos": [
+        {
+          "id": "retratos-cuantos",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "[role=tab]:has-text('Retratos y vistas')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=tab]:has-text('Retratos y vistas')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section:has(h2:text-is('Retratos')) [role=combobox]"
+            },
+            {
+              "accion": "elegir",
+              "titulo": "Retratos que quieres generar",
+              "abrir": "section:has(h2:text-is('Retratos')) [role=combobox]",
+              "opciones": "[role=option]",
+              "selector": "[role=option]:has-text('3')",
+              "etiquetas": [
+                "1 retrato",
+                "2 retratos",
+                "3 retratos",
+                "4 retratos"
+              ]
+            },
+            {
+              "accion": "desplazar",
+              "selector": "button:has-text('Ver lo que cuesta generar')"
+            },
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Ver lo que cuesta generar')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "button:has-text('Generar 3 retratos')",
+              "espera": 60000,
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": "p:has-text('Son 3 imágenes')"
+            }
+          ]
+        },
+        {
+          "id": "retratos-generar",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "label:has-text('Puedo usar lo que se genere')"
+            },
+            {
+              "accion": "clic",
+              "selector": "label:has-text('Puedo usar lo que se genere')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Antes de generar'] label:has-text('Lo he leído y quiero generar igualmente')",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Antes de generar'] label:has-text('Lo he leído y quiero generar igualmente')",
+              "siExiste": true
+            },
+            {
+              "accion": "desplazar",
+              "selector": "button:has-text('Generar 3 retratos')"
+            },
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Generar 3 retratos')"
+            },
+            {
+              "accion": "esperar",
+              "selector": ":text('Se han encargado')",
+              "espera": 300000
+            },
+            {
+              "accion": "desplazar",
+              "selector": ":text('Se han encargado')"
+            }
+          ]
+        },
+        {
+          "id": "cara",
+          "acciones": [
+            {
+              "accion": "esperar",
+              "selector": "button:has-text('Elegir este') >> nth=2",
+              "espera": 600000,
+              "recargar": true,
+              "cada": 20000,
+              "trasRecargar": [
+                {
+                  "accion": "clic",
+                  "selector": "[role=tab]:has-text('Retratos y vistas')"
+                }
+              ]
+            },
+            {
+              "accion": "desplazar",
+              "selector": "button:has-text('Elegir este') >> nth=0"
+            },
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Elegir este') >> nth=0"
+            },
+            {
+              "accion": "esperar",
+              "selector": ":text('Ese retrato es ya la cara')",
+              "espera": 60000,
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": ":text('Ese retrato es ya la cara')"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "inventado-ficha",
+      "ruta": "/personajes",
+      "viewport": {
+        "ancho": 1600,
+        "alto": 856
+      },
+      "ocultar": [
+        "nextjs-portal"
+      ],
+      "pasos": [
+        {
+          "accion": "clic",
+          "selector": "main a:has-text('Brisa')"
+        },
+        {
+          "accion": "esperar",
+          "selector": "[role=tab]:has-text('Retratos y vistas')",
+          "espera": 60000
+        }
+      ],
+      "tramos": [
+        {
+          "id": "ficha-ia",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "button:has-text('Completar la ficha con IA')"
+            },
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Completar la ficha con IA')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button:has-text('Ver con qué modelo se haría')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] button:has-text('Proponer la ficha')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button:has-text('Proponer la ficha')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "[role=dialog] button:has-text('Aceptar')",
+              "espera": 240000
+            }
+          ]
+        },
+        {
+          "id": "ficha-guardar",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] button:has-text('Aceptar')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button:has-text('Aceptar')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "button:has-text('Guardar la ficha')"
+            },
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Guardar la ficha')"
+            },
+            {
+              "accion": "esperar",
+              "selector": ":text('Guardado como versión')",
+              "espera": 60000,
+              "indicador": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "inventado-vistas",
+      "ruta": "/personajes",
+      "viewport": {
+        "ancho": 1600,
+        "alto": 856
+      },
+      "ocultar": [
+        "nextjs-portal"
+      ],
+      "pasos": [
+        {
+          "accion": "clic",
+          "selector": "main a:has-text('Brisa')"
+        },
+        {
+          "accion": "esperar",
+          "selector": "[role=tab]:has-text('Retratos y vistas')",
+          "espera": 60000
+        }
+      ],
+      "tramos": [
+        {
+          "id": "vistas",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "[role=tab]:has-text('Retratos y vistas')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=tab]:has-text('Retratos y vistas')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "button:has-text('vistas que faltan')"
+            },
+            {
+              "accion": "clic",
+              "selector": "button:has-text('vistas que faltan')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "[role=dialog] button:has-text('Generar 3 vistas')",
+              "espera": 60000,
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] label:has-text('Tengo derecho a usar estas fotos')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] label:has-text('Tengo derecho a usar estas fotos')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] label:has-text('He revisado las fotos')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] label:has-text('Sí, quiero gastar')",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] label:has-text('Sí, quiero gastar')",
+              "siExiste": true
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] label:has-text('Lo he leído y quiero generar igualmente') >> nth=0",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] label:has-text('Lo he leído y quiero generar igualmente') >> nth=0",
+              "siExiste": true
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] label:has-text('Lo he leído y quiero generar igualmente') >> nth=1",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] label:has-text('Lo he leído y quiero generar igualmente') >> nth=1",
+              "siExiste": true
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] button:has-text('Generar 3 vistas')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button:has-text('Generar 3 vistas')"
+            },
+            {
+              "accion": "esperar",
+              "selector": ":text('Aparecerán en la ficha al terminar')",
+              "espera": 300000
+            }
+          ]
+        },
+        {
+          "id": "vistas-resto",
+          "acciones": [
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Cobertura de vistas'] :text('Faltan 1 de 5')",
+              "espera": 900000,
+              "recargar": true,
+              "cada": 20000,
+              "trasRecargar": [
+                {
+                  "accion": "clic",
+                  "selector": "[role=tab]:has-text('Retratos y vistas')"
+                }
+              ]
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Cobertura de vistas'] button:has-text('Generarla')"
+            },
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Cobertura de vistas'] button:has-text('Generarla')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "[role=dialog] button:has-text('Generar la vista')",
+              "espera": 60000,
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] label:has-text('Tengo derecho a usar estas fotos')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] label:has-text('Tengo derecho a usar estas fotos')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] label:has-text('He revisado las fotos')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] label:has-text('Sí, quiero gastar')",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] label:has-text('Sí, quiero gastar')",
+              "siExiste": true
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] label:has-text('Lo he leído y quiero generar igualmente') >> nth=0",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] label:has-text('Lo he leído y quiero generar igualmente') >> nth=0",
+              "siExiste": true
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] label:has-text('Lo he leído y quiero generar igualmente') >> nth=1",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] label:has-text('Lo he leído y quiero generar igualmente') >> nth=1",
+              "siExiste": true
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] button:has-text('Generar la vista')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button:has-text('Generar la vista')"
+            }
+          ]
+        },
+        {
+          "id": "vistas-listas",
+          "acciones": [
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Cobertura de vistas'] :text('Todas las vistas cubiertas')",
+              "espera": 900000,
+              "recargar": true,
+              "cada": 20000,
+              "trasRecargar": [
+                {
+                  "accion": "clic",
+                  "selector": "[role=tab]:has-text('Retratos y vistas')"
+                }
+              ]
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Cobertura de vistas'] h2"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "mascota",
+      "ruta": "/personajes/nuevo",
+      "viewport": {
+        "ancho": 1600,
+        "alto": 856
+      },
+      "ocultar": [
+        "nextjs-portal"
+      ],
+      "tramos": [
+        {
+          "id": "mascota-tipo",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 1: ¿Quién es?'] [role=radiogroup]"
+            },
+            {
+              "accion": "elegir",
+              "titulo": "Tipo de personaje",
+              "opciones": "section[aria-label='Paso 1: ¿Quién es?'] [role=radiogroup] label",
+              "selector": "section[aria-label='Paso 1: ¿Quién es?'] [role=radiogroup] label:has-text('Animal')"
+            }
+          ]
+        },
+        {
+          "id": "mascota-datos",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "input[placeholder='Toby']"
+            },
+            {
+              "accion": "escribir",
+              "selector": "input[placeholder='Toby']",
+              "texto": "Lupo"
+            },
+            {
+              "accion": "escribir",
+              "selector": "section[aria-label='Paso 1: ¿Quién es?'] div:has(> label:text-is('Especie o raza (opcional)')) > input",
+              "texto": "Perro mestizo"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 1: ¿Quién es?'] textarea"
+            },
+            {
+              "accion": "escribir",
+              "selector": "section[aria-label='Paso 1: ¿Quién es?'] textarea",
+              "texto": "Pelo color canela con una mancha blanca en el pecho, orejas caídas y collar rojo."
+            }
+          ]
+        },
+        {
+          "id": "mascota-fotos",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 2: Fotos de referencia'] button:has-text('Subir desde el equipo')"
+            },
+            {
+              "accion": "subir",
+              "selector": "section[aria-label='Paso 2: Fotos de referencia'] button:has-text('Subir desde el equipo')",
+              "ficheros": [
+                "mascota/fotos/lupo-1.jpg",
+                "mascota/fotos/lupo-2.jpg",
+                "mascota/fotos/lupo-3.jpg",
+                "mascota/fotos/lupo-4.jpg"
+              ]
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] button:has-text('Subir sin editar')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button:has-text('Subir sin editar')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] button:has-text('Subir sin editar')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button:has-text('Subir sin editar')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] button:has-text('Subir sin editar')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button:has-text('Subir sin editar')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] button:has-text('Subir sin editar')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button:has-text('Subir sin editar')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Paso 2: Fotos de referencia'] img >> nth=3",
+              "espera": 60000,
+              "indicador": false
+            }
+          ]
+        },
+        {
+          "id": "mascota-consentimiento",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 3: Consentimiento'] label:has-text('Un animal mío')"
+            },
+            {
+              "accion": "elegir",
+              "titulo": "¿De quién es la imagen?",
+              "opciones": "section[aria-label='Paso 3: Consentimiento'] [role=radiogroup]:has(label:has-text('Un animal mío')) label",
+              "selector": "section[aria-label='Paso 3: Consentimiento'] label:has-text('Un animal mío')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 3: Consentimiento'] label:has-text('Declaro que es mayor de edad')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 3: Consentimiento'] label:has-text('Declaro que es mayor de edad')",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Paso 3: Consentimiento'] label:has-text('Declaro que es mayor de edad')",
+              "siExiste": true
+            }
+          ]
+        },
+        {
+          "id": "mascota-crear",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "button:has-text('Crear el personaje')"
+            },
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Crear el personaje')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "[role=tab]:has-text('Referencias'), button:has-text('de todas formas')",
+              "espera": 120000
+            },
+            {
+              "accion": "desplazar",
+              "selector": "button:has-text('de todas formas')",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "button:has-text('de todas formas')",
+              "siExiste": true
+            },
+            {
+              "accion": "esperar",
+              "selector": "[role=tab]:has-text('Referencias')",
+              "espera": 60000,
+              "indicador": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

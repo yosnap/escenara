@@ -15,7 +15,11 @@
   - **Mascota**, con 3 o 4 fotos de un perro inventado generadas con IA.
   - **Persona real**: solo una mención breve.
 - **Propósito**: tutorial para la documentación y para la lista pública de YouTube. Público: quien empieza con Escenara.
-- **Voz**: Lydia, `SDVJaMLoJa7wc3s2sn7d`, `eleven_multilingual_v2`. No se genera hasta que el propietario apruebe el guion.
+- **Sin voz (decisión del 2026-10-17)**: el entregable es el MP4 sin voz (`"voz": { "proveedor": "ninguna" }`).
+  - Cada escena lleva un rótulo breve (`titulo`) al lado del móvil, y las frases salen como subtítulos en la
+    versión con subtítulos, que es la recomendada.
+  - La duración de cada escena sale del tiempo de lectura y de sus acciones.
+  - Antes estaba prevista la voz Lydia (`SDVJaMLoJa7wc3s2sn7d`). Sus tomas quedan sin aprobar y no se usan.
 - **Gasto de KIE**: autorizado con un tope de 150 créditos por vídeo, reintentos incluidos (decisión del vídeo
   anterior). Si algo de la app falla, no se arregla en el código: se apunta con evidencia.
 - **Contenido**: solo sintético. La cara de Brisa se genera y Lupo es un perro inventado.

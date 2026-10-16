@@ -125,9 +125,7 @@
     "zonaHoraria": "Europe/Madrid"
   },
   "voz": {
-    "proveedor": "elevenlabs",
-    "vozId": "SDVJaMLoJa7wc3s2sn7d",
-    "modelo": "eleven_multilingual_v2"
+    "proveedor": "ninguna"
   },
   "musica": {
     "caracter": "suave",
