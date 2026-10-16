@@ -307,6 +307,34 @@ export async function marcarCompatibleInvalido(id: string, codigo: string): Prom
     .where(eq(openaiProviders.id, id));
 }
 
+/**
+ * Un servicio que ha rechazado **una petición** (401/403) no se da por muerto sin comprobarlo: antes se le pide su
+ * lista de modelos (`GET /models`, que no gasta cuota). Solo si **también** rechaza la clave se marca como no
+ * válida. Si contesta bien, la clave sirve y el rechazo era de esa petición; si tarda o no contesta, no se sabe
+ * nada de la clave, y un tiempo agotado nunca es un rechazo. Marcarla sin motivo la sacaría del mapa y el siguiente
+ * texto lo escribiría, en silencio, una entrada de pago.
+ *
+ * Devuelve `true` si la ha marcado como no válida.
+ */
+export async function invalidarSiLaClaveNoSirve(
+  usuarioId: string,
+  id: string,
+  buscar?: Parameters<typeof listarModelos>[0]["buscar"],
+): Promise<boolean> {
+  const fila = await filaDe(usuarioId, id);
+  if (fila?.status !== "valida") return false;
+  const clave = descifrarFila(fila);
+  if (!clave) return false;
+  try {
+    await listarModelos({ urlBase: fila.baseUrl, clave, buscar });
+    return false;
+  } catch (error) {
+    if (!(error instanceof ErrorCompatible) || !error.paraElProveedor) return false;
+    await marcarCompatibleInvalido(fila.id, error.codigo);
+    return true;
+  }
+}
+
 async function filaDe(usuarioId: string, id: string): Promise<FilaCompatible | null> {
   const [fila] = await db()
     .select()

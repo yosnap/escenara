@@ -1,7 +1,13 @@
-import { detalleDeTiempo, type IntentoProveedor, mensajeDeFalloDeProveedor } from "@/lib/diagnostico-proveedor";
+import {
+  detalleDeTiempo,
+  fraseDeIntento,
+  type IntentoProveedor,
+  mensajeDeFalloDeProveedor,
+} from "@/lib/diagnostico-proveedor";
+import { formatearCreditos } from "@/lib/generacion";
 import type { TipoDeMapa } from "@/lib/mapa-modelos";
 import { cerrarGastoDeEjecucion, reservarEjecucion } from "../asistente/gasto";
-import { marcarCompatibleInvalido } from "../boveda/compatibles";
+import { invalidarSiLaClaveNoSirve } from "../boveda/compatibles";
 import { db } from "../db/cliente";
 import { assistantRuns, type FilaEjecucionAsistente, usageLedger } from "../db/esquema";
 import { elegirModelo } from "../proveedores/catalogo";
@@ -62,11 +68,12 @@ export interface PeticionDeTexto {
    */
   modelosPreferidos?: readonly string[];
   /**
-   * Solo se puede gastar lo que el usuario vio y confirmó: la entrada principal (si es de pago y la confirmó) y
-   * las que se pagan por cuota del plan. Ninguna **otra** entrada de pago del mapa se prueba, porque su coste no
-   * se enseñó. Si la principal es de cuota, no se confirmó nada, así que solo se prueban entradas de cuota.
+   * Modelo de pago cuyo coste **ya se enseñó y se confirmó** como techo de esta llamada, aunque no sea la entrada
+   * principal del mapa. Es el caso de la traducción y del guion del asistente: su estimación es la del modelo de
+   * texto de la instalación (decisión del propietario, 2026-10-16), así que si la principal de cuota falla, esa
+   * entrada de pago sí se puede usar de reserva, y se avisa con `aviso`. Ninguna otra entrada de pago se prueba.
    */
-  limitarAConfirmado?: boolean;
+  reservaConfirmada?: string;
 }
 
 export interface TextoDelMapa {
@@ -79,6 +86,11 @@ export interface TextoDelMapa {
   /** `true` si la entrada que contestó recibió de verdad la imagen; `false` si solo recibió el texto. */
   conImagen: boolean;
   intentos: IntentoProveedor[];
+  /**
+   * Aviso para enseñar tal cual cuando ha contestado una **reserva de pago**: qué falló, quién lo ha escrito y lo
+   * que ha costado. Vacío si contestó la principal o una reserva que no cobra por petición.
+   */
+  aviso: string;
 }
 
 /** Lo que costaría una llamada de texto por la **entrada principal** del mapa de este usuario. */
@@ -161,6 +173,8 @@ export class ErrorDeTexto extends Error {
   constructor(
     readonly intentos: IntentoProveedor[],
     readonly hayEntradas: boolean,
+    /** Entradas de pago del mapa que no se han probado porque su coste no se había confirmado. */
+    readonly sinConfirmar: readonly string[] = [],
   ) {
     super("No ha habido ninguna entrada del mapa que pudiera escribir el texto.");
     this.name = "ErrorDeTexto";
@@ -169,12 +183,17 @@ export class ErrorDeTexto extends Error {
   /** Mensaje completo, con todas las entradas probadas y su causa concreta. */
   mensaje(encabezado: string): string {
     if (!this.hayEntradas) return `${encabezado}: ${SIN_ENTRADAS.charAt(0).toLowerCase()}${SIN_ENTRADAS.slice(1)}`;
-    return mensajeDeFalloDeProveedor(encabezado, this.intentos, sugerenciaDeMapa(this.intentos));
+    return mensajeDeFalloDeProveedor(encabezado, this.intentos, sugerenciaDeMapa(this.intentos, this.sinConfirmar));
   }
 }
 
 /** Qué puede hacer quien lo lee cuando se han agotado todas las entradas de su mapa. */
-function sugerenciaDeMapa(intentos: readonly IntentoProveedor[]): string {
+function sugerenciaDeMapa(intentos: readonly IntentoProveedor[], sinConfirmar: readonly string[]): string {
+  // Pasar a una entrada de pago sin que se haya confirmado su coste sería cobrar sin avisar: no se hace, y se dice.
+  if (sinConfirmar.length > 0) {
+    const varias = sinConfirmar.length > 1;
+    return `No se ${varias ? "han" : "ha"} probado ${sinConfirmar.join(" ni ")} porque ${varias ? "son" : "es"} de pago y su coste no lo habías confirmado, así que tampoco se ha cobrado nada ahí. Puedes volver a intentarlo cuando responda tu servicio, o poner ${varias ? "una de esas entradas" : "esa entrada"} de pago la primera de tu mapa de modelos de texto en «Tu cuenta» si prefieres pagarla.`;
+  }
   return intentos.length <= 1
     ? "Puedes añadir otra entrada de reserva a tu mapa de modelos de texto en «Tu cuenta» y el siguiente intento la probará sola."
     : "";
@@ -187,11 +206,19 @@ export async function pedirTextoPorMapa(peticion: PeticionDeTexto): Promise<Text
   const sinLocal = entradas.filter((e) => e.proveedor !== "local");
   // Ver y oír solo lo saben los servicios compatibles, que además se pagan por cuota y no por petición.
   const delTipo = peticion.soloMultimodal ? sinLocal.filter((e) => e.proveedor === "compatible") : sinLocal;
-  // Primero se acota a lo confirmado y después se reordena: la entrada confirmada es la principal **del mapa**
-  // (`i === 0` antes de cualquier reordenación), no la que quede delante tras subir los modelos preferidos.
-  const confirmadas = peticion.limitarAConfirmado
-    ? delTipo.filter((e) => e === sinLocal[0] || e.proveedor === "compatible")
-    : delTipo;
+  /**
+   * Solo se puede gastar lo que el usuario vio y confirmó: la entrada principal (si es de pago, su coste es el que
+   * se enseñó), la de pago cuyo coste se confirmó como techo (`reservaConfirmada`) y las que se pagan por cuota del
+   * plan. **Ninguna otra entrada de pago se prueba**, porque pasar a ella sería cobrar sin avisar. Primero se acota
+   * y después se reordena: la confirmada es la principal **del mapa**, no la que quede delante tras los preferidos.
+   */
+  const confirmadas = delTipo.filter(
+    (e) =>
+      e === sinLocal[0] ||
+      e.proveedor === "compatible" ||
+      (peticion.reservaConfirmada !== undefined && e.modelo === peticion.reservaConfirmada),
+  );
+  const sinConfirmar = delTipo.filter((e) => !confirmadas.includes(e)).map((e) => `${e.nombreProveedor} (${e.modelo})`);
   const utiles = ordenarPorPreferencia(confirmadas, peticion.modelosPreferidos ?? []);
   const resultado = await recorrerMapa(
     utiles,
@@ -201,18 +228,26 @@ export async function pedirTextoPorMapa(peticion: PeticionDeTexto): Promise<Text
         ? null
         : clasificarFallo(entrada, error, entrada.proveedor === "compatible" ? "" : detalleDeTiempo(MS_TEXTO)),
   );
-  // Un servicio compatible que ha rechazado la credencial queda marcado como no válido: así la próxima vez ni se
-  // intenta, y la pantalla de «Tu cuenta» lo dice en lugar de dejarlo con aspecto de estar bien.
-  for (const id of resultado.saltados) await marcarCompatibleInvalido(id, "rechazada");
-  if (!resultado.ok) throw new ErrorDeTexto(resultado.intentos, utiles.length > 0);
+  // Un servicio compatible que ha rechazado la credencial queda marcado como no válido, pero solo si su prueba
+  // gratuita lo confirma: así la próxima vez ni se intenta y «Tu cuenta» lo dice, sin que un rechazo suelto, un
+  // tiempo agotado o una sobrecarga suya lo saquen del mapa.
+  for (const id of resultado.saltados) await invalidarSiLaClaveNoSirve(peticion.usuarioId, id, peticion.buscar);
+  if (!resultado.ok) throw new ErrorDeTexto(resultado.intentos, utiles.length > 0, sinConfirmar);
+  const dePago = resultado.entrada.proveedor !== "compatible" && resultado.entrada.proveedor !== "local";
+  const [fallida] = resultado.intentos;
   return {
-    texto: resultado.valor,
+    texto: resultado.valor.texto,
     nombreProveedor: resultado.entrada.nombreProveedor,
     modelo: resultado.entrada.modelo,
     deReserva: resultado.intentos.length > 0,
     // La imagen solo la recibe un servicio compatible: si contestó una entrada de pago, no la vio.
     conImagen: peticion.imagen !== undefined && resultado.entrada.proveedor === "compatible",
     intentos: resultado.intentos,
+    // Si ha escrito una reserva de pago, se dice siempre: qué falló, quién lo ha escrito y cuánto ha costado.
+    aviso:
+      dePago && fallida
+        ? `${fraseDeIntento(fallida)}, así que lo ha escrito tu reserva de pago ${resultado.entrada.nombreProveedor} (${resultado.entrada.modelo}) por ${formatearCreditos(resultado.valor.creditos)}, dentro del coste que confirmaste.`
+        : "",
   };
 }
 
@@ -233,7 +268,17 @@ function ordenarPorPreferencia(entradas: readonly EntradaResuelta[], preferidos:
     .map((e) => e.entrada);
 }
 
-async function intentarEntrada(peticion: PeticionDeTexto, entrada: EntradaResuelta, posicion: number): Promise<string> {
+/** Lo que contestó una entrada y los créditos que costó (0 en una de cuota). */
+interface Contestacion {
+  texto: string;
+  creditos: number;
+}
+
+async function intentarEntrada(
+  peticion: PeticionDeTexto,
+  entrada: EntradaResuelta,
+  posicion: number,
+): Promise<Contestacion> {
   const clave = `${peticion.claveIdempotencia}:${posicion}`;
   return entrada.proveedor === "compatible"
     ? entradaPorCuota(peticion, entrada, clave)
@@ -248,7 +293,7 @@ async function entradaPorCuota(
   peticion: PeticionDeTexto,
   entrada: EntradaResuelta,
   claveIdempotencia: string,
-): Promise<string> {
+): Promise<Contestacion> {
   const servicio = entrada.compatible;
   if (!servicio) throw new ErrorCatalogo(503, "Esa entrada del mapa apunta a un servicio que ya no existe.");
   const respuesta = await pedirChat({
@@ -262,7 +307,7 @@ async function entradaPorCuota(
     ...(peticion.audio ? { audio: peticion.audio } : {}),
   });
   await apuntarPorCuota(peticion, entrada, claveIdempotencia, respuesta.tokensEntrada, respuesta.tokensSalida);
-  return respuesta.texto;
+  return { texto: respuesta.texto, creditos: 0 };
 }
 
 /**
@@ -273,7 +318,7 @@ async function entradaDePago(
   peticion: PeticionDeTexto,
   entrada: EntradaResuelta,
   claveIdempotencia: string,
-): Promise<string> {
+): Promise<Contestacion> {
   const modelo = await elegirModelo("text_generation", entrada.modelo);
   const adaptador = adaptadorDe(modelo.proveedor);
   const generarTexto = adaptador.generarTexto;
@@ -319,7 +364,7 @@ async function entradaDePago(
     throw error;
   }
   await cerrarGastoDeEjecucion(ejecucion.id, respuesta.creditos, "Llamada al modelo de texto.", "listo");
-  return respuesta.texto;
+  return { texto: respuesta.texto, creditos: respuesta.creditos ?? creditos };
 }
 
 const esRechazoProbado = (error: unknown) => Boolean((error as { rechazoProbado?: boolean } | null)?.rechazoProbado);

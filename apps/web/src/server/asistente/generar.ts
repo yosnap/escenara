@@ -113,7 +113,7 @@ export async function escribirGuion(
     throw new ErrorProyecto(503, `Esta instalación aún no puede pagar texto en ${modelo.nombreProveedor}.`);
   }
   const proveedor = modelo.proveedor;
-  const clave = await exigirCredencial(actor.id, proveedor);
+  await exigirCredencial(actor.id, proveedor);
   // Si se conoce el saldo del usuario en el proveedor y no llega, no se llama: el proveedor lo rechazaría y la
   // reserva se habría apartado para nada.
   await exigirSaldo(actor.id, creditos, buscar, proveedor);
@@ -153,6 +153,9 @@ export async function escribirGuion(
       entrada,
       claveIdempotencia,
       buscar,
+      // Lo que se confirmó es el precio de este modelo: si la principal de cuota falla, puede escribir el guion él,
+      // y se avisa (decisión del propietario, 2026-10-16). Ninguna otra entrada de pago se prueba.
+      reservaConfirmada: modelo.modelo,
     });
   } catch (error) {
     if (error instanceof ErrorDeTexto) {
@@ -202,7 +205,8 @@ export async function escribirGuion(
     }
     throw error;
   }
-  return detalleProyecto(actor, proyecto.id);
+  const detalle = await detalleProyecto(actor, proyecto.id);
+  return resultado.aviso === "" ? detalle : { ...detalle, avisoReserva: resultado.aviso };
 }
 
 function numeroDeEscenas(pedidas: unknown, proyecto: FilaProyecto): number {

@@ -66,6 +66,12 @@ function escenaDe(fila: FilaTrabajo): string {
  * Trabajo tal como lo ve el navegador. `conPrompt` solo es `true` cuando el ajuste «Mostrar el prompt a los
  * usuarios» está encendido: de fábrica el prompt compuesto **no sale de aquí** (ADR-0022).
  */
+/** Aviso de reserva de pago guardado con el trabajo, si lo hay. Solo lo escribe el servidor. */
+function avisoReservaDe(fila: FilaTrabajo): { avisoReserva?: string } {
+  const aviso = (fila.input as { avisoReserva?: unknown }).avisoReserva;
+  return typeof aviso === "string" && aviso !== "" ? { avisoReserva: aviso } : {};
+}
+
 export function vistaDe(
   fila: FilaTrabajo,
   medio: FilaMedio | null,
@@ -85,6 +91,7 @@ export function vistaDe(
     estadoProveedor: fila.providerState,
     taskId: fila.taskId,
     escena: escenaDe(fila),
+    ...avisoReservaDe(fila),
     ...(conPrompt && !esTrend ? { prompt: fila.prompt } : {}),
     creditosEstimados: fila.estimatedCredits,
     creditosConsumidos: fila.consumedCredits,

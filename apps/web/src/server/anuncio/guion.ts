@@ -261,8 +261,6 @@ export async function pedirHooksYGuion(
       entrada,
       claveIdempotencia: peticion.claveIdempotencia,
       buscar: peticion.buscar,
-      // Solo se gasta lo que el usuario vio: la entrada principal si es de pago, y las de cuota del plan.
-      limitarAConfirmado: true,
     });
   } catch (error) {
     if (error instanceof ErrorDeTexto) {

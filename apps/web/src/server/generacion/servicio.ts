@@ -736,6 +736,7 @@ export async function crearFotograma(
       // La tarifa exacta que se ha confirmado. El worker envía **esa** variante: sin esto, un cambio de variante
       // en el catálogo entre encolar y enviar pediría una cosa y cobraría otra.
       unidadPrecio: precio.unidad,
+      ...(enIngles.aviso === "" ? {} : { avisoReserva: enIngles.aviso }),
       // Lo que escribió la persona y lo que añadió el servidor, separados: el historial tiene que poder
       // mostrar las dos cosas sin adivinar dónde acaba una y empieza la otra.
       escena: peticion.escenaVisible ?? prompt,
@@ -1122,6 +1123,7 @@ export async function crearAnimacion(
       ...entradaGuardada(adaptador, promptFinal, [origen.id], { ...parametros, segundos }),
       // La tarifa confirmada: es la de **esta** duración, y es la que el worker vuelve a comprobar antes de enviar.
       unidadPrecio: precio.unidad,
+      ...(enIngles.aviso === "" ? {} : { avisoReserva: enIngles.aviso }),
       dialogo: dialogoFinal,
       escena: prompt,
       /**
