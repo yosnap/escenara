@@ -26,6 +26,7 @@ function fallido(cambios: Partial<TrabajoVista>): TrabajoVista {
     proveedor: "kie",
     modelo: "google/gemini-omni-flash-1-1",
     proporcion: null,
+    segundos: null,
     estado: "fallido",
     etapa: null,
     estadoProveedor: "fail",

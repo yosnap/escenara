@@ -246,6 +246,7 @@ describe("axe: Crear y su historial", () => {
       proveedor: "kie",
       modelo: "modelo-de-prueba",
       proporcion: "9:16",
+      segundos: null,
       estado: "listo",
       etapa: "listo",
       estadoProveedor: "success",

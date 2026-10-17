@@ -78,6 +78,7 @@ export function SeccionGeneracion() {
             <div className="w-full">
               <EsperaTrabajo
                 tipo="animacion"
+                segundos={5}
                 estado="en_curso"
                 estadoProveedor="generating"
                 transcurridoSegundos={74}
