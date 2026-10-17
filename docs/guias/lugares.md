@@ -115,6 +115,10 @@ En **«Crear»**, en el paso de describir la escena, bloque **El lugar**: eliges
 **lugar al proyecto** (lo heredan todas sus escenas) y cada escena puede quedarse con él, elegir otro o ir sin lugar.
 Solo se ofrecen los lugares del mismo acabado que el proyecto; el servidor lo vuelve a comprobar.
 
+Así se hace un clip desde «Crear», con tu personaje en su lugar e interactuando con él, paso a paso:
+
+[![Cómo hacer un clip con tu personaje en un lugar tuyo en Escenara, paso a paso](../assets/video/youtube-M4HWebS5IL0.webp)](https://youtu.be/M4HWebS5IL0)
+
 Con un lugar:
 
 - el **fotograma se compone con la foto maestra** junto a las fotos del personaje (y del producto, si lo hay), y el
