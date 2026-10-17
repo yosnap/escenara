@@ -39,8 +39,14 @@ export interface TrabajoDePersonaje {
 /** Dominios reservados para pruebas y ejemplos (RFC 2606 y RFC 6761). */
 const DOMINIO_RESERVADO = /@(?:[a-z0-9-]+\.)*(?:test|example|invalid|localhost|example\.(?:com|net|org))$/i;
 
-export function leerArgumentosReinicio(argv: string[]): { cuenta: string; nombre: string; mascota: string | null } {
-  const conocidas = new Set(["--cuenta", "--nombre", "--mascota"]);
+/**
+ * Lee las opciones `--clave valor` de la línea de órdenes, rechaza las desconocidas y valida `--cuenta` (obligatoria
+ * y de un dominio reservado). Devuelve un lector del resto de opciones y la cuenta en minúsculas.
+ */
+export function leerOpcionesTutorial(
+  argv: string[],
+  conocidas: readonly string[],
+): { cuenta: string; valor: (nombre: string) => string | null } {
   const valor = (nombre: string): string | null => {
     const i = argv.indexOf(nombre);
     if (i < 0) return null;
@@ -48,16 +54,21 @@ export function leerArgumentosReinicio(argv: string[]): { cuenta: string; nombre
     if (!siguiente || siguiente.startsWith("--")) throw new Error(`${nombre} necesita un valor.`);
     return siguiente;
   };
-  const desconocida = argv.find((a) => a.startsWith("--") && !conocidas.has(a));
+  const desconocida = argv.find((a) => a.startsWith("--") && a !== "--cuenta" && !conocidas.includes(a));
   if (desconocida) throw new Error(`Opción desconocida: ${desconocida}.`);
   const cuenta = valor("--cuenta");
   if (!cuenta) throw new Error("Indica la cuenta de tutoriales con --cuenta (correo).");
   if (!DOMINIO_RESERVADO.test(cuenta)) {
     throw new Error("--cuenta tiene que ser un correo de un dominio reservado para pruebas (p. ej. «.test»).");
   }
+  return { cuenta: cuenta.toLowerCase(), valor };
+}
+
+export function leerArgumentosReinicio(argv: string[]): { cuenta: string; nombre: string; mascota: string | null } {
+  const { cuenta, valor } = leerOpcionesTutorial(argv, ["--nombre", "--mascota"]);
   const nombre = valor("--nombre");
   if (!nombre) throw new Error("Indica con --nombre el nombre del personaje que crea el tutorial.");
-  return { cuenta: cuenta.toLowerCase(), nombre, mascota: valor("--mascota") };
+  return { cuenta, nombre, mascota: valor("--mascota") };
 }
 
 /** Motivo para no tocar la cuenta, o `null` si es una cuenta dedicada de tutoriales. */

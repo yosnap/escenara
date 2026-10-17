@@ -1,0 +1,393 @@
+{
+  "capturas": [
+    {
+      "id": "foto-lugar",
+      "ruta": "/crear",
+      "viewport": {
+        "ancho": 1600,
+        "alto": 856
+      },
+      "ocultar": [
+        "nextjs-portal"
+      ],
+      "tramos": [
+        {
+          "id": "origen",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "button:has-text('Siguiente: Origen')"
+            },
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Siguiente: Origen')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Paso 2: ¿De dónde sale el clip?']"
+            },
+            {
+              "accion": "elegir",
+              "titulo": "¿De dónde sale?",
+              "opciones": "section[aria-label='Paso 2: ¿De dónde sale el clip?'] label",
+              "selector": "section[aria-label='Paso 2: ¿De dónde sale el clip?'] label:has-text('Crear un fotograma nuevo')",
+              "etiquetas": [
+                "Crear un fotograma nuevo",
+                "Usar una imagen que ya tengo"
+              ]
+            },
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Siguiente: Quién')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Paso 3: Elige a quién generas']"
+            }
+          ]
+        },
+        {
+          "id": "quien",
+          "acciones": [
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Sin personaje')"
+            },
+            {
+              "accion": "clic",
+              "selector": "label:has-text('Crear solo desde texto')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 3: Elige a quién generas'] [role=combobox]"
+            },
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Siguiente: Escena')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Paso 4: Describe la escena'] textarea"
+            }
+          ]
+        },
+        {
+          "id": "escena",
+          "acciones": [
+            {
+              "accion": "escribir",
+              "selector": "section[aria-label='Paso 4: Describe la escena'] textarea",
+              "texto": "Terraza de una cafetería luminosa en una plaza peatonal por la mañana: mesas de madera clara, sillas verdes, macetas con limoneros y un toldo blanco. Plano general, sin personas ni textos."
+            },
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Siguiente: Coste')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Coste estimado']",
+              "indicador": false
+            }
+          ]
+        },
+        {
+          "id": "coste",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Coste estimado']"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "label:has-text('Lo he leído y quiero generar igualmente')",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "label:has-text('Lo he leído y quiero generar igualmente')",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "label:has-text('Tengo derecho a usar esta imagen')"
+            },
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Generar fotograma')"
+            },
+            {
+              "accion": "esperar",
+              "selector": ":text('Fotograma listo')",
+              "espera": 600000
+            }
+          ]
+        },
+        {
+          "id": "resultado",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": ":text('Fotograma listo')"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "lugar",
+      "ruta": "/lugares",
+      "viewport": {
+        "ancho": 1600,
+        "alto": 856
+      },
+      "ocultar": [
+        "nextjs-portal"
+      ],
+      "tramos": [
+        {
+          "id": "nuevo",
+          "acciones": [
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Crear el primero')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "[role=dialog] input[placeholder='Bar de la esquina']"
+            }
+          ]
+        },
+        {
+          "id": "datos",
+          "acciones": [
+            {
+              "accion": "escribir",
+              "selector": "[role=dialog] input[placeholder='Bar de la esquina']",
+              "texto": "Terraza Mirto"
+            },
+            {
+              "accion": "escribir",
+              "selector": "[role=dialog] textarea",
+              "texto": "Terraza de cafetería luminosa en una plaza peatonal: mesas de madera clara, sillas verdes, limoneros en macetas y toldo blanco."
+            }
+          ]
+        },
+        {
+          "id": "acabado",
+          "acciones": [
+            {
+              "accion": "elegir",
+              "titulo": "Acabado",
+              "abrir": "[role=dialog] [role=combobox]",
+              "opciones": "[role=option]:visible",
+              "selector": "[role=option]:visible:has-text('Real (fotos)')",
+              "etiquetas": [
+                "Real (fotos)",
+                "Animado · Ilustración plana",
+                "Animado · 3D estilizado",
+                "Animado · Anime"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "crear",
+          "acciones": [
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button:has-text('Crear lugar')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section:has(h2:has-text('Declaración de derechos'))",
+              "espera": 60000,
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": ":text('Para poder usarlo')"
+            }
+          ]
+        },
+        {
+          "id": "anadir",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section:has(h2:text-is('Fotos')) button:has-text('Añadir de la biblioteca')"
+            },
+            {
+              "accion": "clic",
+              "selector": "section:has(h2:text-is('Fotos')) button:has-text('Añadir de la biblioteca')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "[role=dialog] button[aria-label^='Seleccionar'] >> nth=0",
+              "espera": 30000,
+              "indicador": false
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button[aria-label^='Seleccionar'] >> nth=0"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button:has-text('Usar selección')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section:has(h2:text-is('Fotos')) li",
+              "espera": 30000,
+              "indicador": false
+            }
+          ]
+        },
+        {
+          "id": "maestra",
+          "acciones": [
+            {
+              "accion": "elegir",
+              "titulo": "Qué muestra",
+              "abrir": "section:has(h2:text-is('Fotos')) li >> nth=0 >> [role=combobox]",
+              "opciones": "[role=option]:visible",
+              "selector": "[role=option]:visible:has-text('Maestra')",
+              "etiquetas": [
+                "Maestra",
+                "Plano general",
+                "Contraplano",
+                "Detalle",
+                "Una zona concreta"
+              ]
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section:has(h2:text-is('Fotos')) li [aria-label='Maestra']"
+            }
+          ]
+        },
+        {
+          "id": "procedencia",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section:has(h2:has-text('Declaración de derechos')) [role=combobox] >> nth=0"
+            },
+            {
+              "accion": "elegir",
+              "titulo": "¿De dónde son las fotos?",
+              "abrir": "section:has(h2:has-text('Declaración de derechos')) [role=combobox] >> nth=0",
+              "opciones": "[role=option]:visible",
+              "selector": "[role=option]:visible:has-text('Las he generado aquí')",
+              "etiquetas": [
+                "Las he hecho yo",
+                "Son de otra persona y tengo su permiso",
+                "Las he generado aquí"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "sitio",
+          "acciones": [
+            {
+              "accion": "elegir",
+              "titulo": "¿Qué tipo de sitio es?",
+              "opciones": "section:has(h2:has-text('Declaración de derechos')) label:has-text('Exterior o espacio público'), section:has(h2:has-text('Declaración de derechos')) label:has-text('Interior privado')",
+              "selector": "section:has(h2:has-text('Declaración de derechos')) label:has-text('Exterior o espacio público')",
+              "etiquetas": [
+                "Exterior o espacio público",
+                "Interior privado o con restricciones"
+              ]
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section:has(h2:has-text('Declaración de derechos')) label:has-text('No sale nadie')"
+            },
+            {
+              "accion": "elegir",
+              "titulo": "¿Sale gente en las fotos?",
+              "opciones": "section:has(h2:has-text('Declaración de derechos')) label:has-text('No sale nadie'), section:has(h2:has-text('Declaración de derechos')) label:has-text('Solo gente pequeña'), section:has(h2:has-text('Declaración de derechos')) label:has-text('Sale gente reconocible'), section:has(h2:has-text('Declaración de derechos')) label:has-text('Salía gente')",
+              "selector": "section:has(h2:has-text('Declaración de derechos')) label:has-text('No sale nadie')",
+              "etiquetas": [
+                "No sale nadie",
+                "Solo gente pequeña al fondo",
+                "Sale gente reconocible",
+                "Salía gente y la he retirado"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "uso",
+          "acciones": [
+            {
+              "accion": "elegir",
+              "titulo": "Uso",
+              "abrir": "section:has(h2:has-text('Declaración de derechos')) [role=combobox] >> nth=1",
+              "opciones": "[role=option]:visible",
+              "selector": "[role=option]:visible:has-text('Comercial')",
+              "etiquetas": [
+                "Personal",
+                "Comercial"
+              ]
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section:has(h2:has-text('Declaración de derechos')) label:has-text('Se ve alguna marca')"
+            }
+          ]
+        },
+        {
+          "id": "declarar",
+          "acciones": [
+            {
+              "accion": "clic",
+              "selector": "section:has(h2:has-text('Declaración de derechos')) label:has-text('no sale ningún menor')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section:has(h2:has-text('Declaración de derechos')) button:has-text('Declarar')"
+            },
+            {
+              "accion": "clic",
+              "selector": "section:has(h2:has-text('Declaración de derechos')) button:has-text('Declarar')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section:has(h2:has-text('Declaración de derechos')) :text('Declarada el')",
+              "espera": 30000,
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section:has(h2:has-text('Declaración de derechos')) :text('Declarada el')"
+            }
+          ]
+        },
+        {
+          "id": "listo",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "nav[aria-label='Aplicación'] a[href='/lugares']"
+            },
+            {
+              "accion": "clic",
+              "selector": "nav[aria-label='Aplicación'] a[href='/lugares']"
+            },
+            {
+              "accion": "esperar",
+              "selector": "main a:has-text('Terraza Mirto')",
+              "espera": 30000,
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": "main a:has-text('Terraza Mirto')"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

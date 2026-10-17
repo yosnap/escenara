@@ -1,0 +1,150 @@
+{
+  "esquema": 1,
+  "proyecto": "escenara",
+  "nombre": "crear-lugar-tutorial",
+  "formato": {
+    "ancho": 1920,
+    "alto": 1080,
+    "fps": 30
+  },
+  "duracion": {
+    "min": 90,
+    "max": 270
+  },
+  "idioma": "es",
+  "marca": {
+    "nombre": "Escenara",
+    "colores": {
+      "primario": "#2753d7",
+      "fondo": "#f7f8fc",
+      "texto": "#182032",
+      "secundario": "#e8458b",
+      "acento": "#f0663d"
+    },
+    "tipografias": {
+      "titulos": "Manrope",
+      "texto": "Manrope"
+    },
+    "logo": "../../docs/branding/escenara-horizontal-light.svg",
+    "fuentes": {
+      "titulos": "../../apps/web/src/fonts/manrope-latin-wght-normal.woff2",
+      "texto": "../../apps/web/src/fonts/manrope-latin-wght-normal.woff2"
+    }
+  },
+  "app": {
+    "urlBase": "http://localhost:3021",
+    "origenesPermitidos": [
+      "http://localhost:3021",
+      "http://localhost:8321",
+      "http://127.0.0.1:8321"
+    ],
+    "preparacion": [
+      "bun",
+      "run",
+      "--cwd",
+      "apps/web",
+      "scripts/reiniciar-tutorial-recurso.ts",
+      "--cuenta",
+      "tutoriales@escenara.test",
+      "--lugar",
+      "Terraza Mirto"
+    ],
+    "inicioSesion": {
+      "ruta": "/entrar",
+      "pasos": [
+        {
+          "accion": "escribir",
+          "selector": "input[type=email]",
+          "variable": "ESCENARA_TUTORIALES_EMAIL"
+        },
+        {
+          "accion": "escribir",
+          "selector": "input[autocomplete=current-password]",
+          "variable": "ESCENARA_TUTORIALES_PASSWORD"
+        },
+        {
+          "accion": "clic",
+          "selector": "form button[type=submit]"
+        },
+        {
+          "accion": "esperar",
+          "selector": "nav[aria-label='Aplicación']"
+        },
+        {
+          "accion": "clic",
+          "selector": "button:has-text('Entendido')",
+          "siExiste": true
+        },
+        {
+          "accion": "esperar",
+          "selector": "nav[aria-label='Aplicación']"
+        }
+      ]
+    },
+    "interceptar": [
+      {
+        "metodo": "DELETE",
+        "url": "**/api/personajes**",
+        "estado": 403,
+        "cuerpo": {
+          "error": "Bloqueado durante la grabación del tutorial: no es parte del flujo."
+        }
+      },
+      {
+        "metodo": "DELETE",
+        "url": "**/api/productos**",
+        "estado": 403,
+        "cuerpo": {
+          "error": "Bloqueado durante la grabación del tutorial: no es parte del flujo."
+        }
+      },
+      {
+        "metodo": "DELETE",
+        "url": "**/api/lugares**",
+        "estado": 403,
+        "cuerpo": {
+          "error": "Bloqueado durante la grabación del tutorial: no es parte del flujo."
+        }
+      },
+      {
+        "metodo": "DELETE",
+        "url": "**/api/media**",
+        "estado": 403,
+        "cuerpo": {
+          "error": "Bloqueado durante la grabación del tutorial: no es parte del flujo."
+        }
+      },
+      {
+        "metodo": "POST",
+        "url": "**/api/lugares/*/edicion**",
+        "estado": 403,
+        "cuerpo": {
+          "error": "Bloqueado durante la grabación del tutorial: no es parte del flujo."
+        }
+      }
+    ],
+    "sustituirTextos": {
+      "http://localhost:3021": "https://escenara.com",
+      "localhost:3021": "escenara.com"
+    },
+    "fecha": "2026-10-16T10:00:00",
+    "zonaHoraria": "Europe/Madrid",
+    "almacenamientoLocal": {
+      "escenara-aviso-cookies-v1": "4102444800000"
+    }
+  },
+  "voz": {
+    "proveedor": "ninguna"
+  },
+  "musica": {
+    "caracter": "suave",
+    "bpm": 100,
+    "tonalidad": "Re mayor"
+  },
+  "direccion": "tutorial",
+  "semilla": 1,
+  "terminos": [
+    "Escenara",
+    "KIE"
+  ]
+}

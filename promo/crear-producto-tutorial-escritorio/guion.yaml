@@ -1,0 +1,120 @@
+# Tutorial «Crear un producto» en modo tutorial, versión de ESCRITORIO (YouTube): la ventana del navegador, fija,
+# ocupa el encuadre. La versión móvil (../crear-producto-tutorial/) tiene el mismo guion.
+# Sin voz: cada escena lleva un rótulo breve (titulo) y sus frases salen como subtítulos.
+# Las fotos del producto se generan dentro de Escenara, en «Crear» (fotograma sin personaje), y después se crea su
+# ficha en «Productos» con esas fotos y el papel de cada una. Producto inventado, sin marcas. Evidencia: briefing.md.
+escenas:
+  - id: gancho
+    pieza: rotulo
+    parametros: { titulo: "Crea tu producto", subtitulo: "Sus fotos y su ficha, paso a paso", fondo: claro, animacion: palabras }
+    frases:
+      - texto: "Vamos a crear un producto para tus vídeos: primero generamos sus fotos en Escenara y después le damos su ficha."
+
+  - id: origen
+    pieza: tutorial
+    parametros: { grabacion: foto-envase, tramo: origen, titulo: "Una foto nueva" }
+    frases:
+      - texto: "En «Crear», pasa a «Origen» y elige «Crear un fotograma nuevo»: así se genera la foto del producto."
+
+  - id: quien
+    pieza: tutorial
+    parametros: { grabacion: foto-envase, tramo: quien, titulo: "Sin personaje" }
+    frases:
+      - texto: "En la foto no sale nadie: elige «Sin personaje» y confirma que se crea solo desde el texto."
+      - texto: "Debajo puedes cambiar el modelo de la imagen. Nano Banana 2 Lite cuesta unos 4 créditos."
+
+  - id: escena
+    pieza: tutorial
+    parametros: { grabacion: foto-envase, tramo: escena, titulo: "Describe el producto" }
+    frases:
+      - texto: "Descríbelo como en una foto de catálogo: material, color, fondo y luz. Pide que no salgan textos ni logotipos."
+
+  - id: coste
+    pieza: tutorial
+    parametros: { grabacion: foto-envase, tramo: coste, titulo: "Revisa el coste" }
+    frases:
+      - texto: "Antes de generar ves lo que cuesta. Confirma que puedes usar la imagen y toca «Generar fotograma»."
+
+  - id: resultado
+    pieza: tutorial
+    parametros: { grabacion: foto-envase, tramo: resultado, titulo: "La primera foto" }
+    frases:
+      - texto: "Aquí la tienes, y ya está guardada en tu biblioteca."
+
+  - id: tapon-referencia
+    pieza: tutorial
+    parametros: { grabacion: foto-tapon, tramo: tapon-referencia, titulo: "Otra vista, la misma botella" }
+    transicion: fundido
+    frases:
+      - texto: "Para otra vista del mismo producto, vuelve a «Crear» y elige esa foto como imagen de partida, desde tu biblioteca."
+
+  - id: tapon-escena
+    pieza: tutorial
+    parametros: { grabacion: foto-tapon, tramo: tapon-escena, titulo: "El detalle del tapón" }
+    frases:
+      - texto: "Pide el detalle que falta, aquí el tapón. Al partir de la primera foto, la botella sale igual."
+
+  - id: tapon-coste
+    pieza: tutorial
+    parametros: { grabacion: foto-tapon, tramo: tapon-coste, titulo: "Genera la segunda" }
+    frases:
+      - texto: "Confirma otra vez el coste y genera."
+
+  - id: tapon-resultado
+    pieza: tutorial
+    parametros: { grabacion: foto-tapon, tramo: tapon-resultado, titulo: "Dos fotos listas" }
+    frases:
+      - texto: "Ya tienes las dos fotos de tu producto."
+
+  - id: nuevo
+    pieza: tutorial
+    parametros: { grabacion: producto, tramo: nuevo, titulo: "Nuevo producto" }
+    transicion: fundido
+    frases:
+      - texto: "Ahora, en «Productos», toca «Crear el primero»."
+
+  - id: datos
+    pieza: tutorial
+    parametros: { grabacion: producto, tramo: datos, titulo: "Nombre y descripción" }
+    frases:
+      - texto: "Ponle un nombre y descríbelo en una o dos frases, en español: qué es y qué se ve."
+
+  - id: tipo
+    pieza: tutorial
+    parametros: { grabacion: producto, tramo: tipo, titulo: "Físico o digital" }
+    frases:
+      - texto: "Elige si es físico, algo que se coge con la mano, o digital, como una app."
+      - texto: "Marca la casilla solo si en las fotos se ve una marca o un logotipo: te avisará del filtro del proveedor."
+
+  - id: crear
+    pieza: tutorial
+    parametros: { grabacion: producto, tramo: crear, titulo: "Crea su ficha" }
+    frases:
+      - texto: "Toca «Crear producto» y se abre su ficha. Las fotos se añaden aquí."
+
+  - id: anadir
+    pieza: tutorial
+    parametros: { grabacion: producto, tramo: anadir, titulo: "Añade sus fotos" }
+    frases:
+      - texto: "En «Fotos de referencia», toca «Añadir de la biblioteca» y elige las dos fotos que acabas de generar."
+
+  - id: papeles
+    pieza: tutorial
+    parametros: { grabacion: producto, tramo: papeles, titulo: "Para qué sirve cada foto" }
+    frases:
+      - texto: "Di para qué sirve cada una: la primera enseña el envase entero y la segunda, el detalle de la tapa."
+      - texto: "Así el modelo sabe qué foto mirar en cada gesto, como al abrir la tapa."
+
+  - id: listo
+    pieza: tutorial
+    parametros: { grabacion: producto, tramo: listo, titulo: "Producto listo" }
+    frases:
+      - texto: "Botella Ondina ya está en tus productos, lista para que un personaje la presente en tus vídeos."
+
+  - id: cierre
+    pieza: logo
+    parametros: { lema: "Crea tu primer producto", url: "docs.escenara.com", fondo: claro }
+    transicion: fundido
+    frases:
+      - texto: "Guía completa en docs.escenara.com. ¡Crea tu primer producto!"
+        hablado: "Guía completa en la documentación de Escenara. ¡Crea tu primer producto!"

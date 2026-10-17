@@ -1,0 +1,120 @@
+# Tutorial «Crear un lugar» en modo tutorial, versión de ESCRITORIO (YouTube): la ventana del navegador, fija,
+# ocupa el encuadre. La versión móvil (../crear-lugar-tutorial/) tiene el mismo guion.
+# Sin voz: cada escena lleva un rótulo breve (titulo) y sus frases salen como subtítulos.
+# La foto del lugar se genera dentro de Escenara, en «Crear» (fotograma sin personaje): un lugar real no tiene
+# generación propia en «Lugares». Después se crea su ficha con esa foto como maestra y se declara. Lugar inventado,
+# sin marcas ni personas. Evidencia: briefing.md.
+escenas:
+  - id: gancho
+    pieza: rotulo
+    parametros: { titulo: "Crea tu lugar", subtitulo: "Su foto, su ficha y su declaración", fondo: claro, animacion: palabras }
+    frases:
+      - texto: "Vamos a crear un lugar para tus escenas: primero generamos su foto en Escenara y después le damos su ficha."
+
+  - id: origen
+    pieza: tutorial
+    parametros: { grabacion: foto-lugar, tramo: origen, titulo: "Una foto nueva" }
+    frases:
+      - texto: "En «Crear», pasa a «Origen» y elige «Crear un fotograma nuevo»: así se genera la foto del lugar."
+
+  - id: quien
+    pieza: tutorial
+    parametros: { grabacion: foto-lugar, tramo: quien, titulo: "Sin personaje" }
+    frases:
+      - texto: "En la foto no sale nadie: elige «Sin personaje» y confirma que se crea solo desde el texto."
+      - texto: "Debajo puedes cambiar el modelo de la imagen. Nano Banana 2 Lite cuesta unos 4 créditos."
+
+  - id: escena
+    pieza: tutorial
+    parametros: { grabacion: foto-lugar, tramo: escena, titulo: "Describe el lugar" }
+    frases:
+      - texto: "Descríbelo en un plano general: qué hay, colores, materiales y luz. Pide que no salga gente ni textos."
+
+  - id: coste
+    pieza: tutorial
+    parametros: { grabacion: foto-lugar, tramo: coste, titulo: "Revisa el coste" }
+    frases:
+      - texto: "Antes de generar ves lo que cuesta. Confirma que puedes usar la imagen y toca «Generar fotograma»."
+
+  - id: resultado
+    pieza: tutorial
+    parametros: { grabacion: foto-lugar, tramo: resultado, titulo: "La foto del lugar" }
+    frases:
+      - texto: "Aquí la tienes, y ya está guardada en tu biblioteca."
+
+  - id: nuevo
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: nuevo, titulo: "Nuevo lugar" }
+    transicion: fundido
+    frases:
+      - texto: "Ahora, en «Lugares», toca «Crear el primero»."
+      - texto: "Si es un sitio famoso no hace falta: basta con nombrarlo en la escena."
+
+  - id: datos
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: datos, titulo: "Nombre y descripción" }
+    frases:
+      - texto: "Ponle un nombre y describe lo que lo hace reconocible: materiales, colores, muebles y luz."
+
+  - id: acabado
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: acabado, titulo: "Real o animado" }
+    frases:
+      - texto: "Elige el acabado: real, con fotos, o animado en uno de sus estilos. Después no se puede cambiar."
+
+  - id: crear
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: crear, titulo: "Crea su ficha" }
+    frases:
+      - texto: "Toca «Crear lugar». Su ficha te dice lo que falta para usarlo: la foto maestra y la declaración."
+
+  - id: anadir
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: anadir, titulo: "Añade su foto" }
+    frases:
+      - texto: "En «Fotos», toca «Añadir de la biblioteca» y elige la foto que acabas de generar."
+
+  - id: maestra
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: maestra, titulo: "La foto maestra" }
+    frases:
+      - texto: "La primera es la maestra: el plano general con la luz de referencia, la única que se envía al generar."
+      - texto: "Si añades más, pueden ser un contraplano, un detalle o una zona concreta."
+
+  - id: procedencia
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: procedencia, titulo: "¿De dónde son las fotos?" }
+    frases:
+      - texto: "Sin declaración no se genera con el lugar. Primero, di de dónde salen las fotos: aquí, «Las he generado aquí»."
+
+  - id: sitio
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: sitio, titulo: "Tipo de sitio y gente" }
+    frases:
+      - texto: "Indica si es un exterior o un interior, y si sale gente. Con gente reconocible no se puede usar."
+
+  - id: uso
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: uso, titulo: "Personal o comercial" }
+    frases:
+      - texto: "Elige el uso: personal, para tus redes, o comercial, en un anuncio o para una marca."
+
+  - id: declarar
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: declarar, titulo: "Declara" }
+    frases:
+      - texto: "Confirma que no sale ningún menor y toca «Declarar». Tu declaración se guarda con su fecha."
+
+  - id: listo
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: listo, titulo: "Lugar listo" }
+    frases:
+      - texto: "Terraza Mirto ya está en tus lugares, lista para tus escenas."
+
+  - id: cierre
+    pieza: logo
+    parametros: { lema: "Crea tu primer lugar", url: "docs.escenara.com", fondo: claro }
+    transicion: fundido
+    frases:
+      - texto: "Guía completa en docs.escenara.com. ¡Crea tu primer lugar!"
+        hablado: "Guía completa en la documentación de Escenara. ¡Crea tu primer lugar!"

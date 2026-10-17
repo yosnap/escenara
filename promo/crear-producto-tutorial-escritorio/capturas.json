@@ -1,0 +1,455 @@
+{
+  "capturas": [
+    {
+      "id": "foto-envase",
+      "ruta": "/crear",
+      "viewport": {
+        "ancho": 1600,
+        "alto": 856
+      },
+      "ocultar": [
+        "nextjs-portal"
+      ],
+      "tramos": [
+        {
+          "id": "origen",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "button:has-text('Siguiente: Origen')"
+            },
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Siguiente: Origen')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Paso 2: ¿De dónde sale el clip?']"
+            },
+            {
+              "accion": "elegir",
+              "titulo": "¿De dónde sale?",
+              "opciones": "section[aria-label='Paso 2: ¿De dónde sale el clip?'] label",
+              "selector": "section[aria-label='Paso 2: ¿De dónde sale el clip?'] label:has-text('Crear un fotograma nuevo')",
+              "etiquetas": [
+                "Crear un fotograma nuevo",
+                "Usar una imagen que ya tengo"
+              ]
+            },
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Siguiente: Quién')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Paso 3: Elige a quién generas']"
+            }
+          ]
+        },
+        {
+          "id": "quien",
+          "acciones": [
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Sin personaje')"
+            },
+            {
+              "accion": "clic",
+              "selector": "label:has-text('Crear solo desde texto')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 3: Elige a quién generas'] [role=combobox]"
+            },
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Siguiente: Escena')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Paso 4: Describe la escena'] textarea"
+            }
+          ]
+        },
+        {
+          "id": "escena",
+          "acciones": [
+            {
+              "accion": "escribir",
+              "selector": "section[aria-label='Paso 4: Describe la escena'] textarea",
+              "texto": "Foto de producto de una botella reutilizable de acero mate verde salvia con tapón de bambú, de pie sobre una mesa blanca, fondo limpio y luz suave de estudio. Sin texto ni logotipos."
+            },
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Siguiente: Coste')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Coste estimado']",
+              "indicador": false
+            }
+          ]
+        },
+        {
+          "id": "coste",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Coste estimado']"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "label:has-text('Lo he leído y quiero generar igualmente')",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "label:has-text('Lo he leído y quiero generar igualmente')",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "label:has-text('Tengo derecho a usar esta imagen')"
+            },
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Generar fotograma')"
+            },
+            {
+              "accion": "esperar",
+              "selector": ":text('Fotograma listo')",
+              "espera": 600000
+            }
+          ]
+        },
+        {
+          "id": "resultado",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": ":text('Fotograma listo')"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "foto-tapon",
+      "ruta": "/crear",
+      "viewport": {
+        "ancho": 1600,
+        "alto": 856
+      },
+      "ocultar": [
+        "nextjs-portal"
+      ],
+      "tramos": [
+        {
+          "id": "tapon-referencia",
+          "acciones": [
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Siguiente: Origen')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Paso 2: ¿De dónde sale el clip?']"
+            },
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Siguiente: Quién')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Paso 3: Elige a quién generas']"
+            },
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Sin personaje')"
+            },
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Paso 3: Elige a quién generas'] button:has-text('Elegir de la biblioteca')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "[role=dialog] button[aria-label^='Seleccionar'] >> nth=0",
+              "espera": 30000,
+              "indicador": false
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button[aria-label^='Seleccionar'] >> nth=0"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button:has-text('Usar este medio')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "label:has-text('En estas fotos no aparece')",
+              "indicador": false
+            },
+            {
+              "accion": "clic",
+              "selector": "label:has-text('En estas fotos no aparece')"
+            },
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Siguiente: Escena')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Paso 4: Describe la escena'] textarea"
+            }
+          ]
+        },
+        {
+          "id": "tapon-escena",
+          "acciones": [
+            {
+              "accion": "escribir",
+              "selector": "section[aria-label='Paso 4: Describe la escena'] textarea",
+              "texto": "La misma botella de la imagen, en primer plano del tapón de bambú, sobre la misma mesa blanca y con la misma luz. Sin texto ni logotipos."
+            },
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Siguiente: Coste')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Coste estimado']",
+              "indicador": false
+            }
+          ]
+        },
+        {
+          "id": "tapon-coste",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Coste estimado']"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "label:has-text('Lo he leído y quiero generar igualmente')",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "label:has-text('Lo he leído y quiero generar igualmente')",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "label:has-text('Tengo derecho a usar esta imagen')"
+            },
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Generar fotograma')"
+            },
+            {
+              "accion": "esperar",
+              "selector": ":text('Fotograma listo')",
+              "espera": 600000
+            }
+          ]
+        },
+        {
+          "id": "tapon-resultado",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": ":text('Fotograma listo')"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "producto",
+      "ruta": "/productos",
+      "viewport": {
+        "ancho": 1600,
+        "alto": 856
+      },
+      "ocultar": [
+        "nextjs-portal"
+      ],
+      "tramos": [
+        {
+          "id": "nuevo",
+          "acciones": [
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Crear el primero')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "[role=dialog] input[placeholder='Crema de noche Aurora']"
+            }
+          ]
+        },
+        {
+          "id": "datos",
+          "acciones": [
+            {
+              "accion": "escribir",
+              "selector": "[role=dialog] input[placeholder='Crema de noche Aurora']",
+              "texto": "Botella Ondina"
+            },
+            {
+              "accion": "escribir",
+              "selector": "[role=dialog] textarea",
+              "texto": "Botella reutilizable de acero mate verde salvia, con tapón de bambú. Sin texto ni logotipos."
+            }
+          ]
+        },
+        {
+          "id": "tipo",
+          "acciones": [
+            {
+              "accion": "elegir",
+              "titulo": "Tipo",
+              "abrir": "[role=dialog] [role=combobox]",
+              "opciones": "[role=option]:visible",
+              "selector": "[role=option]:visible:has-text('Físico')",
+              "etiquetas": [
+                "Físico",
+                "Digital (app o pantalla)"
+              ]
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] label:has-text('En las fotos se ve una marca')"
+            }
+          ]
+        },
+        {
+          "id": "crear",
+          "acciones": [
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button:has-text('Crear producto')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "h2:text-is('Fotos de referencia')",
+              "espera": 60000,
+              "indicador": false
+            }
+          ]
+        },
+        {
+          "id": "anadir",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section:has(h2:text-is('Fotos de referencia')) button:has-text('Añadir de la biblioteca')"
+            },
+            {
+              "accion": "clic",
+              "selector": "section:has(h2:text-is('Fotos de referencia')) button:has-text('Añadir de la biblioteca')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "[role=dialog] button[aria-label^='Seleccionar'] >> nth=1",
+              "espera": 30000,
+              "indicador": false
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button[aria-label^='Seleccionar'] >> nth=1"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button[aria-label^='Seleccionar'] >> nth=0"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button:has-text('Usar selección')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section:has(h2:text-is('Fotos de referencia')) li >> nth=1",
+              "espera": 30000,
+              "indicador": false
+            }
+          ]
+        },
+        {
+          "id": "papeles",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section:has(h2:text-is('Fotos de referencia')) li >> nth=0 >> [role=combobox]"
+            },
+            {
+              "accion": "elegir",
+              "titulo": "Para qué sirve",
+              "abrir": "section:has(h2:text-is('Fotos de referencia')) li >> nth=0 >> [role=combobox]",
+              "opciones": "[role=option]:visible",
+              "selector": "[role=option]:visible:has-text('El envase entero')",
+              "etiquetas": [
+                "Frontal con la etiqueta",
+                "El envase entero",
+                "Detalle de la tapa o el mecanismo",
+                "El producto solo"
+              ]
+            },
+            {
+              "accion": "esperar",
+              "selector": "section:has(h2:text-is('Fotos de referencia')) li >> nth=0 >> [role=combobox]:has-text('El envase entero')",
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section:has(h2:text-is('Fotos de referencia')) li >> nth=1 >> [role=combobox]"
+            },
+            {
+              "accion": "elegir",
+              "titulo": "Para qué sirve",
+              "abrir": "section:has(h2:text-is('Fotos de referencia')) li >> nth=1 >> [role=combobox]",
+              "opciones": "[role=option]:visible",
+              "selector": "[role=option]:visible:has-text('Detalle de la tapa')",
+              "etiquetas": [
+                "Frontal con la etiqueta",
+                "El envase entero",
+                "Detalle de la tapa o el mecanismo",
+                "El producto solo"
+              ]
+            },
+            {
+              "accion": "esperar",
+              "selector": "section:has(h2:text-is('Fotos de referencia')) li >> nth=1 >> [role=combobox]:has-text('Detalle de la tapa')",
+              "indicador": false
+            }
+          ]
+        },
+        {
+          "id": "listo",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "nav[aria-label='Aplicación'] a[href='/productos']"
+            },
+            {
+              "accion": "clic",
+              "selector": "nav[aria-label='Aplicación'] a[href='/productos']"
+            },
+            {
+              "accion": "esperar",
+              "selector": "main a:has-text('Botella Ondina')",
+              "espera": 30000,
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": "main a:has-text('Botella Ondina')"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

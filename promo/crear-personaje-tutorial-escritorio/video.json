@@ -122,7 +122,10 @@
       "localhost:3021": "escenara.com"
     },
     "fecha": "2026-10-16T10:00:00",
-    "zonaHoraria": "Europe/Madrid"
+    "zonaHoraria": "Europe/Madrid",
+    "almacenamientoLocal": {
+      "escenara-aviso-cookies-v1": "4102444800000"
+    }
   },
   "voz": {
     "proveedor": "ninguna"
