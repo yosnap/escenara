@@ -737,6 +737,6 @@ describe.skipIf(!hayBaseDeDatos)("personajes y consentimiento", () => {
       undefined,
     );
     expect(segundo.status).toBe(409);
-    expect((await segundo.json()).error).toContain("personaje con ese nombre");
+    expect((await segundo.json()).error).toContain("no pueden llamarse igual");
   });
 });
