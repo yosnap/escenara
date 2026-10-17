@@ -141,7 +141,10 @@ test("con la descripción corta, el paso lo dice y deja completarla y generar si
 
 test("si no se puede guardar la descripción, se ve la causa y no se abre el coste", async () => {
   peticion.mockImplementation((async () =>
-    Response.json({ error: "La descripción tiene palabras no permitidas." }, { status: 400 })) as typeof fetch);
+    Response.json(
+      { error: "La descripción tiene palabras no permitidas." },
+      { status: 400 },
+    )) as unknown as typeof fetch);
   await pantalla.pintar(<FichaLugar inicial={lugar({ descripcion: "Patio" })} primeraImagen />);
   await pantalla.escribir("Descripción para generarla", DESCRIPCION);
   await pantalla.pulsar("Guardar y generar");

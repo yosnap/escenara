@@ -66,7 +66,9 @@ export function montarPantalla(url: string): PantallaDePrueba {
     },
     escribir: async (etiqueta, valor) => {
       const label = [...ventana.document.querySelectorAll("label")].find((l) => l.textContent?.includes(etiqueta));
-      const control = label?.getAttribute("for") ? ventana.document.getElementById(label.getAttribute("for") ?? "") : null;
+      const control = label?.getAttribute("for")
+        ? ventana.document.getElementById(label.getAttribute("for") ?? "")
+        : null;
       expect(control, `no hay ningún campo «${etiqueta}»`).not.toBeNull();
       const elemento = control as unknown as HTMLInputElement | HTMLTextAreaElement;
       // El setter del prototipo, no el de la instancia: así React ve un valor nuevo, como al teclear.

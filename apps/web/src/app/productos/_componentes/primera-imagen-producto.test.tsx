@@ -2,8 +2,8 @@ import { afterEach, beforeEach, expect, mock, spyOn, test } from "bun:test";
 import { type ComponentType, lazy, Suspense } from "react";
 import type { DialogoSelectorMediosProps } from "@/components/ui/media/dialogo-selector-medios";
 import type { Medio } from "@/lib/media/tipos";
-import type { ProductoVista } from "@/lib/productos";
 import { DialogoDePrueba, montarPantalla, type PantallaDePrueba } from "@/lib/pantalla-de-prueba";
+import type { ProductoVista } from "@/lib/productos";
 
 /**
  * **La primera imagen de un producto**: tras el alta se llega al paso «Su primera imagen» con sus dos maneras a la
