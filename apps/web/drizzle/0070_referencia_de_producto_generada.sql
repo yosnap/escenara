@@ -1,0 +1,1 @@
+ALTER TABLE "product_references" ADD COLUMN "generated" boolean DEFAULT false NOT NULL;

@@ -30,6 +30,7 @@ const foto = (id: string, papel: PapelReferencia, orden: number): ReferenciaProd
   papel,
   orden,
   medio: medio(id),
+  generada: false,
 });
 
 const FOTOS = [

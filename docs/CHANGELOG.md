@@ -2,6 +2,50 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.52.8] · 2026-10-17
+
+### Añadido
+
+- En la ficha de un producto, «Generar una imagen» crea sus imágenes de referencia con IA desde la
+  descripción guardada. Eliges qué vista: la frontal con la etiqueta, el envase entero, el detalle de
+  la tapa o el producto solo. Una captura de pantalla no se genera: se sube la de verdad. Ves el
+  coste antes de confirmar, y la imagen entra en el producto con esa vista y marcada como generada.
+- Un lugar real también genera su imagen dentro de «Lugares»: una foto realista del sitio, vacía,
+  desde su descripción. Hasta ahora solo los lugares animados tenían «Generar un candidato».
+- Las dos pasan por el mismo camino que un fotograma de «Crear»: estimación con su fecha, aviso de
+  gasto, controles previos, casilla de derechos, cola, reserva y clave de idempotencia. Sin
+  descripción guardada, con una vista que no se genera o en un producto sin sitio, no se cobra nada y
+  se dice por qué. Las vistas que se están generando cuentan contra el tope de 8 fotos, y si al
+  terminar el producto ya está lleno o se ha borrado, la imagen se queda en tu biblioteca y el trabajo
+  lo dice. La vista de un producto guarda tu declaración de la marca con su fecha.
+
+### Cambiado
+
+- Para usar las fotos de un lugar ya **no se pide el permiso de quien gestiona el sitio**, ni en un
+  interior ni en un exterior, ni con fotos reales ni generadas. En su lugar declaras una sola cosa:
+  «Puedo usar estas imágenes: no son de un sitio donde esté prohibido fotografiar o grabar». Las
+  declaraciones anteriores siguen valiendo y los lugares ya declarados no cambian.
+
+### Corregido
+
+- Al llegar a «Revisa el coste» lo que falta y puedes hacer ahí mismo (la casilla de derechos, el
+  aviso de gasto) se ve como paso **pendiente**, en gris neutro, y no como un «Bloqueo» rojo. El rojo
+  sale si intentas seguir sin hacerlo, y desde el principio si algo lo impide de verdad: un control
+  bloqueado sin salida o un saldo que no llega. Lo mismo en las imágenes que se generan desde la ficha
+  de un lugar o de un producto.
+- Las fotos que añades a un producto ya no entran todas como «Frontal con la etiqueta». Antes de
+  añadirlas eliges el papel de cada una, que parte del neutro del tipo: el envase entero en un
+  producto físico y la captura en uno digital. Si el alta falla, el diálogo sigue abierto con la causa.
+
+### Actualización
+
+- Migración `0070_referencia_de_producto_generada` (columna `product_references.generated`) y
+  migración `0071_declaracion_lugar_puedo_usar`: quita la restricción del permiso del sitio en un
+  interior y añade `place_declarations.may_use_images`, obligatoria solo desde la versión del texto
+  `2026-10-17.2`, así que las declaraciones existentes siguen valiendo sin tocarlas. Hay que aplicar
+  las migraciones y reiniciar la web y el worker, que es quien adjunta la imagen al producto.
+- La prueba archivada de la declaración de un lugar incluye «puedo usar estas imágenes».
+
 ## [0.52.7] · 2026-10-17
 
 ### Corregido

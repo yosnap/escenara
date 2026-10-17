@@ -491,6 +491,20 @@
       "when": 1791149817855,
       "tag": "0069_proveedor_apimart",
       "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1792204706763,
+      "tag": "0070_referencia_de_producto_generada",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1792206428365,
+      "tag": "0071_declaracion_lugar_puedo_usar",
+      "breakpoints": true
     }
   ]
 }

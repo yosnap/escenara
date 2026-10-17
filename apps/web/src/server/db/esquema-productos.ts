@@ -68,6 +68,11 @@ export const productReferences = pgTable(
       .notNull()
       .references(() => media.id, { onDelete: "cascade" }),
     kind: papelReferenciaProducto("kind").notNull(),
+    /**
+     * `true` si la imagen se generó con IA desde la ficha del producto (con su coste confirmado, por el camino de
+     * los fotogramas); `false` en una foto de la biblioteca. Lo pone el cierre del trabajo, nunca el navegador.
+     */
+    generated: boolean("generated").notNull().default(false),
     sortOrder: integer("sort_order").notNull().default(1),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },

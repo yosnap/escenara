@@ -183,9 +183,13 @@ export const firmaDeAvisos = (confirmados: readonly string[]): string => [...con
  * Motivos de los frenos que impiden generar, en lenguaje llano y con su acción. Es lo que se le pasa al panel
  * de confirmación como lista de bloqueos.
  */
+/** Textos de los frenos sin salida, tal como salen en `bloqueosDeControles`: son las causas reales. */
+export const textosSinSalida = (evaluacion: EvaluacionVista): string[] =>
+  frenosSinSalida(evaluacion).map((c) => `${c.motivo} ${c.accion}`);
+
 export function bloqueosDeControles(evaluacion: EvaluacionVista, confirmados: readonly string[]): string[] {
   return [
-    ...frenosSinSalida(evaluacion).map((c) => `${c.motivo} ${c.accion}`),
+    ...textosSinSalida(evaluacion),
     ...avisosPorConfirmar(evaluacion, confirmados).map((c) => `Falta confirmar el aviso: ${c.motivo}`),
   ];
 }

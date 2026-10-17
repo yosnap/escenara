@@ -67,7 +67,7 @@ export function BloqueConfirmacion({
         estimacion={estimacion}
         etiqueta={etiqueta}
         firma={`${firma}|${controles.firma}`}
-        bloqueos={[...bloqueos, ...requisitosDeControles(controles.bloqueos, envio, paso)]}
+        bloqueos={[...bloqueos, ...requisitosDeControles(controles.bloqueos, envio, paso, controles.sinSalida)]}
         avisosConfirmados={controles.confirmados}
         conProducto={conProducto}
         envio={envio}

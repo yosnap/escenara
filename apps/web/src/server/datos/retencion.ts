@@ -66,7 +66,8 @@ export async function archivarPruebasDeCuenta(tx: Ejecutor, usuarioId: string): 
     ), lugares as (
       insert into consent_evidence (kind, scope, text_version, declared, declared_at, revoked_at)
       select 'lugar', d.space::text || ':' || d.scope::text || ':' || d.photo_origin::text, d.text_version,
-             jsonb_build_object('permisoDelSitio', d.place_permission, 'sinMenores', d.no_minors_declared,
+             jsonb_build_object('puedoUsarImagenes', d.may_use_images, 'permisoDelSitio', d.place_permission,
+                                'sinMenores', d.no_minors_declared,
                                 'marcasVisibles', d.brands_visible, 'personas', d.people_visible::text <> 'ninguna'),
              d.declared_at, d.revoked_at
       from place_declarations d

@@ -77,19 +77,37 @@ export const ALCANCES_LUGAR = ["personal", "comercial"] as const;
 export type AlcanceLugar = (typeof ALCANCES_LUGAR)[number];
 export const esAlcanceLugar = (v: unknown): v is AlcanceLugar => ALCANCES_LUGAR.includes(v as AlcanceLugar);
 
+/** Descripción mínima para generar una imagen del lugar: con menos, el modelo inventaría el sitio. */
+export const DESCRIPCION_MINIMA_PARA_GENERAR = 12;
+
 /** Versión del texto de la declaración que se guarda con ella. Cambiar el texto obliga a subir la versión. */
-export const VERSION_TEXTO_DECLARACION_LUGAR = "2026-09-30.2";
+export const VERSION_TEXTO_DECLARACION_LUGAR = "2026-10-17.2";
 
 /** Mensajes con causa y acción, compartidos por el servidor (que rechaza) y la interfaz (que avisa antes). */
 export const RECHAZO_MENORES =
   "No se puede usar un lugar si en sus fotos sale algún menor, ni aunque sea al fondo. Sube otra foto sin menores.";
 export const RECHAZO_RECONOCIBLES =
   "Con gente reconocible en la foto no se puede generar: retírala con «Retirar personas» (edición de imagen, con su coste confirmado antes) o sube otra foto. No se pixelan caras: el generador copiaría el pixelado.";
-export const AVISO_INTERIOR =
-  "Un interior privado o con restricciones (una tienda, un bar, un museo) exige que declares que tienes permiso de quien lo gestiona.";
+/**
+ * **Lo único que se declara sobre el sitio.** No se pide el permiso de quien lo gestiona (ni en un interior ni en un
+ * exterior, ni con fotos reales ni generadas): basta con que el usuario declare que puede usar estas imágenes porque
+ * no son de un sitio donde esté prohibido fotografiar.
+ */
+export const DECLARACION_PUEDO_USAR =
+  "Puedo usar estas imágenes: no son de un sitio donde esté prohibido fotografiar o grabar";
+export const AYUDA_PUEDO_USAR =
+  "Por ejemplo, un museo o un local con un cartel que lo prohíba, o una instalación militar. Si las has generado aquí, el sitio es inventado y también vale.";
+export const RECHAZO_SIN_PUEDO_USAR =
+  "Para declarar, confirma que puedes usar estas imágenes: que no son de un sitio donde esté prohibido fotografiar. Si lo es, usa otras fotos o genera el lugar aquí.";
+/**
+ * Primera versión del texto con «Puedo usar estas imágenes». Las declaraciones anteriores (con el permiso del sitio de
+ * entonces) siguen valiendo; la base de datos exige la nueva casilla solo desde esta versión.
+ */
+export const VERSION_DESDE_PUEDO_USAR = "2026-10-17.2";
+
 /** Lo que se lee en la pantalla donde se declara, antes de declarar. */
 export const RESPONSABILIDAD_DECLARACION =
-  "Lo que declaras aquí es responsabilidad tuya: que las fotos son tuyas o tienes permiso, quién sale en ellas y que no aparece ningún menor. Escenara no revisa las fotos ni comprueba si sale gente; guarda tu declaración con su fecha.";
+  "Lo que declaras aquí es responsabilidad tuya: que las fotos son tuyas o tienes permiso, que puedes usarlas, quién sale en ellas y que no aparece ningún menor. Escenara no revisa las fotos ni comprueba si sale gente; guarda tu declaración con su fecha.";
 export const SUGERENCIA_FAMOSO =
   "¿Es un sitio famoso? Escribe su nombre en el texto de la escena o en la localización y no hace falta crear un lugar: el modelo ya lo conoce.";
 
@@ -128,7 +146,8 @@ export interface DeclaracionLugarVista {
   origenFotos: OrigenFotosLugar;
   alcance: AlcanceLugar;
   espacio: EspacioLugar;
-  permisoDelLugar: boolean;
+  /** «Puedo usar estas imágenes». `false` solo en declaraciones anteriores a esa casilla, que siguen valiendo. */
+  puedoUsarImagenes: boolean;
   personasVisibles: PersonasVisibles;
   marcasVisibles: boolean;
   declaradaEn: string;

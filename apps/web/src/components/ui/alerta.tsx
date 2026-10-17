@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertOctagon, ArrowDown, ArrowRight, Ban, CheckCircle2, Info, TriangleAlert, X } from "lucide-react";
+import { AlertOctagon, ArrowDown, ArrowRight, Ban, CheckCircle2, Info, ListTodo, TriangleAlert, X } from "lucide-react";
 import { type ReactNode, useId, useState } from "react";
 import { claveDeProblema, type Problema, primeroPendiente, sinRepetidos } from "@/lib/llevar-al-problema";
 import { Boton } from "./button";
@@ -11,7 +11,10 @@ import { buscarProblema, CLASES_FLECHA, CLASES_FLECHA_ANIMADA, llevarAlProblema 
 /**
  * **Alerta**: el componente único para todo lo que la plataforma tiene que decir de un problema o de un resultado.
  *
- * - **bloqueo**: algo impide seguir (falta una casilla, un paso está cerrado). Persiste hasta que se resuelve.
+ * - **pendiente**: lo que aún falta por hacer antes de actuar (marcar una casilla, aceptar el aviso de gasto). No es un
+ *   problema todavía: tono neutro (gris, distinto del azul de «info»), sin rojo. Pasa a **bloqueo** cuando se intenta seguir sin hacerlo.
+ * - **bloqueo**: algo impide seguir tras intentarlo, o por una causa real (sin saldo, un paso cerrado). Persiste
+ *   hasta que se resuelve.
  * - **error**: algo ha fallado (una petición, una generación). Persiste hasta que se resuelve o se reintenta.
  * - **aviso**: pide atención sin bloquear (gasto alto, «Necesita ajustes», un riesgo). Ámbar con triángulo.
  * - **info**: información sin más (una nota, una guía, algo que decide otro, un trabajo en marcha). Azul de marca.
@@ -30,7 +33,7 @@ import { buscarProblema, CLASES_FLECHA, CLASES_FLECHA_ANIMADA, llevarAlProblema 
  * lista de trabajos fallidos no llena de «regiones» la navegación del lector).
  */
 
-export type TipoAlerta = "bloqueo" | "error" | "aviso" | "info" | "hecho";
+export type TipoAlerta = "pendiente" | "bloqueo" | "error" | "aviso" | "info" | "hecho";
 export type AnuncioAlerta = "alerta" | "estado" | "ninguno";
 
 interface EstiloAlerta {
@@ -43,6 +46,14 @@ interface EstiloAlerta {
 }
 
 export const ESTILO_ALERTA: Record<TipoAlerta, EstiloAlerta> = {
+  pendiente: {
+    etiqueta: "Pendiente",
+    icono: <ListTodo />,
+    borde: "border-borde",
+    texto: "text-texto-suave",
+    circulo: "bg-texto-suave/12",
+    anuncio: "estado",
+  },
   bloqueo: {
     etiqueta: "Bloqueo",
     icono: <Ban />,

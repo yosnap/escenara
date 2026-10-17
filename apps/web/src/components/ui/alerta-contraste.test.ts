@@ -15,7 +15,14 @@ const raiz = path.resolve(import.meta.dir, "../../../../..");
 const marca = (await Bun.file(path.join(raiz, "docs/branding/escenara.brand.json")).json()) as Marca;
 
 /** Nombre del color en las clases → nombre del token de la marca. */
-const TOKEN: Record<string, string> = { error: "danger", aviso: "warning", correcto: "success", acento: "primary" };
+const TOKEN: Record<string, string> = {
+  error: "danger",
+  aviso: "warning",
+  correcto: "success",
+  acento: "primary",
+  "texto-suave": "textMuted",
+  borde: "border",
+};
 
 const rgb = (hex: string) => [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
 const hex = (c: number[]) => `#${c.map((v) => Math.round(v).toString(16).padStart(2, "0")).join("")}`;
@@ -27,7 +34,7 @@ const mezcla = (color: string, alfa: number, fondo: string) => {
 
 /** Color y opacidad de una clase como `border-aviso/80` o `bg-error/12`. */
 function colorDe(clase: string, prefijo: string, tema: Record<string, unknown>): { color: string; alfa: number } {
-  const m = clase.match(new RegExp(`\\b${prefijo}-(\\w+)(?:/(\\d+))?`));
+  const m = clase.match(new RegExp(`\\b${prefijo}-([a-z]+(?:-[a-z]+)*)(?:/(\\d+))?`));
   const token = m ? TOKEN[m[1] as string] : undefined;
   if (!m || !token) throw new Error(`Clase sin color conocido: ${clase}`);
   return { color: tema[token] as string, alfa: m[2] ? Number(m[2]) / 100 : 1 };
