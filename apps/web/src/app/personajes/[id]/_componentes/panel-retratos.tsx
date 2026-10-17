@@ -285,7 +285,13 @@ export function PanelRetratos({
         </div>
       )}
 
-      {estimacion === null ? (
+      {estimacion === null && huecos !== null && huecos.libres === 0 ? (
+        // Cola llena: no se ofrece ningún retrato, ni siquiera uno, y se dice por qué y cuándo se podrá.
+        <Aviso tono="aviso">
+          Ahora no cabe ningún retrato más: {motivoSinHuecos(huecos).toLowerCase()} Cuando termine alguno, pulsa «Buscar
+          retratos terminados» y podrás pedir más.
+        </Aviso>
+      ) : estimacion === null ? (
         <div className="flex flex-col gap-3">
           <Selector
             etiqueta="Retratos que quieres generar"

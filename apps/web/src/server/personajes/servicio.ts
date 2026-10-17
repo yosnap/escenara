@@ -165,7 +165,7 @@ async function exigirEdadParaSerPersona(personajeId: string): Promise<void> {
   if (sinEdad) {
     throw new ErrorPersonaje(
       409,
-      "Este personaje se registró como animal, sin declaración de mayoría de edad. Para pasarlo a persona, revoca su consentimiento y registra uno nuevo declarando que la persona de las fotos es mayor de edad. No se ha cambiado nada.",
+      "Este personaje se registró como animal y su consentimiento no lleva declaración de mayoría de edad. Para pasarlo a persona, en este orden: revoca su consentimiento, cambia su tipo a persona y registra un consentimiento nuevo como persona, declarando que es mayor de edad. No se ha cambiado nada.",
     );
   }
 }

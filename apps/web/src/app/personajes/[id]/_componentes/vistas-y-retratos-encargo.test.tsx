@@ -241,8 +241,9 @@ test("tras encargar bien los retratos no aparece ningún bloqueo: el encargo se 
   await pulsar("Generar 3 retratos");
   const texto = ventana.document.body.textContent ?? "";
   expect(texto).toContain("Se han encargado 3 de 3 retratos");
-  // La cola está llena justo porque se acaba de encargar: no es un problema que haya que resolver ahora.
-  expect(texto).not.toContain("trabajos en marcha y esta instalación permite");
+  // La cola está llena justo porque se acaba de encargar: no es un bloqueo que haya que resolver, solo se informa.
+  expect(ventana.document.querySelector('[data-alerta="bloqueo"]')).toBeNull();
+  expect(texto).toContain("Ahora no cabe ningún retrato más");
   expect(botones()).not.toContain("Generar 1 retrato");
 });
 
@@ -258,7 +259,7 @@ test("el número de retratos parte de los huecos libres de la cola, también al 
     ),
   );
   expect(botones()).toContain("Ver lo que cuesta generar 2 retratos");
-  // Con la cola llena tras un encargo (al recargar o al volver a la pestaña) no se ofrecen cuatro.
+  // Con la cola llena tras un encargo (al recargar o al volver a la pestaña) no se ofrecen cuatro, ni uno.
   await act(async () =>
     raiz.render(
       <PanelRetratos
@@ -270,7 +271,9 @@ test("el número de retratos parte de los huecos libres de la cola, también al 
       />,
     ),
   );
-  expect(botones()).toContain("Ver lo que cuesta generar 1 retrato");
+  // No se ofrece ningún retrato: se dice por qué y cuándo se podrá.
+  expect(botones().some((b) => b.startsWith("Ver lo que cuesta"))).toBe(false);
+  expect(ventana.document.body.textContent).toContain("3 trabajos en marcha y esta instalación permite 3");
 });
 
 test("tras encargar, el número elegido se queda en lo que cabe y no vuelve a cuatro", async () => {

@@ -24,6 +24,9 @@ const rutaConsentimiento = await import("@/app/api/personajes/[id]/consentimient
 const rutaInventados = await import("@/app/api/personajes/inventados/route");
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
 const { aplicarMigraciones } = await import("../db/migrar");
+const { db } = await import("../db/cliente");
+const { consentEvidence } = await import("../db/esquema");
+const { archivarPruebasDeCuenta } = await import("../datos/retencion");
 
 type Sesion = Awaited<ReturnType<typeof crearSesionDePrueba>>;
 const ctx = (id: string) => ({ params: Promise.resolve({ id }) });
@@ -84,7 +87,27 @@ describe.skipIf(!hayBaseDeDatos)("alta de personajes y consentimiento", () => {
       ctx(gato.id),
     );
     expect(cambio.status).toBe(409);
-    expect(((await cambio.json()) as { error: string }).error).toContain("registra uno nuevo declarando");
+    expect(((await cambio.json()) as { error: string }).error).toContain(
+      "revoca su consentimiento, cambia su tipo a persona y registra un consentimiento nuevo como persona",
+    );
+
+    // Los pasos que da el mensaje funcionan, en ese orden.
+    const revocado = await rutaConsentimiento.DELETE(
+      pedir(`/api/personajes/${gato.id}/consentimiento`, "DELETE", { motivo: "Es una persona" }),
+      ctx(gato.id),
+    );
+    expect(revocado.status).toBe(200);
+    const persona = await rutaPersonaje.PATCH(
+      pedir(`/api/personajes/${gato.id}`, "PATCH", { tipo: "persona" }),
+      ctx(gato.id),
+    );
+    expect(persona.status).toBe(200);
+    expect(((await persona.json()) as PersonajeVista).puedeGenerar).toBe(false);
+    const declarado = await registrar(gato.id, { titular: "yo", mayoriaDeEdad: true });
+    expect(declarado.status).toBe(200);
+    const final = (await declarado.json()) as PersonajeVista;
+    expect(final.tipo).toBe("persona");
+    expect(final.consentimiento?.mayoriaDeEdad).toBe(true);
   });
 
   test("un inventado recién creado dice que le faltan retratos y vistas, no fotos", async () => {
@@ -122,5 +145,21 @@ describe.skipIf(!hayBaseDeDatos)("alta de personajes y consentimiento", () => {
     const lista = await rutaPersonajes.GET(pedir("/api/personajes", "GET"), undefined);
     const personajes = (await lista.json()) as PersonajeVista[];
     expect(personajes.filter((p) => p.nombre === "Brisa")).toHaveLength(1);
+  });
+
+  test("la prueba archivada de un animal no dice que se declarara menor de edad", async () => {
+    const perro = await nuevo("Toby", "animal");
+    expect((await registrar(perro.id, { titular: "animal_propio", mayoriaDeEdad: false })).status).toBe(200);
+    const persona = await nuevo("Con edad declarada", "persona");
+    expect((await registrar(persona.id, { titular: "yo", mayoriaDeEdad: true })).status).toBe(200);
+    const antes = (await db().select({ id: consentEvidence.id }).from(consentEvidence)).map((f) => f.id);
+    await archivarPruebasDeCuenta(db(), ana.id);
+    const nuevas = (await db().select().from(consentEvidence)).filter((f) => !antes.includes(f.id));
+    const deAnimal = nuevas.filter((f) => f.scope.startsWith("animal_propio:"));
+    expect(deAnimal.length).toBeGreaterThan(0);
+    // En un animal no se aplica: no se escribe `false`, que se leería como «declarado menor».
+    for (const prueba of deAnimal) expect(prueba.declared).not.toHaveProperty("mayorDeEdad");
+    const dePersona = nuevas.filter((f) => f.scope.startsWith("yo:"));
+    expect(dePersona.some((f) => f.declared.mayorDeEdad === true)).toBe(true);
   });
 });
