@@ -2,6 +2,29 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.52.7] · 2026-10-17
+
+### Corregido
+
+- Dar de alta una mascota ya no obliga a marcar «Declaro que es mayor de edad»: esa declaración es
+  sobre la persona de las fotos y solo se pide a personas. El servidor aplica la misma regla, a una
+  persona se le sigue exigiendo aunque elija «Un animal mío», y un animal registrado sin ella no se
+  puede pasar a persona sin registrar antes un consentimiento nuevo.
+- Después de encargar bien los retratos ya no aparece un «Bloqueo» en rojo: el encargo se cierra y
+  solo se ve el aviso de lo encargado. El bloqueo por la cola llena sale solo si intentas preparar
+  otro encargo sin sitio.
+- El número de retratos que quieres generar parte de los huecos libres de tu cola, también al
+  recargar la ficha o al volver a ella, y se pone al día al buscar los retratos terminados. Ya no
+  vuelve a 4 después de encargar.
+- Un personaje inventado se presenta como «Persona inventada» o «Animal inventado», y lo que le falta
+  se cuenta en imágenes entre su retrato elegido y sus vistas generadas, no en fotos de referencia.
+- Crear un personaje (también inventado) o renombrarlo con un nombre que ya usas explica la causa,
+  qué hacer y que no se ha creado ni cambiado nada.
+
+### Actualización
+
+- Sin migraciones nuevas ni cambios de configuración. Reiniciar la web; el worker no cambia.
+
 ## [0.52.6] · 2026-10-16
 
 ### Corregido
