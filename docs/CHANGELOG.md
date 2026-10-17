@@ -9,19 +9,30 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - En «Crear», el producto también se elige en el paso **«Describe la escena»**, con el mismo bloque «El producto»
   del clip. Sus fotos entran como referencia de imagen en el fotograma, igual que las del personaje, así que el
   producto ya sale en la imagen. En el paso del clip aparece elegido con su acción (por ejemplo, «Sostenerlo») y
-  se puede cambiar. El coste del fotograma no cambia: se cobra por imagen.
+  se puede cambiar. El coste del fotograma no cambia: se cobra por imagen. Con el fotograma ya pedido, su producto
+  no se cambia ahí, y si en el clip eliges otro (o lo quitas) un aviso dice que no coincide con el de la imagen.
+- Al crear un producto hay que responder, obligatoriamente, si en las fotos se ve una marca: **Sí** o **No**. Los
+  productos anteriores quedan sin responder (los que tenían marcada la marca siguen con «Sí») y su ficha invita a
+  responderlo.
 
 ### Corregido
 
 - La espera de un clip dice su duración real («Clip de 5 s», «Clip de 10 s»…) en lugar de «Clip de 4 s» siempre.
-- La casilla «Tengo derecho a usar esta marca» solo sale, y solo se exige al generar, cuando el producto se declaró
-  con marca visible. Con un producto sin marca ya no se pide.
+- La casilla «Tengo derecho a usar esta marca» solo sale, y solo se exige al generar, cuando el producto tiene marca
+  o está sin responder. Con un producto declarado sin marca ya no se pide, ni en «Crear» ni en la producción de un
+  proyecto ni en la comparativa A/B, y el trabajo no apunta una declaración que no se hizo. Si el servidor la exige
+  porque la respuesta cambió en otra pestaña, la casilla aparece sin recargar.
 - Tras generar el fotograma, la barra de pasos ya no marca «Coste · Faltan 1» en rojo: lo que falte en una
   confirmación ya hecha no se cuenta como pendiente.
-- Cuando la traducción al inglés falla en la reserva de pago de KIE con un error del proveedor, el registro de
-  gasto ya no apunta créditos que KIE no cobró: esa llamada vuelve sin resultado y sin cobro, y se apunta 0. El
-  error sigue diciendo quién falló y que esa llamada no se ha cobrado. Si la traducción no contesta a tiempo, se
-  sigue apuntando la estimación, porque no se sabe si se cobró.
+- Cuando la traducción al inglés falla en la reserva de pago de KIE con un error 500, 502 o 503 del proveedor, el
+  registro de gasto ya no apunta créditos que KIE no cobró: esa llamada vuelve sin resultado y sin cobro, y se
+  apunta 0. El error sigue diciendo quién falló y que esa llamada no se ha cobrado. Con un 504, un 408, una red
+  caída o si no contesta a tiempo, se sigue apuntando la estimación, porque no se sabe si se cobró.
+
+### Actualización
+
+- Migración `0072`: la respuesta a «¿se ve una marca?» de un producto admite «sin responder». Haz una copia de la
+  base de datos (`bun run db:backup`) antes de `bun run db:migrate`.
 
 ## [0.52.10] · 2026-10-17
 

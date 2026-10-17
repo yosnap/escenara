@@ -327,7 +327,7 @@ Mira [Podcast y dualcast](podcast-y-dualcast.md).
 </details>
 
 <details>
-<summary>Para que … salga con su etiqueta hay que enviarle sus fotos al modelo · … admite N imágenes de referencia · … no admite la foto de … como referencia · … no tiene ninguna foto de referencia que enviar · Has declarado que en … se ve una marca · … es de las acciones que peor salen hoy</summary>
+<summary>Para que … salga con su etiqueta hay que enviarle sus fotos al modelo · … admite N imágenes de referencia · … no admite la foto de … como referencia · … no tiene ninguna foto de referencia que enviar · Has declarado que en … se ve una marca · Todavía no has dicho si en … se ve una marca · … es de las acciones que peor salen hoy</summary>
 
 Son los avisos de una escena con **producto**. Ninguno bloquea y todos se confirman:
 
@@ -341,7 +341,7 @@ Son los avisos de una escena con **producto**. Ninguno bloquea y todos se confir
   tarifa cambia y lo decides tú;
 - **producto sin fotos**: se le pediría al modelo un envase sin marca. Añade al menos la foto frontal con la
   etiqueta;
-- **marca visible**: el filtro del proveedor puede rechazar un logo, y en ese caso no se genera nada y no se te cobra.
+- **marca visible** (o sin responder en la ficha del producto): el filtro del proveedor puede rechazar un logo, y en ese caso no se genera nada y no se te cobra.
   Confirmas que tienes autorización para usar esa marca;
 - **acción poco fiable**: abrir un envase o extender un producto sobre la piel fallan a menudo. Puedes probarla
   igualmente, o elegir una acción más sencilla.
