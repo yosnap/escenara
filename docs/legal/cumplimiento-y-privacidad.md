@@ -93,8 +93,9 @@ personas que no han dado su consentimiento**: gente al fondo de una calle o de u
 calificarlo jurídicamente (la calificación, la base jurídica y el encargo del tratamiento están **pendientes de
 revisión jurídica**):
 
-- **La declaración del lugar es del usuario** y se lo dice la pantalla donde la firma: de dónde son las fotos, si hay
-  permiso del sitio en un interior, si se ve gente y cómo, y que no sale ningún menor. Escenara no revisa las fotos y
+- **La declaración del lugar es del usuario** y se lo dice la pantalla donde la firma: de dónde son las fotos, que puede
+  usarlas porque no son de un sitio donde esté prohibido fotografiar (no se pide el permiso de quien gestiona el sitio,
+  ni en un interior ni en un exterior), si se ve gente y cómo, y que no sale ningún menor. Escenara no revisa las fotos y
   la responsabilidad de lo declarado es de quien declara. Se guarda con su fecha, su cuenta y la versión del texto, y
   no se borra al borrar el lugar.
 - **No se admite gente reconocible** en una foto declarada ni **ningún menor**. No hay detector de caras: la columna
@@ -181,7 +182,8 @@ Lo que se hace, con su motivo, para que la revisión jurídica lo confirme o lo 
 - **Consentimientos y declaraciones de derechos** (consentimiento de un personaje, declaración de un lugar, de una
   canción y de una afirmación sensible del anuncio): se conserva una **prueba mínima y anónima** (`consent_evidence`):
   tipo, alcance, versión del texto aceptado (o su huella SHA-256 cuando lo guardado era el texto entero), casillas
-  declaradas (mayoría de edad, sin menores, permiso del sitio…) y fechas de declaración y revocación. **Sin** nombre
+  declaradas (mayoría de edad, sin menores, «puedo usar estas imágenes» y, en las declaraciones de lugar anteriores
+  al 17/10/2026, el permiso del sitio…) y fechas de declaración y revocación. **Sin** nombre
   de la cuenta, correo, nombres de personas ni de lugares, fotos, documentos ni IP. Motivo: poder demostrar que se
   pidió la declaración y con qué texto, sin conservar datos de nadie. **Alternativa**: borrarlas del todo; es la
   pregunta abierta para la revisión jurídica.

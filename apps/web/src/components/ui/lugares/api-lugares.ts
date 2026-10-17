@@ -51,7 +51,7 @@ export interface DeclaracionPedida {
   origenFotos: string;
   alcance: string;
   espacio: string;
-  permisoDelLugar: boolean;
+  puedoUsarImagenes: boolean;
   personasVisibles: string;
   marcasVisibles: boolean;
   sinMenores: boolean;

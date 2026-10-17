@@ -1,14 +1,13 @@
 import { and, eq, isNull } from "drizzle-orm";
 import {
-  AVISO_INTERIOR,
   esAlcanceLugar,
   esEspacioLugar,
   esOrigenFotosLugar,
   esPersonasVisibles,
-  exigePermisoDelLugar,
   type LugarVista,
   RECHAZO_MENORES,
   RECHAZO_RECONOCIBLES,
+  RECHAZO_SIN_PUEDO_USAR,
   VERSION_TEXTO_DECLARACION_LUGAR,
 } from "@/lib/lugares";
 import { db, type Ejecutor } from "../db/cliente";
@@ -28,15 +27,16 @@ import { ErrorLugar } from "./errores";
  * - **personas reconocibles, no**: se retiran con la edición de imagen o se sube otra foto. No se pixelan caras,
  *   porque el generador copia el pixelado en el fotograma (medido con dinero real);
  * - «retiradas» solo vale si la maestra **es** una foto editada, no la original con la gente;
- * - un **interior real** privado o con restricciones exige declarar el permiso de quien lo gestiona; un lugar con las
- *   imágenes generadas aquí es inventado y no lo necesita (`exigePermisoDelLugar`, la misma regla que la ficha).
+ * - **sin «puedo usar estas imágenes»** (no son de un sitio donde esté prohibido fotografiar), no hay declaración. No
+ *   se pide el permiso de quien gestiona el sitio, ni en un interior ni en un exterior.
  */
 
 export interface DatosDeclaracionLugar {
   origenFotos?: unknown;
   alcance?: unknown;
   espacio?: unknown;
-  permisoDelLugar?: unknown;
+  /** «Puedo usar estas imágenes: no son de un sitio donde esté prohibido fotografiar». Obligatoria. */
+  puedoUsarImagenes?: unknown;
   /** Una de `RESPUESTAS_PERSONAS`: incluye «reconocibles», que se rechaza con su causa. */
   personasVisibles?: unknown;
   marcasVisibles?: unknown;
@@ -60,8 +60,7 @@ export async function declararLugar(actor: Actor, id: unknown, datos: DatosDecla
   if (!esAlcanceLugar(alcance)) throw new ErrorLugar(400, "El uso es personal o comercial: elige uno de los dos.");
   const espacio = datos.espacio ?? "exterior";
   if (!esEspacioLugar(espacio)) throw new ErrorLugar(400, "Dinos si es un exterior o un interior.");
-  const permiso = datos.permisoDelLugar === true;
-  if (exigePermisoDelLugar(espacio, datos.origenFotos) && !permiso) throw new ErrorLugar(400, AVISO_INTERIOR);
+  if (datos.puedoUsarImagenes !== true) throw new ErrorLugar(400, RECHAZO_SIN_PUEDO_USAR);
 
   const referencias = await db()
     .select({ kind: placeReferences.kind, origin: placeReferences.origin })
@@ -88,7 +87,7 @@ export async function declararLugar(actor: Actor, id: unknown, datos: DatosDecla
       photoOrigin: datos.origenFotos as "propias" | "con_permiso" | "generadas",
       scope: alcance,
       space: espacio,
-      placePermission: permiso,
+      mayUseImages: true,
       peopleVisible: datos.personasVisibles as "ninguna" | "no_reconocibles" | "retiradas",
       brandsVisible: datos.marcasVisibles === true,
       noMinorsDeclared: true,

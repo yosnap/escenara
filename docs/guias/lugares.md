@@ -50,7 +50,7 @@ biblioteca**.
 Un lugar **real** también se puede crear sin fotos: en su ficha, **«Generar una imagen»** crea una foto realista del
 sitio, vacía, desde su descripción guardada. Es una generación de imagen y **ves su coste antes de confirmar** (unos 4
 créditos con Nano Banana 2 Lite). Entra como plano general y marcada como generada: si te gusta, **márcala como
-maestra**. Al declarar, elige **«Las he generado aquí»**: es un sitio inventado y no hace falta el permiso de nadie.
+maestra**. Al declarar, elige **«Las he generado aquí»**.
 
 ### Lugar animado
 
@@ -64,10 +64,11 @@ candidato entra como plano general: si te gusta, **márcalo como maestra**; si n
 **Sin declaración no se genera con el lugar.** En la ficha dices:
 
 - **De dónde son las fotos**: tuyas, de otra persona con su permiso, o generadas aquí.
-- **Qué tipo de sitio es**: un exterior o espacio público (una calle, una plaza, una fachada) o un **interior privado
-  o con restricciones** (una tienda, un bar, un museo). Un interior con fotos reales exige que declares que **tienes
-  permiso** de quien lo gestiona. Si las imágenes las has **generado aquí**, el sitio es inventado y ese permiso no se
-  pide, sea interior o exterior.
+- **Qué tipo de sitio es**: un exterior (una calle, una plaza, una fachada) o un interior (una tienda, un bar). Es
+  informativo: **no se pide el permiso de quien gestiona el sitio**, ni en un interior ni en un exterior, ni con fotos
+  reales ni generadas.
+- **«Puedo usar estas imágenes»**: declaras que no son de un sitio donde esté prohibido fotografiar o grabar (un
+  museo o un local con un cartel que lo prohíba, una instalación militar). Sin esta casilla no hay declaración.
 - **Si sale gente** (ver abajo), si se ve alguna marca y el uso: personal o comercial.
 - Y que **no sale ningún menor**, ni al fondo.
 

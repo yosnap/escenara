@@ -370,6 +370,7 @@ describe.skipIf(!hayBaseDeDatos)("lugar: la pantalla de producción dice lo mism
       espacio: "exterior",
       personasVisibles: "ninguna",
       sinMenores: true,
+      puedoUsarImagenes: true,
     });
     const { proyectoId, escenaId } = await proyectoCon({ lugar: { lugarId: lugar.id } });
     const { delLugar, sinConfirmarElLugar, confirmandoLoQueOfrece } = await pantallaYEnvio(proyectoId, escenaId);

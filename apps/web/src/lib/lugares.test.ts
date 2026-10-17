@@ -1,26 +1,29 @@
 import { describe, expect, test } from "bun:test";
-import { exigePermisoDelLugar } from "./lugares";
+import * as lugares from "./lugares";
 
 /**
- * El permiso de quien gestiona el sitio protege a un sitio **real**: un interior fotografiado. Un lugar inventado, con
- * las imágenes generadas en Escenara, no tiene gestor al que pedírselo. La misma regla la aplican la ficha y el servidor.
+ * Para usar las fotos de un lugar no se pide el permiso de quien gestiona el sitio, ni en un interior ni en un
+ * exterior, ni con fotos reales ni generadas. Lo que se declara es **una** cosa: que esas imágenes se pueden usar,
+ * porque no son de un sitio donde esté prohibido fotografiar.
  */
-describe("permiso de quien gestiona el sitio", () => {
-  test("un interior con fotos reales lo exige, sean tuyas o de otra persona", () => {
-    expect(exigePermisoDelLugar("interior", "propias")).toBe(true);
-    expect(exigePermisoDelLugar("interior", "con_permiso")).toBe(true);
+describe("declaración de un lugar: puedo usar estas imágenes", () => {
+  test("la casilla dice qué se declara, con un ejemplo de sitio prohibido", () => {
+    expect(lugares.DECLARACION_PUEDO_USAR).toContain("Puedo usar estas imágenes");
+    expect(lugares.DECLARACION_PUEDO_USAR).toContain("prohibido fotografiar");
+    expect(lugares.AYUDA_PUEDO_USAR.length).toBeGreaterThan(20);
   });
 
-  test("un lugar generado aquí no lo exige, ni interior ni exterior", () => {
-    expect(exigePermisoDelLugar("interior", "generadas")).toBe(false);
-    expect(exigePermisoDelLugar("exterior", "generadas")).toBe(false);
+  test("el rechazo dice la causa y qué hacer", () => {
+    expect(lugares.RECHAZO_SIN_PUEDO_USAR).toContain("prohibido fotografiar");
   });
 
-  test("un exterior no lo exige", () => {
-    expect(exigePermisoDelLugar("exterior", "propias")).toBe(false);
+  test("ya no existe el requisito del permiso de quien gestiona el sitio", () => {
+    expect("exigePermisoDelLugar" in lugares).toBe(false);
+    expect("AVISO_INTERIOR" in lugares).toBe(false);
   });
 
-  test("con un origen que no se entiende se exige: ante la duda, es una foto real", () => {
-    expect(exigePermisoDelLugar("interior", "otra-cosa")).toBe(true);
+  test("el texto de la declaración estrena versión, que es lo que separa las declaraciones antiguas", () => {
+    expect(lugares.VERSION_TEXTO_DECLARACION_LUGAR >= lugares.VERSION_DESDE_PUEDO_USAR).toBe(true);
+    expect("2026-09-30.2" < lugares.VERSION_DESDE_PUEDO_USAR).toBe(true);
   });
 });

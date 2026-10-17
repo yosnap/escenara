@@ -121,6 +121,7 @@ describe.skipIf(!hayBaseDeDatos)("fotos generadas de un lugar", () => {
         origenFotos: "propias",
         personasVisibles: "retiradas",
         sinMenores: true,
+        puedoUsarImagenes: true,
       }),
     ).rejects.toThrow("la maestra es la foto original");
 
@@ -155,6 +156,7 @@ describe.skipIf(!hayBaseDeDatos)("fotos generadas de un lugar", () => {
       origenFotos: "propias",
       personasVisibles: "retiradas",
       sinMenores: true,
+      puedoUsarImagenes: true,
     });
     expect(declarado.declarado).toBe(true);
   });
