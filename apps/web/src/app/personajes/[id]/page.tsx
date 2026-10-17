@@ -9,6 +9,7 @@ import { leerAjustes } from "@/server/ajustes";
 import { esAdmin, exigirSesion } from "@/server/auth/sesion";
 import { bovedaDisponible } from "@/server/boveda/cifrado";
 import { listarCredenciales } from "@/server/boveda/credenciales";
+import { huecosDeCola } from "@/server/cola/encolar";
 import { candidato } from "@/server/comunidad/consulta";
 import { umbralesDe } from "@/server/personajes/calidad";
 import { obtenerPersonaje } from "@/server/personajes/consulta";
@@ -43,6 +44,8 @@ export default async function PaginaPersonaje({ params }: { params: Promise<{ id
   // Los retratos candidatos solo existen en un personaje inventado: en los demás no se consulta nada.
   const actor = { id: sesion.user.id, esAdmin: esAdmin(sesion) };
   const retratos = personaje.inventado && personaje.puedeEditar ? await mediosDeCandidatos(actor, id) : [];
+  // Cuántos retratos caben ahora en su cola: el selector parte de ahí y no de cuatro fijos.
+  const huecos = personaje.inventado && personaje.puedeEditar ? await huecosDeCola(actor.id) : null;
   // Con qué voz se puede registrar: la de sus proyectos en modo Omni. Sin ninguno, la ficha lo dice y no ofrece.
   const proyectosOmni = personaje.puedeEditar ? await proyectosEnModoOmni(actor.id) : [];
   // La hoja 3×3, si la tiene generada: es lo que se enseña en la pestaña de referencias.
@@ -73,6 +76,7 @@ export default async function PaginaPersonaje({ params }: { params: Promise<{ id
           umbrales={umbralesDe(ajustes)}
           claveDeGeneracion={claveDeGeneracion}
           retratos={retratos}
+          huecosDeCola={huecos}
           hojaIdentidad={hojaIdentidad}
           proyectosOmni={proyectosOmni}
           estilosAnimados={estilos}

@@ -16,10 +16,12 @@ const consentimiento = (parcial: Partial<ConsentimientoEfectivo> = {}): Consenti
   titular: "yo",
   aceptado: null,
   revocado: false,
+  mayoriaDeclarada: true,
   ...parcial,
 });
 
 const datos = (parcial: Partial<Parameters<typeof estadoDePersonaje>[0]> = {}) => ({
+  tipo: "persona" as const,
   consentimiento: consentimiento(),
   referencias: 3,
   minimoReferencias: 3,
@@ -65,6 +67,37 @@ describe("estado del personaje", () => {
     expect(estadoDePersonaje(pocas)).toBe("borrador");
     expect(personajePuedeGenerar(pocas)).toBe(false);
     expect(impedimentosDePersonaje(pocas)[0]).toContain("Faltan 2 fotos");
+  });
+
+  test("una persona real con un consentimiento sin declaración de mayoría de edad queda bloqueada", () => {
+    // Llegue por donde llegue (una carrera entre cambiar el tipo y registrar, datos antiguos), no genera.
+    const sinEdad = datos({ consentimiento: consentimiento({ titular: "animal_propio", mayoriaDeclarada: false }) });
+    expect(estadoDePersonaje(sinEdad)).toBe("bloqueado");
+    expect(personajePuedeGenerar(sinEdad)).toBe(false);
+    expect(impedimentosDePersonaje(sinEdad).join(" ")).toContain("Falta la declaración de mayoría de edad");
+  });
+
+  test("un animal y un inventado no necesitan esa declaración", () => {
+    const animal = datos({
+      tipo: "animal",
+      consentimiento: consentimiento({ titular: "animal_propio", mayoriaDeclarada: false }),
+    });
+    expect(estadoDePersonaje(animal)).toBe("listo");
+    const inventado = datos({ consentimiento: consentimiento({ titular: "inventado", mayoriaDeclarada: false }) });
+    expect(estadoDePersonaje(inventado)).toBe("listo");
+    expect(impedimentosDePersonaje(inventado)).toEqual([]);
+  });
+
+  test("a un inventado le faltan retratos y vistas, nunca fotos: no usa fotos de nadie", () => {
+    const recien = datos({ consentimiento: consentimiento({ titular: "inventado" }), referencias: 0 });
+    const motivo = impedimentosDePersonaje(recien).join(" ");
+    expect(motivo).not.toContain("foto");
+    expect(motivo).toContain("Faltan 3 imágenes entre su retrato elegido y sus vistas generadas");
+    expect(motivo).toContain("Empieza por generar sus retratos y elegir uno.");
+    const conCara = datos({ consentimiento: consentimiento({ titular: "inventado" }), referencias: 2 });
+    expect(impedimentosDePersonaje(conCara)).toEqual([
+      "Falta 1 imagen entre su retrato elegido y sus vistas generadas: hacen falta 3 y tiene 2.",
+    ]);
   });
 
   test("un tercero sin revisar queda en revisión y no genera", () => {

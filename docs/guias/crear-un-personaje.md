@@ -59,8 +59,11 @@ delante. Hay tres casos:
 | **Un animal mío** | Tu declaración | Listo, igual |
 | **Otra persona** | El **documento de consentimiento firmado** por ella, subido desde tu equipo en JPEG o PNG | **En revisión**: no genera hasta que quien administra la instalación acepte el documento |
 
-Además, en los tres casos hay que **declarar que la persona de las fotos es mayor de edad**. Sin esa
-declaración no se registra nada.
+Además, si el personaje es una **persona**, hay que **declarar que la persona de las fotos es mayor de
+edad**, elijas el caso que elijas. Sin esa declaración no se registra nada. A un **animal** no se le pide,
+porque no hay ninguna persona cuya edad declarar. Por eso las fotos de un animal no pueden tener personas: el
+servidor las comprueba al añadirlas, sin enviarlas a nadie, y rechaza la foto en la que aparece una persona.
+Si es una persona, créala como persona con su consentimiento.
 
 > **Lo que este control no garantiza.** Escenara no comprueba identidades ni edades: no existe ninguna
 > detección de edad fiable. Lo que hace es guardar tu declaración con tu cuenta y la fecha, exigir un documento

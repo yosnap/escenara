@@ -14,6 +14,7 @@ import { leerAjustes } from "../ajustes";
 import { leerObjeto } from "../almacenamiento";
 import { db, type Ejecutor } from "../db/cliente";
 import { characterReferences, type FilaMedio, media } from "../db/esquema";
+import { type DetectorDePersonas, detectorDePersonas } from "../vision/personas";
 import { analizarImagen, umbralesDe } from "./calidad";
 import { ErrorPersonaje, ErrorReferenciaRechazada } from "./errores";
 
@@ -103,7 +104,16 @@ export async function analizarReferencias(
   personajeId: string,
   peticiones: PeticionReferencia[],
   medios: Map<string, FilaMedio>,
+  opciones: {
+    /**
+     * Las fotos no pueden tener personas: es un animal, que no declara mayoría de edad. Lo comprueba el detector
+     * local del servidor, y una foto que no se ha podido comprobar tampoco entra.
+     */
+    sinPersonas?: boolean;
+    detector?: DetectorDePersonas;
+  } = {},
 ): Promise<ResultadoAnalisis> {
+  const detector = opciones.detector ?? detectorDePersonas;
   const umbrales = umbralesDe(await leerAjustes());
   const previas = await huellasDelPersonaje(personajeId);
   const aceptadas: ReferenciaAnalizada[] = [];
@@ -124,6 +134,15 @@ export async function analizarReferencias(
     if (analisis.demasiadoGrande) {
       rechazadas.push({ medioId: peticion.medioId, motivos: ["enorme"], bloqueante: true, metricas });
       continue;
+    }
+
+    if (opciones.sinPersonas) {
+      const personas = await detector.buscar(datos);
+      if (personas !== "sin_persona") {
+        const motivo = personas === "persona" ? "persona_en_animal" : "persona_sin_comprobar";
+        rechazadas.push({ medioId: peticion.medioId, motivos: [motivo], bloqueante: true, metricas });
+        continue;
+      }
     }
 
     // El duplicado se comprueba contra lo que ya tiene el personaje **y** contra las de esta misma tanda:

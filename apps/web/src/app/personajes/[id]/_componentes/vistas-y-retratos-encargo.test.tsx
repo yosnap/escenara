@@ -138,6 +138,13 @@ beforeEach(() => {
     if (ruta.includes("/api/generacion/huecos")) return Response.json(huecos);
     if (ruta.includes("/api/generacion/estimacion")) return Response.json(estimacion);
     if (ruta.includes("/controles")) return Response.json(controles);
+    if (ruta.includes("/retratos") && _init?.method === "POST") {
+      const { cantidad } = JSON.parse(String(_init.body)) as { cantidad: number };
+      return Response.json({
+        trabajos: Array.from({ length: cantidad }, (_, i) => ({ ...enCurso, id: `retrato-${i}` })),
+        aviso: "",
+      });
+    }
     if (ruta.includes("/retratos")) return Response.json({ candidatos: [] });
     if (ruta.includes("/trabajos/")) return Response.json(enCurso);
     return Response.json({});
@@ -207,12 +214,80 @@ test("el lote de vistas solo confirma las que caben ahora y dice cuáles quedan 
 });
 
 test("los retratos se limitan a los que caben en la cola, antes de confirmar nada", async () => {
-  await act(async () => raiz.render(<PanelRetratos personaje={personaje} medios={[]} onPersonaje={() => {}} />));
+  await act(async () =>
+    raiz.render(<PanelRetratos personaje={personaje} medios={[]} huecosIniciales={null} onPersonaje={() => {}} />),
+  );
   expect(botones()).toContain("Ver lo que cuesta generar 4 retratos");
   await pulsar("Ver lo que cuesta generar 4 retratos");
   expect(botones()).toContain("Generar 3 retratos");
   expect(botones()).not.toContain("Generar 4 retratos");
   expect(ventana.document.body.textContent).toContain("Ahora puedes encargar como máximo 3 retratos");
+});
+
+const marcar = async (etiqueta: string) => {
+  const casilla = [...ventana.document.querySelectorAll("label")]
+    .find((l) => l.textContent?.includes(etiqueta))
+    ?.querySelector('input[type="checkbox"]') as unknown as HTMLInputElement | undefined;
+  expect(casilla).toBeDefined();
+  await act(async () => casilla?.click());
+};
+
+test("tras encargar bien los retratos no aparece ningún bloqueo: el encargo se cierra y solo se ve su aviso", async () => {
+  await act(async () =>
+    raiz.render(<PanelRetratos personaje={personaje} medios={[]} huecosIniciales={null} onPersonaje={() => {}} />),
+  );
+  await pulsar("Ver lo que cuesta generar 4 retratos");
+  await marcar("Puedo usar lo que se genere");
+  await pulsar("Generar 3 retratos");
+  const texto = ventana.document.body.textContent ?? "";
+  expect(texto).toContain("Se han encargado 3 de 3 retratos");
+  // La cola está llena justo porque se acaba de encargar: no es un bloqueo que haya que resolver, solo se informa.
+  expect(ventana.document.querySelector('[data-alerta="bloqueo"]')).toBeNull();
+  expect(texto).toContain("Ahora no cabe ningún retrato más");
+  expect(botones()).not.toContain("Generar 1 retrato");
+});
+
+test("el número de retratos parte de los huecos libres de la cola, también al volver a la ficha", async () => {
+  await act(async () =>
+    raiz.render(
+      <PanelRetratos
+        personaje={personaje}
+        medios={[]}
+        huecosIniciales={{ maximo: 3, enMarcha: 1, libres: 2 }}
+        onPersonaje={() => {}}
+      />,
+    ),
+  );
+  expect(botones()).toContain("Ver lo que cuesta generar 2 retratos");
+  // Con la cola llena tras un encargo (al recargar o al volver a la pestaña) no se ofrecen cuatro, ni uno.
+  await act(async () =>
+    raiz.render(
+      <PanelRetratos
+        key="otra"
+        personaje={personaje}
+        medios={[]}
+        huecosIniciales={{ maximo: 3, enMarcha: 3, libres: 0 }}
+        onPersonaje={() => {}}
+      />,
+    ),
+  );
+  // No se ofrece ningún retrato: se dice por qué y cuándo se podrá.
+  expect(botones().some((b) => b.startsWith("Ver lo que cuesta"))).toBe(false);
+  expect(ventana.document.body.textContent).toContain("3 trabajos en marcha y esta instalación permite 3");
+});
+
+test("tras encargar, el número elegido se queda en lo que cabe y no vuelve a cuatro", async () => {
+  await act(async () =>
+    raiz.render(<PanelRetratos personaje={personaje} medios={[]} huecosIniciales={null} onPersonaje={() => {}} />),
+  );
+  await pulsar("Ver lo que cuesta generar 4 retratos");
+  await marcar("Puedo usar lo que se genere");
+  await pulsar("Generar 3 retratos");
+  // Buscar los terminados vuelve a leer la cola: dos han acabado y caben dos más, no cuatro.
+  huecos = { maximo: 3, enMarcha: 1, libres: 2 };
+  await pulsar("Buscar retratos terminados");
+  expect(botones()).toContain("Ver lo que cuesta generar 1 retrato");
+  expect(botones()).not.toContain("Ver lo que cuesta generar 4 retratos");
 });
 
 test("si el trabajo de una vista en curso falla, la vista se vuelve a ofrecer", async () => {

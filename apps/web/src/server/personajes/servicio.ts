@@ -18,7 +18,15 @@ import {
 } from "@/lib/personajes";
 import { guiaDeEstiloPedida } from "../animados/estilos";
 import { db, type Ejecutor } from "../db/cliente";
-import { characterReferences, characters, generationJobs, media, projects, scenes } from "../db/esquema";
+import {
+  characterReferences,
+  characters,
+  consentRecords,
+  generationJobs,
+  media,
+  projects,
+  scenes,
+} from "../db/esquema";
 import { condicionEnCurso, trabajosQueGeneraron } from "../generacion/trabajos";
 import type { Actor } from "../media/servicio";
 import {
@@ -131,6 +139,54 @@ function esNombreRepetido(error: unknown): boolean {
   return false;
 }
 
+/**
+ * Motivo de un nombre repetido, con la causa y la salida: el nombre que choca, qué hacer y que no ha cambiado nada.
+ * Lo enseña tal cual el alta (normal o inventado) y la ficha al renombrar.
+ */
+const mensajeNombreRepetido = (nombre: string, hecho: "creado" | "cambiado") =>
+  `Ya tienes un personaje llamado «${nombre}» y dos personajes tuyos no pueden llamarse igual. Ponle otro nombre o abre el que ya tienes desde «Tus personajes». No se ha ${hecho} nada.`;
+
+/**
+ * Un personaje animal no declara mayoría de edad. Pasarlo a persona con ese consentimiento dejaría una persona
+ * sin la declaración: hay que registrar antes un consentimiento nuevo como persona.
+ */
+async function exigirEdadParaSerPersona(personajeId: string): Promise<void> {
+  const [sinEdad] = await db()
+    .select({ id: consentRecords.id })
+    .from(consentRecords)
+    .where(
+      and(
+        eq(consentRecords.characterId, personajeId),
+        isNull(consentRecords.revokedAt),
+        eq(consentRecords.adultDeclared, false),
+      ),
+    )
+    .limit(1);
+  if (sinEdad) {
+    throw new ErrorPersonaje(
+      409,
+      "Este personaje se registró como animal y su consentimiento no lleva declaración de mayoría de edad. Para pasarlo a persona, en este orden: revoca su consentimiento, cambia su tipo a persona y registra un consentimiento nuevo como persona, declarando que es mayor de edad. No se ha cambiado nada.",
+    );
+  }
+}
+
+/**
+ * Una persona con fotos no pasa a animal: sus fotos son de una persona, y como animal dejaría de declarar su mayoría
+ * de edad. Sin fotos no hay nada que se cuele; las que se añadan después pasarán el detector de personas.
+ */
+async function exigirSinFotosParaSerAnimal(personajeId: string): Promise<void> {
+  const [conFotos] = await db()
+    .select({ total: count() })
+    .from(characterReferences)
+    .where(eq(characterReferences.characterId, personajeId));
+  if ((conFotos?.total ?? 0) > 0) {
+    throw new ErrorPersonaje(
+      409,
+      "Este personaje tiene fotos de una persona, así que no puede pasar a animal: un animal no puede tener fotos de personas. Si es un animal, créalo aparte como animal con sus propias fotos. No se ha cambiado nada.",
+    );
+  }
+}
+
 export async function crearPersonaje(
   actor: Actor,
   datos: DatosPersonaje,
@@ -169,7 +225,7 @@ export async function crearPersonaje(
     await asegurarVersionVigente(fila);
     return vistaDePersonaje(fila, actor, { completa: true, conReferencias: true });
   } catch (error) {
-    if (esNombreRepetido(error)) throw new ErrorPersonaje(409, "Ya tienes un personaje con ese nombre.");
+    if (esNombreRepetido(error)) throw new ErrorPersonaje(409, mensajeNombreRepetido(nombre, "creado"));
     throw error;
   }
 }
@@ -195,6 +251,9 @@ export async function actualizarPersonaje(
   if (cambios.nombre !== undefined)
     valores.name = texto(cambios.nombre, NOMBRE_MAXIMO, "el nombre del personaje", true);
   if (cambios.tipo !== undefined) valores.kind = tipoValido(cambios.tipo);
+  if (valores.kind === "animal" && fila.kind === "persona" && !fila.virtual) await exigirSinFotosParaSerAnimal(fila.id);
+  // Un inventado no declara edad en ningún tipo: su declaración es que no representa a nadie real.
+  if (valores.kind === "persona" && fila.kind === "animal" && !fila.virtual) await exigirEdadParaSerPersona(fila.id);
   if (cambios.especie !== undefined)
     valores.speciesNotes = texto(cambios.especie, ESPECIE_MAXIMA, "la especie o las notas");
   if (cambios.descripcion !== undefined) {
@@ -331,7 +390,9 @@ export async function actualizarPersonaje(
     });
     return vistaDePersonaje(actualizada, actor, { completa: true, conReferencias: true });
   } catch (error) {
-    if (esNombreRepetido(error)) throw new ErrorPersonaje(409, "Ya tienes un personaje con ese nombre.");
+    if (esNombreRepetido(error)) {
+      throw new ErrorPersonaje(409, mensajeNombreRepetido(valores.name ?? fila.name, "cambiado"));
+    }
     throw error;
   }
 }
@@ -494,6 +555,8 @@ export async function anadirReferencias(
         usarDeTodasFormas: p.usarDeTodasFormas,
       })),
     new Map(propias.map((m) => [m.id, m])),
+    // Una persona no se cuela como animal: un animal no declara mayoría de edad.
+    { sinPersonas: personaje.kind === "animal" },
   );
   exigirAlgoQueGuardar(analisis);
   // La vista libre de 0.13.0 se conserva, indexada por foto para no perderla al filtrar las rechazadas.

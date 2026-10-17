@@ -54,12 +54,18 @@ export async function motivosParaNoGenerar(personajeId: string, minimoPedido?: n
     ultimoConsentimientoDe(personajeId),
     contarReferencias(personajeId),
     db()
-      .select({ renderStyle: characters.renderStyle, masterFrameMediaId: characters.masterFrameMediaId })
+      .select({
+        tipo: characters.kind,
+        renderStyle: characters.renderStyle,
+        masterFrameMediaId: characters.masterFrameMediaId,
+      })
       .from(characters)
       .where(eq(characters.id, personajeId))
       .limit(1),
   ]);
+  // Sin fila el personaje no existe: se trata como persona, que es lo que más exige.
   const motivos = impedimentosDePersonaje({
+    tipo: personaje[0]?.tipo ?? "persona",
     consentimiento: efectivo(consentimiento),
     referencias,
     minimoReferencias: minimo,

@@ -1,5 +1,5 @@
-import type { EstadoPersonaje, TitularConsentimiento } from "@/lib/personajes";
-import { exigeDocumento } from "@/lib/personajes";
+import type { EstadoPersonaje, TipoPersonaje, TitularConsentimiento } from "@/lib/personajes";
+import { exigeDocumento, exigeMayoriaDeEdad } from "@/lib/personajes";
 
 /**
  * Cómo se deduce el estado de un personaje y por qué no puede generar. Está aparte del acceso a la base de
@@ -17,9 +17,13 @@ export interface ConsentimientoEfectivo {
   /** `true` aceptado, `false` rechazado, `null` sin revisar. */
   aceptado: boolean | null;
   revocado: boolean;
+  /** Si el registro lleva la declaración de mayoría de edad (`consent_records.adult_declared`). */
+  mayoriaDeclarada: boolean;
 }
 
 export interface DatosDeEstado {
+  /** Tipo guardado del personaje: la declaración de mayoría de edad solo se exige a una persona. */
+  tipo: TipoPersonaje;
   consentimiento: ConsentimientoEfectivo | null;
   referencias: number;
   minimoReferencias: number;
@@ -31,10 +35,23 @@ export function consentimientoVigente(consentimiento: ConsentimientoEfectivo | n
   return exigeDocumento(consentimiento.titular) ? consentimiento.aceptado === true : true;
 }
 
+/**
+ * Una persona real cuyo consentimiento vigente no lleva la declaración de mayoría de edad. El registro la exige,
+ * pero esta regla no se fía de por dónde llegó el dato (una carrera entre cambiar el tipo y registrar, datos
+ * antiguos, una ruta futura): si falta, el personaje no genera. Un inventado no declara edad: no es nadie real.
+ */
+const faltaMayoriaDeEdad = (datos: DatosDeEstado): boolean => {
+  const c = datos.consentimiento;
+  return (
+    c !== null && !c.revocado && c.titular !== "inventado" && exigeMayoriaDeEdad(datos.tipo) && !c.mayoriaDeclarada
+  );
+};
+
 export function estadoDePersonaje(datos: DatosDeEstado): EstadoPersonaje {
   const c = datos.consentimiento;
   // Revocado o rechazado: bloqueado, y no vuelve solo. Hay que registrar un consentimiento nuevo.
   if (c && (c.revocado || c.aceptado === false)) return "bloqueado";
+  if (faltaMayoriaDeEdad(datos)) return "bloqueado";
   if (!c) return "borrador";
   if (exigeDocumento(c.titular) && c.aceptado === null) return "en_revision";
   return datos.referencias >= datos.minimoReferencias ? "listo" : "borrador";
@@ -50,13 +67,20 @@ export function impedimentosDePersonaje(datos: DatosDeEstado): string[] {
     motivos.push("El consentimiento está revocado: registra uno nuevo para volver a usar el personaje.");
   } else if (c.aceptado === false) {
     motivos.push("La revisión del consentimiento se ha rechazado.");
+  } else if (faltaMayoriaDeEdad(datos)) {
+    motivos.push(
+      "Falta la declaración de mayoría de edad de la persona de las fotos: revoca este consentimiento y registra uno nuevo declarando que es mayor de edad.",
+    );
   } else if (exigeDocumento(c.titular) && c.aceptado === null) {
     motivos.push("El consentimiento de un tercero espera la revisión de quien administra la instalación.");
   }
   if (datos.referencias < datos.minimoReferencias) {
     const faltan = datos.minimoReferencias - datos.referencias;
+    // Un inventado no usa fotos: lo que le falta son imágenes generadas, su retrato elegido y sus vistas.
     motivos.push(
-      `Faltan ${faltan} ${faltan === 1 ? "foto" : "fotos"} de referencia: hacen falta ${datos.minimoReferencias} y hay ${datos.referencias}.`,
+      c?.titular === "inventado"
+        ? `${faltan === 1 ? "Falta 1 imagen" : `Faltan ${faltan} imágenes`} entre su retrato elegido y sus vistas generadas: hacen falta ${datos.minimoReferencias} y tiene ${datos.referencias}.${datos.referencias === 0 ? " Empieza por generar sus retratos y elegir uno." : ""}`
+        : `Faltan ${faltan} ${faltan === 1 ? "foto" : "fotos"} de referencia: hacen falta ${datos.minimoReferencias} y hay ${datos.referencias}.`,
     );
   }
   return motivos;
