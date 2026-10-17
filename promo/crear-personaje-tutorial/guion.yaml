@@ -51,7 +51,7 @@ escenas:
     pieza: tutorial
     parametros: { grabacion: inventado-retratos, tramo: retratos-cuantos, titulo: "¿Cuántos retratos?" }
     frases:
-      - texto: "En «Retratos y vistas», elige cuántos retratos quieres, de uno a cuatro, y mira lo que cuestan antes de generar."
+      - texto: "En «Retratos y vistas», elige cuántos retratos quieres, de uno a tres, y mira lo que cuestan antes de generar."
 
   - id: generar
     pieza: tutorial
