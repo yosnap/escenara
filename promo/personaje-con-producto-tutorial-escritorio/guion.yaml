@@ -1,8 +1,9 @@
 # Tutorial «Personaje con producto» (un anuncio) en modo tutorial, versión de ESCRITORIO (YouTube): la ventana del
 # navegador, fija, ocupa el encuadre. La versión móvil (../personaje-con-producto-tutorial/) tiene el mismo guion.
 # Sin voz: cada escena lleva un rótulo breve (titulo) y sus frases salen como subtítulos.
-# Todo en «Crear»: Brisa sale en un fotograma generado y, en el paso del clip, se elige la Botella Ondina, qué hace
-# con ella y la dirección; el clip se genera con MiniMax H3, que recibe las fotos del producto. Evidencia: briefing.md.
+# Todo en «Crear»: en «Describe la escena» se elige la Botella Ondina y qué hace Brisa con ella, así que el fotograma
+# ya sale con la botella; en el clip sigue elegida y se dirige. El clip se genera con MiniMax H3, que recibe las fotos
+# del producto. Evidencia: briefing.md.
 escenas:
   - id: gancho
     pieza: rotulo
@@ -33,7 +34,14 @@ escenas:
     pieza: tutorial
     parametros: { grabacion: anuncio, tramo: escena, titulo: "Describe la escena" }
     frases:
-      - texto: "Describe dónde está, qué hace y cómo se ve, en español. El producto lo elegirás en el clip."
+      - texto: "Describe dónde está, qué hace y cómo se ve, en español."
+
+  - id: producto-escena
+    pieza: tutorial
+    parametros: { grabacion: anuncio, tramo: producto-escena, titulo: "Elige el producto" }
+    frases:
+      - texto: "Más abajo, en «El producto», elige la Botella Ondina: sus fotos entran como referencia y el fotograma ya sale con ella."
+      - texto: "Y di qué hace Brisa con ella: aquí, sostenerla a la vista."
 
   - id: coste
     pieza: tutorial
@@ -51,7 +59,7 @@ escenas:
     pieza: tutorial
     parametros: { grabacion: anuncio, tramo: fotograma, titulo: "Fotograma listo" }
     frases:
-      - texto: "En unos segundos tienes el fotograma, ya guardado en tu biblioteca."
+      - texto: "En unos segundos tienes el fotograma con Brisa y la botella, ya guardado en tu biblioteca."
 
   - id: modelo-clip
     pieza: tutorial
@@ -62,10 +70,10 @@ escenas:
 
   - id: producto
     pieza: tutorial
-    parametros: { grabacion: anuncio, tramo: producto, titulo: "El producto" }
+    parametros: { grabacion: anuncio, tramo: producto, titulo: "El producto, ya elegido" }
     frases:
-      - texto: "En «El producto», elige la Botella Ondina: sus fotos viajan con el clip."
-      - texto: "Y di qué hace Brisa con ella: aquí, sostenerla a la vista."
+      - texto: "En el clip, la Botella Ondina sigue elegida y sus fotos viajan con él."
+      - texto: "Comprueba qué hace Brisa con ella: sostenerla a la vista."
 
   - id: direccion
     pieza: tutorial
@@ -77,7 +85,7 @@ escenas:
     pieza: tutorial
     parametros: { grabacion: anuncio, tramo: confirmar-clip, titulo: "Confirma y anima" }
     frases:
-      - texto: "Revisa el coste del clip, confirma la revisión y los derechos de la imagen y de la marca, y toca «Animar»."
+      - texto: "Revisa el coste del clip, confirma la revisión y el derecho a usar la imagen, y toca «Animar»."
 
   - id: clip
     pieza: tutorial

@@ -117,7 +117,35 @@
             {
               "accion": "escribir",
               "selector": "section[aria-label='Paso 4: Describe la escena'] textarea >> nth=0",
-              "texto": "En una cocina luminosa con plantas, sonríe a cámara con las manos a la altura del pecho. Plano medio, luz natural de mañana."
+              "texto": "En una cocina luminosa con plantas, sonríe a cámara con su botella a la altura del pecho. Plano medio, luz natural de mañana."
+            }
+          ]
+        },
+        {
+          "id": "producto-escena",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 4: Describe la escena'] >> role=combobox[name='Producto']"
+            },
+            {
+              "accion": "elegir",
+              "titulo": "Producto",
+              "abrir": "section[aria-label='Paso 4: Describe la escena'] >> role=combobox[name='Producto']",
+              "opciones": "[role=option]:visible",
+              "selector": "[role=option]:visible:has-text('Botella Ondina')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Paso 4: Describe la escena'] fieldset:has(> legend:has-text('Qué se hace con él'))",
+              "espera": 30000,
+              "indicador": false
+            },
+            {
+              "accion": "elegir",
+              "titulo": "Qué se hace con él",
+              "opciones": "section[aria-label='Paso 4: Describe la escena'] fieldset:has(> legend:has-text('Qué se hace con él')) label",
+              "selector": "section[aria-label='Paso 4: Describe la escena'] fieldset:has(> legend:has-text('Qué se hace con él')) label:has-text('Sostenerlo')"
             },
             {
               "accion": "desplazar",
@@ -188,14 +216,8 @@
               "selector": "section[aria-label='Paso 5: Revisa el coste y confirma'] button:has-text('Generar fotograma')"
             },
             {
-              "accion": "esperar",
-              "selector": "section[aria-label='Paso 6: Resultado del fotograma']",
-              "espera": 60000,
-              "indicador": false
-            },
-            {
               "accion": "desplazar",
-              "selector": "section[aria-label='Paso 6: Resultado del fotograma']"
+              "selector": "section[aria-label='Paso 6: Resultado del fotograma'] h2"
             }
           ]
         },
@@ -259,16 +281,13 @@
           "id": "producto",
           "acciones": [
             {
-              "accion": "elegir",
-              "titulo": "Producto",
-              "abrir": "section[aria-label='Paso 7: El clip'] >> role=combobox[name='Producto']",
-              "opciones": "[role=option]:visible",
-              "selector": "[role=option]:visible:has-text('Botella Ondina')"
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 7: El clip'] >> role=combobox[name='Producto']"
             },
             {
               "accion": "esperar",
-              "selector": "section[aria-label='Paso 7: El clip'] fieldset:has(> legend:has-text('Qué se hace con él'))",
-              "espera": 30000,
+              "selector": "section[aria-label='Paso 7: El clip'] [role=combobox]:has-text('Botella Ondina')",
+              "espera": 15000,
               "indicador": false
             },
             {
@@ -322,14 +341,6 @@
             {
               "accion": "clic",
               "selector": "section[aria-label='Paso 7: El clip'] label:has-text('Tengo derecho a usar esta imagen')"
-            },
-            {
-              "accion": "desplazar",
-              "selector": "section[aria-label='Paso 7: El clip'] label:has-text('Tengo derecho a usar esta marca')"
-            },
-            {
-              "accion": "clic",
-              "selector": "section[aria-label='Paso 7: El clip'] label:has-text('Tengo derecho a usar esta marca')"
             },
             {
               "accion": "desplazar",

@@ -15,10 +15,13 @@ Cuarto tutorial de la serie (`plans/261017-0246-serie-tutoriales/plan.md`). Ense
 ## Decisiones mías
 
 - **Camino de «Crear»**: formato «Clip para redes» (los trends tienen su propio tutorial) → «Crear un fotograma
-  nuevo» → Brisa → escena → coste → fotograma → clip. En «Crear» el producto se elige **en el paso del clip**, con la
-  dirección: el panel de dirección solo aparece cuando ya hay imagen de partida (`paso-clip.tsx:201`) y el servidor
-  lo dice así (`server/generacion/servicio.ts:286-291`). Por eso la escena del fotograma no nombra la botella y deja
-  las manos a la altura del pecho.
+  nuevo» → Brisa → escena con producto → coste → fotograma → clip. Desde la 0.52.11 el producto se elige en
+  **«Describe la escena»** (`paso-escena.tsx`, `SelectorProducto`): sus fotos entran como referencia del fotograma,
+  que ya sale con Brisa y la botella. En el clip sigue elegido y allí se comprueba la acción; pedido el fotograma, el
+  selector de la escena queda bloqueado (`productoBloqueado`).
+- **Botella Ondina contestada «No» a la marca** (fuera de cámara, en su ficha, antes de grabar): los productos de
+  antes de la 0.52.11 quedaron «sin responder» y así se pedía la casilla de marca, que no corresponde a una botella
+  sin texto ni logotipos.
 - **Modelo del clip: MiniMax H3 (referencia a vídeo)**, 40 créditos por 5 s a 768P (más 2 de traducción como
   máximo). Es el más barato de KIE que **admite la foto del producto** (`server/productos/modelos-sugeridos.ts:35`,
   cupo de galería ≥ 2); los demás de KIE o la describen solo con palabras (Hailuo 2.3 Standard, 30) o cuestan más
@@ -36,6 +39,8 @@ Cuarto tutorial de la serie (`plans/261017-0246-serie-tutoriales/plan.md`). Ense
 - **Espera del clip con la barra de pasos a la vista**: si la espera termina con el vídeo en pantalla, la primera
   imagen lo coge en negro (aún sin cargar). Por eso se sube a «Pasos para crear» antes de esperar y se baja al vídeo
   después.
+- **Tras «Generar fotograma» se baja al paso 6 en cuanto aparece**: la página cambia de paso y se queda abajo, en
+  blanco; esperar antes de desplazar dejaba esa imagen vacía en pantalla.
 - **Esperas sin recargar**: el estado de «Crear» vive en la página y recargar lo perdería; el seguimiento del trabajo
   ya consulta solo (`almacen-trabajo.ts`). Hasta 10 min para el fotograma y 15 para el clip.
 - **Sin preparación**: «Crear» no deja recursos con nombre que choquen al repetir. **Bloqueos**: `DELETE` de
@@ -48,14 +53,15 @@ Cuarto tutorial de la serie (`plans/261017-0246-serie-tutoriales/plan.md`). Ense
 | formato | `app/crear/_componentes/paso-formato.tsx`, `lib/pasos-crear.ts` (`pasoPredeterminadoDeCrear`) |
 | origen | `app/crear/_componentes/paso-origen.tsx` («Crear un fotograma nuevo»: se paga el fotograma y después el clip) |
 | quien | `paso-sujeto.tsx:86` («Se enviarán varias fotos de…»), casilla de revisión (`AVISO_SIN_TERCEROS`) |
-| escena | `paso-escena.tsx` («Qué quieres ver»: dónde está, qué hace y cómo se ve), `servicio.ts:286-291` (el producto va en el clip) |
+| escena | `paso-escena.tsx` («Qué quieres ver»: dónde está, qué hace y cómo se ve) |
+| producto-escena | `paso-escena.tsx` («El producto que sale ya en el fotograma… En el clip sigue elegido»), `SelectorProducto` («Qué se hace con él») |
 | coste | `paso-fotograma.tsx` (`PasoCosteFotograma`: contexto que se enviará, comprobaciones previas, coste estimado) |
 | generar-fotograma | `panel-generar.tsx:147` («Tengo derecho a usar esta imagen»), `vista-crear.tsx` (`generarFotograma` pasa al resultado) |
 | fotograma | `resultado-trabajo.tsx:24-27` («Fotograma listo», «Ya está guardado en tu biblioteca») |
 | modelo-clip | `paso-clip.tsx` (`SelectorModelo` con el precio de cada modelo), `lib/foto-de-producto.ts` |
-| producto | `components/ui/direccion/panel-direccion.tsx:404` (`SelectorProducto`, «Qué se hace con él») |
+| producto | `components/ui/direccion/panel-direccion.tsx` (el mismo `SelectorProducto`, con el producto ya elegido) |
 | direccion | `paso-clip.tsx` («Lo que dice»), `panel-direccion.tsx` (plano, «Escríbelo tú») |
-| confirmar-clip | `panel-generar.tsx:147-156` (derecho de imagen y de marca con producto), `BloqueConfirmacion` («Animar 5 s») |
+| confirmar-clip | `panel-generar.tsx:147-156` (derecho de imagen; la de marca no sale con la marca contestada «No»), `BloqueConfirmacion` («Animar 5 s») |
 | clip | `paso-clip.tsx` (`SeguimientoTrabajo`, «Cambiar y volver a generar», «Otro clip con este fotograma»), `resultado-trabajo.tsx` («Clip listo»), `convertir-en-proyecto.tsx` (sin volver a generar ni cobrar) |
 
 ## Cómo repetir
