@@ -1,7 +1,6 @@
 import { and, eq, isNull } from "drizzle-orm";
 import { PROVEEDORES_PUBLICOS } from "@/lib/boveda";
 import { type CausaFalloProveedor, MENSAJE_FALLO_GENERICO, mensajeDeFalloDelProveedor } from "@/lib/causa-fallo";
-import { mensajeDeFalloDeVoz } from "@/lib/diagnostico-voz";
 import { CLIP, LARGO_ESTADO_PROVEEDOR, TIPO_RESULTADO, type TrabajoVista } from "@/lib/generacion";
 import { usarCredencial } from "../boveda/credenciales";
 import { db } from "../db/cliente";
@@ -12,6 +11,7 @@ import { adjuntarHojaDeIdentidad } from "../personajes/hoja-identidad";
 import { adjuntarVistaGenerada } from "../personajes/vista-sintetica";
 import { cerrarGasto } from "../presupuesto/reserva";
 import { guardarMarcasDeVoz, registrarFalloDeEscena, registrarResultadoDeEscena } from "../produccion/cierre";
+import { adjuntarAlProducto } from "../productos/generacion";
 import { duracionDeModelo, filaDeModelo } from "../proveedores/catalogo";
 import { ErrorProveedor, type TareaProveedor, type VozPedida } from "../proveedores/contrato";
 import { adaptadorDe } from "../proveedores/registro";
@@ -278,6 +278,8 @@ async function guardarArchivoDelTrabajo(
       await adjuntarHojaDeIdentidad(cerrada, medio.id);
       // Y si era una foto editada o un candidato de un lugar, entra en el lugar como foto generada.
       await adjuntarAlLugar(cerrada, medio.id);
+      // Y si era una vista generada de un producto, entra en el producto con su papel, marcada como generada.
+      await adjuntarAlProducto(cerrada, medio.id);
       // Y si el trabajo producía una escena, la escena apunta lo que acaba de pasar (0.19.0). Un fotograma no
       // se aprueba solo: animar cuesta otro dinero y lo autoriza una persona.
       await registrarResultadoDeEscena(cerrada, medio.id);

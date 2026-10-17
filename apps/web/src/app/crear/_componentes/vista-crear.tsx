@@ -352,6 +352,8 @@ export function VistaCrear({
         : []),
     ],
     frenosClip: controlesClip.bloqueos,
+    sinSalidaFotograma: controlesFoto.sinSalida,
+    sinSalidaClip: controlesClip.sinSalida,
     casillasFotograma: confirmacionFoto,
     casillasClip: confirmacionClip,
     conProducto: productoClip.productoId !== "",

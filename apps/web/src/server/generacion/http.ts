@@ -9,6 +9,7 @@ import { ErrorPersonaje } from "../personajes/errores";
 import { ErrorProducto } from "../productos/errores";
 import { ErrorPreset } from "../prompts/errores";
 import { ErrorCatalogo } from "../proveedores/contrato";
+import type { ConfirmacionEncargo } from "./encargo-de-imagen";
 import { ErrorGeneracion } from "./errores";
 
 /**
@@ -103,4 +104,17 @@ export function leerAvisosConfirmados(valor: unknown): string[] {
     }
     return clave;
   });
+}
+
+/** Lee la confirmación del cuerpo de la petición tal cual llega del navegador, sin dar nada por bueno. */
+export function leerConfirmacionEncargo(cuerpo: Record<string, unknown>): ConfirmacionEncargo {
+  return {
+    creditosConfirmados: cuerpo.creditosConfirmados as number,
+    derechos: cuerpo.derechos === true,
+    claveIdempotencia: cuerpo.claveIdempotencia as string,
+    ...(typeof cuerpo.selloEstimacion === "string" ? { selloEstimacion: cuerpo.selloEstimacion } : {}),
+    ...(typeof cuerpo.modelo === "string" ? { modelo: cuerpo.modelo } : {}),
+    avisoUmbralAceptado: cuerpo.avisoUmbralAceptado === true,
+    avisosConfirmados: leerAvisosConfirmados(cuerpo.avisosConfirmados),
+  };
 }

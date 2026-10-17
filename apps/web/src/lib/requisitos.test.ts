@@ -71,6 +71,17 @@ describe("requisitos de la confirmación", () => {
     expect(requisitosDeConfirmacion({ ...base, derechos: true, derechoMarca: true, avisoAceptado: true })).toEqual([]);
   });
 
+  test("un freno sin salida es una causa real: se marca como que impide; un aviso por confirmar, no", () => {
+    expect(
+      requisitosDeControles(["Sin saldo. Recarga.", "Falta confirmar el aviso: X"], "fotograma", "coste", [
+        "Sin saldo. Recarga.",
+      ]),
+    ).toEqual([
+      { id: "fotograma-controles", paso: "coste", texto: "Sin saldo. Recarga.", impide: true },
+      { id: "fotograma-controles", paso: "coste", texto: "Falta confirmar el aviso: X" },
+    ]);
+  });
+
   test("los frenos de los controles apuntan al panel «Antes de generar» de su envío", () => {
     expect(requisitosDeControles(["Falta X."], "fotograma", "coste")).toEqual([
       { id: "fotograma-controles", paso: "coste", texto: "Falta X." },

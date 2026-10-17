@@ -106,7 +106,7 @@ export async function obtenerProducto(actor: Actor, id: unknown): Promise<Produc
     const medio = medios.get(r.mediaId);
     // Una referencia cuya foto ya no está se omite en lugar de romper la ficha. La cascada de la clave ajena
     // lo evita, pero la vista no depende de que la cascada haya corrido.
-    return medio ? [{ id: r.id, papel: r.kind, orden: r.sortOrder, medio }] : [];
+    return medio ? [{ id: r.id, papel: r.kind, orden: r.sortOrder, medio, generada: r.generated }] : [];
   });
   return { ...resumen(fila, referencias, medios), fotos };
 }

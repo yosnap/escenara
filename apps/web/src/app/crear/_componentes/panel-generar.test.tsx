@@ -112,10 +112,40 @@ describe("marcado de las casillas pendientes", () => {
   test("con el bloque de requisitos arriba, la lista de aquí no se repite al lector de pantalla", () => {
     const html = pintar({ casillas: { derechos: false }, avisoEnBloque: true });
     // La alerta de aquí queda oculta al lector y sin botones (el bloque de arriba ya lleva a cada campo).
-    expect(html).toContain('<div aria-hidden="true"><div data-alerta="bloqueo"');
+    expect(html).toContain('<div aria-hidden="true"><div data-alerta="pendiente"');
     expect(html.split('aria-hidden="true"><div data-alerta')[1]?.split("</ul>")[0]).not.toContain("<button");
     const sinBloque = pintar({ casillas: { derechos: false } });
     expect(sinBloque).not.toContain('<div aria-hidden="true"><div data-alerta');
     expect(sinBloque).toContain("Ir al campo");
+  });
+});
+
+describe("pendiente antes de actuar, bloqueo solo tras intentarlo", () => {
+  test("al llegar al coste, lo que falta es un paso pendiente y no un «Bloqueo» rojo", () => {
+    const html = pintar({ casillas: { derechos: false } });
+    expect(html).toContain('data-alerta="pendiente"');
+    expect(html).toContain(">Pendiente<");
+    expect(html).not.toContain(">Bloqueo<");
+    expect(html).not.toContain('data-alerta="bloqueo"');
+  });
+
+  test("con el paso señalado (se ha intentado o se ha ido al requisito), sí es un bloqueo", () => {
+    const html = pintar({ casillas: { derechos: false }, marcar: true });
+    expect(html).toContain('data-alerta="bloqueo"');
+    expect(html).toContain(">Bloqueo<");
+  });
+});
+
+describe("una causa real se ve en rojo desde el principio", () => {
+  test("un freno sin salida es bloqueo sin marcar; las casillas siguen como pendiente", () => {
+    const html = pintar({
+      casillas: { derechos: false },
+      bloqueos: [{ id: "clip-controles", paso: "clip", texto: "Tu saldo no llega. Recarga en KIE.", impide: true }],
+    });
+    expect(html).toContain('data-alerta="bloqueo"');
+    expect(html).toContain('data-alerta="pendiente"');
+    const bloqueo = html.split('data-alerta="bloqueo"')[1]?.split("data-alerta")[0] ?? "";
+    expect(bloqueo).toContain("Tu saldo no llega.");
+    expect(bloqueo).not.toContain("Falta confirmar que tienes derecho");
   });
 });

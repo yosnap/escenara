@@ -3,6 +3,7 @@ import { DepositoPresupuesto } from "@/components/ui/deposito";
 import { EsperaTrabajo, InsigniaEstado } from "@/components/ui/trabajo";
 import { type Deposito, ESTADOS_TRABAJO, type EstadoCola, type Estimacion } from "@/lib/generacion";
 import { Muestra, Seccion } from "../seccion";
+import { MuestraImagenGenerada } from "./muestra-imagen-generada";
 
 const ESTIMACION: Estimacion = {
   tipo: "animacion",
@@ -57,6 +58,9 @@ export function SeccionGeneracion() {
           <div className="w-full">
             <PanelCoste estimacion={ESTIMACION} />
           </div>
+        </Muestra>
+        <Muestra titulo="Imagen generada desde una ficha (lugar o producto): coste, casillas y lo pendiente en neutro">
+          <MuestraImagenGenerada />
         </Muestra>
         <div className="flex flex-col gap-4">
           <Muestra titulo="Estados de un trabajo">

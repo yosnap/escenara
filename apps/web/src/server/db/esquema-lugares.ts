@@ -178,8 +178,16 @@ export const placeDeclarations = pgTable(
     photoOrigin: origenFotosLugar("photo_origin").notNull(),
     scope: alcanceUso("scope").notNull().default("personal"),
     space: espacioLugar("space").notNull().default("exterior"),
-    /** Permiso del titular del sitio. Obligatorio en un interior privado o con restricciones. */
+    /**
+     * Permiso del titular del sitio. **Ya no se pide** (decisión del propietario, 2026-10-17): se conserva como prueba
+     * de lo que se declaró en las declaraciones anteriores, donde un interior lo exigía.
+     */
     placePermission: boolean("place_permission").notNull().default(false),
+    /**
+     * «Puedo usar estas imágenes: no son de un sitio donde esté prohibido fotografiar». Obligatoria desde la versión
+     * del texto `2026-10-17.2`; las declaraciones anteriores siguen valiendo sin ella.
+     */
+    mayUseImages: boolean("may_use_images").notNull().default(false),
     peopleVisible: personasVisiblesLugar("people_visible").notNull(),
     /** Informativo, como `products.brand_visible`: sirve para avisar del filtro del proveedor. */
     brandsVisible: boolean("brands_visible").notNull().default(false),
@@ -196,7 +204,7 @@ export const placeDeclarations = pgTable(
     index("place_declarations_lugar_idx").on(t.placeId, t.declaredAt),
     uniqueIndex("place_declarations_lugar_vigente_uq").on(t.placeId).where(sql`${t.revokedAt} is null`),
     check("place_declarations_sin_menores", sql`${t.noMinorsDeclared} = true`),
-    check("place_declarations_interior_con_permiso", sql`${t.space} = 'exterior' or ${t.placePermission} = true`),
+    check("place_declarations_puedo_usar", sql`${t.mayUseImages} = true or ${t.textVersion} < '2026-10-17.2'`),
   ],
 );
 

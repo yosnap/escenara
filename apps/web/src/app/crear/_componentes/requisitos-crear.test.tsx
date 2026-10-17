@@ -63,6 +63,7 @@ const CONTROLES: Controles = {
   confirmados: [],
   cargando: false,
   bloqueos: [],
+  sinSalida: [],
   firma: "",
   refrescar: async () => null,
   confirmar: () => {},

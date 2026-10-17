@@ -80,7 +80,7 @@ export function PasoCosteFotograma({
 }) {
   return (
     <Paso numero={numero} titulo="Revisa el coste y confirma">
-      <AvisoRequisitos requisitos={requisitos} onIr={onIrARequisito} />
+      <AvisoRequisitos requisitos={requisitos} marcar={marcar} onIr={onIrARequisito} />
       {personaje && contexto && contexto.personajeId === personaje.id && (
         <PanelContextoPersonaje contexto={contexto} cargando={pidiendoContexto} />
       )}

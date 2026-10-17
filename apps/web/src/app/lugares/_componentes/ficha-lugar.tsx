@@ -24,6 +24,7 @@ import { Selector } from "@/components/ui/select";
 import {
   AYUDA_PAPEL_LUGAR,
   DESCRIPCION_LUGAR_MAXIMA,
+  DESCRIPCION_MINIMA_PARA_GENERAR,
   type LugarVista,
   NOMBRE_LUGAR_MAXIMO,
   NOMBRE_PAPEL_LUGAR,
@@ -44,7 +45,8 @@ const DialogoFotoGenerada = dynamic(() => import("./dialogo-foto-generada").then
 
 /**
  * Ficha de un lugar: sus datos, sus fotos con el papel de cada una (una sola maestra), su declaración, sus versiones
- * y su borrado. Las fotos se eligen con el **selector de medios de la biblioteca**: una foto de un lugar es una foto
+ * y su borrado. Sus imágenes también se pueden generar aquí, real o animado, desde la descripción y con el coste
+ * confirmado. Las fotos se eligen con el **selector de medios de la biblioteca**: una foto de un lugar es una foto
  * del usuario como cualquier otra y quitarla de aquí no la borra.
  */
 export function FichaLugar({ inicial }: { inicial: LugarVista }) {
@@ -62,6 +64,15 @@ export function FichaLugar({ inicial }: { inicial: LugarVista }) {
   const [dialogoCargado, setDialogoCargado] = useState(false);
   if (encargo && !dialogoCargado) setDialogoCargado(true);
   const faltas = queFaltaAlLugar(lugar);
+  // Se genera desde la descripción **guardada**: con cambios sin guardar, el resultado no sería lo que se lee.
+  const sinGuardar = nombre !== lugar.nombre || descripcion !== lugar.descripcion;
+  const motivoSinGenerar =
+    lugar.descripcion.trim().length < DESCRIPCION_MINIMA_PARA_GENERAR
+      ? "Para generar, describe el lugar (qué hay, colores, luz) y guarda los cambios."
+      : sinGuardar
+        ? "Guarda los cambios antes de generar: se genera desde la descripción guardada."
+        : null;
+  const puedeGenerar = motivoSinGenerar === null;
 
   const aplicar = async (promesa: Promise<{ ok: true; datos: LugarVista } | { ok: false; error: string }>) => {
     setOcupado(true);
@@ -211,17 +222,22 @@ export function FichaLugar({ inicial }: { inicial: LugarVista }) {
             ))}
           </ul>
         )}
-        {lugar.acabado === "animado" && (
-          <div className="flex flex-wrap items-center gap-3">
-            <Boton variante="secundario" disabled={ocupado} onClick={() => setEncargo({ tipo: "candidato" })}>
-              <Sparkles className="size-5" aria-hidden /> Generar un candidato
-            </Boton>
-            <span className="text-sm text-texto-suave">
-              Desde la descripción y el estilo, con coste confirmado. Marca como maestra el que apruebes, o sube una
-              ilustración tuya.
-            </span>
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          <Boton
+            variante="chispa"
+            disabled={ocupado || !puedeGenerar}
+            onClick={() => setEncargo({ tipo: "candidato" })}
+          >
+            <Sparkles className="size-5" aria-hidden />{" "}
+            {lugar.acabado === "animado" ? "Generar un candidato" : "Generar una imagen"}
+          </Boton>
+          <span className="text-sm text-texto-suave">
+            {motivoSinGenerar ??
+              (lugar.acabado === "animado"
+                ? "Desde la descripción y el estilo, con el coste a la vista antes de confirmar. Marca como maestra el que apruebes, o sube una ilustración tuya."
+                : "Una foto realista del lugar desde su descripción, con el coste a la vista antes de confirmar. Entra marcada como generada; márcala como maestra si te gusta.")}
+          </span>
+        </div>
         <p className="text-sm text-texto-suave">
           Quitar una foto de aquí no la borra de tu biblioteca. Cambiar las fotos o la maestra crea una versión nueva y
           retira la declaración.
@@ -249,6 +265,7 @@ export function FichaLugar({ inicial }: { inicial: LugarVista }) {
           <DialogoFotoGenerada
             key={encargo ? `${encargo.tipo}-${"referenciaId" in encargo ? encargo.referenciaId : ""}` : "ninguno"}
             lugarId={lugar.id}
+            animado={lugar.acabado === "animado"}
             encargo={encargo}
             onCerrar={() => setEncargo(null)}
             onEncargado={(mensaje) => {

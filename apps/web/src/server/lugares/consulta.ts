@@ -77,7 +77,7 @@ const vistaDeclaracion = (fila: FilaDeclaracionLugar): DeclaracionLugarVista => 
   origenFotos: fila.photoOrigin,
   alcance: fila.scope,
   espacio: fila.space,
-  permisoDelLugar: fila.placePermission,
+  puedoUsarImagenes: fila.mayUseImages,
   personasVisibles: fila.peopleVisible,
   marcasVisibles: fila.brandsVisible,
   declaradaEn: fila.declaredAt.toISOString(),
