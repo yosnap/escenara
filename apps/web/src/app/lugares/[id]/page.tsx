@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { abreConPrimeraImagen } from "@/lib/primera-imagen";
 import { esAdmin, exigirSesion } from "@/server/auth/sesion";
 import { obtenerLugar } from "@/server/lugares/consulta";
 import { ErrorLugar } from "@/server/lugares/errores";
@@ -11,7 +12,13 @@ export const metadata: Metadata = { title: "Lugar" };
 export const dynamic = "force-dynamic";
 
 /** Ficha de un lugar. **Solo la ve su dueño**: uno de otra persona responde 404 y no se dice que exista. */
-export default async function PaginaLugar({ params }: { params: Promise<{ id: string }> }) {
+export default async function PaginaLugar({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { id } = await params;
   const sesion = await exigirSesion(`/lugares/${id}`);
   const actor = { id: sesion.user.id, esAdmin: esAdmin(sesion) };
@@ -32,7 +39,10 @@ export default async function PaginaLugar({ params }: { params: Promise<{ id: st
         <Link href="/lugares" className="text-sm font-semibold text-acento underline">
           ← Volver a tus lugares
         </Link>
-        <FichaLugar inicial={lugar} />
+        <FichaLugar
+          inicial={lugar}
+          primeraImagen={abreConPrimeraImagen(await searchParams, lugar.referencias.length)}
+        />
       </main>
     </div>
   );

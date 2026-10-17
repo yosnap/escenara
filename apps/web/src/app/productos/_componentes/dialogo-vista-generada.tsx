@@ -20,12 +20,15 @@ import {
 export function DialogoVistaGenerada({
   productoId,
   tipo,
+  descripcion,
   abierto,
   onCerrar,
   onEncargado,
 }: {
   productoId: string;
   tipo: TipoProducto;
+  /** Descripción guardada del producto, desde la que se genera la vista. */
+  descripcion: string;
   abierto: boolean;
   onCerrar: () => void;
   onEncargado: (mensaje: string) => void;
@@ -42,8 +45,8 @@ export function DialogoVistaGenerada({
         medioId: null,
         cuerpo: { papel },
         titulo: "Generar una imagen del producto",
-        descripcion:
-          "Una imagen de referencia desde la descripción guardada del producto. Es una generación de imagen y se cobra: verás el coste antes de confirmar.",
+        // La descripción guardada se ve aquí: es lo único que se envía, y así se sabe qué se va a pagar.
+        descripcion: `Una imagen de referencia desde la descripción guardada del producto: «${descripcion.trim()}». Es una generación de imagen y se cobra: verás el coste antes de confirmar.`,
         etiquetaDerechos: "Puedo usar lo que se genere y la marca que aparezca en ello",
         mensajeEncargado: `Encargado. La vista «${NOMBRE_PAPEL_REFERENCIA[papel]}» aparecerá en el producto al terminar (recarga la página), marcada como generada. Mírala antes de usarla: si la etiqueta no sale bien, cámbiale el papel.`,
       }}
