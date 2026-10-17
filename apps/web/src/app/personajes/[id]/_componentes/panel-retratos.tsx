@@ -29,25 +29,29 @@ import {
 } from "@/lib/generacion";
 import { problemasDeMotivos } from "@/lib/llevar-al-problema";
 import type { Medio } from "@/lib/media/tipos";
-import { RETRATOS_CANDIDATOS } from "@/lib/omni";
+import { rangoDeRetratos, retratosPorEncargo } from "@/lib/omni";
 import type { PersonajeVista } from "@/lib/personajes";
 
 /** De uno al máximo que se puede encargar ahora: nunca se ofrece un número que la cola rechazaría. */
 const opcionesCantidad = (maximo: number) =>
   Array.from({ length: Math.max(1, maximo) }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }));
 
-/** Lo que cabe ahora en la cola, de uno al máximo de candidatos; sin huecos conocidos, el máximo. */
+/** Lo más que se puede pedir de una vez: los candidatos, sin pasar del tope de trabajos simultáneos. */
+const topeDeRetratos = (huecos: HuecosDeCola | null) => retratosPorEncargo(huecos?.maximo ?? null);
+
+/** Lo que cabe ahora en la cola, de uno al tope; sin huecos conocidos, el tope. */
 const cabenAhora = (huecos: HuecosDeCola | null) =>
-  huecos === null ? RETRATOS_CANDIDATOS : Math.max(1, Math.min(RETRATOS_CANDIDATOS, huecos.libres));
+  huecos === null ? topeDeRetratos(null) : Math.max(1, Math.min(topeDeRetratos(huecos), huecos.libres));
 
 /** Motivos que corresponden a una casilla: con ellos la alerta lleva a la casilla pendiente. */
 const FALTA_DERECHOS = "Falta confirmar que puedes usar lo que se genere.";
 const FALTA_AVISO_GASTO = "Falta aceptar el aviso de gasto.";
 
 /**
- * Retratos de un personaje **inventado** (0.22.0): se generan de uno a cuatro y se elige uno.
+ * Retratos de un personaje **inventado** (0.22.0): se generan de uno a los que quepan de una vez (los candidatos, sin
+ * pasar del tope de trabajos simultáneos) y se elige uno.
  *
- * El coste va delante y es el de siempre: se estima un fotograma, se multiplica por los cuatro candidatos y se
+ * El coste va delante y es el de siempre: se estima un fotograma, se multiplica por los retratos pedidos y se
  * confirma antes de encolar nada. Elegir **no cuesta**: los candidatos ya están pagados y el que no se elige se
  * queda en la biblioteca de su dueño.
  *
@@ -80,9 +84,24 @@ export function PanelRetratos({
   const [aviso, setAviso] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [candidatos, setCandidatos] = useState<Medio[]>(medios);
-  const [cantidad, setCantidad] = useState(() => cabenAhora(huecosIniciales));
+  /** Lo que ha elegido la persona; `null` = los que quepan. */
+  const [elegida, setElegida] = useState<number | null>(null);
   /** Huecos de la cola: los de la página, puestos al día al preparar el gasto, al encargar y al buscar terminados. */
   const [huecos, setHuecos] = useState<HuecosDeCola | null>(huecosIniciales);
+  // Al refrescarse la página (al elegir la cara, por ejemplo) llegan huecos nuevos: mandan sobre los de antes.
+  const [huecosDeLaPagina, setHuecosDeLaPagina] = useState(huecosIniciales);
+  if (huecosIniciales !== huecosDeLaPagina) {
+    setHuecosDeLaPagina(huecosIniciales);
+    setHuecos(huecosIniciales);
+  }
+  const tope = topeDeRetratos(huecos);
+  /**
+   * El número que se pide se **deriva**: lo elegido (o el tope) sin pasar de lo que cabe ahora. Así no salta a un número
+   * cualquiera al encargar, al buscar terminados o al volver a la pestaña: es siempre lo elegido, recortado a la cola, y
+   * cuando se recorta se dice por qué.
+   */
+  const cantidad = Math.min(elegida ?? tope, cabenAhora(huecos));
+  const recortadoPorLaCola = huecos !== null && huecos.libres > 0 && huecos.libres < tope;
   /** Lo que se acaba de encargar, junto al botón: es donde está mirando quien lo ha pulsado. */
   const [encargo, setEncargo] = useState<{ texto: string; faltan: string; reserva: string } | null>(null);
   const opciones = opcionesCantidad(cabenAhora(huecos));
@@ -108,6 +127,15 @@ export function PanelRetratos({
     [FALTA_AVISO_GASTO]: `${idCasilla}-aviso-gasto`,
   });
 
+  /** Cuando la cola recorta lo que se puede pedir, se dice junto al selector: el número no cambia sin motivo. */
+  const avisoRecorte =
+    huecos !== null && recortadoPorLaCola ? (
+      <Aviso tono="aviso">
+        Ahora puedes encargar como máximo {huecos.libres} {huecos.libres === 1 ? "retrato" : "retratos"}:{" "}
+        {motivoSinHuecos(huecos).toLowerCase()} Cuando termine alguno podrás pedir más.
+      </Aviso>
+    ) : null;
+
   /** Pide el coste al abrir el panel de gasto: ver la ficha no tiene que consultar el saldo del proveedor. */
   const preparar = async () => {
     setOcupado(true);
@@ -127,9 +155,8 @@ export function PanelRetratos({
       setError(cola.error);
       return;
     }
+    // Lo elegido se recorta solo a lo que cabe: el número que se confirma es el que se encarga.
     setHuecos(cola.datos);
-    // Lo elegido baja a lo que cabe: el número que se confirma es el que se encarga.
-    setCantidad((elegida) => Math.min(elegida, cabenAhora(cola.datos)));
     setEstimacion(precio.datos);
     if (previo.ok) setControles(previo.datos);
   };
@@ -167,8 +194,6 @@ export function PanelRetratos({
       huecos === null
         ? null
         : { ...huecos, enMarcha: huecos.enMarcha + hechos, libres: Math.max(0, huecos.libres - hechos) };
-    // Lo elegido no puede quedarse en un número que ya no se ofrece.
-    setCantidad((elegida) => Math.min(elegida, cabenAhora(despues)));
     setHuecos(despues);
     // El encargo queda cerrado: su coste, sus casillas y sus comprobaciones eran de **este** gasto. Dejarlos abiertos
     // enseñaría como bloqueo la cola que se acaba de llenar con él; el siguiente encargo vuelve a leer coste y cola.
@@ -189,10 +214,7 @@ export function PanelRetratos({
     }
     setCandidatos(lista.datos.candidatos);
     // Lo que ha terminado deja sitio en la cola: el número que se ofrece se ajusta a la cola de ahora.
-    if (cola.ok) {
-      setHuecos(cola.datos);
-      setCantidad((elegida) => Math.min(elegida, cabenAhora(cola.datos)));
-    }
+    if (cola.ok) setHuecos(cola.datos);
   };
 
   const elegir = async (medioId: string) => {
@@ -218,9 +240,9 @@ export function PanelRetratos({
       <div>
         <h2 className="text-xl font-bold text-texto">Retratos</h2>
         <p className="mt-1 text-texto-suave">
-          Este personaje es inventado: su cara se genera a partir de su descripción. Puedes pedir de uno a cuatro
-          retratos y elegir uno; los demás se quedan en tu biblioteca.{" "}
-          {personaje.estiloAnimado !== "realista" && "El elegido será su fotograma maestro animado."}
+          Este personaje es inventado: su cara se genera a partir de su descripción. Puedes pedir{" "}
+          {tope === 1 ? "un retrato cada vez" : `${rangoDeRetratos(tope)} a la vez`} y elegir uno; los demás se quedan
+          en tu biblioteca. {personaje.estiloAnimado !== "realista" && "El elegido será su fotograma maestro animado."}
         </p>
       </div>
 
@@ -299,9 +321,10 @@ export function PanelRetratos({
             valor={String(cantidad)}
             deshabilitado={ocupado}
             onCambio={(valor) => {
-              if (valor) setCantidad(Number(valor));
+              if (valor) setElegida(Number(valor));
             }}
           />
+          {avisoRecorte}
           <Boton
             variante="secundario"
             className="self-start"
@@ -323,15 +346,10 @@ export function PanelRetratos({
               valor={String(cantidad)}
               deshabilitado={ocupado}
               onCambio={(valor) => {
-                if (valor) setCantidad(Number(valor));
+                if (valor) setElegida(Number(valor));
               }}
             />
-            {huecos !== null && huecos.libres > 0 && huecos.libres < RETRATOS_CANDIDATOS && (
-              <Aviso tono="aviso">
-                Ahora puedes encargar como máximo {huecos.libres} {huecos.libres === 1 ? "retrato" : "retratos"}:{" "}
-                {motivoSinHuecos(huecos).toLowerCase()} Cuando termine alguno podrás pedir más.
-              </Aviso>
-            )}
+            {avisoRecorte}
             <p className="text-sm text-texto-suave">
               Son {cantidad} imágenes, así que el total estimado es{" "}
               <strong className="text-texto">{total === null ? "—" : formatearCreditos(total)}</strong>. Cada una se

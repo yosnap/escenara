@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Boton } from "@/components/ui/button";
 import { EstadoVacio } from "@/components/ui/feedback";
 import { MiniaturaMedio } from "@/components/ui/media/miniatura-medio";
+import { rutaConPrimeraImagen } from "@/lib/primera-imagen";
 import { NOMBRE_TIPO_PRODUCTO, type ProductoResumen } from "@/lib/productos";
 import { DialogoNuevoProducto } from "./dialogo-nuevo-producto";
 
@@ -23,8 +24,8 @@ export function ListaProductos({ inicial }: { inicial: ProductoResumen[] }) {
     <DialogoNuevoProducto
       abierto={creando}
       onAbiertoCambio={setCreando}
-      // Al crearlo se va a su ficha: lo siguiente es añadirle las fotos, y es ahí donde se hace.
-      onCreado={(id) => router.push(`/productos/${id}`)}
+      // Al crearlo se va a su ficha con el paso «Su primera imagen» delante: generarla o subir fotos, sin buscarlo.
+      onCreado={(id) => router.push(rutaConPrimeraImagen(`/productos/${id}`))}
     />
   );
 

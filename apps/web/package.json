@@ -1,6 +1,6 @@
 {
   "name": "@escenara/web",
-  "version": "0.52.8",
+  "version": "0.52.9",
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "module",
@@ -10,7 +10,7 @@
     "start": "bun --bun next start --port 3021",
     "worker": "bun scripts/worker.ts",
     "typecheck": "tsc --noEmit",
-    "test": "bun test",
+    "test": "bun test --isolate",
     "tokens": "bun scripts/tokens.ts",
     "activos": "bun scripts/activos-marca.ts",
     "db:generate": "bun --bun drizzle-kit generate",
