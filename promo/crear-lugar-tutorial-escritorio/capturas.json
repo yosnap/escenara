@@ -1,139 +1,6 @@
 {
   "capturas": [
     {
-      "id": "foto-lugar",
-      "ruta": "/crear",
-      "viewport": {
-        "ancho": 1600,
-        "alto": 856
-      },
-      "ocultar": [
-        "nextjs-portal"
-      ],
-      "tramos": [
-        {
-          "id": "origen",
-          "acciones": [
-            {
-              "accion": "desplazar",
-              "selector": "button:has-text('Siguiente: Origen')"
-            },
-            {
-              "accion": "clic",
-              "selector": "button:has-text('Siguiente: Origen')"
-            },
-            {
-              "accion": "esperar",
-              "selector": "section[aria-label='Paso 2: ¿De dónde sale el clip?']"
-            },
-            {
-              "accion": "elegir",
-              "titulo": "¿De dónde sale?",
-              "opciones": "section[aria-label='Paso 2: ¿De dónde sale el clip?'] label",
-              "selector": "section[aria-label='Paso 2: ¿De dónde sale el clip?'] label:has-text('Crear un fotograma nuevo')",
-              "etiquetas": [
-                "Crear un fotograma nuevo",
-                "Usar una imagen que ya tengo"
-              ]
-            },
-            {
-              "accion": "clic",
-              "selector": "button:has-text('Siguiente: Quién')"
-            },
-            {
-              "accion": "esperar",
-              "selector": "section[aria-label='Paso 3: Elige a quién generas']"
-            }
-          ]
-        },
-        {
-          "id": "quien",
-          "acciones": [
-            {
-              "accion": "clic",
-              "selector": "button:has-text('Sin personaje')"
-            },
-            {
-              "accion": "clic",
-              "selector": "label:has-text('Crear solo desde texto')"
-            },
-            {
-              "accion": "desplazar",
-              "selector": "section[aria-label='Paso 3: Elige a quién generas'] [role=combobox]"
-            },
-            {
-              "accion": "clic",
-              "selector": "button:has-text('Siguiente: Escena')"
-            },
-            {
-              "accion": "esperar",
-              "selector": "section[aria-label='Paso 4: Describe la escena'] textarea"
-            }
-          ]
-        },
-        {
-          "id": "escena",
-          "acciones": [
-            {
-              "accion": "escribir",
-              "selector": "section[aria-label='Paso 4: Describe la escena'] textarea",
-              "texto": "Terraza de una cafetería luminosa en una plaza peatonal por la mañana: mesas de madera clara, sillas verdes, macetas con limoneros y un toldo blanco. Plano general, sin personas ni textos."
-            },
-            {
-              "accion": "clic",
-              "selector": "button:has-text('Siguiente: Coste')"
-            },
-            {
-              "accion": "esperar",
-              "selector": "section[aria-label='Coste estimado']",
-              "indicador": false
-            }
-          ]
-        },
-        {
-          "id": "coste",
-          "acciones": [
-            {
-              "accion": "desplazar",
-              "selector": "section[aria-label='Coste estimado']"
-            },
-            {
-              "accion": "desplazar",
-              "selector": "label:has-text('Lo he leído y quiero generar igualmente')",
-              "siExiste": true
-            },
-            {
-              "accion": "clic",
-              "selector": "label:has-text('Lo he leído y quiero generar igualmente')",
-              "siExiste": true
-            },
-            {
-              "accion": "clic",
-              "selector": "label:has-text('Tengo derecho a usar esta imagen')"
-            },
-            {
-              "accion": "clic",
-              "selector": "button:has-text('Generar fotograma')"
-            },
-            {
-              "accion": "esperar",
-              "selector": ":text('Fotograma listo')",
-              "espera": 600000
-            }
-          ]
-        },
-        {
-          "id": "resultado",
-          "acciones": [
-            {
-              "accion": "desplazar",
-              "selector": ":text('Fotograma listo')"
-            }
-          ]
-        }
-      ]
-    },
-    {
       "id": "lugar",
       "ruta": "/lugares",
       "viewport": {
@@ -168,7 +35,7 @@
             {
               "accion": "escribir",
               "selector": "[role=dialog] textarea",
-              "texto": "Terraza de cafetería luminosa en una plaza peatonal: mesas de madera clara, sillas verdes, limoneros en macetas y toldo blanco."
+              "texto": "Terraza de cafetería luminosa en una plaza peatonal empedrada: mesas de madera clara, sillas verdes, limoneros en macetas y toldo blanco, por la mañana."
             }
           ]
         },
@@ -210,35 +77,102 @@
           ]
         },
         {
-          "id": "anadir",
+          "id": "generar",
           "acciones": [
             {
               "accion": "desplazar",
-              "selector": "section:has(h2:text-is('Fotos')) button:has-text('Añadir de la biblioteca')"
+              "selector": "section:has(h2:text-is('Fotos')) button:has-text('Generar una imagen')"
             },
             {
               "accion": "clic",
-              "selector": "section:has(h2:text-is('Fotos')) button:has-text('Añadir de la biblioteca')"
+              "selector": "section:has(h2:text-is('Fotos')) button:has-text('Generar una imagen')"
             },
             {
               "accion": "esperar",
-              "selector": "[role=dialog] button[aria-label^='Seleccionar'] >> nth=0",
+              "selector": "[role=dialog] button:has-text('Ver lo que cuesta')",
               "espera": 30000,
               "indicador": false
             },
             {
               "accion": "clic",
-              "selector": "[role=dialog] button[aria-label^='Seleccionar'] >> nth=0"
-            },
-            {
-              "accion": "clic",
-              "selector": "[role=dialog] button:has-text('Usar selección')"
+              "selector": "[role=dialog] button:has-text('Ver lo que cuesta')"
             },
             {
               "accion": "esperar",
-              "selector": "section:has(h2:text-is('Fotos')) li",
-              "espera": 30000,
+              "selector": "[role=dialog] section[aria-label='Coste estimado']",
+              "espera": 60000,
               "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] section[aria-label='Coste estimado']"
+            }
+          ]
+        },
+        {
+          "id": "encargar",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] label:has-text('Puedo usar lo que se genere')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] label:has-text('Puedo usar lo que se genere')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] label:has-text('Sí, quiero gastar')",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] label:has-text('Sí, quiero gastar')",
+              "siExiste": true
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] label:has-text('Lo he leído y quiero generar igualmente')",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] label:has-text('Lo he leído y quiero generar igualmente')",
+              "siExiste": true
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] button:has-text('Encargar')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button:has-text('Encargar')"
+            },
+            {
+              "accion": "esperar",
+              "selector": ":text('Encargado.')",
+              "espera": 60000,
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": ":text('Encargado.')"
+            }
+          ]
+        },
+        {
+          "id": "resultado",
+          "acciones": [
+            {
+              "accion": "esperar",
+              "selector": "section:has(h2:text-is('Fotos')) li >> nth=0",
+              "espera": 600000,
+              "recargar": true,
+              "cada": 15000
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section:has(h2:text-is('Fotos')) li >> nth=0"
             }
           ]
         },
@@ -258,6 +192,12 @@
                 "Detalle",
                 "Una zona concreta"
               ]
+            },
+            {
+              "accion": "esperar",
+              "selector": "section:has(h2:text-is('Fotos')) li [aria-label='Maestra']",
+              "espera": 30000,
+              "indicador": false
             },
             {
               "accion": "desplazar",
@@ -340,6 +280,14 @@
         {
           "id": "declarar",
           "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section:has(h2:has-text('Declaración de derechos')) label:has-text('Puedo usar estas imágenes')"
+            },
+            {
+              "accion": "clic",
+              "selector": "section:has(h2:has-text('Declaración de derechos')) label:has-text('Puedo usar estas imágenes')"
+            },
             {
               "accion": "clic",
               "selector": "section:has(h2:has-text('Declaración de derechos')) label:has-text('no sale ningún menor')"
