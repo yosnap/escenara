@@ -1,0 +1,20 @@
+Cómo hacer un clip de anuncio en Escenara: tu personaje presenta tu producto, paso a paso y desde «Crear».
+
+Verás cómo elegir el personaje, describir la escena, ver el coste antes de confirmar, generar el fotograma y, en el clip, elegir el producto, qué hace el personaje con él y la dirección. Al final, el clip real generado.
+
+Escenara es un estudio abierto de personajes y vídeo con IA: usas tus propias claves de los proveedores y ves el coste antes de generar.
+
+🌐 Escenara: https://escenara.com
+📖 Guía completa: https://docs.escenara.com
+
+Capítulos
+0:00 Formato del clip
+0:15 De dónde sale el clip y el personaje
+0:32 Describe la escena y mira el coste
+0:49 Genera el fotograma
+1:02 Modelo del clip y producto
+1:24 Dirige el clip
+1:37 Confirma y anima
+1:52 El clip de anuncio, listo
+
+#Escenara #IA #Tutorial
