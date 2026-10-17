@@ -6,13 +6,18 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ### Corregido
 
-- Dar de alta una mascota ya no obliga a marcar «Declaro que es mayor de edad»: esa declaración es
-  sobre la persona de las fotos y solo se pide a personas. El servidor aplica la misma regla, a una
-  persona se le sigue exigiendo aunque elija «Un animal mío», y un animal registrado sin ella no se
-  puede pasar a persona sin registrar antes un consentimiento nuevo.
+- Dar de alta una mascota ya no obliga a marcar «Declaro que es mayor de edad»: a un animal no se le
+  pide ninguna declaración de edad. A una persona se le sigue exigiendo aunque elija «Un animal mío»,
+  y una persona registrada sin esa declaración, llegue por donde llegue, queda bloqueada y no genera.
+- Una persona no se puede colar como animal. Las fotos de un animal pasan por un detector de personas
+  que funciona en el propio servidor, sin enviar la foto a nadie, y la que tiene una persona se
+  rechaza con su motivo y sin «usarla de todas formas». Si el detector no carga, la foto tampoco
+  entra y se dice por qué. Una persona con fotos no puede pasar a animal, y un animal sin declaración
+  de edad solo pasa a persona revocando su consentimiento, cambiando el tipo y registrando uno nuevo
+  como persona, que es lo que indica el aviso.
 - Después de encargar bien los retratos ya no aparece un «Bloqueo» en rojo: el encargo se cierra y
-  solo se ve el aviso de lo encargado. El bloqueo por la cola llena sale solo si intentas preparar
-  otro encargo sin sitio.
+  solo se ve el aviso de lo encargado. Con la cola llena no se ofrece ningún retrato y se dice por
+  qué y cuándo podrás pedir más.
 - El número de retratos que quieres generar parte de los huecos libres de tu cola, también al
   recargar la ficha o al volver a ella, y se pone al día al buscar los retratos terminados. Ya no
   vuelve a 4 después de encargar.
@@ -23,7 +28,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 
 ### Actualización
 
-- Sin migraciones nuevas ni cambios de configuración. Reiniciar la web; el worker no cambia.
+- Sin migraciones nuevas ni cambios de configuración. Nueva dependencia `onnxruntime-web` y el modelo
+  `apps/web/modelos/yolox-nano.onnx` (Apache-2.0): hay que instalar dependencias y reiniciar la web.
+  El worker no cambia.
+- La prueba archivada del consentimiento de un animal ya no incluye «mayor de edad: no», que se
+  podía leer como «declarado menor».
 
 ## [0.52.6] · 2026-10-16
 
