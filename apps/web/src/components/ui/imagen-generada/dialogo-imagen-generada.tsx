@@ -46,15 +46,12 @@ export interface PedidoDeImagen {
 export function DialogoImagenGenerada({
   pedido,
   abierto,
-  listo = true,
   children,
   onCerrar,
   onEncargado,
 }: {
   pedido: PedidoDeImagen;
   abierto: boolean;
-  /** `false` si a la ficha le falta algo propio para encargar (lo dice ella en `children`). */
-  listo?: boolean;
   /** Opciones propias del encargo (la vista de un producto), encima del coste. */
   children?: ReactNode;
   onCerrar: () => void;
@@ -74,6 +71,7 @@ export function DialogoImagenGenerada({
   const creditos = estimacion ? creditosAConfirmar(estimacion) : null;
   const firma = `${pedido.url}|${JSON.stringify(pedido.cuerpo)}|${estimacion?.sello ?? ""}|${creditos}|${firmaDeAvisos(confirmados)}`;
   const { pendientes, impide } = faltasDelEncargo({ estimacion, controles, confirmados, derechos, avisoAceptado });
+  const bloqueado = pendientes.length > 0 || impide.length > 0;
   const sitios = {
     [FALTA_DERECHOS_IMAGEN]: `${idCasilla}-derechos`,
     [FALTA_AVISO_GASTO_IMAGEN]: `${idCasilla}-aviso-gasto`,
@@ -98,7 +96,7 @@ export function DialogoImagenGenerada({
 
   const encargar = async () => {
     if (!estimacion || creditos === null) return;
-    if (pendientes.length > 0 || impide.length > 0 || !listo) {
+    if (bloqueado) {
       setIntentado(true);
       return;
     }
@@ -122,8 +120,6 @@ export function DialogoImagenGenerada({
     }
     onEncargado(pedido.mensajeEncargado);
   };
-
-  const bloqueado = pendientes.length > 0 || impide.length > 0 || !listo;
 
   return (
     <Dialogo

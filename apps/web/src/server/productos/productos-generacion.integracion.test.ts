@@ -201,9 +201,7 @@ describe.skipIf(!hayBaseDeDatos)("vistas generadas de un producto", () => {
 
   test("un producto lleno no cobra otra vista", async () => {
     const producto = await nuevoProducto();
-    const fotos = await Promise.all(
-      Array.from({ length: 8 }, (_, i) => subirFotoDePrueba(actor, `foto-${i}.png`)),
-    );
+    const fotos = await Promise.all(Array.from({ length: 8 }, (_, i) => subirFotoDePrueba(actor, `foto-${i}.png`)));
     await anadirFotos(
       actor,
       producto.id,
