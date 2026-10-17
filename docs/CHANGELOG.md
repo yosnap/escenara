@@ -2,6 +2,13 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.52.14] · 2026-10-18
+
+### Corregido
+
+- En «Crear», la confirmación del coste del clip enseña también las fotos del producto que viajan con él y cuántas
+  imágenes van en total, contando la imagen que se anima, frente a las que admite el modelo.
+
 ## [0.52.13] · 2026-10-18
 
 ### Corregido

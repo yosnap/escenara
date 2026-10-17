@@ -4,17 +4,20 @@ import type { EvaluacionVista } from "@/lib/controles";
 import type { Medio } from "@/lib/media/tipos";
 
 /**
- * **Zona de claridad**: las fotos del producto y la del lugar que viajan con el fotograma junto a las del personaje,
- * y cuántas imágenes van en total. Las cifras y las fotos salen de la consulta de antes de pagar, que las calcula con
- * el mismo reparto que el envío. Superficie neutra, sin degradados y sin animación.
+ * **Zona de claridad**: las fotos del producto y la del lugar que viajan con el fotograma junto a las del personaje
+ * (o, en el clip, junto a la imagen que se anima), y cuántas imágenes van en total. Las cifras y las fotos salen de la
+ * consulta de antes de pagar, que las calcula con el mismo reparto que el envío. Superficie neutra, sin degradados y sin animación.
  */
 export function PanelFotosQueAcompanan({
   evaluacion,
-  temporales,
+  temporales = 0,
+  clip = false,
 }: {
   evaluacion: EvaluacionVista;
   /** Las referencias temporales de este envío, que viajan además y se enseñan en su propio panel. */
-  temporales: number;
+  temporales?: number;
+  /** En el clip, la imagen que cuenta en el total es la que se anima, no las fotos del personaje. */
+  clip?: boolean;
 }) {
   const { fotosQueViajan: fotos, referencias: reparto } = evaluacion;
   if (!fotos || !reparto) return null;
@@ -35,7 +38,8 @@ export function PanelFotosQueAcompanan({
       {fotos.lugar.length > 0 && <Grupo titulo="Del lugar, su foto principal" medios={fotos.lugar} />}
       <p className="text-sm text-texto-suave">
         En total viajan {total} {total === 1 ? "imagen" : "imágenes"}
-        {temporales > 0 ? ", contando las referencias temporales," : ""} de las {fotos.cupo} que admite este modelo.
+        {clip ? ", contando la imagen que se anima," : temporales > 0 ? ", contando las referencias temporales," : ""}{" "}
+        de las {fotos.cupo} que admite este modelo.
         {recortadas > 0 &&
           ` Del personaje solo caben ${reparto.personaje} de sus ${fotos.fotosDelPersonaje} fotos: el resto del cupo es del producto y del lugar.`}
       </p>

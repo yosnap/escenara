@@ -186,19 +186,16 @@ export async function evaluarControles(
   const evaluacion = evaluarParaMostrar(hechos);
   // Las cifras del reparto, las mismas que usará el envío: el panel puede decir qué viaja sin volver a contarlo.
   if (!reparto) return evaluacion;
-  // En el fotograma, además, qué fotos del producto y del lugar viajan: se enseñan junto a las del personaje. El clip
-  // elige a mano en su propio bloque las fotos del producto que lleva, así que allí ya se ven.
-  const fotos =
-    envio.tipo === "fotograma"
-      ? await fotosQueViajan(actor, {
-          producto,
-          conProducto,
-          conLugar,
-          reparto,
-          envio,
-          cupo: cupoDeGaleria(eleccion.adaptador, eleccion.modelo),
-        })
-      : null;
+  // Además, qué fotos del producto y del lugar viajan: se enseñan antes de pagar junto a las del personaje (en el
+  // fotograma) o junto a la imagen que se anima (en el clip, donde la maestra del lugar no compite).
+  const fotos = await fotosQueViajan(actor, {
+    producto,
+    conProducto,
+    conLugar,
+    reparto,
+    envio,
+    cupo: cupoDeGaleria(eleccion.adaptador, eleccion.modelo),
+  });
   return { ...evaluacion, referencias: reparto, ...(fotos ? { fotosQueViajan: fotos } : {}) };
 }
 
