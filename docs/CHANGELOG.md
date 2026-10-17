@@ -2,6 +2,27 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.52.12] · 2026-10-17
+
+### Corregido
+
+- Dos envíos casi simultáneos que comparten un texto ya no pueden pagar dos veces su traducción al inglés, aunque
+  el resto de lo que se traduce sea distinto (por ejemplo, la misma ficha de personaje con dos escenas). Solo uno
+  llama al traductor; el otro usa la traducción guardada si el primero ya terminó, o dice que el texto se está
+  traduciendo en otra petición y que no se ha enviado nada a generar. Antes, si el primero terminaba justo antes
+  de que el segundo preparase su llamada, el segundo volvía a traducir y a cobrar.
+- Si parte de los textos ya estaba traducida, solo se traduce lo que falta.
+- Tras una traducción fallida, o que contestó con algo que no era una traducción, el siguiente intento con el mismo
+  texto vuelve a traducir en lugar de quedarse esperando. Una traducción interrumpida a medias tampoco deja el texto
+  bloqueado.
+- Si la base de datos no tiene conexión libre para preparar la traducción, el envío se rechaza diciendo la causa y
+  que no se ha enviado nada ni se ha cobrado nada.
+
+### Actualización
+
+- `DATABASE_URL` tiene que ser una conexión directa a PostgreSQL o un pooler en modo sesión, nunca en modo
+  transacción. La traducción usa hasta 4 conexiones más por proceso web (guía de despliegue en Easypanel).
+
 ## [0.52.11] · 2026-10-17
 
 ### Añadido

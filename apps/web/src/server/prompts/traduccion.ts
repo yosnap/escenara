@@ -4,6 +4,7 @@ import { INSTRUCCIONES_TRADUCCION, leerTraducciones, peticionDeTraduccion } from
 import { type IntentoProveedor, mensajeDeFalloDeProveedor } from "@/lib/diagnostico-proveedor";
 import { leerAjustes } from "../ajustes";
 import { eleccionDeTexto } from "../asistente/texto";
+import { conCerrojosConsultivos, ErrorConexionCerrojo } from "../db/cerrojos-consultivos";
 import { db, type Ejecutor } from "../db/cliente";
 import { assistantRuns, translationCache } from "../db/esquema";
 import { ErrorGeneracion } from "../generacion/errores";
@@ -23,8 +24,8 @@ import { ErrorCatalogo } from "../proveedores/contrato";
  * Es una **llamada de pago**, así que recorre el mismo control de dinero que todo lo demás:
  *
  * - **se cachea por huella del texto de origen** (`translation_cache`), por usuario: lo mismo no se paga dos
- *   veces. La caché es la dedupe de verdad; la clave de idempotencia de la ejecución serializa además dos
- *   peticiones simultáneas del mismo texto, para que solo una llame al proveedor;
+ *   veces. La caché es la dedupe de verdad; un cerrojo consultivo por usuario y texto serializa además dos
+ *   peticiones simultáneas que lo comparten, para que solo una lo pague;
  * - **reserva antes de llamar**, con su tope y su presupuesto, y cierra con los créditos que informa el
  *   proveedor (`assistant_runs` con `kind = 'traduccion'`);
  * - **lista blanca de rechazos**: solo se apunta «no ha costado nada» cuando el código prueba que el proveedor
@@ -211,6 +212,72 @@ export async function borrarTraduccionesDePersonaje(ejecutor: Ejecutor, personaj
 }
 
 /**
+ * Traduce los textos que faltan, **con un solo traductor a la vez por usuario y texto**.
+ *
+ * Dos peticiones casi simultáneas que comparten un texto no pueden pagarlo dos veces: cada texto tiene su cerrojo
+ * consultivo de PostgreSQL (por usuario y huella) y la petición toma los de todos sus textos. Si alguno lo tiene
+ * otra, no llama a nadie: usa la caché si ya está todo, o recibe un 409. Y quien los toma **vuelve a mirar la
+ * caché antes de llamar** y traduce solo lo que siga faltando: si otra petición terminó entre su primera lectura
+ * y ahora, lo suyo ya está ahí y no se paga otra vez.
+ *
+ * Si el proceso muere a medias, PostgreSQL suelta los cerrojos con la sesión: una ejecución que se quede en
+ * `reservado` no bloquea el texto (el barrido la cierra después, conservando su estimación). Tras un intento que
+ * no sirvió —un fallo o una respuesta que no se pudo usar como traducción, que no deja nada en la caché— el
+ * siguiente vuelve a llamar.
+ *
+ * Se exporta para poder comprobar con datos viejos (una caché leída antes de que otra petición terminara) que
+ * no se vuelve a pagar.
+ */
+export async function pedirTraduccion(
+  usuarioId: string,
+  pendientes: TextoATraducir[],
+  /** Modelo cuyo coste se enseñó y se confirmó al generar: puede hacer de reserva de pago, avisando. */
+  modeloConfirmado: string,
+  buscar: Buscador,
+): Promise<{ traducidas: Map<string, string>; aviso: string }> {
+  const cerrojos = pendientes.map((p) => `traduccion:${usuarioId}:${huellaDeTexto(p.texto)}`);
+  let resultado: { traducidas: Map<string, string>; aviso: string } | null;
+  try {
+    resultado = await conCerrojosConsultivos(cerrojos, async () => {
+      const traducidas = await deLaCache(usuarioId, pendientes);
+      const faltan = pendientes.filter((p) => !traducidas.has(p.texto));
+      if (faltan.length === 0) return { traducidas, aviso: "" };
+      const clave = await claveDeTraduccion(usuarioId, `traduccion:${huellaDelConjunto(faltan)}`);
+      const nuevas = await llamarAlTraductor(usuarioId, faltan, modeloConfirmado, buscar, clave);
+      for (const [texto, ingles] of nuevas.traducidas) traducidas.set(texto, ingles);
+      return { traducidas, aviso: nuevas.aviso };
+    });
+  } catch (error) {
+    if (error instanceof ErrorConexionCerrojo) {
+      throw new ErrorGeneracion(
+        503,
+        `No se ha podido preparar la traducción al inglés porque ${error.message}. No se ha enviado nada a generar ni se ha cobrado nada: vuelve a intentarlo en unos segundos.`,
+      );
+    }
+    throw error;
+  }
+  return resultado ?? otraPeticionEnCurso(usuarioId, pendientes);
+}
+
+/**
+ * Otra petición con alguno de estos textos llegó primero. No se llama otra vez —sería pagar dos veces lo mismo—,
+ * pero sí se vuelve a mirar la caché: si la otra ya terminó y están todos, esto sigue sin gastar nada.
+ */
+async function otraPeticionEnCurso(
+  usuarioId: string,
+  pendientes: readonly TextoATraducir[],
+): Promise<{ traducidas: Map<string, string>; aviso: string }> {
+  const yaTraducidas = await deLaCache(usuarioId, pendientes);
+  if (yaTraducidas.size === pendientes.length) return { traducidas: yaTraducidas, aviso: "" };
+  // Y si no están, no se afirma nada sobre el cobro: no se sabe si la otra llamada ha terminado, ha fallado o
+  // sigue en curso, y lo único seguro es que aquí no se ha enviado nada a generar.
+  throw new ErrorGeneracion(
+    409,
+    "Tu texto se está traduciendo en otra petición que acabas de hacer. No se ha enviado nada a generar: espera unos segundos y vuelve a intentarlo.",
+  );
+}
+
+/**
  * Traduce los textos que faltan **recorriendo el mapa de modelos de texto** del usuario (0.21.1): la entrada
  * principal primero y, si falla de forma que prueba que no cobró, la siguiente.
  *
@@ -221,15 +288,14 @@ export async function borrarTraduccionesDePersonaje(ejecutor: Ejecutor, personaj
  * Lo que se confirmó antes de generar es el coste de la **entrada principal**, que es el techo: una reserva que
  * se pague por cuota cuesta menos, nunca más.
  */
-async function pedirTraduccion(
+async function llamarAlTraductor(
   usuarioId: string,
   pendientes: TextoATraducir[],
-  /** Modelo cuyo coste se enseñó y se confirmó al generar: puede hacer de reserva de pago, avisando. */
   modeloConfirmado: string,
   buscar: Buscador,
+  claveIdempotencia: string,
 ): Promise<{ traducidas: Map<string, string>; aviso: string }> {
   const originales = pendientes.map((p) => p.texto);
-  const claveIdempotencia = await claveDeTraduccion(usuarioId, pendientes);
   let resultado: TextoDelMapa;
   try {
     resultado = await pedirTextoPorMapa({
@@ -246,16 +312,12 @@ async function pedirTraduccion(
   } catch (error) {
     if (error instanceof ErrorDeTexto) throw new ErrorGeneracion(502, error.mensaje(ENCABEZADO_FALLO));
     if (error instanceof ErrorPeticionRepetida) {
-      // Otra petición del mismo texto llegó primero. No se llama otra vez —sería pagar dos veces lo mismo—, pero
-      // sí se vuelve a mirar la caché: si la otra ya terminó, están todas y esto sigue sin gastar nada.
-      const yaTraducidas = await deLaCache(usuarioId, pendientes);
-      if (yaTraducidas.size === pendientes.length) return { traducidas: yaTraducidas, aviso: "" };
-      // Y si no están, no se afirma nada sobre el cobro: no se sabe si la otra llamada ha terminado, ha fallado o
-      // sigue en curso, y lo único seguro es que aquí no se ha enviado nada a generar.
-      throw new ErrorGeneracion(
-        409,
-        "Tu texto se está traduciendo en otra petición que acabas de hacer. No se ha enviado nada a generar: espera unos segundos y vuelve a intentarlo.",
+      // Red de seguridad: con los cerrojos tomados la clave no debería repetirse nunca. Si pasa, es un fallo
+      // nuestro y se registra, pero tampoco se paga dos veces.
+      console.error(
+        `[traduccion] clave de idempotencia repetida con los cerrojos tomados (usuario ${usuarioId}, clave ${claveIdempotencia}): no se llama al proveedor`,
       );
+      return otraPeticionEnCurso(usuarioId, pendientes);
     }
     if (error instanceof ErrorCatalogo) throw new ErrorGeneracion(error.estado, error.message);
     throw error;
@@ -297,26 +359,32 @@ async function deLaCache(usuarioId: string, entradas: readonly TextoATraducir[])
   return traducidas;
 }
 
-/**
- * Clave de idempotencia de la traducción: la huella del conjunto de textos más el número de intento.
- *
- * La huella serializa dos peticiones simultáneas del mismo texto (solo una llama al proveedor, la otra recibe
- * `nueva: false` y se detiene). El número de intento es lo que permite volver a intentarlo cuando el anterior
- * falló, sin que la clave quede quemada para siempre.
- */
-async function claveDeTraduccion(usuarioId: string, pendientes: readonly TextoATraducir[]): Promise<string> {
-  const huella = huellaDeTexto(
+/** Huella del conjunto de textos, sin importar el orden: es la que identifica una petición de traducción. */
+function huellaDelConjunto(pendientes: readonly TextoATraducir[]): string {
+  return huellaDeTexto(
     pendientes
       .map((p) => huellaDeTexto(p.texto))
       .sort()
       .join("|"),
   );
-  const prefijo = `traduccion:${huella}`;
+}
+
+/**
+ * Clave de idempotencia de un intento de traducción: el prefijo del conjunto que falta más el número de intento,
+ * el mayor que haya con ese prefijo más uno.
+ *
+ * **Solo se calcula con los cerrojos de esos textos tomados**, así que nadie más inserta ejecuciones con este
+ * prefijo mientras se calcula y la clave nunca choca. Lo que impide pagar dos veces lo mismo son los cerrojos más
+ * la caché, no la clave: el número avanza con cada intento que llegó a apuntarse, sirviera o no.
+ */
+async function claveDeTraduccion(usuarioId: string, prefijo: string): Promise<string> {
+  // Las claves son `<prefijo>:<intento>:<posición en el mapa>`: el intento es la tercera parte.
+  const intento = sql`split_part(${assistantRuns.idempotencyKey}, ':', 3)`;
   const [fila] = await db()
-    .select({ total: sql<number>`count(*)::int` })
+    .select({ ultimo: sql<number>`coalesce(max(case when ${intento} ~ '^[0-9]+$' then ${intento}::int end), 0)::int` })
     .from(assistantRuns)
-    .where(and(eq(assistantRuns.userId, usuarioId), like(assistantRuns.idempotencyKey, `${prefijo}%`)));
-  return `${prefijo}:${(fila?.total ?? 0) + 1}`;
+    .where(and(eq(assistantRuns.userId, usuarioId), like(assistantRuns.idempotencyKey, `${prefijo}:%`)));
+  return `${prefijo}:${(fila?.ultimo ?? 0) + 1}`;
 }
 
 async function guardarEnCache(
