@@ -44,7 +44,7 @@ const { creditosAConfirmar } = await import("@/lib/generacion");
 const { olvidarSaldos } = await import("../generacion/estimacion");
 const { crearPersonaje } = await import("../personajes/servicio");
 const { borrarPersonaje } = await import("../personajes/borrado");
-const { huellaDeTexto, purgarTraduccionesViejas } = await import("./traduccion");
+const { huellaDeTexto, pedirTraduccion, purgarTraduccionesViejas } = await import("./traduccion");
 const { olvidarCatalogo } = await import("../proveedores/catalogo");
 const { ErrorGeneracion } = await import("../generacion/errores");
 type Buscador = import("../proveedores/codigos").Buscador;
@@ -62,8 +62,15 @@ const TRADUCIDA = "on a rooftop at dawn, looking at the camera";
 
 /** Textos que se han mandado a traducir, uno por llamada. */
 const traducciones: string[] = [];
-/** Qué contesta el endpoint de texto: `null` = contesta bien; `"tiempo"` = no contesta a tiempo. */
-let falloDeTexto: number | "tiempo" | null = null;
+/**
+ * Qué contesta el endpoint de texto: `null` = contesta bien; `"tiempo"` = no contesta a tiempo; `"inservible"` =
+ * contesta con éxito, pero con un texto que no es una lista de traducciones.
+ */
+let falloDeTexto: number | "tiempo" | "inservible" | null = null;
+/** Si se pone, el endpoint de texto espera a esta promesa antes de contestar: deja una traducción «en curso». */
+let esperarAntesDeContestar: Promise<void> | null = null;
+/** Se resuelve cuando el endpoint de texto recibe una llamada: así se sabe que la traducción ya está en curso. */
+let avisarDeLlamada: (() => void) | null = null;
 /** Saldo que informa el proveedor. Se baja para comprobar que la traducción va detrás de esa puerta. */
 let saldoSimulado = 5000;
 
@@ -78,6 +85,17 @@ const buscar: Buscador = async (url, init) => {
   if (url.includes("/codex/v1/responses")) {
     const cuerpo = JSON.parse(String(init.body)) as { input: { role: string; content: string }[] };
     traducciones.push(cuerpo.input.at(-1)?.content ?? "");
+    avisarDeLlamada?.();
+    if (esperarAntesDeContestar) await esperarAntesDeContestar;
+    if (falloDeTexto === "inservible") {
+      return new Response(
+        JSON.stringify({
+          output: [{ type: "message", content: [{ type: "output_text", text: "Lo siento, no sé traducir eso." }] }],
+          credits_consumed: CREDITOS_INFORMADOS,
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }
     if (falloDeTexto === "tiempo") throw new DOMException("Se ha agotado el tiempo.", "TimeoutError");
     if (falloDeTexto !== null) return new Response(JSON.stringify({ error: "vaya" }), { status: falloDeTexto });
     // Traduce «de verdad» lo que reconoce y devuelve el resto tal cual: basta para comprobar qué se envía.
@@ -306,20 +324,90 @@ describe.skipIf(!hayBaseDeDatos)("traducción de los prompts al inglés", () => 
     olvidarSaldos();
   });
 
-  test("dos peticiones a la vez del mismo texto llaman al proveedor una sola vez", async () => {
+  test("si la primera traducción sigue en curso, la segunda no llama al proveedor y recibe un 409", async () => {
     const texto = "dos peticiones del mismo texto a la vez";
     const llamadas = traducciones.length;
-    const resultados = await Promise.allSettled([generar(texto), generar(texto)]);
+    let soltar = () => {};
+    esperarAntesDeContestar = new Promise<void>((resolver) => {
+      soltar = resolver;
+    });
+    const enCurso = new Promise<void>((resolver) => {
+      avisarDeLlamada = resolver;
+    });
+    const primera = generar(texto);
+    // La segunda empieza cuando la primera ya está esperando al proveedor: la carrera ocurre siempre, no a veces.
+    await enCurso;
+    avisarDeLlamada = null;
+    const segunda = await generar(texto).catch((e: unknown) => e);
+    soltar();
+    esperarAntesDeContestar = null;
+    await primera;
     // Lo que no puede pasar nunca: pagar dos veces la misma traducción.
     expect(traducciones).toHaveLength(llamadas + 1);
-    const rechazadas = resultados.filter((r) => r.status === "rejected");
-    expect(rechazadas.length).toBeLessThanOrEqual(1);
-    for (const rechazada of rechazadas) {
-      const mensaje = String((rechazada as PromiseRejectedResult).reason);
-      // Si una se queda fuera, el mensaje **no afirma nada sobre el cobro**: solo que no se ha enviado a generar.
-      expect(mensaje).toContain("No se ha enviado nada a generar");
-      expect(mensaje).not.toContain("no se te ha cobrado");
-    }
+    expect(segunda).toBeInstanceOf(ErrorGeneracion);
+    expect((segunda as { estado: number }).estado).toBe(409);
+    // El mensaje **no afirma nada sobre el cobro**: solo que no se ha enviado a generar.
+    expect((segunda as Error).message).toContain("No se ha enviado nada a generar");
+    expect((segunda as Error).message).not.toContain("no se te ha cobrado");
+    // Y en cuanto la primera termina, el mismo texto sale de la caché sin volver a llamar.
+    await generar(texto);
+    expect(traducciones).toHaveLength(llamadas + 1);
+  });
+
+  test("si la primera traducción terminó después de que la segunda mirase la caché, la segunda no vuelve a pagar", async () => {
+    const texto = "una petición que mira la caché antes de que la otra termine";
+    const llamadas = traducciones.length;
+    await generar(texto);
+    expect(traducciones).toHaveLength(llamadas + 1);
+    // La segunda petición leyó la caché vacía antes de que la primera guardase: llega aquí sin saber que ya está.
+    const { traducidas } = await pedirTraduccion(ana.id, [{ texto }], "gpt-5-6-sol", buscar);
+    expect(traducciones).toHaveLength(llamadas + 1);
+    expect(traducidas.get(texto)).toBe(TRADUCIDA);
+  });
+
+  test("tras un intento fallido, el mismo texto se puede volver a traducir", async () => {
+    const texto = "una escena que falla la primera vez y se reintenta";
+    const llamadas = traducciones.length;
+    falloDeTexto = 500;
+    await expect(generar(texto)).rejects.toThrow(ErrorGeneracion);
+    falloDeTexto = null;
+    const envio = await generar(texto);
+    expect(traducciones).toHaveLength(llamadas + 2);
+    expect(await promptDe(envio.trabajo.id)).toContain(TRADUCIDA);
+  });
+
+  test("una respuesta que no sirve como traducción no deja el texto bloqueado: el reintento vuelve a llamar", async () => {
+    const texto = "una escena cuya primera respuesta no es una traducción";
+    const llamadas = traducciones.length;
+    falloDeTexto = "inservible";
+    const fallo = await generar(texto).catch((e: unknown) => e);
+    falloDeTexto = null;
+    expect(fallo).toBeInstanceOf(ErrorGeneracion);
+    expect((fallo as { estado: number }).estado).toBe(502);
+    // La ejecución quedó `listo` (el proveedor contestó), pero no hay nada en la caché.
+    expect((await ultimaEjecucion())?.state).toBe("listo");
+    const envio = await generar(texto);
+    expect(traducciones).toHaveLength(llamadas + 2);
+    expect(await promptDe(envio.trabajo.id)).toContain(TRADUCIDA);
+  });
+
+  test("una ejecución que se quedó en `reservado` no bloquea el texto", async () => {
+    const texto = "una escena cuya traducción anterior se interrumpió";
+    const llamadas = traducciones.length;
+    falloDeTexto = 500;
+    await expect(generar(texto)).rejects.toThrow(ErrorGeneracion);
+    falloDeTexto = null;
+    // Como si el proceso hubiera muerto entre la reserva y el cierre: la ejecución se queda `reservado`.
+    const colgada = await ultimaEjecucion();
+    expect(colgada?.idempotencyKey).toMatch(/^traduccion:[0-9a-f]{64}:1:0$/);
+    await db()
+      .update(assistantRuns)
+      .set({ state: "reservado", finishedAt: null })
+      .where(eq(assistantRuns.id, colgada?.id ?? ""));
+    const envio = await generar(texto);
+    expect(traducciones).toHaveLength(llamadas + 2);
+    expect(await promptDe(envio.trabajo.id)).toContain(TRADUCIDA);
+    expect((await ultimaEjecucion())?.idempotencyKey).toMatch(/^traduccion:[0-9a-f]{64}:2:0$/);
   });
 
   test("la traducción de la ficha de un personaje se borra con el personaje", async () => {
