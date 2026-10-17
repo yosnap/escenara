@@ -4,6 +4,10 @@ Un lugar es un **sitio poco conocido que quieres usar como escenario una y otra 
 esquina, el patio de tu edificio. Lo das de alta una vez en **Lugares**, con sus fotos, y a partir de ahí lo eliges
 en **«Crear»**, en la **escena de un proyecto** o como **lugar del proyecto entero**.
 
+Así se crea un lugar, se genera su foto y se declara, paso a paso:
+
+[![Cómo crear un lugar en Escenara y generar su foto con IA, paso a paso](../assets/video/youtube-z9Ty1cgKzEY.webp)](https://youtu.be/z9Ty1cgKzEY)
+
 Lo que Escenara promete con un lugar es esto: **el sitio del fotograma es el de tu foto maestra**. Se reconoce por su
 estructura, sus materiales, sus muebles fijos y su luz. No se calca: el modelo lo recompone desde otro ángulo, igual
 que harías tú moviendo el móvil.

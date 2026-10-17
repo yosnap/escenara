@@ -4,6 +4,10 @@ Un producto es lo que enseñas delante de la cámara: un bote, una prenda o una 
 das de alta una vez en **Productos**, con sus fotos, y a partir de ahí lo eliges en cualquier clip: en
 **«Crear»** y en la **escena de un proyecto**, en el mismo panel donde diriges.
 
+Así se crea un producto y se generan sus imágenes sin salir de su ficha, paso a paso:
+
+[![Cómo crear un producto en Escenara y generar sus imágenes con IA, paso a paso](../assets/video/youtube-9CCW9_EWzeg.webp)](https://youtu.be/9CCW9_EWzeg)
+
 Lo que Escenara promete con un producto es una cosa concreta: **su etiqueta y su envase no se tocan**. Ni se
 reescribe el texto, ni se cambia el color, ni se inventa un logo. Después de generar, Jev compara el resultado
 con tu foto frontal y te dice si el producto sigue siendo el tuyo.

@@ -5,7 +5,7 @@
 ¿Prefieres verlo? El tutorial en vídeo crea un personaje de tu **mascota** (un animal, con sus fotos y su
 consentimiento) y otro inventado, paso a paso:
 
-[![Cómo crear un personaje en Escenara: inventado y tu mascota, paso a paso](../assets/video/youtube-0nT6cqlq8h4.webp)](https://youtu.be/0nT6cqlq8h4)
+[![Cómo crear un personaje en Escenara: inventado y tu mascota, paso a paso](../assets/video/youtube-UjaTyuU8xqc.webp)](https://youtu.be/UjaTyuU8xqc)
 
 Un **personaje** es una persona o un animal con sus fotos de referencia y su consentimiento de uso de imagen.
 Es lo que mantiene la misma cara entre vídeos: al generar, Escenara le manda al modelo **varias** fotos del
