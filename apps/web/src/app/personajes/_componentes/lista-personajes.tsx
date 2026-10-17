@@ -6,7 +6,7 @@ import { claseBoton } from "@/components/ui/button";
 import { AnilloHistoria } from "@/components/ui/creator";
 import { EstadoVacio } from "@/components/ui/feedback";
 import { anilloDeEstado, InsigniaEstadoPersonaje } from "@/components/ui/personaje";
-import { ETIQUETA_TIPO_PERSONAJE, type PersonajeVista } from "@/lib/personajes";
+import { etiquetaDeTipo, type PersonajeVista, resumenDeReferencias } from "@/lib/personajes";
 
 /**
  * Lista de personajes con su anillo de estado, el icono y el texto. El estado nunca se indica solo con el
@@ -46,8 +46,7 @@ export function ListaPersonajes({ inicial }: { inicial: PersonajeVista[] }) {
             <div className="flex min-w-0 flex-1 flex-col gap-2">
               <span className="truncate text-lg font-bold text-texto">{personaje.nombre}</span>
               <span className="text-sm text-texto-suave">
-                {ETIQUETA_TIPO_PERSONAJE[personaje.tipo]} · {personaje.totalReferencias}{" "}
-                {personaje.totalReferencias === 1 ? "foto" : "fotos"} de {personaje.minimoReferencias} mínimas
+                {etiquetaDeTipo(personaje)} · {resumenDeReferencias(personaje)}
               </span>
               <InsigniaEstadoPersonaje estado={personaje.estado} className="self-start" />
               {personaje.impedimentos.length > 0 && (

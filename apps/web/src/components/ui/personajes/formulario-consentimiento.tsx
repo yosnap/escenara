@@ -18,7 +18,9 @@ import {
   ETIQUETA_AUTORIZO_PARECIDO,
   ETIQUETA_TITULAR,
   exigeDocumento,
+  exigeMayoriaDeEdad,
   TITULARES_REGISTRABLES,
+  type TipoPersonaje,
   type TitularConsentimiento,
 } from "@/lib/personajes";
 
@@ -27,7 +29,8 @@ import {
  * parallax, texto legal sin ambigüedad y el alcance real del control escrito delante.
  *
  * Lo que decide de verdad está en el servidor (`server/personajes/consentimiento.ts`): sin declaración de
- * mayoría de edad no se registra nada, y un tercero exige documento firmado y revisión humana.
+ * mayoría de edad no se registra una persona (a un animal no se le pide), y un tercero exige documento firmado y
+ * revisión humana.
  */
 
 export interface EstadoConsentimiento {
@@ -52,9 +55,11 @@ export const CONSENTIMIENTO_INICIAL: EstadoConsentimiento = {
 };
 
 /** Motivos por los que el consentimiento aún no se puede registrar. Vacío = se puede. */
-export function bloqueosDeConsentimiento(estado: EstadoConsentimiento): string[] {
+export function bloqueosDeConsentimiento(estado: EstadoConsentimiento, tipo: TipoPersonaje): string[] {
   const motivos: string[] = [];
-  if (!estado.mayoriaDeEdad) motivos.push("Falta declarar que la persona de las fotos es mayor de edad.");
+  if (exigeMayoriaDeEdad(tipo) && !estado.mayoriaDeEdad) {
+    motivos.push("Falta declarar que la persona de las fotos es mayor de edad.");
+  }
   if (exigeDocumento(estado.titular) && estado.documento.length === 0) {
     motivos.push("Falta subir el documento de consentimiento firmado por esa persona.");
   }
@@ -62,10 +67,13 @@ export function bloqueosDeConsentimiento(estado: EstadoConsentimiento): string[]
 }
 
 export function FormularioConsentimiento({
+  tipo,
   valor,
   onCambio,
   deshabilitado,
 }: {
+  /** Tipo del personaje: la casilla de mayoría de edad solo se enseña a una persona. */
+  tipo: TipoPersonaje;
   valor: EstadoConsentimiento;
   onCambio: (estado: EstadoConsentimiento) => void;
   deshabilitado?: boolean;
@@ -120,13 +128,15 @@ export function FormularioConsentimiento({
         onCambio={(v) => cambiar("coherencia", v)}
       />
 
-      <Casilla
-        etiqueta="Declaro que es mayor de edad"
-        descripcion={AVISO_MAYORIA_DE_EDAD}
-        marcada={valor.mayoriaDeEdad}
-        deshabilitado={deshabilitado}
-        onCambio={(v) => cambiar("mayoriaDeEdad", v)}
-      />
+      {exigeMayoriaDeEdad(tipo) && (
+        <Casilla
+          etiqueta="Declaro que es mayor de edad"
+          descripcion={AVISO_MAYORIA_DE_EDAD}
+          marcada={valor.mayoriaDeEdad}
+          deshabilitado={deshabilitado}
+          onCambio={(v) => cambiar("mayoriaDeEdad", v)}
+        />
+      )}
 
       {exigeDocumento(valor.titular) && (
         <div className="flex flex-col gap-3">

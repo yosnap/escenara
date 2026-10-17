@@ -4,6 +4,7 @@ import {
   esAlcanceUso,
   esTitularConsentimiento,
   exigeDocumento,
+  exigeMayoriaDeEdad,
   MOTIVO_MAXIMO,
   type PersonajeVista,
   type TitularConsentimiento,
@@ -21,8 +22,10 @@ import { fichaDePersonaje } from "./servicio";
  *
  * Reglas duras de la versión, acordadas en las decisiones provisionales de la fase 13:
  *
- * - **sin declaración de mayoría de edad no se registra nada** (400). Es un control, no una garantía: nadie
- *   puede comprobar la edad de la persona de una foto, y así está escrito en la interfaz y en `docs/legal/`;
+ * - **sin declaración de mayoría de edad no se registra una persona** (400). Es un control, no una garantía:
+ *   nadie puede comprobar la edad de la persona de una foto, y así está escrito en la interfaz y en `docs/legal/`.
+ *   A un animal no se le pide: no hay ninguna persona cuya edad declarar. Lo decide el tipo del personaje, no el
+ *   titular elegido, así que una persona registrada como «un animal mío» sigue teniendo que declararla;
  * - «soy yo» y «animal propio» no tienen fricción: la declaración con la cuenta y la fecha basta;
  * - un **tercero exige documento firmado** subido a la biblioteca del usuario; con documento el personaje
  *   queda `en_revision` y **no genera** hasta que quien administra lo acepta;
@@ -177,7 +180,8 @@ export async function registrarConsentimiento(
       "Este personaje ya se registró como imagen de otra persona, así que no se puede cambiar a «soy yo» ni a «un animal mío». Registra otro consentimiento de tercero, con su documento firmado, y quien administra volverá a revisarlo.",
     );
   }
-  if (datos.mayoriaDeEdad !== true) {
+  const exigeEdad = exigeMayoriaDeEdad(personaje.kind);
+  if (exigeEdad && datos.mayoriaDeEdad !== true) {
     throw new ErrorPersonaje(
       400,
       "Tienes que declarar que la persona de las fotos es mayor de edad. Sin esa declaración el personaje queda bloqueado.",
@@ -195,7 +199,8 @@ export async function registrarConsentimiento(
       await tx.insert(consentRecords).values({
         characterId: personaje.id,
         holderType: titular,
-        adultDeclared: true,
+        // En un animal no se declara: guardar `true` diría que alguien declaró la edad de una persona que no hay.
+        adultDeclared: exigeEdad,
         coherenceDeclared: datos.coherencia === true,
         usageScope: alcance,
         documentMediaId: documentoId,

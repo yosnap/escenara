@@ -2,6 +2,38 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.52.7] · 2026-10-17
+
+### Corregido
+
+- Dar de alta una mascota ya no obliga a marcar «Declaro que es mayor de edad»: a un animal no se le
+  pide ninguna declaración de edad. A una persona se le sigue exigiendo aunque elija «Un animal mío»,
+  y una persona registrada sin esa declaración, llegue por donde llegue, queda bloqueada y no genera.
+- Una persona no se puede colar como animal. Las fotos de un animal pasan por un detector de personas
+  que funciona en el propio servidor, sin enviar la foto a nadie, y la que tiene una persona se
+  rechaza con su motivo y sin «usarla de todas formas». Si el detector no carga, la foto tampoco
+  entra y se dice por qué. Una persona con fotos no puede pasar a animal, y un animal sin declaración
+  de edad solo pasa a persona revocando su consentimiento, cambiando el tipo y registrando uno nuevo
+  como persona, que es lo que indica el aviso.
+- Después de encargar bien los retratos ya no aparece un «Bloqueo» en rojo: el encargo se cierra y
+  solo se ve el aviso de lo encargado. Con la cola llena no se ofrece ningún retrato y se dice por
+  qué y cuándo podrás pedir más.
+- El número de retratos que quieres generar parte de los huecos libres de tu cola, también al
+  recargar la ficha o al volver a ella, y se pone al día al buscar los retratos terminados. Ya no
+  vuelve a 4 después de encargar.
+- Un personaje inventado se presenta como «Persona inventada» o «Animal inventado», y lo que le falta
+  se cuenta en imágenes entre su retrato elegido y sus vistas generadas, no en fotos de referencia.
+- Crear un personaje (también inventado) o renombrarlo con un nombre que ya usas explica la causa,
+  qué hacer y que no se ha creado ni cambiado nada.
+
+### Actualización
+
+- Sin migraciones nuevas ni cambios de configuración. Nueva dependencia `onnxruntime-web` y el modelo
+  `apps/web/modelos/yolox-nano.onnx` (Apache-2.0): hay que instalar dependencias y reiniciar la web.
+  El worker no cambia.
+- La prueba archivada del consentimiento de un animal ya no incluye «mayor de edad: no», que se
+  podía leer como «declarado menor».
+
 ## [0.52.6] · 2026-10-16
 
 ### Corregido

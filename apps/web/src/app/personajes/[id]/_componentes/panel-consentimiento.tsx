@@ -20,6 +20,7 @@ import {
   ETIQUETA_ALCANCE,
   ETIQUETA_TITULAR,
   exigeDocumento,
+  exigeMayoriaDeEdad,
   MOTIVO_MAXIMO,
   type PersonajeVista,
 } from "@/lib/personajes";
@@ -62,7 +63,14 @@ export function PanelConsentimiento({
             {[
               ["Titular", ETIQUETA_TITULAR[consentimiento.titular]],
               ["Alcance de uso", ETIQUETA_ALCANCE[consentimiento.alcance]],
-              ["Mayoría de edad declarada", consentimiento.mayoriaDeEdad ? "Sí" : "No"],
+              [
+                "Mayoría de edad declarada",
+                consentimiento.mayoriaDeEdad
+                  ? "Sí"
+                  : exigeMayoriaDeEdad(personaje.tipo)
+                    ? "No"
+                    : "No se aplica a un animal",
+              ],
               [
                 "Comprobación de parecido autorizada",
                 consentimiento.coherenciaDeclarada
@@ -142,20 +150,20 @@ export function PanelConsentimiento({
 
       {nuevo !== null && (
         <div className="flex flex-col gap-3">
-          <FormularioConsentimiento valor={nuevo} onCambio={setNuevo} deshabilitado={ocupado} />
-          {bloqueosDeConsentimiento(nuevo).length > 0 && (
+          <FormularioConsentimiento tipo={personaje.tipo} valor={nuevo} onCambio={setNuevo} deshabilitado={ocupado} />
+          {bloqueosDeConsentimiento(nuevo, personaje.tipo).length > 0 && (
             <Alerta
               tipo="bloqueo"
               compacta
               anuncio="ninguno"
               protege
-              elementos={bloqueosDeConsentimiento(nuevo).map((texto) => ({ texto }))}
+              elementos={bloqueosDeConsentimiento(nuevo, personaje.tipo).map((texto) => ({ texto }))}
             />
           )}
           <div className="flex flex-wrap gap-3">
             <Boton
               cargando={ocupado}
-              disabled={bloqueosDeConsentimiento(nuevo).length > 0}
+              disabled={bloqueosDeConsentimiento(nuevo, personaje.tipo).length > 0}
               onClick={async () => {
                 const error = await onRegistrar(nuevo);
                 if (!error) setNuevo(null);

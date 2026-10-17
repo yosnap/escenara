@@ -19,7 +19,8 @@ import { MiniaturaMedio } from "../media/miniatura-medio";
  *
  * Es un **aviso**, no un error: casi todo lo que se mide se puede usar de todas formas (una foto real recortada
  * sigue siendo suya), así que cada foto salvable lleva su botón, y hay uno para todas cuando son varias. Lo que
- * no se puede saltar —«enorme» y «duplicada»— se explica **sin botón**: ofrecerlo y luego negarlo sería peor.
+ * no se puede saltar —«enorme», «duplicada» o una persona en las fotos de un animal— se explica **sin botón**:
+ * ofrecerlo y luego negarlo sería peor.
  *
  * La foto que se guarda así queda **señalada**, y su tarjeta sigue diciendo todo lo que le pasaba: el control
  * previo de generar la vuelve a nombrar, así que nadie se lleva una sorpresa al ver el resultado.
@@ -57,7 +58,7 @@ export function FotosRechazadas({
         {salvables.length > 0 && bloqueantes.length === 0
           ? "Sirven, pero van a guiar algo peor el parecido. Puedes usarlas igualmente: se guardan señaladas y su tarjeta lo sigue diciendo."
           : bloqueantes.length > 0 && salvables.length === 0
-            ? "Estas no se pueden usar: no es una cuestión de calidad, es que no se pueden analizar o ya las tienes."
+            ? "Estas no se pueden usar: no es una cuestión de calidad. Cada una dice por qué y qué hacer."
             : "Unas se pueden usar de todas formas y otras no. Cada una dice cuál es su caso."}
       </p>
 
