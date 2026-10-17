@@ -65,6 +65,10 @@ puede rechazar un logo, y en ese caso no se genera nada y **no se te cobra**.
 
 ## Elegirlo en un clip
 
+Así se hace un clip de anuncio desde «Crear», con tu personaje presentando el producto, paso a paso:
+
+[![Cómo hacer un clip de anuncio con tu personaje y tu producto en Escenara, paso a paso](../assets/video/youtube-LBWXkrFa-84.webp)](https://youtu.be/LBWXkrFa-84)
+
 En el panel de dirección, bloque **El producto**: eliges cuál y **qué se hace con él**. Es **una sola elección**
 entre todas las acciones, aunque salgan repartidas en familias: si eliges una de moda, se desmarca la que tenías
 en «Con el producto en la mano». Encima de la lista, **«Elegida: …»** te dice cuál es en cada momento. Cada acción
