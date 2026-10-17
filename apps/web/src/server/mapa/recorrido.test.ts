@@ -55,4 +55,16 @@ describe("recorrido del mapa y regla de dinero", () => {
     expect(resultado.ok).toBe(true);
     expect(llamadas).toEqual(["primero", "segundo"]);
   });
+
+  test("un error sin resultado que prueba que no cobró se cuenta «sin cobro», pero no abre otra entrada de pago", async () => {
+    const llamadas: string[] = [];
+    const resultado = await recorrerMapa([pago("primero"), pago("segundo")], async (entrada) => {
+      llamadas.push(entrada.modelo);
+      throw new ErrorProveedor("kie", "error-proveedor", undefined, true);
+    });
+    expect(resultado.ok).toBe(false);
+    expect(resultado.intentos[0]?.cobro).toBe("sin-cobro");
+    // Pasar a otra entrada de pago sigue exigiendo el rechazo probado: la regla del recorrido no cambia.
+    expect(llamadas).toEqual(["primero"]);
+  });
 });

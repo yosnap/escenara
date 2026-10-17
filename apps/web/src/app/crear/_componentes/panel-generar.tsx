@@ -15,7 +15,7 @@ export interface ConfirmacionCoste {
   /** Sello del precio que se mostró: si el precio ha cambiado, el servidor lo rechaza. */
   selloEstimacion: string;
   derechos: boolean;
-  /** Casilla «tengo derecho a usar esta marca»: solo se pide cuando el envío lleva producto. */
+  /** Casilla «tengo derecho a usar esta marca»: solo se pide cuando el envío lleva un producto con marca. */
   derechoMarca: boolean;
   avisoUmbralAceptado: boolean;
   /** Clave de la confirmación: la misma confirmación repetida no genera un segundo trabajo. */
@@ -41,7 +41,7 @@ export function PanelGenerar({
   firma,
   bloqueos,
   avisosConfirmados,
-  conProducto = false,
+  conMarca = false,
   envio,
   paso,
   confirmacion,
@@ -59,8 +59,11 @@ export function PanelGenerar({
   bloqueos: Requisito[];
   /** Avisos de los controles previos que el usuario ha confirmado (0.18.0). */
   avisosConfirmados: readonly string[];
-  /** `true` cuando el envío lleva producto: entonces, y solo entonces, se pide la casilla de la marca. */
-  conProducto?: boolean;
+  /**
+   * `true` cuando el envío lleva un producto **con marca declarada**: entonces, y solo entonces, se pide la casilla
+   * de la marca. Un producto declarado sin marca no tiene nada que autorizar.
+   */
+  conMarca?: boolean;
   /** Envío que se confirma: entra en el identificador de sus casillas, que no pueden repetirse entre envíos. */
   envio: string;
   /** Paso donde está este panel. */
@@ -91,7 +94,7 @@ export function PanelGenerar({
   const pendientes = requisitosDeConfirmacion({
     envio,
     paso,
-    conProducto,
+    conMarca,
     superaUmbral: estimacion.superaUmbral,
     derechos,
     derechoMarca,
@@ -151,10 +154,10 @@ export function PanelGenerar({
         requisito={idRequisito(envio, "derechos")}
         error={errorDeRequisito(marcadas, idRequisito(envio, "derechos"))}
       />
-      {conProducto && (
+      {conMarca && (
         <Casilla
           etiqueta="Tengo derecho a usar esta marca"
-          descripcion="El producto es tuyo o tienes autorización de la marca para usarlo en este vídeo. Solo aparece cuando el envío lleva producto, y sin ella no se genera. Tu declaración queda registrada con su fecha."
+          descripcion="El producto es tuyo o tienes autorización de la marca para usarlo en este vídeo. Solo aparece cuando el producto tiene marca, y sin ella no se genera. Tu declaración queda registrada con su fecha."
           marcada={derechoMarca}
           onCambio={setDerechoMarca}
           requisito={idRequisito(envio, "marca")}

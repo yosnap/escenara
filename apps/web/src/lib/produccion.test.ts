@@ -65,6 +65,7 @@ const escena = (cambios: Partial<EscenaProduccionVista> = {}): EscenaProduccionV
   motivoUltimoFallo: "",
   cambiadaDesdeLaGeneracion: false,
   conProducto: false,
+  conMarca: false,
   faltaInsertarCaptura: false,
   // Una escena de un personaje, que es lo de siempre: sin reparto de dos y sin clips de podcast (0.28.0).
   reparto: null,

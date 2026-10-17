@@ -69,6 +69,12 @@ const estadoDelTrabajo = (estado: EstadoTrabajo): EstadoDePaso =>
 const trabajoParado = (estado: EstadoTrabajo) => !esEstadoActivo(estado) && estado !== "listo";
 
 /**
+ * Queda un fotograma por confirmar: no se ha pedido ninguno o el último se ha parado y hay que pedir otro. Con uno en
+ * marcha o listo, su confirmación ya se hizo y lo que falte en ella no se cuenta como pendiente.
+ */
+export const fotogramaPorConfirmar = (estado: EstadoTrabajo | null) => estado === null || trabajoParado(estado);
+
+/**
  * Qué decir del fotograma parado. Con la misma confirmación, el servidor devuelve el mismo trabajo (así no se paga
  * dos veces), así que para pedir otro hay que cambiar algo de lo que se confirma.
  */

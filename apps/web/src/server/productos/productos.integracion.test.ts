@@ -255,6 +255,40 @@ describe.skipIf(!hayBaseDeDatos)("productos con sus fotos, su elección y su bor
 
   // ── 2. Solo su dueño lo ve ─────────────────────────────────────────────────────────────────────────────
 
+  describe("la respuesta obligatoria a «¿se ve una marca?»", () => {
+    test("sin responder no se crea, y con «no» se guarda como no", async () => {
+      const sinResponder = await rutaProductos.POST(
+        pedir(ana, "/api/productos", "POST", {
+          nombre: `Sin respuesta ${randomBytes(3).toString("hex")}`,
+          tipo: "fisico",
+        }),
+        undefined,
+      );
+      expect(sinResponder.status).toBe(400);
+      expect(((await sinResponder.json()) as { error: string }).error).toContain("se ve una marca");
+
+      const conNo = await rutaProductos.POST(
+        pedir(ana, "/api/productos", "POST", {
+          nombre: `Sin marca ${randomBytes(3).toString("hex")}`,
+          tipo: "fisico",
+          marcaVisible: false,
+        }),
+        undefined,
+      );
+      expect(conNo.status).toBe(201);
+      const producto = (await conNo.json()) as ProductoVista;
+      expect(producto.marcaVisible).toBe(false);
+
+      // Editar sin mandar la respuesta (o con `null`) no la borra: no se vuelve a «sin responder».
+      const editado = await rutaProducto.PATCH(
+        pedir(ana, `/api/productos/${producto.id}`, "PATCH", { nombre: producto.nombre, marcaVisible: null }),
+        contexto(producto.id),
+      );
+      expect(editado.status).toBe(200);
+      expect(((await editado.json()) as ProductoVista).marcaVisible).toBe(false);
+    });
+  });
+
   describe("un producto es de su dueño y de nadie más", () => {
     test("otra persona no lo lista, no lo lee, no lo edita y no lo borra", async () => {
       const producto = await crearProductoDe(ana, `De Ana ${randomBytes(3).toString("hex")}`);

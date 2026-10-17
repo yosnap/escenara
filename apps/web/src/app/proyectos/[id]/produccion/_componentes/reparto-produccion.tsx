@@ -172,7 +172,7 @@ export function RepartoProduccion({
           bloqueos={bloqueosDelEnvio}
           avisosConfirmados={avisosConfirmados}
           avisos={avisos}
-          conProducto={escena.conProducto}
+          conMarca={escena.conMarca}
           onConfirmarAviso={onConfirmarAviso}
           ocupado={ocupado}
           onEnviar={repetir ? onRegenerar : onProducir}

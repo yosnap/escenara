@@ -1,4 +1,5 @@
 import { afterAll, afterEach, beforeEach, expect, spyOn, test } from "bun:test";
+import { act } from "react";
 import type { Medio } from "@/lib/media/tipos";
 import {
   montarPantalla,
@@ -106,8 +107,19 @@ test("al crear un producto se va a su ficha con el paso de la primera imagen", a
   await pantalla.pulsar("Crear el primero");
   await pantalla.escribir("Nombre", "Crema Aurora");
   await pantalla.escribir("Descripción corta", DESCRIPCION);
+  // Sin responder si se ve una marca no se puede crear: el botón no envía nada.
   await pantalla.pulsar("Crear producto");
-  expect(enviados.find((e) => e.metodo === "POST")?.cuerpo).toMatchObject({ descripcion: DESCRIPCION });
+  expect(enviados.find((e) => e.metodo === "POST")).toBeUndefined();
+  const no = [...documento().querySelectorAll("label")]
+    .find((l) => l.textContent?.includes("No, no se ve ninguna"))
+    ?.querySelector('[role="radio"]');
+  expect(no, "no hay opción «No» en la pregunta de la marca").toBeTruthy();
+  await act(async () => (no as unknown as HTMLElement).click());
+  await pantalla.pulsar("Crear producto");
+  expect(enviados.find((e) => e.metodo === "POST")?.cuerpo).toMatchObject({
+    descripcion: DESCRIPCION,
+    marcaVisible: false,
+  });
   expect(rutas).toEqual(["/productos/p1?primera-imagen=1"]);
 });
 

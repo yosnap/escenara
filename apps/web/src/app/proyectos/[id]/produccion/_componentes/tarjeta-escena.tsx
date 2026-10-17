@@ -265,7 +265,7 @@ export function TarjetaEscena({
               bloqueos={bloqueos}
               avisosConfirmados={avisosConfirmados}
               avisos={avisosFotograma}
-              conProducto={escena.conProducto}
+              conMarca={escena.conMarca}
               onConfirmarAviso={onConfirmarAviso}
               ocupado={ocupado}
               onEnviar={onProducir}
@@ -306,7 +306,7 @@ export function TarjetaEscena({
               bloqueos={bloqueosClip}
               avisosConfirmados={avisosConfirmados}
               avisos={avisosClip}
-              conProducto={escena.conProducto}
+              conMarca={escena.conMarca}
               onConfirmarAviso={onConfirmarAviso}
               ocupado={ocupado}
               onEnviar={onAprobar}
@@ -329,7 +329,7 @@ export function TarjetaEscena({
               bloqueos={bloqueosClip}
               avisosConfirmados={avisosConfirmados}
               avisos={avisosClip}
-              conProducto={escena.conProducto}
+              conMarca={escena.conMarca}
               onConfirmarAviso={onConfirmarAviso}
               ocupado={ocupado}
               onEnviar={onOtroClip}
@@ -359,7 +359,7 @@ export function TarjetaEscena({
               bloqueos={bloqueos}
               avisosConfirmados={avisosConfirmados}
               avisos={avisosFotograma}
-              conProducto={escena.conProducto}
+              conMarca={escena.conMarca}
               onConfirmarAviso={onConfirmarAviso}
               ocupado={ocupado}
               onEnviar={onRegenerar}

@@ -351,12 +351,11 @@ async function entradaDePago(
       buscar: peticion.buscar ?? fetch,
     });
   } catch (error) {
+    // Solo se apunta lo que se ha cobrado de verdad: 0 cuando el fallo lo prueba, la estimación cuando no se sabe.
     await cerrarGastoDeEjecucion(
       ejecucion.id,
-      esRechazoProbado(error) ? 0 : null,
-      esRechazoProbado(error)
-        ? "El proveedor rechazó la petición sin ejecutarla."
-        : "El proveedor no confirmó el resultado.",
+      sinCobro(error) ? 0 : null,
+      motivoDelFallo(error),
       "fallido",
       0,
       (error as Error).message,
@@ -367,7 +366,18 @@ async function entradaDePago(
   return { texto: respuesta.texto, creditos: respuesta.creditos ?? creditos };
 }
 
-const esRechazoProbado = (error: unknown) => Boolean((error as { rechazoProbado?: boolean } | null)?.rechazoProbado);
+type FalloConCobro = { rechazoProbado?: boolean; sinCobro?: boolean } | null;
+
+const esRechazoProbado = (error: unknown) => Boolean((error as FalloConCobro)?.rechazoProbado);
+
+/** `true` si el fallo prueba que no se ha cobrado: un rechazo probado o una respuesta de error sin resultado. */
+const sinCobro = (error: unknown) => esRechazoProbado(error) || Boolean((error as FalloConCobro)?.sinCobro);
+
+function motivoDelFallo(error: unknown): string {
+  if (esRechazoProbado(error)) return "El proveedor rechazó la petición sin ejecutarla.";
+  if (sinCobro(error)) return "El proveedor respondió con un error y sin resultado: no ha cobrado la llamada.";
+  return "El proveedor no confirmó el resultado.";
+}
 
 /** Apunta una llamada que no cuesta créditos, con sus tokens. Perder el apunte no puede tirar el trabajo. */
 async function apuntarPorCuota(

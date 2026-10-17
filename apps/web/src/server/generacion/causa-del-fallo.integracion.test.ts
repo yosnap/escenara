@@ -99,6 +99,7 @@ describe.skipIf(!hayBaseDeDatos)("causa del fallo del proveedor", () => {
           name: `Crema ${crypto.randomUUID().slice(0, 8)}`,
           description: "Bote blanco.",
           kind: "fisico",
+          brandVisible: false,
         })
         .returning();
       const [proyecto] = await db().insert(projects).values({ userId: ana.id, title: "Anuncio" }).returning();

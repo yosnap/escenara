@@ -7,13 +7,14 @@ import { Multipaso, PanelDePaso, useMultipaso } from "@/components/ui/multipaso"
 import type { ModeloElegible } from "@/lib/catalogo";
 import { type EvaluacionVista, evaluacionPendiente } from "@/lib/controles";
 import { DIRECCION_CON_ACENTO_VACIA, type DireccionElegidaConAcento, type OpcionesDeDireccion } from "@/lib/direccion";
+import { fotoDeProductoDelModelo } from "@/lib/foto-de-producto";
 import type { Deposito, EstadoCola, Estimacion, TrabajoVista } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
 import { resolverPaso } from "@/lib/multipaso";
-import { numeroDePaso, pasoPredeterminadoDeCrear, pasosDeCrear } from "@/lib/pasos-crear";
+import { fotogramaPorConfirmar, numeroDePaso, pasoPredeterminadoDeCrear, pasosDeCrear } from "@/lib/pasos-crear";
 import type { ContextoAplicado, PersonajeElegible } from "@/lib/personajes";
 import { CATEGORIAS_DE_LA_DIRECCION, type CatalogoParaCrear, type PresetVisible } from "@/lib/presets";
-import { PRODUCTO_ELEGIDO_VACIO, type ProductoElegido } from "@/lib/productos";
+import type { ProductoElegido } from "@/lib/productos";
 import { requisitosDeCrear, variableDeTexto } from "@/lib/requisitos-crear";
 import { eleccionSinLoDecidido, segundosParaTrend } from "@/lib/trends";
 import {
@@ -49,6 +50,7 @@ import { useContextoPersonaje } from "./use-contexto-personaje";
 import { useControles } from "./use-controles";
 import { useFormatoClip } from "./use-formato-clip";
 import { useLugarDeCrear } from "./use-lugar-crear";
+import { useProductoDeCrear } from "./use-producto-de-crear";
 import { useRequisitosSenalados } from "./use-requisitos-senalados";
 
 /**
@@ -143,8 +145,13 @@ export function VistaCrear({
   const [origenElegido, setOrigenElegido] = useState<OrigenDelClip>("fotograma");
   /** Cómo se dirige el clip. En «Crear» no hay escena que lo guarde, así que viaja con la confirmación. */
   const [direccionClip, setDireccionClip] = useState<DireccionElegidaConAcento>(DIRECCION_CON_ACENTO_VACIA);
-  /** El producto del clip: va aparte de la dirección (claves de catálogo) porque es una fila tuya. Solo se guarda. */
-  const [productoClip, setProductoClip] = useState<ProductoElegido>(PRODUCTO_ELEGIDO_VACIO);
+  /**
+   * El producto: va aparte de la dirección (claves de catálogo) porque es una fila tuya. Es **uno solo** para el
+   * fotograma y el clip; su lógica (marca, coherencia entre los dos pasos) está en `use-producto-de-crear.ts`.
+   */
+  const productoCrear = useProductoDeCrear({ alCambiar: (p, cambia) => alCambiarProducto(p, cambia) });
+  const productoClip = productoCrear.producto;
+  const conMarca = productoCrear.conMarca;
   const [opcionesDireccion, setOpcionesDireccion] = useState<OpcionesDeDireccion | null>(null);
   const [estimacionFoto, setEstimacionFoto] = useState(estimacionFotograma);
   const [estimacionClip, setEstimacionClip] = useState(estimacionAnimacion);
@@ -356,9 +363,10 @@ export function VistaCrear({
     sinSalidaClip: controlesClip.sinSalida,
     casillasFotograma: confirmacionFoto,
     casillasClip: confirmacionClip,
-    conProducto: productoClip.productoId !== "",
+    conMarca,
     fotogramaSuperaUmbral: estimacionFoto.superaUmbral,
     clipSuperaUmbral: estimacionClip.superaUmbral,
+    fotogramaPorConfirmar: fotogramaPorConfirmar(fotograma?.estado ?? null),
     clipPorConfirmar,
   });
 
@@ -401,6 +409,8 @@ export function VistaCrear({
       modelo,
       ...(id ? { personajeId: id } : medio ? { medioId: medio } : {}),
       ...lugar.enLaConsulta(),
+      // El producto entra en el fotograma: sus avisos (fotos que no caben, marca) se dan antes de confirmar.
+      ...productoCrear.enLaConsulta(),
     });
     if (fallo) setError(fallo);
   };
@@ -416,9 +426,15 @@ export function VistaCrear({
     if (fallo) setError(fallo);
   };
 
-  /** Elegir o quitar el producto cambia lo evaluado: se vuelve a preguntar al servidor para que el aviso salga ya. */
-  const elegirProductoDelClip = async (producto: ProductoElegido) => {
-    setProductoClip(producto);
+  /**
+   * Elegir o quitar el producto (en la escena o en el clip) cambia lo evaluado: se vuelve a preguntar al servidor
+   * para que el aviso salga ya. Mientras el fotograma está por confirmar, también sus controles, porque el producto
+   * entra en él como referencia.
+   */
+  const alCambiarProducto = async (producto: ProductoElegido, cambiaEnElFotograma: boolean) => {
+    if (origenElegido === "fotograma" && fotogramaPorConfirmar(fotograma?.estado ?? null) && cambiaEnElFotograma) {
+      await refrescarControles(personajeId, referencia?.id, estimacionFoto.modelo);
+    }
     const medioId = fotograma?.medio?.id ?? imagenDelClip?.id;
     if (!medioId) return;
     const fallo = await comprobarClip(medioId, { producto });
@@ -474,8 +490,10 @@ export function VistaCrear({
             ? { medioId: referencia.id }
             : {}),
       /**
-       * El producto del clip viaja también con el fotograma: con un producto digital, el fotograma **es** el
-       * primer paso (el dispositivo con la pantalla apagada), y con uno físico es donde se ve en la mano.
+       * El producto elegido al describir la escena viaja con el fotograma y sus fotos entran como referencia de
+       * imagen, igual que las del personaje: con un producto digital, el fotograma **es** el primer paso (el
+       * dispositivo con la pantalla apagada), y con uno físico ya sale en la mano. Las fotos elegidas a mano se
+       * quedan para el clip, que es donde se ajustan al cupo de su modelo.
        */
       producto: { productoId: productoClip.productoId, accion: productoClip.accion },
       ...lugar.enElEnvio,
@@ -491,9 +509,12 @@ export function VistaCrear({
     });
     setEnviando(null);
     if (!respuesta.ok) {
-      setError(mensajeDeFallo(respuesta));
+      const mensaje = mensajeDeFallo(respuesta);
+      setError(mensaje);
+      productoCrear.alRechazar(mensaje);
       return;
     }
+    if (!pasoDigital) productoCrear.fotogramaPedido();
     setAnimacion(null);
     setFotograma(respuesta.datos);
     // Confirmado el gasto, lo siguiente es ver cómo va: se pasa al resultado sin tener que buscarlo.
@@ -522,7 +543,9 @@ export function VistaCrear({
     });
     setEnviando(null);
     if (!respuesta.ok) {
-      setError(mensajeDeFallo(respuesta));
+      const mensaje = mensajeDeFallo(respuesta);
+      setError(mensaje);
+      productoCrear.alRechazar(mensaje);
       if (trendElegido) void refrescarCatalogo("animacion", estimacionClip.modelo, segundosClip);
       return;
     }
@@ -782,6 +805,12 @@ export function VistaCrear({
                 accionesDePreset={accionesDePreset("fotograma")}
                 lugar={lugar.lugar}
                 onLugar={lugar.elegir}
+                producto={productoClip}
+                accionesProducto={opcionesDireccion?.accionProducto}
+                fotoDeProducto={fotoDeProductoDelModelo(modelosDelFotograma, estimacionFoto.modelo)}
+                // Con el fotograma ya pedido, su producto no se cambia aquí: el clip avisa si no coincide.
+                productoBloqueado={!fotogramaPorConfirmar(fotograma?.estado ?? null)}
+                onProducto={(producto, resumen) => void productoCrear.elegir(producto, resumen)}
                 onPrompt={setPrompt}
                 onDialogo={setDialogo}
                 onPlantilla={setPlantillaFoto}
@@ -803,8 +832,8 @@ export function VistaCrear({
                 pidiendoContexto={pidiendoContexto}
                 controles={controlesFoto}
                 estimacion={estimacionFoto}
-                conProducto={productoClip.productoId !== ""}
-                firma={`fotograma|${personaje?.id ?? ""}|${contexto?.personajeId === personaje?.id ? contexto?.versionId : ""}|${referencia?.id ?? ""}|${descripcion}|${estimacionFoto.modelo}|${estimacionFoto.sello}|${firmaDePlantilla(previaFoto, plantillaFoto)}|${JSON.stringify(referenciasParaEnviar(referenciasTemporales))}`}
+                conMarca={conMarca}
+                firma={`fotograma|${personaje?.id ?? ""}|${contexto?.personajeId === personaje?.id ? contexto?.versionId : ""}|${referencia?.id ?? ""}|${descripcion}|${productoClip.productoId}|${productoClip.accion}|${estimacionFoto.modelo}|${estimacionFoto.sello}|${firmaDePlantilla(previaFoto, plantillaFoto)}|${JSON.stringify(referenciasParaEnviar(referenciasTemporales))}`}
                 bloqueos={requisitos.fotogramaBase}
                 requisitos={requisitos.fotograma}
                 confirmacion={confirmacionFoto}
@@ -850,7 +879,9 @@ export function VistaCrear({
             opcionesDireccion={opcionesDireccion}
             direccion={direccionClip}
             producto={productoClip}
-            onProducto={elegirProductoDelClip}
+            onProducto={(producto, resumen) => void productoCrear.elegir(producto, resumen)}
+            conMarca={conMarca}
+            avisoProducto={fotograma?.medio ? productoCrear.avisoDelClip : null}
             catalogo={catalogoClip}
             plantilla={plantillaClip}
             previa={previaClip}

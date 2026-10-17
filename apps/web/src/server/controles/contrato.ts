@@ -253,8 +253,11 @@ export interface HechosProducto {
    * referencias y su `character_ids` son excluyentes, así que la cara y la voz pasan a salir de las fotos.
    */
   identidadRegistradaPerdida: boolean;
-  /** El usuario declaró que en el producto se ve una marca. Decide el aviso del filtro del proveedor. */
-  marcaVisible: boolean;
+  /**
+   * Si el usuario declaró que en el producto se ve una marca (`null` = sin responder). Con marca o sin responder se
+   * avisa del filtro del proveedor y se pide confirmar la autorización.
+   */
+  marcaVisible: boolean | null;
 }
 
 /**

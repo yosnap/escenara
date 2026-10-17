@@ -136,7 +136,7 @@ describe.skipIf(!hayBaseDeDatos)("con lugar, el aviso y el envío cuentan igual 
   async function producto(tipo: "fisico" | "digital", papeles: string[]): Promise<string> {
     const [fila] = await db()
       .insert(products)
-      .values({ ownerId: ana.id, name: `${tipo} ${crypto.randomUUID().slice(0, 6)}`, kind: tipo })
+      .values({ ownerId: ana.id, name: `${tipo} ${crypto.randomUUID().slice(0, 6)}`, kind: tipo, brandVisible: false })
       .returning();
     let orden = 1;
     for (const papel of papeles) {

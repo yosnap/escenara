@@ -3,6 +3,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { esProveedor, PROVEEDORES_PUBLICOS, type Proveedor } from "@/lib/boveda";
 import type { ModeloVista } from "@/lib/catalogo";
 import { DIALOGO_MAXIMO, PROMPT_MAXIMO, PROMPT_MINIMO } from "@/lib/generacion";
+import { MENSAJE_FALTA_DECLARACION_MARCA } from "@/lib/productos";
 import { leerAjustes } from "../ajustes";
 import { leerObjeto } from "../almacenamiento";
 import { usarCredencialValida } from "../boveda/credenciales";
@@ -92,7 +93,7 @@ export function exigirDerechoDeMarca(derechoMarca: unknown) {
   if (derechoMarca !== true) {
     throw new ErrorGeneracion(
       400,
-      "Confirma que tienes derecho a usar la marca de este producto antes de generar. Si es un producto de otra empresa, necesitas su autorización.",
+      `${MENSAJE_FALTA_DECLARACION_MARCA} Si es un producto de otra empresa, necesitas su autorización.`,
     );
   }
 }

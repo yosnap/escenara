@@ -114,7 +114,7 @@ describe("fallos del proveedor", () => {
     [403, "rechazada"],
     [402, "sin-credito"],
     [429, "limite"],
-    // Un 5xx no prueba nada: puede haber fallado después de ejecutar, así que no entra en la lista blanca.
+    // Un 5xx no es un rechazo probado (no abre otra entrada de pago), pero esta llamada síncrona vuelve sin cobro.
     [500, "error-proveedor"],
     [503, "error-proveedor"],
   ];
@@ -125,8 +125,34 @@ describe("fallos del proveedor", () => {
       expect(fallo).toBeInstanceOf(ErrorKie);
       expect((fallo as InstanceType<typeof ErrorKie>).codigo).toBe(codigo);
       expect((fallo as Error).message).not.toContain(CLAVE);
+      // Llamada síncrona que cobra con la respuesta completa: 500, 502 y 503 vuelven sin cobro (los 4xx de la
+      // lista ya son rechazos probados por su código).
+      expect((fallo as InstanceType<typeof ErrorKie>).sinCobro).toBe([500, 502, 503].includes(estado));
     });
   }
+
+  test("un 504 o un 408 no prueban que no se cobrara: se conserva la estimación", async () => {
+    for (const estado of [504, 408]) {
+      const fallo = (await pedir(conEstado(estado)).catch((e: unknown) => e)) as InstanceType<typeof ErrorKie>;
+      expect(fallo.codigo).toBe("error-proveedor");
+      expect(fallo.sinCobro).toBe(false);
+    }
+  });
+
+  test("un error de KIE dentro del cuerpo se trata como su estado", async () => {
+    const con =
+      (code: number): Buscador =>
+      async () =>
+        respuesta({ code, msg: `clave ${CLAVE} con fallo` });
+    const de500 = (await pedir(con(500)).catch((e: unknown) => e)) as InstanceType<typeof ErrorKie>;
+    expect(de500.codigo).toBe("error-proveedor");
+    expect(de500.sinCobro).toBe(true);
+    const de504 = (await pedir(con(504)).catch((e: unknown) => e)) as InstanceType<typeof ErrorKie>;
+    expect(de504.sinCobro).toBe(false);
+    const de402 = (await pedir(con(402)).catch((e: unknown) => e)) as InstanceType<typeof ErrorKie>;
+    expect(de402.codigo).toBe("sin-credito");
+    expect(de402.message).not.toContain(CLAVE);
+  });
 
   test("un cuerpo que no es JSON es «respuesta-inesperada»", async () => {
     const buscar: Buscador = async () => new Response("<html>vaya</html>", { status: 200 });
@@ -150,6 +176,8 @@ describe("fallos del proveedor", () => {
     };
     const fallo = await pedir(buscar).catch((e: unknown) => e);
     expect((fallo as InstanceType<typeof ErrorKie>).codigo).toBe("tiempo-agotado");
+    // Sin respuesta no hay prueba de nada: se conserva la estimación como consumo.
+    expect((fallo as InstanceType<typeof ErrorKie>).sinCobro).toBe(false);
   });
 
   test("el cliente corta por su cuenta: la petición lleva señal de tiempo", async () => {

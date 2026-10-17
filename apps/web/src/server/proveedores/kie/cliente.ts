@@ -23,7 +23,14 @@ const MS_SUBIDA = 60_000;
 
 /** Fallo del proveedor reducido a un código propio, con un mensaje ya apto para el usuario. */
 export class ErrorKie extends Error {
-  constructor(readonly codigo: CodigoPrueba) {
+  constructor(
+    readonly codigo: CodigoPrueba,
+    /**
+     * `true` cuando la propia respuesta prueba que no se ha cobrado nada aunque el código no esté en la lista
+     * blanca: hoy solo lo marca la llamada síncrona de texto (`texto.ts`) al recibir un estado HTTP de error.
+     */
+    readonly sinCobro = false,
+  ) {
     super(MENSAJE_PRUEBA[codigo]);
     this.name = "ErrorKie";
   }

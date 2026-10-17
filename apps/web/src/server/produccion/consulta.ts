@@ -50,6 +50,7 @@ import {
 } from "../omni/escena";
 import { eleccionOmni } from "../omni/registro";
 import { ultimaVersion } from "../personajes/ficha";
+import { marcasExigidas } from "../productos/declaracion-marca";
 import { plantillaVigenteDe } from "../prompts/consulta";
 import { creditosDelEnvio } from "../prompts/traduccion";
 import { ErrorCatalogo } from "../proveedores/contrato";
@@ -241,6 +242,8 @@ function vistaDeEscena(
   alternativas: ReadonlySet<string>,
   /** Escenas con una comparativa guardada y todavía sin lanzar ni cancelar. */
   lanzandose: ReadonlySet<string>,
+  /** Productos cuya marca hay que declarar al enviar (`marcasExigidas`). */
+  marcas: ReadonlyMap<string, boolean>,
 ): EscenaProduccionVista {
   // El trabajo vigente de cada tipo es el más reciente: la lista viene ordenada por fecha descendente.
   const fotograma = trabajos.find((t) => t.kind === "fotograma") ?? null;
@@ -274,6 +277,7 @@ function vistaDeEscena(
     motivoUltimoFallo: fila.lastFailureReason,
     cambiadaDesdeLaGeneracion: fila.changedSinceGeneration,
     conProducto: fila.productId !== null,
+    conMarca: fila.productId !== null && (marcas.get(fila.productId) ?? false),
     // Lo mismo que decide el servidor al aprobar el fotograma: un paso, un cobro y un botón que lo dice.
     faltaInsertarCaptura: fila.productId !== null && (fotograma?.digitalStep ?? "") === "pantalla_negra",
     reparto,
@@ -386,6 +390,7 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
     alternativasDeEscenas(ids),
     escenasConComparativaLanzandose(ids),
   ]);
+  const marcas = await marcasExigidas(filasEscena.map((e) => e.productId));
   const medios = await mediosDeLaRejilla(actor, [
     ...[...porEscena.values()].flat().map((t) => t.resultMediaId),
     ...filasEscena.flatMap((e) => [e.approvedFrameMediaId, e.clipMediaId]),
@@ -434,6 +439,7 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
         reparto,
         alternativas,
         lanzandose,
+        marcas,
       );
     }),
   );

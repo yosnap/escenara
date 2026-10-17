@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { PROMPT_MINIMO } from "./generacion";
 import {
   type DatosPasosCrear,
+  fotogramaPorConfirmar,
   IDS_PASOS_CREAR,
   MOTIVO_FOTOGRAMA_PARADO,
   numeroDePaso,
@@ -174,5 +175,19 @@ describe("requisitos pendientes en la barra", () => {
 
   test("sin pendientes o con cero, los pasos quedan como estaban", () => {
     expect(pasosDeCrear({ ...VACIO, pendientes: { escena: 0 } })).toEqual(pasosDeCrear(VACIO));
+  });
+});
+
+describe("fotograma por confirmar", () => {
+  test("sin fotograma o con el último parado queda uno por confirmar", () => {
+    expect(fotogramaPorConfirmar(null)).toBe(true);
+    expect(fotogramaPorConfirmar("fallido")).toBe(true);
+    expect(fotogramaPorConfirmar("cancelado")).toBe(true);
+  });
+
+  test("con uno en marcha o listo, su confirmación ya está hecha", () => {
+    expect(fotogramaPorConfirmar("en_curso")).toBe(false);
+    expect(fotogramaPorConfirmar("en_cola")).toBe(false);
+    expect(fotogramaPorConfirmar("listo")).toBe(false);
   });
 });

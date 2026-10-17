@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { Boton } from "@/components/ui/button";
-import { Casilla } from "@/components/ui/choice";
 import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo, EntradaTexto } from "@/components/ui/field";
 import { Dialogo } from "@/components/ui/overlay";
 import { crearProducto } from "@/components/ui/productos/api-productos";
+import { PreguntaMarca } from "@/components/ui/productos/pregunta-marca";
 import { Selector } from "@/components/ui/select";
 import {
   AYUDA_DESCRIPCION_PRODUCTO,
@@ -23,8 +23,8 @@ import {
  * biblioteca entera delante y diciendo el papel de cada una. Pedirlo todo aquí obligaría a meter media
  * biblioteca dentro de un diálogo.
  *
- * La declaración de marca se pide al crear y no después porque cambia lo que hay que avisarle: un producto con
- * logo puede chocar con el filtro del proveedor, y eso se dice antes de gastar, no después.
+ * Si se ve una marca se responde al crear, y es obligatorio: con marca, cada vídeo pide la declaración «Tengo derecho
+ * a usar esta marca» y se avisa del filtro del proveedor; sin marca, no se pide nada.
  */
 export function DialogoNuevoProducto({
   abierto,
@@ -38,11 +38,13 @@ export function DialogoNuevoProducto({
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [tipo, setTipo] = useState<TipoProducto>("fisico");
-  const [marcaVisible, setMarcaVisible] = useState(false);
+  // Sin responder hasta que se elige: la respuesta es obligatoria.
+  const [marcaVisible, setMarcaVisible] = useState<boolean | null>(null);
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
 
   const crear = async () => {
+    if (marcaVisible === null) return;
     setGuardando(true);
     setError("");
     const resultado = await crearProducto({ nombre, descripcion, tipo, marcaVisible });
@@ -65,7 +67,11 @@ export function DialogoNuevoProducto({
           <Boton variante="secundario" onClick={() => onAbiertoCambio(false)} disabled={guardando}>
             Cancelar
           </Boton>
-          <Boton variante="chispa" onClick={crear} disabled={guardando || nombre.trim() === ""}>
+          <Boton
+            variante="chispa"
+            onClick={crear}
+            disabled={guardando || nombre.trim() === "" || marcaVisible === null}
+          >
             {guardando ? "Creando…" : "Crear producto"}
           </Boton>
         </>
@@ -110,13 +116,7 @@ export function DialogoNuevoProducto({
           onCambio={(v) => v && setTipo(v as TipoProducto)}
         />
 
-        <Casilla
-          etiqueta="En las fotos se ve una marca o un logotipo"
-          descripcion="Solo para avisarte: el filtro del proveedor puede rechazar una marca ajena, y entonces no se cobra nada y se te dice por qué."
-          marcada={marcaVisible}
-          deshabilitado={guardando}
-          onCambio={setMarcaVisible}
-        />
+        <PreguntaMarca valor={marcaVisible} onCambio={setMarcaVisible} />
 
         {error !== "" && <Aviso tono="error">{error}</Aviso>}
       </div>
