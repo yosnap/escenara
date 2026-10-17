@@ -9,7 +9,8 @@ import type { PersonajeVista } from "@/lib/personajes";
  * - la mayoría de edad se exige a una persona y no a un animal, y no se esquiva eligiendo «un animal mío»;
  * - un animal registrado sin esa declaración no pasa a persona sin registrar un consentimiento nuevo;
  * - un inventado recién creado dice que le faltan retratos y vistas, no fotos;
- * - un nombre repetido explica la causa, qué hacer y que no se ha creado nada.
+ * - un nombre repetido explica la causa, qué hacer y que no se ha creado nada;
+ * - una persona no se cuela como animal: ni con una foto en la que aparece, ni cambiando el tipo con fotos.
  */
 loadEnvConfig(path.resolve(import.meta.dirname, "../../../../.."), true, { info() {}, error: console.error }, true);
 const hayBaseDeDatos = Boolean(process.env.DATABASE_URL);
@@ -27,6 +28,9 @@ const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
 const { consentEvidence } = await import("../db/esquema");
 const { archivarPruebasDeCuenta } = await import("../datos/retencion");
+const rutaReferencias = await import("@/app/api/personajes/[id]/referencias/route");
+const { crearMedio } = await import("../media/servicio");
+const { readFile } = await import("node:fs/promises");
 
 type Sesion = Awaited<ReturnType<typeof crearSesionDePrueba>>;
 const ctx = (id: string) => ({ params: Promise.resolve({ id }) });
@@ -161,5 +165,48 @@ describe.skipIf(!hayBaseDeDatos)("alta de personajes y consentimiento", () => {
     for (const prueba of deAnimal) expect(prueba.declared).not.toHaveProperty("mayorDeEdad");
     const dePersona = nuevas.filter((f) => f.scope.startsWith("yo:"));
     expect(dePersona.some((f) => f.declared.mayorDeEdad === true)).toBe(true);
+  });
+
+  /** Sube una de las fotos de prueba del detector (generadas con IA) a la biblioteca de Ana. */
+  const subir = async (nombre: string) => {
+    const datos = await readFile(path.resolve(import.meta.dirname, "../vision/fixtures", nombre));
+    return crearMedio({ id: ana.id, esAdmin: false }, new File([datos], nombre, { type: "image/jpeg" }));
+  };
+
+  const anadir = (id: string, medioId: string) =>
+    rutaReferencias.POST(
+      pedir(`/api/personajes/${id}/referencias`, "POST", { referencias: [{ medioId, usarDeTodasFormas: true }] }),
+      ctx(id),
+    );
+
+  test("un animal no admite una foto en la que aparece una persona, ni de todas formas", async () => {
+    const mascota = await nuevo("Coco", "animal");
+    const respuesta = await anadir(mascota.id, (await subir("persona-generada.jpg")).id);
+    expect(respuesta.status).toBe(422);
+    const cuerpo = (await respuesta.json()) as {
+      error: string;
+      rechazos: { motivos: string[]; bloqueante: boolean }[];
+    };
+    expect(cuerpo.rechazos[0]?.motivos).toEqual(["persona_en_animal"]);
+    expect(cuerpo.rechazos[0]?.bloqueante).toBe(true);
+    expect(cuerpo.error).toContain("un animal no puede tener fotos de personas");
+  });
+
+  test("un animal sí admite la foto de un perro de frente", async () => {
+    const mascota = await nuevo("Rufo", "animal");
+    const respuesta = await anadir(mascota.id, (await subir("perro-de-frente.jpg")).id);
+    expect(respuesta.status).toBe(200);
+    expect(((await respuesta.json()) as PersonajeVista).totalReferencias).toBe(1);
+  });
+
+  test("una persona con fotos no pasa a animal", async () => {
+    const persona = await nuevo("Con fotos", "persona");
+    expect((await anadir(persona.id, (await subir("persona-generada.jpg")).id)).status).toBe(200);
+    const cambio = await rutaPersonaje.PATCH(
+      pedir(`/api/personajes/${persona.id}`, "PATCH", { tipo: "animal" }),
+      ctx(persona.id),
+    );
+    expect(cambio.status).toBe(409);
+    expect(((await cambio.json()) as { error: string }).error).toContain("no puede pasar a animal");
   });
 });

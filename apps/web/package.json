@@ -33,6 +33,7 @@
     "motion": "13.4.4",
     "next": "16.3.6",
     "nodemailer": "10.0.10",
+    "onnxruntime-web": "1.30.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-image-crop": "11.1.2",

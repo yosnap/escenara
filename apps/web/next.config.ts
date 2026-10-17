@@ -14,6 +14,8 @@ const nextConfig: NextConfig = {
   // En desarrollo, Next registra cada acción de servidor con sus argumentos: contraseñas y claves de API
   // acabarían en la consola. Ningún secreto debe aparecer en los registros (bóveda, ADR-0005).
   logging: { serverFunctions: false },
+  // El detector de personas carga su WebAssembly desde el propio paquete: se deja fuera del empaquetado.
+  serverExternalPackages: ["onnxruntime-web"],
   // El historial de versiones del admin lee el changelog de la raíz del monorepo.
   outputFileTracingIncludes: { "/admin/versiones": ["../../docs/CHANGELOG.md"] },
   // Páginas con datos de cuenta: que ningún proxy o CDN las guarde.

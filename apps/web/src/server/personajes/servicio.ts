@@ -170,6 +170,23 @@ async function exigirEdadParaSerPersona(personajeId: string): Promise<void> {
   }
 }
 
+/**
+ * Una persona con fotos no pasa a animal: sus fotos son de una persona, y como animal dejaría de declarar su mayoría
+ * de edad. Sin fotos no hay nada que se cuele; las que se añadan después pasarán el detector de personas.
+ */
+async function exigirSinFotosParaSerAnimal(personajeId: string): Promise<void> {
+  const [conFotos] = await db()
+    .select({ total: count() })
+    .from(characterReferences)
+    .where(eq(characterReferences.characterId, personajeId));
+  if ((conFotos?.total ?? 0) > 0) {
+    throw new ErrorPersonaje(
+      409,
+      "Este personaje tiene fotos de una persona, así que no puede pasar a animal: un animal no puede tener fotos de personas. Si es un animal, créalo aparte como animal con sus propias fotos. No se ha cambiado nada.",
+    );
+  }
+}
+
 export async function crearPersonaje(
   actor: Actor,
   datos: DatosPersonaje,
@@ -234,6 +251,7 @@ export async function actualizarPersonaje(
   if (cambios.nombre !== undefined)
     valores.name = texto(cambios.nombre, NOMBRE_MAXIMO, "el nombre del personaje", true);
   if (cambios.tipo !== undefined) valores.kind = tipoValido(cambios.tipo);
+  if (valores.kind === "animal" && fila.kind === "persona" && !fila.virtual) await exigirSinFotosParaSerAnimal(fila.id);
   // Un inventado no declara edad en ningún tipo: su declaración es que no representa a nadie real.
   if (valores.kind === "persona" && fila.kind === "animal" && !fila.virtual) await exigirEdadParaSerPersona(fila.id);
   if (cambios.especie !== undefined)
@@ -537,6 +555,8 @@ export async function anadirReferencias(
         usarDeTodasFormas: p.usarDeTodasFormas,
       })),
     new Map(propias.map((m) => [m.id, m])),
+    // Una persona no se cuela como animal: un animal no declara mayoría de edad.
+    { sinPersonas: personaje.kind === "animal" },
   );
   exigirAlgoQueGuardar(analisis);
   // La vista libre de 0.13.0 se conserva, indexada por foto para no perderla al filtrar las rechazadas.
