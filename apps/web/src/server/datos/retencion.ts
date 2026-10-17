@@ -51,12 +51,13 @@ export async function archivarPruebasDeCuenta(tx: Ejecutor, usuarioId: string): 
     with personajes as (
       insert into consent_evidence (kind, scope, text_version, declared, declared_at, revoked_at)
       select 'personaje', c.holder_type::text || ':' || c.usage_scope::text, '',
-             -- mayorDeEdad solo va cuando se declaró o se exigía (persona real): en un animal o un inventado
-             -- un false se leería como «declarado menor», y no es eso: es que no se aplica.
+             -- mayorDeEdad solo va cuando se declaró o se exigía (titular persona: «yo» o «tercero»). Se mira el
+             -- titular con el que se registró, no el tipo actual: un animal que luego pasó a persona registró su
+             -- consentimiento sin edad, y un false se leería como «declarado menor».
              jsonb_build_object('sintetico', c.synthetic_declared,
                                 'coherencia', c.coherence_declared, 'conDocumento', c.document_media_id is not null,
                                 'revisadoYAprobado', coalesce(c.review_approved, false))
-             || case when c.adult_declared or (ch.kind = 'persona' and c.holder_type <> 'inventado')
+             || case when c.adult_declared or c.holder_type in ('yo', 'tercero')
                      then jsonb_build_object('mayorDeEdad', c.adult_declared) else '{}'::jsonb end,
              c.registered_at, c.revoked_at
       from consent_records c join characters ch on ch.id = c.character_id
