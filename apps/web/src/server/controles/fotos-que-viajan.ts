@@ -9,9 +9,9 @@ import { referenciasDeProductoGuardadas } from "../productos/referencias";
 import { type EnvioConProducto, fotosDelPersonajeEnElEnvio } from "../productos/reparto-del-envio";
 
 /**
- * **Las fotos del producto y la maestra del lugar que viajarán con el fotograma**, para enseñarlas antes de pagar
- * junto a las del personaje (zona de claridad). Salen de las mismas funciones que guarda el envío, así que lo que se
- * enseña es lo que se manda. `null` si el envío no lleva ninguna de las dos.
+ * **Las fotos del producto y la maestra del lugar que viajarán con el envío**, para enseñarlas antes de pagar junto a
+ * las del personaje o a la imagen que se anima (zona de claridad). Salen de las mismas funciones que guarda el envío,
+ * así que lo que se enseña es lo que se manda. `null` si el envío no lleva ninguna de las dos.
  */
 export async function fotosQueViajan(
   actor: Actor,

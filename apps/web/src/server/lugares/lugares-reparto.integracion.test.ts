@@ -215,7 +215,11 @@ describe.skipIf(!hayBaseDeDatos)("con lugar, el aviso y el envío cuentan igual 
       pedir(ana, `/api/generacion/controles?${new URLSearchParams({ tipo: caso.tipo, modelo, ...caso.consulta })}`),
       undefined,
     );
-    expect(respuesta.status).toBe(200);
+    // Con el cuerpo, para que un rechazo diga su causa.
+    expect({ estado: respuesta.status, error: respuesta.ok ? null : await respuesta.clone().json() }).toEqual({
+      estado: 200,
+      error: null,
+    });
     return (await respuesta.json()) as {
       comprobaciones: { regla: string; confirmable?: boolean }[];
       referencias?: Cifras & { cabenTodas: boolean };
@@ -299,9 +303,9 @@ describe.skipIf(!hayBaseDeDatos)("con lugar, el aviso y el envío cuentan igual 
           producto: dicho.producto,
           lugar: dicho.lugar,
         });
-        // Las fotos que se enseñan antes de pagar son las que se guardan con el envío, y solo en el fotograma.
+        // Las fotos que se enseñan antes de pagar son las que se guardan con el envío, en el fotograma y en el clip.
         const enseñadas = consulta.fotosQueViajan;
-        if (caso.tipo === "animacion" || (enviado.producto === 0 && enviado.lugar === 0)) {
+        if (enviado.producto === 0 && enviado.lugar === 0) {
           expect(enseñadas).toBeUndefined();
         } else {
           expect({
@@ -335,5 +339,35 @@ describe.skipIf(!hayBaseDeDatos)("con lugar, el aviso y el envío cuentan igual 
     expect(consulta.fotosQueViajan?.producto.map((m) => m.id)).toEqual(
       "fotos" in enviado ? enviado.fotos.producto : [],
     );
+  });
+
+  test("el clip con fotos del producto elegidas a mano: se enseñan las mismas que se envían, en el mismo orden", async () => {
+    const fotos = await db()
+      .select({ id: productReferences.mediaId })
+      .from(productReferences)
+      .where(eq(productReferences.productId, fisico))
+      .orderBy(productReferences.sortOrder);
+    // Dos de las tres, en orden distinto al suyo: la suelta antes que el envase.
+    const elegidas = [fotos[2]?.id ?? "", fotos[1]?.id ?? ""];
+    const caso: Caso = {
+      nombre: "clip con fotos elegidas a mano",
+      tipo: "animacion",
+      consulta: { medioId: imagen, productoId: fisico, accion: "sostenerlo", fotos: elegidas.join(",") },
+      envio: { medioId: imagen, dialogo: "", producto: { productoId: fisico, accion: "sostenerlo", fotos: elegidas } },
+    };
+    // El clip por defecto solo admite la imagen de partida: hace falta uno con galería para que viaje el producto.
+    const modelo = "minimax-h3/reference-to-video";
+    await conCupo(modelo, 10);
+    await db().delete(rateLimits);
+    const consulta = await consultar(caso, modelo);
+    const enviado = await enviar(
+      caso,
+      modelo,
+      consulta.comprobaciones.filter((c) => c.confirmable).map((c) => c.regla),
+    );
+    if ("error" in enviado) throw new Error(enviado.error);
+    expect(enviado.fotos.producto.length).toBeGreaterThan(0);
+    expect(consulta.fotosQueViajan?.producto.map((m) => m.id)).toEqual(enviado.fotos.producto);
+    expect(consulta.fotosQueViajan?.lugar).toEqual([]);
   });
 });
