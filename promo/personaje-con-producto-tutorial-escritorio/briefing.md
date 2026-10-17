@@ -46,6 +46,17 @@ Cuarto tutorial de la serie (`plans/261017-0246-serie-tutoriales/plan.md`). Ense
 - **Sin preparación**: «Crear» no deja recursos con nombre que choquen al repetir. **Bloqueos**: `DELETE` de
   personajes, productos, lugares y medios.
 
+- **El clip se reproduce al final, con su sonido** (petición del propietario): una segunda grabación, `resultado`,
+  llega fuera de cámara al mismo resultado sin gastar créditos. Usa «Usar una imagen que ya tengo» con el
+  fotograma real de esta versión, y el `POST` del clip se responde con el GET del trabajo real ya generado
+  (`interceptar` de la captura). Lo que se ve es la app con ese trabajo.
+  - Escritorio: trabajo `2325ff01-7e61-4869-8e95-dceed9556304`, medio `f9ff2193-…`.
+  - Móvil: trabajo `0196c040-aba6-4e96-9a6f-21705968997f`, medio `17e5e120-…`.
+  - La acción `reproducir` del motor toca el play y guarda el MP4 que sirve la app. En el render se reproduce entero
+    encima del vídeo de la página, acercado, con la música bajada 24 dB y la frase de Brisa audible.
+  - Repetir solo esto: `pnpm preparar --video <carpeta> --solo resultado` y después
+    `pnpm video --video <carpeta> --sin-capturas`.
+
 ## Evidencia de cada frase
 
 | Escena | Evidencia |
@@ -62,6 +73,7 @@ Cuarto tutorial de la serie (`plans/261017-0246-serie-tutoriales/plan.md`). Ense
 | producto | `components/ui/direccion/panel-direccion.tsx` (el mismo `SelectorProducto`, con el producto ya elegido) |
 | direccion | `paso-clip.tsx` («Lo que dice»), `panel-direccion.tsx` (plano, «Escríbelo tú») |
 | confirmar-clip | `panel-generar.tsx:147-156` (derecho de imagen; la de marca no sale con la marca contestada «No»), `BloqueConfirmacion` («Animar 5 s») |
+| ver-clip, opciones-clip | `visor-medio.tsx` (vídeo con controles), `resultado-trabajo.tsx`, `paso-clip.tsx` («Otro clip con este fotograma»), `convertir-en-proyecto.tsx` |
 | clip | `paso-clip.tsx` (`SeguimientoTrabajo`, «Cambiar y volver a generar», «Otro clip con este fotograma»), `resultado-trabajo.tsx` («Clip listo»), `convertir-en-proyecto.tsx` (sin volver a generar ni cobrar) |
 
 ## Cómo repetir

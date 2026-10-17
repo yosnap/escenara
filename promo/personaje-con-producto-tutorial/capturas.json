@@ -421,6 +421,111 @@
           ]
         }
       ]
+    },
+    {
+      "id": "resultado",
+      "ruta": "/crear",
+      "ocultar": [
+        "nextjs-portal"
+      ],
+      "interceptar": [
+        {
+          "metodo": "POST",
+          "url": "**/api/generacion/trabajos",
+          "responderCon": "/api/generacion/trabajos/0196c040-aba6-4e96-9a6f-21705968997f"
+        }
+      ],
+      "pasos": [
+        {
+          "accion": "clic",
+          "selector": "main button:visible:has-text('Siguiente: Origen')"
+        },
+        {
+          "accion": "clic",
+          "selector": "main :text-is('Usar una imagen que ya tengo')"
+        },
+        {
+          "accion": "clic",
+          "selector": "main button:visible:has-text('Siguiente: Imagen')"
+        },
+        {
+          "accion": "clic",
+          "selector": "main button:visible:has-text('Elegir de la biblioteca')"
+        },
+        {
+          "accion": "esperar",
+          "selector": "[role=dialog] input[type=search]"
+        },
+        {
+          "accion": "escribir",
+          "selector": "[role=dialog] input[type=search]",
+          "texto": "66413020cf28f55a56179db6d233bb74"
+        },
+        {
+          "accion": "esperar",
+          "selector": "[role=dialog] button[aria-label='Seleccionar 66413020cf28f55a56179db6d233bb74_0_1792259663.jpeg']"
+        },
+        {
+          "accion": "clic",
+          "selector": "[role=dialog] button[aria-label='Seleccionar 66413020cf28f55a56179db6d233bb74_0_1792259663.jpeg']"
+        },
+        {
+          "accion": "clic",
+          "selector": "[role=dialog] button:has-text('Usar este medio')"
+        },
+        {
+          "accion": "clic",
+          "selector": "main button:visible:has-text('Siguiente: Clip')"
+        },
+        {
+          "accion": "esperar",
+          "selector": "section[aria-label='Paso 4: El clip'] label:has-text('En estas fotos no aparece ninguna otra persona')"
+        },
+        {
+          "accion": "clic",
+          "selector": "section[aria-label='Paso 4: El clip'] label:has-text('En estas fotos no aparece ninguna otra persona')"
+        },
+        {
+          "accion": "clic",
+          "selector": "section[aria-label='Paso 4: El clip'] label:has-text('Tengo derecho a usar esta imagen')"
+        },
+        {
+          "accion": "clic",
+          "selector": "section[aria-label='Paso 4: El clip'] button:has-text('Animar')"
+        },
+        {
+          "accion": "esperar",
+          "selector": "section[aria-label='Paso 4: El clip'] section:has(h3:text-is('Clip listo')) video"
+        },
+        {
+          "accion": "desplazar",
+          "selector": "section[aria-label='Paso 4: El clip'] section:has(h3:text-is('Clip listo')) video"
+        }
+      ],
+      "tramos": [
+        {
+          "id": "ver",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 4: El clip'] section:has(h3:text-is('Clip listo')) video"
+            },
+            {
+              "accion": "reproducir",
+              "selector": "section[aria-label='Paso 4: El clip'] section:has(h3:text-is('Clip listo')) video"
+            }
+          ]
+        },
+        {
+          "id": "opciones",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 4: El clip'] button:has-text('Otro clip con este fotograma')"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

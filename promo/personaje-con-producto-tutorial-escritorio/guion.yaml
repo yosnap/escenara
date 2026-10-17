@@ -92,7 +92,19 @@ escenas:
     parametros: { grabacion: anuncio, tramo: clip, titulo: "Clip listo" }
     frases:
       - texto: "Unos minutos después, el clip de anuncio está listo y guardado en tu biblioteca."
-      - texto: "Desde aquí lo ves, pides otro con el mismo fotograma o lo llevas a un proyecto sin volver a pagarlo."
+
+  - id: ver-clip
+    pieza: tutorial
+    parametros: { grabacion: resultado, tramo: ver, titulo: "Míralo" }
+    transicion: fundido
+    frases:
+      - texto: "Toca el play y míralo: Brisa presenta su Botella Ondina."
+
+  - id: opciones-clip
+    pieza: tutorial
+    parametros: { grabacion: resultado, tramo: opciones, titulo: "Y después" }
+    frases:
+      - texto: "Desde aquí pides otro con el mismo fotograma o lo llevas a un proyecto sin volver a pagarlo."
 
   - id: cierre
     pieza: logo

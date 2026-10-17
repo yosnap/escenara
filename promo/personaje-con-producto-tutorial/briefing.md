@@ -11,6 +11,9 @@ y el móvil va en el centro del encuadre, con el rótulo de cada paso a su lado.
   cuentan dentro del tope de 300 créditos del tutorial. No se reutiliza el clip de escritorio: la clave de cada
   confirmación es aleatoria (`panel-generar.tsx:122`) y enseñarlo exigiría interceptar el envío.
 
+- El final (escenas «Míralo» y «Y después») sale de la grabación `resultado`, igual que en escritorio, con el clip
+  de móvil (trabajo `0196c040-aba6-4e96-9a6f-21705968997f`), sin gastar créditos.
+
 ## Cómo repetir
 
 - Desde el motor (`fabrica-videos-tutorial`): `pnpm video --video <esta carpeta>` (graba y renderiza) o
