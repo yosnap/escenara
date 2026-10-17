@@ -373,9 +373,11 @@ describe.skipIf(!hayBaseDeDatos)("lugares: propiedad, declaración, versión, re
     };
     // Una nueva (texto vigente) sin la declaración no entra ni saltándose el servicio.
     await expect(
-      db()
-        .insert(placeDeclarations)
-        .values({ ...comun, textVersion: VERSION_TEXTO_DECLARACION_LUGAR, mayUseImages: false }),
+      (async () => {
+        await db()
+          .insert(placeDeclarations)
+          .values({ ...comun, textVersion: VERSION_TEXTO_DECLARACION_LUGAR, mayUseImages: false });
+      })(),
     ).rejects.toThrow();
     // Una de antes (con el permiso del sitio de entonces) se conserva y el lugar sigue declarado.
     await db()
