@@ -10,6 +10,7 @@ import { Selector } from "@/components/ui/select";
 import {
   AVISO_INTERIOR,
   ESPACIOS_LUGAR,
+  exigePermisoDelLugar,
   type LugarVista,
   NOMBRE_ESPACIO,
   NOMBRE_ORIGEN_FOTOS,
@@ -25,11 +26,16 @@ import {
  * **Declaración de derechos del lugar.** Sin ella no se genera con el lugar. Es del usuario: la aplicación no
  * juzga si algo es legal, pero no acepta lo que esta versión no admite y lo dice **antes** de enviar, con la causa
  * y qué hacer: gente reconocible (se retira o se cambia la foto; no se pixela, porque el generador copia el
- * pixelado), menores (nunca) y un interior sin permiso de quien lo gestiona.
+ * pixelado), menores (nunca) y un interior real sin permiso de quien lo gestiona. Con las imágenes generadas aquí
+ * (un sitio inventado) ese permiso no se pide.
  */
 export function DeclaracionLugar({ lugar, onCambio }: { lugar: LugarVista; onCambio: (lugar: LugarVista) => void }) {
   const vigente = lugar.declaracion;
-  const [origenFotos, setOrigenFotos] = useState<string>(vigente?.origenFotos ?? "propias");
+  // Si todas las fotos salen de una generación de aquí, lo coherente de partida es «Las he generado aquí».
+  const todasGeneradas = lugar.referencias.length > 0 && lugar.referencias.every((r) => r.generada);
+  const [origenFotos, setOrigenFotos] = useState<string>(
+    vigente?.origenFotos ?? (todasGeneradas ? "generadas" : "propias"),
+  );
   const [alcance, setAlcance] = useState<string>(vigente?.alcance ?? "personal");
   const [espacio, setEspacio] = useState<string>(vigente?.espacio ?? "exterior");
   const [permiso, setPermiso] = useState(vigente?.permisoDelLugar ?? false);
@@ -40,7 +46,8 @@ export function DeclaracionLugar({ lugar, onCambio }: { lugar: LugarVista; onCam
   const [ocupado, setOcupado] = useState(false);
 
   const reconocibles = personas === "reconocibles";
-  const faltaPermiso = espacio === "interior" && !permiso;
+  const pidePermiso = exigePermisoDelLugar(espacio, origenFotos);
+  const faltaPermiso = pidePermiso && !permiso;
   const puedeDeclarar = lugar.fotos > 0 && sinMenores && !reconocibles && !faltaPermiso;
 
   const enviar = async (promesa: ReturnType<typeof declararLugar>) => {
@@ -80,7 +87,10 @@ export function DeclaracionLugar({ lugar, onCambio }: { lugar: LugarVista; onCam
         onCambio={setEspacio}
         opciones={ESPACIOS_LUGAR.map((e) => ({ value: e, etiqueta: NOMBRE_ESPACIO[e] }))}
       />
-      {espacio === "interior" && (
+      {espacio === "interior" && !pidePermiso && (
+        <Aviso tono="info">Es un sitio inventado, generado aquí: no hace falta el permiso de nadie para usarlo.</Aviso>
+      )}
+      {pidePermiso && (
         <Casilla
           etiqueta="Tengo permiso de quien gestiona este sitio para grabar y usar estas imágenes"
           descripcion={AVISO_INTERIOR}
@@ -141,7 +151,7 @@ export function DeclaracionLugar({ lugar, onCambio }: { lugar: LugarVista; onCam
                 origenFotos,
                 alcance,
                 espacio,
-                permisoDelLugar: permiso,
+                permisoDelLugar: pidePermiso && permiso,
                 personasVisibles: personas,
                 marcasVisibles: marcas,
                 sinMenores,

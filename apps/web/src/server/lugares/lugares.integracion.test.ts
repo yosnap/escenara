@@ -343,6 +343,18 @@ describe.skipIf(!hayBaseDeDatos)("lugares: propiedad, declaración, versión, re
     expect(((await conOtra.json()) as LugarVista).declarado).toBe(false);
   });
 
+  test("un interior generado aquí no pide el permiso de quien gestiona el sitio; uno con fotos reales, sí", async () => {
+    const { lugar } = await lugarConMaestra(false);
+    const real = await patchLugar(ana, lugar.id, { ...DECLARACION, origenFotos: "con_permiso", espacio: "interior" });
+    expect(real.status).toBe(400);
+    expect(await errorDe(real)).toContain("permiso de quien lo gestiona");
+    const inventado = await patchLugar(ana, lugar.id, { ...DECLARACION, origenFotos: "generadas", espacio: "interior" });
+    expect(inventado.status).toBe(200);
+    const vista = (await inventado.json()) as LugarVista;
+    expect(vista.declarado).toBe(true);
+    expect(vista.declaracion?.permisoDelLugar).toBe(false);
+  });
+
   test("quitar la maestra retira la declaración, como cambiarla", async () => {
     const { lugar } = await lugarConMaestra();
     expect(lugar.declarado).toBe(true);

@@ -78,7 +78,7 @@ export type AlcanceLugar = (typeof ALCANCES_LUGAR)[number];
 export const esAlcanceLugar = (v: unknown): v is AlcanceLugar => ALCANCES_LUGAR.includes(v as AlcanceLugar);
 
 /** Versión del texto de la declaración que se guarda con ella. Cambiar el texto obliga a subir la versión. */
-export const VERSION_TEXTO_DECLARACION_LUGAR = "2026-09-30.2";
+export const VERSION_TEXTO_DECLARACION_LUGAR = "2026-10-17.1";
 
 /** Mensajes con causa y acción, compartidos por el servidor (que rechaza) y la interfaz (que avisa antes). */
 export const RECHAZO_MENORES =
@@ -86,7 +86,16 @@ export const RECHAZO_MENORES =
 export const RECHAZO_RECONOCIBLES =
   "Con gente reconocible en la foto no se puede generar: retírala con «Retirar personas» (edición de imagen, con su coste confirmado antes) o sube otra foto. No se pixelan caras: el generador copiaría el pixelado.";
 export const AVISO_INTERIOR =
-  "Un interior privado o con restricciones (una tienda, un bar, un museo) exige que declares que tienes permiso de quien lo gestiona.";
+  "Un interior real privado o con restricciones (una tienda, un bar, un museo) exige que declares que tienes permiso de quien lo gestiona. Si las imágenes las has generado aquí (un sitio inventado), no hace falta.";
+
+/**
+ * ¿Hay que declarar el permiso de quien gestiona el sitio? Solo en un **interior con fotos reales** (tuyas o de otra
+ * persona). Un lugar con las imágenes generadas en Escenara es inventado: no tiene gestor al que pedírselo, sea
+ * interior o exterior. Ante un origen que no se entiende se exige, como con una foto real. La usan la ficha (que no
+ * pide la casilla) y el servidor (que rechaza la declaración sin ella).
+ */
+export const exigePermisoDelLugar = (espacio: unknown, origenFotos: unknown): boolean =>
+  espacio === "interior" && origenFotos !== "generadas";
 /** Lo que se lee en la pantalla donde se declara, antes de declarar. */
 export const RESPONSABILIDAD_DECLARACION =
   "Lo que declaras aquí es responsabilidad tuya: que las fotos son tuyas o tienes permiso, quién sale en ellas y que no aparece ningún menor. Escenara no revisa las fotos ni comprueba si sale gente; guarda tu declaración con su fecha.";

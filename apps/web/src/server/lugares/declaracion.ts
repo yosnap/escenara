@@ -5,6 +5,7 @@ import {
   esEspacioLugar,
   esOrigenFotosLugar,
   esPersonasVisibles,
+  exigePermisoDelLugar,
   type LugarVista,
   RECHAZO_MENORES,
   RECHAZO_RECONOCIBLES,
@@ -27,7 +28,8 @@ import { ErrorLugar } from "./errores";
  * - **personas reconocibles, no**: se retiran con la edición de imagen o se sube otra foto. No se pixelan caras,
  *   porque el generador copia el pixelado en el fotograma (medido con dinero real);
  * - «retiradas» solo vale si la maestra **es** una foto editada, no la original con la gente;
- * - un **interior** privado o con restricciones exige declarar el permiso de quien lo gestiona.
+ * - un **interior real** privado o con restricciones exige declarar el permiso de quien lo gestiona; un lugar con las
+ *   imágenes generadas aquí es inventado y no lo necesita (`exigePermisoDelLugar`, la misma regla que la ficha).
  */
 
 export interface DatosDeclaracionLugar {
@@ -59,7 +61,7 @@ export async function declararLugar(actor: Actor, id: unknown, datos: DatosDecla
   const espacio = datos.espacio ?? "exterior";
   if (!esEspacioLugar(espacio)) throw new ErrorLugar(400, "Dinos si es un exterior o un interior.");
   const permiso = datos.permisoDelLugar === true;
-  if (espacio === "interior" && !permiso) throw new ErrorLugar(400, AVISO_INTERIOR);
+  if (exigePermisoDelLugar(espacio, datos.origenFotos) && !permiso) throw new ErrorLugar(400, AVISO_INTERIOR);
 
   const referencias = await db()
     .select({ kind: placeReferences.kind, origin: placeReferences.origin })
