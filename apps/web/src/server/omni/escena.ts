@@ -4,6 +4,7 @@ import { proporcionFijadaDelProyecto } from "@/lib/formatos";
 import type { Medio } from "@/lib/media/tipos";
 import { creditosDeEscenaOmni, precioOmniEstimado, usaIdentidadRegistrada, type VozOmniDelProyecto } from "@/lib/omni";
 import { duracionParaModelo } from "@/lib/produccion";
+import { exigeDeclaracionDeMarca } from "@/lib/productos";
 import { firmaDeVoz, nombreDeVoz } from "@/lib/voz";
 import { contextoAnimadoDeEscena } from "../animados/contexto-escena";
 import { escenaPropia } from "../asistente/consulta";
@@ -49,6 +50,7 @@ import { contextoDeVersion, promptConContexto } from "../personajes/contexto";
 import { ultimaVersion } from "../personajes/ficha";
 import { personajePropio, referenciasParaGenerar } from "../personajes/puede-generar";
 import { acotarCoste } from "../presupuesto/acotar";
+import { fechaDeLaDeclaracionDeMarca, marcaAlEnviar } from "../productos/declaracion-marca";
 import { completarModelosSugeridos } from "../productos/modelos-sugeridos";
 import { productoEnPrompt, productoParaGenerar } from "../productos/prompt";
 import { referenciasDelPersonajeQueViajan } from "../productos/referencias";
@@ -398,8 +400,8 @@ export async function producirEscenaHablada(
     identidadRegistradaPerdida: conIdentidad,
     envio: { tipo: "escena-omni", personaje, conHoja: personaje !== null && hojaEnElEnvio(personaje, escena.id) },
   });
-  // Solo si el producto lleva marca: sin marca declarada no hay nada que autorizar.
-  if (producto?.marcaVisible) exigirDerechoDeMarca(confirmacion.derechoMarca);
+  // Con marca o sin responder se exige; solo un «no» explícito deja sin nada que autorizar.
+  if (producto && exigeDeclaracionDeMarca(producto.marcaVisible)) exigirDerechoDeMarca(confirmacion.derechoMarca);
   if (conProducto) await completarModelosSugeridos(conProducto.hechos, CAPACIDAD_DE_TIPO.animacion);
 
   /**
@@ -587,6 +589,8 @@ export async function producirEscenaHablada(
       input: {
         prompt: promptFinal,
         ...(enIngles.aviso === "" ? {} : { avisoReserva: enIngles.aviso }),
+        // Si al enviarlo se exigía la declaración de marca.
+        ...marcaAlEnviar(producto),
         /**
          * Con identidad registrada no hay referencias: la cara la pone el registro del proveedor. Con un motor de
          * referencias, son las fotos del personaje, y la muestra de la voz va aparte porque es audio y no imagen.
@@ -626,8 +630,8 @@ export async function producirEscenaHablada(
       ...columnasDelLugar(conLugar?.lugar ?? null),
       // Turno del clip en el intercambio: es lo que el montaje (0.32.0) lee para alternar los planos.
       castClipOrder: clip ? clip.orden : null,
-      // La declaración de marca se guarda con su fecha, igual que la de la imagen.
-      brandRightsAt: producto ? new Date() : null,
+      // La declaración de marca se guarda con su fecha, igual que la de la imagen, cuando se exigió.
+      brandRightsAt: fechaDeLaDeclaracionDeMarca(producto),
       // Cada clip de un podcast es de **su** personaje, con la ficha con la que está registrado.
       characterId: clip ? clip.personajeId : personaje.id,
       characterVersionId: clip && clip.personajeVersionId !== "" ? clip.personajeVersionId : version.id,

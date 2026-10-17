@@ -34,6 +34,7 @@ import { direccionGuardada, esUuidGeneracion, filaPropia } from "../generacion/t
 import { sitioLugarDe } from "../lugares/en-el-envio";
 import type { Actor } from "../media/servicio";
 import { motivosParaNoGenerar } from "../personajes/puede-generar";
+import { derechoMarcaDelTrabajo } from "../productos/declaracion-marca";
 import { fotosDelProducto as fotosVigentesDelProducto } from "../productos/referencias";
 import { motivoTrendNoDisponible } from "../prompts/trends";
 import { sembrarRepartoInicial } from "../reparto/siembra";
@@ -309,7 +310,7 @@ async function leerClip(actor: Actor, trabajoId: unknown): Promise<ClipLeido> {
       declaraciones: {
         derechosImagen: fila.rightsConfirmedAt !== null,
         revisionDeFotos: fila.characterId ? fila.referencesReviewedAt !== null : null,
-        derechoMarca: fila.productId ? fila.brandRightsAt !== null : null,
+        derechoMarca: derechoMarcaDelTrabajo(fila),
       },
     },
   };

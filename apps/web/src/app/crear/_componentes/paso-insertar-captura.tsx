@@ -8,6 +8,7 @@ import type { Estimacion } from "@/lib/generacion";
 import {
   DESCRIPCION_PASO_DIGITAL,
   DIGITAL_SIN_CAPTURA,
+  exigeDeclaracionDeMarca,
   NOMBRE_PASO_DIGITAL,
   type ProductoVista,
 } from "@/lib/productos";
@@ -96,7 +97,7 @@ export function PasoInsertarCaptura({
             envio="insercion"
             paso="fotograma"
             // La ficha ya está cargada: la casilla de la marca solo sale si se declaró que se ve una.
-            conMarca={producto.marcaVisible}
+            conMarca={exigeDeclaracionDeMarca(producto.marcaVisible)}
             enviando={enviando}
             onGenerar={onGenerar}
           />

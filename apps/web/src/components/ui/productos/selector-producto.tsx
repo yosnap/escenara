@@ -74,7 +74,11 @@ export function SelectorProducto({
   /** Lo que se dice bajo el título: en el fotograma de «Crear» el producto sale ya en la imagen. */
   descripcion?: string;
   deshabilitado?: boolean;
-  onCambio: (elegido: ProductoElegido) => void;
+  /**
+   * Cada cambio llega con el **resumen** del producto elegido (`null` sin producto): quien guarda la elección sabe
+   * así, sin volver a pedir la lista, lo que hace falta de él (por ejemplo, si su marca hay que declararla).
+   */
+  onCambio: (elegido: ProductoElegido, resumen: ProductoResumen | null) => void;
 }) {
   const [productos, setProductos] = useState<ProductoResumen[] | null>(null);
   const [error, setError] = useState("");
@@ -120,7 +124,8 @@ export function SelectorProducto({
           onCambio={(v) => {
             const id = v ?? "";
             // Quitar el producto se lleva la acción: una acción sin producto no describe nada.
-            onCambio(id === "" ? { productoId: "", accion: "" } : { productoId: id, accion: producto.accion });
+            const resumen = (productos ?? []).find((p) => p.id === id) ?? null;
+            onCambio(id === "" ? { productoId: "", accion: "" } : { productoId: id, accion: producto.accion }, resumen);
           }}
         />
       )}
@@ -152,7 +157,7 @@ export function SelectorProducto({
           deshabilitado={deshabilitado}
           onCambio={(fotos) => {
             const { fotos: _anteriores, ...sinFotos } = producto;
-            onCambio(fotos ? { ...sinFotos, fotos } : sinFotos);
+            onCambio(fotos ? { ...sinFotos, fotos } : sinFotos, elegido);
           }}
         />
       )}
@@ -165,7 +170,7 @@ export function SelectorProducto({
             acciones={acciones}
             accion={producto.accion}
             deshabilitado={deshabilitado}
-            onCambio={(accion) => onCambio({ ...producto, accion })}
+            onCambio={(accion) => onCambio({ ...producto, accion }, elegido)}
           />
           {producto.accion === "" && <Aviso tono="aviso">{AVISO_PRODUCTO_SIN_ACCION}</Aviso>}
           {esAccionPocoFiable(producto.accion) && <Aviso tono="aviso">{AVISO_ACCION_POCO_FIABLE}</Aviso>}

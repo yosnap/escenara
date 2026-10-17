@@ -18,7 +18,7 @@ import { DIALOGO_MAXIMO, type Estimacion, type TrabajoVista } from "@/lib/genera
 import type { Medio } from "@/lib/media/tipos";
 import { AVISO_SIN_TERCEROS } from "@/lib/personajes";
 import type { CatalogoParaCrear, PlantillaVisible, PresetVisible } from "@/lib/presets";
-import type { ProductoElegido } from "@/lib/productos";
+import type { ProductoElegido, ProductoResumen } from "@/lib/productos";
 import { errorDeRequisito, ID_DESCRIPCION, idRequisito, type Requisito } from "@/lib/requisitos";
 import { ENVIO_CLIP, ID_REVISION_CLIP, variableDeTexto } from "@/lib/requisitos-crear";
 import { textoDeDuraciones } from "@/lib/trends";
@@ -61,6 +61,7 @@ export function PasoClip({
   producto,
   onProducto,
   conMarca,
+  avisoProducto = null,
   catalogo,
   plantilla,
   previa,
@@ -110,9 +111,11 @@ export function PasoClip({
   direccion: DireccionElegidaConAcento;
   /** El producto y qué se hace con él: el mismo del fotograma, si se eligió al describir la escena. Aquí va con la dirección. */
   producto: ProductoElegido;
-  onProducto: (elegido: ProductoElegido) => void;
+  onProducto: (elegido: ProductoElegido, resumen?: ProductoResumen | null) => void;
   /** El producto elegido tiene marca declarada: se pide la casilla de la marca. */
   conMarca: boolean;
+  /** Si el producto del clip no es el del fotograma del que sale, por qué importa; `null` si coinciden. */
+  avisoProducto?: string | null;
   catalogo: CatalogoParaCrear;
   plantilla: EstadoPlantilla;
   previa: Previsualizacion;
@@ -174,9 +177,9 @@ export function PasoClip({
       // El clip de «Crear» parte de una sola imagen: su fotograma.
       fotosDelPersonaje: 1,
     });
-  const elegirProducto = (elegido: ProductoElegido) => {
+  const elegirProducto = (elegido: ProductoElegido, resumen: ProductoResumen | null) => {
     eleccionHecha.current = elegido.fotos;
-    onProducto(elegido);
+    onProducto(elegido, resumen);
   };
   const cambiarModelo = (modeloNuevo: string) => {
     const { fotos: _actuales, ...sinFotos } = producto;
@@ -211,6 +214,7 @@ export function PasoClip({
           {/* Lo que falta, arriba y con cada punto como botón que lleva al campo. */}
           {!clipEnMarcha && <AvisoRequisitos requisitos={requisitos} marcar={marcar} onIr={onIrARequisito} />}
           {avisoModelo && <Aviso tono="aviso">{avisoModelo}</Aviso>}
+          {avisoProducto && <Aviso tono="aviso">{avisoProducto}</Aviso>}
           {origen && (
             <AvisoProporcionDelFotograma
               proporcionDelFotograma={proporcionDelFotograma}

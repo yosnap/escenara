@@ -74,7 +74,7 @@ export function ConfirmacionAB({
     ...(!preparacion.conPersonaje || sinTerceros
       ? []
       : [{ id: casilla("sin-terceros"), texto: "Falta confirmar la revisión de las fotos del personaje." }]),
-    ...(!preparacion.conProducto || derechoMarca
+    ...(!preparacion.conMarca || derechoMarca
       ? []
       : [{ id: casilla("marca"), texto: "Falta confirmar que tienes derecho a usar la marca del producto." }]),
     ...(!superaUmbral || avisoAceptado
@@ -166,7 +166,8 @@ export function ConfirmacionAB({
           requisito={casilla("sin-terceros")}
         />
       )}
-      {preparacion.conProducto && (
+      {/* Solo con un producto con marca (o sin responder): con uno declarado sin marca no hay nada que autorizar. */}
+      {preparacion.conMarca && (
         <Casilla
           etiqueta="Tengo derecho a usar esta marca"
           descripcion="El producto es tuyo o tienes autorización de la marca para usarlo en este vídeo."

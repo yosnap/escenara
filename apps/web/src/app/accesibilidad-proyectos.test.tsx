@@ -108,6 +108,7 @@ const escenaProduccion = (cambios: Partial<EscenaProduccionVista> = {}): EscenaP
   motivoUltimoFallo: "",
   cambiadaDesdeLaGeneracion: false,
   conProducto: true,
+  conMarca: true,
   faltaInsertarCaptura: false,
   reparto: null,
   clipsHablados: [],

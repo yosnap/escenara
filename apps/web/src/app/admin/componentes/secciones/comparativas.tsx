@@ -64,6 +64,7 @@ const PREPARACION: PreparacionAB = {
   impedimentos: [],
   umbralAvisoCreditos: 100,
   conProducto: false,
+  conMarca: false,
   conPersonaje: true,
   avisos: [],
   fotograma: null,

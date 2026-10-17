@@ -15,7 +15,7 @@ const ACCIONES = [
   { clave: "sostenerlo", nombre: "Sostenerlo", descripcion: "Lo tiene en la mano." },
 ] as unknown as OpcionDireccion[];
 
-const pintar = (producto: ProductoElegido, acciones: OpcionDireccion[] | null = ACCIONES) =>
+const pintar = (producto: ProductoElegido, acciones: OpcionDireccion[] | null = ACCIONES, bloqueado = false) =>
   renderToStaticMarkup(
     <PasoEscena
       numero={4}
@@ -30,6 +30,7 @@ const pintar = (producto: ProductoElegido, acciones: OpcionDireccion[] | null = 
       accionesDePreset={() => null}
       producto={producto}
       accionesProducto={acciones ?? undefined}
+      productoBloqueado={bloqueado}
       onProducto={() => {}}
       onPrompt={() => {}}
       onDialogo={() => {}}
@@ -53,5 +54,11 @@ describe("producto en el paso de la escena", () => {
 
   test("sin catálogo de acciones todavía no se pinta el selector", () => {
     expect(pintar(PRODUCTO_ELEGIDO_VACIO, null)).not.toContain("sale ya en el fotograma");
+  });
+
+  test("con el fotograma ya pedido, el producto se ve pero no se cambia, y se dice por qué", () => {
+    const html = pintar({ productoId: "p1", accion: "sostenerlo" }, ACCIONES, true);
+    expect(html).toContain("El fotograma ya está pedido con este producto");
+    expect(pintar({ productoId: "p1", accion: "sostenerlo" })).not.toContain("El fotograma ya está pedido");
   });
 });

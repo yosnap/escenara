@@ -82,7 +82,12 @@ describe.skipIf(!hayBaseDeDatos)("estrategia del anuncio: ángulo, oferta y brie
   });
 
   const productoDe = async (actor: Actor, nombre: string) =>
-    crearProducto(actor, { nombre: `${nombre} ${sufijo()}`, descripcion: "Bote blanco.", tipo: "fisico" });
+    crearProducto(actor, {
+      nombre: `${nombre} ${sufijo()}`,
+      descripcion: "Bote blanco.",
+      tipo: "fisico",
+      marcaVisible: false,
+    });
 
   /** Proyecto nuevo, del que solo hace falta su identificador. */
   async function proyectoDe(actor: Actor, titulo: string): Promise<{ id: string }> {

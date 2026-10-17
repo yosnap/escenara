@@ -122,14 +122,38 @@ export interface ReferenciaProducto {
   generada: boolean;
 }
 
+/**
+ * `true` si un envío con este producto exige la declaración «Tengo derecho a usar esta marca»: con marca declarada
+ * y también **sin responder**, que es el lado seguro. Solo un «no» explícito la quita. Cliente y servidor usan esta
+ * misma regla.
+ */
+export const exigeDeclaracionDeMarca = (marcaVisible: boolean | null | undefined): boolean => marcaVisible !== false;
+
+/**
+ * Principio del rechazo del servidor cuando falta la declaración de marca. La pantalla lo reconoce para enseñar la
+ * casilla al momento (el producto pudo cambiar de respuesta en otra pestaña), sin recargar.
+ */
+export const MENSAJE_FALTA_DECLARACION_MARCA =
+  "Confirma que tienes derecho a usar la marca de este producto antes de generar.";
+
+/** Texto de la pregunta obligatoria del alta (y de la ficha mientras siga sin responder). */
+export const PREGUNTA_MARCA_VISIBLE = "¿En las fotos se ve una marca o un logotipo?";
+export const AYUDA_MARCA_VISIBLE =
+  "Es obligatorio responder. Si dices que sí, en cada vídeo con este producto confirmarás que tienes derecho a usar esa marca, y se te avisará de que el filtro del proveedor puede rechazarla (entonces no se cobra nada y se te dice por qué). Si dices que no, no se te pedirá.";
+export const INVITACION_MARCA_SIN_RESPONDER =
+  "Todavía no has dicho si en las fotos se ve una marca. Mientras no lo respondas, cada vídeo con este producto te pedirá confirmar que tienes derecho a usarla.";
+
 /** Un producto en la lista: lo justo para reconocerlo sin cargar sus fotos. */
 export interface ProductoResumen {
   id: string;
   nombre: string;
   descripcion: string;
   tipo: TipoProducto;
-  /** `true` si el usuario ha declarado que se ve una marca. Es informativo: no bloquea nada. */
-  marcaVisible: boolean;
+  /**
+   * Si en las fotos se ve una marca, tal como lo declaró el usuario: `true`, `false` o `null` si aún no lo ha
+   * respondido. Con marca o sin responder se pide la declaración de marca en cada envío (`exigeDeclaracionDeMarca`).
+   */
+  marcaVisible: boolean | null;
   referencias: number;
   /** Las que no están en la papelera: son las únicas que el servidor envía al modelo. */
   fotosVigentes: number;

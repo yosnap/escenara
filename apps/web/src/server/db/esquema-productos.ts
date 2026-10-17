@@ -42,10 +42,12 @@ export const products = pgTable(
     description: text("description").notNull().default(""),
     kind: tipoProducto("kind").notNull().default("fisico"),
     /**
-     * El usuario declara que en las fotos se ve una marca. Es **informativo**: no bloquea nada y no se detecta
-     * por nuestra cuenta; sirve para poder avisarle de que el filtro del proveedor puede rechazarlo.
+     * El usuario declara si en las fotos se ve una marca: es una respuesta **obligatoria** al crear el producto
+     * (`true` = sí, `false` = no) y `null` = sin responder (los productos anteriores a la pregunta). No se detecta
+     * por nuestra cuenta. Con marca, o sin responder, cada envío con el producto exige la declaración «Tengo derecho
+     * a usar esta marca» y se avisa de que el filtro del proveedor puede rechazarla; con «no» no se pide nada.
      */
-    brandVisible: boolean("brand_visible").notNull().default(false),
+    brandVisible: boolean("brand_visible"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

@@ -8,6 +8,7 @@ import { AvisoFotoDeProducto } from "@/components/ui/productos/aviso-foto-de-pro
 import { ElectorAccionProducto } from "@/components/ui/productos/elector-accion-producto";
 import { ElectorFotosProducto } from "@/components/ui/productos/elector-fotos-producto";
 import { DefinicionesPictogramaProducto } from "@/components/ui/productos/pictogramas-producto";
+import { PreguntaMarca } from "@/components/ui/productos/pregunta-marca";
 import type { ModeloElegible } from "@/lib/catalogo";
 import type { OpcionDireccion } from "@/lib/direccion";
 import { alternarFoto, fotosQueViajan } from "@/lib/fotos-del-producto";
@@ -118,6 +119,7 @@ export function SeccionProductos() {
     ),
   );
   const [accion, setAccion] = useState("");
+  const [marca, setMarca] = useState<boolean | null>(null);
   const [modelo, setModelo] = useState(CLIP_SIN_FOTO.modelo);
   const [otra, setOtra] = useState("moda-giro-360");
   return (
@@ -128,6 +130,9 @@ export function SeccionProductos() {
     >
       <DefinicionesPictogramaProducto />
       <div className="flex flex-col gap-8">
+        <Muestra titulo="¿Se ve una marca? Sí/No obligatorio del alta (en la ficha, sin responder, con su invitación)">
+          <PreguntaMarca valor={marca} onCambio={setMarca} invitarSiFalta />
+        </Muestra>
         <Muestra titulo="Cabecera del bloque">
           <CabeceraGrupo
             como="h3"

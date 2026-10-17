@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
+import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo } from "@/components/ui/field";
 import { SelectorLugar } from "@/components/ui/lugares/selector-lugar";
 import { AvisoSinVoz } from "@/components/ui/modelo";
@@ -12,7 +13,7 @@ import type { FotoDeProductoDelClip } from "@/lib/foto-de-producto";
 import { DIALOGO_MAXIMO, PROMPT_MINIMO } from "@/lib/generacion";
 import type { LugarDeEscena } from "@/lib/lugares";
 import { type CatalogoParaCrear, type PresetVisible, VARIABLE_TEXTO_MAXIMA } from "@/lib/presets";
-import type { ProductoElegido } from "@/lib/productos";
+import type { ProductoElegido, ProductoResumen } from "@/lib/productos";
 import { errorDeRequisito, ID_DESCRIPCION, idRequisito, type Requisito } from "@/lib/requisitos";
 import { ENVIO_FOTOGRAMA } from "@/lib/requisitos-crear";
 import { DescripcionConReferencias } from "./descripcion-con-referencias";
@@ -47,6 +48,7 @@ export function PasoEscena({
   producto,
   accionesProducto,
   fotoDeProducto,
+  productoBloqueado = false,
   onProducto,
   onPrompt,
   onDialogo,
@@ -79,7 +81,9 @@ export function PasoEscena({
   accionesProducto?: OpcionDireccion[];
   /** Si el modelo del fotograma admite la foto del producto, para avisarlo junto a la elección. */
   fotoDeProducto?: FotoDeProductoDelClip | null;
-  onProducto?: (producto: ProductoElegido) => void;
+  /** El fotograma ya está pedido o listo: su producto se ve pero no se cambia aquí. */
+  productoBloqueado?: boolean;
+  onProducto?: (producto: ProductoElegido, resumen: ProductoResumen | null) => void;
   onPrompt: (texto: string) => void;
   onDialogo: (texto: string) => void;
   onPlantilla: (estado: EstadoPlantilla) => void;
@@ -145,14 +149,22 @@ export function PasoEscena({
 
       {/* El producto también entra por el fotograma: sus fotos viajan como referencia y el clip lo hereda elegido. */}
       {producto && accionesProducto && onProducto && (
-        <SelectorProducto
-          producto={producto}
-          acciones={accionesProducto}
-          fotoDeProducto={fotoDeProducto}
-          descripcion="El producto que sale ya en el fotograma y qué hace el personaje con él. En el clip sigue elegido y puedes cambiarlo."
-          deshabilitado={deshabilitado}
-          onCambio={onProducto}
-        />
+        <div className="flex flex-col gap-2">
+          {productoBloqueado && (
+            <Aviso tono="info">
+              El fotograma ya está pedido con este producto, así que aquí no se cambia. En el paso del clip puedes
+              elegir otro, y se te avisará si no coincide con el de la imagen.
+            </Aviso>
+          )}
+          <SelectorProducto
+            producto={producto}
+            acciones={accionesProducto}
+            fotoDeProducto={fotoDeProducto}
+            descripcion="El producto que sale ya en el fotograma y qué hace el personaje con él. En el clip sigue elegido y puedes cambiarlo."
+            deshabilitado={deshabilitado || productoBloqueado}
+            onCambio={onProducto}
+          />
+        </div>
       )}
 
       {/* Los botones son el corazón de «Crear»: la escena que se escribe arriba es una de las variables. */}

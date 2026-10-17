@@ -677,11 +677,15 @@ const REGLAS: readonly Regla[] = [
    * ninguna tarea— y la declaración expresa de que el uso está autorizado, que es lo que el usuario confirma.
    */
   (h) => {
-    if (!h.producto?.marcaVisible) return null;
+    if (!h.producto || h.producto.marcaVisible === false) return null;
+    const declarado =
+      h.producto.marcaVisible === null
+        ? `Todavía no has dicho si en «${h.producto.nombre}» se ve una marca, así que se trata como si se viera.`
+        : `Has declarado que en «${h.producto.nombre}» se ve una marca.`;
     return {
       regla: "producto-con-marca",
       estado: "ajustes",
-      motivo: `Has declarado que en «${h.producto.nombre}» se ve una marca. El filtro del proveedor puede rechazar un logo de marca, y en ese caso no se genera nada, no se te cobra y se te dice el motivo.`,
+      motivo: `${declarado} El filtro del proveedor puede rechazar un logo de marca, y en ese caso no se genera nada, no se te cobra y se te dice el motivo.`,
       accion:
         "Confirma que tienes autorización para usar esa marca y que aceptas que el proveedor pueda rechazar el envío.",
       http: 409,

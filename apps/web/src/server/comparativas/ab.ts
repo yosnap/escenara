@@ -29,6 +29,7 @@ import { elegirParaTipo } from "../generacion/precios";
 import { type Actor, aDto } from "../media/dto";
 import { estadoDeProduccion } from "../produccion/consulta";
 import { usarVersionDeEscena } from "../produccion/versiones";
+import { marcasExigidas } from "../productos/declaracion-marca";
 import { creditosDelEnvio } from "../prompts/traduccion";
 import { modelosElegibles } from "../proveedores/catalogo";
 
@@ -141,6 +142,7 @@ export async function prepararAB(actor: Actor, escenaId: unknown): Promise<Prepa
     impedimentos,
     umbralAvisoCreditos: ajustes.avisoCreditos,
     conProducto: escena.productId !== null,
+    conMarca: escena.productId !== null && ((await marcasExigidas([escena.productId])).get(escena.productId) ?? false),
     conPersonaje: escena.placeShot !== "solo_lugar" && proyecto.mainCharacterId !== null,
     avisos: [...avisos].map(([regla, motivo]) => ({ regla, motivo })),
     fotograma: fotograma[0] ? aDto(fotograma[0], actor) : null,

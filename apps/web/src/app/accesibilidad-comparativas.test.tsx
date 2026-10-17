@@ -84,6 +84,7 @@ const PREPARACION: PreparacionAB = {
   impedimentos: [],
   umbralAvisoCreditos: 50,
   conProducto: true,
+  conMarca: true,
   conPersonaje: true,
   avisos: [{ regla: "precio-antiguo", motivo: "El precio de este modelo se comprobó hace más de 90 días." }],
   fotograma: null,

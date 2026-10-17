@@ -229,6 +229,7 @@ describe.skipIf(!hayBaseDeDatos)("lugares: propiedad, declaración, versión, re
       pedir(ana, "/api/productos", "POST", {
         nombre: `Crema ${crypto.randomUUID().slice(0, 6)}`,
         tipo: "fisico",
+        marcaVisible: false,
       }),
       undefined,
     );

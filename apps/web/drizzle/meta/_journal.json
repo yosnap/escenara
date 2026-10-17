@@ -505,6 +505,13 @@
       "when": 1792206428365,
       "tag": "0071_declaracion_lugar_puedo_usar",
       "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1792253357215,
+      "tag": "0072_marca_visible_sin_responder",
+      "breakpoints": true
     }
   ]
 }
