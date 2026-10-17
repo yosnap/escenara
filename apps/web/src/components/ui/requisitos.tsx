@@ -7,9 +7,12 @@ import { cn } from "./cn";
 import { enfocarProblema, llevarAlProblema } from "./llevar-al-problema";
 
 /**
- * **Aviso de requisitos** (0.33.1): lo que falta antes de poder generar, arriba del paso. Es la `Alerta` de bloqueo con
- * cada punto como botón que lleva al campo, el primero destacado e «Ir al primero». Ya está en la pantalla al abrir el
- * paso, así que no se anuncia de golpe: es una región con nombre, y la barra de pasos dice cuántos faltan.
+ * **Aviso de requisitos** (0.33.1): lo que falta antes de poder generar, arriba del paso, con cada punto como botón que
+ * lleva al campo, el primero destacado e «Ir al primero». Ya está en la pantalla al abrir el paso, así que no se
+ * anuncia de golpe: es una región con nombre, y la barra de pasos dice cuántos faltan.
+ *
+ * Al llegar, lo que falta es un **paso pendiente** (tono neutro): todavía no ha fallado nada. Solo cuando la persona
+ * ha intentado seguir o ha ido a un requisito (`marcar`) pasa a **bloqueo** rojo, igual que las casillas marcadas.
  *
  * No sabe nada de pasos ni de formularios: recibe los requisitos y avisa de cuál se ha pulsado. Quien lo usa decide
  * cómo llegar al campo (normalmente `irARequisito`).
@@ -17,18 +20,21 @@ import { enfocarProblema, llevarAlProblema } from "./llevar-al-problema";
 export function AvisoRequisitos({
   requisitos,
   titulo = "Antes de generar, falta:",
+  marcar = false,
   onIr,
   className,
 }: {
   requisitos: readonly Requisito[];
   titulo?: string;
+  /** `true` cuando ya se ha intentado seguir o se ha ido a un requisito: entonces lo pendiente es un bloqueo. */
+  marcar?: boolean;
   onIr: (requisito: Requisito) => void;
   className?: string;
 }) {
   if (requisitos.length === 0) return null;
   return (
     <Alerta
-      tipo="bloqueo"
+      tipo={marcar ? "bloqueo" : "pendiente"}
       titulo={titulo}
       elementos={requisitos}
       onIr={onIr}

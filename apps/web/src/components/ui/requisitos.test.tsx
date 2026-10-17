@@ -19,8 +19,18 @@ const REQUISITOS: Requisito[] = [
 ];
 
 describe("aviso de requisitos", () => {
-  test("título, un botón por requisito y borde de error completo (no lateral)", () => {
+  test("al abrir es un paso pendiente: neutro, con su rótulo y sin el rojo de bloqueo", () => {
     const html = renderToStaticMarkup(<AvisoRequisitos requisitos={REQUISITOS} onIr={() => {}} />);
+    expect(html).toContain('data-alerta="pendiente"');
+    expect(html).toContain(">Pendiente<");
+    expect(html).not.toContain(">Bloqueo<");
+    expect(html).not.toMatch(/\bborder-error\b/);
+    expect(html).toContain("Falta describir la escena.");
+  });
+
+  test("tras intentarlo: título, un botón por requisito y borde de error completo (no lateral)", () => {
+    const html = renderToStaticMarkup(<AvisoRequisitos requisitos={REQUISITOS} marcar onIr={() => {}} />);
+    expect(html).toContain(">Bloqueo<");
     expect(html).toContain("Antes de generar, falta:");
     // Un botón por requisito y, con más de uno, «Ir al primero».
     expect(html.match(/<button/g)?.length).toBe(3);

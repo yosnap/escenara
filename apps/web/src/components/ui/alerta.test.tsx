@@ -36,6 +36,16 @@ describe("alerta: los tres tipos", () => {
     expect(html).toContain("border-aviso/80");
   });
 
+  test("pendiente: neutro, rótulo «Pendiente», sin rojo y se anuncia con cortesía", () => {
+    const html = renderToStaticMarkup(<Alerta tipo="pendiente" elementos={ELEMENTOS} />);
+    expect(html).toContain('data-alerta="pendiente"');
+    expect(html).toContain(">Pendiente<");
+    expect(html).toContain("border-2");
+    expect(html).not.toMatch(/\b(border|text)-error\b/);
+    expect(html).not.toContain('role="alert"');
+    expect(html).not.toMatch(/\bborder-[lrse](-|\b)/);
+  });
+
   test("hecho: estado, sin nada a lo que llevar", () => {
     const html = renderToStaticMarkup(<Alerta tipo="hecho">Guardado.</Alerta>);
     expect(html).toContain('role="status"');

@@ -98,7 +98,10 @@ export function PanelGenerar({
     avisoAceptado,
   });
   const impedimentos = [...bloqueos, ...pendientes];
-  const marcadas = marcar || intentado ? pendientes : [];
+  const marcando = marcar || intentado;
+  const marcadas = marcando ? pendientes : [];
+  // Antes de actuar, lo que falta es un paso pendiente (neutro); el rojo de bloqueo llega al intentar seguir sin ello.
+  const tipoAviso = marcando ? "bloqueo" : "pendiente";
 
   const generar = () => {
     // Misma confirmación, misma clave: un doble clic o un reintento no pagan dos veces. Los avisos confirmados
@@ -123,14 +126,14 @@ export function PanelGenerar({
           // El bloque de arriba ya lo dice y lleva a cada campo: aquí solo se ve, sin botones ni segundo anuncio.
           <div aria-hidden>
             <Alerta
-              tipo="bloqueo"
+              tipo={tipoAviso}
               compacta
               anuncio="ninguno"
               elementos={impedimentos.map((r) => ({ texto: r.texto }))}
             />
           </div>
         ) : (
-          <Alerta tipo="bloqueo" compacta anuncio="ninguno" protege elementos={impedimentos} onIr={onIntento} />
+          <Alerta tipo={tipoAviso} compacta anuncio="ninguno" protege elementos={impedimentos} onIr={onIntento} />
         )
       }
     >

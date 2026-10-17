@@ -37,11 +37,16 @@ export function SeccionAlertas() {
     <Seccion
       id="alertas"
       titulo="Alertas"
-      descripcion="Un solo componente para todo lo que hay que decir: bloqueo (rojo, impide seguir), error (rojo, algo ha fallado), aviso (ámbar, pide atención sin bloquear) e información (azul de marca), y «hecho» para confirmar. Borde completo, icono y rótulo en texto; bloqueos y errores persisten hasta resolverse y lo que protege dinero o consentimiento nunca se descarta. Al pulsar un problema, la pantalla cambia de paso si hace falta, se desplaza, lo enfoca, lo resalta con un aro de marca y lo señala con una flecha."
+      descripcion="Un solo componente para todo lo que hay que decir: pendiente (azul de marca, lo que falta antes de actuar; pasa a bloqueo al intentar seguir sin ello), bloqueo (rojo, impide seguir), error (rojo, algo ha fallado), aviso (ámbar, pide atención sin bloquear) e información (azul de marca), y «hecho» para confirmar. Borde completo, icono y rótulo en texto; bloqueos y errores persisten hasta resolverse y lo que protege dinero o consentimiento nunca se descarta. Al pulsar un problema, la pantalla cambia de paso si hace falta, se desplaza, lo enfoca, lo resalta con un aro de marca y lo señala con una flecha."
     >
       <div className="grid gap-4 lg:grid-cols-2">
-        <Muestra titulo="Los cuatro tipos">
+        <Muestra titulo="Los tipos">
           <div className="flex w-full flex-col gap-3">
+            <Alerta
+              tipo="pendiente"
+              titulo="Antes de generar, falta:"
+              elementos={[{ texto: "Falta confirmar que tienes derecho a usar la imagen." }]}
+            />
             <Alerta tipo="bloqueo" titulo="No se puede generar todavía">
               Falta tu clave de KIE. Añádela en Cuenta › Proveedores; no se ha cobrado nada.
             </Alerta>
