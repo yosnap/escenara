@@ -2,6 +2,41 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.52.8] · 2026-10-17
+
+### Añadido
+
+- En la ficha de un producto, «Generar una imagen» crea sus imágenes de referencia con IA desde la
+  descripción guardada. Eliges qué vista: la frontal con la etiqueta, el envase entero, el detalle de
+  la tapa o el producto solo. Una captura de pantalla no se genera: se sube la de verdad. Ves el
+  coste antes de confirmar, y la imagen entra en el producto con esa vista y marcada como generada.
+- Un lugar real también genera su imagen dentro de «Lugares»: una foto realista del sitio, vacía,
+  desde su descripción. Hasta ahora solo los lugares animados tenían «Generar un candidato».
+- Las dos pasan por el mismo camino que un fotograma de «Crear»: estimación con su fecha, aviso de
+  gasto, controles previos, casilla de derechos, cola, reserva y clave de idempotencia. Sin
+  descripción guardada, en un producto lleno o con una vista que no se genera, no se cobra nada y se
+  dice por qué.
+
+### Corregido
+
+- Un lugar con las imágenes generadas aquí ya no pide el permiso de quien gestiona el sitio, aunque
+  sea un interior: es un sitio inventado. Con fotos reales de un interior se sigue exigiendo, y el
+  servidor aplica la misma regla.
+- Al llegar a «Revisa el coste» lo que falta (la casilla de derechos, el aviso de gasto) se ve como
+  paso **pendiente**, en neutro, y no como un «Bloqueo» rojo. El rojo sale si intentas seguir sin
+  hacerlo o si algo lo impide de verdad, como un saldo que no llega. Lo mismo en las imágenes que se
+  generan desde la ficha de un lugar o de un producto.
+- Las fotos que añades a un producto ya no entran todas como «Frontal con la etiqueta». Antes de
+  añadirlas eliges el papel de cada una, que parte del neutro del tipo: el envase entero en un
+  producto físico y la captura en uno digital.
+
+### Actualización
+
+- Migración `0070_referencia_de_producto_generada` (columna `product_references.generated`): hay que
+  aplicar las migraciones y reiniciar la web y el worker, que es quien adjunta la imagen al producto
+  al terminar.
+- La versión del texto de la declaración de un lugar pasa a `2026-10-17.1`.
+
 ## [0.52.7] · 2026-10-17
 
 ### Corregido
