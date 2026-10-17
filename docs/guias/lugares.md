@@ -136,6 +136,8 @@ El modelo admite un número de imágenes, y se reparten así: **al menos una del
 lo hay, y la maestra del lugar si queda sitio**. Lo que queda se reparte entre el personaje y el producto como
 siempre. **La primera foto del personaje debe ser la del vestuario que quieres**: con varias fotos suyas el modelo
 mezcla la ropa. Si la maestra no cabe, se te avisa **antes de pagar**, con las cifras, y el lugar viaja solo descrito.
+En «Revisa el coste y confirma» ves **todas las fotos que se enviarán**: las del personaje, las del producto y la
+maestra del lugar, con el total frente a lo que admite el modelo.
 Más imágenes **no suben el precio** de un fotograma (medido: 4 créditos con 0 a 4 imágenes).
 
 ### El plano del lugar solo
