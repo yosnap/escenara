@@ -66,6 +66,9 @@ entre todas las acciones, aunque salgan repartidas en familias: si eliges una de
 en «Con el producto en la mano». Encima de la lista, **«Elegida: …»** te dice cuál es en cada momento. Cada acción
 lleva su dibujo y **una frase** de lo que verás.
 
+Antes de pagar, tanto en el fotograma como en el clip, la confirmación del coste enseña **las fotos del producto que
+se enviarán** y cuántas imágenes van en total frente a las que admite el modelo.
+
 **En «Crear», desde el fotograma.** En el paso **«Describe la escena»** está el mismo bloque **El producto**. Si lo
 eliges ahí, sus fotos entran como referencia de imagen en el fotograma, igual que las del personaje, y el producto
 ya sale en la imagen (por ejemplo, en la mano con «Sostenerlo»). En el paso **«El clip»** aparece ya elegido, con su

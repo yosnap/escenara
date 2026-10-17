@@ -25,6 +25,7 @@ import { textoDeDuraciones } from "@/lib/trends";
 import { AvisoProporcionDelFotograma } from "./aviso-proporcion-del-fotograma";
 import { BloqueConfirmacion } from "./bloque-confirmacion";
 import { CampoVariableTexto } from "./campo-variable-texto";
+import { PanelFotosQueAcompanan } from "./panel-fotos-que-acompanan";
 import type { ConfirmacionCoste } from "./panel-generar";
 import { type EstadoPlantilla, PanelPlantilla, type Previsualizacion } from "./panel-plantilla";
 import { ResultadoTrabajo } from "./resultado-trabajo";
@@ -335,6 +336,7 @@ export function PasoClip({
             </Aviso>
           )}
 
+          {!clipEnMarcha && <PanelFotosQueAcompanan evaluacion={controles.evaluacion} clip />}
           {!clipEnMarcha && (
             <BloqueConfirmacion
               controles={controles}
