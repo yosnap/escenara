@@ -1,7 +1,7 @@
 # Tutorial «Crear un lugar» en modo tutorial, versión de ESCRITORIO (YouTube): la ventana del navegador, fija,
 # ocupa el encuadre. La versión móvil (../crear-lugar-tutorial/) tiene el mismo guion.
 # Sin voz: cada escena lleva un rótulo breve (titulo) y sus frases salen como subtítulos.
-# Se crea la ficha en «Lugares», su foto se genera dentro de la ficha («Generar una imagen»), se marca como maestra
+# Tras el alta, el paso «Su primera imagen» genera su foto («Genera su primera imagen»), se marca como maestra
 # y se declara. Lugar inventado, sin marcas ni personas. Evidencia: briefing.md.
 escenas:
   - id: gancho
@@ -31,15 +31,15 @@ escenas:
 
   - id: crear
     pieza: tutorial
-    parametros: { grabacion: lugar, tramo: crear, titulo: "Crea su ficha" }
+    parametros: { grabacion: lugar, tramo: crear, titulo: "Su primera imagen" }
     frases:
-      - texto: "Toca «Crear lugar». Su ficha te dice lo que falta para usarlo: la foto maestra y la declaración."
+      - texto: "Toca «Crear lugar» y la app te propone su primera imagen: generarla, subir tus fotos o hacerlo después."
 
   - id: generar
     pieza: tutorial
     parametros: { grabacion: lugar, tramo: generar, titulo: "Genera su foto" }
     frases:
-      - texto: "En «Fotos», toca «Generar una imagen»: una foto realista del lugar, vacía, desde su descripción. Antes ves lo que cuesta."
+      - texto: "Toca «Genera su primera imagen»: una foto realista del lugar, vacía, desde su descripción. Antes ves lo que cuesta."
 
   - id: encargar
     pieza: tutorial

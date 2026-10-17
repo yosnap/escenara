@@ -1,7 +1,7 @@
 # Briefing · Tutorial «Crear un producto» (escritorio, para YouTube)
 
-Segundo tutorial de la serie (`plans/261017-0246-serie-tutoriales/plan.md`). Desde la 0.52.8 las imágenes del
-producto se generan **dentro de su ficha**. La versión móvil (`../crear-producto-tutorial/`) tiene el mismo guion y
+Segundo tutorial de la serie (`plans/261017-0246-serie-tutoriales/plan.md`). Desde la 0.52.9, al crear el producto
+se llega al paso «Su primera imagen» y sus imágenes se generan **dentro de su ficha**. La versión móvil (`../crear-producto-tutorial/`) tiene el mismo guion y
 las mismas acciones; solo cambia el viewport.
 
 ## Decisiones del propietario (2026-10-17)
@@ -14,8 +14,9 @@ las mismas acciones; solo cambia el viewport.
 
 ## Decisiones mías
 
-- **Dos vistas generadas** en la ficha: «El envase entero» y «Detalle de la tapa o el mecanismo» (2 imágenes de
-  `nano-banana-2-lite` por versión, unos 8 créditos). La segunda se encarga mientras se hace la primera.
+- **Dos vistas generadas**: «El envase entero» desde el paso «Su primera imagen» («Genera su primera imagen») y,
+  cuando ya está en la ficha, «Detalle de la tapa o el mecanismo» con «Generar una imagen» (2 imágenes de
+  `nano-banana-2-lite` por versión, unos 8 créditos).
 - **Diálogo de papeles con una foto propia**: `producto/botella-ondina-sola.jpg` (en la carpeta móvil) es una foto
   de la misma botella generada antes en «Crear». Está subida una sola vez a la biblioteca de Tutoriales con ese
   nombre; la grabación la busca por «botella» y la añade como «El producto solo». No cuesta nada.
@@ -32,7 +33,7 @@ las mismas acciones; solo cambia el viewport.
 |---|---|
 | nuevo, datos | `apps/web/src/app/productos/_componentes/lista-productos.tsx`, `dialogo-nuevo-producto.tsx`, `apps/web/src/lib/productos.ts` (`AYUDA_DESCRIPCION_PRODUCTO`) |
 | tipo | `lib/productos.ts` (`TIPOS_PRODUCTO`), casilla de marca en `dialogo-nuevo-producto.tsx` («Solo para avisarte…») |
-| crear | `lista-productos.tsx` (al crear se va a la ficha) |
+| crear | `lista-productos.tsx` y `components/ui/imagen-generada/primera-imagen.tsx` (paso «Su primera imagen»: generar, subir o «Lo haré después») |
 | generar, encargar | `ficha-producto.tsx:200-218` («Generar una imagen», desde la descripción guardada), `dialogo-vista-generada.tsx` («Qué vista generar», `PAPELES_GENERABLES`), `components/ui/imagen-generada/dialogo-imagen-generada.tsx` («Ver lo que cuesta», «Encargar») |
 | resultado | `ficha-producto.tsx:245` («Generada aquí con IA»), `server/productos/generacion.ts:132` (entra con el papel pedido) |
 | anadir, papel | `ficha-producto.tsx:282` y `dialogo-papeles-fotos.tsx` («¿Qué muestra esta foto?», «Añadir la foto») |

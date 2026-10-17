@@ -62,13 +62,13 @@
             },
             {
               "accion": "esperar",
-              "selector": "section:has(h2:has-text('Declaración de derechos'))",
+              "selector": "h2:text-is('Su primera imagen')",
               "espera": 60000,
               "indicador": false
             },
             {
               "accion": "desplazar",
-              "selector": ":text('Para poder usarlo')"
+              "selector": "h2:text-is('Su primera imagen')"
             }
           ]
         },
@@ -77,11 +77,11 @@
           "acciones": [
             {
               "accion": "desplazar",
-              "selector": "section:has(h2:text-is('Fotos')) button:has-text('Generar una imagen')"
+              "selector": "button[data-opcion=generar]"
             },
             {
               "accion": "clic",
-              "selector": "section:has(h2:text-is('Fotos')) button:has-text('Generar una imagen')"
+              "selector": "button[data-opcion=generar]"
             },
             {
               "accion": "esperar",
@@ -146,13 +146,13 @@
             },
             {
               "accion": "esperar",
-              "selector": ":text('Encargado.')",
+              "selector": ":text('Generándose su primera imagen'), :text('Encargado.')",
               "espera": 60000,
               "indicador": false
             },
             {
               "accion": "desplazar",
-              "selector": ":text('Encargado.')"
+              "selector": ":text('Generándose su primera imagen'), :text('Encargado.')"
             }
           ]
         },
@@ -161,14 +161,14 @@
           "acciones": [
             {
               "accion": "esperar",
-              "selector": "section:has(h2:text-is('Fotos')) li >> nth=0",
+              "selector": "section:has(h2:text-is('Fotos')) li:has([role=combobox]) >> nth=0",
               "espera": 600000,
               "recargar": true,
               "cada": 15000
             },
             {
               "accion": "desplazar",
-              "selector": "section:has(h2:text-is('Fotos')) li >> nth=0"
+              "selector": "section:has(h2:text-is('Fotos')) li:has([role=combobox]) >> nth=0"
             }
           ]
         },

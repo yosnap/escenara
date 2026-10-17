@@ -1,17 +1,18 @@
-Cómo crear un producto en Escenara, paso a paso: generas sus fotos con IA dentro de la app y le das su ficha.
+Cómo crear un producto en Escenara, paso a paso: le das su ficha y generas sus imágenes con IA sin salir de ella.
 
-Verás cómo generar una foto de producto solo desde el texto en «Crear», sacar una segunda vista partiendo de la primera para que salga el mismo producto, crear su ficha en «Productos», añadir las fotos desde tu biblioteca y decir para qué sirve cada una.
+Verás cómo dar de alta un producto, generar su primera imagen eligiendo la vista y viendo el coste antes de confirmar, generar otra vista desde su ficha y añadir tus propias fotos diciendo qué muestra cada una.
 
 Escenara es un estudio abierto de personajes y vídeo con IA: usas tus propias claves de los proveedores y ves el coste antes de generar.
 
+🌐 Escenara: https://escenara.com
 📖 Guía completa: https://docs.escenara.com
 
 Capítulos
-0:00 Genera la foto del producto
-0:40 Revisa el coste y genera
-0:52 Otra vista de la misma botella
-1:29 Nuevo producto
-1:41 Físico o digital
-2:01 Añade sus fotos y di para qué sirve cada una
+0:00 Nuevo producto
+0:21 Físico o digital
+0:34 Su primera imagen
+0:56 Confirma y encarga
+1:09 Otra vista desde la ficha
+1:30 Sube tus fotos y di qué muestran
 
 #Escenara #IA #Tutorial

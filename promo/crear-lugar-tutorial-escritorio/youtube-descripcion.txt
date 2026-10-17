@@ -1,18 +1,18 @@
-Cómo crear un lugar en Escenara, paso a paso: generas su foto con IA dentro de la app, la marcas como maestra y declaras sus derechos.
+Cómo crear un lugar en Escenara, paso a paso: le das su ficha, generas su foto con IA sin salir de ella, la marcas como maestra y declaras sus derechos.
 
-Verás cómo generar la foto de un lugar solo desde el texto en «Crear», crear su ficha en «Lugares», elegir el acabado, añadir la foto maestra desde tu biblioteca y completar la declaración de derechos para poder usarlo en tus escenas.
+Verás cómo dar de alta un lugar, elegir su acabado, generar su primera imagen viendo el coste antes de confirmar, marcarla como foto maestra y completar la declaración de derechos para poder usarlo en tus escenas.
 
 Escenara es un estudio abierto de personajes y vídeo con IA: usas tus propias claves de los proveedores y ves el coste antes de generar.
 
+🌐 Escenara: https://escenara.com
 📖 Guía completa: https://docs.escenara.com
 
 Capítulos
-0:00 Genera la foto del lugar
-0:40 Revisa el coste y genera
-0:51 Nuevo lugar
-1:09 Real o animado
-1:24 La foto maestra
-1:46 Declaración de derechos
-2:09 Declara y listo
+0:00 Nuevo lugar y su acabado
+0:33 Su primera imagen
+0:51 Confirma y encarga
+1:03 La foto maestra
+1:17 Declaración de derechos
+1:40 Declara y listo
 
 #Escenara #IA #Tutorial

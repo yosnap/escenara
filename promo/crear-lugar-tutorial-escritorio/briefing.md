@@ -1,7 +1,7 @@
 # Briefing · Tutorial «Crear un lugar» (escritorio, para YouTube)
 
-Tercer tutorial de la serie (`plans/261017-0246-serie-tutoriales/plan.md`). Desde la 0.52.8 la foto de un lugar real
-se genera **dentro de su ficha**. La versión móvil (`../crear-lugar-tutorial/`) tiene el mismo guion y las mismas
+Tercer tutorial de la serie (`plans/261017-0246-serie-tutoriales/plan.md`). Desde la 0.52.9, al crear el lugar se llega
+al paso «Su primera imagen», que genera su foto **dentro de la ficha**. La versión móvil (`../crear-lugar-tutorial/`) tiene el mismo guion y las mismas
 acciones; solo cambia el viewport.
 
 ## Decisiones del propietario (2026-10-17)
@@ -20,8 +20,8 @@ acciones; solo cambia el viewport.
 - **Uso «Comercial»**: la serie sigue con anuncios; hoy no cambia nada al generar.
 - **Viewport** `{ "ancho": 1600, "alto": 856 }`; opciones con `[role=option]:visible`.
 - **Preparación**: `scripts/reiniciar-tutorial-recurso.ts --lugar "Terraza Mirto"`, que borra solo ese lugar.
-  **Bloqueos**: `DELETE` de personajes, productos, lugares y medios, y `POST /api/lugares/*/edicion` no se bloquea
-  porque es el encargo que enseña el tutorial.
+  **Bloqueos**: `DELETE` de personajes, productos, lugares y medios. `POST /api/lugares/*/edicion` no se bloquea:
+  es el encargo que enseña el tutorial.
 
 ## Evidencia de cada frase
 
@@ -29,8 +29,8 @@ acciones; solo cambia el viewport.
 |---|---|
 | nuevo | `lista-lugares.tsx` («Crear el primero»), `apps/web/src/lib/lugares.ts` (`SUGERENCIA_FAMOSO`) |
 | datos, acabado | `dialogo-nuevo-lugar.tsx` (nombre, descripción, «Acabado», no se puede cambiar después) |
-| crear | `ficha-lugar.tsx:117` («Para poder usarlo: …») |
-| generar, encargar | `ficha-lugar.tsx:225-240` («Generar una imagen»), `dialogo-foto-generada.tsx` (foto realista, vacía, desde la descripción guardada), `components/ui/imagen-generada/dialogo-imagen-generada.tsx` |
+| crear | `components/ui/imagen-generada/primera-imagen.tsx` (paso «Su primera imagen»: generar, subir o «Lo haré después») |
+| generar, encargar | `primera-imagen.tsx` («Genera su primera imagen»), `dialogo-foto-generada.tsx` (foto realista, vacía, desde la descripción guardada), `components/ui/imagen-generada/dialogo-imagen-generada.tsx` |
 | resultado, maestra | `ficha-lugar.tsx:184` («Qué muestra»), `lib/lugares.ts` (`PAPELES_LUGAR`), `server/lugares/edicion.ts:151-159` |
 | procedencia, sitio, uso | `declaracion-lugar.tsx` (origen preelegido «generadas» si todas las fotos son generadas, tipo de sitio, gente, uso) |
 | declarar | `declaracion-lugar.tsx:50`, `:90` (`DECLARACION_PUEDO_USAR`), `:122` (menores) y `:141-156` («Declarar») |

@@ -64,13 +64,13 @@
             },
             {
               "accion": "esperar",
-              "selector": "h2:text-is('Fotos de referencia')",
+              "selector": "h2:text-is('Su primera imagen')",
               "espera": 60000,
               "indicador": false
             },
             {
               "accion": "desplazar",
-              "selector": "section:has(h2:text-is('Fotos de referencia')) button:has-text('Generar una imagen')"
+              "selector": "h2:text-is('Su primera imagen')"
             }
           ]
         },
@@ -79,11 +79,11 @@
           "acciones": [
             {
               "accion": "desplazar",
-              "selector": "section:has(h2:text-is('Fotos de referencia')) button:has-text('Generar una imagen')"
+              "selector": "button[data-opcion=generar]"
             },
             {
               "accion": "clic",
-              "selector": "section:has(h2:text-is('Fotos de referencia')) button:has-text('Generar una imagen')"
+              "selector": "button[data-opcion=generar]"
             },
             {
               "accion": "esperar",
@@ -161,13 +161,29 @@
             },
             {
               "accion": "esperar",
-              "selector": ":text('Encargado.')",
+              "selector": ":text('Generándose su primera imagen'), :text('Encargado.')",
               "espera": 60000,
               "indicador": false
             },
             {
               "accion": "desplazar",
-              "selector": ":text('Encargado.')"
+              "selector": ":text('Generándose su primera imagen'), :text('Encargado.')"
+            }
+          ]
+        },
+        {
+          "id": "resultado",
+          "acciones": [
+            {
+              "accion": "esperar",
+              "selector": "section:has(h2:text-is('Fotos de referencia')) li:has([role=combobox]) >> nth=0",
+              "espera": 600000,
+              "recargar": true,
+              "cada": 15000
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section:has(h2:text-is('Fotos de referencia')) li:has([role=combobox]) >> nth=0"
             }
           ]
         },
@@ -264,18 +280,18 @@
           ]
         },
         {
-          "id": "resultado",
+          "id": "resultado-2",
           "acciones": [
             {
               "accion": "esperar",
-              "selector": "section:has(h2:text-is('Fotos de referencia')) li >> nth=1",
+              "selector": "section:has(h2:text-is('Fotos de referencia')) li:has([role=combobox]) >> nth=1",
               "espera": 600000,
               "recargar": true,
               "cada": 15000
             },
             {
               "accion": "desplazar",
-              "selector": "section:has(h2:text-is('Fotos de referencia')) li >> nth=1"
+              "selector": "section:has(h2:text-is('Fotos de referencia')) li:has([role=combobox]) >> nth=1"
             }
           ]
         },

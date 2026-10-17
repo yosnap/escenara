@@ -1,8 +1,8 @@
 # Tutorial «Crear un producto» en modo tutorial, versión MÓVIL: el móvil va en el centro y el rótulo a su lado.
 # La versión de escritorio (../crear-producto-tutorial-escritorio/) tiene el mismo guion.
 # Sin voz: cada escena lleva un rótulo breve (titulo) y sus frases salen como subtítulos.
-# Se crea la ficha en «Productos» y sus imágenes se generan dentro de la ficha («Generar una imagen», eligiendo la
-# vista). Después se añade una foto de la biblioteca con el diálogo de papeles. Producto inventado, sin marcas.
+# Tras el alta, el paso «Su primera imagen» genera la primera (eligiendo la vista) y desde la ficha se genera otra
+# vista. Después se añade una foto de la biblioteca con el diálogo de papeles. Producto inventado, sin marcas.
 # Evidencia: briefing.md.
 escenas:
   - id: gancho
@@ -32,15 +32,15 @@ escenas:
 
   - id: crear
     pieza: tutorial
-    parametros: { grabacion: producto, tramo: crear, titulo: "Crea su ficha" }
+    parametros: { grabacion: producto, tramo: crear, titulo: "Su primera imagen" }
     frases:
-      - texto: "Toca «Crear producto» y se abre su ficha. Las imágenes se añaden aquí."
+      - texto: "Toca «Crear producto» y la app te propone su primera imagen: generarla, subir tus fotos o hacerlo después."
 
   - id: generar
     pieza: tutorial
     parametros: { grabacion: producto, tramo: generar, titulo: "Genera una imagen" }
     frases:
-      - texto: "Toca «Generar una imagen» y elige qué vista quieres: la frontal con la etiqueta, el envase entero, un detalle de la tapa o el producto solo."
+      - texto: "Toca «Genera su primera imagen» y elige la vista: la frontal con la etiqueta, el envase entero, un detalle de la tapa o el producto solo."
       - texto: "Antes de encargarla ves lo que cuesta."
 
   - id: encargar
@@ -49,17 +49,23 @@ escenas:
     frases:
       - texto: "Confirma que puedes usar lo que se genere y toca «Encargar»."
 
+  - id: resultado
+    pieza: tutorial
+    parametros: { grabacion: producto, tramo: resultado, titulo: "Su primera imagen, lista" }
+    frases:
+      - texto: "Al terminar, entra en su ficha con su papel y marcada como generada."
+
   - id: otra-vista
     pieza: tutorial
     parametros: { grabacion: producto, tramo: otra-vista, titulo: "Otra vista" }
     frases:
-      - texto: "Mientras se hace, encarga otra vista: aquí, el detalle de la tapa."
+      - texto: "Para otra vista, toca «Generar una imagen» en la ficha: aquí, el detalle de la tapa."
 
-  - id: resultado
+  - id: resultado-2
     pieza: tutorial
-    parametros: { grabacion: producto, tramo: resultado, titulo: "Imágenes listas" }
+    parametros: { grabacion: producto, tramo: resultado-2, titulo: "Dos vistas listas" }
     frases:
-      - texto: "Al terminar, entran en la ficha con su papel y marcadas como generadas."
+      - texto: "Ya tiene dos imágenes, cada una con su papel."
 
   - id: anadir
     pieza: tutorial
