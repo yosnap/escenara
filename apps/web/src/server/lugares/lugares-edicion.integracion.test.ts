@@ -189,6 +189,7 @@ describe.skipIf(!hayBaseDeDatos)("fotos generadas de un lugar", () => {
     const nueva = despues.referencias.find((r) => r.medio.id === generada);
     expect(nueva?.generada).toBe(true);
     expect(nueva?.papel).toBe("general");
+    expect(despues.referencias.filter((r) => r.papel === "maestra")).toHaveLength(1);
   });
 
   test("sin descripción guardada no se cobra un candidato de un lugar real", async () => {

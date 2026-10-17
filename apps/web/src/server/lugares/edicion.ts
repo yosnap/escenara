@@ -4,7 +4,7 @@ import type { TrabajoVista } from "@/lib/generacion";
 import { DESCRIPCION_MINIMA_PARA_GENERAR } from "@/lib/lugares";
 import { db } from "../db/cliente";
 import type { FilaTrabajo } from "../db/esquema";
-import { placeReferences } from "../db/esquema-lugares";
+import { placeReferences, places } from "../db/esquema-lugares";
 import { claveDerivada, exigirClaveIdempotencia } from "../generacion/comprobaciones";
 import { type ConfirmacionEncargo, confirmacionDelFotograma } from "../generacion/encargo-de-imagen";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
@@ -141,6 +141,9 @@ export async function adjuntarAlLugar(fila: FilaTrabajo, medioId: string): Promi
   try {
     const lugar = await filaPropia({ id: fila.userId }, edicion.lugarId);
     await db().transaction(async (tx) => {
+      // Bloquea el lugar antes de mirar si tiene maestra: dos candidatos que se cierren a la vez no pueden leer los
+      // dos «no hay maestra»; el segundo chocaría con el índice de una sola maestra y no entraría en el lugar.
+      await tx.select({ id: places.id }).from(places).where(eq(places.id, lugar.id)).for("update");
       const [origen] = edicion.referenciaId
         ? await tx
             .select()
