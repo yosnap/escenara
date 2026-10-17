@@ -77,6 +77,9 @@ export const ALCANCES_LUGAR = ["personal", "comercial"] as const;
 export type AlcanceLugar = (typeof ALCANCES_LUGAR)[number];
 export const esAlcanceLugar = (v: unknown): v is AlcanceLugar => ALCANCES_LUGAR.includes(v as AlcanceLugar);
 
+/** Descripción mínima para generar una imagen del lugar: con menos, el modelo inventaría el sitio. */
+export const DESCRIPCION_MINIMA_PARA_GENERAR = 12;
+
 /** Versión del texto de la declaración que se guarda con ella. Cambiar el texto obliga a subir la versión. */
 export const VERSION_TEXTO_DECLARACION_LUGAR = "2026-10-17.1";
 

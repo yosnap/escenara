@@ -348,7 +348,11 @@ describe.skipIf(!hayBaseDeDatos)("lugares: propiedad, declaración, versión, re
     const real = await patchLugar(ana, lugar.id, { ...DECLARACION, origenFotos: "con_permiso", espacio: "interior" });
     expect(real.status).toBe(400);
     expect(await errorDe(real)).toContain("permiso de quien lo gestiona");
-    const inventado = await patchLugar(ana, lugar.id, { ...DECLARACION, origenFotos: "generadas", espacio: "interior" });
+    const inventado = await patchLugar(ana, lugar.id, {
+      ...DECLARACION,
+      origenFotos: "generadas",
+      espacio: "interior",
+    });
     expect(inventado.status).toBe(200);
     const vista = (await inventado.json()) as LugarVista;
     expect(vista.declarado).toBe(true);

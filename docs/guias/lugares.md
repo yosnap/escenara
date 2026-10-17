@@ -45,6 +45,13 @@ Después, en su ficha, le añades fotos de tu biblioteca y dices qué muestra ca
 La primera foto que añades a un lugar sin maestra entra como maestra. Quitar una foto de aquí **no la borra de tu
 biblioteca**.
 
+### Generar sus imágenes aquí
+
+Un lugar **real** también se puede crear sin fotos: en su ficha, **«Generar una imagen»** crea una foto realista del
+sitio, vacía, desde su descripción guardada. Es una generación de imagen y **ves su coste antes de confirmar** (unos 4
+créditos con Nano Banana 2 Lite). Entra como plano general y marcada como generada: si te gusta, **márcala como
+maestra**. Al declarar, elige **«Las he generado aquí»**: es un sitio inventado y no hace falta el permiso de nadie.
+
 ### Lugar animado
 
 Un lugar animado se hace con **una ilustración tuya** (súbela a la biblioteca y márcala como maestra) o con **un
@@ -58,8 +65,9 @@ candidato entra como plano general: si te gusta, **márcalo como maestra**; si n
 
 - **De dónde son las fotos**: tuyas, de otra persona con su permiso, o generadas aquí.
 - **Qué tipo de sitio es**: un exterior o espacio público (una calle, una plaza, una fachada) o un **interior privado
-  o con restricciones** (una tienda, un bar, un museo). Un interior exige que declares que **tienes permiso** de quien
-  lo gestiona.
+  o con restricciones** (una tienda, un bar, un museo). Un interior con fotos reales exige que declares que **tienes
+  permiso** de quien lo gestiona. Si las imágenes las has **generado aquí**, el sitio es inventado y ese permiso no se
+  pide, sea interior o exterior.
 - **Si sale gente** (ver abajo), si se ve alguna marca y el uso: personal o comercial.
 - Y que **no sale ningún menor**, ni al fondo.
 

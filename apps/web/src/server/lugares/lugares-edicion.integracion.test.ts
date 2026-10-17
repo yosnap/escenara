@@ -159,13 +159,41 @@ describe.skipIf(!hayBaseDeDatos)("fotos generadas de un lugar", () => {
     expect(declarado.declarado).toBe(true);
   });
 
-  test("otra persona no puede encargar nada sobre un lugar ajeno, y un lugar real no pide candidatos", async () => {
+  test("otra persona no puede encargar nada sobre un lugar ajeno", async () => {
     const { lugar } = await lugarDeclaradoDePrueba(actor, "Bar");
     await guardarCredencial(beto.id, "kie", "sk-beto-clave-de-kie-inventada-edicion", buscar);
     const ajeno = await encargar(beto, lugar.id, { tipo: "retirar-personas", referenciaId: lugar.referencias[0]?.id });
     expect(ajeno.status).toBe(404);
-    const candidato = await encargar(ana, lugar.id, { tipo: "candidato" });
-    expect(candidato.status).toBe(409);
+    const ajenoCandidato = await encargar(beto, lugar.id, { tipo: "candidato" });
+    expect(ajenoCandidato.status).toBe(404);
+    expect(await db().select().from(generationJobs).where(eq(generationJobs.userId, ana.id))).toHaveLength(0);
+  });
+
+  test("un lugar real también genera su imagen dentro de «Lugares»: foto realista, sin partida, y entra como generada", async () => {
+    const { lugar } = await lugarDeclaradoDePrueba(actor, "Terraza inventada");
+    const respuesta = await encargar(ana, lugar.id, { tipo: "candidato" });
+    expect(respuesta.status).toBe(201);
+    const [trabajo] = await db().select().from(generationJobs).where(eq(generationJobs.userId, ana.id));
+    expect(trabajo?.kind).toBe("fotograma");
+    expect(trabajo?.sourceMediaId).toBeNull();
+    expect((trabajo?.input as { sinReferencia?: unknown } | undefined)?.sinReferencia).toBe(true);
+    expect(trabajo?.prompt).toContain("Bar de barrio con azulejos");
+    // Se reservó lo que cuesta: el mismo apunte que cualquier fotograma.
+    expect(await db().select().from(usageLedger).where(eq(usageLedger.userId, ana.id))).not.toHaveLength(0);
+    if (!trabajo) throw new Error("Falta el trabajo.");
+    const generada = await subirFotoDePrueba(actor, "terraza-generada.png");
+    await adjuntarAlLugar(trabajo, generada);
+    const despues = await obtenerLugar(actor, lugar.id);
+    const nueva = despues.referencias.find((r) => r.medio.id === generada);
+    expect(nueva?.generada).toBe(true);
+    expect(nueva?.papel).toBe("general");
+  });
+
+  test("sin descripción guardada no se cobra un candidato de un lugar real", async () => {
+    const real = await crearLugar(actor, { nombre: `Sin describir ${crypto.randomUUID().slice(0, 6)}` });
+    const respuesta = await encargar(ana, real.id, { tipo: "candidato" });
+    expect(respuesta.status).toBe(409);
+    expect(((await respuesta.json()) as { error: string }).error).toContain("No se ha cobrado nada");
     expect(await db().select().from(generationJobs).where(eq(generationJobs.userId, ana.id))).toHaveLength(0);
   });
 

@@ -15,7 +15,9 @@ En **Productos**, con el botón **«Nuevo producto»**, pones el nombre, una fra
 - **Físico**: algo que se coge con la mano.
 - **Digital**: una app o un programa que se ve en una pantalla.
 
-Después le añades fotos de tu biblioteca, y a cada una le dices **para qué sirve**:
+Después le añades fotos de tu biblioteca y, antes de añadirlas, le dices a cada una **para qué sirve**. Cada foto
+parte de un papel neutro (**«El envase entero»** en un producto físico, **«Captura de pantalla»** en uno digital), nunca
+de la frontal con la etiqueta: márcala tú solo si en la foto se lee la etiqueta. El papel se cambia luego en la lista.
 
 | Papel | Para qué |
 |---|---|
@@ -24,6 +26,14 @@ Después le añades fotos de tu biblioteca, y a cada una le dices **para qué si
 | Detalle de la tapa o el mecanismo | El tapón o el dosificador de cerca. Obligatoria en la práctica si vas a abrirlo. |
 | Captura de pantalla | La pantalla de tu app tal cual. Es la que se inserta en un producto digital. |
 | El producto solo | Sobre fondo limpio, sin nadie sosteniéndolo. |
+
+### Generar sus imágenes aquí
+
+Si no tienes fotos, **«Generar una imagen»** las crea desde la descripción guardada del producto. Eliges **qué vista**
+(la frontal con la etiqueta, el envase entero, el detalle de la tapa o el producto solo; una captura de pantalla no se
+genera, se sube la de verdad) y ves **el coste antes de confirmar**: es una imagen y se cobra como un fotograma, con el
+mismo aviso de gasto y la misma casilla de derechos. Al terminar entra en el producto con esa vista y marcada como
+**«Generada aquí con IA»**. Antes de generar, guarda la descripción: se usa la guardada, no la que estás escribiendo.
 
 Si declaras que en el producto **se ve una marca**, se te avisará antes de cada envío: el filtro del proveedor
 puede rechazar un logo, y en ese caso no se genera nada y **no se te cobra**.

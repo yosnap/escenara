@@ -1,12 +1,15 @@
 "use client";
 
-import { ImagePlus, Trash2 } from "lucide-react";
+import { ImagePlus, Sparkles, Trash2 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Boton, BotonIcono } from "@/components/ui/button";
+import { CargadorChispa } from "@/components/ui/chispa";
 import { Casilla } from "@/components/ui/choice";
 import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo, EntradaTexto } from "@/components/ui/field";
+import { LimiteDeCarga } from "@/components/ui/limite-de-carga";
 import { DialogoSelectorMedios } from "@/components/ui/media/diferidos";
 import { MiniaturaMedio } from "@/components/ui/media/miniatura-medio";
 import { Dialogo } from "@/components/ui/overlay";
@@ -19,9 +22,11 @@ import {
   resumenDeBorrado,
 } from "@/components/ui/productos/api-productos";
 import { Selector } from "@/components/ui/select";
+import type { Medio } from "@/lib/media/tipos";
 import {
   AYUDA_DESCRIPCION_PRODUCTO,
   AYUDA_PAPEL_REFERENCIA,
+  DESCRIPCION_MINIMA_PARA_GENERAR,
   DESCRIPCION_PRODUCTO_MAXIMA,
   DESCRIPCION_TIPO_PRODUCTO,
   NOMBRE_PAPEL_REFERENCIA,
@@ -35,6 +40,13 @@ import {
   type TipoProducto,
 } from "@/lib/productos";
 import type { ResumenBorradoProducto } from "@/server/productos/borrado";
+import { DialogoPapelesFotos } from "./dialogo-papeles-fotos";
+
+/** El diálogo del coste (con el panel de controles) se descarga al pedir la primera imagen, no con la ficha. */
+const DialogoVistaGenerada = dynamic(() => import("./dialogo-vista-generada").then((m) => m.DialogoVistaGenerada), {
+  ssr: false,
+  loading: () => <CargadorChispa etiqueta="Cargando el coste" />,
+});
 
 /**
  * Ficha de un producto: sus datos, sus fotos con el papel de cada una y su borrado.
@@ -43,8 +55,12 @@ import type { ResumenBorradoProducto } from "@/server/productos/borrado";
  * no hay una subida propia de productos, porque una foto de producto es una foto del usuario como cualquier
  * otra y tiene que poder reutilizarse.
  *
- * El papel se pide **al añadir** y se puede cambiar después. Se pide entonces y no antes porque es cuando se
- * está mirando la foto: decidir «esta es la de la etiqueta» sin verla es adivinar.
+ * El papel se pide **al añadir** (cada foto parte del papel neutro de su tipo, nunca de la etiqueta) y se puede
+ * cambiar después. Se pide entonces y no antes porque es cuando se está mirando la foto: decidir «esta es la de la
+ * etiqueta» sin verla es adivinar.
+ *
+ * Las imágenes de referencia también se pueden **generar aquí** desde la descripción guardada, eligiendo la vista,
+ * con el coste confirmado como cualquier fotograma; entran marcadas como generadas.
  */
 export function FichaProducto({ inicial }: { inicial: ProductoVista }) {
   const router = useRouter();
@@ -59,9 +75,24 @@ export function FichaProducto({ inicial }: { inicial: ProductoVista }) {
   const [borrando, setBorrando] = useState<ResumenBorradoProducto | null>(null);
   const [ocupado, setOcupado] = useState(false);
 
+  const [porAnadir, setPorAnadir] = useState<Medio[]>([]);
+  const [generando, setGenerando] = useState(false);
+  // Cada apertura es un encargo nuevo: el diálogo se rehace y no arrastra casillas ni la clave del anterior.
+  const [apertura, setApertura] = useState(0);
+  const [encargado, setEncargado] = useState("");
+  // Desde el primer encargo el diálogo se queda montado: al cerrarlo devuelve el foco al botón que lo abrió.
+  const [dialogoCargado, setDialogoCargado] = useState(false);
+  if (generando && !dialogoCargado) setDialogoCargado(true);
+
   const papeles = PAPELES_POR_TIPO[producto.tipo];
-  /** Papel de fábrica al añadir: el primero del tipo, que es el que casi siempre toca. */
-  const papelPorDefecto: PapelReferencia = papeles[0] ?? "envase";
+  // Se genera desde la descripción **guardada**: con cambios sin guardar, el resultado no sería lo que se lee.
+  const sinGuardar = descripcion !== producto.descripcion || tipo !== producto.tipo;
+  const motivoSinGenerar =
+    producto.descripcion.trim().length < DESCRIPCION_MINIMA_PARA_GENERAR
+      ? "Para generar, describe el producto (qué es, forma, colores, etiqueta) y guarda los cambios."
+      : sinGuardar
+        ? "Guarda los cambios antes de generar: se genera desde la descripción guardada."
+        : null;
 
   const guardar = async () => {
     setGuardando(true);
@@ -106,6 +137,7 @@ export function FichaProducto({ inicial }: { inicial: ProductoVista }) {
       </div>
 
       {error !== "" && <Aviso tono="error">{error}</Aviso>}
+      {encargado !== "" && <Aviso tono="correcto">{encargado}</Aviso>}
 
       <section className="flex flex-col gap-4 rounded-tarjeta border-2 border-borde/60 bg-superficie p-4">
         <h2 className="text-xl font-bold text-texto">Qué es</h2>
@@ -160,10 +192,26 @@ export function FichaProducto({ inicial }: { inicial: ProductoVista }) {
       <section className="flex flex-col gap-4 rounded-tarjeta border-2 border-borde/60 bg-superficie p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-xl font-bold text-texto">Fotos de referencia</h2>
-          <Boton variante="chispa" onClick={() => setEligiendo(true)} disabled={ocupado}>
-            <ImagePlus className="size-5" aria-hidden /> Añadir de la biblioteca
-          </Boton>
+          <div className="flex flex-wrap gap-2">
+            <Boton
+              variante="secundario"
+              onClick={() => {
+                setApertura((n) => n + 1);
+                setGenerando(true);
+              }}
+              disabled={ocupado || motivoSinGenerar !== null}
+            >
+              <Sparkles className="size-5" aria-hidden /> Generar una imagen
+            </Boton>
+            <Boton variante="chispa" onClick={() => setEligiendo(true)} disabled={ocupado}>
+              <ImagePlus className="size-5" aria-hidden /> Añadir de la biblioteca
+            </Boton>
+          </div>
         </div>
+        <p className="text-sm text-texto-suave">
+          {motivoSinGenerar ??
+            "«Generar una imagen» crea una vista del producto (la frontal, el envase, un detalle) desde su descripción guardada, con el coste a la vista antes de confirmar."}
+        </p>
         <p className="text-texto-suave">
           Di para qué sirve cada una. La frontal con la etiqueta es la que se compara con el resultado, y el detalle del
           mecanismo es la que hace falta para abrir la tapa.
@@ -190,6 +238,7 @@ export function FichaProducto({ inicial }: { inicial: ProductoVista }) {
                     }))}
                     onCambio={(v) => v && aplicar(cambiarPapelDeFoto(producto.id, foto.id, v as PapelReferencia))}
                   />
+                  {foto.generada && <span className="text-sm text-texto-suave">Generada aquí con IA.</span>}
                   {foto.medio.enPapelera && (
                     <span className="text-sm text-texto-suave">
                       Esta foto está en tu papelera: no describe nada hasta que la restaures.
@@ -221,16 +270,38 @@ export function FichaProducto({ inicial }: { inicial: ProductoVista }) {
         inicial={[]}
         onConfirmar={(medios) => {
           setEligiendo(false);
-          if (medios.length === 0) return;
-          // Todas entran con el papel de fábrica del tipo y se corrige en la lista, que es donde se ven.
-          void aplicar(
-            anadirFotosAProducto(
-              producto.id,
-              medios.map((m) => ({ medioId: m.id, papel: papelPorDefecto })),
-            ),
-          );
+          // Antes de añadirlas se dice qué muestra cada una: parten del papel neutro del tipo, no de la etiqueta.
+          setPorAnadir(medios);
         }}
       />
+
+      <DialogoPapelesFotos
+        key={porAnadir.map((m) => m.id).join(",")}
+        medios={porAnadir}
+        tipo={producto.tipo}
+        ocupado={ocupado}
+        onCancelar={() => setPorAnadir([])}
+        onAnadir={async (fotos) => {
+          await aplicar(anadirFotosAProducto(producto.id, fotos));
+          setPorAnadir([]);
+        }}
+      />
+
+      {dialogoCargado && (
+        <LimiteDeCarga>
+          <DialogoVistaGenerada
+            key={`${producto.tipo}-${apertura}`}
+            productoId={producto.id}
+            tipo={producto.tipo}
+            abierto={generando}
+            onCerrar={() => setGenerando(false)}
+            onEncargado={(mensaje) => {
+              setGenerando(false);
+              setEncargado(mensaje);
+            }}
+          />
+        </LimiteDeCarga>
+      )}
 
       <Dialogo
         abierto={borrando !== null}

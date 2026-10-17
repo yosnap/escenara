@@ -96,6 +96,7 @@ const referencia = (id: string, papel: PapelReferencia, orden: number, color: st
   papel,
   orden,
   medio: miniatura(id, color),
+  generada: false,
 });
 
 /** La caja de ejemplo tiene cinco fotos y en el clip solo caben tres. */
