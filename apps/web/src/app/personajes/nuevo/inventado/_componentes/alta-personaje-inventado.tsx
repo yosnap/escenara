@@ -16,7 +16,7 @@ import {
   type OpcionEstiloAnimado,
 } from "@/components/ui/personajes/campos-estilo-animado";
 import { nombresRealesEn } from "@/lib/nombres-reales";
-import { DECLARACION_PERSONAJE_INVENTADO, MOTIVO_SIN_FOTOS_REALES } from "@/lib/omni";
+import { DECLARACION_PERSONAJE_INVENTADO, MOTIVO_SIN_FOTOS_REALES, retratosEnPalabras } from "@/lib/omni";
 import { DESCRIPCION_MAXIMA, NOMBRE_MAXIMO } from "@/lib/personajes";
 
 /** Descripción mínima para que los retratos salgan de algo y no de una línea suelta. La misma que el servidor. */
@@ -31,9 +31,12 @@ const DESCRIPCION_MINIMA = 20;
  */
 export function AltaPersonajeInventado({
   estilos,
+  retratos,
   descripcionInicial = "",
 }: {
   estilos: OpcionEstiloAnimado[];
+  /** Retratos que se pueden pedir de una vez en esta instalación (`retratosPorEncargo`). */
+  retratos: number;
   /** Descripción de partida al inspirarse en un personaje de la comunidad (solo el texto, nunca sus imágenes). */
   descripcionInicial?: string;
 }) {
@@ -149,9 +152,10 @@ export function AltaPersonajeInventado({
       <Paso numero={4} titulo="Y después">
         <div className="flex flex-col gap-4 rounded-tarjeta border border-borde bg-superficie p-5">
           <p className="text-texto-suave">
-            Al crearlo irás a su ficha, donde se generan <strong className="text-texto">cuatro retratos</strong> a
-            partir de esta descripción. Verás lo que cuesta antes de generarlos y eliges el que te convenza; el resto se
-            queda en tu biblioteca. De ese retrato salen después sus vistas.
+            Al crearlo irás a su ficha, donde se generan{" "}
+            <strong className="text-texto">hasta {retratosEnPalabras(retratos)}</strong> a partir de esta descripción.
+            Verás lo que cuesta antes de generarlos y eliges el que te convenza; el resto se queda en tu biblioteca. De
+            ese retrato salen después sus vistas.
           </p>
           {bloqueos.length > 0 && (
             <Alerta

@@ -231,3 +231,21 @@ export const MOTIVO_SIN_FOTOS_REALES =
 
 /** Retratos candidatos que se generan al crear un personaje inventado. Se elige uno y los demás se descartan. */
 export const RETRATOS_CANDIDATOS = 4;
+
+/**
+ * **Retratos que se pueden pedir de una vez**: los candidatos, sin pasar del tope de trabajos simultáneos de la
+ * instalación (con tres a la vez, como mucho tres). Es el máximo del selector y el número que dicen los textos, para
+ * que nunca se prometan más de los que se pueden encargar. Sin tope conocido, los candidatos.
+ */
+export const retratosPorEncargo = (trabajosSimultaneos: number | null): number =>
+  trabajosSimultaneos === null ? RETRATOS_CANDIDATOS : Math.max(1, Math.min(RETRATOS_CANDIDATOS, trabajosSimultaneos));
+
+const CIFRAS_EN_PALABRAS = ["cero", "uno", "dos", "tres", "cuatro"];
+
+/** «tres retratos», «un retrato». */
+export const retratosEnPalabras = (n: number): string =>
+  n === 1 ? "un retrato" : `${CIFRAS_EN_PALABRAS[n] ?? n} retratos`;
+
+/** «de uno a tres retratos», o «un retrato» si solo se puede uno. */
+export const rangoDeRetratos = (n: number): string =>
+  n === 1 ? "un retrato" : `de uno a ${CIFRAS_EN_PALABRAS[n] ?? n} retratos`;

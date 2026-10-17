@@ -2,6 +2,7 @@ import { ArrowLeft } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { claseBoton } from "@/components/ui/button";
+import { retratosEnPalabras, retratosPorEncargo } from "@/lib/omni";
 import { leerAjustes } from "@/server/ajustes";
 import { exigirSesion } from "@/server/auth/sesion";
 import { CabeceraApp } from "../../_app/cabecera-app";
@@ -13,7 +14,9 @@ export const dynamic = "force-dynamic";
 /** Alta de un personaje en pasos: tipo, nombre, fotos de referencia, consentimiento y resumen. */
 export default async function PaginaNuevoPersonaje() {
   const sesion = await exigirSesion("/personajes/nuevo");
-  const { minimoReferenciasPersonaje } = await leerAjustes();
+  const { minimoReferenciasPersonaje, trabajosSimultaneos } = await leerAjustes();
+  // Los retratos que se prometen son los que se pueden encargar de una vez, no más.
+  const retratos = retratosEnPalabras(retratosPorEncargo(trabajosSimultaneos));
 
   return (
     <div className="min-h-dvh bg-fondo">
@@ -34,7 +37,7 @@ export default async function PaginaNuevoPersonaje() {
         <div className="flex flex-col gap-2 rounded-tarjeta border-2 border-borde bg-superficie p-5">
           <p className="font-semibold text-texto">¿No es una persona real?</p>
           <p className="text-texto-suave">
-            Un personaje inventado nace de una descripción: se generan cuatro retratos y eliges uno. No admite fotos de
+            Un personaje inventado nace de una descripción: se generan hasta {retratos} y eliges uno. No admite fotos de
             personas reales y todo lo que genere queda marcado como contenido sintético.
           </p>
           <Link href="/personajes/nuevo/inventado" className={claseBoton("secundario", "sm", "self-start")}>
