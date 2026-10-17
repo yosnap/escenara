@@ -38,11 +38,12 @@ export function DeclaracionLugar({ lugar, onCambio }: { lugar: LugarVista; onCam
   );
   const [alcance, setAlcance] = useState<string>(vigente?.alcance ?? "personal");
   const [espacio, setEspacio] = useState<string>(vigente?.espacio ?? "exterior");
-  // Se vuelve a marcar en cada declaración, como la de los menores: es lo que se declara ahora.
-  const [puedoUsar, setPuedoUsar] = useState(false);
+  // Con una declaración vigente salen como se declararon (la de los menores es obligatoria para declarar); sin ella
+  // hay que marcarlas a mano. La ficha remonta este bloque al cambiar de declaración.
+  const [puedoUsar, setPuedoUsar] = useState(vigente?.puedoUsarImagenes ?? false);
   const [personas, setPersonas] = useState<string>(vigente?.personasVisibles ?? "ninguna");
   const [marcas, setMarcas] = useState(vigente?.marcasVisibles ?? false);
-  const [sinMenores, setSinMenores] = useState(false);
+  const [sinMenores, setSinMenores] = useState(vigente != null);
   const [error, setError] = useState("");
   const [ocupado, setOcupado] = useState(false);
 

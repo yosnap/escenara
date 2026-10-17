@@ -64,15 +64,17 @@ biblioteca**.
 
 Un lugar **real** también se puede crear sin fotos: en su ficha, **«Generar una imagen»** crea una foto realista del
 sitio, vacía, desde su descripción guardada. Es una generación de imagen y **ves su coste antes de confirmar** (unos 4
-créditos con Nano Banana 2 Lite). Entra como plano general y marcada como generada: si te gusta, **márcala como
-maestra**. Al declarar, elige **«Las he generado aquí»**.
+créditos con Nano Banana 2 Lite). Entra marcada como generada; si el lugar todavía no tenía maestra, **es su
+maestra**. Si ya la tenía, entra como plano general y, si te gusta más, **márcala como maestra**. Al declarar, elige
+**«Las he generado aquí»**.
 
 ### Lugar animado
 
 Un lugar animado se hace con **una ilustración tuya** (súbela a la biblioteca y márcala como maestra) o con **un
 candidato generado**: en su ficha, **«Generar un candidato»** crea una imagen del sitio, vacía, desde su descripción y
 su estilo. Es una generación de imagen y **se confirma su coste antes** (unos 4 créditos con Nano Banana 2 Lite). El
-candidato entra como plano general: si te gusta, **márcalo como maestra**; si no, genera otro.
+primer candidato es la maestra del lugar; los siguientes entran como plano general: si te gusta más uno, **márcalo
+como maestra**.
 
 ## La declaración de derechos
 
