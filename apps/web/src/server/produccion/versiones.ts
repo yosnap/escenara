@@ -18,6 +18,7 @@ import {
 } from "../db/esquema";
 import type { Actor } from "../media/servicio";
 import { motivosParaNoGenerar } from "../personajes/puede-generar";
+import { derechoMarcaDelTrabajo } from "../productos/declaracion-marca";
 import { invalidarRevisionesDeEscena } from "../revision/resultados";
 import { ajustarEstadoDelProyecto } from "./cierre";
 
@@ -184,7 +185,7 @@ async function exigirPuertasDeLaVersion(
   const faltan = declaracionesQueFaltan({
     derechosImagen: trabajo.rightsConfirmedAt !== null,
     revisionDeFotos: trabajo.characterId ? trabajo.referencesReviewedAt !== null : null,
-    derechoMarca: trabajo.productId ? trabajo.brandRightsAt !== null : null,
+    derechoMarca: derechoMarcaDelTrabajo(trabajo),
   });
   if (faltan.length > 0) motivos.push(`Esa versión se generó sin ${faltan.join(" ni ")}.`);
   if (motivos.length > 0) {

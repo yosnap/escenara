@@ -2,7 +2,8 @@
 
 Un producto es lo que enseñas delante de la cámara: un bote, una prenda o una app en la pantalla del móvil. Lo
 das de alta una vez en **Productos**, con sus fotos, y a partir de ahí lo eliges en cualquier clip: en
-**«Crear»** y en la **escena de un proyecto**, en el mismo panel donde diriges.
+**«Crear»** y en la **escena de un proyecto**, en el mismo panel donde diriges. En «Crear» también puedes elegirlo
+antes, al describir la escena, para que ya salga en el fotograma.
 
 Así se crea un producto y se generan sus imágenes sin salir de su ficha, paso a paso:
 
@@ -18,6 +19,15 @@ En **Productos**, con el botón **«Nuevo producto»**, pones el nombre, una fra
 
 - **Físico**: algo que se coge con la mano.
 - **Digital**: una app o un programa que se ve en una pantalla.
+
+Y respondes, **obligatoriamente**, a **«¿En las fotos se ve una marca o un logotipo?»**: **Sí** o **No**. Sin
+responder no se puede crear. Con **Sí**, en cada vídeo con el producto confirmarás que tienes derecho a usar esa
+marca, y se te avisará de que el filtro del proveedor puede rechazarla. Con **No**, no se te pedirá nada. La
+respuesta se cambia en la ficha del producto.
+
+Los productos creados antes de esta pregunta quedan **sin responder** (salvo los que ya tenían marcada la marca,
+que siguen con **Sí**). Mientras sigan así, su ficha te invita a responder, y cada vídeo con ellos pide la casilla de
+la marca igual que si la tuvieran.
 
 Al pulsar «Crear producto» llegas a su ficha con el paso **«Su primera imagen»** delante, con dos opciones:
 
@@ -50,7 +60,7 @@ genera, se sube la de verdad) y ves **el coste antes de confirmar**: es una imag
 mismo aviso de gasto y la misma casilla de derechos. Al terminar entra en el producto con esa vista y marcada como
 **«Generada aquí con IA»**. Antes de generar, guarda la descripción: se usa la guardada, no la que estás escribiendo.
 
-Si declaras que en el producto **se ve una marca**, se te avisará antes de cada envío: el filtro del proveedor
+Si respondes que en el producto **se ve una marca** (o aún no lo has respondido), se te avisará antes de cada envío: el filtro del proveedor
 puede rechazar un logo, y en ese caso no se genera nada y **no se te cobra**.
 
 ## Elegirlo en un clip
@@ -59,6 +69,14 @@ En el panel de dirección, bloque **El producto**: eliges cuál y **qué se hace
 entre todas las acciones, aunque salgan repartidas en familias: si eliges una de moda, se desmarca la que tenías
 en «Con el producto en la mano». Encima de la lista, **«Elegida: …»** te dice cuál es en cada momento. Cada acción
 lleva su dibujo y **una frase** de lo que verás.
+
+**En «Crear», desde el fotograma.** En el paso **«Describe la escena»** está el mismo bloque **El producto**. Si lo
+eliges ahí, sus fotos entran como referencia de imagen en el fotograma, igual que las del personaje, y el producto
+ya sale en la imagen (por ejemplo, en la mano con «Sostenerlo»). En el paso **«El clip»** aparece ya elegido, con su
+acción, y puedes cambiarlo. El coste del fotograma no cambia por llevar el producto: se cobra por imagen. Las fotos
+del producto que se envían se eligen en el clip, que es donde dependen del modelo. Una vez pedido el fotograma, su
+producto ya no se cambia en «Describe la escena»; si en el clip eliges otro (o lo quitas), un aviso te dice que no
+coincide con el de la imagen y qué puede pasar.
 
 - **Con el producto en la mano** (siempre a la vista): sostenerlo, mirarlo, señalarlo, enseñarlo a cámara,
   abrirlo, aplicarlo, o el **producto solo**.
@@ -158,9 +176,10 @@ Todos estos avisos salen **antes** de gastar y se confirman con una casilla; nin
 - **En el producto se ve una marca.** El filtro del proveedor puede rechazarlo; si lo rechaza, no se cobra.
 - **La acción es poco fiable** (las de piel).
 
-Y una casilla que **sí bloquea**: **«Tengo derecho a usar esta marca»**. Aparece solo cuando el envío lleva
-producto y, mientras no la marques, el botón de generar no se activa. Tu declaración queda registrada con su
-fecha en el trabajo.
+Y una casilla que **sí bloquea**: **«Tengo derecho a usar esta marca»**. Aparece cuando el envío lleva un producto
+**con marca** o **sin responder**, en «Crear», en la producción de un proyecto y en la comparativa A/B, y mientras no
+la marques el botón de generar no se activa. Tu declaración queda registrada con su fecha en el trabajo. Si
+respondiste **No**, la casilla no sale, no se te pide y no se apunta ninguna declaración.
 
 ## Borrar un producto
 

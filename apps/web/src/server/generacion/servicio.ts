@@ -3,6 +3,7 @@ import { DIRECCION_CON_ACENTO_VACIA } from "@/lib/direccion";
 import { CLIP, type TipoTrabajo, type TrabajoVista } from "@/lib/generacion";
 import type { TipoPersonaje } from "@/lib/personajes";
 import { duracionParaModelo } from "@/lib/produccion";
+import { exigeDeclaracionDeMarca } from "@/lib/productos";
 import { promptParaLugarBase } from "@/lib/referencias-temporales";
 import { motivoDuracionNoAdmitida } from "@/lib/trends";
 import { contextoAnimadoDeEscena } from "../animados/contexto-escena";
@@ -32,6 +33,7 @@ import { contextoDeVersion, personajePorId, promptConContexto, versionDeTrabajo 
 import { personajePropio, referenciasParaGenerar } from "../personajes/puede-generar";
 import { acotarCoste } from "../presupuesto/acotar";
 import { eleccionDeFotosDelTrabajo, productoDelTrabajo } from "../productos/columnas";
+import { fechaDeLaDeclaracionDeMarca, marcaAlEnviar } from "../productos/declaracion-marca";
 import { completarModelosSugeridos } from "../productos/modelos-sugeridos";
 import { productoEnPrompt, productoParaGenerar } from "../productos/prompt";
 import { referenciasDelPersonajeQueViajan, referenciasDeProductoGuardadas } from "../productos/referencias";
@@ -283,8 +285,8 @@ export async function crearFotograma(
       : null;
 
   /**
-   * **El producto del fotograma** (0.26.0). Sale de la escena, que es donde se elige: el camino rápido de
-   * «Crear» elige el producto junto a la dirección del clip, no aquí. Se resuelve **antes** de la puerta
+   * **El producto del fotograma** (0.26.0). Sale de la escena en un proyecto y, en el camino rápido de «Crear», del
+   * que se elige al describir la escena (el mismo que después sigue en el clip). Se resuelve **antes** de la puerta
    * porque sus avisos —la identidad que no cabe, la marca que el filtro puede rechazar— son de los que hay
    * que dar antes de cobrar nada.
    */
@@ -296,8 +298,9 @@ export async function crearFotograma(
     { ...(peticion.pasoDigital ? { pasoSolicitado: peticion.pasoDigital } : {}) },
     await eleccionDeFotosDelTrabajo(conEscena?.escena.id ?? null, peticion.productoElegido),
   );
-  // Con producto hay una marca en juego, y usarla es una declaración aparte de la de la imagen.
-  if (producto) exigirDerechoDeMarca(peticion.derechoMarca);
+  // Con un producto con marca (o sin responder si la tiene) hay una marca en juego, y usarla es una declaración aparte
+  // de la de la imagen. Si se declaró sin marca no hay nada que autorizar, así que ni se pide ni se exige.
+  if (producto && exigeDeclaracionDeMarca(producto.marcaVisible)) exigirDerechoDeMarca(peticion.derechoMarca);
   // El lugar (la maestra) compite por el mismo cupo, así que se resuelve antes del reparto y con la misma cuenta. La
   // inserción de la captura edita un fotograma ya situado: el lugar cuenta (su declaración) pero su maestra no viaja.
   const conLugar = peticion.edicionDeLugar
@@ -578,6 +581,8 @@ export async function crearFotograma(
       // Fotos del producto que viajan con este envío, ya repartidas contra el tope del modelo. Se guardan sus
       // identificadores y no sus URL: las del proveedor caducan y no se guardan nunca.
       ...referenciasDeProductoGuardadas(producto, conProducto),
+      // Si al enviarlo se exigía la declaración de marca: con ella se sabe después si falta o si no hacía falta.
+      ...marcaAlEnviar(producto),
       // La maestra del lugar, si viaja: va la última, detrás de las fotos del personaje y del producto.
       ...entradaDelLugar(conLugar, reparto),
       ...(temporales.referencias.length
@@ -592,15 +597,16 @@ export async function crearFotograma(
     },
     sourceMediaId: origen?.id ?? null,
     sceneId: conEscena?.escena.id ?? null,
-    // El fotograma de una escena hereda su producto. En «Crear» no llega ninguno: allí el producto se elige
-    // junto a la dirección del clip, que es donde se ve lo que se le va a pedir.
+    // El fotograma de una escena hereda su producto; en «Crear» llega el elegido en «Describe la escena», que
+    // entra como referencia de imagen igual que el personaje.
     ...columnasProducto,
     // El lugar y la versión con la que se pidió: es lo que compara Jev y lo que cita el historial.
     ...columnasDelLugar(conLugar?.lugar ?? null),
     // Qué paso del producto digital es este envío, y la declaración de marca con su fecha.
     digitalStep: producto?.pasoDigital ?? "",
-    // Una vista generada de un producto también declara la marca: su casilla de derechos la menciona.
-    brandRightsAt: producto || peticion.edicionDeProducto ? new Date() : null,
+    // Una vista generada de un producto también declara la marca: su casilla de derechos la menciona. Con un
+    // producto declarado sin marca no se declaró nada, así que no hay fecha.
+    brandRightsAt: peticion.edicionDeProducto ? new Date() : fechaDeLaDeclaracionDeMarca(producto),
     characterId: personajeId,
     characterVersionId: conFicha.versionId,
     ...columnasDePlantilla(base.compuesto),
@@ -722,7 +728,8 @@ export async function crearAnimacion(
     undefined,
     await eleccionDeFotosDelTrabajo(partida.escenaId, peticion.productoElegido),
   );
-  if (producto) exigirDerechoDeMarca(peticion.derechoMarca);
+  // Con marca o sin responder se exige; solo un «no» explícito deja sin nada que autorizar.
+  if (producto && exigeDeclaracionDeMarca(producto.marcaVisible)) exigirDerechoDeMarca(peticion.derechoMarca);
   // Un clip parte de **una** imagen: su fotograma aprobado. Este camino no cita ninguna identidad registrada: la
   // escena hablada en modo Omni va por `omni/escena.ts`.
   // El clip hereda el lugar de su fotograma: el sitio ya está dentro de la imagen de partida.
@@ -926,6 +933,7 @@ export async function crearAnimacion(
     identityReferenceKind: partida.referenciaIdentidad,
     input: {
       ...entradaGuardada(adaptador, promptFinal, [origen.id], { ...parametros, segundos }),
+      ...marcaAlEnviar(producto),
       // La tarifa confirmada: es la de **esta** duración, y es la que el worker vuelve a comprobar antes de enviar.
       unidadPrecio: precio.unidad,
       ...(enIngles.aviso === "" ? {} : { avisoReserva: enIngles.aviso }),
@@ -963,8 +971,8 @@ export async function crearAnimacion(
     // El producto con el que se pidió: el de la escena cuando el clip sale de un proyecto y el elegido en
     // «Crear» cuando no hay escena.
     ...columnasProducto,
-    // El clip no es un paso del producto digital, pero sí lleva la declaración de marca con su fecha.
-    brandRightsAt: producto ? new Date() : null,
+    // El clip no es un paso del producto digital, pero sí lleva la declaración de marca con su fecha cuando se exigió.
+    brandRightsAt: fechaDeLaDeclaracionDeMarca(producto),
     parentJobId: partida.trabajoPadreId,
     characterId: partida.personajeId,
     characterVersionId: partida.versionPersonajeId,

@@ -45,7 +45,7 @@ const pintar = (
   opciones: {
     bloqueos?: Requisito[];
     casillas?: Parameters<typeof confirmacion>[0];
-    conProducto?: boolean;
+    conMarca?: boolean;
     superaUmbral?: boolean;
     marcar?: boolean;
     avisoEnBloque?: boolean;
@@ -58,7 +58,7 @@ const pintar = (
       firma="f"
       bloqueos={opciones.bloqueos ?? []}
       avisosConfirmados={[]}
-      conProducto={opciones.conProducto}
+      conMarca={opciones.conMarca}
       envio="clip"
       paso="clip"
       confirmacion={confirmacion(opciones.casillas)}
@@ -85,14 +85,20 @@ describe("botón de generar", () => {
       { bloqueos: [{ id: "descripcion", paso: "escena", texto: "Falta describir la escena." }] },
     ],
     ["la casilla de derechos de la imagen", { casillas: { derechos: false } }],
-    ["la casilla de la marca con producto", { conProducto: true, casillas: { derechoMarca: false } }],
+    ["la casilla de la marca con un producto con marca", { conMarca: true, casillas: { derechoMarca: false } }],
     ["el aviso de gasto alto", { superaUmbral: true, casillas: { avisoAceptado: false } }],
   ])("apagado por %s", (_nombre, opciones) => {
     expect(botonApagado(pintar(opciones))).toBe(true);
   });
 
-  test("la marca no se pide si no hay producto ni el aviso si no se supera el umbral", () => {
+  test("la marca no se pide sin producto con marca ni el aviso si no se supera el umbral", () => {
     expect(botonApagado(pintar({ casillas: { derechoMarca: false, avisoAceptado: false } }))).toBe(false);
+  });
+
+  test("con un producto declarado sin marca, la casilla de la marca ni se muestra", () => {
+    const sinMarca = pintar({ conMarca: false, casillas: { derechoMarca: false } });
+    expect(sinMarca).not.toContain("Tengo derecho a usar esta marca");
+    expect(pintar({ conMarca: true })).toContain("Tengo derecho a usar esta marca");
   });
 });
 

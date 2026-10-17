@@ -37,6 +37,7 @@ export function SeguimientoTrabajo({
     <div className="flex flex-col gap-3">
       <EsperaTrabajo
         tipo={trabajo.tipo}
+        segundos={trabajo.segundos}
         estado={trabajo.estado}
         estadoProveedor={trabajo.estadoProveedor}
         transcurridoSegundos={estado.transcurridoSegundos}

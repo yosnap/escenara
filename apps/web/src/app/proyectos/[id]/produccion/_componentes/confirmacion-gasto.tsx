@@ -36,7 +36,7 @@ export function ConfirmacionGasto({
   bloqueos,
   avisosConfirmados,
   avisos = [],
-  conProducto = false,
+  conMarca = false,
   onConfirmarAviso,
   ocupado,
   onEnviar,
@@ -70,8 +70,11 @@ export function ConfirmacionGasto({
    * las dos. Sin esto, el botón decía «falta confirmar el aviso» sin decir dónde.
    */
   avisos?: readonly { regla: string; motivo: string }[];
-  /** `true` cuando la escena lleva producto: entonces, y solo entonces, se pide la casilla de la marca. */
-  conProducto?: boolean;
+  /**
+   * `true` cuando la escena lleva un producto con marca (o sin responder si la tiene): entonces, y solo entonces, se
+   * pide la casilla de la marca. Con un producto declarado sin marca no hay nada que autorizar.
+   */
+  conMarca?: boolean;
   onConfirmarAviso?: (regla: string, valor: boolean) => void;
   ocupado: boolean;
   onEnviar: (confirmacion: ConfirmacionEnvio) => void;
@@ -95,7 +98,7 @@ export function ConfirmacionGasto({
     ...(sinTerceros
       ? []
       : [{ id: casilla("sin-terceros"), texto: "Falta confirmar la revisión de las fotos del personaje." }]),
-    ...(!conProducto || derechoMarca
+    ...(!conMarca || derechoMarca
       ? []
       : [{ id: casilla("marca"), texto: "Falta confirmar que tienes derecho a usar la marca del producto." }]),
     ...(!superaUmbral || avisoAceptado
@@ -145,10 +148,10 @@ export function ConfirmacionGasto({
         onCambio={setSinTerceros}
         requisito={casilla("sin-terceros")}
       />
-      {conProducto && (
+      {conMarca && (
         <Casilla
           etiqueta="Tengo derecho a usar esta marca"
-          descripcion="El producto es tuyo o tienes autorización de la marca para usarlo en este vídeo. Solo aparece cuando el envío lleva producto, y sin ella no se genera. Tu declaración queda registrada con su fecha."
+          descripcion="El producto es tuyo o tienes autorización de la marca para usarlo en este vídeo. Solo aparece cuando el producto tiene marca, y sin ella no se genera. Tu declaración queda registrada con su fecha."
           marcada={derechoMarca}
           onCambio={setDerechoMarca}
           requisito={casilla("marca")}

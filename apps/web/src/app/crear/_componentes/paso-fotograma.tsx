@@ -40,7 +40,7 @@ export function PasoCosteFotograma({
   pidiendoContexto,
   controles,
   estimacion,
-  conProducto,
+  conMarca,
   firma,
   bloqueos,
   requisitos,
@@ -64,7 +64,8 @@ export function PasoCosteFotograma({
   pidiendoContexto: boolean;
   controles: Controles;
   estimacion: Estimacion;
-  conProducto: boolean;
+  /** El producto elegido tiene marca declarada: se pide la casilla de la marca. */
+  conMarca: boolean;
   firma: string;
   /** Lo propio del fotograma que falta (a quién, escena y plantilla). */
   bloqueos: readonly Requisito[];
@@ -94,7 +95,7 @@ export function PasoCosteFotograma({
       <BloqueConfirmacion
         controles={controles}
         estimacion={estimacion}
-        conProducto={conProducto}
+        conMarca={conMarca}
         etiqueta="Generar fotograma"
         firma={firma}
         bloqueos={[...bloqueos]}

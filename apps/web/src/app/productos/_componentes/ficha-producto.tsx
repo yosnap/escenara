@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Boton, BotonIcono } from "@/components/ui/button";
 import { CargadorChispa } from "@/components/ui/chispa";
-import { Casilla } from "@/components/ui/choice";
 import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo, EntradaTexto } from "@/components/ui/field";
 import {
@@ -28,6 +27,7 @@ import {
   quitarFotoDeProducto,
   resumenDeBorrado,
 } from "@/components/ui/productos/api-productos";
+import { PreguntaMarca } from "@/components/ui/productos/pregunta-marca";
 import { Selector } from "@/components/ui/select";
 import type { Medio } from "@/lib/media/tipos";
 import {
@@ -131,7 +131,8 @@ export function FichaProducto({ inicial }: { inicial: ProductoVista }) {
       nombre: producto.nombre,
       descripcion: nueva,
       tipo: producto.tipo,
-      marcaVisible: producto.marcaVisible,
+      // Sin responder no se manda: la respuesta solo la cambia quien la elige.
+      ...(producto.marcaVisible === null ? {} : { marcaVisible: producto.marcaVisible }),
     });
     setGuardando(false);
     if (!resultado.ok) {
@@ -146,7 +147,12 @@ export function FichaProducto({ inicial }: { inicial: ProductoVista }) {
   const guardar = async () => {
     setGuardando(true);
     setError("");
-    const resultado = await editarProducto(producto.id, { nombre, descripcion, tipo, marcaVisible });
+    const resultado = await editarProducto(producto.id, {
+      nombre,
+      descripcion,
+      tipo,
+      ...(marcaVisible === null ? {} : { marcaVisible }),
+    });
     setGuardando(false);
     if (resultado.ok) setProducto(resultado.datos);
     else setError(resultado.error);
@@ -245,13 +251,7 @@ export function FichaProducto({ inicial }: { inicial: ProductoVista }) {
               }))}
               onCambio={(v) => v && setTipo(v as TipoProducto)}
             />
-            <Casilla
-              etiqueta="En las fotos se ve una marca o un logotipo"
-              descripcion="Solo para avisarte: el filtro del proveedor puede rechazar una marca ajena, y entonces no se cobra nada y se te dice por qué."
-              marcada={marcaVisible}
-              deshabilitado={guardando}
-              onCambio={setMarcaVisible}
-            />
+            <PreguntaMarca valor={marcaVisible} onCambio={setMarcaVisible} invitarSiFalta />
             <div className="flex justify-end">
               <Boton variante="secundario" onClick={guardar} disabled={guardando || nombre.trim() === ""}>
                 {guardando ? "Guardando…" : "Guardar cambios"}

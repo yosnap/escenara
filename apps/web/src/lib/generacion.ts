@@ -152,6 +152,8 @@ export interface TrabajoVista {
   modelo: string;
   /** Proporción en la que se pidió («9:16»…), o `null` si el modelo no la acepta y toma la de la imagen (0.41.0). */
   proporcion: string | null;
+  /** Duración del clip pedida al proveedor, en segundos; `null` en los fotogramas, las voces y los trabajos antiguos. */
+  segundos: number | null;
   estado: EstadoTrabajo;
   /**
    * Etapa real por la que va el trabajo (0.19.0), o `null` si todavía no ha entrado en ninguna. Se deduce del

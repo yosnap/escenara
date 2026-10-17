@@ -58,16 +58,21 @@ export function InsigniaEstado({ estado }: { estado: EstadoTrabajo }) {
   );
 }
 
-const ETIQUETA_TIPO: Record<TipoTrabajoCola, string> = {
-  fotograma: "Fotograma",
-  animacion: "Clip de 4 s",
+/**
+ * Qué se está generando. Un clip dice la duración que se pidió de verdad al proveedor; si el trabajo no la
+ * guardó (trabajos antiguos), se dice «Clip» sin inventarse una.
+ */
+export function etiquetaTipoTrabajo(tipo: TipoTrabajoCola, segundos?: number | null): string {
+  if (tipo === "fotograma") return "Fotograma";
   // «Crear» no pide voces, pero la tarjeta de espera es la misma que usa la pantalla de voz de un proyecto.
-  voz: "Voz de la escena",
-};
+  if (tipo === "voz") return "Voz de la escena";
+  return segundos != null && segundos > 0 ? `Clip de ${segundos} s` : "Clip";
+}
 
 /** Tarjeta de espera: estado real, estado crudo del proveedor, tiempo transcurrido y Chispa acompañando. */
 export function EsperaTrabajo({
   tipo,
+  segundos,
   estado,
   estadoProveedor,
   transcurridoSegundos,
@@ -76,6 +81,8 @@ export function EsperaTrabajo({
   children,
 }: {
   tipo: TipoTrabajoCola;
+  /** Duración pedida del clip, si es un clip y se conoce. */
+  segundos?: number | null;
   estado: EstadoTrabajo;
   estadoProveedor: string | null;
   transcurridoSegundos: number;
@@ -94,7 +101,7 @@ export function EsperaTrabajo({
       <div className="flex items-center gap-4">
         <MascotaChispa expresion={estado === "listo" ? "celebra" : "saluda"} tamano={64} />
         <div className="flex flex-col gap-1">
-          <p className="text-sm text-texto-suave">{ETIQUETA_TIPO[tipo]}</p>
+          <p className="text-sm text-texto-suave">{etiquetaTipoTrabajo(tipo, segundos)}</p>
           <p className={cn("flex items-center gap-2 text-xl font-bold", a.clase)}>
             <span aria-hidden className="[&>svg]:size-5">
               {a.icono}

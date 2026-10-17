@@ -29,8 +29,12 @@ const json = (metodo: string, cuerpo: unknown): RequestInit => ({
 
 export const listarProductos = () => pedir<ProductoResumen[]>("/api/productos");
 
-export const crearProducto = (datos: { nombre: string; descripcion: string; tipo: string; marcaVisible: boolean }) =>
-  pedir<ProductoVista>("/api/productos", json("POST", datos));
+export const crearProducto = (datos: {
+  nombre: string;
+  descripcion: string;
+  tipo: string;
+  marcaVisible: boolean | null;
+}) => pedir<ProductoVista>("/api/productos", json("POST", datos));
 
 export const obtenerProducto = (id: string) => pedir<ProductoVista>(`/api/productos/${id}`);
 

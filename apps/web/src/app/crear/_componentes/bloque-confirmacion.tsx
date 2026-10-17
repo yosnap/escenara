@@ -25,7 +25,7 @@ export function BloqueConfirmacion({
   confirmacion,
   marcar,
   avisoEnBloque,
-  conProducto = false,
+  conMarca = false,
   enviando,
   onIntento,
   onGenerar,
@@ -48,8 +48,8 @@ export function BloqueConfirmacion({
   avisoEnBloque?: boolean;
   /** Se pulsó el botón mientras faltaba algo. */
   onIntento?: (primero: Requisito) => void;
-  /** `true` cuando el envío lleva producto: entonces se pide además la casilla del derecho de marca. */
-  conProducto?: boolean;
+  /** `true` cuando el envío lleva un producto con marca: entonces se pide además la casilla del derecho de marca. */
+  conMarca?: boolean;
   enviando: boolean;
   onGenerar: (confirmacion: ConfirmacionCoste) => void;
 }) {
@@ -69,7 +69,7 @@ export function BloqueConfirmacion({
         firma={`${firma}|${controles.firma}`}
         bloqueos={[...bloqueos, ...requisitosDeControles(controles.bloqueos, envio, paso, controles.sinSalida)]}
         avisosConfirmados={controles.confirmados}
-        conProducto={conProducto}
+        conMarca={conMarca}
         envio={envio}
         paso={paso}
         confirmacion={confirmacion}

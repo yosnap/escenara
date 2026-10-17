@@ -76,7 +76,10 @@ describe.skipIf(!hayBaseDeDatos)("el producto al convertir un clip de Crear", ()
 
   /** Un producto con tres fotos (frontal, envase y suelta), en ese orden de prioridad. */
   async function productoConTresFotos(): Promise<{ id: string; fotos: [string, string, string] }> {
-    const [producto] = await db().insert(products).values({ ownerId: ana.id, name: "Bote con fotos" }).returning();
+    const [producto] = await db()
+      .insert(products)
+      .values({ ownerId: ana.id, name: "Bote con fotos", brandVisible: false })
+      .returning();
     if (!producto) throw new Error("No se ha podido crear el producto de prueba.");
     const fotos = await Promise.all(
       (["etiqueta", "envase", "suelto"] as const).map(async (papel, i) => {

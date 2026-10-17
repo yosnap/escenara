@@ -268,6 +268,11 @@ export interface EscenaProduccionVista {
    */
   conProducto: boolean;
   /**
+   * El producto de la escena exige la declaración «Tengo derecho a usar esta marca»: tiene marca declarada o está
+   * sin responder. Con un producto declarado sin marca no se pide. Es la misma regla que aplica el servidor.
+   */
+  conMarca: boolean;
+  /**
    * **Falta insertar la captura** (producto digital, 0.26.0): lo que hay hecho es el fotograma con la
    * pantalla apagada, así que lo siguiente no es el clip sino meter la captura dentro de esa pantalla. Es
    * otra generación con su coste, y el botón tiene que decirlo.

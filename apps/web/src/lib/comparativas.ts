@@ -134,6 +134,8 @@ export interface PreparacionAB {
   impedimentos: string[];
   umbralAvisoCreditos: number;
   conProducto: boolean;
+  /** El producto de la escena exige la declaración de marca (con marca o sin responder), como en «Crear». */
+  conMarca: boolean;
   conPersonaje: boolean;
   /** Avisos «Necesita ajustes» de la escena que se pueden confirmar, como en la producción. */
   avisos: { regla: string; motivo: string }[];

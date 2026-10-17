@@ -52,8 +52,11 @@ export interface ProductoParaGenerar {
   sinHabla: boolean;
   /** `true` en las acciones que hoy salen mal a menudo (las de piel). Se avisa antes de gastar. */
   pocoFiable: boolean;
-  /** Lo que el usuario declaró: en el producto se ve una marca. Decide el aviso del filtro del proveedor. */
-  marcaVisible: boolean;
+  /**
+   * Lo que el usuario declaró: si en el producto se ve una marca (`null` = sin responder). Decide si se exige la
+   * declaración de marca y el aviso del filtro del proveedor.
+   */
+  marcaVisible: boolean | null;
   /** Fotos que pueden viajar como referencia, por orden de prioridad. Puede estar vacío. */
   fotos: readonly string[];
   /**
