@@ -9,7 +9,12 @@ import { DialogoImagenGenerada, type PedidoDeImagen } from "@/components/ui/imag
 export type EncargoDeFoto = { tipo: "retirar-personas"; referenciaId: string; medioId: string } | { tipo: "candidato" };
 
 /** Textos y datos del encargo, según el tipo y el acabado del lugar. */
-function pedidoDe(lugarId: string, encargo: EncargoDeFoto, animado: boolean, descripcion: string): PedidoDeImagen {
+export function pedidoDeFoto(
+  lugarId: string,
+  encargo: EncargoDeFoto,
+  animado: boolean,
+  descripcion: string,
+): PedidoDeImagen {
   const url = `/api/lugares/${lugarId}/edicion`;
   if (encargo.tipo === "retirar-personas") {
     return {
@@ -62,7 +67,7 @@ export function DialogoFotoGenerada({
   onEncargado: (mensaje: string) => void;
 }) {
   // Sin encargo el diálogo sigue montado y cerrado: así devuelve el foco al botón que lo abrió.
-  const pedido = pedidoDe(lugarId, encargo ?? { tipo: "candidato" }, animado, descripcion);
+  const pedido = pedidoDeFoto(lugarId, encargo ?? { tipo: "candidato" }, animado, descripcion);
   return (
     <DialogoImagenGenerada pedido={pedido} abierto={encargo !== null} onCerrar={onCerrar} onEncargado={onEncargado} />
   );

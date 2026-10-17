@@ -1,53 +1,52 @@
-import { afterEach, beforeEach, expect, mock, spyOn, test } from "bun:test";
-import { type ComponentType, lazy, Suspense } from "react";
-import type { DialogoSelectorMediosProps } from "@/components/ui/media/dialogo-selector-medios";
+import { afterAll, afterEach, beforeEach, expect, spyOn, test } from "bun:test";
 import type { LugarVista } from "@/lib/lugares";
 import type { Medio } from "@/lib/media/tipos";
-import { DialogoDePrueba, montarPantalla, type PantallaDePrueba } from "@/lib/pantalla-de-prueba";
+import {
+  montarPantalla,
+  type PantallaDePrueba,
+  sustitucionesDeFicha,
+  sustituirModulos,
+} from "@/lib/pantalla-de-prueba";
 import type { EncargoDeFoto } from "./dialogo-foto-generada";
 
 /**
  * **La primera imagen de un lugar**: tras el alta se llega al paso «Su primera imagen» con sus dos maneras a la vista,
  * y en la ficha sin fotos el estado vacío explica las mismas dos. El diálogo del coste y el selector de la biblioteca
- * se sustituyen por unos que dicen con qué se abren: lo que se comprueba es que se abren, y con qué descripción.
+ * se sustituyen por unos que dicen con qué se abren y dejan encargar o cancelar. Las sustituciones se deshacen al
+ * terminar el fichero: no llegan a ninguna otra prueba.
  */
 const rutas: string[] = [];
-const navegacion = await import("next/navigation");
-mock.module("next/navigation", () => ({
-  ...navegacion,
-  useRouter: () => ({ push: (ruta: string) => rutas.push(ruta), replace() {}, refresh() {} }),
-}));
-mock.module("next/dynamic", () => ({
-  default: (cargar: () => Promise<ComponentType<Record<string, unknown>>>) => {
-    const Perezoso = lazy(async () => ({ default: await cargar() }));
-    return (props: Record<string, unknown>) => (
-      <Suspense fallback={null}>
-        <Perezoso {...props} />
-      </Suspense>
-    );
-  },
-}));
-const overlay = await import("@/components/ui/overlay");
-mock.module("@/components/ui/overlay", () => ({ ...overlay, Dialogo: DialogoDePrueba }));
-mock.module("./dialogo-foto-generada", () => ({
-  DialogoFotoGenerada: (p: { encargo: EncargoDeFoto | null; descripcion: string }) =>
-    p.encargo ? <output data-dialogo-generar>{p.descripcion}</output> : null,
-}));
 const MEDIO = { id: "m1", titulo: "Patio", nombre: "patio.jpg", tipo: "imagen" } as unknown as Medio;
-const diferidos = await import("@/components/ui/media/diferidos");
-mock.module("@/components/ui/media/diferidos", () => ({
-  ...diferidos,
-  DialogoSelectorMedios: (p: DialogoSelectorMediosProps) =>
-    p.abierto ? (
-      <section data-selector-medios>
-        <button type="button" onClick={() => p.onConfirmar([MEDIO])}>
-          Elegir el patio
-        </button>
-      </section>
-    ) : null,
-}));
-const { FichaLugar } = await import("./ficha-lugar");
-const { ListaLugares } = await import("./lista-lugares");
+const restaurar = await sustituirModulos({
+  ...sustitucionesDeFicha(rutas, MEDIO, "Elegir el patio"),
+  [`${import.meta.dir}/dialogo-foto-generada.tsx`]: () => ({
+    DialogoFotoGenerada: (p: {
+      encargo: EncargoDeFoto | null;
+      descripcion: string;
+      onCerrar: () => void;
+      onEncargado: (mensaje: string) => void;
+    }) =>
+      p.encargo ? (
+        <section data-dialogo-generar>
+          <output>{p.descripcion}</output>
+          <button type="button" onClick={() => p.onEncargado("Encargado. La imagen aparecerá en el lugar.")}>
+            Encargar de prueba
+          </button>
+          <button type="button" onClick={p.onCerrar}>
+            Cancelar de prueba
+          </button>
+        </section>
+      ) : null,
+  }),
+});
+afterAll(restaurar);
+/**
+ * Copias propias de la ficha y de la lista, cargadas después de las sustituciones. Sin `--isolate`, otro fichero puede
+ * haberlas cargado antes con el `next/dynamic` de verdad, y la ficha guarda el diálogo diferido al cargarse.
+ */
+const COPIA = "pantalla-de-prueba";
+const { FichaLugar } = (await import(`./ficha-lugar.tsx?${COPIA}`)) as typeof import("./ficha-lugar");
+const { ListaLugares } = (await import(`./lista-lugares.tsx?${COPIA}`)) as typeof import("./lista-lugares");
 
 const DESCRIPCION = "Patio andaluz con azulejos azules y macetas.";
 const lugar = (cambios: Partial<LugarVista> = {}): LugarVista => ({
@@ -67,6 +66,10 @@ const lugar = (cambios: Partial<LugarVista> = {}): LugarVista => ({
   versiones: [],
   ...cambios,
 });
+const CON_FOTO = lugar({
+  tieneMaestra: true,
+  referencias: [{ id: "r1", papel: "maestra", generada: false, orden: 0, medio: MEDIO }],
+});
 
 let pantalla: PantallaDePrueba;
 let peticion: ReturnType<typeof spyOn<typeof globalThis, "fetch">>;
@@ -83,6 +86,7 @@ beforeEach(() => {
     if (init?.method === "PATCH" && typeof cuerpo.descripcion === "string") {
       return Response.json(lugar({ descripcion: cuerpo.descripcion }));
     }
+    if (init?.method === "PATCH" && cuerpo.accion === "anadir-fotos") return Response.json(CON_FOTO);
     return Response.json(lugar());
   }) as typeof fetch);
 });
@@ -92,9 +96,15 @@ afterEach(async () => {
   await pantalla.desmontar();
 });
 
-const paso = () => pantalla.ventana.document.querySelector("[data-paso-primera-imagen]");
-const generar = () => pantalla.ventana.document.querySelector("[data-dialogo-generar]");
-const selector = () => pantalla.ventana.document.querySelector("[data-selector-medios]");
+const documento = () => pantalla.ventana.document;
+const paso = () => documento().querySelector("[data-paso-primera-imagen]");
+const generar = () => documento().querySelector("[data-dialogo-generar]");
+const selector = () => documento().querySelector("[data-selector-medios]");
+const boton = (texto: string) =>
+  [...documento().querySelectorAll("button")].find((b) => b.textContent?.trim() === texto) ?? null;
+const enfocado = () => documento().activeElement?.textContent?.trim();
+const anuncio = () => documento().querySelector("[data-anuncio-paso]")?.textContent ?? "";
+const sinParametro = () => pantalla.ventana.history.replaceState(null, "", "/lugares/l1");
 
 test("al crear un lugar se va a su ficha con el paso de la primera imagen", async () => {
   await pantalla.pintar(<ListaLugares inicial={[]} />);
@@ -107,28 +117,44 @@ test("al crear un lugar se va a su ficha con el paso de la primera imagen", asyn
 });
 
 test("recién creado, la ficha abre con «Su primera imagen» y sus dos opciones", async () => {
-  await pantalla.pintar(<FichaLugar inicial={lugar()} primeraImagen />);
+  await pantalla.pintar(<FichaLugar inicial={lugar()} />);
   expect(paso()?.textContent).toContain("Su primera imagen");
-  expect(pantalla.botones()).toEqual(expect.arrayContaining(["Genera su primera imagen", "Sube tus fotos"]));
-  expect(pantalla.botones()).toContain("Lo haré después");
+  expect(pantalla.botones()).toEqual(
+    expect.arrayContaining(["Genera su primera imagen", "Sube tus fotos", "Lo haré después"]),
+  );
   // La ficha entera espera detrás: no se mezclan los datos con el paso.
   expect(pantalla.texto()).not.toContain("Guardar cambios");
 });
 
-test("«Genera su primera imagen» abre el diálogo del coste con la descripción guardada", async () => {
-  await pantalla.pintar(<FichaLugar inicial={lugar()} primeraImagen />);
-  await pantalla.pulsar("Genera su primera imagen");
-  expect(generar()?.textContent).toBe(DESCRIPCION);
+test("con alguna imagen puesta no se enseña el paso aunque la dirección lo pida", async () => {
+  await pantalla.pintar(<FichaLugar inicial={CON_FOTO} />);
+  expect(paso()).toBeNull();
 });
 
-test("con la descripción corta, el paso lo dice y deja completarla y generar sin salir", async () => {
-  await pantalla.pintar(<FichaLugar inicial={lugar({ descripcion: "Patio" })} primeraImagen />);
+test("«Genera su primera imagen» abre el diálogo del coste con la descripción guardada", async () => {
+  await pantalla.pintar(<FichaLugar inicial={lugar()} />);
+  await pantalla.pulsar("Genera su primera imagen");
+  expect(generar()?.querySelector("output")?.textContent).toBe(DESCRIPCION);
+});
+
+test("encargar desde el paso lo cierra, lleva el foco a las fotos y no invita a pagar otra", async () => {
+  await pantalla.pintar(<FichaLugar inicial={lugar()} />);
+  await pantalla.pulsar("Genera su primera imagen");
+  await pantalla.pulsar("Encargar de prueba");
+  expect(paso()).toBeNull();
+  expect(enfocado()).toBe("Fotos");
+  expect(anuncio()).toContain("Imagen encargada");
+  const vacio = documento().querySelector("[data-vacio-primera-imagen]");
+  expect(vacio?.querySelector("[data-generandose]")?.textContent).toContain("Generándose su primera imagen");
+  expect(boton("Genera su primera imagen")).toBeNull();
+});
+
+test("con la descripción corta, el paso deja completarla y generar con el mismo botón", async () => {
+  await pantalla.pintar(<FichaLugar inicial={lugar({ descripcion: "Patio" })} />);
   expect(paso()?.textContent).toContain("hace falta describirlo un poco más");
-  expect(pantalla.botones()).not.toContain("Genera su primera imagen");
-  const boton = [...pantalla.ventana.document.querySelectorAll("button")].find(
-    (b) => b.textContent?.trim() === "Guardar y generar",
-  );
-  expect(boton?.hasAttribute("disabled")).toBe(true);
+  expect(boton("Genera su primera imagen")).toBeNull();
+  const elBoton = boton("Guardar y generar");
+  expect(elBoton?.hasAttribute("disabled")).toBe(true);
 
   await pantalla.escribir("Descripción para generarla", DESCRIPCION);
   await pantalla.pulsar("Guardar y generar");
@@ -136,7 +162,14 @@ test("con la descripción corta, el paso lo dice y deja completarla y generar si
     nombre: "Patio de la abuela",
     descripcion: DESCRIPCION,
   });
-  expect(generar()?.textContent).toBe(DESCRIPCION);
+  expect(generar()?.querySelector("output")?.textContent).toBe(DESCRIPCION);
+  // El botón que abrió el diálogo sigue montado (ahora «Genera…»): al cancelar, el foco vuelve a él.
+  expect(elBoton?.isConnected).toBe(true);
+  expect(elBoton?.textContent?.trim()).toBe("Genera su primera imagen");
+  await pantalla.pulsar("Cancelar de prueba");
+  expect(generar()).toBeNull();
+  expect(paso()).not.toBeNull();
+  expect(documento().activeElement === elBoton).toBe(true);
 });
 
 test("si no se puede guardar la descripción, se ve la causa y no se abre el coste", async () => {
@@ -145,15 +178,36 @@ test("si no se puede guardar la descripción, se ve la causa y no se abre el cos
       { error: "La descripción tiene palabras no permitidas." },
       { status: 400 },
     )) as unknown as typeof fetch);
-  await pantalla.pintar(<FichaLugar inicial={lugar({ descripcion: "Patio" })} primeraImagen />);
+  await pantalla.pintar(<FichaLugar inicial={lugar({ descripcion: "Patio" })} />);
   await pantalla.escribir("Descripción para generarla", DESCRIPCION);
   await pantalla.pulsar("Guardar y generar");
   expect(pantalla.texto()).toContain("La descripción tiene palabras no permitidas.");
   expect(generar()).toBeNull();
+  expect(paso()).not.toBeNull();
 });
 
-test("«Sube tus fotos» abre la biblioteca y, al añadir, deja en la ficha", async () => {
-  await pantalla.pintar(<FichaLugar inicial={lugar()} primeraImagen />);
+test("mientras se guarda la descripción, el paso no deja volver a pulsar", async () => {
+  let responder: (respuesta: Response) => void = () => {};
+  peticion.mockImplementation((async (_url: RequestInfo | URL, init?: RequestInit) => {
+    enviados.push({ url: "", metodo: init?.method ?? "GET", cuerpo: {} });
+    return new Promise<Response>((resolver) => {
+      responder = resolver;
+    });
+  }) as unknown as typeof fetch);
+  await pantalla.pintar(<FichaLugar inicial={lugar({ descripcion: "Patio" })} />);
+  await pantalla.escribir("Descripción para generarla", DESCRIPCION);
+  await pantalla.pulsar("Guardar y generar");
+  for (const texto of ["Guardar y generar", "Sube tus fotos", "Lo haré después"]) {
+    expect(boton(texto)?.hasAttribute("disabled")).toBe(true);
+  }
+  (boton("Guardar y generar") as unknown as HTMLButtonElement).click();
+  expect(enviados.filter((e) => e.metodo === "PATCH")).toHaveLength(1);
+  responder(Response.json(lugar()));
+  await pantalla.pintar(<FichaLugar inicial={lugar({ descripcion: "Patio" })} />);
+});
+
+test("«Sube tus fotos» abre la biblioteca y, al añadir bien, deja en la ficha con el foco en las fotos", async () => {
+  await pantalla.pintar(<FichaLugar inicial={lugar()} />);
   await pantalla.pulsar("Sube tus fotos");
   expect(selector()).not.toBeNull();
   await pantalla.pulsar("Elegir el patio");
@@ -162,19 +216,47 @@ test("«Sube tus fotos» abre la biblioteca y, al añadir, deja en la ficha", as
     fotos: [{ medioId: "m1", papel: "maestra" }],
   });
   expect(paso()).toBeNull();
+  expect(enfocado()).toBe("Fotos");
+  expect(anuncio()).toContain("Fotos añadidas");
+  expect(pantalla.ventana.location.search).toBe("");
 });
 
-test("«Lo haré después» deja en la ficha y quita el paso de la dirección", async () => {
-  await pantalla.pintar(<FichaLugar inicial={lugar()} primeraImagen />);
+test("si añadir las fotos falla, se queda en el paso con la causa", async () => {
+  peticion.mockImplementation((async () =>
+    Response.json({ error: "Un lugar admite 8 fotos como mucho." }, { status: 400 })) as unknown as typeof fetch);
+  await pantalla.pintar(<FichaLugar inicial={lugar()} />);
+  await pantalla.pulsar("Sube tus fotos");
+  await pantalla.pulsar("Elegir el patio");
+  expect(paso()).not.toBeNull();
+  expect(pantalla.texto()).toContain("Un lugar admite 8 fotos como mucho.");
+});
+
+test("«Lo haré después» deja en la ficha, quita el paso de la dirección y lleva el foco a las fotos", async () => {
+  await pantalla.pintar(<FichaLugar inicial={lugar()} />);
   await pantalla.pulsar("Lo haré después");
   expect(paso()).toBeNull();
   expect(pantalla.texto()).toContain("Guardar cambios");
   expect(pantalla.ventana.location.search).toBe("");
+  expect(enfocado()).toBe("Fotos");
+  expect(anuncio()).toContain("Ya estás en la ficha de «Patio de la abuela»");
+});
+
+test("al volver con «Atrás» a una ficha guardada de antes, el paso no reaparece", async () => {
+  await pantalla.pintar(<FichaLugar inicial={lugar()} />);
+  await pantalla.pulsar("Sube tus fotos");
+  await pantalla.pulsar("Elegir el patio");
+  expect(paso()).toBeNull();
+  // «Atrás» puede volver a montar la ficha con lo que pintó el servidor entonces (sin fotos); la dirección ya no
+  // lleva el parámetro, que es lo que decide.
+  await pantalla.pintar(<FichaLugar key="restaurada" inicial={lugar()} />);
+  expect(paso()).toBeNull();
+  expect(documento().querySelector("[data-vacio-primera-imagen]")).not.toBeNull();
 });
 
 test("en la ficha sin fotos, el estado vacío explica las dos maneras de poner la primera", async () => {
+  sinParametro();
   await pantalla.pintar(<FichaLugar inicial={lugar({ descripcion: "Patio" })} />);
-  const vacio = pantalla.ventana.document.querySelector("[data-vacio-primera-imagen]");
+  const vacio = documento().querySelector("[data-vacio-primera-imagen]");
   expect(vacio?.textContent).toContain("Todavía no tiene ninguna imagen");
   expect(vacio?.textContent).toContain("Genera su primera imagen");
   expect(vacio?.textContent).toContain("Sube tus fotos");
@@ -185,7 +267,10 @@ test("en la ficha sin fotos, el estado vacío explica las dos maneras de poner l
 });
 
 test("en la ficha sin fotos y con descripción, se genera desde el estado vacío", async () => {
+  sinParametro();
   await pantalla.pintar(<FichaLugar inicial={lugar()} />);
   await pantalla.pulsar("Genera su primera imagen");
-  expect(generar()?.textContent).toBe(DESCRIPCION);
+  expect(generar()?.querySelector("output")?.textContent).toBe(DESCRIPCION);
+  await pantalla.pulsar("Encargar de prueba");
+  expect(documento().querySelector("[data-generandose]")).not.toBeNull();
 });

@@ -1,8 +1,10 @@
-import { expect } from "bun:test";
+import { expect, mock } from "bun:test";
 import { Window } from "happy-dom";
-import { act, type ComponentProps, type ReactNode } from "react";
+import { act, type ComponentProps, type ComponentType, lazy, type ReactNode, Suspense } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import type { DialogoSelectorMediosProps } from "@/components/ui/media/dialogo-selector-medios";
 import type { Dialogo } from "@/components/ui/overlay";
+import type { Medio } from "@/lib/media/tipos";
 
 /**
  * **Una pantalla de verdad para las pruebas de interacción**: una ventana de happy-dom puesta como la global, una raíz
@@ -114,4 +116,73 @@ export function DialogoDePrueba({ abierto, titulo, descripcion, children, pie }:
       {pie}
     </section>
   );
+}
+
+type Modulo = Record<string, unknown>;
+
+/**
+ * **Sustituye módulos solo para un fichero de pruebas.** `mock.module` vale para todo el proceso: sin deshacerlo, el
+ * `Dialogo` falso o un `next/dynamic` que no pinta nada llegarían a los ficheros que corren después (y una prueba de
+ * accesibilidad podría pasar en vacío). Devuelve cómo dejarlos como estaban, para llamarlo en `afterAll`.
+ *
+ * Las rutas relativas se resolverían desde aquí: pásalas resueltas con `import.meta.resolve` desde la prueba.
+ */
+export async function sustituirModulos(
+  sustituciones: Record<string, (original: Modulo) => Modulo>,
+): Promise<() => void> {
+  const originales: [string, Modulo][] = [];
+  for (const [ruta, sustituto] of Object.entries(sustituciones)) {
+    // Copia de lo que exporta ahora: el espacio de nombres es vivo y pasaría a ser el sustituto.
+    const original: Modulo = { ...((await import(ruta)) as Modulo) };
+    originales.push([ruta, original]);
+    mock.module(ruta, () => sustituto(original));
+  }
+  return () => {
+    for (const [ruta, original] of originales) mock.module(ruta, () => original);
+  };
+}
+
+/**
+ * Sustituciones de una **ficha con fotos** (lugar o producto) en happy-dom:
+ *
+ * - el enrutador apunta las rutas a las que se va y `useSearchParams` lee la dirección de la ventana, como hace Next
+ *   (que la sincroniza con `replaceState`);
+ * - `next/dynamic` sin servidor no llega a cargar: se cambia por `lazy`, que hace lo mismo;
+ * - el `Dialogo` de Base UI, por `DialogoDePrueba`;
+ * - el selector de la biblioteca, por un botón que elige `medio`.
+ */
+export function sustitucionesDeFicha(
+  rutas: string[],
+  medio: Medio,
+  etiquetaElegir: string,
+): Record<string, (original: Modulo) => Modulo> {
+  return {
+    "next/navigation": (original) => ({
+      ...original,
+      useRouter: () => ({ push: (ruta: string) => rutas.push(ruta), replace() {}, refresh() {} }),
+      useSearchParams: () => new URLSearchParams(window.location.search),
+    }),
+    "next/dynamic": () => ({
+      default: (cargar: () => Promise<ComponentType<Record<string, unknown>>>) => {
+        const Perezoso = lazy(async () => ({ default: await cargar() }));
+        return (props: Record<string, unknown>) => (
+          <Suspense fallback={null}>
+            <Perezoso {...props} />
+          </Suspense>
+        );
+      },
+    }),
+    "@/components/ui/overlay": (original) => ({ ...original, Dialogo: DialogoDePrueba }),
+    "@/components/ui/media/diferidos": (original) => ({
+      ...original,
+      DialogoSelectorMedios: (p: DialogoSelectorMediosProps) =>
+        p.abierto ? (
+          <section data-selector-medios>
+            <button type="button" onClick={() => p.onConfirmar([medio])}>
+              {etiquetaElegir}
+            </button>
+          </section>
+        ) : null,
+    }),
+  };
 }

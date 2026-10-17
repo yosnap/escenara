@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { abreConPrimeraImagen } from "@/lib/primera-imagen";
 import { esAdmin, exigirSesion } from "@/server/auth/sesion";
 import { obtenerProducto } from "@/server/productos/consulta";
 import { ErrorProducto } from "@/server/productos/errores";
@@ -15,13 +14,7 @@ export const dynamic = "force-dynamic";
  * Ficha de un producto: sus datos y sus fotos con el papel de cada una. **Solo la ve su dueño**: uno de otra
  * persona responde 404, igual que un personaje ajeno, y no se dice que exista.
  */
-export default async function PaginaProducto({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
+export default async function PaginaProducto({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const sesion = await exigirSesion(`/productos/${id}`);
   const actor = { id: sesion.user.id, esAdmin: esAdmin(sesion) };
@@ -42,10 +35,7 @@ export default async function PaginaProducto({
         <Link href="/productos" className="text-sm font-semibold text-acento underline">
           ← Volver a tus productos
         </Link>
-        <FichaProducto
-          inicial={producto}
-          primeraImagen={abreConPrimeraImagen(await searchParams, producto.fotos.length)}
-        />
+        <FichaProducto inicial={producto} />
       </main>
     </div>
   );

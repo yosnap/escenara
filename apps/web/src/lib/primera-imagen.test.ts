@@ -7,9 +7,9 @@ describe("paso de la primera imagen", () => {
   });
 
   test("se abre solo si se pide y la ficha no tiene ninguna imagen", () => {
-    expect(abreConPrimeraImagen({ "primera-imagen": "1" }, 0)).toBe(true);
-    expect(abreConPrimeraImagen({ "primera-imagen": "1" }, 2)).toBe(false);
-    expect(abreConPrimeraImagen({}, 0)).toBe(false);
-    expect(abreConPrimeraImagen({ "primera-imagen": ["1", "1"] }, 0)).toBe(false);
+    expect(abreConPrimeraImagen("1", 0)).toBe(true);
+    expect(abreConPrimeraImagen("1", 2)).toBe(false);
+    expect(abreConPrimeraImagen(null, 0)).toBe(false);
+    expect(abreConPrimeraImagen("0", 0)).toBe(false);
   });
 });

@@ -9,8 +9,10 @@ import { CargadorChispa } from "@/components/ui/chispa";
 import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo, EntradaTexto } from "@/components/ui/field";
 import {
+  AnuncioPaso,
   PasoPrimeraImagen,
   type TextosPrimeraImagen,
+  usePasoPrimeraImagen,
   VacioPrimeraImagen,
 } from "@/components/ui/imagen-generada/primera-imagen";
 import { LimiteDeCarga } from "@/components/ui/limite-de-carga";
@@ -66,14 +68,7 @@ const PISTA_DESCRIPCION_LUGAR = "Cuenta qué hay, los colores, los materiales y 
  * confirmado. Las fotos se eligen con el **selector de medios de la biblioteca**: una foto de un lugar es una foto
  * del usuario como cualquier otra y quitarla de aquí no la borra.
  */
-export function FichaLugar({
-  inicial,
-  primeraImagen = false,
-}: {
-  inicial: LugarVista;
-  /** Recién creado: abre con el paso «Su primera imagen» en lugar de la ficha entera. */
-  primeraImagen?: boolean;
-}) {
+export function FichaLugar({ inicial }: { inicial: LugarVista }) {
   const router = useRouter();
   const [lugar, setLugar] = useState(inicial);
   const [nombre, setNombre] = useState(inicial.nombre);
@@ -84,7 +79,9 @@ export function FichaLugar({
   const [ocupado, setOcupado] = useState(false);
   const [encargo, setEncargo] = useState<EncargoDeFoto | null>(null);
   const [encargado, setEncargado] = useState("");
-  const [paso, setPaso] = useState(primeraImagen);
+  // Recién creado (y sin imágenes), abre con el paso «Su primera imagen» en lugar de la ficha entera.
+  const pasoFicha = usePasoPrimeraImagen(lugar.referencias.length);
+  const { paso } = pasoFicha;
   // Desde el primer encargo el diálogo se queda montado: al cerrarlo devuelve el foco al botón que lo abrió.
   const [dialogoCargado, setDialogoCargado] = useState(false);
   if (encargo && !dialogoCargado) setDialogoCargado(true);
@@ -108,10 +105,25 @@ export function FichaLugar({
     else setError(resultado.error);
   };
 
-  /** Deja el paso y enseña la ficha entera; la dirección pierde el parámetro para que recargar no lo repita. */
-  const salirDelPaso = () => {
-    setPaso(false);
-    window.history.replaceState(null, "", window.location.pathname);
+  /** Añade las fotos elegidas; desde el paso, solo se sale de él si han entrado bien. */
+  const anadirDesdeBiblioteca = async (medios: readonly { id: string }[]) => {
+    setEligiendo(false);
+    if (medios.length === 0) return;
+    const desdeElPaso = paso;
+    setOcupado(true);
+    setError("");
+    // Sin maestra todavía, la primera que se añade lo es; las demás entran como plano general.
+    const resultado = await anadirFotosALugar(
+      lugar.id,
+      medios.map((m, i) => ({ medioId: m.id, papel: !lugar.tieneMaestra && i === 0 ? "maestra" : "general" })),
+    );
+    setOcupado(false);
+    if (!resultado.ok) {
+      setError(resultado.error);
+      return;
+    }
+    setLugar(resultado.datos);
+    if (desdeElPaso) pasoFicha.salir(`Fotos añadidas. Ya estás en la ficha de «${lugar.nombre}», en «Fotos».`);
   };
 
   /** Completar la descripción desde el paso: se guarda como en la ficha y el campo de la ficha la refleja. */
@@ -160,6 +172,7 @@ export function FichaLugar({
         </Boton>
       </div>
 
+      <AnuncioPaso texto={pasoFicha.anuncio} />
       {error !== "" && <Aviso tono="error">{error}</Aviso>}
       {encargado !== "" && <Aviso tono="correcto">{encargado}</Aviso>}
       {!paso && faltas.length > 0 && <Aviso tono="aviso">Para poder usarlo: {faltas.join(" ")}</Aviso>}
@@ -176,7 +189,11 @@ export function FichaLugar({
           onGuardarDescripcion={guardarDescripcion}
           onGenerar={() => setEncargo({ tipo: "candidato" })}
           onSubir={() => setEligiendo(true)}
-          onDespues={salirDelPaso}
+          onDespues={() =>
+            pasoFicha.salir(
+              `Ya estás en la ficha de «${lugar.nombre}». Puedes ponerle la primera imagen desde «Fotos» cuando quieras.`,
+            )
+          }
         />
       ) : (
         <>
@@ -221,7 +238,10 @@ export function FichaLugar({
 
           <section className="flex flex-col gap-4 rounded-tarjeta border-2 border-borde/60 bg-superficie p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-xl font-bold text-texto">Fotos</h2>
+              {/* Al salir del paso, el foco viene aquí: es donde se pone la primera imagen. */}
+              <h2 ref={pasoFicha.refDestino} tabIndex={-1} className="text-xl font-bold text-texto">
+                Fotos
+              </h2>
               <Boton variante="chispa" onClick={() => setEligiendo(true)} disabled={ocupado}>
                 <ImagePlus className="size-5" aria-hidden /> Añadir de la biblioteca
               </Boton>
@@ -236,6 +256,7 @@ export function FichaLugar({
                 texto="Sin maestra, este lugar solo puede ir descrito con palabras."
                 textos={textos}
                 motivoSinGenerar={motivoSinGenerar}
+                generandose={encargado !== ""}
                 ocupado={ocupado}
                 onGenerar={() => setEncargo({ tipo: "candidato" })}
                 onSubir={() => setEligiendo(true)}
@@ -343,12 +364,16 @@ export function FichaLugar({
             animado={lugar.acabado === "animado"}
             descripcion={lugar.descripcion}
             encargo={encargo}
-            onCerrar={() => setEncargo(null)}
+            onCerrar={() => {
+              setEncargo(null);
+              // Cancelado desde el paso, el foco vuelve a su botón de generar, que sigue ahí.
+              if (paso) pasoFicha.volverAlPaso();
+            }}
             onEncargado={(mensaje) => {
               setEncargo(null);
               setEncargado(mensaje);
               // Con la primera imagen encargada, el paso ha cumplido: se vuelve a la ficha con el aviso a la vista.
-              if (paso) salirDelPaso();
+              if (paso) pasoFicha.salir(`Imagen encargada. Ya estás en la ficha de «${lugar.nombre}», en «Fotos».`);
             }}
           />
         </LimiteDeCarga>
@@ -361,18 +386,7 @@ export function FichaLugar({
         tipos={["imagen"]}
         sinDocumentos
         inicial={[]}
-        onConfirmar={(medios) => {
-          setEligiendo(false);
-          if (medios.length === 0) return;
-          if (paso) salirDelPaso();
-          // Sin maestra todavía, la primera que se añade lo es; las demás entran como plano general.
-          void aplicar(
-            anadirFotosALugar(
-              lugar.id,
-              medios.map((m, i) => ({ medioId: m.id, papel: !lugar.tieneMaestra && i === 0 ? "maestra" : "general" })),
-            ),
-          );
-        }}
+        onConfirmar={(medios) => void anadirDesdeBiblioteca(medios)}
       />
 
       <Dialogo

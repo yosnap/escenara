@@ -36,6 +36,7 @@ export function MuestraPrimeraImagen() {
         texto="Sin maestra, este lugar solo puede ir descrito con palabras."
         textos={TEXTOS}
         motivoSinGenerar="Para generar, describe el lugar (qué hay, colores, luz) y guarda los cambios."
+        generandose={false}
         ocupado={false}
         onGenerar={() => setHecho("Abriría el diálogo del coste.")}
         onSubir={() => setHecho("Abriría la biblioteca para elegir o subir fotos.")}

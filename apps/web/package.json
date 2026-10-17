@@ -10,7 +10,7 @@
     "start": "bun --bun next start --port 3021",
     "worker": "bun scripts/worker.ts",
     "typecheck": "tsc --noEmit",
-    "test": "bun test",
+    "test": "bun test --isolate",
     "tokens": "bun scripts/tokens.ts",
     "activos": "bun scripts/activos-marca.ts",
     "db:generate": "bun --bun drizzle-kit generate",

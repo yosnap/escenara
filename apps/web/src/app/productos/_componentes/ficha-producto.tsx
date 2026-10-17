@@ -10,8 +10,10 @@ import { Casilla } from "@/components/ui/choice";
 import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo, EntradaTexto } from "@/components/ui/field";
 import {
+  AnuncioPaso,
   PasoPrimeraImagen,
   type TextosPrimeraImagen,
+  usePasoPrimeraImagen,
   VacioPrimeraImagen,
 } from "@/components/ui/imagen-generada/primera-imagen";
 import { LimiteDeCarga } from "@/components/ui/limite-de-carga";
@@ -77,14 +79,7 @@ const PISTA_DESCRIPCION_PRODUCTO = "Cuenta qué es, su forma, sus colores y lo q
  * Las imágenes de referencia también se pueden **generar aquí** desde la descripción guardada, eligiendo la vista,
  * con el coste confirmado como cualquier fotograma; entran marcadas como generadas.
  */
-export function FichaProducto({
-  inicial,
-  primeraImagen = false,
-}: {
-  inicial: ProductoVista;
-  /** Recién creado: abre con el paso «Su primera imagen» en lugar de la ficha entera. */
-  primeraImagen?: boolean;
-}) {
+export function FichaProducto({ inicial }: { inicial: ProductoVista }) {
   const router = useRouter();
   const [producto, setProducto] = useState(inicial);
   const [nombre, setNombre] = useState(inicial.nombre);
@@ -103,7 +98,9 @@ export function FichaProducto({
   // Cada apertura es un encargo nuevo: el diálogo se rehace y no arrastra casillas ni la clave del anterior.
   const [apertura, setApertura] = useState(0);
   const [encargado, setEncargado] = useState("");
-  const [paso, setPaso] = useState(primeraImagen);
+  // Recién creado (y sin fotos), abre con el paso «Su primera imagen» en lugar de la ficha entera.
+  const pasoFicha = usePasoPrimeraImagen(producto.fotos.length);
+  const { paso } = pasoFicha;
   // Desde el primer encargo el diálogo se queda montado: al cerrarlo devuelve el foco al botón que lo abrió.
   const [dialogoCargado, setDialogoCargado] = useState(false);
   if (generando && !dialogoCargado) setDialogoCargado(true);
@@ -124,12 +121,6 @@ export function FichaProducto({
   const abrirGenerar = () => {
     setApertura((n) => n + 1);
     setGenerando(true);
-  };
-
-  /** Deja el paso y enseña la ficha entera; la dirección pierde el parámetro para que recargar no lo repita. */
-  const salirDelPaso = () => {
-    setPaso(false);
-    window.history.replaceState(null, "", window.location.pathname);
   };
 
   /** Completar la descripción desde el paso: se guarda como en la ficha y el campo de la ficha la refleja. */
@@ -194,6 +185,7 @@ export function FichaProducto({
         </Boton>
       </div>
 
+      <AnuncioPaso texto={pasoFicha.anuncio} />
       {error !== "" && <Aviso tono="error">{error}</Aviso>}
       {encargado !== "" && <Aviso tono="correcto">{encargado}</Aviso>}
 
@@ -209,7 +201,11 @@ export function FichaProducto({
           onGuardarDescripcion={guardarDescripcion}
           onGenerar={abrirGenerar}
           onSubir={() => setEligiendo(true)}
-          onDespues={salirDelPaso}
+          onDespues={() =>
+            pasoFicha.salir(
+              `Ya estás en la ficha de «${producto.nombre}». Puedes ponerle la primera imagen desde «Fotos de referencia» cuando quieras.`,
+            )
+          }
         />
       ) : (
         <>
@@ -265,7 +261,10 @@ export function FichaProducto({
 
           <section className="flex flex-col gap-4 rounded-tarjeta border-2 border-borde/60 bg-superficie p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-xl font-bold text-texto">Fotos de referencia</h2>
+              {/* Al salir del paso, el foco viene aquí: es donde se pone la primera imagen. */}
+              <h2 ref={pasoFicha.refDestino} tabIndex={-1} className="text-xl font-bold text-texto">
+                Fotos de referencia
+              </h2>
               {/* Sin ninguna foto, las dos maneras de poner la primera las explica el estado vacío. */}
               {producto.fotos.length > 0 && (
                 <div className="flex flex-wrap gap-2">
@@ -294,6 +293,7 @@ export function FichaProducto({
                 texto="Sin fotos, el modelo no sabe qué aspecto tiene este producto."
                 textos={TEXTOS_PRIMERA_IMAGEN}
                 motivoSinGenerar={motivoSinGenerar}
+                generandose={encargado !== ""}
                 ocupado={ocupado}
                 onGenerar={abrirGenerar}
                 onSubir={() => setEligiendo(true)}
@@ -379,7 +379,9 @@ export function FichaProducto({
           setProducto(resultado.datos);
           setPorAnadir([]);
           // Con las primeras fotos puestas, el paso ha cumplido: se vuelve a la ficha.
-          if (paso) salirDelPaso();
+          if (paso) {
+            pasoFicha.salir(`Fotos añadidas. Ya estás en la ficha de «${producto.nombre}», en «Fotos de referencia».`);
+          }
         }}
       />
 
@@ -391,12 +393,20 @@ export function FichaProducto({
             tipo={producto.tipo}
             descripcion={producto.descripcion}
             abierto={generando}
-            onCerrar={() => setGenerando(false)}
+            onCerrar={() => {
+              setGenerando(false);
+              // Cancelado desde el paso, el foco vuelve a su botón de generar, que sigue ahí.
+              if (paso) pasoFicha.volverAlPaso();
+            }}
             onEncargado={(mensaje) => {
               setGenerando(false);
               setEncargado(mensaje);
               // Con la primera imagen encargada, el paso ha cumplido: se vuelve a la ficha con el aviso a la vista.
-              if (paso) salirDelPaso();
+              if (paso) {
+                pasoFicha.salir(
+                  `Imagen encargada. Ya estás en la ficha de «${producto.nombre}», en «Fotos de referencia».`,
+                );
+              }
             }}
           />
         </LimiteDeCarga>
