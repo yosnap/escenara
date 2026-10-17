@@ -1,0 +1,399 @@
+{
+  "capturas": [
+    {
+      "id": "anuncio",
+      "ruta": "/crear",
+      "viewport": {
+        "ancho": 1600,
+        "alto": 856
+      },
+      "ocultar": [
+        "nextjs-portal"
+      ],
+      "tramos": [
+        {
+          "id": "formato",
+          "acciones": [
+            {
+              "accion": "elegir",
+              "titulo": "Plantilla o trend",
+              "abrir": "section[aria-label='Paso 1: Elige el formato'] [role=combobox]",
+              "opciones": "[role=option]:visible",
+              "selector": "[role=option]:visible:has-text('Clip para redes')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "main button:visible:has-text('Siguiente: Origen')"
+            },
+            {
+              "accion": "clic",
+              "selector": "main button:visible:has-text('Siguiente: Origen')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Paso 2: ¿De dónde sale el clip?']",
+              "espera": 15000,
+              "indicador": false
+            }
+          ]
+        },
+        {
+          "id": "origen",
+          "acciones": [
+            {
+              "accion": "elegir",
+              "titulo": "¿De dónde sale el clip?",
+              "opciones": "section[aria-label='Paso 2: ¿De dónde sale el clip?'] fieldset label",
+              "selector": "section[aria-label='Paso 2: ¿De dónde sale el clip?'] fieldset label:has-text('Crear un fotograma nuevo')",
+              "etiquetas": [
+                "Crear un fotograma nuevo",
+                "Usar una imagen que ya tengo"
+              ]
+            },
+            {
+              "accion": "desplazar",
+              "selector": "main button:visible:has-text('Siguiente: Quién')"
+            },
+            {
+              "accion": "clic",
+              "selector": "main button:visible:has-text('Siguiente: Quién')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Paso 3: Elige a quién generas']",
+              "espera": 15000,
+              "indicador": false
+            }
+          ]
+        },
+        {
+          "id": "quien",
+          "acciones": [
+            {
+              "accion": "elegir",
+              "titulo": "Personaje",
+              "opciones": "section[aria-label='Paso 3: Elige a quién generas'] li > button",
+              "selector": "section[aria-label='Paso 3: Elige a quién generas'] li > button:has-text('Brisa')",
+              "etiquetas": [
+                "Sin personaje",
+                "Lupo",
+                "Brisa",
+                "Elisa"
+              ]
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Paso 3: Elige a quién generas'] p:has-text('Se enviarán varias fotos de «Brisa»')",
+              "espera": 30000,
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 3: Elige a quién generas'] label:has-text('En estas fotos no aparece ninguna otra persona')"
+            },
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Paso 3: Elige a quién generas'] label:has-text('En estas fotos no aparece ninguna otra persona')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "main button:visible:has-text('Siguiente: Escena')"
+            },
+            {
+              "accion": "clic",
+              "selector": "main button:visible:has-text('Siguiente: Escena')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Paso 4: Describe la escena']",
+              "espera": 15000,
+              "indicador": false
+            }
+          ]
+        },
+        {
+          "id": "escena",
+          "acciones": [
+            {
+              "accion": "escribir",
+              "selector": "section[aria-label='Paso 4: Describe la escena'] textarea >> nth=0",
+              "texto": "En una cocina luminosa con plantas, sonríe a cámara con las manos a la altura del pecho. Plano medio, luz natural de mañana."
+            },
+            {
+              "accion": "desplazar",
+              "selector": "main button:visible:has-text('Siguiente: Coste')"
+            },
+            {
+              "accion": "clic",
+              "selector": "main button:visible:has-text('Siguiente: Coste')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Paso 5: Revisa el coste y confirma'] section[aria-label='Coste estimado']",
+              "espera": 60000,
+              "indicador": false
+            }
+          ]
+        },
+        {
+          "id": "coste",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 5: Revisa el coste y confirma'] section[aria-label='Contexto que se enviará al modelo']"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 5: Revisa el coste y confirma'] section[aria-label='Coste estimado']"
+            }
+          ]
+        },
+        {
+          "id": "generar-fotograma",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 5: Revisa el coste y confirma'] label:has-text('Tengo derecho a usar esta imagen')"
+            },
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Paso 5: Revisa el coste y confirma'] label:has-text('Tengo derecho a usar esta imagen')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 5: Revisa el coste y confirma'] label:has-text('Sí, quiero gastar')",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Paso 5: Revisa el coste y confirma'] label:has-text('Sí, quiero gastar')",
+              "siExiste": true
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 5: Revisa el coste y confirma'] label:has-text('Lo he leído y quiero generar igualmente')",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Paso 5: Revisa el coste y confirma'] label:has-text('Lo he leído y quiero generar igualmente')",
+              "siExiste": true
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 5: Revisa el coste y confirma'] button:has-text('Generar fotograma')"
+            },
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Paso 5: Revisa el coste y confirma'] button:has-text('Generar fotograma')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Paso 6: Resultado del fotograma']",
+              "espera": 60000,
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 6: Resultado del fotograma']"
+            }
+          ]
+        },
+        {
+          "id": "fotograma",
+          "acciones": [
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Paso 6: Resultado del fotograma'] h3:text-is('Fotograma listo')",
+              "espera": 600000
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 6: Resultado del fotograma'] h3:text-is('Fotograma listo')"
+            }
+          ]
+        },
+        {
+          "id": "modelo-clip",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "main button:visible:has-text('Siguiente: Clip')"
+            },
+            {
+              "accion": "clic",
+              "selector": "main button:visible:has-text('Siguiente: Clip')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Paso 7: El clip'] >> role=combobox[name='Modelo del clip']",
+              "espera": 30000,
+              "indicador": false
+            },
+            {
+              "accion": "elegir",
+              "titulo": "Modelo del clip",
+              "abrir": "section[aria-label='Paso 7: El clip'] >> role=combobox[name='Modelo del clip']",
+              "opciones": "[role=option]:visible",
+              "selector": "[role=option]:visible:has-text('MiniMax H3')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Paso 7: El clip'] [role=combobox]:has-text('MiniMax H3')",
+              "espera": 30000,
+              "indicador": false
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Paso 7: El clip'] section[aria-label='Coste estimado']:has-text('MiniMax H3'), section[aria-label='Paso 7: El clip'] section[aria-label='Coste estimado']:has-text('minimax-h3')",
+              "espera": 30000,
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 7: El clip'] section[aria-label='Coste estimado']"
+            }
+          ]
+        },
+        {
+          "id": "producto",
+          "acciones": [
+            {
+              "accion": "elegir",
+              "titulo": "Producto",
+              "abrir": "section[aria-label='Paso 7: El clip'] >> role=combobox[name='Producto']",
+              "opciones": "[role=option]:visible",
+              "selector": "[role=option]:visible:has-text('Botella Ondina')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Paso 7: El clip'] fieldset:has(> legend:has-text('Qué se hace con él'))",
+              "espera": 30000,
+              "indicador": false
+            },
+            {
+              "accion": "elegir",
+              "titulo": "Qué se hace con él",
+              "opciones": "section[aria-label='Paso 7: El clip'] fieldset:has(> legend:has-text('Qué se hace con él')) label",
+              "selector": "section[aria-label='Paso 7: El clip'] fieldset:has(> legend:has-text('Qué se hace con él')) label:has-text('Sostenerlo')"
+            }
+          ]
+        },
+        {
+          "id": "direccion",
+          "acciones": [
+            {
+              "accion": "escribir",
+              "selector": "section[aria-label='Paso 7: El clip'] textarea[placeholder='¡Estamos muy contentos de lanzar esto!']",
+              "texto": "Mi Botella Ondina va conmigo a todas partes."
+            },
+            {
+              "accion": "elegir",
+              "titulo": "Plano",
+              "opciones": "section[aria-label='Paso 7: El clip'] fieldset:has(> legend:has-text('Plano')) label",
+              "selector": "section[aria-label='Paso 7: El clip'] fieldset:has(> legend:has-text('Plano')) label:has-text('Plano medio')"
+            },
+            {
+              "accion": "escribir",
+              "selector": "section[aria-label='Paso 7: El clip'] textarea[placeholder^='Que sostenga el bote']",
+              "texto": "Que levante la botella hacia la cámara y sonría al decir la frase."
+            }
+          ]
+        },
+        {
+          "id": "confirmar-clip",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 7: El clip'] label:has-text('En estas fotos no aparece ninguna otra persona')"
+            },
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Paso 7: El clip'] label:has-text('En estas fotos no aparece ninguna otra persona')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 7: El clip'] section[aria-label='Coste estimado']"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 7: El clip'] label:has-text('Tengo derecho a usar esta imagen')"
+            },
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Paso 7: El clip'] label:has-text('Tengo derecho a usar esta imagen')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 7: El clip'] label:has-text('Tengo derecho a usar esta marca')"
+            },
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Paso 7: El clip'] label:has-text('Tengo derecho a usar esta marca')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 7: El clip'] label:has-text('Sí, quiero gastar')",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Paso 7: El clip'] label:has-text('Sí, quiero gastar')",
+              "siExiste": true
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 7: El clip'] label:has-text('Lo he leído y quiero generar igualmente')",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Paso 7: El clip'] label:has-text('Lo he leído y quiero generar igualmente')",
+              "siExiste": true
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 7: El clip'] button:has-text('Animar 5 s')"
+            },
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Paso 7: El clip'] button:has-text('Animar 5 s')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Paso 7: El clip'] div[role=status].border-2",
+              "espera": 60000,
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 7: El clip'] div[role=status].border-2"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "nav[aria-label='Pasos para crear']"
+            }
+          ]
+        },
+        {
+          "id": "clip",
+          "acciones": [
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Paso 7: El clip'] h3:text-is('Clip listo')",
+              "espera": 900000
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 7: El clip'] section:has(h3:text-is('Clip listo')) video"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Paso 7: El clip'] button:has-text('Otro clip con este fotograma')"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
