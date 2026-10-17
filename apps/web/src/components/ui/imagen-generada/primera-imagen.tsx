@@ -307,8 +307,15 @@ export function VacioPrimeraImagen({
       className="flex flex-col gap-4 rounded-tarjeta border-2 border-dashed border-borde/60 px-4 py-6"
     >
       <div className="flex flex-col gap-1 text-center">
-        <h3 className="text-xl font-bold text-texto">Todavía no tiene ninguna imagen</h3>
-        <p className="mx-auto max-w-xl text-texto-suave">{texto} Tienes dos maneras de ponerle la primera:</p>
+        {/* Con la primera ya encargada no se dice que no tiene ninguna: se está haciendo. */}
+        <h3 className="text-xl font-bold text-texto">
+          {generandose ? "Su primera imagen se está generando" : "Todavía no tiene ninguna imagen"}
+        </h3>
+        <p className="mx-auto max-w-xl text-texto-suave">
+          {generandose
+            ? "Aparecerá aquí en cuanto termine. Mientras tanto, también puedes subir tus fotos:"
+            : `${texto} Tienes dos maneras de ponerle la primera:`}
+        </p>
       </div>
       <OpcionesPrimeraImagen
         textos={textos}
