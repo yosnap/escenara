@@ -213,3 +213,82 @@ figure.diagrama svg {
 .sl-markdown-content details > :last-child {
   margin-bottom: 1rem;
 }
+
+/*
+ * Vídeos de YouTube en fachada: miniatura local y botón de reproducir; el reproductor (youtube-nocookie.com)
+ * solo se carga al pulsar. Marco completo y foco visible, nunca una franja de color a un lado.
+ */
+.sl-markdown-content figure.video-youtube {
+  max-width: 880px;
+  margin-block: 1.5rem;
+}
+
+.video-youtube__fachada,
+.video-youtube__marco {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: var(--sl-color-gray-6);
+}
+
+.sl-markdown-content .video-youtube__fachada img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  object-fit: cover;
+  border: 0;
+  border-radius: 0;
+}
+
+.video-youtube__boton {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  border-radius: 999px;
+  background: var(--escenara-degradado);
+  box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 0.35);
+  transform: translate(-50%, -50%);
+  transition: transform 0.2s ease;
+}
+
+/* Triángulo de «reproducir», un poco desplazado para que parezca centrado. */
+.video-youtube__boton::before {
+  content: "";
+  margin-left: 0.3rem;
+  border-style: solid;
+  border-width: 0.8rem 0 0.8rem 1.3rem;
+  border-color: transparent transparent transparent #fff;
+}
+
+.video-youtube__fachada:hover .video-youtube__boton,
+.video-youtube__fachada:focus-visible .video-youtube__boton {
+  transform: translate(-50%, -50%) scale(1.08);
+}
+
+.video-youtube__fachada:focus-visible,
+.video-youtube__marco:focus-visible {
+  outline: 3px solid var(--sl-color-accent);
+  outline-offset: 3px;
+}
+
+.sl-markdown-content figure.video-youtube figcaption {
+  margin-top: 0.5rem;
+  font-size: var(--sl-text-sm);
+  font-style: normal;
+  color: var(--sl-color-gray-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .video-youtube__boton {
+    transition: none;
+  }
+}
