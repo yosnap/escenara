@@ -17,6 +17,23 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
   opción, no en letra pequeña junto a un botón apagado.
 - El diálogo para generar la imagen de un lugar o de un producto enseña la descripción guardada desde
   la que se genera.
+- El paso «Su primera imagen» ya no vuelve a salir al regresar con «Atrás» después de salir de él o
+  de añadir fotos. Al salir del paso («Lo haré después», al encargar la imagen o al añadir fotos) el
+  foco va al encabezado de las fotos y un lector de pantalla oye dónde estás. Si cancelas el diálogo
+  del coste tras «Guardar y generar», el foco vuelve al botón de generar. En un lugar, el paso solo
+  se cierra cuando las fotos han entrado bien; si fallan, sigues en el paso y ves la causa.
+- Con la primera imagen ya encargada, la ficha dice «Generándose su primera imagen…» en lugar de
+  volver a ofrecer «Genera su primera imagen», para no invitar a pagar dos veces.
+- Los retratos de un personaje inventado prometen los que de verdad puedes pedir: «de uno a tres
+  retratos a la vez» con el tope de tres trabajos simultáneos, y no «de uno a cuatro». Lo mismo en el
+  alta del personaje. Después de encargar y elegir la cara, el número de retratos ya no salta a otro
+  cualquiera: es el que habías elegido, recortado a lo que cabe ahora en la cola, y si se recorta se
+  dice por qué.
+
+### Actualización
+
+- `bun run test` dentro de `apps/web` aísla cada fichero de pruebas (`--isolate`) como el script de la
+  raíz, y las sustituciones de las pruebas de pantalla se deshacen al terminar cada fichero.
 
 ## [0.52.8] · 2026-10-17
 
