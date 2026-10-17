@@ -2,6 +2,27 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.52.11] · 2026-10-17
+
+### Añadido
+
+- En «Crear», el producto también se elige en el paso **«Describe la escena»**, con el mismo bloque «El producto»
+  del clip. Sus fotos entran como referencia de imagen en el fotograma, igual que las del personaje, así que el
+  producto ya sale en la imagen. En el paso del clip aparece elegido con su acción (por ejemplo, «Sostenerlo») y
+  se puede cambiar. El coste del fotograma no cambia: se cobra por imagen.
+
+### Corregido
+
+- La espera de un clip dice su duración real («Clip de 5 s», «Clip de 10 s»…) en lugar de «Clip de 4 s» siempre.
+- La casilla «Tengo derecho a usar esta marca» solo sale, y solo se exige al generar, cuando el producto se declaró
+  con marca visible. Con un producto sin marca ya no se pide.
+- Tras generar el fotograma, la barra de pasos ya no marca «Coste · Faltan 1» en rojo: lo que falte en una
+  confirmación ya hecha no se cuenta como pendiente.
+- Cuando la traducción al inglés falla en la reserva de pago de KIE con un error del proveedor, el registro de
+  gasto ya no apunta créditos que KIE no cobró: esa llamada vuelve sin resultado y sin cobro, y se apunta 0. El
+  error sigue diciendo quién falló y que esa llamada no se ha cobrado. Si la traducción no contesta a tiempo, se
+  sigue apuntando la estimación, porque no se sabe si se cobró.
+
 ## [0.52.10] · 2026-10-17
 
 ### Corregido

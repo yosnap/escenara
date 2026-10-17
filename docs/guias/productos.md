@@ -2,7 +2,8 @@
 
 Un producto es lo que enseñas delante de la cámara: un bote, una prenda o una app en la pantalla del móvil. Lo
 das de alta una vez en **Productos**, con sus fotos, y a partir de ahí lo eliges en cualquier clip: en
-**«Crear»** y en la **escena de un proyecto**, en el mismo panel donde diriges.
+**«Crear»** y en la **escena de un proyecto**, en el mismo panel donde diriges. En «Crear» también puedes elegirlo
+antes, al describir la escena, para que ya salga en el fotograma.
 
 Lo que Escenara promete con un producto es una cosa concreta: **su etiqueta y su envase no se tocan**. Ni se
 reescribe el texto, ni se cambia el color, ni se inventa un logo. Después de generar, Jev compara el resultado
@@ -55,6 +56,12 @@ En el panel de dirección, bloque **El producto**: eliges cuál y **qué se hace
 entre todas las acciones, aunque salgan repartidas en familias: si eliges una de moda, se desmarca la que tenías
 en «Con el producto en la mano». Encima de la lista, **«Elegida: …»** te dice cuál es en cada momento. Cada acción
 lleva su dibujo y **una frase** de lo que verás.
+
+**En «Crear», desde el fotograma.** En el paso **«Describe la escena»** está el mismo bloque **El producto**. Si lo
+eliges ahí, sus fotos entran como referencia de imagen en el fotograma, igual que las del personaje, y el producto
+ya sale en la imagen (por ejemplo, en la mano con «Sostenerlo»). En el paso **«El clip»** aparece ya elegido, con su
+acción, y puedes cambiarlo. El coste del fotograma no cambia por llevar el producto: se cobra por imagen. Las fotos
+del producto que se envían se eligen en el clip, que es donde dependen del modelo.
 
 - **Con el producto en la mano** (siempre a la vista): sostenerlo, mirarlo, señalarlo, enseñarlo a cámara,
   abrirlo, aplicarlo, o el **producto solo**.
@@ -154,9 +161,10 @@ Todos estos avisos salen **antes** de gastar y se confirman con una casilla; nin
 - **En el producto se ve una marca.** El filtro del proveedor puede rechazarlo; si lo rechaza, no se cobra.
 - **La acción es poco fiable** (las de piel).
 
-Y una casilla que **sí bloquea**: **«Tengo derecho a usar esta marca»**. Aparece solo cuando el envío lleva
-producto y, mientras no la marques, el botón de generar no se activa. Tu declaración queda registrada con su
-fecha en el trabajo.
+Y una casilla que **sí bloquea**: **«Tengo derecho a usar esta marca»**. Aparece solo cuando el envío lleva un
+producto **con marca** (el que tiene marcada «En las fotos se ve una marca») y, mientras no la marques, el botón de
+generar no se activa. Tu declaración queda registrada con su fecha en el trabajo. Si declaraste el producto sin
+marca, la casilla no sale y no se te pide.
 
 ## Borrar un producto
 
