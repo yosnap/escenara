@@ -30,6 +30,12 @@ Configura `DATABASE_URL`, las variables S3 y `BETTER_AUTH_SECRET`, `BETTER_AUTH_
 `S3_ENDPOINT` debe ser accesible por HTTPS desde el navegador, porque firma las URL de reproducción.
 Las claves se guardan únicamente en el entorno privado del panel.
 
+`DATABASE_URL` tiene que ser una conexión directa a PostgreSQL o un pooler en **modo sesión**. Nunca un
+pooler en modo transacción (por ejemplo, PgBouncer con `pool_mode = transaction`). Desde 0.52.12, la
+traducción al inglés usa cerrojos consultivos de sesión para no pagar dos veces el mismo texto. En modo
+transacción, el cerrojo y su liberación podrían ir a sesiones distintas y dejar un texto bloqueado.
+Esos cerrojos usan como máximo 4 conexiones más por proceso web.
+
 1. Comprueba que no hay trabajos activos y realiza `pg_dump -Fc --no-owner --no-acl`.
 2. Restaura en una base nueva e inventaría el bucket. Copia los objetos referenciados por las tablas
    y los archivos adicionales que necesite la aplicación, preservando sus claves y tipos MIME.
