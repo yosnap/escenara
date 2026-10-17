@@ -283,8 +283,8 @@ export async function crearFotograma(
       : null;
 
   /**
-   * **El producto del fotograma** (0.26.0). Sale de la escena, que es donde se elige: el camino rápido de
-   * «Crear» elige el producto junto a la dirección del clip, no aquí. Se resuelve **antes** de la puerta
+   * **El producto del fotograma** (0.26.0). Sale de la escena en un proyecto y, en el camino rápido de «Crear», del
+   * que se elige al describir la escena (el mismo que después sigue en el clip). Se resuelve **antes** de la puerta
    * porque sus avisos —la identidad que no cabe, la marca que el filtro puede rechazar— son de los que hay
    * que dar antes de cobrar nada.
    */
@@ -296,8 +296,9 @@ export async function crearFotograma(
     { ...(peticion.pasoDigital ? { pasoSolicitado: peticion.pasoDigital } : {}) },
     await eleccionDeFotosDelTrabajo(conEscena?.escena.id ?? null, peticion.productoElegido),
   );
-  // Con producto hay una marca en juego, y usarla es una declaración aparte de la de la imagen.
-  if (producto) exigirDerechoDeMarca(peticion.derechoMarca);
+  // Con un producto con marca hay una marca en juego, y usarla es una declaración aparte de la de la imagen. Si se
+  // declaró sin marca no hay nada que autorizar, así que ni se pide ni se exige.
+  if (producto?.marcaVisible) exigirDerechoDeMarca(peticion.derechoMarca);
   // El lugar (la maestra) compite por el mismo cupo, así que se resuelve antes del reparto y con la misma cuenta. La
   // inserción de la captura edita un fotograma ya situado: el lugar cuenta (su declaración) pero su maestra no viaja.
   const conLugar = peticion.edicionDeLugar
@@ -592,14 +593,16 @@ export async function crearFotograma(
     },
     sourceMediaId: origen?.id ?? null,
     sceneId: conEscena?.escena.id ?? null,
-    // El fotograma de una escena hereda su producto. En «Crear» no llega ninguno: allí el producto se elige
-    // junto a la dirección del clip, que es donde se ve lo que se le va a pedir.
+    // El fotograma de una escena hereda su producto; en «Crear» llega el elegido en «Describe la escena», que
+    // entra como referencia de imagen igual que el personaje.
     ...columnasProducto,
     // El lugar y la versión con la que se pidió: es lo que compara Jev y lo que cita el historial.
     ...columnasDelLugar(conLugar?.lugar ?? null),
     // Qué paso del producto digital es este envío, y la declaración de marca con su fecha.
     digitalStep: producto?.pasoDigital ?? "",
-    // Una vista generada de un producto también declara la marca: su casilla de derechos la menciona.
+    // Una vista generada de un producto también declara la marca: su casilla de derechos la menciona. Con un
+    // producto declarado sin marca no hay nada que autorizar: la fecha deja constancia de que el requisito de la
+    // marca estaba cumplido al enviar, y así una versión no se tiene después por generada sin él.
     brandRightsAt: producto || peticion.edicionDeProducto ? new Date() : null,
     characterId: personajeId,
     characterVersionId: conFicha.versionId,
@@ -722,7 +725,8 @@ export async function crearAnimacion(
     undefined,
     await eleccionDeFotosDelTrabajo(partida.escenaId, peticion.productoElegido),
   );
-  if (producto) exigirDerechoDeMarca(peticion.derechoMarca);
+  // Solo si el producto lleva marca: sin marca declarada no hay nada que autorizar.
+  if (producto?.marcaVisible) exigirDerechoDeMarca(peticion.derechoMarca);
   // Un clip parte de **una** imagen: su fotograma aprobado. Este camino no cita ninguna identidad registrada: la
   // escena hablada en modo Omni va por `omni/escena.ts`.
   // El clip hereda el lugar de su fotograma: el sitio ya está dentro de la imagen de partida.
@@ -963,7 +967,8 @@ export async function crearAnimacion(
     // El producto con el que se pidió: el de la escena cuando el clip sale de un proyecto y el elegido en
     // «Crear» cuando no hay escena.
     ...columnasProducto,
-    // El clip no es un paso del producto digital, pero sí lleva la declaración de marca con su fecha.
+    // El clip no es un paso del producto digital, pero sí lleva la declaración de marca con su fecha (o, sin marca
+    // declarada, la constancia de que no había ninguna que autorizar).
     brandRightsAt: producto ? new Date() : null,
     parentJobId: partida.trabajoPadreId,
     characterId: partida.personajeId,

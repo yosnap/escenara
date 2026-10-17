@@ -167,13 +167,17 @@ describe.skipIf(!hayBaseDeDatos)("producto digital en dos pasos y acciones espec
   const subirFoto = async (nombre: string) =>
     (await crearMedio({ id: ana.id, esAdmin: false }, new File([await png()], nombre, { type: "image/png" }))).id;
 
-  async function crearProducto(nombre: string, tipo: "fisico" | "digital"): Promise<ProductoVista> {
+  async function crearProducto(
+    nombre: string,
+    tipo: "fisico" | "digital",
+    marcaVisible = true,
+  ): Promise<ProductoVista> {
     const respuesta = await rutaProductos.POST(
       pedir(ana, "/api/productos", "POST", {
         nombre,
         descripcion: tipo === "digital" ? "App de notas con fondo oscuro." : "Bote blanco con etiqueta negra.",
         tipo,
-        marcaVisible: true,
+        marcaVisible,
       }),
       undefined,
     );
@@ -359,6 +363,21 @@ describe.skipIf(!hayBaseDeDatos)("producto digital en dos pasos y acciones espec
       const trabajo = (await marcada.json()) as TrabajoVista;
       const [fila] = await db().select().from(generationJobs).where(eq(generationJobs.id, trabajo.id)).limit(1);
       expect(fila?.brandRightsAt).not.toBeNull();
+    });
+
+    test("con un producto declarado sin marca no se pide ni se exige", async () => {
+      const producto = await crearProducto(`Sin marca ${randomBytes(3).toString("hex")}`, "fisico", false);
+      await anadirFoto(producto.id, "etiqueta");
+      const partida = await subirFoto("origen-sin-marca.png");
+      const respuesta = await pedirFotograma({
+        medioId: partida,
+        producto: { productoId: producto.id, accion: "sostenerlo" },
+      });
+      // No hay ninguna marca que autorizar: el envío sale sin la casilla.
+      expect(respuesta.status).toBe(201);
+      const trabajo = (await respuesta.json()) as TrabajoVista;
+      const [fila] = await db().select().from(generationJobs).where(eq(generationJobs.id, trabajo.id)).limit(1);
+      expect(fila?.productId).toBe(producto.id);
     });
   });
 

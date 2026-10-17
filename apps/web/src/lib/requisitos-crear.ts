@@ -160,9 +160,15 @@ export interface DatosDeRequisitosDeCrear {
   sinSalidaClip?: readonly string[];
   casillasFotograma: CasillasDeConfirmacion;
   casillasClip: CasillasDeConfirmacion;
-  conProducto: boolean;
+  /** El producto elegido tiene marca declarada: solo entonces se pide la casilla de la marca. */
+  conMarca: boolean;
   fotogramaSuperaUmbral: boolean;
   clipSuperaUmbral: boolean;
+  /**
+   * Queda un fotograma por confirmar: no se ha pedido ninguno o el último se ha parado. Con uno en marcha o ya listo,
+   * lo que falte en su confirmación no se cuenta en la barra: ese gasto ya está hecho.
+   */
+  fotogramaPorConfirmar: boolean;
   /** Hay imagen de la que sale el clip, y no hay un clip ya en marcha: solo entonces existe su confirmación. */
   clipPorConfirmar: boolean;
 }
@@ -192,7 +198,7 @@ export function requisitosDeCrear(d: DatosDeRequisitosDeCrear): RequisitosDeCrea
       ...d.casillasFotograma,
       envio: ENVIO_FOTOGRAMA,
       paso: "coste",
-      conProducto: d.conProducto,
+      conMarca: d.conMarca,
       superaUmbral: d.fotogramaSuperaUmbral,
     },
     d.sinSalidaFotograma,
@@ -204,7 +210,7 @@ export function requisitosDeCrear(d: DatosDeRequisitosDeCrear): RequisitosDeCrea
       ...d.casillasClip,
       envio: ENVIO_CLIP,
       paso: "clip",
-      conProducto: d.conProducto,
+      conMarca: d.conMarca,
       superaUmbral: d.clipSuperaUmbral,
     },
     d.sinSalidaClip,
@@ -215,7 +221,7 @@ export function requisitosDeCrear(d: DatosDeRequisitosDeCrear): RequisitosDeCrea
     clip,
     clipBase,
     pendientes: pendientesPorPaso([
-      ...(d.origen === "fotograma" ? fotograma : []),
+      ...(d.origen === "fotograma" && d.fotogramaPorConfirmar ? fotograma : []),
       ...(d.clipPorConfirmar ? clip : []),
     ]),
   };

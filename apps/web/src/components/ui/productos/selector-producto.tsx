@@ -53,6 +53,7 @@ export function SelectorProducto({
   acciones,
   fotoDeProducto,
   elegirFotos,
+  descripcion = "El producto que sale en el clip y qué hace el personaje con él.",
   deshabilitado,
   onCambio,
 }: {
@@ -70,6 +71,8 @@ export function SelectorProducto({
    * elección que no se guarda engañaría.
    */
   elegirFotos?: CupoDeFotos | null;
+  /** Lo que se dice bajo el título: en el fotograma de «Crear» el producto sale ya en la imagen. */
+  descripcion?: string;
   deshabilitado?: boolean;
   onCambio: (elegido: ProductoElegido) => void;
 }) {
@@ -93,13 +96,7 @@ export function SelectorProducto({
   return (
     <section className="flex flex-col gap-8 rounded-tarjeta border border-borde bg-superficie/60 p-5">
       <DefinicionesPictogramaProducto />
-      <CabeceraGrupo
-        como="h5"
-        icono={Package}
-        titulo="El producto"
-        descripcion="El producto que sale en el clip y qué hace el personaje con él."
-        tono="producto"
-      />
+      <CabeceraGrupo como="h5" icono={Package} titulo="El producto" descripcion={descripcion} tono="producto" />
 
       {error !== "" && <Aviso tono="error">{error}</Aviso>}
 

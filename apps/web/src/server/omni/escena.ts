@@ -398,7 +398,8 @@ export async function producirEscenaHablada(
     identidadRegistradaPerdida: conIdentidad,
     envio: { tipo: "escena-omni", personaje, conHoja: personaje !== null && hojaEnElEnvio(personaje, escena.id) },
   });
-  if (producto) exigirDerechoDeMarca(confirmacion.derechoMarca);
+  // Solo si el producto lleva marca: sin marca declarada no hay nada que autorizar.
+  if (producto?.marcaVisible) exigirDerechoDeMarca(confirmacion.derechoMarca);
   if (conProducto) await completarModelosSugeridos(conProducto.hechos, CAPACIDAD_DE_TIPO.animacion);
 
   /**

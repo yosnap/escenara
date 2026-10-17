@@ -60,6 +60,7 @@ export function PasoClip({
   direccion,
   producto,
   onProducto,
+  conMarca,
   catalogo,
   plantilla,
   previa,
@@ -107,9 +108,11 @@ export function PasoClip({
   dialogo: string;
   opcionesDireccion: OpcionesDeDireccion | null;
   direccion: DireccionElegidaConAcento;
-  /** El producto del clip y qué se hace con él. Se elige en el mismo panel que la dirección. */
+  /** El producto y qué se hace con él: el mismo del fotograma, si se eligió al describir la escena. Aquí va con la dirección. */
   producto: ProductoElegido;
   onProducto: (elegido: ProductoElegido) => void;
+  /** El producto elegido tiene marca declarada: se pide la casilla de la marca. */
+  conMarca: boolean;
   catalogo: CatalogoParaCrear;
   plantilla: EstadoPlantilla;
   previa: Previsualizacion;
@@ -341,7 +344,7 @@ export function PasoClip({
               marcar={marcar}
               avisoEnBloque
               onIntento={onIrARequisito}
-              conProducto={producto.productoId !== ""}
+              conMarca={conMarca}
               enviando={enviando}
               onGenerar={onGenerar}
             />

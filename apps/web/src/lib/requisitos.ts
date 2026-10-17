@@ -41,7 +41,8 @@ export interface DatosConfirmacion {
   envio: string;
   /** Paso donde está el panel de confirmación. */
   paso: string;
-  conProducto: boolean;
+  /** El envío lleva un producto **con marca declarada**: solo entonces se pide la casilla de la marca. */
+  conMarca: boolean;
   superaUmbral: boolean;
   derechos: boolean;
   derechoMarca: boolean;
@@ -53,7 +54,7 @@ export function requisitosDeConfirmacion(d: DatosConfirmacion): Requisito[] {
   const de = (campo: string, texto: string): Requisito => ({ id: idRequisito(d.envio, campo), paso: d.paso, texto });
   return [
     ...(d.derechos ? [] : [de("derechos", TEXTO_FALTA_DERECHOS)]),
-    ...(!d.conProducto || d.derechoMarca ? [] : [de("marca", TEXTO_FALTA_MARCA)]),
+    ...(!d.conMarca || d.derechoMarca ? [] : [de("marca", TEXTO_FALTA_MARCA)]),
     ...(!d.superaUmbral || d.avisoAceptado ? [] : [de("aviso-gasto", TEXTO_FALTA_AVISO_GASTO)]),
   ];
 }

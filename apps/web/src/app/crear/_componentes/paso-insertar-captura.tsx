@@ -95,7 +95,8 @@ export function PasoInsertarCaptura({
             bloqueos={[]}
             envio="insercion"
             paso="fotograma"
-            conProducto
+            // La ficha ya está cargada: la casilla de la marca solo sale si se declaró que se ve una.
+            conMarca={producto.marcaVisible}
             enviando={enviando}
             onGenerar={onGenerar}
           />
