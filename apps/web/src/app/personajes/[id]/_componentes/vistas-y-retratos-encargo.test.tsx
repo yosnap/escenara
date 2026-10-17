@@ -221,7 +221,8 @@ test("los retratos se limitan a los que caben en la cola, antes de confirmar nad
   await pulsar("Ver lo que cuesta generar 4 retratos");
   expect(botones()).toContain("Generar 3 retratos");
   expect(botones()).not.toContain("Generar 4 retratos");
-  expect(ventana.document.body.textContent).toContain("Ahora puedes encargar como máximo 3 retratos");
+  // El tope de la instalación (tres a la vez) se dice donde se promete cuántos se pueden pedir.
+  expect(ventana.document.body.textContent).toContain("de uno a tres retratos a la vez");
 });
 
 const marcar = async (etiqueta: string) => {
@@ -276,7 +277,7 @@ test("el número de retratos parte de los huecos libres de la cola, también al 
   expect(ventana.document.body.textContent).toContain("3 trabajos en marcha y esta instalación permite 3");
 });
 
-test("tras encargar, el número elegido se queda en lo que cabe y no vuelve a cuatro", async () => {
+test("tras encargar, el número se recorta a lo que cabe, dice por qué y no vuelve a cuatro", async () => {
   await act(async () =>
     raiz.render(<PanelRetratos personaje={personaje} medios={[]} huecosIniciales={null} onPersonaje={() => {}} />),
   );
@@ -286,8 +287,45 @@ test("tras encargar, el número elegido se queda en lo que cabe y no vuelve a cu
   // Buscar los terminados vuelve a leer la cola: dos han acabado y caben dos más, no cuatro.
   huecos = { maximo: 3, enMarcha: 1, libres: 2 };
   await pulsar("Buscar retratos terminados");
-  expect(botones()).toContain("Ver lo que cuesta generar 1 retrato");
+  expect(botones()).toContain("Ver lo que cuesta generar 2 retratos");
   expect(botones()).not.toContain("Ver lo que cuesta generar 4 retratos");
+  expect(ventana.document.body.textContent).toContain("Ahora puedes encargar como máximo 2 retratos");
+});
+
+test("la pestaña promete los retratos que el selector deja pedir, no cuatro", async () => {
+  await act(async () =>
+    raiz.render(
+      <PanelRetratos
+        personaje={personaje}
+        medios={[]}
+        huecosIniciales={{ maximo: 3, enMarcha: 0, libres: 3 }}
+        onPersonaje={() => {}}
+      />,
+    ),
+  );
+  const texto = ventana.document.body.textContent ?? "";
+  expect(texto).toContain("de uno a tres retratos a la vez");
+  expect(texto).not.toContain("cuatro");
+  expect(botones()).toContain("Ver lo que cuesta generar 3 retratos");
+  // Con la cola libre no hay recorte que explicar.
+  expect(texto).not.toContain("Ahora puedes encargar como máximo");
+});
+
+test("tras encargar tres y elegir la cara, el selector vuelve a los tres que caben, no a otro número", async () => {
+  const pintar = (huecosDeLaPagina: HuecosDeCola) =>
+    act(async () =>
+      raiz.render(
+        <PanelRetratos personaje={personaje} medios={[]} huecosIniciales={huecosDeLaPagina} onPersonaje={() => {}} />,
+      ),
+    );
+  await pintar({ maximo: 3, enMarcha: 0, libres: 3 });
+  await pulsar("Ver lo que cuesta generar 3 retratos");
+  await marcar("Puedo usar lo que se genere");
+  await pulsar("Generar 3 retratos");
+  expect(ventana.document.body.textContent).toContain("Ahora no cabe ningún retrato más");
+  // Elegir la cara refresca la página: llegan los huecos de ahora, con los tres retratos ya terminados.
+  await pintar({ maximo: 3, enMarcha: 0, libres: 3 });
+  expect(botones()).toContain("Ver lo que cuesta generar 3 retratos");
 });
 
 test("si el trabajo de una vista en curso falla, la vista se vuelve a ofrecer", async () => {

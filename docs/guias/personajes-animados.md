@@ -11,7 +11,7 @@ Un personaje animado es **inventado**: no representa a una persona real. Puedes 
    referencias *descriptivas*. Evita nombres de personas reales, obras o estudios concretos.
 3. Guarda el personaje. El texto del estilo activo se conserva con la versión de su ficha aunque quien
    administra edite el preset después.
-4. Genera entre **uno y cuatro retratos candidatos** tras revisar el coste por imagen y el total. Elige el que mejor establezca
+4. Genera **varios retratos candidatos** (hasta cuatro, sin pasar de los trabajos a la vez de tu instalación) tras revisar el coste por imagen y el total. Elige el que mejor establezca
    cara, silueta y colores: será el **retrato maestro**. Los demás siguen en tu biblioteca.
 5. Completa al menos **dos vistas generadas** del mismo personaje y aprueba las que vayas a usar. El maestro y
    esas dos vistas bastan para empezar una escena; las otras vistas siguen recomendadas y el aviso se puede
