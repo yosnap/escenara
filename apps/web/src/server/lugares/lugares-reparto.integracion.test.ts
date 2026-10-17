@@ -219,10 +219,13 @@ describe.skipIf(!hayBaseDeDatos)("con lugar, el aviso y el envío cuentan igual 
     return (await respuesta.json()) as {
       comprobaciones: { regla: string; confirmable?: boolean }[];
       referencias?: Cifras & { cabenTodas: boolean };
+      fotosQueViajan?: { producto: { id: string }[]; lugar: { id: string }[] };
     };
   }
 
-  async function enviar(caso: Caso, modelo: string, avisos: string[]): Promise<Cifras | { error: string }> {
+  type Enviado = Cifras & { fotos: { producto: string[]; lugar: string[] } };
+
+  async function enviar(caso: Caso, modelo: string, avisos: string[]): Promise<Enviado | { error: string }> {
     const estimacion = await estimar(ana.id, caso.tipo, buscar, modelo);
     const respuesta = await rutaTrabajos.POST(
       pedir(ana, "/api/generacion/trabajos", "POST", {
@@ -257,6 +260,7 @@ describe.skipIf(!hayBaseDeDatos)("con lugar, el aviso y el envío cuentan igual 
       personaje: entrada.referencias?.length ?? 0,
       producto: entrada.referenciasProducto?.length ?? 0,
       lugar: entrada.referenciasLugar?.length ?? 0,
+      fotos: { producto: entrada.referenciasProducto ?? [], lugar: entrada.referenciasLugar ?? [] },
     };
   }
 
@@ -279,7 +283,7 @@ describe.skipIf(!hayBaseDeDatos)("con lugar, el aviso y el envío cuentan igual 
           expect(dicho?.producto).toBe(0);
           continue;
         }
-        const enviado = resultado;
+        const { fotos: fotosEnviadas, ...enviado } = resultado;
         if (!dicho) {
           // Sin reparto que decir, no viaja nada del producto ni del lugar.
           expect({ caso: caso.nombre, producto: enviado.producto, lugar: enviado.lugar }).toEqual({
@@ -295,6 +299,17 @@ describe.skipIf(!hayBaseDeDatos)("con lugar, el aviso y el envío cuentan igual 
           producto: dicho.producto,
           lugar: dicho.lugar,
         });
+        // Las fotos que se enseñan antes de pagar son las que se guardan con el envío, y solo en el fotograma.
+        const enseñadas = consulta.fotosQueViajan;
+        if (caso.tipo === "animacion" || (enviado.producto === 0 && enviado.lugar === 0)) {
+          expect(enseñadas).toBeUndefined();
+        } else {
+          expect({
+            caso: caso.nombre,
+            producto: enseñadas?.producto.map((m) => m.id),
+            lugar: enseñadas?.lugar.map((m) => m.id),
+          }).toEqual({ caso: caso.nombre, ...fotosEnviadas });
+        }
         // El aviso de la maestra que no cabe sale exactamente cuando la maestra se queda fuera de un fotograma.
         const maestraCompite = caso.tipo === "fotograma" && caso.consulta.paso !== "insertar_captura";
         expect(consulta.comprobaciones.some((c) => c.regla === "lugar-maestra-no-cabe")).toBe(
@@ -315,6 +330,10 @@ describe.skipIf(!hayBaseDeDatos)("con lugar, el aviso y el envío cuentan igual 
       modelo,
       consulta.comprobaciones.filter((c) => c.confirmable).map((c) => c.regla),
     );
-    expect(enviado).toEqual({ personaje: 1, producto: 3, lugar: 0 });
+    expect(enviado).toMatchObject({ personaje: 1, producto: 3, lugar: 0 });
+    // La captura que se inserta es la que se enseñó antes de pagar.
+    expect(consulta.fotosQueViajan?.producto.map((m) => m.id)).toEqual(
+      "fotos" in enviado ? enviado.fotos.producto : [],
+    );
   });
 });

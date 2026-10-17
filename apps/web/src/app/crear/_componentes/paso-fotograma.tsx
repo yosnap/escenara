@@ -10,6 +10,7 @@ import type { ContextoAplicado, PersonajeElegible } from "@/lib/personajes";
 import type { Requisito } from "@/lib/requisitos";
 import { ENVIO_FOTOGRAMA } from "@/lib/requisitos-crear";
 import { BloqueConfirmacion } from "./bloque-confirmacion";
+import { PanelFotosQueAcompanan } from "./panel-fotos-que-acompanan";
 import type { ConfirmacionCoste } from "./panel-generar";
 import type { ReferenciaEnPantalla } from "./referencias-en-pantalla";
 
@@ -85,6 +86,7 @@ export function PasoCosteFotograma({
       {personaje && contexto && contexto.personajeId === personaje.id && (
         <PanelContextoPersonaje contexto={contexto} cargando={pidiendoContexto} />
       )}
+      <PanelFotosQueAcompanan evaluacion={controles.evaluacion} temporales={referenciasTemporales.length} />
       {referenciasTemporales.length > 0 && <PanelReferenciasTemporales referencias={referenciasTemporales} revision />}
       {referenciasTemporales.length > 0 && (
         <Boton variante="secundario" cargando={comprobandoReferencias} onClick={onComprobarReferencias}>
