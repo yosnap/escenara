@@ -35,7 +35,17 @@ export interface RespuestaTexto {
 interface CuerpoRespuesta {
   output?: unknown;
   credits_consumed?: unknown;
+  /** Sobre de error propio de KIE (`{ code, msg }`), que a veces llega con un 200 en HTTP. */
+  code?: unknown;
 }
+
+/**
+ * Estados de error del servidor de KIE que, en este endpoint síncrono, prueban que no hubo cobro: cobra con la
+ * respuesta completa (`credits_consumed`), y estos vuelven sin resultado. Comprobado con el saldo real de KIE el
+ * 2026-10-17 (un 5xx de `gpt-5-6-sol` no descontó nada). **Solo estos tres**: un 504 o un 408 son esperas agotadas en
+ * las que la respuesta pudo completarse y cobrarse sin llegar, igual que un tiempo agotado propio o una red caída.
+ */
+export const ESTADOS_SIN_COBRO: readonly number[] = [500, 502, 503];
 
 /**
  * Pide un texto al modelo. `instrucciones` las compone **siempre el servidor**; `entrada` es el contenido del
@@ -67,15 +77,17 @@ export async function generarTextoKie(
     throw new ErrorKie(codigoDeFallo(error));
   }
   const porEstado = codigoDeEstado(respuesta.status);
-  // Este endpoint es síncrono y cobra con la respuesta completa (`credits_consumed`): un estado HTTP de error
-  // vuelve sin resultado y sin cobro. Comprobado con el saldo real de KIE el 2026-10-17: un 5xx de `gpt-5-6-sol`
-  // no descontó nada. Un tiempo agotado o una red caída siguen sin probar nada: ahí la respuesta no llegó.
-  if (porEstado) throw new ErrorKie(porEstado, true);
+  if (porEstado) throw new ErrorKie(porEstado, ESTADOS_SIN_COBRO.includes(respuesta.status));
   let cuerpo: CuerpoRespuesta;
   try {
     cuerpo = (await respuesta.json()) as CuerpoRespuesta;
   } catch {
     throw new ErrorKie("respuesta-inesperada");
+  }
+  // Error propio de KIE dentro del cuerpo, sin `output`: se trata como el estado HTTP que dice.
+  if (cuerpo.output === undefined && typeof cuerpo.code === "number" && cuerpo.code !== 200) {
+    const porCodigo = codigoDeEstado(cuerpo.code) ?? "error-proveedor";
+    throw new ErrorKie(porCodigo, ESTADOS_SIN_COBRO.includes(cuerpo.code));
   }
   // Un `output` que no se entiende **no descarta los créditos**: si el proveedor informa lo que ha cobrado, eso
   // es lo que se apunta. Quien llama trata el texto vacío como respuesta inservible y cierra el gasto con el dato

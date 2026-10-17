@@ -235,6 +235,21 @@ describe.skipIf(!hayBaseDeDatos)("traducción de los prompts al inglés", () => 
     falloDeTexto = null;
   });
 
+  test("un 504 de la traducción no prueba que no se cobrara: se conserva la estimación", async () => {
+    falloDeTexto = 504;
+    const fallo = await generar("una escena cuya traducción se queda esperando en el proveedor").catch(
+      (e: unknown) => e,
+    );
+    expect(fallo).toBeInstanceOf(ErrorGeneracion);
+    const ultima = await ultimaEjecucion();
+    expect(ultima?.state).toBe("fallido");
+    expect(ultima?.consumedCredits).toBeNull();
+    const apuntes = (await apuntesDeTraduccion()).filter((a) => a.assistantRunId === ultima?.id);
+    expect(apuntes.find((a) => a.entryType === "consumo")?.credits).toBe(CREDITOS_TEXTO);
+    expect((fallo as Error).message).toContain("No se sabe si te ha cobrado");
+    falloDeTexto = null;
+  });
+
   test("si la traducción no contesta a tiempo, se conserva la estimación: no se sabe si se cobró", async () => {
     falloDeTexto = "tiempo";
     const fallo = await generar("una escena cuya traducción no contesta").catch((e: unknown) => e);
