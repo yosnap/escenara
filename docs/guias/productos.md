@@ -15,7 +15,18 @@ En **Productos**, con el botón **«Nuevo producto»**, pones el nombre, una fra
 - **Físico**: algo que se coge con la mano.
 - **Digital**: una app o un programa que se ve en una pantalla.
 
-Después le añades fotos de tu biblioteca y, antes de añadirlas, le dices a cada una **para qué sirve**. Cada foto
+Al pulsar «Crear producto» llegas a su ficha con el paso **«Su primera imagen»** delante, con dos opciones:
+
+- **«Genera su primera imagen»**: abre el diálogo de la imagen generada con la descripción que acabas de guardar a la
+  vista; eliges la vista y ves **el coste antes de confirmar** (ver más abajo). Si la descripción es demasiado corta
+  para generar, el propio paso lo dice y te deja completarla ahí con **«Guardar y generar»**.
+- **«Sube tus fotos»**: abre tu biblioteca, donde también puedes subir archivos nuevos, y después te pide el papel de
+  cada foto.
+
+**«Lo haré después»** te deja en la ficha. Mientras el producto no tenga ninguna foto, la sección de fotos explica esas
+mismas dos opciones y, si todavía no se puede generar, dice por qué dentro de la propia opción.
+
+Al añadir fotos de tu biblioteca, antes de que entren, le dices a cada una **para qué sirve**. Cada foto
 parte de un papel neutro (**«El envase entero»** en un producto físico, **«Captura de pantalla»** en uno digital), nunca
 de la frontal con la etiqueta: márcala tú solo si en la foto se lee la etiqueta. El papel se cambia luego en la lista.
 

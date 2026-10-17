@@ -27,6 +27,17 @@ colores, muebles, la luz) y su **acabado**:
 
 ![Tus lugares con un lugar de demostración todavía sin fotos](../assets/capturas/0.49.0-lugares-claro.webp)
 
+Al pulsar «Crear lugar» llegas a su ficha con el paso **«Su primera imagen»** delante, con dos opciones:
+
+- **«Genera su primera imagen»**: abre el diálogo de la imagen generada con la descripción que acabas de guardar a la
+  vista y **el coste antes de confirmar** (ver más abajo). Si la descripción es demasiado corta para generar, el propio
+  paso lo dice y te deja completarla ahí con **«Guardar y generar»**.
+- **«Sube tus fotos»**: abre tu biblioteca, donde también puedes subir archivos nuevos. La primera que añades es la
+  maestra.
+
+**«Lo haré después»** te deja en la ficha. Mientras el lugar no tenga ninguna imagen, la sección de fotos explica esas
+mismas dos opciones y, si todavía no se puede generar, dice por qué dentro de la propia opción.
+
 Recién creado, el lugar no se puede usar todavía: su ficha dice arriba lo que le falta («Marca una foto como maestra.
 Declara los derechos de las fotos»).
 
