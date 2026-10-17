@@ -29,6 +29,7 @@ import {
   DESCRIPCION_MINIMA_PARA_GENERAR,
   DESCRIPCION_PRODUCTO_MAXIMA,
   DESCRIPCION_TIPO_PRODUCTO,
+  MAXIMO_REFERENCIAS_PRODUCTO,
   NOMBRE_PAPEL_REFERENCIA,
   NOMBRE_PRODUCTO_MAXIMO,
   NOMBRE_TIPO_PRODUCTO,
@@ -76,6 +77,7 @@ export function FichaProducto({ inicial }: { inicial: ProductoVista }) {
   const [ocupado, setOcupado] = useState(false);
 
   const [porAnadir, setPorAnadir] = useState<Medio[]>([]);
+  const [errorAlAnadir, setErrorAlAnadir] = useState("");
   const [generando, setGenerando] = useState(false);
   // Cada apertura es un encargo nuevo: el diálogo se rehace y no arrastra casillas ni la clave del anterior.
   const [apertura, setApertura] = useState(0);
@@ -88,11 +90,13 @@ export function FichaProducto({ inicial }: { inicial: ProductoVista }) {
   // Se genera desde la descripción **guardada**: con cambios sin guardar, el resultado no sería lo que se lee.
   const sinGuardar = descripcion !== producto.descripcion || tipo !== producto.tipo;
   const motivoSinGenerar =
-    producto.descripcion.trim().length < DESCRIPCION_MINIMA_PARA_GENERAR
-      ? "Para generar, describe el producto (qué es, forma, colores, etiqueta) y guarda los cambios."
-      : sinGuardar
-        ? "Guarda los cambios antes de generar: se genera desde la descripción guardada."
-        : null;
+    producto.fotos.length >= MAXIMO_REFERENCIAS_PRODUCTO
+      ? `Este producto ya tiene ${MAXIMO_REFERENCIAS_PRODUCTO} fotos, el máximo: quita alguna para generar otra.`
+      : producto.descripcion.trim().length < DESCRIPCION_MINIMA_PARA_GENERAR
+        ? "Para generar, describe el producto (qué es, forma, colores, etiqueta) y guarda los cambios."
+        : sinGuardar
+          ? "Guarda los cambios antes de generar: se genera desde la descripción guardada."
+          : null;
 
   const guardar = async () => {
     setGuardando(true);
@@ -280,9 +284,22 @@ export function FichaProducto({ inicial }: { inicial: ProductoVista }) {
         medios={porAnadir}
         tipo={producto.tipo}
         ocupado={ocupado}
-        onCancelar={() => setPorAnadir([])}
+        error={errorAlAnadir}
+        onCancelar={() => {
+          setPorAnadir([]);
+          setErrorAlAnadir("");
+        }}
         onAnadir={async (fotos) => {
-          await aplicar(anadirFotosAProducto(producto.id, fotos));
+          // Si el alta falla, el diálogo sigue abierto con la causa: no hay que volver a elegir las fotos.
+          setOcupado(true);
+          setErrorAlAnadir("");
+          const resultado = await anadirFotosAProducto(producto.id, fotos);
+          setOcupado(false);
+          if (!resultado.ok) {
+            setErrorAlAnadir(resultado.error);
+            return;
+          }
+          setProducto(resultado.datos);
           setPorAnadir([]);
         }}
       />

@@ -33,6 +33,8 @@ const { estimar, olvidarSaldos } = await import("../generacion/estimacion");
 const { subirFotoDePrueba } = await import("../lugares/lugar-de-prueba");
 const { adjuntarAlProducto } = await import("./generacion");
 const { anadirFotos, crearProducto } = await import("./servicio");
+const { borrarProducto } = await import("./borrado");
+const { media } = await import("../db/esquema");
 const { obtenerProducto } = await import("./consulta");
 
 type Sesion = Awaited<ReturnType<typeof crearSesionDePrueba>>;
@@ -211,5 +213,70 @@ describe.skipIf(!hayBaseDeDatos)("vistas generadas de un producto", () => {
     expect(lleno.status).toBe(409);
     expect(((await lleno.json()) as { error: string }).error).toContain("No se ha cobrado nada");
     expect(await trabajosDeAna()).toHaveLength(0);
+  });
+  /** Producto con `n` fotos de la biblioteca ya añadidas. */
+  const productoConFotos = async (n: number) => {
+    const producto = await nuevoProducto();
+    const fotos = await Promise.all(Array.from({ length: n }, (_, i) => subirFotoDePrueba(actor, `foto-${i}.png`)));
+    await anadirFotos(
+      actor,
+      producto.id,
+      fotos.map((medioId) => ({ medioId, papel: "envase" as const })),
+    );
+    return producto;
+  };
+
+  test("las vistas que se están generando cuentan contra el tope: con 7 fotos, la segunda no se cobra", async () => {
+    const producto = await productoConFotos(7);
+    const primera = await encargar(ana, producto.id, { papel: "etiqueta" });
+    expect(primera.status).toBe(201);
+    const apuntesTrasLaPrimera = (await db().select().from(usageLedger).where(eq(usageLedger.userId, ana.id))).length;
+    const segunda = await encargar(ana, producto.id, { papel: "mecanismo" });
+    expect(segunda.status).toBe(409);
+    const error = ((await segunda.json()) as { error: string }).error;
+    expect(error).toContain("ya se está generando 1 vista");
+    expect(error).toContain("No se ha cobrado nada");
+    expect(await trabajosDeAna()).toHaveLength(1);
+    expect(await db().select().from(usageLedger).where(eq(usageLedger.userId, ana.id))).toHaveLength(
+      apuntesTrasLaPrimera,
+    );
+  });
+
+  test("la vista guarda la declaración de la marca con su fecha, porque su casilla la menciona", async () => {
+    const producto = await nuevoProducto();
+    expect((await encargar(ana, producto.id, { papel: "etiqueta" })).status).toBe(201);
+    const [trabajo] = await trabajosDeAna();
+    expect(trabajo?.brandRightsAt).toBeInstanceOf(Date);
+  });
+
+  test("si el producto se llena mientras se genera, la imagen se queda en la biblioteca y el trabajo lo dice", async () => {
+    const producto = await productoConFotos(7);
+    expect((await encargar(ana, producto.id, { papel: "suelto" })).status).toBe(201);
+    const [trabajo] = await trabajosDeAna();
+    if (!trabajo) throw new Error("Falta el trabajo.");
+    const otra = await subirFotoDePrueba(actor, "octava.png");
+    await anadirFotos(actor, producto.id, [{ medioId: otra, papel: "envase" }]);
+    const generada = await subirFotoDePrueba(actor, "vista-que-no-cabe.png");
+    await adjuntarAlProducto(trabajo, generada);
+    const despues = await obtenerProducto(actor, producto.id);
+    expect(despues.fotos.map((f) => f.medio.id)).not.toContain(generada);
+    const [anotado] = await trabajosDeAna();
+    expect(anotado?.errorMessage).toContain("está en tu biblioteca");
+    const [medio] = await db().select().from(media).where(eq(media.id, generada));
+    expect(medio?.deletedAt).toBeNull();
+  });
+
+  test("si el producto se borra mientras se genera, el cierre no falla y el trabajo lo dice", async () => {
+    const producto = await nuevoProducto();
+    expect((await encargar(ana, producto.id, { papel: "envase" })).status).toBe(201);
+    const [trabajo] = await trabajosDeAna();
+    if (!trabajo) throw new Error("Falta el trabajo.");
+    await borrarProducto(actor, producto.id);
+    const generada = await subirFotoDePrueba(actor, "vista-sin-producto.png");
+    await adjuntarAlProducto(trabajo, generada);
+    const [anotado] = await trabajosDeAna();
+    expect(anotado?.errorMessage).toContain("El producto se borró mientras se generaba");
+    const [medio] = await db().select().from(media).where(eq(media.id, generada));
+    expect(medio?.deletedAt).toBeNull();
   });
 });

@@ -599,7 +599,8 @@ export async function crearFotograma(
     ...columnasDelLugar(conLugar?.lugar ?? null),
     // Qué paso del producto digital es este envío, y la declaración de marca con su fecha.
     digitalStep: producto?.pasoDigital ?? "",
-    brandRightsAt: producto ? new Date() : null,
+    // Una vista generada de un producto también declara la marca: su casilla de derechos la menciona.
+    brandRightsAt: producto || peticion.edicionDeProducto ? new Date() : null,
     characterId: personajeId,
     characterVersionId: conFicha.versionId,
     ...columnasDePlantilla(base.compuesto),

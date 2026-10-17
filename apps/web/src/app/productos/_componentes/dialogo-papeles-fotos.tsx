@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Alerta } from "@/components/ui/alerta";
 import { Boton } from "@/components/ui/button";
 import { MiniaturaMedio } from "@/components/ui/media/miniatura-medio";
 import { Dialogo } from "@/components/ui/overlay";
@@ -24,6 +25,7 @@ export function DialogoPapelesFotos({
   medios,
   tipo,
   ocupado,
+  error = "",
   onCancelar,
   onAnadir,
 }: {
@@ -31,6 +33,8 @@ export function DialogoPapelesFotos({
   medios: readonly Medio[];
   tipo: TipoProducto;
   ocupado: boolean;
+  /** Causa por la que no se han podido añadir: el diálogo sigue abierto con las fotos elegidas. */
+  error?: string;
   onCancelar: () => void;
   onAnadir: (fotos: { medioId: string; papel: PapelReferencia }[]) => void;
 }) {
@@ -64,7 +68,42 @@ export function DialogoPapelesFotos({
         </>
       }
     >
-      <ul className="flex flex-col gap-3">
+      <CuerpoPapelesFotos
+        medios={medios}
+        opciones={opciones}
+        papelDe={papelDe}
+        ocupado={ocupado}
+        error={error}
+        onCambio={(medioId, papel) => setPapeles((antes) => ({ ...antes, [medioId]: papel }))}
+      />
+    </Dialogo>
+  );
+}
+
+/** Lo de dentro del diálogo: la causa si falló el alta y cada foto con su papel. Separado para poder probarlo. */
+export function CuerpoPapelesFotos({
+  medios,
+  opciones,
+  papelDe,
+  ocupado,
+  error,
+  onCambio,
+}: {
+  medios: readonly Medio[];
+  opciones: { value: PapelReferencia; label: string; descripcion: string }[];
+  papelDe: (medioId: string) => PapelReferencia;
+  ocupado: boolean;
+  error: string;
+  onCambio: (medioId: string, papel: PapelReferencia) => void;
+}) {
+  return (
+    <>
+      {error !== "" && (
+        <Alerta tipo="error" compacta>
+          {error}
+        </Alerta>
+      )}
+      <ul className="mt-3 flex flex-col gap-3">
         {medios.map((medio) => (
           <li key={medio.id} className="flex items-center gap-3 rounded-tarjeta border border-borde bg-elevada/40 p-3">
             <span className="block size-16 shrink-0 overflow-hidden rounded-control border border-borde">
@@ -76,11 +115,11 @@ export function DialogoPapelesFotos({
               valor={papelDe(medio.id)}
               deshabilitado={ocupado}
               opciones={opciones}
-              onCambio={(v) => v && setPapeles((antes) => ({ ...antes, [medio.id]: v as PapelReferencia }))}
+              onCambio={(v) => v && onCambio(medio.id, v as PapelReferencia)}
             />
           </li>
         ))}
       </ul>
-    </Dialogo>
+    </>
   );
 }

@@ -1,5 +1,6 @@
-import { count, eq } from "drizzle-orm";
+import { and, count, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { TrabajoVista } from "@/lib/generacion";
+import { ESTADOS_ACTIVOS } from "@/lib/generacion";
 import {
   DESCRIPCION_MINIMA_PARA_GENERAR,
   esPapelReferencia,
@@ -10,7 +11,7 @@ import {
   type PapelReferencia,
 } from "@/lib/productos";
 import { db } from "../db/cliente";
-import type { FilaTrabajo } from "../db/esquema";
+import { type FilaTrabajo, generationJobs } from "../db/esquema";
 import { productReferences } from "../db/esquema-productos";
 import { claveDerivada, exigirClaveIdempotencia } from "../generacion/comprobaciones";
 import { type ConfirmacionEncargo, confirmacionDelFotograma } from "../generacion/encargo-de-imagen";
@@ -49,6 +50,34 @@ const ENCUADRE: Record<PapelReferencia, string> = {
 export const promptDeVista = (papel: PapelReferencia, descripcion: string): string =>
   `${ENCUADRE[papel]}: ${descripcion.trim()} Sin personas ni manos, sin texto añadido ni marcas de agua, luz suave.`;
 
+/**
+ * Fotos del producto **más las vistas que se están generando para él**. Las dos cuentan contra el tope: si solo se
+ * contaran las fotos, con 7 se podrían pagar dos vistas a la vez y la segunda no cabría al terminar.
+ */
+export async function fotosYVistasEnMarcha(
+  usuarioId: string,
+  productoId: string,
+): Promise<{ fotos: number; enMarcha: number; total: number }> {
+  const [fotos] = await db()
+    .select({ total: count() })
+    .from(productReferences)
+    .where(eq(productReferences.productId, productoId));
+  const [vivos] = await db()
+    .select({ total: count() })
+    .from(generationJobs)
+    .where(
+      and(
+        eq(generationJobs.userId, usuarioId),
+        isNull(generationJobs.resultMediaId),
+        inArray(generationJobs.state, [...ESTADOS_ACTIVOS]),
+        sql`${generationJobs.input}->'edicionDeProducto'->>'productoId' = ${productoId}`,
+      ),
+    );
+  const n = fotos?.total ?? 0;
+  const m = vivos?.total ?? 0;
+  return { fotos: n, enMarcha: m, total: n + m };
+}
+
 /** Encarga una vista generada del producto, con su coste confirmado. */
 export async function generarVistaDeProducto(
   actor: Actor,
@@ -70,14 +99,13 @@ export async function generarVistaDeProducto(
       "Describe el producto en la ficha (qué es, forma, colores, etiqueta) y guárdalo antes de generar una imagen. No se ha cobrado nada.",
     );
   }
-  const [fila] = await db()
-    .select({ total: count() })
-    .from(productReferences)
-    .where(eq(productReferences.productId, producto.id));
-  if ((fila?.total ?? 0) >= MAXIMO_REFERENCIAS_PRODUCTO) {
+  const ocupadas = await fotosYVistasEnMarcha(actor.id, producto.id);
+  if (ocupadas.total >= MAXIMO_REFERENCIAS_PRODUCTO) {
     throw new ErrorProducto(
       409,
-      `Un producto admite ${MAXIMO_REFERENCIAS_PRODUCTO} fotos como mucho y este ya las tiene. Quita alguna antes de generar otra. No se ha cobrado nada.`,
+      ocupadas.enMarcha === 0
+        ? `Un producto admite ${MAXIMO_REFERENCIAS_PRODUCTO} fotos como mucho y este ya las tiene. Quita alguna antes de generar otra. No se ha cobrado nada.`
+        : `Un producto admite ${MAXIMO_REFERENCIAS_PRODUCTO} fotos como mucho: tiene ${ocupadas.fotos} y ${ocupadas.enMarcha === 1 ? "ya se está generando 1 vista" : `ya se están generando ${ocupadas.enMarcha} vistas`}. Espera a que terminen o quita alguna foto. No se ha cobrado nada.`,
     );
   }
   const envio = await crearFotograma(
@@ -102,35 +130,44 @@ export async function generarVistaDeProducto(
 
 /**
  * Al cerrarse un trabajo de vista de producto, su resultado entra en el producto con el papel pedido, marcado como
- * generado. Si el producto ya no existe o se ha llenado mientras se generaba, la imagen se queda en la biblioteca.
+ * generado. Si el producto ya no existe o se ha llenado mientras se generaba, la imagen se queda en la biblioteca y
+ * **el trabajo lo dice** (su mensaje, que se ve junto al resultado): se ha pagado y no puede desaparecer sin aviso.
  */
 export async function adjuntarAlProducto(fila: FilaTrabajo, medioId: string): Promise<void> {
   const edicion = (fila.input as { edicionDeProducto?: EdicionDeProducto }).edicionDeProducto;
   if (!edicion?.productoId || !esPapelReferencia(edicion.papel)) return;
+  let motivo: string;
   try {
     const producto = await filaPropia({ id: fila.userId, esAdmin: false }, edicion.productoId);
     const [cuenta] = await db()
       .select({ total: count() })
       .from(productReferences)
       .where(eq(productReferences.productId, producto.id));
-    if ((cuenta?.total ?? 0) >= MAXIMO_REFERENCIAS_PRODUCTO) {
-      console.warn(
-        `[productos] «${producto.name}» se llenó mientras se generaba: la vista ${medioId} queda en la biblioteca.`,
-      );
+    if ((cuenta?.total ?? 0) < MAXIMO_REFERENCIAS_PRODUCTO) {
+      await db()
+        .insert(productReferences)
+        .values({
+          productId: producto.id,
+          mediaId: medioId,
+          kind: edicion.papel,
+          generated: true,
+          sortOrder: await siguienteOrden(producto.id),
+        })
+        .onConflictDoNothing({ target: [productReferences.productId, productReferences.mediaId] });
       return;
     }
-    await db()
-      .insert(productReferences)
-      .values({
-        productId: producto.id,
-        mediaId: medioId,
-        kind: edicion.papel,
-        generated: true,
-        sortOrder: await siguienteOrden(producto.id),
-      })
-      .onConflictDoNothing({ target: [productReferences.productId, productReferences.mediaId] });
+    motivo = `«${producto.name}» ya tenía ${MAXIMO_REFERENCIAS_PRODUCTO} fotos al terminar, así que la imagen no se ha añadido: está en tu biblioteca. Quita una foto del producto y añádela desde «Añadir de la biblioteca».`;
   } catch (error) {
-    // El producto pudo borrarse mientras se generaba: el resultado se queda en la biblioteca, sin producto al que ir.
-    console.warn(`[productos] el resultado del trabajo ${fila.id} no se ha podido adjuntar a su producto:`, error);
+    motivo =
+      error instanceof ErrorProducto && error.estado === 404
+        ? "El producto se borró mientras se generaba: la imagen está en tu biblioteca."
+        : "No se ha podido añadir la imagen al producto: está en tu biblioteca. Añádela desde la ficha con «Añadir de la biblioteca».";
+    if (!(error instanceof ErrorProducto))
+      console.warn(`[productos] no se ha podido adjuntar el trabajo ${fila.id}:`, error);
   }
+  await db()
+    .update(generationJobs)
+    .set({ errorMessage: fila.errorMessage ? `${fila.errorMessage} ${motivo}` : motivo })
+    .where(eq(generationJobs.id, fila.id))
+    .catch((error) => console.error(`[productos] no se ha podido anotar el motivo en el trabajo ${fila.id}:`, error));
 }
