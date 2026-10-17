@@ -67,6 +67,18 @@ describe("estado del personaje", () => {
     expect(impedimentosDePersonaje(pocas)[0]).toContain("Faltan 2 fotos");
   });
 
+  test("a un inventado le faltan retratos y vistas, nunca fotos: no usa fotos de nadie", () => {
+    const recien = datos({ consentimiento: consentimiento({ titular: "inventado" }), referencias: 0 });
+    const motivo = impedimentosDePersonaje(recien).join(" ");
+    expect(motivo).not.toContain("foto");
+    expect(motivo).toContain("Faltan 3 imágenes entre su retrato elegido y sus vistas generadas");
+    expect(motivo).toContain("Empieza por generar sus retratos y elegir uno.");
+    const conCara = datos({ consentimiento: consentimiento({ titular: "inventado" }), referencias: 2 });
+    expect(impedimentosDePersonaje(conCara)).toEqual([
+      "Falta 1 imagen entre su retrato elegido y sus vistas generadas: hacen falta 3 y tiene 2.",
+    ]);
+  });
+
   test("un tercero sin revisar queda en revisión y no genera", () => {
     const enRevision = datos({ consentimiento: consentimiento({ titular: "tercero" }) });
     expect(estadoDePersonaje(enRevision)).toBe("en_revision");

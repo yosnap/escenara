@@ -55,8 +55,11 @@ export function impedimentosDePersonaje(datos: DatosDeEstado): string[] {
   }
   if (datos.referencias < datos.minimoReferencias) {
     const faltan = datos.minimoReferencias - datos.referencias;
+    // Un inventado no usa fotos: lo que le falta son imágenes generadas, su retrato elegido y sus vistas.
     motivos.push(
-      `Faltan ${faltan} ${faltan === 1 ? "foto" : "fotos"} de referencia: hacen falta ${datos.minimoReferencias} y hay ${datos.referencias}.`,
+      c?.titular === "inventado"
+        ? `${faltan === 1 ? "Falta 1 imagen" : `Faltan ${faltan} imágenes`} entre su retrato elegido y sus vistas generadas: hacen falta ${datos.minimoReferencias} y tiene ${datos.referencias}.${datos.referencias === 0 ? " Empieza por generar sus retratos y elegir uno." : ""}`
+        : `Faltan ${faltan} ${faltan === 1 ? "foto" : "fotos"} de referencia: hacen falta ${datos.minimoReferencias} y hay ${datos.referencias}.`,
     );
   }
   return motivos;

@@ -36,6 +36,10 @@ import type { PersonajeVista } from "@/lib/personajes";
 const opcionesCantidad = (maximo: number) =>
   Array.from({ length: Math.max(1, maximo) }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }));
 
+/** Lo que cabe ahora en la cola, de uno al máximo de candidatos; sin huecos conocidos, el máximo. */
+const cabenAhora = (huecos: HuecosDeCola | null) =>
+  huecos === null ? RETRATOS_CANDIDATOS : Math.max(1, Math.min(RETRATOS_CANDIDATOS, huecos.libres));
+
 /** Motivos que corresponden a una casilla: con ellos la alerta lleva a la casilla pendiente. */
 const FALTA_DERECHOS = "Falta confirmar que puedes usar lo que se genere.";
 const FALTA_AVISO_GASTO = "Falta aceptar el aviso de gasto.";
@@ -54,11 +58,17 @@ const FALTA_AVISO_GASTO = "Falta aceptar el aviso de gasto.";
 export function PanelRetratos({
   personaje,
   medios,
+  huecosIniciales,
   onPersonaje,
 }: {
   personaje: PersonajeVista;
   /** Retratos ya generados, resueltos por la página: aquí no se consultan medios sueltos. */
   medios: Medio[];
+  /**
+   * Huecos de la cola al cargar la ficha, leídos por la página: el número de retratos parte de lo que cabe, también
+   * al recargar o al volver a la pestaña justo después de un encargo. `null` si no se han podido leer.
+   */
+  huecosIniciales: HuecosDeCola | null;
   onPersonaje: (personaje: PersonajeVista) => void;
 }) {
   const [estimacion, setEstimacion] = useState<Estimacion | null>(null);
@@ -70,13 +80,12 @@ export function PanelRetratos({
   const [aviso, setAviso] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [candidatos, setCandidatos] = useState<Medio[]>(medios);
-  const [cantidad, setCantidad] = useState(RETRATOS_CANDIDATOS);
-  /** Huecos de la cola al preparar el gasto; hasta entonces se ofrece el máximo de candidatos. */
-  const [huecos, setHuecos] = useState<HuecosDeCola | null>(null);
+  const [cantidad, setCantidad] = useState(() => cabenAhora(huecosIniciales));
+  /** Huecos de la cola: los de la página, puestos al día al preparar el gasto, al encargar y al buscar terminados. */
+  const [huecos, setHuecos] = useState<HuecosDeCola | null>(huecosIniciales);
   /** Lo que se acaba de encargar, junto al botón: es donde está mirando quien lo ha pulsado. */
   const [encargo, setEncargo] = useState<{ texto: string; faltan: string; reserva: string } | null>(null);
-  const maximoAhora = huecos === null ? RETRATOS_CANDIDATOS : Math.min(RETRATOS_CANDIDATOS, huecos.libres);
-  const opciones = opcionesCantidad(maximoAhora);
+  const opciones = opcionesCantidad(cabenAhora(huecos));
   /** Clave de esta confirmación: se conserva mientras no cambie lo que se confirma, para no pagar dos veces. */
   const clave = useRef<{ firma: string; valor: string } | null>(null);
 
@@ -120,7 +129,7 @@ export function PanelRetratos({
     }
     setHuecos(cola.datos);
     // Lo elegido baja a lo que cabe: el número que se confirma es el que se encarga.
-    setCantidad((elegida) => Math.max(1, Math.min(elegida, RETRATOS_CANDIDATOS, cola.datos.libres)));
+    setCantidad((elegida) => Math.min(elegida, cabenAhora(cola.datos)));
     setEstimacion(precio.datos);
     if (previo.ok) setControles(previo.datos);
   };
@@ -154,25 +163,36 @@ export function PanelRetratos({
       // Si la traducción la escribió una reserva de pago, se dice quién y cuánto costó (es el mismo en todos).
       reserva: respuesta.datos.trabajos.find((t) => t.avisoReserva)?.avisoReserva ?? "",
     });
-    // Lo elegido no puede quedarse en un número que ya no se ofrece.
-    setCantidad((elegida) =>
-      huecos === null ? elegida : Math.max(1, Math.min(elegida, RETRATOS_CANDIDATOS, huecos.libres - hechos)),
-    );
-    setHuecos((antes) =>
-      antes === null
+    const despues =
+      huecos === null
         ? null
-        : { ...antes, enMarcha: antes.enMarcha + hechos, libres: Math.max(0, antes.libres - hechos) },
-    );
+        : { ...huecos, enMarcha: huecos.enMarcha + hechos, libres: Math.max(0, huecos.libres - hechos) };
+    // Lo elegido no puede quedarse en un número que ya no se ofrece.
+    setCantidad((elegida) => Math.min(elegida, cabenAhora(despues)));
+    setHuecos(despues);
+    // El encargo queda cerrado: su coste, sus casillas y sus comprobaciones eran de **este** gasto. Dejarlos abiertos
+    // enseñaría como bloqueo la cola que se acaba de llenar con él; el siguiente encargo vuelve a leer coste y cola.
+    setEstimacion(null);
+    setControles(null);
+    setConfirmados([]);
+    setDerechos(false);
+    setAvisoAceptado(false);
+    clave.current = null;
   };
 
   /** Vuelve a leer los candidatos del servidor: los que ya terminaron aparecen sin recargar la página. */
   const recargarCandidatos = async () => {
-    const lista = await consultarRetratos(personaje.id);
+    const [lista, cola] = await Promise.all([consultarRetratos(personaje.id), consultarHuecos()]);
     if (!lista.ok) {
       setError(lista.error);
       return;
     }
     setCandidatos(lista.datos.candidatos);
+    // Lo que ha terminado deja sitio en la cola: el número que se ofrece se ajusta a la cola de ahora.
+    if (cola.ok) {
+      setHuecos(cola.datos);
+      setCantidad((elegida) => Math.min(elegida, cabenAhora(cola.datos)));
+    }
   };
 
   const elegir = async (medioId: string) => {

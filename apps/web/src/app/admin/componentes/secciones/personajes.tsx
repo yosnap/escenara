@@ -178,13 +178,13 @@ export function SeccionPersonajes() {
         </Muestra>
         <Muestra titulo="Consentimiento (zona de claridad)">
           <div className="flex w-full flex-col gap-3">
-            <FormularioConsentimiento valor={consentimiento} onCambio={setConsentimiento} />
+            <FormularioConsentimiento tipo="persona" valor={consentimiento} onCambio={setConsentimiento} />
             <Alerta
               tipo="bloqueo"
               compacta
               anuncio="ninguno"
               protege
-              elementos={bloqueosDeConsentimiento(consentimiento).map((texto) => ({ texto }))}
+              elementos={bloqueosDeConsentimiento(consentimiento, "persona").map((texto) => ({ texto }))}
             />
           </div>
         </Muestra>
