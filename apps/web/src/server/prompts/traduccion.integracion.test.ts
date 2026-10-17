@@ -62,8 +62,8 @@ const TRADUCIDA = "on a rooftop at dawn, looking at the camera";
 
 /** Textos que se han mandado a traducir, uno por llamada. */
 const traducciones: string[] = [];
-/** Qué contesta el endpoint de texto: `null` = contesta bien. */
-let falloDeTexto: number | null = null;
+/** Qué contesta el endpoint de texto: `null` = contesta bien; `"tiempo"` = no contesta a tiempo. */
+let falloDeTexto: number | "tiempo" | null = null;
 /** Saldo que informa el proveedor. Se baja para comprobar que la traducción va detrás de esa puerta. */
 let saldoSimulado = 5000;
 
@@ -78,6 +78,7 @@ const buscar: Buscador = async (url, init) => {
   if (url.includes("/codex/v1/responses")) {
     const cuerpo = JSON.parse(String(init.body)) as { input: { role: string; content: string }[] };
     traducciones.push(cuerpo.input.at(-1)?.content ?? "");
+    if (falloDeTexto === "tiempo") throw new DOMException("Se ha agotado el tiempo.", "TimeoutError");
     if (falloDeTexto !== null) return new Response(JSON.stringify({ error: "vaya" }), { status: falloDeTexto });
     // Traduce «de verdad» lo que reconoce y devuelve el resto tal cual: basta para comprobar qué se envía.
     const cuantos = (cuerpo.input.at(-1)?.content.match(/^\d+\. /gm) ?? []).length;
@@ -220,11 +221,29 @@ describe.skipIf(!hayBaseDeDatos)("traducción de los prompts al inglés", () => 
     expect((fallo as Error).message).toContain("no se ha enviado nada a generar");
     // Ni trabajo ni reserva de la generación: el rechazo ocurre antes de encolar.
     expect(await trabajosDeAna()).toBe(trabajosAntes);
-    // Y el gasto de la llamada fallida queda apuntado: un 5xx no prueba que no se ejecutara, así que se
-    // conserva la estimación en lugar de soltarla.
+    // El endpoint de texto es síncrono y cobra con la respuesta completa: un 5xx vuelve sin resultado y sin cobro,
+    // así que se apunta 0 y no la estimación (que inflaría lo consumido con algo que el proveedor no cobró).
+    const ultima = await ultimaEjecucion();
+    expect(ultima?.state).toBe("fallido");
+    expect(ultima?.consumedCredits).toBe(0);
+    const apuntes = (await apuntesDeTraduccion()).filter((a) => a.assistantRunId === ultima?.id);
+    expect(apuntes.find((a) => a.entryType === "consumo")?.credits).toBe(0);
+    // Y el error lo dice con su causa: quién falló y que esa llamada no se ha cobrado.
+    expect((fallo as Error).message).toContain("gpt-5-6-sol");
+    expect((fallo as Error).message).toMatch(/no se te ha cobrado nada/i);
+    expect((fallo as Error).message).not.toContain("No se sabe si te ha cobrado");
+    falloDeTexto = null;
+  });
+
+  test("si la traducción no contesta a tiempo, se conserva la estimación: no se sabe si se cobró", async () => {
+    falloDeTexto = "tiempo";
+    const fallo = await generar("una escena cuya traducción no contesta").catch((e: unknown) => e);
+    expect(fallo).toBeInstanceOf(ErrorGeneracion);
     const ultima = await ultimaEjecucion();
     expect(ultima?.state).toBe("fallido");
     expect(ultima?.consumedCredits).toBeNull();
+    const apuntes = (await apuntesDeTraduccion()).filter((a) => a.assistantRunId === ultima?.id);
+    expect(apuntes.find((a) => a.entryType === "consumo")?.credits).toBe(CREDITOS_TEXTO);
     falloDeTexto = null;
   });
 

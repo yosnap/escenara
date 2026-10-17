@@ -69,7 +69,7 @@ async function normalizando<T>(accion: () => Promise<T>): Promise<T> {
   try {
     return await accion();
   } catch (error) {
-    if (error instanceof ErrorKie) throw new ErrorProveedor("kie", error.codigo, error.message);
+    if (error instanceof ErrorKie) throw new ErrorProveedor("kie", error.codigo, error.message, error.sinCobro);
     throw error;
   }
 }

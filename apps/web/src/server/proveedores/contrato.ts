@@ -59,6 +59,12 @@ export class ErrorProveedor extends Error {
     readonly proveedor: string,
     readonly codigo: CodigoPrueba,
     mensaje: string = MENSAJE_PRUEBA[codigo],
+    /**
+     * La respuesta prueba que no se ha cobrado aunque el código no sea un rechazo probado. Solo cambia **lo que se
+     * apunta y lo que se dice del cobro**, nunca el recorrido: pasar a otra entrada de pago sigue exigiendo
+     * `rechazoProbado`.
+     */
+    private readonly sinCobroComprobado = false,
   ) {
     super(mensaje);
     this.name = "ErrorProveedor";
@@ -85,6 +91,15 @@ export class ErrorProveedor extends Error {
    */
   get rechazoProbado(): boolean {
     return CODIGOS_DE_RECHAZO_PROBADO.includes(this.codigo);
+  }
+
+  /**
+   * `true` si se sabe que el proveedor no ha cobrado nada: un rechazo probado o una respuesta que lo demuestra por
+   * sí misma (la llamada síncrona de texto de KIE devuelta con un estado HTTP de error, sin resultado). Decide si
+   * el gasto se cierra a 0; **no** autoriza a pasar a otra entrada de pago.
+   */
+  get sinCobro(): boolean {
+    return this.rechazoProbado || this.sinCobroComprobado;
   }
 }
 

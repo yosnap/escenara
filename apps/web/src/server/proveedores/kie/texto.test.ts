@@ -114,7 +114,7 @@ describe("fallos del proveedor", () => {
     [403, "rechazada"],
     [402, "sin-credito"],
     [429, "limite"],
-    // Un 5xx no prueba nada: puede haber fallado después de ejecutar, así que no entra en la lista blanca.
+    // Un 5xx no es un rechazo probado (no abre otra entrada de pago), pero esta llamada síncrona vuelve sin cobro.
     [500, "error-proveedor"],
     [503, "error-proveedor"],
   ];
@@ -125,6 +125,8 @@ describe("fallos del proveedor", () => {
       expect(fallo).toBeInstanceOf(ErrorKie);
       expect((fallo as InstanceType<typeof ErrorKie>).codigo).toBe(codigo);
       expect((fallo as Error).message).not.toContain(CLAVE);
+      // Es una llamada síncrona que cobra con la respuesta completa: un estado HTTP de error vuelve sin cobro.
+      expect((fallo as InstanceType<typeof ErrorKie>).sinCobro).toBe(true);
     });
   }
 
@@ -150,6 +152,8 @@ describe("fallos del proveedor", () => {
     };
     const fallo = await pedir(buscar).catch((e: unknown) => e);
     expect((fallo as InstanceType<typeof ErrorKie>).codigo).toBe("tiempo-agotado");
+    // Sin respuesta no hay prueba de nada: se conserva la estimación como consumo.
+    expect((fallo as InstanceType<typeof ErrorKie>).sinCobro).toBe(false);
   });
 
   test("el cliente corta por su cuenta: la petición lleva señal de tiempo", async () => {

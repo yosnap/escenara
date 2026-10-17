@@ -67,7 +67,10 @@ export async function generarTextoKie(
     throw new ErrorKie(codigoDeFallo(error));
   }
   const porEstado = codigoDeEstado(respuesta.status);
-  if (porEstado) throw new ErrorKie(porEstado);
+  // Este endpoint es síncrono y cobra con la respuesta completa (`credits_consumed`): un estado HTTP de error
+  // vuelve sin resultado y sin cobro. Comprobado con el saldo real de KIE el 2026-10-17: un 5xx de `gpt-5-6-sol`
+  // no descontó nada. Un tiempo agotado o una red caída siguen sin probar nada: ahí la respuesta no llegó.
+  if (porEstado) throw new ErrorKie(porEstado, true);
   let cuerpo: CuerpoRespuesta;
   try {
     cuerpo = (await respuesta.json()) as CuerpoRespuesta;
