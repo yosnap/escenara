@@ -135,6 +135,9 @@ test("encargar desde el paso lo cierra, lleva el foco a las fotos y no invita a 
   expect(enfocado()).toBe("Fotos de referencia");
   expect(anuncio()).toContain("Imagen encargada");
   expect(documento().querySelector("[data-generandose]")?.textContent).toContain("Generándose su primera imagen");
+  // Mientras llega, el estado vacío ya no dice que no tiene ninguna imagen.
+  const titulo = documento().querySelector("[data-vacio-primera-imagen] h3")?.textContent;
+  expect(titulo).toBe("Su primera imagen se está generando");
   expect(boton("Genera su primera imagen")).toBeNull();
 });
 

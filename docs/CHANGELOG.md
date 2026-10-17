@@ -2,6 +2,19 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.52.10] · 2026-10-17
+
+### Corregido
+
+- Mientras se genera la primera imagen de un lugar o de un producto, la sección de fotos ya no dice
+  «Todavía no tiene ninguna imagen»: dice que se está generando y que aparecerá ahí al terminar, y
+  deja subir fotos mientras tanto.
+- La primera imagen generada de un lugar que aún no tiene foto maestra pasa a ser su maestra, como la
+  primera que subes. Si ya había maestra, la generada entra como plano general y la cambias tú.
+- Después de declarar un lugar, las casillas «Puedo usar estas imágenes» y «En estas fotos no sale
+  ningún menor» salen marcadas junto a «Declarada el…», como se declararon, en lugar de vacías como si
+  no se hubiera guardado. Si se revoca o se retira la declaración, vuelven a salir vacías.
+
 ## [0.52.9] · 2026-10-17
 
 ### Corregido

@@ -171,7 +171,7 @@ describe.skipIf(!hayBaseDeDatos)("fotos generadas de un lugar", () => {
     expect(await db().select().from(generationJobs).where(eq(generationJobs.userId, ana.id))).toHaveLength(0);
   });
 
-  test("un lugar real también genera su imagen dentro de «Lugares»: foto realista, sin partida, y entra como generada", async () => {
+  test("un lugar real también genera su imagen dentro de «Lugares»: foto realista, sin partida, y entra como generada sin quitar la maestra", async () => {
     const { lugar } = await lugarDeclaradoDePrueba(actor, "Terraza inventada");
     const respuesta = await encargar(ana, lugar.id, { tipo: "candidato" });
     expect(respuesta.status).toBe(201);
@@ -211,7 +211,7 @@ describe.skipIf(!hayBaseDeDatos)("fotos generadas de un lugar", () => {
     expect(retirar.status).toBe(409);
   });
 
-  test("un candidato de un lugar animado sale sin foto de partida, con su estilo, y entra en el lugar sin ser maestro", async () => {
+  test("el primer candidato de un lugar animado sale sin foto de partida, con su estilo, y entra como maestra; el siguiente no", async () => {
     const animado = await crearLugar(actor, {
       nombre: `Plaza de Nora ${crypto.randomUUID().slice(0, 6)}`,
       descripcion: "Plaza pequeña con un quiosco, bancos verdes y una fuente.",
@@ -227,7 +227,13 @@ describe.skipIf(!hayBaseDeDatos)("fotos generadas de un lugar", () => {
     const candidato = await subirFotoDePrueba(actor, "candidato.png");
     await adjuntarAlLugar(trabajo, candidato);
     const despues = await obtenerLugar(actor, animado.id);
-    expect(despues.referencias.find((r) => r.medio.id === candidato)?.papel).toBe("general");
-    expect(despues.tieneMaestra).toBe(false);
+    expect(despues.referencias.find((r) => r.medio.id === candidato)?.papel).toBe("maestra");
+    expect(despues.tieneMaestra).toBe(true);
+    // Con la maestra ya puesta, otro candidato no la sustituye: espera a que el usuario lo apruebe.
+    const segundo = await subirFotoDePrueba(actor, "candidato-2.png");
+    await adjuntarAlLugar(trabajo, segundo);
+    const final = await obtenerLugar(actor, animado.id);
+    expect(final.referencias.find((r) => r.medio.id === segundo)?.papel).toBe("general");
+    expect(final.referencias.find((r) => r.medio.id === candidato)?.papel).toBe("maestra");
   });
 });
