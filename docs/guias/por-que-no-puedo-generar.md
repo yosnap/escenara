@@ -32,7 +32,7 @@ preparación usan los mismos colores: «Necesita ajustes» en ámbar, «Requiere
 
 | Rótulo | Cuándo sale | ¿Se puede cerrar? |
 |---|---|---|
-| **Pendiente** (azul, lista) | Lo que aún te falta hacer antes de generar: marcar una casilla, aceptar el aviso de gasto. Todavía no es un problema. | No. Se va sola cuando lo haces. |
+| **Pendiente** (gris, lista) | Lo que aún te falta hacer antes de generar: marcar una casilla, aceptar el aviso de gasto. Todavía no es un problema. | No. Se va sola cuando lo haces. |
 | **Bloqueo** (rojo) | Has intentado seguir sin lo pendiente, o algo lo impide de verdad (sin saldo, un paso cerrado). | No. Se va sola cuando lo resuelves. |
 | **Error** (rojo) | Algo ha fallado: una petición, una generación. Dice la causa, si se ha cobrado y qué hacer. | No. Se va al reintentar o al resolverlo. |
 | **Aviso** (ámbar, triángulo) | Algo que pide atención sin bloquear: el gasto alto, «Necesita ajustes», un riesgo. | No. |

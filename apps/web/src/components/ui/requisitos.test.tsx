@@ -42,6 +42,17 @@ describe("aviso de requisitos", () => {
     expect(html).not.toMatch(/\bborder-[lrse](-|\b)/);
   });
 
+  test("un freno real (sin salida) se ve en rojo desde el principio, sin haber intentado nada", () => {
+    const html = renderToStaticMarkup(
+      <AvisoRequisitos
+        requisitos={[...REQUISITOS, { id: "fotograma-controles", paso: "coste", texto: "Sin saldo.", impide: true }]}
+        onIr={() => {}}
+      />,
+    );
+    expect(html).toContain('data-alerta="bloqueo"');
+    expect(html).toMatch(/\bborder-error\b/);
+  });
+
   test("sin requisitos no pinta nada", () => {
     expect(renderToStaticMarkup(<AvisoRequisitos requisitos={[]} onIr={() => {}} />)).toBe("");
   });

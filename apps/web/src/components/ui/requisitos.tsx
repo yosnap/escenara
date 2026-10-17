@@ -12,7 +12,8 @@ import { enfocarProblema, llevarAlProblema } from "./llevar-al-problema";
  * anuncia de golpe: es una región con nombre, y la barra de pasos dice cuántos faltan.
  *
  * Al llegar, lo que falta es un **paso pendiente** (tono neutro): todavía no ha fallado nada. Solo cuando la persona
- * ha intentado seguir o ha ido a un requisito (`marcar`) pasa a **bloqueo** rojo, igual que las casillas marcadas.
+ * ha intentado seguir o ha ido a un requisito (`marcar`) pasa a **bloqueo** rojo, igual que las casillas marcadas. Si
+ * algún punto es una causa real (`impide`: un control sin salida, el saldo), es bloqueo desde el principio.
  *
  * No sabe nada de pasos ni de formularios: recibe los requisitos y avisa de cuál se ha pulsado. Quien lo usa decide
  * cómo llegar al campo (normalmente `irARequisito`).
@@ -34,7 +35,7 @@ export function AvisoRequisitos({
   if (requisitos.length === 0) return null;
   return (
     <Alerta
-      tipo={marcar ? "bloqueo" : "pendiente"}
+      tipo={marcar || requisitos.some((r) => r.impide) ? "bloqueo" : "pendiente"}
       titulo={titulo}
       elementos={requisitos}
       onIr={onIr}

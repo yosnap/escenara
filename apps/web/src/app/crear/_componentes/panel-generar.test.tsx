@@ -135,3 +135,17 @@ describe("pendiente antes de actuar, bloqueo solo tras intentarlo", () => {
     expect(html).toContain(">Bloqueo<");
   });
 });
+
+describe("una causa real se ve en rojo desde el principio", () => {
+  test("un freno sin salida es bloqueo sin marcar; las casillas siguen como pendiente", () => {
+    const html = pintar({
+      casillas: { derechos: false },
+      bloqueos: [{ id: "clip-controles", paso: "clip", texto: "Tu saldo no llega. Recarga en KIE.", impide: true }],
+    });
+    expect(html).toContain('data-alerta="bloqueo"');
+    expect(html).toContain('data-alerta="pendiente"');
+    const bloqueo = html.split('data-alerta="bloqueo"')[1]?.split("data-alerta")[0] ?? "";
+    expect(bloqueo).toContain("Tu saldo no llega.");
+    expect(bloqueo).not.toContain("Falta confirmar que tienes derecho");
+  });
+});

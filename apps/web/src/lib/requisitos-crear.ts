@@ -121,10 +121,12 @@ export function requisitosDelEnvio(
   propios: readonly Requisito[],
   frenosDeControles: readonly string[],
   confirmacion: DatosConfirmacion,
+  /** Los frenos que no se salvan confirmando: se marcan como causa real. */
+  sinSalida: readonly string[] = [],
 ): Requisito[] {
   return [
     ...propios,
-    ...requisitosDeControles(frenosDeControles, confirmacion.envio, confirmacion.paso),
+    ...requisitosDeControles(frenosDeControles, confirmacion.envio, confirmacion.paso, sinSalida),
     ...requisitosDeConfirmacion(confirmacion),
   ];
 }
@@ -153,6 +155,9 @@ export interface DatosDeRequisitosDeCrear {
   /** Frenos de los controles previos de cada envío. */
   frenosFotograma: readonly string[];
   frenosClip: readonly string[];
+  /** De esos frenos, los que no se salvan confirmando (causas reales). */
+  sinSalidaFotograma?: readonly string[];
+  sinSalidaClip?: readonly string[];
   casillasFotograma: CasillasDeConfirmacion;
   casillasClip: CasillasDeConfirmacion;
   conProducto: boolean;
@@ -180,20 +185,30 @@ export interface RequisitosDeCrear {
 export function requisitosDeCrear(d: DatosDeRequisitosDeCrear): RequisitosDeCrear {
   const fotogramaBase = requisitosDelFotograma(d.fotograma);
   const clipBase = requisitosDelClip(d.clip);
-  const fotograma = requisitosDelEnvio(fotogramaBase, d.frenosFotograma, {
-    ...d.casillasFotograma,
-    envio: ENVIO_FOTOGRAMA,
-    paso: "coste",
-    conProducto: d.conProducto,
-    superaUmbral: d.fotogramaSuperaUmbral,
-  });
-  const clip = requisitosDelEnvio(clipBase, d.frenosClip, {
-    ...d.casillasClip,
-    envio: ENVIO_CLIP,
-    paso: "clip",
-    conProducto: d.conProducto,
-    superaUmbral: d.clipSuperaUmbral,
-  });
+  const fotograma = requisitosDelEnvio(
+    fotogramaBase,
+    d.frenosFotograma,
+    {
+      ...d.casillasFotograma,
+      envio: ENVIO_FOTOGRAMA,
+      paso: "coste",
+      conProducto: d.conProducto,
+      superaUmbral: d.fotogramaSuperaUmbral,
+    },
+    d.sinSalidaFotograma,
+  );
+  const clip = requisitosDelEnvio(
+    clipBase,
+    d.frenosClip,
+    {
+      ...d.casillasClip,
+      envio: ENVIO_CLIP,
+      paso: "clip",
+      conProducto: d.conProducto,
+      superaUmbral: d.clipSuperaUmbral,
+    },
+    d.sinSalidaClip,
+  );
   return {
     fotograma,
     fotogramaBase,

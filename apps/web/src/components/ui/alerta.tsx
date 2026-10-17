@@ -12,7 +12,7 @@ import { buscarProblema, CLASES_FLECHA, CLASES_FLECHA_ANIMADA, llevarAlProblema 
  * **Alerta**: el componente único para todo lo que la plataforma tiene que decir de un problema o de un resultado.
  *
  * - **pendiente**: lo que aún falta por hacer antes de actuar (marcar una casilla, aceptar el aviso de gasto). No es un
- *   problema todavía: tono neutro de marca, sin rojo. Pasa a **bloqueo** cuando se intenta seguir sin hacerlo.
+ *   problema todavía: tono neutro (gris, distinto del azul de «info»), sin rojo. Pasa a **bloqueo** cuando se intenta seguir sin hacerlo.
  * - **bloqueo**: algo impide seguir tras intentarlo, o por una causa real (sin saldo, un paso cerrado). Persiste
  *   hasta que se resuelve.
  * - **error**: algo ha fallado (una petición, una generación). Persiste hasta que se resuelve o se reintenta.
@@ -49,9 +49,9 @@ export const ESTILO_ALERTA: Record<TipoAlerta, EstiloAlerta> = {
   pendiente: {
     etiqueta: "Pendiente",
     icono: <ListTodo />,
-    borde: "border-acento/80",
-    texto: "text-acento",
-    circulo: "bg-acento/12",
+    borde: "border-borde",
+    texto: "text-texto-suave",
+    circulo: "bg-texto-suave/12",
     anuncio: "estado",
   },
   bloqueo: {

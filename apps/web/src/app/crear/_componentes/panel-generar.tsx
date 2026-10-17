@@ -103,6 +103,19 @@ export function PanelGenerar({
   // Antes de actuar, lo que falta es un paso pendiente (neutro); el rojo de bloqueo llega al intentar seguir sin ello.
   const tipoAviso = marcando ? "bloqueo" : "pendiente";
 
+  // Una causa real (un control sin salida, el saldo) es bloqueo desde el principio; lo demás, pendiente hasta intentarlo.
+  const reales = impedimentos.filter((r) => r.impide);
+  const porHacer = impedimentos.filter((r) => !r.impide);
+  const aviso = (tipo: "bloqueo" | "pendiente", elementos: Requisito[]) =>
+    avisoEnBloque ? (
+      // El bloque de arriba ya lo dice y lleva a cada campo: aquí solo se ve, sin botones ni segundo anuncio.
+      <div aria-hidden>
+        <Alerta tipo={tipo} compacta anuncio="ninguno" elementos={elementos.map((r) => ({ texto: r.texto }))} />
+      </div>
+    ) : (
+      <Alerta tipo={tipo} compacta anuncio="ninguno" protege elementos={elementos} onIr={onIntento} />
+    );
+
   const generar = () => {
     // Misma confirmación, misma clave: un doble clic o un reintento no pagan dos veces. Los avisos confirmados
     // forman parte de la firma (la compone quien llama), así que confirmar otro aviso estrena clave.
@@ -122,18 +135,11 @@ export function PanelGenerar({
     <PanelCoste
       estimacion={estimacion}
       aviso={
-        impedimentos.length === 0 ? undefined : avisoEnBloque ? (
-          // El bloque de arriba ya lo dice y lleva a cada campo: aquí solo se ve, sin botones ni segundo anuncio.
-          <div aria-hidden>
-            <Alerta
-              tipo={tipoAviso}
-              compacta
-              anuncio="ninguno"
-              elementos={impedimentos.map((r) => ({ texto: r.texto }))}
-            />
-          </div>
-        ) : (
-          <Alerta tipo={tipoAviso} compacta anuncio="ninguno" protege elementos={impedimentos} onIr={onIntento} />
+        impedimentos.length === 0 ? undefined : (
+          <>
+            {reales.length > 0 && aviso("bloqueo", reales)}
+            {porHacer.length > 0 && aviso(tipoAviso, porHacer)}
+          </>
         )
       }
     >
