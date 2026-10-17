@@ -2,6 +2,22 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.52.9] · 2026-10-17
+
+### Corregido
+
+- Al crear un lugar o un producto ya no te quedas delante de una ficha sin fotos sin saber qué sigue:
+  llegas al paso **«Su primera imagen»** con dos opciones a la vista. **«Genera su primera imagen»**
+  abre el diálogo de siempre con la descripción recién guardada y el coste antes de confirmar (en un
+  producto, eligiendo la vista); si la descripción es demasiado corta, el paso lo dice y te deja
+  completarla ahí. **«Sube tus fotos»** abre tu biblioteca, donde también se suben archivos nuevos (en
+  un producto, con el papel de cada foto). **«Lo haré después»** te deja en la ficha.
+- En la ficha de un lugar o de un producto sin ninguna imagen, la sección de fotos explica esas dos
+  maneras de poner la primera, y si todavía no se puede generar dice por qué dentro de la propia
+  opción, no en letra pequeña junto a un botón apagado.
+- El diálogo para generar la imagen de un lugar o de un producto enseña la descripción guardada desde
+  la que se genera.
+
 ## [0.52.8] · 2026-10-17
 
 ### Añadido
