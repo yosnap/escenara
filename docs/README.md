@@ -67,6 +67,7 @@ Mapa de la documentación pública del proyecto. Versión actual: **0.52.3**. Pa
 - `docs/assets/diagramas/`: diagramas SVG de las guías, con colores por variables CSS (`--dg-*`) para que se lean en tema claro y oscuro, y con `<title>` y `<desc>`.
 - `docs/assets/`: imágenes y recursos de apoyo de la documentación.
 - `docs/assets/capturas/`: capturas de la plataforma para la guía de usuario y el README.
+- `docs/assets/video/`: miniaturas de los vídeos de YouTube que enlazan el README y las guías (cómo se incrustan en una guía, en [CONTRIBUTING](../CONTRIBUTING.md#guías-y-capturas)).
 
 ## Convenciones
 

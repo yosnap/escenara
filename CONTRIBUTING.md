@@ -102,6 +102,12 @@ usuario nacen de duplicar desde «Crear», nunca de la semilla.
   solo para eso, puertos distintos de los de tu instalación de trabajo y cuentas de demostración. Nunca fotos, voces
   ni datos de personas reales, ni generaciones de pago hechas solo para la captura. Se guardan en WebP con el
   nombre `{versión}-{pantalla}-{claro|oscuro}.webp`, y el texto alternativo describe lo que se ve.
+- Los **vídeos de YouTube** (un tutorial por guía) se incrustan como una miniatura enlazada, sola en su párrafo:
+  `[![Título del vídeo](../assets/video/youtube-<id>.webp)](https://youtu.be/<id>)`. En GitHub se ve la miniatura
+  que lleva al vídeo; la web de documentación la convierte en una fachada que solo carga el reproductor de
+  `youtube-nocookie.com` al pulsarla. El texto alternativo es el título del vídeo (obligatorio) y la miniatura se
+  descarga una vez a `docs/assets/video/` en WebP (de `https://i.ytimg.com/vi/<id>/maxresdefault.jpg`), para no
+  cargar nada de terceros antes del clic. Un id no válido o una miniatura externa paran `bun run docs:build`.
 
 ## Idioma
 
