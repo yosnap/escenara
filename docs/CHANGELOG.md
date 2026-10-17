@@ -2,6 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.52.13] · 2026-10-18
+
+### Corregido
+
+- En «Crear», antes de confirmar el fotograma, el resumen de lo que se enviará al modelo enseña también las fotos del
+  producto y la foto principal del lugar que viajan con él, no solo las del personaje, y dice cuántas imágenes van en
+  total frente a las que admite el modelo. Si el cupo deja fuera alguna foto del personaje, también lo dice.
+
 ## [0.52.12] · 2026-10-17
 
 ### Corregido
