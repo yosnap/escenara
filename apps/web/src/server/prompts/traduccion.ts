@@ -1,10 +1,10 @@
 import { createHash } from "node:crypto";
 import { and, eq, inArray, like, lt, sql } from "drizzle-orm";
 import { INSTRUCCIONES_TRADUCCION, leerTraducciones, peticionDeTraduccion } from "@/lib/asistente";
-import { readServerConfig } from "@/lib/config";
 import { type IntentoProveedor, mensajeDeFalloDeProveedor } from "@/lib/diagnostico-proveedor";
 import { leerAjustes } from "../ajustes";
 import { eleccionDeTexto } from "../asistente/texto";
+import { conCerrojosConsultivos, ErrorConexionCerrojo } from "../db/cerrojos-consultivos";
 import { db, type Ejecutor } from "../db/cliente";
 import { assistantRuns, translationCache } from "../db/esquema";
 import { ErrorGeneracion } from "../generacion/errores";
@@ -24,8 +24,8 @@ import { ErrorCatalogo } from "../proveedores/contrato";
  * Es una **llamada de pago**, así que recorre el mismo control de dinero que todo lo demás:
  *
  * - **se cachea por huella del texto de origen** (`translation_cache`), por usuario: lo mismo no se paga dos
- *   veces. La caché es la dedupe de verdad; un cerrojo consultivo por usuario y conjunto de textos serializa
- *   además dos peticiones simultáneas del mismo texto, para que solo una llame al proveedor;
+ *   veces. La caché es la dedupe de verdad; un cerrojo consultivo por usuario y texto serializa además dos
+ *   peticiones simultáneas que lo comparten, para que solo una lo pague;
  * - **reserva antes de llamar**, con su tope y su presupuesto, y cierra con los créditos que informa el
  *   proveedor (`assistant_runs` con `kind = 'traduccion'`);
  * - **lista blanca de rechazos**: solo se apunta «no ha costado nada» cuando el código prueba que el proveedor
@@ -212,18 +212,18 @@ export async function borrarTraduccionesDePersonaje(ejecutor: Ejecutor, personaj
 }
 
 /**
- * Traduce los textos que faltan, **con un solo traductor a la vez por usuario y conjunto de textos**.
+ * Traduce los textos que faltan, **con un solo traductor a la vez por usuario y texto**.
  *
- * Dos peticiones casi simultáneas del mismo texto no pueden pagar dos veces: la primera toma un cerrojo
- * consultivo de PostgreSQL con la huella del conjunto y la segunda, si lo encuentra tomado, no llama a nadie
- * (usa la caché si ya está, o recibe un 409). Y quien toma el cerrojo **vuelve a mirar la caché antes de
- * llamar**: si otra petición terminó entre su primera lectura y ahora, su traducción ya está ahí y no se paga
- * otra vez. Así da igual cuándo llegue cada una: solo llama quien de verdad no tiene la traducción.
+ * Dos peticiones casi simultáneas que comparten un texto no pueden pagarlo dos veces: cada texto tiene su cerrojo
+ * consultivo de PostgreSQL (por usuario y huella) y la petición toma los de todos sus textos. Si alguno lo tiene
+ * otra, no llama a nadie: usa la caché si ya está todo, o recibe un 409. Y quien los toma **vuelve a mirar la
+ * caché antes de llamar** y traduce solo lo que siga faltando: si otra petición terminó entre su primera lectura
+ * y ahora, lo suyo ya está ahí y no se paga otra vez.
  *
- * El cerrojo vive en una conexión propia y se suelta al terminar, falle o no. Si el proceso muere a medias, se
- * cierra la conexión y PostgreSQL lo suelta solo: una ejecución que se quede en `reservado` no bloquea el texto
- * (el barrido la cierra después, conservando su estimación). Tras un intento que no sirvió —un fallo o una
- * respuesta que no se pudo usar como traducción, que no deja nada en la caché— el siguiente vuelve a llamar.
+ * Si el proceso muere a medias, PostgreSQL suelta los cerrojos con la sesión: una ejecución que se quede en
+ * `reservado` no bloquea el texto (el barrido la cierra después, conservando su estimación). Tras un intento que
+ * no sirvió —un fallo o una respuesta que no se pudo usar como traducción, que no deja nada en la caché— el
+ * siguiente vuelve a llamar.
  *
  * Se exporta para poder comprobar con datos viejos (una caché leída antes de que otra petición terminara) que
  * no se vuelve a pagar.
@@ -235,25 +235,33 @@ export async function pedirTraduccion(
   modeloConfirmado: string,
   buscar: Buscador,
 ): Promise<{ traducidas: Map<string, string>; aviso: string }> {
-  const prefijo = `traduccion:${huellaDelConjunto(pendientes)}`;
-  const resultado = await conCerrojo(`${usuarioId}:${prefijo}`, async () => {
-    const yaTraducidas = await deLaCache(usuarioId, pendientes);
-    if (yaTraducidas.size === pendientes.length) return { traducidas: yaTraducidas, aviso: "" };
-    return llamarAlTraductor(
-      usuarioId,
-      pendientes,
-      modeloConfirmado,
-      buscar,
-      await claveDeTraduccion(usuarioId, prefijo),
-    );
-  });
-  if (resultado !== null) return resultado;
-  return otraPeticionEnCurso(usuarioId, pendientes);
+  const cerrojos = pendientes.map((p) => `traduccion:${usuarioId}:${huellaDeTexto(p.texto)}`);
+  let resultado: { traducidas: Map<string, string>; aviso: string } | null;
+  try {
+    resultado = await conCerrojosConsultivos(cerrojos, async () => {
+      const traducidas = await deLaCache(usuarioId, pendientes);
+      const faltan = pendientes.filter((p) => !traducidas.has(p.texto));
+      if (faltan.length === 0) return { traducidas, aviso: "" };
+      const clave = await claveDeTraduccion(usuarioId, `traduccion:${huellaDelConjunto(faltan)}`);
+      const nuevas = await llamarAlTraductor(usuarioId, faltan, modeloConfirmado, buscar, clave);
+      for (const [texto, ingles] of nuevas.traducidas) traducidas.set(texto, ingles);
+      return { traducidas, aviso: nuevas.aviso };
+    });
+  } catch (error) {
+    if (error instanceof ErrorConexionCerrojo) {
+      throw new ErrorGeneracion(
+        503,
+        `No se ha podido preparar la traducción al inglés porque ${error.message}. No se ha enviado nada a generar ni se ha cobrado nada: vuelve a intentarlo en unos segundos.`,
+      );
+    }
+    throw error;
+  }
+  return resultado ?? otraPeticionEnCurso(usuarioId, pendientes);
 }
 
 /**
- * Otra petición del mismo texto llegó primero. No se llama otra vez —sería pagar dos veces lo mismo—, pero sí se
- * vuelve a mirar la caché: si la otra ya terminó, están todas y esto sigue sin gastar nada.
+ * Otra petición con alguno de estos textos llegó primero. No se llama otra vez —sería pagar dos veces lo mismo—,
+ * pero sí se vuelve a mirar la caché: si la otra ya terminó y están todos, esto sigue sin gastar nada.
  */
 async function otraPeticionEnCurso(
   usuarioId: string,
@@ -267,29 +275,6 @@ async function otraPeticionEnCurso(
     409,
     "Tu texto se está traduciendo en otra petición que acabas de hacer. No se ha enviado nada a generar: espera unos segundos y vuelve a intentarlo.",
   );
-}
-
-/**
- * Ejecuta `trabajo` con el cerrojo consultivo de `nombre` tomado, o devuelve `null` sin ejecutarlo si otro lo
- * tiene. Usa una conexión propia: con el pool de `db()`, tomarlo y soltarlo podría caer en sesiones distintas, y
- * una transacción abierta durante la llamada al proveedor dejaría el pool sin conexiones para el propio trabajo.
- */
-async function conCerrojo<T>(nombre: string, trabajo: () => Promise<T>): Promise<T | null> {
-  const conexion = new Bun.SQL(readServerConfig().databaseUrl, { max: 1 });
-  try {
-    const [cerrojo] = await conexion`select pg_try_advisory_lock(hashtextextended(${nombre}, 0)) as tomado`;
-    if (!(cerrojo as { tomado?: boolean } | undefined)?.tomado) return null;
-    try {
-      return await trabajo();
-    } finally {
-      // Si no se pudiera soltar, cerrar la conexión lo suelta igual: no se tapa el resultado del trabajo.
-      await conexion`select pg_advisory_unlock(hashtextextended(${nombre}, 0))`.catch((error: unknown) =>
-        console.error(`[traduccion] no se ha podido soltar el cerrojo: ${String(error)}`),
-      );
-    }
-  } finally {
-    await conexion.close();
-  }
 }
 
 /**
@@ -326,8 +311,14 @@ async function llamarAlTraductor(
     });
   } catch (error) {
     if (error instanceof ErrorDeTexto) throw new ErrorGeneracion(502, error.mensaje(ENCABEZADO_FALLO));
-    // Red de seguridad: con el cerrojo no debería repetirse la clave, pero si pasara, tampoco se paga dos veces.
-    if (error instanceof ErrorPeticionRepetida) return otraPeticionEnCurso(usuarioId, pendientes);
+    if (error instanceof ErrorPeticionRepetida) {
+      // Red de seguridad: con los cerrojos tomados la clave no debería repetirse nunca. Si pasa, es un fallo
+      // nuestro y se registra, pero tampoco se paga dos veces.
+      console.error(
+        `[traduccion] clave de idempotencia repetida con los cerrojos tomados (usuario ${usuarioId}, clave ${claveIdempotencia}): no se llama al proveedor`,
+      );
+      return otraPeticionEnCurso(usuarioId, pendientes);
+    }
     if (error instanceof ErrorCatalogo) throw new ErrorGeneracion(error.estado, error.message);
     throw error;
   }
@@ -379,18 +370,21 @@ function huellaDelConjunto(pendientes: readonly TextoATraducir[]): string {
 }
 
 /**
- * Clave de idempotencia de un intento de traducción: el prefijo del conjunto más el número de intento.
+ * Clave de idempotencia de un intento de traducción: el prefijo del conjunto que falta más el número de intento,
+ * el mayor que haya con ese prefijo más uno.
  *
- * **Solo se calcula con el cerrojo tomado**, así que nadie más inserta ejecuciones con este prefijo mientras se
- * cuentan y la clave nunca choca. El número avanza con cada intento que llegó a apuntarse, sirviera o no: lo que
- * impide pagar dos veces lo mismo es el cerrojo más la caché, no la clave.
+ * **Solo se calcula con los cerrojos de esos textos tomados**, así que nadie más inserta ejecuciones con este
+ * prefijo mientras se calcula y la clave nunca choca. Lo que impide pagar dos veces lo mismo son los cerrojos más
+ * la caché, no la clave: el número avanza con cada intento que llegó a apuntarse, sirviera o no.
  */
 async function claveDeTraduccion(usuarioId: string, prefijo: string): Promise<string> {
+  // Las claves son `<prefijo>:<intento>:<posición en el mapa>`: el intento es la tercera parte.
+  const intento = sql`split_part(${assistantRuns.idempotencyKey}, ':', 3)`;
   const [fila] = await db()
-    .select({ total: sql<number>`count(*)::int` })
+    .select({ ultimo: sql<number>`coalesce(max(case when ${intento} ~ '^[0-9]+$' then ${intento}::int end), 0)::int` })
     .from(assistantRuns)
     .where(and(eq(assistantRuns.userId, usuarioId), like(assistantRuns.idempotencyKey, `${prefijo}:%`)));
-  return `${prefijo}:${(fila?.total ?? 0) + 1}`;
+  return `${prefijo}:${(fila?.ultimo ?? 0) + 1}`;
 }
 
 async function guardarEnCache(

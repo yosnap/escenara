@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { loadEnvConfig } from "@next/env";
@@ -47,6 +47,7 @@ const { borrarPersonaje } = await import("../personajes/borrado");
 const { huellaDeTexto, pedirTraduccion, purgarTraduccionesViejas } = await import("./traduccion");
 const { olvidarCatalogo } = await import("../proveedores/catalogo");
 const { ErrorGeneracion } = await import("../generacion/errores");
+const { MAXIMO_CONEXIONES_CERROJO } = await import("../db/cerrojos-consultivos");
 type Buscador = import("../proveedores/codigos").Buscador;
 type Herramientas = import("../generacion/herramientas").Herramientas;
 type Actor = import("../media/servicio").Actor;
@@ -69,7 +70,7 @@ const traducciones: string[] = [];
 let falloDeTexto: number | "tiempo" | "inservible" | null = null;
 /** Si se pone, el endpoint de texto espera a esta promesa antes de contestar: deja una traducción «en curso». */
 let esperarAntesDeContestar: Promise<void> | null = null;
-/** Se resuelve cuando el endpoint de texto recibe una llamada: así se sabe que la traducción ya está en curso. */
+/** Se llama cada vez que el endpoint de texto recibe una llamada: así se sabe que la traducción ya está en curso. */
 let avisarDeLlamada: (() => void) | null = null;
 /** Saldo que informa el proveedor. Se baja para comprobar que la traducción va detrás de esa puerta. */
 let saldoSimulado = 5000;
@@ -154,6 +155,13 @@ describe.skipIf(!hayBaseDeDatos)("traducción de los prompts al inglés", () => 
       { presupuestoCreditos: 100_000, avisoCreditos: 100_000, trabajosSimultaneos: 20, traducirPrompts: false },
       admin.id,
     );
+  });
+
+  afterEach(() => {
+    // Un test que falle a medias no puede dejar el simulador retenido o fallando para los siguientes.
+    esperarAntesDeContestar = null;
+    avisarDeLlamada = null;
+    falloDeTexto = null;
   });
 
   afterAll(async () => {
@@ -327,10 +335,7 @@ describe.skipIf(!hayBaseDeDatos)("traducción de los prompts al inglés", () => 
   test("si la primera traducción sigue en curso, la segunda no llama al proveedor y recibe un 409", async () => {
     const texto = "dos peticiones del mismo texto a la vez";
     const llamadas = traducciones.length;
-    let soltar = () => {};
-    esperarAntesDeContestar = new Promise<void>((resolver) => {
-      soltar = resolver;
-    });
+    const soltar = retenerAlProveedor();
     const enCurso = new Promise<void>((resolver) => {
       avisarDeLlamada = resolver;
     });
@@ -340,7 +345,6 @@ describe.skipIf(!hayBaseDeDatos)("traducción de los prompts al inglés", () => 
     avisarDeLlamada = null;
     const segunda = await generar(texto).catch((e: unknown) => e);
     soltar();
-    esperarAntesDeContestar = null;
     await primera;
     // Lo que no puede pasar nunca: pagar dos veces la misma traducción.
     expect(traducciones).toHaveLength(llamadas + 1);
@@ -364,6 +368,87 @@ describe.skipIf(!hayBaseDeDatos)("traducción de los prompts al inglés", () => 
     expect(traducciones).toHaveLength(llamadas + 1);
     expect(traducidas.get(texto)).toBe(TRADUCIDA);
   });
+
+  test("dos envíos a la vez con un texto en común no lo traducen dos veces", async () => {
+    const ficha = `una ficha compartida ${crypto.randomUUID()}`;
+    const escenaA = `la escena del primer envío ${crypto.randomUUID()}`;
+    const escenaB = `la escena del segundo envío ${crypto.randomUUID()}`;
+    const llamadas = traducciones.length;
+    const soltar = retenerAlProveedor();
+    const enCurso = new Promise<void>((resolver) => {
+      avisarDeLlamada = resolver;
+    });
+    const primera = pedirTraduccion(ana.id, [{ texto: escenaA }, { texto: ficha }], "gpt-5-6-sol", buscar);
+    await enCurso;
+    // La ficha se está traduciendo en la primera: la segunda no llama, aunque su escena sea otra.
+    const segunda = await pedirTraduccion(ana.id, [{ texto: escenaB }, { texto: ficha }], "gpt-5-6-sol", buscar).catch(
+      (e: unknown) => e,
+    );
+    soltar();
+    await primera;
+    expect(traducciones).toHaveLength(llamadas + 1);
+    expect((segunda as { estado?: number }).estado).toBe(409);
+    // Al repetirla, la ficha ya está en la caché y solo se traduce su escena.
+    const repetida = await pedirTraduccion(ana.id, [{ texto: escenaB }, { texto: ficha }], "gpt-5-6-sol", buscar);
+    expect(traducciones).toHaveLength(llamadas + 2);
+    expect(traducciones.at(-1)).toContain(escenaB);
+    expect(traducciones.at(-1)).not.toContain(ficha);
+    expect(repetida.traducidas.size).toBe(2);
+  });
+
+  test("con parte de los textos en la caché, solo se traduce lo que falta", async () => {
+    const guardado = `un texto ya traducido ${crypto.randomUUID()}`;
+    const nuevo = `un texto todavía sin traducir ${crypto.randomUUID()}`;
+    await db()
+      .insert(translationCache)
+      .values({
+        userId: ana.id,
+        sourceHash: huellaDeTexto(guardado),
+        target: "already translated",
+        model: "gpt-5-6-sol",
+      });
+    const llamadas = traducciones.length;
+    const { traducidas } = await pedirTraduccion(
+      ana.id,
+      [{ texto: guardado }, { texto: nuevo }],
+      "gpt-5-6-sol",
+      buscar,
+    );
+    expect(traducciones).toHaveLength(llamadas + 1);
+    expect(traducciones.at(-1)).toContain(nuevo);
+    expect(traducciones.at(-1)).not.toContain(guardado);
+    expect(traducidas.get(guardado)).toBe("already translated");
+    expect(traducidas.get(nuevo)).toBe(TRADUCIDA);
+  });
+
+  test("sin conexión libre para los cerrojos, se rechaza con un 503 sin llamar ni cobrar", async () => {
+    const llamadas = traducciones.length;
+    const soltar = retenerAlProveedor();
+    let recibidas = 0;
+    const todasEnCurso = new Promise<void>((resolver) => {
+      avisarDeLlamada = () => {
+        recibidas++;
+        if (recibidas === MAXIMO_CONEXIONES_CERROJO) resolver();
+      };
+    });
+    // Cada traducción retenida ocupa una conexión del pool de cerrojos hasta que termina.
+    const ocupadas = Array.from({ length: MAXIMO_CONEXIONES_CERROJO }, () =>
+      pedirTraduccion(ana.id, [{ texto: `ocupa una conexión ${crypto.randomUUID()}` }], "gpt-5-6-sol", buscar),
+    );
+    await todasEnCurso;
+    const fallo = await pedirTraduccion(
+      ana.id,
+      [{ texto: `no encuentra conexión ${crypto.randomUUID()}` }],
+      "gpt-5-6-sol",
+      buscar,
+    ).catch((e: unknown) => e);
+    soltar();
+    await Promise.all(ocupadas);
+    expect(fallo).toBeInstanceOf(ErrorGeneracion);
+    expect((fallo as { estado: number }).estado).toBe(503);
+    expect((fallo as Error).message).toContain("No se ha enviado nada a generar ni se ha cobrado nada");
+    expect(traducciones).toHaveLength(llamadas + MAXIMO_CONEXIONES_CERROJO);
+  }, 15_000);
 
   test("tras un intento fallido, el mismo texto se puede volver a traducir", async () => {
     const texto = "una escena que falla la primera vez y se reintenta";
@@ -466,6 +551,18 @@ describe.skipIf(!hayBaseDeDatos)("traducción de los prompts al inglés", () => 
       h,
     );
   };
+
+  /** Retiene las respuestas del endpoint de texto hasta llamar a la función que devuelve. */
+  function retenerAlProveedor(): () => void {
+    let soltar = () => {};
+    esperarAntesDeContestar = new Promise<void>((resolver) => {
+      soltar = resolver;
+    });
+    return () => {
+      soltar();
+      esperarAntesDeContestar = null;
+    };
+  }
 
   /** Enciende la traducción y deja el modelo de texto utilizable, como haría quien administra. */
   async function activarTraduccion() {
