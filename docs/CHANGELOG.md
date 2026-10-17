@@ -2,6 +2,18 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.52.12] · 2026-10-17
+
+### Corregido
+
+- Dos envíos casi simultáneos con el mismo texto ya no pueden pagar dos veces su traducción al inglés. Solo uno
+  llama al traductor; el otro usa la traducción guardada si el primero ya terminó, o dice que el texto se está
+  traduciendo en otra petición y que no se ha enviado nada a generar. Antes, si el primero terminaba justo antes
+  de que el segundo preparase su llamada, el segundo volvía a traducir y a cobrar.
+- Tras una traducción fallida, o que contestó con algo que no era una traducción, el siguiente intento con el mismo
+  texto vuelve a traducir en lugar de quedarse esperando. Una traducción interrumpida a medias tampoco deja el texto
+  bloqueado.
+
 ## [0.52.11] · 2026-10-17
 
 ### Añadido
