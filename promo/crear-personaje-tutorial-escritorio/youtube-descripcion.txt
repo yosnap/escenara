@@ -4,6 +4,7 @@ Verás cómo elegir el tipo de personaje, describirlo, escoger su estilo visual,
 
 Escenara es un estudio abierto de personajes y vídeo con IA: usas tus propias claves de los proveedores y ves el coste antes de generar.
 
+🌐 Escenara: https://escenara.com
 📖 Guía completa: https://docs.escenara.com
 
 Capítulos
@@ -15,6 +16,6 @@ Capítulos
 2:17 Tu mascota
 2:34 Fotos de tu mascota
 2:48 Consentimiento y ficha
-3:02 Cierre
+3:01 Cierre
 
 #Escenara #IA #Tutorial
