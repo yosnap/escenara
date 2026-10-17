@@ -667,20 +667,6 @@
               "titulo": "¿De quién es la imagen?",
               "opciones": "section[aria-label='Paso 3: Consentimiento'] [role=radiogroup]:has(label:has-text('Un animal mío')) label",
               "selector": "section[aria-label='Paso 3: Consentimiento'] label:has-text('Un animal mío')"
-            },
-            {
-              "accion": "desplazar",
-              "selector": "section[aria-label='Paso 3: Consentimiento'] label:has-text('Declaro que es mayor de edad')"
-            },
-            {
-              "accion": "desplazar",
-              "selector": "section[aria-label='Paso 3: Consentimiento'] label:has-text('Declaro que es mayor de edad')",
-              "siExiste": true
-            },
-            {
-              "accion": "clic",
-              "selector": "section[aria-label='Paso 3: Consentimiento'] label:has-text('Declaro que es mayor de edad')",
-              "siExiste": true
             }
           ]
         },
