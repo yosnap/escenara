@@ -46,6 +46,7 @@ import { type Actor, aDto } from "../media/servicio";
 import { modeloEnMensaje } from "../modelo-en-mensajes";
 import { type CosteDeEscenaOmni, segundosPlanificados } from "../omni/escena";
 import {
+  costeOmniDelPlan,
   costesOmniPorDuracion,
   estimacionDeEscenaOmni,
   selloOmniVigente,
@@ -71,7 +72,7 @@ import {
   proyectosDe,
 } from "./consulta";
 import { ErrorProyecto } from "./errores";
-import { condicionesDe } from "./guion-por-bloques";
+import { condicionesDe, guionCompletoVigente } from "./guion-por-bloques";
 import { estadoDelAsistente } from "./texto";
 
 /**
@@ -671,12 +672,13 @@ const conFotoDeProducto = (estimacion: EstimacionEscena | null, foto: FotoDeProd
 /** Proyecto completo: escenas, afirmaciones y plan. Es lo que pinta `/proyectos/[id]`. */
 export async function detalleProyecto(actor: Actor, id: unknown): Promise<ProyectoDetalle> {
   const fila = await proyectoPropio(actor, id);
-  const [filasEscena, elecciones, ajustes, asistente, creditosAsistente] = await Promise.all([
+  const [filasEscena, elecciones, ajustes, asistente, creditosAsistente, guionCompleto] = await Promise.all([
     escenasDe(fila.id),
     eleccionesDelPlan(actor.id, fila),
     leerAjustes(),
     estadoDelAsistente(actor.id),
     gastoDelAsistente(fila.id),
+    guionCompletoVigente(fila.id),
   ]);
   const ids = filasEscena.map((e) => e.id);
   const [afirmaciones, trabajos, contexto] = await Promise.all([
@@ -715,6 +717,7 @@ export async function detalleProyecto(actor: Actor, id: unknown): Promise<Proyec
     formatosGenerables: formatosGenerables(await modelosDelProyecto(actor.id, elecciones, fila)),
     avanzadas: await avanzadasDelProyecto(actor.id, fila, elecciones),
     videoCompleto: condicionesDe(fila, ajustes),
+    guionCompleto: guionCompleto && filasEscena.length > 0,
   };
 }
 
@@ -762,6 +765,14 @@ export async function aprobarPlan(actor: Actor, id: unknown, peticion: PeticionA
     const [fila] = await tx.select().from(projects).where(eq(projects.id, proyectoId)).limit(1).for("update");
     if (!fila) throw new ErrorProyecto(404, "Ese proyecto no existe.");
     const filasEscena = await escenasDe(proyectoId, tx);
+    // Las escenas que cuentan son las leídas aquí, con el proyecto bloqueado: si alguna cambió de duración desde la
+    // primera lectura, su tarifa se lee ahora en lugar de quedarse sin estimar.
+    if (omni) {
+      for (const escena of filasEscena) {
+        const segundos = segundosPlanificados(escena, fila);
+        if (!omni.has(segundos)) omni.set(segundos, await costeOmniDelPlan(actor.id, fila, segundos));
+      }
+    }
     const estimaciones = await estimacionesDeEscenas(fila, filasEscena, actor.id, elecciones, ajustes, omni);
     const ids = filasEscena.map((e) => e.id);
     const afirmaciones = ids.length === 0 ? [] : await tx.select().from(claims).where(inArray(claims.sceneId, ids));

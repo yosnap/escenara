@@ -27,9 +27,15 @@ import type { Buscador } from "../proveedores/codigos";
 import { ErrorCatalogo } from "../proveedores/contrato";
 import { proyectoPropio } from "./consulta";
 import { ErrorProyecto } from "./errores";
-import { sustituirEscenas } from "./escenas";
+import { exigirEscenasReescribibles, sustituirEscenas } from "./escenas";
 import { ejecucionDeLaConfirmacion } from "./gasto";
-import { clavePrimeraLlamada, escribirVideoCompleto, leerVideoPedido, type VideoPedido } from "./guion-por-bloques";
+import {
+  clavePrimeraLlamada,
+  escribirVideoCompleto,
+  falloDeUnaConfirmacion,
+  leerVideoPedido,
+  type VideoPedido,
+} from "./guion-por-bloques";
 import { detalleProyecto, exigirTopeDelProyecto } from "./plan";
 import { exigirAsistenteDisponible } from "./texto";
 
@@ -123,7 +129,9 @@ export async function escribirGuion(
     actor.id,
     video ? clavePrimeraLlamada(video, claveIdempotencia) : claveIdempotencia,
   );
-  if (yaEjecutada) return detalleProyecto(actor, proyecto.id);
+  if (yaEjecutada) return repetida(actor, proyecto.id, video ? claveIdempotencia : null);
+  // Un proyecto con escenas en producción no se reescribe: se dice **antes** de gastar ritmo, saldo o una llamada.
+  await exigirEscenasReescribibles(proyecto.id);
   if (!(await dentroDelLimite(`asistente:${actor.id}`, RITMO_ASISTENTE))) {
     throw new ErrorProyecto(429, "Has pedido demasiados guiones seguidos. Espera un rato.");
   }
@@ -137,7 +145,9 @@ export async function escribirGuion(
   // Si se conoce el saldo del usuario en el proveedor y no llega, no se llama: el proveedor lo rechazaría y la
   // reserva se habría apartado para nada.
   await exigirSaldo(actor.id, creditos, buscar, proveedor);
-  if (video) return guionDelVideo(actor, proyecto, video, claveIdempotencia, creditos, modelo.modelo, buscar);
+  if (video) {
+    return guionDelVideo(actor, proyecto, video, claveIdempotencia, creditos, precio.creditos, modelo.modelo, buscar);
+  }
 
   // La petición se compone **antes** de reservar: leer la ficha del protagonista puede fallar (consentimiento
   // revocado, personaje borrado), y una reserva apartada por un fallo nuestro le comería presupuesto al usuario
@@ -230,6 +240,16 @@ export async function escribirGuion(
   return resultado.aviso === "" ? detalle : { ...detalle, avisoReserva: resultado.aviso };
 }
 
+/**
+ * Respuesta a una confirmación que ya se había ejecutado. En un vídeo completo que falló a mitad se dice qué pasó
+ * (con un 409, para que la pantalla estrene clave), en lugar de devolver el proyecto como si nada.
+ */
+async function repetida(actor: Actor, proyectoId: string, claveVideo: string | null): Promise<ProyectoDetalle> {
+  const fallo = claveVideo ? await falloDeUnaConfirmacion(actor.id, claveVideo) : null;
+  if (fallo) throw new ErrorProyecto(409, fallo);
+  return detalleProyecto(actor, proyectoId);
+}
+
 const sinValor = (valor: unknown) => valor === undefined || valor === null || valor === "";
 
 /**
@@ -242,13 +262,14 @@ async function guionDelVideo(
   video: VideoPedido,
   claveIdempotencia: string,
   creditos: number,
+  creditosPorLlamada: number,
   modelo: string,
   buscar: Buscador,
 ): Promise<ProyectoDetalle> {
   await exigirTopeDelProyecto(actor.id, proyecto.id, creditos);
   // Esta confirmación ya se había ejecutado: se devuelve el proyecto como está y **no se llama a nadie**.
   if (await ejecucionDeLaConfirmacion(actor.id, clavePrimeraLlamada(video, claveIdempotencia))) {
-    return detalleProyecto(actor, proyecto.id);
+    return repetida(actor, proyecto.id, claveIdempotencia);
   }
   let aviso: string;
   try {
@@ -259,6 +280,8 @@ async function guionDelVideo(
       claveIdempotencia,
       buscar,
       reservaConfirmada: modelo,
+      confirmado: creditos,
+      creditosPorLlamada,
     }));
   } catch (error) {
     // La misma confirmación ya estaba en marcha: se devuelve el proyecto como está y no se llama a nadie más.

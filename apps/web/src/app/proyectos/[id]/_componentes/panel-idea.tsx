@@ -15,6 +15,7 @@ import { SelectorPersonaje } from "@/components/ui/personaje";
 import { Selector } from "@/components/ui/select";
 import { type EleccionVideoCompleto, motivoDeLaEleccion, SelectorVideoCompleto } from "@/components/ui/video-completo";
 import { type ClaveConfirmacion, claveEstable } from "@/lib/asistente";
+import { renovarClaveTrasFallo } from "@/lib/comparativas";
 import { ACENTOS, type Acento, AYUDA_ACENTO, NOMBRE_ACENTO } from "@/lib/direccion";
 import { formatoPrincipal } from "@/lib/formatos";
 import { formatearCreditos, formatearEuros } from "@/lib/generacion";
@@ -131,9 +132,9 @@ export function PanelIdea({
     });
     setEscribiendo(false);
     if (!resultado.ok) {
-      // El servidor ha respondido con un error: no queda nada en marcha con esta clave, así que el siguiente intento
-      // es una confirmación nueva. Con un error de red no se sabe, y se conserva para no pagar dos veces.
-      if (!resultado.red) clave.current = null;
+      // Solo con un error que Escenara ha terminado de responder se estrena clave. Sin certeza (sin conexión, o un
+      // 502/503/504 del proxy) se conserva: repetirla no paga dos veces.
+      if (renovarClaveTrasFallo(resultado)) clave.current = null;
       onError(
         resultado.red
           ? `${resultado.error} Puede que el guion se haya encargado: recarga la página antes de repetir.`
@@ -145,7 +146,7 @@ export function PanelIdea({
     setHecho(
       video.duracion === null
         ? "El asistente ha propuesto un guion. Revísalo escena a escena antes de aprobar el plan."
-        : "El asistente ha escrito el guion completo, con el diálogo de cada clip. Puedes verlo y editarlo en las escenas y en su reparto antes de aprobar el plan.",
+        : "El asistente ha escrito el guion completo, con el diálogo de cada clip. En el paso «Escenas», ábrelo en «Ver y editar el diálogo» si quieres leerlo o cambiar algo antes de aprobar el plan.",
     );
     setAvisoReserva(resultado.datos.avisoReserva ?? null);
     onCambio(resultado.datos);

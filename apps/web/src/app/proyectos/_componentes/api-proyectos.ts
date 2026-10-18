@@ -1,3 +1,4 @@
+import { MENSAJE_SIN_CERTEZA, respuestaSinCerteza } from "@/lib/comparativas";
 import type { OpcionesDeDireccion } from "@/lib/direccion";
 import type { FormatoMontaje } from "@/lib/formatos";
 import type { ProyectoDetalle } from "@/lib/proyectos";
@@ -11,12 +12,25 @@ import type { ProyectoDetalle } from "@/lib/proyectos";
  */
 export type Resultado<T> = { ok: true; datos: T } | { ok: false; error: string; red?: boolean };
 
+/**
+ * Lee la respuesta. Un 502, 503 o 504, o una respuesta sin JSON, **no dice si la petición llegó a terminar** (los pone
+ * el proxy que hay delante): se trata como un fallo de red, para que quien gasta conserve su clave de idempotencia y
+ * repetir no cobre dos veces.
+ */
+export function leerRespuesta<T>(estado: number, ok: boolean, cuerpo: unknown): Resultado<T> {
+  const error = (cuerpo as { error?: unknown } | null)?.error;
+  if (!ok && respuestaSinCerteza(estado, cuerpo !== null)) {
+    return { ok: false, error: typeof error === "string" ? error : MENSAJE_SIN_CERTEZA, red: true };
+  }
+  if (!ok) return { ok: false, error: typeof error === "string" ? error : "No se ha podido completar la operación." };
+  return { ok: true, datos: cuerpo as T };
+}
+
 async function pedir<T>(url: string, init?: RequestInit): Promise<Resultado<T>> {
   try {
     const respuesta = await fetch(url, init);
     const cuerpo = await respuesta.json().catch(() => null);
-    if (!respuesta.ok) return { ok: false, error: cuerpo?.error ?? "No se ha podido completar la operación." };
-    return { ok: true, datos: cuerpo as T };
+    return leerRespuesta<T>(respuesta.status, respuesta.ok, cuerpo);
   } catch {
     return { ok: false, error: "Sin conexión con el servidor.", red: true };
   }

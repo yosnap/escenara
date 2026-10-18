@@ -260,6 +260,16 @@ export interface EscenaProduccionVista {
   presupuestoReintentos: number;
   /** Motivo del último fallo apto para el usuario; vacío si no ha fallado nada. */
   motivoUltimoFallo: string;
+  /**
+   * En modo «Voz e identidad registradas», lo que cuesta el clip hablado **de esta escena** con su duración (cada
+   * duración tiene su tarifa y su sello) y los segundos que se piden. `null` fuera de ese modo o sin precio.
+   */
+  costeHablado?: { creditos: number; sello: string; segundos: number } | null;
+  /**
+   * En un plano de podcast con otro personaje que el protagonista: lo que le falta a **ese** personaje para salir con
+   * su cara y su voz registradas, con su nombre. Vacío o ausente si no le falta nada. Bloquea producir la escena.
+   */
+  faltaDelPlano?: string;
   /** La escena se editó después de generarla: lo producido ya no corresponde a lo que dice. */
   cambiadaDesdeLaGeneracion: boolean;
   /**
@@ -374,6 +384,12 @@ export interface ProduccionVista {
   /** Escenas que se pueden encolar ahora mismo y lo que costaría hacerlo. */
   porProducir: number;
   creditosPorFotograma: number;
+  /**
+   * En modo «Voz e identidad registradas»: lo que cuesta cada escena pendiente si **todas** cuestan lo mismo (misma
+   * duración), que es lo que se confirma al producirlas de una vez; `null` si sus duraciones difieren y hay que
+   * confirmarlas una a una. Ausente en los demás modos.
+   */
+  costeHabladoComun?: { creditos: number; sello: string } | null;
   /**
    * Umbral de aviso por gasto alto de Admin › Ajustes, en créditos y **por trabajo**. Es el mismo que compara el
    * servidor (`generacion/comprobaciones.ts › exigirAvisoUmbral`), así que la confirmación puede pedir la casilla

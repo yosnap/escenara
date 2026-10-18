@@ -59,7 +59,9 @@ export function PanelVozOmni({
         <p className="text-sm text-texto-suave">
           {omni.creditosPorEscena === null
             ? "Esta instalación no tiene ningún modelo de escenas habladas con precio registrado, así que no se puede estimar ni producir en este modo."
-            : `${formatearCreditos(omni.creditosPorEscena)} por escena${omni.precioEstimado ? ", estimados: solo está medido el precio de los clips de 4 s, y el de las demás duraciones se calcula en proporción." : ", medido con esa duración."}`}
+            : omni.creditosPorDuracion && omni.creditosPorDuracion.length > 1
+              ? `Cada escena se cobra con la tarifa de su duración: ${omni.creditosPorDuracion.map((d) => `${formatearCreditos(d.creditos)} las de ${d.segundos} s`).join(", ")}.`
+              : `${formatearCreditos(omni.creditosPorEscena)} por escena${omni.precioEstimado ? ", estimados: solo está medido el precio de los clips de 4 s, y el de las demás duraciones se calcula en proporción." : ", medido con esa duración."}`}
         </p>
       </div>
 

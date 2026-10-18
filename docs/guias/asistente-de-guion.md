@@ -115,8 +115,9 @@ registradas»**, que es con el que se producen estos clips. Si falta algo, la op
 **Lo que cuesta, antes de empezar.** El recuadro neutro enseña las llamadas de texto que se van a hacer (una para
 20 s), **una llamada de reserva aparte** y el total que confirmas, con la fecha del precio. La reserva solo se gasta
 si un trozo del guion llega cortado o con frases que no caben en sus segundos: entonces se repite **solo ese trozo**,
-una vez y con la causa. Si no hace falta, no se gasta. Lo que pagas nunca pasa del total confirmado. El coste de los
-clips se enseña aparte, antes de producir.
+una vez y con la causa. Si no hace falta, no se gasta. Antes de cada llamada se suma lo ya cobrado: si la siguiente
+pudiera pasar del total confirmado (porque el proveedor cobró alguna más cara de lo estimado), no se hace, se para y
+se te dice cuánto ha costado lo hecho. El coste de los clips se enseña aparte, antes de producir.
 
 **Las frases caben en su clip.** Se piden a unas 2,5 palabras por segundo: como mucho 25 palabras en un clip de
 10 s, 20 en uno de 8 s y 15 en uno de 6 s. Un clip que se pase no se recorta a medias: se pide otra vez. El diálogo
@@ -126,9 +127,10 @@ se escribe en español de España y se guarda **tal cual**, sin traducir.
 trozo repetido tampoco sirve, el aviso te dice qué parte falló, qué proveedor contestó, cuánto han costado las
 llamadas ya hechas y qué hacer; tus escenas siguen como estaban.
 
-**Ver y editar el diálogo.** El guion escrito son escenas normales: cada una con su texto, su plano y su acción, y
-en la entrevista con su reparto y sus turnos. Lo revisas y lo cambias en el paso «Escenas» y en el reparto de cada
-escena, igual que uno escrito a mano. Escribirlo ajusta la duración de clip del proyecto a la del primer clip (10 s
+**Ver y editar el diálogo.** El diálogo va plegado: en el paso «Escenas» ves un resumen (cuántos clips y cuánto
+dura) y el plegable **«Ver y editar el diálogo»**. Dentro están las escenas normales, cada una con su texto, su plano
+y su acción, y en la entrevista con su reparto y sus turnos; las cambias igual que un guion escrito a mano. Si dejas
+cambios sin guardar, el plegable no se cierra hasta que los guardes o los descartes. Escribirlo ajusta la duración de clip del proyecto a la del primer clip (10 s
 en una persona y entrevista, 8 s en podcast) y cada escena guarda la suya.
 
 Los vídeos de **≈ 1 minuto** (8 clips de 8 s) y **≈ 3 minutos** (23 clips de 8 s) están preparados pero **no se

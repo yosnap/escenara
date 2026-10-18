@@ -440,27 +440,40 @@ export async function borrarEscena(actor: Actor, escenaId: unknown): Promise<voi
  * nada y se dice, en lugar de dejar el proyecto a medias entre dos guiones.
  */
 async function vaciarParaElGuion(tx: Ejecutor, proyectoId: string): Promise<string | null> {
-  const actuales = await escenasDe(proyectoId, tx);
-  const ids = actuales.map((e) => e.id);
+  await exigirEscenasReescribibles(proyectoId, tx);
   const [proyecto] = await tx
     .select({ protagonista: projects.mainCharacterId })
     .from(projects)
     .where(eq(projects.id, proyectoId))
     .limit(1);
-  // Se mira el estado **y** si alguna escena tiene ya un trabajo detrás, aunque no haya terminado: ese trabajo
-  // se ha pagado y borrar su escena dejaría el gasto sin nada que lo explique.
+  await tx.delete(scenes).where(eq(scenes.projectId, proyectoId));
+  return proyecto?.protagonista ?? null;
+}
+
+export const MOTIVO_ESCENAS_EN_PRODUCCION =
+  "Este proyecto ya tiene escenas en producción: el asistente no las reescribe. Crea otro proyecto o edita las escenas a mano.";
+
+/**
+ * Comprueba que el asistente puede reescribir las escenas del proyecto: ninguna producida ni con un trabajo detrás,
+ * aunque no haya terminado (ese trabajo se ha pagado y borrar su escena dejaría el gasto sin explicación).
+ *
+ * Se llama **antes de gastar** (al pedir el guion, sin haber llamado a nadie) y otra vez en la transacción que lo
+ * guarda, por si alguien empezó a producir mientras se escribía.
+ */
+export async function exigirEscenasReescribibles(proyectoId: string, ejecutor: Ejecutor = db()): Promise<void> {
+  const actuales = await escenasDe(proyectoId, ejecutor);
+  const ids = actuales.map((e) => e.id);
   const conTrabajo =
     ids.length === 0
       ? []
-      : await tx.select({ id: generationJobs.id }).from(generationJobs).where(inArray(generationJobs.sceneId, ids));
+      : await ejecutor
+          .select({ id: generationJobs.id })
+          .from(generationJobs)
+          .where(inArray(generationJobs.sceneId, ids))
+          .limit(1);
   if (actuales.some((e) => e.state === "producida") || conTrabajo.length > 0) {
-    throw new ErrorProyecto(
-      409,
-      "Este proyecto ya tiene escenas en producción: el asistente no las reescribe. Crea otro proyecto o edita las escenas a mano.",
-    );
+    throw new ErrorProyecto(409, MOTIVO_ESCENAS_EN_PRODUCCION);
   }
-  if (actuales.length > 0) await tx.delete(scenes).where(eq(scenes.projectId, proyectoId));
-  return proyecto?.protagonista ?? null;
 }
 
 /** Sustituye todas las escenas en borrador del proyecto por las que propone el asistente. */

@@ -206,8 +206,10 @@ export function SelectorVideoCompleto({
             {formatearFecha(precio.comprobado)}) ≈ {formatearEuros(coste.total * eurosPorCredito)}
           </p>
           <p className="text-sm text-texto-suave">
-            La reserva solo se gasta si un trozo del guion llega cortado o no cabe en sus segundos; nunca se pasa del
-            total. El coste de los clips se enseña aparte, antes de producir.
+            La reserva solo se gasta si un trozo del guion llega cortado o no cabe en sus segundos. Antes de cada
+            llamada se suma lo ya cobrado: si la siguiente pudiera pasar del total, no se hace, se para y se te dice
+            cuánto ha costado lo hecho. El importe de cada llamada lo informa el proveedor al terminar. El coste de los
+            clips se enseña aparte, antes de producir.
           </p>
         </div>
       )}

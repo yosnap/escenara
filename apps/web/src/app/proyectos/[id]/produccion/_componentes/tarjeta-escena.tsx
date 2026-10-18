@@ -75,6 +75,8 @@ export function TarjetaEscena({
   const bloqueos = [
     ...bloqueosDeControles(escena.controles, avisosConfirmados),
     ...bloqueosDeControles(produccion.controlesDelModelo, avisosConfirmados),
+    // El otro personaje de un plano de podcast, sin registrar: se dice aquí, antes de confirmar nada.
+    ...(escena.faltaDelPlano ? [escena.faltaDelPlano] : []),
   ];
   const firma = [escena.id, ...avisosConfirmados].join("|");
   // Los avisos que frenan a esta escena, sin repetir regla: los suyos y los del modelo y el protagonista.
@@ -98,6 +100,15 @@ export function TarjetaEscena({
     ...bloqueos,
     ...(escena.controlesDelProductoClip ? bloqueosDeControles(escena.controlesDelProductoClip, avisosConfirmados) : []),
   ];
+  /**
+   * En modo «Voz e identidad registradas» no hay fotograma: producir la escena encola su clip hablado, y se confirma
+   * con la tarifa **de su duración** (un podcast de 20 s mezcla clips de 8 y 6 s), la misma que exige el servidor.
+   */
+  const hablada = produccion.modoVoz === "omni";
+  const creditosAlProducir = hablada
+    ? (escena.costeHablado?.creditos ?? produccion.creditosPorClip)
+    : produccion.creditosPorFotograma;
+  const selloAlProducir = hablada ? (escena.costeHablado?.sello ?? produccion.selloClip) : produccion.selloFotograma;
   const enVuelo = escenaEnVuelo(escena);
   const lista = escenaLista(escena);
   const sinProducir = escena.fotograma === null;
@@ -257,11 +268,15 @@ export function TarjetaEscena({
           {escena.reparto === null && !enVuelo && sinProducir && escena.estado !== "borrador" && (
             <ConfirmacionGasto
               titulo="Producir esta escena"
-              explicacion="Se encola su fotograma. El clip llega después, cuando apruebes el fotograma."
-              creditos={produccion.creditosPorFotograma}
+              explicacion={
+                hablada
+                  ? `Se encola su clip hablado de ${escena.costeHablado?.segundos ?? escena.segundos} s, con la voz y la cara registradas. No hay fotograma que aprobar.`
+                  : "Se encola su fotograma. El clip llega después, cuando apruebes el fotograma."
+              }
+              creditos={creditosAlProducir}
               umbral={produccion.umbralAvisoCreditos}
-              sello={produccion.selloFotograma}
-              etiqueta="Generar el fotograma"
+              sello={selloAlProducir}
+              etiqueta={hablada ? "Generar el clip hablado" : "Generar el fotograma"}
               firma={`producir|${firma}`}
               bloqueos={bloqueos}
               avisosConfirmados={avisosConfirmados}

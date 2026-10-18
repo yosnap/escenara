@@ -339,6 +339,11 @@ export interface ProyectoDetalle {
    * La pantalla calcula las opciones y el coste con las mismas funciones con las que el servidor las rechaza.
    */
   videoCompleto?: CondicionesVideoCompleto;
+  /**
+   * `true` si el guion vigente lo escribió entero el asistente como vídeo completo: su diálogo va plegado en
+   * «Opciones avanzadas» y se ve y se edita ahí.
+   */
+  guionCompleto?: boolean;
 }
 
 /**

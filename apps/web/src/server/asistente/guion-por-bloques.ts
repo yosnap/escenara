@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { and, desc, eq, like } from "drizzle-orm";
 import { limpiarTextoDePrompt } from "@/lib/ficha-personaje";
 import { formatearCreditos } from "@/lib/generacion";
 import { CONCEPTO_MAXIMO } from "@/lib/proyectos";
@@ -145,9 +145,57 @@ export async function leerVideoPedido(
   return { duracion, tipo, personajes };
 }
 
+/**
+ * Las llamadas de un vídeo completo llevan `:video` en su clave. Es lo que permite saber, sin columna nueva, que el
+ * guion vigente del proyecto lo escribió entero el asistente (y por eso su diálogo va plegado en la pantalla).
+ */
+const MARCA_VIDEO = ":video";
+
 /** Clave de la primera llamada del guion: si ya existe, esta confirmación ya se ejecutó. */
 export const clavePrimeraLlamada = (video: VideoPedido, claveIdempotencia: string): string =>
-  `${porBloques(video.duracion) ? `${claveIdempotencia}:biblia` : claveIdempotencia}:0`;
+  `${claveIdempotencia}${MARCA_VIDEO}${porBloques(video.duracion) ? ":biblia" : ""}:0`;
+
+/**
+ * `true` si el guion vigente del proyecto es un vídeo completo escrito por el asistente: la última llamada de guion
+ * que terminó es de un vídeo completo. Un guion de escenas sueltas escrito después lo desmarca.
+ */
+export async function guionCompletoVigente(proyectoId: string): Promise<boolean> {
+  const [ultima] = await db()
+    .select({ clave: assistantRuns.idempotencyKey })
+    .from(assistantRuns)
+    .where(
+      and(eq(assistantRuns.projectId, proyectoId), eq(assistantRuns.kind, "guion"), eq(assistantRuns.state, "listo")),
+    )
+    .orderBy(desc(assistantRuns.createdAt))
+    .limit(1);
+  return ultima?.clave.includes(MARCA_VIDEO) ?? false;
+}
+
+/**
+ * Qué pasó con una confirmación que ya se había ejecutado, para decirlo en lugar de devolver el proyecto sin más.
+ * `null` si terminó bien (o sigue en marcha): entonces lo que hay es su resultado.
+ */
+export async function falloDeUnaConfirmacion(usuarioId: string, claveIdempotencia: string): Promise<string | null> {
+  const filas = await db()
+    .select({
+      estado: assistantRuns.state,
+      error: assistantRuns.errorMessage,
+      escenas: assistantRuns.scenesProposed,
+    })
+    .from(assistantRuns)
+    .where(
+      and(
+        eq(assistantRuns.userId, usuarioId),
+        like(assistantRuns.idempotencyKey, `${claveIdempotencia}${MARCA_VIDEO}%`),
+      ),
+    );
+  // El guion se guardó (la última llamada apunta sus escenas): un trozo repetido por el camino no es un fallo.
+  if (filas.some((f) => (f.escenas ?? 0) > 0)) return null;
+  const fallidas = filas.filter((f) => f.estado === "fallido" || (f.error ?? "") !== "");
+  if (fallidas.length === 0) return null;
+  const listas = filas.filter((f) => f.estado === "listo" && (f.error ?? "") === "").length;
+  return `Esta misma confirmación ya se intentó y no terminó: ${listas === 0 ? "ninguna llamada llegó a servir" : `${listas} ${listas === 1 ? "llamada se hizo y se cobró" : "llamadas se hicieron y se cobraron"}`}, pero el guion no se guardó, así que tus escenas siguen como estaban. No se ha vuelto a llamar a nadie ni a cobrar nada. Recarga la página y vuelve a confirmar para intentarlo de nuevo.`;
+}
 
 interface Contexto {
   actor: Actor;
@@ -157,7 +205,19 @@ interface Contexto {
   buscar: Buscador;
   /** Modelo de pago cuyo precio se confirmó: puede escribir si la principal de cuota falla. */
   reservaConfirmada: string;
+  /** Total confirmado (llamadas + reserva) y precio estimado de una llamada: el techo que no se puede pasar. */
+  confirmado: number;
+  creditosPorLlamada: number;
 }
+
+/**
+ * Lo gastado hasta ahora: lo que costó cada llamada que contestó, más una llamada entera por cada intento fallido
+ * que pudo cobrar. Es una cuenta prudente: nunca se queda corta.
+ */
+export const gastoDeLasLlamadas = (
+  hechas: readonly Pick<TextoDelMapa, "creditos" | "intentos">[],
+  porLlamada: number,
+) => hechas.reduce((s, h) => s + h.creditos + h.intentos.filter((i) => i.cobro !== "sin-cobro").length * porLlamada, 0);
 
 /**
  * Escribe el guion entero y lo guarda en una transacción. Devuelve el aviso de reserva de pago, si alguna llamada
@@ -180,11 +240,13 @@ export async function escribirVideoCompleto(ctx: Contexto): Promise<{ aviso: str
     componer: (causa?: string) => string,
     leer: (texto: string) => T,
   ): Promise<T> {
-    const claveDe = (intento: number) => `${ctx.claveIdempotencia}${sufijo}${intento === 0 ? "" : `:r${intento}`}`;
+    const claveDe = (intento: number) =>
+      `${ctx.claveIdempotencia}${MARCA_VIDEO}${sufijo}${intento === 0 ? "" : `:r${intento}`}`;
     try {
       const { valor, respuesta, intento } = await trozoConReintento({
         reserva,
         pedir: async (intento, causa) => {
+          exigirMargen(ctx, nombre, hechas);
           const respuesta = await pedir(ctx, claveDe(intento), instrucciones, componer(causa), nombre, hechas);
           hechas.push(respuesta);
           return respuesta;
@@ -247,26 +309,57 @@ export async function escribirVideoCompleto(ctx: Contexto): Promise<{ aviso: str
 
   const personajes = { A: video.personajes[0]?.id ?? null, B: video.personajes[1]?.id ?? null };
   const escenas = escenasDeLosClips(clips, video.tipo, personajes, video.tipo === "podcast" ? randomUUID() : null);
-  const escritas = await db().transaction(async (tx) => {
-    const total = await sustituirEscenasDelGuion(tx, proyecto.id, escenas);
-    /**
-     * La duración de clip del proyecto pasa a ser la del primer clip (10 s en una persona y entrevista, 8 s en el
-     * resto): así el plan, la rejilla de producción y la confirmación hablan de la misma tarifa que cada escena.
-     * Solo el podcast de 20 s mezcla duraciones (8 + 6 + 6 s), y cada escena guarda la suya.
-     */
-    await tx
-      .update(projects)
-      .set({
-        clipSeconds: plan[0]?.segundos ?? proyecto.clipSeconds,
-        ...(concepto === "" ? {} : { concept: limpiarTextoDePrompt(concepto, CONCEPTO_MAXIMO) }),
-        updatedAt: new Date(),
-      })
-      .where(eq(projects.id, proyecto.id));
-    return total;
-  });
+  const escritas = await guardarSinPerderLoCobrado(hechas, () =>
+    db().transaction(async (tx) => {
+      const total = await sustituirEscenasDelGuion(tx, proyecto.id, escenas);
+      /**
+       * La duración de clip del proyecto pasa a ser la del primer clip (10 s en una persona y entrevista, 8 s en el
+       * resto): así el plan, la rejilla de producción y la confirmación hablan de la misma tarifa que cada escena.
+       * Solo el podcast de 20 s mezcla duraciones (8 + 6 + 6 s), y cada escena guarda la suya.
+       */
+      await tx
+        .update(projects)
+        .set({
+          clipSeconds: plan[0]?.segundos ?? proyecto.clipSeconds,
+          ...(concepto === "" ? {} : { concept: limpiarTextoDePrompt(concepto, CONCEPTO_MAXIMO) }),
+          updatedAt: new Date(),
+        })
+        .where(eq(projects.id, proyecto.id));
+      return total;
+    }),
+  );
   const ultima = await ejecucionDeLaConfirmacion(ctx.actor.id, ultimaClave);
   if (ultima) await db().update(assistantRuns).set({ scenesProposed: escritas }).where(eq(assistantRuns.id, ultima.id));
   return { aviso: [...new Set(hechas.map((h) => h.aviso).filter((a) => a !== ""))].join(" ") };
+}
+
+/**
+ * Guarda el guion. Si la escritura falla (alguien empezó a producir una escena mientras se escribía), las llamadas ya
+ * están hechas y cobradas: el error lo dice, además de su causa.
+ */
+async function guardarSinPerderLoCobrado<T>(hechas: readonly TextoDelMapa[], guardar: () => Promise<T>): Promise<T> {
+  try {
+    return await guardar();
+  } catch (error) {
+    if (error instanceof ErrorProyecto) {
+      throw new ErrorProyecto(error.estado, `${error.message} No se ha guardado el guion.${loYaCobrado(hechas)}`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Antes de cada llamada: si la siguiente pudiera pasar de lo confirmado (porque alguna anterior costó más de lo
+ * estimado), se para aquí, sin llamar, con la causa, el proveedor y lo ya cobrado.
+ */
+function exigirMargen(ctx: Contexto, nombre: string, hechas: readonly TextoDelMapa[]): void {
+  const gastado = gastoDeLasLlamadas(hechas, ctx.creditosPorLlamada);
+  if (gastado + Math.ceil(ctx.creditosPorLlamada) <= ctx.confirmado) return;
+  const proveedor = hechas.at(-1)?.nombreProveedor;
+  throw new ErrorProyecto(
+    409,
+    `Se ha parado antes de escribir ${nombre}: las llamadas hechas${proveedor ? ` a ${proveedor}` : ""} han costado más de lo estimado y la siguiente podría pasar de los ${formatearCreditos(ctx.confirmado)} que confirmaste, así que no se ha hecho. No se ha guardado nada.${loYaCobrado(hechas)} Vuelve a intentarlo con una confirmación nueva: el coste que verás ya será el vigente.`,
+  );
 }
 
 /** Una llamada por el mapa de texto. Un fallo del proveedor se dice con el trozo, la causa y lo ya cobrado. */

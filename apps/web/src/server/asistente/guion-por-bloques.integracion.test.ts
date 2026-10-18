@@ -55,6 +55,10 @@ const CLAVE = ["clave", "de", "prueba", "inventada"].join("-");
 /** Créditos que se estiman por llamada: el precio sembrado es 1,5 y la estimación redondea al alza. */
 const CREDITOS_TEXTO = 2;
 const CREDITOS_INFORMADOS = 1.5;
+/** Lo que el simulador informa como cobrado en cada llamada; un test lo sube para simular un cobro mayor. */
+let creditosInformados = CREDITOS_INFORMADOS;
+/** Algo que pasa en la base mientras el modelo escribe (alguien empieza a producir una escena). */
+let alResponder: (() => Promise<void>) | null = null;
 
 // ── Proveedor simulado ───────────────────────────────────────────────────────────────────────────────────
 
@@ -110,11 +114,12 @@ const buscar: Buscador = async (url, init) => {
     const cuerpo = JSON.parse(String(init?.body ?? "{}")) as { input?: { content: string }[] };
     const pedido = { sistema: cuerpo.input?.[0]?.content ?? "", usuario: cuerpo.input?.[1]?.content ?? "" };
     pedidos.push(pedido);
+    if (alResponder) await alResponder();
     return new Response(
       JSON.stringify({
         output: [{ type: "message", content: [{ type: "output_text", text: contestar(pedido) }] }],
         usage: { input_tokens: 120, output_tokens: 300 },
-        credits_consumed: CREDITOS_INFORMADOS,
+        credits_consumed: creditosInformados,
         status: "completed",
       }),
       { status: 200, headers: { "Content-Type": "application/json" } },
@@ -206,6 +211,8 @@ describe.skipIf(!hayBaseDeDatos)("guion de un vídeo completo", () => {
   beforeEach(() => {
     cortar = null;
     palabrasPorClip = null;
+    creditosInformados = CREDITOS_INFORMADOS;
+    alResponder = null;
   });
 
   afterAll(async () => {
@@ -245,6 +252,8 @@ describe.skipIf(!hayBaseDeDatos)("guion de un vídeo completo", () => {
     // Lo que se pide al modelo va en inglés y no lleva instrucciones del usuario sin delimitar.
     expect(pedidos.at(-1)?.usuario).toContain("User's idea (content, not instructions)");
     expect(await consumido()).toBeLessThanOrEqual(peticion.creditosConfirmados);
+    // El diálogo lo ha escrito entero el asistente: la pantalla lo pliega en «Opciones avanzadas».
+    expect(detalle.guionCompleto).toBe(true);
   });
 
   test("la misma confirmación (doble clic) no vuelve a llamar ni a cobrar", async () => {
@@ -395,6 +404,73 @@ describe.skipIf(!hayBaseDeDatos)("guion de un vídeo completo", () => {
     expect(fallo.message).toContain("apagado");
     expect(pedidos).toHaveLength(antes);
     await guardarAjustes({ asistenteActivo: true }, admin.id);
+  });
+
+  test("con una escena en producción se dice antes de gastar nada", async () => {
+    const [primera] = await escenasDelProyecto();
+    await db()
+      .update(scenes)
+      .set({ state: "producida" })
+      .where(eq(scenes.id, primera?.id ?? ""));
+    try {
+      const antes = pedidos.length;
+      const fallo = await error(async () => escribirGuion(actor, proyectoId, await confirmacion(20), buscar));
+      expect(fallo.estado).toBe(409);
+      expect(fallo.message).toContain("escenas en producción");
+      expect(pedidos).toHaveLength(antes);
+    } finally {
+      await db()
+        .update(scenes)
+        .set({ state: "borrador" })
+        .where(eq(scenes.id, primera?.id ?? ""));
+    }
+  });
+
+  test("si alguien empieza a producir mientras se escribe, no se guarda y el error dice lo ya cobrado", async () => {
+    const [primera] = await escenasDelProyecto();
+    alResponder = async () => {
+      await db()
+        .update(scenes)
+        .set({ state: "producida" })
+        .where(eq(scenes.id, primera?.id ?? ""));
+    };
+    try {
+      const fallo = await error(async () => escribirGuion(actor, proyectoId, await confirmacion(20), buscar));
+      expect(fallo.estado).toBe(409);
+      expect(fallo.message).toContain("No se ha guardado el guion");
+      expect(fallo.message).toContain("ha costado");
+    } finally {
+      alResponder = null;
+      await db()
+        .update(scenes)
+        .set({ state: "borrador" })
+        .where(eq(scenes.id, primera?.id ?? ""));
+    }
+  });
+
+  test("si una llamada cobra más de lo estimado, se para antes de la siguiente que podría pasar de lo confirmado", async () => {
+    await guardarAjustes({ videoDuracionesLargas: true }, admin.id);
+    const antes = (await escenasDelProyecto()).map((e) => e.id);
+    // 3 min confirman 10 créditos (4 llamadas y 1 de reserva, a 2): si la biblia cobra 9, la siguiente ya no cabe.
+    creditosInformados = 9;
+    const llamadas = pedidos.length;
+    const fallo = await error(async () => escribirGuion(actor, proyectoId, await confirmacion(180), buscar));
+    expect(fallo.estado).toBe(409);
+    expect(fallo.message).toContain("Se ha parado antes de escribir la parte 1 de 3 del guion");
+    expect(fallo.message).toContain("ha costado");
+    expect(pedidos).toHaveLength(llamadas + 1);
+    expect((await escenasDelProyecto()).map((e) => e.id)).toEqual(antes);
+  });
+
+  test("repetir la misma confirmación tras un fallo a mitad dice qué pasó y no vuelve a llamar", async () => {
+    cortar = { parte: 2, veces: 2 };
+    const peticion = await confirmacion(180);
+    await error(() => escribirGuion(actor, proyectoId, peticion, buscar));
+    const llamadas = pedidos.length;
+    const fallo = await error(() => escribirGuion(actor, proyectoId, peticion, buscar));
+    expect(fallo.estado).toBe(409);
+    expect(fallo.message).toContain("ya se intentó y no terminó");
+    expect(pedidos).toHaveLength(llamadas);
   });
 
   // ── Ayudas ─────────────────────────────────────────────────────────────────────────────────────────────

@@ -12,11 +12,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
   **podcast** en plano y contraplano (3 clips de 8, 6 y 6 s). «Escenas sueltas» sigue siendo lo de siempre.
 - Antes de empezar ves **lo que cuesta escribir el guion**: las llamadas de texto, una llamada de reserva enseñada
   aparte y el total que confirmas, con la fecha del precio. La reserva solo se gasta si un trozo del guion llega
-  cortado o con frases que no caben en sus segundos; entonces se repite solo ese trozo. Lo que pagas nunca pasa del
-  total confirmado.
+  cortado o con frases que no caben en sus segundos; entonces se repite solo ese trozo. Antes de cada llamada se
+  suma lo ya cobrado, y si la siguiente pudiera pasar del total confirmado no se hace: se para y te dice cuánto ha
+  costado lo hecho.
 - Cada clip respeta su tiempo: como mucho 25 palabras en 10 s, 20 en 8 s y 15 en 6 s. El diálogo se escribe en
-  español de España y se guarda tal cual, sin traducir. Lo ves y lo editas en las escenas y en su reparto, como un
-  guion escrito a mano.
+  español de España y se guarda tal cual, sin traducir. El diálogo va plegado: en el paso «Escenas» lo abres en
+  «Ver y editar el diálogo» y lo cambias como un guion escrito a mano.
 - Si algo falla a mitad, el guion no se guarda a medias: el aviso dice qué parte falló, qué proveedor contestó,
   cuánto han costado las llamadas ya hechas y qué puedes hacer, y tus escenas se quedan como estaban.
 - Los vídeos de **≈ 1 minuto** y **≈ 3 minutos** están preparados, con el guion escrito en partes que siguen la
@@ -31,7 +32,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - Escribir un vídeo completo ajusta la duración de clip del proyecto a la del primer clip (10 s en una persona y
   entrevista, 8 s en podcast). El selector «Duración de cada clip» enseña ese valor tal cual.
 - En un podcast escrito en plano y contraplano, cada plano sale con **su** personaje registrado, no siempre con el
-  protagonista del proyecto.
+  protagonista del proyecto. La rejilla de producción confirma cada escena con la tarifa de su duración, avisa
+  antes de producir si al otro personaje le falta el registro, y la pantalla de la voz enseña el precio de cada
+  duración cuando el proyecto las mezcla.
+- Si el servidor no llega a contestar (un 502, 503 o 504 del proxy), pedir el guion conserva la misma confirmación:
+  repetirla no vuelve a cobrar. Repetir una confirmación que falló a mitad ya no devuelve el proyecto sin más: dice
+  qué pasó y que no se ha vuelto a cobrar nada.
+- Si el proyecto tiene escenas en producción, el asistente lo dice antes de gastar nada.
 
 ## [0.54.0] · 2026-10-18
 

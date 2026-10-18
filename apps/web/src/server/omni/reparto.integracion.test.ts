@@ -53,9 +53,9 @@ const { guardarAjustes, leerAjustes } = await import("../ajustes");
 const { guardarCredencial } = await import("../boveda/credenciales");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
-const { characters, generationJobs, projects, rateLimits, scenes, usageLedger, users, voiceSamples } = await import(
-  "../db/esquema"
-);
+const { characters, generationJobs, modelPrices, projects, rateLimits, scenes, usageLedger, users, voiceSamples } =
+  await import("../db/esquema");
+const { estadoDeProduccion } = await import("../produccion/consulta");
 const { crearMedio } = await import("../media/servicio");
 const { olvidarSaldos } = await import("../generacion/estimacion");
 const { cancelarTrabajo } = await import("../cola/cancelar");
@@ -899,5 +899,57 @@ describeSiHayBase("escenas habladas con dos personajes", () => {
     expect(fallo.message).toContain("solo genera de 4 s");
     expect(fallo.message).not.toContain("modelo de animación");
     expect(enviados).toHaveLength(0);
+  });
+
+  test("una escena hablada de 6 s se confirma desde la rejilla con la tarifa de su duración", async () => {
+    await registrarTodo([lucia.id]);
+    // Tarifa propia de 6 s para el modelo de escenas habladas de las pruebas, que de serie solo tiene la de 4 s.
+    const candidatos = await listarModelos({ capacidad: "image_to_video" });
+    const modelo = MODELOS_OMNI.flatMap((nombre) => candidatos.filter((m) => m.modelo === nombre))[0]?.modelo;
+    if (!modelo) throw new Error("Falta el modelo de escenas habladas.");
+    await db()
+      .insert(modelPrices)
+      .values({
+        provider: "kie",
+        model: modelo,
+        unit: "clip de 6 s",
+        credits: 84,
+        source: "Prueba de 6 s.",
+        published: true,
+      })
+      .onConflictDoNothing();
+    olvidarCatalogo();
+    try {
+      // El proyecto sigue en 4 s y esta escena, como el contraplano de un podcast de 20 s, dura 6.
+      await db().update(scenes).set({ plannedSeconds: 6 }).where(eq(scenes.id, escenaId));
+      await aprobarPlan();
+      const estado = await estadoDeProduccion(actor, proyectoId);
+      const escena = estado.escenas.find((e) => e.id === escenaId);
+      expect(escena?.costeHablado?.segundos).toBe(6);
+      expect(escena?.costeHablado?.creditos).not.toBe(estado.creditosPorClip);
+      await producirEscena(
+        actor,
+        escenaId,
+        {
+          derechos: true,
+          sinTerceros: true,
+          creditosConfirmados: escena?.costeHablado?.creditos ?? 0,
+          selloEstimacion: escena?.costeHablado?.sello ?? "",
+          claveIdempotencia: crypto.randomUUID(),
+          avisoUmbralAceptado: true,
+          avisosConfirmados: estado.controlesDelModelo.comprobaciones.filter((c) => c.confirmable).map((c) => c.regla),
+        },
+        h,
+      );
+      const trabajos = await trabajosDeLaEscena();
+      expect(trabajos).toHaveLength(1);
+      const parametros = (trabajos[0]?.input as { parametros?: { segundos?: number } } | undefined)?.parametros;
+      expect(parametros?.segundos).toBe(6);
+    } finally {
+      await db()
+        .delete(modelPrices)
+        .where(and(eq(modelPrices.model, modelo), eq(modelPrices.unit, "clip de 6 s")));
+      olvidarCatalogo();
+    }
   });
 });
