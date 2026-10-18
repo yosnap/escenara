@@ -12,9 +12,15 @@ import { cn } from "./cn";
 export function PanelCoste({
   estimacion,
   aviso,
+  mostrarModelo = false,
   children,
 }: {
   estimacion: Estimacion;
+  /**
+   * Nombra el modelo en la línea del precio. Apagado por defecto: el usuario normal ve duración y créditos, y el
+   * modelo solo dentro de «Opciones avanzadas» (o en el panel de administración, que lo enciende).
+   */
+  mostrarModelo?: boolean;
   /** Motivo por el que todavía no se puede generar (falta clave, saldo o consentimiento), ya como `Alerta`. */
   aviso?: ReactNode;
   /** Controles de confirmación, si los hay. */
@@ -71,8 +77,17 @@ export function PanelCoste({
 
       <p className="text-sm text-texto-suave">
         Es una <strong className="font-semibold text-texto">estimación</strong>: el importe final lo decide el proveedor
-        y se guarda tal como lo informe. Precio de <span className="font-mono">{modelo}</span> por {unidad}: {fuente},
-        comprobado el {comprobado}.
+        y se guarda tal como lo informe.{" "}
+        {mostrarModelo ? (
+          <>
+            Precio de <span className="font-mono">{modelo}</span> por {unidad}: {fuente}, comprobado el {comprobado}.
+          </>
+        ) : (
+          // La fuente del precio describe cómo se midió con cada modelo: va con el nombre, en Opciones avanzadas.
+          <>
+            Precio por {unidad}, comprobado el {comprobado}.
+          </>
+        )}
       </p>
     </section>
   );
