@@ -2,7 +2,7 @@
   "capturas": [
     {
       "id": "voz",
-      "ruta": "/proyectos/b5800ddd-a461-4d59-8eb4-184a3082d271/voz",
+      "ruta": "/proyectos/852a1ffe-417e-4a58-aca3-14c742758fb7/voz",
       "ocultar": [
         "nextjs-portal",
         "input[placeholder^='00000000']"
@@ -37,7 +37,7 @@
     },
     {
       "id": "dualcast",
-      "ruta": "/proyectos/b5800ddd-a461-4d59-8eb4-184a3082d271",
+      "ruta": "/proyectos/852a1ffe-417e-4a58-aca3-14c742758fb7",
       "ocultar": [
         "nextjs-portal"
       ],
@@ -202,7 +202,7 @@
             {
               "accion": "escribir",
               "selector": "section[aria-label='Reparto de la escena'] li:has-text('Turno 2') textarea",
-              "texto": "¡Hecho! Invito yo."
+              "texto": "¡Hecho! Y esta vez invito yo."
             }
           ]
         },
@@ -215,7 +215,7 @@
             },
             {
               "accion": "esperar",
-              "selector": "section[aria-label='Reparto de la escena'] :text('«¡Hecho! Invito yo.»')",
+              "selector": "section[aria-label='Reparto de la escena'] :text('«¡Hecho! Y esta vez invito yo.»')",
               "espera": 30000,
               "indicador": false
             },
@@ -352,13 +352,37 @@
               "selector": "section[aria-label='Reparto de la escena'] div:has(> p:text-is('Clip de los dos personajes')) video"
             }
           ]
-        },
+        }
+      ],
+      "interceptar": [
+        {
+          "metodo": "POST",
+          "url": "**/api/escenas/*/produccion",
+          "responderCon": "/api/proyectos/2d6bc37d-5f6e-47fa-a188-3607f2cc7e47/produccion"
+        }
+      ]
+    },
+    {
+      "id": "resultado",
+      "ruta": "/proyectos/2d6bc37d-5f6e-47fa-a188-3607f2cc7e47/montaje",
+      "ocultar": [
+        "nextjs-portal"
+      ],
+      "viewport": {
+        "ancho": 1600,
+        "alto": 856
+      },
+      "tramos": [
         {
           "id": "ver",
           "acciones": [
             {
+              "accion": "desplazar",
+              "selector": "ul[aria-label='Fragmentos del montaje, en el orden en el que se verán'] video[controls], [aria-label='Fragmentos del montaje, en el orden en el que se verán'] video[controls]"
+            },
+            {
               "accion": "reproducir",
-              "selector": "section[aria-label='Reparto de la escena'] div:has(> p:text-is('Clip de los dos personajes')) video"
+              "selector": "ul[aria-label='Fragmentos del montaje, en el orden en el que se verán'] video[controls], [aria-label='Fragmentos del montaje, en el orden en el que se verán'] video[controls]"
             }
           ]
         },
@@ -367,7 +391,7 @@
           "acciones": [
             {
               "accion": "desplazar",
-              "selector": "main a:has-text('Montaje y exportación')"
+              "selector": "main :text-is('Exportar el vídeo')"
             }
           ]
         }

@@ -1,0 +1,20 @@
+Cómo poner a dos personajes en la misma escena de Escenara: un dualcast con Brisa y Elisa hablando por turnos en el mismo plano, paso a paso.
+
+Verás el requisito del modo Omni, cómo abrir el reparto de la escena, la diferencia entre podcast (dos clips) y dualcast (un clip con los dos), cómo añadir el segundo personaje, quién habla y adónde mira cada uno, el diálogo turno a turno, el coste antes de pagar, la aprobación del plan y la producción del clip. Al final, el clip real reproduciéndose: Brisa y Elisa en la Terraza Mirto, cada una con su frase.
+
+Escenara es un estudio abierto de personajes y vídeo con IA: usas tus propias claves de los proveedores y ves el coste antes de generar.
+
+🌐 Escenara: https://escenara.com
+📖 Guía completa: https://docs.escenara.com
+
+Capítulos
+0:00 Antes: el modo Omni
+0:20 La escena y su reparto
+0:32 Podcast o dualcast y el segundo personaje
+0:48 Quién habla y adónde mira
+1:01 El diálogo, turno a turno
+1:18 Lo que cuesta y la aprobación del plan
+1:32 Confirma y genera el clip
+1:55 Mira el clip y después
+
+#Escenara #IA #Tutorial

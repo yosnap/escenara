@@ -1,9 +1,9 @@
 # Tutorial «Podcast / dualcast con dos personajes» en modo tutorial, versión MÓVIL: el móvil va en el centro y el
 # rótulo a su lado. La versión de escritorio (../podcast-dos-personajes-tutorial-escritorio/) tiene el mismo guion.
 # Sin voz: cada escena lleva un rótulo breve (titulo) y sus frases salen como subtítulos.
-# Dos grabaciones: «voz» enseña el requisito (modo Omni con la voz registrada) y «dualcast» monta el reparto en
-# Proyecto › Escenas, aprueba el plan y produce el clip con Brisa y Elisa en el mismo plano. Al final se reproduce
-# el clip con su sonido. Cada tramo empieza con el paso que lo abre, para que la pantalla no avance mientras sigue
+# Tres grabaciones: «voz» enseña el requisito (modo Omni con la voz registrada), «dualcast» monta el reparto en
+# Proyecto › Escenas, aprueba el plan y produce el clip con Brisa y Elisa en el mismo plano, y «resultado» lo
+# reproduce con su sonido en «Montaje y exportación». Cada tramo empieza con el paso que lo abre, para que la pantalla no avance mientras sigue
 # la frase anterior. Evidencia: briefing.md.
 escenas:
   - id: gancho
@@ -106,16 +106,16 @@ escenas:
 
   - id: ver
     pieza: tutorial
-    parametros: { grabacion: dualcast, tramo: ver, titulo: "Míralo" }
+    parametros: { grabacion: resultado, tramo: ver, titulo: "Míralo" }
     transicion: fundido
     frases:
-      - texto: "Toca el play y míralo: Brisa y Elisa en la terraza, por turnos."
+      - texto: "En «Montaje y exportación» tienes el clip. Toca el play: Brisa y Elisa en la terraza, por turnos."
 
   - id: despues
     pieza: tutorial
-    parametros: { grabacion: dualcast, tramo: despues, titulo: "Y después" }
+    parametros: { grabacion: resultado, tramo: despues, titulo: "Y después" }
     frases:
-      - texto: "Desde «Montaje y exportación» lo recortas y lo sacas en el formato de cada red."
+      - texto: "Aquí lo recortas, lo juntas con otras escenas y lo exportas en el formato de cada red."
 
   - id: cierre
     pieza: logo
