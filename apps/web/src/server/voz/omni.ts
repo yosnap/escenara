@@ -159,17 +159,20 @@ export async function registrarVozOmni(
     anterior.ejemplo === eleccion.ejemplo;
   if (mismaVoz) return { proyecto, invalidadas: 0 };
 
-  // Qué se perdería con la voz nueva: todavía con la firma de ahora, que es la que valida lo ya generado.
-  const firmaActual = await firmaOmniDelProyecto(proyecto);
+  /**
+   * Qué se perdería con la voz nueva: se compara lo generado con la firma **futura**. Si la protagonista habla con su
+   * propia voz, su firma no cambia y sus escenas no caen; si habla con la del proyecto, la firma futura no tiene
+   * registro todavía y caen todas las que tengan algo generado.
+   */
+  const futuro = { ...proyecto, omniVoice: eleccion.voz, omniAudioId: "" };
   await exigirConfirmacionDelCambio(
     db(),
     proyecto,
-    // Con otra voz, ningún registro anterior sigue valiendo: la firma futura no tiene ni `audioId` ni identidad.
-    { ...proyecto, omniVoice: eleccion.voz, omniAudioId: "" },
+    futuro,
     confirmado,
     "de voz Omni",
     0,
-    firmaActual,
+    await firmaOmniDelProyecto(futuro),
   );
 
   const { audioId } = await registrarVozEnProveedor(

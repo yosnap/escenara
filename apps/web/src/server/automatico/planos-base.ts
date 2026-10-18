@@ -12,7 +12,7 @@ import {
   TEXTO_SIN_PLANO,
   tieneBiblia,
 } from "@/lib/continuidad";
-import { faltaDeVoz, type HablanteConVoz } from "@/lib/omni";
+import { faltaDeVoz, type HablanteConVoz, usaIdentidadRegistrada } from "@/lib/omni";
 import { leerAjustes } from "../ajustes";
 import { combinarLugarConIdentidad } from "../ajustes-omni";
 import { proyectoPropio, proyectoPropioBloqueado } from "../asistente/consulta";
@@ -42,11 +42,13 @@ import { lugarDeLaEscena } from "../lugares/para-generar";
 import { eleccionDeGeneracion } from "../mapa/generacion";
 import { type Actor, aDto } from "../media/servicio";
 import { ErrorOmni } from "../omni/errores";
+import { eleccionOmni } from "../omni/registro";
 import { personajeDelPlano } from "../omni/reparto";
 import { registrarPersonajeOmni } from "../personajes/omni";
 import { encolarFotograma } from "../produccion/producir";
 import { creditosDelEnvio } from "../prompts/traduccion";
 import { miembrosDelReparto } from "../reparto/consulta";
+import { huellaActual, planosCaducados, retirarPlanosCaducados } from "./huella-plano";
 
 /**
  * **Planos base de un vídeo completo**: un fotograma por personaje que sale solo en alguna escena con lugar,
@@ -70,6 +72,8 @@ import { miembrosDelReparto } from "../reparto/consulta";
 /** Lo que el navegador confirma para pedir los planos que faltan: la confirmación de siempre, por el total. */
 export interface ConfirmacionPlanosBase {
   derechos: boolean;
+  /** Casilla de la marca: la exige el fotograma si la escena del plano lleva un producto con marca. */
+  derechoMarca?: boolean;
   sinTerceros: boolean;
   /** Total de los planos que faltan por pedir, el que se enseñó. */
   creditosConfirmados: number;
@@ -135,11 +139,20 @@ function motivoDelProyecto(proyecto: FilaProyecto, biblia: BibliaContinuidad): s
   return null;
 }
 
-/** Estado de un plano a partir de su trabajo y de lo aprobado. */
+/** Estado de un plano a partir de su trabajo, de lo aprobado y de si sigue correspondiendo a lo de ahora. */
 function estadoDelPlano(
   guardado: PlanoBaseGuardado | undefined,
   trabajo: FilaTrabajo | undefined,
+  caducado = false,
 ): { estado: EstadoPlanoBase; medioId: string | null; motivo: string } {
+  if (caducado) {
+    return {
+      estado: "sin_pedir",
+      medioId: null,
+      motivo:
+        "La ficha del personaje, el lugar o su ropa han cambiado desde que se generó, así que ya no vale y sus escenas han dejado de arrancar de él. Vuelve a pedirlo confirmando su coste.",
+    };
+  }
   if (!guardado?.trabajoId || !trabajo) return { estado: "sin_pedir", medioId: null, motivo: "" };
   if (trabajo.state === "listo" && trabajo.resultMediaId) {
     const aprobado = guardado.medioId === trabajo.resultMediaId;
@@ -159,14 +172,21 @@ interface Lectura {
   proyecto: FilaProyecto;
   biblia: BibliaContinuidad;
   escenas: FilaEscena[];
-  planos: (PlanoNecesario & { guardado: PlanoBaseGuardado | undefined; trabajo: FilaTrabajo | undefined })[];
+  planos: (PlanoNecesario & {
+    guardado: PlanoBaseGuardado | undefined;
+    trabajo: FilaTrabajo | undefined;
+    caducado: boolean;
+  })[];
   sinPlano: { escenaId: string; motivo: keyof typeof TEXTO_SIN_PLANO }[];
 }
 
 async function leer(actor: Actor, proyectoId: unknown): Promise<Lectura> {
+  // Lo caducado se retira antes de leer nada: sus escenas no pueden seguir arrancando de un fotograma que ya no vale.
+  await retirarPlanosCaducados(await proyectoPropio(actor, proyectoId));
   const proyecto = await proyectoPropio(actor, proyectoId);
   const biblia = leerBibliaContinuidad(proyecto.continuityBible);
   const escenas = await escenasDe(proyecto.id);
+  const caducados = new Set((await planosCaducados(proyecto, biblia, escenas)).map((p) => p.personajeId));
   const { planos, sinPlano } = planosNecesarios(await escenasParaPlanos(proyecto, escenas));
   const ids = biblia.planos.map((p) => p.trabajoId).filter((id): id is string => id !== null);
   const trabajos =
@@ -177,10 +197,25 @@ async function leer(actor: Actor, proyectoId: unknown): Promise<Lectura> {
     escenas,
     planos: planos.map((plano) => {
       const guardado = biblia.planos.find((p) => p.personajeId === plano.personajeId);
-      return { ...plano, guardado, trabajo: trabajos.find((t) => t.id === guardado?.trabajoId) };
+      return {
+        ...plano,
+        guardado,
+        trabajo: trabajos.find((t) => t.id === guardado?.trabajoId),
+        caducado: caducados.has(plano.personajeId),
+      };
     }),
     sinPlano,
   };
+}
+
+/**
+ * Los planos base solo si el proyecto es un vídeo completo (tiene biblia); `null` en cualquier otro, sin leer nada
+ * más. Es lo que carga la página de producción.
+ */
+export async function planosBaseDelVideo(actor: Actor, proyectoId: unknown): Promise<PlanosBaseVista | null> {
+  const proyecto = await proyectoPropio(actor, proyectoId);
+  if (proyecto.voiceMode !== "omni" || !tieneBiblia(leerBibliaContinuidad(proyecto.continuityBible))) return null;
+  return planosBaseDe(actor, proyecto.id);
 }
 
 /** Lo que enseña la pantalla: qué planos hacen falta, en qué punto está cada uno y lo que cuestan los que faltan. */
@@ -189,7 +224,7 @@ export async function planosBaseDe(actor: Actor, proyectoId: unknown): Promise<P
   const { proyecto, escenas, planos } = lectura;
   const orden = new Map(escenas.map((e) => [e.id, e.sortOrder]));
   const nombres = await nombresDe(planos.map((p) => p.personajeId));
-  const estados = planos.map((p) => ({ plano: p, ...estadoDelPlano(p.guardado, p.trabajo) }));
+  const estados = planos.map((p) => ({ plano: p, ...estadoDelPlano(p.guardado, p.trabajo, p.caducado) }));
   const medioIds = estados.map((e) => e.medioId).filter((id): id is string => id !== null);
   const medios =
     medioIds.length === 0
@@ -251,6 +286,13 @@ export async function asegurarRegistros(
 ): Promise<string[]> {
   const ids = [...new Set(escenas.flatMap((e) => e.personajes))];
   if (ids.length === 0) return [];
+  // Solo los motores de identidad registrada registran a nadie: los de referencias ponen la cara con fotos y la voz
+  // con una muestra, y registrar ahí enviaría una cara al proveedor para nada.
+  const modelo = await eleccionOmni(actor.id, undefined, proyecto).then(
+    (e) => e.modelo.modelo,
+    () => "",
+  );
+  if (!usaIdentidadRegistrada(modelo)) return [];
   const hablantes: HablanteConVoz[] = await db()
     .select({ personajeId: characters.id, nombre: characters.name, audioIdPropio: characters.omniAudioId })
     .from(characters)
@@ -296,7 +338,7 @@ export async function encolarPlanosBase(
   const motivo = motivoDelProyecto(proyecto, lectura.biblia);
   if (motivo) throw new ErrorProyecto(409, `${motivo} No se ha cobrado nada.`);
   const porPedir = lectura.planos.filter((p) => {
-    const { estado } = estadoDelPlano(p.guardado, p.trabajo);
+    const { estado } = estadoDelPlano(p.guardado, p.trabajo, p.caducado);
     return estado === "sin_pedir" || estado === "fallido";
   });
   if (porPedir.length === 0) return { vista: await planosBaseDe(actor, proyecto.id), nuevos: 0, fallo: null };
@@ -321,6 +363,12 @@ export async function encolarPlanosBase(
   for (const plano of porPedir) {
     const primera = porId.get(plano.escenas[0] ?? "");
     if (!primera) continue;
+    /**
+     * Clave propia de cada plano **y de cada intento**: lleva el trabajo anterior del plano, así que repetir la misma
+     * confirmación no encola otro, pero volver a pedir uno fallido o caducado sí, aunque la pantalla repita la clave.
+     */
+    const claveDelPlano = claveDerivada(clave, "plano-base", plano.personajeId, plano.guardado?.trabajoId ?? "primera");
+    const huella = await huellaActual(proyecto, lectura.biblia, plano.personajeId, primera);
     try {
       const trabajoId = await encolarFotograma(
         actor,
@@ -328,23 +376,28 @@ export async function encolarPlanosBase(
         { ...proyecto, mainCharacterId: plano.personajeId },
         {
           derechos: confirmacion.derechos,
+          ...(confirmacion.derechoMarca === undefined ? {} : { derechoMarca: confirmacion.derechoMarca }),
           sinTerceros: confirmacion.sinTerceros,
           creditosConfirmados: coste.creditos,
           selloEstimacion: confirmacion.selloEstimacion,
-          // Clave propia de cada plano e intento: repetir la confirmación no encola otro, y volver a pedir uno fallido
-          // con otra confirmación sí.
-          claveIdempotencia: claveDerivada(clave, "plano-base", plano.personajeId),
+          claveIdempotencia: claveDelPlano,
           ...(confirmacion.avisoUmbralAceptado === undefined
             ? {}
             : { avisoUmbralAceptado: confirmacion.avisoUmbralAceptado }),
           ...(confirmacion.avisosConfirmados ? { avisosConfirmados: confirmacion.avisosConfirmados } : {}),
         },
-        claveDerivada(clave, "plano-base", plano.personajeId),
+        claveDelPlano,
         h,
         false,
         lectura.biblia.vestuario[plano.personajeId] ?? "",
       );
-      await guardarPlano(actor, proyecto.id, { personajeId: plano.personajeId, trabajoId, medioId: null });
+      await guardarPlano(actor, proyecto.id, {
+        personajeId: plano.personajeId,
+        trabajoId,
+        medioId: null,
+        escenaId: primera.id,
+        huella,
+      });
       nuevos++;
     } catch (error) {
       if (nuevos === 0) throw error;
@@ -367,7 +420,7 @@ export async function aprobarPlanoBase(
   const lectura = await leer(actor, proyectoId);
   const plano = lectura.planos.find((p) => p.personajeId === personajeId);
   if (!plano) throw new ErrorProyecto(404, "Ese plano base no existe en este proyecto.");
-  const { estado, medioId } = estadoDelPlano(plano.guardado, plano.trabajo);
+  const { estado, medioId } = estadoDelPlano(plano.guardado, plano.trabajo, plano.caducado);
   if ((estado !== "listo" && estado !== "aprobado") || !medioId || !plano.trabajo) {
     throw new ErrorProyecto(
       409,
@@ -393,7 +446,13 @@ export async function aprobarPlanoBase(
     await tx
       .update(projects)
       .set({
-        continuityBible: conPlano(biblia, { personajeId: plano.personajeId, trabajoId, medioId }),
+        continuityBible: conPlano(biblia, {
+          personajeId: plano.personajeId,
+          trabajoId,
+          medioId,
+          escenaId: plano.guardado?.escenaId ?? null,
+          huella: plano.guardado?.huella ?? "",
+        }),
         updatedAt: new Date(),
       })
       .where(eq(projects.id, bloqueado.id));

@@ -6,7 +6,9 @@ import {
   combinaLugarConIdentidad,
   conContinuidad,
   esPlanoBase,
+  huellaDelPlano,
   leerBibliaContinuidad,
+  planoCaducado,
   planosNecesarios,
   tieneBiblia,
 } from "./continuidad";
@@ -68,7 +70,7 @@ describe("la biblia guardada", () => {
     });
     expect(leida.lugar).toBe("A bright kitchen at noon");
     expect(leida.vestuario).toEqual({ [A]: "Navy linen shirt" });
-    expect(leida.planos).toEqual([{ personajeId: A, trabajoId: "t1", medioId: null }]);
+    expect(leida.planos).toEqual([{ personajeId: A, trabajoId: "t1", medioId: null, escenaId: null, huella: "" }]);
   });
 
   test("lo que no es un objeto es una biblia vacía", () => {
@@ -80,7 +82,7 @@ describe("la biblia guardada", () => {
   test("un medio es plano base solo si está aprobado en algún plano", () => {
     const biblia: BibliaContinuidad = {
       ...BIBLIA_VACIA,
-      planos: [{ personajeId: A, trabajoId: "t1", medioId: "m1" }],
+      planos: [{ personajeId: A, trabajoId: "t1", medioId: "m1", escenaId: "e1", huella: "h" }],
     };
     expect(esPlanoBase(biblia, "m1")).toBe(true);
     expect(esPlanoBase(biblia, "m2")).toBe(false);
@@ -140,5 +142,38 @@ describe("plano base junto a la identidad registrada", () => {
     expect(combinaLugarConIdentidad({ ajusteGeneral: false, ajusteVideoCompleto: false, esPlanoBase: true })).toBe(
       false,
     );
+  });
+});
+
+describe("un plano base caduca si cambia con qué se generó", () => {
+  const datos = {
+    versionFichaId: "v1",
+    lugarId: "l1",
+    lugarVersion: 2,
+    sitio: "junto a la ventana",
+    vestuario: "Mustard knitted jumper",
+    lugarBiblia: "A small radio studio",
+  };
+  const guardado = { trabajoId: "t1", huella: huellaDelPlano(datos) };
+
+  test("con lo mismo de entonces sigue valiendo", () => {
+    expect(planoCaducado(guardado, huellaDelPlano({ ...datos }))).toBe(false);
+  });
+
+  test("otra versión de la ficha, del lugar, otro sitio, otra ropa u otro lugar de la biblia lo caducan", () => {
+    for (const cambio of [
+      { versionFichaId: "v2" },
+      { lugarVersion: 3 },
+      { lugarId: "l2" },
+      { sitio: "en la barra" },
+      { vestuario: "Red raincoat" },
+      { lugarBiblia: "A rooftop" },
+    ]) {
+      expect(planoCaducado(guardado, huellaDelPlano({ ...datos, ...cambio }))).toBe(true);
+    }
+  });
+
+  test("un plano que nunca se pidió no caduca: no hay nada que retirar", () => {
+    expect(planoCaducado({ trabajoId: null, huella: "" }, huellaDelPlano(datos))).toBe(false);
   });
 });

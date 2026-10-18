@@ -249,6 +249,8 @@ export interface EscenaProduccionVista {
   animacion: TrabajoDeEscena | null;
   /** Fotograma que el usuario aprobó; `null` mientras no apruebe ninguno. Es el que se anima y el que monta. */
   fotogramaAprobado: Medio | null;
+  /** `true` si el fotograma aprobado es el plano base de un vídeo completo (modo voz e identidad registradas). */
+  planoBase?: boolean;
   /** Clip resultante de la escena, si ya está. */
   clip: Medio | null;
   /** Créditos estimados de la escena entera (fotograma + clip), tal como los congeló el plan. */

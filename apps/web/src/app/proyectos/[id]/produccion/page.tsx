@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ErrorProyecto } from "@/server/asistente/errores";
 import { esAdmin, exigirSesion } from "@/server/auth/sesion";
-import { planosBaseDe } from "@/server/automatico/planos-base";
+import { planosBaseDelVideo } from "@/server/automatico/planos-base";
 import { estadoDeProduccion } from "@/server/produccion/consulta";
 import { CabeceraApp } from "../../../_app/cabecera-app";
 import { VistaProduccion } from "./_componentes/vista-produccion";
@@ -27,7 +27,7 @@ export default async function PaginaProduccion({ params }: { params: Promise<{ i
   });
 
   // Los planos base solo existen en los vídeos completos con voz e identidad registradas.
-  const planosBase = produccion.modoVoz === "omni" ? await planosBaseDe(actor, id) : null;
+  const planosBase = produccion.modoVoz === "omni" ? await planosBaseDelVideo(actor, id) : null;
 
   return (
     <div className="min-h-dvh bg-fondo">

@@ -475,4 +475,54 @@ describe.skipIf(!hayBaseDeDatos)("planos base de un vídeo completo y voz de cad
     expect(encendido.character_ids).toHaveLength(1);
     expect(encendido.image_urls).toHaveLength(1);
   });
+
+  test("si cambia la ropa de la biblia, el plano caduca, sus escenas dejan de arrancar de él y se puede volver a pedir", async () => {
+    const proyectoId = await videoCompleto("una_persona");
+    await confirmarPlanos(proyectoId);
+    const [trabajo] = await fotogramas(proyectoId);
+    await fotogramaListo(trabajo?.id ?? "");
+    await aprobarPlanoBase(actor, proyectoId, lucia);
+
+    const [proyecto] = await db().select().from(projects).where(eq(projects.id, proyectoId)).limit(1);
+    const biblia = proyecto?.continuityBible;
+    if (!biblia) throw new Error("Falta la biblia.");
+    await db()
+      .update(projects)
+      .set({ continuityBible: { ...biblia, vestuario: { ...biblia.vestuario, [lucia]: "Red raincoat" } } })
+      .where(eq(projects.id, proyectoId));
+
+    const vista = await planosBaseDe(actor, proyectoId);
+    expect(vista.planos[0]?.estado).toBe("sin_pedir");
+    expect(vista.planos[0]?.motivo).toContain("han cambiado");
+    expect(vista.coste?.porPedir).toBe(1);
+    const filas = await db().select().from(scenes).where(eq(scenes.projectId, proyectoId));
+    expect(filas.map((e) => e.approvedFrameMediaId)).toEqual([null, null]);
+
+    // Volver a pedirlo encarga otro fotograma, ya con la ropa nueva.
+    expect((await confirmarPlanos(proyectoId)).nuevos).toBe(1);
+    const trabajos = await fotogramas(proyectoId);
+    expect(trabajos).toHaveLength(2);
+    expect(trabajos.some((t) => t.prompt.includes("Red raincoat"))).toBe(true);
+  });
+
+  test("un plano fallido se vuelve a pedir cada vez, aunque la pantalla repita la misma clave", async () => {
+    const proyectoId = await videoCompleto("una_persona");
+    const fallar = async () => {
+      const ultimo = (await fotogramas(proyectoId)).at(-1);
+      await db()
+        .update(generationJobs)
+        .set({ state: "fallido", errorMessage: "El proveedor no lo generó." })
+        .where(eq(generationJobs.id, ultimo?.id ?? ""));
+    };
+    await confirmarPlanos(proyectoId);
+    await fallar();
+    const clave = crypto.randomUUID();
+    expect((await confirmarPlanos(proyectoId, clave)).nuevos).toBe(1);
+    await fallar();
+    // Misma clave (la pantalla no ha cambiado su firma: sigue «fallido»), y aun así encarga otro.
+    expect((await confirmarPlanos(proyectoId, clave)).nuevos).toBe(1);
+    expect(await fotogramas(proyectoId)).toHaveLength(3);
+    // Con el tercero en marcha, repetir no encarga nada más.
+    expect((await confirmarPlanos(proyectoId, clave)).nuevos).toBe(0);
+  });
 });

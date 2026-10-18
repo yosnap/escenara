@@ -19,6 +19,7 @@ import { contextoAnimadoDeEscena } from "../animados/contexto-escena";
 import { escenaPropia } from "../asistente/consulta";
 import { ErrorProyecto } from "../asistente/errores";
 import { techoDelProyecto } from "../asistente/plan";
+import { retirarPlanosCaducados } from "../automatico/huella-plano";
 import { encolar, filaDeLaConfirmacion, type NuevoTrabajoEncolado } from "../cola/encolar";
 import { hechosDelReparto, recopilarHechos } from "../controles/hechos";
 import { exigirControles } from "../controles/puerta";
@@ -679,7 +680,9 @@ export async function producirEscenaHablada(
    * aprobado; con el de los vídeos completos, solo su **plano base**. Sin ninguno, el lugar va solo descrito.
    */
   const { leerAjustes, combinarLugarConIdentidad } = await import("../ajustes");
-  const aprobado = escena.approvedFrameMediaId;
+  // Un plano base que ya no corresponde a la ficha, al lugar o a la ropa se retira aquí mismo: no se envía.
+  const retiradas = await retirarPlanosCaducados(proyecto);
+  const aprobado = retiradas.has(escena.id) ? null : escena.approvedFrameMediaId;
   const fotogramaSituado =
     citaIdentidad &&
     conLugar &&

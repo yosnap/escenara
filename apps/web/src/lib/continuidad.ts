@@ -32,6 +32,13 @@ export interface PlanoBaseGuardado {
   trabajoId: string | null;
   /** Fotograma que una persona aprobó y que comparten todas las escenas del plano; `null` mientras no lo haya. */
   medioId: string | null;
+  /** Escena de la que se generó (su lugar y su sitio son los del fotograma); `null` si todavía no se ha pedido. */
+  escenaId: string | null;
+  /**
+   * Con qué se generó: versión de la ficha del personaje, lugar y su versión, sitio, vestuario y lugar de la biblia
+   * (`huellaDelPlano`). Si algo de eso cambia, el plano ya no corresponde y vuelve a «sin pedir».
+   */
+  huella: string;
 }
 
 /** La biblia de continuidad de un proyecto. Vacía en todos los proyectos que no son un vídeo completo. */
@@ -65,10 +72,38 @@ export function leerBibliaContinuidad(valor: unknown): BibliaContinuidad {
   const planos = (Array.isArray(crudo.planos) ? crudo.planos : []).flatMap((p) => {
     const plano = (p ?? {}) as Record<string, unknown>;
     const personajeId = idONulo(plano.personajeId);
-    return personajeId ? [{ personajeId, trabajoId: idONulo(plano.trabajoId), medioId: idONulo(plano.medioId) }] : [];
+    return personajeId
+      ? [
+          {
+            personajeId,
+            trabajoId: idONulo(plano.trabajoId),
+            medioId: idONulo(plano.medioId),
+            escenaId: idONulo(plano.escenaId),
+            huella: typeof plano.huella === "string" ? plano.huella : "",
+          },
+        ]
+      : [];
   });
   return { lugar: texto(crudo.lugar), vestuario, planos };
 }
+
+/** Lo que decide cómo sale un plano base. Si cambia cualquiera de estas cosas, su fotograma ya no corresponde. */
+export interface DatosDelPlano {
+  versionFichaId: string | null;
+  lugarId: string | null;
+  lugarVersion: number | null;
+  sitio: string;
+  vestuario: string;
+  lugarBiblia: string;
+}
+
+/** Huella estable de un plano base: se guarda al pedirlo y se compara con la de ahora. */
+export const huellaDelPlano = (d: DatosDelPlano): string =>
+  JSON.stringify([d.versionFichaId, d.lugarId, d.lugarVersion, d.sitio, d.vestuario, d.lugarBiblia]);
+
+/** `true` si el plano guardado se generó con otra ficha, otro lugar u otra biblia que los de ahora. */
+export const planoCaducado = (guardado: Pick<PlanoBaseGuardado, "trabajoId" | "huella">, huellaActual: string) =>
+  guardado.trabajoId !== null && guardado.huella !== huellaActual;
 
 /** `true` si el proyecto tiene biblia: lo escribió entero el asistente como vídeo completo. */
 export const tieneBiblia = (biblia: BibliaContinuidad): boolean =>

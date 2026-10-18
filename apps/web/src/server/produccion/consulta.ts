@@ -1,4 +1,5 @@
 import { and, desc, eq, inArray, isNotNull, not, sql } from "drizzle-orm";
+import { esPlanoBase, leerBibliaContinuidad } from "@/lib/continuidad";
 import { type EvaluacionVista, peorEstado } from "@/lib/controles";
 import { formatearCreditos } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
@@ -476,6 +477,7 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
   // Y el de **cada escena**, con su duración: un podcast de 20 s son clips de 8, 6 y 6 s, cada uno con su tarifa.
   const porDuracion = omni ? await costesOmniPorDuracion(actor.id, proyecto, filasEscena) : null;
   const faltas = omni ? await faltasDeLosPlanos(actor, proyecto, filasEscena, habladas?.modelo) : new Map();
+  const biblia = leerBibliaContinuidad(proyecto.continuityBible);
   const conCosteHablado = (escena: EscenaProduccionVista): EscenaProduccionVista => {
     if (!porDuracion) return escena;
     const coste = porDuracion.get(escena.segundos) ?? null;
@@ -483,6 +485,8 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
     return {
       ...escena,
       ...(falta ? { faltaDelPlano: falta } : {}),
+      // Solo se rotula como plano base lo que de verdad lo es: otro fotograma aprobado (de la biblioteca) no lo es.
+      planoBase: esPlanoBase(biblia, escena.fotogramaAprobado?.id ?? null),
       costeHablado: coste
         ? { creditos: coste.creditosDelPrimerClip, sello: coste.eleccion.precio.sello, segundos: coste.segundos }
         : null,
