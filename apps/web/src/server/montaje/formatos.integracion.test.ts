@@ -583,7 +583,9 @@ describe.skipIf(!hayBaseDeDatos)("formatos, reencuadre y límites de un proyecto
       .set({ formats: [ajeno] })
       .where(eq(projects.id, proyectoId));
     const fallo = await fijarModoVoz(actor, proyectoId, "omni", true).catch((e: unknown) => e);
-    expect((fallo as Error).message).toContain(`${omni.modelo.nombre} solo admite`);
+    // Se lee en la pantalla del proyecto: el modelo de escenas habladas se nombra por lo que hace.
+    expect((fallo as Error).message).toContain("El modelo de voz e identidad registradas que usas solo admite");
+    expect((fallo as Error).message).not.toContain(omni.modelo.nombre);
     const [proyecto] = await db().select().from(projects).where(eq(projects.id, proyectoId));
     expect(proyecto?.voiceMode).toBe("clip");
     // En vertical, lo de siempre: se puede pasar.

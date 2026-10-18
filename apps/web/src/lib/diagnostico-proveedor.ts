@@ -6,12 +6,16 @@ import type { CodigoPrueba } from "./boveda";
  *
  * Un mensaje de fallo tiene que decir **cuatro cosas**, y las cuatro juntas:
  *
- * 1. **qué falló de verdad**: qué proveedor, qué modelo y con qué causa concreta (tiempo agotado tras N s, error
+ * 1. **qué falló de verdad**: qué proveedor y con qué causa concreta (tiempo agotado tras N s, error
  *    interno del proveedor, cuota agotada hasta tal fecha, límite de peticiones simultáneas, credencial
  *    rechazada…);
  * 2. **si se ha cobrado o no**, y cuando no se sabe, que no se sabe. Es lo primero que quiere saber quien paga;
  * 3. **qué se intentó**: los demás proveedores y modelos que se probaron y qué pasó con cada uno;
  * 4. **qué puede hacer** quien lo lee.
+ *
+ * El **modelo no se nombra** al usuario normal (decisión del propietario, 2026-10-18): se dice el proveedor, que es
+ * la clave que paga, y un segundo intento con el mismo proveedor se dice «otro modelo de…». Con `conModelo` (quien
+ * administra) se añade el nombre entre paréntesis, como antes.
  *
  * «No se ha podido, vuelve a intentarlo» no dice ninguna de las cuatro y **está prohibido**.
  *
@@ -73,11 +77,19 @@ export interface IntentoProveedor {
   detalle?: string;
 }
 
-/** «KIE.ai (gpt-5-6-sol) ha tardado demasiado en responder (tras 90 s)». */
-export function fraseDeIntento(intento: IntentoProveedor): string {
+/**
+ * «KIE.ai ha tardado demasiado en responder (tras 90 s)». Con `conModelo`, «KIE.ai (gpt-5-6-sol) …»; con
+ * `repetido` (ya se intentó antes con ese proveedor), «otro modelo de KIE.ai …».
+ */
+export function fraseDeIntento(intento: IntentoProveedor, conModelo = false, repetido = false): string {
   const causa = CAUSA_DE_CODIGO[intento.codigo];
   const detalle = intento.detalle && intento.detalle !== "" ? ` (${intento.detalle})` : "";
-  return `${intento.proveedor} (${intento.modelo}) ${causa}${detalle}`;
+  const quien = conModelo
+    ? `${intento.proveedor} (${intento.modelo})`
+    : repetido
+      ? `otro modelo de ${intento.proveedor}`
+      : intento.proveedor;
+  return `${quien} ${causa}${detalle}`;
 }
 
 /**
@@ -94,12 +106,17 @@ export function mensajeDeFalloDeProveedor(
   encabezado: string,
   intentos: readonly IntentoProveedor[],
   sugerencia = "",
+  /** Quien lee administra la instalación: se nombra también el modelo de cada intento. */
+  conModelo = false,
 ): string {
   const [primero, ...siguientes] = intentos;
   if (!primero) return `${encabezado}. No ha quedado constancia de ningún intento.`;
-  const partes: string[] = [`${encabezado}: ${fraseDeIntento(primero)}. ${FRASE_DE_COBRO[primero.cobro]}.`];
+  const partes: string[] = [`${encabezado}: ${fraseDeIntento(primero, conModelo)}. ${FRASE_DE_COBRO[primero.cobro]}.`];
+  const probados = new Set([primero.proveedor]);
   for (const intento of siguientes) {
-    partes.push(`Se probó entonces con ${fraseDeIntento(intento)}. ${FRASE_DE_COBRO[intento.cobro]}.`);
+    const frase = fraseDeIntento(intento, conModelo, probados.has(intento.proveedor));
+    probados.add(intento.proveedor);
+    partes.push(`Se probó entonces con ${frase}. ${FRASE_DE_COBRO[intento.cobro]}.`);
   }
   const ultimo = intentos.at(-1);
   if (ultimo) partes.push(ACCION_DE_CODIGO[ultimo.codigo]);

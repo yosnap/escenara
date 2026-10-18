@@ -218,7 +218,10 @@ export async function pedirTextoPorMapa(peticion: PeticionDeTexto): Promise<Text
       e.proveedor === "compatible" ||
       (peticion.reservaConfirmada !== undefined && e.modelo === peticion.reservaConfirmada),
   );
-  const sinConfirmar = delTipo.filter((e) => !confirmadas.includes(e)).map((e) => `${e.nombreProveedor} (${e.modelo})`);
+  // Se nombran por su proveedor (la clave que pagaría), sin el modelo, y cada proveedor una sola vez.
+  const sinConfirmar = [
+    ...new Set(delTipo.filter((e) => !confirmadas.includes(e)).map((e) => `la entrada de ${e.nombreProveedor}`)),
+  ];
   const utiles = ordenarPorPreferencia(confirmadas, peticion.modelosPreferidos ?? []);
   const resultado = await recorrerMapa(
     utiles,
@@ -246,7 +249,7 @@ export async function pedirTextoPorMapa(peticion: PeticionDeTexto): Promise<Text
     // Si ha escrito una reserva de pago, se dice siempre: qué falló, quién lo ha escrito y cuánto ha costado.
     aviso:
       dePago && fallida
-        ? `${fraseDeIntento(fallida)}, así que lo ha escrito tu reserva de pago ${resultado.entrada.nombreProveedor} (${resultado.entrada.modelo}) por ${formatearCreditos(resultado.valor.creditos)}, dentro del coste que confirmaste.`
+        ? `${fraseDeIntento(fallida)}, así que lo ha escrito tu reserva de pago de ${resultado.entrada.nombreProveedor} por ${formatearCreditos(resultado.valor.creditos)}, dentro del coste que confirmaste.`
         : "",
   };
 }

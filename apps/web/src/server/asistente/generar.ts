@@ -17,6 +17,7 @@ import { dentroDelLimite, type Limite } from "../limite";
 import { limitesDeProyecto } from "../limites-proyecto";
 import { ErrorDeTexto, ErrorPeticionRepetida, pedirTextoPorMapa, type TextoDelMapa } from "../mapa/texto";
 import type { Actor } from "../media/servicio";
+import { esLectorAdmin } from "../modelo-en-mensajes";
 import { filaPropia } from "../personajes/consulta";
 import { contextoDeVersion } from "../personajes/contexto";
 import { ultimaVersion } from "../personajes/ficha";
@@ -200,7 +201,7 @@ export async function escribirGuion(
       // Se dice **quién** contestó lo que no se pudo usar: con una reserva puesta, no fue la entrada principal.
       throw new ErrorProyecto(
         502,
-        `${resultado.nombreProveedor} (${resultado.modelo}) ha contestado, pero su texto no se pudo usar como guion: ${error.message}`,
+        `${esLectorAdmin(actor) ? `${resultado.nombreProveedor} (${resultado.modelo})` : `El servicio de texto de ${resultado.nombreProveedor}`} ha contestado, pero su texto no se pudo usar como guion: ${error.message}`,
       );
     }
     throw error;

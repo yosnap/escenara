@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { conPreferenciaOmni, motivoSinReparto } from "./omni";
+import { conPreferenciaOmni, ETIQUETA_REPARTO_MEDIDO, motivoSinReparto } from "./omni";
 
 /**
  * El podcast y el dualcast solo se producen con el modelo con el que se han producido de verdad. `gemini-omni-video`
@@ -10,11 +10,12 @@ describe("modelos que admiten una escena con dos personajes", () => {
     expect(motivoSinReparto({ modelo: "google/gemini-omni-flash-1-1", nombre: "Gemini Omni 1.1 Flash" })).toBeNull();
   });
 
-  test("Gemini Omni (vídeo) no, y el motivo dice la causa y qué modelo elegir", () => {
-    const motivo = motivoSinReparto({ modelo: "gemini-omni-video", nombre: "Gemini Omni (vídeo)" });
-    expect(motivo).toContain("Gemini Omni (vídeo)");
+  test("Gemini Omni (vídeo) no, y el motivo dice la causa y cómo reconocer el modelo que sirve, sin nombrarlos", () => {
+    const motivo = motivoSinReparto({ modelo: "gemini-omni-video", nombre: "Gemini Omni (vídeo)" }) ?? "";
     expect(motivo).toContain("fallo interno");
-    expect(motivo).toContain("Gemini Omni 1.1 Flash");
+    expect(motivo).toContain("Opciones avanzadas");
+    expect(motivo).toContain(ETIQUETA_REPARTO_MEDIDO);
+    expect(motivo).not.toContain("Gemini");
   });
 
   test("un motor de referencias no, porque no registra identidades", () => {

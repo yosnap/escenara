@@ -119,8 +119,7 @@ export function PanelDeHooks({
                 <>Se paga con la cuota de tu plan en {estimacion.nombreProveedor}: 0 créditos.</>
               ) : (
                 <>
-                  {formatearCreditos(estimacion.creditos)} (estimación) · {estimacion.nombreProveedor} ·{" "}
-                  {estimacion.modelo}
+                  {formatearCreditos(estimacion.creditos)} (estimación) · {estimacion.nombreProveedor}
                 </>
               )}
             </p>
@@ -146,7 +145,7 @@ export function PanelDeHooks({
             {propuesta.escenasEscritas > 0
               ? `Se han escrito ${propuesta.escenasEscritas} escenas en borrador. Elige con qué frase arranca el vídeo: se pone delante del guion.`
               : "Elige con qué frase arranca el vídeo: se pone delante del guion que escribas."}{" "}
-            Lo escribió {propuesta.modelo} en {propuesta.nombreProveedor}
+            Lo escribió tu servicio de texto de {propuesta.nombreProveedor}
             {propuesta.deReserva ? " (la entrada principal de tu mapa falló y entró la de reserva)" : ""}.
           </p>
           <ul className="flex flex-col gap-3">

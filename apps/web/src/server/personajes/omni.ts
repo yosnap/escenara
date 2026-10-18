@@ -1,5 +1,5 @@
 import { AVISO_REGISTRO_OMNI, type RegistroOmniVista } from "@/lib/omni";
-import type { FilaPersonaje, FilaRegistroOmni, FilaVersionPersonaje } from "../db/esquema";
+import type { FilaPersonaje, FilaProyecto, FilaRegistroOmni, FilaVersionPersonaje } from "../db/esquema";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import type { Actor } from "../media/servicio";
 import { ErrorOmni } from "../omni/errores";
@@ -58,11 +58,13 @@ export async function registrarPersonajeOmni(
   personajeId: unknown,
   audioId: string,
   h: Herramientas = HERRAMIENTAS,
+  /** El proyecto con cuya voz se registra: si fija su modelo de escenas habladas, se registra con ese. */
+  proyecto?: Pick<FilaProyecto, "videoModel" | "voiceMode">,
 ): Promise<FilaRegistroOmni> {
   if (audioId === "") {
     throw new ErrorOmni(
       409,
-      "Este proyecto todavía no tiene voz Omni registrada, así que no se puede registrar al personaje con ella. Elige y registra la voz del proyecto antes.",
+      "Este proyecto todavía no tiene su voz registrada, así que no se puede registrar al personaje con ella. Elige y registra la voz del proyecto antes.",
     );
   }
   const personaje = await personajePropio(actor, personajeId);
@@ -85,6 +87,7 @@ export async function registrarPersonajeOmni(
     actor.id,
     { nombre: personaje.name, descripcion: descripcionDe(personaje, version), audioId, imagenes },
     h,
+    proyecto,
   );
   return guardarRegistro({
     actor,
@@ -113,11 +116,12 @@ export async function volverARegistrar(
   audioId: string,
   motivo: string,
   h: Herramientas = HERRAMIENTAS,
+  proyecto?: Pick<FilaProyecto, "videoModel" | "voiceMode">,
 ): Promise<FilaRegistroOmni> {
   // La propiedad se comprueba **antes** de tocar nada: sin esto, cualquiera podía marcar como reemplazado el
   // registro del personaje de otra cuenta y dejarle la producción bloqueada.
   await personajePropio(actor, personajeId);
   const anterior = await ultimoRegistro(personajeId);
   if (anterior && anterior.supersededAt === null) await marcarReemplazado(anterior.id, motivo);
-  return registrarPersonajeOmni(actor, personajeId, audioId, h);
+  return registrarPersonajeOmni(actor, personajeId, audioId, h, proyecto);
 }

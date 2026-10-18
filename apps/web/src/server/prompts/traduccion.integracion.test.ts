@@ -254,8 +254,9 @@ describe.skipIf(!hayBaseDeDatos)("traducción de los prompts al inglés", () => 
     expect(ultima?.consumedCredits).toBe(0);
     const apuntes = (await apuntesDeTraduccion()).filter((a) => a.assistantRunId === ultima?.id);
     expect(apuntes.find((a) => a.entryType === "consumo")?.credits).toBe(0);
-    // Y el error lo dice con su causa: quién falló y que esa llamada no se ha cobrado.
-    expect((fallo as Error).message).toContain("gpt-5-6-sol");
+    // Y el error lo dice con su causa: qué proveedor falló (sin nombrar el modelo) y que no se ha cobrado.
+    expect((fallo as Error).message).toContain("KIE");
+    expect((fallo as Error).message).not.toContain("gpt-5-6-sol");
     expect((fallo as Error).message).toMatch(/no se te ha cobrado nada/i);
     expect((fallo as Error).message).not.toContain("No se sabe si te ha cobrado");
     falloDeTexto = null;

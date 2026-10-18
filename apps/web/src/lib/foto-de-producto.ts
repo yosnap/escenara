@@ -59,12 +59,16 @@ export const etiquetaFotoDeProducto = (modelo: ModeloElegible): string | null =>
       ? ETIQUETA_ADMITE_FOTO_PRODUCTO
       : ETIQUETA_SOLO_DESCRITO_PRODUCTO;
 
-/** Aviso junto al selector de producto: la causa, y qué hacer con nombres si hay alternativas. */
+/**
+ * Aviso junto al selector de producto: la causa y qué hacer. Se lee fuera de las Opciones avanzadas, así que no
+ * nombra modelos: dice que hay alternativas y cómo reconocerlas en el selector («Admite la foto del producto»).
+ */
 export function avisoFotoDeProducto(foto: FotoDeProductoDelClip): string {
-  const causa = `${foto.modelo} no admite la foto del producto: viajará descrito con palabras y su etiqueta puede salir distinta.`;
+  const causa =
+    "El modelo del clip elegido no admite la foto del producto: viajará descrito con palabras y su etiqueta puede salir distinta.";
   const salida =
     foto.alternativas.length > 0
-      ? `Puedes elegir un modelo que sí la admita: ${foto.alternativas.join(", ")}. Cambiar de modelo cambia lo que cuesta, y no se cambia solo.`
+      ? `Puedes elegir en las Opciones avanzadas del clip un modelo marcado «${ETIQUETA_ADMITE_FOTO_PRODUCTO}». Cambiar de modelo cambia lo que cuesta, y no se cambia solo.`
       : "Hoy no hay ningún modelo activo que la admita.";
   return `${causa} ${salida} Antes de generar tendrás que confirmarlo.`;
 }

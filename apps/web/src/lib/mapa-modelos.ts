@@ -35,7 +35,8 @@ export const DESCRIPCION_DE_TIPO: Record<TipoDeMapa, string> = {
   transcripcion: "Sacar los subtítulos del audio ya generado.",
   imagen:
     "Los fotogramas de tus escenas, las imágenes de «Crear» y las vistas generadas de tus personajes. Hay dos formas de generar una imagen y las dos están aquí: a partir de otra imagen y a partir del texto a secas.",
-  video: "Los clips de tus escenas, y las escenas habladas cuando el proyecto usa el modo Omni.",
+  video:
+    "Los clips de tus escenas, y las escenas habladas cuando el proyecto usa el modo «Voz e identidad registradas».",
 };
 
 /** Una entrada del mapa tal como viaja al navegador. */

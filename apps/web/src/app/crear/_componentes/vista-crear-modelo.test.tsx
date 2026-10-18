@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, mock, test } from "bun:test";
 import { Window } from "happy-dom";
 import { act, type ComponentProps } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { PREFIJO_SESION_AVANZADAS } from "@/components/ui/opciones-avanzadas";
 import type { ModeloElegible } from "@/lib/catalogo";
 import { evaluacionPendiente } from "@/lib/controles";
 import type { Estimacion } from "@/lib/generacion";
@@ -141,6 +142,7 @@ beforeEach(() => {
     window: ventana,
     document: ventana.document,
     navigator: ventana.navigator,
+    sessionStorage: ventana.sessionStorage,
     IS_REACT_ACT_ENVIRONMENT: true,
     HTMLElement: ventana.HTMLElement,
     Element: ventana.Element,
@@ -198,6 +200,9 @@ const props = (modelo: string, personajeInicial: string | null) => ({
 });
 
 const montar = async (modelo: string, personajeInicial: string | null) => {
+  // El selector de modelo vive en las Opciones avanzadas del fotograma: se dejan abiertas como si ya se hubieran
+  // abierto en esta sesión, que es lo que hace quien quiere elegir modelo.
+  ventana.sessionStorage.setItem(`${PREFIJO_SESION_AVANZADAS}crear:fotograma`, "1");
   await act(async () =>
     raiz.render(<VistaCrear {...(props(modelo, personajeInicial) as unknown as ComponentProps<typeof VistaCrear>)} />),
   );

@@ -1,4 +1,5 @@
 import { proyectoPropio } from "@/server/asistente/consulta";
+import { HERRAMIENTAS } from "@/server/generacion/herramientas";
 import { obtenerPersonaje } from "@/server/personajes/consulta";
 import { type ContextoId, leerCuerpo, leerId, manejador } from "@/server/personajes/http";
 import { registrarPersonajeOmni, volverARegistrar } from "@/server/personajes/omni";
@@ -29,9 +30,12 @@ export const POST = manejador(async (peticion: Request, contexto: ContextoId, ac
       id,
       audioId,
       "El proveedor dejó de reconocer el personaje registrado, así que se registró de nuevo.",
+      HERRAMIENTAS,
+      proyecto,
     );
   } else {
-    await registrarPersonajeOmni(actor, id, audioId);
+    // Con el modelo de escenas habladas fijado en el proyecto, si lo hay: el mismo que producirá sus escenas.
+    await registrarPersonajeOmni(actor, id, audioId, HERRAMIENTAS, proyecto);
   }
   return Response.json(await obtenerPersonaje(actor, id));
 });

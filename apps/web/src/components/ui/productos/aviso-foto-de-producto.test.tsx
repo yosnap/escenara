@@ -9,10 +9,11 @@ const pintar = (foto: FotoDeProductoDelClip | null | undefined, referencias = 2)
   renderToStaticMarkup(<AvisoFotoDeProducto foto={foto} referencias={referencias} />);
 
 describe("aviso de la foto del producto junto al selector", () => {
-  test("con un modelo que no la admite, dice la causa y con qué modelos sí viaja", () => {
+  test("con un modelo que no la admite, dice la causa y dónde elegir uno con el que viaja, sin nombres", () => {
     const html = pintar(SIN_FOTO);
-    expect(html).toContain("Veo 3.1 Lite no admite la foto del producto");
-    expect(html).toContain("MiniMax H3");
+    expect(html).toContain("El modelo del clip elegido no admite la foto del producto");
+    expect(html).toContain("Opciones avanzadas");
+    expect(html).not.toContain("MiniMax H3");
   });
 
   test("sin ningún modelo que la admita, lo dice", () => {

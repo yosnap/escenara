@@ -29,6 +29,7 @@ import {
 import { columnasDelLugar } from "../lugares/para-generar";
 import { type EleccionDelMapa, eleccionDeGeneracion, type ModoDeGeneracion } from "../mapa/generacion";
 import type { Actor } from "../media/servicio";
+import { conMayuscula, DONDE_CAMBIAR_MODELO, type Lector, modeloEnMensaje } from "../modelo-en-mensajes";
 import { contextoDeVersion, personajePorId, promptConContexto, versionDeTrabajo } from "../personajes/contexto";
 import { personajePropio, referenciasParaGenerar } from "../personajes/puede-generar";
 import { acotarCoste } from "../presupuesto/acotar";
@@ -333,7 +334,7 @@ export async function crearFotograma(
   if (producto?.pasoDigital === "insertar_captura" && conProducto?.reparto.producto === 0) {
     throw new ErrorGeneracion(
       409,
-      `${modelo.nombre} no admite una segunda imagen de referencia, así que no se le puede dar la captura para meterla en la pantalla. Elige un modelo de imagen que acepte dos referencias y vuelve a estimar el coste.`,
+      `${conMayuscula(modeloEnMensaje(actor, "imagen", modelo.nombre))} no admite una segunda imagen de referencia, así que no se le puede dar la captura para meterla en la pantalla. No se ha enviado nada y no se te ha cobrado: elige un modelo de imagen que acepte dos referencias en Opciones avanzadas y vuelve a estimar el coste.`,
     );
   }
 
@@ -637,13 +638,13 @@ export async function crearFotograma(
  * el usuario haya elegido siempre que el modelo la admita. Una duración que el modelo no sabe cobrar no se
  * aproxima con otra: se dice y no se gasta.
  */
-function duracionCobrada(modelo: ModeloVista, unidad: string, pedidos: number | null): number {
+function duracionCobrada(modelo: ModeloVista, unidad: string, pedidos: number | null, lector: Lector): number {
   const deLaTarifa = segundosDeUnidad(unidad);
   const cobrables = duracionesConCoste(modelo);
   if (pedidos !== null && deLaTarifa !== null && pedidos !== deLaTarifa) {
     throw new ErrorGeneracion(
       409,
-      `${modelo.nombre} no tiene precio registrado para un clip de ${pedidos} s: solo sabe cobrar ${cobrables.map((d) => `${d.segundos} s`).join(", ")}. Elige una de esas duraciones o cambia de modelo.`,
+      `${conMayuscula(modeloEnMensaje(lector, "video", modelo.nombre))} no tiene precio registrado para un clip de ${pedidos} s: solo sabe cobrar ${cobrables.map((d) => `${d.segundos} s`).join(", ")}. No se ha enviado nada y no se te ha cobrado: elige una de esas duraciones o ${DONDE_CAMBIAR_MODELO}.`,
     );
   }
   if (deLaTarifa !== null) return deLaTarifa;
@@ -812,7 +813,7 @@ export async function crearAnimacion(
    * ninguna (el camino rápido de «Crear»). Se decide **antes** de componer, porque un preset de duración se valida
    * contra la que de verdad se va a pedir.
    */
-  const segundos = duracionCobrada(modelo, precio.unidad, pedidos);
+  const segundos = duracionCobrada(modelo, precio.unidad, pedidos, actor);
   const original = await baseDelPrompt(actor, peticion, "animacion", modelo, tipo, prompt, segundos);
   const direccion =
     direccionElegida ??
@@ -912,7 +913,7 @@ export async function crearAnimacion(
       : await baseDelPrompt(actor, peticion, "animacion", modelo, tipo, escenaDirigida, segundos);
   const promptFinal = promptConContexto(base.escena, contextoEnIngles);
   const proporcion = proporcionDelEnvio(peticion.proporcion, base.compuesto, modelo);
-  await exigirFormatoDelFotograma(partida.proporcionFotograma ?? null, proporcion, modelo);
+  await exigirFormatoDelFotograma(partida.proporcionFotograma ?? null, proporcion, modelo, actor);
   const parametros = adaptador.montarEntrada(modelo, {
     escena: promptFinal,
     dialogo: dialogoFinal,

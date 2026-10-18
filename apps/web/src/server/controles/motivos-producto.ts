@@ -1,3 +1,4 @@
+import { conMayuscula, enMensaje } from "../modelo-en-mensajes";
 import type { HechosModelo, HechosProducto } from "./contrato";
 
 const fotos = (n: number) => (n === 1 ? "1 foto" : `${n} fotos`);
@@ -12,7 +13,7 @@ const verbo = (n: number) => (n === 1 ? "se queda" : "se quedan");
  * se manda.
  */
 export function motivoReferenciasNoCaben(modelo: HechosModelo | undefined, producto: HechosProducto): string {
-  const nombre = modelo?.nombre ?? "Este modelo";
+  const nombre = conMayuscula(enMensaje(modelo));
   const r = producto.referencias;
   const admite = r?.cupo ?? modelo?.maximoReferencias ?? 1;
   const cabecera = `${nombre} admite ${admite} ${admite === 1 ? "referencia" : "referencias"}`;

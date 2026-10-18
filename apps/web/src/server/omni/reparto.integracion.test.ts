@@ -805,7 +805,7 @@ describeSiHayBase("escenas habladas con dos personajes", () => {
       // El plan ya lo enseña como impedimento y no deja aprobarlo: el bloqueo no llega después.
       const { detalleProyecto } = await import("../asistente/plan");
       const detalle = await detalleProyecto(actor, proyectoId);
-      expect(detalle.plan.impedimentos.join(" ")).toContain("Gemini Omni 1.1 Flash");
+      expect(detalle.plan.impedimentos.join(" ")).toContain("Validado con dos personas");
       const aprobar = await rutaPlan.POST(
         pedir(ana, `/api/proyectos/${proyectoId}/plan`, "POST", {
           presupuestoCreditos: 100_000,
@@ -817,11 +817,11 @@ describeSiHayBase("escenas habladas con dos personajes", () => {
 
       const estimada = await estimacion();
       expect(estimada.impedimentos.join(" ")).toContain("fallo interno");
-      expect(estimada.impedimentos.join(" ")).toContain("Gemini Omni 1.1 Flash");
+      expect(estimada.impedimentos.join(" ")).toContain("Validado con dos personas");
 
       const fallo = await error(() => producir(CREDITOS_OMNI));
       expect(fallo.estado).toBe(409);
-      expect(fallo.message).toContain("Gemini Omni 1.1 Flash");
+      expect(fallo.message).toContain("Validado con dos personas");
       expect(fallo.message).toContain("No se ha cobrado nada");
       expect(await trabajosDeLaEscena()).toHaveLength(0);
       expect(enviados).toHaveLength(0);
@@ -895,7 +895,7 @@ describeSiHayBase("escenas habladas con dos personajes", () => {
       ),
     );
     expect(fallo.estado).toBe(409);
-    expect(fallo.message).toContain("Gemini Omni 1.1 Flash");
+    expect(fallo.message).toContain("el modelo de voz e identidad registradas que usas");
     expect(fallo.message).toContain("solo genera de 4 s");
     expect(fallo.message).not.toContain("modelo de animación");
     expect(enviados).toHaveLength(0);

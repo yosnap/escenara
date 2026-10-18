@@ -89,7 +89,7 @@ export function TablaPlan({ plan, escenas }: { plan: PlanVista; escenas: readonl
           {escenas.length === 0
             ? "Añade una escena para ver lo que costaría producirla."
             : fecha === ""
-              ? "Los modelos del catálogo no tienen precio registrado, así que no se puede estimar nada: pídeselo a quien administra."
+              ? "Los modelos que usas no tienen precio registrado, así que no se puede estimar nada: elige otro en las Opciones avanzadas del proyecto o pídeselo a quien administra."
               : `Todas las cifras son una estimación, calculada con el precio del ${fecha}.`}
         </p>
       </div>
@@ -97,7 +97,7 @@ export function TablaPlan({ plan, escenas }: { plan: PlanVista; escenas: readonl
       <TablaDesplazable etiqueta="Plan del proyecto por escenas">
         <table className="w-full min-w-[40rem] border-collapse text-left">
           <caption className="sr-only">
-            Escenas del proyecto con su modelo, su duración y su coste estimado por escena.
+            Escenas del proyecto con lo que se genera, su duración y su coste estimado por escena.
           </caption>
           <thead>
             <tr className="border-b border-borde text-sm text-texto-suave">
@@ -105,7 +105,7 @@ export function TablaPlan({ plan, escenas }: { plan: PlanVista; escenas: readonl
                 Escena
               </th>
               <th scope="col" className="py-2 pr-3 font-semibold">
-                Modelos
+                Se genera
               </th>
               <th scope="col" className="py-2 pr-3 font-semibold">
                 Duración
@@ -131,7 +131,7 @@ export function TablaPlan({ plan, escenas }: { plan: PlanVista; escenas: readonl
                 <th scope="row" className="py-3 pr-3 font-normal text-texto">
                   <span className="font-mono text-texto-suave">{fila.orden}.</span> {fila.resumen}
                 </th>
-                <td className="py-3 pr-3 text-texto-suave">{fila.modelos}</td>
+                <td className="py-3 pr-3 text-texto-suave">{fila.queSeGenera}</td>
                 <td className="py-3 pr-3 font-mono text-texto-suave">{fila.segundos} s</td>
                 <td className="py-3 pr-3 text-texto">
                   <span className="font-mono">{fila.estimacion}</span>

@@ -46,6 +46,7 @@ import {
 import type { EleccionDeTrabajo } from "../generacion/precios";
 import { condicionEnCurso } from "../generacion/trabajos";
 import { type Actor, aDto, espacioUsado } from "../media/servicio";
+import { DONDE_CAMBIAR_MODELO, modeloEnMensaje } from "../modelo-en-mensajes";
 import { costeDeEscenaOmni, duracionesDeOmni, registroParaProducir } from "../omni/escena";
 import { selloOmniVigente } from "../omni/estimacion-plan";
 import { eleccionOmni } from "../omni/registro";
@@ -383,7 +384,7 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
   const proyecto = await proyectoPropio(actor, proyectoId);
   const [filasEscena, elecciones, ajustes, comprometido] = await Promise.all([
     escenasDe(proyecto.id),
-    eleccionesDelPlan(actor.id),
+    eleccionesDelPlan(actor.id, proyecto),
     leerAjustes(),
     comprometidoDelProyecto(proyecto.id),
   ]);
@@ -540,7 +541,7 @@ async function impedimentosDeOmni(actor: Actor, proyecto: FilaProyecto): Promise
   const motivos: string[] = [];
   let modeloOmni: { nombre: string; modelo: string; duraciones: readonly number[] } | null = null;
   try {
-    const { modelo } = await eleccionOmni(actor.id);
+    const { modelo } = await eleccionOmni(actor.id, undefined, proyecto);
     modeloOmni = { nombre: modelo.nombre, modelo: modelo.modelo, duraciones: duracionesDeOmni(modelo) };
   } catch (error) {
     motivos.push(
@@ -556,7 +557,7 @@ async function impedimentosDeOmni(actor: Actor, proyecto: FilaProyecto): Promise
    * cosas distintas.
    */
   const { falta } = await registroParaProducir(actor, proyecto, modeloOmni?.modelo);
-  if (falta !== "") motivos.push(`Este proyecto está en modo Omni y ${falta}`);
+  if (falta !== "") motivos.push(`Este proyecto está en modo «Voz e identidad registradas» y ${falta}`);
   const duracion = modeloOmni ? impedimentoDeDuracionOmni(modeloOmni, proyecto.clipSeconds) : null;
   if (duracion) motivos.push(duracion);
   return motivos;
@@ -573,7 +574,8 @@ export function impedimentoDeDuracionOmni(
 ): string | null {
   const segundos = duracionParaModelo(modelo.duraciones, segundosDelProyecto);
   if (segundos === segundosDelProyecto) return null;
-  return `Los clips de este proyecto son de ${segundosDelProyecto} s y ${modelo.nombre} solo genera de ${segundos} s en esta instalación. Cambia la duración del proyecto a ${segundos} s antes de producir.`;
+  // Se lee en la pantalla del proyecto: el modelo se nombra por lo que hace, no por su nombre.
+  return `Los clips de este proyecto son de ${segundosDelProyecto} s y ${modeloEnMensaje(null, "hablada", modelo.nombre)} solo genera de ${segundos} s en esta instalación. No se ha cobrado nada: cambia la duración del proyecto a ${segundos} s antes de producir, o ${DONDE_CAMBIAR_MODELO}.`;
 }
 
 /**
@@ -652,7 +654,7 @@ export async function exigirDuracionProducible(actor: Actor, proyecto: FilaProye
   if (proyecto.voiceMode === "omni") {
     let modelo: { nombre: string; duraciones: readonly number[] };
     try {
-      const { modelo: elegido } = await eleccionOmni(actor.id);
+      const { modelo: elegido } = await eleccionOmni(actor.id, undefined, proyecto);
       modelo = { nombre: elegido.nombre, duraciones: duracionesDeOmni(elegido) };
     } catch {
       return; // Sin modelo Omni utilizable, el propio envío se rechaza diciendo por qué.
@@ -661,7 +663,7 @@ export async function exigirDuracionProducible(actor: Actor, proyecto: FilaProye
     if (motivo) throw new ErrorProyecto(409, motivo);
     return;
   }
-  const { animacion } = await eleccionesDelPlan(actor.id);
+  const { animacion } = await eleccionesDelPlan(actor.id, proyecto);
   if (!animacion) return; // Sin modelo con precio, el propio envío ya se rechaza por no poder estimarse.
   const motivo = impedimentoDeDuracion(
     duracionParaModelo(animacion.modelo.parametros.duraciones, proyecto.clipSeconds),

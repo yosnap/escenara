@@ -808,10 +808,10 @@ describe.skipIf(!hayBaseDeDatos)("cola, presupuesto y conciliación", () => {
       // Ninguno de estos prueba que el proveedor no haya aceptado el trabajo.
       expect(vista.estado).toBe("desconocido");
       expect(vista.enRevision).toBe(true);
-      // El mensaje dice las cuatro cosas de la norma de errores visibles: qué falló (proveedor y modelo), qué se
-      // ha quedado sin hacer, qué pasa con el dinero y qué hacer.
-      expect(vista.error).toContain("No se ha podido generar el fotograma");
-      expect(vista.error).toContain("KIE.ai (nano-banana-2-lite)");
+      // El mensaje dice las cuatro cosas de la norma de errores visibles: qué falló (el proveedor, sin nombrar el
+      // modelo al usuario), qué se ha quedado sin hacer, qué pasa con el dinero y qué hacer.
+      expect(vista.error).toContain("No se ha podido generar el fotograma: KIE.ai");
+      expect(vista.error).not.toContain("nano-banana-2-lite");
       expect(vista.error).toContain("No se sabe si te ha cobrado");
       expect(vista.error).toContain("revisa el historial de tu cuenta en KIE.ai");
       expect(deposito.reservado).toBe(4);
@@ -832,9 +832,11 @@ describe.skipIf(!hayBaseDeDatos)("cola, presupuesto y conciliación", () => {
       const { vista, deposito } = await envioQueFalla(fallo);
 
       expect(vista.estado).toBe("fallido");
-      expect(vista.error).toContain("No se ha podido generar el fotograma");
-      expect(vista.error).toContain("KIE.ai (nano-banana-2-lite)");
+      expect(vista.error).toContain("No se ha podido generar el fotograma: KIE.ai");
+      expect(vista.error).not.toContain("nano-banana-2-lite");
       expect(vista.error).toContain("No se te ha cobrado nada");
+      // Y qué hacer, según la causa (revisar la clave, recargar saldo o esperar).
+      expect(vista.error).toMatch(/Revisa tu clave|Recarga créditos|Espera un minuto/);
       expect(deposito.reservado).toBe(0);
       expect(deposito.retenido).toBe(0);
       expect(kie.llamadas.crearTarea).toBe(1);

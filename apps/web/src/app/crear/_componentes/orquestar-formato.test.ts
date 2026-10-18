@@ -70,7 +70,7 @@ describe("cambio de modelo al elegir un trend", () => {
     expect(s.modelo).toBe("pro");
     expect(s.modeloCambiado).toBe(true);
     expect(s.estimacion.modelo).toBe("pro");
-    expect(s.aviso).toContain("Hemos cambiado a PRO porque FAST no tiene clips de 6 s");
+    expect(s.aviso).toContain("Hemos cambiado el modelo del clip porque el que usabas no tiene clips de 6 s");
     expect(s.memoria).toEqual({ anterior: "fast", automatico: "pro" });
     expect(e.avisosDeCalculo).toEqual([true, false]);
   });
@@ -78,7 +78,7 @@ describe("cambio de modelo al elegir un trend", () => {
   test("si el trend no admite el modelo actual, cambia aunque tenga tarifa", async () => {
     const s = listo(await aplicarFormato(entrada({ trend: trend("a", 4, ["pro"]) })));
     expect(s.modelo).toBe("pro");
-    expect(s.aviso).toContain("el trend no admite FAST");
+    expect(s.aviso).toContain("el trend no admite el que usabas");
   });
 
   test("si el modelo sirve, no se toca y no hay aviso", async () => {
@@ -118,7 +118,9 @@ describe("quitar el trend", () => {
     expect(s.modelo).toBe("fast");
     expect(s.estimacion.modelo).toBe("fast");
     expect(s.modeloCambiado).toBe(true);
-    expect(s.aviso).toBe("Hemos vuelto a FAST, el modelo que tenías antes de elegir el trend.");
+    expect(s.aviso).toBe(
+      "Hemos vuelto al modelo del clip que tenías antes de elegir el trend (lo ves en las Opciones avanzadas del clip).",
+    );
     expect(s.memoria).toBeNull();
   });
 
