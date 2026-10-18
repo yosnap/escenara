@@ -225,18 +225,24 @@ export async function elegirModelo(capacidad: Capacidad, modelo?: string | null)
   const existente = todos.find((m) => m.modelo === modelo);
   if (!existente) throw new ErrorCatalogo(400, "Ese modelo no está en el catálogo.");
   if (!existente.capacidades.includes(capacidad)) {
-    throw new ErrorCatalogo(400, `El modelo ${existente.nombre} no sirve para esto.`);
+    throw new ErrorCatalogo(400, "El modelo elegido no sirve para esto: elige otro en Opciones avanzadas.");
   }
   if (existente.estado === "retirado") {
-    throw new ErrorCatalogo(409, `El modelo ${existente.nombre} está retirado y ya no se puede usar.`);
+    throw new ErrorCatalogo(
+      409,
+      "El modelo elegido está retirado y ya no se puede usar. No se ha cobrado nada: elige otro en Opciones avanzadas o en Cuenta › Mapa de modelos.",
+    );
   }
   if (!esSeleccionable(existente.estado)) {
     // El motivo concreto lo escribe quien lo dio de alta (la semilla o la sincronización de precios): puede ser
     // que no se haya probado nunca o que esta instalación no sepa con qué parámetros pedírselo.
     const motivo = existente.notas === "" ? "" : ` ${existente.notas}`;
-    throw new ErrorCatalogo(409, `El modelo ${existente.nombre} no se puede elegir en esta instalación.${motivo}`);
+    throw new ErrorCatalogo(409, `El modelo elegido no se puede elegir en esta instalación.${motivo}`);
   }
-  throw new ErrorCatalogo(503, `No hay precio registrado para ${existente.nombre}: sin precio no se genera.`);
+  throw new ErrorCatalogo(
+    503,
+    "No hay precio registrado para el modelo elegido: sin precio no se genera ni se cobra nada. Elige otro en Opciones avanzadas.",
+  );
 }
 
 /**

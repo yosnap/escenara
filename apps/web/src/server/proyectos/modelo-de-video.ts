@@ -5,20 +5,34 @@ import type { FilaProyecto } from "../db/esquema";
 import { modelosParaCrearConFoto } from "../productos/modelos-sugeridos";
 
 /**
- * **El único lector** del modelo de vídeo fijado en un proyecto (`projects.video_model`).
- *
- * Lo usan la estimación del plan, la aprobación, la consulta de producción y el encolado: si cada uno leyera la
- * columna a su manera, la cifra que se confirma y el modelo que se paga podrían ser distintos.
- *
- * Devuelve `null` —es decir, «el mapa de modelos de la cuenta», que es lo de siempre— cuando el proyecto no fija
- * ninguno o cuando lo fijado no vale para su modo: en modo `omni` solo sirve un modelo de escenas habladas, así que
- * un modelo de clip normal fijado antes de cambiar de modo se ignora en lugar de romper la producción.
+ * Lo fijado en el proyecto si vale **para su modo**, sin mirar el catálogo: en modo `omni` solo sirve un modelo de
+ * escenas habladas, así que un modelo de clip fijado antes de cambiar de modo no cuenta. `null` = nada fijado.
  */
-export function modeloDeVideoDe(proyecto: Pick<FilaProyecto, "videoModel" | "voiceMode">): string | null {
+export function modeloFijadoParaElModo(proyecto: Pick<FilaProyecto, "videoModel" | "voiceMode">): string | null {
   const fijado = proyecto.videoModel.trim();
   if (fijado === "") return null;
   if (proyecto.voiceMode === "omni" && !esModeloOmni(fijado)) return null;
   return fijado;
+}
+
+/**
+ * **El único lector** del modelo de vídeo fijado en un proyecto (`projects.video_model`).
+ *
+ * Lo usan la estimación del plan, la aprobación, el sello que se congela, la consulta de producción y el encolado:
+ * si cada uno leyera la columna a su manera, la cifra que se confirma y el modelo que se paga podrían ser distintos.
+ *
+ * Devuelve `null` —es decir, «el mapa de modelos de la cuenta», lo de siempre— cuando el proyecto no fija ninguno,
+ * cuando lo fijado no vale para su modo y cuando **ya no es elegible** (retirado, sin precio o sin la capacidad).
+ * Así un modelo que desaparece del catálogo nunca deja el proyecto sin producir: se vuelve al mapa en todos los
+ * caminos a la vez, y como el coste se reestima antes de cada confirmación, no se cobra una cifra no vista.
+ */
+export async function modeloDeVideoDe(
+  proyecto: Pick<FilaProyecto, "videoModel" | "voiceMode">,
+): Promise<string | null> {
+  const fijado = modeloFijadoParaElModo(proyecto);
+  if (fijado === null) return null;
+  const elegibles = await modelosDeVideoDelProyecto(proyecto.voiceMode);
+  return elegibles.some((m) => m.modelo === fijado) ? fijado : null;
 }
 
 /**

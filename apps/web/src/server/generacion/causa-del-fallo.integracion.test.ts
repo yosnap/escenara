@@ -189,7 +189,9 @@ describe.skipIf(!hayBaseDeDatos)("causa del fallo del proveedor", () => {
     const vista = await reconciliar({ id: ana.id, esAdmin: false }, id, h);
     expect(vista.causaFallo).toBe("bloqueo_seguridad");
     expect(vista.error).not.toContain("producto");
-    expect(vista.error).toContain("Prueba a: cambiar la descripción o generar con otro modelo.");
+    expect(vista.error).toContain(
+      "Prueba a: cambiar la descripción o generar con otro modelo (en Opciones avanzadas).",
+    );
   });
 
   test("un trabajo antiguo que falló por contenido se sigue viendo como antes, sin causa", async () => {

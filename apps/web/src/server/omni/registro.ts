@@ -82,7 +82,7 @@ export async function eleccionOmni(
    */
   proyecto?: Pick<FilaProyecto, "videoModel" | "voiceMode">,
 ): Promise<EleccionDeTrabajo> {
-  const fijado = proyecto ? modeloDeVideoDe(proyecto) : null;
+  const fijado = proyecto ? await modeloDeVideoDe(proyecto) : null;
   if (usuarioId && fijado && esModeloOmni(fijado)) {
     const { eleccionDeGeneracion } = await import("../mapa/generacion");
     const { elegida } = await eleccionDeGeneracion(usuarioId, "animacion", fijado, {
@@ -199,8 +199,10 @@ export async function registrarVozEnProveedor(
   usuarioId: string,
   datos: { voz: string; nombre: string; descripcion: string; ejemplo: string },
   h: Herramientas = HERRAMIENTAS,
+  /** El proyecto de la voz: se registra con el mismo modelo con el que se producirán sus escenas. */
+  proyecto?: Pick<FilaProyecto, "videoModel" | "voiceMode">,
 ): Promise<{ audioId: string; eleccion: EleccionDeTrabajo }> {
-  const eleccion = await eleccionOmni(usuarioId);
+  const eleccion = await eleccionOmni(usuarioId, undefined, proyecto);
   const { modelo, adaptador } = eleccion;
   if (!adaptador.registrarVoz) {
     throw new ErrorOmni(
@@ -251,13 +253,15 @@ export async function registrarPersonajeEnProveedor(
   usuarioId: string,
   datos: { nombre: string; descripcion: string; audioId: string; imagenes: ImagenesDelRegistro },
   h: Herramientas = HERRAMIENTAS,
+  /** El proyecto con cuya voz se registra: mismo modelo que producirá sus escenas (`registroParaProducir`). */
+  proyecto?: Pick<FilaProyecto, "videoModel" | "voiceMode">,
 ): Promise<{
   remoteCharacterId: string;
   imagenUrl: string;
   imagenCuerpoUrl: string;
   creditosObservados: number | null;
 }> {
-  const { modelo, adaptador } = await eleccionOmni(usuarioId);
+  const { modelo, adaptador } = await eleccionOmni(usuarioId, undefined, proyecto);
   if (!adaptador.registrarPersonaje) {
     throw new ErrorOmni(
       503,

@@ -1,6 +1,7 @@
 import { duracionesConCoste, type ModeloVista } from "@/lib/catalogo";
 import type { LimitesDelModelo, RestriccionesPlantilla, ValoresPreset } from "@/lib/presets";
 import { motivoIncompatible } from "@/lib/presets";
+import { DONDE_CAMBIAR_MODELO } from "../modelo-en-mensajes";
 import { ErrorPreset } from "./errores";
 
 /**
@@ -44,7 +45,8 @@ export const duracionEnviada = (modelo: ModeloVista, segundos?: number): number 
 export function limitesDelModelo(modelo: ModeloVista, segundos?: number): LimitesDelModelo {
   const enviada = duracionEnviada(modelo, segundos);
   return {
-    nombre: modelo.nombre,
+    // Viaja al navegador y entra en los motivos de los presets deshabilitados: el modelo no se nombra.
+    nombre: "El modelo elegido",
     proporciones: [...modelo.parametros.proporciones],
     duraciones: enviada === null ? [] : [enviada],
     maximoReferencias: modelo.parametros.maximoReferencias,
@@ -81,18 +83,23 @@ export function exigirCombinacionPosible(
 ): void {
   for (const preset of elegidos) {
     const motivo = motivoDelPreset(preset.valores, modelo, segundos);
-    if (motivo) throw new ErrorPreset(409, `«${preset.nombre}» no se puede generar con este modelo: ${motivo}`);
+    if (motivo) {
+      throw new ErrorPreset(
+        409,
+        `«${preset.nombre}» no se puede generar con el modelo elegido: ${motivo} No se ha cobrado nada: quita ese preset o ${DONDE_CAMBIAR_MODELO}.`,
+      );
+    }
   }
   if (restricciones.modelos.length > 0 && !restricciones.modelos.includes(modelo.modelo)) {
     throw new ErrorPreset(
       409,
-      `Esta plantilla solo funciona con ${restricciones.modelos.join(", ")}: elige uno de esos modelos.`,
+      `Esta plantilla solo funciona con algunos modelos y el elegido no es uno de ellos. No se ha cobrado nada: elige otra plantilla o ${DONDE_CAMBIAR_MODELO}.`,
     );
   }
   if (restricciones.minimoReferencias > modelo.parametros.maximoReferencias) {
     throw new ErrorPreset(
       409,
-      `Esta plantilla necesita al menos ${restricciones.minimoReferencias} foto(s) de referencia y ${modelo.nombre} admite ${modelo.parametros.maximoReferencias}.`,
+      `Esta plantilla necesita al menos ${restricciones.minimoReferencias} foto(s) de referencia y el modelo elegido admite ${modelo.parametros.maximoReferencias}. No se ha cobrado nada: elige otra plantilla o ${DONDE_CAMBIAR_MODELO}.`,
     );
   }
 }

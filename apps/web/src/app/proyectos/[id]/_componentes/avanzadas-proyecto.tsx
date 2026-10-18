@@ -40,7 +40,7 @@ export function AvanzadasProyecto({
       value: DEL_MAPA,
       label: "El de tu mapa de modelos",
       descripcion:
-        avanzadas.modeloVideo === "" && avanzadas.enUso !== ""
+        (avanzadas.modeloVideo === "" || avanzadas.fijadoNoDisponible) && avanzadas.enUso !== ""
           ? `Ahora: ${avanzadas.enUso}. Se cambia en Cuenta › Mapa de modelos.`
           : "El primero que sirva de tu mapa de modelos (Cuenta › Mapa de modelos).",
     },
@@ -73,14 +73,15 @@ export function AvanzadasProyecto({
       <Selector
         etiqueta={`${queModelo} de este proyecto`}
         opciones={opciones}
-        valor={avanzadas.modeloVideo === "" ? DEL_MAPA : avanzadas.modeloVideo}
+        // Un modelo fijado que ya no está disponible no se ofrece: se marca lo que de verdad se usa, el mapa.
+        valor={avanzadas.modeloVideo === "" || avanzadas.fijadoNoDisponible ? DEL_MAPA : avanzadas.modeloVideo}
         deshabilitado={guardando}
         onCambio={(v) => void elegir(v)}
       />
       {avanzadas.fijadoNoDisponible && (
         <Aviso tono="aviso">
-          El modelo fijado en este proyecto ya no está disponible en este modo de voz, así que se usa el de tu mapa de
-          modelos. Elige otro o vuelve a «El de tu mapa de modelos».
+          El modelo que fijaste ya no está disponible; se usa el de tu mapa. El coste del plan ya está calculado con él.
+          Si prefieres otro, elígelo aquí.
         </Aviso>
       )}
       <p className="text-sm text-texto-suave">

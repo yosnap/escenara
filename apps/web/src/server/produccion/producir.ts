@@ -294,7 +294,7 @@ export async function encolarAnimacion(
       claveIdempotencia: clave,
       // El modelo de una comparativa A/B manda; si no, el fijado en el proyecto (el mismo lector con el que se
       // estimó y se aprobó) y, sin ninguno, el mapa de la cuenta.
-      ...modeloDelClip(confirmacion, proyecto),
+      ...(await modeloDelClip(confirmacion, proyecto)),
       ...(await plantillaYFormatoDelEnvio(actor.id, plantilla, proyecto)),
     },
     h,
@@ -302,8 +302,11 @@ export async function encolarAnimacion(
 }
 
 /** Modelo con el que se pide el clip de una escena normal; vacío = el mapa de la cuenta, con sus reservas. */
-function modeloDelClip(confirmacion: ConfirmacionProduccion, proyecto: FilaProyecto): { modelo?: string } {
-  const modelo = confirmacion.modelo ?? (proyecto.voiceMode === "omni" ? null : modeloDeVideoDe(proyecto));
+async function modeloDelClip(
+  confirmacion: ConfirmacionProduccion,
+  proyecto: FilaProyecto,
+): Promise<{ modelo?: string }> {
+  const modelo = confirmacion.modelo ?? (proyecto.voiceMode === "omni" ? null : await modeloDeVideoDe(proyecto));
   return modelo ? { modelo } : {};
 }
 

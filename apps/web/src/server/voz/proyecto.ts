@@ -166,7 +166,8 @@ export async function fijarModoVoz(
     if (modo === "omni") {
       // Import diferido: los formatos del proyecto leen el plan, que a su vez lee la voz.
       const { exigirFormatoParaOmni } = await import("../montaje/formatos-del-proyecto");
-      await exigirFormatoParaOmni(actor.id, proyecto);
+      // El modelo fijado se vacía al cambiar de modo (abajo): el formato se juzga con el del mapa.
+      await exigirFormatoParaOmni(actor.id, { ...proyecto, videoModel: "" });
     }
     const futuro = { ...proyecto, voiceMode: modo };
     // Pasar a `pista` con clips ya producidos es la única forma de acabar con dos voces en el mismo plano, así que
@@ -175,7 +176,12 @@ export async function fijarModoVoz(
     await exigirConfirmacionDelCambio(tx, proyecto, futuro, confirmado, "de modo de voz", conDialogoHablado.length);
     const [actualizado] = await tx
       .update(projects)
-      .set({ voiceMode: modo, updatedAt: new Date() })
+      /**
+       * El modelo de vídeo fijado en las Opciones avanzadas se eligió para el modo de antes (un modelo de clip no
+       * genera escenas habladas, y al revés), así que al cambiar de modo se vacía y el proyecto vuelve al mapa de
+       * la cuenta. Es la regla más simple: nunca queda un modelo fijado que no vale para el modo vigente.
+       */
+      .set({ voiceMode: modo, videoModel: "", updatedAt: new Date() })
       .where(eq(projects.id, proyecto.id))
       .returning();
     if (!actualizado) throw new ErrorProyecto(404, "Ese proyecto no existe.");

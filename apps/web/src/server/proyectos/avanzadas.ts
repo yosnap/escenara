@@ -15,13 +15,14 @@ export async function avanzadasDelProyecto(
   elecciones: EleccionesDelPlan,
 ): Promise<AvanzadasDelProyecto> {
   const escenasHabladas = proyecto.voiceMode === "omni";
-  const [modelos, enUso] = await Promise.all([
+  const [modelos, enUso, vigente] = await Promise.all([
     modelosDeVideoDelProyecto(proyecto.voiceMode),
     escenasHabladas
       ? eleccionOmni(usuarioId, undefined, proyecto)
           .then((e) => e.modelo.nombre)
           .catch(() => "")
       : Promise.resolve(elecciones.animacion?.modelo.nombre ?? ""),
+    modeloDeVideoDe(proyecto),
   ]);
   const fijado = proyecto.videoModel.trim();
   return {
@@ -29,7 +30,7 @@ export async function avanzadasDelProyecto(
     modelos,
     enUso,
     escenasHabladas,
-    fijadoNoDisponible:
-      fijado !== "" && (modeloDeVideoDe(proyecto) === null || !modelos.some((m) => m.modelo === fijado)),
+    // Fijado pero ignorado (retirado, sin precio o de otro modo): todos los caminos usan ya el mapa.
+    fijadoNoDisponible: fijado !== "" && vigente === null,
   };
 }

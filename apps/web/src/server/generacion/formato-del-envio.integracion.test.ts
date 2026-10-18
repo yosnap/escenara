@@ -186,7 +186,8 @@ describe.skipIf(!hayBaseDeDatos)("el formato elegido al generar", () => {
     const antes = await db().select().from(generationJobs).where(eq(generationJobs.userId, ana.id));
     const fallo = await generar(conFormato("cuadrado-1-1")).catch((e: unknown) => e);
     expect(fallo).toBeInstanceOf(ErrorPreset);
-    expect((fallo as Error).message).toContain("solo admite 9:16, 16:9, 4:5");
+    expect((fallo as Error).message).toContain("El modelo elegido solo admite 9:16, 16:9, 4:5");
+    expect((fallo as Error).message).toContain("No se ha cobrado nada");
     const despues = await db().select().from(generationJobs).where(eq(generationJobs.userId, ana.id));
     expect(despues).toHaveLength(antes.length);
   });

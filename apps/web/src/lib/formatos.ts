@@ -232,7 +232,9 @@ export function motivoFormatoNoGenerable(
         : `${m.nombre} solo admite ${m.proporciones.join(", ")}`,
     );
   if (motivos.length === 0) return null;
-  return `${motivos.join("; ")}. Con los modelos que tienes elegidos no se puede generar en ${proporcion}: elige otro formato principal o cambia de modelo. Los demás formatos se pueden seguir sacando en el montaje con reencuadre.`;
+  // El nombre puede llegar como frase en minúscula («el modelo de vídeo que usas»): la frase empieza en mayúscula.
+  const lista = motivos.join("; ");
+  return `${lista.charAt(0).toLocaleUpperCase("es")}${lista.slice(1)}. Con los modelos que tienes elegidos no se puede generar en ${proporcion}: elige otro formato principal o cambia de modelo (en las Opciones avanzadas del proyecto o en Cuenta › Mapa de modelos). Los demás formatos se pueden seguir sacando en el montaje con reencuadre.`;
 }
 
 /** Por formato, por qué no se puede generar en él con estos modelos; `null` si se puede. */

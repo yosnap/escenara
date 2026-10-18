@@ -43,6 +43,7 @@ import { type EleccionDeTrabajo, elegirParaTipo } from "../generacion/precios";
 import { limitesDe } from "../limites-proyecto";
 import { eleccionDeGeneracion } from "../mapa/generacion";
 import { type Actor, aDto } from "../media/servicio";
+import { modeloEnMensaje } from "../modelo-en-mensajes";
 import type { CosteDeEscenaOmni } from "../omni/escena";
 import { costeOmniDelPlan, estimacionDeEscenaOmni, selloOmniVigente } from "../omni/estimacion-plan";
 import { eleccionOmni } from "../omni/registro";
@@ -105,7 +106,7 @@ export async function eleccionesDelPlan(
    */
   proyecto?: Pick<FilaProyecto, "videoModel" | "voiceMode">,
 ): Promise<EleccionesDelPlan> {
-  const fijado = proyecto && proyecto.voiceMode !== "omni" ? modeloDeVideoDe(proyecto) : null;
+  const fijado = proyecto && proyecto.voiceMode !== "omni" ? await modeloDeVideoDe(proyecto) : null;
   const [fotograma, animacion] = await Promise.all([
     elegir("fotograma", usuarioId),
     elegir("animacion", usuarioId, fijado),
@@ -113,10 +114,16 @@ export async function eleccionesDelPlan(
   return { fotograma, animacion };
 }
 
-/** Los modelos del plan con sus proporciones del catálogo: es con lo que se decide en qué formato se puede generar. */
+/**
+ * Los modelos del plan con sus proporciones del catálogo: es con lo que se decide en qué formato se puede generar. El
+ * motivo se lee en la pantalla del proyecto, así que cada modelo se nombra por lo que hace y no por su nombre.
+ */
 export const modelosDelPlan = (elecciones: EleccionesDelPlan) =>
-  [elecciones.fotograma, elecciones.animacion].flatMap((e) =>
-    e ? [{ nombre: e.modelo.nombre, proporciones: e.modelo.parametros.proporciones }] : [],
+  [
+    { eleccion: elecciones.fotograma, nombre: modeloEnMensaje(null, "imagen", "") },
+    { eleccion: elecciones.animacion, nombre: modeloEnMensaje(null, "video", "") },
+  ].flatMap(({ eleccion, nombre }) =>
+    eleccion ? [{ nombre, proporciones: eleccion.modelo.parametros.proporciones }] : [],
   );
 
 /**
@@ -131,7 +138,9 @@ export async function modelosDelProyecto(
 ) {
   if (proyecto.voiceMode !== "omni") return modelosDelPlan(elecciones);
   const omni = await eleccionOmni(usuarioId, undefined, proyecto).catch(() => null);
-  return omni ? [{ nombre: omni.modelo.nombre, proporciones: omni.modelo.parametros.proporciones }] : [];
+  return omni
+    ? [{ nombre: modeloEnMensaje(null, "hablada", ""), proporciones: omni.modelo.parametros.proporciones }]
+    : [];
 }
 
 async function elegir(
@@ -574,8 +583,8 @@ export async function listarProyectos(actor: Actor): Promise<ProyectoVista[]> {
   const escenasPorProyecto = await escenasDeProyectos(filas.map((f) => f.id));
   // Una lectura de modelos por cada modelo de vídeo distinto (casi siempre una sola: el mapa de la cuenta).
   const leidas = new Map<string, Promise<EleccionesDelPlan>>();
-  const eleccionesDe = (fila: FilaProyecto) => {
-    const clave = fila.voiceMode === "omni" ? "" : (modeloDeVideoDe(fila) ?? "");
+  const eleccionesDe = async (fila: FilaProyecto) => {
+    const clave = fila.voiceMode === "omni" ? "" : ((await modeloDeVideoDe(fila)) ?? "");
     const leida = leidas.get(clave) ?? eleccionesDelPlan(actor.id, fila);
     leidas.set(clave, leida);
     return leida;

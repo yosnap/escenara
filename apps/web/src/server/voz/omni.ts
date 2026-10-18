@@ -160,6 +160,8 @@ export async function registrarVozOmni(
       ejemplo: eleccion.ejemplo,
     },
     h,
+    // Con el modelo fijado en el proyecto, si lo hay: el mismo con el que se producirán sus escenas.
+    proyecto,
   );
 
   return db().transaction(async (tx) => {

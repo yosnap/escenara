@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, SlidersHorizontal } from "lucide-react";
-import { type ReactNode, useEffect, useId, useState } from "react";
+import { type ReactNode, useId, useSyncExternalStore } from "react";
 import { cn } from "./cn";
 
 /**
@@ -18,22 +18,38 @@ export const PREFIJO_SESION_AVANZADAS = "escenara-avanzadas:";
 
 const claveDeSesion = (clave: string) => `${PREFIJO_SESION_AVANZADAS}${clave}`;
 
-/** Lee lo recordado; con el almacenamiento bloqueado (modo privado estricto) se queda plegado. */
-function leerRecordado(clave: string): boolean | null {
+/**
+ * Lo recordado de cada vídeo vive en `sessionStorage`; si el navegador lo bloquea (modo privado estricto), en esta
+ * memoria, que dura lo que la página. Los componentes se suscriben con `useSyncExternalStore`.
+ */
+const enMemoria = new Map<string, "1" | "0">();
+const suscriptores = new Set<() => void>();
+
+function leerRecordado(clave: string): "1" | "0" | null {
   try {
     const valor = globalThis.sessionStorage?.getItem(claveDeSesion(clave));
-    return valor === null || valor === undefined ? null : valor === "1";
+    if (valor === "1" || valor === "0") return valor;
   } catch {
-    return null;
+    // Almacenamiento bloqueado: se mira la memoria de la página.
   }
+  return enMemoria.get(clave) ?? null;
 }
 
 function recordar(clave: string, abierto: boolean): void {
+  const valor = abierto ? "1" : "0";
   try {
-    globalThis.sessionStorage?.setItem(claveDeSesion(clave), abierto ? "1" : "0");
+    globalThis.sessionStorage?.setItem(claveDeSesion(clave), valor);
+    enMemoria.delete(clave);
   } catch {
-    // Sin almacenamiento solo se pierde el recuerdo: el plegable sigue funcionando en la página.
+    // Sin almacenamiento solo se pierde el recuerdo entre páginas: el plegable sigue funcionando en esta.
+    enMemoria.set(clave, valor);
   }
+  for (const avisar of suscriptores) avisar();
+}
+
+function suscribir(avisar: () => void): () => void {
+  suscriptores.add(avisar);
+  return () => suscriptores.delete(avisar);
 }
 
 export function OpcionesAvanzadas({
@@ -61,20 +77,18 @@ export function OpcionesAvanzadas({
   className?: string;
 }) {
   const idContenido = useId();
-  const [abierto, setAbierto] = useState(false);
-
-  // El estado recordado se lee al montar en el cliente: en el servidor no hay sesión y todo empieza plegado. Si el
-  // mismo bloque pasa a ser de otro vídeo, toma lo que recuerde ese vídeo (plegado si no recuerda nada).
-  useEffect(() => {
-    setAbierto(leerRecordado(clave) ?? false);
-  }, [clave]);
+  // En el servidor no hay sesión y todo empieza plegado; en el cliente manda lo que recuerde **este** vídeo, así que
+  // si el mismo bloque pasa a ser de otro vídeo toma el estado del nuevo (plegado si no recuerda nada).
+  const abierto = useSyncExternalStore(
+    suscribir,
+    () => leerRecordado(clave) === "1",
+    () => false,
+  );
 
   const visible = abierto || forzarAbierto;
   const cambiar = () => {
     if (forzarAbierto) return;
-    const siguiente = !abierto;
-    setAbierto(siguiente);
-    recordar(clave, siguiente);
+    recordar(clave, !abierto);
   };
 
   return (

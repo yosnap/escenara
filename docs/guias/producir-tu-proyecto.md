@@ -106,7 +106,11 @@ Las pantallas del proyecto hablan de duración y créditos, no de modelos. Los m
   «Voz e identidad registradas», el de las escenas habladas) o lo dejas en «El de tu mapa de modelos», que es lo
   normal. También dice con qué se generaría ahora y con qué modelos se estima cada escena. Cambiar de modelo cambia
   el coste: el plan se recalcula y, si estaba aprobado, vuelve a borrador para que revises la cifra antes de producir.
-  Lo ya generado se conserva;
+  Lo ya generado se conserva. Un modelo fijado se pide **tal cual, con su precio del catálogo y sin relevo**: si
+  falla sin cobrar no se prueba solo la siguiente entrada de tu mapa, como pasa con «El de tu mapa de modelos». Si
+  el modelo fijado se retira o se queda sin precio, el proyecto vuelve solo a tu mapa y el plegable lo avisa. Al
+  cambiar el modo de voz del proyecto, el modelo fijado se quita y se vuelve al mapa, porque se eligió para el otro
+  modo;
 - **el de cada escena**, en la tarjeta de producción: dice con qué modelo salieron su fotograma y su clip, y es donde
   está **«Comparar generando»** para animar el mismo fotograma con dos modelos.
 

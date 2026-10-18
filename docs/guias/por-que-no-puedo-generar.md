@@ -391,7 +391,7 @@ petición; solo lo usa para elegir una de estas causas.
 ## Lo que no se puede saltar, no se salta
 
 Un **Bloqueado** no se puede confirmar de ninguna manera. Eso incluye los requisitos del canto, del reparto de dos
-personajes, de Omni y del montaje: no son avisos, son cosas que faltan. Tampoco enviando su clave de regla a la API a mano: el
+personajes, de la voz e identidad registradas y del montaje: no son avisos, son cosas que faltan. Tampoco enviando su clave de regla a la API a mano: el
 servidor ignora cualquier confirmación que llegue para un freno que no sea un aviso. Lo mismo vale para
 **Requiere revisión**: ahí no hay casilla, hay algo que aportar.
 

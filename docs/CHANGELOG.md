@@ -12,7 +12,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - En un proyecto puedes fijar el **modelo de vídeo de ese proyecto** desde sus Opciones avanzadas (en el modo «Voz e
   identidad registradas», el de las escenas habladas). Si no fijas ninguno se usa tu mapa de modelos, como hasta
   ahora. Cambiarlo recalcula el coste del plan y, si estaba aprobado, lo devuelve a borrador para que revises la
-  cifra antes de producir; lo ya generado se conserva.
+  cifra antes de producir; lo ya generado se conserva. El modelo fijado se pide tal cual, sin relevo a las demás
+  entradas del mapa. Si se retira o se queda sin precio, el proyecto vuelve solo a tu mapa y el plegable lo avisa, y
+  al cambiar el modo de voz del proyecto se quita. Registrar la voz y los personajes de un proyecto de escenas
+  habladas usa también el modelo fijado.
 
 ### Cambiado
 
