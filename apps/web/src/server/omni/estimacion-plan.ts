@@ -1,4 +1,5 @@
 import { precioCaducado } from "@/lib/catalogo";
+import { motivoSinReparto } from "@/lib/omni";
 import type { EstimacionEscena } from "@/lib/proyectos";
 import type { FilaProyecto } from "../db/esquema";
 import { ErrorCatalogo } from "../proveedores/contrato";
@@ -16,10 +17,15 @@ export function estimacionDeEscenaOmni(
   coste: CosteDeEscenaOmni,
   clips: number,
   eurosPorCredito: number,
+  /** La escena es un podcast o un dualcast: solo se produce con un modelo que admita dos personajes. */
+  conReparto = false,
 ): EstimacionEscena {
   const creditos = totalDeEscenaOmni(coste, clips);
   const { modelo, precio } = coste.eleccion;
+  // El mismo motivo con el que se rechazaría al confirmar: así el plan no deja aprobar lo que luego no se produce.
+  const bloqueo = conReparto ? motivoSinReparto(modelo) : null;
   return {
+    ...(bloqueo ? { bloqueo } : {}),
     creditosFotograma: 0,
     creditosAnimacion: creditos,
     creditos,
@@ -46,4 +52,10 @@ export async function costeOmniDelPlan(usuarioId: string, proyecto: FilaProyecto
     if (error instanceof ErrorCatalogo || error instanceof ErrorOmni) return null;
     throw error;
   }
+}
+
+/** Sello vigente del precio de las escenas habladas del proyecto; `null` fuera del modo Omni o sin modelo con precio. */
+export async function selloOmniVigente(usuarioId: string, proyecto: FilaProyecto): Promise<string | null> {
+  if (proyecto.voiceMode !== "omni") return null;
+  return (await costeOmniDelPlan(usuarioId, proyecto))?.eleccion.precio.sello ?? null;
 }

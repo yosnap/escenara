@@ -16,12 +16,17 @@ import {
   type VersionDeClip,
   type VersionDeEscena,
 } from "@/lib/produccion";
-import { resumenDeEscena } from "@/lib/proyectos";
+import { precioCambiadoDesdeLaAprobacion, resumenDeEscena } from "@/lib/proyectos";
 import type { ModoVoz } from "@/lib/voz";
 import { leerAjustes } from "../ajustes";
 import { afirmacionesDe, escenasDe, proyectoPropio } from "../asistente/consulta";
 import { ErrorProyecto } from "../asistente/errores";
-import { comprometidoDelProyecto, type EleccionesDelPlan, eleccionesDelPlan } from "../asistente/plan";
+import {
+  comprometidoDelProyecto,
+  type EleccionesDelPlan,
+  eleccionesDelPlan,
+  selloCongeladoDe,
+} from "../asistente/plan";
 import { proporcionDelTrabajo } from "../cola/entrada-del-trabajo";
 import { posicionesEnCola } from "../cola/toma";
 import { alternativasDeEscenas, condicionDeAlternativa, escenasConComparativaLanzandose } from "../comparativas/marcas";
@@ -42,6 +47,7 @@ import type { EleccionDeTrabajo } from "../generacion/precios";
 import { condicionEnCurso } from "../generacion/trabajos";
 import { type Actor, aDto, espacioUsado } from "../media/servicio";
 import { costeDeEscenaOmni, duracionesDeOmni, registroParaProducir } from "../omni/escena";
+import { selloOmniVigente } from "../omni/estimacion-plan";
 import { eleccionOmni } from "../omni/registro";
 import { ultimaVersion } from "../personajes/ficha";
 import { marcasExigidas } from "../productos/declaracion-marca";
@@ -176,6 +182,8 @@ const consumidoDe = (filas: readonly FilaTrabajo[]): number =>
 interface ContextoDeControles {
   parametros: ParametrosControles;
   selloVigente: string;
+  /** Sello vigente de las escenas habladas en modo Omni; `null` en los demás modos. */
+  selloOmni: string | null;
   versionPersonaje: string | null;
   versionPlantilla: string | null;
 }
@@ -185,14 +193,16 @@ async function contextoDeControles(
   proyecto: FilaProyecto,
   elecciones: EleccionesDelPlan,
 ): Promise<ContextoDeControles> {
-  const [parametros, version, plantilla] = await Promise.all([
+  const [parametros, version, plantilla, selloOmni] = await Promise.all([
     parametrosDeControles(),
     proyecto.mainCharacterId ? ultimaVersion(proyecto.mainCharacterId) : null,
     plantillaVigenteDe(actor.id, "image_edit"),
+    selloOmniVigente(actor.id, proyecto),
   ]);
   return {
     parametros,
     selloVigente: elecciones.fotograma?.precio.sello ?? "",
+    selloOmni,
     versionPersonaje: version?.id ?? null,
     versionPlantilla: plantilla?.versionId ?? null,
   };
@@ -212,7 +222,10 @@ function hechosDeFila(
     planAprobado: proyecto.planApprovedAt !== null,
     aprobada: fila.state !== "borrador",
     motivoInvalidacion: fila.invalidationReason,
-    precioCambiado: fila.approvedFrameStamp !== "" && fila.approvedFrameStamp !== contexto.selloVigente,
+    precioCambiado: precioCambiadoDesdeLaAprobacion(selloCongeladoDe(fila), {
+      fotograma: contexto.selloVigente,
+      omni: contexto.selloOmni,
+    }),
     fichaCambiada:
       fila.approvedCharacterVersionId !== null && fila.approvedCharacterVersionId !== contexto.versionPersonaje,
     plantillaCambiada:

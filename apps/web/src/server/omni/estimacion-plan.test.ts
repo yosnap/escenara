@@ -40,6 +40,19 @@ describe("coste de una escena hablada en el plan", () => {
     expect(estimacion.selloFotograma).toBe("");
   });
 
+  test("un reparto con un modelo que no lo admite queda bloqueado en el plan con su causa", () => {
+    const video = {
+      ...coste,
+      eleccion: {
+        ...eleccion,
+        modelo: { ...eleccion.modelo, modelo: "gemini-omni-video", nombre: "Gemini Omni (vídeo)" },
+      },
+    } as CosteDeEscenaOmni;
+    expect(estimacionDeEscenaOmni(video, 1, 0.005, true).bloqueo).toContain("Gemini Omni 1.1 Flash");
+    expect(estimacionDeEscenaOmni(video, 1, 0.005, false).bloqueo).toBeUndefined();
+    expect(estimacionDeEscenaOmni(coste, 1, 0.005, true).bloqueo).toBeUndefined();
+  });
+
   test("un podcast cuenta sus dos clips y la traducción una sola vez", () => {
     expect(totalDeEscenaOmni(coste, 2)).toBe(128);
     expect(estimacionDeEscenaOmni(coste, 2, 0.005).creditos).toBe(128);

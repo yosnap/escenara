@@ -4,7 +4,7 @@
 
 En una escena hablada puedes montar una conversación entre **dos personajes tuyos**. Elige el formato en **Proyecto › Escenas › Reparto**. Necesitas el modo de voz **Omni**, una voz registrada para el proyecto y cada personaje registrado con esa voz y con su ficha vigente. [Escenas habladas](escenas-habladas.md) explica esos registros; hacerlos no gasta créditos.
 
-El podcast y el dualcast solo se producen con **Gemini Omni 1.1 Flash**, que es con el que se han medido. Ponlo el primero de la lista de vídeo de tu [mapa de modelos](mapa-de-modelos.md), en «Tu cuenta». Con **Gemini Omni (vídeo)** el clip con dos personajes registrados falló en KIE con un fallo interno, sin cobrar. Por eso la estimación lo avisa y no deja confirmar el gasto con ese modelo.
+El podcast y el dualcast solo se producen con **Gemini Omni 1.1 Flash**, que es con el que se han medido. Ponlo el primero de la lista de vídeo de tu [mapa de modelos](mapa-de-modelos.md), en «Tu cuenta». Con **Gemini Omni (vídeo)** el clip con dos personajes registrados dio un fallo interno en KIE, sin cobrar. Por eso, con ese modelo, el plan no deja aprobar la escena y la estimación avisa sin dejar confirmar el gasto.
 
 ![Vista previa del reparto y del consentimiento por personaje](../assets/capturas/0.28.0-reparto-claro.jpg)
 

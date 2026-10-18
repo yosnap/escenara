@@ -17,6 +17,7 @@ import {
   PRESUPUESTO_MAXIMO,
   type ProyectoDetalle,
   type ProyectoVista,
+  precioCambiadoDesdeLaAprobacion,
   puedeAprobarse,
 } from "@/lib/proyectos";
 import { type Ajustes, eurosPorCreditoDe, leerAjustes } from "../ajustes";
@@ -43,7 +44,7 @@ import { limitesDe } from "../limites-proyecto";
 import { eleccionDeGeneracion } from "../mapa/generacion";
 import { type Actor, aDto } from "../media/servicio";
 import type { CosteDeEscenaOmni } from "../omni/escena";
-import { costeOmniDelPlan, estimacionDeEscenaOmni } from "../omni/estimacion-plan";
+import { costeOmniDelPlan, estimacionDeEscenaOmni, selloOmniVigente } from "../omni/estimacion-plan";
 import { eleccionOmni } from "../omni/registro";
 import { clipsEsperadosDe } from "../omni/reparto";
 import { personajePorId } from "../personajes/contexto";
@@ -194,8 +195,16 @@ async function estimacionDelFormato(
     omni,
     await clipsEsperadosDe(escena),
     eurosPorCreditoDe(ajustes, omni.eleccion.modelo.proveedor),
+    escena.castFormat !== "solo",
   );
 }
+
+/** Lo que el precio congelado de una escena se compara con lo vigente: el sello del fotograma y el de Omni. */
+export const selloCongeladoDe = (escena: FilaEscena) => ({
+  canto: escena.clipFormat === "cantar",
+  selloFotograma: escena.approvedFrameStamp,
+  selloAnimacion: escena.approvedAnimationStamp,
+});
 
 /**
  * Estimación de cada escena de un proyecto, por id. El coste de Omni se lee una vez para todo el proyecto: es el
@@ -207,8 +216,15 @@ async function estimacionesDeEscenas(
   usuarioId: string,
   elecciones: EleccionesDelPlan,
   ajustes: Ajustes,
+  /** Coste de Omni ya leído (al aprobar, el mismo que se congela); si no se pasa, se lee aquí. */
+  omniLeido?: CosteDeEscenaOmni | null,
 ): Promise<Map<string, EstimacionEscena | null>> {
-  const omni = proyecto.voiceMode === "omni" ? await costeOmniDelPlan(usuarioId, proyecto) : undefined;
+  const omni =
+    proyecto.voiceMode !== "omni"
+      ? undefined
+      : omniLeido !== undefined
+        ? omniLeido
+        : await costeOmniDelPlan(usuarioId, proyecto);
   return new Map(
     await Promise.all(
       escenas.map(
@@ -236,6 +252,8 @@ const vistaAfirmacion = (fila: FilaAfirmacion): AfirmacionVista => ({
  */
 interface ContextoDeControles {
   selloVigente: string;
+  /** Sello vigente de las escenas habladas en modo Omni; `null` en los demás modos. */
+  selloOmni: string | null;
   versionPersonaje: string | null;
   versionPlantilla: string | null;
   parametros: ParametrosControles;
@@ -252,7 +270,10 @@ function hechosDeFilaEscena(
     planAprobado: proyecto.planApprovedAt !== null,
     aprobada: fila.state !== "borrador",
     motivoInvalidacion: fila.invalidationReason,
-    precioCambiado: fila.approvedFrameStamp !== "" && fila.approvedFrameStamp !== contexto.selloVigente,
+    precioCambiado: precioCambiadoDesdeLaAprobacion(selloCongeladoDe(fila), {
+      fotograma: contexto.selloVigente,
+      omni: contexto.selloOmni,
+    }),
     fichaCambiada:
       fila.approvedCharacterVersionId !== null && fila.approvedCharacterVersionId !== contexto.versionPersonaje,
     plantillaCambiada:
@@ -352,6 +373,11 @@ export function planDeEscenas(
     presupuestoCreditos: plan.presupuestoCreditos,
     afirmacionesBloqueantes: plan.afirmacionesBloqueantes,
   });
+  // Una escena con precio que aun así no se podría producir (un reparto con un modelo que no lo admite) no se aprueba.
+  for (const escena of estimables) {
+    const bloqueo = escena.estimacion?.bloqueo;
+    if (bloqueo) plan.impedimentos.push(`Escena ${escena.orden}: ${bloqueo}`);
+  }
   return plan;
 }
 
@@ -544,9 +570,14 @@ async function contextoDeControles(
   proyecto: FilaProyecto,
   elecciones: EleccionesDelPlan,
 ): Promise<ContextoDeControles> {
-  const [vigente, parametros] = await Promise.all([versionesACongelar(actor, proyecto), parametrosDeControles()]);
+  const [vigente, parametros, selloOmni] = await Promise.all([
+    versionesACongelar(actor, proyecto),
+    parametrosDeControles(),
+    selloOmniVigente(actor.id, proyecto),
+  ]);
   return {
     selloVigente: elecciones.fotograma?.precio.sello ?? "",
+    selloOmni,
     versionPersonaje: vigente.versionPersonaje,
     versionPlantilla: vigente.versionPlantilla,
     parametros,
@@ -671,9 +702,9 @@ export async function aprobarPlan(actor: Actor, id: unknown, peticion: PeticionA
   const proyectoId = proyecto.id;
   const ajustes = await leerAjustes();
   const elecciones = await eleccionesDelPlan(actor.id);
-  // En modo Omni el clip lo genera el modelo de escenas habladas; `null` en los demás modos.
-  const modeloOmni =
-    proyecto.voiceMode === "omni" ? ((await eleccionOmni(actor.id).catch(() => null))?.modelo.modelo ?? "") : null;
+  // En modo Omni el coste se lee una vez: el mismo objeto da la estimación que se congela y el modelo congelado.
+  const omni = proyecto.voiceMode === "omni" ? await costeOmniDelPlan(actor.id, proyecto) : undefined;
+  const modeloOmni = omni === undefined ? null : (omni?.eleccion.modelo.modelo ?? "");
   // Lo que se congela además del modelo y el precio: con qué versión de la ficha y de la plantilla se iba a
   // componer el prompt. Sin guardarlas, «la ficha ha cambiado desde que aprobaste» no se podría comprobar.
   const congelado = await versionesACongelar(actor, proyecto);
@@ -681,7 +712,7 @@ export async function aprobarPlan(actor: Actor, id: unknown, peticion: PeticionA
     const [fila] = await tx.select().from(projects).where(eq(projects.id, proyectoId)).limit(1).for("update");
     if (!fila) throw new ErrorProyecto(404, "Ese proyecto no existe.");
     const filasEscena = await escenasDe(proyectoId, tx);
-    const estimaciones = await estimacionesDeEscenas(fila, filasEscena, actor.id, elecciones, ajustes);
+    const estimaciones = await estimacionesDeEscenas(fila, filasEscena, actor.id, elecciones, ajustes, omni);
     const ids = filasEscena.map((e) => e.id);
     const afirmaciones = ids.length === 0 ? [] : await tx.select().from(claims).where(inArray(claims.sceneId, ids));
     const escenasVista = filasEscena.map((escena) =>
@@ -771,10 +802,11 @@ export async function hechosDeEscena(
   escenaId: unknown,
 ): Promise<{ escena: FilaEscena; hechos: HechosEscena }> {
   const { escena, proyecto } = await escenaPropia(actor, escenaId);
-  const [elecciones, vigente, afirmaciones] = await Promise.all([
+  const [elecciones, vigente, afirmaciones, selloOmni] = await Promise.all([
     eleccionesDelPlan(actor.id),
     versionesACongelar(actor, proyecto),
     afirmacionesDe([escena.id]),
+    selloOmniVigente(actor.id, proyecto),
   ]);
   const selloVigente = elecciones.fotograma?.precio.sello ?? "";
   return {
@@ -783,7 +815,10 @@ export async function hechosDeEscena(
       planAprobado: proyecto.planApprovedAt !== null,
       aprobada: escena.state !== "borrador",
       motivoInvalidacion: escena.invalidationReason,
-      precioCambiado: escena.approvedFrameStamp !== "" && escena.approvedFrameStamp !== selloVigente,
+      precioCambiado: precioCambiadoDesdeLaAprobacion(selloCongeladoDe(escena), {
+        fotograma: selloVigente,
+        omni: selloOmni,
+      }),
       fichaCambiada:
         escena.approvedCharacterVersionId !== null && escena.approvedCharacterVersionId !== vigente.versionPersonaje,
       plantillaCambiada:

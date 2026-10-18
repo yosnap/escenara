@@ -24,15 +24,7 @@ import { evaluarParaMostrar } from "../controles/puerta";
 import { db } from "../db/cliente";
 import { type FilaEscena, type FilaMedio, type FilaProyecto, generationJobs, media } from "../db/esquema";
 import { type Actor, aDto } from "../media/servicio";
-import {
-  creditosDeEscenaHablada,
-  duracionesDeOmni,
-  precioDeDuracionEstimado,
-  registroParaProducir,
-  segundosDeEscenaOmni,
-} from "../omni/escena";
-import { eleccionOmni } from "../omni/registro";
-import { creditosDelEnvio } from "../prompts/traduccion";
+import { costeDeEscenaOmni, registroParaProducir } from "../omni/escena";
 import { ErrorCatalogo } from "../proveedores/contrato";
 import { muestrasDe } from "./muestra";
 import { musicaDe } from "./musica";
@@ -298,10 +290,10 @@ async function estadoOmni(actor: Actor, proyecto: FilaProyecto): Promise<EstadoO
   let creditosPorEscena: number | null = null;
   let precioEstimado = false;
   try {
-    const { creditos } = await creditosDeEscenaHablada(actor.id, proyecto);
-    const { modelo } = await eleccionOmni(actor.id);
-    creditosPorEscena = await creditosDelEnvio(creditos);
-    precioEstimado = precioDeDuracionEstimado(modelo, segundosDeEscenaOmni(duracionesDeOmni(modelo), proyecto));
+    // La cuenta única del coste de una escena hablada: la misma que exige la confirmación al producir.
+    const coste = await costeDeEscenaOmni(actor.id, proyecto);
+    creditosPorEscena = coste.creditosDelPrimerClip;
+    precioEstimado = coste.precioEstimado;
   } catch {
     // Sin modelo Omni con precio registrado no se inventa ninguna cifra: la pantalla dirá que no se puede.
     creditosPorEscena = null;

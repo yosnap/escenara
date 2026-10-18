@@ -122,18 +122,6 @@ export function creditosDeTarifa(
   return creditosDeEscenaOmni(precio.creditos, segundos, modelo);
 }
 
-/**
- * Créditos de una escena hablada con la duración del proyecto. Se calcula en un solo sitio para que la cifra que
- * se muestra, la que se confirma y la que se aparta sean la misma.
- */
-export async function creditosDeEscenaHablada(
-  usuarioId: string,
-  proyecto: FilaProyecto,
-): Promise<{ creditos: number; sello: string }> {
-  const { eleccion, creditos } = await tarifaDeEscenaHablada(usuarioId, proyecto);
-  return { creditos, sello: eleccion.precio.sello };
-}
-
 /** Modelo, duración y tarifa de **un** clip hablado con la duración del proyecto. */
 async function tarifaDeEscenaHablada(
   usuarioId: string,

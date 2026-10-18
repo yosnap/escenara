@@ -15,9 +15,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
   podcast. Antes sumaban un fotograma y una animación que en este modo no se generan. Los planes ya aprobados
   conservan su cifra hasta que se vuelvan a aprobar.
 - El podcast y el dualcast solo se ofrecen con Gemini Omni 1.1 Flash, que es con el que se han producido de verdad.
-  Con Gemini Omni (vídeo), el clip con dos personajes registrados fallaba en KIE con un fallo interno, sin cobrar.
-  Ahora la estimación y la confirmación lo dicen antes de gastar y explican que hay que poner Gemini Omni 1.1 Flash
-  el primero de la lista de vídeo del mapa de modelos.
+  Con Gemini Omni (vídeo), el clip con dos personajes registrados daba un fallo interno en KIE, sin cobrar. Ahora el
+  plan no deja aprobar esa escena, y la estimación y la confirmación lo dicen antes de gastar. Las tres pantallas
+  explican que hay que poner Gemini Omni 1.1 Flash el primero de la lista de vídeo del mapa de modelos.
+- En modo Omni, si cambia el precio del modelo de escenas habladas después de aprobar el plan, la aprobación de la
+  escena deja de valer y hay que revisar el coste, igual que pasa con el precio del fotograma en los demás modos.
 - En el podcast y el dualcast, la ficha del protagonista ya no viaja en la petición: cada cara la pone su personaje
   registrado. Antes se describía solo al protagonista, también en el clip del otro personaje.
 

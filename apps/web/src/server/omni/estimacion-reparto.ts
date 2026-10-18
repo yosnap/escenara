@@ -13,7 +13,7 @@ import { faltasDeRegistroDelReparto } from "./reparto";
  * Aquí **no se gasta un solo crédito y no se llama a ningún proveedor de generación**: se lee el precio registrado
  * del modelo de escenas habladas y se multiplica por los clips que de verdad se van a pedir. Es la cifra que la
  * pantalla enseña y **exactamente** la que el servidor va a exigir confirmada, porque las dos salen del mismo
- * sitio (`omni/escena.ts › creditosDeEscenaHablada`).
+ * sitio (`omni/escena.ts › costeDeEscenaOmni`).
  *
  * Y la regla de los clips, medida el 2026-09-29: un **dualcast es un clip** (dos `character_ids` cuestan lo mismo
  * que uno) y un **podcast son dos**, uno por personaje.

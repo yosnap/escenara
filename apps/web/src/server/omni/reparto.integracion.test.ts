@@ -801,7 +801,19 @@ describeSiHayBase("escenas habladas con dos personajes", () => {
     try {
       await registrarTodo([lucia.id, elisa.id]);
       await conversacionDeDos("dualcast");
-      await aprobarPlan();
+
+      // El plan ya lo enseña como impedimento y no deja aprobarlo: el bloqueo no llega después.
+      const { detalleProyecto } = await import("../asistente/plan");
+      const detalle = await detalleProyecto(actor, proyectoId);
+      expect(detalle.plan.impedimentos.join(" ")).toContain("Gemini Omni 1.1 Flash");
+      const aprobar = await rutaPlan.POST(
+        pedir(ana, `/api/proyectos/${proyectoId}/plan`, "POST", {
+          presupuestoCreditos: 100_000,
+          totalConfirmado: detalle.plan.totalCreditos,
+        }),
+        ctx(proyectoId),
+      );
+      expect(aprobar.status).toBe(409);
 
       const estimada = await estimacion();
       expect(estimada.impedimentos.join(" ")).toContain("fallo interno");
@@ -848,6 +860,19 @@ describeSiHayBase("escenas habladas con dos personajes", () => {
     expect(escena?.estimatedCredits).toBe(estimada.creditos);
     expect(escena?.approvedFrameModel).toBe("");
     expect(escena?.approvedAnimationModel).toBe("google/gemini-omni-flash-1-1");
+  });
+
+  test("en modo Omni, un cambio del precio de escenas habladas invalida la aprobación como antes", async () => {
+    await registrarTodo([lucia.id]);
+    await aprobarPlan();
+    const [aprobada] = await db().select().from(scenes).where(eq(scenes.id, escenaId)).limit(1);
+    expect(aprobada?.approvedFrameStamp).toBe("");
+    expect(aprobada?.approvedAnimationStamp).not.toBe("");
+    const { hechosDeEscena } = await import("../asistente/plan");
+    expect((await hechosDeEscena(actor, escenaId)).hechos.precioCambiado).toBe(false);
+    // Se simula un sello congelado con otro precio: la aprobación ya no corresponde a lo vigente.
+    await db().update(scenes).set({ approvedAnimationStamp: "kie:precio-anterior@v0" }).where(eq(scenes.id, escenaId));
+    expect((await hechosDeEscena(actor, escenaId)).hechos.precioCambiado).toBe(true);
   });
 
   test("en modo Omni la duración se mide con el modelo Omni y no con el de animación del mapa", async () => {

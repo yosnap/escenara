@@ -72,7 +72,7 @@ export function motivoSinReparto(modelo: { modelo: string; nombre: string }): st
   if (!usaIdentidadRegistrada(modelo.modelo)) {
     return `${modelo.nombre} no admite identidades registradas, y el podcast y el dualcast las necesitan. ${como}`;
   }
-  return `${modelo.nombre} no consigue generar con dos personajes registrados: en KIE falla con un fallo interno, sin cobrar. ${como}`;
+  return `${modelo.nombre} no consigue generar con dos personajes registrados: en KIE da un fallo interno y no cobra. ${como}`;
 }
 
 /**

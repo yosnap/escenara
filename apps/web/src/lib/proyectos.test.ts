@@ -9,6 +9,7 @@ import {
   formatearFecha,
   impedimentosDelPlan,
   type PlanVista,
+  precioCambiadoDesdeLaAprobacion,
   puedeAprobarse,
   resumenDeEscena,
   textoEstimacion,
@@ -147,5 +148,34 @@ describe("qué impide aprobar un plan", () => {
     const plan = { impedimentos: [] } as unknown as PlanVista;
     expect(puedeAprobarse(plan)).toBe(true);
     expect(puedeAprobarse({ ...plan, impedimentos: ["falta algo"] })).toBe(false);
+  });
+});
+
+/**
+ * El aviso de «el precio ha cambiado desde que aprobaste» tiene que seguir saltando en modo Omni, donde la escena no
+ * tiene fotograma y lo que se congela es el sello del modelo de escenas habladas.
+ */
+describe("precio cambiado desde la aprobación", () => {
+  const vigentes = { fotograma: "kie:nano:imagen@v2", omni: "kie:gemini-omni:4s@v2" };
+
+  test("en Omni compara el sello congelado del modelo de escenas habladas con el vigente", () => {
+    const omni = { canto: false, selloFotograma: "", selloAnimacion: "kie:gemini-omni:4s@v1" };
+    expect(precioCambiadoDesdeLaAprobacion(omni, vigentes)).toBe(true);
+    expect(precioCambiadoDesdeLaAprobacion({ ...omni, selloAnimacion: vigentes.omni }, vigentes)).toBe(false);
+  });
+
+  test("con fotograma se compara el sello del fotograma, como siempre", () => {
+    const normal = { canto: false, selloFotograma: "kie:nano:imagen@v1", selloAnimacion: "kie:veo:clip@v1" };
+    expect(precioCambiadoDesdeLaAprobacion(normal, vigentes)).toBe(true);
+    expect(precioCambiadoDesdeLaAprobacion(normal, { ...vigentes, fotograma: "kie:nano:imagen@v1" })).toBe(false);
+  });
+
+  test("el canto y una escena sin aprobar no avisan", () => {
+    expect(
+      precioCambiadoDesdeLaAprobacion({ canto: true, selloFotograma: "", selloAnimacion: "canto@v1" }, vigentes),
+    ).toBe(false);
+    expect(precioCambiadoDesdeLaAprobacion({ canto: false, selloFotograma: "", selloAnimacion: "" }, vigentes)).toBe(
+      false,
+    );
   });
 });
