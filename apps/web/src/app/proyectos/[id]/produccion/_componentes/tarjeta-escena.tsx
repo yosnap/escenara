@@ -7,6 +7,7 @@ import { claseBoton } from "@/components/ui/button";
 import { InsigniaControl } from "@/components/ui/controles";
 import { Aviso } from "@/components/ui/feedback";
 import { SelectorMedios } from "@/components/ui/media/selector-medios";
+import { OpcionesAvanzadas } from "@/components/ui/opciones-avanzadas";
 import { InsigniaEstadoEscena } from "@/components/ui/proyecto";
 import { avisosConfirmables, bloqueosDeControles } from "@/lib/controles";
 import { formatearCreditos } from "@/lib/generacion";
@@ -336,14 +337,29 @@ export function TarjetaEscena({
             />
           )}
 
-          {puedeComparar && (
-            <p className="flex flex-wrap items-center gap-3 text-sm text-texto-suave">
-              <Link href={`/comparar/escena/${escena.id}`} className={claseBoton("secundario", "sm")}>
-                <GitCompareArrows className="size-4" aria-hidden /> Comparar generando
-              </Link>
-              Anima este fotograma con dos modelos y elige el mejor. Antes de confirmar verás cuántas ejecuciones son y
-              cuánto cuestan.
-            </p>
+          {/* Con qué modelo salió y comparar modelos: solo en las Opciones avanzadas de la escena. */}
+          {(puedeComparar || escena.fotograma || escena.animacion) && (
+            <OpcionesAvanzadas clave={`escena:${escena.id}`} compacta>
+              {escena.fotograma && (
+                <p className="text-texto-suave">
+                  Fotograma generado con <span className="font-mono text-texto">{escena.fotograma.modelo}</span>
+                </p>
+              )}
+              {escena.animacion && (
+                <p className="text-texto-suave">
+                  Clip generado con <span className="font-mono text-texto">{escena.animacion.modelo}</span>
+                </p>
+              )}
+              {puedeComparar && (
+                <p className="flex flex-wrap items-center gap-3 text-sm text-texto-suave">
+                  <Link href={`/comparar/escena/${escena.id}`} className={claseBoton("secundario", "sm")}>
+                    <GitCompareArrows className="size-4" aria-hidden /> Comparar generando
+                  </Link>
+                  Anima este fotograma con dos modelos y elige el mejor. Antes de confirmar verás cuántas ejecuciones
+                  son y cuánto cuestan.
+                </p>
+              )}
+            </OpcionesAvanzadas>
           )}
 
           {/* En una escena de dos personajes no hay fotograma que regenerar: lo que se pide otra vez son sus clips. */}

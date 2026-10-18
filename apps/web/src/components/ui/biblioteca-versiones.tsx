@@ -6,6 +6,7 @@ import { Aviso } from "@/components/ui/feedback";
 import { formatearCreditos } from "@/lib/generacion";
 import { formatearTamano } from "@/lib/media/reglas";
 import { avisoDeCuota, type CuotaDeVersiones, type VersionDeClip } from "@/lib/produccion";
+import { GeneradoCon } from "./opciones-avanzadas";
 
 /**
  * **Biblioteca de versiones del clip de una escena** (0.41.0): todos los clips que se han generado para ella, para
@@ -69,7 +70,6 @@ export function BibliotecaVersiones({
                 )}
               </p>
               <p className="text-xs text-texto-suave">
-                <span className="font-mono">{version.modelo}</span> ·{" "}
                 {version.creditosConsumidos === null
                   ? `${formatearCreditos(version.creditosEstimados)} (estimación: el proveedor no informó del gasto)`
                   : `${formatearCreditos(version.creditosConsumidos)} según el proveedor`}{" "}
@@ -78,6 +78,7 @@ export function BibliotecaVersiones({
               <p className="text-xs text-texto-suave">
                 <time dateTime={version.creadoEn}>{new Date(version.creadoEn).toLocaleString("es-ES")}</time>
               </p>
+              <GeneradoCon clave={`trabajo:${version.trabajoId}`} modelo={version.modelo} />
               {version.elegida ? (
                 <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-correcto">
                   <CheckCircle2 className="size-4" aria-hidden /> En uso en el montaje

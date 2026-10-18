@@ -1,3 +1,4 @@
+import { GeneradoCon } from "@/components/ui/opciones-avanzadas";
 import { ETIQUETA_ESTADO, formatearCreditos } from "@/lib/generacion";
 import type { VersionDeEscena } from "@/lib/produccion";
 
@@ -23,7 +24,6 @@ export function HistorialEscena({ versiones }: { versiones: readonly VersionDeEs
               {version.tipo === "fotograma" ? "Fotograma" : "Clip"} · {ETIQUETA_ESTADO[version.estado]}
             </p>
             <p className="text-texto-suave">
-              Modelo <span className="font-mono">{version.modelo}</span> ·{" "}
               {version.creditosConsumidos === null
                 ? `${formatearCreditos(version.creditosEstimados)} (estimación: el proveedor no informó del gasto)`
                 : `${formatearCreditos(version.creditosConsumidos)} según el proveedor`}
@@ -32,6 +32,7 @@ export function HistorialEscena({ versiones }: { versiones: readonly VersionDeEs
               <time dateTime={version.creadoEn}>{new Date(version.creadoEn).toLocaleString("es-ES")}</time>
             </p>
             {version.cambio !== "" && <p className="text-texto">{version.cambio}</p>}
+            <GeneradoCon clave={`trabajo:${version.trabajoId}`} modelo={version.modelo} />
           </li>
         ))}
       </ol>

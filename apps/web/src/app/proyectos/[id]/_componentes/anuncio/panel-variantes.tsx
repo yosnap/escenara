@@ -172,7 +172,7 @@ export function PanelDeVariantes({
           ) : (
             <>
               {formatearCreditos(estado.creditosPorVariante)} por variante × {elegidos.length} ={" "}
-              {formatearCreditos(total)} (estimación) · {estado.nombreProveedor} · {estado.modelo}
+              {formatearCreditos(total)} (estimación) · {estado.nombreProveedor}
             </>
           )}
         </p>

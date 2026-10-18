@@ -200,9 +200,9 @@ export function PanelIdea({
             }}
           />
           <p className="text-sm text-texto-suave">
-            Es lo que dura cada escena del vídeo, y el asistente propone escenas de esa duración. Elige una duración
-            admitida por tu modelo de vídeo y revisa el coste en el plan antes de producir. Veo cobra lo mismo por 4 y 8
-            s; Hailuo 2.3 Standard tiene precio medido a 6 s (27 de septiembre de 2026).
+            Es lo que dura cada escena del vídeo, y el asistente propone escenas de esa duración. Cada duración tiene su
+            precio: revisa el coste en el plan antes de producir. Si el modelo de vídeo no admite la duración elegida,
+            el plan lo dice y la puedes cambiar aquí o cambiar de modelo en las Opciones avanzadas.
           </p>
         </div>
 
@@ -272,8 +272,7 @@ export function PanelIdea({
               </p>
               <p className="font-mono text-texto">
                 {formatearCreditos(estimacionAsistente.creditos)} (estimación, precio del{" "}
-                {formatearFecha(estimacionAsistente.comprobado)}) ≈ {formatearEuros(estimacionAsistente.euros)} ·{" "}
-                {estimacionAsistente.nombreModelo}
+                {formatearFecha(estimacionAsistente.comprobado)}) ≈ {formatearEuros(estimacionAsistente.euros)}
               </p>
               <p className="text-sm text-texto-suave">
                 Se paga con tu propia clave del proveedor. El importe final lo informa él al terminar.

@@ -8,6 +8,7 @@ import { PanelDireccion } from "@/components/ui/direccion/panel-direccion";
 import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo } from "@/components/ui/field";
 import { AvisoSinVoz, SelectorDuracion, SelectorModelo } from "@/components/ui/modelo";
+import { OpcionesAvanzadas } from "@/components/ui/opciones-avanzadas";
 import { Paso } from "@/components/ui/paso";
 import { AvisoRequisitos } from "@/components/ui/requisitos";
 import type { ModeloElegible } from "@/lib/catalogo";
@@ -226,15 +227,18 @@ export function PasoClip({
             />
           )}
           {modelos.length > 1 && (
-            <SelectorModelo
-              etiqueta="Modelo del clip"
-              modelos={modelos}
-              valor={estimacion.modelo}
-              onCambio={cambiarModelo}
-              deshabilitado={enviando}
-              duracionesRequeridas={admitidas}
-              conProducto={producto.productoId !== ""}
-            />
+            // Fuera solo se habla de duración y créditos: el modelo y su precio, en las Opciones avanzadas.
+            <OpcionesAvanzadas clave="crear:clip" resumen="Modelo del clip y su precio">
+              <SelectorModelo
+                etiqueta="Modelo del clip"
+                modelos={modelos}
+                valor={estimacion.modelo}
+                onCambio={cambiarModelo}
+                deshabilitado={enviando}
+                duracionesRequeridas={admitidas}
+                conProducto={producto.productoId !== ""}
+              />
+            </OpcionesAvanzadas>
           )}
           {conCampoDeTexto && plantillaEnUso && variableDeLaEscena && (
             <CampoVariableTexto
@@ -273,7 +277,7 @@ export function PasoClip({
               )}
             </Campo>
           ) : (
-            <AvisoSinVoz />
+            <AvisoSinVoz enAvanzadas={modelos.length > 1} />
           )}
 
           <PanelDireccion
@@ -330,9 +334,8 @@ export function PasoClip({
               {previa.plantilla.duracionesAdmitidas.length === 0
                 ? `Este trend sirve con cualquier duración: se usa la que elijas con el modelo (${segundos} s).`
                 : `Este trend solo admite clips de ${textoDeDuraciones(previa.plantilla.duracionesAdmitidas)}.`}{" "}
-              Coste estimado del clip: {estimacion.creditos} créditos con {estimacion.nombreModelo}; precio comprobado
-              el {estimacion.comprobado}. Revisa también la traducción y el total exacto en la confirmación de abajo
-              antes de gastar.
+              Coste estimado del clip: {estimacion.creditos} créditos; precio comprobado el {estimacion.comprobado}.
+              Revisa también la traducción y el total exacto en la confirmación de abajo antes de gastar.
             </Aviso>
           )}
 

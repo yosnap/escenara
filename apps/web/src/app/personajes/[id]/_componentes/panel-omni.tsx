@@ -82,8 +82,8 @@ export function PanelOmni({
 
       {proyectos.length === 0 ? (
         <Aviso tono="info">
-          No tienes ningún proyecto en modo Omni. La voz con la que se registra es la del proyecto, así que elige
-          primero ese modo en «Voz y subtítulos» y registra allí su voz.
+          No tienes ningún proyecto en modo «Voz e identidad registradas». La voz con la que se registra es la del
+          proyecto, así que elige primero ese modo en «Voz y subtítulos» y registra allí su voz.
         </Aviso>
       ) : (
         <>
@@ -94,13 +94,13 @@ export function PanelOmni({
             opciones={proyectos.map((p) => ({
               value: p.id,
               label: p.titulo,
-              descripcion: p.conVoz ? "Con su voz Omni registrada" : "Todavía sin voz Omni registrada",
+              descripcion: p.conVoz ? "Con su voz registrada" : "Todavía sin voz registrada",
             }))}
           />
           {elegido && !elegido.conVoz && (
             <Aviso tono="error">
-              Ese proyecto todavía no tiene voz Omni registrada, así que no hay con qué registrar al personaje.
-              Regístrala en su pantalla de «Voz y subtítulos»: tampoco cuesta créditos.
+              Ese proyecto todavía no tiene su voz registrada, así que no hay con qué registrar al personaje. Regístrala
+              en su pantalla de «Voz y subtítulos»: tampoco cuesta créditos.
             </Aviso>
           )}
           {error && <Aviso tono="error">{error}</Aviso>}

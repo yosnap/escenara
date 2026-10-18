@@ -204,7 +204,7 @@ export function PasoEscena({
           )}
         </Campo>
       ) : (
-        <AvisoSinVoz />
+        <AvisoSinVoz enAvanzadas />
       )}
     </Paso>
   );
