@@ -1,8 +1,10 @@
 # Podcast y dualcast: dos personajes en una escena
 
-**Versión:** 0.28.0 · **Para:** quien usa Escenara
+**Versión:** 0.52.15 · **Para:** quien usa Escenara
 
 En una escena hablada puedes montar una conversación entre **dos personajes tuyos**. Elige el formato en **Proyecto › Escenas › Reparto**. Necesitas el modo de voz **Omni**, una voz registrada para el proyecto y cada personaje registrado con esa voz y con su ficha vigente. [Escenas habladas](escenas-habladas.md) explica esos registros; hacerlos no gasta créditos.
+
+El podcast y el dualcast solo se producen con **Gemini Omni 1.1 Flash**, que es con el que se han medido. Ponlo el primero de la lista de vídeo de tu [mapa de modelos](mapa-de-modelos.md), en «Tu cuenta». Con **Gemini Omni (vídeo)** el clip con dos personajes registrados dio un fallo interno en KIE, sin cobrar. Por eso, con ese modelo, el plan no deja aprobar la escena y la estimación avisa sin dejar confirmar el gasto.
 
 ![Vista previa del reparto y del consentimiento por personaje](../assets/capturas/0.28.0-reparto-claro.jpg)
 
@@ -33,6 +35,8 @@ Sin turnos, el modelo decide quién dice cada frase. **Los dos registros de pers
 ## Consentimiento y producción
 
 La zona **Consentimiento de quien sale** nombra a cada personaje al que le falta algo y te dirige a su ficha. Con **dos personas reales hacen falta dos consentimientos vigentes**, uno por persona; sin los dos la generación queda bloqueada. Si uno es inventado, debe tener su declaración de personaje inventado y la persona real su consentimiento. De forma provisional se usa el consentimiento individual de la 0.13.0; no se pide otro documento por aparecer juntos.
+
+El plan del proyecto y el editor de la escena enseñan ya ese mismo coste: el modelo Omni, los segundos del clip y el total, con los dos clips del podcast y la traducción si la hay. La ficha del protagonista no viaja en la petición, porque cada cara la pone su personaje registrado.
 
 En **Producción** verás la estimación por clip y total. Confirma una sola vez **el total exacto** y los avisos aplicables. El podcast reserva y cierra el coste de cada clip por separado: cancelar uno no cobra el otro. Cuando se hayan pedido, la tarjeta muestra los **dos clips en orden y con el nombre del personaje**. Esos dos clips se ordenan y se recortan después en [Montaje y exportación](montaje-y-exportacion.md); aquí quedan marcados el orden y el personaje.
 

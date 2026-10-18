@@ -190,6 +190,11 @@ export interface EstimacionEscena {
    * avisar junto al selector de producto. Ausente en las estimaciones donde no aplica (canto).
    */
   fotoDeProducto?: FotoDeProductoDelClip;
+  /**
+   * Lo que impide producir esta escena aunque tenga precio, ya en castellano: hoy, un reparto de dos personajes con
+   * un modelo que no lo admite. Ausente cuando no hay nada que impedir.
+   */
+  bloqueo?: string;
 }
 
 /** Dirección vocal libre: «en tono cercano», «con energía». Corta a propósito: es un matiz, no un guion. */
@@ -399,12 +404,15 @@ export function filasDelPlan(escenas: readonly EscenaVista[]): FilaPlan[] {
       escenaId: escena.id,
       orden: escena.orden,
       resumen: resumenDeEscena(escena),
-      modelos: e ? `${e.modeloFotograma} + ${e.modeloAnimacion}` : "—",
+      // Una escena hablada en modo Omni (o una de canto) no tiene fotograma: sale solo el modelo que la genera.
+      modelos: e ? [e.modeloFotograma, e.modeloAnimacion].filter((m) => m !== "").join(" + ") : "—",
       segundos: e?.segundos ?? escena.segundos,
       estimacion: e ? textoEstimacion(e.creditos, e.euros, e.comprobado) : textoEstimacion(0, 0, ""),
       creditos: e?.creditos ?? 0,
       estado: escena.estado,
-      motivo: e ? "" : "Sin precio registrado para su modelo: esta escena no se puede estimar ni producir.",
+      motivo: e
+        ? (e.bloqueo ?? "")
+        : "Sin precio registrado para su modelo: esta escena no se puede estimar ni producir.",
     };
   });
 }
@@ -457,6 +465,24 @@ export function impedimentosDelPlan(datos: {
 }
 
 export const puedeAprobarse = (plan: PlanVista): boolean => plan.impedimentos.length === 0;
+
+/**
+ * Si el precio que se congeló al aprobar una escena ya no es el vigente, que es lo que invalida su aprobación.
+ *
+ * - Con sello de fotograma, se compara ese, como siempre (y en las escenas Omni aprobadas antes de que el plan
+ *   estimara con el modelo de escenas habladas, que congelaron el del fotograma).
+ * - Una escena Omni no tiene fotograma: congela el sello del modelo de escenas habladas, y ese es el que se mira.
+ * - El canto tiene su propio camino de precio y aquí no se juzga.
+ */
+export function precioCambiadoDesdeLaAprobacion(
+  escena: { canto: boolean; selloFotograma: string; selloAnimacion: string },
+  vigentes: { fotograma: string; omni: string | null },
+): boolean {
+  if (escena.canto) return false;
+  if (escena.selloFotograma !== "") return escena.selloFotograma !== vigentes.fotograma;
+  if (vigentes.omni === null || escena.selloAnimacion === "") return false;
+  return escena.selloAnimacion !== vigentes.omni;
+}
 
 /**
  * Motivo con el que se invalida la aprobación de una escena. Se guarda tal cual en la escena, así que dice
