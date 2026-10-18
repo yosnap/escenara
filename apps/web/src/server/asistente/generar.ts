@@ -130,7 +130,17 @@ export async function escribirGuion(
     video ? clavePrimeraLlamada(video, claveIdempotencia) : claveIdempotencia,
   );
   if (yaEjecutada) return repetida(actor, proyecto.id, video ? claveIdempotencia : null);
-  // Un proyecto con escenas en producción no se reescribe: se dice **antes** de gastar ritmo, saldo o una llamada.
+  /**
+   * Las validaciones que no gastan van antes que el ritmo, el saldo y la reserva, en este orden: la ficha del
+   * protagonista (su consentimiento puede haberse revocado: no sale hacia el proveedor), el tope autorizado del
+   * proyecto y, por último, que sus escenas se puedan reescribir. Leer la ficha **antes** de reservar importa: una
+   * reserva apartada por un fallo nuestro le comería presupuesto al usuario hasta que el barrido la cerrara.
+   */
+  const entrada = video ? "" : await entradaDelGuion(actor, proyecto, peticion.escenas);
+  // El presupuesto autorizado del proyecto es un **tope que se aplica al gastar**: lo que ya lleva comprometido
+  // más esta llamada (o todas las del vídeo completo, reserva incluida) tiene que caber.
+  await exigirTopeDelProyecto(actor.id, proyecto.id, creditos);
+  // Un proyecto con escenas en producción no se reescribe: se dice antes de gastar ritmo, saldo o una llamada.
   await exigirEscenasReescribibles(proyecto.id);
   if (!(await dentroDelLimite(`asistente:${actor.id}`, RITMO_ASISTENTE))) {
     throw new ErrorProyecto(429, "Has pedido demasiados guiones seguidos. Espera un rato.");
@@ -148,23 +158,6 @@ export async function escribirGuion(
   if (video) {
     return guionDelVideo(actor, proyecto, video, claveIdempotencia, creditos, precio.creditos, modelo.modelo, buscar);
   }
-
-  // La petición se compone **antes** de reservar: leer la ficha del protagonista puede fallar (consentimiento
-  // revocado, personaje borrado), y una reserva apartada por un fallo nuestro le comería presupuesto al usuario
-  // hasta que el barrido la cerrara.
-  const { escenasMaximas } = await limitesDeProyecto();
-  const entrada = peticionDeGuion({
-    idea: proyecto.idea,
-    formato: proyecto.format,
-    contextoPersonaje: await contextoDelProtagonista(actor, proyecto),
-    escenas: numeroDeEscenas(peticion.escenas, proyecto),
-    segundos: proyecto.clipSeconds,
-    escenasMaximas,
-  });
-
-  // El presupuesto autorizado del proyecto es un **tope que se aplica al gastar**: lo que ya lleva comprometido
-  // más esta llamada tiene que caber (decisión provisional del propietario, 2026-09-27).
-  await exigirTopeDelProyecto(actor.id, proyecto.id, creditos);
 
   // Esta confirmación ya se había ejecutado: se devuelve el proyecto como está y **no se llama a nadie**.
   if (await ejecucionDeLaConfirmacion(actor.id, `${claveIdempotencia}:0`)) return detalleProyecto(actor, proyecto.id);
@@ -203,7 +196,7 @@ export async function escribirGuion(
 
   const ultima = await ejecucionDeLaConfirmacion(actor.id, `${claveIdempotencia}:${resultado.intentos.length}`);
   try {
-    const propuesta = leerPropuesta(resultado.texto, proyecto.clipSeconds, escenasMaximas);
+    const propuesta = leerPropuesta(resultado.texto, proyecto.clipSeconds, (await limitesDeProyecto()).escenasMaximas);
     const escenasEscritas = await db().transaction(async (tx) => {
       const total = await sustituirEscenas(tx, proyecto.id, propuesta.escenas);
       if (propuesta.concepto !== "") {
@@ -250,6 +243,19 @@ async function repetida(actor: Actor, proyectoId: string, claveVideo: string | n
   return detalleProyecto(actor, proyectoId);
 }
 
+/** Petición del guion de escenas sueltas, compuesta por el servidor con la ficha vigente del protagonista. */
+async function entradaDelGuion(actor: Actor, proyecto: FilaProyecto, escenas: unknown): Promise<string> {
+  const { escenasMaximas } = await limitesDeProyecto();
+  return peticionDeGuion({
+    idea: proyecto.idea,
+    formato: proyecto.format,
+    contextoPersonaje: await contextoDelProtagonista(actor, proyecto),
+    escenas: numeroDeEscenas(escenas, proyecto),
+    segundos: proyecto.clipSeconds,
+    escenasMaximas,
+  });
+}
+
 const sinValor = (valor: unknown) => valor === undefined || valor === null || valor === "";
 
 /**
@@ -266,7 +272,6 @@ async function guionDelVideo(
   modelo: string,
   buscar: Buscador,
 ): Promise<ProyectoDetalle> {
-  await exigirTopeDelProyecto(actor.id, proyecto.id, creditos);
   // Esta confirmación ya se había ejecutado: se devuelve el proyecto como está y **no se llama a nadie**.
   if (await ejecucionDeLaConfirmacion(actor.id, clavePrimeraLlamada(video, claveIdempotencia))) {
     return repetida(actor, proyecto.id, claveIdempotencia);
