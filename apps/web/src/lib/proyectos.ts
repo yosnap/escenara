@@ -7,6 +7,7 @@ import { formatearCreditos, formatearEuros } from "./generacion";
 import type { LugarDeEscena } from "./lugares";
 import type { Medio } from "./media/tipos";
 import type { ProductoElegido } from "./productos";
+import type { CondicionesVideoCompleto } from "./video-completo";
 
 /**
  * Proyectos, escenas y afirmaciones (RF05, 0.17.0) tal como los comparten el servidor y el navegador. Aquí
@@ -333,6 +334,11 @@ export interface ProyectoDetalle {
   formatosGenerables: Record<FormatoMontaje, string | null>;
   /** Lo que se enseña en las Opciones avanzadas del proyecto. Ausente en respuestas que no lo calculan. */
   avanzadas?: AvanzadasDelProyecto;
+  /**
+   * Lo que decide qué vídeos completos se ofrecen en este proyecto (modo de voz, protagonista, ajustes y límites).
+   * La pantalla calcula las opciones y el coste con las mismas funciones con las que el servidor las rechaza.
+   */
+  videoCompleto?: CondicionesVideoCompleto;
 }
 
 /**

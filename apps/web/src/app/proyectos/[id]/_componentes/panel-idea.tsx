@@ -13,6 +13,7 @@ import { Dialogo } from "@/components/ui/overlay";
 import { Paso } from "@/components/ui/paso";
 import { SelectorPersonaje } from "@/components/ui/personaje";
 import { Selector } from "@/components/ui/select";
+import { type EleccionVideoCompleto, motivoDeLaEleccion, SelectorVideoCompleto } from "@/components/ui/video-completo";
 import { type ClaveConfirmacion, claveEstable } from "@/lib/asistente";
 import { ACENTOS, type Acento, AYUDA_ACENTO, NOMBRE_ACENTO } from "@/lib/direccion";
 import { formatoPrincipal } from "@/lib/formatos";
@@ -20,6 +21,7 @@ import { formatearCreditos, formatearEuros } from "@/lib/generacion";
 import type { PersonajeElegible } from "@/lib/personajes";
 import { DURACIONES_DISPONIBLES } from "@/lib/produccion";
 import { CONCEPTO_MAXIMO, ESCENAS_SUGERIDAS, formatearFecha, IDEA_MAXIMA, type ProyectoDetalle } from "@/lib/proyectos";
+import { costeDelGuion } from "@/lib/video-completo";
 import { editarProyecto, pedirGuion } from "../../_componentes/api-proyectos";
 
 /** El selector del lugar del proyecto se descarga aparte: la página del proyecto va justa de JavaScript. */
@@ -29,12 +31,14 @@ const LugarDelProyecto = dynamic(
 );
 
 /**
- * Opciones de duración del clip con precio medido. El coste depende del modelo elegido.
+ * Opciones de duración del clip con precio medido. El coste depende del modelo elegido. Un vídeo completo puede
+ * dejar el proyecto en 10 s, que no se elige aquí pero se enseña tal cual para no mentir sobre lo que hay.
  */
-const OPCIONES_DURACION = DURACIONES_DISPONIBLES.map((segundos) => ({
-  value: String(segundos),
-  label: `${segundos} segundos`,
-}));
+const opcionesDuracion = (actual: number) =>
+  [...new Set([...DURACIONES_DISPONIBLES, actual])].map((segundos) => ({
+    value: String(segundos),
+    label: `${segundos} segundos`,
+  }));
 
 /**
  * Idea, protagonista, duración del clip y concepto, con el asistente al lado.
@@ -77,6 +81,17 @@ export function PanelIdea({
    * es la misma.
    */
   const clave = useRef<ClaveConfirmacion | null>(null);
+  /** Vídeo completo: duración, tipo y segundo personaje. Sin duración, escenas sueltas como hasta ahora. */
+  const [video, setVideo] = useState<EleccionVideoCompleto>({
+    duracion: null,
+    tipo: "una_persona",
+    segundoPersonajeId: null,
+  });
+  const motivoVideo = detalle.videoCompleto ? motivoDeLaEleccion(detalle.videoCompleto, video) : null;
+  const creditosAConfirmar =
+    estimacionAsistente && video.duracion !== null
+      ? costeDelGuion(estimacionAsistente.creditos, video.duracion, video.tipo).total
+      : (estimacionAsistente?.creditos ?? 0);
 
   /** `true` si se ha guardado; si no, ya ha avisado del error y quien llama deshace lo que mostró por adelantado. */
   const guardar = async (cambios: Record<string, unknown>): Promise<boolean> => {
@@ -97,18 +112,28 @@ export function PanelIdea({
     setEscribiendo(true);
     setHecho(null);
     setAvisoReserva(null);
-    // Qué se está confirmando: la idea, el precio y cuántas escenas. Al cambiar cualquiera de los tres, la
-    // confirmación es otra y la clave se renueva.
-    const firma = `${idea.trim()}|${estimacionAsistente.sello}|${estimacionAsistente.creditos}|${ESCENAS_SUGERIDAS[proyecto.formato]}`;
+    // Qué se está confirmando: la idea, el precio, cuántas escenas y, en un vídeo completo, su duración, su tipo y
+    // con quién. Al cambiar cualquiera, la confirmación es otra y la clave se renueva.
+    const firma = `${idea.trim()}|${estimacionAsistente.sello}|${creditosAConfirmar}|${ESCENAS_SUGERIDAS[proyecto.formato]}|${video.duracion ?? ""}|${video.tipo}|${video.segundoPersonajeId ?? ""}`;
     clave.current = claveEstable(clave.current, firma);
     const resultado = await pedirGuion(proyecto.id, {
       claveIdempotencia: clave.current.valor,
-      creditosConfirmados: estimacionAsistente.creditos,
+      creditosConfirmados: creditosAConfirmar,
       selloEstimacion: estimacionAsistente.sello,
       escenas: ESCENAS_SUGERIDAS[proyecto.formato],
+      ...(video.duracion === null
+        ? {}
+        : {
+            duracion: video.duracion,
+            tipo: video.tipo,
+            ...(video.segundoPersonajeId ? { segundoPersonajeId: video.segundoPersonajeId } : {}),
+          }),
     });
     setEscribiendo(false);
     if (!resultado.ok) {
+      // El servidor ha respondido con un error: no queda nada en marcha con esta clave, así que el siguiente intento
+      // es una confirmación nueva. Con un error de red no se sabe, y se conserva para no pagar dos veces.
+      if (!resultado.red) clave.current = null;
       onError(
         resultado.red
           ? `${resultado.error} Puede que el guion se haya encargado: recarga la página antes de repetir.`
@@ -117,7 +142,11 @@ export function PanelIdea({
       return;
     }
     setConcepto(resultado.datos.proyecto.concepto);
-    setHecho("El asistente ha propuesto un guion. Revísalo escena a escena antes de aprobar el plan.");
+    setHecho(
+      video.duracion === null
+        ? "El asistente ha propuesto un guion. Revísalo escena a escena antes de aprobar el plan."
+        : "El asistente ha escrito el guion completo, con el diálogo de cada clip. Puedes verlo y editarlo en las escenas y en su reparto antes de aprobar el plan.",
+    );
     setAvisoReserva(resultado.datos.avisoReserva ?? null);
     onCambio(resultado.datos);
   };
@@ -186,7 +215,7 @@ export function PanelIdea({
         <div className="flex flex-col gap-2">
           <Selector
             etiqueta="Duración de cada clip"
-            opciones={OPCIONES_DURACION}
+            opciones={opcionesDuracion(segundos)}
             valor={String(segundos)}
             deshabilitado={guardando}
             onCambio={(v) => {
@@ -270,17 +299,39 @@ export function PanelIdea({
                 <strong className="text-texto">propuesta</strong>: sustituye las escenas en borrador y no aprueba ni
                 genera nada. Lo revisas tú.
               </p>
-              <p className="font-mono text-texto">
-                {formatearCreditos(estimacionAsistente.creditos)} (estimación, precio del{" "}
-                {formatearFecha(estimacionAsistente.comprobado)}) ≈ {formatearEuros(estimacionAsistente.euros)}
-              </p>
+              {detalle.videoCompleto && (
+                <SelectorVideoCompleto
+                  condiciones={detalle.videoCompleto}
+                  eleccion={video}
+                  personajes={personajes}
+                  protagonistaId={proyecto.personajeId}
+                  precio={estimacionAsistente}
+                  deshabilitado={escribiendo}
+                  onCambio={setVideo}
+                />
+              )}
+              {video.duracion === null && (
+                <p className="font-mono text-texto">
+                  {formatearCreditos(estimacionAsistente.creditos)} (estimación, precio del{" "}
+                  {formatearFecha(estimacionAsistente.comprobado)}) ≈ {formatearEuros(estimacionAsistente.euros)}
+                </p>
+              )}
               <p className="text-sm text-texto-suave">
                 Se paga con tu propia clave del proveedor. El importe final lo informa él al terminar.
               </p>
               <div>
-                <Boton variante="chispa" onClick={escribir} disabled={escribiendo || idea.trim() === ""}>
+                {motivoVideo && <p className="mb-2 text-sm text-texto-suave">{motivoVideo}</p>}
+                <Boton
+                  variante="chispa"
+                  onClick={escribir}
+                  disabled={escribiendo || idea.trim() === "" || motivoVideo !== null}
+                >
                   <Sparkles className="size-5" aria-hidden />
-                  {escribiendo ? "Escribiendo…" : "Escribir el guion con el asistente"}
+                  {escribiendo
+                    ? "Escribiendo…"
+                    : video.duracion === null
+                      ? "Escribir el guion con el asistente"
+                      : "Escribir el guion completo"}
                 </Boton>
               </div>
             </>

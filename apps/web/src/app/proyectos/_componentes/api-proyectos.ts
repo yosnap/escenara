@@ -76,5 +76,14 @@ export const aprobarPlan = (proyectoId: string, presupuestoCreditos: number, tot
  */
 export const pedirGuion = (
   proyectoId: string,
-  datos: { claveIdempotencia: string; creditosConfirmados: number; selloEstimacion: string; escenas?: number },
+  datos: {
+    claveIdempotencia: string;
+    creditosConfirmados: number;
+    selloEstimacion: string;
+    escenas?: number;
+    /** Vídeo completo: duración en segundos, tipo de pieza y, con dos personas, el segundo personaje. */
+    duracion?: number;
+    tipo?: string;
+    segundoPersonajeId?: string;
+  },
 ) => pedir<ProyectoDetalle>(`/api/proyectos/${proyectoId}/asistente`, json("POST", datos));

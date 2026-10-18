@@ -86,6 +86,8 @@ export interface TextoDelMapa {
   /** `true` si la entrada que contestó recibió de verdad la imagen; `false` si solo recibió el texto. */
   conImagen: boolean;
   intentos: IntentoProveedor[];
+  /** Créditos que costó la llamada que contestó: los informados, o la estimación si no los informó; 0 por cuota. */
+  creditos: number;
   /**
    * Aviso para enseñar tal cual cuando ha contestado una **reserva de pago**: qué falló, quién lo ha escrito y lo
    * que ha costado. Vacío si contestó la principal o una reserva que no cobra por petición.
@@ -246,6 +248,7 @@ export async function pedirTextoPorMapa(peticion: PeticionDeTexto): Promise<Text
     // La imagen solo la recibe un servicio compatible: si contestó una entrada de pago, no la vio.
     conImagen: peticion.imagen !== undefined && resultado.entrada.proveedor === "compatible",
     intentos: resultado.intentos,
+    creditos: resultado.valor.creditos,
     // Si ha escrito una reserva de pago, se dice siempre: qué falló, quién lo ha escrito y cuánto ha costado.
     aviso:
       dePago && fallida

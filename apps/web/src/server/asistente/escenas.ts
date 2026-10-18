@@ -9,9 +9,19 @@ import {
 } from "@/lib/direccion";
 import { limpiarTextoDePrompt } from "@/lib/ficha-personaje";
 import { ACCION_MAXIMA, DIRECCION_VOCAL_MAXIMA, motivoDeInvalidacion, TEXTO_ESCENA_MAXIMO } from "@/lib/proyectos";
+import { porDefectoDelReparto } from "@/lib/reparto";
 import { motivoDuracionNoAdmitida } from "@/lib/trends";
+import type { EscenaDelGuion } from "@/lib/video-completo";
 import { db, type Ejecutor } from "../db/cliente";
-import { claims, type FilaEscena, generationJobs, projects, scenes } from "../db/esquema";
+import {
+  claims,
+  type FilaEscena,
+  generationJobs,
+  projects,
+  sceneCharacters,
+  sceneDialogueTurns,
+  scenes,
+} from "../db/esquema";
 import { limitesDeProyecto } from "../limites-proyecto";
 import { camposDeLugar, exigirPlanoSoloCoherente } from "../lugares/escena";
 import type { Actor } from "../media/servicio";
@@ -423,26 +433,20 @@ export async function borrarEscena(actor: Actor, escenaId: unknown): Promise<voi
 }
 
 /**
- * Sustituye todas las escenas en borrador del proyecto por las que propone el asistente. Va en la transacción
- * de quien llama, que es la que cierra el gasto de la llamada.
+ * Vacía las escenas del proyecto para escribir encima un guion del asistente, y devuelve su protagonista. Va en la
+ * transacción de quien llama, que es la que guarda el guion nuevo.
  *
  * Una escena con un trabajo detrás no se toca: ese trabajo se ha pagado. Si hay alguna, el asistente no reescribe
  * nada y se dice, en lugar de dejar el proyecto a medias entre dos guiones.
  */
-export async function sustituirEscenas(
-  tx: Ejecutor,
-  proyectoId: string,
-  propuestas: readonly { texto: string; accion: string; segundos: number }[],
-): Promise<number> {
+async function vaciarParaElGuion(tx: Ejecutor, proyectoId: string): Promise<string | null> {
   const actuales = await escenasDe(proyectoId, tx);
   const ids = actuales.map((e) => e.id);
-  // El protagonista del proyecto, para sembrar el reparto de cada escena que propone el asistente.
   const [proyecto] = await tx
     .select({ protagonista: projects.mainCharacterId })
     .from(projects)
     .where(eq(projects.id, proyectoId))
     .limit(1);
-  const protagonista = proyecto?.protagonista ?? null;
   // Se mira el estado **y** si alguna escena tiene ya un trabajo detrás, aunque no haya terminado: ese trabajo
   // se ha pagado y borrar su escena dejaría el gasto sin nada que lo explique.
   const conTrabajo =
@@ -455,9 +459,18 @@ export async function sustituirEscenas(
       "Este proyecto ya tiene escenas en producción: el asistente no las reescribe. Crea otro proyecto o edita las escenas a mano.",
     );
   }
-  if (actuales.length > 0) {
-    await tx.delete(scenes).where(eq(scenes.projectId, proyectoId));
-  }
+  if (actuales.length > 0) await tx.delete(scenes).where(eq(scenes.projectId, proyectoId));
+  return proyecto?.protagonista ?? null;
+}
+
+/** Sustituye todas las escenas en borrador del proyecto por las que propone el asistente. */
+export async function sustituirEscenas(
+  tx: Ejecutor,
+  proyectoId: string,
+  propuestas: readonly { texto: string; accion: string; segundos: number }[],
+): Promise<number> {
+  // El protagonista del proyecto, para sembrar el reparto de cada escena que propone el asistente.
+  const protagonista = await vaciarParaElGuion(tx, proyectoId);
   let orden = 0;
   const { escenasMaximas } = await limitesDeProyecto();
   for (const propuesta of propuestas.slice(0, escenasMaximas)) {
@@ -479,4 +492,67 @@ export async function sustituirEscenas(
   }
   await invalidarPlan(tx, proyectoId);
   return orden;
+}
+
+/**
+ * Sustituye las escenas por las de un **vídeo completo**: cada escena es un clip con **su** duración, su plano, su
+ * reparto y, en una entrevista, sus turnos. Todo en la transacción de quien llama: o se guarda el guion entero o
+ * no se guarda nada.
+ *
+ * El texto de la escena es el diálogo plano y literal: es lo que se oye en una escena de un personaje y lo que se
+ * revisa en las afirmaciones. Con dos personajes en el plano, lo que se oye son los turnos.
+ */
+export async function sustituirEscenasDelGuion(
+  tx: Ejecutor,
+  proyectoId: string,
+  propuestas: readonly EscenaDelGuion[],
+): Promise<number> {
+  const { escenasMaximas } = await limitesDeProyecto();
+  if (propuestas.length > escenasMaximas) {
+    throw new ErrorProyecto(
+      409,
+      `El guion tiene ${propuestas.length} escenas y el máximo de esta instalación son ${escenasMaximas}.`,
+    );
+  }
+  await vaciarParaElGuion(tx, proyectoId);
+  for (const [indice, propuesta] of propuestas.entries()) {
+    const [escena] = await tx
+      .insert(scenes)
+      .values({
+        projectId: proyectoId,
+        sortOrder: indice + 1,
+        scriptText: propuesta.texto,
+        action: propuesta.accion,
+        plannedSeconds: propuesta.segundos,
+        shotType: propuesta.plano,
+        castFormat: propuesta.formato,
+        podcastGroupId: propuesta.grupoPodcast,
+      })
+      .returning();
+    if (!escena) throw new ErrorProyecto(500, "No se ha podido guardar el guion.");
+    for (const [posicion, personajeId] of propuesta.reparto.entries()) {
+      const defectos = porDefectoDelReparto(propuesta.formato, posicion === 0 ? 1 : 2);
+      await tx.insert(sceneCharacters).values({
+        sceneId: escena.id,
+        characterId: personajeId,
+        role: defectos.papel,
+        side: defectos.lado,
+        gazeDirection: defectos.mirada,
+        sortOrder: posicion + 1,
+      });
+    }
+    if (propuesta.turnos.length > 0) {
+      await tx.insert(sceneDialogueTurns).values(
+        propuesta.turnos.map((turno, orden) => ({
+          sceneId: escena.id,
+          sortOrder: orden + 1,
+          characterId: turno.personajeId,
+          text: turno.texto,
+        })),
+      );
+    }
+    await sincronizarAfirmaciones(tx, escena.id, escena.scriptText);
+  }
+  await invalidarPlan(tx, proyectoId);
+  return propuestas.length;
 }

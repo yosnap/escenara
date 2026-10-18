@@ -75,6 +75,12 @@ export interface Ajustes extends AjustesDatos, AjustesComunidad, AjustesLegales,
    */
   asistenteActivo: boolean;
   /**
+   * **Duraciones largas del vídeo completo** (≈ 1 min y ≈ 3 min), apagadas de fábrica (decisión del propietario,
+   * 2026-10-18): están hechas, pero hasta que baje el coste o se mida otro proveedor solo se ofrece 20 s. Apagado,
+   * la API las rechaza con el motivo, no solo la pantalla.
+   */
+  videoDuracionesLargas: boolean;
+  /**
    * Margen prudente que se suma a la estimación de una escena cuando su modelo no tiene precio **medido**
    * (solo documentado), en % (ADR-0009: el prototipo infraestimó ×3). Siempre se dice en la interfaz.
    */
@@ -370,6 +376,7 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   presupuestoProyecto: 500,
   // El asistente de guion arranca apagado: cuesta dinero y el guion a mano funciona igual de bien.
   asistenteActivo: false,
+  videoDuracionesLargas: false,
   asistenteMargenEstimacion: 30,
   // Traducir cuesta créditos y el modelo de texto aún no está validado: se enciende a propósito.
   traducirPrompts: false,
@@ -565,6 +572,7 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
     mensaje: "Indica un número entero de créditos (0 = no proponer ninguno).",
   },
   asistenteActivo: { valido: booleano, mensaje: "Debe ser sí o no." },
+  videoDuracionesLargas: { valido: booleano, mensaje: "Debe ser sí o no." },
   asistenteMargenEstimacion: {
     valido: entero(0, 200),
     mensaje: "Indica el margen prudente en %, de 0 a 200.",

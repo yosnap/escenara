@@ -1,10 +1,10 @@
 import { precioCaducado } from "@/lib/catalogo";
 import { motivoSinReparto } from "@/lib/omni";
 import type { EstimacionEscena } from "@/lib/proyectos";
-import type { FilaProyecto } from "../db/esquema";
+import type { FilaEscena, FilaProyecto } from "../db/esquema";
 import { ErrorCatalogo } from "../proveedores/contrato";
 import { ErrorOmni } from "./errores";
-import { type CosteDeEscenaOmni, costeDeEscenaOmni, totalDeEscenaOmni } from "./escena";
+import { type CosteDeEscenaOmni, costeDeEscenaOmni, segundosPlanificados, totalDeEscenaOmni } from "./escena";
 
 /**
  * **El plan de una escena hablada** en modo Omni. No hay fotograma ni animación aparte: la escena la genera entera
@@ -45,17 +45,52 @@ export function estimacionDeEscenaOmni(
  * Coste de las escenas habladas de un proyecto, leído **una vez** para todas sus escenas; `null` si no hay modelo
  * Omni utilizable con precio, y entonces el plan dice que esas escenas no se pueden estimar, sin inventar cifra.
  */
-export async function costeOmniDelPlan(usuarioId: string, proyecto: FilaProyecto): Promise<CosteDeEscenaOmni | null> {
+export async function costeOmniDelPlan(
+  usuarioId: string,
+  proyecto: FilaProyecto,
+  segundos: number = proyecto.clipSeconds,
+): Promise<CosteDeEscenaOmni | null> {
   try {
-    return await costeDeEscenaOmni(usuarioId, proyecto);
+    return await costeDeEscenaOmni(usuarioId, proyecto, segundos);
   } catch (error) {
     if (error instanceof ErrorCatalogo || error instanceof ErrorOmni) return null;
     throw error;
   }
 }
 
-/** Sello vigente del precio de las escenas habladas del proyecto; `null` fuera del modo Omni o sin modelo con precio. */
-export async function selloOmniVigente(usuarioId: string, proyecto: FilaProyecto): Promise<string | null> {
+/**
+ * Coste de las escenas habladas **por duración**: cada duración tiene su tarifa y su sello, y en un vídeo completo
+ * las escenas no duran todas lo mismo (un podcast de 20 s son clips de 8, 6 y 6 s). Se lee una vez por duración
+ * distinta, no una por escena. Las duraciones que no salgan de estas escenas no están en el mapa.
+ */
+export async function costesOmniPorDuracion(
+  usuarioId: string,
+  proyecto: FilaProyecto,
+  escenas: readonly Pick<FilaEscena, "plannedSeconds">[],
+): Promise<Map<number, CosteDeEscenaOmni | null>> {
+  const duraciones = [...new Set(escenas.map((e) => segundosPlanificados(e, proyecto)))];
+  return new Map(
+    await Promise.all(duraciones.map(async (s) => [s, await costeOmniDelPlan(usuarioId, proyecto, s)] as const)),
+  );
+}
+
+/** Sello vigente del precio de una escena hablada de esa duración; `null` fuera del modo Omni o sin modelo con precio. */
+export async function selloOmniVigente(
+  usuarioId: string,
+  proyecto: FilaProyecto,
+  segundos: number = proyecto.clipSeconds,
+): Promise<string | null> {
   if (proyecto.voiceMode !== "omni") return null;
-  return (await costeOmniDelPlan(usuarioId, proyecto))?.eleccion.precio.sello ?? null;
+  return (await costeOmniDelPlan(usuarioId, proyecto, segundos))?.eleccion.precio.sello ?? null;
+}
+
+/** Sellos vigentes de las escenas habladas del proyecto por duración; vacío fuera del modo Omni. */
+export async function sellosOmniVigentes(
+  usuarioId: string,
+  proyecto: FilaProyecto,
+  escenas: readonly Pick<FilaEscena, "plannedSeconds">[],
+): Promise<Map<number, string | null>> {
+  if (proyecto.voiceMode !== "omni") return new Map();
+  const costes = await costesOmniPorDuracion(usuarioId, proyecto, escenas);
+  return new Map([...costes].map(([s, coste]) => [s, coste?.eleccion.precio.sello ?? null] as const));
 }

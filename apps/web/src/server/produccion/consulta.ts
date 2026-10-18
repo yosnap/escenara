@@ -47,8 +47,8 @@ import type { EleccionDeTrabajo } from "../generacion/precios";
 import { condicionEnCurso } from "../generacion/trabajos";
 import { type Actor, aDto, espacioUsado } from "../media/servicio";
 import { DONDE_CAMBIAR_MODELO, modeloEnMensaje } from "../modelo-en-mensajes";
-import { costeDeEscenaOmni, duracionesDeOmni, registroParaProducir } from "../omni/escena";
-import { selloOmniVigente } from "../omni/estimacion-plan";
+import { costeDeEscenaOmni, duracionesDeOmni, registroParaProducir, segundosPlanificados } from "../omni/escena";
+import { sellosOmniVigentes } from "../omni/estimacion-plan";
 import { eleccionOmni } from "../omni/registro";
 import { ultimaVersion } from "../personajes/ficha";
 import { marcasExigidas } from "../productos/declaracion-marca";
@@ -183,8 +183,8 @@ const consumidoDe = (filas: readonly FilaTrabajo[]): number =>
 interface ContextoDeControles {
   parametros: ParametrosControles;
   selloVigente: string;
-  /** Sello vigente de las escenas habladas en modo Omni; `null` en los demás modos. */
-  selloOmni: string | null;
+  /** Sellos vigentes de las escenas habladas por duración en modo Omni; vacío en los demás modos. */
+  sellosOmni: Map<number, string | null>;
   versionPersonaje: string | null;
   versionPlantilla: string | null;
 }
@@ -193,17 +193,18 @@ async function contextoDeControles(
   actor: Actor,
   proyecto: FilaProyecto,
   elecciones: EleccionesDelPlan,
+  escenas: readonly FilaEscena[],
 ): Promise<ContextoDeControles> {
-  const [parametros, version, plantilla, selloOmni] = await Promise.all([
+  const [parametros, version, plantilla, sellosOmni] = await Promise.all([
     parametrosDeControles(),
     proyecto.mainCharacterId ? ultimaVersion(proyecto.mainCharacterId) : null,
     plantillaVigenteDe(actor.id, "image_edit"),
-    selloOmniVigente(actor.id, proyecto),
+    sellosOmniVigentes(actor.id, proyecto, escenas),
   ]);
   return {
     parametros,
     selloVigente: elecciones.fotograma?.precio.sello ?? "",
-    selloOmni,
+    sellosOmni,
     versionPersonaje: version?.id ?? null,
     versionPlantilla: plantilla?.versionId ?? null,
   };
@@ -225,7 +226,7 @@ function hechosDeFila(
     motivoInvalidacion: fila.invalidationReason,
     precioCambiado: precioCambiadoDesdeLaAprobacion(selloCongeladoDe(fila), {
       fotograma: contexto.selloVigente,
-      omni: contexto.selloOmni,
+      omni: contexto.sellosOmni.get(segundosPlanificados(fila, proyecto)) ?? null,
     }),
     fichaCambiada:
       fila.approvedCharacterVersionId !== null && fila.approvedCharacterVersionId !== contexto.versionPersonaje,
@@ -393,7 +394,7 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
     trabajosDeEscenas(ids),
     afirmacionesDe(ids),
     posicionesEnCola(),
-    contextoDeControles(actor, proyecto, elecciones),
+    contextoDeControles(actor, proyecto, elecciones, filasEscena),
     escenasEnVueloDelUsuario(actor.id),
     alternativasDeEscenas(ids),
     escenasConComparativaLanzandose(ids),

@@ -4,7 +4,7 @@ import { escenaPropia } from "../asistente/consulta";
 import type { FilaEscena, FilaProyecto } from "../db/esquema";
 import type { Actor } from "../media/servicio";
 import { clipsDePodcast, miembrosDelReparto, turnosDelReparto } from "../reparto/consulta";
-import { costeDeEscenaOmni } from "./escena";
+import { costeDeEscenaOmni, segundosPlanificados } from "./escena";
 import { faltasDeRegistroDelReparto } from "./reparto";
 
 /**
@@ -88,7 +88,7 @@ export async function estimarReparto(
   let precioEstimado: boolean;
   let sinReparto: string | null;
   try {
-    const coste = await costeDeEscenaOmni(actor.id, proyecto);
+    const coste = await costeDeEscenaOmni(actor.id, proyecto, segundosPlanificados(escena, proyecto));
     segundos = coste.segundos;
     creditosPorClip = coste.creditosPorClip;
     creditosDelPrimerClip = coste.creditosDelPrimerClip;
