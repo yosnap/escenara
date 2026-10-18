@@ -18,6 +18,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
   Con Gemini Omni (vídeo), el clip con dos personajes registrados daba un fallo interno en KIE, sin cobrar. Ahora el
   plan no deja aprobar esa escena, y la estimación y la confirmación lo dicen antes de gastar. Las tres pantallas
   explican que hay que poner Gemini Omni 1.1 Flash el primero de la lista de vídeo del mapa de modelos.
+- Una cuenta que no ha ordenado su mapa de modelos vuelve a generar sus escenas habladas con Gemini Omni 1.1 Flash,
+  el modelo recomendado. La recomendación de la plataforma ordenaba los modelos por nombre y ponía delante Gemini
+  Omni (vídeo).
 - En modo Omni, si cambia el precio del modelo de escenas habladas después de aprobar el plan, la aprobación de la
   escena deja de valer y hay que revisar el coste, igual que pasa con el precio del fotograma en los demás modos.
 - En el podcast y el dualcast, la ficha del protagonista ya no viaja en la petición: cada cara la pone su personaje
