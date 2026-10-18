@@ -6,6 +6,7 @@ import { useState } from "react";
 import { claseBoton } from "@/components/ui/button";
 import { Aviso } from "@/components/ui/feedback";
 import { Multipaso, PanelDePaso, useMultipaso } from "@/components/ui/multipaso";
+import { OpcionesAvanzadas } from "@/components/ui/opciones-avanzadas";
 import { InsigniaEstadoProyecto } from "@/components/ui/proyecto";
 import type { ClipsDelProyecto } from "@/lib/audio-del-clip";
 import { formatoPrincipal, PLATAFORMA_DE_FORMATO } from "@/lib/formatos";
@@ -77,6 +78,17 @@ export function VistaProyecto({
     setDetalle(nuevo);
   };
 
+  const listaEscenas = (
+    <ListaEscenas
+      detalle={detalle}
+      personajes={personajes}
+      trends={trends}
+      onCambio={aplicar}
+      onError={setError}
+      onSinGuardar={setSinGuardar}
+    />
+  );
+
   return (
     <>
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -144,14 +156,25 @@ export function VistaProyecto({
             proyectoId={proyecto.id}
             inicial={clips}
           />
-          <ListaEscenas
-            detalle={detalle}
-            personajes={personajes}
-            trends={trends}
-            onCambio={aplicar}
-            onError={setError}
-            onSinGuardar={setSinGuardar}
-          />
+          {detalle.guionCompleto ? (
+            <>
+              <ResumenGuionCompleto detalle={detalle} />
+              {/*
+                El diálogo lo ha escrito el asistente entero: va plegado, y se ve y se edita aquí dentro. No se deja
+                cerrar con cambios sin guardar, porque cerrarlo desmonta el editor y se perderían.
+              */}
+              <OpcionesAvanzadas
+                clave={`dialogo:${proyecto.id}`}
+                titulo="Ver y editar el diálogo"
+                resumen="Las escenas con su texto, su plano, su reparto y sus turnos"
+                forzarAbierto={sinGuardar !== null}
+              >
+                {listaEscenas}
+              </OpcionesAvanzadas>
+            </>
+          ) : (
+            listaEscenas
+          )}
         </PanelDePaso>
         <PanelDePaso id="aprobacion">
           <PanelAprobacion detalle={detalle} onCambio={aplicar} onError={setError} sinGuardar={sinGuardar} />
@@ -161,5 +184,17 @@ export function VistaProyecto({
       {/* Los nombres de modelo y su elección viven solo aquí, plegados; fuera se habla de duración y créditos. */}
       <AvanzadasProyecto detalle={detalle} onCambio={aplicar} onError={setError} />
     </>
+  );
+}
+
+/** Lo que se ve del guion completo sin abrir el diálogo: cuántos clips, cuánto dura y que ya está escrito. */
+function ResumenGuionCompleto({ detalle }: { detalle: ProyectoDetalle }) {
+  const segundos = detalle.escenas.reduce((s, e) => s + e.segundos, 0);
+  return (
+    <Aviso tono="info">
+      El asistente ha escrito el guion completo: {detalle.escenas.length}{" "}
+      {detalle.escenas.length === 1 ? "clip" : "clips"} y {segundos} s en total, con el diálogo seguido de principio a
+      fin. Si quieres leerlo o cambiar alguna frase, ábrelo en «Ver y editar el diálogo».
+    </Aviso>
   );
 }

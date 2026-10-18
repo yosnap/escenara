@@ -2,6 +2,44 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.55.0] · 2026-10-18
+
+### Añadido
+
+- El asistente de guion puede escribir **un vídeo completo de 20 s** desde tu idea, con el diálogo entero de
+  principio a fin y un clip por escena. En el panel del asistente eliges «Vídeo completo de 20 s» y el tipo: **una
+  persona** (2 clips de 10 s), **entrevista** con otro personaje tuyo en el mismo plano (2 clips de 10 s) o
+  **podcast** en plano y contraplano (3 clips de 8, 6 y 6 s). «Escenas sueltas» sigue siendo lo de siempre.
+- Antes de empezar ves **lo que cuesta escribir el guion**: las llamadas de texto, una llamada de reserva enseñada
+  aparte y el total que confirmas, con la fecha del precio. La reserva solo se gasta si un trozo del guion llega
+  cortado o con frases que no caben en sus segundos; entonces se repite solo ese trozo. Antes de cada llamada se
+  suma lo ya cobrado, y si la siguiente pudiera pasar del total confirmado no se hace: se para y te dice cuánto ha
+  costado lo hecho.
+- Cada clip respeta su tiempo: como mucho 25 palabras en 10 s, 20 en 8 s y 15 en 6 s. El diálogo se escribe en
+  español de España y se guarda tal cual, sin traducir. El diálogo va plegado: en el paso «Escenas» lo abres en
+  «Ver y editar el diálogo» y lo cambias como un guion escrito a mano.
+- Si algo falla a mitad, el guion no se guarda a medias: el aviso dice qué parte falló, qué proveedor contestó,
+  cuánto han costado las llamadas ya hechas y qué puedes hacer, y tus escenas se quedan como estaban.
+- Los vídeos de **≈ 1 minuto** y **≈ 3 minutos** están preparados, con el guion escrito en partes que siguen la
+  conversación sin repetirse, pero no se ofrecen hasta que quien administra los abra en Admin › Ajustes («Vídeo
+  completo de 1 y 3 minutos», apagado de fábrica). Mientras esté apagado, el servidor los rechaza con el motivo.
+
+### Cambiado
+
+- En modo «Voz e identidad registradas», cada escena se produce con **su propia duración** y se estima y se
+  confirma con la tarifa de esa duración. Las escenas de siempre copian la del proyecto, así que no cambia nada
+  para ellas.
+- Escribir un vídeo completo ajusta la duración de clip del proyecto a la del primer clip (10 s en una persona y
+  entrevista, 8 s en podcast). El selector «Duración de cada clip» enseña ese valor tal cual.
+- En un podcast escrito en plano y contraplano, cada plano sale con **su** personaje registrado, no siempre con el
+  protagonista del proyecto. La rejilla de producción confirma cada escena con la tarifa de su duración, avisa
+  antes de producir si al otro personaje le falta el registro, y la pantalla de la voz enseña el precio de cada
+  duración cuando el proyecto las mezcla.
+- Si el servidor no llega a contestar (un 502, 503 o 504 del proxy), pedir el guion conserva la misma confirmación:
+  repetirla no vuelve a cobrar. Repetir una confirmación que falló a mitad ya no devuelve el proyecto sin más: dice
+  qué pasó y que no se ha vuelto a cobrar nada.
+- Si el proyecto tiene escenas en producción, el asistente lo dice antes de gastar nada.
+
 ## [0.54.0] · 2026-10-18
 
 ### Añadido

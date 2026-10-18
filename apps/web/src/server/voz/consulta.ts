@@ -25,6 +25,7 @@ import { db } from "../db/cliente";
 import { type FilaEscena, type FilaMedio, type FilaProyecto, generationJobs, media } from "../db/esquema";
 import { type Actor, aDto } from "../media/servicio";
 import { costeDeEscenaOmni, registroParaProducir } from "../omni/escena";
+import { costesOmniPorDuracion } from "../omni/estimacion-plan";
 import { ErrorCatalogo } from "../proveedores/contrato";
 import { muestrasDe } from "./muestra";
 import { musicaDe } from "./musica";
@@ -276,7 +277,7 @@ export async function estadoDeVoz(actor: Actor, proyectoId: unknown): Promise<Vo
     porRegenerar,
     costeRegenerar: soloTranscripcion ? 0 : creditos === null ? null : costeDeLoInvalidado,
     motivoSinCoste: soloTranscripcion || creditos !== null ? "" : disponibilidad.motivoTts,
-    omni: proyecto.voiceMode === "omni" ? await estadoOmni(actor, proyecto) : null,
+    omni: proyecto.voiceMode === "omni" ? await estadoOmni(actor, proyecto, escenas) : null,
   };
 }
 
@@ -285,7 +286,11 @@ export async function estadoDeVoz(actor: Actor, proyectoId: unknown): Promise<Vo
  * mismos sitios que usa la puerta al producir, así que la pantalla no puede prometer algo que el servidor
  * rechace.
  */
-async function estadoOmni(actor: Actor, proyecto: FilaProyecto): Promise<EstadoOmniVista> {
+async function estadoOmni(
+  actor: Actor,
+  proyecto: FilaProyecto,
+  escenas: readonly FilaEscena[],
+): Promise<EstadoOmniVista> {
   const { falta, personaje } = await registroParaProducir(actor, proyecto);
   let creditosPorEscena: number | null = null;
   let precioEstimado = false;
@@ -298,7 +303,16 @@ async function estadoOmni(actor: Actor, proyecto: FilaProyecto): Promise<EstadoO
     // Sin modelo Omni con precio registrado no se inventa ninguna cifra: la pantalla dirá que no se puede.
     creditosPorEscena = null;
   }
+  // Cada escena se cobra con la tarifa de su duración: si el proyecto mezcla duraciones, se enseña cada una.
+  const porDuracion = await costesOmniPorDuracion(actor.id, proyecto, escenas);
+  const creditosPorDuracion =
+    porDuracion.size > 1
+      ? [...porDuracion]
+          .flatMap(([segundos, coste]) => (coste ? [{ segundos, creditos: coste.creditosDelPrimerClip }] : []))
+          .sort((a, b) => b.segundos - a.segundos)
+      : [];
   return {
+    creditosPorDuracion,
     voz: vozOmniDelProyecto(proyecto),
     voces: VOCES_OMNI,
     listo: falta === "",

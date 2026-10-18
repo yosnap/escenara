@@ -49,6 +49,12 @@ export function SeccionAsistente({
         activo={valores.asistenteActivo}
         onCambio={(v) => onCambio("asistenteActivo", v)}
       />
+      <Interruptor
+        etiqueta="Vídeo completo de 1 y 3 minutos"
+        descripcion="Apagado de fábrica: el vídeo completo desde una idea solo se ofrece de 20 s. Encendido, se ofrecen también ≈ 1 min (8 clips) y ≈ 3 min (23 clips), con el guion escrito en bloques. Son vídeos caros: ábrelo cuando el coste por clip lo justifique. Apagado, el servidor rechaza esas duraciones aunque alguien las pida."
+        activo={valores.videoDuracionesLargas}
+        onCambio={(v) => onCambio("videoDuracionesLargas", v)}
+      />
       <div className="grid gap-4 sm:grid-cols-2">
         <Campo
           etiqueta="Presupuesto por proyecto (créditos)"

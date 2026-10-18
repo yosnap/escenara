@@ -667,6 +667,11 @@ export interface EstadoOmniVista {
   falta: string;
   /** Créditos de **una escena** con la duración del proyecto; `null` si no hay modelo Omni con precio. */
   creditosPorEscena: number | null;
+  /**
+   * Lo que cuesta una escena de cada duración que tienen las escenas del proyecto, cuando hay más de una (un podcast
+   * de 20 s son clips de 8 y 6 s). Vacío si todas duran lo mismo: entonces vale `creditosPorEscena`.
+   */
+  creditosPorDuracion?: { segundos: number; creditos: number }[];
   /** `true` cuando ese precio es proporcional y no medido (solo los 4 s están medidos). */
   precioEstimado: boolean;
   /** Nombre del personaje registrado, para poder decir quién habla. Vacío si no hay ninguno. */

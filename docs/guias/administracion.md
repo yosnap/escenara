@@ -88,6 +88,12 @@ Guardar aplica solo los cambios del grupo visible y mantiene pendientes los de o
 otro administrador pide recargar. Las credenciales se guardan o retiran de forma explícita, con revisión de su versión,
 y la auditoría registra claves cambiadas, sin valores secretos. El correo de prueba solo sale al pulsar su botón.
 
+En **Generación y presupuesto › Asistente de guion y proyectos**, el interruptor **«Vídeo completo de 1 y 3
+minutos»** viene apagado de fábrica: el vídeo completo desde una idea solo se ofrece de 20 s. Encendido, se ofrecen
+también ≈ 1 min (8 clips) y ≈ 3 min (23 clips). Apagado, el servidor rechaza esas duraciones aunque alguien las pida
+sin pasar por la pantalla. Si los límites de escenas o de segundos de montaje no las admiten, salen desactivadas con
+el motivo.
+
 ### Correo y plantillas
 
 ![Plantilla de confirmación con datos ficticios](../assets/capturas/0.51.0-correo-verificacion.webp)
