@@ -64,7 +64,7 @@ describe.skipIf(!hayBaseDeDatos)("modelo de vídeo fijado en un proyecto", () =>
     const detalle = await crearProyecto(actor, { titulo: "Sin fijar", formato: "anuncio", idea: "probar" });
     const fila = await proyectoPropio(actor, detalle.proyecto.id);
     expect(fila.videoModel).toBe("");
-    expect(modeloDeVideoDe(fila)).toBeNull();
+    expect(await modeloDeVideoDe(fila)).toBeNull();
     const conProyecto = await eleccionesDelPlan(actor.id, fila);
     const sinProyecto = await eleccionesDelPlan(actor.id);
     expect(conProyecto.animacion?.precio.sello).toBe(sinProyecto.animacion?.precio.sello);
