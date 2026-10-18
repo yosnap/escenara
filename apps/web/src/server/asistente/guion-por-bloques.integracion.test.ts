@@ -100,7 +100,11 @@ function contestar(pedido: Pedido): string {
       };
     },
   );
-  const json = JSON.stringify({ concept: "Una rutina tranquila de café.", clips });
+  // El guion de 20 s pide en la misma respuesta el vestuario fijo y el lugar.
+  const continuidad = pedido.usuario.includes('"setting"')
+    ? { setting: "A sunny rooftop at dawn", characters: [{ speaker: "A", wardrobe: "Navy knitted jumper" }] }
+    : {};
+  const json = JSON.stringify({ concept: "Una rutina tranquila de café.", clips, ...continuidad });
   if (cortar && cortar.parte === parte && cortar.veces > 0) {
     cortar.veces--;
     return json.slice(0, Math.floor(json.length / 2));
@@ -254,6 +258,11 @@ describe.skipIf(!hayBaseDeDatos)("guion de un vídeo completo", () => {
     expect(await consumido()).toBeLessThanOrEqual(peticion.creditosConfirmados);
     // El diálogo lo ha escrito entero el asistente: la pantalla lo pliega en «Opciones avanzadas».
     expect(detalle.guionCompleto).toBe(true);
+    // La biblia de continuidad se guarda con el guion, sin llamada de más: vestuario por personaje y lugar.
+    const [proyecto] = await db().select().from(projects).where(eq(projects.id, proyectoId)).limit(1);
+    expect(proyecto?.continuityBible.vestuario).toEqual({ [lucia.id]: "Navy knitted jumper" });
+    expect(proyecto?.continuityBible.lugar).toBe("A sunny rooftop at dawn");
+    expect(proyecto?.continuityBible.planos).toEqual([]);
   });
 
   test("la misma confirmación (doble clic) no vuelve a llamar ni a cobrar", async () => {
