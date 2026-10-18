@@ -399,7 +399,8 @@ export function filasDelPlan(escenas: readonly EscenaVista[]): FilaPlan[] {
       escenaId: escena.id,
       orden: escena.orden,
       resumen: resumenDeEscena(escena),
-      modelos: e ? `${e.modeloFotograma} + ${e.modeloAnimacion}` : "—",
+      // Una escena hablada en modo Omni (o una de canto) no tiene fotograma: sale solo el modelo que la genera.
+      modelos: e ? [e.modeloFotograma, e.modeloAnimacion].filter((m) => m !== "").join(" + ") : "—",
       segundos: e?.segundos ?? escena.segundos,
       estimacion: e ? textoEstimacion(e.creditos, e.euros, e.comprobado) : textoEstimacion(0, 0, ""),
       creditos: e?.creditos ?? 0,

@@ -83,6 +83,19 @@ describe("desglose del plan por escena", () => {
     expect(filas[0]?.motivo).toBe("");
   });
 
+  test("una escena sin fotograma (Omni o canto) nombra solo el modelo que la genera", () => {
+    const omni: EstimacionEscena = {
+      ...estimacion(65),
+      creditosFotograma: 0,
+      modeloFotograma: "",
+      modeloAnimacion: "Gemini Omni 1.1 Flash",
+    };
+    expect(filasDelPlan([escena("s1", 1, "Charla en la terraza", omni)])[0]?.modelos).toBe("Gemini Omni 1.1 Flash");
+    expect(filasDelPlan([escena("s1", 1, "Plano medio", estimacion(84))])[0]?.modelos).toBe(
+      "Nano Banana 2 Lite + Veo 3.1 Lite",
+    );
+  });
+
   test("una escena sin precio no se estima y dice por qué", () => {
     const filas = filasDelPlan([escena("s1", 1, "Plano general", null)]);
     expect(filas[0]?.creditos).toBe(0);

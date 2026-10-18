@@ -2,6 +2,25 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.52.15] · 2026-10-18
+
+### Corregido
+
+- En modo Omni, un proyecto con clips de 6 s ya se puede producir si el modelo de escenas habladas admite esa
+  duración. Antes, la pantalla de voz anunciaba el coste a 6 s y, al producir, se rechazaba diciendo que el modelo de
+  animación solo generaba de 8 s, porque se comparaba con el modelo de vídeo de los clips normales y no con el que
+  genera la escena hablada. Si el modelo Omni no admite la duración del proyecto, el aviso lo nombra a él.
+- En modo Omni, el plan, el editor de la escena y el estimado de la producción enseñan el modelo que genera la escena
+  hablada, su duración y el mismo coste que pide la confirmación, con la traducción incluida y los dos clips de un
+  podcast. Antes sumaban un fotograma y una animación que en este modo no se generan. Los planes ya aprobados
+  conservan su cifra hasta que se vuelvan a aprobar.
+- El podcast y el dualcast solo se ofrecen con Gemini Omni 1.1 Flash, que es con el que se han producido de verdad.
+  Con Gemini Omni (vídeo), el clip con dos personajes registrados fallaba en KIE con un fallo interno, sin cobrar.
+  Ahora la estimación y la confirmación lo dicen antes de gastar y explican que hay que poner Gemini Omni 1.1 Flash
+  el primero de la lista de vídeo del mapa de modelos.
+- En el podcast y el dualcast, la ficha del protagonista ya no viaja en la petición: cada cara la pone su personaje
+  registrado. Antes se describía solo al protagonista, también en el clip del otro personaje.
+
 ## [0.52.14] · 2026-10-18
 
 ### Corregido

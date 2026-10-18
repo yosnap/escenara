@@ -2,7 +2,13 @@ import { eq } from "drizzle-orm";
 import { CAPACIDAD_DE_TIPO, duracionesConCoste, type ModeloVista, segundosDeUnidad } from "@/lib/catalogo";
 import { proporcionFijadaDelProyecto } from "@/lib/formatos";
 import type { Medio } from "@/lib/media/tipos";
-import { creditosDeEscenaOmni, precioOmniEstimado, usaIdentidadRegistrada, type VozOmniDelProyecto } from "@/lib/omni";
+import {
+  creditosDeEscenaOmni,
+  motivoSinReparto,
+  precioOmniEstimado,
+  usaIdentidadRegistrada,
+  type VozOmniDelProyecto,
+} from "@/lib/omni";
 import { duracionParaModelo } from "@/lib/produccion";
 import { exigeDeclaracionDeMarca } from "@/lib/productos";
 import { firmaDeVoz, nombreDeVoz } from "@/lib/voz";
@@ -42,7 +48,7 @@ import {
 } from "../generacion/comprobaciones";
 import { proporcionDelEnvio } from "../generacion/formato-del-envio";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
-import { exigirSelloVigente } from "../generacion/precios";
+import { type EleccionDeTrabajo, exigirSelloVigente } from "../generacion/precios";
 import { conLugarSuelto, lugarDelEnvio, lugarDelPrompt, textosDelLugar } from "../lugares/en-el-envio";
 import { columnasDelLugar } from "../lugares/para-generar";
 import type { Actor } from "../media/servicio";
@@ -124,6 +130,15 @@ export async function creditosDeEscenaHablada(
   usuarioId: string,
   proyecto: FilaProyecto,
 ): Promise<{ creditos: number; sello: string }> {
+  const { eleccion, creditos } = await tarifaDeEscenaHablada(usuarioId, proyecto);
+  return { creditos, sello: eleccion.precio.sello };
+}
+
+/** Modelo, duración y tarifa de **un** clip hablado con la duración del proyecto. */
+async function tarifaDeEscenaHablada(
+  usuarioId: string,
+  proyecto: FilaProyecto,
+): Promise<{ eleccion: EleccionDeTrabajo; segundos: number; creditos: number }> {
   /**
    * Se lee **dos veces a propósito**: primero para saber qué modelo sería y qué duración admite, y después con
    * esa duración para leer **su** tarifa. Desde la 0.23.4 cada duración de Gemini Omni tiene su precio publicado
@@ -132,9 +147,50 @@ export async function creditosDeEscenaHablada(
    */
   const { modelo: primero } = await eleccionOmni(usuarioId);
   const segundos = segundosDeEscenaOmni(duracionesDeOmni(primero), proyecto);
-  const { modelo, precio } = await eleccionOmni(usuarioId, segundos);
-  return { creditos: creditosDeTarifa(precio, segundos, modelo.modelo), sello: precio.sello };
+  const eleccion = await eleccionOmni(usuarioId, segundos);
+  return { eleccion, segundos, creditos: creditosDeTarifa(eleccion.precio, segundos, eleccion.modelo.modelo) };
 }
+
+/** Lo que cuesta una escena hablada, con el modelo y la duración que de verdad se le van a pedir al proveedor. */
+export interface CosteDeEscenaOmni {
+  eleccion: EleccionDeTrabajo;
+  segundos: number;
+  /** Tarifa de un clip. */
+  creditosPorClip: number;
+  /** El primer clip lleva además la traducción del texto de la escena, que se hace y se paga una sola vez. */
+  creditosDelPrimerClip: number;
+  /** La tarifa de esa duración es una estimación en proporción y no un precio registrado. */
+  precioEstimado: boolean;
+}
+
+/**
+ * **La cuenta única del coste de una escena hablada**: la usan la confirmación del gasto, la estimación del reparto
+ * y el plan del proyecto (con el editor y la producción, que leen lo que el plan congela). Si cada pantalla hiciera
+ * la suya, el plan diría una cifra y el servidor exigiría otra.
+ */
+export async function costeDeEscenaOmni(usuarioId: string, proyecto: FilaProyecto): Promise<CosteDeEscenaOmni> {
+  const { eleccion, segundos, creditos } = await tarifaDeEscenaHablada(usuarioId, proyecto);
+  return {
+    eleccion,
+    segundos,
+    creditosPorClip: creditos,
+    creditosDelPrimerClip: await creditosDelEnvio(creditos),
+    precioEstimado: precioDeDuracionEstimado(eleccion.modelo, segundos),
+  };
+}
+
+/** Total que se confirma por una escena de `clips` clips: el primero, con su traducción, y la tarifa de cada uno más. */
+export const totalDeEscenaOmni = (coste: CosteDeEscenaOmni, clips: number): number =>
+  coste.creditosDelPrimerClip + coste.creditosPorClip * Math.max(0, clips - 1);
+
+/**
+ * Prompt de un envío hablado. Con reparto (podcast o dualcast) **no viaja la ficha del protagonista**: cada cara
+ * la pone su `character_id`, registrado con su propia descripción, y pegar la de uno solo («mantén la identidad
+ * de la misma persona de las fotos», sin fotos) le describiría al modelo a una sola mujer para dos caras, o la del
+ * protagonista en el clip del otro.
+ */
+export const promptDelEnvio = (escenaDirigida: string, contextoDelProtagonista: string, conReparto: boolean): string =>
+  conReparto ? escenaDirigida : promptConContexto(escenaDirigida, contextoDelProtagonista);
 
 /**
  * `true` cuando el precio de esa duración es una **estimación en proporción** y no una tarifa registrada. Desde
@@ -318,17 +374,11 @@ export async function producirEscenaHablada(
   exigirDerechos(confirmacion.derechos);
   exigirRevisionDeReferencias(confirmacion.sinTerceros);
   const claveIdempotencia = exigirClaveIdempotencia(confirmacion.claveIdempotencia);
-  const { modelo: primero } = await eleccionOmni(actor.id);
-  const eleccion = await eleccionOmni(actor.id, segundosDeEscenaOmni(duracionesDeOmni(primero), proyecto));
+  const coste = await costeDeEscenaOmni(actor.id, proyecto);
+  const { eleccion, segundos, creditosPorClip: creditos, creditosDelPrimerClip: porClip } = coste;
   const { modelo, adaptador, precio } = eleccion;
-  if (escena.castFormat !== "solo" && !usaIdentidadRegistrada(modelo.modelo)) {
-    throw new ErrorOmni(
-      409,
-      `El modelo ${modelo.nombre} no admite dos identidades registradas. Elige un modelo Gemini Omni para podcast o dualcast antes de confirmar el gasto. No se ha cobrado nada.`,
-    );
-  }
-  const segundos = segundosDeEscenaOmni(duracionesDeOmni(modelo), proyecto);
-  const creditos = creditosDeTarifa(precio, segundos, modelo.modelo);
+  const sinReparto = escena.castFormat === "solo" ? null : motivoSinReparto(modelo);
+  if (sinReparto) throw new ErrorOmni(409, `${sinReparto} No se ha cobrado nada.`);
   exigirSelloVigente(confirmacion.selloEstimacion, precio.sello, true);
   /**
    * **El coste se confirma una vez y por el total** (0.28.0). Cada clip cuesta lo mismo —la misma tarifa y la
@@ -337,8 +387,7 @@ export async function producirEscenaHablada(
    * son dos se rechaza aquí: es exactamente lo que `exigirConfirmacion` existe para impedir.
    */
   const clipsEsperados = await clipsEsperadosDe(escena);
-  const porClip = await creditosDelEnvio(creditos);
-  const totales = porClip + creditos * (clipsEsperados - 1);
+  const totales = totalDeEscenaOmni(coste, clipsEsperados);
   exigirConfirmacion(confirmacion.creditosConfirmados, totales);
   await exigirAvisoUmbral(totales, confirmacion.avisoUmbralAceptado);
   /**
@@ -509,7 +558,6 @@ export async function producirEscenaHablada(
     segundos,
   });
   const dialogoFinal = dirigido.dialogo;
-  const promptFinal = promptConContexto(dirigido.escena, contextoEnIngles);
   /**
    * Qué se le manda al proveedor según el motor:
    *
@@ -570,8 +618,9 @@ export async function producirEscenaHablada(
     const clave = claveDelClip(orden);
     if (yaEncoladas.some((fila) => fila.idempotencyKey === clave)) continue;
     const personajesOmni = clip ? clip.personajesOmni : citaIdentidad && registro ? [registro.remoteCharacterId] : [];
+    const promptDelClip = promptDelEnvio(dirigido.escena, contextoEnIngles, clip !== null);
     const parametros = adaptador.montarEntrada(modelo, {
-      escena: promptFinal,
+      escena: promptDelClip,
       dialogo: dialogoFinal,
       urls: [],
       segundos,
@@ -584,10 +633,11 @@ export async function producirEscenaHablada(
       kind: "animacion",
       provider: proveedor,
       model: modelo.modelo,
-      prompt: promptFinal,
+      // El despacho vuelve a montar la entrada desde esta columna, así que es el prompt de **este** clip.
+      prompt: promptDelClip,
       identityReferenceKind: elegido?.referenciaIdentidad ?? "vistas",
       input: {
-        prompt: promptFinal,
+        prompt: promptDelClip,
         ...(enIngles.aviso === "" ? {} : { avisoReserva: enIngles.aviso }),
         // Si al enviarlo se exigía la declaración de marca.
         ...marcaAlEnviar(producto),
@@ -601,7 +651,7 @@ export async function producirEscenaHablada(
         ...(proporcion ? { proporcion } : {}),
         dialogo,
         escena: prompt,
-        ...(contextoEnIngles === "" ? {} : { contextoPersonaje: contextoEnIngles }),
+        ...(contextoEnIngles === "" || clip !== null ? {} : { contextoPersonaje: contextoEnIngles }),
         /**
          * Identidad registrada con la que se encoló. El worker envía **esta** y no la que el personaje tenga
          * registrada al llegar su turno: lo que se paga tiene que ser lo que el usuario confirmó. Con dos

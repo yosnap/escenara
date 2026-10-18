@@ -50,6 +50,32 @@ export const usaIdentidadRegistrada = (modelo: string): boolean =>
   MODELOS_CON_IDENTIDAD_REGISTRADA.includes(modelo as (typeof MODELOS_CON_IDENTIDAD_REGISTRADA)[number]);
 
 /**
+ * Modelos con los que **se ha producido de verdad** una escena con dos personajes registrados (podcast y
+ * dualcast). Solo Gemini Omni 1.1 Flash: el spike del 2026-09-29 sacó con él los tres clips (63 créditos cada uno,
+ * con uno o con dos `character_ids`).
+ *
+ * `gemini-omni-video` documenta `character_ids`, pero nunca ha terminado un clip con ellos: el 2026-10-18, el mismo
+ * dualcast falló dos veces seguidas en KIE con «fallo interno» y sin cobro, con una petición idéntica a la que sí
+ * funciona en 1.1 Flash. Mandárselo otra vez sería apostar a ciegas, así que el reparto no se ofrece con él.
+ */
+export const MODELOS_CON_REPARTO_MEDIDO = ["google/gemini-omni-flash-1-1"] as const;
+
+const NOMBRE_DEL_MODELO_CON_REPARTO = "Gemini Omni 1.1 Flash";
+
+/**
+ * Por qué ese modelo no puede producir una escena con dos personajes, en llano; `null` si puede. Es el mismo texto
+ * en la estimación y al confirmar el gasto, para que la pantalla no prometa lo que el servidor va a rechazar.
+ */
+export function motivoSinReparto(modelo: { modelo: string; nombre: string }): string | null {
+  if (MODELOS_CON_REPARTO_MEDIDO.includes(modelo.modelo as (typeof MODELOS_CON_REPARTO_MEDIDO)[number])) return null;
+  const como = `Pon ${NOMBRE_DEL_MODELO_CON_REPARTO} el primero de la lista de vídeo de tu mapa de modelos («Tu cuenta») para el podcast y el dualcast.`;
+  if (!usaIdentidadRegistrada(modelo.modelo)) {
+    return `${modelo.nombre} no admite identidades registradas, y el podcast y el dualcast las necesitan. ${como}`;
+  }
+  return `${modelo.nombre} no consigue generar con dos personajes registrados: en KIE falla con un fallo interno, sin cobrar. ${como}`;
+}
+
+/**
  * Duración con la que se midió el precio de cada motor de escenas habladas. Lo que no esté aquí se estima con
  * su propio precio registrado tal cual, sin escalar: inventar una proporción sobre algo no medido sería peor
  * que no estimarlo.

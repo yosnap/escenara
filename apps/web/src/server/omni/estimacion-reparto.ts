@@ -1,12 +1,10 @@
-import { usaIdentidadRegistrada } from "@/lib/omni";
+import { motivoSinReparto } from "@/lib/omni";
 import { noCabeElDialogo, palabrasDeTurnos, segundosNecesarios } from "@/lib/reparto-envio";
 import { escenaPropia } from "../asistente/consulta";
 import type { FilaEscena, FilaProyecto } from "../db/esquema";
 import type { Actor } from "../media/servicio";
-import { creditosDelEnvio } from "../prompts/traduccion";
 import { clipsDePodcast, miembrosDelReparto, turnosDelReparto } from "../reparto/consulta";
-import { creditosDeEscenaHablada, duracionesDeOmni, precioDeDuracionEstimado, segundosDeEscenaOmni } from "./escena";
-import { eleccionOmni } from "./registro";
+import { costeDeEscenaOmni } from "./escena";
 import { faltasDeRegistroDelReparto } from "./reparto";
 
 /**
@@ -76,29 +74,28 @@ export async function estimarReparto(
     avisos: [],
     impedimentos: [],
   };
-  let creditosPorClip: number;
   /**
-   * Lo que cuesta el **primer** clip: la tarifa del modelo **más la traducción del texto de la escena**, que se
-   * paga una sola vez porque se traduce una sola vez. Es la misma suma que exige `omni/escena.ts` al confirmar
-   * (`creditosDelEnvio(creditos) + creditos × (clips − 1)`), y tiene que salir de aquí igual: sin la traducción, la
-   * pantalla enseñaba un total que el servidor rechazaba con «el coste confirmado no es el vigente».
+   * Lo que cuesta cada clip sale de la cuenta única (`omni/escena.ts › costeDeEscenaOmni`): la tarifa del modelo y,
+   * en el **primer** clip, la traducción del texto de la escena, que se paga una sola vez porque se traduce una
+   * sola vez. Es la misma suma que exige la confirmación; sin la traducción, la pantalla enseñaba un total que el
+   * servidor rechazaba con «el coste confirmado no es el vigente».
    */
+  let creditosPorClip: number;
   let creditosDelPrimerClip: number;
   let sello: string;
   let comprobado: string;
   let segundos: number;
   let precioEstimado: boolean;
-  let modeloAdmiteReparto: boolean;
+  let sinReparto: string | null;
   try {
-    const { creditos, sello: selloLeido } = await creditosDeEscenaHablada(actor.id, proyecto);
-    const { modelo } = await eleccionOmni(actor.id);
-    segundos = segundosDeEscenaOmni(duracionesDeOmni(modelo), proyecto);
-    creditosPorClip = creditos;
-    creditosDelPrimerClip = await creditosDelEnvio(creditos);
-    sello = selloLeido;
-    comprobado = (await eleccionOmni(actor.id, segundos)).precio.comprobado;
-    precioEstimado = precioDeDuracionEstimado(modelo, segundos);
-    modeloAdmiteReparto = usaIdentidadRegistrada(modelo.modelo);
+    const coste = await costeDeEscenaOmni(actor.id, proyecto);
+    segundos = coste.segundos;
+    creditosPorClip = coste.creditosPorClip;
+    creditosDelPrimerClip = coste.creditosDelPrimerClip;
+    sello = coste.eleccion.precio.sello;
+    comprobado = coste.eleccion.precio.comprobado;
+    precioEstimado = coste.precioEstimado;
+    sinReparto = motivoSinReparto(coste.eleccion.modelo);
   } catch (error) {
     return {
       ...vacia,
@@ -141,11 +138,7 @@ export async function estimarReparto(
       "El reparto necesita exactamente dos personajes antes de generar. Añade el segundo en la escena.",
     );
   }
-  if (escena.castFormat !== "solo" && !modeloAdmiteReparto) {
-    impedimentos.push(
-      "El modelo elegido no admite dos identidades registradas. Elige un modelo Gemini Omni antes de generar.",
-    );
-  }
+  if (escena.castFormat !== "solo" && sinReparto) impedimentos.push(sinReparto);
   if (escena.castFormat !== "solo" && proyecto.voiceMode !== "omni") {
     impedimentos.push("Podcast y dualcast necesitan un proyecto en modo Omni. Cambia el modo de voz del proyecto.");
   }

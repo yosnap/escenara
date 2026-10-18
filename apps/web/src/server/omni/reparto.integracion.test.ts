@@ -68,6 +68,8 @@ const { producirEscenaHablada } = await import("./escena");
 const { editarEscena } = await import("../asistente/escenas");
 const { lugarDeclaradoDePrueba } = await import("../lugares/lugar-de-prueba");
 const { estimarReparto } = await import("./estimacion-reparto");
+const { producirEscena } = await import("../produccion/producir");
+const { guardarMapa } = await import("../mapa/mapa");
 const { comprometidoDe } = await import("../presupuesto/deposito");
 const { MODELOS_OMNI, VOCES_OMNI } = await import("@/lib/omni");
 
@@ -775,5 +777,102 @@ describeSiHayBase("escenas habladas con dos personajes", () => {
     // Avisa, no bloquea: confirmado el aviso, se genera igual.
     const { nuevas } = await producir();
     expect(nuevas).toBe(1);
+  });
+  // ── Modelo, duración y coste reales de una escena hablada ───────────────────────────────────────────────
+
+  test("con Gemini Omni (vídeo) el dualcast no se ofrece ni se envía, y dice la causa y qué modelo elegir", async () => {
+    olvidarCatalogo();
+    const [video] = (await listarModelos({ capacidad: "image_to_video" })).filter(
+      (m) => m.modelo === "gemini-omni-video",
+    );
+    if (!video) throw new Error("Falta gemini-omni-video en el catálogo de pruebas.");
+    await cambiarPrecioDeModelo(
+      { modeloId: video.id, creditos: CREDITOS_OMNI, fuente: "Tarifa publicada.", comprobado: "2026-09-28" },
+      admin.id,
+    );
+    olvidarCatalogo();
+    await cambiarEstadoDeModelo(
+      { modeloId: video.id, estado: "validado", evidencia: "Medido con dinero real el 2026-09-28." },
+      admin.id,
+    );
+    olvidarCatalogo();
+    // El usuario lo pone el primero de su mapa de vídeo: es el que elegiría el servidor para hablar.
+    await guardarMapa(ana.id, "video", [{ proveedor: "kie", compatibleId: null, modelo: "gemini-omni-video" }]);
+    try {
+      await registrarTodo([lucia.id, elisa.id]);
+      await conversacionDeDos("dualcast");
+      await aprobarPlan();
+
+      const estimada = await estimacion();
+      expect(estimada.impedimentos.join(" ")).toContain("fallo interno");
+      expect(estimada.impedimentos.join(" ")).toContain("Gemini Omni 1.1 Flash");
+
+      const fallo = await error(() => producir(CREDITOS_OMNI));
+      expect(fallo.estado).toBe(409);
+      expect(fallo.message).toContain("Gemini Omni 1.1 Flash");
+      expect(fallo.message).toContain("No se ha cobrado nada");
+      expect(await trabajosDeLaEscena()).toHaveLength(0);
+      expect(enviados).toHaveLength(0);
+    } finally {
+      await guardarMapa(ana.id, "video", []);
+    }
+  });
+
+  test("el dualcast no lleva la ficha del protagonista en el prompt: cada cara la pone su character_id", async () => {
+    await registrarTodo([lucia.id, elisa.id]);
+    await conversacionDeDos("dualcast");
+    await aprobarPlan();
+    await producir();
+    const [trabajo] = await trabajosDeLaEscena();
+    expect((trabajo?.input as { contextoPersonaje?: string } | undefined)?.contextoPersonaje).toBeUndefined();
+    expect(trabajo?.prompt).not.toContain("reference photos");
+  });
+
+  test("el plan estima la escena hablada con el modelo Omni, su duración y el total que se confirma", async () => {
+    await registrarTodo([lucia.id, elisa.id]);
+    await conversacionDeDos("podcast");
+    const { detalleProyecto } = await import("../asistente/plan");
+    const detalle = await detalleProyecto(actor, proyectoId);
+    const plan = detalle.escenas.find((e) => e.id === escenaId)?.estimacion;
+    const estimada = await estimacion();
+    // Sin fotograma: solo el modelo que genera la escena, y los dos clips del podcast en el total.
+    expect(plan?.modeloFotograma).toBe("");
+    expect(plan?.modeloAnimacion).toContain("Gemini Omni 1.1 Flash");
+    expect(plan?.segundos).toBe(estimada.segundosPorClip);
+    expect(plan?.creditos).toBe(estimada.creditos);
+    expect(detalle.plan.totalCreditos).toBe(estimada.creditos);
+
+    // Lo que el plan congela al aprobar es lo que la producción enseña como «Estimado de la escena».
+    await aprobarPlan();
+    const [escena] = await db().select().from(scenes).where(eq(scenes.id, escenaId)).limit(1);
+    expect(escena?.estimatedCredits).toBe(estimada.creditos);
+    expect(escena?.approvedFrameModel).toBe("");
+    expect(escena?.approvedAnimationModel).toBe("google/gemini-omni-flash-1-1");
+  });
+
+  test("en modo Omni la duración se mide con el modelo Omni y no con el de animación del mapa", async () => {
+    await registrarTodo([lucia.id]);
+    await aprobarPlan();
+    // El Omni de las pruebas solo tiene tarifa de 4 s; Veo admite 8. Antes se miraba Veo y se dejaba pasar.
+    await db().update(projects).set({ clipSeconds: 8 }).where(eq(projects.id, proyectoId));
+    const fallo = await error(() =>
+      producirEscena(
+        actor,
+        escenaId,
+        {
+          derechos: true,
+          sinTerceros: true,
+          creditosConfirmados: CREDITOS_OMNI,
+          selloEstimacion: "",
+          claveIdempotencia: crypto.randomUUID(),
+        },
+        h,
+      ),
+    );
+    expect(fallo.estado).toBe(409);
+    expect(fallo.message).toContain("Gemini Omni 1.1 Flash");
+    expect(fallo.message).toContain("solo genera de 4 s");
+    expect(fallo.message).not.toContain("modelo de animación");
+    expect(enviados).toHaveLength(0);
   });
 });

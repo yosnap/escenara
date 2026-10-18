@@ -41,13 +41,7 @@ import {
 import type { EleccionDeTrabajo } from "../generacion/precios";
 import { condicionEnCurso } from "../generacion/trabajos";
 import { type Actor, aDto, espacioUsado } from "../media/servicio";
-import {
-  creditosDeEscenaHablada,
-  duracionesDeOmni,
-  precioDeDuracionEstimado,
-  registroParaProducir,
-  segundosDeEscenaOmni,
-} from "../omni/escena";
+import { costeDeEscenaOmni, duracionesDeOmni, registroParaProducir } from "../omni/escena";
 import { eleccionOmni } from "../omni/registro";
 import { ultimaVersion } from "../personajes/ficha";
 import { marcasExigidas } from "../productos/declaracion-marca";
@@ -453,7 +447,7 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
    */
   const habladas = omni ? await costeDeEscenaHablada(actor, proyecto) : null;
   const porFotograma = omni ? 0 : await creditosDeTrabajo(elecciones.fotograma);
-  const porClip = habladas ? await creditosDelEnvio(habladas.creditos) : await creditosDeTrabajo(elecciones.animacion);
+  const porClip = habladas ? habladas.porClip : await creditosDeTrabajo(elecciones.animacion);
   const porProducir = escenasPorProducir(escenas, proyecto.voiceMode);
   return {
     proyectoId: proyecto.id,
@@ -507,22 +501,17 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
 }
 
 /**
- * Coste de una escena hablada con la duración del proyecto, y si ese precio está medido o estimado. Sale del
- * mismo sitio que el que se confirma al producir (`omni/escena.ts`), así que la pantalla no puede decir una cifra
- * y el servidor esperar otra.
+ * Coste de una escena hablada con la duración del proyecto, y si ese precio está medido o estimado. Sale de la
+ * cuenta única que también usa la confirmación (`omni/escena.ts › costeDeEscenaOmni`), así que la pantalla no puede
+ * decir una cifra y el servidor esperar otra.
  */
 async function costeDeEscenaHablada(
   actor: Actor,
   proyecto: FilaProyecto,
-): Promise<{ creditos: number; sello: string; estimado: boolean } | null> {
+): Promise<{ porClip: number; sello: string; estimado: boolean } | null> {
   try {
-    const { creditos, sello } = await creditosDeEscenaHablada(actor.id, proyecto);
-    const { modelo } = await eleccionOmni(actor.id);
-    return {
-      creditos,
-      sello,
-      estimado: precioDeDuracionEstimado(modelo, segundosDeEscenaOmni(duracionesDeOmni(modelo), proyecto)),
-    };
+    const coste = await costeDeEscenaOmni(actor.id, proyecto);
+    return { porClip: coste.creditosDelPrimerClip, sello: coste.eleccion.precio.sello, estimado: coste.precioEstimado };
   } catch {
     // Sin modelo Omni utilizable no se inventa ningún precio: `impedimentosDeOmni` dice por qué y no se produce.
     return null;
@@ -539,7 +528,7 @@ async function impedimentosDeOmni(actor: Actor, proyecto: FilaProyecto): Promise
   let modeloOmni: { nombre: string; modelo: string; duraciones: readonly number[] } | null = null;
   try {
     const { modelo } = await eleccionOmni(actor.id);
-    modeloOmni = { nombre: modelo.nombre, modelo: modelo.modelo, duraciones: modelo.parametros.duraciones };
+    modeloOmni = { nombre: modelo.nombre, modelo: modelo.modelo, duraciones: duracionesDeOmni(modelo) };
   } catch (error) {
     motivos.push(
       error instanceof ErrorCatalogo
@@ -555,15 +544,23 @@ async function impedimentosDeOmni(actor: Actor, proyecto: FilaProyecto): Promise
    */
   const { falta } = await registroParaProducir(actor, proyecto, modeloOmni?.modelo);
   if (falta !== "") motivos.push(`Este proyecto está en modo Omni y ${falta}`);
-  if (modeloOmni) {
-    const segundos = segundosDeEscenaOmni(modeloOmni.duraciones, proyecto);
-    if (segundos !== proyecto.clipSeconds) {
-      motivos.push(
-        `Los clips de este proyecto son de ${proyecto.clipSeconds} s y ${modeloOmni.nombre} solo genera de ${segundos} s en esta instalación. Cambia la duración del proyecto a ${segundos} s antes de producir.`,
-      );
-    }
-  }
+  const duracion = modeloOmni ? impedimentoDeDuracionOmni(modeloOmni, proyecto.clipSeconds) : null;
+  if (duracion) motivos.push(duracion);
   return motivos;
+}
+
+/**
+ * La duración de un proyecto en modo Omni se juzga contra **el modelo de escenas habladas**, que es el que genera
+ * la escena entera, y con las duraciones que sabe cobrar: son las mismas que usa el coste que se confirma. `null`
+ * si no hay nada que impedir.
+ */
+export function impedimentoDeDuracionOmni(
+  modelo: { nombre: string; duraciones: readonly number[] },
+  segundosDelProyecto: number,
+): string | null {
+  const segundos = duracionParaModelo(modelo.duraciones, segundosDelProyecto);
+  if (segundos === segundosDelProyecto) return null;
+  return `Los clips de este proyecto son de ${segundosDelProyecto} s y ${modelo.nombre} solo genera de ${segundos} s en esta instalación. Cambia la duración del proyecto a ${segundos} s antes de producir.`;
 }
 
 /**
@@ -635,6 +632,22 @@ export function impedimentoDeDuracion(segundosDelClip: number | null, segundosDe
  * `producirProyecto`: producir, aprobar y regenerar tienen que negarse igual que el botón del proyecto.
  */
 export async function exigirDuracionProducible(actor: Actor, proyecto: FilaProyecto): Promise<void> {
+  /**
+   * En modo Omni no hay animación aparte: la escena la genera entera el modelo de escenas habladas, así que es su
+   * duración la que cuenta. Mirar la del mapa de animación rechazaba 6 s con Gemini Omni porque Veo solo hace 4 u 8.
+   */
+  if (proyecto.voiceMode === "omni") {
+    let modelo: { nombre: string; duraciones: readonly number[] };
+    try {
+      const { modelo: elegido } = await eleccionOmni(actor.id);
+      modelo = { nombre: elegido.nombre, duraciones: duracionesDeOmni(elegido) };
+    } catch {
+      return; // Sin modelo Omni utilizable, el propio envío se rechaza diciendo por qué.
+    }
+    const motivo = impedimentoDeDuracionOmni(modelo, proyecto.clipSeconds);
+    if (motivo) throw new ErrorProyecto(409, motivo);
+    return;
+  }
   const { animacion } = await eleccionesDelPlan(actor.id);
   if (!animacion) return; // Sin modelo con precio, el propio envío ya se rechaza por no poder estimarse.
   const motivo = impedimentoDeDuracion(
