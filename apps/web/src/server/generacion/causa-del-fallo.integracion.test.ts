@@ -155,9 +155,7 @@ describe.skipIf(!hayBaseDeDatos)("causa del fallo del proveedor", () => {
       .select()
       .from(scenes)
       .where(eq(scenes.id, sceneId ?? ""));
-    expect(escena?.lastFailureReason).toContain(
-      "El filtro de seguridad de Gemini Omni 1.1 Flash (vídeo), en KIE.ai, bloqueó",
-    );
+    expect(escena?.lastFailureReason).toContain("El filtro de seguridad de KIE.ai bloqueó");
     expect(escena?.lastFailureReason).toContain("No se ha vuelto a enviar nada.");
 
     // Nada del texto del proveedor en la fila, en la escena ni en lo que ve el navegador.
