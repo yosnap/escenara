@@ -1,6 +1,6 @@
 # El asistente de guion
 
-Guía de uso · puesta al día en la versión 0.33.0
+Guía de uso · puesta al día en la versión 0.55.0
 
 En Escenara un vídeo empieza por un **proyecto**: una idea, un concepto, un guion por escenas y un **plan con su
 coste estimado**. Puedes escribirlo todo a mano, o pedirle al asistente que te proponga un primer borrador. Lo
@@ -93,6 +93,48 @@ quieras. Una escena ya producida no se borra: tiene un trabajo pagado detrás.
 
 Si pulsas el asistente dos veces por error, la segunda no cobra: cada confirmación lleva su clave y la repetición
 devuelve lo que ya había.
+
+## 2 bis · Un vídeo completo desde tu idea
+
+Desde la 0.55.0 el asistente puede escribir **el guion entero de un vídeo**, con el diálogo de principio a fin y un
+clip por escena. En el panel del asistente, en «Duración del vídeo», elige **Vídeo completo de 20 s** en lugar de
+«Escenas sueltas» (que sigue siendo lo de siempre). Después eliges el tipo:
+
+- **Una persona**: tu protagonista presenta o cuenta algo a cámara. Son **2 clips de 10 s**.
+- **Entrevista**: tu protagonista y otro personaje tuyo, los dos en el mismo plano, conversando. Son **2 clips de
+  10 s**, cada uno con su intercambio de frases.
+- **Podcast**: los dos en plano y contraplano, cada clip enseña a quien habla. Son **3 clips de 8, 6 y 6 s**: ida,
+  vuelta y cierre.
+
+En la entrevista y el podcast eliges también **con quién habla** tu protagonista. Los dos tienen que ser personajes
+tuyos que puedan generar (consentimiento vigente y fotos), porque su ficha sale hacia el modelo de texto.
+
+Para que se ofrezca hace falta que el proyecto tenga **protagonista** y esté en el modo de voz **«Voz e identidad
+registradas»**, que es con el que se producen estos clips. Si falta algo, la opción sale desactivada y te dice qué.
+
+**Lo que cuesta, antes de empezar.** El recuadro neutro enseña las llamadas de texto que se van a hacer (una para
+20 s), **una llamada de reserva aparte** y el total que confirmas, con la fecha del precio. La reserva solo se gasta
+si un trozo del guion llega cortado o con frases que no caben en sus segundos: entonces se repite **solo ese trozo**,
+una vez y con la causa. Si no hace falta, no se gasta. Lo que pagas nunca pasa del total confirmado. El coste de los
+clips se enseña aparte, antes de producir.
+
+**Las frases caben en su clip.** Se piden a unas 2,5 palabras por segundo: como mucho 25 palabras en un clip de
+10 s, 20 en uno de 8 s y 15 en uno de 6 s. Un clip que se pase no se recorta a medias: se pide otra vez. El diálogo
+se escribe en español de España y se guarda **tal cual**, sin traducir.
+
+**Si algo falla, no se queda a medias.** El guion se guarda entero al final. Si el proveedor no contesta, o el
+trozo repetido tampoco sirve, el aviso te dice qué parte falló, qué proveedor contestó, cuánto han costado las
+llamadas ya hechas y qué hacer; tus escenas siguen como estaban.
+
+**Ver y editar el diálogo.** El guion escrito son escenas normales: cada una con su texto, su plano y su acción, y
+en la entrevista con su reparto y sus turnos. Lo revisas y lo cambias en el paso «Escenas» y en el reparto de cada
+escena, igual que uno escrito a mano. Escribirlo ajusta la duración de clip del proyecto a la del primer clip (10 s
+en una persona y entrevista, 8 s en podcast) y cada escena guarda la suya.
+
+Los vídeos de **≈ 1 minuto** (8 clips de 8 s) y **≈ 3 minutos** (23 clips de 8 s) están preparados pero **no se
+ofrecen** mientras quien administra no los abra en Admin › Ajustes («Vídeo completo de 1 y 3 minutos»). Su guion se
+escribe en partes: primero un plan corto con el concepto, el vestuario, el lugar y el objetivo de cada parte, y
+después cada parte de hasta 8 clips sabiendo cómo terminó la anterior, para que la conversación siga sin repetirse.
 
 ## 3 · Las afirmaciones por verificar
 
