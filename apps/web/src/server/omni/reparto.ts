@@ -202,3 +202,17 @@ export async function faltasDeRegistroDelReparto(escena: FilaEscena, audioId: st
   if (miembros.length < 2) return [];
   return (await registrosDelReparto(miembros, audioId)).faltan;
 }
+
+/**
+ * Personaje de un **plano de podcast** escrito como plano y contraplano: una escena `solo` que pertenece a un grupo de
+ * podcast y cuyo único miembro del reparto sale en ella. Devuelve su identificador, o `null` en cualquier otra escena,
+ * que se produce con el protagonista del proyecto como siempre.
+ *
+ * Se apoya en el grupo y no solo en el reparto a propósito: una escena `solo` de siempre puede conservar en su reparto
+ * a un protagonista anterior, y producirla con él cambiaría lo que ya hacía.
+ */
+export async function personajeDelPlano(escena: FilaEscena): Promise<string | null> {
+  if (escena.castFormat !== "solo" || escena.podcastGroupId === null) return null;
+  const miembros = await miembrosDelReparto(escena.id);
+  return miembros.length === 1 ? (miembros[0]?.personajeId ?? null) : null;
+}

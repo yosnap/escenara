@@ -3,6 +3,7 @@ import { ErrorPropuesta, INSTRUCCIONES_ASISTENTE, leerPropuesta, peticionDeGuion
 import { esProveedor } from "@/lib/boveda";
 import { limpiarTextoDePrompt } from "@/lib/ficha-personaje";
 import { CONCEPTO_MAXIMO, ESCENAS_SUGERIDAS, type ProyectoDetalle } from "@/lib/proyectos";
+import { costeDelGuion } from "@/lib/video-completo";
 import { motivoSinDeclaracion } from "../anuncio/puerta-guion";
 import { db } from "../db/cliente";
 import { assistantRuns, type FilaProyecto, projects } from "../db/esquema";
@@ -26,8 +27,15 @@ import type { Buscador } from "../proveedores/codigos";
 import { ErrorCatalogo } from "../proveedores/contrato";
 import { proyectoPropio } from "./consulta";
 import { ErrorProyecto } from "./errores";
-import { sustituirEscenas } from "./escenas";
+import { exigirEscenasReescribibles, sustituirEscenas } from "./escenas";
 import { ejecucionDeLaConfirmacion } from "./gasto";
+import {
+  clavePrimeraLlamada,
+  escribirVideoCompleto,
+  falloDeUnaConfirmacion,
+  leerVideoPedido,
+  type VideoPedido,
+} from "./guion-por-bloques";
 import { detalleProyecto, exigirTopeDelProyecto } from "./plan";
 import { exigirAsistenteDisponible } from "./texto";
 
@@ -62,6 +70,15 @@ export interface PeticionAsistente {
   selloEstimacion: unknown;
   /** Cuántas escenas pedir; sin valor, las sugeridas para el formato del proyecto. */
   escenas?: unknown;
+  /**
+   * Duración del **vídeo completo** en segundos (20, y 60 o 180 con el ajuste del admin encendido). Con ella el
+   * guion se escribe con diálogo continuo, un clip por escena, y `escenas` no cuenta.
+   */
+  duracion?: unknown;
+  /** Tipo de pieza del vídeo completo: `una_persona` (por defecto), `entrevista` o `podcast`. */
+  tipo?: unknown;
+  /** Con quién habla el protagonista en una entrevista o un podcast: un personaje propio. */
+  segundoPersonajeId?: unknown;
 }
 
 /**
@@ -98,13 +115,33 @@ export async function escribirGuion(
   const { modelo, adaptador, precio } = eleccion;
   const generarTexto = adaptador.generarTexto;
   if (!generarTexto) throw new ErrorProyecto(503, `El adaptador de ${modelo.nombreProveedor} no sabe pedir texto.`);
-  const creditos = Math.ceil(precio.creditos);
+  // El vídeo completo se comprueba entero antes de mirar el coste: la duración decide cuántas llamadas se pagan, y
+  // una duración cerrada por el admin se rechaza con su motivo aunque la pida alguien saltándose la pantalla.
+  const video = sinValor(peticion.duracion) ? null : await leerVideoPedido(actor, proyecto, peticion);
+  const creditos = video
+    ? costeDelGuion(precio.creditos, video.duracion, video.tipo).total
+    : Math.ceil(precio.creditos);
   exigirConfirmacion(peticion.creditosConfirmados, creditos);
   exigirSelloVigente(peticion.selloEstimacion, precio.sello, true);
   // Una confirmación repetida (doble clic, reintento tras un error de red) **no gasta ritmo**: se responde con lo
   // que ya hay. Si no, reintentar un fallo de red podría dejar al usuario sin poder pedir nada durante una hora.
-  const yaEjecutada = await ejecucionDeLaConfirmacion(actor.id, claveIdempotencia);
-  if (yaEjecutada) return detalleProyecto(actor, proyecto.id);
+  const yaEjecutada = await ejecucionDeLaConfirmacion(
+    actor.id,
+    video ? clavePrimeraLlamada(video, claveIdempotencia) : claveIdempotencia,
+  );
+  if (yaEjecutada) return repetida(actor, proyecto.id, video ? claveIdempotencia : null);
+  /**
+   * Las validaciones que no gastan van antes que el ritmo, el saldo y la reserva, en este orden: la ficha del
+   * protagonista (su consentimiento puede haberse revocado: no sale hacia el proveedor), el tope autorizado del
+   * proyecto y, por último, que sus escenas se puedan reescribir. Leer la ficha **antes** de reservar importa: una
+   * reserva apartada por un fallo nuestro le comería presupuesto al usuario hasta que el barrido la cerrara.
+   */
+  const entrada = video ? "" : await entradaDelGuion(actor, proyecto, peticion.escenas);
+  // El presupuesto autorizado del proyecto es un **tope que se aplica al gastar**: lo que ya lleva comprometido
+  // más esta llamada (o todas las del vídeo completo, reserva incluida) tiene que caber.
+  await exigirTopeDelProyecto(actor.id, proyecto.id, creditos);
+  // Un proyecto con escenas en producción no se reescribe: se dice antes de gastar ritmo, saldo o una llamada.
+  await exigirEscenasReescribibles(proyecto.id);
   if (!(await dentroDelLimite(`asistente:${actor.id}`, RITMO_ASISTENTE))) {
     throw new ErrorProyecto(429, "Has pedido demasiados guiones seguidos. Espera un rato.");
   }
@@ -118,23 +155,9 @@ export async function escribirGuion(
   // Si se conoce el saldo del usuario en el proveedor y no llega, no se llama: el proveedor lo rechazaría y la
   // reserva se habría apartado para nada.
   await exigirSaldo(actor.id, creditos, buscar, proveedor);
-
-  // La petición se compone **antes** de reservar: leer la ficha del protagonista puede fallar (consentimiento
-  // revocado, personaje borrado), y una reserva apartada por un fallo nuestro le comería presupuesto al usuario
-  // hasta que el barrido la cerrara.
-  const { escenasMaximas } = await limitesDeProyecto();
-  const entrada = peticionDeGuion({
-    idea: proyecto.idea,
-    formato: proyecto.format,
-    contextoPersonaje: await contextoDelProtagonista(actor, proyecto),
-    escenas: numeroDeEscenas(peticion.escenas, proyecto),
-    segundos: proyecto.clipSeconds,
-    escenasMaximas,
-  });
-
-  // El presupuesto autorizado del proyecto es un **tope que se aplica al gastar**: lo que ya lleva comprometido
-  // más esta llamada tiene que caber (decisión provisional del propietario, 2026-09-27).
-  await exigirTopeDelProyecto(actor.id, proyecto.id, creditos);
+  if (video) {
+    return guionDelVideo(actor, proyecto, video, claveIdempotencia, creditos, precio.creditos, modelo.modelo, buscar);
+  }
 
   // Esta confirmación ya se había ejecutado: se devuelve el proyecto como está y **no se llama a nadie**.
   if (await ejecucionDeLaConfirmacion(actor.id, `${claveIdempotencia}:0`)) return detalleProyecto(actor, proyecto.id);
@@ -173,7 +196,7 @@ export async function escribirGuion(
 
   const ultima = await ejecucionDeLaConfirmacion(actor.id, `${claveIdempotencia}:${resultado.intentos.length}`);
   try {
-    const propuesta = leerPropuesta(resultado.texto, proyecto.clipSeconds, escenasMaximas);
+    const propuesta = leerPropuesta(resultado.texto, proyecto.clipSeconds, (await limitesDeProyecto()).escenasMaximas);
     const escenasEscritas = await db().transaction(async (tx) => {
       const total = await sustituirEscenas(tx, proyecto.id, propuesta.escenas);
       if (propuesta.concepto !== "") {
@@ -208,6 +231,70 @@ export async function escribirGuion(
   }
   const detalle = await detalleProyecto(actor, proyecto.id);
   return resultado.aviso === "" ? detalle : { ...detalle, avisoReserva: resultado.aviso };
+}
+
+/**
+ * Respuesta a una confirmación que ya se había ejecutado. En un vídeo completo que falló a mitad se dice qué pasó
+ * (con un 409, para que la pantalla estrene clave), en lugar de devolver el proyecto como si nada.
+ */
+async function repetida(actor: Actor, proyectoId: string, claveVideo: string | null): Promise<ProyectoDetalle> {
+  const fallo = claveVideo ? await falloDeUnaConfirmacion(actor.id, claveVideo) : null;
+  if (fallo) throw new ErrorProyecto(409, fallo);
+  return detalleProyecto(actor, proyectoId);
+}
+
+/** Petición del guion de escenas sueltas, compuesta por el servidor con la ficha vigente del protagonista. */
+async function entradaDelGuion(actor: Actor, proyecto: FilaProyecto, escenas: unknown): Promise<string> {
+  const { escenasMaximas } = await limitesDeProyecto();
+  return peticionDeGuion({
+    idea: proyecto.idea,
+    formato: proyecto.format,
+    contextoPersonaje: await contextoDelProtagonista(actor, proyecto),
+    escenas: numeroDeEscenas(escenas, proyecto),
+    segundos: proyecto.clipSeconds,
+    escenasMaximas,
+  });
+}
+
+const sinValor = (valor: unknown) => valor === undefined || valor === null || valor === "";
+
+/**
+ * El guion de un vídeo completo. La confirmación, la clave, el ritmo, la credencial y el saldo ya están
+ * comprobados; aquí van el tope del proyecto (por el total confirmado, reserva incluida) y la escritura.
+ */
+async function guionDelVideo(
+  actor: Actor,
+  proyecto: FilaProyecto,
+  video: VideoPedido,
+  claveIdempotencia: string,
+  creditos: number,
+  creditosPorLlamada: number,
+  modelo: string,
+  buscar: Buscador,
+): Promise<ProyectoDetalle> {
+  // Esta confirmación ya se había ejecutado: se devuelve el proyecto como está y **no se llama a nadie**.
+  if (await ejecucionDeLaConfirmacion(actor.id, clavePrimeraLlamada(video, claveIdempotencia))) {
+    return repetida(actor, proyecto.id, claveIdempotencia);
+  }
+  let aviso: string;
+  try {
+    ({ aviso } = await escribirVideoCompleto({
+      actor,
+      proyecto,
+      video,
+      claveIdempotencia,
+      buscar,
+      reservaConfirmada: modelo,
+      confirmado: creditos,
+      creditosPorLlamada,
+    }));
+  } catch (error) {
+    // La misma confirmación ya estaba en marcha: se devuelve el proyecto como está y no se llama a nadie más.
+    if (error instanceof ErrorPeticionRepetida) return detalleProyecto(actor, proyecto.id);
+    throw error;
+  }
+  const detalle = await detalleProyecto(actor, proyecto.id);
+  return aviso === "" ? detalle : { ...detalle, avisoReserva: aviso };
 }
 
 function numeroDeEscenas(pedidas: unknown, proyecto: FilaProyecto): number {

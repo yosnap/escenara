@@ -69,7 +69,13 @@ import { vozOmniDelProyecto } from "../voz/omni";
 import { vozDelProyecto } from "../voz/proyecto";
 import { ErrorOmni } from "./errores";
 import { eleccionOmni, registroVigente } from "./registro";
-import { type ClipDelReparto, clipsEsperadosDe, enviosDelReparto, faltasDeRegistroDelReparto } from "./reparto";
+import {
+  type ClipDelReparto,
+  clipsEsperadosDe,
+  enviosDelReparto,
+  faltasDeRegistroDelReparto,
+  personajeDelPlano,
+} from "./reparto";
 
 /**
  * Producción de una **escena hablada** en modo `omni` (RF06 y RF08, 0.22.0).
@@ -100,9 +106,22 @@ export interface ConfirmacionEscenaHablada {
   reintentoDeEscena?: boolean;
 }
 
-/** Segundos que se le pedirán al modelo: los del proyecto si Omni los admite, y si no, los que admita. */
-export const segundosDeEscenaOmni = (duraciones: readonly number[], proyecto: FilaProyecto): number =>
-  duracionParaModelo(duraciones, proyecto.clipSeconds);
+/**
+ * Segundos que se le pedirán al modelo: los pedidos (los de la escena, o los del proyecto si no se dice) si Omni los
+ * admite, y si no, los que admita.
+ */
+export const segundosDeEscenaOmni = (
+  duraciones: readonly number[],
+  proyecto: FilaProyecto,
+  segundosPedidos: number = proyecto.clipSeconds,
+): number => duracionParaModelo(duraciones, segundosPedidos);
+
+/**
+ * Segundos planificados de una escena hablada. Cada escena guarda los suyos: en un vídeo completo un podcast de 20 s
+ * son clips de 8, 6 y 6 s. Las demás escenas copian los del proyecto, así que para ellas no cambia nada.
+ */
+export const segundosPlanificados = (escena: Pick<FilaEscena, "plannedSeconds">, proyecto: FilaProyecto): number =>
+  escena.plannedSeconds > 0 ? escena.plannedSeconds : proyecto.clipSeconds;
 
 /**
  * Créditos de una escena hablada a partir de la tarifa leída. Si la tarifa **es** la de esa duración («clip de
@@ -122,10 +141,11 @@ export function creditosDeTarifa(
   return creditosDeEscenaOmni(precio.creditos, segundos, modelo);
 }
 
-/** Modelo, duración y tarifa de **un** clip hablado con la duración del proyecto. */
+/** Modelo, duración y tarifa de **un** clip hablado con la duración pedida (la del proyecto si no se dice). */
 async function tarifaDeEscenaHablada(
   usuarioId: string,
   proyecto: FilaProyecto,
+  segundosPedidos: number,
 ): Promise<{ eleccion: EleccionDeTrabajo; segundos: number; creditos: number }> {
   /**
    * Se lee **dos veces a propósito**: primero para saber qué modelo sería y qué duración admite, y después con
@@ -134,7 +154,7 @@ async function tarifaDeEscenaHablada(
    * lugar de escalar la de 4 s. Solo se escala lo que no tenga tarifa propia, y se dice que es estimado.
    */
   const { modelo: primero } = await eleccionOmni(usuarioId, undefined, proyecto);
-  const segundos = segundosDeEscenaOmni(duracionesDeOmni(primero), proyecto);
+  const segundos = segundosDeEscenaOmni(duracionesDeOmni(primero), proyecto, segundosPedidos);
   const eleccion = await eleccionOmni(usuarioId, segundos, proyecto);
   return { eleccion, segundos, creditos: creditosDeTarifa(eleccion.precio, segundos, eleccion.modelo.modelo) };
 }
@@ -156,8 +176,13 @@ export interface CosteDeEscenaOmni {
  * y el plan del proyecto (con el editor y la producción, que leen lo que el plan congela). Si cada pantalla hiciera
  * la suya, el plan diría una cifra y el servidor exigiría otra.
  */
-export async function costeDeEscenaOmni(usuarioId: string, proyecto: FilaProyecto): Promise<CosteDeEscenaOmni> {
-  const { eleccion, segundos, creditos } = await tarifaDeEscenaHablada(usuarioId, proyecto);
+export async function costeDeEscenaOmni(
+  usuarioId: string,
+  proyecto: FilaProyecto,
+  /** Segundos de la escena; sin ellos, los del proyecto (los resúmenes de pantalla que no son de una escena). */
+  segundosPedidos: number = proyecto.clipSeconds,
+): Promise<CosteDeEscenaOmni> {
+  const { eleccion, segundos, creditos } = await tarifaDeEscenaHablada(usuarioId, proyecto, segundosPedidos);
   return {
     eleccion,
     segundos,
@@ -362,7 +387,8 @@ export async function producirEscenaHablada(
   exigirDerechos(confirmacion.derechos);
   exigirRevisionDeReferencias(confirmacion.sinTerceros);
   const claveIdempotencia = exigirClaveIdempotencia(confirmacion.claveIdempotencia);
-  const coste = await costeDeEscenaOmni(actor.id, proyecto);
+  // Con la duración **de esta escena**: la confirmación, la reserva y lo que se pide al proveedor son de su clip.
+  const coste = await costeDeEscenaOmni(actor.id, proyecto, segundosPlanificados(escena, proyecto));
   const { eleccion, segundos, creditosPorClip: creditos, creditosDelPrimerClip: porClip } = coste;
   const { modelo, adaptador, precio } = eleccion;
   const sinReparto = escena.castFormat === "solo" ? null : motivoSinReparto(modelo);
@@ -393,9 +419,15 @@ export async function producirEscenaHablada(
   await exigirRitmo(actor.id);
 
   const conIdentidad = usaIdentidadRegistrada(modelo.modelo);
+  /**
+   * El plano de un podcast escrito como plano y contraplano es una escena de **un** personaje que puede no ser el
+   * protagonista: sale quien está en su reparto. Fuera de ese caso, el de siempre: el protagonista del proyecto.
+   */
+  const delPlano = await personajeDelPlano(escena);
+  const proyectoDelEnvio = delPlano ? { ...proyecto, mainCharacterId: delPlano } : proyecto;
   const { personaje, version, registro, voz, falta, muestra } = await registroParaProducir(
     actor,
-    proyecto,
+    proyectoDelEnvio,
     modelo.modelo,
   );
   // También el camino Omni debe cerrar la mezcla de acabados antes de reservar presupuesto.
@@ -420,7 +452,7 @@ export async function producirEscenaHablada(
    * Sin la identidad registrada, la voz tiene que ir como muestra de audio, igual que en el motor de referencias.
    * El registro no la carga, así que se lee aquí: sin ella el clip saldría con una voz inventada y se cobraría.
    */
-  const sinRegistro = conIdentidad && !citaIdentidad ? await referenciasParaProducir(actor, proyecto) : null;
+  const sinRegistro = conIdentidad && !citaIdentidad ? await referenciasParaProducir(actor, proyectoDelEnvio) : null;
   const muestraEnviada = sinRegistro ? (sinRegistro.muestra ?? null) : muestra;
   const faltaEnviada = sinRegistro?.falta || falta;
   /**
