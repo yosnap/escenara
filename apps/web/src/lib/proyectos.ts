@@ -1,3 +1,4 @@
+import type { ModeloElegible } from "./catalogo";
 import type { EstadoControl, EvaluacionVista } from "./controles";
 import { type Acento, DIRECCION_ELEGIDA_VACIA, type DireccionElegida, type ReferenciaIdentidad } from "./direccion";
 import type { FormatoMontaje } from "./formatos";
@@ -330,6 +331,25 @@ export interface ProyectoDetalle {
   limites: { escenasMaximas: number; segundosMaximos: number };
   /** Por formato, por qué no se puede generar en él con los modelos elegidos; `null` si se puede. */
   formatosGenerables: Record<FormatoMontaje, string | null>;
+  /** Lo que se enseña en las Opciones avanzadas del proyecto. Ausente en respuestas que no lo calculan. */
+  avanzadas?: AvanzadasDelProyecto;
+}
+
+/**
+ * **Opciones avanzadas de un proyecto**: el único sitio de sus pantallas donde se ven nombres de modelo. El modelo
+ * de vídeo se puede fijar para este proyecto; vacío, se usa el mapa de modelos de la cuenta, como siempre.
+ */
+export interface AvanzadasDelProyecto {
+  /** Modelo de vídeo fijado (identificador); cadena vacía = el del mapa de la cuenta. */
+  modeloVideo: string;
+  /** Modelos que se pueden fijar en el modo de voz del proyecto, con su coste y sus capacidades. */
+  modelos: ModeloElegible[];
+  /** Nombre del modelo con el que se generaría ahora mismo (el fijado o el del mapa); vacío si no hay ninguno. */
+  enUso: string;
+  /** En modo `omni` el modelo es el de las escenas habladas; en los demás, el que anima los clips. */
+  escenasHabladas: boolean;
+  /** Lo fijado ya no está entre los elegibles (retirado o de otro modo): se avisa y se ofrece volver al mapa. */
+  fijadoNoDisponible: boolean;
 }
 
 /** Plan del proyecto: el desglose por escena, el total y si se puede aprobar. */
@@ -386,7 +406,10 @@ export interface FilaPlan {
   orden: number;
   /** Resumen corto de la escena, para reconocerla en la tabla. */
   resumen: string;
+  /** Nombres de los modelos con que se estima. Solo se enseñan dentro de las Opciones avanzadas del proyecto. */
   modelos: string;
+  /** Qué se genera en la escena, sin nombres de modelo: es lo que lee la tabla del plan. */
+  queSeGenera: string;
   segundos: number;
   /** Texto completo de la estimación, con la palabra «estimación» y la fecha del precio. */
   estimacion: string;
@@ -406,6 +429,7 @@ export function filasDelPlan(escenas: readonly EscenaVista[]): FilaPlan[] {
       resumen: resumenDeEscena(escena),
       // Una escena hablada en modo Omni (o una de canto) no tiene fotograma: sale solo el modelo que la genera.
       modelos: e ? [e.modeloFotograma, e.modeloAnimacion].filter((m) => m !== "").join(" + ") : "—",
+      queSeGenera: !e ? "—" : e.modeloFotograma !== "" ? "Fotograma y clip" : "Clip entero",
       segundos: e?.segundos ?? escena.segundos,
       estimacion: e ? textoEstimacion(e.creditos, e.euros, e.comprobado) : textoEstimacion(0, 0, ""),
       creditos: e?.creditos ?? 0,

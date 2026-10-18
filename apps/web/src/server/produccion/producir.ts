@@ -14,6 +14,7 @@ import { planoDelLugarSolo } from "../lugares/escena";
 import type { Actor } from "../media/servicio";
 import { producirEscenaHablada } from "../omni/escena";
 import { listarPlantillas, plantillaVigenteDe } from "../prompts/consulta";
+import { modeloDeVideoDe } from "../proyectos/modelo-de-video";
 import { invalidarRevisionesDeEscena } from "../revision/resultados";
 import { dialogoDelClip } from "../voz/modo";
 import { animacionDelFotograma } from "./animacion-del-fotograma";
@@ -138,7 +139,7 @@ async function encolarPrimerTrabajo(
   if (escena.castFormat !== "solo" && proyecto.voiceMode !== "omni") {
     throw new ErrorProyecto(
       409,
-      "Esta escena tiene dos personajes y necesita el modo Omni. Cambia el modo de voz del proyecto antes de producirla.",
+      "Esta escena tiene dos personajes y necesita el modo «Voz e identidad registradas». Cambia el modo de voz del proyecto antes de producirla.",
     );
   }
   if (proyecto.voiceMode === "omni") {
@@ -291,11 +292,19 @@ export async function encolarAnimacion(
       avisoUmbralAceptado: confirmacion.avisoUmbralAceptado,
       avisosConfirmados: confirmacion.avisosConfirmados,
       claveIdempotencia: clave,
-      ...(confirmacion.modelo ? { modelo: confirmacion.modelo } : {}),
+      // El modelo de una comparativa A/B manda; si no, el fijado en el proyecto (el mismo lector con el que se
+      // estimó y se aprobó) y, sin ninguno, el mapa de la cuenta.
+      ...modeloDelClip(confirmacion, proyecto),
       ...(await plantillaYFormatoDelEnvio(actor.id, plantilla, proyecto)),
     },
     h,
   );
+}
+
+/** Modelo con el que se pide el clip de una escena normal; vacío = el mapa de la cuenta, con sus reservas. */
+function modeloDelClip(confirmacion: ConfirmacionProduccion, proyecto: FilaProyecto): { modelo?: string } {
+  const modelo = confirmacion.modelo ?? (proyecto.voiceMode === "omni" ? null : modeloDeVideoDe(proyecto));
+  return modelo ? { modelo } : {};
 }
 
 /**
@@ -505,7 +514,7 @@ export async function aprobarFotograma(
   if (proyecto.voiceMode === "omni") {
     throw new ErrorProyecto(
       409,
-      "En modo Omni no hay fotograma que aprobar: cada escena se genera entera con la cara y la voz registradas del protagonista. Produce la escena directamente.",
+      "En modo «Voz e identidad registradas» no hay fotograma que aprobar: cada escena se genera entera con la cara y la voz registradas del protagonista. Produce la escena directamente.",
     );
   }
   await exigirDuracionProducible(actor, proyecto);
@@ -587,7 +596,7 @@ export async function otroClipDeEscena(
   if (proyecto.voiceMode === "omni") {
     throw new ErrorProyecto(
       409,
-      "En modo Omni la escena se genera entera de una vez, así que no hay fotograma que volver a animar: regenera la escena para probar otra dirección.",
+      "En modo «Voz e identidad registradas» la escena se genera entera de una vez, así que no hay fotograma que volver a animar: regenera la escena para probar otra dirección.",
     );
   }
   await exigirDuracionProducible(actor, proyecto);

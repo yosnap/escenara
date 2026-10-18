@@ -16,6 +16,7 @@ import type { TrendPublico } from "@/lib/presets";
 import { ETIQUETA_FORMATO, type ProyectoDetalle } from "@/lib/proyectos";
 import type { DatosDelAnuncio } from "@/server/anuncio/pantalla";
 import { PanelBrief } from "./anuncio/panel-brief";
+import { AvanzadasProyecto } from "./avanzadas-proyecto";
 import { ListaEscenas } from "./lista-escenas";
 import { PanelAprobacion } from "./panel-aprobacion";
 import { PanelClipsProducidos } from "./panel-clips-producidos";
@@ -156,6 +157,9 @@ export function VistaProyecto({
           <PanelAprobacion detalle={detalle} onCambio={aplicar} onError={setError} sinGuardar={sinGuardar} />
         </PanelDePaso>
       </Multipaso>
+
+      {/* Los nombres de modelo y su elección viven solo aquí, plegados; fuera se habla de duración y créditos. */}
+      <AvanzadasProyecto detalle={detalle} onCambio={aplicar} onError={setError} />
     </>
   );
 }

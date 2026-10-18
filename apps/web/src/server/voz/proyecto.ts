@@ -166,7 +166,7 @@ export async function fijarModoVoz(
     if (modo === "omni") {
       // Import diferido: los formatos del proyecto leen el plan, que a su vez lee la voz.
       const { exigirFormatoParaOmni } = await import("../montaje/formatos-del-proyecto");
-      await exigirFormatoParaOmni(actor.id, proyecto.formats);
+      await exigirFormatoParaOmni(actor.id, proyecto);
     }
     const futuro = { ...proyecto, voiceMode: modo };
     // Pasar a `pista` con clips ya producidos es la única forma de acabar con dos voces en el mismo plano, así que

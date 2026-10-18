@@ -15,6 +15,7 @@ import {
   characterOmniRegistrations,
   type FilaMedio,
   type FilaPersonaje,
+  type FilaProyecto,
   type FilaRegistroOmni,
   type FilaVersionPersonaje,
   media,
@@ -27,6 +28,7 @@ import type { Actor } from "../media/servicio";
 import { contextoParaGenerar } from "../personajes/contexto";
 import { ErrorProveedor } from "../proveedores/contrato";
 import { saldoCreditos } from "../proveedores/kie/cliente";
+import { modeloDeVideoDe } from "../proyectos/modelo-de-video";
 import { ErrorOmni } from "./errores";
 
 /**
@@ -71,7 +73,24 @@ export async function exigirRitmoDeRegistro(usuarioId: string): Promise<void> {
  * una decisión de quien administra, y escribirlo a fuego aquí significaría que cambiarlo es cambiar el código.
  * Si ninguno está utilizable, se propaga el motivo del último intento y **no se produce nada**.
  */
-export async function eleccionOmni(usuarioId?: string, segundos?: number): Promise<EleccionDeTrabajo> {
+export async function eleccionOmni(
+  usuarioId?: string,
+  segundos?: number,
+  /**
+   * El proyecto de la escena, si lo hay: un modelo de escenas habladas fijado en sus Opciones avanzadas manda sobre
+   * el mapa. Se lee con el lector único (`modeloDeVideoDe`), el mismo que usan el plan y el encolado.
+   */
+  proyecto?: Pick<FilaProyecto, "videoModel" | "voiceMode">,
+): Promise<EleccionDeTrabajo> {
+  const fijado = proyecto ? modeloDeVideoDe(proyecto) : null;
+  if (usuarioId && fijado && esModeloOmni(fijado)) {
+    const { eleccionDeGeneracion } = await import("../mapa/generacion");
+    const { elegida } = await eleccionDeGeneracion(usuarioId, "animacion", fijado, {
+      soloOmni: true,
+      ...(segundos === undefined ? {} : { segundos }),
+    });
+    return elegida.eleccion;
+  }
   /**
    * Con usuario, manda **su mapa de vídeo** (0.22.0): es él quien elige con qué motor hablan sus escenas, y hay
    * dos (Gemini Omni Flash, el recomendado, y MiniMax H3). Solo se miran las entradas que saben producir una
@@ -98,7 +117,7 @@ export async function eleccionOmni(usuarioId?: string, segundos?: number): Promi
     ultimo ??
     new ErrorOmni(
       503,
-      "Esta instalación no tiene ningún modelo de escenas habladas utilizable, así que no puede usar el modo Omni.",
+      "Esta instalación no tiene ningún modelo de escenas habladas utilizable, así que no puede usar el modo «Voz e identidad registradas».",
     )
   );
 }
@@ -186,7 +205,7 @@ export async function registrarVozEnProveedor(
   if (!adaptador.registrarVoz) {
     throw new ErrorOmni(
       503,
-      `Esta instalación no sabe registrar voces en ${modelo.nombreProveedor}, así que no puede usar el modo Omni. Elige «Voz del clip» o «Pista de voz aparte».`,
+      `Esta instalación no sabe registrar voces en ${modelo.nombreProveedor}, así que no puede usar el modo «Voz e identidad registradas». Elige «Voz del clip» o «Pista de voz aparte».`,
     );
   }
   await exigirRitmoDeRegistro(usuarioId);
@@ -242,7 +261,7 @@ export async function registrarPersonajeEnProveedor(
   if (!adaptador.registrarPersonaje) {
     throw new ErrorOmni(
       503,
-      `Esta instalación no sabe registrar personajes en ${modelo.nombreProveedor}, así que no puede usar el modo Omni. Elige otro modo de voz en el proyecto.`,
+      `Esta instalación no sabe registrar personajes en ${modelo.nombreProveedor}, así que no puede usar el modo «Voz e identidad registradas». Elige otro modo de voz en el proyecto.`,
     );
   }
   await exigirRitmoDeRegistro(usuarioId);
