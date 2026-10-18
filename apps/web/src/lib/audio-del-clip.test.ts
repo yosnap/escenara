@@ -60,7 +60,7 @@ describe("cómo ponerle voz en off", () => {
   });
 
   test("en modo Omni dice que la voz va dentro del clip", () => {
-    expect(comoPonerVozEnOff(clip(), "omni")).toContain("Omni");
+    expect(comoPonerVozEnOff(clip(), "omni")).toContain("Voz e identidad registradas");
   });
 });
 

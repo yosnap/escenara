@@ -55,7 +55,9 @@ export async function impedimentosDe(escena: FilaEscena, proyecto: FilaProyecto)
     motivos.push("Esta escena canta con tu audio: su clip se produce desde el camino de canto y no se compara aquí.");
   }
   if (proyecto.voiceMode === "omni") {
-    motivos.push("En modo Omni la escena se genera entera de una vez: no hay fotograma que animar con dos modelos.");
+    motivos.push(
+      "En modo «Voz e identidad registradas» la escena se genera entera de una vez: no hay fotograma que animar con dos modelos.",
+    );
   }
   if (escena.castFormat !== "solo") {
     motivos.push("Esta escena tiene dos personajes: sus clips van por turnos y no se comparan de uno en uno.");

@@ -62,7 +62,7 @@ export async function registrarPersonajeOmni(
   if (audioId === "") {
     throw new ErrorOmni(
       409,
-      "Este proyecto todavía no tiene voz Omni registrada, así que no se puede registrar al personaje con ella. Elige y registra la voz del proyecto antes.",
+      "Este proyecto todavía no tiene su voz registrada, así que no se puede registrar al personaje con ella. Elige y registra la voz del proyecto antes.",
     );
   }
   const personaje = await personajePropio(actor, personajeId);

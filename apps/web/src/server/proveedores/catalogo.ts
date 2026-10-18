@@ -254,7 +254,7 @@ export async function precioDeModelo(proveedor: string, modelo: string, unidad?:
   if (!fila?.precio) {
     throw new ErrorCatalogo(
       503,
-      `No hay precio registrado para ${modelo}. Sin precio no se puede estimar el coste, así que no se genera.`,
+      "No hay precio registrado para el modelo elegido. Sin precio no se puede estimar el coste, así que no se genera y no se cobra nada: elige otro modelo en Opciones avanzadas o pide a quien administra que registre su precio.",
     );
   }
   if (unidad !== undefined && unidad !== fila.precio.unidad) {
@@ -262,7 +262,7 @@ export async function precioDeModelo(proveedor: string, modelo: string, unidad?:
     if (!otra) {
       throw new ErrorCatalogo(
         503,
-        `No hay precio registrado para ${modelo} por «${unidad}». Sin precio no se puede estimar el coste, así que no se genera.`,
+        `No hay precio registrado para el modelo elegido por «${unidad}». Sin precio no se puede estimar el coste, así que no se genera y no se cobra nada: elige otra duración u otro modelo en Opciones avanzadas.`,
       );
     }
     return {

@@ -32,14 +32,14 @@ export const MODO_VOZ_POR_DEFECTO: ModoVoz = "clip";
 export const ETIQUETA_MODO_VOZ: Record<ModoVoz, string> = {
   clip: "Voz del clip",
   pista: "Pista de voz aparte",
-  omni: "Omni: misma cara y voz en todas las escenas",
+  omni: "Voz e identidad registradas: misma cara y voz en todas las escenas",
 };
 
 export const DESCRIPCION_MODO_VOZ: Record<ModoVoz, string> = {
   clip: "El modelo de vídeo genera el clip con el personaje diciendo el diálogo y los labios sincronizados. No se genera ninguna pista de voz aparte y los subtítulos salen de transcribir el audio del clip.",
   pista:
     "Los clips se piden sin diálogo, solo con sonido ambiente, y el diálogo se genera como audio aparte con la misma voz en todas las escenas. Cuesta una llamada de voz por escena.",
-  omni: "La cara y la voz del protagonista se registran una vez en el proveedor y todas las escenas se generan citándolas: la misma cara, la misma voz y los labios sincronizados. Cada escena es un clip de Gemini Omni y no se genera ningún fotograma aparte.",
+  omni: "La cara y la voz del protagonista se registran una vez en el proveedor y todas las escenas se generan citándolas: la misma cara, la misma voz y los labios sincronizados. Cada escena es un clip hablado y no se genera ningún fotograma aparte.",
 };
 
 /**

@@ -1,4 +1,5 @@
 import type { ModeloVista } from "@/lib/catalogo";
+import { DONDE_CAMBIAR_MODELO } from "../../modelo-en-mensajes";
 import { type ContextoEntrada, ErrorCatalogo } from "../contrato";
 
 /**
@@ -120,7 +121,7 @@ export function entradaDeModelo(modelo: ModeloVista, contexto: ContextoEntrada):
   if (!montar) {
     throw new ErrorCatalogo(
       503,
-      `Esta instalación no sabe montar una tarea de APIMart para ${modelo.nombre}: no se le envía nada a ciegas.`,
+      `Esta instalación no sabe montar una tarea de APIMart para el modelo elegido: no se le envía nada a ciegas ni se te cobra. Elige otro modelo (${DONDE_CAMBIAR_MODELO}).`,
     );
   }
   return montar(limpio, modelo);

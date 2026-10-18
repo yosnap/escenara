@@ -84,7 +84,7 @@ export function comoSuenaLaEscena(clip: ClipProducidoVista, modo: ModoVoz): stri
 export function comoPonerVozEnOff(clip: ClipProducidoVista, modo: ModoVoz): string | null {
   if (modo === "pista" && clip.conPistaDeVoz) return null;
   if (modo === "omni") {
-    return "Este proyecto está en modo Omni, que genera la voz dentro del clip. Para una voz en off, cambia el modo a «Pista de voz aparte» en Voz y subtítulos.";
+    return "Este proyecto está en modo «Voz e identidad registradas», que genera la voz dentro del clip. Para una voz en off, cambia el modo a «Pista de voz aparte» en Voz y subtítulos.";
   }
   const pasos: string[] = [];
   if (!clip.conDialogo) pasos.push("escribe en la escena lo que se dice");

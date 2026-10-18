@@ -82,7 +82,7 @@ export interface EleccionVozOmni {
 /** Valida la elección en el borde: lo que no tenga la forma que acepta el proveedor no sale de aquí. */
 export function validarEleccionVozOmni(crudo: Record<string, unknown>): EleccionVozOmni {
   if (!esVozOmni(crudo.voz)) {
-    throw new ErrorProyecto(400, "Esa voz no está entre las treinta que ofrece Gemini Omni.");
+    throw new ErrorProyecto(400, "Esa voz no está entre las treinta que ofrece el proveedor para la voz registrada.");
   }
   const descripcion = typeof crudo.descripcion === "string" ? crudo.descripcion.trim() : "";
   if (descripcion.length < DESCRIPCION_VOZ_OMNI_MINIMA) {
@@ -126,7 +126,7 @@ export async function registrarVozOmni(
   if (proyecto.voiceMode !== "omni") {
     throw new ErrorProyecto(
       409,
-      "Este proyecto no usa el modo Omni, así que no hay ninguna voz que registrar en el proveedor. Cambia primero el modo de voz a «Omni: misma cara y voz en todas las escenas».",
+      "Este proyecto no usa el modo «Voz e identidad registradas», así que no hay ninguna voz que registrar en el proveedor. Cambia primero el modo de voz a «Voz e identidad registradas: misma cara y voz en todas las escenas».",
     );
   }
   const anterior = vozOmniDelProyecto(proyecto);
@@ -185,7 +185,7 @@ export async function registrarVozOmni(
     const invalidadas = await marcarInvalidadas(
       tx,
       actualizado,
-      `La voz Omni de este proyecto ha pasado a ser «${nombreDeVozOmni(eleccion.voz)}». Lo que se generó con la anterior sonaba con otro timbre, así que ya no vale: vuelve a registrar al protagonista —no cuesta créditos— y regenera las escenas que quieras confirmando su coste.`,
+      `La voz registrada de este proyecto ha pasado a ser «${nombreDeVozOmni(eleccion.voz)}». Lo que se generó con la anterior sonaba con otro timbre, así que ya no vale: vuelve a registrar al protagonista —no cuesta créditos— y regenera las escenas que quieras confirmando su coste.`,
       await firmaOmniDelProyecto(actualizado),
     );
     return { proyecto: actualizado, invalidadas };

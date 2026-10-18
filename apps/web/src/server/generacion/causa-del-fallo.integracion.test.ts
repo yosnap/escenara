@@ -142,7 +142,8 @@ describe.skipIf(!hayBaseDeDatos)("causa del fallo del proveedor", () => {
     expect(vista.estado).toBe("fallido");
     expect(vista.motivoFallo).toBe("contenido");
     expect(vista.causaFallo).toBe("bloqueo_seguridad");
-    expect(vista.error).toContain("El filtro de seguridad de Gemini Omni 1.1 Flash (vídeo), en KIE.ai, bloqueó");
+    expect(vista.error).toContain("El filtro de seguridad de KIE.ai bloqueó");
+    expect(vista.error).not.toContain("Gemini");
     expect(vista.error).toContain("bloqueó la generación (no se ha cobrado nada)");
     expect(vista.error).toContain("quitar el producto o usar menos fotos suyas");
 

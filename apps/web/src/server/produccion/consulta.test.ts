@@ -38,9 +38,10 @@ describe("duración de un proyecto en modo Omni", () => {
     expect(impedimentoDeDuracionOmni(omni, 6)).toBeNull();
   });
 
-  test("una duración que el modelo Omni no cobra se rechaza nombrando ese modelo", () => {
+  test("una duración que el modelo Omni no cobra se rechaza diciendo que es el de escenas habladas, sin nombrarlo", () => {
     const motivo = impedimentoDeDuracionOmni({ nombre: "Gemini Omni 1.1 Flash", duraciones: [4] }, 6);
-    expect(motivo).toContain("Gemini Omni 1.1 Flash");
+    expect(motivo).toContain("el modelo de voz e identidad registradas que usas");
+    expect(motivo).not.toContain("Gemini");
     expect(motivo).toContain("solo genera de 4 s");
     expect(motivo).not.toContain("modelo de animación");
   });

@@ -48,7 +48,7 @@ describe("coste de una escena hablada en el plan", () => {
         modelo: { ...eleccion.modelo, modelo: "gemini-omni-video", nombre: "Gemini Omni (vídeo)" },
       },
     } as CosteDeEscenaOmni;
-    expect(estimacionDeEscenaOmni(video, 1, 0.005, true).bloqueo).toContain("Gemini Omni 1.1 Flash");
+    expect(estimacionDeEscenaOmni(video, 1, 0.005, true).bloqueo).toContain("Validado con dos personas");
     expect(estimacionDeEscenaOmni(video, 1, 0.005, false).bloqueo).toBeUndefined();
     expect(estimacionDeEscenaOmni(coste, 1, 0.005, true).bloqueo).toBeUndefined();
   });

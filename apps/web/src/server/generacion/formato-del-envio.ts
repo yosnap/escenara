@@ -2,6 +2,7 @@ import { esSeleccionable, type ModeloVista } from "@/lib/catalogo";
 import { modeloAnimaLaProporcion, motivoFormatoDelFotograma } from "@/lib/formatos";
 import { motivoIncompatible } from "@/lib/presets";
 import type { OpcionDeGeneracion } from "../mapa/generacion";
+import { DONDE_CAMBIAR_MODELO, esLectorAdmin, type Lector, modeloEnMensaje } from "../modelo-en-mensajes";
 import type { PromptCompuesto } from "../prompts/render";
 import { cargarCatalogo } from "../proveedores/catalogo";
 import { ErrorGeneracion } from "./errores";
@@ -31,12 +32,13 @@ export function proporcionDelEnvio(
   if (proporcion === null) return null;
   const motivo = motivoIncompatible(
     { proporcion, segundos: null },
-    { nombre: modelo.nombre, proporciones: modelo.parametros.proporciones, duraciones: [] },
+    // El mensaje llega al usuario: se nombra el modelo por lo que hace, no por su nombre.
+    { nombre: "El modelo elegido", proporciones: modelo.parametros.proporciones, duraciones: [] },
   );
   if (motivo) {
     throw new ErrorGeneracion(
       409,
-      `${motivo} Elige un formato que admita o cambia de modelo. No se ha enviado nada ni se te ha cobrado.`,
+      `${motivo} Elige un formato que admita o ${DONDE_CAMBIAR_MODELO}. No se ha enviado nada ni se te ha cobrado.`,
     );
   }
   return proporcion;
@@ -66,11 +68,22 @@ export async function exigirFormatoDelFotograma(
   proporcionDelFotograma: string | null,
   proporcionDelClip: string | null,
   modelo: ModeloVista,
+  /** Quien pide el envío: el usuario normal no ve nombres de modelo; quien administra, sí. */
+  lector: Lector = null,
 ): Promise<void> {
-  const conProporciones = { nombre: modelo.nombre, proporciones: modelo.parametros.proporciones };
+  const conProporciones = {
+    nombre: modeloEnMensaje(lector, "video", modelo.nombre),
+    proporciones: modelo.parametros.proporciones,
+  };
   if (motivoFormatoDelFotograma(proporcionDelFotograma, proporcionDelClip, conProporciones) === null) return;
   const alternativas = await modelosQueAnimanLaProporcion(proporcionDelFotograma ?? "");
-  const motivo = motivoFormatoDelFotograma(proporcionDelFotograma, proporcionDelClip, conProporciones, alternativas);
+  const motivo = motivoFormatoDelFotograma(
+    proporcionDelFotograma,
+    proporcionDelClip,
+    conProporciones,
+    alternativas,
+    !esLectorAdmin(lector),
+  );
   if (motivo) throw new ErrorGeneracion(409, `${motivo} No se ha enviado ni reservado nada, y no se te ha cobrado.`);
 }
 

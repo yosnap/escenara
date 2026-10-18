@@ -110,7 +110,7 @@ export async function estadoDelCanto(
       conRetrato: retrato.medio !== null,
       motivoRetratoIncompatible:
         retrato.medio && retrato.medio.sizeBytes > 10 * 1024 * 1024
-          ? `El retrato del personaje ocupa ${(retrato.medio.sizeBytes / 1024 / 1024).toFixed(1)} MB y ${modelo} admite hasta 10 MB. Elige o sube un retrato más pequeño.`
+          ? `El retrato del personaje ocupa ${(retrato.medio.sizeBytes / 1024 / 1024).toFixed(1)} MB y el modelo que pone la voz cantada admite hasta 10 MB. Elige o sube un retrato más pequeño.`
           : "",
       retratoVertical: retrato.vertical,
       proporcionRetrato: retrato.proporcion,

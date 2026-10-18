@@ -4,6 +4,8 @@ import { motivoReferenciasNoCaben } from "./motivos-producto";
 
 const modelo = (maximoReferencias: number): HechosModelo => ({
   nombre: "Gemini Omni 1.1 Flash",
+  // Lo que lee un usuario normal: el modelo por lo que hace, nunca su nombre del catálogo.
+  enMensaje: "el modelo de vídeo que usas",
   maximoReferencias,
   precioComprobado: "2026-09-29",
   precioCaducado: false,
@@ -32,7 +34,7 @@ describe("motivo del aviso de referencias que no caben", () => {
         producto({ cupo: 7, fotosPersonaje: 6, fotosProducto: 5, personaje: 4, producto: 3 }),
       ),
     ).toBe(
-      "Gemini Omni 1.1 Flash admite 7 referencias: se envían 4 del personaje y 3 de «Caja Huerta Valenciana»; 2 fotos del producto y 2 del personaje se quedan fuera. Lo que sobra puede salir distinto.",
+      "El modelo de vídeo que usas admite 7 referencias: se envían 4 del personaje y 3 de «Caja Huerta Valenciana»; 2 fotos del producto y 2 del personaje se quedan fuera. Lo que sobra puede salir distinto.",
     );
   });
 
@@ -42,7 +44,7 @@ describe("motivo del aviso de referencias que no caben", () => {
       producto({ cupo: 7, fotosPersonaje: 4, fotosProducto: 4, personaje: 4, producto: 3 }),
     );
     expect(texto).toBe(
-      "Gemini Omni 1.1 Flash admite 7 referencias: se envían 4 del personaje y 3 de «Caja Huerta Valenciana»; 1 foto del producto se queda fuera. Lo que sobra puede salir distinto.",
+      "El modelo de vídeo que usas admite 7 referencias: se envían 4 del personaje y 3 de «Caja Huerta Valenciana»; 1 foto del producto se queda fuera. Lo que sobra puede salir distinto.",
     );
   });
 
@@ -53,7 +55,7 @@ describe("motivo del aviso de referencias que no caben", () => {
         producto({ cupo: 7, fotosPersonaje: 1, fotosProducto: 8, personaje: 1, producto: 6 }),
       ),
     ).toBe(
-      "Gemini Omni 1.1 Flash admite 7 referencias: se envía 1 foto del personaje y 6 de «Caja Huerta Valenciana»; 2 fotos del producto se quedan fuera. Lo que sobra puede salir distinto.",
+      "El modelo de vídeo que usas admite 7 referencias: se envía 1 foto del personaje y 6 de «Caja Huerta Valenciana»; 2 fotos del producto se quedan fuera. Lo que sobra puede salir distinto.",
     );
   });
 

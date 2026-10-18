@@ -280,10 +280,19 @@ export function motivoFormatoDelFotograma(
   proporcionDelClip: string | null,
   modelo: ModeloConProporciones,
   alternativas: readonly string[] = [],
+  /**
+   * Para el usuario normal: `modelo.nombre` ya llega como frase neutra («el modelo de vídeo elegido») y las
+   * alternativas no se nombran, se eligen en las Opciones avanzadas. Quien administra las ve por su nombre.
+   */
+  sinNombres = false,
 ): string | null {
   if (proporcionDelFotograma === null || proporcionDelClip !== null) return null;
   if (modeloAnimaLaProporcion(modelo.proporciones, proporcionDelFotograma)) return null;
   const otros =
-    alternativas.length > 0 ? `elige otro modelo del clip que la admite (${alternativas.join(", ")}), o ` : "";
+    alternativas.length === 0
+      ? ""
+      : sinNombres
+        ? "elige en Opciones avanzadas otro modelo del clip que la admita, o "
+        : `elige otro modelo del clip que la admite (${alternativas.join(", ")}), o `;
   return `El fotograma está en ${proporcionDelFotograma} y ${modelo.nombre} solo hace clips en ${modelo.proporciones.join(" o ")}, y Escenara no recorta el fotograma por su cuenta. Para animarlo, ${otros}recórtalo a ${modelo.proporciones[0]} en tu Biblioteca («Editar imagen») y anima esa copia.`;
 }
