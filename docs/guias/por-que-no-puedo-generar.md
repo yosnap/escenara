@@ -86,7 +86,7 @@ Se arregla en la ficha del personaje.
 <details>
 <summary>Este proyecto genera sus escenas con la cara y la voz registradas de su protagonista, y …</summary>
 
-Es el modo de voz **Omni** de las escenas habladas: la cara y la voz salen de un registro hecho en el proveedor,
+Es el modo de voz **«Voz e identidad registradas»** de las escenas habladas: la cara y la voz salen de un registro hecho en el proveedor,
 y sin él la escena no puede salir con esa identidad. El mensaje termina diciendo qué falta (la voz o el
 personaje). **Registrarlos no cuesta créditos**: se hace desde la ficha del personaje. Mira
 [Escenas habladas](escenas-habladas.md).
@@ -125,7 +125,7 @@ audio propio**; mientras tanto, cambia el formato de la escena. Mira [Cantar con
 Son del **formato** (0.41.0), y ninguno cobra nada:
 
 - **el modelo no admite el formato elegido**: la opción ya salía deshabilitada en la pantalla; si llega por la API,
-  se rechaza antes de reservar. Elige un formato que admita o cambia de modelo. Los demás formatos se sacan en el
+  se rechaza antes de reservar. Elige un formato que admita o cambia de modelo en las Opciones avanzadas del proyecto o en Cuenta › Mapa de modelos. Los demás formatos se sacan en el
   montaje, del mismo clip y sin coste;
 - **el fotograma está en una proporción que el modelo de vídeo no admite**: pasa a uno de los modelos que el mensaje
   nombra o recorta la imagen en tu biblioteca («Editar imagen») y anima esa copia. Escenara no la recorta por su
@@ -164,9 +164,10 @@ otro al personaje y vuelve a pedir el clip; no se ha reservado nada.
 </details>
 
 <details>
-<summary>El modelo … no acepta fotos de referencia</summary>
+<summary>El modelo de imagen que usas no acepta fotos de referencia</summary>
 
-Ese modelo no admite ninguna imagen de entrada, así que no se puede usar con un personaje. Elige otro modelo.
+Ese modelo no admite ninguna imagen de entrada, así que no se puede usar con un personaje. Elige otro en las Opciones
+avanzadas o en Cuenta › Mapa de modelos. No se ha cobrado nada.
 
 </details>
 
@@ -311,12 +312,12 @@ cámara» si querías que lo dijera. Mira [Dirigir tu clip](dirigir-tu-clip.md).
 </details>
 
 <details>
-<summary>Los dos personajes usan la voz Omni registrada del proyecto · El diálogo no está repartido por turnos · Los turnos más largos no caben en el clip</summary>
+<summary>Los dos personajes usan la voz registrada del proyecto · El diálogo no está repartido por turnos · Los turnos más largos no caben en el clip</summary>
 
 Son los avisos de un **podcast o un dualcast**. Ninguno bloquea, pero los tres se confirman porque son dinero:
 
 - **misma voz**: la conversación saldrá con un solo timbre y no se distinguirá quién habla, porque todavía no hay
-  dos voces Omni distintas en una escena;
+  dos voces registradas distintas en una escena;
 - **sin turnos**: el modelo decide quién dice cada frase y suele repartirlas al azar. Reparte el diálogo en
   turnos, o confirma que te vale como salga;
 - **diálogo largo**: el mensaje calcula, a unas 2,5 palabras por segundo, cuánto haría falta para decirlo. Es una
@@ -337,7 +338,7 @@ Son los avisos de una escena con **producto**. Ninguno bloquea y todos se confir
 - **más referencias de las que caben**: el modelo admite pocas imágenes, y se envían primero la identidad del
   personaje y la foto frontal del producto. Elige un modelo que admita más, o quita fotos del producto;
 - **el modelo no admite la foto del producto**: el producto viaja solo descrito con palabras y su etiqueta puede
-  salir distinta. El mensaje te dice qué modelos sí la llevan, pero **nunca se cambia de modelo por su cuenta**: la
+  salir distinta. En las Opciones avanzadas del clip cada modelo dice si «Admite la foto del producto», pero **nunca se cambia de modelo por su cuenta**: la
   tarifa cambia y lo decides tú;
 - **producto sin fotos**: se le pediría al modelo un envase sin marca. Añade al menos la foto frontal con la
   etiqueta;
@@ -376,9 +377,9 @@ resultado de «Crear» y la escena en Producción te dicen la causa, con qué pr
 
 | Causa | Qué probar |
 |---|---|
-| **El filtro de seguridad del proveedor bloqueó la generación.** Pasa, por ejemplo, con Gemini Omni cuando la revisión de seguridad de Google lo frena. No dice qué le ha disgustado | Si llevaba producto, quítalo o usa menos fotos suyas; cambia la descripción; o genera con otro modelo |
-| **El proveedor ha rechazado la petición por sus normas de contenido** | Cambia la descripción, quita el producto si lo llevaba, o genera con otro modelo |
-| **El proveedor no ha podido usar una de las imágenes de referencia** | Elige otras fotos del producto, revisa las fotos del personaje en su ficha, o genera con otro modelo |
+| **El filtro de seguridad del proveedor bloqueó la generación.** Pasa, por ejemplo, con las escenas habladas cuando la revisión de seguridad de Google las frena. El mensaje nombra el proveedor, no el modelo. No dice qué le ha disgustado | Si llevaba producto, quítalo o usa menos fotos suyas; cambia la descripción; o genera con otro modelo (Opciones avanzadas) |
+| **El proveedor ha rechazado la petición por sus normas de contenido** | Cambia la descripción, quita el producto si lo llevaba, o genera con otro modelo (Opciones avanzadas) |
+| **El proveedor no ha podido usar una de las imágenes de referencia** | Elige otras fotos del producto, revisa las fotos del personaje en su ficha, o genera con otro modelo (Opciones avanzadas) |
 | **El proveedor estaba saturado** | Vuelve a generarlo dentro de un rato, o con otro modelo |
 | **El proveedor cortó la generación por exceso de peticiones** | Espera unos minutos antes de volver a generarlo |
 | **El proveedor tuvo un fallo interno pasajero** («Internal Error»). Visto con Gemini Omni: no cobró y al repetirlo salió bien | Vuelve a generarlo |

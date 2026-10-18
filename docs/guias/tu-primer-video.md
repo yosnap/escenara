@@ -37,7 +37,7 @@ Es el paso «Elige a quién generas»: un personaje tuyo, o una imagen suelta qu
 
 Tienes que marcar la casilla **«En estas fotos no aparece ninguna otra persona ni ningún menor»**.
 
-**Puedes elegir el modelo.** Debajo de la imagen aparece el modelo del fotograma, y junto al clip el de la animación, con sus créditos y su estado. Solo salen los que esta instalación ha probado de verdad: los marcados como **validado** están además revisados por quien administra. Al cambiar de modelo, el coste estimado se vuelve a calcular.
+**El modelo, en «Opciones avanzadas».** En «Crear» solo ves la duración y los créditos: Escenara usa el modelo de tu [mapa de modelos](mapa-de-modelos.md) y no lo nombra. Si quieres elegirlo tú, abre el plegable **«Opciones avanzadas»** debajo de la imagen (modelo del fotograma) o en el paso del clip (modelo de la animación): ahí salen los modelos con sus créditos y su estado. Solo aparecen los que esta instalación ha probado de verdad, y los marcados como **validado** están además revisados por quien administra. Al cambiar de modelo, el coste estimado se vuelve a calcular. El plegable recuerda si lo dejaste abierto mientras dure la sesión del navegador. Cuando el clip está listo, sus Opciones avanzadas dicen con qué modelo se generó.
 
 Marca la casilla **«Tengo derecho a usar esta imagen»** cuando llegues a «Revisa el coste y confirma»: es obligatoria y queda registrada en el trabajo con su fecha. Si la persona de la foto no eres tú, necesitas su permiso.
 
@@ -55,7 +55,7 @@ El fotograma sale vertical (9:16), el formato de Reels, TikTok y Shorts.
 [productos](productos.md) y qué hace el personaje con él. Sus fotos viajan como referencia del fotograma, como las
 del personaje, y en el paso del clip sigue elegido. No es obligatorio: también puedes elegirlo después, en el clip.
 
-**Lo que dice, aparte.** Si quieres que el personaje hable, escribe la frase en el campo **«Lo que dice (opcional)»**, no en la descripción de la escena. Si el modelo de clip que has elegido no genera voz, Escenara te lo dice y ese campo no se usa: para que hable, elige un modelo con voz. Los modelos de imagen, si ven una frase en el prompt, la **dibujan** en el fotograma como subtítulo, bocadillo o rótulo (lo comprobamos generando de verdad con tres modelos distintos), y el clip lo hereda. Por eso el fotograma se genera solo con la descripción visual, y la frase se usa únicamente en el clip, que sí tiene voz.
+**Lo que dice, aparte.** Si quieres que el personaje hable, escribe la frase en el campo **«Lo que dice (opcional)»**, no en la descripción de la escena. Si el modelo de clip que usas no genera voz, Escenara te lo dice y ese campo no se usa: para que hable, elige un modelo con voz en las Opciones avanzadas del clip. Los modelos de imagen, si ven una frase en el prompt, la **dibujan** en el fotograma como subtítulo, bocadillo o rótulo (lo comprobamos generando de verdad con tres modelos distintos), y el clip lo hereda. Por eso el fotograma se genera solo con la descripción visual, y la frase se usa únicamente en el clip, que sí tiene voz.
 
 ### 5. Revisa el coste y confirma
 

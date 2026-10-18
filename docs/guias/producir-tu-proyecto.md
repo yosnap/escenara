@@ -93,8 +93,25 @@ Sin reintentos autorizados, regenerar después de un fallo así se rechaza y te 
 Si el fotograma no te gusta, o has cambiado el guion, **«Regenerar la escena»** encola otro fotograma **solo de esa
 escena**. Las demás no se tocan: ni su estado, ni sus imágenes, ni sus vídeos.
 
-Lo que había antes **no se borra**: sigue en tu biblioteca y aparece en el **historial de la escena**, con el modelo
-con el que se hizo, lo que costó según el proveedor y qué cambió respecto a la versión anterior.
+Lo que había antes **no se borra**: sigue en tu biblioteca y aparece en el **historial de la escena**, con lo que
+costó según el proveedor y qué cambió respecto a la versión anterior. Con qué modelo se hizo cada versión se ve en sus
+**Opciones avanzadas**, plegadas por defecto.
+
+## Opciones avanzadas
+
+Las pantallas del proyecto hablan de duración y créditos, no de modelos. Los modelos están en dos plegables
+**«Opciones avanzadas»**:
+
+- **el del proyecto**, al final de la página del proyecto: eliges el **modelo de vídeo de este proyecto** (en el modo
+  «Voz e identidad registradas», el de las escenas habladas) o lo dejas en «El de tu mapa de modelos», que es lo
+  normal. También dice con qué se generaría ahora y con qué modelos se estima cada escena. Cambiar de modelo cambia
+  el coste: el plan se recalcula y, si estaba aprobado, vuelve a borrador para que revises la cifra antes de producir.
+  Lo ya generado se conserva;
+- **el de cada escena**, en la tarjeta de producción: dice con qué modelo salieron su fotograma y su clip, y es donde
+  está **«Comparar generando»** para animar el mismo fotograma con dos modelos.
+
+Los errores nombran el **proveedor** (la clave con la que pagas) y la causa, si se ha cobrado y qué hacer, pero no el
+modelo: si hay que cambiarlo, te dicen que lo hagas en las Opciones avanzadas o en Cuenta › Mapa de modelos.
 
 Si regeneras una escena que ya estaba producida, su fotograma aprobado y su clip dejan de ser los vigentes (porque
 ya no corresponden a lo que se va a generar) y la escena vuelve a esperar tu aprobación.

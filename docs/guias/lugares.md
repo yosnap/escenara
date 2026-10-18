@@ -136,13 +136,13 @@ Más imágenes **no suben el precio** de un fotograma (medido: 4 créditos con 0
 
 En la escena, **«Plano del lugar solo»**: el sitio sin nadie, mudo, sin reparto ni producto. Sirve de plano de
 situación o de recurso para el montaje, también dentro de un proyecto animado. Parte de la maestra y no pide el
-consentimiento de nadie, porque no sale nadie. En un proyecto en modo Omni (escenas habladas) no se produce: allí cada
+consentimiento de nadie, porque no sale nadie. En un proyecto en modo «Voz e identidad registradas» (escenas habladas) no se produce: allí cada
 escena es un clip hablado.
 
 ### Podcast y dualcast
 
 Un podcast es **una sola escena** que produce dos clips, así que los dos llevan **el mismo lugar y la misma versión**:
-se eligen en esa escena. Con la misma maestra el set sale igual en los dos clips. En las escenas habladas con Omni el lugar va
+se eligen en esa escena. Con la misma maestra el set sale igual en los dos clips. En las escenas habladas con voz e identidad registradas el lugar va
 **descrito**; combinar la identidad registrada con el fotograma situado es un ajuste experimental de la instalación,
 apagado de fábrica.
 

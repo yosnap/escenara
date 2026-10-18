@@ -2,7 +2,7 @@
 
 **Versión:** 0.22.0 · **Para:** quien usa Escenara
 
-El modo **Omni** hace que tu personaje hable en todas las escenas **con la misma cara, la misma voz y los labios
+El modo **«Voz e identidad registradas»** hace que tu personaje hable en todas las escenas **con la misma cara, la misma voz y los labios
 sincronizados**. Es el tercer modo de voz de un proyecto, junto a «Voz del clip» y «Pista de voz aparte», y se
 elige en **Voz y subtítulos**.
 
@@ -10,11 +10,12 @@ elige en **Voz y subtítulos**.
 |---|---|---|---|
 | Voz del clip | No garantizada | Sí | El clip |
 | Pista de voz aparte | Sí | No (el audio se pega después) | El clip + una llamada de voz por escena |
-| **Omni** | **Sí** | **Sí** | Solo el clip |
+| **Voz e identidad registradas** | **Sí** | **Sí** | Solo el clip |
 
 ## Los dos motores
 
-En tu **mapa de vídeo** («Tu cuenta») eliges con cuál se generan:
+En tu **mapa de vídeo** («Tu cuenta») eliges con cuál se generan, o lo fijas para un solo proyecto en sus
+**Opciones avanzadas** (las pantallas del proyecto no nombran el modelo fuera de ese plegable):
 
 | Motor | Cómo pone la cara y la voz | Medido el 2026-09-28 |
 |---|---|---|
@@ -27,7 +28,7 @@ voz, así que el timbre lo eliges tú entre las voces de siempre.
 
 ## Con Gemini Omni Flash
 
-1. En **Voz y subtítulos**, elige el modo «Omni».
+1. En **Voz y subtítulos**, elige el modo «Voz e identidad registradas».
 2. Elige una de las **treinta voces** (cada una dice su género y su tono), describe cómo tiene que sonar —el
    acento va ahí: sin pedirlo no sale el de España— y escribe una frase de ejemplo.
 3. Pulsa **«Registrar esta voz»**. **No cuesta créditos.**

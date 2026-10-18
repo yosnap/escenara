@@ -2,6 +2,32 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.54.0] · 2026-10-18
+
+### Añadido
+
+- Nuevo plegable **«Opciones avanzadas»** en cada vídeo. Es el único sitio de las pantallas de usuario donde se ven
+  nombres de modelo: el selector de modelo, el precio de cada uno y con qué modelo se generó cada trabajo. Empieza
+  cerrado y recuerda si lo dejaste abierto mientras dure la sesión del navegador; no se guarda en tu cuenta.
+- En un proyecto puedes fijar el **modelo de vídeo de ese proyecto** desde sus Opciones avanzadas (en el modo «Voz e
+  identidad registradas», el de las escenas habladas). Si no fijas ninguno se usa tu mapa de modelos, como hasta
+  ahora. Cambiarlo recalcula el coste del plan y, si estaba aprobado, lo devuelve a borrador para que revises la
+  cifra antes de producir; lo ya generado se conserva.
+
+### Cambiado
+
+- «Crear», los proyectos, la voz, el anuncio, los personajes y los historiales ya no nombran modelos: enseñan la
+  duración y los créditos. El modelo del fotograma y el del clip se eligen en las Opciones avanzadas de cada paso, y
+  «Comparar generando» y «Generado con…» de cada escena están en las Opciones avanzadas de su tarjeta de producción.
+- Los avisos y errores dicen la causa, el proveedor (la clave con la que pagas), si se ha cobrado y qué hacer, pero
+  no el nombre del modelo. Cuando hay que cambiarlo, te dicen que lo hagas en las Opciones avanzadas o en Cuenta ›
+  Mapa de modelos, y cómo reconocer el que sirve: por ejemplo, el modelo para el podcast y el dualcast sale marcado
+  «Validado con dos personas», y el que lleva la foto de un producto, «Admite la foto del producto». Quien
+  administra sigue viendo el modelo.
+- El modo de voz «Omni» se llama ahora **«Voz e identidad registradas»**, y su voz, «voz registrada».
+- La tabla del plan enseña qué se genera en cada escena (fotograma y clip, o el clip entero) en lugar de los
+  nombres de los modelos, que pasan a las Opciones avanzadas del proyecto.
+
 ## [0.52.15] · 2026-10-18
 
 ### Corregido
