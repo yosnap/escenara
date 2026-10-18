@@ -1,0 +1,126 @@
+# Tutorial «Podcast / dualcast con dos personajes» en modo tutorial, versión de ESCRITORIO (YouTube): la ventana
+# del navegador, fija, ocupa el encuadre. La versión móvil (../podcast-dos-personajes-tutorial/) tiene el mismo guion.
+# Sin voz: cada escena lleva un rótulo breve (titulo) y sus frases salen como subtítulos.
+# Dos grabaciones: «voz» enseña el requisito (modo Omni con la voz registrada) y «dualcast» monta el reparto en
+# Proyecto › Escenas, aprueba el plan y produce el clip con Brisa y Elisa en el mismo plano. Al final se reproduce
+# el clip con su sonido. Cada tramo empieza con el paso que lo abre, para que la pantalla no avance mientras sigue
+# la frase anterior. Evidencia: briefing.md.
+escenas:
+  - id: gancho
+    pieza: rotulo
+    parametros: { titulo: "Dos personajes en una escena", subtitulo: "Un dualcast con Brisa y Elisa", fondo: claro, animacion: palabras }
+    frases:
+      - texto: "Vamos a juntar a Brisa y a Elisa en el mismo plano, hablando por turnos: un dualcast."
+
+  - id: voz
+    pieza: tutorial
+    parametros: { grabacion: voz, tramo: voz, titulo: "Antes: el modo Omni" }
+    frases:
+      - texto: "Dos personajes necesitan el modo Omni, en «Voz y subtítulos», con la voz del proyecto registrada."
+      - texto: "Cada personaje se registra una vez desde su ficha. Registrar no cuesta créditos."
+
+  - id: escena
+    pieza: tutorial
+    parametros: { grabacion: dualcast, tramo: escena, titulo: "La escena" }
+    transicion: fundido
+    frases:
+      - texto: "En «Escenas» está la escena: las dos en la Terraza Mirto, el lugar del proyecto."
+
+  - id: abrir
+    pieza: tutorial
+    parametros: { grabacion: dualcast, tramo: abrir, titulo: "Abre el reparto" }
+    frases:
+      - texto: "Más abajo, abre el reparto de la escena. Mirarlo no gasta nada."
+
+  - id: formato
+    pieza: tutorial
+    parametros: { grabacion: dualcast, tramo: formato, titulo: "Podcast o dualcast" }
+    frases:
+      - texto: "Elige el formato. Podcast son dos clips, uno por personaje; dualcast, un solo clip con las dos."
+
+  - id: segundo
+    pieza: tutorial
+    parametros: { grabacion: dualcast, tramo: segundo, titulo: "El segundo personaje" }
+    frases:
+      - texto: "Añade a Elisa, otro personaje tuyo. Caben dos como mucho."
+
+  - id: papel
+    pieza: tutorial
+    parametros: { grabacion: dualcast, tramo: papel, titulo: "Las dos hablan" }
+    frases:
+      - texto: "Elisa entra escuchando; como también habla, cámbiala a «Habla»."
+
+  - id: miradas
+    pieza: tutorial
+    parametros: { grabacion: dualcast, tramo: miradas, titulo: "Que se miren" }
+    frases:
+      - texto: "Y cruza las miradas: Brisa hacia la derecha y Elisa hacia la izquierda."
+
+  - id: turnos
+    pieza: tutorial
+    parametros: { grabacion: dualcast, tramo: turnos, titulo: "El diálogo" }
+    frases:
+      - texto: "Reparte el diálogo turno a turno. Se oirá tal cual, en castellano."
+
+  - id: guardar-dialogo
+    pieza: tutorial
+    parametros: { grabacion: dualcast, tramo: guardar-dialogo, titulo: "Lo que se ha pedido" }
+    frases:
+      - texto: "Guarda el diálogo: debajo se resume en castellano quién sale, dónde y qué dice."
+
+  - id: estimacion
+    pieza: tutorial
+    parametros: { grabacion: dualcast, tramo: estimacion, titulo: "Lo que cuesta" }
+    frases:
+      - texto: "Las dos sonarán con la voz del proyecto, y ves el coste estimado: un solo clip."
+
+  - id: aprobar
+    pieza: tutorial
+    parametros: { grabacion: dualcast, tramo: aprobar, titulo: "Aprueba el plan" }
+    frases:
+      - texto: "Pasa a «Aprobación» y aprueba el plan. Aprobar no genera nada ni cobra."
+
+  - id: producir
+    pieza: tutorial
+    parametros: { grabacion: dualcast, tramo: producir, titulo: "A producir" }
+    frases:
+      - texto: "Toca «Producir las escenas». El dualcast se confirma en su propia tarjeta."
+
+  - id: confirmar
+    pieza: tutorial
+    parametros: { grabacion: dualcast, tramo: confirmar, titulo: "Confirma" }
+    frases:
+      - texto: "Confirma el derecho a usar las imágenes, la revisión de las fotos y el aviso de la misma voz."
+
+  - id: generar
+    pieza: tutorial
+    parametros: { grabacion: dualcast, tramo: generar, titulo: "Genera el clip" }
+    frases:
+      - texto: "Con el total exacto delante, toca «Generar el clip». No hay fotograma que aprobar."
+
+  - id: clip
+    pieza: tutorial
+    parametros: { grabacion: dualcast, tramo: clip, titulo: "Clip listo" }
+    frases:
+      - texto: "Al poco, el clip de las dos está listo."
+
+  - id: ver
+    pieza: tutorial
+    parametros: { grabacion: dualcast, tramo: ver, titulo: "Míralo" }
+    transicion: fundido
+    frases:
+      - texto: "Toca el play y míralo: Brisa y Elisa en la terraza, por turnos."
+
+  - id: despues
+    pieza: tutorial
+    parametros: { grabacion: dualcast, tramo: despues, titulo: "Y después" }
+    frases:
+      - texto: "Desde «Montaje y exportación» lo recortas y lo sacas en el formato de cada red."
+
+  - id: cierre
+    pieza: logo
+    parametros: { lema: "Dos personajes, una conversación", url: "escenara.com", fondo: claro }
+    transicion: fundido
+    frases:
+      - texto: "Pruébalo en escenara.com y tienes la guía completa en docs.escenara.com."
+        hablado: "Pruébalo en escenara punto com y tienes la guía completa en la documentación."
