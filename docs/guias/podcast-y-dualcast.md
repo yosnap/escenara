@@ -1,8 +1,8 @@
 # Podcast y dualcast: dos personajes en una escena
 
-**Versión:** 0.52.15 · **Para:** quien usa Escenara
+**Versión:** 0.56.0 · **Para:** quien usa Escenara
 
-En una escena hablada puedes montar una conversación entre **dos personajes tuyos**. Elige el formato en **Proyecto › Escenas › Reparto**. Necesitas el modo de voz **«Voz e identidad registradas»**, una voz registrada para el proyecto y cada personaje registrado con esa voz y con su ficha vigente. [Escenas habladas](escenas-habladas.md) explica esos registros; hacerlos no gasta créditos.
+En una escena hablada puedes montar una conversación entre **dos personajes tuyos**. Elige el formato en **Proyecto › Escenas › Reparto**. Necesitas el modo de voz **«Voz e identidad registradas»** y que **cada personaje hable con su propia voz**: la protagonista puede usar la voz del proyecto, y el otro personaje necesita la suya (ver [Cada personaje con su voz](#cada-personaje-con-su-voz)). Cada uno tiene que estar registrado con su voz y con su ficha vigente. [Escenas habladas](escenas-habladas.md) explica esos registros; hacerlos no gasta créditos.
 
 El podcast y el dualcast solo se producen con **Gemini Omni 1.1 Flash**, que es con el que se han medido. Elígelo en las **Opciones avanzadas** del proyecto, donde sale marcado **«Validado con dos personas»**, o ponlo el primero de la lista de vídeo de tu [mapa de modelos](mapa-de-modelos.md), en «Tu cuenta». Fuera de ese plegable las pantallas no nombran el modelo: el aviso dice dónde elegirlo y cómo reconocerlo. Con **Gemini Omni (vídeo)** el clip con dos personajes registrados dio un fallo interno en KIE, sin cobrar. Por eso, con ese modelo, el plan no deja aprobar la escena y la estimación avisa sin dejar confirmar el gasto.
 
@@ -30,7 +30,37 @@ En el spike del 29/09/2026, un clip de 4 s a 720p con Gemini Omni Flash 1.1 cost
    30/09/2026).
 6. Revisa **Lo que se ha pedido**: resume en castellano quién sale, dónde mira y qué dice. Nunca muestra el prompt interno. Si el diálogo no cabe en los segundos del clip, aparece un aviso con las palabras y los segundos necesarios. Puedes acortarlo o confirmar expresamente que quieres seguir.
 
-Sin turnos, el modelo decide quién dice cada frase. **Los dos registros de personaje usan ahora la voz registrada del proyecto**, así que ambos saldrán con el mismo timbre aunque sus fichas tengan voces predefinidas distintas. La pantalla lo avisa y pide una casilla antes de pagar; dos voces registradas distintas en la misma escena todavía no están disponibles.
+Sin turnos, el modelo decide quién dice cada frase.
+
+## Cada personaje con su voz
+
+Desde la 0.56.0, en un podcast o una entrevista **cada personaje habla con su propia voz registrada**. Antes, los dos
+se registraban con la voz del proyecto y sonaban igual.
+
+1. Abre la ficha del personaje y ve a **Escenas habladas › Su voz en las escenas habladas**.
+2. Elige una de las treinta voces, escribe **cómo tiene que sonar** (el acento va aquí: «acento de España») y una
+   **frase de ejemplo**.
+3. Pulsa **Registrar su voz**. **No cuesta créditos.** Al terminar, el personaje queda registrado con esa voz (tampoco
+   cuesta). Si eso no se puede todavía (por ejemplo, le falta el consentimiento o fotos), la voz se guarda y el aviso
+   dice qué falta. Cuando lo arregles, pulsa **Registrar con su voz**.
+
+La voz es **del personaje**: le acompaña en todos sus proyectos. La voz del proyecto (en **Voz y subtítulos**) sigue
+siendo la de la protagonista cuando ella no tiene la suya.
+
+| Quién | Con qué voz habla |
+|---|---|
+| Un personaje con voz propia | La suya, en cualquier proyecto |
+| La protagonista sin voz propia | La del proyecto, como hasta ahora |
+| El otro personaje sin voz propia | Ninguna: sonaría igual que la protagonista, así que la producción se para y te pide que registres la suya |
+
+**Si ya estaba registrado con la voz del proyecto**, al registrar su voz propia se registra otra vez con ella, sin
+coste. Las escenas que ya salieron con la voz anterior se quedan en tu biblioteca; si las regeneras, cada una cuesta lo
+que diga su confirmación. Con **Usar la voz del proyecto** vuelve a hablar con la del proyecto; entonces hay que
+registrarlo otra vez con ella, también gratis.
+
+**Antes de producir**, la rejilla de producción avisa en la tarjeta de la escena si a alguien le falta su voz o su
+registro, con su nombre y dónde se arregla. No se reserva ni se cobra nada hasta que esté resuelto. Esto vale para la
+entrevista (los dos en el mismo plano) y para el podcast escrito en plano y contraplano (un plano por personaje).
 
 ## Consentimiento y producción
 
