@@ -11,6 +11,7 @@ import {
   nombreDeProveedor,
   type TipoDeMapa,
 } from "@/lib/mapa-modelos";
+import { conPreferenciaOmni } from "@/lib/omni";
 import { type CompatibleUtilizable, usarCompatibles } from "../boveda/compatibles";
 import { usarCredencialValida } from "../boveda/credenciales";
 import { db, type Ejecutor } from "../db/cliente";
@@ -95,7 +96,8 @@ export async function recomendadasDe(tipo: TipoDeMapa): Promise<EntradaMapa[]> {
   const escritas = await filas(null, tipo);
   if (escritas.length > 0) return escritas.map(aEntrada);
   if (tipo === "transcripcion") return [{ proveedor: "local", compatibleId: null, modelo: "" }];
-  const elegibles = await modelosDelTipo(tipo);
+  // Los modelos de escenas habladas, en su orden de preferencia: el catálogo los ordena por nombre.
+  const elegibles = conPreferenciaOmni(await modelosDelTipo(tipo));
   return elegibles.map((m) => ({ proveedor: m.proveedor as Proveedor, compatibleId: null, modelo: m.modelo }));
 }
 

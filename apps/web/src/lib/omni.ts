@@ -50,6 +50,32 @@ export const usaIdentidadRegistrada = (modelo: string): boolean =>
   MODELOS_CON_IDENTIDAD_REGISTRADA.includes(modelo as (typeof MODELOS_CON_IDENTIDAD_REGISTRADA)[number]);
 
 /**
+ * Modelos con los que **se ha producido de verdad** una escena con dos personajes registrados (podcast y
+ * dualcast). Solo Gemini Omni 1.1 Flash: el spike del 2026-09-29 sacó con él los tres clips (63 créditos cada uno,
+ * con uno o con dos `character_ids`).
+ *
+ * `gemini-omni-video` documenta `character_ids`, pero nunca ha terminado un clip con ellos: el 2026-10-18, el mismo
+ * dualcast falló dos veces seguidas en KIE con «fallo interno» y sin cobro, con una petición idéntica a la que sí
+ * funciona en 1.1 Flash. Mandárselo otra vez sería apostar a ciegas, así que el reparto no se ofrece con él.
+ */
+export const MODELOS_CON_REPARTO_MEDIDO = ["google/gemini-omni-flash-1-1"] as const;
+
+const NOMBRE_DEL_MODELO_CON_REPARTO = "Gemini Omni 1.1 Flash";
+
+/**
+ * Por qué ese modelo no puede producir una escena con dos personajes, en llano; `null` si puede. Es el mismo texto
+ * en la estimación y al confirmar el gasto, para que la pantalla no prometa lo que el servidor va a rechazar.
+ */
+export function motivoSinReparto(modelo: { modelo: string; nombre: string }): string | null {
+  if (MODELOS_CON_REPARTO_MEDIDO.includes(modelo.modelo as (typeof MODELOS_CON_REPARTO_MEDIDO)[number])) return null;
+  const como = `Pon ${NOMBRE_DEL_MODELO_CON_REPARTO} el primero de la lista de vídeo de tu mapa de modelos («Tu cuenta») para el podcast y el dualcast.`;
+  if (!usaIdentidadRegistrada(modelo.modelo)) {
+    return `${modelo.nombre} no admite identidades registradas, y el podcast y el dualcast las necesitan. ${como}`;
+  }
+  return `${modelo.nombre} no consigue generar con dos personajes registrados: en KIE da un fallo interno y no cobra. ${como}`;
+}
+
+/**
  * Duración con la que se midió el precio de cada motor de escenas habladas. Lo que no esté aquí se estima con
  * su propio precio registrado tal cual, sin escalar: inventar una proporción sobre algo no medido sería peor
  * que no estimarlo.
@@ -61,6 +87,21 @@ export const SEGUNDOS_MEDIDOS_POR_MODELO: Record<string, number> = {
 };
 
 export const esModeloOmni = (modelo: string): boolean => MODELOS_OMNI.includes(modelo as (typeof MODELOS_OMNI)[number]);
+
+/**
+ * Coloca los modelos de escenas habladas **en el orden de preferencia de `MODELOS_OMNI`**, sin mover nada más: cada
+ * modelo Omni ocupa uno de los huecos que ya ocupaban los Omni, y el resto se queda donde estaba.
+ *
+ * Hace falta en la recomendación que se deduce del catálogo, que ordena por nombre: «Gemini Omni (vídeo)» va antes
+ * que «Gemini Omni 1.1 Flash (vídeo)» porque «(» va antes que «1», y una cuenta sin mapa propio acababa hablando con
+ * `gemini-omni-video` en lugar de con el recomendado.
+ */
+export function conPreferenciaOmni<T extends { modelo: string }>(modelos: readonly T[]): T[] {
+  const orden = (m: T) => MODELOS_OMNI.indexOf(m.modelo as (typeof MODELOS_OMNI)[number]);
+  const omni = modelos.filter((m) => esModeloOmni(m.modelo)).sort((a, b) => orden(a) - orden(b));
+  let siguiente = 0;
+  return modelos.map((m) => (esModeloOmni(m.modelo) ? (omni[siguiente++] ?? m) : m));
+}
 
 /** Límites de los dos registros, tal como los documenta KIE (docs.kie.ai, comprobado el 2026-09-28). */
 export const NOMBRE_VOZ_OMNI_MAXIMO = 210;
