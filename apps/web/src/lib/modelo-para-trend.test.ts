@@ -57,7 +57,9 @@ describe("modelo al elegir un trend", () => {
     expect(d.tipo).toBe("cambiar");
     if (d.tipo !== "cambiar") return;
     expect(d.modelo.modelo).toBe("veo-pro");
-    expect(d.aviso).toContain("Hemos cambiado a VEO-PRO porque VEO-FAST no tiene clips de 6 s");
+    expect(d.aviso).toContain("Hemos cambiado el modelo del clip porque el que usabas no tiene clips de 6 s");
+    expect(d.aviso).toContain("Opciones avanzadas");
+    expect(d.aviso).not.toContain("VEO");
     expect(d.aviso).not.toContain("sin voz");
   });
 
@@ -94,14 +96,15 @@ describe("modelo al elegir un trend", () => {
     expect(d.tipo).toBe("ninguno");
     if (d.tipo !== "ninguno") return;
     expect(d.error).toContain("«Unboxing» hace falta un modelo que tenga precio para clips de 6 s");
-    expect(d.error).toContain("VEO-FAST no tiene clips de 6 s");
+    expect(d.error).toContain("el modelo del clip que usas no tiene clips de 6 s");
+    expect(d.error).not.toContain("VEO");
     expect(d.error).toContain("No se ha aplicado y no se ha cobrado nada");
   });
 
   test("si el trend no admite el modelo actual se cambia aunque tenga tarifa", () => {
     const d = decidirModeloParaTrend({ ...base, actual: PRO, trend: { ...TREND, modelosPermitidos: ["mudo"] } });
     expect(d.tipo === "cambiar" && d.modelo.modelo).toBe("mudo");
-    expect(d.tipo === "cambiar" && d.aviso).toContain("el trend no admite VEO-PRO");
+    expect(d.tipo === "cambiar" && d.aviso).toContain("el trend no admite el que usabas");
   });
 
   test("si el actual está admitido y tiene tarifa se mantiene aunque haya restricción", () => {
@@ -132,7 +135,7 @@ describe("modelo al elegir un trend", () => {
     const soloSeis = modelo("seis", [6]);
     const d = decidirModeloParaTrend({ ...base, actual: soloSeis, trend });
     expect(d.tipo === "cambiar" && d.modelo.modelo).toBe("veo-fast");
-    expect(d.tipo === "cambiar" && d.aviso).toContain("SEIS no tiene clips de 5 o 8 s");
+    expect(d.tipo === "cambiar" && d.aviso).toContain("el que usabas no tiene clips de 5 o 8 s");
     expect(d.tipo === "cambiar" && d.aviso).toContain("solo admite 5 o 8 s");
   });
 

@@ -213,13 +213,13 @@ interface Preparado {
  *
  * No es reintentable: nada de esto se arregla solo.
  */
-function exigirDuracionCobrada(fila: FilaTrabajo, modelo: ModeloVista, unidadConfirmada: string | null): void {
+function exigirDuracionCobrada(fila: FilaTrabajo, unidadConfirmada: string | null): void {
   const segundos = segundosDe(fila);
   if (segundos === null || unidadConfirmada === null) return;
   const deLaTarifa = segundosDeUnidad(unidadConfirmada);
   if (deLaTarifa === null || deLaTarifa === segundos) return;
   throw new ErrorDeMontaje(
-    `El clip que se iba a enviar dura ${segundos} s y lo que se apartó fue el precio de «${unidadConfirmada}» de ${modelo.nombre}. No se ha enviado nada al proveedor y no se te ha cobrado: vuelve a pedir el clip y confirma su coste.`,
+    `El clip que se iba a enviar dura ${segundos} s y lo que se apartó fue el precio de «${unidadConfirmada}» del modelo con que se pidió. No se ha enviado nada al proveedor y no se te ha cobrado: vuelve a pedir el clip y confirma su coste.`,
   );
 }
 
@@ -243,7 +243,7 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
    */
   const confirmada = unidadConfirmadaDe(fila);
   const modelo = confirmada === null ? delCatalogo : { ...delCatalogo, unidad: confirmada };
-  exigirDuracionCobrada(fila, modelo, confirmada);
+  exigirDuracionCobrada(fila, confirmada);
   await revalidarPersonajeDelTrabajo(fila, modelo);
   const credencial = await claveDelTrabajo(fila);
   /**
@@ -946,7 +946,7 @@ async function subirReferencia(
   const archivo = await referenciaCompatible(await archivoDe(origen), modelo.parametros.formatosReferencia);
   if (canto && archivo.size > 10 * 1024 * 1024) {
     throw new ErrorDeMontaje(
-      `El retrato convertido para ${modelo.nombre} ocupa ${(archivo.size / 1024 / 1024).toFixed(1)} MB y el proveedor solo admite 10 MB. No se ha enviado nada ni se te ha cobrado: usa un retrato más pequeño.`,
+      `El retrato convertido para el modelo que pone la voz cantada ocupa ${(archivo.size / 1024 / 1024).toFixed(1)} MB y el proveedor solo admite 10 MB. No se ha enviado nada ni se te ha cobrado: usa un retrato más pequeño.`,
     );
   }
   // La clave de almacenamiento va siempre (ADR-0044): la usa APIMart para firmar su URL pública y la ignoran

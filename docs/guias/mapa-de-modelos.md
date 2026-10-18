@@ -18,7 +18,7 @@ Desde la 0.22.0 el mapa cubre **los cinco tipos**, imagen y vídeo incluidos:
 | **Voz** | Leer el diálogo cuando el proyecto usa pista de voz aparte | Modelos de voz del catálogo con tu clave, y `kokoro` en tus servicios compatibles |
 | **Subtítulos** | Sacar los subtítulos del audio ya generado | Esta instalación (gratis) y `whisper` en tus servicios compatibles |
 | **Imagen** | Los fotogramas de tus escenas, las imágenes de «Crear» y las vistas generadas de tus personajes | Modelos de imagen del catálogo con tu clave |
-| **Vídeo** | Los clips de tus escenas y, en modo Omni, las escenas habladas | Modelos de vídeo del catálogo con tu clave |
+| **Vídeo** | Los clips de tus escenas y, en el modo «Voz e identidad registradas», las escenas habladas | Modelos de vídeo del catálogo con tu clave |
 
 En imagen y vídeo **no aparecen los servicios compatibles con la API de OpenAI**: esos son de texto, voz y
 transcripción, y ofrecerlos aquí sería ofrecer algo que no saben hacer.

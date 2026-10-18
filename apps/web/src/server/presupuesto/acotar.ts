@@ -1,5 +1,6 @@
 import type { TipoTrabajoCola } from "@/lib/generacion";
 import type { EleccionDeTrabajo } from "../generacion/precios";
+import { conMayuscula, modeloEnMensaje } from "../modelo-en-mensajes";
 
 /**
  * ¿Se puede acotar lo que va a costar este trabajo? (PRD §6). Si no se puede, el trabajo **no se envía**:
@@ -36,6 +37,6 @@ export function acotarCoste(tipo: TipoTrabajoCola, eleccion: EleccionDeTrabajo):
   // aquí solo se dice que no se puede y por qué.
   return {
     acotado: false,
-    motivo: `El modelo ${eleccion.modelo.nombre} no declara cuánto dura el clip, así que su precio (${eleccion.precio.unidad}) no acota lo que va a costar. Indica cuántos créditos autorizas como máximo para este trabajo y se enviará con ese techo.`,
+    motivo: `${conMayuscula(modeloEnMensaje(null, "video", eleccion.modelo.nombre))} no declara cuánto dura el clip, así que su precio (${eleccion.precio.unidad}) no acota lo que va a costar. Indica cuántos créditos autorizas como máximo para este trabajo y se enviará con ese techo.`,
   };
 }

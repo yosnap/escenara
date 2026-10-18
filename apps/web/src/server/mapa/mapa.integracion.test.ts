@@ -402,8 +402,9 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
     // El coste que se confirma al generar ya incluye la traducción al precio de KIE: puede hacer de reserva.
     const { trabajo } = await generar("una escena que NaN no traduce a tiempo");
     expect(llamadas).toEqual(["api.nan.builders/gemma4"]);
-    expect(trabajo.avisoReserva).toContain("NaN builders (gemma4) ha tardado demasiado");
-    expect(trabajo.avisoReserva).toContain("reserva de pago KIE.ai (gpt-5-6-sol)");
+    expect(trabajo.avisoReserva).toContain("NaN builders ha tardado demasiado");
+    expect(trabajo.avisoReserva).toContain("reserva de pago de KIE.ai");
+    expect(trabajo.avisoReserva).not.toContain("gpt-5-6-sol");
     expect(trabajo.avisoReserva).toContain("0,5 créditos");
     // Un tiempo agotado no es un rechazo: el servicio sigue siendo válido.
     const despues = await listarCompatibles(ana.id);
@@ -430,9 +431,9 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
     }).catch((e: unknown) => e)) as InstanceType<typeof ErrorDeTexto>;
     expect(fallo).toBeInstanceOf(ErrorDeTexto);
     const mensaje = fallo.mensaje("No se ha podido completar la ficha");
-    expect(mensaje).toContain("NaN builders (gemma4) ha tardado demasiado");
+    expect(mensaje).toContain("NaN builders ha tardado demasiado");
     expect(mensaje).toContain(
-      "No se ha probado KIE.ai (gpt-5-6-sol) porque es de pago y su coste no lo habías confirmado",
+      "No se ha probado la entrada de KIE.ai porque es de pago y su coste no lo habías confirmado",
     );
     expect(mensaje).toContain("tampoco se ha cobrado nada");
     expect(llamadas).toEqual(["api.nan.builders/gemma4"]);
@@ -450,7 +451,7 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
 
   // ── El mensaje cuando todo falla ───────────────────────────────────────────────────────────────────────
 
-  test("si fallan todos, el mensaje cuenta cada proveedor, cada modelo y su causa concreta", async () => {
+  test("si fallan todos, el mensaje cuenta cada proveedor y su causa concreta, sin nombrar modelos", async () => {
     respuestasPorModelo = {
       gemma4: { cuerpo: CHAT_429, estado: 429 },
       "deepseek-v4-flash": { cuerpo: CHAT_402, estado: 402 },
@@ -464,15 +465,17 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
     // 1. qué se ha quedado sin hacer y qué significa para el dinero.
     expect(mensaje).toContain("no se ha enviado nada a generar");
     // 2. el modelo de pago, con su causa.
-    expect(mensaje).toContain("KIE.ai (gpt-5-6-sol)");
+    expect(mensaje).toContain("KIE.ai");
+    expect(mensaje).not.toContain("gpt-5-6-sol");
     expect(mensaje).toContain("error interno suyo");
     // 3. qué se intentó después, uno por uno y con la causa concreta de cada uno.
-    expect(mensaje).toContain("NaN builders (gemma4)");
+    expect(mensaje).toContain("NaN builders");
     expect(mensaje).toContain("máximo 5 peticiones simultáneas");
-    expect(mensaje).toContain("NaN builders (deepseek-v4-flash)");
+    expect(mensaje).toContain("otro modelo de NaN builders");
     expect(mensaje).toContain("la cuota se repone el 2026-10-01");
-    expect(mensaje).toContain("NaN builders (glm5.3-flash)");
-    expect(mensaje).toContain("Otro servicio (modelo-de-ultimo-recurso)");
+    expect(mensaje).toContain("Otro servicio");
+    expect(mensaje).not.toContain("deepseek-v4-flash");
+    expect(mensaje).not.toContain("modelo-de-ultimo-recurso");
     // 4. y nunca el mensaje genérico que la norma prohíbe.
     expect(mensaje).not.toContain("Vuelve a intentarlo en un momento");
   });
@@ -532,7 +535,7 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
     const fallo = (await generar("una escena sin reserva").catch((e: unknown) => e)) as Error;
     expect(fallo).toBeInstanceOf(ErrorGeneracion);
     expect(llamadas).toHaveLength(0);
-    expect(fallo.message).toContain("KIE.ai (gpt-5-6-sol)");
+    expect(fallo.message).toContain("KIE.ai");
     await ponerMapaCompleto();
   });
 
@@ -589,10 +592,11 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
     )) as Error;
     expect(fallo).toBeInstanceOf(ErrorProyecto);
     expect(fallo.message).toContain("el proyecto se ha quedado como estaba");
-    expect(fallo.message).toContain("KIE.ai (gpt-5-6-sol)");
-    expect(fallo.message).toContain("NaN builders (gemma4)");
+    expect(fallo.message).toContain("KIE.ai");
+    expect(fallo.message).toContain("NaN builders");
+    expect(fallo.message).not.toContain("gemma4");
     expect(fallo.message).toContain("máximo 5 peticiones simultáneas");
-    expect(fallo.message).toContain("Otro servicio (modelo-de-ultimo-recurso)");
+    expect(fallo.message).toContain("Otro servicio");
     expect(fallo.message).not.toContain("Vuelve a intentarlo en un momento");
   });
 

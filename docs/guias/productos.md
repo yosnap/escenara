@@ -172,13 +172,15 @@ Todos estos avisos salen **antes** de gastar y se confirman con una casilla; nin
   que la cara sea idéntica entre escenas, haz el producto en un plano aparte y móntalo.
 - **El modelo elegido no admite la foto del producto.** Pasa con Veo: su segunda imagen es el último fotograma
   del clip, no una galería. Entonces el producto viaja solo descrito con palabras. **Escenara no te cambia el
-  modelo por su cuenta** —cambiar de modelo cambia la tarifa—: te dice cuáles sí la llevan y eliges tú, con su
-  coste delante. El aviso sale **junto al selector de producto**, en cuanto eliges el producto (si tiene fotos), y
-  además el selector de modelo del clip indica en cada modelo si «Admite la foto del producto» o si «El producto
-  viaja solo descrito». Sigue saliendo también antes del coste, con su casilla de confirmación.
-- **No caben todas las referencias.** Con las cifras: «Gemini Omni 1.1 Flash admite 7 referencias: se envían 4 del
+  modelo por su cuenta** —cambiar de modelo cambia la tarifa—: eliges tú, con su coste delante. El aviso sale
+  **junto al selector de producto**, en cuanto eliges el producto (si tiene fotos), sin nombrar modelos: te dice que
+  abras las **Opciones avanzadas** del clip, donde el selector de modelo indica en cada uno si «Admite la foto del
+  producto» o si «El producto viaja solo descrito». Sigue saliendo también antes del coste, con su casilla de
+  confirmación.
+- **No caben todas las referencias.** Con las cifras: «El modelo de vídeo que usas admite 7 referencias: se envían 4 del
   personaje y 3 de «Caja Huerta Valenciana»; 2 fotos del producto se quedan fuera. Lo que sobra puede salir
-  distinto.» Puedes elegir otro modelo con más referencias o elegir qué fotos del producto viajan.
+  distinto.» Puedes elegir en las Opciones avanzadas otro modelo con más referencias o elegir qué fotos del producto
+  viajan.
 - **El producto no tiene fotos.** Se le pedirá un envase sin marca, y el resultado no será tu producto.
 - **En el producto se ve una marca.** El filtro del proveedor puede rechazarlo; si lo rechaza, no se cobra.
 - **La acción es poco fiable** (las de piel).

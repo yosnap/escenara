@@ -1,6 +1,7 @@
 import type { ModeloVista } from "@/lib/catalogo";
 import { CLIP } from "@/lib/generacion";
 import { duracionParaModelo } from "@/lib/produccion";
+import { DONDE_CAMBIAR_MODELO } from "../../modelo-en-mensajes";
 import { type ContextoEntrada, ErrorCatalogo } from "../contrato";
 import { resolucionDeUnidadDeCanto } from "./canto";
 import { CAMPOS_DE_URL_DE_FAMILIA, familiaDe, varianteDeUnidad } from "./familias";
@@ -132,14 +133,14 @@ const entradaCanto: Constructor = (contexto, modelo) => {
   if (audio === "") {
     throw new ErrorCatalogo(
       409,
-      `${modelo.nombre} canta a partir de un audio y no ha llegado ninguno, así que no se le ha pedido nada y no se te ha cobrado. Elige el audio de la escena y vuelve a pedir el clip.`,
+      `El modelo que pone la voz cantada canta a partir de un audio y no ha llegado ninguno, así que no se le ha pedido nada y no se te ha cobrado. Elige el audio de la escena y vuelve a pedir el clip.`,
     );
   }
   const retrato = contexto.urls[0] ?? "";
   if (retrato === "") {
     throw new ErrorCatalogo(
       409,
-      `${modelo.nombre} necesita el retrato del personaje como imagen de partida y no ha llegado ninguno, así que no se le ha pedido nada y no se te ha cobrado. Comprueba que el personaje tiene su retrato y vuelve a pedir el clip.`,
+      `El modelo que pone la voz cantada necesita el retrato del personaje como imagen de partida y no ha llegado ninguno, así que no se le ha pedido nada y no se te ha cobrado. Comprueba que el personaje tiene su retrato y vuelve a pedir el clip.`,
     );
   }
   return {
@@ -370,7 +371,7 @@ function montarEntrada(modelo: ModeloVista, contexto: ContextoEntrada): Record<s
   if (!familia) {
     throw new ErrorCatalogo(
       503,
-      `Esta instalación no sabe con qué parámetros pedirle nada a ${modelo.nombre}. Elige otro modelo.`,
+      `Esta instalación no sabe con qué parámetros pedirle nada al modelo elegido de ${modelo.nombreProveedor}. No se ha enviado nada ni se te ha cobrado: elige otro modelo (${DONDE_CAMBIAR_MODELO}).`,
     );
   }
   /**
@@ -385,7 +386,7 @@ function montarEntrada(modelo: ModeloVista, contexto: ContextoEntrada): Record<s
   if (!ofrecida) {
     throw new ErrorCatalogo(
       409,
-      `La unidad registrada de ${modelo.nombre} («${modelo.unidad}») no es ninguna de las que publica el proveedor. Vuelve a sincronizar sus precios antes de generar con él.`,
+      `La tarifa registrada del modelo elegido («${modelo.unidad}») no es ninguna de las que publica ${modelo.nombreProveedor}, así que no se ha enviado nada ni se te ha cobrado. Pide a quien administra que vuelva a sincronizar sus precios, o elige otro modelo (${DONDE_CAMBIAR_MODELO}).`,
     );
   }
   return familia.montar(limpio, ofrecida, modelo.parametros);

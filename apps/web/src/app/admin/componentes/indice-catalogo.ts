@@ -26,6 +26,7 @@ export const INDICE = [
   ["controles", "Controles previos"],
   ["generacion", "Coste y trabajos"],
   ["modelos", "Catálogo de modelos"],
+  ["avanzadas", "Opciones avanzadas"],
   ["comparativas", "Comparativas y calibración"],
   ["comunidad", "Comunidad"],
   ["superposiciones", "Diálogos y pestañas"],

@@ -1129,9 +1129,9 @@ describe.skipIf(!hayBaseDeDatos)("voz y subtítulos de un proyecto", () => {
     // No se ha cambiado de proveedor: no había a quién.
     expect(trabajo?.provider).toBe("kie");
     const mensaje = trabajo?.errorMessage ?? "";
-    // Qué falló: proveedor, modelo y causa concreta.
+    // Qué falló: proveedor y causa concreta; el modelo no se nombra al usuario normal.
     expect(mensaje).toContain("KIE.ai");
-    expect(mensaje).toContain(MODELO_VOZ);
+    expect(mensaje).not.toContain(MODELO_VOZ);
     expect(mensaje).toContain("ha rechazado la credencial");
     // Si se ha cobrado o no.
     expect(mensaje).toContain("No se te ha cobrado nada");

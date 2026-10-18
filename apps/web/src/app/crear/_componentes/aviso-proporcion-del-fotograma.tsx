@@ -14,8 +14,9 @@ import { modeloAnimaLaProporcion, motivoFormatoDelFotograma } from "@/lib/format
  * (`lib/formatos.ts › motivoFormatoDelFotograma`) con la misma proporción, la que quedó en el trabajo del fotograma.
  * Con una imagen propia no sale nada, porque se envía como siempre y el modelo la encaja.
  *
- * Ofrece las dos salidas que hay en «Crear», antes de confirmar nada: pasar a uno de los modelos que sí la animan
- * (un botón por modelo) o recortar el fotograma en la biblioteca y animar la copia.
+ * Ofrece las dos salidas que hay en «Crear», antes de confirmar nada: pasar a un modelo que sí la anima (un solo
+ * botón, sin nombrarlo: el nombre se ve en las Opciones avanzadas del clip) o recortar el fotograma en la biblioteca
+ * y animar la copia.
  */
 export function AvisoProporcionDelFotograma({
   proporcionDelFotograma,
@@ -39,27 +40,21 @@ export function AvisoProporcionDelFotograma({
   const motivo = motivoFormatoDelFotograma(
     proporcionDelFotograma,
     null,
-    { nombre: elegido.nombre, proporciones: elegido.proporciones ?? [] },
+    { nombre: "el modelo del clip elegido", proporciones: elegido.proporciones ?? [] },
     alternativas.map((m) => m.nombre),
+    true,
   );
   if (motivo === null) return null;
+  const primera = alternativas[0];
   return (
     <Aviso tono="aviso">
       <span className="flex flex-col gap-2">
         <span>{motivo}</span>
-        {alternativas.length > 0 && (
+        {primera && (
           <span className="flex flex-wrap items-center gap-2">
-            {alternativas.map((m) => (
-              <Boton
-                key={m.modelo}
-                variante="secundario"
-                tamano="sm"
-                disabled={deshabilitado}
-                onClick={() => onModelo(m.modelo)}
-              >
-                Usar {m.nombre}
-              </Boton>
-            ))}
+            <Boton variante="secundario" tamano="sm" disabled={deshabilitado} onClick={() => onModelo(primera.modelo)}>
+              Usar un modelo que lo anime
+            </Boton>
           </span>
         )}
         <span>

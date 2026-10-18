@@ -140,6 +140,13 @@ export const projects = pgTable(
      */
     clipSeconds: integer("clip_seconds").notNull().default(8),
     /**
+     * Modelo de vídeo fijado para **este** proyecto desde sus «Opciones avanzadas». Vacío (lo normal) = el mapa de
+     * modelos de la cuenta, que es lo que se hacía antes de existir la columna. En modo `omni` es el modelo de las
+     * escenas habladas; en los demás, el que anima los clips. Se lee siempre con
+     * `proyectos/modelo-de-video.ts › modeloDeVideoDe`, para que estimar, aprobar y encolar usen el mismo.
+     */
+    videoModel: text("video_model").notNull().default(""),
+    /**
      * Formatos de salida del proyecto (0.41.0), sin repetidos. **El primero es el principal**: es la proporción
      * que se le pide al modelo al generar, y los demás salen del mismo clip en el montaje con reencuadre, sin
      * regenerar nada. Nace en vertical 9:16, que es lo que eran todos los proyectos anteriores.

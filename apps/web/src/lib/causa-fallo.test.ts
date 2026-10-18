@@ -17,16 +17,22 @@ const OMNI: ContextoFallo = {
 };
 
 describe("mensaje del fallo del proveedor", () => {
-  test("el bloqueo de seguridad dice quién, que no se ha cobrado y qué probar", () => {
+  test("el bloqueo de seguridad dice el proveedor, que no se ha cobrado y qué probar, sin nombrar el modelo", () => {
     expect(mensajeDeFalloDelProveedor("bloqueo_seguridad", OMNI)).toBe(
-      "El filtro de seguridad de Gemini Omni 1.1 Flash, en KIE, bloqueó la generación (no se ha cobrado nada). No dice qué le ha disgustado. Prueba a: quitar el producto o usar menos fotos suyas, cambiar la descripción o generar con otro modelo.",
+      "El filtro de seguridad de KIE bloqueó la generación (no se ha cobrado nada). No dice qué le ha disgustado. Prueba a: quitar el producto o usar menos fotos suyas, cambiar la descripción o generar con otro modelo (en Opciones avanzadas).",
+    );
+  });
+
+  test("a quien administra se le nombra también el modelo", () => {
+    expect(mensajeDeFalloDelProveedor("bloqueo_seguridad", { ...OMNI, conModelo: true })).toContain(
+      "El filtro de seguridad de Gemini Omni 1.1 Flash, en KIE, bloqueó la generación",
     );
   });
 
   test("sin producto no sugiere quitarlo", () => {
     const mensaje = mensajeDeFalloDelProveedor("bloqueo_seguridad", { ...OMNI, conProducto: false });
     expect(mensaje).not.toContain("producto");
-    expect(mensaje).toContain("Prueba a: cambiar la descripción o generar con otro modelo.");
+    expect(mensaje).toContain("Prueba a: cambiar la descripción o generar con otro modelo (en Opciones avanzadas).");
   });
 
   test("dice lo que se ha cobrado cuando el proveedor cobra el intento, o que no ha informado", () => {
@@ -41,10 +47,10 @@ describe("mensaje del fallo del proveedor", () => {
 
   test("la imagen rechazada solo sugiere las fotos que el envío llevaba", () => {
     expect(mensajeDeFalloDelProveedor("imagen_rechazada", OMNI)).toContain(
-      "elegir otras fotos del producto, revisar las fotos del personaje en su ficha o generar con otro modelo",
+      "elegir otras fotos del producto, revisar las fotos del personaje en su ficha o generar con otro modelo (en Opciones avanzadas)",
     );
     const suelta = mensajeDeFalloDelProveedor("imagen_rechazada", { ...OMNI, conProducto: false, conPersonaje: false });
-    expect(suelta).toContain("Prueba a: generar con otro modelo.");
+    expect(suelta).toContain("Prueba a: generar con otro modelo (en Opciones avanzadas).");
   });
 
   test("lo desconocido sigue con el mensaje genérico de siempre", () => {

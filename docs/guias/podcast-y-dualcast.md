@@ -2,9 +2,9 @@
 
 **Versión:** 0.52.15 · **Para:** quien usa Escenara
 
-En una escena hablada puedes montar una conversación entre **dos personajes tuyos**. Elige el formato en **Proyecto › Escenas › Reparto**. Necesitas el modo de voz **Omni**, una voz registrada para el proyecto y cada personaje registrado con esa voz y con su ficha vigente. [Escenas habladas](escenas-habladas.md) explica esos registros; hacerlos no gasta créditos.
+En una escena hablada puedes montar una conversación entre **dos personajes tuyos**. Elige el formato en **Proyecto › Escenas › Reparto**. Necesitas el modo de voz **«Voz e identidad registradas»**, una voz registrada para el proyecto y cada personaje registrado con esa voz y con su ficha vigente. [Escenas habladas](escenas-habladas.md) explica esos registros; hacerlos no gasta créditos.
 
-El podcast y el dualcast solo se producen con **Gemini Omni 1.1 Flash**, que es con el que se han medido. Ponlo el primero de la lista de vídeo de tu [mapa de modelos](mapa-de-modelos.md), en «Tu cuenta». Con **Gemini Omni (vídeo)** el clip con dos personajes registrados dio un fallo interno en KIE, sin cobrar. Por eso, con ese modelo, el plan no deja aprobar la escena y la estimación avisa sin dejar confirmar el gasto.
+El podcast y el dualcast solo se producen con **Gemini Omni 1.1 Flash**, que es con el que se han medido. Elígelo en las **Opciones avanzadas** del proyecto, donde sale marcado **«Validado con dos personas»**, o ponlo el primero de la lista de vídeo de tu [mapa de modelos](mapa-de-modelos.md), en «Tu cuenta». Fuera de ese plegable las pantallas no nombran el modelo: el aviso dice dónde elegirlo y cómo reconocerlo. Con **Gemini Omni (vídeo)** el clip con dos personajes registrados dio un fallo interno en KIE, sin cobrar. Por eso, con ese modelo, el plan no deja aprobar la escena y la estimación avisa sin dejar confirmar el gasto.
 
 ![Vista previa del reparto y del consentimiento por personaje](../assets/capturas/0.28.0-reparto-claro.jpg)
 
@@ -30,13 +30,13 @@ En el spike del 29/09/2026, un clip de 4 s a 720p con Gemini Omni Flash 1.1 cost
    30/09/2026).
 6. Revisa **Lo que se ha pedido**: resume en castellano quién sale, dónde mira y qué dice. Nunca muestra el prompt interno. Si el diálogo no cabe en los segundos del clip, aparece un aviso con las palabras y los segundos necesarios. Puedes acortarlo o confirmar expresamente que quieres seguir.
 
-Sin turnos, el modelo decide quién dice cada frase. **Los dos registros de personaje usan ahora la voz Omni del proyecto**, así que ambos saldrán con el mismo timbre aunque sus fichas tengan voces predefinidas distintas. La pantalla lo avisa y pide una casilla antes de pagar; dos voces Omni distintas en la misma escena todavía no están disponibles.
+Sin turnos, el modelo decide quién dice cada frase. **Los dos registros de personaje usan ahora la voz registrada del proyecto**, así que ambos saldrán con el mismo timbre aunque sus fichas tengan voces predefinidas distintas. La pantalla lo avisa y pide una casilla antes de pagar; dos voces registradas distintas en la misma escena todavía no están disponibles.
 
 ## Consentimiento y producción
 
 La zona **Consentimiento de quien sale** nombra a cada personaje al que le falta algo y te dirige a su ficha. Con **dos personas reales hacen falta dos consentimientos vigentes**, uno por persona; sin los dos la generación queda bloqueada. Si uno es inventado, debe tener su declaración de personaje inventado y la persona real su consentimiento. De forma provisional se usa el consentimiento individual de la 0.13.0; no se pide otro documento por aparecer juntos.
 
-El plan del proyecto y el editor de la escena enseñan ya ese mismo coste: el modelo Omni, los segundos del clip y el total, con los dos clips del podcast y la traducción si la hay. La ficha del protagonista no viaja en la petición, porque cada cara la pone su personaje registrado.
+El plan del proyecto y el editor de la escena enseñan ya ese mismo coste: los segundos del clip y el total, con los dos clips del podcast y la traducción si la hay. La ficha del protagonista no viaja en la petición, porque cada cara la pone su personaje registrado.
 
 En **Producción** verás la estimación por clip y total. Confirma una sola vez **el total exacto** y los avisos aplicables. El podcast reserva y cierra el coste de cada clip por separado: cancelar uno no cobra el otro. Cuando se hayan pedido, la tarjeta muestra los **dos clips en orden y con el nombre del personaje**. Esos dos clips se ordenan y se recortan después en [Montaje y exportación](montaje-y-exportacion.md); aquí quedan marcados el orden y el personaje.
 

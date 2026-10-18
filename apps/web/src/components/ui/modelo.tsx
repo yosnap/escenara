@@ -48,12 +48,16 @@ export function InsigniaEstadoModelo({ estado }: { estado: EstadoModelo }) {
   );
 }
 
-/** Aviso de que el modelo no genera voz: su clip no puede decir nada. */
-export function AvisoSinVoz() {
+/**
+ * Aviso de que el modelo no genera voz: su clip no puede decir nada. No nombra el modelo, así que vale fuera de las
+ * Opciones avanzadas; con `enAvanzadas` dice dónde se cambia.
+ */
+export function AvisoSinVoz({ enAvanzadas = false }: { enAvanzadas?: boolean }) {
   return (
     <Alerta tipo="aviso" compacta icono={<MicOff />}>
-      Este modelo genera vídeo <strong className="font-semibold">sin voz</strong>: el personaje no dirá nada, así que
-      «Lo que dice» no se usa. Para que hable, elige un modelo con voz.
+      El modelo de vídeo elegido genera <strong className="font-semibold">sin voz</strong>: el personaje no dirá nada,
+      así que «Lo que dice» no se usa. Para que hable, elige un modelo con voz
+      {enAvanzadas ? " en las Opciones avanzadas del clip" : ""}.
     </Alerta>
   );
 }

@@ -1,3 +1,4 @@
+import { enMensaje } from "../modelo-en-mensajes";
 import type { Freno, Hechos } from "./contrato";
 
 /**
@@ -65,7 +66,7 @@ export const REGLAS_LUGAR: readonly ((h: Hechos) => Freno | null)[] = [
     return {
       regla: "lugar-maestra-no-cabe",
       estado: "ajustes",
-      motivo: `Con ${h.modelo?.nombre ?? "este modelo"} no cabe la foto maestra de «${h.lugar.nombre}»: sus huecos de referencia son para la persona${h.producto ? " y el producto" : ""}. El lugar viajará solo descrito con palabras.`,
+      motivo: `Con ${enMensaje(h.modelo)} no cabe la foto maestra de «${h.lugar.nombre}»: sus huecos de referencia son para la persona${h.producto ? " y el producto" : ""}. El lugar viajará solo descrito con palabras.`,
       accion:
         "Elige un modelo que admita más referencias y vuelve a estimar el coste, porque la tarifa es otra. Si te vale con la descripción, confírmalo.",
       http: 409,

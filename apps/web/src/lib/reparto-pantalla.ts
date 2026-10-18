@@ -148,7 +148,7 @@ export function avisosDelReparto(
     avisos.push({
       regla: "reparto-misma-voz",
       motivo:
-        "Los dos personajes usan la voz Omni registrada del proyecto, así que la conversación sonará con el mismo timbre. Este formato todavía no admite dos voces Omni distintas.",
+        "Los dos personajes usan la voz registrada del proyecto, así que la conversación sonará con el mismo timbre. Este formato todavía no admite dos voces registradas distintas.",
     });
   }
   if (reparto.turnos.length === 0) {

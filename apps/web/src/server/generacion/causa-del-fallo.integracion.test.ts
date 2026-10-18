@@ -142,7 +142,8 @@ describe.skipIf(!hayBaseDeDatos)("causa del fallo del proveedor", () => {
     expect(vista.estado).toBe("fallido");
     expect(vista.motivoFallo).toBe("contenido");
     expect(vista.causaFallo).toBe("bloqueo_seguridad");
-    expect(vista.error).toContain("El filtro de seguridad de Gemini Omni 1.1 Flash (vídeo), en KIE.ai, bloqueó");
+    expect(vista.error).toContain("El filtro de seguridad de KIE.ai bloqueó");
+    expect(vista.error).not.toContain("Gemini");
     expect(vista.error).toContain("bloqueó la generación (no se ha cobrado nada)");
     expect(vista.error).toContain("quitar el producto o usar menos fotos suyas");
 
@@ -154,9 +155,7 @@ describe.skipIf(!hayBaseDeDatos)("causa del fallo del proveedor", () => {
       .select()
       .from(scenes)
       .where(eq(scenes.id, sceneId ?? ""));
-    expect(escena?.lastFailureReason).toContain(
-      "El filtro de seguridad de Gemini Omni 1.1 Flash (vídeo), en KIE.ai, bloqueó",
-    );
+    expect(escena?.lastFailureReason).toContain("El filtro de seguridad de KIE.ai bloqueó");
     expect(escena?.lastFailureReason).toContain("No se ha vuelto a enviar nada.");
 
     // Nada del texto del proveedor en la fila, en la escena ni en lo que ve el navegador.
@@ -190,7 +189,9 @@ describe.skipIf(!hayBaseDeDatos)("causa del fallo del proveedor", () => {
     const vista = await reconciliar({ id: ana.id, esAdmin: false }, id, h);
     expect(vista.causaFallo).toBe("bloqueo_seguridad");
     expect(vista.error).not.toContain("producto");
-    expect(vista.error).toContain("Prueba a: cambiar la descripción o generar con otro modelo.");
+    expect(vista.error).toContain(
+      "Prueba a: cambiar la descripción o generar con otro modelo (en Opciones avanzadas).",
+    );
   });
 
   test("un trabajo antiguo que falló por contenido se sigue viendo como antes, sin causa", async () => {

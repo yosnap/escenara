@@ -43,6 +43,7 @@ import { type EleccionDeTrabajo, elegirParaTipo } from "../generacion/precios";
 import { limitesDe } from "../limites-proyecto";
 import { eleccionDeGeneracion } from "../mapa/generacion";
 import { type Actor, aDto } from "../media/servicio";
+import { modeloEnMensaje } from "../modelo-en-mensajes";
 import type { CosteDeEscenaOmni } from "../omni/escena";
 import { costeOmniDelPlan, estimacionDeEscenaOmni, selloOmniVigente } from "../omni/estimacion-plan";
 import { eleccionOmni } from "../omni/registro";
@@ -53,6 +54,8 @@ import { fotoDeProductoDelClip } from "../productos/modelos-sugeridos";
 import { fotosDelPersonajeEnElEnvio, hojaEnElEnvio } from "../productos/reparto-del-envio";
 import { plantillaVigenteDe } from "../prompts/consulta";
 import { ErrorCatalogo } from "../proveedores/contrato";
+import { avanzadasDelProyecto } from "../proyectos/avanzadas";
+import { modeloDeVideoDe } from "../proyectos/modelo-de-video";
 import {
   afirmacionesDe,
   escenaPropia,
@@ -95,15 +98,32 @@ export interface EleccionesDelPlan {
  * (0.22.0); sin él, del catálogo de la instalación, que es lo que hacía la 0.21.x. Se le pasa siempre que quien
  * pregunta tiene un actor delante: lo que se estima tiene que ser lo que se va a enviar.
  */
-export async function eleccionesDelPlan(usuarioId?: string): Promise<EleccionesDelPlan> {
-  const [fotograma, animacion] = await Promise.all([elegir("fotograma", usuarioId), elegir("animacion", usuarioId)]);
+export async function eleccionesDelPlan(
+  usuarioId?: string,
+  /**
+   * El proyecto del que se estima: si fija su propio modelo de vídeo (Opciones avanzadas), ese manda sobre el mapa
+   * para el clip. En modo `omni` el modelo fijado es el de las escenas habladas y lo lee `eleccionOmni`, no este.
+   */
+  proyecto?: Pick<FilaProyecto, "videoModel" | "voiceMode">,
+): Promise<EleccionesDelPlan> {
+  const fijado = proyecto && proyecto.voiceMode !== "omni" ? await modeloDeVideoDe(proyecto) : null;
+  const [fotograma, animacion] = await Promise.all([
+    elegir("fotograma", usuarioId),
+    elegir("animacion", usuarioId, fijado),
+  ]);
   return { fotograma, animacion };
 }
 
-/** Los modelos del plan con sus proporciones del catálogo: es con lo que se decide en qué formato se puede generar. */
+/**
+ * Los modelos del plan con sus proporciones del catálogo: es con lo que se decide en qué formato se puede generar. El
+ * motivo se lee en la pantalla del proyecto, así que cada modelo se nombra por lo que hace y no por su nombre.
+ */
 export const modelosDelPlan = (elecciones: EleccionesDelPlan) =>
-  [elecciones.fotograma, elecciones.animacion].flatMap((e) =>
-    e ? [{ nombre: e.modelo.nombre, proporciones: e.modelo.parametros.proporciones }] : [],
+  [
+    { eleccion: elecciones.fotograma, nombre: modeloEnMensaje(null, "imagen", "") },
+    { eleccion: elecciones.animacion, nombre: modeloEnMensaje(null, "video", "") },
+  ].flatMap(({ eleccion, nombre }) =>
+    eleccion ? [{ nombre, proporciones: eleccion.modelo.parametros.proporciones }] : [],
   );
 
 /**
@@ -111,16 +131,27 @@ export const modelosDelPlan = (elecciones: EleccionesDelPlan) =>
  * habladas, que es el único que se usa (sin fotograma ni animación aparte). Sin él, un formato aceptado al fijarlo
  * se rechazaría después al producir.
  */
-export async function modelosDelProyecto(usuarioId: string, elecciones: EleccionesDelPlan, modoVoz: string) {
-  if (modoVoz !== "omni") return modelosDelPlan(elecciones);
-  const omni = await eleccionOmni(usuarioId).catch(() => null);
-  return omni ? [{ nombre: omni.modelo.nombre, proporciones: omni.modelo.parametros.proporciones }] : [];
+export async function modelosDelProyecto(
+  usuarioId: string,
+  elecciones: EleccionesDelPlan,
+  proyecto: Pick<FilaProyecto, "videoModel" | "voiceMode">,
+) {
+  if (proyecto.voiceMode !== "omni") return modelosDelPlan(elecciones);
+  const omni = await eleccionOmni(usuarioId, undefined, proyecto).catch(() => null);
+  return omni
+    ? [{ nombre: modeloEnMensaje(null, "hablada", ""), proporciones: omni.modelo.parametros.proporciones }]
+    : [];
 }
 
-async function elegir(tipo: "fotograma" | "animacion", usuarioId?: string): Promise<EleccionDeTrabajo | null> {
+async function elegir(
+  tipo: "fotograma" | "animacion",
+  usuarioId?: string,
+  /** Modelo fijado en el proyecto: manda sobre el mapa, igual que al encolar (`produccion/producir.ts`). */
+  fijado: string | null = null,
+): Promise<EleccionDeTrabajo | null> {
   try {
-    if (usuarioId) return (await eleccionDeGeneracion(usuarioId, tipo)).elegida.eleccion;
-    return await elegirParaTipo(tipo);
+    if (usuarioId) return (await eleccionDeGeneracion(usuarioId, tipo, fijado)).elegida.eleccion;
+    return await elegirParaTipo(tipo, fijado);
   } catch (error) {
     if (error instanceof ErrorCatalogo) return null;
     throw error;
@@ -548,16 +579,20 @@ export async function vistaDeProyecto(fila: FilaProyecto, totalEscenas: number, 
 
 /** Proyectos del actor con su total estimado, para la lista. Una consulta de escenas para todos, no una por fila. */
 export async function listarProyectos(actor: Actor): Promise<ProyectoVista[]> {
-  const [filas, elecciones, ajustes] = await Promise.all([
-    proyectosDe(actor),
-    eleccionesDelPlan(actor.id),
-    leerAjustes(),
-  ]);
+  const [filas, ajustes] = await Promise.all([proyectosDe(actor), leerAjustes()]);
   const escenasPorProyecto = await escenasDeProyectos(filas.map((f) => f.id));
+  // Una lectura de modelos por cada modelo de vídeo distinto (casi siempre una sola: el mapa de la cuenta).
+  const leidas = new Map<string, Promise<EleccionesDelPlan>>();
+  const eleccionesDe = async (fila: FilaProyecto) => {
+    const clave = fila.voiceMode === "omni" ? "" : ((await modeloDeVideoDe(fila)) ?? "");
+    const leida = leidas.get(clave) ?? eleccionesDelPlan(actor.id, fila);
+    leidas.set(clave, leida);
+    return leida;
+  };
   return Promise.all(
     filas.map(async (fila) => {
       const suyas = escenasPorProyecto.get(fila.id) ?? [];
-      const estimaciones = await estimacionesDeEscenas(fila, suyas, actor.id, elecciones, ajustes);
+      const estimaciones = await estimacionesDeEscenas(fila, suyas, actor.id, await eleccionesDe(fila), ajustes);
       const total = [...estimaciones.values()].reduce((suma, estimacion) => suma + (estimacion?.creditos ?? 0), 0);
       return vistaDeProyecto(fila, suyas.length, total);
     }),
@@ -596,7 +631,7 @@ async function fotoDeProductoDelProyecto(
 ): Promise<FotoDeProductoDelClip | null> {
   try {
     const conOmni = proyecto.voiceMode === "omni";
-    const modelo = conOmni ? (await eleccionOmni(actor.id)).modelo : elecciones.animacion?.modelo;
+    const modelo = conOmni ? (await eleccionOmni(actor.id, undefined, proyecto)).modelo : elecciones.animacion?.modelo;
     if (!modelo) return null;
     const foto = await fotoDeProductoDelClip(modelo, CAPACIDAD_DE_TIPO.animacion);
     // En Omni con producto la cara sale de las fotos del personaje, que compiten con las del producto; el clip
@@ -629,7 +664,7 @@ export async function detalleProyecto(actor: Actor, id: unknown): Promise<Proyec
   const fila = await proyectoPropio(actor, id);
   const [filasEscena, elecciones, ajustes, asistente, creditosAsistente] = await Promise.all([
     escenasDe(fila.id),
-    eleccionesDelPlan(actor.id),
+    eleccionesDelPlan(actor.id, fila),
     leerAjustes(),
     estadoDelAsistente(actor.id),
     gastoDelAsistente(fila.id),
@@ -668,7 +703,8 @@ export async function detalleProyecto(actor: Actor, id: unknown): Promise<Proyec
     motivoAsistente: asistente.motivo,
     estimacionAsistente: asistente.estimacion,
     limites: limitesDe(ajustes),
-    formatosGenerables: formatosGenerables(await modelosDelProyecto(actor.id, elecciones, fila.voiceMode)),
+    formatosGenerables: formatosGenerables(await modelosDelProyecto(actor.id, elecciones, fila)),
+    avanzadas: await avanzadasDelProyecto(actor.id, fila, elecciones),
   };
 }
 
@@ -701,7 +737,7 @@ export async function aprobarPlan(actor: Actor, id: unknown, peticion: PeticionA
   const proyecto = await proyectoPropio(actor, id);
   const proyectoId = proyecto.id;
   const ajustes = await leerAjustes();
-  const elecciones = await eleccionesDelPlan(actor.id);
+  const elecciones = await eleccionesDelPlan(actor.id, proyecto);
   // En modo Omni el coste se lee una vez: el mismo objeto da la estimación que se congela y el modelo congelado.
   const omni = proyecto.voiceMode === "omni" ? await costeOmniDelPlan(actor.id, proyecto) : undefined;
   const modeloOmni = omni === undefined ? null : (omni?.eleccion.modelo.modelo ?? "");
@@ -803,7 +839,7 @@ export async function hechosDeEscena(
 ): Promise<{ escena: FilaEscena; hechos: HechosEscena }> {
   const { escena, proyecto } = await escenaPropia(actor, escenaId);
   const [elecciones, vigente, afirmaciones, selloOmni] = await Promise.all([
-    eleccionesDelPlan(actor.id),
+    eleccionesDelPlan(actor.id, proyecto),
     versionesACongelar(actor, proyecto),
     afirmacionesDe([escena.id]),
     selloOmniVigente(actor.id, proyecto),

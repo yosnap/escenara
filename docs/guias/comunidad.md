@@ -56,7 +56,7 @@ Ante la duda, no se publica, y siempre te dice por qué.
 | | Un clip con producto: sus fotos son subidas |
 | | Un clip de un reparto de dos personajes, de un podcast, o cantado con tu audio (aunque después quites el audio de la escena) |
 | Un clip hablado con una voz de la instalación | Un clip que envió un audio subido, o un audio: podría ser una voz real |
-| Un clip hablado (Omni) con identidad registrada, si el registro subió imágenes generadas de tu inventado | Un clip Omni cuyo registro subió una imagen no generada aquí (aunque luego la quites de la ficha), o sin registro que lo explique |
+| Un clip hablado (voz e identidad registradas) con identidad registrada, si el registro subió imágenes generadas de tu inventado | Un clip hablado cuyo registro subió una imagen no generada aquí (aunque luego la quites de la ficha), o sin registro que lo explique |
 
 Lo que se publica es **una copia**: el título, la descripción y la firma que escribes, y una copia del archivo (en un
 personaje, su retrato y hasta tres vistas generadas; nunca su hoja 3×3). **Nunca** viaja el prompt, el modelo con el que

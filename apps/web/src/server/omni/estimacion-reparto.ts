@@ -140,11 +140,13 @@ export async function estimarReparto(
   }
   if (escena.castFormat !== "solo" && sinReparto) impedimentos.push(sinReparto);
   if (escena.castFormat !== "solo" && proyecto.voiceMode !== "omni") {
-    impedimentos.push("Podcast y dualcast necesitan un proyecto en modo Omni. Cambia el modo de voz del proyecto.");
+    impedimentos.push(
+      "Podcast y dualcast necesitan un proyecto en modo «Voz e identidad registradas». Cambia el modo de voz del proyecto.",
+    );
   }
   if (escena.castFormat !== "solo" && escena.productId !== null) {
     impedimentos.push(
-      "Quita el producto de esta escena: sus fotos no pueden viajar junto con las dos identidades registradas de Omni.",
+      "Quita el producto de esta escena: sus fotos no pueden viajar junto con las dos identidades registradas.",
     );
   }
   for (const clip of clips) {

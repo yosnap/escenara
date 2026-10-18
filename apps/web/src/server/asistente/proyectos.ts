@@ -18,7 +18,7 @@ import {
 } from "@/lib/proyectos";
 import { leerAjustes } from "../ajustes";
 import { borrarProyectoConDerivados } from "../datos/borrado-proyecto";
-import { db } from "../db/cliente";
+import { db, type Ejecutor } from "../db/cliente";
 import { type FilaProyecto, projects, scenes } from "../db/esquema";
 import { aplicarCambioDeAcento } from "../direccion/acento";
 import { invalidarHerederasDelProyecto, lugarPorDefectoValido } from "../lugares/escena";
@@ -27,6 +27,7 @@ import type { Actor } from "../media/servicio";
 import { cambiarFormatosDelProyecto, exigirFormatoGenerable } from "../montaje/formatos-del-proyecto";
 import { filaPropia } from "../personajes/consulta";
 import { exigirPersonajeUsable } from "../personajes/puede-generar";
+import { modeloDeVideoValido } from "../proyectos/modelo-de-video";
 import { esUuidProyecto, proyectoPropio } from "./consulta";
 import { ErrorProyecto } from "./errores";
 import { detalleProyecto } from "./plan";
@@ -60,6 +61,8 @@ export interface DatosProyecto {
   formatos?: unknown;
   /** Lugar por defecto que heredan las escenas; `null` lo quita. Tiene que casar con el acabado del proyecto. */
   lugarId?: unknown;
+  /** Modelo de vídeo fijado en las Opciones avanzadas del proyecto; cadena vacía = el mapa de la cuenta. */
+  modeloVideo?: unknown;
 }
 
 function tituloLimpio(valor: unknown): string {
@@ -191,6 +194,8 @@ export async function editarProyecto(actor: Actor, id: unknown, datos: DatosProy
   if (datos.presupuestoCreditos !== undefined) cambios.authorizedCredits = creditosValidos(datos.presupuestoCreditos);
   if (datos.segundosClip !== undefined) cambios.clipSeconds = duracionValida(datos.segundosClip);
   if (datos.acento !== undefined) cambios.speechAccent = acentoValido(datos.acento);
+  if (datos.modeloVideo !== undefined)
+    cambios.videoModel = await modeloDeVideoValido(datos.modeloVideo, proyecto.voiceMode);
   if (datos.lugarId !== undefined) {
     const esperado = acabado ?? (await acabadoDelProyecto(proyecto.id)) ?? acabadoDe(null);
     cambios.defaultPlaceId = await lugarPorDefectoValido(actor.id, datos.lugarId, esperado);
@@ -219,24 +224,24 @@ export async function editarProyecto(actor: Actor, id: unknown, datos: DatosProy
      * mismo; entrar o salir de 6 s cambia de modelo y precio, por lo que exige aprobar de nuevo el plan.
      * Los clips ya generados se conservan y la rejilla de producción avisa de que han quedado desactualizados.
      */
+    /**
+     * Otro modelo de vídeo es otro precio: lo aprobado se aprobó con la cifra del anterior, así que el plan vuelve
+     * a borrador y hay que revisar el coste antes de producir. Lo ya generado se conserva.
+     */
+    if (cambios.videoModel !== undefined && cambios.videoModel !== proyecto.videoModel) {
+      await volverAAprobar(
+        tx,
+        proyecto.id,
+        "El modelo de vídeo del proyecto ha cambiado, y con él el coste del clip. Revisa y aprueba de nuevo el plan.",
+      );
+    }
     if (cambios.clipSeconds !== undefined && cambios.clipSeconds !== proyecto.clipSeconds) {
       if (cambios.clipSeconds === 6 || proyecto.clipSeconds === 6) {
-        await tx
-          .update(projects)
-          .set({
-            state: sql`case when ${projects.state} = 'planificado' then 'borrador' else ${projects.state} end`,
-            planApprovedAt: null,
-            planApprovedBy: null,
-          })
-          .where(eq(projects.id, proyecto.id));
-        await tx
-          .update(scenes)
-          .set({
-            state: "borrador",
-            approvedAt: null,
-            invalidationReason: "La duración y el coste del clip han cambiado. Revisa y aprueba de nuevo el plan.",
-          })
-          .where(and(eq(scenes.projectId, proyecto.id), eq(scenes.state, "aprobada")));
+        await volverAAprobar(
+          tx,
+          proyecto.id,
+          "La duración y el coste del clip han cambiado. Revisa y aprueba de nuevo el plan.",
+        );
       }
       await tx
         .update(scenes)
@@ -249,6 +254,25 @@ export async function editarProyecto(actor: Actor, id: unknown, datos: DatosProy
     }
   });
   return detalleProyecto(actor, proyecto.id);
+}
+
+/**
+ * Deja el plan sin aprobar y sus escenas aprobadas en borrador, con el motivo: lo que cambia el coste del clip
+ * (la duración que cambia de tarifa, otro modelo de vídeo) no puede seguir producido con la cifra aprobada.
+ */
+async function volverAAprobar(tx: Ejecutor, proyectoId: string, motivo: string): Promise<void> {
+  await tx
+    .update(projects)
+    .set({
+      state: sql`case when ${projects.state} = 'planificado' then 'borrador' else ${projects.state} end`,
+      planApprovedAt: null,
+      planApprovedBy: null,
+    })
+    .where(eq(projects.id, proyectoId));
+  await tx
+    .update(scenes)
+    .set({ state: "borrador", approvedAt: null, invalidationReason: motivo })
+    .where(and(eq(scenes.projectId, proyectoId), eq(scenes.state, "aprobada")));
 }
 
 /**

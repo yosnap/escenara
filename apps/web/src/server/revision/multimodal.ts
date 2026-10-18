@@ -217,7 +217,8 @@ export async function revisarConModelo(
 
   let resumen = "";
   let informados: number | null = null;
-  let motivo = `Revisión multimodal del clip de la escena ${escena.sortOrder} con ${eleccion.nombreModelo}.`;
+  // El motivo se ve en el historial de gasto del usuario: se dice qué se hizo, no con qué modelo.
+  let motivo = `Revisión multimodal del clip de la escena ${escena.sortOrder}.`;
   try {
     const respuesta = await revisarMedio({
       clave,

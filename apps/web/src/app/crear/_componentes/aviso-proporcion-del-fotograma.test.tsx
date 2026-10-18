@@ -30,11 +30,12 @@ describe("el aviso de proporción del fotograma en «Crear»", () => {
     expect(pintar("9:16")).toBe("");
   });
 
-  test("un fotograma generado en 4:5 con Veo avisa con el motivo del servidor, los modelos que lo animan y recortar", () => {
+  test("un fotograma generado en 4:5 con Veo avisa con el motivo, un modelo que lo anima y recortar, sin nombres", () => {
     const html = pintar("4:5");
-    expect(html).toContain("El fotograma está en 4:5 y Veo 3 Lite solo hace clips en 9:16");
-    expect(html).toContain("Usar Hailuo 2.3");
-    expect(html).not.toContain("Usar Kling 3");
+    expect(html).toContain("El fotograma está en 4:5 y el modelo del clip elegido solo hace clips en 9:16");
+    expect(html).toContain("Usar un modelo que lo anime");
+    expect(html).not.toContain("Hailuo");
+    expect(html).not.toContain("Veo");
     expect(html).toContain("recórtalo a 9:16 en tu Biblioteca");
     expect(html).toContain('href="/biblioteca"');
     // Antes de confirmar no se habla de reservas ni cobros: eso lo dice el servidor si llega a pedirse.

@@ -5,6 +5,7 @@ import type { PresenteDeEnvio, RepartoDeEnvio, TurnoDeEnvio } from "@/lib/repart
 import { type ParametrosVoz, parametrosVozDe } from "@/lib/voz";
 import type { FilaTrabajo } from "../db/esquema";
 import type { ReservaAutorizada } from "../mapa/voz";
+import { claseDeTrabajo, DONDE_CAMBIAR_MODELO, modeloEnMensaje } from "../modelo-en-mensajes";
 
 /**
  * Lo que el despacho lee de la entrada guardada de un trabajo al encolarlo. Son lecturas puras y tolerantes:
@@ -227,7 +228,8 @@ export function proporcionPedidaDe(
   if (elegida === null) return {};
   if (modelo.parametros.proporciones.includes(elegida)) return { proporcion: elegida };
   return {
-    error: `Este trabajo se pidió en ${elegida} y ${modelo.nombre} no admite esa proporción, así que no se ha enviado para no generarlo en otra. No se ha enviado nada al proveedor y no se te ha cobrado: vuelve a pedirlo con un modelo que la admita.`,
+    // Lo lee quien pidió el trabajo: el modelo se nombra por lo que hace (el admin lo ve en la fila del trabajo).
+    error: `Este trabajo se pidió en ${elegida} y ${modeloEnMensaje(null, claseDeTrabajo(fila.kind), modelo.nombre)} no admite esa proporción, así que no se ha enviado para no generarlo en otra. No se ha enviado nada al proveedor y no se te ha cobrado: vuelve a pedirlo con un modelo que la admita (${DONDE_CAMBIAR_MODELO}).`,
   };
 }
 

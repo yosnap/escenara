@@ -47,7 +47,7 @@ export function mensajeDeCambioDeProveedor(
   usado: { proveedor: Proveedor; modelo: string },
 ): string {
   const cobro: Cobro = fallido.cobro;
-  return `${fraseDeIntento(aGenerico(fallido))}, y ${FRASE_DE_COBRO[cobro].toLowerCase()}. La voz se ha generado con ${nombreDeProveedor(usado.proveedor)} (${usado.modelo}), que es el proveedor de reserva de esta instalación, y se ha cobrado en esa cuenta.`;
+  return `${fraseDeIntento(aGenerico(fallido))}, y ${FRASE_DE_COBRO[cobro].toLowerCase()}. La voz se ha generado con ${nombreDeProveedor(usado.proveedor)}, que es el proveedor de reserva de esta instalación, y se ha cobrado en esa cuenta.`;
 }
 
 /** Aviso de que el proveedor de reserva existe pero este usuario no lo tiene configurado. */

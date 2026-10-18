@@ -133,9 +133,9 @@ async function tarifaDeEscenaHablada(
    * (63, 84, 105 y 126 créditos a 4, 6, 8 y 10 s), así que la escena se cobra por la tarifa de su duración en
    * lugar de escalar la de 4 s. Solo se escala lo que no tenga tarifa propia, y se dice que es estimado.
    */
-  const { modelo: primero } = await eleccionOmni(usuarioId);
+  const { modelo: primero } = await eleccionOmni(usuarioId, undefined, proyecto);
   const segundos = segundosDeEscenaOmni(duracionesDeOmni(primero), proyecto);
-  const eleccion = await eleccionOmni(usuarioId, segundos);
+  const eleccion = await eleccionOmni(usuarioId, segundos, proyecto);
   return { eleccion, segundos, creditos: creditosDeTarifa(eleccion.precio, segundos, eleccion.modelo.modelo) };
 }
 
@@ -224,7 +224,7 @@ export async function registroParaProducir(
    * - los de **referencias** (MiniMax H3) no registran nada: necesitan la voz del proyecto —la del mapa de voz,
    *   la misma del modo `pista`— y su **muestra ya pagada**, que es lo que viaja como audio de referencia.
    */
-  const conRegistro = usaIdentidadRegistrada(modelo ?? (await modeloDeEscenaHablada(actor.id)));
+  const conRegistro = usaIdentidadRegistrada(modelo ?? (await modeloDeEscenaHablada(actor.id, proyecto)));
   if (!conRegistro) return referenciasParaProducir(actor, proyecto);
   const voz = vozOmniDelProyecto(proyecto);
   if (!voz) {
@@ -239,7 +239,7 @@ export async function registroParaProducir(
   if (!proyecto.mainCharacterId) {
     throw new ErrorProyecto(
       409,
-      "Este proyecto no tiene protagonista asignado, y en modo Omni la cara de todas las escenas es la suya. Elige un personaje con consentimiento vigente.",
+      "Este proyecto no tiene protagonista asignado, y en modo «Voz e identidad registradas» la cara de todas las escenas es la suya. Elige un personaje con consentimiento vigente.",
     );
   }
   const personaje = await personajePropio(actor, proyecto.mainCharacterId);
@@ -266,9 +266,9 @@ export async function registroParaProducir(
 }
 
 /** Modelo con el que se produciría ahora mismo una escena hablada; vacío si no hay ninguno utilizable. */
-async function modeloDeEscenaHablada(usuarioId: string): Promise<string> {
+async function modeloDeEscenaHablada(usuarioId: string, proyecto: FilaProyecto): Promise<string> {
   try {
-    return (await eleccionOmni(usuarioId)).modelo.modelo;
+    return (await eleccionOmni(usuarioId, undefined, proyecto)).modelo.modelo;
   } catch {
     return "";
   }
@@ -339,7 +339,7 @@ export async function producirEscenaHablada(
   if (escena.placeShot === "solo_lugar") {
     throw new ErrorOmni(
       409,
-      "El plano del lugar solo se produce como fotograma y clip mudo, y en modo Omni cada escena es un clip hablado. Cambia el modo de voz del proyecto o haz el plano en otro proyecto y móntalo. No se ha cobrado nada.",
+      "El plano del lugar solo se produce como fotograma y clip mudo, y en modo «Voz e identidad registradas» cada escena es un clip hablado. Cambia el modo de voz del proyecto o haz el plano en otro proyecto y móntalo. No se ha cobrado nada.",
     );
   }
   const prompt = limpiarPrompt(escena.action.trim() !== "" ? escena.action : escena.scriptText);
@@ -355,7 +355,7 @@ export async function producirEscenaHablada(
     if (escena.productId !== null) {
       throw new ErrorOmni(
         409,
-        "Quita el producto de esta escena antes de generar: sus fotos no pueden viajar junto con las dos identidades registradas de Omni.",
+        "Quita el producto de esta escena antes de generar: sus fotos no pueden viajar junto con las dos identidades registradas.",
       );
     }
   }
@@ -733,7 +733,10 @@ export async function escenaHabladaPropia(
 ): Promise<{ escena: FilaEscena; proyecto: FilaProyecto }> {
   const { escena, proyecto } = await escenaPropia(actor, escenaId);
   if (proyecto.voiceMode !== "omni") {
-    throw new ErrorOmni(409, "Este proyecto no está en modo Omni, así que sus escenas no se producen así.");
+    throw new ErrorOmni(
+      409,
+      "Este proyecto no está en modo «Voz e identidad registradas», así que sus escenas no se producen así.",
+    );
   }
   return { escena, proyecto };
 }

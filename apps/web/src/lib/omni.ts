@@ -60,19 +60,27 @@ export const usaIdentidadRegistrada = (modelo: string): boolean =>
  */
 export const MODELOS_CON_REPARTO_MEDIDO = ["google/gemini-omni-flash-1-1"] as const;
 
-const NOMBRE_DEL_MODELO_CON_REPARTO = "Gemini Omni 1.1 Flash";
+/** `true` si con ese modelo se ha producido de verdad una escena con dos personajes registrados. */
+export const tieneRepartoMedido = (modelo: string): boolean =>
+  MODELOS_CON_REPARTO_MEDIDO.includes(modelo as (typeof MODELOS_CON_REPARTO_MEDIDO)[number]);
+
+/** Lo que dice de sí mismo, en el selector de las Opciones avanzadas, el modelo validado con dos personas. */
+export const ETIQUETA_REPARTO_MEDIDO = "Validado con dos personas";
 
 /**
  * Por qué ese modelo no puede producir una escena con dos personajes, en llano; `null` si puede. Es el mismo texto
  * en la estimación y al confirmar el gasto, para que la pantalla no prometa lo que el servidor va a rechazar.
+ *
+ * No nombra ningún modelo (se lee fuera de las Opciones avanzadas): dice dónde elegir el que sirve y cómo
+ * reconocerlo, porque en el selector ese modelo lleva la etiqueta {@link ETIQUETA_REPARTO_MEDIDO}.
  */
 export function motivoSinReparto(modelo: { modelo: string; nombre: string }): string | null {
-  if (MODELOS_CON_REPARTO_MEDIDO.includes(modelo.modelo as (typeof MODELOS_CON_REPARTO_MEDIDO)[number])) return null;
-  const como = `Pon ${NOMBRE_DEL_MODELO_CON_REPARTO} el primero de la lista de vídeo de tu mapa de modelos («Tu cuenta») para el podcast y el dualcast.`;
+  if (tieneRepartoMedido(modelo.modelo)) return null;
+  const como = `Para el podcast y el dualcast, elige en las Opciones avanzadas del proyecto el modelo marcado «${ETIQUETA_REPARTO_MEDIDO}» (o ponlo el primero de la lista de vídeo de tu mapa de modelos, en «Tu cuenta»).`;
   if (!usaIdentidadRegistrada(modelo.modelo)) {
-    return `${modelo.nombre} no admite identidades registradas, y el podcast y el dualcast las necesitan. ${como}`;
+    return `El modelo de escenas habladas que usas no admite identidades registradas, y el podcast y el dualcast las necesitan. No se ha cobrado nada. ${como}`;
   }
-  return `${modelo.nombre} no consigue generar con dos personajes registrados: en KIE da un fallo interno y no cobra. ${como}`;
+  return `El modelo de escenas habladas que usas no consigue generar con dos personajes registrados: en KIE da un fallo interno y no cobra. ${como}`;
 }
 
 /**
