@@ -1,9 +1,12 @@
 import { eq } from "drizzle-orm";
 import { CAPACIDAD_DE_TIPO, duracionesConCoste, type ModeloVista, segundosDeUnidad } from "@/lib/catalogo";
+import { bloqueDeContinuidad, conContinuidad, esPlanoBase, leerBibliaContinuidad } from "@/lib/continuidad";
 import { proporcionFijadaDelProyecto } from "@/lib/formatos";
 import type { Medio } from "@/lib/media/tipos";
 import {
   creditosDeEscenaOmni,
+  faltaDeVoz,
+  type HablanteConVoz,
   motivoSinReparto,
   precioOmniEstimado,
   usaIdentidadRegistrada,
@@ -62,10 +65,10 @@ import { productoEnPrompt, productoParaGenerar } from "../productos/prompt";
 import { referenciasDelPersonajeQueViajan } from "../productos/referencias";
 import { hojaEnElEnvio, repartoCompletoDelEnvio } from "../productos/reparto-del-envio";
 import { creditosDelEnvio, traducirAlIngles } from "../prompts/traduccion";
-import { miembrosDelReparto } from "../reparto/consulta";
+import { miembrosDelReparto, otrosDeLaConversacion } from "../reparto/consulta";
 import { exigirFormatoActivo } from "../reparto/servicio";
 import { muestrasDe } from "../voz/muestra";
-import { vozOmniDelProyecto } from "../voz/omni";
+import { vozOmniDelProyecto, vozRegistradaDe } from "../voz/omni";
 import { vozDelProyecto } from "../voz/proyecto";
 import { ErrorOmni } from "./errores";
 import { eleccionOmni, registroVigente } from "./registro";
@@ -220,15 +223,20 @@ export const duracionesDeOmni = (modelo: ModeloVista): number[] => {
 };
 
 /**
- * Registro con el que se va a producir: el del protagonista, su versión de ficha vigente y la voz del proyecto.
- * Sin él no se produce nada y se dice exactamente qué falta, porque registrar **no cuesta créditos** y por tanto
- * la salida siempre está a un clic.
+ * Registro con el que se va a producir: el del protagonista (o el del personaje del plano), su versión de ficha
+ * vigente y **su voz**: la propia si la tiene y, si no, la del proyecto. Sin él no se produce nada y se dice
+ * exactamente qué falta, porque registrar **no cuesta créditos** y por tanto la salida siempre está a un clic.
  */
 export async function registroParaProducir(
   actor: Actor,
   proyecto: FilaProyecto,
   /** Modelo con el que se va a producir; sin él se mira el que elegiría el mapa ahora mismo. */
   modelo?: string,
+  /**
+   * La conversación en la que habla, si es un plano de podcast: quién es el protagonista de verdad del proyecto y
+   * quién sale en los otros planos. Es con quien no puede compartir voz.
+   */
+  conversacion?: { protagonistaId: string | null; otros: readonly HablanteConVoz[] },
 ): Promise<{
   personaje: FilaPersonaje | null;
   version: FilaVersionPersonaje | null;
@@ -251,23 +259,39 @@ export async function registroParaProducir(
    */
   const conRegistro = usaIdentidadRegistrada(modelo ?? (await modeloDeEscenaHablada(actor.id, proyecto)));
   if (!conRegistro) return referenciasParaProducir(actor, proyecto);
-  const voz = vozOmniDelProyecto(proyecto);
-  if (!voz) {
-    return {
-      personaje: null,
-      version: null,
-      registro: null,
-      voz: null,
-      falta: "todavía no tiene ninguna voz registrada: elígela y regístrala en «Voz y subtítulos».",
-    };
-  }
+  const vacio = { personaje: null, version: null, registro: null, voz: null };
   if (!proyecto.mainCharacterId) {
+    if (!vozOmniDelProyecto(proyecto)) {
+      return {
+        ...vacio,
+        falta: "todavía no tiene ninguna voz registrada: elígela y regístrala en «Voz y subtítulos».",
+      };
+    }
     throw new ErrorProyecto(
       409,
       "Este proyecto no tiene protagonista asignado, y en modo «Voz e identidad registradas» la cara de todas las escenas es la suya. Elige un personaje con consentimiento vigente.",
     );
   }
   const personaje = await personajePropio(actor, proyecto.mainCharacterId);
+  const voz = vozRegistradaDe(personaje, proyecto);
+  if (!voz) {
+    return {
+      ...vacio,
+      falta:
+        conversacion && conversacion.protagonistaId !== personaje.id
+          ? `«${personaje.name}» no tiene ninguna voz registrada: elige y registra su voz en su ficha. No cuesta créditos.`
+          : "todavía no tiene ninguna voz registrada: elígela y regístrala en «Voz y subtítulos».",
+    };
+  }
+  const deVoz = conversacion
+    ? faltaDeVoz(
+        { personajeId: personaje.id, nombre: personaje.name, audioIdPropio: personaje.omniAudioId },
+        conversacion.otros,
+        proyecto.omniAudioId,
+        conversacion.protagonistaId,
+      )
+    : "";
+  if (deVoz !== "") return { ...vacio, personaje, voz, falta: `«${personaje.name}» ${deVoz}` };
   const version = await ultimaVersion(personaje.id);
   if (!version) {
     return {
@@ -286,8 +310,21 @@ export async function registroParaProducir(
     voz,
     falta: registro
       ? ""
-      : `«${personaje.name}» no está registrado con la voz de este proyecto (o su ficha ha cambiado desde que se registró).`,
+      : `«${personaje.name}» no está registrado con ${personaje.omniAudioId === "" ? "la voz de este proyecto" : "su voz"} (o su ficha ha cambiado desde que se registró).`,
   };
+}
+
+/**
+ * La conversación de un plano de podcast: el protagonista de verdad y quién sale en los demás planos de su grupo.
+ * `undefined` fuera de un plano de podcast, donde no hay con quién comparar la voz.
+ */
+export async function conversacionDelPlano(
+  escena: FilaEscena,
+  proyecto: FilaProyecto,
+  personajeId: string | null,
+): Promise<{ protagonistaId: string | null; otros: HablanteConVoz[] } | undefined> {
+  if (!personajeId || escena.podcastGroupId === null) return undefined;
+  return { protagonistaId: proyecto.mainCharacterId, otros: await otrosDeLaConversacion(escena, personajeId) };
 }
 
 /** Modelo con el que se produciría ahora mismo una escena hablada; vacío si no hay ninguno utilizable. */
@@ -429,6 +466,7 @@ export async function producirEscenaHablada(
     actor,
     proyectoDelEnvio,
     modelo.modelo,
+    await conversacionDelPlano(escena, proyecto, delPlano),
   );
   // También el camino Omni debe cerrar la mezcla de acabados antes de reservar presupuesto.
   await contextoAnimadoDeEscena(escena.id, personaje);
@@ -480,7 +518,7 @@ export async function producirEscenaHablada(
    */
   const conReparto = await hechosDelReparto(escena, {
     segundosPorClip: segundos,
-    sinRegistrar: citaIdentidad ? await faltasDeRegistroDelReparto(escena, voz?.audioId ?? "") : [],
+    sinRegistrar: citaIdentidad ? await faltasDeRegistroDelReparto(escena, proyecto) : [],
   });
 
   // ── Punto único: el mismo motor que cierra la puerta de cualquier otro envío ───────────────────────────
@@ -550,7 +588,20 @@ export async function producirEscenaHablada(
     h.buscar,
   );
   const enInglesO = (texto: string) => (texto === "" ? "" : (enIngles.get(texto) ?? texto));
-  const escenaEnIngles = conLugarSuelto(enIngles.get(prompt) ?? prompt, lugarDelPrompt(conLugar, enIngles, null));
+  /**
+   * **Continuidad de un vídeo completo**: el vestuario fijo de quien sale y, sin lugar elegido, el sitio de la
+   * biblia, repetidos literales (ya en inglés) en cada clip. Fuera de un vídeo completo la biblia está vacía y el
+   * prompt es el de siempre.
+   */
+  const biblia = leerBibliaContinuidad(proyecto.continuityBible);
+  const enPlano =
+    escena.castFormat === "solo"
+      ? [{ id: personaje.id, nombre: personaje.name }]
+      : (await miembrosDelReparto(escena.id)).map((m) => ({ id: m.personajeId, nombre: m.nombre }));
+  const escenaEnIngles = conContinuidad(
+    conLugarSuelto(enIngles.get(prompt) ?? prompt, lugarDelPrompt(conLugar, enIngles, null)),
+    bloqueDeContinuidad(biblia, enPlano, conLugar !== null),
+  );
   const contextoEnIngles = enIngles.get(contexto) ?? contexto;
   // La dirección del clip (0.25.0) se aplica con el texto libre ya en inglés. En formato mudo el diálogo no
   // viaja, aunque el guion tenga texto: el clip sale con la boca cerrada y sin voz.
@@ -607,7 +658,7 @@ export async function producirEscenaHablada(
    * Sin reparto de dos, `envios` es `null` y se encola exactamente lo de siempre: un clip, con el
    * `character_ids` del protagonista y el prompt de un personaje hablando a cámara.
    */
-  const envios = citaIdentidad ? await enviosDelReparto(escena, voz?.audioId ?? "", enInglesO) : null;
+  const envios = citaIdentidad ? await enviosDelReparto(escena, proyecto, enInglesO) : null;
   if (envios && envios.faltan.length > 0) {
     // No debería llegarse aquí: la regla `reparto-sin-registro` lo ha bloqueado antes de tocar el dinero. Si se
     // llega, se dice quién falta y no se envía nada, en lugar de mandar una cara inventada y cobrarla.
@@ -624,10 +675,18 @@ export async function producirEscenaHablada(
 
   /**
    * **Experimental, apagado de fábrica** (Admin › Ajustes): con identidad registrada y lugar, el fotograma aprobado de
-   * la escena —situado en su lugar— viaja junto a los `character_ids`. Sin el ajuste, el lugar va solo descrito.
+   * la escena —situado en su lugar— viaja junto a los `character_ids`. Con el ajuste general vale cualquier fotograma
+   * aprobado; con el de los vídeos completos, solo su **plano base**. Sin ninguno, el lugar va solo descrito.
    */
-  const { omniLugarCombinado } = await (await import("../ajustes")).leerAjustes();
-  const fotogramaSituado = citaIdentidad && conLugar && omniLugarCombinado ? escena.approvedFrameMediaId : null;
+  const { leerAjustes, combinarLugarConIdentidad } = await import("../ajustes");
+  const aprobado = escena.approvedFrameMediaId;
+  const fotogramaSituado =
+    citaIdentidad &&
+    conLugar &&
+    aprobado &&
+    combinarLugarConIdentidad(await leerAjustes(), esPlanoBase(biblia, aprobado))
+      ? aprobado
+      : null;
   // El formato principal del proyecto (0.41.0): se comprueba contra el modelo antes de reservar nada.
   const proporcion = proporcionDelEnvio(proporcionFijadaDelProyecto(proyecto.formats), null, modelo);
   const trabajos: FilaTrabajo[] = [...yaEncoladas];

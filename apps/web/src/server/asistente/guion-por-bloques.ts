@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, like } from "drizzle-orm";
+import type { BibliaContinuidad } from "@/lib/continuidad";
 import { limpiarTextoDePrompt } from "@/lib/ficha-personaje";
 import { formatearCreditos } from "@/lib/generacion";
 import { CONCEPTO_MAXIMO } from "@/lib/proyectos";
@@ -8,6 +9,7 @@ import {
   bloquesDe,
   type ClipGuion,
   type CondicionesVideoCompleto,
+  type ContinuidadGuion,
   type DuracionVideo,
   ErrorTrozoInservible,
   escenasDeLosClips,
@@ -265,16 +267,23 @@ export async function escribirVideoCompleto(ctx: Contexto): Promise<{ aviso: str
   const datosComunes = { idea: proyecto.idea, tipo: video.tipo, personajes: video.personajes };
   let concepto = "";
   const clips: ClipGuion[] = [];
+  let continuidad: ContinuidadGuion = { lugar: "", vestuario: {} };
   if (!porBloques(video.duracion)) {
     const leido = await trozo(
       "",
       "el guion",
       INSTRUCCIONES_CLIPS,
       (causaReintento) =>
-        peticionDeClips({ ...datosComunes, clips: plan, ...(causaReintento ? { causaReintento } : {}) }),
+        peticionDeClips({
+          ...datosComunes,
+          clips: plan,
+          conContinuidad: true,
+          ...(causaReintento ? { causaReintento } : {}),
+        }),
       (texto) => leerBloque(texto, plan),
     );
     concepto = leido.concepto;
+    continuidad = leido.continuidad;
     clips.push(...leido.clips);
   } else {
     const biblia: BibliaGuion = await trozo(
@@ -285,6 +294,12 @@ export async function escribirVideoCompleto(ctx: Contexto): Promise<{ aviso: str
       (texto) => leerBiblia(texto, bloques.length),
     );
     concepto = biblia.concepto;
+    continuidad = {
+      lugar: biblia.lugar,
+      vestuario: Object.fromEntries(
+        biblia.personajes.filter((p) => p.vestuario !== "").map((p) => [p.hablante, p.vestuario]),
+      ),
+    };
     for (const [indice, bloque] of bloques.entries()) {
       const parte = { numero: indice + 1, total: bloques.length };
       const turnosPrevios = ultimosTurnos(clips);
@@ -322,6 +337,8 @@ export async function escribirVideoCompleto(ctx: Contexto): Promise<{ aviso: str
         .set({
           clipSeconds: plan[0]?.segundos ?? proyecto.clipSeconds,
           ...(concepto === "" ? {} : { concept: limpiarTextoDePrompt(concepto, CONCEPTO_MAXIMO) }),
+          // Vestuario y lugar fijos de este guion; los planos base de un guion anterior ya no valen: otras escenas.
+          continuityBible: bibliaDelGuion(continuidad, personajes),
           updatedAt: new Date(),
         })
         .where(eq(projects.id, proyecto.id));
@@ -331,6 +348,20 @@ export async function escribirVideoCompleto(ctx: Contexto): Promise<{ aviso: str
   const ultima = await ejecucionDeLaConfirmacion(ctx.actor.id, ultimaClave);
   if (ultima) await db().update(assistantRuns).set({ scenesProposed: escritas }).where(eq(assistantRuns.id, ultima.id));
   return { aviso: [...new Set(hechas.map((h) => h.aviso).filter((a) => a !== ""))].join(" ") };
+}
+
+/** La biblia de continuidad que se guarda con el guion: el vestuario pasa de letras («A», «B») a personajes. */
+export function bibliaDelGuion(
+  continuidad: ContinuidadGuion,
+  personajes: Readonly<Record<Hablante, string | null>>,
+): BibliaContinuidad {
+  const vestuario: Record<string, string> = {};
+  for (const hablante of ["A", "B"] as const) {
+    const id = personajes[hablante];
+    const ropa = continuidad.vestuario[hablante];
+    if (id && ropa) vestuario[id] = ropa;
+  }
+  return { lugar: continuidad.lugar, vestuario, planos: [] };
 }
 
 /**

@@ -145,6 +145,27 @@ describe("lectura de un trozo del guion", () => {
     expect(clips.map((c) => c.segundos)).toEqual([10, 10]);
   });
 
+  test("el vestuario y el lugar que acompañan al guion se leen limpios y nunca obligan a repetirlo", () => {
+    const clips = [
+      { shot: "medium", action: "Plano medio", turns: [{ speaker: "A", text: "Hola." }] },
+      { shot: "medium", action: "Plano medio", turns: [{ speaker: "A", text: "Adiós." }] },
+    ];
+    const con = leerBloque(
+      JSON.stringify({
+        concept: "x",
+        clips,
+        setting: "A sunny rooftop at 9 am --ar 16:9",
+        characters: [{ speaker: "A", wardrobe: "Red raincoat" }, { speaker: "C", wardrobe: "nada" }, { speaker: "B" }],
+      }),
+      plan,
+    );
+    expect(con.continuidad.vestuario).toEqual({ A: "Red raincoat" });
+    expect(con.continuidad.lugar).toContain("A sunny rooftop at 9 am");
+    expect(con.continuidad.lugar).not.toContain("--ar");
+    // Sin vestuario ni lugar, el trozo vale igual.
+    expect(leerBloque(respuesta(clips), plan).continuidad).toEqual({ lugar: "", vestuario: {} });
+  });
+
   test("un JSON cortado a mitad se marca como truncado", () => {
     const cortada = respuesta([{ shot: "medium", action: "x", turns: [{ speaker: "A", text: "Hola" }] }]).slice(0, 60);
     const fallo = (() => {

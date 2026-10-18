@@ -49,6 +49,7 @@ const { producirEscena } = await import("../produccion/producir");
 const { editarEscena } = await import("../asistente/escenas");
 const { registrarPersonajeOmni } = await import("../personajes/omni");
 const { registrarVozOmni, validarEleccionVozOmni } = await import("../voz/omni");
+const { registrarVozPropia } = await import("../personajes/voz-propia");
 const { MODELOS_OMNI, VOCES_OMNI } = await import("@/lib/omni");
 const { lugarDeclaradoDePrueba, subirFotoDePrueba } = await import("./lugar-de-prueba");
 const { revocarDeclaracionDeLugar } = await import("./declaracion");
@@ -274,6 +275,19 @@ describe.skipIf(!hayBaseDeDatos)("lugar: la pantalla de producción dice lo mism
         h,
       );
       const [proyecto] = await db().select().from(projects).where(eq(projects.id, proyectoId));
+      // En una conversación cada uno habla con su voz: la segunda registra la suya (sin coste) y queda registrada.
+      if (opciones.segunda) {
+        await registrarVozPropia(
+          actor,
+          opciones.segunda,
+          validarEleccionVozOmni({
+            voz: VOCES_OMNI[1]?.id ?? "",
+            descripcion: "Voz natural en español de España, más grave y pausada.",
+            ejemplo: "Y yo te lo cuento a mi manera.",
+          }),
+          h,
+        );
+      }
       for (const id of [lucia, ...(opciones.segunda ? [opciones.segunda] : [])]) {
         await registrarPersonajeOmni(actor, id, proyecto?.omniAudioId ?? "", h);
       }

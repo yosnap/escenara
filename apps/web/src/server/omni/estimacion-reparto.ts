@@ -160,7 +160,7 @@ export async function estimarReparto(
       "El diálogo de esta escena no está repartido por turnos, así que el modelo decidirá quién dice cada frase.",
     );
   }
-  for (const falta of await faltasDeRegistroDelReparto(escena, proyecto.omniAudioId)) {
+  for (const falta of await faltasDeRegistroDelReparto(escena, proyecto)) {
     impedimentos.push(`«${falta.nombre}» ${falta.falta}`);
   }
 

@@ -1,3 +1,4 @@
+import type { PlanosBaseVista } from "@/lib/continuidad";
 import type { ProduccionVista } from "@/lib/produccion";
 
 /** Cliente de la API de producción para el navegador. Nada de lógica: quien decide es el servidor. */
@@ -99,3 +100,18 @@ export interface CancelacionDeEscena {
 
 export const cancelarEscena = (escenaId: string) =>
   pedir<CancelacionDeEscena>(`/api/escenas/${escenaId}/produccion`, json({ accion: "cancelar" }));
+
+/** Planos base del vídeo completo: estado y coste de los que faltan. Lectura. */
+export const consultarPlanosBase = (proyectoId: string) =>
+  pedir<PlanosBaseVista>(`/api/proyectos/${proyectoId}/planos-base`);
+
+/** Pide los planos base que faltan, con una confirmación por el total. */
+export const pedirPlanosBase = (proyectoId: string, confirmacion: ConfirmacionEnvio) =>
+  pedir<{ vista: PlanosBaseVista; nuevos: number; fallo: string | null }>(
+    `/api/proyectos/${proyectoId}/planos-base`,
+    json(confirmacion),
+  );
+
+/** Da por bueno el plano base de un personaje: pasa a ser el de sus escenas. No gasta nada. */
+export const aprobarPlanoBase = (proyectoId: string, personajeId: string) =>
+  pedir<PlanosBaseVista>(`/api/proyectos/${proyectoId}/planos-base/${personajeId}`, json({}));

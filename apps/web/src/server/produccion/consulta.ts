@@ -47,7 +47,13 @@ import type { EleccionDeTrabajo } from "../generacion/precios";
 import { condicionEnCurso } from "../generacion/trabajos";
 import { type Actor, aDto, espacioUsado } from "../media/servicio";
 import { DONDE_CAMBIAR_MODELO, modeloEnMensaje } from "../modelo-en-mensajes";
-import { costeDeEscenaOmni, duracionesDeOmni, registroParaProducir, segundosPlanificados } from "../omni/escena";
+import {
+  conversacionDelPlano,
+  costeDeEscenaOmni,
+  duracionesDeOmni,
+  registroParaProducir,
+  segundosPlanificados,
+} from "../omni/escena";
 import { costesOmniPorDuracion, sellosOmniVigentes } from "../omni/estimacion-plan";
 import { eleccionOmni } from "../omni/registro";
 import { personajeDelPlano } from "../omni/reparto";
@@ -430,7 +436,12 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
       ]);
       return vistaDeEscena(
         fila,
-        trabajos,
+        /**
+         * En modo «Voz e identidad registradas» la escena no tiene fotograma propio: un fotograma suyo es el **plano
+         * base** de un vídeo completo, que se prepara aparte y comparten varias escenas. Contarlo como el fotograma
+         * de la escena escondería «Generar el clip hablado» y ofrecería aprobarlo y animarlo, que este modo no hace.
+         */
+        proyecto.voiceMode === "omni" ? trabajos.filter((t) => t.kind !== "fotograma") : trabajos,
         // El mismo motor que cierra la puerta al producir el fotograma, con los datos ya cargados.
         sinLosDelModelo(
           evaluarParaMostrar({
@@ -584,10 +595,12 @@ async function faltasDeLosPlanos(
     const personajeId = await personajeDelPlano(escena);
     if (!personajeId || personajeId === proyecto.mainCharacterId) continue;
     if (!porPersonaje.has(personajeId)) {
+      // Con la conversación: si habla con la misma voz que otro del podcast, también es algo que le falta.
       const { falta, personaje } = await registroParaProducir(
         actor,
         { ...proyecto, mainCharacterId: personajeId },
         modelo,
+        await conversacionDelPlano(escena, proyecto, personajeId),
       );
       porPersonaje.set(
         personajeId,

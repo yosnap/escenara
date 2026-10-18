@@ -19,6 +19,7 @@ import { settings } from "./db/esquema";
 
 export { cantoDe } from "./ajustes-canto";
 export { coherenciaDe } from "./ajustes-coherencia";
+export { combinarLugarConIdentidad } from "./ajustes-omni";
 
 /**
  * Ajustes de la instalación, editables en Admin › Ajustes (norma: la configuración vive en el panel,
@@ -138,6 +139,11 @@ export interface Ajustes extends AjustesDatos, AjustesComunidad, AjustesLegales,
    * lugar y cara fieles, pero la voz no está confirmada. Hasta que el propietario la escuche, no se activa sola.
    */
   omniLugarCombinado: boolean;
+  /**
+   * Lo mismo, **solo para los vídeos completos** y solo con su plano base (`ajustes-omni.ts`). Apagado de fábrica:
+   * se enciende cuando el propietario escuche la voz de un clip combinado y la dé por buena.
+   */
+  omniLugarCombinadoVideoCompleto: boolean;
   /**
    * Revisión de continuidad de las escenas producidas (RF07). Las comprobaciones técnicas **no cuestan nada** y
    * aquí solo se ajustan sus umbrales; qué fallo es crítico vive en el código (`lib/revision.ts`), porque es una
@@ -395,6 +401,7 @@ export const AJUSTES_POR_DEFECTO: Ajustes = {
   // medidos, así que no hay nada que probar antes de ofrecerlos.
   repartoPodcastActivo: true,
   omniLugarCombinado: false,
+  omniLugarCombinadoVideoCompleto: false,
   repartoDualcastActivo: true,
   // Medio segundo: los clips de 4 s de KIE miden 4,0–4,1 s según el contenedor, así que una diferencia menor que
   // esto no es un formato incorrecto, es cómo se cierra un MP4.
@@ -592,6 +599,7 @@ const VALIDACION: Record<keyof Ajustes, { valido: (v: unknown) => boolean; mensa
   },
   repartoPodcastActivo: { valido: booleano, mensaje: "Debe ser sí o no." },
   omniLugarCombinado: { valido: booleano, mensaje: "Debe ser sí o no." },
+  omniLugarCombinadoVideoCompleto: { valido: booleano, mensaje: "Debe ser sí o no." },
   repartoDualcastActivo: { valido: booleano, mensaje: "Debe ser sí o no." },
   revisionToleranciaDuracion: {
     valido: decimal(0, 5),
