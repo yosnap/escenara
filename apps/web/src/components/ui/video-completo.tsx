@@ -41,7 +41,15 @@ export interface PrecioDeLlamada {
   creditos: number;
   euros: number;
   comprobado: string;
+  /** `true` si se paga por la cuota del plan del usuario en ese servicio: entonces no cuesta créditos. */
+  porCuota?: boolean;
+  /** Proveedor que lo escribiría; se nombra cuando va por cuota. Nunca el modelo. */
+  nombreProveedor?: string;
 }
+
+/** «Por la cuota de tu plan en NaN builders»: lo que se dice en lugar de «0 créditos» cuando va por cuota. */
+export const fraseDeCuota = (nombreProveedor?: string) =>
+  `Por la cuota de tu plan${nombreProveedor ? ` en ${nombreProveedor}` : ""}`;
 
 /** Por qué no se puede escribir el guion con esta elección; `null` si se puede. */
 export function motivoDeLaEleccion(c: CondicionesVideoCompleto, e: EleccionVideoCompleto): string | null {
@@ -191,7 +199,24 @@ export function SelectorVideoCompleto({
         </fieldset>
       )}
 
-      {coste && precio && (
+      {coste && precio?.porCuota && (
+        <div className="flex flex-col gap-1 rounded-tarjeta border-2 border-borde bg-superficie p-4">
+          <p className="font-semibold text-texto">Lo que cuesta escribir el guion</p>
+          <p className="font-mono text-texto">
+            {coste.llamadas} {coste.llamadas === 1 ? "llamada" : "llamadas"} de texto, más una de reserva por si hay que
+            repetir un trozo
+          </p>
+          <p className="font-mono font-semibold text-texto">
+            {fraseDeCuota(precio.nombreProveedor)}: no cuesta créditos
+          </p>
+          <p className="text-sm text-texto-suave">
+            Ese servicio se paga con la cuota de tu plan y no por petición. Si no responde, no se pasa a ninguna entrada
+            de pago de tu mapa: se para y se te dice por qué. El coste de los clips se enseña aparte, antes de producir.
+          </p>
+        </div>
+      )}
+
+      {coste && precio && !precio.porCuota && (
         <div className="flex flex-col gap-1 rounded-tarjeta border-2 border-borde bg-superficie p-4">
           <p className="font-semibold text-texto">Lo que cuesta escribir el guion</p>
           <p className="font-mono text-texto">

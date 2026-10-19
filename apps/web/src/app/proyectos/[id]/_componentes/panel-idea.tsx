@@ -13,7 +13,12 @@ import { Dialogo } from "@/components/ui/overlay";
 import { Paso } from "@/components/ui/paso";
 import { SelectorPersonaje } from "@/components/ui/personaje";
 import { Selector } from "@/components/ui/select";
-import { type EleccionVideoCompleto, motivoDeLaEleccion, SelectorVideoCompleto } from "@/components/ui/video-completo";
+import {
+  type EleccionVideoCompleto,
+  fraseDeCuota,
+  motivoDeLaEleccion,
+  SelectorVideoCompleto,
+} from "@/components/ui/video-completo";
 import { type ClaveConfirmacion, claveEstable } from "@/lib/asistente";
 import { renovarClaveTrasFallo } from "@/lib/comparativas";
 import { ACENTOS, type Acento, AYUDA_ACENTO, NOMBRE_ACENTO } from "@/lib/direccion";
@@ -311,14 +316,21 @@ export function PanelIdea({
                   onCambio={setVideo}
                 />
               )}
-              {video.duracion === null && (
-                <p className="font-mono text-texto">
-                  {formatearCreditos(estimacionAsistente.creditos)} (estimación, precio del{" "}
-                  {formatearFecha(estimacionAsistente.comprobado)}) ≈ {formatearEuros(estimacionAsistente.euros)}
-                </p>
-              )}
+              {video.duracion === null &&
+                (estimacionAsistente.porCuota ? (
+                  <p className="font-mono text-texto">
+                    {fraseDeCuota(estimacionAsistente.nombreProveedor)}: no cuesta créditos
+                  </p>
+                ) : (
+                  <p className="font-mono text-texto">
+                    {formatearCreditos(estimacionAsistente.creditos)} (estimación, precio del{" "}
+                    {formatearFecha(estimacionAsistente.comprobado)}) ≈ {formatearEuros(estimacionAsistente.euros)}
+                  </p>
+                ))}
               <p className="text-sm text-texto-suave">
-                Se paga con tu propia clave del proveedor. El importe final lo informa él al terminar.
+                {estimacionAsistente.porCuota
+                  ? "Lo escribe el primer servicio de tu mapa de modelos de texto, que se paga con la cuota de tu plan y no por petición."
+                  : "Se paga con tu propia clave del proveedor. El importe final lo informa él al terminar."}
               </p>
               <div>
                 {motivoVideo && <p className="mb-2 text-sm text-texto-suave">{motivoVideo}</p>}
