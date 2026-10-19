@@ -1,14 +1,22 @@
 import { createHash } from "node:crypto";
 import { and, eq, inArray, like, lt, sql } from "drizzle-orm";
 import { INSTRUCCIONES_TRADUCCION, leerTraducciones, peticionDeTraduccion } from "@/lib/asistente";
+import { esProveedor, PROVEEDORES_PUBLICOS } from "@/lib/boveda";
 import { type IntentoProveedor, mensajeDeFalloDeProveedor } from "@/lib/diagnostico-proveedor";
+import { formatearCreditos } from "@/lib/generacion";
 import { leerAjustes } from "../ajustes";
 import { eleccionDeTexto } from "../asistente/texto";
 import { conCerrojosConsultivos, ErrorConexionCerrojo } from "../db/cerrojos-consultivos";
 import { db, type Ejecutor } from "../db/cliente";
 import { assistantRuns, translationCache } from "../db/esquema";
 import { ErrorGeneracion } from "../generacion/errores";
-import { ErrorDeTexto, ErrorPeticionRepetida, pedirTextoPorMapa, type TextoDelMapa } from "../mapa/texto";
+import {
+  ErrorDeTexto,
+  ErrorPeticionRepetida,
+  pedirTextoPorMapa,
+  type TechoPorLlamada,
+  type TextoDelMapa,
+} from "../mapa/texto";
 import type { Buscador } from "../proveedores/codigos";
 import { ErrorCatalogo } from "../proveedores/contrato";
 
@@ -114,6 +122,22 @@ export async function estadoDeTraduccion(): Promise<EstadoTraduccion> {
 const ENCABEZADO_FALLO =
   "No se ha podido traducir tu texto al inglés, así que no se ha enviado nada a generar y no se te ha cobrado la generación";
 
+/**
+ * Por qué no se ha probado una entrada de pago del mapa al traducir. El coste de la traducción **no sale del mapa**:
+ * se confirma al precio del modelo de texto de la instalación, así que la frase genérica («revisa el coste: verás el
+ * de la primera entrada de tu mapa») sería falsa aquí. Se dice a qué precio se confirmó y qué hacer en el mapa.
+ */
+export function fraseDeTraduccionPorEncima(
+  techo: TechoPorLlamada,
+  porEncima: readonly { nombreProveedor: string; creditos: number }[],
+): string {
+  const quien = esProveedor(techo.proveedor) ? PROVEEDORES_PUBLICOS[techo.proveedor].nombre : techo.proveedor;
+  const caras = porEncima
+    .map((e) => `la de ${e.nombreProveedor} (${formatearCreditos(e.creditos)} por llamada)`)
+    .join(" y ");
+  return `La traducción del prompt se confirma al precio de ${quien} (${formatearCreditos(techo.creditos)}) y la entrada de pago de tu mapa de texto que tocaba, ${caras}, cuesta más, así que no se le ha llamado y no se ha cobrado nada en ella. Pon primero en tu mapa de modelos de texto un servicio de cuota o un modelo que no pase de ${formatearCreditos(techo.creditos)}, en «Tu cuenta».`;
+}
+
 /** Fallo de traducción con todos los intentos contados, para que quien lo lea sepa qué se probó y por qué. */
 function falloDeTraduccion(intentos: readonly IntentoProveedor[], sugerencia: string): ErrorGeneracion {
   return new ErrorGeneracion(502, mensajeDeFalloDeProveedor(ENCABEZADO_FALLO, intentos, sugerencia));
@@ -176,7 +200,8 @@ export async function traducirAlIngles(
   if (porHuella.size > 0) await marcarUsadas(usuarioId, [...porHuella.keys()]);
   if (pendientes.length === 0) return resultado;
 
-  const { traducidas, aviso } = await pedirTraduccion(usuarioId, pendientes, estado.modelo, buscar);
+  const techo = { creditos: estado.creditos, proveedor: estado.proveedor };
+  const { traducidas, aviso } = await pedirTraduccion(usuarioId, pendientes, techo, buscar);
   for (const [texto, ingles] of traducidas) resultado.set(texto, ingles);
   resultado.aviso = aviso;
   return resultado;
@@ -231,8 +256,8 @@ export async function borrarTraduccionesDePersonaje(ejecutor: Ejecutor, personaj
 export async function pedirTraduccion(
   usuarioId: string,
   pendientes: TextoATraducir[],
-  /** Modelo cuyo coste se enseñó y se confirmó al generar: puede hacer de reserva de pago, avisando. */
-  modeloConfirmado: string,
+  /** Lo que se confirmó por traducción al generar: ninguna entrada del mapa puede costar más. */
+  techo: TechoPorLlamada,
   buscar: Buscador,
 ): Promise<{ traducidas: Map<string, string>; aviso: string }> {
   const cerrojos = pendientes.map((p) => `traduccion:${usuarioId}:${huellaDeTexto(p.texto)}`);
@@ -243,7 +268,7 @@ export async function pedirTraduccion(
       const faltan = pendientes.filter((p) => !traducidas.has(p.texto));
       if (faltan.length === 0) return { traducidas, aviso: "" };
       const clave = await claveDeTraduccion(usuarioId, `traduccion:${huellaDelConjunto(faltan)}`);
-      const nuevas = await llamarAlTraductor(usuarioId, faltan, modeloConfirmado, buscar, clave);
+      const nuevas = await llamarAlTraductor(usuarioId, faltan, techo, buscar, clave);
       for (const [texto, ingles] of nuevas.traducidas) traducidas.set(texto, ingles);
       return { traducidas, aviso: nuevas.aviso };
     });
@@ -285,13 +310,14 @@ async function otraPeticionEnCurso(
  * pagan por cuota del plan apuntan 0 créditos. Y si ninguna puede, el error dice **todas** las entradas probadas
  * con su causa concreta, nunca «vuelve a intentarlo».
  *
- * Lo que se confirmó antes de generar es el coste de la **entrada principal**, que es el techo: una reserva que
- * se pague por cuota cuesta menos, nunca más.
+ * Lo que se confirmó antes de generar es el coste del **modelo de texto de la instalación**, y es el techo de cada
+ * llamada: una entrada de cuota cabe siempre y una de pago solo si su precio vigente no pasa de él. Una principal
+ * de pago más cara que lo confirmado no se llama y se dice, en lugar de cobrar más de lo que se enseñó.
  */
 async function llamarAlTraductor(
   usuarioId: string,
   pendientes: TextoATraducir[],
-  modeloConfirmado: string,
+  techo: TechoPorLlamada,
   buscar: Buscador,
   claveIdempotencia: string,
 ): Promise<{ traducidas: Map<string, string>; aviso: string }> {
@@ -305,12 +331,18 @@ async function llamarAlTraductor(
       entrada: peticionDeTraduccion(originales),
       claveIdempotencia,
       buscar,
-      // El total que se confirmó al generar incluye la traducción **al precio de este modelo**: si la principal de
-      // cuota falla, puede escribirla él, y se avisa con el trabajo (decisión del propietario, 2026-10-16).
-      ...(modeloConfirmado === "" ? {} : { reservaConfirmada: modeloConfirmado }),
+      // El total que se confirmó al generar incluye la traducción **al precio del modelo de texto de la
+      // instalación**: cualquier entrada del mapa que quepa en ese precio puede escribirla (una de cuota, o ese
+      // modelo de reserva si la principal de cuota falla, y se avisa con el trabajo); una que cueste más no se llama.
+      techoPorLlamada: techo,
     });
   } catch (error) {
-    if (error instanceof ErrorDeTexto) throw new ErrorGeneracion(502, error.mensaje(ENCABEZADO_FALLO));
+    if (error instanceof ErrorDeTexto) {
+      throw new ErrorGeneracion(
+        error.estado,
+        error.mensaje(ENCABEZADO_FALLO, { porEncima: fraseDeTraduccionPorEncima(techo, error.porEncima) }),
+      );
+    }
     if (error instanceof ErrorPeticionRepetida) {
       // Red de seguridad: con los cerrojos tomados la clave no debería repetirse nunca. Si pasa, es un fallo
       // nuestro y se registra, pero tampoco se paga dos veces.

@@ -130,7 +130,8 @@ export function llamadasDelGuion(duracion: DuracionVideo, tipo: TipoPieza = "una
 
 /**
  * Llamadas de reserva que se confirman aparte: si un trozo llega cortado o no cabe en sus segundos, se repite una
- * vez **dentro de lo confirmado**. Si no hace falta, no se gasta.
+ * vez **dentro de lo confirmado**; y si la entrada principal del mapa de texto falla (un servicio de cuota
+ * saturado, por ejemplo), la reserva de pago puede escribir dentro de ese mismo margen. Si no hace falta, no se gasta.
  */
 export const LLAMADAS_DE_RESERVA = 1;
 
@@ -144,13 +145,37 @@ export interface CosteDelGuion {
   total: number;
 }
 
-/** Coste del guion con el precio de una llamada. Es la misma cuenta en la pantalla y en el servidor. */
-export function costeDelGuion(creditosPorLlamada: number, duracion: DuracionVideo, tipo?: TipoPieza): CosteDelGuion {
+const creditosEnteros = (creditos: number) => Math.max(0, Math.ceil(creditos));
+
+/**
+ * Coste del guion completo con el precio de una llamada de la entrada principal y el de la reserva de pago más cara
+ * del mapa (0 si no hay ninguna). Es la misma cuenta en la pantalla y en el servidor.
+ *
+ * La llamada de reserva se cobra, como mucho, a lo que cueste **la más cara de las que la pueden hacer**: repetir un
+ * trozo lo hace la principal, y escribir cuando la principal falla, la reserva de pago. Sin `creditosReserva`, la
+ * reserva cuesta lo que la principal, como hasta la 0.56.0.
+ */
+export function costeDelGuion(
+  creditosPorLlamada: number,
+  duracion: DuracionVideo,
+  tipo?: TipoPieza,
+  creditosReservaPorLlamada = 0,
+): CosteDelGuion {
   const llamadas = llamadasDelGuion(duracion, tipo);
-  const porLlamada = Math.max(0, Math.ceil(creditosPorLlamada));
+  const porLlamada = creditosEnteros(creditosPorLlamada);
   const creditosLlamadas = llamadas * porLlamada;
-  const creditosReserva = LLAMADAS_DE_RESERVA * porLlamada;
+  const creditosReserva = LLAMADAS_DE_RESERVA * Math.max(porLlamada, creditosEnteros(creditosReservaPorLlamada));
   return { llamadas, creditosLlamadas, creditosReserva, total: creditosLlamadas + creditosReserva };
+}
+
+/**
+ * Coste de un guion de escenas sueltas: una llamada a la principal más, si hay reserva de pago en el mapa, la
+ * llamada de reserva a su precio. Aquí no hay trozos que repetir, así que sin reserva de pago no se suma nada.
+ */
+export function costeDeEscenasSueltas(creditosPorLlamada: number, creditosReservaPorLlamada = 0): CosteDelGuion {
+  const creditosLlamadas = creditosEnteros(creditosPorLlamada);
+  const creditosReserva = LLAMADAS_DE_RESERVA * creditosEnteros(creditosReservaPorLlamada);
+  return { llamadas: 1, creditosLlamadas, creditosReserva, total: creditosLlamadas + creditosReserva };
 }
 
 // ── Opciones que se ofrecen ──────────────────────────────────────────────────────────────────────────────

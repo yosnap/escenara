@@ -13,7 +13,12 @@ import { Dialogo } from "@/components/ui/overlay";
 import { Paso } from "@/components/ui/paso";
 import { SelectorPersonaje } from "@/components/ui/personaje";
 import { Selector } from "@/components/ui/select";
-import { type EleccionVideoCompleto, motivoDeLaEleccion, SelectorVideoCompleto } from "@/components/ui/video-completo";
+import {
+  type EleccionVideoCompleto,
+  fraseDeCuota,
+  motivoDeLaEleccion,
+  SelectorVideoCompleto,
+} from "@/components/ui/video-completo";
 import { type ClaveConfirmacion, claveEstable } from "@/lib/asistente";
 import { renovarClaveTrasFallo } from "@/lib/comparativas";
 import { ACENTOS, type Acento, AYUDA_ACENTO, NOMBRE_ACENTO } from "@/lib/direccion";
@@ -22,7 +27,7 @@ import { formatearCreditos, formatearEuros } from "@/lib/generacion";
 import type { PersonajeElegible } from "@/lib/personajes";
 import { DURACIONES_DISPONIBLES } from "@/lib/produccion";
 import { CONCEPTO_MAXIMO, ESCENAS_SUGERIDAS, formatearFecha, IDEA_MAXIMA, type ProyectoDetalle } from "@/lib/proyectos";
-import { costeDelGuion } from "@/lib/video-completo";
+import { costeDeEscenasSueltas, costeDelGuion } from "@/lib/video-completo";
 import { editarProyecto, pedirGuion } from "../../_componentes/api-proyectos";
 
 /** El selector del lugar del proyecto se descarga aparte: la página del proyecto va justa de JavaScript. */
@@ -91,8 +96,10 @@ export function PanelIdea({
   const motivoVideo = detalle.videoCompleto ? motivoDeLaEleccion(detalle.videoCompleto, video) : null;
   const creditosAConfirmar =
     estimacionAsistente && video.duracion !== null
-      ? costeDelGuion(estimacionAsistente.creditos, video.duracion, video.tipo).total
-      : (estimacionAsistente?.creditos ?? 0);
+      ? costeDelGuion(estimacionAsistente.creditos, video.duracion, video.tipo, estimacionAsistente.reserva?.creditos)
+          .total
+      : costeDeEscenasSueltas(estimacionAsistente?.creditos ?? 0, estimacionAsistente?.reserva?.creditos).total;
+  const reservaSuelta = estimacionAsistente?.reserva?.creditos ?? 0;
 
   /** `true` si se ha guardado; si no, ya ha avisado del error y quien llama deshace lo que mostró por adelantado. */
   const guardar = async (cambios: Record<string, unknown>): Promise<boolean> => {
@@ -311,14 +318,33 @@ export function PanelIdea({
                   onCambio={setVideo}
                 />
               )}
-              {video.duracion === null && (
-                <p className="font-mono text-texto">
-                  {formatearCreditos(estimacionAsistente.creditos)} (estimación, precio del{" "}
-                  {formatearFecha(estimacionAsistente.comprobado)}) ≈ {formatearEuros(estimacionAsistente.euros)}
-                </p>
-              )}
+              {video.duracion === null &&
+                (estimacionAsistente.porCuota ? (
+                  <p className="font-mono text-texto">
+                    {fraseDeCuota(estimacionAsistente.nombreProveedor, reservaSuelta)}
+                    {estimacionAsistente.reserva && reservaSuelta > 0 && (
+                      <>
+                        {" "}
+                        (estimación, precio del {formatearFecha(estimacionAsistente.reserva.comprobado)}) ≈{" "}
+                        {formatearEuros(estimacionAsistente.reserva.euros)}
+                      </>
+                    )}
+                  </p>
+                ) : (
+                  <p className="font-mono text-texto">
+                    {formatearCreditos(estimacionAsistente.creditos)} (estimación, precio del{" "}
+                    {formatearFecha(estimacionAsistente.comprobado)}) ≈ {formatearEuros(estimacionAsistente.euros)}
+                    {estimacionAsistente.reserva &&
+                      reservaSuelta > 0 &&
+                      `; si falla, como mucho ${formatearCreditos(reservaSuelta)} más de reserva ≈ ${formatearEuros(estimacionAsistente.reserva.euros)}`}
+                  </p>
+                ))}
               <p className="text-sm text-texto-suave">
-                Se paga con tu propia clave del proveedor. El importe final lo informa él al terminar.
+                {estimacionAsistente.porCuota
+                  ? "Lo escribe el primer servicio de tu mapa de modelos de texto, que se paga con la cuota de tu plan y no por petición."
+                  : "Se paga con tu propia clave del proveedor. El importe final lo informa él al terminar."}
+                {reservaSuelta > 0 &&
+                  " Si falla, escribe tu reserva de pago, y solo si lo que cuesta cabe en lo que confirmas."}
               </p>
               <div>
                 {motivoVideo && <p className="mb-2 text-sm text-texto-suave">{motivoVideo}</p>}

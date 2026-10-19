@@ -307,9 +307,33 @@ export interface EstimacionTexto {
   nombreModelo: string;
   creditos: number;
   euros: number;
-  /** Fecha (AAAA-MM-DD) en la que se comprobó el precio. */
+  /** Fecha (AAAA-MM-DD) en la que se comprobó el precio; vacía si se paga por cuota. */
   comprobado: string;
+  /**
+   * Sello de lo que se confirma: el modo (`cuota|` o `pago|`), el del precio de la principal y, si hay reserva de
+   * pago, los de sus precios, unidos con «+». Nunca vacío: se exige siempre.
+   */
   sello: string;
+  /**
+   * `true` si la entrada principal del mapa de texto del usuario se paga por cuota de su plan: entonces `creditos`
+   * es 0, que no es lo mismo que gratis, y la pantalla lo dice así.
+   */
+  porCuota: boolean;
+  /** Proveedor que escribiría el guion («NaN builders», «KIE.ai»). Se puede enseñar; el modelo, no. */
+  nombreProveedor: string;
+  /**
+   * Lo que costaría, como mucho, la llamada de reserva de pago si la principal falla: la entrada de pago más cara
+   * del mapa detrás de la principal. `null` si no hay ninguna, y entonces la reserva no cuesta créditos de pago.
+   */
+  reserva: PrecioDeReserva | null;
+}
+
+/** Precio de una llamada de reserva de pago, con su fecha. Sin modelo: no se enseña al usuario normal. */
+export interface PrecioDeReserva {
+  creditos: number;
+  euros: number;
+  /** Fecha (AAAA-MM-DD) del precio. */
+  comprobado: string;
 }
 
 /** Proyecto con todo lo que necesita su página: escenas, afirmaciones y el plan con su coste. */

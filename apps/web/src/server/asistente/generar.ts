@@ -3,20 +3,21 @@ import { ErrorPropuesta, INSTRUCCIONES_ASISTENTE, leerPropuesta, peticionDeGuion
 import { esProveedor } from "@/lib/boveda";
 import { limpiarTextoDePrompt } from "@/lib/ficha-personaje";
 import { CONCEPTO_MAXIMO, ESCENAS_SUGERIDAS, type ProyectoDetalle } from "@/lib/proyectos";
-import { costeDelGuion } from "@/lib/video-completo";
+import { costeDeEscenasSueltas, costeDelGuion } from "@/lib/video-completo";
 import { motivoSinDeclaracion } from "../anuncio/puerta-guion";
 import { db } from "../db/cliente";
 import { assistantRuns, type FilaProyecto, projects } from "../db/esquema";
-import {
-  exigirClaveIdempotencia,
-  exigirConfirmacion,
-  exigirCredencial,
-  exigirSaldo,
-} from "../generacion/comprobaciones";
+import { exigirClaveIdempotencia, exigirConfirmacion, exigirSaldo } from "../generacion/comprobaciones";
 import { exigirSelloVigente } from "../generacion/precios";
 import { dentroDelLimite, type Limite } from "../limite";
 import { limitesDeProyecto } from "../limites-proyecto";
-import { ErrorDeTexto, ErrorPeticionRepetida, pedirTextoPorMapa, type TextoDelMapa } from "../mapa/texto";
+import {
+  ErrorDeTexto,
+  ErrorPeticionRepetida,
+  pedirTextoPorMapa,
+  type TechoPorLlamada,
+  type TextoDelMapa,
+} from "../mapa/texto";
 import type { Actor } from "../media/servicio";
 import { esLectorAdmin } from "../modelo-en-mensajes";
 import { filaPropia } from "../personajes/consulta";
@@ -45,13 +46,14 @@ import { exigirAsistenteDisponible } from "./texto";
  * **Es el único camino de esta versión que gasta dinero**, así que lo recorre entero, en este orden:
  *
  * 1. proyecto del usuario, con idea escrita;
- * 2. asistente disponible (encendido, con modelo de texto utilizable y con la clave del usuario);
- * 3. **estimación confirmada**: los créditos que el usuario tenía delante y el sello del precio vigente. Si el
- *    precio cambió entre la pantalla y el botón, se rechaza y se vuelve a mostrar;
+ * 2. asistente disponible (encendido y con alguna entrada utilizable en el mapa de texto del usuario);
+ * 3. **estimación confirmada**: los créditos que el usuario tenía delante (los de la entrada principal de su mapa,
+ *    0 si se paga por cuota) y el sello del precio vigente. Si cambió entre la pantalla y el botón, se rechaza y
+ *    se vuelve a mostrar;
  * 4. **clave de idempotencia**: la misma confirmación nunca se cobra dos veces;
  * 5. **límite de ritmo** por usuario;
  * 6. **reserva** del coste estimado en el `usage_ledger`, antes de llamar a nadie;
- * 7. la llamada, con la clave del propio usuario;
+ * 7. la llamada, con la clave del propio usuario y **sin pasar nunca de lo confirmado por llamada**;
  * 8. la respuesta se trata como **propuesta no confiable**: se limpia, se recorta y se guarda como borrador;
  * 9. **cierre del gasto** con los créditos que informa el proveedor.
  *
@@ -111,18 +113,26 @@ export async function escribirGuion(
   const sinDeclaracion = await motivoSinDeclaracion(proyecto.id);
   if (sinDeclaracion !== "") throw new ErrorProyecto(409, sinDeclaracion);
   const claveIdempotencia = exigirClaveIdempotencia(peticion.claveIdempotencia);
-  const eleccion = await exigirAsistenteDisponible(actor.id);
-  const { modelo, adaptador, precio } = eleccion;
-  const generarTexto = adaptador.generarTexto;
-  if (!generarTexto) throw new ErrorProyecto(503, `El adaptador de ${modelo.nombreProveedor} no sabe pedir texto.`);
+  // Lo que se confirma es lo que costaría la entrada principal del mapa de texto del usuario, que es por donde se
+  // va a escribir (0 créditos si se paga por la cuota de su plan), más la llamada de reserva a lo que cueste, como
+  // mucho, la reserva de pago de ese mapa.
+  const { estimacion, techo, reserva } = await exigirAsistenteDisponible(actor.id);
   // El vídeo completo se comprueba entero antes de mirar el coste: la duración decide cuántas llamadas se pagan, y
   // una duración cerrada por el admin se rechaza con su motivo aunque la pida alguien saltándose la pantalla.
   const video = sinValor(peticion.duracion) ? null : await leerVideoPedido(actor, proyecto, peticion);
+  const reservaPorLlamada = reserva?.creditos ?? 0;
   const creditos = video
-    ? costeDelGuion(precio.creditos, video.duracion, video.tipo).total
-    : Math.ceil(precio.creditos);
+    ? costeDelGuion(estimacion.creditos, video.duracion, video.tipo, reservaPorLlamada).total
+    : costeDeEscenasSueltas(estimacion.creditos, reservaPorLlamada).total;
+  /**
+   * La cifra se confirma **siempre**, también cuando es 0: así, si el mapa ha cambiado entre la pantalla y el botón
+   * (de cuota a pago, o ha aparecido o desaparecido una reserva de pago), las cifras no coinciden y se rechaza para
+   * volver a enseñarla. El sello (`selloDelAsistente`) lleva el modo y los precios de la principal y de las entradas
+   * que pueden hacer de reserva de pago: si cualquiera cambia, se rechaza con un 409. Nunca está vacío, así que se
+   * exige siempre. Lo que nunca se cobra de más lo garantizan además los techos de cada llamada.
+   */
   exigirConfirmacion(peticion.creditosConfirmados, creditos);
-  exigirSelloVigente(peticion.selloEstimacion, precio.sello, true);
+  exigirSelloVigente(peticion.selloEstimacion, estimacion.sello, true);
   // Una confirmación repetida (doble clic, reintento tras un error de red) **no gasta ritmo**: se responde con lo
   // que ya hay. Si no, reintentar un fallo de red podría dejar al usuario sin poder pedir nada durante una hora.
   const yaEjecutada = await ejecucionDeLaConfirmacion(
@@ -145,19 +155,13 @@ export async function escribirGuion(
   if (!(await dentroDelLimite(`asistente:${actor.id}`, RITMO_ASISTENTE))) {
     throw new ErrorProyecto(429, "Has pedido demasiados guiones seguidos. Espera un rato.");
   }
-  // `estadoDelAsistente` ya lo ha comprobado; aquí se vuelve a acotar porque es lo que decide con qué clave
-  // se paga, y eso no se deduce de un `as`.
-  if (!esProveedor(modelo.proveedor)) {
-    throw new ErrorProyecto(503, `Esta instalación aún no puede pagar texto en ${modelo.nombreProveedor}.`);
+  // Si la principal es de pago y se conoce el saldo del usuario en ese proveedor y no llega, no se llama: el
+  // proveedor lo rechazaría y la reserva se habría apartado para nada. Su clave ya la ha comprobado el mapa, que
+  // descarta las entradas sin credencial válida; una entrada de cuota no tiene saldo que mirar.
+  if (!estimacion.porCuota && esProveedor(techo.proveedor)) {
+    await exigirSaldo(actor.id, creditos, buscar, techo.proveedor);
   }
-  const proveedor = modelo.proveedor;
-  await exigirCredencial(actor.id, proveedor);
-  // Si se conoce el saldo del usuario en el proveedor y no llega, no se llama: el proveedor lo rechazaría y la
-  // reserva se habría apartado para nada.
-  await exigirSaldo(actor.id, creditos, buscar, proveedor);
-  if (video) {
-    return guionDelVideo(actor, proyecto, video, claveIdempotencia, creditos, precio.creditos, modelo.modelo, buscar);
-  }
+  if (video) return guionDelVideo(actor, proyecto, video, claveIdempotencia, creditos, techo, reserva, buscar);
 
   // Esta confirmación ya se había ejecutado: se devuelve el proyecto como está y **no se llama a nadie**.
   if (await ejecucionDeLaConfirmacion(actor.id, `${claveIdempotencia}:0`)) return detalleProyecto(actor, proyecto.id);
@@ -177,14 +181,15 @@ export async function escribirGuion(
       entrada,
       claveIdempotencia,
       buscar,
-      // Lo que se confirmó es el precio de este modelo: si la principal de cuota falla, puede escribir el guion él,
-      // y se avisa (decisión del propietario, 2026-10-16). Ninguna otra entrada de pago se prueba.
-      reservaConfirmada: modelo.modelo,
+      // La principal no puede costar más de su precio confirmado, y una reserva de pago, más de lo que queda del
+      // total: aquí no se ha gastado nada todavía, así que es el total entero.
+      techoPorLlamada: techo,
+      techoReserva: { creditos, proveedor: reserva?.proveedor ?? techo.proveedor },
     });
   } catch (error) {
     if (error instanceof ErrorDeTexto) {
       throw new ErrorProyecto(
-        502,
+        error.estado,
         error.mensaje("No se ha podido escribir el guion, así que el proyecto se ha quedado como estaba"),
       );
     }
@@ -268,8 +273,8 @@ async function guionDelVideo(
   video: VideoPedido,
   claveIdempotencia: string,
   creditos: number,
-  creditosPorLlamada: number,
-  modelo: string,
+  techo: TechoPorLlamada,
+  reserva: TechoPorLlamada | null,
   buscar: Buscador,
 ): Promise<ProyectoDetalle> {
   // Esta confirmación ya se había ejecutado: se devuelve el proyecto como está y **no se llama a nadie**.
@@ -284,9 +289,9 @@ async function guionDelVideo(
       video,
       claveIdempotencia,
       buscar,
-      reservaConfirmada: modelo,
       confirmado: creditos,
-      creditosPorLlamada,
+      techo,
+      reserva,
     }));
   } catch (error) {
     // La misma confirmación ya estaba en marcha: se devuelve el proyecto como está y no se llama a nadie más.
