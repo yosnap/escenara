@@ -127,14 +127,12 @@ export async function escribirGuion(
   /**
    * La cifra se confirma **siempre**, también cuando es 0: así, si el mapa ha cambiado entre la pantalla y el botón
    * (de cuota a pago, o ha aparecido o desaparecido una reserva de pago), las cifras no coinciden y se rechaza para
-   * volver a enseñarla. El sello reúne el de la principal y los de las entradas que pueden hacer de reserva de pago
-   * (`estadoDelAsistente`): si cualquiera de esos precios cambia, el sello cambia y se rechaza con un 409. Solo está
-   * vacío cuando no hay ningún precio que sellar (principal por cuota y ninguna reserva de pago); entonces se exige
-   * que tampoco venga ninguno, y lo que protege es la cifra de 0. Lo que nunca se cobra de más lo garantizan además
-   * los techos de cada llamada.
+   * volver a enseñarla. El sello (`selloDelAsistente`) lleva el modo y los precios de la principal y de las entradas
+   * que pueden hacer de reserva de pago: si cualquiera cambia, se rechaza con un 409. Nunca está vacío, así que se
+   * exige siempre. Lo que nunca se cobra de más lo garantizan además los techos de cada llamada.
    */
   exigirConfirmacion(peticion.creditosConfirmados, creditos);
-  exigirSelloVigente(peticion.selloEstimacion, estimacion.sello, estimacion.sello !== "");
+  exigirSelloVigente(peticion.selloEstimacion, estimacion.sello, true);
   // Una confirmación repetida (doble clic, reintento tras un error de red) **no gasta ritmo**: se responde con lo
   // que ya hay. Si no, reintentar un fallo de red podría dejar al usuario sin poder pedir nada durante una hora.
   const yaEjecutada = await ejecucionDeLaConfirmacion(
@@ -191,7 +189,7 @@ export async function escribirGuion(
   } catch (error) {
     if (error instanceof ErrorDeTexto) {
       throw new ErrorProyecto(
-        502,
+        error.estado,
         error.mensaje("No se ha podido escribir el guion, así que el proyecto se ha quedado como estaba"),
       );
     }

@@ -11,7 +11,7 @@ import { CHAT_200, MODELOS_200, respuestaGrabada } from "../proveedores/compatib
  *   proveedor y la reserva de pago aparte; se confirma solo la reserva y, si NaN responde, no se reserva nada;
  * - si NaN se satura, escribe la reserva de KIE dentro de lo confirmado, y se avisa con proveedor y coste;
  * - si el precio de la reserva cambia entre la pantalla y el botón, el sello lo detecta: 409 sin llamar a nadie;
- * - sin ninguna entrada de pago, el total es 0, no hay reserva ni sello, y confirmar otra cifra se rechaza;
+ * - sin ninguna entrada de pago, el total es 0, no hay reserva y el sello solo dice «cuota»; otra cifra se rechaza;
  * - con la principal de pago a un precio mayor, se confirma ese precio, y confirmar menos se rechaza sin llamar.
  *
  * Ningún test llama a un proveedor de verdad: KIE y el servicio compatible están simulados.
@@ -168,7 +168,7 @@ describe.skipIf(!hayBaseDeDatos)("asistente de guion por el mapa de texto", () =
       reserva: { creditos: CREDITOS_INSTALACION },
     });
     const sello = detalle.estimacionAsistente?.sello ?? "";
-    expect(sello).toContain("gpt-5-6-sol");
+    expect(sello).toBe("cuota|kie:gpt-5-6-sol:respuesta de texto@v1");
     const reservasAntes = await reservasDeAna();
     const escrito = await escribirGuion(actorAna, proyectoId, peticion(CREDITOS_INSTALACION, sello), buscar);
     expect(escrito.escenas.length).toBeGreaterThan(0);
@@ -214,10 +214,10 @@ describe.skipIf(!hayBaseDeDatos)("asistente de guion por el mapa de texto", () =
     }
   });
 
-  test("sin ninguna entrada de pago el total es 0, sin reserva ni sello, y otra cifra se rechaza sin llamar", async () => {
+  test("sin ninguna entrada de pago el total es 0, sin reserva, y otra cifra se rechaza sin llamar", async () => {
     await mapaSoloCuota();
     const { estimacionAsistente } = await detalleProyecto(actorAna, proyectoId);
-    expect(estimacionAsistente).toMatchObject({ creditos: 0, porCuota: true, sello: "", reserva: null });
+    expect(estimacionAsistente).toMatchObject({ creditos: 0, porCuota: true, sello: "cuota|", reserva: null });
     const fallo = await escribirGuion(
       actorAna,
       proyectoId,
@@ -229,7 +229,7 @@ describe.skipIf(!hayBaseDeDatos)("asistente de guion por el mapa de texto", () =
     expect(llamadas).toEqual([]);
 
     const reservasAntes = await reservasDeAna();
-    const escrito = await escribirGuion(actorAna, proyectoId, peticion(0, ""), buscar);
+    const escrito = await escribirGuion(actorAna, proyectoId, peticion(0, "cuota|"), buscar);
     expect(escrito.escenas.length).toBeGreaterThan(0);
     expect(llamadas).toEqual(["nan/gemma4"]);
     expect(await reservasDeAna()).toBe(reservasAntes);
@@ -238,7 +238,7 @@ describe.skipIf(!hayBaseDeDatos)("asistente de guion por el mapa de texto", () =
   test("sin entradas de pago, si NaN falla no se llama a nadie más y se dice por qué", async () => {
     await mapaSoloCuota();
     modelosQueTardan = new Set(["gemma4"]);
-    const fallo = (await escribirGuion(actorAna, proyectoId, peticion(0, ""), buscar).catch(
+    const fallo = (await escribirGuion(actorAna, proyectoId, peticion(0, "cuota|"), buscar).catch(
       (e: unknown) => e,
     )) as Error;
     expect(fallo).toBeInstanceOf(ErrorProyecto);
@@ -246,6 +246,17 @@ describe.skipIf(!hayBaseDeDatos)("asistente de guion por el mapa de texto", () =
     expect(fallo.message).toContain("No se te ha cobrado nada");
     expect(fallo.message).not.toContain("gemma4");
     expect(llamadas).toEqual(["nan/gemma4"]);
+  });
+
+  test("el sello de «NaN con KIE de reserva» no vale para «solo KIE», aunque el precio de KIE sea el mismo", async () => {
+    await mapaDeCuota();
+    const selloCuota = (await detalleProyecto(actorAna, proyectoId)).estimacionAsistente?.sello ?? "";
+    await guardarMapa(ana.id, "texto", [{ proveedor: "kie", compatibleId: null, modelo: "gpt-5-6-sol" }]);
+    const fallo = await escribirGuion(actorAna, proyectoId, peticion(CREDITOS_INSTALACION, selloCuota), buscar).catch(
+      (e: unknown) => e,
+    );
+    expect((fallo as { estado?: number }).estado).toBe(409);
+    expect(llamadas).toEqual([]);
   });
 
   test("con la principal de pago más cara, se confirma su precio y confirmar menos se rechaza sin llamar", async () => {

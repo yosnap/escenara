@@ -102,9 +102,7 @@ async function estadoConPrecios(usuarioId: string): Promise<EstadoConPrecios> {
         creditos: mapa.creditos,
         euros: mapa.porCuota ? 0 : mapa.creditos * eurosPorCreditoDe(ajustes, mapa.proveedor),
         comprobado: mapa.comprobado,
-        // Se sella todo lo que entra en el total: un cambio de precio de la principal o de cualquier entrada que
-        // pueda hacer de reserva de pago cambia el sello, y la confirmación se rechaza con un 409.
-        sello: [mapa.sello, reserva?.sello ?? ""].filter((s) => s !== "").join("+"),
+        sello: selloDelAsistente(mapa.porCuota, mapa.sello, reserva?.sello ?? ""),
         porCuota: mapa.porCuota,
         nombreProveedor: mapa.nombreProveedor,
         reserva: reserva
@@ -119,4 +117,15 @@ async function estadoConPrecios(usuarioId: string): Promise<EstadoConPrecios> {
     techo: { creditos: mapa.creditos, proveedor: mapa.proveedor },
     reserva: reserva ? { creditos: reserva.creditos, proveedor: reserva.proveedor } : null,
   };
+}
+
+/**
+ * Sello de lo que se confirma: **el modo** (`cuota|` o `pago|`) y después el sello del precio de la principal y los de
+ * las entradas que pueden hacer de reserva de pago, unidos con «+». Se sella todo lo que entra en el total: un cambio
+ * de precio de la principal o de cualquier posible reserva cambia el sello, y la confirmación se rechaza con un 409.
+ * El modo va delante porque «NaN por cuota con KIE de reserva» y «KIE de principal» sellarían el mismo precio de KIE
+ * y, sin él, darían el mismo sello aunque se confirme otra cosa. Nunca está vacío, así que siempre se exige.
+ */
+export function selloDelAsistente(porCuota: boolean, selloPrincipal: string, selloReserva: string): string {
+  return `${porCuota ? "cuota" : "pago"}|${[selloPrincipal, selloReserva].filter((s) => s !== "").join("+")}`;
 }

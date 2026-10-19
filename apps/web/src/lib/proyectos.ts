@@ -310,8 +310,8 @@ export interface EstimacionTexto {
   /** Fecha (AAAA-MM-DD) en la que se comprobó el precio; vacía si se paga por cuota. */
   comprobado: string;
   /**
-   * Sello de lo que se confirma: el del precio de la principal y, si hay reserva de pago, también los de sus
-   * precios, unidos con «+». Vacío solo si la principal va por cuota y no hay reserva de pago: nada que sellar.
+   * Sello de lo que se confirma: el modo (`cuota|` o `pago|`), el del precio de la principal y, si hay reserva de
+   * pago, los de sus precios, unidos con «+». Nunca vacío: se exige siempre.
    */
   sello: string;
   /**

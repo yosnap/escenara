@@ -5,6 +5,7 @@ import { loadEnvConfig } from "@next/env";
 import sharp from "sharp";
 import type { PersonajeVista } from "@/lib/personajes";
 import type { ProyectoDetalle } from "@/lib/proyectos";
+import { CHAT_200, CHAT_429, MODELOS_200, respuestaGrabada } from "../proveedores/compatible/fixtures";
 
 /**
  * El guion de un **vídeo completo** contra el PostgreSQL local, con el modelo de texto **simulado**: ningún test
@@ -43,6 +44,8 @@ const { models, projects, sceneCharacters, sceneDialogueTurns, scenes, usageLedg
 );
 const { guardarAjustes } = await import("../ajustes");
 const { guardarCredencial } = await import("../boveda/credenciales");
+const { guardarCompatible, listarCompatibles } = await import("../boveda/compatibles");
+const { guardarMapa } = await import("../mapa/mapa");
 const { crearMedio } = await import("../media/servicio");
 const { olvidarCatalogo } = await import("../proveedores/catalogo");
 const { escribirGuion } = await import("./generar");
@@ -68,6 +71,10 @@ interface Pedido {
 }
 
 const pedidos: Pedido[] = [];
+/** Lo que ha recibido el servicio compatible simulado (NaN builders, por cuota). */
+const pedidosNan: Pedido[] = [];
+/** `true` = NaN builders contesta que está saturado (429): no cobra y se pasa a la siguiente entrada. */
+let nanSaturado = false;
 /** Parte que el simulador contesta cortada y cuántas veces más: `0` es el guion de 20 s; `n`, el bloque n. */
 let cortar: { parte: number; veces: number } | null = null;
 /** Palabras de cada clip, para simular un modelo que se pasa de largo. */
@@ -128,6 +135,14 @@ const buscar: Buscador = async (url, init) => {
       }),
       { status: 200, headers: { "Content-Type": "application/json" } },
     );
+  }
+  if (url.endsWith("/models")) return respuestaGrabada(MODELOS_200);
+  if (url.endsWith("/chat/completions")) {
+    if (nanSaturado) return respuestaGrabada(CHAT_429, 429);
+    const cuerpo = JSON.parse(String(init?.body ?? "{}")) as { messages?: { content: string }[] };
+    const pedido = { sistema: cuerpo.messages?.[0]?.content ?? "", usuario: cuerpo.messages?.[1]?.content ?? "" };
+    pedidosNan.push(pedido);
+    return respuestaGrabada({ ...CHAT_200, choices: [{ message: { content: contestar(pedido) } }] });
   }
   if (url.includes("file-stream-upload")) return sobre({ downloadUrl: "https://tempfile.kie.ai/referencia.png" });
   throw new Error(`URL no simulada: ${url}`);
@@ -217,6 +232,7 @@ describe.skipIf(!hayBaseDeDatos)("guion de un vídeo completo", () => {
     palabrasPorClip = null;
     creditosInformados = CREDITOS_INFORMADOS;
     alResponder = null;
+    nanSaturado = false;
   });
 
   afterAll(async () => {
@@ -415,6 +431,52 @@ describe.skipIf(!hayBaseDeDatos)("guion de un vídeo completo", () => {
     await guardarAjustes({ asistenteActivo: true }, admin.id);
   });
 
+  test("1 min con NaN por cuota y KIE de reserva: se confirma solo la reserva y, si NaN escribe, no se cobra", async () => {
+    const restaurar = await conCuotaYReservaDeKie();
+    try {
+      const estimacion = (await leer()).estimacionAsistente;
+      expect(estimacion).toMatchObject({ creditos: 0, porCuota: true, reserva: { creditos: CREDITOS_TEXTO } });
+      expect(estimacion?.sello.startsWith("cuota|")).toBe(true);
+      const peticion = await confirmacion(60);
+      // Dos llamadas (plan y una parte) por cuota, y la de reserva al precio de KIE.
+      expect(peticion.creditosConfirmados).toBe(CREDITOS_TEXTO);
+      const antesKie = pedidos.length;
+      const antesNan = pedidosNan.length;
+      await consumido();
+      const detalle = await escribirGuion(actor, proyectoId, peticion, buscar);
+      expect(pedidosNan.length - antesNan).toBe(2);
+      expect(pedidos).toHaveLength(antesKie);
+      expect(detalle.escenas.length).toBeGreaterThan(0);
+      expect(await consumido()).toBe(0);
+    } finally {
+      await restaurar();
+    }
+  });
+
+  test("si NaN se satura, KIE escribe el plan dentro de la reserva, y lo que queda ya no alcanza para la parte", async () => {
+    const restaurar = await conCuotaYReservaDeKie();
+    try {
+      nanSaturado = true;
+      const peticion = await confirmacion(60);
+      const antesKie = pedidos.length;
+      const antes = (await escenasDelProyecto()).map((e) => e.id);
+      await consumido();
+      const fallo = await error(() => escribirGuion(actor, proyectoId, peticion, buscar));
+      // El plan lo escribió la reserva de KIE (cobró 1,5 de los 2 confirmados); la parte habría necesitado otros 2.
+      expect(pedidos).toHaveLength(antesKie + 1);
+      expect(fallo.estado).toBe(502);
+      expect(fallo.message).toContain("la parte 1 de 1");
+      expect(fallo.message).toContain("NaN builders ha pedido esperar");
+      expect(fallo.message).toContain("lo confirmado solo dejaba 0,5 créditos");
+      expect(fallo.message).toContain("ha costado 1,5 créditos en total");
+      expect(fallo.message).not.toContain("gpt-5-6-sol");
+      expect(await consumido()).toBeLessThanOrEqual(peticion.creditosConfirmados);
+      expect((await escenasDelProyecto()).map((e) => e.id)).toEqual(antes);
+    } finally {
+      await restaurar();
+    }
+  });
+
   test("con una escena en producción se dice antes de gastar nada", async () => {
     const [primera] = await escenasDelProyecto();
     await db()
@@ -484,6 +546,37 @@ describe.skipIf(!hayBaseDeDatos)("guion de un vídeo completo", () => {
 
   // ── Ayudas ─────────────────────────────────────────────────────────────────────────────────────────────
 
+  /**
+   * Mapa de texto de Ana con NaN builders por cuota primero y el modelo de pago de KIE de reserva, y las duraciones
+   * largas abiertas. Devuelve cómo dejarlo todo como estaba: solo KIE, que es lo que esperan los demás tests.
+   */
+  async function conCuotaYReservaDeKie(): Promise<() => Promise<void>> {
+    let nan = (await listarCompatibles(ana.id)).find((p) => p.nombre === "NaN builders");
+    if (!nan) {
+      await guardarCompatible(
+        ana.id,
+        {
+          nombre: "NaN builders",
+          urlBase: "https://api.nan.builders/v1",
+          clave: ["otra", "clave", "inventada"].join("-"),
+          modelos: ["gemma4"],
+          soloCuota: true,
+        },
+        buscar,
+      );
+      nan = (await listarCompatibles(ana.id)).find((p) => p.nombre === "NaN builders");
+    }
+    await guardarMapa(ana.id, "texto", [
+      { proveedor: "compatible", compatibleId: nan?.id ?? "", modelo: "gemma4" },
+      { proveedor: "kie", compatibleId: null, modelo: "gpt-5-6-sol" },
+    ]);
+    await guardarAjustes({ videoDuracionesLargas: true }, admin.id);
+    return async () => {
+      await guardarMapa(ana.id, "texto", [{ proveedor: "kie", compatibleId: null, modelo: "gpt-5-6-sol" }]);
+      await guardarAjustes({ videoDuracionesLargas: false }, admin.id);
+    };
+  }
+
   const leer = () => detalleProyecto(actor, proyectoId);
 
   /** Confirmación de un vídeo completo con una clave nueva, el total que enseña la pantalla y el sello vigente. */
@@ -491,7 +584,12 @@ describe.skipIf(!hayBaseDeDatos)("guion de un vídeo completo", () => {
     const { costeDelGuion } = await import("@/lib/video-completo");
     const estimacion = (await leer()).estimacionAsistente;
     if (!estimacion) throw new Error("El asistente tendría que estar disponible.");
-    const total = costeDelGuion(estimacion.creditos, duracion as 20, tipo as "una_persona").total;
+    const total = costeDelGuion(
+      estimacion.creditos,
+      duracion as 20,
+      tipo as "una_persona",
+      estimacion.reserva?.creditos ?? 0,
+    ).total;
     return {
       claveIdempotencia: crypto.randomUUID(),
       creditosConfirmados: total,
