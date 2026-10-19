@@ -52,8 +52,8 @@ export const CREDITOS_TEXTO_INFORMADOS = 1.5;
 /** Créditos que se confirman al pedir el guion: el precio sembrado es 1,5 y la estimación redondea al alza. */
 export const CREDITOS_TEXTO_CONFIRMADOS = 2;
 
-/** Sello de la estimación del modelo de texto sembrado en la instalación. */
-export const SELLO_TEXTO = "kie:gpt-5-6-sol:respuesta de texto@v1";
+/** Sello de la estimación del asistente: el modo del mapa del usuario (solo KIE, de pago) y el precio sembrado. */
+export const SELLO_TEXTO = "pago|kie:gpt-5-6-sol:respuesta de texto@v1";
 
 /** Modelo de texto de la semilla que quien administra marca como compatible antes de usar el asistente. */
 export const MODELO_TEXTO = "gpt-5-6-sol";
