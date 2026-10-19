@@ -2,6 +2,21 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.56.1] · 2026-10-19
+
+### Corregido
+
+- **El asistente de guion enseña el coste de lo que de verdad lo va a escribir.** El guion se escribe con el primero de
+  tu mapa de modelos de texto, pero la pantalla pedía confirmar el precio del modelo de texto de la instalación: con un
+  servicio que se paga por la cuota de tu plan se confirmaban créditos que luego no se gastaban, y con un modelo de pago
+  más caro primero se podía cobrar más de lo confirmado. Ahora lo que ves y confirmas es el coste de ese primero; si va
+  por cuota, el panel dice «Por la cuota de tu plan en …» en lugar de una cifra. Vale para las escenas sueltas y para el
+  vídeo completo.
+- **Nunca se cobra más de lo que confirmas.** Si el primero de tu mapa falla, solo se prueban las entradas que caben en
+  lo confirmado. Si una costaría más (por ejemplo, una de pago detrás de un servicio de cuota), no se llama, no se cobra
+  nada y el aviso dice cuál era, cuánto costaría y qué puedes hacer. Lo mismo en la traducción de prompts al inglés.
+- El asistente ya no pide una clave de KIE si tu mapa de texto no la usa.
+
 ## [0.56.0] · 2026-10-18
 
 ### Añadido
