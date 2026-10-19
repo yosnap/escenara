@@ -18,6 +18,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
   no cabe, no se llama, no se cobra nada y el aviso dice cuál era, cuánto costaría y cuánto quedaba. Si el precio de
   esa reserva cambia entre la pantalla y el botón, se te pide confirmar de nuevo. En la traducción de prompts al inglés,
   ninguna entrada puede costar más de lo que se confirmó por ella.
+- Si la primera entrada de tu mapa de texto es un modelo de pago más caro que el precio al que se confirma la
+  traducción del prompt al inglés, la traducción no se hace y el aviso dice a qué precio se confirma, qué entrada cuesta
+  más y qué poner primero en el mapa. No se cobra nada.
 - El asistente ya no pide una clave de KIE si tu mapa de texto no la usa.
 
 ## [0.56.0] · 2026-10-18
