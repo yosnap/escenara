@@ -32,7 +32,8 @@ disponible, la página te dice por qué:
 
 **El guion se pide con tu mapa de modelos de texto**: se usa el primero de la lista y, si falla de una manera que
 prueba que no te cobró, se pasa solo al siguiente. Desde la 0.56.1, **el coste que ves y confirmas es el de ese
-primero**, que es el que va a escribir. Cómo ordenarlo está en [Con qué se genera cada cosa](mapa-de-modelos.md).
+primero**, que es el que va a escribir, más una llamada de reserva aparte al precio de la entrada de pago más cara que
+tengas detrás. Cómo ordenarlo está en [Con qué se genera cada cosa](mapa-de-modelos.md).
 
 Sin asistente **no te falta nada**: escribir el guion a mano es el camino normal, no un apaño.
 
@@ -57,13 +58,18 @@ Crear un proyecto **no cuesta nada**: no llama a ningún proveedor y no reserva 
 Puedes añadir escenas a mano con «Añadir escena», o pulsar «Escribir el guion con el asistente». Antes de pulsarlo
 verás, en el panel neutro, **lo que va a costar**: los créditos estimados y la fecha del precio con el que se
 calculó. Si el primero de tu mapa es un servicio que se paga por la cuota de tu plan, verás «Por la cuota de tu plan
-en …» con el nombre del servicio, en lugar de una cifra: no cuesta créditos. Se apunta en tu registro de gasto como
+en …» con el nombre del servicio en lugar de una cifra y, si detrás tienes una entrada de pago, «si falla, como mucho
+N créditos de reserva». Sin ninguna entrada de pago, «no cuesta créditos». Se apunta en tu registro de gasto como
 cualquier otra llamada.
 
-**Nunca se cobra más de lo que confirmas.** Si el primero de tu mapa falla, solo se prueban las entradas que caben en
-lo confirmado: otra de cuota siempre, y una de pago solo si su precio no pasa del que viste. Si confirmaste un guion
-por cuota y tu servicio no responde, no se pasa a una entrada de pago: se para y se te dice por qué, qué no se probó
-y que no se ha cobrado nada. Si prefieres pagarlo, pon la entrada de pago la primera de tu mapa y verás su coste.
+**La reserva, por si tu servicio se satura.** Los servicios de cuota a veces piden esperar o se quedan sin cuota un
+rato. Si pasa, escribe tu reserva de pago y se te avisa de quién lo escribió y cuánto costó. Si no hace falta, no se
+gasta.
+
+**Nunca se cobra más de lo que confirmas.** Una entrada de pago solo escribe si lo que cuesta cabe en lo que queda de lo
+confirmado. Si no cabe, no se llama: se para y se te dice cuál era, cuánto costaría, cuánto quedaba y que no se ha
+cobrado nada. Si el precio de esa reserva cambia entre que lo ves y pulsas, se te pide confirmar de nuevo con el
+vigente.
 
 Lo que el asistente devuelve es **una propuesta**:
 
@@ -118,12 +124,14 @@ Para que se ofrezca hace falta que el proyecto tenga **protagonista** y esté en
 registradas»**, que es con el que se producen estos clips. Si falta algo, la opción sale desactivada y te dice qué.
 
 **Lo que cuesta, antes de empezar.** El recuadro neutro enseña las llamadas de texto que se van a hacer (una para
-20 s), **una llamada de reserva aparte** y el total que confirmas, con la fecha del precio. La reserva solo se gasta
-si un trozo del guion llega cortado o con frases que no caben en sus segundos: entonces se repite **solo ese trozo**,
-una vez y con la causa. Si no hace falta, no se gasta. Antes de cada llamada se suma lo ya cobrado: si la siguiente
+20 s), **una llamada de reserva aparte** y el total que confirmas, con la fecha del precio. La reserva se cobra, como
+mucho, a lo que cueste la más cara de tu primera opción y tu reserva de pago. Solo se gasta si un trozo del guion llega
+cortado o con frases que no caben en sus segundos (entonces se repite **solo ese trozo**, una vez y con la causa), o
+si falla tu primera opción y escribe tu reserva de pago. Si no hace falta, no se gasta. Antes de cada llamada se suma lo ya cobrado: si la siguiente
 pudiera pasar del total confirmado (porque el proveedor cobró alguna más cara de lo estimado), no se hace, se para y
 se te dice cuánto ha costado lo hecho. Si el primero de tu mapa de texto va por la cuota de tu plan, el recuadro dice
-«Por la cuota de tu plan en …: no cuesta créditos». El coste de los clips se enseña aparte, antes de producir.
+«Por la cuota de tu plan en …» y, si tienes reserva de pago, cuánto podría costar como mucho. El coste de los clips se
+enseña aparte, antes de producir.
 
 **Las frases caben en su clip.** Se piden a unas 2,5 palabras por segundo: como mucho 25 palabras en un clip de
 10 s, 20 en uno de 8 s y 15 en uno de 6 s. Un clip que se pase no se recorta a medias: se pide otra vez. El diálogo
