@@ -65,6 +65,9 @@ Las ramas `main` y `develop` no admiten commits directos. El equipo mantenedor p
 ## Qué esperamos de una contribución
 
 - **Pruebas:** la lógica nueva incluye tests con `bun test` (`*.test.ts` junto al código, importando de `bun:test`).
+  Los de integración (`*.integracion.test.ts`) necesitan PostgreSQL y SeaweedFS: con los servicios de Docker
+  arrancados, `bun run test:bd` los lanza sin `.env`, porque toma la configuración de los propios contenedores
+  (admite los mismos argumentos que `bun test`).
 - **Estilo:** Biome define formato y lint; TypeScript en modo estricto.
 - **Tamaño de archivos:** evita archivos de más de 1.000 líneas; divide en módulos con responsabilidades claras.
 - **Sin secretos:** nunca subas `.env`, claves API, contraseñas ni fotos o voces de personas reales. Usa datos de prueba inventados.
