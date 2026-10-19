@@ -2,6 +2,27 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.56.1] · 2026-10-19
+
+### Corregido
+
+- **El asistente de guion enseña el coste de lo que de verdad lo va a escribir.** El guion se escribe con el primero de
+  tu mapa de modelos de texto, pero la pantalla pedía confirmar el precio del modelo de texto de la instalación: con un
+  servicio que se paga por la cuota de tu plan se confirmaban créditos que luego no se gastaban, y con un modelo de pago
+  más caro primero se podía cobrar más de lo confirmado. Ahora lo que ves y confirmas es el coste de ese primero más,
+  aparte, la llamada de reserva al precio de la entrada de pago más cara que tengas detrás. Si el primero va por cuota,
+  el panel dice «Por la cuota de tu plan en …; si falla, como mucho N créditos de reserva», o «no cuesta créditos» si
+  no tienes ninguna entrada de pago. Vale para las escenas sueltas y para el vídeo completo.
+- **Nunca se cobra más de lo que confirmas.** Si el primero de tu mapa se satura o falla, tu reserva de pago escribe el
+  guion solo si lo que cuesta cabe en lo que queda de lo confirmado, y se avisa de quién lo escribió y cuánto costó. Si
+  no cabe, no se llama, no se cobra nada y el aviso dice cuál era, cuánto costaría y cuánto quedaba. Si el precio de
+  esa reserva cambia entre la pantalla y el botón, se te pide confirmar de nuevo. En la traducción de prompts al inglés,
+  ninguna entrada puede costar más de lo que se confirmó por ella.
+- Si la primera entrada de tu mapa de texto es un modelo de pago más caro que el precio al que se confirma la
+  traducción del prompt al inglés, la traducción no se hace y el aviso dice a qué precio se confirma, qué entrada cuesta
+  más y qué poner primero en el mapa. No se cobra nada.
+- El asistente ya no pide una clave de KIE si tu mapa de texto no la usa.
+
 ## [0.56.0] · 2026-10-18
 
 ### Añadido

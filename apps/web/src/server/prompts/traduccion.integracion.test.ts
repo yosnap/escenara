@@ -56,6 +56,8 @@ const CLAVE = "sk-ana-clave-de-kie-inventada-ffff";
 /** Créditos que se estiman por llamada de texto: el precio sembrado es 1,5 y la estimación redondea al alza. */
 const CREDITOS_TEXTO = 2;
 const CREDITOS_INFORMADOS = 0.5;
+/** Lo que se confirma por traducción al generar: el precio del modelo de texto de la instalación, en KIE. */
+const TECHO_TRADUCCION = { creditos: CREDITOS_TEXTO, proveedor: "kie" };
 const ESCENA = "en una azotea al amanecer, mirando a cámara";
 const TRADUCIDA = "on a rooftop at dawn, looking at the camera";
 
@@ -365,7 +367,7 @@ describe.skipIf(!hayBaseDeDatos)("traducción de los prompts al inglés", () => 
     await generar(texto);
     expect(traducciones).toHaveLength(llamadas + 1);
     // La segunda petición leyó la caché vacía antes de que la primera guardase: llega aquí sin saber que ya está.
-    const { traducidas } = await pedirTraduccion(ana.id, [{ texto }], "gpt-5-6-sol", buscar);
+    const { traducidas } = await pedirTraduccion(ana.id, [{ texto }], TECHO_TRADUCCION, buscar);
     expect(traducciones).toHaveLength(llamadas + 1);
     expect(traducidas.get(texto)).toBe(TRADUCIDA);
   });
@@ -379,18 +381,21 @@ describe.skipIf(!hayBaseDeDatos)("traducción de los prompts al inglés", () => 
     const enCurso = new Promise<void>((resolver) => {
       avisarDeLlamada = resolver;
     });
-    const primera = pedirTraduccion(ana.id, [{ texto: escenaA }, { texto: ficha }], "gpt-5-6-sol", buscar);
+    const primera = pedirTraduccion(ana.id, [{ texto: escenaA }, { texto: ficha }], TECHO_TRADUCCION, buscar);
     await enCurso;
     // La ficha se está traduciendo en la primera: la segunda no llama, aunque su escena sea otra.
-    const segunda = await pedirTraduccion(ana.id, [{ texto: escenaB }, { texto: ficha }], "gpt-5-6-sol", buscar).catch(
-      (e: unknown) => e,
-    );
+    const segunda = await pedirTraduccion(
+      ana.id,
+      [{ texto: escenaB }, { texto: ficha }],
+      TECHO_TRADUCCION,
+      buscar,
+    ).catch((e: unknown) => e);
     soltar();
     await primera;
     expect(traducciones).toHaveLength(llamadas + 1);
     expect((segunda as { estado?: number }).estado).toBe(409);
     // Al repetirla, la ficha ya está en la caché y solo se traduce su escena.
-    const repetida = await pedirTraduccion(ana.id, [{ texto: escenaB }, { texto: ficha }], "gpt-5-6-sol", buscar);
+    const repetida = await pedirTraduccion(ana.id, [{ texto: escenaB }, { texto: ficha }], TECHO_TRADUCCION, buscar);
     expect(traducciones).toHaveLength(llamadas + 2);
     expect(traducciones.at(-1)).toContain(escenaB);
     expect(traducciones.at(-1)).not.toContain(ficha);
@@ -412,7 +417,7 @@ describe.skipIf(!hayBaseDeDatos)("traducción de los prompts al inglés", () => 
     const { traducidas } = await pedirTraduccion(
       ana.id,
       [{ texto: guardado }, { texto: nuevo }],
-      "gpt-5-6-sol",
+      TECHO_TRADUCCION,
       buscar,
     );
     expect(traducciones).toHaveLength(llamadas + 1);
@@ -434,13 +439,13 @@ describe.skipIf(!hayBaseDeDatos)("traducción de los prompts al inglés", () => 
     });
     // Cada traducción retenida ocupa una conexión del pool de cerrojos hasta que termina.
     const ocupadas = Array.from({ length: MAXIMO_CONEXIONES_CERROJO }, () =>
-      pedirTraduccion(ana.id, [{ texto: `ocupa una conexión ${crypto.randomUUID()}` }], "gpt-5-6-sol", buscar),
+      pedirTraduccion(ana.id, [{ texto: `ocupa una conexión ${crypto.randomUUID()}` }], TECHO_TRADUCCION, buscar),
     );
     await todasEnCurso;
     const fallo = await pedirTraduccion(
       ana.id,
       [{ texto: `no encuentra conexión ${crypto.randomUUID()}` }],
-      "gpt-5-6-sol",
+      TECHO_TRADUCCION,
       buscar,
     ).catch((e: unknown) => e);
     soltar();

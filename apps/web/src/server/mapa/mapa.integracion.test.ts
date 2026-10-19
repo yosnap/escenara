@@ -670,7 +670,8 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
   const peticionDeGuion = () => ({
     claveIdempotencia: crypto.randomUUID(),
     creditosConfirmados: CREDITOS_TEXTO,
-    selloEstimacion: "kie:gpt-5-6-sol:respuesta de texto@v1",
+    // El sello del asistente lleva delante el modo: la principal del mapa completo es KIE, de pago.
+    selloEstimacion: "pago|kie:gpt-5-6-sol:respuesta de texto@v1",
   });
 
   const ejecuciones = async (kind: "traduccion" | "guion") =>

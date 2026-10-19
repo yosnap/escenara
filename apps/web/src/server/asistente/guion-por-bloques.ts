@@ -19,6 +19,7 @@ import {
   LLAMADAS_DE_RESERVA,
   leerBiblia,
   leerBloque,
+  llamadasDelGuion,
   motivoDelProyecto,
   motivoDuracion,
   motivoTipo,
@@ -34,7 +35,13 @@ import { type Ajustes, leerAjustes } from "../ajustes";
 import { db } from "../db/cliente";
 import { assistantRuns, type FilaProyecto, projects } from "../db/esquema";
 import { limitesDe } from "../limites-proyecto";
-import { ErrorDeTexto, pedirTextoPorMapa, type TextoDelMapa } from "../mapa/texto";
+import {
+  ErrorDeTexto,
+  ErrorSobreLoConfirmado,
+  pedirTextoPorMapa,
+  type TechoPorLlamada,
+  type TextoDelMapa,
+} from "../mapa/texto";
 import type { Actor } from "../media/servicio";
 import { esLectorAdmin } from "../modelo-en-mensajes";
 import { filaPropia } from "../personajes/consulta";
@@ -205,11 +212,15 @@ interface Contexto {
   video: VideoPedido;
   claveIdempotencia: string;
   buscar: Buscador;
-  /** Modelo de pago cuyo precio se confirmó: puede escribir si la principal de cuota falla. */
-  reservaConfirmada: string;
-  /** Total confirmado (llamadas + reserva) y precio estimado de una llamada: el techo que no se puede pasar. */
+  /** Total confirmado (llamadas + reserva): lo que no se puede pasar entre todas las llamadas. */
   confirmado: number;
-  creditosPorLlamada: number;
+  /** Precio por llamada de la principal del mapa, en la moneda de quien cobra: 0 si va por cuota. */
+  techo: TechoPorLlamada;
+  /**
+   * Precio por llamada de la reserva de pago más cara del mapa; `null` si no hay. Una reserva de pago solo escribe
+   * si lo ya gastado más su precio cabe en el total confirmado.
+   */
+  reserva: TechoPorLlamada | null;
 }
 
 /**
@@ -233,6 +244,9 @@ export async function escribirVideoCompleto(ctx: Contexto): Promise<{ aviso: str
   const reserva: ReservaDeLlamadas = { quedan: LLAMADAS_DE_RESERVA };
   /** Clave de la ejecución que escribió el último trozo útil: ahí se anota cuántas escenas salieron. */
   let ultimaClave = "";
+  /** Trozos que ya se han escrito y cuántos hay en total: los que faltan apartan su parte del total confirmado. */
+  let trozosHechos = 0;
+  const trozosTotales = llamadasDelGuion(video.duracion, video.tipo);
 
   /** Pide un trozo y lo lee; si no sirve y queda reserva, lo repite una vez con la causa. */
   async function trozo<T>(
@@ -249,7 +263,16 @@ export async function escribirVideoCompleto(ctx: Contexto): Promise<{ aviso: str
         reserva,
         pedir: async (intento, causa) => {
           exigirMargen(ctx, nombre, hechas);
-          const respuesta = await pedir(ctx, claveDe(intento), instrucciones, componer(causa), nombre, hechas);
+          const pendientes = Math.max(0, trozosTotales - trozosHechos - 1);
+          const respuesta = await pedir(
+            ctx,
+            claveDe(intento),
+            instrucciones,
+            componer(causa),
+            nombre,
+            hechas,
+            pendientes,
+          );
           hechas.push(respuesta);
           return respuesta;
         },
@@ -257,6 +280,7 @@ export async function escribirVideoCompleto(ctx: Contexto): Promise<{ aviso: str
         alFallar: (intento, respuesta, fallo) => anotarFallo(ctx.actor.id, claveDe(intento), respuesta, fallo.message),
       });
       ultimaClave = `${claveDe(intento)}:${respuesta.intentos.length}`;
+      trozosHechos++;
       return valor;
     } catch (error) {
       if (error instanceof ErrorTrozoInservible) throw mensajeDeTrozoInservible(ctx.actor, nombre, error, hechas);
@@ -384,14 +408,28 @@ async function guardarSinPerderLoCobrado<T>(hechas: readonly TextoDelMapa[], gua
  * estimado), se para aquí, sin llamar, con la causa, el proveedor y lo ya cobrado.
  */
 function exigirMargen(ctx: Contexto, nombre: string, hechas: readonly TextoDelMapa[]): void {
-  const gastado = gastoDeLasLlamadas(hechas, ctx.creditosPorLlamada);
-  if (gastado + Math.ceil(ctx.creditosPorLlamada) <= ctx.confirmado) return;
+  const gastado = gastoDeLasLlamadas(hechas, porLlamadaPrudente(ctx));
+  if (gastado + ctx.techo.creditos <= ctx.confirmado) return;
   const proveedor = hechas.at(-1)?.nombreProveedor;
   throw new ErrorProyecto(
     409,
     `Se ha parado antes de escribir ${nombre}: las llamadas hechas${proveedor ? ` a ${proveedor}` : ""} han costado más de lo estimado y la siguiente podría pasar de los ${formatearCreditos(ctx.confirmado)} que confirmaste, así que no se ha hecho. No se ha guardado nada.${loYaCobrado(hechas)} Vuelve a intentarlo con una confirmación nueva: el coste que verás ya será el vigente.`,
   );
 }
+
+/**
+ * Lo que se cuenta por cada intento fallido que pudo cobrar: el precio más alto de los que pudieron intentarlo (la
+ * principal o la reserva de pago). Es la cuenta prudente: nunca se queda corta.
+ */
+const porLlamadaPrudente = (ctx: Contexto) => Math.max(ctx.techo.creditos, ctx.reserva?.creditos ?? 0);
+
+/**
+ * Lo que puede costar una reserva de pago en esta llamada: el total confirmado menos lo ya gastado y menos lo que
+ * se aparta para los trozos que aún faltan (cada uno al precio de la principal). Así una reserva no se come el
+ * margen de los trozos siguientes. Nunca negativo: con 0, ninguna reserva de pago cabe.
+ */
+export const techoDeReserva = (confirmado: number, gastado: number, pendientes: number, porLlamada: number): number =>
+  Math.max(0, confirmado - gastado - pendientes * porLlamada);
 
 /** Una llamada por el mapa de texto. Un fallo del proveedor se dice con el trozo, la causa y lo ya cobrado. */
 async function pedir(
@@ -401,6 +439,8 @@ async function pedir(
   entrada: string,
   nombre: string,
   hechas: readonly TextoDelMapa[],
+  /** Trozos que faltan después de este. */
+  pendientes: number,
 ): Promise<TextoDelMapa> {
   try {
     return await pedirTextoPorMapa({
@@ -411,13 +451,31 @@ async function pedir(
       entrada,
       claveIdempotencia,
       buscar: ctx.buscar,
-      reservaConfirmada: ctx.reservaConfirmada,
+      techoPorLlamada: ctx.techo,
+      // Una reserva de pago solo cabe en lo que queda del total confirmado tras lo ya gastado y lo apartado para
+      // los trozos que faltan.
+      techoReserva: {
+        creditos: techoDeReserva(
+          ctx.confirmado,
+          gastoDeLasLlamadas(hechas, porLlamadaPrudente(ctx)),
+          pendientes,
+          ctx.techo.creditos,
+        ),
+        proveedor: ctx.reserva?.proveedor ?? ctx.techo.proveedor,
+      },
     });
   } catch (error) {
     if (error instanceof ErrorDeTexto) {
       throw new ErrorProyecto(
-        502,
+        error.estado,
         `${error.mensaje(`No se ha podido escribir ${nombre}, así que el proyecto se ha quedado como estaba`)}${loYaCobrado(hechas)}`,
+      );
+    }
+    // Que no se haya cobrado nada en esa entrada no quiere decir que no se haya cobrado nada: se suma lo ya hecho.
+    if (error instanceof ErrorSobreLoConfirmado) {
+      throw new ErrorProyecto(
+        error.estado,
+        `Se ha parado antes de escribir ${nombre}: ${error.message} No se ha guardado nada.${loYaCobrado(hechas)}`,
       );
     }
     if (error instanceof ErrorCatalogo) throw new ErrorProyecto(error.estado, error.message);

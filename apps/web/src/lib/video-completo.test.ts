@@ -3,6 +3,7 @@ import {
   bloquesDe,
   type CondicionesVideoCompleto,
   contarPalabras,
+  costeDeEscenasSueltas,
   costeDelGuion,
   ErrorDeBloque,
   ErrorTrozoInservible,
@@ -86,8 +87,28 @@ describe("bloques y coste", () => {
   test("el coste confirmado es la suma de las llamadas más una de reserva, enseñada aparte", () => {
     expect(costeDelGuion(1.5, 20)).toEqual({ llamadas: 1, creditosLlamadas: 2, creditosReserva: 2, total: 4 });
     expect(costeDelGuion(3, 180)).toEqual({ llamadas: 4, creditosLlamadas: 12, creditosReserva: 3, total: 15 });
-    // Un servicio por cuota (0 créditos) no cuesta nada, ni con la reserva.
+    // Un servicio por cuota (0 créditos) sin reserva de pago en el mapa no cuesta nada, ni con la reserva.
     expect(costeDelGuion(0, 60).total).toBe(0);
+  });
+
+  test("la llamada de reserva cuesta lo que la más cara que la puede hacer: la principal o la reserva de pago", () => {
+    // Principal por cuota y KIE de reserva a 2: las llamadas no cuestan y la reserva, como mucho, 2.
+    expect(costeDelGuion(0, 60, "una_persona", 2)).toEqual({
+      llamadas: 2,
+      creditosLlamadas: 0,
+      creditosReserva: 2,
+      total: 2,
+    });
+    // Principal de pago más cara que la reserva: repetir un trozo con ella sigue cabiendo.
+    expect(costeDelGuion(5, 20, "una_persona", 2).creditosReserva).toBe(5);
+    expect(costeDelGuion(2, 20, "una_persona", 4.5).creditosReserva).toBe(5);
+  });
+
+  test("las escenas sueltas solo suman reserva si hay una entrada de pago que la pueda hacer", () => {
+    expect(costeDeEscenasSueltas(0, 0).total).toBe(0);
+    expect(costeDeEscenasSueltas(0, 2)).toEqual({ llamadas: 1, creditosLlamadas: 0, creditosReserva: 2, total: 2 });
+    expect(costeDeEscenasSueltas(1.5).total).toBe(2);
+    expect(costeDeEscenasSueltas(5, 2).total).toBe(7);
   });
 });
 

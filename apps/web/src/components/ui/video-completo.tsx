@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/components/ui/cn";
 import { Aviso } from "@/components/ui/feedback";
 import { formatearCreditos, formatearEuros } from "@/lib/generacion";
-import { formatearFecha } from "@/lib/proyectos";
+import { formatearFecha, type PrecioDeReserva } from "@/lib/proyectos";
 import {
   AYUDA_TIPO_PIEZA,
   type CondicionesVideoCompleto,
@@ -41,7 +41,27 @@ export interface PrecioDeLlamada {
   creditos: number;
   euros: number;
   comprobado: string;
+  /** `true` si se paga por la cuota del plan del usuario en ese servicio: entonces no cuesta créditos. */
+  porCuota?: boolean;
+  /** Proveedor que lo escribiría; se nombra cuando va por cuota. Nunca el modelo. */
+  nombreProveedor?: string;
+  /** Lo que costaría, como mucho, la llamada de reserva de pago si la principal falla; `null` si no hay. */
+  reserva?: PrecioDeReserva | null;
 }
+
+/**
+ * «Por la cuota de tu plan en NaN builders; si falla, como mucho 2 créditos de reserva»: lo que se dice en lugar de
+ * «0 créditos» cuando va por cuota. Sin reserva de pago, «…: no cuesta créditos».
+ */
+export const fraseDeCuota = (nombreProveedor: string | undefined, creditosReserva: number) =>
+  `Por la cuota de tu plan${nombreProveedor ? ` en ${nombreProveedor}` : ""}${creditosReserva > 0 ? `; si falla, como mucho ${formatearCreditos(creditosReserva)} de reserva` : ": no cuesta créditos"}`;
+
+/** Euros por crédito de lo que se confirma: el de la principal, o el de la reserva si la principal va por cuota. */
+export const eurosPorCreditoDe = (precio: PrecioDeLlamada): number => {
+  if (precio.creditos > 0) return precio.euros / precio.creditos;
+  const reserva = precio.reserva;
+  return reserva && reserva.creditos > 0 ? reserva.euros / reserva.creditos : 0;
+};
 
 /** Por qué no se puede escribir el guion con esta elección; `null` si se puede. */
 export function motivoDeLaEleccion(c: CondicionesVideoCompleto, e: EleccionVideoCompleto): string | null {
@@ -120,8 +140,10 @@ export function SelectorVideoCompleto({
   const cambiar = (cambios: Partial<EleccionVideoCompleto>) => onCambio({ ...eleccion, ...cambios });
   const otros = personajes.filter((p) => p.id !== protagonistaId);
   const coste =
-    precio && eleccion.duracion !== null ? costeDelGuion(precio.creditos, eleccion.duracion, eleccion.tipo) : null;
-  const eurosPorCredito = precio && precio.creditos > 0 ? precio.euros / precio.creditos : 0;
+    precio && eleccion.duracion !== null
+      ? costeDelGuion(precio.creditos, eleccion.duracion, eleccion.tipo, precio.reserva?.creditos ?? 0)
+      : null;
+  const eurosPorCredito = precio ? eurosPorCreditoDe(precio) : 0;
 
   return (
     <div className="flex flex-col gap-4">
@@ -191,7 +213,33 @@ export function SelectorVideoCompleto({
         </fieldset>
       )}
 
-      {coste && precio && (
+      {coste && precio?.porCuota && (
+        <div className="flex flex-col gap-1 rounded-tarjeta border-2 border-borde bg-superficie p-4">
+          <p className="font-semibold text-texto">Lo que cuesta escribir el guion</p>
+          <p className="font-mono text-texto">
+            {coste.llamadas} {coste.llamadas === 1 ? "llamada" : "llamadas"} de texto, más una de reserva por si hay que
+            repetir un trozo o tu servicio no responde
+          </p>
+          <p className="font-mono font-semibold text-texto">
+            {fraseDeCuota(precio.nombreProveedor, coste.creditosReserva)}
+            {precio.reserva && coste.creditosReserva > 0 && (
+              <>
+                {" "}
+                (estimación, precio del {formatearFecha(precio.reserva.comprobado)}) ≈{" "}
+                {formatearEuros(coste.creditosReserva * eurosPorCredito)}
+              </>
+            )}
+          </p>
+          <p className="text-sm text-texto-suave">
+            {coste.creditosReserva > 0
+              ? "Ese servicio se paga con la cuota de tu plan y no por petición. Si se satura o no responde, escribe tu reserva de pago, y solo si lo que cuesta cabe en lo que confirmas; si no, se para y se te dice por qué."
+              : "Ese servicio se paga con la cuota de tu plan y no por petición. Si no responde, no se pasa a ninguna entrada de pago de tu mapa: se para y se te dice por qué."}{" "}
+            El coste de los clips se enseña aparte, antes de producir.
+          </p>
+        </div>
+      )}
+
+      {coste && precio && !precio.porCuota && (
         <div className="flex flex-col gap-1 rounded-tarjeta border-2 border-borde bg-superficie p-4">
           <p className="font-semibold text-texto">Lo que cuesta escribir el guion</p>
           <p className="font-mono text-texto">
@@ -199,17 +247,19 @@ export function SelectorVideoCompleto({
             {formatearCreditos(coste.creditosLlamadas)}
           </p>
           <p className="font-mono text-texto">
-            Reserva por si hay que repetir un trozo: {formatearCreditos(coste.creditosReserva)}
+            Reserva por si hay que repetir un trozo o falla tu primera opción:{" "}
+            {formatearCreditos(coste.creditosReserva)}
           </p>
           <p className="font-mono font-semibold text-texto">
             Total que confirmas: {formatearCreditos(coste.total)} (estimación, precio del{" "}
             {formatearFecha(precio.comprobado)}) ≈ {formatearEuros(coste.total * eurosPorCredito)}
           </p>
           <p className="text-sm text-texto-suave">
-            La reserva solo se gasta si un trozo del guion llega cortado o no cabe en sus segundos. Antes de cada
-            llamada se suma lo ya cobrado: si la siguiente pudiera pasar del total, no se hace, se para y se te dice
-            cuánto ha costado lo hecho. El importe de cada llamada lo informa el proveedor al terminar. El coste de los
-            clips se enseña aparte, antes de producir.
+            La reserva solo se gasta si un trozo del guion llega cortado o no cabe en sus segundos, o si falla la
+            primera entrada de tu mapa de modelos de texto y escribe otra de pago. Antes de cada llamada se suma lo ya
+            cobrado: si la siguiente pudiera pasar del total, no se hace, se para y se te dice cuánto ha costado lo
+            hecho. El importe de cada llamada lo informa el proveedor al terminar. El coste de los clips se enseña
+            aparte, antes de producir.
           </p>
         </div>
       )}
