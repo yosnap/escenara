@@ -6,6 +6,7 @@ import { Alerta } from "@/components/ui/alerta";
 import { claseBoton } from "@/components/ui/button";
 import { PanelAntesDeGenerar } from "@/components/ui/controles";
 import { Aviso, EstadoVacio } from "@/components/ui/feedback";
+import type { PlanosBaseVista } from "@/lib/continuidad";
 import { avisosConfirmables, bloqueosDeControles, firmaDeAvisos } from "@/lib/controles";
 import { formatearCreditos } from "@/lib/generacion";
 import type { ProduccionVista } from "@/lib/produccion";
@@ -15,6 +16,7 @@ import {
   autorizarReintentos,
   type ConfirmacionEnvio,
   cancelarEscena,
+  consultarProduccion,
   otroClipDeEscena,
   producirCanto,
   producirEscena,
@@ -24,6 +26,7 @@ import {
   usarVersionDeClip,
 } from "./api-produccion";
 import { ConfirmacionGasto } from "./confirmacion-gasto";
+import { PanelPlanosBase } from "./panel-planos-base";
 import { TarjetaEscena } from "./tarjeta-escena";
 
 /**
@@ -33,7 +36,14 @@ import { TarjetaEscena } from "./tarjeta-escena";
  * para cuando no: en Escenara no se usa `useEffect` directo. Cada acción del servidor devuelve el estado de
  * producción **completo**, así que la pantalla nunca muestra un coste ni un estado que ya no sean los vigentes.
  */
-export function VistaProduccion({ inicial }: { inicial: ProduccionVista }) {
+export function VistaProduccion({
+  inicial,
+  planosBase = null,
+}: {
+  inicial: ProduccionVista;
+  /** Planos base del vídeo completo, si el proyecto lo es; `null` en los demás. */
+  planosBase?: PlanosBaseVista | null;
+}) {
   const [almacen] = useState<AlmacenProduccion>(() => crearAlmacenProduccion(inicial));
   const estado = useSyncExternalStore(almacen.subscribe, almacen.obtener, almacen.obtener);
   const [ocupado, setOcupado] = useState(false);
@@ -150,6 +160,15 @@ export function VistaProduccion({ inicial }: { inicial: ProduccionVista }) {
           anuncio="ninguno"
           protege
           elementos={produccion.impedimentos.map((texto) => ({ texto }))}
+        />
+      )}
+
+      {planosBase?.videoCompleto && (
+        <PanelPlanosBase
+          proyectoId={produccion.proyectoId}
+          inicial={planosBase}
+          umbral={produccion.umbralAvisoCreditos}
+          onCambio={() => void ejecutar(() => consultarProduccion(produccion.proyectoId))}
         />
       )}
 

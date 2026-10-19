@@ -1,9 +1,11 @@
+import { ErrorProyecto } from "../asistente/errores";
 import { errorDeOrigen } from "../auth/origen";
 import { esAdmin, respuestaSinSesion, sesionDePeticion } from "../auth/sesion";
 import { ErrorGeneracion } from "../generacion/errores";
 import { dentroDelLimite, type Limite } from "../limite";
 import { ErrorMedio } from "../media/errores";
 import type { Actor } from "../media/servicio";
+import { ErrorOmni } from "../omni/errores";
 import { ErrorMedioEnUso, ErrorPersonaje, ErrorReferenciaRechazada } from "./errores";
 
 /**
@@ -33,6 +35,11 @@ export function respuestaError(error: unknown): Response {
   // Pedir una vista sintética encola un trabajo normal: sus rechazos (coste sin confirmar, sin clave, tope de
   // trabajos, presupuesto) llegan hasta aquí y conservan su código en lugar de convertirse en un 500.
   if (error instanceof ErrorGeneracion) return Response.json({ error: error.message }, { status: error.estado });
+  // Registrar al personaje o su voz en el proveedor de escenas habladas: el motivo (consentimiento, fotos, clave,
+  // fallo del proveedor) ya viene escrito para el usuario, con si se cobró y qué hacer. Sin esto llegaba un 500 mudo.
+  if (error instanceof ErrorOmni || error instanceof ErrorProyecto) {
+    return Response.json({ error: error.message }, { status: error.estado });
+  }
   // Solo el tipo y el mensaje: un error de Drizzle vuelca la consulta **con sus parámetros**, y aquí los
   // parámetros son nombres de personas, identificadores de fotos y de documentos de consentimiento. Nada de eso
   // tiene que acabar en el registro del servidor.

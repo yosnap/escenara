@@ -94,6 +94,13 @@ también ≈ 1 min (8 clips) y ≈ 3 min (23 clips). Apagado, el servidor rechaz
 sin pasar por la pantalla. Si los límites de escenas o de segundos de montaje no las admiten, salen desactivadas con
 el motivo.
 
+En la sección **Lugares**, el interruptor **«Vídeo completo: arrancar cada clip de su plano base con la identidad
+registrada»** viene apagado de fábrica. Encendido, en los vídeos completos escritos por el asistente cada clip se envía
+con su plano base (el fotograma del personaje en el lugar) junto a la identidad registrada; solo vale para esos planos,
+no para cualquier fotograma aprobado (eso lo decide el otro interruptor experimental de la misma sección). Enciéndelo
+cuando hayas escuchado un clip así y la voz sea la registrada; si la voz falla, déjalo apagado y el lugar seguirá
+viajando descrito.
+
 ### Correo y plantillas
 
 ![Plantilla de confirmación con datos ficticios](../assets/capturas/0.51.0-correo-verificacion.webp)

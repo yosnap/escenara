@@ -1,5 +1,6 @@
 import { and, eq, inArray, max, sql } from "drizzle-orm";
 import { detectarAfirmaciones } from "@/lib/asistente";
+import { BIBLIA_VACIA } from "@/lib/continuidad";
 import {
   DESCRIPCION_EXPERTA_MAXIMA,
   esFormatoClip,
@@ -447,6 +448,8 @@ async function vaciarParaElGuion(tx: Ejecutor, proyectoId: string): Promise<stri
     .where(eq(projects.id, proyectoId))
     .limit(1);
   await tx.delete(scenes).where(eq(scenes.projectId, proyectoId));
+  // Las escenas nuevas no son las de la biblia anterior: el vídeo completo la vuelve a escribir en esta transacción.
+  await tx.update(projects).set({ continuityBible: BIBLIA_VACIA }).where(eq(projects.id, proyectoId));
   return proyecto?.protagonista ?? null;
 }
 

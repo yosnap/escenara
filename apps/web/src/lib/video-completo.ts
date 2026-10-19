@@ -270,7 +270,7 @@ export interface ClipGuion {
 
 export interface BibliaGuion {
   concepto: string;
-  /** Papel y vestuario de cada personaje, en castellano. */
+  /** Papel (en castellano) y vestuario (en inglés, es una instrucción visual) de cada personaje. */
   personajes: { hablante: Hablante; papel: string; vestuario: string }[];
   lugar: string;
   /** Objetivo de cada bloque, en orden: es lo que mantiene el arco entre llamadas. */
@@ -347,7 +347,10 @@ export function leerBiblia(crudo: string, bloques: number): BibliaGuion {
  * Lee un trozo del guion y lo comprueba contra su plan: el mismo número de clips, cada turno de alguien que sale
  * en ese plano y ningún clip por encima de sus palabras. Cualquier fallo es un `ErrorDeBloque` con su causa.
  */
-export function leerBloque(crudo: string, plan: readonly ClipPlanificado[]): { concepto: string; clips: ClipGuion[] } {
+export function leerBloque(
+  crudo: string,
+  plan: readonly ClipPlanificado[],
+): { concepto: string; clips: ClipGuion[]; continuidad: ContinuidadGuion } {
   const objeto = objetoDe(crudo);
   const crudos = Array.isArray(objeto.clips) ? objeto.clips : [];
   if (crudos.length !== plan.length) {
@@ -358,7 +361,32 @@ export function leerBloque(crudo: string, plan: readonly ClipPlanificado[]): { c
     );
   }
   const clips = plan.map((planificado, indice) => leerClip(crudos[indice], planificado));
-  return { concepto: limpiarTextoDePrompt(objeto.concept, CONCEPTO_MAXIMO), clips };
+  return {
+    concepto: limpiarTextoDePrompt(objeto.concept, CONCEPTO_MAXIMO),
+    clips,
+    continuidad: leerContinuidad(objeto),
+  };
+}
+
+/** Vestuario fijo de cada personaje y lugar del vídeo, en inglés. Vacíos si el modelo no los dio. */
+export interface ContinuidadGuion {
+  lugar: string;
+  vestuario: Partial<Record<Hablante, string>>;
+}
+
+/**
+ * Lee el vestuario y el lugar que acompañan al guion. **No es motivo de repetir nada**: si faltan o vienen mal, el
+ * vídeo se hace igual con la ficha de cada personaje y el lugar elegido; repetir el trozo costaría una llamada por
+ * algo que solo refuerza la continuidad.
+ */
+export function leerContinuidad(objeto: Record<string, unknown>): ContinuidadGuion {
+  const vestuario: Partial<Record<Hablante, string>> = {};
+  for (const p of Array.isArray(objeto.characters) ? objeto.characters : []) {
+    const c = (p ?? {}) as Record<string, unknown>;
+    const ropa = limpiarTextoDePrompt(c.wardrobe, TEXTO_CORTO).trim();
+    if ((c.speaker === "A" || c.speaker === "B") && ropa !== "") vestuario[c.speaker] = ropa;
+  }
+  return { lugar: limpiarTextoDePrompt(objeto.setting, TEXTO_CORTO).trim(), vestuario };
 }
 
 function leerClip(crudo: unknown, plan: ClipPlanificado): ClipGuion {

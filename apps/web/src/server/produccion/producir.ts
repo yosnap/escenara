@@ -170,8 +170,13 @@ async function encolarPrimerTrabajo(
   await encolarFotograma(actor, escena, proyecto, confirmacion, clave, h, reintento);
 }
 
-/** Encola el fotograma de una escena. Toda la decisión de dinero la toma `crearFotograma`. */
-async function encolarFotograma(
+/**
+ * Encola el fotograma de una escena. Toda la decisión de dinero la toma `crearFotograma`.
+ *
+ * El **plano base** de un vídeo completo pasa también por aquí: el proyecto llega con el personaje del plano como
+ * protagonista y `ropa` trae su vestuario fijo de la biblia, en inglés, para el hueco de vestuario de las 6C.
+ */
+export async function encolarFotograma(
   actor: Actor,
   escena: FilaEscena,
   proyecto: FilaProyecto,
@@ -179,12 +184,13 @@ async function encolarFotograma(
   clave: string,
   h: Herramientas,
   reintento = false,
-): Promise<void> {
+  ropa = "",
+): Promise<string> {
   const plantilla = await plantillaVigenteDe(actor.id, "image_edit");
   const personaje = await personajeDirigidoDe(proyecto);
   // El plano del lugar solo parte de la maestra y no lleva a nadie: ni protagonista ni sus fotos.
   const solo = await planoDelLugarSolo(actor.id, escena, proyecto);
-  await crearFotograma(
+  const { trabajo } = await crearFotograma(
     actor,
     {
       prompt: solo?.prompt ?? textoVisualDe(escena),
@@ -196,7 +202,7 @@ async function encolarFotograma(
        * el plano, el ángulo, la óptica, la luz y el sitio, y el bloque de anclajes tiene que cerrar el prompt.
        * `vestuario` sale de la ficha del personaje, que ya entra por su propio camino como contexto.
        */
-      seisC: await seisCDeLaEscena(actor.id, escena, proyecto, personaje, ""),
+      seisC: await seisCDeLaEscena(actor.id, escena, proyecto, personaje, ropa),
       ...(escena.changeOnly === "ninguno"
         ? {}
         : {
@@ -222,6 +228,7 @@ async function encolarFotograma(
     },
     h,
   );
+  return trabajo.id;
 }
 
 /**

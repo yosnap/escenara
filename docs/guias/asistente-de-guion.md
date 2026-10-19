@@ -138,6 +138,17 @@ ofrecen** mientras quien administra no los abra en Admin › Ajustes («Vídeo c
 escribe en partes: primero un plan corto con el concepto, el vestuario, el lugar y el objetivo de cada parte, y
 después cada parte de hasta 8 clips sabiendo cómo terminó la anterior, para que la conversación siga sin repetirse.
 
+**La misma ropa y el mismo sitio en todos los clips.** Desde la 0.56.0 el guion completo guarda también el
+**vestuario fijo** de cada personaje y el **lugar y la luz** del vídeo (en la de 20 s salen en la misma llamada, sin
+coste de más). No se enseñan: se repiten tal cual en cada clip para que la ropa y el sitio no cambien entre cortes. Si
+el proyecto tiene un [lugar](lugares.md), manda el lugar. Con lugar, en **Producción** aparece además el panel
+**Planos base**: un fotograma por personaje, ya en el lugar y con su ropa, del que arrancan todos sus clips. Cuesta lo
+que un fotograma por plano, se confirma una vez por el total y lo das por bueno tú con **Usarlo en sus escenas**. En
+una persona hay un plano; en un podcast, uno por personaje; en una entrevista, ninguno (los dos comparten plano y la
+continuidad la dan la identidad registrada y el lugar descrito). Antes de pedirlos se registra con su voz, sin coste,
+a quien no lo esté. Mientras quien administra no encienda el ajuste de los vídeos completos (ver
+[Administración](administracion.md)), el plano base queda preparado pero los clips no arrancan de él.
+
 ## 3 · Las afirmaciones por verificar
 
 Escenara **lee tu guion** y señala las frases que conviene comprobar antes de publicar: cifras, cosas presentadas

@@ -1,4 +1,5 @@
 import { and, desc, eq, inArray, isNotNull, not, sql } from "drizzle-orm";
+import { esPlanoBase, leerBibliaContinuidad } from "@/lib/continuidad";
 import { type EvaluacionVista, peorEstado } from "@/lib/controles";
 import { formatearCreditos } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
@@ -47,7 +48,13 @@ import type { EleccionDeTrabajo } from "../generacion/precios";
 import { condicionEnCurso } from "../generacion/trabajos";
 import { type Actor, aDto, espacioUsado } from "../media/servicio";
 import { DONDE_CAMBIAR_MODELO, modeloEnMensaje } from "../modelo-en-mensajes";
-import { costeDeEscenaOmni, duracionesDeOmni, registroParaProducir, segundosPlanificados } from "../omni/escena";
+import {
+  conversacionDelPlano,
+  costeDeEscenaOmni,
+  duracionesDeOmni,
+  registroParaProducir,
+  segundosPlanificados,
+} from "../omni/escena";
 import { costesOmniPorDuracion, sellosOmniVigentes } from "../omni/estimacion-plan";
 import { eleccionOmni } from "../omni/registro";
 import { personajeDelPlano } from "../omni/reparto";
@@ -430,7 +437,12 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
       ]);
       return vistaDeEscena(
         fila,
-        trabajos,
+        /**
+         * En modo «Voz e identidad registradas» la escena no tiene fotograma propio: un fotograma suyo es el **plano
+         * base** de un vídeo completo, que se prepara aparte y comparten varias escenas. Contarlo como el fotograma
+         * de la escena escondería «Generar el clip hablado» y ofrecería aprobarlo y animarlo, que este modo no hace.
+         */
+        proyecto.voiceMode === "omni" ? trabajos.filter((t) => t.kind !== "fotograma") : trabajos,
         // El mismo motor que cierra la puerta al producir el fotograma, con los datos ya cargados.
         sinLosDelModelo(
           evaluarParaMostrar({
@@ -465,6 +477,7 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
   // Y el de **cada escena**, con su duración: un podcast de 20 s son clips de 8, 6 y 6 s, cada uno con su tarifa.
   const porDuracion = omni ? await costesOmniPorDuracion(actor.id, proyecto, filasEscena) : null;
   const faltas = omni ? await faltasDeLosPlanos(actor, proyecto, filasEscena, habladas?.modelo) : new Map();
+  const biblia = leerBibliaContinuidad(proyecto.continuityBible);
   const conCosteHablado = (escena: EscenaProduccionVista): EscenaProduccionVista => {
     if (!porDuracion) return escena;
     const coste = porDuracion.get(escena.segundos) ?? null;
@@ -472,6 +485,8 @@ export async function estadoDeProduccion(actor: Actor, proyectoId: unknown): Pro
     return {
       ...escena,
       ...(falta ? { faltaDelPlano: falta } : {}),
+      // Solo se rotula como plano base lo que de verdad lo es: otro fotograma aprobado (de la biblioteca) no lo es.
+      planoBase: esPlanoBase(biblia, escena.fotogramaAprobado?.id ?? null),
       costeHablado: coste
         ? { creditos: coste.creditosDelPrimerClip, sello: coste.eleccion.precio.sello, segundos: coste.segundos }
         : null,
@@ -584,10 +599,12 @@ async function faltasDeLosPlanos(
     const personajeId = await personajeDelPlano(escena);
     if (!personajeId || personajeId === proyecto.mainCharacterId) continue;
     if (!porPersonaje.has(personajeId)) {
+      // Con la conversación: si habla con la misma voz que otro del podcast, también es algo que le falta.
       const { falta, personaje } = await registroParaProducir(
         actor,
         { ...proyecto, mainCharacterId: personajeId },
         modelo,
+        await conversacionDelPlano(escena, proyecto, personajeId),
       );
       porPersonaje.set(
         personajeId,

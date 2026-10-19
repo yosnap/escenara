@@ -114,6 +114,7 @@ export function TarjetaEscena({
   const sinProducir = escena.fotograma === null;
   const fotogramaListo = escena.fotograma?.estado === "listo" && escena.fotograma.medio !== null;
   const puedeAprobar =
+    !hablada &&
     !escena.comparativaEnMarcha &&
     escena.reparto === null &&
     (fotogramaPorAprobar(escena) || clipPorEncolar(escena)) &&
@@ -123,6 +124,7 @@ export function TarjetaEscena({
    * («ya tiene su clip guardado»), y para probar otro modelo con el mismo fotograma está «Comparar generando».
    */
   const puedePedirOtroClip =
+    !hablada &&
     !escena.comparativaEnMarcha &&
     escena.reparto === null &&
     escena.clip === null &&
@@ -187,9 +189,14 @@ export function TarjetaEscena({
         <>
           <div className={escena.reparto === null ? "grid gap-4 sm:grid-cols-2" : "hidden"}>
             <div className="flex flex-col gap-2">
-              <h4 className="text-sm font-semibold text-texto-suave">Fotograma</h4>
+              <h4 className="text-sm font-semibold text-texto-suave">
+                {hablada && escena.planoBase ? "Plano base" : "Fotograma"}
+              </h4>
               {escena.fotogramaAprobado ? (
-                <PrevisualizacionZonas medio={escena.fotogramaAprobado} etiqueta="Fotograma aprobado" />
+                <PrevisualizacionZonas
+                  medio={escena.fotogramaAprobado}
+                  etiqueta={hablada && escena.planoBase ? "Plano base de la escena" : "Fotograma aprobado"}
+                />
               ) : escena.fotograma?.medio ? (
                 <PrevisualizacionZonas medio={escena.fotograma.medio} etiqueta="Fotograma generado" />
               ) : escena.fotograma ? (

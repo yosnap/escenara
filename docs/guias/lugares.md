@@ -144,7 +144,8 @@ escena es un clip hablado.
 Un podcast es **una sola escena** que produce dos clips, así que los dos llevan **el mismo lugar y la misma versión**:
 se eligen en esa escena. Con la misma maestra el set sale igual en los dos clips. En las escenas habladas con voz e identidad registradas el lugar va
 **descrito**; combinar la identidad registrada con el fotograma situado es un ajuste experimental de la instalación,
-apagado de fábrica.
+apagado de fábrica. En un vídeo completo escrito por el asistente, el fotograma situado es el **plano base** de cada
+personaje (ver [Asistente de guion](asistente-de-guion.md)) y tiene su propio ajuste, también apagado de fábrica.
 
 ## Versiones
 
