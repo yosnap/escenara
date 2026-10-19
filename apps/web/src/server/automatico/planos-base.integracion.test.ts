@@ -339,7 +339,8 @@ describe.skipIf(!hayBaseDeDatos)("planos base de un vídeo completo y voz de cad
     const todos = await db()
       .select()
       .from(generationJobs)
-      .where(and(eq(generationJobs.userId, ana.id), eq(generationJobs.kind, "fotograma")));
+      .where(and(eq(generationJobs.userId, ana.id), eq(generationJobs.kind, "fotograma")))
+      .orderBy(generationJobs.createdAt);
     return todos.filter((t) => t.sceneId !== null && ids.includes(t.sceneId));
   };
 
@@ -507,12 +508,16 @@ describe.skipIf(!hayBaseDeDatos)("planos base de un vídeo completo y voz de cad
 
   test("un plano fallido se vuelve a pedir cada vez, aunque la pantalla repita la misma clave", async () => {
     const proyectoId = await videoCompleto("una_persona");
+    // Falla el trabajo **vigente del plano** (el que apunta la biblia): la lista de trabajos no tiene orden fijo, y
+    // tomar «el último» de ella podía volver a fallar uno ya fallido y dejar el vigente en marcha.
     const fallar = async () => {
-      const ultimo = (await fotogramas(proyectoId)).at(-1);
+      const [proyecto] = await db().select().from(projects).where(eq(projects.id, proyectoId)).limit(1);
+      const vigente = proyecto?.continuityBible.planos.find((p) => p.personajeId === lucia)?.trabajoId;
+      if (!vigente) throw new Error("El plano tiene que tener su trabajo encargado.");
       await db()
         .update(generationJobs)
         .set({ state: "fallido", errorMessage: "El proveedor no lo generó." })
-        .where(eq(generationJobs.id, ultimo?.id ?? ""));
+        .where(eq(generationJobs.id, vigente));
     };
     await confirmarPlanos(proyectoId);
     await fallar();
