@@ -208,6 +208,50 @@ export interface VozOmniDelProyecto {
   registradaEn: string;
 }
 
+// ── Voz de cada personaje ────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Voz registrada con la que habla un personaje: **la suya** si la tiene y, si no, la del proyecto. Es lo que se cita
+ * al registrarlo en el proveedor (la voz viaja dentro del personaje registrado) y lo que distingue un registro
+ * vigente de uno hecho con otra voz.
+ */
+export const audioIdEfectivo = (propio: string, delProyecto: string): string => (propio !== "" ? propio : delProyecto);
+
+/** Alguien de una conversación, con su voz propia (vacía si no la tiene). */
+export interface HablanteConVoz {
+  personajeId: string;
+  nombre: string;
+  audioIdPropio: string;
+}
+
+/**
+ * Qué le falta de voz a `quien` para hablar en una conversación con `otros`, o vacío si nada.
+ *
+ * - sin voz propia ni voz del proyecto, no tiene con qué voz registrarse;
+ * - sin voz propia, habla con la del proyecto: si otro de la conversación también, **sonarían igual**. Al
+ *   protagonista se le deja la del proyecto (es la de siempre) y el aviso va al otro, que es quien tiene que elegir
+ *   la suya. Si ninguno es el protagonista, el aviso va a los dos.
+ */
+export function faltaDeVoz(
+  quien: HablanteConVoz,
+  otros: readonly HablanteConVoz[],
+  audioIdDelProyecto: string,
+  protagonistaId: string | null,
+): string {
+  const propia = quien.audioIdPropio;
+  if (audioIdEfectivo(propia, audioIdDelProyecto) === "") {
+    return "no tiene ninguna voz registrada: elige y registra su voz en su ficha, o la del proyecto en «Voz y subtítulos». No cuesta créditos.";
+  }
+  if (propia !== "" || quien.personajeId === protagonistaId) return "";
+  const igual = otros.find(
+    (o) =>
+      o.personajeId !== quien.personajeId &&
+      audioIdEfectivo(o.audioIdPropio, audioIdDelProyecto) === audioIdDelProyecto,
+  );
+  if (!igual) return "";
+  return `no tiene voz propia y sonaría con la misma voz que «${igual.nombre}». Elige y registra su voz en su ficha («Su voz en las escenas habladas»): no cuesta créditos, y queda registrado con ella.`;
+}
+
 /**
  * Registro Omni de **una versión de la ficha** de un personaje. Cambiar la ficha crea versión nueva y obliga a
  * registrar otra vez: lo que se envió al proveedor era la ficha anterior, y la cara del registro es la de

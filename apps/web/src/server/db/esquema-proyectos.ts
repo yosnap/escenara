@@ -12,6 +12,7 @@ import {
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
+import { BIBLIA_VACIA, type BibliaContinuidad } from "@/lib/continuidad";
 import type { FormatoMontaje } from "@/lib/formatos";
 import { media } from "./esquema";
 import { users } from "./esquema-auth";
@@ -210,6 +211,12 @@ export const projects = pgTable(
      * quien manda es el brief: si alguna vez discreparan, el brief es la fuente y esto, el índice.
      */
     anglePresetKey: text("angle_preset_key").notNull().default(""),
+    /**
+     * **Biblia de continuidad** de un vídeo completo: vestuario fijo de cada personaje y lugar, en inglés, y los
+     * planos base (un fotograma por personaje situado en el lugar del que arrancan sus clips). La escribe el
+     * asistente al escribir el guion completo; en los demás proyectos queda vacía (`lib/continuidad.ts`).
+     */
+    continuityBible: jsonb<BibliaContinuidad>("continuity_bible").notNull().default(BIBLIA_VACIA),
     /**
      * **Lugar por defecto** del proyecto: el que heredan sus escenas mientras no elijan otro o lo quiten. `set null`
      * al borrar el lugar: el proyecto sigue siendo el mismo, solo sin sitio fijado.

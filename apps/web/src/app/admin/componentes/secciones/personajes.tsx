@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Alerta } from "@/components/ui/alerta";
+import { CamposVozRegistrada, type EleccionVozRegistrada } from "@/components/ui/campos-voz-registrada";
 import { InsigniaEstadoPersonaje, SelectorPersonaje } from "@/components/ui/personaje";
 import { CamposEstiloAnimado, type MaticesAnimados } from "@/components/ui/personajes/campos-estilo-animado";
 import { DistintivoOrigen } from "@/components/ui/personajes/distintivo-origen";
@@ -24,6 +25,7 @@ import {
   type RechazoDeReferencia,
   VISTAS,
 } from "@/lib/captura-personaje";
+import { DESCRIPCION_VOZ_OMNI_POR_DEFECTO, EJEMPLO_VOZ_OMNI_POR_DEFECTO, VOCES_OMNI } from "@/lib/omni";
 import {
   type ContextoAplicado,
   ESTADOS_PERSONAJE,
@@ -97,6 +99,11 @@ export function SeccionPersonajes() {
     referencias: "figuras geométricas suaves",
   });
   const [consentimiento, setConsentimiento] = useState<EstadoConsentimiento>(CONSENTIMIENTO_INICIAL);
+  const [voz, setVoz] = useState<EleccionVozRegistrada>({
+    voz: VOCES_OMNI[1]?.id ?? "",
+    descripcion: DESCRIPCION_VOZ_OMNI_POR_DEFECTO,
+    ejemplo: EJEMPLO_VOZ_OMNI_POR_DEFECTO,
+  });
   return (
     <Seccion
       id="personajes"
@@ -174,6 +181,11 @@ export function SeccionPersonajes() {
         <Muestra titulo="Contexto que se enviará al modelo (zona de claridad)">
           <div className="w-full">
             <PanelContextoPersonaje contexto={CONTEXTO} />
+          </div>
+        </Muestra>
+        <Muestra titulo="Voz registrada: la del proyecto y la propia de cada personaje (registrarla no cuesta)">
+          <div className="w-full">
+            <CamposVozRegistrada etiqueta="Su voz" voces={VOCES_OMNI} valor={voz} onCambio={setVoz} />
           </div>
         </Muestra>
         <Muestra titulo="Consentimiento (zona de claridad)">

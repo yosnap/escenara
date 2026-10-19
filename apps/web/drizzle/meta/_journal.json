@@ -519,6 +519,13 @@
       "when": 1792331828017,
       "tag": "0073_modelo_de_video_del_proyecto",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1792359260225,
+      "tag": "0074_voces_propias_y_biblia_de_continuidad",
+      "breakpoints": true
     }
   ]
 }

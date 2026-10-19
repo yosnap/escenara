@@ -390,5 +390,22 @@ export const elegirRetrato = (id: string, medioId: string) =>
  * créditos**, pero envía su retrato, así que el servidor exige consentimiento vigente. `volverARegistrar`
  * reemplaza un identificador que el proveedor ya no reconoce.
  */
-export const registrarEnOmni = (id: string, proyectoId: string, volverARegistrar = false) =>
-  pedir<PersonajeVista>(`/api/personajes/${id}/omni`, json("POST", { proyectoId, volverARegistrar }));
+export const registrarEnOmni = (id: string, proyectoId: string | null, volverARegistrar = false) =>
+  pedir<PersonajeVista>(
+    `/api/personajes/${id}/omni`,
+    json("POST", { ...(proyectoId ? { proyectoId } : {}), volverARegistrar }),
+  );
+
+/** Respuesta de la voz propia: el personaje y, si no se pudo registrar con ella todavía, por qué. */
+export interface RespuestaVozPropia {
+  personaje: PersonajeVista;
+  avisoRegistro: string;
+}
+
+/** Registra la voz propia del personaje (sin coste) y, a continuación, al personaje con ella. */
+export const registrarVozPropia = (id: string, voz: string, descripcion: string, ejemplo: string) =>
+  pedir<RespuestaVozPropia>(`/api/personajes/${id}/voz-registrada`, json("POST", { voz, descripcion, ejemplo }));
+
+/** Quita la voz propia: vuelve a hablar con la del proyecto. */
+export const quitarVozPropia = (id: string) =>
+  pedir<RespuestaVozPropia>(`/api/personajes/${id}/voz-registrada`, json("DELETE", {}));

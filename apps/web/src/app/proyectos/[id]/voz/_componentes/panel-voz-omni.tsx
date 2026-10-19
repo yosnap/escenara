@@ -3,16 +3,10 @@
 import { BadgeCheck, Mic } from "lucide-react";
 import { useState } from "react";
 import { Boton } from "@/components/ui/button";
+import { CamposVozRegistrada } from "@/components/ui/campos-voz-registrada";
 import { Aviso } from "@/components/ui/feedback";
-import { AreaTexto, Campo, EntradaTexto } from "@/components/ui/field";
-import { Selector } from "@/components/ui/select";
 import { formatearCreditos } from "@/lib/generacion";
-import {
-  DESCRIPCION_VOZ_OMNI_POR_DEFECTO,
-  EJEMPLO_VOZ_OMNI_MAXIMO,
-  EJEMPLO_VOZ_OMNI_POR_DEFECTO,
-  nombreDeVozOmni,
-} from "@/lib/omni";
+import { DESCRIPCION_VOZ_OMNI_POR_DEFECTO, EJEMPLO_VOZ_OMNI_POR_DEFECTO, nombreDeVozOmni } from "@/lib/omni";
 import type { EstadoOmniVista } from "@/lib/voz";
 
 /**
@@ -65,45 +59,20 @@ export function PanelVozOmni({
         </p>
       </div>
 
-      <Selector
+      <CamposVozRegistrada
         etiqueta="Voz del proyecto"
-        valor={voz}
-        onCambio={(v) => setVoz(v ?? voz)}
-        opciones={omni.voces.map((v) => ({
-          value: v.id,
-          label: v.nombre,
-          descripcion: `${v.genero === "femenina" ? "Femenina" : "Masculina"} · ${v.tono}`,
-        }))}
+        voces={omni.voces}
+        valor={{ voz, descripcion, ejemplo }}
+        onCambio={(v) => {
+          setVoz(v.voz);
+          setDescripcion(v.descripcion);
+          setEjemplo(v.ejemplo);
+        }}
       />
-
-      <Campo
-        etiqueta="Cómo tiene que sonar"
-        ayuda="Se le manda al proveedor tal cual. El acento va aquí: las treinta voces no lo declaran, y sin pedirlo no sale el de España."
-      >
-        {(props) => (
-          <AreaTexto
-            {...props}
-            value={descripcion}
-            maxLength={2000}
-            onChange={(e) => setDescripcion(e.target.value)}
-            className="min-h-20"
-          />
-        )}
-      </Campo>
-
-      <Campo
-        etiqueta="Frase de ejemplo"
-        ayuda={`Una frase corta con la que el proveedor ajusta el tono. Hasta ${EJEMPLO_VOZ_OMNI_MAXIMO} caracteres.`}
-      >
-        {(props) => (
-          <EntradaTexto
-            {...props}
-            value={ejemplo}
-            maxLength={EJEMPLO_VOZ_OMNI_MAXIMO}
-            onChange={(e) => setEjemplo(e.target.value)}
-          />
-        )}
-      </Campo>
+      <p className="text-sm text-texto-suave">
+        Es la voz del protagonista si no tiene la suya. En un podcast o una entrevista, cada personaje habla con{" "}
+        <strong className="text-texto">su propia voz</strong>, que se registra en su ficha.
+      </p>
 
       <div className="flex flex-wrap items-center gap-3">
         <Boton

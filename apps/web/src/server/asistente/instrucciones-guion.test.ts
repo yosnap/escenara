@@ -70,4 +70,25 @@ describe("instrucciones al modelo de texto", () => {
     expect(entrada).toContain("Parts: 3.");
     expect(entrada).toContain("about 184 seconds in 23 clips");
   });
+
+  test("el guion de 20 s pide en la misma respuesta el vestuario fijo y el lugar, en inglés", () => {
+    const entrada = peticionDeClips({
+      idea: "Una mañana en la azotea",
+      tipo: "una_persona",
+      clips: planDeClips(20, "una_persona"),
+      personajes,
+      conContinuidad: true,
+    });
+    expect(entrada).toContain('"setting"');
+    expect(entrada).toContain('"wardrobe"');
+    expect(entrada).toContain('write "wardrobe" and "setting" in English');
+    // Sin pedirlo, la petición es la de siempre.
+    expect(
+      peticionDeClips({ idea: "x", tipo: "una_persona", clips: planDeClips(20, "una_persona"), personajes }),
+    ).not.toContain('"setting"');
+  });
+
+  test("la biblia de los guiones largos pide el vestuario y el lugar en inglés", () => {
+    expect(INSTRUCCIONES_BIBLIA).toContain('write "wardrobe" and "setting" in English');
+  });
 });

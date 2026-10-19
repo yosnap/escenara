@@ -36,6 +36,11 @@ voz, así que el timbre lo eliges tú entre las voces de siempre.
    Tampoco cuesta créditos, pero **envía su retrato al proveedor**, así que hace falta su consentimiento vigente.
 5. Produce el proyecto como siempre. En este modo **no hay fotograma que aprobar**: cada escena es un solo clip.
 
+**Cada personaje puede tener su propia voz** (desde la 0.56.0): en su ficha, **Escenas habladas › Su voz en las
+escenas habladas**. Con ella habla en todos sus proyectos; sin ella, la protagonista habla con la voz del proyecto. En
+un podcast o una entrevista el otro personaje la necesita, para que no suenen igual: ver
+[Podcast y dualcast](podcast-y-dualcast.md#cada-personaje-con-su-voz).
+
 **Si cambias la ficha del personaje** hay que registrarlo otra vez: lo que se envió era la ficha anterior. La
 pantalla lo dice y el botón «Registrar de nuevo» lo arregla, sin coste.
 

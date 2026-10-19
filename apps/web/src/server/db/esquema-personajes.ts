@@ -122,6 +122,19 @@ export const characters = pgTable(
     voiceAxes: jsonb<Record<string, string>>("voice_axes").notNull().default({}),
     voicePresetId: text("voice_preset_id").notNull().default(""),
     /**
+     * **Voz registrada propia del personaje** en el proveedor de escenas habladas. Es la que suena cuando sale en
+     * un podcast o una entrevista, para que cada uno hable con su timbre y no los dos con la voz del proyecto.
+     *
+     * Mismos campos que la voz registrada del proyecto: una de las treinta voces predefinidas, lo que se mandó para
+     * matizarla y el `audioId` que devolvió el proveedor. Vacío = sin voz propia; entonces, si es el protagonista,
+     * habla con la voz del proyecto, como hasta ahora. Registrarla no cuesta créditos.
+     */
+    omniVoice: text("omni_voice").notNull().default(""),
+    omniVoiceDescription: text("omni_voice_description").notNull().default(""),
+    omniVoiceExample: text("omni_voice_example").notNull().default(""),
+    omniAudioId: text("omni_audio_id").notNull().default(""),
+    omniVoiceSetAt: timestamp("omni_voice_set_at", { withTimezone: true }),
+    /**
      * **Hoja de identidad 3×3** (0.25.0): una sola imagen con nueve retratos del personaje (frente, perfiles,
      * tres cuartos, miradas y expresiones), generada desde sus referencias.
      *

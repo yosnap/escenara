@@ -9,11 +9,11 @@ export const dynamic = "force-dynamic";
 
 /**
  * Registra al personaje en el proveedor para las escenas habladas de un proyecto:
- * `{ proyectoId, volverARegistrar? }`.
+ * `{ proyectoId?, volverARegistrar? }`.
  *
  * **No cuesta créditos** (medido el 2026-09-28), pero envía su retrato al proveedor, así que exige
- * consentimiento vigente igual que generar. La voz con la que se registra es **la del proyecto**: no llega
- * ninguna en la petición, porque una voz por personaje volvería a cambiar el timbre entre proyectos.
+ * consentimiento vigente igual que generar. La voz con la que se registra es **la suya propia** si la tiene
+ * registrada (la misma en todos sus proyectos) y, si no, la del proyecto; no llega ninguna en la petición.
  *
  * `volverARegistrar` es para cuando el proveedor ha caducado el identificador anterior: marca el viejo como
  * reemplazado y registra otro, tampoco con coste.
@@ -21,9 +21,12 @@ export const dynamic = "force-dynamic";
 export const POST = manejador(async (peticion: Request, contexto: ContextoId, actor) => {
   const id = await leerId(contexto);
   const cuerpo = await leerCuerpo(peticion);
-  const proyecto = await proyectoPropio(actor, cuerpo.proyectoId);
-  const voz = vozOmniDelProyecto(proyecto);
-  const audioId = voz?.audioId ?? "";
+  // Con voz propia, el proyecto es opcional: solo decide con qué modelo se registra. Sin ella, su voz es la del proyecto.
+  const proyecto =
+    typeof cuerpo.proyectoId === "string" && cuerpo.proyectoId !== ""
+      ? await proyectoPropio(actor, cuerpo.proyectoId)
+      : undefined;
+  const audioId = proyecto ? (vozOmniDelProyecto(proyecto)?.audioId ?? "") : "";
   if (cuerpo.volverARegistrar === true) {
     await volverARegistrar(
       actor,

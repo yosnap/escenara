@@ -11,7 +11,7 @@ import type { FirmaOmni } from "@/lib/voz";
 import { proyectoPropio, proyectoPropioBloqueado } from "../asistente/consulta";
 import { ErrorProyecto } from "../asistente/errores";
 import { db } from "../db/cliente";
-import { type FilaProyecto, projects } from "../db/esquema";
+import { characters, type FilaPersonaje, type FilaProyecto, projects } from "../db/esquema";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import type { Actor } from "../media/servicio";
 import { registrarVozEnProveedor, registroVigente } from "../omni/registro";
@@ -40,20 +40,42 @@ export function vozOmniDelProyecto(proyecto: FilaProyecto): VozOmniDelProyecto |
   };
 }
 
+/** La voz registrada propia de un personaje, o `null` si habla con la del proyecto. */
+export function vozPropiaDe(personaje: FilaPersonaje): VozOmniDelProyecto | null {
+  if (personaje.omniVoice === "" || personaje.omniAudioId === "") return null;
+  return {
+    voz: personaje.omniVoice,
+    descripcion: personaje.omniVoiceDescription,
+    ejemplo: personaje.omniVoiceExample,
+    audioId: personaje.omniAudioId,
+    registradaEn: (personaje.omniVoiceSetAt ?? personaje.updatedAt).toISOString(),
+  };
+}
+
 /**
- * Firma de lo que hace válida una escena hablada **ahora mismo**: la voz registrada del proyecto y la identidad
- * registrada de su protagonista, con su versión de ficha vigente.
+ * Voz con la que habla un personaje en un proyecto: **la suya** si la tiene registrada y, si no, la del proyecto.
+ * `null` si no hay ninguna de las dos.
+ */
+export const vozRegistradaDe = (personaje: FilaPersonaje, proyecto: FilaProyecto): VozOmniDelProyecto | null =>
+  vozPropiaDe(personaje) ?? vozOmniDelProyecto(proyecto);
+
+/**
+ * Firma de lo que hace válida una escena hablada **ahora mismo**: la voz con la que habla el protagonista (la suya o
+ * la del proyecto) y su identidad registrada con esa voz, con su versión de ficha vigente.
  *
  * `null` cuando falta cualquiera de las dos: sin registro no hay escena hablada que pueda darse por buena, y eso
  * es lo que tiene que decir la firma en lugar de parecerse a la anterior.
  */
 export async function firmaOmniDelProyecto(proyecto: FilaProyecto): Promise<FirmaOmni | null> {
-  if (proyecto.omniAudioId === "" || !proyecto.mainCharacterId) return null;
+  if (!proyecto.mainCharacterId) return null;
+  const [personaje] = await db().select().from(characters).where(eq(characters.id, proyecto.mainCharacterId)).limit(1);
+  const audioId = personaje ? vozRegistradaDe(personaje, proyecto)?.audioId : proyecto.omniAudioId;
+  if (!audioId) return null;
   const version = await ultimaVersion(proyecto.mainCharacterId);
   if (!version) return null;
-  const registro = await registroVigente(proyecto.mainCharacterId, version.id, proyecto.omniAudioId);
+  const registro = await registroVigente(proyecto.mainCharacterId, version.id, audioId);
   if (!registro) return null;
-  return { audioId: proyecto.omniAudioId, personajeOmniId: registro.remoteCharacterId };
+  return { audioId, personajeOmniId: registro.remoteCharacterId };
 }
 
 /**
@@ -137,17 +159,20 @@ export async function registrarVozOmni(
     anterior.ejemplo === eleccion.ejemplo;
   if (mismaVoz) return { proyecto, invalidadas: 0 };
 
-  // Qué se perdería con la voz nueva: todavía con la firma de ahora, que es la que valida lo ya generado.
-  const firmaActual = await firmaOmniDelProyecto(proyecto);
+  /**
+   * Qué se perdería con la voz nueva: se compara lo generado con la firma **futura**. Si la protagonista habla con su
+   * propia voz, su firma no cambia y sus escenas no caen; si habla con la del proyecto, la firma futura no tiene
+   * registro todavía y caen todas las que tengan algo generado.
+   */
+  const futuro = { ...proyecto, omniVoice: eleccion.voz, omniAudioId: "" };
   await exigirConfirmacionDelCambio(
     db(),
     proyecto,
-    // Con otra voz, ningún registro anterior sigue valiendo: la firma futura no tiene ni `audioId` ni identidad.
-    { ...proyecto, omniVoice: eleccion.voz, omniAudioId: "" },
+    futuro,
     confirmado,
     "de voz Omni",
     0,
-    firmaActual,
+    await firmaOmniDelProyecto(futuro),
   );
 
   const { audioId } = await registrarVozEnProveedor(

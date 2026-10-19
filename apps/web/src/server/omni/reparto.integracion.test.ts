@@ -64,6 +64,7 @@ const { listarModelos, olvidarCatalogo } = await import("../proveedores/catalogo
 const { cambiarEstadoDeModelo, cambiarPrecioDeModelo } = await import("../proveedores/catalogo-admin");
 const { registrarPersonajeOmni } = await import("../personajes/omni");
 const { registrarVozOmni, validarEleccionVozOmni } = await import("../voz/omni");
+const { registrarVozPropia } = await import("../personajes/voz-propia");
 const { producirEscenaHablada } = await import("./escena");
 const { editarEscena } = await import("../asistente/escenas");
 const { lugarDeclaradoDePrueba } = await import("../lugares/lugar-de-prueba");
@@ -83,6 +84,7 @@ const CLAVE = "sk-reparto-clave-de-kie-inventada-ffffffff";
 /** Precio medido con dinero real el 2026-09-28: 4 s en 9:16 a 720p costaron 63 créditos. */
 const CREDITOS_OMNI = 63;
 const VOZ = VOCES_OMNI[0]?.id ?? "";
+const OTRA_VOZ = VOCES_OMNI[1]?.id ?? "";
 const EJECUCION = crypto.randomUUID().slice(0, 8);
 
 // ── Proveedor simulado, con las formas reales de la API ────────────────────────────────────────────────────
@@ -359,7 +361,10 @@ describeSiHayBase("escenas habladas con dos personajes", () => {
     return escena.id;
   }
 
-  /** Registra la voz del proyecto y los personajes que se le digan. Nada de esto cuesta créditos. */
+  /**
+   * Registra la voz del proyecto y los personajes que se le digan. Quien no es la protagonista registra **su propia
+   * voz** (cada personaje habla con la suya en una conversación) y queda registrada con ella. Nada de esto cuesta.
+   */
   async function registrarTodo(personajes: readonly string[]): Promise<void> {
     await registrarVozOmni(
       actor,
@@ -374,7 +379,21 @@ describeSiHayBase("escenas habladas con dos personajes", () => {
     );
     const [proyecto] = await db().select().from(projects).where(eq(projects.id, proyectoId)).limit(1);
     if (!proyecto) throw new Error("El proyecto ha desaparecido.");
-    for (const personajeId of personajes) await registrarPersonajeOmni(actor, personajeId, proyecto.omniAudioId, h);
+    for (const personajeId of personajes) {
+      if (personajeId !== lucia.id) {
+        await registrarVozPropia(
+          actor,
+          personajeId,
+          validarEleccionVozOmni({
+            voz: OTRA_VOZ,
+            descripcion: "Voz natural en español de España, más grave y pausada.",
+            ejemplo: "Y yo te lo cuento a mi manera.",
+          }),
+          h,
+        );
+      }
+      await registrarPersonajeOmni(actor, personajeId, proyecto.omniAudioId, h);
+    }
   }
 
   const patch = async (cuerpo: Record<string, unknown>): Promise<RepartoVista> => {

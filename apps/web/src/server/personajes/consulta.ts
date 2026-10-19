@@ -26,6 +26,7 @@ import {
 } from "../db/esquema";
 import { type Actor, aDto } from "../media/servicio";
 import { ultimoRegistro } from "../omni/registro";
+import { vozPropiaDe } from "../voz/omni";
 import { motivosGuardados } from "./analisis-referencia";
 import { ErrorPersonaje } from "./errores";
 import {
@@ -364,7 +365,10 @@ export async function vistaDePersonaje(
     probarHojaIdentidad: fila.identitySheetTrial,
     // El registro Omni solo se resuelve para su dueño: dice qué cara suya está alojada en el proveedor.
     ...(opciones.completa && esDueno
-      ? { registroOmni: vistaDeRegistro(await ultimoRegistro(fila.id), version, version?.id ?? null) }
+      ? {
+          registroOmni: vistaDeRegistro(await ultimoRegistro(fila.id), version, version?.id ?? null),
+          vozRegistrada: vozPropiaDe(fila),
+        }
       : {}),
     totalReferencias: utilizables,
     totalGeneradas: generadas,

@@ -3,7 +3,7 @@ import type { EstadoHojaIdentidad } from "./direccion";
 import type { DiferenciaFicha, FichaPersonaje } from "./ficha-personaje";
 import type { TrabajoVista } from "./generacion";
 import type { Medio } from "./media/tipos";
-import type { RegistroOmniVista } from "./omni";
+import type { RegistroOmniVista, VozOmniDelProyecto } from "./omni";
 
 /**
  * Personajes y consentimiento tal como los ven el servidor y el navegador (RF02 y RF10). Aquí no hay nada
@@ -388,6 +388,11 @@ export interface PersonajeVista {
    * versión de la ficha se hizo y si esa versión sigue siendo la vigente.
    */
   registroOmni?: RegistroOmniVista | null;
+  /**
+   * Su **voz registrada propia** para las escenas habladas, solo para su dueño; `null` si habla con la voz del
+   * proyecto. Es la que suena cuando sale en un podcast o una entrevista.
+   */
+  vozRegistrada?: VozOmniDelProyecto | null;
   /**
    * Cuántas **fotos originales** utilizables tiene. Las vistas generadas no se suman aquí: no cuentan para el
    * mínimo que exige la instalación (decisión 3 de la fase 14).

@@ -2,6 +2,43 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.56.0] · 2026-10-18
+
+### Añadido
+
+- **Cada personaje habla con su propia voz.** En la ficha del personaje, «Escenas habladas › Su voz en las escenas
+  habladas», eliges una de las treinta voces, cómo tiene que sonar y una frase de ejemplo, y la registras. **No cuesta
+  créditos**, y el personaje queda registrado con ella en el mismo paso (tampoco cuesta). La voz le acompaña en todos
+  sus proyectos. En un podcast o una entrevista cada uno suena con la suya; la protagonista sin voz propia sigue
+  hablando con la voz del proyecto.
+- **La misma ropa y el mismo sitio en todos los clips de un vídeo completo.** El guion completo guarda el vestuario fijo
+  de cada personaje y el lugar y la luz del vídeo (en el de 20 s salen en la misma llamada, sin coste de más) y los
+  repite en cada clip. No se enseñan en pantalla.
+- **Planos base.** En un vídeo completo con lugar, Producción enseña el panel «Planos base»: un fotograma por personaje,
+  ya en el lugar y con su ropa, del que arrancan todos sus clips. Lo que cuestan va delante, con la fecha del precio, y
+  se confirma una vez por el total; cada plano aparta su importe por separado. Lo das por bueno tú con «Usarlo en sus
+  escenas», y entonces todas las escenas de ese plano comparten el mismo fotograma. Una persona tiene un plano; un
+  podcast, uno por personaje; una entrevista, ninguno, porque los dos comparten plano. Antes de pedirlos se registra con
+  su voz, sin coste, a quien no lo esté. Si no se puede, se dice quién y por qué, y no se cobra nada.
+- Nuevo interruptor en Admin › Ajustes › Lugares: «Vídeo completo: arrancar cada clip de su plano base con la identidad
+  registrada». Viene **apagado**: se enciende cuando se haya escuchado un clip así y la voz sea la registrada. Solo vale
+  para los planos base de los vídeos completos.
+
+### Cambiado
+
+- En un podcast o una entrevista, si los dos personajes acabarían con la misma voz (el otro no tiene la suya), la
+  producción **se para antes de reservar nada** y la tarjeta de la escena dice a quién le falta su voz y dónde se
+  registra. Lo mismo si a alguien le falta el registro con su voz.
+- Si un personaje ya estaba registrado con la voz del proyecto, al registrar su voz propia se registra otra vez con
+  ella, sin coste. Lo que ya salió con la voz anterior se queda en tu biblioteca; regenerarlo cuesta lo que diga su
+  confirmación.
+- La voz del proyecto y la de cada personaje se eligen con los mismos campos.
+
+### Corregido
+
+- Registrar un personaje desde su ficha sin consentimiento, sin fotos o con un fallo del proveedor devolvía un error
+  interno sin explicación. Ahora dice el motivo, que no se ha cobrado nada y qué hacer.
+
 ## [0.55.0] · 2026-10-18
 
 ### Añadido
