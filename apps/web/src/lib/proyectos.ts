@@ -307,9 +307,17 @@ export interface EstimacionTexto {
   nombreModelo: string;
   creditos: number;
   euros: number;
-  /** Fecha (AAAA-MM-DD) en la que se comprobó el precio. */
+  /** Fecha (AAAA-MM-DD) en la que se comprobó el precio; vacía si se paga por cuota. */
   comprobado: string;
+  /** Vacío si se paga por cuota del plan, que no tiene precio que sellar. */
   sello: string;
+  /**
+   * `true` si la entrada principal del mapa de texto del usuario se paga por cuota de su plan: entonces `creditos`
+   * es 0, que no es lo mismo que gratis, y la pantalla lo dice así.
+   */
+  porCuota: boolean;
+  /** Proveedor que escribiría el guion («NaN builders», «KIE.ai»). Se puede enseñar; el modelo, no. */
+  nombreProveedor: string;
 }
 
 /** Proyecto con todo lo que necesita su página: escenas, afirmaciones y el plan con su coste. */

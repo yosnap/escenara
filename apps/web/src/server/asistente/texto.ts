@@ -1,26 +1,28 @@
-import { esProveedor, PROVEEDORES_PUBLICOS } from "@/lib/boveda";
 import type { EstimacionTexto } from "@/lib/proyectos";
 import { eurosPorCreditoDe, leerAjustes } from "../ajustes";
-import { listarCredenciales } from "../boveda/credenciales";
 import type { EleccionDeTrabajo } from "../generacion/precios";
+import { estimarTextoPorMapa } from "../mapa/texto";
 import { ErrorCatalogo } from "../proveedores/contrato";
 import { resolver } from "../proveedores/registro";
 import { ErrorProyecto } from "./errores";
 
 /**
- * Qué modelo de texto usa el asistente y si se puede usar ahora mismo.
+ * Si el asistente de guion se puede usar ahora mismo y lo que costaría cada llamada.
  *
  * El asistente es **opcional por diseño**: escribir el guion a mano es un camino de primera clase, así que
  * aquí nada lanza una excepción por sorpresa. `estadoDelAsistente` devuelve siempre un motivo legible, y solo
- * `eleccionDeTexto` —el camino que va a gastar— convierte ese motivo en un error.
+ * `exigirAsistenteDisponible` —el camino que va a gastar— convierte ese motivo en un error.
  *
- * Tiene que cumplirse todo esto para que esté disponible:
+ * El guion se escribe **recorriendo el mapa de modelos de texto del usuario**, así que la estimación y la
+ * disponibilidad salen de ese mismo mapa (`estimarTextoPorMapa`): lo que se enseña y se confirma es lo que costaría
+ * su entrada principal, que es lo que se va a usar, y no el modelo de texto de la instalación. Tiene que cumplirse:
  *
  * 1. quien administra lo ha encendido en Admin › Ajustes (viene apagado de fábrica: cuesta dinero);
- * 2. el catálogo tiene un modelo `text_generation` seleccionable **y con precio registrado** (sin precio no se
- *    estima y sin estimación no se gasta);
- * 3. el adaptador de ese proveedor sabe pedir texto;
- * 4. el usuario tiene su propia clave de ese proveedor, y válida (BYOK: paga él).
+ * 2. el mapa del usuario tiene al menos una entrada utilizable (con su clave válida) y, si la principal es de pago,
+ *    con precio registrado: sin precio no se estima y sin estimación no se gasta.
+ *
+ * Una entrada principal que se paga por **cuota del plan** (un servicio compatible) se estima en 0 créditos con
+ * `porCuota`, y la pantalla lo dice así en lugar de «0 créditos».
  */
 
 export interface EstadoAsistente {
@@ -34,7 +36,10 @@ export interface EstadoAsistente {
 const APAGADO =
   "El asistente de guion está apagado en esta instalación. Escribe el guion a mano, o pídele a quien administra que lo encienda en Admin › Ajustes.";
 
-/** Elección del modelo de texto: modelo del catálogo, adaptador y precio vigente. */
+/**
+ * Modelo de texto **de la instalación**: modelo del catálogo, adaptador y precio vigente. Ya no decide el guion
+ * (que sale del mapa del usuario); lo usa la traducción de prompts, cuyo coste se suma al de cada envío.
+ */
 export async function eleccionDeTexto(): Promise<EleccionDeTrabajo> {
   const { modelo, adaptador } = await resolver("text_generation");
   if (!adaptador.generarTexto) {
@@ -45,59 +50,52 @@ export async function eleccionDeTexto(): Promise<EleccionDeTrabajo> {
 
 /** Estado del asistente para este usuario, con el motivo legible si no está disponible. */
 export async function estadoDelAsistente(usuarioId: string): Promise<EstadoAsistente> {
-  const ajustes = await leerAjustes();
-  if (!ajustes.asistenteActivo) return { disponible: false, motivo: APAGADO, estimacion: null };
-  let eleccion: EleccionDeTrabajo;
-  try {
-    eleccion = await eleccionDeTexto();
-  } catch (error) {
-    if (error instanceof ErrorCatalogo) return { disponible: false, motivo: error.message, estimacion: null };
-    throw error;
-  }
-  // Un proveedor sin credenciales (el hueco de Google, ADR-0009) no puede cobrar nada: no está disponible.
-  if (!esProveedor(eleccion.modelo.proveedor)) {
-    return {
-      disponible: false,
-      motivo: `Esta instalación aún no puede pagar texto en ${eleccion.modelo.nombreProveedor}.`,
-      estimacion: null,
-    };
-  }
-  const proveedor = eleccion.modelo.proveedor;
-  const credenciales = await listarCredenciales(usuarioId);
-  const credencial = credenciales.find((c) => c.proveedor === proveedor) ?? null;
-  const nombre = PROVEEDORES_PUBLICOS[proveedor].nombre;
-  if (!credencial) {
-    return {
-      disponible: false,
-      motivo: `El asistente escribe con tu propia clave de ${nombre}: añádela en «Tu cuenta». Mientras, puedes escribir el guion a mano.`,
-      estimacion: null,
-    };
-  }
-  if (credencial.estado !== "valida") {
-    return {
-      disponible: false,
-      motivo: `Tu clave de ${nombre} está marcada como no válida. Pruébala o sustitúyela en «Tu cuenta».`,
-      estimacion: null,
-    };
-  }
-  const creditos = Math.ceil(eleccion.precio.creditos);
-  return {
-    disponible: true,
-    motivo: "",
-    estimacion: {
-      modelo: eleccion.modelo.modelo,
-      nombreModelo: eleccion.modelo.nombre,
-      creditos,
-      euros: creditos * eurosPorCreditoDe(ajustes, proveedor),
-      comprobado: eleccion.precio.comprobado,
-      sello: eleccion.precio.sello,
-    },
-  };
+  return (await estadoConProveedor(usuarioId)).estado;
 }
 
-/** Igual, pero para el camino que va a gastar: un asistente no disponible es un error con su motivo. */
-export async function exigirAsistenteDisponible(usuarioId: string): Promise<EleccionDeTrabajo> {
-  const estado = await estadoDelAsistente(usuarioId);
-  if (!estado.disponible) throw new ErrorProyecto(409, estado.motivo);
-  return eleccionDeTexto();
+/**
+ * Igual, pero para el camino que va a gastar: un asistente no disponible es un error con su motivo. Devuelve la
+ * estimación que hay que confirmar y el proveedor que cobraría, que es en cuya moneda están sus créditos.
+ */
+export async function exigirAsistenteDisponible(
+  usuarioId: string,
+): Promise<{ estimacion: EstimacionTexto; proveedor: string }> {
+  const { estado, proveedor } = await estadoConProveedor(usuarioId);
+  if (!estado.disponible || !estado.estimacion) throw new ErrorProyecto(409, estado.motivo);
+  return { estimacion: estado.estimacion, proveedor };
+}
+
+async function estadoConProveedor(usuarioId: string): Promise<{ estado: EstadoAsistente; proveedor: string }> {
+  const ajustes = await leerAjustes();
+  if (!ajustes.asistenteActivo)
+    return { estado: { disponible: false, motivo: APAGADO, estimacion: null }, proveedor: "" };
+  const mapa = await estimarTextoPorMapa(usuarioId);
+  if (!mapa.hayEntradas) {
+    return {
+      estado: {
+        disponible: false,
+        motivo: `${mapa.motivo} Mientras, puedes escribir el guion a mano.`,
+        estimacion: null,
+      },
+      proveedor: "",
+    };
+  }
+  return {
+    estado: {
+      disponible: true,
+      motivo: "",
+      estimacion: {
+        modelo: mapa.modelo,
+        // Un servicio compatible no tiene nombre de catálogo; el modelo solo lo ve quien administra.
+        nombreModelo: mapa.modelo,
+        creditos: mapa.creditos,
+        euros: mapa.porCuota ? 0 : mapa.creditos * eurosPorCreditoDe(ajustes, mapa.proveedor),
+        comprobado: mapa.comprobado,
+        sello: mapa.sello,
+        porCuota: mapa.porCuota,
+        nombreProveedor: mapa.nombreProveedor,
+      },
+    },
+    proveedor: mapa.proveedor,
+  };
 }

@@ -34,7 +34,7 @@ import { type Ajustes, leerAjustes } from "../ajustes";
 import { db } from "../db/cliente";
 import { assistantRuns, type FilaProyecto, projects } from "../db/esquema";
 import { limitesDe } from "../limites-proyecto";
-import { ErrorDeTexto, pedirTextoPorMapa, type TextoDelMapa } from "../mapa/texto";
+import { ErrorDeTexto, pedirTextoPorMapa, type TechoPorLlamada, type TextoDelMapa } from "../mapa/texto";
 import type { Actor } from "../media/servicio";
 import { esLectorAdmin } from "../modelo-en-mensajes";
 import { filaPropia } from "../personajes/consulta";
@@ -205,11 +205,13 @@ interface Contexto {
   video: VideoPedido;
   claveIdempotencia: string;
   buscar: Buscador;
-  /** Modelo de pago cuyo precio se confirmó: puede escribir si la principal de cuota falla. */
-  reservaConfirmada: string;
-  /** Total confirmado (llamadas + reserva) y precio estimado de una llamada: el techo que no se puede pasar. */
+  /** Total confirmado (llamadas + reserva): lo que no se puede pasar entre todas las llamadas. */
   confirmado: number;
-  creditosPorLlamada: number;
+  /**
+   * Lo confirmado por llamada, en la moneda de quien cobra: ninguna llamada (ni la principal del mapa ni una
+   * reserva) puede costar más. Con la principal de cuota es 0, y entonces solo se prueban entradas de cuota.
+   */
+  techo: TechoPorLlamada;
 }
 
 /**
@@ -384,8 +386,8 @@ async function guardarSinPerderLoCobrado<T>(hechas: readonly TextoDelMapa[], gua
  * estimado), se para aquí, sin llamar, con la causa, el proveedor y lo ya cobrado.
  */
 function exigirMargen(ctx: Contexto, nombre: string, hechas: readonly TextoDelMapa[]): void {
-  const gastado = gastoDeLasLlamadas(hechas, ctx.creditosPorLlamada);
-  if (gastado + Math.ceil(ctx.creditosPorLlamada) <= ctx.confirmado) return;
+  const gastado = gastoDeLasLlamadas(hechas, ctx.techo.creditos);
+  if (gastado + ctx.techo.creditos <= ctx.confirmado) return;
   const proveedor = hechas.at(-1)?.nombreProveedor;
   throw new ErrorProyecto(
     409,
@@ -411,7 +413,7 @@ async function pedir(
       entrada,
       claveIdempotencia,
       buscar: ctx.buscar,
-      reservaConfirmada: ctx.reservaConfirmada,
+      techoPorLlamada: ctx.techo,
     });
   } catch (error) {
     if (error instanceof ErrorDeTexto) {
