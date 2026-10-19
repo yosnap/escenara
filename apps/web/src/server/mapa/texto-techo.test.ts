@@ -220,6 +220,8 @@ describe("pedir texto con un techo por llamada", () => {
       "No se ha probado la entrada de KIE.ai (5 créditos por llamada, y lo confirmado solo dejaba 2 créditos)",
     );
     expect(mensaje).not.toContain("mapa de modelos de texto no tiene ninguna entrada");
+    // No se ha enviado nada a nadie: 409, no 502, para que nadie piense que pudo quedar algo encargado.
+    expect((error as InstanceType<typeof ErrorDeTexto>).estado).toBe(409);
   });
 
   test("una entrada de pago de otro proveedor no se compara con créditos ajenos: no se prueba", async () => {
@@ -276,6 +278,8 @@ describe("reserva de pago detrás de una principal de cuota", () => {
     expect(reservas).toEqual([]);
     const mensaje = (error as InstanceType<typeof ErrorDeTexto>).mensaje("No se ha podido escribir el guion");
     expect(mensaje).toContain("(2 créditos por llamada, y lo confirmado solo dejaba 1 crédito)");
+    // Sí se envió algo (a NaN), aunque no cobrara: es un fallo de proveedor, 502.
+    expect((error as InstanceType<typeof ErrorDeTexto>).estado).toBe(502);
     expect(mensaje).toContain("tampoco se ha cobrado nada");
   });
 

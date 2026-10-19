@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto";
 import { and, eq, inArray, like, lt, sql } from "drizzle-orm";
 import { INSTRUCCIONES_TRADUCCION, leerTraducciones, peticionDeTraduccion } from "@/lib/asistente";
+import { esProveedor, PROVEEDORES_PUBLICOS } from "@/lib/boveda";
 import { type IntentoProveedor, mensajeDeFalloDeProveedor } from "@/lib/diagnostico-proveedor";
+import { formatearCreditos } from "@/lib/generacion";
 import { leerAjustes } from "../ajustes";
 import { eleccionDeTexto } from "../asistente/texto";
 import { conCerrojosConsultivos, ErrorConexionCerrojo } from "../db/cerrojos-consultivos";
@@ -119,6 +121,22 @@ export async function estadoDeTraduccion(): Promise<EstadoTraduccion> {
  */
 const ENCABEZADO_FALLO =
   "No se ha podido traducir tu texto al inglés, así que no se ha enviado nada a generar y no se te ha cobrado la generación";
+
+/**
+ * Por qué no se ha probado una entrada de pago del mapa al traducir. El coste de la traducción **no sale del mapa**:
+ * se confirma al precio del modelo de texto de la instalación, así que la frase genérica («revisa el coste: verás el
+ * de la primera entrada de tu mapa») sería falsa aquí. Se dice a qué precio se confirmó y qué hacer en el mapa.
+ */
+export function fraseDeTraduccionPorEncima(
+  techo: TechoPorLlamada,
+  porEncima: readonly { nombreProveedor: string; creditos: number }[],
+): string {
+  const quien = esProveedor(techo.proveedor) ? PROVEEDORES_PUBLICOS[techo.proveedor].nombre : techo.proveedor;
+  const caras = porEncima
+    .map((e) => `la de ${e.nombreProveedor} (${formatearCreditos(e.creditos)} por llamada)`)
+    .join(" y ");
+  return `La traducción del prompt se confirma al precio de ${quien} (${formatearCreditos(techo.creditos)}) y la entrada de pago de tu mapa de texto que tocaba, ${caras}, cuesta más, así que no se le ha llamado y no se ha cobrado nada en ella. Pon primero en tu mapa de modelos de texto un servicio de cuota o un modelo que no pase de ${formatearCreditos(techo.creditos)}, en «Tu cuenta».`;
+}
 
 /** Fallo de traducción con todos los intentos contados, para que quien lo lea sepa qué se probó y por qué. */
 function falloDeTraduccion(intentos: readonly IntentoProveedor[], sugerencia: string): ErrorGeneracion {
@@ -319,7 +337,12 @@ async function llamarAlTraductor(
       techoPorLlamada: techo,
     });
   } catch (error) {
-    if (error instanceof ErrorDeTexto) throw new ErrorGeneracion(502, error.mensaje(ENCABEZADO_FALLO));
+    if (error instanceof ErrorDeTexto) {
+      throw new ErrorGeneracion(
+        error.estado,
+        error.mensaje(ENCABEZADO_FALLO, { porEncima: fraseDeTraduccionPorEncima(techo, error.porEncima) }),
+      );
+    }
     if (error instanceof ErrorPeticionRepetida) {
       // Red de seguridad: con los cerrojos tomados la clave no debería repetirse nunca. Si pasa, es un fallo
       // nuestro y se registra, pero tampoco se paga dos veces.

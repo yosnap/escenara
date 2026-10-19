@@ -284,7 +284,7 @@ export class ErrorSobreLoConfirmado extends ErrorCatalogo {
   constructor(nombreProveedor: string, creditos: number, techo: TechoPorLlamada) {
     super(
       409,
-      `${nombreProveedor} cobraría ahora ${formatearCreditos(creditos)} por llamada y lo que confirmaste ${techo.creditos === 0 ? "no dejaba créditos para ella" : `solo deja ${formatearCreditos(techo.creditos)}`}, así que no se le ha llamado y no se ha cobrado nada. Vuelve a revisar el coste y confírmalo de nuevo.`,
+      `${nombreProveedor} cobraría ahora ${formatearCreditos(creditos)} por llamada y lo que confirmaste ${techo.creditos === 0 ? "no dejaba créditos para ella" : `solo deja ${formatearCreditos(techo.creditos)}`}, así que no se le ha llamado ni se ha cobrado nada en ${nombreProveedor}. Vuelve a revisar el coste y confírmalo de nuevo.`,
     );
     this.name = "ErrorSobreLoConfirmado";
   }
@@ -322,10 +322,26 @@ export class ErrorDeTexto extends Error {
     this.name = "ErrorDeTexto";
   }
 
-  /** Mensaje completo, con todas las entradas probadas y su causa concreta. */
-  mensaje(encabezado: string): string {
+  /**
+   * Código HTTP con el que contestar: **409** cuando no se ha enviado nada a ningún proveedor porque nada cabía en lo
+   * confirmado (no hay ninguna llamada en vuelo que pudiera haber encargado algo), y 502 cuando ha fallado alguno.
+   */
+  get estado(): 409 | 502 {
+    return this.hayEntradas && this.intentos.length === 0 && this.porEncima.length > 0 ? 409 : 502;
+  }
+
+  /**
+   * Mensaje completo, con todas las entradas probadas y su causa concreta. `porEncima` sustituye la frase genérica
+   * sobre las entradas que costarían más de lo confirmado, para quien sabe decirlo mejor (la traducción, cuyo
+   * coste no sale del mapa).
+   */
+  mensaje(encabezado: string, opciones: { porEncima?: string } = {}): string {
     if (!this.hayEntradas) return `${encabezado}: ${SIN_ENTRADAS.charAt(0).toLowerCase()}${SIN_ENTRADAS.slice(1)}`;
-    const sugerencia = [fraseDePorEncima(this.porEncima), sugerenciaDeMapa(this.intentos, this.sinConfirmar)]
+    const frasePorEncima =
+      this.porEncima.length > 0 && opciones.porEncima !== undefined
+        ? opciones.porEncima
+        : fraseDePorEncima(this.porEncima);
+    const sugerencia = [frasePorEncima, sugerenciaDeMapa(this.intentos, this.sinConfirmar)]
       .filter((s) => s !== "")
       .join(" ");
     // Sin ningún intento no hay avería que contar: lo único que pasó es que nada cabía en lo confirmado.
