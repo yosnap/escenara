@@ -1,7 +1,7 @@
 import type { EstimacionTexto } from "@/lib/proyectos";
 import { eurosPorCreditoDe, leerAjustes } from "../ajustes";
 import type { EleccionDeTrabajo } from "../generacion/precios";
-import { estimarTextoPorMapa } from "../mapa/texto";
+import { estimarTextoConReserva, type TechoPorLlamada } from "../mapa/texto";
 import { ErrorCatalogo } from "../proveedores/contrato";
 import { resolver } from "../proveedores/registro";
 import { ErrorProyecto } from "./errores";
@@ -22,7 +22,9 @@ import { ErrorProyecto } from "./errores";
  *    con precio registrado: sin precio no se estima y sin estimación no se gasta.
  *
  * Una entrada principal que se paga por **cuota del plan** (un servicio compatible) se estima en 0 créditos con
- * `porCuota`, y la pantalla lo dice así en lugar de «0 créditos».
+ * `porCuota`, y la pantalla lo dice así en lugar de «0 créditos». Aparte va la **reserva de pago**: la entrada de
+ * pago más cara del mapa detrás de la principal, que puede escribir si la principal falla (un servicio de cuota
+ * saturado, por ejemplo). Su precio entra en el total confirmado como la llamada de reserva, y su sello en el sello.
  */
 
 export interface EstadoAsistente {
@@ -50,36 +52,45 @@ export async function eleccionDeTexto(): Promise<EleccionDeTrabajo> {
 
 /** Estado del asistente para este usuario, con el motivo legible si no está disponible. */
 export async function estadoDelAsistente(usuarioId: string): Promise<EstadoAsistente> {
-  return (await estadoConProveedor(usuarioId)).estado;
+  return (await estadoConPrecios(usuarioId)).estado;
 }
 
 /**
  * Igual, pero para el camino que va a gastar: un asistente no disponible es un error con su motivo. Devuelve la
- * estimación que hay que confirmar y el proveedor que cobraría, que es en cuya moneda están sus créditos.
+ * estimación que hay que confirmar y en qué moneda está cada precio.
  */
-export async function exigirAsistenteDisponible(
-  usuarioId: string,
-): Promise<{ estimacion: EstimacionTexto; proveedor: string }> {
-  const { estado, proveedor } = await estadoConProveedor(usuarioId);
-  if (!estado.disponible || !estado.estimacion) throw new ErrorProyecto(409, estado.motivo);
-  return { estimacion: estado.estimacion, proveedor };
+export async function exigirAsistenteDisponible(usuarioId: string): Promise<AsistenteParaGastar> {
+  const { estado, techo, reserva } = await estadoConPrecios(usuarioId);
+  if (!estado.disponible || !estado.estimacion || !techo) throw new ErrorProyecto(409, estado.motivo);
+  return { estimacion: estado.estimacion, techo, reserva };
 }
 
-async function estadoConProveedor(usuarioId: string): Promise<{ estado: EstadoAsistente; proveedor: string }> {
+/** Lo que necesita el camino que gasta: la estimación confirmada y en qué moneda está cada precio. */
+export interface AsistenteParaGastar {
+  estimacion: EstimacionTexto;
+  /** Precio por llamada de la principal, en los créditos de su proveedor (0 si va por cuota). */
+  techo: TechoPorLlamada;
+  /** Precio por llamada de la reserva de pago, en los créditos de su proveedor; `null` si no hay. */
+  reserva: TechoPorLlamada | null;
+}
+
+interface EstadoConPrecios {
+  estado: EstadoAsistente;
+  techo: TechoPorLlamada | null;
+  reserva: TechoPorLlamada | null;
+}
+
+const noDisponible = (motivo: string): EstadoConPrecios => ({
+  estado: { disponible: false, motivo, estimacion: null },
+  techo: null,
+  reserva: null,
+});
+
+async function estadoConPrecios(usuarioId: string): Promise<EstadoConPrecios> {
   const ajustes = await leerAjustes();
-  if (!ajustes.asistenteActivo)
-    return { estado: { disponible: false, motivo: APAGADO, estimacion: null }, proveedor: "" };
-  const mapa = await estimarTextoPorMapa(usuarioId);
-  if (!mapa.hayEntradas) {
-    return {
-      estado: {
-        disponible: false,
-        motivo: `${mapa.motivo} Mientras, puedes escribir el guion a mano.`,
-        estimacion: null,
-      },
-      proveedor: "",
-    };
-  }
+  if (!ajustes.asistenteActivo) return noDisponible(APAGADO);
+  const { estimacion: mapa, reserva } = await estimarTextoConReserva(usuarioId);
+  if (!mapa.hayEntradas) return noDisponible(`${mapa.motivo} Mientras, puedes escribir el guion a mano.`);
   return {
     estado: {
       disponible: true,
@@ -91,11 +102,21 @@ async function estadoConProveedor(usuarioId: string): Promise<{ estado: EstadoAs
         creditos: mapa.creditos,
         euros: mapa.porCuota ? 0 : mapa.creditos * eurosPorCreditoDe(ajustes, mapa.proveedor),
         comprobado: mapa.comprobado,
-        sello: mapa.sello,
+        // Se sella todo lo que entra en el total: un cambio de precio de la principal o de cualquier entrada que
+        // pueda hacer de reserva de pago cambia el sello, y la confirmación se rechaza con un 409.
+        sello: [mapa.sello, reserva?.sello ?? ""].filter((s) => s !== "").join("+"),
         porCuota: mapa.porCuota,
         nombreProveedor: mapa.nombreProveedor,
+        reserva: reserva
+          ? {
+              creditos: reserva.creditos,
+              euros: reserva.creditos * eurosPorCreditoDe(ajustes, reserva.proveedor),
+              comprobado: reserva.comprobado,
+            }
+          : null,
       },
     },
-    proveedor: mapa.proveedor,
+    techo: { creditos: mapa.creditos, proveedor: mapa.proveedor },
+    reserva: reserva ? { creditos: reserva.creditos, proveedor: reserva.proveedor } : null,
   };
 }

@@ -207,11 +207,13 @@ interface Contexto {
   buscar: Buscador;
   /** Total confirmado (llamadas + reserva): lo que no se puede pasar entre todas las llamadas. */
   confirmado: number;
-  /**
-   * Lo confirmado por llamada, en la moneda de quien cobra: ninguna llamada (ni la principal del mapa ni una
-   * reserva) puede costar más. Con la principal de cuota es 0, y entonces solo se prueban entradas de cuota.
-   */
+  /** Precio por llamada de la principal del mapa, en la moneda de quien cobra: 0 si va por cuota. */
   techo: TechoPorLlamada;
+  /**
+   * Precio por llamada de la reserva de pago más cara del mapa; `null` si no hay. Una reserva de pago solo escribe
+   * si lo ya gastado más su precio cabe en el total confirmado.
+   */
+  reserva: TechoPorLlamada | null;
 }
 
 /**
@@ -386,7 +388,7 @@ async function guardarSinPerderLoCobrado<T>(hechas: readonly TextoDelMapa[], gua
  * estimado), se para aquí, sin llamar, con la causa, el proveedor y lo ya cobrado.
  */
 function exigirMargen(ctx: Contexto, nombre: string, hechas: readonly TextoDelMapa[]): void {
-  const gastado = gastoDeLasLlamadas(hechas, ctx.techo.creditos);
+  const gastado = gastoDeLasLlamadas(hechas, porLlamadaPrudente(ctx));
   if (gastado + ctx.techo.creditos <= ctx.confirmado) return;
   const proveedor = hechas.at(-1)?.nombreProveedor;
   throw new ErrorProyecto(
@@ -394,6 +396,12 @@ function exigirMargen(ctx: Contexto, nombre: string, hechas: readonly TextoDelMa
     `Se ha parado antes de escribir ${nombre}: las llamadas hechas${proveedor ? ` a ${proveedor}` : ""} han costado más de lo estimado y la siguiente podría pasar de los ${formatearCreditos(ctx.confirmado)} que confirmaste, así que no se ha hecho. No se ha guardado nada.${loYaCobrado(hechas)} Vuelve a intentarlo con una confirmación nueva: el coste que verás ya será el vigente.`,
   );
 }
+
+/**
+ * Lo que se cuenta por cada intento fallido que pudo cobrar: el precio más alto de los que pudieron intentarlo (la
+ * principal o la reserva de pago). Es la cuenta prudente: nunca se queda corta.
+ */
+const porLlamadaPrudente = (ctx: Contexto) => Math.max(ctx.techo.creditos, ctx.reserva?.creditos ?? 0);
 
 /** Una llamada por el mapa de texto. Un fallo del proveedor se dice con el trozo, la causa y lo ya cobrado. */
 async function pedir(
@@ -414,6 +422,11 @@ async function pedir(
       claveIdempotencia,
       buscar: ctx.buscar,
       techoPorLlamada: ctx.techo,
+      // Una reserva de pago solo cabe en lo que queda del total confirmado tras lo ya gastado.
+      techoReserva: {
+        creditos: Math.max(0, ctx.confirmado - gastoDeLasLlamadas(hechas, porLlamadaPrudente(ctx))),
+        proveedor: ctx.reserva?.proveedor ?? ctx.techo.proveedor,
+      },
     });
   } catch (error) {
     if (error instanceof ErrorDeTexto) {

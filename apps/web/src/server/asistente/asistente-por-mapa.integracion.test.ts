@@ -7,10 +7,11 @@ import { CHAT_200, MODELOS_200, respuestaGrabada } from "../proveedores/compatib
 /**
  * **El asistente de guion estima, confirma y gasta por el mismo sitio: el mapa de texto del usuario.**
  *
- * - con la entrada principal de cuota (un servicio compatible), la pantalla recibe 0 créditos «por cuota» con el
- *   nombre del proveedor, se confirma 0 y el guion se escribe sin reservar nada;
- * - confirmar el precio del modelo de la instalación cuando el mapa va por cuota se rechaza sin llamar a nadie;
- * - si la principal de cuota falla, la reserva de pago no se llama: costaría más de lo confirmado, y se dice;
+ * - con la entrada principal de cuota y KIE de reserva, la pantalla recibe 0 créditos «por cuota» con el nombre del
+ *   proveedor y la reserva de pago aparte; se confirma solo la reserva y, si NaN responde, no se reserva nada;
+ * - si NaN se satura, escribe la reserva de KIE dentro de lo confirmado, y se avisa con proveedor y coste;
+ * - si el precio de la reserva cambia entre la pantalla y el botón, el sello lo detecta: 409 sin llamar a nadie;
+ * - sin ninguna entrada de pago, el total es 0, no hay reserva ni sello, y confirmar otra cifra se rechaza;
  * - con la principal de pago a un precio mayor, se confirma ese precio, y confirmar menos se rechaza sin llamar.
  *
  * Ningún test llama a un proveedor de verdad: KIE y el servicio compatible están simulados.
@@ -148,25 +149,75 @@ describe.skipIf(!hayBaseDeDatos)("asistente de guion por el mapa de texto", () =
     selloEstimacion,
   });
 
-  test("con la principal de cuota se confirma 0 «por cuota» y el guion se escribe sin reservar nada", async () => {
+  /** Mapa de texto de Ana solo con NaN builders: ninguna entrada de pago. */
+  const mapaSoloCuota = async () => {
+    const nan = (await listarCompatibles(ana.id)).find((p) => p.nombre === "NaN builders");
+    await guardarMapa(ana.id, "texto", [{ proveedor: "compatible", compatibleId: nan?.id ?? "", modelo: "gemma4" }]);
+  };
+
+  const dondePrecio = and(eq(modelPrices.provider, "kie"), eq(modelPrices.model, "gpt-5-6-sol"));
+
+  test("con la principal de cuota y KIE de reserva se confirma solo la reserva, y si NaN responde no se gasta", async () => {
     await mapaDeCuota();
     const detalle = await detalleProyecto(actorAna, proyectoId);
     expect(detalle.asistenteDisponible).toBe(true);
     expect(detalle.estimacionAsistente).toMatchObject({
       creditos: 0,
       porCuota: true,
-      sello: "",
       nombreProveedor: "NaN builders",
+      reserva: { creditos: CREDITOS_INSTALACION },
     });
+    const sello = detalle.estimacionAsistente?.sello ?? "";
+    expect(sello).toContain("gpt-5-6-sol");
     const reservasAntes = await reservasDeAna();
-    const escrito = await escribirGuion(actorAna, proyectoId, peticion(0, ""), buscar);
+    const escrito = await escribirGuion(actorAna, proyectoId, peticion(CREDITOS_INSTALACION, sello), buscar);
     expect(escrito.escenas.length).toBeGreaterThan(0);
+    expect(escrito.avisoReserva).toBeUndefined();
     expect(llamadas).toEqual(["nan/gemma4"]);
     expect(await reservasDeAna()).toBe(reservasAntes);
   });
 
-  test("con la principal de cuota, confirmar el precio de la instalación se rechaza sin llamar a nadie", async () => {
+  test("si NaN se satura, escribe la reserva de KIE dentro de lo confirmado y se avisa", async () => {
     await mapaDeCuota();
+    modelosQueTardan = new Set(["gemma4"]);
+    const sello = (await detalleProyecto(actorAna, proyectoId)).estimacionAsistente?.sello ?? "";
+    const reservasAntes = await reservasDeAna();
+    const escrito = await escribirGuion(actorAna, proyectoId, peticion(CREDITOS_INSTALACION, sello), buscar);
+    expect(llamadas).toEqual(["nan/gemma4", "kie"]);
+    expect(escrito.avisoReserva).toContain("NaN builders ha tardado demasiado");
+    expect(escrito.avisoReserva).toContain("reserva de pago de KIE.ai");
+    expect(escrito.avisoReserva).not.toContain("gpt-5-6-sol");
+    expect(await reservasDeAna()).toBe(reservasAntes + 1);
+  });
+
+  test("si el precio de la reserva cambia tras enseñarlo, el sello lo detecta y no se llama a nadie", async () => {
+    await mapaDeCuota();
+    const sello = (await detalleProyecto(actorAna, proyectoId)).estimacionAsistente?.sello ?? "";
+    const [antes] = await db().select().from(modelPrices).where(dondePrecio);
+    if (!antes) throw new Error("Falta el precio sembrado del modelo de texto.");
+    // Mismo redondeo (2 créditos), otra versión del precio: solo el sello puede notarlo.
+    await db()
+      .update(modelPrices)
+      .set({ credits: 1.8, version: antes.version + 1 })
+      .where(dondePrecio);
+    olvidarCatalogo();
+    try {
+      const fallo = await escribirGuion(actorAna, proyectoId, peticion(CREDITOS_INSTALACION, sello), buscar).catch(
+        (e: unknown) => e,
+      );
+      expect((fallo as { estado?: number }).estado).toBe(409);
+      expect((fallo as Error).message).toContain("ha cambiado");
+      expect(llamadas).toEqual([]);
+    } finally {
+      await db().update(modelPrices).set({ credits: antes.credits, version: antes.version }).where(dondePrecio);
+      olvidarCatalogo();
+    }
+  });
+
+  test("sin ninguna entrada de pago el total es 0, sin reserva ni sello, y otra cifra se rechaza sin llamar", async () => {
+    await mapaSoloCuota();
+    const { estimacionAsistente } = await detalleProyecto(actorAna, proyectoId);
+    expect(estimacionAsistente).toMatchObject({ creditos: 0, porCuota: true, sello: "", reserva: null });
     const fallo = await escribirGuion(
       actorAna,
       proyectoId,
@@ -176,28 +227,29 @@ describe.skipIf(!hayBaseDeDatos)("asistente de guion por el mapa de texto", () =
     expect((fallo as { estado?: number }).estado).toBe(409);
     expect((fallo as Error).message).toContain("ahora son 0 créditos");
     expect(llamadas).toEqual([]);
+
+    const reservasAntes = await reservasDeAna();
+    const escrito = await escribirGuion(actorAna, proyectoId, peticion(0, ""), buscar);
+    expect(escrito.escenas.length).toBeGreaterThan(0);
+    expect(llamadas).toEqual(["nan/gemma4"]);
+    expect(await reservasDeAna()).toBe(reservasAntes);
   });
 
-  test("si la principal de cuota falla, la reserva de pago no se llama y se dice por qué", async () => {
-    await mapaDeCuota();
+  test("sin entradas de pago, si NaN falla no se llama a nadie más y se dice por qué", async () => {
+    await mapaSoloCuota();
     modelosQueTardan = new Set(["gemma4"]);
-    const reservasAntes = await reservasDeAna();
     const fallo = (await escribirGuion(actorAna, proyectoId, peticion(0, ""), buscar).catch(
       (e: unknown) => e,
     )) as Error;
     expect(fallo).toBeInstanceOf(ErrorProyecto);
     expect(fallo.message).toContain("NaN builders ha tardado demasiado");
-    expect(fallo.message).toContain("No se ha probado la entrada de KIE.ai");
-    expect(fallo.message).toContain("la cuota de tu plan, sin créditos");
-    expect(fallo.message).toContain("tampoco se ha cobrado nada");
+    expect(fallo.message).toContain("No se te ha cobrado nada");
     expect(fallo.message).not.toContain("gemma4");
     expect(llamadas).toEqual(["nan/gemma4"]);
-    expect(await reservasDeAna()).toBe(reservasAntes);
   });
 
   test("con la principal de pago más cara, se confirma su precio y confirmar menos se rechaza sin llamar", async () => {
     await guardarMapa(ana.id, "texto", [{ proveedor: "kie", compatibleId: null, modelo: "gpt-5-6-sol" }]);
-    const dondePrecio = and(eq(modelPrices.provider, "kie"), eq(modelPrices.model, "gpt-5-6-sol"));
     const [antes] = await db().select().from(modelPrices).where(dondePrecio);
     if (!antes) throw new Error("Falta el precio sembrado del modelo de texto.");
     await db()

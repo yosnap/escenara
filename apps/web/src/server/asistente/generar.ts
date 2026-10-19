@@ -3,7 +3,7 @@ import { ErrorPropuesta, INSTRUCCIONES_ASISTENTE, leerPropuesta, peticionDeGuion
 import { esProveedor } from "@/lib/boveda";
 import { limpiarTextoDePrompt } from "@/lib/ficha-personaje";
 import { CONCEPTO_MAXIMO, ESCENAS_SUGERIDAS, type ProyectoDetalle } from "@/lib/proyectos";
-import { costeDelGuion } from "@/lib/video-completo";
+import { costeDeEscenasSueltas, costeDelGuion } from "@/lib/video-completo";
 import { motivoSinDeclaracion } from "../anuncio/puerta-guion";
 import { db } from "../db/cliente";
 import { assistantRuns, type FilaProyecto, projects } from "../db/esquema";
@@ -114,21 +114,27 @@ export async function escribirGuion(
   if (sinDeclaracion !== "") throw new ErrorProyecto(409, sinDeclaracion);
   const claveIdempotencia = exigirClaveIdempotencia(peticion.claveIdempotencia);
   // Lo que se confirma es lo que costaría la entrada principal del mapa de texto del usuario, que es por donde se
-  // va a escribir: 0 créditos si se paga por la cuota de su plan.
-  const { estimacion, proveedor } = await exigirAsistenteDisponible(actor.id);
+  // va a escribir (0 créditos si se paga por la cuota de su plan), más la llamada de reserva a lo que cueste, como
+  // mucho, la reserva de pago de ese mapa.
+  const { estimacion, techo, reserva } = await exigirAsistenteDisponible(actor.id);
   // El vídeo completo se comprueba entero antes de mirar el coste: la duración decide cuántas llamadas se pagan, y
   // una duración cerrada por el admin se rechaza con su motivo aunque la pida alguien saltándose la pantalla.
   const video = sinValor(peticion.duracion) ? null : await leerVideoPedido(actor, proyecto, peticion);
-  const creditos = video ? costeDelGuion(estimacion.creditos, video.duracion, video.tipo).total : estimacion.creditos;
+  const reservaPorLlamada = reserva?.creditos ?? 0;
+  const creditos = video
+    ? costeDelGuion(estimacion.creditos, video.duracion, video.tipo, reservaPorLlamada).total
+    : costeDeEscenasSueltas(estimacion.creditos, reservaPorLlamada).total;
   /**
-   * La cifra se confirma **siempre**, también cuando es 0 por cuota: así, si el mapa ha cambiado entre la pantalla
-   * y el botón (de cuota a pago o al revés), las cifras no coinciden y se rechaza para volver a enseñarla. El sello
-   * solo se exige cuando hay precio que sellar: una entrada de cuota no tiene, su sello es vacío y lo que la
-   * protege es esa cifra de 0. Lo que nunca se cobra de más lo garantiza además `techo`, en cada llamada.
+   * La cifra se confirma **siempre**, también cuando es 0: así, si el mapa ha cambiado entre la pantalla y el botón
+   * (de cuota a pago, o ha aparecido o desaparecido una reserva de pago), las cifras no coinciden y se rechaza para
+   * volver a enseñarla. El sello reúne el de la principal y los de las entradas que pueden hacer de reserva de pago
+   * (`estadoDelAsistente`): si cualquiera de esos precios cambia, el sello cambia y se rechaza con un 409. Solo está
+   * vacío cuando no hay ningún precio que sellar (principal por cuota y ninguna reserva de pago); entonces se exige
+   * que tampoco venga ninguno, y lo que protege es la cifra de 0. Lo que nunca se cobra de más lo garantizan además
+   * los techos de cada llamada.
    */
   exigirConfirmacion(peticion.creditosConfirmados, creditos);
-  if (!estimacion.porCuota) exigirSelloVigente(peticion.selloEstimacion, estimacion.sello, true);
-  const techo: TechoPorLlamada = { creditos: estimacion.creditos, proveedor };
+  exigirSelloVigente(peticion.selloEstimacion, estimacion.sello, estimacion.sello !== "");
   // Una confirmación repetida (doble clic, reintento tras un error de red) **no gasta ritmo**: se responde con lo
   // que ya hay. Si no, reintentar un fallo de red podría dejar al usuario sin poder pedir nada durante una hora.
   const yaEjecutada = await ejecucionDeLaConfirmacion(
@@ -154,8 +160,10 @@ export async function escribirGuion(
   // Si la principal es de pago y se conoce el saldo del usuario en ese proveedor y no llega, no se llama: el
   // proveedor lo rechazaría y la reserva se habría apartado para nada. Su clave ya la ha comprobado el mapa, que
   // descarta las entradas sin credencial válida; una entrada de cuota no tiene saldo que mirar.
-  if (!estimacion.porCuota && esProveedor(proveedor)) await exigirSaldo(actor.id, creditos, buscar, proveedor);
-  if (video) return guionDelVideo(actor, proyecto, video, claveIdempotencia, creditos, techo, buscar);
+  if (!estimacion.porCuota && esProveedor(techo.proveedor)) {
+    await exigirSaldo(actor.id, creditos, buscar, techo.proveedor);
+  }
+  if (video) return guionDelVideo(actor, proyecto, video, claveIdempotencia, creditos, techo, reserva, buscar);
 
   // Esta confirmación ya se había ejecutado: se devuelve el proyecto como está y **no se llama a nadie**.
   if (await ejecucionDeLaConfirmacion(actor.id, `${claveIdempotencia}:0`)) return detalleProyecto(actor, proyecto.id);
@@ -175,8 +183,10 @@ export async function escribirGuion(
       entrada,
       claveIdempotencia,
       buscar,
-      // Ninguna llamada, ni la principal ni una reserva, puede costar más de lo que se confirmó por llamada.
+      // La principal no puede costar más de su precio confirmado, y una reserva de pago, más de lo que queda del
+      // total: aquí no se ha gastado nada todavía, así que es el total entero.
       techoPorLlamada: techo,
+      techoReserva: { creditos, proveedor: reserva?.proveedor ?? techo.proveedor },
     });
   } catch (error) {
     if (error instanceof ErrorDeTexto) {
@@ -266,6 +276,7 @@ async function guionDelVideo(
   claveIdempotencia: string,
   creditos: number,
   techo: TechoPorLlamada,
+  reserva: TechoPorLlamada | null,
   buscar: Buscador,
 ): Promise<ProyectoDetalle> {
   // Esta confirmación ya se había ejecutado: se devuelve el proyecto como está y **no se llama a nadie**.
@@ -282,6 +293,7 @@ async function guionDelVideo(
       buscar,
       confirmado: creditos,
       techo,
+      reserva,
     }));
   } catch (error) {
     // La misma confirmación ya estaba en marcha: se devuelve el proyecto como está y no se llama a nadie más.
