@@ -4,9 +4,7 @@
       "id": "alta-inventado",
       "ruta": "/personajes",
       "viewport": "movil",
-      "ocultar": [
-        "nextjs-portal"
-      ],
+      "ocultar": ["nextjs-portal"],
       "tramos": [
         {
           "id": "nuevo",
@@ -33,11 +31,7 @@
               "titulo": "Tipo de personaje",
               "opciones": "main a[href='/personajes/nuevo/inventado'], section[aria-label='Paso 1: ¿Quién es?'] [role=radiogroup] label",
               "selector": "main a[href='/personajes/nuevo/inventado']",
-              "etiquetas": [
-                "Personaje inventado",
-                "Persona real",
-                "Animal real"
-              ]
+              "etiquetas": ["Personaje inventado", "Persona real", "Animal real"]
             },
             {
               "accion": "esperar",
@@ -86,9 +80,7 @@
       "id": "alta-mascota",
       "ruta": "/personajes/nuevo",
       "viewport": "movil",
-      "ocultar": [
-        "nextjs-portal"
-      ],
+      "ocultar": ["nextjs-portal"],
       "tramos": [
         {
           "id": "mascota-tipo",

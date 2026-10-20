@@ -3,9 +3,7 @@
     {
       "id": "lugar",
       "ruta": "/lugares",
-      "ocultar": [
-        "nextjs-portal"
-      ],
+      "ocultar": ["nextjs-portal"],
       "tramos": [
         {
           "id": "nuevo",
@@ -44,12 +42,7 @@
               "abrir": "[role=dialog] [role=combobox]",
               "opciones": "[role=option]:visible",
               "selector": "[role=option]:visible:has-text('Real (fotos)')",
-              "etiquetas": [
-                "Real (fotos)",
-                "Animado · Ilustración plana",
-                "Animado · 3D estilizado",
-                "Animado · Anime"
-              ]
+              "etiquetas": ["Real (fotos)", "Animado · Ilustración plana", "Animado · 3D estilizado", "Animado · Anime"]
             }
           ]
         },
@@ -181,13 +174,7 @@
               "abrir": "section:has(h2:text-is('Fotos')) li >> nth=0 >> [role=combobox]",
               "opciones": "[role=option]:visible",
               "selector": "[role=option]:visible:has-text('Maestra')",
-              "etiquetas": [
-                "Maestra",
-                "Plano general",
-                "Contraplano",
-                "Detalle",
-                "Una zona concreta"
-              ]
+              "etiquetas": ["Maestra", "Plano general", "Contraplano", "Detalle", "Una zona concreta"]
             },
             {
               "accion": "esperar",
@@ -214,11 +201,7 @@
               "abrir": "section:has(h2:has-text('Declaración de derechos')) [role=combobox] >> nth=0",
               "opciones": "[role=option]:visible",
               "selector": "[role=option]:visible:has-text('Las he generado aquí')",
-              "etiquetas": [
-                "Las he hecho yo",
-                "Son de otra persona y tengo su permiso",
-                "Las he generado aquí"
-              ]
+              "etiquetas": ["Las he hecho yo", "Son de otra persona y tengo su permiso", "Las he generado aquí"]
             }
           ]
         },
@@ -230,10 +213,7 @@
               "titulo": "¿Qué tipo de sitio es?",
               "opciones": "section:has(h2:has-text('Declaración de derechos')) label:has-text('Exterior o espacio público'), section:has(h2:has-text('Declaración de derechos')) label:has-text('Interior privado')",
               "selector": "section:has(h2:has-text('Declaración de derechos')) label:has-text('Exterior o espacio público')",
-              "etiquetas": [
-                "Exterior o espacio público",
-                "Interior privado o con restricciones"
-              ]
+              "etiquetas": ["Exterior o espacio público", "Interior privado o con restricciones"]
             },
             {
               "accion": "desplazar",
@@ -262,10 +242,7 @@
               "abrir": "section:has(h2:has-text('Declaración de derechos')) [role=combobox] >> nth=1",
               "opciones": "[role=option]:visible",
               "selector": "[role=option]:visible:has-text('Comercial')",
-              "etiquetas": [
-                "Personal",
-                "Comercial"
-              ]
+              "etiquetas": ["Personal", "Comercial"]
             },
             {
               "accion": "desplazar",

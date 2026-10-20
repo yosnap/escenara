@@ -7,9 +7,7 @@
         "ancho": 1600,
         "alto": 856
       },
-      "ocultar": [
-        "nextjs-portal"
-      ],
+      "ocultar": ["nextjs-portal"],
       "tramos": [
         {
           "id": "formato",
@@ -45,10 +43,7 @@
               "titulo": "¿De dónde sale el clip?",
               "opciones": "section[aria-label='Paso 2: ¿De dónde sale el clip?'] fieldset label",
               "selector": "section[aria-label='Paso 2: ¿De dónde sale el clip?'] fieldset label:has-text('Crear un fotograma nuevo')",
-              "etiquetas": [
-                "Crear un fotograma nuevo",
-                "Usar una imagen que ya tengo"
-              ]
+              "etiquetas": ["Crear un fotograma nuevo", "Usar una imagen que ya tengo"]
             },
             {
               "accion": "desplazar",
@@ -74,12 +69,7 @@
               "titulo": "Personaje",
               "opciones": "section[aria-label='Paso 3: Elige a quién generas'] li > button",
               "selector": "section[aria-label='Paso 3: Elige a quién generas'] li > button:has-text('Brisa')",
-              "etiquetas": [
-                "Sin personaje",
-                "Lupo",
-                "Brisa",
-                "Elisa"
-              ]
+              "etiquetas": ["Sin personaje", "Lupo", "Brisa", "Elisa"]
             },
             {
               "accion": "esperar",
@@ -413,9 +403,7 @@
         "ancho": 1600,
         "alto": 856
       },
-      "ocultar": [
-        "nextjs-portal"
-      ],
+      "ocultar": ["nextjs-portal"],
       "interceptar": [
         {
           "metodo": "POST",

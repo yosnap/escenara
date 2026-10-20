@@ -33,11 +33,7 @@
   },
   "app": {
     "urlBase": "http://localhost:3021",
-    "origenesPermitidos": [
-      "http://localhost:3021",
-      "http://localhost:8321",
-      "http://127.0.0.1:8321"
-    ],
+    "origenesPermitidos": ["http://localhost:3021", "http://localhost:8321", "http://127.0.0.1:8321"],
     "inicioSesion": {
       "ruta": "/entrar",
       "pasos": [
@@ -140,8 +136,5 @@
   },
   "direccion": "tutorial",
   "semilla": 1,
-  "terminos": [
-    "Escenara",
-    "KIE"
-  ]
+  "terminos": ["Escenara", "KIE"]
 }

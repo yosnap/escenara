@@ -3,10 +3,7 @@
     {
       "id": "voz",
       "ruta": "/proyectos/d13550ec-0bce-4ab9-a5e3-d8934c6b5616/voz",
-      "ocultar": [
-        "nextjs-portal",
-        "input[placeholder^='00000000']"
-      ],
+      "ocultar": ["nextjs-portal", "input[placeholder^='00000000']"],
       "tramos": [
         {
           "id": "voz",
@@ -34,9 +31,7 @@
     {
       "id": "dualcast",
       "ruta": "/proyectos/d13550ec-0bce-4ab9-a5e3-d8934c6b5616",
-      "ocultar": [
-        "nextjs-portal"
-      ],
+      "ocultar": ["nextjs-portal"],
       "tramos": [
         {
           "id": "escena",
@@ -350,9 +345,7 @@
     {
       "id": "resultado",
       "ruta": "/proyectos/d13550ec-0bce-4ab9-a5e3-d8934c6b5616/montaje",
-      "ocultar": [
-        "nextjs-portal"
-      ],
+      "ocultar": ["nextjs-portal"],
       "tramos": [
         {
           "id": "ver",

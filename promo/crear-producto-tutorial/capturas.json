@@ -3,9 +3,7 @@
     {
       "id": "producto",
       "ruta": "/productos",
-      "ocultar": [
-        "nextjs-portal"
-      ],
+      "ocultar": ["nextjs-portal"],
       "tramos": [
         {
           "id": "nuevo",
@@ -44,10 +42,7 @@
               "abrir": "[role=dialog] [role=combobox]",
               "opciones": "[role=option]:visible",
               "selector": "[role=option]:visible:has-text('Físico')",
-              "etiquetas": [
-                "Físico",
-                "Digital (app o pantalla)"
-              ]
+              "etiquetas": ["Físico", "Digital (app o pantalla)"]
             },
             {
               "accion": "desplazar",
