@@ -10,6 +10,7 @@
  * Sin `--confirmar` solo enseña lo que haría: subir a YouTube es publicar y lo decide el propietario.
  * Las credenciales viven en docs/privado/youtube/ (fuera de git): `client_secret.json` (cliente OAuth
  * de escritorio) y `token.json` (refresco, se crea con `--autorizar`). Nunca se imprimen.
+ * Un token autorizado antes de pedir `youtube.force-ssl` no puede subir subtítulos: repite `--autorizar`.
  */
 import { chmodSync, existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -21,7 +22,12 @@ const TOKEN = join(CARPETA, "token.json");
 /** Puerto fijo para la vuelta de la autorización (ver puertos del proyecto). */
 const PUERTO = 8521;
 const REDIRECCION = `http://localhost:${PUERTO}`;
-const PERMISOS = "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube";
+/** `youtube.force-ssl` es el que exige `captions.insert`; los demás cubren la subida y las listas. */
+const PERMISOS = [
+  "https://www.googleapis.com/auth/youtube.upload",
+  "https://www.googleapis.com/auth/youtube",
+  "https://www.googleapis.com/auth/youtube.force-ssl",
+].join(" ");
 /** Categoría «Formación» de YouTube. */
 const CATEGORIA_FORMACION = "27";
 
@@ -48,7 +54,7 @@ const cliente = (): Cliente => {
 };
 
 const guardarToken = (datos: unknown) => {
-  writeFileSync(TOKEN, JSON.stringify(datos, null, 2));
+  writeFileSync(TOKEN, JSON.stringify(datos, null, 2), { mode: 0o600 });
   chmodSync(TOKEN, 0o600);
 };
 
@@ -79,6 +85,7 @@ async function autorizar() {
   const codigo = await new Promise<string>((resolver, rechazar) => {
     const servidor = Bun.serve({
       port: PUERTO,
+      hostname: "localhost",
       fetch(peticion) {
         const p = new URL(peticion.url).searchParams;
         if (p.get("state") !== estado) return new Response("Estado no válido.", { status: 400 });
@@ -166,7 +173,8 @@ async function subir() {
       defaultLanguage: "es",
       defaultAudioLanguage: "es",
     },
-    status: { privacyStatus: privacidad, selfDeclaredMadeForKids: false },
+    // Se sube privado y solo al final pasa a la privacidad pedida: si fallan subtítulos o lista, no queda público a medias.
+    status: { privacyStatus: "private", selfDeclaredMadeForKids: false },
   };
   const tamano = (statSync(video).size / 1024 / 1024).toFixed(1);
   console.log(`Vídeo: ${video} (${tamano} MB)\nTítulo: ${titulo}\nPrivacidad: ${privacidad}`);
@@ -203,6 +211,13 @@ async function subir() {
       }),
     });
     console.log(`Añadido a la lista «${lista}»: https://www.youtube.com/playlist?list=${listaId}`);
+  }
+  if (privacidad !== "private") {
+    await api(acceso, "videos?part=status", {
+      method: "PUT",
+      body: JSON.stringify({ id: subido.id, status: { privacyStatus: privacidad, selfDeclaredMadeForKids: false } }),
+    });
+    console.log(`Privacidad cambiada a «${privacidad}».`);
   }
 }
 

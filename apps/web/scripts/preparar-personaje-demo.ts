@@ -15,6 +15,7 @@
  */
 import path from "node:path";
 import { loadEnvConfig } from "@next/env";
+import { esCuentaDedicada } from "./cuenta-dedicada";
 import {
   decidirAccion,
   type EstadoCopia,
@@ -82,16 +83,24 @@ async function cuentaDestino(): Promise<string> {
   const filtro = UUID.test(destinoPedido) ? eq(users.id, destinoPedido) : eq(users.email, destinoPedido.toLowerCase());
   const [usuario] = await db().select({ id: users.id }).from(users).where(filtro).limit(1);
   if (!usuario) throw new Error("La cuenta de destino no existe.");
+  // Solo cuentas dadas de alta con preparar-cuenta-demos.ts: la copia puede reemplazar personajes de la cuenta.
+  if (!esCuentaDedicada(raiz, usuario.id))
+    throw new Error("La cuenta de destino no es una cuenta dedicada de demos o tutoriales.");
   return usuario.id;
 }
 
 async function personajeDeOrigen(destinoId: string) {
   const filtro = UUID.test(personajePedido)
     ? eq(characters.id, personajePedido)
-    : and(eq(characters.name, personajePedido), ne(characters.ownerId, destinoId));
+    : and(
+        eq(characters.name, personajePedido),
+        ne(characters.ownerId, destinoId),
+        // Por nombre solo se toman personajes de administradores, nunca los de un usuario con el mismo nombre.
+        inArray(characters.ownerId, db().select({ id: users.id }).from(users).where(eq(users.role, "admin"))),
+      );
   const filas = await db().select().from(characters).where(filtro).limit(2);
   if (filas.length === 0)
-    throw new Error(`No hay ningún personaje «${personajePedido}» fuera de la cuenta de destino.`);
+    throw new Error(`No hay ningún personaje «${personajePedido}» de un administrador fuera de la cuenta de destino.`);
   if (filas.length > 1) throw new Error(`Hay varios personajes «${personajePedido}»: indica su identificador.`);
   return filas[0] as (typeof filas)[number];
 }

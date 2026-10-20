@@ -2,6 +2,7 @@ import { mkdir, open, unlink } from "node:fs/promises";
 import path from "node:path";
 import { loadEnvConfig } from "@next/env";
 import { hashPassword } from "better-auth/crypto";
+import { esCuentaDedicada } from "./cuenta-dedicada";
 
 /** Alta administrativa local, explícita e idempotente. Nunca imprime contraseñas ni claves de IA. */
 const raiz = path.resolve(import.meta.dirname, "../../..");
@@ -41,6 +42,11 @@ try {
   // No convertir ni resetear una cuenta existente por accidente: el alta es para una cuenta dedicada.
   if (existente && existente.role !== rol)
     throw new Error(`La cuenta de destino existe con otro rol (se esperaba ${rol}).`);
+  // Solo se reutiliza una cuenta que dio de alta este script: un correo equivocado no copia claves a una persona.
+  if (existente && !esCuentaDedicada(raiz, existente.id, [carpetaPrivada]))
+    throw new Error(
+      `La cuenta de destino ya existe y no es dedicada: falta su acceso en docs/privado/${carpetaPrivada}.`,
+    );
   const usuarioId = existente?.id ?? crypto.randomUUID();
   const credenciales = await db().select().from(providerCredentials).where(eq(providerCredentials.userId, admin.id));
   const compatibles = await db().select().from(openaiProviders).where(eq(openaiProviders.userId, admin.id));
