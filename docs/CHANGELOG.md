@@ -20,6 +20,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y 
 - El script de subida a YouTube sube cada vídeo como privado y solo al final le pone la privacidad pedida, así que un
   fallo con los subtítulos o la lista no deja un vídeo público a medias.
 
+### Cambiado
+
+- El presupuesto de JavaScript de 13 páginas sube a lo que pesan hoy más 1 KB, para que la imagen de producción
+  vuelva a compilar. Es crecimiento acumulado entre la 0.52.5 y la 0.56.1 y queda anotado como deuda por reducir.
+
 ## [0.56.1] · 2026-10-19
 
 ### Corregido
