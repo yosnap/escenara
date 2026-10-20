@@ -1,0 +1,1 @@
+- [Numeración de fases](numeracion-fases-hoja-de-ruta.md) — phase-NN es orden; la 1.0.0 se renombra para seguir al final al insertar versiones
