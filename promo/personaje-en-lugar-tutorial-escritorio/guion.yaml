@@ -1,0 +1,126 @@
+# Tutorial «Personaje en un lugar, interactuando» en modo tutorial, versión de ESCRITORIO (YouTube): la ventana
+# del navegador, fija, ocupa el encuadre. La versión móvil (../personaje-en-lugar-tutorial/) tiene el mismo guion.
+# Sin voz: cada escena lleva un rótulo breve (titulo) y sus frases salen como subtítulos.
+# Todo en «Crear»: en «Describe la escena» se elige la Terraza Mirto (su foto principal viaja como referencia) y
+# dónde, dentro de ella; en el clip, la cámara que revela el sitio y un gesto con lo que hay en la mesa. El clip se
+# genera con MiniMax H3, que tiene voz, y al final se reproduce con su sonido. Evidencia: briefing.md.
+escenas:
+  - id: gancho
+    pieza: rotulo
+    parametros: { titulo: "Tu personaje, en tu lugar", subtitulo: "Un clip que ocurre en un sitio tuyo", fondo: claro, animacion: palabras }
+    frases:
+      - texto: "Vamos a llevar a Brisa a la Terraza Mirto y hacer que el clip ocurra allí, todo desde «Crear»."
+
+  - id: formato
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: formato, titulo: "El formato" }
+    frases:
+      - texto: "El primer paso es el formato. Para un clip libre, deja «Clip para redes»."
+
+  - id: origen
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: origen, titulo: "De dónde sale el clip" }
+    frases:
+      - texto: "Elige «Crear un fotograma nuevo»: primero se genera la imagen de partida y después se anima."
+
+  - id: quien
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: quien, titulo: "Elige a tu personaje" }
+    frases:
+      - texto: "Toca a Brisa: se envían varias fotos suyas para que salga siempre igual."
+      - texto: "Confirma que en sus fotos no aparece nadie más."
+
+  - id: escena
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: escena, titulo: "Qué hace allí" }
+    frases:
+      - texto: "Describe qué hace en el sitio: sentada a una mesa, con su café, mirando a cámara."
+
+  - id: lugar
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: lugar, titulo: "Elige el lugar" }
+    frases:
+      - texto: "Más abajo, en «El lugar», elige la Terraza Mirto: su foto principal viaja como referencia."
+      - texto: "Y precisa dónde, dentro del lugar: en la mesa junto a los limoneros, bajo el toldo."
+
+  - id: coste
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: coste, titulo: "Mira lo que cuesta" }
+    frases:
+      - texto: "Antes de gastar ves las fotos de Brisa que se enviarán, las comprobaciones previas y lo que cuesta el fotograma."
+
+  - id: generar-fotograma
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: generar-fotograma, titulo: "Genera el fotograma" }
+    frases:
+      - texto: "Confirma que tienes derecho a usar la imagen y toca «Generar fotograma»."
+
+  - id: fotograma
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: fotograma, titulo: "Fotograma listo" }
+    frases:
+      - texto: "Al poco tienes a Brisa en la terraza, ya guardada en tu biblioteca."
+
+  - id: modelo-clip
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: modelo-clip, titulo: "Elige el modelo del clip" }
+    transicion: fundido
+    frases:
+      - texto: "Pasa al clip y elige el modelo. Cada uno dice lo que cuesta; aquí, MiniMax H3, que tiene voz."
+
+  - id: dice
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: dice, titulo: "Lo que dice" }
+    frases:
+      - texto: "Escribe lo que dice Brisa: se oirá tal cual, con acento de España."
+
+  - id: camara
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: camara, titulo: "Que se vea el sitio" }
+    frases:
+      - texto: "Para lucir el lugar, elige «Retroceso que revela»: la cámara se aleja y aparece la terraza entera."
+
+  - id: gesto
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: gesto, titulo: "Un gesto con lo que hay allí" }
+    frases:
+      - texto: "Y un gesto con lo que tiene en la mesa: «Bebe un sorbo», antes de hablar."
+
+  - id: instrucciones
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: instrucciones, titulo: "Con tus palabras" }
+    frases:
+      - texto: "Lo que no cabe en los botones, escríbelo tú. Debajo, el resumen de lo que le pedirás."
+
+  - id: confirmar-clip
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: confirmar-clip, titulo: "Confirma y anima" }
+    frases:
+      - texto: "Revisa el coste del clip, confirma la revisión y el derecho a usar la imagen, y toca «Animar»."
+
+  - id: clip
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: clip, titulo: "Clip listo" }
+    frases:
+      - texto: "Unos minutos después, el clip está listo y guardado en tu biblioteca."
+
+  - id: ver-clip
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: ver, titulo: "Míralo" }
+    transicion: fundido
+    frases:
+      - texto: "Toca el play y míralo: Brisa en su terraza."
+
+  - id: opciones-clip
+    pieza: tutorial
+    parametros: { grabacion: lugar, tramo: opciones, titulo: "Y después" }
+    frases:
+      - texto: "Desde aquí pides otro con el mismo fotograma o lo llevas a un proyecto sin volver a pagarlo."
+
+  - id: cierre
+    pieza: logo
+    parametros: { lema: "Lleva a tu personaje a su sitio", url: "escenara.com", fondo: claro }
+    transicion: fundido
+    frases:
+      - texto: "Pruébalo en escenara.com y tienes la guía completa en docs.escenara.com."
+        hablado: "Pruébalo en escenara punto com y tienes la guía completa en la documentación."

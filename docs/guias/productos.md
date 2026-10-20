@@ -5,6 +5,10 @@ das de alta una vez en **Productos**, con sus fotos, y a partir de ahí lo elige
 **«Crear»** y en la **escena de un proyecto**, en el mismo panel donde diriges. En «Crear» también puedes elegirlo
 antes, al describir la escena, para que ya salga en el fotograma.
 
+Así se crea un producto y se generan sus imágenes sin salir de su ficha, paso a paso:
+
+[![Cómo crear un producto en Escenara y generar sus imágenes con IA, paso a paso](../assets/video/youtube-9CCW9_EWzeg.webp)](https://youtu.be/9CCW9_EWzeg)
+
 Lo que Escenara promete con un producto es una cosa concreta: **su etiqueta y su envase no se tocan**. Ni se
 reescribe el texto, ni se cambia el color, ni se inventa un logo. Después de generar, Jev compara el resultado
 con tu foto frontal y te dice si el producto sigue siendo el tuyo.
@@ -60,6 +64,10 @@ Si respondes que en el producto **se ve una marca** (o aún no lo has respondido
 puede rechazar un logo, y en ese caso no se genera nada y **no se te cobra**.
 
 ## Elegirlo en un clip
+
+Así se hace un clip de anuncio desde «Crear», con tu personaje presentando el producto, paso a paso:
+
+[![Cómo hacer un clip de anuncio con tu personaje y tu producto en Escenara, paso a paso](../assets/video/youtube-LBWXkrFa-84.webp)](https://youtu.be/LBWXkrFa-84)
 
 En el panel de dirección, bloque **El producto**: eliges cuál y **qué se hace con él**. Es **una sola elección**
 entre todas las acciones, aunque salgan repartidas en familias: si eliges una de moda, se desmarca la que tenías

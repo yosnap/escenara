@@ -2,6 +2,11 @@
 
 **Desde:** 0.22.1, al día con la 0.49.0 · **Para:** quien usa Escenara
 
+¿Prefieres verlo? Este tutorial en vídeo crea un personaje inventado de principio a fin (y, de paso, uno de tu
+mascota con sus fotos):
+
+[![Cómo crear un personaje en Escenara: inventado y tu mascota, paso a paso](../assets/video/youtube-UjaTyuU8xqc.webp)](https://youtu.be/UjaTyuU8xqc)
+
 Un **personaje inventado** no existe: lo describes con palabras, Escenara genera varios retratos y eliges el que
 te convenza: hasta cuatro, sin pasar de los trabajos que tu instalación deja hacer a la vez (tres por defecto). La
 pantalla dice siempre cuántos puedes pedir, y si la cola recorta ese número dice por qué. Desde la 0.22.1 solo tienes que poner **el nombre y una descripción**: el resto de su ficha lo

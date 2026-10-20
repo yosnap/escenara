@@ -1,0 +1,137 @@
+# Tutorial «Crear un personaje» en modo tutorial, versión de ESCRITORIO (YouTube): la ventana del navegador, fija,
+# ocupa el encuadre. Mismo guion que la versión móvil (../crear-personaje-tutorial/).
+# Sin voz (decisión del 2026-10-17): cada escena lleva un rótulo breve (titulo) y sus frases salen como subtítulos.
+# Camino del personaje inventado de principio a fin (retratos y vistas reales) y camino de la mascota (fotos
+# generadas con IA de un perro inventado, ver mascota/prompts.md). La persona real solo se menciona.
+# Evidencia de cada frase: briefing.md.
+escenas:
+  - id: gancho
+    pieza: rotulo
+    parametros: { titulo: "Crea tu personaje", subtitulo: "Inventado o tu mascota, paso a paso", fondo: claro, animacion: palabras }
+    frases:
+      - texto: "Vamos a crear un personaje que salga igual en todos tus vídeos. Primero, uno inventado; después, tu mascota."
+
+  - id: nuevo
+    pieza: tutorial
+    parametros: { grabacion: inventado-alta, tramo: nuevo, titulo: "Nuevo personaje" }
+    frases:
+      - texto: "En Personajes, toca «Nuevo personaje»."
+
+  - id: tipo
+    pieza: tutorial
+    parametros: { grabacion: inventado-alta, tramo: tipo, titulo: "Elige «inventado»" }
+    frases:
+      - texto: "Una persona o un animal reales necesitan fotos y consentimiento. Para empezar, elige un personaje inventado."
+
+  - id: datos
+    pieza: tutorial
+    parametros: { grabacion: inventado-alta, tramo: datos, titulo: "Nombre y descripción" }
+    frases:
+      - texto: "Ponle un nombre y descríbelo: edad, pelo, ropa y gesto. De esa descripción salen sus retratos."
+      - texto: "No nombres a nadie real: si lo haces, la app te avisa mientras escribes."
+
+  - id: estilo
+    pieza: tutorial
+    parametros: { grabacion: inventado-alta, tramo: estilo, titulo: "Estilo visual" }
+    frases:
+      - texto: "Elige su estilo visual: realista, ilustración plana, 3D estilizado o anime. Para Brisa, realista."
+
+  - id: crear
+    pieza: tutorial
+    parametros: { grabacion: inventado-alta, tramo: crear, titulo: "Declara y crea" }
+    frases:
+      - texto: "Declara que es inventado y toca «Crear el personaje inventado»."
+
+  - id: guia
+    pieza: tutorial
+    parametros: { grabacion: inventado-alta, tramo: guia, titulo: "Su ficha te guía" }
+    frases:
+      - texto: "Ya existe, y su ficha te guía con lo que falta: retratos, cara, ficha y vistas."
+
+  - id: retratos
+    pieza: tutorial
+    parametros: { grabacion: inventado-retratos, tramo: retratos-cuantos, titulo: "¿Cuántos retratos?" }
+    frases:
+      - texto: "En «Retratos y vistas», elige cuántos retratos quieres, de uno a tres, y mira lo que cuestan antes de generar."
+
+  - id: generar
+    pieza: tutorial
+    parametros: { grabacion: inventado-retratos, tramo: retratos-generar, titulo: "Genera los retratos" }
+    frases:
+      - texto: "Confirma que puedes usar lo que se genere y toca «Generar». Cada retrato se encola y se cobra por separado."
+
+  - id: cara
+    pieza: tutorial
+    parametros: { grabacion: inventado-retratos, tramo: cara, titulo: "Elige su cara" }
+    frases:
+      - texto: "Cuando terminan, aparecen aquí. Elige el que será su cara; los demás se quedan en tu biblioteca."
+
+  - id: ficha-ia
+    pieza: tutorial
+    parametros: { grabacion: inventado-ficha, tramo: ficha-ia, titulo: "Ficha con IA" }
+    frases:
+      - texto: "Ahora, «Completar la ficha con IA»: te propone sus rasgos, estilo, vestuario, personalidad y voz."
+
+  - id: ficha-guardar
+    pieza: tutorial
+    parametros: { grabacion: inventado-ficha, tramo: ficha-guardar, titulo: "Acepta y guarda" }
+    frases:
+      - texto: "Acepta lo que te convenza y guárdalo con «Guardar la ficha»."
+
+  - id: vistas
+    pieza: tutorial
+    parametros: { grabacion: inventado-vistas, tramo: vistas, titulo: "Genera sus vistas" }
+    frases:
+      - texto: "Faltan sus vistas: perfiles, tres cuartos y cuerpo completo. Ves el total antes de encargarlas."
+
+  - id: vistas-resto
+    pieza: tutorial
+    parametros: { grabacion: inventado-vistas, tramo: vistas-resto, titulo: "La vista que falta" }
+    frases:
+      - texto: "Se hacen como mucho tres a la vez. Cuando terminan, encarga la que falta con «Generarla»."
+
+  - id: vistas-listas
+    pieza: tutorial
+    parametros: { grabacion: inventado-vistas, tramo: vistas-listas, titulo: "Vistas completas" }
+    frases:
+      - texto: "Con estas vistas, el parecido se mantiene de un fotograma a otro. Brisa ya está lista para tus escenas."
+
+  - id: mascota-tipo
+    pieza: tutorial
+    parametros: { grabacion: mascota, tramo: mascota-tipo, titulo: "Tu mascota: «Animal»" }
+    transicion: fundido
+    frases:
+      - texto: "¿Y tu mascota? Vuelve a «Nuevo personaje» y elige «Animal»."
+
+  - id: mascota-datos
+    pieza: tutorial
+    parametros: { grabacion: mascota, tramo: mascota-datos, titulo: "Nombre, raza y rasgos" }
+    frases:
+      - texto: "Ponle su nombre y, si quieres, la especie o la raza. Describe lo que no debe cambiar: pelo, manchas o collar."
+
+  - id: mascota-fotos
+    pieza: tutorial
+    parametros: { grabacion: mascota, tramo: mascota-fotos, titulo: "Sube 3 fotos o más" }
+    frases:
+      - texto: "Sube al menos tres fotos suyas, con luces y ángulos distintos: es lo que mantiene su cara igual entre vídeos."
+      - texto: "Antes de subirlas puedes recortarlas o girarlas; aquí van tal cual."
+
+  - id: mascota-consentimiento
+    pieza: tutorial
+    parametros: { grabacion: mascota, tramo: mascota-consentimiento, titulo: "«Un animal mío»" }
+    frases:
+      - texto: "En el consentimiento, indica que es un animal tuyo: basta con tu declaración."
+
+  - id: mascota-crear
+    pieza: tutorial
+    parametros: { grabacion: mascota, tramo: mascota-crear, titulo: "Crea su ficha" }
+    frases:
+      - texto: "Toca «Crear el personaje» y Lupo ya tiene su ficha, con sus fotos como referencia."
+
+  - id: cierre
+    pieza: logo
+    parametros: { lema: "Crea tu primer personaje", url: "docs.escenara.com", fondo: claro }
+    transicion: fundido
+    frases:
+      - texto: "Guía completa en docs.escenara.com. ¡Crea tu primer personaje!"
+        hablado: "Guía completa en la documentación de Escenara. ¡Crea tu primer personaje!"

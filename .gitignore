@@ -51,3 +51,4 @@ backups/
 # Material editorial interno: se guarda en ../escenara-material-interno, nunca en Git
 /video/
 /docs/marketing/
+.agentkit/

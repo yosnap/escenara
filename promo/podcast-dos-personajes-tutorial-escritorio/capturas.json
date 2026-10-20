@@ -1,0 +1,394 @@
+{
+  "capturas": [
+    {
+      "id": "voz",
+      "ruta": "/proyectos/852a1ffe-417e-4a58-aca3-14c742758fb7/voz",
+      "ocultar": ["nextjs-portal", "input[placeholder^='00000000']"],
+      "viewport": {
+        "ancho": 1600,
+        "alto": 856
+      },
+      "tramos": [
+        {
+          "id": "voz",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "label:has-text('Omni: misma cara y voz en todas las escenas')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "p:has-text('Lo que cuesta cada escena hablada')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "p:has-text('Registrada')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "text=está registrado con esta voz"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dualcast",
+      "ruta": "/proyectos/852a1ffe-417e-4a58-aca3-14c742758fb7",
+      "ocultar": ["nextjs-portal"],
+      "viewport": {
+        "ancho": 1600,
+        "alto": 856
+      },
+      "tramos": [
+        {
+          "id": "escena",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "textarea:has-text('Brisa y Elisa sentadas')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "role=combobox[name='Dónde ocurre']"
+            }
+          ]
+        },
+        {
+          "id": "abrir",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Reparto de la escena'] button:has-text('Ver el reparto')"
+            },
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Reparto de la escena'] button:has-text('Ver el reparto')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Reparto de la escena'] >> role=combobox[name='Formato del reparto']",
+              "espera": 30000,
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Reparto de la escena'] >> role=combobox[name='Formato del reparto']"
+            }
+          ]
+        },
+        {
+          "id": "formato",
+          "acciones": [
+            {
+              "accion": "elegir",
+              "titulo": "Formato del reparto",
+              "abrir": "section[aria-label='Reparto de la escena'] >> role=combobox[name='Formato del reparto']",
+              "opciones": "[role=option]:visible",
+              "selector": "[role=option]:visible:has-text('Dualcast')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Reparto de la escena'] >> role=combobox[name='El segundo personaje']",
+              "espera": 30000,
+              "indicador": false
+            }
+          ]
+        },
+        {
+          "id": "segundo",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Reparto de la escena'] >> role=combobox[name='El segundo personaje']"
+            },
+            {
+              "accion": "elegir",
+              "titulo": "El segundo personaje",
+              "abrir": "section[aria-label='Reparto de la escena'] >> role=combobox[name='El segundo personaje']",
+              "opciones": "[role=option]:visible",
+              "selector": "[role=option]:visible:has-text('Elisa')"
+            },
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Reparto de la escena'] button:has-text('Añadir al reparto')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Reparto de la escena'] li:has(p:has-text('Elisa')) >> role=combobox[name='Qué hace']",
+              "espera": 30000,
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Reparto de la escena'] li:has(p:has-text('Elisa'))"
+            }
+          ]
+        },
+        {
+          "id": "papel",
+          "acciones": [
+            {
+              "accion": "elegir",
+              "titulo": "Qué hace Elisa",
+              "abrir": "section[aria-label='Reparto de la escena'] li:has(p:has-text('Elisa')) >> role=combobox[name='Qué hace']",
+              "opciones": "[role=option]:visible",
+              "selector": "[role=option]:visible:has-text('Habla')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Reparto de la escena'] li:has(p:has-text('Elisa')) [role=combobox]:has-text('Habla')",
+              "espera": 30000,
+              "indicador": false
+            }
+          ]
+        },
+        {
+          "id": "miradas",
+          "acciones": [
+            {
+              "accion": "elegir",
+              "titulo": "Adónde mira Brisa",
+              "abrir": "section[aria-label='Reparto de la escena'] li:has(p:has-text('Brisa')) >> role=combobox[name='Adónde mira']",
+              "opciones": "[role=option]:visible",
+              "selector": "[role=option]:visible:has-text('Hacia la derecha')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Reparto de la escena'] li:has(p:has-text('Brisa')) [role=combobox]:has-text('Hacia la derecha')",
+              "espera": 30000,
+              "indicador": false
+            },
+            {
+              "accion": "elegir",
+              "titulo": "Adónde mira Elisa",
+              "abrir": "section[aria-label='Reparto de la escena'] li:has(p:has-text('Elisa')) >> role=combobox[name='Adónde mira']",
+              "opciones": "[role=option]:visible",
+              "selector": "[role=option]:visible:has-text('Hacia la izquierda')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Reparto de la escena'] li:has(p:has-text('Elisa')) [role=combobox]:has-text('Hacia la izquierda')",
+              "espera": 30000,
+              "indicador": false
+            }
+          ]
+        },
+        {
+          "id": "turnos",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Reparto de la escena'] h5:has-text('El diálogo, turno a turno')"
+            },
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Reparto de la escena'] button:has-text('Añadir un turno')"
+            },
+            {
+              "accion": "escribir",
+              "selector": "section[aria-label='Reparto de la escena'] li:has-text('Turno 1') textarea",
+              "texto": "¿Café mañana en la terraza?"
+            },
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Reparto de la escena'] button:has-text('Añadir un turno')"
+            },
+            {
+              "accion": "escribir",
+              "selector": "section[aria-label='Reparto de la escena'] li:has-text('Turno 2') textarea",
+              "texto": "¡Hecho! Y esta vez invito yo."
+            }
+          ]
+        },
+        {
+          "id": "guardar-dialogo",
+          "acciones": [
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Reparto de la escena'] button:has-text('Guardar el diálogo')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Reparto de la escena'] :text('«¡Hecho! Y esta vez invito yo.»')",
+              "espera": 30000,
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Reparto de la escena'] :text-is('Lo que se ha pedido')"
+            }
+          ]
+        },
+        {
+          "id": "estimacion",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Reparto de la escena'] :text('sonarán con el mismo timbre')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Reparto de la escena'] p:has-text('créditos (estimación)')"
+            }
+          ]
+        },
+        {
+          "id": "aprobar",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "main button:visible:has-text('Siguiente: Aprobación')"
+            },
+            {
+              "accion": "clic",
+              "selector": "main button:visible:has-text('Siguiente: Aprobación')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "main button:visible:has-text('Aprobar el plan')",
+              "espera": 30000,
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": "main button:visible:has-text('Aprobar el plan')"
+            },
+            {
+              "accion": "clic",
+              "selector": "main button:visible:has-text('Aprobar el plan')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "main :text('Plan aprobado con este coste')",
+              "espera": 30000,
+              "indicador": false
+            }
+          ]
+        },
+        {
+          "id": "producir",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "main a:has-text('Producir las escenas')"
+            },
+            {
+              "accion": "clic",
+              "selector": "main a:has-text('Producir las escenas')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Reparto de la escena'] :text('Producir esta escena con los dos personajes')",
+              "espera": 60000,
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Reparto de la escena'] :text('Producir esta escena con los dos personajes')"
+            }
+          ]
+        },
+        {
+          "id": "confirmar",
+          "acciones": [
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Reparto de la escena'] label:has-text('Tengo derecho a usar esta imagen')"
+            },
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Reparto de la escena'] label:has-text('En las fotos del personaje no aparece nadie más')"
+            },
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Reparto de la escena'] label:has-text('Lo he leído y quiero generar igualmente')"
+            },
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Reparto de la escena'] label:has-text('Sí, quiero gastar')",
+              "siExiste": true
+            }
+          ]
+        },
+        {
+          "id": "generar",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Reparto de la escena'] button:has-text('Generar el clip')"
+            },
+            {
+              "accion": "clic",
+              "selector": "section[aria-label='Reparto de la escena'] button:has-text('Generar el clip')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Reparto de la escena'] div:has(> p:text-is('Clip de los dos personajes')) div[role=status], section[aria-label='Reparto de la escena'] div:has(> p:text-is('Clip de los dos personajes')) video",
+              "espera": 120000,
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Reparto de la escena'] div:has(> p:text-is('Clip de los dos personajes'))"
+            }
+          ]
+        },
+        {
+          "id": "clip",
+          "acciones": [
+            {
+              "accion": "esperar",
+              "selector": "section[aria-label='Reparto de la escena'] div:has(> p:text-is('Clip de los dos personajes')) video",
+              "espera": 900000
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section[aria-label='Reparto de la escena'] div:has(> p:text-is('Clip de los dos personajes')) video"
+            }
+          ]
+        }
+      ],
+      "interceptar": [
+        {
+          "metodo": "POST",
+          "url": "**/api/escenas/*/produccion",
+          "responderCon": "/api/proyectos/2d6bc37d-5f6e-47fa-a188-3607f2cc7e47/produccion"
+        }
+      ]
+    },
+    {
+      "id": "resultado",
+      "ruta": "/proyectos/2d6bc37d-5f6e-47fa-a188-3607f2cc7e47/montaje",
+      "ocultar": ["nextjs-portal"],
+      "viewport": {
+        "ancho": 1600,
+        "alto": 856
+      },
+      "tramos": [
+        {
+          "id": "ver",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "ul[aria-label='Fragmentos del montaje, en el orden en el que se verán'] video[controls], [aria-label='Fragmentos del montaje, en el orden en el que se verán'] video[controls]"
+            },
+            {
+              "accion": "reproducir",
+              "selector": "ul[aria-label='Fragmentos del montaje, en el orden en el que se verán'] video[controls], [aria-label='Fragmentos del montaje, en el orden en el que se verán'] video[controls]"
+            }
+          ]
+        },
+        {
+          "id": "despues",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "main :text-is('Exportar el vídeo')"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

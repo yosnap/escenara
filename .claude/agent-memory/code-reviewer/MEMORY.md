@@ -12,3 +12,4 @@
 - [Candados de encolar](proyecto-candados-encolar.md) — encolar bloquea users, no projects; borrados que recuentan con otro candado no excluyen encolados
 - [Envíos múltiples y A/B](proyecto-envios-multiples-no-atomicos.md) — A/B 0.48.0: toma filtrada, barrido reanudable; ojo a `!puedeA` y a claves tras 504
 - [Presupuesto de JS del build](proyecto-presupuesto-js.md) — desde 0.45.0 el build falla por KB; medir contra HTML servido (noModule), .next bloqueado por hook
+- [Lista blanca de origen](proyecto-lista-blanca-origen.md) — 0.49.0: input.referencias, vista_generada, FKs a nulo; 3.ª: el cuerpo Omni borrado desaparece de la cadena

@@ -2,6 +2,24 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.56.2] · 2026-10-20
+
+### Añadido
+
+- **Tutoriales en vídeo dentro de las guías.** Las guías de crear un personaje, personajes inventados, productos y
+  lugares traen su tutorial en vídeo, paso a paso: un personaje inventado y otro de tu mascota, un producto con sus
+  imágenes, un lugar con su foto, y los clips de tu personaje presentando un producto o en uno de tus lugares.
+- **Los vídeos de las guías cargan solo cuando los pides.** Cada vídeo se ve primero como una miniatura ligera; el
+  reproductor de YouTube, en su versión sin cookies, se carga al pulsarla. Sin JavaScript, la miniatura es un enlace
+  normal al vídeo.
+
+### Seguridad
+
+- Los scripts que preparan las cuentas de demos y tutoriales solo escriben en cuentas dedicadas, dadas de alta por el
+  propio script. Un correo equivocado ya no puede copiar claves de proveedor ni personajes a la cuenta de una persona.
+- El script de subida a YouTube sube cada vídeo como privado y solo al final le pone la privacidad pedida, así que un
+  fallo con los subtítulos o la lista no deja un vídeo público a medias.
+
 ## [0.56.1] · 2026-10-19
 
 ### Corregido

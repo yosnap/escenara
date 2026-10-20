@@ -1,0 +1,115 @@
+# Tutorial «Personaje con producto» (un anuncio) en modo tutorial, versión de ESCRITORIO (YouTube): la ventana del
+# navegador, fija, ocupa el encuadre. La versión móvil (../personaje-con-producto-tutorial/) tiene el mismo guion.
+# Sin voz: cada escena lleva un rótulo breve (titulo) y sus frases salen como subtítulos.
+# Todo en «Crear»: en «Describe la escena» se elige la Botella Ondina y qué hace Brisa con ella, así que el fotograma
+# ya sale con la botella; en el clip sigue elegida y se dirige. El clip se genera con MiniMax H3, que recibe las fotos
+# del producto. Evidencia: briefing.md.
+escenas:
+  - id: gancho
+    pieza: rotulo
+    parametros: { titulo: "Tu personaje presenta tu producto", subtitulo: "Un clip de anuncio, paso a paso", fondo: claro, animacion: palabras }
+    frases:
+      - texto: "Vamos a hacer un clip de anuncio: Brisa presenta la Botella Ondina, todo desde «Crear»."
+
+  - id: formato
+    pieza: tutorial
+    parametros: { grabacion: anuncio, tramo: formato, titulo: "El formato" }
+    frases:
+      - texto: "El primer paso es el formato. Para un anuncio libre, deja «Clip para redes»: los trends van en otro tutorial."
+
+  - id: origen
+    pieza: tutorial
+    parametros: { grabacion: anuncio, tramo: origen, titulo: "De dónde sale el clip" }
+    frases:
+      - texto: "Elige «Crear un fotograma nuevo»: primero se genera la imagen de partida y después se anima."
+
+  - id: quien
+    pieza: tutorial
+    parametros: { grabacion: anuncio, tramo: quien, titulo: "Elige a tu personaje" }
+    frases:
+      - texto: "Toca a Brisa: se envían varias fotos suyas para que salga siempre igual."
+      - texto: "Confirma que en sus fotos no aparece nadie más."
+
+  - id: escena
+    pieza: tutorial
+    parametros: { grabacion: anuncio, tramo: escena, titulo: "Describe la escena" }
+    frases:
+      - texto: "Describe dónde está, qué hace y cómo se ve, en español."
+
+  - id: producto-escena
+    pieza: tutorial
+    parametros: { grabacion: anuncio, tramo: producto-escena, titulo: "Elige el producto" }
+    frases:
+      - texto: "Más abajo, en «El producto», elige la Botella Ondina: sus fotos entran como referencia y el fotograma ya sale con ella."
+      - texto: "Y di qué hace Brisa con ella: aquí, sostenerla a la vista."
+
+  - id: coste
+    pieza: tutorial
+    parametros: { grabacion: anuncio, tramo: coste, titulo: "Mira lo que cuesta" }
+    frases:
+      - texto: "Antes de gastar ves qué fotos se enviarán, las comprobaciones previas y lo que cuesta el fotograma."
+
+  - id: generar-fotograma
+    pieza: tutorial
+    parametros: { grabacion: anuncio, tramo: generar-fotograma, titulo: "Genera el fotograma" }
+    frases:
+      - texto: "Confirma que tienes derecho a usar la imagen y toca «Generar fotograma»."
+
+  - id: fotograma
+    pieza: tutorial
+    parametros: { grabacion: anuncio, tramo: fotograma, titulo: "Fotograma listo" }
+    frases:
+      - texto: "En unos segundos tienes el fotograma con Brisa y la botella, ya guardado en tu biblioteca."
+
+  - id: modelo-clip
+    pieza: tutorial
+    parametros: { grabacion: anuncio, tramo: modelo-clip, titulo: "Elige el modelo del clip" }
+    transicion: fundido
+    frases:
+      - texto: "Pasa al clip y elige el modelo. Cada uno dice lo que cuesta; aquí, MiniMax H3, que admite la foto del producto."
+
+  - id: producto
+    pieza: tutorial
+    parametros: { grabacion: anuncio, tramo: producto, titulo: "El producto, ya elegido" }
+    frases:
+      - texto: "En el clip, la Botella Ondina sigue elegida y sus fotos viajan con él."
+      - texto: "Comprueba qué hace Brisa con ella: sostenerla a la vista."
+
+  - id: direccion
+    pieza: tutorial
+    parametros: { grabacion: anuncio, tramo: direccion, titulo: "Dirige el clip" }
+    frases:
+      - texto: "Escribe lo que dice, elige el plano y añade con tus palabras lo que no cabe en los botones."
+
+  - id: confirmar-clip
+    pieza: tutorial
+    parametros: { grabacion: anuncio, tramo: confirmar-clip, titulo: "Confirma y anima" }
+    frases:
+      - texto: "Revisa el coste del clip, confirma la revisión y el derecho a usar la imagen, y toca «Animar»."
+
+  - id: clip
+    pieza: tutorial
+    parametros: { grabacion: anuncio, tramo: clip, titulo: "Clip listo" }
+    frases:
+      - texto: "Unos minutos después, el clip de anuncio está listo y guardado en tu biblioteca."
+
+  - id: ver-clip
+    pieza: tutorial
+    parametros: { grabacion: resultado, tramo: ver, titulo: "Míralo" }
+    transicion: fundido
+    frases:
+      - texto: "Toca el play y míralo: Brisa presenta su Botella Ondina."
+
+  - id: opciones-clip
+    pieza: tutorial
+    parametros: { grabacion: resultado, tramo: opciones, titulo: "Y después" }
+    frases:
+      - texto: "Desde aquí pides otro con el mismo fotograma o lo llevas a un proyecto sin volver a pagarlo."
+
+  - id: cierre
+    pieza: logo
+    parametros: { lema: "Crea tu primer anuncio", url: "escenara.com", fondo: claro }
+    transicion: fundido
+    frases:
+      - texto: "Pruébalo en escenara.com y tienes la guía completa en docs.escenara.com."
+        hablado: "Pruébalo en escenara punto com y tienes la guía completa en la documentación."

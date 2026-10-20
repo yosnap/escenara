@@ -1,0 +1,15 @@
+---
+/**
+ * El contenido de cada guía, como el de Starlight, más el script de las fachadas de vídeo de YouTube:
+ * convierte la miniatura en el reproductor solo cuando quien lee la pulsa.
+ */
+import MarkdownContent from "@astrojs/starlight/components/MarkdownContent.astro";
+---
+
+<MarkdownContent><slot /></MarkdownContent>
+
+<script>
+  import { activarFachadasDeVideo } from "../markdown/video-youtube-cliente";
+
+  activarFachadasDeVideo(document);
+</script>

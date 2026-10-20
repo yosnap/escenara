@@ -3,6 +3,7 @@ import path from "node:path";
 import type { Html, Image, Parent, PhrasingContent, Root, RootContent } from "mdast";
 import type { VFile } from "vfile";
 import { DIR_DIAGRAMAS, DIR_DOCS, DIR_GUIAS, idDeGuia } from "../indice";
+import { fachadaDeVideo, idDeYoutube, miniaturaEnlazada } from "./video-youtube";
 
 /** Los archivos de `docs/assets` que una guía enlaza (no incrusta) se publican bajo esta ruta. */
 export const DIR_ASSETS = path.join(DIR_DOCS, "assets");
@@ -52,8 +53,11 @@ export function exigirImagenPublicable(url: string, dirOrigen: string, guia: str
   }
 }
 
-/** Enlaces de un Markdown que no son imágenes: `[texto](destino)`, sin el `!` delante. */
-const ENLACE = /(?<!!)\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
+/**
+ * Enlaces de un Markdown que no son imágenes: `[texto](destino)`, sin el `!` delante. El texto puede ser una imagen
+ * (`[![alt](miniatura)](destino)`): cuenta el destino del enlace, no la miniatura, que ya se incrusta.
+ */
+const ENLACE = /(?<!!)\[(?:[^[\]]|!\[[^\]]*\]\([^)]*\))*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
 
 /**
  * Archivos de `docs/assets` que enlazan las guías publicadas (audio de ejemplo, capturas a tamaño completo).
@@ -99,12 +103,33 @@ function diagramaDe(nodo: RootContent, dirOrigen: string, guia: string): Html | 
   return { type: "html", value: svgEnLinea(absoluta) };
 }
 
+/**
+ * Una miniatura enlazada a YouTube, sola en su párrafo, se publica como fachada de vídeo. Un id que no es de YouTube,
+ * una miniatura sin texto alternativo (es el título del vídeo) o que no esté en `docs/assets` paran el build.
+ */
+function videoDe(nodo: RootContent, dirOrigen: string, guia: string): RootContent | null {
+  if (nodo.type !== "paragraph") return null;
+  const miniatura = miniaturaEnlazada(nodo);
+  if (!miniatura) return null;
+  const { enlace, imagen } = miniatura;
+  const id = idDeYoutube(enlace.url);
+  if (!id) throw new Error(`${guia} enlaza el vídeo ${enlace.url}, que no tiene un identificador de YouTube válido.`);
+  if (!imagen.alt?.trim()) {
+    throw new Error(`${guia}: la miniatura del vídeo ${id} necesita el título como texto alternativo.`);
+  }
+  if (EXTERNA.test(imagen.url) || imagen.url.startsWith("/")) {
+    throw new Error(`${guia}: la miniatura del vídeo ${id} debe estar en docs/assets, no cargarse de ${imagen.url}.`);
+  }
+  exigirImagenPublicable(imagen.url, dirOrigen, guia);
+  return fachadaDeVideo(id, imagen);
+}
+
 function recorrer(padre: Parent, dirOrigen: string, slugs: ReadonlySet<string>, guia: string): void {
   const nuevos: RootContent[] = [];
   for (const hijo of padre.children as RootContent[]) {
-    const diagrama = diagramaDe(hijo, dirOrigen, guia);
-    if (diagrama) {
-      nuevos.push(diagrama);
+    const bloque = diagramaDe(hijo, dirOrigen, guia) ?? videoDe(hijo, dirOrigen, guia);
+    if (bloque) {
+      nuevos.push(bloque);
       continue;
     }
     if (hijo.type === "link") {
@@ -128,7 +153,7 @@ function recorrer(padre: Parent, dirOrigen: string, slugs: ReadonlySet<string>, 
 
 /**
  * Adapta una guía de `docs/guias` a la web sin tocar el archivo: quita el título `#` (Starlight lo
- * pinta desde el índice), reescribe los enlaces y pone los diagramas en línea.
+ * pinta desde el índice), reescribe los enlaces, pone los diagramas en línea y los vídeos de YouTube en fachada.
  */
 export function remarkGuias(opciones: { slugs: Iterable<string> }) {
   const slugs = new Set(opciones.slugs);

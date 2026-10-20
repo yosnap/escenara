@@ -1,0 +1,399 @@
+{
+  "capturas": [
+    {
+      "id": "producto",
+      "ruta": "/productos",
+      "viewport": {
+        "ancho": 1600,
+        "alto": 856
+      },
+      "ocultar": ["nextjs-portal"],
+      "tramos": [
+        {
+          "id": "nuevo",
+          "acciones": [
+            {
+              "accion": "clic",
+              "selector": "button:has-text('Crear el primero')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "[role=dialog] input[placeholder='Crema de noche Aurora']"
+            }
+          ]
+        },
+        {
+          "id": "datos",
+          "acciones": [
+            {
+              "accion": "escribir",
+              "selector": "[role=dialog] input[placeholder='Crema de noche Aurora']",
+              "texto": "Botella Ondina"
+            },
+            {
+              "accion": "escribir",
+              "selector": "[role=dialog] textarea",
+              "texto": "Botella reutilizable de acero mate verde salvia, con tapón de bambú y asa metálica. Sin texto ni logotipos."
+            }
+          ]
+        },
+        {
+          "id": "tipo",
+          "acciones": [
+            {
+              "accion": "elegir",
+              "titulo": "Tipo",
+              "abrir": "[role=dialog] [role=combobox]",
+              "opciones": "[role=option]:visible",
+              "selector": "[role=option]:visible:has-text('Físico')",
+              "etiquetas": ["Físico", "Digital (app o pantalla)"]
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] label:has-text('En las fotos se ve una marca')"
+            }
+          ]
+        },
+        {
+          "id": "crear",
+          "acciones": [
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button:has-text('Crear producto')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "h2:text-is('Su primera imagen')",
+              "espera": 60000,
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": "h2:text-is('Su primera imagen')"
+            }
+          ]
+        },
+        {
+          "id": "generar",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "button[data-opcion=generar]"
+            },
+            {
+              "accion": "clic",
+              "selector": "button[data-opcion=generar]"
+            },
+            {
+              "accion": "esperar",
+              "selector": "[role=dialog] button:has-text('Ver lo que cuesta')",
+              "espera": 30000,
+              "indicador": false
+            },
+            {
+              "accion": "elegir",
+              "titulo": "Qué vista generar",
+              "abrir": "[role=dialog] [role=combobox]",
+              "opciones": "[role=option]:visible",
+              "selector": "[role=option]:visible:has-text('El envase entero')",
+              "etiquetas": [
+                "Frontal con la etiqueta",
+                "El envase entero",
+                "Detalle de la tapa o el mecanismo",
+                "El producto solo"
+              ]
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button:has-text('Ver lo que cuesta')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "[role=dialog] section[aria-label='Coste estimado']",
+              "espera": 60000,
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] section[aria-label='Coste estimado']"
+            }
+          ]
+        },
+        {
+          "id": "encargar",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] label:has-text('Puedo usar lo que se genere')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] label:has-text('Puedo usar lo que se genere')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] label:has-text('Sí, quiero gastar')",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] label:has-text('Sí, quiero gastar')",
+              "siExiste": true
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] label:has-text('Lo he leído y quiero generar igualmente')",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] label:has-text('Lo he leído y quiero generar igualmente')",
+              "siExiste": true
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] button:has-text('Encargar')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button:has-text('Encargar')"
+            },
+            {
+              "accion": "esperar",
+              "selector": ":text('Generándose su primera imagen'), :text('Encargado.')",
+              "espera": 60000,
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": ":text('Generándose su primera imagen'), :text('Encargado.')"
+            }
+          ]
+        },
+        {
+          "id": "resultado",
+          "acciones": [
+            {
+              "accion": "esperar",
+              "selector": "section:has(h2:text-is('Fotos de referencia')) li:has([role=combobox]) >> nth=0",
+              "espera": 600000,
+              "recargar": true,
+              "cada": 15000
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section:has(h2:text-is('Fotos de referencia')) li:has([role=combobox]) >> nth=0"
+            }
+          ]
+        },
+        {
+          "id": "otra-vista",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section:has(h2:text-is('Fotos de referencia')) button:has-text('Generar una imagen')"
+            },
+            {
+              "accion": "clic",
+              "selector": "section:has(h2:text-is('Fotos de referencia')) button:has-text('Generar una imagen')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "[role=dialog] button:has-text('Ver lo que cuesta')",
+              "espera": 30000,
+              "indicador": false
+            },
+            {
+              "accion": "elegir",
+              "titulo": "Qué vista generar",
+              "abrir": "[role=dialog] [role=combobox]",
+              "opciones": "[role=option]:visible",
+              "selector": "[role=option]:visible:has-text('Detalle de la tapa')",
+              "etiquetas": [
+                "Frontal con la etiqueta",
+                "El envase entero",
+                "Detalle de la tapa o el mecanismo",
+                "El producto solo"
+              ]
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button:has-text('Ver lo que cuesta')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "[role=dialog] section[aria-label='Coste estimado']",
+              "espera": 60000,
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] section[aria-label='Coste estimado']"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] label:has-text('Puedo usar lo que se genere')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] label:has-text('Puedo usar lo que se genere')"
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] label:has-text('Sí, quiero gastar')",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] label:has-text('Sí, quiero gastar')",
+              "siExiste": true
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] label:has-text('Lo he leído y quiero generar igualmente')",
+              "siExiste": true
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] label:has-text('Lo he leído y quiero generar igualmente')",
+              "siExiste": true
+            },
+            {
+              "accion": "desplazar",
+              "selector": "[role=dialog] button:has-text('Encargar')"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button:has-text('Encargar')"
+            },
+            {
+              "accion": "esperar",
+              "selector": ":text('Encargado.')",
+              "espera": 60000,
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": ":text('Encargado.')"
+            }
+          ]
+        },
+        {
+          "id": "resultado-2",
+          "acciones": [
+            {
+              "accion": "esperar",
+              "selector": "section:has(h2:text-is('Fotos de referencia')) li:has([role=combobox]) >> nth=1",
+              "espera": 600000,
+              "recargar": true,
+              "cada": 15000
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section:has(h2:text-is('Fotos de referencia')) li:has([role=combobox]) >> nth=1"
+            }
+          ]
+        },
+        {
+          "id": "anadir",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "section:has(h2:text-is('Fotos de referencia')) button:has-text('Añadir de la biblioteca')"
+            },
+            {
+              "accion": "clic",
+              "selector": "section:has(h2:text-is('Fotos de referencia')) button:has-text('Añadir de la biblioteca')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "[role=dialog] input[type=search]",
+              "espera": 30000,
+              "indicador": false
+            },
+            {
+              "accion": "escribir",
+              "selector": "[role=dialog] input[type=search]",
+              "texto": "botella"
+            },
+            {
+              "accion": "esperar",
+              "selector": "[role=dialog] button[aria-label='Seleccionar botella-ondina-sola.jpg']",
+              "espera": 30000,
+              "indicador": false
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button[aria-label='Seleccionar botella-ondina-sola.jpg']"
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button:has-text('Usar selección')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "[role=dialog] h2:has-text('¿Qué muestra esta foto?')",
+              "espera": 30000,
+              "indicador": false
+            }
+          ]
+        },
+        {
+          "id": "papel",
+          "acciones": [
+            {
+              "accion": "elegir",
+              "titulo": "¿Qué muestra esta foto?",
+              "abrir": "[role=dialog] [role=combobox]",
+              "opciones": "[role=option]:visible",
+              "selector": "[role=option]:visible:has-text('El producto solo')",
+              "etiquetas": [
+                "Frontal con la etiqueta",
+                "El envase entero",
+                "Detalle de la tapa o el mecanismo",
+                "El producto solo"
+              ]
+            },
+            {
+              "accion": "clic",
+              "selector": "[role=dialog] button:has-text('Añadir la foto')"
+            },
+            {
+              "accion": "esperar",
+              "selector": "section:has(h2:text-is('Fotos de referencia')) li >> nth=2",
+              "espera": 30000,
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": "section:has(h2:text-is('Fotos de referencia')) li >> nth=2"
+            }
+          ]
+        },
+        {
+          "id": "listo",
+          "acciones": [
+            {
+              "accion": "desplazar",
+              "selector": "nav[aria-label='Aplicación'] a[href='/productos']"
+            },
+            {
+              "accion": "clic",
+              "selector": "nav[aria-label='Aplicación'] a[href='/productos']"
+            },
+            {
+              "accion": "esperar",
+              "selector": "main a:has-text('Botella Ondina')",
+              "espera": 30000,
+              "indicador": false
+            },
+            {
+              "accion": "desplazar",
+              "selector": "main a:has-text('Botella Ondina')"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

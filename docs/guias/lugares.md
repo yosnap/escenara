@@ -4,6 +4,10 @@ Un lugar es un **sitio poco conocido que quieres usar como escenario una y otra 
 esquina, el patio de tu edificio. Lo das de alta una vez en **Lugares**, con sus fotos, y a partir de ahí lo eliges
 en **«Crear»**, en la **escena de un proyecto** o como **lugar del proyecto entero**.
 
+Así se crea un lugar, se genera su foto y se declara, paso a paso:
+
+[![Cómo crear un lugar en Escenara y generar su foto con IA, paso a paso](../assets/video/youtube-z9Ty1cgKzEY.webp)](https://youtu.be/z9Ty1cgKzEY)
+
 Lo que Escenara promete con un lugar es esto: **el sitio del fotograma es el de tu foto maestra**. Se reconoce por su
 estructura, sus materiales, sus muebles fijos y su luz. No se calca: el modelo lo recompone desde otro ángulo, igual
 que harías tú moviendo el móvil.
@@ -110,6 +114,10 @@ En **«Crear»**, en el paso de describir la escena, bloque **El lugar**: eliges
 **dónde, dentro del lugar** («junto a la ventana», «detrás de la barra»). En un **proyecto**, puedes ponerle un
 **lugar al proyecto** (lo heredan todas sus escenas) y cada escena puede quedarse con él, elegir otro o ir sin lugar.
 Solo se ofrecen los lugares del mismo acabado que el proyecto; el servidor lo vuelve a comprobar.
+
+Así se hace un clip desde «Crear», con tu personaje en su lugar e interactuando con él, paso a paso:
+
+[![Cómo hacer un clip con tu personaje en un lugar tuyo en Escenara, paso a paso](../assets/video/youtube-M4HWebS5IL0.webp)](https://youtu.be/M4HWebS5IL0)
 
 Con un lugar:
 
