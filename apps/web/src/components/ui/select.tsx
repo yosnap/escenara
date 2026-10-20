@@ -54,7 +54,10 @@ export function Selector({
         >
           <S.Value>
             {(v: string | null) => {
-              const o = v ? porValor.get(v) : undefined;
+              // Controlado, la etiqueta sale del valor recibido: la copia interna de Base UI se sincroniza un render
+              // después y, si cambian a la vez el valor y las opciones, se quedaba en el marcador o en la anterior.
+              const actual = valor === undefined ? v : valor;
+              const o = actual ? porValor.get(actual) : undefined;
               return o ? (
                 <span className="flex items-center gap-2">
                   {o.icono}

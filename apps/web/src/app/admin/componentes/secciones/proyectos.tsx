@@ -13,6 +13,7 @@ import {
   type PlanVista,
 } from "@/lib/proyectos";
 import { Muestra, Seccion } from "../seccion";
+import { MuestraVideoCompleto } from "./muestra-video-completo";
 
 /**
  * Insignias de proyecto y la tabla de aprobación del plan (0.17.0). Los datos son inventados aquí a mano para
@@ -110,6 +111,9 @@ export function SeccionProyectos() {
           {ESTADOS_AFIRMACION.map((estado) => (
             <InsigniaAfirmacion key={estado} tipo="salud" estado={estado} />
           ))}
+        </Muestra>
+        <Muestra titulo="Vídeo completo desde una idea: duración, tipo y coste del guion">
+          <MuestraVideoCompleto />
         </Muestra>
         <Muestra titulo="Tabla de aprobación del plan">
           <div className="w-full">

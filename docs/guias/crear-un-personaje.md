@@ -2,6 +2,11 @@
 
 **Desde:** 0.13.0, al día con la 0.49.0 · **Para:** quien usa Escenara
 
+¿Prefieres verlo? El tutorial en vídeo crea un personaje de tu **mascota** (un animal, con sus fotos y su
+consentimiento) y otro inventado, paso a paso:
+
+[![Cómo crear un personaje en Escenara: inventado y tu mascota, paso a paso](../assets/video/youtube-UjaTyuU8xqc.webp)](https://youtu.be/UjaTyuU8xqc)
+
 Un **personaje** es una persona o un animal con sus fotos de referencia y su consentimiento de uso de imagen.
 Es lo que mantiene la misma cara entre vídeos: al generar, Escenara le manda al modelo **varias** fotos del
 personaje en lugar de una sola, y eso guía mucho mejor la identidad.
@@ -59,8 +64,11 @@ delante. Hay tres casos:
 | **Un animal mío** | Tu declaración | Listo, igual |
 | **Otra persona** | El **documento de consentimiento firmado** por ella, subido desde tu equipo en JPEG o PNG | **En revisión**: no genera hasta que quien administra la instalación acepte el documento |
 
-Además, en los tres casos hay que **declarar que la persona de las fotos es mayor de edad**. Sin esa
-declaración no se registra nada.
+Además, si el personaje es una **persona**, hay que **declarar que la persona de las fotos es mayor de
+edad**, elijas el caso que elijas. Sin esa declaración no se registra nada. A un **animal** no se le pide,
+porque no hay ninguna persona cuya edad declarar. Por eso las fotos de un animal no pueden tener personas: el
+servidor las comprueba al añadirlas, sin enviarlas a nadie, y rechaza la foto en la que aparece una persona.
+Si es una persona, créala como persona con su consentimiento.
 
 > **Lo que este control no garantiza.** Escenara no comprueba identidades ni edades: no existe ninguna
 > detección de edad fiable. Lo que hace es guardar tu declaración con tu cuenta y la fecha, exigir un documento

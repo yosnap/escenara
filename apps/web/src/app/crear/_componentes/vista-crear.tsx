@@ -4,17 +4,17 @@ import { useEffect, useRef, useState } from "react";
 import { DepositoPresupuesto } from "@/components/ui/deposito";
 import { Aviso } from "@/components/ui/feedback";
 import { Multipaso, PanelDePaso, useMultipaso } from "@/components/ui/multipaso";
-import { consultarContexto } from "@/components/ui/personajes/api-personajes";
 import type { ModeloElegible } from "@/lib/catalogo";
 import { type EvaluacionVista, evaluacionPendiente } from "@/lib/controles";
 import { DIRECCION_CON_ACENTO_VACIA, type DireccionElegidaConAcento, type OpcionesDeDireccion } from "@/lib/direccion";
+import { fotoDeProductoDelModelo } from "@/lib/foto-de-producto";
 import type { Deposito, EstadoCola, Estimacion, TrabajoVista } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
 import { resolverPaso } from "@/lib/multipaso";
-import { numeroDePaso, pasoPredeterminadoDeCrear, pasosDeCrear } from "@/lib/pasos-crear";
+import { fotogramaPorConfirmar, numeroDePaso, pasoPredeterminadoDeCrear, pasosDeCrear } from "@/lib/pasos-crear";
 import type { ContextoAplicado, PersonajeElegible } from "@/lib/personajes";
 import { CATEGORIAS_DE_LA_DIRECCION, type CatalogoParaCrear, type PresetVisible } from "@/lib/presets";
-import { PRODUCTO_ELEGIDO_VACIO, type ProductoElegido } from "@/lib/productos";
+import type { ProductoElegido } from "@/lib/productos";
 import { requisitosDeCrear, variableDeTexto } from "@/lib/requisitos-crear";
 import { eleccionSinLoDecidido, segundosParaTrend } from "@/lib/trends";
 import {
@@ -25,6 +25,7 @@ import {
   mensajeDeFallo,
 } from "./api-generacion";
 import { consultarCatalogoDePresets, duplicarPreset } from "./api-presets";
+import { mismosMedios, modeloQueSigue, useTurnoVigente } from "./cambio-de-sujeto";
 import { DialogoPresetPropio } from "./dialogo-preset-propio";
 import { cobrablesDe, segundosDelClip } from "./duracion-del-clip";
 import type { ConfirmacionCoste } from "./panel-generar";
@@ -45,9 +46,11 @@ import { PasoSujeto } from "./paso-sujeto";
 import { problemaDeReferencias, type ReferenciaEnPantalla, referenciasParaEnviar } from "./referencias-en-pantalla";
 import { type ClipVigente, comprobarClipVigente } from "./refresco-de-controles";
 import { contextosDeConfirmacion, useConfirmacionCoste } from "./use-confirmacion-coste";
+import { useContextoPersonaje } from "./use-contexto-personaje";
 import { useControles } from "./use-controles";
 import { useFormatoClip } from "./use-formato-clip";
 import { useLugarDeCrear } from "./use-lugar-crear";
+import { useProductoDeCrear } from "./use-producto-de-crear";
 import { useRequisitosSenalados } from "./use-requisitos-senalados";
 
 /**
@@ -119,8 +122,11 @@ export function VistaCrear({
   } | null>(null);
   const [comprobandoRefs, setComprobandoRefs] = useState(false);
   /** Contexto y fotos que el servidor va a enviar: lo pide la acción que lo cambia (personaje o modelo), no un efecto. */
-  const [contexto, setContexto] = useState<ContextoAplicado | null>(contextoInicial);
-  const [pidiendoContexto, setPidiendoContexto] = useState(false);
+  const {
+    contexto,
+    pidiendo: pidiendoContexto,
+    refrescar: refrescarContexto,
+  } = useContextoPersonaje(contextoInicial, (fallo) => setError(fallo));
   const [sinTerceros, setSinTerceros] = useState(false);
   // La revisión del clip es una confirmación distinta sobre un envío distinto, así que tiene su propia casilla.
   const [sinTercerosClip, setSinTercerosClip] = useState(false);
@@ -139,11 +145,21 @@ export function VistaCrear({
   const [origenElegido, setOrigenElegido] = useState<OrigenDelClip>("fotograma");
   /** Cómo se dirige el clip. En «Crear» no hay escena que lo guarde, así que viaja con la confirmación. */
   const [direccionClip, setDireccionClip] = useState<DireccionElegidaConAcento>(DIRECCION_CON_ACENTO_VACIA);
-  /** El producto del clip: va aparte de la dirección (claves de catálogo) porque es una fila tuya. Solo se guarda. */
-  const [productoClip, setProductoClip] = useState<ProductoElegido>(PRODUCTO_ELEGIDO_VACIO);
+  /**
+   * El producto: va aparte de la dirección (claves de catálogo) porque es una fila tuya. Es **uno solo** para el
+   * fotograma y el clip; su lógica (marca, coherencia entre los dos pasos) está en `use-producto-de-crear.ts`.
+   */
+  const productoCrear = useProductoDeCrear({ alCambiar: (p, cambia) => alCambiarProducto(p, cambia) });
+  const productoClip = productoCrear.producto;
+  const conMarca = productoCrear.conMarca;
   const [opcionesDireccion, setOpcionesDireccion] = useState<OpcionesDeDireccion | null>(null);
   const [estimacionFoto, setEstimacionFoto] = useState(estimacionFotograma);
   const [estimacionClip, setEstimacionClip] = useState(estimacionAnimacion);
+  // Solo cuenta la última acción que fija el modelo del fotograma: una respuesta lenta no pisa lo elegido después.
+  const turnoFoto = useTurnoVigente();
+  // Último modelo del fotograma **pedido** (aunque su estimación aún no haya vuelto): si se cambia de sujeto justo
+  // después de elegirlo, se pide con él y no con el que sigue pintado. Es lo mismo que `clipVigente` para el clip.
+  const modeloFotoPedido = useRef(estimacionFotograma.modelo);
   // Lo último elegido del clip: un refresco que sigue tras una espera evalúa lo vigente, no lo de hace un momento.
   const clipVigente = useRef<ClipVigente>({ modelo: estimacionAnimacion.modelo, producto: productoClip });
   useEffect(() => {
@@ -343,11 +359,14 @@ export function VistaCrear({
         : []),
     ],
     frenosClip: controlesClip.bloqueos,
+    sinSalidaFotograma: controlesFoto.sinSalida,
+    sinSalidaClip: controlesClip.sinSalida,
     casillasFotograma: confirmacionFoto,
     casillasClip: confirmacionClip,
-    conProducto: productoClip.productoId !== "",
+    conMarca,
     fotogramaSuperaUmbral: estimacionFoto.superaUmbral,
     clipSuperaUmbral: estimacionClip.superaUmbral,
+    fotogramaPorConfirmar: fotogramaPorConfirmar(fotograma?.estado ?? null),
     clipPorConfirmar,
   });
 
@@ -390,6 +409,8 @@ export function VistaCrear({
       modelo,
       ...(id ? { personajeId: id } : medio ? { medioId: medio } : {}),
       ...lugar.enLaConsulta(),
+      // El producto entra en el fotograma: sus avisos (fotos que no caben, marca) se dan antes de confirmar.
+      ...productoCrear.enLaConsulta(),
     });
     if (fallo) setError(fallo);
   };
@@ -405,47 +426,44 @@ export function VistaCrear({
     if (fallo) setError(fallo);
   };
 
-  /** Elegir o quitar el producto cambia lo evaluado: se vuelve a preguntar al servidor para que el aviso salga ya. */
-  const elegirProductoDelClip = async (producto: ProductoElegido) => {
-    setProductoClip(producto);
+  /**
+   * Elegir o quitar el producto (en la escena o en el clip) cambia lo evaluado: se vuelve a preguntar al servidor
+   * para que el aviso salga ya. Mientras el fotograma está por confirmar, también sus controles, porque el producto
+   * entra en él como referencia.
+   */
+  const alCambiarProducto = async (producto: ProductoElegido, cambiaEnElFotograma: boolean) => {
+    if (origenElegido === "fotograma" && fotogramaPorConfirmar(fotograma?.estado ?? null) && cambiaEnElFotograma) {
+      await refrescarControles(personajeId, referencia?.id, estimacionFoto.modelo);
+    }
     const medioId = fotograma?.medio?.id ?? imagenDelClip?.id;
     if (!medioId) return;
     const fallo = await comprobarClip(medioId, { producto });
     if (fallo) setError(fallo);
   };
 
-  /** Pide el contexto aplicado de un personaje con el modelo que esté elegido. Sin personaje, se limpia. */
-  const refrescarContexto = async (id: string | null, modelo: string) => {
-    if (!id) return setContexto(null);
-    setPidiendoContexto(true);
-    const respuesta = await consultarContexto(id, modelo);
-    setPidiendoContexto(false);
-    // Un fallo aquí no impide generar: lo que decide es el servidor al encolar. Se dice y no se muestra nada.
-    if (!respuesta.ok) {
-      setContexto(null);
-      setError(respuesta.error);
-      return;
-    }
-    setContexto(respuesta.datos);
-  };
-
   /**
    * Al cambiar el sujeto (personaje o imagen) cambia **cómo** se va a generar: con una imagen de partida o sin
-   * ella. Y eso cambia el modelo y su precio, así que la estimación se vuelve a pedir al servidor con el modo
-   * nuevo. Lo llama la acción que cambia el sujeto, nunca un efecto.
+   * ella, y eso puede cambiar el modelo y su precio, así que la estimación se vuelve a pedir al servidor con el
+   * modo nuevo. El modelo elegido se conserva si también vale en ese modo; si no, el servidor pone su
+   * predeterminado. Lo llama la acción que cambia el sujeto, nunca un efecto.
    */
   const refrescarPorSujeto = async (id: string | null, medios: Medio[]) => {
+    const vigente = turnoFoto();
     setSinSujetoConfirmado(false);
     const ahoraSinImagen = id === null && medios.length === 0;
-    const respuesta = await consultarEstimacion("fotograma", undefined, { sinImagen: ahoraSinImagen });
+    const modelo = modeloQueSigue(modeloFotoPedido.current, ahoraSinImagen ? modelosSinImagen : modelosFotograma);
+    const respuesta = await consultarEstimacion("fotograma", modelo, { sinImagen: ahoraSinImagen });
+    if (!vigente()) return;
     if (!respuesta.ok) {
       setError(respuesta.error);
       return;
     }
     setEstimacionFoto(respuesta.datos);
-    await refrescarContexto(id, respuesta.datos.modelo);
+    modeloFotoPedido.current = respuesta.datos.modelo;
+    await refrescarContexto(id, respuesta.datos.modelo, vigente);
+    if (!vigente()) return;
     await refrescarControles(id, medios[0]?.id, respuesta.datos.modelo);
-    await refrescarCatalogo("fotograma", respuesta.datos.modelo, undefined, ahoraSinImagen);
+    if (vigente()) await refrescarCatalogo("fotograma", respuesta.datos.modelo, undefined, ahoraSinImagen, vigente);
   };
 
   /**
@@ -472,8 +490,10 @@ export function VistaCrear({
             ? { medioId: referencia.id }
             : {}),
       /**
-       * El producto del clip viaja también con el fotograma: con un producto digital, el fotograma **es** el
-       * primer paso (el dispositivo con la pantalla apagada), y con uno físico es donde se ve en la mano.
+       * El producto elegido al describir la escena viaja con el fotograma y sus fotos entran como referencia de
+       * imagen, igual que las del personaje: con un producto digital, el fotograma **es** el primer paso (el
+       * dispositivo con la pantalla apagada), y con uno físico ya sale en la mano. Las fotos elegidas a mano se
+       * quedan para el clip, que es donde se ajustan al cupo de su modelo.
        */
       producto: { productoId: productoClip.productoId, accion: productoClip.accion },
       ...lugar.enElEnvio,
@@ -489,9 +509,12 @@ export function VistaCrear({
     });
     setEnviando(null);
     if (!respuesta.ok) {
-      setError(mensajeDeFallo(respuesta));
+      const mensaje = mensajeDeFallo(respuesta);
+      setError(mensaje);
+      productoCrear.alRechazar(mensaje);
       return;
     }
+    if (!pasoDigital) productoCrear.fotogramaPedido();
     setAnimacion(null);
     setFotograma(respuesta.datos);
     // Confirmado el gasto, lo siguiente es ver cómo va: se pasa al resultado sin tener que buscarlo.
@@ -520,7 +543,9 @@ export function VistaCrear({
     });
     setEnviando(null);
     if (!respuesta.ok) {
-      setError(mensajeDeFallo(respuesta));
+      const mensaje = mensajeDeFallo(respuesta);
+      setError(mensaje);
+      productoCrear.alRechazar(mensaje);
       if (trendElegido) void refrescarCatalogo("animacion", estimacionClip.modelo, segundosClip);
       return;
     }
@@ -592,20 +617,27 @@ export function VistaCrear({
             segundosClip,
           )
         : segundos;
+    const vigente = tipo === "fotograma" ? turnoFoto() : () => true;
+    if (tipo === "fotograma") modeloFotoPedido.current = modelo;
     const respuesta = await consultarEstimacion(tipo, modelo, {
       ...(tipo === "fotograma" ? { sinImagen } : {}),
       ...(pedidos === undefined ? {} : { segundos: pedidos }),
       ...(tipo === "animacion" && trendElegido ? { plantillaId: trendElegido.id } : {}),
     });
+    if (!vigente()) return;
     if (!respuesta.ok) {
+      // Sin estimación, el modelo que vale sigue siendo el que se ve: es el que se usará al cambiar de sujeto.
+      if (tipo === "fotograma") modeloFotoPedido.current = estimacionFoto.modelo;
       setError(respuesta.error);
       return;
     }
     if (tipo === "fotograma") {
       setEstimacionFoto(respuesta.datos);
       // El tope de fotos de referencia es del modelo: al cambiarlo, cambia lo que se va a enviar.
-      await refrescarContexto(personajeId, respuesta.datos.modelo);
+      await refrescarContexto(personajeId, respuesta.datos.modelo, vigente);
+      if (!vigente()) return;
       await refrescarControles(personajeId, referencia?.id, respuesta.datos.modelo);
+      if (!vigente()) return;
     } else {
       setEstimacionClip(respuesta.datos);
       // Con fotograma o con imagen propia, el aviso del clip se reevalúa con el modelo nuevo.
@@ -614,7 +646,7 @@ export function VistaCrear({
     }
     // Y los formatos y las duraciones que se pueden ofrecer también son del modelo: se vuelven a pedir en
     // lugar de deducirlos aquí, que es lo que dejaría ofrecer algo que el servidor va a rechazar.
-    await refrescarCatalogo(tipo, respuesta.datos.modelo, respuesta.datos.segundos ?? undefined);
+    await refrescarCatalogo(tipo, respuesta.datos.modelo, respuesta.datos.segundos ?? undefined, sinImagen, vigente);
   };
 
   /** Presets y plantillas para el modelo indicado. Lectura: no encola nada ni mueve dinero. */
@@ -624,12 +656,15 @@ export function VistaCrear({
     segundos?: number,
     /** Si hay o no imagen de partida **ahora mismo**: quien lo llama tras cambiarla trae el valor nuevo. */
     sinImagenAhora = sinImagen,
+    /** Si la acción que lo pidió sigue siendo la última: una respuesta atrasada no cambia el catálogo. */
+    vigente: () => boolean = () => true,
   ) => {
     const respuesta = await consultarCatalogoDePresets(tipo, modelo, {
       // Con el mismo modo que la estimación: la botonera no puede ofrecer algo que el servidor vaya a rechazar.
       ...(tipo === "fotograma" ? { sinImagen: sinImagenAhora } : {}),
       ...(segundos === undefined ? {} : { segundos }),
     });
+    if (!vigente()) return;
     if (!respuesta.ok) {
       setError(respuesta.error);
       return;
@@ -740,11 +775,14 @@ export function VistaCrear({
                 requisitos={senales.marcados(requisitos.fotogramaBase)}
                 deshabilitado={enviando !== null}
                 onPersonaje={(id) => {
+                  // Pulsar otra vez lo que ya está elegido no cambia el sujeto: ni se pide nada ni se toca el modelo.
+                  if (id === personajeId) return;
                   setPersonajeId(id);
                   setSinTerceros(false);
                   void refrescarPorSujeto(id, imagen);
                 }}
                 onImagen={(medios) => {
+                  if (mismosMedios(medios, imagen)) return;
                   setImagen(medios);
                   void refrescarPorSujeto(null, medios);
                 }}
@@ -767,6 +805,12 @@ export function VistaCrear({
                 accionesDePreset={accionesDePreset("fotograma")}
                 lugar={lugar.lugar}
                 onLugar={lugar.elegir}
+                producto={productoClip}
+                accionesProducto={opcionesDireccion?.accionProducto}
+                fotoDeProducto={fotoDeProductoDelModelo(modelosDelFotograma, estimacionFoto.modelo)}
+                // Con el fotograma ya pedido, su producto no se cambia aquí: el clip avisa si no coincide.
+                productoBloqueado={!fotogramaPorConfirmar(fotograma?.estado ?? null)}
+                onProducto={(producto, resumen) => void productoCrear.elegir(producto, resumen)}
                 onPrompt={setPrompt}
                 onDialogo={setDialogo}
                 onPlantilla={setPlantillaFoto}
@@ -788,8 +832,8 @@ export function VistaCrear({
                 pidiendoContexto={pidiendoContexto}
                 controles={controlesFoto}
                 estimacion={estimacionFoto}
-                conProducto={productoClip.productoId !== ""}
-                firma={`fotograma|${personaje?.id ?? ""}|${contexto?.personajeId === personaje?.id ? contexto?.versionId : ""}|${referencia?.id ?? ""}|${descripcion}|${estimacionFoto.modelo}|${estimacionFoto.sello}|${firmaDePlantilla(previaFoto, plantillaFoto)}|${JSON.stringify(referenciasParaEnviar(referenciasTemporales))}`}
+                conMarca={conMarca}
+                firma={`fotograma|${personaje?.id ?? ""}|${contexto?.personajeId === personaje?.id ? contexto?.versionId : ""}|${referencia?.id ?? ""}|${descripcion}|${productoClip.productoId}|${productoClip.accion}|${estimacionFoto.modelo}|${estimacionFoto.sello}|${firmaDePlantilla(previaFoto, plantillaFoto)}|${JSON.stringify(referenciasParaEnviar(referenciasTemporales))}`}
                 bloqueos={requisitos.fotogramaBase}
                 requisitos={requisitos.fotograma}
                 confirmacion={confirmacionFoto}
@@ -835,7 +879,9 @@ export function VistaCrear({
             opcionesDireccion={opcionesDireccion}
             direccion={direccionClip}
             producto={productoClip}
-            onProducto={elegirProductoDelClip}
+            onProducto={(producto, resumen) => void productoCrear.elegir(producto, resumen)}
+            conMarca={conMarca}
+            avisoProducto={fotograma?.medio ? productoCrear.avisoDelClip : null}
             catalogo={catalogoClip}
             plantilla={plantillaClip}
             previa={previaClip}

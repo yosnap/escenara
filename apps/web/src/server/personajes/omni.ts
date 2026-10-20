@@ -1,5 +1,5 @@
-import { AVISO_REGISTRO_OMNI, type RegistroOmniVista } from "@/lib/omni";
-import type { FilaPersonaje, FilaRegistroOmni, FilaVersionPersonaje } from "../db/esquema";
+import { AVISO_REGISTRO_OMNI, audioIdEfectivo, type RegistroOmniVista } from "@/lib/omni";
+import type { FilaPersonaje, FilaProyecto, FilaRegistroOmni, FilaVersionPersonaje } from "../db/esquema";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import type { Actor } from "../media/servicio";
 import { ErrorOmni } from "../omni/errores";
@@ -49,23 +49,27 @@ export function vistaDeRegistro(
 }
 
 /**
- * Registra al personaje con la voz Omni del proyecto y devuelve el registro guardado. Si ya hay uno vigente para
- * esa versión y esa voz, **no se vuelve a llamar al proveedor**: el registro que existe es el bueno y repetirlo
- * solo crearía una segunda identidad con la misma cara.
+ * Registra al personaje con **su voz** —la propia si la tiene registrada y, si no, la del proyecto— y devuelve el
+ * registro guardado. Si ya hay uno vigente para esa versión y esa voz, **no se vuelve a llamar al proveedor**: el
+ * registro que existe es el bueno y repetirlo solo crearía una segunda identidad con la misma cara.
  */
 export async function registrarPersonajeOmni(
   actor: Actor,
   personajeId: unknown,
-  audioId: string,
+  /** Voz registrada del proyecto: es con la que se registra si el personaje no tiene la suya. */
+  audioIdDelProyecto: string,
   h: Herramientas = HERRAMIENTAS,
+  /** El proyecto con cuya voz se registra: si fija su modelo de escenas habladas, se registra con ese. */
+  proyecto?: Pick<FilaProyecto, "videoModel" | "voiceMode">,
 ): Promise<FilaRegistroOmni> {
+  const personaje = await personajePropio(actor, personajeId);
+  const audioId = audioIdEfectivo(personaje.omniAudioId, audioIdDelProyecto);
   if (audioId === "") {
     throw new ErrorOmni(
       409,
-      "Este proyecto todavía no tiene voz Omni registrada, así que no se puede registrar al personaje con ella. Elige y registra la voz del proyecto antes.",
+      `«${personaje.name}» no tiene voz propia y el proyecto todavía no tiene su voz registrada, así que no hay con qué voz registrarlo. Registra su voz en su ficha o la del proyecto en «Voz y subtítulos»: no cuesta créditos. No se ha enviado nada.`,
     );
   }
-  const personaje = await personajePropio(actor, personajeId);
   const motivos = await motivosParaNoGenerar(personaje.id);
   if (motivos.length > 0) {
     throw new ErrorOmni(
@@ -85,6 +89,7 @@ export async function registrarPersonajeOmni(
     actor.id,
     { nombre: personaje.name, descripcion: descripcionDe(personaje, version), audioId, imagenes },
     h,
+    proyecto,
   );
   return guardarRegistro({
     actor,
@@ -110,14 +115,16 @@ export async function registrarPersonajeOmni(
 export async function volverARegistrar(
   actor: Actor,
   personajeId: string,
-  audioId: string,
+  /** Voz registrada del proyecto, para el personaje que no tiene la suya. */
+  audioIdDelProyecto: string,
   motivo: string,
   h: Herramientas = HERRAMIENTAS,
+  proyecto?: Pick<FilaProyecto, "videoModel" | "voiceMode">,
 ): Promise<FilaRegistroOmni> {
   // La propiedad se comprueba **antes** de tocar nada: sin esto, cualquiera podía marcar como reemplazado el
   // registro del personaje de otra cuenta y dejarle la producción bloqueada.
   await personajePropio(actor, personajeId);
   const anterior = await ultimoRegistro(personajeId);
   if (anterior && anterior.supersededAt === null) await marcarReemplazado(anterior.id, motivo);
-  return registrarPersonajeOmni(actor, personajeId, audioId, h);
+  return registrarPersonajeOmni(actor, personajeId, audioIdDelProyecto, h, proyecto);
 }

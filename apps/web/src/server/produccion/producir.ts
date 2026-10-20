@@ -14,6 +14,7 @@ import { planoDelLugarSolo } from "../lugares/escena";
 import type { Actor } from "../media/servicio";
 import { producirEscenaHablada } from "../omni/escena";
 import { listarPlantillas, plantillaVigenteDe } from "../prompts/consulta";
+import { modeloDeVideoDe } from "../proyectos/modelo-de-video";
 import { invalidarRevisionesDeEscena } from "../revision/resultados";
 import { dialogoDelClip } from "../voz/modo";
 import { animacionDelFotograma } from "./animacion-del-fotograma";
@@ -138,7 +139,7 @@ async function encolarPrimerTrabajo(
   if (escena.castFormat !== "solo" && proyecto.voiceMode !== "omni") {
     throw new ErrorProyecto(
       409,
-      "Esta escena tiene dos personajes y necesita el modo Omni. Cambia el modo de voz del proyecto antes de producirla.",
+      "Esta escena tiene dos personajes y necesita el modo «Voz e identidad registradas». Cambia el modo de voz del proyecto antes de producirla.",
     );
   }
   if (proyecto.voiceMode === "omni") {
@@ -169,8 +170,13 @@ async function encolarPrimerTrabajo(
   await encolarFotograma(actor, escena, proyecto, confirmacion, clave, h, reintento);
 }
 
-/** Encola el fotograma de una escena. Toda la decisión de dinero la toma `crearFotograma`. */
-async function encolarFotograma(
+/**
+ * Encola el fotograma de una escena. Toda la decisión de dinero la toma `crearFotograma`.
+ *
+ * El **plano base** de un vídeo completo pasa también por aquí: el proyecto llega con el personaje del plano como
+ * protagonista y `ropa` trae su vestuario fijo de la biblia, en inglés, para el hueco de vestuario de las 6C.
+ */
+export async function encolarFotograma(
   actor: Actor,
   escena: FilaEscena,
   proyecto: FilaProyecto,
@@ -178,12 +184,13 @@ async function encolarFotograma(
   clave: string,
   h: Herramientas,
   reintento = false,
-): Promise<void> {
+  ropa = "",
+): Promise<string> {
   const plantilla = await plantillaVigenteDe(actor.id, "image_edit");
   const personaje = await personajeDirigidoDe(proyecto);
   // El plano del lugar solo parte de la maestra y no lleva a nadie: ni protagonista ni sus fotos.
   const solo = await planoDelLugarSolo(actor.id, escena, proyecto);
-  await crearFotograma(
+  const { trabajo } = await crearFotograma(
     actor,
     {
       prompt: solo?.prompt ?? textoVisualDe(escena),
@@ -195,7 +202,7 @@ async function encolarFotograma(
        * el plano, el ángulo, la óptica, la luz y el sitio, y el bloque de anclajes tiene que cerrar el prompt.
        * `vestuario` sale de la ficha del personaje, que ya entra por su propio camino como contexto.
        */
-      seisC: await seisCDeLaEscena(actor.id, escena, proyecto, personaje, ""),
+      seisC: await seisCDeLaEscena(actor.id, escena, proyecto, personaje, ropa),
       ...(escena.changeOnly === "ninguno"
         ? {}
         : {
@@ -221,6 +228,7 @@ async function encolarFotograma(
     },
     h,
   );
+  return trabajo.id;
 }
 
 /**
@@ -291,11 +299,22 @@ export async function encolarAnimacion(
       avisoUmbralAceptado: confirmacion.avisoUmbralAceptado,
       avisosConfirmados: confirmacion.avisosConfirmados,
       claveIdempotencia: clave,
-      ...(confirmacion.modelo ? { modelo: confirmacion.modelo } : {}),
+      // El modelo de una comparativa A/B manda; si no, el fijado en el proyecto (el mismo lector con el que se
+      // estimó y se aprobó) y, sin ninguno, el mapa de la cuenta.
+      ...(await modeloDelClip(confirmacion, proyecto)),
       ...(await plantillaYFormatoDelEnvio(actor.id, plantilla, proyecto)),
     },
     h,
   );
+}
+
+/** Modelo con el que se pide el clip de una escena normal; vacío = el mapa de la cuenta, con sus reservas. */
+async function modeloDelClip(
+  confirmacion: ConfirmacionProduccion,
+  proyecto: FilaProyecto,
+): Promise<{ modelo?: string }> {
+  const modelo = confirmacion.modelo ?? (proyecto.voiceMode === "omni" ? null : await modeloDeVideoDe(proyecto));
+  return modelo ? { modelo } : {};
 }
 
 /**
@@ -505,7 +524,7 @@ export async function aprobarFotograma(
   if (proyecto.voiceMode === "omni") {
     throw new ErrorProyecto(
       409,
-      "En modo Omni no hay fotograma que aprobar: cada escena se genera entera con la cara y la voz registradas del protagonista. Produce la escena directamente.",
+      "En modo «Voz e identidad registradas» no hay fotograma que aprobar: cada escena se genera entera con la cara y la voz registradas del protagonista. Produce la escena directamente.",
     );
   }
   await exigirDuracionProducible(actor, proyecto);
@@ -587,7 +606,7 @@ export async function otroClipDeEscena(
   if (proyecto.voiceMode === "omni") {
     throw new ErrorProyecto(
       409,
-      "En modo Omni la escena se genera entera de una vez, así que no hay fotograma que volver a animar: regenera la escena para probar otra dirección.",
+      "En modo «Voz e identidad registradas» la escena se genera entera de una vez, así que no hay fotograma que volver a animar: regenera la escena para probar otra dirección.",
     );
   }
   await exigirDuracionProducible(actor, proyecto);

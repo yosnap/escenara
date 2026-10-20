@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { bloqueosDeControles, type EvaluacionVista, firmaDeAvisos, marcarNoFiable } from "@/lib/controles";
+import {
+  bloqueosDeControles,
+  type EvaluacionVista,
+  firmaDeAvisos,
+  marcarNoFiable,
+  textosSinSalida,
+} from "@/lib/controles";
 import { consultarControles } from "./api-generacion";
 import { crearRefresco, type SujetoDeControles } from "./refresco-de-controles";
 
@@ -27,6 +33,8 @@ export interface Controles {
   cargando: boolean;
   /** Motivos por los que aún no se puede generar, con su acción. Vacío = el servidor dejaría pasar. */
   bloqueos: string[];
+  /** Los de `bloqueos` que no se salvan confirmando: causas reales, en rojo desde el principio. */
+  sinSalida: string[];
   /** Firma de lo confirmado: entra en la firma de la confirmación de coste. */
   firma: string;
   /** Vuelve a evaluar en el servidor. Devuelve el error si no se ha podido. */
@@ -76,6 +84,7 @@ export function useControles(inicial: EvaluacionVista): Controles {
     confirmados,
     cargando,
     bloqueos: bloqueosDeControles(evaluacion, confirmados),
+    sinSalida: textosSinSalida(evaluacion),
     firma: firmaDeAvisos(confirmados),
     refrescar,
     confirmar,

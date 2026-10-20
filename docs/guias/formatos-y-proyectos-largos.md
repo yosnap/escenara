@@ -33,7 +33,7 @@ eliges **se envía de verdad** al proveedor y queda apuntada en el trabajo: la v
 ### Lo que tu modelo no admite, no se ofrece
 
 Cada modelo del catálogo tiene apuntadas las proporciones que acepta. Un formato que el modelo elegido no admite
-sale **deshabilitado con el motivo** («Nano Banana 2 Lite solo admite 9:16»), y si alguien lo pidiera por la API, el
+sale **deshabilitado con el motivo** («El modelo elegido solo admite 9:16»), y si alguien lo pidiera por la API, el
 servidor lo rechaza **antes de reservar nada**: no se encola, no se cobra.
 
 En una instalación recién puesta, casi todos los modelos del catálogo declaran solo **9:16** (entre ellos el de

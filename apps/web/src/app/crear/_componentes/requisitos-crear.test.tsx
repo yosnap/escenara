@@ -63,6 +63,7 @@ const CONTROLES: Controles = {
   confirmados: [],
   cargando: false,
   bloqueos: [],
+  sinSalida: [],
   firma: "",
   refrescar: async () => null,
   confirmar: () => {},
@@ -100,6 +101,7 @@ function pintarClip(descripcion: string, origen: "imagen" | "fotograma", senalad
       opcionesDireccion={null}
       direccion={DIRECCION_CON_ACENTO_VACIA}
       producto={PRODUCTO_ELEGIDO_VACIO}
+      conMarca={false}
       onProducto={() => {}}
       catalogo={CATALOGO}
       plantilla={ESTADO}

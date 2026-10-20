@@ -5,7 +5,8 @@ export const dynamic = "force-dynamic";
 
 /**
  * Pide al asistente un concepto y un guion por escenas:
- * `{ claveIdempotencia, creditosConfirmados, selloEstimacion, escenas? }`.
+ * `{ claveIdempotencia, creditosConfirmados, selloEstimacion, escenas? }`, o un **vídeo completo** con
+ * `{ …, duracion, tipo?, segundoPersonajeId? }`: diálogo continuo, un clip por escena.
  *
  * **Es el único POST de esta versión que gasta dinero.** Exige `Origin` del mismo sitio, la estimación
  * confirmada con su sello y una clave de idempotencia: repetir la confirmación devuelve el proyecto tal como
@@ -20,6 +21,9 @@ export const POST = manejador(async (peticion: Request, contexto: ContextoId, ac
       creditosConfirmados: cuerpo.creditosConfirmados,
       selloEstimacion: cuerpo.selloEstimacion,
       escenas: cuerpo.escenas,
+      duracion: cuerpo.duracion,
+      tipo: cuerpo.tipo,
+      segundoPersonajeId: cuerpo.segundoPersonajeId,
     }),
   );
 });

@@ -121,6 +121,7 @@ describe.skipIf(!hayBaseDeDatos)("fotos generadas de un lugar", () => {
         origenFotos: "propias",
         personasVisibles: "retiradas",
         sinMenores: true,
+        puedoUsarImagenes: true,
       }),
     ).rejects.toThrow("la maestra es la foto original");
 
@@ -155,17 +156,47 @@ describe.skipIf(!hayBaseDeDatos)("fotos generadas de un lugar", () => {
       origenFotos: "propias",
       personasVisibles: "retiradas",
       sinMenores: true,
+      puedoUsarImagenes: true,
     });
     expect(declarado.declarado).toBe(true);
   });
 
-  test("otra persona no puede encargar nada sobre un lugar ajeno, y un lugar real no pide candidatos", async () => {
+  test("otra persona no puede encargar nada sobre un lugar ajeno", async () => {
     const { lugar } = await lugarDeclaradoDePrueba(actor, "Bar");
     await guardarCredencial(beto.id, "kie", "sk-beto-clave-de-kie-inventada-edicion", buscar);
     const ajeno = await encargar(beto, lugar.id, { tipo: "retirar-personas", referenciaId: lugar.referencias[0]?.id });
     expect(ajeno.status).toBe(404);
-    const candidato = await encargar(ana, lugar.id, { tipo: "candidato" });
-    expect(candidato.status).toBe(409);
+    const ajenoCandidato = await encargar(beto, lugar.id, { tipo: "candidato" });
+    expect(ajenoCandidato.status).toBe(404);
+    expect(await db().select().from(generationJobs).where(eq(generationJobs.userId, ana.id))).toHaveLength(0);
+  });
+
+  test("un lugar real también genera su imagen dentro de «Lugares»: foto realista, sin partida, y entra como generada sin quitar la maestra", async () => {
+    const { lugar } = await lugarDeclaradoDePrueba(actor, "Terraza inventada");
+    const respuesta = await encargar(ana, lugar.id, { tipo: "candidato" });
+    expect(respuesta.status).toBe(201);
+    const [trabajo] = await db().select().from(generationJobs).where(eq(generationJobs.userId, ana.id));
+    expect(trabajo?.kind).toBe("fotograma");
+    expect(trabajo?.sourceMediaId).toBeNull();
+    expect((trabajo?.input as { sinReferencia?: unknown } | undefined)?.sinReferencia).toBe(true);
+    expect(trabajo?.prompt).toContain("Bar de barrio con azulejos");
+    // Se reservó lo que cuesta: el mismo apunte que cualquier fotograma.
+    expect(await db().select().from(usageLedger).where(eq(usageLedger.userId, ana.id))).not.toHaveLength(0);
+    if (!trabajo) throw new Error("Falta el trabajo.");
+    const generada = await subirFotoDePrueba(actor, "terraza-generada.png");
+    await adjuntarAlLugar(trabajo, generada);
+    const despues = await obtenerLugar(actor, lugar.id);
+    const nueva = despues.referencias.find((r) => r.medio.id === generada);
+    expect(nueva?.generada).toBe(true);
+    expect(nueva?.papel).toBe("general");
+    expect(despues.referencias.filter((r) => r.papel === "maestra")).toHaveLength(1);
+  });
+
+  test("sin descripción guardada no se cobra un candidato de un lugar real", async () => {
+    const real = await crearLugar(actor, { nombre: `Sin describir ${crypto.randomUUID().slice(0, 6)}` });
+    const respuesta = await encargar(ana, real.id, { tipo: "candidato" });
+    expect(respuesta.status).toBe(409);
+    expect(((await respuesta.json()) as { error: string }).error).toContain("No se ha cobrado nada");
     expect(await db().select().from(generationJobs).where(eq(generationJobs.userId, ana.id))).toHaveLength(0);
   });
 
@@ -181,7 +212,7 @@ describe.skipIf(!hayBaseDeDatos)("fotos generadas de un lugar", () => {
     expect(retirar.status).toBe(409);
   });
 
-  test("un candidato de un lugar animado sale sin foto de partida, con su estilo, y entra en el lugar sin ser maestro", async () => {
+  test("el primer candidato de un lugar animado sale sin foto de partida, con su estilo, y entra como maestra; el siguiente no", async () => {
     const animado = await crearLugar(actor, {
       nombre: `Plaza de Nora ${crypto.randomUUID().slice(0, 6)}`,
       descripcion: "Plaza pequeña con un quiosco, bancos verdes y una fuente.",
@@ -197,7 +228,13 @@ describe.skipIf(!hayBaseDeDatos)("fotos generadas de un lugar", () => {
     const candidato = await subirFotoDePrueba(actor, "candidato.png");
     await adjuntarAlLugar(trabajo, candidato);
     const despues = await obtenerLugar(actor, animado.id);
-    expect(despues.referencias.find((r) => r.medio.id === candidato)?.papel).toBe("general");
-    expect(despues.tieneMaestra).toBe(false);
+    expect(despues.referencias.find((r) => r.medio.id === candidato)?.papel).toBe("maestra");
+    expect(despues.tieneMaestra).toBe(true);
+    // Con la maestra ya puesta, otro candidato no la sustituye: espera a que el usuario lo apruebe.
+    const segundo = await subirFotoDePrueba(actor, "candidato-2.png");
+    await adjuntarAlLugar(trabajo, segundo);
+    const final = await obtenerLugar(actor, animado.id);
+    expect(final.referencias.find((r) => r.medio.id === segundo)?.papel).toBe("general");
+    expect(final.referencias.find((r) => r.medio.id === candidato)?.papel).toBe("maestra");
   });
 });

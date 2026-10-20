@@ -15,7 +15,7 @@ export interface ConfirmacionCoste {
   /** Sello del precio que se mostró: si el precio ha cambiado, el servidor lo rechaza. */
   selloEstimacion: string;
   derechos: boolean;
-  /** Casilla «tengo derecho a usar esta marca»: solo se pide cuando el envío lleva producto. */
+  /** Casilla «tengo derecho a usar esta marca»: solo se pide cuando el envío lleva un producto con marca. */
   derechoMarca: boolean;
   avisoUmbralAceptado: boolean;
   /** Clave de la confirmación: la misma confirmación repetida no genera un segundo trabajo. */
@@ -41,7 +41,7 @@ export function PanelGenerar({
   firma,
   bloqueos,
   avisosConfirmados,
-  conProducto = false,
+  conMarca = false,
   envio,
   paso,
   confirmacion,
@@ -59,8 +59,11 @@ export function PanelGenerar({
   bloqueos: Requisito[];
   /** Avisos de los controles previos que el usuario ha confirmado (0.18.0). */
   avisosConfirmados: readonly string[];
-  /** `true` cuando el envío lleva producto: entonces, y solo entonces, se pide la casilla de la marca. */
-  conProducto?: boolean;
+  /**
+   * `true` cuando el envío lleva un producto **con marca declarada**: entonces, y solo entonces, se pide la casilla
+   * de la marca. Un producto declarado sin marca no tiene nada que autorizar.
+   */
+  conMarca?: boolean;
   /** Envío que se confirma: entra en el identificador de sus casillas, que no pueden repetirse entre envíos. */
   envio: string;
   /** Paso donde está este panel. */
@@ -91,14 +94,30 @@ export function PanelGenerar({
   const pendientes = requisitosDeConfirmacion({
     envio,
     paso,
-    conProducto,
+    conMarca,
     superaUmbral: estimacion.superaUmbral,
     derechos,
     derechoMarca,
     avisoAceptado,
   });
   const impedimentos = [...bloqueos, ...pendientes];
-  const marcadas = marcar || intentado ? pendientes : [];
+  const marcando = marcar || intentado;
+  const marcadas = marcando ? pendientes : [];
+  // Antes de actuar, lo que falta es un paso pendiente (neutro); el rojo de bloqueo llega al intentar seguir sin ello.
+  const tipoAviso = marcando ? "bloqueo" : "pendiente";
+
+  // Una causa real (un control sin salida, el saldo) es bloqueo desde el principio; lo demás, pendiente hasta intentarlo.
+  const reales = impedimentos.filter((r) => r.impide);
+  const porHacer = impedimentos.filter((r) => !r.impide);
+  const aviso = (tipo: "bloqueo" | "pendiente", elementos: Requisito[]) =>
+    avisoEnBloque ? (
+      // El bloque de arriba ya lo dice y lleva a cada campo: aquí solo se ve, sin botones ni segundo anuncio.
+      <div aria-hidden>
+        <Alerta tipo={tipo} compacta anuncio="ninguno" elementos={elementos.map((r) => ({ texto: r.texto }))} />
+      </div>
+    ) : (
+      <Alerta tipo={tipo} compacta anuncio="ninguno" protege elementos={elementos} onIr={onIntento} />
+    );
 
   const generar = () => {
     // Misma confirmación, misma clave: un doble clic o un reintento no pagan dos veces. Los avisos confirmados
@@ -119,18 +138,11 @@ export function PanelGenerar({
     <PanelCoste
       estimacion={estimacion}
       aviso={
-        impedimentos.length === 0 ? undefined : avisoEnBloque ? (
-          // El bloque de arriba ya lo dice y lleva a cada campo: aquí solo se ve, sin botones ni segundo anuncio.
-          <div aria-hidden>
-            <Alerta
-              tipo="bloqueo"
-              compacta
-              anuncio="ninguno"
-              elementos={impedimentos.map((r) => ({ texto: r.texto }))}
-            />
-          </div>
-        ) : (
-          <Alerta tipo="bloqueo" compacta anuncio="ninguno" protege elementos={impedimentos} onIr={onIntento} />
+        impedimentos.length === 0 ? undefined : (
+          <>
+            {reales.length > 0 && aviso("bloqueo", reales)}
+            {porHacer.length > 0 && aviso(tipoAviso, porHacer)}
+          </>
         )
       }
     >
@@ -142,10 +154,10 @@ export function PanelGenerar({
         requisito={idRequisito(envio, "derechos")}
         error={errorDeRequisito(marcadas, idRequisito(envio, "derechos"))}
       />
-      {conProducto && (
+      {conMarca && (
         <Casilla
           etiqueta="Tengo derecho a usar esta marca"
-          descripcion="El producto es tuyo o tienes autorización de la marca para usarlo en este vídeo. Solo aparece cuando el envío lleva producto, y sin ella no se genera. Tu declaración queda registrada con su fecha."
+          descripcion="El producto es tuyo o tienes autorización de la marca para usarlo en este vídeo. Solo aparece cuando el producto tiene marca, y sin ella no se genera. Tu declaración queda registrada con su fecha."
           marcada={derechoMarca}
           onCambio={setDerechoMarca}
           requisito={idRequisito(envio, "marca")}

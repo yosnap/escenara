@@ -11,6 +11,7 @@ import {
   limpiarFicha,
   mejoresReferencias,
   type ReferenciaElegible,
+  recortarEnFrontera,
 } from "./ficha-personaje";
 
 /**
@@ -135,7 +136,89 @@ describe("composición del contexto", () => {
       personalidad: "p".repeat(CAMPO_FICHA_MAXIMO),
       voz: "z".repeat(CAMPO_FICHA_MAXIMO),
     });
-    expect(componerContexto(lleno, "persona").length).toBe(CONTEXTO_MAXIMO);
+    const bloque = componerContexto(lleno, "persona");
+    expect(bloque.length).toBeLessThanOrEqual(CONTEXTO_MAXIMO);
+    // Aunque no quepa todo, los rasgos, el vestuario y el estilo siguen dentro.
+    for (const rotulo of ["Rasgos físicos:", "Vestuario:", "Estilo visual:"]) expect(bloque).toContain(rotulo);
+  });
+
+  test("una ficha larga real no se corta a mitad de palabra ni pierde vestuario ni estilo", () => {
+    // Del tamaño de la que llegó cortada en «…curly hair and»: descripción y rasgos largos delante.
+    const descripcion =
+      "Lucía is a 28-year-old lifestyle creator from Valencia who films short everyday videos with her chihuahua, always cheerful, close to the camera and natural, with a warm Mediterranean look that her followers recognise at first sight in every clip.";
+    const larga = ficha({
+      rasgos:
+        "Young woman, 28 years old, slim build, 1.65 m tall, olive skin with light freckles across the nose and cheeks, big hazel eyes, thick dark eyebrows, a small mole above the left lip, full lips, long dark brown curly hair and a centre parting, natural makeup with a soft pink blush and a thin gold nose ring.",
+      estilo:
+        "Bright, natural daylight photography with warm tones, shot on a smartphone at eye level, soft shadows, slightly saturated Mediterranean colours, candid and spontaneous framing as in lifestyle social media content, never studio lighting.",
+      vestuario:
+        "Oversized cream knitted jumper, high-waisted light blue mom jeans, white leather trainers, small gold hoop earrings, a thin gold chain necklace and a tan crossbody bag; in summer a white linen dress with thin straps and brown sandals.",
+      personalidad:
+        "Cheerful, spontaneous and affectionate, laughs easily, talks to the camera as if to a friend, expressive hands and eyebrows, relaxed posture, always playful with her dog and never posing stiffly.",
+      voz: "Warm, bright voice with a soft Valencian accent, fast rhythm when excited, laughs between sentences.",
+    });
+    const bloque = componerContexto(larga, "persona", descripcion);
+    expect(bloque.length).toBeLessThanOrEqual(CONTEXTO_MAXIMO);
+    for (const rotulo of ["Rasgos físicos:", "Vestuario:", "Estilo visual:"]) expect(bloque).toContain(rotulo);
+    // Los rasgos se llevan la parte mayor: llega el pelo, que es justo donde se cortaba antes.
+    expect(bloque).toContain("long dark brown curly hair");
+    expect(bloque).not.toMatch(/ and…?$/m);
+    // Ninguna línea termina en una palabra partida: o va entera o acaba en «…» tras una palabra completa.
+    const lineas = bloque.split("\n").slice(1);
+    for (const linea of lineas) {
+      const valor = linea.slice(linea.indexOf(": ") + 2);
+      const original = [descripcion, ...Object.values(larga)]
+        .map(limpiarCampoFicha)
+        .find((v) => v.startsWith(valor.replace(/…$/, "")));
+      expect(original).toBeDefined();
+      if (valor.endsWith("…")) {
+        const sinPuntos = valor.slice(0, -1);
+        expect(/[\s,.;]/.test(original?.charAt(sinPuntos.length) ?? " ")).toBe(true);
+      } else expect(valor).toBe(original ?? "");
+    }
+    // La voz no se ve en la imagen: es lo primero que sale cuando no cabe todo.
+    expect(bloque).not.toContain("Voz:");
+  });
+
+  test("un campo corto que cabe entero no se descarta aunque se acorten otros", () => {
+    const palabras = (n: number) =>
+      "palabra "
+        .repeat(Math.ceil(n / 8))
+        .slice(0, n)
+        .trim();
+    const bloque = componerContexto(
+      ficha({
+        rasgos: palabras(250),
+        vestuario: palabras(150),
+        estilo: palabras(100),
+        personalidad: "Serena y segura",
+      }),
+      "persona",
+      palabras(300),
+    );
+    expect(bloque.length).toBeLessThanOrEqual(CONTEXTO_MAXIMO);
+    expect(bloque).toContain("Actitud: Serena y segura");
+  });
+
+  test("un texto sin espacios no parte un emoji al recortarse", () => {
+    const bloque = componerContexto(
+      ficha({ rasgos: "😀".repeat(150), vestuario: "👗".repeat(150), estilo: "🎨".repeat(150) }),
+      "persona",
+    );
+    expect(bloque.length).toBeLessThanOrEqual(CONTEXTO_MAXIMO);
+    // Ningún sustituto suelto: cada emoji va entero.
+    expect(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(bloque)).toBe(false);
+  });
+
+  test("si cabe todo, la ficha va entera y en su orden", () => {
+    const corta = ficha({ rasgos: "pelo castaño", estilo: "luz natural", vestuario: "camisa azul", voz: "cálida" });
+    expect(componerContexto(corta, "persona", "Periodista").split("\n").slice(1)).toEqual([
+      "Descripción: Periodista",
+      "Rasgos físicos: pelo castaño",
+      "Estilo visual: luz natural",
+      "Vestuario: camisa azul",
+      "Voz: cálida",
+    ]);
   });
 
   test("el prompt final es la escena y debajo el contexto, en ese orden", () => {
@@ -150,6 +233,16 @@ describe("diferencias entre versiones", () => {
   test("dos instantáneas iguales no tienen diferencias: guardar lo mismo no versiona", () => {
     const uno = version({ ficha: ficha({ rasgos: "pelo castaño" }), referencias: ["a", "b"] });
     expect(diferenciasDeFicha(uno, { ...uno })).toEqual([]);
+  });
+
+  test("la misma guía de estilo leída de un jsonb, con las claves reordenadas, no es una diferencia", () => {
+    const guia = { preset: "anime", prompt: "Anime.", paleta: "", trazo: "", detalle: "", referencias: [] };
+    const reordenada = JSON.parse(
+      '{"trazo":"","paleta":"","preset":"anime","prompt":"Anime.","detalle":"","referencias":[]}',
+    ) as typeof guia;
+    const antes = version({ renderStyle: "animado", styleGuide: reordenada });
+    const despues = version({ renderStyle: "animado", styleGuide: guia });
+    expect(diferenciasDeFicha(antes, despues)).toEqual([]);
   });
 
   test("un cambio de apariencia se nombra con su etiqueta y con los dos valores", () => {
@@ -219,5 +312,32 @@ describe("mejores referencias por cobertura", () => {
     const referencias = [referencia("perfil", "perfil"), referencia("izq", "perfil_izquierdo")];
     // `perfil` es vista mínima de animal; `perfil_izquierdo` no, así que entra después.
     expect(mejoresReferencias("animal", referencias, 1)).toEqual(["perfil"]);
+  });
+});
+
+describe("recorte en frontera", () => {
+  test("no corta palabras: acaba en la última palabra entera y lo marca con «…»", () => {
+    expect(recortarEnFrontera("pelo largo y rizado", 12)).toBe("pelo largo…");
+    expect(recortarEnFrontera("pelo largo y rizado", 100)).toBe("pelo largo y rizado");
+  });
+  test("no deja colgando una conjunción ni una preposición", () => {
+    expect(recortarEnFrontera("long dark curly hair and a centre parting", 26)).toBe("long dark curly hair…");
+  });
+  test("prefiere cortar en una frontera de frase cercana", () => {
+    expect(recortarEnFrontera("Ojos verdes, pelo corto, piel morena y pecas", 32)).toBe("Ojos verdes, pelo corto…");
+  });
+  test("sin espacios corta por caracteres completos, nunca a mitad de un emoji", () => {
+    for (let maximo = 2; maximo < 30; maximo++) {
+      const recorte = recortarEnFrontera("😀".repeat(50), maximo);
+      expect(recorte.length).toBeLessThanOrEqual(maximo);
+      expect(recorte.replace("…", "")).toMatch(/^(?:😀)*$/u);
+    }
+  });
+  test("nunca devuelve más que el máximo", () => {
+    for (let maximo = 0; maximo < 40; maximo++) {
+      expect(recortarEnFrontera("una frase cualquiera bastante larga de verdad", maximo).length).toBeLessThanOrEqual(
+        maximo,
+      );
+    }
   });
 });

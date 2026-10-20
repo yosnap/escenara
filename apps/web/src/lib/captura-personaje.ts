@@ -124,6 +124,8 @@ export const MOTIVOS_RECHAZO = [
   "quemada",
   "cara_pequena",
   "duplicada",
+  "persona_en_animal",
+  "persona_sin_comprobar",
 ] as const;
 export type MotivoRechazo = (typeof MOTIVOS_RECHAZO)[number];
 
@@ -137,6 +139,8 @@ export const ETIQUETA_MOTIVO: Record<MotivoRechazo, string> = {
   quemada: "Demasiada luz",
   cara_pequena: "Cara pequeña",
   duplicada: "Duplicada",
+  persona_en_animal: "Aparece una persona",
+  persona_sin_comprobar: "Sin comprobar si hay personas",
 };
 
 /** Qué hacer para arreglarlo. Un rechazo sin acción concreta solo frustra. */
@@ -150,6 +154,10 @@ export const ACCION_MOTIVO: Record<MotivoRechazo, string> = {
   quemada: "Apártate del foco o baja la luz: los rasgos se están perdiendo en el blanco.",
   cara_pequena: "Acércate hasta que la cara ocupe buena parte del encuadre.",
   duplicada: "Ya tienes esta foto (o una casi idéntica) en el personaje. Haz otra desde otro ángulo.",
+  persona_en_animal:
+    "En esta foto aparece una persona; un animal no puede tener fotos de personas. Si es una persona, créala como persona con su consentimiento.",
+  persona_sin_comprobar:
+    "No se ha podido comprobar si en esta foto aparece una persona, porque el detector de esta instalación no ha cargado. Por seguridad no se ha añadido: avisa a quien administra la instalación y vuelve a intentarlo.",
 };
 
 /**
@@ -158,7 +166,13 @@ export const ACCION_MOTIVO: Record<MotivoRechazo, string> = {
  * 2026-09-28): una foto real recortada guía algo peor la identidad, pero sigue siendo suya y útil, así que se
  * avisa y se deja usar, y el control previo de generar la sigue señalando.
  */
-export const MOTIVOS_TECNICOS: readonly MotivoRechazo[] = ["enorme", "duplicada"];
+export const MOTIVOS_TECNICOS: readonly MotivoRechazo[] = [
+  "enorme",
+  "duplicada",
+  // Un animal no tiene fotos de personas: ni la que tiene una ni la que no se ha podido comprobar se añaden.
+  "persona_en_animal",
+  "persona_sin_comprobar",
+];
 
 export const esMotivoTecnico = (motivo: MotivoRechazo): boolean => MOTIVOS_TECNICOS.includes(motivo);
 

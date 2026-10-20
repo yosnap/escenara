@@ -9,6 +9,7 @@ import type { FilaEscena, FilaPersonaje } from "../db/esquema";
 import { saldoDelUsuario } from "../generacion/estimacion";
 import type { EleccionDeTrabajo } from "../generacion/precios";
 import { type Actor, espacioUsado, limiteSubida } from "../media/servicio";
+import { claseDeTrabajo, esLectorAdmin, type Lector, modeloEnMensaje } from "../modelo-en-mensajes";
 import { referenciasVigentesDe } from "../personajes/consulta";
 import { personajePorId } from "../personajes/contexto";
 import { motivosParaNoGenerar } from "../personajes/puede-generar";
@@ -79,10 +80,17 @@ export async function hechosDeCredencial(
 }
 
 /** Modelo elegido y su precio, con la acotación del coste ya resuelta. */
-export function hechosDeModelo(tipo: TipoTrabajoCola, eleccion: EleccionDeTrabajo): HechosModelo {
+export function hechosDeModelo(
+  tipo: TipoTrabajoCola,
+  eleccion: EleccionDeTrabajo,
+  /** Quién leerá los motivos: sin él se nombra el modelo por lo que hace, que es lo prudente. */
+  lector: Lector = null,
+): HechosModelo {
   const acotacion = acotarCoste(tipo, eleccion);
   return {
     nombre: eleccion.modelo.nombre,
+    enMensaje: modeloEnMensaje(lector, claseDeTrabajo(tipo), eleccion.modelo.nombre),
+    lectorAdmin: esLectorAdmin(lector),
     maximoReferencias: eleccion.modelo.parametros.maximoReferencias,
     precioComprobado: eleccion.precio.comprobado,
     precioCaducado: precioCaducado(eleccion.precio.comprobado),
@@ -319,7 +327,7 @@ export async function recopilarHechos(actor: Actor, sujeto: SujetoDeHechos, busc
     tipo: sujeto.tipo,
     parametros,
     credencial,
-    modelo: hechosDeModelo(sujeto.tipo, sujeto.eleccion),
+    modelo: hechosDeModelo(sujeto.tipo, sujeto.eleccion, actor),
     personaje,
     cuota,
     presupuesto,

@@ -85,7 +85,16 @@ export interface HechosCredencial {
 
 /** Modelo elegido y su precio, reducidos a lo que deciden las reglas. */
 export interface HechosModelo {
+  /** Nombre del modelo en el catálogo. Lo usa la evidencia que ve quien administra, no los motivos al usuario. */
   nombre: string;
+  /**
+   * Cómo se nombra el modelo **en los motivos**, ya decidido según quién los lee (`modelo-en-mensajes.ts`): «el
+   * modelo Veo 3.1 Lite» para quien administra, «el modelo de vídeo que usas» para los demás. En minúscula: las
+   * reglas ponen la mayúscula cuando empiezan frase. Ausente = la frase neutra.
+   */
+  enMensaje?: string;
+  /** Quien lee es admin: se pueden nombrar las alternativas. Ausente = usuario normal, no se nombran. */
+  lectorAdmin?: boolean;
   /** Fotos de referencia que admite; 0 = no admite ninguna. */
   maximoReferencias: number;
   /** Fecha (AAAA-MM-DD) en la que se comprobó su precio. */
@@ -253,8 +262,11 @@ export interface HechosProducto {
    * referencias y su `character_ids` son excluyentes, así que la cara y la voz pasan a salir de las fotos.
    */
   identidadRegistradaPerdida: boolean;
-  /** El usuario declaró que en el producto se ve una marca. Decide el aviso del filtro del proveedor. */
-  marcaVisible: boolean;
+  /**
+   * Si el usuario declaró que en el producto se ve una marca (`null` = sin responder). Con marca o sin responder se
+   * avisa del filtro del proveedor y se pide confirmar la autorización.
+   */
+  marcaVisible: boolean | null;
 }
 
 /**

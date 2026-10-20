@@ -100,7 +100,8 @@ export async function aplicarFormato(e: EntradaDeFormato): Promise<SalidaDeForma
     const anterior = e.candidatos.find((m) => m.modelo === vigenteAutomatico.anterior);
     if (anterior) {
       modelo = anterior.modelo;
-      aviso = `Hemos vuelto a ${anterior.nombre}, el modelo que tenías antes de elegir el trend.`;
+      aviso =
+        "Hemos vuelto al modelo del clip que tenías antes de elegir el trend (lo ves en las Opciones avanzadas del clip).";
     }
   }
 

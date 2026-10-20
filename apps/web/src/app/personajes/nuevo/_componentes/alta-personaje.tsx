@@ -71,7 +71,7 @@ export function AltaPersonaje({ minimoReferencias }: { minimoReferencias: number
     ...(fotos.length >= minimoReferencias
       ? []
       : [`Faltan fotos de referencia: hacen falta ${minimoReferencias} y hay ${fotos.length}.`]),
-    ...bloqueosDeConsentimiento(consentimiento),
+    ...bloqueosDeConsentimiento(consentimiento, tipo),
   ];
 
   /**
@@ -205,7 +205,12 @@ export function AltaPersonaje({ minimoReferencias }: { minimoReferencias: number
       </Paso>
 
       <Paso numero={3} titulo="Consentimiento">
-        <FormularioConsentimiento valor={consentimiento} onCambio={setConsentimiento} deshabilitado={guardando} />
+        <FormularioConsentimiento
+          tipo={tipo}
+          valor={consentimiento}
+          onCambio={setConsentimiento}
+          deshabilitado={guardando}
+        />
       </Paso>
 
       <Paso numero={4} titulo="Resumen">

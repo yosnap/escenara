@@ -14,6 +14,11 @@ export interface Requisito {
   paso: string;
   /** Qué falta, en lenguaje llano y con la causa. Es también el mensaje que se enseña bajo el campo. */
   texto: string;
+  /**
+   * `true` si es una **causa real** que no se cumple marcando algo en la pantalla (un control bloqueado sin salida, un
+   * saldo que no llega): se ve como bloqueo rojo desde el principio. Sin ella, es un paso pendiente.
+   */
+  impide?: true;
 }
 
 /** Los textos son los de siempre: los tests y las guías los citan tal cual. */
@@ -36,7 +41,8 @@ export interface DatosConfirmacion {
   envio: string;
   /** Paso donde está el panel de confirmación. */
   paso: string;
-  conProducto: boolean;
+  /** El envío lleva un producto **con marca declarada**: solo entonces se pide la casilla de la marca. */
+  conMarca: boolean;
   superaUmbral: boolean;
   derechos: boolean;
   derechoMarca: boolean;
@@ -48,14 +54,27 @@ export function requisitosDeConfirmacion(d: DatosConfirmacion): Requisito[] {
   const de = (campo: string, texto: string): Requisito => ({ id: idRequisito(d.envio, campo), paso: d.paso, texto });
   return [
     ...(d.derechos ? [] : [de("derechos", TEXTO_FALTA_DERECHOS)]),
-    ...(!d.conProducto || d.derechoMarca ? [] : [de("marca", TEXTO_FALTA_MARCA)]),
+    ...(!d.conMarca || d.derechoMarca ? [] : [de("marca", TEXTO_FALTA_MARCA)]),
     ...(!d.superaUmbral || d.avisoAceptado ? [] : [de("aviso-gasto", TEXTO_FALTA_AVISO_GASTO)]),
   ];
 }
 
-/** Los frenos de los controles previos, que se arreglan (o se confirman) en el panel «Antes de generar». */
-export const requisitosDeControles = (textos: readonly string[], envio: string, paso: string): Requisito[] =>
-  textos.map((texto) => ({ id: idRequisito(envio, "controles"), paso, texto }));
+/**
+ * Los frenos de los controles previos, que se arreglan (o se confirman) en el panel «Antes de generar». Los que están
+ * en `sinSalida` (frenos que no se salvan confirmando) se marcan como causa real.
+ */
+export const requisitosDeControles = (
+  textos: readonly string[],
+  envio: string,
+  paso: string,
+  sinSalida: readonly string[] = [],
+): Requisito[] =>
+  textos.map((texto) => ({
+    id: idRequisito(envio, "controles"),
+    paso,
+    texto,
+    ...(sinSalida.includes(texto) ? { impide: true as const } : {}),
+  }));
 
 /**
  * Lo que impide componer el prompt con la plantilla elegida. Lo que sale de una variable de texto se arregla

@@ -61,6 +61,7 @@ const escena = (cambios: Partial<EscenaProduccionVista>): EscenaProduccionVista 
   motivoUltimoFallo: "",
   cambiadaDesdeLaGeneracion: false,
   conProducto: false,
+  conMarca: false,
   faltaInsertarCaptura: false,
   reparto: null,
   clipsHablados: [],
@@ -110,9 +111,11 @@ describe("tarjeta de escena con una comparativa en marcha", () => {
     expect((await auditar(html)).graves).toEqual([]);
   });
 
-  test("sin comparativa, la misma escena ofrece comparar generando", () => {
+  test("sin comparativa, la misma escena ofrece comparar generando dentro de sus Opciones avanzadas", () => {
     const html = pintar(escena({ comparativaEnMarcha: false }));
     expect(html).not.toContain("Hay una comparativa generándose");
-    expect(html).toContain("Comparar generando");
+    // Comparar modelos es cosa de las Opciones avanzadas, que empiezan plegadas: fuera no se ve ni se nombra.
+    expect(html).toContain('data-opciones-avanzadas="escena:e1"');
+    expect(html).not.toContain("Comparar generando");
   });
 });

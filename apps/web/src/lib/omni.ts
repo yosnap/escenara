@@ -50,6 +50,40 @@ export const usaIdentidadRegistrada = (modelo: string): boolean =>
   MODELOS_CON_IDENTIDAD_REGISTRADA.includes(modelo as (typeof MODELOS_CON_IDENTIDAD_REGISTRADA)[number]);
 
 /**
+ * Modelos con los que **se ha producido de verdad** una escena con dos personajes registrados (podcast y
+ * dualcast). Solo Gemini Omni 1.1 Flash: el spike del 2026-09-29 sacó con él los tres clips (63 créditos cada uno,
+ * con uno o con dos `character_ids`).
+ *
+ * `gemini-omni-video` documenta `character_ids`, pero nunca ha terminado un clip con ellos: el 2026-10-18, el mismo
+ * dualcast falló dos veces seguidas en KIE con «fallo interno» y sin cobro, con una petición idéntica a la que sí
+ * funciona en 1.1 Flash. Mandárselo otra vez sería apostar a ciegas, así que el reparto no se ofrece con él.
+ */
+export const MODELOS_CON_REPARTO_MEDIDO = ["google/gemini-omni-flash-1-1"] as const;
+
+/** `true` si con ese modelo se ha producido de verdad una escena con dos personajes registrados. */
+export const tieneRepartoMedido = (modelo: string): boolean =>
+  MODELOS_CON_REPARTO_MEDIDO.includes(modelo as (typeof MODELOS_CON_REPARTO_MEDIDO)[number]);
+
+/** Lo que dice de sí mismo, en el selector de las Opciones avanzadas, el modelo validado con dos personas. */
+export const ETIQUETA_REPARTO_MEDIDO = "Validado con dos personas";
+
+/**
+ * Por qué ese modelo no puede producir una escena con dos personajes, en llano; `null` si puede. Es el mismo texto
+ * en la estimación y al confirmar el gasto, para que la pantalla no prometa lo que el servidor va a rechazar.
+ *
+ * No nombra ningún modelo (se lee fuera de las Opciones avanzadas): dice dónde elegir el que sirve y cómo
+ * reconocerlo, porque en el selector ese modelo lleva la etiqueta {@link ETIQUETA_REPARTO_MEDIDO}.
+ */
+export function motivoSinReparto(modelo: { modelo: string; nombre: string }): string | null {
+  if (tieneRepartoMedido(modelo.modelo)) return null;
+  const como = `Para el podcast y el dualcast, elige en las Opciones avanzadas del proyecto el modelo marcado «${ETIQUETA_REPARTO_MEDIDO}» (o ponlo el primero de la lista de vídeo de tu mapa de modelos, en «Tu cuenta»).`;
+  if (!usaIdentidadRegistrada(modelo.modelo)) {
+    return `El modelo de escenas habladas que usas no admite identidades registradas, y el podcast y el dualcast las necesitan. No se ha cobrado nada. ${como}`;
+  }
+  return `El modelo de escenas habladas que usas no consigue generar con dos personajes registrados: en KIE da un fallo interno y no cobra. ${como}`;
+}
+
+/**
  * Duración con la que se midió el precio de cada motor de escenas habladas. Lo que no esté aquí se estima con
  * su propio precio registrado tal cual, sin escalar: inventar una proporción sobre algo no medido sería peor
  * que no estimarlo.
@@ -61,6 +95,21 @@ export const SEGUNDOS_MEDIDOS_POR_MODELO: Record<string, number> = {
 };
 
 export const esModeloOmni = (modelo: string): boolean => MODELOS_OMNI.includes(modelo as (typeof MODELOS_OMNI)[number]);
+
+/**
+ * Coloca los modelos de escenas habladas **en el orden de preferencia de `MODELOS_OMNI`**, sin mover nada más: cada
+ * modelo Omni ocupa uno de los huecos que ya ocupaban los Omni, y el resto se queda donde estaba.
+ *
+ * Hace falta en la recomendación que se deduce del catálogo, que ordena por nombre: «Gemini Omni (vídeo)» va antes
+ * que «Gemini Omni 1.1 Flash (vídeo)» porque «(» va antes que «1», y una cuenta sin mapa propio acababa hablando con
+ * `gemini-omni-video` en lugar de con el recomendado.
+ */
+export function conPreferenciaOmni<T extends { modelo: string }>(modelos: readonly T[]): T[] {
+  const orden = (m: T) => MODELOS_OMNI.indexOf(m.modelo as (typeof MODELOS_OMNI)[number]);
+  const omni = modelos.filter((m) => esModeloOmni(m.modelo)).sort((a, b) => orden(a) - orden(b));
+  let siguiente = 0;
+  return modelos.map((m) => (esModeloOmni(m.modelo) ? (omni[siguiente++] ?? m) : m));
+}
 
 /** Límites de los dos registros, tal como los documenta KIE (docs.kie.ai, comprobado el 2026-09-28). */
 export const NOMBRE_VOZ_OMNI_MAXIMO = 210;
@@ -159,6 +208,50 @@ export interface VozOmniDelProyecto {
   registradaEn: string;
 }
 
+// ── Voz de cada personaje ────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Voz registrada con la que habla un personaje: **la suya** si la tiene y, si no, la del proyecto. Es lo que se cita
+ * al registrarlo en el proveedor (la voz viaja dentro del personaje registrado) y lo que distingue un registro
+ * vigente de uno hecho con otra voz.
+ */
+export const audioIdEfectivo = (propio: string, delProyecto: string): string => (propio !== "" ? propio : delProyecto);
+
+/** Alguien de una conversación, con su voz propia (vacía si no la tiene). */
+export interface HablanteConVoz {
+  personajeId: string;
+  nombre: string;
+  audioIdPropio: string;
+}
+
+/**
+ * Qué le falta de voz a `quien` para hablar en una conversación con `otros`, o vacío si nada.
+ *
+ * - sin voz propia ni voz del proyecto, no tiene con qué voz registrarse;
+ * - sin voz propia, habla con la del proyecto: si otro de la conversación también, **sonarían igual**. Al
+ *   protagonista se le deja la del proyecto (es la de siempre) y el aviso va al otro, que es quien tiene que elegir
+ *   la suya. Si ninguno es el protagonista, el aviso va a los dos.
+ */
+export function faltaDeVoz(
+  quien: HablanteConVoz,
+  otros: readonly HablanteConVoz[],
+  audioIdDelProyecto: string,
+  protagonistaId: string | null,
+): string {
+  const propia = quien.audioIdPropio;
+  if (audioIdEfectivo(propia, audioIdDelProyecto) === "") {
+    return "no tiene ninguna voz registrada: elige y registra su voz en su ficha, o la del proyecto en «Voz y subtítulos». No cuesta créditos.";
+  }
+  if (propia !== "" || quien.personajeId === protagonistaId) return "";
+  const igual = otros.find(
+    (o) =>
+      o.personajeId !== quien.personajeId &&
+      audioIdEfectivo(o.audioIdPropio, audioIdDelProyecto) === audioIdDelProyecto,
+  );
+  if (!igual) return "";
+  return `no tiene voz propia y sonaría con la misma voz que «${igual.nombre}». Elige y registra su voz en su ficha («Su voz en las escenas habladas»): no cuesta créditos, y queda registrado con ella.`;
+}
+
 /**
  * Registro Omni de **una versión de la ficha** de un personaje. Cambiar la ficha crea versión nueva y obliga a
  * registrar otra vez: lo que se envió al proveedor era la ficha anterior, y la cara del registro es la de
@@ -231,3 +324,21 @@ export const MOTIVO_SIN_FOTOS_REALES =
 
 /** Retratos candidatos que se generan al crear un personaje inventado. Se elige uno y los demás se descartan. */
 export const RETRATOS_CANDIDATOS = 4;
+
+/**
+ * **Retratos que se pueden pedir de una vez**: los candidatos, sin pasar del tope de trabajos simultáneos de la
+ * instalación (con tres a la vez, como mucho tres). Es el máximo del selector y el número que dicen los textos, para
+ * que nunca se prometan más de los que se pueden encargar. Sin tope conocido, los candidatos.
+ */
+export const retratosPorEncargo = (trabajosSimultaneos: number | null): number =>
+  trabajosSimultaneos === null ? RETRATOS_CANDIDATOS : Math.max(1, Math.min(RETRATOS_CANDIDATOS, trabajosSimultaneos));
+
+const CIFRAS_EN_PALABRAS = ["cero", "uno", "dos", "tres", "cuatro"];
+
+/** «tres retratos», «un retrato». */
+export const retratosEnPalabras = (n: number): string =>
+  n === 1 ? "un retrato" : `${CIFRAS_EN_PALABRAS[n] ?? n} retratos`;
+
+/** «de uno a tres retratos», o «un retrato» si solo se puede uno. */
+export const rangoDeRetratos = (n: number): string =>
+  n === 1 ? "un retrato" : `de uno a ${CIFRAS_EN_PALABRAS[n] ?? n} retratos`;

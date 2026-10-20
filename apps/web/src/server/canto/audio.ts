@@ -35,11 +35,11 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** Límites publicados por KIE para el audio de cada modelo, antes de subirlo al proveedor. */
 export function motivoAudioIncompatible(medio: FilaMedio, modelo: ModeloCanto): string | null {
   if (!MIME_AUDIO_DE_CANTO.includes(medio.mimeType)) {
-    return `El modelo ${modelo} no admite audio ${medio.mimeType}. Vuelve a subirlo como ${textoDeFormatosDeCanto()}.`;
+    return `El modelo que pone la voz cantada no admite audio ${medio.mimeType}. Vuelve a subirlo como ${textoDeFormatosDeCanto()}.`;
   }
   const maximoMb = modelo === "infinitalk/from-audio" ? 10 : 100;
   if (medio.sizeBytes > maximoMb * 1024 * 1024) {
-    return `El audio ocupa ${(medio.sizeBytes / 1024 / 1024).toFixed(1)} MB y ${modelo} admite hasta ${maximoMb} MB. Comprímelo o recórtalo y vuelve a subirlo.`;
+    return `El audio ocupa ${(medio.sizeBytes / 1024 / 1024).toFixed(1)} MB y el modelo que pone la voz cantada admite hasta ${maximoMb} MB. Comprímelo o recórtalo y vuelve a subirlo.`;
   }
   return null;
 }

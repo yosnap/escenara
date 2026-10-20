@@ -45,7 +45,7 @@ const pintar = (
   opciones: {
     bloqueos?: Requisito[];
     casillas?: Parameters<typeof confirmacion>[0];
-    conProducto?: boolean;
+    conMarca?: boolean;
     superaUmbral?: boolean;
     marcar?: boolean;
     avisoEnBloque?: boolean;
@@ -58,7 +58,7 @@ const pintar = (
       firma="f"
       bloqueos={opciones.bloqueos ?? []}
       avisosConfirmados={[]}
-      conProducto={opciones.conProducto}
+      conMarca={opciones.conMarca}
       envio="clip"
       paso="clip"
       confirmacion={confirmacion(opciones.casillas)}
@@ -85,14 +85,20 @@ describe("botón de generar", () => {
       { bloqueos: [{ id: "descripcion", paso: "escena", texto: "Falta describir la escena." }] },
     ],
     ["la casilla de derechos de la imagen", { casillas: { derechos: false } }],
-    ["la casilla de la marca con producto", { conProducto: true, casillas: { derechoMarca: false } }],
+    ["la casilla de la marca con un producto con marca", { conMarca: true, casillas: { derechoMarca: false } }],
     ["el aviso de gasto alto", { superaUmbral: true, casillas: { avisoAceptado: false } }],
   ])("apagado por %s", (_nombre, opciones) => {
     expect(botonApagado(pintar(opciones))).toBe(true);
   });
 
-  test("la marca no se pide si no hay producto ni el aviso si no se supera el umbral", () => {
+  test("la marca no se pide sin producto con marca ni el aviso si no se supera el umbral", () => {
     expect(botonApagado(pintar({ casillas: { derechoMarca: false, avisoAceptado: false } }))).toBe(false);
+  });
+
+  test("con un producto declarado sin marca, la casilla de la marca ni se muestra", () => {
+    const sinMarca = pintar({ conMarca: false, casillas: { derechoMarca: false } });
+    expect(sinMarca).not.toContain("Tengo derecho a usar esta marca");
+    expect(pintar({ conMarca: true })).toContain("Tengo derecho a usar esta marca");
   });
 });
 
@@ -112,10 +118,40 @@ describe("marcado de las casillas pendientes", () => {
   test("con el bloque de requisitos arriba, la lista de aquí no se repite al lector de pantalla", () => {
     const html = pintar({ casillas: { derechos: false }, avisoEnBloque: true });
     // La alerta de aquí queda oculta al lector y sin botones (el bloque de arriba ya lleva a cada campo).
-    expect(html).toContain('<div aria-hidden="true"><div data-alerta="bloqueo"');
+    expect(html).toContain('<div aria-hidden="true"><div data-alerta="pendiente"');
     expect(html.split('aria-hidden="true"><div data-alerta')[1]?.split("</ul>")[0]).not.toContain("<button");
     const sinBloque = pintar({ casillas: { derechos: false } });
     expect(sinBloque).not.toContain('<div aria-hidden="true"><div data-alerta');
     expect(sinBloque).toContain("Ir al campo");
+  });
+});
+
+describe("pendiente antes de actuar, bloqueo solo tras intentarlo", () => {
+  test("al llegar al coste, lo que falta es un paso pendiente y no un «Bloqueo» rojo", () => {
+    const html = pintar({ casillas: { derechos: false } });
+    expect(html).toContain('data-alerta="pendiente"');
+    expect(html).toContain(">Pendiente<");
+    expect(html).not.toContain(">Bloqueo<");
+    expect(html).not.toContain('data-alerta="bloqueo"');
+  });
+
+  test("con el paso señalado (se ha intentado o se ha ido al requisito), sí es un bloqueo", () => {
+    const html = pintar({ casillas: { derechos: false }, marcar: true });
+    expect(html).toContain('data-alerta="bloqueo"');
+    expect(html).toContain(">Bloqueo<");
+  });
+});
+
+describe("una causa real se ve en rojo desde el principio", () => {
+  test("un freno sin salida es bloqueo sin marcar; las casillas siguen como pendiente", () => {
+    const html = pintar({
+      casillas: { derechos: false },
+      bloqueos: [{ id: "clip-controles", paso: "clip", texto: "Tu saldo no llega. Recarga en KIE.", impide: true }],
+    });
+    expect(html).toContain('data-alerta="bloqueo"');
+    expect(html).toContain('data-alerta="pendiente"');
+    const bloqueo = html.split('data-alerta="bloqueo"')[1]?.split("data-alerta")[0] ?? "";
+    expect(bloqueo).toContain("Tu saldo no llega.");
+    expect(bloqueo).not.toContain("Falta confirmar que tienes derecho");
   });
 });

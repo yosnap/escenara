@@ -53,9 +53,9 @@ const { guardarAjustes, leerAjustes } = await import("../ajustes");
 const { guardarCredencial } = await import("../boveda/credenciales");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
-const { characters, generationJobs, projects, rateLimits, scenes, usageLedger, users, voiceSamples } = await import(
-  "../db/esquema"
-);
+const { characters, generationJobs, modelPrices, projects, rateLimits, scenes, usageLedger, users, voiceSamples } =
+  await import("../db/esquema");
+const { estadoDeProduccion } = await import("../produccion/consulta");
 const { crearMedio } = await import("../media/servicio");
 const { olvidarSaldos } = await import("../generacion/estimacion");
 const { cancelarTrabajo } = await import("../cola/cancelar");
@@ -64,10 +64,13 @@ const { listarModelos, olvidarCatalogo } = await import("../proveedores/catalogo
 const { cambiarEstadoDeModelo, cambiarPrecioDeModelo } = await import("../proveedores/catalogo-admin");
 const { registrarPersonajeOmni } = await import("../personajes/omni");
 const { registrarVozOmni, validarEleccionVozOmni } = await import("../voz/omni");
+const { registrarVozPropia } = await import("../personajes/voz-propia");
 const { producirEscenaHablada } = await import("./escena");
 const { editarEscena } = await import("../asistente/escenas");
 const { lugarDeclaradoDePrueba } = await import("../lugares/lugar-de-prueba");
 const { estimarReparto } = await import("./estimacion-reparto");
+const { producirEscena } = await import("../produccion/producir");
+const { guardarMapa } = await import("../mapa/mapa");
 const { comprometidoDe } = await import("../presupuesto/deposito");
 const { MODELOS_OMNI, VOCES_OMNI } = await import("@/lib/omni");
 
@@ -81,6 +84,7 @@ const CLAVE = "sk-reparto-clave-de-kie-inventada-ffffffff";
 /** Precio medido con dinero real el 2026-09-28: 4 s en 9:16 a 720p costaron 63 créditos. */
 const CREDITOS_OMNI = 63;
 const VOZ = VOCES_OMNI[0]?.id ?? "";
+const OTRA_VOZ = VOCES_OMNI[1]?.id ?? "";
 const EJECUCION = crypto.randomUUID().slice(0, 8);
 
 // ── Proveedor simulado, con las formas reales de la API ────────────────────────────────────────────────────
@@ -357,7 +361,10 @@ describeSiHayBase("escenas habladas con dos personajes", () => {
     return escena.id;
   }
 
-  /** Registra la voz del proyecto y los personajes que se le digan. Nada de esto cuesta créditos. */
+  /**
+   * Registra la voz del proyecto y los personajes que se le digan. Quien no es la protagonista registra **su propia
+   * voz** (cada personaje habla con la suya en una conversación) y queda registrada con ella. Nada de esto cuesta.
+   */
   async function registrarTodo(personajes: readonly string[]): Promise<void> {
     await registrarVozOmni(
       actor,
@@ -372,7 +379,21 @@ describeSiHayBase("escenas habladas con dos personajes", () => {
     );
     const [proyecto] = await db().select().from(projects).where(eq(projects.id, proyectoId)).limit(1);
     if (!proyecto) throw new Error("El proyecto ha desaparecido.");
-    for (const personajeId of personajes) await registrarPersonajeOmni(actor, personajeId, proyecto.omniAudioId, h);
+    for (const personajeId of personajes) {
+      if (personajeId !== lucia.id) {
+        await registrarVozPropia(
+          actor,
+          personajeId,
+          validarEleccionVozOmni({
+            voz: OTRA_VOZ,
+            descripcion: "Voz natural en español de España, más grave y pausada.",
+            ejemplo: "Y yo te lo cuento a mi manera.",
+          }),
+          h,
+        );
+      }
+      await registrarPersonajeOmni(actor, personajeId, proyecto.omniAudioId, h);
+    }
   }
 
   const patch = async (cuerpo: Record<string, unknown>): Promise<RepartoVista> => {
@@ -775,5 +796,179 @@ describeSiHayBase("escenas habladas con dos personajes", () => {
     // Avisa, no bloquea: confirmado el aviso, se genera igual.
     const { nuevas } = await producir();
     expect(nuevas).toBe(1);
+  });
+  // ── Modelo, duración y coste reales de una escena hablada ───────────────────────────────────────────────
+
+  test("con Gemini Omni (vídeo) el dualcast no se ofrece ni se envía, y dice la causa y qué modelo elegir", async () => {
+    olvidarCatalogo();
+    const [video] = (await listarModelos({ capacidad: "image_to_video" })).filter(
+      (m) => m.modelo === "gemini-omni-video",
+    );
+    if (!video) throw new Error("Falta gemini-omni-video en el catálogo de pruebas.");
+    await cambiarPrecioDeModelo(
+      { modeloId: video.id, creditos: CREDITOS_OMNI, fuente: "Tarifa publicada.", comprobado: "2026-09-28" },
+      admin.id,
+    );
+    olvidarCatalogo();
+    await cambiarEstadoDeModelo(
+      { modeloId: video.id, estado: "validado", evidencia: "Medido con dinero real el 2026-09-28." },
+      admin.id,
+    );
+    olvidarCatalogo();
+    // El usuario lo pone el primero de su mapa de vídeo: es el que elegiría el servidor para hablar.
+    await guardarMapa(ana.id, "video", [{ proveedor: "kie", compatibleId: null, modelo: "gemini-omni-video" }]);
+    try {
+      await registrarTodo([lucia.id, elisa.id]);
+      await conversacionDeDos("dualcast");
+
+      // El plan ya lo enseña como impedimento y no deja aprobarlo: el bloqueo no llega después.
+      const { detalleProyecto } = await import("../asistente/plan");
+      const detalle = await detalleProyecto(actor, proyectoId);
+      expect(detalle.plan.impedimentos.join(" ")).toContain("Validado con dos personas");
+      const aprobar = await rutaPlan.POST(
+        pedir(ana, `/api/proyectos/${proyectoId}/plan`, "POST", {
+          presupuestoCreditos: 100_000,
+          totalConfirmado: detalle.plan.totalCreditos,
+        }),
+        ctx(proyectoId),
+      );
+      expect(aprobar.status).toBe(409);
+
+      const estimada = await estimacion();
+      expect(estimada.impedimentos.join(" ")).toContain("fallo interno");
+      expect(estimada.impedimentos.join(" ")).toContain("Validado con dos personas");
+
+      const fallo = await error(() => producir(CREDITOS_OMNI));
+      expect(fallo.estado).toBe(409);
+      expect(fallo.message).toContain("Validado con dos personas");
+      expect(fallo.message).toContain("No se ha cobrado nada");
+      expect(await trabajosDeLaEscena()).toHaveLength(0);
+      expect(enviados).toHaveLength(0);
+    } finally {
+      await guardarMapa(ana.id, "video", []);
+    }
+  });
+
+  test("el dualcast no lleva la ficha del protagonista en el prompt: cada cara la pone su character_id", async () => {
+    await registrarTodo([lucia.id, elisa.id]);
+    await conversacionDeDos("dualcast");
+    await aprobarPlan();
+    await producir();
+    const [trabajo] = await trabajosDeLaEscena();
+    expect((trabajo?.input as { contextoPersonaje?: string } | undefined)?.contextoPersonaje).toBeUndefined();
+    expect(trabajo?.prompt).not.toContain("reference photos");
+  });
+
+  test("el plan estima la escena hablada con el modelo Omni, su duración y el total que se confirma", async () => {
+    await registrarTodo([lucia.id, elisa.id]);
+    await conversacionDeDos("podcast");
+    const { detalleProyecto } = await import("../asistente/plan");
+    const detalle = await detalleProyecto(actor, proyectoId);
+    const plan = detalle.escenas.find((e) => e.id === escenaId)?.estimacion;
+    const estimada = await estimacion();
+    // Sin fotograma: solo el modelo que genera la escena, y los dos clips del podcast en el total.
+    expect(plan?.modeloFotograma).toBe("");
+    expect(plan?.modeloAnimacion).toContain("Gemini Omni 1.1 Flash");
+    expect(plan?.segundos).toBe(estimada.segundosPorClip);
+    expect(plan?.creditos).toBe(estimada.creditos);
+    expect(detalle.plan.totalCreditos).toBe(estimada.creditos);
+
+    // Lo que el plan congela al aprobar es lo que la producción enseña como «Estimado de la escena».
+    await aprobarPlan();
+    const [escena] = await db().select().from(scenes).where(eq(scenes.id, escenaId)).limit(1);
+    expect(escena?.estimatedCredits).toBe(estimada.creditos);
+    expect(escena?.approvedFrameModel).toBe("");
+    expect(escena?.approvedAnimationModel).toBe("google/gemini-omni-flash-1-1");
+  });
+
+  test("en modo Omni, un cambio del precio de escenas habladas invalida la aprobación como antes", async () => {
+    await registrarTodo([lucia.id]);
+    await aprobarPlan();
+    const [aprobada] = await db().select().from(scenes).where(eq(scenes.id, escenaId)).limit(1);
+    expect(aprobada?.approvedFrameStamp).toBe("");
+    expect(aprobada?.approvedAnimationStamp).not.toBe("");
+    const { hechosDeEscena } = await import("../asistente/plan");
+    expect((await hechosDeEscena(actor, escenaId)).hechos.precioCambiado).toBe(false);
+    // Se simula un sello congelado con otro precio: la aprobación ya no corresponde a lo vigente.
+    await db().update(scenes).set({ approvedAnimationStamp: "kie:precio-anterior@v0" }).where(eq(scenes.id, escenaId));
+    expect((await hechosDeEscena(actor, escenaId)).hechos.precioCambiado).toBe(true);
+  });
+
+  test("en modo Omni la duración se mide con el modelo Omni y no con el de animación del mapa", async () => {
+    await registrarTodo([lucia.id]);
+    await aprobarPlan();
+    // El Omni de las pruebas solo tiene tarifa de 4 s; Veo admite 8. Antes se miraba Veo y se dejaba pasar.
+    await db().update(projects).set({ clipSeconds: 8 }).where(eq(projects.id, proyectoId));
+    const fallo = await error(() =>
+      producirEscena(
+        actor,
+        escenaId,
+        {
+          derechos: true,
+          sinTerceros: true,
+          creditosConfirmados: CREDITOS_OMNI,
+          selloEstimacion: "",
+          claveIdempotencia: crypto.randomUUID(),
+        },
+        h,
+      ),
+    );
+    expect(fallo.estado).toBe(409);
+    expect(fallo.message).toContain("el modelo de voz e identidad registradas que usas");
+    expect(fallo.message).toContain("solo genera de 4 s");
+    expect(fallo.message).not.toContain("modelo de animación");
+    expect(enviados).toHaveLength(0);
+  });
+
+  test("una escena hablada de 6 s se confirma desde la rejilla con la tarifa de su duración", async () => {
+    await registrarTodo([lucia.id]);
+    // Tarifa propia de 6 s para el modelo de escenas habladas de las pruebas, que de serie solo tiene la de 4 s.
+    const candidatos = await listarModelos({ capacidad: "image_to_video" });
+    const modelo = MODELOS_OMNI.flatMap((nombre) => candidatos.filter((m) => m.modelo === nombre))[0]?.modelo;
+    if (!modelo) throw new Error("Falta el modelo de escenas habladas.");
+    await db()
+      .insert(modelPrices)
+      .values({
+        provider: "kie",
+        model: modelo,
+        unit: "clip de 6 s",
+        credits: 84,
+        source: "Prueba de 6 s.",
+        published: true,
+      })
+      .onConflictDoNothing();
+    olvidarCatalogo();
+    try {
+      // El proyecto sigue en 4 s y esta escena, como el contraplano de un podcast de 20 s, dura 6.
+      await db().update(scenes).set({ plannedSeconds: 6 }).where(eq(scenes.id, escenaId));
+      await aprobarPlan();
+      const estado = await estadoDeProduccion(actor, proyectoId);
+      const escena = estado.escenas.find((e) => e.id === escenaId);
+      expect(escena?.costeHablado?.segundos).toBe(6);
+      expect(escena?.costeHablado?.creditos).not.toBe(estado.creditosPorClip);
+      await producirEscena(
+        actor,
+        escenaId,
+        {
+          derechos: true,
+          sinTerceros: true,
+          creditosConfirmados: escena?.costeHablado?.creditos ?? 0,
+          selloEstimacion: escena?.costeHablado?.sello ?? "",
+          claveIdempotencia: crypto.randomUUID(),
+          avisoUmbralAceptado: true,
+          avisosConfirmados: estado.controlesDelModelo.comprobaciones.filter((c) => c.confirmable).map((c) => c.regla),
+        },
+        h,
+      );
+      const trabajos = await trabajosDeLaEscena();
+      expect(trabajos).toHaveLength(1);
+      const parametros = (trabajos[0]?.input as { parametros?: { segundos?: number } } | undefined)?.parametros;
+      expect(parametros?.segundos).toBe(6);
+    } finally {
+      await db()
+        .delete(modelPrices)
+        .where(and(eq(modelPrices.model, modelo), eq(modelPrices.unit, "clip de 6 s")));
+      olvidarCatalogo();
+    }
   });
 });

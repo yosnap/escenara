@@ -10,6 +10,7 @@ import type { ContextoAplicado, PersonajeElegible } from "@/lib/personajes";
 import type { Requisito } from "@/lib/requisitos";
 import { ENVIO_FOTOGRAMA } from "@/lib/requisitos-crear";
 import { BloqueConfirmacion } from "./bloque-confirmacion";
+import { PanelFotosQueAcompanan } from "./panel-fotos-que-acompanan";
 import type { ConfirmacionCoste } from "./panel-generar";
 import type { ReferenciaEnPantalla } from "./referencias-en-pantalla";
 
@@ -40,7 +41,7 @@ export function PasoCosteFotograma({
   pidiendoContexto,
   controles,
   estimacion,
-  conProducto,
+  conMarca,
   firma,
   bloqueos,
   requisitos,
@@ -64,7 +65,8 @@ export function PasoCosteFotograma({
   pidiendoContexto: boolean;
   controles: Controles;
   estimacion: Estimacion;
-  conProducto: boolean;
+  /** El producto elegido tiene marca declarada: se pide la casilla de la marca. */
+  conMarca: boolean;
   firma: string;
   /** Lo propio del fotograma que falta (a quién, escena y plantilla). */
   bloqueos: readonly Requisito[];
@@ -80,10 +82,11 @@ export function PasoCosteFotograma({
 }) {
   return (
     <Paso numero={numero} titulo="Revisa el coste y confirma">
-      <AvisoRequisitos requisitos={requisitos} onIr={onIrARequisito} />
+      <AvisoRequisitos requisitos={requisitos} marcar={marcar} onIr={onIrARequisito} />
       {personaje && contexto && contexto.personajeId === personaje.id && (
         <PanelContextoPersonaje contexto={contexto} cargando={pidiendoContexto} />
       )}
+      <PanelFotosQueAcompanan evaluacion={controles.evaluacion} temporales={referenciasTemporales.length} />
       {referenciasTemporales.length > 0 && <PanelReferenciasTemporales referencias={referenciasTemporales} revision />}
       {referenciasTemporales.length > 0 && (
         <Boton variante="secundario" cargando={comprobandoReferencias} onClick={onComprobarReferencias}>
@@ -94,7 +97,7 @@ export function PasoCosteFotograma({
       <BloqueConfirmacion
         controles={controles}
         estimacion={estimacion}
-        conProducto={conProducto}
+        conMarca={conMarca}
         etiqueta="Generar fotograma"
         firma={firma}
         bloqueos={[...bloqueos]}

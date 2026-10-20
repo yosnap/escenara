@@ -1,8 +1,9 @@
 import type { Cobertura, IdentidadReferencia, MotivoRechazo, RechazoDeReferencia, Vista } from "./captura-personaje";
 import type { EstadoHojaIdentidad } from "./direccion";
 import type { DiferenciaFicha, FichaPersonaje } from "./ficha-personaje";
+import type { TrabajoVista } from "./generacion";
 import type { Medio } from "./media/tipos";
-import type { RegistroOmniVista } from "./omni";
+import type { RegistroOmniVista, VozOmniDelProyecto } from "./omni";
 
 /**
  * Personajes y consentimiento tal como los ven el servidor y el navegador (RF02 y RF10). Aquí no hay nada
@@ -22,6 +23,24 @@ export const ETIQUETA_TIPO_PERSONAJE: Record<TipoPersonaje, string> = {
   persona: "Persona",
   animal: "Animal",
 };
+
+const ETIQUETA_TIPO_INVENTADO: Record<TipoPersonaje, string> = {
+  persona: "Persona inventada",
+  animal: "Animal inventado",
+};
+
+/** Cómo se presenta el tipo: un inventado dice que lo es, para no pasar por la imagen de alguien real. */
+export const etiquetaDeTipo = (p: { tipo: TipoPersonaje; inventado: boolean }) =>
+  (p.inventado ? ETIQUETA_TIPO_INVENTADO : ETIQUETA_TIPO_PERSONAJE)[p.tipo];
+
+/**
+ * Progreso hacia el mínimo de referencias. Un inventado no tiene fotos: cuenta su retrato elegido y sus vistas
+ * generadas, que son lo que de verdad le falta.
+ */
+export const resumenDeReferencias = (p: { inventado: boolean; totalReferencias: number; minimoReferencias: number }) =>
+  p.inventado
+    ? `${p.totalReferencias} de ${p.minimoReferencias} imágenes entre retrato y vistas`
+    : `${p.totalReferencias} ${p.totalReferencias === 1 ? "foto" : "fotos"} de ${p.minimoReferencias} mínimas`;
 
 /**
  * Estado del personaje:
@@ -79,6 +98,12 @@ export const DESCRIPCION_TITULAR: Record<TitularConsentimiento, string> = {
  * permitiría marcar como inventado a uno que sí tiene fotos de alguien.
  */
 export const TITULARES_REGISTRABLES = TITULARES_CONSENTIMIENTO.filter((t) => t !== "inventado");
+
+/**
+ * La declaración de mayoría de edad es sobre **la persona** que aparece en las fotos: solo se exige a un personaje
+ * de tipo persona. A un animal no se le pide; el navegador y el servidor aplican esta misma regla.
+ */
+export const exigeMayoriaDeEdad = (tipo: TipoPersonaje) => tipo === "persona";
 
 /** El titular `tercero` es el único que exige documento firmado y revisión humana. */
 export const exigeDocumento = (titular: TitularConsentimiento) => titular === "tercero";
@@ -313,6 +338,12 @@ export interface ContextoAplicado {
   modelo: string;
 }
 
+/** Una vista del personaje que ya se está generando y el trabajo que la genera. */
+export interface VistaEnCurso {
+  vista: Vista;
+  trabajo: TrabajoVista;
+}
+
 /** Personaje tal como lo devuelve la API. `referencias` y `consentimiento` solo van en la ficha. */
 export interface PersonajeVista {
   id: string;
@@ -358,6 +389,11 @@ export interface PersonajeVista {
    */
   registroOmni?: RegistroOmniVista | null;
   /**
+   * Su **voz registrada propia** para las escenas habladas, solo para su dueño; `null` si habla con la voz del
+   * proyecto. Es la que suena cuando sale en un podcast o una entrevista.
+   */
+  vozRegistrada?: VozOmniDelProyecto | null;
+  /**
    * Cuántas **fotos originales** utilizables tiene. Las vistas generadas no se suman aquí: no cuentan para el
    * mínimo que exige la instalación (decisión 3 de la fase 14).
    */
@@ -386,6 +422,11 @@ export interface PersonajeVista {
    * referencias: dice cuántas fotos tiene y de qué ángulo.
    */
   cobertura?: Cobertura;
+  /**
+   * Vistas que ya se están generando, con su trabajo (solo para el dueño). Con esto la ficha, al recargar, no vuelve
+   * a ofrecer «Generarla» para una vista en marcha y sigue su trabajo hasta que termine.
+   */
+  vistasEnCurso?: VistaEnCurso[];
   consentimiento?: ConsentimientoVista | null;
   /** Solo en la vista de administración: quién es el dueño del personaje. */
   propietario?: { id: string; nombre: string };

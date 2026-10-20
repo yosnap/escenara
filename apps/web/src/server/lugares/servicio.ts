@@ -139,8 +139,12 @@ export function leerFotosDeLugar(valor: unknown): FotoDeLugarPedida[] {
   });
 }
 
-/** La maestra que había pasa a plano general: solo puede haber una, y la nueva manda. */
+/**
+ * La maestra que había pasa a plano general: solo puede haber una, y la nueva manda. Bloquea antes el lugar, como
+ * `adjuntarAlLugar`, para que un candidato que se cierre a la vez vea esta maestra y entre como plano general.
+ */
 async function soltarMaestra(tx: Ejecutor, lugarId: string): Promise<void> {
+  await tx.select({ id: places.id }).from(places).where(eq(places.id, lugarId)).for("update");
   await tx
     .update(placeReferences)
     .set({ kind: "general" })

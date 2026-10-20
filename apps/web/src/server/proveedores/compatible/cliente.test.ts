@@ -121,7 +121,7 @@ describe("la causa concreta sí llega, saneada", () => {
     expect(detalleDeErrorAjeno("Something went terribly wrong in shard 7 at /srv/app/x.py")).toBe("");
   });
 
-  test("el mensaje montado cuenta todos los intentos, con proveedor, modelo y causa", () => {
+  test("el mensaje montado cuenta todos los intentos, con proveedor y causa", () => {
     const mensaje = mensajeDeFalloDeProveedor(
       "No se ha podido traducir tu texto al inglés",
       [
@@ -149,11 +149,23 @@ describe("la causa concreta sí llega, saneada", () => {
       ],
       "",
     );
-    expect(mensaje).toContain("KIE.ai (gpt-5-6-sol) ha tardado demasiado en responder (tras 90 s)");
+    // El proveedor sí se nombra; el modelo no (solo quien administra lo ve): el segundo intento con el mismo
+    // proveedor se dice «otro modelo de…».
+    expect(mensaje).toContain("KIE.ai ha tardado demasiado en responder (tras 90 s)");
     expect(mensaje).toContain("No se sabe si te ha cobrado");
-    expect(mensaje).toContain("NaN builders (gemma4)");
+    expect(mensaje).toContain("Se probó entonces con NaN builders");
     expect(mensaje).toContain("máximo 5 peticiones simultáneas");
-    expect(mensaje).toContain("NaN builders (deepseek-v4-flash)");
+    expect(mensaje).toContain("otro modelo de NaN builders");
+    expect(mensaje).not.toContain("gemma4");
+    expect(mensaje).not.toContain("gpt-5-6-sol");
+    // Quien administra sí ve el modelo de cada intento.
+    const paraAdmin = mensajeDeFalloDeProveedor(
+      "No se ha podido",
+      [{ proveedor: "KIE.ai", modelo: "gpt-5-6-sol", codigo: "limite", cobro: "sin-cobro" }],
+      "",
+      true,
+    );
+    expect(paraAdmin).toContain("KIE.ai (gpt-5-6-sol)");
     expect(mensaje).toContain("la cuota se repone el 2026-10-01");
     // Y lo que está prohibido: el mensaje genérico de antes.
     expect(mensaje).not.toContain("Vuelve a intentarlo en un momento");

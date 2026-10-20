@@ -62,11 +62,14 @@ describe("el estado del modelo elegido", () => {
 });
 
 describe("el texto", () => {
-  test("el aviso dice la causa, el efecto y los modelos que sí la admiten", () => {
+  test("el aviso dice la causa, el efecto y cómo reconocer los modelos que sí la admiten, sin nombrarlos", () => {
     const texto = avisoFotoDeProducto({ modelo: "Veo 3.1 Lite", admite: false, alternativas: ["MiniMax H3", "Kling"] });
-    expect(texto).toContain("Veo 3.1 Lite no admite la foto del producto");
+    expect(texto).toContain("El modelo del clip elegido no admite la foto del producto");
     expect(texto).toContain("su etiqueta puede salir distinta");
-    expect(texto).toContain("MiniMax H3, Kling");
+    expect(texto).toContain("Opciones avanzadas");
+    expect(texto).toContain(ETIQUETA_ADMITE_FOTO_PRODUCTO);
+    expect(texto).not.toContain("Veo");
+    expect(texto).not.toContain("MiniMax");
     expect(texto).toContain("no se cambia solo");
   });
 

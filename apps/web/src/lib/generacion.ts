@@ -152,6 +152,8 @@ export interface TrabajoVista {
   modelo: string;
   /** Proporción en la que se pidió («9:16»…), o `null` si el modelo no la acepta y toma la de la imagen (0.41.0). */
   proporcion: string | null;
+  /** Duración del clip pedida al proveedor, en segundos; `null` en los fotogramas, las voces y los trabajos antiguos. */
+  segundos: number | null;
   estado: EstadoTrabajo;
   /**
    * Etapa real por la que va el trabajo (0.19.0), o `null` si todavía no ha entrado en ninguna. Se deduce del
@@ -179,6 +181,11 @@ export interface TrabajoVista {
   /** Créditos que informa el proveedor; `null` si aún no los ha informado. */
   creditosConsumidos: number | null;
   error: string | null;
+  /**
+   * Aviso de que una parte del envío (la traducción del prompt) la escribió una **reserva de pago** porque falló la
+   * principal: quién y cuánto costó. Ausente en el caso normal.
+   */
+  avisoReserva?: string;
   medioOrigenId: string | null;
   /** Personaje con el que se pidió el trabajo, si se pidió con uno; `null` si fue una imagen suelta. */
   personajeId: string | null;
@@ -277,6 +284,22 @@ export interface Estimacion {
    * dice en pantalla: no es el mismo modelo ni el mismo precio que editando una foto.
    */
   sinReferencia: boolean;
+}
+
+/**
+ * Huecos de la cola de este usuario: cuántos trabajos permite la instalación a la vez (en cola o en el proveedor),
+ * cuántos tiene ya en marcha y cuántos puede encargar ahora. Es lo que deja a la pantalla no ofrecer más de lo que
+ * se puede encargar.
+ */
+export interface HuecosDeCola {
+  maximo: number;
+  enMarcha: number;
+  libres: number;
+}
+
+/** Frase con el motivo de no poder encargar más, para enseñarla tal cual. */
+export function motivoSinHuecos(huecos: HuecosDeCola): string {
+  return `Tienes ${huecos.enMarcha} ${huecos.enMarcha === 1 ? "trabajo" : "trabajos"} en marcha y esta instalación permite ${huecos.maximo} a la vez.`;
 }
 
 /** Lo que costaría la traducción al inglés de un texto nuevo, con su precio y su fecha. */

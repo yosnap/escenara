@@ -6,6 +6,7 @@ import { formatearCreditos } from "@/lib/generacion";
 import { formatearTamano } from "@/lib/media/reglas";
 import { formatearFecha } from "@/lib/proyectos";
 import { noCabeElDialogo, PALABRAS_POR_SEGUNDO, segundosNecesarios } from "@/lib/reparto-envio";
+import { conDe, conMayuscula, DONDE_CAMBIAR_MODELO, enMensaje } from "../modelo-en-mensajes";
 import { accionSinPresupuesto, motivoSinPresupuesto } from "../presupuesto/mensajes";
 import {
   type Evaluacion,
@@ -113,8 +114,8 @@ const REGLAS: readonly Regla[] = [
       ? {
           regla: "modelo-sin-referencias",
           estado: "bloqueado",
-          motivo: `El modelo ${h.modelo.nombre} no acepta fotos de referencia, así que no se puede usar con un personaje.`,
-          accion: "Elige otro modelo.",
+          motivo: `${conMayuscula(enMensaje(h.modelo))} no acepta fotos de referencia, así que no se puede usar con un personaje.`,
+          accion: `No se ha enviado nada y no se te ha cobrado: elige otro modelo (${DONDE_CAMBIAR_MODELO}).`,
           http: 400,
           excepcion: "personaje",
         }
@@ -546,9 +547,9 @@ const REGLAS: readonly Regla[] = [
       regla: "reparto-misma-voz",
       estado: "ajustes",
       motivo:
-        "Los dos personajes usan la voz Omni registrada del proyecto, así que la conversación saldrá con un solo timbre y no se distinguirá quién habla.",
+        "Los dos personajes usan la voz registrada del proyecto, así que la conversación saldrá con un solo timbre y no se distinguirá quién habla.",
       accion:
-        "Este formato todavía no admite dos voces Omni distintas. Confirma que quieres generar con el mismo timbre.",
+        "Este formato todavía no admite dos voces registradas distintas. Confirma que quieres generar con el mismo timbre.",
       http: 409,
       excepcion: "personaje",
       confirmable: true,
@@ -632,10 +633,10 @@ const REGLAS: readonly Regla[] = [
     return {
       regla: "producto-sin-hueco-de-referencia",
       estado: "ajustes",
-      motivo: `${h.modelo?.nombre ?? "Este modelo"} no admite la foto de «${h.producto.nombre}» como referencia, así que el producto viajará solo descrito con palabras y su etiqueta puede salir distinta.`,
+      motivo: `${conMayuscula(enMensaje(h.modelo))} no admite la foto de «${h.producto.nombre}» como referencia, así que el producto viajará solo descrito con palabras y su etiqueta puede salir distinta.`,
       accion:
         sugeridos.length > 0
-          ? `Cambia el modelo a uno que sí lleve la foto del producto (${sugeridos.join(", ")}) y vuelve a estimar el coste, porque la tarifa es otra. No se cambia solo por eso. Si te vale con la descripción, confírmalo.`
+          ? `Cambia el modelo a uno que sí lleve la foto del producto${h.modelo?.lectorAdmin ? ` (${sugeridos.join(", ")})` : " (en Opciones avanzadas cada modelo dice si la admite)"} y vuelve a estimar el coste, porque la tarifa es otra. No se cambia solo por eso. Si te vale con la descripción, confírmalo.`
           : "Hoy no hay ningún otro modelo disponible que acepte la foto del producto. Si te vale con la descripción, confírmalo.",
       http: 409,
       excepcion: "generacion",
@@ -677,11 +678,15 @@ const REGLAS: readonly Regla[] = [
    * ninguna tarea— y la declaración expresa de que el uso está autorizado, que es lo que el usuario confirma.
    */
   (h) => {
-    if (!h.producto?.marcaVisible) return null;
+    if (!h.producto || h.producto.marcaVisible === false) return null;
+    const declarado =
+      h.producto.marcaVisible === null
+        ? `Todavía no has dicho si en «${h.producto.nombre}» se ve una marca, así que se trata como si se viera.`
+        : `Has declarado que en «${h.producto.nombre}» se ve una marca.`;
     return {
       regla: "producto-con-marca",
       estado: "ajustes",
-      motivo: `Has declarado que en «${h.producto.nombre}» se ve una marca. El filtro del proveedor puede rechazar un logo de marca, y en ese caso no se genera nada, no se te cobra y se te dice el motivo.`,
+      motivo: `${declarado} El filtro del proveedor puede rechazar un logo de marca, y en ese caso no se genera nada, no se te cobra y se te dice el motivo.`,
       accion:
         "Confirma que tienes autorización para usar esa marca y que aceptas que el proveedor pueda rechazar el envío.",
       http: 409,
@@ -696,7 +701,7 @@ const REGLAS: readonly Regla[] = [
     return {
       regla: "precio-antiguo",
       estado: "ajustes",
-      motivo: `El precio de ${h.modelo.nombre} se comprobó ${fecha}, hace más de ${DIAS_PRECIO_FRESCO} días, así que la estimación puede haberse quedado corta.`,
+      motivo: `El precio ${conDe(enMensaje(h.modelo))} se comprobó ${fecha}, hace más de ${DIAS_PRECIO_FRESCO} días, así que la estimación puede haberse quedado corta.`,
       accion: "Pídele a quien administra que lo vuelva a comprobar, o confirma que aceptas la estimación tal cual.",
       http: 409,
       excepcion: "generacion",

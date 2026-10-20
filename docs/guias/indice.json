@@ -157,12 +157,12 @@
         {
           "archivo": "escenas-habladas.md",
           "titulo": "Escenas habladas",
-          "descripcion": "El modo Omni, sus dos motores, qué se registra y qué cuesta cada escena."
+          "descripcion": "El modo «Voz e identidad registradas», sus dos motores, qué se registra y qué cuesta cada escena."
         },
         {
           "archivo": "podcast-y-dualcast.md",
           "titulo": "Podcast y dualcast",
-          "descripcion": "Dos personajes en una escena: reparto, diálogo por turnos, coste y consentimiento de cada persona."
+          "descripcion": "Dos personajes en una escena: reparto, diálogo por turnos, la voz propia de cada uno, coste y consentimiento."
         }
       ]
     },

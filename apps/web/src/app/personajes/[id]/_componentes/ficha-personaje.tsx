@@ -22,13 +22,9 @@ import {
 } from "@/components/ui/personajes/api-personajes";
 import type { EstadoConsentimiento } from "@/components/ui/personajes/formulario-consentimiento";
 import { ETIQUETA_VISTA, type UmbralesCalidad, type Vista } from "@/lib/captura-personaje";
+import type { HuecosDeCola } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
-import {
-  ETIQUETA_TIPO_PERSONAJE,
-  exigeDocumento,
-  type PersonajeVista,
-  type ReferenciasAnadidas,
-} from "@/lib/personajes";
+import { etiquetaDeTipo, exigeDocumento, type PersonajeVista, type ReferenciasAnadidas } from "@/lib/personajes";
 import { DialogoBorrarPersonaje } from "./dialogo-borrar-personaje";
 import { type EstadoDeClave, PanelCobertura } from "./panel-cobertura";
 import { PanelConsentimiento } from "./panel-consentimiento";
@@ -52,6 +48,7 @@ export function FichaPersonaje({
   umbrales,
   claveDeGeneracion,
   retratos,
+  huecosDeCola,
   hojaIdentidad,
   proyectosOmni,
   estilosAnimados,
@@ -60,6 +57,8 @@ export function FichaPersonaje({
   umbrales: UmbralesCalidad;
   /** Retratos candidatos de un personaje inventado, resueltos por la página; vacío en los demás. */
   retratos: Medio[];
+  /** Huecos de la cola al cargar, para que un inventado no ofrezca más retratos de los que caben; `null` en los demás. */
+  huecosDeCola: HuecosDeCola | null;
   /** Hoja de identidad 3×3 ya generada, resuelta por la página; `null` si todavía no hay ninguna. */
   hojaIdentidad: Medio | null;
   /** Proyectos suyos en modo Omni, para poder registrarlo con la voz de uno de ellos (0.22.0). */
@@ -175,7 +174,7 @@ export function FichaPersonaje({
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <h1 className="text-4xl font-bold text-texto">{personaje.nombre}</h1>
           <p className="text-texto-suave">
-            {ETIQUETA_TIPO_PERSONAJE[personaje.tipo]}
+            {etiquetaDeTipo(personaje)}
             {personaje.especie && ` · ${personaje.especie}`}
           </p>
           <InsigniaEstadoPersonaje estado={personaje.estado} className="self-start" />
@@ -264,6 +263,7 @@ export function FichaPersonaje({
                     <PanelRetratos
                       personaje={personaje}
                       medios={retratos}
+                      huecosIniciales={huecosDeCola}
                       onPersonaje={(actualizado) => {
                         setPersonaje(actualizado);
                         router.refresh();

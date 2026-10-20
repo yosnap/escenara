@@ -75,9 +75,9 @@ describe("paso de formato", () => {
       [NORMAL, TREND],
       TREND,
       false,
-      "Hemos cambiado a Veo Pro porque Veo Fast no tiene clips de 6 s.",
+      "Hemos cambiado el modelo del clip porque el que usabas no tiene clips de 6 s.",
     );
-    expect(html).toContain("Hemos cambiado a Veo Pro porque Veo Fast no tiene clips de 6 s.");
+    expect(html).toContain("Hemos cambiado el modelo del clip porque el que usabas no tiene clips de 6 s.");
     expect(pintar([NORMAL, TREND], TREND)).not.toContain("Hemos cambiado");
   });
 

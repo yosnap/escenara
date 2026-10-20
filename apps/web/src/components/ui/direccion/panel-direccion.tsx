@@ -31,7 +31,7 @@ import {
 } from "@/lib/direccion";
 import type { FotoDeProductoDelClip } from "@/lib/foto-de-producto";
 import type { CupoDeFotos } from "@/lib/fotos-del-producto";
-import type { ProductoElegido } from "@/lib/productos";
+import type { ProductoElegido, ProductoResumen } from "@/lib/productos";
 import { DIRECCION_VOCAL_MAXIMA } from "@/lib/proyectos";
 import { type CategoriaDecidible, sinExpertoConTrend } from "@/lib/trends";
 import { Alerta } from "../alerta";
@@ -175,7 +175,8 @@ export function PanelDireccion({
    * ofrecen, y entonces el bloque no aparece.
    */
   producto?: ProductoElegido;
-  onProducto?: (elegido: ProductoElegido) => void;
+  /** Con el resumen del producto elegido (`null` sin producto), tal como lo da el selector. */
+  onProducto?: (elegido: ProductoElegido, resumen: ProductoResumen | null) => void;
   /** Si el modelo del clip admite la foto del producto: el aviso sale junto al selector de producto. */
   fotoDeProducto?: FotoDeProductoDelClip | null;
   /** Con qué se produce el clip: con ello, el selector deja elegir qué fotos del producto viajan. */

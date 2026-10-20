@@ -12,6 +12,7 @@ import {
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
+import { BIBLIA_VACIA, type BibliaContinuidad } from "@/lib/continuidad";
 import type { FormatoMontaje } from "@/lib/formatos";
 import { media } from "./esquema";
 import { users } from "./esquema-auth";
@@ -140,6 +141,13 @@ export const projects = pgTable(
      */
     clipSeconds: integer("clip_seconds").notNull().default(8),
     /**
+     * Modelo de vídeo fijado para **este** proyecto desde sus «Opciones avanzadas». Vacío (lo normal) = el mapa de
+     * modelos de la cuenta, que es lo que se hacía antes de existir la columna. En modo `omni` es el modelo de las
+     * escenas habladas; en los demás, el que anima los clips. Se lee siempre con
+     * `proyectos/modelo-de-video.ts › modeloDeVideoDe`, para que estimar, aprobar y encolar usen el mismo.
+     */
+    videoModel: text("video_model").notNull().default(""),
+    /**
      * Formatos de salida del proyecto (0.41.0), sin repetidos. **El primero es el principal**: es la proporción
      * que se le pide al modelo al generar, y los demás salen del mismo clip en el montaje con reencuadre, sin
      * regenerar nada. Nace en vertical 9:16, que es lo que eran todos los proyectos anteriores.
@@ -203,6 +211,12 @@ export const projects = pgTable(
      * quien manda es el brief: si alguna vez discreparan, el brief es la fuente y esto, el índice.
      */
     anglePresetKey: text("angle_preset_key").notNull().default(""),
+    /**
+     * **Biblia de continuidad** de un vídeo completo: vestuario fijo de cada personaje y lugar, en inglés, y los
+     * planos base (un fotograma por personaje situado en el lugar del que arrancan sus clips). La escribe el
+     * asistente al escribir el guion completo; en los demás proyectos queda vacía (`lib/continuidad.ts`).
+     */
+    continuityBible: jsonb<BibliaContinuidad>("continuity_bible").notNull().default(BIBLIA_VACIA),
     /**
      * **Lugar por defecto** del proyecto: el que heredan sus escenas mientras no elijan otro o lo quiten. `set null`
      * al borrar el lugar: el proyecto sigue siendo el mismo, solo sin sitio fijado.

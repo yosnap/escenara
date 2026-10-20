@@ -18,7 +18,7 @@ Desde la 0.22.0 el mapa cubre **los cinco tipos**, imagen y vídeo incluidos:
 | **Voz** | Leer el diálogo cuando el proyecto usa pista de voz aparte | Modelos de voz del catálogo con tu clave, y `kokoro` en tus servicios compatibles |
 | **Subtítulos** | Sacar los subtítulos del audio ya generado | Esta instalación (gratis) y `whisper` en tus servicios compatibles |
 | **Imagen** | Los fotogramas de tus escenas, las imágenes de «Crear» y las vistas generadas de tus personajes | Modelos de imagen del catálogo con tu clave |
-| **Vídeo** | Los clips de tus escenas y, en modo Omni, las escenas habladas | Modelos de vídeo del catálogo con tu clave |
+| **Vídeo** | Los clips de tus escenas y, en el modo «Voz e identidad registradas», las escenas habladas | Modelos de vídeo del catálogo con tu clave |
 
 En imagen y vídeo **no aparecen los servicios compatibles con la API de OpenAI**: esos son de texto, voz y
 transcripción, y ofrecerlos aquí sería ofrecer algo que no saben hacer.
@@ -46,6 +46,19 @@ convenientes:
 Hay una excepción, y es por el mismo motivo: si la siguiente opción **no cobra por petición** (los servicios que
 se pagan con la cuota de tu plan), seguir no puede crearte un segundo cargo, así que sí se prueba. Es lo que
 hace que un proveedor que se queda colgado no te deje el trabajo sin hacer.
+
+En texto, desde la 0.52.6, **nunca se pasa a una opción de pago cuyo coste no hayas confirmado**:
+
+- La **traducción de tus prompts** y el **guion del asistente** enseñan y confirman el coste del modelo de texto de
+  la instalación (KIE). Si tu servicio de cuota falla, ese modelo sí hace de reserva, y se te avisa con el trabajo
+  o con el guion: qué falló, quién lo ha escrito y cuántos créditos ha costado.
+- En el resto (completar la ficha con IA, el guion del anuncio) solo confirmas el coste de tu opción principal. Si
+  es de cuota y falla, se prueban tus otros servicios de cuota, pero no un modelo de pago que esté más abajo. Se
+  para y se te dice qué falló, que no se ha cobrado nada y qué puedes hacer: volver a intentarlo, o subir ese modelo
+  de pago al primer puesto si prefieres pagarlo.
+
+Un servicio que tarda demasiado **no se marca como rechazado**. Si un servicio rechaza una petición, antes de
+darlo por no válido se le pide su lista de modelos, que no gasta cuota: solo se marca si también rechaza la clave.
 
 ## Lo que cuesta cada opción
 

@@ -1,13 +1,19 @@
-import { detalleDeTiempo, type IntentoProveedor, mensajeDeFalloDeProveedor } from "@/lib/diagnostico-proveedor";
+import {
+  detalleDeTiempo,
+  fraseDeIntento,
+  type IntentoProveedor,
+  mensajeDeFalloDeProveedor,
+} from "@/lib/diagnostico-proveedor";
+import { formatearCreditos } from "@/lib/generacion";
 import type { TipoDeMapa } from "@/lib/mapa-modelos";
 import { cerrarGastoDeEjecucion, reservarEjecucion } from "../asistente/gasto";
-import { marcarCompatibleInvalido } from "../boveda/compatibles";
+import { invalidarSiLaClaveNoSirve } from "../boveda/compatibles";
 import { db } from "../db/cliente";
 import { assistantRuns, type FilaEjecucionAsistente, usageLedger } from "../db/esquema";
 import { elegirModelo } from "../proveedores/catalogo";
 import type { Buscador } from "../proveedores/codigos";
 import { type AudioParaChat, type ImagenParaChat, pedirChat } from "../proveedores/compatible/cliente";
-import { ErrorCatalogo } from "../proveedores/contrato";
+import { ErrorCatalogo, type PrecioModelo } from "../proveedores/contrato";
 import { MS_TEXTO } from "../proveedores/kie/texto";
 import { adaptadorDe } from "../proveedores/registro";
 import { type EntradaResuelta, resolverMapa } from "./mapa";
@@ -62,11 +68,33 @@ export interface PeticionDeTexto {
    */
   modelosPreferidos?: readonly string[];
   /**
-   * Solo se puede gastar lo que el usuario vio y confirmó: la entrada principal (si es de pago y la confirmó) y
-   * las que se pagan por cuota del plan. Ninguna **otra** entrada de pago del mapa se prueba, porque su coste no
-   * se enseñó. Si la principal es de cuota, no se confirmó nada, así que solo se prueban entradas de cuota.
+   * Lo que el usuario ya vio y confirmó **por llamada**. Con él, una entrada de pago (la principal o una reserva)
+   * solo se prueba si su precio vigente cabe en ese techo; las que costarían más no se llaman y se dicen en el
+   * error, y las de cuota del plan (0 créditos) caben siempre. Es lo que garantiza que nunca se reserva ni se
+   * cobra por encima de lo confirmado. Sin él, solo se gastan la principal y las de cuota.
    */
-  limitarAConfirmado?: boolean;
+  techoPorLlamada?: TechoPorLlamada;
+  /**
+   * Lo que queda del total confirmado para una entrada de pago **que no es la principal** (una reserva): gasto ya
+   * hecho más su precio no puede pasar del total. Solo cuenta junto con `techoPorLlamada`; sin él, las reservas de
+   * pago tienen que caber en `techoPorLlamada`, como la principal.
+   */
+  techoReserva?: TechoPorLlamada;
+}
+
+/**
+ * Créditos por llamada confirmados y **en qué moneda**: los créditos de un proveedor no se comparan con los de
+ * otro. Un techo de 0 (lo confirmado era la cuota del plan) sí vale para cualquiera: cualquier precio lo pasa.
+ */
+export interface TechoPorLlamada {
+  creditos: number;
+  /** Proveedor cuyos créditos se confirmaron; da igual cuál cuando `creditos` es 0. */
+  proveedor: string;
+}
+
+/** `true` si una llamada de pago a ese proveedor por esos créditos cabe en lo confirmado. */
+export function cabeEnElTecho(techo: TechoPorLlamada, proveedor: string, creditos: number): boolean {
+  return creditos <= techo.creditos && (techo.creditos === 0 || proveedor === techo.proveedor);
 }
 
 export interface TextoDelMapa {
@@ -79,6 +107,13 @@ export interface TextoDelMapa {
   /** `true` si la entrada que contestó recibió de verdad la imagen; `false` si solo recibió el texto. */
   conImagen: boolean;
   intentos: IntentoProveedor[];
+  /** Créditos que costó la llamada que contestó: los informados, o la estimación si no los informó; 0 por cuota. */
+  creditos: number;
+  /**
+   * Aviso para enseñar tal cual cuando ha contestado una **reserva de pago**: qué falló, quién lo ha escrito y lo
+   * que ha costado. Vacío si contestó la principal o una reserva que no cobra por petición.
+   */
+  aviso: string;
 }
 
 /** Lo que costaría una llamada de texto por la **entrada principal** del mapa de este usuario. */
@@ -92,6 +127,10 @@ export interface EstimacionDeTexto {
   porCuota: boolean;
   /** Sello del precio con el que se calculó; vacío si se paga por cuota, que no tiene precio que sellar. */
   sello: string;
+  /** Fecha (AAAA-MM-DD) en la que se comprobó ese precio; vacía si se paga por cuota. */
+  comprobado: string;
+  /** Identificador del proveedor que cobraría (`kie`, `compatible`…); vacío si no hay entradas. */
+  proveedor: string;
   nombreProveedor: string;
   modelo: string;
   /** `true` si esa entrada admite que se le envíe una imagen junto con el texto. */
@@ -108,7 +147,76 @@ const SIN_ENTRADAS =
  * Es una **lectura**: no llama a ningún proveedor, no reserva nada y no encola nada.
  */
 export async function estimarTextoPorMapa(usuarioId: string): Promise<EstimacionDeTexto> {
-  const entradas = (await resolverMapa(usuarioId, TIPO_TEXTO)).filter((e) => e.proveedor !== "local");
+  return estimarPrincipal(await entradasDeTexto(usuarioId));
+}
+
+/** Entradas de texto utilizables de este usuario: `local` no sabe escribir texto. */
+async function entradasDeTexto(usuarioId: string): Promise<EntradaResuelta[]> {
+  return (await resolverMapa(usuarioId, TIPO_TEXTO)).filter((e) => e.proveedor !== "local");
+}
+
+/**
+ * Lo que costaría, como mucho, una llamada de **reserva de pago**: la entrada de pago más cara del mapa, detrás de
+ * la principal, que podría escribir si la principal falla. Es lo que se confirma aparte como «reserva».
+ */
+export interface ReservaDeTexto {
+  creditos: number;
+  /** Proveedor en cuyos créditos está el precio: solo las entradas de pago de ese proveedor pueden usarla. */
+  proveedor: string;
+  nombreProveedor: string;
+  /** Fecha del precio de la más cara. */
+  comprobado: string;
+  /**
+   * Sellos de **todas** las entradas de pago de ese proveedor, ordenados y unidos: si cambia el precio de
+   * cualquiera, cambia el sello, aunque no sea la más cara (podría pasar a serlo).
+   */
+  sello: string;
+}
+
+/**
+ * La estimación de la principal y, además, la de la reserva de pago. Es una lectura, como `estimarTextoPorMapa`.
+ *
+ * La reserva solo se mide en **una moneda**: la del proveedor de la principal si es de pago, o si va por cuota, la
+ * de la primera entrada de pago del mapa (la que actuaría primero). Las entradas de pago de otro proveedor no
+ * entran en la cuenta y tampoco se probarán, porque sus créditos no se pueden sumar a los confirmados. Una entrada
+ * sin precio registrado tampoco cuenta, por lo mismo.
+ */
+export async function estimarTextoConReserva(
+  usuarioId: string,
+): Promise<{ estimacion: EstimacionDeTexto; reserva: ReservaDeTexto | null }> {
+  const entradas = await entradasDeTexto(usuarioId);
+  const estimacion = await estimarPrincipal(entradas);
+  if (!estimacion.hayEntradas) return { estimacion, reserva: null };
+  const [principal, ...resto] = entradas;
+  const dePago = resto.filter((e) => e.proveedor !== "compatible");
+  const moneda = principal && principal.proveedor !== "compatible" ? principal.proveedor : dePago[0]?.proveedor;
+  const precios: { entrada: EntradaResuelta; precio: PrecioModelo }[] = [];
+  for (const entrada of dePago.filter((e) => e.proveedor === moneda)) {
+    try {
+      precios.push({ entrada, precio: await precioDeEntrada(entrada) });
+    } catch (error) {
+      if (!(error instanceof ErrorCatalogo)) throw error;
+    }
+  }
+  const masCara = precios.reduce<(typeof precios)[number] | null>(
+    (max, p) => (max === null || p.precio.creditos > max.precio.creditos ? p : max),
+    null,
+  );
+  if (!masCara) return { estimacion, reserva: null };
+  return {
+    estimacion,
+    reserva: {
+      creditos: Math.ceil(masCara.precio.creditos),
+      proveedor: masCara.entrada.proveedor,
+      nombreProveedor: masCara.entrada.nombreProveedor,
+      comprobado: masCara.precio.comprobado,
+      sello: [...new Set(precios.map((p) => p.precio.sello))].sort().join("+"),
+    },
+  };
+}
+
+/** Estimación de la entrada principal de esas entradas. */
+async function estimarPrincipal(entradas: readonly EntradaResuelta[]): Promise<EstimacionDeTexto> {
   const principal = entradas[0];
   if (!principal) {
     return {
@@ -117,6 +225,8 @@ export async function estimarTextoPorMapa(usuarioId: string): Promise<Estimacion
       creditos: 0,
       porCuota: false,
       sello: "",
+      comprobado: "",
+      proveedor: "",
       nombreProveedor: "",
       modelo: "",
       admiteImagen: false,
@@ -125,25 +235,67 @@ export async function estimarTextoPorMapa(usuarioId: string): Promise<Estimacion
   const comun = {
     hayEntradas: true,
     motivo: "",
+    proveedor: principal.proveedor,
     nombreProveedor: principal.nombreProveedor,
     modelo: principal.modelo,
     // Solo un servicio compatible con la API de OpenAI admite el formato multimodal de mensajes.
     admiteImagen: principal.proveedor === "compatible",
   };
   if (principal.proveedor === "compatible") {
-    return { ...comun, creditos: 0, porCuota: true, sello: "" };
+    return { ...comun, creditos: 0, porCuota: true, sello: "", comprobado: "" };
   }
   try {
-    const modelo = await elegirModelo("text_generation", principal.modelo);
-    const precio = await adaptadorDe(modelo.proveedor).estimar(modelo.modelo);
-    return { ...comun, creditos: Math.ceil(precio.creditos), porCuota: false, sello: precio.sello };
+    const precio = await precioDeEntrada(principal);
+    return {
+      ...comun,
+      creditos: Math.ceil(precio.creditos),
+      porCuota: false,
+      sello: precio.sello,
+      comprobado: precio.comprobado,
+    };
   } catch (error) {
     // Un modelo sin precio registrado no se puede estimar, y sin estimación no se gasta: se dice cuál y por qué.
     if (error instanceof ErrorCatalogo) {
-      return { ...comun, motivo: error.message, hayEntradas: false, creditos: 0, porCuota: false, sello: "" };
+      return {
+        ...comun,
+        motivo: error.message,
+        hayEntradas: false,
+        creditos: 0,
+        porCuota: false,
+        sello: "",
+        comprobado: "",
+      };
     }
     throw error;
   }
+}
+
+/** Precio vigente de una entrada de pago del mapa. Lanza `ErrorCatalogo` si su modelo no tiene precio registrado. */
+async function precioDeEntrada(entrada: EntradaResuelta): Promise<PrecioModelo> {
+  const modelo = await elegirModelo("text_generation", entrada.modelo);
+  return adaptadorDe(modelo.proveedor).estimar(modelo.modelo);
+}
+
+/**
+ * Una entrada de pago cuyo precio vigente pasa del techo por llamada que se confirmó. No es un fallo del
+ * proveedor: no se le ha llamado ni ha cobrado nada, y quien llama lo dice con su motivo.
+ */
+export class ErrorSobreLoConfirmado extends ErrorCatalogo {
+  constructor(nombreProveedor: string, creditos: number, techo: TechoPorLlamada) {
+    super(
+      409,
+      `${nombreProveedor} cobraría ahora ${formatearCreditos(creditos)} por llamada y lo que confirmaste ${techo.creditos === 0 ? "no dejaba créditos para ella" : `solo deja ${formatearCreditos(techo.creditos)}`}, así que no se le ha llamado ni se ha cobrado nada en ${nombreProveedor}. Vuelve a revisar el coste y confírmalo de nuevo.`,
+    );
+    this.name = "ErrorSobreLoConfirmado";
+  }
+}
+
+/** Entrada de pago que no se ha probado porque su precio pasaba de lo confirmado por llamada. */
+export interface EntradaPorEncima {
+  nombreProveedor: string;
+  creditos: number;
+  /** Lo que quedaba confirmado para ella: 0 si no quedaba nada (lo confirmado era la cuota del plan). */
+  techo: number;
 }
 
 /**
@@ -161,20 +313,63 @@ export class ErrorDeTexto extends Error {
   constructor(
     readonly intentos: IntentoProveedor[],
     readonly hayEntradas: boolean,
+    /** Entradas de pago del mapa que no se han probado porque su coste no se había confirmado. */
+    readonly sinConfirmar: readonly string[] = [],
+    /** Entradas de pago que no se han probado porque costarían más de lo que quedaba confirmado para ellas. */
+    readonly porEncima: readonly EntradaPorEncima[] = [],
   ) {
     super("No ha habido ninguna entrada del mapa que pudiera escribir el texto.");
     this.name = "ErrorDeTexto";
   }
 
-  /** Mensaje completo, con todas las entradas probadas y su causa concreta. */
-  mensaje(encabezado: string): string {
+  /**
+   * Código HTTP con el que contestar: **409** cuando no se ha enviado nada a ningún proveedor porque nada cabía en lo
+   * confirmado (no hay ninguna llamada en vuelo que pudiera haber encargado algo), y 502 cuando ha fallado alguno.
+   */
+  get estado(): 409 | 502 {
+    return this.hayEntradas && this.intentos.length === 0 && this.porEncima.length > 0 ? 409 : 502;
+  }
+
+  /**
+   * Mensaje completo, con todas las entradas probadas y su causa concreta. `porEncima` sustituye la frase genérica
+   * sobre las entradas que costarían más de lo confirmado, para quien sabe decirlo mejor (la traducción, cuyo
+   * coste no sale del mapa).
+   */
+  mensaje(encabezado: string, opciones: { porEncima?: string } = {}): string {
     if (!this.hayEntradas) return `${encabezado}: ${SIN_ENTRADAS.charAt(0).toLowerCase()}${SIN_ENTRADAS.slice(1)}`;
-    return mensajeDeFalloDeProveedor(encabezado, this.intentos, sugerenciaDeMapa(this.intentos));
+    const frasePorEncima =
+      this.porEncima.length > 0 && opciones.porEncima !== undefined
+        ? opciones.porEncima
+        : fraseDePorEncima(this.porEncima);
+    const sugerencia = [frasePorEncima, sugerenciaDeMapa(this.intentos, this.sinConfirmar)]
+      .filter((s) => s !== "")
+      .join(" ");
+    // Sin ningún intento no hay avería que contar: lo único que pasó es que nada cabía en lo confirmado.
+    if (this.intentos.length === 0 && sugerencia !== "") return `${encabezado}: ${sugerencia}`;
+    return mensajeDeFalloDeProveedor(encabezado, this.intentos, sugerencia);
   }
 }
 
+/** Las entradas de pago que no se probaron por pasar del techo, con su precio y lo que se confirmó. */
+function fraseDePorEncima(porEncima: readonly EntradaPorEncima[]): string {
+  if (porEncima.length === 0) return "";
+  const lista = porEncima
+    .map(
+      (e) =>
+        `la entrada de ${e.nombreProveedor} (${formatearCreditos(e.creditos)} por llamada, y lo confirmado ${e.techo === 0 ? "no dejaba créditos para ella" : `solo dejaba ${formatearCreditos(e.techo)}`})`,
+    )
+    .join(" ni ");
+  const varias = porEncima.length > 1;
+  return `No se ${varias ? "han" : "ha"} probado ${lista} porque ${varias ? "costarían" : "costaría"} más de lo que confirmaste, así que tampoco se ha cobrado nada ahí. Vuelve a revisar el coste: el que verás será el de la primera entrada de tu mapa de modelos de texto, que puedes ordenar en «Tu cuenta».`;
+}
+
 /** Qué puede hacer quien lo lee cuando se han agotado todas las entradas de su mapa. */
-function sugerenciaDeMapa(intentos: readonly IntentoProveedor[]): string {
+function sugerenciaDeMapa(intentos: readonly IntentoProveedor[], sinConfirmar: readonly string[]): string {
+  // Pasar a una entrada de pago sin que se haya confirmado su coste sería cobrar sin avisar: no se hace, y se dice.
+  if (sinConfirmar.length > 0) {
+    const varias = sinConfirmar.length > 1;
+    return `No se ${varias ? "han" : "ha"} probado ${sinConfirmar.join(" ni ")} porque ${varias ? "son" : "es"} de pago y su coste no lo habías confirmado, así que tampoco se ha cobrado nada ahí. Puedes volver a intentarlo cuando responda tu servicio, o poner ${varias ? "una de esas entradas" : "esa entrada"} de pago la primera de tu mapa de modelos de texto en «Tu cuenta» si prefieres pagarla.`;
+  }
   return intentos.length <= 1
     ? "Puedes añadir otra entrada de reserva a tu mapa de modelos de texto en «Tu cuenta» y el siguiente intento la probará sola."
     : "";
@@ -187,33 +382,117 @@ export async function pedirTextoPorMapa(peticion: PeticionDeTexto): Promise<Text
   const sinLocal = entradas.filter((e) => e.proveedor !== "local");
   // Ver y oír solo lo saben los servicios compatibles, que además se pagan por cuota y no por petición.
   const delTipo = peticion.soloMultimodal ? sinLocal.filter((e) => e.proveedor === "compatible") : sinLocal;
-  // Primero se acota a lo confirmado y después se reordena: la entrada confirmada es la principal **del mapa**
-  // (`i === 0` antes de cualquier reordenación), no la que quede delante tras subir los modelos preferidos.
-  const confirmadas = peticion.limitarAConfirmado
-    ? delTipo.filter((e) => e === sinLocal[0] || e.proveedor === "compatible")
-    : delTipo;
+  const { confirmadas, porEncima, techos } = await acotarALoConfirmado(
+    delTipo,
+    sinLocal[0],
+    peticion.techoPorLlamada,
+    peticion.techoReserva,
+  );
+  // Se nombran por su proveedor (la clave que pagaría), sin el modelo, y cada proveedor una sola vez.
+  const sinConfirmar = [
+    ...new Set(
+      delTipo
+        .filter((e) => !confirmadas.includes(e) && !porEncima.some((p) => p.entrada === e))
+        .map((e) => `la entrada de ${e.nombreProveedor}`),
+    ),
+  ];
+  const caras = porEncima.map(({ entrada, creditos, techo }) => ({
+    nombreProveedor: entrada.nombreProveedor,
+    creditos,
+    techo,
+  }));
   const utiles = ordenarPorPreferencia(confirmadas, peticion.modelosPreferidos ?? []);
   const resultado = await recorrerMapa(
     utiles,
-    (entrada, posicion) => intentarEntrada(peticion, entrada, posicion),
+    (entrada, posicion) => intentarEntrada(peticion, entrada, posicion, techos.get(entrada)),
     (entrada, error) =>
-      error instanceof ErrorPeticionRepetida
+      // Ni una petición repetida ni un precio que pasa de lo confirmado son fallos del proveedor: salen tal cual.
+      error instanceof ErrorPeticionRepetida || error instanceof ErrorSobreLoConfirmado
         ? null
         : clasificarFallo(entrada, error, entrada.proveedor === "compatible" ? "" : detalleDeTiempo(MS_TEXTO)),
   );
-  // Un servicio compatible que ha rechazado la credencial queda marcado como no válido: así la próxima vez ni se
-  // intenta, y la pantalla de «Tu cuenta» lo dice en lugar de dejarlo con aspecto de estar bien.
-  for (const id of resultado.saltados) await marcarCompatibleInvalido(id, "rechazada");
-  if (!resultado.ok) throw new ErrorDeTexto(resultado.intentos, utiles.length > 0);
+  // Un servicio compatible que ha rechazado la credencial queda marcado como no válido, pero solo si su prueba
+  // gratuita lo confirma: así la próxima vez ni se intenta y «Tu cuenta» lo dice, sin que un rechazo suelto, un
+  // tiempo agotado o una sobrecarga suya lo saquen del mapa.
+  for (const id of resultado.saltados) await invalidarSiLaClaveNoSirve(peticion.usuarioId, id, peticion.buscar);
+  if (!resultado.ok) {
+    throw new ErrorDeTexto(resultado.intentos, delTipo.length > 0, sinConfirmar, caras);
+  }
+  const dePago = resultado.entrada.proveedor !== "compatible" && resultado.entrada.proveedor !== "local";
+  const [fallida] = resultado.intentos;
   return {
-    texto: resultado.valor,
+    texto: resultado.valor.texto,
     nombreProveedor: resultado.entrada.nombreProveedor,
     modelo: resultado.entrada.modelo,
     deReserva: resultado.intentos.length > 0,
     // La imagen solo la recibe un servicio compatible: si contestó una entrada de pago, no la vio.
     conImagen: peticion.imagen !== undefined && resultado.entrada.proveedor === "compatible",
     intentos: resultado.intentos,
+    creditos: resultado.valor.creditos,
+    // Si ha escrito una reserva de pago, se dice siempre: qué falló, quién lo ha escrito y cuánto ha costado.
+    aviso:
+      dePago && fallida
+        ? `${fraseDeIntento(fallida)}, así que lo ha escrito tu reserva de pago de ${resultado.entrada.nombreProveedor} por ${formatearCreditos(resultado.valor.creditos)}, dentro del coste que confirmaste.`
+        : "",
   };
+}
+
+/**
+ * Solo se puede gastar lo que el usuario vio y confirmó. **Ninguna otra entrada de pago se prueba**, porque pasar a
+ * ella sería cobrar sin avisar:
+ *
+ * - sin techo, la entrada principal (si es de pago, su coste es el que se enseñó) y las de cuota del plan;
+ * - con techo, las de cuota del plan siempre; la principal de pago si su precio vigente cabe en `techo`, y cualquier
+ *   otra de pago (una reserva) si cabe en `techoReserva` (o en `techo`, si no hay techo de reserva). Siempre del
+ *   proveedor cuyos créditos se confirmaron. Las que costarían más se apartan con su precio y lo que quedaba para
+ *   ellas (`porEncima`) para decirlas en el error; las de otro proveedor y las que no tienen precio registrado no
+ *   se pueden comparar, así que tampoco se prueban y se dicen como no confirmadas.
+ *
+ * Devuelve también el techo de cada entrada de pago admitida: es el que se vuelve a comprobar antes de reservar.
+ *
+ * Primero se acota y después se reordena: la principal es la **del mapa**, no la que quede delante tras los
+ * preferidos.
+ */
+async function acotarALoConfirmado(
+  delTipo: readonly EntradaResuelta[],
+  principal: EntradaResuelta | undefined,
+  techo: TechoPorLlamada | undefined,
+  techoReserva: TechoPorLlamada | undefined,
+): Promise<{
+  confirmadas: EntradaResuelta[];
+  porEncima: { entrada: EntradaResuelta; creditos: number; techo: number }[];
+  techos: Map<EntradaResuelta, TechoPorLlamada>;
+}> {
+  const techos = new Map<EntradaResuelta, TechoPorLlamada>();
+  if (techo === undefined) {
+    const confirmadas = delTipo.filter((e) => e === principal || e.proveedor === "compatible");
+    return { confirmadas, porEncima: [], techos };
+  }
+  const confirmadas: EntradaResuelta[] = [];
+  const porEncima: { entrada: EntradaResuelta; creditos: number; techo: number }[] = [];
+  for (const entrada of delTipo) {
+    if (entrada.proveedor === "compatible") {
+      confirmadas.push(entrada);
+      continue;
+    }
+    const suyo = entrada === principal ? techo : (techoReserva ?? techo);
+    let creditos: number;
+    try {
+      creditos = Math.ceil((await precioDeEntrada(entrada)).creditos);
+    } catch (error) {
+      if (error instanceof ErrorCatalogo) continue;
+      throw error;
+    }
+    if (cabeEnElTecho(suyo, entrada.proveedor, creditos)) {
+      confirmadas.push(entrada);
+      techos.set(entrada, suyo);
+    }
+    // Más cara que lo que quedaba para ella. La de otro proveedor no se compara: queda como no confirmada.
+    else if (suyo.creditos === 0 || entrada.proveedor === suyo.proveedor) {
+      porEncima.push({ entrada, creditos, techo: suyo.creditos });
+    }
+  }
+  return { confirmadas, porEncima, techos };
 }
 
 /**
@@ -233,11 +512,23 @@ function ordenarPorPreferencia(entradas: readonly EntradaResuelta[], preferidos:
     .map((e) => e.entrada);
 }
 
-async function intentarEntrada(peticion: PeticionDeTexto, entrada: EntradaResuelta, posicion: number): Promise<string> {
+/** Lo que contestó una entrada y los créditos que costó (0 en una de cuota). */
+interface Contestacion {
+  texto: string;
+  creditos: number;
+}
+
+async function intentarEntrada(
+  peticion: PeticionDeTexto,
+  entrada: EntradaResuelta,
+  posicion: number,
+  /** Techo de esta entrada de pago, si la llamada lleva techo; ver `acotarALoConfirmado`. */
+  techo: TechoPorLlamada | undefined,
+): Promise<Contestacion> {
   const clave = `${peticion.claveIdempotencia}:${posicion}`;
   return entrada.proveedor === "compatible"
     ? entradaPorCuota(peticion, entrada, clave)
-    : entradaDePago(peticion, entrada, clave);
+    : entradaDePago(peticion, entrada, clave, techo);
 }
 
 /**
@@ -248,7 +539,7 @@ async function entradaPorCuota(
   peticion: PeticionDeTexto,
   entrada: EntradaResuelta,
   claveIdempotencia: string,
-): Promise<string> {
+): Promise<Contestacion> {
   const servicio = entrada.compatible;
   if (!servicio) throw new ErrorCatalogo(503, "Esa entrada del mapa apunta a un servicio que ya no existe.");
   const respuesta = await pedirChat({
@@ -262,7 +553,7 @@ async function entradaPorCuota(
     ...(peticion.audio ? { audio: peticion.audio } : {}),
   });
   await apuntarPorCuota(peticion, entrada, claveIdempotencia, respuesta.tokensEntrada, respuesta.tokensSalida);
-  return respuesta.texto;
+  return { texto: respuesta.texto, creditos: 0 };
 }
 
 /**
@@ -273,7 +564,8 @@ async function entradaDePago(
   peticion: PeticionDeTexto,
   entrada: EntradaResuelta,
   claveIdempotencia: string,
-): Promise<string> {
+  techo: TechoPorLlamada | undefined,
+): Promise<Contestacion> {
   const modelo = await elegirModelo("text_generation", entrada.modelo);
   const adaptador = adaptadorDe(modelo.proveedor);
   const generarTexto = adaptador.generarTexto;
@@ -282,6 +574,10 @@ async function entradaDePago(
   }
   const precio = await adaptador.estimar(modelo.modelo);
   const creditos = Math.ceil(precio.creditos);
+  // Última comprobación antes de reservar: si el precio ha subido desde que se acotó el mapa, no se llama.
+  if (techo && !cabeEnElTecho(techo, entrada.proveedor, creditos)) {
+    throw new ErrorSobreLoConfirmado(entrada.nombreProveedor, creditos, techo);
+  }
   const { ejecucion, nueva } = await reservarEjecucion({
     usuarioId: peticion.usuarioId,
     proyectoId: peticion.proyectoId ?? null,
@@ -306,12 +602,11 @@ async function entradaDePago(
       buscar: peticion.buscar ?? fetch,
     });
   } catch (error) {
+    // Solo se apunta lo que se ha cobrado de verdad: 0 cuando el fallo lo prueba, la estimación cuando no se sabe.
     await cerrarGastoDeEjecucion(
       ejecucion.id,
-      esRechazoProbado(error) ? 0 : null,
-      esRechazoProbado(error)
-        ? "El proveedor rechazó la petición sin ejecutarla."
-        : "El proveedor no confirmó el resultado.",
+      sinCobro(error) ? 0 : null,
+      motivoDelFallo(error),
       "fallido",
       0,
       (error as Error).message,
@@ -319,10 +614,21 @@ async function entradaDePago(
     throw error;
   }
   await cerrarGastoDeEjecucion(ejecucion.id, respuesta.creditos, "Llamada al modelo de texto.", "listo");
-  return respuesta.texto;
+  return { texto: respuesta.texto, creditos: respuesta.creditos ?? creditos };
 }
 
-const esRechazoProbado = (error: unknown) => Boolean((error as { rechazoProbado?: boolean } | null)?.rechazoProbado);
+type FalloConCobro = { rechazoProbado?: boolean; sinCobro?: boolean } | null;
+
+const esRechazoProbado = (error: unknown) => Boolean((error as FalloConCobro)?.rechazoProbado);
+
+/** `true` si el fallo prueba que no se ha cobrado: un rechazo probado o una respuesta de error sin resultado. */
+const sinCobro = (error: unknown) => esRechazoProbado(error) || Boolean((error as FalloConCobro)?.sinCobro);
+
+function motivoDelFallo(error: unknown): string {
+  if (esRechazoProbado(error)) return "El proveedor rechazó la petición sin ejecutarla.";
+  if (sinCobro(error)) return "El proveedor respondió con un error y sin resultado: no ha cobrado la llamada.";
+  return "El proveedor no confirmó el resultado.";
+}
 
 /** Apunta una llamada que no cuesta créditos, con sus tokens. Perder el apunte no puede tirar el trabajo. */
 async function apuntarPorCuota(

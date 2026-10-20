@@ -66,7 +66,8 @@ export function clasificarFallo(entrada: EntradaResuelta, error: unknown, detall
       intento: {
         ...base,
         codigo: error.codigo,
-        cobro: error.rechazoProbado ? "sin-cobro" : "se-desconoce",
+        // Lo que se dice del cobro es lo que se apunta; pasar a otra entrada de pago sigue exigiendo el rechazo probado.
+        cobro: error.sinCobro ? "sin-cobro" : "se-desconoce",
         detalle: detalleExtra,
       },
       seguir: error.rechazoProbado,

@@ -121,10 +121,12 @@ export function requisitosDelEnvio(
   propios: readonly Requisito[],
   frenosDeControles: readonly string[],
   confirmacion: DatosConfirmacion,
+  /** Los frenos que no se salvan confirmando: se marcan como causa real. */
+  sinSalida: readonly string[] = [],
 ): Requisito[] {
   return [
     ...propios,
-    ...requisitosDeControles(frenosDeControles, confirmacion.envio, confirmacion.paso),
+    ...requisitosDeControles(frenosDeControles, confirmacion.envio, confirmacion.paso, sinSalida),
     ...requisitosDeConfirmacion(confirmacion),
   ];
 }
@@ -153,11 +155,20 @@ export interface DatosDeRequisitosDeCrear {
   /** Frenos de los controles previos de cada envío. */
   frenosFotograma: readonly string[];
   frenosClip: readonly string[];
+  /** De esos frenos, los que no se salvan confirmando (causas reales). */
+  sinSalidaFotograma?: readonly string[];
+  sinSalidaClip?: readonly string[];
   casillasFotograma: CasillasDeConfirmacion;
   casillasClip: CasillasDeConfirmacion;
-  conProducto: boolean;
+  /** El producto elegido tiene marca declarada: solo entonces se pide la casilla de la marca. */
+  conMarca: boolean;
   fotogramaSuperaUmbral: boolean;
   clipSuperaUmbral: boolean;
+  /**
+   * Queda un fotograma por confirmar: no se ha pedido ninguno o el último se ha parado. Con uno en marcha o ya listo,
+   * lo que falte en su confirmación no se cuenta en la barra: ese gasto ya está hecho.
+   */
+  fotogramaPorConfirmar: boolean;
   /** Hay imagen de la que sale el clip, y no hay un clip ya en marcha: solo entonces existe su confirmación. */
   clipPorConfirmar: boolean;
 }
@@ -180,27 +191,37 @@ export interface RequisitosDeCrear {
 export function requisitosDeCrear(d: DatosDeRequisitosDeCrear): RequisitosDeCrear {
   const fotogramaBase = requisitosDelFotograma(d.fotograma);
   const clipBase = requisitosDelClip(d.clip);
-  const fotograma = requisitosDelEnvio(fotogramaBase, d.frenosFotograma, {
-    ...d.casillasFotograma,
-    envio: ENVIO_FOTOGRAMA,
-    paso: "coste",
-    conProducto: d.conProducto,
-    superaUmbral: d.fotogramaSuperaUmbral,
-  });
-  const clip = requisitosDelEnvio(clipBase, d.frenosClip, {
-    ...d.casillasClip,
-    envio: ENVIO_CLIP,
-    paso: "clip",
-    conProducto: d.conProducto,
-    superaUmbral: d.clipSuperaUmbral,
-  });
+  const fotograma = requisitosDelEnvio(
+    fotogramaBase,
+    d.frenosFotograma,
+    {
+      ...d.casillasFotograma,
+      envio: ENVIO_FOTOGRAMA,
+      paso: "coste",
+      conMarca: d.conMarca,
+      superaUmbral: d.fotogramaSuperaUmbral,
+    },
+    d.sinSalidaFotograma,
+  );
+  const clip = requisitosDelEnvio(
+    clipBase,
+    d.frenosClip,
+    {
+      ...d.casillasClip,
+      envio: ENVIO_CLIP,
+      paso: "clip",
+      conMarca: d.conMarca,
+      superaUmbral: d.clipSuperaUmbral,
+    },
+    d.sinSalidaClip,
+  );
   return {
     fotograma,
     fotogramaBase,
     clip,
     clipBase,
     pendientes: pendientesPorPaso([
-      ...(d.origen === "fotograma" ? fotograma : []),
+      ...(d.origen === "fotograma" && d.fotogramaPorConfirmar ? fotograma : []),
       ...(d.clipPorConfirmar ? clip : []),
     ]),
   };

@@ -1,6 +1,6 @@
 {
   "name": "escenara",
-  "version": "0.52.4",
+  "version": "0.56.2",
   "private": true,
   "description": "Estudio abierto de personajes y vídeo",
   "license": "AGPL-3.0-only",
@@ -25,6 +25,7 @@
     "format": "biome check --write .",
     "typecheck": "bun --filter '*' typecheck",
     "test": "BETTER_AUTH_URL=http://localhost bun test --isolate",
+    "test:bd": "bun scripts/test-bd.ts",
     "check": "bun run lint && bun run typecheck && bun run test && bun run build",
     "services:up": "docker compose up -d --wait postgres seaweedfs mailpit && docker compose run --rm seaweedfs-init",
     "services:down": "docker compose down",

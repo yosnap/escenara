@@ -1,0 +1,95 @@
+# Tutorial «Crear un producto» en modo tutorial, versión de ESCRITORIO (YouTube): la ventana del navegador, fija,
+# ocupa el encuadre. La versión móvil (../crear-producto-tutorial/) tiene el mismo guion.
+# Sin voz: cada escena lleva un rótulo breve (titulo) y sus frases salen como subtítulos.
+# Tras el alta, el paso «Su primera imagen» genera la primera (eligiendo la vista) y desde la ficha se genera otra
+# vista. Después se añade una foto de la biblioteca con el diálogo de papeles. Producto inventado, sin marcas.
+# Evidencia: briefing.md.
+escenas:
+  - id: gancho
+    pieza: rotulo
+    parametros: { titulo: "Crea tu producto", subtitulo: "Su ficha y sus imágenes, paso a paso", fondo: claro, animacion: palabras }
+    frases:
+      - texto: "Vamos a crear un producto para tus vídeos: le damos su ficha y generamos sus imágenes sin salir de ella."
+
+  - id: nuevo
+    pieza: tutorial
+    parametros: { grabacion: producto, tramo: nuevo, titulo: "Nuevo producto" }
+    frases:
+      - texto: "En «Productos», toca «Crear el primero»."
+
+  - id: datos
+    pieza: tutorial
+    parametros: { grabacion: producto, tramo: datos, titulo: "Nombre y descripción" }
+    frases:
+      - texto: "Ponle un nombre y descríbelo en una o dos frases, en español: qué es y qué se ve. De esa descripción salen sus imágenes."
+
+  - id: tipo
+    pieza: tutorial
+    parametros: { grabacion: producto, tramo: tipo, titulo: "Físico o digital" }
+    frases:
+      - texto: "Elige si es físico, algo que se coge con la mano, o digital, como una app."
+      - texto: "Marca la casilla solo si se ve una marca o un logotipo: te avisará del filtro del proveedor."
+
+  - id: crear
+    pieza: tutorial
+    parametros: { grabacion: producto, tramo: crear, titulo: "Su primera imagen" }
+    frases:
+      - texto: "Toca «Crear producto» y la app te propone su primera imagen: generarla, subir tus fotos o hacerlo después."
+
+  - id: generar
+    pieza: tutorial
+    parametros: { grabacion: producto, tramo: generar, titulo: "Genera una imagen" }
+    frases:
+      - texto: "Toca «Genera su primera imagen» y elige la vista: la frontal con la etiqueta, el envase entero, un detalle de la tapa o el producto solo."
+      - texto: "Antes de encargarla ves lo que cuesta."
+
+  - id: encargar
+    pieza: tutorial
+    parametros: { grabacion: producto, tramo: encargar, titulo: "Confirma y encarga" }
+    frases:
+      - texto: "Confirma que puedes usar lo que se genere y toca «Encargar»."
+
+  - id: resultado
+    pieza: tutorial
+    parametros: { grabacion: producto, tramo: resultado, titulo: "Su primera imagen, lista" }
+    frases:
+      - texto: "Al terminar, entra en su ficha con su papel y marcada como generada."
+
+  - id: otra-vista
+    pieza: tutorial
+    parametros: { grabacion: producto, tramo: otra-vista, titulo: "Otra vista" }
+    frases:
+      - texto: "Para otra vista, toca «Generar una imagen» en la ficha: aquí, el detalle de la tapa."
+
+  - id: resultado-2
+    pieza: tutorial
+    parametros: { grabacion: producto, tramo: resultado-2, titulo: "Dos vistas listas" }
+    frases:
+      - texto: "Ya tiene dos imágenes, cada una con su papel."
+
+  - id: anadir
+    pieza: tutorial
+    parametros: { grabacion: producto, tramo: anadir, titulo: "¿Ya tienes fotos?" }
+    transicion: fundido
+    frases:
+      - texto: "¿Ya tienes fotos del producto? Tócalas en «Añadir de la biblioteca»: puedes buscarlas por su nombre."
+
+  - id: papel
+    pieza: tutorial
+    parametros: { grabacion: producto, tramo: papel, titulo: "Qué muestra cada foto" }
+    frases:
+      - texto: "Antes de añadirla, di qué muestra. Así el modelo sabe qué foto mirar en cada gesto, como al abrir la tapa."
+
+  - id: listo
+    pieza: tutorial
+    parametros: { grabacion: producto, tramo: listo, titulo: "Producto listo" }
+    frases:
+      - texto: "Botella Ondina ya está en tus productos, lista para que un personaje la presente en tus vídeos."
+
+  - id: cierre
+    pieza: logo
+    parametros: { lema: "Crea tu primer producto", url: "escenara.com", fondo: claro }
+    transicion: fundido
+    frases:
+      - texto: "Pruébalo en escenara.com y tienes la guía completa en docs.escenara.com."
+        hablado: "Pruébalo en escenara punto com y tienes la guía completa en la documentación."

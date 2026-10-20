@@ -137,13 +137,13 @@ export async function elegirFormatoDeReparto(actor: Actor, escenaId: unknown, fo
   if (formato !== "solo" && proyecto.voiceMode !== "omni") {
     throw new ErrorProyecto(
       409,
-      "Podcast y dualcast necesitan un proyecto en modo Omni. Cambia el modo de voz del proyecto antes de montar el reparto.",
+      "Podcast y dualcast necesitan un proyecto en modo «Voz e identidad registradas». Cambia el modo de voz del proyecto antes de montar el reparto.",
     );
   }
   if (formato !== "solo" && escena.productId !== null) {
     throw new ErrorProyecto(
       409,
-      "Esta escena lleva un producto. Quita el producto antes de elegir podcast o dualcast: Omni no puede enviar sus fotos junto con dos identidades registradas.",
+      "Esta escena lleva un producto. Quita el producto antes de elegir podcast o dualcast: sus fotos no pueden viajar junto con dos identidades registradas.",
     );
   }
   const actualizada = await db().transaction(async (tx) => {

@@ -43,6 +43,8 @@ const datos = (parcial: Partial<DatosDelAnuncio> = {}): DatosDelAnuncio => ({
     creditos: 3,
     porCuota: false,
     sello: "nan:gemma4:texto@v1",
+    comprobado: "2026-10-18",
+    proveedor: "kie",
     nombreProveedor: "NaN builders",
     modelo: "gemma4",
     admiteImagen: false,

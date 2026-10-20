@@ -168,11 +168,8 @@ function CosteDeLaFicha({ estimacion }: { estimacion: EstimacionDeTextoVista }) 
   return (
     <div className="flex flex-col gap-1 rounded-tarjeta border-2 border-borde bg-elevada p-4 text-sm">
       <p className="text-texto">
-        La escribiría{" "}
-        <strong className="font-semibold">
-          {estimacion.nombreProveedor} ({estimacion.modelo})
-        </strong>
-        , la primera entrada de tu mapa de modelos de texto.
+        La escribiría tu servicio de texto de <strong className="font-semibold">{estimacion.nombreProveedor}</strong>,
+        la primera entrada de tu mapa de modelos de texto.
       </p>
       <p className="text-texto">
         {estimacion.porCuota
@@ -203,7 +200,7 @@ function Propuesta({
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-texto-suave">
-        La ha escrito {propuesta.nombreProveedor} ({propuesta.modelo})
+        La ha escrito tu servicio de texto de {propuesta.nombreProveedor}
         {propuesta.deReserva && ", que es una entrada de reserva de tu mapa: la principal no pudo"}.{" "}
         {propuesta.conImagen ? "Ha visto la imagen del personaje." : propuesta.motivoSinImagen}
       </p>

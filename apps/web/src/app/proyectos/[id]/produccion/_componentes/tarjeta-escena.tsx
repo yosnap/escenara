@@ -7,6 +7,7 @@ import { claseBoton } from "@/components/ui/button";
 import { InsigniaControl } from "@/components/ui/controles";
 import { Aviso } from "@/components/ui/feedback";
 import { SelectorMedios } from "@/components/ui/media/selector-medios";
+import { OpcionesAvanzadas } from "@/components/ui/opciones-avanzadas";
 import { InsigniaEstadoEscena } from "@/components/ui/proyecto";
 import { avisosConfirmables, bloqueosDeControles } from "@/lib/controles";
 import { formatearCreditos } from "@/lib/generacion";
@@ -74,6 +75,8 @@ export function TarjetaEscena({
   const bloqueos = [
     ...bloqueosDeControles(escena.controles, avisosConfirmados),
     ...bloqueosDeControles(produccion.controlesDelModelo, avisosConfirmados),
+    // El otro personaje de un plano de podcast, sin registrar: se dice aquí, antes de confirmar nada.
+    ...(escena.faltaDelPlano ? [escena.faltaDelPlano] : []),
   ];
   const firma = [escena.id, ...avisosConfirmados].join("|");
   // Los avisos que frenan a esta escena, sin repetir regla: los suyos y los del modelo y el protagonista.
@@ -97,11 +100,21 @@ export function TarjetaEscena({
     ...bloqueos,
     ...(escena.controlesDelProductoClip ? bloqueosDeControles(escena.controlesDelProductoClip, avisosConfirmados) : []),
   ];
+  /**
+   * En modo «Voz e identidad registradas» no hay fotograma: producir la escena encola su clip hablado, y se confirma
+   * con la tarifa **de su duración** (un podcast de 20 s mezcla clips de 8 y 6 s), la misma que exige el servidor.
+   */
+  const hablada = produccion.modoVoz === "omni";
+  const creditosAlProducir = hablada
+    ? (escena.costeHablado?.creditos ?? produccion.creditosPorClip)
+    : produccion.creditosPorFotograma;
+  const selloAlProducir = hablada ? (escena.costeHablado?.sello ?? produccion.selloClip) : produccion.selloFotograma;
   const enVuelo = escenaEnVuelo(escena);
   const lista = escenaLista(escena);
   const sinProducir = escena.fotograma === null;
   const fotogramaListo = escena.fotograma?.estado === "listo" && escena.fotograma.medio !== null;
   const puedeAprobar =
+    !hablada &&
     !escena.comparativaEnMarcha &&
     escena.reparto === null &&
     (fotogramaPorAprobar(escena) || clipPorEncolar(escena)) &&
@@ -111,6 +124,7 @@ export function TarjetaEscena({
    * («ya tiene su clip guardado»), y para probar otro modelo con el mismo fotograma está «Comparar generando».
    */
   const puedePedirOtroClip =
+    !hablada &&
     !escena.comparativaEnMarcha &&
     escena.reparto === null &&
     escena.clip === null &&
@@ -175,9 +189,14 @@ export function TarjetaEscena({
         <>
           <div className={escena.reparto === null ? "grid gap-4 sm:grid-cols-2" : "hidden"}>
             <div className="flex flex-col gap-2">
-              <h4 className="text-sm font-semibold text-texto-suave">Fotograma</h4>
+              <h4 className="text-sm font-semibold text-texto-suave">
+                {hablada && escena.planoBase ? "Plano base" : "Fotograma"}
+              </h4>
               {escena.fotogramaAprobado ? (
-                <PrevisualizacionZonas medio={escena.fotogramaAprobado} etiqueta="Fotograma aprobado" />
+                <PrevisualizacionZonas
+                  medio={escena.fotogramaAprobado}
+                  etiqueta={hablada && escena.planoBase ? "Plano base de la escena" : "Fotograma aprobado"}
+                />
               ) : escena.fotograma?.medio ? (
                 <PrevisualizacionZonas medio={escena.fotograma.medio} etiqueta="Fotograma generado" />
               ) : escena.fotograma ? (
@@ -256,16 +275,20 @@ export function TarjetaEscena({
           {escena.reparto === null && !enVuelo && sinProducir && escena.estado !== "borrador" && (
             <ConfirmacionGasto
               titulo="Producir esta escena"
-              explicacion="Se encola su fotograma. El clip llega después, cuando apruebes el fotograma."
-              creditos={produccion.creditosPorFotograma}
+              explicacion={
+                hablada
+                  ? `Se encola su clip hablado de ${escena.costeHablado?.segundos ?? escena.segundos} s, con la voz y la cara registradas. No hay fotograma que aprobar.`
+                  : "Se encola su fotograma. El clip llega después, cuando apruebes el fotograma."
+              }
+              creditos={creditosAlProducir}
               umbral={produccion.umbralAvisoCreditos}
-              sello={produccion.selloFotograma}
-              etiqueta="Generar el fotograma"
+              sello={selloAlProducir}
+              etiqueta={hablada ? "Generar el clip hablado" : "Generar el fotograma"}
               firma={`producir|${firma}`}
               bloqueos={bloqueos}
               avisosConfirmados={avisosConfirmados}
               avisos={avisosFotograma}
-              conProducto={escena.conProducto}
+              conMarca={escena.conMarca}
               onConfirmarAviso={onConfirmarAviso}
               ocupado={ocupado}
               onEnviar={onProducir}
@@ -306,7 +329,7 @@ export function TarjetaEscena({
               bloqueos={bloqueosClip}
               avisosConfirmados={avisosConfirmados}
               avisos={avisosClip}
-              conProducto={escena.conProducto}
+              conMarca={escena.conMarca}
               onConfirmarAviso={onConfirmarAviso}
               ocupado={ocupado}
               onEnviar={onAprobar}
@@ -329,21 +352,36 @@ export function TarjetaEscena({
               bloqueos={bloqueosClip}
               avisosConfirmados={avisosConfirmados}
               avisos={avisosClip}
-              conProducto={escena.conProducto}
+              conMarca={escena.conMarca}
               onConfirmarAviso={onConfirmarAviso}
               ocupado={ocupado}
               onEnviar={onOtroClip}
             />
           )}
 
-          {puedeComparar && (
-            <p className="flex flex-wrap items-center gap-3 text-sm text-texto-suave">
-              <Link href={`/comparar/escena/${escena.id}`} className={claseBoton("secundario", "sm")}>
-                <GitCompareArrows className="size-4" aria-hidden /> Comparar generando
-              </Link>
-              Anima este fotograma con dos modelos y elige el mejor. Antes de confirmar verás cuántas ejecuciones son y
-              cuánto cuestan.
-            </p>
+          {/* Con qué modelo salió y comparar modelos: solo en las Opciones avanzadas de la escena. */}
+          {(puedeComparar || escena.fotograma || escena.animacion) && (
+            <OpcionesAvanzadas clave={`escena:${escena.id}`} compacta>
+              {escena.fotograma && (
+                <p className="text-texto-suave">
+                  Fotograma generado con <span className="font-mono text-texto">{escena.fotograma.modelo}</span>
+                </p>
+              )}
+              {escena.animacion && (
+                <p className="text-texto-suave">
+                  Clip generado con <span className="font-mono text-texto">{escena.animacion.modelo}</span>
+                </p>
+              )}
+              {puedeComparar && (
+                <p className="flex flex-wrap items-center gap-3 text-sm text-texto-suave">
+                  <Link href={`/comparar/escena/${escena.id}`} className={claseBoton("secundario", "sm")}>
+                    <GitCompareArrows className="size-4" aria-hidden /> Comparar generando
+                  </Link>
+                  Anima este fotograma con dos modelos y elige el mejor. Antes de confirmar verás cuántas ejecuciones
+                  son y cuánto cuestan.
+                </p>
+              )}
+            </OpcionesAvanzadas>
           )}
 
           {/* En una escena de dos personajes no hay fotograma que regenerar: lo que se pide otra vez son sus clips. */}
@@ -359,7 +397,7 @@ export function TarjetaEscena({
               bloqueos={bloqueos}
               avisosConfirmados={avisosConfirmados}
               avisos={avisosFotograma}
-              conProducto={escena.conProducto}
+              conMarca={escena.conMarca}
               onConfirmarAviso={onConfirmarAviso}
               ocupado={ocupado}
               onEnviar={onRegenerar}

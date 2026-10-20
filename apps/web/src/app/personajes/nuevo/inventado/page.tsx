@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Alerta } from "@/components/ui/alerta";
 import { claseBoton } from "@/components/ui/button";
+import { retratosEnPalabras, retratosPorEncargo } from "@/lib/omni";
+import { leerAjustes } from "@/server/ajustes";
 import { exigirSesion } from "@/server/auth/sesion";
 import { publicacionVisible } from "@/server/comunidad/consulta";
 import { listarPresets } from "@/server/prompts/consulta";
@@ -31,6 +33,8 @@ export default async function PaginaNuevoPersonajeInventado({
       ? await publicacionVisible(inspiracion).catch(() => null)
       : null;
   const inspirado = origen?.tipo === "personaje" ? origen : null;
+  // Los retratos que se prometen son los que se pueden encargar de una vez, no más.
+  const retratos = retratosPorEncargo((await leerAjustes()).trabajosSimultaneos);
   const estilos = (await listarPresets({ categoria: "estilo-animado" }))
     .filter((preset) => preset.activo)
     .map((preset) => ({ clave: preset.clave, nombre: preset.nombre, descripcion: preset.descripcion }));
@@ -44,8 +48,8 @@ export default async function PaginaNuevoPersonajeInventado({
           </Link>
           <h1 className="text-4xl font-bold text-texto">Nuevo personaje inventado</h1>
           <p className="max-w-2xl text-texto-suave">
-            No existe: lo describes, se generan cuatro retratos y eliges el que te convenza. No admite fotos de personas
-            reales, y todo lo que genere queda marcado como contenido sintético.
+            No existe: lo describes, se generan hasta {retratosEnPalabras(retratos)} y eliges el que te convenza. No
+            admite fotos de personas reales, y todo lo que genere queda marcado como contenido sintético.
           </p>
         </div>
         {inspirado && (
@@ -53,7 +57,11 @@ export default async function PaginaNuevoPersonajeInventado({
             Partes de su descripción; cámbiala a tu gusto. Tu personaje será tuyo, con sus propios retratos, y privado.
           </Alerta>
         )}
-        <AltaPersonajeInventado estilos={estilos} descripcionInicial={inspirado?.descripcion ?? ""} />
+        <AltaPersonajeInventado
+          estilos={estilos}
+          retratos={retratos}
+          descripcionInicial={inspirado?.descripcion ?? ""}
+        />
       </main>
     </div>
   );

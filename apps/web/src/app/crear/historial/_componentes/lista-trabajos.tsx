@@ -7,6 +7,7 @@ import { Alerta } from "@/components/ui/alerta";
 import { Boton, claseBoton } from "@/components/ui/button";
 import { Aviso, EstadoVacio } from "@/components/ui/feedback";
 import { MiniaturaMedio } from "@/components/ui/media/miniatura-medio";
+import { GeneradoCon } from "@/components/ui/opciones-avanzadas";
 import { InsigniaEstado } from "@/components/ui/trabajo";
 import { causaConocida, etiquetaDelFallo } from "@/lib/causa-fallo";
 import { type EstadoCola, esCancelable, esEstadoActivo, formatearCreditos, type TrabajoVista } from "@/lib/generacion";
@@ -94,7 +95,6 @@ export function ListaTrabajos({ iniciales, cola }: { iniciales: TrabajoVista[]; 
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <div className="flex flex-wrap items-center gap-2">
                 <InsigniaEstado estado={trabajo.estado} />
-                <span className="font-mono text-sm text-texto-suave">{trabajo.modelo}</span>
                 {trabajo.proporcion && (
                   <span className="rounded-full bg-elevada px-3 py-1 text-sm text-texto-suave">
                     Formato {trabajo.proporcion}
@@ -116,6 +116,7 @@ export function ListaTrabajos({ iniciales, cola }: { iniciales: TrabajoVista[]; 
                   : `${formatearCreditos(trabajo.creditosConsumidos)} según el proveedor`}
                 {trabajo.intentos > 1 && ` · ${trabajo.intentos} de ${trabajo.intentosMaximos} intentos`}
               </p>
+              <GeneradoCon clave={`trabajo:${trabajo.id}`} modelo={trabajo.modelo} />
               {/* Con causa concreta, el mensaje ya la dice entera: la etiqueta solo la repetiría. */}
               {trabajo.motivoFallo && !(causaConocida(trabajo.causaFallo) && trabajo.error) && (
                 <p className="text-sm text-texto-suave">{etiquetaDelFallo(trabajo.motivoFallo, trabajo.causaFallo)}.</p>

@@ -29,6 +29,7 @@ import { elegirParaTipo } from "../generacion/precios";
 import { type Actor, aDto } from "../media/dto";
 import { estadoDeProduccion } from "../produccion/consulta";
 import { usarVersionDeEscena } from "../produccion/versiones";
+import { marcasExigidas } from "../productos/declaracion-marca";
 import { creditosDelEnvio } from "../prompts/traduccion";
 import { modelosElegibles } from "../proveedores/catalogo";
 
@@ -54,7 +55,9 @@ export async function impedimentosDe(escena: FilaEscena, proyecto: FilaProyecto)
     motivos.push("Esta escena canta con tu audio: su clip se produce desde el camino de canto y no se compara aquí.");
   }
   if (proyecto.voiceMode === "omni") {
-    motivos.push("En modo Omni la escena se genera entera de una vez: no hay fotograma que animar con dos modelos.");
+    motivos.push(
+      "En modo «Voz e identidad registradas» la escena se genera entera de una vez: no hay fotograma que animar con dos modelos.",
+    );
   }
   if (escena.castFormat !== "solo") {
     motivos.push("Esta escena tiene dos personajes: sus clips van por turnos y no se comparan de uno en uno.");
@@ -141,6 +144,7 @@ export async function prepararAB(actor: Actor, escenaId: unknown): Promise<Prepa
     impedimentos,
     umbralAvisoCreditos: ajustes.avisoCreditos,
     conProducto: escena.productId !== null,
+    conMarca: escena.productId !== null && ((await marcasExigidas([escena.productId])).get(escena.productId) ?? false),
     conPersonaje: escena.placeShot !== "solo_lugar" && proyecto.mainCharacterId !== null,
     avisos: [...avisos].map(([regla, motivo]) => ({ regla, motivo })),
     fotograma: fotograma[0] ? aDto(fotograma[0], actor) : null,

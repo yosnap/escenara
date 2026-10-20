@@ -232,7 +232,9 @@ export function motivoFormatoNoGenerable(
         : `${m.nombre} solo admite ${m.proporciones.join(", ")}`,
     );
   if (motivos.length === 0) return null;
-  return `${motivos.join("; ")}. Con los modelos que tienes elegidos no se puede generar en ${proporcion}: elige otro formato principal o cambia de modelo. Los demás formatos se pueden seguir sacando en el montaje con reencuadre.`;
+  // El nombre puede llegar como frase en minúscula («el modelo de vídeo que usas»): la frase empieza en mayúscula.
+  const lista = motivos.join("; ");
+  return `${lista.charAt(0).toLocaleUpperCase("es")}${lista.slice(1)}. Con los modelos que tienes elegidos no se puede generar en ${proporcion}: elige otro formato principal o cambia de modelo (en las Opciones avanzadas del proyecto o en Cuenta › Mapa de modelos). Los demás formatos se pueden seguir sacando en el montaje con reencuadre.`;
 }
 
 /** Por formato, por qué no se puede generar en él con estos modelos; `null` si se puede. */
@@ -280,10 +282,19 @@ export function motivoFormatoDelFotograma(
   proporcionDelClip: string | null,
   modelo: ModeloConProporciones,
   alternativas: readonly string[] = [],
+  /**
+   * Para el usuario normal: `modelo.nombre` ya llega como frase neutra («el modelo de vídeo elegido») y las
+   * alternativas no se nombran, se eligen en las Opciones avanzadas. Quien administra las ve por su nombre.
+   */
+  sinNombres = false,
 ): string | null {
   if (proporcionDelFotograma === null || proporcionDelClip !== null) return null;
   if (modeloAnimaLaProporcion(modelo.proporciones, proporcionDelFotograma)) return null;
   const otros =
-    alternativas.length > 0 ? `elige otro modelo del clip que la admite (${alternativas.join(", ")}), o ` : "";
+    alternativas.length === 0
+      ? ""
+      : sinNombres
+        ? "elige en Opciones avanzadas otro modelo del clip que la admita, o "
+        : `elige otro modelo del clip que la admite (${alternativas.join(", ")}), o `;
   return `El fotograma está en ${proporcionDelFotograma} y ${modelo.nombre} solo hace clips en ${modelo.proporciones.join(" o ")}, y Escenara no recorta el fotograma por su cuenta. Para animarlo, ${otros}recórtalo a ${modelo.proporciones[0]} en tu Biblioteca («Editar imagen») y anima esa copia.`;
 }

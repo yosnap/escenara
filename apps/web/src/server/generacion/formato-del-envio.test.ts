@@ -30,7 +30,8 @@ describe("la proporción de un envío", () => {
 
   test("una proporción que el modelo no admite se rechaza antes de encolar, diciendo que no se ha cobrado", () => {
     expect(() => proporcionDelEnvio("1:1", null, veo)).toThrow(ErrorGeneracion);
-    expect(() => proporcionDelEnvio("1:1", null, veo)).toThrow("Veo solo admite 9:16, 16:9");
+    expect(() => proporcionDelEnvio("1:1", null, veo)).toThrow("El modelo elegido solo admite 9:16, 16:9");
+    expect(() => proporcionDelEnvio("1:1", null, veo)).toThrow("Opciones avanzadas");
     expect(() => proporcionDelEnvio("9:16", null, hailuo)).toThrow("no admite elegir proporción");
   });
 
@@ -46,6 +47,14 @@ describe("la proporción de un envío", () => {
     expect(motivoFormatoDelFotograma("9:16", null, conProporciones(veo))).toBeNull();
     // Un modelo que no acepta proporción toma la de la imagen: no hay nada que avisar.
     expect(motivoFormatoDelFotograma("4:5", null, conProporciones(hailuo))).toBeNull();
+  });
+
+  test("para el usuario normal las salidas no nombran ningún modelo: se eligen en las Opciones avanzadas", () => {
+    const neutro = { nombre: "el modelo de vídeo que usas", proporciones: ["9:16"] };
+    const motivo = motivoFormatoDelFotograma("4:5", null, neutro, ["Kling 3", "Seedance"], true) ?? "";
+    expect(motivo).toContain("el modelo de vídeo que usas solo hace clips en 9:16");
+    expect(motivo).toContain("elige en Opciones avanzadas otro modelo del clip que la admita");
+    expect(motivo).not.toContain("Kling");
   });
 
   test("las reservas que no admiten la proporción elegida no se guardan: el relevo no cambia de formato", () => {
@@ -70,7 +79,10 @@ describe("lo que el despacho lee del trabajo", () => {
 
   test("con una elegida que el modelo ya no admite no se envía otra: se devuelve el motivo", () => {
     const resultado = proporcionPedidaDe(fila({ proporcion: "4:5" }, "animacion"), veo);
-    expect("error" in resultado && resultado.error).toContain("Veo no admite esa proporción");
+    // Lo lee el usuario: el modelo se nombra por lo que hace, con dónde cambiarlo, y se dice que no se ha cobrado.
+    expect("error" in resultado && resultado.error).toContain("el modelo de vídeo que usas no admite esa proporción");
+    expect("error" in resultado && resultado.error).not.toContain("Veo");
+    expect("error" in resultado && resultado.error).toContain("no se te ha cobrado");
   });
 
   test("el historial enseña la elegida o, en un trabajo de antes, la que se envió", () => {

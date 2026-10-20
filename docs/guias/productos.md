@@ -2,7 +2,12 @@
 
 Un producto es lo que enseñas delante de la cámara: un bote, una prenda o una app en la pantalla del móvil. Lo
 das de alta una vez en **Productos**, con sus fotos, y a partir de ahí lo eliges en cualquier clip: en
-**«Crear»** y en la **escena de un proyecto**, en el mismo panel donde diriges.
+**«Crear»** y en la **escena de un proyecto**, en el mismo panel donde diriges. En «Crear» también puedes elegirlo
+antes, al describir la escena, para que ya salga en el fotograma.
+
+Así se crea un producto y se generan sus imágenes sin salir de su ficha, paso a paso:
+
+[![Cómo crear un producto en Escenara y generar sus imágenes con IA, paso a paso](../assets/video/youtube-9CCW9_EWzeg.webp)](https://youtu.be/9CCW9_EWzeg)
 
 Lo que Escenara promete con un producto es una cosa concreta: **su etiqueta y su envase no se tocan**. Ni se
 reescribe el texto, ni se cambia el color, ni se inventa un logo. Después de generar, Jev compara el resultado
@@ -15,7 +20,29 @@ En **Productos**, con el botón **«Nuevo producto»**, pones el nombre, una fra
 - **Físico**: algo que se coge con la mano.
 - **Digital**: una app o un programa que se ve en una pantalla.
 
-Después le añades fotos de tu biblioteca, y a cada una le dices **para qué sirve**:
+Y respondes, **obligatoriamente**, a **«¿En las fotos se ve una marca o un logotipo?»**: **Sí** o **No**. Sin
+responder no se puede crear. Con **Sí**, en cada vídeo con el producto confirmarás que tienes derecho a usar esa
+marca, y se te avisará de que el filtro del proveedor puede rechazarla. Con **No**, no se te pedirá nada. La
+respuesta se cambia en la ficha del producto.
+
+Los productos creados antes de esta pregunta quedan **sin responder** (salvo los que ya tenían marcada la marca,
+que siguen con **Sí**). Mientras sigan así, su ficha te invita a responder, y cada vídeo con ellos pide la casilla de
+la marca igual que si la tuvieran.
+
+Al pulsar «Crear producto» llegas a su ficha con el paso **«Su primera imagen»** delante, con dos opciones:
+
+- **«Genera su primera imagen»**: abre el diálogo de la imagen generada con la descripción que acabas de guardar a la
+  vista; eliges la vista y ves **el coste antes de confirmar** (ver más abajo). Si la descripción es demasiado corta
+  para generar, el propio paso lo dice y te deja completarla ahí con **«Guardar y generar»**.
+- **«Sube tus fotos»**: abre tu biblioteca, donde también puedes subir archivos nuevos, y después te pide el papel de
+  cada foto.
+
+**«Lo haré después»** te deja en la ficha. Mientras el producto no tenga ninguna foto, la sección de fotos explica esas
+mismas dos opciones y, si todavía no se puede generar, dice por qué dentro de la propia opción.
+
+Al añadir fotos de tu biblioteca, antes de que entren, le dices a cada una **para qué sirve**. Cada foto
+parte de un papel neutro (**«El envase entero»** en un producto físico, **«Captura de pantalla»** en uno digital), nunca
+de la frontal con la etiqueta: márcala tú solo si en la foto se lee la etiqueta. El papel se cambia luego en la lista.
 
 | Papel | Para qué |
 |---|---|
@@ -25,15 +52,38 @@ Después le añades fotos de tu biblioteca, y a cada una le dices **para qué si
 | Captura de pantalla | La pantalla de tu app tal cual. Es la que se inserta en un producto digital. |
 | El producto solo | Sobre fondo limpio, sin nadie sosteniéndolo. |
 
-Si declaras que en el producto **se ve una marca**, se te avisará antes de cada envío: el filtro del proveedor
+### Generar sus imágenes aquí
+
+Si no tienes fotos, **«Generar una imagen»** las crea desde la descripción guardada del producto. Eliges **qué vista**
+(la frontal con la etiqueta, el envase entero, el detalle de la tapa o el producto solo; una captura de pantalla no se
+genera, se sube la de verdad) y ves **el coste antes de confirmar**: es una imagen y se cobra como un fotograma, con el
+mismo aviso de gasto y la misma casilla de derechos. Al terminar entra en el producto con esa vista y marcada como
+**«Generada aquí con IA»**. Antes de generar, guarda la descripción: se usa la guardada, no la que estás escribiendo.
+
+Si respondes que en el producto **se ve una marca** (o aún no lo has respondido), se te avisará antes de cada envío: el filtro del proveedor
 puede rechazar un logo, y en ese caso no se genera nada y **no se te cobra**.
 
 ## Elegirlo en un clip
+
+Así se hace un clip de anuncio desde «Crear», con tu personaje presentando el producto, paso a paso:
+
+[![Cómo hacer un clip de anuncio con tu personaje y tu producto en Escenara, paso a paso](../assets/video/youtube-LBWXkrFa-84.webp)](https://youtu.be/LBWXkrFa-84)
 
 En el panel de dirección, bloque **El producto**: eliges cuál y **qué se hace con él**. Es **una sola elección**
 entre todas las acciones, aunque salgan repartidas en familias: si eliges una de moda, se desmarca la que tenías
 en «Con el producto en la mano». Encima de la lista, **«Elegida: …»** te dice cuál es en cada momento. Cada acción
 lleva su dibujo y **una frase** de lo que verás.
+
+Antes de pagar, tanto en el fotograma como en el clip, la confirmación del coste enseña **las fotos del producto que
+se enviarán** y cuántas imágenes van en total frente a las que admite el modelo.
+
+**En «Crear», desde el fotograma.** En el paso **«Describe la escena»** está el mismo bloque **El producto**. Si lo
+eliges ahí, sus fotos entran como referencia de imagen en el fotograma, igual que las del personaje, y el producto
+ya sale en la imagen (por ejemplo, en la mano con «Sostenerlo»). En el paso **«El clip»** aparece ya elegido, con su
+acción, y puedes cambiarlo. El coste del fotograma no cambia por llevar el producto: se cobra por imagen. Las fotos
+del producto que se envían se eligen en el clip, que es donde dependen del modelo. Una vez pedido el fotograma, su
+producto ya no se cambia en «Describe la escena»; si en el clip eliges otro (o lo quitas), un aviso te dice que no
+coincide con el de la imagen y qué puede pasar.
 
 - **Con el producto en la mano** (siempre a la vista): sostenerlo, mirarlo, señalarlo, enseñarlo a cámara,
   abrirlo, aplicarlo, o el **producto solo**.
@@ -122,20 +172,23 @@ Todos estos avisos salen **antes** de gastar y se confirman con una casilla; nin
   que la cara sea idéntica entre escenas, haz el producto en un plano aparte y móntalo.
 - **El modelo elegido no admite la foto del producto.** Pasa con Veo: su segunda imagen es el último fotograma
   del clip, no una galería. Entonces el producto viaja solo descrito con palabras. **Escenara no te cambia el
-  modelo por su cuenta** —cambiar de modelo cambia la tarifa—: te dice cuáles sí la llevan y eliges tú, con su
-  coste delante. El aviso sale **junto al selector de producto**, en cuanto eliges el producto (si tiene fotos), y
-  además el selector de modelo del clip indica en cada modelo si «Admite la foto del producto» o si «El producto
-  viaja solo descrito». Sigue saliendo también antes del coste, con su casilla de confirmación.
-- **No caben todas las referencias.** Con las cifras: «Gemini Omni 1.1 Flash admite 7 referencias: se envían 4 del
+  modelo por su cuenta** —cambiar de modelo cambia la tarifa—: eliges tú, con su coste delante. El aviso sale
+  **junto al selector de producto**, en cuanto eliges el producto (si tiene fotos), sin nombrar modelos: te dice que
+  abras las **Opciones avanzadas** del clip, donde el selector de modelo indica en cada uno si «Admite la foto del
+  producto» o si «El producto viaja solo descrito». Sigue saliendo también antes del coste, con su casilla de
+  confirmación.
+- **No caben todas las referencias.** Con las cifras: «El modelo de vídeo que usas admite 7 referencias: se envían 4 del
   personaje y 3 de «Caja Huerta Valenciana»; 2 fotos del producto se quedan fuera. Lo que sobra puede salir
-  distinto.» Puedes elegir otro modelo con más referencias o elegir qué fotos del producto viajan.
+  distinto.» Puedes elegir en las Opciones avanzadas otro modelo con más referencias o elegir qué fotos del producto
+  viajan.
 - **El producto no tiene fotos.** Se le pedirá un envase sin marca, y el resultado no será tu producto.
 - **En el producto se ve una marca.** El filtro del proveedor puede rechazarlo; si lo rechaza, no se cobra.
 - **La acción es poco fiable** (las de piel).
 
-Y una casilla que **sí bloquea**: **«Tengo derecho a usar esta marca»**. Aparece solo cuando el envío lleva
-producto y, mientras no la marques, el botón de generar no se activa. Tu declaración queda registrada con su
-fecha en el trabajo.
+Y una casilla que **sí bloquea**: **«Tengo derecho a usar esta marca»**. Aparece cuando el envío lleva un producto
+**con marca** o **sin responder**, en «Crear», en la producción de un proyecto y en la comparativa A/B, y mientras no
+la marques el botón de generar no se activa. Tu declaración queda registrada con su fecha en el trabajo. Si
+respondiste **No**, la casilla no sale, no se te pide y no se apunta ninguna declaración.
 
 ## Borrar un producto
 

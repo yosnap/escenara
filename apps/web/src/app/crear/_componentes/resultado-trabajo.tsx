@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { claseBoton } from "@/components/ui/button";
 import { VisorMedio } from "@/components/ui/media/visor-medio";
+import { GeneradoCon } from "@/components/ui/opciones-avanzadas";
 import { formatearCreditos, type TrabajoVista } from "@/lib/generacion";
 import { ConvertirEnProyecto } from "./convertir-en-proyecto";
 
@@ -26,10 +27,6 @@ export function ResultadoTrabajo({ trabajo, children }: { trabajo: TrabajoVista;
           <p className="text-texto-suave">Ya está guardado en tu biblioteca.</p>
           <dl className="grid gap-1 text-sm">
             <div className="flex gap-2">
-              <dt className="text-texto-suave">Modelo:</dt>
-              <dd className="font-mono text-texto">{trabajo.modelo}</dd>
-            </div>
-            <div className="flex gap-2">
               <dt className="text-texto-suave">Créditos:</dt>
               <dd className="text-texto">
                 {consumidos === null
@@ -38,6 +35,8 @@ export function ResultadoTrabajo({ trabajo, children }: { trabajo: TrabajoVista;
               </dd>
             </div>
           </dl>
+          {/* Con qué modelo salió solo se dice en las Opciones avanzadas del trabajo. */}
+          <GeneradoCon clave={`trabajo:${trabajo.id}`} modelo={trabajo.modelo} />
           <div className="mt-1 flex flex-wrap gap-2">
             <Link href="/biblioteca" className={claseBoton("secundario", "sm")}>
               <FolderOpen className="size-4" aria-hidden /> Ver en la biblioteca

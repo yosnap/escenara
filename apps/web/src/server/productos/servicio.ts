@@ -45,6 +45,14 @@ function nombreLimpio(valor: unknown): string {
   return nombre;
 }
 
+/** La respuesta a «¿se ve una marca?»: sí o no. Al crear es obligatoria; al editar, si llega, también. */
+function marcaLimpia(valor: unknown): boolean {
+  if (typeof valor !== "boolean") {
+    throw new ErrorProducto(400, "Responde si en las fotos del producto se ve una marca o un logotipo: sí o no.");
+  }
+  return valor;
+}
+
 function tipoLimpio(valor: unknown): TipoProducto {
   if (!esTipoProducto(valor)) throw new ErrorProducto(400, "Un producto es físico o digital: elige uno de los dos.");
   return valor;
@@ -64,7 +72,7 @@ export async function crearProducto(actor: Actor, datos: DatosProducto): Promise
       name: nombre,
       description: limpiarTextoDePrompt(datos.descripcion, DESCRIPCION_PRODUCTO_MAXIMA),
       kind: tipoLimpio(datos.tipo),
-      brandVisible: datos.marcaVisible === true,
+      brandVisible: marcaLimpia(datos.marcaVisible),
     })
     .onConflictDoNothing({ target: [products.ownerId, products.name] })
     .returning();
@@ -82,7 +90,10 @@ export async function actualizarProducto(actor: Actor, id: unknown, datos: Datos
     campos.description = limpiarTextoDePrompt(datos.descripcion, DESCRIPCION_PRODUCTO_MAXIMA);
   }
   if (datos.tipo !== undefined) campos.kind = tipoLimpio(datos.tipo);
-  if (datos.marcaVisible !== undefined) campos.brandVisible = datos.marcaVisible === true;
+  // Se puede cambiar la respuesta, pero no volver a «sin responder»: un `null` deja la que hubiera.
+  if (datos.marcaVisible !== undefined && datos.marcaVisible !== null) {
+    campos.brandVisible = marcaLimpia(datos.marcaVisible);
+  }
 
   if (campos.name !== undefined && campos.name !== producto.name) {
     const [repetido] = await db()

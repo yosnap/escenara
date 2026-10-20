@@ -249,6 +249,8 @@ export interface EscenaProduccionVista {
   animacion: TrabajoDeEscena | null;
   /** Fotograma que el usuario aprobó; `null` mientras no apruebe ninguno. Es el que se anima y el que monta. */
   fotogramaAprobado: Medio | null;
+  /** `true` si el fotograma aprobado es el plano base de un vídeo completo (modo voz e identidad registradas). */
+  planoBase?: boolean;
   /** Clip resultante de la escena, si ya está. */
   clip: Medio | null;
   /** Créditos estimados de la escena entera (fotograma + clip), tal como los congeló el plan. */
@@ -260,6 +262,16 @@ export interface EscenaProduccionVista {
   presupuestoReintentos: number;
   /** Motivo del último fallo apto para el usuario; vacío si no ha fallado nada. */
   motivoUltimoFallo: string;
+  /**
+   * En modo «Voz e identidad registradas», lo que cuesta el clip hablado **de esta escena** con su duración (cada
+   * duración tiene su tarifa y su sello) y los segundos que se piden. `null` fuera de ese modo o sin precio.
+   */
+  costeHablado?: { creditos: number; sello: string; segundos: number } | null;
+  /**
+   * En un plano de podcast con otro personaje que el protagonista: lo que le falta a **ese** personaje para salir con
+   * su cara y su voz registradas, con su nombre. Vacío o ausente si no le falta nada. Bloquea producir la escena.
+   */
+  faltaDelPlano?: string;
   /** La escena se editó después de generarla: lo producido ya no corresponde a lo que dice. */
   cambiadaDesdeLaGeneracion: boolean;
   /**
@@ -267,6 +279,11 @@ export interface EscenaProduccionVista {
    * aparece cuando hay una marca en juego, y sin ella no se genera.
    */
   conProducto: boolean;
+  /**
+   * El producto de la escena exige la declaración «Tengo derecho a usar esta marca»: tiene marca declarada o está
+   * sin responder. Con un producto declarado sin marca no se pide. Es la misma regla que aplica el servidor.
+   */
+  conMarca: boolean;
   /**
    * **Falta insertar la captura** (producto digital, 0.26.0): lo que hay hecho es el fotograma con la
    * pantalla apagada, así que lo siguiente no es el clip sino meter la captura dentro de esa pantalla. Es
@@ -369,6 +386,12 @@ export interface ProduccionVista {
   /** Escenas que se pueden encolar ahora mismo y lo que costaría hacerlo. */
   porProducir: number;
   creditosPorFotograma: number;
+  /**
+   * En modo «Voz e identidad registradas»: lo que cuesta cada escena pendiente si **todas** cuestan lo mismo (misma
+   * duración), que es lo que se confirma al producirlas de una vez; `null` si sus duraciones difieren y hay que
+   * confirmarlas una a una. Ausente en los demás modos.
+   */
+  costeHabladoComun?: { creditos: number; sello: string } | null;
   /**
    * Umbral de aviso por gasto alto de Admin › Ajustes, en créditos y **por trabajo**. Es el mismo que compara el
    * servidor (`generacion/comprobaciones.ts › exigirAvisoUmbral`), así que la confirmación puede pedir la casilla

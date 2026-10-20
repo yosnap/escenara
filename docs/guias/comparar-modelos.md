@@ -72,7 +72,7 @@ fotograma**, con la misma dirección y el mismo texto de la escena.
 Mientras no eliges, **la escena no cambia**: sigue con su clip de antes, y un fallo de una alternativa no marca la
 escena como fallida.
 
-No se puede comparar generando en una escena de canto, en una escena con dos personajes ni en modo Omni: en esos casos
+No se puede comparar generando en una escena de canto, en una escena con dos personajes ni en el modo «Voz e identidad registradas»: en esos casos
 el clip no sale de un fotograma que se pueda animar con dos modelos.
 
 ## Qué no hace

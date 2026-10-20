@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { Problema } from "@/lib/llevar-al-problema";
-import { Alerta, esDescartable, FlechaProblema } from "./alerta";
+import { Alerta, ESTILO_ALERTA, esDescartable, FlechaProblema } from "./alerta";
 import { Aviso, AvisoEstado } from "./feedback";
 
 const veces = (html: string, texto: string) => html.split(texto).length - 1;
@@ -34,6 +34,21 @@ describe("alerta: los tres tipos", () => {
     expect(html).toContain('role="status"');
     expect(html).not.toContain('role="alert"');
     expect(html).toContain("border-aviso/80");
+  });
+
+  test("pendiente: neutro, rótulo «Pendiente», sin rojo y se anuncia con cortesía", () => {
+    const html = renderToStaticMarkup(<Alerta tipo="pendiente" elementos={ELEMENTOS} />);
+    expect(html).toContain('data-alerta="pendiente"');
+    expect(html).toContain(">Pendiente<");
+    expect(html).toContain("border-2");
+    expect(html).not.toMatch(/\b(border|text)-error\b/);
+    expect(html).not.toContain('role="alert"');
+    expect(html).not.toMatch(/\bborder-[lrse](-|\b)/);
+  });
+
+  test("pendiente tiene su propio color: no se confunde con información", () => {
+    expect(ESTILO_ALERTA.pendiente.texto).not.toBe(ESTILO_ALERTA.info.texto);
+    expect(ESTILO_ALERTA.pendiente.borde).not.toBe(ESTILO_ALERTA.info.borde);
   });
 
   test("hecho: estado, sin nada a lo que llevar", () => {

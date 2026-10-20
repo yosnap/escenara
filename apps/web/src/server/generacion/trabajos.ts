@@ -10,7 +10,7 @@ import {
 import { ESTADOS_ACTIVOS, type TrabajoVista } from "@/lib/generacion";
 import { etapaDeTrabajo } from "@/lib/produccion";
 import { leerAjustes } from "../ajustes";
-import { proporcionDelTrabajo } from "../cola/entrada-del-trabajo";
+import { proporcionDelTrabajo, segundosDe } from "../cola/entrada-del-trabajo";
 import { posicionEnCola, posicionesEnCola } from "../cola/toma";
 import { db } from "../db/cliente";
 import { type FilaMedio, type FilaTrabajo, generationJobs, media } from "../db/esquema";
@@ -66,6 +66,12 @@ function escenaDe(fila: FilaTrabajo): string {
  * Trabajo tal como lo ve el navegador. `conPrompt` solo es `true` cuando el ajuste «Mostrar el prompt a los
  * usuarios» está encendido: de fábrica el prompt compuesto **no sale de aquí** (ADR-0022).
  */
+/** Aviso de reserva de pago guardado con el trabajo, si lo hay. Solo lo escribe el servidor. */
+function avisoReservaDe(fila: FilaTrabajo): { avisoReserva?: string } {
+  const aviso = (fila.input as { avisoReserva?: unknown }).avisoReserva;
+  return typeof aviso === "string" && aviso !== "" ? { avisoReserva: aviso } : {};
+}
+
 export function vistaDe(
   fila: FilaTrabajo,
   medio: FilaMedio | null,
@@ -79,12 +85,14 @@ export function vistaDe(
     proveedor: fila.provider,
     modelo: fila.model,
     proporcion: proporcionDelTrabajo(fila),
+    segundos: fila.kind === "animacion" ? segundosDe(fila) : null,
     estado: fila.state,
     // Etapa real por la que va, deducida del estado y de lo que se apuntó al pasar por ella. Nunca un porcentaje.
     etapa: etapaDeTrabajo(fila.state, fila.stage),
     estadoProveedor: fila.providerState,
     taskId: fila.taskId,
     escena: escenaDe(fila),
+    ...avisoReservaDe(fila),
     ...(conPrompt && !esTrend ? { prompt: fila.prompt } : {}),
     creditosEstimados: fila.estimatedCredits,
     creditosConsumidos: fila.consumedCredits,

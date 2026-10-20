@@ -71,6 +71,23 @@ export const PAPELES_POR_TIPO: Record<TipoProducto, readonly PapelReferencia[]> 
   digital: ["captura_pantalla", "envase", "suelto"],
 };
 
+/**
+ * Papel con el que entra una foto al añadirla, hasta que el usuario lo cambie. Es el **neutro** del tipo: la vista
+ * general del envase en un producto físico (no la frontal con la etiqueta, que es la que se compara con el resultado
+ * y no se le puede suponer a cualquier foto) y la captura en uno digital, que es lo que casi siempre se sube.
+ */
+export const papelPorDefecto = (tipo: TipoProducto): PapelReferencia =>
+  tipo === "digital" ? "captura_pantalla" : "envase";
+
+/**
+ * Vistas que se pueden **generar** con IA desde la descripción del producto. Una captura de pantalla no se inventa:
+ * tiene que ser la de verdad, o el anuncio enseñaría una app que no existe.
+ */
+export const PAPELES_GENERABLES: Record<TipoProducto, readonly PapelReferencia[]> = {
+  fisico: PAPELES_POR_TIPO.fisico,
+  digital: PAPELES_POR_TIPO.digital.filter((p) => p !== "captura_pantalla"),
+};
+
 // ── Topes del texto del usuario ─────────────────────────────────────────────────────────────────────────
 
 export const NOMBRE_PRODUCTO_MAXIMO = 80;
@@ -83,6 +100,9 @@ export const DESCRIPCION_PRODUCTO_MAXIMA = 300;
 
 export const AYUDA_DESCRIPCION_PRODUCTO =
   "En una o dos frases, en español: qué es y qué se ve. «Bote de crema blanco con tapón dorado y etiqueta negra».";
+
+/** Descripción mínima para generar una vista con IA: con menos, el modelo inventaría el producto. */
+export const DESCRIPCION_MINIMA_PARA_GENERAR = 12;
 
 /** Tope de productos por persona. Es un guarda contra un bucle del navegador, no un límite de diseño. */
 export const MAXIMO_PRODUCTOS = 100;
@@ -98,7 +118,30 @@ export interface ReferenciaProducto {
   papel: PapelReferencia;
   orden: number;
   medio: Medio;
+  /** `true` si la imagen se generó desde la ficha del producto (con IA), no si es una foto subida. */
+  generada: boolean;
 }
+
+/**
+ * `true` si un envío con este producto exige la declaración «Tengo derecho a usar esta marca»: con marca declarada
+ * y también **sin responder**, que es el lado seguro. Solo un «no» explícito la quita. Cliente y servidor usan esta
+ * misma regla.
+ */
+export const exigeDeclaracionDeMarca = (marcaVisible: boolean | null | undefined): boolean => marcaVisible !== false;
+
+/**
+ * Principio del rechazo del servidor cuando falta la declaración de marca. La pantalla lo reconoce para enseñar la
+ * casilla al momento (el producto pudo cambiar de respuesta en otra pestaña), sin recargar.
+ */
+export const MENSAJE_FALTA_DECLARACION_MARCA =
+  "Confirma que tienes derecho a usar la marca de este producto antes de generar.";
+
+/** Texto de la pregunta obligatoria del alta (y de la ficha mientras siga sin responder). */
+export const PREGUNTA_MARCA_VISIBLE = "¿En las fotos se ve una marca o un logotipo?";
+export const AYUDA_MARCA_VISIBLE =
+  "Es obligatorio responder. Si dices que sí, en cada vídeo con este producto confirmarás que tienes derecho a usar esa marca, y se te avisará de que el filtro del proveedor puede rechazarla (entonces no se cobra nada y se te dice por qué). Si dices que no, no se te pedirá.";
+export const INVITACION_MARCA_SIN_RESPONDER =
+  "Todavía no has dicho si en las fotos se ve una marca. Mientras no lo respondas, cada vídeo con este producto te pedirá confirmar que tienes derecho a usarla.";
 
 /** Un producto en la lista: lo justo para reconocerlo sin cargar sus fotos. */
 export interface ProductoResumen {
@@ -106,8 +149,11 @@ export interface ProductoResumen {
   nombre: string;
   descripcion: string;
   tipo: TipoProducto;
-  /** `true` si el usuario ha declarado que se ve una marca. Es informativo: no bloquea nada. */
-  marcaVisible: boolean;
+  /**
+   * Si en las fotos se ve una marca, tal como lo declaró el usuario: `true`, `false` o `null` si aún no lo ha
+   * respondido. Con marca o sin responder se pide la declaración de marca en cada envío (`exigeDeclaracionDeMarca`).
+   */
+  marcaVisible: boolean | null;
   referencias: number;
   /** Las que no están en la papelera: son las únicas que el servidor envía al modelo. */
   fotosVigentes: number;

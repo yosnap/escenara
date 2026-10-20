@@ -255,6 +255,40 @@ describe.skipIf(!hayBaseDeDatos)("productos con sus fotos, su elección y su bor
 
   // ── 2. Solo su dueño lo ve ─────────────────────────────────────────────────────────────────────────────
 
+  describe("la respuesta obligatoria a «¿se ve una marca?»", () => {
+    test("sin responder no se crea, y con «no» se guarda como no", async () => {
+      const sinResponder = await rutaProductos.POST(
+        pedir(ana, "/api/productos", "POST", {
+          nombre: `Sin respuesta ${randomBytes(3).toString("hex")}`,
+          tipo: "fisico",
+        }),
+        undefined,
+      );
+      expect(sinResponder.status).toBe(400);
+      expect(((await sinResponder.json()) as { error: string }).error).toContain("se ve una marca");
+
+      const conNo = await rutaProductos.POST(
+        pedir(ana, "/api/productos", "POST", {
+          nombre: `Sin marca ${randomBytes(3).toString("hex")}`,
+          tipo: "fisico",
+          marcaVisible: false,
+        }),
+        undefined,
+      );
+      expect(conNo.status).toBe(201);
+      const producto = (await conNo.json()) as ProductoVista;
+      expect(producto.marcaVisible).toBe(false);
+
+      // Editar sin mandar la respuesta (o con `null`) no la borra: no se vuelve a «sin responder».
+      const editado = await rutaProducto.PATCH(
+        pedir(ana, `/api/productos/${producto.id}`, "PATCH", { nombre: producto.nombre, marcaVisible: null }),
+        contexto(producto.id),
+      );
+      expect(editado.status).toBe(200);
+      expect(((await editado.json()) as ProductoVista).marcaVisible).toBe(false);
+    });
+  });
+
   describe("un producto es de su dueño y de nadie más", () => {
     test("otra persona no lo lista, no lo lee, no lo edita y no lo borra", async () => {
       const producto = await crearProductoDe(ana, `De Ana ${randomBytes(3).toString("hex")}`);
@@ -585,7 +619,9 @@ describe.skipIf(!hayBaseDeDatos)("productos con sus fotos, su elección y su bor
       expect(sinConfirmar.status).toBe(409);
       const aviso = ((await sinConfirmar.json()) as { error: string }).error;
       expect(aviso).toContain("no admite la foto");
-      expect(aviso).toContain("MiniMax H3");
+      // Al usuario normal no se le nombran modelos: se le dice cómo reconocerlos en las Opciones avanzadas.
+      expect(aviso).toContain("Opciones avanzadas");
+      expect(aviso).not.toContain("MiniMax H3");
       expect(aviso).toContain("vuelve a estimar el coste");
       // El modelo con el que se acabará enviando sigue siendo el que eligió el usuario: Veo.
 
@@ -596,7 +632,7 @@ describe.skipIf(!hayBaseDeDatos)("productos con sus fotos, su elección y su bor
       expect(prompt).toContain("no invented logo");
     });
 
-    test("el control previo sugiere los modelos que sí llevan la foto, y con uno que la lleva no avisa", async () => {
+    test("el control previo dice dónde elegir un modelo que lleve la foto, y con uno que la lleva no avisa", async () => {
       const producto = await productoConDosFotos(`Control previo ${randomBytes(3).toString("hex")}`);
       const imagen = await subirFoto(ana, "origen-control.png");
       const evaluar = (modelo?: string) =>
@@ -608,12 +644,14 @@ describe.skipIf(!hayBaseDeDatos)("productos con sus fotos, su elección y su bor
           ...(modelo ? { modelo } : {}),
         });
 
-      // Con el predeterminado (Veo, sin galería) avisa y dice cuáles sí la llevan: los mismos que el selector.
+      // Con el predeterminado (Veo, sin galería) avisa y dice dónde elegir uno que la lleve, sin nombrarlos: en
+      // las Opciones avanzadas el selector marca los mismos que sugiere el servidor.
       const conVeo = (await evaluar()).comprobaciones.find((c) => c.regla === "producto-sin-hueco-de-referencia");
       expect(conVeo).toBeDefined();
       expect(conVeo?.accion).not.toContain("no hay ningún otro modelo");
-      for (const nombre of await modelosConFotoDeProducto("image_to_video")) expect(conVeo?.accion).toContain(nombre);
-      expect(conVeo?.accion).toContain("MiniMax H3");
+      expect((await modelosConFotoDeProducto("image_to_video")).length).toBeGreaterThan(0);
+      expect(conVeo?.accion).toContain("Opciones avanzadas");
+      expect(conVeo?.accion).not.toContain("MiniMax H3");
 
       // Con un modelo de galería el aviso no sale.
       const conOmni = await evaluar("gemini-omni-video");

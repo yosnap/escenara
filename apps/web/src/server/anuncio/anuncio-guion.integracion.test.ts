@@ -173,6 +173,7 @@ describe.skipIf(!hayBaseDeDatos)("hooks, guion y variantes del anuncio", () => {
       nombre: `Champú de rizos ${sufijo()}`,
       descripcion: "Bote blanco de 300 ml sin sulfatos.",
       tipo: "fisico",
+      marcaVisible: false,
     });
     productoId = producto.id;
     const oferta = await crearOferta(actorAna, {

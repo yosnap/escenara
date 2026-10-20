@@ -1,6 +1,6 @@
 import { and, count, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { ETIQUETA_VISTA } from "@/lib/captura-personaje";
-import type { TrabajoVista } from "@/lib/generacion";
+import { motivoSinHuecos, type TrabajoVista } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
 import { motivoNombreReal, nombresRealesEn } from "@/lib/nombres-reales";
 import { DECLARACION_PERSONAJE_INVENTADO, MOTIVO_SIN_FOTOS_REALES, RETRATOS_CANDIDATOS } from "@/lib/omni";
@@ -12,6 +12,7 @@ import {
   type TipoPersonaje,
 } from "@/lib/personajes";
 import { guiaDeEstiloPedida } from "../animados/estilos";
+import { filaDeLaConfirmacion, huecosDeCola } from "../cola/encolar";
 import { db } from "../db/cliente";
 import {
   characterReferences,
@@ -179,6 +180,25 @@ export async function generarRetratosCandidatos(
     throw new ErrorPersonaje(409, `Este personaje ya tiene el máximo de ${MAXIMO_REFERENCIAS} fotos.`);
   }
 
+  /**
+   * No se encargan más retratos de los que caben en el tope de trabajos simultáneos: la cola no guarda trabajos por
+   * encima de ese tope, y encargar «cuatro» para que salgan tres sería prometer lo que no se hace. Se rechaza
+   * **antes** de encargar ninguno, con cuántos caben. Repetir la misma confirmación no cuenta: ya se encargó.
+   */
+  const clave = (candidato: number) =>
+    claveDerivada(confirmacion.claveIdempotencia, "retrato", personaje.id, String(candidato));
+  if (!(await filaDeLaConfirmacion(actor.id, clave(1)))) {
+    const huecos = await huecosDeCola(actor.id);
+    if (cantidad > huecos.libres) {
+      throw new ErrorPersonaje(
+        409,
+        huecos.libres === 0
+          ? `${motivoSinHuecos(huecos)} Espera a que termine alguno para pedir retratos. No se ha encargado nada y no se te ha cobrado.`
+          : `Ahora solo caben ${huecos.libres} ${huecos.libres === 1 ? "retrato" : "retratos"}: ${motivoSinHuecos(huecos).toLowerCase()} Pide ${huecos.libres} o espera a que termine alguno. No se ha encargado nada y no se te ha cobrado.`,
+      );
+    }
+  }
+
   const trabajos: TrabajoVista[] = [];
   let aviso = "";
   for (let candidato = 1; candidato <= cantidad; candidato++) {
@@ -191,7 +211,7 @@ export async function generarRetratosCandidatos(
           retratoInventado: true,
           derechos: confirmacion.derechos,
           creditosConfirmados: confirmacion.creditosConfirmados,
-          claveIdempotencia: claveDerivada(confirmacion.claveIdempotencia, "retrato", personaje.id, String(candidato)),
+          claveIdempotencia: clave(candidato),
           ...(confirmacion.selloEstimacion === undefined ? {} : { selloEstimacion: confirmacion.selloEstimacion }),
           ...(confirmacion.modelo === undefined ? {} : { modelo: confirmacion.modelo }),
           ...(confirmacion.avisoUmbralAceptado === undefined

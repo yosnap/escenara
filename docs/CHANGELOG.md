@@ -2,6 +2,425 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.56.2] · 2026-10-20
+
+### Añadido
+
+- **Tutoriales en vídeo dentro de las guías.** Las guías de crear un personaje, personajes inventados, productos y
+  lugares traen su tutorial en vídeo, paso a paso: un personaje inventado y otro de tu mascota, un producto con sus
+  imágenes, un lugar con su foto, y los clips de tu personaje presentando un producto o en uno de tus lugares.
+- **Los vídeos de las guías cargan solo cuando los pides.** Cada vídeo se ve primero como una miniatura ligera; el
+  reproductor de YouTube, en su versión sin cookies, se carga al pulsarla. Sin JavaScript, la miniatura es un enlace
+  normal al vídeo.
+
+### Seguridad
+
+- Los scripts que preparan las cuentas de demos y tutoriales solo escriben en cuentas dedicadas, dadas de alta por el
+  propio script. Un correo equivocado ya no puede copiar claves de proveedor ni personajes a la cuenta de una persona.
+- El script de subida a YouTube sube cada vídeo como privado y solo al final le pone la privacidad pedida, así que un
+  fallo con los subtítulos o la lista no deja un vídeo público a medias.
+
+## [0.56.1] · 2026-10-19
+
+### Corregido
+
+- **El asistente de guion enseña el coste de lo que de verdad lo va a escribir.** El guion se escribe con el primero de
+  tu mapa de modelos de texto, pero la pantalla pedía confirmar el precio del modelo de texto de la instalación: con un
+  servicio que se paga por la cuota de tu plan se confirmaban créditos que luego no se gastaban, y con un modelo de pago
+  más caro primero se podía cobrar más de lo confirmado. Ahora lo que ves y confirmas es el coste de ese primero más,
+  aparte, la llamada de reserva al precio de la entrada de pago más cara que tengas detrás. Si el primero va por cuota,
+  el panel dice «Por la cuota de tu plan en …; si falla, como mucho N créditos de reserva», o «no cuesta créditos» si
+  no tienes ninguna entrada de pago. Vale para las escenas sueltas y para el vídeo completo.
+- **Nunca se cobra más de lo que confirmas.** Si el primero de tu mapa se satura o falla, tu reserva de pago escribe el
+  guion solo si lo que cuesta cabe en lo que queda de lo confirmado, y se avisa de quién lo escribió y cuánto costó. Si
+  no cabe, no se llama, no se cobra nada y el aviso dice cuál era, cuánto costaría y cuánto quedaba. Si el precio de
+  esa reserva cambia entre la pantalla y el botón, se te pide confirmar de nuevo. En la traducción de prompts al inglés,
+  ninguna entrada puede costar más de lo que se confirmó por ella.
+- Si la primera entrada de tu mapa de texto es un modelo de pago más caro que el precio al que se confirma la
+  traducción del prompt al inglés, la traducción no se hace y el aviso dice a qué precio se confirma, qué entrada cuesta
+  más y qué poner primero en el mapa. No se cobra nada.
+- El asistente ya no pide una clave de KIE si tu mapa de texto no la usa.
+
+## [0.56.0] · 2026-10-18
+
+### Añadido
+
+- **Cada personaje habla con su propia voz.** En la ficha del personaje, «Escenas habladas › Su voz en las escenas
+  habladas», eliges una de las treinta voces, cómo tiene que sonar y una frase de ejemplo, y la registras. **No cuesta
+  créditos**, y el personaje queda registrado con ella en el mismo paso (tampoco cuesta). La voz le acompaña en todos
+  sus proyectos. En un podcast o una entrevista cada uno suena con la suya; la protagonista sin voz propia sigue
+  hablando con la voz del proyecto.
+- **La misma ropa y el mismo sitio en todos los clips de un vídeo completo.** El guion completo guarda el vestuario fijo
+  de cada personaje y el lugar y la luz del vídeo (en el de 20 s salen en la misma llamada, sin coste de más) y los
+  repite en cada clip. No se enseñan en pantalla.
+- **Planos base.** En un vídeo completo con lugar, Producción enseña el panel «Planos base»: un fotograma por personaje,
+  ya en el lugar y con su ropa, del que arrancan todos sus clips. Lo que cuestan va delante, con la fecha del precio, y
+  se confirma una vez por el total; cada plano aparta su importe por separado. Lo das por bueno tú con «Usarlo en sus
+  escenas», y entonces todas las escenas de ese plano comparten el mismo fotograma. Una persona tiene un plano; un
+  podcast, uno por personaje; una entrevista, ninguno, porque los dos comparten plano. Antes de pedirlos se registra con
+  su voz, sin coste, a quien no lo esté. Si no se puede, se dice quién y por qué, y no se cobra nada.
+- Nuevo interruptor en Admin › Ajustes › Lugares: «Vídeo completo: arrancar cada clip de su plano base con la identidad
+  registrada». Viene **apagado**: se enciende cuando se haya escuchado un clip así y la voz sea la registrada. Solo vale
+  para los planos base de los vídeos completos.
+
+### Cambiado
+
+- En un podcast o una entrevista, si los dos personajes acabarían con la misma voz (el otro no tiene la suya), la
+  producción **se para antes de reservar nada** y la tarjeta de la escena dice a quién le falta su voz y dónde se
+  registra. Lo mismo si a alguien le falta el registro con su voz.
+- Si un personaje ya estaba registrado con la voz del proyecto, al registrar su voz propia se registra otra vez con
+  ella, sin coste. Lo que ya salió con la voz anterior se queda en tu biblioteca; regenerarlo cuesta lo que diga su
+  confirmación.
+- La voz del proyecto y la de cada personaje se eligen con los mismos campos.
+
+### Corregido
+
+- Registrar un personaje desde su ficha sin consentimiento, sin fotos o con un fallo del proveedor devolvía un error
+  interno sin explicación. Ahora dice el motivo, que no se ha cobrado nada y qué hacer.
+
+## [0.55.0] · 2026-10-18
+
+### Añadido
+
+- El asistente de guion puede escribir **un vídeo completo de 20 s** desde tu idea, con el diálogo entero de
+  principio a fin y un clip por escena. En el panel del asistente eliges «Vídeo completo de 20 s» y el tipo: **una
+  persona** (2 clips de 10 s), **entrevista** con otro personaje tuyo en el mismo plano (2 clips de 10 s) o
+  **podcast** en plano y contraplano (3 clips de 8, 6 y 6 s). «Escenas sueltas» sigue siendo lo de siempre.
+- Antes de empezar ves **lo que cuesta escribir el guion**: las llamadas de texto, una llamada de reserva enseñada
+  aparte y el total que confirmas, con la fecha del precio. La reserva solo se gasta si un trozo del guion llega
+  cortado o con frases que no caben en sus segundos; entonces se repite solo ese trozo. Antes de cada llamada se
+  suma lo ya cobrado, y si la siguiente pudiera pasar del total confirmado no se hace: se para y te dice cuánto ha
+  costado lo hecho.
+- Cada clip respeta su tiempo: como mucho 25 palabras en 10 s, 20 en 8 s y 15 en 6 s. El diálogo se escribe en
+  español de España y se guarda tal cual, sin traducir. El diálogo va plegado: en el paso «Escenas» lo abres en
+  «Ver y editar el diálogo» y lo cambias como un guion escrito a mano.
+- Si algo falla a mitad, el guion no se guarda a medias: el aviso dice qué parte falló, qué proveedor contestó,
+  cuánto han costado las llamadas ya hechas y qué puedes hacer, y tus escenas se quedan como estaban.
+- Los vídeos de **≈ 1 minuto** y **≈ 3 minutos** están preparados, con el guion escrito en partes que siguen la
+  conversación sin repetirse, pero no se ofrecen hasta que quien administra los abra en Admin › Ajustes («Vídeo
+  completo de 1 y 3 minutos», apagado de fábrica). Mientras esté apagado, el servidor los rechaza con el motivo.
+
+### Cambiado
+
+- En modo «Voz e identidad registradas», cada escena se produce con **su propia duración** y se estima y se
+  confirma con la tarifa de esa duración. Las escenas de siempre copian la del proyecto, así que no cambia nada
+  para ellas.
+- Escribir un vídeo completo ajusta la duración de clip del proyecto a la del primer clip (10 s en una persona y
+  entrevista, 8 s en podcast). El selector «Duración de cada clip» enseña ese valor tal cual.
+- En un podcast escrito en plano y contraplano, cada plano sale con **su** personaje registrado, no siempre con el
+  protagonista del proyecto. La rejilla de producción confirma cada escena con la tarifa de su duración, avisa
+  antes de producir si al otro personaje le falta el registro, y la pantalla de la voz enseña el precio de cada
+  duración cuando el proyecto las mezcla.
+- Si el servidor no llega a contestar (un 502, 503 o 504 del proxy), pedir el guion conserva la misma confirmación:
+  repetirla no vuelve a cobrar. Repetir una confirmación que falló a mitad ya no devuelve el proyecto sin más: dice
+  qué pasó y que no se ha vuelto a cobrar nada.
+- Si el proyecto tiene escenas en producción, el asistente lo dice antes de gastar nada.
+
+## [0.54.0] · 2026-10-18
+
+### Añadido
+
+- Nuevo plegable **«Opciones avanzadas»** en cada vídeo. Es el único sitio de las pantallas de usuario donde se ven
+  nombres de modelo: el selector de modelo, el precio de cada uno y con qué modelo se generó cada trabajo. Empieza
+  cerrado y recuerda si lo dejaste abierto mientras dure la sesión del navegador; no se guarda en tu cuenta.
+- En un proyecto puedes fijar el **modelo de vídeo de ese proyecto** desde sus Opciones avanzadas (en el modo «Voz e
+  identidad registradas», el de las escenas habladas). Si no fijas ninguno se usa tu mapa de modelos, como hasta
+  ahora. Cambiarlo recalcula el coste del plan y, si estaba aprobado, lo devuelve a borrador para que revises la
+  cifra antes de producir; lo ya generado se conserva. El modelo fijado se pide tal cual, sin relevo a las demás
+  entradas del mapa. Si se retira o se queda sin precio, el proyecto vuelve solo a tu mapa y el plegable lo avisa, y
+  al cambiar el modo de voz del proyecto se quita. Registrar la voz y los personajes de un proyecto de escenas
+  habladas usa también el modelo fijado.
+
+### Cambiado
+
+- «Crear», los proyectos, la voz, el anuncio, los personajes y los historiales ya no nombran modelos: enseñan la
+  duración y los créditos. El modelo del fotograma y el del clip se eligen en las Opciones avanzadas de cada paso, y
+  «Comparar generando» y «Generado con…» de cada escena están en las Opciones avanzadas de su tarjeta de producción.
+- Los avisos y errores dicen la causa, el proveedor (la clave con la que pagas), si se ha cobrado y qué hacer, pero
+  no el nombre del modelo. Cuando hay que cambiarlo, te dicen que lo hagas en las Opciones avanzadas o en Cuenta ›
+  Mapa de modelos, y cómo reconocer el que sirve: por ejemplo, el modelo para el podcast y el dualcast sale marcado
+  «Validado con dos personas», y el que lleva la foto de un producto, «Admite la foto del producto». Quien
+  administra sigue viendo el modelo.
+- El modo de voz «Omni» se llama ahora **«Voz e identidad registradas»**, y su voz, «voz registrada».
+- La tabla del plan enseña qué se genera en cada escena (fotograma y clip, o el clip entero) en lugar de los
+  nombres de los modelos, que pasan a las Opciones avanzadas del proyecto.
+
+## [0.52.15] · 2026-10-18
+
+### Corregido
+
+- En modo Omni, un proyecto con clips de 6 s ya se puede producir si el modelo de escenas habladas admite esa
+  duración. Antes, la pantalla de voz anunciaba el coste a 6 s y, al producir, se rechazaba diciendo que el modelo de
+  animación solo generaba de 8 s, porque se comparaba con el modelo de vídeo de los clips normales y no con el que
+  genera la escena hablada. Si el modelo Omni no admite la duración del proyecto, el aviso lo nombra a él.
+- En modo Omni, el plan, el editor de la escena y el estimado de la producción enseñan el modelo que genera la escena
+  hablada, su duración y el mismo coste que pide la confirmación, con la traducción incluida y los dos clips de un
+  podcast. Antes sumaban un fotograma y una animación que en este modo no se generan. Los planes ya aprobados
+  conservan su cifra hasta que se vuelvan a aprobar.
+- El podcast y el dualcast solo se ofrecen con Gemini Omni 1.1 Flash, que es con el que se han producido de verdad.
+  Con Gemini Omni (vídeo), el clip con dos personajes registrados daba un fallo interno en KIE, sin cobrar. Ahora el
+  plan no deja aprobar esa escena, y la estimación y la confirmación lo dicen antes de gastar. Las tres pantallas
+  explican que hay que poner Gemini Omni 1.1 Flash el primero de la lista de vídeo del mapa de modelos.
+- Una cuenta que no ha ordenado su mapa de modelos vuelve a generar sus escenas habladas con Gemini Omni 1.1 Flash,
+  el modelo recomendado. La recomendación de la plataforma ordenaba los modelos por nombre y ponía delante Gemini
+  Omni (vídeo).
+- En modo Omni, si cambia el precio del modelo de escenas habladas después de aprobar el plan, la aprobación de la
+  escena deja de valer y hay que revisar el coste, igual que pasa con el precio del fotograma en los demás modos.
+- En el podcast y el dualcast, la ficha del protagonista ya no viaja en la petición: cada cara la pone su personaje
+  registrado. Antes se describía solo al protagonista, también en el clip del otro personaje.
+
+## [0.52.14] · 2026-10-18
+
+### Corregido
+
+- En «Crear», la confirmación del coste del clip enseña también las fotos del producto que viajan con él y cuántas
+  imágenes van en total, contando la imagen que se anima, frente a las que admite el modelo.
+
+## [0.52.13] · 2026-10-18
+
+### Corregido
+
+- En «Crear», antes de confirmar el fotograma, el resumen de lo que se enviará al modelo enseña también las fotos del
+  producto y la foto principal del lugar que viajan con él, no solo las del personaje, y dice cuántas imágenes van en
+  total frente a las que admite el modelo. Si el cupo deja fuera alguna foto del personaje, también lo dice.
+
+## [0.52.12] · 2026-10-17
+
+### Corregido
+
+- Dos envíos casi simultáneos que comparten un texto ya no pueden pagar dos veces su traducción al inglés, aunque
+  el resto de lo que se traduce sea distinto (por ejemplo, la misma ficha de personaje con dos escenas). Solo uno
+  llama al traductor; el otro usa la traducción guardada si el primero ya terminó, o dice que el texto se está
+  traduciendo en otra petición y que no se ha enviado nada a generar. Antes, si el primero terminaba justo antes
+  de que el segundo preparase su llamada, el segundo volvía a traducir y a cobrar.
+- Si parte de los textos ya estaba traducida, solo se traduce lo que falta.
+- Tras una traducción fallida, o que contestó con algo que no era una traducción, el siguiente intento con el mismo
+  texto vuelve a traducir en lugar de quedarse esperando. Una traducción interrumpida a medias tampoco deja el texto
+  bloqueado.
+- Si la base de datos no tiene conexión libre para preparar la traducción, el envío se rechaza diciendo la causa y
+  que no se ha enviado nada ni se ha cobrado nada.
+
+### Actualización
+
+- `DATABASE_URL` tiene que ser una conexión directa a PostgreSQL o un pooler en modo sesión, nunca en modo
+  transacción. La traducción usa hasta 4 conexiones más por proceso web (guía de despliegue en Easypanel).
+
+## [0.52.11] · 2026-10-17
+
+### Añadido
+
+- En «Crear», el producto también se elige en el paso **«Describe la escena»**, con el mismo bloque «El producto»
+  del clip. Sus fotos entran como referencia de imagen en el fotograma, igual que las del personaje, así que el
+  producto ya sale en la imagen. En el paso del clip aparece elegido con su acción (por ejemplo, «Sostenerlo») y
+  se puede cambiar. El coste del fotograma no cambia: se cobra por imagen. Con el fotograma ya pedido, su producto
+  no se cambia ahí, y si en el clip eliges otro (o lo quitas) un aviso dice que no coincide con el de la imagen.
+- Al crear un producto hay que responder, obligatoriamente, si en las fotos se ve una marca: **Sí** o **No**. Los
+  productos anteriores quedan sin responder (los que tenían marcada la marca siguen con «Sí») y su ficha invita a
+  responderlo.
+
+### Corregido
+
+- La espera de un clip dice su duración real («Clip de 5 s», «Clip de 10 s»…) en lugar de «Clip de 4 s» siempre.
+- La casilla «Tengo derecho a usar esta marca» solo sale, y solo se exige al generar, cuando el producto tiene marca
+  o está sin responder. Con un producto declarado sin marca ya no se pide, ni en «Crear» ni en la producción de un
+  proyecto ni en la comparativa A/B, y el trabajo no apunta una declaración que no se hizo. Si el servidor la exige
+  porque la respuesta cambió en otra pestaña, la casilla aparece sin recargar.
+- Tras generar el fotograma, la barra de pasos ya no marca «Coste · Faltan 1» en rojo: lo que falte en una
+  confirmación ya hecha no se cuenta como pendiente.
+- Cuando la traducción al inglés falla en la reserva de pago de KIE con un error 500, 502 o 503 del proveedor, el
+  registro de gasto ya no apunta créditos que KIE no cobró: esa llamada vuelve sin resultado y sin cobro, y se
+  apunta 0. El error sigue diciendo quién falló y que esa llamada no se ha cobrado. Con un 504, un 408, una red
+  caída o si no contesta a tiempo, se sigue apuntando la estimación, porque no se sabe si se cobró.
+
+### Actualización
+
+- Migración `0072`: la respuesta a «¿se ve una marca?» de un producto admite «sin responder». Haz una copia de la
+  base de datos (`bun run db:backup`) antes de `bun run db:migrate`.
+
+## [0.52.10] · 2026-10-17
+
+### Corregido
+
+- Mientras se genera la primera imagen de un lugar o de un producto, la sección de fotos ya no dice
+  «Todavía no tiene ninguna imagen»: dice que se está generando y que aparecerá ahí al terminar, y
+  deja subir fotos mientras tanto.
+- La primera imagen generada de un lugar que aún no tiene foto maestra pasa a ser su maestra, como la
+  primera que subes. Si ya había maestra, la generada entra como plano general y la cambias tú.
+- Después de declarar un lugar, las casillas «Puedo usar estas imágenes» y «En estas fotos no sale
+  ningún menor» salen marcadas junto a «Declarada el…», como se declararon, en lugar de vacías como si
+  no se hubiera guardado. Si se revoca o se retira la declaración, vuelven a salir vacías.
+
+## [0.52.9] · 2026-10-17
+
+### Corregido
+
+- Al crear un lugar o un producto ya no te quedas delante de una ficha sin fotos sin saber qué sigue:
+  llegas al paso **«Su primera imagen»** con dos opciones a la vista. **«Genera su primera imagen»**
+  abre el diálogo de siempre con la descripción recién guardada y el coste antes de confirmar (en un
+  producto, eligiendo la vista); si la descripción es demasiado corta, el paso lo dice y te deja
+  completarla ahí. **«Sube tus fotos»** abre tu biblioteca, donde también se suben archivos nuevos (en
+  un producto, con el papel de cada foto). **«Lo haré después»** te deja en la ficha.
+- En la ficha de un lugar o de un producto sin ninguna imagen, la sección de fotos explica esas dos
+  maneras de poner la primera, y si todavía no se puede generar dice por qué dentro de la propia
+  opción, no en letra pequeña junto a un botón apagado.
+- El diálogo para generar la imagen de un lugar o de un producto enseña la descripción guardada desde
+  la que se genera.
+- El paso «Su primera imagen» ya no vuelve a salir al regresar con «Atrás» después de salir de él o
+  de añadir fotos. Al salir del paso («Lo haré después», al encargar la imagen o al añadir fotos) el
+  foco va al encabezado de las fotos y un lector de pantalla oye dónde estás. Si cancelas el diálogo
+  del coste tras «Guardar y generar», el foco vuelve al botón de generar. En un lugar, el paso solo
+  se cierra cuando las fotos han entrado bien; si fallan, sigues en el paso y ves la causa.
+- Con la primera imagen ya encargada, la ficha dice «Generándose su primera imagen…» en lugar de
+  volver a ofrecer «Genera su primera imagen», para no invitar a pagar dos veces.
+- Los retratos de un personaje inventado prometen los que de verdad puedes pedir: «de uno a tres
+  retratos a la vez» con el tope de tres trabajos simultáneos, y no «de uno a cuatro». Lo mismo en el
+  alta del personaje. Después de encargar y elegir la cara, el número de retratos ya no salta a otro
+  cualquiera: es el que habías elegido, recortado a lo que cabe ahora en la cola, y si se recorta se
+  dice por qué.
+
+### Actualización
+
+- `bun run test` dentro de `apps/web` aísla cada fichero de pruebas (`--isolate`) como el script de la
+  raíz, y las sustituciones de las pruebas de pantalla se deshacen al terminar cada fichero.
+
+## [0.52.8] · 2026-10-17
+
+### Añadido
+
+- En la ficha de un producto, «Generar una imagen» crea sus imágenes de referencia con IA desde la
+  descripción guardada. Eliges qué vista: la frontal con la etiqueta, el envase entero, el detalle de
+  la tapa o el producto solo. Una captura de pantalla no se genera: se sube la de verdad. Ves el
+  coste antes de confirmar, y la imagen entra en el producto con esa vista y marcada como generada.
+- Un lugar real también genera su imagen dentro de «Lugares»: una foto realista del sitio, vacía,
+  desde su descripción. Hasta ahora solo los lugares animados tenían «Generar un candidato».
+- Las dos pasan por el mismo camino que un fotograma de «Crear»: estimación con su fecha, aviso de
+  gasto, controles previos, casilla de derechos, cola, reserva y clave de idempotencia. Sin
+  descripción guardada, con una vista que no se genera o en un producto sin sitio, no se cobra nada y
+  se dice por qué. Las vistas que se están generando cuentan contra el tope de 8 fotos, y si al
+  terminar el producto ya está lleno o se ha borrado, la imagen se queda en tu biblioteca y el trabajo
+  lo dice. La vista de un producto guarda tu declaración de la marca con su fecha.
+
+### Cambiado
+
+- Para usar las fotos de un lugar ya **no se pide el permiso de quien gestiona el sitio**, ni en un
+  interior ni en un exterior, ni con fotos reales ni generadas. En su lugar declaras una sola cosa:
+  «Puedo usar estas imágenes: no son de un sitio donde esté prohibido fotografiar o grabar». Las
+  declaraciones anteriores siguen valiendo y los lugares ya declarados no cambian.
+
+### Corregido
+
+- Al llegar a «Revisa el coste» lo que falta y puedes hacer ahí mismo (la casilla de derechos, el
+  aviso de gasto) se ve como paso **pendiente**, en gris neutro, y no como un «Bloqueo» rojo. El rojo
+  sale si intentas seguir sin hacerlo, y desde el principio si algo lo impide de verdad: un control
+  bloqueado sin salida o un saldo que no llega. Lo mismo en las imágenes que se generan desde la ficha
+  de un lugar o de un producto.
+- Las fotos que añades a un producto ya no entran todas como «Frontal con la etiqueta». Antes de
+  añadirlas eliges el papel de cada una, que parte del neutro del tipo: el envase entero en un
+  producto físico y la captura en uno digital. Si el alta falla, el diálogo sigue abierto con la causa.
+
+### Actualización
+
+- Migración `0070_referencia_de_producto_generada` (columna `product_references.generated`) y
+  migración `0071_declaracion_lugar_puedo_usar`: quita la restricción del permiso del sitio en un
+  interior y añade `place_declarations.may_use_images`, obligatoria solo desde la versión del texto
+  `2026-10-17.2`, así que las declaraciones existentes siguen valiendo sin tocarlas. Hay que aplicar
+  las migraciones y reiniciar la web y el worker, que es quien adjunta la imagen al producto.
+- La prueba archivada de la declaración de un lugar incluye «puedo usar estas imágenes».
+
+## [0.52.7] · 2026-10-17
+
+### Corregido
+
+- Dar de alta una mascota ya no obliga a marcar «Declaro que es mayor de edad»: a un animal no se le
+  pide ninguna declaración de edad. A una persona se le sigue exigiendo aunque elija «Un animal mío»,
+  y una persona registrada sin esa declaración, llegue por donde llegue, queda bloqueada y no genera.
+- Una persona no se puede colar como animal. Las fotos de un animal pasan por un detector de personas
+  que funciona en el propio servidor, sin enviar la foto a nadie, y la que tiene una persona se
+  rechaza con su motivo y sin «usarla de todas formas». Si el detector no carga, la foto tampoco
+  entra y se dice por qué. Una persona con fotos no puede pasar a animal, y un animal sin declaración
+  de edad solo pasa a persona revocando su consentimiento, cambiando el tipo y registrando uno nuevo
+  como persona, que es lo que indica el aviso.
+- Después de encargar bien los retratos ya no aparece un «Bloqueo» en rojo: el encargo se cierra y
+  solo se ve el aviso de lo encargado. Con la cola llena no se ofrece ningún retrato y se dice por
+  qué y cuándo podrás pedir más.
+- El número de retratos que quieres generar parte de los huecos libres de tu cola, también al
+  recargar la ficha o al volver a ella, y se pone al día al buscar los retratos terminados. Ya no
+  vuelve a 4 después de encargar.
+- Un personaje inventado se presenta como «Persona inventada» o «Animal inventado», y lo que le falta
+  se cuenta en imágenes entre su retrato elegido y sus vistas generadas, no en fotos de referencia.
+- Crear un personaje (también inventado) o renombrarlo con un nombre que ya usas explica la causa,
+  qué hacer y que no se ha creado ni cambiado nada.
+
+### Actualización
+
+- Sin migraciones nuevas ni cambios de configuración. Nueva dependencia `onnxruntime-web` y el modelo
+  `apps/web/modelos/yolox-nano.onnx` (Apache-2.0): hay que instalar dependencias y reiniciar la web.
+  El worker no cambia.
+- La prueba archivada del consentimiento de un animal ya no incluye «mayor de edad: no», que se
+  podía leer como «declarado menor».
+
+## [0.52.6] · 2026-10-16
+
+### Corregido
+
+- Guardar la ficha de un personaje inventado ya no borra su cara: la guía de estilo se comparaba de
+  una forma que siempre daba «estilo cambiado» y descartaba su retrato elegido, sus vistas y sus
+  retratos por elegir. Ahora solo cuenta como cambio de estilo el que lo es, y un cambio de estilo de
+  verdad avisa de lo que descarta y no se guarda hasta que lo confirmas.
+- Los retratos y el encargo de todas las vistas ya no ofrecen más de lo que cabe en tu cola de
+  trabajos a la vez (3 de fábrica). Antes de confirmar ves cuántos puedes pedir ahora; las vistas
+  que no caben se nombran para pedirlas cuando termine alguna, y no se cobran. El resultado del
+  encargo de retratos sale junto al botón.
+- Una vista que ya se está generando sale como «Generándose» también al recargar la página y no se
+  puede encargar ni pagar otra vez: el servidor devuelve el trabajo en marcha y la cola rechaza un
+  duplicado sin cobrarlo.
+- Un servicio compatible (como NaN builders) que tarda ya no se marca como «rechazado». Si rechaza
+  una petición, antes de darlo por no válido se comprueba su clave con su lista de modelos, que no
+  gasta cuota.
+- Si tu servicio de cuota falla, la traducción del prompt y el guion del asistente usan de reserva el
+  modelo de texto de la instalación, cuyo coste ya confirmaste, y se avisa con el trabajo o el guion de
+  quién lo ha escrito y cuánto ha costado. El resto de llamadas de texto (ficha con IA, guion del
+  anuncio) ya no pasan a un modelo de pago que no confirmaste: se para y se dice qué falló, que no se
+  ha cobrado nada y cómo seguir.
+- El encargo de todas las vistas solo encarga las vistas que confirmaste en el diálogo, aunque al
+  pulsar quepan más, y repetirlo con la misma confirmación tras un corte de red no amplía el lote.
+- Cambiar el estilo de un personaje también pide confirmación cuando tiene retratos o vistas pagados
+  que todavía se están generando, aunque el cambio llegue sin pasar por la ficha.
+- El número de retratos se ajusta tras un encargo si ya no caben tantos, y un espacio de más en la
+  guía de estilo ya no pide confirmar un descarte.
+
+### Actualización
+
+- Sin migraciones nuevas ni cambios de configuración. Reiniciar web y worker para cargar la nueva
+  comprobación de vistas en marcha.
+
+## [0.52.5] · 2026-10-16
+
+### Corregido
+
+- En «Crear», el modelo del fotograma que eliges se conserva al cambiar de personaje o de imagen si
+  también vale en el modo nuevo; solo cae al predeterminado si no existe allí. Volver a pulsar
+  «Sin personaje» ya no pide nada, una respuesta lenta no pisa lo elegido después y el selector
+  muestra siempre el nombre del modelo real.
+- Las referencias de la escena sin personaje ni imagen de partida se rechazan con la causa en vez de
+  perderse al enviar. Una imagen suelta que salió de un trabajo con personaje ya no falla en el
+  worker por «no llegan al mínimo» de fotos del personaje.
+- La ficha del personaje ya no se corta a mitad de palabra: si no cabe entera, sale primero la voz,
+  se acortan la descripción y la actitud, y los rasgos, el vestuario y el estilo siempre llegan.
+  Un campo corto que cabe entero ya no se descarta y el recorte no parte emojis.
+- Si eliges un modelo y cambias de sujeto antes de que llegue su estimación, se usa el modelo que
+  acabas de elegir. El indicador de carga del contexto del personaje ya no se apaga antes de tiempo.
+- Un `personajeId` vacío ya no evita que una imagen suelta herede su personaje: se siguen exigiendo
+  su consentimiento y la revisión de las fotos, y un identificador mal formado se rechaza con 400.
+- El botón «Sin personaje» del paso de sujeto explica que se genera con una foto suelta o solo con la
+  descripción, para no confundirlo con «Usar una imagen que ya tengo» del origen.
+
+### Actualización
+
+- Sin migraciones nuevas ni cambios de configuración. Reiniciar web y worker para cargar el nuevo
+  envío de referencias. Un fotograma con personaje heredado que ya estuviera en cola antes de
+  actualizar puede fallar por «no llegan al mínimo» (sin cobro): basta con volver a pedirlo.
+
 ## [0.52.4] · 2026-10-12
 
 Las pruebas se ejecutan con origen local y aislamiento por fichero para evitar que la URL de producción, las cachés, ajustes y módulos de una suite alteren las siguientes. Se normaliza también el formato del catálogo y de una instantánea de Drizzle, sin cambiar sus datos.

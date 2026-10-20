@@ -1,18 +1,12 @@
-import { and, count, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, count, eq, isNull, sql } from "drizzle-orm";
+import { mismaGuiaDeEstilo } from "@/lib/animados";
 import { ETIQUETA_VISTA, esVista, promptDeVista, type Vista, vistasPorGenerar } from "@/lib/captura-personaje";
-import type { TrabajoVista } from "@/lib/generacion";
+import { motivoSinHuecos, type TrabajoVista } from "@/lib/generacion";
 import { MAXIMO_REFERENCIAS, type TipoPersonaje } from "@/lib/personajes";
 import { leerObjeto } from "../almacenamiento";
-import { filaDeLaConfirmacion } from "../cola/encolar";
+import { filaDeLaConfirmacion, huecosDeCola } from "../cola/encolar";
 import { db } from "../db/cliente";
-import {
-  characterReferences,
-  characters,
-  characterVersions,
-  type FilaTrabajo,
-  generationJobs,
-  media,
-} from "../db/esquema";
+import { characterReferences, characters, characterVersions, type FilaTrabajo, media } from "../db/esquema";
 import { claveDerivada, exigirAvisoUmbral, exigirClaveIdempotencia } from "../generacion/comprobaciones";
 import { HERRAMIENTAS, type Herramientas } from "../generacion/herramientas";
 import { crearFotograma } from "../generacion/servicio";
@@ -23,6 +17,7 @@ import { coberturaDe, filaPropia } from "./consulta";
 import { ErrorPersonaje } from "./errores";
 import { instantaneaDeVersion } from "./ficha";
 import { versionarEnTransaccion } from "./versiones";
+import { vistaSinteticaDe, vistasEnMarcha } from "./vistas-en-marcha";
 
 /**
  * Vistas sintéticas (decisión 3 de la fase 14): cuando a un personaje le falta una vista de la cobertura, se
@@ -113,6 +108,11 @@ export async function pedirVistaSintetica(
 
   const vista = await vistaQueFalta(personaje.id, personaje.kind, peticion.vista);
 
+  // Una vista que ya se está generando no se encarga otra vez, venga de otra pestaña, de una recarga o del lote:
+  // se devuelve el trabajo que ya está en marcha, sin encolar ni cobrar nada nuevo.
+  const enMarcha = (await vistasEnMarcha(personaje.id)).get(vista);
+  if (enMarcha) return { trabajo: await vistaDeFila(enMarcha), nueva: false, vista };
+
   // El tope de referencias se comprueba antes de gastar: generar una vista que no va a poder guardarse sería
   // pagar por nada.
   const [yaTiene] = await db()
@@ -178,15 +178,32 @@ export interface VistasEncargadas {
 export async function pedirVistasQueFaltan(
   actor: Actor,
   id: unknown,
-  peticion: Omit<PeticionVistaSintetica, "vista">,
+  peticion: Omit<PeticionVistaSintetica, "vista"> & {
+    /** Las vistas que el usuario vio y confirmó. Nunca se encarga ninguna que no esté aquí. */
+    vistas: unknown;
+  },
   h: Herramientas = HERRAMIENTAS,
 ): Promise<VistasEncargadas> {
   const personaje = await filaPropia(actor, id);
+  const { vistas: pedidas, ...confirmacion } = peticion;
+  if (!Array.isArray(pedidas) || pedidas.length === 0 || !pedidas.every(esVista)) {
+    throw new ErrorPersonaje(400, "Indica qué vistas confirmas encargar. No se ha encargado nada.");
+  }
+  const confirmadas = new Set<Vista>(pedidas);
+  const clave = typeof confirmacion.claveIdempotencia === "string" ? confirmacion.claveIdempotencia : "";
+  if (clave === "") throw new ErrorPersonaje(400, "Falta la confirmación de este encargo. Vuelve a intentarlo.");
+  exigirClaveIdempotencia(clave);
+
+  // Esta confirmación ya se encargó (un reintento tras un corte de red): se devuelve lo que se encargó entonces y
+  // **no se amplía**, aunque ahora quepan más. Ampliarlo sería cobrar algo que no se confirmó en esta pantalla.
+  const yaEncargadas = await encargadasConEstaClave(actor.id, personaje.id, clave, [...confirmadas]);
+  if (yaEncargadas.encoladas.length > 0) return yaEncargadas;
   // Lo que ya está **en marcha** no falta: sin esto, pulsar dos veces (o volver a abrir el diálogo, que genera
   // otra clave) encargaba y cobraba una segunda tanda de las mismas vistas mientras la primera se generaba.
-  const enMarcha = await vistasEnMarcha(personaje.id);
+  const enMarcha = new Set((await vistasEnMarcha(personaje.id)).keys());
+  // Solo las confirmadas, en el orden de la cobertura: lo que falta y no se confirmó no se encarga.
   const faltan = vistasPorGenerar(await coberturaDe(personaje.id, personaje.kind, undefined, personaje.virtual)).filter(
-    (v) => !enMarcha.has(v),
+    (v) => !enMarcha.has(v) && confirmadas.has(v),
   );
   if (faltan.length === 0) {
     throw new ErrorPersonaje(
@@ -196,23 +213,33 @@ export async function pedirVistasQueFaltan(
         : "Este personaje ya tiene todas sus vistas: no hay ninguna que generar.",
     );
   }
-  const clave = typeof peticion.claveIdempotencia === "string" ? peticion.claveIdempotencia : "";
-  if (clave === "") throw new ErrorPersonaje(400, "Falta la confirmación de este encargo. Vuelve a intentarlo.");
-  exigirClaveIdempotencia(clave);
+  /**
+   * Solo se encargan las que caben en el tope de trabajos simultáneos (en cola o en el proveedor). La cola no
+   * guarda trabajos por encima de ese tope —es lo que dice el ajuste—, así que en vez de chocar con él vista a
+   * vista se encargan las que caben y las demás se dicen, con su motivo, para pedirlas cuando haya hueco.
+   */
+  const huecos = await huecosDeCola(actor.id);
+  if (huecos.libres === 0) {
+    throw new ErrorPersonaje(
+      409,
+      `${motivoSinHuecos(huecos)} Espera a que termine alguno para encargar sus vistas. No se ha encargado nada y no se te ha cobrado.`,
+    );
+  }
+  const caben = faltan.slice(0, huecos.libres);
   // El aviso de gasto alto se mide sobre **el total del encargo**, no por imagen: seis vistas de 30 créditos
   // son 180, y cada una por separado nunca habría pasado del aviso.
-  const porVista = typeof peticion.creditosConfirmados === "number" ? peticion.creditosConfirmados : 0;
-  await exigirAvisoUmbral(porVista * faltan.length, peticion.avisoUmbralAceptado);
+  const porVista = typeof confirmacion.creditosConfirmados === "number" ? confirmacion.creditosConfirmados : 0;
+  await exigirAvisoUmbral(porVista * caben.length, confirmacion.avisoUmbralAceptado);
 
   const encargadas: VistasEncargadas = { trabajos: [], encoladas: [], sinEncolar: [] };
-  for (const vista of faltan) {
+  for (const vista of caben) {
     try {
       // Cada vista lleva **su propia** clave derivada de la confirmación: repetir el encargo entero devuelve
       // los mismos trabajos en lugar de encolar (y pagar) una segunda tanda.
       const envio = await pedirVistaSintetica(
         actor,
         personaje.id,
-        { ...peticion, vista, claveIdempotencia: claveDerivada(clave, vista) },
+        { ...confirmacion, vista, claveIdempotencia: claveDerivada(clave, vista) },
         h,
       );
       encargadas.trabajos.push(envio.trabajo);
@@ -231,6 +258,14 @@ export async function pedirVistasQueFaltan(
       });
     }
   }
+  // Las confirmadas que no caben se dicen, para pedirlas cuando haya hueco. No se cobran.
+  for (const vista of faltan.slice(caben.length)) {
+    encargadas.sinEncolar.push({
+      vista,
+      etiqueta: ETIQUETA_VISTA[vista],
+      motivo: `no cabe ahora: ${motivoSinHuecos(huecos)} Encárgala cuando termine alguna.`,
+    });
+  }
   // Si no ha salido ni una, esto no es un encargo a medias: es un fallo, y se responde como tal con su motivo.
   if (encargadas.encoladas.length === 0) {
     const primera = encargadas.sinEncolar[0];
@@ -242,24 +277,31 @@ export async function pedirVistasQueFaltan(
   return encargadas;
 }
 
-/** Vistas de este personaje que tienen un trabajo encargado y todavía sin terminar. */
-async function vistasEnMarcha(personajeId: string): Promise<Set<Vista>> {
-  const filas = await db()
-    .select({ entrada: generationJobs.input })
-    .from(generationJobs)
-    .where(
-      and(
-        eq(generationJobs.characterId, personajeId),
-        inArray(generationJobs.state, ["preparando", "en_cola", "esperando_limite", "enviando", "enviado", "en_curso"]),
-        sql`${generationJobs.input}->>'vistaSintetica' is not null`,
-      ),
-    );
-  const vistas = new Set<Vista>();
-  for (const f of filas) {
-    const v = (f.entrada as { vistaSintetica?: unknown }).vistaSintetica;
-    if (esVista(v)) vistas.add(v);
+/**
+ * Lo que ya se encargó con esta confirmación: un trabajo por cada vista confirmada cuya clave derivada existe. Las
+ * confirmadas sin trabajo se devuelven en `sinEncolar`, para que el reintento diga lo mismo que la primera vez.
+ */
+async function encargadasConEstaClave(
+  usuarioId: string,
+  personajeId: string,
+  clave: string,
+  confirmadas: readonly Vista[],
+): Promise<VistasEncargadas> {
+  const encargadas: VistasEncargadas = { trabajos: [], encoladas: [], sinEncolar: [] };
+  for (const vista of confirmadas) {
+    const fila = await filaDeLaConfirmacion(usuarioId, claveDerivada(clave, vista));
+    if (fila && fila.characterId === personajeId) {
+      encargadas.trabajos.push(await vistaDeFila(fila));
+      encargadas.encoladas.push(vista);
+    } else {
+      encargadas.sinEncolar.push({
+        vista,
+        etiqueta: ETIQUETA_VISTA[vista],
+        motivo: "no se encargó con esta confirmación; vuelve a abrir el encargo para pedirla",
+      });
+    }
   }
-  return vistas;
+  return encargadas;
 }
 
 /**
@@ -274,12 +316,6 @@ export async function medidasDelMedio(medioId: string): Promise<AnalisisImagen |
   } catch {
     return null;
   }
-}
-
-/** Vista que pidió el trabajo, leída de su entrada guardada; `null` si no era una vista sintética. */
-export function vistaSinteticaDe(fila: FilaTrabajo): Vista | null {
-  const marca = (fila.input as { vistaSintetica?: unknown }).vistaSintetica;
-  return esVista(marca) ? marca : null;
 }
 
 /**
@@ -313,8 +349,7 @@ export async function adjuntarVistaGenerada(fila: FilaTrabajo, medioId: string):
         const origen = version ? instantaneaDeVersion(version) : null;
         if (
           origen &&
-          (origen.renderStyle !== personaje.renderStyle ||
-            JSON.stringify(origen.styleGuide) !== JSON.stringify(personaje.styleGuide))
+          (origen.renderStyle !== personaje.renderStyle || !mismaGuiaDeEstilo(origen.styleGuide, personaje.styleGuide))
         )
           return;
       }

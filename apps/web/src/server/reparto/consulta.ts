@@ -1,7 +1,8 @@
 import { asc, eq } from "drizzle-orm";
+import { audioIdEfectivo } from "@/lib/omni";
 import type { ClipDePodcast, MiembroReparto, RepartoVista, TurnoReparto } from "@/lib/reparto";
 import { db, type Ejecutor } from "../db/cliente";
-import { characters, type FilaEscena, sceneCharacters, sceneDialogueTurns, scenes } from "../db/esquema";
+import { characters, type FilaEscena, projects, sceneCharacters, sceneDialogueTurns, scenes } from "../db/esquema";
 
 /**
  * Lectura del reparto de una escena (0.28.0). **Solo lectura**: aquí no se valida nada y no se escribe nada, así
@@ -16,6 +17,8 @@ import { characters, type FilaEscena, sceneCharacters, sceneDialogueTurns, scene
 export interface PersonajeDelReparto extends MiembroReparto {
   /** Voz del personaje (0.25.0): la predefinida elegida y sus ejes. Es lo que compara el aviso de misma voz. */
   firmaDeVoz: string;
+  /** Voz registrada propia del personaje; vacía si habla con la del proyecto. */
+  audioIdPropio: string;
 }
 
 /**
@@ -58,6 +61,7 @@ export async function miembrosDelReparto(escenaId: string, ejecutor: Ejecutor = 
       inventado: characters.virtual,
       vozPreset: characters.voicePresetId,
       ejesVoz: characters.voiceAxes,
+      audioIdPropio: characters.omniAudioId,
     })
     .from(sceneCharacters)
     .innerJoin(characters, eq(characters.id, sceneCharacters.characterId))
@@ -73,6 +77,7 @@ export async function miembrosDelReparto(escenaId: string, ejecutor: Ejecutor = 
     mirada: f.mirada,
     orden: f.orden,
     firmaDeVoz: firmaDeVozDePersonaje({ voicePresetId: f.vozPreset, voiceAxes: f.ejesVoz }),
+    audioIdPropio: f.audioIdPropio,
   }));
 }
 
@@ -103,21 +108,50 @@ export const compartenVoz = (miembros: readonly PersonajeDelReparto[]): boolean 
   return new Set(firmas).size < firmas.length;
 };
 
+/** `true` si todos los del reparto acaban hablando con la misma voz registrada (la propia o la del proyecto). */
+export const vocesEfectivasIguales = (miembros: readonly PersonajeDelReparto[], audioIdDelProyecto: string): boolean =>
+  new Set(miembros.map((m) => audioIdEfectivo(m.audioIdPropio, audioIdDelProyecto))).size < miembros.length;
+
+/**
+ * Personajes que salen en **otros planos de la misma conversación**: en un podcast escrito en plano y contraplano,
+ * los de las demás escenas de su grupo. Es con quien no puede compartir voz. Vacío fuera de un grupo de podcast.
+ */
+export async function otrosDeLaConversacion(
+  escena: Pick<FilaEscena, "podcastGroupId">,
+  personajeId: string,
+  ejecutor: Ejecutor = db(),
+): Promise<{ personajeId: string; nombre: string; audioIdPropio: string }[]> {
+  if (escena.podcastGroupId === null) return [];
+  const filas = await ejecutor
+    .selectDistinct({ personajeId: characters.id, nombre: characters.name, audioIdPropio: characters.omniAudioId })
+    .from(sceneCharacters)
+    .innerJoin(scenes, eq(scenes.id, sceneCharacters.sceneId))
+    .innerJoin(characters, eq(characters.id, sceneCharacters.characterId))
+    .where(eq(scenes.podcastGroupId, escena.podcastGroupId));
+  return filas.filter((f) => f.personajeId !== personajeId);
+}
+
 /** El reparto completo de una escena, tal como viaja al navegador. */
 export async function repartoDeEscena(escena: FilaEscena, ejecutor: Ejecutor = db()): Promise<RepartoVista> {
-  const [miembros, turnos] = await Promise.all([
+  const [miembros, turnos, [proyecto]] = await Promise.all([
     miembrosDelReparto(escena.id, ejecutor),
     turnosDelReparto(escena.id, ejecutor),
+    ejecutor.select({ audioId: projects.omniAudioId }).from(projects).where(eq(projects.id, escena.projectId)).limit(1),
   ]);
   return {
     escenaId: escena.id,
     formato: escena.castFormat,
     grupoPodcast: escena.podcastGroupId,
-    miembros: miembros.map(({ firmaDeVoz: _, ...miembro }) => miembro),
+    miembros: miembros.map(({ firmaDeVoz: _, audioIdPropio: __, ...miembro }) => miembro),
     turnos,
-    // En el camino Omni actual los dos registros citan el mismo audioId del proyecto. Aunque las fichas tengan
-    // presets distintos, el clip saldrá con esa misma voz: se avisa con la voz que realmente se envía.
-    mismaVoz: escena.castFormat !== "solo" && miembros.length === 2 ? true : compartenVoz(miembros),
+    /**
+     * Con dos en la escena se avisa con **la voz que de verdad se envía**: la propia de cada uno o, sin ella, la del
+     * proyecto. Si los dos acaban citando la misma, el clip saldrá con esa voz para los dos.
+     */
+    mismaVoz:
+      escena.castFormat !== "solo" && miembros.length === 2
+        ? vocesEfectivasIguales(miembros, proyecto?.audioId ?? "")
+        : compartenVoz(miembros),
   };
 }
 

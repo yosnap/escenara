@@ -1,3 +1,5 @@
+import type { Medio } from "./media/tipos";
+
 /**
  * Controles previos de generación (RF12, 0.18.0) tal como los comparten el servidor y el navegador.
  *
@@ -75,6 +77,18 @@ export interface EvaluacionVista {
    * envío. Solo en la consulta de antes de pagar y solo cuando el envío lleva producto o lugar.
    */
   referencias?: { personaje: number; producto: number; lugar: number; cabenTodas: boolean };
+  /** Las fotos del producto y la maestra del lugar que viajan con un fotograma, para enseñarlas antes de pagar. */
+  fotosQueViajan?: FotosQueViajan;
+}
+
+/** Fotos que acompañan a las del personaje en un fotograma, ya recortadas al reparto del cupo. */
+export interface FotosQueViajan {
+  producto: Medio[];
+  lugar: Medio[];
+  /** Cuántas imágenes admite el envío, el mismo cupo que reparte el servidor. */
+  cupo: number;
+  /** Cuántas imágenes del personaje competían por el cupo: si el reparto da menos, alguna se ha quedado fuera. */
+  fotosDelPersonaje: number;
 }
 
 /** Evaluación vacía y favorable: lo que se muestra mientras no hay nada que evaluar. */
@@ -183,9 +197,13 @@ export const firmaDeAvisos = (confirmados: readonly string[]): string => [...con
  * Motivos de los frenos que impiden generar, en lenguaje llano y con su acción. Es lo que se le pasa al panel
  * de confirmación como lista de bloqueos.
  */
+/** Textos de los frenos sin salida, tal como salen en `bloqueosDeControles`: son las causas reales. */
+export const textosSinSalida = (evaluacion: EvaluacionVista): string[] =>
+  frenosSinSalida(evaluacion).map((c) => `${c.motivo} ${c.accion}`);
+
 export function bloqueosDeControles(evaluacion: EvaluacionVista, confirmados: readonly string[]): string[] {
   return [
-    ...frenosSinSalida(evaluacion).map((c) => `${c.motivo} ${c.accion}`),
+    ...textosSinSalida(evaluacion),
     ...avisosPorConfirmar(evaluacion, confirmados).map((c) => `Falta confirmar el aviso: ${c.motivo}`),
   ];
 }

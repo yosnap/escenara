@@ -186,7 +186,8 @@ describe.skipIf(!hayBaseDeDatos)("el formato elegido al generar", () => {
     const antes = await db().select().from(generationJobs).where(eq(generationJobs.userId, ana.id));
     const fallo = await generar(conFormato("cuadrado-1-1")).catch((e: unknown) => e);
     expect(fallo).toBeInstanceOf(ErrorPreset);
-    expect((fallo as Error).message).toContain("solo admite 9:16, 16:9, 4:5");
+    expect((fallo as Error).message).toContain("El modelo elegido solo admite 9:16, 16:9, 4:5");
+    expect((fallo as Error).message).toContain("No se ha cobrado nada");
     const despues = await db().select().from(generationJobs).where(eq(generationJobs.userId, ana.id));
     expect(despues).toHaveLength(antes.length);
   });
@@ -267,9 +268,10 @@ describe.skipIf(!hayBaseDeDatos)("el formato elegido al generar", () => {
     expect((fallo as InstanceType<typeof ErrorGeneracion>).estado).toBe(409);
     const mensaje = (fallo as Error).message;
     expect(mensaje).toContain("El fotograma está en 4:5");
-    // Las salidas que hay en «Crear»: otro modelo que la anima (Hailuo toma la de la imagen) o recortar la imagen.
-    expect(mensaje).toContain("elige otro modelo del clip que la admite");
-    expect(mensaje).toContain("Hailuo");
+    // Las salidas que hay en «Crear»: otro modelo que la anima, que se elige en las Opciones avanzadas sin nombrarlo
+    // aquí (el usuario normal no ve nombres de modelo), o recortar la imagen.
+    expect(mensaje).toContain("elige en Opciones avanzadas otro modelo del clip que la admita");
+    expect(mensaje).not.toContain("Hailuo");
     expect(mensaje).toContain("recórtalo a 9:16 en tu Biblioteca");
     // Nada encolado ni reservado.
     const clips = await db()

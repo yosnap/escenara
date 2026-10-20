@@ -34,10 +34,13 @@ import type { Actor } from "../media/servicio";
 export async function exigirFormatoGenerable(
   usuarioId: string,
   formato: FormatoMontaje,
-  /** Modo de voz del proyecto: en `omni` también cuenta el modelo de escenas habladas. */
-  modoVoz = "clip",
+  /**
+   * Modo de voz y modelo de vídeo fijado del proyecto: en `omni` cuenta el modelo de escenas habladas, y un modelo
+   * fijado en Opciones avanzadas manda sobre el mapa. Sin proyecto todavía (al crearlo), el mapa de la cuenta.
+   */
+  proyecto: Pick<FilaProyecto, "videoModel" | "voiceMode"> = { videoModel: "", voiceMode: "clip" },
 ): Promise<void> {
-  const modelos = await modelosDelProyecto(usuarioId, await eleccionesDelPlan(usuarioId), modoVoz);
+  const modelos = await modelosDelProyecto(usuarioId, await eleccionesDelPlan(usuarioId, proyecto), proyecto);
   const motivo = formatosGenerables(modelos)[formato];
   if (motivo) throw new ErrorProyecto(409, motivo);
 }
@@ -46,8 +49,14 @@ export async function exigirFormatoGenerable(
  * Al pasar un proyecto a modo `omni`, su formato principal tiene que poder generarlo el modelo de escenas habladas:
  * si no, se dice ahora, antes de cambiar nada, y no al producir la primera escena.
  */
-export async function exigirFormatoParaOmni(usuarioId: string, formatosGuardados: unknown): Promise<void> {
-  await exigirFormatoGenerable(usuarioId, formatoPrincipal(formatosDe(formatosGuardados)), "omni");
+export async function exigirFormatoParaOmni(
+  usuarioId: string,
+  proyecto: Pick<FilaProyecto, "videoModel" | "formats">,
+): Promise<void> {
+  await exigirFormatoGenerable(usuarioId, formatoPrincipal(formatosDe(proyecto.formats)), {
+    videoModel: proyecto.videoModel,
+    voiceMode: "omni",
+  });
 }
 
 /** `true` si el proyecto ya no admite cambiar de formato principal: plan aprobado o algún clip generado. */
@@ -83,7 +92,7 @@ export async function cambiarFormatosDelProyecto(
         `El formato principal decide la proporción en la que se generan los clips, y este proyecto ya tiene el plan aprobado o clips generados en «${PLATAFORMA_DE_FORMATO[formatoPrincipal(anteriores)]}». Añade «${PLATAFORMA_DE_FORMATO[principal]}» como formato más: sale del mismo clip con reencuadre y no cuesta nada.`,
       );
     }
-    await exigirFormatoGenerable(actor.id, principal, proyecto.voiceMode);
+    await exigirFormatoGenerable(actor.id, principal, proyecto);
   }
   await db().update(projects).set({ formats: formatos, updatedAt: new Date() }).where(eq(projects.id, proyecto.id));
   return formatos;

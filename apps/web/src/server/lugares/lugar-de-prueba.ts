@@ -51,6 +51,7 @@ export async function lugarDeclaradoDePrueba(
       espacio: "exterior",
       personasVisibles: "ninguna",
       sinMenores: true,
+      puedoUsarImagenes: true,
     });
   }
   return { lugar, maestra };

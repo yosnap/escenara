@@ -47,7 +47,7 @@ describe("requisitos de la confirmación", () => {
   const base = {
     envio: "clip",
     paso: "clip",
-    conProducto: true,
+    conMarca: true,
     superaUmbral: true,
     derechos: false,
     derechoMarca: false,
@@ -62,13 +62,24 @@ describe("requisitos de la confirmación", () => {
     ]);
   });
 
-  test("la marca solo se pide con producto y el aviso solo si se supera el umbral", () => {
-    const textos = requisitosDeConfirmacion({ ...base, conProducto: false, superaUmbral: false }).map((r) => r.id);
+  test("la marca solo se pide con un producto con marca y el aviso solo si se supera el umbral", () => {
+    const textos = requisitosDeConfirmacion({ ...base, conMarca: false, superaUmbral: false }).map((r) => r.id);
     expect(textos).toEqual(["clip-derechos"]);
   });
 
   test("marcadas las casillas no falta nada", () => {
     expect(requisitosDeConfirmacion({ ...base, derechos: true, derechoMarca: true, avisoAceptado: true })).toEqual([]);
+  });
+
+  test("un freno sin salida es una causa real: se marca como que impide; un aviso por confirmar, no", () => {
+    expect(
+      requisitosDeControles(["Sin saldo. Recarga.", "Falta confirmar el aviso: X"], "fotograma", "coste", [
+        "Sin saldo. Recarga.",
+      ]),
+    ).toEqual([
+      { id: "fotograma-controles", paso: "coste", texto: "Sin saldo. Recarga.", impide: true },
+      { id: "fotograma-controles", paso: "coste", texto: "Falta confirmar el aviso: X" },
+    ]);
   });
 
   test("los frenos de los controles apuntan al panel «Antes de generar» de su envío", () => {
@@ -180,9 +191,10 @@ describe("todos los requisitos de «Crear»", () => {
     frenosClip: [],
     casillasFotograma: { derechos: false, derechoMarca: false, avisoAceptado: false },
     casillasClip: { derechos: false, derechoMarca: false, avisoAceptado: false },
-    conProducto: false,
+    conMarca: false,
     fotogramaSuperaUmbral: false,
     clipSuperaUmbral: false,
+    fotogramaPorConfirmar: true,
     clipPorConfirmar: true,
   };
 
@@ -196,6 +208,14 @@ describe("todos los requisitos de «Crear»", () => {
   test("con una imagen tuya no se cuenta el fotograma, y con el clip en marcha tampoco el clip", () => {
     expect(requisitosDeCrear({ ...datos, origen: "imagen" }).pendientes).toEqual({ clip: 1 });
     expect(requisitosDeCrear({ ...datos, clipPorConfirmar: false }).pendientes).toEqual({ coste: 1 });
+  });
+
+  test("con el fotograma ya pedido, lo que falte en su confirmación no se cuenta en la barra", () => {
+    // Tras generar el fotograma, la casilla de derechos vuelve a estar sin marcar, pero ese gasto ya está hecho.
+    const r = requisitosDeCrear({ ...datos, fotogramaPorConfirmar: false });
+    expect(r.pendientes).toEqual({ clip: 1 });
+    // El paso del coste sigue sabiendo qué faltaría si se pidiera otro.
+    expect(r.fotograma.map((x) => x.id)).toEqual(["fotograma-derechos"]);
   });
 
   test("la variable de texto de la plantilla es la obligatoria o, si no, la primera", () => {

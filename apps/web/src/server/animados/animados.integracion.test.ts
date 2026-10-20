@@ -125,7 +125,16 @@ describe.skipIf(!hayBaseDeDatos)("animados: identidad, estilo heredado y version
       .insert(characterReferences)
       .values({ characterId: inventado.id, mediaId: maestro.id, origin: "vista_generada", sortOrder: 1 });
     const anterior = await ultimaVersion(inventado.id);
-    const cambiada = await actualizarPersonaje(actor, inventado.id, { estiloAnimado: "tres-d-estilizado" });
+    // Sin confirmar, un cambio de estilo que descartaría su cara se rechaza diciendo qué se perdería, sin tocar nada.
+    await expect(actualizarPersonaje(actor, inventado.id, { estiloAnimado: "tres-d-estilizado" })).rejects.toThrow(
+      "su cara elegida",
+    );
+    const [intacta] = await db().select().from(characters).where(eq(characters.id, inventado.id));
+    expect(intacta?.masterFrameMediaId).toBe(maestro.id);
+    const cambiada = await actualizarPersonaje(actor, inventado.id, {
+      estiloAnimado: "tres-d-estilizado",
+      confirmarCambioEstilo: true,
+    });
     const actual = await ultimaVersion(inventado.id);
     const [fila] = await db().select().from(characters).where(eq(characters.id, inventado.id));
     const referencias = await db()
@@ -136,6 +145,104 @@ describe.skipIf(!hayBaseDeDatos)("animados: identidad, estilo heredado y version
     expect(actual?.number).toBe((anterior?.number ?? 0) + 1);
     expect(fila?.masterFrameMediaId).toBeNull();
     expect(referencias).toHaveLength(0);
+  });
+
+  test("guardar la ficha con el mismo estilo no descarta su cara, sus referencias ni sus retratos", async () => {
+    for (const estilo of ["anime", "realista"] as const) {
+      const inventado = await crearPersonajeInventado(actor, {
+        nombre: `Mismo estilo ${estilo} ${crypto.randomUUID()}`,
+        descripcion: "Una surfista de pelo rizado, neopreno rojo y sonrisa tranquila.",
+        declaracion: true,
+        estiloAnimado: estilo,
+        ...(estilo === "anime" ? { guiaPaleta: "pasteles", guiaReferencias: ["acuarela"] } : {}),
+      });
+      const [cara] = await db()
+        .insert(media)
+        .values({
+          ownerId: actor.id,
+          kind: "imagen",
+          storageKey: `pruebas/animados/${crypto.randomUUID()}.png`,
+          originalName: "cara.png",
+          mimeType: "image/png",
+          sizeBytes: 100,
+        })
+        .returning();
+      if (!cara) throw new Error("No se creó el medio de prueba.");
+      await db().update(characters).set({ masterFrameMediaId: cara.id }).where(eq(characters.id, inventado.id));
+      await db()
+        .insert(characterReferences)
+        .values({ characterId: inventado.id, mediaId: cara.id, origin: "vista_generada", viewKey: "frontal" });
+      const [retrato] = await db()
+        .insert(generationJobs)
+        .values({
+          userId: actor.id,
+          kind: "fotograma",
+          provider: "kie",
+          model: "nano-banana-2-lite",
+          state: "listo",
+          prompt: "Retrato",
+          input: { retratoInventado: true },
+          characterId: inventado.id,
+          resultMediaId: cara.id,
+          estimatedCredits: 4,
+        })
+        .returning();
+      // Lo que enviaba la ficha al guardar: el estilo y su guía de siempre, sin cambiar nada de ellos.
+      await actualizarPersonaje(actor, inventado.id, {
+        rasgos: "pecas en la nariz",
+        estiloAnimado: estilo,
+        guiaPaleta: estilo === "anime" ? "pasteles" : "",
+        guiaTrazo: "",
+        guiaDetalle: "",
+        guiaReferencias: estilo === "anime" ? ["acuarela"] : [],
+      });
+      const [fila] = await db().select().from(characters).where(eq(characters.id, inventado.id));
+      const referencias = await db()
+        .select()
+        .from(characterReferences)
+        .where(eq(characterReferences.characterId, inventado.id));
+      const [trabajo] = await db()
+        .select()
+        .from(generationJobs)
+        .where(eq(generationJobs.id, retrato?.id ?? ""));
+      expect(fila?.traits).toBe("pecas en la nariz");
+      expect(fila?.masterFrameMediaId).toBe(cara.id);
+      expect(referencias).toHaveLength(1);
+      expect((trabajo?.input as { retratoDescartado?: boolean } | undefined)?.retratoDescartado).toBeUndefined();
+    }
+  });
+
+  test("cambiar el estilo con retratos pagados en marcha exige confirmarlo, también contra la API", async () => {
+    const inventado = await crearPersonajeInventado(actor, {
+      nombre: `En marcha ${crypto.randomUUID()}`,
+      descripcion: "Un relojero joven de pelo rizado, delantal de cuero y lupa en la frente.",
+      declaracion: true,
+      estiloAnimado: "anime",
+    });
+    // Sin cara ni referencias todavía: solo un retrato pagado que se está generando.
+    await db()
+      .insert(generationJobs)
+      .values({
+        userId: actor.id,
+        kind: "fotograma",
+        provider: "kie",
+        model: "nano-banana-2-lite",
+        state: "en_cola",
+        prompt: "Retrato",
+        input: { retratoInventado: true },
+        characterId: inventado.id,
+        estimatedCredits: 4,
+        idempotencyKey: crypto.randomUUID(),
+      });
+    await expect(actualizarPersonaje(actor, inventado.id, { estiloAnimado: "tres-d-estilizado" })).rejects.toThrow(
+      "1 retrato o vista que se está generando y ya está pagado",
+    );
+    const cambiada = await actualizarPersonaje(actor, inventado.id, {
+      estiloAnimado: "tres-d-estilizado",
+      confirmarCambioEstilo: true,
+    });
+    expect(cambiada.estiloAnimado).toBe("tres-d-estilizado");
+    await db().delete(generationJobs).where(eq(generationJobs.characterId, inventado.id));
   });
 
   test("un maestro aprobado permite generar las vistas que completan el mínimo, pero aún no una escena", async () => {

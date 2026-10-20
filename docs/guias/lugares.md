@@ -4,6 +4,10 @@ Un lugar es un **sitio poco conocido que quieres usar como escenario una y otra 
 esquina, el patio de tu edificio. Lo das de alta una vez en **Lugares**, con sus fotos, y a partir de ahí lo eliges
 en **«Crear»**, en la **escena de un proyecto** o como **lugar del proyecto entero**.
 
+Así se crea un lugar, se genera su foto y se declara, paso a paso:
+
+[![Cómo crear un lugar en Escenara y generar su foto con IA, paso a paso](../assets/video/youtube-z9Ty1cgKzEY.webp)](https://youtu.be/z9Ty1cgKzEY)
+
 Lo que Escenara promete con un lugar es esto: **el sitio del fotograma es el de tu foto maestra**. Se reconoce por su
 estructura, sus materiales, sus muebles fijos y su luz. No se calca: el modelo lo recompone desde otro ángulo, igual
 que harías tú moviendo el móvil.
@@ -27,6 +31,17 @@ colores, muebles, la luz) y su **acabado**:
 
 ![Tus lugares con un lugar de demostración todavía sin fotos](../assets/capturas/0.49.0-lugares-claro.webp)
 
+Al pulsar «Crear lugar» llegas a su ficha con el paso **«Su primera imagen»** delante, con dos opciones:
+
+- **«Genera su primera imagen»**: abre el diálogo de la imagen generada con la descripción que acabas de guardar a la
+  vista y **el coste antes de confirmar** (ver más abajo). Si la descripción es demasiado corta para generar, el propio
+  paso lo dice y te deja completarla ahí con **«Guardar y generar»**.
+- **«Sube tus fotos»**: abre tu biblioteca, donde también puedes subir archivos nuevos. La primera que añades es la
+  maestra.
+
+**«Lo haré después»** te deja en la ficha. Mientras el lugar no tenga ninguna imagen, la sección de fotos explica esas
+mismas dos opciones y, si todavía no se puede generar, dice por qué dentro de la propia opción.
+
 Recién creado, el lugar no se puede usar todavía: su ficha dice arriba lo que le falta («Marca una foto como maestra.
 Declara los derechos de las fotos»).
 
@@ -45,21 +60,32 @@ Después, en su ficha, le añades fotos de tu biblioteca y dices qué muestra ca
 La primera foto que añades a un lugar sin maestra entra como maestra. Quitar una foto de aquí **no la borra de tu
 biblioteca**.
 
+### Generar sus imágenes aquí
+
+Un lugar **real** también se puede crear sin fotos: en su ficha, **«Generar una imagen»** crea una foto realista del
+sitio, vacía, desde su descripción guardada. Es una generación de imagen y **ves su coste antes de confirmar** (unos 4
+créditos con Nano Banana 2 Lite). Entra marcada como generada; si el lugar todavía no tenía maestra, **es su
+maestra**. Si ya la tenía, entra como plano general y, si te gusta más, **márcala como maestra**. Al declarar, elige
+**«Las he generado aquí»**.
+
 ### Lugar animado
 
 Un lugar animado se hace con **una ilustración tuya** (súbela a la biblioteca y márcala como maestra) o con **un
 candidato generado**: en su ficha, **«Generar un candidato»** crea una imagen del sitio, vacía, desde su descripción y
 su estilo. Es una generación de imagen y **se confirma su coste antes** (unos 4 créditos con Nano Banana 2 Lite). El
-candidato entra como plano general: si te gusta, **márcalo como maestra**; si no, genera otro.
+primer candidato es la maestra del lugar; los siguientes entran como plano general: si te gusta más uno, **márcalo
+como maestra**.
 
 ## La declaración de derechos
 
 **Sin declaración no se genera con el lugar.** En la ficha dices:
 
 - **De dónde son las fotos**: tuyas, de otra persona con su permiso, o generadas aquí.
-- **Qué tipo de sitio es**: un exterior o espacio público (una calle, una plaza, una fachada) o un **interior privado
-  o con restricciones** (una tienda, un bar, un museo). Un interior exige que declares que **tienes permiso** de quien
-  lo gestiona.
+- **Qué tipo de sitio es**: un exterior (una calle, una plaza, una fachada) o un interior (una tienda, un bar). Es
+  informativo: **no se pide el permiso de quien gestiona el sitio**, ni en un interior ni en un exterior, ni con fotos
+  reales ni generadas.
+- **«Puedo usar estas imágenes»**: declaras que no son de un sitio donde esté prohibido fotografiar o grabar (un
+  museo o un local con un cartel que lo prohíba, una instalación militar). Sin esta casilla no hay declaración.
 - **Si sale gente** (ver abajo), si se ve alguna marca y el uso: personal o comercial.
 - Y que **no sale ningún menor**, ni al fondo.
 
@@ -89,6 +115,10 @@ En **«Crear»**, en el paso de describir la escena, bloque **El lugar**: eliges
 **lugar al proyecto** (lo heredan todas sus escenas) y cada escena puede quedarse con él, elegir otro o ir sin lugar.
 Solo se ofrecen los lugares del mismo acabado que el proyecto; el servidor lo vuelve a comprobar.
 
+Así se hace un clip desde «Crear», con tu personaje en su lugar e interactuando con él, paso a paso:
+
+[![Cómo hacer un clip con tu personaje en un lugar tuyo en Escenara, paso a paso](../assets/video/youtube-M4HWebS5IL0.webp)](https://youtu.be/M4HWebS5IL0)
+
 Con un lugar:
 
 - el **fotograma se compone con la foto maestra** junto a las fotos del personaje (y del producto, si lo hay), y el
@@ -106,21 +136,24 @@ El modelo admite un número de imágenes, y se reparten así: **al menos una del
 lo hay, y la maestra del lugar si queda sitio**. Lo que queda se reparte entre el personaje y el producto como
 siempre. **La primera foto del personaje debe ser la del vestuario que quieres**: con varias fotos suyas el modelo
 mezcla la ropa. Si la maestra no cabe, se te avisa **antes de pagar**, con las cifras, y el lugar viaja solo descrito.
+En «Revisa el coste y confirma» ves **todas las fotos que se enviarán**: las del personaje, las del producto y la
+maestra del lugar, con el total frente a lo que admite el modelo.
 Más imágenes **no suben el precio** de un fotograma (medido: 4 créditos con 0 a 4 imágenes).
 
 ### El plano del lugar solo
 
 En la escena, **«Plano del lugar solo»**: el sitio sin nadie, mudo, sin reparto ni producto. Sirve de plano de
 situación o de recurso para el montaje, también dentro de un proyecto animado. Parte de la maestra y no pide el
-consentimiento de nadie, porque no sale nadie. En un proyecto en modo Omni (escenas habladas) no se produce: allí cada
+consentimiento de nadie, porque no sale nadie. En un proyecto en modo «Voz e identidad registradas» (escenas habladas) no se produce: allí cada
 escena es un clip hablado.
 
 ### Podcast y dualcast
 
 Un podcast es **una sola escena** que produce dos clips, así que los dos llevan **el mismo lugar y la misma versión**:
-se eligen en esa escena. Con la misma maestra el set sale igual en los dos clips. En las escenas habladas con Omni el lugar va
+se eligen en esa escena. Con la misma maestra el set sale igual en los dos clips. En las escenas habladas con voz e identidad registradas el lugar va
 **descrito**; combinar la identidad registrada con el fotograma situado es un ajuste experimental de la instalación,
-apagado de fábrica.
+apagado de fábrica. En un vídeo completo escrito por el asistente, el fotograma situado es el **plano base** de cada
+personaje (ver [Asistente de guion](asistente-de-guion.md)) y tiene su propio ajuste, también apagado de fábrica.
 
 ## Versiones
 

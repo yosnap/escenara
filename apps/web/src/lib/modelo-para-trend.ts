@@ -83,11 +83,13 @@ export function decidirModeloParaTrend(datos: {
   const sinTarifa = actual !== null && !conTarifa(actual);
   const duraciones = textoDeDuraciones(admitidas);
 
+  // Los mensajes de aquí se leen fuera de las Opciones avanzadas: el modelo se nombra por lo que hace, no por su
+  // nombre. `motivoSinDuracion` sí lo nombra porque solo lo usa el selector, que vive dentro de las avanzadas.
   if (!elegido) {
     const causa = sinTarifa
-      ? ` (${motivoSinDuracion(actual, admitidas)})`
+      ? ` (el modelo del clip que usas no tiene clips de ${duraciones})`
       : actual
-        ? ` (${actual.nombre} no está entre los modelos que admite)`
+        ? " (el modelo del clip que usas no está entre los que admite)"
         : "";
     const que = limita ? `tenga precio para clips de ${duraciones}` : "sirva";
     const admite = permitidos.length > 0 ? " y que este trend admita" : "";
@@ -98,15 +100,15 @@ export function decidirModeloParaTrend(datos: {
   }
 
   const de = !actual
-    ? "el modelo actual no sirve"
+    ? "el que había no sirve"
     : sinTarifa
-      ? `${actual.nombre} no tiene clips de ${duraciones}`
-      : `el trend no admite ${actual.nombre}`;
+      ? `el que usabas no tiene clips de ${duraciones}`
+      : "el trend no admite el que usabas";
   const dura = `, y el trend «${nombreTrend}» solo admite ${duraciones}`;
-  const sinVoz = actual?.conVoz && !elegido.conVoz ? ` Ojo: ${elegido.nombre} genera vídeo sin voz.` : "";
+  const sinVoz = actual?.conVoz && !elegido.conVoz ? " Ojo: el modelo nuevo genera vídeo sin voz." : "";
   return {
     tipo: "cambiar",
     modelo: elegido,
-    aviso: `Hemos cambiado a ${elegido.nombre} porque ${de}${sinTarifa ? dura : ""}.${sinVoz}`,
+    aviso: `Hemos cambiado el modelo del clip porque ${de}${sinTarifa ? dura : ""}. Lo ves y lo cambias en las Opciones avanzadas del clip; el coste de abajo ya es el del modelo nuevo.${sinVoz}`,
   };
 }

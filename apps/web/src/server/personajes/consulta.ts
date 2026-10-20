@@ -26,6 +26,7 @@ import {
 } from "../db/esquema";
 import { type Actor, aDto } from "../media/servicio";
 import { ultimoRegistro } from "../omni/registro";
+import { vozPropiaDe } from "../voz/omni";
 import { motivosGuardados } from "./analisis-referencia";
 import { ErrorPersonaje } from "./errores";
 import {
@@ -38,6 +39,7 @@ import {
 import { fichaDeFila, ultimaVersion } from "./ficha";
 import { vistaDeRegistro } from "./omni";
 import { registrarAccesoAConsentimiento, registrarAccesoAListado } from "./registro-acceso";
+import { vistasEnCursoDe } from "./vistas-en-marcha";
 
 /**
  * Lecturas de personajes y conversión a lo que ve el navegador. Todo lo que sale de aquí ya está filtrado
@@ -69,7 +71,14 @@ export async function ultimoConsentimientoDe(
 }
 
 export const efectivo = (fila: FilaConsentimiento | null): ConsentimientoEfectivo | null =>
-  fila ? { titular: fila.holderType, aceptado: fila.reviewApproved, revocado: fila.revokedAt !== null } : null;
+  fila
+    ? {
+        titular: fila.holderType,
+        aceptado: fila.reviewApproved,
+        revocado: fila.revokedAt !== null,
+        mayoriaDeclarada: fila.adultDeclared,
+      }
+    : null;
 
 /**
  * **Fotos originales** utilizables del personaje: las que apuntan a una foto que sigue en la biblioteca y
@@ -304,7 +313,12 @@ export async function vistaDePersonaje(
   // En un inventado cuentan sus imágenes generadas: no tiene ni admite fotos reales.
   const utilizables = fila.virtual ? vigentes.length : vigentes.filter((r) => r.origin === "foto_original").length;
   const generadas = vigentes.filter((r) => r.origin === "vista_generada").length;
-  const datos = { consentimiento: efectivo(consentimiento), referencias: utilizables, minimoReferencias: minimo };
+  const datos = {
+    tipo: fila.kind,
+    consentimiento: efectivo(consentimiento),
+    referencias: utilizables,
+    minimoReferencias: minimo,
+  };
   const esDueno = fila.ownerId === actor.id;
   // La portada de una persona real es siempre una foto original, por lo mismo que en los listados; la de un
   // inventado es su primera imagen, porque todas son generadas y sin ella se quedaría sin cara.
@@ -351,7 +365,10 @@ export async function vistaDePersonaje(
     probarHojaIdentidad: fila.identitySheetTrial,
     // El registro Omni solo se resuelve para su dueño: dice qué cara suya está alojada en el proveedor.
     ...(opciones.completa && esDueno
-      ? { registroOmni: vistaDeRegistro(await ultimoRegistro(fila.id), version, version?.id ?? null) }
+      ? {
+          registroOmni: vistaDeRegistro(await ultimoRegistro(fila.id), version, version?.id ?? null),
+          vozRegistrada: vozPropiaDe(fila),
+        }
       : {}),
     totalReferencias: utilizables,
     totalGeneradas: generadas,
@@ -375,6 +392,7 @@ export async function vistaDePersonaje(
             fila.virtual,
             await parecidoDecideLaCobertura(),
           ),
+          vistasEnCurso: await vistasEnCursoDe(fila.id),
         }
       : {}),
     ...(opciones.completa
@@ -436,8 +454,9 @@ async function resumenDeLista(filas: FilaPersonaje[], actor: Actor): Promise<Res
       holder_type: string;
       review_approved: boolean | null;
       revoked_at: Date | null;
+      adult_declared: boolean;
     }>(
-      sql`select distinct on (character_id) character_id, holder_type, review_approved, revoked_at
+      sql`select distinct on (character_id) character_id, holder_type, review_approved, revoked_at, adult_declared
           from consent_records where character_id in (${lista})
           order by character_id, registered_at desc`,
     ),
@@ -482,6 +501,7 @@ async function resumenDeLista(filas: FilaPersonaje[], actor: Actor): Promise<Res
           titular: f.holder_type as ConsentimientoEfectivo["titular"],
           aceptado: f.review_approved,
           revocado: f.revoked_at !== null,
+          mayoriaDeclarada: f.adult_declared,
         },
       ]),
     ),
@@ -517,6 +537,7 @@ async function vistasDeLista(
   const resumen = await resumenDeLista(filas, actor);
   return filas.map((fila) => {
     const datos = {
+      tipo: fila.kind,
       consentimiento: resumen.consentimientos.get(fila.id) ?? null,
       referencias: contadas(resumen, fila),
       minimoReferencias: minimo,
@@ -613,6 +634,7 @@ export async function personajesElegibles(actor: Actor): Promise<PersonajeElegib
       nombre: fila.name,
       tipo: fila.kind,
       estado: estadoDePersonaje({
+        tipo: fila.kind,
         consentimiento: resumen.consentimientos.get(fila.id) ?? null,
         referencias,
         minimoReferencias: minimo,
@@ -681,6 +703,7 @@ export async function pendientesDeRevision(actor: Actor, pagina = 1): Promise<Pa
 
   const elementos = filas.map(({ personaje, consentimiento }) => {
     const datos = {
+      tipo: personaje.kind,
       consentimiento: efectivo(consentimiento),
       referencias: contadas(resumen, personaje),
       minimoReferencias: minimo,
@@ -728,11 +751,14 @@ export async function pendientesDeRevision(actor: Actor, pagina = 1): Promise<Pa
 /** Deja la columna `state` al día con lo que dicen los datos. Se llama tras cualquier cambio. */
 export async function recalcularEstado(personajeId: string, ejecutor: Ejecutor = db()): Promise<EstadoPersonaje> {
   const { minimoReferenciasPersonaje: minimo } = await leerAjustes();
-  const [consentimiento, referencias] = await Promise.all([
+  const [consentimiento, referencias, [personaje]] = await Promise.all([
     ultimoConsentimientoDe(personajeId, ejecutor),
     contarReferencias(personajeId, ejecutor),
+    ejecutor.select({ tipo: characters.kind }).from(characters).where(eq(characters.id, personajeId)).limit(1),
   ]);
+  if (!personaje) return "borrador";
   const estado = estadoDePersonaje({
+    tipo: personaje.tipo,
     consentimiento: efectivo(consentimiento),
     referencias,
     minimoReferencias: minimo,

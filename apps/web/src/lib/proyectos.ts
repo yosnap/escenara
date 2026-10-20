@@ -1,3 +1,4 @@
+import type { ModeloElegible } from "./catalogo";
 import type { EstadoControl, EvaluacionVista } from "./controles";
 import { type Acento, DIRECCION_ELEGIDA_VACIA, type DireccionElegida, type ReferenciaIdentidad } from "./direccion";
 import type { FormatoMontaje } from "./formatos";
@@ -6,6 +7,7 @@ import { formatearCreditos, formatearEuros } from "./generacion";
 import type { LugarDeEscena } from "./lugares";
 import type { Medio } from "./media/tipos";
 import type { ProductoElegido } from "./productos";
+import type { CondicionesVideoCompleto } from "./video-completo";
 
 /**
  * Proyectos, escenas y afirmaciones (RF05, 0.17.0) tal como los comparten el servidor y el navegador. Aquí
@@ -190,6 +192,11 @@ export interface EstimacionEscena {
    * avisar junto al selector de producto. Ausente en las estimaciones donde no aplica (canto).
    */
   fotoDeProducto?: FotoDeProductoDelClip;
+  /**
+   * Lo que impide producir esta escena aunque tenga precio, ya en castellano: hoy, un reparto de dos personajes con
+   * un modelo que no lo admite. Ausente cuando no hay nada que impedir.
+   */
+  bloqueo?: string;
 }
 
 /** Dirección vocal libre: «en tono cercano», «con energía». Corta a propósito: es un matiz, no un guion. */
@@ -300,13 +307,42 @@ export interface EstimacionTexto {
   nombreModelo: string;
   creditos: number;
   euros: number;
-  /** Fecha (AAAA-MM-DD) en la que se comprobó el precio. */
+  /** Fecha (AAAA-MM-DD) en la que se comprobó el precio; vacía si se paga por cuota. */
   comprobado: string;
+  /**
+   * Sello de lo que se confirma: el modo (`cuota|` o `pago|`), el del precio de la principal y, si hay reserva de
+   * pago, los de sus precios, unidos con «+». Nunca vacío: se exige siempre.
+   */
   sello: string;
+  /**
+   * `true` si la entrada principal del mapa de texto del usuario se paga por cuota de su plan: entonces `creditos`
+   * es 0, que no es lo mismo que gratis, y la pantalla lo dice así.
+   */
+  porCuota: boolean;
+  /** Proveedor que escribiría el guion («NaN builders», «KIE.ai»). Se puede enseñar; el modelo, no. */
+  nombreProveedor: string;
+  /**
+   * Lo que costaría, como mucho, la llamada de reserva de pago si la principal falla: la entrada de pago más cara
+   * del mapa detrás de la principal. `null` si no hay ninguna, y entonces la reserva no cuesta créditos de pago.
+   */
+  reserva: PrecioDeReserva | null;
+}
+
+/** Precio de una llamada de reserva de pago, con su fecha. Sin modelo: no se enseña al usuario normal. */
+export interface PrecioDeReserva {
+  creditos: number;
+  euros: number;
+  /** Fecha (AAAA-MM-DD) del precio. */
+  comprobado: string;
 }
 
 /** Proyecto con todo lo que necesita su página: escenas, afirmaciones y el plan con su coste. */
 export interface ProyectoDetalle {
+  /**
+   * Solo en la respuesta del asistente de guion: el guion lo escribió una **reserva de pago** porque falló la
+   * entrada principal. Dice qué falló, quién lo escribió y cuánto costó.
+   */
+  avisoReserva?: string;
   proyecto: ProyectoVista;
   escenas: EscenaVista[];
   plan: PlanVista;
@@ -320,6 +356,35 @@ export interface ProyectoDetalle {
   limites: { escenasMaximas: number; segundosMaximos: number };
   /** Por formato, por qué no se puede generar en él con los modelos elegidos; `null` si se puede. */
   formatosGenerables: Record<FormatoMontaje, string | null>;
+  /** Lo que se enseña en las Opciones avanzadas del proyecto. Ausente en respuestas que no lo calculan. */
+  avanzadas?: AvanzadasDelProyecto;
+  /**
+   * Lo que decide qué vídeos completos se ofrecen en este proyecto (modo de voz, protagonista, ajustes y límites).
+   * La pantalla calcula las opciones y el coste con las mismas funciones con las que el servidor las rechaza.
+   */
+  videoCompleto?: CondicionesVideoCompleto;
+  /**
+   * `true` si el guion vigente lo escribió entero el asistente como vídeo completo: su diálogo va plegado en
+   * «Opciones avanzadas» y se ve y se edita ahí.
+   */
+  guionCompleto?: boolean;
+}
+
+/**
+ * **Opciones avanzadas de un proyecto**: el único sitio de sus pantallas donde se ven nombres de modelo. El modelo
+ * de vídeo se puede fijar para este proyecto; vacío, se usa el mapa de modelos de la cuenta, como siempre.
+ */
+export interface AvanzadasDelProyecto {
+  /** Modelo de vídeo fijado (identificador); cadena vacía = el del mapa de la cuenta. */
+  modeloVideo: string;
+  /** Modelos que se pueden fijar en el modo de voz del proyecto, con su coste y sus capacidades. */
+  modelos: ModeloElegible[];
+  /** Nombre del modelo con el que se generaría ahora mismo (el fijado o el del mapa); vacío si no hay ninguno. */
+  enUso: string;
+  /** En modo `omni` el modelo es el de las escenas habladas; en los demás, el que anima los clips. */
+  escenasHabladas: boolean;
+  /** Lo fijado ya no está entre los elegibles (retirado o de otro modo): se avisa y se ofrece volver al mapa. */
+  fijadoNoDisponible: boolean;
 }
 
 /** Plan del proyecto: el desglose por escena, el total y si se puede aprobar. */
@@ -376,7 +441,10 @@ export interface FilaPlan {
   orden: number;
   /** Resumen corto de la escena, para reconocerla en la tabla. */
   resumen: string;
+  /** Nombres de los modelos con que se estima. Solo se enseñan dentro de las Opciones avanzadas del proyecto. */
   modelos: string;
+  /** Qué se genera en la escena, sin nombres de modelo: es lo que lee la tabla del plan. */
+  queSeGenera: string;
   segundos: number;
   /** Texto completo de la estimación, con la palabra «estimación» y la fecha del precio. */
   estimacion: string;
@@ -394,12 +462,16 @@ export function filasDelPlan(escenas: readonly EscenaVista[]): FilaPlan[] {
       escenaId: escena.id,
       orden: escena.orden,
       resumen: resumenDeEscena(escena),
-      modelos: e ? `${e.modeloFotograma} + ${e.modeloAnimacion}` : "—",
+      // Una escena hablada en modo Omni (o una de canto) no tiene fotograma: sale solo el modelo que la genera.
+      modelos: e ? [e.modeloFotograma, e.modeloAnimacion].filter((m) => m !== "").join(" + ") : "—",
+      queSeGenera: !e ? "—" : e.modeloFotograma !== "" ? "Fotograma y clip" : "Clip entero",
       segundos: e?.segundos ?? escena.segundos,
       estimacion: e ? textoEstimacion(e.creditos, e.euros, e.comprobado) : textoEstimacion(0, 0, ""),
       creditos: e?.creditos ?? 0,
       estado: escena.estado,
-      motivo: e ? "" : "Sin precio registrado para su modelo: esta escena no se puede estimar ni producir.",
+      motivo: e
+        ? (e.bloqueo ?? "")
+        : "Sin precio registrado para su modelo: esta escena no se puede estimar ni producir.",
     };
   });
 }
@@ -452,6 +524,24 @@ export function impedimentosDelPlan(datos: {
 }
 
 export const puedeAprobarse = (plan: PlanVista): boolean => plan.impedimentos.length === 0;
+
+/**
+ * Si el precio que se congeló al aprobar una escena ya no es el vigente, que es lo que invalida su aprobación.
+ *
+ * - Con sello de fotograma, se compara ese, como siempre (y en las escenas Omni aprobadas antes de que el plan
+ *   estimara con el modelo de escenas habladas, que congelaron el del fotograma).
+ * - Una escena Omni no tiene fotograma: congela el sello del modelo de escenas habladas, y ese es el que se mira.
+ * - El canto tiene su propio camino de precio y aquí no se juzga.
+ */
+export function precioCambiadoDesdeLaAprobacion(
+  escena: { canto: boolean; selloFotograma: string; selloAnimacion: string },
+  vigentes: { fotograma: string; omni: string | null },
+): boolean {
+  if (escena.canto) return false;
+  if (escena.selloFotograma !== "") return escena.selloFotograma !== vigentes.fotograma;
+  if (vigentes.omni === null || escena.selloAnimacion === "") return false;
+  return escena.selloAnimacion !== vigentes.omni;
+}
 
 /**
  * Motivo con el que se invalida la aprobación de una escena. Se guarda tal cual en la escena, así que dice

@@ -38,6 +38,7 @@ const rutaReferencias = await import("@/app/api/personajes/[id]/referencias/rout
 const rutaConsentimiento = await import("@/app/api/personajes/[id]/consentimiento/route");
 const rutaRevision = await import("@/app/api/personajes/[id]/revision/route");
 const rutaMedio = await import("@/app/api/media/[id]/route");
+const rutaTrabajos = await import("@/app/api/generacion/trabajos/route");
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
@@ -631,6 +632,104 @@ describe.skipIf(!hayBaseDeDatos)("personajes y consentimiento", () => {
     expect(borrado.status).toBe(204);
   });
 
+  test("una imagen suelta generada con un personaje lo hereda y el worker la envía sin exigir sus fotos", async () => {
+    const personaje = await nuevoPersonaje("Heredado", 3);
+    const { trabajo } = await crearFotograma(actorAna, confirmacion(personaje.id), h);
+    await enviarEncolados(h);
+    await pasadaDeCola(h);
+    const generado = await obtenerTrabajo(ana.id, trabajo.id);
+    expect(generado.estado).toBe("listo");
+    const fotogramaId = generado.medio?.id as string;
+    const temporal = await crearMedio(actorAna, new File([await png("#22aa66")], "abrigo.png", { type: "image/png" }));
+
+    // «Sin personaje» con ese fotograma como imagen suelta y una referencia de escena: como lo manda «Crear».
+    const { trabajo: heredado } = await crearFotograma(
+      actorAna,
+      {
+        medioId: fotogramaId,
+        sinTerceros: true,
+        prompt: "Con el @abrigo puesto, saluda a cámara con una sonrisa.",
+        creditosConfirmados: 4,
+        derechos: true,
+        claveIdempotencia: crypto.randomUUID(),
+        referenciasTemporales: [{ medioId: temporal.id, etiqueta: "abrigo", uso: "ropa" }],
+      },
+      h,
+    );
+    expect(heredado.personajeId).toBe(personaje.id);
+
+    subidas = 0;
+    await enviarEncolados(h);
+    const enviado = await obtenerTrabajo(ana.id, heredado.id);
+    // El fotograma no es una foto del personaje: antes se filtraba contra ellas, quedaban 0 y fallaba por el mínimo.
+    expect(enviado.error ?? "").not.toContain("mínimo");
+    expect(enviado.estado).not.toBe("fallido");
+    // Viajan la imagen suelta y la referencia de escena, nada más.
+    expect(subidas).toBe(2);
+    const [fila] = await db().select().from(generationJobs).where(eq(generationJobs.id, heredado.id));
+    expect((fila?.input as { personajeHeredado?: unknown } | undefined)?.personajeHeredado).toBe(true);
+  });
+
+  /** Fotograma ya terminado de un personaje nuevo: la imagen suelta que hereda ese personaje. */
+  const fotogramaDe = async (nombre: string) => {
+    const personaje = await nuevoPersonaje(nombre, 3);
+    const { trabajo } = await crearFotograma(actorAna, confirmacion(personaje.id), h);
+    await enviarEncolados(h);
+    await pasadaDeCola(h);
+    const generado = await obtenerTrabajo(ana.id, trabajo.id);
+    expect(generado.estado).toBe("listo");
+    return { personaje, fotogramaId: generado.medio?.id as string };
+  };
+  const conImagenSuelta = (medioId: string, extra: Record<string, unknown> = {}) => ({
+    medioId,
+    sinTerceros: true,
+    prompt: ESCENA,
+    creditosConfirmados: 4,
+    derechos: true,
+    claveIdempotencia: crypto.randomUUID(),
+    ...extra,
+  });
+
+  test("con personajeId vacío, la imagen suelta sigue heredando el personaje y su revisión", async () => {
+    const { personaje, fotogramaId } = await fotogramaDe("Vacío no esquiva");
+    // La cadena vacía cuenta como ausente: se hereda el personaje, así que se exige la casilla de revisión.
+    await expect(
+      crearFotograma(actorAna, conImagenSuelta(fotogramaId, { personajeId: "", sinTerceros: false }), h),
+    ).rejects.toThrow(/ninguna otra persona ni ningún menor/);
+    // Desde la API, un identificador mal formado no llega al servicio (se rechaza antes de estimar ni llamar a nadie).
+    const malFormado = await rutaTrabajos.POST(
+      pedir(ana, "/api/generacion/trabajos", "POST", {
+        tipo: "fotograma",
+        ...conImagenSuelta(fotogramaId, { personajeId: "no-es-un-uuid" }),
+      }),
+      undefined,
+    );
+    expect(malFormado.status).toBe(400);
+    expect((await malFormado.json()).error).toBe("Ese personaje no es válido.");
+    // Con la casilla marcada se encola, ligado al personaje heredado: su borrado y su consentimiento lo alcanzan.
+    const { trabajo } = await crearFotograma(actorAna, conImagenSuelta(fotogramaId, { personajeId: "" }), h);
+    expect(trabajo.personajeId).toBe(personaje.id);
+  });
+
+  test("un trabajo heredado se cierra sin enviar nada si se revoca el consentimiento antes de enviarse", async () => {
+    const { personaje, fotogramaId } = await fotogramaDe("Heredado revocado");
+    const { trabajo } = await crearFotograma(actorAna, conImagenSuelta(fotogramaId), h);
+    expect(trabajo.personajeId).toBe(personaje.id);
+    const revocar = await rutaConsentimiento.DELETE(
+      pedir(ana, `/api/personajes/${personaje.id}/consentimiento`, "DELETE", { motivo: "Ha retirado su permiso." }),
+      ctx(personaje.id),
+    );
+    expect(revocar.status).toBe(200);
+
+    subidas = 0;
+    await enviarEncolados(h);
+    const cerrado = await obtenerTrabajo(ana.id, trabajo.id);
+    expect(["fallido", "cancelado"]).toContain(cerrado.estado);
+    expect(cerrado.error ?? "").toMatch(/revoca|consentimiento/i);
+    // Ni la imagen suelta ni nada más ha salido hacia el proveedor.
+    expect(subidas).toBe(0);
+  });
+
   test("dos personajes del mismo usuario no pueden llamarse igual", async () => {
     await nuevoPersonaje("Nombre repetido", 0, false);
     const segundo = await rutaPersonajes.POST(
@@ -638,6 +737,6 @@ describe.skipIf(!hayBaseDeDatos)("personajes y consentimiento", () => {
       undefined,
     );
     expect(segundo.status).toBe(409);
-    expect((await segundo.json()).error).toContain("personaje con ese nombre");
+    expect((await segundo.json()).error).toContain("no pueden llamarse igual");
   });
 });

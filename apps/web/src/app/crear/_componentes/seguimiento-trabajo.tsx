@@ -37,6 +37,7 @@ export function SeguimientoTrabajo({
     <div className="flex flex-col gap-3">
       <EsperaTrabajo
         tipo={trabajo.tipo}
+        segundos={trabajo.segundos}
         estado={trabajo.estado}
         estadoProveedor={trabajo.estadoProveedor}
         transcurridoSegundos={estado.transcurridoSegundos}
@@ -47,6 +48,11 @@ export function SeguimientoTrabajo({
         {trabajo.error && (
           <Alerta tipo="error" compacta anuncio="ninguno">
             {trabajo.error}
+          </Alerta>
+        )}
+        {trabajo.avisoReserva && (
+          <Alerta tipo="aviso" compacta anuncio="ninguno">
+            {trabajo.avisoReserva}
           </Alerta>
         )}
         {trabajo.excesoCreditos !== null && trabajo.excesoCreditos > 0 && (

@@ -1,5 +1,6 @@
 import { CAPACIDAD_DE_TIPO, duracionesConCoste, type ModeloVista, unidadParaDuracion } from "@/lib/catalogo";
 import type { TipoTrabajoCola } from "@/lib/generacion";
+import { conMayuscula, DONDE_CAMBIAR_MODELO, modeloEnMensaje } from "../modelo-en-mensajes";
 import type { Adaptador, PrecioModelo } from "../proveedores/contrato";
 import { resolver } from "../proveedores/registro";
 import { ErrorGeneracion } from "./errores";
@@ -44,7 +45,7 @@ export async function elegirParaTipo(
   if (modo.segundos !== undefined && unidad === undefined && cobrables.length > 0) {
     throw new ErrorGeneracion(
       409,
-      `${elegido.nombre} no tiene precio para un clip de ${modo.segundos} s, así que no se puede pedir. Elige una de estas duraciones: ${cobrables.map((d) => `${d} s`).join(", ")}. No se ha cobrado nada.`,
+      `${conMayuscula(modeloEnMensaje(null, "video", elegido.nombre))} no tiene precio para un clip de ${modo.segundos} s, así que no se puede pedir. No se ha cobrado nada: elige una de estas duraciones (${cobrables.map((d) => `${d} s`).join(", ")}) o ${DONDE_CAMBIAR_MODELO}.`,
     );
   }
   return { modelo: elegido, adaptador, precio: await adaptador.estimar(elegido.modelo, unidad) };

@@ -1,6 +1,7 @@
+import { audioIdEfectivo, faltaDeVoz } from "@/lib/omni";
 import type { ClipDePodcast } from "@/lib/reparto";
 import type { RepartoDeEnvio, TurnoDeEnvio } from "@/lib/reparto-envio";
-import type { FilaEscena } from "../db/esquema";
+import type { FilaEscena, FilaProyecto } from "../db/esquema";
 import { ultimaVersion } from "../personajes/ficha";
 import { clipsDePodcast, miembrosDelReparto, type PersonajeDelReparto } from "../reparto/consulta";
 import { registroVigente } from "./registro";
@@ -56,20 +57,29 @@ export interface FaltaDeRegistro {
 /** Traduce al inglés la dirección vocal de un turno. El **texto del turno no pasa por aquí**: no se traduce. */
 export type AlIngles = (texto: string) => string;
 
+/** Lo que hace falta del proyecto para saber con qué voz habla cada uno: su voz y su protagonista. */
+export type VozDelReparto = Pick<FilaProyecto, "omniAudioId" | "mainCharacterId">;
+
 /**
  * Registro de Omni vigente de cada uno del reparto, o lo que le falta.
  *
- * Se pide con la **voz del proyecto** (`audioId`) y con la **versión de ficha vigente** de cada personaje, igual
- * que el camino de un solo personaje: un registro hecho con otra voz o con una ficha anterior no sirve, porque la
- * cara o el timbre del clip no serían los que el usuario ha visto.
+ * Cada uno se busca con **su voz** —la propia o, sin ella, la del proyecto— y con su **versión de ficha vigente**,
+ * igual que el camino de un solo personaje: un registro hecho con otra voz o con una ficha anterior no sirve,
+ * porque la cara o el timbre del clip no serían los que el usuario ha elegido. Y si dos acabarían con la misma voz,
+ * al que no tiene la suya se le pide que la elija: una conversación con un solo timbre no se entiende.
  */
 export async function registrosDelReparto(
   miembros: readonly PersonajeDelReparto[],
-  audioId: string,
+  proyecto: VozDelReparto,
 ): Promise<{ porPersonaje: Map<string, RegistroDelReparto>; faltan: FaltaDeRegistro[] }> {
   const porPersonaje = new Map<string, RegistroDelReparto>();
   const faltan: FaltaDeRegistro[] = [];
   for (const miembro of miembros) {
+    const voz = faltaDeVoz(miembro, miembros, proyecto.omniAudioId, proyecto.mainCharacterId);
+    if (voz !== "") {
+      faltan.push({ nombre: miembro.nombre, falta: voz });
+      continue;
+    }
     const version = await ultimaVersion(miembro.personajeId);
     if (!version) {
       faltan.push({
@@ -78,11 +88,12 @@ export async function registrosDelReparto(
       });
       continue;
     }
+    const audioId = audioIdEfectivo(miembro.audioIdPropio, proyecto.omniAudioId);
     const registro = await registroVigente(miembro.personajeId, version.id, audioId);
     if (!registro) {
       faltan.push({
         nombre: miembro.nombre,
-        falta: `no está registrado en el proveedor con la voz de este proyecto (o su ficha ha cambiado desde que se registró), así que su cara y su voz no pueden salir en el clip. Regístralo desde su ficha: no cuesta créditos.`,
+        falta: `no está registrado en el proveedor con ${miembro.audioIdPropio === "" ? "la voz de este proyecto" : "su voz"} (o su ficha ha cambiado desde que se registró), así que su cara y su voz no pueden salir en el clip. Regístralo desde su ficha: no cuesta créditos.`,
       });
       continue;
     }
@@ -175,13 +186,13 @@ function clipDualcast(
  */
 export async function enviosDelReparto(
   escena: FilaEscena,
-  audioId: string,
+  proyecto: VozDelReparto,
   alIngles: AlIngles = (texto) => texto,
 ): Promise<{ clips: ClipDelReparto[]; faltan: FaltaDeRegistro[] } | null> {
   if (escena.castFormat === "solo") return null;
   const miembros = await miembrosDelReparto(escena.id);
   if (miembros.length < 2) return null;
-  const { porPersonaje, faltan } = await registrosDelReparto(miembros, audioId);
+  const { porPersonaje, faltan } = await registrosDelReparto(miembros, proyecto);
   if (faltan.length > 0) return { clips: [], faltan };
   if (escena.castFormat === "dualcast") {
     const clips = await clipsDePodcast(escena);
@@ -193,12 +204,30 @@ export async function enviosDelReparto(
 
 /**
  * Lo que le falta al reparto para poder producirse, **sin componer ningún envío**: es lo que lee la pantalla y lo
- * que alimenta al motor de controles. Sin voz registrada en el proyecto no se mira nada, porque el registro se
- * hace contra esa voz y el aviso de que falta lo da ya el camino de siempre.
+ * que alimenta al motor de controles. Si nadie tiene voz (ni el proyecto ni ninguno de los dos la suya) no se mira
+ * nada: el aviso de que falta la voz lo da ya el camino de siempre.
  */
-export async function faltasDeRegistroDelReparto(escena: FilaEscena, audioId: string): Promise<FaltaDeRegistro[]> {
-  if (escena.castFormat === "solo" || audioId === "") return [];
+export async function faltasDeRegistroDelReparto(
+  escena: FilaEscena,
+  proyecto: VozDelReparto,
+): Promise<FaltaDeRegistro[]> {
+  if (escena.castFormat === "solo") return [];
   const miembros = await miembrosDelReparto(escena.id);
   if (miembros.length < 2) return [];
-  return (await registrosDelReparto(miembros, audioId)).faltan;
+  if (proyecto.omniAudioId === "" && miembros.every((m) => m.audioIdPropio === "")) return [];
+  return (await registrosDelReparto(miembros, proyecto)).faltan;
+}
+
+/**
+ * Personaje de un **plano de podcast** escrito como plano y contraplano: una escena `solo` que pertenece a un grupo de
+ * podcast y cuyo único miembro del reparto sale en ella. Devuelve su identificador, o `null` en cualquier otra escena,
+ * que se produce con el protagonista del proyecto como siempre.
+ *
+ * Se apoya en el grupo y no solo en el reparto a propósito: una escena `solo` de siempre puede conservar en su reparto
+ * a un protagonista anterior, y producirla con él cambiaría lo que ya hacía.
+ */
+export async function personajeDelPlano(escena: FilaEscena): Promise<string | null> {
+  if (escena.castFormat !== "solo" || escena.podcastGroupId === null) return null;
+  const miembros = await miembrosDelReparto(escena.id);
+  return miembros.length === 1 ? (miembros[0]?.personajeId ?? null) : null;
 }

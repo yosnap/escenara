@@ -13,9 +13,15 @@ import { personajePorId } from "../personajes/contexto";
 import { personajePropio } from "../personajes/puede-generar";
 import { completarModelosSugeridos } from "../productos/modelos-sugeridos";
 import { productoParaGenerar } from "../productos/prompt";
-import { hojaEnElEnvio, repartoCompletoDelEnvio } from "../productos/reparto-del-envio";
+import {
+  cupoDeGaleria,
+  type EnvioConProducto,
+  hojaEnElEnvio,
+  repartoCompletoDelEnvio,
+} from "../productos/reparto-del-envio";
 import { creditosDelEnvio } from "../prompts/traduccion";
 import type { Buscador } from "../proveedores/codigos";
+import { fotosQueViajan } from "./fotos-que-viajan";
 import { conVistaQueCompleta, hechosDelReparto, recopilarHechos } from "./hechos";
 import { evaluarParaMostrar } from "./puerta";
 
@@ -123,22 +129,23 @@ export async function evaluarControles(
           peticion.lugarId ? { lugarId: peticion.lugarId, sitio: "" } : null,
           personaje,
         );
+  // Las mismas entradas que el envío: el clip parte de una imagen, y el fotograma lleva las fotos del personaje
+  // **elegido**, no las del que hereda una imagen suelta.
+  const envio: EnvioConProducto =
+    peticion.tipo === "animacion"
+      ? { tipo: "clip" }
+      : {
+          tipo: "fotograma",
+          personaje: personaje && peticion.personajeId && !peticion.retratoInventado ? personaje : null,
+          sinReferencia,
+          conHoja: personaje !== null && hojaEnElEnvio(personaje, peticion.escenaId ?? undefined),
+        };
   const { conProducto, reparto, hechosLugar } = await repartoCompletoDelEnvio({
     producto,
     conLugar,
     adaptador: eleccion.adaptador,
     modelo: eleccion.modelo,
-    // Las mismas entradas que el envío: el clip parte de una imagen, y el fotograma lleva las fotos del
-    // personaje **elegido**, no las del que hereda una imagen suelta.
-    envio:
-      peticion.tipo === "animacion"
-        ? { tipo: "clip" }
-        : {
-            tipo: "fotograma",
-            personaje: personaje && peticion.personajeId && !peticion.retratoInventado ? personaje : null,
-            sinReferencia,
-            conHoja: personaje !== null && hojaEnElEnvio(personaje, peticion.escenaId ?? undefined),
-          },
+    envio,
   });
   // Sin esto el aviso «no admite la foto del producto» diría que no hay ningún modelo que la admita: la lista de
   // los que sí la llevan la completa quien avisa, con la misma capacidad con la que luego se envía.
@@ -178,7 +185,18 @@ export async function evaluarControles(
   );
   const evaluacion = evaluarParaMostrar(hechos);
   // Las cifras del reparto, las mismas que usará el envío: el panel puede decir qué viaja sin volver a contarlo.
-  return reparto ? { ...evaluacion, referencias: reparto } : evaluacion;
+  if (!reparto) return evaluacion;
+  // Además, qué fotos del producto y del lugar viajan: se enseñan antes de pagar junto a las del personaje (en el
+  // fotograma) o junto a la imagen que se anima (en el clip, donde la maestra del lugar no compite).
+  const fotos = await fotosQueViajan(actor, {
+    producto,
+    conProducto,
+    conLugar,
+    reparto,
+    envio,
+    cupo: cupoDeGaleria(eleccion.adaptador, eleccion.modelo),
+  });
+  return { ...evaluacion, referencias: reparto, ...(fotos ? { fotosQueViajan: fotos } : {}) };
 }
 
 /**

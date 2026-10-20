@@ -3,6 +3,7 @@
 import { Casilla } from "@/components/ui/choice";
 import { SelectorMedios } from "@/components/ui/media/selector-medios";
 import { SelectorModelo } from "@/components/ui/modelo";
+import { OpcionesAvanzadas } from "@/components/ui/opciones-avanzadas";
 import { Paso } from "@/components/ui/paso";
 import { SelectorPersonaje } from "@/components/ui/personaje";
 import { MarcaRequisito } from "@/components/ui/requisitos";
@@ -76,13 +77,16 @@ export function PasoSujeto({
           valor={personajeId}
           onCambio={onPersonaje}
           deshabilitado={deshabilitado}
+          // No es el «Usar una imagen que ya tengo» del origen (que anima tu imagen sin generar fotograma): aquí se
+          // genera el fotograma igual, a partir de una foto de la persona o solo de la descripción.
+          detalleSinPersonaje="Genera con una foto suelta o solo con tu descripción"
         />
       </MarcaRequisito>
       {personaje ? (
         <p className="text-texto-suave">
           Se enviarán varias fotos de «{personaje.nombre}»
           {modeloFoto && modeloFoto.maximoReferencias > 0
-            ? ` (hasta ${modeloFoto.maximoReferencias}, las que admite ${modeloFoto.nombre})`
+            ? ` (hasta ${modeloFoto.maximoReferencias}, las que admite el modelo de la imagen)`
             : ""}
           : varias referencias dan mucha mejor guía de identidad que una sola.
         </p>
@@ -125,15 +129,22 @@ export function PasoSujeto({
         </p>
       )}
       {modelos.length > 1 && (
-        <MarcaRequisito id={ID_MODELO_FOTOGRAMA} error={errorDeRequisito(requisitos, ID_MODELO_FOTOGRAMA)}>
-          <SelectorModelo
-            etiqueta={sinImagen ? "Modelo de la imagen (texto a imagen)" : "Modelo del fotograma"}
-            modelos={modelos}
-            valor={modeloElegido}
-            onCambio={onModelo}
-            deshabilitado={deshabilitado}
-          />
-        </MarcaRequisito>
+        // El modelo solo se ve y se cambia en las Opciones avanzadas; con él pendiente, se abren solas.
+        <OpcionesAvanzadas
+          clave="crear:fotograma"
+          resumen="Modelo de la imagen y su precio"
+          forzarAbierto={errorDeRequisito(requisitos, ID_MODELO_FOTOGRAMA) !== undefined}
+        >
+          <MarcaRequisito id={ID_MODELO_FOTOGRAMA} error={errorDeRequisito(requisitos, ID_MODELO_FOTOGRAMA)}>
+            <SelectorModelo
+              etiqueta={sinImagen ? "Modelo de la imagen (texto a imagen)" : "Modelo del fotograma"}
+              modelos={modelos}
+              valor={modeloElegido}
+              onCambio={onModelo}
+              deshabilitado={deshabilitado}
+            />
+          </MarcaRequisito>
+        </OpcionesAvanzadas>
       )}
     </Paso>
   );

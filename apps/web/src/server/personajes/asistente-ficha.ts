@@ -21,6 +21,7 @@ import {
 } from "../mapa/texto";
 import { imagenParaModelo } from "../media/procesado";
 import type { Actor } from "../media/servicio";
+import { esLectorAdmin } from "../modelo-en-mensajes";
 import type { Buscador } from "../proveedores/codigos";
 import { ErrorCatalogo } from "../proveedores/contrato";
 import { filaPropia } from "./consulta";
@@ -160,7 +161,8 @@ export async function proponerFichaConIA(
       ? await imagenDelPersonaje(personaje)
       : {
           imagen: null,
-          motivo: `${estimacion.nombreProveedor} (${estimacion.modelo}) no admite imágenes, así que la propuesta sale solo de la descripción. Puedes poner delante un servicio que sí las admita en tu mapa de modelos de texto.`,
+          // El proveedor se nombra siempre; el modelo, solo a quien administra.
+          motivo: `${esLectorAdmin(actor) ? `${estimacion.nombreProveedor} (${estimacion.modelo})` : `El servicio de texto de ${estimacion.nombreProveedor} que usas`} no admite imágenes, así que la propuesta sale solo de la descripción. Puedes poner delante un servicio que sí las admita en tu mapa de modelos de texto.`,
         };
 
   let resultado: Awaited<ReturnType<typeof pedirTextoPorMapa>>;
@@ -178,8 +180,6 @@ export async function proponerFichaConIA(
       }),
       claveIdempotencia: `ficha:${personaje.id}:${clave}`,
       buscar,
-      // Solo lo confirmado: la principal si es de pago, y las entradas de cuota.
-      limitarAConfirmado: true,
       ...(imagen ? { imagen } : {}),
     });
   } catch (error) {

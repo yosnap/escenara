@@ -51,8 +51,13 @@ export const MENSAJE_FALLO_GENERICO =
 export interface ContextoFallo {
   /** Nombre público del proveedor que ejecutó la tarea («KIE»). */
   proveedor: string;
-  /** Nombre del modelo tal como está en el catálogo («Gemini Omni 1.1 Flash»). */
+  /** Nombre del modelo tal como está en el catálogo («Gemini Omni 1.1 Flash»). Solo se nombra con `conModelo`. */
   modelo: string;
+  /**
+   * Quien lee administra la instalación: se nombra también el modelo. Ausente = usuario normal, que ve el
+   * proveedor (la clave que paga) pero no el modelo, que solo aparece en las Opciones avanzadas.
+   */
+  conModelo?: boolean;
   /** Créditos que informa el proveedor por el intento; `null` si no ha informado de ninguno. */
   creditos: number | null;
   /** El envío llevaba un producto: solo entonces tiene sentido sugerir quitarlo o usar menos fotos suyas. */
@@ -74,20 +79,21 @@ function opciones(lista: string[]): string {
 }
 
 /**
- * Mensaje para quien generó: qué ha pasado, con qué proveedor y modelo, si se ha cobrado y qué puede probar.
+ * Mensaje para quien generó: qué ha pasado, con qué proveedor (y modelo, si lee quien administra), si se ha cobrado
+ * y qué puede probar.
  * Solo sugiere lo que la aplicación permite hacer de verdad (quitar el producto o elegir sus fotos, cambiar la
  * descripción, elegir otro modelo, revisar las fotos del personaje en su ficha). Nunca incluye texto del
  * proveedor.
  */
 export function mensajeDeFalloDelProveedor(causa: CausaFalloProveedor, c: ContextoFallo): string {
   // Sin paréntesis propios: el nombre del modelo ya puede llevarlos («Gemini Omni 1.1 Flash (vídeo)»).
-  const quien = `${c.modelo}, en ${c.proveedor},`;
+  const quien = c.conModelo ? `${c.modelo}, en ${c.proveedor},` : c.proveedor;
   switch (causa) {
     case "bloqueo_seguridad": {
       const pruebas = [
         ...(c.conProducto ? ["quitar el producto o usar menos fotos suyas"] : []),
         "cambiar la descripción",
-        "generar con otro modelo",
+        "generar con otro modelo (en Opciones avanzadas)",
       ];
       return `El filtro de seguridad de ${quien} bloqueó la generación (${cobro(c.creditos)}). No dice qué le ha disgustado. Prueba a: ${opciones(pruebas)}.`;
     }
@@ -95,7 +101,7 @@ export function mensajeDeFalloDelProveedor(causa: CausaFalloProveedor, c: Contex
       const pruebas = [
         "cambiar la descripción",
         ...(c.conProducto ? ["quitar el producto"] : []),
-        "generar con otro modelo",
+        "generar con otro modelo (en Opciones avanzadas)",
       ];
       return `${quien} ha rechazado la petición por sus normas de contenido (${cobro(c.creditos)}). Prueba a: ${opciones(pruebas)}.`;
     }
@@ -103,12 +109,12 @@ export function mensajeDeFalloDelProveedor(causa: CausaFalloProveedor, c: Contex
       const pruebas = [
         ...(c.conProducto ? ["elegir otras fotos del producto"] : []),
         ...(c.conPersonaje ? ["revisar las fotos del personaje en su ficha"] : []),
-        "generar con otro modelo",
+        "generar con otro modelo (en Opciones avanzadas)",
       ];
       return `${quien} no ha podido usar una de las imágenes de referencia (${cobro(c.creditos)}). Prueba a: ${opciones(pruebas)}.`;
     }
     case "saturado":
-      return `${quien} estaba saturado y no ha terminado la generación (${cobro(c.creditos)}). Prueba a: volver a generarlo dentro de un rato o generar con otro modelo.`;
+      return `${quien} estaba saturado y no ha terminado la generación (${cobro(c.creditos)}). Prueba a: volver a generarlo dentro de un rato o generar con otro modelo (en Opciones avanzadas).`;
     // Visto el 2026-09-30 con Gemini Omni: «500 Internal Error, Please try again later.», sin cobro. Al repetirlo
     // salió bien: es un fallo suyo y pasajero, así que se dice que se puede volver a pedir.
     case "error_interno":

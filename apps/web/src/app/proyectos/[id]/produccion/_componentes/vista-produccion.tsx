@@ -6,6 +6,7 @@ import { Alerta } from "@/components/ui/alerta";
 import { claseBoton } from "@/components/ui/button";
 import { PanelAntesDeGenerar } from "@/components/ui/controles";
 import { Aviso, EstadoVacio } from "@/components/ui/feedback";
+import type { PlanosBaseVista } from "@/lib/continuidad";
 import { avisosConfirmables, bloqueosDeControles, firmaDeAvisos } from "@/lib/controles";
 import { formatearCreditos } from "@/lib/generacion";
 import type { ProduccionVista } from "@/lib/produccion";
@@ -15,6 +16,7 @@ import {
   autorizarReintentos,
   type ConfirmacionEnvio,
   cancelarEscena,
+  consultarProduccion,
   otroClipDeEscena,
   producirCanto,
   producirEscena,
@@ -24,6 +26,7 @@ import {
   usarVersionDeClip,
 } from "./api-produccion";
 import { ConfirmacionGasto } from "./confirmacion-gasto";
+import { PanelPlanosBase } from "./panel-planos-base";
 import { TarjetaEscena } from "./tarjeta-escena";
 
 /**
@@ -33,7 +36,14 @@ import { TarjetaEscena } from "./tarjeta-escena";
  * para cuando no: en Escenara no se usa `useEffect` directo. Cada acción del servidor devuelve el estado de
  * producción **completo**, así que la pantalla nunca muestra un coste ni un estado que ya no sean los vigentes.
  */
-export function VistaProduccion({ inicial }: { inicial: ProduccionVista }) {
+export function VistaProduccion({
+  inicial,
+  planosBase = null,
+}: {
+  inicial: ProduccionVista;
+  /** Planos base del vídeo completo, si el proyecto lo es; `null` en los demás. */
+  planosBase?: PlanosBaseVista | null;
+}) {
   const [almacen] = useState<AlmacenProduccion>(() => crearAlmacenProduccion(inicial));
   const estado = useSyncExternalStore(almacen.subscribe, almacen.obtener, almacen.obtener);
   const [ocupado, setOcupado] = useState(false);
@@ -93,6 +103,13 @@ export function VistaProduccion({ inicial }: { inicial: ProduccionVista }) {
     (escena) => escena.reparto !== null && escena.estado !== "producida",
   );
   const firmaDeEscenas = produccion.escenas.map((e) => e.fotograma?.id ?? "-").join(",");
+  /**
+   * En modo «Voz e identidad registradas» cada escena es un clip hablado y se confirma con la tarifa de su duración.
+   * De una vez solo se pueden producir si todas las pendientes cuestan lo mismo; si no, una a una en su tarjeta.
+   */
+  const hablada = produccion.modoVoz === "omni";
+  const porEscena = hablada ? (produccion.costeHabladoComun?.creditos ?? null) : produccion.creditosPorFotograma;
+  const selloDelLote = hablada ? (produccion.costeHabladoComun?.sello ?? "") : produccion.selloFotograma;
 
   return (
     <>
@@ -146,6 +163,15 @@ export function VistaProduccion({ inicial }: { inicial: ProduccionVista }) {
         />
       )}
 
+      {planosBase?.videoCompleto && (
+        <PanelPlanosBase
+          proyectoId={produccion.proyectoId}
+          inicial={planosBase}
+          umbral={produccion.umbralAvisoCreditos}
+          onCambio={() => void ejecutar(() => consultarProduccion(produccion.proyectoId))}
+        />
+      )}
+
       {hayAvisos && (
         <PanelAntesDeGenerar
           evaluacion={produccion.controlesDelModelo}
@@ -171,41 +197,52 @@ export function VistaProduccion({ inicial }: { inicial: ProduccionVista }) {
         </Aviso>
       )}
 
-      {produccion.porProducir > 0 && produccion.impedimentos.length === 0 && deGolpe > 0 && !repartoPendiente && (
-        <ConfirmacionGasto
-          nivel={2}
-          titulo={
-            deGolpe === produccion.porProducir
-              ? produccion.porProducir === 1
-                ? "Producir la escena pendiente"
-                : `Producir las ${produccion.porProducir} escenas pendientes`
-              : `Producir ${deGolpe} de las ${produccion.porProducir} escenas pendientes`
-          }
-          explicacion={`Se encola el fotograma de cada una. Esta instalación permite ${produccion.maximoEnVuelo} ${produccion.maximoEnVuelo === 1 ? "escena" : "escenas"} a la vez, así que el resto espera: nada se pierde y vuelves a pulsar cuando quede sitio. Cada escena aparta su importe por separado, y el clip de cada una se paga después, al aprobar su fotograma.`}
-          creditos={produccion.creditosPorFotograma}
-          // La cifra principal es lo que se compromete al pulsar: un importe de fotograma no dice lo que cuesta el lote.
-          total={{
-            creditos: deGolpe * produccion.creditosPorFotograma,
-            detalle: `${formatearCreditos(produccion.creditosPorFotograma)} por fotograma × ${deGolpe} ${deGolpe === 1 ? "escena" : "escenas"}`,
-          }}
-          umbral={produccion.umbralAvisoCreditos}
-          sello={produccion.selloFotograma}
-          // Con una sola escena del lote que lleve producto hay una marca en juego, y se declara una vez.
-          conProducto={produccion.escenas.some((e) => e.conProducto)}
-          etiqueta={deGolpe <= 1 ? "Producir la escena" : `Producir ${deGolpe} escenas`}
-          // El último trabajo de cada escena entra en la firma: después de un fallo, volver a pulsar es otra
-          // confirmación y estrena clave, así que el servidor no puede devolver los trabajos que ya fallaron.
-          firma={`proyecto|${firmaDeEscenas}|${firmaDeAvisos(confirmados)}`}
-          bloqueos={bloqueosDelModelo}
-          avisosConfirmados={confirmados}
-          avisos={avisosConfirmables(produccion.controlesDelModelo)}
-          onConfirmarAviso={confirmar}
-          ocupado={ocupado}
-          onEnviar={(confirmacion: ConfirmacionEnvio) =>
-            void ejecutar(() => producirProyecto(produccion.proyectoId, confirmacion))
-          }
-        />
+      {hablada && porEscena === null && produccion.porProducir > 1 && !repartoPendiente && (
+        <Aviso tono="info">
+          Las escenas pendientes tienen duraciones distintas, y cada duración tiene su precio. Confírmalas una a una en
+          su tarjeta: así ves el importe exacto de cada clip.
+        </Aviso>
       )}
+
+      {produccion.porProducir > 0 &&
+        produccion.impedimentos.length === 0 &&
+        deGolpe > 0 &&
+        !repartoPendiente &&
+        porEscena !== null && (
+          <ConfirmacionGasto
+            nivel={2}
+            titulo={
+              deGolpe === produccion.porProducir
+                ? produccion.porProducir === 1
+                  ? "Producir la escena pendiente"
+                  : `Producir las ${produccion.porProducir} escenas pendientes`
+                : `Producir ${deGolpe} de las ${produccion.porProducir} escenas pendientes`
+            }
+            explicacion={`${hablada ? "Se encola el clip hablado de cada una." : "Se encola el fotograma de cada una."} Esta instalación permite ${produccion.maximoEnVuelo} ${produccion.maximoEnVuelo === 1 ? "escena" : "escenas"} a la vez, así que el resto espera: nada se pierde y vuelves a pulsar cuando quede sitio. Cada escena aparta su importe por separado${hablada ? "." : ", y el clip de cada una se paga después, al aprobar su fotograma."}`}
+            creditos={porEscena}
+            // La cifra principal es lo que se compromete al pulsar: un importe de fotograma no dice lo que cuesta el lote.
+            total={{
+              creditos: deGolpe * porEscena,
+              detalle: `${formatearCreditos(porEscena)} por ${hablada ? "clip hablado" : "fotograma"} × ${deGolpe} ${deGolpe === 1 ? "escena" : "escenas"}`,
+            }}
+            umbral={produccion.umbralAvisoCreditos}
+            sello={selloDelLote}
+            // Con una sola escena del lote que lleve producto hay una marca en juego, y se declara una vez.
+            conMarca={produccion.escenas.some((e) => e.conMarca)}
+            etiqueta={deGolpe <= 1 ? "Producir la escena" : `Producir ${deGolpe} escenas`}
+            // El último trabajo de cada escena entra en la firma: después de un fallo, volver a pulsar es otra
+            // confirmación y estrena clave, así que el servidor no puede devolver los trabajos que ya fallaron.
+            firma={`proyecto|${firmaDeEscenas}|${firmaDeAvisos(confirmados)}`}
+            bloqueos={bloqueosDelModelo}
+            avisosConfirmados={confirmados}
+            avisos={avisosConfirmables(produccion.controlesDelModelo)}
+            onConfirmarAviso={confirmar}
+            ocupado={ocupado}
+            onEnviar={(confirmacion: ConfirmacionEnvio) =>
+              void ejecutar(() => producirProyecto(produccion.proyectoId, confirmacion))
+            }
+          />
+        )}
 
       {produccion.escenas.length === 0 ? (
         <EstadoVacio

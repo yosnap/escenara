@@ -213,13 +213,13 @@ interface Preparado {
  *
  * No es reintentable: nada de esto se arregla solo.
  */
-function exigirDuracionCobrada(fila: FilaTrabajo, modelo: ModeloVista, unidadConfirmada: string | null): void {
+function exigirDuracionCobrada(fila: FilaTrabajo, unidadConfirmada: string | null): void {
   const segundos = segundosDe(fila);
   if (segundos === null || unidadConfirmada === null) return;
   const deLaTarifa = segundosDeUnidad(unidadConfirmada);
   if (deLaTarifa === null || deLaTarifa === segundos) return;
   throw new ErrorDeMontaje(
-    `El clip que se iba a enviar dura ${segundos} s y lo que se apartó fue el precio de «${unidadConfirmada}» de ${modelo.nombre}. No se ha enviado nada al proveedor y no se te ha cobrado: vuelve a pedir el clip y confirma su coste.`,
+    `El clip que se iba a enviar dura ${segundos} s y lo que se apartó fue el precio de «${unidadConfirmada}» del modelo con que se pidió. No se ha enviado nada al proveedor y no se te ha cobrado: vuelve a pedir el clip y confirma su coste.`,
   );
 }
 
@@ -243,7 +243,7 @@ async function preparar(fila: FilaTrabajo, workerId: string, h: Herramientas): P
    */
   const confirmada = unidadConfirmadaDe(fila);
   const modelo = confirmada === null ? delCatalogo : { ...delCatalogo, unidad: confirmada };
-  exigirDuracionCobrada(fila, modelo, confirmada);
+  exigirDuracionCobrada(fila, confirmada);
   await revalidarPersonajeDelTrabajo(fila, modelo);
   const credencial = await claveDelTrabajo(fila);
   /**
@@ -849,7 +849,8 @@ async function claveDelTrabajo(fila: FilaTrabajo): Promise<{ clave: string }> {
 /**
  * Referencias del trabajo, en el orden en que se guardaron al encolar, **cruzadas con lo que sigue siendo
  * verdad**: se recortan al tope del modelo (el catálogo puede haber cambiado) y, si el trabajo lleva personaje,
- * se descarta lo que ya no sea referencia suya o esté en la papelera.
+ * se descarta lo que ya no sea referencia suya o esté en la papelera. Con el personaje **heredado** de una imagen
+ * suelta no: lo que viaja es esa imagen, que no es una foto suya, y su consentimiento ya lo revisa la puerta.
  *
  * Es la otra mitad de la revalidación: comprobar el consentimiento no basta si entre encolar y enviar el usuario
  * ha quitado fotos o las ha mandado a la papelera. Si quedan por debajo del mínimo, el trabajo se cierra sin
@@ -861,7 +862,8 @@ async function mediosDeReferencia(fila: FilaTrabajo, maximo = Number.POSITIVE_IN
   // Solo un **fotograma** envía las fotos del personaje. Un clip envía su fotograma aprobado, que no es una
   // referencia del personaje: filtrarlo contra ellas lo descartaba y ningún clip con personaje llegaba a salir.
   // El consentimiento del personaje del clip ya lo ha revisado la puerta de `preparar`.
-  if (fila.characterId && fila.kind === "fotograma") {
+  const heredado = (fila.input as { personajeHeredado?: unknown }).personajeHeredado === true;
+  if (fila.characterId && fila.kind === "fotograma" && !heredado) {
     // Solo lo que sigue siendo referencia del personaje y fuera de la papelera, respetando el orden guardado.
     const referencias = await mediosDeReferenciaVigentes(fila.characterId);
     const vigentes = new Map(referencias.map((r) => [r.mediaId, r.origen]));
@@ -944,7 +946,7 @@ async function subirReferencia(
   const archivo = await referenciaCompatible(await archivoDe(origen), modelo.parametros.formatosReferencia);
   if (canto && archivo.size > 10 * 1024 * 1024) {
     throw new ErrorDeMontaje(
-      `El retrato convertido para ${modelo.nombre} ocupa ${(archivo.size / 1024 / 1024).toFixed(1)} MB y el proveedor solo admite 10 MB. No se ha enviado nada ni se te ha cobrado: usa un retrato más pequeño.`,
+      `El retrato convertido para el modelo que pone la voz cantada ocupa ${(archivo.size / 1024 / 1024).toFixed(1)} MB y el proveedor solo admite 10 MB. No se ha enviado nada ni se te ha cobrado: usa un retrato más pequeño.`,
     );
   }
   // La clave de almacenamiento va siempre (ADR-0044): la usa APIMart para firmar su URL pública y la ignoran

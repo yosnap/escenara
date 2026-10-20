@@ -8,6 +8,7 @@ import { PanelDireccion } from "@/components/ui/direccion/panel-direccion";
 import { Aviso } from "@/components/ui/feedback";
 import { AreaTexto, Campo } from "@/components/ui/field";
 import { AvisoSinVoz, SelectorDuracion, SelectorModelo } from "@/components/ui/modelo";
+import { OpcionesAvanzadas } from "@/components/ui/opciones-avanzadas";
 import { Paso } from "@/components/ui/paso";
 import { AvisoRequisitos } from "@/components/ui/requisitos";
 import type { ModeloElegible } from "@/lib/catalogo";
@@ -18,13 +19,14 @@ import { DIALOGO_MAXIMO, type Estimacion, type TrabajoVista } from "@/lib/genera
 import type { Medio } from "@/lib/media/tipos";
 import { AVISO_SIN_TERCEROS } from "@/lib/personajes";
 import type { CatalogoParaCrear, PlantillaVisible, PresetVisible } from "@/lib/presets";
-import type { ProductoElegido } from "@/lib/productos";
+import type { ProductoElegido, ProductoResumen } from "@/lib/productos";
 import { errorDeRequisito, ID_DESCRIPCION, idRequisito, type Requisito } from "@/lib/requisitos";
 import { ENVIO_CLIP, ID_REVISION_CLIP, variableDeTexto } from "@/lib/requisitos-crear";
 import { textoDeDuraciones } from "@/lib/trends";
 import { AvisoProporcionDelFotograma } from "./aviso-proporcion-del-fotograma";
 import { BloqueConfirmacion } from "./bloque-confirmacion";
 import { CampoVariableTexto } from "./campo-variable-texto";
+import { PanelFotosQueAcompanan } from "./panel-fotos-que-acompanan";
 import type { ConfirmacionCoste } from "./panel-generar";
 import { type EstadoPlantilla, PanelPlantilla, type Previsualizacion } from "./panel-plantilla";
 import { ResultadoTrabajo } from "./resultado-trabajo";
@@ -60,6 +62,8 @@ export function PasoClip({
   direccion,
   producto,
   onProducto,
+  conMarca,
+  avisoProducto = null,
   catalogo,
   plantilla,
   previa,
@@ -107,9 +111,13 @@ export function PasoClip({
   dialogo: string;
   opcionesDireccion: OpcionesDeDireccion | null;
   direccion: DireccionElegidaConAcento;
-  /** El producto del clip y qué se hace con él. Se elige en el mismo panel que la dirección. */
+  /** El producto y qué se hace con él: el mismo del fotograma, si se eligió al describir la escena. Aquí va con la dirección. */
   producto: ProductoElegido;
-  onProducto: (elegido: ProductoElegido) => void;
+  onProducto: (elegido: ProductoElegido, resumen?: ProductoResumen | null) => void;
+  /** El producto elegido tiene marca declarada: se pide la casilla de la marca. */
+  conMarca: boolean;
+  /** Si el producto del clip no es el del fotograma del que sale, por qué importa; `null` si coinciden. */
+  avisoProducto?: string | null;
   catalogo: CatalogoParaCrear;
   plantilla: EstadoPlantilla;
   previa: Previsualizacion;
@@ -171,9 +179,9 @@ export function PasoClip({
       // El clip de «Crear» parte de una sola imagen: su fotograma.
       fotosDelPersonaje: 1,
     });
-  const elegirProducto = (elegido: ProductoElegido) => {
+  const elegirProducto = (elegido: ProductoElegido, resumen: ProductoResumen | null) => {
     eleccionHecha.current = elegido.fotos;
-    onProducto(elegido);
+    onProducto(elegido, resumen);
   };
   const cambiarModelo = (modeloNuevo: string) => {
     const { fotos: _actuales, ...sinFotos } = producto;
@@ -206,8 +214,9 @@ export function PasoClip({
       ) : (
         <div className="flex flex-col gap-4">
           {/* Lo que falta, arriba y con cada punto como botón que lleva al campo. */}
-          {!clipEnMarcha && <AvisoRequisitos requisitos={requisitos} onIr={onIrARequisito} />}
+          {!clipEnMarcha && <AvisoRequisitos requisitos={requisitos} marcar={marcar} onIr={onIrARequisito} />}
           {avisoModelo && <Aviso tono="aviso">{avisoModelo}</Aviso>}
+          {avisoProducto && <Aviso tono="aviso">{avisoProducto}</Aviso>}
           {origen && (
             <AvisoProporcionDelFotograma
               proporcionDelFotograma={proporcionDelFotograma}
@@ -218,15 +227,18 @@ export function PasoClip({
             />
           )}
           {modelos.length > 1 && (
-            <SelectorModelo
-              etiqueta="Modelo del clip"
-              modelos={modelos}
-              valor={estimacion.modelo}
-              onCambio={cambiarModelo}
-              deshabilitado={enviando}
-              duracionesRequeridas={admitidas}
-              conProducto={producto.productoId !== ""}
-            />
+            // Fuera solo se habla de duración y créditos: el modelo y su precio, en las Opciones avanzadas.
+            <OpcionesAvanzadas clave="crear:clip" resumen="Modelo del clip y su precio">
+              <SelectorModelo
+                etiqueta="Modelo del clip"
+                modelos={modelos}
+                valor={estimacion.modelo}
+                onCambio={cambiarModelo}
+                deshabilitado={enviando}
+                duracionesRequeridas={admitidas}
+                conProducto={producto.productoId !== ""}
+              />
+            </OpcionesAvanzadas>
           )}
           {conCampoDeTexto && plantillaEnUso && variableDeLaEscena && (
             <CampoVariableTexto
@@ -265,7 +277,7 @@ export function PasoClip({
               )}
             </Campo>
           ) : (
-            <AvisoSinVoz />
+            <AvisoSinVoz enAvanzadas={modelos.length > 1} />
           )}
 
           <PanelDireccion
@@ -322,12 +334,12 @@ export function PasoClip({
               {previa.plantilla.duracionesAdmitidas.length === 0
                 ? `Este trend sirve con cualquier duración: se usa la que elijas con el modelo (${segundos} s).`
                 : `Este trend solo admite clips de ${textoDeDuraciones(previa.plantilla.duracionesAdmitidas)}.`}{" "}
-              Coste estimado del clip: {estimacion.creditos} créditos con {estimacion.nombreModelo}; precio comprobado
-              el {estimacion.comprobado}. Revisa también la traducción y el total exacto en la confirmación de abajo
-              antes de gastar.
+              Coste estimado del clip: {estimacion.creditos} créditos; precio comprobado el {estimacion.comprobado}.
+              Revisa también la traducción y el total exacto en la confirmación de abajo antes de gastar.
             </Aviso>
           )}
 
+          {!clipEnMarcha && <PanelFotosQueAcompanan evaluacion={controles.evaluacion} clip />}
           {!clipEnMarcha && (
             <BloqueConfirmacion
               controles={controles}
@@ -341,7 +353,7 @@ export function PasoClip({
               marcar={marcar}
               avisoEnBloque
               onIntento={onIrARequisito}
-              conProducto={producto.productoId !== ""}
+              conMarca={conMarca}
               enviando={enviando}
               onGenerar={onGenerar}
             />

@@ -53,7 +53,10 @@ export default defineConfig({
       pagination: true,
       disable404Route: true,
       customCss: ["./src/estilos/escenara.css"],
-      components: { ThemeSelect: "./src/componentes/SelectorTema.astro" },
+      components: {
+        ThemeSelect: "./src/componentes/SelectorTema.astro",
+        MarkdownContent: "./src/componentes/ContenidoGuia.astro",
+      },
       sidebar: secciones.map((seccion) => ({
         label: seccion.titulo,
         items: seccion.guias.map((g) => idDeGuia(g.slug)),

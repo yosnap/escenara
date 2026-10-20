@@ -42,7 +42,7 @@ const rutaTrabajos = await import("@/app/api/generacion/trabajos/route");
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
-const { generationJobs } = await import("../db/esquema");
+const { generationJobs, products } = await import("../db/esquema");
 const { guardarCredencial } = await import("../boveda/credenciales");
 const { crearMedio } = await import("../media/servicio");
 const { avanzarEnviados, enviarEncolados } = await import("../cola/pasada");
@@ -167,13 +167,17 @@ describe.skipIf(!hayBaseDeDatos)("producto digital en dos pasos y acciones espec
   const subirFoto = async (nombre: string) =>
     (await crearMedio({ id: ana.id, esAdmin: false }, new File([await png()], nombre, { type: "image/png" }))).id;
 
-  async function crearProducto(nombre: string, tipo: "fisico" | "digital"): Promise<ProductoVista> {
+  async function crearProducto(
+    nombre: string,
+    tipo: "fisico" | "digital",
+    marcaVisible = true,
+  ): Promise<ProductoVista> {
     const respuesta = await rutaProductos.POST(
       pedir(ana, "/api/productos", "POST", {
         nombre,
         descripcion: tipo === "digital" ? "App de notas con fondo oscuro." : "Bote blanco con etiqueta negra.",
         tipo,
-        marcaVisible: true,
+        marcaVisible,
       }),
       undefined,
     );
@@ -359,6 +363,49 @@ describe.skipIf(!hayBaseDeDatos)("producto digital en dos pasos y acciones espec
       const trabajo = (await marcada.json()) as TrabajoVista;
       const [fila] = await db().select().from(generationJobs).where(eq(generationJobs.id, trabajo.id)).limit(1);
       expect(fila?.brandRightsAt).not.toBeNull();
+    });
+
+    test("con un producto declarado sin marca no se pide ni se exige", async () => {
+      const producto = await crearProducto(`Sin marca ${randomBytes(3).toString("hex")}`, "fisico", false);
+      await anadirFoto(producto.id, "etiqueta");
+      const partida = await subirFoto("origen-sin-marca.png");
+      const respuesta = await pedirFotograma({
+        medioId: partida,
+        producto: { productoId: producto.id, accion: "sostenerlo" },
+      });
+      // No hay ninguna marca que autorizar: el envío sale sin la casilla, y no se apunta una declaración que no hubo.
+      expect(respuesta.status).toBe(201);
+      const trabajo = (await respuesta.json()) as TrabajoVista;
+      const [fila] = await db().select().from(generationJobs).where(eq(generationJobs.id, trabajo.id)).limit(1);
+      expect(fila?.productId).toBe(producto.id);
+      expect(fila?.brandRightsAt).toBeNull();
+      expect((fila?.input as { marcaExigida?: boolean } | undefined)?.marcaExigida).toBe(false);
+    });
+
+    test("con un producto sin responder se exige igual que con marca, y la declaración queda apuntada", async () => {
+      const producto = await crearProducto(`Sin responder ${randomBytes(3).toString("hex")}`, "fisico", false);
+      await anadirFoto(producto.id, "etiqueta");
+      // Un producto anterior a la pregunta: la respuesta está vacía.
+      await db().update(products).set({ brandVisible: null }).where(eq(products.id, producto.id));
+      const partida = await subirFoto("origen-sin-responder.png");
+
+      const sinMarcar = await pedirFotograma({
+        medioId: partida,
+        producto: { productoId: producto.id, accion: "sostenerlo" },
+      });
+      expect(sinMarcar.status).toBe(400);
+      expect(((await sinMarcar.json()) as { error: string }).error).toContain("derecho a usar la marca");
+
+      const marcada = await pedirFotograma({
+        medioId: partida,
+        derechoMarca: true,
+        producto: { productoId: producto.id, accion: "sostenerlo" },
+      });
+      expect(marcada.status).toBe(201);
+      const trabajo = (await marcada.json()) as TrabajoVista;
+      const [fila] = await db().select().from(generationJobs).where(eq(generationJobs.id, trabajo.id)).limit(1);
+      expect(fila?.brandRightsAt).not.toBeNull();
+      expect((fila?.input as { marcaExigida?: boolean } | undefined)?.marcaExigida).toBe(true);
     });
   });
 

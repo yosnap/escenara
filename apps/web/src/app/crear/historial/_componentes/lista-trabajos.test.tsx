@@ -26,6 +26,7 @@ function fallido(cambios: Partial<TrabajoVista>): TrabajoVista {
     proveedor: "kie",
     modelo: "google/gemini-omni-flash-1-1",
     proporcion: null,
+    segundos: null,
     estado: "fallido",
     etapa: null,
     estadoProveedor: "fail",
@@ -80,7 +81,8 @@ describe("causa del fallo en pantalla", () => {
     const html = renderToStaticMarkup(
       <SeguimientoTrabajo inicial={fallido({ causaFallo: "bloqueo_seguridad", error: BLOQUEO })} onCambio={() => {}} />,
     );
-    expect(html).toContain("El filtro de seguridad de Gemini Omni 1.1 Flash (vídeo), en KIE.ai, bloqueó la generación");
+    expect(html).toContain("El filtro de seguridad de KIE.ai bloqueó la generación");
+    expect(html).not.toContain("Gemini");
   });
 
   test("un trabajo antiguo con «contenido» y sin causa se ve como siempre", () => {

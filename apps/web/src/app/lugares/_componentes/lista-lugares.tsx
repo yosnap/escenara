@@ -9,6 +9,7 @@ import { Aviso, EstadoVacio } from "@/components/ui/feedback";
 import { MiniaturaMedio } from "@/components/ui/media/miniatura-medio";
 import { type EstiloAnimado, ETIQUETA_ESTILO_ANIMADO } from "@/lib/animados";
 import { type LugarResumen, queFaltaAlLugar, SUGERENCIA_FAMOSO } from "@/lib/lugares";
+import { rutaConPrimeraImagen } from "@/lib/primera-imagen";
 import { DialogoNuevoLugar } from "./dialogo-nuevo-lugar";
 
 /** Acabado del lugar en palabras: real, o animado con su estilo. */
@@ -29,8 +30,8 @@ export function ListaLugares({ inicial }: { inicial: LugarResumen[] }) {
     <DialogoNuevoLugar
       abierto={creando}
       onAbiertoCambio={setCreando}
-      // Al crearlo se va a su ficha: lo siguiente es añadir las fotos y declarar, y es ahí donde se hace.
-      onCreado={(id) => router.push(`/lugares/${id}`)}
+      // Al crearlo se va a su ficha con el paso «Su primera imagen» delante: generarla o subir fotos, sin buscarlo.
+      onCreado={(id) => router.push(rutaConPrimeraImagen(`/lugares/${id}`))}
     />
   );
 

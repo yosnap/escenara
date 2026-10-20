@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { createMarkdownProcessor } from "@astrojs/markdown-remark";
 import type { Root } from "mdast";
 import { VFile } from "vfile";
 import { DIR_DIAGRAMAS, DIR_GUIAS } from "../indice";
@@ -94,6 +95,52 @@ describe("remarkGuias", () => {
   });
 });
 
+describe("vídeos de YouTube", () => {
+  const MINIATURA = "../assets/video/youtube-0nT6cqlq8h4.webp";
+  const html = async (markdown: string) => {
+    const procesador = await createMarkdownProcessor({
+      syntaxHighlight: false,
+      remarkPlugins: [[remarkGuias, { slugs: SLUGS }]],
+    });
+    const { code } = await procesador.render(markdown, {
+      fileURL: new URL(`file://${path.join(DIR_GUIAS, "tu-primer-video.md")}`),
+    });
+    return code;
+  };
+
+  test("la miniatura enlazada se convierte en una fachada accesible, sin cargar YouTube", async () => {
+    const salida = await html(`Intro.\n\n[![Cómo crear un personaje](${MINIATURA})](https://youtu.be/0nT6cqlq8h4)\n`);
+    expect(salida).toContain(
+      '<figure class="video-youtube" data-video-id="0nT6cqlq8h4" data-titulo="Cómo crear un personaje">',
+    );
+    expect(salida).toContain('href="https://www.youtube.com/watch?v=0nT6cqlq8h4"');
+    expect(salida).toContain('aria-label="Reproducir el vídeo «Cómo crear un personaje» (se carga desde YouTube)"');
+    expect(salida).toContain('<span class="video-youtube__boton" aria-hidden="true">');
+    expect(salida).toContain("<figcaption>Cómo crear un personaje</figcaption>");
+    expect(salida).not.toContain("<iframe");
+    expect(salida).not.toContain("ytimg.com");
+  });
+
+  test("un enlace de YouTube sin miniatura, o con texto alrededor, sigue siendo un enlace", async () => {
+    const salida = await html("Mira [el vídeo](https://youtu.be/0nT6cqlq8h4).\n");
+    expect(salida).toContain('<a href="https://youtu.be/0nT6cqlq8h4">el vídeo</a>');
+    expect(salida).not.toContain("video-youtube");
+  });
+
+  test("un id no válido, una miniatura sin título o de terceros paran el build", async () => {
+    await expect(html(`[![Vídeo](${MINIATURA})](https://youtu.be/no-valido)`)).rejects.toThrow(
+      "no tiene un identificador de YouTube válido",
+    );
+    await expect(html(`[![](${MINIATURA})](https://youtu.be/0nT6cqlq8h4)`)).rejects.toThrow("necesita el título");
+    await expect(
+      html("[![Vídeo](https://i.ytimg.com/vi/0nT6cqlq8h4/maxresdefault.jpg)](https://youtu.be/0nT6cqlq8h4)"),
+    ).rejects.toThrow("debe estar en docs/assets");
+    await expect(html("[![Vídeo](../../package.json)](https://youtu.be/0nT6cqlq8h4)")).rejects.toThrow(
+      "no está en docs/assets",
+    );
+  });
+});
+
 describe("mediosEnlazados", () => {
   test("recoge los medios enlazados desde las guías y nada de fuera de docs/assets", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "guias-"));
@@ -101,7 +148,11 @@ describe("mediosEnlazados", () => {
       const captura = path.join(path.dirname(DIR_DIAGRAMAS), "capturas", "0.32.0-montaje-claro.webp");
       const guia = path.join(dir, "guia.md");
       const relativa = encodeURI(path.relative(dir, captura));
-      writeFileSync(guia, `Ver la [captura](${relativa}) y la [otra guía](otra.md).\n\n![no cuenta](${relativa})\n`);
+      writeFileSync(
+        guia,
+        `Ver la [captura](${relativa}) y la [otra guía](otra.md).\n\n![no cuenta](${relativa})\n\n` +
+          `[![miniatura, tampoco](${relativa})](https://youtu.be/0nT6cqlq8h4)\n`,
+      );
       const medios = mediosEnlazados([guia]);
       expect(medios).toEqual([{ ruta: "/medios/capturas/0.32.0-montaje-claro.webp", origen: captura }]);
     } finally {

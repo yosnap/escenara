@@ -59,6 +59,7 @@ const { ErrorGeneracion } = await import("../generacion/errores");
 const { ErrorProyecto } = await import("../asistente/errores");
 const { guardarMapa, mapaVista, opcionesDe, recomendadasDe, volverALoRecomendado } = await import("./mapa");
 const { transcribirPorMapa } = await import("./transcripcion");
+const { ErrorDeTexto, pedirTextoPorMapa } = await import("./texto");
 const { eleccionDeVozDelMapa } = await import("./voz");
 const { ErrorCatalogo } = await import("../proveedores/contrato");
 type Buscador = import("../proveedores/codigos").Buscador;
@@ -70,7 +71,6 @@ const CLAVE_NAN = "sk-nan-clave-de-ana-inventada-1234";
 const CLAVE_OTRO = "sk-otro-clave-de-ana-inventada-99";
 const BASE_NAN = "https://api.nan.builders/v1";
 const BASE_OTRO = "https://api.ejemplo-compatible.dev/v1";
-const ESCENA = "en una azotea al amanecer, mirando a cámara";
 const TRADUCIDA = "on a rooftop at dawn, looking at the camera";
 const CREDITOS_TEXTO = 2;
 
@@ -94,6 +94,10 @@ const sobre = (data: unknown) => respuestaGrabada({ code: 200, msg: "success", d
 
 /** Cada petición de la lista de modelos: a qué servicio fue y con qué clave. */
 const peticionesDeModelos: { host: string; autorizacion: string | null }[] = [];
+/** Servicios cuya lista de modelos también rechaza la clave (401): su clave está revocada de verdad. */
+let clavesRevocadas = new Set<string>();
+/** Modelos del servicio compatible que no contestan a tiempo: la llamada se corta por tiempo agotado. */
+let modelosQueTardan = new Set<string>();
 
 const buscar: Buscador = async (url, init) => {
   if (url.includes("/chat/credit")) return sobre(5000);
@@ -106,11 +110,13 @@ const buscar: Buscador = async (url, init) => {
   }
   if (url.endsWith("/models")) {
     peticionesDeModelos.push({ host: new URL(url).host, autorizacion: new Headers(init.headers).get("authorization") });
+    if (clavesRevocadas.has(new URL(url).host)) return respuestaGrabada(CHAT_401, 401);
     return respuestaGrabada(MODELOS_200);
   }
   if (url.endsWith("/chat/completions")) {
     const cuerpo = JSON.parse(String(init.body)) as { model: string };
     llamadas.push(`${new URL(url).host}/${cuerpo.model}`);
+    if (modelosQueTardan.has(cuerpo.model)) throw new DOMException("Se ha agotado el tiempo.", "TimeoutError");
     const programada = respuestasPorModelo[cuerpo.model];
     if (programada) return respuestaGrabada(programada.cuerpo, programada.estado);
     return respuestaGrabada({ ...CHAT_200, choices: [{ message: { content: textoCompatible } }] });
@@ -237,6 +243,8 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
     await db().execute(sql`delete from rate_limits where key = ${`boveda:prueba:${ana.id}`}`);
     falloDeKie = 500;
     respuestasPorModelo = {};
+    clavesRevocadas = new Set();
+    modelosQueTardan = new Set();
     textoCompatible = JSON.stringify([TRADUCIDA]);
     // Todos los servicios vuelven a estar válidos: un test que marque uno inválido no puede contaminar al siguiente.
     await guardarCompatible(
@@ -364,12 +372,72 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
 
   test("401 para ese servicio entero, lo marca inválido y sigue con el siguiente", async () => {
     respuestasPorModelo = { gemma4: { cuerpo: CHAT_401, estado: 401 } };
+    // Su prueba gratuita también rechaza la clave: está revocada de verdad.
+    clavesRevocadas = new Set(["api.nan.builders"]);
     await generar("una escena que traduce el segundo servicio");
     // No se han probado los demás modelos de NaN builders: la clave no sirve para ninguno.
     expect(llamadas).toEqual(["api.nan.builders/gemma4", "api.ejemplo-compatible.dev/modelo-de-ultimo-recurso"]);
     const guardados = await listarCompatibles(ana.id);
     expect(guardados.find((p) => p.nombre === "NaN builders")?.estado).toBe("invalida");
     expect(guardados.find((p) => p.nombre === "Otro servicio")?.estado).toBe("valida");
+  });
+
+  test("un 401 suelto con la clave funcionando no marca el servicio como no válido", async () => {
+    respuestasPorModelo = { gemma4: { cuerpo: CHAT_401, estado: 401 } };
+    await generar("una escena con un rechazo suelto");
+    expect(llamadas).toEqual(["api.nan.builders/gemma4", "api.ejemplo-compatible.dev/modelo-de-ultimo-recurso"]);
+    const guardados = await listarCompatibles(ana.id);
+    expect(guardados.find((p) => p.nombre === "NaN builders")?.estado).toBe("valida");
+  });
+
+  test("si NaN tarda, la traducción la escribe la reserva de KIE confirmada y se avisa con proveedor y coste", async () => {
+    const guardados = await listarCompatibles(ana.id);
+    const nan = guardados.find((p) => p.nombre === "NaN builders");
+    await guardarMapa(ana.id, "texto", [
+      { proveedor: "compatible", compatibleId: nan?.id ?? "", modelo: "gemma4" },
+      { proveedor: "kie", compatibleId: null, modelo: "gpt-5-6-sol" },
+    ]);
+    modelosQueTardan = new Set(["gemma4"]);
+    falloDeKie = null;
+    // El coste que se confirma al generar ya incluye la traducción al precio de KIE: puede hacer de reserva.
+    const { trabajo } = await generar("una escena que NaN no traduce a tiempo");
+    expect(llamadas).toEqual(["api.nan.builders/gemma4"]);
+    expect(trabajo.avisoReserva).toContain("NaN builders ha tardado demasiado");
+    expect(trabajo.avisoReserva).toContain("reserva de pago de KIE.ai");
+    expect(trabajo.avisoReserva).not.toContain("gpt-5-6-sol");
+    expect(trabajo.avisoReserva).toContain("0,5 créditos");
+    // Un tiempo agotado no es un rechazo: el servicio sigue siendo válido.
+    const despues = await listarCompatibles(ana.id);
+    expect(despues.find((p) => p.nombre === "NaN builders")?.estado).toBe("valida");
+    await ponerMapaCompleto();
+  });
+
+  test("en una llamada cuyo coste confirmado es el de la principal, no se pasa a una entrada de pago", async () => {
+    const guardados = await listarCompatibles(ana.id);
+    const nan = guardados.find((p) => p.nombre === "NaN builders");
+    await guardarMapa(ana.id, "texto", [
+      { proveedor: "compatible", compatibleId: nan?.id ?? "", modelo: "gemma4" },
+      { proveedor: "kie", compatibleId: null, modelo: "gpt-5-6-sol" },
+    ]);
+    modelosQueTardan = new Set(["gemma4"]);
+    falloDeKie = null;
+    const fallo = (await pedirTextoPorMapa({
+      usuarioId: ana.id,
+      kind: "traduccion",
+      instrucciones: "Traduce.",
+      entrada: "hola",
+      claveIdempotencia: crypto.randomUUID(),
+      buscar,
+    }).catch((e: unknown) => e)) as InstanceType<typeof ErrorDeTexto>;
+    expect(fallo).toBeInstanceOf(ErrorDeTexto);
+    const mensaje = fallo.mensaje("No se ha podido completar la ficha");
+    expect(mensaje).toContain("NaN builders ha tardado demasiado");
+    expect(mensaje).toContain(
+      "No se ha probado la entrada de KIE.ai porque es de pago y su coste no lo habías confirmado",
+    );
+    expect(mensaje).toContain("tampoco se ha cobrado nada");
+    expect(llamadas).toEqual(["api.nan.builders/gemma4"]);
+    await ponerMapaCompleto();
   });
 
   test("un 5xx del servicio de reserva también pasa al siguiente modelo", async () => {
@@ -383,7 +451,7 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
 
   // ── El mensaje cuando todo falla ───────────────────────────────────────────────────────────────────────
 
-  test("si fallan todos, el mensaje cuenta cada proveedor, cada modelo y su causa concreta", async () => {
+  test("si fallan todos, el mensaje cuenta cada proveedor y su causa concreta, sin nombrar modelos", async () => {
     respuestasPorModelo = {
       gemma4: { cuerpo: CHAT_429, estado: 429 },
       "deepseek-v4-flash": { cuerpo: CHAT_402, estado: 402 },
@@ -397,15 +465,17 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
     // 1. qué se ha quedado sin hacer y qué significa para el dinero.
     expect(mensaje).toContain("no se ha enviado nada a generar");
     // 2. el modelo de pago, con su causa.
-    expect(mensaje).toContain("KIE.ai (gpt-5-6-sol)");
+    expect(mensaje).toContain("KIE.ai");
+    expect(mensaje).not.toContain("gpt-5-6-sol");
     expect(mensaje).toContain("error interno suyo");
     // 3. qué se intentó después, uno por uno y con la causa concreta de cada uno.
-    expect(mensaje).toContain("NaN builders (gemma4)");
+    expect(mensaje).toContain("NaN builders");
     expect(mensaje).toContain("máximo 5 peticiones simultáneas");
-    expect(mensaje).toContain("NaN builders (deepseek-v4-flash)");
+    expect(mensaje).toContain("otro modelo de NaN builders");
     expect(mensaje).toContain("la cuota se repone el 2026-10-01");
-    expect(mensaje).toContain("NaN builders (glm5.3-flash)");
-    expect(mensaje).toContain("Otro servicio (modelo-de-ultimo-recurso)");
+    expect(mensaje).toContain("Otro servicio");
+    expect(mensaje).not.toContain("deepseek-v4-flash");
+    expect(mensaje).not.toContain("modelo-de-ultimo-recurso");
     // 4. y nunca el mensaje genérico que la norma prohíbe.
     expect(mensaje).not.toContain("Vuelve a intentarlo en un momento");
   });
@@ -465,7 +535,7 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
     const fallo = (await generar("una escena sin reserva").catch((e: unknown) => e)) as Error;
     expect(fallo).toBeInstanceOf(ErrorGeneracion);
     expect(llamadas).toHaveLength(0);
-    expect(fallo.message).toContain("KIE.ai (gpt-5-6-sol)");
+    expect(fallo.message).toContain("KIE.ai");
     await ponerMapaCompleto();
   });
 
@@ -522,10 +592,11 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
     )) as Error;
     expect(fallo).toBeInstanceOf(ErrorProyecto);
     expect(fallo.message).toContain("el proyecto se ha quedado como estaba");
-    expect(fallo.message).toContain("KIE.ai (gpt-5-6-sol)");
-    expect(fallo.message).toContain("NaN builders (gemma4)");
+    expect(fallo.message).toContain("KIE.ai");
+    expect(fallo.message).toContain("NaN builders");
+    expect(fallo.message).not.toContain("gemma4");
     expect(fallo.message).toContain("máximo 5 peticiones simultáneas");
-    expect(fallo.message).toContain("Otro servicio (modelo-de-ultimo-recurso)");
+    expect(fallo.message).toContain("Otro servicio");
     expect(fallo.message).not.toContain("Vuelve a intentarlo en un momento");
   });
 
@@ -599,7 +670,8 @@ describe.skipIf(!hayBaseDeDatos)("mapa de modelos de texto", () => {
   const peticionDeGuion = () => ({
     claveIdempotencia: crypto.randomUUID(),
     creditosConfirmados: CREDITOS_TEXTO,
-    selloEstimacion: "kie:gpt-5-6-sol:respuesta de texto@v1",
+    // El sello del asistente lleva delante el modo: la principal del mapa completo es KIE, de pago.
+    selloEstimacion: "pago|kie:gpt-5-6-sol:respuesta de texto@v1",
   });
 
   const ejecuciones = async (kind: "traduccion" | "guion") =>

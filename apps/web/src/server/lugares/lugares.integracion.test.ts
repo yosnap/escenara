@@ -46,6 +46,8 @@ const { placeDeclarations, places, placeVersions } = await import("../db/esquema
 const { estimar, olvidarSaldos } = await import("../generacion/estimacion");
 const { enviarEncolados } = await import("../cola/pasada");
 const { subirFotoDePrueba } = await import("./lugar-de-prueba");
+const { obtenerLugar } = await import("./consulta");
+const { VERSION_TEXTO_DECLARACION_LUGAR } = await import("@/lib/lugares");
 
 type Sesion = Awaited<ReturnType<typeof crearSesionDePrueba>>;
 type Actor = import("../media/servicio").Actor;
@@ -173,6 +175,7 @@ describe.skipIf(!hayBaseDeDatos)("lugares: propiedad, declaración, versión, re
     espacio: "exterior",
     personasVisibles: "ninguna",
     sinMenores: true,
+    puedoUsarImagenes: true,
   };
 
   /** Un lugar de Ana con su maestra y, si se pide, su declaración vigente. */
@@ -226,6 +229,7 @@ describe.skipIf(!hayBaseDeDatos)("lugares: propiedad, declaración, versión, re
       pedir(ana, "/api/productos", "POST", {
         nombre: `Crema ${crypto.randomUUID().slice(0, 6)}`,
         tipo: "fisico",
+        marcaVisible: false,
       }),
       undefined,
     );
@@ -318,7 +322,7 @@ describe.skipIf(!hayBaseDeDatos)("lugares: propiedad, declaración, versión, re
 
   // ── Declaración ─────────────────────────────────────────────────────────────────────────────────────────
 
-  test("la declaración no admite menores ni gente reconocible, y un interior exige permiso", async () => {
+  test("la declaración no admite menores, gente reconocible ni sin decir que se pueden usar las imágenes", async () => {
     const { lugar } = await lugarConMaestra(false);
     const sinMenores = await patchLugar(ana, lugar.id, { ...DECLARACION, sinMenores: false });
     expect(sinMenores.status).toBe(400);
@@ -326,12 +330,13 @@ describe.skipIf(!hayBaseDeDatos)("lugares: propiedad, declaración, versión, re
     const reconocibles = await patchLugar(ana, lugar.id, { ...DECLARACION, personasVisibles: "reconocibles" });
     expect(reconocibles.status).toBe(409);
     expect(await errorDe(reconocibles)).toContain("Retirar personas");
-    const interior = await patchLugar(ana, lugar.id, { ...DECLARACION, espacio: "interior" });
-    expect(interior.status).toBe(400);
+    const sinPoderUsar = await patchLugar(ana, lugar.id, { ...DECLARACION, puedoUsarImagenes: false });
+    expect(sinPoderUsar.status).toBe(400);
+    expect(await errorDe(sinPoderUsar)).toContain("prohibido fotografiar");
     // «Retiradas» con la foto original como maestra no vale: la gente sigue en ella.
     const retiradas = await patchLugar(ana, lugar.id, { ...DECLARACION, personasVisibles: "retiradas" });
     expect(retiradas.status).toBe(409);
-    const valida = await patchLugar(ana, lugar.id, { ...DECLARACION, espacio: "interior", permisoDelLugar: true });
+    const valida = await patchLugar(ana, lugar.id, { ...DECLARACION, espacio: "interior" });
     expect(valida.status).toBe(200);
     expect(((await valida.json()) as LugarVista).declarado).toBe(true);
     // Cambiar las fotos retira la declaración: hablaba de otras.
@@ -341,6 +346,47 @@ describe.skipIf(!hayBaseDeDatos)("lugares: propiedad, declaración, versión, re
       fotos: [{ medioId: otra, papel: "detalle" }],
     });
     expect(((await conOtra.json()) as LugarVista).declarado).toBe(false);
+  });
+
+  test("ningún lugar pide el permiso de quien gestiona el sitio: ni interior ni exterior, ni real ni generado", async () => {
+    const { lugar } = await lugarConMaestra(false);
+    for (const origenFotos of ["propias", "con_permiso", "generadas"]) {
+      for (const espacio of ["interior", "exterior"]) {
+        const respuesta = await patchLugar(ana, lugar.id, { ...DECLARACION, origenFotos, espacio });
+        expect(respuesta.status).toBe(200);
+        const vista = (await respuesta.json()) as LugarVista;
+        expect(vista.declarado).toBe(true);
+        expect(vista.declaracion?.puedoUsarImagenes).toBe(true);
+      }
+    }
+  });
+
+  test("una declaración anterior a esta regla sigue valiendo; una nueva sin «puedo usar» la rechaza la base", async () => {
+    const { lugar } = await lugarConMaestra(false);
+    const comun = {
+      placeId: lugar.id,
+      placeName: lugar.nombre,
+      photoOrigin: "propias" as const,
+      space: "interior" as const,
+      peopleVisible: "ninguna" as const,
+      noMinorsDeclared: true,
+      declaredBy: ana.id,
+    };
+    // Una nueva (texto vigente) sin la declaración no entra ni saltándose el servicio.
+    await expect(
+      (async () => {
+        await db()
+          .insert(placeDeclarations)
+          .values({ ...comun, textVersion: VERSION_TEXTO_DECLARACION_LUGAR, mayUseImages: false });
+      })(),
+    ).rejects.toThrow();
+    // Una de antes (con el permiso del sitio de entonces) se conserva y el lugar sigue declarado.
+    await db()
+      .insert(placeDeclarations)
+      .values({ ...comun, textVersion: "2026-09-30.2", placePermission: true, mayUseImages: false });
+    const vista = await obtenerLugar(actorAna, lugar.id);
+    expect(vista.declarado).toBe(true);
+    expect(vista.declaracion?.puedoUsarImagenes).toBe(false);
   });
 
   test("quitar la maestra retira la declaración, como cambiarla", async () => {

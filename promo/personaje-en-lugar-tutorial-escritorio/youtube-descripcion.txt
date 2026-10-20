@@ -1,0 +1,20 @@
+Cómo hacer en Escenara un clip que ocurre en un lugar tuyo: tu personaje en su sitio, interactuando con él, paso a paso y desde «Crear».
+
+Verás cómo elegir el personaje, describir qué hace en el sitio, elegir el lugar y dónde dentro de él, ver el coste antes de confirmar, generar el fotograma y dirigir el clip con una cámara que revela el lugar y un gesto con lo que hay en la mesa. Al final, el clip real reproduciéndose, con Brisa diciendo su frase en la Terraza Mirto.
+
+Escenara es un estudio abierto de personajes y vídeo con IA: usas tus propias claves de los proveedores y ves el coste antes de generar.
+
+🌐 Escenara: https://escenara.com
+📖 Guía completa: https://docs.escenara.com
+
+Capítulos
+0:00 Formato y origen del clip
+0:22 Elige a tu personaje y qué hace
+0:38 Elige el lugar y dónde dentro de él
+0:52 Mira el coste y genera el fotograma
+1:13 Modelo del clip y lo que dice
+1:30 Cámara, gesto e instrucciones
+1:54 Confirma y anima
+2:12 Mira el clip en su lugar
+
+#Escenara #IA #Tutorial

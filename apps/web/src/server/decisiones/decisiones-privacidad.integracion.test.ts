@@ -249,7 +249,10 @@ describe.skipIf(!hayBaseDeDatos)("privacidad de las decisiones y de la sombra", 
       .insert(characters)
       .values({ ownerId: usuarioId, name: "Nuria Vidal", kind: "persona", virtual: true })
       .returning();
-    const [producto] = await db().insert(products).values({ ownerId: usuarioId, name: "Crema Lumi" }).returning();
+    const [producto] = await db()
+      .insert(products)
+      .values({ ownerId: usuarioId, name: "Crema Lumi", brandVisible: false })
+      .returning();
     await db()
       .update(projects)
       .set({ mainCharacterId: inventada?.id ?? null })

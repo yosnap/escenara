@@ -1,0 +1,3 @@
+ALTER TABLE "place_declarations" DROP CONSTRAINT "place_declarations_interior_con_permiso";--> statement-breakpoint
+ALTER TABLE "place_declarations" ADD COLUMN "may_use_images" boolean DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE "place_declarations" ADD CONSTRAINT "place_declarations_puedo_usar" CHECK ("place_declarations"."may_use_images" = true or "place_declarations"."text_version" < '2026-10-17.2');

@@ -1,5 +1,7 @@
 import { and, eq, inArray, isNotNull, lt, ne, or, sql } from "drizzle-orm";
 import type { Proveedor } from "@/lib/boveda";
+import { ETIQUETA_VISTA, esVista } from "@/lib/captura-personaje";
+import type { HuecosDeCola } from "@/lib/generacion";
 import { leerAjustes } from "../ajustes";
 import { ejecucionesDeLaComparativa, exigirSinChoqueConComparativa } from "../comparativas/marcas";
 import { db, type Ejecutor } from "../db/cliente";
@@ -256,6 +258,24 @@ export async function escenasEnVueloDe(
   return fila?.total ?? 0;
 }
 
+/** Trabajos del usuario que cuentan para el tope de simultáneos: en cola, preparándose o en el proveedor. */
+export async function trabajosEnMarchaDe(usuarioId: string, ejecutor: Ejecutor = db()): Promise<number> {
+  const [fila] = await ejecutor
+    .select({ total: sql<number>`count(*)::int` })
+    .from(generationJobs)
+    .where(and(eq(generationJobs.userId, usuarioId), condicionEnCurso()));
+  return fila?.total ?? 0;
+}
+
+/**
+ * Cuántos trabajos puede encargar ahora este usuario. Es una lectura: el tope de verdad lo vuelve a comprobar
+ * `encolar` con la fila del usuario bloqueada, así que esto sirve para no **ofrecer** más de lo que cabe.
+ */
+export async function huecosDeCola(usuarioId: string): Promise<HuecosDeCola> {
+  const [ajustes, enMarcha] = await Promise.all([leerAjustes(), trabajosEnMarchaDe(usuarioId)]);
+  return { maximo: ajustes.trabajosSimultaneos, enMarcha, libres: Math.max(0, ajustes.trabajosSimultaneos - enMarcha) };
+}
+
 export async function encolar(peticion: PeticionEncolado): Promise<Encolado> {
   const ajustes = await leerAjustes();
   try {
@@ -271,13 +291,12 @@ export async function encolar(peticion: PeticionEncolado): Promise<Encolado> {
         : null;
       // Lo mismo con el personaje: si se acaba de borrar, sus fotos no pueden salir sin su consentimiento.
       if (peticion.valores.characterId) await exigirPersonajeVivo(tx, peticion.usuarioId, peticion.valores.characterId);
+      // Y una vista del personaje que ya se está generando no se paga dos veces, aunque lleguen dos envíos a la vez.
+      await exigirVistaSinRepetir(tx, peticion.valores);
       // Y la cuenta no puede estar en la gracia de su borrado: ahí no se genera ni se gasta.
       await exigirCuentaSinBorrado(tx, peticion.usuarioId);
 
-      const [{ total } = { total: 0 }] = await tx
-        .select({ total: sql<number>`count(*)::int` })
-        .from(generationJobs)
-        .where(and(eq(generationJobs.userId, peticion.usuarioId), condicionEnCurso()));
+      const total = await trabajosEnMarchaDe(peticion.usuarioId, tx);
       if (total >= ajustes.trabajosSimultaneos) {
         throw new ErrorGeneracion(
           429,
@@ -393,6 +412,33 @@ async function exigirPersonajeVivo(tx: Ejecutor, usuarioId: string, personajeId:
     throw new ErrorGeneracion(
       409,
       "Este personaje se acaba de borrar, así que no se ha encolado nada ni se te ha cobrado.",
+    );
+  }
+}
+
+/**
+ * Un solo trabajo activo por personaje y vista. Va **dentro** de la transacción, con la fila del usuario ya
+ * bloqueada: es lo que impide que una recarga, otra pestaña o el lote y la vista suelta paguen dos veces la misma
+ * vista mientras la primera se genera. Se rechaza antes de reservar, así que no se cobra nada.
+ */
+async function exigirVistaSinRepetir(tx: Ejecutor, valores: NuevoTrabajoEncolado): Promise<void> {
+  const vista = (valores.input as { vistaSintetica?: unknown } | null | undefined)?.vistaSintetica;
+  if (!valores.characterId || !esVista(vista)) return;
+  const [repetida] = await tx
+    .select({ id: generationJobs.id })
+    .from(generationJobs)
+    .where(
+      and(
+        eq(generationJobs.characterId, valores.characterId),
+        condicionEnCurso(),
+        sql`${generationJobs.input}->>'vistaSintetica' = ${vista}`,
+      ),
+    )
+    .limit(1);
+  if (repetida) {
+    throw new ErrorGeneracion(
+      409,
+      `La vista «${ETIQUETA_VISTA[vista].toLowerCase()}» de este personaje ya se está generando, así que no se ha encargado otra y no se te ha cobrado nada. Espera a que termine: aparecerá en su ficha.`,
     );
   }
 }

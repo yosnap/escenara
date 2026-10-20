@@ -3,6 +3,7 @@ import { esTipoTrabajo } from "@/lib/generacion";
 import { leerDireccionElegida } from "@/server/direccion/eleccion";
 import { ErrorGeneracion } from "@/server/generacion/errores";
 import { exigirMismoOrigen, leerAvisosConfirmados, leerCuerpo, manejador } from "@/server/generacion/http";
+import { uuidOpcional } from "@/server/generacion/identificadores";
 import { crearAnimacion, crearFotograma } from "@/server/generacion/servicio";
 import { listarTrabajos } from "@/server/generacion/trabajos";
 import { leerLugarElegido } from "@/server/lugares/para-generar";
@@ -87,7 +88,8 @@ export const POST = manejador(async (peticion: Request, _: unknown, actor) => {
       ? await crearFotograma(actor, {
           ...comun,
           medioId: cuerpo.medioId as string | undefined,
-          personajeId: cuerpo.personajeId as string | undefined,
+          // Vacío cuenta como ausente: así una imagen suelta con personaje lo sigue heredando con sus reglas.
+          personajeId: uuidOpcional(cuerpo.personajeId, "personaje") ?? undefined,
           referenciasTemporales: cuerpo.referenciasTemporales,
           sinTerceros: cuerpo.sinTerceros === true,
           /**

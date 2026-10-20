@@ -3,7 +3,7 @@ import type { RechazoDeReferencia, Vista } from "@/lib/captura-personaje";
 import type { EvaluacionVista } from "@/lib/controles";
 import type { EstadoHojaIdentidad } from "@/lib/direccion";
 import type { CampoFicha } from "@/lib/ficha-personaje";
-import type { Estimacion, TrabajoVista } from "@/lib/generacion";
+import type { Estimacion, HuecosDeCola, TrabajoVista } from "@/lib/generacion";
 import type { Medio } from "@/lib/media/tipos";
 import type {
   AprobacionVista,
@@ -79,6 +79,8 @@ export type CambiosFicha = Partial<Record<CampoFicha | "descripcion" | "motivo",
   guiaTrazo?: string;
   guiaDetalle?: string;
   guiaReferencias?: string[];
+  /** Acepta que un cambio de estilo descarte su cara, sus retratos y sus vistas. */
+  confirmarCambioEstilo?: boolean;
 };
 
 /**
@@ -179,6 +181,9 @@ export const consultarEstimacionDeVista = () => pedir<Estimacion>("/api/generaci
 export const consultarEstimacionSinImagen = () =>
   pedir<Estimacion>("/api/generacion/estimacion?tipo=fotograma&sinImagen=1");
 
+/** Cuántos trabajos caben ahora en la cola: con esto no se ofrecen más retratos ni vistas de los que se encargan. */
+export const consultarHuecos = () => pedir<HuecosDeCola>("/api/generacion/huecos");
+
 /**
  * «Antes de generar» de una vista que falta: lo mismo que dirá la puerta al encolarla, con sus avisos
  * confirmables. Es una lectura: no gasta nada.
@@ -243,8 +248,13 @@ export const pedirVistaSintetica = (id: string, confirmacion: ConfirmacionVistaS
  * regla que usa la pantalla para enseñar el coste total, así que el número que se confirma es el que se
  * encarga. Lo que no se pueda encolar vuelve en `sinEncolar` con su motivo, **sin cobrar**.
  */
-export const pedirVistasQueFaltan = (id: string, confirmacion: Omit<ConfirmacionVistaSintetica, "vista">) =>
-  pedir<VistasEncargadas>(`/api/personajes/${id}/vistas`, json("POST", confirmacion));
+export const pedirVistasQueFaltan = (
+  id: string,
+  confirmacion: Omit<ConfirmacionVistaSintetica, "vista"> & {
+    /** Las vistas que el usuario ha visto y confirmado: el servidor no encarga ninguna más. */
+    vistas: readonly Vista[];
+  },
+) => pedir<VistasEncargadas>(`/api/personajes/${id}/vistas`, json("POST", confirmacion));
 
 export interface VistasEncargadas {
   trabajos: TrabajoVista[];
@@ -380,5 +390,22 @@ export const elegirRetrato = (id: string, medioId: string) =>
  * créditos**, pero envía su retrato, así que el servidor exige consentimiento vigente. `volverARegistrar`
  * reemplaza un identificador que el proveedor ya no reconoce.
  */
-export const registrarEnOmni = (id: string, proyectoId: string, volverARegistrar = false) =>
-  pedir<PersonajeVista>(`/api/personajes/${id}/omni`, json("POST", { proyectoId, volverARegistrar }));
+export const registrarEnOmni = (id: string, proyectoId: string | null, volverARegistrar = false) =>
+  pedir<PersonajeVista>(
+    `/api/personajes/${id}/omni`,
+    json("POST", { ...(proyectoId ? { proyectoId } : {}), volverARegistrar }),
+  );
+
+/** Respuesta de la voz propia: el personaje y, si no se pudo registrar con ella todavía, por qué. */
+export interface RespuestaVozPropia {
+  personaje: PersonajeVista;
+  avisoRegistro: string;
+}
+
+/** Registra la voz propia del personaje (sin coste) y, a continuación, al personaje con ella. */
+export const registrarVozPropia = (id: string, voz: string, descripcion: string, ejemplo: string) =>
+  pedir<RespuestaVozPropia>(`/api/personajes/${id}/voz-registrada`, json("POST", { voz, descripcion, ejemplo }));
+
+/** Quita la voz propia: vuelve a hablar con la del proyecto. */
+export const quitarVozPropia = (id: string) =>
+  pedir<RespuestaVozPropia>(`/api/personajes/${id}/voz-registrada`, json("DELETE", {}));
