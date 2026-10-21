@@ -878,8 +878,12 @@ async function mediosDeReferencia(fila: FilaTrabajo, maximo = Number.POSITIVE_IN
       .where(eq(characters.id, fila.characterId));
     const vistaSintetica = esVista((fila.input as { vistaSintetica?: unknown }).vistaSintetica);
     const minimo = personaje?.virtual && vistaSintetica ? 1 : minimoReferenciasPersonaje;
-    const cuentan = personaje?.virtual ? ids.length : ids.filter((id) => vigentes.get(id) === "foto_original").length;
-    if (cuentan < minimo) {
+    // El mínimo se mide sobre la **ficha**, igual que al encolar, no sobre lo que viaja: un modelo que solo admite
+    // una referencia envía una sola foto, y medirlo así cerraba siempre el trabajo de un personaje intacto.
+    const cuentan = personaje?.virtual
+      ? referencias.length
+      : referencias.filter((r) => r.origen === "foto_original").length;
+    if (cuentan < minimo || ids.length === 0) {
       throw new ErrorPersonajeNoUsable(
         `Las imágenes de referencia del personaje han cambiado desde que pediste el trabajo y ya no llegan al mínimo de ${minimo}. No se ha enviado nada y no se te ha cobrado: añade más imágenes y vuelve a pedirlo.`,
       );

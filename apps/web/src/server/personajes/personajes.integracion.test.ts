@@ -42,7 +42,10 @@ const rutaTrabajos = await import("@/app/api/generacion/trabajos/route");
 const { crearSesionDePrueba } = await import("../auth/sesion-de-prueba");
 const { aplicarMigraciones } = await import("../db/migrar");
 const { db } = await import("../db/cliente");
-const { characterReferences, characters, consentRecords, generationJobs, media, users } = await import("../db/esquema");
+const { characterReferences, characters, consentRecords, generationJobs, media, models, users } = await import(
+  "../db/esquema"
+);
+const { olvidarCatalogo, parametrosDeTexto, textoDeParametros } = await import("../proveedores/catalogo");
 const { guardarCredencial } = await import("../boveda/credenciales");
 const { crearMedio } = await import("../media/servicio");
 const { leerObjeto } = await import("../almacenamiento");
@@ -286,6 +289,57 @@ describe.skipIf(!hayBaseDeDatos)("personajes y consentimiento", () => {
     await enviarEncolados(h);
     // Una subida al proveedor por referencia: es lo que prueba que se envían varias de verdad.
     expect(subidas).toBe(4);
+  });
+
+  test("un modelo que solo admite una referencia envía una foto y no cierra el trabajo por el mínimo", async () => {
+    const personaje = await nuevoPersonaje("Con modelo de una referencia", 4);
+    const [modelo] = await db().select().from(models).where(eq(models.modelId, "nano-banana-2-lite"));
+    if (!modelo) throw new Error("Falta el modelo de imagen predeterminado en la semilla.");
+    const parametros = parametrosDeTexto(modelo.parameters);
+    await db()
+      .update(models)
+      .set({ parameters: textoDeParametros({ ...parametros, maximoReferencias: 1 }) })
+      .where(eq(models.id, modelo.id));
+    olvidarCatalogo();
+    try {
+      subidas = 0;
+      const { trabajo } = await crearFotograma(actorAna, confirmacion(personaje.id), h);
+      const [fila] = await db().select().from(generationJobs).where(eq(generationJobs.id, trabajo.id));
+      expect((fila?.input as { referencias?: string[] } | undefined)?.referencias).toHaveLength(1);
+
+      // La ficha sigue teniendo sus cuatro fotos: viaja una porque el modelo no admite más, no porque falten.
+      await enviarEncolados(h);
+      const enviado = await obtenerTrabajo(ana.id, trabajo.id);
+      expect(enviado.estado).not.toBe("fallido");
+      expect(enviado.error ?? "").not.toMatch(/han cambiado/);
+      expect(subidas).toBe(1);
+      // Se cierra a mano: el simulador no lo termina y ocuparía un hueco de los trabajos simultáneos.
+      await db().update(generationJobs).set({ state: "cancelado" }).where(eq(generationJobs.id, trabajo.id));
+    } finally {
+      await db().update(models).set({ parameters: modelo.parameters }).where(eq(models.id, modelo.id));
+      olvidarCatalogo();
+    }
+  });
+
+  test("si al enviar la ficha ya no llega al mínimo, se cierra sin subir nada", async () => {
+    const personaje = await nuevoPersonaje("Fotos retiradas", 3);
+    const { trabajo } = await crearFotograma(actorAna, confirmacion(personaje.id), h);
+    // Entre encolar y enviar, una de las tres fotos se va a la papelera: la ficha baja a dos.
+    const [primera] = await db()
+      .select({ mediaId: characterReferences.mediaId })
+      .from(characterReferences)
+      .where(eq(characterReferences.characterId, personaje.id))
+      .limit(1);
+    if (!primera) throw new Error("El personaje no tiene referencias.");
+    await db().update(media).set({ deletedAt: new Date() }).where(eq(media.id, primera.mediaId));
+
+    subidas = 0;
+    await enviarEncolados(h);
+    const cerrado = await obtenerTrabajo(ana.id, trabajo.id);
+    expect(cerrado.estado).toBe("fallido");
+    // Lo para la puerta del personaje antes de montar el envío: la ficha ya no llega al mínimo.
+    expect(cerrado.error ?? "").toMatch(/hacen falta 3 y hay 2[\s\S]*No se ha enviado nada/);
+    expect(subidas).toBe(0);
   });
 
   test("sin confirmar la revisión de las fotos no se encola nada (ADR-0009)", async () => {
