@@ -2,7 +2,7 @@
 
 **Escenara** · Estudio abierto de personajes y vídeo · «Da vida a cada escena»
 
-Mapa de la documentación pública del proyecto. Versión actual: **0.56.3**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
+Mapa de la documentación pública del proyecto. Versión actual: **0.56.4**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
 
 ## Mapa de documentos
 
@@ -16,6 +16,7 @@ Mapa de la documentación pública del proyecto. Versión actual: **0.56.3**. Pa
 | Guías | [Web de documentación](procesos/desplegar-documentacion-easypanel.md) | Las guías de `guias/` publicadas como web con buscador y tema claro y oscuro: `bun run docs:dev` (puerto 3022). El orden, los títulos y qué se publica salen de [guias/indice.json](guias/indice.json) | 0.32.1 |
 | Guías | [Primeros pasos: recorrido por el menú](guias/recorrido-por-el-menu.md) | Qué hay detrás de cada entrada del menú, qué viene encendido y qué se enciende en Admin › Ajustes (comunidad, asistente, canto…), el panel de administración y por dónde empezar | 0.49.0 |
 | Guías | [Configurar la API de cada proveedor](guias/configurar-la-api-de-cada-proveedor.md) | Dónde se consigue cada clave, dónde se guarda (Tu cuenta o Admin › Ajustes) y cómo se comprueba sin gastar | 0.32.1 |
+| Guías | [Cómo guardamos tus claves](guias/como-guardamos-tus-claves.md) | Cómo se cifran y usan las claves de API de cada usuario, qué no se puede prometer y cómo limitar el riesgo | 0.56.4 |
 | Guías | [Dar de alta un modelo](guias/dar-de-alta-un-modelo.md) | Cómo entra un modelo en el catálogo, sus estados, el precio con fuente y fecha, la variante, el predeterminado y la recomendación de la instalación | 0.32.1 |
 | Guías | [Tu primer vídeo](guias/tu-primer-video.md) | Generar un fotograma y un clip de 4 s con tu clave de KIE, y qué hacen las alertas cuando falta algo | 0.36.0 |
 | Guías | [Crear un personaje](guias/crear-un-personaje.md) | Personaje con sus fotos de referencia, consentimiento, revocación y borrado con derivados; el camino al inventado y al animado | 0.49.0 |

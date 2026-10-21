@@ -2,6 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.56.4] · 2026-10-21
+
+### Añadido
+
+- **Guía «Cómo guardamos tus claves».** Explica en lenguaje sencillo cómo se cifran y se usan las claves de API de
+  cada usuario, qué no se puede prometer, qué pasa con ellas al borrar la cuenta y cómo limitar el riesgo creando una
+  clave solo para Escenara y revocándola en el proveedor si hace falta.
+
 ## [0.56.3] · 2026-10-21
 
 ### Corregido
