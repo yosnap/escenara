@@ -45,6 +45,11 @@
           "descripcion": "Dónde se consigue cada clave, dónde se guarda en Escenara y cómo se comprueba sin gastar."
         },
         {
+          "archivo": "como-guardamos-tus-claves.md",
+          "titulo": "Cómo guardamos tus claves",
+          "descripcion": "Cómo se cifran y usan tus claves de API, qué no podemos prometer y cómo quedarte tranquilo."
+        },
+        {
           "archivo": "dar-de-alta-un-modelo.md",
           "titulo": "Dar de alta un modelo",
           "descripcion": "Añadir un modelo al catálogo, fijar su precio con fuente y fecha y dejarlo listo para usarse."
