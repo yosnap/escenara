@@ -2,6 +2,20 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.56.3] · 2026-10-21
+
+### Corregido
+
+- **Los modelos de imagen que admiten una sola referencia vuelven a funcionar con personajes.** Con GPT Image 2 o
+  GPT Image 2.5 Flare, un fotograma con personaje se enviaba con una foto, que es lo que admiten, y el envío lo
+  rechazaba siempre diciendo que las imágenes de referencia habían cambiado y no llegaban al mínimo de 3. Ahora el
+  mínimo se comprueba sobre las fotos de la ficha, igual que al pedirlo, y el trabajo sale con la foto que cabe. Si de
+  verdad se quitan fotos entre pedir y enviar y la ficha baja del mínimo, el trabajo se sigue cerrando sin enviar
+  nada ni cobrar; si solo se quita la foto que iba a viajar, se envía otra de la ficha.
+- **La hoja de identidad 3×3 por defecto ya se envía.** Un fotograma de un personaje con la hoja como referencia
+  por defecto se cerraba siempre al enviarse con el mismo aviso falso, porque la hoja no figura entre sus fotos. Ahora
+  sale con la hoja sola, como estaba previsto.
+
 ## [0.56.2] · 2026-10-20
 
 ### Añadido
