@@ -864,25 +864,39 @@ async function mediosDeReferencia(fila: FilaTrabajo, maximo = Number.POSITIVE_IN
   // El consentimiento del personaje del clip ya lo ha revisado la puerta de `preparar`.
   const heredado = (fila.input as { personajeHeredado?: unknown }).personajeHeredado === true;
   if (fila.characterId && fila.kind === "fotograma" && !heredado) {
-    // Solo lo que sigue siendo referencia del personaje y fuera de la papelera, respetando el orden guardado.
     const referencias = await mediosDeReferenciaVigentes(fila.characterId);
     const vigentes = new Map(referencias.map((r) => [r.mediaId, r.origen]));
-    ids = ids.filter((id) => vigentes.has(id));
     const { minimoReferenciasPersonaje } = await leerAjustes();
     // El mínimo lo sostienen solo las fotos originales: una vista generada se envía como guía, pero no
     // sustituye a una foto de la persona (0.14.0). **Salvo en un personaje inventado**, que no tiene ni admite
     // fotos: ahí lo sostienen sus imágenes generadas, igual que en la ficha (`contarReferencias`).
     const [personaje] = await db()
-      .select({ virtual: characters.virtual })
+      .select({ virtual: characters.virtual, hoja: characters.identitySheetMediaId })
       .from(characters)
       .where(eq(characters.id, fila.characterId));
+    // La hoja 3×3 viaja sola y no es una fila de referencias del personaje: vale mientras siga siendo su hoja.
+    const hoja = fila.identityReferenceKind === "hoja_3x3" ? (personaje?.hoja ?? null) : null;
+    const guardadasDelPersonaje = ids.length;
+    // Solo lo que sigue siendo referencia del personaje (o su hoja) y fuera de la papelera, en el orden guardado.
+    ids = ids.filter((id) => vigentes.has(id) || id === hoja);
     const vistaSintetica = esVista((fila.input as { vistaSintetica?: unknown }).vistaSintetica);
     const minimo = personaje?.virtual && vistaSintetica ? 1 : minimoReferenciasPersonaje;
-    const cuentan = personaje?.virtual ? ids.length : ids.filter((id) => vigentes.get(id) === "foto_original").length;
+    // El mínimo se mide sobre la **ficha**, igual que al encolar, no sobre lo que viaja: un modelo que solo admite
+    // una referencia envía una sola foto, y medirlo así cerraba siempre el trabajo de un personaje intacto. La
+    // revalidación del personaje ya lo comprueba antes; esto cubre lo que cambie entre las dos lecturas.
+    const cuentan = personaje?.virtual
+      ? referencias.length
+      : referencias.filter((r) => r.origen === "foto_original").length;
     if (cuentan < minimo) {
       throw new ErrorPersonajeNoUsable(
         `Las imágenes de referencia del personaje han cambiado desde que pediste el trabajo y ya no llegan al mínimo de ${minimo}. No se ha enviado nada y no se te ha cobrado: añade más imágenes y vuelve a pedirlo.`,
       );
+    }
+    // La ficha sigue completa pero se han retirado justo las que se iban a enviar (con un modelo de una sola
+    // referencia basta con quitar esa foto): se envían las vigentes, las fotos originales primero.
+    if (ids.length === 0 && guardadasDelPersonaje > 0) {
+      const primero = (r: (typeof referencias)[number]) => (r.origen === "foto_original" ? 0 : 1);
+      ids = [...referencias].sort((a, b) => primero(a) - primero(b)).map((r) => r.mediaId);
     }
   }
   ids = ids.slice(0, maximo);

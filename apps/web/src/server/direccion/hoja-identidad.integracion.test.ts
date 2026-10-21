@@ -48,6 +48,7 @@ const { characters, consentRecords, generationJobs, media } = await import("../d
 const { guardarCredencial } = await import("../boveda/credenciales");
 const { crearMedio } = await import("../media/servicio");
 const { enviarEncolados, pasadaDeCola } = await import("../cola/pasada");
+const { crearFotograma } = await import("../generacion/servicio");
 const { HERRAMIENTAS_PERCEPCION } = await import("../coherencia/percepcion");
 const { esTrabajoDeHoja } = await import("../personajes/hoja-identidad");
 const { guardarCompatible } = await import("../boveda/compatibles");
@@ -342,6 +343,37 @@ describe.skipIf(!hayBaseDeDatos)("hoja de identidad 3×3 y extracción 6C, de pu
     expect(referenciasSubidas.length - antes).toBe(3);
     const trabajos = await db().select().from(generationJobs).where(eq(generationJobs.characterId, personaje.id));
     for (const trabajo of trabajos) expect(trabajo.identityReferenceKind).toBe("vistas");
+  });
+
+  test("con la hoja por defecto, un fotograma del personaje sale con la hoja sola y no se cierra", async () => {
+    const personaje = await nuevoPersonaje("Hoja que viaja");
+    await rutaHoja.POST(
+      pedir(ana, `/api/personajes/${personaje.id}/hoja-identidad`, "POST", confirmacionDeHoja()),
+      ctx(personaje.id),
+    );
+    await despachar();
+    await rutaHoja.PATCH(
+      pedir(ana, `/api/personajes/${personaje.id}/hoja-identidad`, "PATCH", { estado: "por_defecto" }),
+      ctx(personaje.id),
+    );
+
+    const antes = referenciasSubidas.length;
+    const { trabajo } = await crearFotograma(
+      actorAna,
+      {
+        ...confirmacionDeHoja({ personajeId: personaje.id }),
+        prompt: "Saluda a cámara en una cafetería luminosa.",
+      },
+      h,
+    );
+    await enviarEncolados(h);
+    const [fila] = await db().select().from(generationJobs).where(eq(generationJobs.id, trabajo.id));
+    expect(fila?.identityReferenceKind).toBe("hoja_3x3");
+    // La hoja no es una fila de referencias del personaje, pero es la suya: se envía, y sola.
+    expect(fila?.state).not.toBe("fallido");
+    expect(fila?.failureReason ?? null).toBeNull();
+    expect(referenciasSubidas.length - antes).toBe(1);
+    await db().update(generationJobs).set({ state: "cancelado" }).where(eq(generationJobs.id, trabajo.id));
   });
 
   // ── Extracción 6C ──────────────────────────────────────────────────────────────────────────────────────
