@@ -321,6 +321,36 @@ describe.skipIf(!hayBaseDeDatos)("personajes y consentimiento", () => {
     }
   });
 
+  test("si se retira justo la foto que iba a viajar, se envía otra de la ficha en su lugar", async () => {
+    const personaje = await nuevoPersonaje("Foto enviada retirada", 4);
+    const [modelo] = await db().select().from(models).where(eq(models.modelId, "nano-banana-2-lite"));
+    if (!modelo) throw new Error("Falta el modelo de imagen predeterminado en la semilla.");
+    const parametros = parametrosDeTexto(modelo.parameters);
+    await db()
+      .update(models)
+      .set({ parameters: textoDeParametros({ ...parametros, maximoReferencias: 1 }) })
+      .where(eq(models.id, modelo.id));
+    olvidarCatalogo();
+    try {
+      const { trabajo } = await crearFotograma(actorAna, confirmacion(personaje.id), h);
+      const [fila] = await db().select().from(generationJobs).where(eq(generationJobs.id, trabajo.id));
+      const [enviada] = (fila?.input as { referencias?: string[] } | undefined)?.referencias ?? [];
+      if (!enviada) throw new Error("El trabajo no guardó la referencia que iba a enviar.");
+      // La ficha conserva tres fotos: sigue llegando al mínimo, solo falta la que se había elegido.
+      await db().update(media).set({ deletedAt: new Date() }).where(eq(media.id, enviada));
+
+      subidas = 0;
+      await enviarEncolados(h);
+      const enviado = await obtenerTrabajo(ana.id, trabajo.id);
+      expect(enviado.estado).not.toBe("fallido");
+      expect(subidas).toBe(1);
+      await db().update(generationJobs).set({ state: "cancelado" }).where(eq(generationJobs.id, trabajo.id));
+    } finally {
+      await db().update(models).set({ parameters: modelo.parameters }).where(eq(models.id, modelo.id));
+      olvidarCatalogo();
+    }
+  });
+
   test("si al enviar la ficha ya no llega al mínimo, se cierra sin subir nada", async () => {
     const personaje = await nuevoPersonaje("Fotos retiradas", 3);
     const { trabajo } = await crearFotograma(actorAna, confirmacion(personaje.id), h);
