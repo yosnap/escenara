@@ -8,11 +8,13 @@ qué protecciones tiene, qué no podemos prometer y qué puedes hacer tú para q
 
 ## En pocas palabras
 
-- Tu clave se guarda **cifrada**. En la base de datos no hay ninguna clave legible.
+- Tu clave se guarda **cifrada**. En la base de datos no hay ninguna clave legible, solo sus 4 últimos caracteres
+  para reconocerla.
 - Después de guardarla **no se vuelve a mostrar** a nadie, ni a ti ni a quien administra. Solo se ven sus 4 últimos
   caracteres, para que sepas cuál es.
-- Solo se usa para **los trabajos que tú pides**, en el momento de enviarlos al proveedor.
-- Puedes **quitarla cuando quieras**, y desaparece también si borras tu cuenta.
+- Solo se usa para **lo que haces en Escenara**: tus generaciones, el seguimiento de esos trabajos y las
+  comprobaciones gratuitas de la clave y del saldo.
+- Puedes **quitarla cuando quieras**. Si borras tu cuenta, se elimina al terminar el periodo de gracia.
 
 ## Cómo se protege
 
@@ -29,8 +31,9 @@ sustituyes una clave por otra que no vale, la anterior sigue en su sitio.
 **Fuera de registros y copias de texto.** Los registros de auditoría y los mensajes de error nunca incluyen claves.
 Tampoco aparecen en la documentación, en la comunidad ni en las exportaciones de tus proyectos.
 
-**Solo viaja al proveedor.** Cuando confirmas una generación, el servidor descifra la clave en ese momento y la envía
-al proveedor correspondiente, por una conexión cifrada, para lanzar tu trabajo. No se envía a ningún otro sitio.
+**Solo viaja al proveedor.** Cada vez que hace falta (al lanzar o seguir un trabajo tuyo, o al comprobar la clave o
+tu saldo), el servidor descifra la clave en ese momento y la envía solo al proveedor correspondiente, por una conexión
+cifrada. No se envía a ningún otro sitio.
 
 ## Lo que no podemos prometer
 
@@ -53,9 +56,12 @@ Escenara no tiene, de momento, auditorías externas ni certificaciones de seguri
 
 ## Tus datos y la ley
 
-Una clave de API no es, en sí misma, un dato personal, pero la tratamos con las garantías del Reglamento General de
-Protección de Datos: cifrado, acceso mínimo, uso solo para la finalidad que pides y borrado cuando lo solicitas. La
-política de privacidad de la instalación, enlazada al pie de cada página de Escenara, lo recoge. Para saber qué se
-borra al eliminar tu cuenta, consulta [Tus datos: historial, exportación y borrado](tus-datos.md).
+Tratamos tu clave como un dato más de tu cuenta, con las garantías del Reglamento General de Protección de Datos:
+cifrado, acceso mínimo, uso solo para lo que haces en Escenara y borrado cuando lo pides. La política de privacidad
+de la instalación, enlazada al pie de cada página de Escenara, indica que las claves se guardan cifradas.
+
+Si borras tu cuenta, la clave se elimina al terminar el periodo de gracia. Las copias de seguridad del servidor pueden
+conservarla, siempre cifrada, hasta que se renuevan. Para saber qué más se borra, consulta
+[Tus datos: historial, exportación y borrado](tus-datos.md).
 
 Para conseguir y probar cada clave, consulta [Configurar la API de cada proveedor](configurar-la-api-de-cada-proveedor.md).
