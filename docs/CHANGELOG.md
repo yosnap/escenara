@@ -2,6 +2,22 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.56.6] · 2026-10-24
+
+### Seguridad
+
+- **Next.js 16.4.3 y React 19.3.1.** Next.js 16.3.6 tenía avisos de seguridad publicados que se corrigen a partir de
+  16.3.8 y 16.4.1, entre ellos una denegación de servicio mediante acciones de servidor y el envenenamiento de la caché
+  en instalaciones propias. La actualización no cambia el comportamiento de Escenara.
+- **better-auth 1.7.12.** Endurece la verificación de los JWT y de las devoluciones OAuth.
+
+### Cambiado
+
+- Parches de drizzle-orm, sharp, nodemailer, Starlight y Astro (7.3.8: la 7.4 exige una versión de Node más reciente
+  que la del entorno local).
+- **Presupuesto de JavaScript.** Next.js 16.4 añade entre 1 y 2 KB de framework a cada ruta. Se actualizan las medidas
+  y se sube el tope de las 9 rutas que lo superaban, al medido más 1 KB.
+
 ## [0.56.5] · 2026-10-23
 
 ### Añadido

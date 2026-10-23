@@ -1,6 +1,6 @@
 {
   "name": "@escenara/docs",
-  "version": "0.56.5",
+  "version": "0.56.6",
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "module",
@@ -11,14 +11,14 @@
     "typecheck": "astro sync && tsc --noEmit"
   },
   "dependencies": {
-    "@astrojs/markdown-remark": "7.3.1",
-    "@astrojs/starlight": "0.42.4",
-    "astro": "7.3.5",
-    "sharp": "0.35.4",
+    "@astrojs/markdown-remark": "7.3.4",
+    "@astrojs/starlight": "0.42.7",
+    "astro": "7.3.8",
+    "sharp": "0.35.5",
     "starlight-links-validator": "0.26.0"
   },
   "devDependencies": {
-    "@types/bun": "1.4.2",
+    "@types/bun": "1.4.4",
     "@types/mdast": "4.0.4",
     "typescript": "7.0.2",
     "vfile": "6.0.3"
