@@ -1,0 +1,56 @@
+# Producción en Coolify: web, worker y archivo de demos con la misma imagen y el mismo commit.
+# Solo «web» compila; los otros dos reutilizan la imagen local, así no se suma memoria al build.
+# PostgreSQL y SeaweedFS son recursos aparte de Coolify. Guía: docs/procesos/desplegar-en-coolify.md
+x-entorno: &entorno
+  DATABASE_URL: ${DATABASE_URL:?}
+  BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?}
+  BETTER_AUTH_URL: ${BETTER_AUTH_URL:?}
+  ESCENARA_CLAVE_MAESTRA: ${ESCENARA_CLAVE_MAESTRA:?}
+  S3_ENDPOINT: ${S3_ENDPOINT:?}
+  S3_REGION: ${S3_REGION:-us-east-1}
+  S3_BUCKET: ${S3_BUCKET:-escenara}
+  S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?}
+  S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?}
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    image: escenara-app:latest
+    environment: *entorno
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "bun", "-e", "fetch('http://127.0.0.1:3021/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 40s
+      retries: 3
+
+  worker:
+    image: escenara-app:latest
+    pull_policy: never
+    command: ["bun", "scripts/worker.ts"]
+    environment: *entorno
+    restart: unless-stopped
+    depends_on:
+      - web
+
+  demos:
+    image: escenara-app:latest
+    pull_policy: never
+    command:
+      - sh
+      - -c
+      - bun scripts/archivar-demos.ts "$$DEMOS_CORREO" && exec bun scripts/archivar-demos.ts "$$DEMOS_CORREO" --watch
+    environment:
+      <<: *entorno
+      DEMOS_CORREO: ${DEMOS_CORREO:?}
+    volumes:
+      - escenara-demos:/app/docs/privado/demos
+    restart: unless-stopped
+    depends_on:
+      - web
+
+volumes:
+  escenara-demos:
