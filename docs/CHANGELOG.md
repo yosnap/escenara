@@ -2,6 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.56.5] · 2026-10-23
+
+### Añadido
+
+- **Despliegue en Coolify.** `docker-compose.coolify.yml` levanta la web, el worker y el archivo de demos con una
+  sola compilación, de modo que los tres ejecutan siempre el mismo commit. La guía
+  `procesos/desplegar-en-coolify.md` recoge los recursos, las variables y cómo publicar una versión.
+
 ## [0.56.4] · 2026-10-21
 
 ### Añadido

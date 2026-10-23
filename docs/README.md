@@ -2,7 +2,7 @@
 
 **Escenara** · Estudio abierto de personajes y vídeo · «Da vida a cada escena»
 
-Mapa de la documentación pública del proyecto. Versión actual: **0.56.4**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
+Mapa de la documentación pública del proyecto. Versión actual: **0.56.5**. Para instalar y contribuir, empieza por el [README](../README.md) y la [guía de contribución](../CONTRIBUTING.md).
 
 ## Mapa de documentos
 
@@ -56,6 +56,7 @@ Mapa de la documentación pública del proyecto. Versión actual: **0.56.4**. Pa
 | Privado | `privado/claves-api.local.md` | Claves reales. **Fuera de git** (`.gitignore`) | Local |
 | Legal | [Cumplimiento y privacidad](legal/cumplimiento-y-privacidad.md) | Marco normativo y controles del producto | Lista de trabajo |
 | Procesos | [Flujo de versiones y ramas](procesos/flujo-versiones-y-ramas.md) | Numeración, ramas, ciclo de una versión y definición de terminado | Vigente |
+| Procesos | [Desplegar en Coolify](procesos/desplegar-en-coolify.md) | Producción actual: recursos del proyecto «Escenara», compose de web, worker y demos, variables y cómo publicar una versión | 0.56.5 |
 | Procesos | [Desplegar la documentación en Easypanel](procesos/desplegar-documentacion-easypanel.md) | Imagen de `apps/docs`, aplicación en Easypanel, dominio `docs.escenara.com`, HTTPS y registro DNS | 0.32.1 |
 | Procesos | [Medir el rendimiento](procesos/medir-el-rendimiento.md) | Objetivos (LCP, INP, CLS y JavaScript por ruta), el presupuesto que comprueba el build y cómo medir en Comet con Lighthouse y el panel de rendimiento | 0.45.0 |
 | Cambios | [CHANGELOG](CHANGELOG.md) | Historial de versiones | Vivo |
