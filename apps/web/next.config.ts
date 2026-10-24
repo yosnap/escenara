@@ -18,6 +18,17 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["onnxruntime-web"],
   // El historial de versiones del admin lee el changelog de la raíz del monorepo.
   outputFileTracingIncludes: { "/admin/versiones": ["../../docs/CHANGELOG.md"] },
+  // El origen permitido es el dominio sin «www.» (BETTER_AUTH_URL): desde www fallarían las escrituras.
+  async redirects() {
+    return [
+      {
+        source: "/:ruta*",
+        has: [{ type: "host", value: "www\\.(?<dominio>.+)" }],
+        destination: "https://:dominio/:ruta*",
+        permanent: true,
+      },
+    ];
+  },
   // Páginas con datos de cuenta: que ningún proxy o CDN las guarde.
   async headers() {
     const privado = [{ key: "Cache-Control", value: "private, no-store" }];
