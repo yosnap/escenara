@@ -2,6 +2,14 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y [SemVer](https://semver.org/lang/es/). Reglas de versiones en `procesos/flujo-versiones-y-ramas.md`.
 
+## [0.56.7] · 2026-10-24
+
+### Corregido
+
+- **www.escenara.com redirige a escenara.com.** Antes servía la web tal cual y, como la aplicación solo acepta
+  escrituras desde su dominio, no se podía iniciar sesión ni guardar nada desde www. Ahora cualquier dirección con
+  «www.» delante redirige de forma permanente a la misma ruta sin «www.».
+
 ## [0.56.6] · 2026-10-24
 
 ### Seguridad
